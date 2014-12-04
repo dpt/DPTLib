@@ -1,0 +1,440 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		55513846165463EB007F3565 /* log2bpp.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377416545786007F3565 /* log2bpp.c */; };
+		55513847165463EB007F3565 /* intersection.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377716545786007F3565 /* intersection.c */; };
+		55513848165463EB007F3565 /* is-empty.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377816545786007F3565 /* is-empty.c */; };
+		55513849165463EB007F3565 /* stream-mem.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377B16545786007F3565 /* stream-mem.c */; };
+		5551384A165463EB007F3565 /* stream-stdio.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377C16545786007F3565 /* stream-stdio.c */; };
+		5551384B165463EB007F3565 /* stream.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377D16545786007F3565 /* stream.c */; };
+		55513862165463EB007F3565 /* grow.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379616545786007F3565 /* grow.c */; };
+		55513863165463EB007F3565 /* shrink.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379716545786007F3565 /* shrink.c */; };
+		55513864165463EB007F3565 /* clz8.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379916545786007F3565 /* clz8.c */; };
+		55513865165463EB007F3565 /* pack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379B16545786007F3565 /* pack.c */; };
+		55513866165463EB007F3565 /* unpack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379C16545786007F3565 /* unpack.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		5551374C165456FA007F3565 /* libDPTLib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libDPTLib.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		5551375516545786007F3565 /* debug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = debug.h; sourceTree = "<group>"; };
+		5551375616545786007F3565 /* result.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = result.h; sourceTree = "<group>"; };
+		5551375716545786007F3565 /* suppress.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = suppress.h; sourceTree = "<group>"; };
+		5551375816545786007F3565 /* types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = types.h; sourceTree = "<group>"; };
+		5551375A16545786007F3565 /* bitmap-set.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "bitmap-set.h"; sourceTree = "<group>"; };
+		5551375B16545786007F3565 /* bitmap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bitmap.h; sourceTree = "<group>"; };
+		5551375C16545786007F3565 /* pixelfmt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pixelfmt.h; sourceTree = "<group>"; };
+		5551375D16545786007F3565 /* screen.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = screen.h; sourceTree = "<group>"; };
+		5551375F16545786007F3565 /* box.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = box.h; sourceTree = "<group>"; };
+		5551376116545786007F3565 /* stream-mem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "stream-mem.h"; sourceTree = "<group>"; };
+		5551376216545786007F3565 /* stream-stdio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "stream-stdio.h"; sourceTree = "<group>"; };
+		5551376316545786007F3565 /* stream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stream.h; sourceTree = "<group>"; };
+		5551376D16545786007F3565 /* array.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = array.h; sourceTree = "<group>"; };
+		5551376E16545786007F3565 /* barith.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = barith.h; sourceTree = "<group>"; };
+		5551376F16545786007F3565 /* likely.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = likely.h; sourceTree = "<group>"; };
+		5551377016545786007F3565 /* minmax.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = minmax.h; sourceTree = "<group>"; };
+		5551377116545786007F3565 /* pack.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pack.h; sourceTree = "<group>"; };
+		5551377416545786007F3565 /* log2bpp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = log2bpp.c; sourceTree = "<group>"; };
+		5551377716545786007F3565 /* intersection.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = intersection.c; sourceTree = "<group>"; };
+		5551377816545786007F3565 /* is-empty.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "is-empty.c"; sourceTree = "<group>"; };
+		5551377B16545786007F3565 /* stream-mem.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-mem.c"; sourceTree = "<group>"; };
+		5551377C16545786007F3565 /* stream-stdio.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-stdio.c"; sourceTree = "<group>"; };
+		5551377D16545786007F3565 /* stream.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = stream.c; sourceTree = "<group>"; };
+		5551379616545786007F3565 /* grow.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = grow.c; sourceTree = "<group>"; };
+		5551379716545786007F3565 /* shrink.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = shrink.c; sourceTree = "<group>"; };
+		5551379916545786007F3565 /* clz8.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = clz8.c; sourceTree = "<group>"; };
+		5551379B16545786007F3565 /* pack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pack.c; sourceTree = "<group>"; };
+		5551379C16545786007F3565 /* unpack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unpack.c; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		55513741165456FA007F3565 = {
+			isa = PBXGroup;
+			children = (
+				5551375316545786007F3565 /* include */,
+				5551377216545786007F3565 /* libraries */,
+				55513808165460EF007F3565 /* Frameworks */,
+				5551374D165456FA007F3565 /* Products */,
+			);
+			indentWidth = 2;
+			sourceTree = "<group>";
+			tabWidth = 8;
+			usesTabs = 0;
+			wrapsLines = 0;
+		};
+		5551374D165456FA007F3565 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5551374C165456FA007F3565 /* libDPTLib.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5551375316545786007F3565 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				5551375416545786007F3565 /* base */,
+				5551375916545786007F3565 /* framebuf */,
+				5551375E16545786007F3565 /* geom */,
+				5551376016545786007F3565 /* io */,
+				5551376C16545786007F3565 /* utils */,
+			);
+			name = include;
+			path = ../../include;
+			sourceTree = "<group>";
+		};
+		5551375416545786007F3565 /* base */ = {
+			isa = PBXGroup;
+			children = (
+				5551375516545786007F3565 /* debug.h */,
+				5551375616545786007F3565 /* result.h */,
+				5551375716545786007F3565 /* suppress.h */,
+				5551375816545786007F3565 /* types.h */,
+			);
+			path = base;
+			sourceTree = "<group>";
+		};
+		5551375916545786007F3565 /* framebuf */ = {
+			isa = PBXGroup;
+			children = (
+				5551375A16545786007F3565 /* bitmap-set.h */,
+				5551375B16545786007F3565 /* bitmap.h */,
+				5551375C16545786007F3565 /* pixelfmt.h */,
+				5551375D16545786007F3565 /* screen.h */,
+			);
+			path = framebuf;
+			sourceTree = "<group>";
+		};
+		5551375E16545786007F3565 /* geom */ = {
+			isa = PBXGroup;
+			children = (
+				5551375F16545786007F3565 /* box.h */,
+			);
+			path = geom;
+			sourceTree = "<group>";
+		};
+		5551376016545786007F3565 /* io */ = {
+			isa = PBXGroup;
+			children = (
+				5551376116545786007F3565 /* stream-mem.h */,
+				5551376216545786007F3565 /* stream-stdio.h */,
+				5551376316545786007F3565 /* stream.h */,
+			);
+			path = io;
+			sourceTree = "<group>";
+		};
+		5551376C16545786007F3565 /* utils */ = {
+			isa = PBXGroup;
+			children = (
+				5551376D16545786007F3565 /* array.h */,
+				5551376E16545786007F3565 /* barith.h */,
+				5551376F16545786007F3565 /* likely.h */,
+				5551377016545786007F3565 /* minmax.h */,
+				5551377116545786007F3565 /* pack.h */,
+			);
+			path = utils;
+			sourceTree = "<group>";
+		};
+		5551377216545786007F3565 /* libraries */ = {
+			isa = PBXGroup;
+			children = (
+				5551377316545786007F3565 /* framebuf */,
+				5551377516545786007F3565 /* geom */,
+				5551377916545786007F3565 /* io */,
+				5551379416545786007F3565 /* utils */,
+			);
+			name = libraries;
+			path = ../../libraries;
+			sourceTree = "<group>";
+		};
+		5551377316545786007F3565 /* framebuf */ = {
+			isa = PBXGroup;
+			children = (
+				5551377416545786007F3565 /* log2bpp.c */,
+			);
+			path = framebuf;
+			sourceTree = "<group>";
+		};
+		5551377516545786007F3565 /* geom */ = {
+			isa = PBXGroup;
+			children = (
+				5551377616545786007F3565 /* box */,
+			);
+			path = geom;
+			sourceTree = "<group>";
+		};
+		5551377616545786007F3565 /* box */ = {
+			isa = PBXGroup;
+			children = (
+				5551377716545786007F3565 /* intersection.c */,
+				5551377816545786007F3565 /* is-empty.c */,
+			);
+			path = box;
+			sourceTree = "<group>";
+		};
+		5551377916545786007F3565 /* io */ = {
+			isa = PBXGroup;
+			children = (
+				5551377A16545786007F3565 /* stream */,
+			);
+			path = io;
+			sourceTree = "<group>";
+		};
+		5551377A16545786007F3565 /* stream */ = {
+			isa = PBXGroup;
+			children = (
+				5551377B16545786007F3565 /* stream-mem.c */,
+				5551377C16545786007F3565 /* stream-stdio.c */,
+				5551377D16545786007F3565 /* stream.c */,
+			);
+			path = stream;
+			sourceTree = "<group>";
+		};
+		5551379416545786007F3565 /* utils */ = {
+			isa = PBXGroup;
+			children = (
+				5551379516545786007F3565 /* array */,
+				5551379816545786007F3565 /* barith */,
+				5551379A16545786007F3565 /* pack */,
+			);
+			path = utils;
+			sourceTree = "<group>";
+		};
+		5551379516545786007F3565 /* array */ = {
+			isa = PBXGroup;
+			children = (
+				5551379616545786007F3565 /* grow.c */,
+				5551379716545786007F3565 /* shrink.c */,
+			);
+			path = array;
+			sourceTree = "<group>";
+		};
+		5551379816545786007F3565 /* barith */ = {
+			isa = PBXGroup;
+			children = (
+				5551379916545786007F3565 /* clz8.c */,
+			);
+			path = barith;
+			sourceTree = "<group>";
+		};
+		5551379A16545786007F3565 /* pack */ = {
+			isa = PBXGroup;
+			children = (
+				5551379B16545786007F3565 /* pack.c */,
+				5551379C16545786007F3565 /* unpack.c */,
+			);
+			path = pack;
+			sourceTree = "<group>";
+		};
+		55513808165460EF007F3565 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5551374B165456FA007F3565 /* DPTLib */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 55513750165456FA007F3565 /* Build configuration list for PBXNativeTarget "DPTLib" */;
+			buildPhases = (
+				55513748165456FA007F3565 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DPTLib;
+			productName = MotionMasks;
+			productReference = 5551374C165456FA007F3565 /* libDPTLib.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		55513743165456FA007F3565 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0500;
+				ORGANIZATIONNAME = "David Thomas";
+			};
+			buildConfigurationList = 55513746165456FA007F3565 /* Build configuration list for PBXProject "DPTLib" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 55513741165456FA007F3565;
+			productRefGroup = 5551374D165456FA007F3565 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				5551374B165456FA007F3565 /* DPTLib */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		55513748165456FA007F3565 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				55513846165463EB007F3565 /* log2bpp.c in Sources */,
+				55513847165463EB007F3565 /* intersection.c in Sources */,
+				55513848165463EB007F3565 /* is-empty.c in Sources */,
+				55513849165463EB007F3565 /* stream-mem.c in Sources */,
+				5551384A165463EB007F3565 /* stream-stdio.c in Sources */,
+				5551384B165463EB007F3565 /* stream.c in Sources */,
+				55513862165463EB007F3565 /* grow.c in Sources */,
+				55513863165463EB007F3565 /* shrink.c in Sources */,
+				55513864165463EB007F3565 /* clz8.c in Sources */,
+				55513865165463EB007F3565 /* pack.c in Sources */,
+				55513866165463EB007F3565 /* unpack.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		5551374E165456FA007F3565 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = NO;
+				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu89;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_TREAT_IMPLICIT_FUNCTION_DECLARATIONS_AS_ERRORS = YES;
+				GCC_TREAT_INCOMPATIBLE_POINTER_TYPE_WARNINGS_AS_ERRORS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = YES;
+				GCC_WARN_ABOUT_MISSING_NEWLINE = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_CHECK_SWITCH_STATEMENTS = YES;
+				GCC_WARN_FOUR_CHARACTER_CONSTANTS = YES;
+				GCC_WARN_INITIALIZER_NOT_FULLY_BRACKETED = YES;
+				GCC_WARN_SHADOW = YES;
+				GCC_WARN_SIGN_COMPARE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNKNOWN_PRAGMAS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_PARAMETER = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/../../include\"",
+					"\"$(SRCROOT)/../../libraries\"",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				ONLY_ACTIVE_ARCH = YES;
+				PUBLIC_HEADERS_FOLDER_PATH = "include/$(TARGET_NAME)";
+				RUN_CLANG_STATIC_ANALYZER = NO;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		5551374F165456FA007F3565 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = NO;
+				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu89;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_TREAT_IMPLICIT_FUNCTION_DECLARATIONS_AS_ERRORS = YES;
+				GCC_TREAT_INCOMPATIBLE_POINTER_TYPE_WARNINGS_AS_ERRORS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = YES;
+				GCC_WARN_ABOUT_MISSING_NEWLINE = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_CHECK_SWITCH_STATEMENTS = YES;
+				GCC_WARN_FOUR_CHARACTER_CONSTANTS = YES;
+				GCC_WARN_INITIALIZER_NOT_FULLY_BRACKETED = YES;
+				GCC_WARN_SHADOW = YES;
+				GCC_WARN_SIGN_COMPARE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNKNOWN_PRAGMAS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_PARAMETER = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/../../include\"",
+					"\"$(SRCROOT)/../../libraries\"",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				PUBLIC_HEADERS_FOLDER_PATH = "include/$(TARGET_NAME)";
+				RUN_CLANG_STATIC_ANALYZER = NO;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		55513751165456FA007F3565 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				EXECUTABLE_PREFIX = lib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		55513752165456FA007F3565 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				EXECUTABLE_PREFIX = lib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		55513746165456FA007F3565 /* Build configuration list for PBXProject "DPTLib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5551374E165456FA007F3565 /* Debug */,
+				5551374F165456FA007F3565 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		55513750165456FA007F3565 /* Build configuration list for PBXNativeTarget "DPTLib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				55513751165456FA007F3565 /* Debug */,
+				55513752165456FA007F3565 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 55513743165456FA007F3565 /* Project object */;
+}
