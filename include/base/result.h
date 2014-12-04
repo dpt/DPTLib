@@ -5,9 +5,12 @@
 
 typedef int result_t;
 
+/* DPTLib */
 #define result_BASE_GENERIC      0x0000
 #define result_BASE_STREAM       0x0100
-#define result_BASE_PLAYER       0x0200 // move to momask code
+
+/* Non-DPTLib */
+#define result_BASE_MMPLAYER     0xF000
 
 #define result_OK                0
 #define result_OOM               1 /* out of memory */
