@@ -69,6 +69,7 @@ typedef unsigned int   pixelfmt_rgba8888_t;
 typedef unsigned int   pixelfmt_abgr8888_t;
 typedef unsigned int   pixelfmt_argb8888_t;
 
+/* Given a pixel format return its log2 bits-per-pixel size. */
 int pixelfmt_log2bpp(pixelfmt_t fmt);
 
 #endif /* FRAMEBUF_PIXELFMT_H */

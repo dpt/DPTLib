@@ -1,4 +1,4 @@
-/* bitmap.h */
+/* bitmap.h -- bitmap image type */
 
 #ifndef FRAMEBUF_BITMAP_H
 #define FRAMEBUF_BITMAP_H

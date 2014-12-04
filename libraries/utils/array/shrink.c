@@ -1,4 +1,4 @@
-/* shrink.c */
+/* shrink.c -- shrink wrap an array */
 
 #include <assert.h>
 #include <stdlib.h>

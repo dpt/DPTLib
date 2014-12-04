@@ -1,4 +1,4 @@
-/* clz8.c */
+/* clz8.c -- count leading zeroes in a byte */
 
 #include "utils/barith.h"
 

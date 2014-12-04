@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: stream-mem.h
- * Purpose: Memory block IO stream implementation
- * ----------------------------------------------------------------------- */
+/* stream-mem.c -- memory block IO stream implementation */
 
 #ifndef STREAM_MEM_H
 #define STREAM_MEM_H

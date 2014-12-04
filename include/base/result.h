@@ -1,4 +1,4 @@
-/* result.h -- generic function result constants */
+/* result.h -- generic function return values */
 
 #ifndef BASE_RESULT_H
 #define BASE_RESULT_H

@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: unpack.c
- * Purpose: Structure unpacking
- * ----------------------------------------------------------------------- */
+/* unpack.c -- structure unpacking */
 
 #include <assert.h>
 #include <ctype.h>

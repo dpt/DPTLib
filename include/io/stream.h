@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: stream.h
- * Purpose: Stream interface
- * ----------------------------------------------------------------------- */
+/* stream.c -- stream system */
 
 /**
  * \file Stream (interface).
@@ -35,8 +32,8 @@ typedef struct stream stream_t;
 /* Interfaces */
 
 typedef result_t stream_op_t(stream_t        *s,
-                                stream_opcode_t  opcode,
-                                void            *opaque);
+                             stream_opcode_t  opcode,
+                             void            *opaque);
 typedef result_t stream_seek_t(stream_t *s, stream_size_t pos);
 typedef int       stream_get_t(stream_t *s);
 typedef stream_size_t stream_fill_t(stream_t *s, stream_size_t need);

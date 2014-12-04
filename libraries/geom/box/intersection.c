@@ -1,3 +1,5 @@
+/* intersection.c -- compute the result of intersecting two boxes */
+
 #include "utils/minmax.h"
 
 #include "geom/box.h"

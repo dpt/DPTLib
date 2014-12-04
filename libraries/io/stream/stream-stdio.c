@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: stream-stdio.c
- * Purpose: C standard IO stream implementation
- * ----------------------------------------------------------------------- */
+/* stream-stdio.c -- C standard IO stream implementation */
 
 #include <assert.h>
 #include <stddef.h>

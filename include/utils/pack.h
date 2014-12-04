@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: pack.h
- * Purpose: Structure packing and unpacking
- * ----------------------------------------------------------------------- */
+/* pack.h -- structure packing and unpacking helpers */
 
 /**
  * \file Pack (interface).

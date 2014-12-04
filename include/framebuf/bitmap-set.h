@@ -1,4 +1,4 @@
-/* bitmap-set.h */
+/* bitmap-set.h -- a set of bitmap images */
 
 #ifndef FRAMEBUF_BITMAP_SET_H
 #define FRAMEBUF_BITMAP_SET_H

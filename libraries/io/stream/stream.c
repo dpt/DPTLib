@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: stream.c
- * Purpose: Stream interface
- * ----------------------------------------------------------------------- */
+/* stream.c -- stream system support functions */
 
 #include <stdio.h>
 #include <stdlib.h>

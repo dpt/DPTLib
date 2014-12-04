@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: stream-mem.c
- * Purpose: Memory block IO stream implementation
- * ----------------------------------------------------------------------- */
+/* stream-mem.c -- memory block IO stream implementation */
 
 #include <assert.h>
 #include <stddef.h>

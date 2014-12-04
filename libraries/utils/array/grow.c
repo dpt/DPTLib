@@ -1,4 +1,4 @@
-/* grow.c */
+/* grow.c -- grow an array */
 
 #include <assert.h>
 #include <stdlib.h>

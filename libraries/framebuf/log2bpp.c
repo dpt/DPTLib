@@ -1,4 +1,4 @@
-/* log2bpp.c */
+/* log2bpp.c -- given a pixel format return its log2 bits-per-pixel size */
 
 #include "framebuf/pixelfmt.h"
 

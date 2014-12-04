@@ -1,4 +1,4 @@
-/* screen.h */
+/* screen.h -- screen type */
 
 #ifndef FRAMEBUF_SCREEN_H
 #define FRAMEBUF_SCREEN_H
