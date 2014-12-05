@@ -31,4 +31,4 @@
 # Additional
 *.d
 *.orig
-*/xcuserdata/*
+xcuserdata
