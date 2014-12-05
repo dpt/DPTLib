@@ -18,6 +18,15 @@
 		55513864165463EB007F3565 /* clz8.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379916545786007F3565 /* clz8.c */; };
 		55513865165463EB007F3565 /* pack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379B16545786007F3565 /* pack.c */; };
 		55513866165463EB007F3565 /* unpack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379C16545786007F3565 /* unpack.c */; };
+		55FC73171A326E16007C451B /* ceillog2.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730D1A326E16007C451B /* ceillog2.c */; };
+		55FC73181A326E16007C451B /* clz.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730E1A326E16007C451B /* clz.c */; };
+		55FC73191A326E16007C451B /* countbits.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730F1A326E16007C451B /* countbits.c */; };
+		55FC731A1A326E16007C451B /* ctz.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC73101A326E16007C451B /* ctz.c */; };
+		55FC731B1A326E16007C451B /* floorlog2.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC73111A326E16007C451B /* floorlog2.c */; };
+		55FC731C1A326E16007C451B /* msb.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC73121A326E16007C451B /* msb.c */; };
+		55FC731D1A326E16007C451B /* power2gt.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC73131A326E16007C451B /* power2gt.c */; };
+		55FC731E1A326E16007C451B /* power2le.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC73141A326E16007C451B /* power2le.c */; };
+		55FC731F1A326E16007C451B /* reversebits.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC73151A326E16007C451B /* reversebits.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -50,6 +59,16 @@
 		5551379916545786007F3565 /* clz8.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = clz8.c; sourceTree = "<group>"; };
 		5551379B16545786007F3565 /* pack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pack.c; sourceTree = "<group>"; };
 		5551379C16545786007F3565 /* unpack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unpack.c; sourceTree = "<group>"; };
+		55FC730D1A326E16007C451B /* ceillog2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ceillog2.c; sourceTree = "<group>"; };
+		55FC730E1A326E16007C451B /* clz.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = clz.c; sourceTree = "<group>"; };
+		55FC730F1A326E16007C451B /* countbits.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = countbits.c; sourceTree = "<group>"; };
+		55FC73101A326E16007C451B /* ctz.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ctz.c; sourceTree = "<group>"; };
+		55FC73111A326E16007C451B /* floorlog2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = floorlog2.c; sourceTree = "<group>"; };
+		55FC73121A326E16007C451B /* msb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = msb.c; sourceTree = "<group>"; };
+		55FC73131A326E16007C451B /* power2gt.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = power2gt.c; sourceTree = "<group>"; };
+		55FC73141A326E16007C451B /* power2le.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = power2le.c; sourceTree = "<group>"; };
+		55FC73151A326E16007C451B /* reversebits.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = reversebits.c; sourceTree = "<group>"; };
+		55FC73161A326E16007C451B /* util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = util.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -143,6 +162,7 @@
 		5551377216545786007F3565 /* libraries */ = {
 			isa = PBXGroup;
 			children = (
+				55A1D6B91A3139CA00CFC972 /* base */,
 				5551377316545786007F3565 /* framebuf */,
 				5551377516545786007F3565 /* geom */,
 				5551377916545786007F3565 /* io */,
@@ -217,6 +237,16 @@
 		5551379816545786007F3565 /* barith */ = {
 			isa = PBXGroup;
 			children = (
+				55FC73161A326E16007C451B /* util.h */,
+				55FC730D1A326E16007C451B /* ceillog2.c */,
+				55FC730E1A326E16007C451B /* clz.c */,
+				55FC730F1A326E16007C451B /* countbits.c */,
+				55FC73101A326E16007C451B /* ctz.c */,
+				55FC73111A326E16007C451B /* floorlog2.c */,
+				55FC73121A326E16007C451B /* msb.c */,
+				55FC73131A326E16007C451B /* power2gt.c */,
+				55FC73141A326E16007C451B /* power2le.c */,
+				55FC73151A326E16007C451B /* reversebits.c */,
 				5551379916545786007F3565 /* clz8.c */,
 			);
 			path = barith;
@@ -236,6 +266,13 @@
 			children = (
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		55A1D6B91A3139CA00CFC972 /* base */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = base;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -289,12 +326,21 @@
 			files = (
 				55513846165463EB007F3565 /* log2bpp.c in Sources */,
 				55513847165463EB007F3565 /* intersection.c in Sources */,
+				55FC731B1A326E16007C451B /* floorlog2.c in Sources */,
+				55FC731E1A326E16007C451B /* power2le.c in Sources */,
+				55FC731D1A326E16007C451B /* power2gt.c in Sources */,
+				55FC731C1A326E16007C451B /* msb.c in Sources */,
 				55513848165463EB007F3565 /* is-empty.c in Sources */,
+				55FC731A1A326E16007C451B /* ctz.c in Sources */,
 				55513849165463EB007F3565 /* stream-mem.c in Sources */,
+				55FC73171A326E16007C451B /* ceillog2.c in Sources */,
 				5551384A165463EB007F3565 /* stream-stdio.c in Sources */,
+				55FC73181A326E16007C451B /* clz.c in Sources */,
+				55FC73191A326E16007C451B /* countbits.c in Sources */,
 				5551384B165463EB007F3565 /* stream.c in Sources */,
 				55513862165463EB007F3565 /* grow.c in Sources */,
 				55513863165463EB007F3565 /* shrink.c in Sources */,
+				55FC731F1A326E16007C451B /* reversebits.c in Sources */,
 				55513864165463EB007F3565 /* clz8.c in Sources */,
 				55513865165463EB007F3565 /* pack.c in Sources */,
 				55513866165463EB007F3565 /* unpack.c in Sources */,
@@ -310,6 +356,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = NO;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = YES;
@@ -350,6 +397,7 @@
 				PUBLIC_HEADERS_FOLDER_PATH = "include/$(TARGET_NAME)";
 				RUN_CLANG_STATIC_ANALYZER = NO;
 				SDKROOT = macosx;
+				USE_HEADERMAP = NO;
 			};
 			name = Debug;
 		};
@@ -359,6 +407,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = NO;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = YES;
@@ -392,6 +441,7 @@
 				PUBLIC_HEADERS_FOLDER_PATH = "include/$(TARGET_NAME)";
 				RUN_CLANG_STATIC_ANALYZER = NO;
 				SDKROOT = macosx;
+				USE_HEADERMAP = NO;
 			};
 			name = Release;
 		};
