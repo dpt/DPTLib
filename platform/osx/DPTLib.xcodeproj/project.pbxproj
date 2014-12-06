@@ -22,6 +22,14 @@
 		55E557F31A3362D1001FB51F /* bsearch-short.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557EF1A33628D001FB51F /* bsearch-short.c */; };
 		55E557F41A3362D1001FB51F /* bsearch-uint.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557F01A33628D001FB51F /* bsearch-uint.c */; };
 		55E557F51A3362D1001FB51F /* bsearch-ushort.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557F11A33628D001FB51F /* bsearch-ushort.c */; };
+		55E558011A337785001FB51F /* rev-l-block.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557F81A337785001FB51F /* rev-l-block.c */; };
+		55E558021A337785001FB51F /* rev-l-m.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557F91A337785001FB51F /* rev-l-m.c */; };
+		55E558031A337785001FB51F /* rev-l.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557FA1A337785001FB51F /* rev-l.c */; };
+		55E558041A337785001FB51F /* rev-s-block.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557FB1A337785001FB51F /* rev-s-block.c */; };
+		55E558051A337785001FB51F /* rev-s-m.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557FC1A337785001FB51F /* rev-s-m.c */; };
+		55E558061A337785001FB51F /* rev-s-pair-m.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557FD1A337785001FB51F /* rev-s-pair-m.c */; };
+		55E558071A337785001FB51F /* rev-s-pair.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557FE1A337785001FB51F /* rev-s-pair.c */; };
+		55E558081A337785001FB51F /* rev-s.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557FF1A337785001FB51F /* rev-s.c */; };
 		55FC73171A326E16007C451B /* ceillog2.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730D1A326E16007C451B /* ceillog2.c */; };
 		55FC73181A326E16007C451B /* clz.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730E1A326E16007C451B /* clz.c */; };
 		55FC73191A326E16007C451B /* countbits.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730F1A326E16007C451B /* countbits.c */; };
@@ -69,6 +77,16 @@
 		55E557EF1A33628D001FB51F /* bsearch-short.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "bsearch-short.c"; sourceTree = "<group>"; };
 		55E557F01A33628D001FB51F /* bsearch-uint.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "bsearch-uint.c"; sourceTree = "<group>"; };
 		55E557F11A33628D001FB51F /* bsearch-ushort.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "bsearch-ushort.c"; sourceTree = "<group>"; };
+		55E557F61A33776A001FB51F /* bytesex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bytesex.h; sourceTree = "<group>"; };
+		55E557F81A337785001FB51F /* rev-l-block.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "rev-l-block.c"; sourceTree = "<group>"; };
+		55E557F91A337785001FB51F /* rev-l-m.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "rev-l-m.c"; sourceTree = "<group>"; };
+		55E557FA1A337785001FB51F /* rev-l.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "rev-l.c"; sourceTree = "<group>"; };
+		55E557FB1A337785001FB51F /* rev-s-block.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "rev-s-block.c"; sourceTree = "<group>"; };
+		55E557FC1A337785001FB51F /* rev-s-m.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "rev-s-m.c"; sourceTree = "<group>"; };
+		55E557FD1A337785001FB51F /* rev-s-pair-m.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "rev-s-pair-m.c"; sourceTree = "<group>"; };
+		55E557FE1A337785001FB51F /* rev-s-pair.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "rev-s-pair.c"; sourceTree = "<group>"; };
+		55E557FF1A337785001FB51F /* rev-s.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "rev-s.c"; sourceTree = "<group>"; };
+		55E558001A337785001FB51F /* util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = util.h; sourceTree = "<group>"; };
 		55FC730D1A326E16007C451B /* ceillog2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ceillog2.c; sourceTree = "<group>"; };
 		55FC730E1A326E16007C451B /* clz.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = clz.c; sourceTree = "<group>"; };
 		55FC730F1A326E16007C451B /* countbits.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = countbits.c; sourceTree = "<group>"; };
@@ -163,6 +181,7 @@
 				5551376D16545786007F3565 /* array.h */,
 				5551376E16545786007F3565 /* barith.h */,
 				55E557EB1A336220001FB51F /* bsearch.h */,
+				55E557F61A33776A001FB51F /* bytesex.h */,
 				5551376F16545786007F3565 /* likely.h */,
 				5551377016545786007F3565 /* minmax.h */,
 				5551377116545786007F3565 /* pack.h */,
@@ -229,6 +248,7 @@
 		5551379416545786007F3565 /* utils */ = {
 			isa = PBXGroup;
 			children = (
+				55E557F71A337785001FB51F /* bytesex */,
 				5551379516545786007F3565 /* array */,
 				5551379816545786007F3565 /* barith */,
 				55E557EC1A33628D001FB51F /* bsearch */,
@@ -300,6 +320,22 @@
 			path = ../bsearch;
 			sourceTree = "<group>";
 		};
+		55E557F71A337785001FB51F /* bytesex */ = {
+			isa = PBXGroup;
+			children = (
+				55E557F81A337785001FB51F /* rev-l-block.c */,
+				55E557F91A337785001FB51F /* rev-l-m.c */,
+				55E557FA1A337785001FB51F /* rev-l.c */,
+				55E557FB1A337785001FB51F /* rev-s-block.c */,
+				55E557FC1A337785001FB51F /* rev-s-m.c */,
+				55E557FD1A337785001FB51F /* rev-s-pair-m.c */,
+				55E557FE1A337785001FB51F /* rev-s-pair.c */,
+				55E557FF1A337785001FB51F /* rev-s.c */,
+				55E558001A337785001FB51F /* util.h */,
+			);
+			path = bytesex;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -350,9 +386,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				55513846165463EB007F3565 /* log2bpp.c in Sources */,
+				55E558061A337785001FB51F /* rev-s-pair-m.c in Sources */,
 				55E557F31A3362D1001FB51F /* bsearch-short.c in Sources */,
 				55513847165463EB007F3565 /* intersection.c in Sources */,
 				55FC731B1A326E16007C451B /* floorlog2.c in Sources */,
+				55E558081A337785001FB51F /* rev-s.c in Sources */,
 				55FC731E1A326E16007C451B /* power2le.c in Sources */,
 				55FC731D1A326E16007C451B /* power2gt.c in Sources */,
 				55FC731C1A326E16007C451B /* msb.c in Sources */,
@@ -363,15 +401,21 @@
 				5551384A165463EB007F3565 /* stream-stdio.c in Sources */,
 				55E557F21A3362D1001FB51F /* bsearch-int.c in Sources */,
 				55FC73181A326E16007C451B /* clz.c in Sources */,
+				55E558051A337785001FB51F /* rev-s-m.c in Sources */,
 				55E557F41A3362D1001FB51F /* bsearch-uint.c in Sources */,
+				55E558041A337785001FB51F /* rev-s-block.c in Sources */,
 				55FC73191A326E16007C451B /* countbits.c in Sources */,
 				5551384B165463EB007F3565 /* stream.c in Sources */,
+				55E558011A337785001FB51F /* rev-l-block.c in Sources */,
 				55513862165463EB007F3565 /* grow.c in Sources */,
+				55E558071A337785001FB51F /* rev-s-pair.c in Sources */,
 				55513863165463EB007F3565 /* shrink.c in Sources */,
 				55E557F51A3362D1001FB51F /* bsearch-ushort.c in Sources */,
+				55E558031A337785001FB51F /* rev-l.c in Sources */,
 				55FC731F1A326E16007C451B /* reversebits.c in Sources */,
 				55513864165463EB007F3565 /* clz8.c in Sources */,
 				55513865165463EB007F3565 /* pack.c in Sources */,
+				55E558021A337785001FB51F /* rev-l-m.c in Sources */,
 				55513866165463EB007F3565 /* unpack.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
