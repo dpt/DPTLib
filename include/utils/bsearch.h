@@ -6,7 +6,24 @@
 #include <stddef.h>
 
 /* Binary search an array 'nelems' long for 'want'.
- * Each array element is 'stride' bytes wide.
+ * Each array element is 'stride' bytes wide. */
+
+/* Example:
+ *
+ * To search an array, ordered by key, composed of the following structures:
+ *
+ * struct foo
+ * {
+ *   int key;
+ *   int value;
+ * }
+ * foo_t;
+ *
+ * foo_t foos[100];
+ *
+ * index = bsearch_int(&foos[0].key, 100, sizeof(foo_t), 42);
+ *
+ * 'index' is the index of the element, or < 0 if not found.
  */
 
 int bsearch_short(const short *array,
