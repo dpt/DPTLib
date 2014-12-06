@@ -30,6 +30,8 @@
 		55E558061A337785001FB51F /* rev-s-pair-m.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557FD1A337785001FB51F /* rev-s-pair-m.c */; };
 		55E558071A337785001FB51F /* rev-s-pair.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557FE1A337785001FB51F /* rev-s-pair.c */; };
 		55E558081A337785001FB51F /* rev-s.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557FF1A337785001FB51F /* rev-s.c */; };
+		55E558111A338F83001FB51F /* smull-fxp16.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5580B1A338F6A001FB51F /* smull-fxp16.c */; };
+		55E558121A338F87001FB51F /* umull-fxp16.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E558101A338F6A001FB51F /* umull-fxp16.c */; };
 		55FC73171A326E16007C451B /* ceillog2.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730D1A326E16007C451B /* ceillog2.c */; };
 		55FC73181A326E16007C451B /* clz.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730E1A326E16007C451B /* clz.c */; };
 		55FC73191A326E16007C451B /* countbits.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730F1A326E16007C451B /* countbits.c */; };
@@ -87,6 +89,9 @@
 		55E557FE1A337785001FB51F /* rev-s-pair.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "rev-s-pair.c"; sourceTree = "<group>"; };
 		55E557FF1A337785001FB51F /* rev-s.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "rev-s.c"; sourceTree = "<group>"; };
 		55E558001A337785001FB51F /* util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = util.h; sourceTree = "<group>"; };
+		55E558091A338F42001FB51F /* fxp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fxp.h; sourceTree = "<group>"; };
+		55E5580B1A338F6A001FB51F /* smull-fxp16.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "smull-fxp16.c"; sourceTree = "<group>"; };
+		55E558101A338F6A001FB51F /* umull-fxp16.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "umull-fxp16.c"; sourceTree = "<group>"; };
 		55FC730D1A326E16007C451B /* ceillog2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ceillog2.c; sourceTree = "<group>"; };
 		55FC730E1A326E16007C451B /* clz.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = clz.c; sourceTree = "<group>"; };
 		55FC730F1A326E16007C451B /* countbits.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = countbits.c; sourceTree = "<group>"; };
@@ -182,6 +187,7 @@
 				5551376E16545786007F3565 /* barith.h */,
 				55E557EB1A336220001FB51F /* bsearch.h */,
 				55E557F61A33776A001FB51F /* bytesex.h */,
+				55E558091A338F42001FB51F /* fxp.h */,
 				5551376F16545786007F3565 /* likely.h */,
 				5551377016545786007F3565 /* minmax.h */,
 				5551377116545786007F3565 /* pack.h */,
@@ -252,6 +258,7 @@
 				5551379516545786007F3565 /* array */,
 				5551379816545786007F3565 /* barith */,
 				55E557EC1A33628D001FB51F /* bsearch */,
+				55E5580A1A338F6A001FB51F /* fxp */,
 				5551379A16545786007F3565 /* pack */,
 			);
 			path = utils;
@@ -336,6 +343,15 @@
 			path = bytesex;
 			sourceTree = "<group>";
 		};
+		55E5580A1A338F6A001FB51F /* fxp */ = {
+			isa = PBXGroup;
+			children = (
+				55E5580B1A338F6A001FB51F /* smull-fxp16.c */,
+				55E558101A338F6A001FB51F /* umull-fxp16.c */,
+			);
+			path = fxp;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -386,6 +402,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				55513846165463EB007F3565 /* log2bpp.c in Sources */,
+				55E558121A338F87001FB51F /* umull-fxp16.c in Sources */,
 				55E558061A337785001FB51F /* rev-s-pair-m.c in Sources */,
 				55E557F31A3362D1001FB51F /* bsearch-short.c in Sources */,
 				55513847165463EB007F3565 /* intersection.c in Sources */,
@@ -413,6 +430,7 @@
 				55E557F51A3362D1001FB51F /* bsearch-ushort.c in Sources */,
 				55E558031A337785001FB51F /* rev-l.c in Sources */,
 				55FC731F1A326E16007C451B /* reversebits.c in Sources */,
+				55E558111A338F83001FB51F /* smull-fxp16.c in Sources */,
 				55513864165463EB007F3565 /* clz8.c in Sources */,
 				55513865165463EB007F3565 /* pack.c in Sources */,
 				55E558021A337785001FB51F /* rev-l-m.c in Sources */,
