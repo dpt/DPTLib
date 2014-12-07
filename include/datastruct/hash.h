@@ -17,6 +17,13 @@
 
 #include "base/result.h"
 
+/* ----------------------------------------------------------------------- */
+
+#define result_HASH_END      (result_BASE_HASH + 0)
+#define result_HASH_BAD_CONT (result_BASE_HASH + 1)
+
+/* ----------------------------------------------------------------------- */
+
 #define T hash_t
 
 typedef struct T T;

@@ -32,6 +32,14 @@
 
 /* ----------------------------------------------------------------------- */
 
+#define result_PICKLE_END               (result_BASE_PICKLE + 0)
+#define result_PICKLE_SKIP              (result_BASE_PICKLE + 1)
+#define result_PICKLE_INCOMPATIBLE      (result_BASE_PICKLE + 2)
+#define result_PICKLE_COULDNT_OPEN_FILE (result_BASE_PICKLE + 3)
+#define result_PICKLE_SYNTAX_ERROR      (result_BASE_PICKLE + 4)
+
+/* ----------------------------------------------------------------------- */
+
 /* methods for reading from an associative array */
 
 typedef result_t (pickle_reader_start)(const void *assocarr,

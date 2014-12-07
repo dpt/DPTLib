@@ -28,6 +28,14 @@
 
 #include "base/result.h"
 
+/* ----------------------------------------------------------------------- */
+
+#define result_ATOM_SET_EMPTY    (result_BASE_ATOM + 0)
+#define result_ATOM_NAME_EXISTS  (result_BASE_ATOM + 1)
+#define result_ATOM_OUT_OF_RANGE (result_BASE_ATOM + 2)
+
+/* ----------------------------------------------------------------------- */
+
 /**
  * An 'atom set' holds a collection of data blocks.
  */

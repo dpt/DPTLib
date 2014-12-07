@@ -22,6 +22,15 @@
 #include "base/result.h"
 #include "databases/pickle.h"
 
+/* ----------------------------------------------------------------------- */
+
+#define result_FILENAMEDB_INCOMPATIBLE      (result_BASE_FILENAMEDB + 0)
+#define result_FILENAMEDB_COULDNT_OPEN_FILE (result_BASE_FILENAMEDB + 1)
+#define result_FILENAMEDB_SYNTAX_ERROR      (result_BASE_FILENAMEDB + 2)
+#define result_FILENAMEDB_BUFF_OVERFLOW     (result_BASE_FILENAMEDB + 3)
+
+/* ----------------------------------------------------------------------- */
+
 #define T filenamedb_t
 
 /* ----------------------------------------------------------------------- */

@@ -25,6 +25,17 @@
 #include "base/result.h"
 #include "databases/pickle.h"
 
+/* ----------------------------------------------------------------------- */
+
+#define result_TAGDB_INCOMPATIBLE      (result_BASE_TAGDB + 0)
+#define result_TAGDB_COULDNT_OPEN_FILE (result_BASE_TAGDB + 1)
+#define result_TAGDB_SYNTAX_ERROR      (result_BASE_TAGDB + 2)
+#define result_TAGDB_UNKNOWN_ID        (result_BASE_TAGDB + 3)
+#define result_TAGDB_BUFF_OVERFLOW     (result_BASE_TAGDB + 4)
+#define result_TAGDB_UNKNOWN_TAG       (result_BASE_TAGDB + 5)
+
+/* ----------------------------------------------------------------------- */
+
 #define T tagdb
 
 /* ----------------------------------------------------------------------- */

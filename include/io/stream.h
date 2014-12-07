@@ -11,9 +11,13 @@
 
 #include "base/result.h"
 
+/* ----------------------------------------------------------------------- */
+
 #define result_STREAM_BAD_SEEK   (result_BASE_STREAM + 0)
 #define result_STREAM_CANT_SEEK  (result_BASE_STREAM + 1)
 #define result_STREAM_UNKNOWN_OP (result_BASE_STREAM + 2)
+
+/* ----------------------------------------------------------------------- */
 
 typedef enum stream_opcode
 {
