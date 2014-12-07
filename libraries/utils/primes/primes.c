@@ -20,4 +20,3 @@ int prime_nearest(int x)
 
   return primes[i - 1]; /* choose the final value */
 }
-
