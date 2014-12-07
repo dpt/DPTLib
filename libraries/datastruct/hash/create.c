@@ -94,7 +94,10 @@ result_t hash_create(int                 nbins,
 
   bins = calloc(nbins, sizeof(*h->bins));
   if (bins == NULL)
+  {
+    free(h);
     return result_OOM;
+  }
 
   /* the default routines handle strings */
 
