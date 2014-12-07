@@ -523,8 +523,6 @@ void tagdb_remove(tagdb *db, tagdb_tag tag)
   db->counts[tag].index = -1;
   db->counts[tag].count = 0;
 
-  err = result_OK;
-
   /* FALLTHROUGH */
 
 Failure:
