@@ -18,7 +18,6 @@
 result_t hash_insert(hash_t *h, void *key, void *value)
 {
   node **n;
-  int    hash;
 
   n = hash_lookup_node(h, key);
   if (*n)
@@ -40,8 +39,6 @@ result_t hash_insert(hash_t *h, void *key, void *value)
     m = malloc(sizeof(*m));
     if (m == NULL)
       return result_OOM;
-
-    hash = h->hash_fn(key) % h->nbins;
 
     m->next  = NULL;
     m->key   = key;
