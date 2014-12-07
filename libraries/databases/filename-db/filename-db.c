@@ -140,9 +140,7 @@ static result_t unformat_value(const char *buf,
                  (const unsigned char *) buf,
                  strlen(buf) + 1, // use 'len'?
                 &vindex);
-  if (err == result_ATOM_NAME_EXISTS)
-    err = result_OK;
-  else if (err)
+  if (err && err != result_ATOM_NAME_EXISTS)
     return err;
 
   *value = (void *) atom_get(db->filenames, vindex, NULL); // casting away const
@@ -322,9 +320,7 @@ result_t filenamedb_add(filenamedb_t *db,
 
   err = atom_new(db->filenames, (const unsigned char *) filename,
                  strlen(filename) + 1, &vindex);
-  if (err == result_ATOM_NAME_EXISTS)
-    err = result_OK;
-  else if (err)
+  if (err && err != result_ATOM_NAME_EXISTS)
     return err;
 
   value = (const char *) atom_get(db->filenames, vindex, NULL);
