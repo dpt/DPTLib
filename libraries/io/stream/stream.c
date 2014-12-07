@@ -3,7 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//#include "fortify/fortify.h"
+#ifdef FORTIFY
+#include "fortify/fortify.h"
+#endif
 
 #include "base/result.h"
 
