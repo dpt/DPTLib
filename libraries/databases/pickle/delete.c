@@ -1,6 +1,7 @@
 /* delete.c */
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #ifdef __riscos
@@ -15,5 +16,7 @@ void pickle_delete(const char *filename)
 
 #ifdef __riscos
   xosfile_delete(filename, NULL, NULL, NULL, NULL, NULL);
+#else
+  remove(filename);
 #endif
 }
