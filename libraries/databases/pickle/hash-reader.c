@@ -36,7 +36,7 @@ result_t pickle_reader_hash_start(const void *assocarr,
 
   state = malloc(sizeof(*state));
   if (state == NULL)
-    return NULL;
+    return result_OOM;
 
   state->hash = (hash_t *) assocarr;
   state->cont = 0;
