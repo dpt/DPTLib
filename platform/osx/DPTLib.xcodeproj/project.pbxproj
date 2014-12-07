@@ -32,6 +32,7 @@
 		55E558081A337785001FB51F /* rev-s.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557FF1A337785001FB51F /* rev-s.c */; };
 		55E558111A338F83001FB51F /* smull-fxp16.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5580B1A338F6A001FB51F /* smull-fxp16.c */; };
 		55E558121A338F87001FB51F /* umull-fxp16.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E558101A338F6A001FB51F /* umull-fxp16.c */; };
+		55E558171A3489BC001FB51F /* primes.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E558161A3489A7001FB51F /* primes.c */; };
 		55FC73171A326E16007C451B /* ceillog2.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730D1A326E16007C451B /* ceillog2.c */; };
 		55FC73181A326E16007C451B /* clz.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730E1A326E16007C451B /* clz.c */; };
 		55FC73191A326E16007C451B /* countbits.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730F1A326E16007C451B /* countbits.c */; };
@@ -92,6 +93,8 @@
 		55E558091A338F42001FB51F /* fxp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fxp.h; sourceTree = "<group>"; };
 		55E5580B1A338F6A001FB51F /* smull-fxp16.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "smull-fxp16.c"; sourceTree = "<group>"; };
 		55E558101A338F6A001FB51F /* umull-fxp16.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "umull-fxp16.c"; sourceTree = "<group>"; };
+		55E558141A348961001FB51F /* primes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = primes.h; sourceTree = "<group>"; };
+		55E558161A3489A7001FB51F /* primes.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = primes.c; sourceTree = "<group>"; };
 		55FC730D1A326E16007C451B /* ceillog2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ceillog2.c; sourceTree = "<group>"; };
 		55FC730E1A326E16007C451B /* clz.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = clz.c; sourceTree = "<group>"; };
 		55FC730F1A326E16007C451B /* countbits.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = countbits.c; sourceTree = "<group>"; };
@@ -131,6 +134,7 @@
 			isa = PBXGroup;
 			children = (
 				5551375416545786007F3565 /* base */,
+				55E558131A34893A001FB51F /* datastruct */,
 				5551375916545786007F3565 /* framebuf */,
 				5551375E16545786007F3565 /* geom */,
 				5551376016545786007F3565 /* io */,
@@ -191,6 +195,7 @@
 				5551376F16545786007F3565 /* likely.h */,
 				5551377016545786007F3565 /* minmax.h */,
 				5551377116545786007F3565 /* pack.h */,
+				55E558141A348961001FB51F /* primes.h */,
 			);
 			path = utils;
 			sourceTree = "<group>";
@@ -260,6 +265,7 @@
 				55E557EC1A33628D001FB51F /* bsearch */,
 				55E5580A1A338F6A001FB51F /* fxp */,
 				5551379A16545786007F3565 /* pack */,
+				55E558151A3489A7001FB51F /* primes */,
 			);
 			path = utils;
 			sourceTree = "<group>";
@@ -352,6 +358,21 @@
 			path = fxp;
 			sourceTree = "<group>";
 		};
+		55E558131A34893A001FB51F /* datastruct */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = datastruct;
+			sourceTree = "<group>";
+		};
+		55E558151A3489A7001FB51F /* primes */ = {
+			isa = PBXGroup;
+			children = (
+				55E558161A3489A7001FB51F /* primes.c */,
+			);
+			path = primes;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -412,6 +433,7 @@
 				55FC731D1A326E16007C451B /* power2gt.c in Sources */,
 				55FC731C1A326E16007C451B /* msb.c in Sources */,
 				55513848165463EB007F3565 /* is-empty.c in Sources */,
+				55E558171A3489BC001FB51F /* primes.c in Sources */,
 				55FC731A1A326E16007C451B /* ctz.c in Sources */,
 				55513849165463EB007F3565 /* stream-mem.c in Sources */,
 				55FC73171A326E16007C451B /* ceillog2.c in Sources */,
