@@ -51,7 +51,7 @@ void vector_destroy(vector_t *doomed);
 /**
  * Clear the specified vector.
  *
- * \param v Vector.
+ * \param vector Vector.
  */
 void vector_clear(vector_t *vector);
 
@@ -60,7 +60,7 @@ void vector_clear(vector_t *vector);
 /**
  * Return the number of elements stored in the specified vector.
  *
- * \param v Vector.
+ * \param vector Vector.
  *
  * \return Number of elements stored.
  */
@@ -69,8 +69,8 @@ int vector_length(const vector_t *vector);
 /**
  * Change the number of elements stored in the specified vector.
  *
- * \param v      Vector.
- * \param nelems New length.
+ * \param vector Vector.
+ * \param length New length.
  *
  * \return Error indication.
  */
@@ -81,7 +81,7 @@ result_t vector_set_length(vector_t *vector, size_t length);
 /**
  * Return the byte width of element stored in the specified vector.
  *
- * \param v Vector.
+ * \param vector Vector.
  *
  * \return Byte width of stored elements.
  */
@@ -93,7 +93,7 @@ int vector_width(const vector_t *vector);
  * If the element width is reduced then any extra bytes are lost. If
  * increased, then zeroes are inserted.
  *
- * \param v     Vector.
+ * \param vector Vector.
  * \param width New element width.
  *
  * \return Error indication.
@@ -105,7 +105,7 @@ result_t vector_set_width(vector_t *vector, size_t width);
 /**
  * Retrieve an element of the vector by index.
  *
- * \param v     Vector.
+ * \param vector Vector.
  * \param index Index of element wanted.
  *
  * \return Pointer to element.
