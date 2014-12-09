@@ -434,7 +434,7 @@
 		5551377316545786007F3565 /* framebuf */ = {
 			isa = PBXGroup;
 			children = (
-				5551377416545786007F3565 /* log2bpp.c */,
+				55F7DFE41A3723C500A64017 /* pixelfmt */,
 			);
 			path = framebuf;
 			sourceTree = "<group>";
@@ -933,6 +933,14 @@
 				55E559181A350037001FB51F /* test.c */,
 			);
 			path = test;
+			sourceTree = "<group>";
+		};
+		55F7DFE41A3723C500A64017 /* pixelfmt */ = {
+			isa = PBXGroup;
+			children = (
+				5551377416545786007F3565 /* log2bpp.c */,
+			);
+			path = pixelfmt;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
