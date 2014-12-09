@@ -134,9 +134,9 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
 /* ----------------------------------------------------------------------- */
 
 result_t atom_new(atom_set_t *s, const unsigned char *block, size_t length,
-               atom_t *patom)
+                  atom_t *patom)
 {
-  result_t    err;
+  result_t err;
   atom_t   atom;
   locpool *pend;
   locpool *p;

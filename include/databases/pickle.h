@@ -43,15 +43,15 @@
 /* methods for reading from an associative array */
 
 typedef result_t (pickle_reader_start)(const void *assocarr,
-                                    void       *opaque,
-                                    void      **state);
+                                       void       *opaque,
+                                       void      **state);
 
 typedef void  (pickle_reader_stop)(void *state, void *opaque);
 
 typedef result_t (pickle_reader_next)(void        *state,
-                                   const void **key,
-                                   const void **value,
-                                   void        *opaque);
+                                      const void **key,
+                                      const void **value,
+                                      void        *opaque);
 
 /**
  * Methods used by pickle_pickle to read elements to serialise.
@@ -72,14 +72,14 @@ pickle_reader_methods;
 
 // nb. same prototypes...
 typedef result_t (pickle_format_key)(const void *key,
-                                  char       *buf,
-                                  size_t      len,
-                                  void       *opaque);
+                                     char       *buf,
+                                     size_t      len,
+                                     void       *opaque);
 
 typedef result_t (pickle_format_value)(const void *value,
-                                    char       *buf,
-                                    size_t      len,
-                                    void       *opaque);
+                                       char       *buf,
+                                       size_t      len,
+                                       void       *opaque);
 
 /**
  * Methods used by pickle_pickle to transform elements for storing.
@@ -100,15 +100,15 @@ pickle_format_methods;
 /* methods for writing to an associative array */
 
 typedef result_t (pickle_writer_start)(void  *assocarr,
-                                    void **state,
-                                    void  *opaque);
+                                       void **state,
+                                       void  *opaque);
 
 typedef void  (pickle_writer_stop)(void *state, void *opaque);
 
 typedef result_t (pickle_writer_next)(void *state,
-                                   void *key,
-                                   void *value,
-                                   void *opaque);
+                                      void *key,
+                                      void *value,
+                                      void *opaque);
 
 typedef struct pickle_writer_methods
 {
@@ -124,14 +124,14 @@ pickle_writer_methods;
 
 // nb. same prototypes...
 typedef result_t (*pickle_unformat_key)(const char *buf,
-                                     size_t      len,
-                                     void      **key,
-                                     void       *opaque);
+                                        size_t      len,
+                                        void      **key,
+                                        void       *opaque);
 
 typedef result_t (*pickle_unformat_value)(const char *buf,
-                                       size_t      len,
-                                       void      **value,
-                                       void       *opaque);
+                                          size_t      len,
+                                          void      **value,
+                                          void       *opaque);
 
 typedef struct pickle_unformat_methods
 {
@@ -152,10 +152,10 @@ pickle_unformat_methods;
  * the keys and values for storage using the methods in 'format'.
  */
 result_t pickle_pickle(const char                  *filename,
-                    void                        *assocarr,
-                    const pickle_reader_methods *reader,
-                    const pickle_format_methods *format,
-                    void                        *opaque);
+                       void                        *assocarr,
+                       const pickle_reader_methods *reader,
+                       const pickle_format_methods *format,
+                       void                        *opaque);
 
 /**
  * Populate associative array 'assocarr' from the file 'filename'. Insert
@@ -163,10 +163,10 @@ result_t pickle_pickle(const char                  *filename,
  * the keys and values from storage using the methods in 'unformat'.
  */
 result_t pickle_unpickle(const char                    *filename,
-                      void                          *assocarr,
-                      const pickle_writer_methods   *writer,
-                      const pickle_unformat_methods *unformat,
-                      void                          *opaque);
+                         void                          *assocarr,
+                         const pickle_writer_methods   *writer,
+                         const pickle_unformat_methods *unformat,
+                         void                          *opaque);
 
 void pickle_delete(const char *filename);
 

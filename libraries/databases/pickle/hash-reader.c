@@ -27,8 +27,8 @@ typedef struct mystate
 mystate;
 
 result_t pickle_reader_hash_start(const void *assocarr,
-                               void       *opaque,
-                               void      **pstate)
+                                  void       *opaque,
+                                  void      **pstate)
 {
   mystate *state;
 
@@ -54,9 +54,9 @@ void pickle_reader_hash_stop(void *state, void *opaque)
 }
 
 result_t pickle_reader_hash_next(void        *vstate,
-                              const void **key,
-                              const void **value,
-                              void        *opaque)
+                                 const void **key,
+                                 const void **value,
+                                 void        *opaque)
 {
   result_t    err;
   mystate *state = vstate;

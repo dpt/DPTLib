@@ -10,7 +10,7 @@
 #include "io/stream.h"
 
 result_t stream_mem_create(const unsigned char *block,
-                            size_t               length,
-                            stream_t           **s);
+                           size_t               length,
+                           stream_t           **s);
 
 #endif /* STREAM_MEM_H */

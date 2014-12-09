@@ -17,10 +17,10 @@
 #include "impl.h"
 
 result_t hash_walk_continuation(hash_t      *h,
-                             int          continuation,
-                             int         *nextcontinuation,
-                             const void **key,
-                             const void **value)
+                                int          continuation,
+                                int         *nextcontinuation,
+                                const void **key,
+                                const void **value)
 {
   unsigned int bin;
   unsigned int item;

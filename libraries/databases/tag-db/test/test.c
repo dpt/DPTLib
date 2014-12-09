@@ -326,7 +326,7 @@ static result_t test_enumerate_ids_by_tag(State *state)
     do
     {
       err = tagdb_enumerate_ids_by_tag(state->db, i, &cont,
-                                        buf, sizeof(buf));
+                                       buf, sizeof(buf));
       if (err)
         goto Failure;
 
@@ -364,7 +364,7 @@ static result_t test_enumerate_ids_by_tags(State *state)
     do
     {
       err = tagdb_enumerate_ids_by_tags(state->db, want, NELEMS(want),
-                                              &cont, buf, sizeof(buf));
+                                        &cont, buf, sizeof(buf));
       if (err)
         goto Failure;
 

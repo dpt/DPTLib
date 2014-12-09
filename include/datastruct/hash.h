@@ -73,11 +73,11 @@ hash_destroy_value hash_no_destroy_value;
  * \return Error indication.
  */
 result_t hash_create(int                 nbins,
-                  hash_fn            *fn,
-                  hash_compare       *compare,
-                  hash_destroy_key   *destroy_key,
-                  hash_destroy_value *destroy_value,
-                  T                 **hash);
+                     hash_fn            *fn,
+                     hash_compare       *compare,
+                     hash_destroy_key   *destroy_key,
+                     hash_destroy_value *destroy_value,
+                     T                 **hash);
 
 /**
  * Destroy a hash.
@@ -160,10 +160,10 @@ int hash_walk(T *hash, hash_walk_callback *cb, void *opaque);
  * \retval result_HASH_END If no elements remain.
  */
 result_t hash_walk_continuation(T           *hash,
-                             int          continuation,
-                             int         *nextcontinuation,
-                             const void **key,
-                             const void **value);
+                                int          continuation,
+                                int         *nextcontinuation,
+                                const void **key,
+                                const void **value);
 
 /* ----------------------------------------------------------------------- */
 

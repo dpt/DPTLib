@@ -18,10 +18,10 @@ node;
 
 struct hash_t
 {
-  hash_fn            *hash_fn;
-  hash_compare       *compare;
-  hash_destroy_key   *destroy_key;
-  hash_destroy_value *destroy_value;
+  hash_fn             *hash_fn;
+  hash_compare        *compare;
+  hash_destroy_key    *destroy_key;
+  hash_destroy_value  *destroy_value;
   int                  nbins;
   node               **bins;
 };

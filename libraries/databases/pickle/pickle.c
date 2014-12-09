@@ -87,10 +87,10 @@ oserrexit:
 }
 
 static result_t pickle__write_body(os_fw                        f,
-                                void                        *assocarr,
-                                const pickle_reader_methods *reader,
-                                const pickle_format_methods *format,
-                                void                        *opaque)
+                                   void                        *assocarr,
+                                   const pickle_reader_methods *reader,
+                                   const pickle_format_methods *format,
+                                   void                        *opaque)
 {
   result_t       err;
   os_error   *oserr;
@@ -166,10 +166,10 @@ oserrexit:
 /* ----------------------------------------------------------------------- */
 
 result_t pickle_pickle(const char                  *filename,
-                    void                        *assocarr,
-                    const pickle_reader_methods *reader,
-                    const pickle_format_methods *format,
-                    void                        *opaque)
+                       void                        *assocarr,
+                       const pickle_reader_methods *reader,
+                       const pickle_format_methods *format,
+                       void                        *opaque)
 {
   result_t err;
   os_fw f;

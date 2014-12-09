@@ -98,9 +98,9 @@ typedef int atom_t;
  * \return Error indication.
  */
 result_t atom_new(atom_set_t          *set,
-               const unsigned char *block,
-               size_t               length,
-               atom_t              *atom);
+                  const unsigned char *block,
+                  size_t               length,
+                  atom_t              *atom);
 
 /**
  * Delete an existing atom.
@@ -135,9 +135,9 @@ const unsigned char *atom_get(atom_set_t *set,
  * \return Error indication.
  */
 result_t atom_set(atom_set_t          *set,
-               atom_t               atom,
-               const unsigned char *block,
-               size_t               length);
+                  atom_t               atom,
+                  const unsigned char *block,
+                  size_t               length);
 
 /**
  * Retrieve the atom matching the specified data block.

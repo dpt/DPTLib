@@ -55,8 +55,8 @@ result_t filenamedb_commit(T *db);
 /* ----------------------------------------------------------------------- */
 
 result_t filenamedb_add(T          *db,
-                     const char *id,
-                     const char *filename);
+                        const char *id,
+                        const char *filename);
 
 const char *filenamedb_get(T          *db,
                            const char *id);

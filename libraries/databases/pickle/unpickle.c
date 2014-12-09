@@ -42,8 +42,8 @@ struct unpickle__state
 /* ----------------------------------------------------------------------- */
 
 static result_t unpickle__parse_line(unpickle__state *state,
-                                  char            *buf,
-                                  void            *opaque)
+                                     char            *buf,
+                                     void            *opaque)
 {
   result_t err;
 
@@ -98,8 +98,8 @@ static result_t unpickle__parse_line(unpickle__state *state,
 }
 
 static result_t unpickle__parse_first_line(unpickle__state *state,
-                                        char            *buf,
-                                        void            *opaque)
+                                           char            *buf,
+                                           void            *opaque)
 {
   static const char signature[] = PICKLE_SIGNATURE;
 
@@ -118,10 +118,10 @@ static result_t unpickle__parse_first_line(unpickle__state *state,
 /* ----------------------------------------------------------------------- */
 
 result_t pickle_unpickle(const char                    *filename,
-                      void                          *assocarr,
-                      const pickle_writer_methods   *writer,
-                      const pickle_unformat_methods *unformat,
-                      void                          *opaque)
+                         void                          *assocarr,
+                         const pickle_writer_methods   *writer,
+                         const pickle_unformat_methods *unformat,
+                         void                          *opaque)
 {
   result_t            err;
   const size_t     bufsz = READBUFSZ;

@@ -11,14 +11,14 @@
 #include "impl.h"
 
 result_t atom_set(atom_set_t          *s,
-               atom_t               a,
-               const unsigned char *block,
-               size_t               length)
+                  atom_t               a,
+                  const unsigned char *block,
+                  size_t               length)
 {
-  result_t   err;
-  atom_t  newa;
-  loc    *p, *q;
-  loc     t;
+  result_t err;
+  atom_t   newa;
+  loc     *p, *q;
+  loc      t;
 
   assert(s);
   assert(a != atom_NOT_FOUND);

@@ -12,7 +12,7 @@
 result_t bitvec_set(bitvec_t *v, int bit)
 {
   result_t err;
-  int   word;
+  int      word;
 
   word = bit >> 5;
 

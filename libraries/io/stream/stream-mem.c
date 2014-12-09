@@ -52,8 +52,8 @@ static stream_size_t stream_mem_length(stream_t *s)
 }
 
 result_t stream_mem_create(const unsigned char *block,
-                            stream_size_t        length,
-                            stream_t           **s)
+                           stream_size_t        length,
+                           stream_t           **s)
 {
   stream_mem_t *sm;
 

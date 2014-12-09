@@ -77,10 +77,10 @@ stream_destroy_t stream_destroy;
 /* Returns the number of bytes remaining in the current buffer.
  * Will attempt to fill the buffer if it's found to be empty. */
 #define stream_remaining_and_fill(s) \
-        (stream_remaining(s) != 0 ? stream_remaining(s) : (s)->fill(s, 1))
+  (stream_remaining(s) != 0 ? stream_remaining(s) : (s)->fill(s, 1))
 
 /* As above but attempts to make 'need' bytes available. */
 #define stream_remaining_need_and_fill(s, need) \
-        (stream_remaining(s) >= (need) ? stream_remaining(s) : (s)->fill(s, need))
+  (stream_remaining(s) >= (need) ? stream_remaining(s) : (s)->fill(s, need))
 
 #endif /* STREAM_H */

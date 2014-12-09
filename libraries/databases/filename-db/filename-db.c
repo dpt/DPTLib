@@ -99,9 +99,9 @@ struct filenamedb_t
 
 /* This is identical to tagdb.c's unformat_key... */
 static result_t unformat_key(const char *buf,
-                          size_t      len,
-                          void      **key,
-                          void       *opaque)
+                             size_t      len,
+                             void      **key,
+                             void       *opaque)
 {
   result_t         err;
   unsigned char hash[digestdb_DIGESTSZ];
@@ -127,9 +127,9 @@ static result_t unformat_key(const char *buf,
 }
 
 static result_t unformat_value(const char *buf,
-                            size_t      len,
-                            void      **value,
-                            void       *opaque)
+                               size_t      len,
+                               void      **value,
+                               void       *opaque)
 {
   result_t         err;
   filenamedb_t *db = opaque;
@@ -140,7 +140,7 @@ static result_t unformat_value(const char *buf,
   err = atom_new(db->filenames,
                  (const unsigned char *) buf,
                  strlen(buf) + 1, // use 'len'?
-                &vindex);
+                 &vindex);
   if (err && err != result_ATOM_NAME_EXISTS)
     return err;
 
@@ -189,7 +189,7 @@ result_t filenamedb_open(const char *filename, filenamedb_t **pdb)
                     digestdb_compare,
                     hash_no_destroy_key,
                     hash_no_destroy_value,
-                   &hash);
+                    &hash);
   if (err)
     goto Failure;
 
@@ -207,8 +207,8 @@ result_t filenamedb_open(const char *filename, filenamedb_t **pdb)
   /* read the database in */
   err = pickle_unpickle(filename,
                         db->hash,
-                       &pickle_writer_hash,
-                       &unformat_methods,
+                        &pickle_writer_hash,
+                        &unformat_methods,
                         db);
   if (err && err != result_PICKLE_COULDNT_OPEN_FILE)
     goto Failure;
@@ -246,9 +246,9 @@ void filenamedb_close(filenamedb_t *db)
 /* ----------------------------------------------------------------------- */
 
 static result_t format_key(const void *vkey,
-                        char       *buf,
-                        size_t      len,
-                        void       *opaque)
+                           char       *buf,
+                           size_t      len,
+                           void       *opaque)
 {
   NOT_USED(opaque);
 
@@ -262,9 +262,9 @@ static result_t format_key(const void *vkey,
 }
 
 static result_t format_value(const void *vvalue,
-                          char       *buf,
-                          size_t      len,
-                          void       *opaque)
+                             char       *buf,
+                             size_t      len,
+                             void       *opaque)
 {
   NOT_USED(len);
   NOT_USED(opaque);
@@ -292,8 +292,8 @@ result_t filenamedb_commit(filenamedb_t *db)
 
   err = pickle_pickle(db->filename,
                       db->hash,
-                     &pickle_reader_hash,
-                     &format_methods,
+                      &pickle_reader_hash,
+                      &format_methods,
                       db);
   if (err)
     return err;
@@ -304,8 +304,8 @@ result_t filenamedb_commit(filenamedb_t *db)
 /* ----------------------------------------------------------------------- */
 
 result_t filenamedb_add(filenamedb_t *db,
-                     const char   *id,
-                     const char   *filename)
+                        const char   *id,
+                        const char   *filename)
 {
   result_t                err;
   int                  kindex;

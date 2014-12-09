@@ -35,80 +35,80 @@ size_t pack(uint8_t *buf, const char *fmt, ...)
 
       switch (c)
       {
-      case 'c': /* (array of) char */
-      {
-        const uint8_t *a; /* array */
-
-        a = (const uint8_t *) va_arg(args, uint8_t *);
-
-        memcpy(bp, a, n);
-        bp += n;
-      }
-      break;
-
-      case 's': /* (array of) short */
-      {
-        const uint16_t *a;
-
-        a = (const uint16_t *) va_arg(args, uint16_t *);
-
-        while (n--)
+        case 'c': /* (array of) char */
         {
-          uint16_t v;
+          const uint8_t *a; /* array */
 
-          v = *a++;
-          *bp++ = (uint8_t) (v      ); /* little endian */
-          *bp++ = (uint8_t) (v >>  8);
+          a = (const uint8_t *) va_arg(args, uint8_t *);
+
+          memcpy(bp, a, n);
+          bp += n;
         }
-      }
-      break;
+          break;
 
-      case 'i': /* (array of) int */
-      {
-        const uint32_t *a;
-
-        a = (const uint32_t *) va_arg(args, uint32_t *);
-
-        while (n--)
+        case 's': /* (array of) short */
         {
-          uint32_t v;
+          const uint16_t *a;
 
-          v = *a++;
-          *bp++ = (uint8_t) (v      ); /* little endian */
-          *bp++ = (uint8_t) (v >>  8);
-          *bp++ = (uint8_t) (v >> 16);
-          *bp++ = (uint8_t) (v >> 24);
+          a = (const uint16_t *) va_arg(args, uint16_t *);
+
+          while (n--)
+          {
+            uint16_t v;
+
+            v = *a++;
+            *bp++ = (uint8_t) (v      ); /* little endian */
+            *bp++ = (uint8_t) (v >>  8);
+          }
         }
-      }
-      break;
+          break;
 
-      case 'q': /* (array of) long long / 'quad' */
-      {
-        const uint64_t *a;
-
-        a = (const uint64_t *) va_arg(args, uint64_t *);
-
-        while (n--)
+        case 'i': /* (array of) int */
         {
-          uint64_t v;
+          const uint32_t *a;
 
-          v = *a++;
-          *bp++ = (uint8_t) (v      ); /* little endian */
-          *bp++ = (uint8_t) (v >>  8);
-          *bp++ = (uint8_t) (v >> 16);
-          *bp++ = (uint8_t) (v >> 24);
-          *bp++ = (uint8_t) (v >> 32);
-          *bp++ = (uint8_t) (v >> 40);
-          *bp++ = (uint8_t) (v >> 48);
-          *bp++ = (uint8_t) (v >> 56);
+          a = (const uint32_t *) va_arg(args, uint32_t *);
+
+          while (n--)
+          {
+            uint32_t v;
+
+            v = *a++;
+            *bp++ = (uint8_t) (v      ); /* little endian */
+            *bp++ = (uint8_t) (v >>  8);
+            *bp++ = (uint8_t) (v >> 16);
+            *bp++ = (uint8_t) (v >> 24);
+          }
         }
-      }
-      break;
+          break;
 
-      default:
-        assert("pack: Illegal array format specifier" == NULL);
-        va_end(args);
-        return 0;
+        case 'q': /* (array of) long long / 'quad' */
+        {
+          const uint64_t *a;
+
+          a = (const uint64_t *) va_arg(args, uint64_t *);
+
+          while (n--)
+          {
+            uint64_t v;
+
+            v = *a++;
+            *bp++ = (uint8_t) (v      ); /* little endian */
+            *bp++ = (uint8_t) (v >>  8);
+            *bp++ = (uint8_t) (v >> 16);
+            *bp++ = (uint8_t) (v >> 24);
+            *bp++ = (uint8_t) (v >> 32);
+            *bp++ = (uint8_t) (v >> 40);
+            *bp++ = (uint8_t) (v >> 48);
+            *bp++ = (uint8_t) (v >> 56);
+          }
+        }
+          break;
+
+        default:
+          assert("pack: Illegal array format specifier" == NULL);
+          va_end(args);
+          return 0;
       }
     }
     else /* N single characters */
@@ -132,62 +132,62 @@ size_t pack(uint8_t *buf, const char *fmt, ...)
 
       switch (c)
       {
-      case 'c': /* char */
-        while (n--)
-          *bp++ = (uint8_t) va_arg(args, uint32_t);
-        break;
+        case 'c': /* char */
+          while (n--)
+            *bp++ = (uint8_t) va_arg(args, uint32_t);
+          break;
 
-      case 's': /* short */
-      {
-        uint32_t v;
-
-        while (n--)
+        case 's': /* short */
         {
-          v = (uint16_t) va_arg(args, uint32_t);
-          *bp++ = (uint8_t) (v); /* little endian */
-          *bp++ = (uint8_t) (v >> 8);
+          uint32_t v;
+
+          while (n--)
+          {
+            v = (uint16_t) va_arg(args, uint32_t);
+            *bp++ = (uint8_t) (v); /* little endian */
+            *bp++ = (uint8_t) (v >> 8);
+          }
         }
-      }
-      break;
+          break;
 
-      case 'i': /* int */
-      {
-        uint32_t v;
-
-        while (n--)
+        case 'i': /* int */
         {
-          v = va_arg(args, uint32_t);
-          *bp++ = (uint8_t) (v); /* little endian */
-          *bp++ = (uint8_t) (v >> 8);
-          *bp++ = (uint8_t) (v >> 16);
-          *bp++ = (uint8_t) (v >> 24);
+          uint32_t v;
+
+          while (n--)
+          {
+            v = va_arg(args, uint32_t);
+            *bp++ = (uint8_t) (v); /* little endian */
+            *bp++ = (uint8_t) (v >> 8);
+            *bp++ = (uint8_t) (v >> 16);
+            *bp++ = (uint8_t) (v >> 24);
+          }
         }
-      }
-      break;
+          break;
 
-      case 'q': /* long long / 'quad' */
-      {
-        uint64_t v;
-
-        while (n--)
+        case 'q': /* long long / 'quad' */
         {
-          v = va_arg(args, uint64_t);
-          *bp++ = (uint8_t) (v); /* little endian */
-          *bp++ = (uint8_t) (v >> 8);
-          *bp++ = (uint8_t) (v >> 16);
-          *bp++ = (uint8_t) (v >> 24);
-          *bp++ = (uint8_t) (v >> 32);
-          *bp++ = (uint8_t) (v >> 40);
-          *bp++ = (uint8_t) (v >> 48);
-          *bp++ = (uint8_t) (v >> 56);
-        }
-      }
-      break;
+          uint64_t v;
 
-      default: /* illegal type character */
-        assert("pack: Illegal format specifier" == NULL);
-        va_end(args);
-        return 0;
+          while (n--)
+          {
+            v = va_arg(args, uint64_t);
+            *bp++ = (uint8_t) (v); /* little endian */
+            *bp++ = (uint8_t) (v >> 8);
+            *bp++ = (uint8_t) (v >> 16);
+            *bp++ = (uint8_t) (v >> 24);
+            *bp++ = (uint8_t) (v >> 32);
+            *bp++ = (uint8_t) (v >> 40);
+            *bp++ = (uint8_t) (v >> 48);
+            *bp++ = (uint8_t) (v >> 56);
+          }
+        }
+          break;
+          
+        default: /* illegal type character */
+          assert("pack: Illegal format specifier" == NULL);
+          va_end(args);
+          return 0;
       }
     }
   }

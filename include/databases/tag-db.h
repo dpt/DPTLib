@@ -74,17 +74,17 @@ result_t tagdb_rename(T *db, tagdb_tag tag, const char *name);
 
 /* enumerate tags with counts */
 result_t tagdb_enumerate_tags(T         *db,
-                           int       *continuation,
-                           tagdb_tag *tag,
-                           int       *count);
+                              int       *continuation,
+                              tagdb_tag *tag,
+                              int       *count);
 
 /* convert a tag to a name */
 /* 'buf' may be NULL if bufsz is 0 */
 result_t tagdb_tagtoname(T         *db,
-                      tagdb_tag  tag,
-                      char      *buf,
-                      size_t    *length,
-                      size_t     bufsz);
+                         tagdb_tag  tag,
+                         char      *buf,
+                         size_t    *length,
+                         size_t     bufsz);
 
 /* ----------------------------------------------------------------------- */
 
@@ -102,30 +102,30 @@ result_t tagdb_untagid(T *db, const char *id, tagdb_tag tag);
 
 /* query tags for id */
 result_t tagdb_get_tags_for_id(T          *db,
-                            const char *id,
-                            int        *continuation,
-                            tagdb_tag  *tag);
+                               const char *id,
+                               int        *continuation,
+                               tagdb_tag  *tag);
 
 /* enumerate ids */
 result_t tagdb_enumerate_ids(T     *db,
-                          int   *continuation,
-                          char  *buf,
-                          size_t bufsz);
+                             int   *continuation,
+                             char  *buf,
+                             size_t bufsz);
 
 /* enumerate ids by tag */
 result_t tagdb_enumerate_ids_by_tag(T        *db,
-                                 tagdb_tag tag,
-                                 int      *continuation,
-                                 char     *buf,
-                                 size_t    bufsz);
+                                    tagdb_tag tag,
+                                    int      *continuation,
+                                    char     *buf,
+                                    size_t    bufsz);
 
 /* enumerate ids which match all specified tags */
 result_t tagdb_enumerate_ids_by_tags(T               *db,
-                                  const tagdb_tag *tags,
-                                  int              ntags,
-                                  int             *continuation,
-                                  char            *buf,
-                                  size_t           bufsz);
+                                     const tagdb_tag *tags,
+                                     int              ntags,
+                                     int             *continuation,
+                                     char            *buf,
+                                     size_t           bufsz);
 
 /* ----------------------------------------------------------------------- */
 

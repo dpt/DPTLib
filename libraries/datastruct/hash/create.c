@@ -78,11 +78,11 @@ void hash_no_destroy_value(void *string)
 /* ----------------------------------------------------------------------- */
 
 result_t hash_create(int                 nbins,
-                  hash_fn            *fn,
-                  hash_compare       *compare,
-                  hash_destroy_key   *destroy_key,
-                  hash_destroy_value *destroy_value,
-                  hash_t            **ph)
+                     hash_fn            *fn,
+                     hash_compare       *compare,
+                     hash_destroy_key   *destroy_key,
+                     hash_destroy_value *destroy_value,
+                     hash_t            **ph)
 {
   hash_t *h;
   node  **bins;

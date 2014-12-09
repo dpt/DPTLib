@@ -11,11 +11,11 @@
 #include "impl.h"
 
 result_t ntree_copy(ntree_t       *t,
-                 ntree_copy_fn *fn,
-                 void          *opaque,
-                 ntree_t      **new_t)
+                    ntree_copy_fn *fn,
+                    void          *opaque,
+                    ntree_t      **new_t)
 {
-  result_t    err;
+  result_t err;
   void    *data;
   ntree_t *new_node;
   ntree_t *child;

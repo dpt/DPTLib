@@ -20,8 +20,8 @@
 #include "databases/pickle-writer-hash.h"
 
 result_t pickle_writer_hash_start(void  *assocarr,
-                               void **pstate,
-                               void  *opaque)
+                                  void **pstate,
+                                  void  *opaque)
 {
   NOT_USED(opaque);
 
@@ -31,9 +31,9 @@ result_t pickle_writer_hash_start(void  *assocarr,
 }
 
 result_t pickle_writer_hash_next(void *state,
-                              void *key,
-                              void *value,
-                              void  *opaque)
+                                 void *key,
+                                 void *value,
+                                 void  *opaque)
 {
   NOT_USED(opaque);
 

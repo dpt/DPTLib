@@ -18,7 +18,7 @@
 
 bitvec_t *bitvec_create(int length)
 {
-  result_t     err;
+  result_t  err;
   bitvec_t *v;
 
   v = malloc(sizeof(*v));
