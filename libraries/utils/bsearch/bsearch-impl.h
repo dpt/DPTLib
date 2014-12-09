@@ -21,7 +21,7 @@ int NAME(const TYPE *array, size_t nelems, size_t stride, TYPE want)
 
   if (nelems == 0)
     return -1;
-  
+
   assert(array != NULL);
 
   stride /= sizeof(*array);

@@ -526,9 +526,9 @@ DECLARE_UNPACKER(vunpack_be, 7, 6, 5, 4, 3, 2, 1, 0)
 size_t vunpack(const unsigned char *buf, const char *fmt, va_list args)
 {
   size_t (*unpacker)(const unsigned char *, const char *, va_list);
-  
+
   unpacker = NATIVE_UNPACKER;
-  
+
   if (*fmt == '<')
   {
     unpacker = vunpack_le;

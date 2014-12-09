@@ -357,7 +357,7 @@ static int prune_cb(const void *key, const void *value, void *opaque)
     hash_remove(db->hash, key);
   }
 #endif
-  
+
   return 0;
 }
 

@@ -183,7 +183,7 @@ size_t pack(uint8_t *buf, const char *fmt, ...)
           }
         }
           break;
-          
+
         default: /* illegal type character */
           assert("pack: Illegal format specifier" == NULL);
           va_end(args);

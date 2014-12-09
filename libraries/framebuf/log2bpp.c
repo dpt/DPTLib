@@ -30,7 +30,7 @@ int pixelfmt_log2bpp(pixelfmt_t fmt)
     case pixelfmt_abgr8888:
     case pixelfmt_argb8888:
       return 5;
-      
+
     default:
       return -1;
   }
