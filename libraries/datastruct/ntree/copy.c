@@ -21,7 +21,7 @@ result_t ntree_copy(ntree_t       *t,
   ntree_t *child;
 
   if (!t)
-    return NULL;
+    return result_BAD_ARG;
 
   err = fn(t->data, opaque, &data);
   if (err)
