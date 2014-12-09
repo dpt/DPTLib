@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: next.c
- * Purpose: Bit vectors
- * ----------------------------------------------------------------------- */
+/* next.c -- bit vectors */
 
 #include "utils/barith.h"
 #include "datastruct/bitvec.h"

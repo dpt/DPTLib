@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: set-length.c
- * Purpose: Vector - flexible array
- * ----------------------------------------------------------------------- */
+/* set-length.c -- vector - flexible array */
 
 #include <stdlib.h>
 

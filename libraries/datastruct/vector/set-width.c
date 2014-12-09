@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: set-width.c
- * Purpose: Vector - flexible array
- * ----------------------------------------------------------------------- */
+/* set-width.c -- vector - flexible array */
 
 #include <stdlib.h>
 

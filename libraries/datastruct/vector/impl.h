@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: vector.h
- * Purpose: Vector - flexible array
- * ----------------------------------------------------------------------- */
+/* vector.h -- vector - flexible array */
 
 #ifndef IMPL_H
 #define IMPL_H

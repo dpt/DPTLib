@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: hash-writer.h
- * Purpose: Glue methods to let pickle write to hashes
- * ----------------------------------------------------------------------- */
+/* hash-writer.h -- glue methods to let pickle write to hashes */
 
 #ifndef DATABASES_PICKLE_WRITER_HASH_H
 #define DATABASES_PICKLE_WRITER_HASH_H

@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: hash-writer.c
- * Purpose: Glue methods to let pickle operate on hashes
- * ----------------------------------------------------------------------- */
+/* hash-writer.c -- glue methods to let pickle operate on hashes */
 
 #include <assert.h>
 #include <ctype.h>

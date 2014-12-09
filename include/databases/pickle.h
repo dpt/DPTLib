@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: pickle.h
- * Purpose: (De-)Serialising associative arrays
- * ----------------------------------------------------------------------- */
+/* pickle.h -- (de-)serialising associative arrays */
 
 /**
  * \file pickle.h

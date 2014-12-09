@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: tag-db.c
- * Purpose: Tag database
- * ----------------------------------------------------------------------- */
+/* tag-db.c -- tag database */
 
 // TODO
 // cope with tags with spaces (quoted for saving and loading)

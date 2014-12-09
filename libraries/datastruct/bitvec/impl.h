@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: impl.h
- * Purpose: Bit vectors
- * ----------------------------------------------------------------------- */
+/* impl.h -- bit vectors */
 
 #ifndef DATASTRUCT_BITVEC_IMPL_H
 #define DATASTRUCT_BITVEC_IMPL_H

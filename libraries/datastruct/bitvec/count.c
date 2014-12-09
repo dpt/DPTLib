@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: count.c
- * Purpose: Bit vectors
- * ----------------------------------------------------------------------- */
+/* count.c -- bit vectors */
 
 #include "utils/barith.h"
 #include "datastruct/bitvec.h"

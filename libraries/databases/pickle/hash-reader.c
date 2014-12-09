@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: hash-reader.c
- * Purpose: Glue methods to let pickle operate on hashes
- * ----------------------------------------------------------------------- */
+/* hash-reader.c -- glue methods to let pickle operate on hashes */
 
 #include <assert.h>
 #include <ctype.h>

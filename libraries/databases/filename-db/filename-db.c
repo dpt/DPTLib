@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: filename-db.c
- * Purpose: Filename database
- * ----------------------------------------------------------------------- */
+/* filename-db.c -- filename database */
 
 /* filenamedb maps md5 digests to filenames so that we can search for files
  * and retrieve filenames */

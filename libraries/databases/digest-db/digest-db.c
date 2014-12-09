@@ -1,7 +1,4 @@
-/* --------------------------------------------------------------------------
- *    Name: digest-db.c
- * Purpose: Digest database
- * ----------------------------------------------------------------------- */
+/* digest-db.c -- digest database */
 
 #include <stddef.h>
 #include <string.h>
