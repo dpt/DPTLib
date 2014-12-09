@@ -143,7 +143,7 @@ result_t atom_set(atom_set_t          *set,
  * \param block  Data block to search for.
  * \param length Length of data block, in bytes.
  *
- * \return Existing atom or ATOM_NOT_FOUND.
+ * \return Existing atom or atom_NOT_FOUND.
  */
 atom_t atom_for_block(atom_set_t          *set,
                       const unsigned char *block,
