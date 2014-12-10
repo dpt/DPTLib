@@ -5,19 +5,18 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef FORTIFY
 #include "fortify/fortify.h"
+#endif
 
-#include "oslib/fileswitch.h"
-#include "oslib/osfile.h"
+#include "base/result.h"
+#include "base/suppress.h"
+#include "datastruct/hash.h"
+#include "utils/array.h"
 
-#include "appengine/types.h"
-#include "appengine/base/errors.h"
-#include "appengine/base/strings.h"
-#include "appengine/datastruct/hash.h"
-
-#include "appengine/databases/pickle.h"
-#include "appengine/databases/pickle-reader-hash.h"
-#include "appengine/databases/pickle-writer-hash.h"
+#include "databases/pickle.h"
+#include "databases/pickle-reader-hash.h"
+#include "databases/pickle-writer-hash.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -71,7 +70,7 @@ static const pickle_format_methods formatters =
 
 /* ----------------------------------------------------------------------- */
 
-static int pickle__test1_write(void)
+static result_t pickle__test1_write(void)
 {
   static const struct
   {
@@ -89,9 +88,9 @@ static int pickle__test1_write(void)
     { "sebastian", "jf" },
   };
 
-  result_t   err;
-  hash_t *d;
-  int     i;
+  result_t err;
+  hash_t  *d;
+  int      i;
 
   printf("test: create hash\n");
 
@@ -131,14 +130,14 @@ static int pickle__test1_write(void)
 
   hash_destroy(d);
 
-  return 0;
+  return result_TEST_PASSED;
 
 
 Failure:
 
-  printf("\n\n*** Error %lx\n", err);
+  printf("\n\n*** Error %x\n", err);
 
-  return 1;
+  return result_TEST_FAILED;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -463,11 +462,11 @@ static void cheese_value_destroy(void *value)
 
 #define FILENAME "testpickle2"
 
-static int pickle__test2_write(void)
+static result_t pickle__test2_write(void)
 {
-  result_t   err;
-  hash_t *d;
-  int     i;
+  result_t err;
+  hash_t  *d;
+  int      i;
 
   printf("test: create hash\n");
 
@@ -507,14 +506,14 @@ static int pickle__test2_write(void)
 
   hash_destroy(d);
 
-  return 0;
+  return result_TEST_PASSED;
 
 
 Failure:
 
-  printf("\n\n*** Error %lx\n", err);
+  printf("\n\n*** Error %x\n", err);
 
-  return 1;
+  return result_TEST_FAILED;
 }
 
 static int my_walk_fn(const void *key, const void *value, void *opaque)
@@ -532,10 +531,10 @@ static int my_walk_fn(const void *key, const void *value, void *opaque)
   return 0;
 }
 
-static int pickle__test2_read(void)
+static result_t pickle__test2_read(void)
 {
-  result_t   err;
-  hash_t *d;
+  result_t err;
+  hash_t  *d;
 
   printf("test: create hash\n");
 
@@ -564,21 +563,21 @@ static int pickle__test2_read(void)
 
   hash_destroy(d);
 
-  return 0;
+  return result_TEST_PASSED;
 
 
 Failure:
 
-  printf("\n\n*** Error %lx\n", err);
+  printf("\n\n*** Error %x\n", err);
 
-  return 1;
+  return result_TEST_FAILED;
 }
 
 /* ----------------------------------------------------------------------- */
 
-int pickle_test(void)
+result_t pickle_test(void)
 {
-  int rc;
+  result_t rc;
 
   printf("test: pickle test 1\n");
 
@@ -596,5 +595,5 @@ int pickle_test(void)
   if (rc)
     return rc;
 
-  return 0;
+  return result_TEST_PASSED;
 }

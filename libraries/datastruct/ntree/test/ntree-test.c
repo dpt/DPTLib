@@ -1,13 +1,15 @@
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
 
-#include "oslib/types.h"
+#include "base/result.h"
+#include "base/suppress.h"
+#include "utils/array.h"
 
-#include "types.h"
 #include "datastruct/ntree.h"
 
 /* Test Tree 1
@@ -172,10 +174,10 @@ static result_t free_data(ntree_t *t, void *opaque)
   return result_OK;
 }
 
-int ntree_test(void)
+result_t ntree_test(void)
 {
-  result_t     err;
-  int       i;
+  result_t err;
+  int      i;
 
   printf("test: build tree\n");
 
@@ -260,12 +262,12 @@ int ntree_test(void)
 
   ntree_delete(data[0].node);
 
-  return 0;
+  return result_TEST_PASSED;
 
 
 Failure:
 
   printf("Error %lu\n", err);
 
-  return 1;
+  return result_TEST_FAILED;
 }

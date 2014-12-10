@@ -5,9 +5,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "oslib/types.h"
-
-#include "types.h"
+#include "base/result.h"
 #include "datastruct/bitvec.h"
 
 #define NBITS 97
@@ -21,9 +19,9 @@ static void dumpbits(bitvec_t *v)
   printf("\n");
 }
 
-int bitvec_test(void)
+result_t bitvec_test(void)
 {
-  result_t     err;
+  result_t  err;
   bitvec_t *v;
   int       i;
   bitvec_t *w;
@@ -33,7 +31,7 @@ int bitvec_test(void)
 
   v = bitvec_create(0);
   if (!v)
-    return 1;
+    goto Failure;
 
   printf("test: set\n");
 
@@ -41,7 +39,7 @@ int bitvec_test(void)
   {
     err = bitvec_set(v, i);
     if (err)
-      return 1;
+      goto Failure;
   }
 
   printf("test: get\n");
@@ -93,7 +91,7 @@ int bitvec_test(void)
   {
     err = bitvec_set(v, i);
     if (err)
-      return 1;
+      goto Failure;
   }
 
   printf("walk through set bits\n");
@@ -115,11 +113,11 @@ int bitvec_test(void)
 
   v = bitvec_create(0);
   if (!v)
-    return 1;
+    goto Failure;
 
   w = bitvec_create(0);
   if (!w)
-    return 1;
+    goto Failure;
 
   printf("created. equal? %d\n", bitvec_eq(v, w));
 
@@ -148,7 +146,7 @@ int bitvec_test(void)
 
   w = bitvec_create(0);
   if (!w)
-    return 1;
+    goto Failure;
 
   bitvec_clear(v, 1);
 
@@ -162,23 +160,23 @@ int bitvec_test(void)
 
   v = bitvec_create(0);
   if (!v)
-    return 1;
+    goto Failure;
 
   w = bitvec_create(0);
   if (!w)
-    return 1;
+    goto Failure;
 
   err = bitvec_set(v, 32);
   if (err)
-    return 1;
+    goto Failure;
 
   err = bitvec_set(w, 32);
   if (err)
-    return 1;
+    goto Failure;
 
   err = bitvec_and(v, w, &x);
   if (err)
-    return 1;
+    goto Failure;
 
   dumpbits(x);
 
@@ -190,23 +188,23 @@ int bitvec_test(void)
 
   v = bitvec_create(0);
   if (!v)
-    return 1;
+    goto Failure;
 
   w = bitvec_create(0);
   if (!w)
-    return 1;
+    goto Failure;
 
   err = bitvec_set(v, 0);
   if (err)
-    return 1;
+    goto Failure;
 
   err = bitvec_set(w, 32);
   if (err)
-    return 1;
+    goto Failure;
 
   err = bitvec_or(v, w, &x);
   if (err)
-    return 1;
+    goto Failure;
 
   dumpbits(x);
 
@@ -214,5 +212,10 @@ int bitvec_test(void)
   bitvec_destroy(w);
   bitvec_destroy(v);
 
-  return 0;
+  return result_TEST_PASSED;
+
+  
+Failure:
+
+  return result_TEST_FAILED;
 }

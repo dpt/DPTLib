@@ -5,7 +5,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "types.h"
+#include "utils/array.h"
 #include "base/result.h"
 #include "datastruct/atom.h"
 
@@ -26,7 +26,7 @@ static const char *newnames[] =
 static result_t test_add(atom_set_t *d)
 {
   result_t err;
-  int   i;
+  int      i;
 
   printf("test: add\n");
 
@@ -190,60 +190,65 @@ static result_t test_random(atom_set_t *d)
   return result_OK;
 }
 
-int atom_test(void)
+result_t atom_test(void)
 {
   result_t   err;
   atom_set_t *d;
 
   d = atom_create_tuned(1, 12);
   if (d == NULL)
-    return 1;
+    goto Failure;
 
   err = test_add(d);
   if (err)
-    return 1;
+    goto Failure;
 
   err = test_to_string(d);
   if (err)
-    return 1;
+    goto Failure;
 
   err = test_to_string_and_len(d);
   if (err)
-    return 1;
+    goto Failure;
 
   err = test_delete(d);
   if (err)
-    return 1;
+    goto Failure;
 
   err = test_to_string_and_len(d);
   if (err)
-    return 1;
+    goto Failure;
 
   err = test_add(d);
   if (err)
-    return 1;
+    goto Failure;
 
   err = test_to_string(d);
   if (err)
-    return 1;
+    goto Failure;
 
   err = test_rename(d);
   if (err)
-    return 1;
+    goto Failure;
 
   err = test_to_string(d);
   if (err)
-    return 1;
+    goto Failure;
 
   err = test_to_string_and_len(d);
   if (err)
-    return 1;
+    goto Failure;
 
   err = test_random(d);
   if (err)
-    return 1;
+    goto Failure;
 
   atom_destroy(d);
 
-  return 0;
+  return result_TEST_PASSED;
+
+  
+Failure:
+
+  return result_TEST_FAILED;
 }

@@ -123,6 +123,20 @@
 		55E5591C1A35004E001FB51F /* hash-reader.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5590F1A350037001FB51F /* hash-reader.c */; };
 		55E5591D1A35004E001FB51F /* hash-writer.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559101A350037001FB51F /* hash-writer.c */; };
 		55E559201A350051001FB51F /* tag-db.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559161A350037001FB51F /* tag-db.c */; };
+		55F7DFEC1A373E9000A64017 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7DFEB1A373E9000A64017 /* main.c */; };
+		55F7DFF61A373F1400A64017 /* array-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5583F1A34F276001FB51F /* array-test.c */; };
+		55F7DFF71A373F2C00A64017 /* atom-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5584B1A34F276001FB51F /* atom-test.c */; };
+		55F7DFF81A373F3E00A64017 /* bitarr-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5584F1A34F276001FB51F /* bitarr-test.c */; };
+		55F7DFF91A373F5F00A64017 /* bitvec-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E558611A34F276001FB51F /* bitvec-test.c */; };
+		55F7DFFA1A373F7200A64017 /* hash-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5586C1A34F276001FB51F /* hash-test.c */; };
+		55F7DFFB1A373F8D00A64017 /* list-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E558811A34F276001FB51F /* list-test.c */; };
+		55F7DFFC1A373F9F00A64017 /* ntree-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E558991A34F276001FB51F /* ntree-test.c */; };
+		55F7DFFD1A373FB800A64017 /* vector-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E558A61A34F276001FB51F /* vector-test.c */; };
+		55F7DFFE1A3742F900A64017 /* libDPTLib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5551374C165456FA007F3565 /* libDPTLib.a */; };
+		55F7E0001A3797F600A64017 /* pickle.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559111A350037001FB51F /* pickle.c */; };
+		55F7E0011A379C9300A64017 /* unpickle.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559141A350037001FB51F /* unpickle.c */; };
+		55F7E0021A37A03D00A64017 /* tag-db-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559181A350037001FB51F /* tag-db-test.c */; };
+		55F7E0031A37A04100A64017 /* pickle-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559131A350037001FB51F /* pickle-test.c */; };
 		55FC73171A326E16007C451B /* ceillog2.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730D1A326E16007C451B /* ceillog2.c */; };
 		55FC73181A326E16007C451B /* clz.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730E1A326E16007C451B /* clz.c */; };
 		55FC73191A326E16007C451B /* countbits.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730F1A326E16007C451B /* countbits.c */; };
@@ -133,6 +147,28 @@
 		55FC731E1A326E16007C451B /* power2le.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC73141A326E16007C451B /* power2le.c */; };
 		55FC731F1A326E16007C451B /* reversebits.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC73151A326E16007C451B /* reversebits.c */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		55F7DFF21A373E9C00A64017 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 55513743165456FA007F3565 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5551374B165456FA007F3565;
+			remoteInfo = DPTLib;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		55F7DFE71A373E9000A64017 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		5551374C165456FA007F3565 /* libDPTLib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libDPTLib.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -203,7 +239,7 @@
 		55E5583B1A34F276001FB51F /* shrinkwrap.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = shrinkwrap.c; sourceTree = "<group>"; };
 		55E5583C1A34F276001FB51F /* squeeze.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = squeeze.c; sourceTree = "<group>"; };
 		55E5583D1A34F276001FB51F /* stretch.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = stretch.c; sourceTree = "<group>"; };
-		55E5583F1A34F276001FB51F /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		55E5583F1A34F276001FB51F /* array-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "array-test.c"; sourceTree = "<group>"; };
 		55E558411A34F276001FB51F /* create.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = create.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E558421A34F276001FB51F /* delete-block.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "delete-block.c"; sourceTree = "<group>"; };
 		55E558431A34F276001FB51F /* delete.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = delete.c; sourceTree = "<group>"; };
@@ -213,9 +249,9 @@
 		55E558471A34F276001FB51F /* impl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = impl.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		55E558481A34F276001FB51F /* new.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = new.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E558491A34F276001FB51F /* set.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = set.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
-		55E5584B1A34F276001FB51F /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = test.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
+		55E5584B1A34F276001FB51F /* atom-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = "atom-test.c"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E5584D1A34F276001FB51F /* count.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = count.c; sourceTree = "<group>"; };
-		55E5584F1A34F276001FB51F /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		55E5584F1A34F276001FB51F /* bitarr-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "bitarr-test.c"; sourceTree = "<group>"; };
 		55E558511A34F276001FB51F /* and.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = and.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E558521A34F276001FB51F /* clear-all.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "clear-all.c"; sourceTree = "<group>"; };
 		55E558531A34F276001FB51F /* clear.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = clear.c; sourceTree = "<group>"; };
@@ -231,7 +267,7 @@
 		55E5585D1A34F276001FB51F /* or.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = or.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E5585E1A34F276001FB51F /* set-all.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "set-all.c"; sourceTree = "<group>"; };
 		55E5585F1A34F276001FB51F /* set.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = set.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
-		55E558611A34F276001FB51F /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = test.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
+		55E558611A34F276001FB51F /* bitvec-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = "bitvec-test.c"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E558621A34F276001FB51F /* toggle.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = toggle.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E558641A34F276001FB51F /* create.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = create.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E558651A34F276001FB51F /* destroy.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = destroy.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -240,7 +276,7 @@
 		55E558681A34F276001FB51F /* lookup-node.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "lookup-node.c"; sourceTree = "<group>"; };
 		55E558691A34F276001FB51F /* lookup.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = lookup.c; sourceTree = "<group>"; };
 		55E5586A1A34F276001FB51F /* remove.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = remove.c; sourceTree = "<group>"; };
-		55E5586C1A34F276001FB51F /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = test.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
+		55E5586C1A34F276001FB51F /* hash-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = "hash-test.c"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E5586D1A34F276001FB51F /* walk-cont.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = "walk-cont.c"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E5586E1A34F276001FB51F /* walk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = walk.c; sourceTree = "<group>"; };
 		55E558701A34F276001FB51F /* append.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = append.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -258,7 +294,7 @@
 		55E5587D1A34F276001FB51F /* find.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = find.c; sourceTree = "<group>"; };
 		55E5587E1A34F276001FB51F /* init.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = init.c; sourceTree = "<group>"; };
 		55E5587F1A34F276001FB51F /* remove.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = remove.c; sourceTree = "<group>"; };
-		55E558811A34F276001FB51F /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		55E558811A34F276001FB51F /* list-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "list-test.c"; sourceTree = "<group>"; };
 		55E558821A34F276001FB51F /* walk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = walk.c; sourceTree = "<group>"; };
 		55E558841A34F276001FB51F /* copy.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = copy.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E558851A34F276001FB51F /* delete.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = delete.c; sourceTree = "<group>"; };
@@ -280,7 +316,7 @@
 		55E558951A34F276001FB51F /* prepend.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = prepend.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E558961A34F276001FB51F /* prev-sibling.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "prev-sibling.c"; sourceTree = "<group>"; };
 		55E558971A34F276001FB51F /* set-data.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "set-data.c"; sourceTree = "<group>"; };
-		55E558991A34F276001FB51F /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = test.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
+		55E558991A34F276001FB51F /* ntree-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = "ntree-test.c"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E5589A1A34F276001FB51F /* unlink.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = unlink.c; sourceTree = "<group>"; };
 		55E5589B1A34F276001FB51F /* walk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = walk.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E5589D1A34F276001FB51F /* clear.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = clear.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -291,7 +327,7 @@
 		55E558A21A34F276001FB51F /* length.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = length.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E558A31A34F276001FB51F /* set-length.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = "set-length.c"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E558A41A34F276001FB51F /* set-width.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = "set-width.c"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
-		55E558A61A34F276001FB51F /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		55E558A61A34F276001FB51F /* vector-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "vector-test.c"; sourceTree = "<group>"; };
 		55E558A71A34F276001FB51F /* width.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = width.c; sourceTree = "<group>"; };
 		55E559021A350014001FB51F /* digest-db.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "digest-db.h"; sourceTree = "<group>"; };
 		55E559031A350014001FB51F /* filename-db.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "filename-db.h"; sourceTree = "<group>"; };
@@ -305,10 +341,12 @@
 		55E5590F1A350037001FB51F /* hash-reader.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "hash-reader.c"; sourceTree = "<group>"; };
 		55E559101A350037001FB51F /* hash-writer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "hash-writer.c"; sourceTree = "<group>"; };
 		55E559111A350037001FB51F /* pickle.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = pickle.c; sourceTree = "<group>"; };
-		55E559131A350037001FB51F /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		55E559131A350037001FB51F /* pickle-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "pickle-test.c"; sourceTree = "<group>"; };
 		55E559141A350037001FB51F /* unpickle.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = unpickle.c; sourceTree = "<group>"; };
 		55E559161A350037001FB51F /* tag-db.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "tag-db.c"; sourceTree = "<group>"; };
-		55E559181A350037001FB51F /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		55E559181A350037001FB51F /* tag-db-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "tag-db-test.c"; sourceTree = "<group>"; };
+		55F7DFE91A373E9000A64017 /* DPTLibTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = DPTLibTest; sourceTree = BUILT_PRODUCTS_DIR; };
+		55F7DFEB1A373E9000A64017 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		55FC730D1A326E16007C451B /* ceillog2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ceillog2.c; sourceTree = "<group>"; };
 		55FC730E1A326E16007C451B /* clz.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = clz.c; sourceTree = "<group>"; };
 		55FC730F1A326E16007C451B /* countbits.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = countbits.c; sourceTree = "<group>"; };
@@ -321,12 +359,24 @@
 		55FC73161A326E16007C451B /* util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = util.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		55F7DFE61A373E9000A64017 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				55F7DFFE1A3742F900A64017 /* libDPTLib.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
 		55513741165456FA007F3565 = {
 			isa = PBXGroup;
 			children = (
 				5551375316545786007F3565 /* include */,
 				5551377216545786007F3565 /* libraries */,
+				55F7DFEA1A373E9000A64017 /* DPTLibTest */,
 				55513808165460EF007F3565 /* Frameworks */,
 				5551374D165456FA007F3565 /* Products */,
 			);
@@ -340,6 +390,7 @@
 			isa = PBXGroup;
 			children = (
 				5551374C165456FA007F3565 /* libDPTLib.a */,
+				55F7DFE91A373E9000A64017 /* DPTLibTest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -643,7 +694,7 @@
 		55E5583E1A34F276001FB51F /* test */ = {
 			isa = PBXGroup;
 			children = (
-				55E5583F1A34F276001FB51F /* test.c */,
+				55E5583F1A34F276001FB51F /* array-test.c */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -669,7 +720,7 @@
 		55E5584A1A34F276001FB51F /* test */ = {
 			isa = PBXGroup;
 			children = (
-				55E5584B1A34F276001FB51F /* test.c */,
+				55E5584B1A34F276001FB51F /* atom-test.c */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -687,7 +738,7 @@
 		55E5584E1A34F276001FB51F /* test */ = {
 			isa = PBXGroup;
 			children = (
-				55E5584F1A34F276001FB51F /* test.c */,
+				55E5584F1A34F276001FB51F /* bitarr-test.c */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -720,7 +771,7 @@
 		55E558601A34F276001FB51F /* test */ = {
 			isa = PBXGroup;
 			children = (
-				55E558611A34F276001FB51F /* test.c */,
+				55E558611A34F276001FB51F /* bitvec-test.c */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -746,7 +797,7 @@
 		55E5586B1A34F276001FB51F /* test */ = {
 			isa = PBXGroup;
 			children = (
-				55E5586C1A34F276001FB51F /* test.c */,
+				55E5586C1A34F276001FB51F /* hash-test.c */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -787,7 +838,7 @@
 		55E558801A34F276001FB51F /* test */ = {
 			isa = PBXGroup;
 			children = (
-				55E558811A34F276001FB51F /* test.c */,
+				55E558811A34F276001FB51F /* list-test.c */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -826,7 +877,7 @@
 		55E558981A34F276001FB51F /* test */ = {
 			isa = PBXGroup;
 			children = (
-				55E558991A34F276001FB51F /* test.c */,
+				55E558991A34F276001FB51F /* ntree-test.c */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -852,7 +903,7 @@
 		55E558A51A34F276001FB51F /* test */ = {
 			isa = PBXGroup;
 			children = (
-				55E558A61A34F276001FB51F /* test.c */,
+				55E558A61A34F276001FB51F /* vector-test.c */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -913,7 +964,7 @@
 		55E559121A350037001FB51F /* test */ = {
 			isa = PBXGroup;
 			children = (
-				55E559131A350037001FB51F /* test.c */,
+				55E559131A350037001FB51F /* pickle-test.c */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -930,7 +981,7 @@
 		55E559171A350037001FB51F /* test */ = {
 			isa = PBXGroup;
 			children = (
-				55E559181A350037001FB51F /* test.c */,
+				55E559181A350037001FB51F /* tag-db-test.c */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -941,6 +992,14 @@
 				5551377416545786007F3565 /* log2bpp.c */,
 			);
 			path = pixelfmt;
+			sourceTree = "<group>";
+		};
+		55F7DFEA1A373E9000A64017 /* DPTLibTest */ = {
+			isa = PBXGroup;
+			children = (
+				55F7DFEB1A373E9000A64017 /* main.c */,
+			);
+			path = DPTLibTest;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -960,6 +1019,24 @@
 			productName = MotionMasks;
 			productReference = 5551374C165456FA007F3565 /* libDPTLib.a */;
 			productType = "com.apple.product-type.library.static";
+		};
+		55F7DFE81A373E9000A64017 /* DPTLibTest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 55F7DFF11A373E9000A64017 /* Build configuration list for PBXNativeTarget "DPTLibTest" */;
+			buildPhases = (
+				55F7DFE51A373E9000A64017 /* Sources */,
+				55F7DFE61A373E9000A64017 /* Frameworks */,
+				55F7DFE71A373E9000A64017 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				55F7DFF31A373E9C00A64017 /* PBXTargetDependency */,
+			);
+			name = DPTLibTest;
+			productName = DPTLibTest;
+			productReference = 55F7DFE91A373E9000A64017 /* DPTLibTest */;
+			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
 
@@ -983,6 +1060,7 @@
 			projectRoot = "";
 			targets = (
 				5551374B165456FA007F3565 /* DPTLib */,
+				55F7DFE81A373E9000A64017 /* DPTLibTest */,
 			);
 		};
 /* End PBXProject section */
@@ -1075,6 +1153,7 @@
 				55E558B91A34F293001FB51F /* for-block.c in Sources */,
 				55E558E81A34F2CA001FB51F /* free.c in Sources */,
 				55FC73191A326E16007C451B /* countbits.c in Sources */,
+				55F7E0011A379C9300A64017 /* unpickle.c in Sources */,
 				55E5591C1A35004E001FB51F /* hash-reader.c in Sources */,
 				5551384B165463EB007F3565 /* stream.c in Sources */,
 				55E558C21A34F2AC001FB51F /* create.c in Sources */,
@@ -1109,6 +1188,7 @@
 				55E558B81A34F293001FB51F /* destroy.c in Sources */,
 				55E558EA1A34F2CA001FB51F /* insert-after.c in Sources */,
 				55E5581C1A3492A8001FB51F /* degs-to-rads.c in Sources */,
+				55F7E0001A3797F600A64017 /* pickle.c in Sources */,
 				55E558B51A34F293001FB51F /* create.c in Sources */,
 				55E558DB1A34F2BB001FB51F /* pop.c in Sources */,
 				55E558CD1A34F2B3001FB51F /* create.c in Sources */,
@@ -1120,7 +1200,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		55F7DFE51A373E9000A64017 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				55F7DFF71A373F2C00A64017 /* atom-test.c in Sources */,
+				55F7E0031A37A04100A64017 /* pickle-test.c in Sources */,
+				55F7DFFD1A373FB800A64017 /* vector-test.c in Sources */,
+				55F7DFF91A373F5F00A64017 /* bitvec-test.c in Sources */,
+				55F7DFFB1A373F8D00A64017 /* list-test.c in Sources */,
+				55F7DFEC1A373E9000A64017 /* main.c in Sources */,
+				55F7E0021A37A03D00A64017 /* tag-db-test.c in Sources */,
+				55F7DFFC1A373F9F00A64017 /* ntree-test.c in Sources */,
+				55F7DFF81A373F3E00A64017 /* bitarr-test.c in Sources */,
+				55F7DFF61A373F1400A64017 /* array-test.c in Sources */,
+				55F7DFFA1A373F7200A64017 /* hash-test.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		55F7DFF31A373E9C00A64017 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5551374B165456FA007F3565 /* DPTLib */;
+			targetProxy = 55F7DFF21A373E9C00A64017 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		5551374E165456FA007F3565 /* Debug */ = {
@@ -1238,6 +1344,47 @@
 			};
 			name = Release;
 		};
+		55F7DFEF1A373E9000A64017 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		55F7DFF01A373E9000A64017 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1258,6 +1405,14 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
+		};
+		55F7DFF11A373E9000A64017 /* Build configuration list for PBXNativeTarget "DPTLibTest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				55F7DFEF1A373E9000A64017 /* Debug */,
+				55F7DFF01A373E9000A64017 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
 		};
 /* End XCConfigurationList section */
 	};

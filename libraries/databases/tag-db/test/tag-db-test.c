@@ -4,17 +4,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef FORTIFY
 #include "fortify/fortify.h"
+#endif
 
-#include "oslib/fileswitch.h"
-#include "oslib/osfile.h"
+#include "base/result.h"
+#include "base/suppress.h"
+#include "utils/array.h"
 
-#include "appengine/types.h"
-#include "appengine/base/errors.h"
-#include "appengine/base/strings.h"
-
-#include "appengine/databases/digest-db.h"
-#include "appengine/databases/tag-db.h"
+#include "datastruct/atom.h"
+#include "databases/digest-db.h"
+#include "databases/tag-db.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -28,7 +28,7 @@ static const char *tagnames[] =
   "fred" /* do not use (to test unused tag case) */
 };
 
-static const char *ids[] =
+static const unsigned char *ids[] =
 {
   "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
   "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01",
@@ -268,7 +268,7 @@ Failure:
   return err;
 }
 
-static void printdigest(const char *digest)
+static void printdigest(const unsigned char *digest)
 {
   int j;
 
@@ -457,14 +457,14 @@ static const char *randomtagname(void)
   return buf;
 }
 
-static const char *randomid(void)
+static const unsigned char *randomid(void)
 {
   static char buf[digestdb_DIGESTSZ];
 
   int i;
 
   for (i = 0; i < digestdb_DIGESTSZ; i++)
-    buf[i] = rnd(255);
+    buf[i] = rnd(256);
 
   return buf;
 }
@@ -472,8 +472,8 @@ static const char *randomid(void)
 static result_t bash_enumerate(State *state)
 {
   result_t err;
-  int   cont;
-  char  buf[256];
+  int      cont;
+  char     buf[256];
 
   cont = 0;
   do
@@ -589,7 +589,7 @@ static result_t test_bash(State *state)
       }
       while (k < ntags);
 
-      tagnames[i] = str_dup(name);
+      tagnames[i] = strdup(name); // FIXME was str_dup
       if (tagnames[i] == NULL)
       {
         err = result_OOM;
@@ -609,8 +609,8 @@ static result_t test_bash(State *state)
 
     for (i = 0; i < nids; i++)
     {
-      const char *id;
-      int         k;
+      const unsigned char *id;
+      int                  k;
 
       if (idnames[i])
         continue;
@@ -691,7 +691,7 @@ static result_t test_bash(State *state)
 
         free(tagnames[i]);
 
-        tagnames[i] = str_dup(tagname);
+        tagnames[i] = strdup(tagname); // FIXME was str_dup
         if (tagnames[i] == NULL)
         {
           err = result_OOM;
@@ -824,7 +824,7 @@ typedef struct
 }
 Test;
 
-int tagdb_test(void)
+result_t tagdb_test(void)
 {
   static const Test tests[] =
   {
@@ -885,12 +885,12 @@ int tagdb_test(void)
 
   tagdb_fin();
 
-  return 0;
+  return result_TEST_PASSED;
 
 
 Failure:
 
-  printf("\n\n*** Error %lx\n", err);
+  printf("\n\n*** Error %x\n", err);
 
-  return 1;
+  return result_TEST_FAILED;
 }

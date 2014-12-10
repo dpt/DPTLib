@@ -15,6 +15,7 @@ typedef int result_t;
 #define result_BASE_PICKLE                      0x0400
 #define result_BASE_TAGDB                       0x0500
 #define result_BASE_FILENAMEDB                  0x0600
+#define result_BASE_TEST                        0x0700
 
 /* Non-DPTLib bases */
 #define result_BASE_MMPLAYER                    0xF000
@@ -39,6 +40,9 @@ typedef int result_t;
 /* TagDB result codes are in databases/tag-db.h */
 
 /* FilenameDB result codes are in databases/filename-db.h */
+
+#define result_TEST_PASSED                      (result_BASE_TEST        + 0)
+#define result_TEST_FAILED                      (result_BASE_TEST        + 1)
 
 /* ----------------------------------------------------------------------- */
 

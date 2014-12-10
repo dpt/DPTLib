@@ -5,9 +5,10 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "oslib/types.h"
+#include "base/result.h"
+#include "base/suppress.h"
+#include "utils/array.h"
 
-#include "types.h"
 #include "datastruct/list.h"
 
 typedef struct
@@ -30,7 +31,7 @@ static int printelement(list_t *e, void *opaque)
   return 0;
 }
 
-int list_test(void)
+result_t list_test(void)
 {
   node data[] =
   {
@@ -59,5 +60,5 @@ int list_test(void)
 
   list_walk(&anchor, printelement, NULL);
 
-  return 0;
+  return result_TEST_PASSED;
 }

@@ -5,9 +5,10 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "oslib/types.h"
+#include "base/result.h"
+#include "base/suppress.h"
+#include "utils/array.h"
 
-#include "types.h"
 #include "datastruct/hash.h"
 
 static char *my_strdup(const char *s)
@@ -38,7 +39,7 @@ static int my_walk_fn(const void *key, const void *value, void *opaque)
   return 0;
 }
 
-int hash_test(void)
+result_t hash_test(void)
 {
   static const struct
   {
@@ -56,16 +57,16 @@ int hash_test(void)
     { "sebastian", "jf" },
   };
 
-  result_t   err;
-  hash_t *d;
-  int     i;
+  result_t err;
+  hash_t  *d;
+  int      i;
 
   printf("test: create\n");
 
   /* use default string handling */
   err = hash_create(20, NULL, NULL, NULL, NULL, &d);
   if (err)
-    return 1;
+    goto Failure;
 
   printf("test: insert\n");
 
@@ -80,11 +81,11 @@ int hash_test(void)
     v = my_strdup(data[i].value);
 
     if (!s || !v)
-      return 1;
+      goto Failure;
 
     err = hash_insert(d, s, v);
     if (err)
-      return 1;
+      goto Failure;
   }
 
   printf("test: iterate\n");
@@ -120,5 +121,10 @@ int hash_test(void)
 
   hash_destroy(d);
 
-  return 0;
+  return result_TEST_PASSED;
+
+
+Failure:
+
+  return result_TEST_FAILED;
 }

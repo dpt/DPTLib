@@ -6,7 +6,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "types.h"
+#include "base/result.h"
 #include "datastruct/bitarr.h"
 
 #define NBITS 97
@@ -31,7 +31,7 @@ static void dumpbits(const TestBits *arr, size_t nbits)
   printf("\n%d bits set\n", c);
 }
 
-int bitarr_test(void)
+result_t bitarr_test(void)
 {
   TestBits arr;
   int      i;
@@ -71,5 +71,5 @@ int bitarr_test(void)
   printf("%d bits set\n", bitarr_count((bitarr_t *) &arr, sizeof(arr)));
 
 
-  return 0;
+  return result_TEST_PASSED;
 }

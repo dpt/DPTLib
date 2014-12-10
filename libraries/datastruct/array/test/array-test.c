@@ -6,10 +6,11 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "types.h"
+#include "base/result.h"
+#include "utils/array.h"
 #include "datastruct/array.h"
 
-int array_test(void)
+result_t array_test(void)
 {
   int delelem1[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
   int delelem2[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
@@ -60,7 +61,7 @@ int array_test(void)
   if (t != 1 + 2 + 3 + 4 + 6 + 7 + 8 + 9)
   {
     printf("unexpected checksum\n");
-    return 1;
+    goto Failure;
   }
 
 
@@ -78,7 +79,7 @@ int array_test(void)
   if (t != 1 + 2 + 3 + 7 + 8 + 9)
   {
     printf("unexpected checksum\n");
-    return 1;
+    goto Failure;
   }
 
 
@@ -93,7 +94,7 @@ int array_test(void)
   if (t != 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9)
   {
     printf("unexpected checksum %d\n", t);
-    return 1;
+    goto Failure;
   }
 
 
@@ -108,7 +109,7 @@ int array_test(void)
   if (t != 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9)
   {
     printf("unexpected checksum %d\n", t);
-    return 1;
+    goto Failure;
   }
 
 
@@ -123,7 +124,7 @@ int array_test(void)
   if (t != 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9)
   {
     printf("unexpected checksum %d\n", t);
-    return 1;
+    goto Failure;
   }
 
 
@@ -138,9 +139,14 @@ int array_test(void)
   if (t != 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9)
   {
     printf("unexpected checksum %d\n", t);
-    return 1;
+    goto Failure;
   }
 
 
-  return 0;
+  return result_TEST_PASSED;
+
+
+Failure:
+
+  return result_TEST_FAILED;
 }

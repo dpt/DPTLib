@@ -5,7 +5,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "types.h"
+#include "utils/array.h"
 #include "base/result.h"
 #include "datastruct/vector.h"
 
@@ -33,7 +33,7 @@ int vector_test(void)
 
   v = vector_create(WIDTH);
   if (v == NULL)
-    return 1;
+    goto Failure;
 
 
   printf("test: clear\n");
@@ -63,7 +63,7 @@ int vector_test(void)
     if (new_length != set_lengths[i])
     {
       printf("*** did not resize as expected!\n");
-      return 1;
+      goto Failure;
     }
   }
 
@@ -74,7 +74,7 @@ int vector_test(void)
   for (i = 0; i < NELEMS(primes); i++)
     *p++ = primes[i];
 
-  printf("populated\n");
+  printf("...populated\n");
 
 
   printf("test: set width\n");
@@ -94,12 +94,14 @@ int vector_test(void)
     if (new_width != set_widths[i])
     {
       printf("*** did not resize as expected!\n");
-      return 1;
+      goto Failure;
     }
+
+    printf("...resized\n");
   }
 
 
-  printf("test: get / ensure values are intact\n");
+  printf("test: ensure values are intact\n");
 
   p = vector_get(v, 0);
   for (i = 0; i < NELEMS(primes); i++)
@@ -107,18 +109,25 @@ int vector_test(void)
     if (*p != primes[i])
     {
       printf("*** %d ought to be %d at index %d\n", *p, primes[i], i);
-      return 1;
+      goto Failure;
     }
 
     p++;
   }
 
-  printf("yes, they are\n");
+  printf("...yes, they are\n");
+
 
 
   printf("test: destroy\n");
 
   vector_destroy(v);
 
-  return 0;
+
+  return result_TEST_PASSED;
+
+
+Failure:
+
+  return result_TEST_FAILED;
 }
