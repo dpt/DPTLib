@@ -28,6 +28,10 @@ result_t vector_set_width(vector_t *v, size_t width)
   currsz = v->allocated * v->width;
   newsz  = v->used * width;
 
+  /* Squeeze now, before shrinking the block. */
+  if (width < v->width)
+    array_squeeze(v->base, v->used, v->width, width);
+
   /* Avoid calling realloc for the same size block. */
   if (currsz != newsz)
   {
@@ -40,10 +44,9 @@ result_t vector_set_width(vector_t *v, size_t width)
     newbase = v->base;
   }
 
+  /* Stretch now that the block has been grown. */
   if (width > v->width)
     array_stretch(newbase, v->used, v->width, width, 0);
-  else
-    array_squeeze(newbase, v->used, v->width, width);
 
   v->width     = width;
   /* v->used remains the same */
