@@ -4,18 +4,17 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+#ifdef FORTIFY
 #include "fortify/fortify.h"
+#endif
 
-#include "oslib/os.h"
-#include "oslib/osfile.h"
-#include "oslib/osfind.h"
-#include "oslib/osgbpb.h"
+#include "base/result.h"
+#include "base/suppress.h"
+#include "utils/array.h"
 
-#include "appengine/types.h"
-#include "appengine/base/errors.h"
-
-#include "appengine/databases/pickle.h"
+#include "databases/pickle.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -123,16 +122,16 @@ result_t pickle_unpickle(const char                    *filename,
                          const pickle_unformat_methods *unformat,
                          void                          *opaque)
 {
-  result_t            err;
+  result_t         err;
   const size_t     bufsz = READBUFSZ;
-  os_fw            f     = 0;
+  FILE            *f = NULL;
   unpickle__state *state;
   int              occupied;
   int              used;
-  void            *wstate;
+  void            *wstate = NULL;
 
-  f = osfind_openinw(osfind_NO_PATH, filename, NULL);
-  if (f == 0)
+  f = fopen(filename, "rb");
+  if (f == NULL)
     return result_PICKLE_COULDNT_OPEN_FILE;
 
   state = malloc(sizeof(*state));
@@ -160,15 +159,12 @@ result_t pickle_unpickle(const char                    *filename,
 
   for (;;)
   {
-    int unread;
+    size_t read;
 
     /* try to fill buffer */
 
-    unread = osgbpb_readw(f,
-                 (byte *) state->buffer + occupied,
-                          bufsz - occupied);
-    occupied = bufsz - unread;
-    if (occupied == 0)
+    read = fread(state->buffer + occupied, 1, bufsz - occupied, f);
+    if (read == 0 && feof(f))
       break; /* nothing left */
 
     for (;;)
@@ -223,8 +219,7 @@ Failure:
 
 EarlyFailure:
 
-  if (f)
-    osfind_closew(f);
+  fclose(f);
 
   free(state);
 

@@ -4,20 +4,16 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+#ifdef FORTIFY
 #include "fortify/fortify.h"
+#endif
 
-#include "oslib/os.h"
-#include "oslib/osfile.h"
-#include "oslib/osfind.h"
-#include "oslib/osgbpb.h"
+#include "base/result.h"
+#include "utils/array.h"
 
-#include "oslib/types.h"
-
-#include "appengine/types.h"
-#include "appengine/base/errors.h"
-
-#include "appengine/databases/pickle.h"
+#include "databases/pickle.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -26,75 +22,32 @@ static const char signature[] = PICKLE_SIGNATURE;
 /* ----------------------------------------------------------------------- */
 
 /* write out a version numbered header */
-static result_t pickle__write_header(os_fw f, const char *comments, size_t len)
+static result_t pickle__write_header(FILE       *f,
+                                     const char *comments,
+                                     size_t      commentslen)
 {
-  // FIXME: Could use printf style here, e.g.:
-  //        "%c %s\n%s\n", commentchar, comments, signature
-
   static const char commentchar[] = "# ";
+  int rc;
 
-  static const struct
-  {
-    const char *line;
-    size_t      length;
-  }
-  lines[] =
-  {
-    { signature, sizeof(signature) - 1 },
-  };
-
-  os_error *oserr;
-  int       i;
-
-  oserr = xosgbpb_writew(f,
-          (const byte *) commentchar,
-                         NELEMS(commentchar) - 1,
-                         NULL);
-  if (oserr)
-    goto oserrexit;
-
-  oserr = xosgbpb_writew(f,
-          (const byte *) comments,
-                         len,
-                         NULL);
-  if (oserr)
-    goto oserrexit;
-
-  oserr = xos_bput('\n', f);
-  if (oserr)
-    goto oserrexit;
-
-  for (i = 0; i < NELEMS(lines); i++)
-  {
-    oserr = xosgbpb_writew(f,
-            (const byte *) lines[i].line,
-                           lines[i].length,
-                           NULL);
-    if (oserr)
-      goto oserrexit;
-
-    oserr = xos_bput('\n', f);
-    if (oserr)
-      goto oserrexit;
-  }
+  rc = fprintf(f, "%s%.*s\n%s\n",
+               commentchar,
+               (int) commentslen,
+               comments,
+               signature);
+  if (rc < 0)
+    return result_BUFFER_OVERFLOW; // FIXME hard coded error number (could use errno?)
 
   return result_OK;
-
-
-oserrexit:
-
-  return result_OS;
 }
 
-static result_t pickle__write_body(os_fw                        f,
+static result_t pickle__write_body(FILE                        *f,
                                    void                        *assocarr,
                                    const pickle_reader_methods *reader,
                                    const pickle_format_methods *format,
                                    void                        *opaque)
 {
-  result_t       err;
-  os_error   *oserr;
-  void       *state;
+  result_t    err;
+  void       *state = NULL;
   const void *key;
   const void *value;
 
@@ -109,6 +62,7 @@ static result_t pickle__write_body(os_fw                        f,
   {
     char buffer1[256];
     char buffer2[768];
+    int  rc;
 
     // FIXME: get the format methods to pass back how much they used then we
     //        can pack the entire lot into the output buffer as we go
@@ -125,25 +79,15 @@ static result_t pickle__write_body(os_fw                        f,
     else if (err)
       goto exit;
 
-
-    oserr = xosgbpb_writew(f, (byte *) buffer1, strlen(buffer1), NULL);
-    if (oserr)
-      goto oserrexit;
-
-    oserr = xosgbpb_writew(f,
-            (const byte *) format->split,
-                           format->splitlen,
-                           NULL);
-    if (oserr)
-      goto oserrexit;
-
-    oserr = xosgbpb_writew(f, (byte *) buffer2, strlen(buffer2), NULL);
-    if (oserr)
-      goto oserrexit;
-
-    oserr = xos_bput('\n', f);
-    if (oserr)
-      goto oserrexit;
+    rc = fprintf(f, "%s%.*s%s\n",
+                 buffer1,
+                 (int) format->splitlen, format->split,
+                 buffer2);
+    if (rc < 0)
+    {
+      err = result_BUFFER_OVERFLOW; // FIXME hard coded error number (could use errno?)
+      goto exit;
+    }
   }
 
   if (err == result_PICKLE_END)
@@ -155,12 +99,6 @@ exit:
     reader->stop(state, opaque);
 
   return err;
-
-
-oserrexit:
-
-  err = result_OS;
-  goto exit;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -172,7 +110,7 @@ result_t pickle_pickle(const char                  *filename,
                        void                        *opaque)
 {
   result_t err;
-  os_fw f;
+  FILE    *f;
 
   assert(filename);
   assert(assocarr);
@@ -181,9 +119,9 @@ result_t pickle_pickle(const char                  *filename,
 
   assert(reader->next); /* the other two methods can be NULL */
 
-  f = osfind_openoutw(osfind_NO_PATH, filename, NULL);
-  if (f == 0)
-    return result_FILE_OPEN_FAILED;
+  f = fopen(filename, "wb");
+  if (f == NULL)
+    return result_PICKLE_COULDNT_OPEN_FILE;
 
   err = pickle__write_header(f, format->comments, format->commentslen);
   if (err)
@@ -193,18 +131,14 @@ result_t pickle_pickle(const char                  *filename,
   if (err)
     goto failure;
 
-  osfind_close(f);
-
-  xosfile_set_type(filename, osfile_TYPE_TEXT);
+  fclose(f);
 
   return result_OK;
 
 
 failure:
 
-  osfind_close(f);
-
-  xosfile_set_type(filename, osfile_TYPE_DATA);
+  fclose(f);
 
   return err;
 }
