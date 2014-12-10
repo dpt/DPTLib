@@ -125,7 +125,8 @@ result_t digestdb_decode(unsigned char *bytes, const char *text)
   const char *end;
   int         lo,hi;
 
-  for (end = text + digestdb_DIGESTSZ * 2; text < end; text += 2)
+  end = text + digestdb_DIGESTSZ * 2;
+  for (; text < end; text += 2)
   {
     hi = tab[text[0]];
     lo = tab[text[1]];
@@ -147,7 +148,8 @@ void digestdb_encode(char *text, const unsigned char *bytes)
 
   const unsigned char *end;
 
-  for (end = bytes + digestdb_DIGESTSZ; bytes < end; bytes++)
+  end = bytes + digestdb_DIGESTSZ;
+  for (; bytes < end; bytes++)
   {
     unsigned char b;
 
