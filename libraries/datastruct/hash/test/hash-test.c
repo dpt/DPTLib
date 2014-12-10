@@ -81,11 +81,19 @@ result_t hash_test(void)
     v = my_strdup(data[i].value);
 
     if (!s || !v)
+    {
+      free(s);
+      free(v);
       goto Failure;
+    }
 
     err = hash_insert(d, s, v);
     if (err)
+    {
+      free(s);
+      free(v);
       goto Failure;
+    }
   }
 
   printf("test: iterate\n");

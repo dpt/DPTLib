@@ -113,6 +113,9 @@ static result_t pickle__test1_write(void)
 
     if (!s || !v)
     {
+      free(s);
+      free(v);
+      
       err = result_OOM;
       goto Failure;
     }
@@ -398,7 +401,10 @@ static result_t cheese_unformat_value(const char *buf,
               pasteurised,
              &age);
   if (rc == EOF || rc != 6)
+  {
+    free(value);
     return result_BAD_ARG;
+  }
 
   value->country     = cheese_country_from_string(country);
   value->region      = cheese_region_from_string(region);
@@ -554,6 +560,8 @@ static result_t pickle__test2_read(void)
                        &pickle_writer_hash,
                        &unformat_cheese_methods,
                         NULL);
+  if (err)
+    goto Failure;
 
   printf("test: iterate\n");
 

@@ -122,12 +122,22 @@ result_t bitvec_test(void)
   printf("created. equal? %d\n", bitvec_eq(v, w));
 
   err = bitvec_set(v, 1);
+  if (err)
+    goto Failure;
+
   err = bitvec_set(w, 1);
+  if (err)
+    goto Failure;
 
   printf("set bit 1 for v+w. equal? %d\n", bitvec_eq(v, w));
 
   err = bitvec_set(v, 1000);
+  if (err)
+    goto Failure;
+
   err = bitvec_set(w, 1000);
+  if (err)
+    goto Failure;
 
   printf("set bit 1000 for v+w. equal? %d\n", bitvec_eq(v, w));
 
