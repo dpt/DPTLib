@@ -5,11 +5,11 @@
 
 #include <stddef.h>
 
-struct vector_t
+struct vector
 {
   size_t width;     /* width of an element */
-  int    used;      /* space used */
-  int    allocated; /* space allocated */
+  int    used;      /* entries used */
+  int    allocated; /* entries allocated */
   void  *base;      /* vector itself */
 };
 
