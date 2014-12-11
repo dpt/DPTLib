@@ -11,9 +11,9 @@
 
 #define NBITS 97
 
-typedef bitarr_ARRAY(NBITS) TestBits;
+typedef bitarr_ARRAY(NBITS) testbits_t;
 
-static void dumpbits(const TestBits *arr, size_t nbits)
+static void dumpbits(const testbits_t *arr, size_t nbits)
 {
   int i;
   int c;
@@ -33,8 +33,8 @@ static void dumpbits(const TestBits *arr, size_t nbits)
 
 result_t bitarr_test(void)
 {
-  TestBits arr;
-  int      i;
+  testbits_t arr;
+  int        i;
 
   printf("test: create\n");
 

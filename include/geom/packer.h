@@ -15,7 +15,7 @@
 
 #define T packer_t
 
-typedef struct T T;
+typedef struct packer T;
 
 T *packer_create(const box_t *dims);
 void packer_destroy(T *doomed);

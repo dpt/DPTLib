@@ -12,14 +12,14 @@
 
 #include "impl.h"
 
-int hash_walk(hash_t *h, hash_walk_callback *cb, void *cbarg)
+int hash_walk(hash_t *h, hash_walk_callback_t *cb, void *cbarg)
 {
   int i;
 
   for (i = 0; i < h->nbins; i++)
   {
-    node *n;
-    node *next;
+    hash_node_t *n;
+    hash_node_t *next;
 
     for (n = h->bins[i]; n != NULL; n = next)
     {

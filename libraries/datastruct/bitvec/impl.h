@@ -3,7 +3,7 @@
 #ifndef DATASTRUCT_BITVEC_IMPL_H
 #define DATASTRUCT_BITVEC_IMPL_H
 
-struct bitvec_t
+struct bitvec
 {
   unsigned int  length; /* length in words */
   unsigned int *vec;

@@ -7,7 +7,7 @@
 
 #include "datastruct/ntree.h"
 
-struct ntree_t
+struct ntree
 {
   ntree_t *next;
   ntree_t *prev;

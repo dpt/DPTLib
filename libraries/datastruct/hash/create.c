@@ -81,8 +81,8 @@ result_t hash_create(int                 nbins,
                      hash_destroy_value *destroy_value,
                      hash_t            **ph)
 {
-  hash_t *h;
-  node  **bins;
+  hash_t       *h;
+  hash_node_t **bins;
 
   h = malloc(sizeof(*h));
   if (h == NULL)

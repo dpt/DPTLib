@@ -13,7 +13,7 @@
 
 #define T ntree_t
 
-typedef struct T T;
+typedef struct ntree T;
 
 /* ----------------------------------------------------------------------- */
 

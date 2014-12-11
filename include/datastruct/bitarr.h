@@ -41,7 +41,7 @@
 /**
  * A bit array's type.
  */
-typedef struct T T;
+typedef struct bitarr T;
 
 /**
  * A bit array's element type.
@@ -80,7 +80,7 @@ typedef unsigned int bitarr_elem_t;
 /**
  * A bit array.
  */
-struct T
+struct bitarr
 {
   bitarr_elem_t entries[UNKNOWN];
 };

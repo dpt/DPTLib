@@ -16,18 +16,18 @@
 #include "databases/pickle.h"
 #include "databases/pickle-reader-hash.h"
 
-typedef struct mystate
+typedef struct pickle_reader_hash_state
 {
   hash_t *hash;
   int     cont;
 }
-mystate;
+pickle_reader_hash_state_t;
 
 result_t pickle_reader_hash_start(const void *assocarr,
                                   void       *opaque,
                                   void      **pstate)
 {
-  mystate *state;
+  pickle_reader_hash_state_t *state;
 
   NOT_USED(opaque);
 
@@ -55,8 +55,8 @@ result_t pickle_reader_hash_next(void        *vstate,
                                  const void **value,
                                  void        *opaque)
 {
-  result_t    err;
-  mystate *state = vstate;
+  result_t                    err;
+  pickle_reader_hash_state_t *state = vstate;
 
   NOT_USED(opaque);
 

@@ -15,7 +15,7 @@ typedef enum packer_sortdir
 }
 packer_sortdir;
 
-struct packer_t
+struct packer
 {
   box_t         *areas;
   int            allocedareas;

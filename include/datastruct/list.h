@@ -13,9 +13,9 @@
 
 #define T list_t
 
-typedef struct T
+typedef struct list
 {
-  struct T *next;
+  struct list *next;
 }
 T;
 

@@ -14,7 +14,7 @@
 
 result_t hash_insert(hash_t *h, void *key, void *value)
 {
-  node **n;
+  hash_node_t **n;
 
   n = hash_lookup_node(h, key);
   if (*n)
@@ -29,7 +29,7 @@ result_t hash_insert(hash_t *h, void *key, void *value)
   }
   else
   {
-    node *m;
+    hash_node_t *m;
 
     /* not found: create new node */
 

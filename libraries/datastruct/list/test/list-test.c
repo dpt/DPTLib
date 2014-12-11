@@ -11,20 +11,20 @@
 
 #include "datastruct/list.h"
 
-typedef struct
+typedef struct node
 {
   list_t ll;
   char   string[32];
 }
-node;
+node_t;
 
 static int printelement(list_t *e, void *opaque)
 {
-  node *n;
+  node_t *n;
 
   NOT_USED(opaque);
 
-  n = (node *) e;
+  n = (node_t *) e;
 
   printf("%p: %s\n", (void *) e, n->string);
 
@@ -33,7 +33,7 @@ static int printelement(list_t *e, void *opaque)
 
 result_t list_test(void)
 {
-  node data[] =
+  node_t data[] =
   {
     { { NULL }, "deckard"   },
     { { NULL }, "batty"     },

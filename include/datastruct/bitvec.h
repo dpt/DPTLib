@@ -20,7 +20,7 @@
 
 #define T bitvec_t
 
-typedef struct T T;
+typedef struct bitvec T;
 
 /* Creates a bit vector big enough to hold 'length' bits.
  * All bits are zero after creation. */

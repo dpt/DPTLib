@@ -84,7 +84,7 @@ void filenamedb_fin(void)
 
 /* ----------------------------------------------------------------------- */
 
-struct filenamedb_t
+struct filenamedb
 {
   char       *filename;
 

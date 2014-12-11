@@ -7,9 +7,9 @@
 
 #define T hlist_t
 
-typedef struct T *T;
+typedef struct hlist *T;
 
-struct T
+struct hlist
 {
   T     rest;
   void *first; /* the payload */

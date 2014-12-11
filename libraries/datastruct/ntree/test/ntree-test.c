@@ -30,9 +30,9 @@ typedef struct mynode
   int         position;
   ntree_t    *node;
 }
-mynode;
+mynode_t;
 
-static mynode data[] =
+static mynode_t data[] =
 {
   { "a", -1, 0, NULL },
   { "b",  0, 0, NULL },
@@ -81,12 +81,12 @@ typedef struct print_data
   char *buf;
   int   index;
 }
-print_data;
+print_data_t;
 
 static result_t concat(ntree_t *t, void *opaque)
 {
-  print_data *data = opaque;
-  char       *s;
+  print_data_t *data = opaque;
+  char         *s;
 
   s = ntree_get_data(t);
 
@@ -101,8 +101,8 @@ static result_t concat(ntree_t *t, void *opaque)
 static result_t tree_to_string(ntree_t *t, ntree_walk_flags flags, int depth,
                                char *buf)
 {
-  result_t      err;
-  print_data data;
+  result_t     err;
+  print_data_t data;
 
   buf[0] = '\0';
 

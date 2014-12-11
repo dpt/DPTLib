@@ -22,8 +22,8 @@ result_t hash_walk_continuation(hash_t      *h,
   unsigned int bin;
   unsigned int item;
   int          i;
-  node        *n;
-  node        *next = NULL;
+  hash_node_t *n;
+  hash_node_t *next = NULL;
 
   if (continuation == -1) /* previous iteration was the last element */
     return result_HASH_END;

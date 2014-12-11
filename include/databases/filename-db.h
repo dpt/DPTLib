@@ -41,7 +41,7 @@ void filenamedb_fin(void);
 
 /* ----------------------------------------------------------------------- */
 
-typedef struct T T;
+typedef struct filenamedb T;
 
 result_t filenamedb_open(const char *filename, T **db);
 void filenamedb_close(T *db);

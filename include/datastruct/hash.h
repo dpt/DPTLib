@@ -23,7 +23,7 @@
 
 #define T hash_t
 
-typedef struct T T;
+typedef struct hash T;
 
 /* ----------------------------------------------------------------------- */
 
@@ -125,9 +125,9 @@ void hash_remove(T *hash, const void *key);
  *
  * Return a negative value to halt the walk operation.
  */
-typedef int (hash_walk_callback)(const void *key,
-                                 const void *value,
-                                 void       *opaque);
+typedef int (hash_walk_callback_t)(const void *key,
+                                   const void *value,
+                                   void       *opaque);
 
 /**
  * Walk the hash, calling the specified routine for every element.
@@ -139,7 +139,7 @@ typedef int (hash_walk_callback)(const void *key,
  * \return The negative value returned from the callback, or zero for
  * success.
  */
-int hash_walk(T *hash, hash_walk_callback *cb, void *opaque);
+int hash_walk(T *hash, hash_walk_callback_t *cb, void *opaque);
 
 /* ----------------------------------------------------------------------- */
 
