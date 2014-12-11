@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -81,7 +82,7 @@ static result_t test_to_string_and_len(atom_set_t *d)
 
     string = (const char *) atom_get(d, i, &len);
     if (string)
-      printf("%d is '%.*s' (length %u)\n", i, (int) len, string, len);
+      printf("%d is '%.*s' (length %zu)\n", i, (int) len, string, len);
   }
 
   return result_OK;

@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -85,13 +86,13 @@ print_data_t;
 
 static result_t concat(ntree_t *t, void *opaque)
 {
-  print_data_t *data = opaque;
+  print_data_t *pdata = opaque;
   char         *s;
 
   s = ntree_get_data(t);
 
-  strcat(data->buf, s);
-  data->index += strlen(s);
+  strcat(pdata->buf, s);
+  pdata->index += strlen(s);
 
   printf("'%s' at depth %d\n", s, ntree_depth(t));
 
@@ -102,14 +103,14 @@ static result_t tree_to_string(ntree_t *t, ntree_walk_flags flags, int depth,
                                char *buf)
 {
   result_t     err;
-  print_data_t data;
+  print_data_t pdata;
 
   buf[0] = '\0';
 
-  data.buf   = buf;
-  data.index = 0;
+  pdata.buf   = buf;
+  pdata.index = 0;
 
-  err = ntree_walk(t, flags | ntree_WALK_ALL, depth, concat, &data);
+  err = ntree_walk(t, flags | ntree_WALK_ALL, depth, concat, &pdata);
 
   return err;
 }
@@ -267,7 +268,7 @@ result_t ntree_test(void)
 
 Failure:
 
-  printf("Error %lu\n", err);
+  printf("Error %x\n", err);
 
   return result_TEST_FAILED;
 }
