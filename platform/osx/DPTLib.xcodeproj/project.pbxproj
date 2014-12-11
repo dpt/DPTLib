@@ -145,6 +145,9 @@
 		55F7E0241A38E38100A64017 /* round.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E01A1A38E38100A64017 /* round.c */; };
 		55F7E0251A38E38100A64017 /* round4.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E01B1A38E38100A64017 /* round4.c */; };
 		55F7E0261A38E38100A64017 /* union.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E01C1A38E38100A64017 /* union.c */; };
+		55F7E02E1A39183300A64017 /* packer.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E02B1A39183300A64017 /* packer.c */; };
+		55F7E0371A391AA800A64017 /* txtscr.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E0361A391AA800A64017 /* txtscr.c */; };
+		55F7E0381A391B4F00A64017 /* packer-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E02D1A39183300A64017 /* packer-test.c */; };
 		55FC73171A326E16007C451B /* ceillog2.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730D1A326E16007C451B /* ceillog2.c */; };
 		55FC73181A326E16007C451B /* clz.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730E1A326E16007C451B /* clz.c */; };
 		55FC73191A326E16007C451B /* countbits.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730F1A326E16007C451B /* countbits.c */; };
@@ -363,6 +366,12 @@
 		55F7E01A1A38E38100A64017 /* round.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = round.c; sourceTree = "<group>"; };
 		55F7E01B1A38E38100A64017 /* round4.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = round4.c; sourceTree = "<group>"; };
 		55F7E01C1A38E38100A64017 /* union.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = union.c; sourceTree = "<group>"; };
+		55F7E0271A39178100A64017 /* packer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = packer.h; sourceTree = "<group>"; };
+		55F7E02A1A39183300A64017 /* impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = impl.h; sourceTree = "<group>"; };
+		55F7E02B1A39183300A64017 /* packer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = packer.c; sourceTree = "<group>"; };
+		55F7E02D1A39183300A64017 /* packer-test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "packer-test.c"; sourceTree = "<group>"; };
+		55F7E0331A391A6600A64017 /* txtscr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = txtscr.h; sourceTree = "<group>"; };
+		55F7E0361A391AA800A64017 /* txtscr.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = txtscr.c; sourceTree = "<group>"; };
 		55FC730D1A326E16007C451B /* ceillog2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ceillog2.c; sourceTree = "<group>"; };
 		55FC730E1A326E16007C451B /* clz.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = clz.c; sourceTree = "<group>"; };
 		55FC730F1A326E16007C451B /* countbits.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = countbits.c; sourceTree = "<group>"; };
@@ -420,6 +429,7 @@
 				5551375916545786007F3565 /* framebuf */,
 				5551375E16545786007F3565 /* geom */,
 				5551376016545786007F3565 /* io */,
+				55F7E0311A391A6600A64017 /* test */,
 				5551376C16545786007F3565 /* utils */,
 			);
 			name = include;
@@ -452,6 +462,7 @@
 			isa = PBXGroup;
 			children = (
 				5551375F16545786007F3565 /* box.h */,
+				55F7E0271A39178100A64017 /* packer.h */,
 			);
 			path = geom;
 			sourceTree = "<group>";
@@ -492,6 +503,7 @@
 				5551377316545786007F3565 /* framebuf */,
 				5551377516545786007F3565 /* geom */,
 				5551377916545786007F3565 /* io */,
+				55F7E0341A391AA800A64017 /* test */,
 				5551379416545786007F3565 /* utils */,
 			);
 			name = libraries;
@@ -510,6 +522,7 @@
 			isa = PBXGroup;
 			children = (
 				5551377616545786007F3565 /* box */,
+				55F7E0291A39183300A64017 /* packer */,
 			);
 			path = geom;
 			sourceTree = "<group>";
@@ -1026,6 +1039,48 @@
 			path = DPTLibTest;
 			sourceTree = "<group>";
 		};
+		55F7E0291A39183300A64017 /* packer */ = {
+			isa = PBXGroup;
+			children = (
+				55F7E02A1A39183300A64017 /* impl.h */,
+				55F7E02B1A39183300A64017 /* packer.c */,
+				55F7E02C1A39183300A64017 /* test */,
+			);
+			path = packer;
+			sourceTree = "<group>";
+		};
+		55F7E02C1A39183300A64017 /* test */ = {
+			isa = PBXGroup;
+			children = (
+				55F7E02D1A39183300A64017 /* packer-test.c */,
+			);
+			path = test;
+			sourceTree = "<group>";
+		};
+		55F7E0311A391A6600A64017 /* test */ = {
+			isa = PBXGroup;
+			children = (
+				55F7E0331A391A6600A64017 /* txtscr.h */,
+			);
+			path = test;
+			sourceTree = "<group>";
+		};
+		55F7E0341A391AA800A64017 /* test */ = {
+			isa = PBXGroup;
+			children = (
+				55F7E0351A391AA800A64017 /* txtscr */,
+			);
+			path = test;
+			sourceTree = "<group>";
+		};
+		55F7E0351A391AA800A64017 /* txtscr */ = {
+			isa = PBXGroup;
+			children = (
+				55F7E0361A391AA800A64017 /* txtscr.c */,
+			);
+			path = txtscr;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -1107,6 +1162,7 @@
 				55E558F51A34F2CA001FB51F /* prev-sibling.c in Sources */,
 				55E558C51A34F2AC001FB51F /* eq.c in Sources */,
 				55FC731B1A326E16007C451B /* floorlog2.c in Sources */,
+				55F7E0371A391AA800A64017 /* txtscr.c in Sources */,
 				55E558E51A34F2CA001FB51F /* delete.c in Sources */,
 				55E558081A337785001FB51F /* rev-s.c in Sources */,
 				55E558E41A34F2CA001FB51F /* copy.c in Sources */,
@@ -1229,6 +1285,7 @@
 				55E558D31A34F2B3001FB51F /* walk-cont.c in Sources */,
 				55513866165463EB007F3565 /* unpack.c in Sources */,
 				55E558F21A34F2CA001FB51F /* nth-child.c in Sources */,
+				55F7E02E1A39183300A64017 /* packer.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1237,6 +1294,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				55F7DFF71A373F2C00A64017 /* atom-test.c in Sources */,
+				55F7E0381A391B4F00A64017 /* packer-test.c in Sources */,
 				55F7E0031A37A04100A64017 /* pickle-test.c in Sources */,
 				55F7DFFD1A373FB800A64017 /* vector-test.c in Sources */,
 				55F7DFF91A373F5F00A64017 /* bitvec-test.c in Sources */,

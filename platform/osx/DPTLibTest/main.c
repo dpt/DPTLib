@@ -25,6 +25,9 @@ extern result_t vector_test(void);
 extern result_t pickle_test(void);
 extern result_t tagdb_test(void);
 
+/* geom */
+extern result_t packer_test(void);
+
 int main(int argc, const char *argv[])
 {
   result_t rc;
@@ -59,6 +62,9 @@ int main(int argc, const char *argv[])
   /* database */
   TEST(pickle)
   TEST(tagdb)
+
+  /* geom */
+  TEST(packer)
 
   printf("=== %d tested, %d passed\n", ntested, npassed);
 

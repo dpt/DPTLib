@@ -16,6 +16,7 @@ typedef int result_t;
 #define result_BASE_TAGDB                       0x0500
 #define result_BASE_FILENAMEDB                  0x0600
 #define result_BASE_TEST                        0x0700
+#define result_BASE_PACKER                      0x0800
 
 /* Non-DPTLib bases */
 #define result_BASE_MMPLAYER                    0xF000
