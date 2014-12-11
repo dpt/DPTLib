@@ -8,69 +8,156 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#ifdef FORTIFY
+#include "fortify/fortify.h"
+#endif
 
 #include "base/result.h"
+#include "utils/array.h"
+
+/* ----------------------------------------------------------------------- */
+
+typedef result_t (testfn_t)(void);
+
+typedef struct test
+{
+  const char *name;
+  testfn_t   *test;
+}
+test_t;
+
+/* ----------------------------------------------------------------------- */
 
 /* datastruct */
-extern result_t atom_test(void);
-extern result_t bitarr_test(void);
-extern result_t bitvec_test(void);
-extern result_t hash_test(void);
-extern result_t list_test(void);
-extern result_t ntree_test(void);
-extern result_t vector_test(void);
+extern testfn_t atom_test,
+                bitarr_test,
+                bitvec_test,
+                hash_test,
+                list_test,
+                ntree_test,
+                vector_test;
 
 /* database */
-extern result_t pickle_test(void);
-extern result_t tagdb_test(void);
+extern testfn_t pickle_test,
+                tagdb_test;
 
 /* geom */
-extern result_t packer_test(void);
+extern testfn_t packer_test;
 
 /* utils */
-extern result_t array_test(void);
+extern testfn_t array_test;
 
-int main(int argc, const char *argv[])
+/* ----------------------------------------------------------------------- */
+
+static const test_t tests[] =
+{
+  { "atom",   atom_test   },
+  { "bitarr", bitarr_test },
+  { "bitvec", bitvec_test },
+  { "hash",   hash_test   },
+  { "list",   list_test   },
+  { "ntree",  ntree_test  },
+  { "vector", vector_test },
+
+  { "pickle", pickle_test },
+  { "tagdb",  tagdb_test  },
+  
+  { "packer", packer_test },
+  
+  { "array",  array_test  },
+};
+
+static const int ntests = NELEMS(tests);
+
+/* ----------------------------------------------------------------------- */
+
+static int runtest(const test_t *t)
 {
   result_t rc;
-  int ntested = 0;
-  int npassed = 0;
+  
+  printf(">>\n" ">> Begin %s tests\n" ">>\n", t->name);
+  
+  rc = t->test();
 
-#define TEST(name) \
-  printf(">>>\n"); \
-  printf(">>> test: %s\n", #name); \
-  printf(">>>\n"); \
-  rc = name##_test(); \
-  ntested++; \
-  if (rc != result_TEST_PASSED) { \
-    printf("*** failure\n"); \
-  } else { \
-    npassed++; \
-    printf("<<<\n"); \
-    printf("<<< (done)\n"); \
-    printf("<<<\n"); \
+#ifdef FORTIFY
+  Fortify_CheckAllMemory();
+#endif
+  
+  if (rc != result_TEST_PASSED)
+  {
+    printf("** ****************\n");
+    printf("** * TEST FAILING *\n");
+    printf("** ****************\n");
   }
 
-  /* datastruct */
-  TEST(atom)
-  TEST(bitarr)
-  TEST(bitvec)
-  TEST(hash)
-  TEST(list)
-  TEST(ntree)
-  TEST(vector)
+  printf("<<\n" "<< %s tests complete.\n" "<<\n" "\n", t->name);
 
-  /* database */
-  TEST(pickle)
-  TEST(tagdb)
+  return rc;
+}
 
-  /* geom */
-  TEST(packer)
+int main(int argc, char *argv[])
+{
+  int nrun;
+  int nfailures;
+  int i;
+  int npassed;
+  
+#ifdef FORTIFY
+  Fortify_EnterScope();
+#endif
+  
+  nrun      = 0;
+  nfailures = 0;
+  
+  if (argc < 2)
+  {
+    /* run all tests */
+    
+    printf("++ Running all tests.\n");
+    
+    for (i = 0; i < ntests; i++)
+    {
+      nrun++;
+      if (runtest(&tests[i]) != result_TEST_PASSED)
+        nfailures++;
+    }
+  }
+  else
+  {
+    /* run the specified tests only */
+    
+    for (i = 1; i < argc; i++)
+    {
+      int j;
+      
+      printf("++ Running specified tests only.\n");
+      
+      for (j = 0; j < ntests; j++)
+        if (strcmp(tests[j].name, argv[i]) == 0)
+          break;
+      
+      if (j == ntests)
+      {
+        printf("** Unknown test '%s'.\n", argv[i]);
+      }
+      else
+      {
+        nrun++;
+        if (runtest(&tests[j]) != result_TEST_PASSED)
+          nfailures++;
+      }
+    }
+  }
+  
+  npassed = nrun - nfailures;
+  printf("++ Tests completed: %d of %d tests passed.\n", npassed, nrun);
 
-  /* utils */
-  TEST(array)
-
-  printf("=== %d tested, %d passed\n", ntested, npassed);
-
-  exit(EXIT_SUCCESS);
+#ifdef FORTIFY
+  Fortify_LeaveScope();
+  Fortify_OutputStatistics();
+#endif
+  
+  exit(nfailures == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }

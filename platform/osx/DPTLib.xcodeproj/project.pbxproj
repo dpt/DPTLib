@@ -243,7 +243,7 @@
 		55E558391A34F276001FB51F /* delelems.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = delelems.c; sourceTree = "<group>"; };
 		55E5583C1A34F276001FB51F /* squeeze.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = squeeze.c; sourceTree = "<group>"; };
 		55E5583D1A34F276001FB51F /* stretch.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = stretch.c; sourceTree = "<group>"; };
-		55E5583F1A34F276001FB51F /* array-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = "array-test.c"; path = "../../../utils/array/test/array-test.c"; sourceTree = "<group>"; };
+		55E5583F1A34F276001FB51F /* array-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "array-test.c"; sourceTree = "<group>"; };
 		55E558411A34F276001FB51F /* create.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = create.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E558421A34F276001FB51F /* delete-block.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "delete-block.c"; sourceTree = "<group>"; };
 		55E558431A34F276001FB51F /* delete.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = delete.c; sourceTree = "<group>"; };
@@ -725,8 +725,7 @@
 			children = (
 				55E5583F1A34F276001FB51F /* array-test.c */,
 			);
-			name = test;
-			path = ../../datastruct/array/test;
+			path = test;
 			sourceTree = "<group>";
 		};
 		55E558401A34F276001FB51F /* atom */ = {
@@ -1317,6 +1316,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
+				CLANG_MODULES_AUTOLINK = YES;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = NO;
@@ -1369,6 +1369,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
+				CLANG_MODULES_AUTOLINK = YES;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = NO;
