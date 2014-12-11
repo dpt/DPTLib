@@ -44,7 +44,8 @@ extern testfn_t pickle_test,
                 tagdb_test;
 
 /* geom */
-extern testfn_t packer_test;
+extern testfn_t layout_test,
+                packer_test;
 
 /* utils */
 extern testfn_t array_test;
@@ -64,6 +65,7 @@ static const test_t tests[] =
   { "pickle", pickle_test },
   { "tagdb",  tagdb_test  },
   
+  { "layout", layout_test },
   { "packer", packer_test },
   
   { "array",  array_test  },

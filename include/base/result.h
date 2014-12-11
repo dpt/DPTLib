@@ -17,6 +17,7 @@ typedef int result_t;
 #define result_BASE_FILENAMEDB                  0x0600
 #define result_BASE_TEST                        0x0700
 #define result_BASE_PACKER                      0x0800
+#define result_BASE_LAYOUT                      0x0900
 
 /* Non-DPTLib bases */
 #define result_BASE_MMPLAYER                    0xF000
@@ -44,6 +45,10 @@ typedef int result_t;
 
 #define result_TEST_PASSED                      (result_BASE_TEST        + 0)
 #define result_TEST_FAILED                      (result_BASE_TEST        + 1)
+
+/* Packer result codes are in geom/packer.h */
+
+/* Layout result codes are in geom/layout.h */
 
 /* ----------------------------------------------------------------------- */
 

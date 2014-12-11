@@ -119,6 +119,8 @@
 		55E5591C1A35004E001FB51F /* hash-reader.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5590F1A350037001FB51F /* hash-reader.c */; };
 		55E5591D1A35004E001FB51F /* hash-writer.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559101A350037001FB51F /* hash-writer.c */; };
 		55E559201A350051001FB51F /* tag-db.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559161A350037001FB51F /* tag-db.c */; };
+		55E559261A3A60E5001FB51F /* layout.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559231A3A60E5001FB51F /* layout.c */; };
+		55E559281A3A60EF001FB51F /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559251A3A60E5001FB51F /* test.c */; };
 		55F7DFEC1A373E9000A64017 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7DFEB1A373E9000A64017 /* main.c */; };
 		55F7DFF61A373F1400A64017 /* array-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5583F1A34F276001FB51F /* array-test.c */; };
 		55F7DFF71A373F2C00A64017 /* atom-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5584B1A34F276001FB51F /* atom-test.c */; };
@@ -349,6 +351,9 @@
 		55E559141A350037001FB51F /* unpickle.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = unpickle.c; sourceTree = "<group>"; };
 		55E559161A350037001FB51F /* tag-db.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "tag-db.c"; sourceTree = "<group>"; };
 		55E559181A350037001FB51F /* tag-db-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "tag-db-test.c"; sourceTree = "<group>"; };
+		55E559231A3A60E5001FB51F /* layout.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = layout.c; sourceTree = "<group>"; };
+		55E559251A3A60E5001FB51F /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		55E559291A3A6106001FB51F /* layout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = layout.h; sourceTree = "<group>"; };
 		55F7DFE91A373E9000A64017 /* DPTLibTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = DPTLibTest; sourceTree = BUILT_PRODUCTS_DIR; };
 		55F7DFEB1A373E9000A64017 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		55F7E0131A38E38100A64017 /* contains-box.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "contains-box.c"; sourceTree = "<group>"; };
@@ -457,6 +462,7 @@
 			isa = PBXGroup;
 			children = (
 				5551375F16545786007F3565 /* box.h */,
+				55E559291A3A6106001FB51F /* layout.h */,
 				55F7E0271A39178100A64017 /* packer.h */,
 			);
 			path = geom;
@@ -517,6 +523,7 @@
 			isa = PBXGroup;
 			children = (
 				5551377616545786007F3565 /* box */,
+				55E559221A3A60E5001FB51F /* layout */,
 				55F7E0291A39183300A64017 /* packer */,
 			);
 			path = geom;
@@ -1015,6 +1022,23 @@
 			path = test;
 			sourceTree = "<group>";
 		};
+		55E559221A3A60E5001FB51F /* layout */ = {
+			isa = PBXGroup;
+			children = (
+				55E559231A3A60E5001FB51F /* layout.c */,
+				55E559241A3A60E5001FB51F /* test */,
+			);
+			path = layout;
+			sourceTree = "<group>";
+		};
+		55E559241A3A60E5001FB51F /* test */ = {
+			isa = PBXGroup;
+			children = (
+				55E559251A3A60E5001FB51F /* test.c */,
+			);
+			path = test;
+			sourceTree = "<group>";
+		};
 		55F7DFE41A3723C500A64017 /* pixelfmt */ = {
 			isa = PBXGroup;
 			children = (
@@ -1212,6 +1236,7 @@
 				55F7E0211A38E38100A64017 /* intersection.c in Sources */,
 				55E558051A337785001FB51F /* rev-s-m.c in Sources */,
 				55E558F41A34F2CA001FB51F /* prepend.c in Sources */,
+				55E559261A3A60E5001FB51F /* layout.c in Sources */,
 				55E558B61A34F293001FB51F /* delete-block.c in Sources */,
 				55E558C81A34F2AC001FB51F /* next.c in Sources */,
 				55E559201A350051001FB51F /* tag-db.c in Sources */,
@@ -1283,6 +1308,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				55E559281A3A60EF001FB51F /* test.c in Sources */,
 				55F7DFF71A373F2C00A64017 /* atom-test.c in Sources */,
 				55F7E0381A391B4F00A64017 /* packer-test.c in Sources */,
 				55F7E0031A37A04100A64017 /* pickle-test.c in Sources */,
