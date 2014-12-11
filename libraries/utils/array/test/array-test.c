@@ -8,7 +8,6 @@
 
 #include "base/result.h"
 #include "utils/array.h"
-#include "datastruct/array.h"
 
 result_t array_test(void)
 {

@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "datastruct/array.h"
+#include "utils/array.h"
 
 /* walk forwards, skip first element */
 void array_squeeze1(unsigned char *base,

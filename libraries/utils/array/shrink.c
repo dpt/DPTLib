@@ -3,6 +3,10 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#ifdef FORTIFY
+#include "fortify/fortify.h"
+#endif
+
 #include "utils/array.h"
 
 int array_shrink(void   **pblock,

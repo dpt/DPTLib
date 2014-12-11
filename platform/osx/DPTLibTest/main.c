@@ -12,7 +12,6 @@
 #include "base/result.h"
 
 /* datastruct */
-extern result_t array_test(void);
 extern result_t atom_test(void);
 extern result_t bitarr_test(void);
 extern result_t bitvec_test(void);
@@ -27,6 +26,9 @@ extern result_t tagdb_test(void);
 
 /* geom */
 extern result_t packer_test(void);
+
+/* utils */
+extern result_t array_test(void);
 
 int main(int argc, const char *argv[])
 {
@@ -50,7 +52,6 @@ int main(int argc, const char *argv[])
   }
 
   /* datastruct */
-  TEST(array)
   TEST(atom)
   TEST(bitarr)
   TEST(bitvec)
@@ -65,6 +66,9 @@ int main(int argc, const char *argv[])
 
   /* geom */
   TEST(packer)
+
+  /* utils */
+  TEST(array)
 
   printf("=== %d tested, %d passed\n", ntested, npassed);
 

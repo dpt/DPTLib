@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "datastruct/array.h"
+#include "utils/array.h"
 
 void array_delete_elements(void  *array,
                            size_t elemsize,

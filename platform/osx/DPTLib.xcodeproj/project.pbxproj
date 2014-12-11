@@ -35,8 +35,6 @@
 		55E5581D1A3492AB001FB51F /* gcd.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5581B1A34926A001FB51F /* gcd.c */; };
 		55E558AE1A34F281001FB51F /* delelem.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E558381A34F276001FB51F /* delelem.c */; };
 		55E558AF1A34F281001FB51F /* delelems.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E558391A34F276001FB51F /* delelems.c */; };
-		55E558B01A34F281001FB51F /* grow.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5583A1A34F276001FB51F /* grow.c */; };
-		55E558B11A34F281001FB51F /* shrinkwrap.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5583B1A34F276001FB51F /* shrinkwrap.c */; };
 		55E558B21A34F281001FB51F /* squeeze.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5583C1A34F276001FB51F /* squeeze.c */; };
 		55E558B31A34F281001FB51F /* stretch.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5583D1A34F276001FB51F /* stretch.c */; };
 		55E558B51A34F293001FB51F /* create.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E558411A34F276001FB51F /* create.c */; };
@@ -233,7 +231,6 @@
 		55E558181A3491D1001FB51F /* maths.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = maths.h; sourceTree = "<group>"; };
 		55E5581A1A34926A001FB51F /* degs-to-rads.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "degs-to-rads.c"; sourceTree = "<group>"; };
 		55E5581B1A34926A001FB51F /* gcd.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = gcd.c; sourceTree = "<group>"; };
-		55E5582D1A34F25E001FB51F /* array.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = array.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		55E5582E1A34F25E001FB51F /* atom.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = atom.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		55E5582F1A34F25E001FB51F /* bitarr.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = bitarr.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		55E558301A34F25E001FB51F /* bitvec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = bitvec.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
@@ -244,11 +241,9 @@
 		55E558351A34F25E001FB51F /* vector.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = vector.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		55E558381A34F276001FB51F /* delelem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = delelem.c; sourceTree = "<group>"; };
 		55E558391A34F276001FB51F /* delelems.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = delelems.c; sourceTree = "<group>"; };
-		55E5583A1A34F276001FB51F /* grow.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = grow.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
-		55E5583B1A34F276001FB51F /* shrinkwrap.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = shrinkwrap.c; sourceTree = "<group>"; };
 		55E5583C1A34F276001FB51F /* squeeze.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = squeeze.c; sourceTree = "<group>"; };
 		55E5583D1A34F276001FB51F /* stretch.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = stretch.c; sourceTree = "<group>"; };
-		55E5583F1A34F276001FB51F /* array-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "array-test.c"; sourceTree = "<group>"; };
+		55E5583F1A34F276001FB51F /* array-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = "array-test.c"; path = "../../../utils/array/test/array-test.c"; sourceTree = "<group>"; };
 		55E558411A34F276001FB51F /* create.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = create.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		55E558421A34F276001FB51F /* delete-block.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "delete-block.c"; sourceTree = "<group>"; };
 		55E558431A34F276001FB51F /* delete.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = delete.c; sourceTree = "<group>"; };
@@ -580,8 +575,13 @@
 		5551379516545786007F3565 /* array */ = {
 			isa = PBXGroup;
 			children = (
+				55E558381A34F276001FB51F /* delelem.c */,
+				55E558391A34F276001FB51F /* delelems.c */,
 				5551379616545786007F3565 /* grow.c */,
 				5551379716545786007F3565 /* shrink.c */,
+				55E5583C1A34F276001FB51F /* squeeze.c */,
+				55E5583D1A34F276001FB51F /* stretch.c */,
+				55E5583E1A34F276001FB51F /* test */,
 			);
 			path = array;
 			sourceTree = "<group>";
@@ -667,7 +667,6 @@
 		55E558131A34893A001FB51F /* datastruct */ = {
 			isa = PBXGroup;
 			children = (
-				55E5582D1A34F25E001FB51F /* array.h */,
 				55E5582E1A34F25E001FB51F /* atom.h */,
 				55E5582F1A34F25E001FB51F /* bitarr.h */,
 				55E558301A34F25E001FB51F /* bitvec.h */,
@@ -716,13 +715,6 @@
 		55E558371A34F276001FB51F /* array */ = {
 			isa = PBXGroup;
 			children = (
-				55E558381A34F276001FB51F /* delelem.c */,
-				55E558391A34F276001FB51F /* delelems.c */,
-				55E5583A1A34F276001FB51F /* grow.c */,
-				55E5583B1A34F276001FB51F /* shrinkwrap.c */,
-				55E5583C1A34F276001FB51F /* squeeze.c */,
-				55E5583D1A34F276001FB51F /* stretch.c */,
-				55E5583E1A34F276001FB51F /* test */,
 			);
 			name = array;
 			path = datastruct/array;
@@ -733,7 +725,8 @@
 			children = (
 				55E5583F1A34F276001FB51F /* array-test.c */,
 			);
-			path = test;
+			name = test;
+			path = ../../datastruct/array/test;
 			sourceTree = "<group>";
 		};
 		55E558401A34F276001FB51F /* atom */ = {
@@ -1253,9 +1246,7 @@
 				55E558EF1A34F2CA001FB51F /* n-nodes.c in Sources */,
 				55E558071A337785001FB51F /* rev-s-pair.c in Sources */,
 				55F7E01F1A38E38100A64017 /* could-hold.c in Sources */,
-				55E558B11A34F281001FB51F /* shrinkwrap.c in Sources */,
 				55513863165463EB007F3565 /* shrink.c in Sources */,
-				55E558B01A34F281001FB51F /* grow.c in Sources */,
 				55E557F51A3362D1001FB51F /* bsearch-ushort.c in Sources */,
 				55E558031A337785001FB51F /* rev-l.c in Sources */,
 				55E558BD1A34F29F001FB51F /* count.c in Sources */,

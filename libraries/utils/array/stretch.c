@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "datastruct/array.h"
+#include "utils/array.h"
 
 /* Periodically wipe regions within the specified block. */
 static void array_memset_stride(unsigned char *base,

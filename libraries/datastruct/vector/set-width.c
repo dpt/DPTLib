@@ -7,7 +7,7 @@
 #endif
 
 #include "utils/barith.h"
-#include "datastruct/array.h"
+#include "utils/array.h"
 
 #include "datastruct/vector.h"
 
