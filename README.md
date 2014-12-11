@@ -46,12 +46,17 @@ Things
 ### Geometry
 
  * geom/box.h -- box type
+ * geom/packer.h -- box packing for layout
 
 ### I/O
 
  * io/stream-mem.h -- memory block IO stream implementation
  * io/stream-stdio.h -- C standard IO stream implementation
  * io/stream.h -- stream system
+
+### Test
+
+  * test/txtscr.h -- text format 'screen'
 
 ### Utilities
 
