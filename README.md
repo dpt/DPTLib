@@ -26,12 +26,11 @@ Things
 
 ### Data Structures
 
- * datastruct/array.h -- array utilities
  * datastruct/atom.h -- indexed data block storage
  * datastruct/bitarr.h -- arrays of bits
  * datastruct/bitvec.h -- flexible arrays of bits
  * datastruct/hash.h -- associative arrays
- * datastruct/hlist.h --  "Hanson" linked list library (from C Interfaces and Implementations book)
+ * datastruct/hlist.h -- "Hanson" linked list library (from the book [C Interfaces and Implementations](https://sites.google.com/site/cinterfacesimplementations/))
  * datastruct/list.h -- linked lists
  * datastruct/ntree.h -- n-ary trees
  * datastruct/vector.h -- flexible arrays
@@ -47,6 +46,7 @@ Things
 
  * geom/box.h -- box type
  * geom/packer.h -- box packing for layout
+ * geom/layout.h -- laying out elements using the packer
 
 ### I/O
 
@@ -56,7 +56,7 @@ Things
 
 ### Test
 
-  * test/txtscr.h -- text format 'screen'
+ * test/txtscr.h -- text format 'screen'
 
 ### Utilities
 
