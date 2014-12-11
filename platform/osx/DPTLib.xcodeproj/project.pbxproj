@@ -8,8 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		55513846165463EB007F3565 /* log2bpp.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377416545786007F3565 /* log2bpp.c */; };
-		55513847165463EB007F3565 /* intersection.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377716545786007F3565 /* intersection.c */; };
-		55513848165463EB007F3565 /* is-empty.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377816545786007F3565 /* is-empty.c */; };
 		55513849165463EB007F3565 /* stream-mem.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377B16545786007F3565 /* stream-mem.c */; };
 		5551384A165463EB007F3565 /* stream-stdio.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377C16545786007F3565 /* stream-stdio.c */; };
 		5551384B165463EB007F3565 /* stream.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377D16545786007F3565 /* stream.c */; };
@@ -137,6 +135,16 @@
 		55F7E0011A379C9300A64017 /* unpickle.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559141A350037001FB51F /* unpickle.c */; };
 		55F7E0021A37A03D00A64017 /* tag-db-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559181A350037001FB51F /* tag-db-test.c */; };
 		55F7E0031A37A04100A64017 /* pickle-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559131A350037001FB51F /* pickle-test.c */; };
+		55F7E01D1A38E38100A64017 /* contains-box.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E0131A38E38100A64017 /* contains-box.c */; };
+		55F7E01E1A38E38100A64017 /* contains-point.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E0141A38E38100A64017 /* contains-point.c */; };
+		55F7E01F1A38E38100A64017 /* could-hold.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E0151A38E38100A64017 /* could-hold.c */; };
+		55F7E0201A38E38100A64017 /* grow.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E0161A38E38100A64017 /* grow.c */; };
+		55F7E0211A38E38100A64017 /* intersection.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E0171A38E38100A64017 /* intersection.c */; };
+		55F7E0221A38E38100A64017 /* intersects.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E0181A38E38100A64017 /* intersects.c */; };
+		55F7E0231A38E38100A64017 /* is-empty.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E0191A38E38100A64017 /* is-empty.c */; };
+		55F7E0241A38E38100A64017 /* round.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E01A1A38E38100A64017 /* round.c */; };
+		55F7E0251A38E38100A64017 /* round4.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E01B1A38E38100A64017 /* round4.c */; };
+		55F7E0261A38E38100A64017 /* union.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7E01C1A38E38100A64017 /* union.c */; };
 		55FC73171A326E16007C451B /* ceillog2.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730D1A326E16007C451B /* ceillog2.c */; };
 		55FC73181A326E16007C451B /* clz.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730E1A326E16007C451B /* clz.c */; };
 		55FC73191A326E16007C451B /* countbits.c in Sources */ = {isa = PBXBuildFile; fileRef = 55FC730F1A326E16007C451B /* countbits.c */; };
@@ -190,8 +198,6 @@
 		5551377016545786007F3565 /* minmax.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = minmax.h; sourceTree = "<group>"; };
 		5551377116545786007F3565 /* pack.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = pack.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		5551377416545786007F3565 /* log2bpp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = log2bpp.c; sourceTree = "<group>"; };
-		5551377716545786007F3565 /* intersection.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = intersection.c; sourceTree = "<group>"; };
-		5551377816545786007F3565 /* is-empty.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "is-empty.c"; sourceTree = "<group>"; };
 		5551377B16545786007F3565 /* stream-mem.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-mem.c"; sourceTree = "<group>"; };
 		5551377C16545786007F3565 /* stream-stdio.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-stdio.c"; sourceTree = "<group>"; };
 		5551377D16545786007F3565 /* stream.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = stream.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -347,6 +353,16 @@
 		55E559181A350037001FB51F /* tag-db-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "tag-db-test.c"; sourceTree = "<group>"; };
 		55F7DFE91A373E9000A64017 /* DPTLibTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = DPTLibTest; sourceTree = BUILT_PRODUCTS_DIR; };
 		55F7DFEB1A373E9000A64017 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		55F7E0131A38E38100A64017 /* contains-box.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "contains-box.c"; sourceTree = "<group>"; };
+		55F7E0141A38E38100A64017 /* contains-point.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "contains-point.c"; sourceTree = "<group>"; };
+		55F7E0151A38E38100A64017 /* could-hold.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "could-hold.c"; sourceTree = "<group>"; };
+		55F7E0161A38E38100A64017 /* grow.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = grow.c; sourceTree = "<group>"; };
+		55F7E0171A38E38100A64017 /* intersection.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = intersection.c; sourceTree = "<group>"; };
+		55F7E0181A38E38100A64017 /* intersects.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = intersects.c; sourceTree = "<group>"; };
+		55F7E0191A38E38100A64017 /* is-empty.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "is-empty.c"; sourceTree = "<group>"; };
+		55F7E01A1A38E38100A64017 /* round.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = round.c; sourceTree = "<group>"; };
+		55F7E01B1A38E38100A64017 /* round4.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = round4.c; sourceTree = "<group>"; };
+		55F7E01C1A38E38100A64017 /* union.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = union.c; sourceTree = "<group>"; };
 		55FC730D1A326E16007C451B /* ceillog2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ceillog2.c; sourceTree = "<group>"; };
 		55FC730E1A326E16007C451B /* clz.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = clz.c; sourceTree = "<group>"; };
 		55FC730F1A326E16007C451B /* countbits.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = countbits.c; sourceTree = "<group>"; };
@@ -501,8 +517,16 @@
 		5551377616545786007F3565 /* box */ = {
 			isa = PBXGroup;
 			children = (
-				5551377716545786007F3565 /* intersection.c */,
-				5551377816545786007F3565 /* is-empty.c */,
+				55F7E0131A38E38100A64017 /* contains-box.c */,
+				55F7E0141A38E38100A64017 /* contains-point.c */,
+				55F7E0151A38E38100A64017 /* could-hold.c */,
+				55F7E0161A38E38100A64017 /* grow.c */,
+				55F7E0171A38E38100A64017 /* intersection.c */,
+				55F7E0181A38E38100A64017 /* intersects.c */,
+				55F7E0191A38E38100A64017 /* is-empty.c */,
+				55F7E01A1A38E38100A64017 /* round.c */,
+				55F7E01B1A38E38100A64017 /* round4.c */,
+				55F7E01C1A38E38100A64017 /* union.c */,
 			);
 			path = box;
 			sourceTree = "<group>";
@@ -1082,7 +1106,6 @@
 				55E558C01A34F2AC001FB51F /* clear.c in Sources */,
 				55E558F51A34F2CA001FB51F /* prev-sibling.c in Sources */,
 				55E558C51A34F2AC001FB51F /* eq.c in Sources */,
-				55513847165463EB007F3565 /* intersection.c in Sources */,
 				55FC731B1A326E16007C451B /* floorlog2.c in Sources */,
 				55E558E51A34F2CA001FB51F /* delete.c in Sources */,
 				55E558081A337785001FB51F /* rev-s.c in Sources */,
@@ -1098,7 +1121,7 @@
 				55E558CE1A34F2B3001FB51F /* destroy.c in Sources */,
 				55E558DE1A34F2BB001FB51F /* to-array.c in Sources */,
 				55E558FE1A34F2D0001FB51F /* set-length.c in Sources */,
-				55513848165463EB007F3565 /* is-empty.c in Sources */,
+				55F7E0251A38E38100A64017 /* round4.c in Sources */,
 				55E558B71A34F293001FB51F /* delete.c in Sources */,
 				55E558CC1A34F2AC001FB51F /* toggle.c in Sources */,
 				55E558DD1A34F2BB001FB51F /* reverse.c in Sources */,
@@ -1121,10 +1144,12 @@
 				55E558F31A34F2CA001FB51F /* parent.c in Sources */,
 				55E558ED1A34F2CA001FB51F /* last-child.c in Sources */,
 				55E558BF1A34F2AC001FB51F /* clear-all.c in Sources */,
+				55F7E0261A38E38100A64017 /* union.c in Sources */,
 				55FC73171A326E16007C451B /* ceillog2.c in Sources */,
 				55E558D91A34F2BB001FB51F /* list.c in Sources */,
 				55E558F91A34F2D0001FB51F /* clear.c in Sources */,
 				55E558F11A34F2CA001FB51F /* next-sibling.c in Sources */,
+				55F7E01E1A38E38100A64017 /* contains-point.c in Sources */,
 				55E558D21A34F2B3001FB51F /* remove.c in Sources */,
 				55E558D61A34F2BB001FB51F /* copy.c in Sources */,
 				55E558BA1A34F293001FB51F /* get.c in Sources */,
@@ -1134,7 +1159,9 @@
 				55E557F21A3362D1001FB51F /* bsearch-int.c in Sources */,
 				55FC73181A326E16007C451B /* clz.c in Sources */,
 				55E558FC1A34F2D0001FB51F /* get.c in Sources */,
+				55F7E0221A38E38100A64017 /* intersects.c in Sources */,
 				55E558E71A34F2CA001FB51F /* first-child.c in Sources */,
+				55F7E0211A38E38100A64017 /* intersection.c in Sources */,
 				55E558051A337785001FB51F /* rev-s-m.c in Sources */,
 				55E558F41A34F2CA001FB51F /* prepend.c in Sources */,
 				55E558B61A34F293001FB51F /* delete-block.c in Sources */,
@@ -1151,6 +1178,7 @@
 				55E558CF1A34F2B3001FB51F /* insert.c in Sources */,
 				55E558DF1A34F2C3001FB51F /* add-head.c in Sources */,
 				55E558B91A34F293001FB51F /* for-block.c in Sources */,
+				55F7E0241A38E38100A64017 /* round.c in Sources */,
 				55E558E81A34F2CA001FB51F /* free.c in Sources */,
 				55FC73191A326E16007C451B /* countbits.c in Sources */,
 				55F7E0011A379C9300A64017 /* unpickle.c in Sources */,
@@ -1158,6 +1186,7 @@
 				5551384B165463EB007F3565 /* stream.c in Sources */,
 				55E558C21A34F2AC001FB51F /* create.c in Sources */,
 				55E558E31A34F2C3001FB51F /* walk.c in Sources */,
+				55F7E0231A38E38100A64017 /* is-empty.c in Sources */,
 				55E558011A337785001FB51F /* rev-l-block.c in Sources */,
 				55E558E91A34F2CA001FB51F /* get-data.c in Sources */,
 				55513862165463EB007F3565 /* grow.c in Sources */,
@@ -1167,6 +1196,7 @@
 				55E5591D1A35004E001FB51F /* hash-writer.c in Sources */,
 				55E558EF1A34F2CA001FB51F /* n-nodes.c in Sources */,
 				55E558071A337785001FB51F /* rev-s-pair.c in Sources */,
+				55F7E01F1A38E38100A64017 /* could-hold.c in Sources */,
 				55E558B11A34F281001FB51F /* shrinkwrap.c in Sources */,
 				55513863165463EB007F3565 /* shrink.c in Sources */,
 				55E558B01A34F281001FB51F /* grow.c in Sources */,
@@ -1179,6 +1209,7 @@
 				55E558C41A34F2AC001FB51F /* ensure.c in Sources */,
 				55E558BB1A34F293001FB51F /* new.c in Sources */,
 				55FC731F1A326E16007C451B /* reversebits.c in Sources */,
+				55F7E0201A38E38100A64017 /* grow.c in Sources */,
 				55E558E11A34F2C3001FB51F /* init.c in Sources */,
 				55E558111A338F83001FB51F /* smull-fxp16.c in Sources */,
 				55513864165463EB007F3565 /* clz8.c in Sources */,
@@ -1186,6 +1217,7 @@
 				55E558EB1A34F2CA001FB51F /* insert-before.c in Sources */,
 				55513865165463EB007F3565 /* pack.c in Sources */,
 				55E558B81A34F293001FB51F /* destroy.c in Sources */,
+				55F7E01D1A38E38100A64017 /* contains-box.c in Sources */,
 				55E558EA1A34F2CA001FB51F /* insert-after.c in Sources */,
 				55E5581C1A3492A8001FB51F /* degs-to-rads.c in Sources */,
 				55F7E0001A3797F600A64017 /* pickle.c in Sources */,
@@ -1413,6 +1445,7 @@
 				55F7DFF01A373E9000A64017 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

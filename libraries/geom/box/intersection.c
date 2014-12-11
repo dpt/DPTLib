@@ -1,4 +1,4 @@
-/* intersection.c -- compute the result of intersecting two boxes */
+/* intersection.c -- compute "c" the result of intersecting boxes "a" and "b" */
 
 #include "utils/minmax.h"
 

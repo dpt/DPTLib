@@ -2,8 +2,8 @@
 
 #include "geom/box.h"
 
-int box_is_empty(const box_t *a)
+int box_is_empty(const box_t *box)
 {
-  return (a->x0 >= a->x1) ||
-         (a->y0 >= a->y1);
+  return (box->x0 >= box->x1) ||
+         (box->y0 >= box->y1);
 }
