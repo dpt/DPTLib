@@ -279,8 +279,8 @@ static void printdigest(const unsigned char *digest)
 static result_t test_enumerate_ids(State *state)
 {
   result_t err;
-  int   cont;
-  char  buf[256];
+  int      cont;
+  char     buf[256];
 
   cont = 0;
   do
@@ -309,7 +309,7 @@ Failure:
 static result_t test_enumerate_ids_by_tag(State *state)
 {
   result_t err;
-  int   i;
+  int      i;
 
   for (i = 0; i < NELEMS(tagnames); i++)
   {
@@ -351,8 +351,8 @@ Failure:
 static result_t test_enumerate_ids_by_tags(State *state)
 {
   result_t err;
-  int   cont;
-  char  buf[256];
+  int      cont;
+  char     buf[256];
 
   {
     static const tagdb_tag want[] = { 0, 1 };
@@ -484,10 +484,10 @@ static result_t bash_enumerate(State *state)
 
     if (cont)
     {
-      int        ntags;
+      int       ntags;
       tagdb_tag tag;
-      int        cont2;
-      char       buf2[256];
+      int       cont2;
+      char      buf2[256];
 
       printf("getting tags for '");
       printdigest(buf);
@@ -541,12 +541,12 @@ static result_t test_bash(State *state)
   const int nuntaggings = ntags; /* number of times to untag */
   const int reps        = 3;     /* overall number of repetitions */
 
-  result_t       err;
-  int         i;
+  result_t   err;
+  int        i;
   tagdb_tag  tags[ntags];
-  char       *tagnames[ntags];
-  char       *idnames[nids];
-  int         j;
+  char      *tagnames[ntags];
+  char      *idnames[nids];
+  int        j;
 
   srand(0x6487ED51);
 
