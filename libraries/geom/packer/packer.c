@@ -11,6 +11,7 @@
 
 #include "base/result.h"
 #include "geom/box.h"
+#include "utils/array.h"
 
 #include "geom/packer.h"
 
@@ -122,7 +123,16 @@ static result_t add_area(packer_t *packer, const box_t *area)
 
     return result_OK; /* entirely contained */
   }
-
+  
+#ifdef USE_ARRAY_GROW
+  if (array_grow((void **) &packer->areas,
+                 sizeof(*packer->areas),
+                 packer->usedareas,
+                 &packer->allocedareas,
+                 1,
+                 1))
+    return result_OOM;
+#else
   if (packer->usedareas + 1 > packer->allocedareas)
   {
     int     n;
@@ -139,7 +149,8 @@ static result_t add_area(packer_t *packer, const box_t *area)
 
     debugf(("add_area: growing list to %d\n", n));
   }
-
+#endif
+  
   packer->areas[packer->usedareas++] = *area;
 
   packer->sorted = 0;

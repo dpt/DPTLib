@@ -440,6 +440,18 @@ result_t tagdb_add(tagdb *db, const char *name, tagdb_tag *ptag)
     {
       /* didn't find any empty entries - have to extend */
 
+#ifdef USE_ARRAY_GROW
+      if (array_grow((void **) &db->counts,
+                     sizeof(*db->counts),
+                     db->c_used,
+                     &db->c_allocated,
+                     1,
+                     8))
+      {
+        err = result_OOM;
+        goto Failure;
+      }
+#else
       size_t n;
       void  *newarr;
 
@@ -456,6 +468,7 @@ result_t tagdb_add(tagdb *db, const char *name, tagdb_tag *ptag)
 
       db->counts      = newarr;
       db->c_allocated = n;
+#endif
 
       i = db->c_used++;
     }

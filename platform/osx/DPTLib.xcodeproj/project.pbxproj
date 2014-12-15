@@ -706,7 +706,6 @@
 		55E558361A34F269001FB51F /* datastruct */ = {
 			isa = PBXGroup;
 			children = (
-				55E558371A34F276001FB51F /* array */,
 				55E558401A34F276001FB51F /* atom */,
 				55E5584C1A34F276001FB51F /* bitarr */,
 				55E558501A34F276001FB51F /* bitvec */,
@@ -717,14 +716,6 @@
 				55E5589C1A34F276001FB51F /* vector */,
 			);
 			name = datastruct;
-			sourceTree = "<group>";
-		};
-		55E558371A34F276001FB51F /* array */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = array;
-			path = datastruct/array;
 			sourceTree = "<group>";
 		};
 		55E5583E1A34F276001FB51F /* test */ = {
@@ -1381,6 +1372,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = "-DUSE_ARRAY_GROW";
 				PUBLIC_HEADERS_FOLDER_PATH = "include/$(TARGET_NAME)";
 				RUN_CLANG_STATIC_ANALYZER = NO;
 				SDKROOT = macosx;
@@ -1427,6 +1419,7 @@
 					"\"$(SRCROOT)/../../libraries\"",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				OTHER_CFLAGS = "-DUSE_ARRAY_GROW";
 				PUBLIC_HEADERS_FOLDER_PATH = "include/$(TARGET_NAME)";
 				RUN_CLANG_STATIC_ANALYZER = NO;
 				SDKROOT = macosx;

@@ -37,6 +37,15 @@ result_t atom_ensure_loc_space(atom_set_t *s)
 
   /* do we need to grow the pool list? */
 
+#ifdef USE_ARRAY_GROW
+  if (array_grow((void **) &s->locpools,
+                 sizeof(*s->locpools),
+                 s->l_used,
+                 &s->l_allocated,
+                 1,
+                 LOCPTRMINSZ))
+    return result_OOM;
+#else
   if (s->l_used == s->l_allocated)
   {
     size_t   newallocated;
@@ -56,6 +65,7 @@ result_t atom_ensure_loc_space(atom_set_t *s)
     s->locpools    = newpools;
     s->l_allocated = newallocated;
   }
+#endif
 
   /* allocate a new pool */
 
@@ -94,6 +104,15 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
 
   /* do we need to grow the pool list? */
 
+#ifdef USE_ARRAY_GROW
+  if (array_grow((void **) &s->blkpools,
+                 sizeof(*s->blkpools),
+                 s->b_used,
+                 &s->b_allocated,
+                 1,
+                 BLKPTRMINSZ))
+    return result_OOM;
+#else
   if (s->b_used == s->b_allocated)
   {
     size_t     newallocated;
@@ -113,6 +132,7 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
     s->blkpools    = newpools;
     s->b_allocated = newallocated;
   }
+#endif
 
   /* allocate a new pool */
 
