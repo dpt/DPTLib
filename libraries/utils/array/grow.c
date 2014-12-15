@@ -8,6 +8,7 @@
 #endif
 
 #include "utils/array.h"
+#include "utils/barith.h"
 
 /* used, need, minimum - specified as number of elements (not bytes) */
 int array_grow(void   **pblock,
@@ -37,8 +38,11 @@ int array_grow(void   **pblock,
   if (allocated < minimum)
     allocated = minimum;
 
-  while (allocated < need)
-    allocated *= 2; /* doubling block size strategy */
+  /* doubling block size strategy */
+  /* This is similar to:
+   *   while (allocated < need)
+   *     allocated *= 2; */
+  allocated = power2gt(need - 1); /* subtract 1 for greater or equal */
 
   block = realloc(*pblock, elemsize * allocated);
   if (block == NULL)
