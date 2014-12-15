@@ -1379,7 +1379,7 @@
 					"\"$(SRCROOT)/../../include\"",
 					"\"$(SRCROOT)/../../libraries\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				ONLY_ACTIVE_ARCH = YES;
 				PUBLIC_HEADERS_FOLDER_PATH = "include/$(TARGET_NAME)";
 				RUN_CLANG_STATIC_ANALYZER = NO;
@@ -1426,7 +1426,7 @@
 					"\"$(SRCROOT)/../../include\"",
 					"\"$(SRCROOT)/../../libraries\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				PUBLIC_HEADERS_FOLDER_PATH = "include/$(TARGET_NAME)";
 				RUN_CLANG_STATIC_ANALYZER = NO;
 				SDKROOT = macosx;
