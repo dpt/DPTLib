@@ -36,15 +36,15 @@ typedef struct loc
   unsigned char *ptr;    /* pointer to block */
   int            length; /* length of block (-ve if deallocated) */
 }
-loc;
+loc_t;
 
 /* Stores the location and used count of a location pool. */
 typedef struct locpool
 {
-  loc *locs;
-  int  used;
+  struct loc *locs;
+  int         used;
 }
-locpool;
+locpool_t;
 
 /* Stores the location and used count of a block pool. */
 typedef struct blkpool
@@ -52,20 +52,20 @@ typedef struct blkpool
   unsigned char *blks;
   int            used;
 }
-blkpool;
+blkpool_t;
 
-struct atom_set_t
+struct atom_set
 {
-  size_t   log2locpoolsz; /* log2 number of locations per locpool */
-  size_t   log2blkpoolsz; /* log2 number of bytes per blkpool */
+  size_t     log2locpoolsz; /* log2 number of locations per locpool */
+  size_t     log2blkpoolsz; /* log2 number of bytes per blkpool */
 
-  locpool *locpools;      /* growable array of location pools */
-  int      l_used;
-  int      l_allocated;
+  locpool_t *locpools;      /* growable array of location pools */
+  int        l_used;
+  int        l_allocated;
 
-  blkpool *blkpools;      /* growable array of block pools */
-  int      b_used;
-  int      b_allocated;
+  blkpool_t *blkpools;      /* growable array of block pools */
+  int        b_used;
+  int        b_allocated;
 };
 
 /* ----------------------------------------------------------------------- */

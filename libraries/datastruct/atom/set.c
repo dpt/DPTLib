@@ -14,8 +14,8 @@ result_t atom_set(atom_set_t          *s,
 {
   result_t err;
   atom_t   newa;
-  loc     *p, *q;
-  loc      t;
+  loc_t   *p, *q;
+  loc_t    t;
 
   assert(s);
   assert(a != atom_NOT_FOUND);

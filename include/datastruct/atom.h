@@ -36,7 +36,7 @@
 /**
  * An 'atom set' holds a collection of data blocks.
  */
-typedef struct atom_set_t atom_set_t;
+typedef struct atom_set atom_set_t;
 
 /* ----------------------------------------------------------------------- */
 

@@ -8,6 +8,7 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "utils/array.h"
 #include "utils/barith.h"
 
 #include "datastruct/atom.h"
@@ -19,8 +20,8 @@
 /* Ensure we have space for one more location struct. */
 result_t atom_ensure_loc_space(atom_set_t *s)
 {
-  loc     *newpool;
-  locpool *pool;
+  loc_t     *newpool;
+  locpool_t *pool;
 
   assert(s);
 
@@ -39,7 +40,7 @@ result_t atom_ensure_loc_space(atom_set_t *s)
   if (s->l_used == s->l_allocated)
   {
     size_t   newallocated;
-    locpool *newpools;
+    locpool_t *newpools;
 
     newallocated = s->l_used + 1;
     /* start with at least this many entries */
@@ -76,7 +77,7 @@ result_t atom_ensure_loc_space(atom_set_t *s)
 result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
 {
   unsigned char *newpool;
-  blkpool       *pool;
+  blkpool_t     *pool;
 
   assert(s);
   assert(length > 0);
@@ -95,8 +96,8 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
 
   if (s->b_used == s->b_allocated)
   {
-    size_t   newallocated;
-    blkpool *newpools;
+    size_t     newallocated;
+    blkpool_t *newpools;
 
     newallocated = s->b_used + 1;
     /* start with at least this many entries */
@@ -133,13 +134,13 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
 result_t atom_new(atom_set_t *s, const unsigned char *block, size_t length,
                   atom_t *patom)
 {
-  result_t err;
-  atom_t   atom;
-  locpool *pend;
-  locpool *p;
-  loc     *lend;
-  loc     *l;
-  int      i;
+  result_t   err;
+  atom_t     atom;
+  locpool_t *pend;
+  locpool_t *p;
+  loc_t     *lend;
+  loc_t     *l;
+  int        i;
 
   assert(s);
   assert(block);

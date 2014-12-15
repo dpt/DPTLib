@@ -12,8 +12,8 @@ atom_t atom_for_block(atom_set_t          *s,
                       const unsigned char *block,
                       size_t               length)
 {
-  const locpool *pend;
-  const locpool *p;
+  const locpool_t *pend;
+  const locpool_t *p;
 
   assert(s);
   assert(block);
@@ -24,8 +24,8 @@ atom_t atom_for_block(atom_set_t          *s,
   pend = s->locpools + s->l_used;
   for (p = s->locpools; p < pend; p++)
   {
-    const loc *lend;
-    const loc *l;
+    const loc_t *lend;
+    const loc_t *l;
 
     /* linear search every loc */
 
