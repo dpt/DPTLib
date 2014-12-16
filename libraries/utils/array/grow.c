@@ -18,7 +18,7 @@ int array_grow(void   **pblock,
                int      need,
                int      minimum)
 {
-  int   allocated;
+  int   to_allocate;
   void *block;
 
   assert(pblock);
@@ -28,28 +28,23 @@ int array_grow(void   **pblock,
   assert(need > 0);
   assert(minimum > 0);
 
-  allocated = *pallocated;
-
   need += used;
 
-  if (need <= allocated)
+  if (need < minimum)
+    need = minimum;
+
+  if (need <= *pallocated)
     return 0; /* block has enough spare space */
 
-  if (allocated < minimum)
-    allocated = minimum;
+  /* Rounding up to the next largest power of two strategy. */
+  to_allocate = power2gt(need - 1); /* subtract 1 to make greater or equal */
 
-  /* doubling block size strategy */
-  /* This is similar to:
-   *   while (allocated < need)
-   *     allocated *= 2; */
-  allocated = power2gt(need - 1); /* subtract 1 for greater or equal */
-
-  block = realloc(*pblock, elemsize * allocated);
+  block = realloc(*pblock, elemsize * to_allocate);
   if (block == NULL)
     return 1; /* out of memory */
 
   *pblock     = block;
-  *pallocated = allocated;
+  *pallocated = to_allocate;
 
   return 0;
 }

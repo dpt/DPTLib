@@ -68,13 +68,15 @@ void array_squeeze2(unsigned char *base,
 #define NELEMS(a) ((int) (sizeof(a) / sizeof((a)[0])))
 
 /**
- * Grow a dynamically allocated array as required by doubling.
+ * Grow a dynamically allocated array as required.
+ *
+ * Presently the growth strategy is doubling.
  *
  * 'block' can be NULL to perform an initial alloc.
  * Start with used == allocated == 0.
  *
- * \param block     Pointer to pointer to block. Updated on exit.
- * \param elemsize  Element size.
+ * \param block     Pointer to pointer to block. Updated on success.
+ * \param elemsize  Element size in bytes.
  * \param used      Number of currently occupied elements.
  * \param allocated Pointer to number of allocated elements. Updated on exit.
  * \param need      Number of unoccupied elements we need.
