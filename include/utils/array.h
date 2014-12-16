@@ -13,6 +13,19 @@
 
 /* ----------------------------------------------------------------------- */
 
+/**
+ * Returns the number of elements in the specified array.
+ */
+#define NELEMS(a) ((int) (sizeof(a) / sizeof((a)[0])))
+
+/**
+ * Signifies an array of unknown length, e.g. when used as the size of an
+ * array which is the final member of a struct.
+ */
+#define UNKNOWN 1
+
+/* ----------------------------------------------------------------------- */
+
 /* Delete the specified element. */
 void array_delete_element(void  *array,
                           size_t elemsize,
@@ -61,11 +74,6 @@ void array_squeeze2(unsigned char *base,
 #define array_squeeze array_squeeze2
 
 /* ----------------------------------------------------------------------- */
-
-/**
- * Returns the number of elements in the specified array.
- */
-#define NELEMS(a) ((int) (sizeof(a) / sizeof((a)[0])))
 
 /**
  * Grow a dynamically allocated array as required.

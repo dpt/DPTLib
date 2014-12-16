@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		55511B491A40F49000D572A7 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55511B481A40F49000D572A7 /* test.c */; };
+		55511B4D1A40F4CD00D572A7 /* stream-mtfcomp.c in Sources */ = {isa = PBXBuildFile; fileRef = 55511B4A1A40F4CD00D572A7 /* stream-mtfcomp.c */; };
+		55511B4E1A40F4CD00D572A7 /* stream-packbitscomp.c in Sources */ = {isa = PBXBuildFile; fileRef = 55511B4B1A40F4CD00D572A7 /* stream-packbitscomp.c */; };
+		55511B4F1A40F4CD00D572A7 /* stream-packbitsdecomp.c in Sources */ = {isa = PBXBuildFile; fileRef = 55511B4C1A40F4CD00D572A7 /* stream-packbitsdecomp.c */; };
 		55513846165463EB007F3565 /* log2bpp.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377416545786007F3565 /* log2bpp.c */; };
 		55513849165463EB007F3565 /* stream-mem.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377B16545786007F3565 /* stream-mem.c */; };
 		5551384A165463EB007F3565 /* stream-stdio.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551377C16545786007F3565 /* stream-stdio.c */; };
@@ -173,6 +177,12 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		55511B481A40F49000D572A7 /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		55511B4A1A40F4CD00D572A7 /* stream-mtfcomp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-mtfcomp.c"; sourceTree = "<group>"; };
+		55511B4B1A40F4CD00D572A7 /* stream-packbitscomp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-packbitscomp.c"; sourceTree = "<group>"; };
+		55511B4C1A40F4CD00D572A7 /* stream-packbitsdecomp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-packbitsdecomp.c"; sourceTree = "<group>"; };
+		55511B501A40F50C00D572A7 /* stream-mtfcomp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "stream-mtfcomp.h"; sourceTree = "<group>"; };
+		55511B511A40F50C00D572A7 /* stream-packbits.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "stream-packbits.h"; sourceTree = "<group>"; };
 		5551374C165456FA007F3565 /* libDPTLib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libDPTLib.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		5551375516545786007F3565 /* debug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = debug.h; sourceTree = "<group>"; };
 		5551375616545786007F3565 /* result.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = result.h; sourceTree = "<group>"; };
@@ -377,6 +387,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		55511B471A40F49000D572A7 /* test */ = {
+			isa = PBXGroup;
+			children = (
+				55511B481A40F49000D572A7 /* test.c */,
+			);
+			path = test;
+			sourceTree = "<group>";
+		};
 		55513741165456FA007F3565 = {
 			isa = PBXGroup;
 			children = (
@@ -453,6 +471,8 @@
 			isa = PBXGroup;
 			children = (
 				5551376116545786007F3565 /* stream-mem.h */,
+				55511B501A40F50C00D572A7 /* stream-mtfcomp.h */,
+				55511B511A40F50C00D572A7 /* stream-packbits.h */,
 				5551376216545786007F3565 /* stream-stdio.h */,
 				5551376316545786007F3565 /* stream.h */,
 			);
@@ -538,9 +558,13 @@
 		5551377A16545786007F3565 /* stream */ = {
 			isa = PBXGroup;
 			children = (
+				55511B4A1A40F4CD00D572A7 /* stream-mtfcomp.c */,
+				55511B4B1A40F4CD00D572A7 /* stream-packbitscomp.c */,
+				55511B4C1A40F4CD00D572A7 /* stream-packbitsdecomp.c */,
 				5551377B16545786007F3565 /* stream-mem.c */,
 				5551377C16545786007F3565 /* stream-stdio.c */,
 				5551377D16545786007F3565 /* stream.c */,
+				55511B471A40F49000D572A7 /* test */,
 			);
 			path = stream;
 			sourceTree = "<group>";
@@ -1203,10 +1227,12 @@
 				55E558041A337785001FB51F /* rev-s-block.c in Sources */,
 				55E558D11A34F2B3001FB51F /* lookup.c in Sources */,
 				55E558D41A34F2B3001FB51F /* walk.c in Sources */,
+				55511B4F1A40F4CD00D572A7 /* stream-packbitsdecomp.c in Sources */,
 				55E558CF1A34F2B3001FB51F /* insert.c in Sources */,
 				55E558DF1A34F2C3001FB51F /* add-head.c in Sources */,
 				55B22A231A4063000022ED84 /* barith.c in Sources */,
 				55E558B91A34F293001FB51F /* for-block.c in Sources */,
+				55511B4D1A40F4CD00D572A7 /* stream-mtfcomp.c in Sources */,
 				55F7E0241A38E38100A64017 /* round.c in Sources */,
 				55E558E81A34F2CA001FB51F /* free.c in Sources */,
 				55F7E0011A379C9300A64017 /* unpickle.c in Sources */,
@@ -1216,6 +1242,7 @@
 				55E558E31A34F2C3001FB51F /* walk.c in Sources */,
 				55F7E0231A38E38100A64017 /* is-empty.c in Sources */,
 				55E558011A337785001FB51F /* rev-l-block.c in Sources */,
+				55511B4E1A40F4CD00D572A7 /* stream-packbitscomp.c in Sources */,
 				55E558E91A34F2CA001FB51F /* get-data.c in Sources */,
 				55513862165463EB007F3565 /* grow.c in Sources */,
 				55E558E21A34F2C3001FB51F /* remove.c in Sources */,
@@ -1262,6 +1289,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				55E559281A3A60EF001FB51F /* test.c in Sources */,
+				55511B491A40F49000D572A7 /* test.c in Sources */,
 				55F7DFF71A373F2C00A64017 /* atom-test.c in Sources */,
 				55F7E0381A391B4F00A64017 /* packer-test.c in Sources */,
 				55F7E0031A37A04100A64017 /* pickle-test.c in Sources */,
@@ -1292,7 +1320,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_MODULES_AUTOLINK = YES;
@@ -1302,7 +1329,6 @@
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -1346,7 +1372,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_MODULES_AUTOLINK = YES;
@@ -1357,7 +1382,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
 				GCC_TREAT_IMPLICIT_FUNCTION_DECLARATIONS_AS_ERRORS = YES;
 				GCC_TREAT_INCOMPATIBLE_POINTER_TYPE_WARNINGS_AS_ERRORS = YES;

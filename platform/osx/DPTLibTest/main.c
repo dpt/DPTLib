@@ -47,6 +47,9 @@ extern testfn_t pickle_test,
 extern testfn_t layout_test,
                 packer_test;
 
+/* io */
+extern testfn_t stream_test;
+
 /* utils */
 extern testfn_t array_test;
 
@@ -67,6 +70,8 @@ static const test_t tests[] =
   
   { "layout", layout_test },
   { "packer", packer_test },
+  
+  { "stream", stream_test },
   
   { "array",  array_test  },
 };

@@ -30,11 +30,7 @@
 
 #include <stdlib.h>
 
-#ifdef __riscos
-#include "oslib/types.h"
-#else
-#define UNKNOWN 1
-#endif
+#include "utils/array.h" /* for 'UNKNOWN' */
 
 #define T bitarr_t
 
