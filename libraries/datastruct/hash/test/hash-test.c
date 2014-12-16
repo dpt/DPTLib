@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
