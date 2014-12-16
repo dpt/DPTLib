@@ -41,7 +41,7 @@ int bitvec_next(const bitvec_t *v, int n)
     if (lo >= 0)
       word &= ~((1 << (lo + 1)) - 1);
 
-    bits = lsb(word);
+    bits = LSB(word);
     if (bits)
       return (hi << 5) + ctz(bits);
 
