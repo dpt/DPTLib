@@ -590,17 +590,17 @@ result_t pickle_test(void)
   printf("test: pickle test 1\n");
 
   rc = pickle__test1_write();
-  if (rc)
+  if (rc != result_TEST_PASSED)
     return rc;
 
   printf("test: pickle test 2\n");
 
   rc = pickle__test2_write();
-  if (rc)
+  if (rc != result_TEST_PASSED)
     return rc;
 
   rc = pickle__test2_read();
-  if (rc)
+  if (rc != result_TEST_PASSED)
     return rc;
 
   return result_TEST_PASSED;
