@@ -1,4 +1,4 @@
-/* pickle.c */
+/* pickle.c -- serialise an associative array to file */
 
 #include <assert.h>
 #include <ctype.h>
@@ -117,7 +117,7 @@ result_t pickle_pickle(const char                  *filename,
   assert(reader);
   assert(format);
 
-  assert(reader->next); /* the other two methods can be NULL */
+  assert(reader->next); /* start and stop can be NULL, but we need next */
 
   f = fopen(filename, "wb");
   if (f == NULL)

@@ -30,7 +30,7 @@ result_t pickle_writer_hash_start(void  *assocarr,
 result_t pickle_writer_hash_next(void *state,
                                  void *key,
                                  void *value,
-                                 void  *opaque)
+                                 void *opaque)
 {
   NOT_USED(opaque);
 

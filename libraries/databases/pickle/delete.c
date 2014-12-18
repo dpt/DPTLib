@@ -1,4 +1,4 @@
-/* delete.c */
+/* delete.c -- delete a pickle file */
 
 #include <assert.h>
 #include <stdio.h>
