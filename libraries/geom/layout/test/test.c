@@ -38,10 +38,10 @@ int layout_test(void)
   spec.leading = 2;
 
   err = layout_place(&spec,
-                      elements,
-                      NELEMS(elements),
-                      boxes,
-                      NELEMS(boxes));
+                     elements,
+                     NELEMS(elements),
+                     boxes,
+                     NELEMS(boxes));
   if (err)
     goto failure;
 

@@ -106,7 +106,7 @@ BARITH_INLINE int countbits(unsigned int x)
   x  = ((x >> 4) + x) & 0x0f0f0f0f;
   x +=   x >> 8;
   x +=   x >> 16;
-  
+
   return x & 0x3f;
 }
 #endif
@@ -126,7 +126,7 @@ BARITH_INLINE int clz(unsigned int x)
    * Subject:    Re: Finding highest/lowest set bit
    * Date:       28 Oct 2000 01:01:26 GMT
    */
-  
+
   static const unsigned char tab[32] =
   {
     0, 31,  9, 30,  3,  8, 18, 29,
@@ -134,10 +134,10 @@ BARITH_INLINE int clz(unsigned int x)
     1, 10,  4, 19,  6, 15, 13, 23,
    11, 20, 16, 24, 21, 25, 26, 27
   };
-  
+
   if (x == 0)
     return 32;
-  
+
   SPREADMSB(x);
   return tab[(0x07dcd629 * (x + 1)) >> 27];
 #endif
@@ -178,11 +178,11 @@ BARITH_INLINE int ctz(unsigned int x)
     30, 21, 27, 12, 25, 16, 18,  8,
     20, 11, 15,  7, 10,  6,  5,  4
   };
-  
+
   x = LSB(x);
   if (x == 0)
     return 32;
-  
+
   return tab[(0x0fb9ac52 * x) >> 27];
 #endif
 }
@@ -220,10 +220,10 @@ BARITH_INLINE unsigned int floorlog2(unsigned int x)
 BARITH_INLINE unsigned int ceillog2(unsigned int x)
 {
   unsigned int y;
-  
+
   y = !ISPOWER2(x); /* 1 if x is not a power of two, 0 otherwise */
   SPREADMSB(x);
-  
+
   return countbits(x >> 1) + y;
 }
 

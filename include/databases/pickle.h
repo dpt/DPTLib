@@ -160,7 +160,7 @@ typedef result_t (pickle_writer_start)(void  *assocarr,
  * \param[in]   state     Reader state.
  * \param[in]   opaque    The opaque pointer passed into pickle_unpickle().
  */
-typedef void  (pickle_writer_stop)(void *state, void *opaque);
+typedef void (pickle_writer_stop)(void *state, void *opaque);
 
 /**
  * Interface used by pickle when a key:value pair is ready to be inserted.

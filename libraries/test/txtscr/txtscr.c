@@ -56,7 +56,7 @@ void txtscr_clear(txtscr_t *scr)
 /* adds to the pixels, rather than overwriting */
 void txtscr_addbox(txtscr_t *scr, const box_t *box)
 {
-  int x,y;
+  int x, y;
 
   for (y = box->y0; y < box->y1; y++)
     for (x = box->x0; x < box->x1; x++)
@@ -67,7 +67,7 @@ void txtscr_print(txtscr_t *scr)
 {
   static const char map[] = ".123456789ABCDEF";
 
-  int x,y;
+  int x, y;
 
   for (y = scr->height - 1; y >= 0; y--)
   {

@@ -115,7 +115,7 @@ static result_t pickle__test1_write(void)
     {
       free(s);
       free(v);
-      
+
       err = result_OOM;
       goto Failure;
     }
@@ -357,9 +357,9 @@ static const pickle_format_methods format_cheese_methods =
 /* ----------------------------------------------------------------------- */
 
 static result_t cheese_unformat_key(const char *buf,
-                                 size_t      len,
-                                 void      **key,
-                                 void       *opaque)
+                                    size_t      len,
+                                    void      **key,
+                                    void       *opaque)
 {
   NOT_USED(len);
   NOT_USED(opaque);
@@ -372,9 +372,9 @@ static result_t cheese_unformat_key(const char *buf,
 }
 
 static result_t cheese_unformat_value(const char *buf,
-                                   size_t      len,
-                                   void      **pvalue,
-                                   void       *opaque)
+                                      size_t      len,
+                                      void      **pvalue,
+                                      void       *opaque)
 {
   cheese_value *value;
   int           rc;

@@ -248,7 +248,7 @@ result_t atom_test(void)
 
   return result_TEST_PASSED;
 
-  
+
 Failure:
 
   return result_TEST_FAILED;

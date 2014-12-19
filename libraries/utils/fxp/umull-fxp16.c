@@ -7,5 +7,5 @@
 
 T umull_fxp16(T x, T y)
 {
-  return (T) (((LL) x * (LL) y) >> 16);
+  return (T)(((LL) x * (LL) y) >> 16);
 }

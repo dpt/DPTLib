@@ -140,7 +140,7 @@ static int decompress(MTFState *s, int (*cb)(void *opaque), void *opaque)
       return EOF; // fix termination case
     }
 
-    DBUG(("{=%d}",c));
+    DBUG(("{=%d}", c));
     buf |= c << used;
     used += 8;
   }
@@ -170,7 +170,7 @@ static int decompress(MTFState *s, int (*cb)(void *opaque), void *opaque)
         return EOF; // fix termination case
       }
 
-      DBUG(("{=%d}",c));
+      DBUG(("{=%d}", c));
       buf |= c << used;
       used += 8;
     }
@@ -185,7 +185,7 @@ static int decompress(MTFState *s, int (*cb)(void *opaque), void *opaque)
   s->buf  = buf;
   s->used = used;
 
-  DBUG(("{decompress=%c}",r));
+  DBUG(("{decompress=%c}", r));
 
   return r;
 }
@@ -259,7 +259,7 @@ result_t stream_mtfcomp_create(stream_t *input, int bufsz, stream_t **s)
     return result_OOM;
 
   sm->base.buf     =
-  sm->base.end     = sm->buffer; /* force a fill on first use */
+    sm->base.end     = sm->buffer; /* force a fill on first use */
 
   sm->base.last    = result_OK;
 
@@ -348,7 +348,7 @@ result_t stream_mtfdecomp_create(stream_t *input, int bufsz, stream_t **s)
     return result_OOM;
 
   sm->base.buf     =
-  sm->base.end     = sm->buffer; /* force a fill on first use */
+    sm->base.end     = sm->buffer; /* force a fill on first use */
 
   sm->base.last    = result_OK;
 

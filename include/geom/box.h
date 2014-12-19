@@ -58,7 +58,7 @@ void box_intersection(const box_t *a, const box_t *b, box_t *c);
  */
 void box_union(const box_t *a, const box_t *b, box_t *c);
 
-/** 
+/**
  * Affirms if the specified box is empty.
  *
  * \param[in] b The box to test.

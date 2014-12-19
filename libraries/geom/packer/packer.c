@@ -111,8 +111,8 @@ static result_t add_area(packer_t *packer, const box_t *area)
   for (i = 0; i < packer->usedareas; i++)
   {
     if (box_is_empty(&packer->areas[i]) ||
-       !box_contains_box(area, &packer->areas[i]))
-        continue;
+        !box_contains_box(area, &packer->areas[i]))
+      continue;
 
     debugf(("add_area: contained by: %d <%d %d %d %d>\n",
             i,
@@ -123,7 +123,7 @@ static result_t add_area(packer_t *packer, const box_t *area)
 
     return result_OK; /* entirely contained */
   }
-  
+
 #ifdef USE_ARRAY_GROW
   if (array_grow((void **) &packer->areas,
                  sizeof(*packer->areas),
@@ -150,7 +150,7 @@ static result_t add_area(packer_t *packer, const box_t *area)
     debugf(("add_area: growing list to %d\n", n));
   }
 #endif
-  
+
   packer->areas[packer->usedareas++] = *area;
 
   packer->sorted = 0;
@@ -414,10 +414,10 @@ result_t packer_place_at(packer_t *packer, const box_t *area)
 }
 
 result_t packer_place_by(packer_t  *packer,
-                      packer_loc loc,
-                      int        w,
-                      int        h,
-                const box_t   **pos)
+                         packer_loc loc,
+                         int        w,
+                         int        h,
+                         const box_t   **pos)
 {
   result_t         err;
   const box_t *b;

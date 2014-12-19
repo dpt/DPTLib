@@ -166,7 +166,7 @@ result_t pickle_unpickle(const char                    *filename,
     read = fread(state->buffer + occupied, 1, bufsz - occupied, f);
     if (read == 0 && feof(f))
       break; /* nothing left */
-    
+
     occupied += read;
 
     for (;;)

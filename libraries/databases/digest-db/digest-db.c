@@ -123,7 +123,7 @@ result_t digestdb_decode(unsigned char *bytes, const char *text)
   };
 
   const char *end;
-  int         lo,hi;
+  int         lo, hi;
 
   end = text + digestdb_DIGESTSZ * 2;
   for (; text < end; text += 2)

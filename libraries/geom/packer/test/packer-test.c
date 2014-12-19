@@ -89,7 +89,7 @@ static result_t subtest1(packer_t *packer, txtscr_t *scr)
 
     dumppacker(packer, scr);
 
-    err = packer_place_by(packer, packer_LOC_TOP_LEFT, 3,3, &placed);
+    err = packer_place_by(packer, packer_LOC_TOP_LEFT, 3, 3, &placed);
     if (err == result_PACKER_DIDNT_FIT)
     {
       printf("could not place\n");
@@ -206,12 +206,12 @@ static result_t subtest2(packer_loc loc, packer_cleardir clear)
   }
   elements[] =
   {
-    { 26,26,     26, 0 },
-    { 26,26,     28, 0 },
+    { 26, 26,     26, 0 },
+    { 26, 26,     28, 0 },
 //  { 96,INT_MAX, 1, 0 },
-    { 26,26,     26, 0 },
+    { 26, 26,     26, 0 },
     // want to force a newline here
-    { 26,INT_MAX, 2, 0 }
+    { 26, INT_MAX, 2, 0 }
   };
 
   result_t         err;
@@ -288,9 +288,9 @@ static result_t subtest2(packer_loc loc, packer_cleardir clear)
       printf("place vertical padding\n");
 
       err = packer_place_by(packer,
-                             loc,
-                             MAXWIDTH - 2 * PADDING, PADDING,
-                             NULL);
+                            loc,
+                            MAXWIDTH - 2 * PADDING, PADDING,
+                            NULL);
       if (err == result_PACKER_DIDNT_FIT)
       {
         printf("*** could not place vertical padding\n");
@@ -307,9 +307,9 @@ static result_t subtest2(packer_loc loc, packer_cleardir clear)
         printf("place horizontal padding\n");
 
         err = packer_place_by(packer,
-                               loc,
-                               PADDING, elements[k].h,
-                               NULL);
+                              loc,
+                              PADDING, elements[k].h,
+                              NULL);
         if (err == result_PACKER_DIDNT_FIT)
         {
           printf("*** could not place horizontal padding\n");
@@ -322,8 +322,8 @@ static result_t subtest2(packer_loc loc, packer_cleardir clear)
       printf("place element\n");
 
       err = packer_place_by(packer,
-                             loc,
-                             elements[k].chosenw, elements[k].h,
+                            loc,
+                            elements[k].chosenw, elements[k].h,
                             &placed);
       if (err == result_PACKER_DIDNT_FIT)
       {

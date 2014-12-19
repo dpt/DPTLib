@@ -24,8 +24,8 @@
 
 /* ----------------------------------------------------------------------- */
 
-/** 
- * Convert an atom into a loc. 
+/**
+ * Convert an atom into a loc.
  */
 #define ATOMLOC(i) \
   s->locpools[(i) >> s->log2locpoolsz].locs[(i) & ((1 << s->log2locpoolsz) - 1)]
@@ -36,13 +36,13 @@
 #define ATOMPTR(i) \
   (ATOMLOC(i).ptr)
 
-/** 
+/**
  * Retrieve an atom's length.
  */
 #define ATOMLENGTH(i) \
   (ATOMLOC(i).length)
 
-/** 
+/**
  * Returns true if the specified atom corresponds to an allocated (but not
  * necessarily used) index.
  */

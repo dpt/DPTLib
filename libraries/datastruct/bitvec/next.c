@@ -7,7 +7,7 @@
 
 int bitvec_next(const bitvec_t *v, int n)
 {
-  int hi,lo;
+  int hi, lo;
 
   if (!v->vec)
     return -1; /* no vec allocated */

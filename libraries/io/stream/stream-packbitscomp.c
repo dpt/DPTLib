@@ -266,10 +266,10 @@ result_t stream_packbitscomp_create(stream_t *input, int bufsz, stream_t **s)
 
   sp = malloc(offsetof(stream_packbitscomp, buffer) + bufsz);
   if (!sp)
-      return result_OOM;
+    return result_OOM;
 
   sp->base.buf     =
-  sp->base.end     = sp->buffer; /* force a fill on first use */
+    sp->base.end     = sp->buffer; /* force a fill on first use */
 
   sp->base.last    = result_OK;
 
