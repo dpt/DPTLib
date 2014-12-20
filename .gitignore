@@ -32,3 +32,5 @@
 *.d
 *.orig
 xcuserdata
+tags
+*.plist
