@@ -19,6 +19,7 @@
 		55513863165463EB007F3565 /* shrink.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379716545786007F3565 /* shrink.c */; };
 		55513865165463EB007F3565 /* pack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379B16545786007F3565 /* pack.c */; };
 		55513866165463EB007F3565 /* unpack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379C16545786007F3565 /* unpack.c */; };
+		556DE2071A4615DC009BBE63 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE2061A4615DC009BBE63 /* main.c */; };
 		55B22A231A4063000022ED84 /* barith.c in Sources */ = {isa = PBXBuildFile; fileRef = 55B22A221A4063000022ED84 /* barith.c */; };
 		55E557F21A3362D1001FB51F /* bsearch-int.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557EE1A33628D001FB51F /* bsearch-int.c */; };
 		55E557F31A3362D1001FB51F /* bsearch-short.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557EF1A33628D001FB51F /* bsearch-short.c */; };
@@ -125,7 +126,6 @@
 		55E559201A350051001FB51F /* tag-db.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559161A350037001FB51F /* tag-db.c */; };
 		55E559261A3A60E5001FB51F /* layout.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559231A3A60E5001FB51F /* layout.c */; };
 		55E559281A3A60EF001FB51F /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559251A3A60E5001FB51F /* test.c */; };
-		55F7DFEC1A373E9000A64017 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 55F7DFEB1A373E9000A64017 /* main.c */; };
 		55F7DFF61A373F1400A64017 /* array-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5583F1A34F276001FB51F /* array-test.c */; };
 		55F7DFF71A373F2C00A64017 /* atom-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5584B1A34F276001FB51F /* atom-test.c */; };
 		55F7DFF81A373F3E00A64017 /* bitarr-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5584F1A34F276001FB51F /* bitarr-test.c */; };
@@ -209,6 +209,7 @@
 		5551379716545786007F3565 /* shrink.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = shrink.c; sourceTree = "<group>"; };
 		5551379B16545786007F3565 /* pack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pack.c; sourceTree = "<group>"; };
 		5551379C16545786007F3565 /* unpack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unpack.c; sourceTree = "<group>"; };
+		556DE2061A4615DC009BBE63 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		55B22A221A4063000022ED84 /* barith.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = barith.c; sourceTree = "<group>"; };
 		55E557EB1A336220001FB51F /* bsearch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bsearch.h; sourceTree = "<group>"; };
 		55E557ED1A33628D001FB51F /* bsearch-impl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = "bsearch-impl.h"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
@@ -356,7 +357,6 @@
 		55E559251A3A60E5001FB51F /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
 		55E559291A3A6106001FB51F /* layout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = layout.h; sourceTree = "<group>"; };
 		55F7DFE91A373E9000A64017 /* DPTLibTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = DPTLibTest; sourceTree = BUILT_PRODUCTS_DIR; };
-		55F7DFEB1A373E9000A64017 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		55F7E0131A38E38100A64017 /* contains-box.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "contains-box.c"; sourceTree = "<group>"; };
 		55F7E0141A38E38100A64017 /* contains-point.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "contains-point.c"; sourceTree = "<group>"; };
 		55F7E0151A38E38100A64017 /* could-hold.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "could-hold.c"; sourceTree = "<group>"; };
@@ -400,7 +400,6 @@
 			children = (
 				5551375316545786007F3565 /* include */,
 				5551377216545786007F3565 /* libraries */,
-				55F7DFEA1A373E9000A64017 /* DPTLibTest */,
 				55513808165460EF007F3565 /* Frameworks */,
 				5551374D165456FA007F3565 /* Products */,
 			);
@@ -558,10 +557,10 @@
 		5551377A16545786007F3565 /* stream */ = {
 			isa = PBXGroup;
 			children = (
+				5551377B16545786007F3565 /* stream-mem.c */,
 				55511B4A1A40F4CD00D572A7 /* stream-mtfcomp.c */,
 				55511B4B1A40F4CD00D572A7 /* stream-packbitscomp.c */,
 				55511B4C1A40F4CD00D572A7 /* stream-packbitsdecomp.c */,
-				5551377B16545786007F3565 /* stream-mem.c */,
 				5551377C16545786007F3565 /* stream-stdio.c */,
 				5551377D16545786007F3565 /* stream.c */,
 				55511B471A40F49000D572A7 /* test */,
@@ -612,6 +611,14 @@
 			children = (
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		556DE2051A4615DC009BBE63 /* main */ = {
+			isa = PBXGroup;
+			children = (
+				556DE2061A4615DC009BBE63 /* main.c */,
+			);
+			path = main;
 			sourceTree = "<group>";
 		};
 		55A1D6B91A3139CA00CFC972 /* base */ = {
@@ -1033,14 +1040,6 @@
 			path = pixelfmt;
 			sourceTree = "<group>";
 		};
-		55F7DFEA1A373E9000A64017 /* DPTLibTest */ = {
-			isa = PBXGroup;
-			children = (
-				55F7DFEB1A373E9000A64017 /* main.c */,
-			);
-			path = DPTLibTest;
-			sourceTree = "<group>";
-		};
 		55F7E0291A39183300A64017 /* packer */ = {
 			isa = PBXGroup;
 			children = (
@@ -1070,6 +1069,7 @@
 		55F7E0341A391AA800A64017 /* test */ = {
 			isa = PBXGroup;
 			children = (
+				556DE2051A4615DC009BBE63 /* main */,
 				55F7E0351A391AA800A64017 /* txtscr */,
 			);
 			path = test;
@@ -1277,6 +1277,7 @@
 				55E558CD1A34F2B3001FB51F /* create.c in Sources */,
 				55E559001A34F2D0001FB51F /* width.c in Sources */,
 				55E558021A337785001FB51F /* rev-l-m.c in Sources */,
+				556DE2071A4615DC009BBE63 /* main.c in Sources */,
 				55E558D31A34F2B3001FB51F /* walk-cont.c in Sources */,
 				55513866165463EB007F3565 /* unpack.c in Sources */,
 				55E558F21A34F2CA001FB51F /* nth-child.c in Sources */,
@@ -1296,7 +1297,6 @@
 				55F7DFFD1A373FB800A64017 /* vector-test.c in Sources */,
 				55F7DFF91A373F5F00A64017 /* bitvec-test.c in Sources */,
 				55F7DFFB1A373F8D00A64017 /* list-test.c in Sources */,
-				55F7DFEC1A373E9000A64017 /* main.c in Sources */,
 				55F7E0021A37A03D00A64017 /* tag-db-test.c in Sources */,
 				55F7DFFC1A373F9F00A64017 /* ntree-test.c in Sources */,
 				55F7DFF81A373F3E00A64017 /* bitarr-test.c in Sources */,

@@ -67,12 +67,12 @@ static const test_t tests[] =
 
   { "pickle", pickle_test },
   { "tagdb",  tagdb_test  },
-  
+
   { "layout", layout_test },
   { "packer", packer_test },
-  
+
   { "stream", stream_test },
-  
+
   { "array",  array_test  },
 };
 
@@ -83,15 +83,15 @@ static const int ntests = NELEMS(tests);
 static int runtest(const test_t *t)
 {
   result_t rc;
-  
+
   printf(">>\n" ">> Begin %s tests\n" ">>\n", t->name);
-  
+
   rc = t->test();
 
 #ifdef FORTIFY
   Fortify_CheckAllMemory();
 #endif
-  
+
   if (rc != result_TEST_PASSED)
   {
     printf("** ****************\n");
@@ -110,20 +110,20 @@ int main(int argc, char *argv[])
   int nfailures;
   int i;
   int npassed;
-  
+
 #ifdef FORTIFY
   Fortify_EnterScope();
 #endif
-  
+
   nrun      = 0;
   nfailures = 0;
-  
+
   if (argc < 2)
   {
     /* run all tests */
-    
+
     printf("++ Running all tests.\n");
-    
+
     for (i = 0; i < ntests; i++)
     {
       nrun++;
@@ -134,17 +134,17 @@ int main(int argc, char *argv[])
   else
   {
     /* run the specified tests only */
-    
+
     for (i = 1; i < argc; i++)
     {
       int j;
-      
+
       printf("++ Running specified tests only.\n");
-      
+
       for (j = 0; j < ntests; j++)
         if (strcmp(tests[j].name, argv[i]) == 0)
           break;
-      
+
       if (j == ntests)
       {
         printf("** Unknown test '%s'.\n", argv[i]);
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
       }
     }
   }
-  
+
   npassed = nrun - nfailures;
   printf("++ Tests completed: %d of %d tests passed.\n", npassed, nrun);
 
@@ -165,6 +165,6 @@ int main(int argc, char *argv[])
   Fortify_LeaveScope();
   Fortify_OutputStatistics();
 #endif
-  
+
   exit(nfailures == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
