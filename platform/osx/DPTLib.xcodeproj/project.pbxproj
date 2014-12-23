@@ -20,6 +20,8 @@
 		55513865165463EB007F3565 /* pack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379B16545786007F3565 /* pack.c */; };
 		55513866165463EB007F3565 /* unpack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379C16545786007F3565 /* unpack.c */; };
 		556DE2071A4615DC009BBE63 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE2061A4615DC009BBE63 /* main.c */; };
+		556DE20B1A49983C009BBE63 /* ensure.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE20A1A49983C009BBE63 /* ensure.c */; };
+		556DE20D1A49A1FB009BBE63 /* insert.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE20C1A49A1FB009BBE63 /* insert.c */; };
 		55B22A231A4063000022ED84 /* barith.c in Sources */ = {isa = PBXBuildFile; fileRef = 55B22A221A4063000022ED84 /* barith.c */; };
 		55E557F21A3362D1001FB51F /* bsearch-int.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557EE1A33628D001FB51F /* bsearch-int.c */; };
 		55E557F31A3362D1001FB51F /* bsearch-short.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557EF1A33628D001FB51F /* bsearch-short.c */; };
@@ -210,6 +212,8 @@
 		5551379B16545786007F3565 /* pack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pack.c; sourceTree = "<group>"; };
 		5551379C16545786007F3565 /* unpack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unpack.c; sourceTree = "<group>"; };
 		556DE2061A4615DC009BBE63 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		556DE20A1A49983C009BBE63 /* ensure.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ensure.c; sourceTree = "<group>"; };
+		556DE20C1A49A1FB009BBE63 /* insert.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = insert.c; sourceTree = "<group>"; };
 		55B22A221A4063000022ED84 /* barith.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = barith.c; sourceTree = "<group>"; };
 		55E557EB1A336220001FB51F /* bsearch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bsearch.h; sourceTree = "<group>"; };
 		55E557ED1A33628D001FB51F /* bsearch-impl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = "bsearch-impl.h"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
@@ -918,9 +922,11 @@
 				55E5589E1A34F276001FB51F /* create.c */,
 				55E5589F1A34F276001FB51F /* destroy.c */,
 				55E558A01A34F276001FB51F /* get.c */,
+				556DE20C1A49A1FB009BBE63 /* insert.c */,
 				55E558A11A34F276001FB51F /* impl.h */,
 				55E558A21A34F276001FB51F /* length.c */,
 				55E558A31A34F276001FB51F /* set-length.c */,
+				556DE20A1A49983C009BBE63 /* ensure.c */,
 				55E558A41A34F276001FB51F /* set-width.c */,
 				55E558A51A34F276001FB51F /* test */,
 				55E558A71A34F276001FB51F /* width.c */,
@@ -1154,6 +1160,7 @@
 				55E558CB1A34F2AC001FB51F /* set.c in Sources */,
 				55E558D01A34F2B3001FB51F /* lookup-node.c in Sources */,
 				55513846165463EB007F3565 /* log2bpp.c in Sources */,
+				556DE20B1A49983C009BBE63 /* ensure.c in Sources */,
 				55E558C11A34F2AC001FB51F /* count.c in Sources */,
 				55E558C31A34F2AC001FB51F /* destroy.c in Sources */,
 				55E558121A338F87001FB51F /* umull-fxp16.c in Sources */,
@@ -1220,6 +1227,7 @@
 				55E558C81A34F2AC001FB51F /* next.c in Sources */,
 				55E559201A350051001FB51F /* tag-db.c in Sources */,
 				55E557F41A3362D1001FB51F /* bsearch-uint.c in Sources */,
+				556DE20D1A49A1FB009BBE63 /* insert.c in Sources */,
 				55E558FB1A34F2D0001FB51F /* destroy.c in Sources */,
 				55E558C71A34F2AC001FB51F /* length.c in Sources */,
 				55E558F01A34F2CA001FB51F /* new.c in Sources */,

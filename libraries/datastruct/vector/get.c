@@ -6,8 +6,6 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "utils/barith.h"
-
 #include "datastruct/vector.h"
 
 #include "impl.h"

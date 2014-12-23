@@ -66,12 +66,27 @@ int vector_length(const vector_t *vector);
 /**
  * Change the number of elements stored in the specified vector.
  *
+ * Truncates the vector if smaller than the present size.
+ *
  * \param vector Vector.
  * \param length New length.
  *
  * \return Error indication.
  */
 result_t vector_set_length(vector_t *vector, size_t length);
+
+/* ----------------------------------------------------------------------- */
+
+/**
+ * Ensure that at least the specified number of elements can be stored in
+ * the specified vector.
+ *
+ * \param vector Vector.
+ * \param need   Required length.
+ *
+ * \return Error indication.
+ */
+result_t vector_ensure(vector_t *vector, size_t need);
 
 /* ----------------------------------------------------------------------- */
 
@@ -108,6 +123,18 @@ result_t vector_set_width(vector_t *vector, size_t width);
  * \return Pointer to element.
  */
 void *vector_get(vector_t *vector, int index);
+
+/* ----------------------------------------------------------------------- */
+
+/**
+ * Insert an element, allocating memory if required.
+ *
+ * \param vector  Vector.
+ * \param element Element to insert.
+ *
+ * \return Error indication.
+ */
+result_t vector_insert(vector_t *vector, void *element);
 
 /* ----------------------------------------------------------------------- */
 

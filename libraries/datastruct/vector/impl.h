@@ -8,8 +8,8 @@
 struct vector
 {
   size_t width;     /* width of an element */
-  int    used;      /* entries used */
-  int    allocated; /* entries allocated */
+  size_t used;      /* entries used */
+  size_t allocated; /* entries allocated */
   void  *base;      /* vector itself */
 };
 
