@@ -10,43 +10,31 @@
 	<string>DPTLib</string>
 	<key>IDESourceControlProjectOriginsDictionary</key>
 	<dict>
-		<key>1D281DCE4EACED18BB02B741DB9C3B0F72555D61</key>
-		<string>https://github.com/dpt/Lib.git</string>
-		<key>768D492288FADCC563494AF183B74307932FF490</key>
-		<string>https://github.com/dpt/MotionMasks.git</string>
+		<key>D9779BF793578A9E67ED2E4B4DDA989CBCCA2EF9</key>
+		<string>https://github.com/dpt/DPTLib.git</string>
 	</dict>
 	<key>IDESourceControlProjectPath</key>
 	<string>platform/osx/DPTLib.xcodeproj</string>
 	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
 	<dict>
-		<key>1D281DCE4EACED18BB02B741DB9C3B0F72555D61</key>
+		<key>D9779BF793578A9E67ED2E4B4DDA989CBCCA2EF9</key>
 		<string>../../../..</string>
-		<key>768D492288FADCC563494AF183B74307932FF490</key>
-		<string>../../../../../MotionMasks</string>
 	</dict>
 	<key>IDESourceControlProjectURL</key>
-	<string>https://github.com/dpt/Lib.git</string>
+	<string>https://github.com/dpt/DPTLib.git</string>
 	<key>IDESourceControlProjectVersion</key>
 	<integer>111</integer>
 	<key>IDESourceControlProjectWCCIdentifier</key>
-	<string>1D281DCE4EACED18BB02B741DB9C3B0F72555D61</string>
+	<string>D9779BF793578A9E67ED2E4B4DDA989CBCCA2EF9</string>
 	<key>IDESourceControlProjectWCConfigurations</key>
 	<array>
 		<dict>
 			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
 			<string>public.vcs.git</string>
 			<key>IDESourceControlWCCIdentifierKey</key>
-			<string>1D281DCE4EACED18BB02B741DB9C3B0F72555D61</string>
+			<string>D9779BF793578A9E67ED2E4B4DDA989CBCCA2EF9</string>
 			<key>IDESourceControlWCCName</key>
-			<string>Lib</string>
-		</dict>
-		<dict>
-			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
-			<string>public.vcs.git</string>
-			<key>IDESourceControlWCCIdentifierKey</key>
-			<string>768D492288FADCC563494AF183B74307932FF490</string>
-			<key>IDESourceControlWCCName</key>
-			<string>MotionMasks</string>
+			<string>DPTLib</string>
 		</dict>
 	</array>
 </dict>
