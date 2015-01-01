@@ -16,11 +16,11 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* We use an atom set as the store at the moment. This is a bit wasteful as
- * a length field is stored per entry and it's always 16 bytes. */
 
 static struct
 {
+  /* We use an atom set as the store at the moment. This is a bit wasteful as
+   * a length field is stored per entry and it's always 16 bytes. */
   atom_set_t *digests;
 }
 LOCALS;

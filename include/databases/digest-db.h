@@ -5,11 +5,9 @@
  *
  * Digest database.
  *
- * The digestdb is a static in-memory array dedicated to holding (128-bit)
- * digests.
- *
- * digestdb is used by tagdb and filenamedb to save memory by sharing the
- * digest storage cost.
+ * digestdb is a wrapper around an atom set specifically for holding
+ * (128-bit) digests. It is used by tagdb and filenamedb to share the cost of
+ * storing digest values by replacing 128-bit digests with smaller indices.
  */
 
 #ifndef DATABASES_DIGEST_DB_H
@@ -39,6 +37,8 @@ unsigned int digestdb_hash(const void *a);
 int digestdb_compare(const void *a, const void *b);
 
 /* ----------------------------------------------------------------------- */
+
+/* Utilities */
 
 /* Decode 32 characters of ASCII hex to 16 bytes.
  * Returns result_BAD_ARG if nonhex data is encountered. */
