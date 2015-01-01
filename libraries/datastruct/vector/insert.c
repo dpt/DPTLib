@@ -12,7 +12,7 @@
 
 #include "impl.h"
 
-result_t vector_insert(vector_t *v, void *element)
+result_t vector_insert(vector_t *v, const void *element)
 {
   result_t  err;
   size_t    used;

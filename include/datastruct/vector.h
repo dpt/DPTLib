@@ -134,7 +134,7 @@ void *vector_get(vector_t *vector, int index);
  *
  * \return Error indication.
  */
-result_t vector_insert(vector_t *vector, void *element);
+result_t vector_insert(vector_t *vector, const void *element);
 
 /* ----------------------------------------------------------------------- */
 
