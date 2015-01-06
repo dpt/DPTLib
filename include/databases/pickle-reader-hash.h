@@ -7,10 +7,10 @@
 
 /* Methods exposed for clients' re-use. */
 
-pickle_reader_start pickle_reader_hash_start;
-pickle_reader_stop  pickle_reader_hash_stop;
-pickle_reader_next  pickle_reader_hash_next;
+pickle_reader_start_t pickle_reader_hash_start;
+pickle_reader_stop_t  pickle_reader_hash_stop;
+pickle_reader_next_t  pickle_reader_hash_next;
 
-extern const pickle_reader_methods pickle_reader_hash;
+extern const pickle_reader_methods_t pickle_reader_hash;
 
 #endif /* DATABASES_PICKLE_READER_HASH_H */

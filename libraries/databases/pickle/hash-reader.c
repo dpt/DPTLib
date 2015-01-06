@@ -69,7 +69,7 @@ result_t pickle_reader_hash_next(void        *vstate,
   return (err == result_HASH_END) ? result_PICKLE_END : err;
 }
 
-const pickle_reader_methods pickle_reader_hash =
+const pickle_reader_methods_t pickle_reader_hash =
 {
   pickle_reader_hash_start,
   pickle_reader_hash_stop,

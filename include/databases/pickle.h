@@ -50,9 +50,9 @@
  *
  * \return Error indication.
  */
-typedef result_t (pickle_reader_start)(const void *assocarr,
-                                       void       *opaque,
-                                       void      **state);
+typedef result_t (pickle_reader_start_t)(const void *assocarr,
+                                         void       *opaque,
+                                         void      **state);
 
 /**
  * Interface used when pickle stops reading from the associative array.
@@ -60,7 +60,7 @@ typedef result_t (pickle_reader_start)(const void *assocarr,
  * \param[in]   state     Reader state.
  * \param[in]   opaque    The opaque pointer passed into pickle_pickle().
  */
-typedef void (pickle_reader_stop)(void *state, void *opaque);
+typedef void (pickle_reader_stop_t)(void *state, void *opaque);
 
 /**
  * Interface used by pickle to read the next array entry.
@@ -73,10 +73,10 @@ typedef void (pickle_reader_stop)(void *state, void *opaque);
  * \return result_OK if entry returned.
  * \return result_PICKLE_END if end reached.
  */
-typedef result_t (pickle_reader_next)(void        *state,
-                                      const void **key,
-                                      const void **value,
-                                      void        *opaque);
+typedef result_t (pickle_reader_next_t)(void        *state,
+                                        const void **key,
+                                        const void **value,
+                                        void        *opaque);
 
 /**
  * Interfaces for reading from an associative array.
@@ -85,11 +85,11 @@ typedef result_t (pickle_reader_next)(void        *state,
  */
 typedef struct pickle_reader_methods
 {
-  pickle_reader_start *start;
-  pickle_reader_stop  *stop;
-  pickle_reader_next  *next;
+  pickle_reader_start_t *start;
+  pickle_reader_stop_t  *stop;
+  pickle_reader_next_t  *next;
 }
-pickle_reader_methods;
+pickle_reader_methods_t;
 
 /* ----------------------------------------------------------------------- */
 
@@ -104,10 +104,10 @@ pickle_reader_methods;
  * \return result_OK if entry returned.
  * \return result_PICKLE_SKIP if this key:value pair ought to be skipped.
  */
-typedef result_t (pickle_format_key)(const void *key,
-                                     char       *buf,
-                                     size_t      len,
-                                     void       *opaque);
+typedef result_t (pickle_format_key_t)(const void *key,
+                                       char       *buf,
+                                       size_t      len,
+                                       void       *opaque);
 
 /**
  * Interface used by pickle to format a value into text.
@@ -120,24 +120,24 @@ typedef result_t (pickle_format_key)(const void *key,
  * \return result_OK if entry returned.
  * \return result_PICKLE_SKIP if this key:value pair ought to be skipped.
  */
-typedef result_t (pickle_format_value)(const void *value,
-                                       char       *buf,
-                                       size_t      len,
-                                       void       *opaque);
+typedef result_t (pickle_format_value_t)(const void *value,
+                                         char       *buf,
+                                         size_t      len,
+                                         void       *opaque);
 
 /**
  * Interfaces used to turn input keys and values into text.
  */
 typedef struct pickle_format_methods
 {
-  const char          *comments;    /**< Initial comment string to write. */
-  size_t               commentslen; /**< Length of above. */
-  const char          *split;       /**< String inbetween key and value. */
-  size_t               splitlen;    /**< Length of above. */
-  pickle_format_key   *key;
-  pickle_format_value *value;
+  const char            *comments;    /**< Initial comment string to write. */
+  size_t                 commentslen; /**< Length of above. */
+  const char            *split;       /**< String inbetween key and value. */
+  size_t                 splitlen;    /**< Length of above. */
+  pickle_format_key_t   *key;
+  pickle_format_value_t *value;
 }
-pickle_format_methods;
+pickle_format_methods_t;
 
 /* ----------------------------------------------------------------------- */
 
@@ -150,9 +150,9 @@ pickle_format_methods;
  *
  * \return Error indication.
  */
-typedef result_t (pickle_writer_start)(void  *assocarr,
-                                       void **state,
-                                       void  *opaque);
+typedef result_t (pickle_writer_start_t)(void  *assocarr,
+                                         void **state,
+                                         void  *opaque);
 
 /**
  * Interface used when pickle stops writing to the associative array.
@@ -160,7 +160,7 @@ typedef result_t (pickle_writer_start)(void  *assocarr,
  * \param[in]   state     Reader state.
  * \param[in]   opaque    The opaque pointer passed into pickle_unpickle().
  */
-typedef void (pickle_writer_stop)(void *state, void *opaque);
+typedef void (pickle_writer_stop_t)(void *state, void *opaque);
 
 /**
  * Interface used by pickle when a key:value pair is ready to be inserted.
@@ -172,10 +172,10 @@ typedef void (pickle_writer_stop)(void *state, void *opaque);
  *
  * \return Error indication.
  */
-typedef result_t (pickle_writer_next)(void *state,
-                                      void *key,
-                                      void *value,
-                                      void *opaque);
+typedef result_t (pickle_writer_next_t)(void *state,
+                                        void *key,
+                                        void *value,
+                                        void *opaque);
 
 /**
  * Interfaces for writing to an associative array.
@@ -184,11 +184,11 @@ typedef result_t (pickle_writer_next)(void *state,
  */
 typedef struct pickle_writer_methods
 {
-  pickle_writer_start *start;
-  pickle_writer_stop  *stop;
-  pickle_writer_next  *next;
+  pickle_writer_start_t *start;
+  pickle_writer_stop_t  *stop;
+  pickle_writer_next_t  *next;
 }
-pickle_writer_methods;
+pickle_writer_methods_t;
 
 /* ----------------------------------------------------------------------- */
 
@@ -202,10 +202,10 @@ pickle_writer_methods;
  *
  * \return result_OK if entry returned.
  */
-typedef result_t (*pickle_unformat_key)(const char *buf,
-                                        size_t      len,
-                                        void      **key,
-                                        void       *opaque);
+typedef result_t (*pickle_unformat_key_t)(const char *buf,
+                                          size_t      len,
+                                          void      **key,
+                                          void       *opaque);
 
 /**
  * Interface used by pickle_unpickle to parse a value from the file.
@@ -217,22 +217,22 @@ typedef result_t (*pickle_unformat_key)(const char *buf,
  *
  * \return result_OK if entry returned.
  */
-typedef result_t (*pickle_unformat_value)(const char *buf,
-                                          size_t      len,
-                                          void      **value,
-                                          void       *opaque);
+typedef result_t (*pickle_unformat_value_t)(const char *buf,
+                                            size_t      len,
+                                            void      **value,
+                                            void       *opaque);
 
 /**
  * Interfaces used by pickle_unpickle to parse input keys and values.
  */
 typedef struct pickle_unformat_methods
 {
-  const char           *split;    /**< Separator used between key and value. */
-  size_t                splitlen; /**< Length of above. */
-  pickle_unformat_key   key;
-  pickle_unformat_value value;
+  const char             *split;    /**< Separator used between key and value. */
+  size_t                  splitlen; /**< Length of above. */
+  pickle_unformat_key_t   key;
+  pickle_unformat_value_t value;
 }
-pickle_unformat_methods;
+pickle_unformat_methods_t;
 
 /* ----------------------------------------------------------------------- */
 
@@ -249,11 +249,11 @@ pickle_unformat_methods;
  *
  * \return Error indication.
  */
-result_t pickle_pickle(const char                  *filename,
-                       void                        *assocarr,
-                       const pickle_reader_methods *reader,
-                       const pickle_format_methods *format,
-                       void                        *opaque);
+result_t pickle_pickle(const char                    *filename,
+                       void                          *assocarr,
+                       const pickle_reader_methods_t *reader,
+                       const pickle_format_methods_t *format,
+                       void                          *opaque);
 
 /**
  * Populate associative array 'assocarr' from the file 'filename'. Insert
@@ -268,11 +268,11 @@ result_t pickle_pickle(const char                  *filename,
  *
  * \return Error indication.
  */
-result_t pickle_unpickle(const char                    *filename,
-                         void                          *assocarr,
-                         const pickle_writer_methods   *writer,
-                         const pickle_unformat_methods *unformat,
-                         void                          *opaque);
+result_t pickle_unpickle(const char                      *filename,
+                         void                            *assocarr,
+                         const pickle_writer_methods_t   *writer,
+                         const pickle_unformat_methods_t *unformat,
+                         void                            *opaque);
 
 /**
  * Delete the pickle file 'filename'.

@@ -58,7 +58,7 @@ static result_t test1_format_value(const void *key, char *buf, size_t len, void 
   return result_OK;
 }
 
-static const pickle_format_methods formatters =
+static const pickle_format_methods_t formatters =
 {
   "test comment",
   NELEMS("test comment") - 1,
@@ -344,7 +344,7 @@ static result_t cheese_format_value(const void *vvalue, char *buf, size_t len, v
   return result_OK;
 }
 
-static const pickle_format_methods format_cheese_methods =
+static const pickle_format_methods_t format_cheese_methods =
 {
   "Cheeses",
   NELEMS("Cheeses") - 1,
@@ -425,7 +425,7 @@ static result_t cheese_unformat_value(const char *buf,
   return result_OK;
 }
 
-static const pickle_unformat_methods unformat_cheese_methods =
+static const pickle_unformat_methods_t unformat_cheese_methods =
 {
   " -*- ",
   5,

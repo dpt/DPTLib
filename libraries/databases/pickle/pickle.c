@@ -40,11 +40,11 @@ static result_t pickle__write_header(FILE       *f,
   return result_OK;
 }
 
-static result_t pickle__write_body(FILE                        *f,
-                                   void                        *assocarr,
-                                   const pickle_reader_methods *reader,
-                                   const pickle_format_methods *format,
-                                   void                        *opaque)
+static result_t pickle__write_body(FILE                          *f,
+                                   void                          *assocarr,
+                                   const pickle_reader_methods_t *reader,
+                                   const pickle_format_methods_t *format,
+                                   void                          *opaque)
 {
   result_t    err;
   void       *state = NULL;
@@ -103,11 +103,11 @@ exit:
 
 /* ----------------------------------------------------------------------- */
 
-result_t pickle_pickle(const char                  *filename,
-                       void                        *assocarr,
-                       const pickle_reader_methods *reader,
-                       const pickle_format_methods *format,
-                       void                        *opaque)
+result_t pickle_pickle(const char                    *filename,
+                       void                          *assocarr,
+                       const pickle_reader_methods_t *reader,
+                       const pickle_format_methods_t *format,
+                       void                          *opaque)
 {
   result_t err;
   FILE    *f;

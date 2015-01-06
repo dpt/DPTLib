@@ -193,7 +193,7 @@ static result_t unformat_value(const char *inbuf,
   return result_OK;
 }
 
-static const pickle_unformat_methods unformat_methods =
+static const pickle_unformat_methods_t unformat_methods =
 {
   " ", /* split string */
   1,   /* split string length */
@@ -358,7 +358,7 @@ static result_t format_value(const void *vvalue,
   return (c > 0) ? result_OK : result_PICKLE_SKIP;
 }
 
-static const pickle_format_methods format_methods =
+static const pickle_format_methods_t format_methods =
 {
   "Tags",
   NELEMS("Tags") - 1,

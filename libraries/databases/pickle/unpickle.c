@@ -28,14 +28,14 @@ typedef result_t (*lineparser)(unpickle__state *, char *, void *);
 
 struct unpickle__state
 {
-  lineparser                     parse;
+  lineparser                       parse;
 
-  const pickle_writer_methods   *writer;
-  const pickle_unformat_methods *unformat;
+  const pickle_writer_methods_t   *writer;
+  const pickle_unformat_methods_t *unformat;
 
-  void                          *wstate; // writer state
+  void                            *wstate; // writer state
 
-  char                           buffer[READBUFSZ];
+  char                             buffer[READBUFSZ];
 };
 
 /* ----------------------------------------------------------------------- */
@@ -116,11 +116,11 @@ static result_t unpickle__parse_first_line(unpickle__state *state,
 
 /* ----------------------------------------------------------------------- */
 
-result_t pickle_unpickle(const char                    *filename,
-                         void                          *assocarr,
-                         const pickle_writer_methods   *writer,
-                         const pickle_unformat_methods *unformat,
-                         void                          *opaque)
+result_t pickle_unpickle(const char                      *filename,
+                         void                            *assocarr,
+                         const pickle_writer_methods_t   *writer,
+                         const pickle_unformat_methods_t *unformat,
+                         void                            *opaque)
 {
   result_t         err;
   const size_t     bufsz = READBUFSZ;

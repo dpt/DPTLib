@@ -37,7 +37,7 @@ result_t pickle_writer_hash_next(void *state,
   return hash_insert((hash_t *) state, key, value);
 }
 
-const pickle_writer_methods pickle_writer_hash =
+const pickle_writer_methods_t pickle_writer_hash =
 {
   pickle_writer_hash_start,
   NULL,

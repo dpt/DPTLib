@@ -146,7 +146,7 @@ static result_t unformat_value(const char *buf,
   return result_OK;
 }
 
-static const pickle_unformat_methods unformat_methods =
+static const pickle_unformat_methods_t unformat_methods =
 {
   " ", /* split string */
   1,   /* split string length */
@@ -271,7 +271,7 @@ static result_t format_value(const void *vvalue,
   return result_OK;
 }
 
-static const pickle_format_methods format_methods =
+static const pickle_format_methods_t format_methods =
 {
   "Filenames",
   NELEMS("Filenames") - 1,
