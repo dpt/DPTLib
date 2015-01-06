@@ -33,7 +33,7 @@
 
 /* ----------------------------------------------------------------------- */
 
-#define T tagdb
+#define T tagdb_t
 
 /* ----------------------------------------------------------------------- */
 
@@ -46,7 +46,7 @@ void tagdb_fin(void);
 
 /* ----------------------------------------------------------------------- */
 
-typedef struct T T;
+typedef struct tagdb T;
 
 result_t tagdb_open(const char *filename, T **db);
 void tagdb_close(T *db);

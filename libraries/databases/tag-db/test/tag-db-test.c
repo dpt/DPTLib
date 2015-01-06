@@ -75,7 +75,7 @@ taggings[] =
 typedef struct
 {
   tagdb_tag tags[8]; /* 8 == NELEMS(tagnames) */
-  tagdb     *db;
+  tagdb_t   *db;
 }
 State;
 
