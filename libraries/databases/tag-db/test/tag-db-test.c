@@ -74,8 +74,8 @@ taggings[] =
 
 typedef struct
 {
-  tagdb_tag tags[8]; /* 8 == NELEMS(tagnames) */
-  tagdb_t   *db;
+  tagdb_tag_t  tags[8]; /* 8 == NELEMS(tagnames) */
+  tagdb_t     *db;
 }
 State;
 
@@ -156,8 +156,8 @@ static result_t test_enumerate_tags(State *state)
   cont = 0;
   do
   {
-    tagdb_tag tag;
-    int        count;
+    tagdb_tag_t tag;
+    int         count;
 
     printf("continuation %d...", cont);
 
@@ -225,8 +225,8 @@ static result_t test_get_tags_for_id(State *state)
 
   for (i = 0; i < NELEMS(ids); i++)
   {
-    int        ntags;
-    tagdb_tag tag;
+    int         ntags;
+    tagdb_tag_t tag;
 
     printf("getting tags for id '%d'... ", i);
 
@@ -355,7 +355,7 @@ static result_t test_enumerate_ids_by_tags(State *state)
   char     buf[256];
 
   {
-    static const tagdb_tag want[] = { 0, 1 };
+    static const tagdb_tag_t want[] = { 0, 1 };
 
     printf("ids tagged with '%s' and '%s'...\n",
            tagnames[want[0]], tagnames[want[1]]);
@@ -484,10 +484,10 @@ static result_t bash_enumerate(State *state)
 
     if (cont)
     {
-      int       ntags;
-      tagdb_tag tag;
-      int       cont2;
-      char      buf2[256];
+      int         ntags;
+      tagdb_tag_t tag;
+      int         cont2;
+      char        buf2[256];
 
       printf("getting tags for '");
       printdigest(buf);
@@ -542,11 +542,11 @@ static result_t test_bash(State *state)
   const int reps        = 3;     /* overall number of repetitions */
 
   result_t   err;
-  int        i;
-  tagdb_tag  tags[ntags];
-  char      *tagnames[ntags];
-  char      *idnames[nids];
-  int        j;
+  int          i;
+  tagdb_tag_t  tags[ntags];
+  char        *tagnames[ntags];
+  char        *idnames[nids];
+  int          j;
 
   srand(0x6487ED51);
 

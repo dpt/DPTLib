@@ -97,7 +97,7 @@ struct tagdb
   hash_t                 *hash; /* maps ids to bitvecs holding tag indices */
 };
 
-static void tagdb__taginc(tagdb_t *db, tagdb_tag tag);
+static void tagdb__taginc(tagdb_t *db, tagdb_tag_t tag);
 //static void tagdb__tagdec(tagdb_t *db, tagdb_tag tag);
 
 /* ----------------------------------------------------------------------- */
@@ -177,7 +177,7 @@ static result_t unformat_value(const char *inbuf,
 
   for (i = 0; i < t; i++)
   {
-    tagdb_tag tag;
+    tagdb_tag_t tag;
 
     err = tagdb_add(db, tokens[i], &tag);
     if (err)
@@ -394,11 +394,11 @@ typedef struct tagdb_tag_entry
 }
 tagdb_tag_entry;
 
-result_t tagdb_add(tagdb_t *db, const char *name, tagdb_tag *ptag)
+result_t tagdb_add(tagdb_t *db, const char *name, tagdb_tag_t *ptag)
 {
   result_t      err;
-  atom_t     index;
-  tagdb_tag i;
+  atom_t      index;
+  tagdb_tag_t i;
 
   assert(db);
   assert(name);
@@ -498,7 +498,7 @@ Failure:
   return err;
 }
 
-void tagdb_remove(tagdb_t *db, tagdb_tag tag)
+void tagdb_remove(tagdb_t *db, tagdb_tag_t tag)
 {
   result_t err;
   int   cont;
@@ -543,7 +543,7 @@ Failure:
   return;
 }
 
-result_t tagdb_rename(tagdb_t *db, tagdb_tag tag, const char *name)
+result_t tagdb_rename(tagdb_t *db, tagdb_tag_t tag, const char *name)
 {
   assert(db);
   assert(tag < db->c_used && db->counts[tag].index != -1);
@@ -555,10 +555,10 @@ result_t tagdb_rename(tagdb_t *db, tagdb_tag tag, const char *name)
                   strlen(name) + 1);
 }
 
-result_t tagdb_enumerate_tags(tagdb_t   *db,
-                              int       *continuation,
-                              tagdb_tag *tag,
-                              int       *count)
+result_t tagdb_enumerate_tags(tagdb_t     *db,
+                              int         *continuation,
+                              tagdb_tag_t *tag,
+                              int         *count)
 {
   int index;
 
@@ -593,11 +593,11 @@ result_t tagdb_enumerate_tags(tagdb_t   *db,
   return result_OK;
 }
 
-result_t tagdb_tagtoname(tagdb_t   *db,
-                         tagdb_tag  tag,
-                         char      *buf,
-                         size_t    *length,
-                         size_t     bufsz)
+result_t tagdb_tagtoname(tagdb_t     *db,
+                         tagdb_tag_t  tag,
+                         char        *buf,
+                         size_t      *length,
+                         size_t       bufsz)
 {
   const char *s;
   size_t      l;
@@ -625,18 +625,18 @@ result_t tagdb_tagtoname(tagdb_t   *db,
 
 /* ----------------------------------------------------------------------- */
 
-static void tagdb__taginc(tagdb_t *db, tagdb_tag tag)
+static void tagdb__taginc(tagdb_t *db, tagdb_tag_t tag)
 {
   db->counts[tag].count++;
 }
 
-static void tagdb__tagdec(tagdb_t *db, tagdb_tag tag)
+static void tagdb__tagdec(tagdb_t *db, tagdb_tag_t tag)
 {
   db->counts[tag].count--;
 }
 
 /* This tags and inserts. */
-result_t tagdb_tagid(tagdb_t *db, const char *id, tagdb_tag tag)
+result_t tagdb_tagid(tagdb_t *db, const char *id, tagdb_tag_t tag)
 {
   result_t     err;
   bitvec_t *val;
@@ -688,7 +688,7 @@ result_t tagdb_tagid(tagdb_t *db, const char *id, tagdb_tag tag)
   return result_OK;
 }
 
-result_t tagdb_untagid(tagdb_t *db, const char *id, tagdb_tag tag)
+result_t tagdb_untagid(tagdb_t *db, const char *id, tagdb_tag_t tag)
 {
   bitvec_t *val;
 
@@ -711,10 +711,10 @@ result_t tagdb_untagid(tagdb_t *db, const char *id, tagdb_tag tag)
 
 /* ----------------------------------------------------------------------- */
 
-result_t tagdb_get_tags_for_id(tagdb_t    *db,
-                               const char *id,
-                               int        *continuation,
-                               tagdb_tag  *tag)
+result_t tagdb_get_tags_for_id(tagdb_t     *db,
+                               const char  *id,
+                               int         *continuation,
+                               tagdb_tag_t *tag)
 {
   bitvec_t *v;
   int       index;
@@ -759,11 +759,11 @@ result_t tagdb_get_tags_for_id(tagdb_t    *db,
 
 struct enumerate_state
 {
-  int         start;
-  int         count;
-  const char *found;
-  tagdb_tag  tag; /* the tag we want */
-  bitvec_t   *want;
+  int          start;
+  int          count;
+  const char  *found;
+  tagdb_tag_t  tag; /* the tag we want */
+  bitvec_t    *want;
   result_t       err;
 };
 
@@ -838,11 +838,11 @@ static int getidbytag_cb(const void *key, const void *value, void *opaque)
   return -1; /* stop the walk now */
 }
 
-result_t tagdb_enumerate_ids_by_tag(tagdb_t   *db,
-                                    tagdb_tag  tag,
-                                    int       *continuation,
-                                    char      *buf,
-                                    size_t     bufsz)
+result_t tagdb_enumerate_ids_by_tag(tagdb_t     *db,
+                                    tagdb_tag_t  tag,
+                                    int         *continuation,
+                                    char        *buf,
+                                    size_t       bufsz)
 {
   struct enumerate_state state;
 
@@ -914,12 +914,12 @@ static int getidbytags_cb(const void *key, const void *value, void *opaque)
   return -1; /* stop the walk now */
 }
 
-result_t tagdb_enumerate_ids_by_tags(tagdb_t         *db,
-                                     const tagdb_tag *tags,
-                                     int              ntags,
-                                     int             *continuation,
-                                     char            *buf,
-                                     size_t           bufsz)
+result_t tagdb_enumerate_ids_by_tags(tagdb_t           *db,
+                                     const tagdb_tag_t *tags,
+                                     int                ntags,
+                                     int               *continuation,
+                                     char              *buf,
+                                     size_t             bufsz)
 {
   result_t                  err;
   bitvec_t              *want = NULL;
