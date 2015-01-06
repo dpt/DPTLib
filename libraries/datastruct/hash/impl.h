@@ -7,20 +7,20 @@
 
 typedef struct hash_node
 {
-  struct hash_node    *next;
-  void                *key;
-  void                *value;
+  struct hash_node      *next;
+  void                  *key;
+  void                  *value;
 }
 hash_node_t;
 
 struct hash
 {
-  hash_fn             *hash_fn;
-  hash_compare        *compare;
-  hash_destroy_key    *destroy_key;
-  hash_destroy_value  *destroy_value;
-  int                  nbins;
-  hash_node_t        **bins;
+  hash_fn_t             *hash_fn;
+  hash_compare_t        *compare;
+  hash_destroy_key_t    *destroy_key;
+  hash_destroy_value_t  *destroy_value;
+  int                    nbins;
+  hash_node_t          **bins;
 };
 
 hash_node_t **hash_lookup_node(hash_t *h, const void *key);

@@ -30,32 +30,32 @@ typedef struct hash T;
 /**
  * A function called to hash the specified key.
  */
-typedef unsigned int (hash_fn)(const void *a);
+typedef unsigned int (hash_fn_t)(const void *a);
 
 /**
  * A function called to compare the two specified keys.
  */
-typedef int (hash_compare)(const void *a, const void *b);
+typedef int (hash_compare_t)(const void *a, const void *b);
 
 /**
  * A function called to destroy the specified key.
  */
-typedef void (hash_destroy_key)(void *key);
+typedef void (hash_destroy_key_t)(void *key);
 
 /**
  * A function called to destroy the specified value.
  */
-typedef void (hash_destroy_value)(void *value);
+typedef void (hash_destroy_value_t)(void *value);
 
 /**
  * A no-op function for use where a hash_destroy_key is expected.
  */
-hash_destroy_key hash_no_destroy_key;
+hash_destroy_key_t hash_no_destroy_key;
 
 /**
  * A no-op function for use where a hash_destroy_value is expected.
  */
-hash_destroy_value hash_no_destroy_value;
+hash_destroy_value_t hash_no_destroy_value;
 
 /**
  * Create a hash.
@@ -69,12 +69,12 @@ hash_destroy_value hash_no_destroy_value;
  *
  * \return Error indication.
  */
-result_t hash_create(int                 nbins,
-                     hash_fn            *fn,
-                     hash_compare       *compare,
-                     hash_destroy_key   *destroy_key,
-                     hash_destroy_value *destroy_value,
-                     T                 **hash);
+result_t hash_create(int                    nbins,
+                     hash_fn_t             *fn,
+                     hash_compare_t        *compare,
+                     hash_destroy_key_t    *destroy_key,
+                     hash_destroy_value_t  *destroy_value,
+                     T                    **hash);
 
 /**
  * Destroy a hash.
