@@ -12,7 +12,7 @@
 
 #include "test/txtscr.h"
 
-struct txtscr_t
+struct txtscr
 {
   int   width, height;
   char *screen;

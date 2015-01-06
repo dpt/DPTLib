@@ -7,7 +7,7 @@
 
 #define T txtscr_t
 
-typedef struct T T;
+typedef struct txtscr T;
 
 T *txtscr_create(int width, int height);
 void txtscr_destroy(T *doomed);
