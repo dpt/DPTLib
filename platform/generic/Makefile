@@ -156,6 +156,10 @@ lint:
 tags:
 	$(CTAGS) -R --sort=yes --c++-kinds=+p --fields=+iaS --extra=+q -f $(ROOT)/tags $(ROOT)
 
+.PHONY: cscope
+cscope:
+	cscope -b -R
+
 .PHONY: astyle
 astyle:
 	astyle --options=$(ROOT)/.astylerc --recursive "$(ROOT)/*.h" "$(ROOT)/*.c"
