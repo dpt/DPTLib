@@ -99,7 +99,7 @@ static result_t concat(ntree_t *t, void *opaque)
   return result_OK;
 }
 
-static result_t tree_to_string(ntree_t *t, ntree_walk_flags flags, int depth,
+static result_t tree_to_string(ntree_t *t, ntree_walk_flags_t flags, int depth,
                                char *buf)
 {
   result_t     err;
@@ -115,7 +115,7 @@ static result_t tree_to_string(ntree_t *t, ntree_walk_flags flags, int depth,
   return err;
 }
 
-static result_t walk_test(ntree_t *t, ntree_walk_flags flags,
+static result_t walk_test(ntree_t *t, ntree_walk_flags_t flags,
                           const char *expected[])
 {
   result_t err;

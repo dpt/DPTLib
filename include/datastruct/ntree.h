@@ -58,7 +58,7 @@ T *ntree_last_child(T *t);
 
 /* ----------------------------------------------------------------------- */
 
-typedef unsigned int ntree_walk_flags;
+typedef unsigned int ntree_walk_flags_t;
 
 #define ntree_WALK_ORDER_MASK (3u << 0)
 #define ntree_WALK_IN_ORDER   (0u << 0)
@@ -69,20 +69,20 @@ typedef unsigned int ntree_walk_flags;
 #define ntree_WALK_BRANCHES   (1u << 3)
 #define ntree_WALK_ALL        (ntree_WALK_LEAVES | ntree_WALK_BRANCHES)
 
-typedef result_t (ntree_walk_fn)(T *t, void *opaque);
+typedef result_t (ntree_walk_fn_t)(T *t, void *opaque);
 
 /* max_depth of 0 means 'walk all', 1..N just walk level 1..N */
-result_t ntree_walk(T               *t,
-                    ntree_walk_flags flags,
-                    int              max_depth,
-                    ntree_walk_fn   *fn,
-                    void            *opaque);
+result_t ntree_walk(T                  *t,
+                    ntree_walk_flags_t  flags,
+                    int                 max_depth,
+                    ntree_walk_fn_t    *fn,
+                    void               *opaque);
 
 /* ----------------------------------------------------------------------- */
 
-typedef result_t (ntree_copy_fn)(void *data, void *opaque, void **newdata);
+typedef result_t (ntree_copy_fn_t)(void *data, void *opaque, void **newdata);
 
-result_t ntree_copy(T *t, ntree_copy_fn *fn, void *opaque, T **new_t);
+result_t ntree_copy(T *t, ntree_copy_fn_t *fn, void *opaque, T **new_t);
 
 #undef T
 

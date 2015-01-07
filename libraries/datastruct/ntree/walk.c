@@ -8,11 +8,11 @@
 
 #include "impl.h"
 
-static result_t walk_in_order(ntree_t         *t,
-                              ntree_walk_flags flags,
-                              int              depth,
-                              ntree_walk_fn   *fn,
-                              void            *opaque)
+static result_t walk_in_order(ntree_t           *t,
+                              ntree_walk_flags_t flags,
+                              int                depth,
+                              ntree_walk_fn_t   *fn,
+                              void              *opaque)
 {
   result_t err;
 
@@ -64,11 +64,11 @@ static result_t walk_in_order(ntree_t         *t,
   return result_OK;
 }
 
-static result_t walk_pre_order(ntree_t         *t,
-                               ntree_walk_flags flags,
-                               int              depth,
-                               ntree_walk_fn   *fn,
-                               void            *opaque)
+static result_t walk_pre_order(ntree_t           *t,
+                               ntree_walk_flags_t flags,
+                               int                depth,
+                               ntree_walk_fn_t   *fn,
+                               void              *opaque)
 {
   result_t err;
 
@@ -110,11 +110,11 @@ static result_t walk_pre_order(ntree_t         *t,
   return result_OK;
 }
 
-static result_t walk_post_order(ntree_t         *t,
-                                ntree_walk_flags flags,
-                                int              depth,
-                                ntree_walk_fn   *fn,
-                                void            *opaque)
+static result_t walk_post_order(ntree_t           *t,
+                                ntree_walk_flags_t flags,
+                                int                depth,
+                                ntree_walk_fn_t   *fn,
+                                void              *opaque)
 {
   result_t err;
 
@@ -156,16 +156,16 @@ static result_t walk_post_order(ntree_t         *t,
   return result_OK;
 }
 
-result_t ntree_walk(ntree_t         *t,
-                    ntree_walk_flags flags,
-                    int              max_depth,
-                    ntree_walk_fn   *fn,
-                    void            *opaque)
+result_t ntree_walk(ntree_t           *t,
+                    ntree_walk_flags_t flags,
+                    int                max_depth,
+                    ntree_walk_fn_t   *fn,
+                    void              *opaque)
 {
   result_t (*walker)(ntree_t *,
-                     ntree_walk_flags,
+                     ntree_walk_flags_t,
                      int,
-                     ntree_walk_fn *,
+                     ntree_walk_fn_t *,
                      void *);
 
   switch (flags & ntree_WALK_ORDER_MASK)
