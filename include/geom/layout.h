@@ -34,7 +34,7 @@ typedef struct layout_element
   }
   data;
 }
-layout_element;
+layout_element_t;
 
 typedef struct layout_spec
 {
@@ -44,12 +44,12 @@ typedef struct layout_spec
   int             spacing;
   int             leading;
 }
-layout_spec;
+layout_spec_t;
 
-result_t layout_place(const layout_spec    *spec,
-                      const layout_element *elements,
-                      int                   nelements,
-                      box_t                *boxes,
-                      int                   nboxes);
+result_t layout_place(const layout_spec_t    *spec,
+                      const layout_element_t *elements,
+                      int                     nelements,
+                      box_t                  *boxes,
+                      int                     nboxes);
 
 #endif /* GEOM_LAYOUT_H */

@@ -12,20 +12,20 @@
 int layout_test(void)
 {
   static const box_t dims = { 0, 0, 8, 8 };
-  static const layout_element elements[] =
+  static const layout_element_t elements[] =
   {
     { layout_BOX, { .box = { 2, 2, 2 } } },
     { layout_BOX, { .box = { 2, 2, 2 } } },
     { layout_BOX, { .box = { 1, INT_MAX, 2 } } },
   };
 
-  result_t    err;
-  packer_t   *packer;
-  layout_spec spec;
-  box_t       boxes[3];
-  int         i;
-  box_t       used;
-  txtscr_t   *scr;
+  result_t      err;
+  packer_t     *packer;
+  layout_spec_t spec;
+  box_t         boxes[3];
+  int           i;
+  box_t         used;
+  txtscr_t     *scr;
 
   packer = packer_create(&dims);
   if (packer == NULL)

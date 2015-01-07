@@ -9,11 +9,11 @@
 
 /* ----------------------------------------------------------------------- */
 
-result_t layout_place(const layout_spec     *spec,
-                      const layout_element  *elements,
-                      int              nelements,
-                      box_t          *boxes,
-                      int              nboxes)
+result_t layout_place(const layout_spec_t    *spec,
+                      const layout_element_t *elements,
+                      int                     nelements,
+                      box_t                  *boxes,
+                      int                     nboxes)
 {
   result_t err = result_OK;
   int      j;
