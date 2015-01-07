@@ -152,7 +152,7 @@ typedef enum cheese_country
   Wales,
   cheese_COUNTRY__LIMIT
 }
-cheese_country;
+cheese_country_t;
 
 typedef enum cheese_region
 {
@@ -164,7 +164,7 @@ typedef enum cheese_region
   Yorkshire,
   cheese_REGION__LIMIT
 }
-cheese_region;
+cheese_region_t;
 
 typedef enum cheese_source
 {
@@ -174,7 +174,7 @@ typedef enum cheese_source
   Sheep,
   cheese_SOURCE__LIMIT
 }
-cheese_source;
+cheese_source_t;
 
 typedef enum cheese_pasteurised
 {
@@ -182,7 +182,7 @@ typedef enum cheese_pasteurised
   Unpasteurised,
   cheese_PASTEURISED__LIMIT
 }
-cheese_pasteurised;
+cheese_pasteurised_t;
 
 /* ----------------------------------------------------------------------- */
 
@@ -193,7 +193,7 @@ static const char *countries[cheese_COUNTRY__LIMIT] =
   "Wales",
 };
 
-static const char *cheese_country_to_string(cheese_country c)
+static const char *cheese_country_to_string(cheese_country_t c)
 {
   if (c < 0 || c >= cheese_COUNTRY__LIMIT)
     return "Unknown country";
@@ -201,15 +201,15 @@ static const char *cheese_country_to_string(cheese_country c)
   return countries[c];
 }
 
-static cheese_country cheese_country_from_string(const char *s)
+static cheese_country_t cheese_country_from_string(const char *s)
 {
   int i;
 
   for (i = 0; i < cheese_COUNTRY__LIMIT; i++)
     if (strcmp(countries[i], s) == 0)
-      return (cheese_country) i;
+      return (cheese_country_t) i;
 
-  return (cheese_country) -1;
+  return (cheese_country_t) -1;
 }
 
 static const char *regions[cheese_REGION__LIMIT] =
@@ -222,7 +222,7 @@ static const char *regions[cheese_REGION__LIMIT] =
   "Yorkshire",
 };
 
-static const char *cheese_region_to_string(cheese_region r)
+static const char *cheese_region_to_string(cheese_region_t r)
 {
   if (r < 0 || r >= cheese_REGION__LIMIT)
     return "Unknown region";
@@ -230,15 +230,15 @@ static const char *cheese_region_to_string(cheese_region r)
   return regions[r];
 }
 
-static cheese_region cheese_region_from_string(const char *s)
+static cheese_region_t cheese_region_from_string(const char *s)
 {
   int i;
 
   for (i = 0; i < cheese_REGION__LIMIT; i++)
     if (strcmp(regions[i], s) == 0)
-      return (cheese_region) i;
+      return (cheese_region_t) i;
 
-  return (cheese_region) -1;
+  return (cheese_region_t) -1;
 }
 
 static const char *sources[cheese_SOURCE__LIMIT] =
@@ -249,7 +249,7 @@ static const char *sources[cheese_SOURCE__LIMIT] =
   "Sheep",
 };
 
-static const char *cheese_source_to_string(cheese_source s)
+static const char *cheese_source_to_string(cheese_source_t s)
 {
   if (s < 0 || s >= cheese_SOURCE__LIMIT)
     return "Unknown source";
@@ -257,15 +257,15 @@ static const char *cheese_source_to_string(cheese_source s)
   return sources[s];
 }
 
-static cheese_source cheese_source_from_string(const char *s)
+static cheese_source_t cheese_source_from_string(const char *s)
 {
   int i;
 
   for (i = 0; i < cheese_SOURCE__LIMIT; i++)
     if (strcmp(sources[i], s) == 0)
-      return (cheese_source) i;
+      return (cheese_source_t) i;
 
-  return (cheese_source) -1;
+  return (cheese_source_t) -1;
 }
 
 static const char *pasteurisations[cheese_PASTEURISED__LIMIT] =
@@ -274,7 +274,7 @@ static const char *pasteurisations[cheese_PASTEURISED__LIMIT] =
   "Unpasteurised",
 };
 
-static const char *cheese_pasteurised_to_string(cheese_pasteurised p)
+static const char *cheese_pasteurised_to_string(cheese_pasteurised_t p)
 {
   if (p < 0 || p >= cheese_PASTEURISED__LIMIT)
     return "Unknown pasteurisation";
@@ -282,15 +282,15 @@ static const char *cheese_pasteurised_to_string(cheese_pasteurised p)
   return pasteurisations[p];
 }
 
-static cheese_pasteurised cheese_pasteurised_from_string(const char *s)
+static cheese_pasteurised_t cheese_pasteurised_from_string(const char *s)
 {
   int i;
 
   for (i = 0; i < cheese_PASTEURISED__LIMIT; i++)
     if (strcmp(pasteurisations[i], s) == 0)
-      return (cheese_pasteurised) i;
+      return (cheese_pasteurised_t) i;
 
-  return (cheese_pasteurised) -1;
+  return (cheese_pasteurised_t) -1;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -299,23 +299,23 @@ typedef struct cheese_key
 {
   char name[32];
 }
-cheese_key;
+cheese_key_t;
 
 typedef struct cheese_value
 {
-  cheese_country     country;
-  cheese_region      region;
-  cheese_source      source1, source2;
-  cheese_pasteurised pasteurised;
-  int                age; /* typical age in months */
+  cheese_country_t     country;
+  cheese_region_t      region;
+  cheese_source_t      source1, source2;
+  cheese_pasteurised_t pasteurised;
+  int                  age; /* typical age in months */
 }
-cheese_value;
+cheese_value_t;
 
 /* ----------------------------------------------------------------------- */
 
 static result_t cheese_format_key(const void *vkey, char *buf, size_t len, void *opaque)
 {
-  const cheese_key *key = vkey;
+  const cheese_key_t *key = vkey;
 
   NOT_USED(opaque);
 
@@ -327,7 +327,7 @@ static result_t cheese_format_key(const void *vkey, char *buf, size_t len, void 
 
 static result_t cheese_format_value(const void *vvalue, char *buf, size_t len, void *opaque)
 {
-  const cheese_value *value = vvalue;
+  const cheese_value_t *value = vvalue;
 
   NOT_USED(opaque);
 
@@ -376,19 +376,19 @@ static result_t cheese_unformat_value(const char *buf,
                                       void      **pvalue,
                                       void       *opaque)
 {
-  cheese_value *value;
-  int           rc;
-  char          country[100];
-  char          region[100];
-  char          source1[100];
-  char          source2[100];
-  char          pasteurised[100];
-  int           age;
+  cheese_value_t *value;
+  int             rc;
+  char            country[100];
+  char            region[100];
+  char            source1[100];
+  char            source2[100];
+  char            pasteurised[100];
+  int             age;
 
   NOT_USED(len);
   NOT_USED(opaque);
 
-  value = malloc(sizeof(cheese_value));
+  value = malloc(sizeof(cheese_value_t));
   if (value == NULL)
     return result_OOM;
 
@@ -437,8 +437,8 @@ static const pickle_unformat_methods_t unformat_cheese_methods =
 
 static const struct
 {
-  cheese_key   key;
-  cheese_value value;
+  cheese_key_t   key;
+  cheese_value_t value;
 }
 cheeses[] =
 {
@@ -493,7 +493,7 @@ static result_t pickle__test2_write(void)
 
     err = hash_insert(d,
              (char *) cheeses[i].key.name,
-    (cheese_value *) &cheeses[i].value);
+   (cheese_value_t *) &cheeses[i].value);
     if (err)
       goto Failure;
   }

@@ -22,13 +22,13 @@
 
 /* ----------------------------------------------------------------------- */
 
-typedef struct unpickle__state unpickle__state;
+typedef struct unpickle__state unpickle__state_t;
 
-typedef result_t (*lineparser)(unpickle__state *, char *, void *);
+typedef result_t (*lineparser_t)(unpickle__state_t *, char *, void *);
 
 struct unpickle__state
 {
-  lineparser                       parse;
+  lineparser_t                     parse;
 
   const pickle_writer_methods_t   *writer;
   const pickle_unformat_methods_t *unformat;
@@ -40,9 +40,9 @@ struct unpickle__state
 
 /* ----------------------------------------------------------------------- */
 
-static result_t unpickle__parse_line(unpickle__state *state,
-                                     char            *buf,
-                                     void            *opaque)
+static result_t unpickle__parse_line(unpickle__state_t *state,
+                                     char              *buf,
+                                     void              *opaque)
 {
   result_t err;
 
@@ -96,9 +96,9 @@ static result_t unpickle__parse_line(unpickle__state *state,
   return result_OK;
 }
 
-static result_t unpickle__parse_first_line(unpickle__state *state,
-                                           char            *buf,
-                                           void            *opaque)
+static result_t unpickle__parse_first_line(unpickle__state_t *state,
+                                           char              *buf,
+                                           void              *opaque)
 {
   static const char signature[] = PICKLE_SIGNATURE;
 
@@ -122,13 +122,13 @@ result_t pickle_unpickle(const char                      *filename,
                          const pickle_unformat_methods_t *unformat,
                          void                            *opaque)
 {
-  result_t         err;
-  const size_t     bufsz = READBUFSZ;
-  FILE            *f = NULL;
-  unpickle__state *state;
-  int              occupied;
-  int              used;
-  void            *wstate = NULL;
+  result_t           err;
+  const size_t       bufsz = READBUFSZ;
+  FILE              *f = NULL;
+  unpickle__state_t *state;
+  int                occupied;
+  int                used;
+  void              *wstate = NULL;
 
   f = fopen(filename, "rb");
   if (f == NULL)
