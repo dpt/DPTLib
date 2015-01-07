@@ -34,13 +34,13 @@ typedef struct stream_packbits_decomp
                                   * PackBits algorithm can generate, i.e. at
                                   * least 128 bytes. */
 }
-stream_packbits_decomp;
+stream_packbits_decomp_t;
 
 static int stream_packbits_decomp_get(stream_t *s)
 {
-  stream_packbits_decomp *sm = (stream_packbits_decomp *) s;
-  unsigned char          *p;
-  unsigned char          *end;
+  stream_packbits_decomp_t *sm = (stream_packbits_decomp_t *) s;
+  unsigned char            *p;
+  unsigned char            *end;
 
   /* are we only called when buffer empty? */
   assert(sm->base.buf == sm->base.end);
@@ -170,7 +170,7 @@ exit:
 
 result_t stream_packbitsdecomp_create(stream_t *input, int bufsz, stream_t **s)
 {
-  stream_packbits_decomp *sp;
+  stream_packbits_decomp_t *sp;
 
   if (bufsz <= 0)
     bufsz = 128;
@@ -180,7 +180,7 @@ result_t stream_packbitsdecomp_create(stream_t *input, int bufsz, stream_t **s)
 
   assert(input);
 
-  sp = malloc(offsetof(stream_packbits_decomp, buffer) + bufsz);
+  sp = malloc(offsetof(stream_packbits_decomp_t, buffer) + bufsz);
   if (!sp)
     return result_OOM;
 

@@ -30,7 +30,7 @@ typedef enum Index
   PackBitsDecomp,
   MaxStreams,
 }
-Index;
+Index_t;
 
 #if !USEFILE
 static const unsigned char input[] =

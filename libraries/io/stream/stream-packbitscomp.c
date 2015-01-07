@@ -41,7 +41,7 @@ typedef struct stream_packbitscomp
   int            bufsz;
   unsigned char  buffer[UNKNOWN];
 }
-stream_packbitscomp;
+stream_packbitscomp_t;
 
 static result_t stream_packbitscomp_op(stream_t *s, stream_opcode_t op, void *arg)
 {
@@ -52,7 +52,7 @@ static result_t stream_packbitscomp_op(stream_t *s, stream_opcode_t op, void *ar
   return result_STREAM_UNKNOWN_OP;
 }
 
-static void stream_packbitscomp_reset(stream_packbitscomp *c)
+static void stream_packbitscomp_reset(stream_packbitscomp_t *c)
 {
   c->state       = Initial;
   c->lastliteral = NULL;
@@ -61,11 +61,11 @@ static void stream_packbitscomp_reset(stream_packbitscomp *c)
 
 static int stream_packbitscomp_get(stream_t *s)
 {
-  stream_packbitscomp *sm = (stream_packbitscomp *) s;
-  unsigned char       *p;
-  unsigned char       *end;
-  int                  n;
-  int                  first;
+  stream_packbitscomp_t *sm = (stream_packbitscomp_t *) s;
+  unsigned char         *p;
+  unsigned char         *end;
+  int                    n;
+  int                    first;
 
   /* are we only called when buffer empty? */
   assert(sm->base.buf == sm->base.end);
@@ -253,7 +253,7 @@ again: /* more of the current run left to pack */
 
 result_t stream_packbitscomp_create(stream_t *input, int bufsz, stream_t **s)
 {
-  stream_packbitscomp *sp;
+  stream_packbitscomp_t *sp;
 
   if (bufsz <= 0)
     bufsz = 128;
@@ -264,7 +264,7 @@ result_t stream_packbitscomp_create(stream_t *input, int bufsz, stream_t **s)
 
   assert(input);
 
-  sp = malloc(offsetof(stream_packbitscomp, buffer) + bufsz);
+  sp = malloc(offsetof(stream_packbitscomp_t, buffer) + bufsz);
   if (!sp)
     return result_OOM;
 
