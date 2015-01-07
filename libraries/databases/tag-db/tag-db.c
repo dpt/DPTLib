@@ -392,7 +392,7 @@ typedef struct tagdb_tag_entry
   atom_t index;
   int    count;
 }
-tagdb_tag_entry;
+tagdb_tag_entry_t;
 
 result_t tagdb_add(tagdb_t *db, const char *name, tagdb_tag_t *ptag)
 {

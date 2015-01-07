@@ -77,11 +77,11 @@ typedef struct
   tagdb_tag_t  tags[8]; /* 8 == NELEMS(tagnames) */
   tagdb_t     *db;
 }
-State;
+State_t;
 
 /* ----------------------------------------------------------------------- */
 
-static result_t test_open(State *state)
+static result_t test_open(State_t *state)
 {
   result_t err;
 
@@ -90,7 +90,7 @@ static result_t test_open(State *state)
   return err;
 }
 
-static result_t test_add_tags(State *state)
+static result_t test_add_tags(State_t *state)
 {
   result_t err;
   int   i;
@@ -113,7 +113,7 @@ Failure:
   return err;
 }
 
-static result_t test_rename_tags(State *state)
+static result_t test_rename_tags(State_t *state)
 {
   result_t err;
   int   i;
@@ -147,7 +147,7 @@ Failure:
   return err;
 }
 
-static result_t test_enumerate_tags(State *state)
+static result_t test_enumerate_tags(State_t *state)
 {
   result_t err;
   int   cont;
@@ -188,7 +188,7 @@ Failure:
   return err;
 }
 
-static result_t test_tag_id(State *state)
+static result_t test_tag_id(State_t *state)
 {
   result_t err;
   int   i;
@@ -216,7 +216,7 @@ Failure:
   return err;
 }
 
-static result_t test_get_tags_for_id(State *state)
+static result_t test_get_tags_for_id(State_t *state)
 {
   result_t err;
   int   i;
@@ -276,7 +276,7 @@ static void printdigest(const unsigned char *digest)
     printf("%02x", digest[j]);
 }
 
-static result_t test_enumerate_ids(State *state)
+static result_t test_enumerate_ids(State_t *state)
 {
   result_t err;
   int      cont;
@@ -306,7 +306,7 @@ Failure:
   return err;
 }
 
-static result_t test_enumerate_ids_by_tag(State *state)
+static result_t test_enumerate_ids_by_tag(State_t *state)
 {
   result_t err;
   int      i;
@@ -348,7 +348,7 @@ Failure:
   return err;
 }
 
-static result_t test_enumerate_ids_by_tags(State *state)
+static result_t test_enumerate_ids_by_tags(State_t *state)
 {
   result_t err;
   int      cont;
@@ -386,7 +386,7 @@ Failure:
   return err;
 }
 
-static result_t test_tag_remove(State *state)
+static result_t test_tag_remove(State_t *state)
 {
   int i;
 
@@ -396,7 +396,7 @@ static result_t test_tag_remove(State *state)
   return result_OK;
 }
 
-static result_t test_commit(State *state)
+static result_t test_commit(State_t *state)
 {
   result_t err;
 
@@ -407,7 +407,7 @@ static result_t test_commit(State *state)
   return result_OK;
 }
 
-static result_t test_forget(State *state)
+static result_t test_forget(State_t *state)
 {
   int i;
 
@@ -417,14 +417,14 @@ static result_t test_forget(State *state)
   return result_OK;
 }
 
-static result_t test_close(State *state)
+static result_t test_close(State_t *state)
 {
   tagdb_close(state->db); /* remember that this calls _commit */
 
   return result_OK;
 }
 
-static result_t test_delete(State *state)
+static result_t test_delete(State_t *state)
 {
   NOT_USED(state);
 
@@ -469,7 +469,7 @@ static const unsigned char *randomid(void)
   return buf;
 }
 
-static result_t bash_enumerate(State *state)
+static result_t bash_enumerate(State_t *state)
 {
   result_t err;
   int      cont;
@@ -533,7 +533,7 @@ failure:
   return err;
 }
 
-static result_t test_bash(State *state)
+static result_t test_bash(State_t *state)
 {
   const int ntags       = 100;   /* number of tags to generate */
   const int nids        = 10;    /* number of IDs to generate */
@@ -815,18 +815,18 @@ failure:
 
 /* ----------------------------------------------------------------------- */
 
-typedef result_t testfn(State *state);
+typedef result_t testfn_t(State_t *state);
 
-typedef struct
+typedef struct Test
 {
-  testfn     *fn;
+  testfn_t   *fn;
   const char *desc;
 }
-Test;
+Test_t;
 
 result_t tagdb_test(void)
 {
-  static const Test tests[] =
+  static const Test_t tests[] =
   {
     { test_open,
       "open" },
@@ -865,8 +865,8 @@ result_t tagdb_test(void)
   };
 
   result_t err;
-  State state;
-  int   i;
+  State_t  state;
+  int      i;
 
   printf("test: init\n");
 
