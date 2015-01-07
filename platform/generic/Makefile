@@ -27,7 +27,8 @@ ROOT:=$(abspath $(dir $(lastword $(MAKEFILE_LIST)))../..)
 PUBLIC_INCLUDES=$(ROOT)/include
 LIBRARIES=$(ROOT)/libraries
 PLATFORM_DIR=$(ROOT)/platform/generic
-LIB=$(PROJECT)
+APPS_DIR=$(ROOT)/apps
+LIB=$(PROJECT).a
 TESTAPP=$(PROJECT)Test
 
 # Tools (choices)
@@ -105,15 +106,19 @@ endif
 # http://stackoverflow.com/a/6145814/306867
 FILTER_OUT = $(foreach v,$(2),$(if $(findstring $(1),$(v)),,$(v)))
 
-ALLSRC=$(shell find $(LIBRARIES) $(PLATFORM_DIR) -type f -name '*.c' -print)
+LIBSRC=$(shell find $(LIBRARIES) $(PLATFORM_DIR) -type f -name '*.c' -print)
 
-SRC=$(call FILTER_OUT,test, $(ALLSRC))
+SRC=$(call FILTER_OUT,test, $(LIBSRC))
 OBJ=$(SRC:.c=.o)
 DEP=$(SRC:.c=.d)
 
-TESTSRC=$(filter-out $(SRC), $(ALLSRC))
+TESTSRC=$(filter-out $(SRC), $(LIBSRC))
 TESTOBJ=$(TESTSRC:.c=.o)
 TESTDEP=$(TESTSRC:.c=.d)
+
+TESTAPPSRC=$(shell find $(APPS_DIR)/test -type f -name '*.c' -print)
+TESTAPPOBJ=$(TESTAPPSRC:.c=.o)
+TESTAPPDEP=$(TESTAPPSRC:.c=.d)
 
 .c.o:;	$(CC) -c $(CFLAGS) $< -o $@
 
@@ -141,7 +146,7 @@ $(LIB): $(OBJ)
 .PHONY:	test
 test:	$(TESTAPP)
 
-$(TESTAPP): $(TESTOBJ) $(LIB)
+$(TESTAPP): $(TESTAPPOBJ) $(TESTOBJ) $(LIB)
 	$(LD) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 .PHONY: analyze
@@ -172,8 +177,11 @@ clean:
 	-rm -f $(LIB)
 	-rm -f $(TESTOBJ)
 	-rm -f $(TESTDEP)
+	-rm -f $(TESTAPPOBJ)
+	-rm -f $(TESTAPPDEP)
 	-rm -f $(TESTAPP)
 
 -include $(DEP)
 -include $(TESTDEP)
+-include $(TESTAPPDEP)
 

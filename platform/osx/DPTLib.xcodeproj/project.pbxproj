@@ -19,10 +19,10 @@
 		55513863165463EB007F3565 /* shrink.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379716545786007F3565 /* shrink.c */; };
 		55513865165463EB007F3565 /* pack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379B16545786007F3565 /* pack.c */; };
 		55513866165463EB007F3565 /* unpack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379C16545786007F3565 /* unpack.c */; };
-		556DE2071A4615DC009BBE63 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE2061A4615DC009BBE63 /* main.c */; };
 		556DE20B1A49983C009BBE63 /* ensure.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE20A1A49983C009BBE63 /* ensure.c */; };
 		556DE20D1A49A1FB009BBE63 /* insert.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE20C1A49A1FB009BBE63 /* insert.c */; };
 		55B22A231A4063000022ED84 /* barith.c in Sources */ = {isa = PBXBuildFile; fileRef = 55B22A221A4063000022ED84 /* barith.c */; };
+		55DC56221A5DB44E003A2985 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 55DC56211A5DB44E003A2985 /* main.c */; };
 		55E557F21A3362D1001FB51F /* bsearch-int.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557EE1A33628D001FB51F /* bsearch-int.c */; };
 		55E557F31A3362D1001FB51F /* bsearch-short.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557EF1A33628D001FB51F /* bsearch-short.c */; };
 		55E557F41A3362D1001FB51F /* bsearch-uint.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557F01A33628D001FB51F /* bsearch-uint.c */; };
@@ -211,10 +211,10 @@
 		5551379716545786007F3565 /* shrink.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = shrink.c; sourceTree = "<group>"; };
 		5551379B16545786007F3565 /* pack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pack.c; sourceTree = "<group>"; };
 		5551379C16545786007F3565 /* unpack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unpack.c; sourceTree = "<group>"; };
-		556DE2061A4615DC009BBE63 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		556DE20A1A49983C009BBE63 /* ensure.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ensure.c; sourceTree = "<group>"; };
 		556DE20C1A49A1FB009BBE63 /* insert.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = insert.c; sourceTree = "<group>"; };
 		55B22A221A4063000022ED84 /* barith.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = barith.c; sourceTree = "<group>"; };
+		55DC56211A5DB44E003A2985 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		55E557EB1A336220001FB51F /* bsearch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bsearch.h; sourceTree = "<group>"; };
 		55E557ED1A33628D001FB51F /* bsearch-impl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = "bsearch-impl.h"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		55E557EE1A33628D001FB51F /* bsearch-int.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "bsearch-int.c"; sourceTree = "<group>"; };
@@ -402,6 +402,7 @@
 		55513741165456FA007F3565 = {
 			isa = PBXGroup;
 			children = (
+				55DC561F1A5DB44E003A2985 /* apps */,
 				5551375316545786007F3565 /* include */,
 				5551377216545786007F3565 /* libraries */,
 				55513808165460EF007F3565 /* Frameworks */,
@@ -617,14 +618,6 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		556DE2051A4615DC009BBE63 /* main */ = {
-			isa = PBXGroup;
-			children = (
-				556DE2061A4615DC009BBE63 /* main.c */,
-			);
-			path = main;
-			sourceTree = "<group>";
-		};
 		55A1D6B91A3139CA00CFC972 /* base */ = {
 			isa = PBXGroup;
 			children = (
@@ -638,6 +631,23 @@
 				55B22A221A4063000022ED84 /* barith.c */,
 			);
 			path = barith;
+			sourceTree = "<group>";
+		};
+		55DC561F1A5DB44E003A2985 /* apps */ = {
+			isa = PBXGroup;
+			children = (
+				55DC56201A5DB44E003A2985 /* test */,
+			);
+			name = apps;
+			path = ../../apps;
+			sourceTree = "<group>";
+		};
+		55DC56201A5DB44E003A2985 /* test */ = {
+			isa = PBXGroup;
+			children = (
+				55DC56211A5DB44E003A2985 /* main.c */,
+			);
+			path = test;
 			sourceTree = "<group>";
 		};
 		55E557EC1A33628D001FB51F /* bsearch */ = {
@@ -1075,7 +1085,6 @@
 		55F7E0341A391AA800A64017 /* test */ = {
 			isa = PBXGroup;
 			children = (
-				556DE2051A4615DC009BBE63 /* main */,
 				55F7E0351A391AA800A64017 /* txtscr */,
 			);
 			path = test;
@@ -1285,7 +1294,6 @@
 				55E558CD1A34F2B3001FB51F /* create.c in Sources */,
 				55E559001A34F2D0001FB51F /* width.c in Sources */,
 				55E558021A337785001FB51F /* rev-l-m.c in Sources */,
-				556DE2071A4615DC009BBE63 /* main.c in Sources */,
 				55E558D31A34F2B3001FB51F /* walk-cont.c in Sources */,
 				55513866165463EB007F3565 /* unpack.c in Sources */,
 				55E558F21A34F2CA001FB51F /* nth-child.c in Sources */,
@@ -1303,6 +1311,7 @@
 				55F7E0381A391B4F00A64017 /* packer-test.c in Sources */,
 				55F7E0031A37A04100A64017 /* pickle-test.c in Sources */,
 				55F7DFFD1A373FB800A64017 /* vector-test.c in Sources */,
+				55DC56221A5DB44E003A2985 /* main.c in Sources */,
 				55F7DFF91A373F5F00A64017 /* bitvec-test.c in Sources */,
 				55F7DFFB1A373F8D00A64017 /* list-test.c in Sources */,
 				55F7E0021A37A03D00A64017 /* tag-db-test.c in Sources */,
