@@ -192,7 +192,7 @@ failure:
 #define MAXHEIGHT 36
 #define PADDING   2
 
-static result_t subtest2(packer_loc loc, packer_cleardir clear)
+static result_t subtest2(packer_loc_t loc, packer_cleardir_t clear)
 {
   static const box_t pagedims = {       0,       0, MAXWIDTH, MAXHEIGHT };
   static const box_t margins  = { PADDING, PADDING,  PADDING,   PADDING };
@@ -371,8 +371,8 @@ static int test2(void)
 {
   static const struct
   {
-    packer_loc      loc;
-    packer_cleardir clear;
+    packer_loc_t      loc;
+    packer_cleardir_t clear;
   }
   tests[] =
   {

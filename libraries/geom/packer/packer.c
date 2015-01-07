@@ -278,7 +278,7 @@ COMPARE_AREAS(top_right,    b->y1 - a->y1, b->x1 - a->x1, a->x0 - b->x0)
 COMPARE_AREAS(bottom_left,  a->y0 - b->y0, a->x0 - b->x0, b->x1 - a->x1)
 COMPARE_AREAS(bottom_right, a->y0 - b->y0, b->x1 - a->x1, a->x0 - b->x0)
 
-static void packer_sort(packer_t *packer, packer_sortdir order)
+static void packer_sort(packer_t *packer, packer_sortdir_t order)
 {
   box_t       *areas;
   int           usedareas;
@@ -373,7 +373,7 @@ static const box_t *packer_next(packer_t *packer)
   return &packer->nextarea;
 }
 
-static const box_t *packer_start(packer_t *packer, packer_sortdir order)
+static const box_t *packer_start(packer_t *packer, packer_sortdir_t order)
 {
   packer_sort(packer, order);
 
@@ -386,11 +386,11 @@ static const box_t *packer_start(packer_t *packer, packer_sortdir order)
 
 /* ----------------------------------------------------------------------- */
 
-int packer_next_width(packer_t *packer, packer_loc loc)
+int packer_next_width(packer_t *packer, packer_loc_t loc)
 {
   const box_t *b;
 
-  b = packer_start(packer, (packer_sortdir) loc);
+  b = packer_start(packer, (packer_sortdir_t) loc);
   if (!b)
     return 0;
 
@@ -413,11 +413,11 @@ result_t packer_place_at(packer_t *packer, const box_t *area)
   return remove_area(packer, &b);
 }
 
-result_t packer_place_by(packer_t  *packer,
-                         packer_loc loc,
-                         int        w,
-                         int        h,
-                         const box_t   **pos)
+result_t packer_place_by(packer_t     *packer,
+                         packer_loc_t  loc,
+                         int           w,
+                         int           h,
+                         const box_t **pos)
 {
   result_t         err;
   const box_t *b;
@@ -428,7 +428,7 @@ result_t packer_place_by(packer_t  *packer,
   if (w == 0 || h == 0)
     return result_PACKER_EMPTY;
 
-  for (b = packer_start(packer, (packer_sortdir) loc);
+  for (b = packer_start(packer, (packer_sortdir_t) loc);
        b;
        b = packer_next(packer))
   {
@@ -487,10 +487,10 @@ result_t packer_place_by(packer_t  *packer,
 
 /* ----------------------------------------------------------------------- */
 
-result_t packer_clear(packer_t *packer, packer_cleardir clear)
+result_t packer_clear(packer_t *packer, packer_cleardir_t clear)
 {
   result_t         err;
-  int           left, right;
+  int          left, right;
   const box_t *b;
   box_t        clearbox;
 
@@ -543,7 +543,7 @@ result_t packer_clear(packer_t *packer, packer_cleardir clear)
 
 /* ----------------------------------------------------------------------- */
 
-result_t packer_map(packer_t *packer, packer_map_fn *fn, void *opaque)
+result_t packer_map(packer_t *packer, packer_map_fn_t *fn, void *opaque)
 {
   result_t         err;
   const box_t *b;

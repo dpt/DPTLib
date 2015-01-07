@@ -38,11 +38,11 @@ layout_element_t;
 
 typedef struct layout_spec
 {
-  packer_t       *packer;
-  packer_loc      loc;
-  packer_cleardir clear;
-  int             spacing;
-  int             leading;
+  packer_t         *packer;
+  packer_loc_t      loc;
+  packer_cleardir_t clear;
+  int               spacing;
+  int               leading;
 }
 layout_spec_t;
 

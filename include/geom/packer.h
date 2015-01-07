@@ -30,10 +30,10 @@ typedef enum packer_loc
   packer_LOC_BOTTOM_RIGHT,
   packer_LOC__LIMIT,
 }
-packer_loc;
+packer_loc_t;
 
 /* returns the width of the next available area. */
-int packer_next_width(T *packer, packer_loc loc);
+int packer_next_width(T *packer, packer_loc_t loc);
 
 /* places an absolutely positioned box 'area'. ignores any margins. */
 result_t packer_place_at(T           *packer,
@@ -42,7 +42,7 @@ result_t packer_place_at(T           *packer,
 /* places a box of dimensions (w,h) in the next free area determined by
  * location 'loc'. */
 result_t packer_place_by(T            *packer,
-                         packer_loc    loc,
+                         packer_loc_t  loc,
                          int           w,
                          int           h,
                          const box_t **pos);
@@ -54,14 +54,14 @@ typedef enum packer_cleardir
   packer_CLEAR_BOTH,
   packer_CLEAR__LIMIT,
 }
-packer_cleardir;
+packer_cleardir_t;
 
 /* clears up to the next specified boundary. */
-result_t packer_clear(T *packer, packer_cleardir clear);
+result_t packer_clear(T *packer, packer_cleardir_t clear);
 
-typedef result_t (packer_map_fn)(const box_t *area, void *opaque);
+typedef result_t (packer_map_fn_t)(const box_t *area, void *opaque);
 /* calls 'fn' for every area known about. */
-result_t packer_map(T *packer, packer_map_fn *fn, void *opaque);
+result_t packer_map(T *packer, packer_map_fn_t *fn, void *opaque);
 
 /* returns the union of all areas used. ignores margins. */
 const box_t *packer_get_consumed_area(const T *packer);
