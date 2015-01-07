@@ -28,9 +28,9 @@ void list_add_to_head(T *anchor, T *item);
 
 void list_remove(T *anchor, T *doomed);
 
-typedef int (list_walk_callback)(T *, void *);
+typedef int (list_walk_callback_t)(T *, void *);
 
-int list_walk(T *anchor, list_walk_callback *cb, void *opaque);
+int list_walk(T *anchor, list_walk_callback_t *cb, void *opaque);
 
 /* Searches the linked list looking for a key. The key is specified as an
  * offset from the start of the linked list element. It is an int-sized unit.

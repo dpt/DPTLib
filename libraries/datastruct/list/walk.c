@@ -1,7 +1,7 @@
 
 #include "datastruct/list.h"
 
-int list_walk(list_t *anchor, list_walk_callback cb, void *opaque)
+int list_walk(list_t *anchor, list_walk_callback_t cb, void *opaque)
 {
   list_t *e;
   list_t *next;
