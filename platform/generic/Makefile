@@ -131,6 +131,7 @@ usage:
 	@echo '  lint		Perform a lint run'
 	@echo '  tags		Generate tags'
 	@echo '  astyle	Run astyle on the source'
+	@echo '  docs		Generate docs'
 	@echo
 	@echo 'MODE=<release|debug>'
 
@@ -168,6 +169,10 @@ cscope:
 .PHONY: astyle
 astyle:
 	astyle --options=$(ROOT)/.astylerc --recursive "$(ROOT)/*.h" "$(ROOT)/*.c"
+
+.PHONY: docs
+docs:
+	doxygen Doxyfile
 
 .PHONY: clean
 clean:
