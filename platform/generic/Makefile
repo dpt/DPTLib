@@ -60,11 +60,6 @@ else ifeq ($(TARGET),osx-any-clang)
 	LD=$(CLANG) $(SANITIZE)
 	AR=libtool
 	ARFLAGS=-static -o
-else ifeq ($(TARGET),linux-arm-gcc)
-	GCC=arm-linux-gnueabi-gcc-4.7
-	CC=$(GCC)
-	LD=$(GCC)
-	# TODO: AR
 else ifeq ($(TARGET),linux-any-clang)
 	CLANG=clang
 	CLANGFLAGS=-ferror-limit=2
@@ -77,6 +72,12 @@ else ifeq ($(TARGET),linux-arm-any)
 	# armv5-none-eabi -fpu=hard
 	CC=gcc
 	LD=gcc
+else ifeq ($(TARGET),linux-arm-gcc)
+	GCC=arm-linux-gnueabi-gcc-4.7
+	CROSSFLAGS=-mcpu=arm7tdmi -mthumb -mfloat-abi=soft
+	CC=$(GCC)
+	LD=$(GCC)
+	# TODO: AR
 else
 	CC=gcc
 	LD=gcc
@@ -84,7 +85,12 @@ else
 	ARFLAGS=rc
 endif
 
-CTAGS=/usr/local/bin/ctags
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+	CTAGS=/usr/local/bin/ctags
+else
+	CTAGS=ctags
+endif
 
 # Tools (config)
 #
@@ -98,7 +104,7 @@ LDFLAGS=$(CROSSFLAGS)
 LDLIBS=$(LIBS)
 
 ifeq ($(MODE),release)
-  CFLAGS+=-O2 -DNDEBUG
+  CFLAGS+=-Os -DNDEBUG
 else
   CFLAGS+=-g
 endif
@@ -130,6 +136,7 @@ usage:
 	@echo '  analyze	Perform a clang analyze run'
 	@echo '  lint		Perform a lint run'
 	@echo '  tags		Generate tags'
+	@echo '  cscope		Generate cscope database'
 	@echo '  astyle	Run astyle on the source'
 	@echo '  docs		Generate docs'
 	@echo
@@ -164,7 +171,7 @@ tags:
 
 .PHONY: cscope
 cscope:
-	cscope -b -R
+	cscope -b -f $(ROOT)/cscope.out -R -s $(ROOT)
 
 .PHONY: astyle
 astyle:
@@ -177,14 +184,16 @@ docs:
 .PHONY: clean
 clean:
 	@echo 'Cleaning...'
-	-rm -f $(OBJ)
-	-rm -f $(DEP)
-	-rm -f $(LIB)
-	-rm -f $(TESTOBJ)
-	-rm -f $(TESTDEP)
-	-rm -f $(TESTAPPOBJ)
-	-rm -f $(TESTAPPDEP)
-	-rm -f $(TESTAPP)
+	-@rm -vf $(OBJ)
+	-@rm -vf $(DEP)
+	-@rm -vf $(LIB)
+	-@rm -vf $(TESTOBJ)
+	-@rm -vf $(TESTDEP)
+	-@rm -vf $(TESTAPPOBJ)
+	-@rm -vf $(TESTAPPDEP)
+	-@rm -vf $(TESTAPP)
+	-@rm -vf $(ROOT)/tags
+	-@rm -vrf $(ROOT)/doxydocs
 
 -include $(DEP)
 -include $(TESTDEP)
