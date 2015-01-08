@@ -13,4 +13,7 @@ struct vector
   void  *base;      /* vector itself */
 };
 
+/* Calculate address of element 'i'. */
+#define VECTOR_INDEX(v, i) ((char *) v->base + (i) * v->width)
+
 #endif /* IMPL_H */

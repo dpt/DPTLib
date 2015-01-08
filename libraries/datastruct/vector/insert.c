@@ -12,7 +12,7 @@
 
 #include "impl.h"
 
-result_t vector_insert(vector_t *v, const void *element)
+result_t vector_insert(vector_t *v, const void *value)
 {
   result_t  err;
   size_t    used;
@@ -26,7 +26,7 @@ result_t vector_insert(vector_t *v, const void *element)
   base = vector_get(v, (int) used);
   assert(base != NULL); /* can't fail, so assert */
   
-  memcpy(base, element, v->width);
+  memcpy(base, value, v->width);
   v->used++;
   
   return result_OK;

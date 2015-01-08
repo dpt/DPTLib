@@ -10,7 +10,7 @@
 
 #include "impl.h"
 
-void *vector_get(vector_t *v, int i)
+void *vector_get(const vector_t *v, int index)
 {
-  return (char *) v->base + i * v->width;
+  return VECTOR_INDEX(v, index);
 }

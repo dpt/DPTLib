@@ -23,6 +23,7 @@
 		556DE20D1A49A1FB009BBE63 /* insert.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE20C1A49A1FB009BBE63 /* insert.c */; };
 		55B22A231A4063000022ED84 /* barith.c in Sources */ = {isa = PBXBuildFile; fileRef = 55B22A221A4063000022ED84 /* barith.c */; };
 		55DC56221A5DB44E003A2985 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 55DC56211A5DB44E003A2985 /* main.c */; };
+		55DC56271A61C952003A2985 /* set.c in Sources */ = {isa = PBXBuildFile; fileRef = 55DC56261A61C951003A2985 /* set.c */; };
 		55E557F21A3362D1001FB51F /* bsearch-int.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557EE1A33628D001FB51F /* bsearch-int.c */; };
 		55E557F31A3362D1001FB51F /* bsearch-short.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557EF1A33628D001FB51F /* bsearch-short.c */; };
 		55E557F41A3362D1001FB51F /* bsearch-uint.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557F01A33628D001FB51F /* bsearch-uint.c */; };
@@ -215,6 +216,7 @@
 		556DE20C1A49A1FB009BBE63 /* insert.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = insert.c; sourceTree = "<group>"; };
 		55B22A221A4063000022ED84 /* barith.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = barith.c; sourceTree = "<group>"; };
 		55DC56211A5DB44E003A2985 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		55DC56261A61C951003A2985 /* set.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = set.c; sourceTree = "<group>"; };
 		55E557EB1A336220001FB51F /* bsearch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bsearch.h; sourceTree = "<group>"; };
 		55E557ED1A33628D001FB51F /* bsearch-impl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = "bsearch-impl.h"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		55E557EE1A33628D001FB51F /* bsearch-int.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "bsearch-int.c"; sourceTree = "<group>"; };
@@ -932,6 +934,7 @@
 				55E5589E1A34F276001FB51F /* create.c */,
 				55E5589F1A34F276001FB51F /* destroy.c */,
 				55E558A01A34F276001FB51F /* get.c */,
+				55DC56261A61C951003A2985 /* set.c */,
 				556DE20C1A49A1FB009BBE63 /* insert.c */,
 				55E558A11A34F276001FB51F /* impl.h */,
 				55E558A21A34F276001FB51F /* length.c */,
@@ -1256,6 +1259,7 @@
 				55E5591C1A35004E001FB51F /* hash-reader.c in Sources */,
 				5551384B165463EB007F3565 /* stream.c in Sources */,
 				55E558C21A34F2AC001FB51F /* create.c in Sources */,
+				55DC56271A61C952003A2985 /* set.c in Sources */,
 				55E558E31A34F2C3001FB51F /* walk.c in Sources */,
 				55F7E0231A38E38100A64017 /* is-empty.c in Sources */,
 				55E558011A337785001FB51F /* rev-l-block.c in Sources */,

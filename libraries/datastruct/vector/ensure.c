@@ -22,6 +22,8 @@ result_t vector_ensure(vector_t *v, size_t need)
     newbase = realloc(v->base, required * v->width);
     if (newbase == NULL)
       return result_OOM;
+
+    // Note: We're not wiping the new portion of the array.
     
     v->allocated = required;
     v->base      = newbase;

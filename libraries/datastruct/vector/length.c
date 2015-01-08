@@ -10,7 +10,7 @@
 
 #include "impl.h"
 
-int vector_length(const vector_t *v)
+size_t vector_length(const vector_t *v)
 {
   return v->used;
 }
