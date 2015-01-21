@@ -1,5 +1,6 @@
 /* get.c -- vector - flexible array */
 
+#include <assert.h>
 #include <stdlib.h>
 
 #ifdef FORTIFY
@@ -12,5 +13,7 @@
 
 void *vector_get(const vector_t *v, int index)
 {
+  assert(index < v->allocated);
+
   return VECTOR_INDEX(v, index);
 }

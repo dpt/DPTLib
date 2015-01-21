@@ -149,6 +149,17 @@ void vector_set(vector_t *vector, int index, const void *value);
  */
 result_t vector_insert(vector_t *vector, const void *value);
 
+/**
+ * Insert many elements at the end of the vector, allocating memory if required.
+ *
+ * \param[in] vector  Vector to change.
+ * \param[in] values  Array of values to insert.
+ * \param[in] nvalues Number of values to insert.
+ *
+ * \return result_OK or result_OOM.
+ */
+result_t vector_insert_many(vector_t *vector, const void *values, int nvalues);
+
 /* ----------------------------------------------------------------------- */
 
 #endif /* DATASTRUCT_VECTOR_H */
