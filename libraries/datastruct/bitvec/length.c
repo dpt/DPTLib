@@ -1,10 +1,12 @@
 /* length.c -- bit vectors */
 
+#include <stddef.h>
+
 #include "datastruct/bitvec.h"
 
 #include "impl.h"
 
-int bitvec_length(const bitvec_t *v)
+unsigned int bitvec_length(const bitvec_t *v)
 {
-  return v->length << 5;
+  return v->length << LOG2BITSPERWORD;
 }

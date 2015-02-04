@@ -4,14 +4,14 @@
 
 #include "impl.h"
 
-void bitvec_clear(bitvec_t *v, int bit)
+void bitvec_clear(bitvec_t *v, bitvec_index_t bit)
 {
-  int word;
+  unsigned int word;
 
   word = bit >> 5;
 
   if (word >= v->length)
     return;
 
-  v->vec[word] &= ~(1u << (bit & 0x1F));
+  v->vec[word] &= ~(1u << (bit & WORDMASK));
 }

@@ -13,11 +13,11 @@
 
 #include "impl.h"
 
-result_t bitvec_ensure(bitvec_t *v, int need)
+result_t bitvec_ensure(bitvec_t *v, unsigned int need)
 {
   if (need > v->length)
   {
-    int           length;
+    unsigned int  length;
     unsigned int *vec;
 
     length = need;

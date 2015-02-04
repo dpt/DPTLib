@@ -4,14 +4,14 @@
 
 #include "impl.h"
 
-int bitvec_get(const bitvec_t *v, int bit)
+int bitvec_get(const bitvec_t *v, bitvec_index_t bit)
 {
-  int word;
+  unsigned int word;
 
-  word = bit >> 5;
+  word = bit >> LOG2BITSPERWORD;
 
   if (word >= v->length)
     return 0;
 
-  return (v->vec[word] & (1u << (bit & 0x1F))) != 0;
+  return (v->vec[word] & (1u << (bit & WORDMASK))) != 0;
 }

@@ -22,22 +22,24 @@
 
 typedef struct bitvec T;
 
+typedef unsigned int bitvec_index_t;
+
 /* Creates a bit vector big enough to hold 'length' bits.
  * All bits are zero after creation. */
-T *bitvec_create(int length);
+T *bitvec_create(unsigned int length);
 void bitvec_destroy(T *v);
 
-result_t bitvec_set(T *v, int bit);
-void bitvec_clear(T *v, int bit);
-result_t bitvec_toggle(T *v, int bit);
+result_t bitvec_set(T *v, bitvec_index_t bit);
+void bitvec_clear(T *v, bitvec_index_t bit);
+result_t bitvec_toggle(T *v, bitvec_index_t bit);
 
-int bitvec_get(const T *v, int bit);
+int bitvec_get(const T *v, bitvec_index_t bit);
 
 /* Returns the length of the vector in bits. */
-int bitvec_length(const T *v);
+unsigned int bitvec_length(const T *v);
 
 /* Returns the number of set bits in the vector. */
-int bitvec_count(const T *v);
+unsigned int bitvec_count(const T *v);
 
 /* Returns the number of the next set bit after 'n'. */
 /* -1 should be the initial value (bits are numbered 0..) */

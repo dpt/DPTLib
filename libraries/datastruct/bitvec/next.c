@@ -7,17 +7,18 @@
 
 int bitvec_next(const bitvec_t *v, int n)
 {
-  int hi, lo;
+  unsigned int hi;
+  int          lo;
 
   if (!v->vec)
     return -1; /* no vec allocated */
 
   if (n >= 0)
   {
-    hi = n >> 5;
-    lo = n & 0x1f;
+    hi = n >> LOG2BITSPERWORD;
+    lo = n & WORDMASK;
 
-    if (lo == 0x1f) /* at word boundary: skip first step */
+    if (lo == WORDMASK) /* at word boundary: skip first step */
     {
       hi++;
       lo = -1; /* -1 => no mask */
@@ -43,7 +44,7 @@ int bitvec_next(const bitvec_t *v, int n)
 
     bits = LSB(word);
     if (bits)
-      return (hi << 5) + ctz(bits);
+      return (hi << LOG2BITSPERWORD) + ctz(bits);
 
     lo = -1; /* don't mask the next words */
   }

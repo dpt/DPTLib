@@ -5,10 +5,10 @@
 
 #include "impl.h"
 
-int bitvec_count(const bitvec_t *v)
+unsigned int bitvec_count(const bitvec_t *v)
 {
-  int c;
-  int i;
+  unsigned int c;
+  unsigned int i;
 
   c = 0;
   for (i = 0; i < v->length; i++)

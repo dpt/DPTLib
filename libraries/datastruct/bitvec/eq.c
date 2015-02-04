@@ -31,7 +31,7 @@ int bitvec_eq(const bitvec_t *a, const bitvec_t *b)
 {
   unsigned int    al;
   unsigned int    bl;
-  int             l;
+  unsigned int    l;
   const bitvec_t *p; /* the longer one */
 
   al = a->length;
@@ -43,7 +43,7 @@ int bitvec_eq(const bitvec_t *a, const bitvec_t *b)
   {
     int r;
 
-    r = memcmp(a->vec, b->vec, l * 4);
+    r = memcmp(a->vec, b->vec, l * BYTESPERWORD);
     if (r != 0)
       return 0; /* not equal */
   }

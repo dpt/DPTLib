@@ -13,7 +13,7 @@
 
 #include "impl.h"
 
-bitvec_t *bitvec_create(int length)
+bitvec_t *bitvec_create(unsigned int length)
 {
   result_t  err;
   bitvec_t *v;
@@ -25,7 +25,7 @@ bitvec_t *bitvec_create(int length)
   v->length = 0;
   v->vec    = NULL;
 
-  err = bitvec_ensure(v, length >> 5);
+  err = bitvec_ensure(v, length >> LOG2BITSPERWORD);
   if (err)
   {
     assert(err == result_OOM);

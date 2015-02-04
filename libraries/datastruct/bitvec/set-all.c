@@ -15,5 +15,5 @@ void bitvec_set_all(bitvec_t *v)
 
   /* Note: This may set more bits than strictly required. */
 
-  memset(v->vec, 0xff, v->length * 4);
+  memset(v->vec, 0xFF, v->length * BYTESPERWORD);
 }

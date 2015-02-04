@@ -6,18 +6,18 @@
 
 #include "impl.h"
 
-result_t bitvec_toggle(bitvec_t *v, int bit)
+result_t bitvec_toggle(bitvec_t *v, bitvec_index_t bit)
 {
-  result_t err;
-  int      word;
+  result_t     err;
+  unsigned int word;
 
-  word = bit >> 5;
+  word = bit >> LOG2BITSPERWORD;
 
   err = bitvec_ensure(v, word + 1);
   if (err)
     return err;
 
-  v->vec[word] ^= 1u << (bit & 0x1F);
+  v->vec[word] ^= 1u << (bit & WORDMASK);
 
   return result_OK;
 }

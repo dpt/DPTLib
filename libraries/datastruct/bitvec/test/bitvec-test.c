@@ -1,4 +1,5 @@
 
+#include <limits.h>
 #include <stdio.h>
 
 #ifdef FORTIFY
@@ -12,9 +13,9 @@
 
 static void dumpbits(bitvec_t *v)
 {
-  int i;
+  unsigned int i;
 
-  for (i = bitvec_length(v) - 1; i >= 0; i--)
+  for (i = bitvec_length(v) - 1; i != UINT_MAX; i--)
     printf("%d", bitvec_get(v, i));
   printf("\n");
 }
@@ -45,7 +46,7 @@ result_t bitvec_test(void)
   printf("test: get\n");
 
   {
-    int c;
+    unsigned int c;
 
     c = 0;
     for (i = 0; i < NBITS; i++)
@@ -66,7 +67,7 @@ result_t bitvec_test(void)
   printf("test: get\n");
 
   {
-    int c;
+    unsigned int c;
 
     c = 0;
     for (i = 0; i < NBITS; i++)
