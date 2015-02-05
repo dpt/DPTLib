@@ -18,6 +18,8 @@
 #include "oslib/osfind.h"
 #include "oslib/osfscontrol.h"
 #include "oslib/osgbpb.h"
+#else
+#include <unistd.h>
 #endif
 
 #include "base/suppress.h"
@@ -353,6 +355,9 @@ static int prune_cb(const void *key, const void *value, void *opaque)
     /* if not, delete it */
     hash_remove(db->hash, key);
   }
+#else
+  if (access(value, F_OK) != -1)
+    hash_remove(db->hash, key);
 #endif
 
   return 0;
