@@ -450,7 +450,7 @@ static const char *randomtagname(void)
   length = rnd(NELEMS(buf) - 1);
 
   for (i = 0; i < length; i++)
-    buf[i] = 'a' + rnd(26) - 1;
+    buf[i] = (char) ('a' + rnd(26) - 1);
 
   buf[i] = '\0';
 
@@ -459,12 +459,12 @@ static const char *randomtagname(void)
 
 static const unsigned char *randomid(void)
 {
-  static char buf[digestdb_DIGESTSZ];
+  static unsigned char buf[digestdb_DIGESTSZ];
 
   int i;
 
   for (i = 0; i < digestdb_DIGESTSZ; i++)
-    buf[i] = rnd(256);
+    buf[i] = (char) rnd(256);
 
   return buf;
 }

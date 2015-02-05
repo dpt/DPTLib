@@ -58,7 +58,7 @@ result_t tagdb_commit(T *db);
 
 /* tag management */
 
-typedef unsigned int tagdb_tag_t;
+typedef unsigned int tagdb_tag_t; // make int instead?
 
 /* add a new tag */
 result_t tagdb_add(T *db, const char *name, tagdb_tag_t *tag);

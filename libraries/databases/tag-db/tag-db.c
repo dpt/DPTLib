@@ -638,7 +638,7 @@ static void tagdb__tagdec(tagdb_t *db, tagdb_tag_t tag)
 /* This tags and inserts. */
 result_t tagdb_tagid(tagdb_t *db, const char *id, tagdb_tag_t tag)
 {
-  result_t     err;
+  result_t  err;
   bitvec_t *val;
   int       inc;
 
@@ -679,7 +679,7 @@ result_t tagdb_tagid(tagdb_t *db, const char *id, tagdb_tag_t tag)
 
     bitvec_set(val, tag);
 
-    hash_insert(db->hash, (char *) key, val);
+    hash_insert(db->hash, (void *) key, val);
   }
 
   if (inc)
