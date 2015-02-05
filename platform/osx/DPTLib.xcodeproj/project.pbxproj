@@ -19,6 +19,7 @@
 		55513863165463EB007F3565 /* shrink.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379716545786007F3565 /* shrink.c */; };
 		55513865165463EB007F3565 /* pack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379B16545786007F3565 /* pack.c */; };
 		55513866165463EB007F3565 /* unpack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379C16545786007F3565 /* unpack.c */; };
+		555E85B61A840E4D00BBC66C /* bsearch-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 555E85B41A840E4D00BBC66C /* bsearch-test.c */; };
 		556DE20B1A49983C009BBE63 /* ensure.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE20A1A49983C009BBE63 /* ensure.c */; };
 		556DE20D1A49A1FB009BBE63 /* insert.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE20C1A49A1FB009BBE63 /* insert.c */; };
 		55B22A231A4063000022ED84 /* barith.c in Sources */ = {isa = PBXBuildFile; fileRef = 55B22A221A4063000022ED84 /* barith.c */; };
@@ -212,6 +213,7 @@
 		5551379716545786007F3565 /* shrink.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = shrink.c; sourceTree = "<group>"; };
 		5551379B16545786007F3565 /* pack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pack.c; sourceTree = "<group>"; };
 		5551379C16545786007F3565 /* unpack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unpack.c; sourceTree = "<group>"; };
+		555E85B41A840E4D00BBC66C /* bsearch-test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "bsearch-test.c"; path = "test/bsearch-test.c"; sourceTree = "<group>"; };
 		556DE20A1A49983C009BBE63 /* ensure.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ensure.c; sourceTree = "<group>"; };
 		556DE20C1A49A1FB009BBE63 /* insert.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = insert.c; sourceTree = "<group>"; };
 		55B22A221A4063000022ED84 /* barith.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = barith.c; sourceTree = "<group>"; };
@@ -620,6 +622,14 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		555E85B31A840E0300BBC66C /* test */ = {
+			isa = PBXGroup;
+			children = (
+				555E85B41A840E4D00BBC66C /* bsearch-test.c */,
+			);
+			name = test;
+			sourceTree = "<group>";
+		};
 		55A1D6B91A3139CA00CFC972 /* base */ = {
 			isa = PBXGroup;
 			children = (
@@ -660,6 +670,7 @@
 				55E557EF1A33628D001FB51F /* bsearch-short.c */,
 				55E557F01A33628D001FB51F /* bsearch-uint.c */,
 				55E557F11A33628D001FB51F /* bsearch-ushort.c */,
+				555E85B31A840E0300BBC66C /* test */,
 			);
 			path = bsearch;
 			sourceTree = "<group>";
@@ -1311,6 +1322,7 @@
 			files = (
 				55E559281A3A60EF001FB51F /* test.c in Sources */,
 				55511B491A40F49000D572A7 /* test.c in Sources */,
+				555E85B61A840E4D00BBC66C /* bsearch-test.c in Sources */,
 				55F7DFF71A373F2C00A64017 /* atom-test.c in Sources */,
 				55F7E0381A391B4F00A64017 /* packer-test.c in Sources */,
 				55F7E0031A37A04100A64017 /* pickle-test.c in Sources */,

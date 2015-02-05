@@ -51,29 +51,31 @@ extern testfn_t layout_test,
 extern testfn_t stream_test;
 
 /* utils */
-extern testfn_t array_test;
+extern testfn_t array_test,
+                bsearch_test;
 
 /* ----------------------------------------------------------------------- */
 
 static const test_t tests[] =
 {
-  { "atom",   atom_test   },
-  { "bitarr", bitarr_test },
-  { "bitvec", bitvec_test },
-  { "hash",   hash_test   },
-  { "list",   list_test   },
-  { "ntree",  ntree_test  },
-  { "vector", vector_test },
+  { "atom",     atom_test     },
+  { "bitarr",   bitarr_test   },
+  { "bitvec",   bitvec_test   },
+  { "hash",     hash_test     },
+  { "list",     list_test     },
+  { "ntree",    ntree_test    },
+  { "vector",   vector_test   },
 
-  { "pickle", pickle_test },
-  { "tagdb",  tagdb_test  },
+  { "pickle",   pickle_test   },
+  { "tagdb",    tagdb_test    },
 
-  { "layout", layout_test },
-  { "packer", packer_test },
+  { "layout",   layout_test   },
+  { "packer",   packer_test   },
 
-  { "stream", stream_test },
+  { "stream",   stream_test   },
 
-  { "array",  array_test  },
+  { "array",    array_test    },
+  { "bsearch",  bsearch_test  },
 };
 
 static const int ntests = NELEMS(tests);
