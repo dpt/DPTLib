@@ -23,7 +23,9 @@ static const int primes[] =
   97, 101, 103, 107, 109, 113, 127
 };
 
-int vector_test(void)
+result_t vector_test(void); /* suppress "No previous prototype" warning */
+
+result_t vector_test(void)
 {
   vector_t *v;
   int       i;

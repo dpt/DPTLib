@@ -12,6 +12,8 @@
 
 #include "utils/bsearch.h"
 
+result_t bsearch_test(void); /* suppress "No previous prototype" warning */
+
 result_t bsearch_test(void)
 {
   int i;

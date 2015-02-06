@@ -583,6 +583,8 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+result_t pickle_test(void); /* suppress "No previous prototype" warning */
+
 result_t pickle_test(void)
 {
   result_t rc;

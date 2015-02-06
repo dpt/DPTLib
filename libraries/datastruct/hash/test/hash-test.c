@@ -40,6 +40,8 @@ static int my_walk_fn(const void *key, const void *value, void *opaque)
   return 0;
 }
 
+result_t hash_test(void); /* suppress "No previous prototype" warning */
+
 result_t hash_test(void)
 {
   static const struct

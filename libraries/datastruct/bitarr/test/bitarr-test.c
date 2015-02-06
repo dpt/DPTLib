@@ -32,6 +32,8 @@ static void dumpbits(const testbits_t *arr, size_t nbits)
   printf("\n%d bits set\n", c);
 }
 
+result_t bitarr_test(void); /* suppress "No previous prototype" warning */
+
 result_t bitarr_test(void)
 {
   testbits_t arr;

@@ -9,6 +9,8 @@
 #include "base/result.h"
 #include "utils/array.h"
 
+result_t array_test(void); /* suppress "No previous prototype" warning */
+
 result_t array_test(void)
 {
   int delelem1[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };

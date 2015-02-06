@@ -191,6 +191,8 @@ static result_t test_random(atom_set_t *d)
   return result_OK;
 }
 
+result_t atom_test(void); /* suppress "No previous prototype" warning */
+
 result_t atom_test(void)
 {
   result_t   err;

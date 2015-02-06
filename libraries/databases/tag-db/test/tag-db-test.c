@@ -824,6 +824,8 @@ typedef struct Test
 }
 Test_t;
 
+result_t tagdb_test(void); /* suppress "No previous prototype" warning */
+
 result_t tagdb_test(void)
 {
   static const Test_t tests[] =

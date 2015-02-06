@@ -20,6 +20,8 @@ static void dumpbits(bitvec_t *v)
   printf("\n");
 }
 
+result_t bitvec_test(void); /* suppress "No previous prototype" warning */
+
 result_t bitvec_test(void)
 {
   result_t  err;

@@ -203,6 +203,8 @@ static result_t free_data(ntree_t *t, void *opaque)
 
 /* -------------------------------------------------------------------------- */
 
+result_t ntree_test(void); /* suppress "No previous prototype" warning */
+
 result_t ntree_test(void)
 {
   result_t err;

@@ -31,6 +31,8 @@ static int printelement(list_t *e, void *opaque)
   return 0;
 }
 
+result_t list_test(void); /* suppress "No previous prototype" warning */
+
 result_t list_test(void)
 {
   node_t data[] =

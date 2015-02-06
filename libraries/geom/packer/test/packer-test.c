@@ -398,7 +398,9 @@ failure:
   return 1;
 }
 
-int packer_test(void)
+result_t packer_test(void); /* suppress "No previous prototype" warning */
+
+result_t packer_test(void)
 {
   result_t err;
 
