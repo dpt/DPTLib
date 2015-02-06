@@ -26,7 +26,7 @@ int NAME(const TYPE *array, size_t nelems, size_t stride, TYPE want)
 
   stride /= sizeof(*array);
 
-  searchRange = power2le(nelems);
+  searchRange = power2le(nelems); // power2le not expecting 64-bit arg
 
   i = searchRange - 1;
   if (want > array[i * stride])
