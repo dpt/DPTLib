@@ -155,7 +155,7 @@ static const char *randomname(void)
   length = rnd(NELEMS(buf) - 1);
 
   for (i = 0; i < length; i++)
-    buf[i] = 'a' + rnd(26) - 1;
+    buf[i] = (char) ('a' + rnd(26) - 1);
 
   buf[i] = '\0';
 
