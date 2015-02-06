@@ -43,7 +43,7 @@ int vector_test(void)
 
   printf("test: length\n");
 
-  printf("length = %d\n", vector_length(v));
+  printf("length = %zu\n", vector_length(v));
 
 
   printf("test: set length\n");
