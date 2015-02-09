@@ -136,7 +136,7 @@ usage:
 	@echo '  analyze	Perform a clang analyze run'
 	@echo '  lint		Perform a lint run'
 	@echo '  tags		Generate tags'
-	@echo '  cscope		Generate cscope database'
+	@echo '  cscope	Generate cscope database'
 	@echo '  astyle	Run astyle on the source'
 	@echo '  docs		Generate docs'
 	@echo
