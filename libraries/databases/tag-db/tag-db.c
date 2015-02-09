@@ -394,9 +394,9 @@ typedef struct tagdb_tag_entry
 }
 tagdb_tag_entry_t;
 
-result_t tagdb_add(tagdb_t *db, const char *name, tagdb_tag_t *ptag)
+result_t tagdb_add(tagdb_t *db, const unsigned char *name, tagdb_tag_t *ptag)
 {
-  result_t      err;
+  result_t    err;
   atom_t      index;
   tagdb_tag_t i;
 
@@ -543,7 +543,9 @@ Failure:
   return;
 }
 
-result_t tagdb_rename(tagdb_t *db, tagdb_tag_t tag, const char *name)
+result_t tagdb_rename(tagdb_t             *db,
+                      tagdb_tag_t          tag,
+                      const unsigned char *name)
 {
   assert(db);
   assert(tag < db->c_used && db->counts[tag].index != -1);
@@ -593,11 +595,11 @@ result_t tagdb_enumerate_tags(tagdb_t     *db,
   return result_OK;
 }
 
-result_t tagdb_tagtoname(tagdb_t     *db,
-                         tagdb_tag_t  tag,
-                         char        *buf,
-                         size_t      *length,
-                         size_t       bufsz)
+result_t tagdb_tagtoname(tagdb_t       *db,
+                         tagdb_tag_t    tag,
+                         unsigned char *buf,
+                         size_t        *length,
+                         size_t         bufsz)
 {
   const char *s;
   size_t      l;
@@ -636,7 +638,7 @@ static void tagdb__tagdec(tagdb_t *db, tagdb_tag_t tag)
 }
 
 /* This tags and inserts. */
-result_t tagdb_tagid(tagdb_t *db, const char *id, tagdb_tag_t tag)
+result_t tagdb_tagid(tagdb_t *db, const unsigned char *id, tagdb_tag_t tag)
 {
   result_t  err;
   bitvec_t *val;
@@ -711,10 +713,10 @@ result_t tagdb_untagid(tagdb_t *db, const char *id, tagdb_tag_t tag)
 
 /* ----------------------------------------------------------------------- */
 
-result_t tagdb_get_tags_for_id(tagdb_t     *db,
-                               const char  *id,
-                               int         *continuation,
-                               tagdb_tag_t *tag)
+result_t tagdb_get_tags_for_id(tagdb_t             *db,
+                               const unsigned char *id,
+                               int                 *continuation,
+                               tagdb_tag_t         *tag)
 {
   bitvec_t *v;
   int       index;
@@ -781,10 +783,10 @@ static int getid_cb(const void *key, const void *value, void *opaque)
   return -1; /* stop the walk now */
 }
 
-result_t tagdb_enumerate_ids(tagdb_t *db,
-                             int     *continuation,
-                             char    *buf,
-                             size_t   bufsz)
+result_t tagdb_enumerate_ids(tagdb_t       *db,
+                             int           *continuation,
+                             unsigned char *buf,
+                             size_t         bufsz)
 {
   struct enumerate_state state;
 
@@ -838,11 +840,11 @@ static int getidbytag_cb(const void *key, const void *value, void *opaque)
   return -1; /* stop the walk now */
 }
 
-result_t tagdb_enumerate_ids_by_tag(tagdb_t     *db,
-                                    tagdb_tag_t  tag,
-                                    int         *continuation,
-                                    char        *buf,
-                                    size_t       bufsz)
+result_t tagdb_enumerate_ids_by_tag(tagdb_t       *db,
+                                    tagdb_tag_t    tag,
+                                    int           *continuation,
+                                    unsigned char *buf,
+                                    size_t         bufsz)
 {
   struct enumerate_state state;
 
@@ -918,7 +920,7 @@ result_t tagdb_enumerate_ids_by_tags(tagdb_t           *db,
                                      const tagdb_tag_t *tags,
                                      int                ntags,
                                      int               *continuation,
-                                     char              *buf,
+                                     unsigned char     *buf,
                                      size_t             bufsz)
 {
   result_t                  err;
@@ -996,7 +998,7 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
-void tagdb_forget(tagdb_t *db, const char *id)
+void tagdb_forget(tagdb_t *db, const unsigned char *id)
 {
   assert(db);
   assert(id);

@@ -61,13 +61,15 @@ result_t tagdb_commit(T *db);
 typedef unsigned int tagdb_tag_t; // make int instead?
 
 /* add a new tag */
-result_t tagdb_add(T *db, const char *name, tagdb_tag_t *tag);
+result_t tagdb_add(T *db, const unsigned char *name, tagdb_tag_t *tag);
 
 /* delete a tag */
 void tagdb_remove(T *db, tagdb_tag_t tag);
 
 /* rename a tag */
-result_t tagdb_rename(T *db, tagdb_tag_t tag, const char *name);
+result_t tagdb_rename(tagdb_t             *db,
+                      tagdb_tag_t          tag,
+                      const unsigned char *name);
 
 /* enumerate tags with counts */
 result_t tagdb_enumerate_tags(T           *db,
@@ -77,18 +79,18 @@ result_t tagdb_enumerate_tags(T           *db,
 
 /* convert a tag to a name */
 /* 'buf' may be NULL if bufsz is 0 */
-result_t tagdb_tagtoname(T           *db,
-                         tagdb_tag_t  tag,
-                         char        *buf,
-                         size_t      *length,
-                         size_t       bufsz);
+result_t tagdb_tagtoname(tagdb_t       *db,
+                         tagdb_tag_t    tag,
+                         unsigned char *buf,
+                         size_t        *length,
+                         size_t         bufsz);
 
 /* ----------------------------------------------------------------------- */
 
 /* tagging */
 
 /* apply tag to id */
-result_t tagdb_tagid(T *db, const char *id, tagdb_tag_t tag);
+result_t tagdb_tagid(T *db, const unsigned char *id, tagdb_tag_t tag);
 
 /* remove tag from id */
 result_t tagdb_untagid(T *db, const char *id, tagdb_tag_t tag);
@@ -98,36 +100,36 @@ result_t tagdb_untagid(T *db, const char *id, tagdb_tag_t tag);
 /* queries */
 
 /* query tags for id */
-result_t tagdb_get_tags_for_id(T            *db,
-                               const char   *id,
-                               int          *continuation,
-                               tagdb_tag_t  *tag);
+result_t tagdb_get_tags_for_id(T                   *db,
+                               const unsigned char *id,
+                               int                 *continuation,
+                               tagdb_tag_t         *tag);
 
 /* enumerate ids */
-result_t tagdb_enumerate_ids(T     *db,
-                             int   *continuation,
-                             char  *buf,
-                             size_t bufsz);
+result_t tagdb_enumerate_ids(tagdb_t       *db,
+                             int           *continuation,
+                             unsigned char *buf,
+                             size_t         bufsz);
 
 /* enumerate ids by tag */
-result_t tagdb_enumerate_ids_by_tag(T          *db,
-                                    tagdb_tag_t tag,
-                                    int        *continuation,
-                                    char       *buf,
-                                    size_t      bufsz);
+result_t tagdb_enumerate_ids_by_tag(tagdb_t       *db,
+                                    tagdb_tag_t    tag,
+                                    int           *continuation,
+                                    unsigned char *buf,
+                                    size_t         bufsz);
 
 /* enumerate ids which match all specified tags */
 result_t tagdb_enumerate_ids_by_tags(T                 *db,
                                      const tagdb_tag_t *tags,
-                                     int              ntags,
+                                     int                ntags,
                                      int               *continuation,
-                                     char              *buf,
+                                     unsigned char     *buf,
                                      size_t             bufsz);
 
 /* ----------------------------------------------------------------------- */
 
 /* delete knowledge of id */
-void tagdb_forget(T *db, const char *id);
+void tagdb_forget(T *db, const unsigned char *id);
 
 /* ----------------------------------------------------------------------- */
 

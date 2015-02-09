@@ -24,17 +24,29 @@
 
 static const char *tagnames[] =
 {
-  "marty", "jennifer", "emmett", "einstein", "lorraine", "george", "biff",
+  "marty",
+  "jennifer",
+  "emmett",
+  "einstein",
+  "lorraine",
+  "george",
+  "biff",
   "fred" /* do not use (to test unused tag case) */
 };
 
+static const unsigned char id0[] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+static const unsigned char id1[] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1 };
+static const unsigned char id2[] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2 };
+static const unsigned char id3[] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3 };
+static const unsigned char id4[] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4 };
+
 static const unsigned char *ids[] =
 {
-  "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-  "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01",
-  "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02",
-  "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x03",
-  "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04",
+  &id0[0],
+  &id1[0],
+  &id2[0],
+  &id3[0],
+  &id4[0],
 };
 
 static const char *renames[] =
@@ -98,7 +110,7 @@ static result_t test_add_tags(State_t *state)
   for (i = 0; i < NELEMS(tagnames); i++)
   {
     printf("adding '%s'...", tagnames[i]);
-    err = tagdb_add(state->db, tagnames[i], &state->tags[i]);
+    err = tagdb_add(state->db, (const unsigned char *) tagnames[i], &state->tags[i]);
     if (err)
       goto Failure;
 
@@ -116,11 +128,11 @@ Failure:
 static result_t test_rename_tags(State_t *state)
 {
   result_t err;
-  int   i;
+  int      i;
 
   for (i = 0; i < NELEMS(renames); i++)
   {
-    char buf[256];
+    unsigned char buf[256];
 
     err = tagdb_tagtoname(state->db, state->tags[i], buf, NULL, sizeof(buf));
     if (err)
@@ -128,7 +140,7 @@ static result_t test_rename_tags(State_t *state)
 
     printf("renaming '%s'...", buf);
 
-    err = tagdb_rename(state->db, state->tags[i], renames[i]);
+    err = tagdb_rename(state->db, state->tags[i], (const unsigned char *) renames[i]);
     if (err)
       goto Failure;
 
@@ -149,9 +161,9 @@ Failure:
 
 static result_t test_enumerate_tags(State_t *state)
 {
-  result_t err;
-  int   cont;
-  char  buf[256];
+  result_t      err;
+  int           cont;
+  unsigned char buf[256];
 
   cont = 0;
   do
@@ -218,10 +230,10 @@ Failure:
 
 static result_t test_get_tags_for_id(State_t *state)
 {
-  result_t err;
-  int   i;
-  int   cont;
-  char  buf[256];
+  result_t      err;
+  int           i;
+  int           cont;
+  unsigned char buf[256];
 
   for (i = 0; i < NELEMS(ids); i++)
   {
@@ -278,9 +290,9 @@ static void printdigest(const unsigned char *digest)
 
 static result_t test_enumerate_ids(State_t *state)
 {
-  result_t err;
-  int      cont;
-  char     buf[256];
+  result_t      err;
+  int           cont;
+  unsigned char buf[256];
 
   cont = 0;
   do
@@ -313,8 +325,8 @@ static result_t test_enumerate_ids_by_tag(State_t *state)
 
   for (i = 0; i < NELEMS(tagnames); i++)
   {
-    int  cont;
-    char buf[256];
+    int           cont;
+    unsigned char buf[256];
 
     err = tagdb_tagtoname(state->db, state->tags[i], buf, NULL, sizeof(buf));
     if (err)
@@ -350,9 +362,9 @@ Failure:
 
 static result_t test_enumerate_ids_by_tags(State_t *state)
 {
-  result_t err;
-  int      cont;
-  char     buf[256];
+  result_t      err;
+  int           cont;
+  unsigned char buf[256];
 
   {
     static const tagdb_tag_t want[] = { 0, 1 };
@@ -471,9 +483,9 @@ static const unsigned char *randomid(void)
 
 static result_t bash_enumerate(State_t *state)
 {
-  result_t err;
-  int      cont;
-  char     buf[256];
+  result_t      err;
+  int           cont;
+  unsigned char buf[256];
 
   cont = 0;
   do
@@ -484,10 +496,10 @@ static result_t bash_enumerate(State_t *state)
 
     if (cont)
     {
-      int         ntags;
-      tagdb_tag_t tag;
-      int         cont2;
-      char        buf2[256];
+      int           ntags;
+      tagdb_tag_t   tag;
+      int           cont2;
+      unsigned char buf2[256];
 
       printf("getting tags for '");
       printdigest(buf);
@@ -541,12 +553,12 @@ static result_t test_bash(State_t *state)
   const int nuntaggings = ntags; /* number of times to untag */
   const int reps        = 3;     /* overall number of repetitions */
 
-  result_t   err;
-  int          i;
-  tagdb_tag_t  tags[ntags];
-  char        *tagnames[ntags];
-  char        *idnames[nids];
-  int          j;
+  result_t       err;
+  int            i;
+  tagdb_tag_t    tags[ntags];
+  unsigned char *tagnames[ntags];
+  unsigned char *idnames[nids];
+  int           j;
 
   srand(0x6487ED51);
 
@@ -674,8 +686,8 @@ static result_t test_bash(State_t *state)
 
     for (i = 0; i < ntags; i++)
     {
-      char        buf[256];
-      const char *tagname;
+      unsigned char buf[256];
+      const char   *tagname;
 
       err = tagdb_tagtoname(state->db, tags[i], buf, NULL, sizeof(buf));
       if (err)
