@@ -11,7 +11,7 @@
 
 #include "impl.h"
 
-void *vector_get(const vector_t *v, int index)
+void *vector_get(const vector_t *v, unsigned int index)
 {
   assert(index < v->allocated);
 

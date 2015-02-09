@@ -13,7 +13,7 @@
 
 #include "impl.h"
 
-void vector_set(vector_t *vector, int index, const void *value)
+void vector_set(vector_t *vector, unsigned int index, const void *value)
 {
   assert(index < vector->allocated);
 

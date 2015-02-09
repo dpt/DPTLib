@@ -10,7 +10,7 @@
 
 #include "impl.h"
 
-result_t vector_set_length(vector_t *v, size_t length)
+result_t vector_set_length(vector_t *v, unsigned int length)
 {
   void *newbase;
 

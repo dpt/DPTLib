@@ -11,9 +11,9 @@
 
 #define WIDTH 4 /* bytes */
 
-static const int set_lengths[] = { 25, 50, 75, 100 };
+static const unsigned int set_lengths[] = { 25, 50, 75, 100 };
 
-static const int set_widths[] = { 3, 2, 1, 2, 3, 4 };
+static const size_t set_widths[] = { 3, 2, 1, 2, 3, 4 };
 
 static const int primes[] =
 {
@@ -52,15 +52,15 @@ result_t vector_test(void)
 
   for (i = 0; i < NELEMS(set_lengths); i++)
   {
-    int new_length;
+    size_t new_length;
 
-    printf("test: set length to %d\n", set_lengths[i]);
+    printf("test: set length to %u\n", set_lengths[i]);
 
     vector_set_length(v, set_lengths[i]);
 
     new_length = vector_length(v);
 
-    printf("new length = %d\n", new_length);
+    printf("new length = %zu\n", new_length);
 
     if (new_length != set_lengths[i])
     {
@@ -83,15 +83,15 @@ result_t vector_test(void)
 
   for (i = 0; i < NELEMS(set_widths); i++)
   {
-    int new_width;
+    size_t new_width;
 
-    printf("test: set width to %d\n", set_widths[i]);
+    printf("test: set width to %zu\n", set_widths[i]);
 
     vector_set_width(v, set_widths[i]);
 
     new_width = vector_width(v);
 
-    printf("new width = %d\n", new_width);
+    printf("new width = %zu\n", new_width);
 
     if (new_width != set_widths[i])
     {

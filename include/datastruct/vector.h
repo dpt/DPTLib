@@ -73,7 +73,7 @@ size_t vector_length(const vector_t *vector);
  *
  * \return result_OK or result_OOM.
  */
-result_t vector_set_length(vector_t *vector, size_t length);
+result_t vector_set_length(vector_t *vector, unsigned int length);
 
 /* ----------------------------------------------------------------------- */
 
@@ -86,7 +86,7 @@ result_t vector_set_length(vector_t *vector, size_t length);
  *
  * \return result_OK or result_OOM.
  */
-result_t vector_ensure(vector_t *vector, size_t need);
+result_t vector_ensure(vector_t *vector, unsigned int need);
 
 /* ----------------------------------------------------------------------- */
 
@@ -122,7 +122,7 @@ result_t vector_set_width(vector_t *vector, size_t width);
  *
  * \return Pointer to element.
  */
-void *vector_get(const vector_t *vector, int index);
+void *vector_get(const vector_t *vector, unsigned int index);
 
 /* ----------------------------------------------------------------------- */
 
@@ -135,7 +135,7 @@ void *vector_get(const vector_t *vector, int index);
  * \param[in] index  Index of element to assign.
  * \param[in] value  Value to assign.
  */
-void vector_set(vector_t *vector, int index, const void *value);
+void vector_set(vector_t *vector, unsigned int index, const void *value);
 
 /* ----------------------------------------------------------------------- */
 

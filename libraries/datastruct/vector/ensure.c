@@ -10,12 +10,12 @@
 
 #include "impl.h"
 
-result_t vector_ensure(vector_t *v, size_t need)
+result_t vector_ensure(vector_t *v, unsigned int need)
 {
   if (need > v->allocated)
   {
-    size_t  required;
-    void   *newbase;
+    unsigned int required;
+    void        *newbase;
     
     required = need;
     

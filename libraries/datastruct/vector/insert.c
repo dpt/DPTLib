@@ -14,9 +14,9 @@
 
 result_t vector_insert(vector_t *v, const void *value)
 {
-  result_t err;
-  size_t   used;
-  void    *base;
+  result_t     err;
+  unsigned int used;
+  void        *base;
 
   used = v->used;
 
@@ -34,9 +34,9 @@ result_t vector_insert(vector_t *v, const void *value)
 
 result_t vector_insert_many(vector_t *v, const void *values, int nvalues)
 {
-  result_t err;
-  size_t   used;
-  void    *base;
+  result_t     err;
+  unsigned int used;
+  void        *base;
 
   used = v->used;
 
