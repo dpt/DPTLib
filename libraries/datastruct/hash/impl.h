@@ -19,7 +19,7 @@ struct hash
   hash_compare_t        *compare;
   hash_destroy_key_t    *destroy_key;
   hash_destroy_value_t  *destroy_value;
-  int                    nbins;
+  unsigned int           nbins;
   hash_node_t          **bins;
 };
 
