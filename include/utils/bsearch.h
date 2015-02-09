@@ -27,22 +27,22 @@
  */
 
 int bsearch_short(const short *array,
-                  size_t       nelems,
+                  unsigned int nelems,
                   size_t       stride,
                   short        want);
 
 int bsearch_ushort(const unsigned short *array,
-                   size_t                nelems,
+                   unsigned int          nelems,
                    size_t                stride,
                    unsigned short        want);
 
-int bsearch_int(const int *array,
-                size_t     nelems,
-                size_t     stride,
-                int        want);
+int bsearch_int(const int   *array,
+                unsigned int nelems,
+                size_t       stride,
+                int          want);
 
 int bsearch_uint(const unsigned int *array,
-                 size_t              nelems,
+                 unsigned int        nelems,
                  size_t              stride,
                  unsigned int        want);
 

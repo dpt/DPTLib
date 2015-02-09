@@ -11,11 +11,11 @@
 
 #include "utils/bsearch.h"
 
-int NAME(const TYPE *array, size_t nelems, size_t stride, TYPE want)
+int NAME(const TYPE *array, unsigned int nelems, size_t stride, TYPE want)
 {
-  size_t searchRange;
-  size_t i;
-  TYPE   c;
+  unsigned int searchRange;
+  unsigned int i;
+  TYPE         c;
 
   assert(stride > 0);
 
@@ -26,7 +26,7 @@ int NAME(const TYPE *array, size_t nelems, size_t stride, TYPE want)
 
   stride /= sizeof(*array);
 
-  searchRange = power2le(nelems); // power2le not expecting 64-bit arg
+  searchRange = power2le(nelems);
 
   i = searchRange - 1;
   if (want > array[i * stride])
