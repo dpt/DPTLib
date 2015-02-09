@@ -4,5 +4,5 @@
 
 unsigned short int rev_s(unsigned short int r0)
 {
-  return (r0 >> 8) | (r0 << 8);
+  return (unsigned short int) ((r0 >> 8) | (r0 << 8));
 }

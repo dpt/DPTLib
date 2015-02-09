@@ -25,7 +25,7 @@ void rev_s_block(unsigned short int *array, size_t nelems)
 
     r0 = *p;
 
-    *p++ = (r0 >> 8) | (r0 << 8);
+    *p++ = (unsigned short int) ((r0 >> 8) | (r0 << 8));
 
     nelems--;
   }
@@ -59,6 +59,6 @@ void rev_s_block(unsigned short int *array, size_t nelems)
 
     r0 = *p;
 
-    *p = (r0 >> 8) | (r0 << 8);
+    *p = (unsigned short int) ((r0 >> 8) | (r0 << 8));
   }
 }
