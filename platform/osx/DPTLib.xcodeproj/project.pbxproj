@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		55511B491A40F49000D572A7 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55511B481A40F49000D572A7 /* test.c */; };
+		55511B491A40F49000D572A7 /* stream-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55511B481A40F49000D572A7 /* stream-test.c */; };
 		55511B4D1A40F4CD00D572A7 /* stream-mtfcomp.c in Sources */ = {isa = PBXBuildFile; fileRef = 55511B4A1A40F4CD00D572A7 /* stream-mtfcomp.c */; };
 		55511B4E1A40F4CD00D572A7 /* stream-packbitscomp.c in Sources */ = {isa = PBXBuildFile; fileRef = 55511B4B1A40F4CD00D572A7 /* stream-packbitscomp.c */; };
 		55511B4F1A40F4CD00D572A7 /* stream-packbitsdecomp.c in Sources */ = {isa = PBXBuildFile; fileRef = 55511B4C1A40F4CD00D572A7 /* stream-packbitsdecomp.c */; };
@@ -129,7 +129,7 @@
 		55E5591D1A35004E001FB51F /* hash-writer.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559101A350037001FB51F /* hash-writer.c */; };
 		55E559201A350051001FB51F /* tag-db.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559161A350037001FB51F /* tag-db.c */; };
 		55E559261A3A60E5001FB51F /* layout.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559231A3A60E5001FB51F /* layout.c */; };
-		55E559281A3A60EF001FB51F /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559251A3A60E5001FB51F /* test.c */; };
+		55E559281A3A60EF001FB51F /* layout-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559251A3A60E5001FB51F /* layout-test.c */; };
 		55F7DFF61A373F1400A64017 /* array-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5583F1A34F276001FB51F /* array-test.c */; };
 		55F7DFF71A373F2C00A64017 /* atom-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5584B1A34F276001FB51F /* atom-test.c */; };
 		55F7DFF81A373F3E00A64017 /* bitarr-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5584F1A34F276001FB51F /* bitarr-test.c */; };
@@ -181,7 +181,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		55511B481A40F49000D572A7 /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		55511B481A40F49000D572A7 /* stream-test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-test.c"; sourceTree = "<group>"; };
 		55511B4A1A40F4CD00D572A7 /* stream-mtfcomp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-mtfcomp.c"; sourceTree = "<group>"; };
 		55511B4B1A40F4CD00D572A7 /* stream-packbitscomp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-packbitscomp.c"; sourceTree = "<group>"; };
 		55511B4C1A40F4CD00D572A7 /* stream-packbitsdecomp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-packbitsdecomp.c"; sourceTree = "<group>"; };
@@ -362,7 +362,7 @@
 		55E559161A350037001FB51F /* tag-db.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "tag-db.c"; sourceTree = "<group>"; };
 		55E559181A350037001FB51F /* tag-db-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "tag-db-test.c"; sourceTree = "<group>"; };
 		55E559231A3A60E5001FB51F /* layout.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = layout.c; sourceTree = "<group>"; };
-		55E559251A3A60E5001FB51F /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		55E559251A3A60E5001FB51F /* layout-test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "layout-test.c"; sourceTree = "<group>"; };
 		55E559291A3A6106001FB51F /* layout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = layout.h; sourceTree = "<group>"; };
 		55F7DFE91A373E9000A64017 /* DPTLibTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = DPTLibTest; sourceTree = BUILT_PRODUCTS_DIR; };
 		55F7E0131A38E38100A64017 /* contains-box.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "contains-box.c"; sourceTree = "<group>"; };
@@ -398,7 +398,7 @@
 		55511B471A40F49000D572A7 /* test */ = {
 			isa = PBXGroup;
 			children = (
-				55511B481A40F49000D572A7 /* test.c */,
+				55511B481A40F49000D572A7 /* stream-test.c */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -1057,7 +1057,7 @@
 		55E559241A3A60E5001FB51F /* test */ = {
 			isa = PBXGroup;
 			children = (
-				55E559251A3A60E5001FB51F /* test.c */,
+				55E559251A3A60E5001FB51F /* layout-test.c */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -1320,8 +1320,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				55E559281A3A60EF001FB51F /* test.c in Sources */,
-				55511B491A40F49000D572A7 /* test.c in Sources */,
+				55E559281A3A60EF001FB51F /* layout-test.c in Sources */,
+				55511B491A40F49000D572A7 /* stream-test.c in Sources */,
 				555E85B61A840E4D00BBC66C /* bsearch-test.c in Sources */,
 				55F7DFF71A373F2C00A64017 /* atom-test.c in Sources */,
 				55F7E0381A391B4F00A64017 /* packer-test.c in Sources */,
