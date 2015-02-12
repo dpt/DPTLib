@@ -130,7 +130,7 @@ static result_t add_area(packer_t *packer, const box_t *area)
 #else
   if (packer->usedareas + 1 > packer->allocedareas)
   {
-    int     n;
+    int    n;
     box_t *areas;
 
     n = packer->allocedareas * 2;
@@ -156,8 +156,8 @@ static result_t add_area(packer_t *packer, const box_t *area)
 static result_t remove_area(packer_t *packer, const box_t *area)
 {
   result_t err;
-  int   n;
-  int   i;
+  int      n;
+  int      i;
 
   logf_debug("remove_area: %d %d %d %d",
              area->x0,
@@ -276,7 +276,7 @@ COMPARE_AREAS(bottom_right, a->y0 - b->y0, b->x1 - a->x1, a->x0 - b->x0)
 static void packer_sort(packer_t *packer, packer_sortdir_t order)
 {
   box_t       *areas;
-  int           usedareas;
+  int          usedareas;
   const box_t *end;
   box_t       *b;
 
@@ -414,7 +414,7 @@ result_t packer_place_by(packer_t     *packer,
                          int           h,
                          const box_t **pos)
 {
-  result_t         err;
+  result_t     err;
   const box_t *b;
 
   if (pos)
@@ -484,7 +484,7 @@ result_t packer_place_by(packer_t     *packer,
 
 result_t packer_clear(packer_t *packer, packer_cleardir_t clear)
 {
-  result_t         err;
+  result_t     err;
   int          left, right;
   const box_t *b;
   box_t        clearbox;
@@ -540,7 +540,7 @@ result_t packer_clear(packer_t *packer, packer_cleardir_t clear)
 
 result_t packer_map(packer_t *packer, packer_map_fn_t *fn, void *opaque)
 {
-  result_t         err;
+  result_t     err;
   const box_t *b;
 
   for (b = packer_start(packer, packer->order);

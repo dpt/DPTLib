@@ -135,7 +135,7 @@ static result_t unformat_value(const char *inbuf,
                                void      **value,
                                void       *opaque)
 {
-  result_t       err;
+  result_t    err;
   char        buf[1024];
   char       *p;
   int         t;
@@ -501,7 +501,7 @@ Failure:
 void tagdb_remove(tagdb_t *db, tagdb_tag_t tag)
 {
   result_t err;
-  int   cont;
+  int      cont;
 
   assert(db);
   assert(tag < db->c_used && db->counts[tag].index != -1);
