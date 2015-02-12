@@ -3,6 +3,9 @@
 #ifndef UTILS_BARITH_H
 #define UTILS_BARITH_H
 
+#include <limits.h>
+#include <stdint.h>
+
 /* ----------------------------------------------------------------------- */
 
 /* The inline arrangement here is taken from "Inline Functions In C"
@@ -49,57 +52,72 @@
 #ifndef BARITH_HAVE_GCC_BUILTINS
 
 /* Returns the number of bits set in the argument. */
-BARITH_INLINE int countbits(unsigned int);
+BARITH_INLINE int countbits_32(uint32_t);
+BARITH_INLINE int countbits_64(uint64_t);
 
 /* Returns the count of leading zeros of the argument. */
-BARITH_INLINE int clz(unsigned int);
+BARITH_INLINE int clz_32(uint32_t);
+BARITH_INLINE int clz_64(uint64_t);
 
 /* Count leading zeroes for bytes. */
 BARITH_INLINE int clz8(unsigned int);
 
 /* Returns the count of trailing zeros of the argument. */
-BARITH_INLINE int ctz(unsigned int);
+BARITH_INLINE int ctz_32(uint32_t);
+BARITH_INLINE int ctz_64(uint64_t);
 
 #else
 
-#define countbits(x)  __builtin_popcount(x)
+#define countbits_32(x)  __builtin_popcount(x)
+#define countbits_64(x)  __builtin_popcountll(x)
 
-#define clz(x)        __builtin_clz(x)
+#define clz_32(x)        __builtin_clz(x)
+#define clz_64(x)        __builtin_clzll(x)
 
-#define clz8(byte)    (byte ? __builtin_clz(byte) - 24 : 8)
+#define clz8(byte)       (byte ? __builtin_clz(byte) - 24 : 8)
 
-#define ctz(x)        __builtin_ctz(x)
+#define ctz_32(x)        __builtin_ctz(x)
+#define ctz_64(x)        __builtin_ctzll(x)
 
 #endif
 
 /* Returns the most significant set bit. */
-BARITH_INLINE unsigned int msb(unsigned int);
+BARITH_INLINE uint32_t msb_32(uint32_t);
+BARITH_INLINE uint64_t msb_64(uint64_t);
 
 /* Returns the power of two less than or equal to the argument. */
-BARITH_INLINE unsigned int power2le(unsigned int);
+BARITH_INLINE uint32_t power2le_32(uint32_t);
+BARITH_INLINE uint64_t power2le_64(uint64_t);
 
 /* Returns the power of two greater than the argument. */
-BARITH_INLINE unsigned int power2gt(unsigned int);
+BARITH_INLINE uint32_t power2gt_32(uint32_t);
+BARITH_INLINE uint64_t power2gt_64(uint64_t);
 
 /* Returns the floor log2 of the argument. */
-BARITH_INLINE unsigned int floorlog2(unsigned int);
+BARITH_INLINE uint32_t floorlog2_32(uint32_t);
+BARITH_INLINE uint64_t floorlog2_64(uint64_t);
 
 /* Returns the ceiling log2 of the argument. */
-BARITH_INLINE unsigned int ceillog2(unsigned int);
+BARITH_INLINE uint32_t ceillog2_32(uint32_t);
+BARITH_INLINE uint64_t ceillog2_64(uint64_t);
 
 /* Returns the argument reversed bitwise. */
-BARITH_INLINE unsigned int reversebits(unsigned int);
+BARITH_INLINE uint32_t reversebits_32(uint32_t);
+BARITH_INLINE uint64_t reversebits_64(uint64_t);
 
 /* ----------------------------------------------------------------------- */
 
 /* Spread the most significant set bit downwards so it fills all lower bits.
  */
-#define SPREADMSB(x) \
-  x |= x >> 1; x |= x >> 2; x |= x >> 4; x |= x >> 8; x |= x >> 16
+#define SPREADMSB_32(x) \
+x |= x >> 1; x |= x >> 2; x |= x >> 4; x |= x >> 8; x |= x >> 16
+#define SPREADMSB_64(x) \
+x |= x >> 1; x |= x >> 2; x |= x >> 4; x |= x >> 8; x |= x >> 16; x |= x >> 32
 
 #ifndef BARITH_HAVE_GCC_BUILTINS
 /* Returns the number of bits set in the argument. */
-BARITH_INLINE int countbits(unsigned int x)
+/* See http://en.wikipedia.org/wiki/Hamming_weight */
+BARITH_INLINE int countbits_32(uint32_t x)
 {
   x -=  (x >> 1) & 0x55555555;
   x  = ((x >> 2) & 0x33333333) + (x & 0x33333333);
@@ -109,14 +127,26 @@ BARITH_INLINE int countbits(unsigned int x)
 
   return x & 0x3f;
 }
+BARITH_INLINE int countbits_64(uint32_t x)
+{
+  x -=  (x >> 1) & 0x5555555555555555;
+  x  = ((x >> 2) & 0x3333333333333333) + (x & 0x3333333333333333);
+  x  = ((x >> 4) + x) & 0x0f0f0f0f0f0f0f0f;
+  x +=   x >> 8;
+  x +=   x >> 16;
+  x +=   x >> 32;
+
+  return x & 0x7f;
+}
 #endif
 
 #ifndef BARITH_HAVE_GCC_BUILTINS
 /* Returns the count of leading zeros of the argument. */
-BARITH_INLINE int clz(unsigned int x)
+/* See http://en.wikipedia.org/wiki/Find_first_set */
+BARITH_INLINE int clz_32(uint32_t x)
 {
 #ifdef UNUSED_ALTERNATIVE
-  SPREADMSB(x);
+  SPREADMSB_32(x);
   return 32 - countbits(x);
 #else
   /* Source:
@@ -138,9 +168,14 @@ BARITH_INLINE int clz(unsigned int x)
   if (x == 0)
     return 32;
 
-  SPREADMSB(x);
+  SPREADMSB_32(x);
   return tab[(0x07dcd629 * (x + 1)) >> 27];
 #endif
+}
+BARITH_INLINE int clz_64(uint64_t x)
+{
+  SPREADMSB_64(x);
+  return 64 - countbits(x);
 }
 #endif
 
@@ -166,7 +201,7 @@ BARITH_INLINE int clz8(unsigned int byte)
 
 #ifndef BARITH_HAVE_GCC_BUILTINS
 /* Returns the count of trailing zeros of the argument. */
-BARITH_INLINE int ctz(unsigned int x)
+BARITH_INLINE int ctz_32(uint32_t x)
 {
 #ifdef UNUSED_ALTERNATIVE
   return countbits(LSB(x) - 1);
@@ -186,60 +221,172 @@ BARITH_INLINE int ctz(unsigned int x)
   return tab[(0x0fb9ac52 * x) >> 27];
 #endif
 }
+BARITH_INLINE int ctz_64(uint64_t x)
+{
+  return countbits(LSB(x) - 1);
+}
 #endif
 
 /* Returns the most significant set bit. */
-BARITH_INLINE unsigned int msb(unsigned int x)
+BARITH_INLINE uint32_t msb_32(uint32_t x)
 {
-  SPREADMSB(x);
+  SPREADMSB_32(x);
+  return x & ~(x >> 1);
+}
+BARITH_INLINE uint64_t msb_64(uint64_t x)
+{
+  SPREADMSB_64(x);
   return x & ~(x >> 1);
 }
 
 /* Returns the power of two less than or equal to the argument. */
-BARITH_INLINE unsigned int power2le(unsigned int x)
+BARITH_INLINE uint32_t power2le_32(uint32_t x)
 {
-  SPREADMSB(x);
+  SPREADMSB_32(x);
+  return (x >> 1) + 1;
+}
+BARITH_INLINE uint64_t power2le_64(uint64_t x)
+{
+  SPREADMSB_64(x);
   return (x >> 1) + 1;
 }
 
 /* Returns the power of two greater than the argument. */
-BARITH_INLINE unsigned int power2gt(unsigned int x)
+BARITH_INLINE uint32_t power2gt_32(uint32_t x)
 {
-  SPREADMSB(x);
+  SPREADMSB_32(x);
+  return x + 1;
+}
+BARITH_INLINE uint64_t power2gt_64(uint64_t x)
+{
+  SPREADMSB_64(x);
   return x + 1;
 }
 
 /* Returns the floor log2 of the argument. */
-BARITH_INLINE unsigned int floorlog2(unsigned int x)
+BARITH_INLINE uint32_t floorlog2_32(uint32_t x)
 {
-  SPREADMSB(x);
-  return countbits(x >> 1);
+  SPREADMSB_32(x);
+  return countbits_32(x >> 1);
+}
+BARITH_INLINE uint64_t floorlog2_64(uint64_t x)
+{
+  SPREADMSB_64(x);
+  return countbits_64(x >> 1);
 }
 
 /* Returns the ceiling log2 of the argument. */
-BARITH_INLINE unsigned int ceillog2(unsigned int x)
+BARITH_INLINE uint32_t ceillog2_32(uint32_t x)
 {
-  unsigned int y;
+  uint32_t y;
 
   y = !ISPOWER2(x); /* 1 if x is not a power of two, 0 otherwise */
-  SPREADMSB(x);
+  SPREADMSB_32(x);
 
-  return countbits(x >> 1) + y;
+  return countbits_32(x >> 1) + y;
+}
+BARITH_INLINE uint64_t ceillog2_64(uint64_t x)
+{
+  uint64_t y;
+
+  y = !ISPOWER2(x); /* 1 if x is not a power of two, 0 otherwise */
+  SPREADMSB_64(x);
+
+  return countbits_64(x >> 1) + y;
 }
 
 /* Returns the argument reversed bitwise. */
-BARITH_INLINE unsigned int reversebits(unsigned int x)
+BARITH_INLINE uint32_t reversebits_32(uint32_t x)
 {
-  unsigned int y;
-  
+  uint32_t y;
+
   y = 0x55555555; x = ((x >> 1) & y) | ((x & y) << 1);
   y = 0x33333333; x = ((x >> 2) & y) | ((x & y) << 2);
   y = 0x0f0f0f0f; x = ((x >> 4) & y) | ((x & y) << 4);
   y = 0x00ff00ff; x = ((x >> 8) & y) | ((x & y) << 8);
-  
+
   return (x >> 16) | (x << 16);
+}
+BARITH_INLINE uint64_t reversebits_64(uint64_t x)
+{
+  uint64_t y;
+
+  y = 0x5555555555555555; x = ((x >>  1) & y) | ((x & y)  << 1);
+  y = 0x3333333333333333; x = ((x >>  2) & y) | ((x & y)  << 2);
+  y = 0x0f0f0f0f0f0f0f0f; x = ((x >>  4) & y) | ((x & y)  << 4);
+  y = 0x00ff00ff00ff00ff; x = ((x >>  8) & y) | ((x & y)  << 8);
+  y = 0x0000ffff0000ffff; x = ((x >> 16) & y) | ((x & y) << 16);
+
+  return (x >> 32) | (x << 32);
 }
 
 /* ----------------------------------------------------------------------- */
+
+/* */
+
+#if UINT_MAX == 4294967295U
+
+#define countbits     countbits_32
+#define clz           clz_32
+#define ctz           ctz_32
+#define msb           msb_32
+#define power2le      power2le_32
+#define power2gt      power2gt_32
+#define floorlog2     floorlog2_32
+#define ceillog2      ceillog2_32
+#define reversebits   reversebits_32
+
+#elif UINT_MAX == 18446744073709551615ULL
+
+#define countbits     countbits_64
+#define clz           clz_64
+#define ctz           ctz_64
+#define msb           msb_64
+#define power2le      power2le_64
+#define power2gt      power2gt_64
+#define floorlog2     floorlog2_64
+#define ceillog2      ceillog2_64
+#define reversebits   reversebits_64
+
+#else
+
+#error Unable to determine size of int.
+
+#endif
+
+
+#if SIZE_MAX == 4294967295U
+
+#define countbits_size_t     countbits_32
+#define clz_size_t           clz_32
+#define ctz_size_t           ctz_32
+#define msb_size_t           msb_32
+#define power2le_size_t      power2le_32
+#define power2gt_size_t      power2gt_32
+#define floorlog2_size_t     floorlog2_32
+#define ceillog2_size_t      ceillog2_32
+#define reversebits_size_t   reversebits_32
+
+#elif SIZE_MAX == 18446744073709551615ULL
+
+#define countbits_size_t     countbits_64
+#define clz_size_t           clz_64
+#define ctz_size_t           ctz_64
+#define msb_size_t           msb_64
+#define power2le_size_t      power2le_64
+#define power2gt_size_t      power2gt_64
+#define floorlog2_size_t     floorlog2_64
+#define ceillog2_size_t      ceillog2_64
+#define reversebits_size_t   reversebits_64
+
+#else
+
+#error Unable to determine size of size_t.
+
+#endif
+
+
+// TODO: Add variants for other types here.
+
 
 #endif /* UTILS_BARITH_H */
