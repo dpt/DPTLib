@@ -1,0 +1,5 @@
+* Add attributions (e.g. the packbits compressor is inspired by libtiff).
+* Apply inlining to bytesex and anything else that might benefit.
+* Big Doxygen pass to improve documentation.
+* Drop array squeeze/stretch duplicate functions.
+* Reinstate Fortify, or use Robin's one.
