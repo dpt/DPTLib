@@ -14,7 +14,7 @@
 
 typedef bitarr_ARRAY(NBITS) testbits_t;
 
-static void dumpbits(const testbits_t *arr, size_t nbits)
+static void dumpbits(const testbits_t *arr, int nbits)
 {
   int i;
   int c;
