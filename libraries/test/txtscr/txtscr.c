@@ -14,8 +14,8 @@
 
 struct txtscr
 {
-  int   width, height;
-  char *screen;
+  int            width, height;
+  unsigned char *screen;
 };
 
 txtscr_t *txtscr_create(int width, int height)
@@ -73,7 +73,7 @@ void txtscr_print(txtscr_t *scr)
   {
     for (x = 0; x < scr->width; x++)
     {
-      int c;
+      unsigned int c;
 
       c = scr->screen[y * scr->width + x];
       c = (c >= sizeof(map) - 1) ? '?' : map[c];
