@@ -17,6 +17,7 @@
 
 #include "io/stream-packbits.h"
 
+//#define DBUG(args) logf_debug args
 #define DBUG(args)
 
 /* If we added some sort of state then we can keep the output buffer full
@@ -118,7 +119,7 @@ static int stream_packbits_decomp_get(stream_t *s)
 
       while (N)
       {
-        int avail;
+        stream_size_t avail;
 
         /* how much is available? */
 
@@ -128,7 +129,7 @@ static int stream_packbits_decomp_get(stream_t *s)
           DBUG(("*** truncated ***\n"));
           goto exit; /* likely truncated data */
         }
-        avail = MIN(avail, N);
+        avail = MIN(avail, (stream_size_t) N);
 
         if (avail == 1)
         {
