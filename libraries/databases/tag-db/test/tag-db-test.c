@@ -556,9 +556,9 @@ static result_t test_bash(State_t *state)
   result_t       err;
   int            i;
   tagdb_tag_t    tags[ntags];
-  unsigned char *tagnames[ntags];
-  unsigned char *idnames[nids];
-  int           j;
+  unsigned char *gentagnames[ntags];
+  unsigned char *genidnames[nids];
+  int            j;
 
   srand(0x6487ED51);
 
@@ -571,10 +571,10 @@ static result_t test_bash(State_t *state)
   printf("bash: setup\n");
 
   for (i = 0; i < ntags; i++)
-    tagnames[i] = NULL;
+    gentagnames[i] = NULL;
 
   for (i = 0; i < nids; i++)
-    idnames[i] = NULL;
+    genidnames[i] = NULL;
 
   for (j = 0; j < reps; j++)
   {
@@ -587,7 +587,7 @@ static result_t test_bash(State_t *state)
       const char *name;
       int         k;
 
-      if (tagnames[i])
+      if (gentagnames[i])
         continue;
 
       do
@@ -596,21 +596,21 @@ static result_t test_bash(State_t *state)
 
         /* ensure that the random name is unique */
         for (k = 0; k < ntags; k++)
-          if (tagnames[k] && strcmp(tagnames[k], name) == 0)
+          if (gentagnames[k] && strcmp((char *) gentagnames[k], name) == 0)
             break;
       }
       while (k < ntags);
 
-      tagnames[i] = strdup(name); // FIXME was str_dup
-      if (tagnames[i] == NULL)
+      gentagnames[i] = (unsigned char *) strdup(name); // FIXME was str_dup
+      if (gentagnames[i] == NULL)
       {
         err = result_OOM;
         goto failure;
       }
 
-      printf("adding '%s'...", tagnames[i]);
+      printf("adding '%s'...", gentagnames[i]);
 
-      err = tagdb_add(state->db, tagnames[i], &tags[i]);
+      err = tagdb_add(state->db, gentagnames[i], &tags[i]);
       if (err)
         goto failure;
 
@@ -624,7 +624,7 @@ static result_t test_bash(State_t *state)
       const unsigned char *id;
       int                  k;
 
-      if (idnames[i])
+      if (genidnames[i])
         continue;
 
       do
@@ -633,22 +633,22 @@ static result_t test_bash(State_t *state)
 
         /* ensure that the random name is unique */
         for (k = 0; k < nids; k++)
-          if (idnames[k] && memcmp(idnames[k], id, digestdb_DIGESTSZ) == 0)
+          if (genidnames[k] && memcmp(genidnames[k], id, digestdb_DIGESTSZ) == 0)
             break;
       }
       while (k < nids);
 
-      idnames[i] = malloc(digestdb_DIGESTSZ);
-      if (idnames[i] == NULL)
+      genidnames[i] = malloc(digestdb_DIGESTSZ);
+      if (genidnames[i] == NULL)
       {
         err = result_OOM;
         goto failure;
       }
 
-      memcpy(idnames[i], id, digestdb_DIGESTSZ);
+      memcpy(genidnames[i], id, digestdb_DIGESTSZ);
 
       printf("%d is id '", i);
-      printdigest(idnames[i]);
+      printdigest(genidnames[i]);
       printf("'\n");
     }
 
@@ -661,17 +661,17 @@ static result_t test_bash(State_t *state)
 
       do
         whichid = rnd(nids) - 1;
-      while (idnames[whichid] == NULL);
+      while (genidnames[whichid] == NULL);
 
       do
         whichtag = rnd(ntags) - 1;
-      while (tagnames[whichtag] == NULL);
+      while (gentagnames[whichtag] == NULL);
 
       printf("tagging '");
-      printdigest(idnames[whichid]);
+      printdigest(genidnames[whichid]);
       printf("' with %d\n", tags[whichtag]);
 
-      err = tagdb_tagid(state->db, idnames[whichid], tags[whichtag]);
+      err = tagdb_tagid(state->db, genidnames[whichid], tags[whichtag]);
       if (err)
         goto failure;
     }
@@ -701,18 +701,18 @@ static result_t test_bash(State_t *state)
       {
         tagname = randomtagname();
 
-        free(tagnames[i]);
+        free(gentagnames[i]);
 
-        tagnames[i] = strdup(tagname); // FIXME was str_dup
-        if (tagnames[i] == NULL)
+        gentagnames[i] = (unsigned char *) strdup(tagname); // FIXME was str_dup
+        if (gentagnames[i] == NULL)
         {
           err = result_OOM;
           goto failure;
         }
 
-        printf("renaming '%s' to '%s'", buf, tagnames[i]);
+        printf("renaming '%s' to '%s'", buf, gentagnames[i]);
 
-        err = tagdb_rename(state->db, tags[i], tagnames[i]);
+        err = tagdb_rename(state->db, tags[i], gentagnames[i]);
         if (err == result_OK)
           break;
 
@@ -726,7 +726,7 @@ static result_t test_bash(State_t *state)
       if (err)
         goto failure;
 
-      assert(strcmp(tagnames[i], buf) == 0);
+      assert(strcmp((char *) gentagnames[i], (char *) buf) == 0);
 
       printf("..ok\n");
     }
@@ -746,17 +746,17 @@ static result_t test_bash(State_t *state)
 
       do
         whichid = rnd(nids) - 1;
-      while (idnames[whichid] == NULL);
+      while (genidnames[whichid] == NULL);
 
       do
         whichtag = rnd(ntags) - 1;
-      while (tagnames[whichtag] == NULL);
+      while (gentagnames[whichtag] == NULL);
 
       printf("untagging '");
-      printdigest(idnames[whichid]);
+      printdigest(genidnames[whichid]);
       printf("' with %d\n", tags[whichtag]);
 
-      err = tagdb_untagid(state->db, idnames[whichid], tags[whichtag]);
+      err = tagdb_untagid(state->db, genidnames[whichid], tags[whichtag]);
       if (err)
         goto failure;
     }
@@ -771,10 +771,10 @@ static result_t test_bash(State_t *state)
 
     for (i = 0; i < ntags; i += 2)
     {
-      printf("removing tag %d ('%s')\n", tags[i], tagnames[i]);
+      printf("removing tag %d ('%s')\n", tags[i], gentagnames[i]);
 
-      free(tagnames[i]);
-      tagnames[i] = NULL;
+      free(gentagnames[i]);
+      gentagnames[i] = NULL;
 
       tagdb_remove(state->db, tags[i]);
       tags[i] = -1;
@@ -791,13 +791,13 @@ static result_t test_bash(State_t *state)
     for (i = 0; i < nids; i += 2)
     {
       printf("removing id %d '", i);
-      printdigest(idnames[i]);
+      printdigest(genidnames[i]);
       printf("'\n");
 
-      tagdb_forget(state->db, idnames[i]);
+      tagdb_forget(state->db, genidnames[i]);
 
-      free(idnames[i]);
-      idnames[i] = NULL;
+      free(genidnames[i]);
+      genidnames[i] = NULL;
     }
 
     printf("bash: enumerate\n");
@@ -808,10 +808,10 @@ static result_t test_bash(State_t *state)
   }
 
   for (i = 0; i < nids; i++)
-    free(idnames[i]);
+    free(genidnames[i]);
 
   for (i = 0; i < ntags; i++)
-    free(tagnames[i]);
+    free(gentagnames[i]);
 
   tagdb_close(state->db); /* remember that this calls _commit */
 

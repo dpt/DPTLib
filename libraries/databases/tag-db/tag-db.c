@@ -91,8 +91,8 @@ struct tagdb
   atom_set_t             *tags; /* tag names */
 
   struct tagdb_tag_entry *counts;
-  int                     c_used;
-  int                     c_allocated;
+  unsigned int            c_used;
+  unsigned int            c_allocated;
 
   hash_t                 *hash; /* maps ids to bitvecs holding tag indices */
 };
@@ -107,7 +107,7 @@ static result_t unformat_key(const char *buf,
                              void      **key,
                              void       *opaque)
 {
-  result_t         err;
+  result_t      err;
   unsigned char hash[digestdb_DIGESTSZ];
   int           kindex;
 
@@ -179,7 +179,7 @@ static result_t unformat_value(const char *inbuf,
   {
     tagdb_tag_t tag;
 
-    err = tagdb_add(db, tokens[i], &tag);
+    err = tagdb_add(db, (const unsigned char *) tokens[i], &tag);
     if (err)
       return err;
 
@@ -319,7 +319,7 @@ static result_t format_value(const void *vvalue,
                              size_t      len,
                              void       *opaque)
 {
-  result_t           err;
+  result_t        err;
   tagdb_t        *db = opaque;
   const bitvec_t *v  = vvalue;
   int             c;
@@ -338,7 +338,11 @@ static result_t format_value(const void *vvalue,
     if (index < 0)
       break;
 
-    err = tagdb_tagtoname(db, index, buf + c, &length, len - c);
+    err = tagdb_tagtoname(db,
+                          index,
+                          (unsigned char *) (buf + c),
+                          &length,
+                          len - c);
     if (err)
       return -1;
 
@@ -404,8 +408,8 @@ result_t tagdb_add(tagdb_t *db, const unsigned char *name, tagdb_tag_t *ptag)
   assert(name);
 
   err = atom_new(db->tags,
-                 (const unsigned char *) name,
-                 strlen(name) + 1,
+                 name,
+                 strlen((const char *) name) + 1,
                 &index);
   if (err == result_ATOM_NAME_EXISTS)
   {
@@ -511,7 +515,7 @@ void tagdb_remove(tagdb_t *db, tagdb_tag_t tag)
   cont = 0;
   do
   {
-    char id[MAXIDLEN];
+    unsigned char id[MAXIDLEN];
 
     err = tagdb_enumerate_ids_by_tag(db, tag, &cont, id, sizeof(id));
     if (err)
@@ -554,7 +558,7 @@ result_t tagdb_rename(tagdb_t             *db,
   return atom_set(db->tags,
                   db->counts[tag].index,
                   (const unsigned char *) name,
-                  strlen(name) + 1);
+                  strlen((char *) name) + 1);
 }
 
 result_t tagdb_enumerate_tags(tagdb_t     *db,
@@ -562,7 +566,7 @@ result_t tagdb_enumerate_tags(tagdb_t     *db,
                               tagdb_tag_t *tag,
                               int         *count)
 {
-  int index;
+  unsigned int index;
 
   assert(db);
   assert(continuation);
