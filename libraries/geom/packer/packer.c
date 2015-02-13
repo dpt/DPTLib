@@ -330,7 +330,7 @@ static void packer_sort(packer_t *packer, packer_sortdir_t order)
     if (!box_is_empty(b))
       continue;
 
-    n = b - areas;
+    n = (int) (b - areas);
 
     logf_debug("trimming to %d long", n);
     packer->usedareas = n;
@@ -453,6 +453,9 @@ result_t packer_place_by(packer_t     *packer,
     packer->placed_area.x0 = b->x1 - w;
     packer->placed_area.x1 = b->x1;
     break;
+
+  default:
+    break;
   }
 
   switch (loc)
@@ -467,6 +470,9 @@ result_t packer_place_by(packer_t     *packer,
   case packer_LOC_BOTTOM_RIGHT:
     packer->placed_area.y0 = b->y0;
     packer->placed_area.y1 = b->y0 + h;
+    break;
+
+  default:
     break;
   }
 
