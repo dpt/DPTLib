@@ -12,7 +12,7 @@
 
 void atom_destroy(atom_set_t *s)
 {
-  int i;
+  unsigned int i;
 
   if (s == NULL)
     return;

@@ -25,8 +25,8 @@ atom_set_t *atom_create_tuned(size_t locpoolsz, size_t blkpoolsz)
   if (s == NULL)
     return NULL;
 
-  s->log2locpoolsz = locpoolsz ? ceillog2(locpoolsz) : LOG2LOCPOOLSZ;
-  s->log2blkpoolsz = blkpoolsz ? ceillog2(blkpoolsz) : LOG2BLKPOOLSZ;
+  s->log2locpoolsz = locpoolsz ? ceillog2_size_t(locpoolsz) : LOG2LOCPOOLSZ;
+  s->log2blkpoolsz = blkpoolsz ? ceillog2_size_t(blkpoolsz) : LOG2BLKPOOLSZ;
 
   return s;
 }

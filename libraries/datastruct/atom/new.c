@@ -41,7 +41,7 @@ result_t atom_ensure_loc_space(atom_set_t *s)
   if (array_grow((void **) &s->locpools,
                  sizeof(*s->locpools),
                  s->l_used,
-                 &s->l_allocated,
+                 (int *) &s->l_allocated,
                  1,
                  LOCPTRMINSZ))
     return result_OOM;
@@ -108,7 +108,7 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
   if (array_grow((void **) &s->blkpools,
                  sizeof(*s->blkpools),
                  s->b_used,
-                 &s->b_allocated,
+                 (int *) &s->b_allocated,
                  1,
                  BLKPTRMINSZ))
     return result_OOM;
@@ -151,16 +151,18 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
 
 /* ----------------------------------------------------------------------- */
 
-result_t atom_new(atom_set_t *s, const unsigned char *block, size_t length,
-                  atom_t *patom)
+result_t atom_new(atom_set_t          *s,
+                  const unsigned char *block,
+                  size_t               length,
+                  atom_t              *patom)
 {
-  result_t   err;
-  atom_t     atom;
-  locpool_t *pend;
-  locpool_t *p;
-  loc_t     *lend;
-  loc_t     *l;
-  int        i;
+  result_t      err;
+  atom_t        atom;
+  locpool_t    *pend;
+  locpool_t    *p;
+  loc_t        *lend;
+  loc_t        *l;
+  unsigned int  i;
 
   assert(s);
   assert(block);
@@ -204,7 +206,7 @@ result_t atom_new(atom_set_t *s, const unsigned char *block, size_t length,
    * case.
    */
   for (i = 0; i < s->b_used; i++)
-    if ((1 << s->log2blkpoolsz) - s->blkpools[i].used >= length)
+    if ((1U << s->log2blkpoolsz) - s->blkpools[i].used >= length)
       break;
 
   if (i == s->b_used)

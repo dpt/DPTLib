@@ -31,6 +31,7 @@ typedef int result_t;
 #define result_BUFFER_OVERFLOW                  (result_BASE_GENERIC     + 4)
 #define result_STOP_WALK                        (result_BASE_GENERIC     + 5)
 #define result_PARSE_ERROR                      (result_BASE_GENERIC     + 6)
+#define result_TOO_BIG                          (result_BASE_GENERIC     + 7)
 
 /* Stream result codes are in io/stream.h */
 

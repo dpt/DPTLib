@@ -47,7 +47,7 @@
  * necessarily used) index.
  */
 #define ATOMVALID(i) \
-  ((unsigned int) i < ((s->l_used - 1) << s->log2locpoolsz) + s->locpools[s->l_used - 1].used)
+  ((unsigned int) i < ((s->l_used - 1U) << s->log2locpoolsz) + s->locpools[s->l_used - 1].used)
 
 /* ----------------------------------------------------------------------- */
 
@@ -71,22 +71,22 @@ locpool_t;
 typedef struct blkpool
 {
   unsigned char  *blks;
-  int             used;
+  int             used; // gets compared with size_t ...
 }
 blkpool_t;
 
 struct atom_set
 {
-  size_t     log2locpoolsz; /* log2 number of locations per locpool */
-  size_t     log2blkpoolsz; /* log2 number of bytes per blkpool */
+  size_t          log2locpoolsz; /* log2 number of locations per locpool */
+  size_t          log2blkpoolsz; /* log2 number of bytes per blkpool */
 
-  locpool_t *locpools;      /* growable array of location pools */
-  int        l_used;
-  int        l_allocated;
+  locpool_t      *locpools;      /* growable array of location pools */
+  unsigned int    l_used;
+  unsigned int    l_allocated;
 
-  blkpool_t *blkpools;      /* growable array of block pools */
-  int        b_used;
-  int        b_allocated;
+  blkpool_t      *blkpools;      /* growable array of block pools */
+  unsigned int    b_used;
+  unsigned int    b_allocated;
 };
 
 /* ----------------------------------------------------------------------- */

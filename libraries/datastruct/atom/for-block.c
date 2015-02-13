@@ -1,6 +1,7 @@
 /* for-block.c -- atoms */
 
 #include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,6 +19,12 @@ atom_t atom_for_block(atom_set_t          *s,
   assert(s);
   assert(block);
   assert(length > 0);
+
+  /* The current implementation uses an int for the length of a block, and
+   * negative numbers indicate unused blocks, so we cannot cope with lengths
+   * greater than INT_MAX even though the interface allows size_t. */
+  if (length > INT_MAX)
+    return result_TOO_BIG;
 
   /* linear search every locpool */
 
