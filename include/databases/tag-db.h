@@ -93,7 +93,7 @@ result_t tagdb_tagtoname(tagdb_t       *db,
 result_t tagdb_tagid(T *db, const unsigned char *id, tagdb_tag_t tag);
 
 /* remove tag from id */
-result_t tagdb_untagid(T *db, const char *id, tagdb_tag_t tag);
+result_t tagdb_untagid(T *db, const unsigned char *id, tagdb_tag_t tag);
 
 /* ----------------------------------------------------------------------- */
 

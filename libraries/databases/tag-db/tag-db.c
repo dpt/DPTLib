@@ -690,7 +690,7 @@ result_t tagdb_tagid(tagdb_t *db, const unsigned char *id, tagdb_tag_t tag)
   return result_OK;
 }
 
-result_t tagdb_untagid(tagdb_t *db, const char *id, tagdb_tag_t tag)
+result_t tagdb_untagid(tagdb_t *db, const unsigned char *id, tagdb_tag_t tag)
 {
   bitvec_t *val;
 
