@@ -448,7 +448,7 @@ result_t tagdb_add(tagdb_t *db, const unsigned char *name, tagdb_tag_t *ptag)
       if (array_grow((void **) &db->counts,
                      sizeof(*db->counts),
                      db->c_used,
-                     &db->c_allocated,
+                     (int *) &db->c_allocated,
                      1,
                      8))
       {
