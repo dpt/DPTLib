@@ -204,7 +204,7 @@ result_t pickle_unpickle(const char                      *filename,
           goto Failure;
       }
 
-      used = (nl + 1) - state->buffer;
+      used = (nl + 1) - state->buffer; // ptrdiff_t -> int
       if (occupied - used <= 0)
         break;
     }
