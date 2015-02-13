@@ -64,7 +64,7 @@ static void update_current(MTFState_t *s, int c)
 
   if (pos > 0)
     memmove(s->tab + 1, s->tab, pos);
-  s->tab[0] = c;
+  s->tab[0] = (unsigned char) c;
 }
 
 /* this yields a byte at a time */
@@ -230,7 +230,7 @@ static int stream_mtfcomp_get(stream_t *s)
       break;
     }
 
-    *p++ = c;
+    *p++ = (unsigned char) c;
   }
 
   if (p == sm->buffer)
@@ -319,7 +319,7 @@ static int stream_mtfdecomp_get(stream_t *s)
       break;
     }
 
-    *p++ = c;
+    *p++ = (unsigned char) c;
   }
 
   if (p == sm->buffer)
