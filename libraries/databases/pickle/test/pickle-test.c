@@ -195,7 +195,7 @@ static const char *countries[cheese_COUNTRY__LIMIT] =
 
 static const char *cheese_country_to_string(cheese_country_t c)
 {
-  if (c < 0 || c >= cheese_COUNTRY__LIMIT)
+  if ((unsigned int) c >= cheese_COUNTRY__LIMIT)
     return "Unknown country";
 
   return countries[c];
@@ -224,7 +224,7 @@ static const char *regions[cheese_REGION__LIMIT] =
 
 static const char *cheese_region_to_string(cheese_region_t r)
 {
-  if (r < 0 || r >= cheese_REGION__LIMIT)
+  if ((unsigned int) r >= cheese_REGION__LIMIT)
     return "Unknown region";
 
   return regions[r];
@@ -251,7 +251,7 @@ static const char *sources[cheese_SOURCE__LIMIT] =
 
 static const char *cheese_source_to_string(cheese_source_t s)
 {
-  if (s < 0 || s >= cheese_SOURCE__LIMIT)
+  if ((unsigned int) s >= cheese_SOURCE__LIMIT)
     return "Unknown source";
 
   return sources[s];
@@ -276,7 +276,7 @@ static const char *pasteurisations[cheese_PASTEURISED__LIMIT] =
 
 static const char *cheese_pasteurised_to_string(cheese_pasteurised_t p)
 {
-  if (p < 0 || p >= cheese_PASTEURISED__LIMIT)
+  if ((unsigned int) p >= cheese_PASTEURISED__LIMIT)
     return "Unknown pasteurisation";
 
   return pasteurisations[p];
@@ -413,11 +413,11 @@ static result_t cheese_unformat_value(const char *buf,
   value->pasteurised = cheese_pasteurised_from_string(pasteurised);
   value->age         = age;
 
-  if (value->country     < 0 ||
-      value->region      < 0 ||
-      value->source1     < 0 ||
-      value->source2     < 0 ||
-      value->pasteurised < 0)
+  if ((unsigned int) value->country >= cheese_COUNTRY__LIMIT ||
+      (unsigned int) value->region >= cheese_REGION__LIMIT   ||
+      (unsigned int) value->source1 >= cheese_SOURCE__LIMIT  ||
+      (unsigned int) value->source2 >= cheese_SOURCE__LIMIT  ||
+      (unsigned int) value->pasteurised >= cheese_PASTEURISED__LIMIT)
     return result_BAD_ARG;
 
   *pvalue = value;
