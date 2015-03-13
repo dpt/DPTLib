@@ -122,13 +122,14 @@ result_t pickle_unpickle(const char                      *filename,
                          const pickle_unformat_methods_t *unformat,
                          void                            *opaque)
 {
-  result_t           err;
   const size_t       bufsz = READBUFSZ;
+
+  result_t           err;
   FILE              *f = NULL;
   unpickle__state_t *state;
-  int                occupied;
-  int                used;
   void              *wstate = NULL;
+  size_t             occupied;
+  size_t             used;
 
   f = fopen(filename, "rb");
   if (f == NULL)
