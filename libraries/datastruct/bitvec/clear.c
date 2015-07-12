@@ -13,5 +13,5 @@ void bitvec_clear(bitvec_t *v, bitvec_index_t bit)
   if (word >= v->length)
     return;
 
-  v->vec[word] &= ~(1u << (bit & WORDMASK));
+  v->vec[word] &= ~(bitvec_1 << (bit & WORDMASK));
 }

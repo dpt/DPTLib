@@ -32,19 +32,19 @@ int bitvec_next(const bitvec_t *v, int n)
 
   for (; hi < v->length; hi++)
   {
-    unsigned int word;
-    unsigned int bits;
+    bitvec_T word;
+    bitvec_T bits;
 
     word = v->vec[hi];
     if (word == 0)
       continue; /* no bits set */
 
     if (lo >= 0)
-      word &= ~((1 << (lo + 1)) - 1);
+      word &= ~((bitvec_1 << (lo + 1)) - 1); /* mask off considered bits */
 
     bits = LSB(word);
     if (bits)
-      return (hi << LOG2BITSPERWORD) + ctz(bits);
+      return (hi << LOG2BITSPERWORD) + bitvec_ctz(bits);
 
     lo = -1; /* don't mask the next words */
   }

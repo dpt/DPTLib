@@ -17,7 +17,7 @@ result_t bitvec_toggle(bitvec_t *v, bitvec_index_t bit)
   if (err)
     return err;
 
-  v->vec[word] ^= 1u << (bit & WORDMASK);
+  v->vec[word] ^= bitvec_1 << (bit & WORDMASK);
 
   return result_OK;
 }

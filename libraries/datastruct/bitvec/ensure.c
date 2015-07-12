@@ -18,7 +18,7 @@ result_t bitvec_ensure(bitvec_t *v, unsigned int need)
   if (need > v->length)
   {
     unsigned int  length;
-    unsigned int *vec;
+    bitvec_T     *vec;
 
     length = need;
 

@@ -12,7 +12,7 @@ unsigned int bitvec_count(const bitvec_t *v)
 
   c = 0;
   for (i = 0; i < v->length; i++)
-    c += countbits(v->vec[i]);
+    c += bitvec_countbits(v->vec[i]);
 
   return c;
 }
