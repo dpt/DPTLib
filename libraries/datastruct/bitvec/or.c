@@ -13,7 +13,7 @@ result_t bitvec_or(const bitvec_t *a, const bitvec_t *b, bitvec_t **c)
   int             min, max;
   bitvec_t       *v;
   int             i;
-  const bitvec_t *p;
+  const bitvec_t *longest;
 
   *c = NULL;
 
@@ -28,10 +28,10 @@ result_t bitvec_or(const bitvec_t *a, const bitvec_t *b, bitvec_t **c)
   for (i = 0; i < min; i++)
     v->vec[i] = a->vec[i] | b->vec[i];
 
-  p = (a->length > b->length) ? a : b;
+  longest = (a->length > b->length) ? a : b;
 
   for (i = min; i < max; i++)
-    v->vec[i] = p->vec[i];
+    v->vec[i] = longest->vec[i];
 
   *c = v;
 
