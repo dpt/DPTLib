@@ -418,7 +418,10 @@ static result_t cheese_unformat_value(const char *buf,
       (unsigned int) value->source1 >= cheese_SOURCE__LIMIT  ||
       (unsigned int) value->source2 >= cheese_SOURCE__LIMIT  ||
       (unsigned int) value->pasteurised >= cheese_PASTEURISED__LIMIT)
+  {
+    free(value);
     return result_BAD_ARG;
+  }
 
   *pvalue = value;
 
