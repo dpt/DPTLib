@@ -8,7 +8,7 @@ void bitvec_clear(bitvec_t *v, bitvec_index_t bit)
 {
   unsigned int word;
 
-  word = bit >> 5;
+  word = bit >> LOG2BITSPERWORD;
 
   if (word >= v->length)
     return;

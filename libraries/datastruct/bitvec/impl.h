@@ -4,7 +4,7 @@
 #define DATASTRUCT_BITVEC_IMPL_H
 
 #define LOG2BITSPERWORD 5
-#define BYTESPERWORD    (1 << (LOG2BITSPERWORD - 2))
+#define BYTESPERWORD    (1 << (LOG2BITSPERWORD - 3))
 #define WORDMASK        ((1 << LOG2BITSPERWORD) - 1)
 
 struct bitvec
