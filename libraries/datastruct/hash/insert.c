@@ -12,7 +12,7 @@
 
 #include "impl.h"
 
-result_t hash_insert(hash_t *h, void *key, void *value)
+result_t hash_insert(hash_t *h, const void *key, const void *value)
 {
   hash_node_t **n;
 
@@ -21,11 +21,11 @@ result_t hash_insert(hash_t *h, void *key, void *value)
   {
     /* already exists: update the value */
 
-    h->destroy_value((*n)->value);
+    h->destroy_value((void *) (*n)->value); /* must cast away const */
 
     (*n)->value = value;
 
-    h->destroy_key(key);
+    h->destroy_key((void *) key); /* must cast away const */
   }
   else
   {
@@ -40,6 +40,8 @@ result_t hash_insert(hash_t *h, void *key, void *value)
     m->next  = NULL;
     m->key   = key;
     m->value = value;
+
+    h->count++;
 
     *n = m;
   }

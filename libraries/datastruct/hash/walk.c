@@ -12,7 +12,7 @@
 
 #include "impl.h"
 
-int hash_walk(hash_t *h, hash_walk_callback_t *cb, void *cbarg)
+result_t hash_walk(const hash_t *h, hash_walk_callback_t *cb, void *cbarg)
 {
   unsigned int i;
 
@@ -23,15 +23,15 @@ int hash_walk(hash_t *h, hash_walk_callback_t *cb, void *cbarg)
 
     for (n = h->bins[i]; n != NULL; n = next)
     {
-      int r;
+      result_t r;
 
       next = n->next;
 
       r = cb(n->key, n->value, cbarg);
-      if (r < 0)
+      if (r)
         return r;
     }
   }
 
-  return 0;
+  return result_OK;
 }

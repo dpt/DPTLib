@@ -130,6 +130,7 @@
 		55E559201A350051001FB51F /* tag-db.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559161A350037001FB51F /* tag-db.c */; };
 		55E559261A3A60E5001FB51F /* layout.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559231A3A60E5001FB51F /* layout.c */; };
 		55E559281A3A60EF001FB51F /* layout-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559251A3A60E5001FB51F /* layout-test.c */; };
+		55EC240E1B62EB8E00AD9D28 /* count.c in Sources */ = {isa = PBXBuildFile; fileRef = 55EC240D1B62EB8E00AD9D28 /* count.c */; };
 		55F7DFF61A373F1400A64017 /* array-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5583F1A34F276001FB51F /* array-test.c */; };
 		55F7DFF71A373F2C00A64017 /* atom-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5584B1A34F276001FB51F /* atom-test.c */; };
 		55F7DFF81A373F3E00A64017 /* bitarr-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5584F1A34F276001FB51F /* bitarr-test.c */; };
@@ -364,6 +365,7 @@
 		55E559231A3A60E5001FB51F /* layout.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = layout.c; sourceTree = "<group>"; };
 		55E559251A3A60E5001FB51F /* layout-test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "layout-test.c"; sourceTree = "<group>"; };
 		55E559291A3A6106001FB51F /* layout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = layout.h; sourceTree = "<group>"; };
+		55EC240D1B62EB8E00AD9D28 /* count.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = count.c; sourceTree = "<group>"; };
 		55F7DFE91A373E9000A64017 /* DPTLibTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = DPTLibTest; sourceTree = BUILT_PRODUCTS_DIR; };
 		55F7E0131A38E38100A64017 /* contains-box.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "contains-box.c"; sourceTree = "<group>"; };
 		55F7E0141A38E38100A64017 /* contains-point.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "contains-point.c"; sourceTree = "<group>"; };
@@ -409,7 +411,6 @@
 				55DC561F1A5DB44E003A2985 /* apps */,
 				5551375316545786007F3565 /* include */,
 				5551377216545786007F3565 /* libraries */,
-				55513808165460EF007F3565 /* Frameworks */,
 				5551374D165456FA007F3565 /* Products */,
 			);
 			indentWidth = 2;
@@ -613,13 +614,6 @@
 				5551379C16545786007F3565 /* unpack.c */,
 			);
 			path = pack;
-			sourceTree = "<group>";
-		};
-		55513808165460EF007F3565 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		555E85B31A840E0300BBC66C /* test */ = {
@@ -835,6 +829,7 @@
 		55E558631A34F276001FB51F /* hash */ = {
 			isa = PBXGroup;
 			children = (
+				55EC240D1B62EB8E00AD9D28 /* count.c */,
 				55E558641A34F276001FB51F /* create.c */,
 				55E558651A34F276001FB51F /* destroy.c */,
 				55E558661A34F276001FB51F /* impl.h */,
@@ -1154,7 +1149,7 @@
 		55513743165456FA007F3565 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0500;
+				LastUpgradeCheck = 0700;
 				ORGANIZATIONNAME = "David Thomas";
 			};
 			buildConfigurationList = 55513746165456FA007F3565 /* Build configuration list for PBXProject "DPTLib" */;
@@ -1299,6 +1294,7 @@
 				55E558DA1A34F2BB001FB51F /* map.c in Sources */,
 				55E558EB1A34F2CA001FB51F /* insert-before.c in Sources */,
 				55513865165463EB007F3565 /* pack.c in Sources */,
+				55EC240E1B62EB8E00AD9D28 /* count.c in Sources */,
 				55E558B81A34F293001FB51F /* destroy.c in Sources */,
 				55F7E01D1A38E38100A64017 /* contains-box.c in Sources */,
 				55E558EA1A34F2CA001FB51F /* insert-after.c in Sources */,
@@ -1362,6 +1358,7 @@
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				ENABLE_TESTABILITY = YES;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;

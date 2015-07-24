@@ -233,7 +233,8 @@ result_t tagdb_open(const char *filename, tagdb_t **pdb)
     goto Failure;
   }
 
-  err = hash_create(HASHSIZE,
+  err = hash_create(NULL,
+                    HASHSIZE,
                     digestdb_hash,
                     digestdb_compare,
                     hash_no_destroy_key,
@@ -656,7 +657,7 @@ result_t tagdb_tagid(tagdb_t *db, const unsigned char *id, tagdb_tag_t tag)
 
   inc = 1; /* set this if it's a new tagging */
 
-  val = hash_lookup(db->hash, id);
+  val = (bitvec_t *) hash_lookup(db->hash, id);
   if (val)
   {
     /* update */
@@ -704,7 +705,7 @@ result_t tagdb_untagid(tagdb_t *db, const unsigned char *id, tagdb_tag_t tag)
   if (tag >= db->c_used || db->counts[tag].index == -1)
     return result_TAGDB_UNKNOWN_TAG;
 
-  val = hash_lookup(db->hash, id);
+  val = (bitvec_t *) hash_lookup(db->hash, id);
   if (!val)
     return result_TAGDB_UNKNOWN_ID;
 
@@ -730,7 +731,7 @@ result_t tagdb_get_tags_for_id(tagdb_t             *db,
   assert(continuation);
   assert(tag);
 
-  v = hash_lookup(db->hash, id);
+  v = (bitvec_t *) hash_lookup(db->hash, id);
   if (!v)
     return result_TAGDB_UNKNOWN_ID;
 

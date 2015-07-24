@@ -74,7 +74,8 @@ void hash_no_destroy_value(void *string)
 
 /* ----------------------------------------------------------------------- */
 
-result_t hash_create(int                    nbins,
+result_t hash_create(const void            *default_value,
+                     int                    nbins,
                      hash_fn_t             *fn,
                      hash_compare_t        *compare,
                      hash_destroy_key_t    *destroy_key,
@@ -99,12 +100,17 @@ result_t hash_create(int                    nbins,
 
   /* the default routines handle strings */
 
+  h->nbins         = nbins;
+  h->bins          = bins;
+
+  h->count         = 0;
+
+  h->default_value = default_value;
+
   h->hash_fn       = fn            ? fn            : string_hash;
   h->compare       = compare       ? compare       : string_compare;
   h->destroy_key   = destroy_key   ? destroy_key   : string_destroy;
   h->destroy_value = destroy_value ? destroy_value : string_destroy;
-  h->nbins         = nbins;
-  h->bins          = bins;
 
   *ph = h;
 

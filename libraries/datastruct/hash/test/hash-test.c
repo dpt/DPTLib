@@ -67,7 +67,7 @@ result_t hash_test(void)
   printf("test: create\n");
 
   /* use default string handling */
-  err = hash_create(20, NULL, NULL, NULL, NULL, &d);
+  err = hash_create(NULL,  20, NULL, NULL, NULL, NULL, &d);
   if (err)
     goto Failure;
 
@@ -99,6 +99,8 @@ result_t hash_test(void)
     }
   }
 
+  printf("count = %d\n", hash_count(d));
+
   printf("test: iterate\n");
 
   hash_walk(d, my_walk_fn, NULL);
@@ -127,6 +129,8 @@ result_t hash_test(void)
 
   for (i = 0; i < NELEMS(data); i++)
     hash_remove(d, data[i].name);
+
+  printf("count = %d\n", hash_count(d));
 
   printf("test: destroy\n");
 

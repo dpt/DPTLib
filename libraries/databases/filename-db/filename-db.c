@@ -183,7 +183,8 @@ result_t filenamedb_open(const char *filename, filenamedb_t **pdb)
     goto Failure;
   }
 
-  err = hash_create(HASHSIZE,
+  err = hash_create(NULL,
+                    HASHSIZE,
                     digestdb_hash,
                     digestdb_compare,
                     hash_no_destroy_key,

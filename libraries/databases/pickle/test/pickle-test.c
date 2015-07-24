@@ -95,7 +95,7 @@ static result_t pickle__test1_write(void)
   printf("test: create hash\n");
 
   /* use default string handling */
-  err = hash_create(20, NULL, NULL, NULL, NULL, &d);
+  err = hash_create(NULL, 20, NULL, NULL, NULL, NULL, &d);
   if (err)
     goto Failure;
 
@@ -479,7 +479,8 @@ static result_t pickle__test2_write(void)
 
   printf("test: create hash\n");
 
-  err = hash_create(0,
+  err = hash_create(NULL,
+                    0,
                     NULL,
                     NULL,
                     hash_no_destroy_key,
@@ -547,7 +548,8 @@ static result_t pickle__test2_read(void)
 
   printf("test: create hash\n");
 
-  err = hash_create(0,
+  err = hash_create(NULL,
+                    0,
                     NULL,
                     NULL,
                     cheese_key_destroy,

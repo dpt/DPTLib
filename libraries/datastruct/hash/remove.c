@@ -18,10 +18,12 @@ void hash_remove_node(hash_t *h, hash_node_t **n)
 
   *n = doomed->next;
 
-  h->destroy_key(doomed->key);
-  h->destroy_value(doomed->value);
+  h->destroy_key((void *) doomed->key);
+  h->destroy_value((void *) doomed->value);
 
   free(doomed);
+
+  h->count--;
 }
 
 void hash_remove(hash_t *h, const void *key)

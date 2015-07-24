@@ -16,8 +16,8 @@
 
 /* ----------------------------------------------------------------------- */
 
-#define result_HASH_END      (result_BASE_HASH + 0)
-#define result_HASH_BAD_CONT (result_BASE_HASH + 1)
+#define result_HASH_END      (result_BASE_HASH + 0) /* Indicates final element */
+#define result_HASH_BAD_CONT (result_BASE_HASH + 1) /* Invalid continuation value */
 
 /* ----------------------------------------------------------------------- */
 
@@ -60,6 +60,7 @@ hash_destroy_value_t hash_no_destroy_value;
 /**
  * Create a hash.
  *
+ * \param      default_value Value to return for failed lookups.
  * \param      nbins         Suggested number of hash bins to allocate.
  * \param      fn            Function to hash keys.
  * \param      compare       Function to compare keys.
@@ -69,7 +70,8 @@ hash_destroy_value_t hash_no_destroy_value;
  *
  * \return Error indication.
  */
-result_t hash_create(int                    nbins,
+result_t hash_create(const void            *default_value,
+                     int                    nbins,
                      hash_fn_t             *fn,
                      hash_compare_t        *compare,
                      hash_destroy_key_t    *destroy_key,
@@ -93,7 +95,7 @@ void hash_destroy(T *doomed);
  *
  * \return Value associated with the specified key.
  */
-void *hash_lookup(T *hash, const void *key);
+const void *hash_lookup(T *hash, const void *key);
 
 /**
  * Insert the specified key:value pair into the hash.
@@ -108,7 +110,7 @@ void *hash_lookup(T *hash, const void *key);
  *
  * \return Error indication.
  */
-result_t hash_insert(T *hash, void *key, void *value);
+result_t hash_insert(T *hash, const void *key, const void *value);
 
 /**
  * Remove the specified key from the hash.
@@ -118,12 +120,21 @@ result_t hash_insert(T *hash, void *key, void *value);
  */
 void hash_remove(T *hash, const void *key);
 
+/**
+ * Return the count of items stored in the hash.
+ *
+ * \param hash Hash.
+ *
+ * \return Count of items in the hash.
+ */
+int hash_count(T *hash);
+
 /* ----------------------------------------------------------------------- */
 
 /**
  * A function called for every key:value pair in the hash.
  *
- * Return a negative value to halt the walk operation.
+ * Return an error to halt the walk operation.
  */
 typedef int (hash_walk_callback_t)(const void *key,
                                    const void *value,
@@ -136,10 +147,10 @@ typedef int (hash_walk_callback_t)(const void *key,
  * \param cb     Callback routine.
  * \param opaque Opaque pointer to pass to callback routine.
  *
- * \return The negative value returned from the callback, or zero for
- * success.
+ * \return Error indication.
+ * \retval result_OK If the walk completed successfully.
  */
-int hash_walk(T *hash, hash_walk_callback_t *cb, void *opaque);
+result_t hash_walk(const T *hash, hash_walk_callback_t *cb, void *opaque);
 
 /* ----------------------------------------------------------------------- */
 
