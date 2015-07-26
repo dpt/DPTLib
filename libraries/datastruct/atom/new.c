@@ -153,11 +153,12 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
 
 result_t atom_new(atom_set_t          *s,
                   const unsigned char *block,
-                  size_t               length,
+                  size_t               sizet_length,
                   atom_t              *patom)
 {
   result_t      err;
   atom_t        atom;
+  int           length;
   locpool_t    *pend;
   locpool_t    *p;
   loc_t        *lend;
@@ -166,16 +167,18 @@ result_t atom_new(atom_set_t          *s,
 
   assert(s);
   assert(block);
-  assert(length > 0);
+  assert(sizet_length > 0);
   assert(patom);
 
-  atom = atom_for_block(s, block, length);
+  atom = atom_for_block(s, block, sizet_length);
   if (atom != atom_NOT_FOUND) /* already present */
   {
     if (patom)
       *patom = atom;
     return result_ATOM_NAME_EXISTS;
   }
+
+  length = (int) sizet_length;
 
   /* Do we have a spare (previously deallocated) entry which can take this
    * data? It must be exactly the right size. Doing this mitigates part of
@@ -238,7 +241,7 @@ fillin:
   memcpy(l->ptr, block, length);
 
   if (patom)
-    *patom = ((p - s->locpools) << s->log2locpoolsz) + (l - p->locs);
+    *patom = (atom_t) (((p - s->locpools) << s->log2locpoolsz) + (l - p->locs));
 
   return result_OK;
 }

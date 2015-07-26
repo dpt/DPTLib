@@ -11,20 +11,23 @@
 
 atom_t atom_for_block(atom_set_t          *s,
                       const unsigned char *block,
-                      size_t               length)
+                      size_t               sizet_length)
 {
+  int              length;
   const locpool_t *pend;
   const locpool_t *p;
 
   assert(s);
   assert(block);
-  assert(length > 0);
+  assert(sizet_length > 0);
 
   /* The current implementation uses an int for the length of a block, and
    * negative numbers indicate unused blocks, so we cannot cope with lengths
    * greater than INT_MAX even though the interface allows size_t. */
-  if (length > INT_MAX)
+  if (sizet_length > INT_MAX)
     return result_TOO_BIG;
+
+  length = (int) sizet_length;
 
   /* linear search every locpool */
 
@@ -39,7 +42,7 @@ atom_t atom_for_block(atom_set_t          *s,
     lend = p->locs + p->used;
     for (l = p->locs; l < lend; l++)
       if (l->length == length && memcmp(l->ptr, block, length) == 0)
-        return ((p - s->locpools) << s->log2locpoolsz) + (l - p->locs);
+        return (atom_t) (((p - s->locpools) << s->log2locpoolsz) + (l - p->locs));
   }
 
   return atom_NOT_FOUND;
