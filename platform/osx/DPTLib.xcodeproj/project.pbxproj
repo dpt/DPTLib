@@ -182,6 +182,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		551FE0C91B723B9D00F49B70 /* point.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = point.h; sourceTree = "<group>"; };
 		55511B481A40F49000D572A7 /* stream-test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-test.c"; sourceTree = "<group>"; };
 		55511B4A1A40F4CD00D572A7 /* stream-mtfcomp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-mtfcomp.c"; sourceTree = "<group>"; };
 		55511B4B1A40F4CD00D572A7 /* stream-packbitscomp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-packbitscomp.c"; sourceTree = "<group>"; };
@@ -472,6 +473,7 @@
 				5551375F16545786007F3565 /* box.h */,
 				55E559291A3A6106001FB51F /* layout.h */,
 				55F7E0271A39178100A64017 /* packer.h */,
+				551FE0C91B723B9D00F49B70 /* point.h */,
 			);
 			path = geom;
 			sourceTree = "<group>";
