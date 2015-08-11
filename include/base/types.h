@@ -19,6 +19,14 @@ typedef unsigned short     uint16_t;
 typedef unsigned int       uint32_t;
 typedef unsigned long long uint64_t;
 
+#ifdef _MSC_VER
+#ifdef _WIN64
+typedef __int64 intptr_t;
+#else
+typedef int intptr_t;
+#endif
+#endif
+
 #endif
 
 #endif /* BASE_TYPES_H */

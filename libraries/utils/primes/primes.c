@@ -1,6 +1,6 @@
 /* primes.c -- cache of prime numbers */
 
-#include "utils/array.h" /* for NELEMS */
+#include "base/utils.h"
 
 #include "utils/primes.h"
 

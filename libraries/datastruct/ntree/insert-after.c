@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "base/suppress.h"
+#include "base/utils.h"
 
 #include "base/result.h"
 #include "datastruct/ntree.h"

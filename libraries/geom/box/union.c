@@ -1,6 +1,6 @@
 /* union.c -- return a box "c" that contains both boxes "a" and "b" */
 
-#include "utils/minmax.h"
+#include "base/utils.h"
 
 #include "geom/box.h"
 

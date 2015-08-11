@@ -7,7 +7,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "base/suppress.h"
+#include "base/utils.h"
 
 #include "base/result.h"
 #include "utils/primes.h"

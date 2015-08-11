@@ -12,10 +12,9 @@
 
 #include "base/result.h"
 #include "base/debug.h"
-#include "base/suppress.h"
+#include "base/utils.h"
 #include "io/stream.h"
 #include "utils/array.h"
-#include "utils/minmax.h"
 
 #include "io/stream-packbits.h"
 

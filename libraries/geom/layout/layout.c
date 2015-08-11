@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-#include "utils/minmax.h"
+#include "base/utils.h"
 #include "geom/packer.h"
 
 #include "geom/layout.h"

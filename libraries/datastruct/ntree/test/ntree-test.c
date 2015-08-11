@@ -8,7 +8,7 @@
 #endif
 
 #include "base/result.h"
-#include "base/suppress.h"
+#include "base/utils.h"
 #include "utils/array.h"
 
 #include "datastruct/ntree.h"

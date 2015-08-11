@@ -192,7 +192,6 @@
 		5551374C165456FA007F3565 /* libDPTLib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libDPTLib.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		5551375516545786007F3565 /* debug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = debug.h; sourceTree = "<group>"; };
 		5551375616545786007F3565 /* result.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = result.h; sourceTree = "<group>"; };
-		5551375716545786007F3565 /* suppress.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = suppress.h; sourceTree = "<group>"; };
 		5551375816545786007F3565 /* types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = types.h; sourceTree = "<group>"; };
 		5551375A16545786007F3565 /* bitmap-set.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "bitmap-set.h"; sourceTree = "<group>"; };
 		5551375B16545786007F3565 /* bitmap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bitmap.h; sourceTree = "<group>"; };
@@ -204,8 +203,6 @@
 		5551376316545786007F3565 /* stream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = stream.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		5551376D16545786007F3565 /* array.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = array.h; sourceTree = "<group>"; };
 		5551376E16545786007F3565 /* barith.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = barith.h; sourceTree = "<group>"; };
-		5551376F16545786007F3565 /* likely.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = likely.h; sourceTree = "<group>"; };
-		5551377016545786007F3565 /* minmax.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = minmax.h; sourceTree = "<group>"; };
 		5551377116545786007F3565 /* pack.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = pack.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		5551377416545786007F3565 /* log2bpp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = log2bpp.c; sourceTree = "<group>"; };
 		5551377B16545786007F3565 /* stream-mem.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "stream-mem.c"; sourceTree = "<group>"; };
@@ -218,6 +215,7 @@
 		555E85B41A840E4D00BBC66C /* bsearch-test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "bsearch-test.c"; path = "test/bsearch-test.c"; sourceTree = "<group>"; };
 		556DE20A1A49983C009BBE63 /* ensure.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ensure.c; sourceTree = "<group>"; };
 		556DE20C1A49A1FB009BBE63 /* insert.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = insert.c; sourceTree = "<group>"; };
+		55A2FB281B7A45080047C488 /* utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
 		55B22A221A4063000022ED84 /* barith.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = barith.c; sourceTree = "<group>"; };
 		55DC56211A5DB44E003A2985 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		55DC56261A61C951003A2985 /* set.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = set.c; sourceTree = "<group>"; };
@@ -450,8 +448,8 @@
 			children = (
 				5551375516545786007F3565 /* debug.h */,
 				5551375616545786007F3565 /* result.h */,
-				5551375716545786007F3565 /* suppress.h */,
 				5551375816545786007F3565 /* types.h */,
+				55A2FB281B7A45080047C488 /* utils.h */,
 			);
 			path = base;
 			sourceTree = "<group>";
@@ -498,9 +496,7 @@
 				55E557EB1A336220001FB51F /* bsearch.h */,
 				55E557F61A33776A001FB51F /* bytesex.h */,
 				55E558091A338F42001FB51F /* fxp.h */,
-				5551376F16545786007F3565 /* likely.h */,
 				55E558181A3491D1001FB51F /* maths.h */,
-				5551377016545786007F3565 /* minmax.h */,
 				5551377116545786007F3565 /* pack.h */,
 				55E558141A348961001FB51F /* primes.h */,
 			);

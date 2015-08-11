@@ -14,11 +14,6 @@
 /* ----------------------------------------------------------------------- */
 
 /**
- * Returns the number of elements in the specified array.
- */
-#define NELEMS(a) ((int) (sizeof(a) / sizeof((a)[0])))
-
-/**
  * Signifies an array of unknown length, e.g. when used as the size of an
  * array which is the final member of a struct.
  */

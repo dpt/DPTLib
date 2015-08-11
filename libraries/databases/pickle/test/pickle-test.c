@@ -10,7 +10,7 @@
 #endif
 
 #include "base/result.h"
-#include "base/suppress.h"
+#include "base/utils.h"
 #include "datastruct/hash.h"
 #include "utils/array.h"
 

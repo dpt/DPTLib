@@ -9,7 +9,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "base/suppress.h"
+#include "base/utils.h"
 
 #include "datastruct/hash.h"
 

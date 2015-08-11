@@ -4,8 +4,7 @@
 #include <string.h>
 
 #include "base/result.h"
-#include "utils/array.h"
-#include "utils/minmax.h"
+#include "base/utils.h"
 
 #include "test/txtscr.h"
 

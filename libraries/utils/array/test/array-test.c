@@ -7,6 +7,8 @@
 #endif
 
 #include "base/result.h"
+#include "base/utils.h"
+
 #include "utils/array.h"
 
 result_t array_test(void); /* suppress "No previous prototype" warning */

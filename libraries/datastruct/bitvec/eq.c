@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-#include "utils/minmax.h"
+#include "base/utils.h"
 
 #include "datastruct/bitvec.h"
 

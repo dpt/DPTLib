@@ -9,7 +9,7 @@
 #endif
 
 #include "base/result.h"
-#include "utils/array.h"
+#include "base/utils.h"
 
 #include "io/stream.h"
 #include "io/stream-stdio.h"

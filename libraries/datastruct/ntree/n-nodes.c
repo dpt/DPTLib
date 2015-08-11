@@ -1,6 +1,6 @@
 /* n-nodes.c -- n-ary tree */
 
-#include "base/suppress.h"
+#include "base/utils.h"
 
 #include "datastruct/ntree.h"
 

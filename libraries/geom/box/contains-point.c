@@ -1,6 +1,6 @@
 /* contains-point.c -- return true if "box" contains the point (x,y) */
 
-#include "utils/minmax.h"
+#include "base/utils.h"
 
 #include "geom/box.h"
 

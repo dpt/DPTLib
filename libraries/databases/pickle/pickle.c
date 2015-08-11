@@ -11,7 +11,7 @@
 #endif
 
 #include "base/result.h"
-#include "utils/array.h"
+#include "base/utils.h"
 
 #include "databases/pickle.h"
 

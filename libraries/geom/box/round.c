@@ -1,6 +1,6 @@
 /* round.c -- round a box's coords so they're a multiple of "amount" */
 
-#include "utils/minmax.h"
+#include "base/utils.h"
 
 #include "geom/box.h"
 

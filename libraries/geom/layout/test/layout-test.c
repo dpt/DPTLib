@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "base/utils.h"
 #include "geom/box.h"
 #include "test/txtscr.h"
-#include "utils/array.h"
 
 #include "geom/layout.h"
 

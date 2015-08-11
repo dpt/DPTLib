@@ -22,7 +22,7 @@
 #include <unistd.h>
 #endif
 
-#include "base/suppress.h"
+#include "base/utils.h"
 #include "base/result.h"
 //#include "base/strings.h"
 #include "databases/digest-db.h"

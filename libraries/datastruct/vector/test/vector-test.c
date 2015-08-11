@@ -5,8 +5,8 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "utils/array.h"
 #include "base/result.h"
+#include "base/utils.h"
 #include "datastruct/vector.h"
 
 #define WIDTH 4 /* bytes */

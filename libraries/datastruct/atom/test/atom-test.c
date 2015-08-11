@@ -1,13 +1,14 @@
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
 
-#include "utils/array.h"
 #include "base/result.h"
+#include "base/utils.h"
 #include "datastruct/atom.h"
 
 static const char *data[] =
