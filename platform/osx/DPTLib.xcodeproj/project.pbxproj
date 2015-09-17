@@ -20,6 +20,7 @@
 		55513865165463EB007F3565 /* pack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379B16545786007F3565 /* pack.c */; };
 		55513866165463EB007F3565 /* unpack.c in Sources */ = {isa = PBXBuildFile; fileRef = 5551379C16545786007F3565 /* unpack.c */; };
 		555E85B61A840E4D00BBC66C /* bsearch-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 555E85B41A840E4D00BBC66C /* bsearch-test.c */; };
+		5563C4521BAACF3200CD1461 /* reset.c in Sources */ = {isa = PBXBuildFile; fileRef = 5563C4511BAACF3200CD1461 /* reset.c */; };
 		556DE20B1A49983C009BBE63 /* ensure.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE20A1A49983C009BBE63 /* ensure.c */; };
 		556DE20D1A49A1FB009BBE63 /* insert.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE20C1A49A1FB009BBE63 /* insert.c */; };
 		55B22A231A4063000022ED84 /* barith.c in Sources */ = {isa = PBXBuildFile; fileRef = 55B22A221A4063000022ED84 /* barith.c */; };
@@ -213,6 +214,7 @@
 		5551379B16545786007F3565 /* pack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pack.c; sourceTree = "<group>"; };
 		5551379C16545786007F3565 /* unpack.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unpack.c; sourceTree = "<group>"; };
 		555E85B41A840E4D00BBC66C /* bsearch-test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "bsearch-test.c"; path = "test/bsearch-test.c"; sourceTree = "<group>"; };
+		5563C4511BAACF3200CD1461 /* reset.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = reset.c; sourceTree = "<group>"; };
 		556DE20A1A49983C009BBE63 /* ensure.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ensure.c; sourceTree = "<group>"; };
 		556DE20C1A49A1FB009BBE63 /* insert.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = insert.c; sourceTree = "<group>"; };
 		55A2FB281B7A45080047C488 /* utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
@@ -547,6 +549,7 @@
 				55F7E0171A38E38100A64017 /* intersection.c */,
 				55F7E0181A38E38100A64017 /* intersects.c */,
 				55F7E0191A38E38100A64017 /* is-empty.c */,
+				5563C4511BAACF3200CD1461 /* reset.c */,
 				55F7E01A1A38E38100A64017 /* round.c */,
 				55F7E01B1A38E38100A64017 /* round4.c */,
 				55F7E01C1A38E38100A64017 /* union.c */,
@@ -1182,6 +1185,7 @@
 				55E558121A338F87001FB51F /* umull-fxp16.c in Sources */,
 				55E5591B1A35004E001FB51F /* delete.c in Sources */,
 				55E558061A337785001FB51F /* rev-s-pair-m.c in Sources */,
+				5563C4521BAACF3200CD1461 /* reset.c in Sources */,
 				55E557F31A3362D1001FB51F /* bsearch-short.c in Sources */,
 				55E558C01A34F2AC001FB51F /* clear.c in Sources */,
 				55E558F51A34F2CA001FB51F /* prev-sibling.c in Sources */,

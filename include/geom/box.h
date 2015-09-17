@@ -10,6 +10,16 @@ typedef struct box
 box_t;
 
 /**
+ * Reset the box to an invalid state.
+ *
+ * This sets x0,y0 to INT_MAX and the x1,y1 to INT_MIN. This is an invalid
+ * box but will still produce a valid result when intersected with.
+ *
+ * \param[in] b The box to reset.
+ */
+void box_reset(box_t *b);
+
+/**
  * Affirms if box "outside" entirely contains box "inside".
  *
  * \param[in] inner The inner box.
