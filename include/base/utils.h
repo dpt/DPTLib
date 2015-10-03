@@ -11,14 +11,22 @@
 #endif
 
 /**
- * Clamping variables.
+ * Return the minimum of (a,b).
  */
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
+
+/**
+ * Return the maximum of (a,b).
+ */
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
+
+/**
+ * Return 'a' clamped to the range [b..c].
+ */
 #define CLAMP(a,b,c) MIN(MAX(a,b),c)
 
 /**
- * To suppress warnings about unused variables.
+ * Suppress warnings about unused variables.
  */
 #define NOT_USED(x) ((x) = (x))
 
