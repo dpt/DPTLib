@@ -3,7 +3,14 @@
 /**
  * \file Stream (interface).
  *
- * Data source.
+ * A stream is a generic interface which can be used to wrap sources of
+ * bytes.
+ *
+ * Single byte and block operations are supported. Byte access is efficient:
+ * implemented as a macro.
+ *
+ * Some streams take other streams as input, allowing chains.
+ *
  */
 
 #ifndef STREAM_H
@@ -21,35 +28,41 @@
 
 typedef enum stream_opcode
 {
-  stream_IN_MEMORY /* query whether stream is contained in memory,
-                    * returns an int */
+  stream_IN_MEMORY /**< Query whether stream is contained in memory.
+                    * Returns an int. */
 }
 stream_opcode_t;
 
-/** A type which holds a size or offset within a stream. */
-typedef size_t stream_size_t; // ideally make this 64-bit where supported
+/**
+ * A type which holds a size or offset within a stream.
+ */
+typedef size_t stream_size_t; // TODO: Make this 64-bit where supported.
 
+/* stream_get returns an int, so can return EOF. */
+/* stream_fill returns a stream_size_t, so can return stream_EOF. */
 #define stream_EOF ((stream_size_t) -1)
 
 typedef struct stream stream_t;
 
-/* Interfaces */
+/*
+ * Interfaces
+ */
 
-typedef result_t stream_op_t(stream_t        *s,
-                             stream_opcode_t  opcode,
-                             void            *opaque);
-typedef result_t stream_seek_t(stream_t *s, stream_size_t pos);
-typedef int       stream_get_t(stream_t *s);
+typedef result_t      stream_op_t(stream_t       *s,
+                                  stream_opcode_t opcode,
+                                  void           *opaque);
+typedef result_t      stream_seek_t(stream_t *s, stream_size_t pos);
+typedef int           stream_get_t(stream_t *s);
 typedef stream_size_t stream_fill_t(stream_t *s, stream_size_t need);
 typedef stream_size_t stream_length_t(stream_t *s);
-typedef void      stream_destroy_t(stream_t *doomed);
+typedef void          stream_destroy_t(stream_t *doomed);
 
 struct stream
 {
-  const unsigned char *buf; /* current buffer pointer */
-  const unsigned char *end; /* end of buffer pointer (exclusive - points to the char after buffer end) */
+  const unsigned char *buf;     /**< Current buffer pointer. */
+  const unsigned char *end;     /**< End of buffer pointer (exclusive - points to the char after buffer end). */
 
-  result_t             last; /* last error. set when we return EOF? */
+  result_t             last;    /**< Last error. Set when we return EOF? */
 
   stream_op_t         *op;
   stream_seek_t       *seek;
@@ -59,7 +72,10 @@ struct stream
   stream_destroy_t    *destroy;
 };
 
-/* Main entry points */
+/*
+ * Main entry points
+ */
+
 stream_op_t      stream_op;
 stream_seek_t    stream_seek;
 stream_length_t  stream_length;
