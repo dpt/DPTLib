@@ -141,5 +141,7 @@ result_t hash_test(void)
 
 Failure:
 
+  printf("\n\n*** Error %x\n", err);
+
   return result_TEST_FAILED;
 }
