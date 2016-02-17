@@ -247,9 +247,9 @@ failure:
 #define COMPARE_AREAS(name,ta,tb,tc)                            \
 static int compare_areas_##name(const void *va, const void *vb) \
 {                                                               \
-  const box_t *a = va, *b = vb;                                \
-  int           emptya, emptyb;                                 \
-  int           v;                                              \
+  const box_t *a = va, *b = vb;                                 \
+  int          emptya, emptyb;                                  \
+  int          v;                                               \
                                                                 \
   emptya = box_is_empty(a);                                     \
   emptyb = box_is_empty(b);                                     \
