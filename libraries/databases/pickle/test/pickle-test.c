@@ -122,7 +122,12 @@ static result_t pickle__test1_write(void)
 
     err = hash_insert(d, s, v);
     if (err)
+    {
+      free(s);
+      free(v);
+
       goto Failure;
+    }
   }
 
   err = pickle_pickle("testpickle1", d, &pickle_reader_hash, &formatters, NULL);
