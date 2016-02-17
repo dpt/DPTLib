@@ -109,7 +109,7 @@ static result_t add_area(packer_t *packer, const box_t *area)
         !box_contains_box(area, &packer->areas[i]))
       continue;
 
-    logf_debug("add_area: contained by: %d <%d %d %d %d>\n",
+    logf_debug("add_area: contained by: %d <%d %d %d %d>",
                i,
                packer->areas[i].x0,
                packer->areas[i].y0,
