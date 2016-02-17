@@ -22,7 +22,7 @@ T hlist_copy(T list)
   {
     *p = malloc(sizeof(**p));
     if (*p == NULL)
-      return NULL; // doesn't unwind in failure case
+      return NULL; /* FIXME: This won't unwind the mallocs in the failure case. */
 
     (*p)->first = list->first;
     p = &(*p)->rest;
