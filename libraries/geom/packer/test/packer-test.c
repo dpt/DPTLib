@@ -16,7 +16,7 @@ static result_t drawbox(const box_t *box, void *opaque)
 {
   txtscr_t *scr = opaque;
 
-  printf("drawbox: %d %d %d %d\n", box->x0, box->y0, box->x1, box->y1);
+  printf("drawbox: <%d,%d-%d,%d>\n", box->x0, box->y0, box->x1, box->y1);
 
   txtscr_addbox(scr, box);
 
@@ -95,7 +95,7 @@ static result_t subtest1(packer_t *packer, txtscr_t *scr)
       break;
     }
 
-    printf("%d placed at: {%d %d %d %d}\n",
+    printf("%d placed at: <%d,%d-%d,%d>\n",
            i,
            placed->x0,
            placed->y0,

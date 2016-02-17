@@ -49,7 +49,7 @@ result_t layout_test(void)
 
   used = *packer_get_consumed_area(packer);
 
-  printf("consumed: %d %d %d %d\n", used.x0, used.y0, used.x1, used.y1);
+  printf("layout_test: consumed: <%d,%d-%d,%d>\n", used.x0, used.y0, used.x1, used.y1);
 
   packer_destroy(packer);
 

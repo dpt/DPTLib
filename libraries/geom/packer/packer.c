@@ -82,7 +82,7 @@ void packer_set_margins(packer_t *packer, const box_t *margins)
     packer->margins.y1 = packer->margins.y0 + 1;
   }
 
-  logf_debug("with margins: %d %d %d %d",
+  logf_debug("with margins: <%d,%d-%d,%d>",
               packer->margins.x0,
               packer->margins.y0,
               packer->margins.x1,
@@ -95,7 +95,7 @@ static result_t add_area(packer_t *packer, const box_t *area)
 {
   int i;
 
-  logf_debug("add_area: %d %d %d %d",
+  logf_debug("add_area: <%d,%d-%d,%d>",
              area->x0,
              area->y0,
              area->x1,
@@ -109,7 +109,7 @@ static result_t add_area(packer_t *packer, const box_t *area)
         !box_contains_box(area, &packer->areas[i]))
       continue;
 
-    logf_debug("add_area: contained by: %d <%d %d %d %d>",
+    logf_debug("add_area: contained by: %d <%d,%d-%d,%d>",
                i,
                packer->areas[i].x0,
                packer->areas[i].y0,
@@ -159,7 +159,7 @@ static result_t remove_area(packer_t *packer, const box_t *area)
   int      n;
   int      i;
 
-  logf_debug("remove_area: %d %d %d %d",
+  logf_debug("remove_area: <%d,%d-%d,%d>",
              area->x0,
              area->y0,
              area->x1,
@@ -325,7 +325,7 @@ static void packer_sort(packer_t *packer, packer_sortdir_t order)
     /* trim away any invalid areas which will have been sorted to the end
      * of the list */
 
-    logf_debug("%d %d %d %d", b->x0, b->y0, b->x1, b->y1);
+    logf_debug("<%d,%d-%d,%d>", b->x0, b->y0, b->x1, b->y1);
 
     if (!box_is_empty(b))
       continue;
@@ -359,7 +359,7 @@ static const box_t *packer_next(packer_t *packer)
   }
   while (box_is_empty(&packer->nextarea));
 
-  logf_debug("next: %d %d %d %d",
+  logf_debug("next: <%d,%d-%d,%d>",
              packer->nextarea.x0,
              packer->nextarea.y0,
              packer->nextarea.x1,
