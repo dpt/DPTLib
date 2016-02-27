@@ -30,7 +30,7 @@ typedef int result_t;
 #define result_OK                               (result_BASE_GENERIC     + 0)   /* No error */
 #define result_OOM                              (result_BASE_GENERIC     + 1)   /* Out of memory */
 #define result_FILE_NOT_FOUND                   (result_BASE_GENERIC     + 2)
-#define result_BAD_ARG                          (result_BASE_GENERIC     + 3)   /* Argument unacceptable */
+#define result_BAD_ARG                          (result_BASE_GENERIC     + 3)   /* An argument was unacceptable */
 #define result_BUFFER_OVERFLOW                  (result_BASE_GENERIC     + 4)
 #define result_STOP_WALK                        (result_BASE_GENERIC     + 5)   /* Used to cancel callbacks */
 #define result_PARSE_ERROR                      (result_BASE_GENERIC     + 6)
@@ -39,6 +39,7 @@ typedef int result_t;
 #define result_NOT_FOUND                        (result_BASE_GENERIC     + 9)   /* Item not found */
 #define result_EXISTS                           (result_BASE_GENERIC     + 10)  /* Item already exists */
 #define result_CLASHES                          (result_BASE_GENERIC     + 11)  /* Key clashes with existing one */
+#define result_NULL_ARG                         (result_BASE_GENERIC     + 12)  /* An argument was NULL */
 
 /* Stream result codes are in io/stream.h */
 
