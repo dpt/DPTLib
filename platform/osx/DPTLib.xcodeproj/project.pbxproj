@@ -26,6 +26,7 @@
 		55B22A231A4063000022ED84 /* barith.c in Sources */ = {isa = PBXBuildFile; fileRef = 55B22A221A4063000022ED84 /* barith.c */; };
 		55DC56221A5DB44E003A2985 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 55DC56211A5DB44E003A2985 /* main.c */; };
 		55DC56271A61C952003A2985 /* set.c in Sources */ = {isa = PBXBuildFile; fileRef = 55DC56261A61C951003A2985 /* set.c */; };
+		55E055FC1CA49C3A0036BDDE /* composite.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E055FB1CA49C3A0036BDDE /* composite.c */; };
 		55E557F21A3362D1001FB51F /* bsearch-int.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557EE1A33628D001FB51F /* bsearch-int.c */; };
 		55E557F31A3362D1001FB51F /* bsearch-short.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557EF1A33628D001FB51F /* bsearch-short.c */; };
 		55E557F41A3362D1001FB51F /* bsearch-uint.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E557F01A33628D001FB51F /* bsearch-uint.c */; };
@@ -221,6 +222,8 @@
 		55B22A221A4063000022ED84 /* barith.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = barith.c; sourceTree = "<group>"; };
 		55DC56211A5DB44E003A2985 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		55DC56261A61C951003A2985 /* set.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = set.c; sourceTree = "<group>"; };
+		55E055FB1CA49C3A0036BDDE /* composite.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = composite.c; path = composite/composite.c; sourceTree = "<group>"; };
+		55E055FD1CA49C740036BDDE /* composite.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = composite.h; sourceTree = "<group>"; };
 		55E557EB1A336220001FB51F /* bsearch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bsearch.h; sourceTree = "<group>"; };
 		55E557ED1A33628D001FB51F /* bsearch-impl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = "bsearch-impl.h"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		55E557EE1A33628D001FB51F /* bsearch-int.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "bsearch-int.c"; sourceTree = "<group>"; };
@@ -461,6 +464,7 @@
 			children = (
 				5551375A16545786007F3565 /* bitmap-set.h */,
 				5551375B16545786007F3565 /* bitmap.h */,
+				55E055FD1CA49C740036BDDE /* composite.h */,
 				5551375C16545786007F3565 /* pixelfmt.h */,
 				5551375D16545786007F3565 /* screen.h */,
 			);
@@ -524,6 +528,7 @@
 		5551377316545786007F3565 /* framebuf */ = {
 			isa = PBXGroup;
 			children = (
+				55E055FA1CA49C310036BDDE /* composite */,
 				55F7DFE41A3723C500A64017 /* pixelfmt */,
 			);
 			path = framebuf;
@@ -655,6 +660,14 @@
 				55DC56211A5DB44E003A2985 /* main.c */,
 			);
 			path = test;
+			sourceTree = "<group>";
+		};
+		55E055FA1CA49C310036BDDE /* composite */ = {
+			isa = PBXGroup;
+			children = (
+				55E055FB1CA49C3A0036BDDE /* composite.c */,
+			);
+			name = composite;
 			sourceTree = "<group>";
 		};
 		55E557EC1A33628D001FB51F /* bsearch */ = {
@@ -1183,6 +1196,7 @@
 				55E558C11A34F2AC001FB51F /* count.c in Sources */,
 				55E558C31A34F2AC001FB51F /* destroy.c in Sources */,
 				55E558121A338F87001FB51F /* umull-fxp16.c in Sources */,
+				55E055FC1CA49C3A0036BDDE /* composite.c in Sources */,
 				55E5591B1A35004E001FB51F /* delete.c in Sources */,
 				55E558061A337785001FB51F /* rev-s-pair-m.c in Sources */,
 				5563C4521BAACF3200CD1461 /* reset.c in Sources */,
