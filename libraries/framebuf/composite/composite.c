@@ -41,12 +41,6 @@
 
 /* Working Out
  *
- * Notation:
- *
- * Ra/Sa/Da: result/source/destination alpha component
- * Rc/Sc/Dc: result/source/destination colour component
- * Fa/Fb: blending fraction a/b
- *
  * This working out assumes premultiplied colour values.
  *
  * General form:
@@ -357,7 +351,7 @@
 /* ----------------------------------------------------------------------- */
 
 /* The type of a generic 32-bit xxxA pixel. */
-/* ...which could maybe go in pixelfmt.h. */
+/* ...which ought to go in pixelfmt.h. */
 typedef unsigned int pixelfmt_xxxa8888_t;
 
 /* The type of a compositing routine. */
@@ -516,10 +510,11 @@ static void comp_xxxa8888_src_over(const pixelfmt_xxxa8888_t *src,
 
 /* ----------------------------------------------------------------------- */
 
-// Initially it looks like destination over can be implemented by just taking
-// source over and swapping the arguments around. But for this interface the
-// result B is overwritten, so we'd end up trying to overwrite the input
-// A if we only swapped the args.
+/* Initially it looks like destination over can be implemented by just taking
+ * source over and swapping the arguments around. But for this interface the
+ * result B is overwritten, so we'd end up trying to overwrite the input
+ * A if we only swapped the args.
+ */
 
 /**
  * 'Destination over'. The destination is composed with the source, and the

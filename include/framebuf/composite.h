@@ -1,4 +1,4 @@
-/* composite.h */
+/* composite.h -- Porter-Duff image compositing */
 
 #ifndef COMPOSITE_H
 #define COMPOSITE_H
@@ -27,11 +27,11 @@ typedef enum composite_rule
 composite_rule_t;
 
 /**
- * Composites 'src' over 'dst' (or other rule).
+ * Composites bitmap 'src' over 'dst' (or other rule).
  *
  * \param[in] rule Compositing rule to use.
- * \param[in] src  Source bitmap.
- * \param[in] dst  Destination bitmap.
+ * \param[in] src  First source bitmap.
+ * \param[in] dst  Second source and destination bitmap.
  *
  * \return Result.
  *
