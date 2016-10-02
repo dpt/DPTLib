@@ -32,6 +32,7 @@ test_t;
 
 /* datastruct */
 extern testfn_t atom_test,
+                cache_test,
                 bitarr_test,
                 bitvec_test,
                 hash_test,
@@ -61,6 +62,7 @@ static const test_t tests[] =
   { "atom",     atom_test     },
   { "bitarr",   bitarr_test   },
   { "bitvec",   bitvec_test   },
+  { "cache",    cache_test    },
   { "hash",     hash_test     },
   { "list",     list_test     },
   { "ntree",    ntree_test    },

@@ -132,6 +132,8 @@
 		55E559201A350051001FB51F /* tag-db.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559161A350037001FB51F /* tag-db.c */; };
 		55E559261A3A60E5001FB51F /* layout.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559231A3A60E5001FB51F /* layout.c */; };
 		55E559281A3A60EF001FB51F /* layout-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E559251A3A60E5001FB51F /* layout-test.c */; };
+		55E5695E1DA19B70002F5E0B /* cache.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5695D1DA19B70002F5E0B /* cache.c */; };
+		55E569611DA19C27002F5E0B /* cache-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E569601DA19C27002F5E0B /* cache-test.c */; };
 		55EC240E1B62EB8E00AD9D28 /* count.c in Sources */ = {isa = PBXBuildFile; fileRef = 55EC240D1B62EB8E00AD9D28 /* count.c */; };
 		55F7DFF61A373F1400A64017 /* array-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5583F1A34F276001FB51F /* array-test.c */; };
 		55F7DFF71A373F2C00A64017 /* atom-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E5584B1A34F276001FB51F /* atom-test.c */; };
@@ -369,6 +371,9 @@
 		55E559231A3A60E5001FB51F /* layout.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = layout.c; sourceTree = "<group>"; };
 		55E559251A3A60E5001FB51F /* layout-test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "layout-test.c"; sourceTree = "<group>"; };
 		55E559291A3A6106001FB51F /* layout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = layout.h; sourceTree = "<group>"; };
+		55E569591DA19A3D002F5E0B /* cache.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = cache.h; sourceTree = "<group>"; };
+		55E5695D1DA19B70002F5E0B /* cache.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = cache.c; path = datastruct/cache/cache.c; sourceTree = "<group>"; };
+		55E569601DA19C27002F5E0B /* cache-test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "cache-test.c"; path = "datastruct/cache/test/cache-test.c"; sourceTree = "<group>"; };
 		55EC240D1B62EB8E00AD9D28 /* count.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = count.c; sourceTree = "<group>"; };
 		55F7DFE91A373E9000A64017 /* DPTLibTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = DPTLibTest; sourceTree = BUILT_PRODUCTS_DIR; };
 		55F7E0131A38E38100A64017 /* contains-box.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "contains-box.c"; sourceTree = "<group>"; };
@@ -714,6 +719,7 @@
 				55E5582E1A34F25E001FB51F /* atom.h */,
 				55E5582F1A34F25E001FB51F /* bitarr.h */,
 				55E558301A34F25E001FB51F /* bitvec.h */,
+				55E569591DA19A3D002F5E0B /* cache.h */,
 				55E558311A34F25E001FB51F /* hash.h */,
 				55E558321A34F25E001FB51F /* hlist.h */,
 				55E558331A34F25E001FB51F /* list.h */,
@@ -746,6 +752,7 @@
 				55E558401A34F276001FB51F /* atom */,
 				55E5584C1A34F276001FB51F /* bitarr */,
 				55E558501A34F276001FB51F /* bitvec */,
+				55E5695B1DA19B3E002F5E0B /* cache */,
 				55E558631A34F276001FB51F /* hash */,
 				55E5586F1A34F276001FB51F /* hlist */,
 				55E5587B1A34F276001FB51F /* list */,
@@ -1071,6 +1078,23 @@
 			path = test;
 			sourceTree = "<group>";
 		};
+		55E5695B1DA19B3E002F5E0B /* cache */ = {
+			isa = PBXGroup;
+			children = (
+				55E5695D1DA19B70002F5E0B /* cache.c */,
+				55E5695F1DA19C10002F5E0B /* test */,
+			);
+			name = cache;
+			sourceTree = "<group>";
+		};
+		55E5695F1DA19C10002F5E0B /* test */ = {
+			isa = PBXGroup;
+			children = (
+				55E569601DA19C27002F5E0B /* cache-test.c */,
+			);
+			name = test;
+			sourceTree = "<group>";
+		};
 		55F7DFE41A3723C500A64017 /* pixelfmt */ = {
 			isa = PBXGroup;
 			children = (
@@ -1279,6 +1303,7 @@
 				55E558E81A34F2CA001FB51F /* free.c in Sources */,
 				55F7E0011A379C9300A64017 /* unpickle.c in Sources */,
 				55E5591C1A35004E001FB51F /* hash-reader.c in Sources */,
+				55E5695E1DA19B70002F5E0B /* cache.c in Sources */,
 				5551384B165463EB007F3565 /* stream.c in Sources */,
 				55E558C21A34F2AC001FB51F /* create.c in Sources */,
 				55DC56271A61C952003A2985 /* set.c in Sources */,
@@ -1314,6 +1339,7 @@
 				55E558B81A34F293001FB51F /* destroy.c in Sources */,
 				55F7E01D1A38E38100A64017 /* contains-box.c in Sources */,
 				55E558EA1A34F2CA001FB51F /* insert-after.c in Sources */,
+				55E569611DA19C27002F5E0B /* cache-test.c in Sources */,
 				55E5581C1A3492A8001FB51F /* degs-to-rads.c in Sources */,
 				55F7E0001A3797F600A64017 /* pickle.c in Sources */,
 				55E558B51A34F293001FB51F /* create.c in Sources */,
