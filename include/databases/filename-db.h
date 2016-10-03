@@ -14,6 +14,11 @@
 #ifndef DATABASES_FILENAME_DB_H
 #define DATABASES_FILENAME_DB_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stddef.h>
 
 #include "base/result.h"
@@ -66,5 +71,9 @@ result_t filenamedb_prune(T *db);
 /* ----------------------------------------------------------------------- */
 
 #undef T
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATABASES_FILENAME_DB_H */

@@ -5,6 +5,11 @@
 #ifndef DATASTRUCT_HLIST_H
 #define DATASTRUCT_HLIST_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #define T hlist_t
 
 typedef struct hlist *T;
@@ -27,5 +32,9 @@ void hlist_map(T list, void apply(void **x, void *cl),  void *cl);
 void **hlist_to_array(T list, void *end);
 
 #undef T
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATASTRUCT_HLIST_H */

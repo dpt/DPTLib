@@ -21,6 +21,11 @@
 #ifndef DATASTRUCT_ATOM_H
 #define DATASTRUCT_ATOM_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stddef.h>
 
 #include "base/result.h"
@@ -166,5 +171,9 @@ void atom_delete_block(atom_set_t          *set,
                        size_t               length);
 
 /* ----------------------------------------------------------------------- */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATASTRUCT_ATOM_H */

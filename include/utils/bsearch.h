@@ -3,6 +3,11 @@
 #ifndef UTILS_BSEARCH_H
 #define UTILS_BSEARCH_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stddef.h>
 
 /* Binary search an array 'nelems' long for 'want'.
@@ -45,5 +50,9 @@ int bsearch_uint(const unsigned int *array,
                  unsigned int        nelems,
                  size_t              stride,
                  unsigned int        want);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* UTILS_BSEARCH_H */

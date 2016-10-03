@@ -13,6 +13,11 @@
 #ifndef UTILS_PACK_H
 #define UTILS_PACK_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdarg.h>
 #include <stddef.h>
 
@@ -121,5 +126,9 @@ size_t unpack(const unsigned char *inbuf, const char *fmt, ...);
  * Variant of unpack() which accepts a va_list.
  */
 size_t vunpack(const unsigned char *buf, const char *fmt, va_list args);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* UTILS_PACK_H */

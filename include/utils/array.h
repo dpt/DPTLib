@@ -9,6 +9,11 @@
 #ifndef UTILS_ARRAY_H
 #define UTILS_ARRAY_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdlib.h>
 
 /* ----------------------------------------------------------------------- */
@@ -110,5 +115,9 @@ int array_shrink(void   **block,
                  int     *allocated);
 
 /* ----------------------------------------------------------------------- */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* UTILS_ARRAY_H */

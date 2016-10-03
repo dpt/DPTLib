@@ -9,6 +9,11 @@
 #ifndef DATASTRUCT_NTREE_H
 #define DATASTRUCT_NTREE_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "base/result.h"
 
 #define T ntree_t
@@ -85,5 +90,9 @@ typedef result_t (ntree_copy_fn_t)(void *data, void *opaque, void **newdata);
 result_t ntree_copy(T *t, ntree_copy_fn_t *fn, void *opaque, T **new_t);
 
 #undef T
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATASTRUCT_NTREE_H */

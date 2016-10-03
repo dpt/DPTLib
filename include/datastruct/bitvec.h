@@ -16,6 +16,11 @@
 #ifndef DATASTRUCT_BITVEC_H
 #define DATASTRUCT_BITVEC_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "base/result.h"
 
 #define T bitvec_t
@@ -54,5 +59,9 @@ void bitvec_set_all(T *v);
 void bitvec_clear_all(T *v);
 
 #undef T
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATASTRUCT_BITVEC_H */

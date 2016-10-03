@@ -28,6 +28,11 @@
 #ifndef DATASTRUCT_BITARR_H
 #define DATASTRUCT_BITARR_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdlib.h>
 
 #include "utils/array.h" /* for 'UNKNOWN' */
@@ -137,5 +142,9 @@ struct bitarr
 int bitarr_count(const T *arr, size_t bytelen);
 
 #undef T
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATASTRUCT_BITARR_H */

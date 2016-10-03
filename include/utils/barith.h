@@ -3,6 +3,11 @@
 #ifndef UTILS_BARITH_H
 #define UTILS_BARITH_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <limits.h>
 #include <stdint.h>
 
@@ -388,5 +393,9 @@ BARITH_INLINE uint64_t reversebits_64(uint64_t x)
 
 // TODO: Add variants for other types here.
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* UTILS_BARITH_H */

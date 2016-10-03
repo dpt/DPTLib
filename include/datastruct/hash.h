@@ -12,6 +12,11 @@
 #ifndef DATASTRUCT_HASH_H
 #define DATASTRUCT_HASH_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "base/result.h"
 
 /* ----------------------------------------------------------------------- */
@@ -176,5 +181,9 @@ result_t hash_walk_continuation(T           *hash,
 /* ----------------------------------------------------------------------- */
 
 #undef T
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATASTRUCT_HASH_H */

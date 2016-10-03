@@ -3,6 +3,11 @@
 #ifndef GEOM_LAYOUT_H
 #define GEOM_LAYOUT_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "base/result.h"
 #include "geom/box.h"
 #include "geom/packer.h"
@@ -51,5 +56,9 @@ result_t layout_place(const layout_spec_t    *spec,
                       int                     nelements,
                       box_t                  *boxes,
                       int                     nboxes);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* GEOM_LAYOUT_H */

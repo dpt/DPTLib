@@ -3,6 +3,11 @@
 #ifndef FRAMEBUF_PIXELFMT_H
 #define FRAMEBUF_PIXELFMT_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /** Represents a pixel format. */
 // 'rgbx8888' would be 0xXXBBGGRR
 // round up to whole units using X if that part of the word is empty
@@ -71,6 +76,10 @@ typedef unsigned int   pixelfmt_argb8888_t;
 
 /* Given a pixel format return its log2 bits-per-pixel size. */
 int pixelfmt_log2bpp(pixelfmt_t fmt);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FRAMEBUF_PIXELFMT_H */
 

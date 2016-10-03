@@ -3,6 +3,11 @@
 #ifndef GEOM_BOX_H
 #define GEOM_BOX_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef struct box
 {
   int x0, y0, x1, y1;
@@ -112,5 +117,9 @@ void box_round4(box_t *b);
  * \return Non-zero if the point is contained.
  */
 int box_could_hold(const box_t *b, int w, int h);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* GEOM_BOX_H */

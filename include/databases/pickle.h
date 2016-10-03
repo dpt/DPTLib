@@ -27,6 +27,11 @@
 #ifndef DATABASES_PICKLE_H
 #define DATABASES_PICKLE_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdlib.h>
 
 #include "base/result.h"
@@ -287,5 +292,9 @@ void pickle_delete(const char *filename);
 #define PICKLE_SIGNATURE "1"
 
 /* ----------------------------------------------------------------------- */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATABASES_PICKLE_H */

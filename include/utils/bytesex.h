@@ -3,6 +3,11 @@
 #ifndef UTILS_BYTESEX_H
 #define UTILS_BYTESEX_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stddef.h>
 
 /* Reverse bytesex.
@@ -25,5 +30,9 @@ unsigned int rev_l_m(const unsigned char *);
 
 void rev_s_block(unsigned short int *array, size_t nelems);
 void rev_l_block(unsigned int       *array, size_t nelems);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* UTILS_BYTESEX_H */

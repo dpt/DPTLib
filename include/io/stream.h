@@ -16,6 +16,11 @@
 #ifndef STREAM_H
 #define STREAM_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "base/result.h"
 
 /* ----------------------------------------------------------------------- */
@@ -98,5 +103,9 @@ stream_destroy_t stream_destroy;
 /* As above but attempts to make 'need' bytes available. */
 #define stream_remaining_need_and_fill(s, need) \
   (stream_remaining(s) >= (need) ? stream_remaining(s) : (s)->fill(s, need))
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STREAM_H */

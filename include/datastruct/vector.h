@@ -16,6 +16,11 @@
 #ifndef DATASTRUCT_VECTOR_H
 #define DATASTRUCT_VECTOR_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stddef.h>
 
 #include "base/result.h"
@@ -161,5 +166,9 @@ result_t vector_insert(vector_t *vector, const void *value);
 result_t vector_insert_many(vector_t *vector, const void *values, int nvalues);
 
 /* ----------------------------------------------------------------------- */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATASTRUCT_VECTOR_H */

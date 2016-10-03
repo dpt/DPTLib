@@ -17,6 +17,11 @@
 #ifndef DATABASES_TAG_DB_H
 #define DATABASES_TAG_DB_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stddef.h>
 
 #include "base/result.h"
@@ -134,5 +139,9 @@ void tagdb_forget(T *db, const unsigned char *id);
 /* ----------------------------------------------------------------------- */
 
 #undef T
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATABASES_TAG_DB_H */

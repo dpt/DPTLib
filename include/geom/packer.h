@@ -3,6 +3,11 @@
 #ifndef GEOM_PACKER_H
 #define GEOM_PACKER_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "base/result.h"
 #include "geom/box.h"
 
@@ -67,5 +72,9 @@ result_t packer_map(T *packer, packer_map_fn_t *fn, void *opaque);
 const box_t *packer_get_consumed_area(const T *packer);
 
 #undef T
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* GEOM_PACKER_H */

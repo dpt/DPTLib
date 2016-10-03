@@ -3,6 +3,11 @@
 #ifndef TEST_TXTSCR_H
 #define TEST_TXTSCR_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "geom/box.h"
 
 #define T txtscr_t
@@ -20,5 +25,9 @@ void txtscr_addbox(T *scr, const box_t *box);
 void txtscr_print(T *scr);
 
 #undef T
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* TEST_TXTSCR_H */

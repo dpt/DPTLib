@@ -9,6 +9,11 @@
 #ifndef DATASTRUCT_LIST_H
 #define DATASTRUCT_LIST_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdlib.h>
 
 #define T list_t
@@ -38,5 +43,9 @@ int list_walk(T *anchor, list_walk_callback_t *cb, void *opaque);
 T *list_find(T *anchor, size_t keyloc, int key);
 
 #undef T
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATASTRUCT_LIST_H */

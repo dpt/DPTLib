@@ -13,6 +13,11 @@
 #ifndef DATABASES_DIGEST_DB_H
 #define DATABASES_DIGEST_DB_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stddef.h>
 
 #include "base/result.h"
@@ -48,5 +53,9 @@ result_t digestdb_decode(unsigned char *digest, const char *text);
 void digestdb_encode(char *text, const unsigned char *digest);
 
 /* ----------------------------------------------------------------------- */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATABASES_DIGEST_DB_H */

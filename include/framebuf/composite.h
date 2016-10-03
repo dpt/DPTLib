@@ -3,6 +3,11 @@
 #ifndef COMPOSITE_H
 #define COMPOSITE_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "base/result.h"
 
 #include "framebuf/bitmap.h"
@@ -40,5 +45,9 @@ composite_rule_t;
 result_t composite(composite_rule_t rule,
                    const bitmap_t  *src,
                    bitmap_t        *dst);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* COMPOSITE_H */
