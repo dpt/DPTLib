@@ -228,7 +228,7 @@ result_t cache_create(const cacheconfig_t *config,
   /* round store to a multiple of free_t (otherwise risk putting a 8-byte
    * free_t into a 4-byte spare block) */
   szstore   = (szstore / quantum) * quantum;
-  szcache   = szheader + szbins + szentries + szstore;
+  szcache   = ofstore + szstore;
 
   if (szcache > length)
     return result_BAD_ARG; /* calculations didn't work */
