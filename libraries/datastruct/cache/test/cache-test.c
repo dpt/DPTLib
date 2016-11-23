@@ -129,6 +129,8 @@ static result_t cache_test_outer(const cacheconfig_t *config,
     if (err)
       goto failure;
 
+    free(data);
+
     p = cache_get(cache, 0xdeadbeef);
     if (p == NULL)
     {
