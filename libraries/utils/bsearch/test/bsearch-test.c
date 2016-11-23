@@ -106,14 +106,7 @@ result_t bsearch_test(void)
   
   printf("\n");
 
+  printf("bsearch: %d failure(s)\n", nfailures);
 
-  if (nfailures > 0)
-    goto Failure;
-  
-  return result_TEST_PASSED;
-  
-  
-Failure:
-  
-  return result_TEST_FAILED;
+  return (nfailures > 0) ? result_TEST_FAILED : result_TEST_PASSED;
 }

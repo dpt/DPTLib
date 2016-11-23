@@ -19,8 +19,9 @@ static int cache_test_put(cache_t *cache, int maxkey);
 
 result_t cache_test(void)
 {
+  result_t      err = result_OK;
   cacheconfig_t config;
-  int           nfails;
+  int           nfailures;
   int           i;
 
   config.hash_chain_length   = 4;
@@ -30,30 +31,27 @@ result_t cache_test(void)
 #define MAXLEN 1536
 #define MAXKEY 970
 
-  nfails = 0;
+  nfailures = 0;
   srand(0x060708aa);
   for (i = 0; i < 10; i++)
   {
-    size_t length;
-    int    rc;
+    size_t   length;
 
     length = MINLEN + rand() / (RAND_MAX / (MAXLEN - MINLEN + 1) + 1);
     printf("test: cache with length %zu\n", length);
-    rc = cache_test_outer(&config, length, MAXKEY);
-    if (rc != result_TEST_PASSED)
-      nfails++;
-
-    printf("%s\n", rc == result_TEST_PASSED ? "PASS" : "FAIL");
+    err = cache_test_outer(&config, length, MAXKEY);
+    if (err != result_TEST_PASSED)
+    {
+      printf("\n\n*** Error %x\n", err);
+      nfailures++;
+    }
   }
 
-  printf("cache: %d failure(s)\n", nfails);
+  printf("\n");
 
-  return result_TEST_PASSED;
+  printf("cache: %d failure(s)\n", nfailures);
 
-
-Failure:
-
-  return result_TEST_FAILED;
+  return (nfailures == 0) ? result_TEST_PASSED : result_TEST_FAILED;
 }
 
 static result_t cache_test_outer(const cacheconfig_t *config,
@@ -62,7 +60,7 @@ static result_t cache_test_outer(const cacheconfig_t *config,
 {
   unsigned char  block[cachelength];
   cache_t       *cache;
-  result_t       rc;
+  result_t       err;
 
   printf("test: destroy NULL\n");
 
@@ -70,28 +68,28 @@ static result_t cache_test_outer(const cacheconfig_t *config,
 
   printf("test: create-destroy\n");
 
-  rc = cache_create(NULL, cachelength, &cache);
-  if (rc)
+  err = cache_create(NULL, cachelength, &cache);
+  if (err)
     goto failure;
 
   cache_destroy(cache);
 
   printf("test: construct (in provided block)\n");
 
-  rc = cache_construct(NULL, block, cachelength, &cache);
-  if (rc)
+  err = cache_construct(NULL, block, cachelength, &cache);
+  if (err)
     goto failure;
 
   cache = NULL;
 
   printf("test: create and run tests\n");
 
-  rc = cache_create(config, cachelength, &cache);
-  if (rc)
+  err = cache_create(config, cachelength, &cache);
+  if (err)
     goto failure;
 
-  rc = cache_test_put(cache, maxkey);
-  if (rc != result_TEST_PASSED)
+  err = cache_test_put(cache, maxkey);
+  if (err != result_TEST_PASSED)
     goto failure;
 
   cache_destroy(cache);
@@ -106,8 +104,8 @@ static result_t cache_test_outer(const cacheconfig_t *config,
     unsigned int   saved_checksum;
     unsigned char *p;
 
-    rc = cache_create(config, cachelength, &cache);
-    if (rc)
+    err = cache_create(config, cachelength, &cache);
+    if (err)
       goto failure;
 
     cache_get_info(cache, &info);
@@ -115,7 +113,7 @@ static result_t cache_test_outer(const cacheconfig_t *config,
     data = malloc(info.maxlength);
     if (data == NULL)
     {
-      rc = result_OOM;
+      err = result_OOM;
       goto failure;
     }
 
@@ -127,14 +125,14 @@ static result_t cache_test_outer(const cacheconfig_t *config,
     }
     saved_checksum = checksum;
 
-    rc = cache_put(cache, 0xdeadbeef, data, info.maxlength, NULL);
-    if (rc)
+    err = cache_put(cache, 0xdeadbeef, data, info.maxlength, NULL);
+    if (err)
       goto failure;
 
     p = cache_get(cache, 0xdeadbeef);
     if (p == NULL)
     {
-      rc = result_TEST_FAILED;
+      err = result_TEST_FAILED;
       goto failure;
     }
 
@@ -144,7 +142,7 @@ static result_t cache_test_outer(const cacheconfig_t *config,
 
     if (saved_checksum != checksum)
     {
-      rc = result_TEST_FAILED;
+      err = result_TEST_FAILED;
       goto failure;
     }
 
@@ -157,7 +155,7 @@ static result_t cache_test_outer(const cacheconfig_t *config,
 
 failure:
 
-  return rc;
+  return err;
 }
 
 static result_t cache_test_put(cache_t *cache, int maxkey)
