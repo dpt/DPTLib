@@ -22,9 +22,9 @@
  * +--------+------+---------+-------------------------------------------+
  *
  * - Header is a cache_t.
- * - Bins is an array of pointers to a linked list of entries, all of which
+ * - Bins is an array of pointers to linked lists of entries, all of which
  *   hash to that bin.
- *   The final + 1 hash bin is the complement of the earlier lists: a linked
+ *   The last + 1 hash bin is the complement of the earlier lists: a linked
  *   list of free entries (all the entries not linked from elsewhere).
  * - Entries are the items stored in the cache.
  * - Store is the actual stored data.
@@ -612,8 +612,8 @@ result_t cache_put(cache_t    *c,
     /* find a free block */
 
     /* If we can't find one of at least the size we need then evict and
-     * retry. This isn't great but ensure that we will eventually get a block
-     * of at least the right size. */
+     * retry. This isn't great but ensures that we will eventually get a
+     * block of at least the right size. */
     for (;;)
     {
       for (left = (free_t *) &c->firstfree; (right = left->next) != NULL; left = right)
@@ -679,7 +679,6 @@ result_t cache_put(cache_t    *c,
     }
 
     /* unlink */
-
     c->bins[c->nbins] = entry->next;
 
     cache_check(c, -1);
