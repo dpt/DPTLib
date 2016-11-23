@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -86,11 +87,15 @@ static const int ntests = NELEMS(tests);
 
 static int runtest(const test_t *t)
 {
+  clock_t  start, end;
   result_t rc;
+  double   elapsed;
 
   printf(">>\n" ">> Begin %s tests\n" ">>\n", t->name);
 
+  start = clock();
   rc = t->test();
+  end = clock();
 
 #ifdef FORTIFY
   Fortify_CheckAllMemory();
@@ -103,7 +108,8 @@ static int runtest(const test_t *t)
     printf("** ****************\n");
   }
 
-  printf("<<\n" "<< %s tests complete.\n" "<<\n" "\n", t->name);
+  elapsed = (double) (end - start) / CLOCKS_PER_SEC;
+  printf("<<\n" "<< %s tests complete in %.4fs.\n" "<<\n" "\n", t->name, elapsed);
 
   return rc;
 }
