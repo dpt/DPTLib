@@ -12,8 +12,8 @@ Modules
 
  * [`base/debug.h`](https://github.com/dpt/DPTLib/blob/master/include/base/debug.h) — debugging and logging macros
  * [`base/result.h`](https://github.com/dpt/DPTLib/blob/master/include/base/result.h) — generic function return values
- * [`base/suppress.h`](https://github.com/dpt/DPTLib/blob/master/include/base/suppress.h) — helpers to suppress compiler warnings
  * [`base/types.h`](https://github.com/dpt/DPTLib/blob/master/include/base/types.h) — fixed-width integer types
+ * [`base/utils.h`](https://github.com/dpt/DPTLib/blob/master/include/base/utils.h) — various utilities
 
 ### Databases
 
@@ -70,8 +70,6 @@ Modules
  * [`utils/bsearch.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/bsearch.h) — binary searching arrays
  * [`utils/bytesex.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/bytesex.h) — reversing bytesex
  * [`utils/fxp.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/fxp.h) — fixed point helpers
- * [`utils/likely.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/likely.h) — hints to compiler of probable execution path
  * [`utils/maths.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/maths.h) — math utils
- * [`utils/minmax.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/minmax.h) — clamping numbers
  * [`utils/pack.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/pack.h) — structure packing and unpacking helpers
  * [`utils/primes.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/primes.h) — cache of prime numbers
