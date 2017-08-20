@@ -18,6 +18,7 @@ typedef int result_t;
 #define result_BASE_TEST                        0x0700
 #define result_BASE_PACKER                      0x0800
 #define result_BASE_LAYOUT                      0x0900
+#define result_BASE_BITFIFO                     0x0A00
 
 /* Non-DPTLib bases */
 #define result_BASE_MMPLAYER                    0xF000

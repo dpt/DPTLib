@@ -11,6 +11,11 @@
 #endif
 
 /**
+ * Divide while rounding upwards.
+ */
+#define DIVIDE_ROUNDING_UP(n, m) (((n) + (m) - 1) / (m))
+
+/**
  * Return the minimum of (a,b).
  */
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))

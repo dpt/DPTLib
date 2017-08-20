@@ -33,9 +33,10 @@ test_t;
 
 /* datastruct */
 extern testfn_t atom_test,
-                cache_test,
                 bitarr_test,
+                bitfifo_test,
                 bitvec_test,
+                cache_test,
                 hash_test,
                 list_test,
                 ntree_test,
@@ -62,6 +63,7 @@ static const test_t tests[] =
 {
   { "atom",     atom_test     },
   { "bitarr",   bitarr_test   },
+  { "bitfifo",  bitfifo_test  },
   { "bitvec",   bitvec_test   },
   { "cache",    cache_test    },
   { "hash",     hash_test     },
@@ -116,10 +118,12 @@ static int runtest(const test_t *t)
 
 int main(int argc, char *argv[])
 {
-  int nrun;
-  int nfailures;
-  int i;
-  int npassed;
+  int     nrun;
+  int     nfailures;
+  clock_t start, end;
+  int     i;
+  double  elapsed;
+  int     npassed;
 
 #ifdef FORTIFY
   Fortify_EnterScope();
@@ -127,6 +131,8 @@ int main(int argc, char *argv[])
 
   nrun      = 0;
   nfailures = 0;
+
+  start = clock();
 
   if (argc < 2)
   {
@@ -168,8 +174,14 @@ int main(int argc, char *argv[])
     }
   }
 
+  end = clock();
+
+  elapsed = (double) (end - start) / CLOCKS_PER_SEC;
   npassed = nrun - nfailures;
-  printf("++ Tests completed: %d of %d tests passed.\n", npassed, nrun);
+  printf("++ Tests completed in %.4fs: %d of %d tests passed.\n",
+         elapsed,
+         npassed,
+         nrun);
 
 #ifdef FORTIFY
   Fortify_LeaveScope();

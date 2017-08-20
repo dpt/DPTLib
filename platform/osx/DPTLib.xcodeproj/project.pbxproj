@@ -24,6 +24,8 @@
 		556DE20B1A49983C009BBE63 /* ensure.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE20A1A49983C009BBE63 /* ensure.c */; };
 		556DE20D1A49A1FB009BBE63 /* insert.c in Sources */ = {isa = PBXBuildFile; fileRef = 556DE20C1A49A1FB009BBE63 /* insert.c */; };
 		55B22A231A4063000022ED84 /* barith.c in Sources */ = {isa = PBXBuildFile; fileRef = 55B22A221A4063000022ED84 /* barith.c */; };
+		55CDA5881F49084C006FC753 /* bitfifo.c in Sources */ = {isa = PBXBuildFile; fileRef = 55CDA5871F49084C006FC753 /* bitfifo.c */; };
+		55CDA58C1F49093A006FC753 /* bitfifo-test.c in Sources */ = {isa = PBXBuildFile; fileRef = 55CDA58B1F49093A006FC753 /* bitfifo-test.c */; };
 		55DC56221A5DB44E003A2985 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 55DC56211A5DB44E003A2985 /* main.c */; };
 		55DC56271A61C952003A2985 /* set.c in Sources */ = {isa = PBXBuildFile; fileRef = 55DC56261A61C951003A2985 /* set.c */; };
 		55E055FC1CA49C3A0036BDDE /* composite.c in Sources */ = {isa = PBXBuildFile; fileRef = 55E055FB1CA49C3A0036BDDE /* composite.c */; };
@@ -222,6 +224,9 @@
 		556DE20C1A49A1FB009BBE63 /* insert.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = insert.c; sourceTree = "<group>"; };
 		55A2FB281B7A45080047C488 /* utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
 		55B22A221A4063000022ED84 /* barith.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = barith.c; sourceTree = "<group>"; };
+		55CDA5871F49084C006FC753 /* bitfifo.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = bitfifo.c; sourceTree = "<group>"; };
+		55CDA5891F490863006FC753 /* bitfifo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bitfifo.h; sourceTree = "<group>"; };
+		55CDA58B1F49093A006FC753 /* bitfifo-test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "bitfifo-test.c"; sourceTree = "<group>"; };
 		55DC56211A5DB44E003A2985 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		55DC56261A61C951003A2985 /* set.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = set.c; sourceTree = "<group>"; };
 		55E055FB1CA49C3A0036BDDE /* composite.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = composite.c; path = composite/composite.c; sourceTree = "<group>"; };
@@ -650,6 +655,24 @@
 			path = barith;
 			sourceTree = "<group>";
 		};
+		55CDA5861F490823006FC753 /* bitfifo */ = {
+			isa = PBXGroup;
+			children = (
+				55CDA5871F49084C006FC753 /* bitfifo.c */,
+				55CDA58A1F490923006FC753 /* test */,
+			);
+			name = bitfifo;
+			path = datastruct/bitfifo;
+			sourceTree = "<group>";
+		};
+		55CDA58A1F490923006FC753 /* test */ = {
+			isa = PBXGroup;
+			children = (
+				55CDA58B1F49093A006FC753 /* bitfifo-test.c */,
+			);
+			path = test;
+			sourceTree = "<group>";
+		};
 		55DC561F1A5DB44E003A2985 /* apps */ = {
 			isa = PBXGroup;
 			children = (
@@ -718,6 +741,7 @@
 			children = (
 				55E5582E1A34F25E001FB51F /* atom.h */,
 				55E5582F1A34F25E001FB51F /* bitarr.h */,
+				55CDA5891F490863006FC753 /* bitfifo.h */,
 				55E558301A34F25E001FB51F /* bitvec.h */,
 				55E569591DA19A3D002F5E0B /* cache.h */,
 				55E558311A34F25E001FB51F /* hash.h */,
@@ -751,6 +775,7 @@
 			children = (
 				55E558401A34F276001FB51F /* atom */,
 				55E5584C1A34F276001FB51F /* bitarr */,
+				55CDA5861F490823006FC753 /* bitfifo */,
 				55E558501A34F276001FB51F /* bitvec */,
 				55E5695B1DA19B3E002F5E0B /* cache */,
 				55E558631A34F276001FB51F /* hash */,
@@ -1187,7 +1212,7 @@
 		55513743165456FA007F3565 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0700;
+				LastUpgradeCheck = 0830;
 				ORGANIZATIONNAME = "David Thomas";
 			};
 			buildConfigurationList = 55513746165456FA007F3565 /* Build configuration list for PBXProject "DPTLib" */;
@@ -1225,6 +1250,7 @@
 				55E558061A337785001FB51F /* rev-s-pair-m.c in Sources */,
 				5563C4521BAACF3200CD1461 /* reset.c in Sources */,
 				55E557F31A3362D1001FB51F /* bsearch-short.c in Sources */,
+				55CDA5881F49084C006FC753 /* bitfifo.c in Sources */,
 				55E558C01A34F2AC001FB51F /* clear.c in Sources */,
 				55E558F51A34F2CA001FB51F /* prev-sibling.c in Sources */,
 				55E558C51A34F2AC001FB51F /* eq.c in Sources */,
@@ -1373,6 +1399,7 @@
 				55F7DFF81A373F3E00A64017 /* bitarr-test.c in Sources */,
 				55F7DFF61A373F1400A64017 /* array-test.c in Sources */,
 				55F7DFFA1A373F7200A64017 /* hash-test.c in Sources */,
+				55CDA58C1F49093A006FC753 /* bitfifo-test.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1397,12 +1424,17 @@
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = NO;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -1421,6 +1453,7 @@
 				GCC_WARN_INITIALIZER_NOT_FULLY_BRACKETED = YES;
 				GCC_WARN_SHADOW = YES;
 				GCC_WARN_SIGN_COMPARE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNKNOWN_PRAGMAS = YES;
 				GCC_WARN_UNUSED_FUNCTION = YES;
@@ -1430,7 +1463,7 @@
 					"\"$(SRCROOT)/../../include\"",
 					"\"$(SRCROOT)/../../libraries\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				MACOSX_DEPLOYMENT_TARGET = 10.12;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "-DUSE_ARRAY_GROW";
 				PUBLIC_HEADERS_FOLDER_PATH = "include/$(TARGET_NAME)";
@@ -1450,11 +1483,16 @@
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = NO;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_TREAT_IMPLICIT_FUNCTION_DECLARATIONS_AS_ERRORS = YES;
 				GCC_TREAT_INCOMPATIBLE_POINTER_TYPE_WARNINGS_AS_ERRORS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -1467,6 +1505,7 @@
 				GCC_WARN_INITIALIZER_NOT_FULLY_BRACKETED = YES;
 				GCC_WARN_SHADOW = YES;
 				GCC_WARN_SIGN_COMPARE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNKNOWN_PRAGMAS = YES;
 				GCC_WARN_UNUSED_FUNCTION = YES;
@@ -1476,7 +1515,7 @@
 					"\"$(SRCROOT)/../../include\"",
 					"\"$(SRCROOT)/../../libraries\"",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				MACOSX_DEPLOYMENT_TARGET = 10.12;
 				OTHER_CFLAGS = "-DUSE_ARRAY_GROW";
 				PUBLIC_HEADERS_FOLDER_PATH = "include/$(TARGET_NAME)";
 				RUN_CLANG_STATIC_ANALYZER = NO;
