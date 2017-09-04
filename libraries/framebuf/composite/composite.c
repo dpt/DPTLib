@@ -4,7 +4,7 @@
  *
  * David Thomas, 2016
  */
- 
+
 /* Notes
  *
  * - Deals with non-premultiplied values only.

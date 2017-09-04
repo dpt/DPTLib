@@ -69,7 +69,7 @@ result_t bitfifo_dequeue(T            *fifo,
 
 /* empty the specified fifo */
 void bitfifo_clear(T *fifo);
-  
+
 /* returns number of used bits in the fifo */
 size_t bitfifo_used(const T *fifo);
 

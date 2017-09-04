@@ -37,7 +37,7 @@ result_t bsearch_test(void)
       printf("ok!\n");
     }
   }
-  
+
   printf("\n");
 
 
@@ -59,7 +59,7 @@ result_t bsearch_test(void)
       printf("ok!\n");
     }
   }
-  
+
   printf("\n");
 
 
@@ -81,7 +81,7 @@ result_t bsearch_test(void)
       printf("ok!\n");
     }
   }
-  
+
   printf("\n");
 
 
@@ -103,7 +103,7 @@ result_t bsearch_test(void)
       printf("ok!\n");
     }
   }
-  
+
   printf("\n");
 
   printf("bsearch: %d failure(s)\n", nfailures);

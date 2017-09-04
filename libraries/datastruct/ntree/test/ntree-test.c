@@ -269,7 +269,7 @@ result_t ntree_test(void)
     int height;
 
     BEGIN_TEST("max height");
-    
+
     height = ntree_max_height(test_data[0].node);
     printf("height = %d\n", height);
     if (height != 4)
@@ -288,7 +288,7 @@ result_t ntree_test(void)
     int n_nodes;
 
     BEGIN_TEST("number of nodes");
-    
+
     n_nodes = ntree_n_nodes(test_data[0].node);
     printf("n_nodes = %d\n", n_nodes);
     if (n_nodes != 10)
