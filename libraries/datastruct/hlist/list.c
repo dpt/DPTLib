@@ -21,7 +21,7 @@ T hlist_list(void *x, ...)
 
   va_start(ap, x);
 
-  for ( ; x; x = va_arg(ap, void *))
+  for (; x; x = va_arg(ap, void *))
   {
     *p = malloc(sizeof(**p));
     if (*p == NULL)

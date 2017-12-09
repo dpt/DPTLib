@@ -22,7 +22,7 @@ result_t layout_place(const layout_spec_t    *spec,
 
   j = 0;
 
-  for (i = 0; i < nelements; )
+  for (i = 0; i < nelements;)
   {
     int nextw;
     int first;

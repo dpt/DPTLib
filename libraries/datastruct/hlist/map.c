@@ -21,7 +21,7 @@ void hlist_map(T list, void apply(void **x, void *cl), void *cl)
   /* Difference from CII: a next pointer is maintained for some robustness.
    */
 
-  for ( ; list; list = next)
+  for (; list; list = next)
   {
     next = list->rest;
     apply(&list->first, cl);

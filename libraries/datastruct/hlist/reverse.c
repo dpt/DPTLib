@@ -18,7 +18,7 @@ T hlist_reverse(T list)
 
   head = NULL;
 
-  for ( ; list; list = next)
+  for (; list; list = next)
   {
     next = list->rest;
     list->rest = head;

@@ -170,16 +170,16 @@ result_t ntree_walk(ntree_t           *t,
 
   switch (flags & ntree_WALK_ORDER_MASK)
   {
-    default:
-    case ntree_WALK_IN_ORDER:
-      walker = walk_in_order;
-      break;
-    case ntree_WALK_PRE_ORDER:
-      walker = walk_pre_order;
-      break;
-    case ntree_WALK_POST_ORDER:
-      walker = walk_post_order;
-      break;
+  default:
+  case ntree_WALK_IN_ORDER:
+    walker = walk_in_order;
+    break;
+  case ntree_WALK_PRE_ORDER:
+    walker = walk_pre_order;
+    break;
+  case ntree_WALK_POST_ORDER:
+    walker = walk_post_order;
+    break;
   }
 
   return walker(t, flags, max_depth, fn, opaque);

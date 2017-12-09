@@ -110,7 +110,7 @@ static int runtest(const test_t *t)
     printf("** ****************\n");
   }
 
-  elapsed = (double) (end - start) / CLOCKS_PER_SEC;
+  elapsed = (double)(end - start) / CLOCKS_PER_SEC;
   printf("<<\n" "<< %s tests complete in %.4fs.\n" "<<\n" "\n", t->name, elapsed);
 
   return rc;
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
 
   end = clock();
 
-  elapsed = (double) (end - start) / CLOCKS_PER_SEC;
+  elapsed = (double)(end - start) / CLOCKS_PER_SEC;
   npassed = nrun - nfailures;
   printf("++ Tests completed in %.4fs: %d of %d tests passed.\n",
          elapsed,

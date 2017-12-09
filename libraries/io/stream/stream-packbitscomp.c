@@ -125,112 +125,112 @@ again: /* more of the current run left to pack */
     switch (sm->state)
     {
     case Initial: /* Initial state: Set state to 'Run' or 'Literal'. */
-       if (n > 1)
-       {
-         DBUG(("stream_packbitscomp_get: Initial -> Run of %d", MIN(n, 128)));
-         sm->state = Run;
+      if (n > 1)
+      {
+        DBUG(("stream_packbitscomp_get: Initial -> Run of %d", MIN(n, 128)));
+        sm->state = Run;
 
-         /* Clamp run lengths to a maximum of 128. Technically they could go
-          * up to 129, but that would generate a -128 output which is
-          * specified to be ignored by the PackBits spec. */
+        /* Clamp run lengths to a maximum of 128. Technically they could go
+         * up to 129, but that would generate a -128 output which is
+         * specified to be ignored by the PackBits spec. */
 
-         *p++ = (unsigned char) (-MIN(n, 128) + 1);
-         *p++ = (unsigned char) first;
-         n -= 128;
+        *p++ = (unsigned char)(-MIN(n, 128) + 1);
+        *p++ = (unsigned char) first;
+        n -= 128;
 
-         if (n > 0)
-           goto again;
-       }
-       else
-       {
-         DBUG(("stream_packbitscomp_get: Initial -> Literal"));
-         sm->state = Literal;
+        if (n > 0)
+          goto again;
+      }
+      else
+      {
+        DBUG(("stream_packbitscomp_get: Initial -> Literal"));
+        sm->state = Literal;
 
-         sm->lastliteral = p;
-         *p++ = 0; /* 1 repetition */
-         *p++ = (unsigned char) first;
-       }
-       break;
+        sm->lastliteral = p;
+        *p++ = 0; /* 1 repetition */
+        *p++ = (unsigned char) first;
+      }
+      break;
 
-     case Literal: /* Last object was a literal. */
-       if (n > 1)
-       {
-         DBUG(("stream_packbitscomp_get: Literal -> Run of %d", MIN(n, 128)));
-         sm->state = LiteralRun;
+    case Literal: /* Last object was a literal. */
+      if (n > 1)
+      {
+        DBUG(("stream_packbitscomp_get: Literal -> Run of %d", MIN(n, 128)));
+        sm->state = LiteralRun;
 
-         *p++ = (unsigned char) (-MIN(n, 128) + 1);
-         *p++ = (unsigned char) first;
-         n -= 128;
+        *p++ = (unsigned char)(-MIN(n, 128) + 1);
+        *p++ = (unsigned char) first;
+        n -= 128;
 
-         if (n > 0)
-           goto again;
-       }
-       else
-       {
-         DBUG(("stream_packbitscomp_get: Literal -> Literal"));
+        if (n > 0)
+          goto again;
+      }
+      else
+      {
+        DBUG(("stream_packbitscomp_get: Literal -> Literal"));
 
-         assert(sm->lastliteral);
+        assert(sm->lastliteral);
 
-         *p++ = (unsigned char) first;
+        *p++ = (unsigned char) first;
 
-         /* extend the previous literal */
-         DBUG((" extending previous"));
-         if (++(*sm->lastliteral) == 127)
-         {
-           DBUG((" -> Initial"));
-           sm->state = Initial;
-         }
-       }
-       break;
+        /* extend the previous literal */
+        DBUG((" extending previous"));
+        if (++(*sm->lastliteral) == 127)
+        {
+          DBUG((" -> Initial"));
+          sm->state = Initial;
+        }
+      }
+      break;
 
-     case Run: /* Last object was a run. */
-       if (n > 1)
-       {
-         DBUG(("stream_packbitscomp_get: Run -> Run"));
+    case Run: /* Last object was a run. */
+      if (n > 1)
+      {
+        DBUG(("stream_packbitscomp_get: Run -> Run"));
 
-         *p++ = (unsigned char) (-MIN(n, 128) + 1);
-         *p++ = (unsigned char) first;
-         n -= 128;
+        *p++ = (unsigned char)(-MIN(n, 128) + 1);
+        *p++ = (unsigned char) first;
+        n -= 128;
 
-         if (n > 0)
-             goto again;
-       }
-       else
-       {
-         DBUG(("stream_packbitscomp_get: Run -> Literal"));
-         sm->state = Literal;
+        if (n > 0)
+          goto again;
+      }
+      else
+      {
+        DBUG(("stream_packbitscomp_get: Run -> Literal"));
+        sm->state = Literal;
 
-         sm->lastliteral = p;
-         *p++ = 0; /* 1 repetition */
-         *p++ = (unsigned char) first;
-       }
-       break;
+        sm->lastliteral = p;
+        *p++ = 0; /* 1 repetition */
+        *p++ = (unsigned char) first;
+      }
+      break;
 
-     case LiteralRun: /* last object was a run, preceded by a literal */
-       {
-       unsigned char ll;
+    case LiteralRun: /* last object was a run, preceded by a literal */
+    {
+      unsigned char ll;
 
-       assert(sm->lastliteral);
+      assert(sm->lastliteral);
 
-       ll = *sm->lastliteral;
+      ll = *sm->lastliteral;
 
-       /* Check to see if previous run should be converted to a literal, in
-        * which case we convert literal-run-literal to a single literal. */
-       if (n == 1 && p[-2] == (unsigned char) -1 && ll <= 125)
-       {
-           DBUG(("stream_packbitscomp_get: LiteralRun merge literal-run-literal"));
-           ll += 2; /* ..127 */
-           sm->state = (ll == 127) ? Initial : Literal;
-           *sm->lastliteral = ll;
-           p[-2] = p[-1];
-       }
-       else
-       {
-           DBUG(("stream_packbitscomp_get: LiteralRun -> Run"));
-           sm->state = Run;
-       }
-       goto again;
-       }
+      /* Check to see if previous run should be converted to a literal, in
+       * which case we convert literal-run-literal to a single literal. */
+      if (n == 1 && p[-2] == (unsigned char) - 1 && ll <= 125)
+      {
+        DBUG(("stream_packbitscomp_get: LiteralRun merge literal-run-literal"));
+        ll += 2; /* ..127 */
+        sm->state = (ll == 127) ? Initial : Literal;
+        *sm->lastliteral = ll;
+        p[-2] = p[-1];
+      }
+      else
+      {
+        DBUG(("stream_packbitscomp_get: LiteralRun -> Run"));
+        sm->state = Run;
+      }
+      goto again;
+    }
     }
   }
 

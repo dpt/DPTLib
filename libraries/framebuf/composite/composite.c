@@ -561,8 +561,8 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_in_general(pixelfmt_xxxa888
   dstalpha = ALPHA(dst);
 
   newalpha = DIV_255(srcalpha * dstalpha, tmp);
-   if (newalpha == 0)
-     return 0;
+  if (newalpha == 0)
+    return 0;
 
   /* colour part comes second */
   return (src & ~ALPHA_MASK) | (newalpha << ALPHA_SHIFT);
@@ -936,56 +936,56 @@ static void composite_xxxa8888(composite_rule_t rule,
 
   switch (rule)
   {
-    case composite_RULE_CLEAR:
-      compo = comp_xxxa8888_clear;
-      break;
+  case composite_RULE_CLEAR:
+    compo = comp_xxxa8888_clear;
+    break;
 
-    case composite_RULE_SRC:
-      compo = comp_xxxa8888_src;
-      break;
+  case composite_RULE_SRC:
+    compo = comp_xxxa8888_src;
+    break;
 
-    case composite_RULE_DST:
-      break;
+  case composite_RULE_DST:
+    break;
 
-    case composite_RULE_SRC_OVER:
-      compo = comp_xxxa8888_src_over;
-      break;
+  case composite_RULE_SRC_OVER:
+    compo = comp_xxxa8888_src_over;
+    break;
 
-    case composite_RULE_DST_OVER:
-      compo = comp_xxxa8888_dst_over;
-      break;
+  case composite_RULE_DST_OVER:
+    compo = comp_xxxa8888_dst_over;
+    break;
 
-    case composite_RULE_SRC_IN:
-      compo = comp_xxxa8888_src_in;
-      break;
+  case composite_RULE_SRC_IN:
+    compo = comp_xxxa8888_src_in;
+    break;
 
-    case composite_RULE_DST_IN:
-      compo = comp_xxxa8888_dst_in;
-      break;
+  case composite_RULE_DST_IN:
+    compo = comp_xxxa8888_dst_in;
+    break;
 
-    case composite_RULE_SRC_OUT:
-      compo = comp_xxxa8888_src_out;
-      break;
+  case composite_RULE_SRC_OUT:
+    compo = comp_xxxa8888_src_out;
+    break;
 
-    case composite_RULE_DST_OUT:
-      compo = comp_xxxa8888_dst_out;
-      break;
+  case composite_RULE_DST_OUT:
+    compo = comp_xxxa8888_dst_out;
+    break;
 
-    case composite_RULE_SRC_ATOP:
-      compo = comp_xxxa8888_src_atop;
-      break;
+  case composite_RULE_SRC_ATOP:
+    compo = comp_xxxa8888_src_atop;
+    break;
 
-    case composite_RULE_DST_ATOP:
-      compo = comp_xxxa8888_dst_atop;
-      break;
+  case composite_RULE_DST_ATOP:
+    compo = comp_xxxa8888_dst_atop;
+    break;
 
-    case composite_RULE_XOR:
-      compo = comp_xxxa8888_xor;
-      break;
+  case composite_RULE_XOR:
+    compo = comp_xxxa8888_xor;
+    break;
 
-    default:
-      assert("Invalid composite rule" == NULL);
-      break;
+  default:
+    assert("Invalid composite rule" == NULL);
+    break;
   }
 
   while (height--)
@@ -1014,15 +1014,15 @@ result_t composite(composite_rule_t rule,
 
   switch (src->format)
   {
-    case pixelfmt_rgba8888:
-    case pixelfmt_bgra8888:
-      composite_xxxa8888(rule, src, dst);
-      break;
+  case pixelfmt_rgba8888:
+  case pixelfmt_bgra8888:
+    composite_xxxa8888(rule, src, dst);
+    break;
 
-    case pixelfmt_abgr8888:
-    case pixelfmt_argb8888:
-    default:
-      return result_NOT_IMPLEMENTED;
+  case pixelfmt_abgr8888:
+  case pixelfmt_argb8888:
+  default:
+    return result_NOT_IMPLEMENTED;
   }
 
   return result_OK;

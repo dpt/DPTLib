@@ -219,7 +219,7 @@ static int stream_mtfcomp_get(stream_t *s)
 
   /* fill the buffer up */
 
-  for (p = sm->buffer; p < sm->buffer + sm->bufsz; )
+  for (p = sm->buffer; p < sm->buffer + sm->bufsz;)
   {
     int c;
 
@@ -308,7 +308,7 @@ static int stream_mtfdecomp_get(stream_t *s)
 
   /* fill the buffer up */
 
-  for (p = sm->buffer; p < sm->buffer + sm->bufsz; )
+  for (p = sm->buffer; p < sm->buffer + sm->bufsz;)
   {
     int c;
 

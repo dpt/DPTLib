@@ -330,7 +330,7 @@ static void packer_sort(packer_t *packer, packer_sortdir_t order)
     if (!box_is_empty(b))
       continue;
 
-    n = (int) (b - areas);
+    n = (int)(b - areas);
 
     logf_debug("trimming to %d long", n);
     packer->usedareas = n;

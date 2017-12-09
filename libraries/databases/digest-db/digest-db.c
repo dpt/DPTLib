@@ -134,7 +134,7 @@ result_t digestdb_decode(unsigned char *bytes, const char *text)
     if (lo == _ || hi == _)
       return result_BAD_ARG;
 
-    *bytes++ = (unsigned char) ((hi << 4) | lo);
+    *bytes++ = (unsigned char)((hi << 4) | lo);
   }
 
 #undef _

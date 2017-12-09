@@ -18,7 +18,7 @@ T hlist_copy(T list)
 
   p = &head;
 
-  for ( ; list; list = list->rest)
+  for (; list; list = list->rest)
   {
     *p = malloc(sizeof(**p));
     if (*p == NULL)

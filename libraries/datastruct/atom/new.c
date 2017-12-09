@@ -241,7 +241,7 @@ fillin:
   memcpy(l->ptr, block, length);
 
   if (patom)
-    *patom = (atom_t) (((p - s->locpools) << s->log2locpoolsz) + (l - p->locs));
+    *patom = (atom_t)(((p - s->locpools) << s->log2locpoolsz) + (l - p->locs));
 
   return result_OK;
 }

@@ -205,8 +205,8 @@ result_t cache_create(const cacheconfig_t *config,
 
   /* compute the number of entries to allocate based on the size of the cache
    * (and the user's configured value) */
-  nentries = (int) (length / sizeof(*c->entries) *
-                    config->nentries_percentage / 100);
+  nentries = (int)(length / sizeof(*c->entries) *
+                   config->nentries_percentage / 100);
   if (nentries < 1)
     return result_BAD_ARG;
 
@@ -239,9 +239,9 @@ result_t cache_create(const cacheconfig_t *config,
     return result_OOM;
 
   /* work out structure locations */
-  c->bins    = (struct cacheentry **) ((char *) c + ofbins);
-  c->entries = (struct cacheentry *)  ((char *) c + ofentries);
-  c->store   =                (unsigned char *) c + ofstore;
+  c->bins    = (struct cacheentry **)((char *) c + ofbins);
+  c->entries =  (struct cacheentry *)((char *) c + ofentries);
+  c->store   =               (unsigned char *) c + ofstore;
 
   c->nbins    = nbins;
   c->nentries = nentries;
@@ -298,8 +298,8 @@ result_t cache_construct(const cacheconfig_t *config,
 
   /* compute the number of entries to allocate based on the size of the cache
    * (and the user's configured value) */
-  nentries = (int) (length / sizeof(*c->entries) *
-                    config->nentries_percentage / 100);
+  nentries = (int)(length / sizeof(*c->entries) *
+                   config->nentries_percentage / 100);
   if (nentries < 1)
     return result_BAD_ARG;
 
@@ -329,9 +329,9 @@ result_t cache_construct(const cacheconfig_t *config,
   c = block;
 
   /* work out structure locations */
-  c->bins    = (struct cacheentry **) ((char *) c + ofbins);
-  c->entries = (struct cacheentry *)  ((char *) c + ofentries);
-  c->store   =                (unsigned char *) c + ofstore;
+  c->bins    = (struct cacheentry **)((char *) c + ofbins);
+  c->entries = (struct cacheentry *)((char *) c + ofentries);
+  c->store   = (unsigned char *) c + ofstore;
 
   c->nbins    = nbins;
   c->nentries = nentries;

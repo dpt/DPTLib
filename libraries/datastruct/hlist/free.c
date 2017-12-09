@@ -18,7 +18,7 @@ void hlist_free(T *list)
 
   assert(list != NULL);
 
-  for ( ; *list; *list = next)
+  for (; *list; *list = next)
   {
     next = (*list)->rest;
     free(*list);

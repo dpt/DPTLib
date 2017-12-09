@@ -42,7 +42,7 @@ atom_t atom_for_block(atom_set_t          *s,
     lend = p->locs + p->used;
     for (l = p->locs; l < lend; l++)
       if (l->length == length && memcmp(l->ptr, block, length) == 0)
-        return (atom_t) (((p - s->locpools) << s->log2locpoolsz) + (l - p->locs));
+        return (atom_t)(((p - s->locpools) << s->log2locpoolsz) + (l - p->locs));
   }
 
   return atom_NOT_FOUND;
