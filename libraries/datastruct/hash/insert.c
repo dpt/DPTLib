@@ -21,7 +21,7 @@ result_t hash_insert(hash_t *h, const void *key, const void *value)
   {
     /* already exists: update the value */
 
-    h->destroy_value((void *)(*n)->value);  /* must cast away const */
+    h->destroy_value((void *)(*n)->value); /* must cast away const */
 
     (*n)->value = value;
 

@@ -330,8 +330,8 @@ result_t cache_construct(const cacheconfig_t *config,
 
   /* work out structure locations */
   c->bins    = (struct cacheentry **)((char *) c + ofbins);
-  c->entries = (struct cacheentry *)((char *) c + ofentries);
-  c->store   = (unsigned char *) c + ofstore;
+  c->entries =  (struct cacheentry *)((char *) c + ofentries);
+  c->store   =               (unsigned char *) c + ofstore;
 
   c->nbins    = nbins;
   c->nentries = nentries;

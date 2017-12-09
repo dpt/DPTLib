@@ -216,7 +216,7 @@ again: /* more of the current run left to pack */
 
       /* Check to see if previous run should be converted to a literal, in
        * which case we convert literal-run-literal to a single literal. */
-      if (n == 1 && p[-2] == (unsigned char) - 1 && ll <= 125)
+      if (n == 1 && p[-2] == (unsigned char) -1 && ll <= 125)
       {
         DBUG(("stream_packbitscomp_get: LiteralRun merge literal-run-literal"));
         ll += 2; /* ..127 */
