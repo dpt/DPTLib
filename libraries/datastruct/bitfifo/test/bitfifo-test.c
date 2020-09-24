@@ -33,7 +33,7 @@ expected[] =
 /* shows changes from previous stats */
 static void dump(const bitfifo_t *fifo)
 {
-  static size_t previous_used  = SIZE_T_MAX;
+  static size_t previous_used  = (size_t) -1; /* aka SIZE_MAX */
   static int    previous_full  = INT_MAX;
   static int    previous_empty = INT_MAX;
 
