@@ -27,9 +27,7 @@ endif()
 
 if(TARGET_RISCOS)
     set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE) # overwrite default of '-O3 -NDEBUG'
-endif()
 
-if(TARGET_RISCOS)
     # I tried to get this to live in riscos.cmake but was defeated.
     set(CMAKE_EXECUTABLE_SUFFIX ,ff8)
 
@@ -57,7 +55,7 @@ add_library(${LIBRARY})
 
 set_target_properties(${LIBRARY} PROPERTIES
     VERSION 0.2.7
-    DESCRIPTION "DPT's C Library"
+    DESCRIPTION "DPT's Portable C Library"
     C_STANDARD 99
     PREFIX ""  # remove 'lib' prefix
     ARCHIVE_OUTPUT_NAME_DEBUG ${LIBRARY}-debug
@@ -65,9 +63,7 @@ set_target_properties(${LIBRARY} PROPERTIES
     ARCHIVE_OUTPUT_NAME_RELWITHDEBINFO ${LIBRARY}-relwithdebinfo
     ARCHIVE_OUTPUT_NAME_MINSIZEREL ${LIBRARY}-minsizerel)
 
-target_include_directories(${LIBRARY}
-    PUBLIC
-    include)
+target_include_directories(${LIBRARY} PUBLIC include)
 
 set(PUBLIC_HEADERS
     include/base/debug.h
