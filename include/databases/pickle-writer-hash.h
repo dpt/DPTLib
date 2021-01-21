@@ -1,4 +1,4 @@
-/* hash-writer.h -- glue methods to let pickle write to hashes */
+/* pickle-writer-hash.h -- glue methods to let pickle write to hashes */
 
 #ifndef DATABASES_PICKLE_WRITER_HASH_H
 #define DATABASES_PICKLE_WRITER_HASH_H

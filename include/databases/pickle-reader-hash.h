@@ -1,4 +1,4 @@
-/* hash-reader.h -- glue methods to let pickle read from hashes */
+/* pickle-reader-hash.h -- glue methods to let pickle read from hashes */
 
 #ifndef DATABASES_PICKLE_READER_HASH_H
 #define DATABASES_PICKLE_READER_HASH_H
