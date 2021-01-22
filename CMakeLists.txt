@@ -32,8 +32,8 @@ if(TARGET_RISCOS)
     set(CMAKE_EXECUTABLE_SUFFIX ,ff8)
 
     # For now, divide assembly targets into ancient or modern ARM (pivot=ARMv5).
-    option(APPENGINE_ARMV5 "Utilise ARMv5" OFF)
-    if(APPENGINE_ARMV5)
+    option(DPTLIB_ARMV5 "Utilise ARMv5" OFF)
+    if(DPTLIB_ARMV5)
 	string(APPEND CMAKE_C_FLAGS " -march=armv5 -mtune=xscale")
     else()
 	string(APPEND CMAKE_C_FLAGS " -march=armv2 -mtune=arm2")
