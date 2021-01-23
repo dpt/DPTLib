@@ -350,7 +350,8 @@ target_link_libraries(${TEST} ${LIBRARY})
 #
 
 # Note: This affects everything built by this file.
-set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR} CACHE PATH "CMake install prefix" FORCE)
+# This (removed) FORCE stops users from specifying our install dir (so is wrong)...
+set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR} CACHE PATH "CMake install prefix")
 
 # Install library & test program into root of build directory.
 install(TARGETS ${LIBRARY} ${TEST}
