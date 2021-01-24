@@ -4,7 +4,7 @@
 #
 # Copyright (c) David Thomas, 2020-2021
 #
-# vim: sw=4
+# vim: sw=4 ts=4 noet
 
 # TODO
 # - Fortify
@@ -32,8 +32,8 @@ if(TARGET_RISCOS)
     set(CMAKE_EXECUTABLE_SUFFIX ,ff8)
 
     # For now, divide assembly targets into ancient or modern ARM (pivot=ARMv5).
-    option(DPTLIB_ARMV5 "Utilise ARMv5" OFF)
-    if(DPTLIB_ARMV5)
+    option(ARMV5 "Utilise ARMv5" OFF)
+    if(ARMV5)
 	string(APPEND CMAKE_C_FLAGS " -march=armv5 -mtune=xscale")
     else()
 	string(APPEND CMAKE_C_FLAGS " -march=armv2 -mtune=arm2")
@@ -275,7 +275,7 @@ set(UTILS_SOURCES
     libraries/utils/pack/unpack.c
     libraries/utils/primes/primes.c)
 
-set(ALL_SOURCES 
+set(ALL_SOURCES
     ${DATABASE_SOURCES}
     ${DATASTRUCT_SOURCES}
     ${FRAMEBUF_SOURCES}
