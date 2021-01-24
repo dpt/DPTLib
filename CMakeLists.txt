@@ -336,9 +336,9 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/include
 # Self-test executable
 #
 
-option(DPTLIB_BUILD_TESTS "Build test program" OFF)
+option(BUILD_TESTS "Build test program" OFF)
 
-if(DPTLIB_BUILD_TESTS)
+if(BUILD_TESTS)
     set(TEST ${PROJECT_NAME}Test)
 
     set(TEST_SOURCES
