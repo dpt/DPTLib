@@ -110,6 +110,10 @@ set(PUBLIC_HEADERS
     include/utils/pack.h
     include/utils/primes.h)
 
+# The public headers must be set as properties of the library, not as
+# target_sources. The quoting is essential.
+set_target_properties(${LIBRARY} PROPERTIES PUBLIC_HEADER "${PUBLIC_HEADERS}")
+
 set(DATABASE_SOURCES
     libraries/databases/digest-db/digest-db.c
     libraries/databases/filename-db/filename-db.c
@@ -272,7 +276,6 @@ set(UTILS_SOURCES
     libraries/utils/primes/primes.c)
 
 set(ALL_SOURCES 
-    ${PUBLIC_HEADERS}
     ${DATABASE_SOURCES}
     ${DATASTRUCT_SOURCES}
     ${FRAMEBUF_SOURCES}
@@ -304,57 +307,76 @@ if(USE_FORTIFY)
 endif()
 
 
-# Self-test executable
-#
-
-set(TEST ${PROJECT_NAME}Test)
-
-set(TEST_SOURCES
-    apps/test/main.c
-    libraries/databases/tag-db/test/tag-db-test.c
-    libraries/databases/pickle/test/pickle-test.c
-    libraries/io/stream/test/stream-test.c
-    libraries/utils/bsearch/test/bsearch-test.c
-    libraries/utils/array/test/array-test.c
-    libraries/geom/packer/test/packer-test.c
-    libraries/geom/layout/test/layout-test.c
-    libraries/datastruct/bitfifo/test/bitfifo-test.c
-    libraries/datastruct/bitvec/test/bitvec-test.c
-    libraries/datastruct/cache/test/cache-test.c
-    libraries/datastruct/atom/test/atom-test.c
-    libraries/datastruct/ntree/test/ntree-test.c
-    libraries/datastruct/hash/test/hash-test.c
-    libraries/datastruct/list/test/list-test.c
-    libraries/datastruct/bitarr/test/bitarr-test.c
-    libraries/datastruct/vector/test/vector-test.c)
-
-# Avoid a warning from CMake
-set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-
-add_executable(${TEST} ${TEST_SOURCES})
-
-set_target_properties(${TEST} PROPERTIES
-    DESCRIPTION "DPTLib test program"
-    C_STANDARD 99
-    OUTPUT_NAME_DEBUG ${TEST}-debug
-    OUTPUT_NAME_RELEASE ${TEST}
-    OUTPUT_NAME_RELWITHDEBINFO ${TEST}-relwithdebinfo
-    OUTPUT_NAME_MINSIZEREL ${TEST}-minsizerel)
-
-# DPTTest dependencies
-# Of course, DPTTest depends on DPTLib.
-target_link_libraries(${TEST} ${LIBRARY})
-
-
 # Installation
 #
 
-# Note: This affects everything built by this file.
-# This (removed) FORCE stops users from specifying our install dir (so is wrong)...
-set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR} CACHE PATH "CMake install prefix")
+# Set install location
+# - We can't use set(...) with FORCE because that will override any passed-in
+#   configuration values.
+# - We can't use set(...) without FORCE because that won't override the
+#   default value...
+# - So, just check for the default value and override it if set.
+if(${CMAKE_INSTALL_PREFIX} STREQUAL "/usr/local")
+    set(CMAKE_INSTALL_PREFIX "install" CACHE PATH "CMake install prefix" FORCE)
+endif()
 
-# Install library & test program into root of build directory.
-install(TARGETS ${LIBRARY} ${TEST}
-    CONFIGURATIONS Debug Release RelWithDebInfo MinSizeRel
-    ARCHIVE DESTINATION .
-    RUNTIME DESTINATION .)
+# Install headers and library
+# - We have to use EXCLUDE_FROM_ALL to stop the PUBLIC_HEADERs getting
+#   installed by install(TARGETS ...).
+install(TARGETS ${LIBRARY} ARCHIVE
+    PUBLIC_HEADER EXCLUDE_FROM_ALL)
+# - We can't use install(TARGETS ... PUBLIC_HEADER) to install headers, as
+#   expected, since that flattens the include directory's hierarchy. Use
+#   install(DIRECTORY ...) instead.
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/include
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+    FILES_MATCHING PATTERN "*.h")
+
+
+# Self-test executable
+#
+
+option(DPTLIB_BUILD_TESTS "Build test program" OFF)
+
+if(DPTLIB_BUILD_TESTS)
+    set(TEST ${PROJECT_NAME}Test)
+
+    set(TEST_SOURCES
+	apps/test/main.c
+	libraries/databases/tag-db/test/tag-db-test.c
+	libraries/databases/pickle/test/pickle-test.c
+	libraries/io/stream/test/stream-test.c
+	libraries/utils/bsearch/test/bsearch-test.c
+	libraries/utils/array/test/array-test.c
+	libraries/geom/packer/test/packer-test.c
+	libraries/geom/layout/test/layout-test.c
+	libraries/datastruct/bitfifo/test/bitfifo-test.c
+	libraries/datastruct/bitvec/test/bitvec-test.c
+	libraries/datastruct/cache/test/cache-test.c
+	libraries/datastruct/atom/test/atom-test.c
+	libraries/datastruct/ntree/test/ntree-test.c
+	libraries/datastruct/hash/test/hash-test.c
+	libraries/datastruct/list/test/list-test.c
+	libraries/datastruct/bitarr/test/bitarr-test.c
+	libraries/datastruct/vector/test/vector-test.c)
+
+    # Avoid a warning from CMake
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+
+    add_executable(${TEST} ${TEST_SOURCES})
+
+    set_target_properties(${TEST} PROPERTIES
+	DESCRIPTION "DPTLib test program"
+	C_STANDARD 99
+	OUTPUT_NAME_DEBUG ${TEST}-debug
+	OUTPUT_NAME_RELEASE ${TEST}
+	OUTPUT_NAME_RELWITHDEBINFO ${TEST}-relwithdebinfo
+	OUTPUT_NAME_MINSIZEREL ${TEST}-minsizerel)
+
+    # DPTTest dependencies
+    # Of course, DPTTest depends on DPTLib.
+    target_link_libraries(${TEST} ${LIBRARY})
+
+    install(TARGETS ${TEST} RUNTIME
+	DESTINATION ${CMAKE_INSTALL_PREFIX})
+endif()
