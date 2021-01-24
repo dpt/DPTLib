@@ -4,7 +4,7 @@
 #
 # Copyright (c) David Thomas, 2020-2021
 #
-# vim: sw=4 ts=4 noet
+# vim: sw=4 ts=8 et
 
 # TODO
 # - Fortify
@@ -34,9 +34,9 @@ if(TARGET_RISCOS)
     # For now, divide assembly targets into ancient or modern ARM (pivot=ARMv5).
     option(ARMV5 "Utilise ARMv5" OFF)
     if(ARMV5)
-	string(APPEND CMAKE_C_FLAGS " -march=armv5 -mtune=xscale")
+        string(APPEND CMAKE_C_FLAGS " -march=armv5 -mtune=xscale")
     else()
-	string(APPEND CMAKE_C_FLAGS " -march=armv2 -mtune=arm2")
+        string(APPEND CMAKE_C_FLAGS " -march=armv2 -mtune=arm2")
     endif()
 endif()
 
@@ -313,8 +313,8 @@ endif()
 # Set install location
 # - We can't use set(...) with FORCE because that will override any passed-in
 #   configuration values.
-# - We can't use set(...) without FORCE because that won't override the
-#   default value...
+# - We can't use set(...) without FORCE because that won't override the default
+#   value...
 # - So, just check for the default value and override it if set.
 if(${CMAKE_INSTALL_PREFIX} STREQUAL "/usr/local")
     set(CMAKE_INSTALL_PREFIX "install" CACHE PATH "CMake install prefix" FORCE)
@@ -342,23 +342,23 @@ if(DPTLIB_BUILD_TESTS)
     set(TEST ${PROJECT_NAME}Test)
 
     set(TEST_SOURCES
-	apps/test/main.c
-	libraries/databases/tag-db/test/tag-db-test.c
-	libraries/databases/pickle/test/pickle-test.c
-	libraries/io/stream/test/stream-test.c
-	libraries/utils/bsearch/test/bsearch-test.c
-	libraries/utils/array/test/array-test.c
-	libraries/geom/packer/test/packer-test.c
-	libraries/geom/layout/test/layout-test.c
-	libraries/datastruct/bitfifo/test/bitfifo-test.c
-	libraries/datastruct/bitvec/test/bitvec-test.c
-	libraries/datastruct/cache/test/cache-test.c
-	libraries/datastruct/atom/test/atom-test.c
-	libraries/datastruct/ntree/test/ntree-test.c
-	libraries/datastruct/hash/test/hash-test.c
-	libraries/datastruct/list/test/list-test.c
-	libraries/datastruct/bitarr/test/bitarr-test.c
-	libraries/datastruct/vector/test/vector-test.c)
+        apps/test/main.c
+        libraries/databases/tag-db/test/tag-db-test.c
+        libraries/databases/pickle/test/pickle-test.c
+        libraries/io/stream/test/stream-test.c
+        libraries/utils/bsearch/test/bsearch-test.c
+        libraries/utils/array/test/array-test.c
+        libraries/geom/packer/test/packer-test.c
+        libraries/geom/layout/test/layout-test.c
+        libraries/datastruct/bitfifo/test/bitfifo-test.c
+        libraries/datastruct/bitvec/test/bitvec-test.c
+        libraries/datastruct/cache/test/cache-test.c
+        libraries/datastruct/atom/test/atom-test.c
+        libraries/datastruct/ntree/test/ntree-test.c
+        libraries/datastruct/hash/test/hash-test.c
+        libraries/datastruct/list/test/list-test.c
+        libraries/datastruct/bitarr/test/bitarr-test.c
+        libraries/datastruct/vector/test/vector-test.c)
 
     # Avoid a warning from CMake
     set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
@@ -366,17 +366,17 @@ if(DPTLIB_BUILD_TESTS)
     add_executable(${TEST} ${TEST_SOURCES})
 
     set_target_properties(${TEST} PROPERTIES
-	DESCRIPTION "DPTLib test program"
-	C_STANDARD 99
-	OUTPUT_NAME_DEBUG ${TEST}-debug
-	OUTPUT_NAME_RELEASE ${TEST}
-	OUTPUT_NAME_RELWITHDEBINFO ${TEST}-relwithdebinfo
-	OUTPUT_NAME_MINSIZEREL ${TEST}-minsizerel)
+        DESCRIPTION "DPTLib test program"
+        C_STANDARD 99
+        OUTPUT_NAME_DEBUG ${TEST}-debug
+        OUTPUT_NAME_RELEASE ${TEST}
+        OUTPUT_NAME_RELWITHDEBINFO ${TEST}-relwithdebinfo
+        OUTPUT_NAME_MINSIZEREL ${TEST}-minsizerel)
 
     # DPTTest dependencies
     # Of course, DPTTest depends on DPTLib.
     target_link_libraries(${TEST} ${LIBRARY})
 
     install(TARGETS ${TEST} RUNTIME
-	DESTINATION ${CMAKE_INSTALL_PREFIX})
+        DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif()
