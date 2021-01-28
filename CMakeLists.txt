@@ -7,7 +7,7 @@
 # vim: sw=4 ts=8 et
 
 # TODO
-# - Fortify
+# - Fortify needs to be provided to DPTLib
 
 cmake_minimum_required(VERSION 3.18)
 
@@ -20,24 +20,8 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules/)
 project(DPTLib VERSION 0.2.7 DESCRIPTION "DPT's C Library" LANGUAGES C)
 
 # The values set in the toolchain file aren't available until this point.
-
-if(TARGET_RISCOS AND NOT DEFINED ENV{GCCSDK_INSTALL_ENV})
-    message(FATAL_ERROR "GCCSDK_INSTALL_ENV is not set")
-endif()
-
 if(TARGET_RISCOS)
-    set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE) # overwrite default of '-O3 -NDEBUG'
-
-    # I tried to get this to live in riscos.cmake but was defeated.
-    set(CMAKE_EXECUTABLE_SUFFIX ,ff8)
-
-    # For now, divide assembly targets into ancient or modern ARM (pivot=ARMv5).
-    option(ARMV5 "Utilise ARMv5" OFF)
-    if(ARMV5)
-        string(APPEND CMAKE_C_FLAGS " -march=armv5 -mtune=xscale")
-    else()
-        string(APPEND CMAKE_C_FLAGS " -march=armv2 -mtune=arm2")
-    endif()
+    riscos_set_flags()
 endif()
 
 # If this is enabled then the final binary will need to be linked against
@@ -49,21 +33,19 @@ if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
     message(STATUS "DPTLib: Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
-set(LIBRARY ${PROJECT_NAME})
+add_library(DPTLib)
 
-add_library(${LIBRARY})
-
-set_target_properties(${LIBRARY} PROPERTIES
+set_target_properties(DPTLib PROPERTIES
     VERSION 0.2.7
     DESCRIPTION "DPT's Portable C Library"
     C_STANDARD 99
     PREFIX ""  # remove 'lib' prefix
-    ARCHIVE_OUTPUT_NAME_DEBUG ${LIBRARY}-debug
-    ARCHIVE_OUTPUT_NAME_RELEASE ${LIBRARY}
-    ARCHIVE_OUTPUT_NAME_RELWITHDEBINFO ${LIBRARY}-relwithdebinfo
-    ARCHIVE_OUTPUT_NAME_MINSIZEREL ${LIBRARY}-minsizerel)
+    ARCHIVE_OUTPUT_NAME_DEBUG DPTLib-debug
+    ARCHIVE_OUTPUT_NAME_RELEASE DPTLib
+    ARCHIVE_OUTPUT_NAME_RELWITHDEBINFO DPTLib-relwithdebinfo
+    ARCHIVE_OUTPUT_NAME_MINSIZEREL DPTLib-minsizerel)
 
-target_include_directories(${LIBRARY} PUBLIC include)
+target_include_directories(DPTLib PUBLIC include)
 
 set(PUBLIC_HEADERS
     include/base/debug.h
@@ -112,7 +94,7 @@ set(PUBLIC_HEADERS
 
 # The public headers must be set as properties of the library, not as
 # target_sources. The quoting is essential.
-set_target_properties(${LIBRARY} PROPERTIES PUBLIC_HEADER "${PUBLIC_HEADERS}")
+set_target_properties(DPTLib PROPERTIES PUBLIC_HEADER "${PUBLIC_HEADERS}")
 
 set(DATABASE_SOURCES
     libraries/databases/digest-db/digest-db.c
@@ -242,7 +224,7 @@ set(IO_SOURCES
     libraries/io/stream/stream-stdio.c
     libraries/io/stream/stream.c)
 
-set(TEST_SOURCES
+set(TESTLIB_SOURCES
     libraries/test/txtscr/txtscr.c)
 
 set(UTILS_SOURCES
@@ -281,15 +263,15 @@ set(ALL_SOURCES
     ${FRAMEBUF_SOURCES}
     ${GEOM_SOURCES}
     ${IO_SOURCES}
-    ${TEST_SOURCES}
+    ${TESTLIB_SOURCES}
     ${UTILS_SOURCES})
 
-target_sources(${LIBRARY} PRIVATE ${ALL_SOURCES})
+target_sources(DPTLib PRIVATE ${ALL_SOURCES})
 
-target_compile_options(${LIBRARY} PRIVATE -Wall -Wextra -pedantic)
+target_compile_options(DPTLib PRIVATE -Wall -Wextra -pedantic)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
-    target_compile_definitions(${LIBRARY} PRIVATE $<UPPER_CASE:${LIBRARY}>_DEBUG)
+    target_compile_definitions(DPTLib PRIVATE DPTLIB_DEBUG)
 endif()
 
 # Library dependencies
@@ -297,13 +279,12 @@ endif()
 
 if(TARGET_RISCOS)
     # OSLib (& anything else in GCCSDK)
-    target_include_directories(${LIBRARY} PUBLIC $ENV{GCCSDK_INSTALL_ENV}/include)
-    target_link_libraries(${LIBRARY} PUBLIC $ENV{GCCSDK_INSTALL_ENV}/lib/libOSLib32.a)
+    target_include_directories(DPTLib PUBLIC $ENV{GCCSDK_INSTALL_ENV}/include)
+    target_link_libraries(DPTLib PUBLIC $ENV{GCCSDK_INSTALL_ENV}/lib/libOSLib32.a)
 endif()
 
 if(USE_FORTIFY)
-    target_compile_definitions(${LIBRARY} PUBLIC FORTIFY)
-    target_link_libraries(${LIBRARY} PUBLIC Fortify)
+    target_link_libraries(DPTLib PUBLIC Fortify)
 endif()
 
 
@@ -323,7 +304,7 @@ endif()
 # Install headers and library
 # - We have to use EXCLUDE_FROM_ALL to stop the PUBLIC_HEADERs getting
 #   installed by install(TARGETS ...).
-install(TARGETS ${LIBRARY} ARCHIVE
+install(TARGETS DPTLib ARCHIVE
     PUBLIC_HEADER EXCLUDE_FROM_ALL)
 # - We can't use install(TARGETS ... PUBLIC_HEADER) to install headers, as
 #   expected, since that flattens the include directory's hierarchy. Use
@@ -339,8 +320,6 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/include
 option(BUILD_TESTS "Build test program" OFF)
 
 if(BUILD_TESTS)
-    set(TEST ${PROJECT_NAME}Test)
-
     set(TEST_SOURCES
         apps/test/main.c
         libraries/databases/tag-db/test/tag-db-test.c
@@ -363,20 +342,20 @@ if(BUILD_TESTS)
     # Avoid a warning from CMake
     set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
-    add_executable(${TEST} ${TEST_SOURCES})
+    add_executable(DPTLibTest ${TEST_SOURCES})
 
-    set_target_properties(${TEST} PROPERTIES
+    set_target_properties(DPTLibTest PROPERTIES
         DESCRIPTION "DPTLib test program"
         C_STANDARD 99
-        OUTPUT_NAME_DEBUG ${TEST}-debug
-        OUTPUT_NAME_RELEASE ${TEST}
-        OUTPUT_NAME_RELWITHDEBINFO ${TEST}-relwithdebinfo
-        OUTPUT_NAME_MINSIZEREL ${TEST}-minsizerel)
+        OUTPUT_NAME_DEBUG DPTLibTest-debug
+        OUTPUT_NAME_RELEASE DPTLibTest
+        OUTPUT_NAME_RELWITHDEBINFO DPTLibTest-relwithdebinfo
+        OUTPUT_NAME_MINSIZEREL DPTLibTest-minsizerel)
 
     # DPTTest dependencies
     # Of course, DPTTest depends on DPTLib.
-    target_link_libraries(${TEST} ${LIBRARY})
+    target_link_libraries(DPTLibTest DPTLib)
 
-    install(TARGETS ${TEST} RUNTIME
+    install(TARGETS DPTLibTest RUNTIME
         DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif()
