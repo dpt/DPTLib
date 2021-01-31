@@ -8,11 +8,18 @@ extern "C"
 {
 #endif
 
+#ifndef __riscos
+/** A box inclusive of (x0,y0) and exclusive of (x1,y1). */
 typedef struct box
 {
   int x0, y0, x1, y1;
 }
 box_t;
+#else
+#include "oslib/os.h"
+/* When on RISC OS, use OSLib's box type in preference. */
+typedef os_box box_t;
+#endif
 
 /**
  * Reset the box to an invalid state.
