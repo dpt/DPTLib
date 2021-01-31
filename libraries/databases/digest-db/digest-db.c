@@ -1,5 +1,6 @@
 /* digest-db.c -- digest database */
 
+#include <limits.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -104,6 +105,26 @@ result_t digestdb_decode(unsigned char *bytes, const char *text)
 
   static const unsigned char tab[] =
   {
+#if CHAR_MIN < 0
+    /* signed chars need -128..127 */
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, _, _, _, _, _, _,
+    _,10,11,12,13,14,15, _, _, _, _, _, _, _, _, _,
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    _,10,11,12,13,14,15, _, _, _, _, _, _, _, _, _,
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+#else
+    /* unsigned chars need 0..255 */
     _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
     _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
     _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
@@ -120,6 +141,7 @@ result_t digestdb_decode(unsigned char *bytes, const char *text)
     _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
     _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
     _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+#endif
   };
 
   const char *end;
@@ -128,8 +150,8 @@ result_t digestdb_decode(unsigned char *bytes, const char *text)
   end = text + digestdb_DIGESTSZ * 2;
   for (; text < end; text += 2)
   {
-    hi = tab[text[0]];
-    lo = tab[text[1]];
+    hi = tab[(int) text[0] - CHAR_MIN]; /* CHAR_MIN is negative, so subtract */
+    lo = tab[(int) text[1] - CHAR_MIN];
 
     if (lo == _ || hi == _)
       return result_BAD_ARG;
