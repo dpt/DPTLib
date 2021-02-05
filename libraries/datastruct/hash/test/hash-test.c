@@ -35,7 +35,7 @@ static int my_walk_fn(const void *key, const void *value, void *opaque)
 
   NOT_USED(opaque);
 
-  printf("walk '%s':'%s'...\n", sk, sv);
+  printf("walk '%s':'%s'...\n", (const char *) sk, (const char *) sv);
 
   return 0;
 }
@@ -121,7 +121,7 @@ result_t hash_test(void)
       if (err == result_HASH_END)
         break;
 
-      printf("walk '%s':'%s'...\n", key, value);
+      printf("walk '%s':'%s'...\n", (const char *) key, (const char *) value);
     }
   }
 
