@@ -6,8 +6,8 @@
 #
 # vim: sw=4 ts=8 et
 
-# TODO
-# - Fortify needs to be provided to DPTLib
+# Notes
+# - Fortify, if wanted, must be supplied to this build.
 
 cmake_minimum_required(VERSION 3.18)
 
@@ -298,7 +298,7 @@ endif()
 #   value...
 # - So, just check for the default value and override it if set.
 if(${CMAKE_INSTALL_PREFIX} STREQUAL "/usr/local")
-    set(CMAKE_INSTALL_PREFIX "install" CACHE PATH "CMake install prefix" FORCE)
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "CMake install prefix" FORCE)
 endif()
 
 # Install headers and library
