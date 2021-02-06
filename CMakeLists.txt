@@ -258,6 +258,7 @@ set(UTILS_SOURCES
     libraries/utils/primes/primes.c)
 
 set(ALL_SOURCES
+    ${PUBLIC_HEADERS}
     ${DATABASE_SOURCES}
     ${DATASTRUCT_SOURCES}
     ${FRAMEBUF_SOURCES}
@@ -359,3 +360,10 @@ if(BUILD_TESTS)
     install(TARGETS DPTLibTest RUNTIME
         DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif()
+
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+        MyLibConfigVersion.cmake
+            VERSION ${PACKAGE_VERSION}
+                COMPATIBILITY AnyNewerVersion
+                    )
