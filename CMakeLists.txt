@@ -15,7 +15,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif()
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules/)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/)
 
 project(DPTLib VERSION 0.2.7 DESCRIPTION "DPT's C Library" LANGUAGES C)
 
@@ -299,7 +299,7 @@ endif()
 #   value...
 # - So, just check for the default value and override it if set.
 if(${CMAKE_INSTALL_PREFIX} STREQUAL "/usr/local")
-    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "CMake install prefix" FORCE)
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/install" CACHE PATH "CMake install prefix" FORCE)
 endif()
 
 # Install headers and library
@@ -310,7 +310,7 @@ install(TARGETS DPTLib ARCHIVE
 # - We can't use install(TARGETS ... PUBLIC_HEADER) to install headers, as
 #   expected, since that flattens the include directory's hierarchy. Use
 #   install(DIRECTORY ...) instead.
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/include
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include
     DESTINATION ${CMAKE_INSTALL_PREFIX}
     FILES_MATCHING PATTERN "*.h")
 
