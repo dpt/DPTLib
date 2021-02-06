@@ -37,3 +37,5 @@ tags
 doxydocs
 *.swp
 build
+build.ninja/
+build.xcode/
