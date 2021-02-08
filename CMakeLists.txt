@@ -33,6 +33,11 @@ if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
     message(STATUS "DPTLib: Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.h.in
+               ${CMAKE_CURRENT_BINARY_DIR}/version.h)
+
+
 add_library(DPTLib)
 
 set_target_properties(DPTLib PROPERTIES
@@ -361,9 +366,10 @@ if(BUILD_TESTS)
         DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif()
 
-include(CMakePackageConfigHelpers)
-write_basic_package_version_file(
-        MyLibConfigVersion.cmake
-            VERSION ${PACKAGE_VERSION}
-                COMPATIBILITY AnyNewerVersion
-                    )
+
+
+#include(CMakePackageConfigHelpers)
+#
+#write_basic_package_version_file(DPTConfigVersion.cmake
+#    VERSION ${PACKAGE_VERSION}
+#    COMPATIBILITY AnyNewerVersion)
