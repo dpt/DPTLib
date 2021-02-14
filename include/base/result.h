@@ -43,6 +43,7 @@ typedef int result_t;
 #define result_EXISTS                           (result_BASE_GENERIC     + 10)  /* Item already exists */
 #define result_CLASHES                          (result_BASE_GENERIC     + 11)  /* Key clashes with existing one */
 #define result_NULL_ARG                         (result_BASE_GENERIC     + 12)  /* An argument was NULL */
+#define result_NOT_SUPPORTED                    (result_BASE_GENERIC     + 13)  /* Not supported, e.g. no hardware */
 
 /* Stream result codes are in io/stream.h */
 
