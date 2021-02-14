@@ -68,8 +68,10 @@ int box_intersects(const box_t *a, const box_t *b);
  * \param[in]  a The first box.
  * \param[in]  b The second box.
  * \param[out] c The output intersected box.
+ *
+ * \return Non-zero if the result is invalid.
  */
-void box_intersection(const box_t *a, const box_t *b, box_t *c);
+int box_intersection(const box_t *a, const box_t *b, box_t *c);
 
 /**
  * Populates the box "c" with the union of boxes "a" and "b".
