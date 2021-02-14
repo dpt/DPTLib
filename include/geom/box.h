@@ -97,13 +97,13 @@ int box_is_empty(const box_t *b);
 void box_grow(box_t *b, int change);
 
 /**
- * Rounds a box's coordinates so that they're a multiple of 'amount'.
+ * Rounds a box's coordinates so that they're a multiple of log2 x,y.
  *
  * x0 and y0 are rounded down. x1 and y1 are rounded up.
  *
  * \param[in] b The box to round.
  */
-void box_round(box_t *b, int amount);
+void box_round(box_t *b, int log2x, int log2y);
 
 /**
  * Rounds a box's coordinates so that they're a multiple of 4.
