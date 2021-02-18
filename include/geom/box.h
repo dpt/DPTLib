@@ -8,11 +8,18 @@ extern "C"
 {
 #endif
 
+#ifndef __riscos
+/** A box inclusive of (x0,y0) and exclusive of (x1,y1). */
 typedef struct box
 {
   int x0, y0, x1, y1;
 }
 box_t;
+#else
+#include "oslib/os.h"
+/* When on RISC OS, use OSLib's box type in preference. */
+typedef os_box box_t;
+#endif
 
 /**
  * Reset the box to an invalid state.
@@ -61,8 +68,10 @@ int box_intersects(const box_t *a, const box_t *b);
  * \param[in]  a The first box.
  * \param[in]  b The second box.
  * \param[out] c The output intersected box.
+ *
+ * \return Non-zero if the result is invalid.
  */
-void box_intersection(const box_t *a, const box_t *b, box_t *c);
+int box_intersection(const box_t *a, const box_t *b, box_t *c);
 
 /**
  * Populates the box "c" with the union of boxes "a" and "b".
@@ -90,13 +99,13 @@ int box_is_empty(const box_t *b);
 void box_grow(box_t *b, int change);
 
 /**
- * Rounds a box's coordinates so that they're a multiple of 'amount'.
+ * Rounds a box's coordinates so that they're a multiple of log2 x,y.
  *
  * x0 and y0 are rounded down. x1 and y1 are rounded up.
  *
  * \param[in] b The box to round.
  */
-void box_round(box_t *b, int amount);
+void box_round(box_t *b, int log2x, int log2y);
 
 /**
  * Rounds a box's coordinates so that they're a multiple of 4.

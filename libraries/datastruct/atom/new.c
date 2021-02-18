@@ -96,7 +96,7 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
    * pool, then there's space */
 
   if (s->b_used > 0 &&
-      s->blkpools[s->b_used - 1].used + length <= (1 << s->log2blkpoolsz))
+      s->blkpools[s->b_used - 1].used + length <= (1U << s->log2blkpoolsz))
     return result_OK;
 
   /* otherwise the last allocated pool is full or there are no pools
@@ -190,7 +190,7 @@ result_t atom_new(atom_set_t          *s,
   {
     lend = p->locs + p->used;
     for (l = p->locs; l < lend; l++)
-      if (l->length == -((int) length)) /* careful of unsigned len */
+      if (l->length == -length) /* careful to use signed length */
         goto fillin;
   }
 
@@ -209,14 +209,14 @@ result_t atom_new(atom_set_t          *s,
    * case.
    */
   for (i = 0; i < s->b_used; i++)
-    if ((1U << s->log2blkpoolsz) - s->blkpools[i].used >= length)
+    if ((1U << s->log2blkpoolsz) - s->blkpools[i].used >= sizet_length)
       break;
 
   if (i == s->b_used)
   {
     /* didn't find a suitable gap - need to allocate more block space */
 
-    err = atom_ensure_blk_space(s, length);
+    err = atom_ensure_blk_space(s, sizet_length);
     if (err)
       return err;
 

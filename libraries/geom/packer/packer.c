@@ -76,13 +76,13 @@ void packer_set_margins(packer_t *packer, const box_t *margins)
   {
     /* keep valid */
 
-    logf_debug("is empty");
+    logf_debug("packer_set_margins: %s", "is empty");
 
     packer->margins.x1 = packer->margins.x0 + 1;
     packer->margins.y1 = packer->margins.y0 + 1;
   }
 
-  logf_debug("with margins: <%d,%d-%d,%d>",
+  logf_debug("packer_set_margins: margins=<%d,%d-%d,%d>",
               packer->margins.x0,
               packer->margins.y0,
               packer->margins.x1,
@@ -95,7 +95,7 @@ static result_t add_area(packer_t *packer, const box_t *area)
 {
   int i;
 
-  logf_debug("add_area: <%d,%d-%d,%d>",
+  logf_debug("add_area: area=<%d,%d-%d,%d>",
              area->x0,
              area->y0,
              area->x1,
@@ -109,7 +109,7 @@ static result_t add_area(packer_t *packer, const box_t *area)
         !box_contains_box(area, &packer->areas[i]))
       continue;
 
-    logf_debug("add_area: contained by: %d <%d,%d-%d,%d>",
+    logf_debug("add_area: is contained by: %d <%d,%d-%d,%d>",
                i,
                packer->areas[i].x0,
                packer->areas[i].y0,
@@ -314,7 +314,7 @@ static void packer_sort(packer_t *packer, packer_sortdir_t order)
     qsort(areas, usedareas, sizeof(*areas), compare);
   }
 
-  logf_debug("packer_sort: trimming");
+  logf_debug("packer_sort: %s", "trimming");
 
   end = areas + usedareas;
 
@@ -325,14 +325,14 @@ static void packer_sort(packer_t *packer, packer_sortdir_t order)
     /* trim away any invalid areas which will have been sorted to the end
      * of the list */
 
-    logf_debug("<%d,%d-%d,%d>", b->x0, b->y0, b->x1, b->y1);
+    logf_debug("packer_sort: b=<%d,%d-%d,%d>", b->x0, b->y0, b->x1, b->y1);
 
     if (!box_is_empty(b))
       continue;
 
     n = (int)(b - areas);
 
-    logf_debug("trimming to %d long", n);
+    logf_debug("packer_sort: trimming to %d long", n);
     packer->usedareas = n;
     break;
   }
@@ -349,7 +349,7 @@ static const box_t *packer_next(packer_t *packer)
   {
     if (packer->nextindex >= packer->usedareas)
     {
-      logf_debug("next: none left");
+      logf_debug("packer_next: %s", "none left");
       return NULL; /* no more areas */
     }
 
@@ -359,7 +359,7 @@ static const box_t *packer_next(packer_t *packer)
   }
   while (box_is_empty(&packer->nextarea));
 
-  logf_debug("next: <%d,%d-%d,%d>",
+  logf_debug("packer_next: <%d,%d-%d,%d>",
              packer->nextarea.x0,
              packer->nextarea.y0,
              packer->nextarea.x1,
@@ -374,7 +374,7 @@ static const box_t *packer_start(packer_t *packer, packer_sortdir_t order)
 
   packer->nextindex = 0;
 
-  logf_debug("start: list is %d long", packer->usedareas);
+  logf_debug("packer_start: list is %d long", packer->usedareas);
 
   return packer_next(packer);
 }
@@ -429,14 +429,14 @@ result_t packer_place_by(packer_t     *packer,
   {
     if (box_could_hold(b, w, h))
     {
-      logf_debug("packer_place_by: fits");
+      logf_debug("packer_place_by: %s", "fits");
       break;
     }
   }
 
   if (!b)
   {
-    logf_debug("packer_place_by: didn't fit");
+    logf_debug("packer_place_by: %s", "didn't fit");
     return result_PACKER_DIDNT_FIT;
   }
 
@@ -495,7 +495,7 @@ result_t packer_clear(packer_t *packer, packer_cleardir_t clear)
   const box_t *b;
   box_t        clearbox;
 
-  logf_debug("packer_clear");
+  logf_debug("packer_clear: %s", "entered");
 
   switch (clear)
   {
@@ -526,7 +526,7 @@ result_t packer_clear(packer_t *packer, packer_cleardir_t clear)
 
   /* clear from top of found box upwards to top of doc */
 
-  logf_debug("packer_clear: invalidate area");
+  logf_debug("packer_clear: %s", "invalidate area");
 
   clearbox = packer->margins;
 

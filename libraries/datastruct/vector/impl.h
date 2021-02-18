@@ -1,4 +1,4 @@
-/* vector.h -- vector - flexible array */
+/* impl.h -- vector - flexible array */
 
 #ifndef IMPL_H
 #define IMPL_H

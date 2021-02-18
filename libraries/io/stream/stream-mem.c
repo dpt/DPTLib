@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include "base/result.h"
+#include "base/utils.h"
 
 #include "io/stream.h"
 
@@ -36,7 +37,7 @@ static int stream_mem_get(stream_t *s)
 {
   stream_mem_t *sm = (stream_mem_t *) s;
 
-//  NOT_USED(sm); /* only used in debug builds */
+  NOT_USED(sm); /* only used in debug builds */
 
   /* are we only called when buffer empty? */
   assert(sm->base.buf == sm->base.end);

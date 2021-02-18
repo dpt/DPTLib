@@ -21,10 +21,12 @@ typedef int result_t;
 #define result_BASE_BITFIFO                     0x0A00
 
 /* Non-DPTLib bases */
-#define result_BASE_MMPLAYER                    0xF000
-#define result_BASE_CONTAINER                   0xF100
-#define result_BASE_CONTAINER_HASH              0xF200
-#define result_BASE_CONTAINER_QUEUE             0xF300
+#define result_BASE_MMPLAYER                    0x4000
+#define result_BASE_CONTAINER                   0x4100
+#define result_BASE_CONTAINER_HASH              0x4200
+#define result_BASE_CONTAINER_QUEUE             0x4300
+
+/* AppEngine uses 0x8000+ */
 
 /* ----------------------------------------------------------------------- */
 
@@ -41,6 +43,7 @@ typedef int result_t;
 #define result_EXISTS                           (result_BASE_GENERIC     + 10)  /* Item already exists */
 #define result_CLASHES                          (result_BASE_GENERIC     + 11)  /* Key clashes with existing one */
 #define result_NULL_ARG                         (result_BASE_GENERIC     + 12)  /* An argument was NULL */
+#define result_NOT_SUPPORTED                    (result_BASE_GENERIC     + 13)  /* Not supported, e.g. no hardware */
 
 /* Stream result codes are in io/stream.h */
 

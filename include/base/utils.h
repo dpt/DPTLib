@@ -3,6 +3,11 @@
 #ifndef BASE_UTILS_H
 #define BASE_UTILS_H
 
+/* When on RISC OS, bring OSLib's types in. */
+#ifdef __riscos
+#include "oslib/types.h"
+#endif
+
 /**
  * Returns the number of elements in the specified array.
  */
@@ -33,7 +38,9 @@
 /**
  * Suppress warnings about unused variables.
  */
+#ifndef NOT_USED
 #define NOT_USED(x) ((x) = (x))
+#endif
 
 /**
  * Inlining.

@@ -3,7 +3,7 @@ DPTLib
 
 DPTLib is my C library.
 
-Formed of the various bits of portable code I've written for PrivateEye, MotionMasks and other projects, consider it a work in progress.
+It's formed of the various bits of portable C code that I've written for PrivateEye, MotionMasks and other projects. Please consider it a permanent work in progress.
 
 Modules
 -------
@@ -73,3 +73,14 @@ Modules
  * [`utils/maths.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/maths.h) — math utils
  * [`utils/pack.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/pack.h) — structure packing and unpacking helpers
  * [`utils/primes.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/primes.h) — cache of prime numbers
+
+Building
+--------
+
+Use CMake, e.g.:
+
+`mkdir build`
+`cd build`
+`cmake ..`
+`make -j4`
+

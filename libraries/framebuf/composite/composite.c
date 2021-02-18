@@ -945,7 +945,7 @@ static void composite_xxxa8888(composite_rule_t rule,
     break;
 
   case composite_RULE_DST:
-    break;
+    return;
 
   case composite_RULE_SRC_OVER:
     compo = comp_xxxa8888_src_over;
@@ -985,7 +985,7 @@ static void composite_xxxa8888(composite_rule_t rule,
 
   default:
     assert("Invalid composite rule" == NULL);
-    break;
+    return;
   }
 
   while (height--)

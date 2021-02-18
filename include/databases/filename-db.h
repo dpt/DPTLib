@@ -51,7 +51,9 @@ typedef struct filenamedb T;
 result_t filenamedb_open(const char *filename, T **db);
 void filenamedb_close(T *db);
 
-/* force any pending changes to disc */
+/**
+ * Force any pending changes to disc.
+ */
 result_t filenamedb_commit(T *db);
 
 /* ----------------------------------------------------------------------- */
@@ -65,7 +67,9 @@ const char *filenamedb_get(T          *db,
 
 /* ----------------------------------------------------------------------- */
 
-/* delete knowledge of filenames which don't exist on disc */
+/**
+ * Delete knowledge of filenames which don't exist on disc.
+ */
 result_t filenamedb_prune(T *db);
 
 /* ----------------------------------------------------------------------- */

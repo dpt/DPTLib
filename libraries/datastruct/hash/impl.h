@@ -1,4 +1,4 @@
-/* impl.c -- hash */
+/* impl.h -- hash */
 
 #ifndef DATASTRUCT_HASH_IMPL_H
 #define DATASTRUCT_HASH_IMPL_H
