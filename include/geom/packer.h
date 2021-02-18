@@ -1,4 +1,4 @@
-/* packerh -- box packing for layout */
+/* packer.h -- box packing for layout */
 
 #ifndef GEOM_PACKER_H
 #define GEOM_PACKER_H
