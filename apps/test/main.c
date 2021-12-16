@@ -46,6 +46,9 @@ extern testfn_t atom_test,
 extern testfn_t pickle_test,
                 tagdb_test;
 
+/* framebuf */
+extern testfn_t bmfont_test;
+
 /* geom */
 extern testfn_t layout_test,
                 packer_test;
@@ -73,6 +76,8 @@ static const test_t tests[] =
 
   { "pickle",   pickle_test   },
   { "tagdb",    tagdb_test    },
+
+  { "bmfont",   bmfont_test   },
 
   { "layout",   layout_test   },
   { "packer",   packer_test   },

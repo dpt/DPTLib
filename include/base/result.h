@@ -44,6 +44,7 @@ typedef int result_t;
 #define result_CLASHES                          (result_BASE_GENERIC     + 11)  /* Key clashes with existing one */
 #define result_NULL_ARG                         (result_BASE_GENERIC     + 12)  /* An argument was NULL */
 #define result_NOT_SUPPORTED                    (result_BASE_GENERIC     + 13)  /* Not supported, e.g. no hardware */
+#define result_INCOMPATIBLE                     (result_BASE_GENERIC     + 14)  /* An argument was incompatible */
 
 /* Stream result codes are in io/stream.h */
 

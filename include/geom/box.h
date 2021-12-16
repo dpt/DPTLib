@@ -74,6 +74,15 @@ int box_intersects(const box_t *a, const box_t *b);
 int box_intersection(const box_t *a, const box_t *b, box_t *c);
 
 /**
+ * Populates the box "c" with the clip factors of box "b" over "a".
+ *
+ * \param[in]  a The first box.
+ * \param[in]  b The second box.
+ * \param[out] c The output clip factors (positive where "b" extends outside of "a").
+ */
+void box_clip(const box_t *a, const box_t *b, box_t *c);
+
+/**
  * Populates the box "c" with the union of boxes "a" and "b".
  *
  * \param[in]  a The first box.
