@@ -1100,7 +1100,7 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   if (!box_intersects(&scrclip, &drawbox))
     return result_OK; /* not visible */
 
-  box_clip(&scrclip, &drawbox, &drawclip);
+  box_clipped(&scrclip, &drawbox, &drawclip);
 
   int            left_skip         = drawclip.x0;
   int            top_skip          = drawclip.y0;

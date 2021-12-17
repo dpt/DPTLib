@@ -208,7 +208,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/screen/screen.c)
 
 set(GEOM_SOURCES
-    libraries/geom/box/clip.c
+    libraries/geom/box/clipped.c
     libraries/geom/box/contains-box.c
     libraries/geom/box/contains-point.c
     libraries/geom/box/could-hold.c
