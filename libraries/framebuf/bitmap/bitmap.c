@@ -59,27 +59,38 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
   switch (log2bpp)
   {
   case 0: /* 1bpp */
-    memset(bm->base, px * 0xFF, bm->rowbytes * bm->height);
-    break;
   case 1: /* 2bpp */
-    memset(bm->base, px * 0x55, bm->rowbytes * bm->height);
-    break;
   case 2: /* 4bpp */
-    memset(bm->base, px * 0x11, bm->rowbytes * bm->height);
-    break;
   case 3: /* 8bpp */
-    memset(bm->base, px * 0x01, bm->rowbytes * bm->height);
+    switch (log2bpp)
+    {
+    case 0: px *= 0xFF; break;
+    case 1: px *= 0x55; break;
+    case 2: px *= 0x11; break;
+    case 3: px *= 0x01; break;
+    }
+    memset(bm->base, px, bm->rowbytes * bm->height);
     break;
 
   case 5: /* 32bpp - pixels are ints */
   {
-    unsigned int *pixels;
+    /* if all bytes of 'px' are the same, use memset() */
+    int tmp1 = px ^ (px >> 16);
+    int tmp2 = tmp1 ^ (tmp1 >> 8);
+    if ((tmp2 & 0xFF) == 0)
+    {
+      memset(bm->base, px, bm->rowbytes * bm->height);
+    }
+    else
+    {
+      unsigned int *pixels;
 
-    pixels = bm->base;
-    for (y = 0; y < bm->height; y++)
-      for (x = 0; x < bm->width; x++)
-        *pixels++ = px;
-    // pixels += bm->rowbytes / sizeof(*pixels) - bm->width;  cope with gaps etc.
+      pixels = bm->base;
+      for (y = 0; y < bm->height; y++)
+        for (x = 0; x < bm->width; x++)
+          *pixels++ = px;
+        // TODO: pixels += bm->rowbytes / sizeof(*pixels) - bm->width;  cope with gaps etc.
+    }
   }
     break;
 
