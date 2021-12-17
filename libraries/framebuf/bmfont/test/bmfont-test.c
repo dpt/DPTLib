@@ -159,7 +159,7 @@ result_t bmfont_test(void)
     size_t      stringlen = strlen(line->string);
     point_t     origin    = line->origin;
 
-    bmfont_info(bmfont, &glyphwidth, &glyphheight);
+    bmfont_get_info(bmfont, &glyphwidth, &glyphheight);
 
     do
     {

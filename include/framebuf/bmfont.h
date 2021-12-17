@@ -31,7 +31,7 @@ result_t bmfont_create(const char *png,
 
 void bmfont_destroy(bmfont_t *bmfont);
 
-void bmfont_info(bmfont_t *bmfont, int *width, int *height);
+void bmfont_get_info(bmfont_t *bmfont, int *width, int *height);
 
 result_t bmfont_measure(bmfont_t       *bmfont,
                         const char     *text,

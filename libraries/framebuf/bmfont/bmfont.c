@@ -504,7 +504,7 @@ void bmfont_destroy(bmfont_t *bmfont)
 
 /* -------------------------------------------------------------------------- */
 
-void bmfont_info(bmfont_t *bmfont, int *width, int *height)
+void bmfont_get_info(bmfont_t *bmfont, int *width, int *height)
 {
   *width  = bmfont->charwidth;
   *height = bmfont->charheight;
