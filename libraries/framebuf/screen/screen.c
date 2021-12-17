@@ -15,7 +15,15 @@ void screen_init(screen_t  *scr,
                  box_t      clip,
                  void      *base)
 {
-  assert("NYI" == NULL);
+  assert(scr);
+
+  scr->width    = width;
+  scr->height   = height;
+  scr->format   = fmt;
+  scr->rowbytes = rowbytes;
+  scr->palette  = palette;
+  scr->clip     = clip;
+  scr->base     = base;
 }
 
 void screen_for_bitmap(screen_t *scr, const bitmap_t *bm)
