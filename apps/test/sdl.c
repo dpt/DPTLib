@@ -23,14 +23,15 @@
 
 /* Configuration */
 
+#undef SDL     /* use SDL */
 #define TEST_P4 /* test 4bpp */
-
-/* ----------------------------------------------------------------------- */
 
 const int GAMEWIDTH  = 800;
 const int GAMEHEIGHT = 600;
 
 /* ----------------------------------------------------------------------- */
+
+#ifdef SDL
 
 typedef struct sdlstate
 {
@@ -40,7 +41,7 @@ typedef struct sdlstate
 }
 sdlstate_t;
 
-void PrintEvent(const SDL_Event * event)
+void PrintEvent(const SDL_Event *event)
 {
   if (event->type == SDL_WINDOWEVENT) {
     switch (event->window.event) {
@@ -173,6 +174,8 @@ static void stop_sdl(sdlstate_t *state)
   SDL_Quit();
 }
 
+#endif /* SDL */
+
 /* ----------------------------------------------------------------------- */
 
 typedef struct testfont
@@ -244,7 +247,9 @@ int main(int argc, char *argv[])
 
   result_t      rc = result_OK;
   const char   *fontpath;
+#ifdef SDL
   sdlstate_t    state;
+#endif
   unsigned int *pixels;
   bitmap_t      bm;
   int           bm_inited = 0;
@@ -261,11 +266,13 @@ int main(int argc, char *argv[])
 
   fontpath = argv[1];
 
+#ifdef SDL
   memset(&state, 0, sizeof(state));
 
   rc = start_sdl(&state);
   if (rc)
     goto failure;
+#endif
 
   pixels = malloc(scr_rowbytes * scr_height);
   if (pixels == NULL)
@@ -278,6 +285,8 @@ int main(int argc, char *argv[])
   bm_inited = 1;
 
   bitmap_clear(&bm, palette[background_colour_index]);
+
+  screen_for_bitmap(&scr, &bm);
 
   for (font = 0; font < NELEMS(fonts); font++)
   {
@@ -292,8 +301,6 @@ int main(int argc, char *argv[])
 
     bmfont_get_info(fonts[font].bmfont, &fonts[font].width, &fonts[font].height);
   }
-
-  screen_for_bitmap(&scr, &bm);
 
   // test screen clipping
   box_t scrclip = screen_get_clip(&scr);
@@ -312,6 +319,7 @@ int main(int argc, char *argv[])
 
   for (frame = 0; !quit; frame++)
   {
+#ifdef SDL
     {
       SDL_Event event;
 
@@ -374,8 +382,12 @@ int main(int argc, char *argv[])
         }
       }
     }
+#else
+    if (frame > 1000)
+      quit = 1;
+#endif
 
-    colour_t fg = palette[ 1];
+    colour_t fg = palette[1];
     colour_t bg = transparency ? transparent : palette[15];
 
     if (!dontclear)
@@ -386,11 +398,11 @@ int main(int argc, char *argv[])
 
     // clipping test
     {
-      point_t      origin  = {mx,my};
-      const int    height  = fonts[currfont].height;
-      const int    rows    = scr_height / height;
-      box_t        dirty;
-      int          i;
+      point_t   origin  = {mx,my};
+      const int height  = fonts[currfont].height;
+      const int rows    = scr_height / height;
+      box_t     dirty;
+      int       i;
 
       for (i = 0; i < rows; i++)
       {
@@ -462,13 +474,16 @@ int main(int argc, char *argv[])
         texturearea.w = uniondirty.x1 - uniondirty.x0;
         texturearea.h = uniondirty.y1 - uniondirty.y0;
       }
+#ifdef SDL
       // the rect given here describes where to draw in the texture
       SDL_UpdateTexture(state.texture,
                        &texturearea,
                         (char *) scr_bgrx8888->base + texturearea.y * scr_bgrx8888->rowbytes + texturearea.x * 4,
                         scr_bgrx8888->rowbytes);
+#endif
     }
 
+#ifdef SDL
     /* Clear screen */
     SDL_SetRenderDrawColor(state.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE); /* opaque white */
     SDL_RenderClear(state.renderer);
@@ -476,21 +491,22 @@ int main(int argc, char *argv[])
     SDL_RenderCopy(state.renderer, state.texture, NULL, NULL);
     SDL_RenderPresent(state.renderer);
 
-    SDL_Delay(1000 / 60); // 60fps
+    SDL_Delay(1000 / 60); /* 60fps */
+#endif
 
     prevdirty = overalldirty;
   }
 
+#ifdef SDL
   stop_sdl(&state);
+#endif
 
   printf("(quit)\n");
-
   exit(EXIT_SUCCESS);
 
 
 failure:
-  printf("(error rd=%d)\n", rc);
-
+  fprintf(stderr, "(error rd=%d)\n", rc);
   exit(EXIT_FAILURE);
 }
 
