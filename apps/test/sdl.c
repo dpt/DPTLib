@@ -279,7 +279,7 @@ int main(int argc, char *argv[])
     if (rc)
       goto failure;
 
-    bmfont_info(fonts[font].bmfont, &fonts[font].width, &fonts[font].height);
+    bmfont_get_info(fonts[font].bmfont, &fonts[font].width, &fonts[font].height);
   }
 
   screen_for_bitmap(&scr, &bm);
