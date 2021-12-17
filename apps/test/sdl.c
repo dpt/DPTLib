@@ -21,6 +21,12 @@
 
 /* ----------------------------------------------------------------------- */
 
+/* Configuration */
+
+#define TEST_P4 /* test 4bpp */
+
+/* ----------------------------------------------------------------------- */
+
 const int GAMEWIDTH  = 800;
 const int GAMEHEIGHT = 600;
 
@@ -204,8 +210,13 @@ int main(int argc, char *argv[])
 {
   const int        scr_width    = GAMEWIDTH;
   const int        scr_height   = GAMEHEIGHT;
-  const pixelfmt_t scr_fmt      = pixelfmt_p4; // pixelfmt_bgrx8888;
+#ifdef TEST_P4
+  const pixelfmt_t scr_fmt      = pixelfmt_p4;
   const int        scr_log2bpp  = 2; /* 4bpp */
+#else
+  const pixelfmt_t scr_fmt      = pixelfmt_bgrx8888;
+  const int        scr_log2bpp  = 5; /* 32bpp */
+#endif
   const int        scr_rowbytes = (scr_width << scr_log2bpp) / 8;
   const int        scr_bytes    = scr_rowbytes * scr_height;
 
