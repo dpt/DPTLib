@@ -111,7 +111,10 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
 
   dst = malloc(sizeof(*dst));
   if (dst == NULL)
+  {
+    free(outpixels);
     return result_OOM;
+  }
 
   rc = bitmap_init(dst,
                    src->width, src->height,
