@@ -26,11 +26,6 @@ const int GAMEHEIGHT = 600;
 
 /* ----------------------------------------------------------------------- */
 
-// TODO: Solve this absolute path....
-#define PATH "/Users/dave/SyncProjects/github/DPTLib/" // ick.
-
-/* ----------------------------------------------------------------------- */
-
 typedef struct sdlstate
 {
   SDL_Window   *window;
@@ -186,11 +181,11 @@ bmtestfont_t;
 
 static bmtestfont_t fonts[] =
 {
-  { PATH "tiny-font.png",     NULL },
-  { PATH "henry-font.png",    NULL },
-  { PATH "tall-font.png",     NULL },
-  { PATH "ms-sans-serif.png", NULL },
-  { PATH "digits-font.png",   NULL }
+  { "tiny-font.png",     NULL },
+  { "henry-font.png",    NULL },
+  { "tall-font.png",     NULL },
+  { "ms-sans-serif.png", NULL },
+  { "digits-font.png",   NULL }
 };
 
 static const char *strings[] =
@@ -205,7 +200,7 @@ static const char *strings[] =
 
 /* ----------------------------------------------------------------------- */
 
-int main(void)
+int main(int argc, char *argv[])
 {
   const int        scr_width    = GAMEWIDTH;
   const int        scr_height   = GAMEHEIGHT;
@@ -237,6 +232,7 @@ int main(void)
   const colour_t transparent = colour_rgba(0x00, 0x00, 0x00, 0x00);
 
   result_t      rc = result_OK;
+  const char   *fontpath;
   sdlstate_t    state;
   unsigned int *pixels;
   bitmap_t      bm;
@@ -245,6 +241,14 @@ int main(void)
   screen_t      scr;
   bool          quit = false;
   int           frame;
+
+  if (argc < 2)
+  {
+    fprintf(stderr, "Syntax: %s <fontpath>\n", argv[0]);
+    exit(EXIT_FAILURE);
+  }
+
+  fontpath = argv[1];
 
   memset(&state, 0, sizeof(state));
 
@@ -266,7 +270,12 @@ int main(void)
 
   for (font = 0; font < NELEMS(fonts); font++)
   {
-    rc = bmfont_create(fonts[font].filename, &fonts[font].bmfont);
+    char filename[PATH_MAX];
+
+    strcpy(filename, fontpath);
+    strcat(filename, "/resources/bmfonts/");
+    strcat(filename, fonts[font].filename);
+    rc = bmfont_create(filename, &fonts[font].bmfont);
     if (rc)
       goto failure;
 
