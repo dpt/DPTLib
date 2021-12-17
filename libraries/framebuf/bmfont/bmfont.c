@@ -654,6 +654,8 @@ static void bmfont_drawchar_p4_1w_t(void        *vscreen,
   unsigned char       *scr = vscreen;
   const unsigned char *gly = vglyph;
 
+  NOT_USED(bg);
+
   assert(shift == 0 || shift == 4);
   assert(charwidth > 0);
   assert(charheight > 0);
@@ -798,6 +800,8 @@ static void bmfont_drawchar_p4_2w_t(void        *vscreen,
 {
   unsigned char        *scr = vscreen;
   const unsigned short *gly = vglyph;
+
+  NOT_USED(bg);
 
   assert(shift == 0 || shift == 4);
   assert(charwidth > 0);
