@@ -10,6 +10,8 @@
 #include "base/result.h"
 #include "datastruct/bitarr.h"
 
+#include "test/all-tests.h"
+
 #define NBITS 97
 
 typedef bitarr_ARRAY(NBITS) testbits_t;
@@ -32,9 +34,7 @@ static void dumpbits(const testbits_t *arr, int nbits)
   printf("\n%d bits set\n", c);
 }
 
-result_t bitarr_test(void); /* suppress "No previous prototype" warning */
-
-result_t bitarr_test(void)
+result_t bitarr_test(const char *resources)
 {
   testbits_t arr;
   int        i;

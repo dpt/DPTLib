@@ -296,14 +296,92 @@ if(USE_FORTIFY)
     target_link_libraries(DPTLib PUBLIC Fortify)
 endif()
 
-## libpng
-#find_package(PNG REQUIRED)
-# Using PkgConfig and IMPORTED_TARGET to avoid header/lib mismatch on macOS.
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(PNG REQUIRED IMPORTED_TARGET libpng)
-target_include_directories(DPTLib PUBLIC ${PNG_INCLUDE_DIRS})
-target_compile_options(DPTLib PUBLIC ${PNG_CFLAGS_OTHER})
-target_link_libraries(DPTLib PUBLIC PkgConfig::PNG)
+if(NOT TARGET_RISCOS)
+    ## Where PkgConfig is available, use it
+    find_package(PkgConfig REQUIRED)
+    # Use IMPORTED_TARGET to avoid header/lib mismatch on macOS.
+    pkg_check_modules(PNG REQUIRED IMPORTED_TARGET libpng)
+    target_include_directories(DPTLib PUBLIC ${PNG_INCLUDE_DIRS})
+    target_compile_options(DPTLib PUBLIC ${PNG_CFLAGS_OTHER})
+    target_link_libraries(DPTLib PUBLIC PkgConfig::PNG)
+else()
+    ## On RISC OS we must build libpng & zlib
+    include(FetchContent)
+
+    FetchContent_Declare(zlib
+                         GIT_REPOSITORY https://github.com/madler/zlib.git
+                         GIT_TAG v1.2.11)
+    FetchContent_Declare(libpng
+                         GIT_REPOSITORY https://github.com/glennrp/libpng.git
+                         GIT_TAG v1.6.37)
+
+    FetchContent_GetProperties(zlib)
+    if(NOT zlib_POPULATED)
+        FetchContent_Populate(zlib)
+
+        # Patch CMake minimum to 3.0.0
+        message(STATUS "patching zlib...")
+        execute_process(COMMAND           ${GIT_EXECUTABLE} apply ${CMAKE_CURRENT_LIST_DIR}/cmake/zlib.patch
+                        WORKING_DIRECTORY ${zlib_SOURCE_DIR}
+                        OUTPUT_QUIET
+                        ERROR_QUIET) # because it'll error upon re-run
+
+        # Set vars that libpng's cmakelists will use to get zlib
+        set(ZLIB_INCLUDE_DIR ${zlib_SOURCE_DIR} ${zlib_BINARY_DIR})
+        set(ZLIB_LIBRARY zlibstatic)
+
+        # https://stackoverflow.com/questions/37582508/silence-cmp0048-warnings-in-vendored-projects
+        set(CMAKE_PROJECT_INCLUDE_BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/enable_cmp0048.cmake")
+        add_subdirectory(${zlib_SOURCE_DIR} ${zlib_BINARY_DIR} EXCLUDE_FROM_ALL)
+        unset(CMAKE_PROJECT_INCLUDE_BEFORE)
+    endif()
+
+    install(TARGETS zlibstatic EXPORT zlibstatic-targets
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT zlibstatic
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT zlibstatic
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT zlibstatic
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ZLIB
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ZLIB
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ZLIB)
+
+    export(TARGETS zlibstatic
+           NAMESPACE ZLIB::
+           FILE ${CMAKE_INSTALL_PREFIX}/zlibstatic-targets.cmake)
+
+    install(EXPORT zlibstatic-targets
+            DESTINATION ${CMAKE_INSTALL_PREFIX}
+            NAMESPACE ZLIB::
+            COMPONENT zlibstatic-export)
+
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_PREFIX}/
+            DESTINATION ${CMAKE_INSTALL_PREFIX}
+            COMPONENT zlibstatic-export
+            PATTERN zlibstatic-targets.cmake EXCLUDE)
+
+    FetchContent_GetProperties(libpng)
+    if(NOT libpng_POPULATED)
+        FetchContent_Populate(libpng)
+
+        # Patch libm find_library problem
+        message(STATUS "patching libpng...")
+        execute_process(COMMAND           ${GIT_EXECUTABLE} apply ${CMAKE_CURRENT_LIST_DIR}/cmake/libpng-libm-unix.patch
+                        WORKING_DIRECTORY ${libpng_SOURCE_DIR}
+                        OUTPUT_QUIET
+                        ERROR_QUIET) # because it'll error upon re-run
+
+        configure_file(${libpng_SOURCE_DIR}/scripts/pnglibconf.h.prebuilt ${libpng_SOURCE_DIR}/pnglibconf.h COPYONLY)
+
+        cmake_policy(SET CMP0077 NEW)
+        set(PNG_SHARED OFF)
+
+        add_subdirectory(${libpng_SOURCE_DIR} ${libpng_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif() 
+
+    include_directories(SYSTEM ${libpng_SOURCE_DIR}/ ${libpng_BINARY_DIR}/)
+    include_directories(SYSTEM ${zlib_SOURCE_DIR}/)
+
+    target_link_libraries(DPTLib PRIVATE png_static)
+endif()     
 
 # Installation
 #
@@ -335,6 +413,7 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include
 #
 
 option(BUILD_TESTS "Build test program" OFF)
+option(BUILD_SDL_TESTS "Build tests that use SDL" OFF)
 
 if(BUILD_TESTS)
     set(TEST_SOURCES
@@ -371,41 +450,19 @@ if(BUILD_TESTS)
         OUTPUT_NAME_MINSIZEREL DPTLibTest-minsizerel)
 
     # DPTTest dependencies
-    # Of course, DPTTest depends on DPTLib.
-    target_link_libraries(DPTLibTest DPTLib)
+    # Of course, DPTLibTest depends on DPTLib.
+    target_link_libraries(DPTLibTest DPTLib m)
+
+    if(BUILD_SDL_TESTS)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(SDL2 REQUIRED sdl2 SDL2_image)
+        target_link_libraries(DPTLibTest ${SDL2_LINK_LIBRARIES})
+        target_include_directories(DPTLibTest PUBLIC ${SDL2_INCLUDE_DIRS})
+        target_compile_options(DPTLibTest PUBLIC ${SDL2_CFLAGS_OTHER})
+
+        target_compile_definitions(DPTLibTest PUBLIC USE_SDL)
+    endif()
 
     install(TARGETS DPTLibTest RUNTIME
         DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif()
-
-
-option(BUILD_SDL_TESTS "Build SDL test program" OFF)
-
-if(BUILD_SDL_TESTS)
-    set(SDL_TEST_SOURCES apps/test/sdl.c)
-
-    add_executable(DPTLibSDLTest ${SDL_TEST_SOURCES})
-
-    set_target_properties(DPTLibSDLTest PROPERTIES
-        DESCRIPTION "DPTLib SDL test program"
-        C_STANDARD 99
-        OUTPUT_NAME_DEBUG DPTLibSDLTest-debug
-        OUTPUT_NAME_RELEASE DPTLibSDLTest
-        OUTPUT_NAME_RELWITHDEBINFO DPTLibSDLTest-relwithdebinfo
-        OUTPUT_NAME_MINSIZEREL DPTLibSDLTest-minsizerel)
-
-    # DPTTest dependencies
-    # Of course, DPTTest depends on DPTLib.
-    target_link_libraries(DPTLibSDLTest DPTLib)
-
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SDL2 REQUIRED sdl2 SDL2_image)
-    target_link_libraries(DPTLibSDLTest ${SDL2_LINK_LIBRARIES})
-    target_include_directories(DPTLibSDLTest PUBLIC ${SDL2_INCLUDE_DIRS})
-    target_compile_options(DPTLibSDLTest PUBLIC ${SDL2_CFLAGS_OTHER})
-
-    install(TARGETS DPTLibSDLTest RUNTIME
-        DESTINATION ${CMAKE_INSTALL_PREFIX})
-endif()
-
-# vim: sw=4 et

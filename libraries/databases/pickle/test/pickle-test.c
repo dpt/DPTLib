@@ -18,6 +18,8 @@
 #include "databases/pickle-reader-hash.h"
 #include "databases/pickle-writer-hash.h"
 
+#include "test/all-tests.h"
+
 /* ----------------------------------------------------------------------- */
 
 static char *my_strdup(const char *s)
@@ -593,9 +595,7 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
-result_t pickle_test(void); /* suppress "No previous prototype" warning */
-
-result_t pickle_test(void)
+result_t pickle_test(const char *resources)
 {
   result_t rc;
 

@@ -11,6 +11,8 @@
 
 #include "datastruct/list.h"
 
+#include "test/all-tests.h"
+
 typedef struct node
 {
   list_t ll;
@@ -31,9 +33,7 @@ static int printelement(list_t *e, void *opaque)
   return 0;
 }
 
-result_t list_test(void); /* suppress "No previous prototype" warning */
-
-result_t list_test(void)
+result_t list_test(const char *resources)
 {
   node_t data[] =
   {
