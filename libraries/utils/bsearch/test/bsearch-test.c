@@ -12,9 +12,9 @@
 
 #include "utils/bsearch.h"
 
-result_t bsearch_test(void); /* suppress "No previous prototype" warning */
+#include "test/all-tests.h"
 
-result_t bsearch_test(void)
+result_t bsearch_test(const char *resources)
 {
   int i;
   int nfailures = 0;

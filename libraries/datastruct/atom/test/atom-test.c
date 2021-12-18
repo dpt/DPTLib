@@ -11,6 +11,8 @@
 #include "base/utils.h"
 #include "datastruct/atom.h"
 
+#include "test/all-tests.h"
+
 static const char *data[] =
 {
   "deckard", "batty", "rachael", "gaff", "bryant", "pris", "sebastian",
@@ -192,9 +194,7 @@ static result_t test_random(atom_set_t *d)
   return result_OK;
 }
 
-result_t atom_test(void); /* suppress "No previous prototype" warning */
-
-result_t atom_test(void)
+result_t atom_test(const char *resources)
 {
   result_t   err;
   atom_set_t *d;

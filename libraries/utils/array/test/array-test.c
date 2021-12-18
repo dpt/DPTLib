@@ -11,9 +11,9 @@
 
 #include "utils/array.h"
 
-result_t array_test(void); /* suppress "No previous prototype" warning */
+#include "test/all-tests.h"
 
-result_t array_test(void)
+result_t array_test(const char *resources)
 {
   int delelem1[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
   int delelem2[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
