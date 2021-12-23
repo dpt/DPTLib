@@ -68,7 +68,11 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
     goto cleanup;
   }
 
-  assert(bm->format == pixelfmt_bgra8888);
+  if (bm->format != pixelfmt_bgrx8888)
+  {
+    rc = result_NOT_SUPPORTED;
+    goto cleanup;
+  }
 
   const unsigned int *inrow = bm->base;
 
