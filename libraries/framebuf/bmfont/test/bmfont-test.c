@@ -24,7 +24,7 @@
 
 /* Configuration */
 
-#define TEST_P4 /* test 4bpp */
+//#define TEST_P4 /* test 4bpp, otherwise 32bpp */
 
 const int GAMEWIDTH  = 800;
 const int GAMEHEIGHT = 600;
@@ -180,18 +180,18 @@ static void stop_sdl(sdlstate_t *state)
 
 /* ----------------------------------------------------------------------- */
 
-typedef struct testfont
+typedef struct bmtestfont
 {
-  const char *filename;
-  bmfont_t   *bmfont;
-  int         width, height;
+  const char   *filename;
+  bmfont_t     *bmfont;
+  int           width, height;
 }
 bmtestfont_t;
 
-typedef struct testline
+typedef struct bmtestline
 {
   int           font_index;
-  unsigned char fg,bg; // palette indices
+  unsigned char fg, bg; /* palette indices */
   point_t       origin;
   const char   *string;
 }
@@ -199,7 +199,7 @@ bmtestline_t;
 
 /* ----------------------------------------------------------------------- */
 
-static bmtestfont_t fonts[] =
+static bmtestfont_t bmfonts[] =
 {
   { "tiny-font.png",     NULL },
   { "henry-font.png",    NULL },
@@ -243,7 +243,6 @@ static const char *strings[] =
 
 result_t bmfont_test(const char *resources)
 {
-#if 1
   const int        scr_width    = GAMEWIDTH;
   const int        scr_height   = GAMEHEIGHT;
 #ifdef TEST_P4
@@ -274,7 +273,7 @@ result_t bmfont_test(const char *resources)
     colour_rgb(0xFF, 0x77, 0xA8),
     colour_rgb(0xFF, 0xCC, 0xAA),
   };
-  const int background_colour_index = 7; // near white
+  const int background_colour_index = 7; /* near white */
 
   const colour_t transparent = colour_rgba(0x00, 0x00, 0x00, 0x00);
 
@@ -287,8 +286,6 @@ result_t bmfont_test(const char *resources)
   int           bm_inited = 0;
   int           font;
   screen_t      scr;
-  bool          quit = false;
-  int           frame;
 
 #ifdef USE_SDL
   memset(&state, 0, sizeof(state));
@@ -312,289 +309,34 @@ result_t bmfont_test(const char *resources)
 
   screen_for_bitmap(&scr, &bm);
 
-  for (font = 0; font < NELEMS(fonts); font++)
+  for (font = 0; font < NELEMS(bmfonts); font++)
   {
     char filename[PATH_MAX];
 
     strcpy(filename, resources);
     strcat(filename, "/resources/bmfonts/");
-    strcat(filename, fonts[font].filename);
-    rc = bmfont_create(filename, &fonts[font].bmfont);
+    strcat(filename, bmfonts[font].filename);
+    rc = bmfont_create(filename, &bmfonts[font].bmfont);
     if (rc)
       goto Failure;
 
-    bmfont_get_info(fonts[font].bmfont, &fonts[font].width, &fonts[font].height);
+    bmfont_get_info(bmfonts[font].bmfont, &bmfonts[font].width, &bmfonts[font].height);
   }
 
-  // test screen clipping
-  box_t scrclip = screen_get_clip(&scr);
-  box_grow(&scrclip, -37);
-  scr.clip = scrclip;
+  // ===================================
 
-  int mx = 0;
-  int my = 0;
-  int dontclear = 0;
-  int animate = 0;
-  int firstdraw = 1;
-  int cycling = 1;
-  int currfont = 1;
-  int transparency = 0;
-  box_t prevdirty;
-
-  for (frame = 0; !quit; frame++)
-  {
-#ifdef USE_SDL
-    {
-      SDL_Event event;
-
-      // Consume all pending events
-      while (SDL_PollEvent(&event))
-      {
-        switch (event.type)
-        {
-        case SDL_QUIT:
-          quit = 1;
-          SDL_Log("Quitting after %i ticks", event.quit.timestamp);
-          break;
-
-        case SDL_WINDOWEVENT:
-          PrintEvent(&event);
-          break;
-
-        case SDL_KEYDOWN:
-          break;
-
-        case SDL_KEYUP:
-          switch (event.key.keysym.sym)
-          {
-          case SDLK_c: cycling = !cycling; break;
-          case SDLK_f: currfont = (currfont + 1) % NELEMS(fonts); break;
-          case SDLK_t: transparency = !transparency; break;
-          }
-          break;
-
-        case SDL_TEXTEDITING:
-        case SDL_TEXTINPUT:
-          break;
-
-        case SDL_MOUSEMOTION:
-          mx = event.motion.x - 32;
-          my = event.motion.y - 8;
-          break;
-
-        case SDL_MOUSEBUTTONDOWN:
-        case SDL_MOUSEBUTTONUP:
-          {
-            switch (event.button.button)
-            {
-            case SDL_BUTTON_LEFT:
-              animate = (event.type == SDL_MOUSEBUTTONDOWN);
-              break;
-            case SDL_BUTTON_RIGHT:
-              dontclear = (event.type == SDL_MOUSEBUTTONDOWN);
-              break;
-            }
-          }
-          break;
-
-        case SDL_MOUSEWHEEL:
-          break;
-
-        default:
-          printf("Unhandled event code {%d}\n", event.type);
-          break;
-        }
-      }
-    }
-#else
-    if (frame > 1000)
-      quit = 1;
-#endif
-
-    colour_t fg = palette[1];
-    colour_t bg = transparency ? transparent : palette[15];
-
-    if (!dontclear)
-      bitmap_clear(&bm, palette[background_colour_index]);
-
-    box_t overalldirty;
-    box_reset(&overalldirty);
-
-    // clipping test
-    {
-      point_t   origin  = {mx,my};
-      const int height  = fonts[currfont].height;
-      const int rows    = scr_height / height;
-      box_t     dirty;
-      int       i;
-
-      for (i = 0; i < rows; i++)
-      {
-        const char  *message = strings[i % NELEMS(strings)];
-        const size_t msglen  = strlen(message);
-
-        if (animate)
-        {
-          const double movement_speed = 8.0;
-
-          int    j  = i - (rows / 2);
-          double t  = (frame + j) / movement_speed;
-          double sx = mx - GAMEWIDTH  / 2.0;
-          double sy = my - GAMEHEIGHT / 2.0;
-          origin.x  = mx +              sin(t) * sx;
-          origin.y  = my + j * height + cos(t) * sy;
-          if (cycling)
-          {
-            fg = palette[( 0 + i + frame / 2) % 16];
-            bg = transparency ? transparent : palette[(15 + i + frame / 3) % 16];
-          }
-        }
-        dirty.x0 = origin.x;
-        dirty.y0 = origin.y;
-        dirty.x1 = origin.x + msglen * 15; // HACK
-        dirty.y1 = origin.y + height;
-        box_intersection(&dirty, &scrclip, &dirty); /* clamp to screen bounds */
-        box_union(&overalldirty, &dirty, &overalldirty);
-        (void) bmfont_draw(fonts[currfont].bmfont,
-                          &scr,
-                           message,
-                           msglen,
-                           fg, bg,
-                          &origin,
-                           NULL /*endpos*/);
-        if (!animate)
-          break;
-      }
-    }
-
-    /* Update the texture and render it */
-
-#ifdef USE_SDL
-    if (!box_is_empty(&overalldirty))
-    {
-      bitmap_t *scr_bgrx8888;
-      SDL_Rect  texturearea;
-
-      if (scr_fmt != pixelfmt_bgrx8888)
-        bitmap_convert((const bitmap_t *) &scr, pixelfmt_bgrx8888, &scr_bgrx8888);
-      else
-        scr_bgrx8888 = (bitmap_t *) &scr;
-
-      if (firstdraw)
-      {
-        texturearea.x = 0;
-        texturearea.y = 0;
-        texturearea.w = GAMEWIDTH;
-        texturearea.h = GAMEHEIGHT;
-        firstdraw = 0;
-      }
-      else
-      {
-        box_t uniondirty;
-
-        box_union(&overalldirty, &prevdirty, &uniondirty);
-
-        texturearea.x = uniondirty.x0;
-        texturearea.y = uniondirty.y0;
-        texturearea.w = uniondirty.x1 - uniondirty.x0;
-        texturearea.h = uniondirty.y1 - uniondirty.y0;
-      }
-      // the rect given here describes where to draw in the texture
-      SDL_UpdateTexture(state.texture,
-                       &texturearea,
-                        (char *) scr_bgrx8888->base + texturearea.y * scr_bgrx8888->rowbytes + texturearea.x * 4,
-                        scr_bgrx8888->rowbytes);
-    }
-
-    /* Clear screen */
-    SDL_SetRenderDrawColor(state.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE); /* opaque white */
-    SDL_RenderClear(state.renderer);
-    /* Render texture */
-    SDL_RenderCopy(state.renderer, state.texture, NULL, NULL);
-    SDL_RenderPresent(state.renderer);
-
-    SDL_Delay(1000 / 60); /* 60fps */
-#endif
-
-    prevdirty = overalldirty;
-  }
-
-//  bitmap_save_png(&bm, "bmfont-test-979.png");
-
-#ifdef USE_SDL
-  stop_sdl(&state);
-#endif
-
-#else
-
-  const int scr_width    = 320;
-  const int scr_height   = 240;
-  const int scr_rowbytes = scr_width * 4;
-
-  const colour_t palette[] = {
-    colour_rgb(0x00, 0x00, 0x00),
-    colour_rgb(0x1D, 0x2B, 0x53),
-    colour_rgb(0x7E, 0x25, 0x53),
-    colour_rgb(0x00, 0x87, 0x51),
-    colour_rgb(0xAB, 0x52, 0x36),
-    colour_rgb(0x5F, 0x57, 0x4F),
-    colour_rgb(0xC2, 0xC3, 0xC7),
-    colour_rgb(0xFF, 0xF1, 0xE8),
-    colour_rgb(0xFF, 0x00, 0x4D),
-    colour_rgb(0xFF, 0xA3, 0x00),
-    colour_rgb(0xFF, 0xEC, 0x27),
-    colour_rgb(0x00, 0xE4, 0x36),
-    colour_rgb(0x29, 0xAD, 0xFF),
-    colour_rgb(0x83, 0x76, 0x9C),
-    colour_rgb(0xFF, 0x77, 0xA8),
-    colour_rgb(0xFF, 0xCC, 0xAA),
-    colour_rgba(0x00, 0x00, 0x00, 0x00) // transparent
-  };
-
-  result_t            rc = result_OK;
-  unsigned int       *pixels;
-  bitmap_t            bm;
-  int                 bm_inited = 0;
-  int                 font;
-  screen_t            scr;
   const bmtestline_t *line;
-
-  pixels = malloc(scr_rowbytes * scr_height);
-  if (pixels == NULL)
-  {
-    rc = result_OOM;
-    goto Failure;
-  }
-
-  bitmap_init(&bm, scr_width, scr_height, pixelfmt_bgra8888, scr_rowbytes, NULL, pixels);
-  bm_inited = 1;
-
-  bitmap_clear(&bm, palette[15]);
-
-  for (font = 0; font < NELEMS(fonts); font++)
-  {
-    char filename[PATH_MAX];
-
-    strcpy(filename, resources);
-    strcat(filename, "/resources/bmfonts/");
-    strcat(filename, fonts[font].filename);
-    rc = bmfont_create(filename, &fonts[font].bmfont);
-    if (rc)
-      goto Failure;
-  }
-
-  screen_for_bitmap(&scr, &bm);
 
   // clipping test
   {
     const int fonti = 1;
-    point_t origin;
+    point_t   origin;
 
     origin.x = 4;
     origin.y = -4;
     for (int i = 0; i < scr_height/16; i++)
     {
-      rc = bmfont_draw(fonts[fonti].bmfont,
+      rc = bmfont_draw(bmfonts[fonti].bmfont,
                        &scr,
                        "Lorem ipsum dolor sit amet, consectetuer",
                        40,
@@ -609,11 +351,12 @@ result_t bmfont_test(const char *resources)
 
   bitmap_save_png(&bm, "bmfont-clipping-test.png");
 
+  // ===================================
+
   // general test
-  if (0)
   for (line = &lines[0]; line < &lines[0] + NELEMS(lines); line++)
   {
-    bmfont_t   *bmfont    = fonts[line->font_index].bmfont;
+    bmfont_t   *bmfont    = bmfonts[line->font_index].bmfont;
     int         glyphwidth, glyphheight;
     const char *string    = line->string;
     size_t      stringlen = strlen(line->string);
@@ -677,16 +420,218 @@ result_t bmfont_test(const char *resources)
 
   bitmap_save_png(&bm, "bmfont-output.png");
 
+  // ===================================
+
+  bool  quit = false;
+  int   frame;
+
+  // test screen clipping
+  box_t scrclip = screen_get_clip(&scr);
+  box_grow(&scrclip, -37);
+  scr.clip = scrclip;
+
+  int   mx = 0;
+  int   my = 0;
+  int   dontclear = 0;
+  int   animate = 0;
+  int   firstdraw = 1;
+  int   cycling = 1;
+  int   currfont = 1;
+  int   transparency = 0;
+  box_t prevdirty;
+
+  for (frame = 0; !quit; frame++)
+  {
+#ifdef USE_SDL
+    {
+      SDL_Event event;
+
+      // Consume all pending events
+      while (SDL_PollEvent(&event))
+      {
+        switch (event.type)
+        {
+        case SDL_QUIT:
+          quit = 1;
+          SDL_Log("Quitting after %i ticks", event.quit.timestamp);
+          break;
+
+        case SDL_WINDOWEVENT:
+          PrintEvent(&event);
+          break;
+
+        case SDL_KEYDOWN:
+          break;
+
+        case SDL_KEYUP:
+          switch (event.key.keysym.sym)
+          {
+          case SDLK_c: cycling = !cycling; break;
+          case SDLK_f: currfont = (currfont + 1) % NELEMS(bmfonts); break;
+          case SDLK_t: transparency = !transparency; break;
+          }
+          break;
+
+        case SDL_TEXTEDITING:
+        case SDL_TEXTINPUT:
+          break;
+
+        case SDL_MOUSEMOTION:
+          mx = event.motion.x - 32;
+          my = event.motion.y - 8;
+          break;
+
+        case SDL_MOUSEBUTTONDOWN:
+        case SDL_MOUSEBUTTONUP:
+          {
+            switch (event.button.button)
+            {
+            case SDL_BUTTON_LEFT:
+              animate = (event.type == SDL_MOUSEBUTTONDOWN);
+              break;
+            case SDL_BUTTON_RIGHT:
+              dontclear = (event.type == SDL_MOUSEBUTTONDOWN);
+              break;
+            }
+          }
+          break;
+
+        case SDL_MOUSEWHEEL:
+          break;
+
+        default:
+          printf("Unhandled event code {%d}\n", event.type);
+          break;
+        }
+      }
+    }
+#else
+    if (frame > 1000)
+      quit = 1;
+#endif
+
+    colour_t fg = palette[1];
+    colour_t bg = transparency ? transparent : palette[15];
+
+    if (!dontclear)
+      bitmap_clear(&bm, palette[background_colour_index]);
+
+    box_t overalldirty;
+    box_reset(&overalldirty);
+
+    // clipping test
+    {
+      point_t   origin  = {mx,my};
+      const int height  = bmfonts[currfont].height;
+      const int rows    = scr_height / height;
+      box_t     dirty;
+      int       i;
+
+      for (i = 0; i < rows; i++)
+      {
+        const char  *message = strings[i % NELEMS(strings)];
+        const size_t msglen  = strlen(message);
+
+        if (animate)
+        {
+          const double movement_speed = 8.0;
+
+          int    j  = i - (rows / 2);
+          double t  = (frame + j) / movement_speed;
+          double sx = mx - GAMEWIDTH  / 2.0;
+          double sy = my - GAMEHEIGHT / 2.0;
+          origin.x  = mx +              sin(t) * sx;
+          origin.y  = my + j * height + cos(t) * sy;
+          if (cycling)
+          {
+            fg = palette[( 0 + i + frame / 2) % 16];
+            bg = transparency ? transparent : palette[(15 + i + frame / 3) % 16];
+          }
+        }
+        dirty.x0 = origin.x;
+        dirty.y0 = origin.y;
+        dirty.x1 = origin.x + msglen * 15; // HACK
+        dirty.y1 = origin.y + height;
+        box_intersection(&dirty, &scrclip, &dirty); /* clamp to screen bounds */
+        box_union(&overalldirty, &dirty, &overalldirty);
+        (void) bmfont_draw(bmfonts[currfont].bmfont,
+                          &scr,
+                           message,
+                           msglen,
+                           fg, bg,
+                          &origin,
+                           NULL /*endpos*/);
+        if (!animate)
+          break;
+      }
+    }
+
+    /* Update the texture and render it */
+
+#ifdef USE_SDL
+    if (!box_is_empty(&overalldirty))
+    {
+      bitmap_t *scr_bgrx8888;
+      SDL_Rect  texturearea;
+
+      if (scr_fmt != pixelfmt_bgrx8888)
+        bitmap_convert((const bitmap_t *) &scr, pixelfmt_bgrx8888, &scr_bgrx8888);
+      else
+        scr_bgrx8888 = (bitmap_t *) &scr;
+
+      if (firstdraw)
+      {
+        texturearea.x = 0;
+        texturearea.y = 0;
+        texturearea.w = GAMEWIDTH;
+        texturearea.h = GAMEHEIGHT;
+        firstdraw = 0;
+      }
+      else
+      {
+        box_t uniondirty;
+
+        box_union(&overalldirty, &prevdirty, &uniondirty);
+
+        texturearea.x = uniondirty.x0;
+        texturearea.y = uniondirty.y0;
+        texturearea.w = uniondirty.x1 - uniondirty.x0;
+        texturearea.h = uniondirty.y1 - uniondirty.y0;
+      }
+      // the rect given here describes where to draw in the texture
+      SDL_UpdateTexture(state.texture,
+                       &texturearea,
+                        (char *) scr_bgrx8888->base + texturearea.y * scr_bgrx8888->rowbytes + texturearea.x * 4,
+                        scr_bgrx8888->rowbytes);
+    }
+
+//    /* Clear screen */
+//    SDL_SetRenderDrawColor(state.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE); /* opaque white */
+//    SDL_RenderClear(state.renderer);
+    /* Render texture */
+    SDL_RenderCopy(state.renderer, state.texture, NULL, NULL);
+    SDL_RenderPresent(state.renderer);
+
+    SDL_Delay(1000 / 60); /* 60fps */
+#endif
+
+    prevdirty = overalldirty;
+  }
+
+//  bitmap_save_png(&bm, "bmfont-test-979.png");
+
+#ifdef USE_SDL
+  stop_sdl(&state);
 #endif
 
   rc = result_TEST_PASSED;
 
 Cleanup:
-  for (font = 0; font < NELEMS(fonts); font++)
-    bmfont_destroy(fonts[font].bmfont);
+  for (int f = 0; f < NELEMS(bmfonts); f++)
+    bmfont_destroy(bmfonts[f].bmfont);
 
-  if (bm_inited)
-    free(bm.base);
+//  if (bm_inited)
+//    free(bm.base);
 
   return rc;
 
