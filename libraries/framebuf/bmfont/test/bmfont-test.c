@@ -225,25 +225,27 @@ static const char lorem_ipsum[] =
 "cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non "
 "proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
 
-static const bmtestline_t lines[] =
+static const char *pangrams[] =
 {
-  { 0, 0, 16, { 4,   4       }, "HELLO, WORLD!" },
-  { 0, 1,  9, { 4,   4+ 6    }, "This is a tiny 4x5 font, so I can write loads and loads in it, even this!" },
-  { 0, 2, 10, { 4,   4+ 6* 2 }, lorem_ipsum },
-  { 1, 3, 16, { 4, 128+16*-1 }, "Hello Humans!" },
-  { 1, 4, 12, { 4, 128+16* 0 }, "This is a massive 15x16 font, so I have to split it up!" },
-  { 1, 5, 13, { 4, 128+16* 2 }, "Five boxing wizards vex the quick brown fox." },
-  { 1, 6, 14, { 4, 128+16* 4 }, "Thisisjustalonglonglinewithoutanyspacestotestsplittingcornercases." },
-};
-
-static const char *strings[] =
-{
-  "DPTLib bmfont test!",
-  "The five boxing wizards jump quickly.",
+  "A quart jar of oil mixed with zinc oxide makes a very bright paint.",
+  "A quick movement of the enemy will jeopardize six gunboats.",
+  "A wizard's job is to vex chumps quickly in fog.",
+  "Amazingly few discotheques provide jukeboxes.",
+  "Few black taxis drive up major roads on quiet hazy nights.",
+  "Jack quietly moved up front and seized the big ball of wax.",
   "Jackdaws love my big sphinx of quartz.",
+  "Just keep examining every low bid quoted for zinc etchings.",
+  "Just work for improved basic techniques to maximize your typing skill.",
+  "My girl wove six dozen plaid jackets before she quit.",
   "Pack my box with five dozen liquor jugs.",
-  "A horse that was too yellow moaned devilish odes",
-  "The sick person in pyjamas quickly trusted the swarthy driver",
+  "Six big devils from Japan quickly forgot how to waltz.",
+  "Six boys guzzled cheap raw plum vodka quite joyfully.",
+  "Sixty zippers were quickly picked from the woven jute bag.",
+  "The five boxing wizards jump quickly.",
+  "The public was amazed to view the quickness and dexterity of the juggler.",
+  "The quick brown fox jumps over the lazy dog.",
+  "We promptly judged antique ivory buckles for the next prize.",
+  "Whenever the black fox jumped the squirrel gazed suspiciously."
 };
 
 /* ----------------------------------------------------------------------- */
@@ -584,7 +586,7 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
 
       for (i = 0; i < rows; i++)
       {
-        const char  *message = strings[i % NELEMS(strings)];
+        const char  *message = pangrams[i % NELEMS(pangrams)];
         const size_t msglen  = strlen(message);
 
         if (animate)
@@ -759,7 +761,7 @@ result_t bmfont_test_one_format(const char *resources,
     bmfont_get_info(bmfonts[font].bmfont, &bmfonts[font].width, &bmfonts[font].height);
   }
 
-  // ===================================
+  /* ------------------------------------------------------------------------ */
 
   typedef result_t (*bmfonttestfn_t)(bmfontteststate_t *);
 
@@ -770,16 +772,16 @@ result_t bmfont_test_one_format(const char *resources,
     bmfont_interactive_test
   };
 
-  int t;
+  int test;
 
-  for (t = 0; t < NELEMS(tests); t++)
+  for (test = 0; test < NELEMS(tests); test++)
   {
-    rc = tests[t](&state);
+    rc = tests[test](&state);
     if (rc != result_TEST_PASSED)
       goto Failure;
   }
 
-  // ===================================
+  /* ------------------------------------------------------------------------ */
 
 Cleanup:
   for (int f = 0; f < NELEMS(bmfonts); f++)
