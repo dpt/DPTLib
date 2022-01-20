@@ -29,10 +29,22 @@ const int GAMEHEIGHT = 600;
 
 /* ----------------------------------------------------------------------- */
 
-#define palette_BLACK       (0)
-#define palette_DARK_GREEN  (3)
-#define palette_WHITE       (7)
-#define palette_GREEN      (11)
+#define palette_BLACK        (0)
+#define palette_DARK_BLUE    (1)
+#define palette_DARK_PURPLE  (2)
+#define palette_DARK_GREEN   (3)
+#define palette_BROWN        (4)
+#define palette_DARK_GREY    (5)
+#define palette_LIGHT_GREY   (6)
+#define palette_WHITE        (7)
+#define palette_RED          (8)
+#define palette_ORANGE       (9)
+#define palette_YELLOW      (10)
+#define palette_GREEN       (11)
+#define palette_BLUE        (12)
+#define palette_LAVENDER    (13)
+#define palette_PINK        (14)
+#define palette_LIGHT_PEACH (15)
 
 /* ----------------------------------------------------------------------- */
 
@@ -568,8 +580,8 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
       quit = 1;
 #endif
 
-    colour_t fg = state->palette[1];
-    colour_t bg = transparency ? state->transparent : state->palette[15];
+    colour_t fg = state->palette[palette_DARK_BLUE];
+    colour_t bg = transparency ? state->transparent : state->palette[palette_LIGHT_PEACH];
 
     if (!dontclear)
       bitmap_clear(&state->bm, state->palette[state->background_colour_index]);
@@ -693,22 +705,22 @@ result_t bmfont_test_one_format(const char *resources,
 
   const int scr_rowbytes = (state.scr_width << scr_log2bpp) / 8;
 
-  state.palette[ 0] = colour_rgb(0x00, 0x00, 0x00);
-  state.palette[ 1] = colour_rgb(0x1D, 0x2B, 0x53);
-  state.palette[ 2] = colour_rgb(0x7E, 0x25, 0x53);
-  state.palette[ 3] = colour_rgb(0x00, 0x87, 0x51);
-  state.palette[ 4] = colour_rgb(0xAB, 0x52, 0x36);
-  state.palette[ 5] = colour_rgb(0x5F, 0x57, 0x4F);
-  state.palette[ 6] = colour_rgb(0xC2, 0xC3, 0xC7);
-  state.palette[ 7] = colour_rgb(0xFF, 0xF1, 0xE8);
-  state.palette[ 8] = colour_rgb(0xFF, 0x00, 0x4D);
-  state.palette[ 9] = colour_rgb(0xFF, 0xA3, 0x00);
-  state.palette[10] = colour_rgb(0xFF, 0xEC, 0x27);
-  state.palette[11] = colour_rgb(0x00, 0xE4, 0x36);
-  state.palette[12] = colour_rgb(0x29, 0xAD, 0xFF);
-  state.palette[13] = colour_rgb(0x83, 0x76, 0x9C);
-  state.palette[14] = colour_rgb(0xFF, 0x77, 0xA8);
-  state.palette[15] = colour_rgb(0xFF, 0xCC, 0xAA);
+  state.palette[palette_BLACK      ] = colour_rgb(0x00, 0x00, 0x00);
+  state.palette[palette_DARK_BLUE  ] = colour_rgb(0x1D, 0x2B, 0x53);
+  state.palette[palette_DARK_PURPLE] = colour_rgb(0x7E, 0x25, 0x53);
+  state.palette[palette_DARK_GREEN ] = colour_rgb(0x00, 0x87, 0x51);
+  state.palette[palette_BROWN      ] = colour_rgb(0xAB, 0x52, 0x36);
+  state.palette[palette_DARK_GREY  ] = colour_rgb(0x5F, 0x57, 0x4F);
+  state.palette[palette_LIGHT_GREY ] = colour_rgb(0xC2, 0xC3, 0xC7);
+  state.palette[palette_WHITE      ] = colour_rgb(0xFF, 0xF1, 0xE8);
+  state.palette[palette_RED        ] = colour_rgb(0xFF, 0x00, 0x4D);
+  state.palette[palette_ORANGE     ] = colour_rgb(0xFF, 0xA3, 0x00);
+  state.palette[palette_YELLOW     ] = colour_rgb(0xFF, 0xEC, 0x27);
+  state.palette[palette_GREEN      ] = colour_rgb(0x00, 0xE4, 0x36);
+  state.palette[palette_BLUE       ] = colour_rgb(0x29, 0xAD, 0xFF);
+  state.palette[palette_LAVENDER   ] = colour_rgb(0x83, 0x76, 0x9C);
+  state.palette[palette_PINK       ] = colour_rgb(0xFF, 0x77, 0xA8);
+  state.palette[palette_LIGHT_PEACH] = colour_rgb(0xFF, 0xCC, 0xAA);
 
   state.transparent = colour_rgba(0x00, 0x00, 0x00, 0x00);
 
