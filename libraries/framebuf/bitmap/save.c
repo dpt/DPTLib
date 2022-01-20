@@ -17,10 +17,13 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   png_bytep   outrow   = NULL;
   int         x,y;
 
+  if (bm->format != pixelfmt_bgrx8888)
+    return result_NOT_SUPPORTED;
+
   fp = fopen(filename, "wb");
   if (fp == NULL)
   {
-    rc = result_FILE_NOT_FOUND; // poor
+    rc = result_FOPEN_FAILED;
     goto cleanup;
   }
 
@@ -65,12 +68,6 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   if (outrow == NULL)
   {
     rc = result_OOM;
-    goto cleanup;
-  }
-
-  if (bm->format != pixelfmt_bgrx8888)
-  {
-    rc = result_NOT_SUPPORTED;
     goto cleanup;
   }
 
