@@ -1,9 +1,12 @@
 /* bmfont.c */
 
-/* TODO
- * - Detect colours by inspecting palette rather than assuming specific indices.
- * - Sidebearings
- * - Kerning
+/* TODOS / IDEAS
+ *
+ * (1) Instead of relying on hard-coded pixel values for the font input format
+ *     we could use the palette to determine the correct values.
+ * (2) Support for sidebearings
+ * (3) Support for kerning
+ * (4) Could try to make the character plotters word-oriented rather than byte.
  */
 
 #include <assert.h>
@@ -125,7 +128,8 @@ static result_t extract_advance_widths(bmfont_t    *bmfont,
     png_uint_32  x;
     pixelfmt_x_t adw_px;
 
-    /* maintain two words, a current and a pending so we've always got enough bits ready */
+    /* maintain two words, a current and a pending so we've always got enough
+     * bits ready */
     currbits  = rev_l(*pixels++);
     ncurrbits = 32; /* bits available in currbits */
     nextbits  = 0;
@@ -139,7 +143,7 @@ static result_t extract_advance_widths(bmfont_t    *bmfont,
 
         if (nnextbits == 0) /* refill if needed */
         {
-          nextbits  = rev_l(*pixels++); // TODO check for end of buffer
+          nextbits  = rev_l(*pixels++); // TODO: Check for end of buffer
           nnextbits = 32;
         }
 
@@ -252,7 +256,8 @@ static result_t extract_glyphs(bmfont_t    *bmfont,
       continue;
     }
 
-    /* maintain two words, a current and a pending so we've always got enough bits ready */
+    /* maintain two words, a current and a pending so we've always got enough
+     * bits ready */
     currbits  = rev_l(*pixels++);
     ncurrbits = 32; /* bits available in currbits */
     nextbits  = 0;
@@ -273,7 +278,7 @@ static result_t extract_glyphs(bmfont_t    *bmfont,
 
         if (nnextbits == 0) /* refill if needed */
         {
-          nextbits = rev_l(*pixels++); // TODO check for end of buffer
+          nextbits  = rev_l(*pixels++); // TODO: Check for end of buffer
           nnextbits = 32;
         }
 
@@ -524,8 +529,7 @@ result_t bmfont_measure(bmfont_t       *bmfont,
   assert(text);
   assert(textlen > 0);
   assert(target_width >= 0);
-  assert(split_point);
-  assert(actual_width);
+  /* split_point, actual_width may be NULL */
 
   current_width = 0;
   for (len = textlen; len; len--)
@@ -596,15 +600,15 @@ static void bmfont_drawchar_p4_1w_o(void        *vscreen,
   gly += top_skip;
 
   /* adjust stride */
-  int stride = rowbytes / sizeof(*scr); // NOP
+  int stride = rowbytes / sizeof(*scr);
 
   /* build packed LUT 0xFFBFFBBB for inner loop (F=fg, B=bg) */
   unsigned int tab = (fg * 0x11011000) | (bg * 0x00100111);
 
   while (charheight--)
   {
-    unsigned int row = *gly++; // 2 bytes wide font data
-    row >>= right_skip; // compensate when right hand clipping
+    unsigned int row = *gly++; /* 2 bytes wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
 
     unsigned char *scr2 = scr;
     int            cw   = charwidth;
@@ -665,7 +669,7 @@ static void bmfont_drawchar_p4_1w_t(void        *vscreen,
   gly += top_skip;
 
   /* adjust stride */
-  int stride = rowbytes / sizeof(*scr); // NOP
+  int stride = rowbytes / sizeof(*scr);
 
   /* build packed LUTs for inner loop */
   unsigned int fgtab = fg * 0x11011000;
@@ -673,8 +677,8 @@ static void bmfont_drawchar_p4_1w_t(void        *vscreen,
 
   while (charheight--)
   {
-    unsigned int row = *gly++; // 2 bytes wide font data
-    row >>= right_skip; // compensate when right hand clipping
+    unsigned int row = *gly++; /* 2 bytes wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
 
     unsigned char *scr2 = scr;
     int            cw   = charwidth;
@@ -736,15 +740,15 @@ static void bmfont_drawchar_p4_2w_o(void        *vscreen,
   gly += top_skip;
 
   /* adjust stride */
-  int stride = rowbytes / sizeof(*scr); // NOP
+  int stride = rowbytes / sizeof(*scr);
 
   /* build packed LUT 0xFFBFFBBB for inner loop (F=fg, B=bg) */
   unsigned int tab = (fg * 0x11011000) | (bg * 0x00100111);
 
   while (charheight--)
   {
-    unsigned int row = *gly++; // 2 bytes wide font data
-    row >>= right_skip; // compensate when right hand clipping
+    unsigned int row = *gly++; /* 2 bytes wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
 
     unsigned char *scr2 = scr;
     int            cw   = charwidth;
@@ -812,7 +816,7 @@ static void bmfont_drawchar_p4_2w_t(void        *vscreen,
   gly += top_skip;
 
   /* adjust stride */
-  int stride = rowbytes / sizeof(*scr); // NOP
+  int stride = rowbytes / sizeof(*scr);
 
   /* build packed LUTs for inner loop */
   unsigned int fgtab = fg * 0x11011000;
@@ -820,8 +824,8 @@ static void bmfont_drawchar_p4_2w_t(void        *vscreen,
 
   while (charheight--)
   {
-    unsigned int row = *gly++; // 2 bytes wide font data
-    row >>= right_skip; // compensate when right hand clipping
+    unsigned int row = *gly++; /* 2 bytes wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
 
     unsigned char *scr2 = scr;
     int            cw   = charwidth;
@@ -893,11 +897,11 @@ static void bmfont_drawchar_any8888_1w_o(void        *vscreen,
 
   while (charheight--)
   {
-    unsigned int row = *gly++; // 1 byte wide font data
-    row >>= right_skip; // compensate when right hand clipping
+    unsigned int row = *gly++; /* 1 byte wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
 
-    switch (charwidth) { // jump table test
-      case 8: *scr++ = (row & (1u << 7)) ? fg : bg; // fallthrough!
+    switch (charwidth) { /* jump table test */
+      case 8: *scr++ = (row & (1u << 7)) ? fg : bg; /* fallthrough! */
       case 7: *scr++ = (row & (1u << 6)) ? fg : bg;
       case 6: *scr++ = (row & (1u << 5)) ? fg : bg;
       case 5: *scr++ = (row & (1u << 4)) ? fg : bg;
@@ -936,11 +940,11 @@ static void bmfont_drawchar_any8888_1w_t(void        *vscreen,
 
   while (charheight--)
   {
-    unsigned int row = *gly++; // 1 byte wide font data
-    row >>= right_skip; // compensate when right hand clipping
+    unsigned int row = *gly++; /* 1 byte wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
 
-    switch (charwidth) { // jump table test
-      case 8: if (row & (1u << 7)) *scr = fg; scr++; // fallthrough!
+    switch (charwidth) { /* jump table test */
+      case 8: if (row & (1u << 7)) *scr = fg; scr++; /* fallthrough! */
       case 7: if (row & (1u << 6)) *scr = fg; scr++;
       case 6: if (row & (1u << 5)) *scr = fg; scr++;
       case 5: if (row & (1u << 4)) *scr = fg; scr++;
@@ -978,11 +982,11 @@ static void bmfont_drawchar_any8888_2w_o(void        *vscreen,
 
   while (charheight--)
   {
-    unsigned int row = *gly++; // 2 bytes wide font data
-    row >>= right_skip; // compensate when right hand clipping
+    unsigned int row = *gly++; /* 2 bytes wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
 
-    switch (charwidth) { // jump table test
-      case 16: *scr++ = (row & (1u << 15)) ? fg : bg; // fallthrough!
+    switch (charwidth) { /* jump table test */
+      case 16: *scr++ = (row & (1u << 15)) ? fg : bg; /* fallthrough! */
       case 15: *scr++ = (row & (1u << 14)) ? fg : bg;
       case 14: *scr++ = (row & (1u << 13)) ? fg : bg;
       case 13: *scr++ = (row & (1u << 12)) ? fg : bg;
@@ -1029,11 +1033,11 @@ static void bmfont_drawchar_any8888_2w_t(void        *vscreen,
 
   while (charheight--)
   {
-    unsigned int row = *gly++; // 2 bytes wide font data
-    row >>= right_skip; // compensate when right hand clipping
+    unsigned int row = *gly++; /* 2 bytes wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
 
-    switch (charwidth) { // jump table test
-      case 16: if (row & (1u << 15)) *scr = fg; scr++; // fallthrough!
+    switch (charwidth) { /* jump table test */
+      case 16: if (row & (1u << 15)) *scr = fg; scr++; /* fallthrough! */
       case 15: if (row & (1u << 14)) *scr = fg; scr++;
       case 14: if (row & (1u << 13)) *scr = fg; scr++;
       case 13: if (row & (1u << 12)) *scr = fg; scr++;
@@ -1104,7 +1108,7 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   if (!box_intersects(&scrclip, &drawbox))
     return result_OK; /* not visible */
 
-  box_clipped(&scrclip, &drawbox, &drawclip);
+  box_clipped(&scrclip, &drawbox, &drawclip); /* note: drawclip isn't a proper box */
 
   int            left_skip         = drawclip.x0;
   int            top_skip          = drawclip.y0;
@@ -1118,7 +1122,7 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   int            log2bpp           = pixelfmt_log2bpp(scr->format);
   unsigned char *screen            = (unsigned char *) scr->base + clamped_pos_y * scr->rowbytes + ((clamped_pos_x << log2bpp) >> 3);
   int            log2pixperb       = MAX(0, 3 - log2bpp); /* log2 pixels per byte */
-  int            shift              = (clamped_pos_x & ((1 << log2pixperb) - 1)) << log2bpp;
+  int            shift             = (clamped_pos_x & ((1 << log2pixperb) - 1)) << log2bpp;
 
   int            rowbytes          = scr->rowbytes;
   int            charwidth         = bmfont->charwidth;
@@ -1129,7 +1133,9 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   pixelfmt_x_t   nativebg          = colour_to_pixel(scr->palette, 1 << (1 << log2bpp), bg, scr->format);
   int            remaining         = scrclip.x1 - clamped_pos_x; /* in pixels */
 
-  const int      tracking         = 0; // +ve can break stuff!
+  const int      tracking          = 0; /* note: +ve can break stuff! */
+
+  int            x                 = pos->x;
 
   assert(clippedcharheight > 0);
 
@@ -1143,6 +1149,8 @@ result_t bmfont_draw(bmfont_t      *bmfont,
     c       = *text++;
     gid     = c - ' ';
     advance = bmfont->adw[gid] + tracking;
+
+    x += advance;
 
     /* skip characters until we can plot */
     if (left_skip > advance)
@@ -1173,14 +1181,33 @@ result_t bmfont_draw(bmfont_t      *bmfont,
 
       remaining -= advance;
       if (remainingcharwidth < advance)
-        len = 0; /* stop drawing */
+        break; /* stop drawing */
     }
 
     left_skip = 0;
   }
 
   if (end_pos)
-    *end_pos = (point_t) { 42, pos->y }; // TODO: screen -> coord and clamp?
+  {
+    /* calculate final x */
+    if (len > 0)
+    {
+      while (len--)
+      {
+        int c;
+        int gid;
+        int advance;
+
+        c       = *text++;
+        gid     = c - ' ';
+        advance = bmfont->adw[gid] + tracking;
+
+        x += advance;
+      }
+    }
+
+    *end_pos = (point_t) { x, pos->y };
+  }
 
   return result_OK;
 }
