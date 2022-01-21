@@ -508,6 +508,7 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
   int   currfont = 1;
   int   transparency = 0;
   box_t prevdirty;
+  box_t overalldirty;
 
   for (frame = 0; !quit; frame++)
   {
@@ -584,10 +585,10 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
     colour_t bg = transparency ? state->transparent : state->palette[palette_LIGHT_PEACH];
 
     if (!dontclear)
+    {
       bitmap_clear(&state->bm, state->palette[state->background_colour_index]);
-
-    box_t overalldirty;
-    box_reset(&overalldirty);
+      box_reset(&overalldirty);
+    }
 
     {
       point_t   origin  = {mx,my};
@@ -621,7 +622,7 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
         dirty.y0 = origin.y;
         dirty.x1 = origin.x + msglen * 15; // HACK
         dirty.y1 = origin.y + height;
-        box_intersection(&dirty, &scrclip, &dirty); /* clamp to screen bounds */
+        box_intersection(&dirty, &scrclip, &dirty); /* dirtied area clamped to screen bounds */
         box_union(&overalldirty, &dirty, &overalldirty);
         (void) bmfont_draw(bmfonts[currfont].bmfont,
                           &state->scr,
@@ -667,16 +668,14 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
         texturearea.w = uniondirty.x1 - uniondirty.x0;
         texturearea.h = uniondirty.y1 - uniondirty.y0;
       }
-      // the rect given here describes where to draw in the texture
+
+      /* the rect passed here says where to draw in the texture */
       SDL_UpdateTexture(state->sdl_state.texture,
                        &texturearea,
-                        (char *) scr_bgrx8888->base + texturearea.y * scr_bgrx8888->rowbytes + texturearea.x * 4,
+               (char *) scr_bgrx8888->base + texturearea.y * scr_bgrx8888->rowbytes + texturearea.x * 4,
                         scr_bgrx8888->rowbytes);
     }
 
-//    /* Clear screen */
-//    SDL_SetRenderDrawColor(state.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE); /* opaque white */
-//    SDL_RenderClear(state.renderer);
     /* Render texture */
     SDL_RenderCopy(state->sdl_state.renderer, state->sdl_state.texture, NULL, NULL);
     SDL_RenderPresent(state->sdl_state.renderer);
