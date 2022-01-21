@@ -1,20 +1,4 @@
-/* bmfont.h -- bitmap font engine */
-
-// font data:
-// bitmap
-// em size
-// height (to baseline)
-// descender (from baseline)
-// some way to get advance widths
-// [kerning]
-//
-//
-// interface:
-// screen ptr / base
-// plot position
-// colour to plot using - some defined control character interface
-// string to plot
-// clip rect?
+/* bmfont.h -- proportional bitmap font engine */
 
 #ifndef DPTLIB_BMFONT_H
 #define DPTLIB_BMFONT_H
@@ -24,11 +8,9 @@
 #include "framebuf/screen.h"
 
 typedef struct bmfont bmfont_t;
-typedef int bmfont_width_t; // in pixels?
+typedef int bmfont_width_t; /* in pixels */
 
-result_t bmfont_create(const char *png,
-                       bmfont_t  **bmfont);
-
+result_t bmfont_create(const char *png, bmfont_t **bmfont);
 void bmfont_destroy(bmfont_t *bmfont);
 
 void bmfont_get_info(bmfont_t *bmfont, int *width, int *height);
