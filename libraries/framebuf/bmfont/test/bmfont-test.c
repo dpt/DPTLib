@@ -22,12 +22,7 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* Configuration */
-
-const int GAMEWIDTH  = 800;
-const int GAMEHEIGHT = 600;
-
-/* ----------------------------------------------------------------------- */
+/* PICO-8 palette */
 
 #define palette_BLACK        (0)
 #define palette_DARK_BLUE    (1)
@@ -131,7 +126,7 @@ void PrintEvent(const SDL_Event *event)
   }
 }
 
-static result_t start_sdl(sdlstate_t *state)
+static result_t start_sdl(sdlstate_t *state, int width, int height)
 {
   if (SDL_Init(SDL_INIT_VIDEO) < 0)
   {
@@ -141,7 +136,7 @@ static result_t start_sdl(sdlstate_t *state)
 
   state->window = SDL_CreateWindow("DPTLib SDL Test",
                                    SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                   GAMEWIDTH, GAMEHEIGHT,
+                                   width, height,
                                    SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
   if (state->window == NULL)
   {
@@ -161,7 +156,7 @@ static result_t start_sdl(sdlstate_t *state)
   state->texture = SDL_CreateTexture(state->renderer,
                                      SDL_PIXELFORMAT_ARGB8888,
                                      SDL_TEXTUREACCESS_STREAMING,
-                                     GAMEWIDTH, GAMEHEIGHT);
+                                     width, height);
   if (state->texture == NULL)
   {
     fprintf(stderr, "Error: SDL_CreateTexture: %s\n", SDL_GetError());
@@ -178,7 +173,7 @@ static result_t start_sdl(sdlstate_t *state)
 
 
 failure:
-  return result_TOO_BIG; // incorrect
+  return result_NOT_SUPPORTED; /* not ideal */
 }
 
 static void stop_sdl(sdlstate_t *state)
@@ -278,27 +273,27 @@ bmfontteststate_t;
 
 static result_t bmfont_clipping_test(bmfontteststate_t *state)
 {
-  static const point_t centres[] =
+  const point_t centres[] =
   {
-    {  0            , GAMEHEIGHT * 0 / 4 },
-    {  GAMEWIDTH / 2, GAMEHEIGHT * 0 / 4 },
-    {  GAMEWIDTH    , GAMEHEIGHT * 0 / 4 },
+    {  0                   , state->scr_height * 0 / 4 },
+    {  state->scr_width / 2, state->scr_height * 0 / 4 },
+    {  state->scr_width    , state->scr_height * 0 / 4 },
 
-    {  0            , GAMEHEIGHT * 1 / 4 },
-    {  GAMEWIDTH / 2, GAMEHEIGHT * 1 / 4 },
-    {  GAMEWIDTH    , GAMEHEIGHT * 1 / 4 },
+    {  0                   , state->scr_height * 1 / 4 },
+    {  state->scr_width / 2, state->scr_height * 1 / 4 },
+    {  state->scr_width    , state->scr_height * 1 / 4 },
 
-    {  0            , GAMEHEIGHT * 2 / 4 },
-    {  GAMEWIDTH / 2, GAMEHEIGHT * 2 / 4 },
-    {  GAMEWIDTH    , GAMEHEIGHT * 2 / 4 },
+    {  0                   , state->scr_height * 2 / 4 },
+    {  state->scr_width / 2, state->scr_height * 2 / 4 },
+    {  state->scr_width    , state->scr_height * 2 / 4 },
 
-    {  0            , GAMEHEIGHT * 3 / 4 },
-    {  GAMEWIDTH / 2, GAMEHEIGHT * 3 / 4 },
-    {  GAMEWIDTH    , GAMEHEIGHT * 3 / 4 },
+    {  0                   , state->scr_height * 3 / 4 },
+    {  state->scr_width / 2, state->scr_height * 3 / 4 },
+    {  state->scr_width    , state->scr_height * 3 / 4 },
 
-    {  0            , GAMEHEIGHT * 4 / 4 },
-    {  GAMEWIDTH / 2, GAMEHEIGHT * 4 / 4 },
-    {  GAMEWIDTH    , GAMEHEIGHT * 4 / 4 },
+    {  0                   , state->scr_height * 4 / 4 },
+    {  state->scr_width / 2, state->scr_height * 4 / 4 },
+    {  state->scr_width    , state->scr_height * 4 / 4 },
   };
 
   result_t rc = result_OK;
@@ -418,12 +413,11 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
                                 string,
                                 stringlen,
                                 state->scr_width - origin.x,
-                               &absolute_break, // if no break returns strlen
+                               &absolute_break, /* if no break returns strlen */
                                &width);
-          //printf("absolute_break=%d w=%d\n", absolute_break, width);
 
           friendly_break = absolute_break;
-          if (absolute_break < stringlen) // if string did need breaking
+          if (absolute_break < stringlen) /* if string did need breaking */
           {
             /* Try to split at spaces */
             for (friendly_break = absolute_break - 1; friendly_break >= 0; friendly_break--)
@@ -462,7 +456,7 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
           {
             origin.x = 0;
             origin.y += glyphheight + 1; /* 1 => leading */
-            if (origin.y >= GAMEHEIGHT)
+            if (origin.y >= state->scr_height)
               goto stop;
           }
           else
@@ -491,24 +485,23 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
 
 static result_t bmfont_interactive_test(bmfontteststate_t *state)
 {
-  bool  quit = false;
+  bool  quit          = false;
   int   frame;
+  int   mx            = 0;
+  int   my            = 0;
+  int   dontclear     = 0;
+  int   animate       = 0;
+  int   firstdraw     = 1;
+  int   cycling       = 1;
+  int   currfont      = 1;
+  int   transparency  = 0;
+  box_t prevdirty;
+  box_t overalldirty;
 
-  // test screen clipping
+  /* test screen clipping */
   box_t scrclip = screen_get_clip(&state->scr);
   box_grow(&scrclip, -37);
   state->scr.clip = scrclip;
-
-  int   mx = 0;
-  int   my = 0;
-  int   dontclear = 0;
-  int   animate = 0;
-  int   firstdraw = 1;
-  int   cycling = 1;
-  int   currfont = 1;
-  int   transparency = 0;
-  box_t prevdirty;
-  box_t overalldirty;
 
   for (frame = 0; !quit; frame++)
   {
@@ -516,7 +509,7 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
     {
       SDL_Event event;
 
-      // Consume all pending events
+      /* Consume all pending events */
       while (SDL_PollEvent(&event))
       {
         switch (event.type)
@@ -608,8 +601,8 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
 
           int    j  = i - (rows / 2);
           double t  = (frame + j) / movement_speed;
-          double sx = mx - GAMEWIDTH  / 2.0;
-          double sy = my - GAMEHEIGHT / 2.0;
+          double sx = mx - state->scr_width  / 2.0;
+          double sy = my - state->scr_height / 2.0;
           origin.x  = mx +              sin(t) * sx;
           origin.y  = my + j * height + cos(t) * sy;
           if (cycling)
@@ -653,8 +646,8 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
       {
         texturearea.x = 0;
         texturearea.y = 0;
-        texturearea.w = GAMEWIDTH;
-        texturearea.h = GAMEHEIGHT;
+        texturearea.w = state->scr_width;
+        texturearea.h = state->scr_height;
         firstdraw = 0;
       }
       else
@@ -693,33 +686,40 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
   return result_TEST_PASSED;
 }
 
+static void define_pico8_palette(colour_t palette[16])
+{
+  palette[palette_BLACK      ] = colour_rgb(0x00, 0x00, 0x00);
+  palette[palette_DARK_BLUE  ] = colour_rgb(0x1D, 0x2B, 0x53);
+  palette[palette_DARK_PURPLE] = colour_rgb(0x7E, 0x25, 0x53);
+  palette[palette_DARK_GREEN ] = colour_rgb(0x00, 0x87, 0x51);
+  palette[palette_BROWN      ] = colour_rgb(0xAB, 0x52, 0x36);
+  palette[palette_DARK_GREY  ] = colour_rgb(0x5F, 0x57, 0x4F);
+  palette[palette_LIGHT_GREY ] = colour_rgb(0xC2, 0xC3, 0xC7);
+  palette[palette_WHITE      ] = colour_rgb(0xFF, 0xF1, 0xE8);
+  palette[palette_RED        ] = colour_rgb(0xFF, 0x00, 0x4D);
+  palette[palette_ORANGE     ] = colour_rgb(0xFF, 0xA3, 0x00);
+  palette[palette_YELLOW     ] = colour_rgb(0xFF, 0xEC, 0x27);
+  palette[palette_GREEN      ] = colour_rgb(0x00, 0xE4, 0x36);
+  palette[palette_BLUE       ] = colour_rgb(0x29, 0xAD, 0xFF);
+  palette[palette_LAVENDER   ] = colour_rgb(0x83, 0x76, 0x9C);
+  palette[palette_PINK       ] = colour_rgb(0xFF, 0x77, 0xA8);
+  palette[palette_LIGHT_PEACH] = colour_rgb(0xFF, 0xCC, 0xAA);
+}
+
 result_t bmfont_test_one_format(const char *resources,
+                                int         scr_width,
+                                int         scr_height,
                                 pixelfmt_t  scr_fmt,
                                 int         scr_log2bpp)
 {
   bmfontteststate_t state;
 
-  state.scr_width  = GAMEWIDTH;
-  state.scr_height = GAMEHEIGHT;
+  state.scr_width  = scr_width;
+  state.scr_height = scr_height;
 
   const int scr_rowbytes = (state.scr_width << scr_log2bpp) / 8;
 
-  state.palette[palette_BLACK      ] = colour_rgb(0x00, 0x00, 0x00);
-  state.palette[palette_DARK_BLUE  ] = colour_rgb(0x1D, 0x2B, 0x53);
-  state.palette[palette_DARK_PURPLE] = colour_rgb(0x7E, 0x25, 0x53);
-  state.palette[palette_DARK_GREEN ] = colour_rgb(0x00, 0x87, 0x51);
-  state.palette[palette_BROWN      ] = colour_rgb(0xAB, 0x52, 0x36);
-  state.palette[palette_DARK_GREY  ] = colour_rgb(0x5F, 0x57, 0x4F);
-  state.palette[palette_LIGHT_GREY ] = colour_rgb(0xC2, 0xC3, 0xC7);
-  state.palette[palette_WHITE      ] = colour_rgb(0xFF, 0xF1, 0xE8);
-  state.palette[palette_RED        ] = colour_rgb(0xFF, 0x00, 0x4D);
-  state.palette[palette_ORANGE     ] = colour_rgb(0xFF, 0xA3, 0x00);
-  state.palette[palette_YELLOW     ] = colour_rgb(0xFF, 0xEC, 0x27);
-  state.palette[palette_GREEN      ] = colour_rgb(0x00, 0xE4, 0x36);
-  state.palette[palette_BLUE       ] = colour_rgb(0x29, 0xAD, 0xFF);
-  state.palette[palette_LAVENDER   ] = colour_rgb(0x83, 0x76, 0x9C);
-  state.palette[palette_PINK       ] = colour_rgb(0xFF, 0x77, 0xA8);
-  state.palette[palette_LIGHT_PEACH] = colour_rgb(0xFF, 0xCC, 0xAA);
+  define_pico8_palette(&state.palette[0]);
 
   state.transparent = colour_rgba(0x00, 0x00, 0x00, 0x00);
 
@@ -733,7 +733,7 @@ result_t bmfont_test_one_format(const char *resources,
 #ifdef USE_SDL
   memset(&state.sdl_state, 0, sizeof(state.sdl_state));
 
-  rc = start_sdl(&state.sdl_state);
+  rc = start_sdl(&state.sdl_state, state.scr_width, state.scr_height);
   if (rc)
     goto Failure;
 #endif
@@ -769,7 +769,9 @@ result_t bmfont_test_one_format(const char *resources,
     if (rc)
       goto Failure;
 
-    bmfont_get_info(bmfonts[font].bmfont, &bmfonts[font].width, &bmfonts[font].height);
+    bmfont_get_info(bmfonts[font].bmfont,
+                   &bmfonts[font].width,
+                   &bmfonts[font].height);
   }
 
   /* ------------------------------------------------------------------------ */
@@ -814,13 +816,14 @@ result_t bmfont_test(const char *resources)
 {
   static const struct
   {
+    int        width, height;
     pixelfmt_t fmt;
     int        log2bpp;
   }
   tab[] =
   {
-    { pixelfmt_p4,       2 },
-    { pixelfmt_bgrx8888, 5 }
+    { 800, 600, pixelfmt_p4,       2 },
+    { 800, 600, pixelfmt_bgrx8888, 5 }
   };
 
   result_t rc;
@@ -828,7 +831,11 @@ result_t bmfont_test(const char *resources)
 
   for (i = 0; i < NELEMS(tab); i++)
   {
-    rc = bmfont_test_one_format(resources, tab[i].fmt, tab[i].log2bpp);
+    rc = bmfont_test_one_format(resources,
+                                tab[i].width,
+                                tab[i].height,
+                                tab[i].fmt,
+                                tab[i].log2bpp);
     if (rc != result_TEST_PASSED)
       return rc;
   }
