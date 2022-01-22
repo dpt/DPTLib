@@ -9,6 +9,8 @@
 #include "base/result.h"
 #include "datastruct/bitvec.h"
 
+#include "test/all-tests.h"
+
 #define NBITS 97
 
 static void dumpbits(bitvec_t *v)
@@ -20,9 +22,7 @@ static void dumpbits(bitvec_t *v)
   printf("\n");
 }
 
-result_t bitvec_test(void); /* suppress "No previous prototype" warning */
-
-result_t bitvec_test(void)
+result_t bitvec_test(const char *resources)
 {
   result_t  err;
   bitvec_t *v;

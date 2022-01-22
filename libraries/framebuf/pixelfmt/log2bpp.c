@@ -1,11 +1,20 @@
 /* log2bpp.c -- given a pixel format return its log2 bits-per-pixel size */
 
+#include <assert.h>
+
 #include "framebuf/pixelfmt.h"
 
 int pixelfmt_log2bpp(pixelfmt_t fmt)
 {
   switch (fmt)
   {
+  case pixelfmt_p1:
+    return 0;
+  case pixelfmt_p2:
+    return 1;
+  case pixelfmt_p4:
+    return 2;
+  case pixelfmt_p8:
   case pixelfmt_y8:
     return 3;
 
@@ -32,6 +41,7 @@ int pixelfmt_log2bpp(pixelfmt_t fmt)
     return 5;
 
   default:
+    assert(0);
     return -1;
   }
 }

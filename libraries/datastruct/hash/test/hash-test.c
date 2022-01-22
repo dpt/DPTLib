@@ -12,6 +12,8 @@
 
 #include "datastruct/hash.h"
 
+#include "test/all-tests.h"
+
 static char *my_strdup(const char *s)
 {
   size_t l;
@@ -40,9 +42,7 @@ static int my_walk_fn(const void *key, const void *value, void *opaque)
   return 0;
 }
 
-result_t hash_test(void); /* suppress "No previous prototype" warning */
-
-result_t hash_test(void)
+result_t hash_test(const char *resources)
 {
   static const struct
   {

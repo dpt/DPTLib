@@ -74,6 +74,15 @@ int box_intersects(const box_t *a, const box_t *b);
 int box_intersection(const box_t *a, const box_t *b, box_t *c);
 
 /**
+ * Populates the box "clipped" with the sizes of the edges discarded when clipping box "b" against "a".
+ *
+ * \param[in]  a The first box.
+ * \param[in]  b The second box.
+ * \param[out] clipped Not really a box, but one scalar per edge. Values are positive where "b" extends outside of "a", zero otherwise.
+ */
+void box_clipped(const box_t *a, const box_t *b, box_t *clipped);
+
+/**
  * Populates the box "c" with the union of boxes "a" and "b".
  *
  * \param[in]  a The first box.

@@ -16,6 +16,8 @@
 #include "databases/digest-db.h"
 #include "databases/tag-db.h"
 
+#include "test/all-tests.h"
+
 /* ----------------------------------------------------------------------- */
 
 #define FILENAME "test-tag-db"
@@ -827,18 +829,16 @@ failure:
 
 /* ----------------------------------------------------------------------- */
 
-typedef result_t testfn_t(State_t *state);
+typedef result_t tagdb_testfn_t(State_t *state);
 
 typedef struct Test
 {
-  testfn_t   *fn;
-  const char *desc;
+  tagdb_testfn_t *fn;
+  const char     *desc;
 }
 Test_t;
 
-result_t tagdb_test(void); /* suppress "No previous prototype" warning */
-
-result_t tagdb_test(void)
+result_t tagdb_test(const char *resources)
 {
   static const Test_t tests[] =
   {

@@ -70,6 +70,8 @@ set(PUBLIC_HEADERS
     include/datastruct/vector.h
     include/framebuf/bitmap-set.h
     include/framebuf/bitmap.h
+    include/framebuf/bmfont.h
+    include/framebuf/colour.h
     include/framebuf/composite.h
     include/framebuf/pixelfmt.h
     include/framebuf/screen.h
@@ -197,10 +199,16 @@ set(DATASTRUCT_SOURCES
     libraries/datastruct/vector/width.c)
 
 set(FRAMEBUF_SOURCES
+    libraries/framebuf/bitmap/bitmap.c
+    libraries/framebuf/bitmap/save.c
+    libraries/framebuf/bmfont/bmfont.c
+    libraries/framebuf/colour/colour.c
     libraries/framebuf/composite/composite.c
-    libraries/framebuf/pixelfmt/log2bpp.c)
+    libraries/framebuf/pixelfmt/log2bpp.c
+    libraries/framebuf/screen/screen.c)
 
 set(GEOM_SOURCES
+    libraries/geom/box/clipped.c
     libraries/geom/box/contains-box.c
     libraries/geom/box/contains-point.c
     libraries/geom/box/could-hold.c
@@ -288,6 +296,92 @@ if(USE_FORTIFY)
     target_link_libraries(DPTLib PUBLIC Fortify)
 endif()
 
+if(NOT TARGET_RISCOS)
+    ## Where PkgConfig is available, use it
+    find_package(PkgConfig REQUIRED)
+    # Use IMPORTED_TARGET to avoid header/lib mismatch on macOS.
+    pkg_check_modules(PNG REQUIRED IMPORTED_TARGET libpng)
+    target_include_directories(DPTLib PUBLIC ${PNG_INCLUDE_DIRS})
+    target_compile_options(DPTLib PUBLIC ${PNG_CFLAGS_OTHER})
+    target_link_libraries(DPTLib PUBLIC PkgConfig::PNG)
+else()
+    ## On RISC OS we must build libpng & zlib
+    include(FetchContent)
+
+    FetchContent_Declare(zlib
+                         GIT_REPOSITORY https://github.com/madler/zlib.git
+                         GIT_TAG v1.2.11)
+    FetchContent_Declare(libpng
+                         GIT_REPOSITORY https://github.com/glennrp/libpng.git
+                         GIT_TAG v1.6.37)
+
+    FetchContent_GetProperties(zlib)
+    if(NOT zlib_POPULATED)
+        FetchContent_Populate(zlib)
+
+        # Patch CMake minimum to 3.0.0
+        message(STATUS "patching zlib...")
+        execute_process(COMMAND           ${GIT_EXECUTABLE} apply ${CMAKE_CURRENT_LIST_DIR}/cmake/zlib.patch
+                        WORKING_DIRECTORY ${zlib_SOURCE_DIR}
+                        OUTPUT_QUIET
+                        ERROR_QUIET) # because it'll error upon re-run
+
+        # Set vars that libpng's cmakelists will use to get zlib
+        set(ZLIB_INCLUDE_DIR ${zlib_SOURCE_DIR} ${zlib_BINARY_DIR})
+        set(ZLIB_LIBRARY zlibstatic)
+
+        # https://stackoverflow.com/questions/37582508/silence-cmp0048-warnings-in-vendored-projects
+        set(CMAKE_PROJECT_INCLUDE_BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/enable_cmp0048.cmake")
+        add_subdirectory(${zlib_SOURCE_DIR} ${zlib_BINARY_DIR} EXCLUDE_FROM_ALL)
+        unset(CMAKE_PROJECT_INCLUDE_BEFORE)
+    endif()
+
+    install(TARGETS zlibstatic EXPORT zlibstatic-targets
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT zlibstatic
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT zlibstatic
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT zlibstatic
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ZLIB
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ZLIB
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ZLIB)
+
+    export(TARGETS zlibstatic
+           NAMESPACE ZLIB::
+           FILE ${CMAKE_INSTALL_PREFIX}/zlibstatic-targets.cmake)
+
+    install(EXPORT zlibstatic-targets
+            DESTINATION ${CMAKE_INSTALL_PREFIX}
+            NAMESPACE ZLIB::
+            COMPONENT zlibstatic-export)
+
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_PREFIX}/
+            DESTINATION ${CMAKE_INSTALL_PREFIX}
+            COMPONENT zlibstatic-export
+            PATTERN zlibstatic-targets.cmake EXCLUDE)
+
+    FetchContent_GetProperties(libpng)
+    if(NOT libpng_POPULATED)
+        FetchContent_Populate(libpng)
+
+        # Patch libm find_library problem
+        message(STATUS "patching libpng...")
+        execute_process(COMMAND           ${GIT_EXECUTABLE} apply ${CMAKE_CURRENT_LIST_DIR}/cmake/libpng-libm-unix.patch
+                        WORKING_DIRECTORY ${libpng_SOURCE_DIR}
+                        OUTPUT_QUIET
+                        ERROR_QUIET) # because it'll error upon re-run
+
+        configure_file(${libpng_SOURCE_DIR}/scripts/pnglibconf.h.prebuilt ${libpng_SOURCE_DIR}/pnglibconf.h COPYONLY)
+
+        cmake_policy(SET CMP0077 NEW)
+        set(PNG_SHARED OFF)
+
+        add_subdirectory(${libpng_SOURCE_DIR} ${libpng_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif() 
+
+    include_directories(SYSTEM ${libpng_SOURCE_DIR}/ ${libpng_BINARY_DIR}/)
+    include_directories(SYSTEM ${zlib_SOURCE_DIR}/)
+
+    target_link_libraries(DPTLib PRIVATE png_static)
+endif()     
 
 # Installation
 #
@@ -319,25 +413,27 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include
 #
 
 option(BUILD_TESTS "Build test program" OFF)
+option(BUILD_SDL_TESTS "Build tests that use SDL" OFF)
 
 if(BUILD_TESTS)
     set(TEST_SOURCES
         apps/test/main.c
         libraries/databases/tag-db/test/tag-db-test.c
         libraries/databases/pickle/test/pickle-test.c
-        libraries/io/stream/test/stream-test.c
-        libraries/utils/bsearch/test/bsearch-test.c
-        libraries/utils/array/test/array-test.c
-        libraries/geom/packer/test/packer-test.c
-        libraries/geom/layout/test/layout-test.c
+        libraries/datastruct/atom/test/atom-test.c
+        libraries/datastruct/bitarr/test/bitarr-test.c
         libraries/datastruct/bitfifo/test/bitfifo-test.c
         libraries/datastruct/bitvec/test/bitvec-test.c
         libraries/datastruct/cache/test/cache-test.c
-        libraries/datastruct/atom/test/atom-test.c
-        libraries/datastruct/ntree/test/ntree-test.c
         libraries/datastruct/hash/test/hash-test.c
         libraries/datastruct/list/test/list-test.c
-        libraries/datastruct/bitarr/test/bitarr-test.c
+        libraries/datastruct/ntree/test/ntree-test.c
+        libraries/framebuf/bmfont/test/bmfont-test.c
+        libraries/geom/layout/test/layout-test.c
+        libraries/geom/packer/test/packer-test.c
+        libraries/io/stream/test/stream-test.c
+        libraries/utils/array/test/array-test.c
+        libraries/utils/bsearch/test/bsearch-test.c
         libraries/datastruct/vector/test/vector-test.c)
 
     # Avoid a warning from CMake
@@ -354,8 +450,18 @@ if(BUILD_TESTS)
         OUTPUT_NAME_MINSIZEREL DPTLibTest-minsizerel)
 
     # DPTTest dependencies
-    # Of course, DPTTest depends on DPTLib.
-    target_link_libraries(DPTLibTest DPTLib)
+    # Of course, DPTLibTest depends on DPTLib.
+    target_link_libraries(DPTLibTest DPTLib m)
+
+    if(BUILD_SDL_TESTS)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(SDL2 REQUIRED sdl2 SDL2_image)
+        target_link_libraries(DPTLibTest ${SDL2_LINK_LIBRARIES})
+        target_include_directories(DPTLibTest PUBLIC ${SDL2_INCLUDE_DIRS})
+        target_compile_options(DPTLibTest PUBLIC ${SDL2_CFLAGS_OTHER})
+
+        target_compile_definitions(DPTLibTest PUBLIC USE_SDL)
+    endif()
 
     install(TARGETS DPTLibTest RUNTIME
         DESTINATION ${CMAKE_INSTALL_PREFIX})

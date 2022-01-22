@@ -9,9 +9,9 @@
 
 #include "geom/layout.h"
 
-result_t layout_test(void); /* suppress "No previous prototype" warning */
+#include "test/all-tests.h"
 
-result_t layout_test(void)
+result_t layout_test(const char *resources)
 {
   static const box_t dims = { 0, 0, 8, 8 };
   static const layout_element_t elements[] =
