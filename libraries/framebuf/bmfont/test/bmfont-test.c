@@ -636,9 +636,13 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
     {
       bitmap_t *scr_bgrx8888;
       SDL_Rect  texturearea;
+      char     *scr;
 
       if (state->scr.format != pixelfmt_bgrx8888)
-        bitmap_convert((const bitmap_t *) &state->scr, pixelfmt_bgrx8888, &scr_bgrx8888);
+        /* convert the screen to bgrx8888 */
+        bitmap_convert((const bitmap_t *) &state->scr,
+                                           pixelfmt_bgrx8888,
+                                          &scr_bgrx8888);
       else
         scr_bgrx8888 = (bitmap_t *) &state->scr;
 
@@ -663,9 +667,12 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
       }
 
       /* the rect passed here says where to draw in the texture */
+      scr = (char *) scr_bgrx8888->base +
+                     texturearea.y * scr_bgrx8888->rowbytes +
+                     texturearea.x * 4;
       SDL_UpdateTexture(state->sdl_state.texture,
                        &texturearea,
-               (char *) scr_bgrx8888->base + texturearea.y * scr_bgrx8888->rowbytes + texturearea.x * 4,
+                        scr,
                         scr_bgrx8888->rowbytes);
     }
 
