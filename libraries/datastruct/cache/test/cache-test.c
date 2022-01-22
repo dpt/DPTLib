@@ -11,13 +11,14 @@
 #include "base/result.h"
 #include "datastruct/cache.h"
 
-result_t cache_test(void); /* suppress "No previous prototype" warning */
+#include "test/all-tests.h"
+
 static int cache_test_outer(const cacheconfig_t *config,
                             size_t               length,
                             int                  maxkey);
 static int cache_test_put(cache_t *cache, int maxkey);
 
-result_t cache_test(void)
+result_t cache_test(const char *resources)
 {
   result_t      err = result_OK;
   cacheconfig_t config;

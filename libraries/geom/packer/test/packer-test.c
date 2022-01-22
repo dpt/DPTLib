@@ -10,6 +10,8 @@
 
 #include "geom/packer.h"
 
+#include "test/all-tests.h"
+
 /* ----------------------------------------------------------------------- */
 
 static result_t drawbox(const box_t *box, void *opaque)
@@ -397,9 +399,7 @@ failure:
   return 1;
 }
 
-result_t packer_test(void); /* suppress "No previous prototype" warning */
-
-result_t packer_test(void)
+result_t packer_test(const char *resources)
 {
   result_t err;
 

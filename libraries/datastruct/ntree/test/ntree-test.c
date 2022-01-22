@@ -13,6 +13,8 @@
 
 #include "datastruct/ntree.h"
 
+#include "test/all-tests.h"
+
 /* -------------------------------------------------------------------------- */
 
 #define BEGIN_TEST(testname) \
@@ -203,9 +205,7 @@ static result_t free_data(ntree_t *t, void *opaque)
 
 /* -------------------------------------------------------------------------- */
 
-result_t ntree_test(void); /* suppress "No previous prototype" warning */
-
-result_t ntree_test(void)
+result_t ntree_test(const char *resources)
 {
   result_t err;
   int      nfailures = 0;

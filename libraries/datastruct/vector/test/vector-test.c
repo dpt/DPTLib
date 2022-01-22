@@ -9,6 +9,8 @@
 #include "base/utils.h"
 #include "datastruct/vector.h"
 
+#include "test/all-tests.h"
+
 #define WIDTH 4 /* bytes */
 
 static const unsigned int set_lengths[] = { 25, 50, 75, 100 };
@@ -23,9 +25,7 @@ static const int primes[] =
   97, 101, 103, 107, 109, 113, 127
 };
 
-result_t vector_test(void); /* suppress "No previous prototype" warning */
-
-result_t vector_test(void)
+result_t vector_test(const char *resources)
 {
   vector_t *v;
   int       i;

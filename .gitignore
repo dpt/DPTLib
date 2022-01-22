@@ -39,3 +39,4 @@ doxydocs
 build
 build.ninja/
 build.xcode/
+.DS_Store

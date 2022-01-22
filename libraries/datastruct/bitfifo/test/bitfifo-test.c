@@ -11,6 +11,8 @@
 #include "base/result.h"
 #include "datastruct/bitfifo.h"
 
+#include "test/all-tests.h"
+
 #define MAXSIZE 32
 
 static const struct
@@ -59,9 +61,7 @@ static void dump(const bitfifo_t *fifo)
   previous_empty = empty;
 }
 
-result_t bitfifo_test(void); /* suppress "No previous prototype" warning */
-
-result_t bitfifo_test(void)
+result_t bitfifo_test(const char *resources)
 {
   const unsigned int all_ones = ~0;
 

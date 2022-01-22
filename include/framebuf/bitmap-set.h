@@ -10,7 +10,7 @@ typedef struct bitmap_set bitmap_set_t;
 
 struct bitmap_set
 {
-  bitmap_MEMBERS;
+  bitmap_format_MEMBERS;
   void **bases;  /* an array of bitmap base pointers */
   int    nbases;
 };
