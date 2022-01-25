@@ -2,7 +2,7 @@ DPTLib
 ======
 version 0.3.0
 
-DPTLib is my platform independent C library. It has a wide variety of functions in it, formed of the various bits of portable C code that I've written for PrivateEye, MotionMasks and various other projects. Please consider it a permanent work in progress.
+DPTLib is my platform independent C library. It contains a wide variety of functions, formed of various portable C code that I've written for PrivateEye, MotionMasks and other projects. Please consider it a permanent work in progress.
 
 Overview of Modules
 -------------------
@@ -40,6 +40,8 @@ Overview of Modules
 
  * [`framebuf/bitmap.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/bitmap.h) — bitmap image type
     * [`framebuf/bitmap-set.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/bitmap-set.h) — a set of bitmap images
+ * [`framebuf/bmfont.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/bmfont.h) — a proportional bitmap font engine {[docs](https://github.com/dpt/DPTLib/blob/master/docs/bmfont.md)}
+ * [`framebuf/colour.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/colour.h) — colour definition and conversion
  * [`framebuf/composite.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/composite.h) — Porter-Duff image compositing
  * [`framebuf/pixelfmt.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/pixelfmt.h) — pixel formats
  * [`framebuf/screen.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/screen.h) — screen type
