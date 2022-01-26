@@ -89,7 +89,7 @@ typedef unsigned int   pixelfmt_rgba8888_t;
 typedef unsigned int   pixelfmt_abgr8888_t;
 typedef unsigned int   pixelfmt_argb8888_t;
 
-typedef unsigned int   pixelfmt_x_t; /* generic/unspecified pixel */
+typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
 
 /* ----------------------------------------------------------------------- */
 
@@ -98,18 +98,17 @@ typedef unsigned int   pixelfmt_x_t; /* generic/unspecified pixel */
 
 /* ----------------------------------------------------------------------- */
 
-#define PIXELFMT_EXTRACT(px,sh,n) (((pixelfmt_x_t) (px) >> (sh)) & (n))
+#define PIXELFMT_EXTRACT(px,sh,n) (((pixelfmt_any_t) (px) >> (sh)) & (n))
 
 /* RGB565 */
 #define PIXELFMT_Rxx565_SHIFT  (0)
 #define PIXELFMT_xGx565_SHIFT  (5)
 #define PIXELFMT_xxB565_SHIFT (10)
-//
 #define PIXELFMT_Rxx565(px) PIXELFMT_EXTRACT(px, PIXELFMT_Rxx565_SHIFT, 0x1Fu)
 #define PIXELFMT_xGx565(px) PIXELFMT_EXTRACT(px, PIXELFMT_xGx565_SHIFT, 0x3Fu)
 #define PIXELFMT_xxB565(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxB565_SHIFT, 0x1Fu)
 
-/* XXXX8888 */
+/* any 8888 */
 #define PIXELFMT_Rxxx8888_SHIFT  (0)
 #define PIXELFMT_Bxxx8888_SHIFT  (0)
 #define PIXELFMT_xGxx8888_SHIFT  (8)
@@ -121,25 +120,22 @@ typedef unsigned int   pixelfmt_x_t; /* generic/unspecified pixel */
 #define PIXELFMT_Bxxx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_Bxxx8888_SHIFT, 0xFFu)
 #define PIXELFMT_xGxx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xGxx8888_SHIFT, 0xFFu)
 #define PIXELFMT_xxRx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxRx8888_SHIFT, 0xFFu)
-//
 #define PIXELFMT_MAKE_BGRX8888(R,G,B) \
-  (((pixelfmt_x_t) (R) << PIXELFMT_Bxxx8888_SHIFT) | \
-   ((pixelfmt_x_t) (G) << PIXELFMT_xGxx8888_SHIFT) | \
-   ((pixelfmt_x_t) (B) << PIXELFMT_xxRx8888_SHIFT) | \
-   ((pixelfmt_x_t) (0xFF) << PIXELFMT_xxxA8888_SHIFT))
+  (((pixelfmt_any_t) (R) << PIXELFMT_Bxxx8888_SHIFT) | \
+   ((pixelfmt_any_t) (G) << PIXELFMT_xGxx8888_SHIFT) | \
+   ((pixelfmt_any_t) (B) << PIXELFMT_xxRx8888_SHIFT) | \
+   ((pixelfmt_any_t) (0xFF) << PIXELFMT_xxxA8888_SHIFT))
 
 /* RGBA8888 */
-//
 #define PIXELFMT_Rxxx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_Rxxx8888_SHIFT, 0xFFu)
 #define PIXELFMT_xGxx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xGxx8888_SHIFT, 0xFFu)
 #define PIXELFMT_xxBx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxBx8888_SHIFT, 0xFFu)
 #define PIXELFMT_xxxA8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxxA8888_SHIFT, 0xFFu)
-//
 #define PIXELFMT_MAKE_RGBA8888(R,G,B,A) \
-  (((pixelfmt_x_t) (R) << PIXELFMT_Rxxx8888_SHIFT) | \
-   ((pixelfmt_x_t) (G) << PIXELFMT_xGxx8888_SHIFT) | \
-   ((pixelfmt_x_t) (B) << PIXELFMT_xxBx8888_SHIFT) | \
-   ((pixelfmt_x_t) (A) << PIXELFMT_xxxA8888_SHIFT))
+  (((pixelfmt_any_t) (R) << PIXELFMT_Rxxx8888_SHIFT) | \
+   ((pixelfmt_any_t) (G) << PIXELFMT_xGxx8888_SHIFT) | \
+   ((pixelfmt_any_t) (B) << PIXELFMT_xxBx8888_SHIFT) | \
+   ((pixelfmt_any_t) (A) << PIXELFMT_xxxA8888_SHIFT))
 
 /* ----------------------------------------------------------------------- */
 
