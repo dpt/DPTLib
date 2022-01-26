@@ -906,9 +906,25 @@ static void composite_xxxa8888(composite_rule_t rule,
                                const bitmap_t  *src,
                                bitmap_t        *dst)
 {
+  static compo_t *compos[composite_RULE__LIMIT] =
+  {
+    comp_xxxa8888_clear,    /* composite_RULE_CLEAR */
+    comp_xxxa8888_src,      /* composite_RULE_SRC */
+    NULL,                   /* composite_RULE_DST */
+    comp_xxxa8888_src_over, /* composite_RULE_SRC_OVER */
+    comp_xxxa8888_dst_over, /* composite_RULE_DST_OVER */
+    comp_xxxa8888_src_in,   /* composite_RULE_SRC_IN */
+    comp_xxxa8888_dst_in,   /* composite_RULE_DST_IN */
+    comp_xxxa8888_src_out,  /* composite_RULE_SRC_OUT */
+    comp_xxxa8888_dst_out,  /* composite_RULE_DST_OUT */
+    comp_xxxa8888_src_atop, /* composite_RULE_SRC_ATOP */
+    comp_xxxa8888_dst_atop, /* composite_RULE_DST_ATOP */
+    comp_xxxa8888_xor       /* composite_RULE_XOR */
+  };
+
+  compo_t                   *compo;
   const pixelfmt_xxxa8888_t *srcscan; /* source scanline */
   pixelfmt_xxxa8888_t       *dstscan; /* destination scanline */
-  compo_t                   *compo;
   int                        width, height;
   int                        rowbytes;
 
@@ -916,65 +932,13 @@ static void composite_xxxa8888(composite_rule_t rule,
   if (rule == composite_RULE_DST)
     return;
 
+  compo = compos[rule];
+
   srcscan  = src->base;
   dstscan  = dst->base;
   width    = src->width;
   height   = src->height;
   rowbytes = src->rowbytes / sizeof(pixelfmt_xxxa8888_t);
-
-  switch (rule)
-  {
-  case composite_RULE_CLEAR:
-    compo = comp_xxxa8888_clear;
-    break;
-
-  case composite_RULE_SRC:
-    compo = comp_xxxa8888_src;
-    break;
-
-  case composite_RULE_DST:
-    return;
-
-  case composite_RULE_SRC_OVER:
-    compo = comp_xxxa8888_src_over;
-    break;
-
-  case composite_RULE_DST_OVER:
-    compo = comp_xxxa8888_dst_over;
-    break;
-
-  case composite_RULE_SRC_IN:
-    compo = comp_xxxa8888_src_in;
-    break;
-
-  case composite_RULE_DST_IN:
-    compo = comp_xxxa8888_dst_in;
-    break;
-
-  case composite_RULE_SRC_OUT:
-    compo = comp_xxxa8888_src_out;
-    break;
-
-  case composite_RULE_DST_OUT:
-    compo = comp_xxxa8888_dst_out;
-    break;
-
-  case composite_RULE_SRC_ATOP:
-    compo = comp_xxxa8888_src_atop;
-    break;
-
-  case composite_RULE_DST_ATOP:
-    compo = comp_xxxa8888_dst_atop;
-    break;
-
-  case composite_RULE_XOR:
-    compo = comp_xxxa8888_xor;
-    break;
-
-  default:
-    assert("Invalid composite rule" == NULL);
-    return;
-  }
 
   while (height--)
   {
