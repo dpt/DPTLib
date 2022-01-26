@@ -89,6 +89,8 @@ typedef unsigned int   pixelfmt_rgba8888_t;
 typedef unsigned int   pixelfmt_abgr8888_t;
 typedef unsigned int   pixelfmt_argb8888_t;
 
+typedef unsigned int   pixelfmt_xxxa8888_t; /* any alpha */
+
 typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
 
 /* ----------------------------------------------------------------------- */
@@ -104,6 +106,9 @@ typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
 #define PIXELFMT_Rxx565_SHIFT  (0)
 #define PIXELFMT_xGx565_SHIFT  (5)
 #define PIXELFMT_xxB565_SHIFT (10)
+#define PIXELFMT_Rxx565_MASK  (0x1Fu <<  0)
+#define PIXELFMT_xGx565_MASK  (0x3Fu <<  5)
+#define PIXELFMT_xxB565_MASK  (0x1Fu << 10)
 #define PIXELFMT_Rxx565(px) PIXELFMT_EXTRACT(px, PIXELFMT_Rxx565_SHIFT, 0x1Fu)
 #define PIXELFMT_xGx565(px) PIXELFMT_EXTRACT(px, PIXELFMT_xGx565_SHIFT, 0x3Fu)
 #define PIXELFMT_xxB565(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxB565_SHIFT, 0x1Fu)
@@ -115,6 +120,12 @@ typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
 #define PIXELFMT_xxBx8888_SHIFT (16)
 #define PIXELFMT_xxRx8888_SHIFT (16)
 #define PIXELFMT_xxxA8888_SHIFT (24)
+#define PIXELFMT_Rxxx8888_MASK  (0xFFu <<  0)
+#define PIXELFMT_Bxxx8888_MASK  (0xFFu <<  0)
+#define PIXELFMT_xGxx8888_MASK  (0xFFu <<  8)
+#define PIXELFMT_xxBx8888_MASK  (0xFFu << 16)
+#define PIXELFMT_xxRx8888_MASK  (0xFFu << 16)
+#define PIXELFMT_xxxA8888_MASK  (0xFFu << 24)
 
 /* BGRX8888 */
 #define PIXELFMT_Bxxx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_Bxxx8888_SHIFT, 0xFFu)
