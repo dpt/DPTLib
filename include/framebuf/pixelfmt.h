@@ -148,6 +148,13 @@ typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
    ((pixelfmt_any_t) (B) << PIXELFMT_xxBx8888_SHIFT) | \
    ((pixelfmt_any_t) (A) << PIXELFMT_xxxA8888_SHIFT))
 
+/* BGRA8888 */
+#define PIXELFMT_MAKE_BGRA8888(R,G,B,A) \
+  (((pixelfmt_any_t) (B) << PIXELFMT_Bxxx8888_SHIFT) | \
+   ((pixelfmt_any_t) (G) << PIXELFMT_xGxx8888_SHIFT) | \
+   ((pixelfmt_any_t) (R) << PIXELFMT_xxRx8888_SHIFT) | \
+   ((pixelfmt_any_t) (A) << PIXELFMT_xxxA8888_SHIFT))
+
 /* ----------------------------------------------------------------------- */
 
 /* Given a pixel format return its log2 bits-per-pixel size. */

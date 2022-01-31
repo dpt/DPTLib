@@ -378,13 +378,13 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
   info_ptr = png_create_info_struct(png_ptr);
   if (info_ptr == NULL)
   {
-    rc = result_BAD_ARG;
+    rc = result_OOM;
     goto cleanup;
   }
 
   if (setjmp(png_jmpbuf(png_ptr)))
   {
-    rc = result_BAD_ARG;
+    rc = result_OOM;
     goto cleanup;
   }
 
