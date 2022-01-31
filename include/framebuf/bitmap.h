@@ -53,6 +53,7 @@ void bitmap_clear(bitmap_t *bm, colour_t c);
 //  bm->base = base;
 //}
 
+result_t bitmap_load_png(bitmap_t *bm, const char *filename);
 result_t bitmap_save_png(const bitmap_t *bm, const char *filename);
 
 result_t bitmap_convert(const bitmap_t *bm, pixelfmt_t newfmt, bitmap_t **newbm);
