@@ -10,15 +10,29 @@
 
 result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
 {
-  result_t    rc;
-  FILE       *fp;
-  png_structp png_ptr  = NULL;
-  png_infop   info_ptr = NULL;
-  png_bytep   outrow   = NULL;
-  int         x,y;
+  result_t             rc;
+  pixelfmt_t           fmt;
+  size_t               bytespp;
+  FILE                *fp;
+  png_structp          png_ptr  = NULL;
+  png_infop            info_ptr = NULL;
+  png_bytep            outrow   = NULL;
+  pixelfmt_xxxa8888_t *inrow; // more like xxxx8888
+  int                  x,y;
 
-  if (bm->format != pixelfmt_bgrx8888)
+  switch (bm->format)
+  {
+  case pixelfmt_bgrx8888:
+    fmt     = PNG_COLOR_TYPE_RGB;
+    bytespp = 3;
+    break;
+  case pixelfmt_bgra8888:
+    fmt     = PNG_COLOR_TYPE_RGBA;
+    bytespp = 4;
+    break;
+  default:
     return result_NOT_SUPPORTED;
+  }
 
   fp = fopen(filename, "wb");
   if (fp == NULL)
@@ -43,7 +57,7 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
 
   if (setjmp(png_jmpbuf(png_ptr)))
   {
-    rc = result_OOM; // poor
+    rc = result_BAD_ARG; /* not ideal */
     goto cleanup;
   }
 
@@ -52,7 +66,7 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   png_set_IHDR(png_ptr, info_ptr,
                bm->width, bm->height,
                8,
-               PNG_COLOR_TYPE_RGB,
+               fmt,
                PNG_INTERLACE_NONE,
                PNG_COMPRESSION_TYPE_DEFAULT,
                PNG_FILTER_TYPE_DEFAULT);
@@ -64,25 +78,46 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   // png_set_filler(png_ptr, 0, PNG_FILLER_AFTER);
   // png_set_packing for <8bpp images
 
-  outrow = malloc(3 * bm->width * sizeof(png_byte));
+  outrow = malloc(bytespp * bm->width * sizeof(png_byte));
   if (outrow == NULL)
   {
     rc = result_OOM;
     goto cleanup;
   }
 
-  const unsigned int *inrow = bm->base;
+  inrow = bm->base;
 
   for (y = 0; y < bm->height; y++)
   {
     png_bytep pout = &outrow[0];
-    for (x = 0; x < bm->width; x++)
+
+    switch (bm->format)
     {
-      unsigned int in = *inrow++;
-      *pout++ = (in >> 16);
-      *pout++ = (in >> 8);
-      *pout++ = (in >> 0);
+    case pixelfmt_bgrx8888:
+      for (x = 0; x < bm->width; x++)
+      {
+        pixelfmt_xxxa8888_t in = *inrow++;
+        *pout++ = PIXELFMT_xxRx8888(in);
+        *pout++ = PIXELFMT_xGxx8888(in);
+        *pout++ = PIXELFMT_Bxxx8888(in);
+      }
+      break;
+
+    case pixelfmt_bgra8888:
+      for (x = 0; x < bm->width; x++)
+      {
+        pixelfmt_xxxa8888_t in = *inrow++;
+        *pout++ = PIXELFMT_xxRx8888(in);
+        *pout++ = PIXELFMT_xGxx8888(in);
+        *pout++ = PIXELFMT_Bxxx8888(in);
+        *pout++ = PIXELFMT_xxxA8888(in);
+      }
+      break;
+
+    default:
+      assert(0);
     }
+
     png_write_row(png_ptr, outrow);
     //inrow += bm->rowbytes / 4;
   }
