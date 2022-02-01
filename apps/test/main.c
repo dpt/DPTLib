@@ -33,28 +33,29 @@ test_t;
 
 static const test_t tests[] =
 {
-  { "atom",     atom_test     },
-  { "bitarr",   bitarr_test   },
-  { "bitfifo",  bitfifo_test  },
-  { "bitvec",   bitvec_test   },
-  { "cache",    cache_test    },
-  { "hash",     hash_test     },
-  { "list",     list_test     },
-  { "ntree",    ntree_test    },
-  { "vector",   vector_test   },
+  { "atom",       atom_test       },
+  { "bitarr",     bitarr_test     },
+  { "bitfifo",    bitfifo_test    },
+  { "bitvec",     bitvec_test     },
+  { "cache",      cache_test      },
+  { "hash",       hash_test       },
+  { "list",       list_test       },
+  { "ntree",      ntree_test      },
+  { "vector",     vector_test     },
 
-  { "pickle",   pickle_test   },
-  { "tagdb",    tagdb_test    },
+  { "pickle",     pickle_test     },
+  { "tagdb",      tagdb_test      },
 
-  { "bmfont",   bmfont_test   },
+  { "bmfont",     bmfont_test     },
+  { "composite",  composite_test  },
 
-  { "layout",   layout_test   },
-  { "packer",   packer_test   },
+  { "layout",     layout_test     },
+  { "packer",     packer_test     },
 
-  { "stream",   stream_test   },
+  { "stream",     stream_test     },
 
-  { "array",    array_test    },
-  { "bsearch",  bsearch_test  },
+  { "array",      array_test      },
+  { "bsearch",    bsearch_test    },
 };
 
 static const int ntests = NELEMS(tests);

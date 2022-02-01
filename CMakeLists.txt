@@ -79,6 +79,7 @@ set(PUBLIC_HEADERS
     include/geom/layout.h
     include/geom/packer.h
     include/geom/point.h
+    include/io/path.h
     include/io/stream-mem.h
     include/io/stream-mtfcomp.h
     include/io/stream-packbits.h
