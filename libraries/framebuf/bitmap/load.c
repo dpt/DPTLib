@@ -91,6 +91,9 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
   case PNG_COLOR_TYPE_RGBA:
     bm_fmt = pixelfmt_rgba8888;
     break;
+  default:
+    rc = result_INCOMPATIBLE;
+    goto cleanup;
   }
 
   bm_rowbytes = (pngwidth << pixelfmt_log2bpp(bm_fmt)) >> 3;
