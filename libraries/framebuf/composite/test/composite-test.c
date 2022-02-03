@@ -1,5 +1,6 @@
 /* composite-test.c */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,18 +23,23 @@
 
 /* ----------------------------------------------------------------------- */
 
-// This could move to common, but we would need to abstract the memory management.
-static result_t bitmap_size_clone(bitmap_t *cloned, const bitmap_t *src)
+/* Move these bitmap_* functions out to common, but the memory management
+ * will need to be abstracted. */
+
+static result_t bitmap_clone_by_size(bitmap_t *cloned, const bitmap_t *src)
 {
   size_t pixelbytes;
   void  *pixels;
+
+  assert(cloned);
+  assert(src);
 
   pixelbytes = src->height * src->rowbytes;
   pixels = malloc(pixelbytes);
   if (pixels == NULL)
     return result_OOM;
 
-  // TODO: This clones the palette pointer too, which is dubious.
+  /* FIXME: This clones the palette pointer too, which is dubious. */
 
   *cloned = *src;
   cloned->base = pixels;
@@ -41,28 +47,38 @@ static result_t bitmap_size_clone(bitmap_t *cloned, const bitmap_t *src)
   return result_OK;
 }
 
-static void bitmap_clone_pixels(bitmap_t *cloned, const bitmap_t *src)
+static void bitmap_clone_pixels(bitmap_t *dst, const bitmap_t *src)
 {
-  memcpy(cloned->base, src->base, src->height * src->rowbytes);
+  assert(dst);
+  assert(src);
+
+  if (dst->width    != src->width  ||
+      dst->height   != src->height ||
+      dst->format   != src->format ||
+      dst->rowbytes != src->rowbytes)
+    return result_INCOMPATIBLE;
+
+  memcpy(dst->base, src->base, src->height * src->rowbytes);
 }
 
-// todo: generalise and hoist out
-static void bitmap_plot(const bitmap_t *src, bitmap_t *dst, int x, int y)
+static result_t bitmap_plot(const bitmap_t *src, bitmap_t *dst, int x, int y)
 {
-  pixelfmt_xxxa8888_t *sp = dst->base; // ought to have an xxxx_t type
+  pixelfmt_xxxa8888_t *sp = dst->base; /* FIXME: ought to have an xxxx_t type */
   pixelfmt_xxxa8888_t *dp = src->base;
   int                  h;
 
   if (src->format != dst->format)
-    return;
+    return result_INCOMPATIBLE;
 
-  sp = sp + x + y * dst->rowbytes / 4;
+  sp += x + y * dst->rowbytes / 4;
   for (h = 0; h < src->height; h++)
   {
     memcpy(sp, dp, src->rowbytes);
     sp += dst->rowbytes / 4;
     dp += src->rowbytes / 4;
   }
+
+  return result_OK;
 }
 
 static result_t bitmap_convert_inplace(bitmap_t *bm, pixelfmt_t new_fmt)
@@ -161,8 +177,8 @@ static result_t load_test_png(bitmap_t   *bm,
 
   if (bm->width != SMALLWIDTH || bm->height != SMALLHEIGHT || bm->format != FORMAT)
   {
-    fprintf(stderr, "error: wrong width, height or format\n");
-    // TODO destroy bm
+    fprintf(stderr, "load_test_png: wrong width, height or format\n");
+    free(bm->base);
     return result_BAD_ARG;
   }
 
@@ -171,19 +187,19 @@ static result_t load_test_png(bitmap_t   *bm,
 
 /* ----------------------------------------------------------------------- */
 
+/* This creates a large bitmap then draws all twelve composite rule
+ * combinations into it, in a 4x3 grid. */
 result_t composite_test(const char *resources)
 {
+  const int scr_rowbytes = (WIDTH << pixelfmt_log2bpp(FORMAT)) >> 3;
+
   result_t         rc;
   void            *bigpixels;
   bitmap_t         bigbitmap;
-  screen_t         bigscreen;
-  bitmap_t         bmsrc;
-  bitmap_t         bmdst;
+  bitmap_t         bm[2];
   bitmap_t         bmtmp;
   composite_rule_t rule;
   int              x,y;
-
-  const int scr_rowbytes = (WIDTH << pixelfmt_log2bpp(FORMAT)) / 8;
 
   bigpixels = malloc(scr_rowbytes * HEIGHT);
   if (bigpixels == NULL)
@@ -192,31 +208,19 @@ result_t composite_test(const char *resources)
     goto Failure;
   }
 
-  // make a big screen
-  bitmap_init(&bigbitmap,
-               WIDTH, HEIGHT,
-               FORMAT,
-               scr_rowbytes,
-               NULL,
-               bigpixels);
+  bitmap_init(&bigbitmap, WIDTH, HEIGHT, FORMAT, scr_rowbytes, NULL, bigpixels);
 
- // no point doing this: bitmap_clear(&bigbitmap, colour_rgb(0xFF, 0xFF, 0xFF));
-
-  screen_for_bitmap(&bigscreen, &bigbitmap); // not actually using the screen yet
-
-  rc = load_test_png(&bmsrc, resources, "A");
+  rc = load_test_png(&bm[0], resources, "A"); /* source */
   if (rc)
     goto Failure;
 
-  rc = load_test_png(&bmdst, resources, "B");
+  rc = load_test_png(&bm[1], resources, "B"); /* destination */
   if (rc)
     goto Failure;
 
-  rc = bitmap_size_clone(&bmtmp, &bmdst);
+  rc = bitmap_clone_by_size(&bmtmp, &bm[1]);
   if (rc)
     goto Failure;
-
-  // 12 composite rules, so want 4x3 grid of results?
 
   rule = composite_RULE_CLEAR;
   for (y = 0; y < 3; y++)
@@ -226,13 +230,14 @@ result_t composite_test(const char *resources)
       if (rule >= composite_RULE__LIMIT)
         continue;
 
-      bitmap_clone_pixels(&bmtmp, &bmdst);
+      /* reset the temporary output back to the 'destination' pixels */
+      bitmap_clone_pixels(&bmtmp, &bm[1]);
 
-      rc = composite(rule++, &bmsrc, &bmtmp);
+      rc = composite(rule++, &bm[0], &bmtmp);
       if (rc)
         goto Failure;
 
-      // copy bmdst to (x,y) inside bigscreen
+      /* copy result to (x,y) inside bigscreen */
       bitmap_plot(&bmtmp, &bigbitmap, x * SMALLWIDTH, y * SMALLHEIGHT);
     }
   }
@@ -241,10 +246,10 @@ result_t composite_test(const char *resources)
   if (rc)
     goto Failure;
 
-  free(bigpixels);
-  free(bmsrc.base);
-  free(bmdst.base);
   free(bmtmp.base);
+  free(bm[1].base);
+  free(bm[0].base);
+  free(bigpixels);
 
   return result_TEST_PASSED;
 
@@ -255,4 +260,3 @@ Failure:
 }
 
 /* vim: set ts=8 sts=2 sw=2 et: */
-
