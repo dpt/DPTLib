@@ -19,10 +19,10 @@ colour_t colour_rgb(int r, int g, int b);
 colour_t colour_rgba(int r, int g, int b, int a);
 
 /** Return colour `c` as a pixel of format `fmt`. */
-pixelfmt_x_t colour_to_pixel(const colour_t *palette,
-                             int             nentries,
-                             colour_t        required,
-                             pixelfmt_t      fmt);
+pixelfmt_any_t colour_to_pixel(const colour_t *palette,
+                               int             nentries,
+                               colour_t        required,
+                               pixelfmt_t      fmt);
 
 /** Return the alpha component of the specified colour. */
 unsigned int colour_get_alpha(const colour_t *c);

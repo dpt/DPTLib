@@ -320,39 +320,27 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* Pixel component macros */
+/* Shorthands for pixel macros */
 
-/* These constants are correct for pixelfmt_bgra8888. */
-/* Note: This code treats colour components identically so R,G,B could be
- * in the wrong order and I wouldn't know. */
-#define RED_SHIFT   0
-#define GREEN_SHIFT 8
-#define BLUE_SHIFT  16
-#define ALPHA_SHIFT 24
+/* These constants are correct for pixelfmt_rgba8888 but the code treats colour
+ * components identically so R,G,B could be in the wrong order and I wouldn't
+ * know. */
 
-/* Macros to form pixel components. */
-#define RED_MASK    (0xFFu << RED_SHIFT)
-#define GREEN_MASK  (0xFFu << GREEN_SHIFT)
-#define BLUE_MASK   (0xFFu << BLUE_SHIFT)
-#define ALPHA_MASK  (0xFFu << ALPHA_SHIFT)
+#define RED_SHIFT     PIXELFMT_Rxxx8888_SHIFT
+#define GREEN_SHIFT   PIXELFMT_xGxx8888_SHIFT
+#define BLUE_SHIFT    PIXELFMT_xxBx8888_SHIFT
+#define ALPHA_SHIFT   PIXELFMT_xxxA8888_SHIFT
 
-/* Macros to extract pixel components. */
-#define RED(px)     (((px) >> RED_SHIFT)    & 0xFFu)
-#define GREEN(px)   (((px) >> GREEN_SHIFT)  & 0xFFu)
-#define BLUE(px)    (((px) >> BLUE_SHIFT)   & 0xFFu)
-#define ALPHA(px)   (((px) >> ALPHA_SHIFT)  & 0xFFu)
+#define ALPHA_MASK    PIXELFMT_xxxA8888_MASK
 
-/* Fuses components back together into a pixel. */
-#define FUSE(r,g,b,a) (((r) << RED_SHIFT)   | \
-                       ((g) << GREEN_SHIFT) | \
-                       ((b) << BLUE_SHIFT)  | \
-                       ((a) << ALPHA_SHIFT))
+#define RED(px)       PIXELFMT_Rxxx8888(px)
+#define GREEN(px)     PIXELFMT_xGxx8888(px)
+#define BLUE(px)      PIXELFMT_xxBx8888(px)
+#define ALPHA(px)     PIXELFMT_xxxA8888(px)
+
+#define FUSE(r,g,b,a) PIXELFMT_MAKE_RGBA8888(r,g,b,a)
 
 /* ----------------------------------------------------------------------- */
-
-/* The type of a generic 32-bit xxxA pixel. */
-/* ...which ought to go in pixelfmt.h. */
-typedef unsigned int pixelfmt_xxxa8888_t;
 
 /* The type of a compositing routine. */
 typedef void (compo_t)(const pixelfmt_xxxa8888_t *src,
@@ -918,9 +906,25 @@ static void composite_xxxa8888(composite_rule_t rule,
                                const bitmap_t  *src,
                                bitmap_t        *dst)
 {
+  static compo_t *compos[composite_RULE__LIMIT] =
+  {
+    comp_xxxa8888_clear,    /* composite_RULE_CLEAR */
+    comp_xxxa8888_src,      /* composite_RULE_SRC */
+    NULL,                   /* composite_RULE_DST */
+    comp_xxxa8888_src_over, /* composite_RULE_SRC_OVER */
+    comp_xxxa8888_dst_over, /* composite_RULE_DST_OVER */
+    comp_xxxa8888_src_in,   /* composite_RULE_SRC_IN */
+    comp_xxxa8888_dst_in,   /* composite_RULE_DST_IN */
+    comp_xxxa8888_src_out,  /* composite_RULE_SRC_OUT */
+    comp_xxxa8888_dst_out,  /* composite_RULE_DST_OUT */
+    comp_xxxa8888_src_atop, /* composite_RULE_SRC_ATOP */
+    comp_xxxa8888_dst_atop, /* composite_RULE_DST_ATOP */
+    comp_xxxa8888_xor       /* composite_RULE_XOR */
+  };
+
+  compo_t                   *compo;
   const pixelfmt_xxxa8888_t *srcscan; /* source scanline */
   pixelfmt_xxxa8888_t       *dstscan; /* destination scanline */
-  compo_t                   *compo;
   int                        width, height;
   int                        rowbytes;
 
@@ -928,65 +932,13 @@ static void composite_xxxa8888(composite_rule_t rule,
   if (rule == composite_RULE_DST)
     return;
 
+  compo = compos[rule];
+
   srcscan  = src->base;
   dstscan  = dst->base;
   width    = src->width;
   height   = src->height;
   rowbytes = src->rowbytes / sizeof(pixelfmt_xxxa8888_t);
-
-  switch (rule)
-  {
-  case composite_RULE_CLEAR:
-    compo = comp_xxxa8888_clear;
-    break;
-
-  case composite_RULE_SRC:
-    compo = comp_xxxa8888_src;
-    break;
-
-  case composite_RULE_DST:
-    return;
-
-  case composite_RULE_SRC_OVER:
-    compo = comp_xxxa8888_src_over;
-    break;
-
-  case composite_RULE_DST_OVER:
-    compo = comp_xxxa8888_dst_over;
-    break;
-
-  case composite_RULE_SRC_IN:
-    compo = comp_xxxa8888_src_in;
-    break;
-
-  case composite_RULE_DST_IN:
-    compo = comp_xxxa8888_dst_in;
-    break;
-
-  case composite_RULE_SRC_OUT:
-    compo = comp_xxxa8888_src_out;
-    break;
-
-  case composite_RULE_DST_OUT:
-    compo = comp_xxxa8888_dst_out;
-    break;
-
-  case composite_RULE_SRC_ATOP:
-    compo = comp_xxxa8888_src_atop;
-    break;
-
-  case composite_RULE_DST_ATOP:
-    compo = comp_xxxa8888_dst_atop;
-    break;
-
-  case composite_RULE_XOR:
-    compo = comp_xxxa8888_xor;
-    break;
-
-  default:
-    assert("Invalid composite rule" == NULL);
-    return;
-  }
 
   while (height--)
   {

@@ -52,12 +52,12 @@ static unsigned int closest_palette_entry(const colour_t *palette,
   return closest;
 }
 
-pixelfmt_x_t colour_to_pixel(const colour_t *palette,
-                             int             nentries,
-                             colour_t        required,
-                             pixelfmt_t      fmt)
+pixelfmt_any_t colour_to_pixel(const colour_t *palette,
+                               int             nentries,
+                               colour_t        required,
+                               pixelfmt_t      fmt)
 {
-  pixelfmt_x_t r,g,b,a;
+  pixelfmt_any_t r,g,b,a;
 
   switch (fmt)
   {

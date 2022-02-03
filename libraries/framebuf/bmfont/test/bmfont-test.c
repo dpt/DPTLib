@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -15,6 +16,7 @@
 
 #include "base/result.h"
 #include "base/utils.h"
+#include "io/path.h"
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
 
@@ -215,11 +217,11 @@ bmtestline_t;
 
 static bmtestfont_t bmfonts[MAXFONTS] =
 {
-  { "tiny-font.png",     NULL },
-  { "henry-font.png",    NULL },
-  { "tall-font.png",     NULL },
-  { "ms-sans-serif.png", NULL },
-  { "digits-font.png",   NULL }
+  { "tiny-font",     NULL },
+  { "henry-font",    NULL },
+  { "tall-font",     NULL },
+  { "ms-sans-serif", NULL },
+  { "digits-font",   NULL }
 };
 
 /* ----------------------------------------------------------------------- */
@@ -299,7 +301,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
   result_t rc = result_OK;
   int      font;
   int      transparent;
-  char     filename[256];
+  char     leafname[DPTLIB_MAXPATH];
 
   for (font = 0; font < MAXFONTS; font++)
   {
@@ -362,12 +364,12 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
           return rc;
       }
 
-      sprintf(filename,
-              "bmfont-clipping-font-%d%s-%dbpp.png",
-              font,
-              transparent ? "-transparent" : "-filled",
-              1 << pixelfmt_log2bpp(state->scr.format));
-      bitmap_save_png(&state->bm, filename);
+      snprintf(leafname, sizeof(leafname),
+               "bmfont-clipping-font-%d%s-%dbpp",
+               font,
+               transparent ? "-transparent" : "-filled",
+               1 << pixelfmt_log2bpp(state->scr.format));
+      bitmap_save_png(&state->bm, path_join_leafname(leafname, "png"));
     }
   }
 
@@ -389,7 +391,7 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
       const char *string;
       size_t      stringlen;
       point_t     origin    = {0,0};
-      char        filename[256];
+      char        leafname[256];
 
       bitmap_clear(&state->bm, state->palette[palette_DARK_GREEN]);
 
@@ -471,12 +473,12 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
       }
 
     stop:
-      sprintf(filename,
-              "bmfont-layout-font-%d%s-%dbpp.png",
-              font,
-              transparent ? "-transparent" : "-filled",
-              1 << pixelfmt_log2bpp(state->scr.format));
-      bitmap_save_png(&state->bm, filename);
+      snprintf(leafname, sizeof(leafname),
+               "bmfont-layout-font-%d%s-%dbpp",
+               font,
+               transparent ? "-transparent" : "-filled",
+               1 << pixelfmt_log2bpp(state->scr.format));
+      bitmap_save_png(&state->bm, path_join_leafname(leafname, "png"));
     }
   }
 
@@ -716,15 +718,15 @@ static void define_pico8_palette(colour_t palette[16])
 result_t bmfont_test_one_format(const char *resources,
                                 int         scr_width,
                                 int         scr_height,
-                                pixelfmt_t  scr_fmt,
-                                int         scr_log2bpp)
+                                pixelfmt_t  scr_fmt)
 {
   bmfontteststate_t state;
 
   state.scr_width  = scr_width;
   state.scr_height = scr_height;
 
-  const int scr_rowbytes = (state.scr_width << scr_log2bpp) / 8;
+
+  const int scr_rowbytes = (state.scr_width << pixelfmt_log2bpp(scr_fmt)) / 8;
 
   define_pico8_palette(&state.palette[0]);
 
@@ -767,11 +769,11 @@ result_t bmfont_test_one_format(const char *resources,
 
   for (font = 0; font < NELEMS(bmfonts); font++)
   {
-    char filename[PATH_MAX];
+    const char *leafname;
+    const char *filename;
 
-    strcpy(filename, resources);
-    strcat(filename, "/resources/bmfonts/");
-    strcat(filename, bmfonts[font].filename);
+    leafname = path_join_leafname(bmfonts[font].filename, "png");
+    filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
     rc = bmfont_create(filename, &bmfonts[font].bmfont);
     if (rc)
       goto Failure;
@@ -829,8 +831,8 @@ result_t bmfont_test(const char *resources)
   }
   tab[] =
   {
-    { 800, 600, pixelfmt_p4,       2 },
-    { 800, 600, pixelfmt_bgrx8888, 5 }
+    { 800, 600, pixelfmt_p4       },
+    { 800, 600, pixelfmt_bgrx8888 }
   };
 
   result_t rc;
@@ -841,8 +843,7 @@ result_t bmfont_test(const char *resources)
     rc = bmfont_test_one_format(resources,
                                 tab[i].width,
                                 tab[i].height,
-                                tab[i].fmt,
-                                tab[i].log2bpp);
+                                tab[i].fmt);
     if (rc != result_TEST_PASSED)
       return rc;
   }
