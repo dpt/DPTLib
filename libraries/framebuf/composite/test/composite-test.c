@@ -47,7 +47,7 @@ static result_t bitmap_clone_by_size(bitmap_t *cloned, const bitmap_t *src)
   return result_OK;
 }
 
-static void bitmap_clone_pixels(bitmap_t *dst, const bitmap_t *src)
+static result_t bitmap_clone_pixels(bitmap_t *dst, const bitmap_t *src)
 {
   assert(dst);
   assert(src);
@@ -59,6 +59,8 @@ static void bitmap_clone_pixels(bitmap_t *dst, const bitmap_t *src)
     return result_INCOMPATIBLE;
 
   memcpy(dst->base, src->base, src->height * src->rowbytes);
+
+  return result_OK;
 }
 
 static result_t bitmap_plot(const bitmap_t *src, bitmap_t *dst, int x, int y)
@@ -231,7 +233,9 @@ result_t composite_test(const char *resources)
         continue;
 
       /* reset the temporary output back to the 'destination' pixels */
-      bitmap_clone_pixels(&bmtmp, &bm[1]);
+      rc = bitmap_clone_pixels(&bmtmp, &bm[1]);
+      if (rc)
+        goto Failure;
 
       rc = composite(rule++, &bm[0], &bmtmp);
       if (rc)
