@@ -23,7 +23,8 @@ extern testfn_t pickle_test,
                 tagdb_test;
 
 /* framebuf */
-extern testfn_t bmfont_test;
+extern testfn_t bmfont_test,
+                composite_test;
 
 /* geom */
 extern testfn_t layout_test,

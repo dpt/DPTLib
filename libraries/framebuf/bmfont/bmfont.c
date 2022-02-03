@@ -83,7 +83,7 @@ static void build_adw_tab(unsigned char tab[256], int idx)
 }
 
 /** Counts advance widths. */
-static int count_adw(unsigned char tab[256], pixelfmt_x_t adw_px)
+static int count_adw(unsigned char tab[256], pixelfmt_any_t adw_px)
 {
   return tab[(adw_px >>  0) & 0xFF] +
          tab[(adw_px >>  8) & 0xFF] +
@@ -121,12 +121,12 @@ static result_t extract_advance_widths(bmfont_t    *bmfont,
 
   for (y = 0; y < imgheight; y += bmfont->gridheight)
   {
-    unsigned int currbits;
-    int          ncurrbits;
-    unsigned int nextbits;
-    int          nnextbits;
-    png_uint_32  x;
-    pixelfmt_x_t adw_px;
+    unsigned int   currbits;
+    int            ncurrbits;
+    unsigned int   nextbits;
+    int            nnextbits;
+    png_uint_32    x;
+    pixelfmt_any_t adw_px;
 
     /* maintain two words, a current and a pending so we've always got enough
      * bits ready */
@@ -240,14 +240,14 @@ static result_t extract_glyphs(bmfont_t    *bmfont,
 
   for (y = 0; y < imgheight; y++)
   {
-    unsigned int currbits;
-    int          ncurrbits;
-    unsigned int nextbits;
-    int          nnextbits;
-    int          rowoffset;
-    int          lineoffset;
-    png_uint_32  x;
-    pixelfmt_x_t glyph_px;
+    unsigned int   currbits;
+    int            ncurrbits;
+    unsigned int   nextbits;
+    int            nnextbits;
+    int            rowoffset;
+    int            lineoffset;
+    png_uint_32    x;
+    pixelfmt_any_t glyph_px;
 
     /* skip those rows that contain advance widths */
     if ((y % bmfont->gridheight) == 0)
@@ -378,13 +378,13 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
   info_ptr = png_create_info_struct(png_ptr);
   if (info_ptr == NULL)
   {
-    rc = result_BAD_ARG;
+    rc = result_OOM;
     goto cleanup;
   }
 
   if (setjmp(png_jmpbuf(png_ptr)))
   {
-    rc = result_BAD_ARG;
+    rc = result_OOM;
     goto cleanup;
   }
 
@@ -564,29 +564,29 @@ result_t bmfont_measure(bmfont_t       *bmfont,
 
 /* bmfont_drawchar_<pixel format>_<width>w_<o/t> */
 
-typedef void bmfont_drawchar_t(void        *vscreen,
-                               const void  *vglyph,
-                               int          top_skip,
-                               int          right_skip,
-                               int          shift,
-                               int          stride,
-                               int          charwidth,
-                               int          charheight,
-                               pixelfmt_x_t fg,
-                               pixelfmt_x_t bg);
+typedef void bmfont_drawchar_t(void          *vscreen,
+                               const void    *vglyph,
+                               int            top_skip,
+                               int            right_skip,
+                               int            shift,
+                               int            stride,
+                               int            charwidth,
+                               int            charheight,
+                               pixelfmt_any_t fg,
+                               pixelfmt_any_t bg);
 
 /* -------------------------------------------------------------------------- */
 
-static void bmfont_drawchar_p4_1w_o(void        *vscreen,
-                                    const void  *vglyph,
-                                    int          top_skip,
-                                    int          right_skip,
-                                    int          shift,
-                                    int          rowbytes,
-                                    int          charwidth,
-                                    int          charheight,
-                                    pixelfmt_x_t fg,
-                                    pixelfmt_x_t bg)
+static void bmfont_drawchar_p4_1w_o(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
 {
   unsigned char       *scr = vscreen;
   const unsigned char *gly = vglyph;
@@ -644,16 +644,16 @@ static void bmfont_drawchar_p4_1w_o(void        *vscreen,
   }
 }
 
-static void bmfont_drawchar_p4_1w_t(void        *vscreen,
-                                    const void  *vglyph,
-                                    int          top_skip,
-                                    int          right_skip,
-                                    int          shift,
-                                    int          rowbytes,
-                                    int          charwidth,
-                                    int          charheight,
-                                    pixelfmt_x_t fg,
-                                    pixelfmt_x_t bg)
+static void bmfont_drawchar_p4_1w_t(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
 {
   unsigned char       *scr = vscreen;
   const unsigned char *gly = vglyph;
@@ -717,16 +717,16 @@ static void bmfont_drawchar_p4_1w_t(void        *vscreen,
   }
 }
 
-static void bmfont_drawchar_p4_2w_o(void        *vscreen,
-                                    const void  *vglyph,
-                                    int          top_skip,
-                                    int          right_skip,
-                                    int          shift,
-                                    int          rowbytes,
-                                    int          charwidth,
-                                    int          charheight,
-                                    pixelfmt_x_t fg,
-                                    pixelfmt_x_t bg)
+static void bmfont_drawchar_p4_2w_o(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
 {
   unsigned char        *scr = vscreen;
   const unsigned short *gly = vglyph;
@@ -791,16 +791,16 @@ static void bmfont_drawchar_p4_2w_o(void        *vscreen,
   }
 }
 
-static void bmfont_drawchar_p4_2w_t(void        *vscreen,
-                                    const void  *vglyph,
-                                    int          top_skip,
-                                    int          right_skip,
-                                    int          shift,
-                                    int          rowbytes,
-                                    int          charwidth,
-                                    int          charheight,
-                                    pixelfmt_x_t fg,
-                                    pixelfmt_x_t bg)
+static void bmfont_drawchar_p4_2w_t(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
 {
   unsigned char        *scr = vscreen;
   const unsigned short *gly = vglyph;
@@ -874,16 +874,16 @@ static void bmfont_drawchar_p4_2w_t(void        *vscreen,
 /* -------------------------------------------------------------------------- */
 
 /* draw a character up to byte wide, opaque */
-static void bmfont_drawchar_any8888_1w_o(void        *vscreen,
-                                         const void  *vglyph,
-                                         int          top_skip,
-                                         int          right_skip,
-                                         int          shift,
-                                         int          rowbytes,
-                                         int          charwidth,
-                                         int          charheight,
-                                         pixelfmt_x_t fg,
-                                         pixelfmt_x_t bg)
+static void bmfont_drawchar_any8888_1w_o(void          *vscreen,
+                                         const void    *vglyph,
+                                         int            top_skip,
+                                         int            right_skip,
+                                         int            shift,
+                                         int            rowbytes,
+                                         int            charwidth,
+                                         int            charheight,
+                                         pixelfmt_any_t fg,
+                                         pixelfmt_any_t bg)
 {
   pixelfmt_bgrx8888_t *scr = vscreen;
   const unsigned char *gly = vglyph;
@@ -916,16 +916,16 @@ static void bmfont_drawchar_any8888_1w_o(void        *vscreen,
 }
 
 /* draw a character up to byte wide, transparent */
-static void bmfont_drawchar_any8888_1w_t(void        *vscreen,
-                                         const void  *vglyph,
-                                         int          top_skip,
-                                         int          right_skip,
-                                         int          shift,
-                                         int          rowbytes,
-                                         int          charwidth,
-                                         int          charheight,
-                                         pixelfmt_x_t fg,
-                                         pixelfmt_x_t bg)
+static void bmfont_drawchar_any8888_1w_t(void          *vscreen,
+                                         const void    *vglyph,
+                                         int            top_skip,
+                                         int            right_skip,
+                                         int            shift,
+                                         int            rowbytes,
+                                         int            charwidth,
+                                         int            charheight,
+                                         pixelfmt_any_t fg,
+                                         pixelfmt_any_t bg)
 {
   pixelfmt_bgrx8888_t *scr = vscreen;
   const unsigned char *gly = vglyph;
@@ -959,16 +959,16 @@ static void bmfont_drawchar_any8888_1w_t(void        *vscreen,
 }
 
 /* draw a character up to two bytes wide, opaque */
-static void bmfont_drawchar_any8888_2w_o(void        *vscreen,
-                                         const void  *vglyph,
-                                         int          top_skip,
-                                         int          right_skip,
-                                         int          shift,
-                                         int          rowbytes,
-                                         int          charwidth,
-                                         int          charheight,
-                                         pixelfmt_x_t fg,
-                                         pixelfmt_x_t bg)
+static void bmfont_drawchar_any8888_2w_o(void          *vscreen,
+                                         const void    *vglyph,
+                                         int            top_skip,
+                                         int            right_skip,
+                                         int            shift,
+                                         int            rowbytes,
+                                         int            charwidth,
+                                         int            charheight,
+                                         pixelfmt_any_t fg,
+                                         pixelfmt_any_t bg)
 {
   pixelfmt_bgrx8888_t  *scr = vscreen;
   const unsigned short *gly = vglyph;
@@ -1009,16 +1009,16 @@ static void bmfont_drawchar_any8888_2w_o(void        *vscreen,
 }
 
 /* draw a character up to two bytes wide, transparent */
-static void bmfont_drawchar_any8888_2w_t(void        *vscreen,
-                                         const void  *vglyph,
-                                         int          top_skip,
-                                         int          right_skip,
-                                         int          shift,
-                                         int          rowbytes,
-                                         int          charwidth,
-                                         int          charheight,
-                                         pixelfmt_x_t fg,
-                                         pixelfmt_x_t bg)
+static void bmfont_drawchar_any8888_2w_t(void          *vscreen,
+                                         const void    *vglyph,
+                                         int            top_skip,
+                                         int            right_skip,
+                                         int            shift,
+                                         int            rowbytes,
+                                         int            charwidth,
+                                         int            charheight,
+                                         pixelfmt_any_t fg,
+                                         pixelfmt_any_t bg)
 {
   pixelfmt_bgrx8888_t  *scr = vscreen;
   const unsigned short *gly = vglyph;
@@ -1129,8 +1129,8 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   int            charheight        = bmfont->charheight;
   int            clippedcharheight = charheight - top_skip - bottom_skip;
   int            glyphbytes        = bmfont->glyphrowbytes * charheight;
-  pixelfmt_x_t   nativefg          = colour_to_pixel(scr->palette, 1 << (1 << log2bpp), fg, scr->format);
-  pixelfmt_x_t   nativebg          = colour_to_pixel(scr->palette, 1 << (1 << log2bpp), bg, scr->format);
+  pixelfmt_any_t nativefg          = colour_to_pixel(scr->palette, 1 << (1 << log2bpp), fg, scr->format);
+  pixelfmt_any_t nativebg          = colour_to_pixel(scr->palette, 1 << (1 << log2bpp), bg, scr->format);
   int            remaining         = scrclip.x1 - clamped_pos_x; /* in pixels */
 
   const int      tracking          = 0; /* note: +ve can break stuff! */

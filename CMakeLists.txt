@@ -79,6 +79,7 @@ set(PUBLIC_HEADERS
     include/geom/layout.h
     include/geom/packer.h
     include/geom/point.h
+    include/io/path.h
     include/io/stream-mem.h
     include/io/stream-mtfcomp.h
     include/io/stream-packbits.h
@@ -200,6 +201,7 @@ set(DATASTRUCT_SOURCES
 
 set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/bitmap.c
+    libraries/framebuf/bitmap/load.c
     libraries/framebuf/bitmap/save.c
     libraries/framebuf/bmfont/bmfont.c
     libraries/framebuf/colour/colour.c
@@ -225,6 +227,7 @@ set(GEOM_SOURCES
     libraries/geom/packer/packer.c)
 
 set(IO_SOURCES
+    libraries/io/path/path.c
     libraries/io/stream/stream-mem.c
     libraries/io/stream/stream-mtfcomp.c
     libraries/io/stream/stream-packbitscomp.c
@@ -375,13 +378,13 @@ else()
         set(PNG_SHARED OFF)
 
         add_subdirectory(${libpng_SOURCE_DIR} ${libpng_BINARY_DIR} EXCLUDE_FROM_ALL)
-    endif() 
+    endif()
 
     include_directories(SYSTEM ${libpng_SOURCE_DIR}/ ${libpng_BINARY_DIR}/)
     include_directories(SYSTEM ${zlib_SOURCE_DIR}/)
 
     target_link_libraries(DPTLib PRIVATE png_static)
-endif()     
+endif()
 
 # Installation
 #
@@ -429,6 +432,7 @@ if(BUILD_TESTS)
         libraries/datastruct/list/test/list-test.c
         libraries/datastruct/ntree/test/ntree-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
+        libraries/framebuf/composite/test/composite-test.c
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
         libraries/io/stream/test/stream-test.c
