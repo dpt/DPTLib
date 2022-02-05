@@ -6,9 +6,6 @@
 #
 # vim: sw=4 ts=8 et
 
-# Notes
-# - Fortify, if wanted, must be supplied to this build.
-
 cmake_minimum_required(VERSION 3.18)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -24,14 +21,14 @@ if(TARGET_RISCOS)
     riscos_set_flags()
 endif()
 
-# If this is enabled then the final binary will need to be linked against
-# Fortify too.
 option(USE_FORTIFY "Use Fortify" OFF)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
 if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
     message(STATUS "DPTLib: Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
+
+add_subdirectory(libraries/fortify)
 
 add_library(DPTLib)
 
@@ -296,6 +293,7 @@ if(TARGET_RISCOS)
 endif()
 
 if(USE_FORTIFY)
+    target_compile_definitions(DPTLib PRIVATE FORTIFY)
     target_link_libraries(DPTLib PUBLIC Fortify)
 endif()
 
