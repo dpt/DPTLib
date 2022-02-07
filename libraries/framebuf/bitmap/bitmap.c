@@ -54,7 +54,7 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
   assert(bm);
 
   log2bpp = pixelfmt_log2bpp(bm->format);
-  px = colour_to_pixel(bm->palette, 1 << (1 << log2bpp), colour, bm->format);
+  px = colour_to_pixel(bm->palette, bm->palette ? 1 << (1 << log2bpp) : 0, colour, bm->format);
 
   switch (log2bpp)
   {
