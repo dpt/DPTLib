@@ -1129,8 +1129,8 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   int            charheight        = bmfont->charheight;
   int            clippedcharheight = charheight - top_skip - bottom_skip;
   int            glyphbytes        = bmfont->glyphrowbytes * charheight;
-  pixelfmt_any_t nativefg          = colour_to_pixel(scr->palette, 1 << (1 << log2bpp), fg, scr->format);
-  pixelfmt_any_t nativebg          = colour_to_pixel(scr->palette, 1 << (1 << log2bpp), bg, scr->format);
+  pixelfmt_any_t nativefg          = colour_to_pixel(scr->palette, scr->palette ? 1 << (1 << log2bpp) : 0, fg, scr->format);
+  pixelfmt_any_t nativebg          = colour_to_pixel(scr->palette, scr->palette ? 1 << (1 << log2bpp) : 0, bg, scr->format);
   int            remaining         = scrclip.x1 - clamped_pos_x; /* in pixels */
 
   const int      tracking          = 0; /* note: +ve can break stuff! */
