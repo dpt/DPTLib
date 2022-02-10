@@ -1164,24 +1164,27 @@ result_t bmfont_draw(bmfont_t      *bmfont,
       glyph = (unsigned char *) bmfont->glyphs + gid * glyphbytes;
 
       int remainingcharwidth = MIN(remaining, advance); /* in pixels */
-      int right_skip         = charwidth - remainingcharwidth;
       int clippedcharwidth   = remainingcharwidth - left_skip;
 
       if (clippedcharwidth > 0)
+      {
+        int right_skip = charwidth - remainingcharwidth;
+
         drawfn(screen, glyph,
                top_skip, right_skip,
                shift, rowbytes,
                clippedcharwidth, clippedcharheight,
                nativefg, nativebg);
+      }
 
-      int pixelsused_bits = (advance - left_skip) << log2bpp;
+      if ((remaining -= clippedcharwidth) <= 0)
+        break; /* stop drawing */
+
+      /* advance the screen pointer */
+      int pixelsused_bits = clippedcharwidth << log2bpp;
       int nbits           = shift + pixelsused_bits;
       screen = (unsigned char *) screen + (nbits >> 3);
       shift  = nbits & 7;
-
-      remaining -= advance;
-      if (remainingcharwidth < advance)
-        break; /* stop drawing */
     }
 
     left_skip = 0;
