@@ -2,7 +2,7 @@
 #
 # DPTLib
 #
-# Copyright (c) David Thomas, 2020-2021
+# Copyright (c) David Thomas, 2020-2022
 #
 # vim: sw=4 ts=8 et
 
@@ -20,6 +20,14 @@ project(DPTLib VERSION 0.3.0 DESCRIPTION "DPT's C Library" LANGUAGES C)
 if(TARGET_RISCOS)
     riscos_set_flags()
 endif()
+
+
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+endif(CCACHE_FOUND)
+
 
 option(USE_FORTIFY "Use Fortify" OFF)
 
