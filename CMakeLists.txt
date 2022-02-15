@@ -335,37 +335,15 @@ else()
                         OUTPUT_QUIET
                         ERROR_QUIET) # because it'll error upon re-run
 
-        # Set vars that libpng's cmakelists will use to get zlib
-        set(ZLIB_INCLUDE_DIR ${zlib_SOURCE_DIR} ${zlib_BINARY_DIR})
-        set(ZLIB_LIBRARY zlibstatic)
-
         # https://stackoverflow.com/questions/37582508/silence-cmp0048-warnings-in-vendored-projects
         set(CMAKE_PROJECT_INCLUDE_BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/enable_cmp0048.cmake")
         add_subdirectory(${zlib_SOURCE_DIR} ${zlib_BINARY_DIR} EXCLUDE_FROM_ALL)
         unset(CMAKE_PROJECT_INCLUDE_BEFORE)
+
+        # Set vars that libpng's CMakeLists will use to get zlib (as FindZLIB would set)
+        set(ZLIB_INCLUDE_DIR ${zlib_SOURCE_DIR} ${zlib_BINARY_DIR})
+        set(ZLIB_LIBRARY ${zlib_BINARY_DIR}/libz.a)
     endif()
-
-    install(TARGETS zlibstatic EXPORT zlibstatic-targets
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT zlibstatic
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT zlibstatic
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT zlibstatic
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ZLIB
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ZLIB
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ZLIB)
-
-    export(TARGETS zlibstatic
-           NAMESPACE ZLIB::
-           FILE ${CMAKE_INSTALL_PREFIX}/zlibstatic-targets.cmake)
-
-    install(EXPORT zlibstatic-targets
-            DESTINATION ${CMAKE_INSTALL_PREFIX}
-            NAMESPACE ZLIB::
-            COMPONENT zlibstatic-export)
-
-    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_PREFIX}/
-            DESTINATION ${CMAKE_INSTALL_PREFIX}
-            COMPONENT zlibstatic-export
-            PATTERN zlibstatic-targets.cmake EXCLUDE)
 
     FetchContent_GetProperties(libpng)
     if(NOT libpng_POPULATED)
