@@ -215,6 +215,8 @@ static result_t extract_glyphs(bmfont_t    *bmfont,
   int            sizeofrow;
   png_uint_32    y;
 
+  NOT_USED(rowbytes);
+
   assert(bmfont);
   assert(voidpixels);
   assert(imgwidth > 0);
