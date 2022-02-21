@@ -1,0 +1,10 @@
+# pngusr-ro.dfa
+
+everything = off
+
+option READ_EXPAND on
+option READ_FILLER on
+option READ_STRIP_16_TO_8 on
+option SEQUENTIAL_READ on
+option SETJMP on
+option STDIO on

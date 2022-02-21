@@ -30,6 +30,7 @@ endif(CCACHE_FOUND)
 
 
 option(USE_FORTIFY "Use Fortify" OFF)
+option(DPTLIB_NO_PNG_WRITE "Remove libpng write support" OFF)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
 if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
@@ -305,6 +306,10 @@ if(USE_FORTIFY)
     target_link_libraries(DPTLib PUBLIC Fortify)
 endif()
 
+if(DPTLIB_NO_PNG_WRITE)
+    target_compile_definitions(DPTLib PRIVATE DPTLIB_NO_PNG_WRITE)
+endif()
+
 if(NOT TARGET_RISCOS)
     ## Where PkgConfig is available, use it
     find_package(PkgConfig REQUIRED)
@@ -356,13 +361,18 @@ else()
                         OUTPUT_QUIET
                         ERROR_QUIET) # because it'll error upon re-run
 
-        configure_file(${libpng_SOURCE_DIR}/scripts/pnglibconf.h.prebuilt ${libpng_SOURCE_DIR}/pnglibconf.h COPYONLY)
-
         cmake_policy(SET CMP0077 NEW)
         set(PNG_SHARED OFF)
 
         add_subdirectory(${libpng_SOURCE_DIR} ${libpng_BINARY_DIR} EXCLUDE_FROM_ALL)
     endif()
+
+    if(DPTLIB_NO_PNG_WRITE)
+        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/pngusr-ro.dfa ${CMAKE_CURRENT_BINARY_DIR}/pngusr.dfa COPYONLY)
+    else()
+        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/pngusr-rw.dfa ${CMAKE_CURRENT_BINARY_DIR}/pngusr.dfa COPYONLY)
+    endif()
+    set(DFA_XTRA ${CMAKE_CURRENT_SOURCE_DIR}/pngusr.dfa)
 
     include_directories(SYSTEM ${libpng_SOURCE_DIR}/ ${libpng_BINARY_DIR}/)
     include_directories(SYSTEM ${zlib_SOURCE_DIR}/)
