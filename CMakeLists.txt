@@ -372,7 +372,7 @@ else()
     else()
         configure_file(${CMAKE_CURRENT_SOURCE_DIR}/pngusr-rw.dfa ${CMAKE_CURRENT_BINARY_DIR}/pngusr.dfa COPYONLY)
     endif()
-    set(DFA_XTRA ${CMAKE_CURRENT_SOURCE_DIR}/pngusr.dfa)
+    set(DFA_XTRA ${CMAKE_CURRENT_BINARY_DIR}/pngusr.dfa)
 
     include_directories(SYSTEM ${libpng_SOURCE_DIR}/ ${libpng_BINARY_DIR}/)
     include_directories(SYSTEM ${zlib_SOURCE_DIR}/)
