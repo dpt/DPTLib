@@ -331,10 +331,11 @@ else()
 
     FetchContent_GetProperties(zlib)
     if(NOT zlib_POPULATED)
+        message(STATUS "zlib: fetching and patching...")
+
         FetchContent_Populate(zlib)
 
         # Patch CMake minimum to 3.0.0
-        message(STATUS "patching zlib...")
         execute_process(COMMAND           ${GIT_EXECUTABLE} apply ${CMAKE_CURRENT_LIST_DIR}/cmake/zlib.patch
                         WORKING_DIRECTORY ${zlib_SOURCE_DIR}
                         OUTPUT_QUIET
@@ -352,10 +353,11 @@ else()
 
     FetchContent_GetProperties(libpng)
     if(NOT libpng_POPULATED)
+        message(STATUS "libpng: fetching and patching...")
+
         FetchContent_Populate(libpng)
 
         # Patch libm find_library problem
-        message(STATUS "patching libpng...")
         execute_process(COMMAND           ${GIT_EXECUTABLE} apply ${CMAKE_CURRENT_LIST_DIR}/cmake/libpng-libm-unix.patch
                         WORKING_DIRECTORY ${libpng_SOURCE_DIR}
                         OUTPUT_QUIET
@@ -368,11 +370,14 @@ else()
     endif()
 
     if(DPTLIB_NO_PNG_WRITE)
-        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/pngusr-ro.dfa ${CMAKE_CURRENT_BINARY_DIR}/pngusr.dfa COPYONLY)
+        message(STATUS "libpng: configuring for read only")
+        set(PNGUSR pngusr-ro.dfa)
     else()
-        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/pngusr-rw.dfa ${CMAKE_CURRENT_BINARY_DIR}/pngusr.dfa COPYONLY)
+        message(STATUS "libpng: configuring for read-write")
+        set(PNGUSR pngusr-rw.dfa)
     endif()
-    set(DFA_XTRA ${CMAKE_CURRENT_BINARY_DIR}/pngusr.dfa)
+    set(DFA_XTRA ${libpng_BINARY_DIR}/pngusr-dptlib.dfa CACHE FILEPATH "File containing extra configuration settings" FORCE)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${PNGUSR} ${DFA_XTRA} COPYONLY)
 
     include_directories(SYSTEM ${libpng_SOURCE_DIR}/ ${libpng_BINARY_DIR}/)
     include_directories(SYSTEM ${zlib_SOURCE_DIR}/)
