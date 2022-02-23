@@ -30,7 +30,7 @@ endif(CCACHE_FOUND)
 
 
 option(USE_FORTIFY "Use Fortify" OFF)
-option(DPTLIB_NO_PNG_WRITE "Remove libpng write support" OFF)
+option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
 if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
@@ -306,8 +306,8 @@ if(USE_FORTIFY)
     target_link_libraries(DPTLib PUBLIC Fortify)
 endif()
 
-if(DPTLIB_NO_PNG_WRITE)
-    target_compile_definitions(DPTLib PRIVATE DPTLIB_NO_PNG_WRITE)
+if(DPTLIB_IMAGES_READ_ONLY)
+    target_compile_definitions(DPTLib PRIVATE DPTLIB_IMAGES_READ_ONLY)
 endif()
 
 if(NOT TARGET_RISCOS)
@@ -369,7 +369,7 @@ else()
         add_subdirectory(${libpng_SOURCE_DIR} ${libpng_BINARY_DIR} EXCLUDE_FROM_ALL)
     endif()
 
-    if(DPTLIB_NO_PNG_WRITE)
+    if(DPTLIB_IMAGES_READ_ONLY)
         message(STATUS "libpng: configuring for read only")
         set(PNGUSR pngusr-ro.dfa)
     else()
