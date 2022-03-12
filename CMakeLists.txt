@@ -382,7 +382,7 @@ else()
     include_directories(SYSTEM ${libpng_SOURCE_DIR}/ ${libpng_BINARY_DIR}/)
     include_directories(SYSTEM ${zlib_SOURCE_DIR}/)
 
-    target_link_libraries(DPTLib PRIVATE png_static)
+    target_link_libraries(DPTLib PUBLIC zlibstatic png_static)
 endif()
 
 # Installation
