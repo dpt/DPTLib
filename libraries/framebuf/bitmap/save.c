@@ -10,7 +10,7 @@
 
 result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
 {
-#ifdef DPTLIB_NO_PNG_WRITE
+#ifdef DPTLIB_IMAGES_READ_ONLY
   return result_NOT_SUPPORTED;
 #else
   result_t             rc;
@@ -136,7 +136,7 @@ cleanup:
   free(outrow);
 
   return rc;
-#endif /* DPTLIB_NO_PNG_WRITE */
+#endif /* DPTLIB_IMAGES_READ_ONLY */
 }
 
 /* vim: set ts=8 sts=2 sw=2 et: */
