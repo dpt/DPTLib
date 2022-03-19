@@ -364,7 +364,12 @@ else()
                         ERROR_QUIET) # because it'll error upon re-run
 
         cmake_policy(SET CMP0077 NEW)
-        option(PNG_SHARED "Build shared lib" OFF)
+
+        set(PNG_SHARED OFF CACHE BOOL "" FORCE)
+        set(PNG_STATIC ON CACHE BOOL "" FORCE)
+        set(PNG_EXECUTABLES OFF CACHE BOOL "" FORCE) # we only want lib
+        set(PNG_TESTS OFF CACHE BOOL "" FORCE) # we only want lib
+        set(SKIP_INSTALL_ALL OFF CACHE BOOL "" FORCE) # we only want lib
 
         add_subdirectory(${libpng_SOURCE_DIR} ${libpng_BINARY_DIR} EXCLUDE_FROM_ALL)
     endif()
