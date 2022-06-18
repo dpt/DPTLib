@@ -1,14 +1,18 @@
 DPTLib
 ======
+version 0.4.0
 
 [![Build status](https://github.com/dpt/DPTLib/actions/workflows/ci.yml/badge.svg)](https://github.com/dpt/DPTLib/actions)
 
-version 0.4.0
+© David Thomas, 2013-2022
 
-DPTLib is my platform independent C library. It contains a wide variety of functions, formed of various portable C code that I've written for PrivateEye, MotionMasks and other projects. Please consider it a permanent work in progress.
+Overview
+--------
 
-Overview of Modules
--------------------
+DPTLib is my platform independent C library. It contains a wide variety of functions, formed of various portable C code that I've written for [PrivateEye](https://github.com/dpt/PrivateEye), [MotionMasks](https://github.com/dpt/MotionMasks) and other projects. Please consider it a permanent work in progress.
+
+Modules
+-------
 
 ### Base
 
@@ -79,8 +83,8 @@ Overview of Modules
  * [`utils/pack.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/pack.h) — structure packing and unpacking helpers
  * [`utils/primes.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/primes.h) — cache of prime numbers
 
-Building DPTLib
----------------
+Building
+--------
 
 Use CMake, e.g.:
 ```
@@ -89,3 +93,17 @@ cd build
 cmake ..
 make -j4
 ```
+
+Testing
+-------
+
+Enable `BUILD_TESTS`, e.g. using `ccmake` and build. Then invoke DPTLibTest like:
+```
+./DPTLibTest -resources <path to DPTLib>
+```
+
+It'll spew a load of test output. If successful you'll see:
+```
+++ Tests completed in 0.9909s: 18 of 18 tests passed.
+```
+
