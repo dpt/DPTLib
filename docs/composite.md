@@ -25,11 +25,11 @@ Rules
 * `composite_RULE_SRC`
   * [Sa, Sc]
 * `composite_RULE_DST`
-  * [Da, Dc]G
+  * [Da, Dc]
 * `composite_RULE_SRC_OVER`
-  * [Sa + Da·(1 – Sa), Sc + Dc·(1 – Sa)
+  * [Sa + Da·(1 – Sa), Sc + Dc·(1 – Sa)]
 * `composite_RULE_DST_OVER`
-  * [Da + Sa·(1 – Da), Dc + Sc·(1 – Da)
+  * [Da + Sa·(1 – Da), Dc + Sc·(1 – Da)]
 * `composite_RULE_SRC_IN`
   * [Sa·Da, Sc·Da]
 * `composite_RULE_DST_IN`
