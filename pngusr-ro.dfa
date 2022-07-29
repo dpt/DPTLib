@@ -2,6 +2,7 @@
 
 everything = off
 
+option ERROR_TEXT on
 option READ_EXPAND on
 option READ_FILLER on
 option READ_STRIP_16_TO_8 on
