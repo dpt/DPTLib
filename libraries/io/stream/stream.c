@@ -1,5 +1,6 @@
 /* stream.c -- stream system support functions */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -27,10 +28,27 @@ result_t stream_seek(stream_t *s, stream_size_t pos)
   return s->seek(s, pos);
 }
 
+int stream_get(stream_t *s)
+{
+  if (stream_remaining(s) < 1)
+    if (s->fill(s) == 0)
+      return EOF;
+
+  return *s->buf++;
+}
+
+stream_size_t stream_fill(stream_t *s)
+{
+  if (!s->fill)
+    return 0;
+
+  return s->fill(s);
+}
+
 stream_size_t stream_length(stream_t *s)
 {
   if (!s->length)
-    return -1; // FIXME: Returned as size_t
+    return 0;
 
   return s->length(s);
 }

@@ -24,7 +24,7 @@
  * more of the time, as we'd be able to suspend and resume within the
  * repetition and literal generation steps. */
 
-typedef struct stream_packbits_decomp
+typedef struct stream_packbitsdecomp
 {
   stream_t      base;
   stream_t     *input;
@@ -35,19 +35,20 @@ typedef struct stream_packbits_decomp
                                   * PackBits algorithm can generate, i.e. at
                                   * least 128 bytes. */
 }
-stream_packbits_decomp_t;
+stream_packbitsdecomp_t;
 
-static int stream_packbits_decomp_get(stream_t *s)
+static stream_size_t stream_packbitsdecomp_fill(stream_t *s)
 {
-  stream_packbits_decomp_t *sm = (stream_packbits_decomp_t *) s;
-  unsigned char            *p;
-  unsigned char            *end;
+  stream_packbitsdecomp_t *sm = (stream_packbitsdecomp_t *) s;
+  unsigned char           *orig_p;
+  unsigned char           *p;
+  unsigned char           *end;
 
   /* are we only called when buffer empty? */
   assert(sm->base.buf == sm->base.end);
 
-  p   = sm->buffer;
-  end = sm->buffer + sm->bufsz;
+  orig_p = p = (unsigned char *) sm->base.buf; // cur buf ptr
+  end = sm->buffer + sm->bufsz; // abs buf end
 
   for (;;)
   {
@@ -65,7 +66,7 @@ static int stream_packbits_decomp_get(stream_t *s)
        * N = -(N - 256) + 1; when N is unsigned, since N > 128
        * N = -N + 257; */
 
-      DBUG(("stream_packbits_decomp_get: decomp run: %d -> %d\n", N, -N + 257));
+      DBUG(("stream_packbitsdecomp_fill: decomp run: %d -> %d\n", N, -N + 257));
 
       N = -N + 257;
 
@@ -88,7 +89,7 @@ static int stream_packbits_decomp_get(stream_t *s)
     {
       N++; /* 0-127 on input means 1-128 bytes out */
 
-      DBUG(("stream_packbits_decomp_get: decomp literal: %d\n", N));
+      DBUG(("stream_packbitsdecomp_fill: decomp literal: %d\n", N));
 
       /* ensure we have enough buffer space */
 
@@ -99,7 +100,6 @@ static int stream_packbits_decomp_get(stream_t *s)
       }
 
       /* copy literal bytes across to output */
-
 #if 0
       while (N--)
       {
@@ -129,8 +129,8 @@ static int stream_packbits_decomp_get(stream_t *s)
           DBUG(("*** truncated ***\n"));
           goto exit; /* likely truncated data */
         }
-        avail = MIN(avail, (stream_size_t) N);
 
+        avail = MIN(avail, (stream_size_t) N);
         if (avail == 1)
         {
           *p++ = *sm->input->buf++;
@@ -150,28 +150,29 @@ static int stream_packbits_decomp_get(stream_t *s)
     }
     else
     {
-      DBUG(("stream_packbits_decomp_get: *** 128 encountered! ***"));
+      DBUG(("stream_packbitsdecomp_fill: *** 128 encountered! ***"));
       /* ignore the 128 case */
     }
   }
 
 exit:
 
-  if (p == sm->buffer)
+  if (p == orig_p)
   {
-    DBUG(("stream_packbits_decomp_get: no bytes generated in decomp\n"));
-    return EOF; /* EOF at start */
+    DBUG(("stream_packbitsdecomp_fill: no bytes generated in decomp"));
+    // EOF was returned here in older code...
+  }
+  else
+  {
+    sm->base.end = p;
   }
 
-  sm->base.buf = sm->buffer;
-  sm->base.end = p;
-
-  return *sm->base.buf++;
+  return stream_remaining(s);
 }
 
 result_t stream_packbitsdecomp_create(stream_t *input, int bufsz, stream_t **s)
 {
-  stream_packbits_decomp_t *sp;
+  stream_packbitsdecomp_t *sp;
 
   if (bufsz <= 0)
     bufsz = 128;
@@ -181,7 +182,7 @@ result_t stream_packbitsdecomp_create(stream_t *input, int bufsz, stream_t **s)
 
   assert(input);
 
-  sp = malloc(offsetof(stream_packbits_decomp_t, buffer) + bufsz);
+  sp = malloc(offsetof(stream_packbitsdecomp_t, buffer) + bufsz);
   if (!sp)
     return result_OOM;
 
@@ -192,7 +193,8 @@ result_t stream_packbitsdecomp_create(stream_t *input, int bufsz, stream_t **s)
 
   sp->base.op      = NULL;
   sp->base.seek    = NULL; /* can't seek */
-  sp->base.get     = stream_packbits_decomp_get;
+  sp->base.get     = stream_get;
+  sp->base.fill    = stream_packbitsdecomp_fill;
   sp->base.length  = NULL; /* unknown length */
   sp->base.destroy = NULL;
 
