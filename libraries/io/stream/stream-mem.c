@@ -45,6 +45,11 @@ static int stream_mem_get(stream_t *s)
   return EOF;
 }
 
+static stream_size_t stream_mem_fill(stream_t *s)
+{
+  return stream_remaining(s); /* no refill */
+}
+
 static stream_size_t stream_mem_length(stream_t *s)
 {
   stream_mem_t *sm = (stream_mem_t *) s;
@@ -72,6 +77,7 @@ result_t stream_mem_create(const unsigned char *block,
   sm->base.op      = NULL;
   sm->base.seek    = stream_mem_seek;
   sm->base.get     = stream_mem_get;
+  sm->base.fill    = stream_mem_fill;
   sm->base.length  = stream_mem_length;
   sm->base.destroy = NULL;
 

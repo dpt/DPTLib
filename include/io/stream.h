@@ -58,16 +58,17 @@ typedef result_t      stream_op_t(stream_t       *s,
                                   void           *opaque);
 typedef result_t      stream_seek_t(stream_t *s, stream_size_t pos);
 typedef int           stream_get_t(stream_t *s);
-typedef stream_size_t stream_fill_t(stream_t *s, stream_size_t need);
+typedef stream_size_t stream_fill_t(stream_t *s);
 typedef stream_size_t stream_length_t(stream_t *s);
 typedef void          stream_destroy_t(stream_t *doomed);
 
+/* This is exposed for efficiency - don't use these directly! */
 struct stream
 {
   const unsigned char *buf;     /**< Current buffer pointer. */
   const unsigned char *end;     /**< End of buffer pointer (exclusive - points to the char after buffer end). */
 
-  result_t             last;    /**< Last error. Set when we return EOF? */
+  result_t             last;    /**< Last error. Set whenever we return `stream_EOF`? */
 
   stream_op_t         *op;
   stream_seek_t       *seek;
@@ -78,31 +79,29 @@ struct stream
 };
 
 /*
- * Main entry points
+ * User entry points
  */
 
 stream_op_t      stream_op;
 stream_seek_t    stream_seek;
+stream_get_t     stream_get;  /**< `stream_getc()` is the inline alternative */
+stream_fill_t    stream_fill;
 stream_length_t  stream_length;
 stream_destroy_t stream_destroy;
 
-/* Get a byte from a stream. Returns EOF (not stream_EOF) at EOF. */
+/** Get a byte from a stream. Returns `EOF` (not `stream_EOF`) at EOF. */
 #define stream_getc(s) (((s)->buf != (s)->end) ? *(s)->buf++ : (s)->get(s))
 
-/* Put back the last byte gotten. */
+/** Put back the last byte gotten. */
 #define stream_ungetc(s) --(s)->buf
 
-/* Returns the number of bytes remaining in the current buffer. */
+/** Returns the number of bytes remaining in the current buffer. */
 #define stream_remaining(s) ((stream_size_t) ((s)->end - (s)->buf))
 
-/* Returns the number of bytes remaining in the current buffer.
+/** Returns the number of bytes remaining in the current buffer.
  * Will attempt to fill the buffer if it's found to be empty. */
 #define stream_remaining_and_fill(s) \
-  (stream_remaining(s) != 0 ? stream_remaining(s) : (s)->fill(s, 1))
-
-/* As above but attempts to make 'need' bytes available. */
-#define stream_remaining_need_and_fill(s, need) \
-  (stream_remaining(s) >= (need) ? stream_remaining(s) : (s)->fill(s, need))
+  (stream_remaining(s) != 0 ? stream_remaining(s) : (s)->fill(s))
 
 #ifdef __cplusplus
 }

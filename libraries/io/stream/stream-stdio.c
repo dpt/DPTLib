@@ -55,15 +55,14 @@ static int stream_stdio_get(stream_t *s)
   return *sf->base.buf++;
 }
 
-/* ensure we have at least 'need' bytes in the buffer. return 0, or EOF. */
-static stream_size_t stream_stdio_fill(stream_t *s, stream_size_t need)
+static stream_size_t stream_stdio_fill(stream_t *s)
 {
   stream_file_t *sf        = (stream_file_t *) s;
   size_t         remaining = stream_remaining(s);
   size_t         read;
 
-  if (remaining >= need)
-    return remaining; /* have enough bytes already */
+  if (remaining >= sf->bufsz)
+    return remaining; /* buffer already full */
 
   /* shift any remaining bytes to the start of the buffer */
   if (remaining)
