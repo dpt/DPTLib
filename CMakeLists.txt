@@ -227,6 +227,7 @@ set(GEOM_SOURCES
     libraries/geom/box/reset.c
     libraries/geom/box/round.c
     libraries/geom/box/round4.c
+    libraries/geom/box/translated.c
     libraries/geom/box/union.c
     libraries/geom/layout/layout.c
     libraries/geom/packer/impl.h
@@ -438,6 +439,7 @@ if(BUILD_TESTS)
         libraries/datastruct/ntree/test/ntree-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/composite/test/composite-test.c
+        libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
         libraries/io/stream/test/stream-test.c

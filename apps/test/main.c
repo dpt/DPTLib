@@ -49,6 +49,7 @@ static const test_t tests[] =
   { "bmfont",     bmfont_test     },
   { "composite",  composite_test  },
 
+  { "box",        box_test        },
   { "layout",     layout_test     },
   { "packer",     packer_test     },
 
