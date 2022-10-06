@@ -6,6 +6,6 @@
 
 int box_contains_point(const box_t *box, int x, int y)
 {
-  return x >= box->x0 && x <= box->x1 &&
-         y >= box->y0 && y <= box->y1;
+  return x >= box->x0 && x < box->x1 &&
+         y >= box->y0 && y < box->y1;
 }

@@ -27,7 +27,8 @@ extern testfn_t bmfont_test,
                 composite_test;
 
 /* geom */
-extern testfn_t layout_test,
+extern testfn_t box_test,
+                layout_test,
                 packer_test;
 
 /* io */
