@@ -1,6 +1,8 @@
 DPTLib > framebuf > bmfont
 ==========================
-"bmfont" is a sub-library of DPTLib for drawing proportional bitmap fonts. It reads font definitions from PNG files which have the glyphs laid out in a grid with extra lines inserted that define the advance widths.
+"bmfont" is a sub-library of DPTLib for drawing proportional bitmap fonts. It reads font definitions from PNG files which have the glyphs laid out in a grid with extra lines inserted that define the advance widths, like so:
+
+![Henry Fonta](../resources/bmfonts/henry-font.png)
 
 It can handle 4bpp and 32bpp format screens at the time of writing.
 
