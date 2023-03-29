@@ -38,7 +38,7 @@ Modules
  * [`datastruct/bitvec.h`](https://github.com/dpt/DPTLib/blob/master/include/datastruct/bitvec.h) — flexible arrays of bits
  * [`datastruct/cache.h`](https://github.com/dpt/DPTLib/blob/master/include/datastruct/cache.h) — generic single-block cache
  * [`datastruct/hash.h`](https://github.com/dpt/DPTLib/blob/master/include/datastruct/hash.h) — associative arrays
- * [`datastruct/hlist.h`](https://github.com/dpt/DPTLib/blob/master/include/datastruct/hlist.h) — "Hanson" linked list library - from the book [C Interfaces and Implementations](https://sites.google.com/site/cinterfacesimplementations/)
+ * [`datastruct/hlist.h`](https://github.com/dpt/DPTLib/blob/master/include/datastruct/hlist.h) — "Hanson" linked list library - from the book [C Interfaces and Implementations](https://github.com/drh/cii/)
  * [`datastruct/list.h`](https://github.com/dpt/DPTLib/blob/master/include/datastruct/list.h) — linked lists
  * [`datastruct/ntree.h`](https://github.com/dpt/DPTLib/blob/master/include/datastruct/ntree.h) — n-ary trees
  * [`datastruct/vector.h`](https://github.com/dpt/DPTLib/blob/master/include/datastruct/vector.h) — flexible arrays
