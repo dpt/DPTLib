@@ -194,7 +194,7 @@ static result_t test_compressors(void)
 
   return rc;
 
-  
+
 Failure:
   return result_TEST_FAILED;
 }

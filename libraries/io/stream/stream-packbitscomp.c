@@ -71,7 +71,7 @@ static stream_size_t stream_packbitscomp_fill(stream_t *s)
 
   orig_p = p = (unsigned char *) sm->base.buf; // cur buf ptr
   end = sm->buffer + sm->bufsz; // abs buf end
-  
+
   if (p == end)
     return stream_remaining(s); // already full
 

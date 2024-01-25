@@ -139,9 +139,9 @@ int box_could_hold(const box_t *b, int w, int h);
 /**
  * Translates box "b" by (x,y) producing new box "t".
  *
- * \param[in] b	The box to translate.
- * \param[in] x	The amount to translate by horizontally.
- * \param[in] y	The amount to translate by vertically.
+ * \param[in] b The box to translate.
+ * \param[in] x The amount to translate by horizontally.
+ * \param[in] y The amount to translate by vertically.
  * \param[in] t The new box.
  */
 void box_translated(const box_t *b, int x, int y, box_t *t);
