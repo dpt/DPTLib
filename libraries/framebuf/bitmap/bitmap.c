@@ -47,14 +47,17 @@ result_t bitmap_init(bitmap_t       *bm,
 
 void bitmap_clear(bitmap_t *bm, colour_t colour)
 {
-  int          log2bpp;
-  unsigned int px;
-  int          x,y;
+  int            log2bpp;
+  pixelfmt_any_t px;
+  int            x,y;
 
   assert(bm);
 
   log2bpp = pixelfmt_log2bpp(bm->format);
-  px = colour_to_pixel(bm->palette, bm->palette ? 1 << (1 << log2bpp) : 0, colour, bm->format);
+  px = colour_to_pixel(bm->palette,
+                       bm->palette ? 1 << (1 << log2bpp) : 0,
+                       colour,
+                       bm->format);
 
   switch (log2bpp)
   {
@@ -75,21 +78,23 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
   case 5: /* 32bpp - pixels are ints */
   {
     /* if all bytes of 'px' are the same, use memset() */
-    int tmp1 = px ^ (px >> 16);
-    int tmp2 = tmp1 ^ (tmp1 >> 8);
-    if ((tmp2 & 0xFF) == 0)
+    pixelfmt_any_t tmp1 = px ^ (px >> 16);
+    pixelfmt_any_t tmp2 = tmp1 ^ (tmp1 >> 8);
+    if (tmp2 == 0)
     {
       memset(bm->base, px, bm->rowbytes * bm->height);
     }
     else
     {
-      unsigned int *pixels;
+      unsigned int *pixels; // add pixelfmt_xxxx_t ?
 
       pixels = bm->base;
       for (y = 0; y < bm->height; y++)
+      {
         for (x = 0; x < bm->width; x++)
           *pixels++ = px;
-        // TODO: pixels += bm->rowbytes / sizeof(*pixels) - bm->width;  cope with gaps etc.
+        pixels += bm->rowbytes / sizeof(*pixels) - bm->width;
+      }
     }
   }
     break;
