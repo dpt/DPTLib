@@ -564,7 +564,8 @@ result_t bmfont_measure(bmfont_t       *bmfont,
 
 /* -------------------------------------------------------------------------- */
 
-/* bmfont_drawchar_<pixel format>_<width>w_<o/t> */
+/* bmfont_drawchar_<pixel format>_<width>w_<o/t>
+ * where width is in bytes and o => opaque, t => transparent */
 
 typedef void bmfont_drawchar_t(void          *vscreen,
                                const void    *vglyph,
