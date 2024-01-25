@@ -1,12 +1,11 @@
-DPTLib > framebuf > composite
-=============================
+[DPTLib](https://github.com/dpt/DPTLib) > framebuf > composite
+==============================================================
 "composite" is a sub-library of DPTLib for performing [Porter-Duff bitmap compositing](https://keithp.com/~keithp/porterduff/p253-porter.pdf).
 
 The code is written to make use of degenerate cases where pixels are fully transparent or fully opaque.
 
 Compositing
 -----------
-
 Given input source `src` and destination `dst` bitmaps every pixel is composited according to the chosen `rule` and written back to `dst`.
 
 The bitmaps given must have alpha channels: `pixelfmt_rgba8888` and `pixelfmt_bgra8888` formats are currently supported.
@@ -19,7 +18,6 @@ result_t composite(composite_rule_t rule,
 
 Rules
 -----
-
 * `composite_RULE_CLEAR`
   * [0, 0]
 * `composite_RULE_SRC`
