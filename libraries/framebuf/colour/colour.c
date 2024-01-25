@@ -103,7 +103,7 @@ pixelfmt_any_t colour_to_pixel(const colour_t *palette,
     g = PIXELFMT_xGxx8888(required.primary);
     b = PIXELFMT_xxBx8888(required.primary);
     a = (fmt == pixelfmt_bgra8888) ? PIXELFMT_xxxA8888(required.primary) : PIXELFMT_OPAQUE;
-    return (a << 24) | (r << 16) | (g << 8) | (b << 0); // need pixelfmt.h defs
+    return PIXELFMT_MAKE_BGRA8888(r, g, b, a);
 
   default:
     assert("Unimplemented pixel format" == NULL);
