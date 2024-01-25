@@ -1,5 +1,5 @@
-DPTLib > io > stream
-====================
+[DPTLib](https://github.com/dpt/DPTLib) > io > stream
+=====================================================
 "stream" is a sub-library of DPTLib for creating data sources and transforms.
 
 The core type `stream_t` is an interface which can be used to wrap, or create, sources of bytes. The interface is primarily byte oriented but block operations are supported too. Byte access is efficiently implemented as a macro.
