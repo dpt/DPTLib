@@ -27,6 +27,34 @@ void screen_init(screen_t  *scr,
 
 void screen_for_bitmap(screen_t *scr, const bitmap_t *bm);
 
-box_t screen_get_clip(const screen_t *scr);
+/* Returns if clip is valid. */
+int screen_get_clip(const screen_t *scr, box_t *clip);
+
+void screen_draw_pixel(screen_t *scr,
+                       int x, int y,
+                       colour_t colour);
+
+/// Draws a solid rectangle.
+/// - Parameters:
+///   - scr: Screen to draw upon.
+///   - x: X coordinate of leftmost point of rectangle.
+///   - y: Y coordinate of topmost point of rectangle.
+///   - width: Width of rectangle.
+///   - height: Height of rectangle.
+///   - colour: Colour of rectangle.
+void screen_draw_rect(screen_t *scr,
+                      int x, int y,
+                      int width, int height,
+                      colour_t colour);
+
+/// Special case of above.
+void screen_draw_square(screen_t *scr,
+                        int x, int y,
+                        int size,
+                        colour_t colour);
+
+void screen_draw_line(screen_t *scr,
+                      int x0, int y0, int x1, int y1,
+                      colour_t colour);
 
 #endif /* FRAMEBUF_SCREEN_H */

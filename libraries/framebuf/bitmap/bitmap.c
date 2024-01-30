@@ -78,15 +78,15 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
   case 5: /* 32bpp - pixels are ints */
   {
     /* if all bytes of 'px' are the same, use memset() */
-    pixelfmt_any_t tmp1 = px ^ (px >> 16);
-    pixelfmt_any_t tmp2 = tmp1 ^ (tmp1 >> 8);
+    pixelfmt_any32_t tmp1 = px ^ (px >> 16);
+    pixelfmt_any32_t tmp2 = tmp1 ^ (tmp1 >> 8);
     if (tmp2 == 0)
     {
       memset(bm->base, px, bm->rowbytes * bm->height);
     }
     else
     {
-      unsigned int *pixels; // add pixelfmt_xxxx_t ?
+      pixelfmt_any32_t *pixels;
 
       pixels = bm->base;
       for (y = 0; y < bm->height; y++)

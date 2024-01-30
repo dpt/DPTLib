@@ -6,7 +6,7 @@
 
 void box_reset(box_t *b)
 {
-  const box_t invalid = { INT_MAX, INT_MAX, INT_MIN, INT_MIN };
+  const box_t invalid = BOX_RESET;
 
   *b = invalid;
 }

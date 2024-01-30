@@ -8,6 +8,8 @@ extern "C"
 {
 #endif
 
+typedef int fix16_t;
+
 /* Signed multiply of two 16.16 fixed-point numbers. */
 int smull_fxp16(int x, int y);
 

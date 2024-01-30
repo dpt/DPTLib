@@ -353,9 +353,9 @@ static const box_t *packer_next(packer_t *packer)
       return NULL; /* no more areas */
     }
 
-    box_intersection(&packer->areas[packer->nextindex++],
-                     &packer->margins,
-                     &packer->nextarea);
+    (void) box_intersection(&packer->areas[packer->nextindex++],
+                            &packer->margins,
+                            &packer->nextarea);
   }
   while (box_is_empty(&packer->nextarea));
 
@@ -400,7 +400,7 @@ result_t packer_place_at(packer_t *packer, const box_t *area)
 
   /* subtract the margins */
 
-  box_intersection(&packer->margins, area, &b);
+  (void) box_intersection(&packer->margins, area, &b);
 
   if (box_is_empty(&b))
     return result_PACKER_EMPTY;
