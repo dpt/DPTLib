@@ -504,7 +504,8 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
   box_t overalldirty;
 
   /* test screen clipping */
-  box_t scrclip = screen_get_clip(&state->scr);
+  box_t scrclip;
+  (void) screen_get_clip(&state->scr, &scrclip);
   box_grow(&scrclip, -37);
   state->scr.clip = scrclip;
 
@@ -620,7 +621,7 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
         dirty.y0 = origin.y;
         dirty.x1 = origin.x + msglen * 15; // HACK
         dirty.y1 = origin.y + height;
-        box_intersection(&dirty, &scrclip, &dirty); /* dirtied area clamped to screen bounds */
+        (void) box_intersection(&dirty, &scrclip, &dirty); /* dirtied area clamped to screen bounds */
         box_union(&overalldirty, &dirty, &overalldirty);
         (void) bmfont_draw(bmfonts[currfont].bmfont,
                           &state->scr,

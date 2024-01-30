@@ -79,6 +79,7 @@ set(PUBLIC_HEADERS
     include/framebuf/bmfont.h
     include/framebuf/colour.h
     include/framebuf/composite.h
+    include/framebuf/curve.h
     include/framebuf/pixelfmt.h
     include/framebuf/screen.h
     include/geom/box.h
@@ -91,6 +92,7 @@ set(PUBLIC_HEADERS
     include/io/stream-packbits.h
     include/io/stream-stdio.h
     include/io/stream.h
+    include/test/all-tests.h
     include/test/txtscr.h
     include/utils/array.h
     include/utils/barith.h
@@ -212,6 +214,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bmfont/bmfont.c
     libraries/framebuf/colour/colour.c
     libraries/framebuf/composite/composite.c
+    libraries/framebuf/curve/curve.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/screen/screen.c)
 
@@ -220,6 +223,7 @@ set(GEOM_SOURCES
     libraries/geom/box/contains-box.c
     libraries/geom/box/contains-point.c
     libraries/geom/box/could-hold.c
+    libraries/geom/box/extend.c
     libraries/geom/box/grow.c
     libraries/geom/box/intersection.c
     libraries/geom/box/intersects.c
@@ -441,6 +445,7 @@ if(BUILD_TESTS)
         libraries/datastruct/ntree/test/ntree-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/composite/test/composite-test.c
+        libraries/framebuf/curve/test/curve-test.c
         libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
