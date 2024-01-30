@@ -1101,7 +1101,8 @@ result_t bmfont_draw(bmfont_t      *bmfont,
     assert(0); return result_BAD_ARG;
   }
 
-  scrclip = screen_get_clip(scr);
+  if (screen_get_clip(scr, &scrclip))
+    return result_OK; /* invalid clipped screen */
 
   drawbox.x0 = pos->x;
   drawbox.y0 = pos->y;

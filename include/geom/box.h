@@ -3,6 +3,8 @@
 #ifndef GEOM_BOX_H
 #define GEOM_BOX_H
 
+#include <limits.h>
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -20,6 +22,8 @@ box_t;
 /* When on RISC OS, use OSLib's box type in preference. */
 typedef os_box box_t;
 #endif
+
+#define BOX_RESET { INT_MAX, INT_MAX, INT_MIN, INT_MIN }
 
 /**
  * Reset the box to an invalid state.
@@ -145,6 +149,15 @@ int box_could_hold(const box_t *b, int w, int h);
  * \param[in] t The new box.
  */
 void box_translated(const box_t *b, int x, int y, box_t *t);
+
+/**
+ * Extend box "b" to include (x,y).
+ *
+ * \param[in] b The box to extend.
+ * \param[in] x The x coordinate of the point to include.
+ * \param[in] y The y coordinate of the point to include.
+ */
+void box_extend(box_t *b, int x, int y); // not sure about name
 
 #ifdef __cplusplus
 }
