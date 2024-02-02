@@ -516,11 +516,17 @@ static result_t curve_interactive_test(curveteststate_t *state)
         b.x1 = draw_points[i + 1].x;
         b.y1 = draw_points[i + 1].y;
         if (checker)
-          colour = state->palette[(i & 1) ? palette_RED : palette_LIGHT_PEACH];
+          colour = state->palette[(i & 1) ? palette_DARK_PURPLE : palette_LIGHT_PEACH];
         else
           colour = state->palette[palette_BLACK];
 
-        screen_draw_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
+//        screen_draw_pixel(&state->scr, b.x0, b.y0-20, state->palette[palette_GREEN]);
+//        screen_draw_pixel(&state->scr, b.x1, b.y1-20, state->palette[palette_RED]);
+        screen_draw_line(&state->scr, b.x0, b.y0-20, b.x1, b.y1-20, colour);
+
+        screen_draw_pixel(&state->scr, b.x0, b.y0, state->palette[palette_GREEN]);
+        screen_draw_pixel(&state->scr, b.x1, b.y1, state->palette[palette_RED]);
+        screen_draw_aa_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
 
         box_union(&b, &overalldirty, &overalldirty);
       }

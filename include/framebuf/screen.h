@@ -57,4 +57,8 @@ void screen_draw_line(screen_t *scr,
                       int x0, int y0, int x1, int y1,
                       colour_t colour);
 
+void screen_draw_aa_line(screen_t *scr,
+                         int x0, int y0, int x1, int y1,
+                         colour_t colour);
+
 #endif /* FRAMEBUF_SCREEN_H */
