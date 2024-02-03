@@ -220,17 +220,17 @@ curveteststate_t;
 #define BORDER        (64)
 #define UNIT          (96)
 
-static point_t jitter_yes(point_t p)
+static point_t jitter_on(point_t p)
 {
   point_t q;
 
-  q.x = p.x + (rand() % 4) - 2;
-  q.y = p.y + (rand() % 4) - 2;
+  q.x = p.x + (rand() % 2) - 1;
+  q.y = p.y + (rand() % 2) - 1;
 
   return q;
 }
 
-static point_t jitter_no(point_t p)
+static point_t jitter_off(point_t p)
 {
   return p;
 }
@@ -258,30 +258,32 @@ static result_t curve_interactive_test(curveteststate_t *state)
     { Quintic,    0 + 2 + 3 + 4 + 5 },
   };
 
-  bool    quit     = false;
-  bool    checker  = true;
-  point_t (*jitter)(point_t) = &jitter_no;
+  bool      quit     = false;
+  bool      checker  = true;
+  point_t (*jitter)(point_t) = &jitter_off;
 
-  int     frame;
-  int     mx            = 0;
-  int     my            = 0;
-  int     firstdraw     = 1;
-  int     cycling       = 1;
-  int     dontclear     = 0;
-  box_t   prevdirty     = BOX_RESET;
-  box_t   overalldirty  = BOX_RESET;
-  int     i;
-  point_t control_points[MAXCONTROLPTS];
-  point_t draw_points[MAXDRAWPTS];
-  int     ndrawpoints = 32;
-  int     dragging = -1;
-  int     set;
-  int     section_height;
-  int     npoints;
-  int     cpi;
-  int     y;
-  int     width;
-  int     lefthand;
+  int       frame;
+  int       mx            = 0;
+  int       my            = 0;
+  int       firstdraw     = 1;
+  int       aa            = 1;
+  int       cycling       = 1;
+  int       dontclear     = 0;
+  int       points        = 1;
+  box_t     prevdirty     = BOX_RESET;
+  box_t     overalldirty  = BOX_RESET;
+  int       i;
+  point_t   control_points[MAXCONTROLPTS];
+  point_t   draw_points[MAXDRAWPTS];
+  int       ndrawpoints = 32;
+  int       dragging = -1;
+  int       set;
+  int       section_height;
+  int       npoints;
+  int       cpi;
+  int       y;
+  int       width;
+  int       lefthand;
 
   section_height = (state->scr_height - (NSETS - 1) * BLOBSZ) / NSETS; /* divide screen into chunks */
   cpi     = 0; /* control point index */
@@ -331,14 +333,12 @@ static result_t curve_interactive_test(curveteststate_t *state)
         case SDL_KEYUP:
           switch (event.key.keysym.sym)
           {
-          case SDLK_q: quit = true; break;
+          case SDLK_a: aa = !aa; break;
           case SDLK_c: checker = !checker; break;
-          case SDLK_j: jitter = (jitter == jitter_yes) ? jitter_no : jitter_yes; break;
+          case SDLK_j: jitter = (jitter == jitter_on) ? jitter_off : jitter_on; break;
+          case SDLK_p: points = !points; break;
+          case SDLK_q: quit = true; break;
           }
-          break;
-
-        case SDL_TEXTEDITING:
-        case SDL_TEXTINPUT:
           break;
 
         case SDL_MOUSEMOTION:
@@ -520,13 +520,16 @@ static result_t curve_interactive_test(curveteststate_t *state)
         else
           colour = state->palette[palette_BLACK];
 
-//        screen_draw_pixel(&state->scr, b.x0, b.y0-20, state->palette[palette_GREEN]);
-//        screen_draw_pixel(&state->scr, b.x1, b.y1-20, state->palette[palette_RED]);
-        screen_draw_line(&state->scr, b.x0, b.y0-20, b.x1, b.y1-20, colour);
+        if (points)
+        {
+          screen_draw_pixel(&state->scr, b.x0, b.y0, state->palette[palette_GREEN]);
+          screen_draw_pixel(&state->scr, b.x1, b.y1, state->palette[palette_RED]);
+        }
 
-        screen_draw_pixel(&state->scr, b.x0, b.y0, state->palette[palette_GREEN]);
-        screen_draw_pixel(&state->scr, b.x1, b.y1, state->palette[palette_RED]);
-        screen_draw_aa_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
+        if (aa)
+          screen_draw_aa_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
+        else
+          screen_draw_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
 
         box_union(&b, &overalldirty, &overalldirty);
       }

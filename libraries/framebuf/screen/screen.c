@@ -117,8 +117,7 @@ void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour)
 
 static void screen_blend_pixel(screen_t *scr,
                                int x, int y,
-                               int alpha,
-                               colour_t colour)
+                               colour_t colour, int alpha)
 {
   pixelfmt_any_t colpx;
 
@@ -265,31 +264,31 @@ void screen_draw_line(screen_t *scr,
   }
 }
 
-void screen_draw_aa_line(screen_t *scr,
-                         int ix0, int iy0, int ix1, int iy1,
+void screen_draw_aa_linef(screen_t *scr,
+                         float x0, float y0, float x1, float y1,
                          colour_t colour)
 {
-  float x0, y0, x1, y1;
   float steep;
-  float dx,dy;
+  float dx, dy;
   float grad;
-  float inter_y;
+  float yf;
   int   xend, yend;
   float xgap;
-  int   xpxl1, xpxl2;
-  int   ypxl1, ypxl2;
+  int   ix0, ix1;
+  int   iy0, iy1;
   int   x;
+  int   alpha1, alpha2;
+  int   y;
 
-  x0 = ix0;
-  y0 = iy0;
-  x1 = ix1;
-  y1 = iy1;
+  dx = x1 - x0;
+  dy = y1 - y0;
 
-  steep = fabsf(y1 - y0) > fabsf(x1 - x0);
+  steep = fabsf(dy) > fabsf(dx);
   if (steep)
   {
     SWAP(x0, y0);
     SWAP(x1, y1);
+    SWAP(dx, dy);
   }
 
   if (x0 > x1)
@@ -298,75 +297,72 @@ void screen_draw_aa_line(screen_t *scr,
     SWAP(y0, y1);
   }
 
-  dx = x1 - x0;
-  dy = y1 - y0;
-
   grad = (dx == 0.0f) ? 1.0f : dy / dx;
 
   // start point
 
-  xend  = roundf(x0);
-  yend  = y0 + grad * ((float) xend - x0);
-  xgap  = 1.0f - (x0 + 0.5f - floorf(x0 + 0.5f)); // 1-fpart(x0 + 0.5f)  this is giving 0.5 for straight line
-  xpxl1 = xend;
-  ypxl1 = floorf(yend);
+  xend = roundf(x0);
+  yend = y0 + grad * (xend - x0);
+  xgap = xend + 0.5 - x0;
+  ix0  = xend;
+  iy0  = floorf(yend);
+  alpha1 = 255.0f *  (iy0 + 1.0f - yend) * xgap;
+  alpha2 = 255.0f * -(iy0        - yend) * xgap;
   if (steep)
   {
-    int alpha = 255.0f * (floorf(yend) + 1.0f - yend) * xgap;
-    screen_blend_pixel(scr, ypxl1,     xpxl1, 255 - alpha, colour);
-    screen_blend_pixel(scr, ypxl1 + 1, xpxl1,       alpha, colour);
+    screen_blend_pixel(scr, iy0,     ix0, colour, alpha1);
+    screen_blend_pixel(scr, iy0 + 1, ix0, colour, alpha2);
   }
   else
   {
-    int alpha = 255.0f * (floorf(yend) + 1.0f - yend) * xgap;
-    screen_blend_pixel(scr, xpxl1, ypxl1,    255 - alpha, colour);
-    screen_blend_pixel(scr, xpxl1, ypxl1 + 1,      alpha, colour);
+    screen_blend_pixel(scr, ix0, iy0,     colour, alpha1);
+    screen_blend_pixel(scr, ix0, iy0 + 1, colour, alpha2);
   }
 
-  inter_y = yend + grad;
+  yf = yend + grad;
 
   // end point
 
-  xend  = roundf(x1);
-  yend  = y1 + grad * ((float) xend - x1);
-  xgap  = x1 + 0.5f - floorf(x1 + 0.5f); // fpart(x1 + 0.5f)
-  xpxl2 = xend;
-  ypxl2 = floorf(yend);
-//  if (steep)
-//  {
-//    int alpha = 255.0f * ((1.0f - (yend - floorf(yend))) * xgap);
-//    screen_blend_pixel(scr, ypxl2,     xpxl2, 255 - alpha, colour);
-//    screen_blend_pixel(scr, ypxl2 + 1, xpxl2,       alpha, colour);
-//  }
-//  else
-//  {
-//    int alpha = 255.0f * ((1.0f - (yend - floorf(yend))) * xgap);
-//    screen_blend_pixel(scr, xpxl2, ypxl2,     255 - alpha, colour);
-//    screen_blend_pixel(scr, xpxl2, ypxl2 + 1,       alpha, colour);
-//  }
-
+  xend = roundf(x1);
+  yend = y1 + grad * (xend - x1);
+  xgap = x1 + 0.5f - xend;
+  ix1  = xend;
+  iy1  = floorf(yend);
+  alpha1 = 255.0f *  (iy1 + 1.0f - yend) * xgap;
+  alpha2 = 255.0f * -(iy1        - yend) * xgap;
   if (steep)
   {
-    for (x = xpxl1 + 1; x < xpxl2; x++)
-    {
-      int y     = floorf(inter_y);
-      int alpha = (inter_y - floorf(inter_y)) * 255.0f;
-
-      screen_blend_pixel(scr, y,     x, 255 - alpha, colour);
-      screen_blend_pixel(scr, y + 1, x,       alpha, colour);
-      inter_y += grad;
-    }
+    screen_blend_pixel(scr, iy1,     ix1, colour, alpha1);
+    screen_blend_pixel(scr, iy1 + 1, ix1, colour, alpha2);
   }
   else
   {
-    for (x = xpxl1 + 1; x < xpxl2; x++)
-    {
-      int y     = floorf(inter_y);
-      int alpha = (inter_y - floorf(inter_y)) * 255.0f;
-
-      screen_blend_pixel(scr, x, y,     255 - alpha, colour);
-      screen_blend_pixel(scr, x, y + 1,       alpha, colour);
-      inter_y += grad;
-    }
+    screen_blend_pixel(scr, ix1, iy1,     colour, alpha1);
+    screen_blend_pixel(scr, ix1, iy1 + 1, colour, alpha2);
   }
+
+  for (x = ix0 + 1; x < ix1; x++)
+  {
+    y = floorf(yf);
+    alpha1 = (y + 1.0f - yf) * 255.0f;
+    alpha2 = (yf - y) * 255.0f;
+    if (steep)
+    {
+      screen_blend_pixel(scr, y,     x, colour, alpha1);
+      screen_blend_pixel(scr, y + 1, x, colour, alpha2);
+    }
+    else
+    {
+      screen_blend_pixel(scr, x, y,     colour, alpha1);
+      screen_blend_pixel(scr, x, y + 1, colour, alpha2);
+    }
+    yf += grad;
+  }
+}
+
+void screen_draw_aa_line(screen_t *scr,
+                         int x0, int y0, int x1, int y1,
+                         colour_t colour)
+{
+  screen_draw_aa_linef(scr, x0, y0, x1, y1, colour);
 }
