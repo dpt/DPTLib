@@ -2,11 +2,11 @@
 #
 # DPTLib
 #
-# Copyright (c) David Thomas, 2020-2022
+# Copyright (c) David Thomas, 2020-2024
 #
 # vim: sw=4 ts=8 et
 
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.8)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
@@ -285,6 +285,8 @@ set(ALL_SOURCES
     ${TESTLIB_SOURCES}
     ${UTILS_SOURCES})
 
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${ALL_SOURCES})
+
 target_sources(DPTLib PRIVATE ${ALL_SOURCES})
 
 target_compile_options(DPTLib PRIVATE -Wall -Wextra -pedantic)
@@ -446,6 +448,8 @@ if(BUILD_TESTS)
         libraries/utils/array/test/array-test.c
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/datastruct/vector/test/vector-test.c)
+
+    source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
 
     # Avoid a warning from CMake
     set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
