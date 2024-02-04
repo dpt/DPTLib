@@ -24,8 +24,9 @@ void screen_init(screen_t  *scr,
   scr->format   = fmt;
   scr->rowbytes = rowbytes;
   scr->palette  = palette;
-  scr->clip     = clip;
+  scr->span     = spanregistry_get(fmt);
   scr->base     = base;
+  scr->clip     = clip;
 }
 
 void screen_for_bitmap(screen_t *scr, const bitmap_t *bm)
@@ -81,8 +82,6 @@ static void screen_blend_pixel(screen_t *scr,
 {
   pixelfmt_any_t colpx;
 
-  const span_t *span = spanregistry_get(scr->format); // slow - hoist to screen level
-
   colpx = colour_to_pixel(NULL, 0, colour, scr->format);
   switch (scr->format)
   {
@@ -97,7 +96,7 @@ static void screen_blend_pixel(screen_t *scr,
 
       scrpx = *((pixelfmt_bgrx8888_t *) p);
 
-      span->blendconst(&newpx, &scrpx, &colpx, 1, alpha);
+      scr->span->blendconst(&newpx, &scrpx, &colpx, 1, alpha);
 
       *((pixelfmt_bgrx8888_t *) p) = newpx;
     }
@@ -227,8 +226,8 @@ void screen_draw_line(screen_t *scr,
 }
 
 void screen_draw_aa_linef(screen_t *scr,
-                         float x0, float y0, float x1, float y1,
-                         colour_t colour)
+                          float x0, float y0, float x1, float y1,
+                          colour_t colour)
 {
   float steep;
   float dx, dy;

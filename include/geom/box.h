@@ -11,16 +11,20 @@ extern "C"
 #endif
 
 #ifndef __riscos
+
 /** A box inclusive of (x0,y0) and exclusive of (x1,y1). */
 typedef struct box
 {
   int x0, y0, x1, y1;
 }
 box_t;
+
 #else
+
 #include "oslib/os.h"
 /* When on RISC OS, use OSLib's box type in preference. */
 typedef os_box box_t;
+
 #endif
 
 #define BOX_RESET { INT_MAX, INT_MAX, INT_MIN, INT_MIN }
@@ -151,13 +155,22 @@ int box_could_hold(const box_t *b, int w, int h);
 void box_translated(const box_t *b, int x, int y, box_t *t);
 
 /**
- * Extend box "b" to include (x,y).
+ * Extend box "b" to include the point (x,y).
  *
  * \param[in] b The box to extend.
  * \param[in] x The x coordinate of the point to include.
  * \param[in] y The y coordinate of the point to include.
  */
 void box_extend(box_t *b, int x, int y); // not sure about name
+
+/**
+ * Extend box "b" to include any number of points.
+ *
+ * \param[in] b The new box.
+ * \param[in] npoints Numer of points supplied.
+ * \param[in] varargs Two ints for every point.
+ */
+void box_extend_n(box_t *b, int npoints, ...);
 
 #ifdef __cplusplus
 }

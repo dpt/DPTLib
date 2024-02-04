@@ -6,21 +6,24 @@
 #include "base/result.h"
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
+#include "framebuf/span.h"
 
 /** Common bitmap members. */
-#define bitmap_format_MEMBERS \
-  int        width, height;   \
-  pixelfmt_t format;          \
-  int        rowbytes;        \
-  colour_t  *palette
+#define bitmap_format_MEMBERS  \
+  int           width, height; \
+  pixelfmt_t    format;        \
+  int           rowbytes;      \
+  colour_t     *palette;       \
+  const span_t *span;
 
 /** Common bitmap members. */
-#define bitmap_all_MEMBERS    \
-  int        width, height;   \
-  pixelfmt_t format;          \
-  int        rowbytes;        \
-  colour_t  *palette;         \
-  void      *base
+#define bitmap_all_MEMBERS     \
+  int           width, height; \
+  pixelfmt_t    format;        \
+  int           rowbytes;      \
+  colour_t     *palette;       \
+  const span_t *span;          \
+  void         *base
 
 /** A bitmap. */
 typedef struct bitmap bitmap_t;

@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "framebuf/bitmap.h"
+#include "framebuf/span-registry.h"
 
 result_t bitmap_init(bitmap_t       *bm,
                      int             width,
@@ -24,6 +25,7 @@ result_t bitmap_init(bitmap_t       *bm,
   bm->format   = fmt;
   bm->rowbytes = rowbytes;
   bm->palette  = NULL;
+  bm->span     = spanregistry_get(fmt);
   bm->base     = base;
 
   log2bpp = pixelfmt_log2bpp(fmt);
