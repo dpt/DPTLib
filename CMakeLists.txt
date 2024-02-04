@@ -82,6 +82,12 @@ set(PUBLIC_HEADERS
     include/framebuf/curve.h
     include/framebuf/pixelfmt.h
     include/framebuf/screen.h
+    include/framebuf/span-bgrx8888.h
+    include/framebuf/span-registry.h
+    include/framebuf/span-rgba8888.h
+    include/framebuf/span-rgbx8888.h
+    include/framebuf/span-xbgr8888.h
+    include/framebuf/span.h
     include/geom/box.h
     include/geom/layout.h
     include/geom/packer.h
@@ -216,7 +222,14 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/composite/composite.c
     libraries/framebuf/curve/curve.c
     libraries/framebuf/pixelfmt/log2bpp.c
-    libraries/framebuf/screen/screen.c)
+    libraries/framebuf/screen/screen.c
+    libraries/framebuf/span-registry/get.c
+    libraries/framebuf/span-registry/regdata.h
+    libraries/framebuf/span/all8888.c
+    libraries/framebuf/span/all8888.h
+    libraries/framebuf/span/bgrx8888.c
+    libraries/framebuf/span/rgbx8888.c
+    libraries/framebuf/span/xbgr8888.c)
 
 set(GEOM_SOURCES
     libraries/geom/box/clipped.c

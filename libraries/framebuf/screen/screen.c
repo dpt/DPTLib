@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "framebuf/screen.h"
+#include "framebuf/span-registry.h"
 
 void screen_init(screen_t  *scr,
                  int        width,
@@ -74,52 +75,13 @@ void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour)
   }
 }
 
-// Pinched from MotionMasks
-
-#define RED_SHIFT   16
-#define GREEN_SHIFT 8
-#define BLUE_SHIFT  0
-#define X_SHIFT     24
-
-#define RED_MASK   (0xFFu << RED_SHIFT)
-#define GREEN_MASK (0xFFu << GREEN_SHIFT)
-#define BLUE_MASK  (0xFFu << BLUE_SHIFT)
-#define X_MASK     (0xFFu << X_SHIFT)
-
-/* Blend specified pixels. */
-#define SPAN_ALL8888_BLEND_PIX(fmt, src1, src2, alpha, dst)                      \
-{                                                                                \
-  fmt r1, g1, b1;                                                                \
-  fmt r2, g2, b2;                                                                \
-                                                                                 \
-  if (alpha == 0)                                                                \
-    dst = src1;                                                                  \
-  else if (alpha == 255)                                                         \
-    dst = src2;                                                                  \
-  else                                                                           \
-  {                                                                              \
-    r1 = (src1 & RED_MASK) >> RED_SHIFT;                                         \
-    r2 = (src2 & RED_MASK) >> RED_SHIFT;                                         \
-    r1 = (r1 * (256 - alpha) + r2 * alpha) >> 8;                                 \
-                                                                                 \
-    g1 = (src1 & GREEN_MASK) >> GREEN_SHIFT;                                     \
-    g2 = (src2 & GREEN_MASK) >> GREEN_SHIFT;                                     \
-    g1 = (g1 * (256 - alpha) + g2 * alpha) >> 8;                                 \
-                                                                                 \
-    b1 = (src1 & BLUE_MASK) >> BLUE_SHIFT;                                       \
-    b2 = (src2 & BLUE_MASK) >> BLUE_SHIFT;                                       \
-    b1 = (b1 * (256 - alpha) + b2 * alpha) >> 8;                                 \
-                                                                                 \
-    dst = (r1 << RED_SHIFT) | (g1 << GREEN_SHIFT) | (b1 << BLUE_SHIFT) | X_MASK; \
-  }                                                                              \
-}
-
-
 static void screen_blend_pixel(screen_t *scr,
                                int x, int y,
                                colour_t colour, int alpha)
 {
   pixelfmt_any_t colpx;
+
+  const span_t *span = spanregistry_get(scr->format); // slow - hoist to screen level
 
   colpx = colour_to_pixel(NULL, 0, colour, scr->format);
   switch (scr->format)
@@ -135,7 +97,7 @@ static void screen_blend_pixel(screen_t *scr,
 
       scrpx = *((pixelfmt_bgrx8888_t *) p);
 
-      SPAN_ALL8888_BLEND_PIX(pixelfmt_bgrx8888_t, scrpx, colpx, alpha, newpx);
+      span->blendconst(&newpx, &scrpx, &colpx, 1, alpha);
 
       *((pixelfmt_bgrx8888_t *) p) = newpx;
     }
