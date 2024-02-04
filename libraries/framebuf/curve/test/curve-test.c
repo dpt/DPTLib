@@ -284,6 +284,7 @@ static result_t curve_interactive_test(curveteststate_t *state)
   int       y;
   int       width;
   int       lefthand;
+  float     angle;
 
   section_height = (state->scr_height - (NSETS - 1) * BLOBSZ) / NSETS; /* divide screen into chunks */
   cpi     = 0; /* control point index */
@@ -338,6 +339,8 @@ static result_t curve_interactive_test(curveteststate_t *state)
           case SDLK_j: jitter = (jitter == jitter_on) ? jitter_off : jitter_on; break;
           case SDLK_p: points = !points; break;
           case SDLK_q: quit = true; break;
+          case SDLK_LEFT: angle += 0.5; break;
+          case SDLK_RIGHT: angle -= 0.5; break;
           }
           break;
 
@@ -533,6 +536,33 @@ static result_t curve_interactive_test(curveteststate_t *state)
 
         box_union(&b, &overalldirty, &overalldirty);
       }
+    }
+
+    /* rotate a line */
+
+    {
+      const float  centre   = 40.0f;
+      const float  diameter = 21.0f;
+
+      static float degrees  = 0;
+
+      float        s, c;
+      float        xa, ya, xb, yb;
+      box_t        b = BOX_RESET;
+
+      degrees = angle;
+
+      xa = centre + sinf((degrees +   0.0f) / 360.0f * M_PI * 2.0f) * diameter;
+      ya = centre + cosf((degrees +   0.0f) / 360.0f * M_PI * 2.0f) * diameter;
+      xb = centre + sinf((degrees + 180.0f) / 360.0f * M_PI * 2.0f) * diameter;
+      yb = centre + cosf((degrees + 180.0f) / 360.0f * M_PI * 2.0f) * diameter;
+
+      screen_draw_line(&state->scr, (int) xa, (int) ya, (int) xb, (int) yb, state->palette[palette_DARK_GREEN]);
+      screen_draw_aa_line(&state->scr, xa + 45, ya, xb + 45, yb, state->palette[palette_DARK_GREEN]);
+      screen_draw_aa_linef(&state->scr, xa + 90, ya, xb + 90, yb, state->palette[palette_DARK_GREEN]);
+
+      box_extend_n(&b, 2, 0, 0, 150, 150);
+      box_union(&b, &overalldirty, &overalldirty); // this will leave trails since it's not wiping the /old/ box
     }
 
     /* Update the texture and render it */
