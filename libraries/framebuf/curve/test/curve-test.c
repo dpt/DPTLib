@@ -284,7 +284,7 @@ static result_t curve_interactive_test(curveteststate_t *state)
   int       y;
   int       width;
   int       lefthand;
-  float     angle;
+  float     line_degrees;
 
   section_height = (state->scr_height - (NSETS - 1) * BLOBSZ) / NSETS; /* divide screen into chunks */
   cpi     = 0; /* control point index */
@@ -339,8 +339,8 @@ static result_t curve_interactive_test(curveteststate_t *state)
           case SDLK_j: jitter = (jitter == jitter_on) ? jitter_off : jitter_on; break;
           case SDLK_p: points = !points; break;
           case SDLK_q: quit = true; break;
-          case SDLK_LEFT: angle += 0.5; break;
-          case SDLK_RIGHT: angle -= 0.5; break;
+          case SDLK_LEFT: line_degrees += 0.5; break;
+          case SDLK_RIGHT: line_degrees -= 0.5; break;
           }
           break;
 
@@ -544,18 +544,14 @@ static result_t curve_interactive_test(curveteststate_t *state)
       const float  centre   = 40.0f;
       const float  diameter = 21.0f;
 
-      static float degrees  = 0;
-
       float        s, c;
       float        xa, ya, xb, yb;
       box_t        b = BOX_RESET;
 
-      degrees = angle;
-
-      xa = centre + sinf((degrees +   0.0f) / 360.0f * M_PI * 2.0f) * diameter;
-      ya = centre + cosf((degrees +   0.0f) / 360.0f * M_PI * 2.0f) * diameter;
-      xb = centre + sinf((degrees + 180.0f) / 360.0f * M_PI * 2.0f) * diameter;
-      yb = centre + cosf((degrees + 180.0f) / 360.0f * M_PI * 2.0f) * diameter;
+      xa = centre + sinf((line_degrees +   0.0f) / 360.0f * M_PI * 2.0f) * diameter;
+      ya = centre + cosf((line_degrees +   0.0f) / 360.0f * M_PI * 2.0f) * diameter;
+      xb = centre + sinf((line_degrees + 180.0f) / 360.0f * M_PI * 2.0f) * diameter;
+      yb = centre + cosf((line_degrees + 180.0f) / 360.0f * M_PI * 2.0f) * diameter;
 
       screen_draw_line(&state->scr, (int) xa, (int) ya, (int) xb, (int) yb, state->palette[palette_DARK_GREEN]);
       screen_draw_aa_line(&state->scr, xa + 45, ya, xb + 45, yb, state->palette[palette_DARK_GREEN]);
@@ -573,41 +569,41 @@ static result_t curve_interactive_test(curveteststate_t *state)
       bitmap_t *scr_bgrx8888;
       SDL_Rect  texturearea;
       char     *scr;
+      box_t     scr_clip;
+      box_t     combined_dirty;
 
       if (state->scr.format != pixelfmt_bgrx8888)
-      /* convert the screen to bgrx8888 */
+        /* convert the screen to bgrx8888 */
         bitmap_convert((const bitmap_t *) &state->scr,
-                       pixelfmt_bgrx8888,
-                       &scr_bgrx8888);
+                                           pixelfmt_bgrx8888,
+                                          &scr_bgrx8888);
       else
         scr_bgrx8888 = (bitmap_t *) &state->scr;
 
+      (void) screen_get_clip(&state->scr, &scr_clip);
+
       if (firstdraw)
       {
-        texturearea.x = 0;
-        texturearea.y = 0;
-        texturearea.w = state->scr_width;
-        texturearea.h = state->scr_height;
         firstdraw = 0;
+        combined_dirty = scr_clip;
       }
       else
       {
-        box_t uniondirty;
-
-        box_union(&overalldirty, &prevdirty, &uniondirty);
-
-        texturearea.x = uniondirty.x0;
-        texturearea.y = uniondirty.y0;
-        texturearea.w = uniondirty.x1 - uniondirty.x0;
-        texturearea.h = uniondirty.y1 - uniondirty.y0;
+        box_union(&overalldirty, &prevdirty, &combined_dirty);
+        (void) box_intersection(&scr_clip, &combined_dirty, &combined_dirty);
       }
+
+      texturearea.x = combined_dirty.x0;
+      texturearea.y = combined_dirty.y0;
+      texturearea.w = combined_dirty.x1 - combined_dirty.x0;
+      texturearea.h = combined_dirty.y1 - combined_dirty.y0;
 
       /* the rect passed here says where to draw in the texture */
       scr = (char *) scr_bgrx8888->base +
-      texturearea.y * scr_bgrx8888->rowbytes +
-      texturearea.x * 4;
+                     texturearea.y * scr_bgrx8888->rowbytes +
+                     texturearea.x * 4;
       SDL_UpdateTexture(state->sdl_state.texture,
-                        &texturearea,
+                       &texturearea,
                         scr,
                         scr_bgrx8888->rowbytes);
     }
@@ -689,12 +685,12 @@ result_t curve_test_one_format(const char *resources,
   }
 
   bitmap_init(&state.bm,
-              state.scr_width,
-              state.scr_height,
-              scr_fmt,
-              scr_rowbytes,
-              state.palette,
-              pixels);
+               state.scr_width,
+               state.scr_height,
+               scr_fmt,
+               scr_rowbytes,
+               state.palette,
+               pixels);
   bm_inited = 1;
 
   bitmap_clear(&state.bm, state.palette[state.background_colour_index]);

@@ -22,7 +22,6 @@ void screen_init(screen_t  *scr,
                  pixelfmt_t fmt,
                  int        rowbytes,
                  colour_t  *palette,
-                 box_t      clip,
                  void      *base);
 
 void screen_for_bitmap(screen_t *scr, const bitmap_t *bm);
