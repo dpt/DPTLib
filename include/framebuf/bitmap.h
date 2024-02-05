@@ -17,12 +17,8 @@
   const span_t *span;
 
 /** Common bitmap members. */
-#define bitmap_all_MEMBERS     \
-  int           width, height; \
-  pixelfmt_t    format;        \
-  int           rowbytes;      \
-  colour_t     *palette;       \
-  const span_t *span;          \
+#define bitmap_all_MEMBERS \
+  bitmap_format_MEMBERS    \
   void         *base
 
 /** A bitmap. */
