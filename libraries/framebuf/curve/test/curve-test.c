@@ -196,6 +196,40 @@ static void stop_sdl(sdlstate_t *state)
 
 /* ----------------------------------------------------------------------- */
 
+#define BLOBSZ        (8)
+#define NSETS         (5)
+#define MAXCONTROLPTS (2 + 3 + 4 + 5 + 6)
+#define MINDRAWPTS    (2)
+#define MAXDRAWPTS    (128)
+#define BORDER        (64)
+#define UNIT          (96)
+
+/* ----------------------------------------------------------------------- */
+
+static const struct
+{
+  enum
+  {
+    Linear,
+    Quadratic,
+    Cubic,
+    Quartic,
+    Quintic
+  }
+  kind;
+  int offset;
+}
+curves[] =
+{
+  { Linear,     0                 },
+  { Quadratic,  0 + 2             },
+  { Cubic,      0 + 2 + 3         },
+  { Quartic,    0 + 2 + 3 + 4     },
+  { Quintic,    0 + 2 + 3 + 4 + 5 },
+};
+
+/* ----------------------------------------------------------------------- */
+
 typedef struct curveteststate
 {
   int         scr_width, scr_height;
@@ -207,18 +241,25 @@ typedef struct curveteststate
 #ifdef USE_SDL
   sdlstate_t  sdl_state;
 #endif
+
+  box_t     overalldirty;
+
+  int       section_height;
+
+  point_t   control_points[MAXCONTROLPTS];
+  point_t   draw_points[MAXDRAWPTS];
+  int       ndrawpoints;
+
+  float     line_rotation; /* degrees */
+
+  bool      opt_use_aa;
+  bool      opt_checker;
+  bool      opt_draw_endpoints;
+  point_t (*jitterfn)(point_t);
 }
 curveteststate_t;
 
 /* ----------------------------------------------------------------------- */
-
-#define BLOBSZ        (8)
-#define NSETS         (5)
-#define MAXCONTROLPTS (2 + 3 + 4 + 5 + 6)
-#define MINDRAWPTS    (2)
-#define MAXDRAWPTS    (128)
-#define BORDER        (64)
-#define UNIT          (96)
 
 static point_t jitter_on(point_t p)
 {
@@ -235,78 +276,229 @@ static point_t jitter_off(point_t p)
   return p;
 }
 
-static result_t curve_interactive_test(curveteststate_t *state)
+/* ----------------------------------------------------------------------- */
+
+static result_t setup_all_curves(curveteststate_t *state)
 {
-  static const struct {
-    enum
-    {
-      Linear,
-      Quadratic,
-      Cubic,
-      Quartic,
-      Quintic
-    }
-    kind;
-    int offset;
-  }
-  curves[] =
-  {
-    { Linear,     0                 },
-    { Quadratic,  0 + 2             },
-    { Cubic,      0 + 2 + 3         },
-    { Quartic,    0 + 2 + 3 + 4     },
-    { Quintic,    0 + 2 + 3 + 4 + 5 },
-  };
+  int cpi;
+  int y;
+  int npoints;
+  int set;
 
-  bool      quit     = false;
-  bool      checker  = true;
-  point_t (*jitter)(point_t) = &jitter_off;
-
-  int       frame;
-  int       mx            = 0;
-  int       my            = 0;
-  int       firstdraw     = 1;
-  int       aa            = 1;
-  int       cycling       = 1;
-  int       dontclear     = 0;
-  int       points        = 1;
-  box_t     prevdirty     = BOX_RESET;
-  box_t     overalldirty  = BOX_RESET;
-  int       i;
-  point_t   control_points[MAXCONTROLPTS];
-  point_t   draw_points[MAXDRAWPTS];
-  int       ndrawpoints = 32;
-  int       dragging = -1;
-  int       set;
-  int       section_height;
-  int       npoints;
-  int       cpi;
-  int       y;
-  int       width;
-  int       lefthand;
-  float     line_degrees;
-
-  section_height = (state->scr_height - (NSETS - 1) * BLOBSZ) / NSETS; /* divide screen into chunks */
   cpi     = 0; /* control point index */
   y       = 0;
   npoints = 2;
   for (set = 0; set < NSETS; set++)
   {
+    int width;
+    int lefthand;
+    int i;
+
     width    = (npoints - 1) * UNIT;
     lefthand = (state->scr_width - width) / 2;
 
     for (i = 0; i < npoints; i++)
     {
-      control_points[cpi].x = lefthand + i * UNIT;
-      control_points[cpi].y = (i > 0 && i < npoints - 1) ? y : y + UNIT;
+      state->control_points[cpi].x = lefthand + i * UNIT;
+      state->control_points[cpi].y = (i > 0 && i < npoints - 1) ? y : y + UNIT;
       cpi++;
     }
 
-    y += section_height + BLOBSZ;
+    y += state->section_height + BLOBSZ;
     npoints++;
   }
 
-  memset(draw_points, 0, sizeof(draw_points));
+  return result_OK;
+}
+
+/* draw control point blobs */
+static result_t draw_all_ctrlpts(curveteststate_t *state)
+{
+  int cpi;
+  int npoints;
+  int set;
+
+  cpi     = 0;
+  npoints = 2;
+  for (set = 0; set < NSETS; set++)
+  {
+    int i;
+
+    for (i = 0; i < npoints; i++)
+    {
+      box_t    b;
+      colour_t colour;
+
+      b.x0 = state->control_points[cpi].x - BLOBSZ / 2;
+      b.y0 = state->control_points[cpi].y - BLOBSZ / 2;
+      b.x1 = state->control_points[cpi].x + BLOBSZ / 2;
+      b.y1 = state->control_points[cpi].y + BLOBSZ / 2;
+
+      colour = state->palette[8 + set];
+
+      screen_draw_square(&state->scr, b.x0, b.y0, BLOBSZ, colour);
+
+      box_union(&b, &state->overalldirty, &state->overalldirty);
+
+      cpi++;
+    }
+    npoints++;
+  }
+
+  return result_OK;
+}
+
+/* draw curve from draw_points[] */
+static result_t draw_a_curve(curveteststate_t *state)
+{
+  int i;
+
+  for (i = 0; i < state->ndrawpoints - 1; i++)
+  {
+    box_t    b;
+    colour_t colour;
+
+    b.x0 = state->draw_points[i + 0].x;
+    b.y0 = state->draw_points[i + 0].y;
+    b.x1 = state->draw_points[i + 1].x;
+    b.y1 = state->draw_points[i + 1].y;
+
+    if (state->opt_checker)
+      colour = state->palette[(i & 1) ? palette_DARK_PURPLE : palette_LIGHT_PEACH];
+    else
+      colour = state->palette[palette_BLACK];
+
+    if (state->opt_draw_endpoints)
+    {
+      screen_draw_pixel(&state->scr, b.x0, b.y0, state->palette[palette_GREEN]);
+      screen_draw_pixel(&state->scr, b.x1, b.y1, state->palette[palette_RED]);
+    }
+
+    if (state->opt_use_aa)
+      screen_draw_aa_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
+    else
+      screen_draw_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
+
+    box_union(&b, &state->overalldirty, &state->overalldirty);
+  }
+
+  return result_OK;
+}
+
+/* calculate curves */
+static result_t calc_all_curves(curveteststate_t *state)
+{
+  int set;
+
+  for (set = 0; set < NELEMS(curves); set++)
+  {
+    int o = curves[set].offset;
+    int i;
+
+    for (i = 0; i < state->ndrawpoints; i++)
+    {
+      int t = 65536 * i / (state->ndrawpoints - 1);
+
+      switch (curves[set].kind)
+      {
+      case Linear:
+        state->draw_points[i] = curve_point_on_line(state->jitterfn(state->control_points[o + 0]),
+                                                    state->jitterfn(state->control_points[o + 1]),
+                                                    t);
+        break;
+
+      case Quadratic:
+        state->draw_points[i] = curve_bezier_point_on_quad(state->jitterfn(state->control_points[o + 0]),
+                                                           state->jitterfn(state->control_points[o + 1]),
+                                                           state->jitterfn(state->control_points[o + 2]),
+                                                           t);
+        break;
+
+      case Cubic:
+        state->draw_points[i] = curve_bezier_point_on_cubic(state->jitterfn(state->control_points[o + 0]),
+                                                            state->jitterfn(state->control_points[o + 1]),
+                                                            state->jitterfn(state->control_points[o + 2]),
+                                                            state->jitterfn(state->control_points[o + 3]),
+                                                            t);
+        break;
+
+      case Quartic:
+        state->draw_points[i] = curve_bezier_point_on_quartic(state->jitterfn(state->control_points[o + 0]),
+                                                              state->jitterfn(state->control_points[o + 1]),
+                                                              state->jitterfn(state->control_points[o + 2]),
+                                                              state->jitterfn(state->control_points[o + 3]),
+                                                              state->jitterfn(state->control_points[o + 4]),
+                                                              t);
+        break;
+
+      case Quintic:
+        state->draw_points[i] = curve_bezier_point_on_quintic(state->jitterfn(state->control_points[o + 0]),
+                                                              state->jitterfn(state->control_points[o + 1]),
+                                                              state->jitterfn(state->control_points[o + 2]),
+                                                              state->jitterfn(state->control_points[o + 3]),
+                                                              state->jitterfn(state->control_points[o + 4]),
+                                                              state->jitterfn(state->control_points[o + 5]),
+                                                              t);
+        break;
+      }
+    }
+
+    (void) draw_a_curve(state);
+  }
+
+  return result_OK;
+}
+
+/* rotate a line or three */
+static result_t rotate_lines(curveteststate_t *state)
+{
+  const float centre   = 40.0f;
+  const float diameter = 21.0f;
+
+  float s, c;
+  float xa, ya, xb, yb;
+  box_t b = BOX_RESET;
+
+  xa = centre + sinf((state->line_rotation +   0.0f) / 360.0f * M_PI * 2.0f) * diameter;
+  ya = centre + cosf((state->line_rotation +   0.0f) / 360.0f * M_PI * 2.0f) * diameter;
+  xb = centre + sinf((state->line_rotation + 180.0f) / 360.0f * M_PI * 2.0f) * diameter;
+  yb = centre + cosf((state->line_rotation + 180.0f) / 360.0f * M_PI * 2.0f) * diameter;
+
+  screen_draw_line(&state->scr, (int) xa, (int) ya, (int) xb, (int) yb, state->palette[palette_DARK_GREEN]);
+  screen_draw_aa_line(&state->scr, xa + 45, ya, xb + 45, yb, state->palette[palette_DARK_GREEN]);
+  screen_draw_aa_linef(&state->scr, xa + 90, ya, xb + 90, yb, state->palette[palette_DARK_GREEN]);
+
+  box_extend_n(&b, 2, 0, 0, 150, 150);
+  box_union(&b, &state->overalldirty, &state->overalldirty); // this will leave trails since it's not wiping the /old/ box
+}
+
+static result_t curve_interactive_test(curveteststate_t *state)
+{
+  bool  quit          = false;
+  int   frame;
+  int   mx            = 0;
+  int   my            = 0;
+  int   firstdraw     = 1;
+  int   aa            = 1;
+  int   cycling       = 1;
+  bool  opt_dontclear = false;
+  int   points        = 1;
+  box_t prevdirty     = BOX_RESET;
+  int   dragging      = -1;
+  int   i;
+  int   set;
+
+  state->opt_use_aa         = true;
+  state->opt_checker        = true;
+  state->opt_draw_endpoints = true;
+
+  state->ndrawpoints        = 32;
+  state->overalldirty       = (box_t) BOX_RESET;
+  state->jitterfn           = &jitter_off;
+
+  state->section_height     = (state->scr_height - (NSETS - 1) * BLOBSZ) / NSETS; /* divide screen into chunks */
+
+  setup_all_curves(state);
 
   for (frame = 0; !quit; frame++)
   {
@@ -334,10 +526,10 @@ static result_t curve_interactive_test(curveteststate_t *state)
         case SDL_KEYUP:
           switch (event.key.keysym.sym)
           {
-          case SDLK_a: aa = !aa; break;
-          case SDLK_c: checker = !checker; break;
-          case SDLK_j: jitter = (jitter == jitter_on) ? jitter_off : jitter_on; break;
-          case SDLK_p: points = !points; break;
+          case SDLK_a: state->opt_use_aa = !state->opt_use_aa; break;
+          case SDLK_c: state->opt_checker = !state->opt_checker; break;
+          case SDLK_j: state->jitterfn = (state->jitterfn == jitter_on) ? &jitter_off : &jitter_on; break;
+          case SDLK_p: state->opt_draw_endpoints = !state->opt_draw_endpoints; break;
           case SDLK_q: quit = true; break;
           }
           break;
@@ -346,11 +538,11 @@ static result_t curve_interactive_test(curveteststate_t *state)
           mx = event.motion.x;
           my = event.motion.y;
 
-          line_degrees = mx / 4.0f;
+          state->line_rotation = mx / 4.0f;
 
           if (dragging >= 0) {
-            control_points[dragging].x = mx;
-            control_points[dragging].y = my;
+            state->control_points[dragging].x = mx;
+            state->control_points[dragging].y = my;
           }
           break;
 
@@ -361,35 +553,32 @@ static result_t curve_interactive_test(curveteststate_t *state)
           switch (event.button.button)
           {
           case SDL_BUTTON_LEFT:
-            for (i = 0; i < NELEMS(control_points); i++)
+            for (i = 0; i < NELEMS(state->control_points); i++)
             {
               box_t point_box;
 
-              point_box.x0 = control_points[i].x - BLOBSZ / 2;
-              point_box.y0 = control_points[i].y - BLOBSZ / 2;
-              point_box.x1 = control_points[i].x + BLOBSZ / 2;
-              point_box.y1 = control_points[i].y + BLOBSZ / 2;
+              point_box.x0 = state->control_points[i].x - BLOBSZ / 2;
+              point_box.y0 = state->control_points[i].y - BLOBSZ / 2;
+              point_box.x1 = state->control_points[i].x + BLOBSZ / 2;
+              point_box.y1 = state->control_points[i].y + BLOBSZ / 2;
 
               if (box_contains_point(&point_box, mx, my))
               {
                 dragging = i;
-                control_points[dragging].x = mx;
-                control_points[dragging].y = my;
+                state->control_points[dragging].x = mx;
+                state->control_points[dragging].y = my;
                 break;
               }
             }
             break;
 
           case SDL_BUTTON_RIGHT:
-            dontclear = true;
+            opt_dontclear = true;
             break;
           }
           break;
 
         case SDL_MOUSEBUTTONUP:
-          mx = event.motion.x;
-          my = event.motion.y;
-
           switch (event.button.button)
           {
           case SDL_BUTTON_LEFT:
@@ -397,20 +586,16 @@ static result_t curve_interactive_test(curveteststate_t *state)
             break;
 
           case SDL_BUTTON_RIGHT:
-            dontclear = false;
+            opt_dontclear = false;
             break;
           }
           break;
 
         case SDL_MOUSEWHEEL:
           if (event.motion.yrel > 0)
-          {
-            ndrawpoints = MIN(ndrawpoints + 1, MAXDRAWPTS);
-          }
+            state->ndrawpoints = MIN(state->ndrawpoints + 1, MAXDRAWPTS);
           else if (event.motion.yrel < 0)
-          {
-            ndrawpoints = MAX(ndrawpoints - 1, MINDRAWPTS);
-          }
+            state->ndrawpoints = MAX(state->ndrawpoints - 1, MINDRAWPTS);
           break;
 
         default:
@@ -424,148 +609,21 @@ static result_t curve_interactive_test(curveteststate_t *state)
       quit = 1;
 #endif
 
-    if (!dontclear)
+    if (!opt_dontclear)
     {
       bitmap_clear(&state->bm, state->palette[state->background_colour_index]);
-      box_reset(&overalldirty);
+      box_reset(&state->overalldirty);
     }
 
-    /* draw control point blobs */
-    cpi = 0;
-    npoints = 2;
-    for (set = 0; set < NSETS; set++)
-    {
-      for (i = 0; i < npoints; i++)
-      {
-        box_t    b;
-        colour_t colour;
-
-        b.x0 = control_points[cpi].x - BLOBSZ / 2;
-        b.y0 = control_points[cpi].y - BLOBSZ / 2;
-        b.x1 = control_points[cpi].x + BLOBSZ / 2;
-        b.y1 = control_points[cpi].y + BLOBSZ / 2;
-
-        colour = state->palette[8 + set];
-
-        screen_draw_square(&state->scr, b.x0, b.y0, BLOBSZ, colour);
-
-        box_union(&b, &overalldirty, &overalldirty);
-
-        cpi++;
-      }
-      npoints++;
-    }
-
-    for (set = 0; set < NELEMS(curves); set++)
-    {
-      int o = curves[set].offset;
-
-      for (i = 0; i < ndrawpoints; i++)
-      {
-        int t = 65536 * i / (ndrawpoints - 1);
-
-        switch (curves[set].kind)
-        {
-        case Linear:
-          draw_points[i] = curve_point_on_line(jitter(control_points[o + 0]),
-                                               jitter(control_points[o + 1]),
-                                               t);
-          break;
-
-        case Quadratic:
-          draw_points[i] = curve_bezier_point_on_quad(jitter(control_points[o + 0]),
-                                                      jitter(control_points[o + 1]),
-                                                      jitter(control_points[o + 2]),
-                                                      t);
-          break;
-
-        case Cubic:
-          draw_points[i] = curve_bezier_point_on_cubic(jitter(control_points[o + 0]),
-                                                       jitter(control_points[o + 1]),
-                                                       jitter(control_points[o + 2]),
-                                                       jitter(control_points[o + 3]),
-                                                       t);
-          break;
-
-        case Quartic:
-          draw_points[i] = curve_bezier_point_on_quartic(jitter(control_points[o + 0]),
-                                                         jitter(control_points[o + 1]),
-                                                         jitter(control_points[o + 2]),
-                                                         jitter(control_points[o + 3]),
-                                                         jitter(control_points[o + 4]),
-                                                         t);
-          break;
-
-        case Quintic:
-          draw_points[i] = curve_bezier_point_on_quintic(jitter(control_points[o + 0]),
-                                                         jitter(control_points[o + 1]),
-                                                         jitter(control_points[o + 2]),
-                                                         jitter(control_points[o + 3]),
-                                                         jitter(control_points[o + 4]),
-                                                         jitter(control_points[o + 5]),
-                                                         t);
-          break;
-        }
-      }
-
-      /* draw curves */
-      for (i = 0; i < ndrawpoints - 1; i++)
-      {
-        box_t    b;
-        colour_t colour;
-
-        b.x0 = draw_points[i + 0].x;
-        b.y0 = draw_points[i + 0].y;
-        b.x1 = draw_points[i + 1].x;
-        b.y1 = draw_points[i + 1].y;
-        if (checker)
-          colour = state->palette[(i & 1) ? palette_DARK_PURPLE : palette_LIGHT_PEACH];
-        else
-          colour = state->palette[palette_BLACK];
-
-        if (points)
-        {
-          screen_draw_pixel(&state->scr, b.x0, b.y0, state->palette[palette_GREEN]);
-          screen_draw_pixel(&state->scr, b.x1, b.y1, state->palette[palette_RED]);
-        }
-
-        if (aa)
-          screen_draw_aa_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
-        else
-          screen_draw_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
-
-        box_union(&b, &overalldirty, &overalldirty);
-      }
-    }
-
-    /* rotate a line */
-
-    {
-      const float  centre   = 40.0f;
-      const float  diameter = 21.0f;
-
-      float        s, c;
-      float        xa, ya, xb, yb;
-      box_t        b = BOX_RESET;
-
-      xa = centre + sinf((line_degrees +   0.0f) / 360.0f * M_PI * 2.0f) * diameter;
-      ya = centre + cosf((line_degrees +   0.0f) / 360.0f * M_PI * 2.0f) * diameter;
-      xb = centre + sinf((line_degrees + 180.0f) / 360.0f * M_PI * 2.0f) * diameter;
-      yb = centre + cosf((line_degrees + 180.0f) / 360.0f * M_PI * 2.0f) * diameter;
-
-      screen_draw_line(&state->scr, (int) xa, (int) ya, (int) xb, (int) yb, state->palette[palette_DARK_GREEN]);
-      screen_draw_aa_line(&state->scr, xa + 45, ya, xb + 45, yb, state->palette[palette_DARK_GREEN]);
-      screen_draw_aa_linef(&state->scr, xa + 90, ya, xb + 90, yb, state->palette[palette_DARK_GREEN]);
-
-      box_extend_n(&b, 2, 0, 0, 150, 150);
-      box_union(&b, &overalldirty, &overalldirty); // this will leave trails since it's not wiping the /old/ box
-    }
-
-    /* Update the texture and render it */
+    (void) draw_all_ctrlpts(state);
+    (void) calc_all_curves(state);
+    (void) rotate_lines(state);
 
 #ifdef USE_SDL
-    if (!box_is_empty(&overalldirty))
+    if (!box_is_empty(&state->overalldirty))
     {
+      /* Update the texture and render it */
+
       bitmap_t *scr_bgrx8888;
       SDL_Rect  texturearea;
       char     *scr;
@@ -589,7 +647,7 @@ static result_t curve_interactive_test(curveteststate_t *state)
       }
       else
       {
-        box_union(&overalldirty, &prevdirty, &combined_dirty);
+        box_union(&state->overalldirty, &prevdirty, &combined_dirty);
         (void) box_intersection(&scr_clip, &combined_dirty, &combined_dirty);
       }
 
@@ -615,7 +673,7 @@ static result_t curve_interactive_test(curveteststate_t *state)
     SDL_Delay(1000 / 60); /* 60fps */
 #endif
 
-    prevdirty = overalldirty;
+    prevdirty = state->overalldirty;
   }
 
 #ifdef USE_SDL

@@ -179,38 +179,3 @@ point_t curve_bezier_point_on_quintic_r(point_t p0,
 
   return abcde;
 }
-
-#ifndef NDEBUG
-
-int beziertest(void)
-{
-#define ONE_HALF (65536 / 2)
-
-  point_t a, b, c, d, e;
-  point_t p;
-
-  a.x = 0;
-  a.y = 0;
-
-  b.x = 0;
-  b.y = 100;
-
-  c.x = 100;
-  c.y = 100;
-
-  d.x = 100;
-  d.y = 0;
-
-  p = curve_bezier_point_on_cubic(a, b, c, d, ONE_HALF);
-  p = curve_bezier_point_on_cubic_r(a, b, c, d, ONE_HALF);
-
-  e.x = 0;
-  e.y = 0;
-
-  p = curve_bezier_point_on_quartic(a, b, c, d, e, ONE_HALF);
-  p = curve_bezier_point_on_quartic_r(a, b, c, d, e, ONE_HALF);
-  
-  return 0;
-}
-
-#endif
