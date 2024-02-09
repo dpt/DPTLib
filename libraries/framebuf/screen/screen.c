@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <math.h>
 
 #include "framebuf/screen.h"
@@ -157,8 +158,8 @@ void screen_draw_square(screen_t *scr, int x, int y, int size, colour_t colour)
   screen_draw_rect(scr, x, y, size, size, colour);
 }
 
-#define ABS(a) ((a) < 0 ? -(a) : (a))
-#define SGN(a) ((a) < 0 ? -1 : 1)
+#define ABS(a)    ((a) < 0 ? -(a) : (a))
+#define SGN(a)    ((a) < 0 ? -1 : 1)
 #define SWAP(a,b) do { __typeof(a) t = a; a = b; b = t; } while (0)
 
 // TODO: Cope with a clip region.
@@ -228,17 +229,17 @@ void screen_draw_aa_linef(screen_t *scr,
                           float x0, float y0, float x1, float y1,
                           colour_t colour)
 {
-  float steep;
   float dx, dy;
+  float steep;
   float grad;
-  float yf;
-  int   xend, yend;
+  int   xend;
+  float yend;
   float xgap;
-  int   ix0, ix1;
-  int   iy0, iy1;
-  int   x;
+  int   ix0, iy0;
   int   alpha1, alpha2;
-  int   y;
+  float yf;
+  int   ix1, iy1;
+  int   x, y;
 
   dx = x1 - x0;
   dy = y1 - y0;
@@ -259,13 +260,13 @@ void screen_draw_aa_linef(screen_t *scr,
 
   grad = (dx == 0.0f) ? 1.0f : dy / dx;
 
-  // start point
+  /* start point */
 
-  xend = roundf(x0);
-  yend = y0 + grad * (xend - x0);
-  xgap = xend + 0.5 - x0;
-  ix0  = xend;
-  iy0  = floorf(yend);
+  xend   = (int) lroundf(x0);
+  yend   = y0 + grad * (xend - x0);
+  xgap   = xend + 0.5f - x0;
+  ix0    = xend;
+  iy0    = floorf(yend);
   alpha1 = 255.0f *  (iy0 + 1.0f - yend) * xgap;
   alpha2 = 255.0f * -(iy0        - yend) * xgap;
   if (steep)
@@ -281,13 +282,13 @@ void screen_draw_aa_linef(screen_t *scr,
 
   yf = yend + grad;
 
-  // end point
+  /* end point (inclusive?) */
 
-  xend = roundf(x1);
-  yend = y1 + grad * (xend - x1);
-  xgap = x1 + 0.5f - xend;
-  ix1  = xend;
-  iy1  = floorf(yend);
+  xend   = (int) lroundf(x1);
+  yend   = y1 + grad * (xend - x1);
+  xgap   = x1 + 0.5f - xend;
+  ix1    = xend;
+  iy1    = floorf(yend);
   alpha1 = 255.0f *  (iy1 + 1.0f - yend) * xgap;
   alpha2 = 255.0f * -(iy1        - yend) * xgap;
   if (steep)
@@ -301,11 +302,14 @@ void screen_draw_aa_linef(screen_t *scr,
     screen_blend_pixel(scr, ix1, iy1 + 1, colour, alpha2);
   }
 
+  /* mid points */
+
   for (x = ix0 + 1; x < ix1; x++)
   {
-    y = floorf(yf);
-    alpha1 = (y + 1.0f - yf) * 255.0f;
-    alpha2 = (yf - y) * 255.0f;
+    y      = floorf(yf);
+    alpha1 = 255.0f *  (y + 1.0f - yf);
+    alpha2 = 255.0f * -(y        - yf);
+
     if (steep)
     {
       screen_blend_pixel(scr, y,     x, colour, alpha1);

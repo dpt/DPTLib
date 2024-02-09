@@ -339,14 +339,14 @@ static result_t curve_interactive_test(curveteststate_t *state)
           case SDLK_j: jitter = (jitter == jitter_on) ? jitter_off : jitter_on; break;
           case SDLK_p: points = !points; break;
           case SDLK_q: quit = true; break;
-          case SDLK_LEFT: line_degrees += 0.5; break;
-          case SDLK_RIGHT: line_degrees -= 0.5; break;
           }
           break;
 
         case SDL_MOUSEMOTION:
           mx = event.motion.x;
           my = event.motion.y;
+
+          line_degrees = mx / 4.0f;
 
           if (dragging >= 0) {
             control_points[dragging].x = mx;
