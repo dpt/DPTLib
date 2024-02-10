@@ -6,7 +6,7 @@
 
 void box_reset(box_t *b)
 {
-  const box_t invalid = BOX_RESET;
+  const box_t invalid = BOX_INIT;
 
   *b = invalid;
 }

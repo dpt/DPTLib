@@ -4,11 +4,11 @@
 #include <ctype.h>
 #include <limits.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -237,25 +237,24 @@ typedef struct curveteststate
   screen_t    scr;
   colour_t    palette[16];
   colour_t    transparent;
-  int         background_colour_index;
+  int         background_palette_index;
 #ifdef USE_SDL
   sdlstate_t  sdl_state;
 #endif
 
-  box_t     overalldirty;
-
-  int       section_height;
-
-  point_t   control_points[MAXCONTROLPTS];
-  point_t   draw_points[MAXDRAWPTS];
-  int       ndrawpoints;
-
-  float     line_rotation; /* degrees */
-
-  bool      opt_use_aa;
-  bool      opt_checker;
-  bool      opt_draw_endpoints;
-  point_t (*jitterfn)(point_t);
+  box_t       overalldirty;
+  int         section_height;
+  point_t     control_points[MAXCONTROLPTS];
+  point_t     draw_points[MAXDRAWPTS];
+  int         ndrawpoints;
+  struct
+  {
+    bool      use_aa;
+    bool      checker;
+    bool      draw_endpoints;
+  }
+  opt;
+  point_t   (*jitterfn)(point_t);
 }
 curveteststate_t;
 
@@ -278,22 +277,21 @@ static point_t jitter_off(point_t p)
 
 /* ----------------------------------------------------------------------- */
 
-static result_t setup_all_curves(curveteststate_t *state)
+static void setup_all_curves(curveteststate_t *state)
 {
   int cpi;
   int y;
   int npoints;
   int set;
+  int width;
+  int lefthand;
+  int i;
 
   cpi     = 0; /* control point index */
   y       = 0;
   npoints = 2;
   for (set = 0; set < NSETS; set++)
   {
-    int width;
-    int lefthand;
-    int i;
-
     width    = (npoints - 1) * UNIT;
     lefthand = (state->scr_width - width) / 2;
 
@@ -307,28 +305,23 @@ static result_t setup_all_curves(curveteststate_t *state)
     y += state->section_height + BLOBSZ;
     npoints++;
   }
-
-  return result_OK;
 }
 
-/* draw control point blobs */
-static result_t draw_all_ctrlpts(curveteststate_t *state)
+static void draw_all_control_points(curveteststate_t *state)
 {
-  int cpi;
-  int npoints;
-  int set;
+  int      cpi;
+  int      npoints;
+  int      set;
+  int      i;
+  box_t    b;
+  colour_t colour;
 
   cpi     = 0;
   npoints = 2;
   for (set = 0; set < NSETS; set++)
   {
-    int i;
-
     for (i = 0; i < npoints; i++)
     {
-      box_t    b;
-      colour_t colour;
-
       b.x0 = state->control_points[cpi].x - BLOBSZ / 2;
       b.y0 = state->control_points[cpi].y - BLOBSZ / 2;
       b.x1 = state->control_points[cpi].x + BLOBSZ / 2;
@@ -344,60 +337,57 @@ static result_t draw_all_ctrlpts(curveteststate_t *state)
     }
     npoints++;
   }
-
-  return result_OK;
 }
 
 /* draw curve from draw_points[] */
-static result_t draw_a_curve(curveteststate_t *state)
+static void draw_a_curve(curveteststate_t *state)
 {
-  int i;
+  int      i;
+  box_t    b;
+  colour_t colour;
 
   for (i = 0; i < state->ndrawpoints - 1; i++)
   {
-    box_t    b;
-    colour_t colour;
-
     b.x0 = state->draw_points[i + 0].x;
     b.y0 = state->draw_points[i + 0].y;
     b.x1 = state->draw_points[i + 1].x;
     b.y1 = state->draw_points[i + 1].y;
 
-    if (state->opt_checker)
+    if (state->opt.checker)
       colour = state->palette[(i & 1) ? palette_DARK_PURPLE : palette_LIGHT_PEACH];
     else
       colour = state->palette[palette_BLACK];
 
-    if (state->opt_draw_endpoints)
+    if (state->opt.draw_endpoints)
     {
       screen_draw_pixel(&state->scr, b.x0, b.y0, state->palette[palette_GREEN]);
       screen_draw_pixel(&state->scr, b.x1, b.y1, state->palette[palette_RED]);
     }
 
-    if (state->opt_use_aa)
+    if (state->opt.use_aa)
       screen_draw_aa_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
     else
       screen_draw_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
 
     box_union(&b, &state->overalldirty, &state->overalldirty);
   }
-
-  return result_OK;
 }
 
 /* calculate curves */
-static result_t calc_all_curves(curveteststate_t *state)
+static void calc_all_curves(curveteststate_t *state)
 {
   int set;
+  int o;
+  int i;
+  int t;
 
   for (set = 0; set < NELEMS(curves); set++)
   {
-    int o = curves[set].offset;
-    int i;
+    o = curves[set].offset;
 
     for (i = 0; i < state->ndrawpoints; i++)
     {
-      int t = 65536 * i / (state->ndrawpoints - 1);
+      t = 65536 * i / (state->ndrawpoints - 1);
 
       switch (curves[set].kind)
       {
@@ -443,33 +433,43 @@ static result_t calc_all_curves(curveteststate_t *state)
       }
     }
 
-    (void) draw_a_curve(state);
+    draw_a_curve(state);
   }
-
-  return result_OK;
 }
 
 /* rotate a line or three */
-static result_t rotate_lines(curveteststate_t *state)
+static void rotate_lines(curveteststate_t *state, int degrees, int palidx)
 {
-  const float centre   = 40.0f;
-  const float diameter = 21.0f;
+  const float centre     = 40.0f;
+  const float radius     = 21.0f;
+  const float separation = 90.0f;
 
-  float s, c;
-  float xa, ya, xb, yb;
-  box_t b = BOX_RESET;
+  const float rotation  = degrees / 4.0f;
+  const float scale     = M_PI * 2.0f / 360.0f;
 
-  xa = centre + sinf((state->line_rotation +   0.0f) / 360.0f * M_PI * 2.0f) * diameter;
-  ya = centre + cosf((state->line_rotation +   0.0f) / 360.0f * M_PI * 2.0f) * diameter;
-  xb = centre + sinf((state->line_rotation + 180.0f) / 360.0f * M_PI * 2.0f) * diameter;
-  yb = centre + cosf((state->line_rotation + 180.0f) / 360.0f * M_PI * 2.0f) * diameter;
+  float       xa, ya, xb, yb;
+  box_t       b;
 
-  screen_draw_line(&state->scr, (int) xa, (int) ya, (int) xb, (int) yb, state->palette[palette_DARK_GREEN]);
-  screen_draw_aa_line(&state->scr, xa + 45, ya, xb + 45, yb, state->palette[palette_DARK_GREEN]);
-  screen_draw_aa_linef(&state->scr, xa + 90, ya, xb + 90, yb, state->palette[palette_DARK_GREEN]);
+  xa = centre + sinf((rotation +   0.0f) * scale) * radius;
+  ya = centre + cosf((rotation +   0.0f) * scale) * radius;
+  xb = centre + sinf((rotation + 180.0f) * scale) * radius;
+  yb = centre + cosf((rotation + 180.0f) * scale) * radius;
 
-  box_extend_n(&b, 2, 0, 0, 150, 150);
-  box_union(&b, &state->overalldirty, &state->overalldirty); // this will leave trails since it's not wiping the /old/ box
+  screen_draw_line(&state->scr,
+                   (int) xa, (int) ya, (int) xb, (int) yb,
+                   state->palette[palidx]);
+
+  screen_draw_aa_line(&state->scr,
+                      xa + separation, ya, xb + separation, yb,
+                      state->palette[palidx]);
+
+  screen_draw_aa_linef(&state->scr,
+                       xa + separation * 2.0f, ya, xb + separation * 2.0f, yb,
+                       state->palette[palidx]);
+
+  box_reset(&b);
+  box_extend_n(&b, 2, 0, 0, 150, 150); // not accurate enough
+  box_union(&b, &state->overalldirty, &state->overalldirty);
 }
 
 static result_t curve_interactive_test(curveteststate_t *state)
@@ -479,21 +479,17 @@ static result_t curve_interactive_test(curveteststate_t *state)
   int   mx            = 0;
   int   my            = 0;
   int   firstdraw     = 1;
-  int   aa            = 1;
-  int   cycling       = 1;
   bool  opt_dontclear = false;
-  int   points        = 1;
-  box_t prevdirty     = BOX_RESET;
+  box_t prevdirty     = BOX_INIT;
   int   dragging      = -1;
   int   i;
-  int   set;
 
-  state->opt_use_aa         = true;
-  state->opt_checker        = true;
-  state->opt_draw_endpoints = true;
+  state->opt.use_aa         = true;
+  state->opt.checker        = true;
+  state->opt.draw_endpoints = true;
 
   state->ndrawpoints        = 32;
-  state->overalldirty       = (box_t) BOX_RESET;
+  box_reset(&state->overalldirty);
   state->jitterfn           = &jitter_off;
 
   state->section_height     = (state->scr_height - (NSETS - 1) * BLOBSZ) / NSETS; /* divide screen into chunks */
@@ -526,19 +522,26 @@ static result_t curve_interactive_test(curveteststate_t *state)
         case SDL_KEYUP:
           switch (event.key.keysym.sym)
           {
-          case SDLK_a: state->opt_use_aa = !state->opt_use_aa; break;
-          case SDLK_c: state->opt_checker = !state->opt_checker; break;
-          case SDLK_j: state->jitterfn = (state->jitterfn == jitter_on) ? &jitter_off : &jitter_on; break;
-          case SDLK_p: state->opt_draw_endpoints = !state->opt_draw_endpoints; break;
-          case SDLK_q: quit = true; break;
+          case SDLK_a:
+            state->opt.use_aa = !state->opt.use_aa;
+            break;
+          case SDLK_c:
+            state->opt.checker = !state->opt.checker;
+            break;
+          case SDLK_j:
+            state->jitterfn = (state->jitterfn == jitter_on) ? &jitter_off : &jitter_on;
+            break;
+          case SDLK_p:
+            state->opt.draw_endpoints = !state->opt.draw_endpoints;
+            break;
+          case SDLK_q:
+            quit = true; break;
           }
           break;
 
         case SDL_MOUSEMOTION:
           mx = event.motion.x;
           my = event.motion.y;
-
-          state->line_rotation = mx / 4.0f;
 
           if (dragging >= 0) {
             state->control_points[dragging].x = mx;
@@ -611,13 +614,13 @@ static result_t curve_interactive_test(curveteststate_t *state)
 
     if (!opt_dontclear)
     {
-      bitmap_clear(&state->bm, state->palette[state->background_colour_index]);
+      bitmap_clear(&state->bm, state->palette[state->background_palette_index]);
       box_reset(&state->overalldirty);
     }
 
-    (void) draw_all_ctrlpts(state);
-    (void) calc_all_curves(state);
-    (void) rotate_lines(state);
+    draw_all_control_points(state);
+    calc_all_curves(state);
+    rotate_lines(state, mx, state->opt.checker ? palette_DARK_GREEN : palette_BLACK);
 
 #ifdef USE_SDL
     if (!box_is_empty(&state->overalldirty))
@@ -708,24 +711,23 @@ result_t curve_test_one_format(const char *resources,
                                int         scr_height,
                                pixelfmt_t  scr_fmt)
 {
-  curveteststate_t state;
+  result_t          rc = result_OK;
+  curveteststate_t  state;
+  unsigned int     *pixels;
+  int               bm_inited = 0;
+
+  NOT_USED(resources);
 
   state.scr_width  = scr_width;
   state.scr_height = scr_height;
 
-
-  const int scr_rowbytes = (state.scr_width << pixelfmt_log2bpp(scr_fmt)) / 8;
+  const int scr_rowbytes = (scr_width << pixelfmt_log2bpp(scr_fmt)) / 8;
 
   define_pico8_palette(&state.palette[0]);
 
   state.transparent = colour_rgba(0x00, 0x00, 0x00, 0x00);
 
-  state.background_colour_index = 7; /* near white */
-
-  result_t      rc = result_OK;
-  unsigned int *pixels;
-  int           bm_inited = 0;
-  int           font;
+  state.background_palette_index = 7; /* near white */
 
 #ifdef USE_SDL
   memset(&state.sdl_state, 0, sizeof(state.sdl_state));
@@ -751,15 +753,15 @@ result_t curve_test_one_format(const char *resources,
                pixels);
   bm_inited = 1;
 
-  bitmap_clear(&state.bm, state.palette[state.background_colour_index]);
+  bitmap_clear(&state.bm, state.palette[state.background_palette_index]);
 
   screen_for_bitmap(&state.scr, &state.bm);
 
   /* ------------------------------------------------------------------------ */
 
-  typedef result_t (*bmfonttestfn_t)(curveteststate_t *);
+  typedef result_t (*curvetestfn_t)(curveteststate_t *);
 
-  static const bmfonttestfn_t tests[] =
+  static const curvetestfn_t tests[] =
   {
     curve_interactive_test
   };
@@ -798,7 +800,6 @@ result_t curve_test(const char *resources)
   }
   tab[] =
   {
-    //    { 800, 600, pixelfmt_p4       },
     { 800, 600, pixelfmt_bgrx8888 }
   };
 
@@ -808,8 +809,7 @@ result_t curve_test(const char *resources)
   for (i = 0; i < NELEMS(tab); i++)
   {
     rc = curve_test_one_format(resources,
-                               tab[i].width,
-                               tab[i].height,
+                               tab[i].width, tab[i].height,
                                tab[i].fmt);
     if (rc != result_TEST_PASSED)
       return rc;
