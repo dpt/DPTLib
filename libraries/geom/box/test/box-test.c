@@ -104,6 +104,8 @@ result_t box_test(const char *resources)
   size_t   i;
   int      nfailures;
 
+  NOT_USED(resources);
+
   nfailures = 0;
   for (i = 0; i < NELEMS(tests); i++)
   {

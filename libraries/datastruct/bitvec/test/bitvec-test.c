@@ -7,6 +7,7 @@
 #endif
 
 #include "base/result.h"
+#include "base/utils.h"
 #include "datastruct/bitvec.h"
 
 #include "test/all-tests.h"
@@ -29,6 +30,8 @@ result_t bitvec_test(const char *resources)
   int       i;
   bitvec_t *w;
   bitvec_t *x;
+
+  NOT_USED(resources);
 
   printf("test: create\n");
 

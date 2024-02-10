@@ -211,6 +211,8 @@ result_t ntree_test(const char *resources)
   int      nfailures = 0;
   int      i;
 
+  NOT_USED(resources);
+
   BEGIN_TEST("build tree");
 
   for (i = 0; i < NELEMS(test_data); i++)

@@ -29,6 +29,8 @@ result_t layout_test(const char *resources)
   box_t         used;
   txtscr_t     *scr;
 
+  NOT_USED(resources);
+
   packer = packer_create(&dims);
   if (packer == NULL)
     goto failure;

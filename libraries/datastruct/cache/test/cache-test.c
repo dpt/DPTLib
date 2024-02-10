@@ -9,6 +9,7 @@
 #endif
 
 #include "base/result.h"
+#include "base/utils.h"
 #include "datastruct/cache.h"
 
 #include "test/all-tests.h"
@@ -24,6 +25,8 @@ result_t cache_test(const char *resources)
   cacheconfig_t config;
   int           nfailures;
   int           i;
+
+  NOT_USED(resources);
 
   config.hash_chain_length   = 4;
   config.nentries_percentage = 25;

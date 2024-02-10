@@ -403,6 +403,8 @@ result_t packer_test(const char *resources)
 {
   result_t err;
 
+  NOT_USED(resources);
+
   err = test1();
   if (err)
     goto failure;

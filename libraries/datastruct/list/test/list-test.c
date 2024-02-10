@@ -50,6 +50,8 @@ result_t list_test(const char *resources)
 
   int i;
 
+  NOT_USED(resources);
+
   printf("test: add to head\n");
 
   for (i = 0; i < NELEMS(data); i++)

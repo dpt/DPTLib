@@ -9,6 +9,7 @@
 #endif
 
 #include "base/result.h"
+#include "base/utils.h"
 #include "datastruct/bitfifo.h"
 
 #include "test/all-tests.h"
@@ -29,8 +30,6 @@ expected[] =
   { 31, 0x7FFFFFFF },
   { 32, 0xFFFFFFFF },
 };
-
-#define NELEMS(a) (int)(sizeof(a) / sizeof((a)[0]))
 
 /* shows changes from previous stats */
 static void dump(const bitfifo_t *fifo)
@@ -69,6 +68,8 @@ result_t bitfifo_test(const char *resources)
   bitfifo_t   *fifo;
   int          i;
   unsigned int outbits;
+
+  NOT_USED(resources);
 
   fifo = bitfifo_create(MAXSIZE);
   if (fifo == NULL)

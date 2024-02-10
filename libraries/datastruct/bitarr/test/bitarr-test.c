@@ -8,6 +8,7 @@
 #endif
 
 #include "base/result.h"
+#include "base/utils.h"
 #include "datastruct/bitarr.h"
 
 #include "test/all-tests.h"
@@ -38,6 +39,8 @@ result_t bitarr_test(const char *resources)
 {
   testbits_t arr;
   int        i;
+
+  NOT_USED(resources);
 
   printf("test: create\n");
 

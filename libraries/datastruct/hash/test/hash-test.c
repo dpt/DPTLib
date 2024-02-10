@@ -64,6 +64,8 @@ result_t hash_test(const char *resources)
   hash_t  *d;
   int      i;
 
+  NOT_USED(resources);
+
   printf("test: create\n");
 
   /* use default string handling */
