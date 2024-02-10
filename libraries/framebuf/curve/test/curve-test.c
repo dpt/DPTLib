@@ -179,8 +179,8 @@ static void stop_sdl(sdlstate_t *state)
 #define BLOBSZ        (8)
 #define NSETS         (5)
 #define MAXCONTROLPTS (2 + 3 + 4 + 5 + 6)
-#define MINDRAWPTS    (2)
-#define MAXDRAWPTS    (128)
+#define MINSEGMENTS   (1)
+#define MAXSEGMENTS   (128)
 #define BORDER        (64)
 #define UNIT          (96)
 
@@ -224,9 +224,8 @@ typedef struct curveteststate
 
   box_t       overalldirty;
   int         section_height;
-  point_t     control_points[MAXCONTROLPTS];
-  point_t     draw_points[MAXDRAWPTS];
-  int         ndrawpoints;
+  int         nsegments;
+
   struct
   {
     bool      use_aa;
@@ -235,6 +234,9 @@ typedef struct curveteststate
   }
   opt;
   point_t   (*jitterfn)(point_t);
+
+  point_t     control_points[MAXCONTROLPTS];
+  point_t     draw_points[MAXSEGMENTS];
 }
 curveteststate_t;
 
@@ -326,7 +328,7 @@ static void draw_a_curve(curveteststate_t *state)
   box_t    b;
   colour_t colour;
 
-  for (i = 0; i < state->ndrawpoints - 1; i++)
+  for (i = 0; i < state->nsegments; i++)
   {
     b.x0 = state->draw_points[i + 0].x;
     b.y0 = state->draw_points[i + 0].y;
@@ -365,9 +367,9 @@ static void calc_all_curves(curveteststate_t *state)
   {
     o = curves[set].offset;
 
-    for (i = 0; i < state->ndrawpoints; i++)
+    for (i = 0; i < state->nsegments + 1; i++)
     {
-      t = 65536 * i / (state->ndrawpoints - 1);
+      t = 65536 * i / state->nsegments;
 
       switch (curves[set].kind)
       {
@@ -468,7 +470,7 @@ static result_t curve_interactive_test(curveteststate_t *state)
   state->opt.checker        = true;
   state->opt.draw_endpoints = true;
 
-  state->ndrawpoints        = 32;
+  state->nsegments          = 32;
   box_reset(&state->overalldirty);
   state->jitterfn           = &jitter_off;
 
@@ -576,9 +578,9 @@ static result_t curve_interactive_test(curveteststate_t *state)
 
         case SDL_MOUSEWHEEL:
           if (event.motion.yrel > 0)
-            state->ndrawpoints = MIN(state->ndrawpoints + 1, MAXDRAWPTS);
+            state->nsegments = MIN(state->nsegments + 1, MAXSEGMENTS);
           else if (event.motion.yrel < 0)
-            state->ndrawpoints = MAX(state->ndrawpoints - 1, MINDRAWPTS);
+            state->nsegments = MAX(state->nsegments - 1, MINSEGMENTS);
           break;
 
         default:
