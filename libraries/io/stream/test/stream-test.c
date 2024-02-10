@@ -208,7 +208,6 @@ static result_t test_block(void)
 #endif
   stream_t            *s;
   int                  c;
-  int                  i;
 #if !USEFILE
   const unsigned char *p;
 #endif

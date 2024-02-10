@@ -26,7 +26,7 @@ void screen_init(screen_t  *scr,
   scr->palette  = palette;
   scr->span     = spanregistry_get(fmt);
   scr->base     = base;
-  scr->clip     = (box_t) BOX_RESET;
+  box_reset(&scr->clip);
 }
 
 void screen_for_bitmap(screen_t *scr, const bitmap_t *bm)
@@ -36,7 +36,7 @@ void screen_for_bitmap(screen_t *scr, const bitmap_t *bm)
 
   memcpy(scr, bm, sizeof(bitmap_t)); /* copy common members */
   scr->base = bm->base;
-  scr->clip = (box_t) BOX_RESET;
+  box_reset(&scr->clip);
 }
 
 int screen_get_clip(const screen_t *scr, box_t *clip)
