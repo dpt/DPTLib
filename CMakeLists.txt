@@ -80,6 +80,7 @@ set(PUBLIC_HEADERS
     include/framebuf/colour.h
     include/framebuf/composite.h
     include/framebuf/curve.h
+    include/framebuf/palettes.h
     include/framebuf/pixelfmt.h
     include/framebuf/screen.h
     include/framebuf/span-bgrx8888.h
@@ -221,6 +222,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/colour/colour.c
     libraries/framebuf/composite/composite.c
     libraries/framebuf/curve/curve.c
+    libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/screen/screen.c
     libraries/framebuf/span-registry/get.c
