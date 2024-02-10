@@ -18,30 +18,10 @@
 #include "base/utils.h"
 #include "io/path.h"
 #include "framebuf/colour.h"
+#include "framebuf/palettes.h"
 #include "framebuf/pixelfmt.h"
 
 #include "framebuf/curve.h"
-
-/* ----------------------------------------------------------------------- */
-
-/* PICO-8 palette */
-
-#define palette_BLACK        (0)
-#define palette_DARK_BLUE    (1)
-#define palette_DARK_PURPLE  (2)
-#define palette_DARK_GREEN   (3)
-#define palette_BROWN        (4)
-#define palette_DARK_GREY    (5)
-#define palette_LIGHT_GREY   (6)
-#define palette_WHITE        (7)
-#define palette_RED          (8)
-#define palette_ORANGE       (9)
-#define palette_YELLOW      (10)
-#define palette_GREEN       (11)
-#define palette_BLUE        (12)
-#define palette_LAVENDER    (13)
-#define palette_PINK        (14)
-#define palette_LIGHT_PEACH (15)
 
 /* ----------------------------------------------------------------------- */
 
@@ -354,14 +334,14 @@ static void draw_a_curve(curveteststate_t *state)
     b.y1 = state->draw_points[i + 1].y;
 
     if (state->opt.checker)
-      colour = state->palette[(i & 1) ? palette_DARK_PURPLE : palette_LIGHT_PEACH];
+      colour = state->palette[(i & 1) ? palette_PICO8_DARK_PURPLE : palette_PICO8_LIGHT_PEACH];
     else
-      colour = state->palette[palette_BLACK];
+      colour = state->palette[palette_PICO8_BLACK];
 
     if (state->opt.draw_endpoints)
     {
-      screen_draw_pixel(&state->scr, b.x0, b.y0, state->palette[palette_GREEN]);
-      screen_draw_pixel(&state->scr, b.x1, b.y1, state->palette[palette_RED]);
+      screen_draw_pixel(&state->scr, b.x0, b.y0, state->palette[palette_PICO8_GREEN]);
+      screen_draw_pixel(&state->scr, b.x1, b.y1, state->palette[palette_PICO8_RED]);
     }
 
     if (state->opt.use_aa)
@@ -620,7 +600,7 @@ static result_t curve_interactive_test(curveteststate_t *state)
 
     draw_all_control_points(state);
     calc_all_curves(state);
-    rotate_lines(state, mx, state->opt.checker ? palette_DARK_GREEN : palette_BLACK);
+    rotate_lines(state, mx, state->opt.checker ? palette_PICO8_DARK_GREEN : palette_PICO8_BLACK);
 
 #ifdef USE_SDL
     if (!box_is_empty(&state->overalldirty))
@@ -684,26 +664,6 @@ static result_t curve_interactive_test(curveteststate_t *state)
 #endif
 
   return result_TEST_PASSED;
-}
-
-static void define_pico8_palette(colour_t palette[16])
-{
-  palette[palette_BLACK      ] = colour_rgb(0x00, 0x00, 0x00);
-  palette[palette_DARK_BLUE  ] = colour_rgb(0x1D, 0x2B, 0x53);
-  palette[palette_DARK_PURPLE] = colour_rgb(0x7E, 0x25, 0x53);
-  palette[palette_DARK_GREEN ] = colour_rgb(0x00, 0x87, 0x51);
-  palette[palette_BROWN      ] = colour_rgb(0xAB, 0x52, 0x36);
-  palette[palette_DARK_GREY  ] = colour_rgb(0x5F, 0x57, 0x4F);
-  palette[palette_LIGHT_GREY ] = colour_rgb(0xC2, 0xC3, 0xC7);
-  palette[palette_WHITE      ] = colour_rgb(0xFF, 0xF1, 0xE8);
-  palette[palette_RED        ] = colour_rgb(0xFF, 0x00, 0x4D);
-  palette[palette_ORANGE     ] = colour_rgb(0xFF, 0xA3, 0x00);
-  palette[palette_YELLOW     ] = colour_rgb(0xFF, 0xEC, 0x27);
-  palette[palette_GREEN      ] = colour_rgb(0x00, 0xE4, 0x36);
-  palette[palette_BLUE       ] = colour_rgb(0x29, 0xAD, 0xFF);
-  palette[palette_LAVENDER   ] = colour_rgb(0x83, 0x76, 0x9C);
-  palette[palette_PINK       ] = colour_rgb(0xFF, 0x77, 0xA8);
-  palette[palette_LIGHT_PEACH] = colour_rgb(0xFF, 0xCC, 0xAA);
 }
 
 result_t curve_test_one_format(const char *resources,
