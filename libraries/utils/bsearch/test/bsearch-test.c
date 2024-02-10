@@ -16,10 +16,12 @@
 
 result_t bsearch_test(const char *resources)
 {
+  static const int ints[] = { INT_MIN, INT_MIN + 1, INT_MAX - 1, INT_MAX };
+
   int i;
   int nfailures = 0;
 
-  static const int ints[] = { INT_MIN, INT_MIN + 1, INT_MAX - 1, INT_MAX };
+  NOT_USED(resources);
 
   printf("test: int array\n");
 

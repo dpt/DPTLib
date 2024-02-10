@@ -31,6 +31,8 @@ result_t vector_test(const char *resources)
   int       i;
   int      *p;
 
+  NOT_USED(resources);
+
   printf("test: create\n");
 
   v = vector_create(WIDTH);

@@ -199,6 +199,8 @@ result_t atom_test(const char *resources)
   result_t   err;
   atom_set_t *d;
 
+  NOT_USED(resources);
+
   d = atom_create_tuned(1, 12);
   if (d == NULL)
     goto Failure;

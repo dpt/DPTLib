@@ -287,6 +287,8 @@ result_t stream_test(const char *resources)
 {
   result_t rc;
 
+  NOT_USED(resources);
+
   rc = test_getc_empty();
   if (rc)
     goto Failure;

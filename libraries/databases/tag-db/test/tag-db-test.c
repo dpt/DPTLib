@@ -882,6 +882,8 @@ result_t tagdb_test(const char *resources)
   State_t  state;
   int      i;
 
+  NOT_USED(resources);
+
   printf("test: init\n");
 
   err = tagdb_init();

@@ -49,6 +49,8 @@ result_t array_test(const char *resources)
   int t;
   int i;
 
+  NOT_USED(resources);
+
 
   printf("test: delete element\n");
 

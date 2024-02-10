@@ -599,6 +599,8 @@ result_t pickle_test(const char *resources)
 {
   result_t rc;
 
+  NOT_USED(resources);
+
   printf("test: pickle test 1\n");
 
   rc = pickle__test1_write();
