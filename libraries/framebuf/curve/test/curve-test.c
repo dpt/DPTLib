@@ -177,12 +177,12 @@ static void stop_sdl(sdlstate_t *state)
 /* ----------------------------------------------------------------------- */
 
 #define BLOBSZ        (8)
-#define NSETS         (5)
-#define MAXCONTROLPTS (2 + 3 + 4 + 5 + 6)
+#define NSETS         (6)
+#define MAXCONTROLPTS (2 + 3 + 4 + 5 + 6 + 4)
 #define MINSEGMENTS   (1)
 #define MAXSEGMENTS   (128)
-#define BORDER        (64)
-#define UNIT          (96)
+#define BORDER        (32)
+#define UNIT          (32)
 
 /* ----------------------------------------------------------------------- */
 
@@ -194,18 +194,21 @@ static const struct
     Quadratic,
     Cubic,
     Quartic,
-    Quintic
+    Quintic,
+    FwdDiffCubic
   }
   kind;
+  int npoints;
   int offset;
 }
 curves[] =
 {
-  { Linear,     0                 },
-  { Quadratic,  0 + 2             },
-  { Cubic,      0 + 2 + 3         },
-  { Quartic,    0 + 2 + 3 + 4     },
-  { Quintic,    0 + 2 + 3 + 4 + 5 },
+  { Linear,       2, 0                     },
+  { Quadratic,    3, 0 + 2                 },
+  { Cubic,        4, 0 + 2 + 3             },
+  { Quartic,      5, 0 + 2 + 3 + 4         },
+  { Quintic,      6, 0 + 2 + 3 + 4 + 5     },
+  { FwdDiffCubic, 4, 0 + 2 + 3 + 4 + 5 + 6 }
 };
 
 /* ----------------------------------------------------------------------- */
@@ -259,6 +262,62 @@ static point_t jitter_off(point_t p)
 
 /* ----------------------------------------------------------------------- */
 
+void calcBezier(point_t p1, point_t p2, point_t p3, point_t p4,
+                int nsteps, point_t *points)
+{
+  float cx = 3 * (p2.x - p1.x);
+  float cy = 3 * (p2.y - p1.y);
+
+  float bx = 3 * (p3.x - p2.x) - cx;
+  float by = 3 * (p3.y - p2.y) - cy;
+
+  float ax = p4.x - p1.x - cx - bx;
+  float ay = p4.y - p1.y - cy - by;
+
+  float h = 1.0f / nsteps;
+  float hh = h * h;
+  float hhh = hh * h;
+
+  // first difference
+  float d1x =     ax * hhh +     bx * hh + cx * h;
+  float d1y =     ay * hhh +     by * hh + cy * h;
+
+  // second
+  float d2x = 6 * ax * hhh + 2 * bx * hh;
+  float d2y = 6 * ay * hhh + 2 * by * hh;
+
+  // third
+  float d3x = 6 * ax * hhh;
+  float d3y = 6 * ay * hhh;
+
+  float currentX = p1.x;
+  float currentY = p1.y;
+
+  points[0].x = currentX;
+  points[0].y = currentY;
+
+  // skip first and last points
+  for (int i = 1; i < nsteps; i++)
+  {
+    currentX += d1x;
+    currentY += d1y;
+
+    d1x += d2x;
+    d1y += d2y;
+
+    d2x += d3x;
+    d2y += d3y;
+
+    points[i].x = currentX;
+    points[i].y = currentY;
+  }
+
+  points[nsteps].x = p4.x;
+  points[nsteps].y = p4.y;
+}
+
+/* ----------------------------------------------------------------------- */
+
 static void setup_all_curves(curveteststate_t *state)
 {
   int cpi;
@@ -269,11 +328,11 @@ static void setup_all_curves(curveteststate_t *state)
   int lefthand;
   int i;
 
-  cpi     = 0; /* control point index */
-  y       = 0;
-  npoints = 2;
+  cpi = 0; /* control point index */
+  y   = BORDER;
   for (set = 0; set < NSETS; set++)
   {
+    npoints  = curves[set].npoints;
     width    = (npoints - 1) * UNIT;
     lefthand = (state->scr_width - width) / 2;
 
@@ -284,8 +343,7 @@ static void setup_all_curves(curveteststate_t *state)
       cpi++;
     }
 
-    y += state->section_height + BLOBSZ;
-    npoints++;
+    y += state->section_height;
   }
 }
 
@@ -298,10 +356,11 @@ static void draw_all_control_points(curveteststate_t *state)
   box_t    b;
   colour_t colour;
 
-  cpi     = 0;
-  npoints = 2;
+  cpi = 0;
   for (set = 0; set < NSETS; set++)
   {
+    npoints = curves[set].npoints;
+
     for (i = 0; i < npoints; i++)
     {
       b.x0 = state->control_points[cpi].x - BLOBSZ / 2;
@@ -317,7 +376,6 @@ static void draw_all_control_points(curveteststate_t *state)
 
       cpi++;
     }
-    npoints++;
   }
 }
 
@@ -367,51 +425,63 @@ static void calc_all_curves(curveteststate_t *state)
   {
     o = curves[set].offset;
 
-    for (i = 0; i < state->nsegments + 1; i++)
+    if (curves[set].kind == FwdDiffCubic)
     {
-      t = 65536 * i / state->nsegments;
-
-      switch (curves[set].kind)
+      calcBezier(state->jitterfn(state->control_points[o + 0]),
+                 state->jitterfn(state->control_points[o + 1]),
+                 state->jitterfn(state->control_points[o + 2]),
+                 state->jitterfn(state->control_points[o + 3]),
+                 state->nsegments,
+                &state->draw_points[0]);
+    }
+    else
+    {
+      for (i = 0; i < state->nsegments + 1; i++)
       {
-      case Linear:
-        state->draw_points[i] = curve_point_on_line(state->jitterfn(state->control_points[o + 0]),
-                                                    state->jitterfn(state->control_points[o + 1]),
-                                                    t);
-        break;
+        t = 65536 * i / state->nsegments;
 
-      case Quadratic:
-        state->draw_points[i] = curve_bezier_point_on_quad(state->jitterfn(state->control_points[o + 0]),
-                                                           state->jitterfn(state->control_points[o + 1]),
-                                                           state->jitterfn(state->control_points[o + 2]),
-                                                           t);
-        break;
+        switch (curves[set].kind)
+        {
+        case Linear:
+          state->draw_points[i] = curve_point_on_line(state->jitterfn(state->control_points[o + 0]),
+                                                      state->jitterfn(state->control_points[o + 1]),
+                                                      t);
+          break;
 
-      case Cubic:
-        state->draw_points[i] = curve_bezier_point_on_cubic(state->jitterfn(state->control_points[o + 0]),
-                                                            state->jitterfn(state->control_points[o + 1]),
-                                                            state->jitterfn(state->control_points[o + 2]),
-                                                            state->jitterfn(state->control_points[o + 3]),
-                                                            t);
-        break;
+        case Quadratic:
+          state->draw_points[i] = curve_bezier_point_on_quad(state->jitterfn(state->control_points[o + 0]),
+                                                             state->jitterfn(state->control_points[o + 1]),
+                                                             state->jitterfn(state->control_points[o + 2]),
+                                                             t);
+          break;
 
-      case Quartic:
-        state->draw_points[i] = curve_bezier_point_on_quartic(state->jitterfn(state->control_points[o + 0]),
+        case Cubic:
+          state->draw_points[i] = curve_bezier_point_on_cubic(state->jitterfn(state->control_points[o + 0]),
                                                               state->jitterfn(state->control_points[o + 1]),
                                                               state->jitterfn(state->control_points[o + 2]),
                                                               state->jitterfn(state->control_points[o + 3]),
-                                                              state->jitterfn(state->control_points[o + 4]),
                                                               t);
-        break;
+          break;
 
-      case Quintic:
-        state->draw_points[i] = curve_bezier_point_on_quintic(state->jitterfn(state->control_points[o + 0]),
-                                                              state->jitterfn(state->control_points[o + 1]),
-                                                              state->jitterfn(state->control_points[o + 2]),
-                                                              state->jitterfn(state->control_points[o + 3]),
-                                                              state->jitterfn(state->control_points[o + 4]),
-                                                              state->jitterfn(state->control_points[o + 5]),
-                                                              t);
-        break;
+        case Quartic:
+          state->draw_points[i] = curve_bezier_point_on_quartic(state->jitterfn(state->control_points[o + 0]),
+                                                                state->jitterfn(state->control_points[o + 1]),
+                                                                state->jitterfn(state->control_points[o + 2]),
+                                                                state->jitterfn(state->control_points[o + 3]),
+                                                                state->jitterfn(state->control_points[o + 4]),
+                                                                t);
+          break;
+
+        case Quintic:
+          state->draw_points[i] = curve_bezier_point_on_quintic(state->jitterfn(state->control_points[o + 0]),
+                                                                state->jitterfn(state->control_points[o + 1]),
+                                                                state->jitterfn(state->control_points[o + 2]),
+                                                                state->jitterfn(state->control_points[o + 3]),
+                                                                state->jitterfn(state->control_points[o + 4]),
+                                                                state->jitterfn(state->control_points[o + 5]),
+                                                                t);
+          break;
+        }
       }
     }
 
@@ -474,7 +544,7 @@ static result_t curve_interactive_test(curveteststate_t *state)
   box_reset(&state->overalldirty);
   state->jitterfn           = &jitter_off;
 
-  state->section_height     = (state->scr_height - (NSETS - 1) * BLOBSZ) / NSETS; /* divide screen into chunks */
+  state->section_height     = (state->scr_height - 2 * BORDER) / NSETS; /* divide screen into chunks */
 
   setup_all_curves(state);
 
