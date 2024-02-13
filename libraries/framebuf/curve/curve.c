@@ -20,6 +20,26 @@ point_t curve_point_on_line(point_t p0, point_t p1, fix16_t t)
   return c;
 }
 
+#define SCALE (16)
+
+static point_t scale_up(point_t p)
+{
+  point_t q;
+
+  q.x = p.x * SCALE;
+  q.y = p.y * SCALE;
+  return q;
+}
+
+static point_t scale_down(point_t p)
+{
+  point_t q;
+
+  q.x = p.x / SCALE;
+  q.y = p.y / SCALE;
+  return q;
+}
+
 point_t curve_bezier_point_on_quad(point_t p0,
                                    point_t p1,
                                    point_t p2,
@@ -28,12 +48,16 @@ point_t curve_bezier_point_on_quad(point_t p0,
   point_t a, b;
   point_t ab;
 
+  p0 = scale_up(p0);
+  p1 = scale_up(p1);
+  p2 = scale_up(p2);
+
   a = curve_point_on_line(p0, p1, t);
   b = curve_point_on_line(p1, p2, t);
 
   ab = curve_point_on_line(a, b, t);
 
-  return ab;
+  return scale_down(ab);
 }
 
 point_t curve_bezier_point_on_cubic(point_t p0,
@@ -46,6 +70,11 @@ point_t curve_bezier_point_on_cubic(point_t p0,
   point_t ab, bc;
   point_t abc;
 
+  p0 = scale_up(p0);
+  p1 = scale_up(p1);
+  p2 = scale_up(p2);
+  p3 = scale_up(p3);
+
   a = curve_point_on_line(p0, p1, t);
   b = curve_point_on_line(p1, p2, t);
   c = curve_point_on_line(p2, p3, t);
@@ -55,7 +84,7 @@ point_t curve_bezier_point_on_cubic(point_t p0,
 
   abc = curve_point_on_line(ab, bc, t);
 
-  return abc;
+  return scale_down(abc);
 }
 
 point_t curve_bezier_point_on_quartic(point_t p0,
@@ -69,6 +98,12 @@ point_t curve_bezier_point_on_quartic(point_t p0,
   point_t ab, bc, cd;
   point_t abc, bcd;
   point_t abcd;
+
+  p0 = scale_up(p0);
+  p1 = scale_up(p1);
+  p2 = scale_up(p2);
+  p3 = scale_up(p3);
+  p4 = scale_up(p4);
 
   a = curve_point_on_line(p0, p1, t);
   b = curve_point_on_line(p1, p2, t);
@@ -84,7 +119,7 @@ point_t curve_bezier_point_on_quartic(point_t p0,
 
   abcd = curve_point_on_line(abc, bcd, t);
 
-  return abcd;
+  return scale_down(abcd);
 }
 
 point_t curve_bezier_point_on_quintic(point_t p0,
@@ -100,6 +135,13 @@ point_t curve_bezier_point_on_quintic(point_t p0,
   point_t abc, bcd, cde;
   point_t abcd, bcde;
   point_t abcde;
+
+  p0 = scale_up(p0);
+  p1 = scale_up(p1);
+  p2 = scale_up(p2);
+  p3 = scale_up(p3);
+  p4 = scale_up(p4);
+  p5 = scale_up(p5);
 
   a = curve_point_on_line(p0, p1, t);
   b = curve_point_on_line(p1, p2, t);
@@ -121,7 +163,7 @@ point_t curve_bezier_point_on_quintic(point_t p0,
 
   abcde = curve_point_on_line(abcd, bcde, t);
 
-  return abcde;
+  return scale_down(abcde);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -178,4 +220,74 @@ point_t curve_bezier_point_on_quintic_r(point_t p0,
   abcde = curve_point_on_line(abcd, bcde, t);
 
   return abcde;
+}
+
+/* ----------------------------------------------------------------------- */
+
+void curve_bezier_cubic_f(point_t  p0,
+                          point_t  p1,
+                          point_t  p2,
+                          point_t  p3,
+                          int      nsteps,
+                          point_t *points)
+{
+  float    cx, cy;
+  float    bx, by;
+  float    ax, ay;
+  float    h, hh, hhh;
+  float    d1x, d1y;
+  float    d2x, d2y;
+  float    d3x, d3y;
+  float    curx, cury;
+  int      i;
+  point_t *point;
+
+  cx  = 3.0f * (p1.x - p0.x);
+  cy  = 3.0f * (p1.y - p0.y);
+
+  bx  = 3.0f * (p2.x - p1.x) - cx;
+  by  = 3.0f * (p2.y - p1.y) - cy;
+
+  ax  = p3.x - p0.x - cx - bx;
+  ay  = p3.y - p0.y - cy - by;
+
+  h   = 1.0f / nsteps;
+  hh  = h * h;
+  hhh = hh * h;
+
+  /* first difference */
+  d1x =        ax * hhh +        bx * hh + cx * h;
+  d1y =        ay * hhh +        by * hh + cy * h;
+
+  /* second difference */
+  d2x = 6.0f * ax * hhh + 2.0f * bx * hh;
+  d2y = 6.0f * ay * hhh + 2.0f * by * hh;
+
+  /* third difference */
+  d3x = 6.0f * ax * hhh;
+  d3y = 6.0f * ay * hhh;
+
+  point = &points[0];
+
+  curx = p0.x;
+  cury = p0.y;
+
+  for (i = 0; ; i++)
+  {
+    point->x = curx;
+    point->y = cury;
+    point++;
+
+    if (i == nsteps)
+      break;
+
+    curx += d1x;
+    cury += d1y;
+
+    d1x += d2x;
+    d1y += d2y;
+
+    d2x += d3x;
+    d2y += d3y;
+  }
 }
