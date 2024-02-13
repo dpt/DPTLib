@@ -168,23 +168,21 @@ void screen_draw_line(screen_t *scr,
                       int x0, int y0, int x1, int y1,
                       colour_t colour)
 {
-  // box_t          screen_box;
-  // box_t          line_box;
-  // box_t          draw_box;
+  box_t          screen_box;
+  box_t          line_box;
+  box_t          draw_box;
   // int            clipped_width, clipped_height;
   // pixelfmt_any_t fmt;
-  //
-  // if (screen_get_clip(scr, &screen_box))
-  //   return; /* invalid clipped screen */
-  //
-  // line_box.x0 = x0;
-  // line_box.y0 = y0;
-  // line_box.x1 = x1;
-  // line_box.y1 = y1;
-  // if (box_intersection(&screen_box, &line_box, &draw_box))
-  //   return;
-  //
-  // clipped_width = draw_box.x1 - draw_box.x0;
+
+  if (screen_get_clip(scr, &screen_box))
+    return; /* invalid clipped screen */
+
+  box_reset(&line_box);
+  box_extend_n(&line_box, 2, x0, y0, x1, y1);
+  if (box_intersection(&screen_box, &line_box, &draw_box))
+    return; /* intersection was empty */
+
+  // clipped_width  = draw_box.x1 - draw_box.x0;
   // clipped_height = draw_box.y1 - draw_box.y0;
 
   int dx, dy;
@@ -229,6 +227,24 @@ void screen_draw_aa_linef(screen_t *scr,
                           float x0, float y0, float x1, float y1,
                           colour_t colour)
 {
+  box_t          screen_box;
+  box_t          line_box;
+  box_t          draw_box;
+  // int            clipped_width, clipped_height;
+  // pixelfmt_any_t fmt;
+
+  if (screen_get_clip(scr, &screen_box))
+    return; /* invalid clipped screen */
+
+  box_reset(&line_box);
+  box_extend_n(&line_box, 2, (int) x0, (int) y0, (int) x1, (int) y1);
+  if (box_intersection(&screen_box, &line_box, &draw_box))
+    return; /* intersection was empty */
+
+  // clipped_width  = draw_box.x1 - draw_box.x0;
+  // clipped_height = draw_box.y1 - draw_box.y0;
+
+
   float dx, dy;
   float steep;
   float grad;

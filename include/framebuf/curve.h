@@ -62,4 +62,12 @@ point_t curve_bezier_point_on_quintic_r(point_t p0,
                                         point_t p5,
                                         fix16_t t);
 
+// uses forward differencing (float version)
+void curve_bezier_cubic_f(point_t  p0,
+                          point_t  p1,
+                          point_t  p2,
+                          point_t  p3,
+                          int      nsteps,
+                          point_t *points);
+
 #endif /* DPTLIB_CURVE_H */

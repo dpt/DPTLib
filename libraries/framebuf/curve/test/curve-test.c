@@ -245,6 +245,36 @@ curveteststate_t;
 
 /* ----------------------------------------------------------------------- */
 
+static result_t curve_basic_test(curveteststate_t *state)
+{
+  point_t a = {   0,   0 };
+  point_t b = { 100, 100 };
+
+  point_t c = curve_point_on_line(a, b, 0);
+  assert(c.x == a.x);
+  assert(c.y == a.y);
+
+  point_t d = curve_point_on_line(a, b, 65536);
+  assert(d.x == b.x);
+  assert(d.y == b.y);
+
+  point_t e = curve_point_on_line(a, b, 65536 / 2);
+  assert(e.x == 50);
+  assert(e.y == 50);
+
+  point_t f = curve_point_on_line(a, b, 65536 * 1 / 3);
+  assert(f.x == 33);
+  assert(f.y == 33);
+
+  point_t g = curve_point_on_line(a, b, 65536 * 2 / 3);
+  assert(g.x == 66);
+  assert(g.y == 66);
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 static point_t jitter_on(point_t p)
 {
   point_t q;
@@ -258,62 +288,6 @@ static point_t jitter_on(point_t p)
 static point_t jitter_off(point_t p)
 {
   return p;
-}
-
-/* ----------------------------------------------------------------------- */
-
-void calcBezier(point_t p1, point_t p2, point_t p3, point_t p4,
-                int nsteps, point_t *points)
-{
-  float cx = 3 * (p2.x - p1.x);
-  float cy = 3 * (p2.y - p1.y);
-
-  float bx = 3 * (p3.x - p2.x) - cx;
-  float by = 3 * (p3.y - p2.y) - cy;
-
-  float ax = p4.x - p1.x - cx - bx;
-  float ay = p4.y - p1.y - cy - by;
-
-  float h = 1.0f / nsteps;
-  float hh = h * h;
-  float hhh = hh * h;
-
-  // first difference
-  float d1x =     ax * hhh +     bx * hh + cx * h;
-  float d1y =     ay * hhh +     by * hh + cy * h;
-
-  // second
-  float d2x = 6 * ax * hhh + 2 * bx * hh;
-  float d2y = 6 * ay * hhh + 2 * by * hh;
-
-  // third
-  float d3x = 6 * ax * hhh;
-  float d3y = 6 * ay * hhh;
-
-  float currentX = p1.x;
-  float currentY = p1.y;
-
-  points[0].x = currentX;
-  points[0].y = currentY;
-
-  // skip first and last points
-  for (int i = 1; i < nsteps; i++)
-  {
-    currentX += d1x;
-    currentY += d1y;
-
-    d1x += d2x;
-    d1y += d2y;
-
-    d2x += d3x;
-    d2y += d3y;
-
-    points[i].x = currentX;
-    points[i].y = currentY;
-  }
-
-  points[nsteps].x = p4.x;
-  points[nsteps].y = p4.y;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -418,25 +392,30 @@ static void calc_all_curves(curveteststate_t *state)
 {
   int set;
   int o;
+  int np;
   int i;
   int t;
 
   for (set = 0; set < NELEMS(curves); set++)
   {
     o = curves[set].offset;
+    np = curves[set].npoints;
 
     if (curves[set].kind == FwdDiffCubic)
     {
-      calcBezier(state->jitterfn(state->control_points[o + 0]),
-                 state->jitterfn(state->control_points[o + 1]),
-                 state->jitterfn(state->control_points[o + 2]),
-                 state->jitterfn(state->control_points[o + 3]),
-                 state->nsegments,
-                &state->draw_points[0]);
+      curve_bezier_cubic_f(state->jitterfn(state->control_points[o + 0]),
+                         state->jitterfn(state->control_points[o + 1]),
+                         state->jitterfn(state->control_points[o + 2]),
+                         state->jitterfn(state->control_points[o + 3]),
+                         state->nsegments,
+                        &state->draw_points[0]);
     }
     else
     {
-      for (i = 0; i < state->nsegments + 1; i++)
+      state->draw_points[0]                = state->jitterfn(state->control_points[o]);
+      state->draw_points[state->nsegments] = state->jitterfn(state->control_points[o + np - 1]);
+
+      for (i = 1; i < state->nsegments; i++)
       {
         t = 65536 * i / state->nsegments;
 
@@ -795,6 +774,7 @@ result_t curve_test_one_format(const char *resources,
 
   static const curvetestfn_t tests[] =
   {
+    curve_basic_test,
     curve_interactive_test
   };
 
