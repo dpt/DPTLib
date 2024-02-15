@@ -16,6 +16,16 @@
 #endif
 
 /**
+ * Return the absolute value of 'a'.
+ */
+#define ABS(a) ((a) < 0 ? -(a) : (a))
+
+/**
+ * Return the sign of 'a'.
+ */
+#define SGN(a) ((a) < 0 ? -1 : 1)
+
+/**
  * Divide while rounding upwards.
  */
 #define DIVIDE_ROUNDING_UP(n, m) (((n) + (m) - 1) / (m))
@@ -34,6 +44,11 @@
  * Return 'a' clamped to the range [b..c].
  */
 #define CLAMP(a,b,c) MIN(MAX(a,b),c)
+
+/**
+ * Swap 'a' and 'b'.
+ */
+#define SWAP(a,b) do { __typeof(a) t = a; a = b; b = t; } while (0)
 
 /**
  * Suppress warnings about unused variables.
