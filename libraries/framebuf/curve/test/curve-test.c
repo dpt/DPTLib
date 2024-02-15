@@ -471,36 +471,56 @@ static void calc_all_curves(curveteststate_t *state)
 /* rotate a line or three */
 static void rotate_lines(curveteststate_t *state, int degrees, int palidx)
 {
-  const float centre     = 40.0f;
-  const float radius     = 21.0f;
-  const float separation = 90.0f;
+  static float spin       = 0.0f;
 
-  const float rotation  = degrees / 4.0f;
-  const float scale     = M_PI * 2.0f / 360.0f;
+  const float  radius     = 5.0f;
+  const float  diameter   = radius * 2.0f;
+  const float  deg2rad    = M_PI * 2.0f / 360.0f;
+  const int    nvert      = (state->scr_height + diameter / 2.0f) / diameter;
+  const int    nhorz      = 7;
+  const float  separation = diameter * (nhorz + 2);
 
+  float       startx, starty;
+  int         x,y;
+  float       r;
   float       xa, ya, xb, yb;
   box_t       b;
 
-  xa = centre + sinf((rotation +   0.0f) * scale) * radius;
-  ya = centre + cosf((rotation +   0.0f) * scale) * radius;
-  xb = centre + sinf((rotation + 180.0f) * scale) * radius;
-  yb = centre + cosf((rotation + 180.0f) * scale) * radius;
+  startx = starty = radius;
 
-  screen_draw_line(&state->scr,
-                   (int) xa, (int) ya, (int) xb, (int) yb,
-                   state->palette[palidx]);
+  for (y = 0; y < nvert; y++)
+  {
+    for (x = 0; x < nhorz; x++)
+    {
+      r = spin;
+      r += degrees / 8.0f; /* spin with input */
+      r +=  90.0f * x / (nhorz - 1);
+      r += 360.0f * y / (nvert - 1); /* show all rotations over the range */
 
-  screen_draw_aa_line(&state->scr,
-                      xa + separation, ya, xb + separation, yb,
-                      state->palette[palidx]);
+      spin += 0.0005f; /* spin very slowly over time */
 
-  screen_draw_aa_linef(&state->scr,
-                       xa + separation * 2.0f, ya, xb + separation * 2.0f, yb,
+      xa = startx + x * diameter + sinf((r +   0.0f) * deg2rad) * radius;
+      ya = starty + y * diameter + cosf((r +   0.0f) * deg2rad) * radius;
+      xb = startx + x * diameter + sinf((r + 180.0f) * deg2rad) * radius;
+      yb = starty + y * diameter + cosf((r + 180.0f) * deg2rad) * radius;
+
+      screen_draw_line(&state->scr,
+                       (int) xa, (int) ya, (int) xb, (int) yb,
                        state->palette[palidx]);
 
-  box_reset(&b);
-  box_extend_n(&b, 2, 0, 0, 150, 150); // not accurate enough
-  box_union(&b, &state->overalldirty, &state->overalldirty);
+      screen_draw_aa_line(&state->scr,
+                          xa + separation, ya, xb + separation, yb,
+                          state->palette[palidx]);
+
+      screen_draw_aa_linef(&state->scr,
+                           xa + separation * 2.0f, ya, xb + separation * 2.0f, yb,
+                           state->palette[palidx]);
+
+      box_reset(&b);
+      box_extend_n(&b, (int) xa, (int) ya, (int) xb, (int) yb);
+      box_union(&b, &state->overalldirty, &state->overalldirty);
+    }
+  }
 }
 
 static result_t curve_interactive_test(curveteststate_t *state)
