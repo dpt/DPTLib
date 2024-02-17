@@ -379,7 +379,7 @@ static void draw_a_curve(curveteststate_t *state)
     }
 
     if (state->opt.use_aa)
-      screen_draw_aa_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
+      screen_draw_line_wu_float(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
     else
       screen_draw_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
 
@@ -484,6 +484,7 @@ static void rotate_lines(curveteststate_t *state, int degrees, int palidx)
   int         x,y;
   float       r;
   float       xa, ya, xb, yb;
+  float       sep;
   box_t       b;
 
   startx = starty = radius;
@@ -504,17 +505,24 @@ static void rotate_lines(curveteststate_t *state, int degrees, int palidx)
       xb = startx + x * diameter + sinf((r + 180.0f) * deg2rad) * radius;
       yb = starty + y * diameter + cosf((r + 180.0f) * deg2rad) * radius;
 
+      sep = 0;
+
       screen_draw_line(&state->scr,
-                       (int) xa, (int) ya, (int) xb, (int) yb,
+                       xa + sep, ya, xb + sep, yb,
                        state->palette[palidx]);
+      sep += separation;
 
-      screen_draw_aa_line(&state->scr,
-                          xa + separation, ya, xb + separation, yb,
-                          state->palette[palidx]);
+      screen_draw_line_wu_float(&state->scr,
+                                xa + sep, ya, xb + sep, yb,
+                                state->palette[palidx]);
+      sep += separation;
 
-      screen_draw_aa_linef(&state->scr,
-                           xa + separation * 2.0f, ya, xb + separation * 2.0f, yb,
-                           state->palette[palidx]);
+      screen_draw_line_wu_fix4(&state->scr,
+                              FLOAT_TO_FIX4(xa + sep),
+                              FLOAT_TO_FIX4(ya),
+                              FLOAT_TO_FIX4(xb + sep),
+                              FLOAT_TO_FIX4(yb),
+                              state->palette[palidx]);
 
       box_reset(&b);
       box_extend_n(&b, (int) xa, (int) ya, (int) xb, (int) yb);

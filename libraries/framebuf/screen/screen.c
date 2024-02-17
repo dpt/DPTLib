@@ -4,10 +4,12 @@
 #include <string.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 #include "base/utils.h"
 #include "framebuf/span-registry.h"
+#include "utils/fxp.h"
 
 #include "framebuf/screen.h"
 
@@ -91,6 +93,9 @@ static void screen_blend_pixel(screen_t *scr,
   box_t          clip;
   pixelfmt_any_t colpx;
 
+  assert(alpha >= 0);
+  assert(alpha <= 255);
+
   if (screen_get_clip(scr, &clip) || !box_contains_point(&clip, x, y))
     return;
 
@@ -115,7 +120,6 @@ static void screen_blend_pixel(screen_t *scr,
 }
 
 /* ----------------------------------------------------------------------- */
-
 
 void screen_draw_rect(screen_t *scr,
                       int x, int y,
@@ -203,24 +207,30 @@ static INLINE outcode_t compute_outcode(const box_t *clip, int x, int y)
 }
 
 static int screen_clip_line(const box_t *clip,
-                            int *px0, int *py0, int *px1, int *py1)
+                            int         *px0,
+                            int         *py0,
+                            int         *px1,
+                            int         *py1)
 {
   int       x0, y0, x1, y1;
-  outcode_t o0,o1;
+  outcode_t oc0, oc1;
+  outcode_t oc;
+  int       w, h;
+  int       x, y;
 
   x0 = *px0;
   y0 = *py0;
   x1 = *px1;
   y1 = *py1;
 
-  o0 = compute_outcode(clip, x0, y0);
-  o1 = compute_outcode(clip, x1, y1);
+  oc0 = compute_outcode(clip, x0, y0);
+  oc1 = compute_outcode(clip, x1, y1);
 
   for (;;)
   {
-    if ((o0 | o1) == outcode_INSIDE)
+    if ((oc0 | oc1) == outcode_INSIDE)
     {
-      /* both points lie inside clip - draw*/
+      /* both points lie inside clip - draw */
 
       *px0 = x0;
       *py0 = y0;
@@ -229,17 +239,16 @@ static int screen_clip_line(const box_t *clip,
 
       return 1;
     }
-    else if ((o0 & o1) != 0)
+    else if ((oc0 & oc1) != 0)
     {
       /* both points lie outside clip - don't draw */
       return 0;
     }
     else
     {
-      outcode_t oc = o1 > o0 ? o1 : o0;
-      int       w  = x1 - x0;
-      int       h  = y1 - y0;
-      int       x,y;
+      oc = oc1 > oc0 ? oc1 : oc0;
+      w  = x1 - x0;
+      h  = y1 - y0;
 
       if (oc & outcode_TOP)
       {
@@ -262,17 +271,17 @@ static int screen_clip_line(const box_t *clip,
         y = y0 + h * (clip->x0 - x0) / w;
       }
 
-      if (oc == o0)
+      if (oc == oc0)
       {
         x0 = x;
         y0 = y;
-        o0 = compute_outcode(clip, x0, y0);
+        oc0 = compute_outcode(clip, x0, y0);
       }
       else
       {
         x1 = x;
         y1 = y;
-        o1 = compute_outcode(clip, x1, y1);
+        oc1 = compute_outcode(clip, x1, y1);
       }
     }
   }
@@ -297,11 +306,11 @@ void screen_draw_line(screen_t *scr,
     return;
 
   dx  = x1 - x0;
-  adx = ABS(dx);
+  adx = abs(dx);
   sx  = SGN(dx);
 
   dy  = y1 - y0;
-  ady = -ABS(dy);
+  ady = -abs(dy);
   sy  = SGN(dy);
 
   error = adx + ady;
@@ -329,21 +338,127 @@ void screen_draw_line(screen_t *scr,
   }
 }
 
-void screen_draw_aa_line(screen_t *scr,
-                         int x0, int y0, int x1, int y1,
-                         colour_t colour)
+void screen_draw_line_wu_fix4(screen_t *scr,
+                              fix4_t x0_f4, fix4_t y0_f4, fix4_t x1_f4, fix4_t y1_f4,
+                              colour_t colour)
 {
-  screen_draw_aa_linef(scr, x0, y0, x1, y1, colour);
+  box_t   clip_box_f4;
+  fix4_t  dx_f4, dy_f4;
+  int     steep_b; // bool
+  fix16_t grad_f16;
+  int     xend_i;
+  int     yend_f4;
+  int     xgap_f4;
+  int     ix0_i, iy0_i;
+  int     alpha1_i, alpha2_i;
+  int     yf_f4;
+  int     ix1_i, iy1_i;
+  int     x_i, y_i;
+
+  if (screen_get_clip(scr, &clip_box_f4))
+    return; /* invalid clipped screen */
+
+  // scale up clip box to match the coordinate type
+  clip_box_f4.x0 *= 16;
+  clip_box_f4.y0 *= 16;
+  clip_box_f4.x1 *= 16; // think about exclusive upper bounds
+  clip_box_f4.y1 *= 16;
+
+  if (screen_clip_line(&clip_box_f4, &x0_f4, &y0_f4, &x1_f4, &y1_f4) == 0)
+    return;
+
+  dx_f4 = x1_f4 - x0_f4;
+  dy_f4 = y1_f4 - y0_f4;
+
+  steep_b = abs(dy_f4) > abs(dx_f4);
+  if (steep_b)
+  {
+    SWAP(x0_f4, y0_f4);
+    SWAP(x1_f4, y1_f4);
+    SWAP(dx_f4, dy_f4);
+  }
+
+  if (x0_f4 > x1_f4)
+  {
+    SWAP(x0_f4, x1_f4);
+    SWAP(y0_f4, y1_f4);
+  }
+
+  grad_f16 = (dx_f4 == 0) ? FIX16_ONE : FIX16_ONE * dy_f4 / dx_f4;
+
+  /* start point */
+
+  xend_i   = FIX4_ROUND_TO_INT(x0_f4);
+  yend_f4  = y0_f4 + grad_f16 * (INT_TO_FIX4(xend_i) - x0_f4) / FIX16_ONE;
+  xgap_f4  = INT_TO_FIX4(xend_i) + FIX4_ONE / 2 - x0_f4;
+  assert(xgap_f4 >= 0 && xgap_f4 <= FIX4_ONE);
+  ix0_i    = xend_i;
+  iy0_i    = FIX4_FLOOR_TO_INT(yend_f4);
+  alpha1_i = (255 *  (INT_TO_FIX4(iy0_i) + FIX4_ONE - yend_f4) * xgap_f4 / FIX4_ONE) / FIX4_ONE;
+  alpha2_i = (255 * -(INT_TO_FIX4(iy0_i)            - yend_f4) * xgap_f4 / FIX4_ONE) / FIX4_ONE;
+  if (steep_b)
+  {
+    screen_blend_pixel(scr, iy0_i,     ix0_i, colour, alpha1_i);
+    screen_blend_pixel(scr, iy0_i + 1, ix0_i, colour, alpha2_i);
+  }
+  else
+  {
+    screen_blend_pixel(scr, ix0_i, iy0_i,     colour, alpha1_i);
+    screen_blend_pixel(scr, ix0_i, iy0_i + 1, colour, alpha2_i);
+  }
+
+  yf_f4 = ((yend_f4 << 12) + grad_f16) >> 12; // maybe losing precision here?
+
+  /* end point */
+
+  xend_i   = FIX4_ROUND_TO_INT(x1_f4);
+  yend_f4  = y1_f4 + grad_f16 * (INT_TO_FIX4(xend_i) - x1_f4) / FIX16_ONE;
+  xgap_f4  = x1_f4 + FIX4_ONE / 2 - INT_TO_FIX4(xend_i);
+  assert(xgap_f4 >= 0 && xgap_f4 < FIX4_ONE);
+  ix1_i    = xend_i;
+  iy1_i    = FIX4_FLOOR_TO_INT(yend_f4);
+  alpha1_i = (255 *  (INT_TO_FIX4(iy1_i) + FIX4_ONE - yend_f4) * xgap_f4 / FIX4_ONE) / FIX4_ONE;
+  alpha2_i = (255 * -(INT_TO_FIX4(iy1_i)            - yend_f4) * xgap_f4 / FIX4_ONE) / FIX4_ONE;
+  if (steep_b)
+  {
+    screen_blend_pixel(scr, iy1_i,     ix1_i, colour, alpha1_i);
+    screen_blend_pixel(scr, iy1_i + 1, ix1_i, colour, alpha2_i);
+  }
+  else
+  {
+    screen_blend_pixel(scr, ix1_i, iy1_i,     colour, alpha1_i);
+    screen_blend_pixel(scr, ix1_i, iy1_i + 1, colour, alpha2_i);
+  }
+
+  /* mid points */
+
+  for (x_i = ix0_i + 1; x_i < ix1_i; x_i++)
+  {
+    y_i      = FIX4_FLOOR_TO_INT(yf_f4);
+    alpha1_i = (255 *  (INT_TO_FIX4(y_i) + FIX4_ONE - yf_f4)) / FIX4_ONE;
+    alpha2_i = (255 * -(INT_TO_FIX4(y_i)            - yf_f4)) / FIX4_ONE;
+    if (steep_b)
+    {
+      screen_blend_pixel(scr, y_i,     x_i, colour, alpha1_i);
+      screen_blend_pixel(scr, y_i + 1, x_i, colour, alpha2_i);
+    }
+    else
+    {
+      screen_blend_pixel(scr, x_i, y_i,     colour, alpha1_i);
+      screen_blend_pixel(scr, x_i, y_i + 1, colour, alpha2_i);
+    }
+    yf_f4 = ((yf_f4 << 12) + grad_f16) >> 12; // maybe losing precision here?
+  }
 }
 
-void screen_draw_aa_linef(screen_t *scr,
-                          float fx0, float fy0, float fx1, float fy1,
-                          colour_t colour)
+void screen_draw_line_wu_float(screen_t *scr,
+                               float fx0, float fy0, float fx1, float fy1,
+                               colour_t colour)
 {
   box_t clip_box;
   int   x0, y0, x1, y1;
   float dx, dy;
-  float steep;
+  int   steep; // bool
   float grad;
   int   xend;
   float yend;
@@ -390,6 +505,7 @@ void screen_draw_aa_linef(screen_t *scr,
   xend   = (int) lroundf(fx0);
   yend   = fy0 + grad * (xend - fx0);
   xgap   = xend + 0.5f - fx0;
+  assert(xgap >= 0.0f && xgap <= 1.0f);
   ix0    = xend;
   iy0    = floorf(yend);
   alpha1 = 255.0f *  (iy0 + 1.0f - yend) * xgap;
@@ -412,6 +528,7 @@ void screen_draw_aa_linef(screen_t *scr,
   xend   = (int) lroundf(fx1);
   yend   = fy1 + grad * (xend - fx1);
   xgap   = fx1 + 0.5f - xend;
+  assert(xgap >= 0.0f && xgap < 1.0f);
   ix1    = xend;
   iy1    = floorf(yend);
   alpha1 = 255.0f *  (iy1 + 1.0f - yend) * xgap;
@@ -434,7 +551,6 @@ void screen_draw_aa_linef(screen_t *scr,
     y      = floorf(yf);
     alpha1 = 255.0f *  (y + 1.0f - yf);
     alpha2 = 255.0f * -(y        - yf);
-
     if (steep)
     {
       screen_blend_pixel(scr, y,     x, colour, alpha1);
