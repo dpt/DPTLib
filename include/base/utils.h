@@ -16,11 +16,6 @@
 #endif
 
 /**
- * Return the absolute value of 'a'.
- */
-#define ABS(a) ((a) < 0 ? -(a) : (a))
-
-/**
  * Return the sign of 'a'.
  */
 #define SGN(a) ((a) < 0 ? -1 : 1)
