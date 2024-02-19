@@ -10,16 +10,16 @@ extern "C"
 
 /* -------------------------------------------------------------------------- */
 
-typedef int fix4_t;  /* e.g. 28.4 fixed point */
+typedef int fix8_t;  /* e.g. 24.8 fixed point */
 
-#define FIX4_SHIFT            (4)
-#define FIX4_ONE              (1 << FIX4_SHIFT)
-#define FIX4_FLOOR_TO_INT(f)  ((f) >> FIX4_SHIFT) // round down, like floor()
-#define FIX4_ROUND_TO_INT(f)  (((f) + FIX4_ONE / 2) >> FIX4_SHIFT) // round to nearest, like round()
-#define INT_TO_FIX4(f)        ((f) << FIX4_SHIFT)
-#define FLOAT_TO_FIX4(f)      ((f) * FIX4_ONE)
-#define FIX4_FRAC(f)          ((f) & (FIX4_ONE - 1))
-#define FIX4_FLOOR(f)         ((f) - FIX4_FRAC(f))
+#define FIX8_SHIFT            (8)
+#define FIX8_ONE              (1 << FIX8_SHIFT)
+#define FIX8_FLOOR_TO_INT(f)  ((f) >> FIX8_SHIFT) // round down, like floor()
+#define FIX8_ROUND_TO_INT(f)  (((f) + FIX8_ONE / 2) >> FIX8_SHIFT) // round to nearest, like round()
+#define INT_TO_FIX8(f)        ((f) << FIX8_SHIFT)
+#define FLOAT_TO_FIX8(f)      ((f) * FIX8_ONE)
+#define FIX8_FRAC(f)          ((f) & (FIX8_ONE - 1))
+#define FIX8_FLOOR(f)         ((f) - FIX8_FRAC(f))
 
 /* -------------------------------------------------------------------------- */
 
