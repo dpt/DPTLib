@@ -15,7 +15,7 @@ jobs:
           - { name: "Windows build", os: "windows-latest", install: "choco install cmake ninja" }
           - { name: "macOS build",   os: "macos-latest",   install: "brew install cmake ninja" }
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - run: ${{ matrix.config.install }}
       - run: |
           mkdir build
