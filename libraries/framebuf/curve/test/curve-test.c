@@ -119,9 +119,9 @@ static result_t start_sdl(sdlstate_t *state, int width, int height)
   }
 
   state->window = SDL_CreateWindow("DPTLib SDL Test",
-                                   SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                                   SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                    width, height,
-                                   SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+                                   SDL_WINDOW_SHOWN);
   if (state->window == NULL)
   {
     fprintf(stderr, "Error: SDL_CreateWindow: %s\n", SDL_GetError());
@@ -489,12 +489,13 @@ static void rotate_lines(curveteststate_t *state, int degrees, int palidx)
   const float  separation = diameter;
   const int    ntypes     = 3 + 1;
 
-  float       startx, starty;
-  int         x,y;
-  float       r;
-  float       xa, ya, xb, yb;
-  float       sep;
-  box_t       b;
+  float        startx, starty;
+  int          x,y;
+  float        r;
+  float        ox, oy;
+  float        xa, ya, xb, yb;
+  float        sep;
+  box_t        b;
 
   startx = starty = radius;
 
@@ -502,17 +503,28 @@ static void rotate_lines(curveteststate_t *state, int degrees, int palidx)
   {
     for (x = 0; x < nhorz; x++)
     {
-      r = spin;
-      r += degrees / 8.0f; /* spin with input */
+      /* spin with increasing speed vertically */
+      r = spin * y / 2.0f;
+
+      /* spin very slowly over time */
+      spin += 0.0005f;
+
+      /* spin with input */
+      r += degrees / 8.0f;
+
+      /* show some rotations over the horizontal */
       r +=  90.0f * x / (nhorz - 1);
-      r += 360.0f * y / (nvert - 1); /* show all rotations over the range */
 
-      spin += 0.0005f; /* spin very slowly over time */
+      /* show all rotations over the vertical */
+      r += 360.0f * y / (nvert - 1);
 
-      xa = startx + x * diameter * ntypes + sinf((r +   0.0f) * deg2rad) * radius;
-      ya = starty + y * diameter * ntypes + cosf((r +   0.0f) * deg2rad) * radius;
-      xb = startx + x * diameter * ntypes + sinf((r + 180.0f) * deg2rad) * radius;
-      yb = starty + y * diameter * ntypes + cosf((r + 180.0f) * deg2rad) * radius;
+      ox = startx + x * diameter * ntypes;
+      oy = starty + y * diameter;
+
+      xa = ox + sinf((r +   0.0f) * deg2rad) * radius;
+      ya = oy + cosf((r +   0.0f) * deg2rad) * radius;
+      xb = ox + sinf((r + 180.0f) * deg2rad) * radius;
+      yb = oy + cosf((r + 180.0f) * deg2rad) * radius;
 
       sep = 0;
 
