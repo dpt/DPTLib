@@ -109,6 +109,14 @@ void box_union(const box_t *a, const box_t *b, box_t *c);
 int box_is_empty(const box_t *b);
 
 /**
+ * Scales the box by log2scale.
+ *
+ * \param[in] b The box to grow.
+ * \param[in] log2scale Log2 scale factor.
+ */
+void box_scalelog2(box_t *b, int log2scale);
+
+/**
  * Grows the box outwards by "change".
  *
  * \param[in] b The box to grow.

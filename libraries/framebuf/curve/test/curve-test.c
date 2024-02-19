@@ -231,7 +231,7 @@ typedef struct curveteststate
 
   struct
   {
-    bool      use_aa;
+    int       method;
     bool      checker;
     bool      draw_endpoints;
   }
@@ -378,10 +378,18 @@ static void draw_a_curve(curveteststate_t *state)
       screen_draw_pixel(&state->scr, b.x1, b.y1, state->palette[palette_PICO8_RED]);
     }
 
-    if (state->opt.use_aa)
-      screen_draw_line_wu_float(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
-    else
+    switch (state->opt.method)
+    {
+    case 0:
       screen_draw_line(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
+      break;
+    case 1:
+      screen_draw_line_wu_float(&state->scr, b.x0, b.y0, b.x1, b.y1, colour);
+      break;
+    case 2:
+      screen_draw_line_wu_fix8(&state->scr, b.x0 << FIX8_SHIFT, b.y0 << FIX8_SHIFT, b.x1 << FIX8_SHIFT, b.y1 << FIX8_SHIFT, colour);
+      break;
+    }
 
     box_union(&b, &state->overalldirty, &state->overalldirty);
   }
@@ -544,7 +552,7 @@ static result_t curve_interactive_test(curveteststate_t *state)
   int   dragging      = -1;
   int   i;
 
-  state->opt.use_aa         = true;
+  state->opt.method         = 0;
   state->opt.checker        = true;
   state->opt.draw_endpoints = true;
 
@@ -583,7 +591,10 @@ static result_t curve_interactive_test(curveteststate_t *state)
           switch (event.key.keysym.sym)
           {
           case SDLK_a:
-            state->opt.use_aa = !state->opt.use_aa;
+            if (event.key.keysym.mod == KMOD_SHIFT)
+              state->opt.method = (state->opt.method - 1) % 3;
+            else
+              state->opt.method = (state->opt.method + 1) % 3;
             break;
           case SDLK_c:
             state->opt.checker = !state->opt.checker;
