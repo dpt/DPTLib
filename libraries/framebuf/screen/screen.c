@@ -338,64 +338,64 @@ void screen_draw_line(screen_t *scr,
   }
 }
 
-void screen_draw_line_wu_fix4(screen_t *scr,
-                              fix4_t x0_f4, fix4_t y0_f4, fix4_t x1_f4, fix4_t y1_f4,
+void screen_draw_line_wu_fix8(screen_t *scr,
+                              fix8_t x0_f8, fix8_t y0_f8, fix8_t x1_f8, fix8_t y1_f8,
                               colour_t colour)
 {
-  box_t   clip_box_f4;
-  fix4_t  dx_f4, dy_f4;
+  box_t   clip_box_f8;
+  fix8_t  dx_f8, dy_f8;
   int     steep_b; // bool
   fix16_t grad_f16;
   int     xend_i;
-  int     yend_f4;
-  int     xgap_f4;
+  int     yend_f8;
+  int     xgap_f8;
   int     ix0_i, iy0_i;
   int     alpha1_i, alpha2_i;
-  int     yf_f4;
+  int     yf_f8;
   int     ix1_i, iy1_i;
   int     x_i, y_i;
 
-  if (screen_get_clip(scr, &clip_box_f4))
+  if (screen_get_clip(scr, &clip_box_f8))
     return; /* invalid clipped screen */
 
   // scale up clip box to match the coordinate type
-  clip_box_f4.x0 *= 16;
-  clip_box_f4.y0 *= 16;
-  clip_box_f4.x1 *= 16; // think about exclusive upper bounds
-  clip_box_f4.y1 *= 16;
+  clip_box_f8.x0 <<= FIX8_SHIFT;
+  clip_box_f8.y0 <<= FIX8_SHIFT;
+  clip_box_f8.x1 <<= FIX8_SHIFT; // think about exclusive upper bounds
+  clip_box_f8.y1 <<= FIX8_SHIFT;
 
-  if (screen_clip_line(&clip_box_f4, &x0_f4, &y0_f4, &x1_f4, &y1_f4) == 0)
+  if (screen_clip_line(&clip_box_f8, &x0_f8, &y0_f8, &x1_f8, &y1_f8) == 0)
     return;
 
-  dx_f4 = x1_f4 - x0_f4;
-  dy_f4 = y1_f4 - y0_f4;
+  dx_f8 = x1_f8 - x0_f8;
+  dy_f8 = y1_f8 - y0_f8;
 
-  steep_b = abs(dy_f4) > abs(dx_f4);
+  steep_b = abs(dy_f8) > abs(dx_f8);
   if (steep_b)
   {
-    SWAP(x0_f4, y0_f4);
-    SWAP(x1_f4, y1_f4);
-    SWAP(dx_f4, dy_f4);
+    SWAP(x0_f8, y0_f8);
+    SWAP(x1_f8, y1_f8);
+    SWAP(dx_f8, dy_f8);
   }
 
-  if (x0_f4 > x1_f4)
+  if (x0_f8 > x1_f8)
   {
-    SWAP(x0_f4, x1_f4);
-    SWAP(y0_f4, y1_f4);
+    SWAP(x0_f8, x1_f8);
+    SWAP(y0_f8, y1_f8);
   }
 
-  grad_f16 = (dx_f4 == 0) ? FIX16_ONE : FIX16_ONE * dy_f4 / dx_f4;
+  grad_f16 = (dx_f8 == 0) ? FIX16_ONE : FIX16_ONE * dy_f8 / dx_f8;
 
   /* start point */
 
-  xend_i   = FIX4_ROUND_TO_INT(x0_f4);
-  yend_f4  = y0_f4 + grad_f16 * (INT_TO_FIX4(xend_i) - x0_f4) / FIX16_ONE;
-  xgap_f4  = INT_TO_FIX4(xend_i) + FIX4_ONE / 2 - x0_f4;
-  assert(xgap_f4 >= 0 && xgap_f4 <= FIX4_ONE);
+  xend_i   = FIX8_ROUND_TO_INT(x0_f8);
+  yend_f8  = y0_f8 + grad_f16 * (INT_TO_FIX8(xend_i) - x0_f8) / FIX16_ONE;
+  xgap_f8  = INT_TO_FIX8(xend_i) + FIX8_ONE / 2 - x0_f8;
+  assert(xgap_f8 >= 0 && xgap_f8 <= FIX8_ONE);
   ix0_i    = xend_i;
-  iy0_i    = FIX4_FLOOR_TO_INT(yend_f4);
-  alpha1_i = (255 *  (INT_TO_FIX4(iy0_i) + FIX4_ONE - yend_f4) * xgap_f4 / FIX4_ONE) / FIX4_ONE;
-  alpha2_i = (255 * -(INT_TO_FIX4(iy0_i)            - yend_f4) * xgap_f4 / FIX4_ONE) / FIX4_ONE;
+  iy0_i    = FIX8_FLOOR_TO_INT(yend_f8);
+  alpha1_i = (255 *  (INT_TO_FIX8(iy0_i) + FIX8_ONE - yend_f8) * xgap_f8 / FIX8_ONE) / FIX8_ONE;
+  alpha2_i = (255 * -(INT_TO_FIX8(iy0_i)            - yend_f8) * xgap_f8 / FIX8_ONE) / FIX8_ONE;
   if (steep_b)
   {
     screen_blend_pixel(scr, iy0_i,     ix0_i, colour, alpha1_i);
@@ -407,18 +407,18 @@ void screen_draw_line_wu_fix4(screen_t *scr,
     screen_blend_pixel(scr, ix0_i, iy0_i + 1, colour, alpha2_i);
   }
 
-  yf_f4 = ((yend_f4 << 12) + grad_f16) >> 12; // maybe losing precision here?
+  yf_f8 = ((yend_f8 << (FIX16_SHIFT - FIX8_SHIFT)) + grad_f16) >> (FIX16_SHIFT - FIX8_SHIFT); // maybe losing precision here?
 
   /* end point */
 
-  xend_i   = FIX4_ROUND_TO_INT(x1_f4);
-  yend_f4  = y1_f4 + grad_f16 * (INT_TO_FIX4(xend_i) - x1_f4) / FIX16_ONE;
-  xgap_f4  = x1_f4 + FIX4_ONE / 2 - INT_TO_FIX4(xend_i);
-  assert(xgap_f4 >= 0 && xgap_f4 < FIX4_ONE);
+  xend_i   = FIX8_ROUND_TO_INT(x1_f8);
+  yend_f8  = y1_f8 + grad_f16 * (INT_TO_FIX8(xend_i) - x1_f8) / FIX16_ONE;
+  xgap_f8  = x1_f8 + FIX8_ONE / 2 - INT_TO_FIX8(xend_i);
+  assert(xgap_f8 >= 0 && xgap_f8 < FIX8_ONE);
   ix1_i    = xend_i;
-  iy1_i    = FIX4_FLOOR_TO_INT(yend_f4);
-  alpha1_i = (255 *  (INT_TO_FIX4(iy1_i) + FIX4_ONE - yend_f4) * xgap_f4 / FIX4_ONE) / FIX4_ONE;
-  alpha2_i = (255 * -(INT_TO_FIX4(iy1_i)            - yend_f4) * xgap_f4 / FIX4_ONE) / FIX4_ONE;
+  iy1_i    = FIX8_FLOOR_TO_INT(yend_f8);
+  alpha1_i = (255 *  (INT_TO_FIX8(iy1_i) + FIX8_ONE - yend_f8) * xgap_f8 / FIX8_ONE) / FIX8_ONE;
+  alpha2_i = (255 * -(INT_TO_FIX8(iy1_i)            - yend_f8) * xgap_f8 / FIX8_ONE) / FIX8_ONE;
   if (steep_b)
   {
     screen_blend_pixel(scr, iy1_i,     ix1_i, colour, alpha1_i);
@@ -434,9 +434,9 @@ void screen_draw_line_wu_fix4(screen_t *scr,
 
   for (x_i = ix0_i + 1; x_i < ix1_i; x_i++)
   {
-    y_i      = FIX4_FLOOR_TO_INT(yf_f4);
-    alpha1_i = (255 *  (INT_TO_FIX4(y_i) + FIX4_ONE - yf_f4)) / FIX4_ONE;
-    alpha2_i = (255 * -(INT_TO_FIX4(y_i)            - yf_f4)) / FIX4_ONE;
+    y_i      = FIX8_FLOOR_TO_INT(yf_f8);
+    alpha1_i = (255 *  (INT_TO_FIX8(y_i) + FIX8_ONE - yf_f8)) / FIX8_ONE;
+    alpha2_i = (255 * -(INT_TO_FIX8(y_i)            - yf_f8)) / FIX8_ONE;
     if (steep_b)
     {
       screen_blend_pixel(scr, y_i,     x_i, colour, alpha1_i);
@@ -447,7 +447,7 @@ void screen_draw_line_wu_fix4(screen_t *scr,
       screen_blend_pixel(scr, x_i, y_i,     colour, alpha1_i);
       screen_blend_pixel(scr, x_i, y_i + 1, colour, alpha2_i);
     }
-    yf_f4 = ((yf_f4 << 12) + grad_f16) >> 12; // maybe losing precision here?
+    yf_f8 = ((yf_f8 << (FIX16_SHIFT - FIX8_SHIFT)) + grad_f16) >> (FIX16_SHIFT - FIX8_SHIFT); // maybe losing precision here?
   }
 }
 
