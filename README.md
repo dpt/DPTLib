@@ -4,7 +4,7 @@ version 0.4.0
 
 [![Build status](https://github.com/dpt/DPTLib/actions/workflows/ci.yml/badge.svg)](https://github.com/dpt/DPTLib/actions)
 
-© David Thomas, 2013-2022
+© David Thomas, 2013-2024
 
 Overview
 --------
@@ -62,7 +62,7 @@ Modules
 
 ### I/O
 
- * [`io/stream.h`](https://github.com/dpt/DPTLib/blob/master/include/io/stream.h) — stream system
+ * [`io/stream.h`](https://github.com/dpt/DPTLib/blob/master/include/io/stream.h) — stream system {[docs](https://github.com/dpt/DPTLib/blob/master/docs/stream.md)}
     * [`io/stream-stdio.h`](https://github.com/dpt/DPTLib/blob/master/include/io/stream-stdio.h) — C standard IO stream implementation
     * [`io/stream-mem.h`](https://github.com/dpt/DPTLib/blob/master/include/io/stream-mem.h) — memory block IO stream implementation
     * [`io/stream-packbits.h`](https://github.com/dpt/DPTLib/blob/master/include/io/stream-packbits.h) — PackBits compression - from [TIFF](http://en.wikipedia.org/wiki/Tagged_Image_File_Format)
