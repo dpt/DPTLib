@@ -76,7 +76,7 @@ void screen_draw_line(screen_t *scr,
 
 /// Draws a line (anti-aliased fixed point Wu version).
 ///
-/// Coordinates are `fix4_t`s. Coordinates are inclusive.
+/// Coordinates are `fix8_t`s. Coordinates are inclusive.
 ///
 /// - Parameters:
 ///   - scr: Screen to draw upon.
@@ -85,8 +85,8 @@ void screen_draw_line(screen_t *scr,
 ///   - x1: X coordinate of second point of line.
 ///   - y1: Y coordinate of second point of line.
 ///   - colour: Colour of rectangle.
-void screen_draw_line_wu_fix4(screen_t *scr,
-                              fix4_t x0, fix4_t y0, fix4_t x1, fix4_t y1,
+void screen_draw_line_wu_fix8(screen_t *scr,
+                              fix8_t x0, fix8_t y0, fix8_t x1, fix8_t y1,
                               colour_t colour);
 
 /// Draws a line (floating point Wu version).

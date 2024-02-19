@@ -478,7 +478,8 @@ static void rotate_lines(curveteststate_t *state, int degrees, int palidx)
   const float  deg2rad    = M_PI * 2.0f / 360.0f;
   const int    nvert      = (state->scr_height + diameter / 2.0f) / diameter;
   const int    nhorz      = 7;
-  const float  separation = diameter * (nhorz + 2);
+  const float  separation = diameter;
+  const int    ntypes     = 3 + 1;
 
   float       startx, starty;
   int         x,y;
@@ -500,29 +501,29 @@ static void rotate_lines(curveteststate_t *state, int degrees, int palidx)
 
       spin += 0.0005f; /* spin very slowly over time */
 
-      xa = startx + x * diameter + sinf((r +   0.0f) * deg2rad) * radius;
-      ya = starty + y * diameter + cosf((r +   0.0f) * deg2rad) * radius;
-      xb = startx + x * diameter + sinf((r + 180.0f) * deg2rad) * radius;
-      yb = starty + y * diameter + cosf((r + 180.0f) * deg2rad) * radius;
+      xa = startx + x * diameter * ntypes + sinf((r +   0.0f) * deg2rad) * radius;
+      ya = starty + y * diameter * ntypes + cosf((r +   0.0f) * deg2rad) * radius;
+      xb = startx + x * diameter * ntypes + sinf((r + 180.0f) * deg2rad) * radius;
+      yb = starty + y * diameter * ntypes + cosf((r + 180.0f) * deg2rad) * radius;
 
       sep = 0;
 
       screen_draw_line(&state->scr,
-                       xa + sep, ya, xb + sep, yb,
-                       state->palette[palidx]);
+                        xa + sep, ya, xb + sep, yb,
+                        state->palette[palidx]);
       sep += separation;
 
       screen_draw_line_wu_float(&state->scr,
-                                xa + sep, ya, xb + sep, yb,
-                                state->palette[palidx]);
+                                 xa + sep, ya, xb + sep, yb,
+                                 state->palette[palidx]);
       sep += separation;
 
-      screen_draw_line_wu_fix4(&state->scr,
-                              FLOAT_TO_FIX4(xa + sep),
-                              FLOAT_TO_FIX4(ya),
-                              FLOAT_TO_FIX4(xb + sep),
-                              FLOAT_TO_FIX4(yb),
-                              state->palette[palidx]);
+      screen_draw_line_wu_fix8(&state->scr,
+                                FLOAT_TO_FIX8(xa + sep),
+                                FLOAT_TO_FIX8(ya),
+                                FLOAT_TO_FIX8(xb + sep),
+                                FLOAT_TO_FIX8(yb),
+                                state->palette[palidx]);
 
       box_reset(&b);
       box_extend_n(&b, (int) xa, (int) ya, (int) xb, (int) yb);
