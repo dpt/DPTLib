@@ -206,6 +206,7 @@ static INLINE outcode_t compute_outcode(const box_t *clip, int x, int y)
   return code;
 }
 
+// not necessarily a screen function
 static int screen_clip_line(const box_t *clip,
                             int         *px0,
                             int         *py0,
@@ -347,22 +348,19 @@ void screen_draw_line_wu_fix8(screen_t *scr,
   int     steep_b; // bool
   fix16_t grad_f16;
   int     xend_i;
-  int     yend_f8;
-  int     xgap_f8;
+  fix8_t  yend_f8;
+  fix8_t  xgap_f8;
   int     ix0_i, iy0_i;
   int     alpha1_i, alpha2_i;
-  int     yf_f8;
+  fix8_t  yf_f8;
   int     ix1_i, iy1_i;
   int     x_i, y_i;
 
   if (screen_get_clip(scr, &clip_box_f8))
     return; /* invalid clipped screen */
 
-  // scale up clip box to match the coordinate type
-  clip_box_f8.x0 <<= FIX8_SHIFT;
-  clip_box_f8.y0 <<= FIX8_SHIFT;
-  clip_box_f8.x1 <<= FIX8_SHIFT; // think about exclusive upper bounds
-  clip_box_f8.y1 <<= FIX8_SHIFT;
+  /* scale up screen clip box to match the coordinate type */
+  box_scalelog2(&clip_box_f8, FIX8_SHIFT);
 
   if (screen_clip_line(&clip_box_f8, &x0_f8, &y0_f8, &x1_f8, &y1_f8) == 0)
     return;
@@ -407,7 +405,7 @@ void screen_draw_line_wu_fix8(screen_t *scr,
     screen_blend_pixel(scr, ix0_i, iy0_i + 1, colour, alpha2_i);
   }
 
-  yf_f8 = ((yend_f8 << (FIX16_SHIFT - FIX8_SHIFT)) + grad_f16) >> (FIX16_SHIFT - FIX8_SHIFT); // maybe losing precision here?
+  yf_f8 = ((yend_f8 << (FIX16_SHIFT - FIX8_SHIFT)) + grad_f16) >> (FIX16_SHIFT - FIX8_SHIFT);
 
   /* end point */
 
@@ -447,7 +445,7 @@ void screen_draw_line_wu_fix8(screen_t *scr,
       screen_blend_pixel(scr, x_i, y_i,     colour, alpha1_i);
       screen_blend_pixel(scr, x_i, y_i + 1, colour, alpha2_i);
     }
-    yf_f8 = ((yf_f8 << (FIX16_SHIFT - FIX8_SHIFT)) + grad_f16) >> (FIX16_SHIFT - FIX8_SHIFT); // maybe losing precision here?
+    yf_f8 = ((yf_f8 << (FIX16_SHIFT - FIX8_SHIFT)) + grad_f16) >> (FIX16_SHIFT - FIX8_SHIFT);
   }
 }
 
