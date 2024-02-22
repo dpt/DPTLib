@@ -411,7 +411,7 @@ static void calc_all_curves(curveteststate_t *state)
 
     if (curves[set].kind == FwdDiffCubic)
     {
-      curve_bezier_cubic_f(state->jitterfn(state->control_points[o + 0]),
+      curve_bezier_cubic(state->jitterfn(state->control_points[o + 0]),
                          state->jitterfn(state->control_points[o + 1]),
                          state->jitterfn(state->control_points[o + 2]),
                          state->jitterfn(state->control_points[o + 3]),
