@@ -294,7 +294,7 @@ static result_t extract_glyphs(bmfont_t    *bmfont,
       assert(ncurrbits >= bitsperchar);
 
       glyph_px = (currbits & mask) >> shift; /* extract high bits */
-      currbits <<= bitsperchar; /* discard used bits */
+      currbits = (bitsperchar == 32) ? 0 : currbits << bitsperchar; /* discard used bits */
       ncurrbits -= bitsperchar;
 
       /* glyph_px now has up to 16 2bpp pixels */
