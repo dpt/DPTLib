@@ -215,15 +215,16 @@ bmtestline_t;
 
 /* ----------------------------------------------------------------------- */
 
-#define MAXFONTS 5
+#define MAXFONTS 6
 
 static bmtestfont_t bmfonts[MAXFONTS] =
 {
-  { "tiny-font",     NULL },
-  { "henry-font",    NULL },
-  { "tall-font",     NULL },
-  { "ms-sans-serif", NULL },
-  { "digits-font",   NULL }
+  { "gliderrider-font", NULL },
+  { "tiny-font",        NULL },
+  { "henry-font",       NULL },
+  { "tall-font",        NULL },
+  { "ms-sans-serif",    NULL },
+  { "digits-font",      NULL }
 };
 
 /* ----------------------------------------------------------------------- */
@@ -497,7 +498,7 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
   int   animate       = 0;
   int   firstdraw     = 1;
   int   cycling       = 1;
-  int   currfont      = 1;
+  int   currfont      = 0;
   int   transparency  = 0;
   box_t prevdirty;
   box_t overalldirty;
@@ -601,20 +602,20 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
 
         if (animate)
         {
-          const double movement_speed = 8.0;
+          const double movement_speed = 10;
+          const double movement_scale = 10;
 
           int    j  = i - (rows / 2);
           double t  = (frame + j) / movement_speed;
-          double sx = mx - state->scr_width  / 2.0;
-          double sy = my - state->scr_height / 2.0;
-          origin.x  = mx +              sin(t) * sx;
-          origin.y  = my + j * height + cos(t) * sy;
+          origin.x  = mx +              sin(t) * movement_scale;
+          origin.y  = my + j * height + cos(t) * movement_scale;
           if (cycling)
           {
-            fg = state->palette[( 0 + i + frame / 2) % 16];
+            fg = state->palette[(0 + i + frame / 2) % 16];
             bg = transparency ? state->transparent : state->palette[(15 + i + frame / 3) % 16];
           }
         }
+
         dirty.x0 = origin.x;
         dirty.y0 = origin.y;
         dirty.x1 = origin.x + msglen * 15; // HACK
