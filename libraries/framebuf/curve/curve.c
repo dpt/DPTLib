@@ -1,8 +1,13 @@
 /* bezier.c */
 
-// - Eliminate structure passing, or at least analyse some code with it inlined to see if it helps
-// - Does these need to round to nearest?
-// - Consider overflow too
+// TODO
+//
+// - Eliminate structure passing, or at least analyse some code with it inlined
+//   to see if it hinders or helps
+// - Consider rounding.
+// - Consider overflow too.
+
+#include <assert.h>
 
 #include "base/utils.h"
 
@@ -10,17 +15,12 @@
 
 #include "framebuf/curve.h"
 
-point_t curve_point_on_line(point_t p0, point_t p1, fix16_t t)
-{
-  point_t c;
+/* ----------------------------------------------------------------------- */
 
-  c.x = p0.x + (p1.x - p0.x) * t / 65536;
-  c.y = p0.y + (p1.y - p0.y) * t / 65536;
+#define LOG2SCALE (4)
+#define SCALE     (1 << LOG2SCALE)
 
-  return c;
-}
-
-#define SCALE (16)
+/* ----------------------------------------------------------------------- */
 
 static point_t scale_up(point_t p)
 {
@@ -39,6 +39,20 @@ static point_t scale_down(point_t p)
   q.y = p.y / SCALE;
   return q;
 }
+
+/* ----------------------------------------------------------------------- */
+
+point_t curve_point_on_line(point_t p0, point_t p1, fix16_t t)
+{
+  point_t c;
+
+  c.x = p0.x + (p1.x - p0.x) * t / FIX16_ONE;
+  c.y = p0.y + (p1.y - p0.y) * t / FIX16_ONE;
+
+  return c;
+}
+
+/* ----------------------------------------------------------------------- */
 
 point_t curve_bezier_point_on_quad(point_t p0,
                                    point_t p1,
@@ -276,6 +290,75 @@ void curve_bezier_cubic_f(point_t  p0,
   {
     point->x = curx;
     point->y = cury;
+    point++;
+
+    if (i == nsteps)
+      break;
+
+    curx += d1x;
+    cury += d1y;
+
+    d1x += d2x;
+    d1y += d2y;
+
+    d2x += d3x;
+    d2y += d3y;
+  }
+}
+
+// attempt at an integer version
+void curve_bezier_cubic(point_t  p0,
+                        point_t  p1,
+                        point_t  p2,
+                        point_t  p3,
+                        int      nsteps,
+                        point_t *points)
+{
+  fix16_t  cx, cy;
+  fix16_t  bx, by;
+  fix16_t  ax, ay;
+  fix16_t  h, hh, hhh;
+  fix16_t  d1x, d1y;
+  fix16_t  d2x, d2y;
+  fix16_t  d3x, d3y;
+  fix16_t  curx, cury;
+  int      i;
+  point_t *point;
+
+  cx  = 3 * (p1.x - p0.x) * FIX16_ONE;
+  cy  = 3 * (p1.y - p0.y) * FIX16_ONE;
+
+  bx  = 3 * (p2.x - p1.x) * FIX16_ONE - cx;
+  by  = 3 * (p2.y - p1.y) * FIX16_ONE - cy;
+
+  ax  = (p3.x - p0.x) * FIX16_ONE - cx - bx;
+  ay  = (p3.y - p0.y) * FIX16_ONE - cy - by;
+
+  h   = FIX16_ONE / nsteps;
+  hh  = h * h  / FIX16_ONE;
+  hhh = hh * h / FIX16_ONE;
+
+  /* first difference */
+  d1x = (ax * (long long) hhh + bx * (long long) hh + cx * (long long) h) / FIX16_ONE;
+  d1y = (ay * (long long) hhh + by * (long long) hh + cy * (long long) h) / FIX16_ONE;
+
+  /* second difference */
+  d2x = (6 * ax * (long long) hhh + 2 * bx * (long long) hh) / FIX16_ONE;
+  d2y = (6 * ay * (long long) hhh + 2 * by * (long long) hh) / FIX16_ONE;
+
+  /* third difference */
+  d3x = (6 * ax * (long long) hhh) / FIX16_ONE;
+  d3y = (6 * ay * (long long) hhh) / FIX16_ONE;
+
+  point = &points[0];
+
+  curx = p0.x * FIX16_ONE;
+  cury = p0.y * FIX16_ONE;
+
+  for (i = 0; ; i++)
+  {
+    point->x = (int) (curx >> FIX16_SHIFT);
+    point->y = (int) (cury >> FIX16_SHIFT);
     point++;
 
     if (i == nsteps)

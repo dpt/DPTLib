@@ -53,7 +53,7 @@ point_t curve_bezier_point_on_quartic_r(point_t p0,
                                         point_t p4,
                                         fix16_t t);
 
-// written in terms of cubics (and in turn of quads)
+// written in terms of quartics (and in turn of cubics, etc.)
 point_t curve_bezier_point_on_quintic_r(point_t p0,
                                         point_t p1,
                                         point_t p2,
@@ -69,5 +69,12 @@ void curve_bezier_cubic_f(point_t  p0,
                           point_t  p3,
                           int      nsteps,
                           point_t *points);
+
+void curve_bezier_cubic(point_t  p0,
+                        point_t  p1,
+                        point_t  p2,
+                        point_t  p3,
+                        int      nsteps,
+                        point_t *points);
 
 #endif /* DPTLIB_CURVE_H */
