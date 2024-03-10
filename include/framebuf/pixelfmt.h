@@ -92,8 +92,9 @@ typedef unsigned int   pixelfmt_argb8888_t;
 typedef unsigned int   pixelfmt_xxxa8888_t; /* any 32bpp alpha */
 
 typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
-typedef unsigned short pixelfmt_any16_t; /* any 16bpp */
-typedef unsigned int   pixelfmt_any32_t; /* any 32bpp */
+typedef unsigned char  pixelfmt_any8_t; /* any 8bpp pixel */
+typedef unsigned short pixelfmt_any16_t; /* any 16bpp pixel */
+typedef unsigned int   pixelfmt_any32_t; /* any 32bpp pixel */
 
 /* ----------------------------------------------------------------------- */
 
