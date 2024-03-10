@@ -91,6 +91,7 @@ set(PUBLIC_HEADERS
     include/framebuf/span.h
     include/geom/box.h
     include/geom/layout.h
+    include/geom/line.h
     include/geom/packer.h
     include/geom/point.h
     include/io/path.h
@@ -225,6 +226,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/screen/screen.c
+    libraries/framebuf/screen/screen-draw.c
     libraries/framebuf/span-registry/get.c
     libraries/framebuf/span-registry/regdata.h
     libraries/framebuf/span/all8888.c
@@ -249,6 +251,7 @@ set(GEOM_SOURCES
     libraries/geom/box/translated.c
     libraries/geom/box/union.c
     libraries/geom/layout/layout.c
+    libraries/geom/line/line.c
     libraries/geom/packer/impl.h
     libraries/geom/packer/packer.c)
 
