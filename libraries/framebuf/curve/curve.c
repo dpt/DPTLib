@@ -306,7 +306,7 @@ void curve_bezier_cubic_f(point_t  p0,
   }
 }
 
-// attempt at an integer version
+// this suffers from drift if nsteps isn't a power of 2
 void curve_bezier_cubic(point_t  p0,
                         point_t  p1,
                         point_t  p2,
@@ -325,35 +325,39 @@ void curve_bezier_cubic(point_t  p0,
   int      i;
   point_t *point;
 
-  cx  = 3 * (p1.x - p0.x) * FIX16_ONE;
-  cy  = 3 * (p1.y - p0.y) * FIX16_ONE;
+  assert(nsteps >= 1 && nsteps < 256); // 256 is probably still too many
 
-  bx  = 3 * (p2.x - p1.x) * FIX16_ONE - cx;
-  by  = 3 * (p2.y - p1.y) * FIX16_ONE - cy;
+#define MULFIX16(x,y) (int) (((long long) (x) * (y)) >> FIX16_SHIFT)
 
-  ax  = (p3.x - p0.x) * FIX16_ONE - cx - bx;
-  ay  = (p3.y - p0.y) * FIX16_ONE - cy - by;
+  cx  = 3 * ((p1.x - p0.x) << FIX16_SHIFT);
+  cy  = 3 * ((p1.y - p0.y) << FIX16_SHIFT);
+
+  bx  = 3 * ((p2.x - p1.x) << FIX16_SHIFT) - cx;
+  by  = 3 * ((p2.y - p1.y) << FIX16_SHIFT) - cy;
+
+  ax  = ((p3.x - p0.x) << FIX16_SHIFT) - cx - bx;
+  ay  = ((p3.y - p0.y) << FIX16_SHIFT) - cy - by;
 
   h   = FIX16_ONE / nsteps;
-  hh  = h * h  / FIX16_ONE;
-  hhh = hh * h / FIX16_ONE;
+  hh  = MULFIX16(h,h);
+  hhh = MULFIX16(hh,h);
 
   /* first difference */
-  d1x = (ax * (long long) hhh + bx * (long long) hh + cx * (long long) h) / FIX16_ONE;
-  d1y = (ay * (long long) hhh + by * (long long) hh + cy * (long long) h) / FIX16_ONE;
+  d1x = (fix16_t) ((ax * (long long) hhh + bx * (long long) hh + cx * (long long) h) >> FIX16_SHIFT);
+  d1y = (fix16_t) ((ay * (long long) hhh + by * (long long) hh + cy * (long long) h) >> FIX16_SHIFT);
 
   /* second difference */
-  d2x = (6 * ax * (long long) hhh + 2 * bx * (long long) hh) / FIX16_ONE;
-  d2y = (6 * ay * (long long) hhh + 2 * by * (long long) hh) / FIX16_ONE;
+  d2x = (fix16_t) ((6 * ax * (long long) hhh + 2 * bx * (long long) hh) >> FIX16_SHIFT);
+  d2y = (fix16_t) ((6 * ay * (long long) hhh + 2 * by * (long long) hh) >> FIX16_SHIFT);
 
   /* third difference */
-  d3x = (6 * ax * (long long) hhh) / FIX16_ONE;
-  d3y = (6 * ay * (long long) hhh) / FIX16_ONE;
+  d3x = (fix16_t) ((6 * ax * (long long) hhh) >> FIX16_SHIFT);
+  d3y = (fix16_t) ((6 * ay * (long long) hhh) >> FIX16_SHIFT);
 
   point = &points[0];
 
-  curx = p0.x * FIX16_ONE;
-  cury = p0.y * FIX16_ONE;
+  curx = p0.x << FIX16_SHIFT;
+  cury = p0.y << FIX16_SHIFT;
 
   for (i = 0; ; i++)
   {
