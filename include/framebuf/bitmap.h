@@ -8,27 +8,38 @@
 #include "framebuf/pixelfmt.h"
 #include "framebuf/span.h"
 
-/** Common bitmap members. */
-#define bitmap_format_MEMBERS  \
-  int           width, height; \
-  pixelfmt_t    format;        \
-  int           rowbytes;      \
-  colour_t     *palette;       \
-  const span_t *span;
+/** Common bitmap structure members (used for screens too). */
+#define bitmap_COMMON_MEMBERS \
+  int           width, height; /**< Width and height of the bitmap in pixels. */ \
+  pixelfmt_t    format;        /**< Pixel format of the bitmap. */               \
+  int           rowbytes;      /**< Number of bytes per row of the bitmap. */    \
+  colour_t     *palette;       /**< Palette of the bitmap, or NULL. */           \
+  const span_t *span;          /**< Cached plotting functions for this format. */
 
-/** Common bitmap members. */
-#define bitmap_all_MEMBERS \
-  bitmap_format_MEMBERS    \
-  void         *base
+/** All members required for a single bitmap. */
+#define bitmap_ALL_MEMBERS \
+  bitmap_COMMON_MEMBERS \
+  void         *base; /**< Base address of the bitmap. */
 
-/** A bitmap. */
-typedef struct bitmap bitmap_t;
-
-struct bitmap
+/** A single bitmap. */
+typedef struct bitmap
 {
-  bitmap_all_MEMBERS;
-};
+  bitmap_ALL_MEMBERS
+}
+bitmap_t;
 
+/**
+ * Initialise a previously allocated bitmap structure.
+ *
+ * \param[in] bm       Bitmap to initialise.
+ * \param[in] width    Width of the bitmap in pixels.
+ * \param[in] height   Height of the bitmap in pixels.
+ * \param[in] fmt      Pixel format of the bitmap.
+ * \param[in] rowbytes Number of bytes per row of the bitmap.
+ * \param[in] palette  Palette of the bitmap, or NULL.
+ * \param[in] base     Base address of the bitmap.
+ * \return \ref result_OK on success, or appropriate result code otherwise.
+ */
 result_t bitmap_init(bitmap_t       *bm,
                      int             width,
                      int             height,
@@ -37,7 +48,13 @@ result_t bitmap_init(bitmap_t       *bm,
                      const colour_t *palette,
                      void           *base);
 
-void bitmap_clear(bitmap_t *bm, colour_t c);
+/**
+ * Clear the given bitmap to the specified colour.
+ *
+ * \param[in] bm       Bitmap to clear.
+ * \param[in] colour   Colour to clear the bitmap to.
+ */
+void bitmap_clear(bitmap_t *bm, colour_t colour);
 
 // it ought to be possible to provide instant flip_y by adjusting the base pointer and negating the rowbytes (which is why rowbytes is signed).
 //void bitmap_flip_y(bitmap_t *bm)
@@ -52,9 +69,34 @@ void bitmap_clear(bitmap_t *bm, colour_t c);
 //  bm->base = base;
 //}
 
+/**
+ * Load a PNG image into the given bitmap.
+ *
+ * \param[in] bm       Bitmap to load the image into.
+ * \param[in] filename Filename of the image to load.
+ * \return \ref result_OK on success, or appropriate result code otherwise.
+ */
 result_t bitmap_load_png(bitmap_t *bm, const char *filename);
+
+/**
+ * Save the given bitmap as a PNG image.
+ *
+ * \param[in] bm       Bitmap to save.
+ * \param[in] filename Filename to save the image to.
+ * \return \ref result_OK on success, or appropriate result code otherwise.
+ */
 result_t bitmap_save_png(const bitmap_t *bm, const char *filename);
 
-result_t bitmap_convert(const bitmap_t *bm, pixelfmt_t newfmt, bitmap_t **newbm);
+/**
+ * Convert the given bitmap into a different pixel format, allocating a new bitmap structure for the result.
+ *
+ * \param[in] bm       Bitmap to convert.
+ * \param[in] newfmt   New pixel format.
+ * \param[out] newbm   Converted bitmap.
+ * \return \ref result_OK on success, or appropriate result code otherwise.
+ */
+result_t bitmap_convert(const bitmap_t *bm,
+                        pixelfmt_t      newfmt,
+                        bitmap_t      **newbm);
 
 #endif /* FRAMEBUF_BITMAP_H */

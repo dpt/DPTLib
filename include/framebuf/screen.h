@@ -13,7 +13,7 @@ typedef struct screen screen_t;
 
 struct screen
 {
-  bitmap_all_MEMBERS;
+  bitmap_ALL_MEMBERS;
   box_t clip; /* rectangular clip region, specified in pixels */
 };
 
