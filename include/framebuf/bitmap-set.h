@@ -5,14 +5,15 @@
 
 #include "framebuf/bitmap.h"
 
-/** A set of identical bitmaps. */
-typedef struct bitmap_set bitmap_set_t;
-
-struct bitmap_set
+/**
+ * A set of identical bitmaps.
+ */
+typedef struct bitmap_set
 {
-  bitmap_format_MEMBERS;
-  void **bases;  /* an array of bitmap base pointers */
-  int    nbases;
-};
+  bitmap_COMMON_MEMBERS;
+  void **bases;  /**< Array of bitmap base pointers. */
+  int    nbases; /**< Number of bitmap base pointers. */
+}
+bitmap_set_t;
 
 #endif /* FRAMEBUF_BITMAP_SET_H */
