@@ -111,6 +111,8 @@ pixelfmt_any_t colour_to_pixel(const colour_t *palette,
   }
 }
 
+// TODO: Using unsigned int for alpha here is inconsistent with treatment of alpha
+// above.
 unsigned int colour_get_alpha(const colour_t *c)
 {
   return PIXELFMT_xxxA8888(c->primary);

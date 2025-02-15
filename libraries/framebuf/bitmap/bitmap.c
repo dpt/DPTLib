@@ -28,20 +28,23 @@ result_t bitmap_init(bitmap_t       *bm,
   bm->span     = spanregistry_get(fmt);
   bm->base     = base;
 
-  log2bpp = pixelfmt_log2bpp(fmt);
-  if (log2bpp <= 3 && palette)
+  if (palette)
   {
-    int       nentries;
-    colour_t *newpal;
+    log2bpp = pixelfmt_log2bpp(fmt);
+    if (log2bpp <= 3)
+    {
+      int       nentries;
+      colour_t *newpal;
 
-    nentries = 1 << (1 << log2bpp);
-    newpal = malloc(nentries * sizeof(*newpal));
-    if (newpal == NULL)
-      return result_OOM;
+      nentries = 1 << (1 << log2bpp);
+      newpal = malloc(nentries * sizeof(*newpal));
+      if (newpal == NULL)
+        return result_OOM;
 
-    memcpy(newpal, palette, nentries * sizeof(*newpal));
+      memcpy(newpal, palette, nentries * sizeof(*newpal));
 
-    bm->palette = newpal;
+      bm->palette = newpal;
+    }
   }
 
   return result_OK;

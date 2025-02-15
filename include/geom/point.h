@@ -3,6 +3,7 @@
 #ifndef GEOM_POINT_H
 #define GEOM_POINT_H
 
+/** 2D point with integer coordinates. */
 typedef struct point
 {
   int x, y;
