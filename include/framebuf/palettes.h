@@ -1,4 +1,4 @@
-/* palettes.h */
+/* palettes.h -- standard palettes */
 
 #ifndef PALETTES_H
 #define PALETTES_H
@@ -25,6 +25,11 @@
 #define palette_PICO8_LIGHT_PEACH (15)
 #define palette_PICO8__LENGTH     (16)
 
+/**
+ * Define the PICO-8 palette.
+ *
+ * \param[out] palette PICO-8 palette.
+ */
 void define_pico8_palette(colour_t palette[palette_PICO8__LENGTH]);
 
 #endif /* PALETTES_H */

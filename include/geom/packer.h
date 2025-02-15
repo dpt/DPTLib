@@ -22,11 +22,32 @@ extern "C"
 
 typedef struct packer T;
 
+/**
+ * Creates a new packer.
+ *
+ * \param[in] dims Dimensions of the packer.
+ * \return New packer.
+ */
 T *packer_create(const box_t *dims);
+
+/**
+ * Destroys a packer.
+ *
+ * \param[in] doomed Packer to destroy.
+ */
 void packer_destroy(T *doomed);
 
+/**
+ * Sets the margins of the packer.
+ *
+ * \param[in] packer  Packer to set margins.
+ * \param[in] margins Margins to set.
+ */
 void packer_set_margins(T *packer, const box_t *margins);
 
+/**
+ * Direction to search from for the next available area.
+ */
 typedef enum packer_loc
 {
   packer_LOC_TOP_LEFT,
@@ -37,21 +58,45 @@ typedef enum packer_loc
 }
 packer_loc_t;
 
-/* returns the width of the next available area. */
+/**
+ * Returns the width of the next available area.
+ *
+ * \param[in] packer Packer to get width.
+ * \param[in] loc    Direction to search from for the next available area.
+ * \return Width of the next available area.
+ */
 int packer_next_width(T *packer, packer_loc_t loc);
 
-/* places an absolutely positioned box 'area'. ignores any margins. */
+/**
+ * Places an absolutely positioned box 'area'.
+ *
+ * \param[in] packer Packer to place box.
+ * \param[in] area   Box to place.
+ * \return Result of the placement.
+ */
 result_t packer_place_at(T           *packer,
                          const box_t *area);
 
-/* places a box of dimensions (w,h) in the next free area determined by
- * location 'loc'. */
+/**
+ * Places a box of dimensions (w,h) in the next free area determined by
+ * location 'loc'.
+ *
+ * \param[in]  packer Packer to place box.
+ * \param[in]  loc    Direction to search from for the next available area.
+ * \param[in]  w      Width of the box to place.
+ * \param[in]  h      Height of the box to place.
+ * \param[out] pos    Position of the box.
+ * \return Result of the placement.
+ */
 result_t packer_place_by(T            *packer,
                          packer_loc_t  loc,
                          int           w,
                          int           h,
                          const box_t **pos);
 
+/**
+ * Direction to clear (to move past).
+ */
 typedef enum packer_cleardir
 {
   packer_CLEAR_LEFT,
@@ -61,14 +106,36 @@ typedef enum packer_cleardir
 }
 packer_cleardir_t;
 
-/* clears up to the next specified boundary. */
+/**
+ * Clears up to the next specified boundary.
+ *
+ * \param[in] packer Packer to clear.
+ * \param[in] clear  Direction to clear.
+ * \return Result of the clearing.
+ */
 result_t packer_clear(T *packer, packer_cleardir_t clear);
 
+/**
+ * A function to call for every area known about.
+ */
 typedef result_t (packer_map_fn_t)(const box_t *area, void *opaque);
-/* calls 'fn' for every area known about. */
+
+/**
+ * Calls the given function for every area known about.
+ *
+ * \param[in] packer Packer to query.
+ * \param[in] fn     Function to call.
+ * \param[in] opaque Opaque pointer to pass to the function.
+ * \return Result of the mapping.
+ */
 result_t packer_map(T *packer, packer_map_fn_t *fn, void *opaque);
 
-/* returns the union of all areas used. ignores margins. */
+/**
+ * Returns the union of all areas used (ignoring margins).
+ *
+ * \param[in] packer Packer to query.
+ * \return Union of all areas used.
+ */
 const box_t *packer_get_consumed_area(const T *packer);
 
 #undef T
