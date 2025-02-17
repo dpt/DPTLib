@@ -2,11 +2,11 @@
 #
 # DPTLib
 #
-# Copyright (c) David Thomas, 2020-2024
+# Copyright (c) David Thomas, 2020-2025
 #
 # vim: sw=4 ts=8 et
 
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.23.2)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
@@ -14,20 +14,18 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/)
 
-project(DPTLib VERSION 0.4.0 DESCRIPTION "DPT's C Library" LANGUAGES C)
+project(DPTLib VERSION 0.5.0 DESCRIPTION "DPT's C Library" LANGUAGES C)
 
 # The values set in the toolchain file aren't available until this point.
 if(TARGET_RISCOS)
     riscos_set_flags()
 endif()
 
-
 find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 endif(CCACHE_FOUND)
-
 
 option(USE_FORTIFY "Use Fortify" OFF)
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
@@ -42,7 +40,7 @@ add_subdirectory(libraries/fortify)
 add_library(DPTLib)
 
 set_target_properties(DPTLib PROPERTIES
-    VERSION 0.4.0
+    VERSION 0.5.0
     DESCRIPTION "DPT's Portable C Library"
     C_STANDARD 99
     PREFIX ""  # remove 'lib' prefix
@@ -352,7 +350,7 @@ else()
                          GIT_TAG v1.2.11)
     FetchContent_Declare(libpng
                          GIT_REPOSITORY https://github.com/glennrp/libpng.git
-                         GIT_TAG v1.6.37)
+                         GIT_TAG v1.6.46)
 
     FetchContent_GetProperties(zlib)
     if(NOT zlib_POPULATED)
@@ -388,11 +386,11 @@ else()
                         OUTPUT_QUIET
                         ERROR_QUIET) # because it'll error upon re-run
 
-        cmake_policy(SET CMP0077 NEW)
+        cmake_policy(SET CMP0077 NEW) # option() honors normal variables
 
         set(PNG_SHARED OFF CACHE BOOL "" FORCE)
         set(PNG_STATIC ON CACHE BOOL "" FORCE)
-        set(PNG_EXECUTABLES OFF CACHE BOOL "" FORCE) # we only want lib
+        set(PNG_TOOLS OFF CACHE BOOL "" FORCE) # we only want lib
         set(PNG_TESTS OFF CACHE BOOL "" FORCE) # we only want lib
         set(SKIP_INSTALL_ALL OFF CACHE BOOL "" FORCE) # we only want lib
 
