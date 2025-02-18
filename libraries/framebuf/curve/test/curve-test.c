@@ -468,6 +468,9 @@ static void calc_all_curves(curveteststate_t *state)
                                                                 state->jitterfn(state->control_points[o + 5]),
                                                                 t);
           break;
+
+        default:
+          break;
         }
       }
     }
