@@ -32,7 +32,7 @@ struct packer
   box_t             placed_area;   /* last packer_place_by result */
 
   packer_sortdir_t  order;         /* order to which we have sorted */
-  int               sorted;        // bool
+  int               sorted;        /* a bool */
 
   box_t             consumed_area; /* total consumed area */
 };
