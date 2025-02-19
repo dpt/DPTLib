@@ -306,7 +306,6 @@ void curve_bezier_cubic_f(point_t  p0,
   }
 }
 
-// this suffers from drift if nsteps isn't a power of 2
 void curve_bezier_cubic(point_t  p0,
                         point_t  p1,
                         point_t  p2,
