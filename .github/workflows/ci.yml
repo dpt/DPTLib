@@ -11,9 +11,9 @@ jobs:
     strategy:
       matrix:
         config:
-          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install cmake ninja-build libpng-dev" }
-          - { name: "Windows build", os: "windows-latest", install: "choco install cmake ninja libpng pkgconfiglite" }
-          - { name: "macOS build",   os: "macos-latest",   install: "brew install cmake ninja libpng pkgconf" }
+          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install ninja-build libpng-dev" }
+          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf" }
+          - { name: "macOS build",   os: "macos-latest",   install: "brew install ninja" }
     steps:
       - uses: actions/checkout@v4
       - run: ${{ matrix.config.install }}
