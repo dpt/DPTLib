@@ -210,7 +210,7 @@ void screen_draw_line_wu_fix8(screen_t *scr,
 {
   box_t   clip_box_f8;
   fix8_t  dx_f8, dy_f8;
-  int     steep_b; // bool
+  int     steep_b; /* a bool */
   fix16_t grad_f16;
   int     xend_i;
   fix8_t  yend_f8;

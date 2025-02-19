@@ -1100,20 +1100,22 @@ result_t bmfont_draw(bmfont_t      *bmfont,
     {
     case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p4_1w_t : bmfont_drawchar_p4_1w_o; break;
     case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p4_2w_t : bmfont_drawchar_p4_2w_o; break;
-    default: assert(0); return result_BAD_ARG;
+    default: assert(0); return result_NOT_SUPPORTED;
     }
     break;
+
   case pixelfmt_bgra8888:
   case pixelfmt_bgrx8888:
     switch (bmfont->glyphrowbytes)
     {
     case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_any8888_1w_t : bmfont_drawchar_any8888_1w_o; break;
     case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_any8888_2w_t : bmfont_drawchar_any8888_2w_o; break;
-    default: assert(0); return result_BAD_ARG;
+    default: assert(0); return result_NOT_SUPPORTED;
     }
     break;
+
   default:
-    assert(0); return result_BAD_ARG;
+    assert(0); return result_NOT_SUPPORTED;
   }
 
   if (screen_get_clip(scr, &scrclip))
