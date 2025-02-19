@@ -314,6 +314,12 @@ void screen_draw_line_wu_fix8(screen_t *scr,
   }
 }
 
+/* This is a replacement for C99's lroundf(). */
+static int my_lroundf(float x)
+{
+  return (int)(x + (x >= 0 ? 0.5f : -0.5f));
+}
+
 void screen_draw_line_wu_float(screen_t *scr,
                                float fx0, float fy0, float fx1, float fy1,
                                colour_t colour)
@@ -321,7 +327,7 @@ void screen_draw_line_wu_float(screen_t *scr,
   box_t clip_box;
   int   x0, y0, x1, y1;
   float dx, dy;
-  int   steep; // bool
+  int   steep; /* bool */
   float grad;
   int   xend;
   float yend;
@@ -335,8 +341,8 @@ void screen_draw_line_wu_float(screen_t *scr,
   if (screen_get_clip(scr, &clip_box))
     return; /* invalid clipped screen */
 
-  // this loses the fp precision, so for now just use it to discard lines.
-  // screen_draw_pixel will clip too.
+  /* This discards the fractional part of the coordinates so for now just use it
+   * to discard lines. screen_draw_pixel() will be doing clipping too later. */
   x0 = fx0;
   y0 = fy0;
   x1 = fx1;
@@ -365,7 +371,7 @@ void screen_draw_line_wu_float(screen_t *scr,
 
   /* start point */
 
-  xend   = (int) lroundf(fx0);
+  xend   = (int) my_lroundf(fx0);
   yend   = fy0 + grad * (xend - fx0);
   xgap   = xend + 0.5f - fx0;
   assert(xgap >= 0.0f && xgap <= 1.0f);
@@ -388,7 +394,7 @@ void screen_draw_line_wu_float(screen_t *scr,
 
   /* end point */
 
-  xend   = (int) lroundf(fx1);
+  xend   = (int) my_lroundf(fx1);
   yend   = fy1 + grad * (xend - fx1);
   xgap   = fx1 + 0.5f - xend;
   assert(xgap >= 0.0f && xgap < 1.0f);
