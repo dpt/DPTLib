@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         config:
-          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install cmake ninja-build" }
+          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install cmake ninja-build libpng-dev" }
           - { name: "Windows build", os: "windows-latest", install: "choco install cmake ninja" }
           - { name: "macOS build",   os: "macos-latest",   install: "brew install cmake ninja" }
     steps:
