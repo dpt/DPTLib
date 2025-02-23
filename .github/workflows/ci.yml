@@ -11,15 +11,23 @@ jobs:
     strategy:
       matrix:
         config:
-          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install libpng-dev" }
-          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf" }
-          - { name: "macOS build",   os: "macos-latest",   install: "" }
+          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install libpng-dev", configure: "" }
+          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "-DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" }
+          - { name: "macOS build",   os: "macos-latest",   install: "",                                configure: "" }
     steps:
       - uses: actions/checkout@v4
-      - uses: lukka/get-cmake@latest
-      - run: ${{ matrix.config.install }}
-      - run: |
-          mkdir build
-          cd build
-          cmake -GNinja ..
-          cmake --build .
+
+      - name: Install CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Install dependencies
+        run: |
+          ${{ matrix.config.install }}
+
+      - name: Configure build
+        run: |
+          cmake -B builddir -S . ${{ matrix.config.configure }}  # -DBUILD_TESTS=YES -DBUILD_SDL_TESTS=YES
+
+      - name: Build
+        run: |
+          cmake --build builddir
