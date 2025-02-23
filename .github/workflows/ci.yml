@@ -12,7 +12,7 @@ jobs:
       matrix:
         config:
           - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install libpng-dev", configure: "" }
-          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "-DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" }
+          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "--toolchain=\"${env:VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake\"" }
           - { name: "macOS build",   os: "macos-latest",   install: "",                                configure: "" }
     steps:
       - uses: actions/checkout@v4
