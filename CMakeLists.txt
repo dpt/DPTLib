@@ -334,13 +334,8 @@ if(DPTLIB_IMAGES_READ_ONLY)
 endif()
 
 if(NOT TARGET_RISCOS)
-    ## Where PkgConfig is available, use it
-    find_package(PkgConfig REQUIRED)
-    # Use IMPORTED_TARGET to avoid header/lib mismatch on macOS.
-    pkg_check_modules(PNG REQUIRED IMPORTED_TARGET libpng)
-    target_include_directories(DPTLib PUBLIC ${PNG_INCLUDE_DIRS})
-    target_compile_options(DPTLib PUBLIC ${PNG_CFLAGS_OTHER})
-    target_link_libraries(DPTLib PUBLIC PkgConfig::PNG)
+    find_package(PNG REQUIRED)
+    target_link_libraries(DPTLib PUBLIC PNG::PNG)
 else()
     ## On RISC OS we must build libpng & zlib
     include(FetchContent)
@@ -490,11 +485,10 @@ if(BUILD_TESTS)
     target_link_libraries(DPTLibTest DPTLib m)
 
     if(BUILD_SDL_TESTS)
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(SDL2 REQUIRED sdl2 SDL2_image)
-        target_link_libraries(DPTLibTest ${SDL2_LINK_LIBRARIES})
-        target_include_directories(DPTLibTest PUBLIC ${SDL2_INCLUDE_DIRS})
-        target_compile_options(DPTLibTest PUBLIC ${SDL2_CFLAGS_OTHER})
+        find_package(SDL2 REQUIRED)
+        find_package(SDL2_image REQUIRED)
+
+        target_link_libraries(DPTLibTest SDL2::SDL2 SDL2_image::SDL2_image)
 
         target_compile_definitions(DPTLibTest PUBLIC USE_SDL)
     endif()
