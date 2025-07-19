@@ -2,6 +2,8 @@
 
 #include <assert.h>
 
+#include "base/types.h"
+
 #include "utils/bytesex.h"
 
 void rev_s_block(unsigned short int *array, size_t nelems)
@@ -19,7 +21,7 @@ void rev_s_block(unsigned short int *array, size_t nelems)
   p = array;
 
   /* align to a 4-byte boundary */
-  if (((int) p & 3) != 0)
+  if (((intptr_t) p & 3) != 0)
   {
     unsigned short int r0;
 

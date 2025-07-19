@@ -396,7 +396,7 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
 
           (void) bmfont_measure(bmfont,
                                 string,
-                                stringlen,
+                          (int) stringlen,
                                 state->scr_width - origin.x,
                                &absolute_break, /* if no break returns strlen */
                                &width);
@@ -599,14 +599,14 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
 
         dirty.x0 = origin.x;
         dirty.y0 = origin.y;
-        dirty.x1 = origin.x + msglen * 15; // HACK
+        dirty.x1 = origin.x + (int) msglen * 15; // HACK
         dirty.y1 = origin.y + height;
         (void) box_intersection(&dirty, &scrclip, &dirty); /* dirtied area clamped to screen bounds */
         box_union(&overalldirty, &dirty, &overalldirty);
         (void) bmfont_draw(bmfonts[currfont].bmfont,
                           &state->scr,
                            message,
-                           msglen,
+                     (int) msglen,
                            fg, bg,
                           &origin,
                            NULL /*endpos*/);
