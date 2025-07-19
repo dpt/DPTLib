@@ -48,15 +48,15 @@ result_t atom_ensure_loc_space(atom_set_t *s)
 #else
   if (s->l_used == s->l_allocated)
   {
-    size_t   newallocated;
-    locpool_t *newpools;
+    unsigned int newallocated;
+    locpool_t   *newpools;
 
     newallocated = s->l_used + 1;
     /* start with at least this many entries */
     if (newallocated < LOCPTRMINSZ)
       newallocated = LOCPTRMINSZ;
     /* subtract 1 to make it greater than or equal */
-    newallocated = (size_t) power2gt(newallocated - 1);
+    newallocated = power2gt(newallocated - 1);
 
     newpools = realloc(s->locpools, newallocated * sizeof(*newpools));
     if (newpools == NULL)
@@ -115,15 +115,15 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
 #else
   if (s->b_used == s->b_allocated)
   {
-    size_t     newallocated;
-    blkpool_t *newpools;
+    unsigned int newallocated;
+    blkpool_t   *newpools;
 
     newallocated = s->b_used + 1;
     /* start with at least this many entries */
     if (newallocated < BLKPTRMINSZ)
       newallocated = BLKPTRMINSZ;
     /* subtract 1 to make it greater than or equal */
-    newallocated = (size_t) power2gt(newallocated - 1);
+    newallocated = power2gt(newallocated - 1);
 
     newpools = realloc(s->blkpools, newallocated * sizeof(*newpools));
     if (newpools == NULL)

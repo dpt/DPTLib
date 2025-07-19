@@ -457,10 +457,10 @@ result_t tagdb_add(tagdb_t *db, const unsigned char *name, tagdb_tag_t *ptag)
         goto Failure;
       }
 #else
-      size_t n;
-      void  *newarr;
+      unsigned int n;
+      void        *newarr;
 
-      n = (size_t) power2gt(db->c_allocated);
+      n = power2gt(db->c_allocated);
       if (n < 8)
         n = 8;
 
