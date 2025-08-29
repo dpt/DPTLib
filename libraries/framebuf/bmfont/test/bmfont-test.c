@@ -195,10 +195,11 @@ bmtestline_t;
 
 /* ----------------------------------------------------------------------- */
 
-#define MAXFONTS 6
+#define MAXFONTS 7
 
 static bmtestfont_t bmfonts[MAXFONTS] =
 {
+  { "daydream-font",    NULL },
   { "gliderrider-font", NULL },
   { "tiny-font",        NULL },
   { "henry-font",       NULL },
@@ -480,6 +481,9 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
   int   cycling       = 1;
   int   currfont      = 0;
   int   transparency  = 0;
+  int   caps          = 0;
+  int   offset        = 0;
+  int   shadow        = 0;
   box_t prevdirty;
   box_t overalldirty;
 
@@ -517,8 +521,11 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
           {
           case SDLK_c: cycling = !cycling; break;
           case SDLK_f: currfont = (currfont + 1) % NELEMS(bmfonts); break;
-          case SDLK_t: transparency = !transparency; break;
+          case SDLK_n: offset++; break;
+          case SDLK_p: caps = !caps; break;
           case SDLK_q: quit = true; break;
+          case SDLK_s: shadow = !shadow; break;
+          case SDLK_t: transparency = !transparency; break;
           }
           break;
 
@@ -570,16 +577,25 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
     }
 
     {
-      point_t   origin  = {mx,my};
-      const int height  = bmfonts[currfont].height;
-      const int rows    = state->scr_height / height;
-      box_t     dirty;
-      int       i;
+      point_t    origin  = {mx,my};
+      const int  height  = bmfonts[currfont].height;
+      const int  rows    = state->scr_height / height;
+      box_t      dirty;
+      int        i;
+      char       buf[256];
+      int        j;
 
       for (i = 0; i < rows; i++)
       {
-        const char  *message = pangrams[i % NELEMS(pangrams)];
+        const char  *message = pangrams[(offset + i) % NELEMS(pangrams)];
         const size_t msglen  = strlen(message);
+
+        if (caps)
+        {
+          for (j = 0; j < msglen; j++)
+            buf[j] = toupper(message[j]);
+          message = buf;
+        }
 
         if (animate)
         {
@@ -597,19 +613,49 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
           }
         }
 
-        dirty.x0 = origin.x;
-        dirty.y0 = origin.y;
-        dirty.x1 = origin.x + (int) msglen * 15; // HACK
-        dirty.y1 = origin.y + height;
+        if (shadow)
+        {
+          (void) bmfont_draw(bmfonts[currfont].bmfont,
+                            &state->scr,
+                             message,
+                       (int) msglen,
+                             state->palette[palette_PICO8_BLACK], bg,
+                            &origin,
+                             NULL /*endpos*/);
+
+          origin.x--;
+          origin.y--;
+
+          (void) bmfont_draw(bmfonts[currfont].bmfont,
+                             &state->scr,
+                             message,
+                             (int) msglen,
+                             fg, bg,
+                             &origin,
+                             NULL /*endpos*/);
+
+          dirty.x0 = origin.x;
+          dirty.y0 = origin.y;
+          dirty.x1 = origin.x + 1 + (int) msglen * 15; // HACK
+          dirty.y1 = origin.y + 1 + height;
+        } else {
+          (void) bmfont_draw(bmfonts[currfont].bmfont,
+                             &state->scr,
+                             message,
+                             (int) msglen,
+                             fg, bg,
+                             &origin,
+                             NULL /*endpos*/);
+
+          dirty.x0 = origin.x;
+          dirty.y0 = origin.y;
+          dirty.x1 = origin.x + (int) msglen * 15; // HACK
+          dirty.y1 = origin.y + height;
+        }
+
         (void) box_intersection(&dirty, &scrclip, &dirty); /* dirtied area clamped to screen bounds */
         box_union(&overalldirty, &dirty, &overalldirty);
-        (void) bmfont_draw(bmfonts[currfont].bmfont,
-                          &state->scr,
-                           message,
-                     (int) msglen,
-                           fg, bg,
-                          &origin,
-                           NULL /*endpos*/);
+
         if (!animate)
           break;
       }
@@ -739,7 +785,10 @@ result_t bmfont_test_one_format(const char *resources,
     filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
     rc = bmfont_create(filename, &bmfonts[font].bmfont);
     if (rc)
+    {
+      fprintf(stderr, "Error: Failed to load font %s\n", filename);
       goto Failure;
+    }
 
     bmfont_get_info(bmfonts[font].bmfont,
                    &bmfonts[font].width,
