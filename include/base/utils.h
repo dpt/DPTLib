@@ -31,6 +31,9 @@
 #define CLAMP(a,b,c) MIN(MAX(a,b),c)
 
 /** Swap 'a' and 'b'. */
+#ifdef __GNUC__
+#define SWAP(a,b) do { __typeof__(a) swap_tmp_ = (a); (a) = (b); (b) = swap_tmp_; } while (0)
+#else
 #define SWAP(a,b) \
   do { \
     unsigned char swap_tmp_[sizeof(a)]; \
@@ -38,6 +41,7 @@
     memcpy(&(a), &(b), sizeof(a)); \
     memcpy(&(b), swap_tmp_, sizeof(a)); \
   } while (0)
+#endif
 
 /** Suppress warnings about unused variables. */
 #ifndef NOT_USED
