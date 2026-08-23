@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
-        build_type: [Debug, Release]
+        build_type: [Debug, Release, MinSizeRel]
         config:
           - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install libpng-dev", configure: "" }
           - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "--toolchain=\"${env:VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake\"" }
@@ -45,6 +45,10 @@ jobs:
 
       - name: Run tests
         run: |
-          if [ "${{ matrix.build_type }}" = "Debug" ]; then bin=DPTLibTest-debug; else bin=DPTLibTest; fi
+          case "${{ matrix.build_type }}" in
+            Debug) bin=DPTLibTest-debug ;;
+            MinSizeRel) bin=DPTLibTest-minsizerel ;;
+            *) bin=DPTLibTest ;;
+          esac
           if [ "$RUNNER_OS" = "Windows" ]; then testbin="builddir/${{ matrix.build_type }}/$bin.exe"; else testbin="builddir/$bin"; fi
           "$testbin" -resources .
