@@ -1,6 +1,6 @@
 # DPTLib
 
-version 0.4.0
+version 0.5.0
 
 [![Build status](https://github.com/dpt/DPTLib/actions/workflows/ci.yml/badge.svg)](https://github.com/dpt/DPTLib/actions)
 
@@ -48,18 +48,28 @@ DPTLib is my platform independent C library. It contains a wide variety of funct
 - [`framebuf/bmfont.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/bmfont.h) — a proportional bitmap font engine {[docs](https://github.com/dpt/DPTLib/blob/master/docs/framebuf/bmfont.md)}
 - [`framebuf/colour.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/colour.h) — colour definition and conversion
 - [`framebuf/composite.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/composite.h) — Porter-Duff image compositing {[docs](https://github.com/dpt/DPTLib/blob/master/docs/framebuf/composite.md)}
+- [`framebuf/curve.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/curve.h) — Bezier curve calculations
+- [`framebuf/palettes.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/palettes.h) — standard colour palettes
 - [`framebuf/pixelfmt.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/pixelfmt.h) — pixel formats
 - [`framebuf/screen.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/screen.h) — screen type
+- [`framebuf/span.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/span.h) — interface of plotting methods
+  - [`framebuf/span-registry.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/span-registry.h) — registry of plotting methods by pixel format
+  - [`framebuf/span-bgrx8888.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/span-bgrx8888.h) — plotting methods for BGRx8888
+  - [`framebuf/span-rgba8888.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/span-rgba8888.h) — plotting methods for RGBA8888
+  - [`framebuf/span-rgbx8888.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/span-rgbx8888.h) — plotting methods for RGBx8888
+  - [`framebuf/span-xbgr8888.h`](https://github.com/dpt/DPTLib/blob/master/include/framebuf/span-xbgr8888.h) — plotting methods for XBGR8888
 
 ### Geometry
 
 - [`geom/box.h`](https://github.com/dpt/DPTLib/blob/master/include/geom/box.h) — box type
 - [`geom/packer.h`](https://github.com/dpt/DPTLib/blob/master/include/geom/packer.h) — box packing for layout {[docs](https://github.com/dpt/DPTLib/blob/master/docs/geom/packer.md)}
 - [`geom/layout.h`](https://github.com/dpt/DPTLib/blob/master/include/geom/layout.h) — laying out elements using the packer
+- [`geom/line.h`](https://github.com/dpt/DPTLib/blob/master/include/geom/line.h) — line type and clipping
 - [`geom/point.h`](https://github.com/dpt/DPTLib/blob/master/include/geom/point.h) — point type
 
 ### I/O
 
+- [`io/path.h`](https://github.com/dpt/DPTLib/blob/master/include/io/path.h) — filename path handling
 - [`io/stream.h`](https://github.com/dpt/DPTLib/blob/master/include/io/stream.h) — stream system {[docs](https://github.com/dpt/DPTLib/blob/master/docs/io/stream.md)}
   - [`io/stream-stdio.h`](https://github.com/dpt/DPTLib/blob/master/include/io/stream-stdio.h) — C standard IO stream implementation
   - [`io/stream-mem.h`](https://github.com/dpt/DPTLib/blob/master/include/io/stream-mem.h) — memory block IO stream implementation
