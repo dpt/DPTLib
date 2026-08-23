@@ -11,6 +11,10 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef _MSC_VER
+#include <crtdbg.h>
+#endif
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -104,6 +108,20 @@ int main(int argc, char *argv[])
   int         i;
   double      elapsed;
   int         npassed;
+
+#ifdef _MSC_VER
+  /* Route assert()/runtime-check failures to stderr instead of a blocking
+   * dialog box, so a CI run reports the failure instead of hanging or
+   * exiting silently. */
+  _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+  _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+  _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
+  _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
+#endif
+
+  /* Line-buffer stdout so output up to the point of a crash is still
+   * flushed, even when redirected (Windows fully-buffers by default). */
+  setvbuf(stdout, NULL, _IOLBF, BUFSIZ);
 
 #ifdef FORTIFY
   Fortify_EnterScope();
