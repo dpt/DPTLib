@@ -13,7 +13,7 @@ jobs:
         build_type: [Debug, Release, MinSizeRel]
         config:
           - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install libpng-dev", configure: "" }
-          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "--toolchain=\"${env:VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake\"" }
+          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "--toolchain=\"$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake\"" }
           - { name: "macOS build",   os: "macos-latest",   install: "",                                configure: "" }
     defaults:
       run:
@@ -57,6 +57,9 @@ jobs:
     name: RISC OS build
     runs-on: ubuntu-latest
     container: riscosdotinfo/riscos-gccsdk-4.7:latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v5
 
