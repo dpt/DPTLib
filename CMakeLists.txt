@@ -309,7 +309,11 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${ALL_SOURCES})
 
 target_sources(DPTLib PRIVATE ${ALL_SOURCES})
 
-target_compile_options(DPTLib PRIVATE -Wall -Wextra -pedantic)
+if(MSVC)
+    target_compile_options(DPTLib PRIVATE /W4)
+else()
+    target_compile_options(DPTLib PRIVATE -Wall -Wextra -pedantic)
+endif()
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
     target_compile_definitions(DPTLib PRIVATE DPTLIB_DEBUG)
