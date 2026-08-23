@@ -12,7 +12,7 @@ jobs:
       matrix:
         build_type: [Debug, Release, MinSizeRel]
         config:
-          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install libpng-dev", configure: "" }
+          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "",                                configure: "" }
           - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "--toolchain=\"$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake\"" }
           - { name: "macOS build",   os: "macos-latest",   install: "",                                configure: "" }
     defaults:
@@ -30,6 +30,13 @@ jobs:
         with:
           path: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed
           key: vcpkg-${{ runner.os }}-${{ matrix.config.install }}
+
+      - name: Cache apt packages
+        if: runner.os == 'Linux'
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: libpng-dev
+          version: 1.0
 
       - name: Install dependencies
         run: |
