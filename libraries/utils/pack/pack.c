@@ -106,7 +106,7 @@ size_t pack(uint8_t *buf, const char *fmt, ...)
       break;
 
       default:
-        assert("pack: Illegal array format specifier" == NULL);
+        assert(!"pack: Illegal array format specifier");
         va_end(args);
         return 0;
       }
@@ -185,7 +185,7 @@ size_t pack(uint8_t *buf, const char *fmt, ...)
       break;
 
       default: /* illegal type character */
-        assert("pack: Illegal format specifier" == NULL);
+        assert(!"pack: Illegal format specifier");
         va_end(args);
         return 0;
       }
