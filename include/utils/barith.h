@@ -26,6 +26,8 @@ extern "C"
 #ifndef BARITH_INLINE
 #  if __GNUC__ && !__GNUC_STDC_INLINE__
 #    define BARITH_INLINE extern __inline__
+#  elif defined(_MSC_VER)
+#    define BARITH_INLINE __inline
 #  else
 #    define BARITH_INLINE __inline__
 #  endif
