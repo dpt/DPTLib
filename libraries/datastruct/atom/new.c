@@ -96,7 +96,7 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
    * pool, then there's space */
 
   if (s->b_used > 0 &&
-      s->blkpools[s->b_used - 1].used + length <= (1U << s->log2blkpoolsz))
+      s->blkpools[s->b_used - 1].used + length <= ((size_t) 1 << s->log2blkpoolsz))
     return result_OK;
 
   /* otherwise the last allocated pool is full or there are no pools
@@ -209,7 +209,7 @@ result_t atom_new(atom_set_t          *s,
    * case.
    */
   for (i = 0; i < s->b_used; i++)
-    if ((1U << s->log2blkpoolsz) - s->blkpools[i].used >= sizet_length)
+    if (((size_t) 1 << s->log2blkpoolsz) - s->blkpools[i].used >= sizet_length)
       break;
 
   if (i == s->b_used)
