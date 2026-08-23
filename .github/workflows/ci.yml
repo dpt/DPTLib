@@ -94,7 +94,7 @@ jobs:
       - name: Configure build
         run: |
           source /home/riscos/gccsdk-params
-          cmake -B builddir -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=YES -DCMAKE_TOOLCHAIN_FILE=cmake/riscos.cmake
+          cmake -B builddir -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=YES -DCMAKE_TOOLCHAIN_FILE=cmake/riscos.cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
       - name: Build
         run: |
