@@ -541,7 +541,7 @@ static void rotate_lines(curveteststate_t *state, int degrees, int palidx)
                                 state->palette[palidx]);
 
       box_reset(&b);
-      box_extend_n(&b, (int) xa, (int) ya, (int) xb, (int) yb);
+      box_extend_n(&b, 2, (int) xa, (int) ya, (int) xb, (int) yb);
       box_union(&b, &state->overalldirty, &state->overalldirty);
     }
   }
