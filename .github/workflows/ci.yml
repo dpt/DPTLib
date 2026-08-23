@@ -11,9 +11,9 @@ jobs:
     strategy:
       matrix:
         config:
-          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install libpng-dev", configure: "" }
-          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "--toolchain=\"${env:VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake\"" }
-          - { name: "macOS build",   os: "macos-latest",   install: "",                                configure: "" }
+          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install libpng-dev", configure: "", testbin: "builddir/DPTLibTest-debug" }
+          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "--toolchain=\"${env:VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake\"", testbin: "builddir/Debug/DPTLibTest-debug.exe" }
+          - { name: "macOS build",   os: "macos-latest",   install: "",                                configure: "", testbin: "builddir/DPTLibTest-debug" }
     steps:
       - uses: actions/checkout@v4
 
@@ -26,8 +26,12 @@ jobs:
 
       - name: Configure build
         run: |
-          cmake -B builddir -S . ${{ matrix.config.configure }}  # -DBUILD_TESTS=YES -DBUILD_SDL_TESTS=YES
+          cmake -B builddir -S . -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=YES ${{ matrix.config.configure }}
 
       - name: Build
         run: |
-          cmake --build builddir
+          cmake --build builddir --config Debug
+
+      - name: Run tests
+        run: |
+          ${{ matrix.config.testbin }} -resources .
