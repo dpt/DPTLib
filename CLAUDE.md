@@ -68,3 +68,7 @@ New source/header files must be added by hand to the relevant `set(..._SOURCES .
 - File header comment format: `/* filename.c -- one-line description */`.
 - Section breaks within files use `/* ----- ... ----- */` rule comments.
 - Public API docs use Doxygen (`\file`, `\param`, `\return`); a `Doxyfile` exists for generating them.
+
+## Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/): `<type>[optional scope]: <description>`, e.g. `fix(pickle): handle zero-length blobs`. Common types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `build`. Add a `!` before the colon (or a `BREAKING CHANGE:` footer) for breaking changes.
