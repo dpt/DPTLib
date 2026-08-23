@@ -358,15 +358,7 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
 
   *pbmfont = NULL;
 
-  {
-    static int printed_png_version = 0;
-    if (!printed_png_version)
-    {
-      fprintf(stderr, "bmfont: libpng compiled=%s linked=%s\n",
-              PNG_LIBPNG_VER_STRING, png_get_header_ver(NULL));
-      printed_png_version = 1;
-    }
-  }
+  fprintf(stderr, "bmfont trace: %s stage=start\n", png); fflush(stderr);
 
   fp = fopen(png, "rb");
   if (fp == NULL)
@@ -407,6 +399,10 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
   png_get_IHDR(png_ptr, info_ptr,
               &pngwidth, &pngheight, &pngbitdepth, &pngcolourtype,
                NULL, NULL, NULL);
+
+  fprintf(stderr, "bmfont trace: %s stage=ihdr w=%u h=%u depth=%d type=%d\n",
+          png, (unsigned) pngwidth, (unsigned) pngheight, pngbitdepth, pngcolourtype);
+  fflush(stderr);
 #ifdef BMFONT_DEBUG
   fprintf(stderr, "bmfont load png: w=%d h=%d bit_depth=%d colour_type=%d\n",
           (int) width, (int) height, bit_depth, colour_type);
@@ -463,6 +459,12 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
   bmfont->totalchars    = CHARS_PER_ROW * pngheight / gridheight;
   bmfont->glyphrowbytes = (gridwidth + 7) / 8; /* byte width of stored glyphs (1 or 2) */
 
+  fprintf(stderr, "bmfont trace: %s stage=grid gw=%d gh=%d charw=%d charh=%d totalchars=%d rowbytes=%d\n",
+          png, gridwidth, gridheight,
+          bmfont->charwidth, bmfont->charheight,
+          bmfont->totalchars, bmfont->glyphrowbytes);
+  fflush(stderr);
+
 #ifdef BMFONT_DEBUG
   fprintf(stderr, "bmfont load png: charwidth=%d charheight=%d totalchars=%d glyphrowbytes=%d\n",
           bmfont->charwidth, bmfont->charheight,
@@ -474,6 +476,11 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
     png_uint_32 h;
 
     pngrowbytes = png_get_rowbytes(png_ptr, info_ptr);
+
+    fprintf(stderr, "bmfont trace: %s stage=alloc pngrowbytes=%zu total=%zu\n",
+            png, pngrowbytes, (size_t) pngrowbytes * pngheight);
+    fflush(stderr);
+
     pixels = malloc(pngrowbytes * pngheight);
     if (pixels == NULL)
       goto oom;
@@ -487,13 +494,19 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
 
     png_read_image(png_ptr, row_pointers);
 
+    fprintf(stderr, "bmfont trace: %s stage=decoded\n", png); fflush(stderr);
+
     rc = extract_advance_widths(bmfont, pixels, pngwidth, pngheight, pngrowbytes);
     if (rc)
       goto cleanup;
 
+    fprintf(stderr, "bmfont trace: %s stage=adw-done\n", png); fflush(stderr);
+
     rc = extract_glyphs(bmfont, pixels, pngwidth, pngheight, pngrowbytes);
     if (rc)
       goto cleanup;
+
+    fprintf(stderr, "bmfont trace: %s stage=glyphs-done\n", png); fflush(stderr);
   }
 
   *pbmfont = bmfont;
