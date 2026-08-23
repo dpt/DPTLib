@@ -106,7 +106,7 @@ pixelfmt_any_t colour_to_pixel(const colour_t *palette,
     return PIXELFMT_MAKE_BGRA8888(r, g, b, a);
 
   default:
-    assert("Unimplemented pixel format" == NULL);
+    assert(!"Unimplemented pixel format");
     return 0xFFFFFFFF;
   }
 }

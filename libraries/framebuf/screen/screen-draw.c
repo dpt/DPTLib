@@ -59,7 +59,7 @@ void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour)
     break;
 
   default:
-    assert("Unimplemented pixel format" == NULL);
+    assert(!"Unimplemented pixel format");
     break;
   }
 }
@@ -92,7 +92,7 @@ static void screen_blend_pixel(screen_t *scr,
     break;
 
   default:
-    assert("Unimplemented pixel format" == NULL);
+    assert(!"Unimplemented pixel format");
     break;
   }
 }
@@ -143,7 +143,7 @@ void screen_draw_rect(screen_t *scr,
     break;
 
   default:
-    assert("Unimplemented pixel format" == NULL);
+    assert(!"Unimplemented pixel format");
     break;
   }
 }

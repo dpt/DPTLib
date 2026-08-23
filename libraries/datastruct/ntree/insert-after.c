@@ -16,7 +16,7 @@ result_t ntree_insert_after(ntree_t *parent, ntree_t *sibling, ntree_t *node)
   NOT_USED(sibling);
   NOT_USED(node);
 
-  assert("NYI" == NULL);
+  assert(!"NYI");
 
   return result_OK;
 }

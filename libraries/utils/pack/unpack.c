@@ -86,7 +86,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
       case 'i': dst = DST_i; break;                                      \
       case 'q': dst = DST_q; break;                                      \
       default:                                                           \
-        assert("unpack: Illegal format specifier" == NULL);              \
+        assert(!"unpack: Illegal format specifier");              \
         return 0;                                                        \
       }                                                                  \
                                                                          \
@@ -293,7 +293,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
                                                                          \
                                                                          \
       default:                                                           \
-        assert("unpack: Conversion would truncate" == NULL);             \
+        assert(!"unpack: Conversion would truncate");             \
         return 0;                                                        \
       }                                                                  \
     }                                                                    \
@@ -343,7 +343,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
       case 'i': dst = DST_i; break;                                      \
       case 'q': dst = DST_q; break;                                      \
       default:                                                           \
-        assert("unpack: Illegal format specifier" == NULL);              \
+        assert(!"unpack: Illegal format specifier");              \
         return 0;                                                        \
       }                                                                  \
                                                                          \
@@ -509,7 +509,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
                                                                          \
                                                                          \
       default:                                                           \
-        assert("unpack: Conversion would truncate" == NULL);             \
+        assert(!"unpack: Conversion would truncate");             \
         return 0;                                                        \
       }                                                                  \
     }                                                                    \
