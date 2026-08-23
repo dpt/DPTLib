@@ -10,9 +10,13 @@ extern "C"
 
 /* ----------------------------------------------------------------------- */
 
-/** Represents a pixel format. */
-// 'rgbx8888' would be 0xXXBBGGRR
-// round up to whole units using X if that part of the word is empty
+/**
+ * All currently known pixel formats.
+ *
+ * \note `pixelfmt_rgbx8888` represents a pixel of the form 0xXXBBGGRR.
+ *
+ * \note Round up to whole units using X if that part of the word is empty.
+ */
 typedef enum pixelfmt
 {
   /* packed/paletted */
@@ -59,50 +63,60 @@ pixelfmt_t;
 
 /* ----------------------------------------------------------------------- */
 
-typedef unsigned int   pixelfmt_p1_t; // packed
-typedef unsigned int   pixelfmt_p2_t; // packed
-typedef unsigned int   pixelfmt_p4_t; // packed
-typedef unsigned int   pixelfmt_p8_t; // packed
+typedef unsigned int   pixelfmt_p1_t; /* packed/paletted 1bpp */
+typedef unsigned int   pixelfmt_p2_t; /* packed/paletted 2bpp */
+typedef unsigned int   pixelfmt_p4_t; /* packed/paletted 4bpp */
+typedef unsigned int   pixelfmt_p8_t; /* packed/paletted 8bpp */
 
-typedef unsigned char  pixelfmt_y8_t;
+typedef unsigned char  pixelfmt_y8_t; /* 8bpp grey */
 
-typedef unsigned short pixelfmt_bgrx4444_t;
-typedef unsigned short pixelfmt_rgbx4444_t;
-typedef unsigned short pixelfmt_xbgr4444_t;
-typedef unsigned short pixelfmt_xrgb4444_t;
+typedef unsigned short pixelfmt_bgrx4444_t; /* 12bpp bgrx4444 */
+typedef unsigned short pixelfmt_rgbx4444_t; /* 12bpp rgbx4444 */
+typedef unsigned short pixelfmt_xbgr4444_t; /* 12bpp xbgr4444 */
+typedef unsigned short pixelfmt_xrgb4444_t; /* 12bpp xrgb4444 */
 
-typedef unsigned short pixelfmt_bgrx5551_t;
-typedef unsigned short pixelfmt_rgbx5551_t;
-typedef unsigned short pixelfmt_xbgr1555_t;
-typedef unsigned short pixelfmt_xrgb1555_t;
+typedef unsigned short pixelfmt_bgrx5551_t; /* 15bpp bgrx5551 */
+typedef unsigned short pixelfmt_rgbx5551_t; /* 15bpp rgbx5551 */
+typedef unsigned short pixelfmt_xbgr1555_t; /* 15bpp xbgr1555 */
+typedef unsigned short pixelfmt_xrgb1555_t; /* 15bpp xrgb1555 */
 
-typedef unsigned short pixelfmt_bgr565_t;
-typedef unsigned short pixelfmt_rgb565_t;
+typedef unsigned short pixelfmt_bgr565_t; /* 16bpp bgr565 */
+typedef unsigned short pixelfmt_rgb565_t; /* 16bpp rgb565 */
 
-typedef unsigned int   pixelfmt_bgrx8888_t;
-typedef unsigned int   pixelfmt_rgbx8888_t;
-typedef unsigned int   pixelfmt_xbgr8888_t;
-typedef unsigned int   pixelfmt_xrgb8888_t;
+typedef unsigned int   pixelfmt_bgrx8888_t; /* 24bpp bgrx8888 */
+typedef unsigned int   pixelfmt_rgbx8888_t; /* 24bpp rgbx8888 */
+typedef unsigned int   pixelfmt_xbgr8888_t; /* 24bpp xbgr8888 */
+typedef unsigned int   pixelfmt_xrgb8888_t; /* 24bpp xrgb8888 */
 
-typedef unsigned int   pixelfmt_bgra8888_t;
-typedef unsigned int   pixelfmt_rgba8888_t;
-typedef unsigned int   pixelfmt_abgr8888_t;
-typedef unsigned int   pixelfmt_argb8888_t;
+typedef unsigned int   pixelfmt_bgra8888_t; /* 32bpp bgra8888 */
+typedef unsigned int   pixelfmt_rgba8888_t; /* 32bpp rgba8888 */
+typedef unsigned int   pixelfmt_abgr8888_t; /* 32bpp abgr8888 */
+typedef unsigned int   pixelfmt_argb8888_t; /* 32bpp argb8888 */
 
-typedef unsigned int   pixelfmt_xxxa8888_t; /* any alpha */
+typedef unsigned int   pixelfmt_xxxa8888_t; /* any 32bpp alpha */
 
 typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
+typedef unsigned char  pixelfmt_any8_t; /* any 8bpp pixel */
+typedef unsigned short pixelfmt_any16_t; /* any 16bpp pixel */
+typedef unsigned int   pixelfmt_any32_t; /* any 32bpp pixel */
 
 /* ----------------------------------------------------------------------- */
 
-#define PIXELFMT_TRANSPARENT (0x00u)
-#define PIXELFMT_OPAQUE      (0xFFu)
+#define PIXELFMT_TRANSPARENT (0x00u) /* transparent pixel */
+#define PIXELFMT_OPAQUE      (0xFFu) /* opaque pixel */
 
 /* ----------------------------------------------------------------------- */
 
+/**
+ * Extract a field from a pixel.
+ *
+ * \param px Pixel value.
+ * \param sh Right shift amount.
+ * \param n Mask.
+ */
 #define PIXELFMT_EXTRACT(px,sh,n) (((pixelfmt_any_t) (px) >> (sh)) & (n))
 
-/* RGB565 */
+/* Constants for RGB565 */
 #define PIXELFMT_Rxx565_SHIFT  (0)
 #define PIXELFMT_xGx565_SHIFT  (5)
 #define PIXELFMT_xxB565_SHIFT (10)
@@ -113,7 +127,7 @@ typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
 #define PIXELFMT_xGx565(px) PIXELFMT_EXTRACT(px, PIXELFMT_xGx565_SHIFT, 0x3Fu)
 #define PIXELFMT_xxB565(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxB565_SHIFT, 0x1Fu)
 
-/* any 8888 */
+/* Constants for any 8888 */
 #define PIXELFMT_Rxxx8888_SHIFT  (0)
 #define PIXELFMT_Bxxx8888_SHIFT  (0)
 #define PIXELFMT_xGxx8888_SHIFT  (8)
@@ -127,7 +141,7 @@ typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
 #define PIXELFMT_xxRx8888_MASK  (0xFFu << 16)
 #define PIXELFMT_xxxA8888_MASK  (0xFFu << 24)
 
-/* BGRX8888 */
+/* Constants for BGRX8888 */
 #define PIXELFMT_Bxxx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_Bxxx8888_SHIFT, 0xFFu)
 #define PIXELFMT_xGxx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xGxx8888_SHIFT, 0xFFu)
 #define PIXELFMT_xxRx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxRx8888_SHIFT, 0xFFu)
@@ -137,7 +151,7 @@ typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
    ((pixelfmt_any_t) (B) << PIXELFMT_xxRx8888_SHIFT) | \
    ((pixelfmt_any_t) (0xFF) << PIXELFMT_xxxA8888_SHIFT))
 
-/* RGBA8888 */
+/* Constants for RGBA8888 */
 #define PIXELFMT_Rxxx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_Rxxx8888_SHIFT, 0xFFu)
 #define PIXELFMT_xGxx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xGxx8888_SHIFT, 0xFFu)
 #define PIXELFMT_xxBx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxBx8888_SHIFT, 0xFFu)
@@ -148,7 +162,7 @@ typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
    ((pixelfmt_any_t) (B) << PIXELFMT_xxBx8888_SHIFT) | \
    ((pixelfmt_any_t) (A) << PIXELFMT_xxxA8888_SHIFT))
 
-/* BGRA8888 */
+/* Constants for BGRA8888 */
 #define PIXELFMT_MAKE_BGRA8888(R,G,B,A) \
   (((pixelfmt_any_t) (B) << PIXELFMT_Bxxx8888_SHIFT) | \
    ((pixelfmt_any_t) (G) << PIXELFMT_xGxx8888_SHIFT) | \
@@ -157,7 +171,12 @@ typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
 
 /* ----------------------------------------------------------------------- */
 
-/* Given a pixel format return its log2 bits-per-pixel size. */
+/**
+ * Given a pixel format return its log2 bits-per-pixel size.
+ *
+ * \param fmt Pixel format.
+ * \return Log2 bits-per-pixel size.
+ */
 int pixelfmt_log2bpp(pixelfmt_t fmt);
 
 /* ----------------------------------------------------------------------- */

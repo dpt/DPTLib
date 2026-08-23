@@ -31,6 +31,9 @@ extern "C"
 
 /* ----------------------------------------------------------------------- */
 
+/**
+ * Stream operation codes.
+ */
 typedef enum stream_opcode
 {
   stream_IN_MEMORY /**< Query whether stream is contained in memory.
@@ -40,13 +43,18 @@ stream_opcode_t;
 
 /**
  * A type which holds a size or offset within a stream.
+ *
+ * TODO: Make this 64-bit where supported.
  */
-typedef size_t stream_size_t; // TODO: Make this 64-bit where supported.
+typedef size_t stream_size_t;
 
 /* stream_get returns an int, so can return EOF. */
 /* stream_fill returns a stream_size_t, so can return stream_EOF. */
 #define stream_EOF ((stream_size_t) -1)
 
+/**
+ * A structure representing a stream.
+ */
 typedef struct stream stream_t;
 
 /*
@@ -89,10 +97,10 @@ stream_fill_t    stream_fill;
 stream_length_t  stream_length;
 stream_destroy_t stream_destroy;
 
-/** Get a byte from a stream. Returns `EOF` (not `stream_EOF`) at EOF. */
+/** Fetch a byte from a stream. Returns `EOF` (not `stream_EOF`) at EOF. */
 #define stream_getc(s) (((s)->buf != (s)->end) ? *(s)->buf++ : (s)->get(s))
 
-/** Put back the last byte gotten. */
+/** Put back the last byte fetched. */
 #define stream_ungetc(s) --(s)->buf
 
 /** Returns the number of bytes remaining in the current buffer. */

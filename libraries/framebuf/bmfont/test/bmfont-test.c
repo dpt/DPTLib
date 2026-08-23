@@ -18,30 +18,10 @@
 #include "base/utils.h"
 #include "io/path.h"
 #include "framebuf/colour.h"
+#include "framebuf/palettes.h"
 #include "framebuf/pixelfmt.h"
 
 #include "framebuf/bmfont.h"
-
-/* ----------------------------------------------------------------------- */
-
-/* PICO-8 palette */
-
-#define palette_BLACK        (0)
-#define palette_DARK_BLUE    (1)
-#define palette_DARK_PURPLE  (2)
-#define palette_DARK_GREEN   (3)
-#define palette_BROWN        (4)
-#define palette_DARK_GREY    (5)
-#define palette_LIGHT_GREY   (6)
-#define palette_WHITE        (7)
-#define palette_RED          (8)
-#define palette_ORANGE       (9)
-#define palette_YELLOW      (10)
-#define palette_GREEN       (11)
-#define palette_BLUE        (12)
-#define palette_LAVENDER    (13)
-#define palette_PINK        (14)
-#define palette_LIGHT_PEACH (15)
 
 /* ----------------------------------------------------------------------- */
 
@@ -215,10 +195,11 @@ bmtestline_t;
 
 /* ----------------------------------------------------------------------- */
 
-#define MAXFONTS 6
+#define MAXFONTS 7
 
 static bmtestfont_t bmfonts[MAXFONTS] =
 {
+  { "daydream-font",    NULL },
   { "gliderrider-font", NULL },
   { "tiny-font",        NULL },
   { "henry-font",       NULL },
@@ -313,7 +294,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
       int fontwidth, fontheight;
       int i;
 
-      bitmap_clear(&state->bm, state->palette[palette_DARK_GREEN]);
+      bitmap_clear(&state->bm, state->palette[palette_PICO8_DARK_GREEN]);
 
       bmfont_get_info(bmfonts[font].bmfont, &fontwidth, &fontheight);
 
@@ -336,7 +317,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
         pos.x = centres[i].x - stringwidth / 2 + 1;
         pos.y = centres[i].y - fontheight  / 2 + 1;
 
-        bg = transparent ? state->transparent : state->palette[palette_GREEN];
+        bg = transparent ? state->transparent : state->palette[palette_PICO8_GREEN];
 
         if (transparent)
         {
@@ -344,7 +325,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
                           &state->scr,
                            lorem_ipsum,
                            nchars,
-                           state->palette[palette_BLACK],
+                           state->palette[palette_PICO8_BLACK],
                            bg,
                           &pos,
                            NULL /*endpos*/);
@@ -359,7 +340,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
                         &state->scr,
                          lorem_ipsum,
                          nchars,
-                         state->palette[palette_WHITE],
+                         state->palette[palette_PICO8_WHITE],
                          bg,
                         &pos,
                          NULL /*endpos*/);
@@ -396,7 +377,7 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
       point_t     origin    = {0,0};
       char        leafname[256];
 
-      bitmap_clear(&state->bm, state->palette[palette_DARK_GREEN]);
+      bitmap_clear(&state->bm, state->palette[palette_PICO8_DARK_GREEN]);
 
       bmfont_get_info(bmfont, &glyphwidth, &glyphheight);
 
@@ -416,7 +397,7 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
 
           (void) bmfont_measure(bmfont,
                                 string,
-                                stringlen,
+                          (int) stringlen,
                                 state->scr_width - origin.x,
                                &absolute_break, /* if no break returns strlen */
                                &width);
@@ -444,13 +425,13 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
             newline = 1;
           }
 
-          bg = transparent ? state->transparent : state->palette[palette_GREEN];
+          bg = transparent ? state->transparent : state->palette[palette_PICO8_GREEN];
 
           rc = bmfont_draw(bmfont,
                           &state->scr,
                            string,
                            friendly_break,
-                           state->palette[palette_WHITE],
+                           state->palette[palette_PICO8_WHITE],
                            bg,
                           &origin,
                           &endpos);
@@ -500,11 +481,15 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
   int   cycling       = 1;
   int   currfont      = 0;
   int   transparency  = 0;
+  int   caps          = 0;
+  int   offset        = 0;
+  int   shadow        = 0;
   box_t prevdirty;
   box_t overalldirty;
 
   /* test screen clipping */
-  box_t scrclip = screen_get_clip(&state->scr);
+  box_t scrclip;
+  (void) screen_get_clip(&state->scr, &scrclip);
   box_grow(&scrclip, -37);
   state->scr.clip = scrclip;
 
@@ -536,8 +521,11 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
           {
           case SDLK_c: cycling = !cycling; break;
           case SDLK_f: currfont = (currfont + 1) % NELEMS(bmfonts); break;
-          case SDLK_t: transparency = !transparency; break;
+          case SDLK_n: offset++; break;
+          case SDLK_p: caps = !caps; break;
           case SDLK_q: quit = true; break;
+          case SDLK_s: shadow = !shadow; break;
+          case SDLK_t: transparency = !transparency; break;
           }
           break;
 
@@ -579,8 +567,8 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
       quit = 1;
 #endif
 
-    colour_t fg = state->palette[palette_DARK_BLUE];
-    colour_t bg = transparency ? state->transparent : state->palette[palette_LIGHT_PEACH];
+    colour_t fg = state->palette[palette_PICO8_DARK_BLUE];
+    colour_t bg = transparency ? state->transparent : state->palette[palette_PICO8_LIGHT_PEACH];
 
     if (!dontclear)
     {
@@ -589,16 +577,25 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
     }
 
     {
-      point_t   origin  = {mx,my};
-      const int height  = bmfonts[currfont].height;
-      const int rows    = state->scr_height / height;
-      box_t     dirty;
-      int       i;
+      point_t    origin  = {mx,my};
+      const int  height  = bmfonts[currfont].height;
+      const int  rows    = state->scr_height / height;
+      box_t      dirty;
+      int        i;
+      char       buf[256];
+      int        j;
 
       for (i = 0; i < rows; i++)
       {
-        const char  *message = pangrams[i % NELEMS(pangrams)];
+        const char  *message = pangrams[(offset + i) % NELEMS(pangrams)];
         const size_t msglen  = strlen(message);
+
+        if (caps)
+        {
+          for (j = 0; j < msglen; j++)
+            buf[j] = toupper(message[j]);
+          message = buf;
+        }
 
         if (animate)
         {
@@ -616,19 +613,49 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
           }
         }
 
-        dirty.x0 = origin.x;
-        dirty.y0 = origin.y;
-        dirty.x1 = origin.x + msglen * 15; // HACK
-        dirty.y1 = origin.y + height;
-        box_intersection(&dirty, &scrclip, &dirty); /* dirtied area clamped to screen bounds */
+        if (shadow)
+        {
+          (void) bmfont_draw(bmfonts[currfont].bmfont,
+                            &state->scr,
+                             message,
+                       (int) msglen,
+                             state->palette[palette_PICO8_BLACK], bg,
+                            &origin,
+                             NULL /*endpos*/);
+
+          origin.x--;
+          origin.y--;
+
+          (void) bmfont_draw(bmfonts[currfont].bmfont,
+                             &state->scr,
+                             message,
+                             (int) msglen,
+                             fg, bg,
+                             &origin,
+                             NULL /*endpos*/);
+
+          dirty.x0 = origin.x;
+          dirty.y0 = origin.y;
+          dirty.x1 = origin.x + 1 + (int) msglen * 15; // HACK
+          dirty.y1 = origin.y + 1 + height;
+        } else {
+          (void) bmfont_draw(bmfonts[currfont].bmfont,
+                             &state->scr,
+                             message,
+                             (int) msglen,
+                             fg, bg,
+                             &origin,
+                             NULL /*endpos*/);
+
+          dirty.x0 = origin.x;
+          dirty.y0 = origin.y;
+          dirty.x1 = origin.x + (int) msglen * 15; // HACK
+          dirty.y1 = origin.y + height;
+        }
+
+        (void) box_intersection(&dirty, &scrclip, &dirty); /* dirtied area clamped to screen bounds */
         box_union(&overalldirty, &dirty, &overalldirty);
-        (void) bmfont_draw(bmfonts[currfont].bmfont,
-                          &state->scr,
-                           message,
-                           msglen,
-                           fg, bg,
-                          &origin,
-                           NULL /*endpos*/);
+
         if (!animate)
           break;
       }
@@ -698,26 +725,6 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
   return result_TEST_PASSED;
 }
 
-static void define_pico8_palette(colour_t palette[16])
-{
-  palette[palette_BLACK      ] = colour_rgb(0x00, 0x00, 0x00);
-  palette[palette_DARK_BLUE  ] = colour_rgb(0x1D, 0x2B, 0x53);
-  palette[palette_DARK_PURPLE] = colour_rgb(0x7E, 0x25, 0x53);
-  palette[palette_DARK_GREEN ] = colour_rgb(0x00, 0x87, 0x51);
-  palette[palette_BROWN      ] = colour_rgb(0xAB, 0x52, 0x36);
-  palette[palette_DARK_GREY  ] = colour_rgb(0x5F, 0x57, 0x4F);
-  palette[palette_LIGHT_GREY ] = colour_rgb(0xC2, 0xC3, 0xC7);
-  palette[palette_WHITE      ] = colour_rgb(0xFF, 0xF1, 0xE8);
-  palette[palette_RED        ] = colour_rgb(0xFF, 0x00, 0x4D);
-  palette[palette_ORANGE     ] = colour_rgb(0xFF, 0xA3, 0x00);
-  palette[palette_YELLOW     ] = colour_rgb(0xFF, 0xEC, 0x27);
-  palette[palette_GREEN      ] = colour_rgb(0x00, 0xE4, 0x36);
-  palette[palette_BLUE       ] = colour_rgb(0x29, 0xAD, 0xFF);
-  palette[palette_LAVENDER   ] = colour_rgb(0x83, 0x76, 0x9C);
-  palette[palette_PINK       ] = colour_rgb(0xFF, 0x77, 0xA8);
-  palette[palette_LIGHT_PEACH] = colour_rgb(0xFF, 0xCC, 0xAA);
-}
-
 result_t bmfont_test_one_format(const char *resources,
                                 int         scr_width,
                                 int         scr_height,
@@ -727,7 +734,6 @@ result_t bmfont_test_one_format(const char *resources,
 
   state.scr_width  = scr_width;
   state.scr_height = scr_height;
-
 
   const int scr_rowbytes = (state.scr_width << pixelfmt_log2bpp(scr_fmt)) / 8;
 
@@ -779,7 +785,10 @@ result_t bmfont_test_one_format(const char *resources,
     filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
     rc = bmfont_create(filename, &bmfonts[font].bmfont);
     if (rc)
+    {
+      fprintf(stderr, "Error: Failed to load font %s\n", filename);
       goto Failure;
+    }
 
     bmfont_get_info(bmfonts[font].bmfont,
                    &bmfonts[font].width,

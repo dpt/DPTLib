@@ -106,10 +106,10 @@ static result_t unformat_key(const char *buf,
   unsigned char hash[digestdb_DIGESTSZ];
   int           kindex;
 
-  NOT_USED(len);
   NOT_USED(opaque);
 
-  // if (len != 32) then complain
+  if (len != digestdb_DIGESTSZ * 2 + 1) /* +1 for the terminator length convention used by pickle */
+    return result_FILENAMEDB_SYNTAX_ERROR;
 
   /* convert ID from ASCII hex to binary */
   err = digestdb_decode(hash, buf);
@@ -266,10 +266,15 @@ static result_t format_value(const void *vvalue,
                              size_t      len,
                              void       *opaque)
 {
-  NOT_USED(len);
+  size_t vlen;
+
   NOT_USED(opaque);
 
-  strcpy(buf, vvalue);
+  vlen = strlen(vvalue);
+  if (vlen + 1 > len)
+    return result_FILENAMEDB_BUFF_OVERFLOW;
+
+  memcpy(buf, vvalue, vlen + 1);
 
   return result_OK;
 }

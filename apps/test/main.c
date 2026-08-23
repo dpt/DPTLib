@@ -3,7 +3,7 @@
 //  DPTLibTest
 //
 //  Created by David Thomas on 09/12/2014.
-//  Copyright (c) 2014 David Thomas. All rights reserved.
+//  Copyright (c) 2014-2026 David Thomas. All rights reserved.
 //
 
 #include <stdio.h>
@@ -48,6 +48,7 @@ static const test_t tests[] =
 
   { "bmfont",     bmfont_test     },
   { "composite",  composite_test  },
+  { "curve",      curve_test      },
 
   { "box",        box_test        },
   { "layout",     layout_test     },

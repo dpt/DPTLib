@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "framebuf/bitmap.h"
+#include "framebuf/span-registry.h"
 
 result_t bitmap_init(bitmap_t       *bm,
                      int             width,
@@ -24,22 +25,26 @@ result_t bitmap_init(bitmap_t       *bm,
   bm->format   = fmt;
   bm->rowbytes = rowbytes;
   bm->palette  = NULL;
+  bm->span     = spanregistry_get(fmt);
   bm->base     = base;
 
-  log2bpp = pixelfmt_log2bpp(fmt);
-  if (log2bpp <= 3 && palette)
+  if (palette)
   {
-    int       nentries;
-    colour_t *newpal;
+    log2bpp = pixelfmt_log2bpp(fmt);
+    if (log2bpp <= 3)
+    {
+      int       nentries;
+      colour_t *newpal;
 
-    nentries = 1 << (1 << log2bpp);
-    newpal = malloc(nentries * sizeof(*newpal));
-    if (newpal == NULL)
-      return result_OOM;
+      nentries = 1 << (1 << log2bpp);
+      newpal = malloc(nentries * sizeof(*newpal));
+      if (newpal == NULL)
+        return result_OOM;
 
-    memcpy(newpal, palette, nentries * sizeof(*newpal));
+      memcpy(newpal, palette, nentries * sizeof(*newpal));
 
-    bm->palette = newpal;
+      bm->palette = newpal;
+    }
   }
 
   return result_OK;
@@ -78,15 +83,15 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
   case 5: /* 32bpp - pixels are ints */
   {
     /* if all bytes of 'px' are the same, use memset() */
-    pixelfmt_any_t tmp1 = px ^ (px >> 16);
-    pixelfmt_any_t tmp2 = tmp1 ^ (tmp1 >> 8);
+    pixelfmt_any32_t tmp1 = px ^ (px >> 16);
+    pixelfmt_any32_t tmp2 = tmp1 ^ (tmp1 >> 8);
     if (tmp2 == 0)
     {
       memset(bm->base, px, bm->rowbytes * bm->height);
     }
     else
     {
-      unsigned int *pixels; // add pixelfmt_xxxx_t ?
+      pixelfmt_any32_t *pixels;
 
       pixels = bm->base;
       for (y = 0; y < bm->height; y++)

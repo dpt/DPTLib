@@ -13,6 +13,7 @@ extern "C"
 #include "framebuf/bitmap.h"
 #include "framebuf/pixelfmt.h"
 
+/** Compositing rules. */
 typedef enum composite_rule
 {
   composite_RULE_CLEAR,
@@ -32,15 +33,16 @@ typedef enum composite_rule
 composite_rule_t;
 
 /**
- * Composites bitmap 'src' over 'dst' (or other rule).
+ * Composites bitmap `src` with `dst` using the specified compositing `rule`.
  *
- * \param[in] rule Compositing rule to use.
- * \param[in] src  First source bitmap.
- * \param[in] dst  Second source and destination bitmap.
+ * The destination bitmap is modified in place.
  *
- * \return Result.
+ * Note: The given bitmaps must have alpha channels.
  *
- * The given bitmaps must have alpha channels.
+ * \param[in]     rule Compositing rule to use.
+ * \param[in]     src  First source bitmap.
+ * \param[in,out] dst  Second source and destination bitmap.
+ * \return \ref result_OK on success, or appropriate result code otherwise.
  */
 result_t composite(composite_rule_t rule,
                    const bitmap_t  *src,

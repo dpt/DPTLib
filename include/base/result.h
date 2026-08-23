@@ -7,7 +7,10 @@ typedef int result_t;
 
 /* ----------------------------------------------------------------------- */
 
-/* DPTLib bases */
+/* Components within DPTLib are each assigned a base value for result values.
+ * Each component can then supplement this allocation with its own result codes. */
+
+/* DPTLib result bases. */
 #define result_BASE_GENERIC                     0x0000
 #define result_BASE_STREAM                      0x0100
 #define result_BASE_ATOM                        0x0200
@@ -31,39 +34,33 @@ typedef int result_t;
 /* ----------------------------------------------------------------------- */
 
 #define result_OK                               (result_BASE_GENERIC     + 0)   /* No error */
-#define result_OOM                              (result_BASE_GENERIC     + 1)   /* Out of memory */
-#define result_FILE_NOT_FOUND                   (result_BASE_GENERIC     + 2)
+#define result_OOM                              (result_BASE_GENERIC     + 1)   /* A memory allocation failed */
+#define result_FILE_NOT_FOUND                   (result_BASE_GENERIC     + 2)   /* A file was not found */
 #define result_BAD_ARG                          (result_BASE_GENERIC     + 3)   /* An argument was unacceptable */
-#define result_BUFFER_OVERFLOW                  (result_BASE_GENERIC     + 4)
+#define result_BUFFER_OVERFLOW                  (result_BASE_GENERIC     + 4)   /* A buffer would overflow */
 #define result_STOP_WALK                        (result_BASE_GENERIC     + 5)   /* Used to cancel callbacks */
-#define result_PARSE_ERROR                      (result_BASE_GENERIC     + 6)
-#define result_TOO_BIG                          (result_BASE_GENERIC     + 7)
-#define result_NOT_IMPLEMENTED                  (result_BASE_GENERIC     + 8)   /* Function not implemented */
-#define result_NOT_FOUND                        (result_BASE_GENERIC     + 9)   /* Item not found */
-#define result_EXISTS                           (result_BASE_GENERIC     + 10)  /* Item already exists */
-#define result_CLASHES                          (result_BASE_GENERIC     + 11)  /* Key clashes with existing one */
+#define result_PARSE_ERROR                      (result_BASE_GENERIC     + 6)   /* Encountered a parse error */
+#define result_TOO_BIG                          (result_BASE_GENERIC     + 7)   /* A value was too big */
+#define result_NOT_IMPLEMENTED                  (result_BASE_GENERIC     + 8)   /* The function is not implemented */
+#define result_NOT_FOUND                        (result_BASE_GENERIC     + 9)   /* An item was not found */
+#define result_EXISTS                           (result_BASE_GENERIC     + 10)  /* An item already exists */
+#define result_CLASHES                          (result_BASE_GENERIC     + 11)  /* A key clashes with existing one */
 #define result_NULL_ARG                         (result_BASE_GENERIC     + 12)  /* An argument was NULL */
-#define result_NOT_SUPPORTED                    (result_BASE_GENERIC     + 13)  /* Not supported, e.g. no hardware */
+#define result_NOT_SUPPORTED                    (result_BASE_GENERIC     + 13)  /* Operation not supported, e.g. no hardware */
 #define result_INCOMPATIBLE                     (result_BASE_GENERIC     + 14)  /* An argument was incompatible */
-#define result_FOPEN_FAILED                     (result_BASE_GENERIC     + 15)
+#define result_FOPEN_FAILED                     (result_BASE_GENERIC     + 15)  /* fopen() failed */
 
 /* Stream result codes are in io/stream.h */
-
 /* Atom result codes are in datastruct/atom.h */
-
 /* Hash result codes are in datastruct/hash.h */
-
 /* Pickle result codes are in databases/pickle.h */
-
 /* TagDB result codes are in databases/tag-db.h */
-
 /* FilenameDB result codes are in databases/filename-db.h */
 
 #define result_TEST_PASSED                      (result_BASE_TEST        + 0)
 #define result_TEST_FAILED                      (result_BASE_TEST        + 1)
 
 /* Packer result codes are in geom/packer.h */
-
 /* Layout result codes are in geom/layout.h */
 
 /* ----------------------------------------------------------------------- */

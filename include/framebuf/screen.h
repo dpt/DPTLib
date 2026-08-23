@@ -5,28 +5,141 @@
 
 #include "framebuf/bitmap.h"
 #include "geom/box.h"
+#include "utils/fxp.h"
 
-typedef struct screen screen_t;
+// TODO: Define screen origin etc.
 
-// define screen origin etc.
-
-struct screen
+/**
+ * A screen.
+ */
+typedef struct screen
 {
-  bitmap_all_MEMBERS;
+  bitmap_ALL_MEMBERS
   box_t clip; /* rectangular clip region, specified in pixels */
-};
+}
+screen_t;
 
+/**
+ * Initialize a previously allocated screen structure.
+ *
+ * \param[in] scr       Screen to initialize.
+ * \param[in] width     Width of screen in pixels.
+ * \param[in] height    Height of screen in pixels.
+ * \param[in] fmt       Pixel format of the screen.
+ * \param[in] rowbytes  Number of bytes per row of the screen.
+ * \param[in] palette   Palette of the screen, or NULL.
+ * \param[in] base      Base address of the screen.
+ */
 void screen_init(screen_t  *scr,
                  int        width,
                  int        height,
                  pixelfmt_t fmt,
                  int        rowbytes,
                  colour_t  *palette,
-                 box_t      clip,
                  void      *base);
 
+/**
+ * Initialize a previously allocated screen structure, for drawing to an existing bitmap.
+ *
+ * \param[in] scr Screen to initialize.
+ * \param[in] bm  Bitmap to draw to.
+ */
 void screen_for_bitmap(screen_t *scr, const bitmap_t *bm);
 
-box_t screen_get_clip(const screen_t *scr);
+/**
+ * Read the clipping box of a screen.
+ *
+ * \param[in]  scr  Screen to read clipping box of.
+ * \param[out] clip Clipping box.
+ * \return True if clipping box is valid, false otherwise.
+ */
+int screen_get_clip(const screen_t *scr, box_t *clip);
+
+/**
+ * Draws a single pixel.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x       X coordinate of pixel to draw.
+ * \param[in] y       Y coordinate of pixel to draw.
+ * \param[in] colour  Colour of pixel.
+ */
+void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour);
+
+/**
+ * Draws a solid rectangle.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x       X coordinate of leftmost point of rectangle.
+ * \param[in] y       Y coordinate of topmost point of rectangle.
+ * \param[in] width   Width of rectangle.
+ * \param[in] height  Height of rectangle.
+ * \param[in] colour  Colour of rectangle.
+ */
+void screen_draw_rect(screen_t *scr,
+                      int x, int y,
+                      int width, int height,
+                      colour_t colour);
+
+/**
+ * Special case of `screen_draw_rect`.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x       X coordinate of leftmost point of rectangle.
+ * \param[in] y       Y coordinate of topmost point of rectangle.
+ * \param[in] size    Size of rectangle.
+ * \param[in] colour  Colour of rectangle.
+ */
+void screen_draw_square(screen_t *scr,
+                        int x, int y,
+                        int size,
+                        colour_t colour);
+
+/**
+ * Draws a line (Bresenham version with aliasing).
+ *
+ * Coordinates are `int`s. Coordinates are inclusive.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x0      X coordinate of first point of line.
+ * \param[in] y0      Y coordinate of first point of line.
+ * \param[in] x1      X coordinate of second point of line.
+ * \param[in] y1      Y coordinate of second point of line.
+ * \param[in] colour  Colour of line.
+ */
+void screen_draw_line(screen_t *scr,
+                      int x0, int y0, int x1, int y1,
+                      colour_t colour);
+
+/**
+ * Draws a line (fixed-point Wu version with anti-aliasing).
+ *
+ * Coordinates are fixed point values of type `fix8_t`. Coordinates are inclusive.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x0      X coordinate of first point of line.
+ * \param[in] y0      Y coordinate of first point of line.
+ * \param[in] x1      X coordinate of second point of line.
+ * \param[in] y1      Y coordinate of second point of line.
+ * \param[in] colour  Colour of line.
+ */
+void screen_draw_line_wu_fix8(screen_t *scr,
+                              fix8_t x0, fix8_t y0, fix8_t x1, fix8_t y1,
+                              colour_t colour);
+
+/**
+ * Draws a line (floating point Wu version with anti-aliasing).
+ *
+ * Coordinates are floating point values of type `float`. Coordinates are inclusive.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x0      X coordinate of first point of line.
+ * \param[in] y0      Y coordinate of first point of line.
+ * \param[in] x1      X coordinate of second point of line.
+ * \param[in] y1      Y coordinate of second point of line.
+ * \param[in] colour  Colour of rectangle.
+ */
+void screen_draw_line_wu_float(screen_t *scr,
+                               float x0, float y0, float x1, float y1,
+                               colour_t colour);
 
 #endif /* FRAMEBUF_SCREEN_H */
