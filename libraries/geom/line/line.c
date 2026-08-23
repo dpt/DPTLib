@@ -42,7 +42,7 @@ int line_clip(const box_t *clip,
   outcode_t oc0, oc1;
   outcode_t oc;
   int       w, h;
-  int       x, y;
+  int       x = 0, y = 0;
 
   x0 = *px0;
   y0 = *py0;
