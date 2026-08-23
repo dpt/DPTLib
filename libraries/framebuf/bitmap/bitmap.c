@@ -189,6 +189,4 @@ result_t bitmap_convert(const bitmap_t *src, pixelfmt_t newfmt, bitmap_t **dst)
   default:
     return result_NOT_SUPPORTED;
   }
-
-  return result_OK;
 }
