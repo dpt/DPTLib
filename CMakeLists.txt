@@ -487,7 +487,10 @@ if(BUILD_TESTS)
 
     # DPTTest dependencies
     # Of course, DPTLibTest depends on DPTLib.
-    target_link_libraries(DPTLibTest DPTLib m)
+    target_link_libraries(DPTLibTest DPTLib)
+    if(NOT MSVC)
+        target_link_libraries(DPTLibTest m)
+    endif()
 
     if(BUILD_SDL_TESTS)
         find_package(SDL2 REQUIRED)
