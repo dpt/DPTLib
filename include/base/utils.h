@@ -3,6 +3,8 @@
 #ifndef BASE_UTILS_H
 #define BASE_UTILS_H
 
+#include <string.h>
+
 /* When on RISC OS, bring OSLib's types in. */
 #ifdef __riscos
 #include "oslib/types.h"
@@ -29,7 +31,13 @@
 #define CLAMP(a,b,c) MIN(MAX(a,b),c)
 
 /** Swap 'a' and 'b'. */
-#define SWAP(a,b) do { __typeof(a) t = a; a = b; b = t; } while (0)
+#define SWAP(a,b) \
+  do { \
+    unsigned char swap_tmp_[sizeof(a)]; \
+    memcpy(swap_tmp_, &(a), sizeof(a)); \
+    memcpy(&(a), &(b), sizeof(a)); \
+    memcpy(&(b), swap_tmp_, sizeof(a)); \
+  } while (0)
 
 /** Suppress warnings about unused variables. */
 #ifndef NOT_USED
