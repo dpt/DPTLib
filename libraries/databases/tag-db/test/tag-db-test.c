@@ -547,19 +547,19 @@ failure:
   return err;
 }
 
+#define NTAGS       100     /* number of tags to generate */
+#define NIDS        10      /* number of IDs to generate */
+#define NTAGGINGS   NTAGS   /* number of times to tag */
+#define NUNTAGGINGS NTAGS   /* number of times to untag */
+#define REPS        3       /* overall number of repetitions */
+
 static result_t test_bash(State_t *state)
 {
-  const int ntags       = 100;   /* number of tags to generate */
-  const int nids        = 10;    /* number of IDs to generate */
-  const int ntaggings   = ntags; /* number of times to tag */
-  const int nuntaggings = ntags; /* number of times to untag */
-  const int reps        = 3;     /* overall number of repetitions */
-
   result_t       err;
   int            i;
-  tagdb_tag_t    tags[ntags];
-  unsigned char *gentagnames[ntags];
-  unsigned char *genidnames[nids];
+  tagdb_tag_t    tags[NTAGS];
+  unsigned char *gentagnames[NTAGS];
+  unsigned char *genidnames[NIDS];
   int            j;
 
   srand(0x6487ED51);
@@ -572,19 +572,19 @@ static result_t test_bash(State_t *state)
 
   printf("bash: setup\n");
 
-  for (i = 0; i < ntags; i++)
+  for (i = 0; i < NTAGS; i++)
     gentagnames[i] = NULL;
 
-  for (i = 0; i < nids; i++)
+  for (i = 0; i < NIDS; i++)
     genidnames[i] = NULL;
 
-  for (j = 0; j < reps; j++)
+  for (j = 0; j < REPS; j++)
   {
     printf("bash: starting loop %d\n", j);
 
     printf("bash: create and add tags\n");
 
-    for (i = 0; i < ntags; i++)
+    for (i = 0; i < NTAGS; i++)
     {
       const char *name;
       int         k;
@@ -597,11 +597,11 @@ static result_t test_bash(State_t *state)
         name = randomtagname();
 
         /* ensure that the random name is unique */
-        for (k = 0; k < ntags; k++)
+        for (k = 0; k < NTAGS; k++)
           if (gentagnames[k] && strcmp((char *) gentagnames[k], name) == 0)
             break;
       }
-      while (k < ntags);
+      while (k < NTAGS);
 
       gentagnames[i] = (unsigned char *) strdup(name); // FIXME was str_dup
       if (gentagnames[i] == NULL)
@@ -621,7 +621,7 @@ static result_t test_bash(State_t *state)
 
     printf("bash: create ids\n");
 
-    for (i = 0; i < nids; i++)
+    for (i = 0; i < NIDS; i++)
     {
       const unsigned char *id;
       int                  k;
@@ -634,11 +634,11 @@ static result_t test_bash(State_t *state)
         id = randomid();
 
         /* ensure that the random name is unique */
-        for (k = 0; k < nids; k++)
+        for (k = 0; k < NIDS; k++)
           if (genidnames[k] && memcmp(genidnames[k], id, digestdb_DIGESTSZ) == 0)
             break;
       }
-      while (k < nids);
+      while (k < NIDS);
 
       genidnames[i] = malloc(digestdb_DIGESTSZ);
       if (genidnames[i] == NULL)
@@ -656,17 +656,17 @@ static result_t test_bash(State_t *state)
 
     printf("bash: tag random ids with random tags randomly\n");
 
-    for (i = 0; i < ntaggings; i++)
+    for (i = 0; i < NTAGGINGS; i++)
     {
       int whichid;
       int whichtag;
 
       do
-        whichid = rnd(nids) - 1;
+        whichid = rnd(NIDS) - 1;
       while (genidnames[whichid] == NULL);
 
       do
-        whichtag = rnd(ntags) - 1;
+        whichtag = rnd(NTAGS) - 1;
       while (gentagnames[whichtag] == NULL);
 
       printf("tagging '");
@@ -686,7 +686,7 @@ static result_t test_bash(State_t *state)
 
     printf("bash: rename all tags\n");
 
-    for (i = 0; i < ntags; i++)
+    for (i = 0; i < NTAGS; i++)
     {
       unsigned char buf[256];
       const char   *tagname;
@@ -741,17 +741,17 @@ static result_t test_bash(State_t *state)
 
     printf("bash: untag random ids with random tags randomly\n");
 
-    for (i = 0; i < nuntaggings; i++)
+    for (i = 0; i < NUNTAGGINGS; i++)
     {
       int whichid;
       int whichtag;
 
       do
-        whichid = rnd(nids) - 1;
+        whichid = rnd(NIDS) - 1;
       while (genidnames[whichid] == NULL);
 
       do
-        whichtag = rnd(ntags) - 1;
+        whichtag = rnd(NTAGS) - 1;
       while (gentagnames[whichtag] == NULL);
 
       printf("untagging '");
@@ -771,7 +771,7 @@ static result_t test_bash(State_t *state)
 
     printf("bash: delete every other tag\n");
 
-    for (i = 0; i < ntags; i += 2)
+    for (i = 0; i < NTAGS; i += 2)
     {
       printf("removing tag %d ('%s')\n", tags[i], gentagnames[i]);
 
@@ -790,7 +790,7 @@ static result_t test_bash(State_t *state)
 
     printf("bash: delete every other id\n");
 
-    for (i = 0; i < nids; i += 2)
+    for (i = 0; i < NIDS; i += 2)
     {
       printf("removing id %d '", i);
       printdigest(genidnames[i]);
@@ -809,10 +809,10 @@ static result_t test_bash(State_t *state)
       goto failure;
   }
 
-  for (i = 0; i < nids; i++)
+  for (i = 0; i < NIDS; i++)
     free(genidnames[i]);
 
-  for (i = 0; i < ntags; i++)
+  for (i = 0; i < NTAGS; i++)
     free(gentagnames[i]);
 
   tagdb_close(state->db); /* remember that this calls _commit */
@@ -826,6 +826,12 @@ failure:
 
   return err;
 }
+
+#undef NTAGS
+#undef NIDS
+#undef NTAGGINGS
+#undef NUNTAGGINGS
+#undef REPS
 
 /* ----------------------------------------------------------------------- */
 

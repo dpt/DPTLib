@@ -62,9 +62,13 @@ static result_t cache_test_outer(const cacheconfig_t *config,
                                  size_t               cachelength,
                                  int                  maxkey)
 {
-  unsigned char  block[cachelength];
+  unsigned char *block;
   cache_t       *cache;
   result_t       err;
+
+  block = malloc(cachelength);
+  if (block == NULL)
+    return result_OOM;
 
   printf("test: destroy NULL\n");
 
@@ -157,9 +161,13 @@ static result_t cache_test_outer(const cacheconfig_t *config,
     cache_destroy(cache);
   }
 
+  free(block);
+
   return result_TEST_PASSED;
 
 failure:
+
+  free(block);
 
   return err;
 }
