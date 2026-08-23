@@ -970,7 +970,7 @@ Fortify_LeaveScope(const char *file, unsigned long line)
   if (count)
   {
     sprintf(st_Buffer, "%10s %8lu bytes in %lu blocks with %lu bytes overhead\n",
-            "total", size, count, count * FORTIFY_OVERHEAD);
+            "total", size, count, (unsigned long) (count * FORTIFY_OVERHEAD));
     st_Output(st_Buffer);
   }
 
@@ -1029,7 +1029,7 @@ Fortify_ListAllMemory(const char *file, unsigned long line)
     }
 
     sprintf(st_Buffer, "%10s %8lu bytes in %lu blocks and %lu bytes overhead\n",
-            "total", size, count, count * FORTIFY_OVERHEAD);
+            "total", size, count, (unsigned long) (count * FORTIFY_OVERHEAD));
     st_Output(st_Buffer);
   }
 
