@@ -134,7 +134,7 @@ BARITH_INLINE int countbits_32(uint32_t x)
 
   return x & 0x3f;
 }
-BARITH_INLINE int countbits_64(uint32_t x)
+BARITH_INLINE int countbits_64(uint64_t x)
 {
   x -=  (x >> 1) & 0x5555555555555555;
   x  = ((x >> 2) & 0x3333333333333333) + (x & 0x3333333333333333);
@@ -154,7 +154,7 @@ BARITH_INLINE int clz_32(uint32_t x)
 {
 #ifdef UNUSED_ALTERNATIVE
   SPREADMSB_32(x);
-  return 32 - countbits(x);
+  return 32 - countbits_32(x);
 #else
   /* Source:
    *
@@ -182,7 +182,7 @@ BARITH_INLINE int clz_32(uint32_t x)
 BARITH_INLINE int clz_64(uint64_t x)
 {
   SPREADMSB_64(x);
-  return 64 - countbits(x);
+  return 64 - countbits_64(x);
 }
 #endif
 
@@ -211,7 +211,7 @@ BARITH_INLINE int clz8(unsigned int byte)
 BARITH_INLINE int ctz_32(uint32_t x)
 {
 #ifdef UNUSED_ALTERNATIVE
-  return countbits(LSB(x) - 1);
+  return countbits_32(LSB(x) - 1);
 #else
   static const unsigned char tab[32] =
   {
@@ -230,7 +230,7 @@ BARITH_INLINE int ctz_32(uint32_t x)
 }
 BARITH_INLINE int ctz_64(uint64_t x)
 {
-  return countbits(LSB(x) - 1);
+  return countbits_64(LSB(x) - 1);
 }
 #endif
 
