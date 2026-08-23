@@ -20,6 +20,13 @@ jobs:
       - name: Install CMake
         uses: lukka/get-cmake@latest
 
+      - name: Cache vcpkg packages
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed
+          key: vcpkg-${{ runner.os }}-${{ matrix.config.install }}
+
       - name: Install dependencies
         run: |
           ${{ matrix.config.install }}
@@ -30,7 +37,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake --build builddir --config Debug
+          cmake --build builddir --config Debug --parallel
 
       - name: Run tests
         run: |
