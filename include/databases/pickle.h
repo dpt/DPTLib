@@ -137,7 +137,7 @@ typedef struct pickle_format_methods
 {
   const char            *comments;    /**< Initial comment string to write. */
   size_t                 commentslen; /**< Length of above. */
-  const char            *split;       /**< String inbetween key and value. */
+  const char            *split;       /**< String between key and value. */
   size_t                 splitlen;    /**< Length of above. */
   pickle_format_key_t   *key;
   pickle_format_value_t *value;
