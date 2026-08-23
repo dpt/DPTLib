@@ -178,10 +178,10 @@ static result_t test_compressors(void)
       break;
 
     if (c != *p)
-      printf("difference at %ld\n", p - input);
+      printf("difference at %td\n", p - input);
   }
 
-  printf("%ld bytes processed.\n", p - input);
+  printf("%td bytes processed.\n", p - input);
 #endif
 
   for (i = 0; i < MaxStreams; i++)
@@ -260,12 +260,12 @@ static result_t test_block(void)
 
     if (c != *p)
     {
-      printf("difference at %ld\n", p - input);
+      printf("difference at %td\n", p - input);
       rc = result_TEST_FAILED;
     }
   }
 
-  printf("%ld bytes processed.\n", p - input);
+  printf("%td bytes processed.\n", p - input);
 #endif
 
   stream_destroy(s);
