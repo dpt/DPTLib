@@ -76,9 +76,13 @@ static int runtest(const char *resources, const test_t *t)
 
   printf(">>\n" ">> Begin %s tests\n" ">>\n", t->name);
 
+  fprintf(stderr, "runtest trace: %s starting\n", t->name); fflush(stderr);
+
   start = clock();
   rc = t->test(resources);
   end = clock();
+
+  fprintf(stderr, "runtest trace: %s finished rc=%d\n", t->name, rc); fflush(stderr);
 
 #ifdef FORTIFY
   Fortify_CheckAllMemory();
