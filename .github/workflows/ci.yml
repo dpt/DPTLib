@@ -6,14 +6,18 @@ name: DPTLib
 on: [push]
 jobs:
   build:
-    name: ${{ matrix.config.name }}
+    name: ${{ matrix.config.name }} (${{ matrix.build_type }})
     runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
+        build_type: [Debug, Release]
         config:
-          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install libpng-dev", configure: "", testbin: "builddir/DPTLibTest-debug" }
-          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "--toolchain=\"${env:VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake\"", testbin: "builddir/Debug/DPTLibTest-debug.exe" }
-          - { name: "macOS build",   os: "macos-latest",   install: "",                                configure: "", testbin: "builddir/DPTLibTest-debug" }
+          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install libpng-dev", configure: "" }
+          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "--toolchain=\"${env:VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake\"" }
+          - { name: "macOS build",   os: "macos-latest",   install: "",                                configure: "" }
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v5
 
@@ -33,12 +37,14 @@ jobs:
 
       - name: Configure build
         run: |
-          cmake -B builddir -S . -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=YES ${{ matrix.config.configure }}
+          cmake -B builddir -S . -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DBUILD_TESTS=YES ${{ matrix.config.configure }}
 
       - name: Build
         run: |
-          cmake --build builddir --config Debug --parallel
+          cmake --build builddir --config ${{ matrix.build_type }} --parallel
 
       - name: Run tests
         run: |
-          ${{ matrix.config.testbin }} -resources .
+          if [ "${{ matrix.build_type }}" = "Debug" ]; then bin=DPTLibTest-debug; else bin=DPTLibTest; fi
+          if [ "$RUNNER_OS" = "Windows" ]; then testbin="builddir/${{ matrix.build_type }}/$bin.exe"; else testbin="builddir/$bin"; fi
+          "$testbin" -resources .
