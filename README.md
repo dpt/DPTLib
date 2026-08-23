@@ -4,7 +4,7 @@ version 0.5.0
 
 [![Build status](https://github.com/dpt/DPTLib/actions/workflows/ci.yml/badge.svg)](https://github.com/dpt/DPTLib/actions)
 
-© David Thomas, 2013-2024
+© David Thomas, 2013-2026
 
 ## Overview
 
@@ -113,5 +113,5 @@ Enable `BUILD_TESTS`, e.g. using `ccmake` and build. Then invoke DPTLibTest like
 It'll spew a load of test output. If successful you'll see:
 
 ```
-++ Tests completed in 0.9909s: 18 of 18 tests passed.
+++ Tests completed in 0.9909s: 20 of 20 tests passed.
 ```
