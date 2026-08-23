@@ -27,7 +27,7 @@
 
 #ifdef USE_SDL
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 typedef struct sdlstate
 {
@@ -39,103 +39,91 @@ sdlstate_t;
 
 void PrintEvent(const SDL_Event *event)
 {
-  if (event->type == SDL_WINDOWEVENT)
+  switch (event->type)
   {
-    switch (event->window.event)
-    {
-    case SDL_WINDOWEVENT_SHOWN:
-      SDL_Log("Window %d shown", event->window.windowID);
-      break;
-    case SDL_WINDOWEVENT_HIDDEN:
-      SDL_Log("Window %d hidden", event->window.windowID);
-      break;
-    case SDL_WINDOWEVENT_EXPOSED:
-      SDL_Log("Window %d exposed", event->window.windowID);
-      break;
-    case SDL_WINDOWEVENT_MOVED:
-      SDL_Log("Window %d moved to %d,%d",
-              event->window.windowID, event->window.data1,
-              event->window.data2);
-      break;
-    case SDL_WINDOWEVENT_RESIZED:
-      SDL_Log("Window %d resized to %dx%d",
-              event->window.windowID, event->window.data1,
-              event->window.data2);
-      break;
-    case SDL_WINDOWEVENT_SIZE_CHANGED:
-      SDL_Log("Window %d size changed to %dx%d",
-              event->window.windowID, event->window.data1,
-              event->window.data2);
-      break;
-    case SDL_WINDOWEVENT_MINIMIZED:
-      SDL_Log("Window %d minimized", event->window.windowID);
-      break;
-    case SDL_WINDOWEVENT_MAXIMIZED:
-      SDL_Log("Window %d maximized", event->window.windowID);
-      break;
-    case SDL_WINDOWEVENT_RESTORED:
-      SDL_Log("Window %d restored", event->window.windowID);
-      break;
-    case SDL_WINDOWEVENT_ENTER:
-      SDL_Log("Mouse entered window %d",
-              event->window.windowID);
-      break;
-    case SDL_WINDOWEVENT_LEAVE:
-      SDL_Log("Mouse left window %d", event->window.windowID);
-      break;
-    case SDL_WINDOWEVENT_FOCUS_GAINED:
-      SDL_Log("Window %d gained keyboard focus",
-              event->window.windowID);
-      break;
-    case SDL_WINDOWEVENT_FOCUS_LOST:
-      SDL_Log("Window %d lost keyboard focus",
-              event->window.windowID);
-      break;
-    case SDL_WINDOWEVENT_CLOSE:
-      SDL_Log("Window %d closed", event->window.windowID);
-      break;
-#if SDL_VERSION_ATLEAST(2, 0, 5)
-    case SDL_WINDOWEVENT_TAKE_FOCUS:
-      SDL_Log("Window %d is offered a focus", event->window.windowID);
-      break;
-    case SDL_WINDOWEVENT_HIT_TEST:
-      SDL_Log("Window %d has a special hit test", event->window.windowID);
-      break;
-#endif
-    default:
-      SDL_Log("Window %d got unknown event %d",
-              event->window.windowID, event->window.event);
-      break;
-    }
+  case SDL_EVENT_WINDOW_SHOWN:
+    SDL_Log("Window %u shown", event->window.windowID);
+    break;
+  case SDL_EVENT_WINDOW_HIDDEN:
+    SDL_Log("Window %u hidden", event->window.windowID);
+    break;
+  case SDL_EVENT_WINDOW_EXPOSED:
+    SDL_Log("Window %u exposed", event->window.windowID);
+    break;
+  case SDL_EVENT_WINDOW_MOVED:
+    SDL_Log("Window %u moved to %d,%d",
+            event->window.windowID, event->window.data1,
+            event->window.data2);
+    break;
+  case SDL_EVENT_WINDOW_RESIZED:
+    SDL_Log("Window %u resized to %dx%d",
+            event->window.windowID, event->window.data1,
+            event->window.data2);
+    break;
+  case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+    SDL_Log("Window %u pixel size changed to %dx%d",
+            event->window.windowID, event->window.data1,
+            event->window.data2);
+    break;
+  case SDL_EVENT_WINDOW_MINIMIZED:
+    SDL_Log("Window %u minimized", event->window.windowID);
+    break;
+  case SDL_EVENT_WINDOW_MAXIMIZED:
+    SDL_Log("Window %u maximized", event->window.windowID);
+    break;
+  case SDL_EVENT_WINDOW_RESTORED:
+    SDL_Log("Window %u restored", event->window.windowID);
+    break;
+  case SDL_EVENT_WINDOW_MOUSE_ENTER:
+    SDL_Log("Mouse entered window %u", event->window.windowID);
+    break;
+  case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+    SDL_Log("Mouse left window %u", event->window.windowID);
+    break;
+  case SDL_EVENT_WINDOW_FOCUS_GAINED:
+    SDL_Log("Window %u gained keyboard focus", event->window.windowID);
+    break;
+  case SDL_EVENT_WINDOW_FOCUS_LOST:
+    SDL_Log("Window %u lost keyboard focus", event->window.windowID);
+    break;
+  case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+    SDL_Log("Window %u closed", event->window.windowID);
+    break;
+  case SDL_EVENT_WINDOW_HIT_TEST:
+    SDL_Log("Window %u has a special hit test", event->window.windowID);
+    break;
+  default:
+    SDL_Log("Window %u got unknown event %d",
+            event->window.windowID, event->type);
+    break;
   }
 }
 
 static result_t start_sdl(sdlstate_t *state, int width, int height)
 {
-  if (SDL_Init(SDL_INIT_VIDEO) < 0)
+  if (!SDL_Init(SDL_INIT_VIDEO))
   {
     fprintf(stderr, "Error: SDL_Init: %s\n", SDL_GetError());
     goto failure;
   }
 
   state->window = SDL_CreateWindow("DPTLib SDL Test",
-                                   SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                                    width, height,
-                                   SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+                                   SDL_WINDOW_RESIZABLE);
   if (state->window == NULL)
   {
     fprintf(stderr, "Error: SDL_CreateWindow: %s\n", SDL_GetError());
     goto failure;
   }
 
-  state->renderer = SDL_CreateRenderer(state->window,
-                                       -1,
-                                       SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  state->renderer = SDL_CreateRenderer(state->window, NULL);
   if (state->renderer == NULL)
   {
     fprintf(stderr, "Error: SDL_CreateRenderer: %s\n", SDL_GetError());
     goto failure;
   }
+
+  SDL_SetRenderVSync(state->renderer, 1);
 
   state->texture = SDL_CreateTexture(state->renderer,
                                      SDL_PIXELFORMAT_ARGB8888,
@@ -147,7 +135,7 @@ static result_t start_sdl(sdlstate_t *state, int width, int height)
     goto failure;
   }
 
-  if (SDL_SetTextureBlendMode(state->texture, SDL_BLENDMODE_NONE) < 0)
+  if (!SDL_SetTextureBlendMode(state->texture, SDL_BLENDMODE_NONE))
   {
     fprintf(stderr, "Error: SDL_SetTextureBlendMode: %s\n", SDL_GetError());
     goto failure;
@@ -504,59 +492,61 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
       {
         switch (event.type)
         {
-        case SDL_QUIT:
+        case SDL_EVENT_QUIT:
           quit = 1;
-          SDL_Log("Quitting after %i ticks", event.quit.timestamp);
+          SDL_Log("Quitting after %llu ticks",
+                  (unsigned long long) event.quit.timestamp);
           break;
 
-        case SDL_WINDOWEVENT:
-          PrintEvent(&event);
+        case SDL_EVENT_KEY_DOWN:
           break;
 
-        case SDL_KEYDOWN:
-          break;
-
-        case SDL_KEYUP:
-          switch (event.key.keysym.sym)
+        case SDL_EVENT_KEY_UP:
+          switch (event.key.key)
           {
-          case SDLK_c: cycling = !cycling; break;
-          case SDLK_f: currfont = (currfont + 1) % NELEMS(bmfonts); break;
-          case SDLK_n: offset++; break;
-          case SDLK_p: caps = !caps; break;
-          case SDLK_q: quit = true; break;
-          case SDLK_s: shadow = !shadow; break;
-          case SDLK_t: transparency = !transparency; break;
+          case SDLK_C: cycling = !cycling; break;
+          case SDLK_F: currfont = (currfont + 1) % NELEMS(bmfonts); break;
+          case SDLK_N: offset++; break;
+          case SDLK_P: caps = !caps; break;
+          case SDLK_Q: quit = true; break;
+          case SDLK_S: shadow = !shadow; break;
+          case SDLK_T: transparency = !transparency; break;
           }
           break;
 
-        case SDL_TEXTEDITING:
-        case SDL_TEXTINPUT:
+        case SDL_EVENT_TEXT_EDITING:
+        case SDL_EVENT_TEXT_INPUT:
           break;
 
-        case SDL_MOUSEMOTION:
-          mx = event.motion.x - 32;
-          my = event.motion.y - 8;
+        case SDL_EVENT_MOUSE_MOTION:
+          mx = (int) event.motion.x - 32;
+          my = (int) event.motion.y - 8;
           break;
 
-        case SDL_MOUSEBUTTONDOWN:
-        case SDL_MOUSEBUTTONUP:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
           {
             switch (event.button.button)
             {
             case SDL_BUTTON_LEFT:
-              animate = (event.type == SDL_MOUSEBUTTONDOWN);
+              animate = (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN);
               break;
             case SDL_BUTTON_RIGHT:
-              dontclear = (event.type == SDL_MOUSEBUTTONDOWN);
+              dontclear = (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN);
               break;
             }
           }
           break;
 
-        case SDL_MOUSEWHEEL:
+        case SDL_EVENT_MOUSE_WHEEL:
           break;
 
         default:
+          if (event.type >= SDL_EVENT_WINDOW_FIRST && event.type <= SDL_EVENT_WINDOW_LAST)
+          {
+            PrintEvent(&event);
+            break;
+          }
           printf("Unhandled event code {%d}\n", event.type);
           break;
         }
@@ -709,7 +699,7 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
     }
 
     /* Render texture */
-    SDL_RenderCopy(state->sdl_state.renderer, state->sdl_state.texture, NULL, NULL);
+    SDL_RenderTexture(state->sdl_state.renderer, state->sdl_state.texture, NULL, NULL);
     SDL_RenderPresent(state->sdl_state.renderer);
 
     SDL_Delay(1000 / 60); /* 60fps */
