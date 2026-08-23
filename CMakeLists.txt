@@ -334,8 +334,9 @@ if(DPTLIB_IMAGES_READ_ONLY)
 endif()
 
 if(NOT TARGET_RISCOS)
-    find_package(PNG REQUIRED)
-    target_link_libraries(DPTLib PUBLIC PNG::PNG)
+    set(CMAKE_FIND_FRAMEWORK NEVER)
+    find_package(PNG REQUIRED MODULE)
+    target_link_libraries(DPTLib PRIVATE PNG::PNG)
 else()
     ## On RISC OS we must build libpng & zlib
     include(FetchContent)
