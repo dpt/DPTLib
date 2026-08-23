@@ -2,7 +2,7 @@
 #
 # DPTLib
 #
-# Copyright (c) David Thomas, 2020-2025
+# Copyright (c) David Thomas, 2020-2026
 #
 # vim: sw=4 ts=8 et
 
