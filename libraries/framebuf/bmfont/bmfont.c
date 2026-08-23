@@ -566,7 +566,6 @@ result_t bmfont_measure(bmfont_t       *bmfont,
 
 /* bmfont_drawchar_<pixel format>_<width>w_<o/t>
  * where width is in bytes and o => opaque, t => transparent */
-
 typedef void bmfont_drawchar_t(void          *vscreen,
                                const void    *vglyph,
                                int            top_skip,
@@ -580,6 +579,8 @@ typedef void bmfont_drawchar_t(void          *vscreen,
 
 /* -------------------------------------------------------------------------- */
 
+/* Draw a character, a maximum of one byte wide, to a p4 screen using an opaque
+ * background. */
 static void bmfont_drawchar_p4_1w_o(void          *vscreen,
                                     const void    *vglyph,
                                     int            top_skip,
@@ -647,6 +648,8 @@ static void bmfont_drawchar_p4_1w_o(void          *vscreen,
   }
 }
 
+/* Draw a character, a maximum of one byte wide, to a p4 screen using a
+ * transparent background. */
 static void bmfont_drawchar_p4_1w_t(void          *vscreen,
                                     const void    *vglyph,
                                     int            top_skip,
@@ -720,6 +723,8 @@ static void bmfont_drawchar_p4_1w_t(void          *vscreen,
   }
 }
 
+/* Draw a character, a maximum of two bytes wide, to a p4 screen using an opaque
+ * background. */
 static void bmfont_drawchar_p4_2w_o(void          *vscreen,
                                     const void    *vglyph,
                                     int            top_skip,
@@ -794,6 +799,8 @@ static void bmfont_drawchar_p4_2w_o(void          *vscreen,
   }
 }
 
+/* Draw a character, a maximum of two bytes wide, to a p4 screen using a
+ * transparent background. */
 static void bmfont_drawchar_p4_2w_t(void          *vscreen,
                                     const void    *vglyph,
                                     int            top_skip,
@@ -876,7 +883,8 @@ static void bmfont_drawchar_p4_2w_t(void          *vscreen,
 
 /* -------------------------------------------------------------------------- */
 
-/* draw a character up to byte wide, opaque */
+/* Draw a character, a maximum of one byte wide, to any 8888 screen using an
+ * opaque background. */
 static void bmfont_drawchar_any8888_1w_o(void          *vscreen,
                                          const void    *vglyph,
                                          int            top_skip,
@@ -903,7 +911,8 @@ static void bmfont_drawchar_any8888_1w_o(void          *vscreen,
     unsigned int row = *gly++; /* 1 byte wide font data */
     row >>= right_skip; /* compensate when right hand clipping */
 
-    switch (charwidth) { /* jump table test */
+    switch (charwidth) /* jump table test */
+    {
       case 8: *scr++ = (row & (1u << 7)) ? fg : bg; /* fallthrough! */
       case 7: *scr++ = (row & (1u << 6)) ? fg : bg;
       case 6: *scr++ = (row & (1u << 5)) ? fg : bg;
@@ -918,7 +927,8 @@ static void bmfont_drawchar_any8888_1w_o(void          *vscreen,
   }
 }
 
-/* draw a character up to byte wide, transparent */
+/* Draw a character, a maximum of one byte wide, to any 8888 screen using a
+ * transparent background. */
 static void bmfont_drawchar_any8888_1w_t(void          *vscreen,
                                          const void    *vglyph,
                                          int            top_skip,
@@ -946,7 +956,8 @@ static void bmfont_drawchar_any8888_1w_t(void          *vscreen,
     unsigned int row = *gly++; /* 1 byte wide font data */
     row >>= right_skip; /* compensate when right hand clipping */
 
-    switch (charwidth) { /* jump table test */
+    switch (charwidth) /* jump table test */
+    {
       case 8: if (row & (1u << 7)) *scr = fg; scr++; /* fallthrough! */
       case 7: if (row & (1u << 6)) *scr = fg; scr++;
       case 6: if (row & (1u << 5)) *scr = fg; scr++;
@@ -961,7 +972,8 @@ static void bmfont_drawchar_any8888_1w_t(void          *vscreen,
   }
 }
 
-/* draw a character up to two bytes wide, opaque */
+/* Draw a character, a maximum of two bytes wide, to any 8888 screen using an
+ * opaque background. */
 static void bmfont_drawchar_any8888_2w_o(void          *vscreen,
                                          const void    *vglyph,
                                          int            top_skip,
@@ -988,7 +1000,8 @@ static void bmfont_drawchar_any8888_2w_o(void          *vscreen,
     unsigned int row = *gly++; /* 2 bytes wide font data */
     row >>= right_skip; /* compensate when right hand clipping */
 
-    switch (charwidth) { /* jump table test */
+    switch (charwidth) /* jump table test */
+    {
       case 16: *scr++ = (row & (1u << 15)) ? fg : bg; /* fallthrough! */
       case 15: *scr++ = (row & (1u << 14)) ? fg : bg;
       case 14: *scr++ = (row & (1u << 13)) ? fg : bg;
@@ -1011,7 +1024,8 @@ static void bmfont_drawchar_any8888_2w_o(void          *vscreen,
   }
 }
 
-/* draw a character up to two bytes wide, transparent */
+/* Draw a character, a maximum of two bytes wide, to any 8888 screen using a
+ * transparent background. */
 static void bmfont_drawchar_any8888_2w_t(void          *vscreen,
                                          const void    *vglyph,
                                          int            top_skip,
@@ -1039,7 +1053,8 @@ static void bmfont_drawchar_any8888_2w_t(void          *vscreen,
     unsigned int row = *gly++; /* 2 bytes wide font data */
     row >>= right_skip; /* compensate when right hand clipping */
 
-    switch (charwidth) { /* jump table test */
+    switch (charwidth) /* jump table test */
+    {
       case 16: if (row & (1u << 15)) *scr = fg; scr++; /* fallthrough! */
       case 15: if (row & (1u << 14)) *scr = fg; scr++;
       case 14: if (row & (1u << 13)) *scr = fg; scr++;
@@ -1085,23 +1100,26 @@ result_t bmfont_draw(bmfont_t      *bmfont,
     {
     case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p4_1w_t : bmfont_drawchar_p4_1w_o; break;
     case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p4_2w_t : bmfont_drawchar_p4_2w_o; break;
-    default: assert(0); return result_BAD_ARG;
+    default: assert(0); return result_NOT_SUPPORTED;
     }
     break;
+
   case pixelfmt_bgra8888:
   case pixelfmt_bgrx8888:
     switch (bmfont->glyphrowbytes)
     {
     case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_any8888_1w_t : bmfont_drawchar_any8888_1w_o; break;
     case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_any8888_2w_t : bmfont_drawchar_any8888_2w_o; break;
-    default: assert(0); return result_BAD_ARG;
+    default: assert(0); return result_NOT_SUPPORTED;
     }
     break;
+
   default:
-    assert(0); return result_BAD_ARG;
+    assert(0); return result_NOT_SUPPORTED;
   }
 
-  scrclip = screen_get_clip(scr);
+  if (screen_get_clip(scr, &scrclip))
+    return result_OK; /* invalid clipped screen */
 
   drawbox.x0 = pos->x;
   drawbox.y0 = pos->y;

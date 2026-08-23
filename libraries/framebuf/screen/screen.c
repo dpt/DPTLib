@@ -3,6 +3,14 @@
 #include <assert.h>
 #include <string.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+#include "base/utils.h"
+#include "framebuf/span-registry.h"
+#include "geom/line.h"
+#include "utils/fxp.h"
 
 #include "framebuf/screen.h"
 
@@ -12,7 +20,6 @@ void screen_init(screen_t  *scr,
                  pixelfmt_t fmt,
                  int        rowbytes,
                  colour_t  *palette,
-                 box_t      clip,
                  void      *base)
 {
   assert(scr);
@@ -21,9 +28,10 @@ void screen_init(screen_t  *scr,
   scr->height   = height;
   scr->format   = fmt;
   scr->rowbytes = rowbytes;
-  scr->palette  = palette;
-  scr->clip     = clip;
+  scr->palette  = palette; // FIXME: This doesn't clone the palette, whereas bitmap_init()'s equivalent does.
+  scr->span     = spanregistry_get(fmt);
   scr->base     = base;
+  box_reset(&scr->clip);
 }
 
 void screen_for_bitmap(screen_t *scr, const bitmap_t *bm)
@@ -31,23 +39,20 @@ void screen_for_bitmap(screen_t *scr, const bitmap_t *bm)
   assert(scr);
   assert(bm);
 
-  memcpy(scr, bm, offsetof(screen_t, clip)); /* copy common members */
-  box_reset(&scr->clip);
+  memcpy(scr, bm, sizeof(bitmap_t)); /* copy common members */
   scr->base = bm->base;
+  box_reset(&scr->clip);
 }
 
-box_t screen_get_clip(const screen_t *scr)
+int screen_get_clip(const screen_t *scr, box_t *clip)
 {
-  box_t cur;
-
-  cur.x0 = 0;
-  cur.y0 = 0;
-  cur.x1 = scr->width;
-  cur.y1 = scr->height;
+  clip->x0 = 0;
+  clip->y0 = 0;
+  clip->x1 = scr->width;
+  clip->y1 = scr->height;
 
   if (box_is_empty(&scr->clip))
-    return cur;
+    return 0; /* not empty */
 
-  (void) box_intersection(&cur, &scr->clip, &cur);
-  return cur;
+  return box_intersection(clip, &scr->clip, clip);
 }

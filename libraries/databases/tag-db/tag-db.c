@@ -111,10 +111,10 @@ static result_t unformat_key(const char *buf,
   unsigned char hash[digestdb_DIGESTSZ];
   int           kindex;
 
-  NOT_USED(len);
   NOT_USED(opaque);
 
-  // if (len != 32) then complain
+  if (len != digestdb_DIGESTSZ * 2 + 1) /* +1 for the terminator length convention used by pickle */
+    return result_TAGDB_SYNTAX_ERROR;
 
   /* convert ID from ASCII hex to binary */
   err = digestdb_decode(hash, buf);
@@ -457,10 +457,10 @@ result_t tagdb_add(tagdb_t *db, const unsigned char *name, tagdb_tag_t *ptag)
         goto Failure;
       }
 #else
-      size_t n;
-      void  *newarr;
+      unsigned int n;
+      void        *newarr;
 
-      n = (size_t) power2gt(db->c_allocated);
+      n = power2gt(db->c_allocated);
       if (n < 8)
         n = 8;
 

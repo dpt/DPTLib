@@ -2,11 +2,11 @@
 #
 # DPTLib
 #
-# Copyright (c) David Thomas, 2020-2024
+# Copyright (c) David Thomas, 2020-2026
 #
 # vim: sw=4 ts=8 et
 
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.23.2)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
@@ -14,20 +14,18 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/)
 
-project(DPTLib VERSION 0.4.0 DESCRIPTION "DPT's C Library" LANGUAGES C)
+project(DPTLib VERSION 0.5.0 DESCRIPTION "DPT's C Library" LANGUAGES C)
 
 # The values set in the toolchain file aren't available until this point.
 if(TARGET_RISCOS)
     riscos_set_flags()
 endif()
 
-
 find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 endif(CCACHE_FOUND)
-
 
 option(USE_FORTIFY "Use Fortify" OFF)
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
@@ -42,7 +40,7 @@ add_subdirectory(libraries/fortify)
 add_library(DPTLib)
 
 set_target_properties(DPTLib PROPERTIES
-    VERSION 0.4.0
+    VERSION 0.5.0
     DESCRIPTION "DPT's Portable C Library"
     C_STANDARD 99
     PREFIX ""  # remove 'lib' prefix
@@ -79,10 +77,19 @@ set(PUBLIC_HEADERS
     include/framebuf/bmfont.h
     include/framebuf/colour.h
     include/framebuf/composite.h
+    include/framebuf/curve.h
+    include/framebuf/palettes.h
     include/framebuf/pixelfmt.h
     include/framebuf/screen.h
+    include/framebuf/span-bgrx8888.h
+    include/framebuf/span-registry.h
+    include/framebuf/span-rgba8888.h
+    include/framebuf/span-rgbx8888.h
+    include/framebuf/span-xbgr8888.h
+    include/framebuf/span.h
     include/geom/box.h
     include/geom/layout.h
+    include/geom/line.h
     include/geom/packer.h
     include/geom/point.h
     include/io/path.h
@@ -91,6 +98,7 @@ set(PUBLIC_HEADERS
     include/io/stream-packbits.h
     include/io/stream-stdio.h
     include/io/stream.h
+    include/test/all-tests.h
     include/test/txtscr.h
     include/utils/array.h
     include/utils/barith.h
@@ -212,14 +220,25 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bmfont/bmfont.c
     libraries/framebuf/colour/colour.c
     libraries/framebuf/composite/composite.c
+    libraries/framebuf/curve/curve.c
+    libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pixelfmt/log2bpp.c
-    libraries/framebuf/screen/screen.c)
+    libraries/framebuf/screen/screen.c
+    libraries/framebuf/screen/screen-draw.c
+    libraries/framebuf/span-registry/get.c
+    libraries/framebuf/span-registry/regdata.h
+    libraries/framebuf/span/all8888.c
+    libraries/framebuf/span/all8888.h
+    libraries/framebuf/span/bgrx8888.c
+    libraries/framebuf/span/rgbx8888.c
+    libraries/framebuf/span/xbgr8888.c)
 
 set(GEOM_SOURCES
     libraries/geom/box/clipped.c
     libraries/geom/box/contains-box.c
     libraries/geom/box/contains-point.c
     libraries/geom/box/could-hold.c
+    libraries/geom/box/extend.c
     libraries/geom/box/grow.c
     libraries/geom/box/intersection.c
     libraries/geom/box/intersects.c
@@ -230,6 +249,7 @@ set(GEOM_SOURCES
     libraries/geom/box/translated.c
     libraries/geom/box/union.c
     libraries/geom/layout/layout.c
+    libraries/geom/line/line.c
     libraries/geom/packer/impl.h
     libraries/geom/packer/packer.c)
 
@@ -314,13 +334,9 @@ if(DPTLIB_IMAGES_READ_ONLY)
 endif()
 
 if(NOT TARGET_RISCOS)
-    ## Where PkgConfig is available, use it
-    find_package(PkgConfig REQUIRED)
-    # Use IMPORTED_TARGET to avoid header/lib mismatch on macOS.
-    pkg_check_modules(PNG REQUIRED IMPORTED_TARGET libpng)
-    target_include_directories(DPTLib PUBLIC ${PNG_INCLUDE_DIRS})
-    target_compile_options(DPTLib PUBLIC ${PNG_CFLAGS_OTHER})
-    target_link_libraries(DPTLib PUBLIC PkgConfig::PNG)
+    set(CMAKE_FIND_FRAMEWORK NEVER)
+    find_package(PNG REQUIRED MODULE)
+    target_link_libraries(DPTLib PRIVATE PNG::PNG)
 else()
     ## On RISC OS we must build libpng & zlib
     include(FetchContent)
@@ -330,7 +346,7 @@ else()
                          GIT_TAG v1.2.11)
     FetchContent_Declare(libpng
                          GIT_REPOSITORY https://github.com/glennrp/libpng.git
-                         GIT_TAG v1.6.37)
+                         GIT_TAG v1.6.46)
 
     FetchContent_GetProperties(zlib)
     if(NOT zlib_POPULATED)
@@ -366,11 +382,11 @@ else()
                         OUTPUT_QUIET
                         ERROR_QUIET) # because it'll error upon re-run
 
-        cmake_policy(SET CMP0077 NEW)
+        cmake_policy(SET CMP0077 NEW) # option() honors normal variables
 
         set(PNG_SHARED OFF CACHE BOOL "" FORCE)
         set(PNG_STATIC ON CACHE BOOL "" FORCE)
-        set(PNG_EXECUTABLES OFF CACHE BOOL "" FORCE) # we only want lib
+        set(PNG_TOOLS OFF CACHE BOOL "" FORCE) # we only want lib
         set(PNG_TESTS OFF CACHE BOOL "" FORCE) # we only want lib
         set(SKIP_INSTALL_ALL OFF CACHE BOOL "" FORCE) # we only want lib
 
@@ -441,6 +457,7 @@ if(BUILD_TESTS)
         libraries/datastruct/ntree/test/ntree-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/composite/test/composite-test.c
+        libraries/framebuf/curve/test/curve-test.c
         libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
@@ -469,11 +486,10 @@ if(BUILD_TESTS)
     target_link_libraries(DPTLibTest DPTLib m)
 
     if(BUILD_SDL_TESTS)
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(SDL2 REQUIRED sdl2 SDL2_image)
-        target_link_libraries(DPTLibTest ${SDL2_LINK_LIBRARIES})
-        target_include_directories(DPTLibTest PUBLIC ${SDL2_INCLUDE_DIRS})
-        target_compile_options(DPTLibTest PUBLIC ${SDL2_CFLAGS_OTHER})
+        find_package(SDL2 REQUIRED)
+        find_package(SDL2_image REQUIRED)
+
+        target_link_libraries(DPTLibTest SDL2::SDL2 SDL2_image::SDL2_image)
 
         target_compile_definitions(DPTLibTest PUBLIC USE_SDL)
     endif()

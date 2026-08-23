@@ -11,14 +11,27 @@ jobs:
     strategy:
       matrix:
         config:
-          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install cmake ninja-build" }
-          - { name: "Windows build", os: "windows-latest", install: "choco install cmake ninja" }
-          - { name: "macOS build",   os: "macos-latest",   install: "brew install cmake ninja" }
+          - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "sudo apt-get install libpng-dev", configure: "", testbin: "builddir/DPTLibTest-debug" }
+          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "--toolchain=\"${env:VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake\"", testbin: "builddir/Debug/DPTLibTest-debug.exe" }
+          - { name: "macOS build",   os: "macos-latest",   install: "",                                configure: "", testbin: "builddir/DPTLibTest-debug" }
     steps:
       - uses: actions/checkout@v4
-      - run: ${{ matrix.config.install }}
-      - run: |
-          mkdir build
-          cd build
-          cmake -GNinja ..
-          cmake --build .
+
+      - name: Install CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Install dependencies
+        run: |
+          ${{ matrix.config.install }}
+
+      - name: Configure build
+        run: |
+          cmake -B builddir -S . -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=YES ${{ matrix.config.configure }}
+
+      - name: Build
+        run: |
+          cmake --build builddir --config Debug
+
+      - name: Run tests
+        run: |
+          ${{ matrix.config.testbin }} -resources .
