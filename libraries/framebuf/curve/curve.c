@@ -283,8 +283,8 @@ void curve_bezier_cubic_f(point_t  p0,
 
   point = &points[0];
 
-  curx = p0.x;
-  cury = p0.y;
+  curx = (float) p0.x;
+  cury = (float) p0.y;
 
   for (i = 0; ; i++)
   {

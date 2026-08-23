@@ -141,7 +141,7 @@ static stream_size_t stream_packbitsdecomp_fill(stream_t *s)
           memcpy(p, sm->input->buf, avail);
           p += avail;
           sm->input->buf += avail;
-          N -= avail;
+          N -= (int) avail;
         }
       }
 

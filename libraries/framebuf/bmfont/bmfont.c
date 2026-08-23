@@ -317,7 +317,7 @@ static result_t extract_glyphs(bmfont_t    *bmfont,
       {
         unsigned char *glyphs_as_uchar;
         glyphs_as_uchar  = (unsigned char *) glyphs + offset / sizeof(*glyphs_as_uchar);
-        *glyphs_as_uchar = monopixels;
+        *glyphs_as_uchar = (unsigned char) monopixels;
       }
       else
       {
