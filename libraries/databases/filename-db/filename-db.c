@@ -18,6 +18,9 @@
 #include "oslib/osfind.h"
 #include "oslib/osfscontrol.h"
 #include "oslib/osgbpb.h"
+#elif defined(_MSC_VER)
+#include <io.h>
+#define access _access
 #else
 #include <unistd.h>
 #endif
