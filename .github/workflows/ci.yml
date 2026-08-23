@@ -52,3 +52,48 @@ jobs:
           esac
           if [ "$RUNNER_OS" = "Windows" ]; then testbin="builddir/${{ matrix.build_type }}/$bin.exe"; else testbin="builddir/$bin"; fi
           "$testbin" -resources .
+
+  riscos-build:
+    name: RISC OS build
+    runs-on: ubuntu-latest
+    container: riscosdotinfo/riscos-gccsdk-4.7:latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Cache OSLib
+        id: cache-oslib
+        uses: actions/cache@v4
+        with:
+          path: oslib-bin
+          key: oslib-7.00
+
+      - name: Fetch OSLib
+        if: steps.cache-oslib.outputs.cache-hit != 'true'
+        run: |
+          apt-get update && apt-get install -y rename
+          mkdir -p oslib-bin
+          cd oslib-bin
+          wget -O oslib.zip 'https://sourceforge.net/projects/ro-oslib/files/OSLib/7.00/OSLib-elf-scl-app-hardfloat-7.00.zip/download?use_mirror=master'
+          unzip oslib.zip
+          rename 's!/h/(.*)$!/$1.h!' oslib/h/*
+
+      - name: Install OSLib
+        run: |
+          source /home/riscos/gccsdk-params
+          apt-get update && apt-get install -y rsync
+          mkdir -p "$GCCSDK_INSTALL_ENV/include/oslib/" "$GCCSDK_INSTALL_ENV/lib/"
+          rsync -av oslib-bin/oslib/ "$GCCSDK_INSTALL_ENV/include/oslib/"
+          cp oslib-bin/libOSLib32.a "$GCCSDK_INSTALL_ENV/lib/"
+
+      - name: Configure build
+        run: |
+          source /home/riscos/gccsdk-params
+          cmake -B builddir -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=YES -DCMAKE_TOOLCHAIN_FILE=cmake/riscos.cmake
+
+      - name: Build
+        run: |
+          source /home/riscos/gccsdk-params
+          cmake --build builddir --config Release --parallel
