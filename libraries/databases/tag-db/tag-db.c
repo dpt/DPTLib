@@ -111,10 +111,10 @@ static result_t unformat_key(const char *buf,
   unsigned char hash[digestdb_DIGESTSZ];
   int           kindex;
 
-  NOT_USED(len);
   NOT_USED(opaque);
 
-  // if (len != 32) then complain
+  if (len != digestdb_DIGESTSZ * 2 + 1) /* +1 for the terminator length convention used by pickle */
+    return result_TAGDB_SYNTAX_ERROR;
 
   /* convert ID from ASCII hex to binary */
   err = digestdb_decode(hash, buf);
