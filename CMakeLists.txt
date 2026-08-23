@@ -311,6 +311,7 @@ target_sources(DPTLib PRIVATE ${ALL_SOURCES})
 
 if(MSVC)
     target_compile_options(DPTLib PRIVATE /W4)
+    target_compile_definitions(DPTLib PRIVATE _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_WARNINGS)
 else()
     target_compile_options(DPTLib PRIVATE -Wall -Wextra -pedantic)
 endif()
