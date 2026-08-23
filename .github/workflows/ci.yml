@@ -50,6 +50,15 @@ jobs:
         run: |
           cmake --build builddir --config ${{ matrix.build_type }} --parallel
 
+      - name: List DLLs beside test binary (Windows diagnostics)
+        if: runner.os == 'Windows'
+        run: |
+          echo "-- contents of builddir/${{ matrix.build_type }} --"
+          ls -la "builddir/${{ matrix.build_type }}"
+          echo "-- libpng/zlib DLLs visible on PATH --"
+          where.exe libpng16.dll || true
+          where.exe zlib1.dll || true
+
       - name: Run tests
         run: |
           case "${{ matrix.build_type }}" in

@@ -11,6 +11,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -356,6 +357,16 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
   unsigned char *pixels       = NULL;
 
   *pbmfont = NULL;
+
+  {
+    static int printed_png_version = 0;
+    if (!printed_png_version)
+    {
+      fprintf(stderr, "bmfont: libpng compiled=%s linked=%s\n",
+              PNG_LIBPNG_VER_STRING, png_get_header_ver(NULL));
+      printed_png_version = 1;
+    }
+  }
 
   fp = fopen(png, "rb");
   if (fp == NULL)
