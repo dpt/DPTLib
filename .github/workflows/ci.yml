@@ -26,7 +26,7 @@ jobs:
 
       - name: Cache vcpkg packages
         if: runner.os == 'Windows'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed
           key: vcpkg-${{ runner.os }}-${{ matrix.config.install }}
@@ -68,7 +68,7 @@ jobs:
 
       - name: Cache OSLib
         id: cache-oslib
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: oslib-bin
           key: oslib-7.00
