@@ -32,7 +32,7 @@ void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour)
       scrp = scr->base;
       scrp += y * scr->rowbytes / sizeof(*scrp) + x;
 
-      *scrp = pxl;
+      *scrp = (pixelfmt_any8_t) pxl;
     }
     break;
 

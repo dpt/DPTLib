@@ -27,7 +27,7 @@ static result_t stream_stdio_seek(stream_t *s, stream_size_t pos)
 {
   stream_file_t *sf = (stream_file_t *) s;
 
-  fseek(sf->file, pos, SEEK_SET);
+  fseek(sf->file, (long) pos, SEEK_SET);
 
   sf->base.buf = sf->base.end; /* force a re-fill */
 
@@ -96,7 +96,7 @@ static stream_size_t stream_stdio_length(stream_t *s)
   pos = ftell(sf->file);
   fseek(sf->file, 0, SEEK_END);
   sf->length = ftell(sf->file);
-  fseek(sf->file, pos, SEEK_SET);
+  fseek(sf->file, (long) pos, SEEK_SET);
 
   sf->base.length = stream_stdio_length_quick;
 

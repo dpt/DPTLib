@@ -157,7 +157,7 @@ result_t bitfifo_enqueue(bitfifo_t       *fifo,
            newbitsoffset,
            nnewbits);
 
-    fifo->head += nnewbits;
+    fifo->head += (unsigned int) nnewbits;
   }
   else
   {
