@@ -26,6 +26,7 @@ struct wuss
   list_t         z_order;   /* anchor; head = topmost window */
   wuss_window_t *dragging;  /* NULL when idle */
   int            drag_dx, drag_dy;
+  box_t          dirty;     /* accumulated by wuss_invalidate; reset by a redraw */
 };
 
 struct wuss_window

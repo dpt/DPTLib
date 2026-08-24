@@ -18,6 +18,7 @@ extern "C"
 
 #include "base/result.h"
 #include "framebuf/bmfont.h"
+#include "geom/box.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -94,6 +95,43 @@ void wuss_destroy(wuss_t *doomed);
 result_t wuss_redraw(wuss_t *wuss);
 
 /**
+ * Mark a screen-space region dirty. Window creation, destruction, move,
+ * resize and bring-to-front invalidate their own affected regions
+ * automatically; clients must call this themselves when their content
+ * changes (e.g. an animation), passing the union of the old and new
+ * screen-space areas that need repainting.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] box  Screen-space region to mark dirty.
+ * \return \ref result_OK.
+ */
+result_t wuss_invalidate(wuss_t *wuss, const box_t *box);
+
+/**
+ * Redraw only the region accumulated by wuss_invalidate calls (and any
+ * automatic invalidation from window management) since the last redraw,
+ * back-to-front, then clear the dirty region. Does nothing if nothing is
+ * dirty.
+ *
+ * \param[in] wuss Window manager.
+ * \return \ref result_OK on success, or the last non-OK result returned by
+ *         a client's redraw callback.
+ */
+result_t wuss_redraw_dirty(wuss_t *wuss);
+
+/**
+ * Fetch the current accumulated dirty region (see wuss_invalidate). wuss
+ * only repaints windows, not background between/behind them, so a caller
+ * whose invalidations can expose background (e.g. after a window move)
+ * should clear this region itself before calling wuss_redraw_dirty.
+ *
+ * \param[in]  wuss Window manager.
+ * \param[out] out  Filled in with the dirty region. Empty (box_is_empty)
+ *                  if nothing is dirty.
+ */
+void wuss_get_dirty(const wuss_t *wuss, box_t *out);
+
+/**
  * Deliver a mouse-down event. Hit-tests the topmost window at (x,y),
  * brings it to front if button is Select (Adjust and Menu leave the
  * z-order unchanged), and either starts a titlebar drag or delivers the
@@ -124,8 +162,9 @@ result_t wuss_mouse_up(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_wi
 
 /**
  * Deliver a mouse-move event. Updates the dragged window's position if a
- * drag is active (triggering a redraw), otherwise hit-tests and delivers
- * to the window's client as per wuss_mouse_down.
+ * drag is active (invalidating the affected region; call wuss_redraw_dirty
+ * to actually repaint it), otherwise hit-tests and delivers to the
+ * window's client as per wuss_mouse_down.
  *
  * \param[in]  wuss Window manager.
  * \param[in]  x    Screen x coordinate.

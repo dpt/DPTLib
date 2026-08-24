@@ -64,7 +64,6 @@ ball_client_t;
 static result_t ball_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *client_data)
 {
   ball_client_t *bc;
-  int            width, height;
 
   NOT_USED(window);
 
@@ -75,8 +74,26 @@ static result_t ball_redraw(wuss_window_t *window, screen_t *scr, const box_t *c
                     content->y1 - content->y0,
                     bc->bg);
 
-  width  = content->x1 - content->x0;
-  height = content->y1 - content->y0;
+  screen_draw_rect(scr, content->x0 + bc->x - bc->radius, content->y0 + bc->y - bc->radius,
+                    bc->radius * 2, bc->radius * 2, bc->ball);
+
+  return result_OK;
+}
+
+/* move the ball on and invalidate the union of its old and new positions;
+ * called once per frame from the main loop, not from a wuss callback */
+static void ball_step(wuss_window_t *window, ball_client_t *bc)
+{
+  box_t content, local;
+  int   width, height;
+  int   old_x, old_y;
+
+  wuss_window_get_content_bounds(window, &content);
+  width  = content.x1 - content.x0;
+  height = content.y1 - content.y0;
+
+  old_x = bc->x;
+  old_y = bc->y;
 
   bc->x += bc->dx;
   bc->y += bc->dy;
@@ -86,10 +103,12 @@ static result_t ball_redraw(wuss_window_t *window, screen_t *scr, const box_t *c
   if (bc->y - bc->radius < 0)           { bc->y = bc->radius;          bc->dy = -bc->dy; }
   else if (bc->y + bc->radius > height) { bc->y = height - bc->radius; bc->dy = -bc->dy; }
 
-  screen_draw_rect(scr, content->x0 + bc->x - bc->radius, content->y0 + bc->y - bc->radius,
-                    bc->radius * 2, bc->radius * 2, bc->ball);
+  local.x0 = MIN(old_x, bc->x) - bc->radius;
+  local.y0 = MIN(old_y, bc->y) - bc->radius;
+  local.x1 = MAX(old_x, bc->x) + bc->radius;
+  local.y1 = MAX(old_y, bc->y) + bc->radius;
 
-  return result_OK;
+  wuss_window_invalidate(window, &local);
 }
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
@@ -232,6 +251,8 @@ static result_t wuss_interactive_test(const char *resources)
   quit            = false;
   garbage_pending = false;
 
+  wuss_redraw(wuss);
+
   while (!quit)
   {
     SDL_Event event;
@@ -270,14 +291,15 @@ static result_t wuss_interactive_test(const char *resources)
       }
     }
 
-    bitmap_clear(&bm, palette[palette_PICO8_WHITE]);
-    wuss_redraw(wuss);
+    ball_step(win_a, &ic_a);
 
     if (garbage_pending)
     {
-      /* full-screen corruption; next frame's clear+redraw repairs it
-       * unconditionally, demonstrating that wuss always knows how to
-       * repaint itself regardless of what's underneath */
+      /* full-screen corruption, drawn over whatever's already on screen
+       * (windows included) and left untouched: nothing here is invalidated,
+       * so it stays put until something actually redraws over it, e.g. the
+       * ball's own small per-frame dirty rect eating a trail through it, or
+       * a window being dragged across it */
       unsigned char *p;
       size_t         n;
       size_t         i;
@@ -288,6 +310,21 @@ static result_t wuss_interactive_test(const char *resources)
         p[i] = (unsigned char) rand();
 
       garbage_pending = false;
+    }
+    else
+    {
+      box_t dirty;
+
+      wuss_get_dirty(wuss, &dirty);
+      if (!box_is_empty(&dirty))
+      {
+        scr.clip = dirty;
+        screen_draw_rect(&scr, dirty.x0, dirty.y0,
+                          dirty.x1 - dirty.x0, dirty.y1 - dirty.y0,
+                          palette[palette_PICO8_WHITE]);
+      }
+
+      wuss_redraw_dirty(wuss);
     }
 
     SDL_UpdateTexture(texture, NULL, bm.base, bm.rowbytes);
@@ -524,7 +561,7 @@ result_t wuss_test(const char *resources)
   if (tc_a.mouse_count != 0)
     goto Failure;
 
-  printf("test: drag-move updates visible bounds and triggers redraw\n");
+  printf("test: drag-move updates visible bounds and invalidates the affected region\n");
 
   before_a = tc_a.redraw_count;
   before_b = tc_b.redraw_count;
@@ -532,6 +569,20 @@ result_t wuss_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
+    goto Failure;
+  if (tc_a.redraw_count != before_a || tc_b.redraw_count != before_b)
+    goto Failure; /* invalidated, not yet redrawn */
+
+  {
+    box_t dirty;
+
+    wuss_get_dirty(wuss, &dirty);
+    if (box_is_empty(&dirty))
+      goto Failure;
+  }
+
+  rc = wuss_redraw_dirty(wuss);
+  if (rc != result_OK)
     goto Failure;
   if (tc_a.redraw_count != before_a + 1 || tc_b.redraw_count != before_b + 1)
     goto Failure;
@@ -542,13 +593,10 @@ result_t wuss_test(const char *resources)
 
   printf("test: mouse-up ends the drag\n");
 
-  before_a = tc_a.redraw_count;
   rc = wuss_mouse_up(wuss, 30, 15, wuss_BUTTON_SELECT, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
-    goto Failure;
-  if (tc_a.redraw_count != before_a + 1)
     goto Failure;
 
   printf("test: Adjust-drag moves a window without bringing it to front\n");

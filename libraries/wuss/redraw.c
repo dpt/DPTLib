@@ -89,5 +89,22 @@ result_t wuss_redraw(wuss_t *wuss)
   rc = result_OK;
   redraw_from(wuss, wuss->z_order.next, &full, &rc);
 
+  box_reset(&wuss->dirty);
+
+  return rc;
+}
+
+result_t wuss_redraw_dirty(wuss_t *wuss)
+{
+  result_t rc;
+
+  if (box_is_empty(&wuss->dirty))
+    return result_OK;
+
+  rc = result_OK;
+  redraw_from(wuss, wuss->z_order.next, &wuss->dirty, &rc);
+
+  box_reset(&wuss->dirty);
+
   return rc;
 }

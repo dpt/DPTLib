@@ -13,7 +13,7 @@ result_t wuss_mouse_up(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_wi
     if (hit != NULL)
       *hit = win;
     wuss->dragging = NULL;
-    return wuss_redraw(wuss);
+    return result_OK;
   }
 
   win = wuss__window_at(wuss, x, y);

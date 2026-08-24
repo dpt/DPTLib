@@ -48,6 +48,8 @@ result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *titl
 
   list_add_to_head(&wuss->z_order, &win->link);
 
+  wuss_invalidate(wuss, &win->visible);
+
   *window = win;
 
   return result_OK;

@@ -21,5 +21,7 @@ void wuss_window_destroy(wuss_window_t *doomed)
 
   list_remove(&wuss->z_order, &doomed->link);
 
+  wuss_invalidate(wuss, &doomed->visible);
+
   free(doomed);
 }
