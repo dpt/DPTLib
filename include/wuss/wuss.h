@@ -32,12 +32,15 @@ typedef struct wuss wuss_t;
 /** A window. Full API is in window.h. */
 typedef struct wuss_window wuss_window_t;
 
-/** Mouse buttons. */
+/**
+ * Mouse buttons, RISC OS-style: Select is the primary action, Adjust the
+ * secondary action, Menu pops up a menu.
+ */
 typedef enum wuss_button
 {
-  wuss_BUTTON_LEFT,
-  wuss_BUTTON_MIDDLE,
-  wuss_BUTTON_RIGHT
+  wuss_BUTTON_SELECT,
+  wuss_BUTTON_MENU,
+  wuss_BUTTON_ADJUST
 }
 wuss_button_t;
 
@@ -92,7 +95,8 @@ result_t wuss_redraw(wuss_t *wuss);
 
 /**
  * Deliver a mouse-down event. Hit-tests the topmost window at (x,y),
- * brings it to front, and either starts a titlebar drag or delivers the
+ * brings it to front if button is Select (Adjust and Menu leave the
+ * z-order unchanged), and either starts a titlebar drag or delivers the
  * event to the window's client in window-local content coordinates.
  *
  * \param[in]  wuss   Window manager.

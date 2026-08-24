@@ -14,7 +14,8 @@ result_t wuss_mouse_down(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_
   if (win == NULL)
     return result_OK;
 
-  wuss_window_bring_to_front(win);
+  if (button == wuss_BUTTON_SELECT)
+    wuss_window_bring_to_front(win);
 
   wuss__titlebar_box(win, &titlebar);
   if (box_contains_point(&titlebar, x, y))
