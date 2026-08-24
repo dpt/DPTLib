@@ -137,9 +137,17 @@ static result_t wuss_interactive_test(const char *resources)
 
   SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
 
-  rc = wuss_create(&scr, font, palette, NELEMS(palette), NULL, &wuss);
-  if (rc != result_OK)
-    goto Failure;
+  {
+    wuss_config_t config;
+
+    config.titlebar_height = 0;
+    config.titlebar_bg     = palette_PICO8_DARK_BLUE;
+    config.titlebar_fg     = palette_PICO8_WHITE;
+
+    rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, &wuss);
+    if (rc != result_OK)
+      goto Failure;
+  }
 
   ic_a.colour = palette[palette_PICO8_RED];
   client_a.redraw      = interactive_redraw;
