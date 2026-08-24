@@ -84,6 +84,19 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
 
   switch (pngcolourtype)
   {
+  case PNG_COLOR_TYPE_PALETTE:
+    png_set_palette_to_rgb(png_ptr);
+    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
+    {
+      png_set_tRNS_to_alpha(png_ptr);
+      bm_fmt = pixelfmt_rgba8888;
+    }
+    else
+    {
+      bm_fmt = pixelfmt_rgbx8888;
+      png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
+    }
+    break;
   case PNG_COLOR_TYPE_RGB:
     bm_fmt = pixelfmt_rgbx8888;
     png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
