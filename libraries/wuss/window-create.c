@@ -36,6 +36,15 @@ result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *titl
   else
     memset(&win->client, 0, sizeof(win->client));
 
+  if (client == NULL)
+    win->client.bg = wuss_NO_BACKGROUND;
+  else if (client->bg != wuss_NO_BACKGROUND &&
+           (client->bg < 0 || client->bg >= wuss->npalette))
+  {
+    free(win);
+    return result_WUSS_BAD_COLOUR;
+  }
+
   if (title != NULL)
   {
     strncpy(win->title, title, WUSS_TITLE_MAX);

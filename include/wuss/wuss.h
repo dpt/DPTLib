@@ -48,6 +48,9 @@ wuss_button_t;
 /** An index into a wuss_t's system palette (see wuss_create). Not a colour_t. */
 typedef int wuss_colour_t;
 
+/** Sentinel for wuss_client_t::bg meaning "no automatic background fill". */
+#define wuss_NO_BACKGROUND ((wuss_colour_t) -1)
+
 /** Optional creation-time configuration. */
 typedef struct wuss_config
 {

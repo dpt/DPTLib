@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -28,24 +29,43 @@
 
 #include <SDL3/SDL.h>
 
-typedef struct interactive_client
+/* window B's client: flows a fixed paragraph of placeholder text over its
+ * wuss-filled background, one line per bmfont_draw call */
+typedef struct text_client
 {
-  colour_t colour;
+  bmfont_t *font;
+  colour_t  bg, fg;
 }
-interactive_client_t;
+text_client_t;
 
-static result_t interactive_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *client_data)
+static result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *client_data)
 {
-  interactive_client_t *ic;
+  static const char *const lines[] =
+  {
+    "Lorem ipsum dolor sit amet,",
+    "consectetur adipiscing elit,",
+    "sed do eiusmod tempor",
+    "incididunt ut labore et",
+    "dolore magna aliqua."
+  };
+
+  text_client_t *tcx;
+  int            i, font_width, font_height;
+  point_t        pos;
 
   NOT_USED(window);
 
-  ic = client_data;
+  tcx = client_data;
 
-  screen_draw_rect(scr, content->x0, content->y0,
-                    content->x1 - content->x0,
-                    content->y1 - content->y0,
-                    ic->colour);
+  bmfont_get_info(tcx->font, &font_width, &font_height);
+
+  pos.x = content->x0 + 4;
+  pos.y = content->y0 + 4;
+  for (i = 0; i < NELEMS(lines); i++)
+  {
+    bmfont_draw(tcx->font, scr, lines[i], (int) strlen(lines[i]), tcx->fg, tcx->bg, &pos, NULL);
+    pos.y += font_height + 2;
+  }
 
   return result_OK;
 }
@@ -139,7 +159,7 @@ static result_t wuss_interactive_test(const char *resources)
   colour_t              palette[16];
   wuss_t                *wuss;
   ball_client_t          ic_a;
-  interactive_client_t   ic_b, ic_c;
+  text_client_t          ic_b;
   wuss_client_t          client_a, client_b, client_c;
   box_t                  box_a, box_b, box_c;
   wuss_window_t         *win_a, *win_b, *win_c;
@@ -222,29 +242,33 @@ static result_t wuss_interactive_test(const char *resources)
   client_a.redraw      = ball_redraw;
   client_a.mouse       = NULL;
   client_a.client_data = &ic_a;
+  client_a.bg          = wuss_NO_BACKGROUND; /* ball_redraw paints its own background every frame */
   box_a.x0 = 20;  box_a.y0 = 20;
   box_a.x1 = 220; box_a.y1 = 180;
-  rc = wuss_window_create(wuss, &box_a, "A", &client_a, &win_a);
+  rc = wuss_window_create(wuss, &box_a, "Bouncing Ball", &client_a, &win_a);
   if (rc != result_OK)
     goto Failure;
 
-  ic_b.colour = palette[palette_PICO8_BLUE];
-  client_b.redraw      = interactive_redraw;
+  ic_b.font   = font;
+  ic_b.bg     = palette[palette_PICO8_BLUE]; /* matches client_b.bg, for bmfont_draw's glyph blending */
+  ic_b.fg     = palette[palette_PICO8_WHITE];
+  client_b.redraw      = text_redraw;
   client_b.mouse       = NULL;
   client_b.client_data = &ic_b;
+  client_b.bg          = palette_PICO8_BLUE;
   box_b.x0 = 120; box_b.y0 = 100;
   box_b.x1 = 340; box_b.y1 = 280;
-  rc = wuss_window_create(wuss, &box_b, "B", &client_b, &win_b);
+  rc = wuss_window_create(wuss, &box_b, "Lorem Ipsum", &client_b, &win_b);
   if (rc != result_OK)
     goto Failure;
 
-  ic_c.colour = palette[palette_PICO8_GREEN];
-  client_c.redraw      = interactive_redraw;
+  client_c.redraw      = NULL;
   client_c.mouse       = NULL;
-  client_c.client_data = &ic_c;
+  client_c.client_data = NULL;
+  client_c.bg          = palette_PICO8_GREEN; /* wuss fills the content area itself */
   box_c.x0 = 260; box_c.y0 = 60;
   box_c.x1 = 460; box_c.y1 = 220;
-  rc = wuss_window_create(wuss, &box_c, "C", &client_c, &win_c);
+  rc = wuss_window_create(wuss, &box_c, "Blankety Blank", &client_c, &win_c);
   if (rc != result_OK)
     goto Failure;
 
@@ -476,6 +500,7 @@ result_t wuss_test(const char *resources)
   client_a.redraw      = test_redraw;
   client_a.mouse       = test_mouse;
   client_a.client_data = &tc_a;
+  client_a.bg          = wuss_NO_BACKGROUND;
 
   box_a.x0 = 0;
   box_a.y0 = 0;
@@ -490,6 +515,7 @@ result_t wuss_test(const char *resources)
   client_b.redraw      = test_redraw;
   client_b.mouse       = test_mouse;
   client_b.client_data = &tc_b;
+  client_b.bg          = wuss_NO_BACKGROUND;
 
   box_b.x0 = 50;
   box_b.y0 = 50;
@@ -680,6 +706,7 @@ result_t wuss_test(const char *resources)
   client_c.redraw      = test_redraw;
   client_c.mouse       = test_mouse;
   client_c.client_data = &tc_c;
+  client_c.bg          = wuss_NO_BACKGROUND;
 
   box_c.x0 = 0;
   box_c.y0 = 0;
