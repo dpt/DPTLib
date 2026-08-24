@@ -89,7 +89,7 @@ void text_step(wuss_window_t *window, text_client_t *tcx)
   double   angle;
   result_t rc;
 
-  wuss_window_get_visible_bounds(window, &visible);
+  wuss_window_get_content_bounds(window, &visible);
   height = visible.y1 - visible.y0;
 
   tcx->frame_count++;
