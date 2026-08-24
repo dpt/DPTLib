@@ -527,18 +527,33 @@ result_t wuss_test(const char *resources)
   printf("test: click-to-front changes subsequent overlap hits\n");
 
   tc_a.mouse_count = 0;
-  rc = wuss_mouse_down(wuss, 25, 25, wuss_BUTTON_SELECT, &hit); /* only within A */
+  rc = wuss_mouse_down(wuss, 10, 10, wuss_BUTTON_SELECT, &hit); /* A's titlebar */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
     goto Failure;
 
-  rc = wuss_mouse_up(wuss, 25, 25, wuss_BUTTON_SELECT, &hit);
+  rc = wuss_mouse_up(wuss, 10, 10, wuss_BUTTON_SELECT, &hit);
+  if (rc != result_OK)
+    goto Failure;
+
+  printf("test: content click does not change z-order\n");
+
+  tc_b.mouse_count = 0;
+  rc = wuss_mouse_down(wuss, 120, 120, wuss_BUTTON_SELECT, &hit); /* B's content, only within B */
+  if (rc != result_OK)
+    goto Failure;
+  if (hit != win_b)
+    goto Failure;
+  if (tc_b.mouse_count != 1)
+    goto Failure;
+
+  rc = wuss_mouse_up(wuss, 120, 120, wuss_BUTTON_SELECT, &hit);
   if (rc != result_OK)
     goto Failure;
 
   tc_a.mouse_count = 0;
-  rc = wuss_mouse_down(wuss, 75, 75, wuss_BUTTON_SELECT, &hit); /* now A is topmost */
+  rc = wuss_mouse_down(wuss, 75, 75, wuss_BUTTON_SELECT, &hit); /* A still topmost: B's content click above didn't bring it to front */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)

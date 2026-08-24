@@ -132,10 +132,11 @@ result_t wuss_redraw_dirty(wuss_t *wuss);
 void wuss_get_dirty(const wuss_t *wuss, box_t *out);
 
 /**
- * Deliver a mouse-down event. Hit-tests the topmost window at (x,y),
- * brings it to front if button is Select (Adjust and Menu leave the
- * z-order unchanged), and either starts a titlebar drag or delivers the
- * event to the window's client in window-local content coordinates.
+ * Deliver a mouse-down event. Hit-tests the topmost window at (x,y). A
+ * titlebar click brings the window to front if button is Select (Adjust
+ * and Menu leave the z-order unchanged) and starts a drag; a click on the
+ * window's content never changes the z-order and is delivered to the
+ * client in window-local content coordinates.
  *
  * \param[in]  wuss   Window manager.
  * \param[in]  x      Screen x coordinate.
