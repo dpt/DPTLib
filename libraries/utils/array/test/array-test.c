@@ -49,6 +49,14 @@ result_t array_test(const char *resources)
   int t;
   int i;
 
+  int  *arr;
+  int   allocated;
+  int   used;
+  int   rc;
+
+  int  *arr2;
+  int   allocated2;
+
   NOT_USED(resources);
 
 
@@ -146,6 +154,110 @@ result_t array_test(const char *resources)
     printf("unexpected checksum %d\n", t);
     goto Failure;
   }
+
+
+  printf("test: grow array (initial allocation)\n");
+
+  arr       = NULL;
+  allocated = 0;
+  used      = 0;
+
+  rc = array_grow((void **) &arr, sizeof(*arr), used, &allocated, 5, 4);
+  if (rc != 0 || arr == NULL || allocated != 8)
+  {
+    printf("unexpected result rc=%d allocated=%d\n", rc, allocated);
+    goto Failure;
+  }
+
+  for (i = 0; i < 5; i++)
+    arr[i] = i + 1;
+  used = 5;
+
+
+  printf("test: grow array (existing capacity is sufficient)\n");
+
+  rc = array_grow((void **) &arr, sizeof(*arr), used, &allocated, 2, 1);
+  if (rc != 0 || allocated != 8)
+  {
+    printf("unexpected reallocation rc=%d allocated=%d\n", rc, allocated);
+    free(arr);
+    goto Failure;
+  }
+
+  t = 0;
+  for (i = 0; i < 5; i++)
+    t += arr[i];
+
+  if (t != 1 + 2 + 3 + 4 + 5)
+  {
+    printf("unexpected checksum %d\n", t);
+    free(arr);
+    goto Failure;
+  }
+
+
+  printf("test: grow array (forces reallocation)\n");
+
+  used = allocated; /* pretend the array is full */
+
+  rc = array_grow((void **) &arr, sizeof(*arr), used, &allocated, 1, 1);
+  if (rc != 0 || allocated != 16)
+  {
+    printf("unexpected result rc=%d allocated=%d\n", rc, allocated);
+    free(arr);
+    goto Failure;
+  }
+
+  t = 0;
+  for (i = 0; i < 5; i++)
+    t += arr[i];
+
+  if (t != 1 + 2 + 3 + 4 + 5)
+  {
+    printf("unexpected checksum %d after grow\n", t);
+    free(arr);
+    goto Failure;
+  }
+
+
+  printf("test: shrink array\n");
+
+  rc = array_shrink((void **) &arr, sizeof(*arr), 5, &allocated);
+  if (rc != 0 || allocated != 5)
+  {
+    printf("unexpected result rc=%d allocated=%d\n", rc, allocated);
+    free(arr);
+    goto Failure;
+  }
+
+  t = 0;
+  for (i = 0; i < 5; i++)
+    t += arr[i];
+
+  if (t != 1 + 2 + 3 + 4 + 5)
+  {
+    printf("unexpected checksum %d after shrink\n", t);
+    free(arr);
+    goto Failure;
+  }
+
+  free(arr);
+
+
+  printf("test: grow array (minimum forces a larger allocation)\n");
+
+  arr2       = NULL;
+  allocated2 = 0;
+
+  rc = array_grow((void **) &arr2, sizeof(*arr2), 0, &allocated2, 1, 10);
+  if (rc != 0 || allocated2 != 16)
+  {
+    printf("unexpected result rc=%d allocated2=%d\n", rc, allocated2);
+    free(arr2);
+    goto Failure;
+  }
+
+  free(arr2);
 
 
   return result_TEST_PASSED;
