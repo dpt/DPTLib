@@ -71,6 +71,7 @@ set(PUBLIC_HEADERS
     include/datastruct/hlist.h
     include/datastruct/list.h
     include/datastruct/ntree.h
+    include/datastruct/txtfmt.h
     include/datastruct/vector.h
     include/framebuf/bitmap-set.h
     include/framebuf/bitmap.h
@@ -200,6 +201,15 @@ set(DATASTRUCT_SOURCES
     libraries/datastruct/ntree/set-data.c
     libraries/datastruct/ntree/unlink.c
     libraries/datastruct/ntree/walk.c
+    libraries/datastruct/txtfmt/create.c
+    libraries/datastruct/txtfmt/destroy.c
+    libraries/datastruct/txtfmt/get-length.c
+    libraries/datastruct/txtfmt/get-line.c
+    libraries/datastruct/txtfmt/get-nlines.c
+    libraries/datastruct/txtfmt/get-wrapped-width.c
+    libraries/datastruct/txtfmt/impl.h
+    libraries/datastruct/txtfmt/print.c
+    libraries/datastruct/txtfmt/wrap.c
     libraries/datastruct/vector/clear.c
     libraries/datastruct/vector/create.c
     libraries/datastruct/vector/destroy.c
@@ -460,6 +470,7 @@ if(BUILD_TESTS)
         libraries/datastruct/hash/test/hash-test.c
         libraries/datastruct/list/test/list-test.c
         libraries/datastruct/ntree/test/ntree-test.c
+        libraries/datastruct/txtfmt/test/txtfmt-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
