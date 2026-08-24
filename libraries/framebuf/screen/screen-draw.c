@@ -22,9 +22,23 @@ void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour)
   if (screen_get_clip(scr, &clip) || !box_contains_point(&clip, x, y))
     return;
 
-  pxl = colour_to_pixel(NULL, 0, colour, scr->format);
+  pxl = colour_to_pixel(scr->palette,
+                        (scr->format == pixelfmt_p4) ? 16 : 0,
+                        colour, scr->format);
   switch (pixelfmt_log2bpp(scr->format))
   {
+  case 2:
+    {
+      unsigned char *scrp;
+      int            shift;
+
+      scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 1);
+      shift = (x & 1) * 4;
+
+      *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
+    }
+    break;
+
   case 3:
     {
       pixelfmt_any8_t *scrp;
@@ -123,9 +137,36 @@ void screen_draw_rect(screen_t *scr,
   clipped_width  = draw_box.x1 - draw_box.x0;
   clipped_height = draw_box.y1 - draw_box.y0;
 
-  fmt = colour_to_pixel(NULL, 0, colour, scr->format);
+  fmt = colour_to_pixel(scr->palette,
+                        (scr->format == pixelfmt_p4) ? 16 : 0,
+                        colour, scr->format);
   switch (pixelfmt_log2bpp(scr->format))
   {
+  case 2:
+    {
+      unsigned char *rowp;
+      int            yy, xx;
+
+      rowp = (unsigned char *) scr->base + draw_box.y0 * scr->rowbytes;
+      for (yy = 0; yy < clipped_height; yy++)
+      {
+        for (xx = 0; xx < clipped_width; xx++)
+        {
+          int            x;
+          unsigned char *scrp;
+          int            shift;
+
+          x     = draw_box.x0 + xx;
+          scrp  = rowp + (x >> 1);
+          shift = (x & 1) * 4;
+
+          *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((fmt & 0xF) << shift));
+        }
+        rowp += scr->rowbytes;
+      }
+    }
+    break;
+
   case 5:
     {
       pixelfmt_any32_t *scrp;
