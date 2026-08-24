@@ -63,6 +63,7 @@ static const test_t tests[] =
 
   { "array",      array_test      },
   { "bsearch",    bsearch_test    },
+  { "pack",       pack_test       },
 };
 
 static const int ntests = NELEMS(tests);
