@@ -3,7 +3,7 @@
 /**
  * \file window.h
  *
- * A wuss window: creation, destruction, positioning, sizing, and client
+ * A wuss window: creation, destruction, positioning, sizing and client
  * delegation of content drawing and mouse handling.
  */
 
@@ -108,7 +108,8 @@ void wuss_window_move(wuss_window_t *window, int x, int y);
  * \param[in] width  New width.
  * \param[in] height New height.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if width/height
- *         are too small to hold a titlebar plus any content.
+ *         are too small to hold a titlebar (unless wuss_WINDOW_NO_TITLEBAR is
+ *         set) plus any content.
  */
 result_t wuss_window_resize(wuss_window_t *window, int width, int height);
 

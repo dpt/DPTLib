@@ -10,6 +10,7 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "base/debug.h"
 #include "base/utils.h"
 #include "geom/point.h"
 
@@ -57,7 +58,7 @@ result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content,
       for (friendly_break = absolute_break - 1; friendly_break > 0; friendly_break--)
         if (isspace((unsigned char) string[friendly_break]))
           break;
-      if (friendly_break == 0)
+      if (friendly_break <= 0)
         friendly_break = absolute_break; /* no space to break at: hard break */
     }
 
@@ -83,9 +84,10 @@ result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content,
 
 void text_step(wuss_window_t *window, text_client_t *tcx)
 {
-  box_t visible;
-  int   height, width;
-  double angle;
+  box_t    visible;
+  int      height, width;
+  double   angle;
+  result_t rc;
 
   wuss_window_get_visible_bounds(window, &visible);
   height = visible.y1 - visible.y0;
@@ -94,7 +96,9 @@ void text_step(wuss_window_t *window, text_client_t *tcx)
   angle = tcx->frame_count * (2.0 * M_PI / TEXT_RESIZE_PERIOD_FRAMES);
   width = tcx->base_width + (int) (TEXT_RESIZE_AMPLITUDE * sin(angle));
 
-  wuss_window_resize(window, width, height);
+  rc = wuss_window_resize(window, width, height);
+  if (rc != result_OK)
+    logf_warning("text_step: wuss_window_resize(%d, %d) failed", width, height);
 }
 
 #endif /* USE_SDL */

@@ -668,6 +668,66 @@ result_t wuss_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
+  printf("test: content click on a title-less window brings it to front\n");
+
+  {
+    test_client_t  tc_e, tc_f;
+    wuss_client_t  client_e, client_f;
+    box_t          box_e, box_f;
+    wuss_window_t *win_e, *win_f;
+
+    tc_e.redraw_count = 0;
+    tc_e.mouse_count  = 0;
+    client_e.redraw      = test_redraw;
+    client_e.mouse       = test_mouse;
+    client_e.client_data = &tc_e;
+    client_e.bg          = wuss_NO_BACKGROUND;
+
+    box_e.x0 = 100; box_e.y0 = 0;
+    box_e.x1 = 150; box_e.y1 = 50;
+    rc = wuss_window_create(wuss, &box_e, NULL, wuss_WINDOW_NO_TITLEBAR, &client_e, &win_e);
+    if (rc != result_OK)
+      goto Failure;
+
+    tc_f.redraw_count = 0;
+    tc_f.mouse_count  = 0;
+    client_f.redraw      = test_redraw;
+    client_f.mouse       = test_mouse;
+    client_f.client_data = &tc_f;
+    client_f.bg          = wuss_NO_BACKGROUND;
+
+    box_f.x0 = 130; box_f.y0 = 20;
+    box_f.x1 = 180; box_f.y1 = 70;
+    rc = wuss_window_create(wuss, &box_f, NULL, wuss_WINDOW_NO_TITLEBAR, &client_f, &win_f);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* F was created after E, so F is topmost; click E's exposed content
+     * (outside the overlap) to bring E back to front */
+    rc = wuss_mouse_down(wuss, 110, 10, wuss_BUTTON_SELECT, &hit); /* within E only */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_e)
+      goto Failure;
+
+    rc = wuss_mouse_up(wuss, 110, 10, wuss_BUTTON_SELECT, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_down(wuss, 135, 25, wuss_BUTTON_SELECT, &hit); /* overlap: E now on top */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_e)
+      goto Failure;
+
+    rc = wuss_mouse_up(wuss, 135, 25, wuss_BUTTON_SELECT, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_destroy(win_e);
+    wuss_window_destroy(win_f);
+  }
+
   printf("test: wuss_window_set_background\n");
 
   rc = wuss_window_set_background(win_d, 999);

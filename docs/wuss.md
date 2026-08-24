@@ -26,7 +26,7 @@ Destroy with `wuss_destroy`, which also destroys any windows still open on it.
 
 ## Windows
 
-Create a window with a bounding box, optional title, appearance flags, and a client delegate:
+Create a window with a bounding box, optional title, appearance flags and a client delegate:
 
 ```C
 result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *title,

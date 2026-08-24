@@ -21,6 +21,9 @@ result_t palette_redraw(wuss_window_t *window, screen_t *scr, const box_t *conte
 
   pc = client_data;
 
+  if (pc->npalette <= 0)
+    return result_OK;
+
   cols = 1;
   while (cols * cols < pc->npalette)
     cols++;

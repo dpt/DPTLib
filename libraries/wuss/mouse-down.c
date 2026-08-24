@@ -26,6 +26,11 @@ result_t wuss_mouse_down(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_
     return result_OK;
   }
 
+  /* no titlebar means no drag handle, so a content click is a window's only
+   * way to be raised */
+  if ((win->flags & wuss_WINDOW_NO_TITLEBAR) && button == wuss_BUTTON_SELECT)
+    wuss_window_bring_to_front(win);
+
   if (win->client.mouse != NULL)
   {
     int local_x, local_y;
