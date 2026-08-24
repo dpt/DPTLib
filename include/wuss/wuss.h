@@ -132,16 +132,29 @@ result_t wuss_invalidate(wuss_t *wuss, const box_t *box);
 result_t wuss_redraw_dirty(wuss_t *wuss);
 
 /**
- * Fetch the current accumulated dirty region (see wuss_invalidate). wuss
- * only repaints windows, not background between/behind them, so a caller
- * whose invalidations can expose background (e.g. after a window move)
- * should clear this region itself before calling wuss_redraw_dirty.
+ * Fetch the number of dirty regions currently accumulated (see
+ * wuss_invalidate). Regions are self-coalescing: an invalidation already
+ * covered by an existing region is discarded, and one sharing a complete
+ * edge with an existing region extends it in place, so this stays small
+ * under most usage.
  *
- * \param[in]  wuss Window manager.
- * \param[out] out  Filled in with the dirty region. Empty (box_is_empty)
- *                  if nothing is dirty.
+ * \param[in] wuss Window manager.
+ * \return Number of dirty regions, 0 if nothing is dirty.
  */
-void wuss_get_dirty(const wuss_t *wuss, box_t *out);
+int wuss_get_dirty_count(const wuss_t *wuss);
+
+/**
+ * Fetch one of the current accumulated dirty regions (see
+ * wuss_invalidate). wuss only repaints windows, not background
+ * between/behind them, so a caller whose invalidations can expose
+ * background (e.g. after a window move) should clear these regions itself
+ * before calling wuss_redraw_dirty.
+ *
+ * \param[in]  wuss  Window manager.
+ * \param[in]  index Index of the region to fetch, 0 to wuss_get_dirty_count() - 1.
+ * \param[out] out   Filled in with the dirty region.
+ */
+void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
 
 /**
  * Deliver a mouse-down event. Hit-tests the topmost window at (x,y). A

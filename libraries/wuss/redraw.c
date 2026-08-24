@@ -113,7 +113,7 @@ result_t wuss_redraw(wuss_t *wuss)
   rc = result_OK;
   redraw_from(wuss, wuss->z_order.next, &full, &rc);
 
-  box_reset(&wuss->dirty);
+  wuss->ndirty = 0;
 
   return rc;
 }
@@ -121,14 +121,16 @@ result_t wuss_redraw(wuss_t *wuss)
 result_t wuss_redraw_dirty(wuss_t *wuss)
 {
   result_t rc;
+  int      i;
 
-  if (box_is_empty(&wuss->dirty))
+  if (wuss->ndirty == 0)
     return result_OK;
 
   rc = result_OK;
-  redraw_from(wuss, wuss->z_order.next, &wuss->dirty, &rc);
+  for (i = 0; i < wuss->ndirty; i++)
+    redraw_from(wuss, wuss->z_order.next, &wuss->dirty[i], &rc);
 
-  box_reset(&wuss->dirty);
+  wuss->ndirty = 0;
 
   return rc;
 }

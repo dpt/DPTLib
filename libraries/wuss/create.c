@@ -105,7 +105,7 @@ result_t wuss_create(screen_t             *scr,
   w->drag_dx  = 0;
   w->drag_dy  = 0;
 
-  box_reset(&w->dirty);
+  w->ndirty = 0;
 
   list_init(&w->z_order);
 
