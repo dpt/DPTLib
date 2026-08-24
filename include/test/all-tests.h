@@ -43,4 +43,7 @@ extern testfn_t array_test,
                 bsearch_test,
                 pack_test;
 
+/* wuss */
+extern testfn_t wuss_test;
+
 #endif /* TESTS_ALL_TESTS_H */
