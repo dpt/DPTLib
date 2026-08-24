@@ -48,9 +48,14 @@ static inline int wuss__size_ok(int width, int height, int titlebar_height)
   return width > 0 && height > titlebar_height;
 }
 
+static inline int wuss__titlebar_height_for(const wuss_t *wuss, wuss_window_flags_t flags)
+{
+  return (flags & wuss_WINDOW_NO_TITLEBAR) ? 0 : wuss->titlebar_height;
+}
+
 static inline int wuss__titlebar_height(const wuss_window_t *window)
 {
-  return (window->flags & wuss_WINDOW_NO_TITLEBAR) ? 0 : window->wuss->titlebar_height;
+  return wuss__titlebar_height_for(window->wuss, window->flags);
 }
 
 #endif /* IMPL_H */

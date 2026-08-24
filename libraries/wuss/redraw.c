@@ -9,10 +9,11 @@
 static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, result_t *rc)
 {
   box_t clipped;
+  box_t visible_clipped;
   box_t titlebar;
   box_t content;
 
-  if (box_intersection(&win->visible, full, &clipped))
+  if (box_intersection(&win->visible, full, &visible_clipped))
     return; /* offscreen */
 
   wuss__titlebar_box(win, &titlebar);
@@ -57,7 +58,7 @@ static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, r
     }
   }
 
-  if (!(win->flags & wuss_WINDOW_NO_OUTLINE) && !box_intersection(&win->visible, full, &clipped))
+  if (!(win->flags & wuss_WINDOW_NO_OUTLINE))
   {
     int      width, height;
     colour_t border;
@@ -66,7 +67,7 @@ static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, r
     height = win->visible.y1 - win->visible.y0;
     border = wuss->palette[wuss->titlebar_bg];
 
-    wuss->scr->clip = clipped;
+    wuss->scr->clip = visible_clipped;
     screen_draw_rect(wuss->scr, win->visible.x0,     win->visible.y0,     width, 1,      border);
     screen_draw_rect(wuss->scr, win->visible.x0,     win->visible.y1 - 1, width, 1,      border);
     screen_draw_rect(wuss->scr, win->visible.x0,     win->visible.y0,     1,     height, border);
@@ -74,13 +75,29 @@ static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, r
   }
 }
 
-static void redraw_from(wuss_t *wuss, list_t *e, const box_t *full, result_t *rc)
+/* draws back-to-front (list head = topmost window drawn last) without
+ * recursing per window, so stack use stays flat regardless of window count;
+ * ponytail: O(n^2) walk, fine while window counts stay small, switch to an
+ * array/vector pass if that stops being true */
+static void redraw_from(wuss_t *wuss, list_t *head, const box_t *full, result_t *rc)
 {
-  if (e == NULL)
-    return;
+  const list_t *stop;
 
-  redraw_from(wuss, e->next, full, rc);
-  redraw_window(wuss, (wuss_window_t *) e, full, rc);
+  stop = NULL;
+  for (;;)
+  {
+    list_t *e, *last;
+
+    last = NULL;
+    for (e = head; e != stop; e = e->next)
+      last = e;
+
+    if (last == NULL)
+      break;
+
+    redraw_window(wuss, (wuss_window_t *) last, full, rc);
+    stop = last;
+  }
 }
 
 result_t wuss_redraw(wuss_t *wuss)

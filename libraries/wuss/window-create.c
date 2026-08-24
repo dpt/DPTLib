@@ -21,7 +21,7 @@ result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *titl
 
   width           = visible->x1 - visible->x0;
   height          = visible->y1 - visible->y0;
-  titlebar_height = (flags & wuss_WINDOW_NO_TITLEBAR) ? 0 : wuss->titlebar_height;
+  titlebar_height = wuss__titlebar_height_for(wuss, flags);
   if (!wuss__size_ok(width, height, titlebar_height))
     return result_WUSS_TOO_SMALL;
 
