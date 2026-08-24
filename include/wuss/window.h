@@ -71,19 +71,23 @@ wuss_client_t;
 /**
  * Create a window.
  *
+ * Furniture (titlebar/outline) is added outside \p content, not carved out
+ * of it: the window's content area always ends up exactly \p content, and
+ * its on-screen footprint (see wuss_window_get_visible_bounds) is \p content
+ * expanded outward by whatever furniture flags request.
+ *
  * \param[in]  wuss    Window manager to create the window on.
- * \param[in]  visible Initial visible (on-screen) bounds, screen space. Copied in.
+ * \param[in]  content Requested content-area bounds, screen space. Copied in.
  * \param[in]  title   Titlebar label, or NULL for none. Copied in, truncated if too long. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR.
  * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR / wuss_WINDOW_NO_OUTLINE, OR'd together, or wuss_WINDOW_NONE for the default furniture.
  * \param[in]  client  Content delegate. Copied in. May be NULL for a window with no content handling.
  * \param[out] window  Newly created window. Becomes the topmost window.
- * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if visible
- *         is too small to hold a titlebar (unless wuss_WINDOW_NO_TITLEBAR is
- *         set) plus any content, \ref result_WUSS_BAD_COLOUR if client->bg
- *         is out of range for the palette, or another appropriate result
- *         code.
+ * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
+ *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if
+ *         client->bg is out of range for the palette, or another
+ *         appropriate result code.
  */
-result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *title, wuss_window_flags_t flags, const wuss_client_t *client, wuss_window_t **window);
+result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title, wuss_window_flags_t flags, const wuss_client_t *client, wuss_window_t **window);
 
 /**
  * Destroy a window.
@@ -96,20 +100,19 @@ void wuss_window_destroy(wuss_window_t *doomed);
  * Move a window, preserving its size.
  *
  * \param[in] window Window to move.
- * \param[in] x      New screen x coordinate of the window's top-left.
- * \param[in] y      New screen y coordinate of the window's top-left.
+ * \param[in] x      New screen x coordinate of the window's content top-left.
+ * \param[in] y      New screen y coordinate of the window's content top-left.
  */
 void wuss_window_move(wuss_window_t *window, int x, int y);
 
 /**
- * Resize a window, preserving its top-left position.
+ * Resize a window's content area, preserving its top-left position.
  *
  * \param[in] window Window to resize.
- * \param[in] width  New width.
- * \param[in] height New height.
- * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if width/height
- *         are too small to hold a titlebar (unless wuss_WINDOW_NO_TITLEBAR is
- *         set) plus any content.
+ * \param[in] width  New content width.
+ * \param[in] height New content height.
+ * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if width or
+ *         height is not positive.
  */
 result_t wuss_window_resize(wuss_window_t *window, int width, int height);
 
@@ -121,7 +124,8 @@ result_t wuss_window_resize(wuss_window_t *window, int width, int height);
 void wuss_window_bring_to_front(wuss_window_t *window);
 
 /**
- * Fetch a window's current visible (on-screen) bounds.
+ * Fetch a window's current visible (on-screen) bounds: its full footprint,
+ * including any titlebar/outline furniture, not just its content area.
  *
  * \param[in]  window  Window to query.
  * \param[out] visible Filled in with the window's visible bounds.
@@ -129,8 +133,9 @@ void wuss_window_bring_to_front(wuss_window_t *window);
 void wuss_window_get_visible_bounds(const wuss_window_t *window, box_t *visible);
 
 /**
- * Fetch a window's current content-area bounds, screen space (visible
- * bounds minus the titlebar). Useful for computing invalidation regions
+ * Fetch a window's current content-area bounds, screen space (as requested
+ * at creation, or adjusted by a subsequent move/resize; excludes any
+ * titlebar/outline furniture). Useful for computing invalidation regions
  * outside of a redraw callback.
  *
  * \param[in]  window  Window to query.

@@ -10,28 +10,33 @@
 
 #include "impl.h"
 
-result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *title, wuss_window_flags_t flags, const wuss_client_t *client, wuss_window_t **window)
+result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title, wuss_window_flags_t flags, const wuss_client_t *client, wuss_window_t **window)
 {
   wuss_window_t *win;
-  int             width, height, titlebar_height;
+  int             width, height, outline_px, titlebar_height;
 
   assert(wuss    != NULL);
-  assert(visible != NULL);
+  assert(content != NULL);
   assert(window  != NULL);
 
-  width           = visible->x1 - visible->x0;
-  height          = visible->y1 - visible->y0;
-  titlebar_height = wuss__titlebar_height_for(wuss, flags);
-  if (!wuss__size_ok(width, height, titlebar_height))
+  width  = content->x1 - content->x0;
+  height = content->y1 - content->y0;
+  if (!wuss__size_ok(width, height))
     return result_WUSS_TOO_SMALL;
 
   win = malloc(sizeof(*win));
   if (win == NULL)
     return result_OOM;
 
-  win->wuss    = wuss;
-  win->visible = *visible;
-  win->flags   = flags;
+  outline_px      = wuss__outline_px_for(flags);
+  titlebar_height = wuss__titlebar_height_for(wuss, flags);
+
+  win->wuss       = wuss;
+  win->visible.x0 = content->x0 - outline_px;
+  win->visible.y0 = content->y0 - outline_px - titlebar_height;
+  win->visible.x1 = content->x1 + outline_px;
+  win->visible.y1 = content->y1 + outline_px;
+  win->flags      = flags;
 
   if (client != NULL)
     win->client = *client;
