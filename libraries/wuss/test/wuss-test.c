@@ -56,8 +56,21 @@ static wuss_button_t sdl_button_to_wuss(Uint8 button)
   }
 }
 
+/* SDL delivers mouse coordinates in window space, which F2 can scale away
+ * from the fixed-size wuss screen; map back down to screen space */
+static void sdl_pos_to_scr(SDL_Window *window, int scr_width, int scr_height, float in_x, float in_y, int *out_x, int *out_y)
+{
+  int win_w, win_h;
+
+  SDL_GetWindowSize(window, &win_w, &win_h);
+
+  *out_x = (int) (in_x * scr_width  / win_w);
+  *out_y = (int) (in_y * scr_height / win_h);
+}
+
 /* click windows to bring to front, drag titlebars to move, resize the
- * SDL window to see the wuss screen scale; Q or close to quit */
+ * SDL window to see the wuss screen scale; F2 doubles the SDL window size;
+ * Q or close to quit */
 static result_t wuss_interactive_test(const char *resources)
 {
   const int        scr_width  = 640;
@@ -151,6 +164,7 @@ static result_t wuss_interactive_test(const char *resources)
   }
 
   SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
+  SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST); /* keep pixels crisp when F2 scales the window up */
 
   {
     wuss_config_t config;
@@ -253,20 +267,40 @@ static result_t wuss_interactive_test(const char *resources)
           quit = true;
         else if (event.key.key == SDLK_F1)
           garbage_pending = true;
+        else if (event.key.key == SDLK_F2)
+        {
+          int w, h;
+
+          SDL_GetWindowSize(window, &w, &h);
+          SDL_SetWindowSize(window, w * 2, h * 2);
+        }
         break;
 
       case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        wuss_mouse_down(wuss, (int) event.button.x, (int) event.button.y,
-                         sdl_button_to_wuss(event.button.button), NULL);
+        {
+          int x, y;
+
+          sdl_pos_to_scr(window, scr_width, scr_height, event.button.x, event.button.y, &x, &y);
+          wuss_mouse_down(wuss, x, y, sdl_button_to_wuss(event.button.button), NULL);
+        }
         break;
 
       case SDL_EVENT_MOUSE_BUTTON_UP:
-        wuss_mouse_up(wuss, (int) event.button.x, (int) event.button.y,
-                       sdl_button_to_wuss(event.button.button), NULL);
+        {
+          int x, y;
+
+          sdl_pos_to_scr(window, scr_width, scr_height, event.button.x, event.button.y, &x, &y);
+          wuss_mouse_up(wuss, x, y, sdl_button_to_wuss(event.button.button), NULL);
+        }
         break;
 
       case SDL_EVENT_MOUSE_MOTION:
-        wuss_mouse_move(wuss, (int) event.motion.x, (int) event.motion.y, NULL);
+        {
+          int x, y;
+
+          sdl_pos_to_scr(window, scr_width, scr_height, event.motion.x, event.motion.y, &x, &y);
+          wuss_mouse_move(wuss, x, y, NULL);
+        }
         break;
 
       default:
