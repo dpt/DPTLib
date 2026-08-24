@@ -10,6 +10,8 @@
 #include "base/result.h"
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
+#include "framebuf/colour.h"
+#include "framebuf/palettes.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
@@ -17,6 +19,217 @@
 #include "wuss/window.h"
 
 #include "test/all-tests.h"
+
+/* ----------------------------------------------------------------------- */
+
+#ifdef USE_SDL
+
+#include <SDL3/SDL.h>
+
+typedef struct interactive_client
+{
+  colour_t colour;
+}
+interactive_client_t;
+
+static result_t interactive_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *client_data)
+{
+  interactive_client_t *ic;
+
+  NOT_USED(window);
+
+  ic = client_data;
+
+  screen_draw_rect(scr, content->x0, content->y0,
+                    content->x1 - content->x0,
+                    content->y1 - content->y0,
+                    ic->colour);
+
+  return result_OK;
+}
+
+static wuss_button_t sdl_button_to_wuss(Uint8 button)
+{
+  switch (button)
+  {
+  case SDL_BUTTON_MIDDLE: return wuss_BUTTON_MIDDLE;
+  case SDL_BUTTON_RIGHT:  return wuss_BUTTON_RIGHT;
+  default:                return wuss_BUTTON_LEFT;
+  }
+}
+
+/* click windows to bring to front, drag titlebars to move, resize the
+ * SDL window to see the wuss screen scale; Q or close to quit */
+static result_t wuss_interactive_test(const char *resources)
+{
+  const int   scr_width  = 640;
+  const int   scr_height = 480;
+  const int   rowbytes   = scr_width * 4;
+
+  result_t              rc;
+  void                  *pixels;
+  bitmap_t              bm;
+  screen_t              scr;
+  colour_t              palette[16];
+  wuss_t                *wuss;
+  interactive_client_t   ic_a, ic_b, ic_c;
+  wuss_client_t          client_a, client_b, client_c;
+  box_t                  box_a, box_b, box_c;
+  wuss_window_t         *win_a, *win_b, *win_c;
+  SDL_Window            *window;
+  SDL_Renderer          *renderer;
+  SDL_Texture           *texture;
+  bool                   quit;
+
+  NOT_USED(resources);
+
+  define_pico8_palette(palette);
+
+  pixels = malloc(rowbytes * scr_height);
+  if (pixels == NULL)
+    goto Failure;
+
+  rc = bitmap_init(&bm, scr_width, scr_height, pixelfmt_bgrx8888, rowbytes, palette, pixels);
+  if (rc != result_OK)
+    goto Failure;
+
+  bitmap_clear(&bm, palette[palette_PICO8_WHITE]);
+
+  screen_for_bitmap(&scr, &bm);
+
+  if (!SDL_Init(SDL_INIT_VIDEO))
+  {
+    fprintf(stderr, "Error: SDL_Init: %s\n", SDL_GetError());
+    goto Failure;
+  }
+
+  window = SDL_CreateWindow("DPTLib wuss Test", scr_width, scr_height, 0);
+  if (window == NULL)
+  {
+    fprintf(stderr, "Error: SDL_CreateWindow: %s\n", SDL_GetError());
+    goto Failure;
+  }
+
+  renderer = SDL_CreateRenderer(window, NULL);
+  if (renderer == NULL)
+  {
+    fprintf(stderr, "Error: SDL_CreateRenderer: %s\n", SDL_GetError());
+    goto Failure;
+  }
+
+  texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                               SDL_TEXTUREACCESS_STREAMING,
+                               scr_width, scr_height);
+  if (texture == NULL)
+  {
+    fprintf(stderr, "Error: SDL_CreateTexture: %s\n", SDL_GetError());
+    goto Failure;
+  }
+
+  SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
+
+  rc = wuss_create(&scr, NULL, palette, NELEMS(palette), NULL, &wuss);
+  if (rc != result_OK)
+    goto Failure;
+
+  ic_a.colour = palette[palette_PICO8_RED];
+  client_a.redraw      = interactive_redraw;
+  client_a.mouse       = NULL;
+  client_a.client_data = &ic_a;
+  box_a.x0 = 20;  box_a.y0 = 20;
+  box_a.x1 = 220; box_a.y1 = 180;
+  rc = wuss_window_create(wuss, &box_a, "A", &client_a, &win_a);
+  if (rc != result_OK)
+    goto Failure;
+
+  ic_b.colour = palette[palette_PICO8_BLUE];
+  client_b.redraw      = interactive_redraw;
+  client_b.mouse       = NULL;
+  client_b.client_data = &ic_b;
+  box_b.x0 = 120; box_b.y0 = 100;
+  box_b.x1 = 340; box_b.y1 = 280;
+  rc = wuss_window_create(wuss, &box_b, "B", &client_b, &win_b);
+  if (rc != result_OK)
+    goto Failure;
+
+  ic_c.colour = palette[palette_PICO8_GREEN];
+  client_c.redraw      = interactive_redraw;
+  client_c.mouse       = NULL;
+  client_c.client_data = &ic_c;
+  box_c.x0 = 260; box_c.y0 = 60;
+  box_c.x1 = 460; box_c.y1 = 220;
+  rc = wuss_window_create(wuss, &box_c, "C", &client_c, &win_c);
+  if (rc != result_OK)
+    goto Failure;
+
+  quit = false;
+
+  while (!quit)
+  {
+    SDL_Event event;
+
+    while (SDL_PollEvent(&event))
+    {
+      switch (event.type)
+      {
+      case SDL_EVENT_QUIT:
+        quit = true;
+        break;
+
+      case SDL_EVENT_KEY_UP:
+        if (event.key.key == SDLK_Q)
+          quit = true;
+        break;
+
+      case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        wuss_mouse_down(wuss, (int) event.button.x, (int) event.button.y,
+                         sdl_button_to_wuss(event.button.button), NULL);
+        break;
+
+      case SDL_EVENT_MOUSE_BUTTON_UP:
+        wuss_mouse_up(wuss, (int) event.button.x, (int) event.button.y,
+                       sdl_button_to_wuss(event.button.button), NULL);
+        break;
+
+      case SDL_EVENT_MOUSE_MOTION:
+        wuss_mouse_move(wuss, (int) event.motion.x, (int) event.motion.y, NULL);
+        break;
+
+      default:
+        break;
+      }
+    }
+
+    bitmap_clear(&bm, palette[palette_PICO8_WHITE]);
+    wuss_redraw(wuss);
+
+    SDL_UpdateTexture(texture, NULL, bm.base, bm.rowbytes);
+    SDL_RenderTexture(renderer, texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
+
+    SDL_Delay(1000 / 60);
+  }
+
+  wuss_destroy(wuss);
+
+  SDL_DestroyTexture(texture);
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(window);
+  SDL_Quit();
+
+  free(pixels);
+
+  return result_TEST_PASSED;
+
+
+Failure:
+
+  printf("failed\n");
+
+  return result_TEST_FAILED;
+}
+
+#endif /* USE_SDL */
 
 /* ----------------------------------------------------------------------- */
 
@@ -310,6 +523,12 @@ result_t wuss_test(const char *resources)
   wuss_destroy(wuss);
 
   free(pixels);
+
+#ifdef USE_SDL
+  rc = wuss_interactive_test(resources);
+  if (rc != result_TEST_PASSED)
+    goto Failure;
+#endif
 
   return result_TEST_PASSED;
 
