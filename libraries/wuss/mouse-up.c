@@ -29,10 +29,12 @@ result_t wuss_mouse_up(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_wi
 
   if (win->client.mouse != NULL)
   {
-    int local_x, local_y;
+    box_t content;
+    int   local_x, local_y;
 
-    local_x = x - win->visible.x0;
-    local_y = y - win->visible.y0 - wuss__titlebar_height(win);
+    wuss__content_box(win, &content);
+    local_x = x - content.x0;
+    local_y = y - content.y0;
     return win->client.mouse(win, wuss_MOUSE_UP, local_x, local_y, button, win->client.client_data);
   }
 

@@ -26,13 +26,15 @@ Destroy with `wuss_destroy`, which also destroys any windows still open on it.
 
 ## Windows
 
-Create a window with a bounding box, optional title, appearance flags and a client delegate:
+Create a window with a content bounding box, optional title, appearance flags and a client delegate:
 
 ```C
-result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *title,
+result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title,
                             wuss_window_flags_t flags, const wuss_client_t *client,
                             wuss_window_t **window);
 ```
+
+Furniture is additional to `content`, not carved out of it: the window's content area always ends up exactly the box requested, and its on-screen footprint (`wuss_window_get_visible_bounds`) is `content` expanded outward by whatever furniture flags request — a titlebar above, and/or a 1px outline around all four sides.
 
 `wuss_client_t` holds the client's callbacks and its content background:
 
@@ -50,10 +52,10 @@ wuss_client_t;
 `flags` combines, by bitwise OR:
 
 - `wuss_WINDOW_NONE` — default furniture: titlebar and outline.
-- `wuss_WINDOW_NO_TITLEBAR` — no titlebar; content fills the full visible area, and there's no drag handle.
-- `wuss_WINDOW_NO_OUTLINE` — no 1px border around the visible area.
+- `wuss_WINDOW_NO_TITLEBAR` — no titlebar, and no drag handle.
+- `wuss_WINDOW_NO_OUTLINE` — no 1px border around the window.
 
-Other window operations: `wuss_window_destroy`, `wuss_window_move`, `wuss_window_resize` (preserves top-left), `wuss_window_bring_to_front`, `wuss_window_get_visible_bounds`, `wuss_window_get_content_bounds`, `wuss_window_set_background`.
+Other window operations: `wuss_window_destroy`, `wuss_window_move`, `wuss_window_resize` (preserves content top-left), `wuss_window_bring_to_front`, `wuss_window_get_visible_bounds` (full on-screen footprint), `wuss_window_get_content_bounds`, `wuss_window_set_background`.
 
 ## Client callbacks
 

@@ -17,12 +17,15 @@ result_t wuss_mouse_down(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_
   wuss__titlebar_box(win, &titlebar);
   if (box_contains_point(&titlebar, x, y))
   {
+    box_t content;
+
     if (button == wuss_BUTTON_SELECT)
       wuss_window_bring_to_front(win);
 
+    wuss__content_box(win, &content);
     wuss->dragging = win;
-    wuss->drag_dx  = x - win->visible.x0;
-    wuss->drag_dy  = y - win->visible.y0;
+    wuss->drag_dx  = x - content.x0;
+    wuss->drag_dy  = y - content.y0;
     return result_OK;
   }
 
@@ -33,10 +36,12 @@ result_t wuss_mouse_down(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_
 
   if (win->client.mouse != NULL)
   {
-    int local_x, local_y;
+    box_t content;
+    int   local_x, local_y;
 
-    local_x = x - win->visible.x0;
-    local_y = y - win->visible.y0 - wuss__titlebar_height(win);
+    wuss__content_box(win, &content);
+    local_x = x - content.x0;
+    local_y = y - content.y0;
     return win->client.mouse(win, wuss_MOUSE_DOWN, local_x, local_y, button, win->client.client_data);
   }
 

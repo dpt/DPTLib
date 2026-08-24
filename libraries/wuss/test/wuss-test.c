@@ -379,7 +379,7 @@ result_t wuss_test(const char *resources)
   box_t          box_a, box_b, box_c, box_d;
   wuss_window_t *win_a, *win_b, *win_c, *win_d;
   wuss_window_t *hit;
-  box_t          visible;
+  box_t          visible, content;
   int            before_a, before_b;
   int            width, height;
   const colour_t custom_palette[2] = { 0, 0 };
@@ -428,7 +428,7 @@ result_t wuss_test(const char *resources)
   box_a.x0 = 0;
   box_a.y0 = 0;
   box_a.x1 = 100;
-  box_a.y1 = 10; /* not taller than titlebar_height (20) */
+  box_a.y1 = 0; /* zero-height content is invalid regardless of furniture */
   rc = wuss_window_create(wuss, &box_a, "toosmall", wuss_WINDOW_NONE, NULL, &win_a);
   if (rc != result_WUSS_TOO_SMALL)
     goto Failure;
@@ -483,7 +483,7 @@ result_t wuss_test(const char *resources)
     goto Failure;
   if (tc_b.mouse_count != 1 || tc_a.mouse_count != 0)
     goto Failure;
-  if (tc_b.last_action != wuss_MOUSE_DOWN || tc_b.last_x != 25 || tc_b.last_y != 5)
+  if (tc_b.last_action != wuss_MOUSE_DOWN || tc_b.last_x != 25 || tc_b.last_y != 25)
     goto Failure;
 
   rc = wuss_mouse_up(wuss, 75, 75, wuss_BUTTON_SELECT, &hit);
@@ -493,13 +493,13 @@ result_t wuss_test(const char *resources)
   printf("test: click-to-front changes subsequent overlap hits\n");
 
   tc_a.mouse_count = 0;
-  rc = wuss_mouse_down(wuss, 10, 10, wuss_BUTTON_SELECT, &hit); /* A's titlebar */
+  rc = wuss_mouse_down(wuss, 10, -10, wuss_BUTTON_SELECT, &hit); /* A's titlebar, above its content */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
     goto Failure;
 
-  rc = wuss_mouse_up(wuss, 10, 10, wuss_BUTTON_SELECT, &hit);
+  rc = wuss_mouse_up(wuss, 10, -10, wuss_BUTTON_SELECT, &hit);
   if (rc != result_OK)
     goto Failure;
 
@@ -524,7 +524,7 @@ result_t wuss_test(const char *resources)
     goto Failure;
   if (hit != win_a)
     goto Failure;
-  if (tc_a.mouse_count != 1 || tc_a.last_x != 75 || tc_a.last_y != 55)
+  if (tc_a.mouse_count != 1 || tc_a.last_x != 75 || tc_a.last_y != 75)
     goto Failure;
 
   rc = wuss_mouse_up(wuss, 75, 75, wuss_BUTTON_SELECT, &hit);
@@ -534,7 +534,7 @@ result_t wuss_test(const char *resources)
   printf("test: titlebar click starts a drag, not delivered as content\n");
 
   tc_a.mouse_count = 0;
-  rc = wuss_mouse_down(wuss, 10, 10, wuss_BUTTON_SELECT, &hit); /* A's titlebar, A already topmost */
+  rc = wuss_mouse_down(wuss, 10, -10, wuss_BUTTON_SELECT, &hit); /* A's titlebar, A already topmost */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -569,7 +569,7 @@ result_t wuss_test(const char *resources)
     goto Failure;
 
   wuss_window_get_visible_bounds(win_a, &visible);
-  if (visible.x0 != 20 || visible.y0 != 5)
+  if (visible.x0 != 19 || visible.y0 != 4)
     goto Failure;
 
   printf("test: mouse-up ends the drag\n");
@@ -582,7 +582,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: Adjust-drag moves a window without bringing it to front\n");
 
-  rc = wuss_mouse_down(wuss, 140, 55, wuss_BUTTON_ADJUST, &hit); /* B's titlebar, clear of A */
+  rc = wuss_mouse_down(wuss, 140, 35, wuss_BUTTON_ADJUST, &hit); /* B's titlebar, clear of A */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_b)
@@ -595,7 +595,7 @@ result_t wuss_test(const char *resources)
     goto Failure;
 
   wuss_window_get_visible_bounds(win_b, &visible);
-  if (visible.x0 != 55 || visible.y0 != 55)
+  if (visible.x0 != 54 || visible.y0 != 54)
     goto Failure;
 
   rc = wuss_mouse_up(wuss, 145, 60, wuss_BUTTON_ADJUST, &hit);
@@ -621,25 +621,34 @@ result_t wuss_test(const char *resources)
     goto Failure;
 
   wuss_window_get_visible_bounds(win_a, &visible);
-  if (visible.x0 != 20 || visible.y0 != 5)
+  if (visible.x0 != 19 || visible.y0 != 4)
     goto Failure;
 
   printf("test: window_resize valid and too-small cases\n");
 
-  rc = wuss_window_resize(win_a, 50, 10); /* not taller than titlebar_height */
+  rc = wuss_window_resize(win_a, 50, 0); /* zero-height content is invalid */
   if (rc != result_WUSS_TOO_SMALL)
     goto Failure;
 
   rc = wuss_window_resize(win_a, 50, 50);
   if (rc != result_OK)
     goto Failure;
-  wuss_window_get_visible_bounds(win_a, &visible);
-  width  = visible.x1 - visible.x0;
-  height = visible.y1 - visible.y0;
+
+  /* content ends up exactly the requested size... */
+  wuss_window_get_content_bounds(win_a, &content);
+  width  = content.x1 - content.x0;
+  height = content.y1 - content.y0;
   if (width != 50 || height != 50)
     goto Failure;
 
-  printf("test: title-less, no-outline window accepts height too small for a titlebar\n");
+  /* ...with the titlebar/outline furniture added on top of that */
+  wuss_window_get_visible_bounds(win_a, &visible);
+  width  = visible.x1 - visible.x0;
+  height = visible.y1 - visible.y0;
+  if (width != 52 || height != 72)
+    goto Failure;
+
+  printf("test: title-less, no-outline window has no furniture, so visible == content\n");
 
   tc_d.redraw_count = 0;
   tc_d.mouse_count  = 0;
@@ -649,9 +658,14 @@ result_t wuss_test(const char *resources)
   client_d.bg          = wuss_NO_BACKGROUND;
 
   box_d.x0 = 0;  box_d.y0 = 160;
-  box_d.x1 = 30; box_d.y1 = 175; /* shorter than the 20px titlebar_height */
+  box_d.x1 = 30; box_d.y1 = 175; /* shorter than the 20px titlebar_height, still valid: no titlebar to fit */
   rc = wuss_window_create(wuss, &box_d, "ignored", wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &client_d, &win_d);
   if (rc != result_OK)
+    goto Failure;
+
+  wuss_window_get_visible_bounds(win_d, &visible);
+  if (visible.x0 != box_d.x0 || visible.y0 != box_d.y0 ||
+      visible.x1 != box_d.x1 || visible.y1 != box_d.y1)
     goto Failure;
 
   printf("test: click within a title-less window's top edge is delivered as content, not a drag\n");
@@ -757,7 +771,7 @@ result_t wuss_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
-  rc = wuss_mouse_down(wuss, 5, 5, wuss_BUTTON_SELECT, &hit); /* C's titlebar */
+  rc = wuss_mouse_down(wuss, 5, -10, wuss_BUTTON_SELECT, &hit); /* C's titlebar, above its content */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_c)

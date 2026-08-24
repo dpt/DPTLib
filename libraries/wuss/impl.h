@@ -33,7 +33,8 @@ struct wuss_window
 {
   list_t              link;   /* must be first member */
   wuss_t             *wuss;
-  box_t               visible;
+  box_t               visible; /* full on-screen footprint: content expanded
+                                 * outward by any titlebar/outline furniture */
   wuss_client_t       client;
   wuss_window_flags_t flags;
   char                title[WUSS_TITLE_MAX + 1];
@@ -43,9 +44,9 @@ wuss_window_t *wuss__window_at(wuss_t *wuss, int x, int y);
 void            wuss__titlebar_box(const wuss_window_t *window, box_t *out);
 void            wuss__content_box(const wuss_window_t *window, box_t *out);
 
-static inline int wuss__size_ok(int width, int height, int titlebar_height)
+static inline int wuss__size_ok(int width, int height)
 {
-  return width > 0 && height > titlebar_height;
+  return width > 0 && height > 0;
 }
 
 static inline int wuss__titlebar_height_for(const wuss_t *wuss, wuss_window_flags_t flags)
@@ -56,6 +57,16 @@ static inline int wuss__titlebar_height_for(const wuss_t *wuss, wuss_window_flag
 static inline int wuss__titlebar_height(const wuss_window_t *window)
 {
   return wuss__titlebar_height_for(window->wuss, window->flags);
+}
+
+static inline int wuss__outline_px_for(wuss_window_flags_t flags)
+{
+  return (flags & wuss_WINDOW_NO_OUTLINE) ? 0 : 1;
+}
+
+static inline int wuss__outline_px(const wuss_window_t *window)
+{
+  return wuss__outline_px_for(window->flags);
 }
 
 #endif /* IMPL_H */
