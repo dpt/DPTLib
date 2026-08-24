@@ -332,11 +332,14 @@ static result_t wuss_interactive_test(const char *resources)
     }
     else
     {
-      box_t dirty;
+      int ndirty, i;
 
-      wuss_get_dirty(wuss, &dirty);
-      if (!box_is_empty(&dirty))
+      ndirty = wuss_get_dirty_count(wuss);
+      for (i = 0; i < ndirty; i++)
       {
+        box_t dirty;
+
+        wuss_get_dirty(wuss, i, &dirty);
         scr.clip = dirty;
         screen_draw_rect(&scr, dirty.x0, dirty.y0,
                           dirty.x1 - dirty.x0, dirty.y1 - dirty.y0,
@@ -619,10 +622,7 @@ result_t wuss_test(const char *resources)
     goto Failure; /* invalidated, not yet redrawn */
 
   {
-    box_t dirty;
-
-    wuss_get_dirty(wuss, &dirty);
-    if (box_is_empty(&dirty))
+    if (wuss_get_dirty_count(wuss) == 0)
       goto Failure;
   }
 

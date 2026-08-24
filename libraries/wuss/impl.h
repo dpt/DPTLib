@@ -14,6 +14,8 @@
 #define WUSS_TITLE_MAX               63
 #define WUSS_DEFAULT_TITLEBAR_HEIGHT 20
 
+#define WUSS_MAX_DIRTY 16 /* dirty regions tracked before further invalidations get merged into the last entry */
+
 struct wuss
 {
   screen_t      *scr;
@@ -26,7 +28,8 @@ struct wuss
   list_t         z_order;   /* anchor; head = topmost window */
   wuss_window_t *dragging;  /* NULL when idle */
   int            drag_dx, drag_dy;
-  box_t          dirty;     /* accumulated by wuss_invalidate; reset by a redraw */
+  box_t          dirty[WUSS_MAX_DIRTY]; /* accumulated by wuss_invalidate; reset by a redraw */
+  int            ndirty;
 };
 
 struct wuss_window
