@@ -540,6 +540,32 @@ result_t wuss_test(const char *resources)
   if (tc_a.redraw_count != 1 || tc_b.redraw_count != 1)
     goto Failure;
 
+  printf("test: invalidating an area of A fully covered by topmost B is discarded\n");
+
+  {
+    box_t local;
+
+    local.x0 = 60;
+    local.y0 = 60;
+    local.x1 = 90;
+    local.y1 = 90; /* well within B's (50,50)-(150,150)+furniture visible footprint */
+    wuss_window_invalidate(win_a, &local);
+    if (wuss_get_dirty_count(wuss) != 0)
+      goto Failure;
+
+    local.x0 = 0;
+    local.y0 = 0;
+    local.x1 = 20;
+    local.y1 = 20; /* outside B's footprint entirely: nothing to clip away */
+    wuss_window_invalidate(win_a, &local);
+    if (wuss_get_dirty_count(wuss) != 1)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+  }
+
   printf("test: z-order hit test and local coordinate translation (B on top)\n");
 
   tc_b.mouse_count = 0;
