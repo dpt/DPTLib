@@ -3,6 +3,7 @@
 #ifdef USE_SDL
 
 #include <ctype.h>
+#include <math.h>
 #include <string.h>
 
 #ifdef FORTIFY
@@ -13,6 +14,10 @@
 #include "geom/point.h"
 
 #include "text.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 static const char paragraph[] =
   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
@@ -71,6 +76,25 @@ result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content,
   }
 
   return result_OK;
+}
+
+#define TEXT_RESIZE_PERIOD_FRAMES 300 /* one full swing every 5s at 60fps */
+#define TEXT_RESIZE_AMPLITUDE     50  /* +/-50px either side of base_width */
+
+void text_step(wuss_window_t *window, text_client_t *tcx)
+{
+  box_t visible;
+  int   height, width;
+  double angle;
+
+  wuss_window_get_visible_bounds(window, &visible);
+  height = visible.y1 - visible.y0;
+
+  tcx->frame_count++;
+  angle = tcx->frame_count * (2.0 * M_PI / TEXT_RESIZE_PERIOD_FRAMES);
+  width = tcx->base_width + (int) (TEXT_RESIZE_AMPLITUDE * sin(angle));
+
+  wuss_window_resize(window, width, height);
 }
 
 #endif /* USE_SDL */

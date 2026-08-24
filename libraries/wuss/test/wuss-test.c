@@ -162,15 +162,17 @@ static result_t wuss_interactive_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
-  ic_b.font   = daydream_font;
-  ic_b.bg     = palette[palette_PICO8_BLUE]; /* matches client_b.bg, for bmfont_draw's glyph blending */
-  ic_b.fg     = palette[palette_PICO8_WHITE];
+  ic_b.font        = daydream_font;
+  ic_b.bg          = palette[palette_PICO8_BLUE]; /* matches client_b.bg, for bmfont_draw's glyph blending */
+  ic_b.fg          = palette[palette_PICO8_WHITE];
+  ic_b.frame_count = 0;
   client_b.redraw      = text_redraw;
   client_b.mouse       = NULL;
   client_b.client_data = &ic_b;
   client_b.bg          = palette_PICO8_BLUE;
   box_b.x0 = 120; box_b.y0 = 100;
   box_b.x1 = 340; box_b.y1 = 280;
+  ic_b.base_width = box_b.x1 - box_b.x0;
   rc = wuss_window_create(wuss, &box_b, "Lorem Ipsum", wuss_WINDOW_NONE, &client_b, &win_b);
   if (rc != result_OK)
     goto Failure;
@@ -244,6 +246,7 @@ static result_t wuss_interactive_test(const char *resources)
     }
 
     ball_step(win_a, &ic_a);
+    text_step(win_b, &ic_b);
     blank_step(win_c, &ic_c);
 
     if (garbage_pending)
@@ -287,6 +290,7 @@ static result_t wuss_interactive_test(const char *resources)
       free(disp->base);
       free(disp);
     }
+
     SDL_RenderTexture(renderer, texture, NULL, NULL);
     SDL_RenderPresent(renderer);
 
