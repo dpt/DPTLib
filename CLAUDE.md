@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-DPTLib is a platform-independent C99 library (base, databases, datastruct, framebuf, geom, io, utils modules) shared across the author's projects (PrivateEye, MotionMasks, etc). Targets desktop (Linux/macOS/Windows) and RISC OS (via GCCSDK).
+DPTLib is a platform-independent C99 library (base, databases, datastruct, framebuf, geom, io, text, utils modules) shared across the author's projects (PrivateEye, MotionMasks, etc). Targets desktop (Linux/macOS/Windows) and RISC OS (via GCCSDK).
 
 ## Build
 
