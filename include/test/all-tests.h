@@ -40,6 +40,7 @@ extern testfn_t txtfmt_test;
 
 /* utils */
 extern testfn_t array_test,
-                bsearch_test;
+                bsearch_test,
+                pack_test;
 
 #endif /* TESTS_ALL_TESTS_H */

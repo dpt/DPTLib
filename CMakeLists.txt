@@ -483,6 +483,7 @@ if(BUILD_TESTS)
         libraries/text/txtfmt/test/txtfmt-test.c
         libraries/utils/array/test/array-test.c
         libraries/utils/bsearch/test/bsearch-test.c
+        libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
