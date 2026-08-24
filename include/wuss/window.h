@@ -64,6 +64,7 @@ typedef struct wuss_client
   wuss_redraw_fn_t *redraw;      /**< NULL => content area left blank. */
   wuss_mouse_fn_t  *mouse;       /**< NULL => content mouse events dropped. */
   void             *client_data;
+  wuss_colour_t     bg;          /**< Content background, filled by wuss before redraw is called, or wuss_NO_BACKGROUND for the client to draw its own background (avoids a redundant fill behind an opaque client). */
 }
 wuss_client_t;
 
@@ -76,8 +77,9 @@ wuss_client_t;
  * \param[in]  client  Content delegate. Copied in. May be NULL for a window with no content handling.
  * \param[out] window  Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if visible
- *         is too small to hold a titlebar plus any content, or another
- *         appropriate result code.
+ *         is too small to hold a titlebar plus any content, \ref
+ *         result_WUSS_BAD_COLOUR if client->bg is out of range for the
+ *         palette, or another appropriate result code.
  */
 result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *title, const wuss_client_t *client, wuss_window_t **window);
 

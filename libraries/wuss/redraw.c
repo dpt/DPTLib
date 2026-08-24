@@ -40,6 +40,13 @@ static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, r
   if (!box_intersection(&content, full, &clipped))
   {
     wuss->scr->clip = clipped;
+
+    if (win->client.bg != wuss_NO_BACKGROUND)
+      screen_draw_rect(wuss->scr,
+                       content.x0, content.y0,
+                       content.x1 - content.x0, content.y1 - content.y0,
+                       wuss->palette[win->client.bg]);
+
     if (win->client.redraw != NULL)
     {
       result_t crc;
