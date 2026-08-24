@@ -97,11 +97,24 @@ static int clip_to_visible(wuss_window_t *window, const box_t *box, box_t *out)
   return ncur;
 }
 
+/* Invalidate "box" (screen space), clipped against windows above "window"
+ * in the z-order: the shared primitive behind wuss_window_invalidate and
+ * every other window-owned invalidation (move, resize, background change,
+ * destroy) that would otherwise redraw parts nothing can see change. */
+void wuss__invalidate_clipped(wuss_window_t *window, const box_t *box)
+{
+  box_t pieces[WUSS_MAX_INVALIDATE_PIECES];
+  int   npieces, i;
+
+  npieces = clip_to_visible(window, box, pieces);
+
+  for (i = 0; i < npieces; i++)
+    wuss_invalidate(window->wuss, &pieces[i]);
+}
+
 void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
 {
   box_t screen_box, content;
-  box_t pieces[WUSS_MAX_INVALIDATE_PIECES];
-  int   npieces, i;
 
   wuss__content_box(window, &content);
 
@@ -110,8 +123,5 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
   screen_box.x1 = content.x0 + local_box->x1;
   screen_box.y1 = content.y0 + local_box->y1;
 
-  npieces = clip_to_visible(window, &screen_box, pieces);
-
-  for (i = 0; i < npieces; i++)
-    wuss_invalidate(window->wuss, &pieces[i]);
+  wuss__invalidate_clipped(window, &screen_box);
 }

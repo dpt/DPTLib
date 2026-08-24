@@ -12,7 +12,7 @@ result_t wuss_window_set_background(wuss_window_t *window, wuss_colour_t bg)
   window->client.bg = bg;
 
   wuss__content_box(window, &content);
-  wuss_invalidate(window->wuss, &content);
+  wuss__invalidate_clipped(window, &content);
 
   return result_OK;
 }

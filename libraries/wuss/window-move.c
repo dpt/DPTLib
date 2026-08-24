@@ -22,5 +22,5 @@ void wuss_window_move(wuss_window_t *window, int x, int y)
   window->visible.y1 = window->visible.y0 + height;
 
   box_union(&before, &window->visible, &dirty);
-  wuss_invalidate(window->wuss, &dirty);
+  wuss__invalidate_clipped(window, &dirty);
 }
