@@ -74,7 +74,7 @@ wuss_client_t;
  * \param[in]  wuss    Window manager to create the window on.
  * \param[in]  visible Initial visible (on-screen) bounds, screen space. Copied in.
  * \param[in]  title   Titlebar label, or NULL for none. Copied in, truncated if too long. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR.
- * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR / wuss_WINDOW_NO_OUTLINE, OR'd together, or wuss_WINDOW_NONE for the default chrome.
+ * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR / wuss_WINDOW_NO_OUTLINE, OR'd together, or wuss_WINDOW_NONE for the default furniture.
  * \param[in]  client  Content delegate. Copied in. May be NULL for a window with no content handling.
  * \param[out] window  Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if visible
