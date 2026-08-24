@@ -50,6 +50,48 @@ static result_t interactive_redraw(wuss_window_t *window, screen_t *scr, const b
   return result_OK;
 }
 
+/* window A's client: a ball that bounces off the content box's edges, so
+ * the redraw loop has something moving to repaint every frame */
+typedef struct ball_client
+{
+  colour_t bg, ball;
+  int      x, y;   /* centre, local content coords */
+  int      dx, dy;
+  int      radius;
+}
+ball_client_t;
+
+static result_t ball_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *client_data)
+{
+  ball_client_t *bc;
+  int            width, height;
+
+  NOT_USED(window);
+
+  bc = client_data;
+
+  screen_draw_rect(scr, content->x0, content->y0,
+                    content->x1 - content->x0,
+                    content->y1 - content->y0,
+                    bc->bg);
+
+  width  = content->x1 - content->x0;
+  height = content->y1 - content->y0;
+
+  bc->x += bc->dx;
+  bc->y += bc->dy;
+
+  if (bc->x - bc->radius < 0)           { bc->x = bc->radius;          bc->dx = -bc->dx; }
+  else if (bc->x + bc->radius > width)  { bc->x = width - bc->radius;  bc->dx = -bc->dx; }
+  if (bc->y - bc->radius < 0)           { bc->y = bc->radius;          bc->dy = -bc->dy; }
+  else if (bc->y + bc->radius > height) { bc->y = height - bc->radius; bc->dy = -bc->dy; }
+
+  screen_draw_rect(scr, content->x0 + bc->x - bc->radius, content->y0 + bc->y - bc->radius,
+                    bc->radius * 2, bc->radius * 2, bc->ball);
+
+  return result_OK;
+}
+
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
 {
   switch (button)
@@ -77,7 +119,8 @@ static result_t wuss_interactive_test(const char *resources)
   screen_t              scr;
   colour_t              palette[16];
   wuss_t                *wuss;
-  interactive_client_t   ic_a, ic_b, ic_c;
+  ball_client_t          ic_a;
+  interactive_client_t   ic_b, ic_c;
   wuss_client_t          client_a, client_b, client_c;
   box_t                  box_a, box_b, box_c;
   wuss_window_t         *win_a, *win_b, *win_c;
@@ -85,6 +128,7 @@ static result_t wuss_interactive_test(const char *resources)
   SDL_Renderer          *renderer;
   SDL_Texture           *texture;
   bool                   quit;
+  bool                   garbage_pending;
 
   define_pico8_palette(palette);
 
@@ -149,8 +193,14 @@ static result_t wuss_interactive_test(const char *resources)
       goto Failure;
   }
 
-  ic_a.colour = palette[palette_PICO8_RED];
-  client_a.redraw      = interactive_redraw;
+  ic_a.bg     = palette[palette_PICO8_RED];
+  ic_a.ball   = palette[palette_PICO8_WHITE];
+  ic_a.x      = 50;
+  ic_a.y      = 50;
+  ic_a.dx     = 3;
+  ic_a.dy     = 2;
+  ic_a.radius = 8;
+  client_a.redraw      = ball_redraw;
   client_a.mouse       = NULL;
   client_a.client_data = &ic_a;
   box_a.x0 = 20;  box_a.y0 = 20;
@@ -179,7 +229,8 @@ static result_t wuss_interactive_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
-  quit = false;
+  quit            = false;
+  garbage_pending = false;
 
   while (!quit)
   {
@@ -196,6 +247,8 @@ static result_t wuss_interactive_test(const char *resources)
       case SDL_EVENT_KEY_UP:
         if (event.key.key == SDLK_Q)
           quit = true;
+        else if (event.key.key == SDLK_F1)
+          garbage_pending = true;
         break;
 
       case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -219,6 +272,23 @@ static result_t wuss_interactive_test(const char *resources)
 
     bitmap_clear(&bm, palette[palette_PICO8_WHITE]);
     wuss_redraw(wuss);
+
+    if (garbage_pending)
+    {
+      /* full-screen corruption; next frame's clear+redraw repairs it
+       * unconditionally, demonstrating that wuss always knows how to
+       * repaint itself regardless of what's underneath */
+      unsigned char *p;
+      size_t         n;
+      size_t         i;
+
+      p = pixels;
+      n = (size_t) rowbytes * scr_height;
+      for (i = 0; i < n; i++)
+        p[i] = (unsigned char) rand();
+
+      garbage_pending = false;
+    }
 
     SDL_UpdateTexture(texture, NULL, bm.base, bm.rowbytes);
     SDL_RenderTexture(renderer, texture, NULL, NULL);
