@@ -73,15 +73,17 @@ wuss_client_t;
  *
  * \param[in]  wuss    Window manager to create the window on.
  * \param[in]  visible Initial visible (on-screen) bounds, screen space. Copied in.
- * \param[in]  title   Titlebar label, or NULL for none. Copied in, truncated if too long.
+ * \param[in]  title   Titlebar label, or NULL for none. Copied in, truncated if too long. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR.
+ * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR / wuss_WINDOW_NO_OUTLINE, OR'd together, or wuss_WINDOW_NONE for the default chrome.
  * \param[in]  client  Content delegate. Copied in. May be NULL for a window with no content handling.
  * \param[out] window  Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if visible
- *         is too small to hold a titlebar plus any content, \ref
- *         result_WUSS_BAD_COLOUR if client->bg is out of range for the
- *         palette, or another appropriate result code.
+ *         is too small to hold a titlebar (unless wuss_WINDOW_NO_TITLEBAR is
+ *         set) plus any content, \ref result_WUSS_BAD_COLOUR if client->bg
+ *         is out of range for the palette, or another appropriate result
+ *         code.
  */
-result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *title, const wuss_client_t *client, wuss_window_t **window);
+result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *title, wuss_window_flags_t flags, const wuss_client_t *client, wuss_window_t **window);
 
 /**
  * Destroy a window.
@@ -146,6 +148,19 @@ void wuss_window_get_content_bounds(const wuss_window_t *window, box_t *content)
  *                       passed to the client's mouse callback).
  */
 void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
+
+/**
+ * Change a window's background colour, invalidating its content area so the
+ * next redraw picks up the new fill.
+ *
+ * \param[in] window Window to change.
+ * \param[in] bg     New content background, as an index into the system
+ *                    palette, or wuss_NO_BACKGROUND to hand background
+ *                    painting back to the client.
+ * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if bg is
+ *         out of range for the palette.
+ */
+result_t wuss_window_set_background(wuss_window_t *window, wuss_colour_t bg);
 
 #ifdef __cplusplus
 }

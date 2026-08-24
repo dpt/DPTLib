@@ -29,107 +29,10 @@
 
 #include <SDL3/SDL.h>
 
-/* window B's client: flows a fixed paragraph of placeholder text over its
- * wuss-filled background, one line per bmfont_draw call */
-typedef struct text_client
-{
-  bmfont_t *font;
-  colour_t  bg, fg;
-}
-text_client_t;
-
-static result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *client_data)
-{
-  static const char *const lines[] =
-  {
-    "Lorem ipsum dolor sit amet,",
-    "consectetur adipiscing elit,",
-    "sed do eiusmod tempor",
-    "incididunt ut labore et",
-    "dolore magna aliqua."
-  };
-
-  text_client_t *tcx;
-  int            i, font_width, font_height;
-  point_t        pos;
-
-  NOT_USED(window);
-
-  tcx = client_data;
-
-  bmfont_get_info(tcx->font, &font_width, &font_height);
-
-  pos.x = content->x0 + 4;
-  pos.y = content->y0 + 4;
-  for (i = 0; i < NELEMS(lines); i++)
-  {
-    bmfont_draw(tcx->font, scr, lines[i], (int) strlen(lines[i]), tcx->fg, tcx->bg, &pos, NULL);
-    pos.y += font_height + 2;
-  }
-
-  return result_OK;
-}
-
-/* window A's client: a ball that bounces off the content box's edges, so
- * the redraw loop has something moving to repaint every frame */
-typedef struct ball_client
-{
-  colour_t bg, ball;
-  int      x, y;   /* centre, local content coords */
-  int      dx, dy;
-  int      radius;
-}
-ball_client_t;
-
-static result_t ball_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *client_data)
-{
-  ball_client_t *bc;
-
-  NOT_USED(window);
-
-  bc = client_data;
-
-  screen_draw_rect(scr, content->x0, content->y0,
-                    content->x1 - content->x0,
-                    content->y1 - content->y0,
-                    bc->bg);
-
-  screen_draw_rect(scr, content->x0 + bc->x - bc->radius, content->y0 + bc->y - bc->radius,
-                    bc->radius * 2, bc->radius * 2, bc->ball);
-
-  return result_OK;
-}
-
-/* move the ball on and invalidate the union of its old and new positions;
- * called once per frame from the main loop, not from a wuss callback */
-static void ball_step(wuss_window_t *window, ball_client_t *bc)
-{
-  box_t content, local;
-  int   width, height;
-  int   old_x, old_y;
-
-  wuss_window_get_content_bounds(window, &content);
-  width  = content.x1 - content.x0;
-  height = content.y1 - content.y0;
-
-  old_x = bc->x;
-  old_y = bc->y;
-
-  bc->x += bc->dx;
-  bc->y += bc->dy;
-
-  if (bc->x - bc->radius < 0)           { bc->x = bc->radius;          bc->dx = -bc->dx; }
-  else if (bc->x + bc->radius > width)  { bc->x = width - bc->radius;  bc->dx = -bc->dx; }
-  if (bc->y - bc->radius < 0)           { bc->y = bc->radius;          bc->dy = -bc->dy; }
-  else if (bc->y + bc->radius > height) { bc->y = height - bc->radius; bc->dy = -bc->dy; }
-
-  local.x0 = MIN(old_x, bc->x) - bc->radius;
-  local.y0 = MIN(old_y, bc->y) - bc->radius;
-  local.x1 = MAX(old_x, bc->x) + bc->radius;
-  local.y1 = MAX(old_y, bc->y) + bc->radius;
-
-  wuss_window_invalidate(window, &local);
-}
+#include "clients/ball.h"
+#include "clients/blank.h"
+#include "clients/palette.h"
+#include "clients/text.h"
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
 {
@@ -153,6 +56,7 @@ static result_t wuss_interactive_test(const char *resources)
   const char            *leafname;
   const char            *filename;
   bmfont_t              *font;
+  bmfont_t              *daydream_font;
   void                  *pixels;
   bitmap_t              bm;
   bitmap_t              *disp;
@@ -161,9 +65,11 @@ static result_t wuss_interactive_test(const char *resources)
   wuss_t                *wuss;
   ball_client_t          ic_a;
   text_client_t          ic_b;
-  wuss_client_t          client_a, client_b, client_c;
-  box_t                  box_a, box_b, box_c;
-  wuss_window_t         *win_a, *win_b, *win_c;
+  blank_client_t         ic_c;
+  palette_client_t       ic_d;
+  wuss_client_t          client_a, client_b, client_c, client_d;
+  box_t                  box_a, box_b, box_c, box_d;
+  wuss_window_t         *win_a, *win_b, *win_c, *win_d;
   SDL_Window            *window;
   SDL_Renderer          *renderer;
   SDL_Texture           *texture;
@@ -175,6 +81,12 @@ static result_t wuss_interactive_test(const char *resources)
   leafname = path_join_leafname("ms-sans-serif", "png");
   filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
   rc = bmfont_create(filename, &font);
+  if (rc != result_OK)
+    goto Failure;
+
+  leafname = path_join_leafname("daydream-font", "png");
+  filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
+  rc = bmfont_create(filename, &daydream_font);
   if (rc != result_OK)
     goto Failure;
 
@@ -246,11 +158,11 @@ static result_t wuss_interactive_test(const char *resources)
   client_a.bg          = wuss_NO_BACKGROUND; /* ball_redraw paints its own background every frame */
   box_a.x0 = 20;  box_a.y0 = 20;
   box_a.x1 = 220; box_a.y1 = 180;
-  rc = wuss_window_create(wuss, &box_a, "Bouncing Ball", &client_a, &win_a);
+  rc = wuss_window_create(wuss, &box_a, "Bouncing Ball", wuss_WINDOW_NONE, &client_a, &win_a);
   if (rc != result_OK)
     goto Failure;
 
-  ic_b.font   = font;
+  ic_b.font   = daydream_font;
   ic_b.bg     = palette[palette_PICO8_BLUE]; /* matches client_b.bg, for bmfont_draw's glyph blending */
   ic_b.fg     = palette[palette_PICO8_WHITE];
   client_b.redraw      = text_redraw;
@@ -259,17 +171,32 @@ static result_t wuss_interactive_test(const char *resources)
   client_b.bg          = palette_PICO8_BLUE;
   box_b.x0 = 120; box_b.y0 = 100;
   box_b.x1 = 340; box_b.y1 = 280;
-  rc = wuss_window_create(wuss, &box_b, "Lorem Ipsum", &client_b, &win_b);
+  rc = wuss_window_create(wuss, &box_b, "Lorem Ipsum", wuss_WINDOW_NONE, &client_b, &win_b);
   if (rc != result_OK)
     goto Failure;
 
+  ic_c.npalette   = NELEMS(palette);
+  ic_c.index      = palette_PICO8_GREEN;
+  ic_c.frame_count = 0;
   client_c.redraw      = NULL;
   client_c.mouse       = NULL;
-  client_c.client_data = NULL;
+  client_c.client_data = &ic_c;
   client_c.bg          = palette_PICO8_GREEN; /* wuss fills the content area itself */
   box_c.x0 = 260; box_c.y0 = 60;
   box_c.x1 = 460; box_c.y1 = 220;
-  rc = wuss_window_create(wuss, &box_c, "Blankety Blank", &client_c, &win_c);
+  rc = wuss_window_create(wuss, &box_c, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &client_c, &win_c);
+  if (rc != result_OK)
+    goto Failure;
+
+  ic_d.palette  = palette;
+  ic_d.npalette = NELEMS(palette);
+  client_d.redraw      = palette_redraw;
+  client_d.mouse       = NULL;
+  client_d.client_data = &ic_d;
+  client_d.bg          = palette_PICO8_BLACK; /* backdrop for any rounding gap around the grid */
+  box_d.x0 = 380; box_d.y0 = 260;
+  box_d.x1 = box_d.x0 + 100; box_d.y1 = box_d.y0 + 100;
+  rc = wuss_window_create(wuss, &box_d, "Palette", wuss_WINDOW_NONE, &client_d, &win_d);
   if (rc != result_OK)
     goto Failure;
 
@@ -317,6 +244,7 @@ static result_t wuss_interactive_test(const char *resources)
     }
 
     ball_step(win_a, &ic_a);
+    blank_step(win_c, &ic_c);
 
     if (garbage_pending)
     {
@@ -367,6 +295,7 @@ static result_t wuss_interactive_test(const char *resources)
 
   wuss_destroy(wuss);
   bmfont_destroy(font);
+  bmfont_destroy(daydream_font);
 
   SDL_DestroyTexture(texture);
   SDL_DestroyRenderer(renderer);
@@ -441,10 +370,10 @@ result_t wuss_test(const char *resources)
   wuss_t        *wuss;
   wuss_config_t  bad_config;
   wuss_t        *bad_wuss;
-  test_client_t  tc_a, tc_b, tc_c;
-  wuss_client_t  client_a, client_b, client_c;
-  box_t          box_a, box_b, box_c;
-  wuss_window_t *win_a, *win_b, *win_c;
+  test_client_t  tc_a, tc_b, tc_c, tc_d;
+  wuss_client_t  client_a, client_b, client_c, client_d;
+  box_t          box_a, box_b, box_c, box_d;
+  wuss_window_t *win_a, *win_b, *win_c, *win_d;
   wuss_window_t *hit;
   box_t          visible;
   int            before_a, before_b;
@@ -496,7 +425,7 @@ result_t wuss_test(const char *resources)
   box_a.y0 = 0;
   box_a.x1 = 100;
   box_a.y1 = 10; /* not taller than titlebar_height (20) */
-  rc = wuss_window_create(wuss, &box_a, "toosmall", NULL, &win_a);
+  rc = wuss_window_create(wuss, &box_a, "toosmall", wuss_WINDOW_NONE, NULL, &win_a);
   if (rc != result_WUSS_TOO_SMALL)
     goto Failure;
 
@@ -513,7 +442,7 @@ result_t wuss_test(const char *resources)
   box_a.y0 = 0;
   box_a.x1 = 100;
   box_a.y1 = 100;
-  rc = wuss_window_create(wuss, &box_a, "A", &client_a, &win_a);
+  rc = wuss_window_create(wuss, &box_a, "A", wuss_WINDOW_NONE, &client_a, &win_a);
   if (rc != result_OK)
     goto Failure;
 
@@ -528,7 +457,7 @@ result_t wuss_test(const char *resources)
   box_b.y0 = 50;
   box_b.x1 = 150;
   box_b.y1 = 150;
-  rc = wuss_window_create(wuss, &box_b, "B", &client_b, &win_b);
+  rc = wuss_window_create(wuss, &box_b, "B", wuss_WINDOW_NONE, &client_b, &win_b);
   if (rc != result_OK)
     goto Failure;
 
@@ -706,6 +635,47 @@ result_t wuss_test(const char *resources)
   if (width != 50 || height != 50)
     goto Failure;
 
+  printf("test: title-less, no-outline window accepts height too small for a titlebar\n");
+
+  tc_d.redraw_count = 0;
+  tc_d.mouse_count  = 0;
+  client_d.redraw      = test_redraw;
+  client_d.mouse       = test_mouse;
+  client_d.client_data = &tc_d;
+  client_d.bg          = wuss_NO_BACKGROUND;
+
+  box_d.x0 = 0;  box_d.y0 = 160;
+  box_d.x1 = 30; box_d.y1 = 175; /* shorter than the 20px titlebar_height */
+  rc = wuss_window_create(wuss, &box_d, "ignored", wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &client_d, &win_d);
+  if (rc != result_OK)
+    goto Failure;
+
+  printf("test: click within a title-less window's top edge is delivered as content, not a drag\n");
+
+  rc = wuss_mouse_down(wuss, 5, 165, wuss_BUTTON_SELECT, &hit);
+  if (rc != result_OK)
+    goto Failure;
+  if (hit != win_d)
+    goto Failure;
+  if (tc_d.mouse_count != 1 || tc_d.last_action != wuss_MOUSE_DOWN || tc_d.last_x != 5 || tc_d.last_y != 5)
+    goto Failure;
+
+  rc = wuss_mouse_up(wuss, 5, 165, wuss_BUTTON_SELECT, &hit);
+  if (rc != result_OK)
+    goto Failure;
+
+  printf("test: wuss_window_set_background\n");
+
+  rc = wuss_window_set_background(win_d, 999);
+  if (rc != result_WUSS_BAD_COLOUR)
+    goto Failure;
+
+  rc = wuss_window_set_background(win_d, palette_PICO8_ORANGE);
+  if (rc != result_OK)
+    goto Failure;
+
+  wuss_window_destroy(win_d);
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;
@@ -719,7 +689,7 @@ result_t wuss_test(const char *resources)
   box_c.y0 = 0;
   box_c.x1 = 40;
   box_c.y1 = 40;
-  rc = wuss_window_create(wuss, &box_c, "C", &client_c, &win_c);
+  rc = wuss_window_create(wuss, &box_c, "C", wuss_WINDOW_NONE, &client_c, &win_c);
   if (rc != result_OK)
     goto Failure;
 

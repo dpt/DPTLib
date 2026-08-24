@@ -31,11 +31,12 @@ struct wuss
 
 struct wuss_window
 {
-  list_t        link;   /* must be first member */
-  wuss_t       *wuss;
-  box_t         visible;
-  wuss_client_t client;
-  char          title[WUSS_TITLE_MAX + 1];
+  list_t              link;   /* must be first member */
+  wuss_t             *wuss;
+  box_t               visible;
+  wuss_client_t       client;
+  wuss_window_flags_t flags;
+  char                title[WUSS_TITLE_MAX + 1];
 };
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, int x, int y);
@@ -45,6 +46,11 @@ void            wuss__content_box(const wuss_window_t *window, box_t *out);
 static inline int wuss__size_ok(int width, int height, int titlebar_height)
 {
   return width > 0 && height > titlebar_height;
+}
+
+static inline int wuss__titlebar_height(const wuss_window_t *window)
+{
+  return (window->flags & wuss_WINDOW_NO_TITLEBAR) ? 0 : window->wuss->titlebar_height;
 }
 
 #endif /* IMPL_H */

@@ -6,7 +6,7 @@ result_t wuss_window_resize(wuss_window_t *window, int width, int height)
 {
   box_t before, dirty;
 
-  if (!wuss__size_ok(width, height, window->wuss->titlebar_height))
+  if (!wuss__size_ok(width, height, wuss__titlebar_height(window)))
     return result_WUSS_TOO_SMALL;
 
   before = window->visible;

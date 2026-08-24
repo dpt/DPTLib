@@ -57,7 +57,7 @@ static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, r
     }
   }
 
-  if (!box_intersection(&win->visible, full, &clipped))
+  if (!(win->flags & wuss_WINDOW_NO_OUTLINE) && !box_intersection(&win->visible, full, &clipped))
   {
     int      width, height;
     colour_t border;
