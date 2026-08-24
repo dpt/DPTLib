@@ -8,11 +8,17 @@
 #include <math.h>
 
 #include "base/utils.h"
+#include "framebuf/colour.h"
 #include "framebuf/span-registry.h"
 #include "geom/line.h"
 #include "utils/fxp.h"
 
 #include "framebuf/screen.h"
+
+/* Number of pixels converted per span call in screen_draw_bitmap(). Bounds
+ * the size of its stack scratch buffers so arbitrarily wide bitmaps don't
+ * blow the stack (relevant on RISC OS). */
+#define BITMAP_BLIT_CHUNK 256
 
 void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour)
 {
@@ -192,6 +198,138 @@ void screen_draw_rect(screen_t *scr,
 void screen_draw_square(screen_t *scr, int x, int y, int size, colour_t colour)
 {
   screen_draw_rect(scr, x, y, size, size, colour);
+}
+
+/* ----------------------------------------------------------------------- */
+
+void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
+{
+  box_t clip_box;
+  box_t src_box;
+  box_t draw_box;
+  int   clipped_width, clipped_height;
+  int   has_alpha;
+
+  if (screen_get_clip(scr, &clip_box))
+    return; /* invalid clipped screen */
+
+  src_box.x0 = x;
+  src_box.y0 = y;
+  src_box.x1 = x + src->width;
+  src_box.y1 = y + src->height;
+  if (box_intersection(&clip_box, &src_box, &draw_box))
+    return; /* nothing visible */
+
+  clipped_width  = draw_box.x1 - draw_box.x0;
+  clipped_height = draw_box.y1 - draw_box.y0;
+
+  /* Source pixels loaded from PNG are always laid out R,G,B,A/X byte order
+   * (see bitmap_load_png()), the same layout colour_t::primary uses, so
+   * source pixels can be read directly into a colour_t with no conversion. */
+  has_alpha = (src->format == pixelfmt_rgba8888 || src->format == pixelfmt_bgra8888);
+
+  switch (pixelfmt_log2bpp(scr->format))
+  {
+  case 2:
+    {
+      /* Paletted screen: no linear channel bits to blend, so fall back to
+       * alpha-tested (skip fully transparent, else nearest palette match)
+       * rather than true blending, matching screen_draw_pixel's case 2. */
+      const unsigned char *srcrow;
+      unsigned char        *dstbase;
+      int                   yy;
+
+      srcrow  = (const unsigned char *) src->base + (draw_box.y0 - y) * src->rowbytes;
+      dstbase = scr->base;
+
+      for (yy = 0; yy < clipped_height; yy++)
+      {
+        const pixelfmt_rgba8888_t *srcpx;
+        unsigned char              *rowp;
+        int                         xx;
+
+        srcpx = (const pixelfmt_rgba8888_t *) srcrow + (draw_box.x0 - x);
+        rowp  = dstbase + (draw_box.y0 + yy) * scr->rowbytes;
+
+        for (xx = 0; xx < clipped_width; xx++)
+        {
+          colour_t       c;
+          int            dstx;
+          unsigned char *scrp;
+          int            shift;
+          pixelfmt_any_t pxl;
+
+          c.primary = srcpx[xx];
+          if (has_alpha && colour_get_alpha(&c) == 0)
+            continue; /* fully transparent: leave background alone */
+
+          dstx  = draw_box.x0 + xx;
+          scrp  = rowp + (dstx >> 1);
+          shift = (dstx & 1) * 4;
+          pxl   = colour_to_pixel(scr->palette, 16, c, scr->format);
+
+          *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
+        }
+
+        srcrow += src->rowbytes;
+      }
+    }
+    break;
+
+  case 5:
+    {
+      pixelfmt_any32_t     colbuf[BITMAP_BLIT_CHUNK];
+      unsigned char        alphabuf[BITMAP_BLIT_CHUNK];
+      const unsigned char *srcrow;
+      pixelfmt_any32_t    *dstrow;
+      int                  yy;
+
+      srcrow = (const unsigned char *) src->base + (draw_box.y0 - y) * src->rowbytes;
+      dstrow = scr->base;
+      dstrow += draw_box.y0 * scr->rowbytes / (int) sizeof(*dstrow) + draw_box.x0;
+
+      for (yy = 0; yy < clipped_height; yy++)
+      {
+        const pixelfmt_rgba8888_t *srcpx;
+        pixelfmt_any32_t          *dstpx;
+        int                        remaining;
+
+        srcpx     = (const pixelfmt_rgba8888_t *) srcrow + (draw_box.x0 - x);
+        dstpx     = dstrow;
+        remaining = clipped_width;
+
+        while (remaining > 0)
+        {
+          int chunk, i;
+
+          chunk = (remaining > BITMAP_BLIT_CHUNK) ? BITMAP_BLIT_CHUNK : remaining;
+
+          for (i = 0; i < chunk; i++)
+          {
+            colour_t c;
+
+            c.primary   = srcpx[i];
+            colbuf[i]   = colour_to_pixel(scr->palette, 0, c, scr->format);
+            alphabuf[i] = has_alpha ? colour_get_alpha(&c) : PIXELFMT_OPAQUE;
+          }
+
+          scr->span->blendarray(dstpx, dstpx, colbuf, chunk, alphabuf);
+
+          srcpx     += chunk;
+          dstpx     += chunk;
+          remaining -= chunk;
+        }
+
+        srcrow += src->rowbytes;
+        dstrow += scr->rowbytes / (int) sizeof(*dstrow);
+      }
+    }
+    break;
+
+  default:
+    assert(!"Unimplemented pixel format");
+    break;
+  }
 }
 
 /* ----------------------------------------------------------------------- */
