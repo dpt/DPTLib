@@ -103,8 +103,8 @@ static result_t wuss_interactive_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
-  leafname = path_join_leafname("B", "png");
-  filename = path_join_filename(resources, 3, "resources", "composite", leafname);
+  leafname = path_join_leafname("jessica", "png");
+  filename = path_join_filename(resources, 3, "resources", "images", leafname);
   rc = bitmap_load_png(&ic_e.bitmap, filename);
   if (rc != result_OK)
     goto Failure;
