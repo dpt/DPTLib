@@ -46,6 +46,7 @@ struct wuss_window
 wuss_window_t *wuss__window_at(wuss_t *wuss, int x, int y);
 void            wuss__titlebar_box(const wuss_window_t *window, box_t *out);
 void            wuss__content_box(const wuss_window_t *window, box_t *out);
+void            wuss__invalidate_clipped(wuss_window_t *window, const box_t *box);
 
 static inline int wuss__size_ok(int width, int height)
 {

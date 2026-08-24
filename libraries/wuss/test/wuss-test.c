@@ -869,6 +869,74 @@ result_t wuss_test(const char *resources)
 
   wuss_window_destroy(win_d);
 
+  printf("test: moving/resizing a window entirely behind an occluder has no visible effect\n");
+
+  {
+    test_client_t  tc_h, tc_g;
+    wuss_client_t  client_h, client_g;
+    box_t          box_h, box_g;
+    wuss_window_t *win_h, *win_g;
+    int             before_h, before_g;
+
+    tc_h.redraw_count = 0;
+    tc_h.mouse_count  = 0;
+    client_h.redraw      = test_redraw;
+    client_h.mouse       = test_mouse;
+    client_h.client_data = &tc_h;
+    client_h.bg          = wuss_NO_BACKGROUND;
+
+    box_h.x0 = 10; box_h.y0 = 10;
+    box_h.x1 = 30; box_h.y1 = 30;
+    rc = wuss_window_create(wuss, &box_h, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &client_h, &win_h);
+    if (rc != result_OK)
+      goto Failure;
+
+    tc_g.redraw_count = 0;
+    tc_g.mouse_count  = 0;
+    client_g.redraw      = test_redraw;
+    client_g.mouse       = test_mouse;
+    client_g.client_data = &tc_g;
+    client_g.bg          = wuss_NO_BACKGROUND;
+
+    box_g.x0 = 0;   box_g.y0 = 0;
+    box_g.x1 = 150; box_g.y1 = 150; /* G is created after H, so G is topmost and fully covers H */
+    rc = wuss_window_create(wuss, &box_g, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &client_g, &win_g);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush creation invalidations before measuring */
+    if (rc != result_OK)
+      goto Failure;
+
+    before_h = tc_h.redraw_count;
+    before_g = tc_g.redraw_count;
+
+    wuss_window_move(win_h, 60, 60); /* still entirely within G's footprint */
+    if (wuss_get_dirty_count(wuss) != 0)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_h.redraw_count != before_h || tc_g.redraw_count != before_g)
+      goto Failure; /* nothing visible changed: no redraw of either window */
+
+    rc = wuss_window_resize(win_h, 25, 25); /* still entirely within G's footprint */
+    if (rc != result_OK)
+      goto Failure;
+    if (wuss_get_dirty_count(wuss) != 0)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_h.redraw_count != before_h || tc_g.redraw_count != before_g)
+      goto Failure;
+
+    wuss_window_destroy(win_h);
+    wuss_window_destroy(win_g);
+  }
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;
