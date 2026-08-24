@@ -314,6 +314,7 @@ set(WUSS_SOURCES
     libraries/wuss/create.c
     libraries/wuss/destroy.c
     libraries/wuss/impl.h
+    libraries/wuss/invalidate.c
     libraries/wuss/mouse-down.c
     libraries/wuss/mouse-move.c
     libraries/wuss/mouse-up.c
@@ -323,7 +324,9 @@ set(WUSS_SOURCES
     libraries/wuss/window-bring-to-front.c
     libraries/wuss/window-create.c
     libraries/wuss/window-destroy.c
+    libraries/wuss/window-get-content-bounds.c
     libraries/wuss/window-get-visible-bounds.c
+    libraries/wuss/window-invalidate.c
     libraries/wuss/window-move.c
     libraries/wuss/window-resize.c)
 

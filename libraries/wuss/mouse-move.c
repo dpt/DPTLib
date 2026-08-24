@@ -12,7 +12,7 @@ result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit)
     if (hit != NULL)
       *hit = win;
     wuss_window_move(win, x - wuss->drag_dx, y - wuss->drag_dy);
-    return wuss_redraw(wuss);
+    return result_OK;
   }
 
   win = wuss__window_at(wuss, x, y);

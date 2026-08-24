@@ -123,6 +123,28 @@ void wuss_window_bring_to_front(wuss_window_t *window);
  */
 void wuss_window_get_visible_bounds(const wuss_window_t *window, box_t *visible);
 
+/**
+ * Fetch a window's current content-area bounds, screen space (visible
+ * bounds minus the titlebar). Useful for computing invalidation regions
+ * outside of a redraw callback.
+ *
+ * \param[in]  window  Window to query.
+ * \param[out] content Filled in with the window's content bounds.
+ */
+void wuss_window_get_content_bounds(const wuss_window_t *window, box_t *content);
+
+/**
+ * Mark a region of a window's content as dirty, for the next
+ * wuss_redraw_dirty call. Content changes are opaque to wuss, so clients
+ * must call this themselves (e.g. the union of an animated element's old
+ * and new positions).
+ *
+ * \param[in] window     Window whose content changed.
+ * \param[in] local_box  Region, in window-local content coordinates (as
+ *                       passed to the client's mouse callback).
+ */
+void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
+
 #ifdef __cplusplus
 }
 #endif
