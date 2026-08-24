@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-#include "datastruct/txtfmt.h"
+#include "text/txtfmt.h"
 
 #include "impl.h"
 

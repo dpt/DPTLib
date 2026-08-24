@@ -71,7 +71,6 @@ set(PUBLIC_HEADERS
     include/datastruct/hlist.h
     include/datastruct/list.h
     include/datastruct/ntree.h
-    include/datastruct/txtfmt.h
     include/datastruct/vector.h
     include/framebuf/bitmap-set.h
     include/framebuf/bitmap.h
@@ -101,6 +100,7 @@ set(PUBLIC_HEADERS
     include/io/stream.h
     include/test/all-tests.h
     include/test/txtscr.h
+    include/text/txtfmt.h
     include/utils/array.h
     include/utils/barith.h
     include/utils/bsearch.h
@@ -201,15 +201,6 @@ set(DATASTRUCT_SOURCES
     libraries/datastruct/ntree/set-data.c
     libraries/datastruct/ntree/unlink.c
     libraries/datastruct/ntree/walk.c
-    libraries/datastruct/txtfmt/create.c
-    libraries/datastruct/txtfmt/destroy.c
-    libraries/datastruct/txtfmt/get-length.c
-    libraries/datastruct/txtfmt/get-line.c
-    libraries/datastruct/txtfmt/get-nlines.c
-    libraries/datastruct/txtfmt/get-wrapped-width.c
-    libraries/datastruct/txtfmt/impl.h
-    libraries/datastruct/txtfmt/print.c
-    libraries/datastruct/txtfmt/wrap.c
     libraries/datastruct/vector/clear.c
     libraries/datastruct/vector/create.c
     libraries/datastruct/vector/destroy.c
@@ -275,6 +266,17 @@ set(IO_SOURCES
 set(TESTLIB_SOURCES
     libraries/test/txtscr/txtscr.c)
 
+set(TEXT_SOURCES
+    libraries/text/txtfmt/create.c
+    libraries/text/txtfmt/destroy.c
+    libraries/text/txtfmt/get-length.c
+    libraries/text/txtfmt/get-line.c
+    libraries/text/txtfmt/get-nlines.c
+    libraries/text/txtfmt/get-wrapped-width.c
+    libraries/text/txtfmt/impl.h
+    libraries/text/txtfmt/print.c
+    libraries/text/txtfmt/wrap.c)
+
 set(UTILS_SOURCES
     libraries/utils/array/delelem.c
     libraries/utils/array/delelems.c
@@ -313,6 +315,7 @@ set(ALL_SOURCES
     ${GEOM_SOURCES}
     ${IO_SOURCES}
     ${TESTLIB_SOURCES}
+    ${TEXT_SOURCES}
     ${UTILS_SOURCES})
 
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${ALL_SOURCES})
@@ -470,7 +473,6 @@ if(BUILD_TESTS)
         libraries/datastruct/hash/test/hash-test.c
         libraries/datastruct/list/test/list-test.c
         libraries/datastruct/ntree/test/ntree-test.c
-        libraries/datastruct/txtfmt/test/txtfmt-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
@@ -478,6 +480,7 @@ if(BUILD_TESTS)
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
         libraries/io/stream/test/stream-test.c
+        libraries/text/txtfmt/test/txtfmt-test.c
         libraries/utils/array/test/array-test.c
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/datastruct/vector/test/vector-test.c)

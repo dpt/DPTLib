@@ -7,7 +7,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "datastruct/txtfmt.h"
+#include "text/txtfmt.h"
 
 #include "impl.h"
 

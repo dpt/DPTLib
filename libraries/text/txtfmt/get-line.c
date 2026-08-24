@@ -1,6 +1,6 @@
 /* get-line.c -- txtfmt - text formatting */
 
-#include "datastruct/txtfmt.h"
+#include "text/txtfmt.h"
 
 #include "impl.h"
 

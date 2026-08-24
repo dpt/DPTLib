@@ -8,7 +8,7 @@
 
 #include "base/result.h"
 #include "base/utils.h"
-#include "datastruct/txtfmt.h"
+#include "text/txtfmt.h"
 
 #include "test/all-tests.h"
 

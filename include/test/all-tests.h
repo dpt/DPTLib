@@ -16,7 +16,6 @@ extern testfn_t atom_test,
                 hash_test,
                 list_test,
                 ntree_test,
-                txtfmt_test,
                 vector_test;
 
 /* database */
@@ -35,6 +34,9 @@ extern testfn_t box_test,
 
 /* io */
 extern testfn_t stream_test;
+
+/* text */
+extern testfn_t txtfmt_test;
 
 /* utils */
 extern testfn_t array_test,
