@@ -5,7 +5,7 @@
 result_t wuss_mouse_down(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_window_t **hit)
 {
   wuss_window_t *win;
-  box_t           titlebar;
+  box_t          titlebar;
 
   win = wuss__window_at(wuss, x, y);
   if (hit != NULL)
