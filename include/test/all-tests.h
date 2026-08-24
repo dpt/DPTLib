@@ -16,6 +16,7 @@ extern testfn_t atom_test,
                 hash_test,
                 list_test,
                 ntree_test,
+                txtfmt_test,
                 vector_test;
 
 /* database */
