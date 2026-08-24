@@ -108,7 +108,9 @@ set(PUBLIC_HEADERS
     include/utils/fxp.h
     include/utils/maths.h
     include/utils/pack.h
-    include/utils/primes.h)
+    include/utils/primes.h
+    include/wuss/window.h
+    include/wuss/wuss.h)
 
 # The public headers must be set as properties of the library, not as
 # target_sources. The quoting is essential.
@@ -307,6 +309,28 @@ set(UTILS_SOURCES
     libraries/utils/pack/unpack.c
     libraries/utils/primes/primes.c)
 
+set(WUSS_SOURCES
+    libraries/wuss/content-box.c
+    libraries/wuss/create.c
+    libraries/wuss/destroy.c
+    libraries/wuss/impl.h
+    libraries/wuss/invalidate.c
+    libraries/wuss/mouse-down.c
+    libraries/wuss/mouse-move.c
+    libraries/wuss/mouse-up.c
+    libraries/wuss/redraw.c
+    libraries/wuss/titlebar-box.c
+    libraries/wuss/window-at.c
+    libraries/wuss/window-bring-to-front.c
+    libraries/wuss/window-create.c
+    libraries/wuss/window-destroy.c
+    libraries/wuss/window-get-content-bounds.c
+    libraries/wuss/window-get-visible-bounds.c
+    libraries/wuss/window-invalidate.c
+    libraries/wuss/window-move.c
+    libraries/wuss/window-resize.c
+    libraries/wuss/window-set-background.c)
+
 set(ALL_SOURCES
     ${PUBLIC_HEADERS}
     ${DATABASE_SOURCES}
@@ -316,7 +340,8 @@ set(ALL_SOURCES
     ${IO_SOURCES}
     ${TESTLIB_SOURCES}
     ${TEXT_SOURCES}
-    ${UTILS_SOURCES})
+    ${UTILS_SOURCES}
+    ${WUSS_SOURCES})
 
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${ALL_SOURCES})
 
@@ -484,7 +509,12 @@ if(BUILD_TESTS)
         libraries/utils/array/test/array-test.c
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/utils/pack/test/pack-test.c
-        libraries/datastruct/vector/test/vector-test.c)
+        libraries/datastruct/vector/test/vector-test.c
+        libraries/wuss/test/clients/ball.c
+        libraries/wuss/test/clients/blank.c
+        libraries/wuss/test/clients/palette.c
+        libraries/wuss/test/clients/text.c
+        libraries/wuss/test/wuss-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
 
