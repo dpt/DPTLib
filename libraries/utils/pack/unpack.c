@@ -37,7 +37,7 @@
 #define MERGE(dst, src) (((dst) << 2) + (src))
 
 /* Declare a function which unpacks. */
-#define DECLARE_UNPACKER(name, o0, o1, o2, o3, o4, o5, o6, o7)           \
+#define DECLARE_UNPACKER(name, h0, h1, w0, w1, w2, w3, d0, d1, d2, d3, d4, d5, d6, d7) \
 static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
 {                                                                        \
   const uint8_t *bp;                                                     \
@@ -177,7 +177,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, uint16_t *);                                  \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (uint16_t) (bp[o0] | (bp[o1] << 8));                  \
+            *a++ = (uint16_t) (bp[h0] | (bp[h1] << 8));                  \
             bp += 2;                                                     \
           }                                                              \
         }                                                                \
@@ -190,7 +190,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, uint32_t *);                                  \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (uint32_t) (bp[o0] | (bp[o1] << 8));                  \
+            *a++ = (uint32_t) (bp[h0] | (bp[h1] << 8));                  \
             bp += 2;                                                     \
           }                                                              \
         }                                                                \
@@ -203,7 +203,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, int32_t *);                                   \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (int32_t) (bp[o0] | (bp[o1] << 8));                   \
+            *a++ = (int32_t) (bp[h0] | (bp[h1] << 8));                   \
             bp += 2;                                                     \
           }                                                              \
         }                                                                \
@@ -216,7 +216,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, uint64_t *);                                  \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (uint64_t) (bp[o0] | (bp[o1] << 8));                  \
+            *a++ = (uint64_t) (bp[h0] | (bp[h1] << 8));                  \
             bp += 2;                                                     \
           }                                                              \
         }                                                                \
@@ -229,7 +229,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, int64_t *);                                   \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (int64_t) (bp[o0] | (bp[o1] << 8));                   \
+            *a++ = (int64_t) (bp[h0] | (bp[h1] << 8));                   \
             bp += 2;                                                     \
           }                                                              \
         }                                                                \
@@ -244,7 +244,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, uint32_t *);                                  \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (uint32_t) (bp[o0] | (bp[o1] << 8) | (bp[o2] << 16) | (bp[o3] << 24)); \
+            *a++ = (uint32_t) (bp[w0] | (bp[w1] << 8) | (bp[w2] << 16) | (bp[w3] << 24)); \
             bp += 4;                                                     \
           }                                                              \
         }                                                                \
@@ -257,7 +257,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, uint64_t *);                                  \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (uint32_t) (bp[o0] | (bp[o1] << 8) | (bp[o2] << 16) | (bp[o3] << 24)); \
+            *a++ = (uint32_t) (bp[w0] | (bp[w1] << 8) | (bp[w2] << 16) | (bp[w3] << 24)); \
             bp += 4;                                                     \
           }                                                              \
         }                                                                \
@@ -270,7 +270,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, int64_t *);                                   \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (int32_t) (bp[o0] | (bp[o1] << 8) | (bp[o2] << 16) | (bp[o3] << 24)); \
+            *a++ = (int32_t) (bp[w0] | (bp[w1] << 8) | (bp[w2] << 16) | (bp[w3] << 24)); \
             bp += 4;                                                     \
           }                                                              \
         }                                                                \
@@ -285,7 +285,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, uint64_t *);                                  \
           while (n--)                                                    \
           {                                                              \
-            *a++ = ((uint64_t) bp[o0] | ((uint64_t) bp[o1] << 8) | ((uint64_t) bp[o2] << 16) | ((uint64_t) bp[o3] << 24) | ((uint64_t) bp[o4] << 32) | ((uint64_t) bp[o5] << 40) | ((uint64_t) bp[o6] << 48) | ((uint64_t) bp[o7] << 56)); \
+            *a++ = ((uint64_t) bp[d0] | ((uint64_t) bp[d1] << 8) | ((uint64_t) bp[d2] << 16) | ((uint64_t) bp[d3] << 24) | ((uint64_t) bp[d4] << 32) | ((uint64_t) bp[d5] << 40) | ((uint64_t) bp[d6] << 48) | ((uint64_t) bp[d7] << 56)); \
             bp += 8;                                                     \
           }                                                              \
         }                                                                \
@@ -426,7 +426,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
         while (n--)                                                      \
         {                                                                \
           pS = va_arg(args, uint16_t *);                                 \
-          *pS = (uint16_t) (bp[o0] | (bp[o1] << 8));                     \
+          *pS = (uint16_t) (bp[h0] | (bp[h1] << 8));                     \
           bp += 2;                                                       \
         }                                                                \
         break;                                                           \
@@ -435,7 +435,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
         while (n--)                                                      \
         {                                                                \
           pI = va_arg(args, uint32_t *);                                 \
-          *pI = (uint16_t) (bp[o0] | (bp[o1] << 8));                     \
+          *pI = (uint16_t) (bp[h0] | (bp[h1] << 8));                     \
           bp += 2;                                                       \
         }                                                                \
         break;                                                           \
@@ -444,7 +444,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
         while (n--)                                                      \
         {                                                                \
           pi = va_arg(args, int32_t *);                                  \
-          *pi = (int16_t) (bp[o0] | (bp[o1] << 8));                      \
+          *pi = (int16_t) (bp[h0] | (bp[h1] << 8));                      \
           bp += 2;                                                       \
         }                                                                \
         break;                                                           \
@@ -453,7 +453,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
         while (n--)                                                      \
         {                                                                \
           pQ = va_arg(args, uint64_t *);                                 \
-          *pQ = (uint16_t) (bp[o0] | (bp[o1] << 8));                     \
+          *pQ = (uint16_t) (bp[h0] | (bp[h1] << 8));                     \
           bp += 2;                                                       \
         }                                                                \
         break;                                                           \
@@ -462,7 +462,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
         while (n--)                                                      \
         {                                                                \
           pq = va_arg(args, int64_t *);                                  \
-          *pq = (int16_t) (bp[o0] | (bp[o1] << 8));                      \
+          *pq = (int16_t) (bp[h0] | (bp[h1] << 8));                      \
           bp += 2;                                                       \
         }                                                                \
         break;                                                           \
@@ -473,7 +473,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
         while (n--)                                                      \
         {                                                                \
           pI = va_arg(args, uint32_t *);                                 \
-          *pI = (uint32_t) (bp[o0] | (bp[o1] << 8) | (bp[o2] << 16) | (bp[o3] << 24)); \
+          *pI = (uint32_t) (bp[w0] | (bp[w1] << 8) | (bp[w2] << 16) | (bp[w3] << 24)); \
           bp += 4;                                                       \
         }                                                                \
         break;                                                           \
@@ -482,7 +482,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
         while (n--)                                                      \
         {                                                                \
           pQ = va_arg(args, uint64_t *);                                 \
-          *pQ = (uint32_t) (bp[o0] | (bp[o1] << 8) | (bp[o2] << 16) | (bp[o3] << 24)); \
+          *pQ = (uint32_t) (bp[w0] | (bp[w1] << 8) | (bp[w2] << 16) | (bp[w3] << 24)); \
           bp += 4;                                                       \
         }                                                                \
         break;                                                           \
@@ -491,7 +491,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
         while (n--)                                                      \
         {                                                                \
           pq = va_arg(args, int64_t *);                                  \
-          *pq = (int32_t) (bp[o0] | (bp[o1] << 8) | (bp[o2] << 16) | (bp[o3] << 24)); \
+          *pq = (int32_t) (bp[w0] | (bp[w1] << 8) | (bp[w2] << 16) | (bp[w3] << 24)); \
           bp += 4;                                                       \
         }                                                                \
         break;                                                           \
@@ -502,7 +502,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
         while (n--)                                                      \
         {                                                                \
           pQ = va_arg(args, uint64_t *);                                  \
-          *pQ = ((uint64_t) bp[o0] | ((uint64_t) bp[o1] << 8) | ((uint64_t) bp[o2] << 16) | ((uint64_t) bp[o3] << 24) | ((uint64_t) bp[o4] << 32) | ((uint64_t) bp[o5] << 40) | ((uint64_t) bp[o6] << 48) | ((uint64_t) bp[o7] << 56)); \
+          *pQ = ((uint64_t) bp[d0] | ((uint64_t) bp[d1] << 8) | ((uint64_t) bp[d2] << 16) | ((uint64_t) bp[d3] << 24) | ((uint64_t) bp[d4] << 32) | ((uint64_t) bp[d5] << 40) | ((uint64_t) bp[d6] << 48) | ((uint64_t) bp[d7] << 56)); \
           bp += 8;                                                       \
         }                                                                \
         break;                                                           \
@@ -518,8 +518,8 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
   return (size_t) (bp - buf);                                            \
 }
 
-DECLARE_UNPACKER(vunpack_le, 0, 1, 2, 3, 4, 5, 6, 7)
-DECLARE_UNPACKER(vunpack_be, 7, 6, 5, 4, 3, 2, 1, 0)
+DECLARE_UNPACKER(vunpack_le, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7)
+DECLARE_UNPACKER(vunpack_be, 1, 0, 3, 2, 1, 0, 7, 6, 5, 4, 3, 2, 1, 0)
 
 #define NATIVE_UNPACKER vunpack_le
 
