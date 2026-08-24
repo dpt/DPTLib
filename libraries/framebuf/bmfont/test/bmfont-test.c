@@ -773,21 +773,17 @@ result_t bmfont_test_one_format(const char *resources,
 
     leafname = path_join_leafname(bmfonts[font].filename, "png");
     filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
-    fprintf(stderr, "bmfont-test trace: loading font %d: %s\n", font, filename); fflush(stderr);
     rc = bmfont_create(filename, &bmfonts[font].bmfont);
     if (rc)
     {
       fprintf(stderr, "Error: Failed to load font %s\n", filename);
       goto Failure;
     }
-    fprintf(stderr, "bmfont-test trace: loaded font %d ok\n", font); fflush(stderr);
 
     bmfont_get_info(bmfonts[font].bmfont,
                    &bmfonts[font].width,
                    &bmfonts[font].height);
   }
-
-  fprintf(stderr, "bmfont-test trace: all fonts loaded\n"); fflush(stderr);
 
   /* ------------------------------------------------------------------------ */
 
@@ -804,11 +800,9 @@ result_t bmfont_test_one_format(const char *resources,
 
   for (test = 0; test < NELEMS(tests); test++)
   {
-    fprintf(stderr, "bmfont-test trace: subtest %d starting\n", test); fflush(stderr);
     rc = tests[test](&state);
     if (rc != result_TEST_PASSED)
       goto Failure;
-    fprintf(stderr, "bmfont-test trace: subtest %d done\n", test); fflush(stderr);
   }
 
   /* ------------------------------------------------------------------------ */
