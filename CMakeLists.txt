@@ -512,6 +512,7 @@ if(BUILD_TESTS)
         libraries/datastruct/vector/test/vector-test.c
         libraries/wuss/test/clients/ball.c
         libraries/wuss/test/clients/blank.c
+        libraries/wuss/test/clients/image.c
         libraries/wuss/test/clients/palette.c
         libraries/wuss/test/clients/text.c
         libraries/wuss/test/wuss-test.c)

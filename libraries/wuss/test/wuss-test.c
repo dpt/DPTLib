@@ -31,8 +31,20 @@
 
 #include "clients/ball.h"
 #include "clients/blank.h"
+#include "clients/image.h"
 #include "clients/palette.h"
 #include "clients/text.h"
+
+typedef enum test_window
+{
+  WIN_BALL,
+  WIN_TEXT,
+  WIN_BLANK,
+  WIN_PALETTE,
+  WIN_IMAGE,
+  WIN__COUNT
+}
+test_window_t;
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
 {
@@ -48,33 +60,34 @@ static wuss_button_t sdl_button_to_wuss(Uint8 button)
  * SDL window to see the wuss screen scale; Q or close to quit */
 static result_t wuss_interactive_test(const char *resources)
 {
-  const int   scr_width  = 640;
-  const int   scr_height = 480;
-  const int   rowbytes   = scr_width / 2; /* pixelfmt_p4: 2 pixels/byte */
+  const int        scr_width  = 640;
+  const int        scr_height = 480;
+  const int        rowbytes   = scr_width / 2; /* pixelfmt_p4: 2 pixels/byte */
 
-  result_t              rc;
-  const char            *leafname;
-  const char            *filename;
-  bmfont_t              *font;
-  bmfont_t              *daydream_font;
-  void                  *pixels;
-  bitmap_t              bm;
-  bitmap_t              *disp;
-  screen_t              scr;
-  colour_t              palette[16];
-  wuss_t                *wuss;
-  ball_client_t          ic_a;
-  text_client_t          ic_b;
-  blank_client_t         ic_c;
-  palette_client_t       ic_d;
-  wuss_client_t          client_a, client_b, client_c, client_d;
-  box_t                  box_a, box_b, box_c, box_d;
-  wuss_window_t         *win_a, *win_b, *win_c, *win_d;
-  SDL_Window            *window;
-  SDL_Renderer          *renderer;
-  SDL_Texture           *texture;
-  bool                   quit;
-  bool                   garbage_pending;
+  result_t         rc;
+  const char      *leafname;
+  const char      *filename;
+  bmfont_t        *font;
+  bmfont_t        *daydream_font;
+  void            *pixels;
+  bitmap_t         bm;
+  bitmap_t        *disp;
+  screen_t         scr;
+  colour_t         palette[16];
+  wuss_t          *wuss;
+  ball_client_t    ic_a;
+  text_client_t    ic_b;
+  blank_client_t   ic_c;
+  palette_client_t ic_d;
+  image_client_t   ic_e;
+  wuss_client_t    clients[WIN__COUNT];
+  box_t            boxes[WIN__COUNT];
+  wuss_window_t   *windows[WIN__COUNT];
+  SDL_Window      *window;
+  SDL_Renderer    *renderer;
+  SDL_Texture     *texture;
+  bool             quit;
+  bool             garbage_pending;
 
   define_pico8_palette(palette);
 
@@ -87,6 +100,12 @@ static result_t wuss_interactive_test(const char *resources)
   leafname = path_join_leafname("daydream-font", "png");
   filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
   rc = bmfont_create(filename, &daydream_font);
+  if (rc != result_OK)
+    goto Failure;
+
+  leafname = path_join_leafname("B", "png");
+  filename = path_join_filename(resources, 3, "resources", "composite", leafname);
+  rc = bitmap_load_png(&ic_e.bitmap, filename);
   if (rc != result_OK)
     goto Failure;
 
@@ -152,13 +171,13 @@ static result_t wuss_interactive_test(const char *resources)
   ic_a.dx     = 3;
   ic_a.dy     = 2;
   ic_a.radius = 8;
-  client_a.redraw      = ball_redraw;
-  client_a.mouse       = NULL;
-  client_a.client_data = &ic_a;
-  client_a.bg          = wuss_NO_BACKGROUND; /* ball_redraw paints its own background every frame */
-  box_a.x0 = 20;  box_a.y0 = 20;
-  box_a.x1 = 220; box_a.y1 = 180;
-  rc = wuss_window_create(wuss, &box_a, "Bouncing Ball", wuss_WINDOW_NONE, &client_a, &win_a);
+  clients[WIN_BALL].redraw      = ball_redraw;
+  clients[WIN_BALL].mouse       = NULL;
+  clients[WIN_BALL].client_data = &ic_a;
+  clients[WIN_BALL].bg          = wuss_NO_BACKGROUND; /* ball_redraw paints its own background every frame */
+  boxes[WIN_BALL].x0 = 20;  boxes[WIN_BALL].y0 = 20;
+  boxes[WIN_BALL].x1 = 220; boxes[WIN_BALL].y1 = 180;
+  rc = wuss_window_create(wuss, &boxes[WIN_BALL], "Bouncing Ball", wuss_WINDOW_NONE, &clients[WIN_BALL], &windows[WIN_BALL]);
   if (rc != result_OK)
     goto Failure;
 
@@ -166,39 +185,49 @@ static result_t wuss_interactive_test(const char *resources)
   ic_b.bg          = palette[palette_PICO8_BLUE]; /* matches client_b.bg, for bmfont_draw's glyph blending */
   ic_b.fg          = palette[palette_PICO8_WHITE];
   ic_b.frame_count = 0;
-  client_b.redraw      = text_redraw;
-  client_b.mouse       = NULL;
-  client_b.client_data = &ic_b;
-  client_b.bg          = palette_PICO8_BLUE;
-  box_b.x0 = 120; box_b.y0 = 100;
-  box_b.x1 = 340; box_b.y1 = 280;
-  ic_b.base_width = box_b.x1 - box_b.x0;
-  rc = wuss_window_create(wuss, &box_b, "Lorem Ipsum", wuss_WINDOW_NONE, &client_b, &win_b);
+  clients[WIN_TEXT].redraw      = text_redraw;
+  clients[WIN_TEXT].mouse       = NULL;
+  clients[WIN_TEXT].client_data = &ic_b;
+  clients[WIN_TEXT].bg          = palette_PICO8_BLUE;
+  boxes[WIN_TEXT].x0 = 120; boxes[WIN_TEXT].y0 = 100;
+  boxes[WIN_TEXT].x1 = 340; boxes[WIN_TEXT].y1 = 280;
+  ic_b.base_width = boxes[WIN_TEXT].x1 - boxes[WIN_TEXT].x0;
+  rc = wuss_window_create(wuss, &boxes[WIN_TEXT], "Lorem Ipsum", wuss_WINDOW_NONE, &clients[WIN_TEXT], &windows[WIN_TEXT]);
   if (rc != result_OK)
     goto Failure;
 
   ic_c.npalette   = NELEMS(palette);
   ic_c.index      = palette_PICO8_GREEN;
   ic_c.frame_count = 0;
-  client_c.redraw      = NULL;
-  client_c.mouse       = NULL;
-  client_c.client_data = &ic_c;
-  client_c.bg          = palette_PICO8_GREEN; /* wuss fills the content area itself */
-  box_c.x0 = 260; box_c.y0 = 60;
-  box_c.x1 = 460; box_c.y1 = 220;
-  rc = wuss_window_create(wuss, &box_c, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &client_c, &win_c);
+  clients[WIN_BLANK].redraw      = NULL;
+  clients[WIN_BLANK].mouse       = NULL;
+  clients[WIN_BLANK].client_data = &ic_c;
+  clients[WIN_BLANK].bg          = palette_PICO8_GREEN; /* wuss fills the content area itself */
+  boxes[WIN_BLANK].x0 = 260; boxes[WIN_BLANK].y0 = 60;
+  boxes[WIN_BLANK].x1 = 460; boxes[WIN_BLANK].y1 = 220;
+  rc = wuss_window_create(wuss, &boxes[WIN_BLANK], NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &clients[WIN_BLANK], &windows[WIN_BLANK]);
   if (rc != result_OK)
     goto Failure;
 
   ic_d.palette  = palette;
   ic_d.npalette = NELEMS(palette);
-  client_d.redraw      = palette_redraw;
-  client_d.mouse       = NULL;
-  client_d.client_data = &ic_d;
-  client_d.bg          = palette_PICO8_BLACK; /* backdrop for any rounding gap around the grid */
-  box_d.x0 = 380; box_d.y0 = 260;
-  box_d.x1 = box_d.x0 + 100; box_d.y1 = box_d.y0 + 100;
-  rc = wuss_window_create(wuss, &box_d, "Palette", wuss_WINDOW_NONE, &client_d, &win_d);
+  clients[WIN_PALETTE].redraw      = palette_redraw;
+  clients[WIN_PALETTE].mouse       = NULL;
+  clients[WIN_PALETTE].client_data = &ic_d;
+  clients[WIN_PALETTE].bg          = palette_PICO8_BLACK; /* backdrop for any rounding gap around the grid */
+  boxes[WIN_PALETTE].x0 = 380; boxes[WIN_PALETTE].y0 = 260;
+  boxes[WIN_PALETTE].x1 = boxes[WIN_PALETTE].x0 + 100; boxes[WIN_PALETTE].y1 = boxes[WIN_PALETTE].y0 + 100;
+  rc = wuss_window_create(wuss, &boxes[WIN_PALETTE], "Palette", wuss_WINDOW_NONE, &clients[WIN_PALETTE], &windows[WIN_PALETTE]);
+  if (rc != result_OK)
+    goto Failure;
+
+  clients[WIN_IMAGE].redraw      = image_redraw;
+  clients[WIN_IMAGE].mouse       = NULL;
+  clients[WIN_IMAGE].client_data = &ic_e;
+  clients[WIN_IMAGE].bg          = palette_PICO8_BLACK; /* shows through the image's transparent pixels */
+  boxes[WIN_IMAGE].x0 = 370; boxes[WIN_IMAGE].y0 = 10;
+  boxes[WIN_IMAGE].x1 = boxes[WIN_IMAGE].x0 + ic_e.bitmap.width; boxes[WIN_IMAGE].y1 = boxes[WIN_IMAGE].y0 + ic_e.bitmap.height;
+  rc = wuss_window_create(wuss, &boxes[WIN_IMAGE], "Image", wuss_WINDOW_NONE, &clients[WIN_IMAGE], &windows[WIN_IMAGE]);
   if (rc != result_OK)
     goto Failure;
 
@@ -245,9 +274,9 @@ static result_t wuss_interactive_test(const char *resources)
       }
     }
 
-    ball_step(win_a, &ic_a);
-    text_step(win_b, &ic_b);
-    blank_step(win_c, &ic_c);
+    ball_step(windows[WIN_BALL], &ic_a);
+    text_step(windows[WIN_TEXT], &ic_b);
+    blank_step(windows[WIN_BLANK], &ic_c);
 
     if (garbage_pending)
     {
@@ -307,13 +336,14 @@ static result_t wuss_interactive_test(const char *resources)
   SDL_Quit();
 
   free(pixels);
+  free(ic_e.bitmap.base);
 
   return result_TEST_PASSED;
 
 
 Failure:
 
-  printf("failed\n");
+  printf("wuss_interactive_test: failed (rc=0x%X)\n", rc);
 
   return result_TEST_FAILED;
 }
@@ -802,7 +832,7 @@ result_t wuss_test(const char *resources)
 
 Failure:
 
-  printf("failed\n");
+  printf("wuss_test: failed (rc=0x%X)\n", rc);
 
   return result_TEST_FAILED;
 }
