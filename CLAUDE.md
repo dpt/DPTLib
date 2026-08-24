@@ -57,7 +57,7 @@ New source/header files must be added by hand to the relevant `set(..._SOURCES .
 
 **Test structure.** There is a single test binary (`DPTLibTest`, from `apps/test/main.c`) that dispatches to per-module `<module>_test(resources)` functions declared centrally in `include/test/all-tests.h`. Tests return `result_TEST_PASSED`/`result_TEST_FAILED` (`result_BASE_TEST`).
 
-**Notable sub-libraries with their own docs** (`docs/*.md`): `io/stream` (chainable byte-stream sources/transforms, PackBits and move-to-front compression), `framebuf/bmfont` (proportional bitmap fonts loaded from specially-formatted PNGs), `framebuf/composite` (Porter-Duff compositing on RGBA/BGRA bitmaps).
+**Notable sub-libraries with their own docs** (`docs/*.md`): `io/stream` (chainable byte-stream sources/transforms, PackBits and move-to-front compression), `framebuf/bmfont` (proportional bitmap fonts loaded from specially-formatted PNGs), `framebuf/composite` (Porter-Duff compositing on RGBA/BGRA bitmaps), `wuss` (minimal window manager: creation, z-ordering, mouse routing, dirty-region redraw, client-delegated content).
 
 **RISC OS.** `TARGET_RISCOS` (set by an external toolchain file) switches CMake to fetch/build zlib+libpng from source, link OSLib from `$GCCSDK_INSTALL_ENV`, and applies `riscos_set_flags()`. `pngusr-ro.dfa`/`pngusr-rw.dfa` select libpng's build config depending on `DPTLIB_IMAGES_READ_ONLY`.
 
