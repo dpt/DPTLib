@@ -49,6 +49,22 @@ static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, r
         *rc = crc;
     }
   }
+
+  if (!box_intersection(&win->visible, full, &clipped))
+  {
+    int      width, height;
+    colour_t border;
+
+    width  = win->visible.x1 - win->visible.x0;
+    height = win->visible.y1 - win->visible.y0;
+    border = wuss->palette[wuss->titlebar_bg];
+
+    wuss->scr->clip = clipped;
+    screen_draw_rect(wuss->scr, win->visible.x0,     win->visible.y0,     width, 1,      border);
+    screen_draw_rect(wuss->scr, win->visible.x0,     win->visible.y1 - 1, width, 1,      border);
+    screen_draw_rect(wuss->scr, win->visible.x0,     win->visible.y0,     1,     height, border);
+    screen_draw_rect(wuss->scr, win->visible.x1 - 1, win->visible.y0,     1,     height, border);
+  }
 }
 
 static void redraw_from(wuss_t *wuss, list_t *e, const box_t *full, result_t *rc)
