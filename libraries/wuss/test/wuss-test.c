@@ -147,7 +147,7 @@ static result_t wuss_interactive_test(const char *resources)
 {
   const int   scr_width  = 640;
   const int   scr_height = 480;
-  const int   rowbytes   = scr_width * 4;
+  const int   rowbytes   = scr_width / 2; /* pixelfmt_p4: 2 pixels/byte */
 
   result_t              rc;
   const char            *leafname;
@@ -155,6 +155,7 @@ static result_t wuss_interactive_test(const char *resources)
   bmfont_t              *font;
   void                  *pixels;
   bitmap_t              bm;
+  bitmap_t              *disp;
   screen_t              scr;
   colour_t              palette[16];
   wuss_t                *wuss;
@@ -181,7 +182,7 @@ static result_t wuss_interactive_test(const char *resources)
   if (pixels == NULL)
     goto Failure;
 
-  rc = bitmap_init(&bm, scr_width, scr_height, pixelfmt_bgrx8888, rowbytes, palette, pixels);
+  rc = bitmap_init(&bm, scr_width, scr_height, pixelfmt_p4, rowbytes, palette, pixels);
   if (rc != result_OK)
     goto Failure;
 
@@ -351,7 +352,13 @@ static result_t wuss_interactive_test(const char *resources)
       wuss_redraw_dirty(wuss);
     }
 
-    SDL_UpdateTexture(texture, NULL, bm.base, bm.rowbytes);
+    rc = bitmap_convert(&bm, pixelfmt_bgrx8888, &disp);
+    if (rc == result_OK)
+    {
+      SDL_UpdateTexture(texture, NULL, disp->base, disp->rowbytes);
+      free(disp->base);
+      free(disp);
+    }
     SDL_RenderTexture(renderer, texture, NULL, NULL);
     SDL_RenderPresent(renderer);
 
