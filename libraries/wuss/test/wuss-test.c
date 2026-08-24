@@ -10,11 +10,13 @@
 #include "base/result.h"
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
+#include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
 #include "framebuf/palettes.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "io/path.h"
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 
@@ -67,6 +69,9 @@ static result_t wuss_interactive_test(const char *resources)
   const int   rowbytes   = scr_width * 4;
 
   result_t              rc;
+  const char            *leafname;
+  const char            *filename;
+  bmfont_t              *font;
   void                  *pixels;
   bitmap_t              bm;
   screen_t              scr;
@@ -81,9 +86,13 @@ static result_t wuss_interactive_test(const char *resources)
   SDL_Texture           *texture;
   bool                   quit;
 
-  NOT_USED(resources);
-
   define_pico8_palette(palette);
+
+  leafname = path_join_leafname("ms-sans-serif", "png");
+  filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
+  rc = bmfont_create(filename, &font);
+  if (rc != result_OK)
+    goto Failure;
 
   pixels = malloc(rowbytes * scr_height);
   if (pixels == NULL)
@@ -128,7 +137,7 @@ static result_t wuss_interactive_test(const char *resources)
 
   SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
 
-  rc = wuss_create(&scr, NULL, palette, NELEMS(palette), NULL, &wuss);
+  rc = wuss_create(&scr, font, palette, NELEMS(palette), NULL, &wuss);
   if (rc != result_OK)
     goto Failure;
 
@@ -211,6 +220,7 @@ static result_t wuss_interactive_test(const char *resources)
   }
 
   wuss_destroy(wuss);
+  bmfont_destroy(font);
 
   SDL_DestroyTexture(texture);
   SDL_DestroyRenderer(renderer);
