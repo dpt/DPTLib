@@ -328,7 +328,8 @@ set(WUSS_SOURCES
     libraries/wuss/window-get-visible-bounds.c
     libraries/wuss/window-invalidate.c
     libraries/wuss/window-move.c
-    libraries/wuss/window-resize.c)
+    libraries/wuss/window-resize.c
+    libraries/wuss/window-set-background.c)
 
 set(ALL_SOURCES
     ${PUBLIC_HEADERS}
@@ -509,6 +510,10 @@ if(BUILD_TESTS)
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c
+        libraries/wuss/test/clients/ball.c
+        libraries/wuss/test/clients/blank.c
+        libraries/wuss/test/clients/palette.c
+        libraries/wuss/test/clients/text.c
         libraries/wuss/test/wuss-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})

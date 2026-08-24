@@ -51,6 +51,15 @@ typedef int wuss_colour_t;
 /** Sentinel for wuss_client_t::bg meaning "no automatic background fill". */
 #define wuss_NO_BACKGROUND ((wuss_colour_t) -1)
 
+/** Per-window appearance flags, combinable with bitwise OR. */
+typedef enum wuss_window_flags
+{
+  wuss_WINDOW_NONE        = 0,      /**< Default: titlebar and outline drawn. */
+  wuss_WINDOW_NO_TITLEBAR = 1 << 0, /**< No titlebar; content fills the full visible area, and no drag handle exists. */
+  wuss_WINDOW_NO_OUTLINE  = 1 << 1  /**< No 1px border drawn around the visible area. */
+}
+wuss_window_flags_t;
+
 /** Optional creation-time configuration. */
 typedef struct wuss_config
 {

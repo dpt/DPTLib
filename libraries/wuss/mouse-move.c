@@ -32,7 +32,7 @@ result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit)
       return result_OK;
 
     local_x = x - win->visible.x0;
-    local_y = y - win->visible.y0 - wuss->titlebar_height;
+    local_y = y - win->visible.y0 - wuss__titlebar_height(win);
     return win->client.mouse(win, wuss_MOUSE_MOVE, local_x, local_y, wuss_BUTTON_SELECT, win->client.client_data);
   }
 

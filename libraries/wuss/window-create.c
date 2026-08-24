@@ -10,18 +10,19 @@
 
 #include "impl.h"
 
-result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *title, const wuss_client_t *client, wuss_window_t **window)
+result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *title, wuss_window_flags_t flags, const wuss_client_t *client, wuss_window_t **window)
 {
   wuss_window_t *win;
-  int             width, height;
+  int             width, height, titlebar_height;
 
   assert(wuss    != NULL);
   assert(visible != NULL);
   assert(window  != NULL);
 
-  width  = visible->x1 - visible->x0;
-  height = visible->y1 - visible->y0;
-  if (!wuss__size_ok(width, height, wuss->titlebar_height))
+  width           = visible->x1 - visible->x0;
+  height          = visible->y1 - visible->y0;
+  titlebar_height = (flags & wuss_WINDOW_NO_TITLEBAR) ? 0 : wuss->titlebar_height;
+  if (!wuss__size_ok(width, height, titlebar_height))
     return result_WUSS_TOO_SMALL;
 
   win = malloc(sizeof(*win));
@@ -30,6 +31,7 @@ result_t wuss_window_create(wuss_t *wuss, const box_t *visible, const char *titl
 
   win->wuss    = wuss;
   win->visible = *visible;
+  win->flags   = flags;
 
   if (client != NULL)
     win->client = *client;
