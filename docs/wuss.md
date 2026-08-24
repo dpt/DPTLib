@@ -49,7 +49,7 @@ wuss_client_t;
 
 `flags` combines, by bitwise OR:
 
-- `wuss_WINDOW_NONE` — default chrome: titlebar and outline.
+- `wuss_WINDOW_NONE` — default furniture: titlebar and outline.
 - `wuss_WINDOW_NO_TITLEBAR` — no titlebar; content fills the full visible area, and there's no drag handle.
 - `wuss_WINDOW_NO_OUTLINE` — no 1px border around the visible area.
 
