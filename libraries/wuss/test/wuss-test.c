@@ -566,6 +566,31 @@ result_t wuss_test(const char *resources)
       goto Failure;
   }
 
+  printf("test: a piece straddling B's edge redraws A but not B\n");
+
+  {
+    box_t local;
+
+    before_a = tc_a.redraw_count;
+    before_b = tc_b.redraw_count;
+
+    local.x0 = 30;
+    local.y0 = 60;
+    local.x1 = 70;
+    local.y1 = 90; /* straddles B's left edge (x=49): only x:30-49 survives clipping */
+    wuss_window_invalidate(win_a, &local);
+    if (wuss_get_dirty_count(wuss) != 1)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_a.redraw_count != before_a + 1)
+      goto Failure;
+    if (tc_b.redraw_count != before_b)
+      goto Failure; /* B not touched by the surviving piece: must not be redrawn */
+  }
+
   printf("test: z-order hit test and local coordinate translation (B on top)\n");
 
   tc_b.mouse_count = 0;
