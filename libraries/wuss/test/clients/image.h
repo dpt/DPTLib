@@ -8,9 +8,9 @@
 #include "framebuf/bitmap.h"
 #include "wuss/window.h"
 
-/* window's client: a loaded PNG, drawn pixel-by-pixel with alpha-tested
- * transparency so partially-transparent test images show the window
- * background through them */
+/* window's client: a loaded PNG, alpha-tested against the window
+ * background (this test screen is paletted, so fully-transparent source
+ * pixels are skipped and everything else is drawn at full strength) */
 typedef struct image_client
 {
   bitmap_t bitmap; /* owned: base freed by the caller when done */

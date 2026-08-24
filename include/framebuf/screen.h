@@ -95,6 +95,22 @@ void screen_draw_square(screen_t *scr,
                         colour_t colour);
 
 /**
+ * Draws a bitmap, alpha-blending it against the screen where the bitmap
+ * has an alpha channel. On paletted screens, which have no linear channel
+ * bits to blend, this falls back to alpha-tested transparency instead
+ * (drawn at full strength, or not at all).
+ *
+ * The bitmap is clipped to the screen's clip region. No scaling is
+ * performed.
+ *
+ * \param[in] scr  Screen to draw upon.
+ * \param[in] x    X coordinate of leftmost point to draw bitmap at.
+ * \param[in] y    Y coordinate of topmost point to draw bitmap at.
+ * \param[in] src  Bitmap to draw.
+ */
+void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src);
+
+/**
  * Draws a line (Bresenham version with aliasing).
  *
  * Coordinates are `int`s. Coordinates are inclusive.
