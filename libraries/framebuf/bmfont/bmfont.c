@@ -1186,12 +1186,21 @@ result_t bmfont_draw(bmfont_t      *bmfont,
     {
       glyph = (unsigned char *) bmfont->glyphs + gid * glyphbytes;
 
-      int remainingcharwidth = MIN(remaining, advance); /* in pixels */
-      int clippedcharwidth   = remainingcharwidth - left_skip;
+      int clippedcharwidth = MIN(remaining, advance - left_skip); /* in pixels */
 
-      if (clippedcharwidth > 0)
+      if (clippedcharwidth <= 0)
       {
-        int right_skip = charwidth - remainingcharwidth;
+        /* still entirely left-clipped: the visible clip is narrower than
+         * this character's remaining left-clip amount. Skip it exactly
+         * like the whole-character skip above, without touching
+         * "remaining" or the screen pointer/shift, since nothing of it
+         * was drawn. */
+        left_skip -= advance;
+        continue;
+      }
+
+      {
+        int right_skip = charwidth - left_skip - clippedcharwidth;
 
         drawfn(screen, glyph,
                top_skip, right_skip,
