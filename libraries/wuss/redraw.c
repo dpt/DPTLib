@@ -31,12 +31,33 @@ static void redraw_window(wuss_t        *wuss,
     if (wuss->font != NULL && win->title[0] != '\0')
     {
       point_t pos;
+      int     text_x0;
 
-      pos.x = titlebar.x0 + 2;
+      text_x0 = titlebar.x0 + 2;
+      if (!(win->flags & wuss_WINDOW_NO_CLOSE))
+      {
+        box_t close;
+
+        wuss__close_box(win, &close);
+        text_x0 = close.x1 + 2;
+      }
+
+      pos.x = text_x0;
       pos.y = titlebar.y0 + 2;
       bmfont_draw(wuss->font, wuss->scr, win->title, (int) strlen(win->title),
                  wuss->palette[wuss->titlebar_fg], wuss->palette[wuss->titlebar_bg],
                  &pos, NULL);
+    }
+
+    if (!(win->flags & wuss_WINDOW_NO_CLOSE))
+    {
+      box_t close;
+
+      wuss__close_box(win, &close);
+      screen_draw_rect(wuss->scr,
+                       close.x0, close.y0,
+                       close.x1 - close.x0, close.y1 - close.y0,
+                       wuss->palette[wuss->titlebar_fg]);
     }
   }
 
