@@ -22,7 +22,10 @@
 #define SOFA_TILT           -0.5 /* static camera tilt, radians, so the seat is visible from above */
 #define SOFA_SPIN_PER_FRAME  0.02 /* radians/frame at 60fps, one turn every ~5s */
 #define SOFA_CAMERA_DIST     4.0  /* perspective divisor: bigger = flatter */
-#define SOFA_UNIT_FRACTION   0.35 /* fraction of min(width,height) per model unit */
+#define SOFA_UNIT_FRACTION   0.35 /* fraction of min(width,height) per model unit, at zoom 1.0 */
+#define SOFA_ZOOM_MIN        0.2
+#define SOFA_ZOOM_MAX        4.0
+#define SOFA_ZOOM_PER_NOTCH  0.1
 
 /* one 3D point */
 typedef struct vec3 { double x, y, z; } vec3_t;
@@ -102,9 +105,11 @@ result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
   task->bg       = palette[palette_PICO8_DARK_PURPLE];
   task->line     = palette[palette_PICO8_ORANGE];
   task->angle    = 0.0;
+  task->zoom     = 1.0;
   task->spinning = true;
 
-  delegate = wuss_task_make(sofa_redraw, sofa_mouse, task, wuss_NO_BACKGROUND); /* sofa_redraw paints its own background every frame */
+  delegate        = wuss_task_make(sofa_redraw, sofa_mouse, task, wuss_NO_BACKGROUND); /* sofa_redraw paints its own background every frame */
+  delegate.scroll = sofa_scroll;
   box      = (box_t) BOX_POS_SIZE(250, 260, 180, 160);
 
   return wuss_window_create(wuss, &box, "Sofa", wuss_WINDOW_NONE, &delegate, &task->window);
@@ -135,7 +140,7 @@ result_t sofa_redraw(wuss_window_t *window, screen_t *scr, const box_t *content,
   wuss_window_get_content_bounds(sc->window, &bounds);
   cx   = content->x0 + (bounds.x1 - bounds.x0) / 2;
   cy   = content->y0 + (bounds.y1 - bounds.y0) / 2;
-  unit = MIN(bounds.x1 - bounds.x0, bounds.y1 - bounds.y0) * SOFA_UNIT_FRACTION;
+  unit = MIN(bounds.x1 - bounds.x0, bounds.y1 - bounds.y0) * SOFA_UNIT_FRACTION * sc->zoom;
 
   for (part = 0; part < NELEMS(sofa_parts); part++)
   {
@@ -173,6 +178,30 @@ result_t sofa_mouse(wuss_window_t *window, wuss_mouse_action_t action, int x, in
 
   if (action == wuss_MOUSE_DOWN)
     sc->spinning = !sc->spinning;
+
+  return result_OK;
+}
+
+result_t sofa_scroll(wuss_window_t *window, int x, int y, int delta, void *task_data)
+{
+  sofa_task_t *sc;
+  box_t        content;
+
+  NOT_USED(x);
+  NOT_USED(y);
+
+  sc = task_data;
+
+  sc->zoom += delta * SOFA_ZOOM_PER_NOTCH;
+  if (sc->zoom < SOFA_ZOOM_MIN)
+    sc->zoom = SOFA_ZOOM_MIN;
+  else if (sc->zoom > SOFA_ZOOM_MAX)
+    sc->zoom = SOFA_ZOOM_MAX;
+
+  wuss_window_get_content_bounds(window, &content);
+  content.x1 -= content.x0; content.x0 = 0;
+  content.y1 -= content.y0; content.y0 = 0;
+  wuss_window_invalidate(window, &content);
 
   return result_OK;
 }

@@ -17,12 +17,14 @@ typedef struct sofa_task
   wuss_window_t *window;
   colour_t       bg, line;
   double         angle;
+  double         zoom; /* scroll-adjustable */
   bool           spinning;
 }
 sofa_task_t;
 
 wuss_redraw_fn_t sofa_redraw;
 wuss_mouse_fn_t  sofa_mouse;
+wuss_scroll_fn_t sofa_scroll;
 
 /* create the sofa window against the given wuss instance */
 result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task);
