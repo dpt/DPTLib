@@ -1006,7 +1006,7 @@ result_t wuss_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
 
-    wuss_window_bring_to_front(win_i);
+    wuss_window_restack(win_i, wuss_ZORDER_FRONT);
 
     if (wuss_get_dirty_count(wuss) != 1)
       goto Failure;

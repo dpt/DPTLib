@@ -89,16 +89,16 @@ wuss_event_t;
  * \param[in] task_data As passed to wuss_window_create.
  * \return \ref result_OK on success, else an appropriate result code.
  */
-typedef result_t (wuss_event_fn_t)(wuss_window_t     *window,
+typedef result_t (wuss_event_fn_t)(wuss_window_t      *window,
                                    const wuss_event_t *event,
                                    void               *task_data);
 
 /** A window's content delegate. Copied by value into the window at creation. */
 typedef struct wuss_task
 {
-  wuss_event_fn_t *handle;     /**< NULL => task receives no events; wuss still fills the content background per bg. */
+  wuss_event_fn_t *handle;    /**< NULL => task receives no events; wuss still fills the content background per bg. */
   void            *task_data;
-  wuss_colour_t    bg;         /**< Content background, filled by wuss before redraw is called, or wuss_NO_BACKGROUND for the task to draw its own background (avoids a redundant fill behind an opaque task). */
+  wuss_colour_t    bg;        /**< Content background, filled by wuss before redraw is called, or wuss_NO_BACKGROUND for the task to draw its own background (avoids a redundant fill behind an opaque task). */
 }
 wuss_task_t;
 
@@ -192,18 +192,12 @@ void wuss_window_move(wuss_window_t *window, int x, int y);
 result_t wuss_window_resize(wuss_window_t *window, int width, int height);
 
 /**
- * Bring a window to the front of the z-order.
+ * Move a window to one end of the z-order.
  *
- * \param[in] window Window to bring to front.
+ * \param[in] window Window to restack.
+ * \param[in] reason wuss_ZORDER_FRONT or wuss_ZORDER_BACK.
  */
-void wuss_window_bring_to_front(wuss_window_t *window);
-
-/**
- * Send a window to the back of the z-order.
- *
- * \param[in] window Window to send to back.
- */
-void wuss_window_send_to_back(wuss_window_t *window);
+void wuss_window_restack(wuss_window_t *window, wuss_zorder_t reason);
 
 /**
  * Fetch a window's current visible (on-screen) bounds: its full footprint,

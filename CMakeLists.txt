@@ -329,7 +329,6 @@ set(WUSS_SOURCES
     libraries/wuss/task-stop.c
     libraries/wuss/titlebar-box.c
     libraries/wuss/window-at.c
-    libraries/wuss/window-bring-to-front.c
     libraries/wuss/window-create.c
     libraries/wuss/window-destroy.c
     libraries/wuss/window-get-content-bounds.c
@@ -338,7 +337,7 @@ set(WUSS_SOURCES
     libraries/wuss/window-invalidate.c
     libraries/wuss/window-move.c
     libraries/wuss/window-resize.c
-    libraries/wuss/window-send-to-back.c
+    libraries/wuss/window-restack.c
     libraries/wuss/window-set-background.c
     libraries/wuss/window-set-scroll.c)
 
