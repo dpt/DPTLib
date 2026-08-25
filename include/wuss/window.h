@@ -231,18 +231,14 @@ void wuss_window_get_content_bounds(const wuss_window_t *window,
  *
  * \param[in] window     Window whose content changed.
  * \param[in] local_box  Region, in window-local content coordinates (as
- *                       passed to the task's mouse callback).
+ *                       passed to the task's mouse callback), or NULL to
+ *                       mark the whole content area dirty.
  */
 void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
 
-/**
- * Mark a window's whole content area as dirty, for the next
- * wuss_redraw_dirty call. Equivalent to calling wuss_window_invalidate with
- * a window-local box covering the entire content area.
- *
- * \param[in] window Window whose content changed.
- */
-void wuss_window_invalidate_all(wuss_window_t *window);
+/** Mark a window's whole content area as dirty. Shorthand for
+ * wuss_window_invalidate(window, NULL). */
+#define wuss_window_invalidate_all(window) wuss_window_invalidate((window), NULL)
 
 /**
  * Set a window's scroll offset: the point in virtual content space that

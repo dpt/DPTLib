@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stddef.h>
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
