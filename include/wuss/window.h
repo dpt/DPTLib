@@ -23,15 +23,6 @@ extern "C"
 
 /* ----------------------------------------------------------------------- */
 
-/** The kind of mouse event delivered to a task's mouse callback. */
-typedef enum wuss_mouse_action
-{
-  wuss_MOUSE_DOWN,
-  wuss_MOUSE_UP,
-  wuss_MOUSE_MOVE
-}
-wuss_mouse_action_t;
-
 /**
  * Task redraw callback. Called with scr->clip already set to the
  * on-screen, clipped content area.

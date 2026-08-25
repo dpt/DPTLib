@@ -319,9 +319,8 @@ set(WUSS_SOURCES
     libraries/wuss/destroy.c
     libraries/wuss/impl.h
     libraries/wuss/invalidate.c
-    libraries/wuss/mouse-down.c
+    libraries/wuss/mouse-click.c
     libraries/wuss/mouse-move.c
-    libraries/wuss/mouse-up.c
     libraries/wuss/redraw.c
     libraries/wuss/scroll.c
     libraries/wuss/task-make.c
