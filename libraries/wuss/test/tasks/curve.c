@@ -18,16 +18,6 @@
 #define CURVE_SEGMENTS_MIN     4
 #define CURVE_SEGMENTS_MAX     128
 
-static void invalidate_whole(wuss_window_t *window)
-{
-  box_t content;
-
-  wuss_window_get_content_bounds(window, &content);
-  content.x1 -= content.x0; content.x0 = 0;
-  content.y1 -= content.y0; content.y0 = 0;
-  wuss_window_invalidate(window, &content);
-}
-
 result_t curve_create(wuss_t         *wuss,
                       const colour_t *palette,
                       curve_task_t   *task)
@@ -129,7 +119,7 @@ static result_t curve_mouse(curve_task_t        *task,
       break;
     task->points[task->dragging].x = x;
     task->points[task->dragging].y = y;
-    invalidate_whole(window);
+    wuss_window_invalidate_all(window);
     break;
 
   case wuss_MOUSE_UP:
@@ -150,7 +140,7 @@ static result_t curve_scroll(curve_task_t  *task,
   else if (task->nsegments > CURVE_SEGMENTS_MAX)
     task->nsegments = CURVE_SEGMENTS_MAX;
 
-  invalidate_whole(window);
+  wuss_window_invalidate_all(window);
 
   return result_OK;
 }

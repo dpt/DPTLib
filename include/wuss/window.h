@@ -231,6 +231,15 @@ void wuss_window_get_content_bounds(const wuss_window_t *window,
 void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
 
 /**
+ * Mark a window's whole content area as dirty, for the next
+ * wuss_redraw_dirty call. Equivalent to calling wuss_window_invalidate with
+ * a window-local box covering the entire content area.
+ *
+ * \param[in] window Window whose content changed.
+ */
+void wuss_window_invalidate_all(wuss_window_t *window);
+
+/**
  * Set a window's scroll offset: the point in virtual content space that
  * appears at the content area's top-left. Larger offsets bring later
  * content into view. Invalidates the content area so the next redraw picks
