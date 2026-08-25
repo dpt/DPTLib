@@ -58,11 +58,25 @@ typedef result_t (wuss_redraw_fn_t)(wuss_window_t *window, screen_t *scr, const 
  */
 typedef result_t (wuss_mouse_fn_t)(wuss_window_t *window, wuss_mouse_action_t action, int x, int y, wuss_button_t button, void *task_data);
 
+/**
+ * Task scroll callback. x,y are window-local content coordinates, as per
+ * wuss_mouse_fn_t.
+ *
+ * \param[in] window    The window receiving the event.
+ * \param[in] x         Window-local x coordinate.
+ * \param[in] y         Window-local y coordinate.
+ * \param[in] delta     Scroll amount, sign and units as passed to wuss_scroll.
+ * \param[in] task_data As passed to wuss_window_create.
+ * \return \ref result_OK on success, else an appropriate result code.
+ */
+typedef result_t (wuss_scroll_fn_t)(wuss_window_t *window, int x, int y, int delta, void *task_data);
+
 /** A window's content delegate. Copied by value into the window at creation. */
 typedef struct wuss_task
 {
   wuss_redraw_fn_t *redraw;    /**< NULL => content area left blank. */
   wuss_mouse_fn_t  *mouse;     /**< NULL => content mouse events dropped. */
+  wuss_scroll_fn_t *scroll;    /**< NULL => content scroll events dropped. Not set by wuss_task_make; assign directly if needed. */
   void             *task_data;
   wuss_colour_t     bg;        /**< Content background, filled by wuss before redraw is called, or wuss_NO_BACKGROUND for the task to draw its own background (avoids a redundant fill behind an opaque task). */
 }
