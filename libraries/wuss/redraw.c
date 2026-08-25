@@ -42,17 +42,17 @@ static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, r
   {
     wuss->scr->clip = clipped;
 
-    if (win->client.bg != wuss_NO_BACKGROUND)
+    if (win->task.bg != wuss_NO_BACKGROUND)
       screen_draw_rect(wuss->scr,
                        content.x0, content.y0,
                        content.x1 - content.x0, content.y1 - content.y0,
-                       wuss->palette[win->client.bg]);
+                       wuss->palette[win->task.bg]);
 
-    if (win->client.redraw != NULL)
+    if (win->task.redraw != NULL)
     {
       result_t crc;
 
-      crc = win->client.redraw(win, wuss->scr, &content, win->client.client_data);
+      crc = win->task.redraw(win, wuss->scr, &content, win->task.task_data);
       if (crc != result_OK)
         *rc = crc;
     }

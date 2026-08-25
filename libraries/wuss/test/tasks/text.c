@@ -1,4 +1,4 @@
-/* text.c -- wuss test - static paragraph client */
+/* text.c -- wuss test - static paragraph task */
 
 #ifdef USE_SDL
 
@@ -12,6 +12,8 @@
 
 #include "base/debug.h"
 #include "base/utils.h"
+#include "framebuf/palettes.h"
+#include "geom/box.h"
 #include "geom/point.h"
 
 #include "text.h"
@@ -24,9 +26,35 @@ static const char paragraph[] =
   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
   "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
 
-result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *client_data)
+result_t text_create(wuss_t *wuss, const colour_t *palette, bmfont_t *font, text_task_t *task)
 {
-  text_client_t *tcx;
+  wuss_task_t delegate;
+  box_t       box;
+  result_t    rc;
+
+  task->font        = font;
+  task->bg          = palette[palette_PICO8_BLUE]; /* matches the "Lorem Ipsum" window's bg, for bmfont_draw's glyph blending */
+  task->fg          = palette[palette_PICO8_WHITE];
+  task->frame_count = 0;
+
+  delegate = wuss_task_make(text_redraw, NULL, task, palette_PICO8_BLUE);
+  box      = (box_t) BOX_POS_SIZE(120, 100, 220, 180);
+
+  task->base_width = box.x1 - box.x0;
+
+  rc = wuss_window_create(wuss, &box, "Lorem Ipsum", wuss_WINDOW_NONE, &delegate, &task->window);
+
+  return rc;
+}
+
+void text_destroy(text_task_t *task)
+{
+  wuss_window_destroy(task->window);
+}
+
+result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
+{
+  text_task_t *tcx;
   int             font_width, font_height;
   const char     *string;
   int             stringlen;
@@ -34,7 +62,7 @@ result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content,
 
   NOT_USED(window);
 
-  tcx = client_data;
+  tcx = task_data;
 
   bmfont_get_info(tcx->font, &font_width, &font_height);
 
@@ -82,21 +110,21 @@ result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content,
 #define TEXT_RESIZE_PERIOD_FRAMES 300 /* one full swing every 5s at 60fps */
 #define TEXT_RESIZE_AMPLITUDE     50  /* +/-50px either side of base_width */
 
-void text_step(wuss_window_t *window, text_client_t *tcx)
+void text_step(text_task_t *tcx)
 {
   box_t    visible;
   int      height, width;
   double   angle;
   result_t rc;
 
-  wuss_window_get_content_bounds(window, &visible);
+  wuss_window_get_content_bounds(tcx->window, &visible);
   height = visible.y1 - visible.y0;
 
   tcx->frame_count++;
   angle = tcx->frame_count * (2.0 * M_PI / TEXT_RESIZE_PERIOD_FRAMES);
   width = tcx->base_width + (int) (TEXT_RESIZE_AMPLITUDE * sin(angle));
 
-  rc = wuss_window_resize(window, width, height);
+  rc = wuss_window_resize(tcx->window, width, height);
   if (rc != result_OK)
     logf_warning("text_step: wuss_window_resize(%d, %d) failed", width, height);
 }

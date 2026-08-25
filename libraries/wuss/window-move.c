@@ -27,7 +27,7 @@ void wuss_window_move(wuss_window_t *window, int x, int y)
     /* Topmost, and the screen format supports the blit: every pixel of
      * "before" is genuinely this window's own rendering (nothing above it
      * to have punched holes in it), so sliding those pixels to the new
-     * position is exactly as correct as asking the client to redraw there,
+     * position is exactly as correct as asking the task to redraw there,
      * but far cheaper -- only the vacated sliver behind the old position
      * still needs an actual repaint. */
     wuss__invalidate_minus(window->wuss, &before, &window->visible);

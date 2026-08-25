@@ -11,7 +11,7 @@
 
 /* Windows are treated as fully opaque over their whole visible footprint
  * (titlebar/outline included) for occlusion purposes, matching how
- * redraw_from repaints them: a client that leaves gaps via
+ * redraw_from repaints them: a task that leaves gaps via
  * wuss_NO_BACKGROUND won't get those gaps refreshed by this either. */
 
 /* Append "piece" minus its intersection "cut" with an occluder to "out",
