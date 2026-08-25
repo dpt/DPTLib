@@ -113,6 +113,12 @@ result_t wuss_redraw(wuss_t *wuss)
   rc = result_OK;
   redraw_from(wuss, wuss->z_order.next, &full, &rc);
 
+  /* redraw_window narrows wuss->scr->clip to whatever it last painted;
+   * reset it so anything drawing after this redraw (not least
+   * screen_copy_rect, used for window-drag blitting) sees the whole
+   * screen rather than that leftover sliver. */
+  box_reset(&wuss->scr->clip);
+
   wuss->ndirty = 0;
 
   return rc;
@@ -129,6 +135,8 @@ result_t wuss_redraw_dirty(wuss_t *wuss)
   rc = result_OK;
   for (i = 0; i < wuss->ndirty; i++)
     redraw_from(wuss, wuss->z_order.next, &wuss->dirty[i], &rc);
+
+  box_reset(&wuss->scr->clip); /* see wuss_redraw's comment on the same call */
 
   wuss->ndirty = 0;
 
