@@ -41,7 +41,7 @@ struct wuss_window
   wuss_t             *wuss;
   box_t               visible; /* full on-screen footprint: content expanded
                                  * outward by any titlebar/outline furniture */
-  wuss_client_t       client;
+  wuss_task_t         task;
   wuss_window_flags_t flags;
   char                title[WUSS_TITLE_MAX + 1];
 };

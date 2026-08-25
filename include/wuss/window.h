@@ -3,7 +3,7 @@
 /**
  * \file window.h
  *
- * A wuss window: creation, destruction, positioning, sizing and client
+ * A wuss window: creation, destruction, positioning, sizing and task
  * delegation of content drawing and mouse handling.
  */
 
@@ -23,7 +23,7 @@ extern "C"
 
 /* ----------------------------------------------------------------------- */
 
-/** The kind of mouse event delivered to a client's mouse callback. */
+/** The kind of mouse event delivered to a task's mouse callback. */
 typedef enum wuss_mouse_action
 {
   wuss_MOUSE_DOWN,
@@ -33,51 +33,51 @@ typedef enum wuss_mouse_action
 wuss_mouse_action_t;
 
 /**
- * Client redraw callback. Called with scr->clip already set to the
+ * Task redraw callback. Called with scr->clip already set to the
  * on-screen, clipped content area.
  *
- * \param[in] window      The window being redrawn.
- * \param[in] scr         Screen to draw into.
- * \param[in] content     The window's (unclipped) content box, screen space, for context.
- * \param[in] client_data As passed to wuss_window_create.
+ * \param[in] window    The window being redrawn.
+ * \param[in] scr       Screen to draw into.
+ * \param[in] content   The window's (unclipped) content box, screen space, for context.
+ * \param[in] task_data As passed to wuss_window_create.
  * \return \ref result_OK on success, else an appropriate result code.
  */
-typedef result_t (wuss_redraw_fn_t)(wuss_window_t *window, screen_t *scr, const box_t *content, void *client_data);
+typedef result_t (wuss_redraw_fn_t)(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data);
 
 /**
- * Client mouse callback. x,y are window-local content coordinates (the
+ * Task mouse callback. x,y are window-local content coordinates (the
  * content area's top-left is (0,0)).
  *
- * \param[in] window      The window receiving the event.
- * \param[in] action      Which kind of mouse event this is.
- * \param[in] x           Window-local x coordinate.
- * \param[in] y           Window-local y coordinate.
- * \param[in] button      Button involved (meaningful for DOWN/UP).
- * \param[in] client_data As passed to wuss_window_create.
+ * \param[in] window    The window receiving the event.
+ * \param[in] action    Which kind of mouse event this is.
+ * \param[in] x         Window-local x coordinate.
+ * \param[in] y         Window-local y coordinate.
+ * \param[in] button    Button involved (meaningful for DOWN/UP).
+ * \param[in] task_data As passed to wuss_window_create.
  * \return \ref result_OK on success, else an appropriate result code.
  */
-typedef result_t (wuss_mouse_fn_t)(wuss_window_t *window, wuss_mouse_action_t action, int x, int y, wuss_button_t button, void *client_data);
+typedef result_t (wuss_mouse_fn_t)(wuss_window_t *window, wuss_mouse_action_t action, int x, int y, wuss_button_t button, void *task_data);
 
 /** A window's content delegate. Copied by value into the window at creation. */
-typedef struct wuss_client
+typedef struct wuss_task
 {
-  wuss_redraw_fn_t *redraw;      /**< NULL => content area left blank. */
-  wuss_mouse_fn_t  *mouse;       /**< NULL => content mouse events dropped. */
-  void             *client_data;
-  wuss_colour_t     bg;          /**< Content background, filled by wuss before redraw is called, or wuss_NO_BACKGROUND for the client to draw its own background (avoids a redundant fill behind an opaque client). */
+  wuss_redraw_fn_t *redraw;    /**< NULL => content area left blank. */
+  wuss_mouse_fn_t  *mouse;     /**< NULL => content mouse events dropped. */
+  void             *task_data;
+  wuss_colour_t     bg;        /**< Content background, filled by wuss before redraw is called, or wuss_NO_BACKGROUND for the task to draw its own background (avoids a redundant fill behind an opaque task). */
 }
-wuss_client_t;
+wuss_task_t;
 
 /**
- * Build a wuss_client_t from its fields.
+ * Build a wuss_task_t from its fields.
  *
- * \param[in] redraw      Redraw callback, or NULL for a blank content area.
- * \param[in] mouse       Mouse callback, or NULL to drop content mouse events.
- * \param[in] client_data Opaque pointer passed back to the callbacks.
- * \param[in] bg          Content background, or wuss_NO_BACKGROUND.
- * \return The populated client.
+ * \param[in] redraw    Redraw callback, or NULL for a blank content area.
+ * \param[in] mouse     Mouse callback, or NULL to drop content mouse events.
+ * \param[in] task_data Opaque pointer passed back to the callbacks.
+ * \param[in] bg        Content background, or wuss_NO_BACKGROUND.
+ * \return The populated task.
  */
-wuss_client_t wuss_client_make(wuss_redraw_fn_t *redraw, wuss_mouse_fn_t *mouse, void *client_data, wuss_colour_t bg);
+wuss_task_t wuss_task_make(wuss_redraw_fn_t *redraw, wuss_mouse_fn_t *mouse, void *task_data, wuss_colour_t bg);
 
 /**
  * Create a window.
@@ -91,14 +91,14 @@ wuss_client_t wuss_client_make(wuss_redraw_fn_t *redraw, wuss_mouse_fn_t *mouse,
  * \param[in]  content Requested content-area bounds, screen space. Copied in.
  * \param[in]  title   Titlebar label, or NULL for none. Copied in, truncated if too long. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR.
  * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR / wuss_WINDOW_NO_OUTLINE, OR'd together, or wuss_WINDOW_NONE for the default furniture.
- * \param[in]  client  Content delegate. Copied in. May be NULL for a window with no content handling.
+ * \param[in]  task    Content delegate. Copied in. May be NULL for a window with no content handling.
  * \param[out] window  Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
  *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if
- *         client->bg is out of range for the palette, or another
+ *         task->bg is out of range for the palette, or another
  *         appropriate result code.
  */
-result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title, wuss_window_flags_t flags, const wuss_client_t *client, wuss_window_t **window);
+result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title, wuss_window_flags_t flags, const wuss_task_t *task, wuss_window_t **window);
 
 /**
  * Destroy a window.
@@ -163,13 +163,13 @@ void wuss_window_get_content_bounds(const wuss_window_t *window, box_t *content)
 
 /**
  * Mark a region of a window's content as dirty, for the next
- * wuss_redraw_dirty call. Content changes are opaque to wuss, so clients
+ * wuss_redraw_dirty call. Content changes are opaque to wuss, so tasks
  * must call this themselves (e.g. the union of an animated element's old
  * and new positions).
  *
  * \param[in] window     Window whose content changed.
  * \param[in] local_box  Region, in window-local content coordinates (as
- *                       passed to the client's mouse callback).
+ *                       passed to the task's mouse callback).
  */
 void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
 
@@ -180,7 +180,7 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
  * \param[in] window Window to change.
  * \param[in] bg     New content background, as an index into the system
  *                    palette, or wuss_NO_BACKGROUND to hand background
- *                    painting back to the client.
+ *                    painting back to the task.
  * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if bg is
  *         out of range for the palette.
  */

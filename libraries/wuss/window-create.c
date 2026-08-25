@@ -10,7 +10,7 @@
 
 #include "impl.h"
 
-result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title, wuss_window_flags_t flags, const wuss_client_t *client, wuss_window_t **window)
+result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title, wuss_window_flags_t flags, const wuss_task_t *task, wuss_window_t **window)
 {
   wuss_window_t *win;
   int             width, height, outline_px, titlebar_height;
@@ -38,15 +38,15 @@ result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *titl
   win->visible.y1 = content->y1 + outline_px;
   win->flags      = flags;
 
-  if (client != NULL)
-    win->client = *client;
+  if (task != NULL)
+    win->task = *task;
   else
-    memset(&win->client, 0, sizeof(win->client));
+    memset(&win->task, 0, sizeof(win->task));
 
-  if (client == NULL)
-    win->client.bg = wuss_NO_BACKGROUND;
-  else if (client->bg != wuss_NO_BACKGROUND &&
-           (client->bg < 0 || client->bg >= wuss->npalette))
+  if (task == NULL)
+    win->task.bg = wuss_NO_BACKGROUND;
+  else if (task->bg != wuss_NO_BACKGROUND &&
+           (task->bg < 0 || task->bg >= wuss->npalette))
   {
     free(win);
     return result_WUSS_BAD_COLOUR;

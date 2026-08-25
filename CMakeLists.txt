@@ -312,7 +312,6 @@ set(UTILS_SOURCES
     libraries/utils/primes/primes.c)
 
 set(WUSS_SOURCES
-    libraries/wuss/client-make.c
     libraries/wuss/content-box.c
     libraries/wuss/create.c
     libraries/wuss/destroy.c
@@ -322,6 +321,7 @@ set(WUSS_SOURCES
     libraries/wuss/mouse-move.c
     libraries/wuss/mouse-up.c
     libraries/wuss/redraw.c
+    libraries/wuss/task-make.c
     libraries/wuss/titlebar-box.c
     libraries/wuss/window-at.c
     libraries/wuss/window-bring-to-front.c
@@ -514,12 +514,12 @@ if(BUILD_TESTS)
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c
-        libraries/wuss/test/clients/ball.c
-        libraries/wuss/test/clients/blank.c
-        libraries/wuss/test/clients/checker.c
-        libraries/wuss/test/clients/image.c
-        libraries/wuss/test/clients/palette.c
-        libraries/wuss/test/clients/text.c
+        libraries/wuss/test/tasks/ball.c
+        libraries/wuss/test/tasks/blank.c
+        libraries/wuss/test/tasks/checker.c
+        libraries/wuss/test/tasks/image.c
+        libraries/wuss/test/tasks/palette.c
+        libraries/wuss/test/tasks/text.c
         libraries/wuss/test/wuss-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
