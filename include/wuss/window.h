@@ -33,7 +33,10 @@ extern "C"
  * \param[in] task_data As passed to wuss_window_create.
  * \return \ref result_OK on success, else an appropriate result code.
  */
-typedef result_t (wuss_redraw_fn_t)(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data);
+typedef result_t (wuss_redraw_fn_t)(wuss_window_t *window,
+                                    screen_t      *scr,
+                                    const box_t   *content,
+                                    void          *task_data);
 
 /**
  * Task mouse callback. x,y are window-local content coordinates (the
@@ -47,7 +50,12 @@ typedef result_t (wuss_redraw_fn_t)(wuss_window_t *window, screen_t *scr, const 
  * \param[in] task_data As passed to wuss_window_create.
  * \return \ref result_OK on success, else an appropriate result code.
  */
-typedef result_t (wuss_mouse_fn_t)(wuss_window_t *window, wuss_mouse_action_t action, int x, int y, wuss_button_t button, void *task_data);
+typedef result_t (wuss_mouse_fn_t)(wuss_window_t      *window,
+                                   wuss_mouse_action_t action,
+                                   int                 x,
+                                   int                 y,
+                                   wuss_button_t       button,
+                                   void               *task_data);
 
 /**
  * Task scroll callback. x,y are window-local content coordinates, as per
@@ -60,7 +68,11 @@ typedef result_t (wuss_mouse_fn_t)(wuss_window_t *window, wuss_mouse_action_t ac
  * \param[in] task_data As passed to wuss_window_create.
  * \return \ref result_OK on success, else an appropriate result code.
  */
-typedef result_t (wuss_scroll_fn_t)(wuss_window_t *window, int x, int y, int delta, void *task_data);
+typedef result_t (wuss_scroll_fn_t)(wuss_window_t *window,
+                                    int            x,
+                                    int            y,
+                                    int            delta,
+                                    void          *task_data);
 
 /** A window's content delegate. Copied by value into the window at creation. */
 typedef struct wuss_task
@@ -82,7 +94,10 @@ wuss_task_t;
  * \param[in] bg        Content background, or wuss_NO_BACKGROUND.
  * \return The populated task.
  */
-wuss_task_t wuss_task_make(wuss_redraw_fn_t *redraw, wuss_mouse_fn_t *mouse, void *task_data, wuss_colour_t bg);
+wuss_task_t wuss_task_make(wuss_redraw_fn_t *redraw,
+                           wuss_mouse_fn_t  *mouse,
+                           void             *task_data,
+                           wuss_colour_t     bg);
 
 /**
  * Create a window.
@@ -103,7 +118,12 @@ wuss_task_t wuss_task_make(wuss_redraw_fn_t *redraw, wuss_mouse_fn_t *mouse, voi
  *         task->bg is out of range for the palette, or another
  *         appropriate result code.
  */
-result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title, wuss_window_flags_t flags, const wuss_task_t *task, wuss_window_t **window);
+result_t wuss_window_create(wuss_t             *wuss,
+                            const box_t        *content,
+                            const char         *title,
+                            wuss_window_flags_t flags,
+                            const wuss_task_t  *task,
+                            wuss_window_t     **window);
 
 /**
  * Destroy a window.
@@ -153,7 +173,8 @@ void wuss_window_send_to_back(wuss_window_t *window);
  * \param[in]  window  Window to query.
  * \param[out] visible Filled in with the window's visible bounds.
  */
-void wuss_window_get_visible_bounds(const wuss_window_t *window, box_t *visible);
+void wuss_window_get_visible_bounds(const wuss_window_t *window,
+                                    box_t               *visible);
 
 /**
  * Fetch a window's current content-area bounds, screen space (as requested
@@ -164,7 +185,8 @@ void wuss_window_get_visible_bounds(const wuss_window_t *window, box_t *visible)
  * \param[in]  window  Window to query.
  * \param[out] content Filled in with the window's content bounds.
  */
-void wuss_window_get_content_bounds(const wuss_window_t *window, box_t *content);
+void wuss_window_get_content_bounds(const wuss_window_t *window,
+                                    box_t               *content);
 
 /**
  * Mark a region of a window's content as dirty, for the next

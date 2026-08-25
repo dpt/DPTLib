@@ -12,7 +12,10 @@
 
 #include "palette.h"
 
-result_t palette_create(wuss_t *wuss, const colour_t *palette, int npalette, palette_task_t *task)
+result_t palette_create(wuss_t         *wuss,
+                        const colour_t *palette,
+                        int             npalette,
+                        palette_task_t *task)
 {
   wuss_task_t delegate;
   box_t       box;
@@ -31,7 +34,10 @@ void palette_destroy(palette_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-result_t palette_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
+result_t palette_redraw(wuss_window_t *window,
+                        screen_t      *scr,
+                        const box_t   *content,
+                        void          *task_data)
 {
   palette_task_t *pc;
   int               cols, rows;

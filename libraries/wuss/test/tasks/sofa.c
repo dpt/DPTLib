@@ -120,7 +120,10 @@ void sofa_destroy(sofa_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-result_t sofa_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
+result_t sofa_redraw(wuss_window_t *window,
+                     screen_t      *scr,
+                     const box_t   *content,
+                     void          *task_data)
 {
   sofa_task_t *sc;
   box_t        bounds;
@@ -165,7 +168,12 @@ result_t sofa_redraw(wuss_window_t *window, screen_t *scr, const box_t *content,
   return result_OK;
 }
 
-result_t sofa_mouse(wuss_window_t *window, wuss_mouse_action_t action, int x, int y, wuss_button_t button, void *task_data)
+result_t sofa_mouse(wuss_window_t      *window,
+                    wuss_mouse_action_t action,
+                    int                 x,
+                    int                 y,
+                    wuss_button_t       button,
+                    void               *task_data)
 {
   sofa_task_t *sc;
 
@@ -182,7 +190,11 @@ result_t sofa_mouse(wuss_window_t *window, wuss_mouse_action_t action, int x, in
   return result_OK;
 }
 
-result_t sofa_scroll(wuss_window_t *window, int x, int y, int delta, void *task_data)
+result_t sofa_scroll(wuss_window_t *window,
+                     int            x,
+                     int            y,
+                     int            delta,
+                     void          *task_data)
 {
   sofa_task_t *sc;
   box_t        content;

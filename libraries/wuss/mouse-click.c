@@ -2,7 +2,12 @@
 
 #include "impl.h"
 
-result_t wuss_mouse_click(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_mouse_action_t action, wuss_window_t **hit)
+result_t wuss_mouse_click(wuss_t              *wuss,
+                          int                  x,
+                          int                  y,
+                          wuss_button_t        button,
+                          wuss_mouse_action_t  action,
+                          wuss_window_t      **hit)
 {
   wuss_window_t *win;
   box_t          titlebar;
