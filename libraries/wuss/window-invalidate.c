@@ -97,6 +97,74 @@ static int clip_to_visible(wuss_window_t *window, const box_t *box, box_t *out)
   return ncur;
 }
 
+/* Subtract each of "cuts" (an array of "ncuts" boxes) from "whole", writing
+ * the surviving pieces to "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and
+ * returning their count. */
+static int subtract_boxes(const box_t *whole, const box_t *cuts, int ncuts, box_t *out)
+{
+  box_t  scratch[WUSS_MAX_INVALIDATE_PIECES];
+  box_t *cur, *nxt, *tmp;
+  int    ncur, i;
+
+  cur    = out;
+  nxt    = scratch;
+  cur[0] = *whole;
+  ncur   = 1;
+
+  for (i = 0; i < ncuts; i++)
+  {
+    int p, nnext;
+
+    nnext = 0;
+
+    for (p = 0; p < ncur; p++)
+    {
+      box_t cut;
+
+      if (box_intersection(&cuts[i], &cur[p], &cut))
+      {
+        if (nnext < WUSS_MAX_INVALIDATE_PIECES)
+          nxt[nnext++] = cur[p]; /* no overlap: piece survives untouched */
+      }
+      else
+      {
+        box_subtract_into(&cur[p], &cut, nxt, &nnext);
+      }
+    }
+
+    ncur = nnext;
+    tmp  = cur;
+    cur  = nxt;
+    nxt  = tmp;
+
+    if (ncur == 0)
+      break;
+  }
+
+  if (cur != out)
+    memcpy(out, cur, ncur * sizeof(*out));
+
+  return ncur;
+}
+
+/* Invalidate the parts of "window"'s footprint that were hidden behind
+ * other windows before it comes to the front -- the rest of its footprint
+ * was already showing its own correct pixels, so redrawing that too would
+ * just be wasted work. Must be called before the z-order changes, since it
+ * relies on "window"'s current (pre-reorder) occluders. */
+void wuss__invalidate_uncovered(wuss_window_t *window)
+{
+  box_t visible[WUSS_MAX_INVALIDATE_PIECES];
+  box_t hidden[WUSS_MAX_INVALIDATE_PIECES];
+  int   nvisible, nhidden, i;
+
+  nvisible = clip_to_visible(window, &window->visible, visible);
+  nhidden  = subtract_boxes(&window->visible, visible, nvisible, hidden);
+
+  for (i = 0; i < nhidden; i++)
+    wuss_invalidate(window->wuss, &hidden[i]);
+}
+
 /* Invalidate "box" (screen space), clipped against windows above "window"
  * in the z-order: the shared primitive behind wuss_window_invalidate and
  * every other window-owned invalidation (move, resize, background change,
