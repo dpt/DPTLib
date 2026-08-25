@@ -35,6 +35,11 @@
 #include "clients/palette.h"
 #include "clients/text.h"
 
+/* Screen pixel format for the interactive test: 1 = 32bpp pixelfmt_bgrx8888
+ * (feeds SDL directly, no per-frame conversion); 0 = pixelfmt_p4 paletted
+ * (exercises screen_copy_rect's nibble-packed blit path instead). */
+#define WUSS_TEST_32BPP 1
+
 typedef enum test_window
 {
   WIN_BALL,
@@ -75,7 +80,11 @@ static result_t wuss_interactive_test(const char *resources)
 {
   const int        scr_width  = 640;
   const int        scr_height = 480;
+#if WUSS_TEST_32BPP
+  const int        rowbytes   = scr_width * 4; /* pixelfmt_bgrx8888: 4 bytes/pixel */
+#else
   const int        rowbytes   = scr_width / 2; /* pixelfmt_p4: 2 pixels/byte */
+#endif
 
   result_t         rc;
   const char      *leafname;
@@ -84,7 +93,9 @@ static result_t wuss_interactive_test(const char *resources)
   bmfont_t        *daydream_font;
   void            *pixels;
   bitmap_t         bm;
+#if !WUSS_TEST_32BPP
   bitmap_t        *disp;
+#endif
   screen_t         scr;
   colour_t         palette[16];
   wuss_t          *wuss;
@@ -126,7 +137,11 @@ static result_t wuss_interactive_test(const char *resources)
   if (pixels == NULL)
     goto Failure;
 
+#if WUSS_TEST_32BPP
+  rc = bitmap_init(&bm, scr_width, scr_height, pixelfmt_bgrx8888, rowbytes, palette, pixels);
+#else
   rc = bitmap_init(&bm, scr_width, scr_height, pixelfmt_p4, rowbytes, palette, pixels);
+#endif
   if (rc != result_OK)
     goto Failure;
 
@@ -346,9 +361,17 @@ static result_t wuss_interactive_test(const char *resources)
                           palette[palette_PICO8_WHITE]);
       }
 
+      /* narrowed above per dirty rect for the flash; screen_copy_rect (used
+       * for window-drag blitting) reads this clip too, so it must not leak
+       * into the next frame narrower than the whole screen */
+      box_reset(&scr.clip);
+
       wuss_redraw_dirty(wuss);
     }
 
+#if WUSS_TEST_32BPP
+    SDL_UpdateTexture(texture, NULL, bm.base, bm.rowbytes); /* bm is already bgrx8888: no conversion needed */
+#else
     rc = bitmap_convert(&bm, pixelfmt_bgrx8888, &disp);
     if (rc == result_OK)
     {
@@ -356,6 +379,7 @@ static result_t wuss_interactive_test(const char *resources)
       free(disp->base);
       free(disp);
     }
+#endif
 
     SDL_RenderTexture(renderer, texture, NULL, NULL);
     SDL_RenderPresent(renderer);
@@ -662,6 +686,10 @@ result_t wuss_test(const char *resources)
 
   printf("test: drag-move updates visible bounds and invalidates the affected region\n");
 
+  rc = wuss_redraw_dirty(wuss); /* flush the click-to-front's leftover dirty region first */
+  if (rc != result_OK)
+    goto Failure;
+
   before_a = tc_a.redraw_count;
   before_b = tc_b.redraw_count;
   rc = wuss_mouse_move(wuss, 30, 15, &hit);
@@ -672,16 +700,16 @@ result_t wuss_test(const char *resources)
   if (tc_a.redraw_count != before_a || tc_b.redraw_count != before_b)
     goto Failure; /* invalidated, not yet redrawn */
 
-  {
-    if (wuss_get_dirty_count(wuss) == 0)
-      goto Failure;
-  }
+  if (wuss_get_dirty_count(wuss) == 0)
+    goto Failure;
 
   rc = wuss_redraw_dirty(wuss);
   if (rc != result_OK)
     goto Failure;
-  if (tc_a.redraw_count != before_a + 1 || tc_b.redraw_count != before_b + 1)
-    goto Failure;
+  if (tc_a.redraw_count != before_a || tc_b.redraw_count != before_b)
+    goto Failure; /* blitted, not redrawn: A's own pixels moved without a client
+                    * callback, and the vacated sliver behind its old position
+                    * exposes only background, not B */
 
   wuss_window_get_visible_bounds(win_a, &visible);
   if (visible.x0 != 19 || visible.y0 != 4)
