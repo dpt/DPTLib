@@ -34,6 +34,7 @@
 #include "tasks/checker.h"
 #include "tasks/image.h"
 #include "tasks/palette.h"
+#include "tasks/sofa.h"
 #include "tasks/text.h"
 
 /* Screen pixel format for the interactive test: 1 = 32bpp pixelfmt_bgrx8888
@@ -115,6 +116,7 @@ static result_t wuss_interactive_test(const char *resources)
   palette_task_t   palette_task;
   image_task_t     image_task;
   checker_task_t   checker_task;
+  sofa_task_t      sofa_task;
   SDL_Window      *window;
   SDL_Renderer    *renderer;
   SDL_Texture     *texture;
@@ -219,6 +221,10 @@ static result_t wuss_interactive_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
+  rc = sofa_create(wuss, palette, &sofa_task);
+  if (rc != result_OK)
+    goto Failure;
+
   quit            = false;
   garbage_pending = false;
 
@@ -294,6 +300,7 @@ static result_t wuss_interactive_test(const char *resources)
     ball_step(&ball_task);
     text_step(&text_task);
     blank_step(&blank_task);
+    sofa_step(&sofa_task);
 
     if (garbage_pending)
     {
@@ -361,6 +368,7 @@ static result_t wuss_interactive_test(const char *resources)
   palette_destroy(&palette_task);
   image_destroy(&image_task);
   checker_destroy(&checker_task);
+  sofa_destroy(&sofa_task);
 
   wuss_destroy(wuss);
   bmfont_destroy(font);
