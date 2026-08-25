@@ -325,7 +325,8 @@ set(WUSS_SOURCES
     libraries/wuss/mouse-move.c
     libraries/wuss/redraw.c
     libraries/wuss/scroll.c
-    libraries/wuss/task-make.c
+    libraries/wuss/task-start.c
+    libraries/wuss/task-stop.c
     libraries/wuss/titlebar-box.c
     libraries/wuss/window-at.c
     libraries/wuss/window-bring-to-front.c

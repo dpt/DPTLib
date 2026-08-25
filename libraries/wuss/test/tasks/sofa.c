@@ -108,7 +108,7 @@ result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
   task->zoom     = 1.0;
   task->spinning = true;
 
-  delegate = wuss_task_make(sofa_handle, task, wuss_NO_BACKGROUND); /* sofa_redraw paints its own background every frame */
+  delegate = wuss_task_start(sofa_handle, task, wuss_NO_BACKGROUND); /* sofa_redraw paints its own background every frame */
   box      = (box_t) BOX_POS_SIZE(250, 260, 180, 160);
 
   return wuss_window_create(wuss, &box, "Sofa", wuss_WINDOW_NONE, &delegate, &task->window);

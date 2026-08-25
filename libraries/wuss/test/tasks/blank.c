@@ -24,7 +24,7 @@ result_t blank_create(wuss_t *wuss, int npalette, blank_task_t *task)
   task->index       = palette_PICO8_GREEN;
   task->frame_count = 0;
 
-  delegate = wuss_task_make(blank_handle, task, palette_PICO8_GREEN); /* wuss fills the content area itself */
+  delegate = wuss_task_start(blank_handle, task, palette_PICO8_GREEN); /* wuss fills the content area itself */
   box      = (box_t) BOX_POS_SIZE(260, 60, 200, 160);
 
   return wuss_window_create(wuss, &box, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &delegate, &task->window);

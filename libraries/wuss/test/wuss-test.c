@@ -403,6 +403,7 @@ typedef struct test_task
   int                 last_x, last_y;
   wuss_button_t       last_button;
   int                 close_count;
+  int                 stop_count;
 }
 test_task_t;
 
@@ -432,6 +433,10 @@ static result_t test_handle(wuss_window_t     *window,
 
   case wuss_EVENT_CLOSE:
     tc->close_count++;
+    break;
+
+  case wuss_EVENT_STOP:
+    tc->stop_count++;
     break;
 
   default:
@@ -1119,10 +1124,15 @@ result_t wuss_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
-  printf("test: destroy\n");
+  printf("test: destroy sends wuss_EVENT_STOP to each window's task\n");
 
+  tc_a.stop_count = 0;
+  tc_b.stop_count = 0;
   wuss_window_destroy(win_a);
   wuss_window_destroy(win_b);
+  if (tc_a.stop_count != 1 || tc_b.stop_count != 1)
+    goto Failure;
+
   wuss_destroy(wuss);
 
   free(pixels);
