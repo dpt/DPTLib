@@ -36,8 +36,9 @@ result_t text_create(wuss_t *wuss, const colour_t *palette, bmfont_t *font, text
   task->bg          = palette[palette_PICO8_BLUE]; /* matches the "Lorem Ipsum" window's bg, for bmfont_draw's glyph blending */
   task->fg          = palette[palette_PICO8_WHITE];
   task->frame_count = 0;
+  task->resizing    = true;
 
-  delegate = wuss_task_make(text_redraw, NULL, task, palette_PICO8_BLUE);
+  delegate = wuss_task_make(text_redraw, text_mouse, task, palette_PICO8_BLUE);
   box      = (box_t) BOX_POS_SIZE(120, 100, 220, 180);
 
   task->base_width = box.x1 - box.x0;
@@ -107,6 +108,23 @@ result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content,
   return result_OK;
 }
 
+result_t text_mouse(wuss_window_t *window, wuss_mouse_action_t action, int x, int y, wuss_button_t button, void *task_data)
+{
+  text_task_t *tcx;
+
+  NOT_USED(window);
+  NOT_USED(x);
+  NOT_USED(y);
+  NOT_USED(button);
+
+  tcx = task_data;
+
+  if (action == wuss_MOUSE_DOWN)
+    tcx->resizing = !tcx->resizing;
+
+  return result_OK;
+}
+
 #define TEXT_RESIZE_PERIOD_FRAMES 300 /* one full swing every 5s at 60fps */
 #define TEXT_RESIZE_AMPLITUDE     50  /* +/-50px either side of base_width */
 
@@ -116,6 +134,9 @@ void text_step(text_task_t *tcx)
   int      height, width;
   double   angle;
   result_t rc;
+
+  if (!tcx->resizing)
+    return;
 
   wuss_window_get_content_bounds(tcx->window, &visible);
   height = visible.y1 - visible.y0;
