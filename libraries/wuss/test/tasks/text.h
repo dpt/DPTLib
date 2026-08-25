@@ -25,18 +25,16 @@ typedef struct text_task
 }
 text_task_t;
 
-wuss_redraw_fn_t text_redraw;
-wuss_mouse_fn_t  text_mouse;
+wuss_event_fn_t text_handle;
 
 /* create the paragraph-of-text window against the given wuss instance */
-result_t text_create(wuss_t *wuss, const colour_t *palette, bmfont_t *font, text_task_t *task);
+result_t text_create(wuss_t         *wuss,
+                     const colour_t *palette,
+                     bmfont_t       *font,
+                     text_task_t    *task);
 
 /* destroy the paragraph-of-text window created by text_create */
 void text_destroy(text_task_t *task);
-
-/* slowly resize the window's width +/-50px around base_width, holding
- * height fixed; called once per frame from the main loop */
-void text_step(text_task_t *tcx);
 
 #endif /* USE_SDL */
 

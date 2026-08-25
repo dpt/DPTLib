@@ -88,8 +88,7 @@ static void screen_blend_pixel(screen_t *scr,
                                int x, int y,
                                colour_t colour, int alpha)
 {
-  box_t          clip;
-  pixelfmt_any_t colpx;
+  box_t clip;
 
   assert(alpha >= 0);
   assert(alpha <= 255);
@@ -97,17 +96,35 @@ static void screen_blend_pixel(screen_t *scr,
   if (screen_get_clip(scr, &clip) || !box_contains_point(&clip, x, y))
     return;
 
-  colpx = colour_to_pixel(NULL, 0, colour, scr->format);
   switch (pixelfmt_log2bpp(scr->format))
   {
+  case 2:
+    {
+      unsigned char *scrp;
+      int            shift;
+      unsigned char  idx, out;
+
+      scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 1);
+      shift = (x & 1) * 4;
+      idx   = (*scrp >> shift) & 0xF;
+
+      scr->span->blendconst(&out, &idx, &colour, 1, alpha, scr->palette);
+
+      *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((out & 0xF) << shift));
+    }
+    break;
+
   case 5:
     {
       pixelfmt_any32_t *scrp;
+      pixelfmt_any_t    colpx;
+
+      colpx = colour_to_pixel(NULL, 0, colour, scr->format);
 
       scrp = scr->base;
       scrp += y * scr->rowbytes / sizeof(*scrp) + x;
 
-      scr->span->blendconst(scrp, scrp, &colpx, 1, alpha);
+      scr->span->blendconst(scrp, scrp, &colpx, 1, alpha, NULL);
     }
     break;
 

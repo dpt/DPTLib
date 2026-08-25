@@ -27,7 +27,7 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
   task->balls[0].dy     = 2;
   task->balls[0].radius = 8;
 
-  delegate = wuss_task_make(ball_redraw, ball_mouse, task, wuss_NO_BACKGROUND); /* ball_redraw paints its own background every frame */
+  delegate = wuss_task_start(ball_handle, task, wuss_NO_BACKGROUND); /* ball_redraw paints its own background every frame */
   box      = (box_t) BOX_POS_SIZE(20, 20, 200, 160);
 
   return wuss_window_create(wuss, &box, "Bouncing Ball", wuss_WINDOW_NONE, &delegate, &task->window);
@@ -38,12 +38,10 @@ void ball_destroy(ball_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-result_t ball_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
+static result_t ball_redraw(const box_t *content, void *task_data, screen_t *scr)
 {
   ball_task_t *bc;
   int          i;
-
-  NOT_USED(window);
 
   bc = task_data;
 
@@ -65,12 +63,14 @@ result_t ball_redraw(wuss_window_t *window, screen_t *scr, const box_t *content,
   return result_OK;
 }
 
-result_t ball_mouse(wuss_window_t *window, wuss_mouse_action_t action, int x, int y, wuss_button_t button, void *task_data)
+static result_t ball_mouse(wuss_mouse_action_t action,
+                           int                 x,
+                           int                 y,
+                           wuss_button_t       button,
+                           void               *task_data)
 {
   ball_task_t *bc;
   box_t        local;
-
-  NOT_USED(window);
 
   bc = task_data;
 
@@ -116,11 +116,14 @@ result_t ball_mouse(wuss_window_t *window, wuss_mouse_action_t action, int x, in
   return result_OK;
 }
 
-void ball_step(ball_task_t *bc)
+static result_t ball_idle(void *task_data)
 {
-  box_t content;
-  int   width, height;
-  int   i;
+  ball_task_t *bc;
+  box_t        content;
+  int          width, height;
+  int          i;
+
+  bc = task_data;
 
   wuss_window_get_content_bounds(bc->window, &content);
   width  = content.x1 - content.x0;
@@ -151,6 +154,31 @@ void ball_step(ball_task_t *bc)
     local.y1 = MAX(old_y, b->y) + b->radius;
 
     wuss_window_invalidate(bc->window, &local);
+  }
+
+  return result_OK;
+}
+
+result_t ball_handle(wuss_window_t     *window,
+                     const wuss_event_t *event,
+                     void               *task_data)
+{
+  NOT_USED(window);
+
+  switch (event->kind)
+  {
+  case wuss_EVENT_REDRAW:
+    return ball_redraw(event->data.redraw.content, task_data, event->data.redraw.scr);
+
+  case wuss_EVENT_MOUSE:
+    return ball_mouse(event->data.mouse.action, event->data.mouse.x,
+                      event->data.mouse.y, event->data.mouse.button, task_data);
+
+  case wuss_EVENT_IDLE:
+    return ball_idle(task_data);
+
+  default:
+    return result_OK;
   }
 }
 

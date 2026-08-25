@@ -23,19 +23,22 @@ result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit)
   if (win == NULL)
     return result_OK;
 
-  if (win->task.mouse != NULL)
+  if (win->task.handle != NULL)
   {
-    box_t titlebar, content;
-    int   local_x, local_y;
+    box_t        titlebar, content;
+    wuss_event_t event;
 
     wuss__titlebar_box(win, &titlebar);
     if (box_contains_point(&titlebar, x, y))
       return result_OK;
 
     wuss__content_box(win, &content);
-    local_x = x - content.x0;
-    local_y = y - content.y0;
-    return win->task.mouse(win, wuss_MOUSE_MOVE, local_x, local_y, wuss_BUTTON_SELECT, win->task.task_data);
+    event.kind             = wuss_EVENT_MOUSE;
+    event.data.mouse.action = wuss_MOUSE_MOVE;
+    event.data.mouse.x      = x - content.x0 + win->scroll_x;
+    event.data.mouse.y      = y - content.y0 + win->scroll_y;
+    event.data.mouse.button = wuss_BUTTON_SELECT;
+    return win->task.handle(win, &event, win->task.task_data);
   }
 
   return result_OK;

@@ -16,17 +16,9 @@
 #define CHECKER_BAND_MIN     2
 #define CHECKER_BAND_MAX     32
 
-static void invalidate_whole(wuss_window_t *window)
-{
-  box_t content;
-
-  wuss_window_get_content_bounds(window, &content);
-  content.x1 -= content.x0; content.x0 = 0;
-  content.y1 -= content.y0; content.y0 = 0;
-  wuss_window_invalidate(window, &content);
-}
-
-result_t checker_create(wuss_t *wuss, const colour_t *palette, checker_task_t *task)
+result_t checker_create(wuss_t         *wuss,
+                        const colour_t *palette,
+                        checker_task_t *task)
 {
   wuss_task_t delegate;
   box_t       box;
@@ -39,8 +31,7 @@ result_t checker_create(wuss_t *wuss, const colour_t *palette, checker_task_t *t
   task->band     = CHECKER_BAND_DEFAULT;
   task->band2    = CHECKER_BAND_DEFAULT;
 
-  delegate        = wuss_task_make(checker_redraw, checker_mouse, task, wuss_NO_BACKGROUND); /* checker_redraw paints every pixel itself */
-  delegate.scroll = checker_scroll;
+  delegate = wuss_task_start(checker_handle, task, wuss_NO_BACKGROUND); /* checker_redraw paints every pixel itself */
   box      = (box_t) BOX_POS_SIZE(440, 300, 160, 160);
 
   rc = wuss_window_create(wuss, &box, "Checker 1", wuss_WINDOW_NONE, &delegate, &task->window);
@@ -65,7 +56,10 @@ void checker_destroy(checker_task_t *task)
   wuss_window_destroy(task->window2);
 }
 
-result_t checker_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
+static result_t checker_redraw(wuss_window_t *window,
+                               screen_t      *scr,
+                               const box_t   *content,
+                               void          *task_data)
 {
   checker_task_t   *cc;
   box_t             bounds;
@@ -101,35 +95,25 @@ result_t checker_redraw(wuss_window_t *window, screen_t *scr, const box_t *conte
   return result_OK;
 }
 
-result_t checker_mouse(wuss_window_t *window, wuss_mouse_action_t action, int x, int y, wuss_button_t button, void *task_data)
+static result_t checker_mouse(wuss_window_t *window, void *task_data)
 {
   checker_task_t    *cc;
   checker_pattern_t *pattern;
 
-  NOT_USED(x);
-  NOT_USED(y);
-  NOT_USED(button);
-
   cc = task_data;
-
-  if (action != wuss_MOUSE_DOWN)
-    return result_OK;
 
   pattern  = (window == cc->window2) ? &cc->pattern2 : &cc->pattern;
   *pattern = (*pattern + 1) % checker_PATTERN__COUNT;
 
-  invalidate_whole(window);
+  wuss_window_invalidate_all(window);
 
   return result_OK;
 }
 
-result_t checker_scroll(wuss_window_t *window, int x, int y, int delta, void *task_data)
+static result_t checker_scroll(wuss_window_t *window, int delta, void *task_data)
 {
   checker_task_t *cc;
   int            *band;
-
-  NOT_USED(x);
-  NOT_USED(y);
 
   cc   = task_data;
   band = (window == cc->window2) ? &cc->band2 : &cc->band;
@@ -140,9 +124,31 @@ result_t checker_scroll(wuss_window_t *window, int x, int y, int delta, void *ta
   else if (*band > CHECKER_BAND_MAX)
     *band = CHECKER_BAND_MAX;
 
-  invalidate_whole(window);
+  wuss_window_invalidate_all(window);
 
   return result_OK;
+}
+
+result_t checker_handle(wuss_window_t     *window,
+                        const wuss_event_t *event,
+                        void               *task_data)
+{
+  switch (event->kind)
+  {
+  case wuss_EVENT_REDRAW:
+    return checker_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
+
+  case wuss_EVENT_MOUSE:
+    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+      return result_OK;
+    return checker_mouse(window, task_data);
+
+  case wuss_EVENT_SCROLL:
+    return checker_scroll(window, event->data.scroll.delta, task_data);
+
+  default:
+    return result_OK;
+  }
 }
 
 #endif /* USE_SDL */

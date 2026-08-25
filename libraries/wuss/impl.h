@@ -43,14 +43,22 @@ struct wuss_window
                                  * outward by any titlebar/outline furniture */
   wuss_task_t         task;
   wuss_window_flags_t flags;
+  int                 scroll_x, scroll_y; /* offset into virtual content
+                                            * space of the content box's
+                                            * top-left; see
+                                            * wuss_window_set_scroll */
   char                title[WUSS_TITLE_MAX + 1];
 };
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, int x, int y);
 void            wuss__titlebar_box(const wuss_window_t *window, box_t *out);
+void            wuss__close_box(const wuss_window_t *window, box_t *out);
 void            wuss__content_box(const wuss_window_t *window, box_t *out);
-void            wuss__invalidate_clipped(wuss_window_t *window, const box_t *box);
-void            wuss__invalidate_minus(wuss_t *wuss, const box_t *whole, const box_t *keep);
+void            wuss__invalidate_clipped(wuss_window_t *window,
+                                         const box_t   *box);
+void            wuss__invalidate_minus(wuss_t      *wuss,
+                                       const box_t *whole,
+                                       const box_t *keep);
 void            wuss__invalidate_uncovered(wuss_window_t *window);
 
 static inline int wuss__size_ok(int width, int height)
@@ -58,7 +66,8 @@ static inline int wuss__size_ok(int width, int height)
   return width > 0 && height > 0;
 }
 
-static inline int wuss__titlebar_height_for(const wuss_t *wuss, wuss_window_flags_t flags)
+static inline int wuss__titlebar_height_for(const wuss_t        *wuss,
+                                            wuss_window_flags_t flags)
 {
   return (flags & wuss_WINDOW_NO_TITLEBAR) ? 0 : wuss->titlebar_height;
 }

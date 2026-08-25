@@ -10,7 +10,12 @@
 
 #include "impl.h"
 
-result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title, wuss_window_flags_t flags, const wuss_task_t *task, wuss_window_t **window)
+result_t wuss_window_create(wuss_t             *wuss,
+                            const box_t        *content,
+                            const char         *title,
+                            wuss_window_flags_t flags,
+                            const wuss_task_t  *task,
+                            wuss_window_t     **window)
 {
   wuss_window_t *win;
   int             width, height, outline_px, titlebar_height;
@@ -37,6 +42,8 @@ result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *titl
   win->visible.x1 = content->x1 + outline_px;
   win->visible.y1 = content->y1 + outline_px;
   win->flags      = flags;
+  win->scroll_x   = 0;
+  win->scroll_y   = 0;
 
   if (task != NULL)
     win->task = *task;

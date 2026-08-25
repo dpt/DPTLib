@@ -6,7 +6,10 @@
 
 #include "impl.h"
 
-static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, result_t *rc)
+static void redraw_window(wuss_t        *wuss,
+                          wuss_window_t *win,
+                          const box_t   *full,
+                          result_t      *rc)
 {
   box_t clipped;
   box_t visible_clipped;
@@ -28,12 +31,33 @@ static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, r
     if (wuss->font != NULL && win->title[0] != '\0')
     {
       point_t pos;
+      int     text_x0;
 
-      pos.x = titlebar.x0 + 2;
+      text_x0 = titlebar.x0 + 2;
+      if (!(win->flags & wuss_WINDOW_NO_CLOSE))
+      {
+        box_t close;
+
+        wuss__close_box(win, &close);
+        text_x0 = close.x1 + 2;
+      }
+
+      pos.x = text_x0;
       pos.y = titlebar.y0 + 2;
       bmfont_draw(wuss->font, wuss->scr, win->title, (int) strlen(win->title),
                  wuss->palette[wuss->titlebar_fg], wuss->palette[wuss->titlebar_bg],
                  &pos, NULL);
+    }
+
+    if (!(win->flags & wuss_WINDOW_NO_CLOSE))
+    {
+      box_t close;
+
+      wuss__close_box(win, &close);
+      screen_draw_rect(wuss->scr,
+                       close.x0, close.y0,
+                       close.x1 - close.x0, close.y1 - close.y0,
+                       wuss->palette[wuss->titlebar_fg]);
     }
   }
 
@@ -48,11 +72,15 @@ static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, r
                        content.x1 - content.x0, content.y1 - content.y0,
                        wuss->palette[win->task.bg]);
 
-    if (win->task.redraw != NULL)
+    if (win->task.handle != NULL)
     {
-      result_t crc;
+      wuss_event_t event;
+      result_t     crc;
 
-      crc = win->task.redraw(win, wuss->scr, &content, win->task.task_data);
+      event.kind             = wuss_EVENT_REDRAW;
+      event.data.redraw.scr     = wuss->scr;
+      event.data.redraw.content = &content;
+      crc = win->task.handle(win, &event, win->task.task_data);
       if (crc != result_OK)
         *rc = crc;
     }
@@ -79,7 +107,10 @@ static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, r
  * recursing per window, so stack use stays flat regardless of window count;
  * ponytail: O(n^2) walk, fine while window counts stay small, switch to an
  * array/vector pass if that stops being true */
-static void redraw_from(wuss_t *wuss, list_t *head, const box_t *full, result_t *rc)
+static void redraw_from(wuss_t      *wuss,
+                        list_t      *head,
+                        const box_t *full,
+                        result_t    *rc)
 {
   const list_t *stop;
 
