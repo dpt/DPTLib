@@ -264,7 +264,7 @@ static result_t wuss_interactive_test(const char *resources)
           int x, y;
 
           sdl_pos_to_scr(window, scr_width, scr_height, event.button.x, event.button.y, &x, &y);
-          wuss_mouse_down(wuss, x, y, sdl_button_to_wuss(event.button.button), NULL);
+          wuss_mouse_click(wuss, x, y, sdl_button_to_wuss(event.button.button), wuss_MOUSE_DOWN, NULL);
         }
         break;
 
@@ -273,7 +273,7 @@ static result_t wuss_interactive_test(const char *resources)
           int x, y;
 
           sdl_pos_to_scr(window, scr_width, scr_height, event.button.x, event.button.y, &x, &y);
-          wuss_mouse_up(wuss, x, y, sdl_button_to_wuss(event.button.button), NULL);
+          wuss_mouse_click(wuss, x, y, sdl_button_to_wuss(event.button.button), wuss_MOUSE_UP, NULL);
         }
         break;
 
@@ -603,7 +603,7 @@ result_t wuss_test(const char *resources)
   printf("test: z-order hit test and local coordinate translation (B on top)\n");
 
   tc_b.mouse_count = 0;
-  rc = wuss_mouse_down(wuss, 75, 75, wuss_BUTTON_SELECT, &hit);
+  rc = wuss_mouse_click(wuss, 75, 75, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_b)
@@ -613,27 +613,27 @@ result_t wuss_test(const char *resources)
   if (tc_b.last_action != wuss_MOUSE_DOWN || tc_b.last_x != 25 || tc_b.last_y != 25)
     goto Failure;
 
-  rc = wuss_mouse_up(wuss, 75, 75, wuss_BUTTON_SELECT, &hit);
+  rc = wuss_mouse_click(wuss, 75, 75, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
   printf("test: click-to-front changes subsequent overlap hits\n");
 
   tc_a.mouse_count = 0;
-  rc = wuss_mouse_down(wuss, 10, -10, wuss_BUTTON_SELECT, &hit); /* A's titlebar, above its content */
+  rc = wuss_mouse_click(wuss, 10, -10, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's titlebar, above its content */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
     goto Failure;
 
-  rc = wuss_mouse_up(wuss, 10, -10, wuss_BUTTON_SELECT, &hit);
+  rc = wuss_mouse_click(wuss, 10, -10, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
   printf("test: content click does not change z-order\n");
 
   tc_b.mouse_count = 0;
-  rc = wuss_mouse_down(wuss, 120, 120, wuss_BUTTON_SELECT, &hit); /* B's content, only within B */
+  rc = wuss_mouse_click(wuss, 120, 120, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* B's content, only within B */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_b)
@@ -641,12 +641,12 @@ result_t wuss_test(const char *resources)
   if (tc_b.mouse_count != 1)
     goto Failure;
 
-  rc = wuss_mouse_up(wuss, 120, 120, wuss_BUTTON_SELECT, &hit);
+  rc = wuss_mouse_click(wuss, 120, 120, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
   tc_a.mouse_count = 0;
-  rc = wuss_mouse_down(wuss, 75, 75, wuss_BUTTON_SELECT, &hit); /* A still topmost: B's content click above didn't bring it to front */
+  rc = wuss_mouse_click(wuss, 75, 75, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A still topmost: B's content click above didn't bring it to front */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -654,14 +654,14 @@ result_t wuss_test(const char *resources)
   if (tc_a.mouse_count != 1 || tc_a.last_x != 75 || tc_a.last_y != 75)
     goto Failure;
 
-  rc = wuss_mouse_up(wuss, 75, 75, wuss_BUTTON_SELECT, &hit);
+  rc = wuss_mouse_click(wuss, 75, 75, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
   printf("test: titlebar click starts a drag, not delivered as content\n");
 
   tc_a.mouse_count = 0;
-  rc = wuss_mouse_down(wuss, 10, -10, wuss_BUTTON_SELECT, &hit); /* A's titlebar, A already topmost */
+  rc = wuss_mouse_click(wuss, 10, -10, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's titlebar, A already topmost */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -702,7 +702,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: mouse-up ends the drag\n");
 
-  rc = wuss_mouse_up(wuss, 30, 15, wuss_BUTTON_SELECT, &hit);
+  rc = wuss_mouse_click(wuss, 30, 15, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -710,7 +710,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: Adjust-drag moves a window without bringing it to front\n");
 
-  rc = wuss_mouse_down(wuss, 140, 35, wuss_BUTTON_ADJUST, &hit); /* B's titlebar, clear of A */
+  rc = wuss_mouse_click(wuss, 140, 35, wuss_BUTTON_ADJUST, wuss_MOUSE_DOWN, &hit); /* B's titlebar, clear of A */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_b)
@@ -726,19 +726,19 @@ result_t wuss_test(const char *resources)
   if (visible.x0 != 54 || visible.y0 != 54)
     goto Failure;
 
-  rc = wuss_mouse_up(wuss, 145, 60, wuss_BUTTON_ADJUST, &hit);
+  rc = wuss_mouse_click(wuss, 145, 60, wuss_BUTTON_ADJUST, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_b)
     goto Failure;
 
-  rc = wuss_mouse_down(wuss, 75, 75, wuss_BUTTON_SELECT, &hit); /* within both A and B; A still topmost */
+  rc = wuss_mouse_click(wuss, 75, 75, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* within both A and B; A still topmost */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
     goto Failure;
 
-  rc = wuss_mouse_up(wuss, 75, 75, wuss_BUTTON_SELECT, &hit);
+  rc = wuss_mouse_click(wuss, 75, 75, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
@@ -798,7 +798,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: click within a title-less window's top edge is delivered as content, not a drag\n");
 
-  rc = wuss_mouse_down(wuss, 5, 165, wuss_BUTTON_SELECT, &hit);
+  rc = wuss_mouse_click(wuss, 5, 165, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_d)
@@ -806,7 +806,7 @@ result_t wuss_test(const char *resources)
   if (tc_d.mouse_count != 1 || tc_d.last_action != wuss_MOUSE_DOWN || tc_d.last_x != 5 || tc_d.last_y != 5)
     goto Failure;
 
-  rc = wuss_mouse_up(wuss, 5, 165, wuss_BUTTON_SELECT, &hit);
+  rc = wuss_mouse_click(wuss, 5, 165, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
@@ -846,23 +846,23 @@ result_t wuss_test(const char *resources)
 
     /* F was created after E, so F is topmost; clicking E's exposed content
      * (outside the overlap) is delivered to E but must not raise it */
-    rc = wuss_mouse_down(wuss, 110, 10, wuss_BUTTON_SELECT, &hit); /* within E only */
+    rc = wuss_mouse_click(wuss, 110, 10, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* within E only */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_e)
       goto Failure;
 
-    rc = wuss_mouse_up(wuss, 110, 10, wuss_BUTTON_SELECT, &hit);
+    rc = wuss_mouse_click(wuss, 110, 10, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
-    rc = wuss_mouse_down(wuss, 135, 25, wuss_BUTTON_SELECT, &hit); /* overlap: F still on top */
+    rc = wuss_mouse_click(wuss, 135, 25, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* overlap: F still on top */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_f)
       goto Failure;
 
-    rc = wuss_mouse_up(wuss, 135, 25, wuss_BUTTON_SELECT, &hit);
+    rc = wuss_mouse_click(wuss, 135, 25, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -1057,25 +1057,25 @@ result_t wuss_test(const char *resources)
 
   wuss_window_get_visible_bounds(win_a, &visible); /* A is topmost here */
 
-  rc = wuss_mouse_down(wuss, visible.x0 + 5, visible.y0 + 3, wuss_BUTTON_ADJUST, &hit);
+  rc = wuss_mouse_click(wuss, visible.x0 + 5, visible.y0 + 3, wuss_BUTTON_ADJUST, wuss_MOUSE_DOWN, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
     goto Failure;
 
-  rc = wuss_mouse_up(wuss, visible.x0 + 5, visible.y0 + 3, wuss_BUTTON_ADJUST, &hit);
+  rc = wuss_mouse_click(wuss, visible.x0 + 5, visible.y0 + 3, wuss_BUTTON_ADJUST, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
     goto Failure;
 
-  rc = wuss_mouse_down(wuss, 75, 75, wuss_BUTTON_SELECT, &hit); /* within both A and B */
+  rc = wuss_mouse_click(wuss, 75, 75, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* within both A and B */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_b) /* A must have been sent to back */
     goto Failure;
 
-  rc = wuss_mouse_up(wuss, 75, 75, wuss_BUTTON_SELECT, &hit);
+  rc = wuss_mouse_click(wuss, 75, 75, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
@@ -1096,7 +1096,7 @@ result_t wuss_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
-  rc = wuss_mouse_down(wuss, 5, -10, wuss_BUTTON_SELECT, &hit); /* C's titlebar, above its content */
+  rc = wuss_mouse_click(wuss, 5, -10, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* C's titlebar, above its content */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_c)

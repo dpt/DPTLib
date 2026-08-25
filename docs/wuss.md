@@ -79,7 +79,7 @@ typedef result_t (wuss_scroll_fn_t)(wuss_window_t *window, int x, int y,
 
 ## Mouse and scroll routing
 
-Feed mouse events in with `wuss_mouse_down`/`wuss_mouse_up`/`wuss_mouse_move`, and scroll events with `wuss_scroll`, each hit-testing the topmost window at `(x, y)` and delivering to its task in window-local coordinates. All four take an optional `wuss_window_t **hit` out-parameter naming the window under the pointer (or being dragged). `wuss_scroll` is dropped if the hit window has no scroll callback, or the pointer is over its titlebar.
+Feed mouse events in with `wuss_mouse_click` (action `wuss_MOUSE_DOWN` or `wuss_MOUSE_UP`) and `wuss_mouse_move`, and scroll events with `wuss_scroll`, each hit-testing the topmost window at `(x, y)` and delivering to its task in window-local coordinates. All three take an optional `wuss_window_t **hit` out-parameter naming the window under the pointer (or being dragged). `wuss_scroll` is dropped if the hit window has no scroll callback, or the pointer is over its titlebar.
 
 ## Scrolling
 
