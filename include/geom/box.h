@@ -30,6 +30,9 @@ typedef os_box box_t;
 /** Initialises a box to an invalid state that will still produce a valid result when intersected with. */
 #define BOX_INIT { INT_MAX, INT_MAX, INT_MIN, INT_MIN }
 
+/** Initialises a box from a position (x,y) and a size (w,h). */
+#define BOX_POS_SIZE(x, y, w, h) { (x), (y), (x) + (w), (y) + (h) }
+
 /**
  * Reset the box to an invalid state.
  *

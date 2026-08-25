@@ -69,6 +69,17 @@ typedef struct wuss_client
 wuss_client_t;
 
 /**
+ * Build a wuss_client_t from its fields.
+ *
+ * \param[in] redraw      Redraw callback, or NULL for a blank content area.
+ * \param[in] mouse       Mouse callback, or NULL to drop content mouse events.
+ * \param[in] client_data Opaque pointer passed back to the callbacks.
+ * \param[in] bg          Content background, or wuss_NO_BACKGROUND.
+ * \return The populated client.
+ */
+wuss_client_t wuss_client_make(wuss_redraw_fn_t *redraw, wuss_mouse_fn_t *mouse, void *client_data, wuss_colour_t bg);
+
+/**
  * Create a window.
  *
  * Furniture (titlebar/outline) is added outside \p content, not carved out
