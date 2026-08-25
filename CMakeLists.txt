@@ -82,6 +82,7 @@ set(PUBLIC_HEADERS
     include/framebuf/pixelfmt.h
     include/framebuf/screen.h
     include/framebuf/span-bgrx8888.h
+    include/framebuf/span-p4.h
     include/framebuf/span-registry.h
     include/framebuf/span-rgba8888.h
     include/framebuf/span-rgbx8888.h
@@ -235,6 +236,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/span/all8888.c
     libraries/framebuf/span/all8888.h
     libraries/framebuf/span/bgrx8888.c
+    libraries/framebuf/span/p4.c
     libraries/framebuf/span/rgbx8888.c
     libraries/framebuf/span/xbgr8888.c)
 
@@ -312,29 +314,33 @@ set(UTILS_SOURCES
     libraries/utils/primes/primes.c)
 
 set(WUSS_SOURCES
+    libraries/wuss/close-box.c
     libraries/wuss/content-box.c
     libraries/wuss/create.c
     libraries/wuss/destroy.c
+    libraries/wuss/idle.c
     libraries/wuss/impl.h
     libraries/wuss/invalidate.c
-    libraries/wuss/mouse-down.c
+    libraries/wuss/mouse-click.c
     libraries/wuss/mouse-move.c
-    libraries/wuss/mouse-up.c
     libraries/wuss/redraw.c
     libraries/wuss/scroll.c
-    libraries/wuss/task-make.c
+    libraries/wuss/task-start.c
+    libraries/wuss/task-stop.c
     libraries/wuss/titlebar-box.c
     libraries/wuss/window-at.c
-    libraries/wuss/window-bring-to-front.c
     libraries/wuss/window-create.c
     libraries/wuss/window-destroy.c
     libraries/wuss/window-get-content-bounds.c
+    libraries/wuss/window-get-scroll.c
     libraries/wuss/window-get-visible-bounds.c
     libraries/wuss/window-invalidate.c
+    libraries/wuss/window-invalidate-all.c
     libraries/wuss/window-move.c
     libraries/wuss/window-resize.c
-    libraries/wuss/window-send-to-back.c
-    libraries/wuss/window-set-background.c)
+    libraries/wuss/window-restack.c
+    libraries/wuss/window-set-background.c
+    libraries/wuss/window-set-scroll.c)
 
 set(ALL_SOURCES
     ${PUBLIC_HEADERS}
@@ -518,8 +524,10 @@ if(BUILD_TESTS)
         libraries/wuss/test/tasks/ball.c
         libraries/wuss/test/tasks/blank.c
         libraries/wuss/test/tasks/checker.c
+        libraries/wuss/test/tasks/curve.c
         libraries/wuss/test/tasks/image.c
         libraries/wuss/test/tasks/palette.c
+        libraries/wuss/test/tasks/sofa.c
         libraries/wuss/test/tasks/text.c
         libraries/wuss/test/wuss-test.c)
 

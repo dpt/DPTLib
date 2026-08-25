@@ -1,0 +1,177 @@
+/* curve.c -- wuss test - draggable Bezier curve task */
+
+#ifdef USE_SDL
+
+#ifdef FORTIFY
+#include "fortify/fortify.h"
+#endif
+
+#include "framebuf/curve.h"
+#include "framebuf/palettes.h"
+#include "geom/box.h"
+#include "utils/fxp.h"
+
+#include "curve.h"
+
+#define CURVE_BLOBSZ           8  /* side length of a control-point marker, matches curve-test.c */
+#define CURVE_SEGMENTS_DEFAULT 32
+#define CURVE_SEGMENTS_MIN     4
+#define CURVE_SEGMENTS_MAX     128
+
+result_t curve_create(wuss_t         *wuss,
+                      const colour_t *palette,
+                      curve_task_t   *task)
+{
+  wuss_task_t delegate;
+  box_t       box;
+
+  task->bg        = palette[palette_PICO8_WHITE];
+  task->line      = palette[palette_PICO8_BLACK];
+  task->blob      = palette[palette_PICO8_RED];
+  task->nsegments = CURVE_SEGMENTS_DEFAULT;
+  task->dragging  = -1;
+
+  task->points[0] = (point_t) { 10,  10 };
+  task->points[1] = (point_t) { 10, 140 };
+  task->points[2] = (point_t) { 210, 10 };
+  task->points[3] = (point_t) { 210, 140 };
+
+  delegate = wuss_task_start(curve_handle, task, wuss_NO_BACKGROUND); /* curve_redraw paints its own background */
+  box      = (box_t) BOX_POS_SIZE(20, 260, 220, 160);
+
+  return wuss_window_create(wuss, &box, "Curve", wuss_WINDOW_NONE, &delegate, &task->window);
+}
+
+void curve_destroy(curve_task_t *task)
+{
+  wuss_window_destroy(task->window);
+}
+
+static int blob_hit(const point_t *p, int x, int y)
+{
+  int half = CURVE_BLOBSZ / 2;
+
+  return x >= p->x - half && x < p->x + half &&
+         y >= p->y - half && y < p->y + half;
+}
+
+static result_t curve_redraw(screen_t     *scr,
+                             const box_t  *content,
+                             curve_task_t *task)
+{
+  point_t prev, cur;
+  int     i, half;
+  fix16_t t;
+
+  screen_draw_rect(scr, content->x0, content->y0,
+                   content->x1 - content->x0, content->y1 - content->y0,
+                   task->bg);
+
+  prev = task->points[0];
+  prev.x += content->x0; prev.y += content->y0;
+
+  for (i = 1; i <= task->nsegments; i++)
+  {
+    t   = i * FIX16_ONE / task->nsegments;
+    cur = curve_bezier_point_on_cubic(task->points[0], task->points[1],
+                                      task->points[2], task->points[3], t);
+    cur.x += content->x0; cur.y += content->y0;
+
+    screen_draw_line(scr, prev.x, prev.y, cur.x, cur.y, task->line);
+
+    prev = cur;
+  }
+
+  half = CURVE_BLOBSZ / 2;
+  for (i = 0; i < CURVE_NCONTROLPTS; i++)
+  {
+    cur = task->points[i];
+    cur.x += content->x0; cur.y += content->y0;
+    screen_draw_square(scr, cur.x - half, cur.y - half, CURVE_BLOBSZ, task->blob);
+  }
+
+  return result_OK;
+}
+
+static result_t curve_mouse(curve_task_t        *task,
+                            wuss_mouse_action_t   action,
+                            int                   x,
+                            int                   y,
+                            wuss_window_t        *window)
+{
+  int i;
+
+  switch (action)
+  {
+  case wuss_MOUSE_DOWN:
+    for (i = 0; i < CURVE_NCONTROLPTS; i++)
+    {
+      if (blob_hit(&task->points[i], x, y))
+      {
+        task->dragging = i;
+        break;
+      }
+    }
+    break;
+
+  case wuss_MOUSE_MOVE:
+    if (task->dragging < 0)
+      break;
+    task->points[task->dragging].x = x;
+    task->points[task->dragging].y = y;
+    wuss_window_invalidate_all(window);
+    break;
+
+  case wuss_MOUSE_UP:
+    task->dragging = -1;
+    break;
+  }
+
+  return result_OK;
+}
+
+static result_t curve_scroll(curve_task_t  *task,
+                             int            delta,
+                             wuss_window_t *window)
+{
+  task->nsegments += delta;
+  if (task->nsegments < CURVE_SEGMENTS_MIN)
+    task->nsegments = CURVE_SEGMENTS_MIN;
+  else if (task->nsegments > CURVE_SEGMENTS_MAX)
+    task->nsegments = CURVE_SEGMENTS_MAX;
+
+  wuss_window_invalidate_all(window);
+
+  return result_OK;
+}
+
+result_t curve_handle(wuss_window_t      *window,
+                      const wuss_event_t *event,
+                      void               *task_data)
+{
+  curve_task_t *task;
+
+  task = task_data;
+
+  switch (event->kind)
+  {
+  case wuss_EVENT_REDRAW:
+    return curve_redraw(event->data.redraw.scr, event->data.redraw.content, task);
+
+  case wuss_EVENT_MOUSE:
+    return curve_mouse(task, event->data.mouse.action,
+                       event->data.mouse.x, event->data.mouse.y, window);
+
+  case wuss_EVENT_SCROLL:
+    return curve_scroll(task, event->data.scroll.delta, window);
+
+  case wuss_EVENT_CLOSE:
+    wuss_window_destroy(window);
+    return result_OK;
+
+  default:
+    return result_OK;
+  }
+}
+
+#endif /* USE_SDL */

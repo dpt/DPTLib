@@ -45,6 +45,15 @@ typedef enum wuss_button
 }
 wuss_button_t;
 
+/** The kind of mouse event delivered to a task's mouse callback. */
+typedef enum wuss_mouse_action
+{
+  wuss_MOUSE_DOWN,
+  wuss_MOUSE_UP,
+  wuss_MOUSE_MOVE
+}
+wuss_mouse_action_t;
+
 /** An index into a wuss_t's system palette (see wuss_create). Not a colour_t. */
 typedef int wuss_colour_t;
 
@@ -54,11 +63,21 @@ typedef int wuss_colour_t;
 /** Per-window appearance flags, combinable with bitwise OR. */
 typedef enum wuss_window_flags
 {
-  wuss_WINDOW_NONE        = 0,      /**< Default: titlebar and outline drawn. */
+  wuss_WINDOW_NONE        = 0,      /**< Default: titlebar, close icon and outline drawn. */
   wuss_WINDOW_NO_TITLEBAR = 1 << 0, /**< No titlebar; content fills the full visible area, and no drag handle exists. */
-  wuss_WINDOW_NO_OUTLINE  = 1 << 1  /**< No 1px border drawn around the visible area. */
+  wuss_WINDOW_NO_OUTLINE  = 1 << 1, /**< No 1px border drawn around the visible area. */
+  wuss_WINDOW_NO_CLOSE    = 1 << 2  /**< No close icon in the titlebar. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR. */
 }
 wuss_window_flags_t;
+
+/** Reason code for wuss_window_restack, selecting which end of the
+ * z-order a window moves to. */
+typedef enum wuss_zorder
+{
+  wuss_ZORDER_FRONT, /**< Move the window to the front (topmost). */
+  wuss_ZORDER_BACK   /**< Move the window to the back (bottommost). */
+}
+wuss_zorder_t;
 
 /** Optional creation-time configuration. */
 typedef struct wuss_config
@@ -145,7 +164,7 @@ int wuss_get_dirty_count(const wuss_t *wuss);
 
 /**
  * Fetch one of the current accumulated dirty regions (see
- * wuss_invalidate). wuss only repaints windows, not background
+ * wuss_invalidate). Wuss only repaints windows, not background
  * between/behind them, so a caller whose invalidations can expose
  * background (e.g. after a window move) should clear these regions itself
  * before calling wuss_redraw_dirty.
@@ -157,40 +176,35 @@ int wuss_get_dirty_count(const wuss_t *wuss);
 void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
 
 /**
- * Deliver a mouse-down event. Hit-tests the topmost window at (x,y). A
+ * Deliver a mouse-down or mouse-up event (action must be wuss_MOUSE_DOWN or
+ * wuss_MOUSE_UP). Hit-tests the topmost window at (x,y). On a down, a
  * titlebar click brings the window to front if button is Select (Adjust
- * and Menu leave the z-order unchanged) and starts a drag; a click on the
- * window's content never changes the z-order and is delivered to the
- * task in window-local content coordinates.
+ * and Menu leave the z-order unchanged) and starts a drag; on an up, an
+ * in-progress drag is ended instead of hit-testing (an Adjust click with
+ * no move in between sends the window to the back rather than dragging
+ * it). A click on the window's content never changes the z-order and is
+ * delivered to the task in window-local content coordinates.
  *
  * \param[in]  wuss   Window manager.
  * \param[in]  x      Screen x coordinate.
  * \param[in]  y      Screen y coordinate.
- * \param[in]  button Button pressed.
- * \param[out] hit    Window under the pointer, or NULL if none. May be NULL if not needed.
- * \return \ref result_OK, or a result code returned by the task's mouse callback.
- */
-result_t wuss_mouse_down(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_window_t **hit);
-
-/**
- * Deliver a mouse-up event. Ends an in-progress drag if one is active,
- * otherwise hit-tests and delivers to the window's task as per
- * wuss_mouse_down.
- *
- * \param[in]  wuss   Window manager.
- * \param[in]  x      Screen x coordinate.
- * \param[in]  y      Screen y coordinate.
- * \param[in]  button Button released.
+ * \param[in]  button Button pressed or released.
+ * \param[in]  action wuss_MOUSE_DOWN or wuss_MOUSE_UP.
  * \param[out] hit    Window under the pointer (or being dragged), or NULL if none. May be NULL if not needed.
  * \return \ref result_OK, or a result code returned by the task's mouse callback.
  */
-result_t wuss_mouse_up(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_window_t **hit);
+result_t wuss_mouse_click(wuss_t              *wuss,
+                          int                  x,
+                          int                  y,
+                          wuss_button_t        button,
+                          wuss_mouse_action_t  action,
+                          wuss_window_t      **hit);
 
 /**
  * Deliver a mouse-move event. Updates the dragged window's position if a
  * drag is active (invalidating the affected region; call wuss_redraw_dirty
  * to actually repaint it), otherwise hit-tests and delivers to the
- * window's task as per wuss_mouse_down.
+ * window's task as per wuss_mouse_click.
  *
  * \param[in]  wuss Window manager.
  * \param[in]  x    Screen x coordinate.
@@ -202,7 +216,7 @@ result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit);
 
 /**
  * Deliver a scroll event. Hit-tests the topmost window at (x,y) as per
- * wuss_mouse_down, and delivers to the window's task in window-local
+ * wuss_mouse_click, and delivers to the window's task in window-local
  * content coordinates; dropped if the hit window has no scroll callback,
  * or the pointer is over its titlebar.
  *
@@ -213,7 +227,11 @@ result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit);
  * \param[out] hit   Window under the pointer, or NULL if none. May be NULL if not needed.
  * \return \ref result_OK, or a result code returned by the task's scroll callback.
  */
-result_t wuss_scroll(wuss_t *wuss, int x, int y, int delta, wuss_window_t **hit);
+result_t wuss_scroll(wuss_t         *wuss,
+                     int             x,
+                     int             y,
+                     int             delta,
+                     wuss_window_t **hit);
 
 #ifdef __cplusplus
 }

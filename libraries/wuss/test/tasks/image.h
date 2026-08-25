@@ -18,11 +18,14 @@ typedef struct image_task
 }
 image_task_t;
 
-wuss_redraw_fn_t image_redraw;
+wuss_event_fn_t image_handle;
 
 /* load the image and create its window against the given wuss instance;
  * resources is the DPTLib repo root, for locating the bundled PNG */
-result_t image_create(wuss_t *wuss, const colour_t *palette, const char *resources, image_task_t *task);
+result_t image_create(wuss_t         *wuss,
+                      const colour_t *palette,
+                      const char     *resources,
+                      image_task_t   *task);
 
 /* destroy the window and free the bitmap loaded by image_create */
 void image_destroy(image_task_t *task);

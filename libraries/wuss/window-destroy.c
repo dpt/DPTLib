@@ -15,6 +15,8 @@ void wuss_window_destroy(wuss_window_t *doomed)
   if (doomed == NULL)
     return;
 
+  wuss_task_stop(doomed);
+
   wuss = doomed->wuss;
   if (wuss->dragging == doomed)
     wuss->dragging = NULL;

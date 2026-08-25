@@ -30,12 +30,12 @@ typedef struct checker_task
 }
 checker_task_t;
 
-wuss_redraw_fn_t checker_redraw;
-wuss_mouse_fn_t  checker_mouse;
-wuss_scroll_fn_t checker_scroll;
+wuss_event_fn_t checker_handle;
 
 /* create the two checkerboard windows against the given wuss instance */
-result_t checker_create(wuss_t *wuss, const colour_t *palette, checker_task_t *task);
+result_t checker_create(wuss_t         *wuss,
+                        const colour_t *palette,
+                        checker_task_t *task);
 
 /* destroy the checkerboard windows created by checker_create */
 void checker_destroy(checker_task_t *task);

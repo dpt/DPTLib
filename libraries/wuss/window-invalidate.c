@@ -16,7 +16,10 @@
 
 /* Append "piece" minus its intersection "cut" with an occluder to "out",
  * as up to four non-overlapping bands. */
-static void box_subtract_into(const box_t *piece, const box_t *cut, box_t *out, int *pnout)
+static void box_subtract_into(const box_t *piece,
+                              const box_t *cut,
+                              box_t       *out,
+                              int         *pnout)
 {
   if (cut->y0 > piece->y0 && *pnout < WUSS_MAX_INVALIDATE_PIECES)
   {
@@ -100,7 +103,10 @@ static int clip_to_visible(wuss_window_t *window, const box_t *box, box_t *out)
 /* Subtract each of "cuts" (an array of "ncuts" boxes) from "whole", writing
  * the surviving pieces to "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and
  * returning their count. */
-static int subtract_boxes(const box_t *whole, const box_t *cuts, int ncuts, box_t *out)
+static int subtract_boxes(const box_t *whole,
+                          const box_t *cuts,
+                          int          ncuts,
+                          box_t       *out)
 {
   box_t  scratch[WUSS_MAX_INVALIDATE_PIECES];
   box_t *cur, *nxt, *tmp;
@@ -210,10 +216,10 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
 
   wuss__content_box(window, &content);
 
-  screen_box.x0 = content.x0 + local_box->x0;
-  screen_box.y0 = content.y0 + local_box->y0;
-  screen_box.x1 = content.x0 + local_box->x1;
-  screen_box.y1 = content.y0 + local_box->y1;
+  screen_box.x0 = content.x0 - window->scroll_x + local_box->x0;
+  screen_box.y0 = content.y0 - window->scroll_y + local_box->y0;
+  screen_box.x1 = content.x0 - window->scroll_x + local_box->x1;
+  screen_box.y1 = content.y0 - window->scroll_y + local_box->y1;
 
   wuss__invalidate_clipped(window, &screen_box);
 }
