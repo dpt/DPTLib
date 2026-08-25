@@ -31,6 +31,7 @@
 
 #include "clients/ball.h"
 #include "clients/blank.h"
+#include "clients/checker.h"
 #include "clients/image.h"
 #include "clients/palette.h"
 #include "clients/text.h"
@@ -47,6 +48,7 @@ typedef enum test_window
   WIN_BLANK,
   WIN_PALETTE,
   WIN_IMAGE,
+  WIN_CHECKER,
   WIN__COUNT
 }
 test_window_t;
@@ -104,6 +106,7 @@ static result_t wuss_interactive_test(const char *resources)
   blank_client_t   ic_c;
   palette_client_t ic_d;
   image_client_t   ic_e;
+  checker_client_t ic_f;
   wuss_client_t    clients[WIN__COUNT];
   box_t            boxes[WIN__COUNT];
   wuss_window_t   *windows[WIN__COUNT];
@@ -200,12 +203,8 @@ static result_t wuss_interactive_test(const char *resources)
   ic_a.dx     = 3;
   ic_a.dy     = 2;
   ic_a.radius = 8;
-  clients[WIN_BALL].redraw      = ball_redraw;
-  clients[WIN_BALL].mouse       = NULL;
-  clients[WIN_BALL].client_data = &ic_a;
-  clients[WIN_BALL].bg          = wuss_NO_BACKGROUND; /* ball_redraw paints its own background every frame */
-  boxes[WIN_BALL].x0 = 20;  boxes[WIN_BALL].y0 = 20;
-  boxes[WIN_BALL].x1 = 220; boxes[WIN_BALL].y1 = 180;
+  clients[WIN_BALL] = wuss_client_make(ball_redraw, NULL, &ic_a, wuss_NO_BACKGROUND); /* ball_redraw paints its own background every frame */
+  boxes[WIN_BALL] = (box_t) BOX_POS_SIZE(20, 20, 200, 160);
   rc = wuss_window_create(wuss, &boxes[WIN_BALL], "Bouncing Ball", wuss_WINDOW_NONE, &clients[WIN_BALL], &windows[WIN_BALL]);
   if (rc != result_OK)
     goto Failure;
@@ -214,12 +213,8 @@ static result_t wuss_interactive_test(const char *resources)
   ic_b.bg          = palette[palette_PICO8_BLUE]; /* matches client_b.bg, for bmfont_draw's glyph blending */
   ic_b.fg          = palette[palette_PICO8_WHITE];
   ic_b.frame_count = 0;
-  clients[WIN_TEXT].redraw      = text_redraw;
-  clients[WIN_TEXT].mouse       = NULL;
-  clients[WIN_TEXT].client_data = &ic_b;
-  clients[WIN_TEXT].bg          = palette_PICO8_BLUE;
-  boxes[WIN_TEXT].x0 = 120; boxes[WIN_TEXT].y0 = 100;
-  boxes[WIN_TEXT].x1 = 340; boxes[WIN_TEXT].y1 = 280;
+  clients[WIN_TEXT] = wuss_client_make(text_redraw, NULL, &ic_b, palette_PICO8_BLUE);
+  boxes[WIN_TEXT] = (box_t) BOX_POS_SIZE(120, 100, 220, 180);
   ic_b.base_width = boxes[WIN_TEXT].x1 - boxes[WIN_TEXT].x0;
   rc = wuss_window_create(wuss, &boxes[WIN_TEXT], "Lorem Ipsum", wuss_WINDOW_NONE, &clients[WIN_TEXT], &windows[WIN_TEXT]);
   if (rc != result_OK)
@@ -228,35 +223,31 @@ static result_t wuss_interactive_test(const char *resources)
   ic_c.npalette   = NELEMS(palette);
   ic_c.index      = palette_PICO8_GREEN;
   ic_c.frame_count = 0;
-  clients[WIN_BLANK].redraw      = NULL;
-  clients[WIN_BLANK].mouse       = NULL;
-  clients[WIN_BLANK].client_data = &ic_c;
-  clients[WIN_BLANK].bg          = palette_PICO8_GREEN; /* wuss fills the content area itself */
-  boxes[WIN_BLANK].x0 = 260; boxes[WIN_BLANK].y0 = 60;
-  boxes[WIN_BLANK].x1 = 460; boxes[WIN_BLANK].y1 = 220;
+  clients[WIN_BLANK] = wuss_client_make(NULL, NULL, &ic_c, palette_PICO8_GREEN); /* wuss fills the content area itself */
+  boxes[WIN_BLANK] = (box_t) BOX_POS_SIZE(260, 60, 200, 160);
   rc = wuss_window_create(wuss, &boxes[WIN_BLANK], NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &clients[WIN_BLANK], &windows[WIN_BLANK]);
   if (rc != result_OK)
     goto Failure;
 
   ic_d.palette  = palette;
   ic_d.npalette = NELEMS(palette);
-  clients[WIN_PALETTE].redraw      = palette_redraw;
-  clients[WIN_PALETTE].mouse       = NULL;
-  clients[WIN_PALETTE].client_data = &ic_d;
-  clients[WIN_PALETTE].bg          = palette_PICO8_BLACK; /* backdrop for any rounding gap around the grid */
-  boxes[WIN_PALETTE].x0 = 380; boxes[WIN_PALETTE].y0 = 260;
-  boxes[WIN_PALETTE].x1 = boxes[WIN_PALETTE].x0 + 100; boxes[WIN_PALETTE].y1 = boxes[WIN_PALETTE].y0 + 100;
+  clients[WIN_PALETTE] = wuss_client_make(palette_redraw, NULL, &ic_d, palette_PICO8_BLACK); /* backdrop for any rounding gap around the grid */
+  boxes[WIN_PALETTE] = (box_t) BOX_POS_SIZE(380, 260, 100, 100);
   rc = wuss_window_create(wuss, &boxes[WIN_PALETTE], "Palette", wuss_WINDOW_NONE, &clients[WIN_PALETTE], &windows[WIN_PALETTE]);
   if (rc != result_OK)
     goto Failure;
 
-  clients[WIN_IMAGE].redraw      = image_redraw;
-  clients[WIN_IMAGE].mouse       = NULL;
-  clients[WIN_IMAGE].client_data = &ic_e;
-  clients[WIN_IMAGE].bg          = palette_PICO8_BLACK; /* shows through the image's transparent pixels */
-  boxes[WIN_IMAGE].x0 = 370; boxes[WIN_IMAGE].y0 = 10;
-  boxes[WIN_IMAGE].x1 = boxes[WIN_IMAGE].x0 + ic_e.bitmap.width; boxes[WIN_IMAGE].y1 = boxes[WIN_IMAGE].y0 + ic_e.bitmap.height;
+  clients[WIN_IMAGE] = wuss_client_make(image_redraw, NULL, &ic_e, palette_PICO8_BLACK); /* shows through the image's transparent pixels */
+  boxes[WIN_IMAGE] = (box_t) BOX_POS_SIZE(370, 10, ic_e.bitmap.width, ic_e.bitmap.height);
   rc = wuss_window_create(wuss, &boxes[WIN_IMAGE], "Image", wuss_WINDOW_NONE, &clients[WIN_IMAGE], &windows[WIN_IMAGE]);
+  if (rc != result_OK)
+    goto Failure;
+
+  ic_f.black = palette[palette_PICO8_BLACK];
+  ic_f.white = palette[palette_PICO8_WHITE];
+  clients[WIN_CHECKER] = wuss_client_make(checker_redraw, NULL, &ic_f, wuss_NO_BACKGROUND); /* checker_redraw paints every pixel itself */
+  boxes[WIN_CHECKER] = (box_t) BOX_POS_SIZE(440, 300, 160, 160);
+  rc = wuss_window_create(wuss, &boxes[WIN_CHECKER], "Checker", wuss_WINDOW_NONE, &clients[WIN_CHECKER], &windows[WIN_CHECKER]);
   if (rc != result_OK)
     goto Failure;
 
