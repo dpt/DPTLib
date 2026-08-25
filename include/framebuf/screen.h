@@ -111,6 +111,29 @@ void screen_draw_square(screen_t *scr,
 void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src);
 
 /**
+ * Copies a rectangular region of the screen to another position on the
+ * same screen (e.g. sliding an already-rendered window's pixels to a new
+ * position without asking its owner to redraw). Source and destination may
+ * overlap; copying is done in the correct row order to handle that safely.
+ *
+ * Both the source and destination are clipped to the screen's clip region,
+ * shrinking together so the copied area always maps source pixel to
+ * destination pixel 1:1.
+ *
+ * Callers must check the return value and fall back to a normal
+ * invalidate/redraw when it's false (e.g. out of memory, or an unknown
+ * pixel format), since a declined copy leaves the destination untouched.
+ *
+ * \param[in] scr   Screen to copy within.
+ * \param[in] src   Screen-space region to copy from.
+ * \param[in] dst_x X coordinate of the top-left of the destination.
+ * \param[in] dst_y Y coordinate of the top-left of the destination.
+ * \return True if the copy was performed, false if declined (unsupported
+ *         pixel format).
+ */
+int screen_copy_rect(screen_t *scr, const box_t *src, int dst_x, int dst_y);
+
+/**
  * Draws a line (Bresenham version with aliasing).
  *
  * Coordinates are `int`s. Coordinates are inclusive.
