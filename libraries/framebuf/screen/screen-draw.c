@@ -88,8 +88,7 @@ static void screen_blend_pixel(screen_t *scr,
                                int x, int y,
                                colour_t colour, int alpha)
 {
-  box_t          clip;
-  pixelfmt_any_t colpx;
+  box_t clip;
 
   assert(alpha >= 0);
   assert(alpha <= 255);
@@ -97,47 +96,19 @@ static void screen_blend_pixel(screen_t *scr,
   if (screen_get_clip(scr, &clip) || !box_contains_point(&clip, x, y))
     return;
 
-  colpx = colour_to_pixel(NULL, 0, colour, scr->format);
   switch (pixelfmt_log2bpp(scr->format))
   {
   case 2:
     {
-      unsigned char       *scrp;
-      int                   shift;
-      unsigned int          idx;
-      colour_t              old_colour;
-      pixelfmt_rgba8888_t   oldpx;
-      int                   old_r, old_g, old_b;
-      pixelfmt_rgba8888_t   newpx;
-      int                   new_r, new_g, new_b;
-      int                   blend_r, blend_g, blend_b;
-      colour_t              blended;
-      pixelfmt_any_t        out;
+      unsigned char *scrp;
+      int            shift;
+      unsigned char  idx, out;
 
       scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 1);
       shift = (x & 1) * 4;
       idx   = (*scrp >> shift) & 0xF;
 
-      old_colour = scr->palette[idx];
-      oldpx = old_colour.primary;
-      old_r = PIXELFMT_Rxxx8888(oldpx);
-      old_g = PIXELFMT_xGxx8888(oldpx);
-      old_b = PIXELFMT_xxBx8888(oldpx);
-
-      newpx = colour.primary;
-      new_r = PIXELFMT_Rxxx8888(newpx);
-      new_g = PIXELFMT_xGxx8888(newpx);
-      new_b = PIXELFMT_xxBx8888(newpx);
-
-      /* blend in RGB space, then re-quantise to the nearest palette entry:
-       * a paletted screen has no per-pixel alpha, so this is the closest a
-       * 4bpp surface can get to a translucent blend */
-      blend_r = (new_r * alpha + old_r * (255 - alpha)) / 255;
-      blend_g = (new_g * alpha + old_g * (255 - alpha)) / 255;
-      blend_b = (new_b * alpha + old_b * (255 - alpha)) / 255;
-
-      blended = colour_rgb(blend_r, blend_g, blend_b);
-      out     = colour_to_pixel(scr->palette, 16, blended, scr->format);
+      scr->span->blendconst(&out, &idx, &colour, 1, alpha, scr->palette);
 
       *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((out & 0xF) << shift));
     }
@@ -146,11 +117,14 @@ static void screen_blend_pixel(screen_t *scr,
   case 5:
     {
       pixelfmt_any32_t *scrp;
+      pixelfmt_any_t    colpx;
+
+      colpx = colour_to_pixel(NULL, 0, colour, scr->format);
 
       scrp = scr->base;
       scrp += y * scr->rowbytes / sizeof(*scrp) + x;
 
-      scr->span->blendconst(scrp, scrp, &colpx, 1, alpha);
+      scr->span->blendconst(scrp, scrp, &colpx, 1, alpha, NULL);
     }
     break;
 
