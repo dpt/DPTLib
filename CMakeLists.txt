@@ -317,6 +317,7 @@ set(WUSS_SOURCES
     libraries/wuss/content-box.c
     libraries/wuss/create.c
     libraries/wuss/destroy.c
+    libraries/wuss/idle.c
     libraries/wuss/impl.h
     libraries/wuss/invalidate.c
     libraries/wuss/mouse-click.c

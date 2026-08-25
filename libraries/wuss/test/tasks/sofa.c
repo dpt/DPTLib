@@ -199,6 +199,28 @@ static result_t sofa_scroll(wuss_window_t *window, int delta, void *task_data)
   return result_OK;
 }
 
+static result_t sofa_idle(void *task_data)
+{
+  sofa_task_t *task;
+  box_t        content;
+
+  task = task_data;
+
+  if (!task->spinning)
+    return result_OK;
+
+  task->angle += SOFA_SPIN_PER_FRAME;
+  if (task->angle > 2.0 * M_PI)
+    task->angle -= 2.0 * M_PI;
+
+  wuss_window_get_content_bounds(task->window, &content);
+  content.x1 -= content.x0; content.x0 = 0;
+  content.y1 -= content.y0; content.y0 = 0;
+  wuss_window_invalidate(task->window, &content);
+
+  return result_OK;
+}
+
 result_t sofa_handle(wuss_window_t     *window,
                      const wuss_event_t *event,
                      void               *task_data)
@@ -216,26 +238,12 @@ result_t sofa_handle(wuss_window_t     *window,
   case wuss_EVENT_SCROLL:
     return sofa_scroll(window, event->data.scroll.delta, task_data);
 
+  case wuss_EVENT_IDLE:
+    return sofa_idle(task_data);
+
   default:
     return result_OK;
   }
-}
-
-void sofa_step(sofa_task_t *task)
-{
-  box_t content;
-
-  if (!task->spinning)
-    return;
-
-  task->angle += SOFA_SPIN_PER_FRAME;
-  if (task->angle > 2.0 * M_PI)
-    task->angle -= 2.0 * M_PI;
-
-  wuss_window_get_content_bounds(task->window, &content);
-  content.x1 -= content.x0; content.x0 = 0;
-  content.y1 -= content.y0; content.y0 = 0;
-  wuss_window_invalidate(task->window, &content);
 }
 
 #endif /* USE_SDL */

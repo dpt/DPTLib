@@ -30,10 +30,6 @@ result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task);
 /* destroy the sofa window created by sofa_create */
 void sofa_destroy(sofa_task_t *task);
 
-/* advance the spin and invalidate the whole window; called once per frame
- * from the main loop, not from a wuss callback */
-void sofa_step(sofa_task_t *task);
-
 #endif /* USE_SDL */
 
 #endif /* TASKS_SOFA_H */

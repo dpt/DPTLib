@@ -28,7 +28,8 @@ typedef enum wuss_event_kind
 {
   wuss_EVENT_REDRAW,
   wuss_EVENT_MOUSE,
-  wuss_EVENT_SCROLL
+  wuss_EVENT_SCROLL,
+  wuss_EVENT_IDLE
 }
 wuss_event_kind_t;
 
@@ -68,6 +69,8 @@ typedef struct wuss_event
       int x, y, delta;
     }
     scroll;
+
+    /* wuss_EVENT_IDLE carries no data. */
   }
   data;
 }
@@ -105,6 +108,18 @@ wuss_task_t;
 wuss_task_t wuss_task_make(wuss_event_fn_t *handle,
                            void            *task_data,
                            wuss_colour_t    bg);
+
+/**
+ * Broadcast a wuss_EVENT_IDLE event to every window's task, in z-order.
+ * Intended to be called once per main-loop iteration, after other pending
+ * input has been handled, so tasks can drive their own animation/timers
+ * without the caller stepping each one individually.
+ *
+ * \param[in] wuss Window manager whose windows' tasks should go idle.
+ * \return \ref result_OK on success, else the first non-OK result returned
+ *         by a task's handle callback.
+ */
+result_t wuss_idle(wuss_t *wuss);
 
 /**
  * Create a window.

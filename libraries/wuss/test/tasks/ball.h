@@ -40,10 +40,6 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task);
 /* destroy the bouncing-ball window created by ball_create */
 void ball_destroy(ball_task_t *task);
 
-/* move the ball on and invalidate the union of its old and new positions;
- * called once per frame from the main loop, not from a wuss callback */
-void ball_step(ball_task_t *bc);
-
 #endif /* USE_SDL */
 
 #endif /* TASKS_BALL_H */

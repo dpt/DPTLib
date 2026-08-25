@@ -120,6 +120,36 @@ static result_t text_mouse(void *task_data)
   return result_OK;
 }
 
+#define TEXT_RESIZE_PERIOD_FRAMES 300 /* one full swing every 5s at 60fps */
+#define TEXT_RESIZE_AMPLITUDE     50  /* +/-50px either side of base_width */
+
+static result_t text_idle(void *task_data)
+{
+  text_task_t *tcx;
+  box_t        visible;
+  int          height, width;
+  double       angle;
+  result_t     rc;
+
+  tcx = task_data;
+
+  if (!tcx->resizing)
+    return result_OK;
+
+  wuss_window_get_content_bounds(tcx->window, &visible);
+  height = visible.y1 - visible.y0;
+
+  tcx->frame_count++;
+  angle = tcx->frame_count * (2.0 * M_PI / TEXT_RESIZE_PERIOD_FRAMES);
+  width = tcx->base_width + (int) (TEXT_RESIZE_AMPLITUDE * sin(angle));
+
+  rc = wuss_window_resize(tcx->window, width, height);
+  if (rc != result_OK)
+    logf_warning("text_idle: wuss_window_resize(%d, %d) failed", width, height);
+
+  return rc;
+}
+
 result_t text_handle(wuss_window_t     *window,
                      const wuss_event_t *event,
                      void               *task_data)
@@ -136,34 +166,12 @@ result_t text_handle(wuss_window_t     *window,
       return result_OK;
     return text_mouse(task_data);
 
+  case wuss_EVENT_IDLE:
+    return text_idle(task_data);
+
   default:
     return result_OK;
   }
-}
-
-#define TEXT_RESIZE_PERIOD_FRAMES 300 /* one full swing every 5s at 60fps */
-#define TEXT_RESIZE_AMPLITUDE     50  /* +/-50px either side of base_width */
-
-void text_step(text_task_t *tcx)
-{
-  box_t    visible;
-  int      height, width;
-  double   angle;
-  result_t rc;
-
-  if (!tcx->resizing)
-    return;
-
-  wuss_window_get_content_bounds(tcx->window, &visible);
-  height = visible.y1 - visible.y0;
-
-  tcx->frame_count++;
-  angle = tcx->frame_count * (2.0 * M_PI / TEXT_RESIZE_PERIOD_FRAMES);
-  width = tcx->base_width + (int) (TEXT_RESIZE_AMPLITUDE * sin(angle));
-
-  rc = wuss_window_resize(tcx->window, width, height);
-  if (rc != result_OK)
-    logf_warning("text_step: wuss_window_resize(%d, %d) failed", width, height);
 }
 
 #endif /* USE_SDL */
