@@ -5,6 +5,8 @@
 
 #ifdef USE_SDL
 
+#include <stdbool.h>
+
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
 #include "wuss/window.h"
@@ -18,10 +20,13 @@ typedef struct text_task
   colour_t       bg, fg;
   int            base_width;  /* visible width when the window was created */
   int            frame_count;
+  bool           resizing;    /* toggled by a content click; text_step only
+                                * resizes the window while this is true */
 }
 text_task_t;
 
 wuss_redraw_fn_t text_redraw;
+wuss_mouse_fn_t  text_mouse;
 
 /* create the paragraph-of-text window against the given wuss instance */
 result_t text_create(wuss_t *wuss, const colour_t *palette, bmfont_t *font, text_task_t *task);
