@@ -41,7 +41,7 @@ result_t text_create(wuss_t         *wuss,
   task->frame_count = 0;
   task->resizing    = true;
 
-  delegate = wuss_task_make(text_handle, task, palette_PICO8_BLUE);
+  delegate = wuss_task_start(text_handle, task, palette_PICO8_BLUE);
   box      = (box_t) BOX_POS_SIZE(120, 100, 220, 180);
 
   task->base_width = box.x1 - box.x0;

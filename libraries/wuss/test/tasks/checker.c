@@ -41,7 +41,7 @@ result_t checker_create(wuss_t         *wuss,
   task->band     = CHECKER_BAND_DEFAULT;
   task->band2    = CHECKER_BAND_DEFAULT;
 
-  delegate = wuss_task_make(checker_handle, task, wuss_NO_BACKGROUND); /* checker_redraw paints every pixel itself */
+  delegate = wuss_task_start(checker_handle, task, wuss_NO_BACKGROUND); /* checker_redraw paints every pixel itself */
   box      = (box_t) BOX_POS_SIZE(440, 300, 160, 160);
 
   rc = wuss_window_create(wuss, &box, "Checker 1", wuss_WINDOW_NONE, &delegate, &task->window);

@@ -23,7 +23,7 @@ result_t palette_create(wuss_t         *wuss,
   task->palette  = palette;
   task->npalette = npalette;
 
-  delegate = wuss_task_make(palette_handle, task, palette_PICO8_BLACK); /* backdrop for any rounding gap around the grid */
+  delegate = wuss_task_start(palette_handle, task, palette_PICO8_BLACK); /* backdrop for any rounding gap around the grid */
   box      = (box_t) BOX_POS_SIZE(380, 260, 100, 100);
 
   return wuss_window_create(wuss, &box, "Palette", wuss_WINDOW_NONE, &delegate, &task->window);

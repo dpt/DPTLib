@@ -33,7 +33,8 @@ typedef enum wuss_event_kind
   wuss_EVENT_MOUSE,
   wuss_EVENT_SCROLL,
   wuss_EVENT_IDLE,
-  wuss_EVENT_CLOSE
+  wuss_EVENT_CLOSE,
+  wuss_EVENT_STOP
 }
 wuss_event_kind_t;
 
@@ -74,7 +75,7 @@ typedef struct wuss_event
     }
     scroll;
 
-    /* wuss_EVENT_IDLE and wuss_EVENT_CLOSE carry no data. */
+    /* wuss_EVENT_IDLE, wuss_EVENT_CLOSE and wuss_EVENT_STOP carry no data. */
   }
   data;
 }
@@ -109,9 +110,21 @@ wuss_task_t;
  * \param[in] bg        Content background, or wuss_NO_BACKGROUND.
  * \return The populated task.
  */
-wuss_task_t wuss_task_make(wuss_event_fn_t *handle,
-                           void            *task_data,
-                           wuss_colour_t    bg);
+wuss_task_t wuss_task_start(wuss_event_fn_t *handle,
+                            void            *task_data,
+                            wuss_colour_t    bg);
+
+/**
+ * Notify a window's task that it is shutting down, via wuss_EVENT_STOP.
+ * Called automatically by wuss_window_destroy before the window is torn
+ * down; exposed separately so a task can be stopped without also
+ * destroying its window, if ever needed.
+ *
+ * \param[in] window Window whose task should be stopped.
+ * \return \ref result_OK on success, else the result returned by the
+ *         task's handle callback.
+ */
+result_t wuss_task_stop(wuss_window_t *window);
 
 /**
  * Broadcast a wuss_EVENT_IDLE event to every window's task, in z-order.
