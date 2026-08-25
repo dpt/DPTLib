@@ -48,6 +48,7 @@ void            wuss__titlebar_box(const wuss_window_t *window, box_t *out);
 void            wuss__content_box(const wuss_window_t *window, box_t *out);
 void            wuss__invalidate_clipped(wuss_window_t *window, const box_t *box);
 void            wuss__invalidate_minus(wuss_t *wuss, const box_t *whole, const box_t *keep);
+void            wuss__invalidate_uncovered(wuss_window_t *window);
 
 static inline int wuss__size_ok(int width, int height)
 {
