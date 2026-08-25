@@ -32,6 +32,7 @@
 #include "tasks/ball.h"
 #include "tasks/blank.h"
 #include "tasks/checker.h"
+#include "tasks/curve.h"
 #include "tasks/image.h"
 #include "tasks/palette.h"
 #include "tasks/sofa.h"
@@ -116,6 +117,7 @@ static result_t wuss_interactive_test(const char *resources)
   palette_task_t   palette_task;
   image_task_t     image_task;
   checker_task_t   checker_task;
+  curve_task_t     curve_task;
   sofa_task_t      sofa_task;
   SDL_Window      *window;
   SDL_Renderer    *renderer;
@@ -218,6 +220,10 @@ static result_t wuss_interactive_test(const char *resources)
     goto Failure;
 
   rc = checker_create(wuss, palette, &checker_task);
+  if (rc != result_OK)
+    goto Failure;
+
+  rc = curve_create(wuss, palette, &curve_task);
   if (rc != result_OK)
     goto Failure;
 
@@ -368,6 +374,7 @@ static result_t wuss_interactive_test(const char *resources)
   palette_destroy(&palette_task);
   image_destroy(&image_task);
   checker_destroy(&checker_task);
+  curve_destroy(&curve_task);
   sofa_destroy(&sofa_task);
 
   wuss_destroy(wuss);

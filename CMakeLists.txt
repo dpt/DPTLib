@@ -523,6 +523,7 @@ if(BUILD_TESTS)
         libraries/wuss/test/tasks/ball.c
         libraries/wuss/test/tasks/blank.c
         libraries/wuss/test/tasks/checker.c
+        libraries/wuss/test/tasks/curve.c
         libraries/wuss/test/tasks/image.c
         libraries/wuss/test/tasks/palette.c
         libraries/wuss/test/tasks/sofa.c
