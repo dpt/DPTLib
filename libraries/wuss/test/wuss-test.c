@@ -799,7 +799,7 @@ result_t wuss_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
-  printf("test: content click on a title-less window brings it to front\n");
+  printf("test: content click on a title-less window does not change z-order\n");
 
   {
     test_task_t  tc_e, tc_f;
@@ -833,8 +833,8 @@ result_t wuss_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
 
-    /* F was created after E, so F is topmost; click E's exposed content
-     * (outside the overlap) to bring E back to front */
+    /* F was created after E, so F is topmost; clicking E's exposed content
+     * (outside the overlap) is delivered to E but must not raise it */
     rc = wuss_mouse_down(wuss, 110, 10, wuss_BUTTON_SELECT, &hit); /* within E only */
     if (rc != result_OK)
       goto Failure;
@@ -845,10 +845,10 @@ result_t wuss_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
 
-    rc = wuss_mouse_down(wuss, 135, 25, wuss_BUTTON_SELECT, &hit); /* overlap: E now on top */
+    rc = wuss_mouse_down(wuss, 135, 25, wuss_BUTTON_SELECT, &hit); /* overlap: F still on top */
     if (rc != result_OK)
       goto Failure;
-    if (hit != win_e)
+    if (hit != win_f)
       goto Failure;
 
     rc = wuss_mouse_up(wuss, 135, 25, wuss_BUTTON_SELECT, &hit);
