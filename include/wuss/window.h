@@ -188,6 +188,29 @@ void wuss_window_get_content_bounds(const wuss_window_t *window, box_t *content)
 void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
 
 /**
+ * Set a window's scroll offset: the point in virtual content space that
+ * appears at the content area's top-left. Larger offsets bring later
+ * content into view. Invalidates the content area so the next redraw picks
+ * up the new offset; the task's redraw callback is responsible for using
+ * the offset (via wuss_window_get_scroll) to draw the right portion of its
+ * content.
+ *
+ * \param[in] window Window to scroll.
+ * \param[in] x      New horizontal scroll offset.
+ * \param[in] y      New vertical scroll offset.
+ */
+void wuss_window_set_scroll(wuss_window_t *window, int x, int y);
+
+/**
+ * Fetch a window's current scroll offset.
+ *
+ * \param[in]  window Window to query.
+ * \param[out] x      Filled in with the horizontal scroll offset.
+ * \param[out] y      Filled in with the vertical scroll offset.
+ */
+void wuss_window_get_scroll(const wuss_window_t *window, int *x, int *y);
+
+/**
  * Change a window's background colour, invalidating its content area so the
  * next redraw picks up the new fill.
  *

@@ -210,10 +210,10 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
 
   wuss__content_box(window, &content);
 
-  screen_box.x0 = content.x0 + local_box->x0;
-  screen_box.y0 = content.y0 + local_box->y0;
-  screen_box.x1 = content.x0 + local_box->x1;
-  screen_box.y1 = content.y0 + local_box->y1;
+  screen_box.x0 = content.x0 - window->scroll_x + local_box->x0;
+  screen_box.y0 = content.y0 - window->scroll_y + local_box->y0;
+  screen_box.x1 = content.x0 - window->scroll_x + local_box->x1;
+  screen_box.y1 = content.y0 - window->scroll_y + local_box->y1;
 
   wuss__invalidate_clipped(window, &screen_box);
 }

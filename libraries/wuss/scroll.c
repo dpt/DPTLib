@@ -23,8 +23,8 @@ result_t wuss_scroll(wuss_t *wuss, int x, int y, int delta, wuss_window_t **hit)
       return result_OK;
 
     wuss__content_box(win, &content);
-    local_x = x - content.x0;
-    local_y = y - content.y0;
+    local_x = x - content.x0 + win->scroll_x;
+    local_y = y - content.y0 + win->scroll_y;
     return win->task.scroll(win, local_x, local_y, delta, win->task.task_data);
   }
 
