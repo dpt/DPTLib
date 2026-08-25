@@ -53,15 +53,18 @@ result_t wuss_mouse_click(wuss_t              *wuss,
     return result_OK;
   }
 
-  if (win->task.mouse != NULL)
+  if (win->task.handle != NULL)
   {
-    box_t content;
-    int   local_x, local_y;
+    box_t        content;
+    wuss_event_t event;
 
     wuss__content_box(win, &content);
-    local_x = x - content.x0 + win->scroll_x;
-    local_y = y - content.y0 + win->scroll_y;
-    return win->task.mouse(win, action, local_x, local_y, button, win->task.task_data);
+    event.kind             = wuss_EVENT_MOUSE;
+    event.data.mouse.action = action;
+    event.data.mouse.x      = x - content.x0 + win->scroll_x;
+    event.data.mouse.y      = y - content.y0 + win->scroll_y;
+    event.data.mouse.button = button;
+    return win->task.handle(win, &event, win->task.task_data);
   }
 
   return result_OK;

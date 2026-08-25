@@ -32,8 +32,7 @@ result_t image_create(wuss_t         *wuss,
   if (rc != result_OK)
     return rc;
 
-  delegate        = wuss_task_make(image_redraw, NULL, task, palette_PICO8_BLACK); /* shows through the image's transparent pixels */
-  delegate.scroll = image_scroll;
+  delegate = wuss_task_make(image_handle, task, palette_PICO8_BLACK); /* shows through the image's transparent pixels */
   /* shorter than the bitmap so there's something to scroll through */
   box             = (box_t) BOX_POS_SIZE(370, 10, task->bitmap.width, task->bitmap.height * 2 / 3);
 
@@ -46,10 +45,10 @@ void image_destroy(image_task_t *task)
   free(task->bitmap.base);
 }
 
-result_t image_redraw(wuss_window_t *window,
-                      screen_t      *scr,
-                      const box_t   *content,
-                      void          *task_data)
+static result_t image_redraw(wuss_window_t *window,
+                             screen_t      *scr,
+                             const box_t   *content,
+                             void          *task_data)
 {
   image_task_t *ic;
   int           sx, sy;
@@ -63,18 +62,11 @@ result_t image_redraw(wuss_window_t *window,
   return result_OK;
 }
 
-result_t image_scroll(wuss_window_t *window,
-                      int            x,
-                      int            y,
-                      int            delta,
-                      void          *task_data)
+static result_t image_scroll(wuss_window_t *window, int delta, void *task_data)
 {
   image_task_t *ic;
   box_t         bounds;
   int           sx, sy, max_y;
-
-  NOT_USED(x);
-  NOT_USED(y);
 
   ic = task_data;
 
@@ -95,6 +87,23 @@ result_t image_scroll(wuss_window_t *window,
   wuss_window_set_scroll(window, sx, sy);
 
   return result_OK;
+}
+
+result_t image_handle(wuss_window_t     *window,
+                      const wuss_event_t *event,
+                      void               *task_data)
+{
+  switch (event->kind)
+  {
+  case wuss_EVENT_REDRAW:
+    return image_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
+
+  case wuss_EVENT_SCROLL:
+    return image_scroll(window, event->data.scroll.delta, task_data);
+
+  default:
+    return result_OK;
+  }
 }
 
 #endif /* USE_SDL */

@@ -51,11 +51,15 @@ static void redraw_window(wuss_t        *wuss,
                        content.x1 - content.x0, content.y1 - content.y0,
                        wuss->palette[win->task.bg]);
 
-    if (win->task.redraw != NULL)
+    if (win->task.handle != NULL)
     {
-      result_t crc;
+      wuss_event_t event;
+      result_t     crc;
 
-      crc = win->task.redraw(win, wuss->scr, &content, win->task.task_data);
+      event.kind             = wuss_EVENT_REDRAW;
+      event.data.redraw.scr     = wuss->scr;
+      event.data.redraw.content = &content;
+      crc = win->task.handle(win, &event, win->task.task_data);
       if (crc != result_OK)
         *rc = crc;
     }

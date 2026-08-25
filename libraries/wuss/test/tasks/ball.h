@@ -32,8 +32,7 @@ typedef struct ball_task
 }
 ball_task_t;
 
-wuss_redraw_fn_t ball_redraw;
-wuss_mouse_fn_t  ball_mouse;
+wuss_event_fn_t ball_handle;
 
 /* create the bouncing-ball window against the given wuss instance */
 result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task);
