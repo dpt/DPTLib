@@ -161,7 +161,7 @@ static result_t wuss_interactive_test(const char *resources)
     goto Failure;
   }
 
-  window = SDL_CreateWindow("DPTLib wuss Test", scr_width, scr_height, 0);
+  window = SDL_CreateWindow("DPTLib Wuss Test", scr_width, scr_height, 0);
   if (window == NULL)
   {
     fprintf(stderr, "Error: SDL_CreateWindow: %s\n", SDL_GetError());
