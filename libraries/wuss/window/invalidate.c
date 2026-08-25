@@ -1,8 +1,8 @@
-/* window-invalidate.c -- wuss - minimal window manager */
+/* invalidate.c -- wuss - minimal window manager */
 
 #include <string.h>
 
-#include "impl.h"
+#include "../impl.h"
 
 /* ponytail: fixed cap; if hit, remaining pieces are carried through
  * unclipped against further occluders rather than growing storage -- safe,

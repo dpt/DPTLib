@@ -1,6 +1,6 @@
-/* window-get-scroll.c -- wuss - minimal window manager */
+/* get-scroll.c -- wuss - minimal window manager */
 
-#include "impl.h"
+#include "../impl.h"
 
 void wuss_window_get_scroll(const wuss_window_t *window, int *x, int *y)
 {

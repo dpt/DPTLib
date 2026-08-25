@@ -1,6 +1,6 @@
-/* window-at.c -- wuss - minimal window manager */
+/* at.c -- wuss - minimal window manager */
 
-#include "impl.h"
+#include "../impl.h"
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, int x, int y)
 {
