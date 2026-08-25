@@ -70,6 +70,15 @@ typedef enum wuss_window_flags
 }
 wuss_window_flags_t;
 
+/** Reason code for wuss_window_restack, selecting which end of the
+ * z-order a window moves to. */
+typedef enum wuss_zorder
+{
+  wuss_ZORDER_FRONT, /**< Move the window to the front (topmost). */
+  wuss_ZORDER_BACK   /**< Move the window to the back (bottommost). */
+}
+wuss_zorder_t;
+
 /** Optional creation-time configuration. */
 typedef struct wuss_config
 {

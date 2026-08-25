@@ -23,7 +23,7 @@ result_t wuss_mouse_click(wuss_t              *wuss,
     /* an Adjust click on a titlebar that never moved is a click, not a
      * drag: send the window to the back instead */
     if (button == wuss_BUTTON_ADJUST && !wuss->drag_moved)
-      wuss_window_send_to_back(win);
+      wuss_window_restack(win, wuss_ZORDER_BACK);
 
     return result_OK;
   }
@@ -61,7 +61,7 @@ result_t wuss_mouse_click(wuss_t              *wuss,
       box_t content;
 
       if (button == wuss_BUTTON_SELECT)
-        wuss_window_bring_to_front(win);
+        wuss_window_restack(win, wuss_ZORDER_FRONT);
 
       wuss__content_box(win, &content);
       wuss->dragging   = win;
