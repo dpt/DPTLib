@@ -408,40 +408,33 @@ typedef struct test_task
 }
 test_task_t;
 
-static result_t test_redraw(wuss_window_t *window,
-                            screen_t      *scr,
-                            const box_t   *content,
-                            void          *task_data)
-{
-  test_task_t *tc;
-
-  NOT_USED(window);
-  NOT_USED(scr);
-  NOT_USED(content);
-
-  tc = task_data;
-  tc->redraw_count++;
-
-  return result_OK;
-}
-
-static result_t test_mouse(wuss_window_t      *window,
-                           wuss_mouse_action_t action,
-                           int                 x,
-                           int                 y,
-                           wuss_button_t       button,
-                           void               *task_data)
+static result_t test_handle(wuss_window_t     *window,
+                            const wuss_event_t *event,
+                            void               *task_data)
 {
   test_task_t *tc;
 
   NOT_USED(window);
 
   tc = task_data;
-  tc->mouse_count++;
-  tc->last_action = action;
-  tc->last_x      = x;
-  tc->last_y      = y;
-  tc->last_button = button;
+
+  switch (event->kind)
+  {
+  case wuss_EVENT_REDRAW:
+    tc->redraw_count++;
+    break;
+
+  case wuss_EVENT_MOUSE:
+    tc->mouse_count++;
+    tc->last_action = event->data.mouse.action;
+    tc->last_x      = event->data.mouse.x;
+    tc->last_y      = event->data.mouse.y;
+    tc->last_button = event->data.mouse.button;
+    break;
+
+  default:
+    break;
+  }
 
   return result_OK;
 }
@@ -521,8 +514,7 @@ result_t wuss_test(const char *resources)
 
   tc_a.redraw_count = 0;
   tc_a.mouse_count  = 0;
-  delegate_a.redraw      = test_redraw;
-  delegate_a.mouse       = test_mouse;
+  delegate_a.handle      = test_handle;
   delegate_a.task_data = &tc_a;
   delegate_a.bg          = wuss_NO_BACKGROUND;
 
@@ -536,8 +528,7 @@ result_t wuss_test(const char *resources)
 
   tc_b.redraw_count = 0;
   tc_b.mouse_count  = 0;
-  delegate_b.redraw      = test_redraw;
-  delegate_b.mouse       = test_mouse;
+  delegate_b.handle      = test_handle;
   delegate_b.task_data = &tc_b;
   delegate_b.bg          = wuss_NO_BACKGROUND;
 
@@ -788,8 +779,7 @@ result_t wuss_test(const char *resources)
 
   tc_d.redraw_count = 0;
   tc_d.mouse_count  = 0;
-  delegate_d.redraw      = test_redraw;
-  delegate_d.mouse       = test_mouse;
+  delegate_d.handle      = test_handle;
   delegate_d.task_data = &tc_d;
   delegate_d.bg          = wuss_NO_BACKGROUND;
 
@@ -828,8 +818,7 @@ result_t wuss_test(const char *resources)
 
     tc_e.redraw_count = 0;
     tc_e.mouse_count  = 0;
-    delegate_e.redraw      = test_redraw;
-    delegate_e.mouse       = test_mouse;
+    delegate_e.handle      = test_handle;
     delegate_e.task_data = &tc_e;
     delegate_e.bg          = wuss_NO_BACKGROUND;
 
@@ -841,8 +830,7 @@ result_t wuss_test(const char *resources)
 
     tc_f.redraw_count = 0;
     tc_f.mouse_count  = 0;
-    delegate_f.redraw      = test_redraw;
-    delegate_f.mouse       = test_mouse;
+    delegate_f.handle      = test_handle;
     delegate_f.task_data = &tc_f;
     delegate_f.bg          = wuss_NO_BACKGROUND;
 
@@ -901,8 +889,7 @@ result_t wuss_test(const char *resources)
 
     tc_h.redraw_count = 0;
     tc_h.mouse_count  = 0;
-    delegate_h.redraw      = test_redraw;
-    delegate_h.mouse       = test_mouse;
+    delegate_h.handle      = test_handle;
     delegate_h.task_data = &tc_h;
     delegate_h.bg          = wuss_NO_BACKGROUND;
 
@@ -914,8 +901,7 @@ result_t wuss_test(const char *resources)
 
     tc_g.redraw_count = 0;
     tc_g.mouse_count  = 0;
-    delegate_g.redraw      = test_redraw;
-    delegate_g.mouse       = test_mouse;
+    delegate_g.handle      = test_handle;
     delegate_g.task_data = &tc_g;
     delegate_g.bg          = wuss_NO_BACKGROUND;
 
@@ -968,8 +954,7 @@ result_t wuss_test(const char *resources)
 
     tc_i.redraw_count = 0;
     tc_i.mouse_count  = 0;
-    delegate_i.redraw      = test_redraw;
-    delegate_i.mouse       = test_mouse;
+    delegate_i.handle      = test_handle;
     delegate_i.task_data = &tc_i;
     delegate_i.bg          = wuss_NO_BACKGROUND;
 
@@ -981,8 +966,7 @@ result_t wuss_test(const char *resources)
 
     tc_j.redraw_count = 0;
     tc_j.mouse_count  = 0;
-    delegate_j.redraw      = test_redraw;
-    delegate_j.mouse       = test_mouse;
+    delegate_j.handle      = test_handle;
     delegate_j.task_data = &tc_j;
     delegate_j.bg          = wuss_NO_BACKGROUND;
 
@@ -1024,8 +1008,7 @@ result_t wuss_test(const char *resources)
 
     tc_m.redraw_count = 0;
     tc_m.mouse_count  = 0;
-    delegate_m.redraw      = test_redraw;
-    delegate_m.mouse       = test_mouse;
+    delegate_m.handle      = test_handle;
     delegate_m.task_data = &tc_m;
     delegate_m.bg          = wuss_NO_BACKGROUND;
 
@@ -1091,8 +1074,7 @@ result_t wuss_test(const char *resources)
 
   tc_c.redraw_count = 0;
   tc_c.mouse_count  = 0;
-  delegate_c.redraw      = test_redraw;
-  delegate_c.mouse       = test_mouse;
+  delegate_c.handle      = test_handle;
   delegate_c.task_data = &tc_c;
   delegate_c.bg          = wuss_NO_BACKGROUND;
 

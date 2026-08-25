@@ -18,7 +18,7 @@ typedef struct palette_task
 }
 palette_task_t;
 
-wuss_redraw_fn_t palette_redraw;
+wuss_event_fn_t palette_handle;
 
 /* create the palette-swatch-grid window against the given wuss instance */
 result_t palette_create(wuss_t         *wuss,

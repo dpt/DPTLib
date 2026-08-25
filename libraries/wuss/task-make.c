@@ -4,16 +4,13 @@
 
 #include "wuss/window.h"
 
-wuss_task_t wuss_task_make(wuss_redraw_fn_t *redraw,
-                           wuss_mouse_fn_t  *mouse,
-                           void             *task_data,
-                           wuss_colour_t     bg)
+wuss_task_t wuss_task_make(wuss_event_fn_t *handle,
+                           void            *task_data,
+                           wuss_colour_t    bg)
 {
   wuss_task_t task;
 
-  task.redraw    = redraw;
-  task.mouse     = mouse;
-  task.scroll    = NULL;
+  task.handle    = handle;
   task.task_data = task_data;
   task.bg        = bg;
 

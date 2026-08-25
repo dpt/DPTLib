@@ -13,19 +13,21 @@ result_t wuss_scroll(wuss_t *wuss, int x, int y, int delta, wuss_window_t **hit)
   if (win == NULL)
     return result_OK;
 
-  if (win->task.scroll != NULL)
+  if (win->task.handle != NULL)
   {
-    box_t titlebar, content;
-    int   local_x, local_y;
+    box_t        titlebar, content;
+    wuss_event_t event;
 
     wuss__titlebar_box(win, &titlebar);
     if (box_contains_point(&titlebar, x, y))
       return result_OK;
 
     wuss__content_box(win, &content);
-    local_x = x - content.x0 + win->scroll_x;
-    local_y = y - content.y0 + win->scroll_y;
-    return win->task.scroll(win, local_x, local_y, delta, win->task.task_data);
+    event.kind            = wuss_EVENT_SCROLL;
+    event.data.scroll.x     = x - content.x0 + win->scroll_x;
+    event.data.scroll.y     = y - content.y0 + win->scroll_y;
+    event.data.scroll.delta = delta;
+    return win->task.handle(win, &event, win->task.task_data);
   }
 
   return result_OK;

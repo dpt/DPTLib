@@ -22,9 +22,7 @@ typedef struct sofa_task
 }
 sofa_task_t;
 
-wuss_redraw_fn_t sofa_redraw;
-wuss_mouse_fn_t  sofa_mouse;
-wuss_scroll_fn_t sofa_scroll;
+wuss_event_fn_t sofa_handle;
 
 /* create the sofa window against the given wuss instance */
 result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task);

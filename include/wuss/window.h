@@ -23,81 +23,88 @@ extern "C"
 
 /* ----------------------------------------------------------------------- */
 
-/**
- * Task redraw callback. Called with scr->clip already set to the
- * on-screen, clipped content area.
- *
- * \param[in] window    The window being redrawn.
- * \param[in] scr       Screen to draw into.
- * \param[in] content   The window's (unclipped) content box, screen space, for context.
- * \param[in] task_data As passed to wuss_window_create.
- * \return \ref result_OK on success, else an appropriate result code.
- */
-typedef result_t (wuss_redraw_fn_t)(wuss_window_t *window,
-                                    screen_t      *scr,
-                                    const box_t   *content,
-                                    void          *task_data);
+/** Which kind of event a wuss_event_t carries; more will be added over time. */
+typedef enum wuss_event_kind
+{
+  wuss_EVENT_REDRAW,
+  wuss_EVENT_MOUSE,
+  wuss_EVENT_SCROLL
+}
+wuss_event_kind_t;
 
 /**
- * Task mouse callback. x,y are window-local content coordinates (the
- * content area's top-left is (0,0)).
+ * An event delivered to a task's handle callback. Only the union member
+ * matching \c kind is valid.
+ */
+typedef struct wuss_event
+{
+  wuss_event_kind_t kind;
+  union
+  {
+    /** wuss_EVENT_REDRAW: called with scr->clip already set to the
+     * on-screen, clipped content area. */
+    struct
+    {
+      screen_t    *scr;
+      const box_t *content; /**< The window's (unclipped) content box, screen space, for context. */
+    }
+    redraw;
+
+    /** wuss_EVENT_MOUSE: x,y are window-local content coordinates (the
+     * content area's top-left is (0,0)). button is meaningful for
+     * DOWN/UP. */
+    struct
+    {
+      wuss_mouse_action_t action;
+      int                 x, y;
+      wuss_button_t       button;
+    }
+    mouse;
+
+    /** wuss_EVENT_SCROLL: x,y are window-local content coordinates, as
+     * per mouse. delta's sign and units are as passed to wuss_scroll. */
+    struct
+    {
+      int x, y, delta;
+    }
+    scroll;
+  }
+  data;
+}
+wuss_event_t;
+
+/**
+ * Task event callback.
  *
  * \param[in] window    The window receiving the event.
- * \param[in] action    Which kind of mouse event this is.
- * \param[in] x         Window-local x coordinate.
- * \param[in] y         Window-local y coordinate.
- * \param[in] button    Button involved (meaningful for DOWN/UP).
+ * \param[in] event     The event; see wuss_event_t.
  * \param[in] task_data As passed to wuss_window_create.
  * \return \ref result_OK on success, else an appropriate result code.
  */
-typedef result_t (wuss_mouse_fn_t)(wuss_window_t      *window,
-                                   wuss_mouse_action_t action,
-                                   int                 x,
-                                   int                 y,
-                                   wuss_button_t       button,
+typedef result_t (wuss_event_fn_t)(wuss_window_t     *window,
+                                   const wuss_event_t *event,
                                    void               *task_data);
-
-/**
- * Task scroll callback. x,y are window-local content coordinates, as per
- * wuss_mouse_fn_t.
- *
- * \param[in] window    The window receiving the event.
- * \param[in] x         Window-local x coordinate.
- * \param[in] y         Window-local y coordinate.
- * \param[in] delta     Scroll amount, sign and units as passed to wuss_scroll.
- * \param[in] task_data As passed to wuss_window_create.
- * \return \ref result_OK on success, else an appropriate result code.
- */
-typedef result_t (wuss_scroll_fn_t)(wuss_window_t *window,
-                                    int            x,
-                                    int            y,
-                                    int            delta,
-                                    void          *task_data);
 
 /** A window's content delegate. Copied by value into the window at creation. */
 typedef struct wuss_task
 {
-  wuss_redraw_fn_t *redraw;    /**< NULL => content area left blank. */
-  wuss_mouse_fn_t  *mouse;     /**< NULL => content mouse events dropped. */
-  wuss_scroll_fn_t *scroll;    /**< NULL => content scroll events dropped. Not set by wuss_task_make; assign directly if needed. */
-  void             *task_data;
-  wuss_colour_t     bg;        /**< Content background, filled by wuss before redraw is called, or wuss_NO_BACKGROUND for the task to draw its own background (avoids a redundant fill behind an opaque task). */
+  wuss_event_fn_t *handle;     /**< NULL => task receives no events; wuss still fills the content background per bg. */
+  void            *task_data;
+  wuss_colour_t    bg;         /**< Content background, filled by wuss before redraw is called, or wuss_NO_BACKGROUND for the task to draw its own background (avoids a redundant fill behind an opaque task). */
 }
 wuss_task_t;
 
 /**
  * Build a wuss_task_t from its fields.
  *
- * \param[in] redraw    Redraw callback, or NULL for a blank content area.
- * \param[in] mouse     Mouse callback, or NULL to drop content mouse events.
- * \param[in] task_data Opaque pointer passed back to the callbacks.
+ * \param[in] handle    Event callback, or NULL for a task that receives no events.
+ * \param[in] task_data Opaque pointer passed back to the callback.
  * \param[in] bg        Content background, or wuss_NO_BACKGROUND.
  * \return The populated task.
  */
-wuss_task_t wuss_task_make(wuss_redraw_fn_t *redraw,
-                           wuss_mouse_fn_t  *mouse,
-                           void             *task_data,
-                           wuss_colour_t     bg);
+wuss_task_t wuss_task_make(wuss_event_fn_t *handle,
+                           void            *task_data,
+                           wuss_colour_t    bg);
 
 /**
  * Create a window.

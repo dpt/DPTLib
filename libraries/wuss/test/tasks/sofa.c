@@ -108,8 +108,7 @@ result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
   task->zoom     = 1.0;
   task->spinning = true;
 
-  delegate        = wuss_task_make(sofa_redraw, sofa_mouse, task, wuss_NO_BACKGROUND); /* sofa_redraw paints its own background every frame */
-  delegate.scroll = sofa_scroll;
+  delegate = wuss_task_make(sofa_handle, task, wuss_NO_BACKGROUND); /* sofa_redraw paints its own background every frame */
   box      = (box_t) BOX_POS_SIZE(250, 260, 180, 160);
 
   return wuss_window_create(wuss, &box, "Sofa", wuss_WINDOW_NONE, &delegate, &task->window);
@@ -120,10 +119,10 @@ void sofa_destroy(sofa_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-result_t sofa_redraw(wuss_window_t *window,
-                     screen_t      *scr,
-                     const box_t   *content,
-                     void          *task_data)
+static result_t sofa_redraw(wuss_window_t *window,
+                            screen_t      *scr,
+                            const box_t   *content,
+                            void          *task_data)
 {
   sofa_task_t *sc;
   box_t        bounds;
@@ -168,39 +167,21 @@ result_t sofa_redraw(wuss_window_t *window,
   return result_OK;
 }
 
-result_t sofa_mouse(wuss_window_t      *window,
-                    wuss_mouse_action_t action,
-                    int                 x,
-                    int                 y,
-                    wuss_button_t       button,
-                    void               *task_data)
+static result_t sofa_mouse(void *task_data)
 {
   sofa_task_t *sc;
 
-  NOT_USED(window);
-  NOT_USED(x);
-  NOT_USED(y);
-  NOT_USED(button);
-
   sc = task_data;
 
-  if (action == wuss_MOUSE_DOWN)
-    sc->spinning = !sc->spinning;
+  sc->spinning = !sc->spinning;
 
   return result_OK;
 }
 
-result_t sofa_scroll(wuss_window_t *window,
-                     int            x,
-                     int            y,
-                     int            delta,
-                     void          *task_data)
+static result_t sofa_scroll(wuss_window_t *window, int delta, void *task_data)
 {
   sofa_task_t *sc;
   box_t        content;
-
-  NOT_USED(x);
-  NOT_USED(y);
 
   sc = task_data;
 
@@ -216,6 +197,28 @@ result_t sofa_scroll(wuss_window_t *window,
   wuss_window_invalidate(window, &content);
 
   return result_OK;
+}
+
+result_t sofa_handle(wuss_window_t     *window,
+                     const wuss_event_t *event,
+                     void               *task_data)
+{
+  switch (event->kind)
+  {
+  case wuss_EVENT_REDRAW:
+    return sofa_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
+
+  case wuss_EVENT_MOUSE:
+    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+      return result_OK;
+    return sofa_mouse(task_data);
+
+  case wuss_EVENT_SCROLL:
+    return sofa_scroll(window, event->data.scroll.delta, task_data);
+
+  default:
+    return result_OK;
+  }
 }
 
 void sofa_step(sofa_task_t *task)
