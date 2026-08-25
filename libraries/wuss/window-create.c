@@ -37,6 +37,8 @@ result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *titl
   win->visible.x1 = content->x1 + outline_px;
   win->visible.y1 = content->y1 + outline_px;
   win->flags      = flags;
+  win->scroll_x   = 0;
+  win->scroll_y   = 0;
 
   if (task != NULL)
     win->task = *task;

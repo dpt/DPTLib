@@ -43,6 +43,10 @@ struct wuss_window
                                  * outward by any titlebar/outline furniture */
   wuss_task_t         task;
   wuss_window_flags_t flags;
+  int                 scroll_x, scroll_y; /* offset into virtual content
+                                            * space of the content box's
+                                            * top-left; see
+                                            * wuss_window_set_scroll */
   char                title[WUSS_TITLE_MAX + 1];
 };
 

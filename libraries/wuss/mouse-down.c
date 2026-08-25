@@ -36,8 +36,8 @@ result_t wuss_mouse_down(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_
     int   local_x, local_y;
 
     wuss__content_box(win, &content);
-    local_x = x - content.x0;
-    local_y = y - content.y0;
+    local_x = x - content.x0 + win->scroll_x;
+    local_y = y - content.y0 + win->scroll_y;
     return win->task.mouse(win, wuss_MOUSE_DOWN, local_x, local_y, button, win->task.task_data);
   }
 

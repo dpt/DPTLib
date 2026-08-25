@@ -75,11 +75,18 @@ typedef result_t (wuss_scroll_fn_t)(wuss_window_t *window, int x, int y,
 
 `redraw` is called with `scr->clip` already set to the on-screen, clipped content area; `content` gives the window's full (unclipped) content box in screen space, for context.
 
-`mouse` and `scroll` receive `x`/`y` in window-local content coordinates (the content area's top-left is `(0,0)`), for `wuss_MOUSE_DOWN`/`wuss_MOUSE_UP`/`wuss_MOUSE_MOVE` and scroll respectively. A titlebar click never reaches a task's mouse callback: it starts a drag (and, for `wuss_BUTTON_SELECT`, brings the window to front) instead. A content click, even on a `wuss_WINDOW_NO_TITLEBAR` window with no drag handle, never changes z-order — only a titlebar click raises a window — so tasks are free to use content clicks for their own purposes without wuss reordering windows underneath them.
+`mouse` and `scroll` receive `x`/`y` in window-local content coordinates: the content area's top-left is `(0,0)` plus the window's current scroll offset (see "Scrolling" below), for `wuss_MOUSE_DOWN`/`wuss_MOUSE_UP`/`wuss_MOUSE_MOVE` and scroll respectively. A titlebar click never reaches a task's mouse callback: it starts a drag (and, for `wuss_BUTTON_SELECT`, brings the window to front) instead. A content click, even on a `wuss_WINDOW_NO_TITLEBAR` window with no drag handle, never changes z-order — only a titlebar click raises a window — so tasks are free to use content clicks for their own purposes without wuss reordering windows underneath them.
 
 ## Mouse and scroll routing
 
 Feed mouse events in with `wuss_mouse_down`/`wuss_mouse_up`/`wuss_mouse_move`, and scroll events with `wuss_scroll`, each hit-testing the topmost window at `(x, y)` and delivering to its task in window-local coordinates. All four take an optional `wuss_window_t **hit` out-parameter naming the window under the pointer (or being dragged). `wuss_scroll` is dropped if the hit window has no scroll callback, or the pointer is over its titlebar.
+
+## Scrolling
+
+Each window carries a scroll offset, `(0, 0)` by default: the point in the task's virtual content space that appears at the content area's top-left. `wuss_window_set_scroll(window, x, y)` moves it (invalidating the content area so the next redraw picks it up); `wuss_window_get_scroll` reads it back. wuss itself doesn't clip, pan pixels, or know how big a task's content actually is — a task determines its own extent and clamps as it sees fit — it just plumbs the offset through:
+
+- window-local `x`/`y` delivered to `mouse`/`scroll` callbacks (and expected in `wuss_window_invalidate`'s `local_box`) are in virtual content space, i.e. already shifted by the scroll offset.
+- `redraw` still receives `content` as the on-screen (unscrolled) content box; a task reads the offset itself via `wuss_window_get_scroll` to work out which part of its content to paint there.
 
 ## Redrawing
 
