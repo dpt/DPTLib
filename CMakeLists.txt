@@ -177,6 +177,7 @@ set(DATASTRUCT_SOURCES
     libraries/datastruct/hlist/reverse.c
     libraries/datastruct/hlist/to-array.c
     libraries/datastruct/list/add-head.c
+    libraries/datastruct/list/add-tail.c
     libraries/datastruct/list/find.c
     libraries/datastruct/list/init.c
     libraries/datastruct/list/remove.c
@@ -331,6 +332,7 @@ set(WUSS_SOURCES
     libraries/wuss/window-invalidate.c
     libraries/wuss/window-move.c
     libraries/wuss/window-resize.c
+    libraries/wuss/window-send-to-back.c
     libraries/wuss/window-set-background.c)
 
 set(ALL_SOURCES

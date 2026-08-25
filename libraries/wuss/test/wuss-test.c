@@ -1059,6 +1059,32 @@ result_t wuss_test(const char *resources)
     wuss_window_destroy(win_m);
   }
 
+  printf("test: Adjust-click (no move) on a titlebar sends the window to back\n");
+
+  wuss_window_get_visible_bounds(win_a, &visible); /* A is topmost here */
+
+  rc = wuss_mouse_down(wuss, visible.x0 + 5, visible.y0 + 3, wuss_BUTTON_ADJUST, &hit);
+  if (rc != result_OK)
+    goto Failure;
+  if (hit != win_a)
+    goto Failure;
+
+  rc = wuss_mouse_up(wuss, visible.x0 + 5, visible.y0 + 3, wuss_BUTTON_ADJUST, &hit);
+  if (rc != result_OK)
+    goto Failure;
+  if (hit != win_a)
+    goto Failure;
+
+  rc = wuss_mouse_down(wuss, 75, 75, wuss_BUTTON_SELECT, &hit); /* within both A and B */
+  if (rc != result_OK)
+    goto Failure;
+  if (hit != win_b) /* A must have been sent to back */
+    goto Failure;
+
+  rc = wuss_mouse_up(wuss, 75, 75, wuss_BUTTON_SELECT, &hit);
+  if (rc != result_OK)
+    goto Failure;
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;

@@ -147,11 +147,13 @@ static int subtract_boxes(const box_t *whole, const box_t *cuts, int ncuts, box_
   return ncur;
 }
 
-/* Invalidate the parts of "window"'s footprint that were hidden behind
- * other windows before it comes to the front -- the rest of its footprint
- * was already showing its own correct pixels, so redrawing that too would
- * just be wasted work. Must be called before the z-order changes, since it
- * relies on "window"'s current (pre-reorder) occluders. */
+/* Invalidate the parts of "window"'s footprint that are hidden behind other
+ * windows at the current z-order -- the rest of its footprint is already
+ * showing its own correct pixels, so redrawing that too would just be
+ * wasted work. Bring-to-front calls this before reordering, so "hidden"
+ * means "about to be uncovered"; send-to-back calls it after reordering, so
+ * "hidden" means "just became covered" -- either way, invalidating exactly
+ * these parts is enough for the next redraw to leave the screen correct. */
 void wuss__invalidate_uncovered(wuss_window_t *window)
 {
   box_t visible[WUSS_MAX_INVALIDATE_PIECES];

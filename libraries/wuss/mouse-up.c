@@ -13,6 +13,12 @@ result_t wuss_mouse_up(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_wi
     if (hit != NULL)
       *hit = win;
     wuss->dragging = NULL;
+
+    /* an Adjust click on a titlebar that never moved is a click, not a
+     * drag: send the window to the back instead */
+    if (button == wuss_BUTTON_ADJUST && !wuss->drag_moved)
+      wuss_window_send_to_back(win);
+
     return result_OK;
   }
 
