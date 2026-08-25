@@ -408,7 +408,10 @@ typedef struct test_task
 }
 test_task_t;
 
-static result_t test_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
+static result_t test_redraw(wuss_window_t *window,
+                            screen_t      *scr,
+                            const box_t   *content,
+                            void          *task_data)
 {
   test_task_t *tc;
 
@@ -422,7 +425,12 @@ static result_t test_redraw(wuss_window_t *window, screen_t *scr, const box_t *c
   return result_OK;
 }
 
-static result_t test_mouse(wuss_window_t *window, wuss_mouse_action_t action, int x, int y, wuss_button_t button, void *task_data)
+static result_t test_mouse(wuss_window_t      *window,
+                           wuss_mouse_action_t action,
+                           int                 x,
+                           int                 y,
+                           wuss_button_t       button,
+                           void               *task_data)
 {
   test_task_t *tc;
 

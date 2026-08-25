@@ -183,7 +183,12 @@ void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
  * \param[out] hit    Window under the pointer (or being dragged), or NULL if none. May be NULL if not needed.
  * \return \ref result_OK, or a result code returned by the task's mouse callback.
  */
-result_t wuss_mouse_click(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_mouse_action_t action, wuss_window_t **hit);
+result_t wuss_mouse_click(wuss_t              *wuss,
+                          int                  x,
+                          int                  y,
+                          wuss_button_t        button,
+                          wuss_mouse_action_t  action,
+                          wuss_window_t      **hit);
 
 /**
  * Deliver a mouse-move event. Updates the dragged window's position if a
@@ -212,7 +217,11 @@ result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit);
  * \param[out] hit   Window under the pointer, or NULL if none. May be NULL if not needed.
  * \return \ref result_OK, or a result code returned by the task's scroll callback.
  */
-result_t wuss_scroll(wuss_t *wuss, int x, int y, int delta, wuss_window_t **hit);
+result_t wuss_scroll(wuss_t         *wuss,
+                     int             x,
+                     int             y,
+                     int             delta,
+                     wuss_window_t **hit);
 
 #ifdef __cplusplus
 }

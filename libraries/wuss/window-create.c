@@ -10,7 +10,12 @@
 
 #include "impl.h"
 
-result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title, wuss_window_flags_t flags, const wuss_task_t *task, wuss_window_t **window)
+result_t wuss_window_create(wuss_t             *wuss,
+                            const box_t        *content,
+                            const char         *title,
+                            wuss_window_flags_t flags,
+                            const wuss_task_t  *task,
+                            wuss_window_t     **window)
 {
   wuss_window_t *win;
   int             width, height, outline_px, titlebar_height;

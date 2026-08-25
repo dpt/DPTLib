@@ -15,7 +15,10 @@
 
 #include "image.h"
 
-result_t image_create(wuss_t *wuss, const colour_t *palette, const char *resources, image_task_t *task)
+result_t image_create(wuss_t         *wuss,
+                      const colour_t *palette,
+                      const char     *resources,
+                      image_task_t   *task)
 {
   const char *leafname;
   const char *filename;
@@ -43,7 +46,10 @@ void image_destroy(image_task_t *task)
   free(task->bitmap.base);
 }
 
-result_t image_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
+result_t image_redraw(wuss_window_t *window,
+                      screen_t      *scr,
+                      const box_t   *content,
+                      void          *task_data)
 {
   image_task_t *ic;
   int           sx, sy;
@@ -57,7 +63,11 @@ result_t image_redraw(wuss_window_t *window, screen_t *scr, const box_t *content
   return result_OK;
 }
 
-result_t image_scroll(wuss_window_t *window, int x, int y, int delta, void *task_data)
+result_t image_scroll(wuss_window_t *window,
+                      int            x,
+                      int            y,
+                      int            delta,
+                      void          *task_data)
 {
   image_task_t *ic;
   box_t         bounds;

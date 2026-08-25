@@ -26,7 +26,10 @@ static const char paragraph[] =
   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
   "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
 
-result_t text_create(wuss_t *wuss, const colour_t *palette, bmfont_t *font, text_task_t *task)
+result_t text_create(wuss_t         *wuss,
+                     const colour_t *palette,
+                     bmfont_t       *font,
+                     text_task_t    *task)
 {
   wuss_task_t delegate;
   box_t       box;
@@ -53,7 +56,10 @@ void text_destroy(text_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
+result_t text_redraw(wuss_window_t *window,
+                     screen_t      *scr,
+                     const box_t   *content,
+                     void          *task_data)
 {
   text_task_t *tcx;
   int             font_width, font_height;
@@ -108,7 +114,12 @@ result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content,
   return result_OK;
 }
 
-result_t text_mouse(wuss_window_t *window, wuss_mouse_action_t action, int x, int y, wuss_button_t button, void *task_data)
+result_t text_mouse(wuss_window_t      *window,
+                    wuss_mouse_action_t action,
+                    int                 x,
+                    int                 y,
+                    wuss_button_t       button,
+                    void               *task_data)
 {
   text_task_t *tcx;
 

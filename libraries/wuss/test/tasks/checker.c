@@ -26,7 +26,9 @@ static void invalidate_whole(wuss_window_t *window)
   wuss_window_invalidate(window, &content);
 }
 
-result_t checker_create(wuss_t *wuss, const colour_t *palette, checker_task_t *task)
+result_t checker_create(wuss_t         *wuss,
+                        const colour_t *palette,
+                        checker_task_t *task)
 {
   wuss_task_t delegate;
   box_t       box;
@@ -65,7 +67,10 @@ void checker_destroy(checker_task_t *task)
   wuss_window_destroy(task->window2);
 }
 
-result_t checker_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
+result_t checker_redraw(wuss_window_t *window,
+                        screen_t      *scr,
+                        const box_t   *content,
+                        void          *task_data)
 {
   checker_task_t   *cc;
   box_t             bounds;
@@ -101,7 +106,12 @@ result_t checker_redraw(wuss_window_t *window, screen_t *scr, const box_t *conte
   return result_OK;
 }
 
-result_t checker_mouse(wuss_window_t *window, wuss_mouse_action_t action, int x, int y, wuss_button_t button, void *task_data)
+result_t checker_mouse(wuss_window_t      *window,
+                       wuss_mouse_action_t action,
+                       int                 x,
+                       int                 y,
+                       wuss_button_t       button,
+                       void               *task_data)
 {
   checker_task_t    *cc;
   checker_pattern_t *pattern;
@@ -123,7 +133,11 @@ result_t checker_mouse(wuss_window_t *window, wuss_mouse_action_t action, int x,
   return result_OK;
 }
 
-result_t checker_scroll(wuss_window_t *window, int x, int y, int delta, void *task_data)
+result_t checker_scroll(wuss_window_t *window,
+                        int            x,
+                        int            y,
+                        int            delta,
+                        void          *task_data)
 {
   checker_task_t *cc;
   int            *band;

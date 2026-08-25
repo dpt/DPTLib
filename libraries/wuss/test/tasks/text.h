@@ -29,7 +29,10 @@ wuss_redraw_fn_t text_redraw;
 wuss_mouse_fn_t  text_mouse;
 
 /* create the paragraph-of-text window against the given wuss instance */
-result_t text_create(wuss_t *wuss, const colour_t *palette, bmfont_t *font, text_task_t *task);
+result_t text_create(wuss_t         *wuss,
+                     const colour_t *palette,
+                     bmfont_t       *font,
+                     text_task_t    *task);
 
 /* destroy the paragraph-of-text window created by text_create */
 void text_destroy(text_task_t *task);

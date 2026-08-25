@@ -6,7 +6,10 @@
 
 #include "impl.h"
 
-static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, result_t *rc)
+static void redraw_window(wuss_t        *wuss,
+                          wuss_window_t *win,
+                          const box_t   *full,
+                          result_t      *rc)
 {
   box_t clipped;
   box_t visible_clipped;
@@ -79,7 +82,10 @@ static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, r
  * recursing per window, so stack use stays flat regardless of window count;
  * ponytail: O(n^2) walk, fine while window counts stay small, switch to an
  * array/vector pass if that stops being true */
-static void redraw_from(wuss_t *wuss, list_t *head, const box_t *full, result_t *rc)
+static void redraw_from(wuss_t      *wuss,
+                        list_t      *head,
+                        const box_t *full,
+                        result_t    *rc)
 {
   const list_t *stop;
 

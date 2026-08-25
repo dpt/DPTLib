@@ -38,7 +38,10 @@ void ball_destroy(ball_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-result_t ball_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
+result_t ball_redraw(wuss_window_t *window,
+                     screen_t      *scr,
+                     const box_t   *content,
+                     void          *task_data)
 {
   ball_task_t *bc;
   int          i;
@@ -65,7 +68,12 @@ result_t ball_redraw(wuss_window_t *window, screen_t *scr, const box_t *content,
   return result_OK;
 }
 
-result_t ball_mouse(wuss_window_t *window, wuss_mouse_action_t action, int x, int y, wuss_button_t button, void *task_data)
+result_t ball_mouse(wuss_window_t      *window,
+                    wuss_mouse_action_t action,
+                    int                 x,
+                    int                 y,
+                    wuss_button_t       button,
+                    void               *task_data)
 {
   ball_task_t *bc;
   box_t        local;
