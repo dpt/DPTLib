@@ -42,17 +42,17 @@ static void redraw_window(wuss_t *wuss, wuss_window_t *win, const box_t *full, r
   {
     wuss->scr->clip = clipped;
 
-    if (win->client.bg != wuss_NO_BACKGROUND)
+    if (win->task.bg != wuss_NO_BACKGROUND)
       screen_draw_rect(wuss->scr,
                        content.x0, content.y0,
                        content.x1 - content.x0, content.y1 - content.y0,
-                       wuss->palette[win->client.bg]);
+                       wuss->palette[win->task.bg]);
 
-    if (win->client.redraw != NULL)
+    if (win->task.redraw != NULL)
     {
       result_t crc;
 
-      crc = win->client.redraw(win, wuss->scr, &content, win->client.client_data);
+      crc = win->task.redraw(win, wuss->scr, &content, win->task.task_data);
       if (crc != result_OK)
         *rc = crc;
     }
@@ -113,7 +113,13 @@ result_t wuss_redraw(wuss_t *wuss)
   rc = result_OK;
   redraw_from(wuss, wuss->z_order.next, &full, &rc);
 
-  box_reset(&wuss->dirty);
+  /* redraw_window narrows wuss->scr->clip to whatever it last painted;
+   * reset it so anything drawing after this redraw (not least
+   * screen_copy_rect, used for window-drag blitting) sees the whole
+   * screen rather than that leftover sliver. */
+  box_reset(&wuss->scr->clip);
+
+  wuss->ndirty = 0;
 
   return rc;
 }
@@ -121,14 +127,18 @@ result_t wuss_redraw(wuss_t *wuss)
 result_t wuss_redraw_dirty(wuss_t *wuss)
 {
   result_t rc;
+  int      i;
 
-  if (box_is_empty(&wuss->dirty))
+  if (wuss->ndirty == 0)
     return result_OK;
 
   rc = result_OK;
-  redraw_from(wuss, wuss->z_order.next, &wuss->dirty, &rc);
+  for (i = 0; i < wuss->ndirty; i++)
+    redraw_from(wuss, wuss->z_order.next, &wuss->dirty[i], &rc);
 
-  box_reset(&wuss->dirty);
+  box_reset(&wuss->scr->clip); /* see wuss_redraw's comment on the same call */
+
+  wuss->ndirty = 0;
 
   return rc;
 }

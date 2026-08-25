@@ -31,6 +31,8 @@ void list_init(T *anchor);
 
 void list_add_to_head(T *anchor, T *item);
 
+void list_add_to_tail(T *anchor, T *item);
+
 void list_remove(T *anchor, T *doomed);
 
 typedef int (list_walk_callback_t)(T *, void *);

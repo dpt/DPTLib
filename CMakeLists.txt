@@ -177,6 +177,7 @@ set(DATASTRUCT_SOURCES
     libraries/datastruct/hlist/reverse.c
     libraries/datastruct/hlist/to-array.c
     libraries/datastruct/list/add-head.c
+    libraries/datastruct/list/add-tail.c
     libraries/datastruct/list/find.c
     libraries/datastruct/list/init.c
     libraries/datastruct/list/remove.c
@@ -227,6 +228,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/screen/screen.c
+    libraries/framebuf/screen/screen-copy-rect.c
     libraries/framebuf/screen/screen-draw.c
     libraries/framebuf/span-registry/get.c
     libraries/framebuf/span-registry/regdata.h
@@ -319,6 +321,8 @@ set(WUSS_SOURCES
     libraries/wuss/mouse-move.c
     libraries/wuss/mouse-up.c
     libraries/wuss/redraw.c
+    libraries/wuss/scroll.c
+    libraries/wuss/task-make.c
     libraries/wuss/titlebar-box.c
     libraries/wuss/window-at.c
     libraries/wuss/window-bring-to-front.c
@@ -329,6 +333,7 @@ set(WUSS_SOURCES
     libraries/wuss/window-invalidate.c
     libraries/wuss/window-move.c
     libraries/wuss/window-resize.c
+    libraries/wuss/window-send-to-back.c
     libraries/wuss/window-set-background.c)
 
 set(ALL_SOURCES
@@ -510,10 +515,12 @@ if(BUILD_TESTS)
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c
-        libraries/wuss/test/clients/ball.c
-        libraries/wuss/test/clients/blank.c
-        libraries/wuss/test/clients/palette.c
-        libraries/wuss/test/clients/text.c
+        libraries/wuss/test/tasks/ball.c
+        libraries/wuss/test/tasks/blank.c
+        libraries/wuss/test/tasks/checker.c
+        libraries/wuss/test/tasks/image.c
+        libraries/wuss/test/tasks/palette.c
+        libraries/wuss/test/tasks/text.c
         libraries/wuss/test/wuss-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})

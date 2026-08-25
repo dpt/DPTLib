@@ -91,6 +91,11 @@ DPTLib is my platform independent C library. It contains a wide variety of funct
 - [`utils/pack.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/pack.h) — structure packing and unpacking helpers
 - [`utils/primes.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/primes.h) — cache of prime numbers
 
+### Wuss
+
+- [`wuss/wuss.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/wuss.h) — minimal window manager {[docs](https://github.com/dpt/DPTLib/blob/master/docs/wuss.md)}
+  - [`wuss/window.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/window.h) — window creation, positioning, sizing and client delegation
+
 ## Building
 
 Use CMake, e.g.:
