@@ -665,7 +665,7 @@ result_t wuss_test(const char *resources)
   printf("test: clicking a window's close icon sends wuss_EVENT_CLOSE, not a drag\n");
 
   tc_a.close_count = 0;
-  rc = wuss_mouse_click(wuss, 5, -10, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's close icon */
+  rc = wuss_mouse_click(wuss, 6, 11, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's close icon */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -673,24 +673,24 @@ result_t wuss_test(const char *resources)
   if (tc_a.close_count != 1)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, 30, 15, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit); /* if the close click had started a drag, this would move A */
+  rc = wuss_mouse_click(wuss, 31, 36, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit); /* if the close click had started a drag, this would move A */
   if (rc != result_OK)
     goto Failure;
 
   wuss_window_get_visible_bounds(win_a, &visible);
-  if (visible.x0 != -1 || visible.y0 != -21)
+  if (visible.x0 != 0 || visible.y0 != 0)
     goto Failure; /* unmoved: no drag was started by the close click */
 
   printf("test: click-to-front changes subsequent overlap hits\n");
 
   tc_a.mouse_count = 0;
-  rc = wuss_mouse_click(wuss, 30, -10, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's titlebar, above its content, clear of the close icon */
+  rc = wuss_mouse_click(wuss, 31, 11, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's titlebar, above its content, clear of the close icon */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, 30, -10, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  rc = wuss_mouse_click(wuss, 31, 11, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
@@ -715,7 +715,7 @@ result_t wuss_test(const char *resources)
     goto Failure;
   if (hit != win_a)
     goto Failure;
-  if (tc_a.mouse_count != 1 || tc_a.last_x != 75 || tc_a.last_y != 75)
+  if (tc_a.mouse_count != 1 || tc_a.last_x != 74 || tc_a.last_y != 54)
     goto Failure;
 
   rc = wuss_mouse_click(wuss, 75, 75, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
@@ -725,7 +725,7 @@ result_t wuss_test(const char *resources)
   printf("test: titlebar click starts a drag, not delivered as content\n");
 
   tc_a.mouse_count = 0;
-  rc = wuss_mouse_click(wuss, 30, -10, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's titlebar, A already topmost, clear of the close icon */
+  rc = wuss_mouse_click(wuss, 31, 11, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's titlebar, A already topmost, clear of the close icon */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -741,7 +741,7 @@ result_t wuss_test(const char *resources)
 
   before_a = tc_a.redraw_count;
   before_b = tc_b.redraw_count;
-  rc = wuss_mouse_move(wuss, 30, 15, &hit);
+  rc = wuss_mouse_move(wuss, 31, 36, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -761,12 +761,12 @@ result_t wuss_test(const char *resources)
                     * exposes only background, not B */
 
   wuss_window_get_visible_bounds(win_a, &visible);
-  if (visible.x0 != -1 || visible.y0 != 4)
+  if (visible.x0 != 0 || visible.y0 != 25)
     goto Failure;
 
   printf("test: mouse-up ends the drag\n");
 
-  rc = wuss_mouse_click(wuss, 30, 15, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  rc = wuss_mouse_click(wuss, 31, 36, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -813,7 +813,7 @@ result_t wuss_test(const char *resources)
     goto Failure;
 
   wuss_window_get_visible_bounds(win_a, &visible);
-  if (visible.x0 != -1 || visible.y0 != 4)
+  if (visible.x0 != 0 || visible.y0 != 25)
     goto Failure;
 
   printf("test: window_resize valid and too-small cases\n");
@@ -1151,7 +1151,7 @@ result_t wuss_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, 30, -10, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* C's titlebar, above its content, clear of the close icon */
+  rc = wuss_mouse_click(wuss, 31, 11, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* C's titlebar, above its content, clear of the close icon */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_c)

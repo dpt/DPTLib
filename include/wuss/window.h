@@ -139,9 +139,14 @@ result_t wuss_idle(wuss_t *wuss);
  * Create a window.
  *
  * Furniture (titlebar/outline) is added outside \p content, not carved out
- * of it: the window's content area always ends up exactly \p content, and
- * its on-screen footprint (see wuss_window_get_visible_bounds) is \p content
- * expanded outward by whatever furniture flags request.
+ * of it: before clamping, the window's content area is exactly \p content,
+ * and its on-screen footprint (see wuss_window_get_visible_bounds) is
+ * \p content expanded outward by whatever furniture flags request. If that
+ * footprint would then fall off the top or left edge of the screen, the
+ * window (content included) is nudged right/down just enough to bring it
+ * flush with the edge, so the titlebar/close icon stay reachable; a window
+ * wider or taller than the screen keeps its top-left corner on-screen
+ * instead. The bottom/right edges are not clamped.
  *
  * \param[in]  wuss    Window manager to create the window on.
  * \param[in]  content Requested content-area bounds, screen space. Copied in.
