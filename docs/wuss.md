@@ -1,11 +1,11 @@
 # [DPTLib](https://github.com/dpt/DPTLib) > wuss
 
-"wuss" is a minimal window manager. It owns window creation, positioning, sizing, z-ordering, mouse event routing and dragging. Window contents are entirely delegated to clients, which supply a redraw callback and (optionally) a mouse callback.
+"wuss" is a minimal window manager. It owns window creation, positioning, sizing, z-ordering, mouse/scroll event routing and dragging. Window contents are entirely delegated to tasks, which supply a redraw callback and (optionally) mouse and scroll callbacks.
 
 - It draws windows back-to-front, with an optional titlebar and 1px outline per window.
-- It hit-tests and routes mouse-down/up/move events, including titlebar drag-to-move.
-- It tracks a single dirty region, accumulated automatically by window management (create/destroy/move/resize/bring-to-front) and manually by clients, for partial redraws.
-- Content drawing and mouse handling are entirely client-supplied; wuss only fills the content background before calling the client's redraw callback (unless the client opts out with `wuss_NO_BACKGROUND`).
+- It hit-tests and routes mouse-down/up/move and scroll events, including titlebar drag-to-move.
+- It tracks a single dirty region, accumulated automatically by window management (create/destroy/move/resize/bring-to-front) and manually by tasks, for partial redraws.
+- Content drawing and mouse/scroll handling are entirely task-supplied; wuss only fills the content background before calling the task's redraw callback (unless the task opts out with `wuss_NO_BACKGROUND`).
 
 ## Setup
 
@@ -26,28 +26,31 @@ Destroy with `wuss_destroy`, which also destroys any windows still open on it.
 
 ## Windows
 
-Create a window with a content bounding box, optional title, appearance flags and a client delegate:
+Create a window with a content bounding box, optional title, appearance flags and a task delegate:
 
 ```C
 result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title,
-                            wuss_window_flags_t flags, const wuss_client_t *client,
+                            wuss_window_flags_t flags, const wuss_task_t *task,
                             wuss_window_t **window);
 ```
 
 Furniture is additional to `content`, not carved out of it: the window's content area always ends up exactly the box requested, and its on-screen footprint (`wuss_window_get_visible_bounds`) is `content` expanded outward by whatever furniture flags request — a titlebar above, and/or a 1px outline around all four sides.
 
-`wuss_client_t` holds the client's callbacks and its content background:
+`wuss_task_t` holds the task's callbacks and its content background:
 
 ```C
-typedef struct wuss_client
+typedef struct wuss_task
 {
   wuss_redraw_fn_t *redraw;      /* NULL => content area left blank */
   wuss_mouse_fn_t  *mouse;       /* NULL => content mouse events dropped */
-  void             *client_data;
+  wuss_scroll_fn_t *scroll;      /* NULL => content scroll events dropped; not set by wuss_task_make */
+  void             *task_data;
   wuss_colour_t     bg;          /* filled by wuss before redraw, or wuss_NO_BACKGROUND */
 }
-wuss_client_t;
+wuss_task_t;
 ```
+
+`wuss_task_make` builds one from `redraw`/`mouse`/`task_data`/`bg`; `scroll` isn't a parameter, so assign it directly on the result if the task needs it.
 
 `flags` combines, by bitwise OR:
 
@@ -55,30 +58,33 @@ wuss_client_t;
 - `wuss_WINDOW_NO_TITLEBAR` — no titlebar, and no drag handle.
 - `wuss_WINDOW_NO_OUTLINE` — no 1px border around the window.
 
-Other window operations: `wuss_window_destroy`, `wuss_window_move`, `wuss_window_resize` (preserves content top-left), `wuss_window_bring_to_front`, `wuss_window_get_visible_bounds` (full on-screen footprint), `wuss_window_get_content_bounds`, `wuss_window_set_background`.
+Other window operations: `wuss_window_destroy`, `wuss_window_move`, `wuss_window_resize` (preserves content top-left), `wuss_window_bring_to_front`, `wuss_window_send_to_back`, `wuss_window_get_visible_bounds` (full on-screen footprint), `wuss_window_get_content_bounds`, `wuss_window_set_background`.
 
-## Client callbacks
+## Task callbacks
 
 ```C
 typedef result_t (wuss_redraw_fn_t)(wuss_window_t *window, screen_t *scr,
-                                    const box_t *content, void *client_data);
+                                    const box_t *content, void *task_data);
 
 typedef result_t (wuss_mouse_fn_t)(wuss_window_t *window, wuss_mouse_action_t action,
-                                   int x, int y, wuss_button_t button, void *client_data);
+                                   int x, int y, wuss_button_t button, void *task_data);
+
+typedef result_t (wuss_scroll_fn_t)(wuss_window_t *window, int x, int y,
+                                    int delta, void *task_data);
 ```
 
 `redraw` is called with `scr->clip` already set to the on-screen, clipped content area; `content` gives the window's full (unclipped) content box in screen space, for context.
 
-`mouse` receives `x`/`y` in window-local content coordinates (the content area's top-left is `(0,0)`), for `wuss_MOUSE_DOWN`/`wuss_MOUSE_UP`/`wuss_MOUSE_MOVE`. A titlebar click never reaches a client's mouse callback: it starts a drag (and, for `wuss_BUTTON_SELECT`, brings the window to front) instead.
+`mouse` and `scroll` receive `x`/`y` in window-local content coordinates (the content area's top-left is `(0,0)`), for `wuss_MOUSE_DOWN`/`wuss_MOUSE_UP`/`wuss_MOUSE_MOVE` and scroll respectively. A titlebar click never reaches a task's mouse callback: it starts a drag (and, for `wuss_BUTTON_SELECT`, brings the window to front) instead. A content click, even on a `wuss_WINDOW_NO_TITLEBAR` window with no drag handle, never changes z-order — only a titlebar click raises a window — so tasks are free to use content clicks for their own purposes without wuss reordering windows underneath them.
 
-## Mouse routing
+## Mouse and scroll routing
 
-Feed mouse events in with `wuss_mouse_down`/`wuss_mouse_up`/`wuss_mouse_move`, each hit-testing the topmost window at `(x, y)` and delivering to its client in window-local coordinates. All three take an optional `wuss_window_t **hit` out-parameter naming the window under the pointer (or being dragged).
+Feed mouse events in with `wuss_mouse_down`/`wuss_mouse_up`/`wuss_mouse_move`, and scroll events with `wuss_scroll`, each hit-testing the topmost window at `(x, y)` and delivering to its task in window-local coordinates. All four take an optional `wuss_window_t **hit` out-parameter naming the window under the pointer (or being dragged). `wuss_scroll` is dropped if the hit window has no scroll callback, or the pointer is over its titlebar.
 
 ## Redrawing
 
 - `wuss_redraw` repaints every window, back-to-front, unconditionally.
-- `wuss_invalidate` / `wuss_window_invalidate` mark a screen-space or window-local region dirty; window management calls these automatically for its own changes, but a client must call one of them itself whenever its content changes on its own (e.g. an animation), passing the union of the old and new areas that need repainting.
+- `wuss_invalidate` / `wuss_window_invalidate` mark a screen-space or window-local region dirty; window management calls these automatically for its own changes, but a task must call one of them itself whenever its content changes on its own (e.g. an animation), passing the union of the old and new areas that need repainting.
 - `wuss_redraw_dirty` repaints only the accumulated dirty region, then clears it. wuss only repaints windows, not the background between/behind them, so a caller whose invalidation can expose background (e.g. after a window move) should clear that region itself first.
 - `wuss_get_dirty` fetches the current accumulated dirty region without redrawing.
 
