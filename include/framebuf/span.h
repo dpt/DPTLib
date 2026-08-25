@@ -19,17 +19,20 @@ typedef void (span_copy_t)(void *dst, const void *src, int length);
  *
  * This will blend the respective source pixels by the specified constant alpha value, writing the results to the destination buffer (like Porter-Duff Source Over Destination).
  *
- * \param[out] dst    Destination pixels.
- * \param[in]  src1   Source pixels 1.
- * \param[in]  src2   Source pixels 2.
- * \param[in]  length Length of pixels to blend.
- * \param[in]  alpha  Constant alpha value (0..255).
+ * \param[out] dst     Destination pixels.
+ * \param[in]  src1    Source pixels 1.
+ * \param[in]  src2    Source pixels 2.
+ * \param[in]  length  Length of pixels to blend.
+ * \param[in]  alpha   Constant alpha value (0..255).
+ * \param[in]  context Format-specific extra data (e.g. a palette for an
+ *                     indexed format); ignored where not needed, pass NULL.
  */
 typedef void (span_blendconst_t)(void       *dst,
                                  const void *src1,
                                  const void *src2,
                                  int         length,
-                                 int         alpha);
+                                 int         alpha,
+                                 const void *context);
 
 /**
  * Type of a "blend array of pixels" function.

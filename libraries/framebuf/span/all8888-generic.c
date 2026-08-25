@@ -1,5 +1,7 @@
 /* all8888-blend.c -- alpha blending common to all 8888 formats */
 
+#include "base/utils.h"
+
 #if !defined(RED_SHIFT) || !defined(GREEN_SHIFT) || !defined(BLUE_SHIFT) || !defined(X_SHIFT)
 #error A required shift definition is missing.
 #endif
@@ -50,11 +52,14 @@ static void func(void       *vdst,                                             \
                  const void *vsrc1,                                            \
                  const void *vsrc2,                                            \
                  int         length,                                           \
-                 int         alpha)                                            \
+                 int         alpha,                                            \
+                 const void *context)                                          \
 {                                                                              \
     fmt       *pdst  = vdst;                                                   \
     const fmt *psrc1 = vsrc1;                                                  \
     const fmt *psrc2 = vsrc2;                                                  \
+                                                                               \
+    NOT_USED(context);                                                        \
                                                                                \
     SPAN_ALL8888_BLEND_PIX_PRE(alpha)                                          \
                                                                                \
