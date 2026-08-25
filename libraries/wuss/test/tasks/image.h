@@ -19,6 +19,7 @@ typedef struct image_task
 image_task_t;
 
 wuss_redraw_fn_t image_redraw;
+wuss_scroll_fn_t image_scroll;
 
 /* load the image and create its window against the given wuss instance;
  * resources is the DPTLib repo root, for locating the bundled PNG */
