@@ -49,15 +49,32 @@ void checker_destroy(checker_task_t *task)
 result_t checker_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
 {
   checker_task_t   *cc;
-  int               x, y;
-
-  NOT_USED(window);
+  box_t             bounds;
+  int               x, y, lx, ly;
 
   cc = task_data;
 
-  for (y = content->y0; y < content->y1; y++)
-    for (x = content->x0; x < content->x1; x++)
-      screen_draw_pixel(scr, x, y, ((x + y) & 1) ? cc->black : cc->white);
+  wuss_window_get_content_bounds(window, &bounds);
+
+  if (window == cc->window2)
+  {
+    for (y = content->y0; y < content->y1; y++)
+      for (x = content->x0; x < content->x1; x++)
+      {
+        lx = x - bounds.x0;
+        screen_draw_pixel(scr, x, y, (lx & 1) ? cc->black : cc->white);
+      }
+  }
+  else
+  {
+    for (y = content->y0; y < content->y1; y++)
+      for (x = content->x0; x < content->x1; x++)
+      {
+        lx = x - bounds.x0;
+        ly = y - bounds.y0;
+        screen_draw_pixel(scr, x, y, ((lx + ly) & 1) ? cc->black : cc->white);
+      }
+  }
 
   return result_OK;
 }
