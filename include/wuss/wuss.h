@@ -5,7 +5,7 @@
  *
  * Wuss is a minimal window manager. It owns window creation, positioning,
  * sizing, z-ordering, mouse event routing and dragging. Window contents are
- * entirely delegated to clients (see window.h).
+ * entirely delegated to tasks (see window.h).
  */
 
 #ifndef WUSS_WUSS_H
@@ -48,7 +48,7 @@ wuss_button_t;
 /** An index into a wuss_t's system palette (see wuss_create). Not a colour_t. */
 typedef int wuss_colour_t;
 
-/** Sentinel for wuss_client_t::bg meaning "no automatic background fill". */
+/** Sentinel for wuss_task_t::bg meaning "no automatic background fill". */
 #define wuss_NO_BACKGROUND ((wuss_colour_t) -1)
 
 /** Per-window appearance flags, combinable with bitwise OR. */
@@ -101,7 +101,7 @@ void wuss_destroy(wuss_t *doomed);
  *
  * \param[in] wuss Window manager.
  * \return \ref result_OK on success, or the last non-OK result returned by
- *         a client's redraw callback (drawing continues past a failing
+ *         a task's redraw callback (drawing continues past a failing
  *         window rather than stopping).
  */
 result_t wuss_redraw(wuss_t *wuss);
@@ -109,7 +109,7 @@ result_t wuss_redraw(wuss_t *wuss);
 /**
  * Mark a screen-space region dirty. Window creation, destruction, move,
  * resize and bring-to-front invalidate their own affected regions
- * automatically; clients must call this themselves when their content
+ * automatically; tasks must call this themselves when their content
  * changes (e.g. an animation), passing the union of the old and new
  * screen-space areas that need repainting.
  *
@@ -127,41 +127,54 @@ result_t wuss_invalidate(wuss_t *wuss, const box_t *box);
  *
  * \param[in] wuss Window manager.
  * \return \ref result_OK on success, or the last non-OK result returned by
- *         a client's redraw callback.
+ *         a task's redraw callback.
  */
 result_t wuss_redraw_dirty(wuss_t *wuss);
 
 /**
- * Fetch the current accumulated dirty region (see wuss_invalidate). wuss
- * only repaints windows, not background between/behind them, so a caller
- * whose invalidations can expose background (e.g. after a window move)
- * should clear this region itself before calling wuss_redraw_dirty.
+ * Fetch the number of dirty regions currently accumulated (see
+ * wuss_invalidate). Regions are self-coalescing: an invalidation already
+ * covered by an existing region is discarded, and one sharing a complete
+ * edge with an existing region extends it in place, so this stays small
+ * under most usage.
  *
- * \param[in]  wuss Window manager.
- * \param[out] out  Filled in with the dirty region. Empty (box_is_empty)
- *                  if nothing is dirty.
+ * \param[in] wuss Window manager.
+ * \return Number of dirty regions, 0 if nothing is dirty.
  */
-void wuss_get_dirty(const wuss_t *wuss, box_t *out);
+int wuss_get_dirty_count(const wuss_t *wuss);
+
+/**
+ * Fetch one of the current accumulated dirty regions (see
+ * wuss_invalidate). wuss only repaints windows, not background
+ * between/behind them, so a caller whose invalidations can expose
+ * background (e.g. after a window move) should clear these regions itself
+ * before calling wuss_redraw_dirty.
+ *
+ * \param[in]  wuss  Window manager.
+ * \param[in]  index Index of the region to fetch, 0 to wuss_get_dirty_count() - 1.
+ * \param[out] out   Filled in with the dirty region.
+ */
+void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
 
 /**
  * Deliver a mouse-down event. Hit-tests the topmost window at (x,y). A
  * titlebar click brings the window to front if button is Select (Adjust
  * and Menu leave the z-order unchanged) and starts a drag; a click on the
  * window's content never changes the z-order and is delivered to the
- * client in window-local content coordinates.
+ * task in window-local content coordinates.
  *
  * \param[in]  wuss   Window manager.
  * \param[in]  x      Screen x coordinate.
  * \param[in]  y      Screen y coordinate.
  * \param[in]  button Button pressed.
  * \param[out] hit    Window under the pointer, or NULL if none. May be NULL if not needed.
- * \return \ref result_OK, or a result code returned by the client's mouse callback.
+ * \return \ref result_OK, or a result code returned by the task's mouse callback.
  */
 result_t wuss_mouse_down(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_window_t **hit);
 
 /**
  * Deliver a mouse-up event. Ends an in-progress drag if one is active,
- * otherwise hit-tests and delivers to the window's client as per
+ * otherwise hit-tests and delivers to the window's task as per
  * wuss_mouse_down.
  *
  * \param[in]  wuss   Window manager.
@@ -169,7 +182,7 @@ result_t wuss_mouse_down(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_
  * \param[in]  y      Screen y coordinate.
  * \param[in]  button Button released.
  * \param[out] hit    Window under the pointer (or being dragged), or NULL if none. May be NULL if not needed.
- * \return \ref result_OK, or a result code returned by the client's mouse callback.
+ * \return \ref result_OK, or a result code returned by the task's mouse callback.
  */
 result_t wuss_mouse_up(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_window_t **hit);
 
@@ -177,15 +190,30 @@ result_t wuss_mouse_up(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_wi
  * Deliver a mouse-move event. Updates the dragged window's position if a
  * drag is active (invalidating the affected region; call wuss_redraw_dirty
  * to actually repaint it), otherwise hit-tests and delivers to the
- * window's client as per wuss_mouse_down.
+ * window's task as per wuss_mouse_down.
  *
  * \param[in]  wuss Window manager.
  * \param[in]  x    Screen x coordinate.
  * \param[in]  y    Screen y coordinate.
  * \param[out] hit  Window under the pointer (or being dragged), or NULL if none. May be NULL if not needed.
- * \return \ref result_OK, or a result code returned by the client's mouse callback.
+ * \return \ref result_OK, or a result code returned by the task's mouse callback.
  */
 result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit);
+
+/**
+ * Deliver a scroll event. Hit-tests the topmost window at (x,y) as per
+ * wuss_mouse_down, and delivers to the window's task in window-local
+ * content coordinates; dropped if the hit window has no scroll callback,
+ * or the pointer is over its titlebar.
+ *
+ * \param[in]  wuss  Window manager.
+ * \param[in]  x     Screen x coordinate.
+ * \param[in]  y     Screen y coordinate.
+ * \param[in]  delta Scroll amount; sign and units are caller-defined.
+ * \param[out] hit   Window under the pointer, or NULL if none. May be NULL if not needed.
+ * \return \ref result_OK, or a result code returned by the task's scroll callback.
+ */
+result_t wuss_scroll(wuss_t *wuss, int x, int y, int delta, wuss_window_t **hit);
 
 #ifdef __cplusplus
 }

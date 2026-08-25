@@ -13,6 +13,12 @@ result_t wuss_mouse_up(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_wi
     if (hit != NULL)
       *hit = win;
     wuss->dragging = NULL;
+
+    /* an Adjust click on a titlebar that never moved is a click, not a
+     * drag: send the window to the back instead */
+    if (button == wuss_BUTTON_ADJUST && !wuss->drag_moved)
+      wuss_window_send_to_back(win);
+
     return result_OK;
   }
 
@@ -27,7 +33,7 @@ result_t wuss_mouse_up(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_wi
   if (box_contains_point(&titlebar, x, y))
     return result_OK;
 
-  if (win->client.mouse != NULL)
+  if (win->task.mouse != NULL)
   {
     box_t content;
     int   local_x, local_y;
@@ -35,7 +41,7 @@ result_t wuss_mouse_up(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_wi
     wuss__content_box(win, &content);
     local_x = x - content.x0;
     local_y = y - content.y0;
-    return win->client.mouse(win, wuss_MOUSE_UP, local_x, local_y, button, win->client.client_data);
+    return win->task.mouse(win, wuss_MOUSE_UP, local_x, local_y, button, win->task.task_data);
   }
 
   return result_OK;

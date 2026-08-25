@@ -19,9 +19,9 @@ void wuss_window_destroy(wuss_window_t *doomed)
   if (wuss->dragging == doomed)
     wuss->dragging = NULL;
 
-  list_remove(&wuss->z_order, &doomed->link);
+  wuss__invalidate_clipped(doomed, &doomed->visible);
 
-  wuss_invalidate(wuss, &doomed->visible);
+  list_remove(&wuss->z_order, &doomed->link);
 
   free(doomed);
 }

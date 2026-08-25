@@ -18,7 +18,7 @@ result_t wuss_window_resize(wuss_window_t *window, int width, int height)
   window->visible.y1 = window->visible.y0 + height + titlebar_height + 2 * outline_px;
 
   box_union(&before, &window->visible, &dirty);
-  wuss_invalidate(window->wuss, &dirty);
+  wuss__invalidate_clipped(window, &dirty);
 
   return result_OK;
 }
