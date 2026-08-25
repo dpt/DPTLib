@@ -321,6 +321,7 @@ set(WUSS_SOURCES
     libraries/wuss/mouse-move.c
     libraries/wuss/mouse-up.c
     libraries/wuss/redraw.c
+    libraries/wuss/scroll.c
     libraries/wuss/task-make.c
     libraries/wuss/titlebar-box.c
     libraries/wuss/window-at.c

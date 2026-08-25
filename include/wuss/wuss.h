@@ -200,6 +200,21 @@ result_t wuss_mouse_up(wuss_t *wuss, int x, int y, wuss_button_t button, wuss_wi
  */
 result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit);
 
+/**
+ * Deliver a scroll event. Hit-tests the topmost window at (x,y) as per
+ * wuss_mouse_down, and delivers to the window's task in window-local
+ * content coordinates; dropped if the hit window has no scroll callback,
+ * or the pointer is over its titlebar.
+ *
+ * \param[in]  wuss  Window manager.
+ * \param[in]  x     Screen x coordinate.
+ * \param[in]  y     Screen y coordinate.
+ * \param[in]  delta Scroll amount; sign and units are caller-defined.
+ * \param[out] hit   Window under the pointer, or NULL if none. May be NULL if not needed.
+ * \return \ref result_OK, or a result code returned by the task's scroll callback.
+ */
+result_t wuss_scroll(wuss_t *wuss, int x, int y, int delta, wuss_window_t **hit);
+
 #ifdef __cplusplus
 }
 #endif

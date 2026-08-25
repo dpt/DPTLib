@@ -277,6 +277,15 @@ static result_t wuss_interactive_test(const char *resources)
         }
         break;
 
+      case SDL_EVENT_MOUSE_WHEEL:
+        {
+          int x, y;
+
+          sdl_pos_to_scr(window, scr_width, scr_height, event.wheel.mouse_x, event.wheel.mouse_y, &x, &y);
+          wuss_scroll(wuss, x, y, (int) event.wheel.y, NULL);
+        }
+        break;
+
       default:
         break;
       }
