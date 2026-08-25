@@ -29,8 +29,10 @@ result_t image_create(wuss_t *wuss, const colour_t *palette, const char *resourc
   if (rc != result_OK)
     return rc;
 
-  delegate = wuss_task_make(image_redraw, NULL, task, palette_PICO8_BLACK); /* shows through the image's transparent pixels */
-  box      = (box_t) BOX_POS_SIZE(370, 10, task->bitmap.width, task->bitmap.height);
+  delegate        = wuss_task_make(image_redraw, NULL, task, palette_PICO8_BLACK); /* shows through the image's transparent pixels */
+  delegate.scroll = image_scroll;
+  /* shorter than the bitmap so there's something to scroll through */
+  box             = (box_t) BOX_POS_SIZE(370, 10, task->bitmap.width, task->bitmap.height * 2 / 3);
 
   return wuss_window_create(wuss, &box, "Image", wuss_WINDOW_NONE, &delegate, &task->window);
 }
@@ -44,12 +46,43 @@ void image_destroy(image_task_t *task)
 result_t image_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
 {
   image_task_t *ic;
-
-  NOT_USED(window);
+  int           sx, sy;
 
   ic = task_data;
 
-  screen_draw_bitmap(scr, content->x0, content->y0, &ic->bitmap);
+  wuss_window_get_scroll(window, &sx, &sy);
+
+  screen_draw_bitmap(scr, content->x0 - sx, content->y0 - sy, &ic->bitmap);
+
+  return result_OK;
+}
+
+result_t image_scroll(wuss_window_t *window, int x, int y, int delta, void *task_data)
+{
+  image_task_t *ic;
+  box_t         bounds;
+  int           sx, sy, max_y;
+
+  NOT_USED(x);
+  NOT_USED(y);
+
+  ic = task_data;
+
+  wuss_window_get_content_bounds(window, &bounds);
+  wuss_window_get_scroll(window, &sx, &sy);
+
+  sy += delta;
+
+  max_y = ic->bitmap.height - (bounds.y1 - bounds.y0);
+  if (max_y < 0)
+    max_y = 0;
+
+  if (sy < 0)
+    sy = 0;
+  else if (sy > max_y)
+    sy = max_y;
+
+  wuss_window_set_scroll(window, sx, sy);
 
   return result_OK;
 }
