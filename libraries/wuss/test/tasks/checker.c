@@ -16,16 +16,6 @@
 #define CHECKER_BAND_MIN     2
 #define CHECKER_BAND_MAX     32
 
-static void invalidate_whole(wuss_window_t *window)
-{
-  box_t content;
-
-  wuss_window_get_content_bounds(window, &content);
-  content.x1 -= content.x0; content.x0 = 0;
-  content.y1 -= content.y0; content.y0 = 0;
-  wuss_window_invalidate(window, &content);
-}
-
 result_t checker_create(wuss_t         *wuss,
                         const colour_t *palette,
                         checker_task_t *task)
@@ -115,7 +105,7 @@ static result_t checker_mouse(wuss_window_t *window, void *task_data)
   pattern  = (window == cc->window2) ? &cc->pattern2 : &cc->pattern;
   *pattern = (*pattern + 1) % checker_PATTERN__COUNT;
 
-  invalidate_whole(window);
+  wuss_window_invalidate_all(window);
 
   return result_OK;
 }
@@ -134,7 +124,7 @@ static result_t checker_scroll(wuss_window_t *window, int delta, void *task_data
   else if (*band > CHECKER_BAND_MAX)
     *band = CHECKER_BAND_MAX;
 
-  invalidate_whole(window);
+  wuss_window_invalidate_all(window);
 
   return result_OK;
 }

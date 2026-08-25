@@ -181,7 +181,6 @@ static result_t sofa_mouse(void *task_data)
 static result_t sofa_scroll(wuss_window_t *window, int delta, void *task_data)
 {
   sofa_task_t *sc;
-  box_t        content;
 
   sc = task_data;
 
@@ -191,10 +190,7 @@ static result_t sofa_scroll(wuss_window_t *window, int delta, void *task_data)
   else if (sc->zoom > SOFA_ZOOM_MAX)
     sc->zoom = SOFA_ZOOM_MAX;
 
-  wuss_window_get_content_bounds(window, &content);
-  content.x1 -= content.x0; content.x0 = 0;
-  content.y1 -= content.y0; content.y0 = 0;
-  wuss_window_invalidate(window, &content);
+  wuss_window_invalidate_all(window);
 
   return result_OK;
 }
@@ -202,7 +198,6 @@ static result_t sofa_scroll(wuss_window_t *window, int delta, void *task_data)
 static result_t sofa_idle(void *task_data)
 {
   sofa_task_t *task;
-  box_t        content;
 
   task = task_data;
 
@@ -213,10 +208,7 @@ static result_t sofa_idle(void *task_data)
   if (task->angle > 2.0 * M_PI)
     task->angle -= 2.0 * M_PI;
 
-  wuss_window_get_content_bounds(task->window, &content);
-  content.x1 -= content.x0; content.x0 = 0;
-  content.y1 -= content.y0; content.y0 = 0;
-  wuss_window_invalidate(task->window, &content);
+  wuss_window_invalidate_all(task->window);
 
   return result_OK;
 }
