@@ -67,7 +67,7 @@ static wuss_button_t sdl_button_to_wuss(Uint8 button)
 }
 
 /* SDL delivers mouse coordinates in window space, which F2 can scale away
- * from the fixed-size wuss screen; map back down to screen space */
+ * from the fixed-size Wuss screen; map back down to screen space */
 static void sdl_pos_to_scr(SDL_Window *window,
                            int         scr_width,
                            int         scr_height,
@@ -85,7 +85,7 @@ static void sdl_pos_to_scr(SDL_Window *window,
 }
 
 /* click windows to bring to front, drag titlebars to move, resize the
- * SDL window to see the wuss screen scale; F2 doubles the SDL window size,
+ * SDL window to see the Wuss screen scale; F2 doubles the SDL window size,
  * Shift-F2 halves it; Q or close to quit */
 static result_t wuss_interactive_test(const char *resources)
 {
@@ -435,7 +435,7 @@ static result_t test_handle(wuss_window_t     *window,
     tc->close_count++;
     break;
 
-  case wuss_EVENT_STOP:
+  case wuss_EVENT_QUIT:
     tc->stop_count++;
     break;
 
@@ -1124,7 +1124,7 @@ result_t wuss_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
-  printf("test: destroy sends wuss_EVENT_STOP to each window's task\n");
+  printf("test: destroy sends wuss_EVENT_QUIT to each window's task\n");
 
   tc_a.stop_count = 0;
   tc_b.stop_count = 0;

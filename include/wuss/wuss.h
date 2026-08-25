@@ -164,7 +164,7 @@ int wuss_get_dirty_count(const wuss_t *wuss);
 
 /**
  * Fetch one of the current accumulated dirty regions (see
- * wuss_invalidate). wuss only repaints windows, not background
+ * wuss_invalidate). Wuss only repaints windows, not background
  * between/behind them, so a caller whose invalidations can expose
  * background (e.g. after a window move) should clear these regions itself
  * before calling wuss_redraw_dirty.
