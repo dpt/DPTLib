@@ -8,7 +8,7 @@
 void wuss_window_move(wuss_window_t *window, int x, int y)
 {
   int   width, height, outline_px, titlebar_height;
-  box_t before, dirty;
+  box_t before, dirty, copied;
 
   width           = window->visible.x1 - window->visible.x0;
   height          = window->visible.y1 - window->visible.y0;
@@ -22,7 +22,7 @@ void wuss_window_move(wuss_window_t *window, int x, int y)
   window->visible.y1 = window->visible.y0 + height;
 
   if (window->wuss->z_order.next == &window->link &&
-      screen_copy_rect(window->wuss->scr, &before, window->visible.x0, window->visible.y0))
+      screen_copy_rect(window->wuss->scr, &before, window->visible.x0, window->visible.y0, &copied))
   {
     /* Topmost, and the screen format supports the blit: every pixel of
      * "before" is genuinely this window's own rendering (nothing above it
@@ -31,6 +31,12 @@ void wuss_window_move(wuss_window_t *window, int x, int y)
      * but far cheaper -- only the vacated sliver behind the old position
      * still needs an actual repaint. */
     wuss__invalidate_minus(window->wuss, &before, &window->visible);
+
+    /* "copied" can be smaller than the new footprint if either end of the
+     * move was partly off-screen (e.g. dragging back on-screen from
+     * off-screen): the leftover part has no valid source pixels behind it,
+     * so it needs a real repaint too, not just the vacated sliver above. */
+    wuss__invalidate_minus(window->wuss, &window->visible, &copied);
   }
   else
   {

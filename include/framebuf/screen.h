@@ -124,14 +124,24 @@ void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src);
  * invalidate/redraw when it's false (e.g. out of memory, or an unknown
  * pixel format), since a declined copy leaves the destination untouched.
  *
- * \param[in] scr   Screen to copy within.
- * \param[in] src   Screen-space region to copy from.
- * \param[in] dst_x X coordinate of the top-left of the destination.
- * \param[in] dst_y Y coordinate of the top-left of the destination.
+ * If "src" or the intended destination falls partly off-screen, the actual
+ * copied area shrinks to what both ends have in common on-screen: callers
+ * must invalidate whatever part of their intended (unclipped) destination
+ * falls outside "copied_dst", since it has no valid source pixels to have
+ * been copied from and so is left untouched, not merely stale.
+ *
+ * \param[in]  scr        Screen to copy within.
+ * \param[in]  src        Screen-space region to copy from.
+ * \param[in]  dst_x      X coordinate of the top-left of the destination.
+ * \param[in]  dst_y      Y coordinate of the top-left of the destination.
+ * \param[out] copied_dst Set to the on-screen box actually copied to (may
+ *                        be smaller than intended if either end was
+ *                        partly off-screen). Pass NULL if not needed.
+ *                        Left unset if the copy was declined.
  * \return True if the copy was performed, false if declined (unsupported
  *         pixel format).
  */
-int screen_copy_rect(screen_t *scr, const box_t *src, int dst_x, int dst_y);
+int screen_copy_rect(screen_t *scr, const box_t *src, int dst_x, int dst_y, box_t *copied_dst);
 
 /**
  * Draws a line (Bresenham version with aliasing).
