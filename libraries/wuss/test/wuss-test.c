@@ -85,8 +85,8 @@ static void sdl_pos_to_scr(SDL_Window *window,
 }
 
 /* click windows to bring to front, drag titlebars to move, resize the
- * SDL window to see the wuss screen scale; F2 doubles the SDL window size;
- * Q or close to quit */
+ * SDL window to see the wuss screen scale; F2 doubles the SDL window size,
+ * Shift-F2 halves it; Q or close to quit */
 static result_t wuss_interactive_test(const char *resources)
 {
   const int        scr_width  = 640;
@@ -252,7 +252,10 @@ static result_t wuss_interactive_test(const char *resources)
           int w, h;
 
           SDL_GetWindowSize(window, &w, &h);
-          SDL_SetWindowSize(window, w * 2, h * 2);
+          if (event.key.mod & SDL_KMOD_SHIFT)
+            SDL_SetWindowSize(window, w / 2, h / 2);
+          else
+            SDL_SetWindowSize(window, w * 2, h * 2);
         }
         break;
 
