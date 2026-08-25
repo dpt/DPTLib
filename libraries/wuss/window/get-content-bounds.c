@@ -1,6 +1,6 @@
-/* window-get-content-bounds.c -- wuss - minimal window manager */
+/* get-content-bounds.c -- wuss - minimal window manager */
 
-#include "impl.h"
+#include "../impl.h"
 
 void wuss_window_get_content_bounds(const wuss_window_t *window, box_t *content)
 {

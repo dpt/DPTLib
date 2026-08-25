@@ -1,4 +1,4 @@
-/* window-create.c -- wuss - minimal window manager */
+/* create.c -- wuss - minimal window manager */
 
 #include <assert.h>
 #include <stdlib.h>
@@ -8,7 +8,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "impl.h"
+#include "../impl.h"
 
 result_t wuss_window_create(wuss_t             *wuss,
                             const box_t        *content,

@@ -1,6 +1,6 @@
-/* window-set-background.c -- wuss - minimal window manager */
+/* set-background.c -- wuss - minimal window manager */
 
-#include "impl.h"
+#include "../impl.h"
 
 result_t wuss_window_set_background(wuss_window_t *window, wuss_colour_t bg)
 {

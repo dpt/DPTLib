@@ -1,6 +1,6 @@
-/* window-resize.c -- wuss - minimal window manager */
+/* resize.c -- wuss - minimal window manager */
 
-#include "impl.h"
+#include "../impl.h"
 
 result_t wuss_window_resize(wuss_window_t *window, int width, int height)
 {
