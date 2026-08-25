@@ -36,10 +36,6 @@ result_t text_create(wuss_t         *wuss,
 /* destroy the paragraph-of-text window created by text_create */
 void text_destroy(text_task_t *task);
 
-/* slowly resize the window's width +/-50px around base_width, holding
- * height fixed; called once per frame from the main loop */
-void text_step(text_task_t *tcx);
-
 #endif /* USE_SDL */
 
 #endif /* TASKS_TEXT_H */

@@ -300,10 +300,7 @@ static result_t wuss_interactive_test(const char *resources)
       }
     }
 
-    ball_step(&ball_task);
-    text_step(&text_task);
-    blank_step(&blank_task);
-    sofa_step(&sofa_task);
+    wuss_idle(wuss);
 
     if (garbage_pending)
     {

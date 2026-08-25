@@ -7,6 +7,7 @@
 #endif
 
 #include "base/debug.h"
+#include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 
@@ -23,7 +24,7 @@ result_t blank_create(wuss_t *wuss, int npalette, blank_task_t *task)
   task->index       = palette_PICO8_GREEN;
   task->frame_count = 0;
 
-  delegate = wuss_task_make(NULL, task, palette_PICO8_GREEN); /* wuss fills the content area itself */
+  delegate = wuss_task_make(blank_handle, task, palette_PICO8_GREEN); /* wuss fills the content area itself */
   box      = (box_t) BOX_POS_SIZE(260, 60, 200, 160);
 
   return wuss_window_create(wuss, &box, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &delegate, &task->window);
@@ -34,19 +35,36 @@ void blank_destroy(blank_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-void blank_step(blank_task_t *bc)
+static result_t blank_idle(void *task_data)
 {
-  result_t rc;
+  blank_task_t *bc;
+  result_t      rc;
+
+  bc = task_data;
 
   if (++bc->frame_count < BLANK_CYCLE_FRAMES)
-    return;
+    return result_OK;
 
   bc->frame_count = 0;
   bc->index       = (bc->index + 1) % bc->npalette;
 
   rc = wuss_window_set_background(bc->window, bc->index);
   if (rc != result_OK)
-    logf_warning("blank_step: wuss_window_set_background(%d) failed", bc->index);
+    logf_warning("blank_idle: wuss_window_set_background(%d) failed", bc->index);
+
+  return rc;
+}
+
+result_t blank_handle(wuss_window_t     *window,
+                      const wuss_event_t *event,
+                      void               *task_data)
+{
+  NOT_USED(window);
+
+  if (event->kind != wuss_EVENT_IDLE)
+    return result_OK;
+
+  return blank_idle(task_data);
 }
 
 #endif /* USE_SDL */
