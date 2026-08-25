@@ -135,6 +135,13 @@ result_t wuss_window_resize(wuss_window_t *window, int width, int height);
 void wuss_window_bring_to_front(wuss_window_t *window);
 
 /**
+ * Send a window to the back of the z-order.
+ *
+ * \param[in] window Window to send to back.
+ */
+void wuss_window_send_to_back(wuss_window_t *window);
+
+/**
  * Fetch a window's current visible (on-screen) bounds: its full footprint,
  * including any titlebar/outline furniture, not just its content area.
  *

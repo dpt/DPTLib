@@ -28,6 +28,9 @@ struct wuss
   list_t         z_order;   /* anchor; head = topmost window */
   wuss_window_t *dragging;  /* NULL when idle */
   int            drag_dx, drag_dy;
+  int            drag_moved; /* set once a mouse-move is delivered mid-drag;
+                               * a titlebar mouse-down/up with no move in
+                               * between is a click, not a drag */
   box_t          dirty[WUSS_MAX_DIRTY]; /* accumulated by wuss_invalidate; reset by a redraw */
   int            ndirty;
 };
