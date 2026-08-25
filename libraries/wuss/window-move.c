@@ -21,6 +21,22 @@ void wuss_window_move(wuss_window_t *window, int x, int y)
   window->visible.x1 = window->visible.x0 + width;
   window->visible.y1 = window->visible.y0 + height;
 
-  box_union(&before, &window->visible, &dirty);
-  wuss__invalidate_clipped(window, &dirty);
+  if (window->wuss->z_order.next == &window->link &&
+      screen_copy_rect(window->wuss->scr, &before, window->visible.x0, window->visible.y0))
+  {
+    /* Topmost, and the screen format supports the blit: every pixel of
+     * "before" is genuinely this window's own rendering (nothing above it
+     * to have punched holes in it), so sliding those pixels to the new
+     * position is exactly as correct as asking the client to redraw there,
+     * but far cheaper -- only the vacated sliver behind the old position
+     * still needs an actual repaint. */
+    wuss__invalidate_minus(window->wuss, &before, &window->visible);
+  }
+  else
+  {
+    /* Not topmost, or the blit was declined (e.g. paletted screen): fall
+     * back to a normal clipped redraw of the whole moved footprint. */
+    box_union(&before, &window->visible, &dirty);
+    wuss__invalidate_clipped(window, &dirty);
+  }
 }

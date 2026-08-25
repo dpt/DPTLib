@@ -227,6 +227,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/screen/screen.c
+    libraries/framebuf/screen/screen-copy-rect.c
     libraries/framebuf/screen/screen-draw.c
     libraries/framebuf/span-registry/get.c
     libraries/framebuf/span-registry/regdata.h

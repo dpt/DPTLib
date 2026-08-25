@@ -112,6 +112,28 @@ void wuss__invalidate_clipped(wuss_window_t *window, const box_t *box)
     wuss_invalidate(window->wuss, &pieces[i]);
 }
 
+/* Invalidate the part of "whole" not already covered by "keep" -- used
+ * after a blit has slid a window's pixels from "whole" to "keep", so only
+ * the vacated sliver still needs an actual repaint. */
+void wuss__invalidate_minus(wuss_t *wuss, const box_t *whole, const box_t *keep)
+{
+  box_t pieces[WUSS_MAX_INVALIDATE_PIECES];
+  box_t cut;
+  int   npieces, i;
+
+  if (box_intersection(keep, whole, &cut))
+  {
+    wuss_invalidate(wuss, whole); /* no overlap: all of "whole" is vacated */
+    return;
+  }
+
+  npieces = 0;
+  box_subtract_into(whole, &cut, pieces, &npieces);
+
+  for (i = 0; i < npieces; i++)
+    wuss_invalidate(wuss, &pieces[i]);
+}
+
 void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
 {
   box_t screen_box, content;
