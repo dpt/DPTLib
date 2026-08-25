@@ -965,6 +965,109 @@ result_t wuss_test(const char *resources)
     wuss_window_destroy(win_g);
   }
 
+  printf("test: bring-to-front only invalidates the newly-uncovered part\n");
+
+  {
+    test_client_t  tc_i, tc_j;
+    wuss_client_t  client_i, client_j;
+    box_t          box_i, box_j, dirty;
+    wuss_window_t *win_i, *win_j;
+
+    tc_i.redraw_count = 0;
+    tc_i.mouse_count  = 0;
+    client_i.redraw      = test_redraw;
+    client_i.mouse       = test_mouse;
+    client_i.client_data = &tc_i;
+    client_i.bg          = wuss_NO_BACKGROUND;
+
+    box_i.x0 = 0; box_i.y0 = 0;
+    box_i.x1 = 100; box_i.y1 = 100;
+    rc = wuss_window_create(wuss, &box_i, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &client_i, &win_i);
+    if (rc != result_OK)
+      goto Failure;
+
+    tc_j.redraw_count = 0;
+    tc_j.mouse_count  = 0;
+    client_j.redraw      = test_redraw;
+    client_j.mouse       = test_mouse;
+    client_j.client_data = &tc_j;
+    client_j.bg          = wuss_NO_BACKGROUND;
+
+    box_j.x0 = 50; box_j.y0 = 0;
+    box_j.x1 = 150; box_j.y1 = 100; /* J created after I, so J is topmost, covering I's right half */
+    rc = wuss_window_create(wuss, &box_j, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &client_j, &win_j);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush creation invalidations before measuring */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_bring_to_front(win_i);
+
+    if (wuss_get_dirty_count(wuss) != 1)
+      goto Failure;
+
+    wuss_get_dirty(wuss, 0, &dirty);
+    if (dirty.x0 != 50 || dirty.y0 != 0 || dirty.x1 != 100 || dirty.y1 != 100)
+      goto Failure; /* only I's previously-hidden right half, not its whole 0..100 footprint */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_destroy(win_i);
+    wuss_window_destroy(win_j);
+  }
+
+  printf("test: dragging off-screen and back on repaints the reappearing edge\n");
+
+  {
+    test_client_t  tc_m;
+    wuss_client_t  client_m;
+    box_t          box_m;
+    wuss_window_t *win_m;
+    int            before_m;
+
+    tc_m.redraw_count = 0;
+    tc_m.mouse_count  = 0;
+    client_m.redraw      = test_redraw;
+    client_m.mouse       = test_mouse;
+    client_m.client_data = &tc_m;
+    client_m.bg          = wuss_NO_BACKGROUND;
+
+    box_m.x0 = 10; box_m.y0 = 10;
+    box_m.x1 = 60; box_m.y1 = 60; /* 50x50, fully on-screen, topmost (created last) */
+    rc = wuss_window_create(wuss, &box_m, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &client_m, &win_m);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush creation invalidation, paint M's initial content */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_move(win_m, -40, 10); /* slide left until half of M is off the left edge */
+    rc = wuss_redraw_dirty(wuss); /* flush the vacated-sliver repaint from this move */
+    if (rc != result_OK)
+      goto Failure;
+
+    before_m = tc_m.redraw_count;
+
+    wuss_window_move(win_m, 10, 10); /* slide back: the part that re-enters the screen was
+                                       * never blitted (its source pixels were off-screen),
+                                       * so it must be a real client redraw, not a blit */
+    if (wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_m.redraw_count != before_m + 1)
+      goto Failure; /* M must get a genuine redraw call to repaint the reappeared part */
+
+    wuss_window_destroy(win_m);
+  }
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;
