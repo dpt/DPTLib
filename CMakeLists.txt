@@ -335,7 +335,6 @@ set(WUSS_SOURCES
     libraries/wuss/window-get-scroll.c
     libraries/wuss/window-get-visible-bounds.c
     libraries/wuss/window-invalidate.c
-    libraries/wuss/window-invalidate-all.c
     libraries/wuss/window-move.c
     libraries/wuss/window-resize.c
     libraries/wuss/window-restack.c
