@@ -9,7 +9,7 @@ result_t wuss_task_stop(wuss_window_t *window)
   if (window->task.handle == NULL)
     return result_OK;
 
-  event.kind = wuss_EVENT_STOP;
+  event.kind = wuss_EVENT_QUIT;
 
   return window->task.handle(window, &event, window->task.task_data);
 }

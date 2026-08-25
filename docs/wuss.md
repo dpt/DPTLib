@@ -5,7 +5,7 @@
 - It draws windows back-to-front, with an optional titlebar and 1px outline per window.
 - It hit-tests and routes mouse-down/up/move and scroll events, including titlebar drag-to-move.
 - It tracks a single dirty region, accumulated automatically by window management (create/destroy/move/resize/bring-to-front) and manually by tasks, for partial redraws.
-- Content drawing and mouse/scroll handling are entirely task-supplied; wuss only fills the content background before delivering a redraw event to the task's handle callback (unless the task opts out with `wuss_NO_BACKGROUND`).
+- Content drawing and mouse/scroll handling are entirely task-supplied; Wuss only fills the content background before delivering a redraw event to the task's handle callback (unless the task opts out with `wuss_NO_BACKGROUND`).
 
 ## Setup
 
@@ -90,7 +90,7 @@ A task supplies a single `handle` callback and dispatches on `event->kind`. Only
 
 For `wuss_EVENT_REDRAW`, `event->data.redraw.scr` is called with `scr->clip` already set to the on-screen, clipped content area; `event->data.redraw.content` gives the window's full (unclipped) content box in screen space, for context.
 
-For `wuss_EVENT_MOUSE` and `wuss_EVENT_SCROLL`, `event->data.mouse.x`/`y` and `event->data.scroll.x`/`y` are window-local content coordinates: the content area's top-left is `(0,0)` plus the window's current scroll offset (see "Scrolling" below). `event->data.mouse.action` is `wuss_MOUSE_DOWN`/`wuss_MOUSE_UP`/`wuss_MOUSE_MOVE`. A titlebar click never reaches a task's handle callback: it starts a drag (and, for `wuss_BUTTON_SELECT`, brings the window to front) instead. A content click, even on a `wuss_WINDOW_NO_TITLEBAR` window with no drag handle, never changes z-order — only a titlebar click raises a window — so tasks are free to use content clicks for their own purposes without wuss reordering windows underneath them.
+For `wuss_EVENT_MOUSE` and `wuss_EVENT_SCROLL`, `event->data.mouse.x`/`y` and `event->data.scroll.x`/`y` are window-local content coordinates: the content area's top-left is `(0,0)` plus the window's current scroll offset (see "Scrolling" below). `event->data.mouse.action` is `wuss_MOUSE_DOWN`/`wuss_MOUSE_UP`/`wuss_MOUSE_MOVE`. A titlebar click never reaches a task's handle callback: it starts a drag (and, for `wuss_BUTTON_SELECT`, brings the window to front) instead. A content click, even on a `wuss_WINDOW_NO_TITLEBAR` window with no drag handle, never changes z-order — only a titlebar click raises a window — so tasks are free to use content clicks for their own purposes without Wuss reordering windows underneath them.
 
 ## Mouse and scroll routing
 
@@ -98,7 +98,7 @@ Feed mouse events in with `wuss_mouse_click` (action `wuss_MOUSE_DOWN` or `wuss_
 
 ## Scrolling
 
-Each window carries a scroll offset, `(0, 0)` by default: the point in the task's virtual content space that appears at the content area's top-left. `wuss_window_set_scroll(window, x, y)` moves it (invalidating the content area so the next redraw picks it up); `wuss_window_get_scroll` reads it back. wuss itself doesn't clip, pan pixels, or know how big a task's content actually is — a task determines its own extent and clamps as it sees fit — it just plumbs the offset through:
+Each window carries a scroll offset, `(0, 0)` by default: the point in the task's virtual content space that appears at the content area's top-left. `wuss_window_set_scroll(window, x, y)` moves it (invalidating the content area so the next redraw picks it up); `wuss_window_get_scroll` reads it back. Wuss itself doesn't clip, pan pixels, or know how big a task's content actually is — a task determines its own extent and clamps as it sees fit — it just plumbs the offset through:
 
 - window-local `x`/`y` delivered in mouse/scroll events (and expected in `wuss_window_invalidate`'s `local_box`) are in virtual content space, i.e. already shifted by the scroll offset.
 - a redraw event's `content` is still the on-screen (unscrolled) content box; a task reads the offset itself via `wuss_window_get_scroll` to work out which part of its content to paint there.
@@ -107,11 +107,11 @@ Each window carries a scroll offset, `(0, 0)` by default: the point in the task'
 
 - `wuss_redraw` repaints every window, back-to-front, unconditionally.
 - `wuss_invalidate` / `wuss_window_invalidate` mark a screen-space or window-local region dirty; window management calls these automatically for its own changes, but a task must call one of them itself whenever its content changes on its own (e.g. an animation), passing the union of the old and new areas that need repainting.
-- `wuss_redraw_dirty` repaints only the accumulated dirty region, then clears it. wuss only repaints windows, not the background between/behind them, so a caller whose invalidation can expose background (e.g. after a window move) should clear that region itself first.
+- `wuss_redraw_dirty` repaints only the accumulated dirty region, then clears it. Wuss only repaints windows, not the background between/behind them, so a caller whose invalidation can expose background (e.g. after a window move) should clear that region itself first.
 - `wuss_get_dirty` fetches the current accumulated dirty region without redrawing.
 
 ## Limitations
 
-- No menus: `wuss_BUTTON_MENU` is defined and routed like any other button, but wuss has no built-in menu widget.
+- No menus: `wuss_BUTTON_MENU` is defined and routed like any other button, but Wuss has no built-in menu widget.
 - No window resizing gesture (drag-to-resize) built in; `wuss_window_resize` exists but callers must drive it themselves.
 - No overlapping-window damage tracking finer than each window's own bounding box.

@@ -3,7 +3,7 @@
 /**
  * \file window.h
  *
- * A wuss window: creation, destruction, positioning, sizing and task
+ * A Wuss window: creation, destruction, positioning, sizing and task
  * delegation of content drawing and mouse handling.
  */
 
@@ -23,18 +23,15 @@ extern "C"
 
 /* ----------------------------------------------------------------------- */
 
-/** Which kind of event a wuss_event_t carries; more will be added over time.
- * wuss_EVENT_CLOSE is sent to a window's task when its close icon is
- * clicked; wuss itself takes no action, so a task wanting the window
- * actually destroyed must call wuss_window_destroy from its handler. */
+/** Which kind of event a wuss_event_t carries; more will be added over time. */
 typedef enum wuss_event_kind
 {
-  wuss_EVENT_REDRAW,
-  wuss_EVENT_MOUSE,
-  wuss_EVENT_SCROLL,
-  wuss_EVENT_IDLE,
-  wuss_EVENT_CLOSE,
-  wuss_EVENT_STOP
+  wuss_EVENT_REDRAW, /**< Part of the window's content needs repainting. */
+  wuss_EVENT_MOUSE,  /**< Button down/up over the window's content. */
+  wuss_EVENT_SCROLL, /**< Mouse wheel used over the window's content. */
+  wuss_EVENT_IDLE,   /**< Wuss has finished its pending tasks. */
+  wuss_EVENT_CLOSE,  /**< Close icon clicked; Wuss takes no action itself. */
+  wuss_EVENT_QUIT    /**< Task shutting down, via wuss_task_stop. */
 }
 wuss_event_kind_t;
 
@@ -75,7 +72,7 @@ typedef struct wuss_event
     }
     scroll;
 
-    /* wuss_EVENT_IDLE, wuss_EVENT_CLOSE and wuss_EVENT_STOP carry no data. */
+    /* wuss_EVENT_IDLE, wuss_EVENT_CLOSE and wuss_EVENT_QUIT carry no data. */
   }
   data;
 }
@@ -96,9 +93,9 @@ typedef result_t (wuss_event_fn_t)(wuss_window_t      *window,
 /** A window's content delegate. Copied by value into the window at creation. */
 typedef struct wuss_task
 {
-  wuss_event_fn_t *handle;    /**< NULL => task receives no events; wuss still fills the content background per bg. */
+  wuss_event_fn_t *handle;    /**< NULL => task receives no events; Wuss still fills the content background per bg. */
   void            *task_data;
-  wuss_colour_t    bg;        /**< Content background, filled by wuss before redraw is called, or wuss_NO_BACKGROUND for the task to draw its own background (avoids a redundant fill behind an opaque task). */
+  wuss_colour_t    bg;        /**< Content background, filled by Wuss before redraw is called, or wuss_NO_BACKGROUND for the task to draw its own background (avoids a redundant fill behind an opaque task). */
 }
 wuss_task_t;
 
@@ -115,7 +112,7 @@ wuss_task_t wuss_task_start(wuss_event_fn_t *handle,
                             wuss_colour_t    bg);
 
 /**
- * Notify a window's task that it is shutting down, via wuss_EVENT_STOP.
+ * Notify a window's task that it is shutting down, via wuss_EVENT_QUIT.
  * Called automatically by wuss_window_destroy before the window is torn
  * down; exposed separately so a task can be stopped without also
  * destroying its window, if ever needed.
@@ -223,7 +220,7 @@ void wuss_window_get_content_bounds(const wuss_window_t *window,
 
 /**
  * Mark a region of a window's content as dirty, for the next
- * wuss_redraw_dirty call. Content changes are opaque to wuss, so tasks
+ * wuss_redraw_dirty call. Content changes are opaque to Wuss, so tasks
  * must call this themselves (e.g. the union of an animated element's old
  * and new positions).
  *
