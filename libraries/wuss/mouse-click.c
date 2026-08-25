@@ -11,6 +11,7 @@ result_t wuss_mouse_click(wuss_t              *wuss,
 {
   wuss_window_t *win;
   box_t          titlebar;
+  wuss_event_t   event;
 
   if (action == wuss_MOUSE_UP && wuss->dragging != NULL)
   {
@@ -34,6 +35,24 @@ result_t wuss_mouse_click(wuss_t              *wuss,
   if (win == NULL)
     return result_OK;
 
+  if (!(win->flags & wuss_WINDOW_NO_TITLEBAR) &&
+      !(win->flags & wuss_WINDOW_NO_CLOSE)    &&
+      action == wuss_MOUSE_DOWN               &&
+      button == wuss_BUTTON_SELECT)
+  {
+    box_t close;
+
+    wuss__close_box(win, &close);
+    if (box_contains_point(&close, x, y))
+    {
+      if (win->task.handle == NULL)
+        return result_OK;
+
+      event.kind = wuss_EVENT_CLOSE;
+      return win->task.handle(win, &event, win->task.task_data);
+    }
+  }
+
   wuss__titlebar_box(win, &titlebar);
   if (box_contains_point(&titlebar, x, y))
   {
@@ -55,8 +74,7 @@ result_t wuss_mouse_click(wuss_t              *wuss,
 
   if (win->task.handle != NULL)
   {
-    box_t        content;
-    wuss_event_t event;
+    box_t content;
 
     wuss__content_box(win, &content);
     event.kind             = wuss_EVENT_MOUSE;

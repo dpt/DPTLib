@@ -23,13 +23,17 @@ extern "C"
 
 /* ----------------------------------------------------------------------- */
 
-/** Which kind of event a wuss_event_t carries; more will be added over time. */
+/** Which kind of event a wuss_event_t carries; more will be added over time.
+ * wuss_EVENT_CLOSE is sent to a window's task when its close icon is
+ * clicked; wuss itself takes no action, so a task wanting the window
+ * actually destroyed must call wuss_window_destroy from its handler. */
 typedef enum wuss_event_kind
 {
   wuss_EVENT_REDRAW,
   wuss_EVENT_MOUSE,
   wuss_EVENT_SCROLL,
-  wuss_EVENT_IDLE
+  wuss_EVENT_IDLE,
+  wuss_EVENT_CLOSE
 }
 wuss_event_kind_t;
 
@@ -70,7 +74,7 @@ typedef struct wuss_event
     }
     scroll;
 
-    /* wuss_EVENT_IDLE carries no data. */
+    /* wuss_EVENT_IDLE and wuss_EVENT_CLOSE carry no data. */
   }
   data;
 }

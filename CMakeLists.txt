@@ -314,6 +314,7 @@ set(UTILS_SOURCES
     libraries/utils/primes/primes.c)
 
 set(WUSS_SOURCES
+    libraries/wuss/close-box.c
     libraries/wuss/content-box.c
     libraries/wuss/create.c
     libraries/wuss/destroy.c

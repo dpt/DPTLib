@@ -63,9 +63,10 @@ typedef int wuss_colour_t;
 /** Per-window appearance flags, combinable with bitwise OR. */
 typedef enum wuss_window_flags
 {
-  wuss_WINDOW_NONE        = 0,      /**< Default: titlebar and outline drawn. */
+  wuss_WINDOW_NONE        = 0,      /**< Default: titlebar, close icon and outline drawn. */
   wuss_WINDOW_NO_TITLEBAR = 1 << 0, /**< No titlebar; content fills the full visible area, and no drag handle exists. */
-  wuss_WINDOW_NO_OUTLINE  = 1 << 1  /**< No 1px border drawn around the visible area. */
+  wuss_WINDOW_NO_OUTLINE  = 1 << 1, /**< No 1px border drawn around the visible area. */
+  wuss_WINDOW_NO_CLOSE    = 1 << 2  /**< No close icon in the titlebar. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR. */
 }
 wuss_window_flags_t;
 
