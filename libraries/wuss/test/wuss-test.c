@@ -87,7 +87,9 @@ static void sdl_pos_to_scr(SDL_Window *window,
 
 /* click windows to bring to front, drag titlebars to move, resize the
  * SDL window to see the Wuss screen scale; F2 doubles the SDL window size,
- * Shift-F2 halves it; Q or close to quit */
+ * Shift-F2 halves it; F3 redraws the whole screen one pixel at a time, to
+ * catch tasks whose drawing routines misbehave under a 1x1 clip; Q or
+ * close to quit */
 static result_t wuss_interactive_test(const char *resources)
 {
   const int        scr_width  = 640;
@@ -124,6 +126,7 @@ static result_t wuss_interactive_test(const char *resources)
   SDL_Texture     *texture;
   bool             quit;
   bool             garbage_pending;
+  bool             pixel_stress_pending;
 
   define_pico8_palette(palette);
 
@@ -231,8 +234,9 @@ static result_t wuss_interactive_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
-  quit            = false;
-  garbage_pending = false;
+  quit                 = false;
+  garbage_pending      = false;
+  pixel_stress_pending = false;
 
   wuss_redraw(wuss);
 
@@ -253,6 +257,8 @@ static result_t wuss_interactive_test(const char *resources)
           quit = true;
         else if (event.key.key == SDLK_F1)
           garbage_pending = true;
+        else if (event.key.key == SDLK_F3)
+          pixel_stress_pending = true;
         else if (event.key.key == SDLK_F2)
         {
           int w, h;
@@ -325,6 +331,32 @@ static result_t wuss_interactive_test(const char *resources)
         p[i] = (unsigned char) rand();
 
       garbage_pending = false;
+    }
+    else if (pixel_stress_pending)
+    {
+      /* redraw the whole screen one pixel at a time: each wuss_redraw_dirty
+       * call is flushed before the next pixel is invalidated, so no two
+       * pixels are ever coalesced into one redraw. A task whose drawing
+       * routine assumes it always gets handed a multi-pixel/aligned clip
+       * (rather than trusting scr->clip) will visibly misdraw here even
+       * though it looks fine under normal, larger dirty regions. */
+      int x, y;
+
+      for (y = 0; y < scr_height; y++)
+      {
+        for (x = 0; x < scr_width; x++)
+        {
+          box_t px;
+
+          px.x0 = x;     px.y0 = y;
+          px.x1 = x + 1; px.y1 = y + 1;
+
+          wuss_invalidate(wuss, &px);
+          wuss_redraw_dirty(wuss);
+        }
+      }
+
+      pixel_stress_pending = false;
     }
     else
     {
