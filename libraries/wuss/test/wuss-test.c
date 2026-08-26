@@ -34,6 +34,7 @@
 #include "tasks/checker.h"
 #include "tasks/curve.h"
 #include "tasks/image.h"
+#include "tasks/launcher.h"
 #include "tasks/palette.h"
 #include "tasks/sofa.h"
 #include "tasks/text.h"
@@ -43,19 +44,44 @@
  * (exercises screen_copy_rect's nibble-packed blit path instead). */
 #define WUSS_TEST_32BPP 0
 
-typedef enum task
-{
-  TASK_BALL,
-  TASK_TEXT,
-  TASK_BLANK,
-  TASK_PALETTE,
-  TASK_IMAGE,
-  TASK_CHECKER,
-  TASK__COUNT
-}
-task_t;
+/* the launcher's spawn callbacks take no arguments, so the pieces they need
+ * are stashed here instead; wuss_interactive_test runs at most once per
+ * process, so file-scope statics are as good as a context struct */
+static wuss_t         *g_wuss;
+static const colour_t *g_palette;
+static int              g_npalette;
+static const char      *g_resources;
+static bmfont_t        *g_daydream_font;
 
-#define MAX_TASKS TASK__COUNT /* one instance per task type, for now */
+static ball_task_t     g_ball_task;
+static text_task_t     g_text_task;
+static blank_task_t    g_blank_task;
+static palette_task_t  g_palette_task;
+static image_task_t    g_image_task;
+static checker_task_t  g_checker_task;
+static curve_task_t    g_curve_task;
+static sofa_task_t     g_sofa_task;
+
+static result_t spawn_ball(void)    { return ball_create(g_wuss, g_palette, &g_ball_task); }
+static result_t spawn_text(void)    { return text_create(g_wuss, g_palette, g_daydream_font, &g_text_task); }
+static result_t spawn_blank(void)   { return blank_create(g_wuss, g_npalette, &g_blank_task); }
+static result_t spawn_palette(void) { return palette_create(g_wuss, g_palette, g_npalette, &g_palette_task); }
+static result_t spawn_image(void)   { return image_create(g_wuss, g_palette, g_resources, &g_image_task); }
+static result_t spawn_checker(void) { return checker_create(g_wuss, g_palette, &g_checker_task); }
+static result_t spawn_curve(void)   { return curve_create(g_wuss, g_palette, &g_curve_task); }
+static result_t spawn_sofa(void)    { return sofa_create(g_wuss, g_palette, &g_sofa_task); }
+
+static launcher_entry_t g_launcher_entries[] =
+{
+  { "Ball",    spawn_ball,    false },
+  { "Text",    spawn_text,    false },
+  { "Blank",   spawn_blank,   false },
+  { "Palette", spawn_palette, false },
+  { "Image",   spawn_image,   false },
+  { "Checker", spawn_checker, false },
+  { "Curve",   spawn_curve,   false },
+  { "Sofa",    spawn_sofa,    false }
+};
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
 {
@@ -113,14 +139,7 @@ static result_t wuss_interactive_test(const char *resources)
   screen_t         scr;
   colour_t         palette[16];
   wuss_t          *wuss;
-  ball_task_t      ball_task;
-  text_task_t      text_task;
-  blank_task_t     blank_task;
-  palette_task_t   palette_task;
-  image_task_t     image_task;
-  checker_task_t   checker_task;
-  curve_task_t     curve_task;
-  sofa_task_t      sofa_task;
+  launcher_task_t  launcher_task;
   SDL_Window      *window;
   SDL_Renderer    *renderer;
   SDL_Texture     *texture;
@@ -202,35 +221,13 @@ static result_t wuss_interactive_test(const char *resources)
       goto Failure;
   }
 
-  rc = ball_create(wuss, palette, &ball_task);
-  if (rc != result_OK)
-    goto Failure;
+  g_wuss          = wuss;
+  g_palette       = palette;
+  g_npalette      = NELEMS(palette);
+  g_resources     = resources;
+  g_daydream_font = daydream_font;
 
-  rc = text_create(wuss, palette, daydream_font, &text_task);
-  if (rc != result_OK)
-    goto Failure;
-
-  rc = blank_create(wuss, NELEMS(palette), &blank_task);
-  if (rc != result_OK)
-    goto Failure;
-
-  rc = palette_create(wuss, palette, NELEMS(palette), &palette_task);
-  if (rc != result_OK)
-    goto Failure;
-
-  rc = image_create(wuss, palette, resources, &image_task);
-  if (rc != result_OK)
-    goto Failure;
-
-  rc = checker_create(wuss, palette, &checker_task);
-  if (rc != result_OK)
-    goto Failure;
-
-  rc = curve_create(wuss, palette, &curve_task);
-  if (rc != result_OK)
-    goto Failure;
-
-  rc = sofa_create(wuss, palette, &sofa_task);
+  rc = launcher_create(wuss, g_launcher_entries, NELEMS(g_launcher_entries), font, palette, &launcher_task);
   if (rc != result_OK)
     goto Failure;
 
@@ -400,14 +397,15 @@ static result_t wuss_interactive_test(const char *resources)
     SDL_Delay(1000 / 60);
   }
 
-  ball_destroy(&ball_task);
-  text_destroy(&text_task);
-  blank_destroy(&blank_task);
-  palette_destroy(&palette_task);
-  image_destroy(&image_task);
-  checker_destroy(&checker_task);
-  curve_destroy(&curve_task);
-  sofa_destroy(&sofa_task);
+  if (g_launcher_entries[0].running) ball_destroy(&g_ball_task);
+  if (g_launcher_entries[1].running) text_destroy(&g_text_task);
+  if (g_launcher_entries[2].running) blank_destroy(&g_blank_task);
+  if (g_launcher_entries[3].running) palette_destroy(&g_palette_task);
+  if (g_launcher_entries[4].running) image_destroy(&g_image_task);
+  if (g_launcher_entries[5].running) checker_destroy(&g_checker_task);
+  if (g_launcher_entries[6].running) curve_destroy(&g_curve_task);
+  if (g_launcher_entries[7].running) sofa_destroy(&g_sofa_task);
+  launcher_destroy(&launcher_task);
 
   wuss_destroy(wuss);
   bmfont_destroy(font);
