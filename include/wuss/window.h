@@ -45,11 +45,16 @@ typedef struct wuss_event
   union
   {
     /** wuss_EVENT_REDRAW: called with scr->clip already set to the
-     * on-screen, clipped content area. */
+     * on-screen, clipped content area. bounds and scroll_x/scroll_y are
+     * exactly what wuss_window_get_content_bounds/wuss_window_get_scroll
+     * would return, passed through so tasks don't need to call back into
+     * Wuss on every redraw. */
     struct
     {
       screen_t    *scr;
       const box_t *content; /**< The window's (unclipped) content box, screen space, for context. */
+      const box_t *bounds;  /**< Same as content; the window's content-area box. */
+      int          scroll_x, scroll_y; /**< Current scroll offset, as per wuss_window_get_scroll. */
     }
     redraw;
 

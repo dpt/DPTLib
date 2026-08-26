@@ -54,17 +54,20 @@ void launcher_destroy(launcher_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-static result_t launcher_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
+static result_t launcher_redraw(const wuss_event_t *event, void *task_data)
 {
   launcher_task_t        *lc;
-  int                      i, font_width, font_height, sx, sy;
+  screen_t                *scr;
+  const box_t             *content;
+  int                      i, font_width, font_height, sy;
   point_t                  pos;
   const launcher_entry_t  *entry;
 
   lc = task_data;
 
-  wuss_window_get_scroll(window, &sx, &sy);
-  NOT_USED(sx);
+  scr     = event->data.redraw.scr;
+  content = event->data.redraw.content;
+  sy      = event->data.redraw.scroll_y;
 
   screen_draw_rect(scr, content->x0, content->y0,
                    content->x1 - content->x0, content->y1 - content->y0,
@@ -124,7 +127,7 @@ result_t launcher_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return launcher_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
+    return launcher_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action != wuss_MOUSE_DOWN)

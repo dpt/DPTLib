@@ -152,18 +152,22 @@ void sofa_destroy(sofa_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-static result_t sofa_redraw(wuss_window_t *window,
-                            screen_t      *scr,
-                            const box_t   *content,
-                            void          *task_data)
+static result_t sofa_redraw(const wuss_event_t *event, void *task_data)
 {
   sofa_task_t *sc;
-  box_t        bounds;
+  screen_t    *scr;
+  const box_t *content, *bounds;
   int          cx, cy, sx, sy;
   double       unit;
   size_t       part;
 
   sc = task_data;
+
+  scr     = event->data.redraw.scr;
+  content = event->data.redraw.content;
+  bounds  = event->data.redraw.bounds;
+  sx      = event->data.redraw.scroll_x;
+  sy      = event->data.redraw.scroll_y;
 
   screen_draw_rect(scr,
                    content->x0,
@@ -172,11 +176,9 @@ static result_t sofa_redraw(wuss_window_t *window,
                    content->y1 - content->y0,
                    sc->bg);
 
-  wuss_window_get_content_bounds(sc->window, &bounds);
-  wuss_window_get_scroll(window, &sx, &sy);
-  cx   = content->x0 - sx + (bounds.x1 - bounds.x0) / 2;
-  cy   = content->y0 - sy + (bounds.y1 - bounds.y0) / 2;
-  unit = MIN(bounds.x1 - bounds.x0, bounds.y1 - bounds.y0) * SOFA_UNIT_FRACTION * sc->zoom;
+  cx   = content->x0 - sx + (bounds->x1 - bounds->x0) / 2;
+  cy   = content->y0 - sy + (bounds->y1 - bounds->y0) / 2;
+  unit = MIN(bounds->x1 - bounds->x0, bounds->y1 - bounds->y0) * SOFA_UNIT_FRACTION * sc->zoom;
 
   if (sc->shape == sofa_SHAPE_SOFA)
   {
@@ -283,7 +285,7 @@ result_t sofa_handle(wuss_window_t     *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return sofa_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
+    return sofa_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action != wuss_MOUSE_DOWN)

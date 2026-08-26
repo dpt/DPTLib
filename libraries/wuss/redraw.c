@@ -32,9 +32,12 @@ static void redraw_window(wuss_t        *wuss,
       wuss_event_t event;
       result_t     crc;
 
-      event.kind             = wuss_EVENT_REDRAW;
-      event.data.redraw.scr     = wuss->scr;
-      event.data.redraw.content = &content;
+      event.kind                 = wuss_EVENT_REDRAW;
+      event.data.redraw.scr      = wuss->scr;
+      event.data.redraw.content  = &content;
+      event.data.redraw.bounds   = &content;
+      event.data.redraw.scroll_x = win->scroll_x;
+      event.data.redraw.scroll_y = win->scroll_y;
       crc = win->task.handle(win, &event, win->task.task_data);
       if (crc != result_OK)
         *rc = crc;
