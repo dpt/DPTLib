@@ -20,7 +20,7 @@ result_t wuss_window_create(wuss_t             *wuss,
                             wuss_window_t     **window)
 {
   wuss_window_t *win;
-  int             width, height, outline_px, titlebar_height;
+  int             width, height, outline_px, titlebar_height, carve_x, carve_y;
   int             scr_width, scr_height, dx, dy;
 
   assert(wuss    != NULL);
@@ -38,12 +38,13 @@ result_t wuss_window_create(wuss_t             *wuss,
 
   outline_px      = wuss__outline_px_for(flags);
   titlebar_height = wuss__titlebar_height_for(wuss, flags);
+  wuss__furniture_carve_for(flags, wuss__icon_size_for(wuss, flags), &carve_x, &carve_y);
 
   win->wuss       = wuss;
   win->visible.x0 = content->x0 - outline_px;
   win->visible.y0 = content->y0 - outline_px - titlebar_height;
-  win->visible.x1 = content->x1 + outline_px;
-  win->visible.y1 = content->y1 + outline_px;
+  win->visible.x1 = content->x1 + outline_px + carve_x;
+  win->visible.y1 = content->y1 + outline_px + carve_y;
 
   /* nudge back on-screen so the titlebar/close icon stay reachable; a
    * window bigger than the screen keeps its top-left (titlebar) edge

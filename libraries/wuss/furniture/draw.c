@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "base/utils.h"
 #include "geom/point.h"
 
 #include "../impl.h"
@@ -28,8 +29,9 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
     if (wuss->font != NULL && window->title[0] != '\0')
     {
-      point_t pos;
-      int     text_x0;
+      point_t        pos;
+      int            text_x0, text_x1, titlelen, split_point;
+      bmfont_width_t width;
 
       text_x0 = titlebar.x0 + 2;
       if (!(window->flags & wuss_WINDOW_NO_CLOSE))
@@ -39,12 +41,34 @@ void wuss__furniture_draw(wuss_t        *wuss,
         wuss__close_box(window, &close);
         text_x0 = close.x1 + 2;
       }
+      else if (!(window->flags & wuss_WINDOW_NO_BACK))
+      {
+        box_t back;
 
-      pos.x = text_x0;
-      pos.y = titlebar.y0 + 2;
-      bmfont_draw(wuss->font, wuss->scr, window->title, (int) strlen(window->title),
-                 wuss->palette[wuss->titlebar_fg], wuss->palette[wuss->titlebar_bg],
-                 &pos, NULL);
+        wuss__back_box(window, &back);
+        text_x0 = back.x1 + 2;
+      }
+
+      text_x1 = titlebar.x1 - 2;
+      if (!(window->flags & wuss_WINDOW_NO_TOGGLE_SIZE))
+      {
+        box_t toggle;
+
+        wuss__toggle_box(window, &toggle);
+        text_x1 = toggle.x0 - 2;
+      }
+
+      if (text_x1 > text_x0)
+      {
+        titlelen = (int) strlen(window->title);
+        bmfont_measure(wuss->font, window->title, titlelen, text_x1 - text_x0, &split_point, &width);
+
+        pos.x = text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
+        pos.y = titlebar.y0 + 2;
+        bmfont_draw(wuss->font, wuss->scr, window->title, titlelen,
+                   wuss->palette[wuss->titlebar_fg], wuss->palette[wuss->titlebar_bg],
+                   &pos, NULL);
+      }
     }
 
     if (!(window->flags & wuss_WINDOW_NO_CLOSE))

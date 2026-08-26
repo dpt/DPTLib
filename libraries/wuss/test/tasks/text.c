@@ -44,7 +44,8 @@ result_t text_create(wuss_t         *wuss,
   delegate = wuss_task_start(text_handle, task, palette_PICO8_BLUE);
   box      = (box_t) BOX_POS_SIZE(120, 100, 220, 180);
 
-  task->base_width = box.x1 - box.x0;
+  task->base_width  = box.x1 - box.x0;
+  task->base_height = box.y1 - box.y0;
 
   rc = wuss_window_create(wuss,
                           &box,
@@ -134,7 +135,6 @@ static result_t text_mouse(void *task_data)
 static result_t text_idle(void *task_data)
 {
   text_task_t *tcx;
-  box_t        visible;
   int          height, width;
   double       angle;
   result_t     rc;
@@ -144,8 +144,7 @@ static result_t text_idle(void *task_data)
   if (!tcx->resizing)
     return result_OK;
 
-  wuss_window_get_content_bounds(tcx->window, &visible);
-  height = visible.y1 - visible.y0;
+  height = tcx->base_height;
 
   tcx->frame_count++;
   angle = tcx->frame_count * (2.0 * M_PI / TEXT_RESIZE_PERIOD_FRAMES);
