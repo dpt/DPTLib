@@ -70,20 +70,23 @@ void checker_destroy(checker_task_t *task)
   wuss_window_destroy(task->window2);
 }
 
-static result_t checker_redraw(wuss_window_t *window,
-                               screen_t      *scr,
-                               const box_t   *content,
-                               void          *task_data)
+static result_t checker_redraw(wuss_window_t      *window,
+                               const wuss_event_t *event,
+                               void               *task_data)
 {
   checker_task_t   *cc;
-  box_t             bounds;
+  screen_t         *scr;
+  const box_t      *content, *bounds;
   checker_pattern_t pattern;
   int               x, y, lx, ly, sx, sy, band_px, band;
 
   cc = task_data;
 
-  wuss_window_get_content_bounds(window, &bounds);
-  wuss_window_get_scroll(window, &sx, &sy);
+  scr     = event->data.redraw.scr;
+  content = event->data.redraw.content;
+  bounds  = event->data.redraw.bounds;
+  sx      = event->data.redraw.scroll_x;
+  sy      = event->data.redraw.scroll_y;
 
   pattern = (window == cc->window2) ? cc->pattern2 : cc->pattern;
   band_px = (window == cc->window2) ? cc->band2    : cc->band;
@@ -92,8 +95,8 @@ static result_t checker_redraw(wuss_window_t *window,
   {
     for (x = content->x0; x < content->x1; x++)
     {
-      lx = x - bounds.x0 + sx;
-      ly = y - bounds.y0 + sy;
+      lx = x - bounds->x0 + sx;
+      ly = y - bounds->y0 + sy;
 
       switch (pattern)
       {
@@ -152,7 +155,7 @@ result_t checker_handle(wuss_window_t     *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return checker_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
+    return checker_redraw(window, event, task_data);
 
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action != wuss_MOUSE_DOWN)

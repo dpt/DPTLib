@@ -41,12 +41,11 @@ void palette_destroy(palette_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-static result_t palette_redraw(wuss_window_t *window,
-                               screen_t      *scr,
-                               const box_t   *content,
-                               void          *task_data)
+static result_t palette_redraw(const wuss_event_t *event, void *task_data)
 {
   palette_task_t *pc;
+  screen_t       *scr;
+  const box_t    *content;
   int               cols, rows;
   int               cell_w, cell_h;
   int               i, sx, sy;
@@ -56,7 +55,10 @@ static result_t palette_redraw(wuss_window_t *window,
   if (pc->npalette <= 0)
     return result_OK;
 
-  wuss_window_get_scroll(window, &sx, &sy);
+  scr     = event->data.redraw.scr;
+  content = event->data.redraw.content;
+  sx      = event->data.redraw.scroll_x;
+  sy      = event->data.redraw.scroll_y;
 
   cols = 1;
   while (cols * cols < pc->npalette)
@@ -95,7 +97,7 @@ result_t palette_handle(wuss_window_t     *window,
   if (event->kind != wuss_EVENT_REDRAW)
     return result_OK;
 
-  return palette_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
+  return palette_redraw(event, task_data);
 }
 
 #endif /* USE_SDL */

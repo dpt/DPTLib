@@ -52,17 +52,19 @@ void image_destroy(image_task_t *task)
   free(task->bitmap.base);
 }
 
-static result_t image_redraw(wuss_window_t *window,
-                             screen_t      *scr,
-                             const box_t   *content,
-                             void          *task_data)
+static result_t image_redraw(const wuss_event_t *event, void *task_data)
 {
   image_task_t *ic;
+  screen_t     *scr;
+  const box_t  *content;
   int           sx, sy;
 
   ic = task_data;
 
-  wuss_window_get_scroll(window, &sx, &sy);
+  scr     = event->data.redraw.scr;
+  content = event->data.redraw.content;
+  sx      = event->data.redraw.scroll_x;
+  sy      = event->data.redraw.scroll_y;
 
   screen_draw_bitmap(scr, content->x0 - sx, content->y0 - sy, &ic->bitmap);
 
@@ -80,7 +82,7 @@ result_t image_handle(wuss_window_t     *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return image_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
+    return image_redraw(event, task_data);
 
   case wuss_EVENT_CLOSE:
     wuss_window_destroy(window);

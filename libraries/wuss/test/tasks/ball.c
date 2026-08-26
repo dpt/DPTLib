@@ -45,14 +45,19 @@ void ball_destroy(ball_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-static result_t ball_redraw(wuss_window_t *window, const box_t *content, void *task_data, screen_t *scr)
+static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 {
   ball_task_t *bc;
+  screen_t    *scr;
+  const box_t *content;
   int          i, sx, sy;
 
   bc = task_data;
 
-  wuss_window_get_scroll(window, &sx, &sy);
+  scr     = event->data.redraw.scr;
+  content = event->data.redraw.content;
+  sx      = event->data.redraw.scroll_x;
+  sy      = event->data.redraw.scroll_y;
 
   screen_draw_rect(scr, content->x0, content->y0,
                    content->x1 - content->x0,
@@ -184,7 +189,7 @@ result_t ball_handle(wuss_window_t     *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return ball_redraw(window, event->data.redraw.content, task_data, event->data.redraw.scr);
+    return ball_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
     return ball_mouse(window, event->data.mouse.action, event->data.mouse.x,

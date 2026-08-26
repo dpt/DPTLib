@@ -54,25 +54,26 @@ void gradient_destroy(gradient_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-static result_t gradient_redraw(wuss_window_t *window,
-                                screen_t      *scr,
-                                const box_t   *content,
-                                void          *task_data)
+static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
 {
-  box_t bounds;
-  int   sx, sy, x, y, lx, ly;
+  screen_t    *scr;
+  const box_t *content, *bounds;
+  int          sx, sy, x, y, lx, ly;
 
   NOT_USED(task_data);
 
-  wuss_window_get_content_bounds(window, &bounds);
-  wuss_window_get_scroll(window, &sx, &sy);
+  scr     = event->data.redraw.scr;
+  content = event->data.redraw.content;
+  bounds  = event->data.redraw.bounds;
+  sx      = event->data.redraw.scroll_x;
+  sy      = event->data.redraw.scroll_y;
 
   for (y = content->y0; y < content->y1; y++)
   {
     for (x = content->x0; x < content->x1; x++)
     {
-      lx = x - bounds.x0 + sx;
-      ly = y - bounds.y0 + sy;
+      lx = x - bounds->x0 + sx;
+      ly = y - bounds->y0 + sy;
 
       screen_draw_pixel(scr, x, y,
                         colour_rgb(dither(lx * 255 / GRADIENT_DOC_WIDTH, lx, ly),
@@ -95,7 +96,7 @@ result_t gradient_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return gradient_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
+    return gradient_redraw(event, task_data);
 
   case wuss_EVENT_CLOSE:
     wuss_window_destroy(window);

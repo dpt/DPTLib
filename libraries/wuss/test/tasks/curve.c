@@ -65,16 +65,18 @@ static int blob_hit(const point_t *p, int x, int y)
          y >= p->y - half && y < p->y + half;
 }
 
-static result_t curve_redraw(wuss_window_t *window,
-                             screen_t      *scr,
-                             const box_t   *content,
-                             curve_task_t  *task)
+static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
 {
-  point_t prev, cur;
-  int     i, half, sx, sy;
-  fix16_t t;
+  screen_t    *scr;
+  const box_t *content;
+  point_t      prev, cur;
+  int          i, half, sx, sy;
+  fix16_t      t;
 
-  wuss_window_get_scroll(window, &sx, &sy);
+  scr     = event->data.redraw.scr;
+  content = event->data.redraw.content;
+  sx      = event->data.redraw.scroll_x;
+  sy      = event->data.redraw.scroll_y;
 
   screen_draw_rect(scr, content->x0, content->y0,
                    content->x1 - content->x0, content->y1 - content->y0,
@@ -170,7 +172,7 @@ result_t curve_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return curve_redraw(window, event->data.redraw.scr, event->data.redraw.content, task);
+    return curve_redraw(event, task);
 
   case wuss_EVENT_MOUSE:
     return curve_mouse(task, event->data.mouse.action,
