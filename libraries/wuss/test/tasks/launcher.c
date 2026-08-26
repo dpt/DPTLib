@@ -39,7 +39,7 @@ result_t launcher_create(wuss_t           *wuss,
   delegate = wuss_task_start(launcher_handle, task, wuss_NO_BACKGROUND); /* launcher_redraw paints its own background */
   box      = (box_t) BOX_POS_SIZE(10, 10, LAUNCHER_WIDTH, LAUNCHER_PAD * 2 + nentries * LAUNCHER_ROW_HEIGHT);
 
-  return wuss_window_create(wuss, &box, "Launcher", wuss_WINDOW_NONE, &delegate, &task->window);
+  return wuss_window_create(wuss, &box, "Launcher", wuss_WINDOW_NO_CLOSE, &delegate, &task->window);
 }
 
 void launcher_destroy(launcher_task_t *task)
@@ -82,6 +82,7 @@ static result_t launcher_mouse(int y, void *task_data)
   launcher_task_t  *lc;
   int               i;
   launcher_entry_t *entry;
+  result_t          rc;
 
   lc = task_data;
 
@@ -93,9 +94,11 @@ static result_t launcher_mouse(int y, void *task_data)
   if (entry->running)
     return result_OK;
 
-  entry->running = true;
+  rc = entry->spawn();
+  if (rc == result_OK)
+    entry->running = true;
 
-  return entry->spawn();
+  return rc;
 }
 
 result_t launcher_handle(wuss_window_t      *window,
