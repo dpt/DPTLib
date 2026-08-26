@@ -46,7 +46,14 @@ result_t text_create(wuss_t         *wuss,
 
   task->base_width = box.x1 - box.x0;
 
-  rc = wuss_window_create(wuss, &box, "Lorem Ipsum", wuss_WINDOW_NONE, &delegate, &task->window);
+  rc = wuss_window_create(wuss,
+                          &box,
+                          "Lorem Ipsum",
+                          wuss_WINDOW_NONE,
+                          &delegate,
+                          box.x1 - box.x0,
+                          box.y1 - box.y0,
+                          &task->window);
 
   return rc;
 }

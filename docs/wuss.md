@@ -31,8 +31,11 @@ Create a window with a content bounding box, optional title, appearance flags an
 ```C
 result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title,
                             wuss_window_flags_t flags, const wuss_task_t *task,
+                            int doc_width, int doc_height,
                             wuss_window_t **window);
 ```
+
+`doc_width`/`doc_height` are the virtual document extent behind the horizontal/vertical scrollbars' thumb proportion; pass `content`'s own width/height for a window with nothing to scroll. Set once at creation, immutable thereafter.
 
 Furniture is additional to `content`, not carved out of it: the window's content area always ends up exactly the box requested, and its on-screen footprint (`wuss_window_get_visible_bounds`) is `content` expanded outward by whatever furniture flags request — a titlebar above, and/or a 1px outline around all four sides.
 
@@ -52,11 +55,21 @@ wuss_task_t;
 
 `flags` combines, by bitwise OR:
 
-- `wuss_WINDOW_NONE` — default furniture: titlebar and outline.
+- `wuss_WINDOW_NONE` — default: every furniture region drawn.
 - `wuss_WINDOW_NO_TITLEBAR` — no titlebar, and no drag handle.
 - `wuss_WINDOW_NO_OUTLINE` — no 1px border around the window.
+- `wuss_WINDOW_NO_CLOSE` — no close icon in the titlebar.
+- `wuss_WINDOW_NO_BACK` — no send-to-back icon in the titlebar.
+- `wuss_WINDOW_NO_TOGGLE_SIZE` — no toggle-size icon in the titlebar.
+- `wuss_WINDOW_NO_VSCROLL` — no vertical scrollbar on the right edge.
+- `wuss_WINDOW_NO_HSCROLL` — no horizontal scrollbar on the bottom edge.
+- `wuss_WINDOW_NO_RESIZE` — no resize icon in the bottom-right corner.
 
-Other window operations: `wuss_window_destroy`, `wuss_window_move`, `wuss_window_resize` (preserves content top-left), `wuss_window_bring_to_front`, `wuss_window_send_to_back`, `wuss_window_get_visible_bounds` (full on-screen footprint), `wuss_window_get_content_bounds`, `wuss_window_set_background`.
+`wuss_WINDOW_NO_CLOSE`/`NO_BACK`/`NO_TOGGLE_SIZE` are ignored if `flags` includes `wuss_WINDOW_NO_TITLEBAR`; `NO_VSCROLL`/`NO_HSCROLL`/`NO_RESIZE` apply regardless.
+
+All furniture actions (back, toggle-size, resize-drag, scrollbar arrow/thumb) are handled entirely within Wuss via `wuss_mouse_click`/`wuss_mouse_move` — no new client events.
+
+Other window operations: `wuss_window_destroy`, `wuss_window_move`, `wuss_window_resize` (preserves content top-left), `wuss_window_restack`, `wuss_window_get_visible_bounds` (full on-screen footprint), `wuss_window_get_content_bounds`, `wuss_window_set_background`.
 
 ## Task callbacks
 
@@ -113,5 +126,4 @@ Each window carries a scroll offset, `(0, 0)` by default: the point in the task'
 ## Limitations
 
 - No menus: `wuss_BUTTON_MENU` is defined and routed like any other button, but Wuss has no built-in menu widget.
-- No window resizing gesture (drag-to-resize) built in; `wuss_window_resize` exists but callers must drive it themselves.
 - No overlapping-window damage tracking finer than each window's own bounding box.

@@ -18,7 +18,8 @@ result_t wuss_mouse_click(wuss_t              *wuss,
     win = wuss->dragging;
     if (hit != NULL)
       *hit = win;
-    wuss->dragging = NULL;
+    wuss->dragging  = NULL;
+    wuss->drag_kind = wuss_FURNITURE_DRAG_NONE;
 
     /* an Adjust click on a titlebar that never moved is a click, not a
      * drag: send the window to the back instead */
@@ -48,6 +49,42 @@ result_t wuss_mouse_click(wuss_t              *wuss,
     return win->task.handle(win, &event, win->task.task_data);
   }
 
+  if (region == wuss_FURNITURE_BACK        ||
+      region == wuss_FURNITURE_TOGGLE_SIZE ||
+      region == wuss_FURNITURE_VSCROLL_UP  ||
+      region == wuss_FURNITURE_VSCROLL_DOWN ||
+      region == wuss_FURNITURE_HSCROLL_LEFT ||
+      region == wuss_FURNITURE_HSCROLL_RIGHT)
+  {
+    if (action == wuss_MOUSE_DOWN && button == wuss_BUTTON_SELECT)
+    {
+      switch (region)
+      {
+      case wuss_FURNITURE_BACK:
+        wuss_window_restack(win, wuss_ZORDER_BACK);
+        break;
+      case wuss_FURNITURE_TOGGLE_SIZE:
+        wuss__furniture_toggle_size(win);
+        break;
+      case wuss_FURNITURE_VSCROLL_UP:
+        wuss__furniture_scroll_step(win, 0, -WUSS_SCROLL_STEP);
+        break;
+      case wuss_FURNITURE_VSCROLL_DOWN:
+        wuss__furniture_scroll_step(win, 0, WUSS_SCROLL_STEP);
+        break;
+      case wuss_FURNITURE_HSCROLL_LEFT:
+        wuss__furniture_scroll_step(win, -WUSS_SCROLL_STEP, 0);
+        break;
+      case wuss_FURNITURE_HSCROLL_RIGHT:
+        wuss__furniture_scroll_step(win, WUSS_SCROLL_STEP, 0);
+        break;
+      default:
+        break;
+      }
+    }
+    return result_OK;
+  }
+
   if (region == wuss_FURNITURE_CLOSE || region == wuss_FURNITURE_TITLE)
   {
     if (action == wuss_MOUSE_DOWN)
@@ -59,9 +96,33 @@ result_t wuss_mouse_click(wuss_t              *wuss,
 
       wuss__content_box(win, &content);
       wuss->dragging   = win;
+      wuss->drag_kind  = wuss_FURNITURE_DRAG_MOVE;
       wuss->drag_dx    = x - content.x0;
       wuss->drag_dy    = y - content.y0;
       wuss->drag_moved = 0;
+    }
+    return result_OK;
+  }
+
+  if (region == wuss_FURNITURE_RESIZE ||
+      region == wuss_FURNITURE_VSCROLL_BAR ||
+      region == wuss_FURNITURE_HSCROLL_BAR)
+  {
+    if (action == wuss_MOUSE_DOWN)
+    {
+      int sx, sy;
+
+      if (button == wuss_BUTTON_SELECT)
+        wuss_window_restack(win, wuss_ZORDER_FRONT);
+
+      wuss_window_get_scroll(win, &sx, &sy);
+
+      wuss->dragging          = win;
+      wuss->drag_kind         = wuss__furniture_drag_kind(region);
+      wuss->drag_dx           = x;
+      wuss->drag_dy           = y;
+      wuss->drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_BAR) ? sy : sx;
+      wuss->drag_moved        = 0;
     }
     return result_OK;
   }

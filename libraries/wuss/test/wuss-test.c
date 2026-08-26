@@ -555,7 +555,14 @@ result_t wuss_test(const char *resources)
   box_a.y0 = 0;
   box_a.x1 = 100;
   box_a.y1 = 0; /* zero-height content is invalid regardless of furniture */
-  rc = wuss_window_create(wuss, &box_a, "toosmall", wuss_WINDOW_NONE, NULL, &win_a);
+  rc = wuss_window_create(wuss,
+                          &box_a,
+                          "toosmall",
+                          wuss_WINDOW_NONE,
+                          NULL,
+                          box_a.x1 - box_a.x0,
+                          box_a.y1 - box_a.y0,
+                          &win_a);
   if (rc != result_WUSS_TOO_SMALL)
     goto Failure;
 
@@ -571,7 +578,16 @@ result_t wuss_test(const char *resources)
   box_a.y0 = 0;
   box_a.x1 = 100;
   box_a.y1 = 100;
-  rc = wuss_window_create(wuss, &box_a, "A", wuss_WINDOW_NONE, &delegate_a, &win_a);
+  rc = wuss_window_create(wuss,
+                          &box_a,
+                          "A",
+                          wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
+                          wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                          wuss_WINDOW_NO_RESIZE,
+                          &delegate_a,
+                          box_a.x1 - box_a.x0,
+                          box_a.y1 - box_a.y0,
+                          &win_a);
   if (rc != result_OK)
     goto Failure;
 
@@ -585,7 +601,16 @@ result_t wuss_test(const char *resources)
   box_b.y0 = 50;
   box_b.x1 = 150;
   box_b.y1 = 150;
-  rc = wuss_window_create(wuss, &box_b, "B", wuss_WINDOW_NONE, &delegate_b, &win_b);
+  rc = wuss_window_create(wuss,
+                          &box_b,
+                          "B",
+                          wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
+                          wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                          wuss_WINDOW_NO_RESIZE,
+                          &delegate_b,
+                          box_b.x1 - box_b.x0,
+                          box_b.y1 - box_b.y0,
+                          &win_b);
   if (rc != result_OK)
     goto Failure;
 
@@ -853,7 +878,16 @@ result_t wuss_test(const char *resources)
 
   box_d.x0 = 0;  box_d.y0 = 160;
   box_d.x1 = 30; box_d.y1 = 175; /* shorter than the 20px titlebar_height, still valid: no titlebar to fit */
-  rc = wuss_window_create(wuss, &box_d, "ignored", wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &delegate_d, &win_d);
+  rc = wuss_window_create(wuss,
+                          &box_d,
+                          "ignored",
+                          wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                          wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                          wuss_WINDOW_NO_RESIZE,
+                          &delegate_d,
+                          box_d.x1 - box_d.x0,
+                          box_d.y1 - box_d.y0,
+                          &win_d);
   if (rc != result_OK)
     goto Failure;
 
@@ -892,7 +926,16 @@ result_t wuss_test(const char *resources)
 
     box_e.x0 = 100; box_e.y0 = 0;
     box_e.x1 = 150; box_e.y1 = 50;
-    rc = wuss_window_create(wuss, &box_e, NULL, wuss_WINDOW_NO_TITLEBAR, &delegate_e, &win_e);
+    rc = wuss_window_create(wuss,
+                            &box_e,
+                            NULL,
+                            wuss_WINDOW_NO_TITLEBAR |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_e,
+                            box_e.x1 - box_e.x0,
+                            box_e.y1 - box_e.y0,
+                            &win_e);
     if (rc != result_OK)
       goto Failure;
 
@@ -904,7 +947,16 @@ result_t wuss_test(const char *resources)
 
     box_f.x0 = 130; box_f.y0 = 20;
     box_f.x1 = 180; box_f.y1 = 70;
-    rc = wuss_window_create(wuss, &box_f, NULL, wuss_WINDOW_NO_TITLEBAR, &delegate_f, &win_f);
+    rc = wuss_window_create(wuss,
+                            &box_f,
+                            NULL,
+                            wuss_WINDOW_NO_TITLEBAR |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_f,
+                            box_f.x1 - box_f.x0,
+                            box_f.y1 - box_f.y0,
+                            &win_f);
     if (rc != result_OK)
       goto Failure;
 
@@ -963,7 +1015,16 @@ result_t wuss_test(const char *resources)
 
     box_h.x0 = 10; box_h.y0 = 10;
     box_h.x1 = 30; box_h.y1 = 30;
-    rc = wuss_window_create(wuss, &box_h, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &delegate_h, &win_h);
+    rc = wuss_window_create(wuss,
+                            &box_h,
+                            NULL,
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_h,
+                            box_h.x1 - box_h.x0,
+                            box_h.y1 - box_h.y0,
+                            &win_h);
     if (rc != result_OK)
       goto Failure;
 
@@ -975,7 +1036,16 @@ result_t wuss_test(const char *resources)
 
     box_g.x0 = 0;   box_g.y0 = 0;
     box_g.x1 = 150; box_g.y1 = 150; /* G is created after H, so G is topmost and fully covers H */
-    rc = wuss_window_create(wuss, &box_g, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &delegate_g, &win_g);
+    rc = wuss_window_create(wuss,
+                            &box_g,
+                            NULL,
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_g,
+                            box_g.x1 - box_g.x0,
+                            box_g.y1 - box_g.y0,
+                            &win_g);
     if (rc != result_OK)
       goto Failure;
 
@@ -1028,7 +1098,16 @@ result_t wuss_test(const char *resources)
 
     box_i.x0 = 0; box_i.y0 = 0;
     box_i.x1 = 100; box_i.y1 = 100;
-    rc = wuss_window_create(wuss, &box_i, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &delegate_i, &win_i);
+    rc = wuss_window_create(wuss,
+                            &box_i,
+                            NULL,
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_i,
+                            box_i.x1 - box_i.x0,
+                            box_i.y1 - box_i.y0,
+                            &win_i);
     if (rc != result_OK)
       goto Failure;
 
@@ -1040,7 +1119,16 @@ result_t wuss_test(const char *resources)
 
     box_j.x0 = 50; box_j.y0 = 0;
     box_j.x1 = 150; box_j.y1 = 100; /* J created after I, so J is topmost, covering I's right half */
-    rc = wuss_window_create(wuss, &box_j, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &delegate_j, &win_j);
+    rc = wuss_window_create(wuss,
+                            &box_j,
+                            NULL,
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_j,
+                            box_j.x1 - box_j.x0,
+                            box_j.y1 - box_j.y0,
+                            &win_j);
     if (rc != result_OK)
       goto Failure;
 
@@ -1082,7 +1170,16 @@ result_t wuss_test(const char *resources)
 
     box_m.x0 = 10; box_m.y0 = 10;
     box_m.x1 = 60; box_m.y1 = 60; /* 50x50, fully on-screen, topmost (created last) */
-    rc = wuss_window_create(wuss, &box_m, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &delegate_m, &win_m);
+    rc = wuss_window_create(wuss,
+                            &box_m,
+                            NULL,
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_m,
+                            box_m.x1 - box_m.x0,
+                            box_m.y1 - box_m.y0,
+                            &win_m);
     if (rc != result_OK)
       goto Failure;
 
@@ -1150,7 +1247,16 @@ result_t wuss_test(const char *resources)
   box_c.y0 = 0;
   box_c.x1 = 40;
   box_c.y1 = 40;
-  rc = wuss_window_create(wuss, &box_c, "C", wuss_WINDOW_NONE, &delegate_c, &win_c);
+  rc = wuss_window_create(wuss,
+                          &box_c,
+                          "C",
+                          wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
+                          wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                          wuss_WINDOW_NO_RESIZE,
+                          &delegate_c,
+                          box_c.x1 - box_c.x0,
+                          box_c.y1 - box_c.y0,
+                          &win_c);
   if (rc != result_OK)
     goto Failure;
 

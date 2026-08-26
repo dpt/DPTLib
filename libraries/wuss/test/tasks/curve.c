@@ -41,7 +41,14 @@ result_t curve_create(wuss_t         *wuss,
   delegate = wuss_task_start(curve_handle, task, wuss_NO_BACKGROUND); /* curve_redraw paints its own background */
   box      = (box_t) BOX_POS_SIZE(20, 260, 220, 160);
 
-  return wuss_window_create(wuss, &box, "Curve", wuss_WINDOW_NONE, &delegate, &task->window);
+  return wuss_window_create(wuss,
+                            &box,
+                            "Curve",
+                            wuss_WINDOW_NONE,
+                            &delegate,
+                            box.x1 - box.x0,
+                            box.y1 - box.y0,
+                            &task->window);
 }
 
 void curve_destroy(curve_task_t *task)

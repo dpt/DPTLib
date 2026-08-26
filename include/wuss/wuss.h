@@ -63,10 +63,15 @@ typedef int wuss_colour_t;
 /** Per-window appearance flags, combinable with bitwise OR. */
 typedef enum wuss_window_flags
 {
-  wuss_WINDOW_NONE        = 0,      /**< Default: titlebar, close icon and outline drawn. */
-  wuss_WINDOW_NO_TITLEBAR = 1 << 0, /**< No titlebar; content fills the full visible area, and no drag handle exists. */
-  wuss_WINDOW_NO_OUTLINE  = 1 << 1, /**< No 1px border drawn around the visible area. */
-  wuss_WINDOW_NO_CLOSE    = 1 << 2  /**< No close icon in the titlebar. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR. */
+  wuss_WINDOW_NONE           = 0,      /**< Default: every furniture region drawn. */
+  wuss_WINDOW_NO_TITLEBAR    = 1 << 0, /**< No titlebar; content fills the full visible area, and no drag handle exists. */
+  wuss_WINDOW_NO_OUTLINE     = 1 << 1, /**< No 1px border drawn around the visible area. */
+  wuss_WINDOW_NO_CLOSE       = 1 << 2, /**< No close icon in the titlebar. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR. */
+  wuss_WINDOW_NO_BACK        = 1 << 3, /**< No send-to-back icon in the titlebar. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR. */
+  wuss_WINDOW_NO_TOGGLE_SIZE = 1 << 4, /**< No toggle-size icon in the titlebar. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR. */
+  wuss_WINDOW_NO_VSCROLL     = 1 << 5, /**< No vertical scrollbar on the right edge. */
+  wuss_WINDOW_NO_HSCROLL     = 1 << 6, /**< No horizontal scrollbar on the bottom edge. */
+  wuss_WINDOW_NO_RESIZE      = 1 << 7  /**< No resize icon in the bottom-right corner. */
 }
 wuss_window_flags_t;
 
