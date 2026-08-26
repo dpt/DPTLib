@@ -16,7 +16,7 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
   }
   else
   {
-    int     outline_px, titlebar_height, width, height;
+    int     outline_px, titlebar_height, available_width, available_height, width, height;
     point_t carve;
 
     outline_px      = wuss__outline_px(window);
@@ -29,8 +29,21 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
      * account for scrollbar/resize-icon furniture (carve), which sits
      * outside the content area same as create.c/resize.c do, or the window
      * ends up carve.x/carve.y short of the doc size it's meant to reach. */
-    width  = MIN(window->doc_width,  window->wuss->scr->width  - window->visible.x0 - 2 * outline_px - carve.x);
-    height = MIN(window->doc_height, window->wuss->scr->height - window->visible.y0 - 2 * outline_px - titlebar_height - carve.y);
+    available_width  = window->wuss->scr->width  - window->visible.x0 - 2 * outline_px - carve.x;
+    available_height = window->wuss->scr->height - window->visible.y0 - 2 * outline_px - titlebar_height - carve.y;
+
+    /* a window dragged far enough off-screen leaves no room at all to the
+     * screen edge, so the above can go negative -- floor it like
+     * drag-resize.c does, or new_visible ends up with x1/y1 less than
+     * x0/y0 (an inverted box), which is never hit-testable again
+     * (box_contains_point can't match x1<x0), leaving the window stuck.
+     * Floor the available space, not the final width/height below, so a
+     * doc smaller than WUSS_MIN_CONTENT still stops at its own size. */
+    available_width  = MAX(available_width,  WUSS_MIN_CONTENT);
+    available_height = MAX(available_height, WUSS_MIN_CONTENT);
+
+    width  = MIN(window->doc_width,  available_width);
+    height = MIN(window->doc_height, available_height);
 
     window->pre_toggle = window->visible;
 
