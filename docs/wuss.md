@@ -69,7 +69,7 @@ wuss_task_t;
 
 All furniture actions (back, toggle-size, resize-drag, scrollbar arrow/thumb) are handled entirely within Wuss via `wuss_mouse_click`/`wuss_mouse_move` — no new client events.
 
-Other window operations: `wuss_window_destroy`, `wuss_window_move`, `wuss_window_resize` (preserves content top-left), `wuss_window_restack`, `wuss_window_get_visible_bounds` (full on-screen footprint), `wuss_window_get_content_bounds`, `wuss_window_set_background`.
+Other window operations: `wuss_window_close`, `wuss_window_move`, `wuss_window_resize` (preserves content top-left), `wuss_window_restack`, `wuss_window_get_visible_bounds` (full on-screen footprint), `wuss_window_get_content_bounds`, `wuss_window_set_background`.
 
 ## Task callbacks
 

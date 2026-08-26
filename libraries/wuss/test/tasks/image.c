@@ -48,7 +48,7 @@ result_t image_create(wuss_t         *wuss,
 
 void image_destroy(image_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  wuss_window_close(task->window);
   free(task->bitmap.base);
 }
 
@@ -85,7 +85,7 @@ result_t image_handle(wuss_window_t     *window,
     return image_redraw(event, task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_destroy(window);
+    wuss_window_close(window);
     ic->window = NULL;
     return result_OK;
 

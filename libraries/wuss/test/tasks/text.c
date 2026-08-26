@@ -61,7 +61,7 @@ result_t text_create(wuss_t         *wuss,
 
 void text_destroy(text_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  wuss_window_close(task->window);
 }
 
 static result_t text_redraw(const wuss_event_t *event, void *task_data)
@@ -181,7 +181,7 @@ result_t text_handle(wuss_window_t     *window,
     return text_mouse(task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_destroy(window);
+    wuss_window_close(window);
     tcx->window = NULL;
     return result_OK;
 

@@ -57,7 +57,7 @@ result_t checker_create(wuss_t         *wuss,
                           &task->window2);
   if (rc != result_OK)
   {
-    wuss_window_destroy(task->window);
+    wuss_window_close(task->window);
     return rc;
   }
 
@@ -66,8 +66,8 @@ result_t checker_create(wuss_t         *wuss,
 
 void checker_destroy(checker_task_t *task)
 {
-  wuss_window_destroy(task->window);
-  wuss_window_destroy(task->window2);
+  wuss_window_close(task->window);
+  wuss_window_close(task->window2);
 }
 
 static result_t checker_redraw(wuss_window_t      *window,
@@ -166,7 +166,7 @@ result_t checker_handle(wuss_window_t     *window,
     return checker_scroll(window, event->data.scroll.delta, task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_destroy(window);
+    wuss_window_close(window);
     if (window == cc->window2)
       cc->window2 = NULL;
     else

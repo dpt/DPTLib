@@ -51,7 +51,7 @@ result_t launcher_create(wuss_t           *wuss,
 
 void launcher_destroy(launcher_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  wuss_window_close(task->window);
 }
 
 static result_t launcher_redraw(const wuss_event_t *event, void *task_data)

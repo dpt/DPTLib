@@ -42,7 +42,7 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
 
 void ball_destroy(ball_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  wuss_window_close(task->window);
 }
 
 static result_t ball_redraw(const wuss_event_t *event, void *task_data)
@@ -200,7 +200,7 @@ result_t ball_handle(wuss_window_t     *window,
     return ball_idle(task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_destroy(window);
+    wuss_window_close(window);
     bc->window = NULL;
     return result_OK;
 

@@ -38,7 +38,7 @@ result_t palette_create(wuss_t         *wuss,
 
 void palette_destroy(palette_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  wuss_window_close(task->window);
 }
 
 static result_t palette_redraw(const wuss_event_t *event, void *task_data)
@@ -89,7 +89,7 @@ result_t palette_handle(wuss_window_t     *window,
 {
   if (event->kind == wuss_EVENT_CLOSE)
   {
-    wuss_window_destroy(window);
+    wuss_window_close(window);
     ((palette_task_t *) task_data)->window = NULL;
     return result_OK;
   }

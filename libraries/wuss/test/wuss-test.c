@@ -451,6 +451,7 @@ typedef struct test_task
   wuss_button_t       last_button;
   int                 close_count;
   int                 stop_count;
+  int                 open_count;
 }
 test_task_t;
 
@@ -484,6 +485,10 @@ static result_t test_handle(wuss_window_t     *window,
 
   case wuss_EVENT_QUIT:
     tc->stop_count++;
+    break;
+
+  case wuss_EVENT_OPEN:
+    tc->open_count++;
     break;
 
   default:
@@ -575,6 +580,7 @@ result_t wuss_test(const char *resources)
 
   tc_a.redraw_count = 0;
   tc_a.mouse_count  = 0;
+  tc_a.open_count   = 0;
   delegate_a.handle      = test_handle;
   delegate_a.task_data = &tc_a;
   delegate_a.bg          = wuss_NO_BACKGROUND;
@@ -851,15 +857,22 @@ result_t wuss_test(const char *resources)
   if (visible.x0 != 0 || visible.y0 != 25)
     goto Failure;
 
+  if (tc_a.open_count != 1)
+    goto Failure; /* wuss_EVENT_OPEN sent once for the drag-move above */
+
   printf("test: window_resize valid and too-small cases\n");
 
   rc = wuss_window_resize(win_a, 50, 0); /* zero-height content is invalid */
   if (rc != result_WUSS_TOO_SMALL)
     goto Failure;
+  if (tc_a.open_count != 1)
+    goto Failure; /* rejected resize: no wuss_EVENT_OPEN */
 
   rc = wuss_window_resize(win_a, 50, 50);
   if (rc != result_OK)
     goto Failure;
+  if (tc_a.open_count != 2)
+    goto Failure; /* wuss_EVENT_OPEN sent for the successful resize */
 
   /* content ends up exactly the requested size... */
   wuss_window_get_content_bounds(win_a, &content);
@@ -989,8 +1002,8 @@ result_t wuss_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
 
-    wuss_window_destroy(win_e);
-    wuss_window_destroy(win_f);
+    wuss_window_close(win_e);
+    wuss_window_close(win_f);
   }
 
   printf("test: wuss_window_set_background\n");
@@ -1003,7 +1016,7 @@ result_t wuss_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
-  wuss_window_destroy(win_d);
+  wuss_window_close(win_d);
 
   printf("test: moving/resizing a window entirely behind an occluder has no visible effect\n");
 
@@ -1085,8 +1098,8 @@ result_t wuss_test(const char *resources)
     if (tc_h.redraw_count != before_h || tc_g.redraw_count != before_g)
       goto Failure;
 
-    wuss_window_destroy(win_h);
-    wuss_window_destroy(win_g);
+    wuss_window_close(win_h);
+    wuss_window_close(win_g);
   }
 
   printf("test: bring-to-front only invalidates the newly-uncovered part\n");
@@ -1156,8 +1169,8 @@ result_t wuss_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
 
-    wuss_window_destroy(win_i);
-    wuss_window_destroy(win_j);
+    wuss_window_close(win_i);
+    wuss_window_close(win_j);
   }
 
   printf("test: dragging off-screen and back on repaints the reappearing edge\n");
@@ -1213,7 +1226,7 @@ result_t wuss_test(const char *resources)
     if (tc_m.redraw_count != before_m + 1)
       goto Failure; /* M must get a genuine redraw call to repaint the reappeared part */
 
-    wuss_window_destroy(win_m);
+    wuss_window_close(win_m);
   }
 
   printf("test: Adjust-click on a window's back icon brings it to front\n");
@@ -1354,8 +1367,8 @@ result_t wuss_test(const char *resources)
     if (content.x1 - content.x0 != width || content.y1 - content.y0 != height)
       goto Failure; /* clamped to the same size as dragging to exactly the doc extent: not left to grow past it */
 
-    wuss_window_destroy(win_g);
-    wuss_window_destroy(win_h);
+    wuss_window_close(win_g);
+    wuss_window_close(win_h);
   }
 
   printf("test: destroy mid-drag then move doesn't crash\n");
@@ -1389,18 +1402,20 @@ result_t wuss_test(const char *resources)
   if (hit != win_c)
     goto Failure;
 
-  wuss_window_destroy(win_c);
+  wuss_window_close(win_c);
 
   rc = wuss_mouse_move(wuss, 20, 20, &hit);
   if (rc != result_OK)
     goto Failure;
 
-  printf("test: destroy sends wuss_EVENT_QUIT to each window's task\n");
+  printf("test: wuss_task_stop sends wuss_EVENT_QUIT to each window's task\n");
 
   tc_a.stop_count = 0;
   tc_b.stop_count = 0;
-  wuss_window_destroy(win_a);
-  wuss_window_destroy(win_b);
+  wuss_task_stop(win_a);
+  wuss_task_stop(win_b);
+  wuss_window_close(win_a);
+  wuss_window_close(win_b);
   if (tc_a.stop_count != 1 || tc_b.stop_count != 1)
     goto Failure;
 

@@ -1,4 +1,4 @@
-/* destroy.c -- wuss - minimal window manager */
+/* close.c -- wuss - minimal window manager */
 
 #include <stdlib.h>
 
@@ -8,14 +8,12 @@
 
 #include "../impl.h"
 
-void wuss_window_destroy(wuss_window_t *doomed)
+void wuss_window_close(wuss_window_t *doomed)
 {
   wuss_t *wuss;
 
   if (doomed == NULL)
     return;
-
-  wuss_task_stop(doomed);
 
   wuss = doomed->wuss;
   if (wuss->dragging == doomed)

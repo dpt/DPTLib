@@ -21,6 +21,8 @@ void wuss_window_move(wuss_window_t *window, int x, int y)
   window->visible.x1 = window->visible.x0 + width;
   window->visible.y1 = window->visible.y0 + height;
 
+  wuss__notify_open(window);
+
   if (window->wuss->z_order.next == &window->link &&
       screen_copy_rect(window->wuss->scr, &before, window->visible.x0, window->visible.y0, &copied))
   {

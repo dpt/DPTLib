@@ -31,7 +31,8 @@ typedef enum wuss_event_kind
   wuss_EVENT_SCROLL, /**< Mouse wheel used over the window's content. */
   wuss_EVENT_IDLE,   /**< Wuss has finished its pending tasks. */
   wuss_EVENT_CLOSE,  /**< Close icon clicked; Wuss takes no action itself. */
-  wuss_EVENT_QUIT    /**< Task shutting down, via wuss_task_stop. */
+  wuss_EVENT_QUIT,   /**< Task shutting down, via wuss_task_stop. */
+  wuss_EVENT_OPEN    /**< Window moved or resized. */
 }
 wuss_event_kind_t;
 
@@ -77,7 +78,8 @@ typedef struct wuss_event
     }
     scroll;
 
-    /* wuss_EVENT_IDLE, wuss_EVENT_CLOSE and wuss_EVENT_QUIT carry no data. */
+    /* wuss_EVENT_IDLE, wuss_EVENT_CLOSE, wuss_EVENT_QUIT and
+     * wuss_EVENT_OPEN carry no data. */
   }
   data;
 }
@@ -118,9 +120,8 @@ wuss_task_t wuss_task_start(wuss_event_fn_t *handle,
 
 /**
  * Notify a window's task that it is shutting down, via wuss_EVENT_QUIT.
- * Called automatically by wuss_window_destroy before the window is torn
- * down; exposed separately so a task can be stopped without also
- * destroying its window, if ever needed.
+ * Not called automatically by wuss_window_close; call it first if the
+ * task needs notice before its window is torn down.
  *
  * \param[in] window Window whose task should be stopped.
  * \return \ref result_OK on success, else the result returned by the
@@ -180,7 +181,7 @@ result_t wuss_window_create(wuss_t             *wuss,
  *
  * \param[in] doomed Window to destroy.
  */
-void wuss_window_destroy(wuss_window_t *doomed);
+void wuss_window_close(wuss_window_t *doomed);
 
 /**
  * Move a window, preserving its size.
