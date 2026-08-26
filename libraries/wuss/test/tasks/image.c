@@ -70,33 +70,6 @@ static result_t image_redraw(wuss_window_t *window,
   return result_OK;
 }
 
-static result_t image_scroll(wuss_window_t *window, int delta, void *task_data)
-{
-  image_task_t *ic;
-  box_t         bounds;
-  int           sx, sy, max_y;
-
-  ic = task_data;
-
-  wuss_window_get_content_bounds(window, &bounds);
-  wuss_window_get_scroll(window, &sx, &sy);
-
-  sy += delta;
-
-  max_y = ic->bitmap.height - (bounds.y1 - bounds.y0);
-  if (max_y < 0)
-    max_y = 0;
-
-  if (sy < 0)
-    sy = 0;
-  else if (sy > max_y)
-    sy = max_y;
-
-  wuss_window_set_scroll(window, sx, sy);
-
-  return result_OK;
-}
-
 result_t image_handle(wuss_window_t     *window,
                       const wuss_event_t *event,
                       void               *task_data)
@@ -109,9 +82,6 @@ result_t image_handle(wuss_window_t     *window,
   {
   case wuss_EVENT_REDRAW:
     return image_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
-
-  case wuss_EVENT_SCROLL:
-    return image_scroll(window, event->data.scroll.delta, task_data);
 
   case wuss_EVENT_CLOSE:
     wuss_window_destroy(window);

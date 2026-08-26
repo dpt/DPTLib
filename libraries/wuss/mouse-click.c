@@ -21,11 +21,6 @@ result_t wuss_mouse_click(wuss_t              *wuss,
     wuss->dragging  = NULL;
     wuss->drag_kind = wuss_FURNITURE_DRAG_NONE;
 
-    /* an Adjust click on a titlebar that never moved is a click, not a
-     * drag: send the window to the back instead */
-    if (button == wuss_BUTTON_ADJUST && !wuss->drag_moved)
-      wuss_window_restack(win, wuss_ZORDER_BACK);
-
     return result_OK;
   }
 
@@ -49,8 +44,16 @@ result_t wuss_mouse_click(wuss_t              *wuss,
     return win->task.handle(win, &event, win->task.task_data);
   }
 
-  if (region == wuss_FURNITURE_BACK        ||
-      region == wuss_FURNITURE_TOGGLE_SIZE ||
+  if (region == wuss_FURNITURE_BACK && action == wuss_MOUSE_DOWN)
+  {
+    if (button == wuss_BUTTON_SELECT)
+      wuss_window_restack(win, wuss_ZORDER_BACK);
+    else if (button == wuss_BUTTON_ADJUST)
+      wuss_window_restack(win, wuss_ZORDER_FRONT);
+    return result_OK;
+  }
+
+  if (region == wuss_FURNITURE_TOGGLE_SIZE ||
       region == wuss_FURNITURE_VSCROLL_UP  ||
       region == wuss_FURNITURE_VSCROLL_DOWN ||
       region == wuss_FURNITURE_HSCROLL_LEFT ||
@@ -60,9 +63,6 @@ result_t wuss_mouse_click(wuss_t              *wuss,
     {
       switch (region)
       {
-      case wuss_FURNITURE_BACK:
-        wuss_window_restack(win, wuss_ZORDER_BACK);
-        break;
       case wuss_FURNITURE_TOGGLE_SIZE:
         wuss__furniture_toggle_size(win);
         break;
@@ -99,7 +99,6 @@ result_t wuss_mouse_click(wuss_t              *wuss,
       wuss->drag_kind  = wuss_FURNITURE_DRAG_MOVE;
       wuss->drag_dx    = x - content.x0;
       wuss->drag_dy    = y - content.y0;
-      wuss->drag_moved = 0;
     }
     return result_OK;
   }
@@ -122,7 +121,6 @@ result_t wuss_mouse_click(wuss_t              *wuss,
       wuss->drag_dx           = x;
       wuss->drag_dy           = y;
       wuss->drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_BAR) ? sy : sx;
-      wuss->drag_moved        = 0;
     }
     return result_OK;
   }

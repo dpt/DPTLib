@@ -11,7 +11,6 @@ result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit)
     win = wuss->dragging;
     if (hit != NULL)
       *hit = win;
-    wuss->drag_moved = 1;
 
     switch (wuss->drag_kind)
     {

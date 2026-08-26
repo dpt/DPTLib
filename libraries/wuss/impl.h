@@ -87,9 +87,6 @@ struct wuss
                                                   * RESIZE: unused, recomputed each move;
                                                   * *_THUMB: pointer position at drag start */
   int                         drag_scroll_start; /* *_THUMB: scroll_x/scroll_y at drag start */
-  int                         drag_moved; /* set once a mouse-move is delivered mid-drag;
-                                            * a titlebar mouse-down/up with no move in
-                                            * between is a click, not a drag */
   box_t                       dirty[WUSS_MAX_DIRTY]; /* accumulated by wuss_invalidate; reset by a redraw */
   int                         ndirty;
 };

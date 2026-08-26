@@ -1209,31 +1209,147 @@ result_t wuss_test(const char *resources)
     wuss_window_destroy(win_m);
   }
 
-  printf("test: Adjust-click (no move) on a titlebar sends the window to back\n");
+  printf("test: Adjust-click on a window's back icon brings it to front\n");
 
-  wuss_window_get_visible_bounds(win_a, &visible); /* A is topmost here */
+  {
+    test_task_t    tc_g, tc_h;
+    wuss_task_t    delegate_g, delegate_h;
+    box_t          box_g, box_h;
+    wuss_window_t *win_g, *win_h;
 
-  rc = wuss_mouse_click(wuss, visible.x0 + 5, visible.y0 + 3, wuss_BUTTON_ADJUST, wuss_MOUSE_DOWN, &hit);
-  if (rc != result_OK)
-    goto Failure;
-  if (hit != win_a)
-    goto Failure;
+    tc_h.redraw_count = 0;
+    tc_h.mouse_count  = 0;
+    delegate_h.handle    = test_handle;
+    delegate_h.task_data = &tc_h;
+    delegate_h.bg        = wuss_NO_BACKGROUND;
 
-  rc = wuss_mouse_click(wuss, visible.x0 + 5, visible.y0 + 3, wuss_BUTTON_ADJUST, wuss_MOUSE_UP, &hit);
-  if (rc != result_OK)
-    goto Failure;
-  if (hit != win_a)
-    goto Failure;
+    box_h.x0 = 130; box_h.y0 = 50;
+    box_h.x1 = 190; box_h.y1 = 100;
+    rc = wuss_window_create(wuss,
+                            &box_h,
+                            "H",
+                            wuss_WINDOW_NONE,
+                            &delegate_h,
+                            box_h.x1 - box_h.x0,
+                            box_h.y1 - box_h.y0,
+                            &win_h);
+    if (rc != result_OK)
+      goto Failure;
 
-  rc = wuss_mouse_click(wuss, 75, 75, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* within both A and B */
-  if (rc != result_OK)
-    goto Failure;
-  if (hit != win_b) /* A must have been sent to back */
-    goto Failure;
+    tc_g.redraw_count = 0;
+    tc_g.mouse_count  = 0;
+    delegate_g.handle    = test_handle;
+    delegate_g.task_data = &tc_g;
+    delegate_g.bg        = wuss_NO_BACKGROUND;
 
-  rc = wuss_mouse_click(wuss, 75, 75, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
-  if (rc != result_OK)
-    goto Failure;
+    box_g.x0 = 110; box_g.y0 = 30;
+    box_g.x1 = 160; box_g.y1 = 80;
+    rc = wuss_window_create(wuss,
+                            &box_g,
+                            "G",
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
+                            &delegate_g,
+                            box_g.x1 - box_g.x0,
+                            box_g.y1 - box_g.y0,
+                            &win_g);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* G is topmost here, overlapping H; G's own back icon (top-left
+     * corner) never falls under H, so it stays clickable either way */
+    wuss_window_get_visible_bounds(win_g, &visible);
+
+    rc = wuss_mouse_click(wuss, 145, 65, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* overlap of G and H */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_g)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, 145, 65, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, visible.x0 + 5, visible.y0 + 5, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* G's back icon */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_g)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, visible.x0 + 5, visible.y0 + 5, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, 145, 65, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* overlap: H now on top */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_h) /* G was sent to back */
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, 145, 65, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, visible.x0 + 5, visible.y0 + 5, wuss_BUTTON_ADJUST, wuss_MOUSE_DOWN, &hit); /* Adjust-click G's back icon */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_g)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, visible.x0 + 5, visible.y0 + 5, wuss_BUTTON_ADJUST, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, 145, 65, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* overlap: G back on top */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_g) /* Adjust-click on the back icon brought G back to front */
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, 145, 65, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    printf("test: drag-resize stops at doc_width/doc_height, not just WUSS_MIN_CONTENT\n");
+
+    wuss_window_get_content_bounds(win_g, &content); /* G's doc_width/doc_height are 50x50, same as its initial content size */
+
+    rc = wuss_mouse_click(wuss, visible.x1 - 3, visible.y1 - 3, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* G's resize icon */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_g)
+      goto Failure;
+
+    rc = wuss_mouse_move(wuss, content.x0 + 50, content.y0 + 50, &hit); /* drag to exactly the doc extent */
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, content.x0 + 50, content.y0 + 50, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_g, &content);
+    width  = content.x1 - content.x0;
+    height = content.y1 - content.y0;
+
+    rc = wuss_mouse_click(wuss, visible.x1 - 3, visible.y1 - 3, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* G's resize icon again */
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_move(wuss, content.x0 + 500, content.y0 + 500, &hit); /* drag far past the doc extent */
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, content.x0 + 500, content.y0 + 500, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_g, &content);
+    if (content.x1 - content.x0 != width || content.y1 - content.y0 != height)
+      goto Failure; /* clamped to the same size as dragging to exactly the doc extent: not left to grow past it */
+
+    wuss_window_destroy(win_g);
+    wuss_window_destroy(win_h);
+  }
 
   printf("test: destroy mid-drag then move doesn't crash\n");
 
