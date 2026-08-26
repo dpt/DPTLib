@@ -5,7 +5,7 @@
 - It draws windows back-to-front, with an optional titlebar and 1px outline per window.
 - It hit-tests and routes mouse-down/up/move and scroll events, including titlebar drag-to-move.
 - It tracks a single dirty region, accumulated automatically by window management (create/destroy/move/resize/bring-to-front) and manually by tasks, for partial redraws.
-- Content drawing and mouse/scroll handling are entirely task-supplied; Wuss only fills the content background before delivering a redraw event to the task's handle callback (unless the task opts out with `wuss_NO_BACKGROUND`).
+- Content drawing and mouse handling are entirely task-supplied; Wuss only fills the content background before delivering a redraw event to the task's handle callback (unless the task opts out with `wuss_NO_BACKGROUND`). Scrolling is Wuss's own default action (see "Scrolling" below); a task may additionally react to `wuss_EVENT_SCROLL` for its own purposes.
 
 ## Setup
 
@@ -59,7 +59,7 @@ wuss_task_t;
 - `wuss_WINDOW_NO_TITLEBAR` — no titlebar, and no drag handle.
 - `wuss_WINDOW_NO_OUTLINE` — no 1px border around the window.
 - `wuss_WINDOW_NO_CLOSE` — no close icon in the titlebar.
-- `wuss_WINDOW_NO_BACK` — no send-to-back icon in the titlebar.
+- `wuss_WINDOW_NO_BACK` — no back icon in the titlebar (`wuss_BUTTON_SELECT` sends the window to back, `wuss_BUTTON_ADJUST` brings it to front).
 - `wuss_WINDOW_NO_TOGGLE_SIZE` — no toggle-size icon in the titlebar.
 - `wuss_WINDOW_NO_VSCROLL` — no vertical scrollbar on the right edge.
 - `wuss_WINDOW_NO_HSCROLL` — no horizontal scrollbar on the bottom edge.
@@ -111,7 +111,7 @@ Feed mouse events in with `wuss_mouse_click` (action `wuss_MOUSE_DOWN` or `wuss_
 
 ## Scrolling
 
-Each window carries a scroll offset, `(0, 0)` by default: the point in the task's virtual content space that appears at the content area's top-left. `wuss_window_set_scroll(window, x, y)` moves it (invalidating the content area so the next redraw picks it up); `wuss_window_get_scroll` reads it back. Wuss itself doesn't clip, pan pixels, or know how big a task's content actually is — a task determines its own extent and clamps as it sees fit — it just plumbs the offset through:
+Each window carries a scroll offset, `(0, 0)` by default: the point in the task's virtual content space that appears at the content area's top-left. `wuss_window_set_scroll(window, x, y)` moves it (invalidating the content area so the next redraw picks it up); `wuss_window_get_scroll` reads it back. `wuss_scroll` applies this offset itself as Wuss's default scroll action, clamped to `doc_width`/`doc_height` (set at window creation), before also delivering `wuss_EVENT_SCROLL` to the task if it has a handle:
 
 - window-local `x`/`y` delivered in mouse/scroll events (and expected in `wuss_window_invalidate`'s `local_box`) are in virtual content space, i.e. already shifted by the scroll offset.
 - a redraw event's `content` is still the on-screen (unscrolled) content box; a task reads the offset itself via `wuss_window_get_scroll` to work out which part of its content to paint there.
