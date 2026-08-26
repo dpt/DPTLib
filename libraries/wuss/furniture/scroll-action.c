@@ -2,13 +2,11 @@
 
 #include "../impl.h"
 
-void wuss__furniture_scroll_step(wuss_window_t *window, point_t delta)
+point_t wuss__scroll_clamp(const wuss_window_t *window, point_t desired)
 {
-  box_t   content;
-  point_t scroll;
-  int     max_x, max_y;
+  box_t content;
+  int   max_x, max_y;
 
-  wuss_window_get_scroll(window, &scroll);
   wuss__content_box(window, &content);
 
   max_x = window->doc_width  - (content.x1 - content.x0);
@@ -18,16 +16,26 @@ void wuss__furniture_scroll_step(wuss_window_t *window, point_t delta)
   if (max_y < 0)
     max_y = 0;
 
+  if (desired.x < 0)
+    desired.x = 0;
+  else if (desired.x > max_x)
+    desired.x = max_x;
+  if (desired.y < 0)
+    desired.y = 0;
+  else if (desired.y > max_y)
+    desired.y = max_y;
+
+  return desired;
+}
+
+void wuss__furniture_scroll_step(wuss_window_t *window, point_t delta)
+{
+  point_t scroll;
+
+  wuss_window_get_scroll(window, &scroll);
   scroll.x += delta.x;
   scroll.y += delta.y;
-  if (scroll.x < 0)
-    scroll.x = 0;
-  else if (scroll.x > max_x)
-    scroll.x = max_x;
-  if (scroll.y < 0)
-    scroll.y = 0;
-  else if (scroll.y > max_y)
-    scroll.y = max_y;
+  scroll = wuss__scroll_clamp(window, scroll);
 
   wuss_window_set_scroll(window, scroll);
 }
