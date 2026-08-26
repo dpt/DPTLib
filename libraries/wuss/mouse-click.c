@@ -9,9 +9,9 @@ result_t wuss_mouse_click(wuss_t              *wuss,
                           wuss_mouse_action_t  action,
                           wuss_window_t      **hit)
 {
-  wuss_window_t *win;
-  box_t          titlebar;
-  wuss_event_t   event;
+  wuss_window_t          *win;
+  wuss_furniture_region_t region;
+  wuss_event_t            event;
 
   if (action == wuss_MOUSE_UP && wuss->dragging != NULL)
   {
@@ -35,26 +35,20 @@ result_t wuss_mouse_click(wuss_t              *wuss,
   if (win == NULL)
     return result_OK;
 
-  if (!(win->flags & wuss_WINDOW_NO_TITLEBAR) &&
-      !(win->flags & wuss_WINDOW_NO_CLOSE)    &&
-      action == wuss_MOUSE_DOWN               &&
+  region = wuss__furniture_hit_test(win, x, y);
+
+  if (region == wuss_FURNITURE_CLOSE &&
+      action == wuss_MOUSE_DOWN     &&
       button == wuss_BUTTON_SELECT)
   {
-    box_t close;
+    if (win->task.handle == NULL)
+      return result_OK;
 
-    wuss__close_box(win, &close);
-    if (box_contains_point(&close, x, y))
-    {
-      if (win->task.handle == NULL)
-        return result_OK;
-
-      event.kind = wuss_EVENT_CLOSE;
-      return win->task.handle(win, &event, win->task.task_data);
-    }
+    event.kind = wuss_EVENT_CLOSE;
+    return win->task.handle(win, &event, win->task.task_data);
   }
 
-  wuss__titlebar_box(win, &titlebar);
-  if (box_contains_point(&titlebar, x, y))
+  if (region == wuss_FURNITURE_CLOSE || region == wuss_FURNITURE_TITLE)
   {
     if (action == wuss_MOUSE_DOWN)
     {
