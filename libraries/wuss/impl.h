@@ -152,6 +152,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
                           wuss_window_t *window,
                           const box_t   *full);
 void wuss__furniture_invalidate(wuss_window_t *window);
+void wuss__furniture_invalidate_for(wuss_window_t *window, const box_t *visible);
 
 /* geometry: titlebar icons */
 void wuss__back_box(const wuss_window_t *window, box_t *out);
