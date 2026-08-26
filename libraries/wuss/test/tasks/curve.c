@@ -8,6 +8,7 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "base/utils.h"
 #include "framebuf/curve.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
@@ -145,10 +146,7 @@ static result_t curve_scroll(curve_task_t  *task,
                              wuss_window_t *window)
 {
   task->nsegments += delta;
-  if (task->nsegments < CURVE_SEGMENTS_MIN)
-    task->nsegments = CURVE_SEGMENTS_MIN;
-  else if (task->nsegments > CURVE_SEGMENTS_MAX)
-    task->nsegments = CURVE_SEGMENTS_MAX;
+  task->nsegments  = CLAMP(task->nsegments, CURVE_SEGMENTS_MIN, CURVE_SEGMENTS_MAX);
 
   wuss_window_invalidate_all(window);
 

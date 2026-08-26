@@ -193,10 +193,7 @@ static result_t sofa_scroll(wuss_window_t *window, int delta, void *task_data)
   sc = task_data;
 
   sc->zoom += delta * SOFA_ZOOM_PER_NOTCH;
-  if (sc->zoom < SOFA_ZOOM_MIN)
-    sc->zoom = SOFA_ZOOM_MIN;
-  else if (sc->zoom > SOFA_ZOOM_MAX)
-    sc->zoom = SOFA_ZOOM_MAX;
+  sc->zoom  = CLAMP(sc->zoom, SOFA_ZOOM_MIN, SOFA_ZOOM_MAX);
 
   wuss_window_invalidate_all(window);
 

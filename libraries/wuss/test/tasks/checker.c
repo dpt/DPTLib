@@ -66,10 +66,8 @@ result_t checker_create(wuss_t         *wuss,
 
 void checker_destroy(checker_task_t *task)
 {
-  if (task->window != NULL)
-    wuss_window_destroy(task->window);
-  if (task->window2 != NULL)
-    wuss_window_destroy(task->window2);
+  wuss_window_destroy(task->window);
+  wuss_window_destroy(task->window2);
 }
 
 static result_t checker_redraw(wuss_window_t *window,
@@ -98,9 +96,9 @@ static result_t checker_redraw(wuss_window_t *window,
 
       switch (pattern)
       {
-      case checker_PATTERN_HORIZONTAL: band = ly / band_px;                    break;
-      case checker_PATTERN_VERTICAL:   band = lx / band_px;                    break;
-      case checker_PATTERN_DIAGONAL:   band = (lx + ly) / band_px;             break;
+      case checker_PATTERN_HORIZONTAL: band = ly / band_px;                break;
+      case checker_PATTERN_VERTICAL:   band = lx / band_px;                break;
+      case checker_PATTERN_DIAGONAL:   band = (lx + ly) / band_px;         break;
       default:                         band = lx / band_px + ly / band_px; break; /* CHECKERBOARD */
       }
 
@@ -135,10 +133,7 @@ static result_t checker_scroll(wuss_window_t *window, int delta, void *task_data
   band = (window == cc->window2) ? &cc->band2 : &cc->band;
 
   *band += delta;
-  if (*band < CHECKER_BAND_MIN)
-    *band = CHECKER_BAND_MIN;
-  else if (*band > CHECKER_BAND_MAX)
-    *band = CHECKER_BAND_MAX;
+  *band  = CLAMP(*band, CHECKER_BAND_MIN, CHECKER_BAND_MAX);
 
   wuss_window_invalidate_all(window);
 
