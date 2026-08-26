@@ -5,7 +5,7 @@
 - It draws windows back-to-front, with an optional titlebar and 1px outline per window.
 - It hit-tests and routes mouse-down/up/move and scroll events, including titlebar drag-to-move.
 - It tracks a single dirty region, accumulated automatically by window management (create/destroy/move/resize/bring-to-front) and manually by tasks, for partial redraws.
-- Content drawing and mouse/scroll handling are entirely task-supplied; Wuss only fills the content background before delivering a redraw event to the task's handle callback (unless the task opts out with `wuss_NO_BACKGROUND`).
+- Content drawing and mouse handling are entirely task-supplied; Wuss only fills the content background before delivering a redraw event to the task's handle callback (unless the task opts out with `wuss_NO_BACKGROUND`). Scrolling is Wuss's own default action (see "Scrolling" below); a task may additionally react to `wuss_EVENT_SCROLL` for its own purposes.
 
 ## Setup
 
@@ -31,8 +31,11 @@ Create a window with a content bounding box, optional title, appearance flags an
 ```C
 result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title,
                             wuss_window_flags_t flags, const wuss_task_t *task,
+                            int doc_width, int doc_height,
                             wuss_window_t **window);
 ```
+
+`doc_width`/`doc_height` are the virtual document extent behind the horizontal/vertical scrollbars' thumb proportion; pass `content`'s own width/height for a window with nothing to scroll. Set once at creation, immutable thereafter.
 
 Furniture is additional to `content`, not carved out of it: the window's content area always ends up exactly the box requested, and its on-screen footprint (`wuss_window_get_visible_bounds`) is `content` expanded outward by whatever furniture flags request — a titlebar above, and/or a 1px outline around all four sides.
 
@@ -52,11 +55,21 @@ wuss_task_t;
 
 `flags` combines, by bitwise OR:
 
-- `wuss_WINDOW_NONE` — default furniture: titlebar and outline.
+- `wuss_WINDOW_NONE` — default: every furniture region drawn.
 - `wuss_WINDOW_NO_TITLEBAR` — no titlebar, and no drag handle.
 - `wuss_WINDOW_NO_OUTLINE` — no 1px border around the window.
+- `wuss_WINDOW_NO_CLOSE` — no close icon in the titlebar.
+- `wuss_WINDOW_NO_BACK` — no back icon in the titlebar (`wuss_BUTTON_SELECT` sends the window to back, `wuss_BUTTON_ADJUST` brings it to front).
+- `wuss_WINDOW_NO_TOGGLE_SIZE` — no toggle-size icon in the titlebar.
+- `wuss_WINDOW_NO_VSCROLL` — no vertical scrollbar on the right edge.
+- `wuss_WINDOW_NO_HSCROLL` — no horizontal scrollbar on the bottom edge.
+- `wuss_WINDOW_NO_RESIZE` — no resize icon in the bottom-right corner.
 
-Other window operations: `wuss_window_destroy`, `wuss_window_move`, `wuss_window_resize` (preserves content top-left), `wuss_window_bring_to_front`, `wuss_window_send_to_back`, `wuss_window_get_visible_bounds` (full on-screen footprint), `wuss_window_get_content_bounds`, `wuss_window_set_background`.
+`wuss_WINDOW_NO_CLOSE`/`NO_BACK`/`NO_TOGGLE_SIZE` are ignored if `flags` includes `wuss_WINDOW_NO_TITLEBAR`; `NO_VSCROLL`/`NO_HSCROLL`/`NO_RESIZE` apply regardless.
+
+All furniture actions (back, toggle-size, resize-drag, scrollbar arrow/thumb) are handled entirely within Wuss via `wuss_mouse_click`/`wuss_mouse_move` — no new client events.
+
+Other window operations: `wuss_window_destroy`, `wuss_window_move`, `wuss_window_resize` (preserves content top-left), `wuss_window_restack`, `wuss_window_get_visible_bounds` (full on-screen footprint), `wuss_window_get_content_bounds`, `wuss_window_set_background`.
 
 ## Task callbacks
 
@@ -98,7 +111,7 @@ Feed mouse events in with `wuss_mouse_click` (action `wuss_MOUSE_DOWN` or `wuss_
 
 ## Scrolling
 
-Each window carries a scroll offset, `(0, 0)` by default: the point in the task's virtual content space that appears at the content area's top-left. `wuss_window_set_scroll(window, x, y)` moves it (invalidating the content area so the next redraw picks it up); `wuss_window_get_scroll` reads it back. Wuss itself doesn't clip, pan pixels, or know how big a task's content actually is — a task determines its own extent and clamps as it sees fit — it just plumbs the offset through:
+Each window carries a scroll offset, `(0, 0)` by default: the point in the task's virtual content space that appears at the content area's top-left. `wuss_window_set_scroll(window, x, y)` moves it (invalidating the content area so the next redraw picks it up); `wuss_window_get_scroll` reads it back. `wuss_scroll` applies this offset itself as Wuss's default scroll action, clamped to `doc_width`/`doc_height` (set at window creation), before also delivering `wuss_EVENT_SCROLL` to the task if it has a handle:
 
 - window-local `x`/`y` delivered in mouse/scroll events (and expected in `wuss_window_invalidate`'s `local_box`) are in virtual content space, i.e. already shifted by the scroll offset.
 - a redraw event's `content` is still the on-screen (unscrolled) content box; a task reads the offset itself via `wuss_window_get_scroll` to work out which part of its content to paint there.
@@ -113,5 +126,4 @@ Each window carries a scroll offset, `(0, 0)` by default: the point in the task'
 ## Limitations
 
 - No menus: `wuss_BUTTON_MENU` is defined and routed like any other button, but Wuss has no built-in menu widget.
-- No window resizing gesture (drag-to-resize) built in; `wuss_window_resize` exists but callers must drive it themselves.
 - No overlapping-window damage tracking finer than each window's own bounding box.

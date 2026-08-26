@@ -1,8 +1,8 @@
-/* window-invalidate.c -- wuss - minimal window manager */
+/* invalidate.c -- wuss - minimal window manager */
 
 #include <string.h>
 
-#include "impl.h"
+#include "../impl.h"
 
 /* ponytail: fixed cap; if hit, remaining pieces are carried through
  * unclipped against further occluders rather than growing storage -- safe,
@@ -212,9 +212,18 @@ void wuss__invalidate_minus(wuss_t *wuss, const box_t *whole, const box_t *keep)
 
 void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
 {
-  box_t screen_box, content;
+  box_t screen_box, content, whole;
 
   wuss__content_box(window, &content);
+
+  if (local_box == NULL)
+  {
+    whole.x0 = 0;
+    whole.y0 = 0;
+    whole.x1 = content.x1 - content.x0;
+    whole.y1 = content.y1 - content.y0;
+    local_box = &whole;
+  }
 
   screen_box.x0 = content.x0 - window->scroll_x + local_box->x0;
   screen_box.y0 = content.y0 - window->scroll_y + local_box->y0;

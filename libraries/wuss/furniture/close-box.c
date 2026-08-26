@@ -1,8 +1,6 @@
 /* close-box.c -- wuss - minimal window manager */
 
-#include "impl.h"
-
-#define WUSS_CLOSE_ICON_INSET 3
+#include "../impl.h"
 
 void wuss__close_box(const wuss_window_t *window, box_t *out)
 {
@@ -11,10 +9,12 @@ void wuss__close_box(const wuss_window_t *window, box_t *out)
 
   wuss__titlebar_box(window, &titlebar);
 
-  inset = WUSS_CLOSE_ICON_INSET;
-  size  = (titlebar.y1 - titlebar.y0) - inset * 2;
+  inset = WUSS_ICON_INSET;
+  size  = wuss__icon_size(window);
 
   out->x0 = titlebar.x0 + inset;
+  if (!(window->flags & wuss_WINDOW_NO_BACK))
+    out->x0 += size + inset; /* shift right, clear of the back icon */
   out->y0 = titlebar.y0 + inset;
   out->x1 = out->x0 + size;
   out->y1 = out->y0 + size;

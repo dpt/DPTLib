@@ -1,6 +1,6 @@
-/* window-restack.c -- wuss - minimal window manager */
+/* restack.c -- wuss - minimal window manager */
 
-#include "impl.h"
+#include "../impl.h"
 
 void wuss_window_restack(wuss_window_t *window, wuss_zorder_t reason)
 {

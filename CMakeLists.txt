@@ -314,10 +314,22 @@ set(UTILS_SOURCES
     libraries/utils/primes/primes.c)
 
 set(WUSS_SOURCES
-    libraries/wuss/close-box.c
-    libraries/wuss/content-box.c
     libraries/wuss/create.c
     libraries/wuss/destroy.c
+    libraries/wuss/furniture/back-box.c
+    libraries/wuss/furniture/close-box.c
+    libraries/wuss/furniture/content-box.c
+    libraries/wuss/furniture/drag-resize.c
+    libraries/wuss/furniture/draw.c
+    libraries/wuss/furniture/hit-test.c
+    libraries/wuss/furniture/hscroll-box.c
+    libraries/wuss/furniture/invalidate.c
+    libraries/wuss/furniture/resize-box.c
+    libraries/wuss/furniture/scroll-action.c
+    libraries/wuss/furniture/titlebar-box.c
+    libraries/wuss/furniture/toggle-action.c
+    libraries/wuss/furniture/toggle-box.c
+    libraries/wuss/furniture/vscroll-box.c
     libraries/wuss/idle.c
     libraries/wuss/impl.h
     libraries/wuss/invalidate.c
@@ -327,20 +339,18 @@ set(WUSS_SOURCES
     libraries/wuss/scroll.c
     libraries/wuss/task-start.c
     libraries/wuss/task-stop.c
-    libraries/wuss/titlebar-box.c
-    libraries/wuss/window-at.c
-    libraries/wuss/window-create.c
-    libraries/wuss/window-destroy.c
-    libraries/wuss/window-get-content-bounds.c
-    libraries/wuss/window-get-scroll.c
-    libraries/wuss/window-get-visible-bounds.c
-    libraries/wuss/window-invalidate.c
-    libraries/wuss/window-invalidate-all.c
-    libraries/wuss/window-move.c
-    libraries/wuss/window-resize.c
-    libraries/wuss/window-restack.c
-    libraries/wuss/window-set-background.c
-    libraries/wuss/window-set-scroll.c)
+    libraries/wuss/window/at.c
+    libraries/wuss/window/create.c
+    libraries/wuss/window/destroy.c
+    libraries/wuss/window/get-content-bounds.c
+    libraries/wuss/window/get-scroll.c
+    libraries/wuss/window/get-visible-bounds.c
+    libraries/wuss/window/invalidate.c
+    libraries/wuss/window/move.c
+    libraries/wuss/window/resize.c
+    libraries/wuss/window/restack.c
+    libraries/wuss/window/set-background.c
+    libraries/wuss/window/set-scroll.c)
 
 set(ALL_SOURCES
     ${PUBLIC_HEADERS}
@@ -526,6 +536,7 @@ if(BUILD_TESTS)
         libraries/wuss/test/tasks/checker.c
         libraries/wuss/test/tasks/curve.c
         libraries/wuss/test/tasks/image.c
+        libraries/wuss/test/tasks/launcher.c
         libraries/wuss/test/tasks/palette.c
         libraries/wuss/test/tasks/sofa.c
         libraries/wuss/test/tasks/text.c

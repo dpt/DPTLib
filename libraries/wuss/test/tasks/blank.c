@@ -27,7 +27,14 @@ result_t blank_create(wuss_t *wuss, int npalette, blank_task_t *task)
   delegate = wuss_task_start(blank_handle, task, palette_PICO8_GREEN); /* wuss fills the content area itself */
   box      = (box_t) BOX_POS_SIZE(260, 60, 200, 160);
 
-  return wuss_window_create(wuss, &box, NULL, wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE, &delegate, &task->window);
+  return wuss_window_create(wuss,
+                            &box,
+                            NULL,
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            &delegate,
+                            box.x1 - box.x0,
+                            box.y1 - box.y0,
+                            &task->window);
 }
 
 void blank_destroy(blank_task_t *task)

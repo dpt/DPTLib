@@ -34,13 +34,27 @@ result_t checker_create(wuss_t         *wuss,
   delegate = wuss_task_start(checker_handle, task, wuss_NO_BACKGROUND); /* checker_redraw paints every pixel itself */
   box      = (box_t) BOX_POS_SIZE(440, 300, 160, 160);
 
-  rc = wuss_window_create(wuss, &box, "Checker 1", wuss_WINDOW_NONE, &delegate, &task->window);
+  rc = wuss_window_create(wuss,
+                          &box,
+                          "Checker 1",
+                          wuss_WINDOW_NONE,
+                          &delegate,
+                          box.x1 - box.x0,
+                          box.y1 - box.y0,
+                          &task->window);
   if (rc != result_OK)
     return rc;
 
   box = (box_t) BOX_POS_SIZE(440, 10, 160, 160);
 
-  rc = wuss_window_create(wuss, &box, "Checker 2", wuss_WINDOW_NONE, &delegate, &task->window2);
+  rc = wuss_window_create(wuss,
+                          &box,
+                          "Checker 2",
+                          wuss_WINDOW_NONE,
+                          &delegate,
+                          box.x1 - box.x0,
+                          box.y1 - box.y0,
+                          &task->window2);
   if (rc != result_OK)
   {
     wuss_window_destroy(task->window);
@@ -52,8 +66,10 @@ result_t checker_create(wuss_t         *wuss,
 
 void checker_destroy(checker_task_t *task)
 {
-  wuss_window_destroy(task->window);
-  wuss_window_destroy(task->window2);
+  if (task->window != NULL)
+    wuss_window_destroy(task->window);
+  if (task->window2 != NULL)
+    wuss_window_destroy(task->window2);
 }
 
 static result_t checker_redraw(wuss_window_t *window,
@@ -133,6 +149,10 @@ result_t checker_handle(wuss_window_t     *window,
                         const wuss_event_t *event,
                         void               *task_data)
 {
+  checker_task_t *cc;
+
+  cc = task_data;
+
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
@@ -145,6 +165,14 @@ result_t checker_handle(wuss_window_t     *window,
 
   case wuss_EVENT_SCROLL:
     return checker_scroll(window, event->data.scroll.delta, task_data);
+
+  case wuss_EVENT_CLOSE:
+    wuss_window_destroy(window);
+    if (window == cc->window2)
+      cc->window2 = NULL;
+    else
+      cc->window = NULL;
+    return result_OK;
 
   default:
     return result_OK;
