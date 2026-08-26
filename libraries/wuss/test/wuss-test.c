@@ -1379,7 +1379,8 @@ result_t wuss_test(const char *resources)
     box_t          box_t_win, before, after, titlebar, toggle;
     wuss_window_t *win_t;
     int            outline_px, titlebar_height, inset, icon;
-    int            i, dirty_area, full_area, cx, cy;
+    int            i, dirty_area, full_area, cx, cy, old_icon_x, old_icon_y, found;
+    int            interior_x, interior_y, interior_dirty;
 
     tc_t.redraw_count = 0;
     tc_t.mouse_count  = 0;
@@ -1417,6 +1418,17 @@ result_t wuss_test(const char *resources)
     toggle.y1 = toggle.y0 + icon;
     cx = (toggle.x0 + toggle.x1) / 2;
     cy = (toggle.y0 + toggle.y1) / 2;
+    old_icon_x = cx; old_icon_y = cy; /* pre-grow icon centre: ends up mid-titlebar once the window widens */
+
+    /* pre-grow content interior, well clear of outline/titlebar/scrollbar
+     * furniture on every side (carve.x == carve.y == icon here, since both
+     * scrollbars are enabled) -- a point the blit must genuinely have
+     * preserved, unlike a naive summed-region-area comparison, which
+     * overcounts once furniture invalidation adds several regions that
+     * overlap each other and the grown-edge region without merging (only
+     * exact-edge-aligned boxes merge; see box_merge in invalidate.c) */
+    interior_x = (before.x0 + outline_px + before.x1 - outline_px - icon) / 2;
+    interior_y = (before.y0 + outline_px + titlebar_height + before.y1 - outline_px - icon) / 2;
 
     rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* T's toggle-size icon: grow */
     if (rc != result_OK)
@@ -1430,21 +1442,30 @@ result_t wuss_test(const char *resources)
     if (wuss_get_dirty_count(wuss) == 0)
       goto Failure;
 
-    dirty_area = 0;
+    found          = 0;
+    interior_dirty = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
     {
       box_t region;
 
       wuss_get_dirty(wuss, i, &region);
-      dirty_area += (region.x1 - region.x0) * (region.y1 - region.y0);
+      if (box_contains_point(&region, old_icon_x, old_icon_y))
+        found = 1;
+      if (box_contains_point(&region, interior_x, interior_y))
+        interior_dirty = 1;
     }
+    if (!found)
+      goto Failure; /* the old toggle-icon glyph, now mid-titlebar rather than
+                      * at its corner, falls inside both "before" and the
+                      * grown "visible" -- the content blit alone would leave
+                      * it un-redrawn as a ghost; furniture must be forced
+                      * dirty separately since its layout depends on size */
+
+    if (interior_dirty)
+      goto Failure; /* interior content pixel, untouched by any furniture or
+                      * grown-edge region: the blit must have reused it */
 
     wuss_window_get_visible_bounds(win_t, &after);
-    full_area = (after.x1 - after.x0) * (after.y1 - after.y0);
-    if (dirty_area >= full_area)
-      goto Failure; /* blit reused the still-valid pixels: only the grown
-                      * edge is dirty, not the whole new footprint */
-
     if (after.x1 > 200 || after.y1 > 200)
       goto Failure; /* maximizing must stay on-screen: bounded by what's left
                       * of the screen from T's own x0/y0 (10,10), not by the
