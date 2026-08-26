@@ -49,14 +49,14 @@ static result_t palette_redraw(wuss_window_t *window,
   palette_task_t *pc;
   int               cols, rows;
   int               cell_w, cell_h;
-  int               i;
-
-  NOT_USED(window);
+  int               i, sx, sy;
 
   pc = task_data;
 
   if (pc->npalette <= 0)
     return result_OK;
+
+  wuss_window_get_scroll(window, &sx, &sy);
 
   cols = 1;
   while (cols * cols < pc->npalette)
@@ -72,8 +72,8 @@ static result_t palette_redraw(wuss_window_t *window,
 
     col = i % cols;
     row = i / cols;
-    x   = content->x0 + col * cell_w;
-    y   = content->y0 + row * cell_h;
+    x   = content->x0 - sx + col * cell_w;
+    y   = content->y0 - sy + row * cell_h;
 
     screen_draw_rect(scr, x, y, cell_w, cell_h, pc->palette[i]);
   }
