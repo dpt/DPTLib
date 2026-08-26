@@ -72,7 +72,8 @@ typedef enum wuss_window_flags
   wuss_WINDOW_NO_TOGGLE_SIZE = 1 << 4, /**< No toggle-size icon in the titlebar. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR. */
   wuss_WINDOW_NO_VSCROLL     = 1 << 5, /**< No vertical scrollbar on the right edge. */
   wuss_WINDOW_NO_HSCROLL     = 1 << 6, /**< No horizontal scrollbar on the bottom edge. */
-  wuss_WINDOW_NO_RESIZE      = 1 << 7  /**< No resize icon in the bottom-right corner. */
+  wuss_WINDOW_NO_RESIZE      = 1 << 7, /**< No resize icon in the bottom-right corner. */
+  wuss_WINDOW_NO_TOGGLE_BLIT = 1 << 8  /**< Toggle-size always fully redraws the window's content instead of blitting the preserved region -- for a task whose rendering depends on the window's size in ways redraw can't patch incrementally (e.g. a palette that lays itself out across the whole window). */
 }
 wuss_window_flags_t;
 
