@@ -230,13 +230,13 @@ static result_t wuss_interactive_test(const char *resources)
     config.titlebar_height   = 0;
     config.palette.title.bg  = palette_PICO8_DARK_BLUE;
     config.palette.title.fg  = palette_PICO8_WHITE;
-    config.palette.back      = palette_PICO8_WHITE;
-    config.palette.close     = palette_PICO8_WHITE;
-    config.palette.toggle    = palette_PICO8_WHITE;
-    config.palette.resize    = palette_PICO8_DARK_BLUE;
-    config.palette.arrows    = palette_PICO8_DARK_BLUE;
+    config.palette.back      = palette_PICO8_GREEN;
+    config.palette.close     = palette_PICO8_RED;
+    config.palette.toggle    = palette_PICO8_ORANGE;
+    config.palette.resize    = palette_PICO8_LAVENDER;
+    config.palette.arrows    = palette_PICO8_BLUE;
     config.palette.wells     = palette_PICO8_DARK_BLUE;
-    config.palette.sausages  = palette_PICO8_WHITE;
+    config.palette.sausages  = palette_PICO8_LIGHT_GREY;
 
     rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, &wuss);
     if (rc != result_OK)
