@@ -71,16 +71,25 @@ static result_t spawn_checker(void) { return checker_create(g_wuss, g_palette, &
 static result_t spawn_curve(void)   { return curve_create(g_wuss, g_palette, &g_curve_task); }
 static result_t spawn_sofa(void)    { return sofa_create(g_wuss, g_palette, &g_sofa_task); }
 
+static void destroy_ball(void)    { ball_destroy(&g_ball_task); }
+static void destroy_text(void)    { text_destroy(&g_text_task); }
+static void destroy_blank(void)   { blank_destroy(&g_blank_task); }
+static void destroy_palette(void) { palette_destroy(&g_palette_task); }
+static void destroy_image(void)   { image_destroy(&g_image_task); }
+static void destroy_checker(void) { checker_destroy(&g_checker_task); }
+static void destroy_curve(void)   { curve_destroy(&g_curve_task); }
+static void destroy_sofa(void)    { sofa_destroy(&g_sofa_task); }
+
 static launcher_entry_t g_launcher_entries[] =
 {
-  { "Ball",    spawn_ball,    false },
-  { "Text",    spawn_text,    false },
-  { "Blank",   spawn_blank,   false },
-  { "Palette", spawn_palette, false },
-  { "Image",   spawn_image,   false },
-  { "Checker", spawn_checker, false },
-  { "Curve",   spawn_curve,   false },
-  { "Sofa",    spawn_sofa,    false }
+  { "Ball",    spawn_ball,    destroy_ball,    false },
+  { "Text",    spawn_text,    destroy_text,    false },
+  { "Blank",   spawn_blank,   destroy_blank,   false },
+  { "Palette", spawn_palette, destroy_palette, false },
+  { "Image",   spawn_image,   destroy_image,   false },
+  { "Checker", spawn_checker, destroy_checker, false },
+  { "Curve",   spawn_curve,   destroy_curve,   false },
+  { "Sofa",    spawn_sofa,    destroy_sofa,    false }
 };
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
@@ -146,6 +155,7 @@ static result_t wuss_interactive_test(const char *resources)
   bool             quit;
   bool             garbage_pending;
   bool             pixel_stress_pending;
+  int              i;
 
   define_pico8_palette(palette);
 
@@ -397,14 +407,9 @@ static result_t wuss_interactive_test(const char *resources)
     SDL_Delay(1000 / 60);
   }
 
-  if (g_launcher_entries[0].running) ball_destroy(&g_ball_task);
-  if (g_launcher_entries[1].running) text_destroy(&g_text_task);
-  if (g_launcher_entries[2].running) blank_destroy(&g_blank_task);
-  if (g_launcher_entries[3].running) palette_destroy(&g_palette_task);
-  if (g_launcher_entries[4].running) image_destroy(&g_image_task);
-  if (g_launcher_entries[5].running) checker_destroy(&g_checker_task);
-  if (g_launcher_entries[6].running) curve_destroy(&g_curve_task);
-  if (g_launcher_entries[7].running) sofa_destroy(&g_sofa_task);
+  for (i = 0; i < NELEMS(g_launcher_entries); i++)
+    if (g_launcher_entries[i].running)
+      g_launcher_entries[i].destroy();
   launcher_destroy(&launcher_task);
 
   wuss_destroy(wuss);

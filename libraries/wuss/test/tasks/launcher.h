@@ -12,15 +12,17 @@
 #include "wuss/window.h"
 
 typedef result_t (*launcher_spawn_fn_t)(void);
+typedef void     (*launcher_destroy_fn_t)(void);
 
 /* one clickable row; "running" is set once spawned and never cleared, so a
  * second click is a no-op -- relaunching a task after its window closes
  * needs the test restarted */
 typedef struct launcher_entry
 {
-  const char          *name;
-  launcher_spawn_fn_t  spawn;
-  bool                 running;
+  const char           *name;
+  launcher_spawn_fn_t    spawn;
+  launcher_destroy_fn_t  destroy;
+  bool                   running;
 }
 launcher_entry_t;
 
