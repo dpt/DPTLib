@@ -21,8 +21,11 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
     outline_px      = wuss__outline_px(window);
     titlebar_height = wuss__titlebar_height(window);
 
-    width  = MIN(window->doc_width,  window->wuss->scr->width  - 2 * outline_px);
-    height = MIN(window->doc_height, window->wuss->scr->height - 2 * outline_px - titlebar_height);
+    /* bounded by what's actually left of the screen from the window's
+     * current top-left, not the screen's full width/height -- otherwise a
+     * window not already at the origin grows straight off the edge */
+    width  = MIN(window->doc_width,  window->wuss->scr->width  - window->visible.x0 - 2 * outline_px);
+    height = MIN(window->doc_height, window->wuss->scr->height - window->visible.y0 - 2 * outline_px - titlebar_height);
 
     window->pre_toggle = window->visible;
 

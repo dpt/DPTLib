@@ -1445,6 +1445,11 @@ result_t wuss_test(const char *resources)
       goto Failure; /* blit reused the still-valid pixels: only the grown
                       * edge is dirty, not the whole new footprint */
 
+    if (after.x1 > 200 || after.y1 > 200)
+      goto Failure; /* maximizing must stay on-screen: bounded by what's left
+                      * of the screen from T's own x0/y0 (10,10), not by the
+                      * screen's full width/height as if T were at the origin */
+
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK)
       goto Failure;
