@@ -46,18 +46,19 @@ static result_t gradient_redraw(wuss_window_t *window,
                                 void          *task_data)
 {
   box_t bounds;
-  int   x, y, lx, ly;
+  int   sx, sy, x, y, lx, ly;
 
   NOT_USED(task_data);
 
   wuss_window_get_content_bounds(window, &bounds);
+  wuss_window_get_scroll(window, &sx, &sy);
 
   for (y = content->y0; y < content->y1; y++)
   {
     for (x = content->x0; x < content->x1; x++)
     {
-      lx = x - bounds.x0;
-      ly = y - bounds.y0;
+      lx = x - bounds.x0 + sx;
+      ly = y - bounds.y0 + sy;
 
       screen_draw_pixel(scr, x, y,
                         colour_rgb(lx * 255 / GRADIENT_DOC_WIDTH,
