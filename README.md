@@ -1,6 +1,6 @@
 # DPTLib
 
-version 0.5.0
+version 0.6.0
 
 [![Build status](https://github.com/dpt/DPTLib/actions/workflows/ci.yml/badge.svg)](https://github.com/dpt/DPTLib/actions)
 
