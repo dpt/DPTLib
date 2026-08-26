@@ -78,9 +78,9 @@ static inline wuss_furniture_drag_kind_t wuss__furniture_drag_kind(wuss_furnitur
 
 struct wuss
 {
-  screen_t                  *scr;
-  bmfont_t                  *font;      /* nullable, not owned */
-  colour_t                  *palette;   /* owned */
+  screen_t                   *scr;
+  bmfont_t                   *font;      /* nullable, not owned */
+  colour_t                   *palette;   /* owned */
   int                         npalette;
   wuss_colour_t               titlebar_bg;
   wuss_colour_t               titlebar_fg;
@@ -88,10 +88,10 @@ struct wuss
   list_t                      z_order;   /* anchor; head = topmost window */
   wuss_window_t              *dragging;  /* NULL when idle */
   wuss_furniture_drag_kind_t  drag_kind;
-  int                         drag_dx, drag_dy; /* MOVE: pointer offset within content;
-                                                  * RESIZE: unused, recomputed each move;
-                                                  * *_THUMB: pointer position at drag start */
-  int                         drag_scroll_start; /* *_THUMB: scroll_x/scroll_y at drag start */
+  point_t                     drag; /* MOVE: pointer offset within content;
+                                     * RESIZE: unused, recomputed each move;
+                                     * *_THUMB: pointer position at drag start */
+  int                         drag_scroll_start; /* *_THUMB: scroll.x/scroll.y at drag start */
   box_t                       dirty[WUSS_MAX_DIRTY]; /* accumulated by wuss_invalidate; reset by a redraw */
   int                         ndirty;
 };
@@ -101,13 +101,11 @@ struct wuss_window
   list_t              link;   /* must be first member */
   wuss_t             *wuss;
   box_t               visible; /* full on-screen footprint: content expanded
-                                 * outward by any titlebar/outline furniture */
+                                * outward by any titlebar/outline furniture */
   wuss_task_t         task;
   wuss_window_flags_t flags;
-  int                 scroll_x, scroll_y; /* offset into virtual content
-                                            * space of the content box's
-                                            * top-left; see
-                                            * wuss_window_set_scroll */
+  point_t             scroll; /* offset into virtual content space of the
+                               * content box's top-left; see wuss_window_set_scroll */
   int                 doc_width, doc_height; /* virtual document extent, set at creation */
   int                 toggled;      /* currently at TOGGLE_SIZE's "full" size? */
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
@@ -149,8 +147,7 @@ static inline void wuss__notify_open(wuss_window_t *window)
 /* ----- furniture ----- */
 
 wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
-                                                 int                  x,
-                                                 int                  y);
+                                                 point_t              p);
 void wuss__furniture_draw(wuss_t        *wuss,
                           wuss_window_t *window,
                           const box_t   *full);
@@ -177,8 +174,8 @@ int  wuss__hscroll_track_px(const wuss_window_t *window);
 
 /* actions */
 void wuss__furniture_toggle_size(wuss_window_t *window);
-void wuss__furniture_scroll_step(wuss_window_t *window, int dx, int dy);
-void wuss__furniture_drag_resize(wuss_window_t *window, int x, int y);
+void wuss__furniture_scroll_step(wuss_window_t *window, point_t delta);
+void wuss__furniture_drag_resize(wuss_window_t *window, point_t p);
 void wuss__furniture_drag_thumb(wuss_window_t *window,
                                 int            delta_px,
                                 int            scroll_start,
@@ -234,18 +231,17 @@ static inline int wuss__icon_size(const wuss_window_t *window)
  * two stay consistent with each other */
 static inline void wuss__furniture_carve_for(wuss_window_flags_t flags,
                                              int                 icon_size,
-                                             int                *carve_x,
-                                             int                *carve_y)
+                                             point_t            *carve)
 {
-  *carve_x = (flags & wuss_WINDOW_NO_VSCROLL) ? 0 : icon_size;
-  *carve_y = (flags & wuss_WINDOW_NO_HSCROLL) ? 0 : icon_size;
+  carve->x = (flags & wuss_WINDOW_NO_VSCROLL) ? 0 : icon_size;
+  carve->y = (flags & wuss_WINDOW_NO_HSCROLL) ? 0 : icon_size;
 
   if (!(flags & wuss_WINDOW_NO_RESIZE) &&
       (flags & wuss_WINDOW_NO_VSCROLL) &&
       (flags & wuss_WINDOW_NO_HSCROLL))
   {
-    *carve_x = icon_size;
-    *carve_y = icon_size;
+    carve->x = icon_size;
+    carve->y = icon_size;
   }
 }
 

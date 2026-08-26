@@ -2,7 +2,7 @@
 
 #include "../impl.h"
 
-void wuss__furniture_scroll_step(wuss_window_t *window, int dx, int dy)
+void wuss__furniture_scroll_step(wuss_window_t *window, point_t delta)
 {
   box_t content;
   int   sx, sy, max_x, max_y;
@@ -17,8 +17,8 @@ void wuss__furniture_scroll_step(wuss_window_t *window, int dx, int dy)
   if (max_y < 0)
     max_y = 0;
 
-  sx += dx;
-  sy += dy;
+  sx += delta.x;
+  sy += delta.y;
   if (sx < 0)
     sx = 0;
   else if (sx > max_x)
@@ -69,7 +69,7 @@ void wuss__furniture_drag_thumb(wuss_window_t *window,
     new_scroll = max_scroll;
 
   if (horizontal)
-    wuss_window_set_scroll(window, new_scroll, window->scroll_y);
+    wuss_window_set_scroll(window, new_scroll, window->scroll.y);
   else
-    wuss_window_set_scroll(window, window->scroll_x, new_scroll);
+    wuss_window_set_scroll(window, window->scroll.x, new_scroll);
 }

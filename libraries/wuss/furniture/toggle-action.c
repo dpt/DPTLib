@@ -35,7 +35,7 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
   window->visible = new_visible;
   window->toggled = !window->toggled;
 
-  wuss__furniture_scroll_step(window, 0, 0); /* re-clamp to the new content size */
+  wuss__furniture_scroll_step(window, (point_t) { 0, 0 }); /* re-clamp to the new content size */
 
   box_union(&before, &window->visible, &dirty);
   wuss__invalidate_clipped(window, &dirty);

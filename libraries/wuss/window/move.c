@@ -24,7 +24,8 @@ void wuss_window_move(wuss_window_t *window, int x, int y)
   wuss__notify_open(window);
 
   if (window->wuss->z_order.next == &window->link &&
-      screen_copy_rect(window->wuss->scr, &before, window->visible.x0, window->visible.y0, &copied))
+      screen_copy_rect(window->wuss->scr, &before,
+                       (point_t) { window->visible.x0, window->visible.y0 }, &copied))
   {
     /* Topmost, and the screen format supports the blit: every pixel of
      * "before" is genuinely this window's own rendering (nothing above it

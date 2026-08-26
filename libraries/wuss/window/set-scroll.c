@@ -7,18 +7,18 @@ void wuss_window_set_scroll(wuss_window_t *window, int x, int y)
   box_t content, copied;
   int   dx, dy;
 
-  dx = x - window->scroll_x;
-  dy = y - window->scroll_y;
+  dx = x - window->scroll.x;
+  dy = y - window->scroll.y;
   if (dx == 0 && dy == 0)
     return;
 
-  window->scroll_x = x;
-  window->scroll_y = y;
+  window->scroll.x = x;
+  window->scroll.y = y;
 
   wuss__content_box(window, &content);
 
-  /* the scrollbar thumb position depends on scroll_x/scroll_y, so its track
-   * needs redrawing too -- content invalidation alone never touches it */
+  /* the scrollbar thumb position depends on scroll, so its track needs
+   * redrawing too -- content invalidation alone never touches it */
   wuss__furniture_invalidate(window);
 
   if (window->wuss->z_order.next == &window->link)
@@ -29,7 +29,7 @@ void wuss_window_set_scroll(wuss_window_t *window, int x, int y)
      * newly-exposed edge strip(s) need an actual repaint. */
     window->wuss->scr->clip = content;
     if (screen_copy_rect(window->wuss->scr, &content,
-                         content.x0 - dx, content.y0 - dy, &copied))
+                         (point_t) { content.x0 - dx, content.y0 - dy }, &copied))
     {
       wuss__invalidate_minus(window->wuss, &content, &copied);
       return;

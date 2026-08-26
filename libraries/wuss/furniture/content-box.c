@@ -4,7 +4,8 @@
 
 void wuss__content_box(const wuss_window_t *window, box_t *out)
 {
-  int outline_px, carve_x, carve_y;
+  int     outline_px;
+  point_t carve;
 
   outline_px = wuss__outline_px(window);
 
@@ -13,7 +14,7 @@ void wuss__content_box(const wuss_window_t *window, box_t *out)
   out->x1 = window->visible.x1 - outline_px;
   out->y1 = window->visible.y1 - outline_px;
 
-  wuss__furniture_carve_for(window->flags, wuss__icon_size(window), &carve_x, &carve_y);
-  out->x1 -= carve_x;
-  out->y1 -= carve_y;
+  wuss__furniture_carve_for(window->flags, wuss__icon_size(window), &carve);
+  out->x1 -= carve.x;
+  out->y1 -= carve.y;
 }

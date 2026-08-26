@@ -474,8 +474,8 @@ static result_t test_handle(wuss_window_t     *window,
   case wuss_EVENT_MOUSE:
     tc->mouse_count++;
     tc->last_action = event->data.mouse.action;
-    tc->last_x      = event->data.mouse.x;
-    tc->last_y      = event->data.mouse.y;
+    tc->last_x      = event->data.mouse.point.x;
+    tc->last_y      = event->data.mouse.point.y;
     tc->last_button = event->data.mouse.button;
     break;
 

@@ -85,8 +85,8 @@ static result_t checker_redraw(wuss_window_t      *window,
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
   bounds  = event->data.redraw.bounds;
-  sx      = event->data.redraw.scroll_x;
-  sy      = event->data.redraw.scroll_y;
+  sx      = event->data.redraw.scroll.x;
+  sy      = event->data.redraw.scroll.y;
 
   pattern = (window == cc->window2) ? cc->pattern2 : cc->pattern;
   band_px = (window == cc->window2) ? cc->band2    : cc->band;

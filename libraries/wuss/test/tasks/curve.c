@@ -76,8 +76,8 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
   bounds  = event->data.redraw.bounds;
-  sx      = event->data.redraw.scroll_x;
-  sy      = event->data.redraw.scroll_y;
+  sx      = event->data.redraw.scroll.x;
+  sy      = event->data.redraw.scroll.y;
 
   screen_draw_rect(scr, content->x0, content->y0,
                    content->x1 - content->x0, content->y1 - content->y0,
@@ -177,7 +177,7 @@ result_t curve_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MOUSE:
     return curve_mouse(task, event->data.mouse.action,
-                       event->data.mouse.x, event->data.mouse.y, window);
+                       event->data.mouse.point.x, event->data.mouse.point.y, window);
 
   case wuss_EVENT_SCROLL:
     return curve_scroll(task, event->data.scroll.delta, window);
