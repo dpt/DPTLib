@@ -1538,6 +1538,85 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_t);
   }
 
+  printf("test: wuss_WINDOW_NO_TOGGLE_BLIT redraws the whole window instead of blitting\n");
+
+  {
+    test_task_t    tc_nb;
+    wuss_task_t    delegate_nb;
+    box_t          box_nb, before, titlebar, toggle;
+    wuss_window_t *win_nb;
+    int            outline_px, titlebar_height, inset, icon;
+    int            i, cx, cy, interior_x, interior_y, interior_dirty;
+
+    tc_nb.redraw_count = 0;
+    tc_nb.mouse_count  = 0;
+    delegate_nb.handle    = test_handle;
+    delegate_nb.task_data = &tc_nb;
+    delegate_nb.bg        = wuss_NO_BACKGROUND;
+
+    box_nb.x0 = 10; box_nb.y0 = 10;
+    box_nb.x1 = 50; box_nb.y1 = 50; /* 40x40 content, room to grow to a 200x200 doc */
+    rc = wuss_window_create(wuss, &box_nb, "NB", wuss_WINDOW_NO_TOGGLE_BLIT,
+                            &delegate_nb, 200, 200, &win_nb);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush the create's own invalidate */
+    if (rc != result_OK)
+      goto Failure;
+
+    outline_px      = 1;
+    titlebar_height = 20;
+    inset           = 3;
+    icon            = titlebar_height - 2 * inset;
+
+    wuss_window_get_visible_bounds(win_nb, &before);
+    titlebar.x0 = before.x0 + outline_px;
+    titlebar.x1 = before.x1 - outline_px;
+    titlebar.y0 = before.y0 + outline_px;
+    toggle.x1 = titlebar.x1 - inset;
+    toggle.x0 = toggle.x1 - icon;
+    toggle.y0 = titlebar.y0 + inset;
+    toggle.y1 = toggle.y0 + icon;
+    cx = (toggle.x0 + toggle.x1) / 2;
+    cy = (toggle.y0 + toggle.y1) / 2;
+
+    /* same pre-grow interior point as the blit test above -- there, the
+     * blit must preserve it (never dirty); here, the flag must force a full
+     * redraw instead of a blit, so this point must come out dirty */
+    interior_x = (before.x0 + outline_px + before.x1 - outline_px - icon) / 2;
+    interior_y = (before.y0 + outline_px + titlebar_height + before.y1 - outline_px - icon) / 2;
+
+    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* NB's toggle-size icon: grow */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_nb)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    interior_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      box_t region;
+
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, interior_x, interior_y))
+        interior_dirty = 1;
+    }
+    if (!interior_dirty)
+      goto Failure; /* wuss_WINDOW_NO_TOGGLE_BLIT must skip the blit path
+                      * entirely, so even an interior pixel the blit would
+                      * otherwise have preserved comes out dirty */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_nb);
+  }
+
   printf("test: toggle-size maximize accounts for scrollbar furniture, not just outline/titlebar\n");
 
   {

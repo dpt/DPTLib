@@ -58,7 +58,8 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
 
   wuss__furniture_scroll_step(window, (point_t) { 0, 0 }); /* re-clamp to the new content size */
 
-  if (window->wuss->z_order.next == &window->link &&
+  if (!(window->flags & wuss_WINDOW_NO_TOGGLE_BLIT) &&
+      window->wuss->z_order.next == &window->link &&
       screen_copy_rect(window->wuss->scr, &before,
                        (point_t) { before.x0, before.y0 }, &copied))
   {
