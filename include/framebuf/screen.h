@@ -5,6 +5,7 @@
 
 #include "framebuf/bitmap.h"
 #include "geom/box.h"
+#include "geom/point.h"
 #include "utils/fxp.h"
 
 // TODO: Define screen origin etc.
@@ -132,8 +133,7 @@ void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src);
  *
  * \param[in]  scr        Screen to copy within.
  * \param[in]  src        Screen-space region to copy from.
- * \param[in]  dst_x      X coordinate of the top-left of the destination.
- * \param[in]  dst_y      Y coordinate of the top-left of the destination.
+ * \param[in]  dst        Top-left of the destination.
  * \param[out] copied_dst Set to the on-screen box actually copied to (may
  *                        be smaller than intended if either end was
  *                        partly off-screen). Pass NULL if not needed.
@@ -141,7 +141,10 @@ void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src);
  * \return True if the copy was performed, false if declined (unsupported
  *         pixel format).
  */
-int screen_copy_rect(screen_t *scr, const box_t *src, int dst_x, int dst_y, box_t *copied_dst);
+int screen_copy_rect(screen_t    *scr,
+                     const box_t *src,
+                     point_t      dst,
+                     box_t       *copied_dst);
 
 /**
  * Draws a line (Bresenham version with aliasing).

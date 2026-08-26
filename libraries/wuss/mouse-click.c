@@ -3,8 +3,7 @@
 #include "impl.h"
 
 result_t wuss_mouse_click(wuss_t              *wuss,
-                          int                  x,
-                          int                  y,
+                          point_t              p,
                           wuss_button_t        button,
                           wuss_mouse_action_t  action,
                           wuss_window_t      **hit)
@@ -12,26 +11,30 @@ result_t wuss_mouse_click(wuss_t              *wuss,
   wuss_window_t          *win;
   wuss_furniture_region_t region;
   wuss_event_t            event;
+  int                     x, y;
 
-  if (action == wuss_MOUSE_UP && wuss->dragging != NULL)
+  x = p.x;
+  y = p.y;
+
+  if (action == wuss_MOUSE_UP && wuss->furniture.dragging != NULL)
   {
-    win = wuss->dragging;
+    win = wuss->furniture.dragging;
     if (hit != NULL)
       *hit = win;
-    wuss->dragging  = NULL;
-    wuss->drag_kind = wuss_FURNITURE_DRAG_NONE;
+    wuss->furniture.dragging  = NULL;
+    wuss->furniture.drag_kind = wuss_FURNITURE_DRAG_NONE;
 
     return result_OK;
   }
 
-  win = wuss__window_at(wuss, x, y);
+  win = wuss__window_at(wuss, p);
   if (hit != NULL)
     *hit = win;
 
   if (win == NULL)
     return result_OK;
 
-  region = wuss__furniture_hit_test(win, x, y);
+  region = wuss__furniture_hit_test(win, (point_t) { x, y });
 
   if (region == wuss_FURNITURE_CLOSE &&
       action == wuss_MOUSE_DOWN     &&
@@ -67,16 +70,16 @@ result_t wuss_mouse_click(wuss_t              *wuss,
         wuss__furniture_toggle_size(win);
         break;
       case wuss_FURNITURE_VSCROLL_UP:
-        wuss__furniture_scroll_step(win, 0, -WUSS_SCROLL_STEP);
+        wuss__furniture_scroll_step(win, (point_t) { 0, -WUSS_SCROLL_STEP });
         break;
       case wuss_FURNITURE_VSCROLL_DOWN:
-        wuss__furniture_scroll_step(win, 0, WUSS_SCROLL_STEP);
+        wuss__furniture_scroll_step(win, (point_t) { 0, WUSS_SCROLL_STEP });
         break;
       case wuss_FURNITURE_HSCROLL_LEFT:
-        wuss__furniture_scroll_step(win, -WUSS_SCROLL_STEP, 0);
+        wuss__furniture_scroll_step(win, (point_t) { -WUSS_SCROLL_STEP, 0 });
         break;
       case wuss_FURNITURE_HSCROLL_RIGHT:
-        wuss__furniture_scroll_step(win, WUSS_SCROLL_STEP, 0);
+        wuss__furniture_scroll_step(win, (point_t) { WUSS_SCROLL_STEP, 0 });
         break;
       default:
         break;
@@ -95,32 +98,32 @@ result_t wuss_mouse_click(wuss_t              *wuss,
         wuss_window_restack(win, wuss_ZORDER_FRONT);
 
       wuss__content_box(win, &content);
-      wuss->dragging   = win;
-      wuss->drag_kind  = wuss_FURNITURE_DRAG_MOVE;
-      wuss->drag_dx    = x - content.x0;
-      wuss->drag_dy    = y - content.y0;
+      wuss->furniture.dragging   = win;
+      wuss->furniture.drag_kind  = wuss_FURNITURE_DRAG_MOVE;
+      wuss->furniture.drag.x     = x - content.x0;
+      wuss->furniture.drag.y     = y - content.y0;
     }
     return result_OK;
   }
 
   if (region == wuss_FURNITURE_RESIZE ||
-      region == wuss_FURNITURE_VSCROLL_BAR ||
-      region == wuss_FURNITURE_HSCROLL_BAR)
+      region == wuss_FURNITURE_VSCROLL_WELL ||
+      region == wuss_FURNITURE_HSCROLL_WELL)
   {
     if (action == wuss_MOUSE_DOWN)
     {
-      int sx, sy;
+      point_t scroll;
 
       if (button == wuss_BUTTON_SELECT)
         wuss_window_restack(win, wuss_ZORDER_FRONT);
 
-      wuss_window_get_scroll(win, &sx, &sy);
+      wuss_window_get_scroll(win, &scroll);
 
-      wuss->dragging          = win;
-      wuss->drag_kind         = wuss__furniture_drag_kind(region);
-      wuss->drag_dx           = x;
-      wuss->drag_dy           = y;
-      wuss->drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_BAR) ? sy : sx;
+      wuss->furniture.dragging          = win;
+      wuss->furniture.drag_kind         = wuss__furniture_drag_kind(region);
+      wuss->furniture.drag.x            = x;
+      wuss->furniture.drag.y            = y;
+      wuss->furniture.drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_WELL) ? scroll.y : scroll.x;
     }
     return result_OK;
   }
@@ -130,11 +133,11 @@ result_t wuss_mouse_click(wuss_t              *wuss,
     box_t content;
 
     wuss__content_box(win, &content);
-    event.kind             = wuss_EVENT_MOUSE;
-    event.data.mouse.action = action;
-    event.data.mouse.x      = x - content.x0 + win->scroll_x;
-    event.data.mouse.y      = y - content.y0 + win->scroll_y;
-    event.data.mouse.button = button;
+    event.kind               = wuss_EVENT_MOUSE;
+    event.data.mouse.action  = action;
+    event.data.mouse.point.x = x - content.x0 + win->scroll.x;
+    event.data.mouse.point.y = y - content.y0 + win->scroll.y;
+    event.data.mouse.button  = button;
     return win->task.handle(win, &event, win->task.task_data);
   }
 

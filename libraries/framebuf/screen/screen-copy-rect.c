@@ -57,7 +57,7 @@ static int screen_copy_rect_p4(screen_t *scr, const box_t *s, const box_t *d,
   return 1;
 }
 
-int screen_copy_rect(screen_t *scr, const box_t *src, int dst_x, int dst_y, box_t *copied_dst)
+int screen_copy_rect(screen_t *scr, const box_t *src, point_t dst, box_t *copied_dst)
 {
   box_t          clip_box, s, d, d_clipped;
   int            dx, dy, width, height, bpp;
@@ -67,8 +67,8 @@ int screen_copy_rect(screen_t *scr, const box_t *src, int dst_x, int dst_y, box_
   if (screen_get_clip(scr, &clip_box))
     return 0; /* invalid clipped screen */
 
-  dx = dst_x - src->x0;
-  dy = dst_y - src->y0;
+  dx = dst.x - src->x0;
+  dy = dst.y - src->y0;
 
   if (box_intersection(&clip_box, src, &s))
     return 0; /* source entirely off-screen */
@@ -90,7 +90,7 @@ int screen_copy_rect(screen_t *scr, const box_t *src, int dst_x, int dst_y, box_
   width  = s.x1 - s.x0;
   height = s.y1 - s.y0;
 
-  /* "src"/dst_x,dst_y describe the ideal, unclipped move: when either end
+  /* "src"/dst describe the ideal, unclipped move: when either end
    * falls partly off-screen, "d_clipped" (the part actually copied) can be
    * smaller than the caller's intended destination, e.g. a window dragged
    * back on-screen from off-screen has no source pixels for the part that

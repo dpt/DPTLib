@@ -20,9 +20,11 @@ result_t wuss_create(screen_t             *scr,
                      const wuss_config_t  *config,
                      wuss_t              **wuss)
 {
-  wuss_t   *w;
-  int       font_height;
-  int       font_width;
+  wuss_t        *w;
+  wuss_palette_t pal;
+  wuss_colour_t  bg, fg;
+  int            font_height;
+  int            font_width;
 
   assert(scr  != NULL);
   assert(wuss != NULL);
@@ -62,27 +64,48 @@ result_t wuss_create(screen_t             *scr,
 
   if (config != NULL)
   {
-    w->titlebar_bg = config->titlebar_bg;
-    w->titlebar_fg = config->titlebar_fg;
-  }
-  else if (palette == NULL)
-  {
-    w->titlebar_bg = palette_PICO8_DARK_BLUE;
-    w->titlebar_fg = palette_PICO8_WHITE;
+    pal = config->palette;
   }
   else
   {
-    w->titlebar_bg = 0;
-    w->titlebar_fg = (w->npalette > 1) ? 1 : 0;
+    if (palette == NULL)
+    {
+      bg = palette_PICO8_DARK_BLUE;
+      fg = palette_PICO8_WHITE;
+    }
+    else
+    {
+      bg = 0;
+      fg = (w->npalette > 1) ? 1 : 0;
+    }
+
+    pal.title.bg = bg;
+    pal.title.fg = fg;
+    pal.back     = fg;
+    pal.close    = fg;
+    pal.toggle   = fg;
+    pal.resize   = bg;
+    pal.arrows   = bg;
+    pal.wells    = bg;
+    pal.sausages = fg;
   }
 
-  if (w->titlebar_bg < 0 || w->titlebar_bg >= w->npalette ||
-      w->titlebar_fg < 0 || w->titlebar_fg >= w->npalette)
+  if (pal.title.bg < 0 || pal.title.bg >= w->npalette ||
+      pal.title.fg < 0 || pal.title.fg >= w->npalette ||
+      pal.back     < 0 || pal.back     >= w->npalette ||
+      pal.close    < 0 || pal.close    >= w->npalette ||
+      pal.toggle   < 0 || pal.toggle   >= w->npalette ||
+      pal.resize   < 0 || pal.resize   >= w->npalette ||
+      pal.arrows   < 0 || pal.arrows   >= w->npalette ||
+      pal.wells    < 0 || pal.wells    >= w->npalette ||
+      pal.sausages < 0 || pal.sausages >= w->npalette)
   {
     free(w->palette);
     free(w);
     return result_WUSS_BAD_COLOUR;
   }
+
+  w->furniture_colours = pal;
 
   if (config != NULL && config->titlebar_height > 0)
   {
@@ -99,11 +122,11 @@ result_t wuss_create(screen_t             *scr,
     w->titlebar_height = WUSS_DEFAULT_TITLEBAR_HEIGHT;
   }
 
-  w->scr      = scr;
-  w->font     = font;
-  w->dragging = NULL;
-  w->drag_dx  = 0;
-  w->drag_dy  = 0;
+  w->scr                = scr;
+  w->font               = font;
+  w->furniture.dragging = NULL;
+  w->furniture.drag.x   = 0;
+  w->furniture.drag.y   = 0;
 
   w->ndirty = 0;
 

@@ -2,7 +2,7 @@
 
 #include "../impl.h"
 
-wuss_window_t *wuss__window_at(wuss_t *wuss, int x, int y)
+wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p)
 {
   list_t *e;
 
@@ -11,7 +11,7 @@ wuss_window_t *wuss__window_at(wuss_t *wuss, int x, int y)
     wuss_window_t *win;
 
     win = (wuss_window_t *) e;
-    if (box_contains_point(&win->visible, x, y))
+    if (box_contains_point(&win->visible, p.x, p.y))
       return win;
   }
 

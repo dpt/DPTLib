@@ -10,8 +10,17 @@
 #include "framebuf/colour.h"
 #include "wuss/window.h"
 
-/* a wireframe sofa (seat, backrest, two arms) spinning about its vertical
- * axis; a content click pauses/resumes the spin */
+/* which model is currently on show */
+typedef enum sofa_shape
+{
+  sofa_SHAPE_SOFA,
+  sofa_SHAPE_SHIP
+}
+sofa_shape_t;
+
+/* a wireframe sofa (seat, backrest, two arms) or a spaceship,
+ * spinning about its vertical axis; a Select click pauses/resumes the spin,
+ * an Adjust click cycles the model */
 typedef struct sofa_task
 {
   wuss_window_t *window;
@@ -19,6 +28,7 @@ typedef struct sofa_task
   double         angle;
   double         zoom; /* scroll-adjustable */
   bool           spinning;
+  sofa_shape_t   shape;
 }
 sofa_task_t;
 

@@ -29,7 +29,7 @@ result_t palette_create(wuss_t         *wuss,
   return wuss_window_create(wuss,
                             &box,
                             "Palette",
-                            wuss_WINDOW_NONE,
+                            wuss_WINDOW_NO_TOGGLE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
                             &delegate,
                             box.x1 - box.x0,
                             box.y1 - box.y0,
@@ -38,34 +38,35 @@ result_t palette_create(wuss_t         *wuss,
 
 void palette_destroy(palette_task_t *task)
 {
-  if (task->window != NULL)
-    wuss_window_destroy(task->window);
+  wuss_window_close(task->window);
 }
 
-static result_t palette_redraw(wuss_window_t *window,
-                               screen_t      *scr,
-                               const box_t   *content,
-                               void          *task_data)
+static result_t palette_redraw(const wuss_event_t *event, void *task_data)
 {
   palette_task_t *pc;
+  screen_t       *scr;
+  const box_t    *bounds;
   int               cols, rows;
   int               cell_w, cell_h;
-  int               i;
-
-  NOT_USED(window);
+  int               i, sx, sy;
 
   pc = task_data;
 
   if (pc->npalette <= 0)
     return result_OK;
 
+  scr    = event->data.redraw.scr;
+  bounds = event->data.redraw.bounds;
+  sx     = event->data.redraw.scroll.x;
+  sy     = event->data.redraw.scroll.y;
+
   cols = 1;
   while (cols * cols < pc->npalette)
     cols++;
   rows = (pc->npalette + cols - 1) / cols;
 
-  cell_w = (content->x1 - content->x0) / cols;
-  cell_h = (content->y1 - content->y0) / rows;
+  cell_w = (bounds->x1 - bounds->x0) / cols;
+  cell_h = (bounds->y1 - bounds->y0) / rows;
 
   for (i = 0; i < pc->npalette; i++)
   {
@@ -73,8 +74,8 @@ static result_t palette_redraw(wuss_window_t *window,
 
     col = i % cols;
     row = i / cols;
-    x   = content->x0 + col * cell_w;
-    y   = content->y0 + row * cell_h;
+    x   = bounds->x0 - sx + col * cell_w;
+    y   = bounds->y0 - sy + row * cell_h;
 
     screen_draw_rect(scr, x, y, cell_w, cell_h, pc->palette[i]);
   }
@@ -88,7 +89,7 @@ result_t palette_handle(wuss_window_t     *window,
 {
   if (event->kind == wuss_EVENT_CLOSE)
   {
-    wuss_window_destroy(window);
+    wuss_window_close(window);
     ((palette_task_t *) task_data)->window = NULL;
     return result_OK;
   }
@@ -96,7 +97,7 @@ result_t palette_handle(wuss_window_t     *window,
   if (event->kind != wuss_EVENT_REDRAW)
     return result_OK;
 
-  return palette_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
+  return palette_redraw(event, task_data);
 }
 
 #endif /* USE_SDL */
