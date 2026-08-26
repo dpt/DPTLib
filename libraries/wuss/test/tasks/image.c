@@ -36,7 +36,14 @@ result_t image_create(wuss_t         *wuss,
   /* shorter than the bitmap so there's something to scroll through */
   box             = (box_t) BOX_POS_SIZE(370, 10, task->bitmap.width, task->bitmap.height * 2 / 3);
 
-  return wuss_window_create(wuss, &box, "Image", wuss_WINDOW_NONE, &delegate, &task->window);
+  return wuss_window_create(wuss,
+                            &box,
+                            "Image",
+                            wuss_WINDOW_NONE,
+                            &delegate,
+                            task->bitmap.width,
+                            task->bitmap.height,
+                            &task->window);
 }
 
 void image_destroy(image_task_t *task)

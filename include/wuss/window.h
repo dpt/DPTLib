@@ -148,12 +148,14 @@ result_t wuss_idle(wuss_t *wuss);
  * wider or taller than the screen keeps its top-left corner on-screen
  * instead. The bottom/right edges are not clamped.
  *
- * \param[in]  wuss    Window manager to create the window on.
- * \param[in]  content Requested content-area bounds, screen space. Copied in.
- * \param[in]  title   Titlebar label, or NULL for none. Copied in, truncated if too long. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR.
- * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR / wuss_WINDOW_NO_OUTLINE, OR'd together, or wuss_WINDOW_NONE for the default furniture.
- * \param[in]  task    Content delegate. Copied in. May be NULL for a window with no content handling.
- * \param[out] window  Newly created window. Becomes the topmost window.
+ * \param[in]  wuss       Window manager to create the window on.
+ * \param[in]  content    Requested content-area bounds, screen space. Copied in.
+ * \param[in]  title      Titlebar label, or NULL for none. Copied in, truncated if too long. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR.
+ * \param[in]  flags      Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR / wuss_WINDOW_NO_OUTLINE, OR'd together, or wuss_WINDOW_NONE for the default furniture.
+ * \param[in]  task       Content delegate. Copied in. May be NULL for a window with no content handling.
+ * \param[in]  doc_width  Virtual document width, for the horizontal scrollbar's thumb proportion; pass content's own width for a window with nothing to scroll.
+ * \param[in]  doc_height Virtual document height, for the vertical scrollbar's thumb proportion; pass content's own height for a window with nothing to scroll.
+ * \param[out] window     Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
  *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if
  *         task->bg is out of range for the palette, or another
@@ -164,6 +166,8 @@ result_t wuss_window_create(wuss_t             *wuss,
                             const char         *title,
                             wuss_window_flags_t flags,
                             const wuss_task_t  *task,
+                            int                 doc_width,
+                            int                 doc_height,
                             wuss_window_t     **window);
 
 /**

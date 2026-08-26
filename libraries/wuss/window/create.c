@@ -15,6 +15,8 @@ result_t wuss_window_create(wuss_t             *wuss,
                             const char         *title,
                             wuss_window_flags_t flags,
                             const wuss_task_t  *task,
+                            int                 doc_width,
+                            int                 doc_height,
                             wuss_window_t     **window)
 {
   wuss_window_t *win;
@@ -71,6 +73,9 @@ result_t wuss_window_create(wuss_t             *wuss,
   win->flags      = flags;
   win->scroll_x   = 0;
   win->scroll_y   = 0;
+  win->doc_width  = doc_width;
+  win->doc_height = doc_height;
+  win->toggled    = 0;
 
   if (task != NULL)
     win->task = *task;

@@ -316,12 +316,20 @@ set(UTILS_SOURCES
 set(WUSS_SOURCES
     libraries/wuss/create.c
     libraries/wuss/destroy.c
+    libraries/wuss/furniture/back-box.c
     libraries/wuss/furniture/close-box.c
     libraries/wuss/furniture/content-box.c
+    libraries/wuss/furniture/drag-resize.c
     libraries/wuss/furniture/draw.c
     libraries/wuss/furniture/hit-test.c
+    libraries/wuss/furniture/hscroll-box.c
     libraries/wuss/furniture/invalidate.c
+    libraries/wuss/furniture/resize-box.c
+    libraries/wuss/furniture/scroll-action.c
     libraries/wuss/furniture/titlebar-box.c
+    libraries/wuss/furniture/toggle-action.c
+    libraries/wuss/furniture/toggle-box.c
+    libraries/wuss/furniture/vscroll-box.c
     libraries/wuss/idle.c
     libraries/wuss/impl.h
     libraries/wuss/invalidate.c
