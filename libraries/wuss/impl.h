@@ -16,6 +16,11 @@
 
 #define WUSS_MAX_DIRTY 16 /* dirty regions tracked before further invalidations get merged into the last entry */
 
+/* ponytail: fixed cap; if hit, remaining pieces are carried through
+ * unclipped against further occluders rather than growing storage -- safe,
+ * just some avoidable redraw work, never wrong */
+#define WUSS_MAX_INVALIDATE_PIECES 32
+
 #define WUSS_ICON_INSET   3  /* shared by close/back/toggle/resize icons and scrollbar breadth */
 #define WUSS_MIN_THUMB    6  /* scrollbar thumb never shrinks below this, however small the content fraction */
 #define WUSS_MIN_CONTENT  20 /* resize-drag floor: content can never be squeezed smaller than this */
@@ -119,6 +124,13 @@ void            wuss__invalidate_minus(wuss_t      *wuss,
                                        const box_t *whole,
                                        const box_t *keep);
 void            wuss__invalidate_uncovered(wuss_window_t *window);
+
+/* Clip "box" (screen space) down to the parts not already covered by
+ * windows above "window" in the z-order, writing the surviving pieces to
+ * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count. */
+int             wuss__clip_to_visible(wuss_window_t *window,
+                                      const box_t   *box,
+                                      box_t         *out);
 
 /* ----- furniture ----- */
 

@@ -624,7 +624,9 @@ result_t wuss_test(const char *resources)
   rc = wuss_redraw(wuss);
   if (rc != result_OK)
     goto Failure;
-  if (tc_a.redraw_count != 1 || tc_b.redraw_count != 1)
+  /* A's visible footprint is L-shaped (B covers its bottom-right corner),
+   * so it's redrawn as two non-overlapping pieces; B is unoccluded, one */
+  if (tc_a.redraw_count != 2 || tc_b.redraw_count != 1)
     goto Failure;
 
   printf("test: invalidating an area of A fully covered by topmost B is discarded\n");
