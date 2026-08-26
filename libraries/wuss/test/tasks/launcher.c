@@ -77,7 +77,7 @@ static result_t launcher_redraw(screen_t *scr, const box_t *content, void *task_
   return result_OK;
 }
 
-static result_t launcher_mouse(int y, void *task_data)
+static result_t launcher_mouse(wuss_window_t *window, int y, void *task_data)
 {
   launcher_task_t  *lc;
   int               i;
@@ -96,7 +96,10 @@ static result_t launcher_mouse(int y, void *task_data)
 
   rc = entry->spawn();
   if (rc == result_OK)
+  {
     entry->running = true;
+    wuss_window_invalidate_all(window);
+  }
 
   return rc;
 }
@@ -105,8 +108,6 @@ result_t launcher_handle(wuss_window_t      *window,
                          const wuss_event_t *event,
                          void               *task_data)
 {
-  NOT_USED(window);
-
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
@@ -115,7 +116,7 @@ result_t launcher_handle(wuss_window_t      *window,
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
-    return launcher_mouse(event->data.mouse.y, task_data);
+    return launcher_mouse(window, event->data.mouse.y, task_data);
 
   default:
     return result_OK;
