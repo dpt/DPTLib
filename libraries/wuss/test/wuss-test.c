@@ -1381,6 +1381,7 @@ result_t wuss_test(const char *resources)
     int            outline_px, titlebar_height, inset, icon;
     int            i, dirty_area, full_area, cx, cy, old_icon_x, old_icon_y, found;
     int            interior_x, interior_y, interior_dirty;
+    int            old_vscroll_x, old_vscroll_y, old_vscroll_found;
 
     tc_t.redraw_count = 0;
     tc_t.mouse_count  = 0;
@@ -1430,6 +1431,14 @@ result_t wuss_test(const char *resources)
     interior_x = (before.x0 + outline_px + before.x1 - outline_px - icon) / 2;
     interior_y = (before.y0 + outline_px + titlebar_height + before.y1 - outline_px - icon) / 2;
 
+    /* pre-grow vscroll column, at the *old* right edge: once the window
+     * widens this sits mid-content rather than at the (now further right)
+     * new column, inside the region the blit reuses as valid pixels --
+     * the content redraw never touches it, so only a forced old-furniture
+     * invalidate stops the old scrollbar glyph being left behind there */
+    old_vscroll_x = before.x1 - outline_px - icon / 2;
+    old_vscroll_y = interior_y;
+
     rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* T's toggle-size icon: grow */
     if (rc != result_OK)
       goto Failure;
@@ -1442,8 +1451,9 @@ result_t wuss_test(const char *resources)
     if (wuss_get_dirty_count(wuss) == 0)
       goto Failure;
 
-    found          = 0;
-    interior_dirty = 0;
+    found             = 0;
+    interior_dirty    = 0;
+    old_vscroll_found = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
     {
       box_t region;
@@ -1453,7 +1463,16 @@ result_t wuss_test(const char *resources)
         found = 1;
       if (box_contains_point(&region, interior_x, interior_y))
         interior_dirty = 1;
+      if (box_contains_point(&region, old_vscroll_x, old_vscroll_y))
+        old_vscroll_found = 1;
     }
+    if (!old_vscroll_found)
+      goto Failure; /* the old vscroll column, now mid-content rather than at
+                      * the (further right) new right edge, falls inside both
+                      * "before" and the grown "visible" same as the toggle
+                      * icon above -- the blit alone leaves its stale pixels
+                      * on screen unless the old furniture position is also
+                      * forced dirty */
     if (!found)
       goto Failure; /* the old toggle-icon glyph, now mid-titlebar rather than
                       * at its corner, falls inside both "before" and the

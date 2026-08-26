@@ -77,6 +77,15 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
      * old toggle icon location is now mid-titlebar, not redrawn by either
      * invalidate_minus above since it falls inside both "before" and the
      * new "visible". Force it dirty regardless of the blit. */
+    if (window->visible.x1 - window->visible.x0 > before.x1 - before.x0 ||
+        window->visible.y1 - window->visible.y0 > before.y1 - before.y0)
+      /* Growing strands old furniture (e.g. the old vscroll column) inside
+       * what's now interior content, a region the blit above treats as
+       * already-valid and so never repaints -- force its old position dirty
+       * too. Shrinking needs no such help: old furniture positions only
+       * ever land outside the new, smaller box, already covered by the
+       * invalidate_minus vacated-region call above. */
+      wuss__furniture_invalidate_for(window, &before);
     wuss__furniture_invalidate(window);
   }
   else
