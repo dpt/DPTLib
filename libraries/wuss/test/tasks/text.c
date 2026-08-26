@@ -78,7 +78,7 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
 
   scr    = event->data.redraw.scr;
   bounds = event->data.redraw.bounds;
-  sy     = event->data.redraw.scroll_y;
+  sy     = event->data.redraw.scroll.y;
 
   bmfont_get_info(tcx->font, &font_width, &font_height);
 

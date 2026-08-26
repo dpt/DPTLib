@@ -102,8 +102,8 @@ result_t wuss_create(screen_t             *scr,
   w->scr      = scr;
   w->font     = font;
   w->dragging = NULL;
-  w->drag_dx  = 0;
-  w->drag_dy  = 0;
+  w->drag.x   = 0;
+  w->drag.y   = 0;
 
   w->ndirty = 0;
 

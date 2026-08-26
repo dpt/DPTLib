@@ -17,6 +17,7 @@ extern "C"
 
 #include "base/result.h"
 #include "geom/box.h"
+#include "geom/point.h"
 #include "framebuf/screen.h"
 
 #include "wuss/wuss.h"
@@ -26,13 +27,13 @@ extern "C"
 /** Which kind of event a wuss_event_t carries; more will be added over time. */
 typedef enum wuss_event_kind
 {
+  wuss_EVENT_IDLE,   /**< Wuss has finished its pending tasks. */
   wuss_EVENT_REDRAW, /**< Part of the window's content needs repainting. */
+  wuss_EVENT_OPEN,   /**< Window moved or resized. */
+  wuss_EVENT_CLOSE,  /**< Close icon clicked; Wuss takes no action itself. */
   wuss_EVENT_MOUSE,  /**< Button down/up over the window's content. */
   wuss_EVENT_SCROLL, /**< Mouse wheel used over the window's content. */
-  wuss_EVENT_IDLE,   /**< Wuss has finished its pending tasks. */
-  wuss_EVENT_CLOSE,  /**< Close icon clicked; Wuss takes no action itself. */
-  wuss_EVENT_QUIT,   /**< Task shutting down, via wuss_task_stop. */
-  wuss_EVENT_OPEN    /**< Window moved or resized. */
+  wuss_EVENT_QUIT    /**< Task shutting down, via wuss_task_stop. */
 }
 wuss_event_kind_t;
 
@@ -46,35 +47,36 @@ typedef struct wuss_event
   union
   {
     /** wuss_EVENT_REDRAW: called with scr->clip already set to the
-     * on-screen, clipped content area. bounds and scroll_x/scroll_y are
-     * exactly what wuss_window_get_content_bounds/wuss_window_get_scroll
-     * would return, passed through so tasks don't need to call back into
-     * Wuss on every redraw. */
+     * on-screen, clipped content area. bounds and scroll are exactly what
+     * wuss_window_get_content_bounds/wuss_window_get_scroll would return,
+     * passed through so tasks don't need to call back into Wuss on every
+     * redraw. */
     struct
     {
       screen_t    *scr;
       const box_t *content; /**< The region that actually needs repainting, screen space; a subset of bounds. Tasks should only touch pixels within this box. */
       const box_t *bounds;  /**< The window's full (unclipped) content-area box, screen space, as per wuss_window_get_content_bounds; for converting screen position to document position. */
-      int          scroll_x, scroll_y; /**< Current scroll offset, as per wuss_window_get_scroll. */
+      point_t      scroll;  /**< Current scroll offset, as per wuss_window_get_scroll. */
     }
     redraw;
 
-    /** wuss_EVENT_MOUSE: x,y are window-local content coordinates (the
+    /** wuss_EVENT_MOUSE: point is window-local content coordinates (the
      * content area's top-left is (0,0)). button is meaningful for
      * DOWN/UP. */
     struct
     {
       wuss_mouse_action_t action;
-      int                 x, y;
+      point_t             point;
       wuss_button_t       button;
     }
     mouse;
 
-    /** wuss_EVENT_SCROLL: x,y are window-local content coordinates, as
+    /** wuss_EVENT_SCROLL: point is window-local content coordinates, as
      * per mouse. delta's sign and units are as passed to wuss_scroll. */
     struct
     {
-      int x, y, delta;
+      point_t point;
+      int     delta;
     }
     scroll;
 

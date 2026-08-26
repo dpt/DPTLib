@@ -57,8 +57,8 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
   bounds  = event->data.redraw.bounds;
-  sx      = event->data.redraw.scroll_x;
-  sy      = event->data.redraw.scroll_y;
+  sx      = event->data.redraw.scroll.x;
+  sy      = event->data.redraw.scroll.y;
 
   screen_draw_rect(scr, content->x0, content->y0,
                    content->x1 - content->x0,
@@ -193,8 +193,8 @@ result_t ball_handle(wuss_window_t     *window,
     return ball_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
-    return ball_mouse(window, event->data.mouse.action, event->data.mouse.x,
-                      event->data.mouse.y, event->data.mouse.button, task_data);
+    return ball_mouse(window, event->data.mouse.action, event->data.mouse.point.x,
+                      event->data.mouse.point.y, event->data.mouse.button, task_data);
 
   case wuss_EVENT_IDLE:
     return ball_idle(task_data);

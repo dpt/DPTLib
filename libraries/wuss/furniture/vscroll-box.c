@@ -90,7 +90,7 @@ void wuss__vscroll_thumb_box(const wuss_window_t *window, box_t *out)
     thumb_px = track_px;
 
   if (doc_size > content_size && track_px > thumb_px)
-    thumb_y0 = bar.y0 + (track_px - thumb_px) * window->scroll_y / (doc_size - content_size);
+    thumb_y0 = bar.y0 + (track_px - thumb_px) * window->scroll.y / (doc_size - content_size);
   else
     thumb_y0 = bar.y0;
 

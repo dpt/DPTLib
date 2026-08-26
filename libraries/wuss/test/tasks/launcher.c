@@ -68,7 +68,7 @@ static result_t launcher_redraw(const wuss_event_t *event, void *task_data)
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
   bounds  = event->data.redraw.bounds;
-  sy      = event->data.redraw.scroll_y;
+  sy      = event->data.redraw.scroll.y;
 
   screen_draw_rect(scr, content->x0, content->y0,
                    content->x1 - content->x0, content->y1 - content->y0,
@@ -133,7 +133,7 @@ result_t launcher_handle(wuss_window_t      *window,
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
-    return launcher_mouse(window, event->data.mouse.y, task_data);
+    return launcher_mouse(window, event->data.mouse.point.y, task_data);
 
   default:
     return result_OK;

@@ -65,8 +65,8 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
   bounds  = event->data.redraw.bounds;
-  sx      = event->data.redraw.scroll_x;
-  sy      = event->data.redraw.scroll_y;
+  sx      = event->data.redraw.scroll.x;
+  sy      = event->data.redraw.scroll.y;
 
   for (y = content->y0; y < content->y1; y++)
   {

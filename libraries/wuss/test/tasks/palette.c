@@ -57,8 +57,8 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
 
   scr    = event->data.redraw.scr;
   bounds = event->data.redraw.bounds;
-  sx     = event->data.redraw.scroll_x;
-  sy     = event->data.redraw.scroll_y;
+  sx     = event->data.redraw.scroll.x;
+  sy     = event->data.redraw.scroll.y;
 
   cols = 1;
   while (cols * cols < pc->npalette)

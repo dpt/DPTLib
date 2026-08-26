@@ -31,7 +31,7 @@ result_t wuss_mouse_click(wuss_t              *wuss,
   if (win == NULL)
     return result_OK;
 
-  region = wuss__furniture_hit_test(win, x, y);
+  region = wuss__furniture_hit_test(win, (point_t) { x, y });
 
   if (region == wuss_FURNITURE_CLOSE &&
       action == wuss_MOUSE_DOWN     &&
@@ -67,16 +67,16 @@ result_t wuss_mouse_click(wuss_t              *wuss,
         wuss__furniture_toggle_size(win);
         break;
       case wuss_FURNITURE_VSCROLL_UP:
-        wuss__furniture_scroll_step(win, 0, -WUSS_SCROLL_STEP);
+        wuss__furniture_scroll_step(win, (point_t) { 0, -WUSS_SCROLL_STEP });
         break;
       case wuss_FURNITURE_VSCROLL_DOWN:
-        wuss__furniture_scroll_step(win, 0, WUSS_SCROLL_STEP);
+        wuss__furniture_scroll_step(win, (point_t) { 0, WUSS_SCROLL_STEP });
         break;
       case wuss_FURNITURE_HSCROLL_LEFT:
-        wuss__furniture_scroll_step(win, -WUSS_SCROLL_STEP, 0);
+        wuss__furniture_scroll_step(win, (point_t) { -WUSS_SCROLL_STEP, 0 });
         break;
       case wuss_FURNITURE_HSCROLL_RIGHT:
-        wuss__furniture_scroll_step(win, WUSS_SCROLL_STEP, 0);
+        wuss__furniture_scroll_step(win, (point_t) { WUSS_SCROLL_STEP, 0 });
         break;
       default:
         break;
@@ -97,8 +97,8 @@ result_t wuss_mouse_click(wuss_t              *wuss,
       wuss__content_box(win, &content);
       wuss->dragging   = win;
       wuss->drag_kind  = wuss_FURNITURE_DRAG_MOVE;
-      wuss->drag_dx    = x - content.x0;
-      wuss->drag_dy    = y - content.y0;
+      wuss->drag.x     = x - content.x0;
+      wuss->drag.y     = y - content.y0;
     }
     return result_OK;
   }
@@ -118,8 +118,8 @@ result_t wuss_mouse_click(wuss_t              *wuss,
 
       wuss->dragging          = win;
       wuss->drag_kind         = wuss__furniture_drag_kind(region);
-      wuss->drag_dx           = x;
-      wuss->drag_dy           = y;
+      wuss->drag.x            = x;
+      wuss->drag.y            = y;
       wuss->drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_BAR) ? sy : sx;
     }
     return result_OK;
@@ -130,11 +130,11 @@ result_t wuss_mouse_click(wuss_t              *wuss,
     box_t content;
 
     wuss__content_box(win, &content);
-    event.kind             = wuss_EVENT_MOUSE;
-    event.data.mouse.action = action;
-    event.data.mouse.x      = x - content.x0 + win->scroll_x;
-    event.data.mouse.y      = y - content.y0 + win->scroll_y;
-    event.data.mouse.button = button;
+    event.kind               = wuss_EVENT_MOUSE;
+    event.data.mouse.action  = action;
+    event.data.mouse.point.x = x - content.x0 + win->scroll.x;
+    event.data.mouse.point.y = y - content.y0 + win->scroll.y;
+    event.data.mouse.button  = button;
     return win->task.handle(win, &event, win->task.task_data);
   }
 
