@@ -33,6 +33,7 @@
 #include "tasks/blank.h"
 #include "tasks/checker.h"
 #include "tasks/curve.h"
+#include "tasks/gradient.h"
 #include "tasks/image.h"
 #include "tasks/launcher.h"
 #include "tasks/palette.h"
@@ -42,7 +43,7 @@
 /* Screen pixel format for the interactive test: 1 = 32bpp pixelfmt_bgrx8888
  * (feeds SDL directly, no per-frame conversion); 0 = pixelfmt_p4 paletted
  * (exercises screen_copy_rect's nibble-packed blit path instead). */
-#define WUSS_TEST_32BPP 0
+#define WUSS_TEST_32BPP 1
 
 /* the launcher's spawn callbacks take no arguments, so the pieces they need
  * are stashed here instead; wuss_interactive_test runs at most once per
@@ -61,35 +62,39 @@ static image_task_t    g_image_task;
 static checker_task_t  g_checker_task;
 static curve_task_t    g_curve_task;
 static sofa_task_t     g_sofa_task;
+static gradient_task_t g_gradient_task;
 
-static result_t spawn_ball(void)    { return ball_create(g_wuss, g_palette, &g_ball_task); }
-static result_t spawn_text(void)    { return text_create(g_wuss, g_palette, g_daydream_font, &g_text_task); }
-static result_t spawn_blank(void)   { return blank_create(g_wuss, g_npalette, &g_blank_task); }
-static result_t spawn_palette(void) { return palette_create(g_wuss, g_palette, g_npalette, &g_palette_task); }
-static result_t spawn_image(void)   { return image_create(g_wuss, g_palette, g_resources, &g_image_task); }
-static result_t spawn_checker(void) { return checker_create(g_wuss, g_palette, &g_checker_task); }
-static result_t spawn_curve(void)   { return curve_create(g_wuss, g_palette, &g_curve_task); }
-static result_t spawn_sofa(void)    { return sofa_create(g_wuss, g_palette, &g_sofa_task); }
+static result_t spawn_ball(void)     { return ball_create(g_wuss, g_palette, &g_ball_task); }
+static result_t spawn_text(void)     { return text_create(g_wuss, g_palette, g_daydream_font, &g_text_task); }
+static result_t spawn_blank(void)    { return blank_create(g_wuss, g_npalette, &g_blank_task); }
+static result_t spawn_palette(void)  { return palette_create(g_wuss, g_palette, g_npalette, &g_palette_task); }
+static result_t spawn_image(void)    { return image_create(g_wuss, g_palette, g_resources, &g_image_task); }
+static result_t spawn_checker(void)  { return checker_create(g_wuss, g_palette, &g_checker_task); }
+static result_t spawn_curve(void)    { return curve_create(g_wuss, g_palette, &g_curve_task); }
+static result_t spawn_sofa(void)     { return sofa_create(g_wuss, g_palette, &g_sofa_task); }
+static result_t spawn_gradient(void) { return gradient_create(g_wuss, &g_gradient_task); }
 
-static void destroy_ball(void)    { ball_destroy(&g_ball_task); }
-static void destroy_text(void)    { text_destroy(&g_text_task); }
-static void destroy_blank(void)   { blank_destroy(&g_blank_task); }
-static void destroy_palette(void) { palette_destroy(&g_palette_task); }
-static void destroy_image(void)   { image_destroy(&g_image_task); }
-static void destroy_checker(void) { checker_destroy(&g_checker_task); }
-static void destroy_curve(void)   { curve_destroy(&g_curve_task); }
-static void destroy_sofa(void)    { sofa_destroy(&g_sofa_task); }
+static void destroy_ball(void)     { ball_destroy(&g_ball_task); }
+static void destroy_text(void)     { text_destroy(&g_text_task); }
+static void destroy_blank(void)    { blank_destroy(&g_blank_task); }
+static void destroy_palette(void)  { palette_destroy(&g_palette_task); }
+static void destroy_image(void)    { image_destroy(&g_image_task); }
+static void destroy_checker(void)  { checker_destroy(&g_checker_task); }
+static void destroy_curve(void)    { curve_destroy(&g_curve_task); }
+static void destroy_sofa(void)     { sofa_destroy(&g_sofa_task); }
+static void destroy_gradient(void) { gradient_destroy(&g_gradient_task); }
 
 static launcher_entry_t g_launcher_entries[] =
 {
-  { "Ball",    spawn_ball,    destroy_ball,    false },
-  { "Text",    spawn_text,    destroy_text,    false },
-  { "Blank",   spawn_blank,   destroy_blank,   false },
-  { "Palette", spawn_palette, destroy_palette, false },
-  { "Image",   spawn_image,   destroy_image,   false },
-  { "Checker", spawn_checker, destroy_checker, false },
-  { "Curve",   spawn_curve,   destroy_curve,   false },
-  { "Sofa",    spawn_sofa,    destroy_sofa,    false }
+  { "Ball",     spawn_ball,     destroy_ball,     false },
+  { "Text",     spawn_text,     destroy_text,     false },
+  { "Blank",    spawn_blank,    destroy_blank,    false },
+  { "Palette",  spawn_palette,  destroy_palette,  false },
+  { "Image",    spawn_image,    destroy_image,    false },
+  { "Checker",  spawn_checker,  destroy_checker,  false },
+  { "Curve",    spawn_curve,    destroy_curve,    false },
+  { "Sofa",     spawn_sofa,     destroy_sofa,     false },
+  { "Gradient", spawn_gradient, destroy_gradient, false }
 };
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)

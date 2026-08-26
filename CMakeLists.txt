@@ -535,6 +535,7 @@ if(BUILD_TESTS)
         libraries/wuss/test/tasks/blank.c
         libraries/wuss/test/tasks/checker.c
         libraries/wuss/test/tasks/curve.c
+        libraries/wuss/test/tasks/gradient.c
         libraries/wuss/test/tasks/image.c
         libraries/wuss/test/tasks/launcher.c
         libraries/wuss/test/tasks/palette.c
