@@ -43,7 +43,7 @@
 /* Screen pixel format for the interactive test: 1 = 32bpp pixelfmt_bgrx8888
  * (feeds SDL directly, no per-frame conversion); 0 = pixelfmt_p4 paletted
  * (exercises screen_copy_rect's nibble-packed blit path instead). */
-#define WUSS_TEST_32BPP 1
+#define WUSS_TEST_32BPP 0
 
 /* the launcher's spawn callbacks take no arguments, so the pieces they need
  * are stashed here instead; wuss_interactive_test runs at most once per
