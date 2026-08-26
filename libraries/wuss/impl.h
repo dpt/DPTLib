@@ -32,8 +32,7 @@ struct wuss
   bmfont_t                   *font;      /* nullable, not owned */
   colour_t                   *palette;   /* owned */
   int                         npalette;
-  wuss_colour_t               titlebar_bg;
-  wuss_colour_t               titlebar_fg;
+  struct wuss__furniture_colours furniture_colours;
   int                         titlebar_height;
   list_t                      z_order;   /* anchor; head = topmost window */
   struct wuss__furniture      furniture;

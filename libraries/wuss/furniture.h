@@ -52,6 +52,14 @@ struct wuss__furniture
   int                         drag_scroll_start; /* *_SAUSAGE: scroll.x/scroll.y at drag start */
 };
 
+/* Furniture chrome colours (titlebar, scrollbar, icons), embedded in
+ * struct wuss. */
+struct wuss__furniture_colours
+{
+  wuss_colour_t bg;
+  wuss_colour_t fg;
+};
+
 static inline wuss_furniture_drag_kind_t wuss__furniture_drag_kind(wuss_furniture_region_t region)
 {
   switch (region)
