@@ -227,9 +227,16 @@ static result_t wuss_interactive_test(const char *resources)
   {
     wuss_config_t config;
 
-    config.titlebar_height = 0;
-    config.titlebar_bg     = palette_PICO8_DARK_BLUE;
-    config.titlebar_fg     = palette_PICO8_WHITE;
+    config.titlebar_height   = 0;
+    config.palette.title.bg  = palette_PICO8_DARK_BLUE;
+    config.palette.title.fg  = palette_PICO8_WHITE;
+    config.palette.back      = palette_PICO8_WHITE;
+    config.palette.close     = palette_PICO8_WHITE;
+    config.palette.toggle    = palette_PICO8_WHITE;
+    config.palette.resize    = palette_PICO8_DARK_BLUE;
+    config.palette.arrows    = palette_PICO8_DARK_BLUE;
+    config.palette.wells     = palette_PICO8_DARK_BLUE;
+    config.palette.sausages  = palette_PICO8_WHITE;
 
     rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, &wuss);
     if (rc != result_OK)
@@ -535,9 +542,16 @@ result_t wuss_test(const char *resources)
 
   printf("test: wuss_create with bad titlebar colour index\n");
 
-  bad_config.titlebar_height = 0;
-  bad_config.titlebar_bg     = 999;
-  bad_config.titlebar_fg     = 0;
+  bad_config.titlebar_height  = 0;
+  bad_config.palette.title.bg = 999;
+  bad_config.palette.title.fg = 0;
+  bad_config.palette.back     = 0;
+  bad_config.palette.close    = 0;
+  bad_config.palette.toggle   = 0;
+  bad_config.palette.resize   = 0;
+  bad_config.palette.arrows   = 0;
+  bad_config.palette.wells    = 0;
+  bad_config.palette.sausages = 0;
   rc = wuss_create(&scr, NULL, NULL, 0, &bad_config, &bad_wuss);
   if (rc != result_WUSS_BAD_COLOUR)
     goto Failure;

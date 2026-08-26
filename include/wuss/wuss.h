@@ -61,6 +61,28 @@ typedef int wuss_colour_t;
 /** Sentinel for wuss_task_t::bg meaning "no automatic background fill". */
 #define wuss_NO_BACKGROUND ((wuss_colour_t) -1)
 
+/** Furniture chrome colours, one entry per class of furniture. Title is
+ * the only two-tone class (fill + text); the rest are drawn as a single
+ * flat colour. Each value is an index into the system palette (see
+ * wuss_create). */
+typedef struct wuss_palette
+{
+  struct
+  {
+    wuss_colour_t bg;     /**< Titlebar fill. */
+    wuss_colour_t fg;     /**< Titlebar text. */
+  }
+  title;
+  wuss_colour_t back;     /**< Send-to-back icon. */
+  wuss_colour_t close;    /**< Close icon. */
+  wuss_colour_t toggle;   /**< Toggle-size icon. */
+  wuss_colour_t resize;   /**< Resize icon. */
+  wuss_colour_t arrows;   /**< Scrollbar arrows. */
+  wuss_colour_t wells;    /**< Scrollbar wells. */
+  wuss_colour_t sausages; /**< Scrollbar sausages. */
+}
+wuss_palette_t;
+
 /** Per-window appearance flags, combinable with bitwise OR. */
 typedef enum wuss_window_flags
 {
@@ -89,9 +111,8 @@ wuss_zorder_t;
 /** Optional creation-time configuration. */
 typedef struct wuss_config
 {
-  int           titlebar_height; /**< Titlebar height in pixels, or 0 to derive from font metrics (or a built-in fallback if no font). */
-  wuss_colour_t titlebar_bg;     /**< Titlebar background, as an index into the system palette. */
-  wuss_colour_t titlebar_fg;     /**< Titlebar text colour, as an index into the system palette. */
+  int            titlebar_height; /**< Titlebar height in pixels, or 0 to derive from font metrics (or a built-in fallback if no font). */
+  wuss_palette_t palette;         /**< Furniture chrome colours. */
 }
 wuss_config_t;
 
@@ -104,8 +125,8 @@ wuss_config_t;
  * \param[in]  npalette Number of entries in palette. Ignored if palette is NULL.
  * \param[in]  config   Creation-time configuration, or NULL for defaults.
  * \param[out] wuss     Newly created window manager.
- * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if config's
- *         titlebar_bg/titlebar_fg are out of range for the palette, or
+ * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if any of
+ *         config's palette entries are out of range for the palette, or
  *         another appropriate result code.
  */
 result_t wuss_create(screen_t             *scr,
