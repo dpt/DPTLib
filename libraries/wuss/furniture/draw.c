@@ -122,7 +122,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
   if (!(window->flags & wuss_WINDOW_NO_VSCROLL))
   {
-    box_t up, down, thumb;
+    box_t up, down, bar, thumb;
 
     wuss__vscroll_up_box(window, &up);
     if (!box_intersection(&up, full, &clipped))
@@ -140,6 +140,14 @@ void wuss__furniture_draw(wuss_t        *wuss,
                        wuss->palette[wuss->titlebar_bg]);
     }
 
+    wuss__vscroll_bar_box(window, &bar);
+    if (!box_intersection(&bar, full, &clipped))
+    {
+      wuss->scr->clip = clipped;
+      screen_draw_rect(wuss->scr, bar.x0, bar.y0, bar.x1 - bar.x0, bar.y1 - bar.y0,
+                       wuss->palette[wuss->titlebar_bg]);
+    }
+
     wuss__vscroll_thumb_box(window, &thumb);
     if (!box_intersection(&thumb, full, &clipped))
     {
@@ -151,7 +159,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
   if (!(window->flags & wuss_WINDOW_NO_HSCROLL))
   {
-    box_t left, right, thumb;
+    box_t left, right, bar, thumb;
 
     wuss__hscroll_left_box(window, &left);
     if (!box_intersection(&left, full, &clipped))
@@ -166,6 +174,14 @@ void wuss__furniture_draw(wuss_t        *wuss,
     {
       wuss->scr->clip = clipped;
       screen_draw_rect(wuss->scr, right.x0, right.y0, right.x1 - right.x0, right.y1 - right.y0,
+                       wuss->palette[wuss->titlebar_bg]);
+    }
+
+    wuss__hscroll_bar_box(window, &bar);
+    if (!box_intersection(&bar, full, &clipped))
+    {
+      wuss->scr->clip = clipped;
+      screen_draw_rect(wuss->scr, bar.x0, bar.y0, bar.x1 - bar.x0, bar.y1 - bar.y0,
                        wuss->palette[wuss->titlebar_bg]);
     }
 
