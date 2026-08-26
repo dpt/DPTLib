@@ -187,13 +187,40 @@ static inline int wuss__outline_px(const wuss_window_t *window)
 /* ponytail: falls back to the default titlebar height when the window has
  * none, so NO_TITLEBAR windows that still opt into scrollbars/resize get a
  * sane breadth rather than a negative one */
-static inline int wuss__icon_size(const wuss_window_t *window)
+static inline int wuss__icon_size_for(const wuss_t *wuss, wuss_window_flags_t flags)
 {
   int size;
 
-  size = wuss__titlebar_height(window) - 2 * WUSS_ICON_INSET;
+  size = wuss__titlebar_height_for(wuss, flags) - 2 * WUSS_ICON_INSET;
 
   return (size > 0) ? size : WUSS_DEFAULT_TITLEBAR_HEIGHT - 2 * WUSS_ICON_INSET;
+}
+
+static inline int wuss__icon_size(const wuss_window_t *window)
+{
+  return wuss__icon_size_for(window->wuss, window->flags);
+}
+
+/* how much of a content box's width/height is furniture (scrollbars, the
+ * resize icon's corner), reserved outside the content area rather than
+ * carved out of it -- shared by wuss__content_box (subtracts it back off
+ * visible) and window creation/resize (add it to visible up front) so the
+ * two stay consistent with each other */
+static inline void wuss__furniture_carve_for(wuss_window_flags_t flags,
+                                             int                 icon_size,
+                                             int                *carve_x,
+                                             int                *carve_y)
+{
+  *carve_x = (flags & wuss_WINDOW_NO_VSCROLL) ? 0 : icon_size;
+  *carve_y = (flags & wuss_WINDOW_NO_HSCROLL) ? 0 : icon_size;
+
+  if (!(flags & wuss_WINDOW_NO_RESIZE) &&
+      (flags & wuss_WINDOW_NO_VSCROLL) &&
+      (flags & wuss_WINDOW_NO_HSCROLL))
+  {
+    *carve_x = icon_size;
+    *carve_y = icon_size;
+  }
 }
 
 #endif /* IMPL_H */
