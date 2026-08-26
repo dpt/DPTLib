@@ -35,7 +35,7 @@ result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *titl
                             wuss_window_t **window);
 ```
 
-`doc_width`/`doc_height` are the virtual document extent behind the horizontal/vertical scrollbars' thumb proportion; pass `content`'s own width/height for a window with nothing to scroll. Set once at creation, immutable thereafter.
+`doc_width`/`doc_height` are the virtual document extent behind the horizontal/vertical scrollbars' sausage proportion; pass `content`'s own width/height for a window with nothing to scroll. Set once at creation, immutable thereafter.
 
 Furniture is additional to `content`, not carved out of it: the window's content area always ends up exactly the box requested, and its on-screen footprint (`wuss_window_get_visible_bounds`) is `content` expanded outward by whatever furniture flags request — a titlebar above, and/or a 1px outline around all four sides.
 

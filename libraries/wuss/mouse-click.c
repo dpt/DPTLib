@@ -107,8 +107,8 @@ result_t wuss_mouse_click(wuss_t              *wuss,
   }
 
   if (region == wuss_FURNITURE_RESIZE ||
-      region == wuss_FURNITURE_VSCROLL_BAR ||
-      region == wuss_FURNITURE_HSCROLL_BAR)
+      region == wuss_FURNITURE_VSCROLL_WELL ||
+      region == wuss_FURNITURE_HSCROLL_WELL)
   {
     if (action == wuss_MOUSE_DOWN)
     {
@@ -123,7 +123,7 @@ result_t wuss_mouse_click(wuss_t              *wuss,
       wuss->drag_kind         = wuss__furniture_drag_kind(region);
       wuss->drag.x            = x;
       wuss->drag.y            = y;
-      wuss->drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_BAR) ? scroll.y : scroll.x;
+      wuss->drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_WELL) ? scroll.y : scroll.x;
     }
     return result_OK;
   }

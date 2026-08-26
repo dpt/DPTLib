@@ -95,7 +95,7 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
 
     /* Unlike a move, a toggle changes the window's size, so furniture that
      * lays itself out relative to that size (titlebar icons anchored to its
-     * right edge, scrollbar track/thumb proportions, the resize corner)
+     * right edge, scrollbar well/sausage proportions, the resize corner)
      * reflows even where the blit reused valid content pixels -- e.g. the
      * old toggle icon location is now mid-titlebar, not redrawn by either
      * invalidate_minus above since it falls inside both "before" and the

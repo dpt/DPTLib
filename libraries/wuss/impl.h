@@ -22,7 +22,7 @@
 #define WUSS_MAX_INVALIDATE_PIECES 32
 
 #define WUSS_ICON_INSET   3  /* shared by close/back/toggle/resize icons and scrollbar breadth */
-#define WUSS_MIN_THUMB    6  /* scrollbar thumb never shrinks below this, however small the content fraction */
+#define WUSS_MIN_SAUSAGE  6  /* scrollbar sausage never shrinks below this, however small the content fraction */
 #define WUSS_MIN_CONTENT  20 /* resize-drag floor: content can never be squeezed smaller than this */
 #define WUSS_SCROLL_STEP  20 /* pixels stepped per scrollbar arrow click */
 
@@ -38,11 +38,11 @@ typedef enum wuss_furniture_region
   wuss_FURNITURE_TITLE,
   wuss_FURNITURE_TOGGLE_SIZE,
   wuss_FURNITURE_VSCROLL_UP,
-  wuss_FURNITURE_VSCROLL_BAR,
+  wuss_FURNITURE_VSCROLL_WELL,
   wuss_FURNITURE_VSCROLL_DOWN,
   wuss_FURNITURE_RESIZE,
   wuss_FURNITURE_HSCROLL_RIGHT,
-  wuss_FURNITURE_HSCROLL_BAR,
+  wuss_FURNITURE_HSCROLL_WELL,
   wuss_FURNITURE_HSCROLL_LEFT
 }
 wuss_furniture_region_t;
@@ -53,8 +53,8 @@ typedef enum wuss_furniture_drag_kind
   wuss_FURNITURE_DRAG_NONE,
   wuss_FURNITURE_DRAG_MOVE,
   wuss_FURNITURE_DRAG_RESIZE,
-  wuss_FURNITURE_DRAG_VSCROLL_THUMB,
-  wuss_FURNITURE_DRAG_HSCROLL_THUMB
+  wuss_FURNITURE_DRAG_VSCROLL_SAUSAGE,
+  wuss_FURNITURE_DRAG_HSCROLL_SAUSAGE
 }
 wuss_furniture_drag_kind_t;
 
@@ -67,10 +67,10 @@ static inline wuss_furniture_drag_kind_t wuss__furniture_drag_kind(wuss_furnitur
     return wuss_FURNITURE_DRAG_MOVE;
   case wuss_FURNITURE_RESIZE:
     return wuss_FURNITURE_DRAG_RESIZE;
-  case wuss_FURNITURE_VSCROLL_BAR:
-    return wuss_FURNITURE_DRAG_VSCROLL_THUMB;
-  case wuss_FURNITURE_HSCROLL_BAR:
-    return wuss_FURNITURE_DRAG_HSCROLL_THUMB;
+  case wuss_FURNITURE_VSCROLL_WELL:
+    return wuss_FURNITURE_DRAG_VSCROLL_SAUSAGE;
+  case wuss_FURNITURE_HSCROLL_WELL:
+    return wuss_FURNITURE_DRAG_HSCROLL_SAUSAGE;
   default:
     return wuss_FURNITURE_DRAG_NONE;
   }
@@ -90,8 +90,8 @@ struct wuss
   wuss_furniture_drag_kind_t  drag_kind;
   point_t                     drag; /* MOVE: pointer offset within content;
                                      * RESIZE: unused, recomputed each move;
-                                     * *_THUMB: pointer position at drag start */
-  int                         drag_scroll_start; /* *_THUMB: scroll.x/scroll.y at drag start */
+                                     * *_SAUSAGE: pointer position at drag start */
+  int                         drag_scroll_start; /* *_SAUSAGE: scroll.x/scroll.y at drag start */
   box_t                       dirty[WUSS_MAX_DIRTY]; /* accumulated by wuss_invalidate; reset by a redraw */
   int                         ndirty;
 };
@@ -162,26 +162,26 @@ void wuss__resize_box(const wuss_window_t *window, box_t *out);
 /* geometry: vertical scrollbar */
 void wuss__vscroll_up_box(const wuss_window_t *window, box_t *out);
 void wuss__vscroll_down_box(const wuss_window_t *window, box_t *out);
-void wuss__vscroll_bar_box(const wuss_window_t *window, box_t *out);
-void wuss__vscroll_thumb_box(const wuss_window_t *window, box_t *out);
-int  wuss__vscroll_track_px(const wuss_window_t *window);
+void wuss__vscroll_well_box(const wuss_window_t *window, box_t *out);
+void wuss__vscroll_sausage_box(const wuss_window_t *window, box_t *out);
+int  wuss__vscroll_well_px(const wuss_window_t *window);
 
 /* geometry: horizontal scrollbar */
 void wuss__hscroll_left_box(const wuss_window_t *window, box_t *out);
 void wuss__hscroll_right_box(const wuss_window_t *window, box_t *out);
-void wuss__hscroll_bar_box(const wuss_window_t *window, box_t *out);
-void wuss__hscroll_thumb_box(const wuss_window_t *window, box_t *out);
-int  wuss__hscroll_track_px(const wuss_window_t *window);
+void wuss__hscroll_well_box(const wuss_window_t *window, box_t *out);
+void wuss__hscroll_sausage_box(const wuss_window_t *window, box_t *out);
+int  wuss__hscroll_well_px(const wuss_window_t *window);
 
 /* actions */
 void wuss__furniture_toggle_size(wuss_window_t *window);
 void wuss__furniture_scroll_step(wuss_window_t *window, point_t delta);
 point_t wuss__scroll_clamp(const wuss_window_t *window, point_t desired);
 void wuss__furniture_drag_resize(wuss_window_t *window, point_t p);
-void wuss__furniture_drag_thumb(wuss_window_t *window,
-                                int            delta_px,
-                                int            scroll_start,
-                                int            horizontal);
+void wuss__furniture_drag_sausage(wuss_window_t *window,
+                                  int            delta_px,
+                                  int            scroll_start,
+                                  int            horizontal);
 
 static inline int wuss__size_ok(int width, int height)
 {

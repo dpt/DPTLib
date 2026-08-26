@@ -52,9 +52,9 @@ wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
     if (box_contains_point(&box, p.x, p.y))
       return wuss_FURNITURE_VSCROLL_DOWN;
 
-    wuss__vscroll_bar_box(window, &box);
+    wuss__vscroll_well_box(window, &box);
     if (box_contains_point(&box, p.x, p.y))
-      return wuss_FURNITURE_VSCROLL_BAR;
+      return wuss_FURNITURE_VSCROLL_WELL;
   }
 
   if (!(window->flags & wuss_WINDOW_NO_HSCROLL))
@@ -67,9 +67,9 @@ wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
     if (box_contains_point(&box, p.x, p.y))
       return wuss_FURNITURE_HSCROLL_RIGHT;
 
-    wuss__hscroll_bar_box(window, &box);
+    wuss__hscroll_well_box(window, &box);
     if (box_contains_point(&box, p.x, p.y))
-      return wuss_FURNITURE_HSCROLL_BAR;
+      return wuss_FURNITURE_HSCROLL_WELL;
   }
 
   return wuss_FURNITURE_CONTENT;

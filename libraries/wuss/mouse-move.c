@@ -22,12 +22,12 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
       wuss__furniture_drag_resize(win, (point_t) { x, y });
       break;
 
-    case wuss_FURNITURE_DRAG_VSCROLL_THUMB:
-      wuss__furniture_drag_thumb(win, y - wuss->drag.y, wuss->drag_scroll_start, 0);
+    case wuss_FURNITURE_DRAG_VSCROLL_SAUSAGE:
+      wuss__furniture_drag_sausage(win, y - wuss->drag.y, wuss->drag_scroll_start, 0);
       break;
 
-    case wuss_FURNITURE_DRAG_HSCROLL_THUMB:
-      wuss__furniture_drag_thumb(win, x - wuss->drag.x, wuss->drag_scroll_start, 1);
+    case wuss_FURNITURE_DRAG_HSCROLL_SAUSAGE:
+      wuss__furniture_drag_sausage(win, x - wuss->drag.x, wuss->drag_scroll_start, 1);
       break;
 
     case wuss_FURNITURE_DRAG_MOVE:

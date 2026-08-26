@@ -16,7 +16,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
 
   wuss__content_box(window, &content);
 
-  /* the scrollbar thumb position depends on scroll, so its track needs
+  /* the scrollbar sausage position depends on scroll, so its well needs
    * redrawing too -- content invalidation alone never touches it */
   wuss__furniture_invalidate(window);
 
