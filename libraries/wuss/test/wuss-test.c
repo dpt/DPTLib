@@ -1498,6 +1498,104 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_t);
   }
 
+  printf("test: toggle-size maximize accounts for scrollbar furniture, not just outline/titlebar\n");
+
+  {
+    test_task_t    tc_u;
+    wuss_task_t    delegate_u;
+    box_t          box_u, ub, titlebar, toggle;
+    wuss_window_t *win_u;
+    int            outline_px, titlebar_height, inset, icon;
+    int            cx, cy;
+
+    tc_u.redraw_count = 0;
+    tc_u.mouse_count  = 0;
+    delegate_u.handle    = test_handle;
+    delegate_u.task_data = &tc_u;
+    delegate_u.bg        = wuss_NO_BACKGROUND;
+
+    box_u.x0 = 80; box_u.y0 = 80;
+    box_u.x1 = 120; box_u.y1 = 120; /* 40x40 content */
+    rc = wuss_window_create(wuss, &box_u, "U", wuss_WINDOW_NONE, /* scrollbars on: carve.x/y = icon size */
+                            &delegate_u, 70, 70, &win_u); /* doc size well within the 200x200 screen: growth is doc-limited, not screen-limited */
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    outline_px      = 1;
+    titlebar_height = 20;
+    inset           = 3;
+    icon            = titlebar_height - 2 * inset;
+
+    wuss_window_get_visible_bounds(win_u, &ub);
+    titlebar.x0 = ub.x0 + outline_px;
+    titlebar.x1 = ub.x1 - outline_px;
+    titlebar.y0 = ub.y0 + outline_px;
+    toggle.x1 = titlebar.x1 - inset;
+    toggle.x0 = toggle.x1 - icon;
+    toggle.y0 = titlebar.y0 + inset;
+    toggle.y1 = toggle.y0 + icon;
+    cx = (toggle.x0 + toggle.x1) / 2;
+    cy = (toggle.y0 + toggle.y1) / 2;
+
+    rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* U's toggle-size icon: grow to doc size */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_u)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_u, &content);
+    width  = content.x1 - content.x0;
+    height = content.y1 - content.y0;
+    if (width != 70 || height != 70)
+      goto Failure; /* visible must grow by the scrollbar breadth too, on top
+                      * of outline/titlebar, or content ends up icon-size
+                      * short of doc_width/doc_height */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* toggle back: shrink. Icon moved with the grown titlebar, so recompute. */
+    wuss_window_get_visible_bounds(win_u, &ub);
+    titlebar.x0 = ub.x0 + outline_px;
+    titlebar.x1 = ub.x1 - outline_px;
+    titlebar.y0 = ub.y0 + outline_px;
+    toggle.x1 = titlebar.x1 - inset;
+    toggle.x0 = toggle.x1 - icon;
+    toggle.y0 = titlebar.y0 + inset;
+    toggle.y1 = toggle.y0 + icon;
+    cx = (toggle.x0 + toggle.x1) / 2;
+    cy = (toggle.y0 + toggle.y1) / 2;
+
+    rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* U's toggle-size icon: shrink back */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_u)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_u, &content);
+    width  = content.x1 - content.x0;
+    height = content.y1 - content.y0;
+    if (width != 40 || height != 40)
+      goto Failure; /* restores exactly the pre-toggle content size */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_u);
+  }
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;
