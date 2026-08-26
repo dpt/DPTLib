@@ -189,10 +189,9 @@ void wuss_window_close(wuss_window_t *doomed);
  * Move a window, preserving its size.
  *
  * \param[in] window Window to move.
- * \param[in] x      New screen x coordinate of the window's content top-left.
- * \param[in] y      New screen y coordinate of the window's content top-left.
+ * \param[in] p      New screen coordinate of the window's content top-left.
  */
-void wuss_window_move(wuss_window_t *window, int x, int y);
+void wuss_window_move(wuss_window_t *window, point_t p);
 
 /**
  * Resize a window's content area, preserving its top-left position.
@@ -261,19 +260,17 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
  * content.
  *
  * \param[in] window Window to scroll.
- * \param[in] x      New horizontal scroll offset.
- * \param[in] y      New vertical scroll offset.
+ * \param[in] p      New scroll offset.
  */
-void wuss_window_set_scroll(wuss_window_t *window, int x, int y);
+void wuss_window_set_scroll(wuss_window_t *window, point_t p);
 
 /**
  * Fetch a window's current scroll offset.
  *
  * \param[in]  window Window to query.
- * \param[out] x      Filled in with the horizontal scroll offset.
- * \param[out] y      Filled in with the vertical scroll offset.
+ * \param[out] p      Filled in with the scroll offset.
  */
-void wuss_window_get_scroll(const wuss_window_t *window, int *x, int *y);
+void wuss_window_get_scroll(const wuss_window_t *window, point_t *p);
 
 /**
  * Change a window's background colour, invalidating its content area so the

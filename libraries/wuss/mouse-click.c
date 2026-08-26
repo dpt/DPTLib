@@ -3,8 +3,7 @@
 #include "impl.h"
 
 result_t wuss_mouse_click(wuss_t              *wuss,
-                          int                  x,
-                          int                  y,
+                          point_t              p,
                           wuss_button_t        button,
                           wuss_mouse_action_t  action,
                           wuss_window_t      **hit)
@@ -12,6 +11,10 @@ result_t wuss_mouse_click(wuss_t              *wuss,
   wuss_window_t          *win;
   wuss_furniture_region_t region;
   wuss_event_t            event;
+  int                     x, y;
+
+  x = p.x;
+  y = p.y;
 
   if (action == wuss_MOUSE_UP && wuss->dragging != NULL)
   {
@@ -24,7 +27,7 @@ result_t wuss_mouse_click(wuss_t              *wuss,
     return result_OK;
   }
 
-  win = wuss__window_at(wuss, x, y);
+  win = wuss__window_at(wuss, p);
   if (hit != NULL)
     *hit = win;
 
@@ -109,18 +112,18 @@ result_t wuss_mouse_click(wuss_t              *wuss,
   {
     if (action == wuss_MOUSE_DOWN)
     {
-      int sx, sy;
+      point_t scroll;
 
       if (button == wuss_BUTTON_SELECT)
         wuss_window_restack(win, wuss_ZORDER_FRONT);
 
-      wuss_window_get_scroll(win, &sx, &sy);
+      wuss_window_get_scroll(win, &scroll);
 
       wuss->dragging          = win;
       wuss->drag_kind         = wuss__furniture_drag_kind(region);
       wuss->drag.x            = x;
       wuss->drag.y            = y;
-      wuss->drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_BAR) ? sy : sx;
+      wuss->drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_BAR) ? scroll.y : scroll.x;
     }
     return result_OK;
   }

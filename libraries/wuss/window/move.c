@@ -2,10 +2,10 @@
 
 #include "../impl.h"
 
-/* x,y is the window's content top-left; the furniture offset (outline plus
+/* p is the window's content top-left; the furniture offset (outline plus
  * any titlebar) is constant for a given window, so the footprint just
  * follows it */
-void wuss_window_move(wuss_window_t *window, int x, int y)
+void wuss_window_move(wuss_window_t *window, point_t p)
 {
   int   width, height, outline_px, titlebar_height;
   box_t before, dirty, copied;
@@ -16,8 +16,8 @@ void wuss_window_move(wuss_window_t *window, int x, int y)
   titlebar_height = wuss__titlebar_height(window);
   before          = window->visible;
 
-  window->visible.x0 = x - outline_px;
-  window->visible.y0 = y - outline_px - titlebar_height;
+  window->visible.x0 = p.x - outline_px;
+  window->visible.y0 = p.y - outline_px - titlebar_height;
   window->visible.x1 = window->visible.x0 + width;
   window->visible.y1 = window->visible.y0 + height;
 

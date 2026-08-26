@@ -4,10 +4,11 @@
 
 void wuss__furniture_scroll_step(wuss_window_t *window, point_t delta)
 {
-  box_t content;
-  int   sx, sy, max_x, max_y;
+  box_t   content;
+  point_t scroll;
+  int     max_x, max_y;
 
-  wuss_window_get_scroll(window, &sx, &sy);
+  wuss_window_get_scroll(window, &scroll);
   wuss__content_box(window, &content);
 
   max_x = window->doc_width  - (content.x1 - content.x0);
@@ -17,18 +18,18 @@ void wuss__furniture_scroll_step(wuss_window_t *window, point_t delta)
   if (max_y < 0)
     max_y = 0;
 
-  sx += delta.x;
-  sy += delta.y;
-  if (sx < 0)
-    sx = 0;
-  else if (sx > max_x)
-    sx = max_x;
-  if (sy < 0)
-    sy = 0;
-  else if (sy > max_y)
-    sy = max_y;
+  scroll.x += delta.x;
+  scroll.y += delta.y;
+  if (scroll.x < 0)
+    scroll.x = 0;
+  else if (scroll.x > max_x)
+    scroll.x = max_x;
+  if (scroll.y < 0)
+    scroll.y = 0;
+  else if (scroll.y > max_y)
+    scroll.y = max_y;
 
-  wuss_window_set_scroll(window, sx, sy);
+  wuss_window_set_scroll(window, scroll);
 }
 
 void wuss__furniture_drag_thumb(wuss_window_t *window,
@@ -69,7 +70,7 @@ void wuss__furniture_drag_thumb(wuss_window_t *window,
     new_scroll = max_scroll;
 
   if (horizontal)
-    wuss_window_set_scroll(window, new_scroll, window->scroll.y);
+    wuss_window_set_scroll(window, (point_t) { new_scroll, window->scroll.y });
   else
-    wuss_window_set_scroll(window, window->scroll.x, new_scroll);
+    wuss_window_set_scroll(window, (point_t) { window->scroll.x, new_scroll });
 }

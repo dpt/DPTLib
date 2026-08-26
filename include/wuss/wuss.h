@@ -19,6 +19,7 @@ extern "C"
 #include "base/result.h"
 #include "framebuf/bmfont.h"
 #include "geom/box.h"
+#include "geom/point.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -191,16 +192,14 @@ void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
  * delivered to the task in window-local content coordinates.
  *
  * \param[in]  wuss   Window manager.
- * \param[in]  x      Screen x coordinate.
- * \param[in]  y      Screen y coordinate.
+ * \param[in]  p      Screen coordinate.
  * \param[in]  button Button pressed or released.
  * \param[in]  action wuss_MOUSE_DOWN or wuss_MOUSE_UP.
  * \param[out] hit    Window under the pointer (or being dragged), or NULL if none. May be NULL if not needed.
  * \return \ref result_OK, or a result code returned by the task's mouse callback.
  */
 result_t wuss_mouse_click(wuss_t              *wuss,
-                          int                  x,
-                          int                  y,
+                          point_t              p,
                           wuss_button_t        button,
                           wuss_mouse_action_t  action,
                           wuss_window_t      **hit);
@@ -212,29 +211,26 @@ result_t wuss_mouse_click(wuss_t              *wuss,
  * window's task as per wuss_mouse_click.
  *
  * \param[in]  wuss Window manager.
- * \param[in]  x    Screen x coordinate.
- * \param[in]  y    Screen y coordinate.
+ * \param[in]  p    Screen coordinate.
  * \param[out] hit  Window under the pointer (or being dragged), or NULL if none. May be NULL if not needed.
  * \return \ref result_OK, or a result code returned by the task's mouse callback.
  */
-result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit);
+result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit);
 
 /**
- * Deliver a scroll event. Hit-tests the topmost window at (x,y) as per
+ * Deliver a scroll event. Hit-tests the topmost window at p as per
  * wuss_mouse_click, and delivers to the window's task in window-local
  * content coordinates; dropped if the hit window has no scroll callback,
  * or the pointer is over its titlebar.
  *
  * \param[in]  wuss  Window manager.
- * \param[in]  x     Screen x coordinate.
- * \param[in]  y     Screen y coordinate.
+ * \param[in]  p     Screen coordinate.
  * \param[in]  delta Scroll amount; sign and units are caller-defined.
  * \param[out] hit   Window under the pointer, or NULL if none. May be NULL if not needed.
  * \return \ref result_OK, or a result code returned by the task's scroll callback.
  */
 result_t wuss_scroll(wuss_t         *wuss,
-                     int             x,
-                     int             y,
+                     point_t         p,
                      int             delta,
                      wuss_window_t **hit);
 
