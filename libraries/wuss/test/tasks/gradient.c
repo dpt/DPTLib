@@ -51,7 +51,7 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t *task)
 
 void gradient_destroy(gradient_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  wuss_window_close(task->window);
 }
 
 static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
@@ -99,7 +99,7 @@ result_t gradient_handle(wuss_window_t      *window,
     return gradient_redraw(event, task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_destroy(window);
+    wuss_window_close(window);
     gc->window = NULL;
     return result_OK;
 

@@ -39,7 +39,7 @@ result_t blank_create(wuss_t *wuss, int npalette, blank_task_t *task)
 
 void blank_destroy(blank_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  wuss_window_close(task->window);
 }
 
 static result_t blank_idle(void *task_data)

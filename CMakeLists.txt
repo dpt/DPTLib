@@ -341,7 +341,7 @@ set(WUSS_SOURCES
     libraries/wuss/task-stop.c
     libraries/wuss/window/at.c
     libraries/wuss/window/create.c
-    libraries/wuss/window/destroy.c
+    libraries/wuss/window/close.c
     libraries/wuss/window/get-content-bounds.c
     libraries/wuss/window/get-scroll.c
     libraries/wuss/window/get-visible-bounds.c

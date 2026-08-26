@@ -132,6 +132,20 @@ int             wuss__clip_to_visible(wuss_window_t *window,
                                       const box_t   *box,
                                       box_t         *out);
 
+/* Notify a window's task that it has been moved or resized, via
+ * wuss_EVENT_OPEN; the return value is discarded, matching how furniture
+ * drawing and other in-line notifications are treated. */
+static inline void wuss__notify_open(wuss_window_t *window)
+{
+  wuss_event_t event;
+
+  if (window->task.handle == NULL)
+    return;
+
+  event.kind = wuss_EVENT_OPEN;
+  (void) window->task.handle(window, &event, window->task.task_data);
+}
+
 /* ----- furniture ----- */
 
 wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,

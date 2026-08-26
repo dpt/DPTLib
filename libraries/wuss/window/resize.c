@@ -18,6 +18,8 @@ result_t wuss_window_resize(wuss_window_t *window, int width, int height)
   window->visible.x1 = window->visible.x0 + width  + 2 * outline_px + carve_x;
   window->visible.y1 = window->visible.y0 + height + titlebar_height + 2 * outline_px + carve_y;
 
+  wuss__notify_open(window);
+
   box_union(&before, &window->visible, &dirty);
   wuss__invalidate_clipped(window, &dirty);
 

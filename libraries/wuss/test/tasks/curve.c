@@ -54,7 +54,7 @@ result_t curve_create(wuss_t         *wuss,
 
 void curve_destroy(curve_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  wuss_window_close(task->window);
 }
 
 static int blob_hit(const point_t *p, int x, int y)
@@ -183,7 +183,7 @@ result_t curve_handle(wuss_window_t      *window,
     return curve_scroll(task, event->data.scroll.delta, window);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_destroy(window);
+    wuss_window_close(window);
     task->window = NULL;
     return result_OK;
 
