@@ -62,22 +62,22 @@ result_t wuss_create(screen_t             *scr,
 
   if (config != NULL)
   {
-    w->titlebar_bg = config->titlebar_bg;
-    w->titlebar_fg = config->titlebar_fg;
+    w->furniture_colours.bg = config->titlebar_bg;
+    w->furniture_colours.fg = config->titlebar_fg;
   }
   else if (palette == NULL)
   {
-    w->titlebar_bg = palette_PICO8_DARK_BLUE;
-    w->titlebar_fg = palette_PICO8_WHITE;
+    w->furniture_colours.bg = palette_PICO8_DARK_BLUE;
+    w->furniture_colours.fg = palette_PICO8_WHITE;
   }
   else
   {
-    w->titlebar_bg = 0;
-    w->titlebar_fg = (w->npalette > 1) ? 1 : 0;
+    w->furniture_colours.bg = 0;
+    w->furniture_colours.fg = (w->npalette > 1) ? 1 : 0;
   }
 
-  if (w->titlebar_bg < 0 || w->titlebar_bg >= w->npalette ||
-      w->titlebar_fg < 0 || w->titlebar_fg >= w->npalette)
+  if (w->furniture_colours.bg < 0 || w->furniture_colours.bg >= w->npalette ||
+      w->furniture_colours.fg < 0 || w->furniture_colours.fg >= w->npalette)
   {
     free(w->palette);
     free(w);
