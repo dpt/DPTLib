@@ -6,7 +6,7 @@
 
 void wuss__furniture_toggle_size(wuss_window_t *window)
 {
-  box_t before, new_visible, dirty;
+  box_t before, new_visible, dirty, copied;
 
   before = window->visible;
 
@@ -37,6 +37,21 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
 
   wuss__furniture_scroll_step(window, (point_t) { 0, 0 }); /* re-clamp to the new content size */
 
-  box_union(&before, &window->visible, &dirty);
-  wuss__invalidate_clipped(window, &dirty);
+  if (window->wuss->z_order.next == &window->link &&
+      screen_copy_rect(window->wuss->scr, &before,
+                       (point_t) { before.x0, before.y0 }, &copied))
+  {
+    /* Topmost, and the screen format supports the blit: the window's
+     * top-left never moves for a toggle, so re-blitting "before" onto
+     * itself is a no-op that just confirms which of its pixels are still
+     * on-screen -- only whatever's newly exposed (grown) or newly vacated
+     * (shrunk) relative to that needs an actual repaint. */
+    wuss__invalidate_minus(window->wuss, &before, &window->visible);
+    wuss__invalidate_minus(window->wuss, &window->visible, &copied);
+  }
+  else
+  {
+    box_union(&before, &window->visible, &dirty);
+    wuss__invalidate_clipped(window, &dirty);
+  }
 }
