@@ -45,7 +45,7 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
 {
   palette_task_t *pc;
   screen_t       *scr;
-  const box_t    *content;
+  const box_t    *bounds;
   int               cols, rows;
   int               cell_w, cell_h;
   int               i, sx, sy;
@@ -55,18 +55,18 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
   if (pc->npalette <= 0)
     return result_OK;
 
-  scr     = event->data.redraw.scr;
-  content = event->data.redraw.content;
-  sx      = event->data.redraw.scroll_x;
-  sy      = event->data.redraw.scroll_y;
+  scr    = event->data.redraw.scr;
+  bounds = event->data.redraw.bounds;
+  sx     = event->data.redraw.scroll_x;
+  sy     = event->data.redraw.scroll_y;
 
   cols = 1;
   while (cols * cols < pc->npalette)
     cols++;
   rows = (pc->npalette + cols - 1) / cols;
 
-  cell_w = (content->x1 - content->x0) / cols;
-  cell_h = (content->y1 - content->y0) / rows;
+  cell_w = (bounds->x1 - bounds->x0) / cols;
+  cell_h = (bounds->y1 - bounds->y0) / rows;
 
   for (i = 0; i < pc->npalette; i++)
   {
@@ -74,8 +74,8 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
 
     col = i % cols;
     row = i / cols;
-    x   = content->x0 - sx + col * cell_w;
-    y   = content->y0 - sy + row * cell_h;
+    x   = bounds->x0 - sx + col * cell_w;
+    y   = bounds->y0 - sy + row * cell_h;
 
     screen_draw_rect(scr, x, y, cell_w, cell_h, pc->palette[i]);
   }

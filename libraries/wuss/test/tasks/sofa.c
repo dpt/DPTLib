@@ -176,8 +176,8 @@ static result_t sofa_redraw(const wuss_event_t *event, void *task_data)
                    content->y1 - content->y0,
                    sc->bg);
 
-  cx   = content->x0 - sx + (bounds->x1 - bounds->x0) / 2;
-  cy   = content->y0 - sy + (bounds->y1 - bounds->y0) / 2;
+  cx   = bounds->x0 - sx + (bounds->x1 - bounds->x0) / 2;
+  cy   = bounds->y0 - sy + (bounds->y1 - bounds->y0) / 2;
   unit = MIN(bounds->x1 - bounds->x0, bounds->y1 - bounds->y0) * SOFA_UNIT_FRACTION * sc->zoom;
 
   if (sc->shape == sofa_SHAPE_SOFA)

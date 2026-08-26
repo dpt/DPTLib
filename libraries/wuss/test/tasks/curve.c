@@ -68,13 +68,14 @@ static int blob_hit(const point_t *p, int x, int y)
 static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
 {
   screen_t    *scr;
-  const box_t *content;
+  const box_t *content, *bounds;
   point_t      prev, cur;
   int          i, half, sx, sy;
   fix16_t      t;
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
+  bounds  = event->data.redraw.bounds;
   sx      = event->data.redraw.scroll_x;
   sy      = event->data.redraw.scroll_y;
 
@@ -83,14 +84,14 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
                    task->bg);
 
   prev = task->points[0];
-  prev.x += content->x0 - sx; prev.y += content->y0 - sy;
+  prev.x += bounds->x0 - sx; prev.y += bounds->y0 - sy;
 
   for (i = 1; i <= task->nsegments; i++)
   {
     t   = i * FIX16_ONE / task->nsegments;
     cur = curve_bezier_point_on_cubic(task->points[0], task->points[1],
                                       task->points[2], task->points[3], t);
-    cur.x += content->x0 - sx; cur.y += content->y0 - sy;
+    cur.x += bounds->x0 - sx; cur.y += bounds->y0 - sy;
 
     screen_draw_line(scr, prev.x, prev.y, cur.x, cur.y, task->line);
 
@@ -101,7 +102,7 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   for (i = 0; i < CURVE_NCONTROLPTS; i++)
   {
     cur = task->points[i];
-    cur.x += content->x0 - sx; cur.y += content->y0 - sy;
+    cur.x += bounds->x0 - sx; cur.y += bounds->y0 - sy;
     screen_draw_square(scr, cur.x - half, cur.y - half, CURVE_BLOBSZ, task->blob);
   }
 

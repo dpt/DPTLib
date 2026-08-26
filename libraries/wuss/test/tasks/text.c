@@ -68,7 +68,7 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
 {
   text_task_t *tcx;
   screen_t       *scr;
-  const box_t    *content;
+  const box_t    *bounds;
   int             font_width, font_height, sy;
   const char     *string;
   int             stringlen;
@@ -76,24 +76,24 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
 
   tcx = task_data;
 
-  scr     = event->data.redraw.scr;
-  content = event->data.redraw.content;
-  sy      = event->data.redraw.scroll_y;
+  scr    = event->data.redraw.scr;
+  bounds = event->data.redraw.bounds;
+  sy     = event->data.redraw.scroll_y;
 
   bmfont_get_info(tcx->font, &font_width, &font_height);
 
   string    = paragraph;
   stringlen = (int) strlen(paragraph);
 
-  pos.x = content->x0 + 4;
-  pos.y = content->y0 - sy + 4;
+  pos.x = bounds->x0 + 4;
+  pos.y = bounds->y0 - sy + 4;
 
-  while (stringlen > 0 && pos.y + font_height <= content->y1)
+  while (stringlen > 0 && pos.y + font_height <= bounds->y1)
   {
     int            absolute_break, friendly_break;
     bmfont_width_t width;
 
-    bmfont_measure(tcx->font, string, stringlen, content->x1 - 4 - pos.x, &absolute_break, &width);
+    bmfont_measure(tcx->font, string, stringlen, bounds->x1 - 4 - pos.x, &absolute_break, &width);
 
     friendly_break = absolute_break;
     if (absolute_break < stringlen)
@@ -116,7 +116,7 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
       stringlen--;
     }
 
-    pos.x  = content->x0 + 4;
+    pos.x  = bounds->x0 + 4;
     pos.y += font_height + 2;
   }
 

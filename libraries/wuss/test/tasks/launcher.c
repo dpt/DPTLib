@@ -58,7 +58,7 @@ static result_t launcher_redraw(const wuss_event_t *event, void *task_data)
 {
   launcher_task_t        *lc;
   screen_t                *scr;
-  const box_t             *content;
+  const box_t             *content, *bounds;
   int                      i, font_width, font_height, sy;
   point_t                  pos;
   const launcher_entry_t  *entry;
@@ -67,6 +67,7 @@ static result_t launcher_redraw(const wuss_event_t *event, void *task_data)
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
+  bounds  = event->data.redraw.bounds;
   sy      = event->data.redraw.scroll_y;
 
   screen_draw_rect(scr, content->x0, content->y0,
@@ -80,8 +81,8 @@ static result_t launcher_redraw(const wuss_event_t *event, void *task_data)
   {
     entry = &lc->entries[i];
 
-    pos.x = content->x0 + LAUNCHER_PAD;
-    pos.y = content->y0 - sy + LAUNCHER_PAD + i * LAUNCHER_ROW_HEIGHT + (LAUNCHER_ROW_HEIGHT - font_height) / 2;
+    pos.x = bounds->x0 + LAUNCHER_PAD;
+    pos.y = bounds->y0 - sy + LAUNCHER_PAD + i * LAUNCHER_ROW_HEIGHT + (LAUNCHER_ROW_HEIGHT - font_height) / 2;
 
     bmfont_draw(lc->font, scr, entry->name, (int) strlen(entry->name),
                entry->running ? lc->running_fg : lc->fg, lc->bg, &pos, NULL);
