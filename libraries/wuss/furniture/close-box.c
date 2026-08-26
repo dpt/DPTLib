@@ -1,6 +1,6 @@
 /* close-box.c -- wuss - minimal window manager */
 
-#include "impl.h"
+#include "../impl.h"
 
 #define WUSS_CLOSE_ICON_INSET 3
 

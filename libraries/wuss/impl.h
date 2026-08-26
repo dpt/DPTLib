@@ -61,6 +61,43 @@ void            wuss__invalidate_minus(wuss_t      *wuss,
                                        const box_t *keep);
 void            wuss__invalidate_uncovered(wuss_window_t *window);
 
+/* ----- furniture ----- */
+
+/* Which region of a window's border (or its content) a point falls in.
+ * Only NONE, CONTENT, CLOSE and TITLE are reachable today; the rest are
+ * declared ready for the full furniture build (back, toggle-size,
+ * scrollbars, resize) so core never has to change again to grow into them. */
+typedef enum wuss_furniture_region
+{
+  wuss_FURNITURE_NONE,
+  wuss_FURNITURE_CONTENT,
+  wuss_FURNITURE_BACK,
+  wuss_FURNITURE_CLOSE,
+  wuss_FURNITURE_TITLE,
+  wuss_FURNITURE_TOGGLE_SIZE,
+  wuss_FURNITURE_VSCROLL_UP,
+  wuss_FURNITURE_VSCROLL_BAR,
+  wuss_FURNITURE_VSCROLL_DOWN,
+  wuss_FURNITURE_RESIZE,
+  wuss_FURNITURE_HSCROLL_RIGHT,
+  wuss_FURNITURE_HSCROLL_BAR,
+  wuss_FURNITURE_HSCROLL_LEFT
+}
+wuss_furniture_region_t;
+
+wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
+                                                 int                  x,
+                                                 int                  y);
+void wuss__furniture_draw(wuss_t        *wuss,
+                          wuss_window_t *window,
+                          const box_t   *full);
+
+/* No caller yet: window management already invalidates its own whole
+ * footprint on move/resize/etc, so nothing needs this independently until
+ * scrollbar-thumb dragging (a later ticket) needs to repaint furniture
+ * without repainting content. */
+void wuss__furniture_invalidate(wuss_window_t *window);
+
 static inline int wuss__size_ok(int width, int height)
 {
   return width > 0 && height > 0;

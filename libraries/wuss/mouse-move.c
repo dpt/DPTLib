@@ -23,14 +23,13 @@ result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit)
   if (win == NULL)
     return result_OK;
 
+  if (wuss__furniture_hit_test(win, x, y) != wuss_FURNITURE_CONTENT)
+    return result_OK;
+
   if (win->task.handle != NULL)
   {
-    box_t        titlebar, content;
+    box_t        content;
     wuss_event_t event;
-
-    wuss__titlebar_box(win, &titlebar);
-    if (box_contains_point(&titlebar, x, y))
-      return result_OK;
 
     wuss__content_box(win, &content);
     event.kind             = wuss_EVENT_MOUSE;
