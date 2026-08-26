@@ -56,6 +56,15 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
      * (shrunk) relative to that needs an actual repaint. */
     wuss__invalidate_minus(window->wuss, &before, &window->visible);
     wuss__invalidate_minus(window->wuss, &window->visible, &copied);
+
+    /* Unlike a move, a toggle changes the window's size, so furniture that
+     * lays itself out relative to that size (titlebar icons anchored to its
+     * right edge, scrollbar track/thumb proportions, the resize corner)
+     * reflows even where the blit reused valid content pixels -- e.g. the
+     * old toggle icon location is now mid-titlebar, not redrawn by either
+     * invalidate_minus above since it falls inside both "before" and the
+     * new "visible". Force it dirty regardless of the blit. */
+    wuss__furniture_invalidate(window);
   }
   else
   {
