@@ -52,26 +52,6 @@ struct wuss__furniture
   int                         drag_scroll_start; /* *_SAUSAGE: scroll.x/scroll.y at drag start */
 };
 
-/* Furniture chrome colours, one entry per class of furniture, embedded in
- * struct wuss. Title is the only two-tone class (fill + text); the rest
- * are drawn as a single flat colour. */
-struct wuss__furniture_colours
-{
-  struct
-  {
-    wuss_colour_t bg;
-    wuss_colour_t fg;
-  }
-  title;
-  wuss_colour_t back;
-  wuss_colour_t close;
-  wuss_colour_t toggle;
-  wuss_colour_t resize;
-  wuss_colour_t arrows;
-  wuss_colour_t wells;
-  wuss_colour_t sausages;
-};
-
 static inline wuss_furniture_drag_kind_t wuss__furniture_drag_kind(wuss_furniture_region_t region)
 {
   switch (region)
