@@ -53,7 +53,8 @@ result_t text_create(wuss_t         *wuss,
 
 void text_destroy(text_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  if (task->window != NULL)
+    wuss_window_destroy(task->window);
 }
 
 static result_t text_redraw(screen_t *scr, const box_t *content, void *task_data)
@@ -154,7 +155,9 @@ result_t text_handle(wuss_window_t     *window,
                      const wuss_event_t *event,
                      void               *task_data)
 {
-  NOT_USED(window);
+  text_task_t *tcx;
+
+  tcx = task_data;
 
   switch (event->kind)
   {
@@ -165,6 +168,11 @@ result_t text_handle(wuss_window_t     *window,
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     return text_mouse(task_data);
+
+  case wuss_EVENT_CLOSE:
+    wuss_window_destroy(window);
+    tcx->window = NULL;
+    return result_OK;
 
   case wuss_EVENT_IDLE:
     return text_idle(task_data);

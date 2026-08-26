@@ -35,7 +35,8 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
 
 void ball_destroy(ball_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  if (task->window != NULL)
+    wuss_window_destroy(task->window);
 }
 
 static result_t ball_redraw(const box_t *content, void *task_data, screen_t *scr)
@@ -163,7 +164,9 @@ result_t ball_handle(wuss_window_t     *window,
                      const wuss_event_t *event,
                      void               *task_data)
 {
-  NOT_USED(window);
+  ball_task_t *bc;
+
+  bc = task_data;
 
   switch (event->kind)
   {
@@ -176,6 +179,11 @@ result_t ball_handle(wuss_window_t     *window,
 
   case wuss_EVENT_IDLE:
     return ball_idle(task_data);
+
+  case wuss_EVENT_CLOSE:
+    wuss_window_destroy(window);
+    bc->window = NULL;
+    return result_OK;
 
   default:
     return result_OK;

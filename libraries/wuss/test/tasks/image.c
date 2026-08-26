@@ -41,7 +41,8 @@ result_t image_create(wuss_t         *wuss,
 
 void image_destroy(image_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  if (task->window != NULL)
+    wuss_window_destroy(task->window);
   free(task->bitmap.base);
 }
 
@@ -93,6 +94,10 @@ result_t image_handle(wuss_window_t     *window,
                       const wuss_event_t *event,
                       void               *task_data)
 {
+  image_task_t *ic;
+
+  ic = task_data;
+
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
@@ -100,6 +105,11 @@ result_t image_handle(wuss_window_t     *window,
 
   case wuss_EVENT_SCROLL:
     return image_scroll(window, event->data.scroll.delta, task_data);
+
+  case wuss_EVENT_CLOSE:
+    wuss_window_destroy(window);
+    ic->window = NULL;
+    return result_OK;
 
   default:
     return result_OK;
