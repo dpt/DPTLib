@@ -1,4 +1,4 @@
-/* sofa.c -- wuss test - rotating wireframe sofa task */
+/* sofa.c -- wuss test - rotating wireframe sofa and spaceship task */
 
 #ifdef USE_SDL
 
@@ -49,6 +49,31 @@ static const int cube_edges[12][2] =
   { 0, 1 }, { 2, 3 }, { 4, 5 }, { 6, 7 },
   { 0, 2 }, { 1, 3 }, { 4, 6 }, { 5, 7 },
   { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 },
+};
+
+/* a simplified wireframe spaceship: diamond fuselage plus
+ * delta wings, model units roughly -1.4..1.4 */
+static const vec3_t ship_vertices[10] =
+{
+  {  0.0,  0.0,  1.3 }, /* 0 nose */
+  {  0.0,  0.0, -1.0 }, /* 1 tail */
+  {  0.0,  0.35, 0.1 }, /* 2 top */
+  {  0.0, -0.35, 0.1 }, /* 3 bottom */
+  { -0.5,  0.0,  0.1 }, /* 4 left */
+  {  0.5,  0.0,  0.1 }, /* 5 right */
+  { -1.4,  0.0, -0.5 }, /* 6 left wingtip */
+  { -0.5,  0.0, -0.4 }, /* 7 left wing root rear */
+  {  1.4,  0.0, -0.5 }, /* 8 right wingtip */
+  {  0.5,  0.0, -0.4 }, /* 9 right wing root rear */
+};
+
+static const int ship_edges[18][2] =
+{
+  { 0, 2 }, { 0, 3 }, { 0, 4 }, { 0, 5 }, /* nose to ring */
+  { 1, 2 }, { 1, 3 }, { 1, 4 }, { 1, 5 }, /* tail to ring */
+  { 2, 4 }, { 4, 3 }, { 3, 5 }, { 5, 2 }, /* ring */
+  { 4, 6 }, { 6, 7 }, { 7, 4 },           /* left wing */
+  { 5, 8 }, { 8, 9 }, { 9, 5 },           /* right wing */
 };
 
 static void box3_corners(const box3_t *box, vec3_t out[8])
@@ -107,6 +132,7 @@ result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
   task->angle    = 0.0;
   task->zoom     = 1.0;
   task->spinning = true;
+  task->shape    = sofa_SHAPE_SOFA;
 
   delegate = wuss_task_start(sofa_handle, task, wuss_NO_BACKGROUND); /* sofa_redraw paints its own background every frame */
   box      = (box_t) BOX_POS_SIZE(250, 260, 180, 160);
@@ -142,7 +168,9 @@ static result_t sofa_redraw(wuss_window_t *window,
 
   sc = task_data;
 
-  screen_draw_rect(scr, content->x0, content->y0,
+  screen_draw_rect(scr,
+                   content->x0,
+                   content->y0,
                    content->x1 - content->x0,
                    content->y1 - content->y0,
                    sc->bg);
@@ -152,22 +180,42 @@ static result_t sofa_redraw(wuss_window_t *window,
   cy   = content->y0 + (bounds.y1 - bounds.y0) / 2;
   unit = MIN(bounds.x1 - bounds.x0, bounds.y1 - bounds.y0) * SOFA_UNIT_FRACTION * sc->zoom;
 
-  for (part = 0; part < NELEMS(sofa_parts); part++)
+  if (sc->shape == sofa_SHAPE_SOFA)
   {
-    vec3_t       corners[8];
-    fix8_point_t screen[8];
+    for (part = 0; part < NELEMS(sofa_parts); part++)
+    {
+      vec3_t       corners[8];
+      fix8_point_t screen[8];
+      int          i;
+
+      box3_corners(&sofa_parts[part], corners);
+      for (i = 0; i < 8; i++)
+        screen[i] = project(rotate_xy(corners[i], SOFA_TILT, sc->angle), cx, cy, unit);
+
+      for (i = 0; i < 12; i++)
+      {
+        const fix8_point_t *a, *b;
+
+        a = &screen[cube_edges[i][0]];
+        b = &screen[cube_edges[i][1]];
+        screen_draw_line_wu_fix8(scr, a->x, a->y, b->x, b->y, sc->line);
+      }
+    }
+  }
+  else
+  {
+    fix8_point_t screen[NELEMS(ship_vertices)];
     int          i;
 
-    box3_corners(&sofa_parts[part], corners);
-    for (i = 0; i < 8; i++)
-      screen[i] = project(rotate_xy(corners[i], SOFA_TILT, sc->angle), cx, cy, unit);
+    for (i = 0; i < (int) NELEMS(ship_vertices); i++)
+      screen[i] = project(rotate_xy(ship_vertices[i], SOFA_TILT, sc->angle), cx, cy, unit);
 
-    for (i = 0; i < 12; i++)
+    for (i = 0; i < (int) NELEMS(ship_edges); i++)
     {
       const fix8_point_t *a, *b;
 
-      a = &screen[cube_edges[i][0]];
-      b = &screen[cube_edges[i][1]];
+      a = &screen[ship_edges[i][0]];
+      b = &screen[ship_edges[i][1]];
       screen_draw_line_wu_fix8(scr, a->x, a->y, b->x, b->y, sc->line);
     }
   }
@@ -175,13 +223,21 @@ static result_t sofa_redraw(wuss_window_t *window,
   return result_OK;
 }
 
-static result_t sofa_mouse(void *task_data)
+static result_t sofa_mouse(wuss_window_t *window, wuss_button_t button, void *task_data)
 {
   sofa_task_t *sc;
 
   sc = task_data;
 
-  sc->spinning = !sc->spinning;
+  if (button == wuss_BUTTON_ADJUST)
+  {
+    sc->shape = (sc->shape == sofa_SHAPE_SOFA) ? sofa_SHAPE_SHIP : sofa_SHAPE_SOFA;
+    wuss_window_invalidate_all(window);
+  }
+  else
+  {
+    sc->spinning = !sc->spinning;
+  }
 
   return result_OK;
 }
@@ -234,7 +290,7 @@ result_t sofa_handle(wuss_window_t     *window,
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
-    return sofa_mouse(task_data);
+    return sofa_mouse(window, event->data.mouse.button, task_data);
 
   case wuss_EVENT_SCROLL:
     return sofa_scroll(window, event->data.scroll.delta, task_data);
