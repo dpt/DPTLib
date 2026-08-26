@@ -52,8 +52,10 @@ result_t checker_create(wuss_t         *wuss,
 
 void checker_destroy(checker_task_t *task)
 {
-  wuss_window_destroy(task->window);
-  wuss_window_destroy(task->window2);
+  if (task->window != NULL)
+    wuss_window_destroy(task->window);
+  if (task->window2 != NULL)
+    wuss_window_destroy(task->window2);
 }
 
 static result_t checker_redraw(wuss_window_t *window,
@@ -133,6 +135,10 @@ result_t checker_handle(wuss_window_t     *window,
                         const wuss_event_t *event,
                         void               *task_data)
 {
+  checker_task_t *cc;
+
+  cc = task_data;
+
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
@@ -145,6 +151,14 @@ result_t checker_handle(wuss_window_t     *window,
 
   case wuss_EVENT_SCROLL:
     return checker_scroll(window, event->data.scroll.delta, task_data);
+
+  case wuss_EVENT_CLOSE:
+    wuss_window_destroy(window);
+    if (window == cc->window2)
+      cc->window2 = NULL;
+    else
+      cc->window = NULL;
+    return result_OK;
 
   default:
     return result_OK;

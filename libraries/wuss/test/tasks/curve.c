@@ -46,7 +46,8 @@ result_t curve_create(wuss_t         *wuss,
 
 void curve_destroy(curve_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  if (task->window != NULL)
+    wuss_window_destroy(task->window);
 }
 
 static int blob_hit(const point_t *p, int x, int y)
@@ -169,6 +170,7 @@ result_t curve_handle(wuss_window_t      *window,
 
   case wuss_EVENT_CLOSE:
     wuss_window_destroy(window);
+    task->window = NULL;
     return result_OK;
 
   default:

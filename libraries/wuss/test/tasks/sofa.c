@@ -116,7 +116,8 @@ result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
 
 void sofa_destroy(sofa_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  if (task->window != NULL)
+    wuss_window_destroy(task->window);
 }
 
 static result_t sofa_redraw(wuss_window_t *window,
@@ -217,6 +218,10 @@ result_t sofa_handle(wuss_window_t     *window,
                      const wuss_event_t *event,
                      void               *task_data)
 {
+  sofa_task_t *sc;
+
+  sc = task_data;
+
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
@@ -232,6 +237,11 @@ result_t sofa_handle(wuss_window_t     *window,
 
   case wuss_EVENT_IDLE:
     return sofa_idle(task_data);
+
+  case wuss_EVENT_CLOSE:
+    wuss_window_destroy(window);
+    sc->window = NULL;
+    return result_OK;
 
   default:
     return result_OK;
