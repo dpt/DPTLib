@@ -65,27 +65,30 @@ static int blob_hit(const point_t *p, int x, int y)
          y >= p->y - half && y < p->y + half;
 }
 
-static result_t curve_redraw(screen_t     *scr,
-                             const box_t  *content,
-                             curve_task_t *task)
+static result_t curve_redraw(wuss_window_t *window,
+                             screen_t      *scr,
+                             const box_t   *content,
+                             curve_task_t  *task)
 {
   point_t prev, cur;
-  int     i, half;
+  int     i, half, sx, sy;
   fix16_t t;
+
+  wuss_window_get_scroll(window, &sx, &sy);
 
   screen_draw_rect(scr, content->x0, content->y0,
                    content->x1 - content->x0, content->y1 - content->y0,
                    task->bg);
 
   prev = task->points[0];
-  prev.x += content->x0; prev.y += content->y0;
+  prev.x += content->x0 - sx; prev.y += content->y0 - sy;
 
   for (i = 1; i <= task->nsegments; i++)
   {
     t   = i * FIX16_ONE / task->nsegments;
     cur = curve_bezier_point_on_cubic(task->points[0], task->points[1],
                                       task->points[2], task->points[3], t);
-    cur.x += content->x0; cur.y += content->y0;
+    cur.x += content->x0 - sx; cur.y += content->y0 - sy;
 
     screen_draw_line(scr, prev.x, prev.y, cur.x, cur.y, task->line);
 
@@ -96,7 +99,7 @@ static result_t curve_redraw(screen_t     *scr,
   for (i = 0; i < CURVE_NCONTROLPTS; i++)
   {
     cur = task->points[i];
-    cur.x += content->x0; cur.y += content->y0;
+    cur.x += content->x0 - sx; cur.y += content->y0 - sy;
     screen_draw_square(scr, cur.x - half, cur.y - half, CURVE_BLOBSZ, task->blob);
   }
 
@@ -109,7 +112,11 @@ static result_t curve_mouse(curve_task_t        *task,
                             int                   y,
                             wuss_window_t        *window)
 {
-  int i;
+  int i, sx, sy;
+
+  wuss_window_get_scroll(window, &sx, &sy);
+  x += sx;
+  y += sy;
 
   switch (action)
   {
@@ -163,7 +170,7 @@ result_t curve_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return curve_redraw(event->data.redraw.scr, event->data.redraw.content, task);
+    return curve_redraw(window, event->data.redraw.scr, event->data.redraw.content, task);
 
   case wuss_EVENT_MOUSE:
     return curve_mouse(task, event->data.mouse.action,

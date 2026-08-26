@@ -64,15 +64,18 @@ void text_destroy(text_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-static result_t text_redraw(screen_t *scr, const box_t *content, void *task_data)
+static result_t text_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
 {
   text_task_t *tcx;
-  int             font_width, font_height;
+  int             font_width, font_height, sx, sy;
   const char     *string;
   int             stringlen;
   point_t         pos;
 
   tcx = task_data;
+
+  wuss_window_get_scroll(window, &sx, &sy);
+  NOT_USED(sx);
 
   bmfont_get_info(tcx->font, &font_width, &font_height);
 
@@ -80,7 +83,7 @@ static result_t text_redraw(screen_t *scr, const box_t *content, void *task_data
   stringlen = (int) strlen(paragraph);
 
   pos.x = content->x0 + 4;
-  pos.y = content->y0 + 4;
+  pos.y = content->y0 - sy + 4;
 
   while (stringlen > 0 && pos.y + font_height <= content->y1)
   {
@@ -167,7 +170,7 @@ result_t text_handle(wuss_window_t     *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return text_redraw(event->data.redraw.scr, event->data.redraw.content, task_data);
+    return text_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
 
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action != wuss_MOUSE_DOWN)

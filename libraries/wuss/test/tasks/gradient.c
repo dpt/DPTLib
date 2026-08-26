@@ -17,6 +17,20 @@
 #define GRADIENT_OPEN_WIDTH  100
 #define GRADIENT_OPEN_HEIGHT 100
 
+/* 4x4 ordered (Bayer) dither matrix, values 0..15 */
+static const int bayer4x4[4][4] =
+{
+  {  0,  8,  2, 10 },
+  { 12,  4, 14,  6 },
+  {  3, 11,  1,  9 },
+  { 15,  7, 13,  5 },
+};
+
+static int dither(int v, int x, int y)
+{
+  return CLAMP(v + bayer4x4[y & 3][x & 3] - 8, 0, 255);
+}
+
 result_t gradient_create(wuss_t *wuss, gradient_task_t *task)
 {
   wuss_task_t delegate;
@@ -61,9 +75,9 @@ static result_t gradient_redraw(wuss_window_t *window,
       ly = y - bounds.y0 + sy;
 
       screen_draw_pixel(scr, x, y,
-                        colour_rgb(lx * 255 / GRADIENT_DOC_WIDTH,
-                                   ly * 255 / GRADIENT_DOC_HEIGHT,
-                                   255 - (lx + ly) * 255 / (GRADIENT_DOC_WIDTH + GRADIENT_DOC_HEIGHT)));
+                        colour_rgb(dither(lx * 255 / GRADIENT_DOC_WIDTH, lx, ly),
+                                   dither(ly * 255 / GRADIENT_DOC_HEIGHT, lx, ly),
+                                   dither(255 - (lx + ly) * 255 / (GRADIENT_DOC_WIDTH + GRADIENT_DOC_HEIGHT), lx, ly)));
     }
   }
 

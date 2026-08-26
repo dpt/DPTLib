@@ -45,12 +45,14 @@ void ball_destroy(ball_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-static result_t ball_redraw(const box_t *content, void *task_data, screen_t *scr)
+static result_t ball_redraw(wuss_window_t *window, const box_t *content, void *task_data, screen_t *scr)
 {
   ball_task_t *bc;
-  int          i;
+  int          i, sx, sy;
 
   bc = task_data;
+
+  wuss_window_get_scroll(window, &sx, &sy);
 
   screen_draw_rect(scr, content->x0, content->y0,
                    content->x1 - content->x0,
@@ -63,14 +65,15 @@ static result_t ball_redraw(const box_t *content, void *task_data, screen_t *scr
 
     b = &bc->balls[i];
 
-    screen_draw_rect(scr, content->x0 + b->x - b->radius, content->y0 + b->y - b->radius,
+    screen_draw_rect(scr, content->x0 - sx + b->x - b->radius, content->y0 - sy + b->y - b->radius,
                      b->radius * 2, b->radius * 2, bc->ball);
   }
 
   return result_OK;
 }
 
-static result_t ball_mouse(wuss_mouse_action_t action,
+static result_t ball_mouse(wuss_window_t      *window,
+                           wuss_mouse_action_t action,
                            int                 x,
                            int                 y,
                            wuss_button_t       button,
@@ -78,11 +81,14 @@ static result_t ball_mouse(wuss_mouse_action_t action,
 {
   ball_task_t *bc;
   box_t        local;
+  int          sx, sy;
 
   bc = task_data;
 
   if (action != wuss_MOUSE_DOWN)
     return result_OK;
+
+  wuss_window_get_scroll(window, &sx, &sy);
 
   if (button == wuss_BUTTON_SELECT)
   {
@@ -92,16 +98,16 @@ static result_t ball_mouse(wuss_mouse_action_t action,
       return result_OK;
 
     b         = &bc->balls[bc->nballs++];
-    b->x      = x;
-    b->y      = y;
+    b->x      = x + sx;
+    b->y      = y + sy;
     b->dx     = (bc->nballs & 1) ? 3 : -3;
     b->dy     = (bc->nballs & 2) ? 2 : -2;
     b->radius = 8;
 
-    local.x0 = b->x - b->radius;
-    local.y0 = b->y - b->radius;
-    local.x1 = b->x + b->radius;
-    local.y1 = b->y + b->radius;
+    local.x0 = b->x - b->radius - sx;
+    local.y0 = b->y - b->radius - sy;
+    local.x1 = b->x + b->radius - sx;
+    local.y1 = b->y + b->radius - sy;
     wuss_window_invalidate(bc->window, &local);
   }
   else if (button == wuss_BUTTON_ADJUST)
@@ -113,10 +119,10 @@ static result_t ball_mouse(wuss_mouse_action_t action,
 
     b = &bc->balls[--bc->nballs];
 
-    local.x0 = b->x - b->radius;
-    local.y0 = b->y - b->radius;
-    local.x1 = b->x + b->radius;
-    local.y1 = b->y + b->radius;
+    local.x0 = b->x - b->radius - sx;
+    local.y0 = b->y - b->radius - sy;
+    local.x1 = b->x + b->radius - sx;
+    local.y1 = b->y + b->radius - sy;
     wuss_window_invalidate(bc->window, &local);
   }
 
@@ -127,12 +133,13 @@ static result_t ball_idle(void *task_data)
 {
   ball_task_t *bc;
   box_t        content;
-  int          width, height;
+  int          width, height, sx, sy;
   int          i;
 
   bc = task_data;
 
   wuss_window_get_content_bounds(bc->window, &content);
+  wuss_window_get_scroll(bc->window, &sx, &sy);
   width  = content.x1 - content.x0;
   height = content.y1 - content.y0;
 
@@ -150,15 +157,15 @@ static result_t ball_idle(void *task_data)
     b->x += b->dx;
     b->y += b->dy;
 
-    if (b->x - b->radius < 0)           { b->x = b->radius;          b->dx = -b->dx; }
-    else if (b->x + b->radius > width)  { b->x = width - b->radius;  b->dx = -b->dx; }
-    if (b->y - b->radius < 0)           { b->y = b->radius;          b->dy = -b->dy; }
-    else if (b->y + b->radius > height) { b->y = height - b->radius; b->dy = -b->dy; }
+    if (b->x - b->radius < sx)              { b->x = sx + b->radius;          b->dx = -b->dx; }
+    else if (b->x + b->radius > sx + width) { b->x = sx + width - b->radius;  b->dx = -b->dx; }
+    if (b->y - b->radius < sy)              { b->y = sy + b->radius;          b->dy = -b->dy; }
+    else if (b->y + b->radius > sy + height){ b->y = sy + height - b->radius; b->dy = -b->dy; }
 
-    local.x0 = MIN(old_x, b->x) - b->radius;
-    local.y0 = MIN(old_y, b->y) - b->radius;
-    local.x1 = MAX(old_x, b->x) + b->radius;
-    local.y1 = MAX(old_y, b->y) + b->radius;
+    local.x0 = MIN(old_x, b->x) - b->radius - sx;
+    local.y0 = MIN(old_y, b->y) - b->radius - sy;
+    local.x1 = MAX(old_x, b->x) + b->radius - sx;
+    local.y1 = MAX(old_y, b->y) + b->radius - sy;
 
     wuss_window_invalidate(bc->window, &local);
   }
@@ -177,10 +184,10 @@ result_t ball_handle(wuss_window_t     *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return ball_redraw(event->data.redraw.content, task_data, event->data.redraw.scr);
+    return ball_redraw(window, event->data.redraw.content, task_data, event->data.redraw.scr);
 
   case wuss_EVENT_MOUSE:
-    return ball_mouse(event->data.mouse.action, event->data.mouse.x,
+    return ball_mouse(window, event->data.mouse.action, event->data.mouse.x,
                       event->data.mouse.y, event->data.mouse.button, task_data);
 
   case wuss_EVENT_IDLE:

@@ -54,14 +54,17 @@ void launcher_destroy(launcher_task_t *task)
   wuss_window_destroy(task->window);
 }
 
-static result_t launcher_redraw(screen_t *scr, const box_t *content, void *task_data)
+static result_t launcher_redraw(wuss_window_t *window, screen_t *scr, const box_t *content, void *task_data)
 {
   launcher_task_t        *lc;
-  int                      i, font_width, font_height;
+  int                      i, font_width, font_height, sx, sy;
   point_t                  pos;
   const launcher_entry_t  *entry;
 
   lc = task_data;
+
+  wuss_window_get_scroll(window, &sx, &sy);
+  NOT_USED(sx);
 
   screen_draw_rect(scr, content->x0, content->y0,
                    content->x1 - content->x0, content->y1 - content->y0,
@@ -75,7 +78,7 @@ static result_t launcher_redraw(screen_t *scr, const box_t *content, void *task_
     entry = &lc->entries[i];
 
     pos.x = content->x0 + LAUNCHER_PAD;
-    pos.y = content->y0 + LAUNCHER_PAD + i * LAUNCHER_ROW_HEIGHT + (LAUNCHER_ROW_HEIGHT - font_height) / 2;
+    pos.y = content->y0 - sy + LAUNCHER_PAD + i * LAUNCHER_ROW_HEIGHT + (LAUNCHER_ROW_HEIGHT - font_height) / 2;
 
     bmfont_draw(lc->font, scr, entry->name, (int) strlen(entry->name),
                entry->running ? lc->running_fg : lc->fg, lc->bg, &pos, NULL);
@@ -87,13 +90,16 @@ static result_t launcher_redraw(screen_t *scr, const box_t *content, void *task_
 static result_t launcher_mouse(wuss_window_t *window, int y, void *task_data)
 {
   launcher_task_t  *lc;
-  int               i;
+  int               i, sx, sy;
   launcher_entry_t *entry;
   result_t          rc;
 
   lc = task_data;
 
-  i = (y - LAUNCHER_PAD) / LAUNCHER_ROW_HEIGHT;
+  wuss_window_get_scroll(window, &sx, &sy);
+  NOT_USED(sx);
+
+  i = (y + sy - LAUNCHER_PAD) / LAUNCHER_ROW_HEIGHT;
   if (i < 0 || i >= lc->nentries)
     return result_OK;
 
@@ -118,7 +124,7 @@ result_t launcher_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return launcher_redraw(event->data.redraw.scr, event->data.redraw.content, task_data);
+    return launcher_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
 
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action != wuss_MOUSE_DOWN)

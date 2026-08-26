@@ -78,11 +78,12 @@ static result_t checker_redraw(wuss_window_t *window,
   checker_task_t   *cc;
   box_t             bounds;
   checker_pattern_t pattern;
-  int               x, y, lx, ly, band_px, band;
+  int               x, y, lx, ly, sx, sy, band_px, band;
 
   cc = task_data;
 
   wuss_window_get_content_bounds(window, &bounds);
+  wuss_window_get_scroll(window, &sx, &sy);
 
   pattern = (window == cc->window2) ? cc->pattern2 : cc->pattern;
   band_px = (window == cc->window2) ? cc->band2    : cc->band;
@@ -91,8 +92,8 @@ static result_t checker_redraw(wuss_window_t *window,
   {
     for (x = content->x0; x < content->x1; x++)
     {
-      lx = x - bounds.x0;
-      ly = y - bounds.y0;
+      lx = x - bounds.x0 + sx;
+      ly = y - bounds.y0 + sy;
 
       switch (pattern)
       {
