@@ -42,8 +42,7 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
 
 void ball_destroy(ball_task_t *task)
 {
-  if (task->window != NULL)
-    wuss_window_destroy(task->window);
+  wuss_window_destroy(task->window);
 }
 
 static result_t ball_redraw(const box_t *content, void *task_data, screen_t *scr)

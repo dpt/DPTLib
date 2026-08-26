@@ -61,8 +61,7 @@ result_t text_create(wuss_t         *wuss,
 
 void text_destroy(text_task_t *task)
 {
-  if (task->window != NULL)
-    wuss_window_destroy(task->window);
+  wuss_window_destroy(task->window);
 }
 
 static result_t text_redraw(screen_t *scr, const box_t *content, void *task_data)

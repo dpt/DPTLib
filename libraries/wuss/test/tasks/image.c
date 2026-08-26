@@ -48,8 +48,7 @@ result_t image_create(wuss_t         *wuss,
 
 void image_destroy(image_task_t *task)
 {
-  if (task->window != NULL)
-    wuss_window_destroy(task->window);
+  wuss_window_destroy(task->window);
   free(task->bitmap.base);
 }
 
