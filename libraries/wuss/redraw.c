@@ -34,7 +34,7 @@ static void redraw_window(wuss_t        *wuss,
 
       event.kind                 = wuss_EVENT_REDRAW;
       event.data.redraw.scr      = wuss->scr;
-      event.data.redraw.content  = &content;
+      event.data.redraw.content  = &clipped;
       event.data.redraw.bounds   = &content;
       event.data.redraw.scroll_x = win->scroll_x;
       event.data.redraw.scroll_y = win->scroll_y;

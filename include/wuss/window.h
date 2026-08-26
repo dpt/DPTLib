@@ -52,8 +52,8 @@ typedef struct wuss_event
     struct
     {
       screen_t    *scr;
-      const box_t *content; /**< The window's (unclipped) content box, screen space, for context. */
-      const box_t *bounds;  /**< Same as content; the window's content-area box. */
+      const box_t *content; /**< The region that actually needs repainting, screen space; a subset of bounds. Tasks should only touch pixels within this box. */
+      const box_t *bounds;  /**< The window's full (unclipped) content-area box, screen space, as per wuss_window_get_content_bounds; for converting screen position to document position. */
       int          scroll_x, scroll_y; /**< Current scroll offset, as per wuss_window_get_scroll. */
     }
     redraw;
