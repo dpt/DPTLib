@@ -13,7 +13,7 @@
 #include "checker.h"
 
 #define CHECKER_BAND_DEFAULT 8  /* pixels per band, so each pattern reads clearly */
-#define CHECKER_BAND_MIN     2
+#define CHECKER_BAND_MIN     1
 #define CHECKER_BAND_MAX     32
 
 result_t checker_create(wuss_t         *wuss,
@@ -57,7 +57,7 @@ result_t checker_create(wuss_t         *wuss,
                           &task->window2);
   if (rc != result_OK)
   {
-    wuss_window_destroy(task->window);
+    wuss_window_close(task->window);
     return rc;
   }
 
@@ -66,25 +66,27 @@ result_t checker_create(wuss_t         *wuss,
 
 void checker_destroy(checker_task_t *task)
 {
-  if (task->window != NULL)
-    wuss_window_destroy(task->window);
-  if (task->window2 != NULL)
-    wuss_window_destroy(task->window2);
+  wuss_window_close(task->window);
+  wuss_window_close(task->window2);
 }
 
-static result_t checker_redraw(wuss_window_t *window,
-                               screen_t      *scr,
-                               const box_t   *content,
-                               void          *task_data)
+static result_t checker_redraw(wuss_window_t      *window,
+                               const wuss_event_t *event,
+                               void               *task_data)
 {
   checker_task_t   *cc;
-  box_t             bounds;
+  screen_t         *scr;
+  const box_t      *content, *bounds;
   checker_pattern_t pattern;
-  int               x, y, lx, ly, band_px, band;
+  int               x, y, lx, ly, sx, sy, band_px, band;
 
   cc = task_data;
 
-  wuss_window_get_content_bounds(window, &bounds);
+  scr     = event->data.redraw.scr;
+  content = event->data.redraw.content;
+  bounds  = event->data.redraw.bounds;
+  sx      = event->data.redraw.scroll.x;
+  sy      = event->data.redraw.scroll.y;
 
   pattern = (window == cc->window2) ? cc->pattern2 : cc->pattern;
   band_px = (window == cc->window2) ? cc->band2    : cc->band;
@@ -93,14 +95,14 @@ static result_t checker_redraw(wuss_window_t *window,
   {
     for (x = content->x0; x < content->x1; x++)
     {
-      lx = x - bounds.x0;
-      ly = y - bounds.y0;
+      lx = x - bounds->x0 + sx;
+      ly = y - bounds->y0 + sy;
 
       switch (pattern)
       {
-      case checker_PATTERN_HORIZONTAL: band = ly / band_px;                    break;
-      case checker_PATTERN_VERTICAL:   band = lx / band_px;                    break;
-      case checker_PATTERN_DIAGONAL:   band = (lx + ly) / band_px;             break;
+      case checker_PATTERN_HORIZONTAL: band = ly / band_px;                break;
+      case checker_PATTERN_VERTICAL:   band = lx / band_px;                break;
+      case checker_PATTERN_DIAGONAL:   band = (lx + ly) / band_px;         break;
       default:                         band = lx / band_px + ly / band_px; break; /* CHECKERBOARD */
       }
 
@@ -135,10 +137,7 @@ static result_t checker_scroll(wuss_window_t *window, int delta, void *task_data
   band = (window == cc->window2) ? &cc->band2 : &cc->band;
 
   *band += delta;
-  if (*band < CHECKER_BAND_MIN)
-    *band = CHECKER_BAND_MIN;
-  else if (*band > CHECKER_BAND_MAX)
-    *band = CHECKER_BAND_MAX;
+  *band  = CLAMP(*band, CHECKER_BAND_MIN, CHECKER_BAND_MAX);
 
   wuss_window_invalidate_all(window);
 
@@ -156,7 +155,7 @@ result_t checker_handle(wuss_window_t     *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return checker_redraw(window, event->data.redraw.scr, event->data.redraw.content, task_data);
+    return checker_redraw(window, event, task_data);
 
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
@@ -167,7 +166,7 @@ result_t checker_handle(wuss_window_t     *window,
     return checker_scroll(window, event->data.scroll.delta, task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_destroy(window);
+    wuss_window_close(window);
     if (window == cc->window2)
       cc->window2 = NULL;
     else

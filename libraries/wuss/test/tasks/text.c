@@ -61,34 +61,39 @@ result_t text_create(wuss_t         *wuss,
 
 void text_destroy(text_task_t *task)
 {
-  if (task->window != NULL)
-    wuss_window_destroy(task->window);
+  wuss_window_close(task->window);
 }
 
-static result_t text_redraw(screen_t *scr, const box_t *content, void *task_data)
+static result_t text_redraw(const wuss_event_t *event, void *task_data)
 {
   text_task_t *tcx;
-  int             font_width, font_height;
+  screen_t       *scr;
+  const box_t    *bounds;
+  int             font_width, font_height, sy;
   const char     *string;
   int             stringlen;
   point_t         pos;
 
   tcx = task_data;
 
+  scr    = event->data.redraw.scr;
+  bounds = event->data.redraw.bounds;
+  sy     = event->data.redraw.scroll.y;
+
   bmfont_get_info(tcx->font, &font_width, &font_height);
 
   string    = paragraph;
   stringlen = (int) strlen(paragraph);
 
-  pos.x = content->x0 + 4;
-  pos.y = content->y0 + 4;
+  pos.x = bounds->x0 + 4;
+  pos.y = bounds->y0 - sy + 4;
 
-  while (stringlen > 0 && pos.y + font_height <= content->y1)
+  while (stringlen > 0 && pos.y + font_height <= bounds->y1)
   {
     int            absolute_break, friendly_break;
     bmfont_width_t width;
 
-    bmfont_measure(tcx->font, string, stringlen, content->x1 - 4 - pos.x, &absolute_break, &width);
+    bmfont_measure(tcx->font, string, stringlen, bounds->x1 - 4 - pos.x, &absolute_break, &width);
 
     friendly_break = absolute_break;
     if (absolute_break < stringlen)
@@ -111,7 +116,7 @@ static result_t text_redraw(screen_t *scr, const box_t *content, void *task_data
       stringlen--;
     }
 
-    pos.x  = content->x0 + 4;
+    pos.x  = bounds->x0 + 4;
     pos.y += font_height + 2;
   }
 
@@ -168,7 +173,7 @@ result_t text_handle(wuss_window_t     *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return text_redraw(event->data.redraw.scr, event->data.redraw.content, task_data);
+    return text_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
@@ -176,7 +181,7 @@ result_t text_handle(wuss_window_t     *window,
     return text_mouse(task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_destroy(window);
+    wuss_window_close(window);
     tcx->window = NULL;
     return result_OK;
 

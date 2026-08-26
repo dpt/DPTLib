@@ -4,11 +4,6 @@
 
 #include "../impl.h"
 
-/* ponytail: fixed cap; if hit, remaining pieces are carried through
- * unclipped against further occluders rather than growing storage -- safe,
- * just some avoidable redraw work, never wrong */
-#define WUSS_MAX_INVALIDATE_PIECES 32
-
 /* Windows are treated as fully opaque over their whole visible footprint
  * (titlebar/outline included) for occlusion purposes, matching how
  * redraw_from repaints them: a task that leaves gaps via
@@ -50,7 +45,7 @@ static void box_subtract_into(const box_t *piece,
 /* Clip "box" (screen space) down to the parts not already covered by
  * windows above "window" in the z-order, writing the surviving pieces to
  * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count. */
-static int clip_to_visible(wuss_window_t *window, const box_t *box, box_t *out)
+int wuss__clip_to_visible(wuss_window_t *window, const box_t *box, box_t *out)
 {
   box_t   scratch[WUSS_MAX_INVALIDATE_PIECES];
   box_t  *cur, *nxt, *tmp;
@@ -166,7 +161,7 @@ void wuss__invalidate_uncovered(wuss_window_t *window)
   box_t hidden[WUSS_MAX_INVALIDATE_PIECES];
   int   nvisible, nhidden, i;
 
-  nvisible = clip_to_visible(window, &window->visible, visible);
+  nvisible = wuss__clip_to_visible(window, &window->visible, visible);
   nhidden  = subtract_boxes(&window->visible, visible, nvisible, hidden);
 
   for (i = 0; i < nhidden; i++)
@@ -182,7 +177,7 @@ void wuss__invalidate_clipped(wuss_window_t *window, const box_t *box)
   box_t pieces[WUSS_MAX_INVALIDATE_PIECES];
   int   npieces, i;
 
-  npieces = clip_to_visible(window, box, pieces);
+  npieces = wuss__clip_to_visible(window, box, pieces);
 
   for (i = 0; i < npieces; i++)
     wuss_invalidate(window->wuss, &pieces[i]);
@@ -225,10 +220,10 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
     local_box = &whole;
   }
 
-  screen_box.x0 = content.x0 - window->scroll_x + local_box->x0;
-  screen_box.y0 = content.y0 - window->scroll_y + local_box->y0;
-  screen_box.x1 = content.x0 - window->scroll_x + local_box->x1;
-  screen_box.y1 = content.y0 - window->scroll_y + local_box->y1;
+  screen_box.x0 = content.x0 - window->scroll.x + local_box->x0;
+  screen_box.y0 = content.y0 - window->scroll.y + local_box->y0;
+  screen_box.x1 = content.x0 - window->scroll.x + local_box->x1;
+  screen_box.y1 = content.y0 - window->scroll.y + local_box->y1;
 
   wuss__invalidate_clipped(window, &screen_box);
 }

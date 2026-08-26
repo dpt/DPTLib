@@ -10,6 +10,8 @@ static void redraw_window(wuss_t        *wuss,
   box_t clipped;
   box_t visible_clipped;
   box_t content;
+  box_t pieces[WUSS_MAX_INVALIDATE_PIECES];
+  int   npieces, i;
 
   if (box_intersection(&win->visible, full, &visible_clipped))
     return; /* offscreen */
@@ -17,9 +19,18 @@ static void redraw_window(wuss_t        *wuss,
   wuss__furniture_draw(wuss, win, full);
 
   wuss__content_box(win, &content);
-  if (!box_intersection(&content, full, &clipped))
+  if (box_intersection(&content, full, &clipped))
+    return;
+
+  /* skip (or shrink to) whatever part of "clipped" isn't hidden behind a
+   * higher window -- otherwise every dirty rect raised by a window on top
+   * (e.g. a moving ball) would also repaint whatever it's covering below,
+   * however expensive that redraw is, for pixels nobody will ever see */
+  npieces = wuss__clip_to_visible(win, &clipped, pieces);
+
+  for (i = 0; i < npieces; i++)
   {
-    wuss->scr->clip = clipped;
+    wuss->scr->clip = pieces[i];
 
     if (win->task.bg != wuss_NO_BACKGROUND)
       screen_draw_rect(wuss->scr,
@@ -32,9 +43,11 @@ static void redraw_window(wuss_t        *wuss,
       wuss_event_t event;
       result_t     crc;
 
-      event.kind             = wuss_EVENT_REDRAW;
-      event.data.redraw.scr     = wuss->scr;
-      event.data.redraw.content = &content;
+      event.kind                 = wuss_EVENT_REDRAW;
+      event.data.redraw.scr      = wuss->scr;
+      event.data.redraw.content  = &pieces[i];
+      event.data.redraw.bounds   = &content;
+      event.data.redraw.scroll = win->scroll;
       crc = win->task.handle(win, &event, win->task.task_data);
       if (crc != result_OK)
         *rc = crc;

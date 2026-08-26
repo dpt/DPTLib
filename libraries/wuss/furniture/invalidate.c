@@ -2,14 +2,25 @@
 
 #include "../impl.h"
 
-void wuss__furniture_invalidate(wuss_window_t *window)
+/* Same as wuss__furniture_invalidate, but against an arbitrary box rather
+ * than window->visible -- lets a caller that's just resized the window
+ * (toggle-size) also mark the *old* furniture strips dirty, since a blit
+ * that reused the old pixels leaves stale titlebar/scrollbar/outline
+ * pixels sitting wherever those strips used to be. */
+void wuss__furniture_invalidate_for(wuss_window_t *window, const box_t *visible)
 {
-  box_t titlebar;
-  int   outline_px;
+  int outline_px;
+
+  outline_px = wuss__outline_px(window);
 
   if (!(window->flags & wuss_WINDOW_NO_TITLEBAR))
   {
-    wuss__titlebar_box(window, &titlebar);
+    box_t titlebar;
+
+    titlebar.x0 = visible->x0 + outline_px;
+    titlebar.y0 = visible->y0 + outline_px;
+    titlebar.x1 = visible->x1 - outline_px;
+    titlebar.y1 = titlebar.y0 + wuss__titlebar_height(window);
     wuss__invalidate_clipped(window, &titlebar);
   }
 
@@ -17,10 +28,10 @@ void wuss__furniture_invalidate(wuss_window_t *window)
   {
     box_t column;
 
-    column.x1 = window->visible.x1 - wuss__outline_px(window);
+    column.x1 = visible->x1 - outline_px;
     column.x0 = column.x1 - wuss__icon_size(window);
-    column.y0 = window->visible.y0;
-    column.y1 = window->visible.y1;
+    column.y0 = visible->y0;
+    column.y1 = visible->y1;
     wuss__invalidate_clipped(window, &column);
   }
 
@@ -28,32 +39,36 @@ void wuss__furniture_invalidate(wuss_window_t *window)
   {
     box_t row;
 
-    row.y1 = window->visible.y1 - wuss__outline_px(window);
+    row.y1 = visible->y1 - outline_px;
     row.y0 = row.y1 - wuss__icon_size(window);
-    row.x0 = window->visible.x0;
-    row.x1 = window->visible.x1;
+    row.x0 = visible->x0;
+    row.x1 = visible->x1;
     wuss__invalidate_clipped(window, &row);
   }
 
-  outline_px = wuss__outline_px(window);
   if (outline_px > 0)
   {
     box_t edge;
 
-    edge = window->visible;
+    edge = *visible;
     edge.y1 = edge.y0 + outline_px;
     wuss__invalidate_clipped(window, &edge); /* top */
 
-    edge = window->visible;
+    edge = *visible;
     edge.y0 = edge.y1 - outline_px;
     wuss__invalidate_clipped(window, &edge); /* bottom */
 
-    edge = window->visible;
+    edge = *visible;
     edge.x1 = edge.x0 + outline_px;
     wuss__invalidate_clipped(window, &edge); /* left */
 
-    edge = window->visible;
+    edge = *visible;
     edge.x0 = edge.x1 - outline_px;
     wuss__invalidate_clipped(window, &edge); /* right */
   }
+}
+
+void wuss__furniture_invalidate(wuss_window_t *window)
+{
+  wuss__furniture_invalidate_for(window, &window->visible);
 }

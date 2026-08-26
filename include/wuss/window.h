@@ -17,6 +17,7 @@ extern "C"
 
 #include "base/result.h"
 #include "geom/box.h"
+#include "geom/point.h"
 #include "framebuf/screen.h"
 
 #include "wuss/wuss.h"
@@ -26,11 +27,12 @@ extern "C"
 /** Which kind of event a wuss_event_t carries; more will be added over time. */
 typedef enum wuss_event_kind
 {
+  wuss_EVENT_IDLE,   /**< Wuss has finished its pending tasks. */
   wuss_EVENT_REDRAW, /**< Part of the window's content needs repainting. */
+  wuss_EVENT_OPEN,   /**< Window moved or resized. */
+  wuss_EVENT_CLOSE,  /**< Close icon clicked; Wuss takes no action itself. */
   wuss_EVENT_MOUSE,  /**< Button down/up over the window's content. */
   wuss_EVENT_SCROLL, /**< Mouse wheel used over the window's content. */
-  wuss_EVENT_IDLE,   /**< Wuss has finished its pending tasks. */
-  wuss_EVENT_CLOSE,  /**< Close icon clicked; Wuss takes no action itself. */
   wuss_EVENT_QUIT    /**< Task shutting down, via wuss_task_stop. */
 }
 wuss_event_kind_t;
@@ -45,34 +47,41 @@ typedef struct wuss_event
   union
   {
     /** wuss_EVENT_REDRAW: called with scr->clip already set to the
-     * on-screen, clipped content area. */
+     * on-screen, clipped content area. bounds and scroll are exactly what
+     * wuss_window_get_content_bounds/wuss_window_get_scroll would return,
+     * passed through so tasks don't need to call back into Wuss on every
+     * redraw. */
     struct
     {
       screen_t    *scr;
-      const box_t *content; /**< The window's (unclipped) content box, screen space, for context. */
+      const box_t *content; /**< The region that actually needs repainting, screen space; a subset of bounds. Tasks should only touch pixels within this box. */
+      const box_t *bounds;  /**< The window's full (unclipped) content-area box, screen space, as per wuss_window_get_content_bounds; for converting screen position to document position. */
+      point_t      scroll;  /**< Current scroll offset, as per wuss_window_get_scroll. */
     }
     redraw;
 
-    /** wuss_EVENT_MOUSE: x,y are window-local content coordinates (the
+    /** wuss_EVENT_MOUSE: point is window-local content coordinates (the
      * content area's top-left is (0,0)). button is meaningful for
      * DOWN/UP. */
     struct
     {
       wuss_mouse_action_t action;
-      int                 x, y;
+      point_t             point;
       wuss_button_t       button;
     }
     mouse;
 
-    /** wuss_EVENT_SCROLL: x,y are window-local content coordinates, as
+    /** wuss_EVENT_SCROLL: point is window-local content coordinates, as
      * per mouse. delta's sign and units are as passed to wuss_scroll. */
     struct
     {
-      int x, y, delta;
+      point_t point;
+      int     delta;
     }
     scroll;
 
-    /* wuss_EVENT_IDLE, wuss_EVENT_CLOSE and wuss_EVENT_QUIT carry no data. */
+    /* wuss_EVENT_IDLE, wuss_EVENT_CLOSE, wuss_EVENT_QUIT and
+     * wuss_EVENT_OPEN carry no data. */
   }
   data;
 }
@@ -113,9 +122,8 @@ wuss_task_t wuss_task_start(wuss_event_fn_t *handle,
 
 /**
  * Notify a window's task that it is shutting down, via wuss_EVENT_QUIT.
- * Called automatically by wuss_window_destroy before the window is torn
- * down; exposed separately so a task can be stopped without also
- * destroying its window, if ever needed.
+ * Not called automatically by wuss_window_close; call it first if the
+ * task needs notice before its window is torn down.
  *
  * \param[in] window Window whose task should be stopped.
  * \return \ref result_OK on success, else the result returned by the
@@ -153,8 +161,8 @@ result_t wuss_idle(wuss_t *wuss);
  * \param[in]  title      Titlebar label, or NULL for none. Copied in, truncated if too long. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR.
  * \param[in]  flags      Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR / wuss_WINDOW_NO_OUTLINE, OR'd together, or wuss_WINDOW_NONE for the default furniture.
  * \param[in]  task       Content delegate. Copied in. May be NULL for a window with no content handling.
- * \param[in]  doc_width  Virtual document width, for the horizontal scrollbar's thumb proportion; pass content's own width for a window with nothing to scroll.
- * \param[in]  doc_height Virtual document height, for the vertical scrollbar's thumb proportion; pass content's own height for a window with nothing to scroll.
+ * \param[in]  doc_width  Virtual document width, for the horizontal scrollbar's sausage proportion; pass content's own width for a window with nothing to scroll.
+ * \param[in]  doc_height Virtual document height, for the vertical scrollbar's sausage proportion; pass content's own height for a window with nothing to scroll.
  * \param[out] window     Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
  *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if
@@ -175,16 +183,15 @@ result_t wuss_window_create(wuss_t             *wuss,
  *
  * \param[in] doomed Window to destroy.
  */
-void wuss_window_destroy(wuss_window_t *doomed);
+void wuss_window_close(wuss_window_t *doomed);
 
 /**
  * Move a window, preserving its size.
  *
  * \param[in] window Window to move.
- * \param[in] x      New screen x coordinate of the window's content top-left.
- * \param[in] y      New screen y coordinate of the window's content top-left.
+ * \param[in] p      New screen coordinate of the window's content top-left.
  */
-void wuss_window_move(wuss_window_t *window, int x, int y);
+void wuss_window_move(wuss_window_t *window, point_t p);
 
 /**
  * Resize a window's content area, preserving its top-left position.
@@ -253,19 +260,17 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
  * content.
  *
  * \param[in] window Window to scroll.
- * \param[in] x      New horizontal scroll offset.
- * \param[in] y      New vertical scroll offset.
+ * \param[in] p      New scroll offset.
  */
-void wuss_window_set_scroll(wuss_window_t *window, int x, int y);
+void wuss_window_set_scroll(wuss_window_t *window, point_t p);
 
 /**
  * Fetch a window's current scroll offset.
  *
  * \param[in]  window Window to query.
- * \param[out] x      Filled in with the horizontal scroll offset.
- * \param[out] y      Filled in with the vertical scroll offset.
+ * \param[out] p      Filled in with the scroll offset.
  */
-void wuss_window_get_scroll(const wuss_window_t *window, int *x, int *y);
+void wuss_window_get_scroll(const wuss_window_t *window, point_t *p);
 
 /**
  * Change a window's background colour, invalidating its content area so the

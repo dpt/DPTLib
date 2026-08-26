@@ -330,6 +330,7 @@ set(WUSS_SOURCES
     libraries/wuss/furniture/toggle-action.c
     libraries/wuss/furniture/toggle-box.c
     libraries/wuss/furniture/vscroll-box.c
+    libraries/wuss/furniture.h
     libraries/wuss/idle.c
     libraries/wuss/impl.h
     libraries/wuss/invalidate.c
@@ -341,7 +342,7 @@ set(WUSS_SOURCES
     libraries/wuss/task-stop.c
     libraries/wuss/window/at.c
     libraries/wuss/window/create.c
-    libraries/wuss/window/destroy.c
+    libraries/wuss/window/close.c
     libraries/wuss/window/get-content-bounds.c
     libraries/wuss/window/get-scroll.c
     libraries/wuss/window/get-visible-bounds.c
@@ -535,6 +536,7 @@ if(BUILD_TESTS)
         libraries/wuss/test/tasks/blank.c
         libraries/wuss/test/tasks/checker.c
         libraries/wuss/test/tasks/curve.c
+        libraries/wuss/test/tasks/gradient.c
         libraries/wuss/test/tasks/image.c
         libraries/wuss/test/tasks/launcher.c
         libraries/wuss/test/tasks/palette.c
