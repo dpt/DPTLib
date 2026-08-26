@@ -26,12 +26,20 @@ result_t palette_create(wuss_t         *wuss,
   delegate = wuss_task_start(palette_handle, task, palette_PICO8_BLACK); /* backdrop for any rounding gap around the grid */
   box      = (box_t) BOX_POS_SIZE(380, 260, 100, 100);
 
-  return wuss_window_create(wuss, &box, "Palette", wuss_WINDOW_NONE, &delegate, &task->window);
+  return wuss_window_create(wuss,
+                            &box,
+                            "Palette",
+                            wuss_WINDOW_NONE,
+                            &delegate,
+                            box.x1 - box.x0,
+                            box.y1 - box.y0,
+                            &task->window);
 }
 
 void palette_destroy(palette_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  if (task->window != NULL)
+    wuss_window_destroy(task->window);
 }
 
 static result_t palette_redraw(wuss_window_t *window,
@@ -78,6 +86,13 @@ result_t palette_handle(wuss_window_t     *window,
                         const wuss_event_t *event,
                         void               *task_data)
 {
+  if (event->kind == wuss_EVENT_CLOSE)
+  {
+    wuss_window_destroy(window);
+    ((palette_task_t *) task_data)->window = NULL;
+    return result_OK;
+  }
+
   if (event->kind != wuss_EVENT_REDRAW)
     return result_OK;
 

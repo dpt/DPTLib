@@ -18,7 +18,8 @@ typedef struct text_task
   wuss_window_t *window;
   bmfont_t      *font;
   colour_t       bg, fg;
-  int            base_width;  /* visible width when the window was created */
+  int            base_width;  /* content width when the window was created */
+  int            base_height; /* content height when the window was created */
   int            frame_count;
   bool           resizing;    /* toggled by a content click; text_step only
                                 * resizes the window while this is true */

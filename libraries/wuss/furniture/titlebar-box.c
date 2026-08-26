@@ -1,6 +1,6 @@
 /* titlebar-box.c -- wuss - minimal window manager */
 
-#include "impl.h"
+#include "../impl.h"
 
 void wuss__titlebar_box(const wuss_window_t *window, box_t *out)
 {

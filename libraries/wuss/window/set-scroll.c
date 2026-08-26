@@ -1,6 +1,6 @@
-/* window-set-scroll.c -- wuss - minimal window manager */
+/* set-scroll.c -- wuss - minimal window manager */
 
-#include "impl.h"
+#include "../impl.h"
 
 void wuss_window_set_scroll(wuss_window_t *window, int x, int y)
 {

@@ -1,6 +1,6 @@
-/* window-move.c -- wuss - minimal window manager */
+/* move.c -- wuss - minimal window manager */
 
-#include "impl.h"
+#include "../impl.h"
 
 /* x,y is the window's content top-left; the furniture offset (outline plus
  * any titlebar) is constant for a given window, so the footprint just

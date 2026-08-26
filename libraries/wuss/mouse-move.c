@@ -11,8 +11,27 @@ result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit)
     win = wuss->dragging;
     if (hit != NULL)
       *hit = win;
-    wuss->drag_moved = 1;
-    wuss_window_move(win, x - wuss->drag_dx, y - wuss->drag_dy);
+
+    switch (wuss->drag_kind)
+    {
+    case wuss_FURNITURE_DRAG_RESIZE:
+      wuss__furniture_drag_resize(win, x, y);
+      break;
+
+    case wuss_FURNITURE_DRAG_VSCROLL_THUMB:
+      wuss__furniture_drag_thumb(win, y - wuss->drag_dy, wuss->drag_scroll_start, 0);
+      break;
+
+    case wuss_FURNITURE_DRAG_HSCROLL_THUMB:
+      wuss__furniture_drag_thumb(win, x - wuss->drag_dx, wuss->drag_scroll_start, 1);
+      break;
+
+    case wuss_FURNITURE_DRAG_MOVE:
+    default:
+      wuss_window_move(win, x - wuss->drag_dx, y - wuss->drag_dy);
+      break;
+    }
+
     return result_OK;
   }
 
@@ -23,14 +42,13 @@ result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit)
   if (win == NULL)
     return result_OK;
 
+  if (wuss__furniture_hit_test(win, x, y) != wuss_FURNITURE_CONTENT)
+    return result_OK;
+
   if (win->task.handle != NULL)
   {
-    box_t        titlebar, content;
+    box_t        content;
     wuss_event_t event;
-
-    wuss__titlebar_box(win, &titlebar);
-    if (box_contains_point(&titlebar, x, y))
-      return result_OK;
 
     wuss__content_box(win, &content);
     event.kind             = wuss_EVENT_MOUSE;

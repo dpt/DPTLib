@@ -1,4 +1,4 @@
-/* window-destroy.c -- wuss - minimal window manager */
+/* destroy.c -- wuss - minimal window manager */
 
 #include <stdlib.h>
 
@@ -6,7 +6,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "impl.h"
+#include "../impl.h"
 
 void wuss_window_destroy(wuss_window_t *doomed)
 {

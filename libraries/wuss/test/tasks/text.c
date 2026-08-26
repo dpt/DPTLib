@@ -44,16 +44,25 @@ result_t text_create(wuss_t         *wuss,
   delegate = wuss_task_start(text_handle, task, palette_PICO8_BLUE);
   box      = (box_t) BOX_POS_SIZE(120, 100, 220, 180);
 
-  task->base_width = box.x1 - box.x0;
+  task->base_width  = box.x1 - box.x0;
+  task->base_height = box.y1 - box.y0;
 
-  rc = wuss_window_create(wuss, &box, "Lorem Ipsum", wuss_WINDOW_NONE, &delegate, &task->window);
+  rc = wuss_window_create(wuss,
+                          &box,
+                          "Lorem Ipsum",
+                          wuss_WINDOW_NONE,
+                          &delegate,
+                          box.x1 - box.x0,
+                          box.y1 - box.y0,
+                          &task->window);
 
   return rc;
 }
 
 void text_destroy(text_task_t *task)
 {
-  wuss_window_destroy(task->window);
+  if (task->window != NULL)
+    wuss_window_destroy(task->window);
 }
 
 static result_t text_redraw(screen_t *scr, const box_t *content, void *task_data)
@@ -126,7 +135,6 @@ static result_t text_mouse(void *task_data)
 static result_t text_idle(void *task_data)
 {
   text_task_t *tcx;
-  box_t        visible;
   int          height, width;
   double       angle;
   result_t     rc;
@@ -136,8 +144,7 @@ static result_t text_idle(void *task_data)
   if (!tcx->resizing)
     return result_OK;
 
-  wuss_window_get_content_bounds(tcx->window, &visible);
-  height = visible.y1 - visible.y0;
+  height = tcx->base_height;
 
   tcx->frame_count++;
   angle = tcx->frame_count * (2.0 * M_PI / TEXT_RESIZE_PERIOD_FRAMES);
@@ -154,7 +161,9 @@ result_t text_handle(wuss_window_t     *window,
                      const wuss_event_t *event,
                      void               *task_data)
 {
-  NOT_USED(window);
+  text_task_t *tcx;
+
+  tcx = task_data;
 
   switch (event->kind)
   {
@@ -165,6 +174,11 @@ result_t text_handle(wuss_window_t     *window,
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     return text_mouse(task_data);
+
+  case wuss_EVENT_CLOSE:
+    wuss_window_destroy(window);
+    tcx->window = NULL;
+    return result_OK;
 
   case wuss_EVENT_IDLE:
     return text_idle(task_data);

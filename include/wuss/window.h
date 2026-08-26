@@ -139,16 +139,23 @@ result_t wuss_idle(wuss_t *wuss);
  * Create a window.
  *
  * Furniture (titlebar/outline) is added outside \p content, not carved out
- * of it: the window's content area always ends up exactly \p content, and
- * its on-screen footprint (see wuss_window_get_visible_bounds) is \p content
- * expanded outward by whatever furniture flags request.
+ * of it: before clamping, the window's content area is exactly \p content,
+ * and its on-screen footprint (see wuss_window_get_visible_bounds) is
+ * \p content expanded outward by whatever furniture flags request. If that
+ * footprint would then fall off the top or left edge of the screen, the
+ * window (content included) is nudged right/down just enough to bring it
+ * flush with the edge, so the titlebar/close icon stay reachable; a window
+ * wider or taller than the screen keeps its top-left corner on-screen
+ * instead. The bottom/right edges are not clamped.
  *
- * \param[in]  wuss    Window manager to create the window on.
- * \param[in]  content Requested content-area bounds, screen space. Copied in.
- * \param[in]  title   Titlebar label, or NULL for none. Copied in, truncated if too long. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR.
- * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR / wuss_WINDOW_NO_OUTLINE, OR'd together, or wuss_WINDOW_NONE for the default furniture.
- * \param[in]  task    Content delegate. Copied in. May be NULL for a window with no content handling.
- * \param[out] window  Newly created window. Becomes the topmost window.
+ * \param[in]  wuss       Window manager to create the window on.
+ * \param[in]  content    Requested content-area bounds, screen space. Copied in.
+ * \param[in]  title      Titlebar label, or NULL for none. Copied in, truncated if too long. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR.
+ * \param[in]  flags      Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR / wuss_WINDOW_NO_OUTLINE, OR'd together, or wuss_WINDOW_NONE for the default furniture.
+ * \param[in]  task       Content delegate. Copied in. May be NULL for a window with no content handling.
+ * \param[in]  doc_width  Virtual document width, for the horizontal scrollbar's thumb proportion; pass content's own width for a window with nothing to scroll.
+ * \param[in]  doc_height Virtual document height, for the vertical scrollbar's thumb proportion; pass content's own height for a window with nothing to scroll.
+ * \param[out] window     Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
  *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if
  *         task->bg is out of range for the palette, or another
@@ -159,6 +166,8 @@ result_t wuss_window_create(wuss_t             *wuss,
                             const char         *title,
                             wuss_window_flags_t flags,
                             const wuss_task_t  *task,
+                            int                 doc_width,
+                            int                 doc_height,
                             wuss_window_t     **window);
 
 /**
@@ -226,18 +235,14 @@ void wuss_window_get_content_bounds(const wuss_window_t *window,
  *
  * \param[in] window     Window whose content changed.
  * \param[in] local_box  Region, in window-local content coordinates (as
- *                       passed to the task's mouse callback).
+ *                       passed to the task's mouse callback), or NULL to
+ *                       mark the whole content area dirty.
  */
 void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
 
-/**
- * Mark a window's whole content area as dirty, for the next
- * wuss_redraw_dirty call. Equivalent to calling wuss_window_invalidate with
- * a window-local box covering the entire content area.
- *
- * \param[in] window Window whose content changed.
- */
-void wuss_window_invalidate_all(wuss_window_t *window);
+/** Mark a window's whole content area as dirty. Shorthand for
+ * wuss_window_invalidate(window, NULL). */
+#define wuss_window_invalidate_all(window) wuss_window_invalidate((window), NULL)
 
 /**
  * Set a window's scroll offset: the point in virtual content space that
