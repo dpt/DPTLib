@@ -99,11 +99,11 @@ result_t wuss_create(screen_t             *scr,
     w->titlebar_height = WUSS_DEFAULT_TITLEBAR_HEIGHT;
   }
 
-  w->scr      = scr;
-  w->font     = font;
-  w->dragging = NULL;
-  w->drag.x   = 0;
-  w->drag.y   = 0;
+  w->scr                = scr;
+  w->font               = font;
+  w->furniture.dragging = NULL;
+  w->furniture.drag.x   = 0;
+  w->furniture.drag.y   = 0;
 
   w->ndirty = 0;
 

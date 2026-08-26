@@ -16,13 +16,13 @@ result_t wuss_mouse_click(wuss_t              *wuss,
   x = p.x;
   y = p.y;
 
-  if (action == wuss_MOUSE_UP && wuss->dragging != NULL)
+  if (action == wuss_MOUSE_UP && wuss->furniture.dragging != NULL)
   {
-    win = wuss->dragging;
+    win = wuss->furniture.dragging;
     if (hit != NULL)
       *hit = win;
-    wuss->dragging  = NULL;
-    wuss->drag_kind = wuss_FURNITURE_DRAG_NONE;
+    wuss->furniture.dragging  = NULL;
+    wuss->furniture.drag_kind = wuss_FURNITURE_DRAG_NONE;
 
     return result_OK;
   }
@@ -98,10 +98,10 @@ result_t wuss_mouse_click(wuss_t              *wuss,
         wuss_window_restack(win, wuss_ZORDER_FRONT);
 
       wuss__content_box(win, &content);
-      wuss->dragging   = win;
-      wuss->drag_kind  = wuss_FURNITURE_DRAG_MOVE;
-      wuss->drag.x     = x - content.x0;
-      wuss->drag.y     = y - content.y0;
+      wuss->furniture.dragging   = win;
+      wuss->furniture.drag_kind  = wuss_FURNITURE_DRAG_MOVE;
+      wuss->furniture.drag.x     = x - content.x0;
+      wuss->furniture.drag.y     = y - content.y0;
     }
     return result_OK;
   }
@@ -119,11 +119,11 @@ result_t wuss_mouse_click(wuss_t              *wuss,
 
       wuss_window_get_scroll(win, &scroll);
 
-      wuss->dragging          = win;
-      wuss->drag_kind         = wuss__furniture_drag_kind(region);
-      wuss->drag.x            = x;
-      wuss->drag.y            = y;
-      wuss->drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_WELL) ? scroll.y : scroll.x;
+      wuss->furniture.dragging          = win;
+      wuss->furniture.drag_kind         = wuss__furniture_drag_kind(region);
+      wuss->furniture.drag.x            = x;
+      wuss->furniture.drag.y            = y;
+      wuss->furniture.drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_WELL) ? scroll.y : scroll.x;
     }
     return result_OK;
   }

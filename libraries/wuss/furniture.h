@@ -41,6 +41,17 @@ typedef enum wuss_furniture_drag_kind
 }
 wuss_furniture_drag_kind_t;
 
+/* Furniture drag state, embedded in struct wuss. */
+struct wuss__furniture
+{
+  wuss_window_t              *dragging;  /* NULL when idle */
+  wuss_furniture_drag_kind_t  drag_kind;
+  point_t                     drag; /* MOVE: pointer offset within content;
+                                     * RESIZE: unused, recomputed each move;
+                                     * *_SAUSAGE: pointer position at drag start */
+  int                         drag_scroll_start; /* *_SAUSAGE: scroll.x/scroll.y at drag start */
+};
+
 static inline wuss_furniture_drag_kind_t wuss__furniture_drag_kind(wuss_furniture_region_t region)
 {
   switch (region)

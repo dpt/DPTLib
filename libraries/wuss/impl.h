@@ -36,12 +36,7 @@ struct wuss
   wuss_colour_t               titlebar_fg;
   int                         titlebar_height;
   list_t                      z_order;   /* anchor; head = topmost window */
-  wuss_window_t              *dragging;  /* NULL when idle */
-  wuss_furniture_drag_kind_t  drag_kind;
-  point_t                     drag; /* MOVE: pointer offset within content;
-                                     * RESIZE: unused, recomputed each move;
-                                     * *_SAUSAGE: pointer position at drag start */
-  int                         drag_scroll_start; /* *_SAUSAGE: scroll.x/scroll.y at drag start */
+  struct wuss__furniture      furniture;
   box_t                       dirty[WUSS_MAX_DIRTY]; /* accumulated by wuss_invalidate; reset by a redraw */
   int                         ndirty;
 };
