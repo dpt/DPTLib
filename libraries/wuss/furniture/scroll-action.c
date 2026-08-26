@@ -40,25 +40,25 @@ void wuss__furniture_scroll_step(wuss_window_t *window, point_t delta)
   wuss_window_set_scroll(window, scroll);
 }
 
-void wuss__furniture_drag_thumb(wuss_window_t *window,
-                                int            delta_px,
-                                int            scroll_start,
-                                int            horizontal)
+void wuss__furniture_drag_sausage(wuss_window_t *window,
+                                  int            delta_px,
+                                  int            scroll_start,
+                                  int            horizontal)
 {
   box_t content;
-  int   track_px, content_size, doc_size, max_scroll, new_scroll;
+  int   well_px, content_size, doc_size, max_scroll, new_scroll;
 
   wuss__content_box(window, &content);
 
   if (horizontal)
   {
-    track_px     = wuss__hscroll_track_px(window);
+    well_px      = wuss__hscroll_well_px(window);
     content_size = content.x1 - content.x0;
     doc_size     = window->doc_width;
   }
   else
   {
-    track_px     = wuss__vscroll_track_px(window);
+    well_px      = wuss__vscroll_well_px(window);
     content_size = content.y1 - content.y0;
     doc_size     = window->doc_height;
   }
@@ -67,10 +67,10 @@ void wuss__furniture_drag_thumb(wuss_window_t *window,
   if (max_scroll < 0)
     max_scroll = 0;
 
-  if (track_px <= 0 || doc_size <= content_size)
+  if (well_px <= 0 || doc_size <= content_size)
     new_scroll = 0;
   else
-    new_scroll = scroll_start + delta_px * doc_size / track_px;
+    new_scroll = scroll_start + delta_px * doc_size / well_px;
 
   if (new_scroll < 0)
     new_scroll = 0;

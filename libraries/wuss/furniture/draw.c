@@ -122,7 +122,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
   if (!(window->flags & wuss_WINDOW_NO_VSCROLL))
   {
-    box_t up, down, bar, thumb;
+    box_t up, down, well, sausage;
 
     wuss__vscroll_up_box(window, &up);
     if (!box_intersection(&up, full, &clipped))
@@ -140,26 +140,26 @@ void wuss__furniture_draw(wuss_t        *wuss,
                        wuss->palette[wuss->titlebar_bg]);
     }
 
-    wuss__vscroll_bar_box(window, &bar);
-    if (!box_intersection(&bar, full, &clipped))
+    wuss__vscroll_well_box(window, &well);
+    if (!box_intersection(&well, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr, bar.x0, bar.y0, bar.x1 - bar.x0, bar.y1 - bar.y0,
+      screen_draw_rect(wuss->scr, well.x0, well.y0, well.x1 - well.x0, well.y1 - well.y0,
                        wuss->palette[wuss->titlebar_bg]);
     }
 
-    wuss__vscroll_thumb_box(window, &thumb);
-    if (!box_intersection(&thumb, full, &clipped))
+    wuss__vscroll_sausage_box(window, &sausage);
+    if (!box_intersection(&sausage, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr, thumb.x0, thumb.y0, thumb.x1 - thumb.x0, thumb.y1 - thumb.y0,
+      screen_draw_rect(wuss->scr, sausage.x0, sausage.y0, sausage.x1 - sausage.x0, sausage.y1 - sausage.y0,
                        wuss->palette[wuss->titlebar_fg]);
     }
   }
 
   if (!(window->flags & wuss_WINDOW_NO_HSCROLL))
   {
-    box_t left, right, bar, thumb;
+    box_t left, right, well, sausage;
 
     wuss__hscroll_left_box(window, &left);
     if (!box_intersection(&left, full, &clipped))
@@ -177,19 +177,19 @@ void wuss__furniture_draw(wuss_t        *wuss,
                        wuss->palette[wuss->titlebar_bg]);
     }
 
-    wuss__hscroll_bar_box(window, &bar);
-    if (!box_intersection(&bar, full, &clipped))
+    wuss__hscroll_well_box(window, &well);
+    if (!box_intersection(&well, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr, bar.x0, bar.y0, bar.x1 - bar.x0, bar.y1 - bar.y0,
+      screen_draw_rect(wuss->scr, well.x0, well.y0, well.x1 - well.x0, well.y1 - well.y0,
                        wuss->palette[wuss->titlebar_bg]);
     }
 
-    wuss__hscroll_thumb_box(window, &thumb);
-    if (!box_intersection(&thumb, full, &clipped))
+    wuss__hscroll_sausage_box(window, &sausage);
+    if (!box_intersection(&sausage, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr, thumb.x0, thumb.y0, thumb.x1 - thumb.x0, thumb.y1 - thumb.y0,
+      screen_draw_rect(wuss->scr, sausage.x0, sausage.y0, sausage.x1 - sausage.x0, sausage.y1 - sausage.y0,
                        wuss->palette[wuss->titlebar_fg]);
     }
   }

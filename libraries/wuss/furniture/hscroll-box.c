@@ -44,7 +44,7 @@ void wuss__hscroll_right_box(const wuss_window_t *window, box_t *out)
   out->x0 = row.x1 - size;
 }
 
-void wuss__hscroll_bar_box(const wuss_window_t *window, box_t *out)
+void wuss__hscroll_well_box(const wuss_window_t *window, box_t *out)
 {
   box_t row;
   int   size;
@@ -58,42 +58,42 @@ void wuss__hscroll_bar_box(const wuss_window_t *window, box_t *out)
   out->x1 = row.x1 - size;
 }
 
-int wuss__hscroll_track_px(const wuss_window_t *window)
+int wuss__hscroll_well_px(const wuss_window_t *window)
 {
-  box_t bar;
+  box_t well;
 
-  wuss__hscroll_bar_box(window, &bar);
+  wuss__hscroll_well_box(window, &well);
 
-  return bar.x1 - bar.x0;
+  return well.x1 - well.x0;
 }
 
-void wuss__hscroll_thumb_box(const wuss_window_t *window, box_t *out)
+void wuss__hscroll_sausage_box(const wuss_window_t *window, box_t *out)
 {
-  box_t bar, content;
-  int   track_px, content_size, doc_size, thumb_px, thumb_x0;
+  box_t well, content;
+  int   well_px, content_size, doc_size, sausage_px, sausage_x0;
 
-  wuss__hscroll_bar_box(window, &bar);
+  wuss__hscroll_well_box(window, &well);
   wuss__content_box(window, &content);
 
-  track_px     = bar.x1 - bar.x0;
+  well_px      = well.x1 - well.x0;
   content_size = content.x1 - content.x0;
   doc_size     = window->doc_width;
   if (doc_size < content_size)
     doc_size = content_size;
 
-  thumb_px = (doc_size > 0) ? track_px * content_size / doc_size : track_px;
-  if (thumb_px < WUSS_MIN_THUMB)
-    thumb_px = WUSS_MIN_THUMB;
-  if (thumb_px > track_px)
-    thumb_px = track_px;
+  sausage_px = (doc_size > 0) ? well_px * content_size / doc_size : well_px;
+  if (sausage_px < WUSS_MIN_SAUSAGE)
+    sausage_px = WUSS_MIN_SAUSAGE;
+  if (sausage_px > well_px)
+    sausage_px = well_px;
 
-  if (doc_size > content_size && track_px > thumb_px)
-    thumb_x0 = bar.x0 + (track_px - thumb_px) * window->scroll.x / (doc_size - content_size);
+  if (doc_size > content_size && well_px > sausage_px)
+    sausage_x0 = well.x0 + (well_px - sausage_px) * window->scroll.x / (doc_size - content_size);
   else
-    thumb_x0 = bar.x0;
+    sausage_x0 = well.x0;
 
-  out->y0 = bar.y0;
-  out->y1 = bar.y1;
-  out->x0 = thumb_x0;
-  out->x1 = thumb_x0 + thumb_px;
+  out->y0 = well.y0;
+  out->y1 = well.y1;
+  out->x0 = sausage_x0;
+  out->x1 = sausage_x0 + sausage_px;
 }
