@@ -2,18 +2,17 @@
 
 #include "../impl.h"
 
-void wuss_window_set_scroll(wuss_window_t *window, int x, int y)
+void wuss_window_set_scroll(wuss_window_t *window, point_t p)
 {
   box_t content, copied;
   int   dx, dy;
 
-  dx = x - window->scroll.x;
-  dy = y - window->scroll.y;
+  dx = p.x - window->scroll.x;
+  dy = p.y - window->scroll.y;
   if (dx == 0 && dy == 0)
     return;
 
-  window->scroll.x = x;
-  window->scroll.y = y;
+  window->scroll = p;
 
   wuss__content_box(window, &content);
 

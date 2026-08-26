@@ -2,12 +2,16 @@
 
 #include "impl.h"
 
-result_t wuss_scroll(wuss_t *wuss, int x, int y, int delta, wuss_window_t **hit)
+result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
 {
   wuss_window_t *win;
   box_t          titlebar;
+  int            x, y;
 
-  win = wuss__window_at(wuss, x, y);
+  x = p.x;
+  y = p.y;
+
+  win = wuss__window_at(wuss, p);
   if (hit != NULL)
     *hit = win;
 

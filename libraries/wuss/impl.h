@@ -112,7 +112,7 @@ struct wuss_window
   char                title[WUSS_TITLE_MAX + 1];
 };
 
-wuss_window_t *wuss__window_at(wuss_t *wuss, int x, int y);
+wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
 void            wuss__titlebar_box(const wuss_window_t *window, box_t *out);
 void            wuss__close_box(const wuss_window_t *window, box_t *out);
 void            wuss__content_box(const wuss_window_t *window, box_t *out);

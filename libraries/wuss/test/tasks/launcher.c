@@ -94,16 +94,17 @@ static result_t launcher_redraw(const wuss_event_t *event, void *task_data)
 static result_t launcher_mouse(wuss_window_t *window, int y, void *task_data)
 {
   launcher_task_t  *lc;
-  int               i, sx, sy;
+  int               i;
+  point_t           scroll;
   launcher_entry_t *entry;
   result_t          rc;
 
   lc = task_data;
 
-  wuss_window_get_scroll(window, &sx, &sy);
-  NOT_USED(sx);
+  wuss_window_get_scroll(window, &scroll);
+  NOT_USED(scroll.x);
 
-  i = (y + sy - LAUNCHER_PAD) / LAUNCHER_ROW_HEIGHT;
+  i = (y + scroll.y - LAUNCHER_PAD) / LAUNCHER_ROW_HEIGHT;
   if (i < 0 || i >= lc->nentries)
     return result_OK;
 

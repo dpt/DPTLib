@@ -115,11 +115,12 @@ static result_t curve_mouse(curve_task_t        *task,
                             int                   y,
                             wuss_window_t        *window)
 {
-  int i, sx, sy;
+  int     i;
+  point_t scroll;
 
-  wuss_window_get_scroll(window, &sx, &sy);
-  x += sx;
-  y += sy;
+  wuss_window_get_scroll(window, &scroll);
+  x += scroll.x;
+  y += scroll.y;
 
   switch (action)
   {

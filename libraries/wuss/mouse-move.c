@@ -2,9 +2,13 @@
 
 #include "impl.h"
 
-result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit)
+result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
 {
   wuss_window_t *win;
+  int            x, y;
+
+  x = p.x;
+  y = p.y;
 
   if (wuss->dragging != NULL)
   {
@@ -28,14 +32,14 @@ result_t wuss_mouse_move(wuss_t *wuss, int x, int y, wuss_window_t **hit)
 
     case wuss_FURNITURE_DRAG_MOVE:
     default:
-      wuss_window_move(win, x - wuss->drag.x, y - wuss->drag.y);
+      wuss_window_move(win, (point_t) { x - wuss->drag.x, y - wuss->drag.y });
       break;
     }
 
     return result_OK;
   }
 
-  win = wuss__window_at(wuss, x, y);
+  win = wuss__window_at(wuss, p);
   if (hit != NULL)
     *hit = win;
 

@@ -2,8 +2,7 @@
 
 #include "../impl.h"
 
-void wuss_window_get_scroll(const wuss_window_t *window, int *x, int *y)
+void wuss_window_get_scroll(const wuss_window_t *window, point_t *p)
 {
-  *x = window->scroll.x;
-  *y = window->scroll.y;
+  *p = window->scroll;
 }
