@@ -149,8 +149,7 @@ result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
 
 void sofa_destroy(sofa_task_t *task)
 {
-  if (task->window != NULL)
-    wuss_window_destroy(task->window);
+  wuss_window_destroy(task->window);
 }
 
 static result_t sofa_redraw(wuss_window_t *window,

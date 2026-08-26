@@ -38,8 +38,7 @@ result_t palette_create(wuss_t         *wuss,
 
 void palette_destroy(palette_task_t *task)
 {
-  if (task->window != NULL)
-    wuss_window_destroy(task->window);
+  wuss_window_destroy(task->window);
 }
 
 static result_t palette_redraw(wuss_window_t *window,
