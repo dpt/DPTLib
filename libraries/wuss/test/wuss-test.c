@@ -1371,6 +1371,128 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_h);
   }
 
+  printf("test: toggle-size blits rather than redrawing the whole window\n");
+
+  {
+    test_task_t    tc_t;
+    wuss_task_t    delegate_t;
+    box_t          box_t_win, before, after, titlebar, toggle;
+    wuss_window_t *win_t;
+    int            outline_px, titlebar_height, inset, icon;
+    int            i, dirty_area, full_area, cx, cy;
+
+    tc_t.redraw_count = 0;
+    tc_t.mouse_count  = 0;
+    delegate_t.handle    = test_handle;
+    delegate_t.task_data = &tc_t;
+    delegate_t.bg        = wuss_NO_BACKGROUND;
+
+    box_t_win.x0 = 10; box_t_win.y0 = 10;
+    box_t_win.x1 = 50; box_t_win.y1 = 50; /* 40x40 content, room to grow to a 200x200 doc */
+    rc = wuss_window_create(wuss, &box_t_win, "T", wuss_WINDOW_NONE,
+                            &delegate_t, 200, 200, &win_t);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush the create's own invalidate */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* toggle icon: top-right of the titlebar, inset by 3px, sized 20 - 2*3
+     * (default titlebar height 20, WUSS_ICON_INSET 3), matching
+     * wuss__toggle_box's formula -- mirrored here since the test only sees
+     * the public API */
+    outline_px      = 1;
+    titlebar_height = 20;
+    inset           = 3;
+    icon            = titlebar_height - 2 * inset;
+
+    wuss_window_get_visible_bounds(win_t, &before);
+    titlebar.x0 = before.x0 + outline_px;
+    titlebar.x1 = before.x1 - outline_px;
+    titlebar.y0 = before.y0 + outline_px;
+    toggle.x1 = titlebar.x1 - inset;
+    toggle.x0 = toggle.x1 - icon;
+    toggle.y0 = titlebar.y0 + inset;
+    toggle.y1 = toggle.y0 + icon;
+    cx = (toggle.x0 + toggle.x1) / 2;
+    cy = (toggle.y0 + toggle.y1) / 2;
+
+    rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* T's toggle-size icon: grow */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_t)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    if (wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+
+    dirty_area = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      box_t region;
+
+      wuss_get_dirty(wuss, i, &region);
+      dirty_area += (region.x1 - region.x0) * (region.y1 - region.y0);
+    }
+
+    wuss_window_get_visible_bounds(win_t, &after);
+    full_area = (after.x1 - after.x0) * (after.y1 - after.y0);
+    if (dirty_area >= full_area)
+      goto Failure; /* blit reused the still-valid pixels: only the grown
+                      * edge is dirty, not the whole new footprint */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* toggle back: shrink. Icon moved with the grown titlebar, so recompute. */
+    wuss_window_get_visible_bounds(win_t, &before);
+    titlebar.x0 = before.x0 + outline_px;
+    titlebar.x1 = before.x1 - outline_px;
+    titlebar.y0 = before.y0 + outline_px;
+    toggle.x1 = titlebar.x1 - inset;
+    toggle.x0 = toggle.x1 - icon;
+    toggle.y0 = titlebar.y0 + inset;
+    toggle.y1 = toggle.y0 + icon;
+    cx = (toggle.x0 + toggle.x1) / 2;
+    cy = (toggle.y0 + toggle.y1) / 2;
+
+    rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* T's toggle-size icon: shrink */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_t)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    if (wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+
+    dirty_area = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      box_t region;
+
+      wuss_get_dirty(wuss, i, &region);
+      dirty_area += (region.x1 - region.x0) * (region.y1 - region.y0);
+    }
+
+    full_area = (before.x1 - before.x0) * (before.y1 - before.y0); /* the grown box: what a full-union invalidate would have covered */
+    if (dirty_area >= full_area)
+      goto Failure; /* vacated edge only, not the whole grown footprint */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_t);
+  }
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;
