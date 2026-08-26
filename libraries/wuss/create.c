@@ -20,9 +20,10 @@ result_t wuss_create(screen_t             *scr,
                      const wuss_config_t  *config,
                      wuss_t              **wuss)
 {
-  wuss_t   *w;
-  int       font_height;
-  int       font_width;
+  wuss_t       *w;
+  wuss_colour_t bg, fg;
+  int           font_height;
+  int           font_width;
 
   assert(scr  != NULL);
   assert(wuss != NULL);
@@ -62,27 +63,36 @@ result_t wuss_create(screen_t             *scr,
 
   if (config != NULL)
   {
-    w->furniture_colours.bg = config->titlebar_bg;
-    w->furniture_colours.fg = config->titlebar_fg;
+    bg = config->titlebar_bg;
+    fg = config->titlebar_fg;
   }
   else if (palette == NULL)
   {
-    w->furniture_colours.bg = palette_PICO8_DARK_BLUE;
-    w->furniture_colours.fg = palette_PICO8_WHITE;
+    bg = palette_PICO8_DARK_BLUE;
+    fg = palette_PICO8_WHITE;
   }
   else
   {
-    w->furniture_colours.bg = 0;
-    w->furniture_colours.fg = (w->npalette > 1) ? 1 : 0;
+    bg = 0;
+    fg = (w->npalette > 1) ? 1 : 0;
   }
 
-  if (w->furniture_colours.bg < 0 || w->furniture_colours.bg >= w->npalette ||
-      w->furniture_colours.fg < 0 || w->furniture_colours.fg >= w->npalette)
+  if (bg < 0 || bg >= w->npalette || fg < 0 || fg >= w->npalette)
   {
     free(w->palette);
     free(w);
     return result_WUSS_BAD_COLOUR;
   }
+
+  w->furniture_colours.title.bg = bg;
+  w->furniture_colours.title.fg = fg;
+  w->furniture_colours.back     = fg;
+  w->furniture_colours.close    = fg;
+  w->furniture_colours.toggle   = fg;
+  w->furniture_colours.resize   = bg;
+  w->furniture_colours.arrows   = bg;
+  w->furniture_colours.wells    = bg;
+  w->furniture_colours.sausages = fg;
 
   if (config != NULL && config->titlebar_height > 0)
   {
