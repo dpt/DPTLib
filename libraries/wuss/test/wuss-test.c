@@ -1617,6 +1617,123 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_u);
   }
 
+  printf("test: toggle-size maximize stays a valid box for a window dragged off the right/bottom edge\n");
+
+  {
+    test_task_t    tc_v;
+    wuss_task_t    delegate_v;
+    box_t          box_v, vb, titlebar, toggle;
+    wuss_window_t *win_v;
+    int            outline_px, titlebar_height, inset, icon;
+    int            cx, cy;
+
+    tc_v.redraw_count = 0;
+    tc_v.mouse_count  = 0;
+    delegate_v.handle    = test_handle;
+    delegate_v.task_data = &tc_v;
+    delegate_v.bg        = wuss_NO_BACKGROUND;
+
+    box_v.x0 = 10; box_v.y0 = 10;
+    box_v.x1 = 70; box_v.y1 = 70; /* 60x60 content -- wide enough titlebar that
+                                    * back/close/toggle icons don't overlap
+                                    * (a titlebar much narrower than that makes
+                                    * the toggle icon's box overlap close's, so
+                                    * a click meant for toggle lands on close
+                                    * instead, since hit-test checks close
+                                    * first -- a separate, pre-existing issue
+                                    * unrelated to toggle-size specifically).
+                                    * Doc big enough that maximize is
+                                    * screen-limited, not doc-limited. */
+    rc = wuss_window_create(wuss, &box_v, "V", wuss_WINDOW_NONE,
+                            &delegate_v, 200, 200, &win_v);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* drag well past the right/bottom screen edge (200x200 screen) -- an
+     * ordinary, already-supported position (see the drag-off-screen test
+     * above): titlebar drag calls wuss_window_move with no clamping. From
+     * here, "available space to the screen edge" (scr_width - visible.x0 -
+     * furniture) goes negative, further than furniture alone can absorb. */
+    wuss_window_move(win_v, 310, 310);
+
+    outline_px      = 1;
+    titlebar_height = 20;
+    inset           = 3;
+    icon            = titlebar_height - 2 * inset;
+
+    wuss_window_get_visible_bounds(win_v, &vb);
+    titlebar.x0 = vb.x0 + outline_px;
+    titlebar.x1 = vb.x1 - outline_px;
+    titlebar.y0 = vb.y0 + outline_px;
+    toggle.x1 = titlebar.x1 - inset;
+    toggle.x0 = toggle.x1 - icon;
+    toggle.y0 = titlebar.y0 + inset;
+    toggle.y1 = toggle.y0 + icon;
+    cx = (toggle.x0 + toggle.x1) / 2;
+    cy = (toggle.y0 + toggle.y1) / 2;
+
+    rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* V's toggle-size icon: maximize while off-screen */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_v)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_v, &vb);
+    if (vb.x1 <= vb.x0 || vb.y1 <= vb.y0)
+      goto Failure; /* screen-limited width/height went negative (x0 is
+                      * further right than the screen edge plus furniture
+                      * can make room for), producing an inverted box --
+                      * un-hit-testable forever after, since box_contains_point
+                      * can never match x0>x1: the window is stuck, unclickable,
+                      * unclosable. Must floor at WUSS_MIN_CONTENT like
+                      * drag-resize.c does, even if that leaves the maximized
+                      * window hanging off the visible screen. */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* toggle back: shrink. Confirm the window is still reachable at all --
+     * this alone would already fail (rc != result_OK from a wrong hit) if
+     * the icon had become permanently unhittable above. */
+    wuss_window_get_visible_bounds(win_v, &vb);
+    titlebar.x0 = vb.x0 + outline_px;
+    titlebar.x1 = vb.x1 - outline_px;
+    titlebar.y0 = vb.y0 + outline_px;
+    toggle.x1 = titlebar.x1 - inset;
+    toggle.x0 = toggle.x1 - icon;
+    toggle.y0 = titlebar.y0 + inset;
+    toggle.y1 = toggle.y0 + icon;
+    cx = (toggle.x0 + toggle.x1) / 2;
+    cy = (toggle.y0 + toggle.y1) / 2;
+
+    rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* V's toggle-size icon: shrink back */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_v)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, cx, cy, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_v, &vb);
+    if (vb.x1 <= vb.x0 || vb.y1 <= vb.y0)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_v);
+  }
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;
