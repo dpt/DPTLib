@@ -13,7 +13,7 @@
 #include "checker.h"
 
 #define CHECKER_BAND_DEFAULT 8  /* pixels per band, so each pattern reads clearly */
-#define CHECKER_BAND_MIN     2
+#define CHECKER_BAND_MIN     1
 #define CHECKER_BAND_MAX     32
 
 result_t checker_create(wuss_t         *wuss,
