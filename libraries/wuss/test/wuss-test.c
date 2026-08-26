@@ -1538,6 +1538,103 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_t);
   }
 
+  printf("test: toggle-size that forces a scroll re-clamp invalidates the content it's about to redraw at the new offset, not just the blit's edge sliver\n");
+
+  {
+    test_task_t    tc_r;
+    wuss_task_t    delegate_r;
+    box_t          box_r, before, titlebar, toggle;
+    wuss_window_t *win_r;
+    int            outline_px, titlebar_height, inset, icon;
+    int            i, interior_x, interior_y, interior_dirty, cx, cy;
+
+    tc_r.redraw_count = 0;
+    tc_r.mouse_count  = 0;
+    delegate_r.handle    = test_handle;
+    delegate_r.task_data = &tc_r;
+    delegate_r.bg        = wuss_NO_BACKGROUND;
+
+    box_r.x0 = 10; box_r.y0 = 10;
+    box_r.x1 = 50; box_r.y1 = 50; /* 40x40 content; doc bigger than that, so it starts scrollable */
+    rc = wuss_window_create(wuss, &box_r, "R", wuss_WINDOW_NONE,
+                            &delegate_r, 70, 70, &win_r);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush the create's own invalidate */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_set_scroll(win_r, (point_t) { 0, 15 }); /* within range: max_y = 70 - 40 = 30 */
+
+    rc = wuss_redraw_dirty(wuss); /* flush the scroll's own invalidate */
+    if (rc != result_OK)
+      goto Failure;
+
+    outline_px      = 1;
+    titlebar_height = 20;
+    inset           = 3;
+    icon            = titlebar_height - 2 * inset;
+
+    wuss_window_get_visible_bounds(win_r, &before);
+    titlebar.x0 = before.x0 + outline_px;
+    titlebar.x1 = before.x1 - outline_px;
+    titlebar.y0 = before.y0 + outline_px;
+    toggle.x1 = titlebar.x1 - inset;
+    toggle.x0 = toggle.x1 - icon;
+    toggle.y0 = titlebar.y0 + inset;
+    toggle.y1 = toggle.y0 + icon;
+    cx = (toggle.x0 + toggle.x1) / 2;
+    cy = (toggle.y0 + toggle.y1) / 2;
+
+    /* interior of the OLD content box, clear of outline/titlebar/scrollbar
+     * furniture -- well inside "before", so a plain grow (no re-clamp) would
+     * leave it untouched by the blit-reuse optimisation, same as the
+     * "toggle-size blits" test above. But this window starts scrolled, and
+     * growing to doc_height (70) here forces content_size up to doc_size,
+     * clamping scroll.y back to 0 -- the content this point shows is stale
+     * regardless of the blit, so it must be invalidated outright. */
+    interior_x = (before.x0 + outline_px + before.x1 - outline_px - icon) / 2;
+    interior_y = (before.y0 + outline_px + titlebar_height + before.y1 - outline_px - icon) / 2;
+
+    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* R's toggle-size icon: grow past doc_height, forcing a scroll re-clamp */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_r)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    if (wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+
+    interior_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      box_t region;
+
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, interior_x, interior_y))
+        interior_dirty = 1;
+    }
+    if (!interior_dirty)
+      goto Failure; /* the re-clamp changed scroll.y, so every pixel in the
+                      * content box is now showing the wrong offset -- if
+                      * this interior point (untouched by the toggle's own
+                      * blit-reuse/furniture invalidation) isn't marked
+                      * dirty, the fix has regressed to relying on
+                      * wuss_window_set_scroll's live blit-and-shift, which
+                      * is invalid mid-toggle: the screen doesn't reflect
+                      * the new geometry yet at that point */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_r);
+  }
+
   printf("test: wuss_WINDOW_NO_TOGGLE_BLIT redraws the whole window instead of blitting\n");
 
   {

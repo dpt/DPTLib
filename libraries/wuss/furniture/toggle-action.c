@@ -56,7 +56,29 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
   window->visible = new_visible;
   window->toggled = !window->toggled;
 
-  wuss__furniture_scroll_step(window, (point_t) { 0, 0 }); /* re-clamp to the new content size */
+  {
+    point_t new_scroll;
+
+    new_scroll = wuss__scroll_clamp(window, window->scroll);
+    if (new_scroll.x != window->scroll.x || new_scroll.y != window->scroll.y)
+    {
+      box_t content;
+
+      /* Don't route this through wuss_window_set_scroll: its topmost
+       * live-blit-and-shift optimization assumes the screen already shows
+       * this window's content at the old scroll offset, which holds for a
+       * genuine scroll but not here -- the window has just been resized and
+       * nothing below has repainted yet, so that blit would shift whatever
+       * currently happens to be on screen (stale furniture/background
+       * pixels included) into the new content area instead of the
+       * document. Just store the clamped value and invalidate the content
+       * box outright, so the redraw this triggers draws it correctly at
+       * the new offset. */
+      window->scroll = new_scroll;
+      wuss__content_box(window, &content);
+      wuss__invalidate_clipped(window, &content);
+    }
+  }
 
   if (!(window->flags & wuss_WINDOW_NO_TOGGLE_BLIT) &&
       window->wuss->z_order.next == &window->link &&
