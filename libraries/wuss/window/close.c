@@ -16,8 +16,8 @@ void wuss_window_close(wuss_window_t *doomed)
     return;
 
   wuss = doomed->wuss;
-  if (wuss->dragging == doomed)
-    wuss->dragging = NULL;
+  if (wuss->furniture.dragging == doomed)
+    wuss->furniture.dragging = NULL;
 
   wuss__invalidate_clipped(doomed, &doomed->visible);
 

@@ -10,29 +10,29 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   x = p.x;
   y = p.y;
 
-  if (wuss->dragging != NULL)
+  if (wuss->furniture.dragging != NULL)
   {
-    win = wuss->dragging;
+    win = wuss->furniture.dragging;
     if (hit != NULL)
       *hit = win;
 
-    switch (wuss->drag_kind)
+    switch (wuss->furniture.drag_kind)
     {
     case wuss_FURNITURE_DRAG_RESIZE:
       wuss__furniture_drag_resize(win, (point_t) { x, y });
       break;
 
     case wuss_FURNITURE_DRAG_VSCROLL_SAUSAGE:
-      wuss__furniture_drag_sausage(win, y - wuss->drag.y, wuss->drag_scroll_start, 0);
+      wuss__furniture_drag_sausage(win, y - wuss->furniture.drag.y, wuss->furniture.drag_scroll_start, 0);
       break;
 
     case wuss_FURNITURE_DRAG_HSCROLL_SAUSAGE:
-      wuss__furniture_drag_sausage(win, x - wuss->drag.x, wuss->drag_scroll_start, 1);
+      wuss__furniture_drag_sausage(win, x - wuss->furniture.drag.x, wuss->furniture.drag_scroll_start, 1);
       break;
 
     case wuss_FURNITURE_DRAG_MOVE:
     default:
-      wuss_window_move(win, (point_t) { x - wuss->drag.x, y - wuss->drag.y });
+      wuss_window_move(win, (point_t) { x - wuss->furniture.drag.x, y - wuss->furniture.drag.y });
       break;
     }
 
