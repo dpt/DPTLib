@@ -63,7 +63,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
         titlelen = (int) strlen(window->title);
         bmfont_measure(wuss->font, window->title, titlelen, text_x1 - text_x0, &split_point, &width);
 
-        pos.x = text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
+        pos.x = (split_point < titlelen) ? text_x0 : text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
         pos.y = titlebar.y0 + 2;
         bmfont_draw(wuss->font, wuss->scr, window->title, titlelen,
                    wuss->palette[wuss->titlebar_fg], wuss->palette[wuss->titlebar_bg],
