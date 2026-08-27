@@ -2134,6 +2134,55 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_m2);
   }
 
+  printf("test: resizing a wuss_WINDOW_NO_TOGGLE_BLIT window redraws it fully\n");
+
+  {
+    test_task_t    tc_nb2;
+    wuss_task_t    delegate_nb2;
+    box_t          box_nb2, before3, after3, region;
+    wuss_window_t *win_nb2;
+    int            i, dirty_area, full_area;
+
+    tc_nb2.redraw_count = 0;
+    tc_nb2.mouse_count  = 0;
+    delegate_nb2.handle    = test_handle;
+    delegate_nb2.task_data = &tc_nb2;
+    delegate_nb2.bg        = wuss_NO_BACKGROUND;
+
+    box_nb2.x0 = 0; box_nb2.y0 = 0;
+    box_nb2.x1 = 40; box_nb2.y1 = 40;
+    rc = wuss_window_create(wuss, &box_nb2, "NB2", wuss_WINDOW_NO_TOGGLE_BLIT,
+                            &delegate_nb2,
+                            box_nb2.x1 - box_nb2.x0,
+                            box_nb2.y1 - box_nb2.y0,
+                            &win_nb2);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush the creation invalidation first */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_nb2, &before3);
+
+    rc = wuss_window_resize(win_nb2, 80, 80); /* grow */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_nb2, &after3);
+    full_area  = (after3.x1 - after3.x0) * (after3.y1 - after3.y0);
+    dirty_area = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      dirty_area += (region.x1 - region.x0) * (region.y1 - region.y0);
+    }
+    if (dirty_area < full_area)
+      goto Failure; /* NO_TOGGLE_BLIT must fully redraw, not just the sliver */
+
+    wuss_window_close(win_nb2);
+  }
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;

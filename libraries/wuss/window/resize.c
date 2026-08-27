@@ -49,22 +49,37 @@ result_t wuss_window_resize(wuss_window_t *window, int width, int height)
 
   wuss__notify_open(window);
 
-  /* The top-left corner is fixed, so any pixels within both the old and new
-   * footprint are unchanged and don't need repainting -- only the shrunk-away
-   * sliver (revealing whatever is now behind it) and the grown-into sliver
-   * (this window's own previously-undrawn content) do. */
-  invalidate_grown_or_shrunk(window, &before, &window->visible);
-  invalidate_grown_or_shrunk(window, &window->visible, &before);
+  if (window->flags & wuss_WINDOW_NO_TOGGLE_BLIT)
+  {
+    /* This task's content isn't just anchored positions plus furniture --
+     * it lays itself out across the whole window (e.g. a palette swatch
+     * grid), so the "unchanged interior" assumption below doesn't hold:
+     * every pixel of the new footprint needs redrawing, not just the
+     * grown/shrunk sliver. */
+    box_t dirty;
 
-  /* Growing strands old furniture (e.g. the old outline/scrollbar edge)
-   * inside what's now interior content -- a region both calls above treat
-   * as already-valid and so never repaint. Force its old position dirty
-   * too. Shrinking needs no such help: old furniture positions only ever
-   * land outside the new, smaller box, already covered above. */
-  if (window->visible.x1 - window->visible.x0 > before.x1 - before.x0 ||
-      window->visible.y1 - window->visible.y0 > before.y1 - before.y0)
-    wuss__furniture_invalidate_for(window, &before);
-  wuss__furniture_invalidate(window);
+    box_union(&before, &window->visible, &dirty);
+    wuss__invalidate_clipped(window, &dirty);
+  }
+  else
+  {
+    /* The top-left corner is fixed, so any pixels within both the old and
+     * new footprint are unchanged and don't need repainting -- only the
+     * shrunk-away sliver (revealing whatever is now behind it) and the
+     * grown-into sliver (this window's own previously-undrawn content) do. */
+    invalidate_grown_or_shrunk(window, &before, &window->visible);
+    invalidate_grown_or_shrunk(window, &window->visible, &before);
+
+    /* Growing strands old furniture (e.g. the old outline/scrollbar edge)
+     * inside what's now interior content -- a region both calls above treat
+     * as already-valid and so never repaint. Force its old position dirty
+     * too. Shrinking needs no such help: old furniture positions only ever
+     * land outside the new, smaller box, already covered above. */
+    if (window->visible.x1 - window->visible.x0 > before.x1 - before.x0 ||
+        window->visible.y1 - window->visible.y0 > before.y1 - before.y0)
+      wuss__furniture_invalidate_for(window, &before);
+    wuss__furniture_invalidate(window);
+  }
 
   return result_OK;
 }
