@@ -169,13 +169,13 @@ static result_t wuss_interactive_test(const char *resources)
 
   define_pico8_palette(palette);
 
-  leafname = path_join_leafname("digits-font", "png");
+  leafname = path_join_leafname("digits", "png");
   filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
   rc = bmfont_create(filename, &font);
   if (rc != result_OK)
     goto Failure;
 
-  leafname = path_join_leafname("daydream-font", "png");
+  leafname = path_join_leafname("daydream", "png");
   filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
   rc = bmfont_create(filename, &daydream_font);
   if (rc != result_OK)
