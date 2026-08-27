@@ -20,7 +20,7 @@ result_t wuss_create(screen_t             *scr,
                      wuss_t              **wuss);
 ```
 
-`font` and `palette` may both be NULL, for unlabelled titlebars and a built-in default palette respectively. `config` may be NULL for default titlebar height/colours.
+`font` and `palette` may both be NULL, for unlabelled titlebars and a built-in default palette respectively. `config` may be NULL for default titlebar height/colours. `wuss_get_font` reads back the font passed in (or NULL), for a task that wants to draw its own content in the same face as titlebars.
 
 Destroy with `wuss_destroy`, which also destroys any windows still open on it.
 
@@ -64,8 +64,9 @@ wuss_task_t;
 - `wuss_WINDOW_NO_VSCROLL` — no vertical scrollbar on the right edge.
 - `wuss_WINDOW_NO_HSCROLL` — no horizontal scrollbar on the bottom edge.
 - `wuss_WINDOW_NO_RESIZE` — no resize icon in the bottom-right corner.
+- `wuss_WINDOW_NO_TOGGLE_BLIT` — toggle-size always fully redraws the window's content instead of blitting the preserved region; for a task whose rendering depends on window size in ways a partial redraw can't patch (e.g. a layout that spans the whole window).
 
-`wuss_WINDOW_NO_CLOSE`/`NO_BACK`/`NO_TOGGLE_SIZE` are ignored if `flags` includes `wuss_WINDOW_NO_TITLEBAR`; `NO_VSCROLL`/`NO_HSCROLL`/`NO_RESIZE` apply regardless.
+`wuss_WINDOW_NO_CLOSE`/`NO_BACK`/`NO_TOGGLE_SIZE` are ignored if `flags` includes `wuss_WINDOW_NO_TITLEBAR`; `NO_VSCROLL`/`NO_HSCROLL`/`NO_RESIZE`/`NO_TOGGLE_BLIT` apply regardless.
 
 All furniture actions (back, toggle-size, resize-drag, scrollbar arrow/thumb) are handled entirely within Wuss via `wuss_mouse_click`/`wuss_mouse_move` — no new client events.
 
@@ -121,9 +122,9 @@ Each window carries a scroll offset, `(0, 0)` by default: the point in the task'
 - `wuss_redraw` repaints every window, back-to-front, unconditionally.
 - `wuss_invalidate` / `wuss_window_invalidate` mark a screen-space or window-local region dirty; window management calls these automatically for its own changes, but a task must call one of them itself whenever its content changes on its own (e.g. an animation), passing the union of the old and new areas that need repainting.
 - `wuss_redraw_dirty` repaints only the accumulated dirty region, then clears it. Wuss only repaints windows, not the background between/behind them, so a caller whose invalidation can expose background (e.g. after a window move) should clear that region itself first.
-- `wuss_get_dirty` fetches the current accumulated dirty region without redrawing.
+- `wuss_get_dirty_count`/`wuss_get_dirty(wuss, index, out)` fetch the currently accumulated dirty regions (coalesced as they accumulate, up to a fixed cap after which further regions are merged into the last one) without redrawing.
+- A window move or resize is clipped, piece by piece, against whatever's above it in the z-order, and any pixels a move can preserve are blitted directly rather than queued dirty; only the genuinely-changed pieces end up in the dirty region. This is an internal optimisation with no effect on a task's own redraw handling.
 
 ## Limitations
 
 - No menus: `wuss_BUTTON_MENU` is defined and routed like any other button, but Wuss has no built-in menu widget.
-- No overlapping-window damage tracking finer than each window's own bounding box.
