@@ -519,6 +519,11 @@ void bmfont_get_info(bmfont_t *bmfont, int *width, int *height)
   *height = bmfont->charheight;
 }
 
+int bmfont_get_count(bmfont_t *bmfont)
+{
+  return bmfont->totalchars;
+}
+
 result_t bmfont_measure(bmfont_t       *bmfont,
                         const char     *text,
                         int             textlen,

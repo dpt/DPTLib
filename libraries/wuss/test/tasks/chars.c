@@ -69,6 +69,7 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
   screen_t     *scr;
   const box_t  *bounds;
   int           font_width, font_height, cell_w, cell_h;
+  int           first, count;
   int           i, sx, sy;
 
   cc = task_data;
@@ -82,6 +83,9 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
   cell_w = font_width  + CHARS_PAD * 2;
   cell_h = font_height + CHARS_PAD * 2;
 
+  first = ' '; /* bmfont glyphs are laid out contiguously starting here */
+  count = bmfont_get_count(cc->font);
+
   for (i = 0; i < CHARS_COLS * CHARS_ROWS; i++)
   {
     int     col, row, x, y;
@@ -94,6 +98,9 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
     y   = bounds->y0 - sy + row * cell_h;
 
     screen_draw_rect(scr, x, y, cell_w, cell_h, cc->bg);
+
+    if (i < first || i >= first + count)
+      continue; /* no glyph for this byte value: leave the cell blank */
 
     ch    = (char) i;
     pos.x = x + CHARS_PAD;
