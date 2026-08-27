@@ -588,6 +588,7 @@ result_t wuss_test(const char *resources)
                           &box_a,
                           "toosmall",
                           wuss_WINDOW_NONE,
+                          wuss_NO_BACKGROUND,
                           NULL,
                           box_a.x1 - box_a.x0,
                           box_a.y1 - box_a.y0,
@@ -602,7 +603,6 @@ result_t wuss_test(const char *resources)
   tc_a.open_count   = 0;
   delegate_a.handle      = test_handle;
   delegate_a.task_data = &tc_a;
-  delegate_a.bg          = wuss_NO_BACKGROUND;
 
   box_a.x0 = 0;
   box_a.y0 = 0;
@@ -614,6 +614,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                           wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                           wuss_WINDOW_NO_RESIZE,
+                          wuss_NO_BACKGROUND,
                           &delegate_a,
                           box_a.x1 - box_a.x0,
                           box_a.y1 - box_a.y0,
@@ -625,7 +626,6 @@ result_t wuss_test(const char *resources)
   tc_b.mouse_count  = 0;
   delegate_b.handle      = test_handle;
   delegate_b.task_data = &tc_b;
-  delegate_b.bg          = wuss_NO_BACKGROUND;
 
   box_b.x0 = 50;
   box_b.y0 = 50;
@@ -637,6 +637,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                           wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                           wuss_WINDOW_NO_RESIZE,
+                          wuss_NO_BACKGROUND,
                           &delegate_b,
                           box_b.x1 - box_b.x0,
                           box_b.y1 - box_b.y0,
@@ -913,7 +914,6 @@ result_t wuss_test(const char *resources)
   tc_d.mouse_count  = 0;
   delegate_d.handle      = test_handle;
   delegate_d.task_data = &tc_d;
-  delegate_d.bg          = wuss_NO_BACKGROUND;
 
   box_d.x0 = 0;  box_d.y0 = 160;
   box_d.x1 = 30; box_d.y1 = 175; /* shorter than the 20px titlebar_height, still valid: no titlebar to fit */
@@ -923,6 +923,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                           wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                           wuss_WINDOW_NO_RESIZE,
+                          wuss_NO_BACKGROUND,
                           &delegate_d,
                           box_d.x1 - box_d.x0,
                           box_d.y1 - box_d.y0,
@@ -961,7 +962,6 @@ result_t wuss_test(const char *resources)
     tc_e.mouse_count  = 0;
     delegate_e.handle      = test_handle;
     delegate_e.task_data = &tc_e;
-    delegate_e.bg          = wuss_NO_BACKGROUND;
 
     box_e.x0 = 100; box_e.y0 = 0;
     box_e.x1 = 150; box_e.y1 = 50;
@@ -971,6 +971,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_e,
                             box_e.x1 - box_e.x0,
                             box_e.y1 - box_e.y0,
@@ -982,7 +983,6 @@ result_t wuss_test(const char *resources)
     tc_f.mouse_count  = 0;
     delegate_f.handle      = test_handle;
     delegate_f.task_data = &tc_f;
-    delegate_f.bg          = wuss_NO_BACKGROUND;
 
     box_f.x0 = 130; box_f.y0 = 20;
     box_f.x1 = 180; box_f.y1 = 70;
@@ -992,6 +992,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_f,
                             box_f.x1 - box_f.x0,
                             box_f.y1 - box_f.y0,
@@ -1050,7 +1051,6 @@ result_t wuss_test(const char *resources)
     tc_h.mouse_count  = 0;
     delegate_h.handle      = test_handle;
     delegate_h.task_data = &tc_h;
-    delegate_h.bg          = wuss_NO_BACKGROUND;
 
     box_h.x0 = 10; box_h.y0 = 10;
     box_h.x1 = 30; box_h.y1 = 30;
@@ -1060,6 +1060,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_h,
                             box_h.x1 - box_h.x0,
                             box_h.y1 - box_h.y0,
@@ -1071,7 +1072,6 @@ result_t wuss_test(const char *resources)
     tc_g.mouse_count  = 0;
     delegate_g.handle      = test_handle;
     delegate_g.task_data = &tc_g;
-    delegate_g.bg          = wuss_NO_BACKGROUND;
 
     box_g.x0 = 0;   box_g.y0 = 0;
     box_g.x1 = 150; box_g.y1 = 150; /* G is created after H, so G is topmost and fully covers H */
@@ -1081,6 +1081,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_g,
                             box_g.x1 - box_g.x0,
                             box_g.y1 - box_g.y0,
@@ -1133,7 +1134,6 @@ result_t wuss_test(const char *resources)
     tc_i.mouse_count  = 0;
     delegate_i.handle      = test_handle;
     delegate_i.task_data = &tc_i;
-    delegate_i.bg          = wuss_NO_BACKGROUND;
 
     box_i.x0 = 0; box_i.y0 = 0;
     box_i.x1 = 100; box_i.y1 = 100;
@@ -1143,6 +1143,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_i,
                             box_i.x1 - box_i.x0,
                             box_i.y1 - box_i.y0,
@@ -1154,7 +1155,6 @@ result_t wuss_test(const char *resources)
     tc_j.mouse_count  = 0;
     delegate_j.handle      = test_handle;
     delegate_j.task_data = &tc_j;
-    delegate_j.bg          = wuss_NO_BACKGROUND;
 
     box_j.x0 = 50; box_j.y0 = 0;
     box_j.x1 = 150; box_j.y1 = 100; /* J created after I, so J is topmost, covering I's right half */
@@ -1164,6 +1164,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_j,
                             box_j.x1 - box_j.x0,
                             box_j.y1 - box_j.y0,
@@ -1205,7 +1206,6 @@ result_t wuss_test(const char *resources)
     tc_m.mouse_count  = 0;
     delegate_m.handle      = test_handle;
     delegate_m.task_data = &tc_m;
-    delegate_m.bg          = wuss_NO_BACKGROUND;
 
     box_m.x0 = 10; box_m.y0 = 10;
     box_m.x1 = 60; box_m.y1 = 60; /* 50x50, fully on-screen, topmost (created last) */
@@ -1215,6 +1215,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_m,
                             box_m.x1 - box_m.x0,
                             box_m.y1 - box_m.y0,
@@ -1260,7 +1261,6 @@ result_t wuss_test(const char *resources)
     tc_h.mouse_count  = 0;
     delegate_h.handle    = test_handle;
     delegate_h.task_data = &tc_h;
-    delegate_h.bg        = wuss_NO_BACKGROUND;
 
     box_h.x0 = 130; box_h.y0 = 50;
     box_h.x1 = 190; box_h.y1 = 100;
@@ -1268,6 +1268,7 @@ result_t wuss_test(const char *resources)
                             &box_h,
                             "H",
                             wuss_WINDOW_NONE,
+                            wuss_NO_BACKGROUND,
                             &delegate_h,
                             box_h.x1 - box_h.x0,
                             box_h.y1 - box_h.y0,
@@ -1279,7 +1280,6 @@ result_t wuss_test(const char *resources)
     tc_g.mouse_count  = 0;
     delegate_g.handle    = test_handle;
     delegate_g.task_data = &tc_g;
-    delegate_g.bg        = wuss_NO_BACKGROUND;
 
     box_g.x0 = 110; box_g.y0 = 30;
     box_g.x1 = 160; box_g.y1 = 80;
@@ -1287,6 +1287,7 @@ result_t wuss_test(const char *resources)
                             &box_g,
                             "G",
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
+                            wuss_NO_BACKGROUND,
                             &delegate_g,
                             box_g.x1 - box_g.x0,
                             box_g.y1 - box_g.y0,
@@ -1406,11 +1407,11 @@ result_t wuss_test(const char *resources)
     tc_t.mouse_count  = 0;
     delegate_t.handle    = test_handle;
     delegate_t.task_data = &tc_t;
-    delegate_t.bg        = wuss_NO_BACKGROUND;
 
     box_t_win.x0 = 10; box_t_win.y0 = 10;
     box_t_win.x1 = 50; box_t_win.y1 = 50; /* 40x40 content, room to grow to a 200x200 doc */
     rc = wuss_window_create(wuss, &box_t_win, "T", wuss_WINDOW_NONE,
+                            wuss_NO_BACKGROUND,
                             &delegate_t, 200, 200, &win_t);
     if (rc != result_OK)
       goto Failure;
@@ -1571,11 +1572,11 @@ result_t wuss_test(const char *resources)
     tc_r.mouse_count  = 0;
     delegate_r.handle    = test_handle;
     delegate_r.task_data = &tc_r;
-    delegate_r.bg        = wuss_NO_BACKGROUND;
 
     box_r.x0 = 10; box_r.y0 = 10;
     box_r.x1 = 50; box_r.y1 = 50; /* 40x40 content; doc bigger than that, so it starts scrollable */
     rc = wuss_window_create(wuss, &box_r, "R", wuss_WINDOW_NONE,
+                            wuss_NO_BACKGROUND,
                             &delegate_r, 70, 70, &win_r);
     if (rc != result_OK)
       goto Failure;
@@ -1668,11 +1669,11 @@ result_t wuss_test(const char *resources)
     tc_nb.mouse_count  = 0;
     delegate_nb.handle    = test_handle;
     delegate_nb.task_data = &tc_nb;
-    delegate_nb.bg        = wuss_NO_BACKGROUND;
 
     box_nb.x0 = 10; box_nb.y0 = 10;
     box_nb.x1 = 50; box_nb.y1 = 50; /* 40x40 content, room to grow to a 200x200 doc */
     rc = wuss_window_create(wuss, &box_nb, "NB", wuss_WINDOW_NO_RESIZE_BLIT,
+                            wuss_NO_BACKGROUND,
                             &delegate_nb, 200, 200, &win_nb);
     if (rc != result_OK)
       goto Failure;
@@ -1747,11 +1748,10 @@ result_t wuss_test(const char *resources)
     tc_u.mouse_count  = 0;
     delegate_u.handle    = test_handle;
     delegate_u.task_data = &tc_u;
-    delegate_u.bg        = wuss_NO_BACKGROUND;
 
     box_u.x0 = 80; box_u.y0 = 80;
     box_u.x1 = 120; box_u.y1 = 120; /* 40x40 content */
-    rc = wuss_window_create(wuss, &box_u, "U", wuss_WINDOW_NONE, /* scrollbars on: carve.x/y = icon size */
+    rc = wuss_window_create(wuss, &box_u, "U", wuss_WINDOW_NONE, wuss_NO_BACKGROUND, /* scrollbars on: carve.x/y = icon size */
                             &delegate_u, 70, 70, &win_u); /* doc size well within the 200x200 screen: growth is doc-limited, not screen-limited */
     if (rc != result_OK)
       goto Failure;
@@ -1845,7 +1845,6 @@ result_t wuss_test(const char *resources)
     tc_v.mouse_count  = 0;
     delegate_v.handle    = test_handle;
     delegate_v.task_data = &tc_v;
-    delegate_v.bg        = wuss_NO_BACKGROUND;
 
     box_v.x0 = 10; box_v.y0 = 10;
     box_v.x1 = 70; box_v.y1 = 70; /* 60x60 content -- wide enough titlebar that
@@ -1859,6 +1858,7 @@ result_t wuss_test(const char *resources)
                                     * Doc big enough that maximize is
                                     * screen-limited, not doc-limited. */
     rc = wuss_window_create(wuss, &box_v, "V", wuss_WINDOW_NONE,
+                            wuss_NO_BACKGROUND,
                             &delegate_v, 200, 200, &win_v);
     if (rc != result_OK)
       goto Failure;
@@ -1961,7 +1961,6 @@ result_t wuss_test(const char *resources)
     tc_k.mouse_count  = 0;
     delegate_k.handle    = test_handle;
     delegate_k.task_data = &tc_k;
-    delegate_k.bg        = wuss_NO_BACKGROUND;
 
     box_k.x0 = 0; box_k.y0 = 140; /* clear of the still-open A/B windows above */
     box_k.x1 = 50; box_k.y1 = 175;
@@ -1971,6 +1970,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_k,
                             box_k.x1 - box_k.x0,
                             box_k.y1 - box_k.y0,
@@ -1982,7 +1982,6 @@ result_t wuss_test(const char *resources)
     tc_l.mouse_count  = 0;
     delegate_l.handle    = test_handle;
     delegate_l.task_data = &tc_l;
-    delegate_l.bg        = wuss_NO_BACKGROUND;
 
     box_l.x0 = 120; box_l.y0 = 140; /* well clear of K, so never overlaps it */
     box_l.x1 = 170; box_l.y1 = 175;
@@ -1992,6 +1991,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_l,
                             box_l.x1 - box_l.x0,
                             box_l.y1 - box_l.y0,
@@ -2050,7 +2050,6 @@ result_t wuss_test(const char *resources)
     tc_m2.mouse_count  = 0;
     delegate_m2.handle    = test_handle;
     delegate_m2.task_data = &tc_m2;
-    delegate_m2.bg        = wuss_NO_BACKGROUND;
 
     box_m2.x0 = 0; box_m2.y0 = 0;
     box_m2.x1 = 40; box_m2.y1 = 40;
@@ -2059,6 +2058,7 @@ result_t wuss_test(const char *resources)
                             "M2",
                             wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
+                            wuss_NO_BACKGROUND,
                             &delegate_m2,
                             box_m2.x1 - box_m2.x0,
                             box_m2.y1 - box_m2.y0,
@@ -2147,11 +2147,11 @@ result_t wuss_test(const char *resources)
     tc_nb2.mouse_count  = 0;
     delegate_nb2.handle    = test_handle;
     delegate_nb2.task_data = &tc_nb2;
-    delegate_nb2.bg        = wuss_NO_BACKGROUND;
 
     box_nb2.x0 = 0; box_nb2.y0 = 0;
     box_nb2.x1 = 40; box_nb2.y1 = 40;
     rc = wuss_window_create(wuss, &box_nb2, "NB2", wuss_WINDOW_NO_RESIZE_BLIT,
+                            wuss_NO_BACKGROUND,
                             &delegate_nb2,
                             box_nb2.x1 - box_nb2.x0,
                             box_nb2.y1 - box_nb2.y0,
@@ -2196,7 +2196,6 @@ result_t wuss_test(const char *resources)
     tc_n.mouse_count  = 0;
     delegate_n.handle    = test_handle;
     delegate_n.task_data = &tc_n;
-    delegate_n.bg        = wuss_NO_BACKGROUND;
 
     box_n.x0 = 0; box_n.y0 = 140; /* clear of any occluder to start */
     box_n.x1 = 60; box_n.y1 = 170;
@@ -2204,6 +2203,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_n,
                             box_n.x1 - box_n.x0,
                             box_n.y1 - box_n.y0,
@@ -2215,7 +2215,6 @@ result_t wuss_test(const char *resources)
     tc_o.mouse_count  = 0;
     delegate_o.handle    = test_handle;
     delegate_o.task_data = &tc_o;
-    delegate_o.bg        = wuss_NO_BACKGROUND;
 
     box_o.x0 = 90; box_o.y0 = 140; /* N will be dragged partly on top of O */
     box_o.x1 = 130; box_o.y1 = 180;
@@ -2223,6 +2222,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_o,
                             box_o.x1 - box_o.x0,
                             box_o.y1 - box_o.y0,
@@ -2300,7 +2300,6 @@ result_t wuss_test(const char *resources)
     tc_b.mouse_count  = 0;
     delegate_b.handle    = test_handle;
     delegate_b.task_data = &tc_b;
-    delegate_b.bg        = wuss_NO_BACKGROUND;
 
     box_b.x0 = 20; box_b.y0 = 10; /* left half will sit under A */
     box_b.x1 = 80; box_b.y1 = 50;
@@ -2308,6 +2307,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_b,
                             box_b.x1 - box_b.x0,
                             box_b.y1 - box_b.y0,
@@ -2319,7 +2319,6 @@ result_t wuss_test(const char *resources)
     tc_a.mouse_count  = 0;
     delegate_a.handle    = test_handle;
     delegate_a.task_data = &tc_a;
-    delegate_a.bg        = wuss_NO_BACKGROUND;
 
     box_a.x0 = 0; box_a.y0 = 0; /* created after B, so A is topmost */
     box_a.x1 = 40; box_a.y1 = 100;
@@ -2327,6 +2326,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_a,
                             box_a.x1 - box_a.x0,
                             box_a.y1 - box_a.y0,
@@ -2403,7 +2403,6 @@ result_t wuss_test(const char *resources)
     tc_b.mouse_count  = 0;
     delegate_b.handle    = test_handle;
     delegate_b.task_data = &tc_b;
-    delegate_b.bg        = wuss_NO_BACKGROUND;
 
     box_b.x0 = 0; box_b.y0 = 0; /* right part sits under A throughout */
     box_b.x1 = 60; box_b.y1 = 40;
@@ -2411,6 +2410,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_b,
                             box_b.x1 - box_b.x0,
                             box_b.y1 - box_b.y0,
@@ -2422,7 +2422,6 @@ result_t wuss_test(const char *resources)
     tc_a.mouse_count  = 0;
     delegate_a.handle    = test_handle;
     delegate_a.task_data = &tc_a;
-    delegate_a.bg        = wuss_NO_BACKGROUND;
 
     box_a.x0 = 40; box_a.y0 = 0; /* created after B, so A is topmost */
     box_a.x1 = 100; box_a.y1 = 40;
@@ -2430,6 +2429,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_a,
                             box_a.x1 - box_a.x0,
                             box_a.y1 - box_a.y0,
@@ -2483,7 +2483,6 @@ result_t wuss_test(const char *resources)
     tc_b.mouse_count  = 0;
     delegate_b.handle    = test_handle;
     delegate_b.task_data = &tc_b;
-    delegate_b.bg        = wuss_NO_BACKGROUND;
 
     box_b.x0 = 0; box_b.y0 = 0; /* middle band sits under A */
     box_b.x1 = 60; box_b.y1 = 60;
@@ -2491,6 +2490,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_b,
                             box_b.x1 - box_b.x0,
                             box_b.y1 - box_b.y0,
@@ -2502,7 +2502,6 @@ result_t wuss_test(const char *resources)
     tc_a.mouse_count  = 0;
     delegate_a.handle    = test_handle;
     delegate_a.task_data = &tc_a;
-    delegate_a.bg        = wuss_NO_BACKGROUND;
 
     box_a.x0 = 0; box_a.y0 = 20; /* created after B, so A is topmost */
     box_a.x1 = 60; box_a.y1 = 40;
@@ -2510,6 +2509,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_a,
                             box_a.x1 - box_a.x0,
                             box_a.y1 - box_a.y0,
@@ -2596,7 +2596,6 @@ result_t wuss_test(const char *resources)
     tc_b.mouse_count  = 0;
     delegate_b.handle    = test_handle;
     delegate_b.task_data = &tc_b;
-    delegate_b.bg        = wuss_NO_BACKGROUND;
 
     box_b.x0 = 80; box_b.y0 = 80; /* corner already under A */
     box_b.x1 = 140; box_b.y1 = 140;
@@ -2604,6 +2603,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_b,
                             box_b.x1 - box_b.x0,
                             box_b.y1 - box_b.y0,
@@ -2615,7 +2615,6 @@ result_t wuss_test(const char *resources)
     tc_a.mouse_count  = 0;
     delegate_a.handle    = test_handle;
     delegate_a.task_data = &tc_a;
-    delegate_a.bg        = wuss_NO_BACKGROUND;
 
     box_a.x0 = 0; box_a.y0 = 0; /* created after B, so A is topmost */
     box_a.x1 = 100; box_a.y1 = 100;
@@ -2623,6 +2622,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
+                            wuss_NO_BACKGROUND,
                             &delegate_a,
                             box_a.x1 - box_a.x0,
                             box_a.y1 - box_a.y0,
@@ -2688,7 +2688,6 @@ result_t wuss_test(const char *resources)
   tc_c.mouse_count  = 0;
   delegate_c.handle      = test_handle;
   delegate_c.task_data = &tc_c;
-  delegate_c.bg          = wuss_NO_BACKGROUND;
 
   box_c.x0 = 0;
   box_c.y0 = 0;
@@ -2700,6 +2699,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                           wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                           wuss_WINDOW_NO_RESIZE,
+                          wuss_NO_BACKGROUND,
                           &delegate_c,
                           box_c.x1 - box_c.x0,
                           box_c.y1 - box_c.y0,

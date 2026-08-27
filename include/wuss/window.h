@@ -102,9 +102,8 @@ typedef result_t (wuss_event_fn_t)(wuss_window_t      *window,
 /** A window's content delegate. Copied by value into the window at creation. */
 typedef struct wuss_task
 {
-  wuss_event_fn_t *handle;    /**< NULL => task receives no events; Wuss still fills the content background per bg. */
+  wuss_event_fn_t *handle;    /**< NULL => task receives no events; Wuss still fills the content background per wuss_window_create's bg. */
   void            *task_data;
-  wuss_colour_t    bg;        /**< Content background, filled by Wuss before redraw is called, or wuss_NO_BACKGROUND for the task to draw its own background (avoids a redundant fill behind an opaque task). */
 }
 wuss_task_t;
 
@@ -113,12 +112,10 @@ wuss_task_t;
  *
  * \param[in] handle    Event callback, or NULL for a task that receives no events.
  * \param[in] task_data Opaque pointer passed back to the callback.
- * \param[in] bg        Content background, or wuss_NO_BACKGROUND.
  * \return The populated task.
  */
 wuss_task_t wuss_task_start(wuss_event_fn_t *handle,
-                            void            *task_data,
-                            wuss_colour_t    bg);
+                            void            *task_data);
 
 /**
  * Notify a window's task that it is shutting down, via wuss_EVENT_QUIT.
@@ -160,19 +157,21 @@ result_t wuss_idle(wuss_t *wuss);
  * \param[in]  content    Requested content-area bounds, screen space. Copied in.
  * \param[in]  title      Titlebar label, or NULL for none. Copied in, truncated if too long. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR.
  * \param[in]  flags      Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR / wuss_WINDOW_NO_OUTLINE, OR'd together, or wuss_WINDOW_NONE for the default furniture.
+ * \param[in]  bg         Content background, filled by Wuss before each redraw, or wuss_NO_BACKGROUND for the task to draw its own background (avoids a redundant fill behind an opaque task). Changeable later via wuss_window_set_background.
  * \param[in]  task       Content delegate. Copied in. May be NULL for a window with no content handling.
  * \param[in]  doc_width  Virtual document width, for the horizontal scrollbar's sausage proportion; pass content's own width for a window with nothing to scroll.
  * \param[in]  doc_height Virtual document height, for the vertical scrollbar's sausage proportion; pass content's own height for a window with nothing to scroll.
  * \param[out] window     Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
  *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if
- *         task->bg is out of range for the palette, or another
- *         appropriate result code.
+ *         bg is out of range for the palette, or another appropriate
+ *         result code.
  */
 result_t wuss_window_create(wuss_t             *wuss,
                             const box_t        *content,
                             const char         *title,
                             wuss_window_flags_t flags,
+                            wuss_colour_t       bg,
                             const wuss_task_t  *task,
                             int                 doc_width,
                             int                 doc_height,

@@ -32,11 +32,11 @@ static void redraw_window(wuss_t        *wuss,
   {
     wuss->scr->clip = pieces[i];
 
-    if (win->task.bg != wuss_NO_BACKGROUND)
+    if (win->bg != wuss_NO_BACKGROUND)
       screen_draw_rect(wuss->scr,
                        content.x0, content.y0,
                        content.x1 - content.x0, content.y1 - content.y0,
-                       wuss->palette[win->task.bg]);
+                       wuss->palette[win->bg]);
 
     if (win->task.handle != NULL)
     {

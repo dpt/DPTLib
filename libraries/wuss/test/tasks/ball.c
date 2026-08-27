@@ -27,13 +27,14 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
   task->balls[0].dy     = 2;
   task->balls[0].radius = 8;
 
-  delegate = wuss_task_start(ball_handle, task, wuss_NO_BACKGROUND); /* ball_redraw paints its own background every frame */
+  delegate = wuss_task_start(ball_handle, task); /* ball_redraw paints its own background every frame */
   box      = (box_t) BOX_POS_SIZE(20, 20, 200, 160);
 
   return wuss_window_create(wuss,
                             &box,
                             "Bouncing Ball",
                             wuss_WINDOW_NONE,
+                            wuss_NO_BACKGROUND,
                             &delegate,
                             box.x1 - box.x0,
                             box.y1 - box.y0,

@@ -14,6 +14,7 @@ result_t wuss_window_create(wuss_t             *wuss,
                             const box_t        *content,
                             const char         *title,
                             wuss_window_flags_t flags,
+                            wuss_colour_t       bg,
                             const wuss_task_t  *task,
                             int                 doc_width,
                             int                 doc_height,
@@ -84,14 +85,12 @@ result_t wuss_window_create(wuss_t             *wuss,
   else
     memset(&win->task, 0, sizeof(win->task));
 
-  if (task == NULL)
-    win->task.bg = wuss_NO_BACKGROUND;
-  else if (task->bg != wuss_NO_BACKGROUND &&
-           (task->bg < 0 || task->bg >= wuss->npalette))
+  if (bg != wuss_NO_BACKGROUND && (bg < 0 || bg >= wuss->npalette))
   {
     free(win);
     return result_WUSS_BAD_COLOUR;
   }
+  win->bg = bg;
 
   if (title != NULL)
   {

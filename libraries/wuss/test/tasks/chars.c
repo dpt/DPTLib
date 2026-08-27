@@ -41,7 +41,7 @@ result_t chars_create(wuss_t         *wuss,
   task->fg   = palette[palette_PICO8_BLACK];
   task->bg   = palette[palette_PICO8_WHITE];
 
-  delegate = wuss_task_start(chars_handle, task, wuss_NO_BACKGROUND); /* chars_redraw paints every cell itself */
+  delegate = wuss_task_start(chars_handle, task); /* chars_redraw paints every cell itself */
   box      = (box_t) BOX_POS_SIZE(500, 100, cell_w * CHARS_COLS, cell_h * CHARS_ROWS);
 
   return wuss_window_create(wuss,
@@ -51,6 +51,7 @@ result_t chars_create(wuss_t         *wuss,
                             wuss_WINDOW_NO_TOGGLE_SIZE |
                             wuss_WINDOW_NO_VSCROLL     |
                             wuss_WINDOW_NO_HSCROLL,
+                            wuss_NO_BACKGROUND,
                             &delegate,
                             box.x1 - box.x0,
                             box.y1 - box.y0,

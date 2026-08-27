@@ -36,13 +36,14 @@ result_t launcher_create(wuss_t           *wuss,
   task->bg         = palette[palette_PICO8_WHITE];
   task->running_fg = palette[palette_PICO8_LIGHT_GREY];
 
-  delegate = wuss_task_start(launcher_handle, task, wuss_NO_BACKGROUND); /* launcher_redraw paints its own background */
+  delegate = wuss_task_start(launcher_handle, task); /* launcher_redraw paints its own background */
   box      = (box_t) BOX_POS_SIZE(10, 10, LAUNCHER_WIDTH, LAUNCHER_PAD * 2 + nentries * LAUNCHER_ROW_HEIGHT);
 
   return wuss_window_create(wuss,
                             &box,
                             "Launcher",
                             wuss_WINDOW_NO_CLOSE,
+                            wuss_NO_BACKGROUND,
                             &delegate,
                             box.x1 - box.x0,
                             box.y1 - box.y0,
