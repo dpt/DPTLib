@@ -2,15 +2,15 @@
 
 "bmfont" is a sub-library of DPTLib for drawing proportionally spaced bitmap fonts. It reads font definitions from PNG files like this:
 
-![Henry Font](../resources/bmfonts/henry-font.png)
+![Henry Font](../resources/bmfonts/henry.png)
 
 or this:
 
-![Digits Font](../resources/bmfonts/digits-font.png)
+![Digits Font](../resources/bmfonts/digits.png)
 
 or even this:
 
-![Tiny Font](../resources/bmfonts/tiny-font.png)
+![Tiny Font](../resources/bmfonts/tiny.png)
 
 ...which have the glyphs laid out in a grid, with extra lines inserted, that define the advance widths.
 

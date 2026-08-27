@@ -187,13 +187,13 @@ bmtestline_t;
 
 static bmtestfont_t bmfonts[MAXFONTS] =
 {
-  { "daydream-font",    NULL },
-  { "gliderrider-font", NULL },
-  { "tiny-font",        NULL },
-  { "henry-font",       NULL },
-  { "tall-font",        NULL },
+  { "daydream",         NULL },
+  { "gliderrider",      NULL },
+  { "tiny",             NULL },
+  { "henry",            NULL },
+  { "tall",             NULL },
   { "ms-sans-serif",    NULL },
-  { "digits-font",      NULL }
+  { "digits",           NULL }
 };
 
 /* ----------------------------------------------------------------------- */
