@@ -63,9 +63,9 @@ static unsigned int closest_palette_entry(const colour_t *palette,
     dr = ent_r - req_r;
     dg = ent_g - req_g;
     db = ent_b - req_b;
-    curdist = ((dr * dr) * red_weight   +
-               (dg * dg) * green_weight +
-               (db * db) * blue_weight) >> 16;
+    curdist = ((unsigned int) (dr * dr) * red_weight   +
+               (unsigned int) (dg * dg) * green_weight +
+               (unsigned int) (db * db) * blue_weight) >> 16;
     if (curdist < dist)
     {
       dist    = curdist;
