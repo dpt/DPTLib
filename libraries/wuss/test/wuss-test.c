@@ -1948,6 +1948,95 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_v);
   }
 
+  printf("test: dragging a back-most window with nothing above it still blits\n");
+
+  {
+    test_task_t    tc_k, tc_l;
+    wuss_task_t    delegate_k, delegate_l;
+    box_t          box_k, box_l;
+    wuss_window_t *win_k, *win_l;
+    int            before_k, before_l;
+
+    tc_k.redraw_count = 0;
+    tc_k.mouse_count  = 0;
+    delegate_k.handle    = test_handle;
+    delegate_k.task_data = &tc_k;
+    delegate_k.bg        = wuss_NO_BACKGROUND;
+
+    box_k.x0 = 0; box_k.y0 = 140; /* clear of the still-open A/B windows above */
+    box_k.x1 = 50; box_k.y1 = 175;
+    rc = wuss_window_create(wuss,
+                            &box_k,
+                            "K",
+                            wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_k,
+                            box_k.x1 - box_k.x0,
+                            box_k.y1 - box_k.y0,
+                            &win_k);
+    if (rc != result_OK)
+      goto Failure;
+
+    tc_l.redraw_count = 0;
+    tc_l.mouse_count  = 0;
+    delegate_l.handle    = test_handle;
+    delegate_l.task_data = &tc_l;
+    delegate_l.bg        = wuss_NO_BACKGROUND;
+
+    box_l.x0 = 120; box_l.y0 = 140; /* well clear of K, so never overlaps it */
+    box_l.x1 = 170; box_l.y1 = 175;
+    rc = wuss_window_create(wuss,
+                            &box_l,
+                            "L",
+                            wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_l,
+                            box_l.x1 - box_l.x0,
+                            box_l.y1 - box_l.y0,
+                            &win_l);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_restack(win_k, wuss_ZORDER_BACK); /* K is no longer topmost, but L never overlaps it */
+
+    rc = wuss_redraw_dirty(wuss); /* flush the restack's own dirty region first */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_k, &visible);
+
+    rc = wuss_mouse_click(wuss, (point_t) { visible.x0 + 31, visible.y0 + 11 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* K's titlebar, clear of the close icon */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_k)
+      goto Failure;
+
+    before_k = tc_k.redraw_count;
+    before_l = tc_l.redraw_count;
+    rc = wuss_mouse_move(wuss, (point_t) { visible.x0 + 45, visible.y0 + 21 }, &hit);
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_k)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_k.redraw_count != before_k || tc_l.redraw_count != before_l)
+      goto Failure; /* blitted, not redrawn: nothing above K overlapped its old
+                      * footprint, so the move fast path must still apply even
+                      * though K isn't topmost */
+
+    rc = wuss_mouse_click(wuss, (point_t) { visible.x0 + 45, visible.y0 + 21 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_k);
+    wuss_window_close(win_l);
+  }
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;
