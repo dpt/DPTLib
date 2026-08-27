@@ -46,8 +46,8 @@ typedef unsigned int cachekey_t;
 /**
  * Create a cache.
  *
- * \param[in]  config   Pointer to cache parameters, or NULL for default
- *                      cache parameters.
+ * \param[in]  config   Pointer to cache parameters, or NULL for default cache
+ *                      parameters.
  * \param[in]  length   Byte length of the cache to allocate.
  * \param[out] cache    Returned pointer to the created cache.
  *
@@ -67,8 +67,8 @@ void cache_destroy(cache_t *doomed);
 /**
  * Create a cache in a supplied block of memory.
  *
- * \param[in]  config   Pointer to cache parameters, or NULL for default
- *                      cache parameters.
+ * \param[in]  config   Pointer to cache parameters, or NULL for default cache
+ *                      parameters.
  * \param[in]  block    Pointer to memory to use.
  * \param[in]  length   Byte length of block.
  * \param[out] cache    Returned pointer to the created cache.
@@ -104,9 +104,8 @@ void *cache_get(cache_t *cache, cachekey_t key);
  * \param[in]  key       Key.
  * \param[in]  data      Pointer to data to store.
  * \param[in]  length    Length of data.
- * \param[out] inserted  Returned pointer to the inserted data, or NULL if
- *                       not wanted. This valid until the next cache_put
- *                       operation.
+ * \param[out] inserted  Returned pointer to the inserted data, or NULL if not
+ *                       wanted. This valid until the next cache_put operation.
  *
  * \return Error indication.
  */

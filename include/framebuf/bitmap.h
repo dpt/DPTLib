@@ -88,7 +88,8 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename);
 result_t bitmap_save_png(const bitmap_t *bm, const char *filename);
 
 /**
- * Convert the given bitmap into a different pixel format, allocating a new bitmap structure for the result.
+ * Convert the given bitmap into a different pixel format, allocating a new
+ * bitmap structure for the result.
  *
  * \param[in] bm       Bitmap to convert.
  * \param[in] newfmt   New pixel format.

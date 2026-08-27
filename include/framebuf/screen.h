@@ -40,7 +40,8 @@ void screen_init(screen_t  *scr,
                  void      *base);
 
 /**
- * Initialize a previously allocated screen structure, for drawing to an existing bitmap.
+ * Initialize a previously allocated screen structure, for drawing to an
+ * existing bitmap.
  *
  * \param[in] scr Screen to initialize.
  * \param[in] bm  Bitmap to draw to.
@@ -96,13 +97,12 @@ void screen_draw_square(screen_t *scr,
                         colour_t colour);
 
 /**
- * Draws a bitmap, alpha-blending it against the screen where the bitmap
- * has an alpha channel. On paletted screens, which have no linear channel
- * bits to blend, this falls back to alpha-tested transparency instead
- * (drawn at full strength, or not at all).
+ * Draws a bitmap, alpha-blending it against the screen where the bitmap has an
+ * alpha channel. On paletted screens, which have no linear channel bits to
+ * blend, this falls back to alpha-tested transparency instead (drawn at full
+ * strength, or not at all).
  *
- * The bitmap is clipped to the screen's clip region. No scaling is
- * performed.
+ * The bitmap is clipped to the screen's clip region. No scaling is performed.
  *
  * \param[in] scr  Screen to draw upon.
  * \param[in] x    X coordinate of leftmost point to draw bitmap at.
@@ -112,34 +112,34 @@ void screen_draw_square(screen_t *scr,
 void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src);
 
 /**
- * Copies a rectangular region of the screen to another position on the
- * same screen (e.g. sliding an already-rendered window's pixels to a new
- * position without asking its owner to redraw). Source and destination may
- * overlap; copying is done in the correct row order to handle that safely.
+ * Copies a rectangular region of the screen to another position on the same
+ * screen (e.g. sliding an already-rendered window's pixels to a new position
+ * without asking its owner to redraw). Source and destination may overlap;
+ * copying is done in the correct row order to handle that safely.
  *
  * Both the source and destination are clipped to the screen's clip region,
- * shrinking together so the copied area always maps source pixel to
- * destination pixel 1:1.
+ * shrinking together so the copied area always maps source pixel to destination
+ * pixel 1:1.
  *
  * Callers must check the return value and fall back to a normal
- * invalidate/redraw when it's false (e.g. out of memory, or an unknown
- * pixel format), since a declined copy leaves the destination untouched.
+ * invalidate/redraw when it's false (e.g. out of memory, or an unknown pixel
+ * format), since a declined copy leaves the destination untouched.
  *
  * If "src" or the intended destination falls partly off-screen, the actual
- * copied area shrinks to what both ends have in common on-screen: callers
- * must invalidate whatever part of their intended (unclipped) destination
- * falls outside "copied_dst", since it has no valid source pixels to have
- * been copied from and so is left untouched, not merely stale.
+ * copied area shrinks to what both ends have in common on-screen: callers must
+ * invalidate whatever part of their intended (unclipped) destination falls
+ * outside "copied_dst", since it has no valid source pixels to have been copied
+ * from and so is left untouched, not merely stale.
  *
  * \param[in]  scr        Screen to copy within.
  * \param[in]  src        Screen-space region to copy from.
  * \param[in]  dst        Top-left of the destination.
- * \param[out] copied_dst Set to the on-screen box actually copied to (may
- *                        be smaller than intended if either end was
- *                        partly off-screen). Pass NULL if not needed.
- *                        Left unset if the copy was declined.
- * \return True if the copy was performed, false if declined (unsupported
- *         pixel format).
+ * \param[out] copied_dst Set to the on-screen box actually copied to (may be
+ *                        smaller than intended if either end was partly
+ *                        off-screen). Pass NULL if not needed. Left unset if
+ *                        the copy was declined.
+ * \return True if the copy was performed, false if declined (unsupported pixel
+ *         format).
  */
 int screen_copy_rect(screen_t    *scr,
                      const box_t *src,
@@ -165,7 +165,8 @@ void screen_draw_line(screen_t *scr,
 /**
  * Draws a line (fixed-point Wu version with anti-aliasing).
  *
- * Coordinates are fixed point values of type `fix8_t`. Coordinates are inclusive.
+ * Coordinates are fixed point values of type `fix8_t`. Coordinates are
+ * inclusive.
  *
  * \param[in] scr     Screen to draw upon.
  * \param[in] x0      X coordinate of first point of line.
@@ -181,7 +182,8 @@ void screen_draw_line_wu_fix8(screen_t *scr,
 /**
  * Draws a line (floating point Wu version with anti-aliasing).
  *
- * Coordinates are floating point values of type `float`. Coordinates are inclusive.
+ * Coordinates are floating point values of type `float`. Coordinates are
+ * inclusive.
  *
  * \param[in] scr     Screen to draw upon.
  * \param[in] x0      X coordinate of first point of line.

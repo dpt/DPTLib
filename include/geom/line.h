@@ -11,7 +11,8 @@ extern "C"
 #include "geom/box.h"
 
 /**
- * Clips the line (x0,y0)-(x1,y1) by box `clip` and returns the clipped points in `x0` and co.
+ * Clips the line (x0,y0)-(x1,y1) by box `clip` and returns the clipped points
+ * in `x0` and co.
  *
  * \param[in]     clip Rectangular clip region.
  * \param[in,out] x0   X coordinate of first point of line (modified).

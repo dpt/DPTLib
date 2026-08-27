@@ -27,7 +27,10 @@ typedef os_box box_t;
 
 #endif
 
-/** Initialises a box to an invalid state that will still produce a valid result when intersected with. */
+/**
+ * Initialises a box to an invalid state that will still produce a valid result
+ * when intersected with.
+ */
 #define BOX_INIT { INT_MAX, INT_MAX, INT_MIN, INT_MIN }
 
 /** Initialises a box from a position (x,y) and a size (w,h). */
@@ -36,8 +39,8 @@ typedef os_box box_t;
 /**
  * Reset the box to an invalid state.
  *
- * This sets x0,y0 to INT_MAX and the x1,y1 to INT_MIN. This is an invalid
- * box but will still produce a valid result when intersected with.
+ * This sets x0,y0 to INT_MAX and the x1,y1 to INT_MIN. This is an invalid box
+ * but will still produce a valid result when intersected with.
  *
  * \param[in] b The box to reset.
  */
@@ -82,11 +85,14 @@ int box_intersects(const box_t *a, const box_t *b);
 int box_intersection(const box_t *a, const box_t *b, box_t *c);
 
 /**
- * Populates the box "clipped" with the sizes of the edges discarded when clipping box "b" against "a".
+ * Populates the box "clipped" with the sizes of the edges discarded when
+ * clipping box "b" against "a".
  *
  * \param[in]  a       The first box.
  * \param[in]  b       The second box.
- * \param[out] clipped Not really a box, but one scalar per edge. Values are positive where "b" extends outside of "a", zero otherwise.
+ * \param[out] clipped Not really a box, but one scalar per edge. Values are
+ *                     positive where "b" extends outside of "a", zero
+ *                     otherwise.
  */
 void box_clipped(const box_t *a, const box_t *b, box_t *clipped);
 
