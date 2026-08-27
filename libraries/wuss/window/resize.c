@@ -56,5 +56,15 @@ result_t wuss_window_resize(wuss_window_t *window, int width, int height)
   invalidate_grown_or_shrunk(window, &before, &window->visible);
   invalidate_grown_or_shrunk(window, &window->visible, &before);
 
+  /* Growing strands old furniture (e.g. the old outline/scrollbar edge)
+   * inside what's now interior content -- a region both calls above treat
+   * as already-valid and so never repaint. Force its old position dirty
+   * too. Shrinking needs no such help: old furniture positions only ever
+   * land outside the new, smaller box, already covered above. */
+  if (window->visible.x1 - window->visible.x0 > before.x1 - before.x0 ||
+      window->visible.y1 - window->visible.y0 > before.y1 - before.y0)
+    wuss__furniture_invalidate_for(window, &before);
+  wuss__furniture_invalidate(window);
+
   return result_OK;
 }
