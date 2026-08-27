@@ -1,11 +1,39 @@
 /* resize.c -- wuss - minimal window manager */
 
+#include "base/utils.h"
+
 #include "../impl.h"
+
+/* Invalidate the part of "a" not covered by "b", given both share the same
+ * top-left corner (true of a window's visible box before/after a resize, as
+ * only the bottom-right corner moves): the difference splits into exactly
+ * two non-overlapping rectangles, each clipped against occluders before
+ * queueing. */
+static void invalidate_grown_or_shrunk(wuss_window_t *window,
+                                       const box_t   *a,
+                                       const box_t   *b)
+{
+  box_t piece;
+
+  if (a->x1 > b->x1)
+  {
+    piece.x0 = b->x1; piece.y0 = a->y0;
+    piece.x1 = a->x1; piece.y1 = a->y1;
+    wuss__invalidate_clipped(window, &piece);
+  }
+
+  if (a->y1 > b->y1)
+  {
+    piece.x0 = a->x0;            piece.y0 = b->y1;
+    piece.x1 = MIN(a->x1, b->x1); piece.y1 = a->y1;
+    wuss__invalidate_clipped(window, &piece);
+  }
+}
 
 result_t wuss_window_resize(wuss_window_t *window, int width, int height)
 {
   int     outline_px, titlebar_height;
-  box_t   before, dirty;
+  box_t   before;
   point_t carve;
 
   if (!wuss__size_ok(width, height))
@@ -21,8 +49,12 @@ result_t wuss_window_resize(wuss_window_t *window, int width, int height)
 
   wuss__notify_open(window);
 
-  box_union(&before, &window->visible, &dirty);
-  wuss__invalidate_clipped(window, &dirty);
+  /* The top-left corner is fixed, so any pixels within both the old and new
+   * footprint are unchanged and don't need repainting -- only the shrunk-away
+   * sliver (revealing whatever is now behind it) and the grown-into sliver
+   * (this window's own previously-undrawn content) do. */
+  invalidate_grown_or_shrunk(window, &before, &window->visible);
+  invalidate_grown_or_shrunk(window, &window->visible, &before);
 
   return result_OK;
 }
