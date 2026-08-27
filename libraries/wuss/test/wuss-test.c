@@ -2390,6 +2390,184 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_a);
   }
 
+  printf("test: moving a window whose occluded piece was never blitted doesn't redraw the occluder\n");
+
+  {
+    test_task_t    tc_a, tc_b;
+    wuss_task_t    delegate_a, delegate_b;
+    box_t          box_a, box_b, visible_a, visible_b_before;
+    box_t          region;
+    wuss_window_t *win_a, *win_b;
+    int            i, occluder_dirty;
+
+    tc_b.redraw_count = 0;
+    tc_b.mouse_count  = 0;
+    delegate_b.handle    = test_handle;
+    delegate_b.task_data = &tc_b;
+    delegate_b.bg        = wuss_NO_BACKGROUND;
+
+    box_b.x0 = 0; box_b.y0 = 0; /* right part sits under A throughout */
+    box_b.x1 = 60; box_b.y1 = 40;
+    rc = wuss_window_create(wuss, &box_b, "B",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_b,
+                            box_b.x1 - box_b.x0,
+                            box_b.y1 - box_b.y0,
+                            &win_b);
+    if (rc != result_OK)
+      goto Failure;
+
+    tc_a.redraw_count = 0;
+    tc_a.mouse_count  = 0;
+    delegate_a.handle    = test_handle;
+    delegate_a.task_data = &tc_a;
+    delegate_a.bg        = wuss_NO_BACKGROUND;
+
+    box_a.x0 = 40; box_a.y0 = 0; /* created after B, so A is topmost */
+    box_a.x1 = 100; box_a.y1 = 40;
+    rc = wuss_window_create(wuss, &box_a, "A",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_a,
+                            box_a.x1 - box_a.x0,
+                            box_a.y1 - box_a.y0,
+                            &win_a);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creations first */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_b, &visible_b_before);
+    wuss_window_get_visible_bounds(win_a, &visible_a);
+
+    /* Move B straight down: its clean piece (x:0-40) and hidden piece
+     * (x:40-60, under A) both stay clear of / under A exactly as before --
+     * nothing about A's own pixels is ever touched by the blit, so A must
+     * not be forced to redraw. */
+    wuss_window_move(win_b, (point_t) { visible_b_before.x0,
+                                        visible_b_before.y0 + 5 });
+
+    occluder_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_intersects(&region, &visible_a))
+        occluder_dirty = 1;
+    }
+    if (occluder_dirty)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_b);
+    wuss_window_close(win_a);
+  }
+
+  printf("test: moving a window split by a mid-band occluder past the gap between bands falls back safely instead of corrupting either band\n");
+
+  {
+    test_task_t    tc_a, tc_b;
+    wuss_task_t    delegate_a, delegate_b;
+    box_t          box_a, box_b, visible_b_before;
+    box_t          top_clear, bottom_clear, region;
+    wuss_window_t *win_a, *win_b;
+    int            i, top_dirty, bottom_dirty;
+
+    tc_b.redraw_count = 0;
+    tc_b.mouse_count  = 0;
+    delegate_b.handle    = test_handle;
+    delegate_b.task_data = &tc_b;
+    delegate_b.bg        = wuss_NO_BACKGROUND;
+
+    box_b.x0 = 0; box_b.y0 = 0; /* middle band sits under A */
+    box_b.x1 = 60; box_b.y1 = 60;
+    rc = wuss_window_create(wuss, &box_b, "B",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_b,
+                            box_b.x1 - box_b.x0,
+                            box_b.y1 - box_b.y0,
+                            &win_b);
+    if (rc != result_OK)
+      goto Failure;
+
+    tc_a.redraw_count = 0;
+    tc_a.mouse_count  = 0;
+    delegate_a.handle    = test_handle;
+    delegate_a.task_data = &tc_a;
+    delegate_a.bg        = wuss_NO_BACKGROUND;
+
+    box_a.x0 = 0; box_a.y0 = 20; /* created after B, so A is topmost */
+    box_a.x1 = 60; box_a.y1 = 40;
+    rc = wuss_window_create(wuss, &box_a, "A",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_a,
+                            box_a.x1 - box_a.x0,
+                            box_a.y1 - box_a.y0,
+                            &win_a);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* B's old footprint (y:0-60) is split by A (y:20-40) into a top clean
+     * band (y:0-20), a hidden middle band (y:20-40) and a bottom clean band
+     * (y:40-60), each spanning the full width. */
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creations first */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_b, &visible_b_before);
+
+    /* Move B down by 25px, past the 20px gap between the two clean bands:
+     * the top band's destination (y:25-45) would land on the bottom band's
+     * still-unread old source (y:40-60), so no ordering of independent
+     * single-rect blits is safe. This must fall back to a full clipped
+     * redraw of the moved footprint rather than risk corrupting either
+     * band with stale, wrongly-shifted rows -- the reported "horizontal
+     * bands redrawn incorrectly" bug. */
+    wuss_window_move(win_b, (point_t) { visible_b_before.x0,
+                                        visible_b_before.y0 + 25 });
+
+    /* New footprint is (0,25)-(60,85). Check the parts of each translated
+     * band that are clear of A (still at y:20-40): the top band's clear
+     * remainder (y:40-45) and the whole bottom band (y:65-85, entirely
+     * clear of A). A full fallback redraw must cover both in full -- a
+     * corrupting partial blit would instead leave one of them stale. */
+    top_clear.x0    = 0;  top_clear.y0    = 40;
+    top_clear.x1    = 60; top_clear.y1    = 45;
+    bottom_clear.x0 = 0;  bottom_clear.y0 = 65;
+    bottom_clear.x1 = 60; bottom_clear.y1 = 85;
+
+    top_dirty = bottom_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_box(&top_clear, &region))
+        top_dirty = 1;
+      if (box_contains_box(&bottom_clear, &region))
+        bottom_dirty = 1;
+    }
+    if (!top_dirty || !bottom_dirty)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_b);
+    wuss_window_close(win_a);
+  }
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;
