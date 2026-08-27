@@ -2470,7 +2470,7 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_a);
   }
 
-  printf("test: moving a window split by a mid-band occluder past the gap between bands falls back safely instead of corrupting either band\n");
+  printf("test: moving a window split by a mid-band occluder past the gap between bands blits both bands in a safe order\n");
 
   {
     test_task_t    tc_a, tc_b;
@@ -2529,24 +2529,22 @@ result_t wuss_test(const char *resources)
     wuss_window_get_visible_bounds(win_b, &visible_b_before);
 
     /* Move B down by 25px, past the 20px gap between the two clean bands:
-     * the top band's destination (y:25-45) would land on the bottom band's
-     * still-unread old source (y:40-60), so no ordering of independent
-     * single-rect blits is safe. This must fall back to a full clipped
-     * redraw of the moved footprint rather than risk corrupting either
-     * band with stale, wrongly-shifted rows -- the reported "horizontal
-     * bands redrawn incorrectly" bug. */
+     * the top band's destination (y:25-45) lands on the bottom band's
+     * still-unread old source (y:40-60). Blitted in the other order --
+     * bottom band first (its destination y:65-85 doesn't touch the top
+     * band's source), then the top band -- both blits are safe, so this
+     * is not a genuine clobber cycle (translating disjoint pieces by the
+     * same offset never produces one: any conflict is consistently
+     * oriented by the direction of the move). Only the top band's
+     * destination overlap with A (y:25-40) needs forcing dirty, plus the
+     * translated hidden band (y:45-65, never had valid pixels). */
     wuss_window_move(win_b, (point_t) { visible_b_before.x0,
                                         visible_b_before.y0 + 25 });
 
-    /* New footprint is (0,25)-(60,85). Check the parts of each translated
-     * band that are clear of A (still at y:20-40): the top band's clear
-     * remainder (y:40-45) and the whole bottom band (y:65-85, entirely
-     * clear of A). A full fallback redraw must cover both in full -- a
-     * corrupting partial blit would instead leave one of them stale. */
-    top_clear.x0    = 0;  top_clear.y0    = 40;
-    top_clear.x1    = 60; top_clear.y1    = 45;
-    bottom_clear.x0 = 0;  bottom_clear.y0 = 65;
-    bottom_clear.x1 = 60; bottom_clear.y1 = 85;
+    top_clear.x0    = 0;  top_clear.y0    = 25;
+    top_clear.x1    = 60; top_clear.y1    = 40;
+    bottom_clear.x0 = 0;  bottom_clear.y0 = 45;
+    bottom_clear.x1 = 60; bottom_clear.y1 = 65;
 
     top_dirty = bottom_dirty = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
@@ -2560,6 +2558,22 @@ result_t wuss_test(const char *resources)
     if (!top_dirty || !bottom_dirty)
       goto Failure;
 
+    /* The blit must have actually happened, not fallen back: the part of
+     * B's new footprint that's clear of A and not the hidden band (e.g.
+     * the bottom band's new position, y:65-85) must not be dirtied. */
+    {
+      box_t clean_after, dirty_check;
+
+      clean_after.x0 = 0;  clean_after.y0 = 65;
+      clean_after.x1 = 60; clean_after.y1 = 85;
+      for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+      {
+        wuss_get_dirty(wuss, i, &region);
+        if (!box_intersection(&region, &clean_after, &dirty_check))
+          goto Failure;
+      }
+    }
+
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK)
       goto Failure;
@@ -2568,14 +2582,14 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_a);
   }
 
-  printf("test: dragging a window deeper under an occluder never re-marks the occluder when the blit is declined\n");
+  printf("test: dragging a window deeper under a corner occluder blits both L-shaped pieces in a safe order\n");
 
   {
     test_task_t    tc_a, tc_b;
     wuss_task_t    delegate_a, delegate_b;
     box_t          box_a, box_b, visible_b_before, visible_a, region;
     wuss_window_t *win_a, *win_b;
-    int            i, a_dirty;
+    int            i;
 
     tc_b.redraw_count = 0;
     tc_b.mouse_count  = 0;
@@ -2617,13 +2631,15 @@ result_t wuss_test(const char *resources)
 
     /* B's old footprint (80,80)-(140,140) overlaps A (0,0)-(100,100) in its
      * corner (80,80)-(100,100); the rest of B is split into an L-shaped
-     * clean region of two pieces. Dragging B up-left by (-15,-15) grows the
-     * overlap without ever fully hiding or fully clearing it -- the
-     * "further under, overlap changes" scenario -- and also makes one clean
-     * piece's destination land on the other's still-unread source, so
-     * wuss__pieces_would_clobber declines the blit entirely. With no blit,
-     * nothing ever touches A's pixels, so A must not be marked dirty at
-     * all, anywhere, including across the newly-grown part of the overlap. */
+     * clean region of two pieces, one of whose destination lands on the
+     * other's still-unread source -- but blitting the other piece first
+     * avoids that entirely, so this must NOT fall back to a full clipped
+     * redraw (that was the "Adjust drag behind a corner fully redraws the
+     * window" regression). Dragging B up-left by (-15,-15) also grows the
+     * overlap with A without ever fully hiding or fully clearing it -- the
+     * blit legitimately re-marks part of the old overlap dirty too, since
+     * the raw copy pastes B's stale pixels over A's correct rendering
+     * there before it gets repainted. */
 
     rc = wuss_redraw_dirty(wuss); /* flush both creations first */
     if (rc != result_OK)
@@ -2635,15 +2651,28 @@ result_t wuss_test(const char *resources)
     wuss_window_move(win_b, (point_t) { visible_b_before.x0 - 15,
                                         visible_b_before.y0 - 15 });
 
-    a_dirty = 0;
-    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    /* The blit must have actually happened, not fallen back: B's own
+     * footprint (outside A) must not be dirtied wholesale. */
     {
-      wuss_get_dirty(wuss, i, &region);
-      if (box_intersects(&region, &visible_a))
-        a_dirty = 1;
+      box_t  visible_b_after, whole_footprint, dirty_area_box;
+      int    dirty_area, footprint_area;
+
+      wuss_window_get_visible_bounds(win_b, &visible_b_after);
+      box_union(&visible_b_before, &visible_b_after, &whole_footprint);
+
+      dirty_area = 0;
+      for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+      {
+        wuss_get_dirty(wuss, i, &region);
+        if (!box_intersection(&region, &whole_footprint, &dirty_area_box))
+          dirty_area += (dirty_area_box.x1 - dirty_area_box.x0) *
+                        (dirty_area_box.y1 - dirty_area_box.y0);
+      }
+      footprint_area = (whole_footprint.x1 - whole_footprint.x0) *
+                       (whole_footprint.y1 - whole_footprint.y0);
+      if (dirty_area >= footprint_area)
+        goto Failure; /* fell back to a full redraw instead of blitting */
     }
-    if (a_dirty)
-      goto Failure; /* A was never touched, so it must never be marked dirty */
 
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK)
