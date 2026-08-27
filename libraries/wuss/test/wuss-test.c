@@ -2183,7 +2183,7 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_nb2);
   }
 
-  printf("test: dragging a clear window onto an occluder redraws the occluder\n");
+  printf("test: dragging a clear window onto an occluder leaves the occluder untouched\n");
 
   {
     test_task_t    tc_n, tc_o;
@@ -2250,11 +2250,10 @@ result_t wuss_test(const char *resources)
     exposed.x1 = visible_o.x0; exposed.y1 = visible.y1; /* N's part left of O */
     box_intersection(&visible, &visible_o, &occluded); /* N's part under O */
 
-    /* The part of N's new footprint that lands under O must be forced dirty
-     * (unclipped, so the redraw picks up O as the topmost owner there) --
-     * the blit is a raw pixel copy that just pasted N's stale pixels
-     * straight over O's rendering, and nothing else would ever ask O to
-     * repair that. */
+    /* The part of N's new footprint that lands under O must NOT be queued
+     * dirty -- O hasn't moved, so its pixels are already correct there, and
+     * the move blit must have skipped blitting into that area rather than
+     * pasting N's stale pixels over it and forcing a repair. */
     occluded_dirty = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
     {
@@ -2262,7 +2261,7 @@ result_t wuss_test(const char *resources)
       if (box_intersects(&region, &occluded))
         occluded_dirty = 1;
     }
-    if (!occluded_dirty)
+    if (occluded_dirty)
       goto Failure;
 
     /* The exposed part of N's new footprint, not under any occluder, must
@@ -2476,9 +2475,9 @@ result_t wuss_test(const char *resources)
     test_task_t    tc_a, tc_b;
     wuss_task_t    delegate_a, delegate_b;
     box_t          box_a, box_b, visible_b_before;
-    box_t          top_clear, bottom_clear, region;
+    box_t          occluded_overlap, hidden_new, region;
     wuss_window_t *win_a, *win_b;
-    int            i, top_dirty, bottom_dirty;
+    int            i, occluded_dirty, hidden_dirty;
 
     tc_b.redraw_count = 0;
     tc_b.mouse_count  = 0;
@@ -2535,27 +2534,29 @@ result_t wuss_test(const char *resources)
      * band's source), then the top band -- both blits are safe, so this
      * is not a genuine clobber cycle (translating disjoint pieces by the
      * same offset never produces one: any conflict is consistently
-     * oriented by the direction of the move). Only the top band's
-     * destination overlap with A (y:25-40) needs forcing dirty, plus the
-     * translated hidden band (y:45-65, never had valid pixels). */
+     * oriented by the direction of the move). The top band's destination
+     * overlap with A (y:25-40) is skipped by the blit entirely (A hasn't
+     * moved, its pixels there are already correct), so it must stay clean;
+     * the translated hidden band (y:45-65, never had valid pixels) still
+     * needs forcing dirty for a real repaint. */
     wuss_window_move(win_b, (point_t) { visible_b_before.x0,
                                         visible_b_before.y0 + 25 });
 
-    top_clear.x0    = 0;  top_clear.y0    = 25;
-    top_clear.x1    = 60; top_clear.y1    = 40;
-    bottom_clear.x0 = 0;  bottom_clear.y0 = 45;
-    bottom_clear.x1 = 60; bottom_clear.y1 = 65;
+    occluded_overlap.x0 = 0;  occluded_overlap.y0 = 25;
+    occluded_overlap.x1 = 60; occluded_overlap.y1 = 40;
+    hidden_new.x0       = 0;  hidden_new.y0       = 45;
+    hidden_new.x1       = 60; hidden_new.y1       = 65;
 
-    top_dirty = bottom_dirty = 0;
+    occluded_dirty = hidden_dirty = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
     {
       wuss_get_dirty(wuss, i, &region);
-      if (box_contains_box(&top_clear, &region))
-        top_dirty = 1;
-      if (box_contains_box(&bottom_clear, &region))
-        bottom_dirty = 1;
+      if (box_intersects(&region, &occluded_overlap))
+        occluded_dirty = 1;
+      if (box_contains_box(&hidden_new, &region))
+        hidden_dirty = 1;
     }
-    if (!top_dirty || !bottom_dirty)
+    if (occluded_dirty || !hidden_dirty)
       goto Failure;
 
     /* The blit must have actually happened, not fallen back: the part of
@@ -2637,9 +2638,8 @@ result_t wuss_test(const char *resources)
      * redraw (that was the "Adjust drag behind a corner fully redraws the
      * window" regression). Dragging B up-left by (-15,-15) also grows the
      * overlap with A without ever fully hiding or fully clearing it -- the
-     * blit legitimately re-marks part of the old overlap dirty too, since
-     * the raw copy pastes B's stale pixels over A's correct rendering
-     * there before it gets repainted. */
+     * blit skips the part of each piece's destination that now lands under
+     * A, so A's own rendering there is never touched and needs no repair. */
 
     rc = wuss_redraw_dirty(wuss); /* flush both creations first */
     if (rc != result_OK)
