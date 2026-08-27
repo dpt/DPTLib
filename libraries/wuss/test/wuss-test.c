@@ -2568,6 +2568,91 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_a);
   }
 
+  printf("test: dragging a window deeper under an occluder never re-marks the occluder when the blit is declined\n");
+
+  {
+    test_task_t    tc_a, tc_b;
+    wuss_task_t    delegate_a, delegate_b;
+    box_t          box_a, box_b, visible_b_before, visible_a, region;
+    wuss_window_t *win_a, *win_b;
+    int            i, a_dirty;
+
+    tc_b.redraw_count = 0;
+    tc_b.mouse_count  = 0;
+    delegate_b.handle    = test_handle;
+    delegate_b.task_data = &tc_b;
+    delegate_b.bg        = wuss_NO_BACKGROUND;
+
+    box_b.x0 = 80; box_b.y0 = 80; /* corner already under A */
+    box_b.x1 = 140; box_b.y1 = 140;
+    rc = wuss_window_create(wuss, &box_b, "B",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_b,
+                            box_b.x1 - box_b.x0,
+                            box_b.y1 - box_b.y0,
+                            &win_b);
+    if (rc != result_OK)
+      goto Failure;
+
+    tc_a.redraw_count = 0;
+    tc_a.mouse_count  = 0;
+    delegate_a.handle    = test_handle;
+    delegate_a.task_data = &tc_a;
+    delegate_a.bg        = wuss_NO_BACKGROUND;
+
+    box_a.x0 = 0; box_a.y0 = 0; /* created after B, so A is topmost */
+    box_a.x1 = 100; box_a.y1 = 100;
+    rc = wuss_window_create(wuss, &box_a, "A",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_a,
+                            box_a.x1 - box_a.x0,
+                            box_a.y1 - box_a.y0,
+                            &win_a);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* B's old footprint (80,80)-(140,140) overlaps A (0,0)-(100,100) in its
+     * corner (80,80)-(100,100); the rest of B is split into an L-shaped
+     * clean region of two pieces. Dragging B up-left by (-15,-15) grows the
+     * overlap without ever fully hiding or fully clearing it -- the
+     * "further under, overlap changes" scenario -- and also makes one clean
+     * piece's destination land on the other's still-unread source, so
+     * wuss__pieces_would_clobber declines the blit entirely. With no blit,
+     * nothing ever touches A's pixels, so A must not be marked dirty at
+     * all, anywhere, including across the newly-grown part of the overlap. */
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creations first */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_b, &visible_b_before);
+    wuss_window_get_visible_bounds(win_a, &visible_a);
+
+    wuss_window_move(win_b, (point_t) { visible_b_before.x0 - 15,
+                                        visible_b_before.y0 - 15 });
+
+    a_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_intersects(&region, &visible_a))
+        a_dirty = 1;
+    }
+    if (a_dirty)
+      goto Failure; /* A was never touched, so it must never be marked dirty */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_b);
+    wuss_window_close(win_a);
+  }
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;
