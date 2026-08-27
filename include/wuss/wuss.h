@@ -144,6 +144,15 @@ result_t wuss_create(screen_t             *scr,
 void wuss_destroy(wuss_t *doomed);
 
 /**
+ * Fetch the system font (see wuss_create), for tasks to draw their own
+ * content in the same face as window titlebars.
+ *
+ * \param[in] wuss Window manager.
+ * \return System font, or NULL if none was given to wuss_create.
+ */
+bmfont_t *wuss_get_font(const wuss_t *wuss);
+
+/**
  * Redraw every window, back-to-front.
  *
  * \param[in] wuss Window manager.
