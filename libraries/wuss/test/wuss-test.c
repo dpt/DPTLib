@@ -2188,9 +2188,9 @@ result_t wuss_test(const char *resources)
   {
     test_task_t    tc_n, tc_o;
     wuss_task_t    delegate_n, delegate_o;
-    box_t          box_n, box_o, exposed, region;
+    box_t          box_n, box_o, visible_o, exposed, occluded, region;
     wuss_window_t *win_n, *win_o;
-    int            i, exposed_dirty;
+    int            i, exposed_dirty, occluded_dirty;
 
     tc_n.redraw_count = 0;
     tc_n.mouse_count  = 0;
@@ -2245,14 +2245,30 @@ result_t wuss_test(const char *resources)
     wuss_window_move(win_n, (point_t) { visible.x0 + 80, visible.y0 + 10 });
 
     wuss_window_get_visible_bounds(win_n, &visible);
-    exposed.x0 = visible.x0; exposed.y0 = visible.y0;
-    exposed.x1 = box_o.x0;   exposed.y1 = visible.y1; /* N's part left of O */
+    wuss_window_get_visible_bounds(win_o, &visible_o);
+    exposed.x0 = visible.x0;   exposed.y0 = visible.y0;
+    exposed.x1 = visible_o.x0; exposed.y1 = visible.y1; /* N's part left of O */
+    box_intersection(&visible, &visible_o, &occluded); /* N's part under O */
 
-    /* The part of N's new footprint not covered by O must be queued dirty
-     * right away, from the fallback clipped redraw -- if the blit fast path
-     * had wrongly fired instead (because it only checked the old footprint
-     * for occlusion), N's stale pixels would have been pasted straight over
-     * O with no invalidation of this exposed sliver at all. */
+    /* The part of N's new footprint that lands under O must be forced dirty
+     * (unclipped, so the redraw picks up O as the topmost owner there) --
+     * the blit is a raw pixel copy that just pasted N's stale pixels
+     * straight over O's rendering, and nothing else would ever ask O to
+     * repair that. */
+    occluded_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_intersects(&region, &occluded))
+        occluded_dirty = 1;
+    }
+    if (!occluded_dirty)
+      goto Failure;
+
+    /* The exposed part of N's new footprint, not under any occluder, must
+     * NOT be queued dirty -- it was already moved there correctly by the
+     * blit, so redrawing it too would be exactly the "repaint what could
+     * have been left in place" waste this fast path exists to avoid. */
     exposed_dirty = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
     {
@@ -2260,7 +2276,7 @@ result_t wuss_test(const char *resources)
       if (box_intersects(&region, &exposed))
         exposed_dirty = 1;
     }
-    if (!exposed_dirty)
+    if (exposed_dirty)
       goto Failure;
 
     rc = wuss_redraw_dirty(wuss);
