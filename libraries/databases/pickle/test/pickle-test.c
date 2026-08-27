@@ -338,7 +338,7 @@ static result_t cheese_format_value(const void *vvalue, char *buf, size_t len, v
 
   NOT_USED(opaque);
 
-  sprintf(buf,
+  snprintf(buf, len,
          "%s %s %s %s %s %d",
           cheese_country_to_string(value->country),
           cheese_region_to_string(value->region),

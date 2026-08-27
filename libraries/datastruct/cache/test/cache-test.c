@@ -183,7 +183,7 @@ static result_t cache_test_put(cache_t *cache, int maxkey)
 
   for (i = 0; i < maxkey; i++)
   {
-    sprintf(data, "(%d)", i);
+    snprintf(data, sizeof(data), "(%d)", i);
     cache_put(cache, i, data, strlen(data) + 1, NULL);
   }
 
@@ -197,7 +197,7 @@ static result_t cache_test_put(cache_t *cache, int maxkey)
     {
       char *cached;
 
-      int len = sprintf(data, "(%d)", i);
+      int len = snprintf(data, sizeof(data), "(%d)", i);
       cached = (char *) cache_get(cache, i);
       if (cached)
       {
@@ -215,7 +215,7 @@ static result_t cache_test_put(cache_t *cache, int maxkey)
 
   for (i = 0; i < maxkey; i++)
   {
-    sprintf(data, "(%d)", i);
+    snprintf(data, sizeof(data), "(%d)", i);
 
     cache_put(cache, i, data, strlen(data) + 1, NULL);
   }
