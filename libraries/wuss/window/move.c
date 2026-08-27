@@ -2,16 +2,18 @@
 
 #include "../impl.h"
 
-/* true if any window above "window" in z-order overlaps "before" -- if
- * so, "before" isn't purely this window's own rendering and the blit
- * fast path in wuss_window_move() must not be used */
-static int wuss__occluded_above(wuss_window_t *window, const box_t *before)
+/* true if any window above "window" in z-order overlaps "box" -- if so,
+ * "box" isn't purely this window's own rendering (if it's the old
+ * footprint) or would have this window's stale pixels blitted over an
+ * occluder (if it's the new footprint), so the blit fast path in
+ * wuss_window_move() must not be used for either case */
+static int wuss__occluded_above(wuss_window_t *window, const box_t *box)
 {
   list_t *e;
 
   for (e = window->wuss->z_order.next; e != &window->link; e = e->next)
   {
-    if (box_intersects(&((wuss_window_t *) e)->visible, before))
+    if (box_intersects(&((wuss_window_t *) e)->visible, box))
       return 1;
   }
 
@@ -40,16 +42,18 @@ void wuss_window_move(wuss_window_t *window, point_t p)
   wuss__notify_open(window);
 
   if (!wuss__occluded_above(window, &before) &&
+      !wuss__occluded_above(window, &window->visible) &&
       screen_copy_rect(window->wuss->scr, &before,
                        (point_t) { window->visible.x0, window->visible.y0 }, &copied))
   {
-    /* Nothing above this window overlaps its old footprint, and the screen
-     * format supports the blit: every pixel of "before" is genuinely this
-     * window's own rendering (nothing above it to have punched holes in
-     * it), so sliding those pixels to the new position is exactly as
-     * correct as asking the task to redraw there, but far cheaper -- only
-     * the vacated sliver behind the old position still needs an actual
-     * repaint. */
+    /* Nothing above this window overlaps its old OR new footprint, and the
+     * screen format supports the blit: every pixel of "before" is genuinely
+     * this window's own rendering (nothing above it to have punched holes in
+     * it), and nothing above it at the destination would have its rendering
+     * clobbered by the raw pixel copy, so sliding those pixels to the new
+     * position is exactly as correct as asking the task to redraw there, but
+     * far cheaper -- only the vacated sliver behind the old position still
+     * needs an actual repaint. */
     wuss__invalidate_minus(window->wuss, &before, &window->visible);
 
     /* "copied" can be smaller than the new footprint if either end of the
