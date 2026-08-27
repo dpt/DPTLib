@@ -98,10 +98,10 @@ int wuss__clip_to_visible(wuss_window_t *window, const box_t *box, box_t *out)
 /* Subtract each of "cuts" (an array of "ncuts" boxes) from "whole", writing
  * the surviving pieces to "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and
  * returning their count. */
-static int subtract_boxes(const box_t *whole,
-                          const box_t *cuts,
-                          int          ncuts,
-                          box_t       *out)
+int wuss__subtract_boxes(const box_t *whole,
+                         const box_t *cuts,
+                         int          ncuts,
+                         box_t       *out)
 {
   box_t  scratch[WUSS_MAX_INVALIDATE_PIECES];
   box_t *cur, *nxt, *tmp;
@@ -162,7 +162,7 @@ void wuss__invalidate_uncovered(wuss_window_t *window)
   int   nvisible, nhidden, i;
 
   nvisible = wuss__clip_to_visible(window, &window->visible, visible);
-  nhidden  = subtract_boxes(&window->visible, visible, nvisible, hidden);
+  nhidden  = wuss__subtract_boxes(&window->visible, visible, nvisible, hidden);
 
   for (i = 0; i < nhidden; i++)
     wuss_invalidate(window->wuss, &hidden[i]);

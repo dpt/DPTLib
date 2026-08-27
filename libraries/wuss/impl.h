@@ -74,6 +74,14 @@ int             wuss__clip_to_visible(wuss_window_t *window,
                                       const box_t   *box,
                                       box_t         *out);
 
+/* Subtract each of "cuts" (an array of "ncuts" boxes) from "whole", writing
+ * the surviving pieces to "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and
+ * returning their count. */
+int             wuss__subtract_boxes(const box_t *whole,
+                                     const box_t *cuts,
+                                     int          ncuts,
+                                     box_t       *out);
+
 /* Notify a window's task that it has been moved or resized, via
  * wuss_EVENT_OPEN; the return value is discarded, matching how furniture
  * drawing and other in-line notifications are treated. */

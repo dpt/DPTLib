@@ -2287,6 +2287,109 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_o);
   }
 
+  printf("test: moving a partly-occluded window blits its clean part and only repaints the occluded part\n");
+
+  {
+    test_task_t    tc_a, tc_b;
+    wuss_task_t    delegate_a, delegate_b;
+    box_t          box_a, box_b, visible_a, visible_b_before;
+    box_t          clean_new, hidden_new, region;
+    wuss_window_t *win_a, *win_b;
+    int            i, dx, clean_dirty, hidden_dirty;
+
+    tc_b.redraw_count = 0;
+    tc_b.mouse_count  = 0;
+    delegate_b.handle    = test_handle;
+    delegate_b.task_data = &tc_b;
+    delegate_b.bg        = wuss_NO_BACKGROUND;
+
+    box_b.x0 = 20; box_b.y0 = 10; /* left half will sit under A */
+    box_b.x1 = 80; box_b.y1 = 50;
+    rc = wuss_window_create(wuss, &box_b, "B",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_b,
+                            box_b.x1 - box_b.x0,
+                            box_b.y1 - box_b.y0,
+                            &win_b);
+    if (rc != result_OK)
+      goto Failure;
+
+    tc_a.redraw_count = 0;
+    tc_a.mouse_count  = 0;
+    delegate_a.handle    = test_handle;
+    delegate_a.task_data = &tc_a;
+    delegate_a.bg        = wuss_NO_BACKGROUND;
+
+    box_a.x0 = 0; box_a.y0 = 0; /* created after B, so A is topmost */
+    box_a.x1 = 40; box_a.y1 = 100;
+    rc = wuss_window_create(wuss, &box_a, "A",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_a,
+                            box_a.x1 - box_a.x0,
+                            box_a.y1 - box_a.y0,
+                            &win_a);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* B's old footprint (x:20-80,y:10-50) is split by A (x:0-40) into a
+     * hidden strip (x:20-40, under A) and a clean strip (x:40-80, exposed). */
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creations first */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_b, &visible_b_before);
+    wuss_window_get_visible_bounds(win_a, &visible_a);
+
+    /* Move B far enough right that its whole new footprint clears A. */
+    dx = 60;
+    wuss_window_move(win_b, (point_t) { visible_b_before.x0 + dx,
+                                        visible_b_before.y0 });
+
+    /* The clean strip (previously exposed, genuinely B's own pixels) lands
+     * at its translated destination and must have been blitted there, not
+     * repainted. */
+    clean_new.x0 = 40 + dx; clean_new.y0 = 10;
+    clean_new.x1 = 80 + dx; clean_new.y1 = 50;
+
+    /* The hidden strip (previously under A, never B's valid rendering) has
+     * no valid source pixels, so its translated destination must be a real
+     * repaint. */
+    hidden_new.x0 = 20 + dx; hidden_new.y0 = 10;
+    hidden_new.x1 = 40 + dx; hidden_new.y1 = 50;
+
+    hidden_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_intersects(&region, &hidden_new))
+        hidden_dirty = 1;
+    }
+    if (!hidden_dirty)
+      goto Failure;
+
+    clean_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_intersects(&region, &clean_new))
+        clean_dirty = 1;
+    }
+    if (clean_dirty)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_b);
+    wuss_window_close(win_a);
+  }
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;
