@@ -3,10 +3,9 @@
 #include "../impl.h"
 
 /* true if any window above "window" in z-order overlaps "box" -- if so,
- * "box" isn't purely this window's own rendering (if it's the old
- * footprint) or would have this window's stale pixels blitted over an
- * occluder (if it's the new footprint), so the blit fast path in
- * wuss_window_move() must not be used for either case */
+ * "box" isn't purely this window's own rendering, so blitting it as the
+ * source of a move would slide stale/wrong pixels rather than this
+ * window's own content */
 static int wuss__occluded_above(wuss_window_t *window, const box_t *box)
 {
   list_t *e;
@@ -42,18 +41,16 @@ void wuss_window_move(wuss_window_t *window, point_t p)
   wuss__notify_open(window);
 
   if (!wuss__occluded_above(window, &before) &&
-      !wuss__occluded_above(window, &window->visible) &&
       screen_copy_rect(window->wuss->scr, &before,
                        (point_t) { window->visible.x0, window->visible.y0 }, &copied))
   {
-    /* Nothing above this window overlaps its old OR new footprint, and the
-     * screen format supports the blit: every pixel of "before" is genuinely
-     * this window's own rendering (nothing above it to have punched holes in
-     * it), and nothing above it at the destination would have its rendering
-     * clobbered by the raw pixel copy, so sliding those pixels to the new
-     * position is exactly as correct as asking the task to redraw there, but
-     * far cheaper -- only the vacated sliver behind the old position still
-     * needs an actual repaint. */
+    /* Nothing above this window overlaps its old footprint, and the screen
+     * format supports the blit: every pixel of "before" is genuinely this
+     * window's own rendering (nothing above it to have punched holes in
+     * it), so sliding those pixels to the new position is exactly as
+     * correct as asking the task to redraw there, but far cheaper -- only
+     * the vacated sliver behind the old position still needs an actual
+     * repaint. */
     wuss__invalidate_minus(window->wuss, &before, &window->visible);
 
     /* "copied" can be smaller than the new footprint if either end of the
@@ -61,6 +58,14 @@ void wuss_window_move(wuss_window_t *window, point_t p)
      * off-screen): the leftover part has no valid source pixels behind it,
      * so it needs a real repaint too, not just the vacated sliver above. */
     wuss__invalidate_minus(window->wuss, &window->visible, &copied);
+
+    /* The blit is a raw pixel copy: if the new footprint lands under a
+     * window above this one in z-order, it just pasted this window's stale
+     * pixels straight over that occluder's rendering. Force exactly that
+     * overlap dirty (unclipped, so the redraw picks up the occluder as the
+     * topmost owner there) to repair it -- this window's own newly-covered
+     * area needs no such fix, since it's rightfully hidden anyway. */
+    wuss__invalidate_uncovered(window);
   }
   else
   {
