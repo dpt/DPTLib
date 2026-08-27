@@ -29,7 +29,7 @@ result_t palette_create(wuss_t         *wuss,
   return wuss_window_create(wuss,
                             &box,
                             "Palette",
-                            wuss_WINDOW_NO_TOGGLE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                            wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
                             &delegate,
                             box.x1 - box.x0,
                             box.y1 - box.y0,
