@@ -2071,8 +2071,8 @@ result_t wuss_test(const char *resources)
       goto Failure;
 
     wuss_window_get_visible_bounds(win_m2, &before2);
-    interior_x = before2.x0 + 2; /* well inside the untouched top-left corner */
-    interior_y = before2.y0 + 2;
+    interior_x = before2.x0 + 2;  /* inside the untouched left edge */
+    interior_y = before2.y0 + 25; /* below the titlebar, in plain content */
 
     rc = wuss_window_resize(win_m2, 80, 80); /* grow */
     if (rc != result_OK)
