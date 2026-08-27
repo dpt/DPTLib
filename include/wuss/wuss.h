@@ -23,8 +23,10 @@ extern "C"
 
 /* ----------------------------------------------------------------------- */
 
-#define result_WUSS_TOO_SMALL  (result_BASE_WUSS + 0) /* Window/resize dimensions too small */
-#define result_WUSS_BAD_COLOUR (result_BASE_WUSS + 1) /* A palette index was out of range */
+/** Window/resize dimensions too small. */
+#define result_WUSS_TOO_SMALL  (result_BASE_WUSS + 0)
+/** A palette index was out of range. */
+#define result_WUSS_BAD_COLOUR (result_BASE_WUSS + 1)
 
 /* ----------------------------------------------------------------------- */
 
@@ -55,10 +57,15 @@ typedef enum wuss_mouse_action
 }
 wuss_mouse_action_t;
 
-/** An index into a wuss_t's system palette (see wuss_create). Not a colour_t. */
+/**
+ * An index into a wuss_t's system palette (see wuss_create). Not a colour_t.
+ */
 typedef int wuss_colour_t;
 
-/** Sentinel for wuss_window_create's bg meaning "no automatic background fill". */
+/**
+ * Sentinel for wuss_window_create's bg meaning "no automatic background
+ * fill".
+ */
 #define wuss_NO_BACKGROUND ((wuss_colour_t) -1)
 
 /** Furniture chrome colours, one entry per class of furniture. Title is
@@ -86,16 +93,53 @@ wuss_palette_t;
 /** Per-window appearance flags, combinable with bitwise OR. */
 typedef enum wuss_window_flags
 {
-  wuss_WINDOW_NONE           = 0,      /**< Default: every furniture region drawn. */
-  wuss_WINDOW_NO_TITLEBAR    = 1 << 0, /**< No titlebar; content fills the full visible area, and no drag handle exists. */
-  wuss_WINDOW_NO_OUTLINE     = 1 << 1, /**< No 1px border drawn around the visible area. */
-  wuss_WINDOW_NO_CLOSE       = 1 << 2, /**< No close icon in the titlebar. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR. */
-  wuss_WINDOW_NO_BACK        = 1 << 3, /**< No send-to-back icon in the titlebar. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR. */
-  wuss_WINDOW_NO_TOGGLE_SIZE = 1 << 4, /**< No toggle-size icon in the titlebar. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR. */
-  wuss_WINDOW_NO_VSCROLL     = 1 << 5, /**< No vertical scrollbar on the right edge. */
-  wuss_WINDOW_NO_HSCROLL     = 1 << 6, /**< No horizontal scrollbar on the bottom edge. */
-  wuss_WINDOW_NO_RESIZE      = 1 << 7, /**< No resize icon in the bottom-right corner. */
-  wuss_WINDOW_NO_RESIZE_BLIT = 1 << 8  /**< A resize (drag or toggle-size) always fully redraws the window's content instead of blitting the preserved region -- for a task whose rendering depends on the window's size in ways redraw can't patch incrementally (e.g. a palette that lays itself out across the whole window). */
+  /** Default: every furniture region drawn. */
+  wuss_WINDOW_NONE           = 0,
+
+  /**
+   * No titlebar; content fills the full visible area, and no drag handle
+   * exists.
+   */
+  wuss_WINDOW_NO_TITLEBAR    = 1 << 0,
+
+  /** No 1px border drawn around the visible area. */
+  wuss_WINDOW_NO_OUTLINE     = 1 << 1,
+
+  /**
+   * No close icon in the titlebar. Ignored if flags includes
+   * wuss_WINDOW_NO_TITLEBAR.
+   */
+  wuss_WINDOW_NO_CLOSE       = 1 << 2,
+
+  /**
+   * No send-to-back icon in the titlebar. Ignored if flags includes
+   * wuss_WINDOW_NO_TITLEBAR.
+   */
+  wuss_WINDOW_NO_BACK        = 1 << 3,
+
+  /**
+   * No toggle-size icon in the titlebar. Ignored if flags includes
+   * wuss_WINDOW_NO_TITLEBAR.
+   */
+  wuss_WINDOW_NO_TOGGLE_SIZE = 1 << 4,
+
+  /** No vertical scrollbar on the right edge. */
+  wuss_WINDOW_NO_VSCROLL     = 1 << 5,
+
+  /** No horizontal scrollbar on the bottom edge. */
+  wuss_WINDOW_NO_HSCROLL     = 1 << 6,
+
+  /** No resize icon in the bottom-right corner. */
+  wuss_WINDOW_NO_RESIZE      = 1 << 7,
+
+  /**
+   * A resize (drag or toggle-size) always fully redraws the window's
+   * content instead of blitting the preserved region -- for a task whose
+   * rendering depends on the window's size in ways redraw can't patch
+   * incrementally (e.g. a palette that lays itself out across the whole
+   * window).
+   */
+  wuss_WINDOW_NO_RESIZE_BLIT = 1 << 8
 }
 wuss_window_flags_t;
 
@@ -111,18 +155,28 @@ wuss_zorder_t;
 /** Optional creation-time configuration. */
 typedef struct wuss_config
 {
-  int            titlebar_height; /**< Titlebar height in pixels, or 0 to derive from font metrics (or a built-in fallback if no font). */
-  wuss_palette_t palette;         /**< Furniture chrome colours. */
+  /**
+   * Titlebar height in pixels, or 0 to derive from font metrics (or a
+   * built-in fallback if no font).
+   */
+  int            titlebar_height;
+
+  /** Furniture chrome colours. */
+  wuss_palette_t palette;
 }
 wuss_config_t;
 
 /**
  * Create a window manager.
  *
- * \param[in]  scr      Screen to draw windows onto. Not owned; must outlive the wuss_t.
- * \param[in]  font     Font used to draw titlebar labels, or NULL to draw titlebars unlabelled. Not owned.
- * \param[in]  palette  System palette, copied in, or NULL to use a built-in default palette.
- * \param[in]  npalette Number of entries in palette. Ignored if palette is NULL.
+ * \param[in]  scr      Screen to draw windows onto. Not owned; must
+ *                      outlive the wuss_t.
+ * \param[in]  font     Font used to draw titlebar labels, or NULL to draw
+ *                      titlebars unlabelled. Not owned.
+ * \param[in]  palette  System palette, copied in, or NULL to use a
+ *                      built-in default palette.
+ * \param[in]  npalette Number of entries in palette. Ignored if palette
+ *                      is NULL.
  * \param[in]  config   Creation-time configuration, or NULL for defaults.
  * \param[out] wuss     Newly created window manager.
  * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if any of
@@ -207,7 +261,8 @@ int wuss_get_dirty_count(const wuss_t *wuss);
  * before calling wuss_redraw_dirty.
  *
  * \param[in]  wuss  Window manager.
- * \param[in]  index Index of the region to fetch, 0 to wuss_get_dirty_count() - 1.
+ * \param[in]  index Index of the region to fetch, 0 to
+ *                   wuss_get_dirty_count() - 1.
  * \param[out] out   Filled in with the dirty region.
  */
 void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
@@ -226,8 +281,10 @@ void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
  * \param[in]  p      Screen coordinate.
  * \param[in]  button Button pressed or released.
  * \param[in]  action wuss_MOUSE_DOWN or wuss_MOUSE_UP.
- * \param[out] hit    Window under the pointer (or being dragged), or NULL if none. May be NULL if not needed.
- * \return \ref result_OK, or a result code returned by the task's mouse callback.
+ * \param[out] hit    Window under the pointer (or being dragged), or NULL if
+ *                    none. May be NULL if not needed.
+ * \return \ref result_OK, or a result code returned by the task's mouse
+ *         callback.
  */
 result_t wuss_mouse_click(wuss_t              *wuss,
                           point_t              p,
@@ -243,8 +300,10 @@ result_t wuss_mouse_click(wuss_t              *wuss,
  *
  * \param[in]  wuss Window manager.
  * \param[in]  p    Screen coordinate.
- * \param[out] hit  Window under the pointer (or being dragged), or NULL if none. May be NULL if not needed.
- * \return \ref result_OK, or a result code returned by the task's mouse callback.
+ * \param[out] hit  Window under the pointer (or being dragged), or NULL if
+ *                  none. May be NULL if not needed.
+ * \return \ref result_OK, or a result code returned by the task's mouse
+ *         callback.
  */
 result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit);
 
@@ -257,8 +316,10 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit);
  * \param[in]  wuss  Window manager.
  * \param[in]  p     Screen coordinate.
  * \param[in]  delta Scroll amount; sign and units are caller-defined.
- * \param[out] hit   Window under the pointer, or NULL if none. May be NULL if not needed.
- * \return \ref result_OK, or a result code returned by the task's scroll callback.
+ * \param[out] hit   Window under the pointer, or NULL if none. May be NULL
+ *                   if not needed.
+ * \return \ref result_OK, or a result code returned by the task's scroll
+ *         callback.
  */
 result_t wuss_scroll(wuss_t         *wuss,
                      point_t         p,

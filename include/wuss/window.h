@@ -54,9 +54,23 @@ typedef struct wuss_event
     struct
     {
       screen_t    *scr;
-      const box_t *content; /**< The region that actually needs repainting, screen space; a subset of bounds. Tasks should only touch pixels within this box. */
-      const box_t *bounds;  /**< The window's full (unclipped) content-area box, screen space, as per wuss_window_get_content_bounds; for converting screen position to document position. */
-      point_t      scroll;  /**< Current scroll offset, as per wuss_window_get_scroll. */
+
+      /**
+       * The region that actually needs repainting, screen space; a
+       * subset of bounds. Tasks should only touch pixels within this
+       * box.
+       */
+      const box_t *content;
+
+      /**
+       * The window's full (unclipped) content-area box, screen space,
+       * as per wuss_window_get_content_bounds; for converting screen
+       * position to document position.
+       */
+      const box_t *bounds;
+
+      /** Current scroll offset, as per wuss_window_get_scroll. */
+      point_t      scroll;
     }
     redraw;
 
@@ -102,7 +116,12 @@ typedef result_t (wuss_event_fn_t)(wuss_window_t      *window,
 /** A window's content delegate. Copied by value into the window at creation. */
 typedef struct wuss_task
 {
-  wuss_event_fn_t *handle;    /**< NULL => task receives no events; Wuss still fills the content background per wuss_window_create's bg. */
+  /**
+   * NULL => task receives no events; Wuss still fills the content
+   * background per wuss_window_create's bg.
+   */
+  wuss_event_fn_t *handle;
+
   void            *task_data;
 }
 wuss_task_t;
@@ -110,7 +129,8 @@ wuss_task_t;
 /**
  * Build a wuss_task_t from its fields.
  *
- * \param[in] handle    Event callback, or NULL for a task that receives no events.
+ * \param[in] handle    Event callback, or NULL for a task that receives
+ *                       no events.
  * \param[in] task_data Opaque pointer passed back to the callback.
  * \return The populated task.
  */
@@ -154,13 +174,27 @@ result_t wuss_idle(wuss_t *wuss);
  * instead. The bottom/right edges are not clamped.
  *
  * \param[in]  wuss       Window manager to create the window on.
- * \param[in]  content    Requested content-area bounds, screen space. Copied in.
- * \param[in]  title      Titlebar label, or NULL for none. Copied in, truncated if too long. Ignored if flags includes wuss_WINDOW_NO_TITLEBAR.
- * \param[in]  flags      Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR / wuss_WINDOW_NO_OUTLINE, OR'd together, or wuss_WINDOW_NONE for the default furniture.
- * \param[in]  bg         Content background, filled by Wuss before each redraw, or wuss_NO_BACKGROUND for the task to draw its own background (avoids a redundant fill behind an opaque task). Changeable later via wuss_window_set_background.
- * \param[in]  task       Content delegate. Copied in. May be NULL for a window with no content handling.
- * \param[in]  doc_width  Virtual document width, for the horizontal scrollbar's sausage proportion; pass content's own width for a window with nothing to scroll.
- * \param[in]  doc_height Virtual document height, for the vertical scrollbar's sausage proportion; pass content's own height for a window with nothing to scroll.
+ * \param[in]  content    Requested content-area bounds, screen space. Copied
+ *                        in.
+ * \param[in]  title      Titlebar label, or NULL for none. Copied in,
+ *                        truncated if too long. Ignored if flags includes
+ *                        wuss_WINDOW_NO_TITLEBAR.
+ * \param[in]  flags      Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR /
+ *                        wuss_WINDOW_NO_OUTLINE, OR'd together, or
+ *                        wuss_WINDOW_NONE for the default furniture.
+ * \param[in]  bg         Content background, filled by Wuss before each
+ *                        redraw, or wuss_NO_BACKGROUND for the task to draw
+ *                        its own background (avoids a redundant fill behind
+ *                        an opaque task). Changeable later via
+ *                        wuss_window_set_background.
+ * \param[in]  task       Content delegate. Copied in. May be NULL for a
+ *                        window with no content handling.
+ * \param[in]  doc_width  Virtual document width, for the horizontal
+ *                        scrollbar's sausage proportion; pass content's own
+ *                        width for a window with nothing to scroll.
+ * \param[in]  doc_height Virtual document height, for the vertical
+ *                        scrollbar's sausage proportion; pass content's own
+ *                        height for a window with nothing to scroll.
  * \param[out] window     Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
  *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if
@@ -248,7 +282,8 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
 
 /** Mark a window's whole content area as dirty. Shorthand for
  * wuss_window_invalidate(window, NULL). */
-#define wuss_window_invalidate_all(window) wuss_window_invalidate((window), NULL)
+#define wuss_window_invalidate_all(window) \
+  wuss_window_invalidate((window), NULL)
 
 /**
  * Set a window's scroll offset: the point in virtual content space that
