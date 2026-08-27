@@ -32,6 +32,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
       point_t        pos;
       int            text_x0, text_x1, titlelen, split_point;
       bmfont_width_t width;
+      box_t          text_box, text_clip;
 
       text_x0 = titlebar.x0 + 2;
       if (!(window->flags & wuss_WINDOW_NO_CLOSE))
@@ -58,16 +59,26 @@ void wuss__furniture_draw(wuss_t        *wuss,
         text_x1 = toggle.x0 - 2;
       }
 
-      if (text_x1 > text_x0)
+      /* A title too wide for its slot mustn't bleed into a neighbouring
+       * icon: clip drawing to the slot itself, not just the whole titlebar,
+       * so a too-long title is cut off cleanly rather than overdrawing
+       * whatever furniture the current redraw didn't happen to touch. */
+      text_box.x0 = text_x0;
+      text_box.y0 = titlebar.y0;
+      text_box.x1 = text_x1;
+      text_box.y1 = titlebar.y1;
+      if (text_x1 > text_x0 && !box_intersection(&text_box, &clipped, &text_clip))
       {
         titlelen = (int) strlen(window->title);
         bmfont_measure(wuss->font, window->title, titlelen, text_x1 - text_x0, &split_point, &width);
 
         pos.x = (split_point < titlelen) ? text_x0 : text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
         pos.y = titlebar.y0 + 2;
+        wuss->scr->clip = text_clip;
         bmfont_draw(wuss->font, wuss->scr, window->title, titlelen,
                    wuss->palette[wuss->furniture_colours.title.fg], wuss->palette[wuss->furniture_colours.title.bg],
                    &pos, NULL);
+        wuss->scr->clip = clipped;
       }
     }
 
