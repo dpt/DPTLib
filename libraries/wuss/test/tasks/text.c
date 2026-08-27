@@ -41,7 +41,7 @@ result_t text_create(wuss_t         *wuss,
   task->frame_count = 0;
   task->resizing    = true;
 
-  delegate = wuss_task_start(text_handle, task, palette_PICO8_BLUE);
+  delegate = wuss_task_start(text_handle, task);
   box      = (box_t) BOX_POS_SIZE(120, 100, 220, 180);
 
   task->base_width  = box.x1 - box.x0;
@@ -51,6 +51,7 @@ result_t text_create(wuss_t         *wuss,
                           &box,
                           "Lorem Ipsum",
                           wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                          palette_PICO8_BLUE,
                           &delegate,
                           box.x1 - box.x0,
                           box.y1 - box.y0,

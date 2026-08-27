@@ -47,6 +47,7 @@ struct wuss_window
   box_t               visible; /* full on-screen footprint: content expanded
                                 * outward by any titlebar/outline furniture */
   wuss_task_t         task;
+  wuss_colour_t       bg;
   wuss_window_flags_t flags;
   point_t             scroll; /* offset into virtual content space of the
                                * content box's top-left; see wuss_window_set_scroll */

@@ -26,32 +26,34 @@ Destroy with `wuss_destroy`, which also destroys any windows still open on it.
 
 ## Windows
 
-Create a window with a content bounding box, optional title, appearance flags and a task delegate:
+Create a window with a content bounding box, optional title, appearance flags, a content background and a task delegate:
 
 ```C
 result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title,
-                            wuss_window_flags_t flags, const wuss_task_t *task,
+                            wuss_window_flags_t flags, wuss_colour_t bg,
+                            const wuss_task_t *task,
                             int doc_width, int doc_height,
                             wuss_window_t **window);
 ```
+
+`bg` is filled in by wuss before each redraw event, or `wuss_NO_BACKGROUND` for the task to draw its own background (avoids a redundant fill behind an opaque task); changeable later via `wuss_window_set_background`.
 
 `doc_width`/`doc_height` are the virtual document extent behind the horizontal/vertical scrollbars' sausage proportion; pass `content`'s own width/height for a window with nothing to scroll. Set once at creation, immutable thereafter.
 
 Furniture is additional to `content`, not carved out of it: the window's content area always ends up exactly the box requested, and its on-screen footprint (`wuss_window_get_visible_bounds`) is `content` expanded outward by whatever furniture flags request — a titlebar above, and/or a 1px outline around all four sides.
 
-`wuss_task_t` holds the task's event callback and its content background:
+`wuss_task_t` holds the task's event callback:
 
 ```C
 typedef struct wuss_task
 {
   wuss_event_fn_t *handle;       /* NULL => task receives no events */
   void            *task_data;
-  wuss_colour_t    bg;           /* filled by wuss before a redraw event, or wuss_NO_BACKGROUND */
 }
 wuss_task_t;
 ```
 
-`wuss_task_make` builds one from `handle`/`task_data`/`bg`.
+`wuss_task_start` builds one from `handle`/`task_data`.
 
 `flags` combines, by bitwise OR:
 

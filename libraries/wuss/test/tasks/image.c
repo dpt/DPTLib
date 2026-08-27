@@ -32,7 +32,7 @@ result_t image_create(wuss_t         *wuss,
   if (rc != result_OK)
     return rc;
 
-  delegate = wuss_task_start(image_handle, task, palette_PICO8_BLACK); /* shows through the image's transparent pixels */
+  delegate = wuss_task_start(image_handle, task); /* shows through the image's transparent pixels */
   /* shorter than the bitmap so there's something to scroll through */
   box             = (box_t) BOX_POS_SIZE(370, 10, task->bitmap.width, task->bitmap.height * 2 / 3);
 
@@ -40,6 +40,7 @@ result_t image_create(wuss_t         *wuss,
                             &box,
                             "Image",
                             wuss_WINDOW_NONE,
+                            palette_PICO8_BLACK,
                             &delegate,
                             task->bitmap.width,
                             task->bitmap.height,

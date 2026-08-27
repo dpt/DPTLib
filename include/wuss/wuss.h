@@ -58,7 +58,7 @@ wuss_mouse_action_t;
 /** An index into a wuss_t's system palette (see wuss_create). Not a colour_t. */
 typedef int wuss_colour_t;
 
-/** Sentinel for wuss_task_t::bg meaning "no automatic background fill". */
+/** Sentinel for wuss_window_create's bg meaning "no automatic background fill". */
 #define wuss_NO_BACKGROUND ((wuss_colour_t) -1)
 
 /** Furniture chrome colours, one entry per class of furniture. Title is

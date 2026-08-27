@@ -36,13 +36,14 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t *task)
   wuss_task_t delegate;
   box_t       box;
 
-  delegate = wuss_task_start(gradient_handle, task, wuss_NO_BACKGROUND); /* gradient_redraw paints every pixel itself */
+  delegate = wuss_task_start(gradient_handle, task); /* gradient_redraw paints every pixel itself */
   box      = (box_t) BOX_POS_SIZE(620, 300, GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT);
 
   return wuss_window_create(wuss,
                             &box,
                             "Gradient",
                             wuss_WINDOW_NONE,
+                            wuss_NO_BACKGROUND,
                             &delegate,
                             GRADIENT_DOC_WIDTH,
                             GRADIENT_DOC_HEIGHT,
