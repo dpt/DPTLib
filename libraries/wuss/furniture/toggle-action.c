@@ -80,7 +80,7 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
     }
   }
 
-  if (!(window->flags & wuss_WINDOW_NO_TOGGLE_BLIT) &&
+  if (!(window->flags & wuss_WINDOW_NO_RESIZE_BLIT) &&
       window->wuss->z_order.next == &window->link &&
       screen_copy_rect(window->wuss->scr, &before,
                        (point_t) { before.x0, before.y0 }, &copied))

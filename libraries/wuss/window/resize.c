@@ -49,7 +49,7 @@ result_t wuss_window_resize(wuss_window_t *window, int width, int height)
 
   wuss__notify_open(window);
 
-  if (window->flags & wuss_WINDOW_NO_TOGGLE_BLIT)
+  if (window->flags & wuss_WINDOW_NO_RESIZE_BLIT)
   {
     /* This task's content isn't just anchored positions plus furniture --
      * it lays itself out across the whole window (e.g. a palette swatch

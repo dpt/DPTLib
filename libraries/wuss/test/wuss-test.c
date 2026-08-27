@@ -1654,7 +1654,7 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_r);
   }
 
-  printf("test: wuss_WINDOW_NO_TOGGLE_BLIT redraws the whole window instead of blitting\n");
+  printf("test: wuss_WINDOW_NO_RESIZE_BLIT redraws the whole window instead of blitting\n");
 
   {
     test_task_t    tc_nb;
@@ -1672,7 +1672,7 @@ result_t wuss_test(const char *resources)
 
     box_nb.x0 = 10; box_nb.y0 = 10;
     box_nb.x1 = 50; box_nb.y1 = 50; /* 40x40 content, room to grow to a 200x200 doc */
-    rc = wuss_window_create(wuss, &box_nb, "NB", wuss_WINDOW_NO_TOGGLE_BLIT,
+    rc = wuss_window_create(wuss, &box_nb, "NB", wuss_WINDOW_NO_RESIZE_BLIT,
                             &delegate_nb, 200, 200, &win_nb);
     if (rc != result_OK)
       goto Failure;
@@ -1722,7 +1722,7 @@ result_t wuss_test(const char *resources)
         interior_dirty = 1;
     }
     if (!interior_dirty)
-      goto Failure; /* wuss_WINDOW_NO_TOGGLE_BLIT must skip the blit path
+      goto Failure; /* wuss_WINDOW_NO_RESIZE_BLIT must skip the blit path
                       * entirely, so even an interior pixel the blit would
                       * otherwise have preserved comes out dirty */
 
@@ -2134,7 +2134,7 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_m2);
   }
 
-  printf("test: resizing a wuss_WINDOW_NO_TOGGLE_BLIT window redraws it fully\n");
+  printf("test: resizing a wuss_WINDOW_NO_RESIZE_BLIT window redraws it fully\n");
 
   {
     test_task_t    tc_nb2;
@@ -2151,7 +2151,7 @@ result_t wuss_test(const char *resources)
 
     box_nb2.x0 = 0; box_nb2.y0 = 0;
     box_nb2.x1 = 40; box_nb2.y1 = 40;
-    rc = wuss_window_create(wuss, &box_nb2, "NB2", wuss_WINDOW_NO_TOGGLE_BLIT,
+    rc = wuss_window_create(wuss, &box_nb2, "NB2", wuss_WINDOW_NO_RESIZE_BLIT,
                             &delegate_nb2,
                             box_nb2.x1 - box_nb2.x0,
                             box_nb2.y1 - box_nb2.y0,
@@ -2178,7 +2178,7 @@ result_t wuss_test(const char *resources)
       dirty_area += (region.x1 - region.x0) * (region.y1 - region.y0);
     }
     if (dirty_area < full_area)
-      goto Failure; /* NO_TOGGLE_BLIT must fully redraw, not just the sliver */
+      goto Failure; /* NO_RESIZE_BLIT must fully redraw, not just the sliver */
 
     wuss_window_close(win_nb2);
   }
