@@ -2037,6 +2037,103 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_l);
   }
 
+  printf("test: resizing a window only invalidates the grown/shrunk sliver\n");
+
+  {
+    test_task_t    tc_m2;
+    wuss_task_t    delegate_m2;
+    box_t          box_m2, before2, after2, region;
+    wuss_window_t *win_m2;
+    int            i, dirty_area, full_area, interior_x, interior_y, interior_dirty;
+
+    tc_m2.redraw_count = 0;
+    tc_m2.mouse_count  = 0;
+    delegate_m2.handle    = test_handle;
+    delegate_m2.task_data = &tc_m2;
+    delegate_m2.bg        = wuss_NO_BACKGROUND;
+
+    box_m2.x0 = 0; box_m2.y0 = 0;
+    box_m2.x1 = 40; box_m2.y1 = 40;
+    rc = wuss_window_create(wuss,
+                            &box_m2,
+                            "M2",
+                            wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
+                            &delegate_m2,
+                            box_m2.x1 - box_m2.x0,
+                            box_m2.y1 - box_m2.y0,
+                            &win_m2);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush the creation invalidation first */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_m2, &before2);
+    interior_x = before2.x0 + 2; /* well inside the untouched top-left corner */
+    interior_y = before2.y0 + 2;
+
+    rc = wuss_window_resize(win_m2, 80, 80); /* grow */
+    if (rc != result_OK)
+      goto Failure;
+
+    if (wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+
+    interior_dirty = 0;
+    dirty_area     = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, interior_x, interior_y))
+        interior_dirty = 1;
+      dirty_area += (region.x1 - region.x0) * (region.y1 - region.y0);
+    }
+    if (interior_dirty)
+      goto Failure; /* untouched top-left corner, unchanged by growing bottom-right */
+
+    wuss_window_get_visible_bounds(win_m2, &after2);
+    full_area = (after2.x1 - after2.x0) * (after2.y1 - after2.y0);
+    if (dirty_area >= full_area)
+      goto Failure; /* must be less than a full redraw of the grown footprint */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    before2 = after2;
+
+    rc = wuss_window_resize(win_m2, 40, 40); /* shrink back */
+    if (rc != result_OK)
+      goto Failure;
+
+    if (wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+
+    interior_dirty = 0;
+    dirty_area     = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, interior_x, interior_y))
+        interior_dirty = 1;
+      dirty_area += (region.x1 - region.x0) * (region.y1 - region.y0);
+    }
+    if (interior_dirty)
+      goto Failure; /* still untouched: the corner that remains after shrinking */
+
+    full_area = (before2.x1 - before2.x0) * (before2.y1 - before2.y0);
+    if (dirty_area >= full_area)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_m2);
+  }
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;
