@@ -535,6 +535,7 @@ if(BUILD_TESTS)
         libraries/datastruct/vector/test/vector-test.c
         libraries/wuss/test/tasks/ball.c
         libraries/wuss/test/tasks/blank.c
+        libraries/wuss/test/tasks/chars.c
         libraries/wuss/test/tasks/checker.c
         libraries/wuss/test/tasks/curve.c
         libraries/wuss/test/tasks/gradient.c

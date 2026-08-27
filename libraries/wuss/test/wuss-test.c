@@ -31,6 +31,7 @@
 
 #include "tasks/ball.h"
 #include "tasks/blank.h"
+#include "tasks/chars.h"
 #include "tasks/checker.h"
 #include "tasks/curve.h"
 #include "tasks/gradient.h"
@@ -57,6 +58,7 @@ static bmfont_t        *g_daydream_font;
 static ball_task_t     g_ball_task;
 static text_task_t     g_text_task;
 static blank_task_t    g_blank_task;
+static chars_task_t    g_chars_task;
 static palette_task_t  g_palette_task;
 static image_task_t    g_image_task;
 static checker_task_t  g_checker_task;
@@ -67,6 +69,7 @@ static gradient_task_t g_gradient_task;
 static result_t spawn_ball(void)     { return ball_create(g_wuss, g_palette, &g_ball_task); }
 static result_t spawn_text(void)     { return text_create(g_wuss, g_palette, g_daydream_font, &g_text_task); }
 static result_t spawn_blank(void)    { return blank_create(g_wuss, g_npalette, &g_blank_task); }
+static result_t spawn_chars(void)    { return chars_create(g_wuss, g_palette, &g_chars_task); }
 static result_t spawn_palette(void)  { return palette_create(g_wuss, g_palette, g_npalette, &g_palette_task); }
 static result_t spawn_image(void)    { return image_create(g_wuss, g_palette, g_resources, &g_image_task); }
 static result_t spawn_checker(void)  { return checker_create(g_wuss, g_palette, &g_checker_task); }
@@ -77,6 +80,7 @@ static result_t spawn_gradient(void) { return gradient_create(g_wuss, &g_gradien
 static void destroy_ball(void)     { ball_destroy(&g_ball_task); }
 static void destroy_text(void)     { text_destroy(&g_text_task); }
 static void destroy_blank(void)    { blank_destroy(&g_blank_task); }
+static void destroy_chars(void)    { chars_destroy(&g_chars_task); }
 static void destroy_palette(void)  { palette_destroy(&g_palette_task); }
 static void destroy_image(void)    { image_destroy(&g_image_task); }
 static void destroy_checker(void)  { checker_destroy(&g_checker_task); }
@@ -89,6 +93,7 @@ static launcher_entry_t g_launcher_entries[] =
   { "Ball",     spawn_ball,     destroy_ball,     false },
   { "Text",     spawn_text,     destroy_text,     false },
   { "Blank",    spawn_blank,    destroy_blank,    false },
+  { "Chars",    spawn_chars,    destroy_chars,    false },
   { "Palette",  spawn_palette,  destroy_palette,  false },
   { "Image",    spawn_image,    destroy_image,    false },
   { "Checker",  spawn_checker,  destroy_checker,  false },
