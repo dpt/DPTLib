@@ -3,14 +3,13 @@
 /**
  * \file vector.h
  *
- * Vector is an abstracted array which can be resized by both length and
- * element width.
+ * Vector is an abstracted array which can be resized by both length and element
+ * width.
  *
- * Elements are of a fixed size, stored contiguously and are addressed by
- * index.
+ * Elements are of a fixed size, stored contiguously and are addressed by index.
  *
  * \warning If the vector is altered then pointers into the vector may be
- * invalidated (should the block move when reallocated).
+ *          invalidated (should the block move when reallocated).
  */
 
 #ifndef DATASTRUCT_VECTOR_H
@@ -83,8 +82,8 @@ result_t vector_set_length(vector_t *vector, unsigned int length);
 /* ----------------------------------------------------------------------- */
 
 /**
- * Reserve space for at least the specified number of elements in the
- * specified vector.
+ * Reserve space for at least the specified number of elements in the specified
+ * vector.
  *
  * \param[in] vector Vector to change.
  * \param[in] need   Required length.
@@ -107,8 +106,8 @@ size_t vector_width(const vector_t *vector);
 /**
  * Change the byte width of element stored in the specified vector.
  *
- * If the element width is reduced then any extra bytes are lost. If
- * increased, then zeroes are inserted.
+ * If the element width is reduced then any extra bytes are lost. If increased,
+ * then zeroes are inserted.
  *
  * \param[in] vector Vector to change.
  * \param[in] width  New element width.

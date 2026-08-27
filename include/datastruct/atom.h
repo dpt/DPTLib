@@ -6,16 +6,15 @@
  * Indexed data block store.
  *
  * Atoms are indices assigned to blocks of stored data. Identical data blocks
- * are assigned the same atom. Atoms belonging to the same set can be
- * directly compared avoiding the need to memcmp, strcmp, or otherwise
- * linearly compare the contents of the respective data blocks.
+ * are assigned the same atom. Atoms belonging to the same set can be directly
+ * compared avoiding the need to memcmp, strcmp, or otherwise linearly compare
+ * the contents of the respective data blocks.
  *
- * Data blocks can be retrieved by quoting an atom to atom_get. This returns
- * a pointer to the data block along with its length.
+ * Data blocks can be retrieved by quoting an atom to atom_get. This returns a
+ * pointer to the data block along with its length.
  *
- * To avoid heap overhead, atoms are stored in a series of fixed-size pools
- * of memory. The size of the pools may be specified when the set is first
- * created.
+ * To avoid heap overhead, atoms are stored in a series of fixed-size pools of
+ * memory. The size of the pools may be specified when the set is first created.
  */
 
 #ifndef DATASTRUCT_ATOM_H
@@ -57,15 +56,13 @@ atom_set_t *atom_create(void);
 /**
  * Create a new atom set using the specified data sizes.
  *
- * \param locpoolsz Size of a location pool, or zero for the default.
- *                  Set this to the number of entries you typically expect to
- *                  store.
- * \param blkpoolsz Size of a block pool, or zero for the default.
- *                  No inserted data block may be larger than this.
- *                  Increasing this value will use fewer individual block
- *                  pools, reducing heap overhead, at the expense of
- *                  potentially greater wasted space should the block pool
- *                  remain not fully allocated.
+ * \param locpoolsz Size of a location pool, or zero for the default. Set this
+ *                  to the number of entries you typically expect to store.
+ * \param blkpoolsz Size of a block pool, or zero for the default. No inserted
+ *                  data block may be larger than this. Increasing this value
+ *                  will use fewer individual block pools, reducing heap
+ *                  overhead, at the expense of potentially greater wasted space
+ *                  should the block pool remain not fully allocated.
  *
  * \return New atom set, or NULL if out of memory.
  */
@@ -117,8 +114,8 @@ void atom_delete(atom_set_t *set, atom_t atom);
  *
  * \param      set    Atom set.
  * \param      atom   Atom to retrieve.
- * \param[out] length Length of data block, in bytes.
- *                    NULL if length is not required.
+ * \param[out] length Length of data block, in bytes. NULL if length is not
+ *                    required.
  *
  * \return Data block.
  */
@@ -159,8 +156,8 @@ atom_t atom_for_block(atom_set_t          *set,
 /**
  * Delete an existing atom specified by data block.
  *
- * This is a convenience function equivalent to:
- *   atom_delete(set, atom_for_block(set, block, length)).
+ * This is a convenience function equivalent to: atom_delete(set,
+ * atom_for_block(set, block, length)).
  *
  * \param set    Atom set.
  * \param block  Data block to retrieve.

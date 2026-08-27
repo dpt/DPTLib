@@ -39,9 +39,9 @@ void bmfont_destroy(bmfont_t *bmfont);
 void bmfont_get_info(bmfont_t *bmfont, int *width, int *height);
 
 /**
- * Read the number of glyphs in the specified bitmap font. Glyphs are laid
- * out contiguously starting at ' ' (space, 0x20), so a char c has a glyph
- * iff c >= ' ' and c < ' ' + bmfont_get_count(bmfont).
+ * Read the number of glyphs in the specified bitmap font. Glyphs are laid out
+ * contiguously starting at ' ' (space, 0x20), so a char c has a glyph iff c >=
+ * ' ' and c < ' ' + bmfont_get_count(bmfont).
  *
  * \param[in]  bmfont   Bitmap font to query.
  * \return Number of glyphs in the font.

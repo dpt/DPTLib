@@ -63,8 +63,7 @@ wuss_mouse_action_t;
 typedef int wuss_colour_t;
 
 /**
- * Sentinel for wuss_window_create's bg meaning "no automatic background
- * fill".
+ * Sentinel for wuss_window_create's bg meaning "no automatic background fill".
  */
 #define wuss_NO_BACKGROUND ((wuss_colour_t) -1)
 
@@ -133,11 +132,10 @@ typedef enum wuss_window_flags
   wuss_WINDOW_NO_RESIZE      = 1 << 7,
 
   /**
-   * A resize (drag or toggle-size) always fully redraws the window's
-   * content instead of blitting the preserved region -- for a task whose
-   * rendering depends on the window's size in ways redraw can't patch
-   * incrementally (e.g. a palette that lays itself out across the whole
-   * window).
+   * A resize (drag or toggle-size) always fully redraws the window's content
+   * instead of blitting the preserved region -- for a task whose rendering
+   * depends on the window's size in ways redraw can't patch incrementally (e.g.
+   * a palette that lays itself out across the whole window).
    */
   wuss_WINDOW_NO_RESIZE_BLIT = 1 << 8
 }
@@ -156,8 +154,8 @@ wuss_zorder_t;
 typedef struct wuss_config
 {
   /**
-   * Titlebar height in pixels, or 0 to derive from font metrics (or a
-   * built-in fallback if no font).
+   * Titlebar height in pixels, or 0 to derive from font metrics (or a built-in
+   * fallback if no font).
    */
   int            titlebar_height;
 
@@ -169,19 +167,19 @@ wuss_config_t;
 /**
  * Create a window manager.
  *
- * \param[in]  scr      Screen to draw windows onto. Not owned; must
- *                      outlive the wuss_t.
+ * \param[in]  scr      Screen to draw windows onto. Not owned; must outlive the
+ *                      wuss_t.
  * \param[in]  font     Font used to draw titlebar labels, or NULL to draw
  *                      titlebars unlabelled. Not owned.
- * \param[in]  palette  System palette, copied in, or NULL to use a
- *                      built-in default palette.
- * \param[in]  npalette Number of entries in palette. Ignored if palette
- *                      is NULL.
+ * \param[in]  palette  System palette, copied in, or NULL to use a built-in
+ *                      default palette.
+ * \param[in]  npalette Number of entries in palette. Ignored if palette is
+ *                      NULL.
  * \param[in]  config   Creation-time configuration, or NULL for defaults.
  * \param[out] wuss     Newly created window manager.
  * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if any of
- *         config's palette entries are out of range for the palette, or
- *         another appropriate result code.
+ *         config's palette entries are out of range for the palette, or another
+ *         appropriate result code.
  */
 result_t wuss_create(screen_t             *scr,
                      bmfont_t             *font,
@@ -198,8 +196,8 @@ result_t wuss_create(screen_t             *scr,
 void wuss_destroy(wuss_t *doomed);
 
 /**
- * Fetch the system font (see wuss_create), for tasks to draw their own
- * content in the same face as window titlebars.
+ * Fetch the system font (see wuss_create), for tasks to draw their own content
+ * in the same face as window titlebars.
  *
  * \param[in] wuss Window manager.
  * \return System font, or NULL if none was given to wuss_create.
@@ -210,18 +208,17 @@ bmfont_t *wuss_get_font(const wuss_t *wuss);
  * Redraw every window, back-to-front.
  *
  * \param[in] wuss Window manager.
- * \return \ref result_OK on success, or the last non-OK result returned by
- *         a task's redraw callback (drawing continues past a failing
- *         window rather than stopping).
+ * \return \ref result_OK on success, or the last non-OK result returned by a
+ *         task's redraw callback (drawing continues past a failing window
+ *         rather than stopping).
  */
 result_t wuss_redraw(wuss_t *wuss);
 
 /**
- * Mark a screen-space region dirty. Window creation, destruction, move,
- * resize and bring-to-front invalidate their own affected regions
- * automatically; tasks must call this themselves when their content
- * changes (e.g. an animation), passing the union of the old and new
- * screen-space areas that need repainting.
+ * Mark a screen-space region dirty. Window creation, destruction, move, resize
+ * and bring-to-front invalidate their own affected regions automatically; tasks
+ * must call this themselves when their content changes (e.g. an animation),
+ * passing the union of the old and new screen-space areas that need repainting.
  *
  * \param[in] wuss Window manager.
  * \param[in] box  Screen-space region to mark dirty.
@@ -232,21 +229,20 @@ result_t wuss_invalidate(wuss_t *wuss, const box_t *box);
 /**
  * Redraw only the region accumulated by wuss_invalidate calls (and any
  * automatic invalidation from window management) since the last redraw,
- * back-to-front, then clear the dirty region. Does nothing if nothing is
- * dirty.
+ * back-to-front, then clear the dirty region. Does nothing if nothing is dirty.
  *
  * \param[in] wuss Window manager.
- * \return \ref result_OK on success, or the last non-OK result returned by
- *         a task's redraw callback.
+ * \return \ref result_OK on success, or the last non-OK result returned by a
+ *         task's redraw callback.
  */
 result_t wuss_redraw_dirty(wuss_t *wuss);
 
 /**
  * Fetch the number of dirty regions currently accumulated (see
  * wuss_invalidate). Regions are self-coalescing: an invalidation already
- * covered by an existing region is discarded, and one sharing a complete
- * edge with an existing region extends it in place, so this stays small
- * under most usage.
+ * covered by an existing region is discarded, and one sharing a complete edge
+ * with an existing region extends it in place, so this stays small under most
+ * usage.
  *
  * \param[in] wuss Window manager.
  * \return Number of dirty regions, 0 if nothing is dirty.
@@ -254,28 +250,27 @@ result_t wuss_redraw_dirty(wuss_t *wuss);
 int wuss_get_dirty_count(const wuss_t *wuss);
 
 /**
- * Fetch one of the current accumulated dirty regions (see
- * wuss_invalidate). Wuss only repaints windows, not background
- * between/behind them, so a caller whose invalidations can expose
- * background (e.g. after a window move) should clear these regions itself
- * before calling wuss_redraw_dirty.
+ * Fetch one of the current accumulated dirty regions (see wuss_invalidate).
+ * Wuss only repaints windows, not background between/behind them, so a caller
+ * whose invalidations can expose background (e.g. after a window move) should
+ * clear these regions itself before calling wuss_redraw_dirty.
  *
  * \param[in]  wuss  Window manager.
- * \param[in]  index Index of the region to fetch, 0 to
- *                   wuss_get_dirty_count() - 1.
+ * \param[in]  index Index of the region to fetch, 0 to wuss_get_dirty_count() -
+ *                   1.
  * \param[out] out   Filled in with the dirty region.
  */
 void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
 
 /**
  * Deliver a mouse-down or mouse-up event (action must be wuss_MOUSE_DOWN or
- * wuss_MOUSE_UP). Hit-tests the topmost window at (x,y). On a down, a
- * titlebar click brings the window to front if button is Select (Adjust
- * and Menu leave the z-order unchanged) and starts a drag; on an up, an
- * in-progress drag is ended instead of hit-testing (an Adjust click with
- * no move in between sends the window to the back rather than dragging
- * it). A click on the window's content never changes the z-order and is
- * delivered to the task in window-local content coordinates.
+ * wuss_MOUSE_UP). Hit-tests the topmost window at (x,y). On a down, a titlebar
+ * click brings the window to front if button is Select (Adjust and Menu leave
+ * the z-order unchanged) and starts a drag; on an up, an in-progress drag is
+ * ended instead of hit-testing (an Adjust click with no move in between sends
+ * the window to the back rather than dragging it). A click on the window's
+ * content never changes the z-order and is delivered to the task in
+ * window-local content coordinates.
  *
  * \param[in]  wuss   Window manager.
  * \param[in]  p      Screen coordinate.
@@ -293,10 +288,10 @@ result_t wuss_mouse_click(wuss_t              *wuss,
                           wuss_window_t      **hit);
 
 /**
- * Deliver a mouse-move event. Updates the dragged window's position if a
- * drag is active (invalidating the affected region; call wuss_redraw_dirty
- * to actually repaint it), otherwise hit-tests and delivers to the
- * window's task as per wuss_mouse_click.
+ * Deliver a mouse-move event. Updates the dragged window's position if a drag
+ * is active (invalidating the affected region; call wuss_redraw_dirty to
+ * actually repaint it), otherwise hit-tests and delivers to the window's task
+ * as per wuss_mouse_click.
  *
  * \param[in]  wuss Window manager.
  * \param[in]  p    Screen coordinate.
@@ -309,15 +304,15 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit);
 
 /**
  * Deliver a scroll event. Hit-tests the topmost window at p as per
- * wuss_mouse_click, and delivers to the window's task in window-local
- * content coordinates; dropped if the hit window has no scroll callback,
- * or the pointer is over its titlebar.
+ * wuss_mouse_click, and delivers to the window's task in window-local content
+ * coordinates; dropped if the hit window has no scroll callback, or the pointer
+ * is over its titlebar.
  *
  * \param[in]  wuss  Window manager.
  * \param[in]  p     Screen coordinate.
  * \param[in]  delta Scroll amount; sign and units are caller-defined.
- * \param[out] hit   Window under the pointer, or NULL if none. May be NULL
- *                   if not needed.
+ * \param[out] hit   Window under the pointer, or NULL if none. May be NULL if
+ *                   not needed.
  * \return \ref result_OK, or a result code returned by the task's scroll
  *         callback.
  */
