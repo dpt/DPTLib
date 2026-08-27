@@ -244,7 +244,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, uint32_t *);                                  \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (uint32_t) (bp[w0] | (bp[w1] << 8) | (bp[w2] << 16) | (bp[w3] << 24)); \
+            *a++ = (uint32_t) ((uint32_t) bp[w0] | ((uint32_t) bp[w1] << 8) | ((uint32_t) bp[w2] << 16) | ((uint32_t) bp[w3] << 24)); \
             bp += 4;                                                     \
           }                                                              \
         }                                                                \
@@ -257,7 +257,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, uint64_t *);                                  \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (uint32_t) (bp[w0] | (bp[w1] << 8) | (bp[w2] << 16) | (bp[w3] << 24)); \
+            *a++ = (uint32_t) ((uint32_t) bp[w0] | ((uint32_t) bp[w1] << 8) | ((uint32_t) bp[w2] << 16) | ((uint32_t) bp[w3] << 24)); \
             bp += 4;                                                     \
           }                                                              \
         }                                                                \
@@ -270,7 +270,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, int64_t *);                                   \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (int32_t) (bp[w0] | (bp[w1] << 8) | (bp[w2] << 16) | (bp[w3] << 24)); \
+            *a++ = (int32_t) ((uint32_t) bp[w0] | ((uint32_t) bp[w1] << 8) | ((uint32_t) bp[w2] << 16) | ((uint32_t) bp[w3] << 24)); \
             bp += 4;                                                     \
           }                                                              \
         }                                                                \
@@ -473,7 +473,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
         while (n--)                                                      \
         {                                                                \
           pI = va_arg(args, uint32_t *);                                 \
-          *pI = (uint32_t) (bp[w0] | (bp[w1] << 8) | (bp[w2] << 16) | (bp[w3] << 24)); \
+          *pI = (uint32_t) ((uint32_t) bp[w0] | ((uint32_t) bp[w1] << 8) | ((uint32_t) bp[w2] << 16) | ((uint32_t) bp[w3] << 24)); \
           bp += 4;                                                       \
         }                                                                \
         break;                                                           \
@@ -482,7 +482,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
         while (n--)                                                      \
         {                                                                \
           pQ = va_arg(args, uint64_t *);                                 \
-          *pQ = (uint32_t) (bp[w0] | (bp[w1] << 8) | (bp[w2] << 16) | (bp[w3] << 24)); \
+          *pQ = (uint32_t) ((uint32_t) bp[w0] | ((uint32_t) bp[w1] << 8) | ((uint32_t) bp[w2] << 16) | ((uint32_t) bp[w3] << 24)); \
           bp += 4;                                                       \
         }                                                                \
         break;                                                           \
@@ -491,7 +491,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
         while (n--)                                                      \
         {                                                                \
           pq = va_arg(args, int64_t *);                                  \
-          *pq = (int32_t) (bp[w0] | (bp[w1] << 8) | (bp[w2] << 16) | (bp[w3] << 24)); \
+          *pq = (int32_t) ((uint32_t) bp[w0] | ((uint32_t) bp[w1] << 8) | ((uint32_t) bp[w2] << 16) | ((uint32_t) bp[w3] << 24)); \
           bp += 4;                                                       \
         }                                                                \
         break;                                                           \
