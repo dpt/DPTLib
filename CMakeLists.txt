@@ -331,6 +331,7 @@ set(WUSS_SOURCES
     libraries/wuss/furniture/toggle-box.c
     libraries/wuss/furniture/vscroll-box.c
     libraries/wuss/furniture.h
+    libraries/wuss/get-font.c
     libraries/wuss/idle.c
     libraries/wuss/impl.h
     libraries/wuss/invalidate.c
