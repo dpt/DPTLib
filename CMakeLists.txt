@@ -28,6 +28,7 @@ if(CCACHE_FOUND)
 endif(CCACHE_FOUND)
 
 option(USE_FORTIFY "Use Fortify" OFF)
+option(USE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
@@ -393,6 +394,11 @@ endif()
 if(USE_FORTIFY)
     target_compile_definitions(DPTLib PRIVATE FORTIFY)
     target_link_libraries(DPTLib PUBLIC Fortify)
+endif()
+
+if(USE_ASAN)
+    target_compile_options(DPTLib PUBLIC -fsanitize=address,undefined -g -O0)
+    target_link_options(DPTLib PUBLIC -fsanitize=address,undefined)
 endif()
 
 if(DPTLIB_IMAGES_READ_ONLY)
