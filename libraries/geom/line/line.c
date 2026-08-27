@@ -13,6 +13,58 @@ typedef unsigned int outcode_t;
 #define outcode_BOTTOM (1u << 2)
 #define outcode_TOP    (1u << 3)
 
+/* Compute (a * b) / c, truncating toward zero, without overflow and
+ * without using a 64-bit or floating-point intermediate. Assumes the
+ * true result fits in an int (guaranteed here as it's a coordinate). */
+static int muldiv(int a, int b, int c)
+{
+  unsigned int a_lo, a_hi, b_lo, b_hi;
+  unsigned int lo_lo, hi_lo, lo_hi, hi_hi;
+  unsigned int cross, cross_carry, lo_carry;
+  unsigned int hi, lo;
+  unsigned int ua, ub, uc;
+  unsigned int rem, quot, bit;
+  int          neg;
+  int          i;
+
+  neg = 0;
+  if (a < 0) { neg = !neg; ua = 0u - (unsigned int) a; } else ua = (unsigned int) a;
+  if (b < 0) { neg = !neg; ub = 0u - (unsigned int) b; } else ub = (unsigned int) b;
+  if (c < 0) { neg = !neg; uc = 0u - (unsigned int) c; } else uc = (unsigned int) c;
+
+  /* widen ua * ub into a 64-bit result held as two 32-bit halves */
+  a_lo = ua & 0xFFFFu; a_hi = ua >> 16;
+  b_lo = ub & 0xFFFFu; b_hi = ub >> 16;
+
+  lo_lo = a_lo * b_lo;
+  hi_lo = a_hi * b_lo;
+  lo_hi = a_lo * b_hi;
+  hi_hi = a_hi * b_hi;
+
+  cross       = hi_lo + lo_hi;
+  cross_carry = (cross < hi_lo) ? (1u << 16) : 0u;
+  lo          = lo_lo + (cross << 16);
+  lo_carry    = (lo < lo_lo) ? 1u : 0u;
+  hi          = hi_hi + (cross >> 16) + cross_carry + lo_carry;
+
+  /* long-divide the 64-bit (hi:lo) dividend by uc, one bit at a time */
+  rem  = 0;
+  quot = 0;
+  for (i = 63; i >= 0; i--)
+  {
+    bit = (i >= 32) ? ((hi >> (i - 32)) & 1u) : ((lo >> i) & 1u);
+    rem = (rem << 1) | bit;
+    if (rem >= uc)
+    {
+      rem -= uc;
+      if (i < 32)
+        quot |= (1u << i);
+    }
+  }
+
+  return neg ? -(int) quot : (int) quot;
+}
+
 static INLINE outcode_t compute_outcode(const box_t *clip, int x, int y)
 {
   outcode_t code;
@@ -80,23 +132,23 @@ int line_clip(const box_t *clip,
 
       if (oc & outcode_TOP)
       {
-        x = x0 + w * (clip->y1 - 1 - y0) / h;
+        x = x0 + muldiv(w, clip->y1 - 1 - y0, h);
         y = clip->y1 - 1;
       }
       else if (oc & outcode_BOTTOM)
       {
-        x = x0 + w * (clip->y0 - y0) / h;
+        x = x0 + muldiv(w, clip->y0 - y0, h);
         y = clip->y0;
       }
       else if (oc & outcode_RIGHT)
       {
         x = clip->x1 - 1;
-        y = y0 + h * (clip->x1 - 1 - x0) / w;
+        y = y0 + muldiv(h, clip->x1 - 1 - x0, w);
       }
       else if (oc & outcode_LEFT)
       {
         x = clip->x0;
-        y = y0 + h * (clip->x0 - x0) / w;
+        y = y0 + muldiv(h, clip->x0 - x0, w);
       }
 
       if (oc == oc0)
