@@ -50,7 +50,7 @@ result_t text_create(wuss_t         *wuss,
   rc = wuss_window_create(wuss,
                           &box,
                           "Lorem Ipsum",
-                          wuss_WINDOW_NONE,
+                          wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
                           &delegate,
                           box.x1 - box.x0,
                           box.y1 - box.y0,
