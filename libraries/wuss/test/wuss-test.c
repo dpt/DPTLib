@@ -2183,6 +2183,94 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_nb2);
   }
 
+  printf("test: dragging a clear window onto an occluder redraws the occluder\n");
+
+  {
+    test_task_t    tc_n, tc_o;
+    wuss_task_t    delegate_n, delegate_o;
+    box_t          box_n, box_o, exposed, region;
+    wuss_window_t *win_n, *win_o;
+    int            i, exposed_dirty;
+
+    tc_n.redraw_count = 0;
+    tc_n.mouse_count  = 0;
+    delegate_n.handle    = test_handle;
+    delegate_n.task_data = &tc_n;
+    delegate_n.bg        = wuss_NO_BACKGROUND;
+
+    box_n.x0 = 0; box_n.y0 = 140; /* clear of any occluder to start */
+    box_n.x1 = 60; box_n.y1 = 170;
+    rc = wuss_window_create(wuss, &box_n, "N",
+                            wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_n,
+                            box_n.x1 - box_n.x0,
+                            box_n.y1 - box_n.y0,
+                            &win_n);
+    if (rc != result_OK)
+      goto Failure;
+
+    tc_o.redraw_count = 0;
+    tc_o.mouse_count  = 0;
+    delegate_o.handle    = test_handle;
+    delegate_o.task_data = &tc_o;
+    delegate_o.bg        = wuss_NO_BACKGROUND;
+
+    box_o.x0 = 90; box_o.y0 = 140; /* N will be dragged partly on top of O */
+    box_o.x1 = 130; box_o.y1 = 180;
+    rc = wuss_window_create(wuss, &box_o, "O",
+                            wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
+                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
+                            wuss_WINDOW_NO_RESIZE,
+                            &delegate_o,
+                            box_o.x1 - box_o.x0,
+                            box_o.y1 - box_o.y0,
+                            &win_o);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* O is created after N, so O is topmost -- N's destination footprint
+     * will overlap an occluder above it in z-order. */
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creations first */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_n, &visible);
+
+    /* Move N far enough right that its new footprint lands partly under O
+     * (which stays wholly untouched), while its old footprint started
+     * entirely clear of O. */
+    wuss_window_move(win_n, (point_t) { visible.x0 + 80, visible.y0 + 10 });
+
+    wuss_window_get_visible_bounds(win_n, &visible);
+    exposed.x0 = visible.x0; exposed.y0 = visible.y0;
+    exposed.x1 = box_o.x0;   exposed.y1 = visible.y1; /* N's part left of O */
+
+    /* The part of N's new footprint not covered by O must be queued dirty
+     * right away, from the fallback clipped redraw -- if the blit fast path
+     * had wrongly fired instead (because it only checked the old footprint
+     * for occlusion), N's stale pixels would have been pasted straight over
+     * O with no invalidation of this exposed sliver at all. */
+    exposed_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_intersects(&region, &exposed))
+        exposed_dirty = 1;
+    }
+    if (!exposed_dirty)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_n);
+    wuss_window_close(win_o);
+  }
+
   printf("test: destroy mid-drag then move doesn't crash\n");
 
   tc_c.redraw_count = 0;
