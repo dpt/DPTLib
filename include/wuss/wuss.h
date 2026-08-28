@@ -336,6 +336,18 @@ result_t wuss_scroll(wuss_t         *wuss,
                      int             delta,
                      wuss_window_t **hit);
 
+/**
+ * Broadcast a wuss_EVENT_IDLE event to every window's task, in z-order.
+ * Intended to be called once per main-loop iteration, after other pending input
+ * has been handled, so tasks can drive their own animation/timers without the
+ * caller stepping each one individually.
+ *
+ * \param[in] wuss Window manager whose windows' tasks should go idle.
+ * \return \ref result_OK on success, else the first non-OK result returned by a
+ *         task's handle callback.
+ */
+result_t wuss_idle(wuss_t *wuss);
+
 #ifdef __cplusplus
 }
 #endif

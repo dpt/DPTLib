@@ -150,18 +150,6 @@ wuss_task_t wuss_task_start(wuss_event_fn_t *handle,
 result_t wuss_task_stop(wuss_window_t *window);
 
 /**
- * Broadcast a wuss_EVENT_IDLE event to every window's task, in z-order.
- * Intended to be called once per main-loop iteration, after other pending input
- * has been handled, so tasks can drive their own animation/timers without the
- * caller stepping each one individually.
- *
- * \param[in] wuss Window manager whose windows' tasks should go idle.
- * \return \ref result_OK on success, else the first non-OK result returned by a
- *         task's handle callback.
- */
-result_t wuss_idle(wuss_t *wuss);
-
-/**
  * Create a window.
  *
  * Furniture (titlebar/outline) is added outside \p content, not carved out of
