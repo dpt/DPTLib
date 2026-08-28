@@ -25,6 +25,7 @@
 
 #define WUSS_ICON_INSET   3  /* shared by close/back/toggle/resize icons and scrollbar breadth */
 #define WUSS_MIN_CONTENT  20 /* resize-drag floor: content can never be squeezed smaller than this */
+#define WUSS_SCROLL_INSET 2  /* sausage cross-axis margin from its well's edges, purely cosmetic */
 
 /* Internal per-window state, distinct from the public wuss_window_flags_t
  * appearance flags a caller sets at creation -- room to grow without
