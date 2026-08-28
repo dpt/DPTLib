@@ -36,9 +36,9 @@ result_t wuss_mouse_click(wuss_t              *wuss,
 
   region = wuss__furniture_hit_test(win, (point_t) { x, y });
 
-  if (region == wuss_FURNITURE_CLOSE &&
-      action == wuss_MOUSE_DOWN     &&
-      button == wuss_BUTTON_SELECT)
+  if (region == wuss_FURNITURE_CLOSE  &&
+      action == wuss_MOUSE_DOWN       &&
+      (button & wuss_BUTTON_SELECT))
   {
     if (win->task.handle == NULL)
       return result_OK;
@@ -49,9 +49,9 @@ result_t wuss_mouse_click(wuss_t              *wuss,
 
   if (region == wuss_FURNITURE_BACK && action == wuss_MOUSE_DOWN)
   {
-    if (button == wuss_BUTTON_SELECT)
+    if (button & wuss_BUTTON_SELECT)
       wuss_window_restack(win, wuss_ZORDER_BACK);
-    else if (button == wuss_BUTTON_ADJUST)
+    else if (button & wuss_BUTTON_ADJUST)
       wuss_window_restack(win, wuss_ZORDER_FRONT);
     return result_OK;
   }
@@ -63,20 +63,22 @@ result_t wuss_mouse_click(wuss_t              *wuss,
       region == wuss_FURNITURE_HSCROLL_RIGHT)
   {
     if (action == wuss_MOUSE_DOWN &&
-        (button == wuss_BUTTON_SELECT || button == wuss_BUTTON_ADJUST))
+        (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
     {
       /* Adjust-clicking a scroll arrow steps the opposite way to the arrow it
        * points, so one arrow can be worked in both directions without moving
        * the pointer. Toggle-size stays Select-only. */
       int step;
 
-      step = (button == wuss_BUTTON_ADJUST) ? -WUSS_SCROLL_STEP
-                                            :  WUSS_SCROLL_STEP;
+      /* Select wins a Select+Adjust chord, so a chord never scrolls backwards
+       * unexpectedly. */
+      step = (button & wuss_BUTTON_SELECT) ?  WUSS_SCROLL_STEP
+                                           : -WUSS_SCROLL_STEP;
 
       switch (region)
       {
       case wuss_FURNITURE_TOGGLE_SIZE:
-        if (button == wuss_BUTTON_SELECT)
+        if (button & wuss_BUTTON_SELECT)
           wuss__furniture_toggle_size(win);
         break;
       case wuss_FURNITURE_VSCROLL_UP:
@@ -104,7 +106,7 @@ result_t wuss_mouse_click(wuss_t              *wuss,
     {
       box_t content;
 
-      if (button == wuss_BUTTON_SELECT)
+      if (button & wuss_BUTTON_SELECT)
         wuss_window_restack(win, wuss_ZORDER_FRONT);
 
       wuss__content_box(win, &content);
@@ -124,7 +126,7 @@ result_t wuss_mouse_click(wuss_t              *wuss,
     {
       point_t scroll;
 
-      if (button == wuss_BUTTON_SELECT)
+      if (button & wuss_BUTTON_SELECT)
         wuss_window_restack(win, wuss_ZORDER_FRONT);
 
       wuss_window_get_scroll(win, &scroll);

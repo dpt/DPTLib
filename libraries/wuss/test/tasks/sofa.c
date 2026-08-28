@@ -381,7 +381,7 @@ static result_t sofa_mouse(wuss_window_t *window, wuss_button_t button, void *ta
 
   sc = task_data;
 
-  if (button == wuss_BUTTON_ADJUST)
+  if (button & wuss_BUTTON_ADJUST)
   {
     sc->shape = (sc->shape + 1) % sofa_SHAPE__LIMIT;
     sc->turns = 0;
