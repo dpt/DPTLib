@@ -38,6 +38,7 @@
 #include "tasks/image.h"
 #include "tasks/launcher.h"
 #include "tasks/palette.h"
+#include "tasks/porter-duff.h"
 #include "tasks/sofa.h"
 #include "tasks/text.h"
 
@@ -65,6 +66,7 @@ static checker_task_t  g_checker_task;
 static curve_task_t    g_curve_task;
 static sofa_task_t     g_sofa_task;
 static gradient_task_t g_gradient_task;
+static porter_duff_task_t g_porter_duff_task;
 
 static result_t spawn_ball(void)     { return ball_create(g_wuss, g_palette, &g_ball_task); }
 static result_t spawn_text(void)     { return text_create(g_wuss, g_palette, g_daydream_font, &g_text_task); }
@@ -76,6 +78,7 @@ static result_t spawn_checker(void)  { return checker_create(g_wuss, g_palette, 
 static result_t spawn_curve(void)    { return curve_create(g_wuss, g_palette, &g_curve_task); }
 static result_t spawn_sofa(void)     { return sofa_create(g_wuss, g_palette, &g_sofa_task); }
 static result_t spawn_gradient(void) { return gradient_create(g_wuss, &g_gradient_task); }
+static result_t spawn_porter_duff(void) { return porter_duff_create(g_wuss, g_palette, g_daydream_font, g_resources, &g_porter_duff_task); }
 
 static void destroy_ball(void)     { ball_destroy(&g_ball_task); }
 static void destroy_text(void)     { text_destroy(&g_text_task); }
@@ -87,6 +90,7 @@ static void destroy_checker(void)  { checker_destroy(&g_checker_task); }
 static void destroy_curve(void)    { curve_destroy(&g_curve_task); }
 static void destroy_sofa(void)     { sofa_destroy(&g_sofa_task); }
 static void destroy_gradient(void) { gradient_destroy(&g_gradient_task); }
+static void destroy_porter_duff(void) { porter_duff_destroy(&g_porter_duff_task); }
 
 static launcher_entry_t g_launcher_entries[] =
 {
@@ -99,7 +103,8 @@ static launcher_entry_t g_launcher_entries[] =
   { "Checker",  spawn_checker,  destroy_checker,  false },
   { "Curve",    spawn_curve,    destroy_curve,    false },
   { "Sofa",     spawn_sofa,     destroy_sofa,     false },
-  { "Gradient", spawn_gradient, destroy_gradient, false }
+  { "Gradient", spawn_gradient, destroy_gradient, false },
+  { "Porter-Duff", spawn_porter_duff, destroy_porter_duff, false }
 };
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)

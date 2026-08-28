@@ -17,7 +17,7 @@
 
 #define LAUNCHER_ROW_HEIGHT 20
 #define LAUNCHER_PAD        4
-#define LAUNCHER_WIDTH      140
+#define LAUNCHER_WIDTH      160
 
 result_t launcher_create(wuss_t           *wuss,
                          launcher_entry_t *entries,
