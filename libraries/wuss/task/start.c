@@ -1,8 +1,8 @@
-/* task-start.c -- wuss - minimal window manager */
+/* start.c -- wuss - minimal window manager */
 
 #include <stddef.h>
 
-#include "wuss/window.h"
+#include "wuss/task.h"
 
 wuss_task_t wuss_task_start(wuss_event_fn_t *handle,
                             void            *task_data)
