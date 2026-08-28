@@ -305,9 +305,7 @@ static result_t sofa_redraw(const wuss_event_t *event, void *task_data)
 
   screen_draw_rect(scr,
                    content->x0,
-                   content->y0,
-                   content->x1 - content->x0,
-                   content->y1 - content->y0,
+                   content->y0, box_size(content),
                    sc->bg);
 
   cx   = bounds->x0 - sx + (bounds->x1 - bounds->x0) / 2;

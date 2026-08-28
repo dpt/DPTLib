@@ -7,10 +7,11 @@
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/span.h"
+#include "geom/size.h"
 
 /** Common bitmap structure members (used for screens too). */
 #define bitmap_COMMON_MEMBERS \
-  int           width, height; /**< Width and height of the bitmap in pixels. */ \
+  size2d_t      size;          /**< Width and height of the bitmap in pixels. */ \
   pixelfmt_t    format;        /**< Pixel format of the bitmap. */               \
   int           rowbytes;      /**< Number of bytes per row of the bitmap. */    \
   colour_t     *palette;       /**< Palette of the bitmap, or NULL. */           \
@@ -32,8 +33,7 @@ bitmap_t;
  * Initialise a previously allocated bitmap structure.
  *
  * \param[in] bm       Bitmap to initialise.
- * \param[in] width    Width of the bitmap in pixels.
- * \param[in] height   Height of the bitmap in pixels.
+ * \param[in] size     Width and height of the bitmap in pixels.
  * \param[in] fmt      Pixel format of the bitmap.
  * \param[in] rowbytes Number of bytes per row of the bitmap.
  * \param[in] palette  Palette of the bitmap, or NULL.
@@ -41,8 +41,7 @@ bitmap_t;
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
 result_t bitmap_init(bitmap_t       *bm,
-                     int             width,
-                     int             height,
+                     size2d_t        size,
                      pixelfmt_t      fmt,
                      int             rowbytes,
                      const colour_t *palette,

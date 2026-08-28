@@ -9,8 +9,7 @@
 #include "framebuf/span-registry.h"
 
 result_t bitmap_init(bitmap_t       *bm,
-                     int             width,
-                     int             height,
+                     size2d_t        size,
                      pixelfmt_t      fmt,
                      int             rowbytes,
                      const colour_t *palette,
@@ -20,8 +19,7 @@ result_t bitmap_init(bitmap_t       *bm,
 
   assert(bm);
 
-  bm->width    = width;
-  bm->height   = height;
+  bm->size     = size;
   bm->format   = fmt;
   bm->rowbytes = rowbytes;
   bm->palette  = NULL;
@@ -77,7 +75,7 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
     case 2: px *= 0x11; break;
     case 3: px *= 0x01; break;
     }
-    memset(bm->base, px, bm->rowbytes * bm->height);
+    memset(bm->base, px, bm->rowbytes * bm->size.h);
     break;
 
   case 5: /* 32bpp - pixels are ints */
@@ -87,18 +85,18 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
     pixelfmt_any32_t tmp2 = tmp1 ^ (tmp1 >> 8);
     if (tmp2 == 0)
     {
-      memset(bm->base, px, bm->rowbytes * bm->height);
+      memset(bm->base, px, bm->rowbytes * bm->size.h);
     }
     else
     {
       pixelfmt_any32_t *pixels;
 
       pixels = bm->base;
-      for (y = 0; y < bm->height; y++)
+      for (y = 0; y < bm->size.h; y++)
       {
-        for (x = 0; x < bm->width; x++)
+        for (x = 0; x < bm->size.w; x++)
           *pixels++ = px;
-        pixels += bm->rowbytes / sizeof(*pixels) - bm->width;
+        pixels += bm->rowbytes / sizeof(*pixels) - bm->size.w;
       }
     }
   }
@@ -126,7 +124,7 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   for (i = 0; i < 16; i++)
     map[i] = colour_to_pixel(src->palette, 16, src->palette[i], pixelfmt_bgrx8888);
 
-  outpixels = malloc(src->width * sizeof(pixelfmt_bgrx8888_t) * src->height); // rowbytes rounding needed?
+  outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h); // rowbytes rounding needed?
   if (outpixels == NULL)
     return result_OOM;
 
@@ -138,18 +136,18 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   }
 
   rc = bitmap_init(dst,
-                   src->width, src->height,
+                   src->size,
                    pixelfmt_bgrx8888,
-                   src->width * sizeof(pixelfmt_bgrx8888_t),
+                   src->size.w * sizeof(pixelfmt_bgrx8888_t),
                    NULL,
                    outpixels);
   if (rc)
     return rc;
 
   inpixels = src->base;
-  for (y = 0; y < src->height; y++)
+  for (y = 0; y < src->size.h; y++)
   {
-    for (x = 0; x < src->width / 8; x++)
+    for (x = 0; x < src->size.w / 8; x++)
     {
       pixelfmt_p4_t in = *inpixels++; // fetches 8 pixels
       // 0xABCDEFGH is 8 4bpp pixels shown H,G,F,E,D,C,B,A

@@ -29,8 +29,8 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
      * account for scrollbar/resize-icon furniture (carve), which sits
      * outside the content area same as create.c/resize.c do, or the window
      * ends up carve.x/carve.y short of the doc size it's meant to reach. */
-    available_width  = window->wuss->scr->width  - window->visible.x0 - 2 * outline_px - carve.x;
-    available_height = window->wuss->scr->height - window->visible.y0 - 2 * outline_px - titlebar_height - carve.y;
+    available_width  = window->wuss->scr->size.w  - window->visible.x0 - 2 * outline_px - carve.x;
+    available_height = window->wuss->scr->size.h - window->visible.y0 - 2 * outline_px - titlebar_height - carve.y;
 
     /* a window dragged far enough off-screen leaves no room at all to the
      * screen edge, so the above can go negative -- floor it like

@@ -124,8 +124,7 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
 
   png_read_image(png_ptr, row_pointers);
 
-  bitmap_init(bm,
-              pngwidth, pngheight,
+  bitmap_init(bm, (size2d_t) { pngwidth, pngheight },
               bm_fmt,
               bm_rowbytes,
               NULL, /* no palette */

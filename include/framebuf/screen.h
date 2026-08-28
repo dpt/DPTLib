@@ -24,16 +24,14 @@ screen_t;
  * Initialize a previously allocated screen structure.
  *
  * \param[in] scr       Screen to initialize.
- * \param[in] width     Width of screen in pixels.
- * \param[in] height    Height of screen in pixels.
+ * \param[in] size      Width and height of the screen in pixels.
  * \param[in] fmt       Pixel format of the screen.
  * \param[in] rowbytes  Number of bytes per row of the screen.
  * \param[in] palette   Palette of the screen, or NULL.
  * \param[in] base      Base address of the screen.
  */
 void screen_init(screen_t  *scr,
-                 int        width,
-                 int        height,
+                 size2d_t   size,
                  pixelfmt_t fmt,
                  int        rowbytes,
                  colour_t  *palette,
@@ -73,13 +71,12 @@ void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour);
  * \param[in] scr     Screen to draw upon.
  * \param[in] x       X coordinate of leftmost point of rectangle.
  * \param[in] y       Y coordinate of topmost point of rectangle.
- * \param[in] width   Width of rectangle.
- * \param[in] height  Height of rectangle.
+ * \param[in] size    Width and height of rectangle.
  * \param[in] colour  Colour of rectangle.
  */
 void screen_draw_rect(screen_t *scr,
                       int x, int y,
-                      int width, int height,
+                      size2d_t size,
                       colour_t colour);
 
 /**

@@ -34,7 +34,7 @@ static result_t bitmap_clone_by_size(bitmap_t *cloned, const bitmap_t *src)
   assert(cloned);
   assert(src);
 
-  pixelbytes = src->height * src->rowbytes;
+  pixelbytes = src->size.h * src->rowbytes;
   pixels = malloc(pixelbytes);
   if (pixels == NULL)
     return result_OOM;
@@ -52,13 +52,13 @@ static result_t bitmap_clone_pixels(bitmap_t *dst, const bitmap_t *src)
   assert(dst);
   assert(src);
 
-  if (dst->width    != src->width  ||
-      dst->height   != src->height ||
+  if (dst->size.w    != src->size.w  ||
+      dst->size.h   != src->size.h ||
       dst->format   != src->format ||
       dst->rowbytes != src->rowbytes)
     return result_INCOMPATIBLE;
 
-  memcpy(dst->base, src->base, src->height * src->rowbytes);
+  memcpy(dst->base, src->base, src->size.h * src->rowbytes);
 
   return result_OK;
 }
@@ -73,7 +73,7 @@ static result_t bitmap_plot(const bitmap_t *src, bitmap_t *dst, int x, int y)
     return result_INCOMPATIBLE;
 
   sp += x + y * dst->rowbytes / 4;
-  for (h = 0; h < src->height; h++)
+  for (h = 0; h < src->size.h; h++)
   {
     memcpy(sp, dp, src->rowbytes);
     sp += dst->rowbytes / 4;
@@ -99,9 +99,9 @@ static result_t bitmap_convert_inplace(bitmap_t *bm, pixelfmt_t new_fmt)
         pixelfmt_rgbx8888_t *p = bm->base;
         int                  x,y;
 
-        for (y = 0; y < bm->height; y++)
+        for (y = 0; y < bm->size.h; y++)
         {
-          for (x = 0; x < bm->width; x++)
+          for (x = 0; x < bm->size.w; x++)
           {
             pixelfmt_rgbx8888_t px = *p;
             *p++ = PIXELFMT_MAKE_BGRA8888(PIXELFMT_Bxxx8888(px),
@@ -131,9 +131,9 @@ static result_t bitmap_convert_inplace(bitmap_t *bm, pixelfmt_t new_fmt)
         pixelfmt_rgba8888_t *p = bm->base;
         int                  x,y;
 
-        for (y = 0; y < bm->height; y++)
+        for (y = 0; y < bm->size.h; y++)
         {
-          for (x = 0; x < bm->width; x++)
+          for (x = 0; x < bm->size.w; x++)
           {
             pixelfmt_rgba8888_t px = *p;
             *p++ = PIXELFMT_MAKE_BGRA8888(PIXELFMT_Bxxx8888(px),
@@ -177,7 +177,7 @@ static result_t load_test_png(bitmap_t   *bm,
   if (rc)
     return rc;
 
-  if (bm->width != SMALLWIDTH || bm->height != SMALLHEIGHT || bm->format != FORMAT)
+  if (bm->size.w != SMALLWIDTH || bm->size.h != SMALLHEIGHT || bm->format != FORMAT)
   {
     fprintf(stderr, "load_test_png: wrong width, height or format\n");
     free(bm->base);
@@ -210,7 +210,7 @@ result_t composite_test(const char *resources)
     goto Failure;
   }
 
-  bitmap_init(&bigbitmap, WIDTH, HEIGHT, FORMAT, scr_rowbytes, NULL, bigpixels);
+  bitmap_init(&bigbitmap, (size2d_t) { WIDTH, HEIGHT }, FORMAT, scr_rowbytes, NULL, bigpixels);
 
   rc = load_test_png(&bm[0], resources, "A"); /* source */
   if (rc)

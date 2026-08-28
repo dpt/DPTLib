@@ -138,7 +138,7 @@ static void screen_blend_pixel(screen_t *scr,
 
 void screen_draw_rect(screen_t *scr,
                       int x, int y,
-                      int width, int height,
+                      size2d_t size,
                       colour_t colour)
 {
   box_t          clip_box;
@@ -152,8 +152,8 @@ void screen_draw_rect(screen_t *scr,
 
   rect_box.x0 = x;
   rect_box.y0 = y;
-  rect_box.x1 = x + width;
-  rect_box.y1 = y + height;
+  rect_box.x1 = x + size.w;
+  rect_box.y1 = y + size.h;
   if (box_intersection(&clip_box, &rect_box, &draw_box))
     return;
 
@@ -214,7 +214,7 @@ void screen_draw_rect(screen_t *scr,
 
 void screen_draw_square(screen_t *scr, int x, int y, int size, colour_t colour)
 {
-  screen_draw_rect(scr, x, y, size, size, colour);
+  screen_draw_rect(scr, x, y, (size2d_t) { size, size }, colour);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -232,8 +232,8 @@ void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 
   src_box.x0 = x;
   src_box.y0 = y;
-  src_box.x1 = x + src->width;
-  src_box.y1 = y + src->height;
+  src_box.x1 = x + src->size.w;
+  src_box.y1 = y + src->size.h;
   if (box_intersection(&clip_box, &src_box, &draw_box))
     return; /* nothing visible */
 
@@ -359,8 +359,8 @@ static void screen_get_bounds(const screen_t *scr, box_t *bounds)
 {
   bounds->x0 = 0;
   bounds->y0 = 0;
-  bounds->x1 = scr->width;
-  bounds->y1 = scr->height;
+  bounds->x1 = scr->size.w;
+  bounds->y1 = scr->size.h;
 }
 
 void screen_draw_line(screen_t *scr,

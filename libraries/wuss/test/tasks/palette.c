@@ -77,7 +77,7 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
     x   = bounds->x0 - sx + col * cell_w;
     y   = bounds->y0 - sy + row * cell_h;
 
-    screen_draw_rect(scr, x, y, cell_w, cell_h, pc->palette[i]);
+    screen_draw_rect(scr, x, y, (size2d_t) { cell_w, cell_h }, pc->palette[i]);
   }
 
   return result_OK;
