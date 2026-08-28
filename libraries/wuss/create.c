@@ -82,26 +82,26 @@ result_t wuss_create(screen_t             *scr,
       fg = (w->npalette > 1) ? 1 : 0;
     }
 
-    pal.title.bg = bg;
-    pal.title.fg = fg;
-    pal.back     = fg;
-    pal.close    = fg;
-    pal.toggle   = fg;
-    pal.resize   = bg;
-    pal.arrows   = bg;
-    pal.wells    = bg;
-    pal.sausages = fg;
+    pal.title.bg        = bg;
+    pal.title.fg        = fg;
+    pal.back            = fg;
+    pal.close           = fg;
+    pal.toggle          = fg;
+    pal.resize          = bg;
+    pal.scroll.arrows   = bg;
+    pal.scroll.wells    = bg;
+    pal.scroll.sausages = fg;
   }
 
-  if (pal.title.bg < 0 || pal.title.bg >= w->npalette ||
-      pal.title.fg < 0 || pal.title.fg >= w->npalette ||
-      pal.back     < 0 || pal.back     >= w->npalette ||
-      pal.close    < 0 || pal.close    >= w->npalette ||
-      pal.toggle   < 0 || pal.toggle   >= w->npalette ||
-      pal.resize   < 0 || pal.resize   >= w->npalette ||
-      pal.arrows   < 0 || pal.arrows   >= w->npalette ||
-      pal.wells    < 0 || pal.wells    >= w->npalette ||
-      pal.sausages < 0 || pal.sausages >= w->npalette ||
+  if (pal.title.bg        < 0 || pal.title.bg        >= w->npalette ||
+      pal.title.fg        < 0 || pal.title.fg        >= w->npalette ||
+      pal.back            < 0 || pal.back            >= w->npalette ||
+      pal.close           < 0 || pal.close           >= w->npalette ||
+      pal.toggle          < 0 || pal.toggle          >= w->npalette ||
+      pal.resize          < 0 || pal.resize          >= w->npalette ||
+      pal.scroll.arrows   < 0 || pal.scroll.arrows   >= w->npalette ||
+      pal.scroll.wells    < 0 || pal.scroll.wells    >= w->npalette ||
+      pal.scroll.sausages < 0 || pal.scroll.sausages >= w->npalette ||
       (w->backdrop != wuss_NO_BACKGROUND &&
        (w->backdrop < 0 || w->backdrop >= w->npalette)))
   {

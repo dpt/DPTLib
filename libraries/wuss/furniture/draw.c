@@ -140,7 +140,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     {
       wuss->scr->clip = clipped;
       screen_draw_rect(wuss->scr, up.x0, up.y0, up.x1 - up.x0, up.y1 - up.y0,
-                       wuss->palette[wuss->furniture_colours.arrows]);
+                       wuss->palette[wuss->furniture_colours.scroll.arrows]);
     }
 
     wuss__vscroll_down_box(window, &down);
@@ -148,7 +148,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     {
       wuss->scr->clip = clipped;
       screen_draw_rect(wuss->scr, down.x0, down.y0, down.x1 - down.x0, down.y1 - down.y0,
-                       wuss->palette[wuss->furniture_colours.arrows]);
+                       wuss->palette[wuss->furniture_colours.scroll.arrows]);
     }
 
     wuss__vscroll_well_box(window, &well);
@@ -156,7 +156,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     {
       wuss->scr->clip = clipped;
       screen_draw_rect(wuss->scr, well.x0, well.y0, well.x1 - well.x0, well.y1 - well.y0,
-                       wuss->palette[wuss->furniture_colours.wells]);
+                       wuss->palette[wuss->furniture_colours.scroll.wells]);
     }
 
     wuss__vscroll_sausage_box(window, &sausage);
@@ -164,7 +164,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     {
       wuss->scr->clip = clipped;
       screen_draw_rect(wuss->scr, sausage.x0, sausage.y0, sausage.x1 - sausage.x0, sausage.y1 - sausage.y0,
-                       wuss->palette[wuss->furniture_colours.sausages]);
+                       wuss->palette[wuss->furniture_colours.scroll.sausages]);
     }
   }
 
@@ -177,7 +177,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     {
       wuss->scr->clip = clipped;
       screen_draw_rect(wuss->scr, left.x0, left.y0, left.x1 - left.x0, left.y1 - left.y0,
-                       wuss->palette[wuss->furniture_colours.arrows]);
+                       wuss->palette[wuss->furniture_colours.scroll.arrows]);
     }
 
     wuss__hscroll_right_box(window, &right);
@@ -185,7 +185,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     {
       wuss->scr->clip = clipped;
       screen_draw_rect(wuss->scr, right.x0, right.y0, right.x1 - right.x0, right.y1 - right.y0,
-                       wuss->palette[wuss->furniture_colours.arrows]);
+                       wuss->palette[wuss->furniture_colours.scroll.arrows]);
     }
 
     wuss__hscroll_well_box(window, &well);
@@ -193,7 +193,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     {
       wuss->scr->clip = clipped;
       screen_draw_rect(wuss->scr, well.x0, well.y0, well.x1 - well.x0, well.y1 - well.y0,
-                       wuss->palette[wuss->furniture_colours.wells]);
+                       wuss->palette[wuss->furniture_colours.scroll.wells]);
     }
 
     wuss__hscroll_sausage_box(window, &sausage);
@@ -201,7 +201,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     {
       wuss->scr->clip = clipped;
       screen_draw_rect(wuss->scr, sausage.x0, sausage.y0, sausage.x1 - sausage.x0, sausage.y1 - sausage.y0,
-                       wuss->palette[wuss->furniture_colours.sausages]);
+                       wuss->palette[wuss->furniture_colours.scroll.sausages]);
     }
   }
 
