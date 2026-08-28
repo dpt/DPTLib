@@ -2,6 +2,7 @@
 
 #ifdef USE_SDL
 
+#include <assert.h>
 #include <string.h>
 
 #ifdef FORTIFY
@@ -19,18 +20,21 @@
 #define LAUNCHER_PAD        4
 #define LAUNCHER_WIDTH      160
 
-result_t launcher_create(wuss_t           *wuss,
-                         launcher_entry_t *entries,
-                         int               nentries,
-                         bmfont_t         *font,
-                         const colour_t   *palette,
-                         launcher_task_t  *task)
+result_t launcher_create(wuss_t                 *wuss,
+                         const launcher_entry_t *entries,
+                         int                     nentries,
+                         bmfont_t               *font,
+                         const colour_t         *palette,
+                         launcher_task_t        *task)
 {
   wuss_task_t delegate;
   box_t       box;
 
+  assert(nentries <= LAUNCHER_MAX_ENTRIES);
+
   task->entries    = entries;
   task->nentries   = nentries;
+  memset(task->running, 0, sizeof(task->running));
   task->font       = font;
   task->fg         = palette[palette_PICO8_BLACK];
   task->bg         = palette[palette_PICO8_WHITE];
@@ -58,11 +62,11 @@ void launcher_destroy(launcher_task_t *task)
 static result_t launcher_redraw(const wuss_event_t *event, void *task_data)
 {
   launcher_task_t        *lc;
-  screen_t                *scr;
-  const box_t             *content, *bounds;
-  int                      i, font_width, font_height, sx, sy;
-  point_t                  pos;
-  const launcher_entry_t  *entry;
+  screen_t               *scr;
+  const box_t            *content, *bounds;
+  int                     i, font_width, font_height, sx, sy;
+  point_t                 pos;
+  const launcher_entry_t *entry;
 
   lc = task_data;
 
@@ -72,11 +76,9 @@ static result_t launcher_redraw(const wuss_event_t *event, void *task_data)
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  screen_draw_rect(scr, content->x0, content->y0, box_size(content),
-                   lc->bg);
+  screen_draw_rect(scr, content->x0, content->y0, box_size(content), lc->bg);
 
-  bmfont_get_info(lc->font, &font_width, &font_height);
-  NOT_USED(font_width);
+  bmfont_get_info(lc->font, NULL, &font_height);
 
   for (i = 0; i < lc->nentries; i++)
   {
@@ -86,7 +88,7 @@ static result_t launcher_redraw(const wuss_event_t *event, void *task_data)
     pos.y = bounds->y0 - sy + LAUNCHER_PAD + i * LAUNCHER_ROW_HEIGHT + (LAUNCHER_ROW_HEIGHT - font_height) / 2;
 
     bmfont_draw(lc->font, scr, entry->name, (int) strlen(entry->name),
-               entry->running ? lc->running_fg : lc->fg, lc->bg, &pos, NULL);
+               lc->running[i] ? lc->running_fg : lc->fg, lc->bg, &pos, NULL);
   }
 
   return result_OK;
@@ -94,10 +96,10 @@ static result_t launcher_redraw(const wuss_event_t *event, void *task_data)
 
 static result_t launcher_mouse(wuss_window_t *window, int y, void *task_data)
 {
-  launcher_task_t  *lc;
-  int               i;
-  launcher_entry_t *entry;
-  result_t          rc;
+  launcher_task_t        *lc;
+  int                     i;
+  const launcher_entry_t *entry;
+  result_t                rc;
 
   lc = task_data;
 
@@ -107,14 +109,14 @@ static result_t launcher_mouse(wuss_window_t *window, int y, void *task_data)
   if (i < 0 || i >= lc->nentries)
     return result_OK;
 
-  entry = &lc->entries[i];
-  if (entry->running)
+  if (lc->running[i])
     return result_OK;
 
-  rc = entry->spawn();
+  entry = &lc->entries[i];
+  rc    = entry->spawn();
   if (rc == result_OK)
   {
-    entry->running = true;
+    lc->running[i] = true;
     wuss_window_invalidate_all(window);
   }
 
