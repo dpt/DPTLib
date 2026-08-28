@@ -445,6 +445,7 @@ typedef struct test_task
   wuss_mouse_action_t last_action;
   int                 last_x, last_y;
   wuss_button_t       last_button;
+  int                 last_scroll_x, last_scroll_y;
   int                 close_count;
   int                 stop_count;
   int                 open_count;
@@ -473,6 +474,11 @@ static result_t test_handle(wuss_window_t     *window,
     tc->last_x      = event->data.mouse.point.x;
     tc->last_y      = event->data.mouse.point.y;
     tc->last_button = event->data.mouse.button;
+    break;
+
+  case wuss_EVENT_SCROLL:
+    tc->last_scroll_x = event->data.scroll.point.x;
+    tc->last_scroll_y = event->data.scroll.point.y;
     break;
 
   case wuss_EVENT_CLOSE:
@@ -2702,6 +2708,73 @@ result_t wuss_test(const char *resources)
   rc = wuss_mouse_move(wuss, (point_t) { 20, 20 }, &hit);
   if (rc != result_OK)
     goto Failure;
+
+  printf("test: mouse and scroll events arrive in virtual content space, with the scroll offset applied exactly once\n");
+
+  {
+    test_task_t    tc_s;
+    wuss_task_t    delegate_s;
+    box_t          box_s, content_s;
+    wuss_window_t *win_s;
+    point_t        scroll;
+
+    tc_s.mouse_count     = 0;
+    delegate_s.handle    = test_handle;
+    delegate_s.task_data = &tc_s;
+
+    box_s.x0 = 10; box_s.y0 = 10;
+    box_s.x1 = 60; box_s.y1 = 60; /* 50x50 content onto a 200x200 doc: room to scroll */
+    rc = wuss_window_create(wuss, &box_s, "S", wuss_WINDOW_NONE,
+                            wuss_NO_BACKGROUND,
+                            &delegate_s, 200, 200, &win_s);
+    if (rc != result_OK)
+      goto Failure;
+
+    scroll.x = 30;
+    scroll.y = 40;
+    wuss_window_set_scroll(win_s, scroll);
+    wuss_window_get_scroll(win_s, &scroll); /* read back in case it clamped */
+
+    wuss_window_get_content_bounds(win_s, &content_s);
+
+    rc = wuss_mouse_click(wuss,
+                          (point_t) { content_s.x0 + 5, content_s.y0 + 7 },
+                          wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_s)
+      goto Failure;
+    if (tc_s.last_x != 5 + scroll.x || tc_s.last_y != 7 + scroll.y)
+      goto Failure; /* a task adding the scroll offset itself would double-count it */ /* a task adding the scroll offset itself would double-count it */
+
+    rc = wuss_mouse_click(wuss,
+                          (point_t) { content_s.x0 + 5, content_s.y0 + 7 },
+                          wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_move(wuss,
+                         (point_t) { content_s.x0 + 11, content_s.y0 + 13 },
+                         &hit);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_s.last_x != 11 + scroll.x || tc_s.last_y != 13 + scroll.y)
+      goto Failure;
+
+    tc_s.last_scroll_x = -1;
+    tc_s.last_scroll_y = -1;
+    rc = wuss_scroll(wuss,
+                     (point_t) { content_s.x0 + 3, content_s.y0 + 4 },
+                     1, &hit);
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_s)
+      goto Failure;
+    if (tc_s.last_scroll_x != 3 + scroll.x || tc_s.last_scroll_y != 4 + scroll.y)
+      goto Failure;
+
+    wuss_window_close(win_s);
+  }
 
   printf("test: wuss_task_stop sends wuss_EVENT_QUIT to each window's task\n");
 

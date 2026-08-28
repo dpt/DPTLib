@@ -116,12 +116,10 @@ static result_t curve_mouse(curve_task_t        *task,
                             int                   y,
                             wuss_window_t        *window)
 {
-  int     i;
-  point_t scroll;
+  int i;
 
-  wuss_window_get_scroll(window, &scroll);
-  x += scroll.x;
-  y += scroll.y;
+  /* x,y already arrive in virtual content space: wuss_mouse_click/move add the
+   * window's scroll offset before delivering the event. */
 
   switch (action)
   {
