@@ -62,24 +62,34 @@ result_t wuss_mouse_click(wuss_t              *wuss,
       region == wuss_FURNITURE_HSCROLL_LEFT ||
       region == wuss_FURNITURE_HSCROLL_RIGHT)
   {
-    if (action == wuss_MOUSE_DOWN && button == wuss_BUTTON_SELECT)
+    if (action == wuss_MOUSE_DOWN &&
+        (button == wuss_BUTTON_SELECT || button == wuss_BUTTON_ADJUST))
     {
+      /* Adjust-clicking a scroll arrow steps the opposite way to the arrow it
+       * points, so one arrow can be worked in both directions without moving
+       * the pointer. Toggle-size stays Select-only. */
+      int step;
+
+      step = (button == wuss_BUTTON_ADJUST) ? -WUSS_SCROLL_STEP
+                                            :  WUSS_SCROLL_STEP;
+
       switch (region)
       {
       case wuss_FURNITURE_TOGGLE_SIZE:
-        wuss__furniture_toggle_size(win);
+        if (button == wuss_BUTTON_SELECT)
+          wuss__furniture_toggle_size(win);
         break;
       case wuss_FURNITURE_VSCROLL_UP:
-        wuss__furniture_scroll_step(win, (point_t) { 0, -WUSS_SCROLL_STEP });
+        wuss__furniture_scroll_step(win, (point_t) { 0, -step });
         break;
       case wuss_FURNITURE_VSCROLL_DOWN:
-        wuss__furniture_scroll_step(win, (point_t) { 0, WUSS_SCROLL_STEP });
+        wuss__furniture_scroll_step(win, (point_t) { 0, step });
         break;
       case wuss_FURNITURE_HSCROLL_LEFT:
-        wuss__furniture_scroll_step(win, (point_t) { -WUSS_SCROLL_STEP, 0 });
+        wuss__furniture_scroll_step(win, (point_t) { -step, 0 });
         break;
       case wuss_FURNITURE_HSCROLL_RIGHT:
-        wuss__furniture_scroll_step(win, (point_t) { WUSS_SCROLL_STEP, 0 });
+        wuss__furniture_scroll_step(win, (point_t) { step, 0 });
         break;
       default:
         break;
