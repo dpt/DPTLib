@@ -149,8 +149,9 @@ void wuss_window_move(wuss_window_t *window, point_t p)
                           &copied))
     {
       /* The screen format doesn't support the blit at all (e.g. paletted):
-       * this fails identically for every piece, so bail out before any
-       * blits have happened rather than leaving a half-blitted window. */
+       * this fails identically for every piece, so it fails on the first
+       * one, before any blit has happened. Bail out; the caller's fallback
+       * full invalidate repairs the window either way. */
       blit_failed = 1;
       break;
     }
