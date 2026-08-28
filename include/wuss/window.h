@@ -73,9 +73,11 @@ typedef struct wuss_event
     }
     redraw;
 
-    /** wuss_EVENT_MOUSE: point is window-local content coordinates (the
-     * content area's top-left is (0,0)). button is meaningful for
-     * DOWN/UP. */
+    /** wuss_EVENT_MOUSE: point is in virtual content space -- the window's
+     * scroll offset has already been added, so the task must not add it
+     * again. With a scroll offset of (0,0) this is the same as window-local
+     * content coordinates, where the content area's top-left is (0,0).
+     * button is meaningful for DOWN/UP. */
     struct
     {
       wuss_mouse_action_t action;

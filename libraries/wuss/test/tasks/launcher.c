@@ -97,16 +97,14 @@ static result_t launcher_mouse(wuss_window_t *window, int y, void *task_data)
 {
   launcher_task_t  *lc;
   int               i;
-  point_t           scroll;
   launcher_entry_t *entry;
   result_t          rc;
 
   lc = task_data;
 
-  wuss_window_get_scroll(window, &scroll);
-  NOT_USED(scroll.x);
-
-  i = (y + scroll.y - LAUNCHER_PAD) / LAUNCHER_ROW_HEIGHT;
+  /* y already arrives in virtual content space, which is how the rows are
+   * laid out, so the scroll offset must not be added again here. */
+  i = (y - LAUNCHER_PAD) / LAUNCHER_ROW_HEIGHT;
   if (i < 0 || i >= lc->nentries)
     return result_OK;
 

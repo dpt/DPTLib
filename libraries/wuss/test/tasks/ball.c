@@ -104,9 +104,12 @@ static result_t ball_mouse(wuss_window_t      *window,
     if (bc->nballs >= BALL_MAX)
       return result_OK;
 
+    /* x,y already arrive in virtual content space, as ball positions are
+     * held; only the invalidation boxes below need the scroll offset taking
+     * back off to reach window-local coordinates. */
     b         = &bc->balls[bc->nballs++];
-    b->x      = x + scroll.x;
-    b->y      = y + scroll.y;
+    b->x      = x;
+    b->y      = y;
     b->dx     = (bc->nballs & 1) ? 3 : -3;
     b->dy     = (bc->nballs & 2) ? 2 : -2;
     b->radius = 8;
