@@ -33,6 +33,7 @@ result_t palette_create(wuss_t         *wuss,
                             palette_PICO8_BLACK,
                             &delegate,
                             box_size(&box),
+                            (size2d_t) { 0, 0 },
                             &task->window);
 }
 

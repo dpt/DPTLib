@@ -37,6 +37,7 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
                             wuss_NO_BACKGROUND,
                             &delegate,
                             box_size(&box),
+                            (size2d_t) { 0, 0 },
                             &task->window);
 }
 

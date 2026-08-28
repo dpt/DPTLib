@@ -32,13 +32,15 @@ Create a window with a content bounding box, optional title, appearance flags, a
 result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title,
                             wuss_window_flags_t flags, wuss_colour_t bg,
                             const wuss_task_t *task,
-                            size2d_t doc,
+                            size2d_t doc, size2d_t min_doc,
                             wuss_window_t **window);
 ```
 
 `bg` is filled in by wuss before each redraw event, or `wuss_NO_BACKGROUND` for the task to draw its own background (avoids a redundant fill behind an opaque task); changeable later via `wuss_window_set_background`.
 
-`doc` is the virtual document extent behind the horizontal/vertical scrollbars' sausage proportion; pass `content`'s own width/height for a window with nothing to scroll. Set once at creation, immutable thereafter.
+`doc` is the virtual document extent behind the horizontal/vertical scrollbars' sausage proportion; pass `content`'s own width/height for a window with nothing to scroll. It is also the ceiling a resize-drag or toggle-size grows the content area to. Set once at creation, immutable thereafter.
+
+`min_doc` is the opposite end: the smallest content size a resize-drag or toggle-size will shrink to. Pass `(0, 0)` for the built-in floor. It is clamped both to that built-in floor, so a window can never be squeezed too small to grab, and to `doc`, so it can never demand a window larger than the document it shows. Also set once at creation.
 
 Furniture is additional to `content`, not carved out of it: the window's content area always ends up exactly the box requested, and its on-screen footprint (`wuss_window_get_visible_bounds`) is `content` expanded outward by whatever furniture flags request — a titlebar above, and/or a 1px outline around all four sides.
 
@@ -137,7 +139,8 @@ Terms as this document and the API use them. Several are RISC OS conventions, wh
 - **Chord** — two or more mouse buttons held together, e.g. Select+Adjust. Wuss's own furniture handling resolves an ambiguous chord in Select's favour.
 - **Content area** — the part of a window belonging to its task. Its bounds are exactly what was passed to `wuss_window_create`, furniture being added outside it; read back with `wuss_window_get_content_bounds`.
 - **Dirty region** — the accumulated set of screen-space boxes needing repaint, coalesced as they accumulate. `wuss_redraw_dirty` repaints and clears it.
-- **Document extent** — `doc`, the size of a task's virtual content space, fixed at window creation. Sets how far a window can scroll and the scrollbar sausages' proportions.
+- **Document extent** — `doc`, the size of a task's virtual content space, fixed at window creation. Sets how far a window can scroll, the scrollbar sausages' proportions, and the size a resize-drag or toggle-size can grow the content area to.
+- **Minimum extent** — `min_doc`, the smallest content size a resize-drag or toggle-size will leave a window at, fixed at window creation. `(0, 0)` means the built-in floor.
 - **Furniture** — everything Wuss draws around a window's content: outline, titlebar and its icons, scrollbars, resize icon. Drawn outside the content area, never carved out of it. Furniture clicks are handled entirely within Wuss and never reach the task.
 - **Handle callback** — a task's single `wuss_event_fn_t`, receiving every event kind and dispatching on `event->kind`. A window whose task has no handle receives no events at all.
 - **Icon** — a clickable furniture region in the titlebar or window corner: close, back, toggle-size, resize.

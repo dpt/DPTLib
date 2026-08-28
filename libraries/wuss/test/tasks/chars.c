@@ -56,6 +56,7 @@ result_t chars_create(wuss_t         *wuss,
                             wuss_NO_BACKGROUND,
                             &delegate,
                             box_size(&box),
+                            (size2d_t) { 0, 0 },
                             &task->window);
 }
 

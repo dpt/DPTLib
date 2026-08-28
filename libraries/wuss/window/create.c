@@ -17,6 +17,7 @@ result_t wuss_window_create(wuss_t             *wuss,
                             wuss_colour_t       bg,
                             const wuss_task_t  *task,
                             size2d_t            doc,
+                            size2d_t            min_doc,
                             wuss_window_t     **window)
 {
   wuss_window_t *win;
@@ -76,6 +77,7 @@ result_t wuss_window_create(wuss_t             *wuss,
   win->scroll.x   = 0;
   win->scroll.y   = 0;
   win->doc        = doc;
+  win->min_doc    = min_doc;
   win->state      = wuss_WINDOW_STATE_NONE;
 
   if (task != NULL)

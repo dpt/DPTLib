@@ -55,7 +55,12 @@ extern "C"
  *                     with no content handling.
  * \param[in]  doc     Virtual document extent, for the scrollbars' sausage
  *                     proportions; pass content's own width and height for a
- *                     window with nothing to scroll.
+ *                     window with nothing to scroll. Also the ceiling a
+ *                     resize-drag or toggle-size will grow the content area to.
+ * \param[in]  min_doc Minimum content size a resize-drag or toggle-size will
+ *                     shrink to. Pass (0,0) for the built-in floor. Clamped to
+ *                     doc, and to the built-in floor, so it can never make a
+ *                     window unusably small or larger than its document.
  * \param[out] window  Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
  *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if bg is
@@ -68,6 +73,7 @@ result_t wuss_window_create(wuss_t             *wuss,
                             wuss_colour_t       bg,
                             const wuss_task_t  *task,
                             size2d_t            doc,
+                            size2d_t            min_doc,
                             wuss_window_t     **window);
 
 /**

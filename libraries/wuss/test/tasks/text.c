@@ -54,6 +54,7 @@ result_t text_create(wuss_t         *wuss,
                           palette_PICO8_BLUE,
                           &delegate,
                           box_size(&box),
+                          (size2d_t) { 0, 0 },
                           &task->window);
 
   return rc;
