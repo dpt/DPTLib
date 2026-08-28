@@ -33,6 +33,7 @@ struct wuss
   colour_t                   *palette;   /* owned */
   int                         npalette;
   wuss_palette_t              furniture_colours;
+  wuss_colour_t               backdrop;  /* wuss_NO_BACKGROUND for none */
   int                         titlebar_height;
   list_t                      z_order;   /* anchor; head = topmost window */
   struct wuss__furniture      furniture;

@@ -20,7 +20,7 @@ result_t wuss_create(screen_t             *scr,
                      wuss_t              **wuss);
 ```
 
-`font` and `palette` may both be NULL, for unlabelled titlebars and a built-in default palette respectively. `config` may be NULL for default titlebar height/colours. `wuss_get_font` reads back the font passed in (or NULL), for a task that wants to draw its own content in the same face as titlebars.
+`font` and `palette` may both be NULL, for unlabelled titlebars and a built-in default palette respectively. `config` may be NULL for default titlebar height/colours. `config->backdrop` sets a desktop background colour painted behind windows on every redraw, or `wuss_NO_BACKGROUND` (the default when `config` is NULL) to leave the background untouched and require the caller to repaint it itself. `wuss_get_font` reads back the font passed in (or NULL), for a task that wants to draw its own content in the same face as titlebars.
 
 Destroy with `wuss_destroy`, which also destroys any windows still open on it.
 
@@ -121,9 +121,9 @@ Each window carries a scroll offset, `(0, 0)` by default: the point in the task'
 
 ## Redrawing
 
-- `wuss_redraw` repaints every window, back-to-front, unconditionally.
+- `wuss_redraw` repaints every window, back-to-front, unconditionally, having first painted the configured backdrop colour (see Setup) behind them, if any.
 - `wuss_invalidate` / `wuss_window_invalidate` mark a screen-space or window-local region dirty; window management calls these automatically for its own changes, but a task must call one of them itself whenever its content changes on its own (e.g. an animation), passing the union of the old and new areas that need repainting.
-- `wuss_redraw_dirty` repaints only the accumulated dirty region, then clears it. Wuss only repaints windows, not the background between/behind them, so a caller whose invalidation can expose background (e.g. after a window move) should clear that region itself first.
+- `wuss_redraw_dirty` repaints only the accumulated dirty region, then clears it, painting the backdrop colour into each dirty region first if one was configured. Without a configured backdrop, Wuss only repaints windows, not the background between/behind them, so a caller whose invalidation can expose background (e.g. after a window move) should clear that region itself first.
 - `wuss_get_dirty_count`/`wuss_get_dirty(wuss, index, out)` fetch the currently accumulated dirty regions (coalesced as they accumulate, up to a fixed cap after which further regions are merged into the last one) without redrawing.
 - A window move or resize is clipped, piece by piece, against whatever's above it in the z-order, and any pixels a move can preserve are blitted directly rather than queued dirty; only the genuinely-changed pieces end up in the dirty region. This is an internal optimisation with no effect on a task's own redraw handling.
 

@@ -93,6 +93,14 @@ result_t wuss_redraw(wuss_t *wuss)
   full.x1 = wuss->scr->width;
   full.y1 = wuss->scr->height;
 
+  if (wuss->backdrop != wuss_NO_BACKGROUND)
+  {
+    wuss->scr->clip = full;
+    screen_draw_rect(wuss->scr, full.x0, full.y0,
+                     full.x1 - full.x0, full.y1 - full.y0,
+                     wuss->palette[wuss->backdrop]);
+  }
+
   rc = result_OK;
   redraw_from(wuss, wuss->z_order.next, &full, &rc);
 
@@ -117,7 +125,19 @@ result_t wuss_redraw_dirty(wuss_t *wuss)
 
   rc = result_OK;
   for (i = 0; i < wuss->ndirty; i++)
+  {
+    if (wuss->backdrop != wuss_NO_BACKGROUND)
+    {
+      wuss->scr->clip = wuss->dirty[i];
+      screen_draw_rect(wuss->scr,
+                       wuss->dirty[i].x0, wuss->dirty[i].y0,
+                       wuss->dirty[i].x1 - wuss->dirty[i].x0,
+                       wuss->dirty[i].y1 - wuss->dirty[i].y0,
+                       wuss->palette[wuss->backdrop]);
+    }
+
     redraw_from(wuss, wuss->z_order.next, &wuss->dirty[i], &rc);
+  }
 
   box_reset(&wuss->scr->clip); /* see wuss_redraw's comment on the same call */
 

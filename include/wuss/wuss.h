@@ -161,6 +161,13 @@ typedef struct wuss_config
 
   /** Furniture chrome colours. */
   wuss_palette_t palette;
+
+  /**
+   * Desktop background colour, painted behind windows on every redraw, or
+   * wuss_NO_BACKGROUND to leave the background untouched (the caller must then
+   * repaint it itself before wuss_redraw / wuss_redraw_dirty).
+   */
+  wuss_colour_t  backdrop;
 }
 wuss_config_t;
 
@@ -205,7 +212,8 @@ void wuss_destroy(wuss_t *doomed);
 bmfont_t *wuss_get_font(const wuss_t *wuss);
 
 /**
- * Redraw every window, back-to-front.
+ * Redraw every window, back-to-front, having first painted the configured
+ * backdrop colour (see wuss_config_t::backdrop) behind them, if any.
  *
  * \param[in] wuss Window manager.
  * \return \ref result_OK on success, or the last non-OK result returned by a
@@ -230,6 +238,8 @@ result_t wuss_invalidate(wuss_t *wuss, const box_t *box);
  * Redraw only the region accumulated by wuss_invalidate calls (and any
  * automatic invalidation from window management) since the last redraw,
  * back-to-front, then clear the dirty region. Does nothing if nothing is dirty.
+ * Each dirty region has the configured backdrop colour (see
+ * wuss_config_t::backdrop) painted into it first, if any.
  *
  * \param[in] wuss Window manager.
  * \return \ref result_OK on success, or the last non-OK result returned by a
@@ -250,10 +260,11 @@ result_t wuss_redraw_dirty(wuss_t *wuss);
 int wuss_get_dirty_count(const wuss_t *wuss);
 
 /**
- * Fetch one of the current accumulated dirty regions (see wuss_invalidate).
- * Wuss only repaints windows, not background between/behind them, so a caller
- * whose invalidations can expose background (e.g. after a window move) should
- * clear these regions itself before calling wuss_redraw_dirty.
+ * Fetch one of the current accumulated dirty regions (see wuss_invalidate). If
+ * no backdrop colour was configured (see wuss_config_t::backdrop), wuss only
+ * repaints windows, not background between/behind them, so a caller whose
+ * invalidations can expose background (e.g. after a window move) should clear
+ * these regions itself before calling wuss_redraw_dirty.
  *
  * \param[in]  wuss  Window manager.
  * \param[in]  index Index of the region to fetch, 0 to wuss_get_dirty_count() -

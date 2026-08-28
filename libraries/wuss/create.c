@@ -65,9 +65,12 @@ result_t wuss_create(screen_t             *scr,
   if (config != NULL)
   {
     pal = config->palette;
+    w->backdrop = config->backdrop;
   }
   else
   {
+    w->backdrop = wuss_NO_BACKGROUND;
+
     if (palette == NULL)
     {
       bg = palette_PICO8_DARK_BLUE;
@@ -98,7 +101,9 @@ result_t wuss_create(screen_t             *scr,
       pal.resize   < 0 || pal.resize   >= w->npalette ||
       pal.arrows   < 0 || pal.arrows   >= w->npalette ||
       pal.wells    < 0 || pal.wells    >= w->npalette ||
-      pal.sausages < 0 || pal.sausages >= w->npalette)
+      pal.sausages < 0 || pal.sausages >= w->npalette ||
+      (w->backdrop != wuss_NO_BACKGROUND &&
+       (w->backdrop < 0 || w->backdrop >= w->npalette)))
   {
     free(w->palette);
     free(w);

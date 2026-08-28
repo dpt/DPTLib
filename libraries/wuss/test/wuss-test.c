@@ -242,6 +242,7 @@ static result_t wuss_interactive_test(const char *resources)
     config.palette.arrows    = palette_PICO8_BLUE;
     config.palette.wells     = palette_PICO8_DARK_BLUE;
     config.palette.sausages  = palette_PICO8_LIGHT_GREY;
+    config.backdrop          = palette_PICO8_LIGHT_GREY;
 
     rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, &wuss);
     if (rc != result_OK)
@@ -279,6 +280,8 @@ static result_t wuss_interactive_test(const char *resources)
       case SDL_EVENT_KEY_UP:
         if (event.key.key == SDLK_Q)
           quit = true;
+        else if (event.key.key == SDLK_F1 && (event.key.mod & SDL_KMOD_SHIFT))
+          wuss_redraw(wuss);
         else if (event.key.key == SDLK_F1)
           garbage_pending = true;
         else if (event.key.key == SDLK_F3)
@@ -384,25 +387,6 @@ static result_t wuss_interactive_test(const char *resources)
     }
     else
     {
-      int ndirty, i;
-
-      ndirty = wuss_get_dirty_count(wuss);
-      for (i = 0; i < ndirty; i++)
-      {
-        box_t dirty;
-
-        wuss_get_dirty(wuss, i, &dirty);
-        scr.clip = dirty;
-        screen_draw_rect(&scr, dirty.x0, dirty.y0,
-                          dirty.x1 - dirty.x0, dirty.y1 - dirty.y0,
-                          palette[palette_PICO8_WHITE]);
-      }
-
-      /* narrowed above per dirty rect for the flash; screen_copy_rect (used
-       * for window-drag blitting) reads this clip too, so it must not leak
-       * into the next frame narrower than the whole screen */
-      box_reset(&scr.clip);
-
       wuss_redraw_dirty(wuss);
     }
 
