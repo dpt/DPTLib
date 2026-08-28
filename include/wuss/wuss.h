@@ -83,9 +83,13 @@ typedef struct wuss_palette
   wuss_colour_t close;    /**< Close icon. */
   wuss_colour_t toggle;   /**< Toggle-size icon. */
   wuss_colour_t resize;   /**< Resize icon. */
-  wuss_colour_t arrows;   /**< Scrollbar arrows. */
-  wuss_colour_t wells;    /**< Scrollbar wells. */
-  wuss_colour_t sausages; /**< Scrollbar sausages. */
+  struct
+  {
+    wuss_colour_t arrows;   /**< Scrollbar arrows. */
+    wuss_colour_t wells;    /**< Scrollbar wells. */
+    wuss_colour_t sausages; /**< Scrollbar sausages. */
+  }
+  scroll;
 }
 wuss_palette_t;
 
