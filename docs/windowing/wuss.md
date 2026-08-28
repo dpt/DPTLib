@@ -127,6 +127,35 @@ Each window carries a scroll offset, `(0, 0)` by default: the point in the task'
 - `wuss_get_dirty_count`/`wuss_get_dirty(wuss, index, out)` fetch the currently accumulated dirty regions (coalesced as they accumulate, up to a fixed cap after which further regions are merged into the last one) without redrawing.
 - A window move or resize is clipped, piece by piece, against whatever's above it in the z-order, and any pixels a move can preserve are blitted directly rather than queued dirty; only the genuinely-changed pieces end up in the dirty region. This is an internal optimisation with no effect on a task's own redraw handling.
 
+## Glossary
+
+Terms as this document and the API use them. Several are RISC OS conventions, which Wuss follows.
+
+- **Adjust** — the secondary mouse button, `wuss_BUTTON_ADJUST`. Conventionally the variant of an action: Adjust on the back icon brings a window to front rather than sending it back, and Adjust on a scroll arrow steps against the direction the arrow points.
+- **Backdrop** — the desktop background colour painted behind all windows, set by `config->backdrop` at `wuss_create` time. `wuss_NO_BACKGROUND` leaves the area behind windows untouched, making it the caller's to repaint.
+- **Button flags** — `wuss_button_t` values are flags (Select 4, Menu 2, Adjust 1), OR'd together so a chord can be reported. Test a reported button with `&`, never for equality.
+- **Chord** — two or more mouse buttons held together, e.g. Select+Adjust. Wuss's own furniture handling resolves an ambiguous chord in Select's favour.
+- **Content area** — the part of a window belonging to its task. Its bounds are exactly what was passed to `wuss_window_create`, furniture being added outside it; read back with `wuss_window_get_content_bounds`.
+- **Dirty region** — the accumulated set of screen-space boxes needing repaint, coalesced as they accumulate. `wuss_redraw_dirty` repaints and clears it.
+- **Document extent** — `doc`, the size of a task's virtual content space, fixed at window creation. Sets how far a window can scroll and the scrollbar sausages' proportions.
+- **Furniture** — everything Wuss draws around a window's content: outline, titlebar and its icons, scrollbars, resize icon. Drawn outside the content area, never carved out of it. Furniture clicks are handled entirely within Wuss and never reach the task.
+- **Handle callback** — a task's single `wuss_event_fn_t`, receiving every event kind and dispatching on `event->kind`. A window whose task has no handle receives no events at all.
+- **Icon** — a clickable furniture region in the titlebar or window corner: close, back, toggle-size, resize.
+- **Invalidate** — mark a region dirty for the next `wuss_redraw_dirty`. Window management does this for its own changes; a task must do it for its own content changes.
+- **Menu** — the middle mouse button, `wuss_BUTTON_MENU`. Routed like any other button; Wuss provides no menu widget of its own.
+- **Outline** — the 1px border drawn around a window, suppressed by `wuss_WINDOW_NO_OUTLINE`.
+- **Sausage** — the draggable thumb within a scrollbar well, sized in proportion to how much of the document extent the content area shows.
+- **Screen space** — coordinates in the underlying `screen_t`, origin at its top-left. Visible and content bounds are in screen space.
+- **Select** — the primary mouse button, `wuss_BUTTON_SELECT`. Performs the plain action, and raises a window when used on its titlebar.
+- **Task** — the client of a window: an event callback plus an opaque `task_data` pointer, held in a `wuss_task_t`. Wuss owns the window; the task owns what's drawn inside it.
+- **Titlebar** — the strip above the content area carrying the window's label and its icons, and the drag handle for moving the window. Suppressed by `wuss_WINDOW_NO_TITLEBAR`.
+- **Toggle size** — the titlebar icon that switches a window between its normal size and a maximised size, and back.
+- **Virtual content space** — the task's own full coordinate space, of size `doc`. Mouse and scroll events arrive in it, i.e. with the scroll offset already added.
+- **Visible bounds** — a window's whole on-screen footprint, content plus furniture; `wuss_window_get_visible_bounds`.
+- **Well** — the track a scrollbar's sausage slides along, between the two arrow icons.
+- **Window-local coordinates** — coordinates relative to the content area's top-left, before the scroll offset is added. `wuss_window_invalidate` takes its box in these.
+- **Z-order** — the back-to-front stacking order of windows. Changed with `wuss_window_restack`, or by a Select click on a titlebar; content clicks never change it.
+
 ## Limitations
 
 - No menus: `wuss_BUTTON_MENU` is defined and routed like any other button, but Wuss has no built-in menu widget.
