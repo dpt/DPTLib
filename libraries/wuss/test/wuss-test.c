@@ -50,61 +50,61 @@
 /* the launcher's spawn callbacks take no arguments, so the pieces they need
  * are stashed here instead; wuss_interactive_test runs at most once per
  * process, so file-scope statics are as good as a context struct */
-static wuss_t         *g_wuss;
-static const colour_t *g_palette;
-static int              g_npalette;
-static const char      *g_resources;
-static bmfont_t        *g_daydream_font;
+static wuss_t             *g_wuss;
+static const colour_t     *g_palette;
+static int                 g_npalette;
+static const char         *g_resources;
+static bmfont_t           *g_daydream_font;
 
-static ball_task_t     g_ball_task;
-static text_task_t     g_text_task;
-static blank_task_t    g_blank_task;
-static chars_task_t    g_chars_task;
-static palette_task_t  g_palette_task;
-static image_task_t    g_image_task;
-static checker_task_t  g_checker_task;
-static curve_task_t    g_curve_task;
-static sofa_task_t     g_sofa_task;
-static gradient_task_t g_gradient_task;
+static ball_task_t        g_ball_task;
+static text_task_t        g_text_task;
+static blank_task_t       g_blank_task;
+static chars_task_t       g_chars_task;
+static palette_task_t     g_palette_task;
+static image_task_t       g_image_task;
+static checker_task_t     g_checker_task;
+static curve_task_t       g_curve_task;
+static sofa_task_t        g_sofa_task;
+static gradient_task_t    g_gradient_task;
 static porter_duff_task_t g_porter_duff_task;
 
-static result_t spawn_ball(void)     { return ball_create(g_wuss, g_palette, &g_ball_task); }
-static result_t spawn_text(void)     { return text_create(g_wuss, g_palette, g_daydream_font, &g_text_task); }
-static result_t spawn_blank(void)    { return blank_create(g_wuss, g_npalette, &g_blank_task); }
-static result_t spawn_chars(void)    { return chars_create(g_wuss, g_palette, &g_chars_task); }
-static result_t spawn_palette(void)  { return palette_create(g_wuss, g_palette, g_npalette, &g_palette_task); }
-static result_t spawn_image(void)    { return image_create(g_wuss, g_palette, g_resources, &g_image_task); }
-static result_t spawn_checker(void)  { return checker_create(g_wuss, g_palette, &g_checker_task); }
-static result_t spawn_curve(void)    { return curve_create(g_wuss, g_palette, &g_curve_task); }
-static result_t spawn_sofa(void)     { return sofa_create(g_wuss, g_palette, &g_sofa_task); }
-static result_t spawn_gradient(void) { return gradient_create(g_wuss, &g_gradient_task); }
+static result_t spawn_ball(void)        { return ball_create(g_wuss, g_palette, &g_ball_task); }
+static result_t spawn_text(void)        { return text_create(g_wuss, g_palette, g_daydream_font, &g_text_task); }
+static result_t spawn_blank(void)       { return blank_create(g_wuss, g_npalette, &g_blank_task); }
+static result_t spawn_chars(void)       { return chars_create(g_wuss, g_palette, &g_chars_task); }
+static result_t spawn_palette(void)     { return palette_create(g_wuss, g_palette, g_npalette, &g_palette_task); }
+static result_t spawn_image(void)       { return image_create(g_wuss, g_palette, g_resources, &g_image_task); }
+static result_t spawn_checker(void)     { return checker_create(g_wuss, g_palette, &g_checker_task); }
+static result_t spawn_curve(void)       { return curve_create(g_wuss, g_palette, &g_curve_task); }
+static result_t spawn_sofa(void)        { return sofa_create(g_wuss, g_palette, &g_sofa_task); }
+static result_t spawn_gradient(void)    { return gradient_create(g_wuss, &g_gradient_task); }
 static result_t spawn_porter_duff(void) { return porter_duff_create(g_wuss, g_palette, g_daydream_font, g_resources, &g_porter_duff_task); }
 
-static void destroy_ball(void)     { ball_destroy(&g_ball_task); }
-static void destroy_text(void)     { text_destroy(&g_text_task); }
-static void destroy_blank(void)    { blank_destroy(&g_blank_task); }
-static void destroy_chars(void)    { chars_destroy(&g_chars_task); }
-static void destroy_palette(void)  { palette_destroy(&g_palette_task); }
-static void destroy_image(void)    { image_destroy(&g_image_task); }
-static void destroy_checker(void)  { checker_destroy(&g_checker_task); }
-static void destroy_curve(void)    { curve_destroy(&g_curve_task); }
-static void destroy_sofa(void)     { sofa_destroy(&g_sofa_task); }
-static void destroy_gradient(void) { gradient_destroy(&g_gradient_task); }
+static void destroy_ball(void)        { ball_destroy(&g_ball_task); }
+static void destroy_text(void)        { text_destroy(&g_text_task); }
+static void destroy_blank(void)       { blank_destroy(&g_blank_task); }
+static void destroy_chars(void)       { chars_destroy(&g_chars_task); }
+static void destroy_palette(void)     { palette_destroy(&g_palette_task); }
+static void destroy_image(void)       { image_destroy(&g_image_task); }
+static void destroy_checker(void)     { checker_destroy(&g_checker_task); }
+static void destroy_curve(void)       { curve_destroy(&g_curve_task); }
+static void destroy_sofa(void)        { sofa_destroy(&g_sofa_task); }
+static void destroy_gradient(void)    { gradient_destroy(&g_gradient_task); }
 static void destroy_porter_duff(void) { porter_duff_destroy(&g_porter_duff_task); }
 
-static launcher_entry_t g_launcher_entries[] =
+static const launcher_entry_t g_launcher_entries[] =
 {
-  { "Ball",     spawn_ball,     destroy_ball,     false },
-  { "Text",     spawn_text,     destroy_text,     false },
-  { "Blank",    spawn_blank,    destroy_blank,    false },
-  { "Chars",    spawn_chars,    destroy_chars,    false },
-  { "Palette",  spawn_palette,  destroy_palette,  false },
-  { "Image",    spawn_image,    destroy_image,    false },
-  { "Checker",  spawn_checker,  destroy_checker,  false },
-  { "Curve",    spawn_curve,    destroy_curve,    false },
-  { "Sofa",     spawn_sofa,     destroy_sofa,     false },
-  { "Gradient", spawn_gradient, destroy_gradient, false },
-  { "Porter-Duff", spawn_porter_duff, destroy_porter_duff, false }
+  { "Ball",        spawn_ball,        destroy_ball        },
+  { "Text",        spawn_text,        destroy_text        },
+  { "Blank",       spawn_blank,       destroy_blank       },
+  { "Chars",       spawn_chars,       destroy_chars       },
+  { "Palette",     spawn_palette,     destroy_palette     },
+  { "Image",       spawn_image,       destroy_image       },
+  { "Checker",     spawn_checker,     destroy_checker     },
+  { "Curve",       spawn_curve,       destroy_curve       },
+  { "Sofa",        spawn_sofa,        destroy_sofa        },
+  { "Gradient",    spawn_gradient,    destroy_gradient    },
+  { "Porter-Duff", spawn_porter_duff, destroy_porter_duff }
 };
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
@@ -414,7 +414,7 @@ static result_t wuss_interactive_test(const char *resources)
   }
 
   for (i = 0; i < NELEMS(g_launcher_entries); i++)
-    if (g_launcher_entries[i].running)
+    if (launcher_task.running[i])
       g_launcher_entries[i].destroy();
   launcher_destroy(&launcher_task);
 
