@@ -77,7 +77,7 @@ void wuss__hscroll_sausage_box(const wuss_window_t *window, box_t *out)
 
   well_px      = well.x1 - well.x0;
   content_size = content.x1 - content.x0;
-  doc_size     = window->doc_width;
+  doc_size     = window->doc.w;
   if (doc_size < content_size)
     doc_size = content_size;
 

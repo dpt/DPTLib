@@ -9,8 +9,8 @@ point_t wuss__scroll_clamp(const wuss_window_t *window, point_t desired)
 
   wuss__content_box(window, &content);
 
-  max_x = window->doc_width  - (content.x1 - content.x0);
-  max_y = window->doc_height - (content.y1 - content.y0);
+  max_x = window->doc.w  - (content.x1 - content.x0);
+  max_y = window->doc.h - (content.y1 - content.y0);
   if (max_x < 0)
     max_x = 0;
   if (max_y < 0)
@@ -54,13 +54,13 @@ void wuss__furniture_drag_sausage(wuss_window_t *window,
   {
     well_px      = wuss__hscroll_well_px(window);
     content_size = content.x1 - content.x0;
-    doc_size     = window->doc_width;
+    doc_size     = window->doc.w;
   }
   else
   {
     well_px      = wuss__vscroll_well_px(window);
     content_size = content.y1 - content.y0;
-    doc_size     = window->doc_height;
+    doc_size     = window->doc.h;
   }
 
   max_scroll = doc_size - content_size;

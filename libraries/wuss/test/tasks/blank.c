@@ -33,8 +33,7 @@ result_t blank_create(wuss_t *wuss, int npalette, blank_task_t *task)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             palette_PICO8_GREEN,
                             &delegate,
-                            box.x1 - box.x0,
-                            box.y1 - box.y0,
+                            box_size(&box),
                             &task->window);
 }
 

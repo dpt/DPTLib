@@ -42,8 +42,7 @@ result_t image_create(wuss_t         *wuss,
                             wuss_WINDOW_NONE,
                             palette_PICO8_BLACK,
                             &delegate,
-                            task->bitmap.width,
-                            task->bitmap.height,
+                            (size2d_t) { task->bitmap.width, task->bitmap.height },
                             &task->window);
 }
 

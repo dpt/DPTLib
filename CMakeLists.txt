@@ -94,6 +94,7 @@ set(PUBLIC_HEADERS
     include/geom/line.h
     include/geom/packer.h
     include/geom/point.h
+    include/geom/size.h
     include/io/path.h
     include/io/stream-mem.h
     include/io/stream-mtfcomp.h
@@ -255,6 +256,7 @@ set(GEOM_SOURCES
     libraries/geom/box/reset.c
     libraries/geom/box/round.c
     libraries/geom/box/round4.c
+    libraries/geom/box/size.c
     libraries/geom/box/translated.c
     libraries/geom/box/union.c
     libraries/geom/layout/layout.c

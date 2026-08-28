@@ -5,6 +5,8 @@
 
 #include <limits.h>
 
+#include "geom/size.h"
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -35,6 +37,14 @@ typedef os_box box_t;
 
 /** Initialises a box from a position (x,y) and a size (w,h). */
 #define BOX_POS_SIZE(x, y, w, h) { (x), (y), (x) + (w), (y) + (h) }
+
+/**
+ * Returns the size of the box "b".
+ *
+ * \param[in] b The box to measure.
+ * \return The box's width and height.
+ */
+size2d_t box_size(const box_t *b);
 
 /**
  * Reset the box to an invalid state.
