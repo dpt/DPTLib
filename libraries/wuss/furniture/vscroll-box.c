@@ -94,8 +94,8 @@ void wuss__vscroll_sausage_box(const wuss_window_t *window, box_t *out)
   else
     sausage_y0 = well.y0;
 
-  out->x0 = well.x0;
-  out->x1 = well.x1;
+  out->x0 = well.x0 + WUSS_SCROLL_INSET;
+  out->x1 = well.x1 - WUSS_SCROLL_INSET;
   out->y0 = sausage_y0;
   out->y1 = sausage_y0 + sausage_px;
 }
