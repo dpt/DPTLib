@@ -9,9 +9,14 @@
  * pixels sitting wherever those strips used to be. */
 void wuss__furniture_invalidate_for(wuss_window_t *window, const box_t *visible)
 {
-  int outline_px;
+  int     outline_px;
+  point_t carve;
 
   outline_px = wuss__outline_px(window);
+  /* Ask for the same carve the layout uses rather than reading the
+   * scrollbar flags directly: a window with both scrollbars off but resize
+   * on still reserves both strips, for the resize icon and the rules. */
+  wuss__furniture_carve_for(window->flags, wuss__icon_size(window), &carve);
 
   if (!(window->flags & wuss_WINDOW_NO_TITLEBAR))
   {
@@ -24,23 +29,23 @@ void wuss__furniture_invalidate_for(wuss_window_t *window, const box_t *visible)
     wuss__invalidate_clipped(window, &titlebar);
   }
 
-  if (!(window->flags & wuss_WINDOW_NO_VSCROLL))
+  if (carve.x > 0)
   {
     box_t column;
 
     column.x1 = visible->x1 - outline_px;
-    column.x0 = column.x1 - wuss__icon_size(window) - WUSS_DIVIDER_PX; /* include the interior rule */
+    column.x0 = column.x1 - carve.x; /* includes the interior rule */
     column.y0 = visible->y0;
     column.y1 = visible->y1;
     wuss__invalidate_clipped(window, &column);
   }
 
-  if (!(window->flags & wuss_WINDOW_NO_HSCROLL))
+  if (carve.y > 0)
   {
     box_t row;
 
     row.y1 = visible->y1 - outline_px;
-    row.y0 = row.y1 - wuss__icon_size(window) - WUSS_DIVIDER_PX; /* include the interior rule */
+    row.y0 = row.y1 - carve.y; /* includes the interior rule */
     row.x0 = visible->x0;
     row.x1 = visible->x1;
     wuss__invalidate_clipped(window, &row);

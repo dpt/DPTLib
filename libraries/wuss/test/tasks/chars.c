@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <limits.h>
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -85,6 +87,11 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
 
   first = ' '; /* bmfont glyphs are laid out contiguously starting here */
   count = bmfont_get_count(cc->font);
+  /* bmfont indexes its glyph table off a plain char, so a byte value above
+   * CHAR_MAX would index negatively on a signed-char platform. Never draw
+   * one, however many glyphs the font claims. */
+  if (first + count > CHAR_MAX + 1)
+    count = CHAR_MAX + 1 - first;
 
   for (i = 0; i < CHARS_COLS * CHARS_ROWS; i++)
   {

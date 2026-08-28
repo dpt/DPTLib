@@ -502,6 +502,38 @@ static result_t test_handle(wuss_window_t     *window,
 
 /* ----------------------------------------------------------------------- */
 
+/* Total area covered by the dirty list, counting overlapped pixels once.
+ * Summing each region's area instead would double-count wherever two
+ * invalidations overlap, which they legitimately do. */
+static int dirty_union_area(wuss_t *wuss, const box_t *bounds)
+{
+  static unsigned char covered[512 * 512];
+
+  box_t region;
+  int   w, h, i, x, y, area;
+
+  w = bounds->x1 - bounds->x0;
+  h = bounds->y1 - bounds->y0;
+  if (w <= 0 || h <= 0 || w > 512 || h > 512)
+    return -1;
+
+  memset(covered, 0, (size_t) w * h);
+
+  for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+  {
+    wuss_get_dirty(wuss, i, &region);
+    for (y = MAX(region.y0, bounds->y0); y < MIN(region.y1, bounds->y1); y++)
+      for (x = MAX(region.x0, bounds->x0); x < MIN(region.x1, bounds->x1); x++)
+        covered[(y - bounds->y0) * w + (x - bounds->x0)] = 1;
+  }
+
+  area = 0;
+  for (i = 0; i < w * h; i++)
+    area += covered[i];
+
+  return area;
+}
+
 result_t wuss_test(const char *resources)
 {
   result_t       rc;
@@ -2061,20 +2093,19 @@ result_t wuss_test(const char *resources)
       goto Failure;
 
     interior_dirty = 0;
-    dirty_area     = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
     {
       wuss_get_dirty(wuss, i, &region);
       if (box_contains_point(&region, interior_x, interior_y))
         interior_dirty = 1;
-      dirty_area += (region.x1 - region.x0) * (region.y1 - region.y0);
     }
     if (interior_dirty)
       goto Failure; /* untouched top-left corner, unchanged by growing bottom-right */
 
     wuss_window_get_visible_bounds(win_m2, &after2);
-    full_area = (after2.x1 - after2.x0) * (after2.y1 - after2.y0);
-    if (dirty_area >= full_area)
+    full_area  = (after2.x1 - after2.x0) * (after2.y1 - after2.y0);
+    dirty_area = dirty_union_area(wuss, &after2);
+    if (dirty_area < 0 || dirty_area >= full_area)
       goto Failure; /* must be less than a full redraw of the grown footprint */
 
     rc = wuss_redraw_dirty(wuss);
@@ -2091,19 +2122,18 @@ result_t wuss_test(const char *resources)
       goto Failure;
 
     interior_dirty = 0;
-    dirty_area     = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
     {
       wuss_get_dirty(wuss, i, &region);
       if (box_contains_point(&region, interior_x, interior_y))
         interior_dirty = 1;
-      dirty_area += (region.x1 - region.x0) * (region.y1 - region.y0);
     }
     if (interior_dirty)
       goto Failure; /* still untouched: the corner that remains after shrinking */
 
-    full_area = (before2.x1 - before2.x0) * (before2.y1 - before2.y0);
-    if (dirty_area >= full_area)
+    full_area  = (before2.x1 - before2.x0) * (before2.y1 - before2.y0);
+    dirty_area = dirty_union_area(wuss, &before2);
+    if (dirty_area < 0 || dirty_area >= full_area)
       goto Failure;
 
     rc = wuss_redraw_dirty(wuss);
@@ -2689,13 +2719,12 @@ result_t wuss_test(const char *resources)
   printf("test: mouse and scroll events arrive in virtual content space, with the scroll offset applied exactly once\n");
 
   {
-    test_task_t    tc_s;
+    test_task_t    tc_s = { 0 };
     wuss_task_t    delegate_s;
     box_t          box_s, content_s;
     wuss_window_t *win_s;
     point_t        scroll;
 
-    tc_s.mouse_count     = 0;
     delegate_s.handle    = test_handle;
     delegate_s.task_data = &tc_s;
 
@@ -2723,7 +2752,7 @@ result_t wuss_test(const char *resources)
     if (hit != win_s)
       goto Failure;
     if (tc_s.last_x != 5 + scroll.x || tc_s.last_y != 7 + scroll.y)
-      goto Failure; /* a task adding the scroll offset itself would double-count it */ /* a task adding the scroll offset itself would double-count it */
+      goto Failure; /* a task adding the scroll offset itself would double-count it */
 
     rc = wuss_mouse_click(wuss,
                           (point_t) { content_s.x0 + 5, content_s.y0 + 7 },

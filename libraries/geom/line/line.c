@@ -14,8 +14,10 @@ typedef unsigned int outcode_t;
 #define outcode_TOP    (1u << 3)
 
 /* Compute (a * b) / c, truncating toward zero, without overflow and
- * without using a 64-bit or floating-point intermediate. Assumes the
- * true result fits in an int (guaranteed here as it's a coordinate). */
+ * without using a 64-bit or floating-point intermediate. The caller must
+ * guarantee the true result fits in an int -- quotient bits at or above
+ * bit 31 are dropped silently. Holds here: every argument is a screen
+ * coordinate or a difference of two. */
 static int muldiv(int a, int b, int c)
 {
   unsigned int a_lo, a_hi, b_lo, b_hi;
