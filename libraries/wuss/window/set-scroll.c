@@ -28,7 +28,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
      * newly-exposed edge strip(s) need an actual repaint. */
     window->wuss->scr->clip = content;
     if (screen_copy_rect(window->wuss->scr, &content,
-                         (point_t) { content.x0 - dx, content.y0 - dy }, &copied))
+                         POINT(content.x0 - dx, content.y0 - dy), &copied))
     {
       wuss__invalidate_minus(window->wuss, &content, &copied);
       return;

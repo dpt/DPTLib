@@ -34,7 +34,7 @@ result_t blank_create(wuss_t *wuss, int npalette, blank_task_t *task)
                             palette_PICO8_GREEN,
                             &delegate,
                             box_size(&box),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &task->window);
 }
 

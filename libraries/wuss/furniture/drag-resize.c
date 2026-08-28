@@ -18,5 +18,5 @@ void wuss__furniture_drag_resize(wuss_window_t *window, point_t p)
   width  = CLAMP(width,  min.w, MAX(window->doc.w, min.w));
   height = CLAMP(height, min.h, MAX(window->doc.h, min.h));
 
-  wuss_window_resize(window, (size2d_t) { width, height });
+  wuss_window_resize(window, SIZE2D(width, height));
 }

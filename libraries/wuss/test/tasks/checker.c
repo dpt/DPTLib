@@ -41,7 +41,7 @@ result_t checker_create(wuss_t         *wuss,
                           wuss_NO_BACKGROUND,
                           &delegate,
                           box_size(&box),
-                          (size2d_t) { 0, 0 },
+                          SIZE2D(0, 0),
                           &task->window);
   if (rc != result_OK)
     return rc;
@@ -55,7 +55,7 @@ result_t checker_create(wuss_t         *wuss,
                           wuss_NO_BACKGROUND,
                           &delegate,
                           box_size(&box),
-                          (size2d_t) { 0, 0 },
+                          SIZE2D(0, 0),
                           &task->window2);
   if (rc != result_OK)
   {

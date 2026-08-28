@@ -37,7 +37,7 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
                             wuss_NO_BACKGROUND,
                             &delegate,
                             box_size(&box),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &task->window);
 }
 
@@ -70,7 +70,7 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 
     b = &bc->balls[i];
 
-    screen_draw_rect(scr, bounds->x0 - sx + b->x - b->radius, bounds->y0 - sy + b->y - b->radius, (size2d_t) { b->radius * 2, b->radius * 2 }, bc->ball);
+    screen_draw_rect(scr, bounds->x0 - sx + b->x - b->radius, bounds->y0 - sy + b->y - b->radius, SIZE2D(b->radius * 2, b->radius * 2), bc->ball);
   }
 
   return result_OK;

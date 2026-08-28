@@ -34,10 +34,10 @@ result_t curve_create(wuss_t         *wuss,
   task->nsegments = CURVE_SEGMENTS_DEFAULT;
   task->dragging  = -1;
 
-  task->points[0] = (point_t) { 10,  10 };
-  task->points[1] = (point_t) { 10, 140 };
-  task->points[2] = (point_t) { 210, 10 };
-  task->points[3] = (point_t) { 210, 140 };
+  task->points[0] = POINT(10,  10);
+  task->points[1] = POINT(10, 140);
+  task->points[2] = POINT(210, 10);
+  task->points[3] = POINT(210, 140);
 
   delegate = wuss_task_start(curve_handle, task); /* curve_redraw paints its own background */
   box      = (box_t) BOX_POS_SIZE(20, 260, 220, 160);
@@ -49,7 +49,7 @@ result_t curve_create(wuss_t         *wuss,
                             wuss_NO_BACKGROUND,
                             &delegate,
                             box_size(&box),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &task->window);
 }
 

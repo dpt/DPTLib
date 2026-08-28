@@ -515,8 +515,10 @@ void bmfont_destroy(bmfont_t *bmfont)
 
 void bmfont_get_info(bmfont_t *bmfont, int *width, int *height)
 {
-  *width  = bmfont->charwidth;
-  *height = bmfont->charheight;
+  if (width)
+    *width  = bmfont->charwidth;
+  if (height)
+    *height = bmfont->charheight;
 }
 
 int bmfont_get_count(bmfont_t *bmfont)
@@ -1246,7 +1248,7 @@ result_t bmfont_draw(bmfont_t      *bmfont,
       }
     }
 
-    *end_pos = (point_t) { x, pos->y };
+    *end_pos = POINT(x, pos->y);
   }
 
   return result_OK;

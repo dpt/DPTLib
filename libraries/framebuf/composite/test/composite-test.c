@@ -210,7 +210,7 @@ result_t composite_test(const char *resources)
     goto Failure;
   }
 
-  bitmap_init(&bigbitmap, (size2d_t) { WIDTH, HEIGHT }, FORMAT, scr_rowbytes, NULL, bigpixels);
+  bitmap_init(&bigbitmap, SIZE2D(WIDTH, HEIGHT), FORMAT, scr_rowbytes, NULL, bigpixels);
 
   rc = load_test_png(&bm[0], resources, "A"); /* source */
   if (rc)

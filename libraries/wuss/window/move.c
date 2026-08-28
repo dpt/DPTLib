@@ -145,7 +145,7 @@ void wuss_window_move(wuss_window_t *window, point_t p)
     idx = order[i];
 
     if (!screen_copy_rect(window->wuss->scr, &blit_src[idx],
-                          (point_t) { blit_dest[idx].x0, blit_dest[idx].y0 },
+                          POINT(blit_dest[idx].x0, blit_dest[idx].y0),
                           &copied))
     {
       /* The screen format doesn't support the blit at all (e.g. paletted):

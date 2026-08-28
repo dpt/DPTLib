@@ -54,7 +54,7 @@ result_t text_create(wuss_t         *wuss,
                           palette_PICO8_BLUE,
                           &delegate,
                           box_size(&box),
-                          (size2d_t) { 0, 0 },
+                          SIZE2D(0, 0),
                           &task->window);
 
   return rc;
@@ -156,7 +156,7 @@ static result_t text_idle(void *task_data)
   angle = tcx->frame_count * (2.0 * M_PI / TEXT_RESIZE_PERIOD_FRAMES);
   width = tcx->base_width + (int) (TEXT_RESIZE_AMPLITUDE * sin(angle));
 
-  rc = wuss_window_resize(tcx->window, (size2d_t) { width, height });
+  rc = wuss_window_resize(tcx->window, SIZE2D(width, height));
   if (rc != result_OK)
     logf_warning("text_idle: wuss_window_resize(%d, %d) failed", width, height);
 

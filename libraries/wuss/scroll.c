@@ -36,12 +36,12 @@ result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
     event.data.scroll.point.y = y - content.y0 + win->scroll.y;
     event.data.scroll.delta   = delta;
 
-    wuss__furniture_scroll_step(win, (point_t) { 0, delta });
+    wuss__furniture_scroll_step(win, POINT(0, delta));
 
     return win->task.handle(win, &event, win->task.task_data);
   }
 
-  wuss__furniture_scroll_step(win, (point_t) { 0, delta });
+  wuss__furniture_scroll_step(win, POINT(0, delta));
 
   return result_OK;
 }

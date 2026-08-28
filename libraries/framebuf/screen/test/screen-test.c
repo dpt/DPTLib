@@ -85,7 +85,7 @@ static void testscreen_init(testscreen_t *ts)
   for (i = 0; i < WIDTH * HEIGHT; i++)
     ts->pixels[i] = BACKGROUND;
 
-  screen_init(&ts->scr, (size2d_t) { WIDTH, HEIGHT },
+  screen_init(&ts->scr, SIZE2D(WIDTH, HEIGHT),
               pixelfmt_bgrx8888,
               WIDTH * (int) sizeof(ts->pixels[0]),
               NULL,
