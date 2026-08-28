@@ -50,8 +50,8 @@ result_t wuss_window_create(wuss_t             *wuss,
   /* nudge back on-screen so the titlebar/close icon stay reachable; a
    * window bigger than the screen keeps its top-left (titlebar) edge
    * on-screen rather than being centred or left alone */
-  scr_width  = wuss->scr->width;
-  scr_height = wuss->scr->height;
+  scr_width  = wuss->scr->size.w;
+  scr_height = wuss->scr->size.h;
 
   dx = 0;
   if (win->visible.x0 < 0)

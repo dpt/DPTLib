@@ -186,9 +186,9 @@ static result_t wuss_interactive_test(const char *resources)
     goto Failure;
 
 #if WUSS_TEST_32BPP
-  rc = bitmap_init(&bm, scr_width, scr_height, pixelfmt_bgrx8888, rowbytes, palette, pixels);
+  rc = bitmap_init(&bm, (size2d_t) { scr_width, scr_height }, pixelfmt_bgrx8888, rowbytes, palette, pixels);
 #else
-  rc = bitmap_init(&bm, scr_width, scr_height, pixelfmt_p4, rowbytes, palette, pixels);
+  rc = bitmap_init(&bm, (size2d_t) { scr_width, scr_height }, pixelfmt_p4, rowbytes, palette, pixels);
 #endif
   if (rc != result_OK)
     goto Failure;
@@ -529,7 +529,7 @@ result_t wuss_test(const char *resources)
   if (pixels == NULL)
     goto Failure;
 
-  rc = bitmap_init(&bm, 200, 200, pixelfmt_bgrx8888, rowbytes, NULL, pixels);
+  rc = bitmap_init(&bm, (size2d_t) { 200, 200 }, pixelfmt_bgrx8888, rowbytes, NULL, pixels);
   if (rc != result_OK)
     goto Failure;
 

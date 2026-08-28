@@ -71,8 +71,7 @@ static result_t launcher_redraw(const wuss_event_t *event, void *task_data)
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  screen_draw_rect(scr, content->x0, content->y0,
-                   content->x1 - content->x0, content->y1 - content->y0,
+  screen_draw_rect(scr, content->x0, content->y0, box_size(content),
                    lc->bg);
 
   bmfont_get_info(lc->font, &font_width, &font_height);

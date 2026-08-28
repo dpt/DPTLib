@@ -79,8 +79,7 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  screen_draw_rect(scr, content->x0, content->y0,
-                   content->x1 - content->x0, content->y1 - content->y0,
+  screen_draw_rect(scr, content->x0, content->y0, box_size(content),
                    task->bg);
 
   prev = task->points[0];
