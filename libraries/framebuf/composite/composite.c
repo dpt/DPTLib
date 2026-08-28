@@ -936,8 +936,8 @@ static void composite_xxxa8888(composite_rule_t rule,
 
   srcscan  = src->base;
   dstscan  = dst->base;
-  width    = src->width;
-  height   = src->height;
+  width    = src->size.w;
+  height   = src->size.h;
   rowbytes = src->rowbytes / sizeof(pixelfmt_xxxa8888_t);
 
   while (height--)
@@ -959,8 +959,8 @@ result_t composite(composite_rule_t rule,
   if (src == NULL || dst == NULL)
     return result_NULL_ARG;
 
-  if (src->width  != dst->width  ||
-      src->height != dst->height ||
+  if (src->size.w  != dst->size.w  ||
+      src->size.h != dst->size.h ||
       src->format != dst->format)
     return result_BAD_ARG;
 

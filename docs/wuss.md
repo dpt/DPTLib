@@ -20,38 +20,40 @@ result_t wuss_create(screen_t             *scr,
                      wuss_t              **wuss);
 ```
 
-`font` and `palette` may both be NULL, for unlabelled titlebars and a built-in default palette respectively. `config` may be NULL for default titlebar height/colours.
+`font` and `palette` may both be NULL, for unlabelled titlebars and a built-in default palette respectively. `config` may be NULL for default titlebar height/colours. `config->backdrop` sets a desktop background colour painted behind windows on every redraw, or `wuss_NO_BACKGROUND` (the default when `config` is NULL) to leave the background untouched and require the caller to repaint it itself. `wuss_get_font` reads back the font passed in (or NULL), for a task that wants to draw its own content in the same face as titlebars.
 
 Destroy with `wuss_destroy`, which also destroys any windows still open on it.
 
 ## Windows
 
-Create a window with a content bounding box, optional title, appearance flags and a task delegate:
+Create a window with a content bounding box, optional title, appearance flags, a content background and a task delegate:
 
 ```C
 result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title,
-                            wuss_window_flags_t flags, const wuss_task_t *task,
-                            int doc_width, int doc_height,
+                            wuss_window_flags_t flags, wuss_colour_t bg,
+                            const wuss_task_t *task,
+                            size2d_t doc,
                             wuss_window_t **window);
 ```
 
-`doc_width`/`doc_height` are the virtual document extent behind the horizontal/vertical scrollbars' sausage proportion; pass `content`'s own width/height for a window with nothing to scroll. Set once at creation, immutable thereafter.
+`bg` is filled in by wuss before each redraw event, or `wuss_NO_BACKGROUND` for the task to draw its own background (avoids a redundant fill behind an opaque task); changeable later via `wuss_window_set_background`.
+
+`doc` is the virtual document extent behind the horizontal/vertical scrollbars' sausage proportion; pass `content`'s own width/height for a window with nothing to scroll. Set once at creation, immutable thereafter.
 
 Furniture is additional to `content`, not carved out of it: the window's content area always ends up exactly the box requested, and its on-screen footprint (`wuss_window_get_visible_bounds`) is `content` expanded outward by whatever furniture flags request — a titlebar above, and/or a 1px outline around all four sides.
 
-`wuss_task_t` holds the task's event callback and its content background:
+`wuss_task_t` holds the task's event callback:
 
 ```C
 typedef struct wuss_task
 {
   wuss_event_fn_t *handle;       /* NULL => task receives no events */
   void            *task_data;
-  wuss_colour_t    bg;           /* filled by wuss before a redraw event, or wuss_NO_BACKGROUND */
 }
 wuss_task_t;
 ```
 
-`wuss_task_make` builds one from `handle`/`task_data`/`bg`.
+`wuss_task_start` builds one from `handle`/`task_data`.
 
 `flags` combines, by bitwise OR:
 
@@ -64,8 +66,9 @@ wuss_task_t;
 - `wuss_WINDOW_NO_VSCROLL` — no vertical scrollbar on the right edge.
 - `wuss_WINDOW_NO_HSCROLL` — no horizontal scrollbar on the bottom edge.
 - `wuss_WINDOW_NO_RESIZE` — no resize icon in the bottom-right corner.
+- `wuss_WINDOW_NO_RESIZE_BLIT` — a resize (drag or toggle-size) always fully redraws the window's content instead of blitting the preserved region; for a task whose rendering depends on window size in ways a partial redraw can't patch (e.g. a layout that spans the whole window).
 
-`wuss_WINDOW_NO_CLOSE`/`NO_BACK`/`NO_TOGGLE_SIZE` are ignored if `flags` includes `wuss_WINDOW_NO_TITLEBAR`; `NO_VSCROLL`/`NO_HSCROLL`/`NO_RESIZE` apply regardless.
+`wuss_WINDOW_NO_CLOSE`/`NO_BACK`/`NO_TOGGLE_SIZE` are ignored if `flags` includes `wuss_WINDOW_NO_TITLEBAR`; `NO_VSCROLL`/`NO_HSCROLL`/`NO_RESIZE`/`NO_RESIZE_BLIT` apply regardless.
 
 All furniture actions (back, toggle-size, resize-drag, scrollbar arrow/thumb) are handled entirely within Wuss via `wuss_mouse_click`/`wuss_mouse_move` — no new client events.
 
@@ -111,19 +114,19 @@ Feed mouse events in with `wuss_mouse_click` (action `wuss_MOUSE_DOWN` or `wuss_
 
 ## Scrolling
 
-Each window carries a scroll offset, `(0, 0)` by default: the point in the task's virtual content space that appears at the content area's top-left. `wuss_window_set_scroll(window, x, y)` moves it (invalidating the content area so the next redraw picks it up); `wuss_window_get_scroll` reads it back. `wuss_scroll` applies this offset itself as Wuss's default scroll action, clamped to `doc_width`/`doc_height` (set at window creation), before also delivering `wuss_EVENT_SCROLL` to the task if it has a handle:
+Each window carries a scroll offset, `(0, 0)` by default: the point in the task's virtual content space that appears at the content area's top-left. `wuss_window_set_scroll(window, x, y)` moves it (invalidating the content area so the next redraw picks it up); `wuss_window_get_scroll` reads it back. `wuss_scroll` applies this offset itself as Wuss's default scroll action, clamped to `doc` (set at window creation), before also delivering `wuss_EVENT_SCROLL` to the task if it has a handle:
 
 - window-local `x`/`y` delivered in mouse/scroll events (and expected in `wuss_window_invalidate`'s `local_box`) are in virtual content space, i.e. already shifted by the scroll offset.
 - a redraw event's `content` is still the on-screen (unscrolled) content box; a task reads the offset itself via `wuss_window_get_scroll` to work out which part of its content to paint there.
 
 ## Redrawing
 
-- `wuss_redraw` repaints every window, back-to-front, unconditionally.
+- `wuss_redraw` repaints every window, back-to-front, unconditionally, having first painted the configured backdrop colour (see Setup) behind them, if any.
 - `wuss_invalidate` / `wuss_window_invalidate` mark a screen-space or window-local region dirty; window management calls these automatically for its own changes, but a task must call one of them itself whenever its content changes on its own (e.g. an animation), passing the union of the old and new areas that need repainting.
-- `wuss_redraw_dirty` repaints only the accumulated dirty region, then clears it. Wuss only repaints windows, not the background between/behind them, so a caller whose invalidation can expose background (e.g. after a window move) should clear that region itself first.
-- `wuss_get_dirty` fetches the current accumulated dirty region without redrawing.
+- `wuss_redraw_dirty` repaints only the accumulated dirty region, then clears it, painting the backdrop colour into each dirty region first if one was configured. Without a configured backdrop, Wuss only repaints windows, not the background between/behind them, so a caller whose invalidation can expose background (e.g. after a window move) should clear that region itself first.
+- `wuss_get_dirty_count`/`wuss_get_dirty(wuss, index, out)` fetch the currently accumulated dirty regions (coalesced as they accumulate, up to a fixed cap after which further regions are merged into the last one) without redrawing.
+- A window move or resize is clipped, piece by piece, against whatever's above it in the z-order, and any pixels a move can preserve are blitted directly rather than queued dirty; only the genuinely-changed pieces end up in the dirty region. This is an internal optimisation with no effect on a task's own redraw handling.
 
 ## Limitations
 
 - No menus: `wuss_BUTTON_MENU` is defined and routed like any other button, but Wuss has no built-in menu widget.
-- No overlapping-window damage tracking finer than each window's own bounding box.

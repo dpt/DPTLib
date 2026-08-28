@@ -5,6 +5,7 @@
 
 #include "datastruct/list.h"
 #include "geom/box.h"
+#include "geom/size.h"
 #include "framebuf/screen.h"
 #include "framebuf/bmfont.h"
 
@@ -25,6 +26,18 @@
 
 #define WUSS_ICON_INSET   3  /* shared by close/back/toggle/resize icons and scrollbar breadth */
 #define WUSS_MIN_CONTENT  20 /* resize-drag floor: content can never be squeezed smaller than this */
+#define WUSS_SCROLL_INSET 2  /* sausage cross-axis margin from its well's edges, purely cosmetic */
+#define WUSS_DIVIDER_PX   1  /* interior rule between the content area and the furniture on its right/bottom */
+
+/* Internal per-window state, distinct from the public wuss_window_flags_t
+ * appearance flags a caller sets at creation -- room to grow without
+ * widening struct wuss_window by an int per flag. */
+typedef enum wuss_window_state
+{
+  wuss_WINDOW_STATE_NONE    = 0,
+  wuss_WINDOW_STATE_TOGGLED = 1 << 0 /* currently at TOGGLE_SIZE's "full" size */
+}
+wuss_window_state_t;
 
 struct wuss
 {
@@ -33,6 +46,7 @@ struct wuss
   colour_t                   *palette;   /* owned */
   int                         npalette;
   wuss_palette_t              furniture_colours;
+  wuss_colour_t               backdrop;  /* wuss_NO_BACKGROUND for none */
   int                         titlebar_height;
   list_t                      z_order;   /* anchor; head = topmost window */
   struct wuss__furniture      furniture;
@@ -47,11 +61,12 @@ struct wuss_window
   box_t               visible; /* full on-screen footprint: content expanded
                                 * outward by any titlebar/outline furniture */
   wuss_task_t         task;
+  wuss_colour_t       bg;
   wuss_window_flags_t flags;
   point_t             scroll; /* offset into virtual content space of the
                                * content box's top-left; see wuss_window_set_scroll */
-  int                 doc_width, doc_height; /* virtual document extent, set at creation */
-  int                 toggled;      /* currently at TOGGLE_SIZE's "full" size? */
+  size2d_t            doc;    /* virtual document extent, set at creation */
+  wuss_window_state_t state;        /* see wuss_window_state_t */
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];
 };
@@ -73,6 +88,14 @@ void            wuss__invalidate_uncovered(wuss_window_t *window);
 int             wuss__clip_to_visible(wuss_window_t *window,
                                       const box_t   *box,
                                       box_t         *out);
+
+/* Subtract each of "cuts" (an array of "ncuts" boxes) from "whole", writing
+ * the surviving pieces to "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and
+ * returning their count. */
+int             wuss__subtract_boxes(const box_t *whole,
+                                     const box_t *cuts,
+                                     int          ncuts,
+                                     box_t       *out);
 
 /* Notify a window's task that it has been moved or resized, via
  * wuss_EVENT_OPEN; the return value is discarded, matching how furniture
@@ -104,6 +127,19 @@ static inline int wuss__titlebar_height(const wuss_window_t *window)
   return wuss__titlebar_height_for(window->wuss, window->flags);
 }
 
+static inline int wuss__window_toggled(const wuss_window_t *window)
+{
+  return (window->state & wuss_WINDOW_STATE_TOGGLED) != 0;
+}
+
+static inline void wuss__window_set_toggled(wuss_window_t *window, int toggled)
+{
+  if (toggled)
+    window->state |= wuss_WINDOW_STATE_TOGGLED;
+  else
+    window->state &= (wuss_window_state_t) ~wuss_WINDOW_STATE_TOGGLED;
+}
+
 static inline int wuss__outline_px_for(wuss_window_flags_t flags)
 {
   return (flags & wuss_WINDOW_NO_OUTLINE) ? 0 : 1;
@@ -114,14 +150,19 @@ static inline int wuss__outline_px(const wuss_window_t *window)
   return wuss__outline_px_for(window->flags);
 }
 
-/* ponytail: falls back to the default titlebar height when the window has
- * none, so NO_TITLEBAR windows that still opt into scrollbars/resize get a
- * sane breadth rather than a negative one */
+/* ponytail: falls back to wuss's own titlebar height when the window has
+ * none, so NO_TITLEBAR windows that still opt into scrollbars/resize match
+ * their titled siblings instead of a hardcoded size; the hardcoded default
+ * is only a last-resort floor if even that isn't positive */
 static inline int wuss__icon_size_for(const wuss_t *wuss, wuss_window_flags_t flags)
 {
   int size;
 
   size = wuss__titlebar_height_for(wuss, flags) - 2 * WUSS_ICON_INSET;
+  if (size > 0)
+    return size;
+
+  size = wuss->titlebar_height - 2 * WUSS_ICON_INSET;
 
   return (size > 0) ? size : WUSS_DEFAULT_TITLEBAR_HEIGHT - 2 * WUSS_ICON_INSET;
 }
@@ -150,6 +191,12 @@ static inline void wuss__furniture_carve_for(wuss_window_flags_t flags,
     carve->x = icon_size;
     carve->y = icon_size;
   }
+
+  /* where furniture abuts the content area, a rule divides the two */
+  if (carve->x > 0)
+    carve->x += WUSS_DIVIDER_PX;
+  if (carve->y > 0)
+    carve->y += WUSS_DIVIDER_PX;
 }
 
 #endif /* IMPL_H */

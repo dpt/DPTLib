@@ -19,7 +19,8 @@ extern "C"
  *
  * \param[in]  f      File to create the stream from.
  * \param[in]  bufsz  Buffer size in bytes (0 for a sensible default).
- * \param[out] s      Pointer to a `stream_t` pointer to store the created stream.
+ * \param[out] s      Pointer to a `stream_t` pointer to store the created
+ *                    stream.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
 result_t stream_stdio_create(FILE *f, int bufsz, stream_t **s);

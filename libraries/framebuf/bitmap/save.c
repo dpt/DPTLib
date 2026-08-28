@@ -67,7 +67,7 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   png_init_io(png_ptr, fp);
 
   png_set_IHDR(png_ptr, info_ptr,
-               bm->width, bm->height,
+               bm->size.w, bm->size.h,
                8,
                fmt,
                PNG_INTERLACE_NONE,
@@ -81,7 +81,7 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   // png_set_filler(png_ptr, 0, PNG_FILLER_AFTER);
   // png_set_packing for <8bpp images
 
-  outrow = malloc(bytespp * bm->width * sizeof(png_byte));
+  outrow = malloc(bytespp * bm->size.w * sizeof(png_byte));
   if (outrow == NULL)
   {
     rc = result_OOM;
@@ -90,14 +90,14 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
 
   inrow = bm->base;
 
-  for (y = 0; y < bm->height; y++)
+  for (y = 0; y < bm->size.h; y++)
   {
     png_bytep pout = &outrow[0];
 
     switch (bm->format)
     {
     case pixelfmt_bgrx8888:
-      for (x = 0; x < bm->width; x++)
+      for (x = 0; x < bm->size.w; x++)
       {
         pixelfmt_xxxa8888_t in = *inrow++;
         *pout++ = PIXELFMT_xxRx8888(in);
@@ -107,7 +107,7 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
       break;
 
     case pixelfmt_bgra8888:
-      for (x = 0; x < bm->width; x++)
+      for (x = 0; x < bm->size.w; x++)
       {
         pixelfmt_xxxa8888_t in = *inrow++;
         *pout++ = PIXELFMT_xxRx8888(in);

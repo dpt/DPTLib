@@ -41,7 +41,7 @@ result_t text_create(wuss_t         *wuss,
   task->frame_count = 0;
   task->resizing    = true;
 
-  delegate = wuss_task_start(text_handle, task, palette_PICO8_BLUE);
+  delegate = wuss_task_start(text_handle, task);
   box      = (box_t) BOX_POS_SIZE(120, 100, 220, 180);
 
   task->base_width  = box.x1 - box.x0;
@@ -50,10 +50,10 @@ result_t text_create(wuss_t         *wuss,
   rc = wuss_window_create(wuss,
                           &box,
                           "Lorem Ipsum",
-                          wuss_WINDOW_NONE,
+                          wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                          palette_PICO8_BLUE,
                           &delegate,
-                          box.x1 - box.x0,
-                          box.y1 - box.y0,
+                          box_size(&box),
                           &task->window);
 
   return rc;
@@ -155,7 +155,7 @@ static result_t text_idle(void *task_data)
   angle = tcx->frame_count * (2.0 * M_PI / TEXT_RESIZE_PERIOD_FRAMES);
   width = tcx->base_width + (int) (TEXT_RESIZE_AMPLITUDE * sin(angle));
 
-  rc = wuss_window_resize(tcx->window, width, height);
+  rc = wuss_window_resize(tcx->window, (size2d_t) { width, height });
   if (rc != result_OK)
     logf_warning("text_idle: wuss_window_resize(%d, %d) failed", width, height);
 

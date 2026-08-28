@@ -14,11 +14,17 @@
 typedef enum sofa_shape
 {
   sofa_SHAPE_SOFA,
-  sofa_SHAPE_SHIP
+  sofa_SHAPE_SHIP,
+  sofa_SHAPE_TETRAHEDRON,
+  sofa_SHAPE_CUBE,
+  sofa_SHAPE_OCTAHEDRON,
+  sofa_SHAPE_ICOSAHEDRON,
+  sofa_SHAPE_DODECAHEDRON,
+  sofa_SHAPE__LIMIT
 }
 sofa_shape_t;
 
-/* a wireframe sofa (seat, backrest, two arms) or a spaceship,
+/* a wireframe sofa (seat, backrest, two arms), spaceship or Platonic solid,
  * spinning about its vertical axis; a Select click pauses/resumes the spin,
  * an Adjust click cycles the model */
 typedef struct sofa_task
@@ -29,6 +35,7 @@ typedef struct sofa_task
   double         zoom; /* scroll-adjustable */
   bool           spinning;
   sofa_shape_t   shape;
+  int            turns; /* completed rotations of the current model */
 }
 sofa_task_t;
 

@@ -16,7 +16,8 @@ extern "C"
  *
  * \param[in]  input  The input stream.
  * \param[in]  bufsz  The buffer size.
- * \param[out] s      Pointer to a `stream_t` pointer to store the created stream.
+ * \param[out] s      Pointer to a `stream_t` pointer to store the created
+ *                    stream.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
 result_t stream_mtfcomp_create(stream_t *input, int bufsz, stream_t **s);
@@ -26,7 +27,8 @@ result_t stream_mtfcomp_create(stream_t *input, int bufsz, stream_t **s);
  *
  * \param[in]  input  The input stream.
  * \param[in]  bufsz  The buffer size.
- * \param[out] s      Pointer to a `stream_t` pointer to store the created stream.
+ * \param[out] s      Pointer to a `stream_t` pointer to store the created
+ *                    stream.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
 result_t stream_mtfdecomp_create(stream_t *input, int bufsz, stream_t **s);

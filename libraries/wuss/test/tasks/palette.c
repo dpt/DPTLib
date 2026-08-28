@@ -23,16 +23,16 @@ result_t palette_create(wuss_t         *wuss,
   task->palette  = palette;
   task->npalette = npalette;
 
-  delegate = wuss_task_start(palette_handle, task, palette_PICO8_BLACK); /* backdrop for any rounding gap around the grid */
+  delegate = wuss_task_start(palette_handle, task); /* backdrop for any rounding gap around the grid */
   box      = (box_t) BOX_POS_SIZE(380, 260, 100, 100);
 
   return wuss_window_create(wuss,
                             &box,
                             "Palette",
-                            wuss_WINDOW_NO_TOGGLE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                            wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                            palette_PICO8_BLACK,
                             &delegate,
-                            box.x1 - box.x0,
-                            box.y1 - box.y0,
+                            box_size(&box),
                             &task->window);
 }
 
@@ -77,7 +77,7 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
     x   = bounds->x0 - sx + col * cell_w;
     y   = bounds->y0 - sy + row * cell_h;
 
-    screen_draw_rect(scr, x, y, cell_w, cell_h, pc->palette[i]);
+    screen_draw_rect(scr, x, y, (size2d_t) { cell_w, cell_h }, pc->palette[i]);
   }
 
   return result_OK;

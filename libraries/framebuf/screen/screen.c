@@ -15,8 +15,7 @@
 #include "framebuf/screen.h"
 
 void screen_init(screen_t  *scr,
-                 int        width,
-                 int        height,
+                 size2d_t   size,
                  pixelfmt_t fmt,
                  int        rowbytes,
                  colour_t  *palette,
@@ -24,8 +23,7 @@ void screen_init(screen_t  *scr,
 {
   assert(scr);
 
-  scr->width    = width;
-  scr->height   = height;
+  scr->size     = size;
   scr->format   = fmt;
   scr->rowbytes = rowbytes;
   scr->palette  = palette; // FIXME: This doesn't clone the palette, whereas bitmap_init()'s equivalent does.
@@ -48,8 +46,8 @@ int screen_get_clip(const screen_t *scr, box_t *clip)
 {
   clip->x0 = 0;
   clip->y0 = 0;
-  clip->x1 = scr->width;
-  clip->y1 = scr->height;
+  clip->x1 = scr->size.w;
+  clip->y1 = scr->size.h;
 
   if (box_is_empty(&scr->clip))
     return 0; /* not empty */

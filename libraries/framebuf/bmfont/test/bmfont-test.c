@@ -187,13 +187,13 @@ bmtestline_t;
 
 static bmtestfont_t bmfonts[MAXFONTS] =
 {
-  { "daydream-font",    NULL },
-  { "gliderrider-font", NULL },
-  { "tiny-font",        NULL },
-  { "henry-font",       NULL },
-  { "tall-font",        NULL },
+  { "daydream",         NULL },
+  { "gliderrider",      NULL },
+  { "tiny",             NULL },
+  { "henry",            NULL },
+  { "tall",             NULL },
   { "ms-sans-serif",    NULL },
-  { "digits-font",      NULL }
+  { "digits",           NULL }
 };
 
 /* ----------------------------------------------------------------------- */
@@ -753,9 +753,7 @@ result_t bmfont_test_one_format(const char *resources,
     goto Failure;
   }
 
-  bitmap_init(&state.bm,
-               state.scr_width,
-               state.scr_height,
+  bitmap_init(&state.bm, (size2d_t) { state.scr_width, state.scr_height },
                scr_fmt,
                scr_rowbytes,
                state.palette,

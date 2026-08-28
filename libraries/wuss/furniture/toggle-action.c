@@ -10,7 +10,7 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
 
   before = window->visible;
 
-  if (window->toggled)
+  if (wuss__window_toggled(window))
   {
     new_visible = window->pre_toggle;
   }
@@ -29,8 +29,8 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
      * account for scrollbar/resize-icon furniture (carve), which sits
      * outside the content area same as create.c/resize.c do, or the window
      * ends up carve.x/carve.y short of the doc size it's meant to reach. */
-    available_width  = window->wuss->scr->width  - window->visible.x0 - 2 * outline_px - carve.x;
-    available_height = window->wuss->scr->height - window->visible.y0 - 2 * outline_px - titlebar_height - carve.y;
+    available_width  = window->wuss->scr->size.w  - window->visible.x0 - 2 * outline_px - carve.x;
+    available_height = window->wuss->scr->size.h - window->visible.y0 - 2 * outline_px - titlebar_height - carve.y;
 
     /* a window dragged far enough off-screen leaves no room at all to the
      * screen edge, so the above can go negative -- floor it like
@@ -42,8 +42,8 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
     available_width  = MAX(available_width,  WUSS_MIN_CONTENT);
     available_height = MAX(available_height, WUSS_MIN_CONTENT);
 
-    width  = MIN(window->doc_width,  available_width);
-    height = MIN(window->doc_height, available_height);
+    width  = MIN(window->doc.w,  available_width);
+    height = MIN(window->doc.h, available_height);
 
     window->pre_toggle = window->visible;
 
@@ -54,7 +54,7 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
   }
 
   window->visible = new_visible;
-  window->toggled = !window->toggled;
+  wuss__window_set_toggled(window, !wuss__window_toggled(window));
 
   {
     point_t new_scroll;
@@ -80,7 +80,7 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
     }
   }
 
-  if (!(window->flags & wuss_WINDOW_NO_TOGGLE_BLIT) &&
+  if (!(window->flags & wuss_WINDOW_NO_RESIZE_BLIT) &&
       window->wuss->z_order.next == &window->link &&
       screen_copy_rect(window->wuss->scr, &before,
                        (point_t) { before.x0, before.y0 }, &copied))

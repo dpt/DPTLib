@@ -27,16 +27,16 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
   task->balls[0].dy     = 2;
   task->balls[0].radius = 8;
 
-  delegate = wuss_task_start(ball_handle, task, wuss_NO_BACKGROUND); /* ball_redraw paints its own background every frame */
+  delegate = wuss_task_start(ball_handle, task); /* ball_redraw paints its own background every frame */
   box      = (box_t) BOX_POS_SIZE(20, 20, 200, 160);
 
   return wuss_window_create(wuss,
                             &box,
                             "Bouncing Ball",
                             wuss_WINDOW_NONE,
+                            wuss_NO_BACKGROUND,
                             &delegate,
-                            box.x1 - box.x0,
-                            box.y1 - box.y0,
+                            box_size(&box),
                             &task->window);
 }
 
@@ -60,9 +60,7 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  screen_draw_rect(scr, content->x0, content->y0,
-                   content->x1 - content->x0,
-                   content->y1 - content->y0,
+  screen_draw_rect(scr, content->x0, content->y0, box_size(content),
                    bc->bg);
 
   for (i = 0; i < bc->nballs; i++)
@@ -71,8 +69,7 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 
     b = &bc->balls[i];
 
-    screen_draw_rect(scr, bounds->x0 - sx + b->x - b->radius, bounds->y0 - sy + b->y - b->radius,
-                     b->radius * 2, b->radius * 2, bc->ball);
+    screen_draw_rect(scr, bounds->x0 - sx + b->x - b->radius, bounds->y0 - sy + b->y - b->radius, (size2d_t) { b->radius * 2, b->radius * 2 }, bc->ball);
   }
 
   return result_OK;
@@ -103,9 +100,12 @@ static result_t ball_mouse(wuss_window_t      *window,
     if (bc->nballs >= BALL_MAX)
       return result_OK;
 
+    /* x,y already arrive in virtual content space, as ball positions are
+     * held; only the invalidation boxes below need the scroll offset taking
+     * back off to reach window-local coordinates. */
     b         = &bc->balls[bc->nballs++];
-    b->x      = x + scroll.x;
-    b->y      = y + scroll.y;
+    b->x      = x;
+    b->y      = y;
     b->dx     = (bc->nballs & 1) ? 3 : -3;
     b->dy     = (bc->nballs & 2) ? 2 : -2;
     b->radius = 8;
