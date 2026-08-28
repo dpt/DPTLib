@@ -19,7 +19,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
     switch (wuss->furniture.drag_kind)
     {
     case wuss_FURNITURE_DRAG_RESIZE:
-      wuss__furniture_drag_resize(win, (point_t) { x, y });
+      wuss__furniture_drag_resize(win, POINT(x, y));
       break;
 
     case wuss_FURNITURE_DRAG_VSCROLL_SAUSAGE:
@@ -32,7 +32,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
 
     case wuss_FURNITURE_DRAG_MOVE:
     default:
-      wuss_window_move(win, (point_t) { x - wuss->furniture.drag.x, y - wuss->furniture.drag.y });
+      wuss_window_move(win, POINT(x - wuss->furniture.drag.x, y - wuss->furniture.drag.y));
       break;
     }
 
@@ -46,7 +46,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   if (win == NULL)
     return result_OK;
 
-  if (wuss__furniture_hit_test(win, (point_t) { x, y }) != wuss_FURNITURE_CONTENT)
+  if (wuss__furniture_hit_test(win, POINT(x, y)) != wuss_FURNITURE_CONTENT)
     return result_OK;
 
   if (win->task.handle != NULL)

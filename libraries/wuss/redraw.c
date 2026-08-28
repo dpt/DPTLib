@@ -128,7 +128,7 @@ result_t wuss_redraw_dirty(wuss_t *wuss)
     {
       wuss->scr->clip = wuss->dirty[i];
       screen_draw_rect(wuss->scr,
-                       wuss->dirty[i].x0, wuss->dirty[i].y0, (size2d_t) { wuss->dirty[i].x1 - wuss->dirty[i].x0, wuss->dirty[i].y1 - wuss->dirty[i].y0 },
+                       wuss->dirty[i].x0, wuss->dirty[i].y0, SIZE2D(wuss->dirty[i].x1 - wuss->dirty[i].x0, wuss->dirty[i].y1 - wuss->dirty[i].y0),
                        wuss->palette[wuss->backdrop]);
     }
 

@@ -10,4 +10,7 @@ typedef struct size2d
 }
 size2d_t;
 
+/** Construct a size2d_t compound literal. */
+#define SIZE2D(w, h) ((size2d_t) { (w), (h) })
+
 #endif /* GEOM_SIZE_H */

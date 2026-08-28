@@ -78,7 +78,7 @@ void wuss__furniture_drag_sausage(wuss_window_t *window,
     new_scroll = max_scroll;
 
   if (horizontal)
-    wuss_window_set_scroll(window, (point_t) { new_scroll, window->scroll.y });
+    wuss_window_set_scroll(window, POINT(new_scroll, window->scroll.y));
   else
-    wuss_window_set_scroll(window, (point_t) { window->scroll.x, new_scroll });
+    wuss_window_set_scroll(window, POINT(window->scroll.x, new_scroll));
 }

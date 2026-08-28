@@ -49,14 +49,14 @@ result_t chars_create(wuss_t         *wuss,
   return wuss_window_create(wuss,
                             &box,
                             "Chars",
-                            wuss_WINDOW_NO_RESIZE     |
+                            wuss_WINDOW_NO_RESIZE      |
                             wuss_WINDOW_NO_TOGGLE_SIZE |
                             wuss_WINDOW_NO_VSCROLL     |
                             wuss_WINDOW_NO_HSCROLL,
                             wuss_NO_BACKGROUND,
                             &delegate,
                             box_size(&box),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &task->window);
 }
 
@@ -105,7 +105,7 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
     x   = bounds->x0 - sx + col * cell_w;
     y   = bounds->y0 - sy + row * cell_h;
 
-    screen_draw_rect(scr, x, y, (size2d_t) { cell_w, cell_h }, cc->bg);
+    screen_draw_rect(scr, x, y, SIZE2D(cell_w, cell_h), cc->bg);
 
     if (i < first || i >= first + count)
       continue; /* no glyph for this byte value: leave the cell blank */
@@ -121,7 +121,7 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
 
 result_t chars_handle(wuss_window_t      *window,
                       const wuss_event_t *event,
-                      void                *task_data)
+                      void               *task_data)
 {
   if (event->kind == wuss_EVENT_CLOSE)
   {

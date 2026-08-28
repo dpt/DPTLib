@@ -214,7 +214,7 @@ void screen_draw_rect(screen_t *scr,
 
 void screen_draw_square(screen_t *scr, int x, int y, int size, colour_t colour)
 {
-  screen_draw_rect(scr, x, y, (size2d_t) { size, size }, colour);
+  screen_draw_rect(scr, x, y, SIZE2D(size, size), colour);
 }
 
 /* ----------------------------------------------------------------------- */

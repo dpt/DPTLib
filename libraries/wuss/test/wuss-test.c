@@ -191,9 +191,9 @@ static result_t wuss_interactive_test(const char *resources)
     goto Failure;
 
 #if WUSS_TEST_32BPP
-  rc = bitmap_init(&bm, (size2d_t) { scr_width, scr_height }, pixelfmt_bgrx8888, rowbytes, palette, pixels);
+  rc = bitmap_init(&bm, SIZE2D(scr_width, scr_height), pixelfmt_bgrx8888, rowbytes, palette, pixels);
 #else
-  rc = bitmap_init(&bm, (size2d_t) { scr_width, scr_height }, pixelfmt_p4, rowbytes, palette, pixels);
+  rc = bitmap_init(&bm, SIZE2D(scr_width, scr_height), pixelfmt_p4, rowbytes, palette, pixels);
 #endif
   if (rc != result_OK)
     goto Failure;
@@ -308,7 +308,7 @@ static result_t wuss_interactive_test(const char *resources)
           int x, y;
 
           sdl_pos_to_scr(window, scr_width, scr_height, event.button.x, event.button.y, &x, &y);
-          wuss_mouse_click(wuss, (point_t) { x, y }, sdl_button_to_wuss(event.button.button), wuss_MOUSE_DOWN, NULL);
+          wuss_mouse_click(wuss, POINT(x, y), sdl_button_to_wuss(event.button.button), wuss_MOUSE_DOWN, NULL);
         }
         break;
 
@@ -317,7 +317,7 @@ static result_t wuss_interactive_test(const char *resources)
           int x, y;
 
           sdl_pos_to_scr(window, scr_width, scr_height, event.button.x, event.button.y, &x, &y);
-          wuss_mouse_click(wuss, (point_t) { x, y }, sdl_button_to_wuss(event.button.button), wuss_MOUSE_UP, NULL);
+          wuss_mouse_click(wuss, POINT(x, y), sdl_button_to_wuss(event.button.button), wuss_MOUSE_UP, NULL);
         }
         break;
 
@@ -326,7 +326,7 @@ static result_t wuss_interactive_test(const char *resources)
           int x, y;
 
           sdl_pos_to_scr(window, scr_width, scr_height, event.motion.x, event.motion.y, &x, &y);
-          wuss_mouse_move(wuss, (point_t) { x, y }, NULL);
+          wuss_mouse_move(wuss, POINT(x, y), NULL);
         }
         break;
 
@@ -335,7 +335,7 @@ static result_t wuss_interactive_test(const char *resources)
           int x, y;
 
           sdl_pos_to_scr(window, scr_width, scr_height, event.wheel.mouse_x, event.wheel.mouse_y, &x, &y);
-          wuss_scroll(wuss, (point_t) { x, y }, (int) event.wheel.y, NULL);
+          wuss_scroll(wuss, POINT(x, y), (int) event.wheel.y, NULL);
         }
         break;
 
@@ -549,8 +549,8 @@ result_t wuss_test(const char *resources)
   wuss_t        *wuss;
   wuss_config_t  bad_config;
   wuss_t        *bad_wuss;
-  test_task_t  tc_a, tc_b, tc_c, tc_d;
-  wuss_task_t  delegate_a, delegate_b, delegate_c, delegate_d;
+  test_task_t    tc_a, tc_b, tc_c, tc_d;
+  wuss_task_t    delegate_a, delegate_b, delegate_c, delegate_d;
   box_t          box_a, box_b, box_c, box_d;
   wuss_window_t *win_a, *win_b, *win_c, *win_d;
   wuss_window_t *hit;
@@ -566,7 +566,7 @@ result_t wuss_test(const char *resources)
   if (pixels == NULL)
     goto Failure;
 
-  rc = bitmap_init(&bm, (size2d_t) { 200, 200 }, pixelfmt_bgrx8888, rowbytes, NULL, pixels);
+  rc = bitmap_init(&bm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes, NULL, pixels);
   if (rc != result_OK)
     goto Failure;
 
@@ -618,7 +618,7 @@ result_t wuss_test(const char *resources)
                           wuss_NO_BACKGROUND,
                           NULL,
                           box_size(&box_a),
-                          (size2d_t) { 0, 0 },
+                          SIZE2D(0, 0),
                           &win_a);
   if (rc != result_WUSS_TOO_SMALL)
     goto Failure;
@@ -628,7 +628,7 @@ result_t wuss_test(const char *resources)
   tc_a.redraw_count = 0;
   tc_a.mouse_count  = 0;
   tc_a.open_count   = 0;
-  delegate_a.handle      = test_handle;
+  delegate_a.handle    = test_handle;
   delegate_a.task_data = &tc_a;
 
   box_a.x0 = 0;
@@ -644,14 +644,14 @@ result_t wuss_test(const char *resources)
                           wuss_NO_BACKGROUND,
                           &delegate_a,
                           box_size(&box_a),
-                          (size2d_t) { 0, 0 },
+                          SIZE2D(0, 0),
                           &win_a);
   if (rc != result_OK)
     goto Failure;
 
   tc_b.redraw_count = 0;
   tc_b.mouse_count  = 0;
-  delegate_b.handle      = test_handle;
+  delegate_b.handle    = test_handle;
   delegate_b.task_data = &tc_b;
 
   box_b.x0 = 50;
@@ -667,7 +667,7 @@ result_t wuss_test(const char *resources)
                           wuss_NO_BACKGROUND,
                           &delegate_b,
                           box_size(&box_b),
-                          (size2d_t) { 0, 0 },
+                          SIZE2D(0, 0),
                           &win_b);
   if (rc != result_OK)
     goto Failure;
@@ -736,7 +736,7 @@ result_t wuss_test(const char *resources)
   printf("test: z-order hit test and local coordinate translation (B on top)\n");
 
   tc_b.mouse_count = 0;
-  rc = wuss_mouse_click(wuss, (point_t) { 75, 75 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+  rc = wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_b)
@@ -746,14 +746,14 @@ result_t wuss_test(const char *resources)
   if (tc_b.last_action != wuss_MOUSE_DOWN || tc_b.last_x != 25 || tc_b.last_y != 25)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, (point_t) { 75, 75 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  rc = wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
   printf("test: clicking a window's close icon sends wuss_EVENT_CLOSE, not a drag\n");
 
   tc_a.close_count = 0;
-  rc = wuss_mouse_click(wuss, (point_t) { 6, 11 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's close icon */
+  rc = wuss_mouse_click(wuss, POINT(6, 11), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's close icon */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -761,7 +761,7 @@ result_t wuss_test(const char *resources)
   if (tc_a.close_count != 1)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, (point_t) { 31, 36 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit); /* if the close click had started a drag, this would move A */
+  rc = wuss_mouse_click(wuss, POINT(31, 36), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit); /* if the close click had started a drag, this would move A */
   if (rc != result_OK)
     goto Failure;
 
@@ -772,20 +772,20 @@ result_t wuss_test(const char *resources)
   printf("test: click-to-front changes subsequent overlap hits\n");
 
   tc_a.mouse_count = 0;
-  rc = wuss_mouse_click(wuss, (point_t) { 31, 11 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's titlebar, above its content, clear of the close icon */
+  rc = wuss_mouse_click(wuss, POINT(31, 11), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's titlebar, above its content, clear of the close icon */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, (point_t) { 31, 11 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  rc = wuss_mouse_click(wuss, POINT(31, 11), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
   printf("test: content click does not change z-order\n");
 
   tc_b.mouse_count = 0;
-  rc = wuss_mouse_click(wuss, (point_t) { 120, 120 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* B's content, only within B */
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* B's content, only within B */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_b)
@@ -793,12 +793,12 @@ result_t wuss_test(const char *resources)
   if (tc_b.mouse_count != 1)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, (point_t) { 120, 120 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
   tc_a.mouse_count = 0;
-  rc = wuss_mouse_click(wuss, (point_t) { 75, 75 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A still topmost: B's content click above didn't bring it to front */
+  rc = wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A still topmost: B's content click above didn't bring it to front */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -806,14 +806,14 @@ result_t wuss_test(const char *resources)
   if (tc_a.mouse_count != 1 || tc_a.last_x != 74 || tc_a.last_y != 54)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, (point_t) { 75, 75 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  rc = wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
   printf("test: titlebar click starts a drag, not delivered as content\n");
 
   tc_a.mouse_count = 0;
-  rc = wuss_mouse_click(wuss, (point_t) { 31, 11 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's titlebar, A already topmost, clear of the close icon */
+  rc = wuss_mouse_click(wuss, POINT(31, 11), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A's titlebar, A already topmost, clear of the close icon */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -829,7 +829,7 @@ result_t wuss_test(const char *resources)
 
   before_a = tc_a.redraw_count;
   before_b = tc_b.redraw_count;
-  rc = wuss_mouse_move(wuss, (point_t) { 31, 36 }, &hit);
+  rc = wuss_mouse_move(wuss, POINT(31, 36), &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -854,7 +854,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: mouse-up ends the drag\n");
 
-  rc = wuss_mouse_click(wuss, (point_t) { 31, 36 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  rc = wuss_mouse_click(wuss, POINT(31, 36), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
@@ -862,13 +862,13 @@ result_t wuss_test(const char *resources)
 
   printf("test: Adjust-drag moves a window without bringing it to front\n");
 
-  rc = wuss_mouse_click(wuss, (point_t) { 140, 35 }, wuss_BUTTON_ADJUST, wuss_MOUSE_DOWN, &hit); /* B's titlebar, clear of A */
+  rc = wuss_mouse_click(wuss, POINT(140, 35), wuss_BUTTON_ADJUST, wuss_MOUSE_DOWN, &hit); /* B's titlebar, clear of A */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_b)
     goto Failure;
 
-  rc = wuss_mouse_move(wuss, (point_t) { 145, 60 }, &hit);
+  rc = wuss_mouse_move(wuss, POINT(145, 60), &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_b)
@@ -878,23 +878,23 @@ result_t wuss_test(const char *resources)
   if (visible.x0 != 54 || visible.y0 != 54)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, (point_t) { 145, 60 }, wuss_BUTTON_ADJUST, wuss_MOUSE_UP, &hit);
+  rc = wuss_mouse_click(wuss, POINT(145, 60), wuss_BUTTON_ADJUST, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_b)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, (point_t) { 75, 75 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* within both A and B; A still topmost */
+  rc = wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* within both A and B; A still topmost */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_a)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, (point_t) { 75, 75 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  rc = wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
-  rc = wuss_mouse_move(wuss, (point_t) { 200, 200 }, &hit); /* off all windows, drag must have ended */
+  rc = wuss_mouse_move(wuss, POINT(200, 200), &hit); /* off all windows, drag must have ended */
   if (rc != result_OK)
     goto Failure;
   if (hit != NULL)
@@ -909,13 +909,13 @@ result_t wuss_test(const char *resources)
 
   printf("test: window_resize valid and too-small cases\n");
 
-  rc = wuss_window_resize(win_a, (size2d_t) { 50, 0 }); /* zero-height content is invalid */
+  rc = wuss_window_resize(win_a, SIZE2D(50, 0)); /* zero-height content is invalid */
   if (rc != result_WUSS_TOO_SMALL)
     goto Failure;
   if (tc_a.open_count != 1)
     goto Failure; /* rejected resize: no wuss_EVENT_OPEN */
 
-  rc = wuss_window_resize(win_a, (size2d_t) { 50, 50 });
+  rc = wuss_window_resize(win_a, SIZE2D(50, 50));
   if (rc != result_OK)
     goto Failure;
   if (tc_a.open_count != 2)
@@ -953,7 +953,7 @@ result_t wuss_test(const char *resources)
                           wuss_NO_BACKGROUND,
                           &delegate_d,
                           box_size(&box_d),
-                          (size2d_t) { 0, 0 },
+                          SIZE2D(0, 0),
                           &win_d);
   if (rc != result_OK)
     goto Failure;
@@ -965,7 +965,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: click within a title-less window's top edge is delivered as content, not a drag\n");
 
-  rc = wuss_mouse_click(wuss, (point_t) { 5, 165 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+  rc = wuss_mouse_click(wuss, POINT(5, 165), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
   if (rc != result_OK)
     goto Failure;
   if (hit != win_d)
@@ -973,21 +973,21 @@ result_t wuss_test(const char *resources)
   if (tc_d.mouse_count != 1 || tc_d.last_action != wuss_MOUSE_DOWN || tc_d.last_x != 5 || tc_d.last_y != 5)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, (point_t) { 5, 165 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  rc = wuss_mouse_click(wuss, POINT(5, 165), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
   if (rc != result_OK)
     goto Failure;
 
   printf("test: content click on a title-less window does not change z-order\n");
 
   {
-    test_task_t  tc_e, tc_f;
-    wuss_task_t  delegate_e, delegate_f;
+    test_task_t    tc_e, tc_f;
+    wuss_task_t    delegate_e, delegate_f;
     box_t          box_e, box_f;
     wuss_window_t *win_e, *win_f;
 
     tc_e.redraw_count = 0;
     tc_e.mouse_count  = 0;
-    delegate_e.handle      = test_handle;
+    delegate_e.handle    = test_handle;
     delegate_e.task_data = &tc_e;
 
     box_e.x0 = 100; box_e.y0 = 0;
@@ -1001,14 +1001,14 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_e,
                             box_size(&box_e),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_e);
     if (rc != result_OK)
       goto Failure;
 
     tc_f.redraw_count = 0;
     tc_f.mouse_count  = 0;
-    delegate_f.handle      = test_handle;
+    delegate_f.handle    = test_handle;
     delegate_f.task_data = &tc_f;
 
     box_f.x0 = 130; box_f.y0 = 20;
@@ -1022,30 +1022,30 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_f,
                             box_size(&box_f),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_f);
     if (rc != result_OK)
       goto Failure;
 
     /* F was created after E, so F is topmost; clicking E's exposed content
      * (outside the overlap) is delivered to E but must not raise it */
-    rc = wuss_mouse_click(wuss, (point_t) { 110, 10 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* within E only */
+    rc = wuss_mouse_click(wuss, POINT(110, 10), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* within E only */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_e)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { 110, 10 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(110, 10), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { 135, 25 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* overlap: F still on top */
+    rc = wuss_mouse_click(wuss, POINT(135, 25), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* overlap: F still on top */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_f)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { 135, 25 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(135, 25), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -1068,15 +1068,15 @@ result_t wuss_test(const char *resources)
   printf("test: moving/resizing a window entirely behind an occluder has no visible effect\n");
 
   {
-    test_task_t  tc_h, tc_g;
-    wuss_task_t  delegate_h, delegate_g;
+    test_task_t    tc_h, tc_g;
+    wuss_task_t    delegate_h, delegate_g;
     box_t          box_h, box_g;
     wuss_window_t *win_h, *win_g;
-    int             before_h, before_g;
+    int            before_h, before_g;
 
     tc_h.redraw_count = 0;
     tc_h.mouse_count  = 0;
-    delegate_h.handle      = test_handle;
+    delegate_h.handle    = test_handle;
     delegate_h.task_data = &tc_h;
 
     box_h.x0 = 10; box_h.y0 = 10;
@@ -1090,14 +1090,14 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_h,
                             box_size(&box_h),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_h);
     if (rc != result_OK)
       goto Failure;
 
     tc_g.redraw_count = 0;
     tc_g.mouse_count  = 0;
-    delegate_g.handle      = test_handle;
+    delegate_g.handle    = test_handle;
     delegate_g.task_data = &tc_g;
 
     box_g.x0 = 0;   box_g.y0 = 0;
@@ -1111,7 +1111,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_g,
                             box_size(&box_g),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_g);
     if (rc != result_OK)
       goto Failure;
@@ -1123,7 +1123,7 @@ result_t wuss_test(const char *resources)
     before_h = tc_h.redraw_count;
     before_g = tc_g.redraw_count;
 
-    wuss_window_move(win_h, (point_t) { 60, 60 }); /* still entirely within G's footprint */
+    wuss_window_move(win_h, POINT(60, 60)); /* still entirely within G's footprint */
     if (wuss_get_dirty_count(wuss) != 0)
       goto Failure;
 
@@ -1133,7 +1133,7 @@ result_t wuss_test(const char *resources)
     if (tc_h.redraw_count != before_h || tc_g.redraw_count != before_g)
       goto Failure; /* nothing visible changed: no redraw of either window */
 
-    rc = wuss_window_resize(win_h, (size2d_t) { 25, 25 }); /* still entirely within G's footprint */
+    rc = wuss_window_resize(win_h, SIZE2D(25, 25)); /* still entirely within G's footprint */
     if (rc != result_OK)
       goto Failure;
     if (wuss_get_dirty_count(wuss) != 0)
@@ -1152,14 +1152,14 @@ result_t wuss_test(const char *resources)
   printf("test: bring-to-front only invalidates the newly-uncovered part\n");
 
   {
-    test_task_t  tc_i, tc_j;
-    wuss_task_t  delegate_i, delegate_j;
+    test_task_t    tc_i, tc_j;
+    wuss_task_t    delegate_i, delegate_j;
     box_t          box_i, box_j, dirty;
     wuss_window_t *win_i, *win_j;
 
     tc_i.redraw_count = 0;
     tc_i.mouse_count  = 0;
-    delegate_i.handle      = test_handle;
+    delegate_i.handle    = test_handle;
     delegate_i.task_data = &tc_i;
 
     box_i.x0 = 0; box_i.y0 = 0;
@@ -1173,14 +1173,14 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_i,
                             box_size(&box_i),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_i);
     if (rc != result_OK)
       goto Failure;
 
     tc_j.redraw_count = 0;
     tc_j.mouse_count  = 0;
-    delegate_j.handle      = test_handle;
+    delegate_j.handle    = test_handle;
     delegate_j.task_data = &tc_j;
 
     box_j.x0 = 50; box_j.y0 = 0;
@@ -1194,7 +1194,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_j,
                             box_size(&box_j),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_j);
     if (rc != result_OK)
       goto Failure;
@@ -1223,15 +1223,15 @@ result_t wuss_test(const char *resources)
   printf("test: dragging off-screen and back on repaints the reappearing edge\n");
 
   {
-    test_task_t  tc_m;
-    wuss_task_t  delegate_m;
+    test_task_t    tc_m;
+    wuss_task_t    delegate_m;
     box_t          box_m;
     wuss_window_t *win_m;
     int            before_m;
 
     tc_m.redraw_count = 0;
     tc_m.mouse_count  = 0;
-    delegate_m.handle      = test_handle;
+    delegate_m.handle    = test_handle;
     delegate_m.task_data = &tc_m;
 
     box_m.x0 = 10; box_m.y0 = 10;
@@ -1245,7 +1245,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_m,
                             box_size(&box_m),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_m);
     if (rc != result_OK)
       goto Failure;
@@ -1254,14 +1254,14 @@ result_t wuss_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
 
-    wuss_window_move(win_m, (point_t) { -40, 10 }); /* slide left until half of M is off the left edge */
+    wuss_window_move(win_m, POINT(-40, 10)); /* slide left until half of M is off the left edge */
     rc = wuss_redraw_dirty(wuss); /* flush the vacated-sliver repaint from this move */
     if (rc != result_OK)
       goto Failure;
 
     before_m = tc_m.redraw_count;
 
-    wuss_window_move(win_m, (point_t) { 10, 10 }); /* slide back: the part that re-enters the screen was
+    wuss_window_move(win_m, POINT(10, 10)); /* slide back: the part that re-enters the screen was
                                        * never blitted (its source pixels were off-screen),
                                        * so it must be a real task redraw, not a blit */
     if (wuss_get_dirty_count(wuss) == 0)
@@ -1298,7 +1298,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_h,
                             box_size(&box_h),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_h);
     if (rc != result_OK)
       goto Failure;
@@ -1317,7 +1317,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_g,
                             box_size(&box_g),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_g);
     if (rc != result_OK)
       goto Failure;
@@ -1326,53 +1326,53 @@ result_t wuss_test(const char *resources)
      * corner) never falls under H, so it stays clickable either way */
     wuss_window_get_visible_bounds(win_g, &visible);
 
-    rc = wuss_mouse_click(wuss, (point_t) { 145, 65 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* overlap of G and H */
+    rc = wuss_mouse_click(wuss, POINT(145, 65), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* overlap of G and H */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_g)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { 145, 65 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(145, 65), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { visible.x0 + 5, visible.y0 + 5 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* G's back icon */
+    rc = wuss_mouse_click(wuss, POINT(visible.x0 + 5, visible.y0 + 5), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* G's back icon */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_g)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { visible.x0 + 5, visible.y0 + 5 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(visible.x0 + 5, visible.y0 + 5), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { 145, 65 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* overlap: H now on top */
+    rc = wuss_mouse_click(wuss, POINT(145, 65), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* overlap: H now on top */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_h) /* G was sent to back */
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { 145, 65 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(145, 65), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { visible.x0 + 5, visible.y0 + 5 }, wuss_BUTTON_ADJUST, wuss_MOUSE_DOWN, &hit); /* Adjust-click G's back icon */
+    rc = wuss_mouse_click(wuss, POINT(visible.x0 + 5, visible.y0 + 5), wuss_BUTTON_ADJUST, wuss_MOUSE_DOWN, &hit); /* Adjust-click G's back icon */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_g)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { visible.x0 + 5, visible.y0 + 5 }, wuss_BUTTON_ADJUST, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(visible.x0 + 5, visible.y0 + 5), wuss_BUTTON_ADJUST, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { 145, 65 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* overlap: G back on top */
+    rc = wuss_mouse_click(wuss, POINT(145, 65), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* overlap: G back on top */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_g) /* Adjust-click on the back icon brought G back to front */
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { 145, 65 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(145, 65), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -1380,17 +1380,17 @@ result_t wuss_test(const char *resources)
 
     wuss_window_get_content_bounds(win_g, &content); /* G's doc_width/doc_height are 50x50, same as its initial content size */
 
-    rc = wuss_mouse_click(wuss, (point_t) { visible.x1 - 3, visible.y1 - 3 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* G's resize icon */
+    rc = wuss_mouse_click(wuss, POINT(visible.x1 - 3, visible.y1 - 3), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* G's resize icon */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_g)
       goto Failure;
 
-    rc = wuss_mouse_move(wuss, (point_t) { content.x0 + 50, content.y0 + 50 }, &hit); /* drag to exactly the doc extent */
+    rc = wuss_mouse_move(wuss, POINT(content.x0 + 50, content.y0 + 50), &hit); /* drag to exactly the doc extent */
     if (rc != result_OK)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { content.x0 + 50, content.y0 + 50 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(content.x0 + 50, content.y0 + 50), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -1398,15 +1398,15 @@ result_t wuss_test(const char *resources)
     width  = content.x1 - content.x0;
     height = content.y1 - content.y0;
 
-    rc = wuss_mouse_click(wuss, (point_t) { visible.x1 - 3, visible.y1 - 3 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* G's resize icon again */
+    rc = wuss_mouse_click(wuss, POINT(visible.x1 - 3, visible.y1 - 3), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* G's resize icon again */
     if (rc != result_OK)
       goto Failure;
 
-    rc = wuss_mouse_move(wuss, (point_t) { content.x0 + 500, content.y0 + 500 }, &hit); /* drag far past the doc extent */
+    rc = wuss_mouse_move(wuss, POINT(content.x0 + 500, content.y0 + 500), &hit); /* drag far past the doc extent */
     if (rc != result_OK)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { content.x0 + 500, content.y0 + 500 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(content.x0 + 500, content.y0 + 500), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -1436,7 +1436,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(wuss, &box_m, "M", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
                             &delegate_m,
-                            (size2d_t) { 200, 200 }, (size2d_t) { 80, 60 },
+                            SIZE2D(200, 200), SIZE2D(80, 60),
                             &win_m);
     if (rc != result_OK)
       goto Failure;
@@ -1444,17 +1444,17 @@ result_t wuss_test(const char *resources)
     wuss_window_get_visible_bounds(win_m, &visible);
     wuss_window_get_content_bounds(win_m, &content);
 
-    rc = wuss_mouse_click(wuss, (point_t) { visible.x1 - 3, visible.y1 - 3 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* M's resize icon */
+    rc = wuss_mouse_click(wuss, POINT(visible.x1 - 3, visible.y1 - 3), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* M's resize icon */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_m)
       goto Failure;
 
-    rc = wuss_mouse_move(wuss, (point_t) { content.x0 + 5, content.y0 + 5 }, &hit); /* drag far inside min_doc */
+    rc = wuss_mouse_move(wuss, POINT(content.x0 + 5, content.y0 + 5), &hit); /* drag far inside min_doc */
     if (rc != result_OK)
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, (point_t) { content.x0 + 5, content.y0 + 5 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(content.x0 + 5, content.y0 + 5), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -1487,7 +1487,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(wuss, &box_t_win, "T", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
                             &delegate_t,
-                            (size2d_t) { 200, 200 }, (size2d_t) { 0, 0 }, &win_t);
+                            SIZE2D(200, 200), SIZE2D(0, 0), &win_t);
     if (rc != result_OK)
       goto Failure;
 
@@ -1534,12 +1534,12 @@ result_t wuss_test(const char *resources)
     old_vscroll_x = before.x1 - outline_px - icon / 2;
     old_vscroll_y = interior_y;
 
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* T's toggle-size icon: grow */
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* T's toggle-size icon: grow */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_t)
       goto Failure;
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -1601,12 +1601,12 @@ result_t wuss_test(const char *resources)
     cx = (toggle.x0 + toggle.x1) / 2;
     cy = (toggle.y0 + toggle.y1) / 2;
 
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* T's toggle-size icon: shrink */
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* T's toggle-size icon: shrink */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_t)
       goto Failure;
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -1653,7 +1653,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(wuss, &box_r, "R", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
                             &delegate_r,
-                            (size2d_t) { 70, 70 }, (size2d_t) { 0, 0 }, &win_r);
+                            SIZE2D(70, 70), SIZE2D(0, 0), &win_r);
     if (rc != result_OK)
       goto Failure;
 
@@ -1661,7 +1661,7 @@ result_t wuss_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
 
-    wuss_window_set_scroll(win_r, (point_t) { 0, 15 }); /* within range: max_y = 70 - 40 = 30 */
+    wuss_window_set_scroll(win_r, POINT(0, 15)); /* within range: max_y = 70 - 40 = 30 */
 
     rc = wuss_redraw_dirty(wuss); /* flush the scroll's own invalidate */
     if (rc != result_OK)
@@ -1693,12 +1693,12 @@ result_t wuss_test(const char *resources)
     interior_x = (before.x0 + outline_px + before.x1 - outline_px - icon) / 2;
     interior_y = (before.y0 + outline_px + titlebar_height + before.y1 - outline_px - icon) / 2;
 
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* R's toggle-size icon: grow past doc_height, forcing a scroll re-clamp */
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* R's toggle-size icon: grow past doc_height, forcing a scroll re-clamp */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_r)
       goto Failure;
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -1751,7 +1751,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(wuss, &box_nb, "NB", wuss_WINDOW_NO_RESIZE_BLIT,
                             wuss_NO_BACKGROUND,
                             &delegate_nb,
-                            (size2d_t) { 200, 200 }, (size2d_t) { 0, 0 }, &win_nb);
+                            SIZE2D(200, 200), SIZE2D(0, 0), &win_nb);
     if (rc != result_OK)
       goto Failure;
 
@@ -1781,12 +1781,12 @@ result_t wuss_test(const char *resources)
     interior_x = (before.x0 + outline_px + before.x1 - outline_px - icon) / 2;
     interior_y = (before.y0 + outline_px + titlebar_height + before.y1 - outline_px - icon) / 2;
 
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* NB's toggle-size icon: grow */
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* NB's toggle-size icon: grow */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_nb)
       goto Failure;
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -1830,7 +1830,7 @@ result_t wuss_test(const char *resources)
     box_u.x1 = 120; box_u.y1 = 120; /* 40x40 content */
     rc = wuss_window_create(wuss, &box_u, "U", wuss_WINDOW_NONE, wuss_NO_BACKGROUND, /* scrollbars on: carve.x/y = icon size */
                             &delegate_u,
-                            (size2d_t) { 70, 70 }, (size2d_t) { 0, 0 }, &win_u); /* doc size well within the 200x200 screen: growth is doc-limited, not screen-limited */
+                            SIZE2D(70, 70), SIZE2D(0, 0), &win_u); /* doc size well within the 200x200 screen: growth is doc-limited, not screen-limited */
     if (rc != result_OK)
       goto Failure;
 
@@ -1854,12 +1854,12 @@ result_t wuss_test(const char *resources)
     cx = (toggle.x0 + toggle.x1) / 2;
     cy = (toggle.y0 + toggle.y1) / 2;
 
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* U's toggle-size icon: grow to doc size */
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* U's toggle-size icon: grow to doc size */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_u)
       goto Failure;
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -1887,12 +1887,12 @@ result_t wuss_test(const char *resources)
     cx = (toggle.x0 + toggle.x1) / 2;
     cy = (toggle.y0 + toggle.y1) / 2;
 
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* U's toggle-size icon: shrink back */
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* U's toggle-size icon: shrink back */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_u)
       goto Failure;
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -1938,7 +1938,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(wuss, &box_v, "V", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
                             &delegate_v,
-                            (size2d_t) { 200, 200 }, (size2d_t) { 0, 0 }, &win_v);
+                            SIZE2D(200, 200), SIZE2D(0, 0), &win_v);
     if (rc != result_OK)
       goto Failure;
 
@@ -1951,7 +1951,7 @@ result_t wuss_test(const char *resources)
      * above): titlebar drag calls wuss_window_move with no clamping. From
      * here, "available space to the screen edge" (scr_width - visible.x0 -
      * furniture) goes negative, further than furniture alone can absorb. */
-    wuss_window_move(win_v, (point_t) { 310, 310 });
+    wuss_window_move(win_v, POINT(310, 310));
 
     outline_px      = 1;
     titlebar_height = 20;
@@ -1969,12 +1969,12 @@ result_t wuss_test(const char *resources)
     cx = (toggle.x0 + toggle.x1) / 2;
     cy = (toggle.y0 + toggle.y1) / 2;
 
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* V's toggle-size icon: maximize while off-screen */
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* V's toggle-size icon: maximize while off-screen */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_v)
       goto Failure;
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -2007,12 +2007,12 @@ result_t wuss_test(const char *resources)
     cx = (toggle.x0 + toggle.x1) / 2;
     cy = (toggle.y0 + toggle.y1) / 2;
 
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* V's toggle-size icon: shrink back */
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* V's toggle-size icon: shrink back */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_v)
       goto Failure;
-    rc = wuss_mouse_click(wuss, (point_t) { cx, cy }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -2052,7 +2052,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_k,
                             box_size(&box_k),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_k);
     if (rc != result_OK)
       goto Failure;
@@ -2073,7 +2073,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_l,
                             box_size(&box_l),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_l);
     if (rc != result_OK)
       goto Failure;
@@ -2086,7 +2086,7 @@ result_t wuss_test(const char *resources)
 
     wuss_window_get_visible_bounds(win_k, &visible);
 
-    rc = wuss_mouse_click(wuss, (point_t) { visible.x0 + 31, visible.y0 + 11 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* K's titlebar, clear of the close icon */
+    rc = wuss_mouse_click(wuss, POINT(visible.x0 + 31, visible.y0 + 11), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* K's titlebar, clear of the close icon */
     if (rc != result_OK)
       goto Failure;
     if (hit != win_k)
@@ -2094,7 +2094,7 @@ result_t wuss_test(const char *resources)
 
     before_k = tc_k.redraw_count;
     before_l = tc_l.redraw_count;
-    rc = wuss_mouse_move(wuss, (point_t) { visible.x0 + 45, visible.y0 + 21 }, &hit);
+    rc = wuss_mouse_move(wuss, POINT(visible.x0 + 45, visible.y0 + 21), &hit);
     if (rc != result_OK)
       goto Failure;
     if (hit != win_k)
@@ -2108,7 +2108,7 @@ result_t wuss_test(const char *resources)
                       * footprint, so the move fast path must still apply even
                       * though K isn't topmost */
 
-    rc = wuss_mouse_click(wuss, (point_t) { visible.x0 + 45, visible.y0 + 21 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    rc = wuss_mouse_click(wuss, POINT(visible.x0 + 45, visible.y0 + 21), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
@@ -2140,7 +2140,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_m2,
                             box_size(&box_m2),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_m2);
     if (rc != result_OK)
       goto Failure;
@@ -2153,7 +2153,7 @@ result_t wuss_test(const char *resources)
     interior_x = before2.x0 + 2;  /* inside the untouched left edge */
     interior_y = before2.y0 + 25; /* below the titlebar, in plain content */
 
-    rc = wuss_window_resize(win_m2, (size2d_t) { 80, 80 }); /* grow */
+    rc = wuss_window_resize(win_m2, SIZE2D(80, 80)); /* grow */
     if (rc != result_OK)
       goto Failure;
 
@@ -2182,7 +2182,7 @@ result_t wuss_test(const char *resources)
 
     before2 = after2;
 
-    rc = wuss_window_resize(win_m2, (size2d_t) { 40, 40 }); /* shrink back */
+    rc = wuss_window_resize(win_m2, SIZE2D(40, 40)); /* shrink back */
     if (rc != result_OK)
       goto Failure;
 
@@ -2231,7 +2231,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_nb2,
                             box_size(&box_nb2),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_nb2);
     if (rc != result_OK)
       goto Failure;
@@ -2242,7 +2242,7 @@ result_t wuss_test(const char *resources)
 
     wuss_window_get_visible_bounds(win_nb2, &before3);
 
-    rc = wuss_window_resize(win_nb2, (size2d_t) { 80, 80 }); /* grow */
+    rc = wuss_window_resize(win_nb2, SIZE2D(80, 80)); /* grow */
     if (rc != result_OK)
       goto Failure;
 
@@ -2283,7 +2283,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_n,
                             box_size(&box_n),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_n);
     if (rc != result_OK)
       goto Failure;
@@ -2302,7 +2302,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_o,
                             box_size(&box_o),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_o);
     if (rc != result_OK)
       goto Failure;
@@ -2319,7 +2319,7 @@ result_t wuss_test(const char *resources)
     /* Move N far enough right that its new footprint lands partly under O
      * (which stays wholly untouched), while its old footprint started
      * entirely clear of O. */
-    wuss_window_move(win_n, (point_t) { visible.x0 + 80, visible.y0 + 10 });
+    wuss_window_move(win_n, POINT(visible.x0 + 80, visible.y0 + 10));
 
     wuss_window_get_visible_bounds(win_n, &visible);
     wuss_window_get_visible_bounds(win_o, &visible_o);
@@ -2387,7 +2387,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_b,
                             box_size(&box_b),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_b);
     if (rc != result_OK)
       goto Failure;
@@ -2406,7 +2406,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_a,
                             box_size(&box_a),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_a);
     if (rc != result_OK)
       goto Failure;
@@ -2423,8 +2423,8 @@ result_t wuss_test(const char *resources)
 
     /* Move B far enough right that its whole new footprint clears A. */
     dx = 60;
-    wuss_window_move(win_b, (point_t) { visible_b_before.x0 + dx,
-                                        visible_b_before.y0 });
+    wuss_window_move(win_b, POINT(visible_b_before.x0 + dx,
+                                        visible_b_before.y0));
 
     /* The clean strip (previously exposed, genuinely B's own pixels) lands
      * at its translated destination and must have been blitted there, not
@@ -2490,7 +2490,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_b,
                             box_size(&box_b),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_b);
     if (rc != result_OK)
       goto Failure;
@@ -2509,7 +2509,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_a,
                             box_size(&box_a),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_a);
     if (rc != result_OK)
       goto Failure;
@@ -2525,8 +2525,8 @@ result_t wuss_test(const char *resources)
      * (x:40-60, under A) both stay clear of / under A exactly as before --
      * nothing about A's own pixels is ever touched by the blit, so A must
      * not be forced to redraw. */
-    wuss_window_move(win_b, (point_t) { visible_b_before.x0,
-                                        visible_b_before.y0 + 5 });
+    wuss_window_move(win_b, POINT(visible_b_before.x0,
+                                        visible_b_before.y0 + 5));
 
     occluder_dirty = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
@@ -2570,7 +2570,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_b,
                             box_size(&box_b),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_b);
     if (rc != result_OK)
       goto Failure;
@@ -2589,7 +2589,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_a,
                             box_size(&box_a),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_a);
     if (rc != result_OK)
       goto Failure;
@@ -2616,8 +2616,8 @@ result_t wuss_test(const char *resources)
      * moved, its pixels there are already correct), so it must stay clean;
      * the translated hidden band (y:45-65, never had valid pixels) still
      * needs forcing dirty for a real repaint. */
-    wuss_window_move(win_b, (point_t) { visible_b_before.x0,
-                                        visible_b_before.y0 + 25 });
+    wuss_window_move(win_b, POINT(visible_b_before.x0,
+                                        visible_b_before.y0 + 25));
 
     occluded_overlap.x0 = 0;  occluded_overlap.y0 = 25;
     occluded_overlap.x1 = 60; occluded_overlap.y1 = 40;
@@ -2683,7 +2683,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_b,
                             box_size(&box_b),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_b);
     if (rc != result_OK)
       goto Failure;
@@ -2702,7 +2702,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_a,
                             box_size(&box_a),
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(0, 0),
                             &win_a);
     if (rc != result_OK)
       goto Failure;
@@ -2725,8 +2725,8 @@ result_t wuss_test(const char *resources)
     wuss_window_get_visible_bounds(win_b, &visible_b_before);
     wuss_window_get_visible_bounds(win_a, &visible_a);
 
-    wuss_window_move(win_b, (point_t) { visible_b_before.x0 - 15,
-                                        visible_b_before.y0 - 15 });
+    wuss_window_move(win_b, POINT(visible_b_before.x0 - 15,
+                                        visible_b_before.y0 - 15));
 
     /* The blit must have actually happened, not fallen back: B's own
      * footprint (outside A) must not be dirtied wholesale. */
@@ -2779,12 +2779,12 @@ result_t wuss_test(const char *resources)
                           wuss_NO_BACKGROUND,
                           &delegate_c,
                           box_size(&box_c),
-                          (size2d_t) { 0, 0 },
+                          SIZE2D(0, 0),
                           &win_c);
   if (rc != result_OK)
     goto Failure;
 
-  rc = wuss_mouse_click(wuss, (point_t) { 31, 11 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* C's titlebar, above its content, clear of the close icon */
+  rc = wuss_mouse_click(wuss, POINT(31, 11), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* C's titlebar, above its content, clear of the close icon */
   if (rc != result_OK)
     goto Failure;
   if (hit != win_c)
@@ -2792,7 +2792,7 @@ result_t wuss_test(const char *resources)
 
   wuss_window_close(win_c);
 
-  rc = wuss_mouse_move(wuss, (point_t) { 20, 20 }, &hit);
+  rc = wuss_mouse_move(wuss, POINT(20, 20), &hit);
   if (rc != result_OK)
     goto Failure;
 
@@ -2813,7 +2813,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(wuss, &box_s, "S", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
                             &delegate_s,
-                            (size2d_t) { 200, 200 }, (size2d_t) { 0, 0 }, &win_s);
+                            SIZE2D(200, 200), SIZE2D(0, 0), &win_s);
     if (rc != result_OK)
       goto Failure;
 
@@ -2825,7 +2825,7 @@ result_t wuss_test(const char *resources)
     wuss_window_get_content_bounds(win_s, &content_s);
 
     rc = wuss_mouse_click(wuss,
-                          (point_t) { content_s.x0 + 5, content_s.y0 + 7 },
+                          POINT(content_s.x0 + 5, content_s.y0 + 7),
                           wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
     if (rc != result_OK)
       goto Failure;
@@ -2835,13 +2835,13 @@ result_t wuss_test(const char *resources)
       goto Failure; /* a task adding the scroll offset itself would double-count it */
 
     rc = wuss_mouse_click(wuss,
-                          (point_t) { content_s.x0 + 5, content_s.y0 + 7 },
+                          POINT(content_s.x0 + 5, content_s.y0 + 7),
                           wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
     if (rc != result_OK)
       goto Failure;
 
     rc = wuss_mouse_move(wuss,
-                         (point_t) { content_s.x0 + 11, content_s.y0 + 13 },
+                         POINT(content_s.x0 + 11, content_s.y0 + 13),
                          &hit);
     if (rc != result_OK)
       goto Failure;
@@ -2851,7 +2851,7 @@ result_t wuss_test(const char *resources)
     tc_s.last_scroll_x = -1;
     tc_s.last_scroll_y = -1;
     rc = wuss_scroll(wuss,
-                     (point_t) { content_s.x0 + 3, content_s.y0 + 4 },
+                     POINT(content_s.x0 + 3, content_s.y0 + 4),
                      1, &hit);
     if (rc != result_OK)
       goto Failure;
@@ -2889,8 +2889,8 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NONE, /* all furniture present */
                             wuss_NO_BACKGROUND,
                             &delegate_r,
-                            (size2d_t) { 400, 400 },
-                            (size2d_t) { 0, 0 },
+                            SIZE2D(400, 400),
+                            SIZE2D(0, 0),
                             &win_r);
     if (rc != result_OK)
       goto Failure;
@@ -2900,7 +2900,7 @@ result_t wuss_test(const char *resources)
         content_r.y1 - content_r.y0 != box_r.y1 - box_r.y0)
       goto Failure;
 
-    rc = wuss_window_resize(win_r, (size2d_t) { 61, 47 });
+    rc = wuss_window_resize(win_r, SIZE2D(61, 47));
     if (rc != result_OK)
       goto Failure;
 

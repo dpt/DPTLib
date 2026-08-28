@@ -248,9 +248,9 @@ void wuss__furniture_draw(wuss_t        *wuss,
     border = wuss->palette[wuss->furniture_colours.title.bg]; /* no dedicated outline class; matches titlebar chrome */
 
     wuss->scr->clip = visible_clipped;
-    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y0,     (size2d_t) { width, 1 }, border);
-    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y1 - 1, (size2d_t) { width, 1 }, border);
-    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y0,     (size2d_t) { 1, height }, border);
-    screen_draw_rect(wuss->scr, window->visible.x1 - 1, window->visible.y0,     (size2d_t) { 1, height }, border);
+    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y0,     SIZE2D(width, 1), border);
+    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y1 - 1, SIZE2D(width, 1), border);
+    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y0,     SIZE2D(1, height), border);
+    screen_draw_rect(wuss->scr, window->visible.x1 - 1, window->visible.y0,     SIZE2D(1, height), border);
   }
 }

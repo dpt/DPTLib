@@ -34,7 +34,7 @@ result_t wuss_mouse_click(wuss_t              *wuss,
   if (win == NULL)
     return result_OK;
 
-  region = wuss__furniture_hit_test(win, (point_t) { x, y });
+  region = wuss__furniture_hit_test(win, POINT(x, y));
 
   if (region == wuss_FURNITURE_CLOSE  &&
       action == wuss_MOUSE_DOWN       &&
@@ -82,16 +82,16 @@ result_t wuss_mouse_click(wuss_t              *wuss,
           wuss__furniture_toggle_size(win);
         break;
       case wuss_FURNITURE_VSCROLL_UP:
-        wuss__furniture_scroll_step(win, (point_t) { 0, -step });
+        wuss__furniture_scroll_step(win, POINT(0, -step));
         break;
       case wuss_FURNITURE_VSCROLL_DOWN:
-        wuss__furniture_scroll_step(win, (point_t) { 0, step });
+        wuss__furniture_scroll_step(win, POINT(0, step));
         break;
       case wuss_FURNITURE_HSCROLL_LEFT:
-        wuss__furniture_scroll_step(win, (point_t) { -step, 0 });
+        wuss__furniture_scroll_step(win, POINT(-step, 0));
         break;
       case wuss_FURNITURE_HSCROLL_RIGHT:
-        wuss__furniture_scroll_step(win, (point_t) { step, 0 });
+        wuss__furniture_scroll_step(win, POINT(step, 0));
         break;
       default:
         break;
