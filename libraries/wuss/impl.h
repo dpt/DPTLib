@@ -124,14 +124,19 @@ static inline int wuss__outline_px(const wuss_window_t *window)
   return wuss__outline_px_for(window->flags);
 }
 
-/* ponytail: falls back to the default titlebar height when the window has
- * none, so NO_TITLEBAR windows that still opt into scrollbars/resize get a
- * sane breadth rather than a negative one */
+/* ponytail: falls back to wuss's own titlebar height when the window has
+ * none, so NO_TITLEBAR windows that still opt into scrollbars/resize match
+ * their titled siblings instead of a hardcoded size; the hardcoded default
+ * is only a last-resort floor if even that isn't positive */
 static inline int wuss__icon_size_for(const wuss_t *wuss, wuss_window_flags_t flags)
 {
   int size;
 
   size = wuss__titlebar_height_for(wuss, flags) - 2 * WUSS_ICON_INSET;
+  if (size > 0)
+    return size;
+
+  size = wuss->titlebar_height - 2 * WUSS_ICON_INSET;
 
   return (size > 0) ? size : WUSS_DEFAULT_TITLEBAR_HEIGHT - 2 * WUSS_ICON_INSET;
 }
