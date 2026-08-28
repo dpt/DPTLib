@@ -46,6 +46,7 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t *task)
                             wuss_NO_BACKGROUND,
                             &delegate,
                             (size2d_t) { GRADIENT_DOC_WIDTH, GRADIENT_DOC_HEIGHT },
+                            (size2d_t) { 0, 0 },
                             &task->window);
 }
 

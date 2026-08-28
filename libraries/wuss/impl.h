@@ -3,6 +3,7 @@
 #ifndef IMPL_H
 #define IMPL_H
 
+#include "base/utils.h"
 #include "datastruct/list.h"
 #include "geom/box.h"
 #include "geom/size.h"
@@ -66,6 +67,8 @@ struct wuss_window
   point_t             scroll; /* offset into virtual content space of the
                                * content box's top-left; see wuss_window_set_scroll */
   size2d_t            doc;    /* virtual document extent, set at creation */
+  size2d_t            min_doc; /* resize floor, set at creation; see
+                                * wuss__min_content */
   wuss_window_state_t state;        /* see wuss_window_state_t */
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];
@@ -114,6 +117,18 @@ static inline void wuss__notify_open(wuss_window_t *window)
 static inline int wuss__size_ok(int width, int height)
 {
   return width > 0 && height > 0;
+}
+
+/* The floor a resize-drag or toggle-size will shrink a window's content to:
+ * the client's min_doc where it set one, but never below WUSS_MIN_CONTENT (a
+ * window must stay big enough to grab) nor above the window's own doc extent
+ * (a window can't be forced larger than the document it shows). */
+static inline void wuss__min_content(const wuss_window_t *window, size2d_t *min)
+{
+  min->w = CLAMP(window->min_doc.w, WUSS_MIN_CONTENT, MAX(window->doc.w,
+                                                          WUSS_MIN_CONTENT));
+  min->h = CLAMP(window->min_doc.h, WUSS_MIN_CONTENT, MAX(window->doc.h,
+                                                          WUSS_MIN_CONTENT));
 }
 
 static inline int wuss__titlebar_height_for(const wuss_t        *wuss,

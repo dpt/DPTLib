@@ -618,6 +618,7 @@ result_t wuss_test(const char *resources)
                           wuss_NO_BACKGROUND,
                           NULL,
                           box_size(&box_a),
+                          (size2d_t) { 0, 0 },
                           &win_a);
   if (rc != result_WUSS_TOO_SMALL)
     goto Failure;
@@ -643,6 +644,7 @@ result_t wuss_test(const char *resources)
                           wuss_NO_BACKGROUND,
                           &delegate_a,
                           box_size(&box_a),
+                          (size2d_t) { 0, 0 },
                           &win_a);
   if (rc != result_OK)
     goto Failure;
@@ -665,6 +667,7 @@ result_t wuss_test(const char *resources)
                           wuss_NO_BACKGROUND,
                           &delegate_b,
                           box_size(&box_b),
+                          (size2d_t) { 0, 0 },
                           &win_b);
   if (rc != result_OK)
     goto Failure;
@@ -950,6 +953,7 @@ result_t wuss_test(const char *resources)
                           wuss_NO_BACKGROUND,
                           &delegate_d,
                           box_size(&box_d),
+                          (size2d_t) { 0, 0 },
                           &win_d);
   if (rc != result_OK)
     goto Failure;
@@ -997,6 +1001,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_e,
                             box_size(&box_e),
+                            (size2d_t) { 0, 0 },
                             &win_e);
     if (rc != result_OK)
       goto Failure;
@@ -1017,6 +1022,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_f,
                             box_size(&box_f),
+                            (size2d_t) { 0, 0 },
                             &win_f);
     if (rc != result_OK)
       goto Failure;
@@ -1084,6 +1090,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_h,
                             box_size(&box_h),
+                            (size2d_t) { 0, 0 },
                             &win_h);
     if (rc != result_OK)
       goto Failure;
@@ -1104,6 +1111,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_g,
                             box_size(&box_g),
+                            (size2d_t) { 0, 0 },
                             &win_g);
     if (rc != result_OK)
       goto Failure;
@@ -1165,6 +1173,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_i,
                             box_size(&box_i),
+                            (size2d_t) { 0, 0 },
                             &win_i);
     if (rc != result_OK)
       goto Failure;
@@ -1185,6 +1194,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_j,
                             box_size(&box_j),
+                            (size2d_t) { 0, 0 },
                             &win_j);
     if (rc != result_OK)
       goto Failure;
@@ -1235,6 +1245,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_m,
                             box_size(&box_m),
+                            (size2d_t) { 0, 0 },
                             &win_m);
     if (rc != result_OK)
       goto Failure;
@@ -1287,6 +1298,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_h,
                             box_size(&box_h),
+                            (size2d_t) { 0, 0 },
                             &win_h);
     if (rc != result_OK)
       goto Failure;
@@ -1305,6 +1317,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_g,
                             box_size(&box_g),
+                            (size2d_t) { 0, 0 },
                             &win_g);
     if (rc != result_OK)
       goto Failure;
@@ -1405,6 +1418,53 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_h);
   }
 
+  printf("test: drag-resize stops at min_doc, not just WUSS_MIN_CONTENT\n");
+
+  {
+    test_task_t    tc_m;
+    wuss_task_t    delegate_m;
+    box_t          box_m, content, visible;
+    wuss_window_t *win_m;
+
+    tc_m.redraw_count    = 0;
+    tc_m.mouse_count     = 0;
+    delegate_m.handle    = test_handle;
+    delegate_m.task_data = &tc_m;
+
+    box_m.x0 = 10; box_m.y0 = 10;
+    box_m.x1 = 210; box_m.y1 = 210; /* 200x200 content, floored at 80x60 */
+    rc = wuss_window_create(wuss, &box_m, "M", wuss_WINDOW_NONE,
+                            wuss_NO_BACKGROUND,
+                            &delegate_m,
+                            (size2d_t) { 200, 200 }, (size2d_t) { 80, 60 },
+                            &win_m);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_m, &visible);
+    wuss_window_get_content_bounds(win_m, &content);
+
+    rc = wuss_mouse_click(wuss, (point_t) { visible.x1 - 3, visible.y1 - 3 }, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* M's resize icon */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_m)
+      goto Failure;
+
+    rc = wuss_mouse_move(wuss, (point_t) { content.x0 + 5, content.y0 + 5 }, &hit); /* drag far inside min_doc */
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, (point_t) { content.x0 + 5, content.y0 + 5 }, wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_m, &content);
+    if (content.x1 - content.x0 != 80 || content.y1 - content.y0 != 60)
+      goto Failure; /* floored at min_doc, not squeezed down to WUSS_MIN_CONTENT */
+
+    wuss_window_close(win_m);
+  }
+
   printf("test: toggle-size blits rather than redrawing the whole window\n");
 
   {
@@ -1427,7 +1487,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(wuss, &box_t_win, "T", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
                             &delegate_t,
-                            (size2d_t) { 200, 200 }, &win_t);
+                            (size2d_t) { 200, 200 }, (size2d_t) { 0, 0 }, &win_t);
     if (rc != result_OK)
       goto Failure;
 
@@ -1593,7 +1653,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(wuss, &box_r, "R", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
                             &delegate_r,
-                            (size2d_t) { 70, 70 }, &win_r);
+                            (size2d_t) { 70, 70 }, (size2d_t) { 0, 0 }, &win_r);
     if (rc != result_OK)
       goto Failure;
 
@@ -1691,7 +1751,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(wuss, &box_nb, "NB", wuss_WINDOW_NO_RESIZE_BLIT,
                             wuss_NO_BACKGROUND,
                             &delegate_nb,
-                            (size2d_t) { 200, 200 }, &win_nb);
+                            (size2d_t) { 200, 200 }, (size2d_t) { 0, 0 }, &win_nb);
     if (rc != result_OK)
       goto Failure;
 
@@ -1770,7 +1830,7 @@ result_t wuss_test(const char *resources)
     box_u.x1 = 120; box_u.y1 = 120; /* 40x40 content */
     rc = wuss_window_create(wuss, &box_u, "U", wuss_WINDOW_NONE, wuss_NO_BACKGROUND, /* scrollbars on: carve.x/y = icon size */
                             &delegate_u,
-                            (size2d_t) { 70, 70 }, &win_u); /* doc size well within the 200x200 screen: growth is doc-limited, not screen-limited */
+                            (size2d_t) { 70, 70 }, (size2d_t) { 0, 0 }, &win_u); /* doc size well within the 200x200 screen: growth is doc-limited, not screen-limited */
     if (rc != result_OK)
       goto Failure;
 
@@ -1878,7 +1938,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(wuss, &box_v, "V", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
                             &delegate_v,
-                            (size2d_t) { 200, 200 }, &win_v);
+                            (size2d_t) { 200, 200 }, (size2d_t) { 0, 0 }, &win_v);
     if (rc != result_OK)
       goto Failure;
 
@@ -1992,6 +2052,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_k,
                             box_size(&box_k),
+                            (size2d_t) { 0, 0 },
                             &win_k);
     if (rc != result_OK)
       goto Failure;
@@ -2012,6 +2073,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_l,
                             box_size(&box_l),
+                            (size2d_t) { 0, 0 },
                             &win_l);
     if (rc != result_OK)
       goto Failure;
@@ -2078,6 +2140,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_m2,
                             box_size(&box_m2),
+                            (size2d_t) { 0, 0 },
                             &win_m2);
     if (rc != result_OK)
       goto Failure;
@@ -2168,6 +2231,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_nb2,
                             box_size(&box_nb2),
+                            (size2d_t) { 0, 0 },
                             &win_nb2);
     if (rc != result_OK)
       goto Failure;
@@ -2219,6 +2283,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_n,
                             box_size(&box_n),
+                            (size2d_t) { 0, 0 },
                             &win_n);
     if (rc != result_OK)
       goto Failure;
@@ -2237,6 +2302,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_o,
                             box_size(&box_o),
+                            (size2d_t) { 0, 0 },
                             &win_o);
     if (rc != result_OK)
       goto Failure;
@@ -2321,6 +2387,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_b,
                             box_size(&box_b),
+                            (size2d_t) { 0, 0 },
                             &win_b);
     if (rc != result_OK)
       goto Failure;
@@ -2339,6 +2406,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_a,
                             box_size(&box_a),
+                            (size2d_t) { 0, 0 },
                             &win_a);
     if (rc != result_OK)
       goto Failure;
@@ -2422,6 +2490,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_b,
                             box_size(&box_b),
+                            (size2d_t) { 0, 0 },
                             &win_b);
     if (rc != result_OK)
       goto Failure;
@@ -2440,6 +2509,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_a,
                             box_size(&box_a),
+                            (size2d_t) { 0, 0 },
                             &win_a);
     if (rc != result_OK)
       goto Failure;
@@ -2500,6 +2570,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_b,
                             box_size(&box_b),
+                            (size2d_t) { 0, 0 },
                             &win_b);
     if (rc != result_OK)
       goto Failure;
@@ -2518,6 +2589,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_a,
                             box_size(&box_a),
+                            (size2d_t) { 0, 0 },
                             &win_a);
     if (rc != result_OK)
       goto Failure;
@@ -2611,6 +2683,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_b,
                             box_size(&box_b),
+                            (size2d_t) { 0, 0 },
                             &win_b);
     if (rc != result_OK)
       goto Failure;
@@ -2629,6 +2702,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_a,
                             box_size(&box_a),
+                            (size2d_t) { 0, 0 },
                             &win_a);
     if (rc != result_OK)
       goto Failure;
@@ -2705,6 +2779,7 @@ result_t wuss_test(const char *resources)
                           wuss_NO_BACKGROUND,
                           &delegate_c,
                           box_size(&box_c),
+                          (size2d_t) { 0, 0 },
                           &win_c);
   if (rc != result_OK)
     goto Failure;
@@ -2738,7 +2813,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(wuss, &box_s, "S", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
                             &delegate_s,
-                            (size2d_t) { 200, 200 }, &win_s);
+                            (size2d_t) { 200, 200 }, (size2d_t) { 0, 0 }, &win_s);
     if (rc != result_OK)
       goto Failure;
 
@@ -2815,6 +2890,7 @@ result_t wuss_test(const char *resources)
                             wuss_NO_BACKGROUND,
                             &delegate_r,
                             (size2d_t) { 400, 400 },
+                            (size2d_t) { 0, 0 },
                             &win_r);
     if (rc != result_OK)
       goto Failure;
