@@ -111,6 +111,7 @@ set(PUBLIC_HEADERS
     include/utils/maths.h
     include/utils/pack.h
     include/utils/primes.h
+    include/wuss/task.h
     include/wuss/window.h
     include/wuss/wuss.h)
 
@@ -340,8 +341,8 @@ set(WUSS_SOURCES
     libraries/wuss/mouse-move.c
     libraries/wuss/redraw.c
     libraries/wuss/scroll.c
-    libraries/wuss/task-start.c
-    libraries/wuss/task-stop.c
+    libraries/wuss/task/start.c
+    libraries/wuss/task/stop.c
     libraries/wuss/window/at.c
     libraries/wuss/window/create.c
     libraries/wuss/window/close.c
