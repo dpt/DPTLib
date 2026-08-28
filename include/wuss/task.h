@@ -3,8 +3,8 @@
 /**
  * \file task.h
  *
- * A Wuss task: the content delegate a window hands its drawing and input
- * events to, and the events themselves.
+ * A Wuss task: the content delegate a window hands its drawing and input events
+ * to, and the events themselves.
  */
 
 #ifndef WUSS_TASK_H
@@ -77,7 +77,8 @@ typedef struct wuss_event
      * scroll offset has already been added, so the task must not add it
      * again. With a scroll offset of (0,0) this is the same as window-local
      * content coordinates, where the content area's top-left is (0,0).
-     * button is meaningful for DOWN/UP. */
+     * button is meaningful for DOWN/UP, and is a set of wuss_button_t
+     * flags, so test it with '&' rather than comparing for equality. */
     struct
     {
       wuss_mouse_action_t action;

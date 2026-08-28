@@ -40,12 +40,18 @@ typedef struct wuss_window wuss_window_t;
 /**
  * Mouse buttons, RISC OS-style: Select is the primary action, Adjust the
  * secondary action, Menu pops up a menu.
+ *
+ * These are flags, OR'd together, so that chords (e.g. Select and Adjust
+ * pressed together) can be reported. The bit values match the RISC OS button
+ * order. Test them with '&' rather than comparing for equality, or a chord will
+ * match no button at all.
  */
 typedef enum wuss_button
 {
-  wuss_BUTTON_SELECT,
-  wuss_BUTTON_MENU,
-  wuss_BUTTON_ADJUST
+  wuss_BUTTON_NONE   = 0,
+  wuss_BUTTON_ADJUST = 1 << 0,
+  wuss_BUTTON_MENU   = 1 << 1,
+  wuss_BUTTON_SELECT = 1 << 2
 }
 wuss_button_t;
 

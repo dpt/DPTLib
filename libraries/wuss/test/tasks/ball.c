@@ -93,7 +93,7 @@ static result_t ball_mouse(wuss_window_t      *window,
 
   wuss_window_get_scroll(window, &scroll);
 
-  if (button == wuss_BUTTON_SELECT)
+  if (button & wuss_BUTTON_SELECT)
   {
     ball_t *b;
 
@@ -116,7 +116,7 @@ static result_t ball_mouse(wuss_window_t      *window,
     local.y1 = b->y + b->radius - scroll.y;
     wuss_window_invalidate(bc->window, &local);
   }
-  else if (button == wuss_BUTTON_ADJUST)
+  else if (button & wuss_BUTTON_ADJUST)
   {
     ball_t *b;
 
