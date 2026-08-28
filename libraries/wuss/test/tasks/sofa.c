@@ -21,6 +21,7 @@
 
 #define SOFA_TILT           -0.5 /* static camera tilt, radians, so the seat is visible from above */
 #define SOFA_SPIN_PER_FRAME  0.02 /* radians/frame at 60fps, one turn every ~5s */
+#define SOFA_ROTATIONS_PER_MODEL 2 /* auto-cycle to the next model after this many full turns */
 #define SOFA_CAMERA_DIST     4.0  /* perspective divisor: bigger = flatter */
 #define SOFA_UNIT_FRACTION   0.35 /* fraction of min(width,height) per model unit, at zoom 1.0 */
 #define SOFA_ZOOM_MIN        0.2
@@ -265,6 +266,7 @@ result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
   task->zoom     = 1.0;
   task->spinning = true;
   task->shape    = sofa_SHAPE_SOFA;
+  task->turns    = 0;
 
   delegate = wuss_task_start(sofa_handle, task); /* sofa_redraw paints its own background every frame */
   box      = (box_t) BOX_POS_SIZE(250, 260, 180, 160);
@@ -385,6 +387,7 @@ static result_t sofa_mouse(wuss_window_t *window, wuss_button_t button, void *ta
   if (button == wuss_BUTTON_ADJUST)
   {
     sc->shape = (sc->shape + 1) % sofa_SHAPE__LIMIT;
+    sc->turns = 0;
     wuss_window_invalidate_all(window);
   }
   else
@@ -420,7 +423,14 @@ static result_t sofa_idle(void *task_data)
 
   task->angle += SOFA_SPIN_PER_FRAME;
   if (task->angle > 2.0 * M_PI)
+  {
     task->angle -= 2.0 * M_PI;
+    if (++task->turns >= SOFA_ROTATIONS_PER_MODEL)
+    {
+      task->turns = 0;
+      task->shape = (task->shape + 1) % sofa_SHAPE__LIMIT;
+    }
+  }
 
   wuss_window_invalidate_all(task->window);
 

@@ -35,6 +35,7 @@ typedef struct sofa_task
   double         zoom; /* scroll-adjustable */
   bool           spinning;
   sofa_shape_t   shape;
+  int            turns; /* completed rotations of the current model */
 }
 sofa_task_t;
 
