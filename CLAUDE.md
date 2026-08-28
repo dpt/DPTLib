@@ -51,6 +51,8 @@ Success prints `++ Tests completed in Ns: N of N tests passed.`
 
 New source/header files must be added by hand to the relevant `set(..._SOURCES ...)` list and, for public headers, to `PUBLIC_HEADERS`, in `CMakeLists.txt` — there is no globbing.
 
+**Internal naming (see `wuss`).** Functions declared in a private `impl.h` and not part of the public header use a double-underscore prefix, e.g. `wuss__titlebar_height_for`; internal-only enum constants still use the module's normal single-underscore style (e.g. `wuss_WINDOW_STATE_TOGGLED`), matching public enums. Per-instance internal state that isn't part of the public appearance API (e.g. `struct wuss_window`'s toggled/maximised state) is kept as a bitflags enum with `wuss__window_*` accessor helpers rather than loose `int`/`bool` fields, leaving room to add flags without growing the struct.
+
 **Error handling.** No exceptions; functions return `result_t` (`include/base/result.h`). Each module reserves a `result_BASE_<MODULE>` offset block and defines its own `result_<MODULE>_*` codes starting from that base. Common generic codes (`result_OK`, `result_OOM`, `result_BAD_ARG`, etc.) live at `result_BASE_GENERIC`. Callers typically check `rc != result_OK` and propagate.
 
 **Debug/logging.** `include/base/debug.h` provides `logf_info/warning/error/fatal/abort`, plus `check(err)` (log-and-`goto failure`) and `sentinel` (unreachable-code marker), both of which are compiled out entirely when `NDEBUG` is set — don't rely on their side effects in release builds.
