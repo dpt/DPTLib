@@ -25,7 +25,8 @@ extern testfn_t pickle_test,
 /* framebuf */
 extern testfn_t bmfont_test,
                 composite_test,
-                curve_test;
+                curve_test,
+                screen_test;
 
 /* geom */
 extern testfn_t box_test,
