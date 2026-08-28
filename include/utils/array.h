@@ -19,8 +19,8 @@ extern "C"
 /* ----------------------------------------------------------------------- */
 
 /**
- * Signifies an array of unknown length, e.g. when used as the size of an
- * array which is the final member of a struct.
+ * Signifies an array of unknown length, e.g. when used as the size of an array
+ * which is the final member of a struct.
  */
 #define UNKNOWN 1
 
@@ -80,8 +80,8 @@ void array_squeeze2(unsigned char *base,
  *
  * Presently the growth strategy is doubling.
  *
- * 'block' can be NULL to perform an initial alloc.
- * Start with used == allocated == 0.
+ * 'block' can be NULL to perform an initial alloc. Start with used == allocated
+ * == 0.
  *
  * \param block     Pointer to pointer to block. Updated on success.
  * \param elemsize  Element size in bytes.

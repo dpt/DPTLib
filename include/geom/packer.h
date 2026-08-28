@@ -78,8 +78,8 @@ result_t packer_place_at(T           *packer,
                          const box_t *area);
 
 /**
- * Places a box of dimensions (w,h) in the next free area determined by
- * location 'loc'.
+ * Places a box of dimensions (w,h) in the next free area determined by location
+ * 'loc'.
  *
  * \param[in]  packer Packer to place box.
  * \param[in]  loc    Direction to search from for the next available area.

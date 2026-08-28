@@ -14,7 +14,7 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/)
 
-project(DPTLib VERSION 0.5.0 DESCRIPTION "DPT's C Library" LANGUAGES C)
+project(DPTLib VERSION 0.6.0 DESCRIPTION "DPT's C Library" LANGUAGES C)
 
 # The values set in the toolchain file aren't available until this point.
 if(TARGET_RISCOS)
@@ -28,6 +28,7 @@ if(CCACHE_FOUND)
 endif(CCACHE_FOUND)
 
 option(USE_FORTIFY "Use Fortify" OFF)
+option(USE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
@@ -40,7 +41,7 @@ add_subdirectory(libraries/fortify)
 add_library(DPTLib)
 
 set_target_properties(DPTLib PROPERTIES
-    VERSION 0.5.0
+    VERSION 0.6.0
     DESCRIPTION "DPT's Portable C Library"
     C_STANDARD 99
     PREFIX ""  # remove 'lib' prefix
@@ -93,6 +94,7 @@ set(PUBLIC_HEADERS
     include/geom/line.h
     include/geom/packer.h
     include/geom/point.h
+    include/geom/size.h
     include/io/path.h
     include/io/stream-mem.h
     include/io/stream-mtfcomp.h
@@ -110,6 +112,7 @@ set(PUBLIC_HEADERS
     include/utils/maths.h
     include/utils/pack.h
     include/utils/primes.h
+    include/wuss/task.h
     include/wuss/window.h
     include/wuss/wuss.h)
 
@@ -253,6 +256,7 @@ set(GEOM_SOURCES
     libraries/geom/box/reset.c
     libraries/geom/box/round.c
     libraries/geom/box/round4.c
+    libraries/geom/box/size.c
     libraries/geom/box/translated.c
     libraries/geom/box/union.c
     libraries/geom/layout/layout.c
@@ -331,6 +335,7 @@ set(WUSS_SOURCES
     libraries/wuss/furniture/toggle-box.c
     libraries/wuss/furniture/vscroll-box.c
     libraries/wuss/furniture.h
+    libraries/wuss/get-font.c
     libraries/wuss/idle.c
     libraries/wuss/impl.h
     libraries/wuss/invalidate.c
@@ -338,8 +343,8 @@ set(WUSS_SOURCES
     libraries/wuss/mouse-move.c
     libraries/wuss/redraw.c
     libraries/wuss/scroll.c
-    libraries/wuss/task-start.c
-    libraries/wuss/task-stop.c
+    libraries/wuss/task/start.c
+    libraries/wuss/task/stop.c
     libraries/wuss/window/at.c
     libraries/wuss/window/create.c
     libraries/wuss/window/close.c
@@ -392,6 +397,11 @@ endif()
 if(USE_FORTIFY)
     target_compile_definitions(DPTLib PRIVATE FORTIFY)
     target_link_libraries(DPTLib PUBLIC Fortify)
+endif()
+
+if(USE_ASAN)
+    target_compile_options(DPTLib PUBLIC -fsanitize=address,undefined -g -O0)
+    target_link_options(DPTLib PUBLIC -fsanitize=address,undefined)
 endif()
 
 if(DPTLIB_IMAGES_READ_ONLY)
@@ -523,6 +533,7 @@ if(BUILD_TESTS)
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
+        libraries/framebuf/screen/test/screen-test.c
         libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
@@ -534,6 +545,7 @@ if(BUILD_TESTS)
         libraries/datastruct/vector/test/vector-test.c
         libraries/wuss/test/tasks/ball.c
         libraries/wuss/test/tasks/blank.c
+        libraries/wuss/test/tasks/chars.c
         libraries/wuss/test/tasks/checker.c
         libraries/wuss/test/tasks/curve.c
         libraries/wuss/test/tasks/gradient.c

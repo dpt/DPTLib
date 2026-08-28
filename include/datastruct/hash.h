@@ -5,8 +5,8 @@
  *
  * Hash is an associative array.
  *
- * The interface presently forces you to malloc all keys, and values passed
- * in, yourself.
+ * The interface presently forces you to malloc all keys, and values passed in,
+ * yourself.
  */
 
 #ifndef DATASTRUCT_HASH_H
@@ -106,8 +106,8 @@ const void *hash_lookup(T *hash, const void *key);
  * Insert the specified key:value pair into the hash.
  *
  * The hash takes ownership of the key and value pointers. It will call the
- * destroy functions passed to hash_create when the keys and values are to
- * be destroyed.
+ * destroy functions passed to hash_create when the keys and values are to be
+ * destroyed.
  *
  * \param hash  Hash.
  * \param key   Key to insert.
@@ -152,8 +152,8 @@ typedef int (hash_walk_callback_t)(const void *key,
  * \param cb     Callback routine.
  * \param opaque Opaque pointer to pass to callback routine.
  *
- * \return Error indication.
- * \retval result_OK If the walk completed successfully.
+ * \return Error indication. \retval result_OK If the walk completed
+ *         successfully.
  */
 result_t hash_walk(const T *hash, hash_walk_callback_t *cb, void *opaque);
 
@@ -168,9 +168,8 @@ result_t hash_walk(const T *hash, hash_walk_callback_t *cb, void *opaque);
  * \param[out] key              Pointer to receive key.
  * \param[out] value            Pointer to receive value.
  *
- * \return Error indication.
- * \retval result_OK       If an element was found.
- * \retval result_HASH_END If no elements remain.
+ * \return Error indication. \retval result_OK       If an element was found.
+ *         \retval result_HASH_END If no elements remain.
  */
 result_t hash_walk_continuation(T           *hash,
                                 int          continuation,

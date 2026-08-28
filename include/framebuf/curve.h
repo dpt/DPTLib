@@ -11,7 +11,8 @@
 /**
  * Return the point on the line defined by points `p0` and `p1` at time `t`.
  *
- * This is a straight linear interpolation between the two points: there is no curvature.
+ * This is a straight linear interpolation between the two points: there is no
+ * curvature.
  *
  * \param[in] p0 Start point.
  * \param[in] p1 End point.
@@ -115,7 +116,8 @@ point_t curve_bezier_point_on_cubic_r(point_t p0,
                                       fix16_t t);
 
 /**
- * As for \ref curve_bezier_point_on_quartic but is written in terms of cubics (and in turn of quads).
+ * As for \ref curve_bezier_point_on_quartic but is written in terms of cubics
+ * (and in turn of quads).
  *
  * \param[in] p0 Start point.
  * \param[in] p1 Control point 1.
@@ -133,7 +135,8 @@ point_t curve_bezier_point_on_quartic_r(point_t p0,
                                         fix16_t t);
 
 /**
- * As for \ref curve_bezier_point_on_quintic but is written in terms of quartics (and in turn of cubics, etc.).
+ * As for \ref curve_bezier_point_on_quintic but is written in terms of quartics
+ * (and in turn of cubics, etc.).
  *
  * \param[in] p0 Start point.
  * \param[in] p1 Control point 1.
@@ -170,9 +173,11 @@ void curve_bezier_cubic_f(point_t  p0,
                           point_t *points);
 
 /**
- * As for \ref curve_bezier_cubic but uses forward differencing (fixed-point version).
+ * As for \ref curve_bezier_cubic but uses forward differencing (fixed-point
+ * version).
  *
- * \warning This suffers from drift (the end point is not guaranteed to be reached) if `nsteps` isn't a power of 2.
+ * \warning This suffers from drift (the end point is not guaranteed to be
+ *          reached) if `nsteps` isn't a power of 2.
  *
  * \param[in]  p0     Start point.
  * \param[in]  p1     Control point 1.

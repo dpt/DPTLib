@@ -70,14 +70,14 @@ int wuss__hscroll_well_px(const wuss_window_t *window)
 void wuss__hscroll_sausage_box(const wuss_window_t *window, box_t *out)
 {
   box_t well, content;
-  int   well_px, content_size, doc_size, sausage_px, sausage_x0;
+  int   well_px, content_size, doc_size, sausage_px, sausage_x0, inset;
 
   wuss__hscroll_well_box(window, &well);
   wuss__content_box(window, &content);
 
   well_px      = well.x1 - well.x0;
   content_size = content.x1 - content.x0;
-  doc_size     = window->doc_width;
+  doc_size     = window->doc.w;
   if (doc_size < content_size)
     doc_size = content_size;
 
@@ -92,8 +92,12 @@ void wuss__hscroll_sausage_box(const wuss_window_t *window, box_t *out)
   else
     sausage_x0 = well.x0;
 
-  out->y0 = well.y0;
-  out->y1 = well.y1;
+  /* Inset the sausage from the well's long edges, but only while that
+   * leaves something to draw: a tiny titlebar font can make the well
+   * narrower than two insets, which would invert the box. */
+  inset = (well.y1 - well.y0 > 2 * WUSS_SCROLL_INSET) ? WUSS_SCROLL_INSET : 0;
+  out->y0 = well.y0 + inset;
+  out->y1 = well.y1 - inset;
   out->x0 = sausage_x0;
   out->x1 = sausage_x0 + sausage_px;
 }

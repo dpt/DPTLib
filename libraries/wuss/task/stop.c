@@ -1,6 +1,6 @@
-/* task-stop.c -- wuss - minimal window manager */
+/* stop.c -- wuss - minimal window manager */
 
-#include "impl.h"
+#include "../impl.h"
 
 result_t wuss_task_stop(wuss_window_t *window)
 {
