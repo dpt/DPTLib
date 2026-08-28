@@ -45,8 +45,7 @@ result_t launcher_create(wuss_t           *wuss,
                             wuss_WINDOW_NO_CLOSE,
                             wuss_NO_BACKGROUND,
                             &delegate,
-                            box.x1 - box.x0,
-                            box.y1 - box.y0,
+                            box_size(&box),
                             &task->window);
 }
 

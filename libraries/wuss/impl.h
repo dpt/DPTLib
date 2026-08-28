@@ -5,6 +5,7 @@
 
 #include "datastruct/list.h"
 #include "geom/box.h"
+#include "geom/size.h"
 #include "framebuf/screen.h"
 #include "framebuf/bmfont.h"
 
@@ -63,7 +64,7 @@ struct wuss_window
   wuss_window_flags_t flags;
   point_t             scroll; /* offset into virtual content space of the
                                * content box's top-left; see wuss_window_set_scroll */
-  int                 doc_width, doc_height; /* virtual document extent, set at creation */
+  size2d_t            doc;    /* virtual document extent, set at creation */
   wuss_window_state_t state;        /* see wuss_window_state_t */
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];

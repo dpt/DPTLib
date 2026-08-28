@@ -20,6 +20,7 @@ extern "C"
 #include "framebuf/bmfont.h"
 #include "geom/box.h"
 #include "geom/point.h"
+#include "geom/size.h"
 
 /* ----------------------------------------------------------------------- */
 

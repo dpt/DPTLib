@@ -580,8 +580,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NONE,
                           wuss_NO_BACKGROUND,
                           NULL,
-                          box_a.x1 - box_a.x0,
-                          box_a.y1 - box_a.y0,
+                          box_size(&box_a),
                           &win_a);
   if (rc != result_WUSS_TOO_SMALL)
     goto Failure;
@@ -606,8 +605,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NO_RESIZE,
                           wuss_NO_BACKGROUND,
                           &delegate_a,
-                          box_a.x1 - box_a.x0,
-                          box_a.y1 - box_a.y0,
+                          box_size(&box_a),
                           &win_a);
   if (rc != result_OK)
     goto Failure;
@@ -629,8 +627,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NO_RESIZE,
                           wuss_NO_BACKGROUND,
                           &delegate_b,
-                          box_b.x1 - box_b.x0,
-                          box_b.y1 - box_b.y0,
+                          box_size(&box_b),
                           &win_b);
   if (rc != result_OK)
     goto Failure;
@@ -872,13 +869,13 @@ result_t wuss_test(const char *resources)
 
   printf("test: window_resize valid and too-small cases\n");
 
-  rc = wuss_window_resize(win_a, 50, 0); /* zero-height content is invalid */
+  rc = wuss_window_resize(win_a, (size2d_t) { 50, 0 }); /* zero-height content is invalid */
   if (rc != result_WUSS_TOO_SMALL)
     goto Failure;
   if (tc_a.open_count != 1)
     goto Failure; /* rejected resize: no wuss_EVENT_OPEN */
 
-  rc = wuss_window_resize(win_a, 50, 50);
+  rc = wuss_window_resize(win_a, (size2d_t) { 50, 50 });
   if (rc != result_OK)
     goto Failure;
   if (tc_a.open_count != 2)
@@ -915,8 +912,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NO_RESIZE,
                           wuss_NO_BACKGROUND,
                           &delegate_d,
-                          box_d.x1 - box_d.x0,
-                          box_d.y1 - box_d.y0,
+                          box_size(&box_d),
                           &win_d);
   if (rc != result_OK)
     goto Failure;
@@ -963,8 +959,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_e,
-                            box_e.x1 - box_e.x0,
-                            box_e.y1 - box_e.y0,
+                            box_size(&box_e),
                             &win_e);
     if (rc != result_OK)
       goto Failure;
@@ -984,8 +979,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_f,
-                            box_f.x1 - box_f.x0,
-                            box_f.y1 - box_f.y0,
+                            box_size(&box_f),
                             &win_f);
     if (rc != result_OK)
       goto Failure;
@@ -1052,8 +1046,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_h,
-                            box_h.x1 - box_h.x0,
-                            box_h.y1 - box_h.y0,
+                            box_size(&box_h),
                             &win_h);
     if (rc != result_OK)
       goto Failure;
@@ -1073,8 +1066,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_g,
-                            box_g.x1 - box_g.x0,
-                            box_g.y1 - box_g.y0,
+                            box_size(&box_g),
                             &win_g);
     if (rc != result_OK)
       goto Failure;
@@ -1096,7 +1088,7 @@ result_t wuss_test(const char *resources)
     if (tc_h.redraw_count != before_h || tc_g.redraw_count != before_g)
       goto Failure; /* nothing visible changed: no redraw of either window */
 
-    rc = wuss_window_resize(win_h, 25, 25); /* still entirely within G's footprint */
+    rc = wuss_window_resize(win_h, (size2d_t) { 25, 25 }); /* still entirely within G's footprint */
     if (rc != result_OK)
       goto Failure;
     if (wuss_get_dirty_count(wuss) != 0)
@@ -1135,8 +1127,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_i,
-                            box_i.x1 - box_i.x0,
-                            box_i.y1 - box_i.y0,
+                            box_size(&box_i),
                             &win_i);
     if (rc != result_OK)
       goto Failure;
@@ -1156,8 +1147,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_j,
-                            box_j.x1 - box_j.x0,
-                            box_j.y1 - box_j.y0,
+                            box_size(&box_j),
                             &win_j);
     if (rc != result_OK)
       goto Failure;
@@ -1207,8 +1197,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_m,
-                            box_m.x1 - box_m.x0,
-                            box_m.y1 - box_m.y0,
+                            box_size(&box_m),
                             &win_m);
     if (rc != result_OK)
       goto Failure;
@@ -1260,8 +1249,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
                             &delegate_h,
-                            box_h.x1 - box_h.x0,
-                            box_h.y1 - box_h.y0,
+                            box_size(&box_h),
                             &win_h);
     if (rc != result_OK)
       goto Failure;
@@ -1279,8 +1267,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
                             wuss_NO_BACKGROUND,
                             &delegate_g,
-                            box_g.x1 - box_g.x0,
-                            box_g.y1 - box_g.y0,
+                            box_size(&box_g),
                             &win_g);
     if (rc != result_OK)
       goto Failure;
@@ -1402,7 +1389,8 @@ result_t wuss_test(const char *resources)
     box_t_win.x1 = 50; box_t_win.y1 = 50; /* 40x40 content, room to grow to a 200x200 doc */
     rc = wuss_window_create(wuss, &box_t_win, "T", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
-                            &delegate_t, 200, 200, &win_t);
+                            &delegate_t,
+                            (size2d_t) { 200, 200 }, &win_t);
     if (rc != result_OK)
       goto Failure;
 
@@ -1567,7 +1555,8 @@ result_t wuss_test(const char *resources)
     box_r.x1 = 50; box_r.y1 = 50; /* 40x40 content; doc bigger than that, so it starts scrollable */
     rc = wuss_window_create(wuss, &box_r, "R", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
-                            &delegate_r, 70, 70, &win_r);
+                            &delegate_r,
+                            (size2d_t) { 70, 70 }, &win_r);
     if (rc != result_OK)
       goto Failure;
 
@@ -1664,7 +1653,8 @@ result_t wuss_test(const char *resources)
     box_nb.x1 = 50; box_nb.y1 = 50; /* 40x40 content, room to grow to a 200x200 doc */
     rc = wuss_window_create(wuss, &box_nb, "NB", wuss_WINDOW_NO_RESIZE_BLIT,
                             wuss_NO_BACKGROUND,
-                            &delegate_nb, 200, 200, &win_nb);
+                            &delegate_nb,
+                            (size2d_t) { 200, 200 }, &win_nb);
     if (rc != result_OK)
       goto Failure;
 
@@ -1742,7 +1732,8 @@ result_t wuss_test(const char *resources)
     box_u.x0 = 80; box_u.y0 = 80;
     box_u.x1 = 120; box_u.y1 = 120; /* 40x40 content */
     rc = wuss_window_create(wuss, &box_u, "U", wuss_WINDOW_NONE, wuss_NO_BACKGROUND, /* scrollbars on: carve.x/y = icon size */
-                            &delegate_u, 70, 70, &win_u); /* doc size well within the 200x200 screen: growth is doc-limited, not screen-limited */
+                            &delegate_u,
+                            (size2d_t) { 70, 70 }, &win_u); /* doc size well within the 200x200 screen: growth is doc-limited, not screen-limited */
     if (rc != result_OK)
       goto Failure;
 
@@ -1849,7 +1840,8 @@ result_t wuss_test(const char *resources)
                                     * screen-limited, not doc-limited. */
     rc = wuss_window_create(wuss, &box_v, "V", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
-                            &delegate_v, 200, 200, &win_v);
+                            &delegate_v,
+                            (size2d_t) { 200, 200 }, &win_v);
     if (rc != result_OK)
       goto Failure;
 
@@ -1962,8 +1954,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_k,
-                            box_k.x1 - box_k.x0,
-                            box_k.y1 - box_k.y0,
+                            box_size(&box_k),
                             &win_k);
     if (rc != result_OK)
       goto Failure;
@@ -1983,8 +1974,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_l,
-                            box_l.x1 - box_l.x0,
-                            box_l.y1 - box_l.y0,
+                            box_size(&box_l),
                             &win_l);
     if (rc != result_OK)
       goto Failure;
@@ -2050,8 +2040,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
                             wuss_NO_BACKGROUND,
                             &delegate_m2,
-                            box_m2.x1 - box_m2.x0,
-                            box_m2.y1 - box_m2.y0,
+                            box_size(&box_m2),
                             &win_m2);
     if (rc != result_OK)
       goto Failure;
@@ -2064,7 +2053,7 @@ result_t wuss_test(const char *resources)
     interior_x = before2.x0 + 2;  /* inside the untouched left edge */
     interior_y = before2.y0 + 25; /* below the titlebar, in plain content */
 
-    rc = wuss_window_resize(win_m2, 80, 80); /* grow */
+    rc = wuss_window_resize(win_m2, (size2d_t) { 80, 80 }); /* grow */
     if (rc != result_OK)
       goto Failure;
 
@@ -2094,7 +2083,7 @@ result_t wuss_test(const char *resources)
 
     before2 = after2;
 
-    rc = wuss_window_resize(win_m2, 40, 40); /* shrink back */
+    rc = wuss_window_resize(win_m2, (size2d_t) { 40, 40 }); /* shrink back */
     if (rc != result_OK)
       goto Failure;
 
@@ -2143,8 +2132,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(wuss, &box_nb2, "NB2", wuss_WINDOW_NO_RESIZE_BLIT,
                             wuss_NO_BACKGROUND,
                             &delegate_nb2,
-                            box_nb2.x1 - box_nb2.x0,
-                            box_nb2.y1 - box_nb2.y0,
+                            box_size(&box_nb2),
                             &win_nb2);
     if (rc != result_OK)
       goto Failure;
@@ -2155,7 +2143,7 @@ result_t wuss_test(const char *resources)
 
     wuss_window_get_visible_bounds(win_nb2, &before3);
 
-    rc = wuss_window_resize(win_nb2, 80, 80); /* grow */
+    rc = wuss_window_resize(win_nb2, (size2d_t) { 80, 80 }); /* grow */
     if (rc != result_OK)
       goto Failure;
 
@@ -2195,8 +2183,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_n,
-                            box_n.x1 - box_n.x0,
-                            box_n.y1 - box_n.y0,
+                            box_size(&box_n),
                             &win_n);
     if (rc != result_OK)
       goto Failure;
@@ -2214,8 +2201,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_o,
-                            box_o.x1 - box_o.x0,
-                            box_o.y1 - box_o.y0,
+                            box_size(&box_o),
                             &win_o);
     if (rc != result_OK)
       goto Failure;
@@ -2299,8 +2285,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_b,
-                            box_b.x1 - box_b.x0,
-                            box_b.y1 - box_b.y0,
+                            box_size(&box_b),
                             &win_b);
     if (rc != result_OK)
       goto Failure;
@@ -2318,8 +2303,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_a,
-                            box_a.x1 - box_a.x0,
-                            box_a.y1 - box_a.y0,
+                            box_size(&box_a),
                             &win_a);
     if (rc != result_OK)
       goto Failure;
@@ -2402,8 +2386,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_b,
-                            box_b.x1 - box_b.x0,
-                            box_b.y1 - box_b.y0,
+                            box_size(&box_b),
                             &win_b);
     if (rc != result_OK)
       goto Failure;
@@ -2421,8 +2404,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_a,
-                            box_a.x1 - box_a.x0,
-                            box_a.y1 - box_a.y0,
+                            box_size(&box_a),
                             &win_a);
     if (rc != result_OK)
       goto Failure;
@@ -2482,8 +2464,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_b,
-                            box_b.x1 - box_b.x0,
-                            box_b.y1 - box_b.y0,
+                            box_size(&box_b),
                             &win_b);
     if (rc != result_OK)
       goto Failure;
@@ -2501,8 +2482,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_a,
-                            box_a.x1 - box_a.x0,
-                            box_a.y1 - box_a.y0,
+                            box_size(&box_a),
                             &win_a);
     if (rc != result_OK)
       goto Failure;
@@ -2595,8 +2575,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_b,
-                            box_b.x1 - box_b.x0,
-                            box_b.y1 - box_b.y0,
+                            box_size(&box_b),
                             &win_b);
     if (rc != result_OK)
       goto Failure;
@@ -2614,8 +2593,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_RESIZE,
                             wuss_NO_BACKGROUND,
                             &delegate_a,
-                            box_a.x1 - box_a.x0,
-                            box_a.y1 - box_a.y0,
+                            box_size(&box_a),
                             &win_a);
     if (rc != result_OK)
       goto Failure;
@@ -2691,8 +2669,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NO_RESIZE,
                           wuss_NO_BACKGROUND,
                           &delegate_c,
-                          box_c.x1 - box_c.x0,
-                          box_c.y1 - box_c.y0,
+                          box_size(&box_c),
                           &win_c);
   if (rc != result_OK)
     goto Failure;
@@ -2726,7 +2703,8 @@ result_t wuss_test(const char *resources)
     box_s.x1 = 60; box_s.y1 = 60; /* 50x50 content onto a 200x200 doc: room to scroll */
     rc = wuss_window_create(wuss, &box_s, "S", wuss_WINDOW_NONE,
                             wuss_NO_BACKGROUND,
-                            &delegate_s, 200, 200, &win_s);
+                            &delegate_s,
+                            (size2d_t) { 200, 200 }, &win_s);
     if (rc != result_OK)
       goto Failure;
 

@@ -32,13 +32,13 @@ Create a window with a content bounding box, optional title, appearance flags, a
 result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title,
                             wuss_window_flags_t flags, wuss_colour_t bg,
                             const wuss_task_t *task,
-                            int doc_width, int doc_height,
+                            size2d_t doc,
                             wuss_window_t **window);
 ```
 
 `bg` is filled in by wuss before each redraw event, or `wuss_NO_BACKGROUND` for the task to draw its own background (avoids a redundant fill behind an opaque task); changeable later via `wuss_window_set_background`.
 
-`doc_width`/`doc_height` are the virtual document extent behind the horizontal/vertical scrollbars' sausage proportion; pass `content`'s own width/height for a window with nothing to scroll. Set once at creation, immutable thereafter.
+`doc` is the virtual document extent behind the horizontal/vertical scrollbars' sausage proportion; pass `content`'s own width/height for a window with nothing to scroll. Set once at creation, immutable thereafter.
 
 Furniture is additional to `content`, not carved out of it: the window's content area always ends up exactly the box requested, and its on-screen footprint (`wuss_window_get_visible_bounds`) is `content` expanded outward by whatever furniture flags request — a titlebar above, and/or a 1px outline around all four sides.
 
@@ -114,7 +114,7 @@ Feed mouse events in with `wuss_mouse_click` (action `wuss_MOUSE_DOWN` or `wuss_
 
 ## Scrolling
 
-Each window carries a scroll offset, `(0, 0)` by default: the point in the task's virtual content space that appears at the content area's top-left. `wuss_window_set_scroll(window, x, y)` moves it (invalidating the content area so the next redraw picks it up); `wuss_window_get_scroll` reads it back. `wuss_scroll` applies this offset itself as Wuss's default scroll action, clamped to `doc_width`/`doc_height` (set at window creation), before also delivering `wuss_EVENT_SCROLL` to the task if it has a handle:
+Each window carries a scroll offset, `(0, 0)` by default: the point in the task's virtual content space that appears at the content area's top-left. `wuss_window_set_scroll(window, x, y)` moves it (invalidating the content area so the next redraw picks it up); `wuss_window_get_scroll` reads it back. `wuss_scroll` applies this offset itself as Wuss's default scroll action, clamped to `doc` (set at window creation), before also delivering `wuss_EVENT_SCROLL` to the task if it has a handle:
 
 - window-local `x`/`y` delivered in mouse/scroll events (and expected in `wuss_window_invalidate`'s `local_box`) are in virtual content space, i.e. already shifted by the scroll offset.
 - a redraw event's `content` is still the on-screen (unscrolled) content box; a task reads the offset itself via `wuss_window_get_scroll` to work out which part of its content to paint there.

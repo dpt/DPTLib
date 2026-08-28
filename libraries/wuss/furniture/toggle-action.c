@@ -42,8 +42,8 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
     available_width  = MAX(available_width,  WUSS_MIN_CONTENT);
     available_height = MAX(available_height, WUSS_MIN_CONTENT);
 
-    width  = MIN(window->doc_width,  available_width);
-    height = MIN(window->doc_height, available_height);
+    width  = MIN(window->doc.w,  available_width);
+    height = MIN(window->doc.h, available_height);
 
     window->pre_toggle = window->visible;
 

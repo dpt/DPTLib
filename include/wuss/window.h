@@ -18,6 +18,7 @@ extern "C"
 #include "base/result.h"
 #include "geom/box.h"
 #include "geom/point.h"
+#include "geom/size.h"
 #include "framebuf/screen.h"
 
 #include "wuss/task.h"
@@ -54,11 +55,8 @@ extern "C"
  *                        wuss_window_set_background.
  * \param[in]  task       Content delegate. Copied in. May be NULL for a window
  *                        with no content handling.
- * \param[in]  doc_width  Virtual document width, for the horizontal scrollbar's
- *                        sausage proportion; pass content's own width for a
- *                        window with nothing to scroll.
- * \param[in]  doc_height Virtual document height, for the vertical scrollbar's
- *                        sausage proportion; pass content's own height for a
+ * \param[in]  doc        Virtual document extent, for the scrollbars' sausage
+ *                        proportions; pass content's own width and height for a
  *                        window with nothing to scroll.
  * \param[out] window     Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
@@ -71,8 +69,7 @@ result_t wuss_window_create(wuss_t             *wuss,
                             wuss_window_flags_t flags,
                             wuss_colour_t       bg,
                             const wuss_task_t  *task,
-                            int                 doc_width,
-                            int                 doc_height,
+                            size2d_t            doc,
                             wuss_window_t     **window);
 
 /**
@@ -94,12 +91,11 @@ void wuss_window_move(wuss_window_t *window, point_t p);
  * Resize a window's content area, preserving its top-left position.
  *
  * \param[in] window Window to resize.
- * \param[in] width  New content width.
- * \param[in] height New content height.
- * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if width or
- *         height is not positive.
+ * \param[in] size   New content size.
+ * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if size's width
+ *         or height is not positive.
  */
-result_t wuss_window_resize(wuss_window_t *window, int width, int height);
+result_t wuss_window_resize(wuss_window_t *window, size2d_t size);
 
 /**
  * Move a window to one end of the z-order.

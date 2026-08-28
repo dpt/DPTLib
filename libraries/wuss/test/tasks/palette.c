@@ -32,8 +32,7 @@ result_t palette_create(wuss_t         *wuss,
                             wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
                             palette_PICO8_BLACK,
                             &delegate,
-                            box.x1 - box.x0,
-                            box.y1 - box.y0,
+                            box_size(&box),
                             &task->window);
 }
 
