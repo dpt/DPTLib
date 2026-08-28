@@ -10,7 +10,7 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
 
   before = window->visible;
 
-  if (window->toggled)
+  if (wuss__window_toggled(window))
   {
     new_visible = window->pre_toggle;
   }
@@ -54,7 +54,7 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
   }
 
   window->visible = new_visible;
-  window->toggled = !window->toggled;
+  wuss__window_set_toggled(window, !wuss__window_toggled(window));
 
   {
     point_t new_scroll;

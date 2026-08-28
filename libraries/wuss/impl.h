@@ -26,6 +26,16 @@
 #define WUSS_ICON_INSET   3  /* shared by close/back/toggle/resize icons and scrollbar breadth */
 #define WUSS_MIN_CONTENT  20 /* resize-drag floor: content can never be squeezed smaller than this */
 
+/* Internal per-window state, distinct from the public wuss_window_flags_t
+ * appearance flags a caller sets at creation -- room to grow without
+ * widening struct wuss_window by an int per flag. */
+typedef enum wuss_window_state
+{
+  wuss_WINDOW_STATE_NONE    = 0,
+  wuss_WINDOW_STATE_TOGGLED = 1 << 0 /* currently at TOGGLE_SIZE's "full" size */
+}
+wuss_window_state_t;
+
 struct wuss
 {
   screen_t                   *scr;
@@ -53,7 +63,7 @@ struct wuss_window
   point_t             scroll; /* offset into virtual content space of the
                                * content box's top-left; see wuss_window_set_scroll */
   int                 doc_width, doc_height; /* virtual document extent, set at creation */
-  int                 toggled;      /* currently at TOGGLE_SIZE's "full" size? */
+  wuss_window_state_t state;        /* see wuss_window_state_t */
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];
 };
@@ -112,6 +122,19 @@ static inline int wuss__titlebar_height_for(const wuss_t        *wuss,
 static inline int wuss__titlebar_height(const wuss_window_t *window)
 {
   return wuss__titlebar_height_for(window->wuss, window->flags);
+}
+
+static inline int wuss__window_toggled(const wuss_window_t *window)
+{
+  return (window->state & wuss_WINDOW_STATE_TOGGLED) != 0;
+}
+
+static inline void wuss__window_set_toggled(wuss_window_t *window, int toggled)
+{
+  if (toggled)
+    window->state |= wuss_WINDOW_STATE_TOGGLED;
+  else
+    window->state &= (wuss_window_state_t) ~wuss_WINDOW_STATE_TOGGLED;
 }
 
 static inline int wuss__outline_px_for(wuss_window_flags_t flags)

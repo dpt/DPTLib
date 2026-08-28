@@ -78,7 +78,7 @@ result_t wuss_window_create(wuss_t             *wuss,
   win->scroll.y   = 0;
   win->doc_width  = doc_width;
   win->doc_height = doc_height;
-  win->toggled    = 0;
+  win->state      = wuss_WINDOW_STATE_NONE;
 
   if (task != NULL)
     win->task = *task;
