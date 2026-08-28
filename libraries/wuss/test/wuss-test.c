@@ -2754,6 +2754,53 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_s);
   }
 
+  printf("test: content bounds survive furniture, including the interior rules\n");
+
+  {
+    /* Furniture -- outline, titlebar, scrollbars and the rules dividing the
+     * content from them -- is added outside the requested content box, never
+     * carved out of it, so what the caller asks for is what it gets, both at
+     * creation and after a resize. */
+    test_task_t    tc_r;
+    wuss_task_t    delegate_r;
+    box_t          box_r, content_r;
+    wuss_window_t *win_r;
+
+    memset(&tc_r, 0, sizeof(tc_r));
+    delegate_r.handle    = test_handle;
+    delegate_r.task_data = &tc_r;
+
+    box_r.x0 = 20;
+    box_r.y0 = 30;
+    box_r.x1 = 120;
+    box_r.y1 = 110;
+    rc = wuss_window_create(wuss,
+                            &box_r,
+                            "rules",
+                            wuss_WINDOW_NONE, /* all furniture present */
+                            wuss_NO_BACKGROUND,
+                            &delegate_r,
+                            (size2d_t) { 400, 400 },
+                            &win_r);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_r, &content_r);
+    if (content_r.x1 - content_r.x0 != box_r.x1 - box_r.x0 ||
+        content_r.y1 - content_r.y0 != box_r.y1 - box_r.y0)
+      goto Failure;
+
+    rc = wuss_window_resize(win_r, (size2d_t) { 61, 47 });
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_r, &content_r);
+    if (content_r.x1 - content_r.x0 != 61 || content_r.y1 - content_r.y0 != 47)
+      goto Failure;
+
+    wuss_window_close(win_r);
+  }
+
   printf("test: wuss_task_stop sends wuss_EVENT_QUIT to each window's task\n");
 
   tc_a.stop_count = 0;

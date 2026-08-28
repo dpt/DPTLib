@@ -200,6 +200,44 @@ void wuss__furniture_draw(wuss_t        *wuss,
     }
   }
 
+  {
+    box_t   content, rule;
+    point_t carve;
+
+    /* Interior rules: where furniture is carved off the content area's right
+     * or bottom edge, the last pixel of the carve is a dividing line. */
+    wuss__content_box(window, &content);
+    wuss__furniture_carve_for(window->flags, wuss__icon_size(window), &carve);
+
+    if (carve.x > 0)
+    {
+      rule.x0 = content.x1;
+      rule.x1 = content.x1 + WUSS_DIVIDER_PX;
+      rule.y0 = content.y0;
+      rule.y1 = content.y1;
+      if (!box_intersection(&rule, full, &clipped))
+      {
+        wuss->scr->clip = clipped;
+        screen_draw_rect(wuss->scr, rule.x0, rule.y0, box_size(&rule),
+                         wuss->palette[wuss->furniture_colours.title.bg]);
+      }
+    }
+
+    if (carve.y > 0)
+    {
+      rule.x0 = content.x0;
+      rule.x1 = content.x1 + ((carve.x > 0) ? WUSS_DIVIDER_PX : 0); /* meet the vertical rule at the corner */
+      rule.y0 = content.y1;
+      rule.y1 = content.y1 + WUSS_DIVIDER_PX;
+      if (!box_intersection(&rule, full, &clipped))
+      {
+        wuss->scr->clip = clipped;
+        screen_draw_rect(wuss->scr, rule.x0, rule.y0, box_size(&rule),
+                         wuss->palette[wuss->furniture_colours.title.bg]);
+      }
+    }
+  }
+
   if (!(window->flags & wuss_WINDOW_NO_OUTLINE))
   {
     int      width, height;
