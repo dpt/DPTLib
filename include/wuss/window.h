@@ -39,26 +39,24 @@ extern "C"
  * screen keeps its top-left corner on-screen instead. The bottom/right edges
  * are not clamped.
  *
- * \param[in]  wuss       Window manager to create the window on.
- * \param[in]  content    Requested content-area bounds, screen space. Copied
- *                        in.
- * \param[in]  title      Titlebar label, or NULL for none. Copied in, truncated
- *                        if too long. Ignored if flags includes
- *                        wuss_WINDOW_NO_TITLEBAR.
- * \param[in]  flags      Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR /
- *                        wuss_WINDOW_NO_OUTLINE, OR'd together, or
- *                        wuss_WINDOW_NONE for the default furniture.
- * \param[in]  bg         Content background, filled by Wuss before each redraw,
- *                        or wuss_NO_BACKGROUND for the task to draw its own
- *                        background (avoids a redundant fill behind an opaque
- *                        task). Changeable later via
- *                        wuss_window_set_background.
- * \param[in]  task       Content delegate. Copied in. May be NULL for a window
- *                        with no content handling.
- * \param[in]  doc        Virtual document extent, for the scrollbars' sausage
- *                        proportions; pass content's own width and height for a
- *                        window with nothing to scroll.
- * \param[out] window     Newly created window. Becomes the topmost window.
+ * \param[in]  wuss    Window manager to create the window on.
+ * \param[in]  content Requested content-area bounds, screen space. Copied in.
+ * \param[in]  title   Titlebar label, or NULL for none. Copied in, truncated if
+ *                     too long. Ignored if flags includes
+ *                     wuss_WINDOW_NO_TITLEBAR.
+ * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR /
+ *                     wuss_WINDOW_NO_OUTLINE, OR'd together, or
+ *                     wuss_WINDOW_NONE for the default furniture.
+ * \param[in]  bg      Content background, filled by Wuss before each redraw, or
+ *                     wuss_NO_BACKGROUND for the task to draw its own
+ *                     background (avoids a redundant fill behind an opaque
+ *                     task). Changeable later via wuss_window_set_background.
+ * \param[in]  task    Content delegate. Copied in. May be NULL for a window
+ *                     with no content handling.
+ * \param[in]  doc     Virtual document extent, for the scrollbars' sausage
+ *                     proportions; pass content's own width and height for a
+ *                     window with nothing to scroll.
+ * \param[out] window  Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
  *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if bg is
  *         out of range for the palette, or another appropriate result code.
@@ -132,10 +130,10 @@ void wuss_window_get_content_bounds(const wuss_window_t *window,
  * call. Content changes are opaque to Wuss, so tasks must call this themselves
  * (e.g. the union of an animated element's old and new positions).
  *
- * \param[in] window     Window whose content changed.
- * \param[in] local_box  Region, in window-local content coordinates (as passed
- *                       to the task's mouse callback), or NULL to mark the
- *                       whole content area dirty.
+ * \param[in] window    Window whose content changed.
+ * \param[in] local_box Region, in window-local content coordinates (as passed
+ *                      to the task's mouse callback), or NULL to mark the whole
+ *                      content area dirty.
  */
 void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
 

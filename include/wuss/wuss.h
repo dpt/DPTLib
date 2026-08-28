@@ -76,14 +76,14 @@ typedef struct wuss_palette
 {
   struct
   {
-    wuss_colour_t bg;     /**< Titlebar fill. */
-    wuss_colour_t fg;     /**< Titlebar text. */
+    wuss_colour_t bg;       /**< Titlebar fill. */
+    wuss_colour_t fg;       /**< Titlebar text. */
   }
   title;
-  wuss_colour_t back;     /**< Send-to-back icon. */
-  wuss_colour_t close;    /**< Close icon. */
-  wuss_colour_t toggle;   /**< Toggle-size icon. */
-  wuss_colour_t resize;   /**< Resize icon. */
+  wuss_colour_t back;       /**< Send-to-back icon. */
+  wuss_colour_t close;      /**< Close icon. */
+  wuss_colour_t toggle;     /**< Toggle-size icon. */
+  wuss_colour_t resize;     /**< Resize icon. */
   struct
   {
     wuss_colour_t arrows;   /**< Scrollbar arrows. */
@@ -297,11 +297,11 @@ void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
  * \return \ref result_OK, or a result code returned by the task's mouse
  *         callback.
  */
-result_t wuss_mouse_click(wuss_t              *wuss,
-                          point_t              p,
-                          wuss_button_t        button,
-                          wuss_mouse_action_t  action,
-                          wuss_window_t      **hit);
+result_t wuss_mouse_click(wuss_t             *wuss,
+                          point_t             p,
+                          wuss_button_t       button,
+                          wuss_mouse_action_t action,
+                          wuss_window_t     **hit);
 
 /**
  * Deliver a mouse-move event. Updates the dragged window's position if a drag
