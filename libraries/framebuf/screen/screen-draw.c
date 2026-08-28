@@ -351,11 +351,25 @@ void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 
 /* ----------------------------------------------------------------------- */
 
+/* Build the box covering the whole screen, ignoring the current clip
+ * rectangle. Unlike the clip rectangle this is invariant across redraws, so
+ * clipping a line's endpoints against it yields the same result every time.
+ */
+static void screen_get_bounds(const screen_t *scr, box_t *bounds)
+{
+  bounds->x0 = 0;
+  bounds->y0 = 0;
+  bounds->x1 = scr->width;
+  bounds->y1 = scr->height;
+}
+
 void screen_draw_line(screen_t *scr,
                       int x0, int y0, int x1, int y1,
                       colour_t colour)
 {
   box_t clip_box;
+  box_t bounds;
+  int   rx0, ry0, rx1, ry1;
   int   dx, dy;
   int   adx, ady;
   int   sx, sy;
@@ -364,8 +378,21 @@ void screen_draw_line(screen_t *scr,
   if (screen_get_clip(scr, &clip_box))
     return; /* invalid clipped screen */
 
-  if (line_clip(&clip_box, &x0, &y0, &x1, &y1) == 0)
+  /* Reject only: the clipped-back endpoints are discarded, since feeding
+   * them into the stepping maths below would make the pixels chosen depend
+   * on which clip rectangle we happened to be called with. */
+  rx0 = x0;
+  ry0 = y0;
+  rx1 = x1;
+  ry1 = y1;
+  if (line_clip(&clip_box, &rx0, &ry0, &rx1, &ry1) == 0)
     return;
+
+  /* Bound the number of steps taken. Safe to feed into the stepping maths
+   * as the screen bounds never vary between calls. Cannot reject: the clip
+   * box is always a subset of the screen bounds and it just accepted. */
+  screen_get_bounds(scr, &bounds);
+  (void) line_clip(&bounds, &x0, &y0, &x1, &y1);
 
   dx  = x1 - x0;
   adx = abs(dx);
@@ -405,6 +432,8 @@ void screen_draw_line_wu_fix8(screen_t *scr,
                               colour_t colour)
 {
   box_t   clip_box_f8;
+  box_t   bounds_f8;
+  fix8_t  rx0_f8, ry0_f8, rx1_f8, ry1_f8;
   fix8_t  dx_f8, dy_f8;
   int     steep_b; /* a bool */
   fix16_t grad_f16;
@@ -423,8 +452,19 @@ void screen_draw_line_wu_fix8(screen_t *scr,
   /* scale up screen clip box to match the coordinate type */
   box_scalelog2(&clip_box_f8, FIX8_SHIFT);
 
-  if (line_clip(&clip_box_f8, &x0_f8, &y0_f8, &x1_f8, &y1_f8) == 0)
+  /* Reject only: see screen_draw_line() for why the clipped-back endpoints
+   * are discarded rather than used. */
+  rx0_f8 = x0_f8;
+  ry0_f8 = y0_f8;
+  rx1_f8 = x1_f8;
+  ry1_f8 = y1_f8;
+  if (line_clip(&clip_box_f8, &rx0_f8, &ry0_f8, &rx1_f8, &ry1_f8) == 0)
     return;
+
+  /* Bound the number of steps taken, using the invariant screen bounds. */
+  screen_get_bounds(scr, &bounds_f8);
+  box_scalelog2(&bounds_f8, FIX8_SHIFT);
+  (void) line_clip(&bounds_f8, &x0_f8, &y0_f8, &x1_f8, &y1_f8);
 
   dx_f8 = x1_f8 - x0_f8;
   dy_f8 = y1_f8 - y0_f8;
@@ -521,6 +561,7 @@ void screen_draw_line_wu_float(screen_t *scr,
                                colour_t colour)
 {
   box_t clip_box;
+  box_t bounds;
   int   x0, y0, x1, y1;
   float dx, dy;
   int   steep; /* bool */
@@ -532,6 +573,8 @@ void screen_draw_line_wu_float(screen_t *scr,
   int   alpha1, alpha2;
   float yf;
   int   ix1, iy1;
+  int   xlo, xhi;
+  int   xstart, xstop;
   int   x, y;
 
   if (screen_get_clip(scr, &clip_box))
@@ -545,6 +588,8 @@ void screen_draw_line_wu_float(screen_t *scr,
   y1 = fy1;
   if (line_clip(&clip_box, &x0, &y0, &x1, &y1) == 0)
     return;
+
+  screen_get_bounds(scr, &bounds);
 
   dx = fx1 - fx0;
   dy = fy1 - fy0;
@@ -611,7 +656,18 @@ void screen_draw_line_wu_float(screen_t *scr,
 
   /* mid points */
 
-  for (x = ix0 + 1; x < ix1; x++)
+  /* Bound the loop to the screen. Skipped steps are fast-forwarded through
+   * the gradient in closed form, so the pixels drawn stay a function of the
+   * true endpoints alone: the screen bounds, unlike the clip box, are the
+   * same on every call. */
+  xlo    = steep ? bounds.y0 : bounds.x0;
+  xhi    = steep ? bounds.y1 : bounds.x1;
+  xstart = MAX(ix0 + 1, xlo - 1);
+  xstop  = MIN(ix1, xhi + 1);
+
+  yf += grad * (float) (xstart - (ix0 + 1));
+
+  for (x = xstart; x < xstop; x++)
   {
     y      = floorf(yf);
     alpha1 = 255.0f *  (y + 1.0f - yf);
