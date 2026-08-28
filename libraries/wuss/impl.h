@@ -27,6 +27,7 @@
 #define WUSS_ICON_INSET   3  /* shared by close/back/toggle/resize icons and scrollbar breadth */
 #define WUSS_MIN_CONTENT  20 /* resize-drag floor: content can never be squeezed smaller than this */
 #define WUSS_SCROLL_INSET 2  /* sausage cross-axis margin from its well's edges, purely cosmetic */
+#define WUSS_DIVIDER_PX   1  /* interior rule between the content area and the furniture on its right/bottom */
 
 /* Internal per-window state, distinct from the public wuss_window_flags_t
  * appearance flags a caller sets at creation -- room to grow without
@@ -190,6 +191,12 @@ static inline void wuss__furniture_carve_for(wuss_window_flags_t flags,
     carve->x = icon_size;
     carve->y = icon_size;
   }
+
+  /* where furniture abuts the content area, a rule divides the two */
+  if (carve->x > 0)
+    carve->x += WUSS_DIVIDER_PX;
+  if (carve->y > 0)
+    carve->y += WUSS_DIVIDER_PX;
 }
 
 #endif /* IMPL_H */
