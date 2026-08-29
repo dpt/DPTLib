@@ -28,6 +28,10 @@ extern "C"
 #define result_WUSS_TOO_SMALL  (result_BASE_WUSS + 0)
 /** A palette index was out of range. */
 #define result_WUSS_BAD_COLOUR (result_BASE_WUSS + 1)
+/**
+ * An icon spec was malformed (unknown type, or BUTTON without a fill colour).
+ */
+#define result_WUSS_BAD_ICON   (result_BASE_WUSS + 2)
 
 /* ----------------------------------------------------------------------- */
 
@@ -172,6 +176,19 @@ typedef struct wuss_config
 
   /** Furniture chrome colours. */
   wuss_palette_t palette;
+
+  /**
+   * Bevelled work-area button edge shades, as indices into the system palette:
+   * light on the top/left edges, dark on the bottom/right (swapped when the
+   * button is pressed). Both default to the titlebar fill colour when config is
+   * NULL.
+   */
+  struct
+  {
+    wuss_colour_t light; /**< Top/left bevel edge. */
+    wuss_colour_t dark;  /**< Bottom/right bevel edge. */
+  }
+  bevel;
 
   /**
    * Desktop background colour, painted behind windows on every redraw, or

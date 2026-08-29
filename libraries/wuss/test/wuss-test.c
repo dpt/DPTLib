@@ -35,6 +35,7 @@
 #include "tasks/checker.h"
 #include "tasks/curve.h"
 #include "tasks/gradient.h"
+#include "tasks/icons.h"
 #include "tasks/image.h"
 #include "tasks/launcher.h"
 #include "tasks/palette.h"
@@ -66,6 +67,7 @@ static checker_task_t     g_checker_task;
 static curve_task_t       g_curve_task;
 static sofa_task_t        g_sofa_task;
 static gradient_task_t    g_gradient_task;
+static icons_task_t       g_icons_task;
 static porter_duff_task_t g_porter_duff_task;
 
 static result_t spawn_ball(void)        { return ball_create(g_wuss, g_palette, &g_ball_task); }
@@ -78,6 +80,7 @@ static result_t spawn_checker(void)     { return checker_create(g_wuss, g_palett
 static result_t spawn_curve(void)       { return curve_create(g_wuss, g_palette, &g_curve_task); }
 static result_t spawn_sofa(void)        { return sofa_create(g_wuss, g_palette, &g_sofa_task); }
 static result_t spawn_gradient(void)    { return gradient_create(g_wuss, &g_gradient_task); }
+static result_t spawn_icons(void)       { return icons_create(g_wuss, g_palette, g_daydream_font, &g_icons_task); }
 static result_t spawn_porter_duff(void) { return porter_duff_create(g_wuss, g_palette, g_daydream_font, g_resources, &g_porter_duff_task); }
 
 static void destroy_ball(void)        { ball_destroy(&g_ball_task); }
@@ -90,6 +93,7 @@ static void destroy_checker(void)     { checker_destroy(&g_checker_task); }
 static void destroy_curve(void)       { curve_destroy(&g_curve_task); }
 static void destroy_sofa(void)        { sofa_destroy(&g_sofa_task); }
 static void destroy_gradient(void)    { gradient_destroy(&g_gradient_task); }
+static void destroy_icons(void)       { icons_destroy(&g_icons_task); }
 static void destroy_porter_duff(void) { porter_duff_destroy(&g_porter_duff_task); }
 
 static const launcher_entry_t g_launcher_entries[] =
@@ -104,6 +108,7 @@ static const launcher_entry_t g_launcher_entries[] =
   { "Curve",       spawn_curve,       destroy_curve       },
   { "Sofa",        spawn_sofa,        destroy_sofa        },
   { "Gradient",    spawn_gradient,    destroy_gradient    },
+  { "Icons",       spawn_icons,       destroy_icons       },
   { "Porter-Duff", spawn_porter_duff, destroy_porter_duff }
 };
 
@@ -247,6 +252,8 @@ static result_t wuss_interactive_test(const char *resources)
     config.palette.scroll.arrows    = palette_PICO8_BLUE;
     config.palette.scroll.wells     = palette_PICO8_DARK_BLUE;
     config.palette.scroll.sausages  = palette_PICO8_LIGHT_GREY;
+    config.bevel.light              = palette_PICO8_WHITE;
+    config.bevel.dark               = palette_PICO8_DARK_GREY;
     config.backdrop                 = palette_PICO8_LIGHT_GREY;
 
     rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, &wuss);
@@ -1496,7 +1503,7 @@ result_t wuss_test(const char *resources)
       goto Failure;
 
     /* toggle icon: top-right of the titlebar, inset by 3px, sized 20 - 2*3
-     * (default titlebar height 20, WUSS_ICON_INSET 3), matching
+     * (default titlebar height 20, WUSS_BUTTON_INSET 3), matching
      * wuss__toggle_box's formula -- mirrored here since the test only sees
      * the public API */
     outline_px      = 1;

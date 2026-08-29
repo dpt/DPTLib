@@ -207,7 +207,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     /* Interior rules: where furniture is carved off the content area's right
      * or bottom edge, the last pixel of the carve is a dividing line. */
     wuss__content_box(window, &content);
-    wuss__furniture_carve_for(window->flags, wuss__icon_size(window), &carve);
+    wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
 
     if (carve.x > 0)
     {

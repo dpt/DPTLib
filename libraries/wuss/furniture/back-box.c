@@ -9,8 +9,8 @@ void wuss__back_box(const wuss_window_t *window, box_t *out)
 
   wuss__titlebar_box(window, &titlebar);
 
-  inset = WUSS_ICON_INSET;
-  size  = wuss__icon_size(window);
+  inset = WUSS_BUTTON_INSET;
+  size  = wuss__button_size(window);
 
   out->x0 = titlebar.x0 + inset;
   out->y0 = titlebar.y0 + inset;

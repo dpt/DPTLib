@@ -40,7 +40,7 @@ result_t wuss_window_create(wuss_t             *wuss,
 
   outline_px      = wuss__outline_px_for(flags);
   titlebar_height = wuss__titlebar_height_for(wuss, flags);
-  wuss__furniture_carve_for(flags, wuss__icon_size_for(wuss, flags), &carve);
+  wuss__furniture_carve_for(flags, wuss__button_size_for(wuss, flags), &carve);
 
   win->wuss       = wuss;
   win->visible.x0 = content->x0 - outline_px;
@@ -79,6 +79,9 @@ result_t wuss_window_create(wuss_t             *wuss,
   win->doc        = doc;
   win->min_doc    = min_doc;
   win->state      = wuss_WINDOW_STATE_NONE;
+  win->icons      = NULL;
+  win->nicons     = 0;
+  win->cap_icons  = 0;
 
   if (task != NULL)
     win->task = *task;

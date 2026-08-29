@@ -7,7 +7,7 @@ void wuss__resize_box(const wuss_window_t *window, box_t *out)
   int outline_px, size;
 
   outline_px = wuss__outline_px(window);
-  size       = wuss__icon_size(window);
+  size       = wuss__button_size(window);
 
   out->x1 = window->visible.x1 - outline_px;
   out->x0 = out->x1 - size;

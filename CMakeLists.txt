@@ -112,6 +112,7 @@ set(PUBLIC_HEADERS
     include/utils/maths.h
     include/utils/pack.h
     include/utils/primes.h
+    include/wuss/icon.h
     include/wuss/task.h
     include/wuss/window.h
     include/wuss/wuss.h)
@@ -336,6 +337,20 @@ set(WUSS_SOURCES
     libraries/wuss/furniture/vscroll-box.c
     libraries/wuss/furniture.h
     libraries/wuss/get-font.c
+    libraries/wuss/icon/create.c
+    libraries/wuss/icon/delete.c
+    libraries/wuss/icon/draw.c
+    libraries/wuss/icon/free.c
+    libraries/wuss/icon/get-bbox.c
+    libraries/wuss/icon/get-text.c
+    libraries/wuss/icon/get-type.c
+    libraries/wuss/icon/get-window.c
+    libraries/wuss/icon/hit-test.c
+    libraries/wuss/icon/invalidate.c
+    libraries/wuss/icon/screen-box.c
+    libraries/wuss/icon/set-hidden.c
+    libraries/wuss/icon/set-text.c
+    libraries/wuss/icon.h
     libraries/wuss/idle.c
     libraries/wuss/impl.h
     libraries/wuss/invalidate.c
@@ -549,6 +564,7 @@ if(BUILD_TESTS)
         libraries/wuss/test/tasks/checker.c
         libraries/wuss/test/tasks/curve.c
         libraries/wuss/test/tasks/gradient.c
+        libraries/wuss/test/tasks/icons.c
         libraries/wuss/test/tasks/image.c
         libraries/wuss/test/tasks/launcher.c
         libraries/wuss/test/tasks/palette.c

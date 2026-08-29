@@ -42,7 +42,7 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   outline_px      = wuss__outline_px(window);
   titlebar_height = wuss__titlebar_height(window);
   before          = window->visible;
-  wuss__furniture_carve_for(window->flags, wuss__icon_size(window), &carve);
+  wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
 
   window->visible.x1 = window->visible.x0 + size.w + 2 * outline_px + carve.x;
   window->visible.y1 = window->visible.y0 + size.h + titlebar_height + 2 * outline_px + carve.y;

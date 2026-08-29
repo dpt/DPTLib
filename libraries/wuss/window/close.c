@@ -23,5 +23,7 @@ void wuss_window_close(wuss_window_t *doomed)
 
   list_remove(&wuss->z_order, &doomed->link);
 
+  wuss__icons_free(doomed);
+
   free(doomed);
 }
