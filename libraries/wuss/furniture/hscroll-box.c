@@ -7,7 +7,7 @@ static void hscroll_row(const wuss_window_t *window, box_t *out)
   int outline_px, size;
 
   outline_px = wuss__outline_px(window);
-  size       = wuss__icon_size(window);
+  size       = wuss__button_size(window);
 
   out->y1 = window->visible.y1 - outline_px;
   out->y0 = out->y1 - size;
@@ -22,7 +22,7 @@ void wuss__hscroll_left_box(const wuss_window_t *window, box_t *out)
   int   size;
 
   hscroll_row(window, &row);
-  size = wuss__icon_size(window);
+  size = wuss__button_size(window);
 
   out->y0 = row.y0;
   out->y1 = row.y1;
@@ -36,7 +36,7 @@ void wuss__hscroll_right_box(const wuss_window_t *window, box_t *out)
   int   size;
 
   hscroll_row(window, &row);
-  size = wuss__icon_size(window);
+  size = wuss__button_size(window);
 
   out->y0 = row.y0;
   out->y1 = row.y1;
@@ -50,7 +50,7 @@ void wuss__hscroll_well_box(const wuss_window_t *window, box_t *out)
   int   size;
 
   hscroll_row(window, &row);
-  size = wuss__icon_size(window);
+  size = wuss__button_size(window);
 
   out->y0 = row.y0;
   out->y1 = row.y1;

@@ -23,6 +23,7 @@ result_t wuss_create(screen_t             *scr,
   wuss_t        *w;
   wuss_palette_t pal;
   wuss_colour_t  bg, fg;
+  wuss_colour_t  blight, bdark;
   int            font_height;
   int            font_width;
 
@@ -65,6 +66,8 @@ result_t wuss_create(screen_t             *scr,
   if (config != NULL)
   {
     pal = config->palette;
+    blight = config->bevel.light;
+    bdark = config->bevel.dark;
     w->backdrop = config->backdrop;
   }
   else
@@ -91,6 +94,9 @@ result_t wuss_create(screen_t             *scr,
     pal.scroll.arrows   = bg;
     pal.scroll.wells    = bg;
     pal.scroll.sausages = fg;
+
+    blight = pal.title.bg;
+    bdark  = pal.title.bg;
   }
 
   if (pal.title.bg        < 0 || pal.title.bg        >= w->npalette ||
@@ -102,6 +108,8 @@ result_t wuss_create(screen_t             *scr,
       pal.scroll.arrows   < 0 || pal.scroll.arrows   >= w->npalette ||
       pal.scroll.wells    < 0 || pal.scroll.wells    >= w->npalette ||
       pal.scroll.sausages < 0 || pal.scroll.sausages >= w->npalette ||
+      blight              < 0 || blight              >= w->npalette ||
+      bdark               < 0 || bdark               >= w->npalette ||
       (w->backdrop != wuss_NO_BACKGROUND &&
        (w->backdrop < 0 || w->backdrop >= w->npalette)))
   {
@@ -111,6 +119,8 @@ result_t wuss_create(screen_t             *scr,
   }
 
   w->furniture_colours = pal;
+  w->bevel_light       = blight;
+  w->bevel_dark        = bdark;
 
   if (config != NULL && config->titlebar_height > 0)
   {

@@ -154,14 +154,40 @@ result_t wuss_mouse_click(wuss_t              *wuss,
 
   if (win->task.handle != NULL)
   {
-    box_t content;
+    box_t        content;
+    point_t      doc_point;
+    wuss_icon_t *icon;
 
     wuss__content_box(win, &content);
-    event.kind               = wuss_EVENT_MOUSE;
-    event.data.mouse.action  = action;
-    event.data.mouse.point.x = x - content.x0 + win->scroll.x;
-    event.data.mouse.point.y = y - content.y0 + win->scroll.y;
-    event.data.mouse.button  = button;
+    doc_point.x = x - content.x0 + win->scroll.x;
+    doc_point.y = y - content.y0 + win->scroll.y;
+
+    icon = wuss__icon_hit_test(win, doc_point);
+    if (icon != NULL)
+    {
+      if (action == wuss_MOUSE_DOWN &&
+          (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+      {
+        icon->pressed = 1;
+        wuss__icon_invalidate(icon);
+      }
+      else if (action == wuss_MOUSE_UP && icon->pressed)
+      {
+        icon->pressed = 0;
+        wuss__icon_invalidate(icon);
+      }
+
+      event.kind             = wuss_EVENT_ICON;
+      event.data.icon.icon   = icon;
+      event.data.icon.action = action;
+      event.data.icon.button = button;
+      return win->task.handle(win, &event, win->task.task_data);
+    }
+
+    event.kind              = wuss_EVENT_MOUSE;
+    event.data.mouse.action = action;
+    event.data.mouse.point  = doc_point;
+    event.data.mouse.button = button;
     return win->task.handle(win, &event, win->task.task_data);
   }
 

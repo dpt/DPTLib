@@ -52,14 +52,45 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   if (win->task.handle != NULL)
   {
     box_t        content;
+    point_t      doc_point;
+    wuss_icon_t *icon;
     wuss_event_t event;
+    int          k;
 
     wuss__content_box(win, &content);
-    event.kind               = wuss_EVENT_MOUSE;
-    event.data.mouse.action  = wuss_MOUSE_MOVE;
-    event.data.mouse.point.x = x - content.x0 + win->scroll.x;
-    event.data.mouse.point.y = y - content.y0 + win->scroll.y;
-    event.data.mouse.button  = wuss_BUTTON_SELECT;
+    doc_point.x = x - content.x0 + win->scroll.x;
+    doc_point.y = y - content.y0 + win->scroll.y;
+
+    icon = wuss__icon_hit_test(win, doc_point);
+
+    /* Clear the pressed state of any button the pointer has left. This does
+     * not re-press a button on drag-back-in, and does not track which mouse
+     * button is held -- wuss keeps no persistent "button down over content"
+     * state. */
+    for (k = 0; k < win->nicons; k++)
+    {
+      wuss_icon_t *it = win->icons[k];
+
+      if (it->pressed && it != icon)
+      {
+        it->pressed = 0;
+        wuss__icon_invalidate(it);
+      }
+    }
+
+    if (icon != NULL)
+    {
+      event.kind             = wuss_EVENT_ICON;
+      event.data.icon.icon   = icon;
+      event.data.icon.action = wuss_MOUSE_MOVE;
+      event.data.icon.button = wuss_BUTTON_SELECT;
+      return win->task.handle(win, &event, win->task.task_data);
+    }
+
+    event.kind              = wuss_EVENT_MOUSE;
+    event.data.mouse.action = wuss_MOUSE_MOVE;
+    event.data.mouse.point  = doc_point;
+    event.data.mouse.button = wuss_BUTTON_SELECT;
     return win->task.handle(win, &event, win->task.task_data);
   }
 

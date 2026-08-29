@@ -14,6 +14,7 @@
 #include "wuss/window.h"
 
 #include "furniture.h"
+#include "icon.h"
 
 #define WUSS_TITLE_MAX               63
 #define WUSS_DEFAULT_TITLEBAR_HEIGHT 20
@@ -25,7 +26,7 @@
  * just some avoidable redraw work, never wrong */
 #define WUSS_MAX_INVALIDATE_PIECES 32
 
-#define WUSS_ICON_INSET   3  /* shared by close/back/toggle/resize icons and scrollbar breadth */
+#define WUSS_BUTTON_INSET 3  /* shared by close/back/toggle/resize furniture buttons and scrollbar breadth */
 #define WUSS_MIN_CONTENT  20 /* resize-drag floor: content can never be squeezed smaller than this */
 #define WUSS_SCROLL_INSET 2  /* sausage cross-axis margin from its well's edges, purely cosmetic */
 #define WUSS_DIVIDER_PX   1  /* interior rule between the content area and the furniture on its right/bottom */
@@ -47,6 +48,8 @@ struct wuss
   colour_t                   *palette;   /* owned */
   int                         npalette;
   wuss_palette_t              furniture_colours;
+  wuss_colour_t               bevel_light; /* work-area button top/left edge */
+  wuss_colour_t               bevel_dark;  /* work-area button bottom/right edge */
   wuss_colour_t               backdrop;  /* wuss_NO_BACKGROUND for none */
   int                         titlebar_height;
   list_t                      z_order;   /* anchor; head = topmost window */
@@ -72,6 +75,9 @@ struct wuss_window
   wuss_window_state_t state;        /* see wuss_window_state_t */
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];
+  wuss_icon_t       **icons;        /* owned; array of owned icon pointers */
+  int                 nicons;
+  int                 cap_icons;
 };
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
@@ -169,22 +175,22 @@ static inline int wuss__outline_px(const wuss_window_t *window)
  * none, so NO_TITLEBAR windows that still opt into scrollbars/resize match
  * their titled siblings instead of a hardcoded size; the hardcoded default
  * is only a last-resort floor if even that isn't positive */
-static inline int wuss__icon_size_for(const wuss_t *wuss, wuss_window_flags_t flags)
+static inline int wuss__button_size_for(const wuss_t *wuss, wuss_window_flags_t flags)
 {
   int size;
 
-  size = wuss__titlebar_height_for(wuss, flags) - 2 * WUSS_ICON_INSET;
+  size = wuss__titlebar_height_for(wuss, flags) - 2 * WUSS_BUTTON_INSET;
   if (size > 0)
     return size;
 
-  size = wuss->titlebar_height - 2 * WUSS_ICON_INSET;
+  size = wuss->titlebar_height - 2 * WUSS_BUTTON_INSET;
 
-  return (size > 0) ? size : WUSS_DEFAULT_TITLEBAR_HEIGHT - 2 * WUSS_ICON_INSET;
+  return (size > 0) ? size : WUSS_DEFAULT_TITLEBAR_HEIGHT - 2 * WUSS_BUTTON_INSET;
 }
 
-static inline int wuss__icon_size(const wuss_window_t *window)
+static inline int wuss__button_size(const wuss_window_t *window)
 {
-  return wuss__icon_size_for(window->wuss, window->flags);
+  return wuss__button_size_for(window->wuss, window->flags);
 }
 
 /* how much of a content box's width/height is furniture (scrollbars, the
@@ -193,18 +199,18 @@ static inline int wuss__icon_size(const wuss_window_t *window)
  * visible) and window creation/resize (add it to visible up front) so the
  * two stay consistent with each other */
 static inline void wuss__furniture_carve_for(wuss_window_flags_t flags,
-                                             int                 icon_size,
+                                             int                 button_size,
                                              point_t            *carve)
 {
-  carve->x = (flags & wuss_WINDOW_NO_VSCROLL) ? 0 : icon_size;
-  carve->y = (flags & wuss_WINDOW_NO_HSCROLL) ? 0 : icon_size;
+  carve->x = (flags & wuss_WINDOW_NO_VSCROLL) ? 0 : button_size;
+  carve->y = (flags & wuss_WINDOW_NO_HSCROLL) ? 0 : button_size;
 
   if (!(flags & wuss_WINDOW_NO_RESIZE) &&
       (flags & wuss_WINDOW_NO_VSCROLL) &&
       (flags & wuss_WINDOW_NO_HSCROLL))
   {
-    carve->x = icon_size;
-    carve->y = icon_size;
+    carve->x = button_size;
+    carve->y = button_size;
   }
 
   /* where furniture abuts the content area, a rule divides the two */

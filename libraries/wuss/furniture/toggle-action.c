@@ -22,7 +22,7 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
 
     outline_px      = wuss__outline_px(window);
     titlebar_height = wuss__titlebar_height(window);
-    wuss__furniture_carve_for(window->flags, wuss__icon_size(window), &carve);
+    wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
 
     /* bounded by what's actually left of the screen from the window's
      * current top-left, not the screen's full width/height -- otherwise a

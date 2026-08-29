@@ -21,6 +21,7 @@ void wuss_destroy(wuss_t *doomed)
     list_t *next;
 
     next = e->next;
+    wuss__icons_free((wuss_window_t *) e);
     free(e);
     e = next;
   }

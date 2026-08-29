@@ -16,7 +16,7 @@ void wuss__furniture_invalidate_for(wuss_window_t *window, const box_t *visible)
   /* Ask for the same carve the layout uses rather than reading the
    * scrollbar flags directly: a window with both scrollbars off but resize
    * on still reserves both strips, for the resize icon and the rules. */
-  wuss__furniture_carve_for(window->flags, wuss__icon_size(window), &carve);
+  wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
 
   if (!(window->flags & wuss_WINDOW_NO_TITLEBAR))
   {

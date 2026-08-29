@@ -21,6 +21,7 @@ extern "C"
 #include "framebuf/screen.h"
 
 #include "wuss/wuss.h"
+#include "wuss/icon.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -30,8 +31,9 @@ typedef enum wuss_event_kind
   wuss_EVENT_IDLE,   /**< Wuss has finished its pending tasks. */
   wuss_EVENT_REDRAW, /**< Part of the window's content needs repainting. */
   wuss_EVENT_OPEN,   /**< Window moved or resized. */
-  wuss_EVENT_CLOSE,  /**< Close icon clicked; Wuss takes no action itself. */
+  wuss_EVENT_CLOSE,  /**< Close button clicked; Wuss takes no action itself. */
   wuss_EVENT_MOUSE,  /**< Button down/up over the window's content. */
+  wuss_EVENT_ICON,   /**< A work-area button icon was clicked or hovered. */
   wuss_EVENT_SCROLL, /**< Mouse wheel used over the window's content. */
   wuss_EVENT_QUIT    /**< Task shutting down, via wuss_task_stop. */
 }
@@ -86,6 +88,20 @@ typedef struct wuss_event
       wuss_button_t       button;
     }
     mouse;
+
+    /** wuss_EVENT_ICON: delivered instead of wuss_EVENT_MOUSE while the
+     * pointer is inside a wuss_ICON_TYPE_BUTTON icon's bounding box. Label,
+     * hidden and disabled icons never raise this -- those clicks fall through
+     * as wuss_EVENT_MOUSE. action is DOWN/UP/MOVE; button is a set of
+     * wuss_button_t flags, so test it with '&' rather than comparing for
+     * equality. */
+    struct
+    {
+      wuss_icon_t        *icon;
+      wuss_mouse_action_t action;
+      wuss_button_t       button;
+    }
+    icon;
 
     /** wuss_EVENT_SCROLL: point is window-local content coordinates, as
      * per mouse. delta's sign and units are as passed to wuss_scroll. */

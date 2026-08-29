@@ -1,0 +1,177 @@
+/* icon.h -- wuss work-area icons */
+
+/**
+ * \file icon.h
+ *
+ * Work-area icons: static labels and clickable bevelled buttons that Wuss draws
+ * inside a window's content area and hit-tests before the content task sees a
+ * click.
+ *
+ * An icon's bounding box is given in virtual document space -- the same
+ * coordinate space as wuss_EVENT_MOUSE's point and wuss_window_invalidate's
+ * local_box -- so an icon scrolls with the content it sits on. Its on-screen
+ * position is (content.x0 - scroll.x + bbox), using the window's current
+ * content bounds and scroll offset.
+ *
+ * Wuss fills a window's background, draws its icons, then delivers
+ * wuss_EVENT_REDRAW, so a task is free to paint over or around icon pixels. A
+ * click on a wuss_ICON_TYPE_BUTTON reaches the task as wuss_EVENT_ICON; clicks
+ * on a label, or on a hidden or disabled icon, fall through as
+ * wuss_EVENT_MOUSE.
+ */
+
+#ifndef WUSS_ICON_H
+#define WUSS_ICON_H
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "base/result.h"
+#include "geom/box.h"
+
+#include "wuss/wuss.h"
+
+/* ----------------------------------------------------------------------- */
+
+/** An opaque work-area icon handle, owned by the window it is created on. */
+typedef struct wuss_icon wuss_icon_t;
+
+/**
+ * What an icon looks like and how it behaves. The enum is left open so sprite
+ * and editable-text icons can be added later without breaking existing specs.
+ */
+typedef enum wuss_icon_type
+{
+  wuss_ICON_TYPE_LABEL = 0, /**< Static text drawn with the window manager's
+                             *   font. Not interactive: clicks fall through to
+                             *   the task as wuss_EVENT_MOUSE. */
+  wuss_ICON_TYPE_BUTTON     /**< Bevelled rectangle with a centred text label
+                             *   and pressed-state visual feedback; clicks and
+                             *   hovers are delivered to the task as
+                             *   wuss_EVENT_ICON. */
+}
+wuss_icon_type_t;
+
+/** Icon appearance and behaviour flags, combinable with bitwise OR. */
+typedef enum wuss_icon_flags
+{
+  wuss_ICON_FLAGS_NONE     = 0,
+  wuss_ICON_FLAGS_HIDDEN   = 1 << 0, /**< Not drawn, not hit-tested. */
+  wuss_ICON_FLAGS_DISABLED = 1 << 1  /**< Drawn greyed; clicks fall through to
+                                      *   the task as wuss_EVENT_MOUSE rather
+                                      *   than raising wuss_EVENT_ICON. */
+}
+wuss_icon_flags_t;
+
+/**
+ * Description of an icon at creation. Copied by value into the icon; the caller
+ * keeps ownership of \c text, which is copied.
+ *
+ * A RISC OS-style validation string is deliberately omitted for now; a later \c
+ * validation field would stay source-compatible for callers that
+ * zero-initialise the spec.
+ */
+typedef struct wuss_icon_spec
+{
+  box_t             bbox;  /**< Bounding box, virtual document space,
+                            *   inclusive-exclusive. */
+  wuss_icon_type_t  type;  /**< Icon type. */
+  const char       *text;  /**< NUL-terminated label; copied. NULL means "". */
+  wuss_colour_t     fg;    /**< Text colour, as an index into the system
+                            *   palette. */
+  wuss_colour_t     bg;    /**< Fill/bevel base colour, as an index into the
+                            *   system palette. A label may pass
+                            *   wuss_NO_BACKGROUND for text with no fill; a
+                            *   button must pass a real index. */
+  wuss_icon_flags_t flags; /**< Appearance/behaviour flags. */
+}
+wuss_icon_spec_t;
+
+/* ----------------------------------------------------------------------- */
+
+/**
+ * Create an icon on a window. The icon is owned by the window and freed when
+ * the window is closed (or the window manager destroyed). Its bounding box is
+ * invalidated so the next redraw paints it.
+ *
+ * \param[in]  window Window to attach the icon to.
+ * \param[in]  spec   Icon description; copied.
+ * \param[out] icon   Filled in with the new icon handle, or NULL if the caller
+ *                    does not need it.
+ * \return \ref result_OK on success, \ref result_OOM on allocation failure,
+ *         \ref result_WUSS_BAD_COLOUR if fg or bg is out of range for the
+ *         palette, or \ref result_WUSS_BAD_ICON if type is unknown or a button
+ *         spec has no fill colour.
+ */
+result_t wuss_icon_create(wuss_window_t          *window,
+                          const wuss_icon_spec_t *spec,
+                          wuss_icon_t           **icon);
+
+/**
+ * Destroy an icon, unlinking it from its window and invalidating its bounding
+ * box so the next redraw clears it. Safe to pass NULL.
+ *
+ * \param[in] icon Icon to destroy, or NULL.
+ */
+void wuss_icon_delete(wuss_icon_t *icon);
+
+/**
+ * Replace an icon's label text. The new text is copied. Invalidates the icon's
+ * bounding box.
+ *
+ * \param[in] icon Icon to change.
+ * \param[in] text New NUL-terminated label; copied. NULL means "".
+ * \return \ref result_OK on success, \ref result_OOM on allocation failure (the
+ *         icon keeps its old text).
+ */
+result_t wuss_icon_set_text(wuss_icon_t *icon, const char *text);
+
+/**
+ * Show or hide an icon, toggling wuss_ICON_FLAGS_HIDDEN. Invalidates the icon's
+ * bounding box.
+ *
+ * \param[in] icon   Icon to change.
+ * \param[in] hidden Non-zero to hide the icon, zero to show it.
+ */
+void wuss_icon_set_hidden(wuss_icon_t *icon, int hidden);
+
+/**
+ * Fetch an icon's bounding box, in virtual document space.
+ *
+ * \param[in]  icon Icon to query.
+ * \param[out] bbox Filled in with the bounding box.
+ */
+void wuss_icon_get_bbox(const wuss_icon_t *icon, box_t *bbox);
+
+/**
+ * Fetch an icon's type.
+ *
+ * \param[in] icon Icon to query.
+ * \return The icon's type.
+ */
+wuss_icon_type_t wuss_icon_get_type(const wuss_icon_t *icon);
+
+/**
+ * Fetch an icon's current label text.
+ *
+ * \param[in] icon Icon to query.
+ * \return The label, never NULL (may be ""). Owned by the icon; valid until the
+ *         next wuss_icon_set_text or wuss_icon_delete on it.
+ */
+const char *wuss_icon_get_text(const wuss_icon_t *icon);
+
+/**
+ * Fetch the window an icon belongs to.
+ *
+ * \param[in] icon Icon to query.
+ * \return The owning window.
+ */
+wuss_window_t *wuss_icon_get_window(const wuss_icon_t *icon);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* WUSS_ICON_H */
