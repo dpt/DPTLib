@@ -75,7 +75,16 @@ static result_t spawn_text(void)        { return text_create(g_wuss, g_palette, 
 static result_t spawn_blank(void)       { return blank_create(g_wuss, g_npalette, &g_blank_task); }
 static result_t spawn_chars(void)       { return chars_create(g_wuss, g_palette, &g_chars_task); }
 static result_t spawn_palette(void)     { return palette_create(g_wuss, g_palette, g_npalette, &g_palette_task); }
-static result_t spawn_image(void)       { return image_create(g_wuss, g_palette, g_resources, &g_image_task); }
+static result_t spawn_image(void)
+{
+  const char *leafname;
+  const char *filename;
+
+  leafname = path_join_leafname("jessica", "png");
+  filename = path_join_filename(g_resources, 3, "resources", "images", leafname);
+
+  return image_create(g_wuss, g_palette, filename, &g_image_task);
+}
 static result_t spawn_checker(void)     { return checker_create(g_wuss, g_palette, &g_checker_task); }
 static result_t spawn_curve(void)       { return curve_create(g_wuss, g_palette, &g_curve_task); }
 static result_t spawn_sofa(void)        { return sofa_create(g_wuss, g_palette, &g_sofa_task); }
