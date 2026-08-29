@@ -33,6 +33,8 @@ result_t icons_create(wuss_t         *wuss,
 
   task->font    = font;
   task->ink     = palette[palette_PICO8_LAVENDER];
+  task->label   = palette[palette_PICO8_DARK_BLUE];
+  task->paper   = palette[palette_PICO8_LIGHT_GREY]; /* the window bg, below */
   task->window  = NULL;
   task->button  = NULL;
   task->counter = NULL;
@@ -55,8 +57,11 @@ result_t icons_create(wuss_t         *wuss,
 
   memset(&spec, 0, sizeof(spec));
 
+  /* icons sit past the ruler gutter (see ICONS_GUTTER in icons_redraw) so the
+   * axis labels have the top/left strip to themselves */
+
   /* a heading label */
-  spec.bbox  = (box_t) BOX_POS_SIZE(8, 8, 180, 14);
+  spec.bbox  = (box_t) BOX_POS_SIZE(28, 28, 180, 14);
   spec.type  = wuss_ICON_TYPE_LABEL;
   spec.text  = "Work-area icons:";
   spec.fg    = palette_PICO8_DARK_BLUE;
@@ -67,7 +72,7 @@ result_t icons_create(wuss_t         *wuss,
     goto failure;
 
   /* the button that bumps the counter */
-  spec.bbox = (box_t) BOX_POS_SIZE(8, 30, 80, 22);
+  spec.bbox = (box_t) BOX_POS_SIZE(28, 50, 80, 22);
   spec.type = wuss_ICON_TYPE_BUTTON;
   spec.text = "Press me";
   spec.fg   = palette_PICO8_BLACK;
@@ -77,7 +82,7 @@ result_t icons_create(wuss_t         *wuss,
     goto failure;
 
   /* the counter label beside it */
-  spec.bbox = (box_t) BOX_POS_SIZE(100, 30, 140, 52);
+  spec.bbox = (box_t) BOX_POS_SIZE(120, 50, 120, 22);
   spec.type = wuss_ICON_TYPE_LABEL;
   spec.text = "0";
   spec.fg   = palette_PICO8_DARK_BLUE;
@@ -87,7 +92,7 @@ result_t icons_create(wuss_t         *wuss,
     goto failure;
 
   /* a button far down the document, to prove icons scroll and stay clickable */
-  spec.bbox = (box_t) BOX_POS_SIZE(8, 460, 90, 52);
+  spec.bbox = (box_t) BOX_POS_SIZE(28, 460, 90, 52);
   spec.type = wuss_ICON_TYPE_BUTTON;
   spec.text = "Scrolled";
   spec.fg   = palette_PICO8_BLACK;
@@ -109,6 +114,24 @@ void icons_destroy(icons_task_t *task)
   wuss_window_close(task->window);
 }
 
+#define ICONS_GRID       16 /* document-space pitch of the backdrop grid */
+#define ICONS_AXIS_LABEL 64 /* label every Nth grid line along each axis */
+
+/* Screen coordinate of the first grid line at or after lo. Grid lines sit at
+ * document multiples of ICONS_GRID; the screen coordinate of document d is
+ * origin - scroll + d, so lines fall on screen coordinates congruent to
+ * (origin - scroll) modulo ICONS_GRID. */
+static int icons_grid_first(int origin, int scroll, int lo)
+{
+  int phase;
+
+  phase = (origin - scroll) % ICONS_GRID;
+  if (phase < 0)
+    phase += ICONS_GRID;
+
+  return lo - ((lo - phase) % ICONS_GRID + ICONS_GRID) % ICONS_GRID;
+}
+
 static result_t icons_redraw(const wuss_event_t *event, void *task_data)
 {
   icons_task_t *tcx;
@@ -116,9 +139,13 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
   const box_t  *content;
   const box_t  *bounds;
   point_t       scroll;
-  int           phase;
-  int           first;
+  point_t       pos;
+  char          buf[16];
+  int           ox;     /* screen x of document x=0 */
+  int           oy;     /* screen y of document y=0 */
+  int           doc;
   int           x;
+  int           y;
 
   tcx = task_data;
 
@@ -127,17 +154,56 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
   bounds  = event->data.redraw.bounds;
   scroll  = event->data.redraw.scroll;
 
-  /* faint vertical rules every 16 document units, to show the task still
-   * paints under and around the wuss-managed icons -- anchored to the
-   * document so they track the scroll offset. The screen x of document
-   * x=d is bounds->x0 - scroll.x + d, so the rules land on screen
-   * columns congruent to (bounds->x0 - scroll.x) modulo 16. */
-  phase = (bounds->x0 - scroll.x) % 16;
-  if (phase < 0)
-    phase += 16;
-  first = content->x0 - ((content->x0 - phase) % 16 + 16) % 16;
-  for (x = first; x < content->x1; x += 16)
+  ox = bounds->x0 - scroll.x;
+  oy = bounds->y0 - scroll.y;
+
+  /* Everything this task paints is anchored to the document, not the window,
+   * so it scrolls rigidly with the content -- which is what Wuss's scroll
+   * blit assumes. Nothing here is pinned to a window edge. Every draw is
+   * clipped to the dirty rectangle (content) so partial redraws stay cheap. */
+
+  /* a faint grid across the whole work area */
+  for (x = icons_grid_first(bounds->x0, scroll.x, content->x0);
+       x < content->x1;
+       x += ICONS_GRID)
     screen_draw_line(scr, x, content->y0, x, content->y1 - 1, tcx->ink);
+
+  for (y = icons_grid_first(bounds->y0, scroll.y, content->y0);
+       y < content->y1;
+       y += ICONS_GRID)
+    screen_draw_line(scr, content->x0, y, content->x1 - 1, y, tcx->ink);
+
+  /* x-axis ruler: document x printed just below the y=0 line, at each
+   * labelled grid column. Scrolls with the document like the grid. */
+  for (x = icons_grid_first(bounds->x0, scroll.x, content->x0);
+       x < content->x1;
+       x += ICONS_GRID)
+  {
+    doc = x - ox;
+    if (doc <= 0 || doc % ICONS_AXIS_LABEL != 0)
+      continue;
+
+    snprintf(buf, sizeof(buf), "%d", doc);
+    pos = POINT(x + 2, oy + 2);
+    bmfont_draw(tcx->font, scr, buf, (int) strlen(buf),
+                tcx->label, tcx->paper, &pos, NULL);
+  }
+
+  /* y-axis ruler: document y printed just right of the x=0 line, at each
+   * labelled grid row. */
+  for (y = icons_grid_first(bounds->y0, scroll.y, content->y0);
+       y < content->y1;
+       y += ICONS_GRID)
+  {
+    doc = y - oy;
+    if (doc <= 0 || doc % ICONS_AXIS_LABEL != 0)
+      continue;
+
+    snprintf(buf, sizeof(buf), "%d", doc);
+    pos = POINT(ox + 2, y + 2);
+    bmfont_draw(tcx->font, scr, buf, (int) strlen(buf),
+                tcx->label, tcx->paper, &pos, NULL);
+  }
 
   return result_OK;
 }
