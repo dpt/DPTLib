@@ -15,6 +15,8 @@
 
 #include "image.h"
 
+#define BORDER 16
+
 result_t image_create(wuss_t         *wuss,
                       const colour_t *palette,
                       const char     *resources,
@@ -25,6 +27,7 @@ result_t image_create(wuss_t         *wuss,
   wuss_task_t delegate;
   box_t       box;
   result_t    rc;
+  size2d_t    sz;
 
   leafname = path_join_leafname("jessica", "png");
   filename = path_join_filename(resources, 3, "resources", "images", leafname);
@@ -33,17 +36,21 @@ result_t image_create(wuss_t         *wuss,
     return rc;
 
   delegate = wuss_task_start(image_handle, task); /* shows through the image's transparent pixels */
+  
+  sz.w = task->bitmap.size.w + BORDER * 2;
+  sz.h = task->bitmap.size.h + BORDER * 2;
+  
   /* shorter than the bitmap so there's something to scroll through */
-  box             = (box_t) BOX_POS_SIZE(370, 10, task->bitmap.size.w, task->bitmap.size.h * 2 / 3);
+  box = (box_t) BOX_POS_SIZE(370, 10, sz.w, sz.h * 2 / 3);
 
   return wuss_window_create(wuss,
                             &box,
                             "Image",
                             wuss_WINDOW_NONE,
-                            palette_PICO8_BLACK,
+                            palette_PICO8_PINK,
                             &delegate,
-                            SIZE2D(task->bitmap.size.w, task->bitmap.size.h),
-                            SIZE2D(0, 0),
+                            sz,
+                            SIZE2D(32, 32),
                             &task->window);
 }
 
@@ -67,7 +74,7 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   sx     = event->data.redraw.scroll.x;
   sy     = event->data.redraw.scroll.y;
 
-  screen_draw_bitmap(scr, bounds->x0 - sx, bounds->y0 - sy, &ic->bitmap);
+  screen_draw_bitmap(scr, bounds->x0 - sx + BORDER, bounds->y0 - sy + BORDER, &ic->bitmap);
 
   return result_OK;
 }
