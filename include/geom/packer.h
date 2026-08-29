@@ -78,6 +78,18 @@ result_t packer_place_at(T           *packer,
                          const box_t *area);
 
 /**
+ * Sets a gutter for packer_place_by: the width in pixels of a strip it
+ * additionally reserves along each placed box's two edges facing away from the
+ * search corner, so boxes placed by location never end up flush against each
+ * other. Default 0 (no gutter). Negative values are treated as 0. Does not
+ * affect packer_place_at.
+ *
+ * \param[in] packer Packer to configure.
+ * \param[in] gutter Gutter width in pixels.
+ */
+void packer_set_gutter(T *packer, int gutter);
+
+/**
  * Returns a previously placed area to the free pool: the inverse of
  * packer_place_at / packer_place_by.
  *

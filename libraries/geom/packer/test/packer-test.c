@@ -459,6 +459,51 @@ static int test3(void)
   }
 
   packer_destroy(packer);
+
+
+  /* gutter: a column just wide enough for one box plus its gutter forces the
+   * second placement to stack above the first, gutter between them */
+  {
+    static const box_t coldims = { 0, 0, 30, 200 };
+
+    box_t first;
+
+    printf("test3: packer_set_gutter\n");
+
+    packer = packer_create(&coldims);
+    if (packer == NULL)
+      return 1;
+
+    packer_set_gutter(packer, 10);
+
+    /* pos points at the packer's single result buffer, so copy the first
+     * placement out before the second overwrites it */
+    err = packer_place_by(packer, packer_LOC_BOTTOM_LEFT, 20, 20, &a);
+    if (err)
+      goto failure;
+    first = *a;
+
+    err = packer_place_by(packer, packer_LOC_BOTTOM_LEFT, 20, 20, &b);
+    if (err)
+      goto failure;
+
+    /* boxes are still 20x20 (the gutter is not added to the result)... */
+    if (first.x1 - first.x0 != 20 || first.y1 - first.y0 != 20 ||
+        b->x1 - b->x0 != 20 || b->y1 - b->y0 != 20)
+    {
+      printf("test3: gutter inflated the placed box\n");
+      goto failure;
+    }
+    /* ...but the second sits a full gutter above the first, not flush */
+    if (b->y0 - first.y1 != 10)
+    {
+      printf("test3: gap between placements was %d, wanted 10\n",
+             b->y0 - first.y1);
+      goto failure;
+    }
+  }
+
+  packer_destroy(packer);
   return 0;
 
 

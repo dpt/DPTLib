@@ -46,6 +46,8 @@ packer_t *packer_create(const box_t *dims)
   p->order            = packer_SORT_TOP_LEFT; /* any will do */
   p->sorted           = 1;
 
+  p->gutter           = 0;
+
   p->consumed_area.x0 = INT_MAX;
   p->consumed_area.y0 = INT_MAX;
   p->consumed_area.x1 = INT_MIN;
@@ -423,6 +425,11 @@ result_t packer_release(packer_t *packer, const box_t *area)
   return add_area(packer, &b);
 }
 
+void packer_set_gutter(packer_t *packer, int gutter)
+{
+  packer->gutter = (gutter > 0) ? gutter : 0;
+}
+
 result_t packer_place_by(packer_t     *packer,
                          packer_loc_t  loc,
                          int           w,
@@ -431,6 +438,8 @@ result_t packer_place_by(packer_t     *packer,
 {
   result_t     err;
   const box_t *b;
+  int          g, fw, fh;
+  box_t        consume;
 
   if (pos)
     *pos = NULL;
@@ -438,11 +447,17 @@ result_t packer_place_by(packer_t     *packer,
   if (w == 0 || h == 0)
     return result_PACKER_EMPTY;
 
+  /* look for a free area big enough for the box plus the gutter strip it
+   * reserves along its two inner edges */
+  g  = packer->gutter;
+  fw = w + g;
+  fh = h + g;
+
   for (b = packer_start(packer, (packer_sortdir_t) loc);
        b;
        b = packer_next(packer))
   {
-    if (box_could_hold(b, w, h))
+    if (box_could_hold(b, fw, fh))
     {
       logf_debug("packer_place_by: %s", "fits");
       break;
@@ -455,18 +470,24 @@ result_t packer_place_by(packer_t     *packer,
     return result_PACKER_DIDNT_FIT;
   }
 
+  /* the box sits flush in the chosen corner of the free area; the gutter is
+   * reserved on its two edges that face away from that corner */
   switch (loc)
   {
   case packer_LOC_TOP_LEFT:
   case packer_LOC_BOTTOM_LEFT:
     packer->placed_area.x0 = b->x0;
     packer->placed_area.x1 = b->x0 + w;
+    consume.x0             = b->x0;
+    consume.x1             = b->x0 + fw; /* box + gutter to the right */
     break;
 
   case packer_LOC_TOP_RIGHT:
   case packer_LOC_BOTTOM_RIGHT:
     packer->placed_area.x0 = b->x1 - w;
     packer->placed_area.x1 = b->x1;
+    consume.x0             = b->x1 - fw; /* box + gutter to the left */
+    consume.x1             = b->x1;
     break;
 
   default:
@@ -479,19 +500,23 @@ result_t packer_place_by(packer_t     *packer,
   case packer_LOC_TOP_RIGHT:
     packer->placed_area.y0 = b->y1 - h;
     packer->placed_area.y1 = b->y1;
+    consume.y0             = b->y1 - fh; /* box + gutter below */
+    consume.y1             = b->y1;
     break;
 
   case packer_LOC_BOTTOM_LEFT:
   case packer_LOC_BOTTOM_RIGHT:
     packer->placed_area.y0 = b->y0;
     packer->placed_area.y1 = b->y0 + h;
+    consume.y0             = b->y0;
+    consume.y1             = b->y0 + fh; /* box + gutter above */
     break;
 
   default:
     break;
   }
 
-  err = remove_area(packer, &packer->placed_area);
+  err = remove_area(packer, &consume);
   if (err)
     return err;
 
