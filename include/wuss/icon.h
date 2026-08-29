@@ -110,6 +110,26 @@ result_t wuss_icon_create(wuss_window_t          *window,
                           wuss_icon_t           **icon);
 
 /**
+ * Create several icons on a window in one call, as if by \ref wuss_icon_create
+ * for each. Either all \c nspecs icons are created, or none are: on the first
+ * failure any icons already created by this call are destroyed and no handles
+ * are written.
+ *
+ * \param[in]  window Window to attach the icons to.
+ * \param[in]  specs  Array of \c nspecs icon descriptions; each copied.
+ * \param[in]  nspecs Number of entries in \c specs. Zero is a no-op.
+ * \param[out] icons  Array of \c nspecs handles, filled in on success, or NULL
+ *                    if the caller does not need them. Untouched on failure.
+ * \return \ref result_OK on success, or the first failing \ref wuss_icon_create
+ *         code (\ref result_OOM, \ref result_WUSS_BAD_COLOUR, \ref
+ *         result_WUSS_BAD_ICON).
+ */
+result_t wuss_icon_create_array(wuss_window_t          *window,
+                                const wuss_icon_spec_t *specs,
+                                int                     nspecs,
+                                wuss_icon_t           **icons);
+
+/**
  * Destroy an icon, unlinking it from its window and invalidating its bounding
  * box so the next redraw clears it. Safe to pass NULL.
  *

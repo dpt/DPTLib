@@ -338,6 +338,7 @@ set(WUSS_SOURCES
     libraries/wuss/furniture.h
     libraries/wuss/get-font.c
     libraries/wuss/icon/create.c
+    libraries/wuss/icon/create-array.c
     libraries/wuss/icon/delete.c
     libraries/wuss/icon/draw.c
     libraries/wuss/icon/free.c
