@@ -28,7 +28,8 @@ result_t icons_create(wuss_t         *wuss,
 {
   wuss_task_t      delegate;
   box_t            box;
-  wuss_icon_spec_t spec;
+  wuss_icon_spec_t specs[4];
+  wuss_icon_t     *made[4];
   result_t         rc;
 
   task->font    = font;
@@ -55,51 +56,45 @@ result_t icons_create(wuss_t         *wuss,
   if (rc != result_OK)
     return rc;
 
-  memset(&spec, 0, sizeof(spec));
+  memset(specs, 0, sizeof(specs));
 
   /* icons sit past the ruler gutter (see ICONS_GUTTER in icons_redraw) so the
    * axis labels have the top/left strip to themselves */
 
-  /* a heading label */
-  spec.bbox  = (box_t) BOX_POS_SIZE(28, 28, 180, 14);
-  spec.type  = wuss_ICON_TYPE_LABEL;
-  spec.text  = "Work-area icons:";
-  spec.fg    = palette_PICO8_DARK_BLUE;
-  spec.bg    = wuss_NO_BACKGROUND;
-  spec.flags = wuss_ICON_FLAGS_NONE;
-  rc = wuss_icon_create(task->window, &spec, NULL);
+  /* [0] a heading label */
+  specs[0].bbox = (box_t) BOX_POS_SIZE(28, 28, 180, 14);
+  specs[0].type = wuss_ICON_TYPE_LABEL;
+  specs[0].text = "Work-area icons:";
+  specs[0].fg   = palette_PICO8_DARK_BLUE;
+  specs[0].bg   = wuss_NO_BACKGROUND;
+
+  /* [1] the button that bumps the counter */
+  specs[1].bbox = (box_t) BOX_POS_SIZE(28, 50, 80, 22);
+  specs[1].type = wuss_ICON_TYPE_BUTTON;
+  specs[1].text = "Press me";
+  specs[1].fg   = palette_PICO8_BLACK;
+  specs[1].bg   = palette_PICO8_LIGHT_GREY;
+
+  /* [2] the counter label beside it */
+  specs[2].bbox = (box_t) BOX_POS_SIZE(120, 50, 120, 22);
+  specs[2].type = wuss_ICON_TYPE_LABEL;
+  specs[2].text = "0";
+  specs[2].fg   = palette_PICO8_DARK_BLUE;
+  specs[2].bg   = wuss_NO_BACKGROUND;
+
+  /* [3] a button far down the document, to prove icons scroll and stay clickable */
+  specs[3].bbox = (box_t) BOX_POS_SIZE(28, 460, 90, 52);
+  specs[3].type = wuss_ICON_TYPE_BUTTON;
+  specs[3].text = "Scrolled";
+  specs[3].fg   = palette_PICO8_BLACK;
+  specs[3].bg   = palette_PICO8_LIGHT_GREY;
+
+  rc = wuss_icon_create_array(task->window, specs, 4, made);
   if (rc != result_OK)
     goto failure;
 
-  /* the button that bumps the counter */
-  spec.bbox = (box_t) BOX_POS_SIZE(28, 50, 80, 22);
-  spec.type = wuss_ICON_TYPE_BUTTON;
-  spec.text = "Press me";
-  spec.fg   = palette_PICO8_BLACK;
-  spec.bg   = palette_PICO8_LIGHT_GREY;
-  rc = wuss_icon_create(task->window, &spec, &task->button);
-  if (rc != result_OK)
-    goto failure;
-
-  /* the counter label beside it */
-  spec.bbox = (box_t) BOX_POS_SIZE(120, 50, 120, 22);
-  spec.type = wuss_ICON_TYPE_LABEL;
-  spec.text = "0";
-  spec.fg   = palette_PICO8_DARK_BLUE;
-  spec.bg   = wuss_NO_BACKGROUND;
-  rc = wuss_icon_create(task->window, &spec, &task->counter);
-  if (rc != result_OK)
-    goto failure;
-
-  /* a button far down the document, to prove icons scroll and stay clickable */
-  spec.bbox = (box_t) BOX_POS_SIZE(28, 460, 90, 52);
-  spec.type = wuss_ICON_TYPE_BUTTON;
-  spec.text = "Scrolled";
-  spec.fg   = palette_PICO8_BLACK;
-  spec.bg   = palette_PICO8_LIGHT_GREY;
-  rc = wuss_icon_create(task->window, &spec, NULL);
-  if (rc != result_OK)
-    goto failure;
+  task->button  = made[1];
+  task->counter = made[2];
 
   return result_OK;
 
