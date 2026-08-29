@@ -22,7 +22,6 @@ result_t image_create(wuss_t         *wuss,
                       image_task_t   *task)
 {
   wuss_task_t delegate;
-  box_t       box;
   result_t    rc;
   size2d_t    sz;
 
@@ -34,19 +33,17 @@ result_t image_create(wuss_t         *wuss,
   
   sz.w = task->bitmap.size.w + BORDER * 2;
   sz.h = task->bitmap.size.h + BORDER * 2;
-  
-  /* shorter than the bitmap so there's something to scroll through */
-  box = (box_t) BOX_POS_SIZE(370, 10, sz.w, sz.h * 2 / 3);
 
-  return wuss_window_create(wuss,
-                            &box,
-                            "Image",
-                            wuss_WINDOW_NONE,
-                            palette_PICO8_PINK,
-                            &delegate,
-                            sz,
-                            SIZE2D(32, 32),
-                            &task->window);
+  return wuss_window_create_placed(wuss,
+                                   /* shorter than the bitmap so there's something to scroll through */
+                                   SIZE2D(sz.w, sz.h * 2 / 3),
+                                   "Image",
+                                   wuss_WINDOW_NONE,
+                                   palette_PICO8_PINK,
+                                   &delegate,
+                                   sz,
+                                   SIZE2D(32, 32),
+                                   &task->window);
 }
 
 void image_destroy(image_task_t *task)

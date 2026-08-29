@@ -163,7 +163,6 @@ result_t porter_duff_create(wuss_t             *wuss,
                             porter_duff_task_t *task)
 {
   wuss_task_t delegate;
-  box_t       box;
   result_t    rc;
 
   task->font            = font;
@@ -192,17 +191,16 @@ result_t porter_duff_create(wuss_t             *wuss,
     goto free_src;
 
   delegate = wuss_task_start(porter_duff_handle, task); /* porter_duff_redraw paints every pixel itself */
-  box      = (box_t) BOX_POS_SIZE(60, 180, PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT);
 
-  rc = wuss_window_create(wuss,
-                          &box,
-                          "Porter-Duff",
-                          wuss_WINDOW_NONE,
-                          wuss_NO_BACKGROUND,
-                          &delegate,
-                          box_size(&box),
-                          SIZE2D(0, 0),
-                          &task->window);
+  rc = wuss_window_create_placed(wuss,
+                                 SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
+                                 "Porter-Duff",
+                                 wuss_WINDOW_NONE,
+                                 wuss_NO_BACKGROUND,
+                                 &delegate,
+                                 SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
+                                 SIZE2D(0, 0),
+                                 &task->window);
   if (rc != result_OK)
     goto free_dst;
 

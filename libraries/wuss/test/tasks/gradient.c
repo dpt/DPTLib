@@ -34,20 +34,18 @@ static int dither(int v, int x, int y)
 result_t gradient_create(wuss_t *wuss, gradient_task_t *task)
 {
   wuss_task_t delegate;
-  box_t       box;
 
   delegate = wuss_task_start(gradient_handle, task); /* gradient_redraw paints every pixel itself */
-  box      = (box_t) BOX_POS_SIZE(620, 300, GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT);
 
-  return wuss_window_create(wuss,
-                            &box,
-                            "Gradient",
-                            wuss_WINDOW_NONE,
-                            wuss_NO_BACKGROUND,
-                            &delegate,
-                            SIZE2D(GRADIENT_DOC_WIDTH, GRADIENT_DOC_HEIGHT),
-                            SIZE2D(0, 0),
-                            &task->window);
+  return wuss_window_create_placed(wuss,
+                                   SIZE2D(GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT),
+                                   "Gradient",
+                                   wuss_WINDOW_NONE,
+                                   wuss_NO_BACKGROUND,
+                                   &delegate,
+                                   SIZE2D(GRADIENT_DOC_WIDTH, GRADIENT_DOC_HEIGHT),
+                                   SIZE2D(0, 0),
+                                   &task->window);
 }
 
 void gradient_destroy(gradient_task_t *task)

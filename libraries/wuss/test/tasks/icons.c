@@ -27,7 +27,6 @@ result_t icons_create(wuss_t         *wuss,
                       icons_task_t   *task)
 {
   wuss_task_t      delegate;
-  box_t            box;
   wuss_icon_spec_t specs[4];
   wuss_icon_t     *made[4];
   result_t         rc;
@@ -42,17 +41,16 @@ result_t icons_create(wuss_t         *wuss,
   task->count   = 0;
 
   delegate = wuss_task_start(icons_handle, task);
-  box      = (box_t) BOX_POS_SIZE(160, 120, ICONS_DOC_W, 160);
 
-  rc = wuss_window_create(wuss,
-                          &box,
-                          "Icons",
-                          wuss_WINDOW_NONE,
-                          palette_PICO8_LIGHT_GREY,
-                          &delegate,
-                          SIZE2D(ICONS_DOC_W, ICONS_DOC_H),
-                          SIZE2D(0, 0),
-                          &task->window);
+  rc = wuss_window_create_placed(wuss,
+                                 SIZE2D(ICONS_DOC_W, 160),
+                                 "Icons",
+                                 wuss_WINDOW_NONE,
+                                 palette_PICO8_LIGHT_GREY,
+                                 &delegate,
+                                 SIZE2D(ICONS_DOC_W, ICONS_DOC_H),
+                                 SIZE2D(0, 0),
+                                 &task->window);
   if (rc != result_OK)
     return rc;
 
