@@ -77,6 +77,45 @@ result_t wuss_window_create(wuss_t             *wuss,
                             wuss_window_t     **window);
 
 /**
+ * Create a window, letting Wuss choose its position.
+ *
+ * As wuss_window_create, but instead of a content box you pass just the content
+ * size; Wuss places the window (furniture included) in the first free screen
+ * region, packed towards the top-left, tracking occupied area across calls so
+ * successive auto-placed windows tile rather than stack. When no region is
+ * large enough the window is cascaded from the previous placement, stepping by
+ * a titlebar height and wrapping at the screen edge.
+ *
+ * The chosen slot is returned to the pool when the window is closed, or when it
+ * is first moved or resized via wuss_window_move / wuss_window_resize (after
+ * which Wuss no longer tracks its position). A window dragged by its titlebar
+ * counts as moved.
+ *
+ * \param[in]  wuss    Window manager to create the window on.
+ * \param[in]  size    Requested content-area size. Width and height must both
+ *                     be positive.
+ * \param[in]  title   Titlebar label, as wuss_window_create.
+ * \param[in]  flags   Appearance flags, as wuss_window_create.
+ * \param[in]  bg      Content background, as wuss_window_create.
+ * \param[in]  task    Content delegate, as wuss_window_create.
+ * \param[in]  doc     Virtual document extent, as wuss_window_create.
+ * \param[in]  min_doc Minimum content size, as wuss_window_create.
+ * \param[out] window  Newly created window. Becomes the topmost window.
+ * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if size's width
+ *         or height is not positive, \ref result_OOM if the layout tracker
+ *         could not be created, or another result code from wuss_window_create.
+ */
+result_t wuss_window_create_placed(wuss_t             *wuss,
+                                   size2d_t            size,
+                                   const char         *title,
+                                   wuss_window_flags_t flags,
+                                   wuss_colour_t       bg,
+                                   const wuss_task_t  *task,
+                                   size2d_t            doc,
+                                   size2d_t            min_doc,
+                                   wuss_window_t     **window);
+
+/**
  * Destroy a window.
  *
  * \param[in] doomed Window to destroy.

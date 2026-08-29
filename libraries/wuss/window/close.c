@@ -19,6 +19,8 @@ void wuss_window_close(wuss_window_t *doomed)
   if (wuss->furniture.dragging == doomed)
     wuss->furniture.dragging = NULL;
 
+  wuss__release_packed(doomed);
+
   wuss__invalidate_clipped(doomed, &doomed->visible);
 
   list_remove(&wuss->z_order, &doomed->link);

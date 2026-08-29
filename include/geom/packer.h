@@ -78,6 +78,23 @@ result_t packer_place_at(T           *packer,
                          const box_t *area);
 
 /**
+ * Returns a previously placed area to the free pool: the inverse of
+ * packer_place_at / packer_place_by.
+ *
+ * Adjacent released areas are not coalesced, so a single placement that would
+ * span two separately-released areas will not fit until the gap between them is
+ * also freed; placing a box that fits wholly within one free area is
+ * unaffected. packer_get_consumed_area is not narrowed by a release.
+ *
+ * \param[in] packer Packer to release into.
+ * \param[in] area   Area to release. Clipped to the packer's margins. Copied.
+ * \return \ref result_OK, or \ref result_PACKER_EMPTY if 'area' lies entirely
+ *         outside the margins.
+ */
+result_t packer_release(T           *packer,
+                        const box_t *area);
+
+/**
  * Places a box of dimensions (w,h) in the next free area determined by location
  * 'loc'.
  *

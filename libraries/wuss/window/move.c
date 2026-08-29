@@ -78,6 +78,10 @@ void wuss_window_move(wuss_window_t *window, point_t p)
   box_t   before, dirty, copied;
   int     blit_failed;
 
+  /* a manual move desyncs the window from its layout-packer slot; hand the
+   * slot back and stop tracking this window's position */
+  wuss__release_packed(window);
+
   width           = window->visible.x1 - window->visible.x0;
   height          = window->visible.y1 - window->visible.y0;
   outline_px      = wuss__outline_px(window);

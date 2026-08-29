@@ -83,6 +83,8 @@ result_t wuss_window_create(wuss_t             *wuss,
   win->nicons     = 0;
   win->cap_icons  = 0;
 
+  box_reset(&win->packed); /* wuss_window_create_placed fills this in after */
+
   if (task != NULL)
     win->task = *task;
   else

@@ -408,6 +408,21 @@ result_t packer_place_at(packer_t *packer, const box_t *area)
   return remove_area(packer, &b);
 }
 
+result_t packer_release(packer_t *packer, const box_t *area)
+{
+  box_t b;
+
+  (void) box_intersection(&packer->margins, area, &b);
+
+  if (box_is_empty(&b))
+    return result_PACKER_EMPTY;
+
+  /* ponytail: no coalescing with neighbouring free areas -- a released
+   * fragment is usable on its own, which is all whole-box placement needs;
+   * tile-style reuse spanning two released areas would need a merge pass */
+  return add_area(packer, &b);
+}
+
 result_t packer_place_by(packer_t     *packer,
                          packer_loc_t  loc,
                          int           w,

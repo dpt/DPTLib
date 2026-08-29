@@ -2927,6 +2927,71 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_r);
   }
 
+  printf("test: wuss_window_create_placed tiles windows and reclaims a closed slot\n");
+
+  {
+    /* Windows created without a position are packed towards the top-left and
+     * must not overlap; closing one frees its slot for the next create. */
+    test_task_t    tc_p[4];
+    wuss_task_t    delegate_p;
+    wuss_window_t *win_p[4];
+    box_t          vis[4], probe;
+    int            k, m;
+
+    memset(tc_p, 0, sizeof(tc_p));
+    delegate_p.handle    = test_handle;
+    delegate_p.task_data = &tc_p[0];
+
+    for (k = 0; k < 4; k++)
+    {
+      rc = wuss_window_create_placed(wuss,
+                                     SIZE2D(40, 30),
+                                     "P",
+                                     wuss_WINDOW_NONE,
+                                     wuss_NO_BACKGROUND,
+                                     &delegate_p,
+                                     SIZE2D(40, 30),
+                                     SIZE2D(0, 0),
+                                     &win_p[k]);
+      if (rc != result_OK)
+        goto Failure;
+      wuss_window_get_visible_bounds(win_p[k], &vis[k]);
+    }
+
+    for (k = 0; k < 4; k++)
+      for (m = k + 1; m < 4; m++)
+        if (box_intersects(&vis[k], &vis[m]))
+          goto Failure; /* auto-placed windows overlapped */
+
+    /* free the second window's slot, then a new placed window should land
+     * back in it rather than being pushed past the others */
+    probe = vis[1];
+    wuss_window_close(win_p[1]);
+
+    rc = wuss_window_create_placed(wuss,
+                                   SIZE2D(40, 30),
+                                   "P",
+                                   wuss_WINDOW_NONE,
+                                   wuss_NO_BACKGROUND,
+                                   &delegate_p,
+                                   SIZE2D(40, 30),
+                                   SIZE2D(0, 0),
+                                   &win_p[1]);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_p[1], &vis[1]);
+    if (vis[1].x0 != probe.x0 || vis[1].y0 != probe.y0 ||
+        vis[1].x1 != probe.x1 || vis[1].y1 != probe.y1)
+      goto Failure; /* freed slot not reused */
+
+    /* a manual move releases the slot: closing afterwards must not
+     * double-release (would corrupt the packer's free list) */
+    wuss_window_move(win_p[0], POINT(200, 200));
+
+    for (k = 0; k < 4; k++)
+      wuss_window_close(win_p[k]);
+  }
+
   printf("test: wuss_task_stop sends wuss_EVENT_QUIT to each window's task\n");
 
   tc_a.stop_count = 0;
