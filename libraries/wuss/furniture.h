@@ -46,9 +46,14 @@ struct wuss__furniture
 {
   wuss_window_t              *dragging;  /* NULL when idle */
   wuss_furniture_drag_kind_t  drag_kind;
-  point_t                     drag; /* MOVE: pointer offset within content;
-                                     * RESIZE: unused, recomputed each move;
-                                     * *_SAUSAGE: pointer position at drag start */
+  point_t                     drag; /* *_SAUSAGE: pointer position at drag start;
+                                       * MOVE: pointer offset within content */
+  point_t                     drag_offset; /* RESIZE: pointer offset from the
+                                            * content box's bottom-right corner
+                                            * at drag start, so the grab point
+                                            * stays under the pointer instead
+                                            * of the window's edge snapping to
+                                            * it on the first move */
   int                         drag_scroll_start; /* *_SAUSAGE: scroll.x/scroll.y at drag start */
 };
 

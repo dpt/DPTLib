@@ -136,6 +136,18 @@ result_t wuss_mouse_click(wuss_t              *wuss,
       wuss->furniture.drag.x            = x;
       wuss->furniture.drag.y            = y;
       wuss->furniture.drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_WELL) ? scroll.y : scroll.x;
+
+      /* Resize needs the pointer's offset from the content box's current
+       * bottom-right corner, so the point grabbed on the resize icon stays
+       * under the pointer as it moves, rather than that corner jumping to
+       * meet the pointer on the very first move. */
+      if (region == wuss_FURNITURE_RESIZE)
+      {
+        box_t content;
+        wuss__content_box(win, &content);
+        wuss->furniture.drag_offset.x = x - content.x1;
+        wuss->furniture.drag_offset.y = y - content.y1;
+      }
     }
     return result_OK;
   }
