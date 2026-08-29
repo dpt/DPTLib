@@ -32,7 +32,7 @@ result_t text_create(wuss_t         *wuss,
                      text_task_t    *task)
 {
   wuss_task_t delegate;
-  box_t       box;
+  size2d_t    sz;
   result_t    rc;
 
   task->font        = font;
@@ -42,20 +42,20 @@ result_t text_create(wuss_t         *wuss,
   task->resizing    = true;
 
   delegate = wuss_task_start(text_handle, task);
-  box      = (box_t) BOX_POS_SIZE(120, 100, 220, 180);
+  sz       = SIZE2D(220, 180);
 
-  task->base_width  = box.x1 - box.x0;
-  task->base_height = box.y1 - box.y0;
+  task->base_width  = sz.w;
+  task->base_height = sz.h;
 
-  rc = wuss_window_create(wuss,
-                          &box,
-                          "Lorem Ipsum",
-                          wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                          palette_PICO8_BLUE,
-                          &delegate,
-                          box_size(&box),
-                          SIZE2D(0, 0),
-                          &task->window);
+  rc = wuss_window_create_placed(wuss,
+                                 sz,
+                                 "Lorem Ipsum",
+                                 wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                                 palette_PICO8_BLUE,
+                                 &delegate,
+                                 sz,
+                                 SIZE2D(0, 0),
+                                 &task->window);
 
   return rc;
 }

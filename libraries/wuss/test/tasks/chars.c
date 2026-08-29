@@ -24,7 +24,7 @@ result_t chars_create(wuss_t         *wuss,
                       chars_task_t   *task)
 {
   wuss_task_t delegate;
-  box_t       box;
+  size2d_t    sz;
   bmfont_t   *font;
   int         font_width, font_height, cell_w, cell_h;
 
@@ -44,20 +44,20 @@ result_t chars_create(wuss_t         *wuss,
   task->bg   = palette[palette_PICO8_WHITE];
 
   delegate = wuss_task_start(chars_handle, task); /* chars_redraw paints every cell itself */
-  box      = (box_t) BOX_POS_SIZE(500, 100, cell_w * CHARS_COLS, cell_h * CHARS_ROWS);
+  sz       = SIZE2D(cell_w * CHARS_COLS, cell_h * CHARS_ROWS);
 
-  return wuss_window_create(wuss,
-                            &box,
-                            "Chars",
-                            wuss_WINDOW_NO_RESIZE      |
-                            wuss_WINDOW_NO_TOGGLE_SIZE |
-                            wuss_WINDOW_NO_VSCROLL     |
-                            wuss_WINDOW_NO_HSCROLL,
-                            wuss_NO_BACKGROUND,
-                            &delegate,
-                            box_size(&box),
-                            SIZE2D(0, 0),
-                            &task->window);
+  return wuss_window_create_placed(wuss,
+                                   sz,
+                                   "Chars",
+                                   wuss_WINDOW_NO_RESIZE      |
+                                   wuss_WINDOW_NO_TOGGLE_SIZE |
+                                   wuss_WINDOW_NO_VSCROLL     |
+                                   wuss_WINDOW_NO_HSCROLL,
+                                   wuss_NO_BACKGROUND,
+                                   &delegate,
+                                   sz,
+                                   SIZE2D(0, 0),
+                                   &task->window);
 }
 
 void chars_destroy(chars_task_t *task)

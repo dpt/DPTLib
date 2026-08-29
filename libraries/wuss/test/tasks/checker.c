@@ -21,7 +21,6 @@ result_t checker_create(wuss_t         *wuss,
                         checker_task_t *task)
 {
   wuss_task_t delegate;
-  box_t       box;
   result_t    rc;
 
   task->black    = palette[palette_PICO8_BLACK];
@@ -32,31 +31,28 @@ result_t checker_create(wuss_t         *wuss,
   task->band2    = CHECKER_BAND_DEFAULT;
 
   delegate = wuss_task_start(checker_handle, task); /* checker_redraw paints every pixel itself */
-  box      = (box_t) BOX_POS_SIZE(440, 300, 160, 160);
 
-  rc = wuss_window_create(wuss,
-                          &box,
-                          "Checker 1",
-                          wuss_WINDOW_NONE,
-                          wuss_NO_BACKGROUND,
-                          &delegate,
-                          box_size(&box),
-                          SIZE2D(0, 0),
-                          &task->window);
+  rc = wuss_window_create_placed(wuss,
+                                 SIZE2D(160, 160),
+                                 "Checker 1",
+                                 wuss_WINDOW_NONE,
+                                 wuss_NO_BACKGROUND,
+                                 &delegate,
+                                 SIZE2D(160, 160),
+                                 SIZE2D(0, 0),
+                                 &task->window);
   if (rc != result_OK)
     return rc;
 
-  box = (box_t) BOX_POS_SIZE(440, 10, 160, 160);
-
-  rc = wuss_window_create(wuss,
-                          &box,
-                          "Checker 2",
-                          wuss_WINDOW_NONE,
-                          wuss_NO_BACKGROUND,
-                          &delegate,
-                          box_size(&box),
-                          SIZE2D(0, 0),
-                          &task->window2);
+  rc = wuss_window_create_placed(wuss,
+                                 SIZE2D(160, 160),
+                                 "Checker 2",
+                                 wuss_WINDOW_NONE,
+                                 wuss_NO_BACKGROUND,
+                                 &delegate,
+                                 SIZE2D(160, 160),
+                                 SIZE2D(0, 0),
+                                 &task->window2);
   if (rc != result_OK)
   {
     wuss_window_close(task->window);

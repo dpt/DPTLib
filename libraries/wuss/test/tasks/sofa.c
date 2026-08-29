@@ -258,7 +258,6 @@ static fix8_point_t project(vec3_t v, int cx, int cy, double unit)
 result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
 {
   wuss_task_t delegate;
-  box_t       box;
 
   task->bg       = palette[palette_PICO8_DARK_PURPLE];
   task->line     = palette[palette_PICO8_ORANGE];
@@ -269,17 +268,16 @@ result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
   task->turns    = 0;
 
   delegate = wuss_task_start(sofa_handle, task); /* sofa_redraw paints its own background every frame */
-  box      = (box_t) BOX_POS_SIZE(250, 260, 180, 160);
 
-  return wuss_window_create(wuss,
-                            &box,
-                            "Sofa",
-                            wuss_WINDOW_NONE,
-                            wuss_NO_BACKGROUND,
-                            &delegate,
-                            box_size(&box),
-                            SIZE2D(0, 0),
-                            &task->window);
+  return wuss_window_create_placed(wuss,
+                                   SIZE2D(180, 160),
+                                   "Sofa",
+                                   wuss_WINDOW_NONE,
+                                   wuss_NO_BACKGROUND,
+                                   &delegate,
+                                   SIZE2D(180, 160),
+                                   SIZE2D(0, 0),
+                                   &task->window);
 }
 
 void sofa_destroy(sofa_task_t *task)

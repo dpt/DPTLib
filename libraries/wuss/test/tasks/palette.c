@@ -18,23 +18,21 @@ result_t palette_create(wuss_t         *wuss,
                         palette_task_t *task)
 {
   wuss_task_t delegate;
-  box_t       box;
 
   task->palette  = palette;
   task->npalette = npalette;
 
   delegate = wuss_task_start(palette_handle, task); /* backdrop for any rounding gap around the grid */
-  box      = (box_t) BOX_POS_SIZE(380, 260, 100, 100);
 
-  return wuss_window_create(wuss,
-                            &box,
-                            "Palette",
-                            wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                            palette_PICO8_BLACK,
-                            &delegate,
-                            box_size(&box),
-                            SIZE2D(0, 0),
-                            &task->window);
+  return wuss_window_create_placed(wuss,
+                                   SIZE2D(100, 100),
+                                   "Palette",
+                                   wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                                   palette_PICO8_BLACK,
+                                   &delegate,
+                                   SIZE2D(100, 100),
+                                   SIZE2D(0, 0),
+                                   &task->window);
 }
 
 void palette_destroy(palette_task_t *task)

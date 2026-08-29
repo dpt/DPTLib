@@ -26,7 +26,6 @@ result_t curve_create(wuss_t         *wuss,
                       curve_task_t   *task)
 {
   wuss_task_t delegate;
-  box_t       box;
 
   task->bg        = palette[palette_PICO8_WHITE];
   task->line      = palette[palette_PICO8_BLACK];
@@ -40,17 +39,16 @@ result_t curve_create(wuss_t         *wuss,
   task->points[3] = POINT(210, 140);
 
   delegate = wuss_task_start(curve_handle, task); /* curve_redraw paints its own background */
-  box      = (box_t) BOX_POS_SIZE(20, 260, 220, 160);
 
-  return wuss_window_create(wuss,
-                            &box,
-                            "Curve",
-                            wuss_WINDOW_NONE,
-                            wuss_NO_BACKGROUND,
-                            &delegate,
-                            box_size(&box),
-                            SIZE2D(0, 0),
-                            &task->window);
+  return wuss_window_create_placed(wuss,
+                                   SIZE2D(220, 160),
+                                   "Curve",
+                                   wuss_WINDOW_NONE,
+                                   wuss_NO_BACKGROUND,
+                                   &delegate,
+                                   SIZE2D(220, 160),
+                                   SIZE2D(0, 0),
+                                   &task->window);
 }
 
 void curve_destroy(curve_task_t *task)

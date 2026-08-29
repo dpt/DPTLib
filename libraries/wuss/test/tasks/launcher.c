@@ -28,7 +28,7 @@ result_t launcher_create(wuss_t                 *wuss,
                          launcher_task_t        *task)
 {
   wuss_task_t delegate;
-  box_t       box;
+  size2d_t    sz;
 
   assert(nentries <= LAUNCHER_MAX_ENTRIES);
 
@@ -41,17 +41,17 @@ result_t launcher_create(wuss_t                 *wuss,
   task->running_fg = palette[palette_PICO8_LIGHT_GREY];
 
   delegate = wuss_task_start(launcher_handle, task); /* launcher_redraw paints its own background */
-  box      = (box_t) BOX_POS_SIZE(10, 10, LAUNCHER_WIDTH, LAUNCHER_PAD * 2 + nentries * LAUNCHER_ROW_HEIGHT);
+  sz       = SIZE2D(LAUNCHER_WIDTH, LAUNCHER_PAD * 2 + nentries * LAUNCHER_ROW_HEIGHT);
 
-  return wuss_window_create(wuss,
-                            &box,
-                            "Launcher",
-                            wuss_WINDOW_NO_CLOSE,
-                            wuss_NO_BACKGROUND,
-                            &delegate,
-                            box_size(&box),
-                            SIZE2D(0, 0),
-                            &task->window);
+  return wuss_window_create_placed(wuss,
+                                   sz,
+                                   "Launcher",
+                                   wuss_WINDOW_NO_CLOSE,
+                                   wuss_NO_BACKGROUND,
+                                   &delegate,
+                                   sz,
+                                   SIZE2D(0, 0),
+                                   &task->window);
 }
 
 void launcher_destroy(launcher_task_t *task)

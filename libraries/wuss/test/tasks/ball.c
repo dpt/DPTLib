@@ -15,7 +15,6 @@
 result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
 {
   wuss_task_t delegate;
-  box_t       box;
 
   task->bg     = palette[palette_PICO8_RED];
   task->ball   = palette[palette_PICO8_WHITE];
@@ -28,17 +27,16 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
   task->balls[0].radius = 8;
 
   delegate = wuss_task_start(ball_handle, task); /* ball_redraw paints its own background every frame */
-  box      = (box_t) BOX_POS_SIZE(20, 20, 200, 160);
 
-  return wuss_window_create(wuss,
-                            &box,
-                            "Bouncing Ball",
-                            wuss_WINDOW_NONE,
-                            wuss_NO_BACKGROUND,
-                            &delegate,
-                            box_size(&box),
-                            SIZE2D(0, 0),
-                            &task->window);
+  return wuss_window_create_placed(wuss,
+                                   SIZE2D(200, 160),
+                                   "Bouncing Ball",
+                                   wuss_WINDOW_NONE,
+                                   wuss_NO_BACKGROUND,
+                                   &delegate,
+                                   SIZE2D(200, 160),
+                                   SIZE2D(0, 0),
+                                   &task->window);
 }
 
 void ball_destroy(ball_task_t *task)
