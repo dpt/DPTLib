@@ -39,6 +39,9 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   if (!wuss__size_ok(size.w, size.h))
     return result_WUSS_TOO_SMALL;
 
+  /* a manual resize desyncs the window from its layout-packer slot */
+  wuss__release_packed(window);
+
   outline_px      = wuss__outline_px(window);
   titlebar_height = wuss__titlebar_height(window);
   before          = window->visible;

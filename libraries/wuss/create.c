@@ -145,6 +145,10 @@ result_t wuss_create(screen_t             *scr,
 
   w->ndirty = 0;
 
+  w->layout    = NULL;
+  w->cascade.x = 0;
+  w->cascade.y = 0;
+
   list_init(&w->z_order);
 
   *wuss = w;

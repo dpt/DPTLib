@@ -6,6 +6,8 @@
 #include "base/utils.h"
 #include "datastruct/list.h"
 #include "geom/box.h"
+#include "geom/packer.h"
+#include "geom/point.h"
 #include "geom/size.h"
 #include "framebuf/screen.h"
 #include "framebuf/bmfont.h"
@@ -56,6 +58,11 @@ struct wuss
   struct wuss__furniture      furniture;
   box_t                       dirty[WUSS_MAX_DIRTY]; /* accumulated by wuss_invalidate; reset by a redraw */
   int                         ndirty;
+  packer_t                   *layout;    /* owned; occupied screen area for
+                                          * wuss_window_create_placed, lazily
+                                          * created on first auto-placement */
+  point_t                     cascade;   /* next cascade offset, used once the
+                                          * layout packer has no room left */
 };
 
 struct wuss_window
@@ -73,6 +80,9 @@ struct wuss_window
   size2d_t            min_doc; /* resize floor, set at creation; see
                                 * wuss__min_content */
   wuss_window_state_t state;        /* see wuss_window_state_t */
+  box_t               packed;       /* footprint handed to wuss->layout by
+                                     * wuss_window_create_placed, or empty if
+                                     * not auto-placed or already released */
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];
   wuss_icon_t       **icons;        /* owned; array of owned icon pointers */
@@ -123,6 +133,18 @@ static inline void wuss__notify_open(wuss_window_t *window)
 static inline int wuss__size_ok(int width, int height)
 {
   return width > 0 && height > 0;
+}
+
+/* Give an auto-placed window's slot back to the layout packer and stop
+ * tracking it, so a later close/move/resize doesn't release it twice. A
+ * no-op for windows that were never auto-placed (empty "packed"). */
+static inline void wuss__release_packed(wuss_window_t *window)
+{
+  if (box_is_empty(&window->packed))
+    return;
+
+  (void) packer_release(window->wuss->layout, &window->packed);
+  box_reset(&window->packed);
 }
 
 /* The floor a resize-drag or toggle-size will shrink a window's content to:

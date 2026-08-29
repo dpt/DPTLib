@@ -26,6 +26,7 @@ void wuss_destroy(wuss_t *doomed)
     e = next;
   }
 
+  packer_destroy(doomed->layout);
   free(doomed->palette);
   free(doomed);
 }
