@@ -8,12 +8,6 @@ DPTLib is a platform-independent C99 library (base, databases, datastruct, frame
 
 ## Build
 
-```
-mkdir build && cd build
-cmake -DBUILD_TESTS=YES ..
-make -j4
-```
-
 Useful CMake options:
 - `BUILD_TESTS=YES` — build the `DPTLibTest` self-test executable.
 - `BUILD_SDL_TESTS=YES` — additionally build tests needing SDL2/SDL2_image.
@@ -45,9 +39,7 @@ Success prints `++ Tests completed in Ns: N of N tests passed.`
 
 ## Architecture
 
-**Module layout.** Each module lives in two places that must be kept in sync:
-- `include/<area>/<module>.h` — the public API, always wrapped in `extern "C"`, documented with Doxygen `\file`/`\param`/`\return` comments.
-- `libraries/<area>/<module>/` — implementation `.c` files (often one function per file, e.g. `libraries/datastruct/vector/{create,destroy,insert,...}.c`), plus a private `impl.h` defining the opaque struct behind the public typedef and any internal-only declarations.
+**Module layout.** Each module is split between `include/<area>/<module>.h` (public API, `extern "C"`, Doxygen-documented) and `libraries/<area>/<module>/` (implementation `.c` files, often one function per file, plus a private `impl.h` for the opaque struct and internal-only declarations).
 
 New source/header files must be added by hand to the relevant `set(..._SOURCES ...)` list and, for public headers, to `PUBLIC_HEADERS`, in `CMakeLists.txt` — there is no globbing.
 
