@@ -28,6 +28,8 @@
  * just some avoidable redraw work, never wrong */
 #define WUSS_MAX_INVALIDATE_PIECES 32
 
+#define WUSS_PLACE_GUTTER 6  /* px left between windows auto-placed by wuss_window_create_placed */
+
 #define WUSS_BUTTON_INSET 3  /* shared by close/back/toggle/resize furniture buttons and scrollbar breadth */
 #define WUSS_MIN_CONTENT  20 /* resize-drag floor: content can never be squeezed smaller than this */
 #define WUSS_SCROLL_INSET 2  /* sausage cross-axis margin from its well's edges, purely cosmetic */
@@ -80,9 +82,10 @@ struct wuss_window
   size2d_t            min_doc; /* resize floor, set at creation; see
                                 * wuss__min_content */
   wuss_window_state_t state;        /* see wuss_window_state_t */
-  box_t               packed;       /* footprint handed to wuss->layout by
-                                     * wuss_window_create_placed, or empty if
-                                     * not auto-placed or already released */
+  box_t               packed;       /* region wuss_window_create_placed took
+                                     * out of wuss->layout (footprint + gutter),
+                                     * to give back on close/move; empty if not
+                                     * auto-placed or already released */
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];
   wuss_icon_t       **icons;        /* owned; array of owned icon pointers */

@@ -74,7 +74,7 @@ result_t wuss_window_create_placed(wuss_t             *wuss,
   result_t       rc;
   int            left, top, right, bottom;
   int            fw, fh;
-  box_t          screen, content;
+  box_t          screen, content, consumed;
   point_t        origin;
   const box_t   *slot;
   int            tracked;
@@ -95,6 +95,8 @@ result_t wuss_window_create_placed(wuss_t             *wuss,
     wuss->layout = packer_create(&screen);
     if (wuss->layout == NULL)
       return result_OOM;
+
+    packer_set_gutter(wuss->layout, WUSS_PLACE_GUTTER);
   }
 
   footprint_pad(wuss, flags, &left, &top, &right, &bottom);
@@ -125,25 +127,29 @@ result_t wuss_window_create_placed(wuss_t             *wuss,
   content.x1 = content.x0 + size.w;
   content.y1 = content.y0 + size.h;
 
+  /* what packer_place_by actually took out of the free list: the footprint
+   * plus the gutter strip on its inner edges (right and, in packer space,
+   * top -- see packer_LOC_BOTTOM_LEFT). Releasing exactly this on close /
+   * move keeps the gutter from leaking away over a session. */
+  if (tracked)
+  {
+    consumed.x0 = slot->x0;
+    consumed.y0 = slot->y0;
+    consumed.x1 = slot->x1 + WUSS_PLACE_GUTTER;
+    consumed.y1 = slot->y1 + WUSS_PLACE_GUTTER;
+  }
+
   rc = wuss_window_create(wuss, &content, title, flags, bg, task,
                           doc, min_doc, window);
   if (rc != result_OK)
   {
     if (tracked)
-    {
-      box_t placed;
-
-      placed.x0 = origin.x;
-      placed.y0 = origin.y;
-      placed.x1 = origin.x + fw;
-      placed.y1 = origin.y + fh;
-      (void) packer_release(wuss->layout, &placed);
-    }
+      (void) packer_release(wuss->layout, &consumed);
     return rc;
   }
 
   if (tracked)
-    (*window)->packed = *slot;
+    (*window)->packed = consumed;
 
   return result_OK;
 }
