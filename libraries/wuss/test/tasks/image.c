@@ -11,7 +11,6 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
-#include "io/path.h"
 
 #include "image.h"
 
@@ -19,19 +18,15 @@
 
 result_t image_create(wuss_t         *wuss,
                       const colour_t *palette,
-                      const char     *resources,
+                      const char     *path,
                       image_task_t   *task)
 {
-  const char *leafname;
-  const char *filename;
   wuss_task_t delegate;
   box_t       box;
   result_t    rc;
   size2d_t    sz;
 
-  leafname = path_join_leafname("jessica", "png");
-  filename = path_join_filename(resources, 3, "resources", "images", leafname);
-  rc = bitmap_load_png(&task->bitmap, filename);
+  rc = bitmap_load_png(&task->bitmap, path);
   if (rc != result_OK)
     return rc;
 

@@ -20,11 +20,10 @@ image_task_t;
 
 wuss_event_fn_t image_handle;
 
-/* load the image and create its window against the given wuss instance;
- * resources is the DPTLib repo root, for locating the bundled PNG */
+/* load the PNG at path and create its window against the given wuss instance */
 result_t image_create(wuss_t         *wuss,
                       const colour_t *palette,
-                      const char     *resources,
+                      const char     *path,
                       image_task_t   *task);
 
 /* destroy the window and free the bitmap loaded by image_create */
