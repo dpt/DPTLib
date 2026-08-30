@@ -15,6 +15,7 @@ typedef enum sofa_shape
 {
   sofa_SHAPE_SOFA,
   sofa_SHAPE_SHIP,
+  sofa_SHAPE_COBRA,
   sofa_SHAPE_TETRAHEDRON,
   sofa_SHAPE_CUBE,
   sofa_SHAPE_OCTAHEDRON,
@@ -30,7 +31,7 @@ sofa_shape_t;
 typedef struct sofa_task
 {
   wuss_window_t *window;
-  colour_t       bg, line;
+  colour_t       bg, line, dot;
   double         angle;
   double         zoom; /* scroll-adjustable */
   bool           spinning;

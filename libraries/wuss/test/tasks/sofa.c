@@ -15,6 +15,8 @@
 
 #include "sofa.h"
 
+#define SOFA_VERTEX_DOT 2 /* side, px, of the white marker square drawn at each vertex */
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -75,6 +77,81 @@ static const int ship_edges[18][2] =
   { 2, 4 }, { 4, 3 }, { 3, 5 }, { 5, 2 }, /* ring */
   { 4, 6 }, { 6, 7 }, { 7, 4 },           /* left wing */
   { 5, 8 }, { 8, 9 }, { 9, 5 },           /* right wing */
+};
+
+/* a Cobra Mk. 3 from Elite */
+static const vec3_t cobra_vertices[28] =
+{
+  {  32/100.0,   0/100.0,  76/100.0 },
+  { -32/100.0,   0/100.0,  76/100.0 },
+  {   0/100.0,  26/100.0,  24/100.0 },
+  {-120/100.0,  -3/100.0,  -8/100.0 },
+  { 120/100.0,  -3/100.0,  -8/100.0 },
+  { -88/100.0,  16/100.0, -40/100.0 },
+  {  88/100.0,  16/100.0, -40/100.0 },
+  { 128/100.0,  -8/100.0, -40/100.0 },
+  {-128/100.0,  -8/100.0, -40/100.0 },
+  {   0/100.0,  26/100.0, -40/100.0 },
+  { -32/100.0, -24/100.0, -40/100.0 },
+  {  32/100.0, -24/100.0, -40/100.0 },
+  { -36/100.0,   8/100.0, -40/100.0 },
+  {  -8/100.0,  12/100.0, -40/100.0 },
+  {   8/100.0,  12/100.0, -40/100.0 },
+  {  36/100.0,   8/100.0, -40/100.0 },
+  {  36/100.0, -12/100.0, -40/100.0 },
+  {   8/100.0, -16/100.0, -40/100.0 },
+  {  -8/100.0, -16/100.0, -40/100.0 },
+  { -36/100.0, -12/100.0, -40/100.0 },
+  {   0/100.0,   0/100.0,  76/100.0 },
+  {   0/100.0,   0/100.0,  90/100.0 },
+  { -80/100.0,  -6/100.0, -40/100.0 },
+  { -80/100.0,   6/100.0, -40/100.0 },
+  { -88/100.0,   0/100.0, -40/100.0 },
+  {  80/100.0,   6/100.0, -40/100.0 },
+  {  88/100.0,   0/100.0, -40/100.0 },
+  {  80/100.0,  -6/100.0, -40/100.0 },
+};
+
+static const int cobra_edges[38][2] =
+{
+  {  0,  1 },
+  {  0,  4 },
+  {  1,  3 },
+  {  3,  8 },
+  {  4,  7 },
+  {  6,  7 },
+  {  6,  9 },
+  {  5,  9 },
+  {  5,  8 },
+  {  2,  5 },
+  {  2,  6 },
+  {  3,  5 },
+  {  4,  6 },
+  {  1,  2 },
+  {  0,  2 },
+  {  8, 10 },
+  { 10, 11 },
+  {  7, 11 },
+  {  1, 10 },
+  {  0, 11 },
+  {  1,  5 },
+  {  0,  6 },
+  { 20, 21 },
+  { 12, 13 },
+  { 18, 19 },
+  { 14, 15 },
+  { 16, 17 },
+  { 15, 16 },
+  { 14, 17 },
+  { 13, 18 },
+  { 12, 19 },
+  {  2,  9 },
+  { 22, 24 },
+  { 23, 24 },
+  { 22, 23 },
+  { 25, 26 },
+  { 26, 27 },
+  { 25, 27 },
 };
 
 /* the five Platonic solids, vertices normalised to unit circumradius */
@@ -255,12 +332,33 @@ static fix8_point_t project(vec3_t v, int cx, int cy, double unit)
   return p;
 }
 
+/* a marker square, SOFA_VERTEX_DOT on a side, centred on each projected
+ * vertex; drawn after the wireframe so the dots sit on top of the edges */
+static void draw_vertex_dots(screen_t           *scr,
+                             const fix8_point_t *screen,
+                             int                 nvertices,
+                             colour_t            colour)
+{
+  int half;
+  int i;
+
+  half = SOFA_VERTEX_DOT / 2;
+
+  for (i = 0; i < nvertices; i++)
+    screen_draw_square(scr,
+                       FIX8_ROUND_TO_INT(screen[i].x) - half,
+                       FIX8_ROUND_TO_INT(screen[i].y) - half,
+                       SOFA_VERTEX_DOT,
+                       colour);
+}
+
 result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
 {
   wuss_task_t delegate;
 
   task->bg       = palette[palette_PICO8_DARK_PURPLE];
   task->line     = palette[palette_PICO8_ORANGE];
+  task->dot      = palette[palette_PICO8_WHITE];
   task->angle    = 0.0;
   task->zoom     = 1.0;
   task->spinning = true;
@@ -331,6 +429,8 @@ static result_t sofa_redraw(const wuss_event_t *event, void *task_data)
         b = &screen[box_cube_edges[i][1]];
         screen_draw_line_wu_fix8(scr, a->x, a->y, b->x, b->y, sc->line);
       }
+
+      draw_vertex_dots(scr, screen, 8, sc->dot);
     }
   }
   else if (sc->shape == sofa_SHAPE_SHIP)
@@ -349,6 +449,27 @@ static result_t sofa_redraw(const wuss_event_t *event, void *task_data)
       b = &screen[ship_edges[i][1]];
       screen_draw_line_wu_fix8(scr, a->x, a->y, b->x, b->y, sc->line);
     }
+
+    draw_vertex_dots(scr, screen, (int) NELEMS(ship_vertices), sc->dot);
+  }
+  else if (sc->shape == sofa_SHAPE_COBRA)
+  {
+    fix8_point_t screen[NELEMS(cobra_vertices)];
+    int          i;
+
+    for (i = 0; i < (int) NELEMS(cobra_vertices); i++)
+      screen[i] = project(rotate_xy(cobra_vertices[i], SOFA_TILT, sc->angle), cx, cy, unit);
+
+    for (i = 0; i < (int) NELEMS(cobra_edges); i++)
+    {
+      const fix8_point_t *a, *b;
+
+      a = &screen[cobra_edges[i][0]];
+      b = &screen[cobra_edges[i][1]];
+      screen_draw_line_wu_fix8(scr, a->x, a->y, b->x, b->y, sc->line);
+    }
+
+    draw_vertex_dots(scr, screen, (int) NELEMS(cobra_vertices), sc->dot);
   }
   else
   {
@@ -369,6 +490,8 @@ static result_t sofa_redraw(const wuss_event_t *event, void *task_data)
       b = &screen[wf->edges[i][1]];
       screen_draw_line_wu_fix8(scr, a->x, a->y, b->x, b->y, sc->line);
     }
+
+    draw_vertex_dots(scr, screen, wf->nvertices, sc->dot);
   }
 
   return result_OK;
