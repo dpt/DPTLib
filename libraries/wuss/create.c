@@ -13,18 +13,43 @@
 
 #include "impl.h"
 
-result_t wuss_create(screen_t             *scr,
-                     bmfont_t             *font,
-                     const colour_t       *palette,
-                     int                   npalette,
-                     const wuss_config_t  *config,
-                     wuss_t              **wuss)
+#if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
+/* Range-check the bevel colours and (when set) the backdrop against the
+ * palette. Shared by the furniture and icons-only paths so the accepted
+ * range, the error code and the freed-pointer set stay in one place. */
+static result_t validate_bevel_backdrop(const wuss_t *w,
+                                        wuss_colour_t blight,
+                                        wuss_colour_t bdark)
+{
+  if (blight < 0 || blight >= w->npalette ||
+      bdark  < 0 || bdark  >= w->npalette ||
+      (w->backdrop != wuss_NO_BACKGROUND &&
+       (w->backdrop < 0 || w->backdrop >= w->npalette)))
+    return result_WUSS_BAD_COLOUR;
+
+  return result_OK;
+}
+#endif
+
+result_t wuss_create(screen_t            *scr,
+                     bmfont_t            *font,
+                     const colour_t      *palette,
+                     int                  npalette,
+                     const wuss_config_t *config,
+                     wuss_t             **wuss)
 {
   wuss_t        *w;
+#ifdef WUSS_FURNITURE
   wuss_palette_t pal;
   wuss_colour_t  bg, fg;
+#endif
+#if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
+  wuss_colour_t  blight, bdark;
+#endif
+#ifdef WUSS_FURNITURE
   int            font_height;
   int            font_width;
+#endif
 
   assert(scr  != NULL);
   assert(wuss != NULL);
@@ -62,9 +87,12 @@ result_t wuss_create(screen_t             *scr,
     w->npalette = palette_PICO8__LENGTH;
   }
 
+#ifdef WUSS_FURNITURE
   if (config != NULL)
   {
     pal = config->palette;
+    blight = config->bevel.light;
+    bdark = config->bevel.dark;
     w->backdrop = config->backdrop;
   }
   else
@@ -91,6 +119,9 @@ result_t wuss_create(screen_t             *scr,
     pal.scroll.arrows   = bg;
     pal.scroll.wells    = bg;
     pal.scroll.sausages = fg;
+
+    blight = 0;
+    bdark  = 0;
   }
 
   if (pal.title.bg        < 0 || pal.title.bg        >= w->npalette ||
@@ -102,8 +133,7 @@ result_t wuss_create(screen_t             *scr,
       pal.scroll.arrows   < 0 || pal.scroll.arrows   >= w->npalette ||
       pal.scroll.wells    < 0 || pal.scroll.wells    >= w->npalette ||
       pal.scroll.sausages < 0 || pal.scroll.sausages >= w->npalette ||
-      (w->backdrop != wuss_NO_BACKGROUND &&
-       (w->backdrop < 0 || w->backdrop >= w->npalette)))
+      validate_bevel_backdrop(w, blight, bdark) != result_OK)
   {
     free(w->palette);
     free(w);
@@ -111,6 +141,8 @@ result_t wuss_create(screen_t             *scr,
   }
 
   w->furniture_colours = pal;
+  w->bevel_light       = blight;
+  w->bevel_dark        = bdark;
 
   if (config != NULL && config->titlebar_height > 0)
   {
@@ -126,14 +158,55 @@ result_t wuss_create(screen_t             *scr,
   {
     w->titlebar_height = WUSS_DEFAULT_TITLEBAR_HEIGHT;
   }
+#else /* !WUSS_FURNITURE */
+  w->backdrop = (config != NULL) ? config->backdrop : wuss_NO_BACKGROUND;
+
+#ifdef WUSS_ICONS
+  if (config != NULL)
+  {
+    blight = config->bevel.light;
+    bdark  = config->bevel.dark;
+  }
+  else
+  {
+    blight = 0;
+    bdark  = 0;
+  }
+  if (validate_bevel_backdrop(w, blight, bdark) != result_OK)
+  {
+    free(w->palette);
+    free(w);
+    return result_WUSS_BAD_COLOUR;
+  }
+  w->bevel_light = blight;
+  w->bevel_dark  = bdark;
+#else
+  if (w->backdrop != wuss_NO_BACKGROUND &&
+      (w->backdrop < 0 || w->backdrop >= w->npalette))
+  {
+    free(w->palette);
+    free(w);
+    return result_WUSS_BAD_COLOUR;
+  }
+#endif
+#endif /* WUSS_FURNITURE */
 
   w->scr                = scr;
   w->font               = font;
+#ifdef WUSS_FURNITURE
   w->furniture.dragging = NULL;
   w->furniture.drag.x   = 0;
   w->furniture.drag.y   = 0;
+#endif
+#ifdef WUSS_ICONS
+  w->pressed_icon       = NULL;
+#endif
 
   w->ndirty = 0;
+
+  w->layout    = NULL;
+  w->cascade.x = 0;
+  w->cascade.y = 0;
 
   list_init(&w->z_order);
 

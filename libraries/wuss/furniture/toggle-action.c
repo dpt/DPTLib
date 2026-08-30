@@ -16,12 +16,13 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
   }
   else
   {
-    int     outline_px, titlebar_height, available_width, available_height, width, height;
-    point_t carve;
+    int      outline_px, titlebar_height, available_width, available_height, width, height;
+    point_t  carve;
+    size2d_t min;
 
     outline_px      = wuss__outline_px(window);
     titlebar_height = wuss__titlebar_height(window);
-    wuss__furniture_carve_for(window->flags, wuss__icon_size(window), &carve);
+    wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
 
     /* bounded by what's actually left of the screen from the window's
      * current top-left, not the screen's full width/height -- otherwise a
@@ -38,9 +39,10 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
      * x0/y0 (an inverted box), which is never hit-testable again
      * (box_contains_point can't match x1<x0), leaving the window stuck.
      * Floor the available space, not the final width/height below, so a
-     * doc smaller than WUSS_MIN_CONTENT still stops at its own size. */
-    available_width  = MAX(available_width,  WUSS_MIN_CONTENT);
-    available_height = MAX(available_height, WUSS_MIN_CONTENT);
+     * doc smaller than the floor still stops at its own size. */
+    wuss__min_content(window, &min);
+    available_width  = MAX(available_width,  min.w);
+    available_height = MAX(available_height, min.h);
 
     width  = MIN(window->doc.w,  available_width);
     height = MIN(window->doc.h, available_height);
@@ -83,7 +85,7 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
   if (!(window->flags & wuss_WINDOW_NO_RESIZE_BLIT) &&
       window->wuss->z_order.next == &window->link &&
       screen_copy_rect(window->wuss->scr, &before,
-                       (point_t) { before.x0, before.y0 }, &copied))
+                       POINT(before.x0, before.y0), &copied))
   {
     /* Topmost, and the screen format supports the blit: the window's
      * top-left never moves for a toggle, so re-blitting "before" onto

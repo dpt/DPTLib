@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #include <ctype.h>
 #include <math.h>
 #include <string.h>
@@ -32,7 +34,7 @@ result_t text_create(wuss_t         *wuss,
                      text_task_t    *task)
 {
   wuss_task_t delegate;
-  box_t       box;
+  size2d_t    sz;
   result_t    rc;
 
   task->font        = font;
@@ -42,26 +44,22 @@ result_t text_create(wuss_t         *wuss,
   task->resizing    = true;
 
   delegate = wuss_task_start(text_handle, task);
-  box      = (box_t) BOX_POS_SIZE(120, 100, 220, 180);
+  sz       = SIZE2D(220, 180);
 
-  task->base_width  = box.x1 - box.x0;
-  task->base_height = box.y1 - box.y0;
+  task->base_width  = sz.w;
+  task->base_height = sz.h;
 
-  rc = wuss_window_create(wuss,
-                          &box,
-                          "Lorem Ipsum",
-                          wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                          palette_PICO8_BLUE,
-                          &delegate,
-                          box_size(&box),
-                          &task->window);
+  rc = wuss_window_create_placed(wuss,
+                                 sz,
+                                 "Lorem Ipsum",
+                                 wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                                 palette_PICO8_BLUE,
+                                 &delegate,
+                                 sz,
+                                 SIZE2D(0, 0),
+                                 &task->window);
 
   return rc;
-}
-
-void text_destroy(text_task_t *task)
-{
-  wuss_window_close(task->window);
 }
 
 static result_t text_redraw(const wuss_event_t *event, void *task_data)
@@ -155,14 +153,14 @@ static result_t text_idle(void *task_data)
   angle = tcx->frame_count * (2.0 * M_PI / TEXT_RESIZE_PERIOD_FRAMES);
   width = tcx->base_width + (int) (TEXT_RESIZE_AMPLITUDE * sin(angle));
 
-  rc = wuss_window_resize(tcx->window, (size2d_t) { width, height });
+  rc = wuss_window_resize(tcx->window, SIZE2D(width, height));
   if (rc != result_OK)
     logf_warning("text_idle: wuss_window_resize(%d, %d) failed", width, height);
 
   return rc;
 }
 
-result_t text_handle(wuss_window_t     *window,
+result_t text_handle(wuss_window_t      *window,
                      const wuss_event_t *event,
                      void               *task_data)
 {
@@ -182,7 +180,7 @@ result_t text_handle(wuss_window_t     *window,
 
   case wuss_EVENT_CLOSE:
     wuss_window_close(window);
-    tcx->window = NULL;
+    free(tcx); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
   case wuss_EVENT_IDLE:

@@ -25,8 +25,6 @@ wuss_event_fn_t blank_handle;
 /* create the colour-cycling blank window against the given wuss instance */
 result_t blank_create(wuss_t *wuss, int npalette, blank_task_t *task);
 
-/* destroy the colour-cycling window created by blank_create */
-void blank_destroy(blank_task_t *task);
 
 #endif /* USE_SDL */
 

@@ -39,10 +39,13 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   if (!wuss__size_ok(size.w, size.h))
     return result_WUSS_TOO_SMALL;
 
+  /* a manual resize desyncs the window from its layout-packer slot */
+  wuss__release_packed(window);
+
   outline_px      = wuss__outline_px(window);
   titlebar_height = wuss__titlebar_height(window);
   before          = window->visible;
-  wuss__furniture_carve_for(window->flags, wuss__icon_size(window), &carve);
+  wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
 
   window->visible.x1 = window->visible.x0 + size.w + 2 * outline_px + carve.x;
   window->visible.y1 = window->visible.y0 + size.h + titlebar_height + 2 * outline_px + carve.y;
@@ -75,10 +78,12 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
      * as already-valid and so never repaint. Force its old position dirty
      * too. Shrinking needs no such help: old furniture positions only ever
      * land outside the new, smaller box, already covered above. */
+#ifdef WUSS_FURNITURE
     if (window->visible.x1 - window->visible.x0 > before.x1 - before.x0 ||
         window->visible.y1 - window->visible.y0 > before.y1 - before.y0)
       wuss__furniture_invalidate_for(window, &before);
     wuss__furniture_invalidate(window);
+#endif
   }
 
   return result_OK;

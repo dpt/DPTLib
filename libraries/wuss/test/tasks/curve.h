@@ -30,8 +30,6 @@ result_t curve_create(wuss_t         *wuss,
                       const colour_t *palette,
                       curve_task_t   *task);
 
-/* destroy the curve window created by curve_create */
-void curve_destroy(curve_task_t *task);
 
 #endif /* USE_SDL */
 

@@ -75,13 +75,13 @@ hash_destroy_value_t hash_no_destroy_value;
  *
  * \return Error indication.
  */
-result_t hash_create(const void            *default_value,
-                     int                    nbins,
-                     hash_fn_t             *fn,
-                     hash_compare_t        *compare,
-                     hash_destroy_key_t    *destroy_key,
-                     hash_destroy_value_t  *destroy_value,
-                     T                    **hash);
+result_t hash_create(const void           *default_value,
+                     int                   nbins,
+                     hash_fn_t            *fn,
+                     hash_compare_t       *compare,
+                     hash_destroy_key_t   *destroy_key,
+                     hash_destroy_value_t *destroy_value,
+                     T                   **hash);
 
 /**
  * Destroy a hash.

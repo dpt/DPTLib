@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -15,7 +17,6 @@
 result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
 {
   wuss_task_t delegate;
-  box_t       box;
 
   task->bg     = palette[palette_PICO8_RED];
   task->ball   = palette[palette_PICO8_WHITE];
@@ -28,22 +29,18 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
   task->balls[0].radius = 8;
 
   delegate = wuss_task_start(ball_handle, task); /* ball_redraw paints its own background every frame */
-  box      = (box_t) BOX_POS_SIZE(20, 20, 200, 160);
 
-  return wuss_window_create(wuss,
-                            &box,
-                            "Bouncing Ball",
-                            wuss_WINDOW_NONE,
-                            wuss_NO_BACKGROUND,
-                            &delegate,
-                            box_size(&box),
-                            &task->window);
+  return wuss_window_create_placed(wuss,
+                                   SIZE2D(200, 160),
+                                   "Bouncing Ball",
+                                   wuss_WINDOW_NONE,
+                                   wuss_NO_BACKGROUND,
+                                   &delegate,
+                                   SIZE2D(200, 160),
+                                   SIZE2D(0, 0),
+                                   &task->window);
 }
 
-void ball_destroy(ball_task_t *task)
-{
-  wuss_window_close(task->window);
-}
 
 static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 {
@@ -69,7 +66,7 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 
     b = &bc->balls[i];
 
-    screen_draw_rect(scr, bounds->x0 - sx + b->x - b->radius, bounds->y0 - sy + b->y - b->radius, (size2d_t) { b->radius * 2, b->radius * 2 }, bc->ball);
+    screen_draw_rect(scr, bounds->x0 - sx + b->x - b->radius, bounds->y0 - sy + b->y - b->radius, SIZE2D(b->radius * 2, b->radius * 2), bc->ball);
   }
 
   return result_OK;
@@ -93,7 +90,7 @@ static result_t ball_mouse(wuss_window_t      *window,
 
   wuss_window_get_scroll(window, &scroll);
 
-  if (button == wuss_BUTTON_SELECT)
+  if (button & wuss_BUTTON_SELECT)
   {
     ball_t *b;
 
@@ -116,7 +113,7 @@ static result_t ball_mouse(wuss_window_t      *window,
     local.y1 = b->y + b->radius - scroll.y;
     wuss_window_invalidate(bc->window, &local);
   }
-  else if (button == wuss_BUTTON_ADJUST)
+  else if (button & wuss_BUTTON_ADJUST)
   {
     ball_t *b;
 
@@ -180,7 +177,7 @@ static result_t ball_idle(void *task_data)
   return result_OK;
 }
 
-result_t ball_handle(wuss_window_t     *window,
+result_t ball_handle(wuss_window_t      *window,
                      const wuss_event_t *event,
                      void               *task_data)
 {
@@ -202,7 +199,7 @@ result_t ball_handle(wuss_window_t     *window,
 
   case wuss_EVENT_CLOSE:
     wuss_window_close(window);
-    bc->window = NULL;
+    free(bc); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
   default:

@@ -85,8 +85,10 @@ void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour)
 }
 
 static void screen_blend_pixel(screen_t *scr,
-                               int x, int y,
-                               colour_t colour, int alpha)
+                               int       x,
+                               int       y,
+                               colour_t  colour,
+                               int       alpha)
 {
   box_t clip;
 
@@ -137,9 +139,10 @@ static void screen_blend_pixel(screen_t *scr,
 /* ----------------------------------------------------------------------- */
 
 void screen_draw_rect(screen_t *scr,
-                      int x, int y,
-                      size2d_t size,
-                      colour_t colour)
+                      int       x,
+                      int       y,
+                      size2d_t  size,
+                      colour_t  colour)
 {
   box_t          clip_box;
   box_t          rect_box;
@@ -214,7 +217,7 @@ void screen_draw_rect(screen_t *scr,
 
 void screen_draw_square(screen_t *scr, int x, int y, int size, colour_t colour)
 {
-  screen_draw_rect(scr, x, y, (size2d_t) { size, size }, colour);
+  screen_draw_rect(scr, x, y, SIZE2D(size, size), colour);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -364,8 +367,11 @@ static void screen_get_bounds(const screen_t *scr, box_t *bounds)
 }
 
 void screen_draw_line(screen_t *scr,
-                      int x0, int y0, int x1, int y1,
-                      colour_t colour)
+                      int       x0,
+                      int       y0,
+                      int       x1,
+                      int       y1,
+                      colour_t  colour)
 {
   box_t clip_box;
   box_t bounds;
@@ -428,8 +434,11 @@ void screen_draw_line(screen_t *scr,
 }
 
 void screen_draw_line_wu_fix8(screen_t *scr,
-                              fix8_t x0_f8, fix8_t y0_f8, fix8_t x1_f8, fix8_t y1_f8,
-                              colour_t colour)
+                              fix8_t    x0_f8,
+                              fix8_t    y0_f8,
+                              fix8_t    x1_f8,
+                              fix8_t    y1_f8,
+                              colour_t  colour)
 {
   box_t   clip_box_f8;
   box_t   bounds_f8;
@@ -483,18 +492,20 @@ void screen_draw_line_wu_fix8(screen_t *scr,
     SWAP(y0_f8, y1_f8);
   }
 
-  grad_f16 = (dx_f8 == 0) ? FIX16_ONE : FIX16_ONE * dy_f8 / dx_f8;
+  /* 64-bit intermediates: FIX16_ONE * dy_f8 and grad_f16 * dx overflow int. */
+  grad_f16 = (dx_f8 == 0) ? FIX16_ONE : (fix16_t) ((long long) FIX16_ONE * dy_f8 / dx_f8);
 
   /* start point */
 
   xend_i   = FIX8_ROUND_TO_INT(x0_f8);
-  yend_f8  = y0_f8 + grad_f16 * (INT_TO_FIX8(xend_i) - x0_f8) / FIX16_ONE;
+  yend_f8  = y0_f8 + (fix8_t) ((long long) grad_f16 * (INT_TO_FIX8(xend_i) - x0_f8) / FIX16_ONE);
   xgap_f8  = INT_TO_FIX8(xend_i) + FIX8_ONE / 2 - x0_f8;
   assert(xgap_f8 >= 0 && xgap_f8 <= FIX8_ONE);
   ix0_i    = xend_i;
   iy0_i    = FIX8_FLOOR_TO_INT(yend_f8);
-  alpha1_i = (255 *  (INT_TO_FIX8(iy0_i) + FIX8_ONE - yend_f8) * xgap_f8 / FIX8_ONE) / FIX8_ONE;
-  alpha2_i = (255 * -(INT_TO_FIX8(iy0_i)            - yend_f8) * xgap_f8 / FIX8_ONE) / FIX8_ONE;
+  /* iy0_i may be negative; use multiply not INT_TO_FIX8's left shift. */
+  alpha1_i = (255 *  (iy0_i * FIX8_ONE + FIX8_ONE - yend_f8) * xgap_f8 / FIX8_ONE) / FIX8_ONE;
+  alpha2_i = (255 * -(iy0_i * FIX8_ONE            - yend_f8) * xgap_f8 / FIX8_ONE) / FIX8_ONE;
   if (steep_b)
   {
     screen_blend_pixel(scr, iy0_i,     ix0_i, colour, alpha1_i);
@@ -506,18 +517,20 @@ void screen_draw_line_wu_fix8(screen_t *scr,
     screen_blend_pixel(scr, ix0_i, iy0_i + 1, colour, alpha2_i);
   }
 
-  yf_f8 = ((yend_f8 << (FIX16_SHIFT - FIX8_SHIFT)) + grad_f16) >> (FIX16_SHIFT - FIX8_SHIFT);
+  /* yend_f8 may be negative; form the fix16 sum by multiply (left-shifting a
+   * negative is UB) then arithmetic-shift back down. */
+  yf_f8 = (yend_f8 * (FIX16_ONE / FIX8_ONE) + grad_f16) >> (FIX16_SHIFT - FIX8_SHIFT);
 
   /* end point */
 
   xend_i   = FIX8_ROUND_TO_INT(x1_f8);
-  yend_f8  = y1_f8 + grad_f16 * (INT_TO_FIX8(xend_i) - x1_f8) / FIX16_ONE;
+  yend_f8  = y1_f8 + (fix8_t) ((long long) grad_f16 * (INT_TO_FIX8(xend_i) - x1_f8) / FIX16_ONE);
   xgap_f8  = x1_f8 + FIX8_ONE / 2 - INT_TO_FIX8(xend_i);
   assert(xgap_f8 >= 0 && xgap_f8 < FIX8_ONE);
   ix1_i    = xend_i;
   iy1_i    = FIX8_FLOOR_TO_INT(yend_f8);
-  alpha1_i = (255 *  (INT_TO_FIX8(iy1_i) + FIX8_ONE - yend_f8) * xgap_f8 / FIX8_ONE) / FIX8_ONE;
-  alpha2_i = (255 * -(INT_TO_FIX8(iy1_i)            - yend_f8) * xgap_f8 / FIX8_ONE) / FIX8_ONE;
+  alpha1_i = (255 *  (iy1_i * FIX8_ONE + FIX8_ONE - yend_f8) * xgap_f8 / FIX8_ONE) / FIX8_ONE;
+  alpha2_i = (255 * -(iy1_i * FIX8_ONE            - yend_f8) * xgap_f8 / FIX8_ONE) / FIX8_ONE;
   if (steep_b)
   {
     screen_blend_pixel(scr, iy1_i,     ix1_i, colour, alpha1_i);
@@ -534,8 +547,8 @@ void screen_draw_line_wu_fix8(screen_t *scr,
   for (x_i = ix0_i + 1; x_i < ix1_i; x_i++)
   {
     y_i      = FIX8_FLOOR_TO_INT(yf_f8);
-    alpha1_i = (255 *  (INT_TO_FIX8(y_i) + FIX8_ONE - yf_f8)) / FIX8_ONE;
-    alpha2_i = (255 * -(INT_TO_FIX8(y_i)            - yf_f8)) / FIX8_ONE;
+    alpha1_i = (255 *  (y_i * FIX8_ONE + FIX8_ONE - yf_f8)) / FIX8_ONE;
+    alpha2_i = (255 * -(y_i * FIX8_ONE            - yf_f8)) / FIX8_ONE;
     if (steep_b)
     {
       screen_blend_pixel(scr, y_i,     x_i, colour, alpha1_i);
@@ -546,7 +559,7 @@ void screen_draw_line_wu_fix8(screen_t *scr,
       screen_blend_pixel(scr, x_i, y_i,     colour, alpha1_i);
       screen_blend_pixel(scr, x_i, y_i + 1, colour, alpha2_i);
     }
-    yf_f8 = ((yf_f8 << (FIX16_SHIFT - FIX8_SHIFT)) + grad_f16) >> (FIX16_SHIFT - FIX8_SHIFT);
+    yf_f8 = (yf_f8 * (FIX16_ONE / FIX8_ONE) + grad_f16) >> (FIX16_SHIFT - FIX8_SHIFT);
   }
 }
 
@@ -557,8 +570,11 @@ static int my_lroundf(float x)
 }
 
 void screen_draw_line_wu_float(screen_t *scr,
-                               float fx0, float fy0, float fx1, float fy1,
-                               colour_t colour)
+                               float     fx0,
+                               float     fy0,
+                               float     fx1,
+                               float     fy1,
+                               colour_t  colour)
 {
   box_t clip_box;
   box_t bounds;

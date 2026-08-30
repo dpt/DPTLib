@@ -8,7 +8,7 @@ static void vscroll_column(const wuss_window_t *window, box_t *out)
   int   outline_px, size;
 
   outline_px = wuss__outline_px(window);
-  size       = wuss__icon_size(window);
+  size       = wuss__button_size(window);
 
   out->x1 = window->visible.x1 - outline_px;
   out->x0 = out->x1 - size;
@@ -24,7 +24,7 @@ void wuss__vscroll_up_box(const wuss_window_t *window, box_t *out)
   int   size;
 
   vscroll_column(window, &column);
-  size = wuss__icon_size(window);
+  size = wuss__button_size(window);
 
   out->x0 = column.x0;
   out->x1 = column.x1;
@@ -38,7 +38,7 @@ void wuss__vscroll_down_box(const wuss_window_t *window, box_t *out)
   int   size;
 
   vscroll_column(window, &column);
-  size = wuss__icon_size(window);
+  size = wuss__button_size(window);
 
   out->x0 = column.x0;
   out->x1 = column.x1;
@@ -52,7 +52,7 @@ void wuss__vscroll_well_box(const wuss_window_t *window, box_t *out)
   int   size;
 
   vscroll_column(window, &column);
-  size = wuss__icon_size(window);
+  size = wuss__button_size(window);
 
   out->x0 = column.x0;
   out->x1 = column.x1;

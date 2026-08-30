@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #include <stddef.h>
 
 #ifdef FORTIFY
@@ -26,7 +28,6 @@ result_t curve_create(wuss_t         *wuss,
                       curve_task_t   *task)
 {
   wuss_task_t delegate;
-  box_t       box;
 
   task->bg        = palette[palette_PICO8_WHITE];
   task->line      = palette[palette_PICO8_BLACK];
@@ -34,27 +35,22 @@ result_t curve_create(wuss_t         *wuss,
   task->nsegments = CURVE_SEGMENTS_DEFAULT;
   task->dragging  = -1;
 
-  task->points[0] = (point_t) { 10,  10 };
-  task->points[1] = (point_t) { 10, 140 };
-  task->points[2] = (point_t) { 210, 10 };
-  task->points[3] = (point_t) { 210, 140 };
+  task->points[0] = POINT(10,  10);
+  task->points[1] = POINT(10, 140);
+  task->points[2] = POINT(210, 10);
+  task->points[3] = POINT(210, 140);
 
   delegate = wuss_task_start(curve_handle, task); /* curve_redraw paints its own background */
-  box      = (box_t) BOX_POS_SIZE(20, 260, 220, 160);
 
-  return wuss_window_create(wuss,
-                            &box,
-                            "Curve",
-                            wuss_WINDOW_NONE,
-                            wuss_NO_BACKGROUND,
-                            &delegate,
-                            box_size(&box),
-                            &task->window);
-}
-
-void curve_destroy(curve_task_t *task)
-{
-  wuss_window_close(task->window);
+  return wuss_window_create_placed(wuss,
+                                   SIZE2D(220, 160),
+                                   "Curve",
+                                   wuss_WINDOW_NONE,
+                                   wuss_NO_BACKGROUND,
+                                   &delegate,
+                                   SIZE2D(220, 160),
+                                   SIZE2D(0, 0),
+                                   &task->window);
 }
 
 static int blob_hit(const point_t *p, int x, int y)
@@ -108,11 +104,11 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   return result_OK;
 }
 
-static result_t curve_mouse(curve_task_t        *task,
-                            wuss_mouse_action_t   action,
-                            int                   x,
-                            int                   y,
-                            wuss_window_t        *window)
+static result_t curve_mouse(curve_task_t       *task,
+                            wuss_mouse_action_t action,
+                            int                 x,
+                            int                 y,
+                            wuss_window_t      *window)
 {
   int i;
 
@@ -182,7 +178,7 @@ result_t curve_handle(wuss_window_t      *window,
 
   case wuss_EVENT_CLOSE:
     wuss_window_close(window);
-    task->window = NULL;
+    free(task); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
   default:

@@ -40,7 +40,10 @@ static char *my_strdup(const char *s)
 
 /* ----------------------------------------------------------------------- */
 
-static result_t test1_format_key(const void *key, char *buf, size_t len, void *opaque)
+static result_t test1_format_key(const void *key,
+                                 char       *buf,
+                                 size_t      len,
+                                 void       *opaque)
 {
   NOT_USED(len);
   NOT_USED(opaque);
@@ -50,7 +53,10 @@ static result_t test1_format_key(const void *key, char *buf, size_t len, void *o
   return result_OK;
 }
 
-static result_t test1_format_value(const void *key, char *buf, size_t len, void *opaque)
+static result_t test1_format_value(const void *key,
+                                   char       *buf,
+                                   size_t      len,
+                                   void       *opaque)
 {
   NOT_USED(len);
   NOT_USED(opaque);
@@ -320,7 +326,10 @@ cheese_value_t;
 
 /* ----------------------------------------------------------------------- */
 
-static result_t cheese_format_key(const void *vkey, char *buf, size_t len, void *opaque)
+static result_t cheese_format_key(const void *vkey,
+                                  char       *buf,
+                                  size_t      len,
+                                  void       *opaque)
 {
   const cheese_key_t *key = vkey;
 
@@ -332,7 +341,10 @@ static result_t cheese_format_key(const void *vkey, char *buf, size_t len, void 
   return result_OK;
 }
 
-static result_t cheese_format_value(const void *vvalue, char *buf, size_t len, void *opaque)
+static result_t cheese_format_value(const void *vvalue,
+                                    char       *buf,
+                                    size_t      len,
+                                    void       *opaque)
 {
   const cheese_value_t *value = vvalue;
 

@@ -109,11 +109,11 @@ void *cache_get(cache_t *cache, cachekey_t key);
  *
  * \return Error indication.
  */
-result_t cache_put(cache_t    *cache,
-                   cachekey_t  key,
-                   void       *data,
-                   size_t      length,
-                   void      **inserted);
+result_t cache_put(cache_t   *cache,
+                   cachekey_t key,
+                   void      *data,
+                   size_t     length,
+                   void     **inserted);
 
 /**
  * Print cache statistics to stdout.

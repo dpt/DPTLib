@@ -9,8 +9,8 @@ void wuss__toggle_box(const wuss_window_t *window, box_t *out)
 
   wuss__titlebar_box(window, &titlebar);
 
-  inset = WUSS_ICON_INSET;
-  size  = wuss__icon_size(window);
+  inset = WUSS_BUTTON_INSET;
+  size  = wuss__button_size(window);
 
   out->x1 = titlebar.x1 - inset;
   out->x0 = out->x1 - size;

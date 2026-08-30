@@ -34,6 +34,9 @@ struct packer
   packer_sortdir_t  order;         /* order to which we have sorted */
   int               sorted;        /* a bool */
 
+  int               gutter;        /* px reserved past each placed box's
+                                    inner edges by packer_place_by; 0 = none */
+
   box_t             consumed_area; /* total consumed area */
 };
 
