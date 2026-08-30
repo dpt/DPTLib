@@ -21,10 +21,14 @@ void wuss_destroy(wuss_t *doomed)
     list_t *next;
 
     next = e->next;
+#ifdef WUSS_ICONS
+    wuss__icons_free((wuss_window_t *) e);
+#endif
     free(e);
     e = next;
   }
 
+  packer_destroy(doomed->layout);
   free(doomed->palette);
   free(doomed);
 }

@@ -8,31 +8,48 @@ DPTLib is a platform-independent C99 library (base, databases, datastruct, frame
 
 ## Build
 
+Build directories are per-config and already created; there is **no** plain
+`build/` — never invoke `./build/DPTLibTest` or `cmake --build build`.
+
+- `build-asan/`  — **default**. Debug, core tests (`BUILD_TESTS=YES`). Use this
+  unless told otherwise. Despite the name its cache currently has
+  `USE_ASAN=OFF`; re-run cmake with `-DUSE_ASAN=YES` if you actually need the
+  sanitisers.
+- `build-sdl/`   — Release, SDL tests on (`BUILD_SDL_TESTS=ON`). Needed for the
+  interactive `wuss` driver and anything under `libraries/wuss/test/tasks/`.
+- `build-nosdl/` — Release, core tests only.
+- `build-riscos/`— GCCSDK cross build. Leave alone unless working on RISC OS.
+- `build.xc/`    — Xcode generator.
+
+CMake options: `BUILD_TESTS`, `BUILD_SDL_TESTS`, `USE_ASAN` (ASan + UBSan),
+`USE_FORTIFY` (bundled Fortify), `DPTLIB_IMAGES_READ_ONLY` (libpng no write).
+
+(Re)configure a dir only if its `CMakeCache.txt` is missing or you are changing
+options:
 ```
-mkdir build && cd build
-cmake -DBUILD_TESTS=YES ..
-make -j4
+cmake -B build-asan -G Ninja -DBUILD_TESTS=YES
 ```
 
-Useful CMake options:
-- `BUILD_TESTS=YES` — build the `DPTLibTest` self-test executable.
-- `BUILD_SDL_TESTS=YES` — additionally build tests needing SDL2/SDL2_image.
-- `USE_FORTIFY=YES` — link the bundled Fortify memory-debugging library.
-- `DPTLIB_IMAGES_READ_ONLY=YES` — build libpng without write support.
+Build:
+```
+cmake --build build-asan --target DPTLibTest
+```
 
 Requires libpng (`find_package(PNG)` on non-RISC OS). On RISC OS the build fetches and patches zlib/libpng itself via `FetchContent` (see `cmake/*.patch`).
 
 ## Testing
 
-Run all tests (needs `-resources` pointing at the repo root, for test fixture files):
+Run from the **repo root** so `-resources .` resolves the fixture files:
 ```
-./build/DPTLibTest -resources /path/to/DPTLib
+./build-asan/DPTLibTest -resources .
 ```
 
-Run a subset by naming tests (names come from the `tests[]` table in `apps/test/main.c`, e.g. `atom`, `bitvec`, `curve`, `pickle`, `stream`, `packer`):
+Run a subset by naming tests (names come from the `tests[]` table in `apps/test/main.c`, e.g. `atom`, `bitvec`, `curve`, `pickle`, `stream`, `packer`, `wuss`):
 ```
-./build/DPTLibTest -resources /path/to/DPTLib atom bitvec
+./build-asan/DPTLibTest -resources . atom bitvec
 ```
+
+SDL / interactive tests use the `build-sdl` binary instead.
 
 Success prints `++ Tests completed in Ns: N of N tests passed.`
 
@@ -45,9 +62,7 @@ Success prints `++ Tests completed in Ns: N of N tests passed.`
 
 ## Architecture
 
-**Module layout.** Each module lives in two places that must be kept in sync:
-- `include/<area>/<module>.h` — the public API, always wrapped in `extern "C"`, documented with Doxygen `\file`/`\param`/`\return` comments.
-- `libraries/<area>/<module>/` — implementation `.c` files (often one function per file, e.g. `libraries/datastruct/vector/{create,destroy,insert,...}.c`), plus a private `impl.h` defining the opaque struct behind the public typedef and any internal-only declarations.
+**Module layout.** Each module is split between `include/<area>/<module>.h` (public API, `extern "C"`, Doxygen-documented) and `libraries/<area>/<module>/` (implementation `.c` files, often one function per file, plus a private `impl.h` for the opaque struct and internal-only declarations).
 
 New source/header files must be added by hand to the relevant `set(..._SOURCES ...)` list and, for public headers, to `PUBLIC_HEADERS`, in `CMakeLists.txt` — there is no globbing.
 
@@ -70,7 +85,14 @@ New source/header files must be added by hand to the relevant `set(..._SOURCES .
 - File header comment format: `/* filename.c -- one-line description */`.
 - Section breaks within files use `/* ----- ... ----- */` rule comments.
 - Public API docs use Doxygen (`\file`, `\param`, `\return`); a `Doxyfile` exists for generating them.
+- Edit `.c`/`.h` files with the Edit tool, never `sed -i` line-range splices — they corrupt the Allman/2-space layout and can't be verified without re-reading. To inspect exact bytes or indentation, Read the file; don't shell out to `cat -A`/`cat -v`.
+- After editing any `.c`/`.h` function prototype or definition, run `python3 tools/wrap_protos.py <file>`; after editing a header's Doxygen, run `python3 tools/wrap_doxygen.py <file>` (skip vendored headers).
 
 ## Commit messages
 
 Use [Conventional Commits](https://www.conventionalcommits.org/): `<type>[optional scope]: <description>`, e.g. `fix(pickle): handle zero-length blobs`. Common types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `build`. Add a `!` before the colon (or a `BREAKING CHANGE:` footer) for breaking changes.
+
+When the user says "commit": stage the relevant files and `git commit` with the
+message passed via repeated `-m` flags (subject, then body). Do **not** write a
+`COMMIT_MSG` / `COMMIT_MSG_TMP` file. Never `git push` unless explicitly asked —
+pushing prompts for an SSH key passphrase and will hang.

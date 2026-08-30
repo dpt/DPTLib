@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -18,28 +20,22 @@
 result_t blank_create(wuss_t *wuss, int npalette, blank_task_t *task)
 {
   wuss_task_t delegate;
-  box_t       box;
 
   task->npalette    = npalette;
   task->index       = palette_PICO8_GREEN;
   task->frame_count = 0;
 
   delegate = wuss_task_start(blank_handle, task); /* wuss fills the content area itself */
-  box      = (box_t) BOX_POS_SIZE(260, 60, 200, 160);
 
-  return wuss_window_create(wuss,
-                            &box,
-                            NULL,
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
-                            palette_PICO8_GREEN,
-                            &delegate,
-                            box_size(&box),
-                            &task->window);
-}
-
-void blank_destroy(blank_task_t *task)
-{
-  wuss_window_close(task->window);
+  return wuss_window_create_placed(wuss,
+                                   SIZE2D(200, 160),
+                                   NULL,
+                                   wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                                   palette_PICO8_GREEN,
+                                   &delegate,
+                                   SIZE2D(200, 160),
+                                   SIZE2D(0, 0),
+                                   &task->window);
 }
 
 static result_t blank_idle(void *task_data)
@@ -62,11 +58,16 @@ static result_t blank_idle(void *task_data)
   return rc;
 }
 
-result_t blank_handle(wuss_window_t     *window,
+result_t blank_handle(wuss_window_t      *window,
                       const wuss_event_t *event,
                       void               *task_data)
 {
-  NOT_USED(window);
+  if (event->kind == wuss_EVENT_CLOSE)
+  {
+    wuss_window_close(window);
+    free(task_data); /* calloc'd per instance by the spawner */
+    return result_OK;
+  }
 
   if (event->kind != wuss_EVENT_IDLE)
     return result_OK;

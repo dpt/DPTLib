@@ -399,6 +399,120 @@ failure:
   return 1;
 }
 
+/* packer_release: a slot handed back becomes available again. */
+static int test3(void)
+{
+  static const box_t pagedims = { 0, 0, 100, 100 };
+
+  packer_t    *packer;
+  const box_t *a, *b, *c;
+  box_t        freed;
+  result_t     err;
+
+  printf("test3: packer_release\n");
+
+  packer = packer_create(&pagedims);
+  if (packer == NULL)
+    return 1;
+
+  /* fill the page with four 50x50 quads, top-left order */
+  err  = packer_place_by(packer, packer_LOC_TOP_LEFT, 50, 50, &a);
+  err |= packer_place_by(packer, packer_LOC_TOP_LEFT, 50, 50, &b);
+  err |= packer_place_by(packer, packer_LOC_TOP_LEFT, 50, 50, &c);
+  err |= packer_place_by(packer, packer_LOC_TOP_LEFT, 50, 50, NULL);
+  if (err)
+    goto failure;
+
+  /* page is now full: a fifth 50x50 must not fit */
+  if (packer_place_by(packer, packer_LOC_TOP_LEFT, 50, 50, NULL)
+      != result_PACKER_DIDNT_FIT)
+  {
+    printf("test3: expected DIDNT_FIT while full\n");
+    goto failure;
+  }
+
+  /* release the top-left quad, then a 50x50 must fit again, in that slot */
+  freed.x0 = 0; freed.y0 = 0; freed.x1 = 50; freed.y1 = 50;
+  err = packer_release(packer, &freed);
+  if (err)
+    goto failure;
+
+  err = packer_place_by(packer, packer_LOC_TOP_LEFT, 50, 50, &a);
+  if (err)
+  {
+    printf("test3: placement after release failed (%d)\n", err);
+    goto failure;
+  }
+  if (a->x0 != 0 || a->y0 != 0 || a->x1 != 50 || a->y1 != 50)
+  {
+    printf("test3: reused slot <%d,%d-%d,%d>, wanted <0,0-50,50>\n",
+           a->x0, a->y0, a->x1, a->y1);
+    goto failure;
+  }
+
+  /* a box wholly outside the margins is rejected */
+  freed.x0 = 200; freed.y0 = 200; freed.x1 = 250; freed.y1 = 250;
+  if (packer_release(packer, &freed) != result_PACKER_EMPTY)
+  {
+    printf("test3: out-of-bounds release not rejected\n");
+    goto failure;
+  }
+
+  packer_destroy(packer);
+
+
+  /* gutter: a column just wide enough for one box plus its gutter forces the
+   * second placement to stack above the first, gutter between them */
+  {
+    static const box_t coldims = { 0, 0, 30, 200 };
+
+    box_t first;
+
+    printf("test3: packer_set_gutter\n");
+
+    packer = packer_create(&coldims);
+    if (packer == NULL)
+      return 1;
+
+    packer_set_gutter(packer, 10);
+
+    /* pos points at the packer's single result buffer, so copy the first
+     * placement out before the second overwrites it */
+    err = packer_place_by(packer, packer_LOC_BOTTOM_LEFT, 20, 20, &a);
+    if (err)
+      goto failure;
+    first = *a;
+
+    err = packer_place_by(packer, packer_LOC_BOTTOM_LEFT, 20, 20, &b);
+    if (err)
+      goto failure;
+
+    /* boxes are still 20x20 (the gutter is not added to the result)... */
+    if (first.x1 - first.x0 != 20 || first.y1 - first.y0 != 20 ||
+        b->x1 - b->x0 != 20 || b->y1 - b->y0 != 20)
+    {
+      printf("test3: gutter inflated the placed box\n");
+      goto failure;
+    }
+    /* ...but the second sits a full gutter above the first, not flush */
+    if (b->y0 - first.y1 != 10)
+    {
+      printf("test3: gap between placements was %d, wanted 10\n",
+             b->y0 - first.y1);
+      goto failure;
+    }
+  }
+
+  packer_destroy(packer);
+  return 0;
+
+
+failure:
+
+  packer_destroy(packer);
+  return 1;
+}
+
 result_t packer_test(const char *resources)
 {
   result_t err;
@@ -410,6 +524,10 @@ result_t packer_test(const char *resources)
     goto failure;
 
   err = test2();
+  if (err)
+    goto failure;
+
+  err = test3();
   if (err)
     goto failure;
 

@@ -55,10 +55,10 @@ void bitfifo_destroy(T *doomed);
 
 /* writes bits to 'head' onwards, wrapping around if required */
 /* fifo will reject attempts to store more bits than there is space for */
-result_t bitfifo_enqueue(T            *fifo,
+result_t bitfifo_enqueue(T                  *fifo,
                          const unsigned int *newbits,
-                         unsigned int  newbitsoffset,
-                         size_t        nnewbits);
+                         unsigned int        newbitsoffset,
+                         size_t              nnewbits);
 
 /* reads bits from 'tail' onwards, wrapping around if required */
 result_t bitfifo_dequeue(T            *fifo,

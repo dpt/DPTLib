@@ -93,11 +93,11 @@ static int count_adw(unsigned char tab[256], pixelfmt_any_t adw_px)
 }
 
 /** Verify the font format and build the advance width table. */
-static result_t extract_advance_widths(bmfont_t    *bmfont,
-                                       void        *voidpixels,
-                                       png_uint_32  imgwidth,
-                                       png_uint_32  imgheight,
-                                       size_t       rowbytes)
+static result_t extract_advance_widths(bmfont_t   *bmfont,
+                                       void       *voidpixels,
+                                       png_uint_32 imgwidth,
+                                       png_uint_32 imgheight,
+                                       size_t      rowbytes)
 {
   result_t      rc = result_OK;
   unsigned char adwtab[256];
@@ -198,11 +198,11 @@ static void build_repack_tab(unsigned char tab[256], int idx)
              ((((i >> 6) & 3) == idx) << 3);
 }
 
-static result_t extract_glyphs(bmfont_t    *bmfont,
-                               void        *voidpixels,
-                               png_uint_32  imgwidth,
-                               png_uint_32  imgheight,
-                               size_t       rowbytes)
+static result_t extract_glyphs(bmfont_t   *bmfont,
+                               void       *voidpixels,
+                               png_uint_32 imgwidth,
+                               png_uint_32 imgheight,
+                               size_t      rowbytes)
 {
   result_t       rc = result_OK;
   unsigned char  repacktab[256];
@@ -515,8 +515,10 @@ void bmfont_destroy(bmfont_t *bmfont)
 
 void bmfont_get_info(bmfont_t *bmfont, int *width, int *height)
 {
-  *width  = bmfont->charwidth;
-  *height = bmfont->charheight;
+  if (width)
+    *width  = bmfont->charwidth;
+  if (height)
+    *height = bmfont->charheight;
 }
 
 int bmfont_get_count(bmfont_t *bmfont)
@@ -1246,7 +1248,7 @@ result_t bmfont_draw(bmfont_t      *bmfont,
       }
     }
 
-    *end_pos = (point_t) { x, pos->y };
+    *end_pos = POINT(x, pos->y);
   }
 
   return result_OK;

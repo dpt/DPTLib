@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -21,7 +23,6 @@ result_t checker_create(wuss_t         *wuss,
                         checker_task_t *task)
 {
   wuss_task_t delegate;
-  box_t       box;
   result_t    rc;
 
   task->black    = palette[palette_PICO8_BLACK];
@@ -32,29 +33,28 @@ result_t checker_create(wuss_t         *wuss,
   task->band2    = CHECKER_BAND_DEFAULT;
 
   delegate = wuss_task_start(checker_handle, task); /* checker_redraw paints every pixel itself */
-  box      = (box_t) BOX_POS_SIZE(440, 300, 160, 160);
 
-  rc = wuss_window_create(wuss,
-                          &box,
-                          "Checker 1",
-                          wuss_WINDOW_NONE,
-                          wuss_NO_BACKGROUND,
-                          &delegate,
-                          box_size(&box),
-                          &task->window);
+  rc = wuss_window_create_placed(wuss,
+                                 SIZE2D(160, 160),
+                                 "Checker 1",
+                                 wuss_WINDOW_NONE,
+                                 wuss_NO_BACKGROUND,
+                                 &delegate,
+                                 SIZE2D(160, 160),
+                                 SIZE2D(0, 0),
+                                 &task->window);
   if (rc != result_OK)
     return rc;
 
-  box = (box_t) BOX_POS_SIZE(440, 10, 160, 160);
-
-  rc = wuss_window_create(wuss,
-                          &box,
-                          "Checker 2",
-                          wuss_WINDOW_NONE,
-                          wuss_NO_BACKGROUND,
-                          &delegate,
-                          box_size(&box),
-                          &task->window2);
+  rc = wuss_window_create_placed(wuss,
+                                 SIZE2D(160, 160),
+                                 "Checker 2",
+                                 wuss_WINDOW_NONE,
+                                 wuss_NO_BACKGROUND,
+                                 &delegate,
+                                 SIZE2D(160, 160),
+                                 SIZE2D(0, 0),
+                                 &task->window2);
   if (rc != result_OK)
   {
     wuss_window_close(task->window);
@@ -62,12 +62,6 @@ result_t checker_create(wuss_t         *wuss,
   }
 
   return result_OK;
-}
-
-void checker_destroy(checker_task_t *task)
-{
-  wuss_window_close(task->window);
-  wuss_window_close(task->window2);
 }
 
 static result_t checker_redraw(wuss_window_t      *window,
@@ -128,7 +122,9 @@ static result_t checker_mouse(wuss_window_t *window, void *task_data)
   return result_OK;
 }
 
-static result_t checker_scroll(wuss_window_t *window, int delta, void *task_data)
+static result_t checker_scroll(wuss_window_t *window,
+                               int            delta,
+                               void          *task_data)
 {
   checker_task_t *cc;
   int            *band;
@@ -144,7 +140,7 @@ static result_t checker_scroll(wuss_window_t *window, int delta, void *task_data
   return result_OK;
 }
 
-result_t checker_handle(wuss_window_t     *window,
+result_t checker_handle(wuss_window_t      *window,
                         const wuss_event_t *event,
                         void               *task_data)
 {
@@ -171,6 +167,9 @@ result_t checker_handle(wuss_window_t     *window,
       cc->window2 = NULL;
     else
       cc->window = NULL;
+    /* one calloc'd block backs both windows; free it once both are gone */
+    if (cc->window == NULL && cc->window2 == NULL)
+      free(cc);
     return result_OK;
 
   default:

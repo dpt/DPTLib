@@ -27,8 +27,6 @@ result_t chars_create(wuss_t         *wuss,
                       const colour_t *palette,
                       chars_task_t   *task);
 
-/* destroy the glyph-grid window created by chars_create, if any */
-void chars_destroy(chars_task_t *task);
 
 #endif /* USE_SDL */
 

@@ -13,8 +13,13 @@
  * columns within each row by the same rule applied to "dx" -- the standard
  * two-axis blit-direction trick, so every pixel is read before anything
  * that could overwrite it is written. */
-static int screen_copy_rect_p4(screen_t *scr, const box_t *s, const box_t *d,
-                                int width, int height, int dx, int dy)
+static int screen_copy_rect_p4(screen_t    *scr,
+                               const box_t *s,
+                               const box_t *d,
+                               int          width,
+                               int          height,
+                               int          dx,
+                               int          dy)
 {
   unsigned char *base;
   int            rowbytes;
@@ -57,7 +62,10 @@ static int screen_copy_rect_p4(screen_t *scr, const box_t *s, const box_t *d,
   return 1;
 }
 
-int screen_copy_rect(screen_t *scr, const box_t *src, point_t dst, box_t *copied_dst)
+int screen_copy_rect(screen_t    *scr,
+                     const box_t *src,
+                     point_t      dst,
+                     box_t       *copied_dst)
 {
   box_t          clip_box, s, d, d_clipped;
   int            dx, dy, width, height, bpp;

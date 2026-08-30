@@ -44,7 +44,9 @@ typedef struct stream_packbitscomp
 }
 stream_packbitscomp_t;
 
-static result_t stream_packbitscomp_op(stream_t *s, stream_opcode_t op, void *arg)
+static result_t stream_packbitscomp_op(stream_t       *s,
+                                       stream_opcode_t op,
+                                       void           *arg)
 {
   NOT_USED(s);
   NOT_USED(op);

@@ -28,6 +28,10 @@ extern "C"
 #define result_WUSS_TOO_SMALL  (result_BASE_WUSS + 0)
 /** A palette index was out of range. */
 #define result_WUSS_BAD_COLOUR (result_BASE_WUSS + 1)
+/**
+ * An icon spec was malformed (unknown type, or BUTTON without a fill colour).
+ */
+#define result_WUSS_BAD_ICON   (result_BASE_WUSS + 2)
 
 /* ----------------------------------------------------------------------- */
 
@@ -37,15 +41,25 @@ typedef struct wuss wuss_t;
 /** A window. Full API is in window.h. */
 typedef struct wuss_window wuss_window_t;
 
+/** A work-area icon. Full API is in icon.h, and is compiled only when the
+ * library is built with the WUSS_ICONS option on. */
+typedef struct wuss_icon wuss_icon_t;
+
 /**
  * Mouse buttons, RISC OS-style: Select is the primary action, Adjust the
  * secondary action, Menu pops up a menu.
+ *
+ * These are flags, OR'd together, so that chords (e.g. Select and Adjust
+ * pressed together) can be reported. The bit values match the RISC OS button
+ * order. Test them with '&' rather than comparing for equality, or a chord will
+ * match no button at all.
  */
 typedef enum wuss_button
 {
-  wuss_BUTTON_SELECT,
-  wuss_BUTTON_MENU,
-  wuss_BUTTON_ADJUST
+  wuss_BUTTON_NONE   = 0,
+  wuss_BUTTON_ADJUST = 1 << 0,
+  wuss_BUTTON_MENU   = 1 << 1,
+  wuss_BUTTON_SELECT = 1 << 2
 }
 wuss_button_t;
 
@@ -70,20 +84,21 @@ typedef int wuss_colour_t;
 
 /** Furniture chrome colours, one entry per class of furniture. Title is
  * the only two-tone class (fill + text); the rest are drawn as a single
- * flat colour. Each value is an index into the system palette (see
+ * flat colour. Ignored when the library is built with WUSS_FURNITURE off.
+ * Each value is an index into the system palette (see
  * wuss_create). */
 typedef struct wuss_palette
 {
   struct
   {
-    wuss_colour_t bg;     /**< Titlebar fill. */
-    wuss_colour_t fg;     /**< Titlebar text. */
+    wuss_colour_t bg;       /**< Titlebar fill. */
+    wuss_colour_t fg;       /**< Titlebar text. */
   }
   title;
-  wuss_colour_t back;     /**< Send-to-back icon. */
-  wuss_colour_t close;    /**< Close icon. */
-  wuss_colour_t toggle;   /**< Toggle-size icon. */
-  wuss_colour_t resize;   /**< Resize icon. */
+  wuss_colour_t back;       /**< Send-to-back icon. */
+  wuss_colour_t close;      /**< Close icon. */
+  wuss_colour_t toggle;     /**< Toggle-size icon. */
+  wuss_colour_t resize;     /**< Resize icon. */
   struct
   {
     wuss_colour_t arrows;   /**< Scrollbar arrows. */
@@ -94,7 +109,13 @@ typedef struct wuss_palette
 }
 wuss_palette_t;
 
-/** Per-window appearance flags, combinable with bitwise OR. */
+/**
+ * Per-window appearance flags, combinable with bitwise OR.
+ *
+ * \note When the library is built with the WUSS_FURNITURE CMake option off,
+ *       every window is chromeless regardless of these flags and the
+ *       wuss_WINDOW_NO_* bits are ignored.
+ */
 typedef enum wuss_window_flags
 {
   /** Default: every furniture region drawn. */
@@ -155,17 +176,36 @@ typedef enum wuss_zorder
 }
 wuss_zorder_t;
 
-/** Optional creation-time configuration. */
+/**
+ * Optional creation-time configuration.
+ *
+ * \note titlebar_height and palette are ignored when the library is built with
+ *       WUSS_FURNITURE off; bevel is ignored when built with both
+ *       WUSS_FURNITURE and WUSS_ICONS off. backdrop is always honoured.
+ */
 typedef struct wuss_config
 {
   /**
    * Titlebar height in pixels, or 0 to derive from font metrics (or a built-in
-   * fallback if no font).
+   * fallback if no font). Ignored when WUSS_FURNITURE is off.
    */
   int            titlebar_height;
 
-  /** Furniture chrome colours. */
+  /** Furniture chrome colours. Ignored when WUSS_FURNITURE is off. */
   wuss_palette_t palette;
+
+  /**
+   * Bevelled work-area button edge shades, as indices into the system palette:
+   * light on the top/left edges, dark on the bottom/right (swapped when the
+   * button is pressed). Both default to the titlebar fill colour when config is
+   * NULL. Ignored when both WUSS_FURNITURE and WUSS_ICONS are off.
+   */
+  struct
+  {
+    wuss_colour_t light; /**< Top/left bevel edge. */
+    wuss_colour_t dark;  /**< Bottom/right bevel edge. */
+  }
+  bevel;
 
   /**
    * Desktop background colour, painted behind windows on every redraw, or
@@ -193,12 +233,12 @@ wuss_config_t;
  *         config's palette entries are out of range for the palette, or another
  *         appropriate result code.
  */
-result_t wuss_create(screen_t             *scr,
-                     bmfont_t             *font,
-                     const colour_t       *palette,
-                     int                   npalette,
-                     const wuss_config_t  *config,
-                     wuss_t              **wuss);
+result_t wuss_create(screen_t            *scr,
+                     bmfont_t            *font,
+                     const colour_t      *palette,
+                     int                  npalette,
+                     const wuss_config_t *config,
+                     wuss_t             **wuss);
 
 /**
  * Destroy a window manager, and any windows still open on it.
@@ -297,11 +337,11 @@ void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
  * \return \ref result_OK, or a result code returned by the task's mouse
  *         callback.
  */
-result_t wuss_mouse_click(wuss_t              *wuss,
-                          point_t              p,
-                          wuss_button_t        button,
-                          wuss_mouse_action_t  action,
-                          wuss_window_t      **hit);
+result_t wuss_mouse_click(wuss_t             *wuss,
+                          point_t             p,
+                          wuss_button_t       button,
+                          wuss_mouse_action_t action,
+                          wuss_window_t     **hit);
 
 /**
  * Deliver a mouse-move event. Updates the dragged window's position if a drag

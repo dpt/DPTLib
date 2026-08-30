@@ -104,9 +104,9 @@ int txtfmt_get_wrapped_width(const txtfmt_t *tx);
  * \return result_OK or result_BAD_ARG if index is out of range.
  */
 result_t txtfmt_get_line(const txtfmt_t *tx,
-                         int              index,
-                         const char     **line,
-                         int             *length);
+                         int             index,
+                         const char    **line,
+                         int            *length);
 
 /* ----------------------------------------------------------------------- */
 

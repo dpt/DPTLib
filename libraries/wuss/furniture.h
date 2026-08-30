@@ -46,9 +46,14 @@ struct wuss__furniture
 {
   wuss_window_t              *dragging;  /* NULL when idle */
   wuss_furniture_drag_kind_t  drag_kind;
-  point_t                     drag; /* MOVE: pointer offset within content;
-                                     * RESIZE: unused, recomputed each move;
-                                     * *_SAUSAGE: pointer position at drag start */
+  point_t                     drag; /* *_SAUSAGE: pointer position at drag start;
+                                       * MOVE: pointer offset within content */
+  point_t                     drag_offset; /* RESIZE: pointer offset from the
+                                            * content box's bottom-right corner
+                                            * at drag start, so the grab point
+                                            * stays under the pointer instead
+                                            * of the window's edge snapping to
+                                            * it on the first move */
   int                         drag_scroll_start; /* *_SAUSAGE: scroll.x/scroll.y at drag start */
 };
 
@@ -76,7 +81,8 @@ void wuss__furniture_draw(wuss_t        *wuss,
                           wuss_window_t *window,
                           const box_t   *full);
 void wuss__furniture_invalidate(wuss_window_t *window);
-void wuss__furniture_invalidate_for(wuss_window_t *window, const box_t *visible);
+void wuss__furniture_invalidate_for(wuss_window_t *window,
+                                    const box_t   *visible);
 
 /* geometry: titlebar icons */
 void wuss__back_box(const wuss_window_t *window, box_t *out);
@@ -99,8 +105,6 @@ int  wuss__hscroll_well_px(const wuss_window_t *window);
 
 /* actions */
 void wuss__furniture_toggle_size(wuss_window_t *window);
-void wuss__furniture_scroll_step(wuss_window_t *window, point_t delta);
-point_t wuss__scroll_clamp(const wuss_window_t *window, point_t desired);
 void wuss__furniture_drag_resize(wuss_window_t *window, point_t p);
 void wuss__furniture_drag_sausage(wuss_window_t *window,
                                   int            delta_px,

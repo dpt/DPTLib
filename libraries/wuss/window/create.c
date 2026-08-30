@@ -17,6 +17,7 @@ result_t wuss_window_create(wuss_t             *wuss,
                             wuss_colour_t       bg,
                             const wuss_task_t  *task,
                             size2d_t            doc,
+                            size2d_t            min_doc,
                             wuss_window_t     **window)
 {
   wuss_window_t *win;
@@ -39,7 +40,7 @@ result_t wuss_window_create(wuss_t             *wuss,
 
   outline_px      = wuss__outline_px_for(flags);
   titlebar_height = wuss__titlebar_height_for(wuss, flags);
-  wuss__furniture_carve_for(flags, wuss__icon_size_for(wuss, flags), &carve);
+  wuss__furniture_carve_for(flags, wuss__button_size_for(wuss, flags), &carve);
 
   win->wuss       = wuss;
   win->visible.x0 = content->x0 - outline_px;
@@ -76,7 +77,17 @@ result_t wuss_window_create(wuss_t             *wuss,
   win->scroll.x   = 0;
   win->scroll.y   = 0;
   win->doc        = doc;
+  win->min_doc    = min_doc;
+#ifdef WUSS_FURNITURE
   win->state      = wuss_WINDOW_STATE_NONE;
+#endif
+#ifdef WUSS_ICONS
+  win->icons      = NULL;
+  win->nicons     = 0;
+  win->cap_icons  = 0;
+#endif
+
+  box_reset(&win->packed); /* wuss_window_create_placed fills this in after */
 
   if (task != NULL)
     win->task = *task;
@@ -90,6 +101,7 @@ result_t wuss_window_create(wuss_t             *wuss,
   }
   win->bg = bg;
 
+#ifdef WUSS_FURNITURE
   if (title != NULL)
   {
     strncpy(win->title, title, WUSS_TITLE_MAX);
@@ -99,6 +111,9 @@ result_t wuss_window_create(wuss_t             *wuss,
   {
     win->title[0] = '\0';
   }
+#else
+  (void) title;
+#endif
 
   list_add_to_head(&wuss->z_order, &win->link);
 

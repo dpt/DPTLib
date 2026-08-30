@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -18,27 +20,21 @@ result_t palette_create(wuss_t         *wuss,
                         palette_task_t *task)
 {
   wuss_task_t delegate;
-  box_t       box;
 
   task->palette  = palette;
   task->npalette = npalette;
 
   delegate = wuss_task_start(palette_handle, task); /* backdrop for any rounding gap around the grid */
-  box      = (box_t) BOX_POS_SIZE(380, 260, 100, 100);
 
-  return wuss_window_create(wuss,
-                            &box,
-                            "Palette",
-                            wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                            palette_PICO8_BLACK,
-                            &delegate,
-                            box_size(&box),
-                            &task->window);
-}
-
-void palette_destroy(palette_task_t *task)
-{
-  wuss_window_close(task->window);
+  return wuss_window_create_placed(wuss,
+                                   SIZE2D(100, 100),
+                                   "Palette",
+                                   wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                                   palette_PICO8_BLACK,
+                                   &delegate,
+                                   SIZE2D(100, 100),
+                                   SIZE2D(0, 0),
+                                   &task->window);
 }
 
 static result_t palette_redraw(const wuss_event_t *event, void *task_data)
@@ -77,20 +73,20 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
     x   = bounds->x0 - sx + col * cell_w;
     y   = bounds->y0 - sy + row * cell_h;
 
-    screen_draw_rect(scr, x, y, (size2d_t) { cell_w, cell_h }, pc->palette[i]);
+    screen_draw_rect(scr, x, y, SIZE2D(cell_w, cell_h), pc->palette[i]);
   }
 
   return result_OK;
 }
 
-result_t palette_handle(wuss_window_t     *window,
+result_t palette_handle(wuss_window_t      *window,
                         const wuss_event_t *event,
                         void               *task_data)
 {
   if (event->kind == wuss_EVENT_CLOSE)
   {
     wuss_window_close(window);
-    ((palette_task_t *) task_data)->window = NULL;
+    free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
   }
 

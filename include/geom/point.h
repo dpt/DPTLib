@@ -10,4 +10,7 @@ typedef struct point
 }
 point_t;
 
+/** Construct a point_t compound literal. */
+#define POINT(x, y) ((point_t) { (x), (y) })
+
 #endif /* GEOM_POINT_H */

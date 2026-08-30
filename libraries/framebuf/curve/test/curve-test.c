@@ -804,7 +804,7 @@ result_t curve_test_one_format(const char *resources,
     goto Failure;
   }
 
-  bitmap_init(&state.bm, (size2d_t) { state.scr_width, state.scr_height },
+  bitmap_init(&state.bm, SIZE2D(state.scr_width, state.scr_height),
                scr_fmt,
                scr_rowbytes,
                state.palette,

@@ -16,7 +16,9 @@ static void redraw_window(wuss_t        *wuss,
   if (box_intersection(&win->visible, full, &visible_clipped))
     return; /* offscreen */
 
+#ifdef WUSS_FURNITURE
   wuss__furniture_draw(wuss, win, full);
+#endif
 
   wuss__content_box(win, &content);
   if (box_intersection(&content, full, &clipped))
@@ -51,6 +53,17 @@ static void redraw_window(wuss_t        *wuss,
       if (crc != result_OK)
         *rc = crc;
     }
+    
+#ifdef WUSS_ICONS
+    {
+      int k;
+
+      /* draw in array order so later-created icons paint on top, matching
+       * wuss__icon_hit_test's reverse scan */
+      for (k = 0; k < win->nicons; k++)
+        wuss__icon_draw(wuss, win->icons[k], &content, win->scroll);
+    }
+#endif
   }
 }
 
@@ -128,7 +141,7 @@ result_t wuss_redraw_dirty(wuss_t *wuss)
     {
       wuss->scr->clip = wuss->dirty[i];
       screen_draw_rect(wuss->scr,
-                       wuss->dirty[i].x0, wuss->dirty[i].y0, (size2d_t) { wuss->dirty[i].x1 - wuss->dirty[i].x0, wuss->dirty[i].y1 - wuss->dirty[i].y0 },
+                       wuss->dirty[i].x0, wuss->dirty[i].y0, SIZE2D(wuss->dirty[i].x1 - wuss->dirty[i].x0, wuss->dirty[i].y1 - wuss->dirty[i].y0),
                        wuss->palette[wuss->backdrop]);
     }
 

@@ -37,8 +37,6 @@ result_t checker_create(wuss_t         *wuss,
                         const colour_t *palette,
                         checker_task_t *task);
 
-/* destroy the checkerboard windows created by checker_create */
-void checker_destroy(checker_task_t *task);
 
 #endif /* USE_SDL */
 

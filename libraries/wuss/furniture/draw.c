@@ -207,7 +207,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     /* Interior rules: where furniture is carved off the content area's right
      * or bottom edge, the last pixel of the carve is a dividing line. */
     wuss__content_box(window, &content);
-    wuss__furniture_carve_for(window->flags, wuss__icon_size(window), &carve);
+    wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
 
     if (carve.x > 0)
     {
@@ -248,9 +248,9 @@ void wuss__furniture_draw(wuss_t        *wuss,
     border = wuss->palette[wuss->furniture_colours.title.bg]; /* no dedicated outline class; matches titlebar chrome */
 
     wuss->scr->clip = visible_clipped;
-    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y0,     (size2d_t) { width, 1 }, border);
-    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y1 - 1, (size2d_t) { width, 1 }, border);
-    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y0,     (size2d_t) { 1, height }, border);
-    screen_draw_rect(wuss->scr, window->visible.x1 - 1, window->visible.y0,     (size2d_t) { 1, height }, border);
+    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y0,     SIZE2D(width, 1), border);
+    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y1 - 1, SIZE2D(width, 1), border);
+    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y0,     SIZE2D(1, height), border);
+    screen_draw_rect(wuss->scr, window->visible.x1 - 1, window->visible.y0,     SIZE2D(1, height), border);
   }
 }
