@@ -87,6 +87,10 @@ result_t wuss_window_create_placed(wuss_t             *wuss,
 
   if (wuss->layout == NULL)
   {
+    static const box_t margins =  {
+      WUSS_PLACE_GUTTER, WUSS_PLACE_GUTTER, WUSS_PLACE_GUTTER, WUSS_PLACE_GUTTER
+    };
+    
     screen.x0 = 0;
     screen.y0 = 0;
     screen.x1 = wuss->scr->size.w;
@@ -96,6 +100,7 @@ result_t wuss_window_create_placed(wuss_t             *wuss,
     if (wuss->layout == NULL)
       return result_OOM;
 
+    packer_set_margins(wuss->layout, &margins);
     packer_set_gutter(wuss->layout, WUSS_PLACE_GUTTER);
   }
 
