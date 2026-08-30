@@ -277,7 +277,14 @@ static result_t wuss_interactive_test(const char *resources)
   bool             pixel_stress_pending;
   int              i;
 
-  define_pico8_palette(palette);
+  {
+    const char *palette_name = getenv("WUSS_PALETTE"); /* "riscos16" selects the RISC OS 16-colour palette; default is PICO-8 */
+
+    if (palette_name != NULL && strcmp(palette_name, "wimp16") == 0)
+      define_wimp16_palette(palette);
+    else
+      define_pico8_palette(palette);
+  }
 
   leafname = path_join_leafname("digits", "png");
   filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
@@ -354,9 +361,9 @@ static result_t wuss_interactive_test(const char *resources)
     config.palette.scroll.sausages  = palette_PICO8_LIGHT_GREY;
     config.bevel.light              = palette_PICO8_WHITE;
     config.bevel.dark               = palette_PICO8_DARK_GREY;
-    config.backdrop.colour          = palette_PICO8_LIGHT_GREY;
-    config.backdrop.pattern         = screen_PATTERN_SOLID;
-    config.backdrop.pattern_bg      = wuss_NO_BACKGROUND;
+    config.backdrop.colour          = palette_PICO8_WHITE;
+    config.backdrop.pattern         = screen_PATTERN_DOTS;
+    config.backdrop.pattern_bg      = palette_PICO8_LIGHT_GREY;
 
     rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, &wuss);
     if (rc != result_OK)
