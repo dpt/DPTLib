@@ -276,7 +276,7 @@ static result_t wuss_interactive_test(const char *resources)
   g_resources     = resources;
   g_daydream_font = daydream_font;
 
-  rc = launcher_create(wuss, g_launcher_entries, NELEMS(g_launcher_entries), font, palette, &launcher_task);
+  rc = launcher_create(wuss, g_launcher_entries, NELEMS(g_launcher_entries), &launcher_task);
   if (rc != result_OK)
     goto Failure;
 
@@ -429,9 +429,11 @@ static result_t wuss_interactive_test(const char *resources)
     SDL_Delay(1000 / 60);
   }
 
+  /* a task may have been spawned any number of times but each keeps only its
+   * latest window in a shared static; destroy() closes that window if still
+   * open and is a no-op otherwise */
   for (i = 0; i < NELEMS(g_launcher_entries); i++)
-    if (launcher_task.running[i])
-      g_launcher_entries[i].destroy();
+    g_launcher_entries[i].destroy();
   launcher_destroy(&launcher_task);
 
   wuss_destroy(wuss);

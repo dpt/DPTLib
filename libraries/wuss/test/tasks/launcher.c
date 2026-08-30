@@ -12,46 +12,72 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
-#include "geom/point.h"
+
+#include "wuss/icon.h"
 
 #include "launcher.h"
 
-#define LAUNCHER_ROW_HEIGHT 20
+#define LAUNCHER_ROW_HEIGHT 22
 #define LAUNCHER_PAD        4
 #define LAUNCHER_WIDTH      160
 
 result_t launcher_create(wuss_t                 *wuss,
                          const launcher_entry_t *entries,
                          int                     nentries,
-                         bmfont_t               *font,
-                         const colour_t         *palette,
                          launcher_task_t        *task)
 {
-  wuss_task_t delegate;
-  size2d_t    sz;
+  wuss_task_t      delegate;
+  wuss_icon_spec_t specs[LAUNCHER_MAX_ENTRIES];
+  size2d_t         sz;
+  int              i;
+  result_t         rc;
 
   assert(nentries <= LAUNCHER_MAX_ENTRIES);
 
-  task->entries    = entries;
-  task->nentries   = nentries;
-  memset(task->running, 0, sizeof(task->running));
-  task->font       = font;
-  task->fg         = palette[palette_PICO8_BLACK];
-  task->bg         = palette[palette_PICO8_WHITE];
-  task->running_fg = palette[palette_PICO8_LIGHT_GREY];
+  task->entries  = entries;
+  task->nentries = nentries;
+  task->window   = NULL;
+  memset(task->icons, 0, sizeof(task->icons));
 
-  delegate = wuss_task_start(launcher_handle, task); /* launcher_redraw paints its own background */
-  sz       = SIZE2D(LAUNCHER_WIDTH, LAUNCHER_PAD * 2 + nentries * LAUNCHER_ROW_HEIGHT);
+  delegate = wuss_task_start(launcher_handle, task);
+  sz       = SIZE2D(LAUNCHER_WIDTH,
+                    LAUNCHER_PAD * 2 + nentries * LAUNCHER_ROW_HEIGHT);
 
-  return wuss_window_create_placed(wuss,
-                                   sz,
-                                   "Launcher",
-                                   wuss_WINDOW_NO_CLOSE,
-                                   wuss_NO_BACKGROUND,
-                                   &delegate,
-                                   sz,
-                                   SIZE2D(0, 0),
-                                   &task->window);
+  rc = wuss_window_create_placed(wuss,
+                                 sz,
+                                 "Launcher",
+                                 wuss_WINDOW_NO_CLOSE,
+                                 palette_PICO8_LIGHT_GREY,
+                                 &delegate,
+                                 sz,
+                                 SIZE2D(0, 0),
+                                 &task->window);
+  if (rc != result_OK)
+    return rc;
+
+  memset(specs, 0, sizeof(specs));
+
+  for (i = 0; i < nentries; i++)
+  {
+    specs[i].bbox = (box_t) BOX_POS_SIZE(LAUNCHER_PAD,
+                                         LAUNCHER_PAD + i * LAUNCHER_ROW_HEIGHT,
+                                         LAUNCHER_WIDTH - LAUNCHER_PAD * 2,
+                                         LAUNCHER_ROW_HEIGHT - 2);
+    specs[i].type = wuss_ICON_TYPE_BUTTON;
+    specs[i].text = entries[i].name;
+    specs[i].fg   = palette_PICO8_BLACK;
+    specs[i].bg   = palette_PICO8_LIGHT_GREY;
+  }
+
+  rc = wuss_icon_create_array(task->window, specs, nentries, task->icons);
+  if (rc != result_OK)
+  {
+    wuss_window_close(task->window);
+    task->window = NULL;
+    return rc;
+  }
+
+  return result_OK;
 }
 
 void launcher_destroy(launcher_task_t *task)
@@ -59,83 +85,29 @@ void launcher_destroy(launcher_task_t *task)
   wuss_window_close(task->window);
 }
 
-static result_t launcher_redraw(const wuss_event_t *event, void *task_data)
+static result_t launcher_icon(launcher_task_t *lc, const wuss_icon_t *icon)
 {
-  launcher_task_t        *lc;
-  screen_t               *scr;
-  const box_t            *content, *bounds;
-  int                     i, font_width, font_height, sx, sy;
-  point_t                 pos;
-  const launcher_entry_t *entry;
-
-  lc = task_data;
-
-  scr     = event->data.redraw.scr;
-  content = event->data.redraw.content;
-  bounds  = event->data.redraw.bounds;
-  sx      = event->data.redraw.scroll.x;
-  sy      = event->data.redraw.scroll.y;
-
-  screen_draw_rect(scr, content->x0, content->y0, box_size(content), lc->bg);
-
-  bmfont_get_info(lc->font, NULL, &font_height);
+  int i;
 
   for (i = 0; i < lc->nentries; i++)
-  {
-    entry = &lc->entries[i];
-
-    pos.x = bounds->x0 - sx + LAUNCHER_PAD;
-    pos.y = bounds->y0 - sy + LAUNCHER_PAD + i * LAUNCHER_ROW_HEIGHT + (LAUNCHER_ROW_HEIGHT - font_height) / 2;
-
-    bmfont_draw(lc->font, scr, entry->name, (int) strlen(entry->name),
-               lc->running[i] ? lc->running_fg : lc->fg, lc->bg, &pos, NULL);
-  }
+    if (lc->icons[i] == icon)
+      return lc->entries[i].spawn();
 
   return result_OK;
-}
-
-static result_t launcher_mouse(wuss_window_t *window, int y, void *task_data)
-{
-  launcher_task_t        *lc;
-  int                     i;
-  const launcher_entry_t *entry;
-  result_t                rc;
-
-  lc = task_data;
-
-  /* y already arrives in virtual content space, which is how the rows are
-   * laid out, so the scroll offset must not be added again here. */
-  i = (y - LAUNCHER_PAD) / LAUNCHER_ROW_HEIGHT;
-  if (i < 0 || i >= lc->nentries)
-    return result_OK;
-
-  if (lc->running[i])
-    return result_OK;
-
-  entry = &lc->entries[i];
-  rc    = entry->spawn();
-  if (rc == result_OK)
-  {
-    lc->running[i] = true;
-    wuss_window_invalidate_all(window);
-  }
-
-  return rc;
 }
 
 result_t launcher_handle(wuss_window_t      *window,
                          const wuss_event_t *event,
                          void               *task_data)
 {
+  NOT_USED(window);
+
   switch (event->kind)
   {
-  case wuss_EVENT_REDRAW:
-    return launcher_redraw(event, task_data);
-
-  case wuss_EVENT_MOUSE:
-    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+  case wuss_EVENT_ICON:
+    if (event->data.icon.action != wuss_MOUSE_DOWN)
       return result_OK;
-    return launcher_mouse(window, event->data.mouse.point.y, task_data);
+    return launcher_icon(task_data, event->data.icon.icon);
 
   default:
     return result_OK;
