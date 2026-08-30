@@ -19,6 +19,7 @@ struct wuss_icon
   char             *text;    /* owned; never NULL ("" instead) */
   wuss_colour_t     fg;
   wuss_colour_t     bg;
+  screen_pattern_t  pattern; /* wuss_ICON_TYPE_PATTERN tile; 0 otherwise */
   wuss_icon_flags_t flags;
   int               pressed; /* button: 1 while held with the pointer inside */
 };

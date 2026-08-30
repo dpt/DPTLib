@@ -29,6 +29,7 @@ extern "C"
 #endif
 
 #include "base/result.h"
+#include "framebuf/screen.h"
 #include "geom/box.h"
 
 #include "wuss/wuss.h"
@@ -52,10 +53,16 @@ typedef enum wuss_icon_type
   wuss_ICON_TYPE_LABEL = 0, /**< Static text drawn with the window manager's
                              *   font. Not interactive: clicks fall through to
                              *   the task as wuss_EVENT_MOUSE. */
-  wuss_ICON_TYPE_BUTTON     /**< Bevelled rectangle with a centred text label
+  wuss_ICON_TYPE_BUTTON,    /**< Bevelled rectangle with a centred text label
                              *   and pressed-state visual feedback; clicks and
                              *   hovers are delivered to the task as
                              *   wuss_EVENT_ICON. */
+  wuss_ICON_TYPE_PATTERN    /**< Bounding box filled with a repeating two-colour
+                             *   8x8 tile (spec.pattern) in fg/bg, phased to
+                             *   document space so it scrolls rigidly with
+                             *   content. Not interactive: clicks fall through
+                             *   to the task as wuss_EVENT_MOUSE. text is
+                             *   ignored. */
 }
 wuss_icon_type_t;
 
@@ -89,7 +96,11 @@ typedef struct wuss_icon_spec
   wuss_colour_t     bg;    /**< Fill/bevel base colour, as an index into the
                             *   system palette. A label may pass
                             *   wuss_NO_BACKGROUND for text with no fill; a
-                            *   button must pass a real index. */
+                            *   button or pattern icon must pass a real
+                            *   index. */
+  screen_pattern_t  pattern; /**< Tile for wuss_ICON_TYPE_PATTERN; ignored by
+                              *   other types. Zero (screen_PATTERN_SOLID) is a
+                              *   safe default for zero-initialised specs. */
   wuss_icon_flags_t flags; /**< Appearance/behaviour flags. */
 }
 wuss_icon_spec_t;
