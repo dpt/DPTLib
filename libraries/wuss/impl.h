@@ -15,8 +15,12 @@
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 
+#ifdef WUSS_FURNITURE
 #include "furniture.h"
+#endif
+#ifdef WUSS_ICONS
 #include "icon.h"
+#endif
 
 #define WUSS_TITLE_MAX               63
 #define WUSS_DEFAULT_TITLEBAR_HEIGHT 20
@@ -51,13 +55,21 @@ struct wuss
   bmfont_t                   *font;      /* nullable, not owned */
   colour_t                   *palette;   /* owned */
   int                         npalette;
+#ifdef WUSS_FURNITURE
   wuss_palette_t              furniture_colours;
+#endif
+#if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
   wuss_colour_t               bevel_light; /* work-area button top/left edge */
   wuss_colour_t               bevel_dark;  /* work-area button bottom/right edge */
+#endif
   wuss_colour_t               backdrop;  /* wuss_NO_BACKGROUND for none */
+#ifdef WUSS_FURNITURE
   int                         titlebar_height;
+#endif
   list_t                      z_order;   /* anchor; head = topmost window */
+#ifdef WUSS_FURNITURE
   struct wuss__furniture      furniture;
+#endif
   box_t                       dirty[WUSS_MAX_DIRTY]; /* accumulated by wuss_invalidate; reset by a redraw */
   int                         ndirty;
   packer_t                   *layout;    /* owned; occupied screen area for
@@ -65,10 +77,12 @@ struct wuss
                                           * created on first auto-placement */
   point_t                     cascade;   /* next cascade offset, used once the
                                           * layout packer has no room left */
+#ifdef WUSS_ICONS
   wuss_icon_t                *pressed_icon; /* button icon held down, NULL when
                                             * idle; released on any MOUSE_UP
                                             * even if a new window now covers
                                             * its owner */
+#endif
 };
 
 struct wuss_window
@@ -85,22 +99,43 @@ struct wuss_window
   size2d_t            doc;    /* virtual document extent, set at creation */
   size2d_t            min_doc; /* resize floor, set at creation; see
                                 * wuss__min_content */
+#ifdef WUSS_FURNITURE
   wuss_window_state_t state;        /* see wuss_window_state_t */
+#endif
   box_t               packed;       /* region wuss_window_create_placed took
                                      * out of wuss->layout (footprint + gutter),
                                      * to give back on close/move; empty if not
                                      * auto-placed or already released */
+#ifdef WUSS_FURNITURE
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];
+#endif
+#ifdef WUSS_ICONS
   wuss_icon_t       **icons;        /* owned; array of owned icon pointers */
   int                 nicons;
   int                 cap_icons;
+#endif
 };
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
+
+/* clamp "desired" to the window's scrollable range; step the current offset
+ * by "delta" and apply it. Core (furniture-independent) -- used by the wheel
+ * and, when built, the scrollbar furniture. */
+point_t wuss__scroll_clamp(const wuss_window_t *window, point_t desired);
+void    wuss__scroll_step(wuss_window_t *window, point_t delta);
+
+#ifdef WUSS_FURNITURE
 void            wuss__titlebar_box(const wuss_window_t *window, box_t *out);
 void            wuss__close_box(const wuss_window_t *window, box_t *out);
 void            wuss__content_box(const wuss_window_t *window, box_t *out);
+#else
+/* No furniture: the content area is the whole visible footprint. */
+static inline void wuss__content_box(const wuss_window_t *window, box_t *out)
+{
+  *out = window->visible;
+}
+#endif
 void            wuss__invalidate_clipped(wuss_window_t *window,
                                          const box_t   *box);
 void            wuss__invalidate_minus(wuss_t      *wuss,
@@ -166,6 +201,7 @@ static inline void wuss__min_content(const wuss_window_t *window, size2d_t *min)
                                                           WUSS_MIN_CONTENT));
 }
 
+#ifdef WUSS_FURNITURE
 static inline int wuss__titlebar_height_for(const wuss_t       *wuss,
                                             wuss_window_flags_t flags)
 {
@@ -249,5 +285,56 @@ static inline void wuss__furniture_carve_for(wuss_window_flags_t flags,
   if (carve->y > 0)
     carve->y += WUSS_DIVIDER_PX;
 }
+#else /* !WUSS_FURNITURE */
+/* No furniture: every geometry helper collapses to "no chrome", so the core
+ * window create/move/resize maths still compiles and yields visible ==
+ * content. */
+static inline int wuss__titlebar_height_for(const wuss_t       *wuss,
+                                            wuss_window_flags_t flags)
+{
+  (void) wuss; (void) flags;
+  return 0;
+}
+
+static inline int wuss__titlebar_height(const wuss_window_t *window)
+{
+  (void) window;
+  return 0;
+}
+
+static inline int wuss__outline_px_for(wuss_window_flags_t flags)
+{
+  (void) flags;
+  return 0;
+}
+
+static inline int wuss__outline_px(const wuss_window_t *window)
+{
+  (void) window;
+  return 0;
+}
+
+static inline int wuss__button_size_for(const wuss_t       *wuss,
+                                        wuss_window_flags_t flags)
+{
+  (void) wuss; (void) flags;
+  return 0;
+}
+
+static inline int wuss__button_size(const wuss_window_t *window)
+{
+  (void) window;
+  return 0;
+}
+
+static inline void wuss__furniture_carve_for(wuss_window_flags_t flags,
+                                             int                 button_size,
+                                             point_t            *carve)
+{
+  (void) flags; (void) button_size;
+  carve->x = 0;
+  carve->y = 0;
+}
+#endif /* WUSS_FURNITURE */
 
 #endif /* IMPL_H */

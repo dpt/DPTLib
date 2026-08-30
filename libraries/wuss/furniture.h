@@ -105,8 +105,6 @@ int  wuss__hscroll_well_px(const wuss_window_t *window);
 
 /* actions */
 void wuss__furniture_toggle_size(wuss_window_t *window);
-void wuss__furniture_scroll_step(wuss_window_t *window, point_t delta);
-point_t wuss__scroll_clamp(const wuss_window_t *window, point_t desired);
 void wuss__furniture_drag_resize(wuss_window_t *window, point_t p);
 void wuss__furniture_drag_sausage(wuss_window_t *window,
                                   int            delta_px,

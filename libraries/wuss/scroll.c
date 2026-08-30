@@ -5,7 +5,6 @@
 result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
 {
   wuss_window_t *win;
-  box_t          titlebar;
   int            x, y;
 
   x = p.x;
@@ -18,9 +17,15 @@ result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
   if (win == NULL)
     return result_OK;
 
-  wuss__titlebar_box(win, &titlebar);
-  if (box_contains_point(&titlebar, x, y))
-    return result_OK;
+#ifdef WUSS_FURNITURE
+  {
+    box_t titlebar;
+
+    wuss__titlebar_box(win, &titlebar);
+    if (box_contains_point(&titlebar, x, y))
+      return result_OK;
+  }
+#endif
 
   if (win->task.handle != NULL)
   {
@@ -36,12 +41,12 @@ result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
     event.data.scroll.point.y = y - content.y0 + win->scroll.y;
     event.data.scroll.delta   = delta;
 
-    wuss__furniture_scroll_step(win, POINT(0, delta));
+    wuss__scroll_step(win, POINT(0, delta));
 
     return win->task.handle(win, &event, win->task.task_data);
   }
 
-  wuss__furniture_scroll_step(win, POINT(0, delta));
+  wuss__scroll_step(win, POINT(0, delta));
 
   return result_OK;
 }

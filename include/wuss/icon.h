@@ -33,10 +33,15 @@ extern "C"
 
 #include "wuss/wuss.h"
 
+/* The in-content icon subsystem is a compile-time option (CMake WUSS_ICONS).
+ * With it off the library has no wuss_icon_* symbols, so this header body is
+ * skipped. */
+#ifdef WUSS_ICONS
+
 /* ----------------------------------------------------------------------- */
 
-/** An opaque work-area icon handle, owned by the window it is created on. */
-typedef struct wuss_icon wuss_icon_t;
+/* wuss_icon_t (opaque, owned by the window it is created on) is forward-declared
+ * in wuss.h so wuss_event_t can name it regardless of this option. */
 
 /**
  * What an icon looks like and how it behaves. The enum is left open so sprite
@@ -189,6 +194,8 @@ const char *wuss_icon_get_text(const wuss_icon_t *icon);
  * \return The owning window.
  */
 wuss_window_t *wuss_icon_get_window(const wuss_icon_t *icon);
+
+#endif /* WUSS_ICONS */
 
 #ifdef __cplusplus
 }

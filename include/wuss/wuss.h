@@ -41,6 +41,10 @@ typedef struct wuss wuss_t;
 /** A window. Full API is in window.h. */
 typedef struct wuss_window wuss_window_t;
 
+/** A work-area icon. Full API is in icon.h, and is compiled only when the
+ * library is built with the WUSS_ICONS option on. */
+typedef struct wuss_icon wuss_icon_t;
+
 /**
  * Mouse buttons, RISC OS-style: Select is the primary action, Adjust the
  * secondary action, Menu pops up a menu.
@@ -80,7 +84,8 @@ typedef int wuss_colour_t;
 
 /** Furniture chrome colours, one entry per class of furniture. Title is
  * the only two-tone class (fill + text); the rest are drawn as a single
- * flat colour. Each value is an index into the system palette (see
+ * flat colour. Ignored when the library is built with WUSS_FURNITURE off.
+ * Each value is an index into the system palette (see
  * wuss_create). */
 typedef struct wuss_palette
 {
@@ -104,7 +109,13 @@ typedef struct wuss_palette
 }
 wuss_palette_t;
 
-/** Per-window appearance flags, combinable with bitwise OR. */
+/**
+ * Per-window appearance flags, combinable with bitwise OR.
+ *
+ * \note When the library is built with the WUSS_FURNITURE CMake option off,
+ *       every window is chromeless regardless of these flags and the
+ *       wuss_WINDOW_NO_* bits are ignored.
+ */
 typedef enum wuss_window_flags
 {
   /** Default: every furniture region drawn. */
@@ -165,23 +176,29 @@ typedef enum wuss_zorder
 }
 wuss_zorder_t;
 
-/** Optional creation-time configuration. */
+/**
+ * Optional creation-time configuration.
+ *
+ * \note titlebar_height and palette are ignored when the library is built with
+ *       WUSS_FURNITURE off; bevel is ignored when built with both
+ *       WUSS_FURNITURE and WUSS_ICONS off. backdrop is always honoured.
+ */
 typedef struct wuss_config
 {
   /**
    * Titlebar height in pixels, or 0 to derive from font metrics (or a built-in
-   * fallback if no font).
+   * fallback if no font). Ignored when WUSS_FURNITURE is off.
    */
   int            titlebar_height;
 
-  /** Furniture chrome colours. */
+  /** Furniture chrome colours. Ignored when WUSS_FURNITURE is off. */
   wuss_palette_t palette;
 
   /**
    * Bevelled work-area button edge shades, as indices into the system palette:
    * light on the top/left edges, dark on the bottom/right (swapped when the
    * button is pressed). Both default to the titlebar fill colour when config is
-   * NULL.
+   * NULL. Ignored when both WUSS_FURNITURE and WUSS_ICONS are off.
    */
   struct
   {

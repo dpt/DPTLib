@@ -78,10 +78,14 @@ result_t wuss_window_create(wuss_t             *wuss,
   win->scroll.y   = 0;
   win->doc        = doc;
   win->min_doc    = min_doc;
+#ifdef WUSS_FURNITURE
   win->state      = wuss_WINDOW_STATE_NONE;
+#endif
+#ifdef WUSS_ICONS
   win->icons      = NULL;
   win->nicons     = 0;
   win->cap_icons  = 0;
+#endif
 
   box_reset(&win->packed); /* wuss_window_create_placed fills this in after */
 
@@ -97,6 +101,7 @@ result_t wuss_window_create(wuss_t             *wuss,
   }
   win->bg = bg;
 
+#ifdef WUSS_FURNITURE
   if (title != NULL)
   {
     strncpy(win->title, title, WUSS_TITLE_MAX);
@@ -106,6 +111,9 @@ result_t wuss_window_create(wuss_t             *wuss,
   {
     win->title[0] = '\0';
   }
+#else
+  (void) title;
+#endif
 
   list_add_to_head(&wuss->z_order, &win->link);
 

@@ -45,7 +45,11 @@ static void next_cascade(wuss_t *wuss, int fw, int fh, point_t *pos)
 
   scr_w = wuss->scr->size.w;
   scr_h = wuss->scr->size.h;
+#ifdef WUSS_FURNITURE
   step  = wuss->titlebar_height;
+#else
+  step  = 0;
+#endif
   if (step <= 0)
     step = WUSS_DEFAULT_TITLEBAR_HEIGHT;
 

@@ -21,11 +21,17 @@ result_t wuss_create(screen_t            *scr,
                      wuss_t             **wuss)
 {
   wuss_t        *w;
+#ifdef WUSS_FURNITURE
   wuss_palette_t pal;
   wuss_colour_t  bg, fg;
+#endif
+#if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
   wuss_colour_t  blight, bdark;
+#endif
+#ifdef WUSS_FURNITURE
   int            font_height;
   int            font_width;
+#endif
 
   assert(scr  != NULL);
   assert(wuss != NULL);
@@ -63,6 +69,7 @@ result_t wuss_create(screen_t            *scr,
     w->npalette = palette_PICO8__LENGTH;
   }
 
+#ifdef WUSS_FURNITURE
   if (config != NULL)
   {
     pal = config->palette;
@@ -136,13 +143,49 @@ result_t wuss_create(screen_t            *scr,
   {
     w->titlebar_height = WUSS_DEFAULT_TITLEBAR_HEIGHT;
   }
+#else /* !WUSS_FURNITURE */
+  w->backdrop = (config != NULL) ? config->backdrop : wuss_NO_BACKGROUND;
+  if (w->backdrop != wuss_NO_BACKGROUND &&
+      (w->backdrop < 0 || w->backdrop >= w->npalette))
+  {
+    free(w->palette);
+    free(w);
+    return result_WUSS_BAD_COLOUR;
+  }
+
+#ifdef WUSS_ICONS
+  if (config != NULL)
+  {
+    blight = config->bevel.light;
+    bdark  = config->bevel.dark;
+  }
+  else
+  {
+    blight = 0;
+    bdark  = 0;
+  }
+  if (blight < 0 || blight >= w->npalette ||
+      bdark  < 0 || bdark  >= w->npalette)
+  {
+    free(w->palette);
+    free(w);
+    return result_WUSS_BAD_COLOUR;
+  }
+  w->bevel_light = blight;
+  w->bevel_dark  = bdark;
+#endif
+#endif /* WUSS_FURNITURE */
 
   w->scr                = scr;
   w->font               = font;
+#ifdef WUSS_FURNITURE
   w->furniture.dragging = NULL;
-  w->pressed_icon       = NULL;
   w->furniture.drag.x   = 0;
   w->furniture.drag.y   = 0;
+#endif
+#ifdef WUSS_ICONS
+  w->pressed_icon       = NULL;
+#endif
 
   w->ndirty = 0;
 
