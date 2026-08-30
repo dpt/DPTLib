@@ -140,6 +140,7 @@ result_t wuss_create(screen_t            *scr,
   w->scr                = scr;
   w->font               = font;
   w->furniture.dragging = NULL;
+  w->pressed_icon       = NULL;
   w->furniture.drag.x   = 0;
   w->furniture.drag.y   = 0;
 

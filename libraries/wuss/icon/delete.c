@@ -18,6 +18,9 @@ void wuss_icon_delete(wuss_icon_t *icon)
 
   window = icon->window;
 
+  if (window->wuss->pressed_icon == icon)
+    window->wuss->pressed_icon = NULL;
+
   wuss__icon_invalidate(icon);
 
   for (i = 0; i < window->nicons; i++)
