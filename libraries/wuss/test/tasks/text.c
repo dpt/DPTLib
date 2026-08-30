@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #include <ctype.h>
 #include <math.h>
 #include <string.h>
@@ -58,11 +60,6 @@ result_t text_create(wuss_t         *wuss,
                                  &task->window);
 
   return rc;
-}
-
-void text_destroy(text_task_t *task)
-{
-  wuss_window_close(task->window);
 }
 
 static result_t text_redraw(const wuss_event_t *event, void *task_data)
@@ -183,7 +180,7 @@ result_t text_handle(wuss_window_t     *window,
 
   case wuss_EVENT_CLOSE:
     wuss_window_close(window);
-    tcx->window = NULL;
+    free(tcx); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
   case wuss_EVENT_IDLE:

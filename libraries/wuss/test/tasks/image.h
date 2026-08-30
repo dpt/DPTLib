@@ -26,8 +26,6 @@ result_t image_create(wuss_t         *wuss,
                       const char     *path,
                       image_task_t   *task);
 
-/* destroy the window and free the bitmap loaded by image_create */
-void image_destroy(image_task_t *task);
 
 #endif /* USE_SDL */
 

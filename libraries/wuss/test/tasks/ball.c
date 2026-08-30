@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -39,10 +41,6 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
                                    &task->window);
 }
 
-void ball_destroy(ball_task_t *task)
-{
-  wuss_window_close(task->window);
-}
 
 static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 {
@@ -201,7 +199,7 @@ result_t ball_handle(wuss_window_t     *window,
 
   case wuss_EVENT_CLOSE:
     wuss_window_close(window);
-    bc->window = NULL;
+    free(bc); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
   default:

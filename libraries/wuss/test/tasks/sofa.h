@@ -45,8 +45,6 @@ wuss_event_fn_t sofa_handle;
 /* create the sofa window against the given wuss instance */
 result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task);
 
-/* destroy the sofa window created by sofa_create */
-void sofa_destroy(sofa_task_t *task);
 
 #endif /* USE_SDL */
 

@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #include <stddef.h>
 
 #ifdef FORTIFY
@@ -49,11 +51,6 @@ result_t curve_create(wuss_t         *wuss,
                                    SIZE2D(220, 160),
                                    SIZE2D(0, 0),
                                    &task->window);
-}
-
-void curve_destroy(curve_task_t *task)
-{
-  wuss_window_close(task->window);
 }
 
 static int blob_hit(const point_t *p, int x, int y)
@@ -181,7 +178,7 @@ result_t curve_handle(wuss_window_t      *window,
 
   case wuss_EVENT_CLOSE:
     wuss_window_close(window);
-    task->window = NULL;
+    free(task); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
   default:

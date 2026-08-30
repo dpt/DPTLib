@@ -42,8 +42,6 @@ result_t porter_duff_create(wuss_t             *wuss,
                             const char         *resources,
                             porter_duff_task_t *task);
 
-/* destroy the window and free the bitmaps allocated by porter_duff_create */
-void porter_duff_destroy(porter_duff_task_t *task);
 
 #endif /* USE_SDL */
 

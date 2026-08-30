@@ -218,15 +218,6 @@ free_a:
   return rc;
 }
 
-void porter_duff_destroy(porter_duff_task_t *task)
-{
-  wuss_window_close(task->window);
-  free(task->dst.base);
-  free(task->src.base);
-  free(task->b.base);
-  free(task->a.base);
-}
-
 /* ----------------------------------------------------------------------- */
 
 /* Triangle ramp: 0 at the start of the rule's turn, 255 at its midpoint, back
@@ -403,7 +394,11 @@ result_t porter_duff_handle(wuss_window_t      *window,
 
   case wuss_EVENT_CLOSE:
     wuss_window_close(window);
-    pd->window = NULL;
+    free(pd->dst.base);
+    free(pd->src.base);
+    free(pd->b.base);
+    free(pd->a.base);
+    free(pd); /* calloc'd per instance by the spawner */
     return result_OK;
 
   default:

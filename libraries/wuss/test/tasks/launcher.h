@@ -11,14 +11,12 @@
 #include "wuss/window.h"
 
 typedef result_t (*launcher_spawn_fn_t)(void);
-typedef void     (*launcher_destroy_fn_t)(void);
 
 /* one clickable row */
 typedef struct launcher_entry
 {
-  const char           *name;
-  launcher_spawn_fn_t   spawn;
-  launcher_destroy_fn_t destroy;
+  const char         *name;
+  launcher_spawn_fn_t spawn;
 }
 launcher_entry_t;
 

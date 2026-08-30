@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -36,11 +38,6 @@ result_t blank_create(wuss_t *wuss, int npalette, blank_task_t *task)
                                    &task->window);
 }
 
-void blank_destroy(blank_task_t *task)
-{
-  wuss_window_close(task->window);
-}
-
 static result_t blank_idle(void *task_data)
 {
   blank_task_t *bc;
@@ -65,7 +62,12 @@ result_t blank_handle(wuss_window_t     *window,
                       const wuss_event_t *event,
                       void               *task_data)
 {
-  NOT_USED(window);
+  if (event->kind == wuss_EVENT_CLOSE)
+  {
+    wuss_window_close(window);
+    free(task_data); /* calloc'd per instance by the spawner */
+    return result_OK;
+  }
 
   if (event->kind != wuss_EVENT_IDLE)
     return result_OK;

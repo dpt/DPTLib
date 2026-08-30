@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -60,12 +62,6 @@ result_t checker_create(wuss_t         *wuss,
   }
 
   return result_OK;
-}
-
-void checker_destroy(checker_task_t *task)
-{
-  wuss_window_close(task->window);
-  wuss_window_close(task->window2);
 }
 
 static result_t checker_redraw(wuss_window_t      *window,
@@ -169,6 +165,9 @@ result_t checker_handle(wuss_window_t     *window,
       cc->window2 = NULL;
     else
       cc->window = NULL;
+    /* one calloc'd block backs both windows; free it once both are gone */
+    if (cc->window == NULL && cc->window2 == NULL)
+      free(cc);
     return result_OK;
 
   default:
