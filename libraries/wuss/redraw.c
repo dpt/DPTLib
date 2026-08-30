@@ -16,7 +16,9 @@ static void redraw_window(wuss_t        *wuss,
   if (box_intersection(&win->visible, full, &visible_clipped))
     return; /* offscreen */
 
+#ifdef WUSS_FURNITURE
   wuss__furniture_draw(wuss, win, full);
+#endif
 
   wuss__content_box(win, &content);
   if (box_intersection(&content, full, &clipped))
@@ -52,6 +54,7 @@ static void redraw_window(wuss_t        *wuss,
         *rc = crc;
     }
     
+#ifdef WUSS_ICONS
     {
       int k;
 
@@ -60,6 +63,7 @@ static void redraw_window(wuss_t        *wuss,
       for (k = 0; k < win->nicons; k++)
         wuss__icon_draw(wuss, win->icons[k], &content, win->scroll);
     }
+#endif
   }
 }
 

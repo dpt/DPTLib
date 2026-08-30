@@ -78,10 +78,12 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
      * as already-valid and so never repaint. Force its old position dirty
      * too. Shrinking needs no such help: old furniture positions only ever
      * land outside the new, smaller box, already covered above. */
+#ifdef WUSS_FURNITURE
     if (window->visible.x1 - window->visible.x0 > before.x1 - before.x0 ||
         window->visible.y1 - window->visible.y0 > before.y1 - before.y0)
       wuss__furniture_invalidate_for(window, &before);
     wuss__furniture_invalidate(window);
+#endif
   }
 
   return result_OK;

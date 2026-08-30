@@ -30,6 +30,8 @@ endif(CCACHE_FOUND)
 option(USE_FORTIFY "Use Fortify" OFF)
 option(USE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
+option(WUSS_FURNITURE "Build the wuss window-furniture subsystem" ON)
+option(WUSS_ICONS "Build the wuss in-content icon subsystem" ON)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
 if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
@@ -112,10 +114,13 @@ set(PUBLIC_HEADERS
     include/utils/maths.h
     include/utils/pack.h
     include/utils/primes.h
-    include/wuss/icon.h
     include/wuss/task.h
     include/wuss/window.h
     include/wuss/wuss.h)
+
+if(WUSS_ICONS)
+    list(APPEND PUBLIC_HEADERS include/wuss/icon.h)
+endif()
 
 # The public headers must be set as properties of the library, not as
 # target_sources. The quoting is essential.
@@ -319,40 +324,10 @@ set(UTILS_SOURCES
     libraries/utils/pack/unpack.c
     libraries/utils/primes/primes.c)
 
-set(WUSS_SOURCES
+set(WUSS_CORE_SOURCES
     libraries/wuss/create.c
     libraries/wuss/destroy.c
-    libraries/wuss/furniture/back-box.c
-    libraries/wuss/furniture/close-box.c
-    libraries/wuss/furniture/content-box.c
-    libraries/wuss/furniture/drag-resize.c
-    libraries/wuss/furniture/draw.c
-    libraries/wuss/furniture/hit-test.c
-    libraries/wuss/furniture/hscroll-box.c
-    libraries/wuss/furniture/invalidate.c
-    libraries/wuss/furniture/resize-box.c
-    libraries/wuss/furniture/scroll-action.c
-    libraries/wuss/furniture/titlebar-box.c
-    libraries/wuss/furniture/toggle-action.c
-    libraries/wuss/furniture/toggle-box.c
-    libraries/wuss/furniture/vscroll-box.c
-    libraries/wuss/furniture.h
     libraries/wuss/get-font.c
-    libraries/wuss/icon/create.c
-    libraries/wuss/icon/create-array.c
-    libraries/wuss/icon/delete.c
-    libraries/wuss/icon/draw.c
-    libraries/wuss/icon/free.c
-    libraries/wuss/icon/get-bbox.c
-    libraries/wuss/icon/get-text.c
-    libraries/wuss/icon/get-type.c
-    libraries/wuss/icon/get-window.c
-    libraries/wuss/icon/hit-test.c
-    libraries/wuss/icon/invalidate.c
-    libraries/wuss/icon/screen-box.c
-    libraries/wuss/icon/set-hidden.c
-    libraries/wuss/icon/set-text.c
-    libraries/wuss/icon.h
     libraries/wuss/idle.c
     libraries/wuss/impl.h
     libraries/wuss/invalidate.c
@@ -360,6 +335,7 @@ set(WUSS_SOURCES
     libraries/wuss/mouse-move.c
     libraries/wuss/redraw.c
     libraries/wuss/scroll.c
+    libraries/wuss/scroll-step.c
     libraries/wuss/task/start.c
     libraries/wuss/task/stop.c
     libraries/wuss/window/at.c
@@ -375,6 +351,48 @@ set(WUSS_SOURCES
     libraries/wuss/window/restack.c
     libraries/wuss/window/set-background.c
     libraries/wuss/window/set-scroll.c)
+
+set(WUSS_FURNITURE_SOURCES
+    libraries/wuss/furniture/back-box.c
+    libraries/wuss/furniture/close-box.c
+    libraries/wuss/furniture/content-box.c
+    libraries/wuss/furniture/drag-resize.c
+    libraries/wuss/furniture/draw.c
+    libraries/wuss/furniture/hit-test.c
+    libraries/wuss/furniture/hscroll-box.c
+    libraries/wuss/furniture/invalidate.c
+    libraries/wuss/furniture/resize-box.c
+    libraries/wuss/furniture/scroll-action.c
+    libraries/wuss/furniture/titlebar-box.c
+    libraries/wuss/furniture/toggle-action.c
+    libraries/wuss/furniture/toggle-box.c
+    libraries/wuss/furniture/vscroll-box.c
+    libraries/wuss/furniture.h)
+
+set(WUSS_ICON_SOURCES
+    libraries/wuss/icon/create.c
+    libraries/wuss/icon/create-array.c
+    libraries/wuss/icon/delete.c
+    libraries/wuss/icon/draw.c
+    libraries/wuss/icon/free.c
+    libraries/wuss/icon/get-bbox.c
+    libraries/wuss/icon/get-text.c
+    libraries/wuss/icon/get-type.c
+    libraries/wuss/icon/get-window.c
+    libraries/wuss/icon/hit-test.c
+    libraries/wuss/icon/invalidate.c
+    libraries/wuss/icon/screen-box.c
+    libraries/wuss/icon/set-hidden.c
+    libraries/wuss/icon/set-text.c
+    libraries/wuss/icon.h)
+
+set(WUSS_SOURCES ${WUSS_CORE_SOURCES})
+if(WUSS_FURNITURE)
+    list(APPEND WUSS_SOURCES ${WUSS_FURNITURE_SOURCES})
+endif()
+if(WUSS_ICONS)
+    list(APPEND WUSS_SOURCES ${WUSS_ICON_SOURCES})
+endif()
 
 set(ALL_SOURCES
     ${PUBLIC_HEADERS}
@@ -424,6 +442,13 @@ endif()
 
 if(DPTLIB_IMAGES_READ_ONLY)
     target_compile_definitions(DPTLib PRIVATE DPTLIB_IMAGES_READ_ONLY)
+endif()
+
+if(WUSS_FURNITURE)
+    target_compile_definitions(DPTLib PUBLIC WUSS_FURNITURE)
+endif()
+if(WUSS_ICONS)
+    target_compile_definitions(DPTLib PUBLIC WUSS_ICONS)
 endif()
 
 if(NOT TARGET_RISCOS)
@@ -567,14 +592,20 @@ if(BUILD_TESTS)
         libraries/wuss/test/tasks/checker.c
         libraries/wuss/test/tasks/curve.c
         libraries/wuss/test/tasks/gradient.c
-        libraries/wuss/test/tasks/icons.c
         libraries/wuss/test/tasks/image.c
-        libraries/wuss/test/tasks/launcher.c
         libraries/wuss/test/tasks/palette.c
         libraries/wuss/test/tasks/porter-duff.c
         libraries/wuss/test/tasks/sofa.c
         libraries/wuss/test/tasks/text.c
         libraries/wuss/test/wuss-test.c)
+
+    # The icon-driven launcher and the icons task only build when both wuss
+    # subsystems are present; the SDL interactive driver needs them too.
+    if(WUSS_FURNITURE AND WUSS_ICONS)
+        list(APPEND TEST_SOURCES
+            libraries/wuss/test/tasks/icons.c
+            libraries/wuss/test/tasks/launcher.c)
+    endif()
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
 
@@ -599,6 +630,10 @@ if(BUILD_TESTS)
     endif()
 
     if(BUILD_SDL_TESTS)
+        if(NOT (WUSS_FURNITURE AND WUSS_ICONS))
+            message(FATAL_ERROR "BUILD_SDL_TESTS requires WUSS_FURNITURE and WUSS_ICONS")
+        endif()
+
         find_package(SDL3 REQUIRED)
         find_package(SDL3_image REQUIRED)
 

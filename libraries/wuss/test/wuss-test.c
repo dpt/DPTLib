@@ -647,6 +647,8 @@ static int dirty_union_area(wuss_t *wuss, const box_t *bounds)
   return area;
 }
 
+#if defined(WUSS_FURNITURE) && defined(WUSS_ICONS)
+
 result_t wuss_test(const char *resources)
 {
   result_t       rc;
@@ -3114,3 +3116,175 @@ Failure:
 
   return result_TEST_FAILED;
 }
+
+#else /* !(WUSS_FURNITURE && WUSS_ICONS) */
+
+/* Compact core test for builds with furniture and/or icons compiled out.
+ * Exercises the chromeless window path: create, move, z-order, invalidate,
+ * redraw and programmatic scroll. No titlebar, no scrollbars, no icons. */
+result_t wuss_test(const char *resources)
+{
+  result_t       rc;
+  int            rowbytes;
+  void          *pixels;
+  bitmap_t       bm;
+  screen_t       scr;
+  wuss_t        *wuss;
+  test_task_t    tc_a, tc_b;
+  wuss_task_t    delegate_a, delegate_b;
+  box_t          box_a, box_b, content;
+  wuss_window_t *win_a, *win_b, *hit;
+  point_t        scroll;
+
+  /* Force a chromeless window even in a build that still has furniture, so the
+   * assertions below (content box == visible box) hold in every config. */
+  const wuss_window_flags_t chromeless =
+    wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE | wuss_WINDOW_NO_CLOSE |
+    wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
+    wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE;
+
+  NOT_USED(resources);
+
+  rowbytes = 200 * 4;
+  pixels = malloc((size_t) rowbytes * 200);
+  if (pixels == NULL)
+    goto Failure;
+
+  rc = bitmap_init(&bm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes, NULL,
+                   pixels);
+  if (rc != result_OK)
+    goto Failure;
+
+  screen_for_bitmap(&scr, &bm);
+
+  printf("test: wuss_create (core)\n");
+
+  rc = wuss_create(&scr, NULL, NULL, 0, NULL, &wuss);
+  if (rc != result_OK)
+    goto Failure;
+
+  printf("test: window_create too small\n");
+
+  box_a.x0 = 0; box_a.y0 = 0; box_a.x1 = 100; box_a.y1 = 0;
+  rc = wuss_window_create(wuss, &box_a, "toosmall", wuss_WINDOW_NONE,
+                          wuss_NO_BACKGROUND, NULL, box_size(&box_a),
+                          SIZE2D(0, 0), &win_a);
+  if (rc != result_WUSS_TOO_SMALL)
+    goto Failure;
+
+  printf("test: create overlapping windows A and B\n");
+
+  memset(&tc_a, 0, sizeof(tc_a));
+  memset(&tc_b, 0, sizeof(tc_b));
+  delegate_a.handle = test_handle; delegate_a.task_data = &tc_a;
+  delegate_b.handle = test_handle; delegate_b.task_data = &tc_b;
+
+  box_a.x0 = 0; box_a.y0 = 0; box_a.x1 = 100; box_a.y1 = 100;
+  rc = wuss_window_create(wuss, &box_a, "A", chromeless,
+                          wuss_NO_BACKGROUND, &delegate_a, SIZE2D(400, 400),
+                          SIZE2D(0, 0), &win_a);
+  if (rc != result_OK)
+    goto Failure;
+
+  box_b.x0 = 50; box_b.y0 = 50; box_b.x1 = 150; box_b.y1 = 150;
+  rc = wuss_window_create(wuss, &box_b, "B", chromeless,
+                          wuss_NO_BACKGROUND, &delegate_b, SIZE2D(400, 400),
+                          SIZE2D(0, 0), &win_b);
+  if (rc != result_OK)
+    goto Failure;
+
+  /* With furniture off the content box is the visible box verbatim. */
+  wuss_window_get_content_bounds(win_a, &content);
+  if (content.x0 != 0 || content.y0 != 0 ||
+      content.x1 != 100 || content.y1 != 100)
+    goto Failure;
+
+  printf("test: redraw delivers REDRAW events\n");
+
+  wuss_redraw(wuss);
+  if (tc_a.redraw_count == 0 || tc_b.redraw_count == 0)
+    goto Failure;
+
+  printf("test: z-order - click routes to topmost window\n");
+
+  /* B was created last so it is on top over the overlap at (75,75). */
+  rc = wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_DOWN, &hit);
+  if (rc != result_OK || hit != win_b)
+    goto Failure;
+  if (tc_b.mouse_count != 1 || tc_a.mouse_count != 0)
+    goto Failure;
+
+  wuss_window_restack(win_a, wuss_ZORDER_FRONT);
+  rc = wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_DOWN, &hit);
+  if (rc != result_OK || hit != win_a)
+    goto Failure;
+  if (tc_a.mouse_count != 1)
+    goto Failure;
+
+  printf("test: mouse point is in document coordinates\n");
+
+  if (tc_a.last_x != 75 || tc_a.last_y != 75)
+    goto Failure;
+
+  printf("test: window_move\n");
+
+  wuss_window_move(win_a, POINT(20, 20));
+  wuss_window_get_content_bounds(win_a, &content);
+  if (content.x0 != 20 || content.y0 != 20)
+    goto Failure;
+
+  printf("test: programmatic scroll offsets document coordinates\n");
+
+  wuss_window_set_scroll(win_a, POINT(10, 5));
+  wuss_window_get_scroll(win_a, &scroll);
+  if (scroll.x != 10 || scroll.y != 5)
+    goto Failure;
+
+  rc = wuss_mouse_click(wuss, POINT(20, 20), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_DOWN, &hit);
+  if (rc != result_OK || hit != win_a)
+    goto Failure;
+  if (tc_a.last_x != 10 || tc_a.last_y != 5)
+    goto Failure;
+
+  printf("test: wheel scroll delivers SCROLL event and moves offset\n");
+
+  wuss_scroll(wuss, POINT(20, 20), 8, &hit);
+  if (hit != win_a)
+    goto Failure;
+  wuss_window_get_scroll(win_a, &scroll);
+  if (scroll.y != 13)
+    goto Failure;
+
+  printf("test: invalidate marks dirty region\n");
+
+  wuss_window_invalidate(win_a, NULL);
+  if (wuss_get_dirty_count(wuss) == 0)
+    goto Failure;
+  wuss_redraw(wuss);
+  if (wuss_get_dirty_count(wuss) != 0)
+    goto Failure;
+
+  printf("test: window_close delivers CLOSE and drops the window\n");
+
+  wuss_window_close(win_b);
+  rc = wuss_mouse_click(wuss, POINT(140, 140), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_DOWN, &hit);
+  if (rc != result_OK || hit != NULL)
+    goto Failure;
+
+  wuss_destroy(wuss);
+  free(pixels);
+
+  return result_TEST_PASSED;
+
+Failure:
+
+  printf("wuss_test: failed\n");
+
+  return result_TEST_FAILED;
+}
+
+#endif /* WUSS_FURNITURE && WUSS_ICONS */

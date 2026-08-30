@@ -10,6 +10,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   x = p.x;
   y = p.y;
 
+#ifdef WUSS_FURNITURE
   if (wuss->furniture.dragging != NULL)
   {
     win = wuss->furniture.dragging;
@@ -38,6 +39,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
 
     return result_OK;
   }
+#endif
 
   win = wuss__window_at(wuss, p);
   if (hit != NULL)
@@ -46,48 +48,55 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   if (win == NULL)
     return result_OK;
 
+#ifdef WUSS_FURNITURE
   if (wuss__furniture_hit_test(win, POINT(x, y)) != wuss_FURNITURE_CONTENT)
     return result_OK;
+#endif
 
   if (win->task.handle != NULL)
   {
     box_t        content;
     point_t      doc_point;
-    wuss_icon_t *icon;
     wuss_event_t event;
-    int          k;
 
     wuss__content_box(win, &content);
     doc_point.x = x - content.x0 + win->scroll.x;
     doc_point.y = y - content.y0 + win->scroll.y;
 
-    icon = wuss__icon_hit_test(win, doc_point);
-
-    /* Clear the pressed state of any button the pointer has left. This does
-     * not re-press a button on drag-back-in, and does not track which mouse
-     * button is held -- wuss keeps no persistent "button down over content"
-     * state. */
-    for (k = 0; k < win->nicons; k++)
+#ifdef WUSS_ICONS
     {
-      wuss_icon_t *it = win->icons[k];
+      wuss_icon_t *icon;
+      int          k;
 
-      if (it->pressed && it != icon)
+      icon = wuss__icon_hit_test(win, doc_point);
+
+      /* Clear the pressed state of any button the pointer has left. This does
+       * not re-press a button on drag-back-in, and does not track which mouse
+       * button is held -- wuss keeps no persistent "button down over content"
+       * state. */
+      for (k = 0; k < win->nicons; k++)
       {
-        it->pressed = 0;
-        if (wuss->pressed_icon == it)
-          wuss->pressed_icon = NULL;
-        wuss__icon_invalidate(it);
+        wuss_icon_t *it = win->icons[k];
+
+        if (it->pressed && it != icon)
+        {
+          it->pressed = 0;
+          if (wuss->pressed_icon == it)
+            wuss->pressed_icon = NULL;
+          wuss__icon_invalidate(it);
+        }
+      }
+
+      if (icon != NULL)
+      {
+        event.kind             = wuss_EVENT_ICON;
+        event.data.icon.icon   = icon;
+        event.data.icon.action = wuss_MOUSE_MOVE;
+        event.data.icon.button = wuss_BUTTON_SELECT;
+        return win->task.handle(win, &event, win->task.task_data);
       }
     }
-
-    if (icon != NULL)
-    {
-      event.kind             = wuss_EVENT_ICON;
-      event.data.icon.icon   = icon;
-      event.data.icon.action = wuss_MOUSE_MOVE;
-      event.data.icon.button = wuss_BUTTON_SELECT;
-      return win->task.handle(win, &event, win->task.task_data);
-    }
+#endif
 
     event.kind              = wuss_EVENT_MOUSE;
     event.data.mouse.action = wuss_MOUSE_MOVE;
