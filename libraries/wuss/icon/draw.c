@@ -46,10 +46,7 @@ void wuss__icon_draw(wuss_t            *wuss,
 
   scr = wuss->scr;
 
-  b.x0 = content->x0 - scroll.x + icon->bbox.x0;
-  b.y0 = content->y0 - scroll.y + icon->bbox.y0;
-  b.x1 = content->x0 - scroll.x + icon->bbox.x1;
-  b.y1 = content->y0 - scroll.y + icon->bbox.y1;
+  wuss__icon_box_to_screen(content, scroll, &icon->bbox, &b);
 
   if (b.x1 <= b.x0 || b.y1 <= b.y0)
     return;
