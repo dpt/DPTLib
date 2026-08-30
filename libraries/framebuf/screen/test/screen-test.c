@@ -5,6 +5,7 @@
 
 #include "base/result.h"
 #include "base/utils.h"
+#include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
@@ -240,6 +241,141 @@ static result_t test_wu_fix8_extreme_coords(void)
 
 /* ----------------------------------------------------------------------- */
 
+/* 9x9 source: each 3x3 cell a distinct solid colour, indexed [row][col]. */
+#define NP_SRC 9
+#define NP_CELL 3
+
+static const int np_rgb[3][3][3] =
+{
+  { { 255,   0,   0 }, { 255, 255,   0 }, {   0, 255,   0 } },
+  { {   0, 255, 255 }, { 128, 128, 128 }, {   0,   0, 255 } },
+  { { 255,   0, 255 }, { 255, 255, 255 }, {  64,  64,  64 } }
+};
+
+/* Encode an rgb colour to a screen pixel the same way the draw path does. */
+static pixelfmt_bgrx8888_t np_encode(testscreen_t *ts, int r, int g, int b)
+{
+  testscreen_init(ts);
+  screen_draw_pixel(&ts->scr, 0, 0, colour_rgb(r, g, b));
+  return ts->pixels[0];
+}
+
+static void np_make_src(bitmap_t *src, pixelfmt_rgba8888_t *buf)
+{
+  int cx, cy, x, y;
+
+  for (cy = 0; cy < 3; cy++)
+    for (cx = 0; cx < 3; cx++)
+    {
+      colour_t c;
+
+      c = colour_rgb(np_rgb[cy][cx][0], np_rgb[cy][cx][1], np_rgb[cy][cx][2]);
+
+      for (y = 0; y < NP_CELL; y++)
+        for (x = 0; x < NP_CELL; x++)
+          buf[(cy * NP_CELL + y) * NP_SRC + (cx * NP_CELL + x)] = c.primary;
+    }
+
+  bitmap_init(src, SIZE2D(NP_SRC, NP_SRC), pixelfmt_rgba8888,
+              NP_SRC * (int) sizeof(buf[0]), NULL, buf);
+}
+
+static int np_at(testscreen_t *ts, int x, int y)
+{
+  return (int) ts->pixels[y * WIDTH + x];
+}
+
+static result_t test_ninepatch(void)
+{
+  static testscreen_t ts;
+  static testscreen_t enc;
+  static pixelfmt_rgba8888_t srcbuf[NP_SRC * NP_SRC];
+
+  bitmap_t src;
+  box_t    dst = { 5, 5, 45, 45 };
+  int      exp[3][3];
+  int      cx, cy;
+
+  np_make_src(&src, srcbuf);
+
+  for (cy = 0; cy < 3; cy++)
+    for (cx = 0; cx < 3; cx++)
+      exp[cy][cx] = (int) np_encode(&enc,
+                                    np_rgb[cy][cx][0],
+                                    np_rgb[cy][cx][1],
+                                    np_rgb[cy][cx][2]);
+
+  /* Normal case. */
+  testscreen_init(&ts);
+  screen_draw_ninepatch(&ts.scr, &dst, &src);
+
+  /* Corners: the 3x3 block at each destination corner is that corner colour. */
+  if (np_at(&ts, 5, 5)     != exp[0][0] || np_at(&ts, 7, 7)   != exp[0][0] ||
+      np_at(&ts, 44, 5)    != exp[0][2] || np_at(&ts, 42, 7)   != exp[0][2] ||
+      np_at(&ts, 5, 44)    != exp[2][0] || np_at(&ts, 7, 42)   != exp[2][0] ||
+      np_at(&ts, 44, 44)   != exp[2][2] || np_at(&ts, 42, 42)  != exp[2][2])
+  {
+    printf("screen: ninepatch corner mismatch\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Mid-edge and interior. */
+  if (np_at(&ts, 25, 6)  != exp[0][1] || /* top edge */
+      np_at(&ts, 25, 43) != exp[2][1] || /* bottom edge */
+      np_at(&ts, 6, 25)  != exp[1][0] || /* left edge */
+      np_at(&ts, 43, 25) != exp[1][2] || /* right edge */
+      np_at(&ts, 25, 25) != exp[1][1])   /* centre */
+  {
+    printf("screen: ninepatch edge/centre mismatch\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Clipping: a pixel just outside dst stays background. */
+  if (np_at(&ts, 4, 4) != (int) (pixelfmt_bgrx8888_t) BACKGROUND ||
+      np_at(&ts, 45, 45) != (int) (pixelfmt_bgrx8888_t) BACKGROUND)
+  {
+    printf("screen: ninepatch drew outside dst\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Clip composition: restrict to the left half, the right half is untouched. */
+  testscreen_init(&ts);
+  ts.scr.clip = (box_t) { 0, 0, 25, 64 };
+  screen_draw_ninepatch(&ts.scr, &dst, &src);
+  if (np_at(&ts, 6, 25) != exp[1][0] ||
+      np_at(&ts, 30, 25) != (int) (pixelfmt_bgrx8888_t) BACKGROUND)
+  {
+    printf("screen: ninepatch ignored the screen clip\n");
+    return result_TEST_FAILED;
+  }
+  /* The clip is restored on return. */
+  if (!box_is_empty(&ts.scr.clip) &&
+      (ts.scr.clip.x0 != 0 || ts.scr.clip.x1 != 25))
+  {
+    printf("screen: ninepatch did not restore the clip\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Degenerate: dst exactly two cells each way -> only corners, no centre. */
+  testscreen_init(&ts);
+  {
+    box_t small = { 10, 10, 10 + 2 * NP_CELL, 10 + 2 * NP_CELL };
+
+    screen_draw_ninepatch(&ts.scr, &small, &src);
+    if (np_at(&ts, 10, 10) != exp[0][0] ||
+        np_at(&ts, 15, 15) != exp[2][2] ||
+        np_at(&ts, 12, 12) == exp[1][1]) /* centre colour must NOT appear */
+    {
+      printf("screen: ninepatch degenerate case wrong\n");
+      return result_TEST_FAILED;
+    }
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t screen_test(const char *resources)
 {
   typedef result_t (*screentestfn)(void);
@@ -248,7 +384,8 @@ result_t screen_test(const char *resources)
   {
     test_clip_invariance,
     test_clipping_still_happens,
-    test_wu_fix8_extreme_coords
+    test_wu_fix8_extreme_coords,
+    test_ninepatch
   };
 
   result_t rc;

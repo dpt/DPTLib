@@ -110,6 +110,28 @@ void screen_draw_square(screen_t *scr,
 void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src);
 
 /**
+ * Draws a "9-patch": a resizable frame built from a source image that is a 3x3
+ * grid of equal cells. The source width and height must each be a positive
+ * multiple of 3; the cell size is a third of each. Given a destination box, the
+ * four corner cells are drawn at their natural size in the destination corners,
+ * the four edge cells are tiled along the destination edges, and the centre
+ * cell is tiled across the interior.
+ *
+ * If the destination is narrower or shorter than two cells the opposing corners
+ * overlap and each is clipped to its own half; the edges and centre are then
+ * omitted. Drawing is clipped to both the destination box and the screen's clip
+ * region, which is restored on return. Cells are blended exactly as
+ * `screen_draw_bitmap` does. No scaling is performed.
+ *
+ * \param[in] scr  Screen to draw upon.
+ * \param[in] dst  Destination box to fill with the frame.
+ * \param[in] src  Source image, a 3x3 grid of cells.
+ */
+void screen_draw_ninepatch(screen_t       *scr,
+                           const box_t    *dst,
+                           const bitmap_t *src);
+
+/**
  * Copies a rectangular region of the screen to another position on the same
  * screen (e.g. sliding an already-rendered window's pixels to a new position
  * without asking its owner to redraw). Source and destination may overlap;

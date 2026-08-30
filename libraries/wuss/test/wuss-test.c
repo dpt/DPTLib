@@ -118,15 +118,20 @@ static result_t spawn_image(void)
   image_task_t *t;
   const char   *leafname;
   const char   *filename;
+  char          buf[DPTLIB_MAXPATH];
+  const char   *ninepatch;
   result_t      rc;
 
   t = calloc(1, sizeof(*t));
   if (t == NULL) return result_OOM;
 
-  leafname = path_join_leafname("jessica", "png");
-  filename = path_join_filename(g_resources, 3, "resources", "images", leafname);
+  leafname  = path_join_leafname("jessica", "png");
+  filename  = path_join_filename(g_resources, 3, "resources", "images", leafname);
+  strcpy(buf, filename);
+  ninepatch = path_join_filename(g_resources, 3, "resources", "wuss",
+                                 path_join_leafname("9tile", "png"));
 
-  rc = image_create(g_wuss, g_palette, filename, t);
+  rc = image_create(g_wuss, g_palette, buf, ninepatch, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
