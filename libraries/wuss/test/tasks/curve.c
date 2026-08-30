@@ -104,11 +104,11 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   return result_OK;
 }
 
-static result_t curve_mouse(curve_task_t        *task,
-                            wuss_mouse_action_t   action,
-                            int                   x,
-                            int                   y,
-                            wuss_window_t        *window)
+static result_t curve_mouse(curve_task_t       *task,
+                            wuss_mouse_action_t action,
+                            int                 x,
+                            int                 y,
+                            wuss_window_t      *window)
 {
   int i;
 

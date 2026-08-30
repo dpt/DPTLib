@@ -75,9 +75,10 @@ void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour);
  * \param[in] colour  Colour of rectangle.
  */
 void screen_draw_rect(screen_t *scr,
-                      int x, int y,
-                      size2d_t size,
-                      colour_t colour);
+                      int       x,
+                      int       y,
+                      size2d_t  size,
+                      colour_t  colour);
 
 /**
  * Special case of `screen_draw_rect`.
@@ -156,8 +157,11 @@ int screen_copy_rect(screen_t    *scr,
  * \param[in] colour  Colour of line.
  */
 void screen_draw_line(screen_t *scr,
-                      int x0, int y0, int x1, int y1,
-                      colour_t colour);
+                      int       x0,
+                      int       y0,
+                      int       x1,
+                      int       y1,
+                      colour_t  colour);
 
 /**
  * Draws a line (fixed-point Wu version with anti-aliasing).
@@ -173,8 +177,11 @@ void screen_draw_line(screen_t *scr,
  * \param[in] colour  Colour of line.
  */
 void screen_draw_line_wu_fix8(screen_t *scr,
-                              fix8_t x0, fix8_t y0, fix8_t x1, fix8_t y1,
-                              colour_t colour);
+                              fix8_t    x0,
+                              fix8_t    y0,
+                              fix8_t    x1,
+                              fix8_t    y1,
+                              colour_t  colour);
 
 /**
  * Draws a line (floating point Wu version with anti-aliasing).
@@ -190,7 +197,10 @@ void screen_draw_line_wu_fix8(screen_t *scr,
  * \param[in] colour  Colour of rectangle.
  */
 void screen_draw_line_wu_float(screen_t *scr,
-                               float x0, float y0, float x1, float y1,
-                               colour_t colour);
+                               float     x0,
+                               float     y0,
+                               float     x1,
+                               float     y1,
+                               colour_t  colour);
 
 #endif /* FRAMEBUF_SCREEN_H */

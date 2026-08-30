@@ -92,8 +92,10 @@ static void testscreen_init(testscreen_t *ts)
               ts->pixels);
 }
 
-static void draw(screen_t *scr, linekind_t kind, const linetest_t *line,
-                 colour_t colour)
+static void draw(screen_t         *scr,
+                 linekind_t        kind,
+                 const linetest_t *line,
+                 colour_t          colour)
 {
   switch (kind)
   {

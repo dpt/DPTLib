@@ -494,7 +494,9 @@ static result_t sofa_redraw(const wuss_event_t *event, void *task_data)
   return result_OK;
 }
 
-static result_t sofa_mouse(wuss_window_t *window, wuss_button_t button, void *task_data)
+static result_t sofa_mouse(wuss_window_t *window,
+                           wuss_button_t  button,
+                           void          *task_data)
 {
   sofa_task_t *sc;
 
@@ -553,7 +555,7 @@ static result_t sofa_idle(void *task_data)
   return result_OK;
 }
 
-result_t sofa_handle(wuss_window_t     *window,
+result_t sofa_handle(wuss_window_t      *window,
                      const wuss_event_t *event,
                      void               *task_data)
 {

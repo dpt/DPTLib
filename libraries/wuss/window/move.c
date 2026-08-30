@@ -25,8 +25,10 @@ static void translate_box(const box_t *box, int dx, int dy, box_t *out)
  * cycle, and rejecting those outright regressed plain corner-occlusion
  * drags into full fallback redraws. Only an actual cycle (i must precede j
  * and j must precede i) has no safe order and needs the fallback. */
-static int wuss__order_pieces(const box_t *clean, const box_t *dest, int n,
-                              int *order)
+static int wuss__order_pieces(const box_t *clean,
+                              const box_t *dest,
+                              int          n,
+                              int         *order)
 {
   int adj[WUSS_MAX_INVALIDATE_PIECES][WUSS_MAX_INVALIDATE_PIECES];
   int indeg[WUSS_MAX_INVALIDATE_PIECES];

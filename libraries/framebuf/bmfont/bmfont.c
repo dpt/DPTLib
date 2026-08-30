@@ -93,11 +93,11 @@ static int count_adw(unsigned char tab[256], pixelfmt_any_t adw_px)
 }
 
 /** Verify the font format and build the advance width table. */
-static result_t extract_advance_widths(bmfont_t    *bmfont,
-                                       void        *voidpixels,
-                                       png_uint_32  imgwidth,
-                                       png_uint_32  imgheight,
-                                       size_t       rowbytes)
+static result_t extract_advance_widths(bmfont_t   *bmfont,
+                                       void       *voidpixels,
+                                       png_uint_32 imgwidth,
+                                       png_uint_32 imgheight,
+                                       size_t      rowbytes)
 {
   result_t      rc = result_OK;
   unsigned char adwtab[256];
@@ -198,11 +198,11 @@ static void build_repack_tab(unsigned char tab[256], int idx)
              ((((i >> 6) & 3) == idx) << 3);
 }
 
-static result_t extract_glyphs(bmfont_t    *bmfont,
-                               void        *voidpixels,
-                               png_uint_32  imgwidth,
-                               png_uint_32  imgheight,
-                               size_t       rowbytes)
+static result_t extract_glyphs(bmfont_t   *bmfont,
+                               void       *voidpixels,
+                               png_uint_32 imgwidth,
+                               png_uint_32 imgheight,
+                               size_t      rowbytes)
 {
   result_t       rc = result_OK;
   unsigned char  repacktab[256];

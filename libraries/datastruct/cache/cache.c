@@ -573,11 +573,11 @@ static entry_t *evict(cache_t *c)
   return evictee;
 }
 
-result_t cache_put(cache_t    *c,
-                   cachekey_t  key,
-                   void       *data,
-                   size_t      length,
-                   void      **inserted)
+result_t cache_put(cache_t   *c,
+                   cachekey_t key,
+                   void      *data,
+                   size_t     length,
+                   void     **inserted)
 {
   const size_t quantum = sizeof(free_t);
 

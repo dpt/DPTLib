@@ -122,7 +122,9 @@ static result_t checker_mouse(wuss_window_t *window, void *task_data)
   return result_OK;
 }
 
-static result_t checker_scroll(wuss_window_t *window, int delta, void *task_data)
+static result_t checker_scroll(wuss_window_t *window,
+                               int            delta,
+                               void          *task_data)
 {
   checker_task_t *cc;
   int            *band;
@@ -138,7 +140,7 @@ static result_t checker_scroll(wuss_window_t *window, int delta, void *task_data
   return result_OK;
 }
 
-result_t checker_handle(wuss_window_t     *window,
+result_t checker_handle(wuss_window_t      *window,
                         const wuss_event_t *event,
                         void               *task_data)
 {

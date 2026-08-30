@@ -92,12 +92,12 @@ void array_squeeze2(unsigned char *base,
  *
  * \return 0 - ok, 1 - out of memory
  */
-int array_grow(void   **block,
-               size_t   elemsize,
-               int      used,
-               int     *allocated,
-               int      need,
-               int      minimum);
+int array_grow(void **block,
+               size_t elemsize,
+               int    used,
+               int   *allocated,
+               int    need,
+               int    minimum);
 
 /**
  * Shrink a dynamically allocated array to have no free entries.

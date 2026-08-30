@@ -58,7 +58,7 @@ static result_t blank_idle(void *task_data)
   return rc;
 }
 
-result_t blank_handle(wuss_window_t     *window,
+result_t blank_handle(wuss_window_t      *window,
                       const wuss_event_t *event,
                       void               *task_data)
 {

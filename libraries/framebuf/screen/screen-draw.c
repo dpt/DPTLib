@@ -85,8 +85,10 @@ void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour)
 }
 
 static void screen_blend_pixel(screen_t *scr,
-                               int x, int y,
-                               colour_t colour, int alpha)
+                               int       x,
+                               int       y,
+                               colour_t  colour,
+                               int       alpha)
 {
   box_t clip;
 
@@ -137,9 +139,10 @@ static void screen_blend_pixel(screen_t *scr,
 /* ----------------------------------------------------------------------- */
 
 void screen_draw_rect(screen_t *scr,
-                      int x, int y,
-                      size2d_t size,
-                      colour_t colour)
+                      int       x,
+                      int       y,
+                      size2d_t  size,
+                      colour_t  colour)
 {
   box_t          clip_box;
   box_t          rect_box;
@@ -364,8 +367,11 @@ static void screen_get_bounds(const screen_t *scr, box_t *bounds)
 }
 
 void screen_draw_line(screen_t *scr,
-                      int x0, int y0, int x1, int y1,
-                      colour_t colour)
+                      int       x0,
+                      int       y0,
+                      int       x1,
+                      int       y1,
+                      colour_t  colour)
 {
   box_t clip_box;
   box_t bounds;
@@ -428,8 +434,11 @@ void screen_draw_line(screen_t *scr,
 }
 
 void screen_draw_line_wu_fix8(screen_t *scr,
-                              fix8_t x0_f8, fix8_t y0_f8, fix8_t x1_f8, fix8_t y1_f8,
-                              colour_t colour)
+                              fix8_t    x0_f8,
+                              fix8_t    y0_f8,
+                              fix8_t    x1_f8,
+                              fix8_t    y1_f8,
+                              colour_t  colour)
 {
   box_t   clip_box_f8;
   box_t   bounds_f8;
@@ -561,8 +570,11 @@ static int my_lroundf(float x)
 }
 
 void screen_draw_line_wu_float(screen_t *scr,
-                               float fx0, float fy0, float fx1, float fy1,
-                               colour_t colour)
+                               float     fx0,
+                               float     fy0,
+                               float     fx1,
+                               float     fy1,
+                               colour_t  colour)
 {
   box_t clip_box;
   box_t bounds;

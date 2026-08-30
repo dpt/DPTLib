@@ -177,7 +177,7 @@ static result_t ball_idle(void *task_data)
   return result_OK;
 }
 
-result_t ball_handle(wuss_window_t     *window,
+result_t ball_handle(wuss_window_t      *window,
                      const wuss_event_t *event,
                      void               *task_data)
 {
