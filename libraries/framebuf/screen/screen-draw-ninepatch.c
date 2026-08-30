@@ -21,9 +21,13 @@ static void ninepatch_cell(bitmap_t       *cell,
                            int             pw,
                            int             ph)
 {
+  int log2bpp;
   int bpp;
 
-  bpp = 1 << (pixelfmt_log2bpp(src->format) - 3);
+  /* Byte stride per pixel. Sub-byte formats have no meaningful cell offset. */
+  log2bpp = pixelfmt_log2bpp(src->format);
+  assert(log2bpp >= 3);
+  bpp = 1 << (log2bpp - 3);
 
   *cell      = *src;
   cell->size = SIZE2D(pw, ph);
@@ -44,7 +48,6 @@ static void tile_area(screen_t       *scr,
                       int             stepy)
 {
   box_t clip;
-  int   oy;
 
   if (box_is_empty(saved))
     clip = *area;
@@ -56,12 +59,17 @@ static void tile_area(screen_t       *scr,
 
   scr->clip = clip;
 
-  for (oy = area->y0; oy < area->y1; oy += (stepy > 0) ? stepy : (area->y1 - oy))
   {
+    int oy;
     int ox;
 
-    for (ox = area->x0; ox < area->x1; ox += (stepx > 0) ? stepx : (area->x1 - ox))
-      screen_draw_bitmap(scr, ox, oy, cell);
+    for (oy = area->y0; oy < area->y1;
+         oy += (stepy > 0) ? stepy : (area->y1 - oy))
+    {
+      for (ox = area->x0; ox < area->x1;
+           ox += (stepx > 0) ? stepx : (area->x1 - ox))
+        screen_draw_bitmap(scr, ox, oy, cell);
+    }
   }
 }
 
@@ -75,6 +83,7 @@ void screen_draw_ninepatch(screen_t       *scr,
   box_t    saved;
   box_t    orig_clip;
   int      pw, ph;
+  int      midx, midy;
   int      lx, rx, ty, by;
   bitmap_t cell;
 
@@ -87,13 +96,17 @@ void screen_draw_ninepatch(screen_t       *scr,
   pw = src->size.w / 3;
   ph = src->size.h / 3;
 
-  /* Corner column/row boundaries in the destination. When "dst" is narrower
-   * or shorter than two patches the near and far corners overlap; the clip in
-   * tile_area trims each to its own half. */
-  lx = dst->x0 + pw;
-  rx = dst->x1 - pw;
-  ty = dst->y0 + ph;
-  by = dst->y1 - ph;
+  /* Corner column/row boundaries in the destination. When "dst" is narrower or
+   * shorter than two patches the near and far corners would overlap, so each
+   * boundary is clamped to the destination midpoint: the near corner gets the
+   * near half, the far corner the far half, and the edge/centre runs between
+   * them collapse to nothing. */
+  midx = (dst->x0 + dst->x1) / 2;
+  midy = (dst->y0 + dst->y1) / 2;
+  lx = dst->x0 + pw; if (lx > midx) lx = midx;
+  rx = dst->x1 - pw; if (rx < midx) rx = midx;
+  ty = dst->y0 + ph; if (ty > midy) ty = midy;
+  by = dst->y1 - ph; if (by < midy) by = midy;
 
   /* Fold "dst" into the saved clip once, so every tile_area call is bounded by
    * the destination rectangle as well as the caller's clip. An empty caller
