@@ -26,8 +26,6 @@ result_t palette_create(wuss_t         *wuss,
                         int             npalette,
                         palette_task_t *task);
 
-/* destroy the palette-swatch-grid window created by palette_create */
-void palette_destroy(palette_task_t *task);
 
 #endif /* USE_SDL */
 

@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #include <math.h>
 
 #ifdef FORTIFY
@@ -378,11 +380,6 @@ result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
                                    &task->window);
 }
 
-void sofa_destroy(sofa_task_t *task)
-{
-  wuss_window_close(task->window);
-}
-
 static result_t sofa_redraw(const wuss_event_t *event, void *task_data)
 {
   sofa_task_t *sc;
@@ -582,7 +579,7 @@ result_t sofa_handle(wuss_window_t     *window,
 
   case wuss_EVENT_CLOSE:
     wuss_window_close(window);
-    sc->window = NULL;
+    free(sc); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
   default:

@@ -34,8 +34,6 @@ result_t icons_create(wuss_t         *wuss,
                       bmfont_t       *font,
                       icons_task_t   *task);
 
-/* destroy the icons window created by icons_create */
-void icons_destroy(icons_task_t *task);
 
 #endif /* USE_SDL */
 

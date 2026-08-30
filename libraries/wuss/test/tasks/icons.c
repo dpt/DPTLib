@@ -4,6 +4,7 @@
 #include "framebuf/palettes.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef FORTIFY
@@ -100,11 +101,6 @@ failure:
   wuss_window_close(task->window);
   task->window = NULL;
   return rc;
-}
-
-void icons_destroy(icons_task_t *task)
-{
-  wuss_window_close(task->window);
 }
 
 #define ICONS_GRID       16 /* document-space pitch of the backdrop grid */
@@ -237,7 +233,7 @@ result_t icons_handle(wuss_window_t      *window,
 
   case wuss_EVENT_CLOSE:
     wuss_window_close(window);
-    tcx->window = NULL;
+    free(tcx); /* calloc'd per instance by the spawner */
     return result_OK;
 
   default:

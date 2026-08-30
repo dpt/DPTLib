@@ -34,8 +34,6 @@ result_t text_create(wuss_t         *wuss,
                      bmfont_t       *font,
                      text_task_t    *task);
 
-/* destroy the paragraph-of-text window created by text_create */
-void text_destroy(text_task_t *task);
 
 #endif /* USE_SDL */
 

@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -33,11 +35,6 @@ result_t palette_create(wuss_t         *wuss,
                                    SIZE2D(100, 100),
                                    SIZE2D(0, 0),
                                    &task->window);
-}
-
-void palette_destroy(palette_task_t *task)
-{
-  wuss_window_close(task->window);
 }
 
 static result_t palette_redraw(const wuss_event_t *event, void *task_data)
@@ -89,7 +86,7 @@ result_t palette_handle(wuss_window_t     *window,
   if (event->kind == wuss_EVENT_CLOSE)
   {
     wuss_window_close(window);
-    ((palette_task_t *) task_data)->window = NULL;
+    free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
   }
 

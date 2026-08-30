@@ -2,6 +2,8 @@
 
 #ifdef USE_SDL
 
+#include <stdlib.h>
+
 #include <limits.h>
 
 #ifdef FORTIFY
@@ -58,12 +60,6 @@ result_t chars_create(wuss_t         *wuss,
                                    sz,
                                    SIZE2D(0, 0),
                                    &task->window);
-}
-
-void chars_destroy(chars_task_t *task)
-{
-  if (task->window != NULL)
-    wuss_window_close(task->window);
 }
 
 static result_t chars_redraw(const wuss_event_t *event, void *task_data)
@@ -126,7 +122,7 @@ result_t chars_handle(wuss_window_t      *window,
   if (event->kind == wuss_EVENT_CLOSE)
   {
     wuss_window_close(window);
-    ((chars_task_t *) task_data)->window = NULL;
+    free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
   }
 

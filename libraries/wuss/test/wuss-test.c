@@ -57,68 +57,154 @@ static int                 g_npalette;
 static const char         *g_resources;
 static bmfont_t           *g_daydream_font;
 
-static ball_task_t        g_ball_task;
-static text_task_t        g_text_task;
-static blank_task_t       g_blank_task;
-static chars_task_t       g_chars_task;
-static palette_task_t     g_palette_task;
-static image_task_t       g_image_task;
-static checker_task_t     g_checker_task;
-static curve_task_t       g_curve_task;
-static sofa_task_t        g_sofa_task;
-static gradient_task_t    g_gradient_task;
-static icons_task_t       g_icons_task;
-static porter_duff_task_t g_porter_duff_task;
+/* Each spawn allocates a fresh per-instance task block so a task may run in
+ * several windows at once; the block is owned by its window and freed by the
+ * task's wuss_EVENT_CLOSE handler. If create fails, or (for the font-less
+ * chars task) returns OK without opening a window, the block is freed here --
+ * otherwise it would leak. */
 
-static result_t spawn_ball(void)        { return ball_create(g_wuss, g_palette, &g_ball_task); }
-static result_t spawn_text(void)        { return text_create(g_wuss, g_palette, g_daydream_font, &g_text_task); }
-static result_t spawn_blank(void)       { return blank_create(g_wuss, g_npalette, &g_blank_task); }
-static result_t spawn_chars(void)       { return chars_create(g_wuss, g_palette, &g_chars_task); }
-static result_t spawn_palette(void)     { return palette_create(g_wuss, g_palette, g_npalette, &g_palette_task); }
+static result_t spawn_ball(void)
+{
+  ball_task_t *t = calloc(1, sizeof(*t));
+  result_t     rc;
+  if (t == NULL) return result_OOM;
+  rc = ball_create(g_wuss, g_palette, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
+static result_t spawn_text(void)
+{
+  text_task_t *t = calloc(1, sizeof(*t));
+  result_t     rc;
+  if (t == NULL) return result_OOM;
+  rc = text_create(g_wuss, g_palette, g_daydream_font, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
+static result_t spawn_blank(void)
+{
+  blank_task_t *t = calloc(1, sizeof(*t));
+  result_t      rc;
+  if (t == NULL) return result_OOM;
+  rc = blank_create(g_wuss, g_npalette, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
+static result_t spawn_chars(void)
+{
+  chars_task_t *t = calloc(1, sizeof(*t));
+  result_t      rc;
+  if (t == NULL) return result_OOM;
+  rc = chars_create(g_wuss, g_palette, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
+static result_t spawn_palette(void)
+{
+  palette_task_t *t = calloc(1, sizeof(*t));
+  result_t        rc;
+  if (t == NULL) return result_OOM;
+  rc = palette_create(g_wuss, g_palette, g_npalette, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
 static result_t spawn_image(void)
 {
-  const char *leafname;
-  const char *filename;
+  image_task_t *t;
+  const char   *leafname;
+  const char   *filename;
+  result_t      rc;
+
+  t = calloc(1, sizeof(*t));
+  if (t == NULL) return result_OOM;
 
   leafname = path_join_leafname("jessica", "png");
   filename = path_join_filename(g_resources, 3, "resources", "images", leafname);
 
-  return image_create(g_wuss, g_palette, filename, &g_image_task);
+  rc = image_create(g_wuss, g_palette, filename, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
 }
-static result_t spawn_checker(void)     { return checker_create(g_wuss, g_palette, &g_checker_task); }
-static result_t spawn_curve(void)       { return curve_create(g_wuss, g_palette, &g_curve_task); }
-static result_t spawn_sofa(void)        { return sofa_create(g_wuss, g_palette, &g_sofa_task); }
-static result_t spawn_gradient(void)    { return gradient_create(g_wuss, &g_gradient_task); }
-static result_t spawn_icons(void)       { return icons_create(g_wuss, g_palette, g_daydream_font, &g_icons_task); }
-static result_t spawn_porter_duff(void) { return porter_duff_create(g_wuss, g_palette, g_daydream_font, g_resources, &g_porter_duff_task); }
 
-static void destroy_ball(void)        { ball_destroy(&g_ball_task); }
-static void destroy_text(void)        { text_destroy(&g_text_task); }
-static void destroy_blank(void)       { blank_destroy(&g_blank_task); }
-static void destroy_chars(void)       { chars_destroy(&g_chars_task); }
-static void destroy_palette(void)     { palette_destroy(&g_palette_task); }
-static void destroy_image(void)       { image_destroy(&g_image_task); }
-static void destroy_checker(void)     { checker_destroy(&g_checker_task); }
-static void destroy_curve(void)       { curve_destroy(&g_curve_task); }
-static void destroy_sofa(void)        { sofa_destroy(&g_sofa_task); }
-static void destroy_gradient(void)    { gradient_destroy(&g_gradient_task); }
-static void destroy_icons(void)       { icons_destroy(&g_icons_task); }
-static void destroy_porter_duff(void) { porter_duff_destroy(&g_porter_duff_task); }
+static result_t spawn_checker(void)
+{
+  checker_task_t *t = calloc(1, sizeof(*t));
+  result_t        rc;
+  if (t == NULL) return result_OOM;
+  rc = checker_create(g_wuss, g_palette, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
+static result_t spawn_curve(void)
+{
+  curve_task_t *t = calloc(1, sizeof(*t));
+  result_t      rc;
+  if (t == NULL) return result_OOM;
+  rc = curve_create(g_wuss, g_palette, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
+static result_t spawn_sofa(void)
+{
+  sofa_task_t *t = calloc(1, sizeof(*t));
+  result_t     rc;
+  if (t == NULL) return result_OOM;
+  rc = sofa_create(g_wuss, g_palette, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
+static result_t spawn_gradient(void)
+{
+  gradient_task_t *t = calloc(1, sizeof(*t));
+  result_t         rc;
+  if (t == NULL) return result_OOM;
+  rc = gradient_create(g_wuss, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
+static result_t spawn_icons(void)
+{
+  icons_task_t *t = calloc(1, sizeof(*t));
+  result_t      rc;
+  if (t == NULL) return result_OOM;
+  rc = icons_create(g_wuss, g_palette, g_daydream_font, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
+static result_t spawn_porter_duff(void)
+{
+  porter_duff_task_t *t = calloc(1, sizeof(*t));
+  result_t            rc;
+  if (t == NULL) return result_OOM;
+  rc = porter_duff_create(g_wuss, g_palette, g_daydream_font, g_resources, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
 
 static const launcher_entry_t g_launcher_entries[] =
 {
-  { "Ball",        spawn_ball,        destroy_ball        },
-  { "Text",        spawn_text,        destroy_text        },
-  { "Blank",       spawn_blank,       destroy_blank       },
-  { "Chars",       spawn_chars,       destroy_chars       },
-  { "Palette",     spawn_palette,     destroy_palette     },
-  { "Image",       spawn_image,       destroy_image       },
-  { "Checker",     spawn_checker,     destroy_checker     },
-  { "Curve",       spawn_curve,       destroy_curve       },
-  { "Sofa",        spawn_sofa,        destroy_sofa        },
-  { "Gradient",    spawn_gradient,    destroy_gradient    },
-  { "Icons",       spawn_icons,       destroy_icons       },
-  { "Porter-Duff", spawn_porter_duff, destroy_porter_duff }
+  { "Ball",        spawn_ball        },
+  { "Text",        spawn_text        },
+  { "Blank",       spawn_blank       },
+  { "Chars",       spawn_chars       },
+  { "Palette",     spawn_palette     },
+  { "Image",       spawn_image       },
+  { "Checker",     spawn_checker     },
+  { "Curve",       spawn_curve       },
+  { "Sofa",        spawn_sofa        },
+  { "Gradient",    spawn_gradient    },
+  { "Icons",       spawn_icons       },
+  { "Porter-Duff", spawn_porter_duff }
 };
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
@@ -429,11 +515,10 @@ static result_t wuss_interactive_test(const char *resources)
     SDL_Delay(1000 / 60);
   }
 
-  /* a task may have been spawned any number of times but each keeps only its
-   * latest window in a shared static; destroy() closes that window if still
-   * open and is a no-op otherwise */
-  for (i = 0; i < NELEMS(g_launcher_entries); i++)
-    g_launcher_entries[i].destroy();
+  /* ponytail: wuss_destroy() below frees every still-open window but not the
+   * per-instance task block hung off it, so any task window left open at quit
+   * leaks its block. Harmless at process exit; add a wuss close callback if a
+   * task ever needs deterministic teardown. */
   launcher_destroy(&launcher_task);
 
   wuss_destroy(wuss);
