@@ -38,7 +38,9 @@ static void footprint_pad(const wuss_t       *wuss,
 /* Pick the next cascade position for a window of the given footprint size,
  * once the layout packer has no room. Steps down/right by a titlebar each
  * call, wrapping back to the top-left when the step would push the footprint
- * off the screen. */
+ * off the screen. A footprint that is itself larger than the screen can never
+ * fit; it is pinned at the top-left and the cascade counter is not advanced,
+ * so it does not wedge every later window at the origin too. */
 static void next_cascade(wuss_t *wuss, int fw, int fh, point_t *pos)
 {
   int scr_w, scr_h, step;
@@ -52,6 +54,13 @@ static void next_cascade(wuss_t *wuss, int fw, int fh, point_t *pos)
 #endif
   if (step <= 0)
     step = WUSS_DEFAULT_TITLEBAR_HEIGHT;
+
+  if (fw > scr_w || fh > scr_h)
+  {
+    pos->x = 0;
+    pos->y = 0;
+    return;
+  }
 
   if (wuss->cascade.x + fw > scr_w || wuss->cascade.y + fh > scr_h)
   {
