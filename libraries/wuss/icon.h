@@ -24,10 +24,13 @@ struct wuss_icon
   int               pressed; /* button: 1 while held with the pointer inside */
 };
 
-/* Convert an icon's bbox (virtual document space) to a screen-space box, using
- * the owning window's current content box and scroll offset:
- * screen = content.x0 - scroll.x + bbox. Mirrors wuss_window_invalidate. */
-void wuss__icon_screen_box(const wuss_icon_t *icon, box_t *out);
+/* Map an icon bbox (virtual document space) into screen space:
+ * screen = content.x0 - scroll.x + bbox. wuss__icon_draw paints through this
+ * so hit-testing and invalidation cannot drift from what is drawn. */
+void wuss__icon_box_to_screen(const box_t *content,
+                              point_t      scroll,
+                              const box_t *bbox,
+                              box_t       *out);
 
 /* Invalidate exactly this icon's bbox, via wuss_window_invalidate, so a
  * set_text / pressed-state / hide change repaints just the icon. */
