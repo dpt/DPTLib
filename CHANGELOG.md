@@ -57,6 +57,15 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- **Breaking:** the window/desktop background is now a `wuss_backdrop_t`
+  (`{ colour, pattern, pattern_bg }`) instead of a bare `wuss_colour_t`:
+  `wuss_config_t::backdrop`, and the `bg` parameter of
+  `wuss_window_create()`, `wuss_window_create_placed()` and
+  `wuss_window_set_background()`. A non-`screen_PATTERN_SOLID` `pattern` fills
+  with `screen_fill_pattern()` — the desktop phased to the screen origin, a
+  window's content phased to its scroll origin so the pattern stays locked to
+  the content. `wuss_BACKDROP_COLOUR(c)` and `wuss_BACKDROP_PATTERN(c, p, b)`
+  build one; the flat-colour case is `wuss_BACKDROP_COLOUR(old_value)`.
 - **Breaking:** `wuss_button_t` values are now flags (`wuss_BUTTON_SELECT` 4,
   `wuss_BUTTON_MENU` 2, `wuss_BUTTON_ADJUST` 1, `wuss_BUTTON_NONE` 0) so
   chords such as Select+Adjust can be reported. Client code comparing a

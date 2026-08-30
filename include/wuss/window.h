@@ -47,10 +47,13 @@ extern "C"
  * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR /
  *                     wuss_WINDOW_NO_OUTLINE, OR'd together, or
  *                     wuss_WINDOW_NONE for the default furniture.
- * \param[in]  bg      Content background, filled by Wuss before each redraw, or
- *                     wuss_NO_BACKGROUND for the task to draw its own
- *                     background (avoids a redundant fill behind an opaque
- *                     task). Changeable later via wuss_window_set_background.
+ * \param[in]  bg      Content background, filled by Wuss before each redraw: a
+ *                     flat colour or an 8x8 fill pattern (see wuss_backdrop_t).
+ *                     Set its colour to wuss_NO_BACKGROUND for the task to draw
+ *                     its own background (avoids a redundant fill behind an
+ *                     opaque task). Any pattern is phased to the window's
+ *                     scroll origin so it stays locked to the content.
+ *                     Changeable later via wuss_window_set_background.
  * \param[in]  task    Content delegate. Copied in. May be NULL for a window
  *                     with no content handling.
  * \param[in]  doc     Virtual document extent, for the scrollbars' sausage
@@ -63,14 +66,15 @@ extern "C"
  *                     window unusably small or larger than its document.
  * \param[out] window  Newly created window. Becomes the topmost window.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
- *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if bg is
- *         out of range for the palette, or another appropriate result code.
+ *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if any
+ *         of bg's colours are out of range for the palette, or another
+ *         appropriate result code.
  */
 result_t wuss_window_create(wuss_t             *wuss,
                             const box_t        *content,
                             const char         *title,
                             wuss_window_flags_t flags,
-                            wuss_colour_t       bg,
+                            wuss_backdrop_t     bg,
                             const wuss_task_t  *task,
                             size2d_t            doc,
                             size2d_t            min_doc,
@@ -109,7 +113,7 @@ result_t wuss_window_create_placed(wuss_t             *wuss,
                                    size2d_t            size,
                                    const char         *title,
                                    wuss_window_flags_t flags,
-                                   wuss_colour_t       bg,
+                                   wuss_backdrop_t     bg,
                                    const wuss_task_t  *task,
                                    size2d_t            doc,
                                    size2d_t            min_doc,
@@ -208,17 +212,18 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p);
 void wuss_window_get_scroll(const wuss_window_t *window, point_t *p);
 
 /**
- * Change a window's background colour, invalidating its content area so the
- * next redraw picks up the new fill.
+ * Change a window's background, invalidating its content area so the next
+ * redraw picks up the new fill.
  *
  * \param[in] window Window to change.
- * \param[in] bg     New content background, as an index into the system
- *                   palette, or wuss_NO_BACKGROUND to hand background painting
- *                   back to the task.
- * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if bg is out
- *         of range for the palette.
+ * \param[in] bg     New content background: a flat colour or an 8x8 fill
+ *                   pattern (see wuss_backdrop_t). Set its colour to
+ *                   wuss_NO_BACKGROUND to hand background painting back to the
+ *                   task.
+ * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if any of bg's
+ *         colours are out of range for the palette.
  */
-result_t wuss_window_set_background(wuss_window_t *window, wuss_colour_t bg);
+result_t wuss_window_set_background(wuss_window_t *window, wuss_backdrop_t bg);
 
 #ifdef __cplusplus
 }

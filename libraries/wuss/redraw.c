@@ -34,10 +34,11 @@ static void redraw_window(wuss_t        *wuss,
   {
     wuss->scr->clip = pieces[i];
 
-    if (win->bg != wuss_NO_BACKGROUND)
-      screen_draw_rect(wuss->scr,
-                       content.x0, content.y0, box_size(&content),
-                       wuss->palette[win->bg]);
+    /* phase any pattern against the scroll origin so it locks to the
+     * content rather than crawling as the window scrolls */
+    wuss__fill_backdrop(wuss->scr, wuss->palette, &win->bg, &content,
+                        content.x0 - win->scroll.x,
+                        content.y0 - win->scroll.y);
 
     if (win->task.handle != NULL)
     {
@@ -105,12 +106,8 @@ result_t wuss_redraw(wuss_t *wuss)
   full.x1 = wuss->scr->size.w;
   full.y1 = wuss->scr->size.h;
 
-  if (wuss->backdrop != wuss_NO_BACKGROUND)
-  {
-    wuss->scr->clip = full;
-    screen_draw_rect(wuss->scr, full.x0, full.y0, box_size(&full),
-                     wuss->palette[wuss->backdrop]);
-  }
+  wuss->scr->clip = full;
+  wuss__fill_backdrop(wuss->scr, wuss->palette, &wuss->backdrop, &full, 0, 0);
 
   rc = result_OK;
   redraw_from(wuss, wuss->z_order.next, &full, &rc);
@@ -137,13 +134,9 @@ result_t wuss_redraw_dirty(wuss_t *wuss)
   rc = result_OK;
   for (i = 0; i < wuss->ndirty; i++)
   {
-    if (wuss->backdrop != wuss_NO_BACKGROUND)
-    {
-      wuss->scr->clip = wuss->dirty[i];
-      screen_draw_rect(wuss->scr,
-                       wuss->dirty[i].x0, wuss->dirty[i].y0, SIZE2D(wuss->dirty[i].x1 - wuss->dirty[i].x0, wuss->dirty[i].y1 - wuss->dirty[i].y0),
-                       wuss->palette[wuss->backdrop]);
-    }
+    wuss->scr->clip = wuss->dirty[i];
+    wuss__fill_backdrop(wuss->scr, wuss->palette, &wuss->backdrop,
+                        &wuss->dirty[i], 0, 0);
 
     redraw_from(wuss, wuss->z_order.next, &wuss->dirty[i], &rc);
   }

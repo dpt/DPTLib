@@ -354,7 +354,9 @@ static result_t wuss_interactive_test(const char *resources)
     config.palette.scroll.sausages  = palette_PICO8_LIGHT_GREY;
     config.bevel.light              = palette_PICO8_WHITE;
     config.bevel.dark               = palette_PICO8_DARK_GREY;
-    config.backdrop                 = palette_PICO8_LIGHT_GREY;
+    config.backdrop.colour          = palette_PICO8_LIGHT_GREY;
+    config.backdrop.pattern         = screen_PATTERN_SOLID;
+    config.backdrop.pattern_bg      = wuss_NO_BACKGROUND;
 
     rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, &wuss);
     if (rc != result_OK)
@@ -725,7 +727,7 @@ result_t wuss_test(const char *resources)
                           &box_a,
                           "toosmall",
                           wuss_WINDOW_NONE,
-                          wuss_NO_BACKGROUND,
+                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                           NULL,
                           box_size(&box_a),
                           SIZE2D(0, 0),
@@ -751,7 +753,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                           wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                           wuss_WINDOW_NO_RESIZE,
-                          wuss_NO_BACKGROUND,
+                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                           &delegate_a,
                           box_size(&box_a),
                           SIZE2D(0, 0),
@@ -774,7 +776,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                           wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                           wuss_WINDOW_NO_RESIZE,
-                          wuss_NO_BACKGROUND,
+                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                           &delegate_b,
                           box_size(&box_b),
                           SIZE2D(0, 0),
@@ -1060,7 +1062,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                           wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                           wuss_WINDOW_NO_RESIZE,
-                          wuss_NO_BACKGROUND,
+                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                           &delegate_d,
                           box_size(&box_d),
                           SIZE2D(0, 0),
@@ -1108,7 +1110,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_e,
                             box_size(&box_e),
                             SIZE2D(0, 0),
@@ -1129,7 +1131,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_f,
                             box_size(&box_f),
                             SIZE2D(0, 0),
@@ -1165,11 +1167,12 @@ result_t wuss_test(const char *resources)
 
   printf("test: wuss_window_set_background\n");
 
-  rc = wuss_window_set_background(win_d, 999);
+  rc = wuss_window_set_background(win_d, wuss_BACKDROP_COLOUR(999));
   if (rc != result_WUSS_BAD_COLOUR)
     goto Failure;
 
-  rc = wuss_window_set_background(win_d, palette_PICO8_ORANGE);
+  rc = wuss_window_set_background(win_d,
+                                 wuss_BACKDROP_COLOUR(palette_PICO8_ORANGE));
   if (rc != result_OK)
     goto Failure;
 
@@ -1197,7 +1200,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_h,
                             box_size(&box_h),
                             SIZE2D(0, 0),
@@ -1218,7 +1221,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_g,
                             box_size(&box_g),
                             SIZE2D(0, 0),
@@ -1280,7 +1283,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_i,
                             box_size(&box_i),
                             SIZE2D(0, 0),
@@ -1301,7 +1304,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_j,
                             box_size(&box_j),
                             SIZE2D(0, 0),
@@ -1352,7 +1355,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_m,
                             box_size(&box_m),
                             SIZE2D(0, 0),
@@ -1405,7 +1408,7 @@ result_t wuss_test(const char *resources)
                             &box_h,
                             "H",
                             wuss_WINDOW_NONE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_h,
                             box_size(&box_h),
                             SIZE2D(0, 0),
@@ -1424,7 +1427,7 @@ result_t wuss_test(const char *resources)
                             &box_g,
                             "G",
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_g,
                             box_size(&box_g),
                             SIZE2D(0, 0),
@@ -1544,7 +1547,7 @@ result_t wuss_test(const char *resources)
     box_m.x0 = 10; box_m.y0 = 10;
     box_m.x1 = 210; box_m.y1 = 210; /* 200x200 content, floored at 80x60 */
     rc = wuss_window_create(wuss, &box_m, "M", wuss_WINDOW_NONE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_m,
                             SIZE2D(200, 200), SIZE2D(80, 60),
                             &win_m);
@@ -1595,7 +1598,7 @@ result_t wuss_test(const char *resources)
     box_t_win.x0 = 10; box_t_win.y0 = 10;
     box_t_win.x1 = 50; box_t_win.y1 = 50; /* 40x40 content, room to grow to a 200x200 doc */
     rc = wuss_window_create(wuss, &box_t_win, "T", wuss_WINDOW_NONE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_t,
                             SIZE2D(200, 200), SIZE2D(0, 0), &win_t);
     if (rc != result_OK)
@@ -1761,7 +1764,7 @@ result_t wuss_test(const char *resources)
     box_r.x0 = 10; box_r.y0 = 10;
     box_r.x1 = 50; box_r.y1 = 50; /* 40x40 content; doc bigger than that, so it starts scrollable */
     rc = wuss_window_create(wuss, &box_r, "R", wuss_WINDOW_NONE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_r,
                             SIZE2D(70, 70), SIZE2D(0, 0), &win_r);
     if (rc != result_OK)
@@ -1859,7 +1862,7 @@ result_t wuss_test(const char *resources)
     box_nb.x0 = 10; box_nb.y0 = 10;
     box_nb.x1 = 50; box_nb.y1 = 50; /* 40x40 content, room to grow to a 200x200 doc */
     rc = wuss_window_create(wuss, &box_nb, "NB", wuss_WINDOW_NO_RESIZE_BLIT,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_nb,
                             SIZE2D(200, 200), SIZE2D(0, 0), &win_nb);
     if (rc != result_OK)
@@ -1938,7 +1941,8 @@ result_t wuss_test(const char *resources)
 
     box_u.x0 = 80; box_u.y0 = 80;
     box_u.x1 = 120; box_u.y1 = 120; /* 40x40 content */
-    rc = wuss_window_create(wuss, &box_u, "U", wuss_WINDOW_NONE, wuss_NO_BACKGROUND, /* scrollbars on: carve.x/y = icon size */
+    rc = wuss_window_create(wuss, &box_u, "U", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND), /* scrollbars on: carve.x/y = icon size */
                             &delegate_u,
                             SIZE2D(70, 70), SIZE2D(0, 0), &win_u); /* doc size well within the 200x200 screen: growth is doc-limited, not screen-limited */
     if (rc != result_OK)
@@ -2046,7 +2050,7 @@ result_t wuss_test(const char *resources)
                                     * Doc big enough that maximize is
                                     * screen-limited, not doc-limited. */
     rc = wuss_window_create(wuss, &box_v, "V", wuss_WINDOW_NONE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_v,
                             SIZE2D(200, 200), SIZE2D(0, 0), &win_v);
     if (rc != result_OK)
@@ -2159,7 +2163,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_k,
                             box_size(&box_k),
                             SIZE2D(0, 0),
@@ -2180,7 +2184,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_l,
                             box_size(&box_l),
                             SIZE2D(0, 0),
@@ -2247,7 +2251,7 @@ result_t wuss_test(const char *resources)
                             "M2",
                             wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_m2,
                             box_size(&box_m2),
                             SIZE2D(0, 0),
@@ -2338,7 +2342,7 @@ result_t wuss_test(const char *resources)
     box_nb2.x0 = 0; box_nb2.y0 = 0;
     box_nb2.x1 = 40; box_nb2.y1 = 40;
     rc = wuss_window_create(wuss, &box_nb2, "NB2", wuss_WINDOW_NO_RESIZE_BLIT,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_nb2,
                             box_size(&box_nb2),
                             SIZE2D(0, 0),
@@ -2390,7 +2394,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_n,
                             box_size(&box_n),
                             SIZE2D(0, 0),
@@ -2409,7 +2413,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_o,
                             box_size(&box_o),
                             SIZE2D(0, 0),
@@ -2494,7 +2498,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_b,
                             box_size(&box_b),
                             SIZE2D(0, 0),
@@ -2513,7 +2517,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_a,
                             box_size(&box_a),
                             SIZE2D(0, 0),
@@ -2597,7 +2601,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_b,
                             box_size(&box_b),
                             SIZE2D(0, 0),
@@ -2616,7 +2620,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_a,
                             box_size(&box_a),
                             SIZE2D(0, 0),
@@ -2677,7 +2681,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_b,
                             box_size(&box_b),
                             SIZE2D(0, 0),
@@ -2696,7 +2700,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_a,
                             box_size(&box_a),
                             SIZE2D(0, 0),
@@ -2790,7 +2794,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_b,
                             box_size(&box_b),
                             SIZE2D(0, 0),
@@ -2809,7 +2813,7 @@ result_t wuss_test(const char *resources)
                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
                             wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                             wuss_WINDOW_NO_RESIZE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_a,
                             box_size(&box_a),
                             SIZE2D(0, 0),
@@ -2886,7 +2890,7 @@ result_t wuss_test(const char *resources)
                           wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
                           wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
                           wuss_WINDOW_NO_RESIZE,
-                          wuss_NO_BACKGROUND,
+                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                           &delegate_c,
                           box_size(&box_c),
                           SIZE2D(0, 0),
@@ -2921,7 +2925,7 @@ result_t wuss_test(const char *resources)
     box_s.x0 = 10; box_s.y0 = 10;
     box_s.x1 = 60; box_s.y1 = 60; /* 50x50 content onto a 200x200 doc: room to scroll */
     rc = wuss_window_create(wuss, &box_s, "S", wuss_WINDOW_NONE,
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_s,
                             SIZE2D(200, 200), SIZE2D(0, 0), &win_s);
     if (rc != result_OK)
@@ -2997,7 +3001,7 @@ result_t wuss_test(const char *resources)
                             &box_r,
                             "rules",
                             wuss_WINDOW_NONE, /* all furniture present */
-                            wuss_NO_BACKGROUND,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             &delegate_r,
                             SIZE2D(400, 400),
                             SIZE2D(0, 0),
@@ -3042,7 +3046,7 @@ result_t wuss_test(const char *resources)
                                      SIZE2D(40, 30),
                                      "P",
                                      wuss_WINDOW_NONE,
-                                     wuss_NO_BACKGROUND,
+                                     wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                      &delegate_p,
                                      SIZE2D(40, 30),
                                      SIZE2D(0, 0),
@@ -3066,7 +3070,7 @@ result_t wuss_test(const char *resources)
                                    SIZE2D(40, 30),
                                    "P",
                                    wuss_WINDOW_NONE,
-                                   wuss_NO_BACKGROUND,
+                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                    &delegate_p,
                                    SIZE2D(40, 30),
                                    SIZE2D(0, 0),

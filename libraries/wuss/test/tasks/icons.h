@@ -17,7 +17,6 @@ typedef struct icons_task
 {
   wuss_window_t *window;
   bmfont_t      *font;
-  colour_t       ink;    /* grid lines */
   colour_t       label;  /* axis coordinate text */
   colour_t       paper;  /* window bg, for bmfont_draw glyph blending */
   wuss_icon_t   *button;  /* "Press me" */

@@ -30,7 +30,7 @@ result_t palette_create(wuss_t         *wuss,
                                    SIZE2D(100, 100),
                                    "Palette",
                                    wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                                   palette_PICO8_BLACK,
+                                   wuss_BACKDROP_COLOUR(palette_PICO8_BLACK),
                                    &delegate,
                                    SIZE2D(100, 100),
                                    SIZE2D(0, 0),

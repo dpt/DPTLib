@@ -55,7 +55,7 @@ result_t chars_create(wuss_t         *wuss,
                                    wuss_WINDOW_NO_TOGGLE_SIZE |
                                    wuss_WINDOW_NO_VSCROLL     |
                                    wuss_WINDOW_NO_HSCROLL,
-                                   wuss_NO_BACKGROUND,
+                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                    &delegate,
                                    sz,
                                    SIZE2D(0, 0),

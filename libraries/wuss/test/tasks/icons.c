@@ -35,7 +35,6 @@ result_t icons_create(wuss_t         *wuss,
   result_t         rc;
 
   task->font    = font;
-  task->ink     = palette[palette_PICO8_LAVENDER];
   task->label   = palette[palette_PICO8_DARK_BLUE];
   task->paper   = palette[palette_PICO8_LIGHT_GREY]; /* the window bg, below */
   task->window  = NULL;
@@ -49,7 +48,9 @@ result_t icons_create(wuss_t         *wuss,
                                  SIZE2D(ICONS_DOC_W, 160),
                                  "Icons",
                                  wuss_WINDOW_NONE,
-                                 palette_PICO8_LIGHT_GREY,
+                                 wuss_BACKDROP_PATTERN(palette_PICO8_LAVENDER,
+                                                       screen_PATTERN_CROSSHATCH,
+                                                       palette_PICO8_LIGHT_GREY),
                                  &delegate,
                                  SIZE2D(ICONS_DOC_W, ICONS_DOC_H),
                                  SIZE2D(0, 0),
@@ -165,16 +166,9 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
    * blit assumes. Nothing here is pinned to a window edge. Every draw is
    * clipped to the dirty rectangle (content) so partial redraws stay cheap. */
 
-  /* a faint grid across the whole work area */
-  for (x = icons_grid_first(bounds->x0, scroll.x, content->x0);
-       x < content->x1;
-       x += ICONS_GRID)
-    screen_draw_line(scr, x, content->y0, x, content->y1 - 1, tcx->ink);
-
-  for (y = icons_grid_first(bounds->y0, scroll.y, content->y0);
-       y < content->y1;
-       y += ICONS_GRID)
-    screen_draw_line(scr, content->x0, y, content->x1 - 1, y, tcx->ink);
+  /* the faint crosshatch backdrop is now the window's own bg (a
+   * wuss_backdrop_t pattern fill), painted by Wuss before this event and
+   * phase-locked to the scroll origin -- nothing to draw here */
 
   /* x-axis ruler: document x printed just below the y=0 line, at each
    * labelled grid column. Scrolls with the document like the grid. */
