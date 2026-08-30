@@ -35,6 +35,7 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   int     outline_px, titlebar_height;
   box_t   before;
   point_t carve;
+  point_t clamped;
 
   if (!wuss__size_ok(size.w, size.h))
     return result_WUSS_TOO_SMALL;
@@ -51,6 +52,24 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   window->visible.y1 = window->visible.y0 + size.h + titlebar_height + 2 * outline_px + carve.y;
 
   wuss__notify_open(window);
+
+  /* Enlarging the viewport (or growing it past the doc extent) can scroll
+   * content that no longer exists into view; pull the offset back so only
+   * the document extent is ever shown. The interior has moved relative to
+   * the window, so the whole content box needs repainting -- the
+   * grown/shrunk-sliver logic below assumes an unchanged interior. */
+  clamped = wuss__scroll_clamp(window, window->scroll);
+  if (clamped.x != window->scroll.x || clamped.y != window->scroll.y)
+  {
+    box_t content;
+
+    window->scroll = clamped;
+    wuss__content_box(window, &content);
+    wuss__invalidate_clipped(window, &content);
+#ifdef WUSS_FURNITURE
+    wuss__furniture_invalidate(window);
+#endif
+  }
 
   if (window->flags & wuss_WINDOW_NO_RESIZE_BLIT)
   {
