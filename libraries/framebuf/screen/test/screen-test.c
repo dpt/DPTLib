@@ -102,9 +102,10 @@ static void draw(screen_t *scr, linekind_t kind, const linetest_t *line,
     break;
 
   case linekind_WU_FIX8:
+    /* multiply, not INT_TO_FIX8: coords may be negative (left shift is UB). */
     screen_draw_line_wu_fix8(scr,
-                             INT_TO_FIX8(line->x0), INT_TO_FIX8(line->y0),
-                             INT_TO_FIX8(line->x1), INT_TO_FIX8(line->y1),
+                             line->x0 * FIX8_ONE, line->y0 * FIX8_ONE,
+                             line->x1 * FIX8_ONE, line->y1 * FIX8_ONE,
                              colour);
     break;
 
@@ -202,6 +203,41 @@ static result_t test_clipping_still_happens(void)
 
 /* ----------------------------------------------------------------------- */
 
+/* Wu fix8 lines with large and off-screen endpoints must not trip
+ * UndefinedBehaviorSanitizer: the gradient maths once overflowed 32-bit int
+ * (FIX16_ONE * dy_f8) and left-shifted negative pixel coordinates. */
+static result_t test_wu_fix8_extreme_coords(void)
+{
+  /* fix8: value * 256, written out to avoid left-shifting negatives here too. */
+  static const fix8_t endpoints[][4] =
+  {
+    {  -1000 * 256,     32 * 256,   2000 * 256,     33 * 256 },
+    {     32 * 256,  -1000 * 256,     31 * 256,   2000 * 256 },
+    {  -5000 * 256,  -5000 * 256,   5000 * 256,   5000 * 256 },
+    { -32000 * 256,     10 * 256,  32000 * 256,     50 * 256 }
+  };
+
+  static testscreen_t ts;
+
+  colour_t colour;
+  size_t   i;
+
+  colour = colour_rgb(255, 255, 255);
+
+  for (i = 0; i < NELEMS(endpoints); i++)
+  {
+    testscreen_init(&ts);
+    screen_draw_line_wu_fix8(&ts.scr,
+                             endpoints[i][0], endpoints[i][1],
+                             endpoints[i][2], endpoints[i][3],
+                             colour);
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t screen_test(const char *resources)
 {
   typedef result_t (*screentestfn)(void);
@@ -209,7 +245,8 @@ result_t screen_test(const char *resources)
   static const screentestfn tests[] =
   {
     test_clip_invariance,
-    test_clipping_still_happens
+    test_clipping_still_happens,
+    test_wu_fix8_extreme_coords
   };
 
   result_t rc;
