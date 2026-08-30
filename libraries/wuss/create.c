@@ -9,9 +9,16 @@
 #endif
 
 #include "base/utils.h"
-#include "framebuf/palettes.h"
 
 #include "impl.h"
+
+/* Built-in fallback palette when the caller passes NULL: black and white.
+ * wuss makes no other assumptions about palette contents or length. */
+static const colour_t wuss__default_palette[] =
+{
+  { 0xFF000000 }, /* 0: black */
+  { 0xFFFFFFFF }  /* 1: white */
+};
 
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
 /* Range-check the bevel colours and the backdrop against the palette. Shared
@@ -57,34 +64,25 @@ result_t wuss_create(screen_t            *scr,
   if (w == NULL)
     return result_OOM;
 
-  if (palette != NULL)
+  if (palette == NULL)
   {
-    if (npalette <= 0)
-    {
-      free(w);
-      return result_BAD_ARG;
-    }
+    palette  = wuss__default_palette;
+    npalette = NELEMS(wuss__default_palette);
+  }
+  else if (npalette <= 0)
+  {
+    free(w);
+    return result_BAD_ARG;
+  }
 
-    w->palette = malloc(npalette * sizeof(*w->palette));
-    if (w->palette == NULL)
-    {
-      free(w);
-      return result_OOM;
-    }
-    memcpy(w->palette, palette, npalette * sizeof(*w->palette));
-    w->npalette = npalette;
-  }
-  else
+  w->palette = malloc(npalette * sizeof(*w->palette));
+  if (w->palette == NULL)
   {
-    w->palette = malloc(palette_PICO8__LENGTH * sizeof(*w->palette));
-    if (w->palette == NULL)
-    {
-      free(w);
-      return result_OOM;
-    }
-    define_pico8_palette(w->palette);
-    w->npalette = palette_PICO8__LENGTH;
+    free(w);
+    return result_OOM;
   }
+  memcpy(w->palette, palette, npalette * sizeof(*w->palette));
+  w->npalette = npalette;
 
   if (config != NULL)
   {
@@ -106,16 +104,8 @@ result_t wuss_create(screen_t            *scr,
   }
   else
   {
-    if (palette == NULL)
-    {
-      bg = palette_PICO8_DARK_BLUE;
-      fg = palette_PICO8_WHITE;
-    }
-    else
-    {
-      bg = 0;
-      fg = (w->npalette > 1) ? 1 : 0;
-    }
+    bg = 0;
+    fg = (w->npalette > 1) ? 1 : 0;
 
     pal.title.bg        = bg;
     pal.title.fg        = fg;

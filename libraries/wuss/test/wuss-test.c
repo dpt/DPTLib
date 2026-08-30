@@ -1171,8 +1171,7 @@ result_t wuss_test(const char *resources)
   if (rc != result_WUSS_BAD_COLOUR)
     goto Failure;
 
-  rc = wuss_window_set_background(win_d,
-                                 wuss_BACKDROP_COLOUR(palette_PICO8_ORANGE));
+  rc = wuss_window_set_background(win_d, wuss_BACKDROP_COLOUR(1));
   if (rc != result_OK)
     goto Failure;
 
