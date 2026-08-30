@@ -24,6 +24,23 @@ _Unreleased_ until one is cut.
   no region fits. The slot is released on close and on the first
   `wuss_window_move()` / `wuss_window_resize()`. An overall screen margin is
   kept around all auto-placed windows.
+- `screen_fill_pattern()` — 8x8 two-colour tile fill primitive in
+  `framebuf/screen` with eight built-in patterns (solid, grey50, stripes,
+  diagonal, dots, grid, crosshatch), phase-locked to a caller-supplied origin
+  so a scrolling fill stays put. The tile has only eight distinct rows, so each
+  is expanded to a phase-shifted colour run once up front and the scanline
+  loops index it with no per-pixel bit test; the 32bpp path memcpy's whole
+  8-pixel runs.
+- `wuss_ICON_TYPE_PATTERN` — a non-interactive work-area icon whose bbox is
+  filled with a `screen_fill_pattern()` pattern in fg/bg, aligned to document
+  space. Clicks fall through as `wuss_EVENT_MOUSE`; disabled swatches fold fg
+  into bg.
+- `WUSS_FURNITURE` and `WUSS_ICONS` CMake options (both default ON) drop the
+  furniture/*.c and icon/*.c files and `#ifdef`-guard every core call site,
+  struct field and helper that references them. With `WUSS_FURNITURE` off every
+  window is chromeless (content box == visible box); with `WUSS_ICONS` off the
+  `wuss_icon_*` API is not compiled. Programmatic and wheel scrolling survive
+  either off via the new core `scroll-step.c`.
 - `screen_draw_ninepatch()` — draws a resizable "9-patch" frame from a source
   image that is a 3x3 grid of equal cells: corners at natural size, edges and
   centre tiled, clipped to the destination box and the screen clip.
@@ -54,6 +71,8 @@ _Unreleased_ until one is cut.
 
 ### Fixed
 
+- Dragging a scrollbar well with Select no longer raises the window; only a
+  resize-icon grab restacks it.
 - `wuss_window_move()` no longer repaints already-blitted pixels when a drag
   past an occluded corner slides one clean piece of the window onto ground
   another clean piece just vacated.
