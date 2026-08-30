@@ -84,3 +84,5 @@ _Unreleased_ until one is cut.
 - Removed signed-overflow and negative-shift undefined behaviour in the
   anti-aliased fixed-point line rasteriser, reachable with long or off-screen
   endpoints.
+- `screen_draw_ninepatch()` clamps its corner cells so they no longer overlap
+  and double-draw when the destination box is smaller than the source corners.
