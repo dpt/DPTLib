@@ -74,6 +74,8 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
       if (it->pressed && it != icon)
       {
         it->pressed = 0;
+        if (wuss->pressed_icon == it)
+          wuss->pressed_icon = NULL;
         wuss__icon_invalidate(it);
       }
     }

@@ -16,6 +16,21 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   x = p.x;
   y = p.y;
 
+  /* Release a held button icon on any MOUSE_UP, before the hit-test picks a
+   * window: the up may land on a window that opened over the icon's owner on
+   * MOUSE_DOWN, so wuss__window_at would never reach the pressed icon. */
+  if (action == wuss_MOUSE_UP && wuss->pressed_icon != NULL)
+  {
+    wuss_icon_t *pressed = wuss->pressed_icon;
+
+    wuss->pressed_icon = NULL;
+    if (pressed->pressed)
+    {
+      pressed->pressed = 0;
+      wuss__icon_invalidate(pressed);
+    }
+  }
+
   if (action == wuss_MOUSE_UP && wuss->furniture.dragging != NULL)
   {
     win = wuss->furniture.dragging;
@@ -168,12 +183,14 @@ result_t wuss_mouse_click(wuss_t             *wuss,
       if (action == wuss_MOUSE_DOWN &&
           (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
       {
-        icon->pressed = 1;
+        icon->pressed      = 1;
+        wuss->pressed_icon = icon;
         wuss__icon_invalidate(icon);
       }
       else if (action == wuss_MOUSE_UP && icon->pressed)
       {
-        icon->pressed = 0;
+        icon->pressed      = 0;
+        wuss->pressed_icon = NULL;
         wuss__icon_invalidate(icon);
       }
 

@@ -65,6 +65,10 @@ struct wuss
                                           * created on first auto-placement */
   point_t                     cascade;   /* next cascade offset, used once the
                                           * layout packer has no room left */
+  wuss_icon_t                *pressed_icon; /* button icon held down, NULL when
+                                            * idle; released on any MOUSE_UP
+                                            * even if a new window now covers
+                                            * its owner */
 };
 
 struct wuss_window

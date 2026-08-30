@@ -18,6 +18,8 @@ void wuss_window_close(wuss_window_t *doomed)
   wuss = doomed->wuss;
   if (wuss->furniture.dragging == doomed)
     wuss->furniture.dragging = NULL;
+  if (wuss->pressed_icon != NULL && wuss->pressed_icon->window == doomed)
+    wuss->pressed_icon = NULL;
 
   wuss__release_packed(doomed);
 
