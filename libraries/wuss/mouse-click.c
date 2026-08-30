@@ -124,7 +124,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
 
     if (region == wuss_FURNITURE_CLOSE || region == wuss_FURNITURE_TITLE)
     {
-      if (action == wuss_MOUSE_DOWN)
+      if (action == wuss_MOUSE_DOWN &&
+          (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
       {
         box_t content;
 
@@ -144,7 +145,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         region == wuss_FURNITURE_VSCROLL_WELL ||
         region == wuss_FURNITURE_HSCROLL_WELL)
     {
-      if (action == wuss_MOUSE_DOWN)
+      if (action == wuss_MOUSE_DOWN &&
+          (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
       {
         point_t scroll;
 
