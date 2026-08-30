@@ -181,9 +181,28 @@ void wuss_window_move(wuss_window_t *window, point_t p)
      * re-checking occlusion -- regardless of whether every pixel of that
      * new position actually got a blit above: the part that landed under an
      * occluder was skipped there, but the old position is vacated either
-     * way. */
+     * way.
+     *
+     * The sliver is clean[i] minus *every* clean piece's destination, not
+     * just its own: with an occluder biting a corner out of "before", one
+     * clean piece can slide onto ground another clean piece just vacated
+     * (e.g. a full-width bottom band vacated straight into the destination
+     * of the right-side band on a downward drag). That overlap already got
+     * valid pixels from the other piece's blit, so invalidating it would
+     * just repaint good pixels. */
     for (i = 0; i < nclean; i++)
-      wuss__invalidate_minus(window->wuss, &clean[i], &full_dest[i]);
+    {
+      box_t sliver[WUSS_MAX_INVALIDATE_PIECES];
+      int   nsliver, s;
+
+      /* ponytail: nclean is a handful, so this can't approach the
+       * WUSS_MAX_INVALIDATE_PIECES cap; if that ever changes, a dropped
+       * piece here means a missed repaint (visible corruption), not just
+       * wasted work -- revisit then. */
+      nsliver = wuss__subtract_boxes(&clean[i], full_dest, nclean, sliver);
+      for (s = 0; s < nsliver; s++)
+        wuss_invalidate(window->wuss, &sliver[s]);
+    }
 
     /* Whatever of "before" wasn't clean has no valid source pixels: its
      * translated destination needs a genuine repaint, clipped against
