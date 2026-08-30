@@ -109,6 +109,12 @@ void screen_draw_square(screen_t *scr,
  */
 void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src);
 
+/** Flags for `screen_draw_ninepatch`. */
+enum
+{
+  screen_NINEPATCH_NO_CENTRE = 1u << 0 /**< Leave the interior untouched. */
+};
+
 /**
  * Draws a "9-patch": a resizable frame built from a source image that is a 3x3
  * grid of equal cells. The source width and height must each be a positive
@@ -123,13 +129,17 @@ void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src);
  * region, which is restored on return. Cells are blended exactly as
  * `screen_draw_bitmap` does. No scaling is performed.
  *
- * \param[in] scr  Screen to draw upon.
- * \param[in] dst  Destination box to fill with the frame.
- * \param[in] src  Source image, a 3x3 grid of cells.
+ * \param[in] scr   Screen to draw upon.
+ * \param[in] dst   Destination box to fill with the frame.
+ * \param[in] src   Source image, a 3x3 grid of cells.
+ * \param[in] flags Bitwise OR of `screen_NINEPATCH_*`, or 0. Pass
+ *                  `screen_NINEPATCH_NO_CENTRE` to draw only the border and
+ *                  leave the interior untouched.
  */
 void screen_draw_ninepatch(screen_t       *scr,
                            const box_t    *dst,
-                           const bitmap_t *src);
+                           const bitmap_t *src,
+                           unsigned int    flags);
 
 /**
  * Copies a rectangular region of the screen to another position on the same

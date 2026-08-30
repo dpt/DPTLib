@@ -69,7 +69,8 @@ static void tile_area(screen_t       *scr,
 
 void screen_draw_ninepatch(screen_t       *scr,
                            const box_t    *dst,
-                           const bitmap_t *src)
+                           const bitmap_t *src,
+                           unsigned int    flags)
 {
   box_t    saved;
   box_t    orig_clip;
@@ -151,7 +152,7 @@ void screen_draw_ninepatch(screen_t       *scr,
   }
 
   /* Centre. */
-  if (rx > lx && by > ty)
+  if (rx > lx && by > ty && !(flags & screen_NINEPATCH_NO_CENTRE))
   {
     box_t b;
 
