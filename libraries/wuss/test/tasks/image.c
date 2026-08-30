@@ -60,6 +60,8 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   screen_t     *scr;
   const box_t  *bounds;
   int           sx, sy;
+  int           bx, by;
+  box_t         behind;
 
   ic = task_data;
 
@@ -67,18 +69,18 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   bounds = event->data.redraw.bounds;
   sx     = event->data.redraw.scroll.x;
   sy     = event->data.redraw.scroll.y;
+  bx     = bounds->x0 - sx + BORDER;
+  by     = bounds->y0 - sy + BORDER;
 
-  {
-    box_t behind;
+#define NINEPATCHSZ 9
+  
+  behind.x0 = bx - NINEPATCHSZ;
+  behind.y0 = by - NINEPATCHSZ;
+  behind.x1 = behind.x0 + ic->bitmap.size.w + NINEPATCHSZ * 2;
+  behind.y1 = behind.y0 + ic->bitmap.size.h + NINEPATCHSZ * 2;
+  screen_draw_ninepatch(scr, &behind, &ic->ninepatch, 0);
 
-    behind.x0 = bounds->x0 - sx + BORDER - 9;
-    behind.y0 = bounds->y0 - sy + BORDER - 9;
-    behind.x1 = behind.x0 + ic->bitmap.size.w + 9 * 2;
-    behind.y1 = behind.y0 + ic->bitmap.size.h + 9 * 2;
-    screen_draw_ninepatch(scr, &behind, &ic->ninepatch);
-  }
-
-  screen_draw_bitmap(scr, bounds->x0 - sx + BORDER, bounds->y0 - sy + BORDER, &ic->bitmap);
+  screen_draw_bitmap(scr, bx, by, &ic->bitmap);
 
   return result_OK;
 }
