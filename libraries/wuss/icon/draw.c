@@ -88,9 +88,13 @@ void wuss__icon_draw(wuss_t            *wuss,
         screen_draw_rect(scr, b.x0, b.y0,
                          SIZE2D(b.x1 - b.x0, b.y1 - b.y0), bg);
       }
-      else if (icon->window->bg != wuss_NO_BACKGROUND)
+      else if (icon->window->bg.colour != wuss_NO_BACKGROUND)
       {
-        bg = wuss->palette[icon->window->bg];
+        /* blend against the dominant backdrop colour: for a pattern fill
+         * that's its background (clear-bit) colour, not the foreground */
+        bg = (icon->window->bg.pattern != screen_PATTERN_SOLID)
+           ? wuss->palette[icon->window->bg.pattern_bg]
+           : wuss->palette[icon->window->bg.colour];
       }
       else
       {

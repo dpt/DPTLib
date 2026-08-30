@@ -53,7 +53,7 @@ result_t text_create(wuss_t         *wuss,
                                  sz,
                                  "Lorem Ipsum",
                                  wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                                 palette_PICO8_BLUE,
+                                 wuss_BACKDROP_COLOUR(palette_PICO8_BLUE),
                                  &delegate,
                                  sz,
                                  SIZE2D(0, 0),

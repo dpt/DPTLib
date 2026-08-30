@@ -373,7 +373,7 @@ result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
                                    SIZE2D(180, 160),
                                    "Sofa",
                                    wuss_WINDOW_NONE,
-                                   wuss_NO_BACKGROUND,
+                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                    &delegate,
                                    SIZE2D(180, 160),
                                    SIZE2D(0, 0),

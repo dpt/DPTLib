@@ -326,6 +326,7 @@ set(UTILS_SOURCES
     libraries/utils/primes/primes.c)
 
 set(WUSS_CORE_SOURCES
+    libraries/wuss/backdrop.c
     libraries/wuss/create.c
     libraries/wuss/destroy.c
     libraries/wuss/get-font.c

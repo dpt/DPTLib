@@ -43,7 +43,7 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t *task)
                                    SIZE2D(GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT),
                                    "Gradient",
                                    wuss_WINDOW_NONE,
-                                   wuss_NO_BACKGROUND,
+                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                    &delegate,
                                    SIZE2D(GRADIENT_DOC_WIDTH, GRADIENT_DOC_HEIGHT),
                                    SIZE2D(0, 0),

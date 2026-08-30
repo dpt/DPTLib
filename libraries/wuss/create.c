@@ -14,17 +14,16 @@
 #include "impl.h"
 
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
-/* Range-check the bevel colours and (when set) the backdrop against the
- * palette. Shared by the furniture and icons-only paths so the accepted
- * range, the error code and the freed-pointer set stay in one place. */
+/* Range-check the bevel colours and the backdrop against the palette. Shared
+ * by the furniture and icons-only paths so the accepted range, the error code
+ * and the freed-pointer set stay in one place. */
 static result_t validate_bevel_backdrop(const wuss_t *w,
                                         wuss_colour_t blight,
                                         wuss_colour_t bdark)
 {
   if (blight < 0 || blight >= w->npalette ||
       bdark  < 0 || bdark  >= w->npalette ||
-      (w->backdrop != wuss_NO_BACKGROUND &&
-       (w->backdrop < 0 || w->backdrop >= w->npalette)))
+      wuss__validate_backdrop(w, &w->backdrop) != result_OK)
     return result_WUSS_BAD_COLOUR;
 
   return result_OK;
@@ -87,18 +86,26 @@ result_t wuss_create(screen_t            *scr,
     w->npalette = palette_PICO8__LENGTH;
   }
 
+  if (config != NULL)
+  {
+    w->backdrop = config->backdrop;
+  }
+  else
+  {
+    w->backdrop.colour     = wuss_NO_BACKGROUND;
+    w->backdrop.pattern    = screen_PATTERN_SOLID;
+    w->backdrop.pattern_bg = wuss_NO_BACKGROUND;
+  }
+
 #ifdef WUSS_FURNITURE
   if (config != NULL)
   {
     pal = config->palette;
     blight = config->bevel.light;
     bdark = config->bevel.dark;
-    w->backdrop = config->backdrop;
   }
   else
   {
-    w->backdrop = wuss_NO_BACKGROUND;
-
     if (palette == NULL)
     {
       bg = palette_PICO8_DARK_BLUE;
@@ -159,8 +166,6 @@ result_t wuss_create(screen_t            *scr,
     w->titlebar_height = WUSS_DEFAULT_TITLEBAR_HEIGHT;
   }
 #else /* !WUSS_FURNITURE */
-  w->backdrop = (config != NULL) ? config->backdrop : wuss_NO_BACKGROUND;
-
 #ifdef WUSS_ICONS
   if (config != NULL)
   {
@@ -181,8 +186,7 @@ result_t wuss_create(screen_t            *scr,
   w->bevel_light = blight;
   w->bevel_dark  = bdark;
 #else
-  if (w->backdrop != wuss_NO_BACKGROUND &&
-      (w->backdrop < 0 || w->backdrop >= w->npalette))
+  if (wuss__validate_backdrop(w, &w->backdrop) != result_OK)
   {
     free(w->palette);
     free(w);

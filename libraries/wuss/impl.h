@@ -62,7 +62,7 @@ struct wuss
   wuss_colour_t               bevel_light; /* work-area button top/left edge */
   wuss_colour_t               bevel_dark;  /* work-area button bottom/right edge */
 #endif
-  wuss_colour_t               backdrop;  /* wuss_NO_BACKGROUND for none */
+  wuss_backdrop_t             backdrop; /* colour==wuss_NO_BACKGROUND: none */
 #ifdef WUSS_FURNITURE
   int                         titlebar_height;
 #endif
@@ -92,7 +92,7 @@ struct wuss_window
   box_t               visible; /* full on-screen footprint: content expanded
                                 * outward by any titlebar/outline furniture */
   wuss_task_t         task;
-  wuss_colour_t       bg;
+  wuss_backdrop_t     bg; /* content background; colour==wuss_NO_BACKGROUND: none */
   wuss_window_flags_t flags;
   point_t             scroll; /* offset into virtual content space of the
                                * content box's top-left; see wuss_window_set_scroll */
@@ -118,6 +118,23 @@ struct wuss_window
 };
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
+
+/* Range-check a backdrop spec against the palette: its colour, and -- when a
+ * non-solid pattern is set -- its pattern index and background colour.
+ * Returns result_OK or result_WUSS_BAD_COLOUR. */
+result_t wuss__validate_backdrop(const wuss_t          *wuss,
+                                 const wuss_backdrop_t *backdrop);
+
+/* Paint "backdrop" into "area" on "scr": a flat fill in the SOLID case,
+ * otherwise the 8x8 pattern tiled in colour over pattern_bg, phased against
+ * (origin_x, origin_y). No-op when colour is wuss_NO_BACKGROUND. Caller sets
+ * scr->clip. */
+void wuss__fill_backdrop(screen_t              *scr,
+                         const colour_t        *palette,
+                         const wuss_backdrop_t *backdrop,
+                         const box_t           *area,
+                         int                    origin_x,
+                         int                    origin_y);
 
 /* clamp "desired" to the window's scrollable range; step the current offset
  * by "delta" and apply it. Core (furniture-independent) -- used by the wheel

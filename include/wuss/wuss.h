@@ -18,6 +18,7 @@ extern "C"
 
 #include "base/result.h"
 #include "framebuf/bmfont.h"
+#include "framebuf/screen.h"
 #include "geom/box.h"
 #include "geom/point.h"
 #include "geom/size.h"
@@ -177,11 +178,50 @@ typedef enum wuss_zorder
 wuss_zorder_t;
 
 /**
+ * Desktop background specification: a flat colour, or an 8x8 fill pattern. Used
+ * by wuss_config_t. Always honoured regardless of the WUSS_FURNITURE /
+ * WUSS_ICONS options.
+ */
+typedef struct wuss_backdrop
+{
+  /**
+   * Fill colour, or wuss_NO_BACKGROUND to leave the background untouched (the
+   * caller must then repaint it itself before wuss_redraw / wuss_redraw_dirty).
+   * When pattern is not screen_PATTERN_SOLID this is the pattern's foreground
+   * (set-bit) colour.
+   */
+  wuss_colour_t    colour;
+
+  /**
+   * Fill pattern. screen_PATTERN_SOLID (the default) fills flat in colour; any
+   * other value tiles that pattern in colour over pattern_bg, phased to a fixed
+   * screen origin so it stays put across dirty-region redraws. Ignored when
+   * colour is wuss_NO_BACKGROUND.
+   */
+  screen_pattern_t pattern;
+
+  /** Pattern background (clear-bit) colour; used only when pattern is not
+   *  screen_PATTERN_SOLID. */
+  wuss_colour_t    pattern_bg;
+}
+wuss_backdrop_t;
+
+/** A flat-colour wuss_backdrop_t (or wuss_NO_BACKGROUND for none), as a
+ *  compound literal -- the common case where no fill pattern is wanted. */
+#define wuss_BACKDROP_COLOUR(c) \
+  ((wuss_backdrop_t) { (c), screen_PATTERN_SOLID, wuss_NO_BACKGROUND })
+
+/** A patterned wuss_backdrop_t: 8x8 pattern p tiled in colour c over
+ *  background colour b. */
+#define wuss_BACKDROP_PATTERN(c, p, b) ((wuss_backdrop_t) { (c), (p), (b) })
+
+/**
  * Optional creation-time configuration.
  *
  * \note titlebar_height and palette are ignored when the library is built with
  *       WUSS_FURNITURE off; bevel is ignored when built with both
- *       WUSS_FURNITURE and WUSS_ICONS off. backdrop is always honoured.
+ *       WUSS_FURNITURE and WUSS_ICONS off. backdrop is always honoured. See the
+ *       backdrop sub-struct for its own notes.
  */
 typedef struct wuss_config
 {
@@ -207,12 +247,8 @@ typedef struct wuss_config
   }
   bevel;
 
-  /**
-   * Desktop background colour, painted behind windows on every redraw, or
-   * wuss_NO_BACKGROUND to leave the background untouched (the caller must then
-   * repaint it itself before wuss_redraw / wuss_redraw_dirty).
-   */
-  wuss_colour_t  backdrop;
+  /** Desktop background, painted behind windows on every redraw. */
+  wuss_backdrop_t backdrop;
 }
 wuss_config_t;
 

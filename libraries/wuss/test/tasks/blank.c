@@ -31,7 +31,7 @@ result_t blank_create(wuss_t *wuss, int npalette, blank_task_t *task)
                                    SIZE2D(200, 160),
                                    NULL,
                                    wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
-                                   palette_PICO8_GREEN,
+                                   wuss_BACKDROP_COLOUR(palette_PICO8_GREEN),
                                    &delegate,
                                    SIZE2D(200, 160),
                                    SIZE2D(0, 0),
@@ -51,7 +51,8 @@ static result_t blank_idle(void *task_data)
   bc->frame_count = 0;
   bc->index       = (bc->index + 1) % bc->npalette;
 
-  rc = wuss_window_set_background(bc->window, bc->index);
+  rc = wuss_window_set_background(bc->window,
+                                 wuss_BACKDROP_COLOUR(bc->index));
   if (rc != result_OK)
     logf_warning("blank_idle: wuss_window_set_background(%d) failed", bc->index);
 

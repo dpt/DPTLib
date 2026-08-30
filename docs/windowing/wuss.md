@@ -20,7 +20,9 @@ result_t wuss_create(screen_t             *scr,
                      wuss_t              **wuss);
 ```
 
-`font` and `palette` may both be NULL, for unlabelled titlebars and a built-in default palette respectively. `config` may be NULL for default titlebar height/colours. `config->backdrop` sets a desktop background colour painted behind windows on every redraw, or `wuss_NO_BACKGROUND` (the default when `config` is NULL) to leave the background untouched and require the caller to repaint it itself. `wuss_get_font` reads back the font passed in (or NULL), for a task that wants to draw its own content in the same face as titlebars.
+`font` and `palette` may both be NULL, for unlabelled titlebars and a built-in default palette respectively. `config` may be NULL for default titlebar height/colours. `config->backdrop` is a `wuss_backdrop_t` — a flat colour, or an 8x8 fill pattern — painted behind windows on every redraw; set its `colour` to `wuss_NO_BACKGROUND` (the default when `config` is NULL) to leave the background untouched and require the caller to repaint it itself. A non-`screen_PATTERN_SOLID` `pattern` tiles that pattern in `colour` over `pattern_bg`, phased to a fixed screen origin so it does not crawl between full and dirty-region redraws. `wuss_get_font` reads back the font passed in (or NULL), for a task that wants to draw its own content in the same face as titlebars.
+
+A `wuss_backdrop_t` is `{ colour, pattern, pattern_bg }`; the `wuss_BACKDROP_COLOUR(c)` and `wuss_BACKDROP_PATTERN(c, p, b)` macros build one as a compound literal.
 
 Destroy with `wuss_destroy`, which also destroys any windows still open on it.
 
@@ -30,13 +32,13 @@ Create a window with a content bounding box, optional title, appearance flags, a
 
 ```C
 result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title,
-                            wuss_window_flags_t flags, wuss_colour_t bg,
+                            wuss_window_flags_t flags, wuss_backdrop_t bg,
                             const wuss_task_t *task,
                             size2d_t doc, size2d_t min_doc,
                             wuss_window_t **window);
 ```
 
-`bg` is filled in by wuss before each redraw event, or `wuss_NO_BACKGROUND` for the task to draw its own background (avoids a redundant fill behind an opaque task); changeable later via `wuss_window_set_background`.
+`bg` is a `wuss_backdrop_t` (flat colour or 8x8 pattern, as for `config->backdrop`), filled in by wuss before each redraw event; set its `colour` to `wuss_NO_BACKGROUND` for the task to draw its own background (avoids a redundant fill behind an opaque task). Any pattern is phased to the window's scroll origin so it stays locked to the content as the window scrolls. Changeable later via `wuss_window_set_background`, which also takes a `wuss_backdrop_t`.
 
 `doc` is the virtual document extent behind the horizontal/vertical scrollbars' sausage proportion; pass `content`'s own width/height for a window with nothing to scroll. It is also the ceiling a resize-drag or toggle-size grows the content area to. Set once at creation, immutable thereafter.
 

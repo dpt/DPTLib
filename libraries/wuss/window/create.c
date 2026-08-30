@@ -14,7 +14,7 @@ result_t wuss_window_create(wuss_t             *wuss,
                             const box_t        *content,
                             const char         *title,
                             wuss_window_flags_t flags,
-                            wuss_colour_t       bg,
+                            wuss_backdrop_t     bg,
                             const wuss_task_t  *task,
                             size2d_t            doc,
                             size2d_t            min_doc,
@@ -94,7 +94,7 @@ result_t wuss_window_create(wuss_t             *wuss,
   else
     memset(&win->task, 0, sizeof(win->task));
 
-  if (bg != wuss_NO_BACKGROUND && (bg < 0 || bg >= wuss->npalette))
+  if (wuss__validate_backdrop(wuss, &bg) != result_OK)
   {
     free(win);
     return result_WUSS_BAD_COLOUR;
