@@ -14,16 +14,19 @@
 typedef struct image_task
 {
   wuss_window_t *window;
-  bitmap_t       bitmap; /* owned: base freed by the caller when done */
+  bitmap_t       bitmap;    /* owned: base freed by the caller when done */
+  bitmap_t       ninepatch; /* owned: 9-patch tiled behind the main image */
 }
 image_task_t;
 
 wuss_event_fn_t image_handle;
 
-/* load the PNG at path and create its window against the given wuss instance */
+/* load the PNG at path (and the 9-patch PNG at background_path, drawn tiled
+ * behind it) and create its window against the given wuss instance */
 result_t image_create(wuss_t         *wuss,
                       const colour_t *palette,
                       const char     *path,
+                      const char     *background_path,
                       image_task_t   *task);
 
 

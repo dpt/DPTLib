@@ -19,6 +19,7 @@
 result_t image_create(wuss_t         *wuss,
                       const colour_t *palette,
                       const char     *path,
+                      const char     *background_path,
                       image_task_t   *task)
 {
   wuss_task_t delegate;
@@ -28,6 +29,13 @@ result_t image_create(wuss_t         *wuss,
   rc = bitmap_load_png(&task->bitmap, path);
   if (rc != result_OK)
     return rc;
+
+  rc = bitmap_load_png(&task->ninepatch, background_path);
+  if (rc != result_OK)
+  {
+    free(task->bitmap.base);
+    return rc;
+  }
 
   delegate = wuss_task_start(image_handle, task); /* shows through the image's transparent pixels */
   
@@ -60,6 +68,16 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   sx     = event->data.redraw.scroll.x;
   sy     = event->data.redraw.scroll.y;
 
+  {
+    box_t behind;
+
+    behind.x0 = bounds->x0 - sx + BORDER - 9;
+    behind.y0 = bounds->y0 - sy + BORDER - 9;
+    behind.x1 = behind.x0 + ic->bitmap.size.w + 9 * 2;
+    behind.y1 = behind.y0 + ic->bitmap.size.h + 9 * 2;
+    screen_draw_ninepatch(scr, &behind, &ic->ninepatch);
+  }
+
   screen_draw_bitmap(scr, bounds->x0 - sx + BORDER, bounds->y0 - sy + BORDER, &ic->bitmap);
 
   return result_OK;
@@ -81,6 +99,7 @@ result_t image_handle(wuss_window_t      *window,
   case wuss_EVENT_CLOSE:
     wuss_window_close(window);
     free(ic->bitmap.base);
+    free(ic->ninepatch.base);
     free(ic); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
