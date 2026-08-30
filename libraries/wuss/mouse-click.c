@@ -141,7 +141,9 @@ result_t wuss_mouse_click(wuss_t             *wuss,
     {
       point_t scroll;
 
-      if (button & wuss_BUTTON_SELECT)
+      /* Only resize raises the window; dragging a scrollbar well must not
+       * reorder the stack. */
+      if ((button & wuss_BUTTON_SELECT) && region == wuss_FURNITURE_RESIZE)
         wuss_window_restack(win, wuss_ZORDER_FRONT);
 
       wuss_window_get_scroll(win, &scroll);
