@@ -387,6 +387,68 @@ static result_t test_ninepatch(void)
 
 /* ----------------------------------------------------------------------- */
 
+static result_t test_fill_pattern(void)
+{
+  static testscreen_t ts;
+  static testscreen_t enc;
+
+  box_t    box = { 8, 8, 24, 24 };
+  int      fg, bg;
+
+  fg = (int) np_encode(&enc, 255, 0, 0);
+  bg = (int) np_encode(&enc, 0, 0, 255);
+
+  /* GREY50 is 0xAA,0x55,... : at origin (0,0) pixel (x,y) is fg when
+   * ((x ^ y) & 1) == 0. */
+  testscreen_init(&ts);
+  screen_fill_pattern(&ts.scr, &box, screen_PATTERN_GREY50, 0, 0,
+                      colour_rgb(255, 0, 0), colour_rgb(0, 0, 255));
+
+  if (np_at(&ts, 8, 8)  != fg ||  /* (0,0) phase -> set bit */
+      np_at(&ts, 9, 8)  != bg ||
+      np_at(&ts, 8, 9)  != bg ||
+      np_at(&ts, 9, 9)  != fg)
+  {
+    printf("screen: fill_pattern GREY50 wrong at origin 0\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Outside the box stays background. */
+  if (np_at(&ts, 7, 7)  != (int) (pixelfmt_bgrx8888_t) BACKGROUND ||
+      np_at(&ts, 24, 24) != (int) (pixelfmt_bgrx8888_t) BACKGROUND)
+  {
+    printf("screen: fill_pattern drew outside the box\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Shift the origin by one in x: every pixel's phase flips, so the same
+   * screen coordinate takes the other colour. */
+  testscreen_init(&ts);
+  screen_fill_pattern(&ts.scr, &box, screen_PATTERN_GREY50, 1, 0,
+                      colour_rgb(255, 0, 0), colour_rgb(0, 0, 255));
+  if (np_at(&ts, 8, 8) != bg || np_at(&ts, 9, 8) != fg)
+  {
+    printf("screen: fill_pattern ignored origin phase\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Honours the screen clip. */
+  testscreen_init(&ts);
+  ts.scr.clip = (box_t) { 0, 0, 16, 64 };
+  screen_fill_pattern(&ts.scr, &box, screen_PATTERN_SOLID, 0, 0,
+                      colour_rgb(255, 0, 0), colour_rgb(0, 0, 255));
+  if (np_at(&ts, 10, 10) != fg ||
+      np_at(&ts, 20, 10) != (int) (pixelfmt_bgrx8888_t) BACKGROUND)
+  {
+    printf("screen: fill_pattern ignored the screen clip\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t screen_test(const char *resources)
 {
   typedef result_t (*screentestfn)(void);
@@ -396,7 +458,8 @@ result_t screen_test(const char *resources)
     test_clip_invariance,
     test_clipping_still_happens,
     test_wu_fix8_extreme_coords,
-    test_ninepatch
+    test_ninepatch,
+    test_fill_pattern
   };
 
   result_t rc;

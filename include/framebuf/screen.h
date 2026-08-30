@@ -95,6 +95,50 @@ void screen_draw_square(screen_t *scr,
                         colour_t colour);
 
 /**
+ * Built-in 8x8 fill patterns for `screen_fill_pattern`. Each is a 1-bit tile:
+ * set bits take the foreground colour, clear bits the background.
+ */
+typedef enum screen_pattern
+{
+  screen_PATTERN_SOLID = 0, /**< Every pixel foreground. */
+  screen_PATTERN_GREY50,    /**< 50% checkerboard. */
+  screen_PATTERN_HSTRIPE,   /**< Horizontal bars. */
+  screen_PATTERN_VSTRIPE,   /**< Vertical bars. */
+  screen_PATTERN_DIAGONAL,  /**< Diagonal lines. */
+  screen_PATTERN_DOTS,      /**< Sparse dots. */
+  screen_PATTERN_GRID,      /**< Thin grid lines. */
+  screen_PATTERN_CROSSHATCH, /**< Crossed thin lines. */
+  screen_PATTERN__LIMIT     /**< Count of patterns; not itself a pattern. */
+}
+screen_pattern_t;
+
+/**
+ * Fills a box with a repeating 8x8 two-colour pattern.
+ *
+ * The tile is phased against (`origin_x`, `origin_y`): that coordinate is the
+ * one that would map to the box's top-left corner. Passing the caller's own
+ * scroll origin keeps the pattern locked to content as the box moves, rather
+ * than crawling with it.
+ *
+ * Clipped to the screen's clip region.
+ *
+ * \param[in] scr       Screen to draw upon.
+ * \param[in] box       Box to fill, inclusive-exclusive.
+ * \param[in] pattern   Pattern to fill with.
+ * \param[in] origin_x  X coordinate mapping to `box->x0` for tile phase.
+ * \param[in] origin_y  Y coordinate mapping to `box->y0` for tile phase.
+ * \param[in] fg        Colour for set pattern bits.
+ * \param[in] bg        Colour for clear pattern bits.
+ */
+void screen_fill_pattern(screen_t        *scr,
+                         const box_t     *box,
+                         screen_pattern_t pattern,
+                         int              origin_x,
+                         int              origin_y,
+                         colour_t         fg,
+                         colour_t         bg);
+
+/**
  * Draws a bitmap, alpha-blending it against the screen where the bitmap has an
  * alpha channel. On paletted screens, which have no linear channel bits to
  * blend, this falls back to alpha-tested transparency instead (drawn at full

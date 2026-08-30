@@ -65,6 +65,22 @@ void wuss__icon_draw(wuss_t            *wuss,
 
   switch (icon->type)
   {
+  case wuss_ICON_TYPE_PATTERN:
+    {
+      colour_t pat_fg;
+
+      /* disabled: fold the pattern into its own ground so it reads as greyed,
+       * mirroring the button's fg-swap */
+      pat_fg = (icon->flags & wuss_ICON_FLAGS_DISABLED)
+             ? wuss->palette[icon->bg]
+             : fg;
+
+      screen_fill_pattern(scr, &b, icon->pattern,
+                          content->x0 - scroll.x, content->y0 - scroll.y,
+                          pat_fg, wuss->palette[icon->bg]);
+    }
+    break;
+
   case wuss_ICON_TYPE_LABEL:
     {
       colour_t bg;

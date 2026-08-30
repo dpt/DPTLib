@@ -27,9 +27,11 @@ result_t icons_create(wuss_t         *wuss,
                       bmfont_t       *font,
                       icons_task_t   *task)
 {
+  /* [0..3] plus one swatch per built-in pattern */
   wuss_task_t      delegate;
-  wuss_icon_spec_t specs[4];
-  wuss_icon_t     *made[4];
+  wuss_icon_spec_t specs[4 + screen_PATTERN__LIMIT];
+  wuss_icon_t     *made[4 + screen_PATTERN__LIMIT];
+  int              p;
   result_t         rc;
 
   task->font    = font;
@@ -88,7 +90,19 @@ result_t icons_create(wuss_t         *wuss,
   specs[3].fg   = palette_PICO8_BLACK;
   specs[3].bg   = palette_PICO8_LIGHT_GREY;
 
-  rc = wuss_icon_create_array(task->window, specs, 4, made);
+  /* [4..] one swatch per built-in pattern, in a column down the document so
+   * they scroll through the window and stay phase-locked while doing so */
+  for (p = 0; p < screen_PATTERN__LIMIT; p++)
+  {
+    specs[4 + p].bbox    = (box_t) BOX_POS_SIZE(28, 90 + p * 44, 90, 36);
+    specs[4 + p].type    = wuss_ICON_TYPE_PATTERN;
+    specs[4 + p].fg      = palette_PICO8_DARK_BLUE;
+    specs[4 + p].bg      = palette_PICO8_LIGHT_GREY;
+    specs[4 + p].pattern = (screen_pattern_t) p;
+  }
+
+  rc = wuss_icon_create_array(task->window, specs,
+                              4 + screen_PATTERN__LIMIT, made);
   if (rc != result_OK)
     goto failure;
 

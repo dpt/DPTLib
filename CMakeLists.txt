@@ -241,6 +241,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/screen/screen-copy-rect.c
     libraries/framebuf/screen/screen-draw.c
     libraries/framebuf/screen/screen-draw-ninepatch.c
+    libraries/framebuf/screen/screen-fill-pattern.c
     libraries/framebuf/span-registry/get.c
     libraries/framebuf/span-registry/regdata.h
     libraries/framebuf/span/all8888.c
