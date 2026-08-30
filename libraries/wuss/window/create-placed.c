@@ -15,12 +15,12 @@
  * every edge, the titlebar on top, and the scrollbar/resize carve on the
  * right and bottom. Matches wuss_window_create's own visible-box maths so an
  * auto-placed slot ends up exactly the size the window will occupy. */
-static void footprint_pad(const wuss_t        *wuss,
-                          wuss_window_flags_t  flags,
-                          int                 *left,
-                          int                 *top,
-                          int                 *right,
-                          int                 *bottom)
+static void footprint_pad(const wuss_t       *wuss,
+                          wuss_window_flags_t flags,
+                          int                *left,
+                          int                *top,
+                          int                *right,
+                          int                *bottom)
 {
   int     outline_px, titlebar_height;
   point_t carve;

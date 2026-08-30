@@ -129,7 +129,8 @@ static const char *const rule_names[composite_RULE__LIMIT] =
   "XOR"
 };
 
-static result_t load_demo_png(bitmap_t *bm, const char *resources,
+static result_t load_demo_png(bitmap_t   *bm,
+                              const char *resources,
                               const char *leafname)
 {
   const char *leafname_ext;
@@ -351,8 +352,9 @@ static result_t porter_duff_mouse(wuss_window_t *window, void *task_data)
   return result_OK;
 }
 
-static result_t porter_duff_scroll(wuss_window_t *window, int delta,
-                                   void *task_data)
+static result_t porter_duff_scroll(wuss_window_t *window,
+                                   int            delta,
+                                   void          *task_data)
 {
   porter_duff_task_t *pd;
 

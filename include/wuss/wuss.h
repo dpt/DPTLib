@@ -216,12 +216,12 @@ wuss_config_t;
  *         config's palette entries are out of range for the palette, or another
  *         appropriate result code.
  */
-result_t wuss_create(screen_t             *scr,
-                     bmfont_t             *font,
-                     const colour_t       *palette,
-                     int                   npalette,
-                     const wuss_config_t  *config,
-                     wuss_t              **wuss);
+result_t wuss_create(screen_t            *scr,
+                     bmfont_t            *font,
+                     const colour_t      *palette,
+                     int                  npalette,
+                     const wuss_config_t *config,
+                     wuss_t             **wuss);
 
 /**
  * Destroy a window manager, and any windows still open on it.

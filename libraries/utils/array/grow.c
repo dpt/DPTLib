@@ -11,12 +11,12 @@
 #include "utils/barith.h"
 
 /* used, need, minimum - specified as number of elements (not bytes) */
-int array_grow(void   **pblock,
-               size_t   elemsize,
-               int      used,
-               int     *pallocated,
-               int      need,
-               int      minimum)
+int array_grow(void **pblock,
+               size_t elemsize,
+               int    used,
+               int   *pallocated,
+               int    need,
+               int    minimum)
 {
   int   to_allocate;
   void *block;

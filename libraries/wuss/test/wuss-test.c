@@ -560,7 +560,7 @@ typedef struct test_task
 }
 test_task_t;
 
-static result_t test_handle(wuss_window_t     *window,
+static result_t test_handle(wuss_window_t      *window,
                             const wuss_event_t *event,
                             void               *task_data)
 {

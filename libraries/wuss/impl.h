@@ -162,7 +162,7 @@ static inline void wuss__min_content(const wuss_window_t *window, size2d_t *min)
                                                           WUSS_MIN_CONTENT));
 }
 
-static inline int wuss__titlebar_height_for(const wuss_t        *wuss,
+static inline int wuss__titlebar_height_for(const wuss_t       *wuss,
                                             wuss_window_flags_t flags)
 {
   return (flags & wuss_WINDOW_NO_TITLEBAR) ? 0 : wuss->titlebar_height;
@@ -200,7 +200,8 @@ static inline int wuss__outline_px(const wuss_window_t *window)
  * none, so NO_TITLEBAR windows that still opt into scrollbars/resize match
  * their titled siblings instead of a hardcoded size; the hardcoded default
  * is only a last-resort floor if even that isn't positive */
-static inline int wuss__button_size_for(const wuss_t *wuss, wuss_window_flags_t flags)
+static inline int wuss__button_size_for(const wuss_t       *wuss,
+                                        wuss_window_flags_t flags)
 {
   int size;
 

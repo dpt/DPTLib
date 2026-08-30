@@ -13,12 +13,12 @@
 
 #include "impl.h"
 
-result_t wuss_create(screen_t             *scr,
-                     bmfont_t             *font,
-                     const colour_t       *palette,
-                     int                   npalette,
-                     const wuss_config_t  *config,
-                     wuss_t              **wuss)
+result_t wuss_create(screen_t            *scr,
+                     bmfont_t            *font,
+                     const colour_t      *palette,
+                     int                  npalette,
+                     const wuss_config_t *config,
+                     wuss_t             **wuss)
 {
   wuss_t        *w;
   wuss_palette_t pal;
