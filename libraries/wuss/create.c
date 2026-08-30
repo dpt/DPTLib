@@ -13,6 +13,24 @@
 
 #include "impl.h"
 
+#if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
+/* Range-check the bevel colours and (when set) the backdrop against the
+ * palette. Shared by the furniture and icons-only paths so the accepted
+ * range, the error code and the freed-pointer set stay in one place. */
+static result_t validate_bevel_backdrop(const wuss_t *w,
+                                        wuss_colour_t blight,
+                                        wuss_colour_t bdark)
+{
+  if (blight < 0 || blight >= w->npalette ||
+      bdark  < 0 || bdark  >= w->npalette ||
+      (w->backdrop != wuss_NO_BACKGROUND &&
+       (w->backdrop < 0 || w->backdrop >= w->npalette)))
+    return result_WUSS_BAD_COLOUR;
+
+  return result_OK;
+}
+#endif
+
 result_t wuss_create(screen_t            *scr,
                      bmfont_t            *font,
                      const colour_t      *palette,
@@ -102,8 +120,8 @@ result_t wuss_create(screen_t            *scr,
     pal.scroll.wells    = bg;
     pal.scroll.sausages = fg;
 
-    blight = pal.title.bg;
-    bdark  = pal.title.bg;
+    blight = 0;
+    bdark  = 0;
   }
 
   if (pal.title.bg        < 0 || pal.title.bg        >= w->npalette ||
@@ -115,10 +133,7 @@ result_t wuss_create(screen_t            *scr,
       pal.scroll.arrows   < 0 || pal.scroll.arrows   >= w->npalette ||
       pal.scroll.wells    < 0 || pal.scroll.wells    >= w->npalette ||
       pal.scroll.sausages < 0 || pal.scroll.sausages >= w->npalette ||
-      blight              < 0 || blight              >= w->npalette ||
-      bdark               < 0 || bdark               >= w->npalette ||
-      (w->backdrop != wuss_NO_BACKGROUND &&
-       (w->backdrop < 0 || w->backdrop >= w->npalette)))
+      validate_bevel_backdrop(w, blight, bdark) != result_OK)
   {
     free(w->palette);
     free(w);
@@ -145,13 +160,6 @@ result_t wuss_create(screen_t            *scr,
   }
 #else /* !WUSS_FURNITURE */
   w->backdrop = (config != NULL) ? config->backdrop : wuss_NO_BACKGROUND;
-  if (w->backdrop != wuss_NO_BACKGROUND &&
-      (w->backdrop < 0 || w->backdrop >= w->npalette))
-  {
-    free(w->palette);
-    free(w);
-    return result_WUSS_BAD_COLOUR;
-  }
 
 #ifdef WUSS_ICONS
   if (config != NULL)
@@ -164,8 +172,7 @@ result_t wuss_create(screen_t            *scr,
     blight = 0;
     bdark  = 0;
   }
-  if (blight < 0 || blight >= w->npalette ||
-      bdark  < 0 || bdark  >= w->npalette)
+  if (validate_bevel_backdrop(w, blight, bdark) != result_OK)
   {
     free(w->palette);
     free(w);
@@ -173,6 +180,14 @@ result_t wuss_create(screen_t            *scr,
   }
   w->bevel_light = blight;
   w->bevel_dark  = bdark;
+#else
+  if (w->backdrop != wuss_NO_BACKGROUND &&
+      (w->backdrop < 0 || w->backdrop >= w->npalette))
+  {
+    free(w->palette);
+    free(w);
+    return result_WUSS_BAD_COLOUR;
+  }
 #endif
 #endif /* WUSS_FURNITURE */
 
