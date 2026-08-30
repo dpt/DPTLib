@@ -154,10 +154,12 @@ void wuss_window_move(wuss_window_t *window, point_t p)
                           POINT(blit_dest[idx].x0, blit_dest[idx].y0),
                           &copied))
     {
-      /* The screen format doesn't support the blit at all (e.g. paletted):
-       * this fails identically for every piece, so it fails on the first
-       * one, before any blit has happened. Bail out; the caller's fallback
-       * full invalidate repairs the window either way. */
+      /* screen_copy_rect refused this piece: either the screen format has no
+       * blit path (e.g. paletted -- fails on the first piece, before anything
+       * has moved) or this piece's source/dest lies off-screen, which can
+       * happen part-way through after earlier pieces have already blitted.
+       * Either way, bail: the pieces done so far are self-consistent and the
+       * caller's fallback full invalidate repaints the whole union. */
       blit_failed = 1;
       break;
     }
