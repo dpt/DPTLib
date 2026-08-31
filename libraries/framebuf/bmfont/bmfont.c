@@ -158,7 +158,7 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
       assert(ncurrbits >= bitsperchar);
 
       adw_px = currbits & mask; /* extract high bits */
-      currbits <<= bitsperchar; /* discard used bits */
+      currbits = (bitsperchar == 32) ? 0 : currbits << bitsperchar; /* discard used bits */
       ncurrbits -= bitsperchar;
 
       if (array_grow((void **) &bmfont->adw,
