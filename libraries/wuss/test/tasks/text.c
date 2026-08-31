@@ -67,15 +67,16 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
   text_task_t *tcx;
   screen_t       *scr;
   const box_t    *bounds;
-  int             font_width, font_height, sy;
+  int             font_width, font_height, sx, sy;
   const char     *string;
   int             stringlen;
-  point_t         pos;
+  point_t         pos0, pos1;
 
   tcx = task_data;
 
   scr    = event->data.redraw.scr;
   bounds = event->data.redraw.bounds;
+  sx     = event->data.redraw.scroll.x;
   sy     = event->data.redraw.scroll.y;
 
   bmfont_get_info(tcx->font, &font_width, &font_height);
@@ -83,15 +84,23 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
   string    = paragraph;
   stringlen = (int) strlen(paragraph);
 
-  pos.x = bounds->x0 + 4;
-  pos.y = bounds->y0 - sy + 4;
+#define INSET   4
+#define LEADING 2
+  
+  pos0.x = bounds->x0 - sx + INSET;
+  pos0.y = bounds->y0 - sy + INSET;
+  pos1.x = bounds->x1 - sx - INSET;
+  pos1.y = bounds->y1 - sy - INSET;
 
-  while (stringlen > 0 && pos.y + font_height <= bounds->y1)
+  while (stringlen)
   {
-    int            absolute_break, friendly_break;
+    int            target_width;
+    int            absolute_break;
     bmfont_width_t width;
+    int            friendly_break;
 
-    bmfont_measure(tcx->font, string, stringlen, bounds->x1 - 4 - pos.x, &absolute_break, &width);
+    target_width = pos1.x - pos0.x;
+    bmfont_measure(tcx->font, string, stringlen, target_width, &absolute_break, &width);
 
     friendly_break = absolute_break;
     if (absolute_break < stringlen)
@@ -104,7 +113,7 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
         friendly_break = absolute_break; /* no space to break at: hard break */
     }
 
-    bmfont_draw(tcx->font, scr, string, friendly_break, tcx->fg, tcx->bg, &pos, NULL);
+    bmfont_draw(tcx->font, scr, string, friendly_break, tcx->fg, tcx->bg, &pos0, NULL);
 
     string    += friendly_break;
     stringlen -= friendly_break;
@@ -114,8 +123,7 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
       stringlen--;
     }
 
-    pos.x  = bounds->x0 + 4;
-    pos.y += font_height + 2;
+    pos0.y += font_height + LEADING;
   }
 
   return result_OK;
