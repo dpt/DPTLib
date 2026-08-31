@@ -433,6 +433,81 @@ void screen_draw_line(screen_t *scr,
   }
 }
 
+void screen_draw_dashed_line(screen_t *scr,
+                             int       x0,
+                             int       y0,
+                             int       x1,
+                             int       y1,
+                             int       on,
+                             int       off,
+                             colour_t  colour)
+{
+  box_t clip_box;
+  box_t bounds;
+  int   rx0, ry0, rx1, ry1;
+  int   dx, dy;
+  int   adx, ady;
+  int   sx, sy;
+  int   error, e2;
+  int   period;
+  int   phase;
+
+  if (on <= 0)
+    return;
+  if (off < 0)
+    off = 0;
+  period = on + off;
+
+  if (screen_get_clip(scr, &clip_box))
+    return; /* invalid clipped screen */
+
+  rx0 = x0;
+  ry0 = y0;
+  rx1 = x1;
+  ry1 = y1;
+  if (line_clip(&clip_box, &rx0, &ry0, &rx1, &ry1) == 0)
+    return;
+
+  screen_get_bounds(scr, &bounds);
+  (void) line_clip(&bounds, &x0, &y0, &x1, &y1);
+
+  dx  = x1 - x0;
+  adx = abs(dx);
+  sx  = SGN(dx);
+
+  dy  = y1 - y0;
+  ady = -abs(dy);
+  sy  = SGN(dy);
+
+  error = adx + ady;
+  phase = 0;
+
+  for (;;)
+  {
+    if (phase < on)
+      screen_draw_pixel(scr, x0, y0, colour);
+    if (++phase >= period)
+      phase = 0;
+
+    if (x0 == x1 && y0 == y1)
+      break;
+
+    e2 = 2 * error;
+    if (e2 >= ady)
+    {
+      if (x0 == x1) { break; }
+      error += ady;
+      x0 += sx;
+    }
+    if (e2 <= adx)
+    {
+      if (y0 == y1) { break; }
+      error += adx;
+      y0 += sy;
+    }
+  }
+}
+
 void screen_draw_line_wu_fix8(screen_t *scr,
                               fix8_t    x0_f8,
                               fix8_t    y0_f8,

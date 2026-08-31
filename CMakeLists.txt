@@ -337,6 +337,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/create.c
     libraries/wuss/destroy.c
     libraries/wuss/get-font.c
+    libraries/wuss/get-pointer.c
     libraries/wuss/idle.c
     libraries/wuss/impl.h
     libraries/wuss/invalidate.c

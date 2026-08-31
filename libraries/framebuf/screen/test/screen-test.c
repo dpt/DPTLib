@@ -449,6 +449,71 @@ static result_t test_fill_pattern(void)
 
 /* ----------------------------------------------------------------------- */
 
+static result_t test_dashed_line(void)
+{
+  static testscreen_t ts;
+  static testscreen_t enc;
+
+  int fg;
+  int x;
+  int on_count, off_count;
+
+  fg = (int) np_encode(&enc, 255, 0, 0);
+
+  /* Horizontal line y=10, x in [0,19], on=2 off=2: phase cycles
+   * 0,1 (drawn) 2,3 (skipped) starting at x=0. */
+  testscreen_init(&ts);
+  screen_draw_dashed_line(&ts.scr, 0, 10, 19, 10, 2, 2, colour_rgb(255, 0, 0));
+
+  on_count = off_count = 0;
+  for (x = 0; x <= 19; x++)
+  {
+    int lit = (np_at(&ts, x, 10) == fg);
+    int want = ((x % 4) < 2);
+    if (lit != want)
+    {
+      printf("screen: dashed_line wrong at x=%d (lit=%d want=%d)\n",
+             x, lit, want);
+      return result_TEST_FAILED;
+    }
+    if (lit) on_count++; else off_count++;
+  }
+  if (on_count != 10 || off_count != 10)
+  {
+    printf("screen: dashed_line dash ratio off (on=%d off=%d)\n",
+           on_count, off_count);
+    return result_TEST_FAILED;
+  }
+
+  /* off <= 0 gives a solid line. */
+  testscreen_init(&ts);
+  screen_draw_dashed_line(&ts.scr, 0, 5, 9, 5, 3, 0, colour_rgb(255, 0, 0));
+  for (x = 0; x <= 9; x++)
+  {
+    if (np_at(&ts, x, 5) != fg)
+    {
+      printf("screen: dashed_line with off=0 left a gap at x=%d\n", x);
+      return result_TEST_FAILED;
+    }
+  }
+
+  /* on <= 0 draws nothing. */
+  testscreen_init(&ts);
+  screen_draw_dashed_line(&ts.scr, 0, 7, 9, 7, 0, 4, colour_rgb(255, 0, 0));
+  for (x = 0; x <= 9; x++)
+  {
+    if (np_at(&ts, x, 7) != (int) (pixelfmt_bgrx8888_t) BACKGROUND)
+    {
+      printf("screen: dashed_line with on=0 drew a pixel at x=%d\n", x);
+      return result_TEST_FAILED;
+    }
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t screen_test(const char *resources)
 {
   typedef result_t (*screentestfn)(void);
@@ -459,7 +524,8 @@ result_t screen_test(const char *resources)
     test_clipping_still_happens,
     test_wu_fix8_extreme_coords,
     test_ninepatch,
-    test_fill_pattern
+    test_fill_pattern,
+    test_dashed_line
   };
 
   result_t rc;

@@ -233,7 +233,7 @@ static void menu_selected(const wuss_menu_t *menu,
 
 static result_t spawn_menu(void)
 {
-  return wuss_menu_open(g_wuss, &g_menu, POINT(120, 120),
+  return wuss_menu_open(g_wuss, &g_menu, wuss_get_pointer(g_wuss),
                         menu_selected, NULL, NULL);
 }
 

@@ -359,31 +359,30 @@ void wuss__icon_draw(wuss_t            *wuss,
 
   case wuss_ICON_TYPE_MENU_ENTRY:
     {
-      colour_t ink, ground;
+      colour_t ink, ground, tmp;
       int      disabled, highlit, pad, mid_y;
 
       disabled = (icon->flags & wuss_ICON_FLAGS_DISABLED) != 0;
       highlit  = icon->hovered && !disabled;
       pad      = 4;
 
-      /* highlight inverts to the accent colours (the window manager's
-       * emphasis pair); otherwise ink over the row's own/inherited ground */
+      /* resolve the row's own ink over its own/inherited ground */
+      if (icon->bg != wuss_NO_BACKGROUND)
+        ground = wuss->palette[icon->bg];
+      else if (icon->window->bg.colour != wuss_NO_BACKGROUND)
+        ground = (icon->window->bg.pattern != screen_PATTERN_SOLID)
+               ? wuss->palette[icon->window->bg.pattern_bg]
+               : wuss->palette[icon->window->bg.colour];
+      else
+        ground = fg; /* bmfont still needs a blend colour */
+      ink = disabled ? wuss->palette[wuss->bevel_dark] : fg;
+
+      /* highlight simply swaps the row's fg/bg */
       if (highlit)
       {
-        ground = wuss->palette[wuss->accent_bg];
-        ink    = wuss->palette[wuss->accent_fg];
-      }
-      else
-      {
-        if (icon->bg != wuss_NO_BACKGROUND)
-          ground = wuss->palette[icon->bg];
-        else if (icon->window->bg.colour != wuss_NO_BACKGROUND)
-          ground = (icon->window->bg.pattern != screen_PATTERN_SOLID)
-                 ? wuss->palette[icon->window->bg.pattern_bg]
-                 : wuss->palette[icon->window->bg.colour];
-        else
-          ground = fg; /* bmfont still needs a blend colour */
-        ink = disabled ? wuss->palette[wuss->bevel_dark] : fg;
+        tmp    = ink;
+        ink    = ground;
+        ground = tmp;
       }
 
       if (highlit || icon->bg != wuss_NO_BACKGROUND)
@@ -393,7 +392,8 @@ void wuss__icon_draw(wuss_t            *wuss,
       if (icon->flags & wuss_ICON_FLAGS_SEPARATOR)
       {
         mid_y = b.y0 + (b.y1 - b.y0) / 2;
-        screen_draw_line(scr, b.x0 + pad, mid_y, b.x1 - 1 - pad, mid_y, ink);
+        screen_draw_dashed_line(scr, b.x0 + pad, mid_y, b.x1 - 1 - pad, mid_y,
+                                2, 2, ink);
         break;
       }
 

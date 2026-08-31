@@ -111,11 +111,12 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
     if (item->submenu == NULL || self->child != NULL)
       return result_OK;
 
-    wuss_window_get_visible_bounds(self->window, &wb);
+    wuss_window_get_content_bounds(self->window, &wb);
     wuss_icon_get_bbox(icon, &ib);
 
-    /* The menu is unscrolled, so a row's document y equals its screen y
-     * offset from the window's top. */
+    /* wb is the content box in screen space; the menu is unscrolled, so a
+     * row's document y is its offset from the content top. The child's own
+     * titlebar sits above `at`, so a submenu row lines up with its parent. */
     at.x = wb.x1 - WUSS_MENU_SUBMENU_OVERLAP;
     at.y = wb.y0 + ib.y0;
 
@@ -269,13 +270,16 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   size = SIZE2D(width, height);
   task = wuss_task_start(wuss__menu_handle, node);
 
-  rc = wuss_window_create_placed(wuss, size, NULL,
-                                 wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE
+  /* ponytail: menus carry no title string yet; a bare titlebar is enough for
+   * the drag/knock-back affordance. Add wuss_menu_t.title if a caption is
+   * wanted. */
+  rc = wuss_window_create_placed(wuss, size, "",
+                                 wuss_WINDOW_NO_OUTLINE
                                  | wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK
                                  | wuss_WINDOW_NO_TOGGLE_SIZE
                                  | wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL
                                  | wuss_WINDOW_NO_RESIZE,
-                                 wuss_BACKDROP_COLOUR(1),
+                                 wuss_BACKDROP_COLOUR(wuss->white),
                                  &task, size, size, &node->window);
   if (rc != result_OK)
   {
@@ -327,6 +331,12 @@ result_t wuss_menu_open(wuss_t                *wuss,
     wuss__menu_close_from(wuss->menu_chain);
     wuss->menu_chain = NULL;
   }
+
+  /* RISC OS convention: the pointer opens the menu sitting a little inside its
+   * first item, not on the top-left corner. Shift the content top-left up and
+   * left so `at` (the pointer) lands over row 0. */
+  at.x -= WUSS_MENU_TICK_W;
+  at.y -= WUSS_MENU_ROW_PAD;
 
   rc = wuss__menu_spawn(wuss, menu, at, NULL, on_select, ctx, &root);
   if (rc != result_OK)

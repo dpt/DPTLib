@@ -10,6 +10,8 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   x = p.x;
   y = p.y;
 
+  wuss->pointer = p;
+
 #ifdef WUSS_FURNITURE
   if (wuss->furniture.dragging != NULL)
   {
