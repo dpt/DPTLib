@@ -5,6 +5,7 @@
 
 #ifdef USE_SDL
 
+#include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
 #include "wuss/icon.h"
@@ -24,6 +25,9 @@ typedef struct icons_task
   int            count;
   wuss_icon_t   *opt;     /* standalone option button */
   wuss_icon_t   *state;   /* label echoing radio/option selection */
+  bitmap_t       sprite;  /* borrowed by the two BITMAP icons; freed on close */
+  int            has_sprite;
+  wuss_icon_t   *hotspot; /* the interactive BITMAP icon */
 }
 icons_task_t;
 
@@ -33,6 +37,7 @@ wuss_event_fn_t icons_handle;
 result_t icons_create(wuss_t         *wuss,
                       const colour_t *palette,
                       bmfont_t       *font,
+                      const char     *resources,
                       icons_task_t   *task);
 
 

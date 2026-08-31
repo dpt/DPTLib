@@ -74,12 +74,22 @@ typedef enum wuss_icon_type
                              *   selects it and clears every other selected
                              *   radio sharing its non-zero group, then the task
                              *   is told via wuss_EVENT_ICON. */
-  wuss_ICON_TYPE_OPTION     /**< An option button: a small box at the left of
+  wuss_ICON_TYPE_OPTION,    /**< An option button: a small box at the left of
                              *   the bounding box, ticked when selected, with
                              *   the label (text) to its right. Interactive: a
                              *   click toggles its own selected state (group is
                              *   ignored), then the task is told via
                              *   wuss_EVENT_ICON. */
+  wuss_ICON_TYPE_BITMAP     /**< A caller-owned bitmap (spec.bitmap) drawn at
+                             *   the top-left of the bounding box, alpha-blended
+                             *   against what is already there, clipped to the
+                             *   box; no scaling. The bitmap is borrowed, not
+                             *   copied, and must outlive the icon (unlike
+                             *   text). fg, bg, text and pattern are ignored.
+                             *   Not interactive unless
+                             *   wuss_ICON_FLAGS_INTERACTIVE is set, in which
+                             *   case clicks raise wuss_EVENT_ICON like a
+                             *   button. */
 }
 wuss_icon_type_t;
 
@@ -99,12 +109,20 @@ typedef enum wuss_icon_flags
                                           *   the text in the bounding box.
                                           *   Takes precedence over
                                           *   wuss_ICON_FLAGS_JUSTIFY_RIGHT. */
-  wuss_ICON_FLAGS_DEFAULT       = 1 << 4  /**< wuss_ICON_TYPE_BUTTON: draw as a
+  wuss_ICON_FLAGS_DEFAULT       = 1 << 4, /**< wuss_ICON_TYPE_BUTTON: draw as a
                                           *   default action button, in the
                                           *   window manager's accent colours
                                           *   (see wuss_config_t::accent)
                                           *   instead of the ordinary bevel.
                                           *   Ignored by other icon types. */
+  wuss_ICON_FLAGS_INTERACTIVE  = 1 << 5  /**< wuss_ICON_TYPE_BITMAP: hit-test
+                                          *   the icon and raise wuss_EVENT_ICON
+                                          *   on a click, like a button.
+                                          *   Without it a bitmap icon is pure
+                                          *   decoration and clicks fall through
+                                          *   as wuss_EVENT_MOUSE. Ignored by
+                                          *   other icon types (interactive or
+                                          *   not by their nature). */
 }
 wuss_icon_flags_t;
 
@@ -132,6 +150,11 @@ typedef struct wuss_icon_spec
   screen_pattern_t  pattern; /**< Tile for wuss_ICON_TYPE_PATTERN; ignored by
                               *   other types. Zero (screen_PATTERN_SOLID) is a
                               *   safe default for zero-initialised specs. */
+  const bitmap_t   *bitmap; /**< wuss_ICON_TYPE_BITMAP: the image to draw.
+                             *   Borrowed, not copied; must outlive the icon.
+                             *   Ignored by other types; NULL (the default) is
+                             *   only valid when type is not
+                             *   wuss_ICON_TYPE_BITMAP. */
   int               group; /**< wuss_ICON_TYPE_RADIO: exclusive-selection group.
                             *   Selecting a radio clears every other selected
                             *   radio on the same window with the same group.
@@ -155,8 +178,8 @@ wuss_icon_spec_t;
  *                    does not need it.
  * \return \ref result_OK on success, \ref result_OOM on allocation failure,
  *         \ref result_WUSS_BAD_COLOUR if fg or bg is out of range for the
- *         palette, or \ref result_WUSS_BAD_ICON if type is unknown or a button
- *         spec has no fill colour.
+ *         palette, or \ref result_WUSS_BAD_ICON if type is unknown, a button or
+ *         pattern spec has no fill colour, or a bitmap spec has no bitmap.
  */
 result_t wuss_icon_create(wuss_window_t          *window,
                           const wuss_icon_spec_t *spec,

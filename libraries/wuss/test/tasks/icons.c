@@ -11,11 +11,13 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "framebuf/bitmap.h"
 #include "framebuf/palettes.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "geom/point.h"
 #include "geom/size.h"
+#include "io/path.h"
 
 #include "icons.h"
 
@@ -25,29 +27,40 @@
 result_t icons_create(wuss_t         *wuss,
                       const colour_t *palette,
                       bmfont_t       *font,
+                      const char     *resources,
                       icons_task_t   *task)
 {
   /* [0..3], one swatch per built-in pattern, then [.. +3] a grouping frame
    * with two differently-justified labels inside it, then [.. +5] three grouped
-   * radios, a standalone option and a label echoing the selection */
-  enum { ICONS_NSPECS = 4 + screen_PATTERN__LIMIT + 3 + 5 };
+   * radios, a standalone option and a label echoing the selection, then [.. +2]
+   * a decorative bitmap icon and an interactive one that bumps the counter */
+  enum { ICONS_NSPECS = 4 + screen_PATTERN__LIMIT + 3 + 5 + 2 };
   wuss_task_t      delegate;
   wuss_icon_spec_t specs[ICONS_NSPECS];
   wuss_icon_t     *made[ICONS_NSPECS];
+  const char      *sprite_path;
   int              p;
-  int              g;   /* index of the first frame spec */
-  int              r;   /* radio index */
+  int              g;      /* index of the first frame spec */
+  int              r;      /* radio index */
+  int              nspecs; /* live spec count (sprite icons are optional) */
   result_t         rc;
 
-  task->font    = font;
-  task->label   = palette[palette_PICO8_DARK_BLUE];
-  task->paper   = palette[palette_PICO8_LIGHT_GREY]; /* the window bg, below */
-  task->window  = NULL;
-  task->button  = NULL;
-  task->counter = NULL;
-  task->count   = 0;
-  task->opt     = NULL;
-  task->state   = NULL;
+  task->font       = font;
+  task->label      = palette[palette_PICO8_DARK_BLUE];
+  task->paper      = palette[palette_PICO8_LIGHT_GREY]; /* the window bg, below */
+  task->window     = NULL;
+  task->button     = NULL;
+  task->counter    = NULL;
+  task->count      = 0;
+  task->opt        = NULL;
+  task->state      = NULL;
+  task->has_sprite = 0;
+  task->hotspot    = NULL;
+
+  sprite_path = path_join_filename(resources, 3, "resources", "wuss",
+                                   path_join_leafname("9tile", "png"));
+  if (bitmap_load_png(&task->sprite, sprite_path) == result_OK)
+    task->has_sprite = 1;
 
   delegate = wuss_task_start(icons_handle, task);
 
@@ -63,7 +76,11 @@ result_t icons_create(wuss_t         *wuss,
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
+    if (task->has_sprite)
+      free(task->sprite.base);
     return rc;
+  }
 
   memset(specs, 0, sizeof(specs));
 
@@ -159,7 +176,27 @@ result_t icons_create(wuss_t         *wuss,
   specs[g + 7].fg   = palette_PICO8_DARK_BLUE;
   specs[g + 7].bg   = wuss_NO_BACKGROUND;
 
-  rc = wuss_icon_create_array(task->window, specs, ICONS_NSPECS, made);
+  nspecs = g + 8;
+
+  /* [g+8] a decorative bitmap, [g+9] an interactive one that bumps the
+   * counter -- only if the sprite loaded */
+  if (task->has_sprite)
+  {
+    specs[g + 8].bbox   = (box_t) BOX_POS_SIZE(28, 484, task->sprite.size.w,
+                                               task->sprite.size.h);
+    specs[g + 8].type   = wuss_ICON_TYPE_BITMAP;
+    specs[g + 8].bitmap = &task->sprite;
+
+    specs[g + 9].bbox   = (box_t) BOX_POS_SIZE(120, 484, task->sprite.size.w,
+                                               task->sprite.size.h);
+    specs[g + 9].type   = wuss_ICON_TYPE_BITMAP;
+    specs[g + 9].bitmap = &task->sprite;
+    specs[g + 9].flags  = wuss_ICON_FLAGS_INTERACTIVE;
+
+    nspecs = g + 10;
+  }
+
+  rc = wuss_icon_create_array(task->window, specs, nspecs, made);
   if (rc != result_OK)
     goto failure;
 
@@ -167,12 +204,16 @@ result_t icons_create(wuss_t         *wuss,
   task->counter = made[2];
   task->opt     = made[g + 6];
   task->state   = made[g + 7];
+  if (task->has_sprite)
+    task->hotspot = made[g + 9];
 
   return result_OK;
 
 failure:
   wuss_window_close(task->window);
   task->window = NULL;
+  if (task->has_sprite)
+    free(task->sprite.base);
   return rc;
 }
 
@@ -286,7 +327,7 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
 
   if (event->data.icon.action != wuss_MOUSE_DOWN)
     return result_OK;
-  if (icon != tcx->button)
+  if (icon != tcx->button && icon != tcx->hotspot)
     return result_OK;
 
   tcx->count++;
@@ -312,7 +353,9 @@ result_t icons_handle(wuss_window_t      *window,
     return icons_icon(event, task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
+    wuss_window_close(window); /* frees the icons, which only borrowed sprite */
+    if (tcx->has_sprite)
+      free(tcx->sprite.base);
     free(tcx); /* calloc'd per instance by the spawner */
     return result_OK;
 
