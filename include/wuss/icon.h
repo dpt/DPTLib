@@ -57,23 +57,36 @@ typedef enum wuss_icon_type
                              *   and pressed-state visual feedback; clicks and
                              *   hovers are delivered to the task as
                              *   wuss_EVENT_ICON. */
-  wuss_ICON_TYPE_PATTERN    /**< Bounding box filled with a repeating two-colour
+  wuss_ICON_TYPE_PATTERN,   /**< Bounding box filled with a repeating two-colour
                              *   8x8 tile (spec.pattern) in fg/bg, phased to
                              *   document space so it scrolls rigidly with
                              *   content. Not interactive: clicks fall through
                              *   to the task as wuss_EVENT_MOUSE. text is
                              *   ignored. */
+  wuss_ICON_TYPE_FRAME      /**< A grouping box: a one-pixel rectangle in fg
+                             *   around the bounding box, broken at the top-left
+                             *   for an optional caption (text) drawn over the
+                             *   window background. Not interactive: clicks fall
+                             *   through to the task as wuss_EVENT_MOUSE. */
 }
 wuss_icon_type_t;
 
 /** Icon appearance and behaviour flags, combinable with bitwise OR. */
 typedef enum wuss_icon_flags
 {
-  wuss_ICON_FLAGS_NONE     = 0,
-  wuss_ICON_FLAGS_HIDDEN   = 1 << 0, /**< Not drawn, not hit-tested. */
-  wuss_ICON_FLAGS_DISABLED = 1 << 1  /**< Drawn greyed; clicks fall through to
-                                      *   the task as wuss_EVENT_MOUSE rather
-                                      *   than raising wuss_EVENT_ICON. */
+  wuss_ICON_FLAGS_NONE          = 0,
+  wuss_ICON_FLAGS_HIDDEN        = 1 << 0, /**< Not drawn, not hit-tested. */
+  wuss_ICON_FLAGS_DISABLED      = 1 << 1, /**< Drawn greyed; clicks fall through
+                                          *   to the task as wuss_EVENT_MOUSE
+                                          *   rather than raising
+                                          *   wuss_EVENT_ICON. */
+  wuss_ICON_FLAGS_JUSTIFY_RIGHT = 1 << 2, /**< wuss_ICON_TYPE_LABEL: right-align
+                                          *   the text in the bounding box
+                                          *   instead of the default left. */
+  wuss_ICON_FLAGS_JUSTIFY_CENTRE = 1 << 3 /**< wuss_ICON_TYPE_LABEL: centre the
+                                          *   text in the bounding box. Takes
+                                          *   precedence over
+                                          *   wuss_ICON_FLAGS_JUSTIFY_RIGHT. */
 }
 wuss_icon_flags_t;
 
@@ -94,9 +107,9 @@ typedef struct wuss_icon_spec
   wuss_colour_t     fg;    /**< Text colour, as an index into the system
                             *   palette. */
   wuss_colour_t     bg;    /**< Fill/bevel base colour, as an index into the
-                            *   system palette. A label may pass
-                            *   wuss_NO_BACKGROUND for text with no fill; a
-                            *   button or pattern icon must pass a real
+                            *   system palette. A label or frame may pass
+                            *   wuss_NO_BACKGROUND for text/outline with no
+                            *   fill; a button or pattern icon must pass a real
                             *   index. */
   screen_pattern_t  pattern; /**< Tile for wuss_ICON_TYPE_PATTERN; ignored by
                               *   other types. Zero (screen_PATTERN_SOLID) is a

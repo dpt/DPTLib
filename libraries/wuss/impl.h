@@ -35,6 +35,11 @@
 #define WUSS_PLACE_GUTTER 6  /* px left between windows auto-placed by wuss_window_create_placed */
 
 #define WUSS_BUTTON_INSET 3  /* shared by close/back/toggle/resize furniture buttons and scrollbar breadth */
+
+#ifdef WUSS_ICONS
+#define WUSS_FRAME_CAPTION_INSET 8 /* x offset of a wuss_ICON_TYPE_FRAME caption from the frame's left edge */
+#define WUSS_FRAME_CAPTION_PAD   2 /* gap left in the frame's top edge either side of the caption */
+#endif
 #define WUSS_MIN_CONTENT  20 /* resize-drag floor: content can never be squeezed smaller than this */
 #define WUSS_SCROLL_INSET 2  /* sausage cross-axis margin from its well's edges, purely cosmetic */
 #define WUSS_DIVIDER_PX   1  /* interior rule between the content area and the furniture on its right/bottom */

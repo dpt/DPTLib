@@ -27,11 +27,14 @@ result_t icons_create(wuss_t         *wuss,
                       bmfont_t       *font,
                       icons_task_t   *task)
 {
-  /* [0..3] plus one swatch per built-in pattern */
+  /* [0..3], one swatch per built-in pattern, then [.. +3] a grouping frame
+   * with two differently-justified labels inside it */
+  enum { ICONS_NSPECS = 4 + screen_PATTERN__LIMIT + 3 };
   wuss_task_t      delegate;
-  wuss_icon_spec_t specs[4 + screen_PATTERN__LIMIT];
-  wuss_icon_t     *made[4 + screen_PATTERN__LIMIT];
+  wuss_icon_spec_t specs[ICONS_NSPECS];
+  wuss_icon_t     *made[ICONS_NSPECS];
   int              p;
+  int              g;   /* index of the first frame spec */
   result_t         rc;
 
   task->font    = font;
@@ -102,8 +105,31 @@ result_t icons_create(wuss_t         *wuss,
     specs[4 + p].pattern = (screen_pattern_t) p;
   }
 
-  rc = wuss_icon_create_array(task->window, specs,
-                              4 + screen_PATTERN__LIMIT, made);
+  /* [g] a grouping frame down the document, with [g+1] a right-justified and
+   * [g+2] a centred label sat inside it */
+  g = 4 + screen_PATTERN__LIMIT;
+
+  specs[g].bbox = (box_t) BOX_POS_SIZE(28, 300, 170, 70);
+  specs[g].type = wuss_ICON_TYPE_FRAME;
+  specs[g].text = "Grouping frame";
+  specs[g].fg   = palette_PICO8_DARK_BLUE;
+  specs[g].bg   = wuss_NO_BACKGROUND;
+
+  specs[g + 1].bbox  = (box_t) BOX_POS_SIZE(38, 320, 150, 14);
+  specs[g + 1].type  = wuss_ICON_TYPE_LABEL;
+  specs[g + 1].text  = "right";
+  specs[g + 1].fg    = palette_PICO8_DARK_BLUE;
+  specs[g + 1].bg    = wuss_NO_BACKGROUND;
+  specs[g + 1].flags = wuss_ICON_FLAGS_JUSTIFY_RIGHT;
+
+  specs[g + 2].bbox  = (box_t) BOX_POS_SIZE(38, 342, 150, 14);
+  specs[g + 2].type  = wuss_ICON_TYPE_LABEL;
+  specs[g + 2].text  = "centre";
+  specs[g + 2].fg    = palette_PICO8_DARK_BLUE;
+  specs[g + 2].bg    = wuss_NO_BACKGROUND;
+  specs[g + 2].flags = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
+
+  rc = wuss_icon_create_array(task->window, specs, ICONS_NSPECS, made);
   if (rc != result_OK)
     goto failure;
 
