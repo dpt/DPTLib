@@ -307,6 +307,17 @@ void wuss_destroy(wuss_t *doomed);
 bmfont_t *wuss_get_font(const wuss_t *wuss);
 
 /**
+ * The last pointer position seen by wuss_mouse_click or wuss_mouse_move, screen
+ * space. (0,0) until the first mouse event. Handy for opening a pop-up menu
+ * under the pointer from a task's icon handler, which gets no coordinate of its
+ * own.
+ *
+ * \param[in] wuss Window manager.
+ * \return Last pointer position, screen space.
+ */
+point_t wuss_get_pointer(const wuss_t *wuss);
+
+/**
  * Redraw every window, back-to-front, having first painted the configured
  * backdrop colour (see wuss_config_t::backdrop) behind them, if any.
  *

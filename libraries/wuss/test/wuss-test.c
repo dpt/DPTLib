@@ -2612,14 +2612,6 @@ result_t wuss_test(const char *resources)
      * and is not emitted, so the submenu has 3 rows */
     if (strcmp(m->items[1].text, "File") != 0)            goto MenuFail;
     sub = m->items[1].submenu;
-    printf("  sub1=%p nitems=%d\n", (void *) sub, sub ? sub->nitems : -1);
-    if (sub != NULL)
-      printf("  sub1[0]=%s f=%u [1]=%s f=%u [2]=%s f=%u\n",
-             sub->items[0].text, sub->items[0].flags,
-             sub->nitems > 1 ? sub->items[1].text : "?",
-             sub->nitems > 1 ? sub->items[1].flags : 0,
-             sub->nitems > 2 ? sub->items[2].text : "?",
-             sub->nitems > 2 ? sub->items[2].flags : 0);
     if (sub == NULL || sub->nitems != 3)                  goto MenuFail;
     if (strcmp(sub->items[0].text, "Grid") != 0)          goto MenuFail;
     if (!(sub->items[0].flags & wuss_MENU_ITEM_TICKED))   goto MenuFail;

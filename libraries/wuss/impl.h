@@ -63,6 +63,7 @@ struct wuss
   bmfont_t                   *font;      /* nullable, not owned */
   colour_t                   *palette;   /* owned */
   int                         npalette;
+  wuss_colour_t               white;     /* palette index nearest to white */
 #ifdef WUSS_FURNITURE
   wuss_palette_t              furniture_colours;
 #endif
@@ -87,6 +88,8 @@ struct wuss
                                           * created on first auto-placement */
   point_t                     cascade;   /* next cascade offset, used once the
                                           * layout packer has no room left */
+  point_t                     pointer;   /* last pointer position, screen
+                                          * space, from any mouse click/move */
 #ifdef WUSS_ICONS
   wuss_icon_t                *pressed_icon; /* button icon held down, NULL when
                                             * idle; released on any MOUSE_UP

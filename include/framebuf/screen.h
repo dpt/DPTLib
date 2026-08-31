@@ -240,6 +240,31 @@ void screen_draw_line(screen_t *scr,
                       colour_t  colour);
 
 /**
+ * Draws a stippled line: `on` pixels drawn, then `off` skipped, repeating along
+ * the line. Bresenham stepping, so the dash period is measured in steps not
+ * Euclidean distance. `on` <= 0 draws nothing; `off` <= 0 gives a solid line.
+ *
+ * Coordinates are `int`s and inclusive.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x0      X coordinate of first point of line.
+ * \param[in] y0      Y coordinate of first point of line.
+ * \param[in] x1      X coordinate of second point of line.
+ * \param[in] y1      Y coordinate of second point of line.
+ * \param[in] on      Length of each dash, in steps.
+ * \param[in] off     Gap between dashes, in steps.
+ * \param[in] colour  Colour of line.
+ */
+void screen_draw_dashed_line(screen_t *scr,
+                             int       x0,
+                             int       y0,
+                             int       x1,
+                             int       y1,
+                             int       on,
+                             int       off,
+                             colour_t  colour);
+
+/**
  * Draws a line (fixed-point Wu version with anti-aliasing).
  *
  * Coordinates are fixed point values of type `fix8_t`. Coordinates are

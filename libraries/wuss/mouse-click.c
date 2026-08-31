@@ -15,6 +15,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   x = p.x;
   y = p.y;
 
+  wuss->pointer = p;
+
 #ifdef WUSS_ICONS
   /* Release a held button icon on any MOUSE_UP, before the hit-test picks a
    * window: the up may land on a window that opened over the icon's owner on

@@ -89,6 +89,34 @@ result_t wuss_create(screen_t            *scr,
   memcpy(w->palette, palette, npalette * sizeof(*w->palette));
   w->npalette = npalette;
 
+  /* Cache the palette index nearest to opaque white, for menu backdrops and
+   * anything else wanting "paper". Sum-of-squared-channel-distance to white;
+   * ties keep the first. */
+  {
+    unsigned long best_d;
+    int           i;
+
+    w->white = 0;
+    best_d   = ~0UL;
+    for (i = 0; i < npalette; i++)
+    {
+      unsigned int  px;
+      long          dr, dg, db;
+      unsigned long d;
+
+      px = w->palette[i].primary;
+      dr = 255 - (long) ((px >> 16) & 0xFF);
+      dg = 255 - (long) ((px >>  8) & 0xFF);
+      db = 255 - (long) ( px        & 0xFF);
+      d  = (unsigned long) (dr * dr + dg * dg + db * db);
+      if (d < best_d)
+      {
+        best_d  = d;
+        w->white = i;
+      }
+    }
+  }
+
   if (config != NULL)
   {
     w->backdrop = config->backdrop;
@@ -222,6 +250,8 @@ result_t wuss_create(screen_t            *scr,
   w->layout    = NULL;
   w->cascade.x = 0;
   w->cascade.y = 0;
+  w->pointer.x = 0;
+  w->pointer.y = 0;
 
   list_init(&w->z_order);
 
