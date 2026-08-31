@@ -98,9 +98,12 @@ typedef enum wuss_icon_type
                              *   selected (see wuss_icon_set_selected), and an
                              *   optional submenu arrow at the right edge with
                              *   wuss_ICON_FLAGS_SUBMENU.
-                             *   wuss_ICON_FLAGS_SEPARATOR draws a horizontal
-                             *   rule instead of text. Interactive: a click
-                             *   raises wuss_EVENT_ICON like a button; a
+                             *   wuss_ICON_FLAGS_SEPARATOR draws a dashed rule
+                             *   along the top edge before the text, marking a
+                             *   group boundary; the entry keeps its label and
+                             *   stays interactive (an entry with the flag and
+                             *   no text is just a bare rule). Interactive: a
+                             *   click raises wuss_EVENT_ICON like a button; a
                              *   disabled entry never highlights and its clicks
                              *   fall through. */
 }
@@ -142,9 +145,11 @@ typedef enum wuss_icon_flags
                                           *   a submenu. Ignored by other
                                           *   types. */
   wuss_ICON_FLAGS_SEPARATOR    = 1 << 7  /**< wuss_ICON_TYPE_MENU_ENTRY: draw a
-                                          *   horizontal rule across the
-                                          *   bounding box instead of text; the
-                                          *   entry is inert (not hit-tested).
+                                          *   dashed rule along the entry's top
+                                          *   edge, then the text as normal; the
+                                          *   entry stays interactive. An entry
+                                          *   carrying the flag with no text is
+                                          *   a bare rule and is not hit-tested.
                                           *   Ignored by other types. */
 }
 wuss_icon_flags_t;

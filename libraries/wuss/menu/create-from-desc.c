@@ -240,11 +240,14 @@ static result_t build_add(Building    *b,
   it->flags   = wuss_MENU_ITEM_NONE;
   it->submenu = submenu;
 
+  /* '|' before this item means "draw a dashed rule above it"; the item keeps
+   * its own text and stays pickable. */
   if (b->pending_dash)
   {
     it->flags |= wuss_MENU_ITEM_DASHED;
     b->pending_dash = 0;
   }
+
   if (opt & Tick)
     it->flags |= wuss_MENU_ITEM_TICKED;
   if (opt & Shade)
@@ -297,6 +300,7 @@ result_t wuss_menu_create_from_desc(wuss_menu_t **out, const char *desc, ...)
   Parser   parser;
   Building stack[WUSS_MENU_DESC_DEPTH];
   int      need_title[WUSS_MENU_DESC_DEPTH];
+  char    *titles[WUSS_MENU_DESC_DEPTH];
   int      sp;
   va_list  ap;
   result_t rc;
@@ -313,7 +317,13 @@ result_t wuss_menu_create_from_desc(wuss_menu_t **out, const char *desc, ...)
     stack[i].items = NULL;
     stack[i].n = stack[i].cap = stack[i].pending_dash = 0;
     need_title[i] = 0;
+    titles[i]     = NULL;
   }
+
+  /* the descriptor's first token is the root menu's title, exactly as the
+   * first token inside a { } is that submenu's -- so the same strings port
+   * from PrivateEye unchanged */
+  need_title[0] = 1;
 
   sp = 0;
   rc = result_OK;
@@ -433,7 +443,18 @@ result_t wuss_menu_create_from_desc(wuss_menu_t **out, const char *desc, ...)
 
       if (need_title[sp])
       {
-        need_title[sp] = 0; /* the submenu title -- parsed, not emitted */
+        /* the menu's title token -- captured, not emitted as an item; kept
+         * only for the root (sp 0), submenus get no caption */
+        need_title[sp] = 0;
+        if (sp == 0)
+        {
+          titles[0] = strdup(text);
+          if (titles[0] == NULL)
+          {
+            rc = result_OOM;
+            break;
+          }
+        }
         continue;
       }
 
@@ -469,7 +490,10 @@ result_t wuss_menu_create_from_desc(wuss_menu_t **out, const char *desc, ...)
   if (rc != result_OK)
   {
     for (i = 0; i < WUSS_MENU_DESC_DEPTH; i++)
+    {
       build_discard(&stack[i]);
+      free(titles[i]);
+    }
     return rc;
   }
 
@@ -477,8 +501,11 @@ result_t wuss_menu_create_from_desc(wuss_menu_t **out, const char *desc, ...)
   if (*out == NULL)
   {
     build_discard(&stack[0]);
+    free(titles[0]);
     return result_OOM;
   }
+
+  (*out)->title = titles[0]; /* ownership transferred; NULL if none given */
 
   return result_OK;
 }

@@ -91,7 +91,7 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
   item = &self->menu->items[index];
 
-  if (item->flags & (wuss_MENU_ITEM_DASHED | wuss_MENU_ITEM_DISABLED))
+  if (item->flags & wuss_MENU_ITEM_DISABLED)
     return result_OK;
 
   if (event->data.icon.action == wuss_MOUSE_MOVE)
@@ -200,7 +200,7 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
     text = menu->items[i].text ? menu->items[i].text : "";
     len  = (int) strlen(text);
     if (len == 0)
-      continue; /* separator row, nothing to measure */
+      continue; /* empty label (bare rule row); nothing to measure */
     if (bmfont_measure(wuss->font, text, len,
                        INT_MAX, &split, &w) == result_OK && (int) w > widest)
       widest = (int) w;
