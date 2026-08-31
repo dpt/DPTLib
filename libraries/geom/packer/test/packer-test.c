@@ -513,6 +513,119 @@ failure:
   return 1;
 }
 
+/* count_and_last: packer_map callback recording the free-area count and the
+ * last area visited. */
+struct scan
+{
+  int   count;
+  box_t last;
+};
+
+static result_t count_and_last(const box_t *area, void *opaque)
+{
+  struct scan *s = opaque;
+
+  s->count++;
+  s->last = *area;
+
+  return result_OK;
+}
+
+/* packer_release coalescing: filling a page with mixed sizes then releasing
+ * every slot must collapse the free list back to the whole page, so a
+ * full-page box fits again. */
+static int test4(void)
+{
+  static const box_t pagedims = { 0, 0, 300, 300 };
+
+  static const int w[6] = { 40, 55, 40, 70, 40, 50 };
+  static const int h[6] = { 30, 40, 30, 35, 30, 45 };
+
+  packer_t    *packer;
+  const box_t *slot;
+  box_t        held[6];
+  box_t        full;
+  struct scan  s;
+  result_t     err;
+  int          cycle;
+  int          i;
+
+  printf("test4: packer_release coalescing\n");
+
+  packer = packer_create(&pagedims);
+  if (packer == NULL)
+    return 1;
+
+  packer_set_gutter(packer, 4);
+
+  /* several open/close rounds: the free list must not drift */
+  for (cycle = 0; cycle < 4; cycle++)
+  {
+    for (i = 0; i < 6; i++)
+    {
+      err = packer_place_by(packer, packer_LOC_BOTTOM_LEFT, w[i], h[i], &slot);
+      if (err)
+      {
+        printf("test4: cycle %d place %d failed (%d)\n", cycle, i, err);
+        goto failure;
+      }
+
+      /* release what place_by consumed: the box plus its gutter strip */
+      held[i]    = *slot;
+      held[i].x1 = slot->x1 + 4;
+      held[i].y1 = slot->y1 + 4;
+    }
+
+    for (i = 5; i >= 0; i--)
+    {
+      err = packer_release(packer, &held[i]);
+      if (err)
+      {
+        printf("test4: cycle %d release %d failed (%d)\n", cycle, i, err);
+        goto failure;
+      }
+    }
+
+    /* everything is back: exactly one free area, the whole margin */
+    s.count = 0;
+    err = packer_map(packer, count_and_last, &s);
+    if (err)
+      goto failure;
+
+    if (s.count != 1)
+    {
+      printf("test4: cycle %d left %d free areas, wanted 1\n", cycle, s.count);
+      goto failure;
+    }
+
+    if (s.last.x0 != 0   || s.last.y0 != 0 ||
+        s.last.x1 != 300 || s.last.y1 != 300)
+    {
+      printf("test4: cycle %d free area <%d,%d-%d,%d>, wanted <0,0-300,300>\n",
+             cycle, s.last.x0, s.last.y0, s.last.x1, s.last.y1);
+      goto failure;
+    }
+  }
+
+  /* and a box spanning the whole page now fits */
+  full.x0 = 0; full.y0 = 0; full.x1 = 300; full.y1 = 300;
+  err = packer_place_at(packer, &full);
+  if (err)
+  {
+    printf("test4: full-page placement after reclaim failed (%d)\n", err);
+    goto failure;
+  }
+
+  packer_destroy(packer);
+  return 0;
+
+
+failure:
+
+  packer_destroy(packer);
+  return 1;
+}
+
 result_t packer_test(const char *resources)
 {
   result_t err;
@@ -528,6 +641,10 @@ result_t packer_test(const char *resources)
     goto failure;
 
   err = test3();
+  if (err)
+    goto failure;
+
+  err = test4();
   if (err)
     goto failure;
 

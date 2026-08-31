@@ -93,10 +93,11 @@ void packer_set_gutter(T *packer, int gutter);
  * Returns a previously placed area to the free pool: the inverse of
  * packer_place_at / packer_place_by.
  *
- * Adjacent released areas are not coalesced, so a single placement that would
- * span two separately-released areas will not fit until the gap between them is
- * also freed; placing a box that fits wholly within one free area is
- * unaffected. packer_get_consumed_area is not narrowed by a release.
+ * Free areas that share a full edge are coalesced after each release, so
+ * repeated place/release cycles reclaim the whole page rather than fragmenting
+ * it. A placement spanning two free areas that only partially overlap
+ * (staggered edges) still will not fit until the gap between them is freed too.
+ * packer_get_consumed_area is not narrowed by a release.
  *
  * \param[in] packer Packer to release into.
  * \param[in] area   Area to release. Clipped to the packer's margins. Copied.
