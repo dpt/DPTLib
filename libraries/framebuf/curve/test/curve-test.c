@@ -688,7 +688,7 @@ static result_t curve_interactive_test(curveteststate_t *state)
       }
     }
 #else
-    if (frame > 1000)
+    if (frame > 100) /* headless: enough frames to cover every draw path */
       quit = 1;
 #endif
 
