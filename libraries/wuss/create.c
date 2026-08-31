@@ -26,10 +26,14 @@ static const colour_t wuss__default_palette[] =
  * and the freed-pointer set stay in one place. */
 static result_t validate_bevel_backdrop(const wuss_t *w,
                                         wuss_colour_t blight,
-                                        wuss_colour_t bdark)
+                                        wuss_colour_t bdark,
+                                        wuss_colour_t abg,
+                                        wuss_colour_t afg)
 {
   if (blight < 0 || blight >= w->npalette ||
       bdark  < 0 || bdark  >= w->npalette ||
+      abg    < 0 || abg    >= w->npalette ||
+      afg    < 0 || afg    >= w->npalette ||
       wuss__validate_backdrop(w, &w->backdrop) != result_OK)
     return result_WUSS_BAD_COLOUR;
 
@@ -51,6 +55,7 @@ result_t wuss_create(screen_t            *scr,
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
   wuss_colour_t  blight, bdark;
+  wuss_colour_t  abg, afg;
 #endif
 #ifdef WUSS_FURNITURE
   int            font_height;
@@ -101,6 +106,8 @@ result_t wuss_create(screen_t            *scr,
     pal = config->palette;
     blight = config->bevel.light;
     bdark = config->bevel.dark;
+    abg = config->accent.bg;
+    afg = config->accent.fg;
   }
   else
   {
@@ -119,6 +126,8 @@ result_t wuss_create(screen_t            *scr,
 
     blight = 0;
     bdark  = 0;
+    abg    = bg; /* default action button: the titlebar colours */
+    afg    = fg;
   }
 
   if (pal.title.bg        < 0 || pal.title.bg        >= w->npalette ||
@@ -130,7 +139,7 @@ result_t wuss_create(screen_t            *scr,
       pal.scroll.arrows   < 0 || pal.scroll.arrows   >= w->npalette ||
       pal.scroll.wells    < 0 || pal.scroll.wells    >= w->npalette ||
       pal.scroll.sausages < 0 || pal.scroll.sausages >= w->npalette ||
-      validate_bevel_backdrop(w, blight, bdark) != result_OK)
+      validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
   {
     free(w->palette);
     free(w);
@@ -140,6 +149,8 @@ result_t wuss_create(screen_t            *scr,
   w->furniture_colours = pal;
   w->bevel_light       = blight;
   w->bevel_dark        = bdark;
+  w->accent_bg         = abg;
+  w->accent_fg         = afg;
 
   if (config != NULL && config->titlebar_height > 0)
   {
@@ -161,13 +172,17 @@ result_t wuss_create(screen_t            *scr,
   {
     blight = config->bevel.light;
     bdark  = config->bevel.dark;
+    abg    = config->accent.bg;
+    afg    = config->accent.fg;
   }
   else
   {
     blight = 0;
     bdark  = 0;
+    abg    = 0;
+    afg    = (w->npalette > 1) ? 1 : 0;
   }
-  if (validate_bevel_backdrop(w, blight, bdark) != result_OK)
+  if (validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
   {
     free(w->palette);
     free(w);
@@ -175,6 +190,8 @@ result_t wuss_create(screen_t            *scr,
   }
   w->bevel_light = blight;
   w->bevel_dark  = bdark;
+  w->accent_bg   = abg;
+  w->accent_fg   = afg;
 #else
   if (wuss__validate_backdrop(w, &w->backdrop) != result_OK)
   {

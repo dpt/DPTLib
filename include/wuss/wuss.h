@@ -219,7 +219,7 @@ wuss_backdrop_t;
  * Optional creation-time configuration.
  *
  * \note titlebar_height and palette are ignored when the library is built with
- *       WUSS_FURNITURE off; bevel is ignored when built with both
+ *       WUSS_FURNITURE off; bevel and accent are ignored when built with both
  *       WUSS_FURNITURE and WUSS_ICONS off. backdrop is always honoured. See the
  *       backdrop sub-struct for its own notes.
  */
@@ -246,6 +246,20 @@ typedef struct wuss_config
     wuss_colour_t dark;  /**< Bottom/right bevel edge. */
   }
   bevel;
+
+  /**
+   * Fill and text colours for a default action button -- a work-area button
+   * icon created with wuss_ICON_FLAGS_DEFAULT, drawn to stand out from the
+   * ordinary bevelled buttons around it (RISC OS's "default action button").
+   * Both default to the titlebar colours (bg / fg) when config is NULL. Ignored
+   * when both WUSS_FURNITURE and WUSS_ICONS are off.
+   */
+  struct
+  {
+    wuss_colour_t bg; /**< Default-button fill. */
+    wuss_colour_t fg; /**< Default-button text. */
+  }
+  accent;
 
   /** Desktop background, painted behind windows on every redraw. */
   wuss_backdrop_t backdrop;

@@ -83,10 +83,16 @@ typedef enum wuss_icon_flags
   wuss_ICON_FLAGS_JUSTIFY_RIGHT = 1 << 2, /**< wuss_ICON_TYPE_LABEL: right-align
                                           *   the text in the bounding box
                                           *   instead of the default left. */
-  wuss_ICON_FLAGS_JUSTIFY_CENTRE = 1 << 3 /**< wuss_ICON_TYPE_LABEL: centre the
-                                          *   text in the bounding box. Takes
-                                          *   precedence over
+  wuss_ICON_FLAGS_JUSTIFY_CENTRE = 1 << 3, /**< wuss_ICON_TYPE_LABEL: centre
+                                          *   the text in the bounding box.
+                                          *   Takes precedence over
                                           *   wuss_ICON_FLAGS_JUSTIFY_RIGHT. */
+  wuss_ICON_FLAGS_DEFAULT       = 1 << 4  /**< wuss_ICON_TYPE_BUTTON: draw as a
+                                          *   default action button, in the
+                                          *   window manager's accent colours
+                                          *   (see wuss_config_t::accent)
+                                          *   instead of the ordinary bevel.
+                                          *   Ignored by other icon types. */
 }
 wuss_icon_flags_t;
 
