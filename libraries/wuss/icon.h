@@ -19,10 +19,17 @@ struct wuss_icon
   char             *text;    /* owned; never NULL ("" instead) */
   wuss_colour_t     fg;
   wuss_colour_t     bg;
-  screen_pattern_t  pattern; /* wuss_ICON_TYPE_PATTERN tile; 0 otherwise */
+  screen_pattern_t  pattern;  /* wuss_ICON_TYPE_PATTERN tile; 0 otherwise */
+  int               group;    /* radio: exclusive-selection group; 0 = none */
   wuss_icon_flags_t flags;
-  int               pressed; /* button: 1 while held with the pointer inside */
+  int               pressed;  /* button: 1 while held with the pointer inside */
+  int               selected; /* radio/option: 1 while latched on */
 };
+
+/* Set icon->selected, invalidating it. For a radio with a non-zero group,
+ * selecting it also clears every other selected radio on the same window with
+ * that group. Ignored for types with no latched state. */
+void wuss__icon_select(wuss_icon_t *icon, int selected);
 
 /* Map an icon bbox (virtual document space) into screen space:
  * screen = content.x0 - scroll.x + bbox. wuss__icon_draw paints through this

@@ -63,11 +63,23 @@ typedef enum wuss_icon_type
                              *   content. Not interactive: clicks fall through
                              *   to the task as wuss_EVENT_MOUSE. text is
                              *   ignored. */
-  wuss_ICON_TYPE_FRAME      /**< A grouping box: a one-pixel rectangle in fg
+  wuss_ICON_TYPE_FRAME,     /**< A grouping box: a one-pixel rectangle in fg
                              *   around the bounding box, broken at the top-left
                              *   for an optional caption (text) drawn over the
                              *   window background. Not interactive: clicks fall
                              *   through to the task as wuss_EVENT_MOUSE. */
+  wuss_ICON_TYPE_RADIO,     /**< A radio button: a small ring at the left of the
+                             *   bounding box, filled when selected, with the
+                             *   label (text) to its right. Interactive: a click
+                             *   selects it and clears every other selected
+                             *   radio sharing its non-zero group, then the task
+                             *   is told via wuss_EVENT_ICON. */
+  wuss_ICON_TYPE_OPTION     /**< An option button: a small box at the left of
+                             *   the bounding box, ticked when selected, with
+                             *   the label (text) to its right. Interactive: a
+                             *   click toggles its own selected state (group is
+                             *   ignored), then the task is told via
+                             *   wuss_EVENT_ICON. */
 }
 wuss_icon_type_t;
 
@@ -113,13 +125,19 @@ typedef struct wuss_icon_spec
   wuss_colour_t     fg;    /**< Text colour, as an index into the system
                             *   palette. */
   wuss_colour_t     bg;    /**< Fill/bevel base colour, as an index into the
-                            *   system palette. A label or frame may pass
-                            *   wuss_NO_BACKGROUND for text/outline with no
-                            *   fill; a button or pattern icon must pass a real
-                            *   index. */
+                            *   system palette. A label, frame, radio or option
+                            *   icon may pass wuss_NO_BACKGROUND for no fill
+                            *   behind its text/glyph; a button or pattern icon
+                            *   must pass a real index. */
   screen_pattern_t  pattern; /**< Tile for wuss_ICON_TYPE_PATTERN; ignored by
                               *   other types. Zero (screen_PATTERN_SOLID) is a
                               *   safe default for zero-initialised specs. */
+  int               group; /**< wuss_ICON_TYPE_RADIO: exclusive-selection group.
+                            *   Selecting a radio clears every other selected
+                            *   radio on the same window with the same group.
+                            *   Zero (the default) means "no group": such a
+                            *   radio still toggles but never clears another.
+                            *   Ignored by all other icon types. */
   wuss_icon_flags_t flags; /**< Appearance/behaviour flags. */
 }
 wuss_icon_spec_t;
@@ -224,6 +242,27 @@ const char *wuss_icon_get_text(const wuss_icon_t *icon);
  * \return The owning window.
  */
 wuss_window_t *wuss_icon_get_window(const wuss_icon_t *icon);
+
+/**
+ * Fetch a radio or option icon's selected (latched) state.
+ *
+ * \param[in] icon Icon to query.
+ * \return Non-zero if selected, zero otherwise. Always zero for icon types that
+ *         have no latched state.
+ */
+int wuss_icon_get_selected(const wuss_icon_t *icon);
+
+/**
+ * Set a radio or option icon's selected state, invalidating it so the next
+ * redraw repaints it. For a radio with a non-zero group, selecting it (passing
+ * non-zero) also clears every other selected radio on the same window with that
+ * group. No task event is delivered -- this is the programmatic path, distinct
+ * from a user click. A no-op for icon types with no latched state.
+ *
+ * \param[in] icon     Icon to change.
+ * \param[in] selected Non-zero to select, zero to deselect.
+ */
+void wuss_icon_set_selected(wuss_icon_t *icon, int selected);
 
 #endif /* WUSS_ICONS */
 
