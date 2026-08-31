@@ -31,12 +31,16 @@ result_t wuss_icon_create(wuss_window_t          *window,
       spec->type != wuss_ICON_TYPE_PATTERN &&
       spec->type != wuss_ICON_TYPE_FRAME &&
       spec->type != wuss_ICON_TYPE_RADIO &&
-      spec->type != wuss_ICON_TYPE_OPTION)
+      spec->type != wuss_ICON_TYPE_OPTION &&
+      spec->type != wuss_ICON_TYPE_BITMAP)
     return result_WUSS_BAD_ICON;
 
   if ((spec->type == wuss_ICON_TYPE_BUTTON ||
        spec->type == wuss_ICON_TYPE_PATTERN) &&
       spec->bg == wuss_NO_BACKGROUND)
+    return result_WUSS_BAD_ICON;
+
+  if (spec->type == wuss_ICON_TYPE_BITMAP && spec->bitmap == NULL)
     return result_WUSS_BAD_ICON;
 
   if (spec->type == wuss_ICON_TYPE_PATTERN &&
@@ -74,13 +78,14 @@ result_t wuss_icon_create(wuss_window_t          *window,
   }
   memcpy(it->text, src, len + 1);
 
-  it->window  = window;
-  it->bbox    = spec->bbox;
-  it->type    = spec->type;
-  it->fg      = spec->fg;
-  it->bg      = spec->bg;
+  it->window   = window;
+  it->bbox     = spec->bbox;
+  it->type     = spec->type;
+  it->fg       = spec->fg;
+  it->bg       = spec->bg;
   it->pattern  = (spec->type == wuss_ICON_TYPE_PATTERN) ? spec->pattern
                                                         : screen_PATTERN_SOLID;
+  it->bitmap   = (spec->type == wuss_ICON_TYPE_BITMAP) ? spec->bitmap : NULL;
   it->group    = (spec->type == wuss_ICON_TYPE_RADIO) ? spec->group : 0;
   it->flags    = spec->flags;
   it->pressed  = 0;

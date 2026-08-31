@@ -177,7 +177,7 @@ static result_t spawn_icons(void)
   icons_task_t *t = calloc(1, sizeof(*t));
   result_t      rc;
   if (t == NULL) return result_OOM;
-  rc = icons_create(g_wuss, g_palette, g_daydream_font, t);
+  rc = icons_create(g_wuss, g_palette, g_daydream_font, g_resources, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }

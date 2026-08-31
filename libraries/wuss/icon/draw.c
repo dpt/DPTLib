@@ -333,5 +333,28 @@ void wuss__icon_draw(wuss_t            *wuss,
       }
     }
     break;
+
+  case wuss_ICON_TYPE_BITMAP:
+    {
+      screen_t clipped;
+
+      if (icon->bitmap == NULL)
+        break;
+
+      /* screen_draw_bitmap clips to scr->clip and does not scale, so narrow
+       * the clip to the icon box (intersected with whatever redraw already
+       * set) and blit at the box's top-left */
+      clipped = *scr;
+      if (clipped.clip.x0 < b.x0) clipped.clip.x0 = b.x0;
+      if (clipped.clip.y0 < b.y0) clipped.clip.y0 = b.y0;
+      if (clipped.clip.x1 > b.x1) clipped.clip.x1 = b.x1;
+      if (clipped.clip.y1 > b.y1) clipped.clip.y1 = b.y1;
+      if (clipped.clip.x1 <= clipped.clip.x0 ||
+          clipped.clip.y1 <= clipped.clip.y0)
+        break;
+
+      screen_draw_bitmap(&clipped, b.x0, b.y0, icon->bitmap);
+    }
+    break;
   }
 }
