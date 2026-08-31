@@ -4,7 +4,6 @@
 
 #include <stdlib.h>
 
-#include <ctype.h>
 #include <math.h>
 #include <string.h>
 
@@ -17,6 +16,7 @@
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "geom/point.h"
+#include "text/bmtext.h"
 
 #include "text.h"
 
@@ -66,95 +66,15 @@ result_t text_create(wuss_t         *wuss,
 #define LEADING    2
 #define MAX_LINES  64 /* paragraph is short and fixed; overflow is dropped */
 
-typedef struct text_line
-{
-  const char *str;
-  int         len;
-}
-text_line_t;
-
-/* Break "string" into lines that each fit "wrap_width" pixels in "font",
- * writing up to "max" of them to "lines". Returns the line count. Pure
- * layout: no drawing, no screen or scroll state. */
-static int text_layout(bmfont_t    *font,
-                       const char  *string,
-                       int          stringlen,
-                       int          wrap_width,
-                       text_line_t *lines,
-                       int          max)
-{
-  int nlines;
-
-  nlines = 0;
-
-  while (stringlen > 0 && nlines < max)
-  {
-    int            absolute_break;
-    bmfont_width_t width;
-    int            friendly_break;
-
-    bmfont_measure(font, string, stringlen, wrap_width, &absolute_break, &width);
-
-    friendly_break = absolute_break;
-    if (absolute_break < stringlen)
-    {
-      /* line didn't fit whole: try to break at the last space within it */
-      for (friendly_break = absolute_break - 1; friendly_break > 0; friendly_break--)
-        if (isspace((unsigned char) string[friendly_break]))
-          break;
-      if (friendly_break <= 0)
-        friendly_break = absolute_break; /* no space to break at: hard break */
-    }
-
-    lines[nlines].str = string;
-    lines[nlines].len = friendly_break;
-    nlines++;
-
-    string    += friendly_break;
-    stringlen -= friendly_break;
-    while (stringlen > 0 && isspace((unsigned char) *string))
-    {
-      string++;
-      stringlen--;
-    }
-  }
-
-  return nlines;
-}
-
-/* Draw pre-laid-out "lines" stacked from "origin", advancing by the font
- * height plus LEADING per line. */
-static void text_render(bmfont_t          *font,
-                        screen_t          *scr,
-                        const text_line_t *lines,
-                        int                nlines,
-                        colour_t           fg,
-                        colour_t           bg,
-                        point_t            origin)
-{
-  int     font_width, font_height;
-  point_t pos;
-  int     i;
-
-  bmfont_get_info(font, &font_width, &font_height);
-
-  pos = origin;
-  for (i = 0; i < nlines; i++)
-  {
-    bmfont_draw(font, scr, lines[i].str, lines[i].len, fg, bg, &pos, NULL);
-    pos.y += font_height + LEADING;
-  }
-}
-
 static result_t text_redraw(const wuss_event_t *event, void *task_data)
 {
-  text_task_t *tcx;
-  screen_t    *scr;
-  const box_t *bounds;
-  int          sx, sy;
-  text_line_t  lines[MAX_LINES];
-  int          nlines;
-  point_t      origin;
+  text_task_t  *tcx;
+  screen_t     *scr;
+  const box_t  *bounds;
+  int           sx, sy;
+  bmtext_line_t lines[MAX_LINES];
+  int           nlines;
+  point_t       origin;
 
   tcx = task_data;
 
@@ -163,17 +83,17 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
   sx     = event->data.redraw.scroll.x;
   sy     = event->data.redraw.scroll.y;
 
-  nlines = text_layout(tcx->font,
-                       paragraph,
-                       (int) strlen(paragraph),
-                       (bounds->x1 - INSET) - (bounds->x0 + INSET),
-                       lines,
-                       MAX_LINES);
+  nlines = bmtext_layout(tcx->font,
+                         paragraph,
+                         (int) strlen(paragraph),
+                         (bounds->x1 - INSET) - (bounds->x0 + INSET),
+                         lines,
+                         MAX_LINES);
 
   origin.x = bounds->x0 - sx + INSET;
   origin.y = bounds->y0 - sy + INSET;
 
-  text_render(tcx->font, scr, lines, nlines, tcx->fg, tcx->bg, origin);
+  bmtext_draw(tcx->font, scr, lines, nlines, tcx->fg, tcx->bg, LEADING, origin);
 
   return result_OK;
 }

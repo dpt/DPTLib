@@ -105,6 +105,7 @@ set(PUBLIC_HEADERS
     include/io/stream.h
     include/test/all-tests.h
     include/test/txtscr.h
+    include/text/bmtext.h
     include/text/txtfmt.h
     include/utils/array.h
     include/utils/barith.h
@@ -285,6 +286,8 @@ set(TESTLIB_SOURCES
     libraries/test/txtscr/txtscr.c)
 
 set(TEXT_SOURCES
+    libraries/text/bmtext/draw.c
+    libraries/text/bmtext/layout.c
     libraries/text/txtfmt/create.c
     libraries/text/txtfmt/destroy.c
     libraries/text/txtfmt/get-length.c
