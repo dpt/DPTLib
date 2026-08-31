@@ -381,6 +381,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/draw.c
     libraries/wuss/icon/free.c
     libraries/wuss/icon/get-bbox.c
+    libraries/wuss/icon/get-selected.c
     libraries/wuss/icon/get-text.c
     libraries/wuss/icon/get-type.c
     libraries/wuss/icon/get-window.c
@@ -388,6 +389,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/invalidate.c
     libraries/wuss/icon/screen-box.c
     libraries/wuss/icon/set-hidden.c
+    libraries/wuss/icon/set-selected.c
     libraries/wuss/icon/set-text.c
     libraries/wuss/icon.h)
 

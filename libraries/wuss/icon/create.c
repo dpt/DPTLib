@@ -29,7 +29,9 @@ result_t wuss_icon_create(wuss_window_t          *window,
   if (spec->type != wuss_ICON_TYPE_LABEL &&
       spec->type != wuss_ICON_TYPE_BUTTON &&
       spec->type != wuss_ICON_TYPE_PATTERN &&
-      spec->type != wuss_ICON_TYPE_FRAME)
+      spec->type != wuss_ICON_TYPE_FRAME &&
+      spec->type != wuss_ICON_TYPE_RADIO &&
+      spec->type != wuss_ICON_TYPE_OPTION)
     return result_WUSS_BAD_ICON;
 
   if ((spec->type == wuss_ICON_TYPE_BUTTON ||
@@ -77,10 +79,12 @@ result_t wuss_icon_create(wuss_window_t          *window,
   it->type    = spec->type;
   it->fg      = spec->fg;
   it->bg      = spec->bg;
-  it->pattern = (spec->type == wuss_ICON_TYPE_PATTERN) ? spec->pattern
-                                                       : screen_PATTERN_SOLID;
-  it->flags   = spec->flags;
-  it->pressed = 0;
+  it->pattern  = (spec->type == wuss_ICON_TYPE_PATTERN) ? spec->pattern
+                                                        : screen_PATTERN_SOLID;
+  it->group    = (spec->type == wuss_ICON_TYPE_RADIO) ? spec->group : 0;
+  it->flags    = spec->flags;
+  it->pressed  = 0;
+  it->selected = 0;
 
   window->icons[window->nicons++] = it;
 

@@ -14,7 +14,9 @@ wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point)
   {
     it = window->icons[i];
 
-    if (it->type != wuss_ICON_TYPE_BUTTON)
+    if (it->type != wuss_ICON_TYPE_BUTTON &&
+        it->type != wuss_ICON_TYPE_RADIO &&
+        it->type != wuss_ICON_TYPE_OPTION)
       continue;
 
     if (it->flags & (wuss_ICON_FLAGS_HIDDEN | wuss_ICON_FLAGS_DISABLED))

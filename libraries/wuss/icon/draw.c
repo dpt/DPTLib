@@ -245,5 +245,93 @@ void wuss__icon_draw(wuss_t            *wuss,
       }
     }
     break;
+
+  case wuss_ICON_TYPE_RADIO:
+  case wuss_ICON_TYPE_OPTION:
+    {
+      colour_t glyph, bg;
+      box_t    g;
+      int      gsz, gy, tx;
+
+      /* the glyph is a square the height of the font (min 8), sat at the left
+       * of the box and vertically centred; the label follows to its right */
+      gsz = (font_height >= 8) ? font_height : 8;
+      if (gsz > b.y1 - b.y0)
+        gsz = b.y1 - b.y0;
+      gy = b.y0 + (b.y1 - b.y0 - gsz) / 2;
+
+      g.x0 = b.x0;
+      g.y0 = gy;
+      g.x1 = b.x0 + gsz;
+      g.y1 = gy + gsz;
+
+      glyph = (icon->flags & wuss_ICON_FLAGS_DISABLED)
+            ? wuss->palette[wuss->bevel_dark]
+            : fg;
+
+      /* ground the glyph blends against: explicit bg, else the window backdrop,
+       * else fg (bmfont still needs a colour) -- same ladder as the label case */
+      if (icon->bg != wuss_NO_BACKGROUND)
+        bg = wuss->palette[icon->bg];
+      else if (icon->window->bg.colour != wuss_NO_BACKGROUND)
+        bg = (icon->window->bg.pattern != screen_PATTERN_SOLID)
+           ? wuss->palette[icon->window->bg.pattern_bg]
+           : wuss->palette[icon->window->bg.colour];
+      else
+        bg = glyph;
+
+      if (icon->bg != wuss_NO_BACKGROUND)
+        screen_draw_rect(scr, b.x0, b.y0,
+                         SIZE2D(b.x1 - b.x0, b.y1 - b.y0), bg);
+
+      if (icon->type == wuss_ICON_TYPE_RADIO)
+      {
+        /* a square ring (no circle primitive); a solid centre when selected */
+        screen_draw_line(scr, g.x0 + 2, g.y0,     g.x1 - 3, g.y0,     glyph);
+        screen_draw_line(scr, g.x0 + 2, g.y1 - 1, g.x1 - 3, g.y1 - 1, glyph);
+        screen_draw_line(scr, g.x0,     g.y0 + 2, g.x0,     g.y1 - 3, glyph);
+        screen_draw_line(scr, g.x1 - 1, g.y0 + 2, g.x1 - 1, g.y1 - 3, glyph);
+        if (icon->selected)
+          screen_draw_rect(scr, g.x0 + 3, g.y0 + 3,
+                           SIZE2D(gsz - 6, gsz - 6), glyph);
+      }
+      else
+      {
+        /* a box; a tick (two strokes) when selected */
+        screen_draw_line(scr, g.x0,     g.y0,     g.x1 - 1, g.y0,     glyph);
+        screen_draw_line(scr, g.x0,     g.y1 - 1, g.x1 - 1, g.y1 - 1, glyph);
+        screen_draw_line(scr, g.x0,     g.y0,     g.x0,     g.y1 - 1, glyph);
+        screen_draw_line(scr, g.x1 - 1, g.y0,     g.x1 - 1, g.y1 - 1, glyph);
+        if (icon->selected)
+        {
+          screen_draw_line(scr, g.x0 + 2, g.y0 + gsz / 2,
+                           g.x0 + gsz / 2 - 1, g.y1 - 3, glyph);
+          screen_draw_line(scr, g.x0 + gsz / 2 - 1, g.y1 - 3,
+                           g.x1 - 3, g.y0 + 2, glyph);
+        }
+      }
+
+      if (have_font)
+      {
+        point_t        pos;
+        int            interior_w, split_point;
+        bmfont_width_t width;
+
+        tx = g.x1 + 4;
+        interior_w = (b.x1 - tx) - 1;
+        if (interior_w < 1)
+          interior_w = 1;
+
+        bmfont_measure(wuss->font, icon->text, (int) strlen(icon->text),
+                       interior_w, &split_point, &width);
+        NOT_USED(width);
+
+        pos.x = tx;
+        pos.y = b.y0 + (b.y1 - b.y0 - font_height) / 2;
+        bmfont_draw(wuss->font, scr, icon->text, (int) strlen(icon->text),
+                    glyph, bg, &pos, NULL);
+      }
+    }
+    break;
   }
 }

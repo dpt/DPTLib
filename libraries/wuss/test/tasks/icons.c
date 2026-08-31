@@ -28,13 +28,15 @@ result_t icons_create(wuss_t         *wuss,
                       icons_task_t   *task)
 {
   /* [0..3], one swatch per built-in pattern, then [.. +3] a grouping frame
-   * with two differently-justified labels inside it */
-  enum { ICONS_NSPECS = 4 + screen_PATTERN__LIMIT + 3 };
+   * with two differently-justified labels inside it, then [.. +5] three grouped
+   * radios, a standalone option and a label echoing the selection */
+  enum { ICONS_NSPECS = 4 + screen_PATTERN__LIMIT + 3 + 5 };
   wuss_task_t      delegate;
   wuss_icon_spec_t specs[ICONS_NSPECS];
   wuss_icon_t     *made[ICONS_NSPECS];
   int              p;
   int              g;   /* index of the first frame spec */
+  int              r;   /* radio index */
   result_t         rc;
 
   task->font    = font;
@@ -44,6 +46,8 @@ result_t icons_create(wuss_t         *wuss,
   task->button  = NULL;
   task->counter = NULL;
   task->count   = 0;
+  task->opt     = NULL;
+  task->state   = NULL;
 
   delegate = wuss_task_start(icons_handle, task);
 
@@ -131,12 +135,38 @@ result_t icons_create(wuss_t         *wuss,
   specs[g + 2].bg    = wuss_NO_BACKGROUND;
   specs[g + 2].flags = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
 
+  /* [g+3..g+5] three radios sharing group 1, [g+6] a standalone option,
+   * [g+7] a label echoing whichever control last changed */
+  for (r = 0; r < 3; r++)
+  {
+    specs[g + 3 + r].bbox  = (box_t) BOX_POS_SIZE(28, 380 + r * 20, 150, 16);
+    specs[g + 3 + r].type  = wuss_ICON_TYPE_RADIO;
+    specs[g + 3 + r].text  = (r == 0) ? "Red" : (r == 1) ? "Green" : "Blue";
+    specs[g + 3 + r].fg    = palette_PICO8_DARK_BLUE;
+    specs[g + 3 + r].bg    = wuss_NO_BACKGROUND;
+    specs[g + 3 + r].group = 1;
+  }
+
+  specs[g + 6].bbox = (box_t) BOX_POS_SIZE(28, 444, 150, 16);
+  specs[g + 6].type = wuss_ICON_TYPE_OPTION;
+  specs[g + 6].text = "Wireframe";
+  specs[g + 6].fg   = palette_PICO8_DARK_BLUE;
+  specs[g + 6].bg   = wuss_NO_BACKGROUND;
+
+  specs[g + 7].bbox = (box_t) BOX_POS_SIZE(28, 464, 180, 14);
+  specs[g + 7].type = wuss_ICON_TYPE_LABEL;
+  specs[g + 7].text = "(no selection)";
+  specs[g + 7].fg   = palette_PICO8_DARK_BLUE;
+  specs[g + 7].bg   = wuss_NO_BACKGROUND;
+
   rc = wuss_icon_create_array(task->window, specs, ICONS_NSPECS, made);
   if (rc != result_OK)
     goto failure;
 
   task->button  = made[1];
   task->counter = made[2];
+  task->opt     = made[g + 6];
+  task->state   = made[g + 7];
 
   return result_OK;
 
@@ -236,13 +266,27 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
 static result_t icons_icon(const wuss_event_t *event, void *task_data)
 {
   icons_task_t *tcx;
-  char          buf[16];
+  wuss_icon_t  *icon;
+  char          buf[48];
 
-  tcx = task_data;
+  tcx  = task_data;
+  icon = event->data.icon.icon;
+
+  /* a radio/option latches on MOUSE_UP -- report the state then */
+  if (event->data.icon.action == wuss_MOUSE_UP &&
+      (wuss_icon_get_type(icon) == wuss_ICON_TYPE_RADIO ||
+       wuss_icon_get_type(icon) == wuss_ICON_TYPE_OPTION))
+  {
+    snprintf(buf, sizeof(buf), "%s: %s%s",
+             wuss_icon_get_text(icon),
+             wuss_icon_get_selected(icon) ? "on" : "off",
+             (icon == tcx->opt) ? "" : " (radio)");
+    return wuss_icon_set_text(tcx->state, buf);
+  }
 
   if (event->data.icon.action != wuss_MOUSE_DOWN)
     return result_OK;
-  if (event->data.icon.icon != tcx->button)
+  if (icon != tcx->button)
     return result_OK;
 
   tcx->count++;

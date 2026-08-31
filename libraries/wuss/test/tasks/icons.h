@@ -22,6 +22,8 @@ typedef struct icons_task
   wuss_icon_t   *button;  /* "Press me" */
   wuss_icon_t   *counter; /* label showing hit count */
   int            count;
+  wuss_icon_t   *opt;     /* standalone option button */
+  wuss_icon_t   *state;   /* label echoing radio/option selection */
 }
 icons_task_t;
 
