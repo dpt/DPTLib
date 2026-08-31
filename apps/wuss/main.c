@@ -203,7 +203,7 @@ static const wuss_menu_item_t g_menu_export_items[] =
 };
 static const wuss_menu_t g_menu_export =
 {
-  g_menu_export_items, NELEMS(g_menu_export_items)
+  "Export", g_menu_export_items, NELEMS(g_menu_export_items)
 };
 
 static const wuss_menu_item_t g_menu_items[] =
@@ -217,7 +217,7 @@ static const wuss_menu_item_t g_menu_items[] =
 };
 static const wuss_menu_t g_menu =
 {
-  g_menu_items, NELEMS(g_menu_items)
+  "Display", g_menu_items, NELEMS(g_menu_items)
 };
 
 static void menu_selected(const wuss_menu_t *menu,
