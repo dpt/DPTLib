@@ -46,14 +46,31 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
     *hit = win;
 
   if (win == NULL)
+  {
+#ifdef WUSS_ICONS
+    wuss__icon_set_hover(wuss, NULL);
+#endif
     return result_OK;
+  }
 
 #ifdef WUSS_FURNITURE
   if (wuss__furniture_hit_test(win, POINT(x, y)) != wuss_FURNITURE_CONTENT)
+  {
+#ifdef WUSS_ICONS
+    wuss__icon_set_hover(wuss, NULL);
+#endif
     return result_OK;
+  }
 #endif
 
-  if (win->task.handle != NULL)
+  if (win->task.handle == NULL)
+  {
+#ifdef WUSS_ICONS
+    wuss__icon_set_hover(wuss, NULL);
+#endif
+    return result_OK;
+  }
+
   {
     box_t        content;
     point_t      doc_point;
@@ -69,6 +86,8 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
       int          k;
 
       icon = wuss__icon_hit_test(win, doc_point);
+
+      wuss__icon_set_hover(wuss, icon);
 
       /* Clear the pressed state of any button the pointer has left. This does
        * not re-press a button on drag-back-in, and does not track which mouse

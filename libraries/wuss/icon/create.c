@@ -32,7 +32,8 @@ result_t wuss_icon_create(wuss_window_t          *window,
       spec->type != wuss_ICON_TYPE_FRAME &&
       spec->type != wuss_ICON_TYPE_RADIO &&
       spec->type != wuss_ICON_TYPE_OPTION &&
-      spec->type != wuss_ICON_TYPE_BITMAP)
+      spec->type != wuss_ICON_TYPE_BITMAP &&
+      spec->type != wuss_ICON_TYPE_MENU_ENTRY)
     return result_WUSS_BAD_ICON;
 
   if ((spec->type == wuss_ICON_TYPE_BUTTON ||
@@ -90,6 +91,7 @@ result_t wuss_icon_create(wuss_window_t          *window,
   it->flags    = spec->flags;
   it->pressed  = 0;
   it->selected = 0;
+  it->hovered  = 0;
 
   window->icons[window->nicons++] = it;
 

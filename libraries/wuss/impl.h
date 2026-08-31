@@ -89,6 +89,10 @@ struct wuss
                                             * idle; released on any MOUSE_UP
                                             * even if a new window now covers
                                             * its owner */
+  wuss_icon_t                *hover_icon;   /* icon the pointer is currently
+                                            * over, NULL when none; drives
+                                            * hover-highlight repaint of
+                                            * menu-entry icons */
 #endif
 };
 

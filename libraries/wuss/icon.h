@@ -24,13 +24,20 @@ struct wuss_icon
   int               group;    /* radio: exclusive-selection group; 0 = none */
   wuss_icon_flags_t flags;
   int               pressed;  /* button: 1 while held with the pointer inside */
-  int               selected; /* radio/option: 1 while latched on */
+  int               selected; /* radio/option: 1 while latched on; menu entry:
+                               * 1 draws a tick */
+  int               hovered;  /* menu entry: 1 while the pointer is over it */
 };
 
 /* Set icon->selected, invalidating it. For a radio with a non-zero group,
  * selecting it also clears every other selected radio on the same window with
  * that group. Ignored for types with no latched state. */
 void wuss__icon_select(wuss_icon_t *icon, int selected);
+
+/* Make "icon" (may be NULL) the hovered icon: clears the hovered flag on the
+ * previous wuss->hover_icon and sets it on the new one, invalidating whichever
+ * of the two changed. A no-op if nothing changed. */
+void wuss__icon_set_hover(wuss_t *wuss, wuss_icon_t *icon);
 
 /* Map an icon bbox (virtual document space) into screen space:
  * screen = content.x0 - scroll.x + bbox. wuss__icon_draw paints through this

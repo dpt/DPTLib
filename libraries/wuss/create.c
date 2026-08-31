@@ -211,6 +211,7 @@ result_t wuss_create(screen_t            *scr,
 #endif
 #ifdef WUSS_ICONS
   w->pressed_icon       = NULL;
+  w->hover_icon         = NULL;
 #endif
 
   w->ndirty = 0;

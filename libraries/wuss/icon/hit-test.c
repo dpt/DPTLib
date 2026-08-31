@@ -14,11 +14,16 @@ wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point)
   {
     it = window->icons[i];
 
-    /* a bitmap icon is interactive only when it asks to be; the other
-     * clickable types always are */
+    /* a bitmap icon is interactive only when it asks to be; a menu separator
+     * never is; the other clickable types always are */
     if (it->type == wuss_ICON_TYPE_BITMAP)
     {
       if (!(it->flags & wuss_ICON_FLAGS_INTERACTIVE))
+        continue;
+    }
+    else if (it->type == wuss_ICON_TYPE_MENU_ENTRY)
+    {
+      if (it->flags & wuss_ICON_FLAGS_SEPARATOR)
         continue;
     }
     else if (it->type != wuss_ICON_TYPE_BUTTON &&
