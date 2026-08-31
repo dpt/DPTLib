@@ -20,6 +20,9 @@
 #include "io/path.h"
 #include "wuss/wuss.h"
 #include "wuss/window.h"
+#ifdef WUSS_MENUS
+#include "wuss/menu.h"
+#endif
 
 #include "test/all-tests.h"
 
@@ -2577,6 +2580,76 @@ result_t wuss_test(const char *resources)
   wuss_window_close(win_b);
   if (tc_a.stop_count != 1 || tc_b.stop_count != 1)
     goto Failure;
+
+#ifdef WUSS_MENUS
+  printf("test: wuss_menu_create_from_desc parses a descriptor tree\n");
+  {
+    static const wuss_menu_item_t borrowed_items[] =
+    {
+      { "Info",  wuss_MENU_ITEM_NONE, NULL },
+      { "About", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_t borrowed =
+    {
+      borrowed_items, NELEMS(borrowed_items)
+    };
+    wuss_menu_t *m;
+    const wuss_menu_t *sub;
+
+    /* root: App, <title discarded> Grid(!), Export(~), Quit(|), Help(> borrowed)
+     * with "File" substituted for both %s. */
+    rc = wuss_menu_create_from_desc(&m,
+           "App, %s { %s, !Grid, ~Export, |Quit }, >Help",
+           "File", "File", &borrowed);
+    if (rc != result_OK)
+      goto Failure;
+
+    if (m->nitems != 3)                                   goto MenuFail;
+    if (strcmp(m->items[0].text, "App") != 0)             goto MenuFail;
+    if (m->items[0].submenu != NULL)                      goto MenuFail;
+
+    /* items[1] "File" carries the { } submenu; its first token was the title
+     * and is not emitted, so the submenu has 3 rows */
+    if (strcmp(m->items[1].text, "File") != 0)            goto MenuFail;
+    sub = m->items[1].submenu;
+    printf("  sub1=%p nitems=%d\n", (void *) sub, sub ? sub->nitems : -1);
+    if (sub != NULL)
+      printf("  sub1[0]=%s f=%u [1]=%s f=%u [2]=%s f=%u\n",
+             sub->items[0].text, sub->items[0].flags,
+             sub->nitems > 1 ? sub->items[1].text : "?",
+             sub->nitems > 1 ? sub->items[1].flags : 0,
+             sub->nitems > 2 ? sub->items[2].text : "?",
+             sub->nitems > 2 ? sub->items[2].flags : 0);
+    if (sub == NULL || sub->nitems != 3)                  goto MenuFail;
+    if (strcmp(sub->items[0].text, "Grid") != 0)          goto MenuFail;
+    if (!(sub->items[0].flags & wuss_MENU_ITEM_TICKED))   goto MenuFail;
+    if (!(sub->items[1].flags & wuss_MENU_ITEM_DISABLED)) goto MenuFail;
+    if (!(sub->items[2].flags & wuss_MENU_ITEM_DASHED))   goto MenuFail;
+    if (strcmp(sub->items[2].text, "Quit") != 0)          goto MenuFail;
+
+    /* items[2] "Help" got a deep copy of the borrowed menu */
+    if (strcmp(m->items[2].text, "Help") != 0)            goto MenuFail;
+    sub = m->items[2].submenu;
+    if (sub == NULL || sub == &borrowed)                  goto MenuFail;
+    if (sub->nitems != 2)                                 goto MenuFail;
+    if (strcmp(sub->items[1].text, "About") != 0)         goto MenuFail;
+
+    wuss_menu_destroy(m);
+
+    /* malformed: unbalanced brace */
+    rc = wuss_menu_create_from_desc(&m, "A { B, C");
+    if (rc != result_BAD_ARG)
+      goto MenuFail;
+
+    rc = result_OK;
+    goto MenuOK;
+
+MenuFail:
+    printf("wuss_test: menu-desc check failed\n");
+    return result_TEST_FAILED;
+MenuOK: ;
+  }
+#endif
 
   wuss_destroy(wuss);
 

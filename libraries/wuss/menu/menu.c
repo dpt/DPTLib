@@ -191,11 +191,15 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   for (i = 0; i < menu->nitems; i++)
   {
     const char    *text;
+    int            len;
     int            split;
     bmfont_width_t w;
 
     text = menu->items[i].text ? menu->items[i].text : "";
-    if (bmfont_measure(wuss->font, text, (int) strlen(text),
+    len  = (int) strlen(text);
+    if (len == 0)
+      continue; /* separator row, nothing to measure */
+    if (bmfont_measure(wuss->font, text, len,
                        INT_MAX, &split, &w) == result_OK && (int) w > widest)
       widest = (int) w;
   }

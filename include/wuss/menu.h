@@ -107,6 +107,44 @@ void wuss_menu_close(wuss_menu_handle_t handle);
 /** Non-zero while \p handle refers to a currently open chain. */
 int wuss_menu_is_open(wuss_menu_handle_t handle);
 
+/* ----------------------------------------------------------------------- */
+
+/**
+ * Build a wuss_menu_t tree from a compact descriptor string. The syntax is
+ * lifted from PrivateEye's menu_create_from_desc. A comma separates items. A
+ * leading '|' marks an item a dashed separator above it
+ * (wuss_MENU_ITEM_DASHED). A '{ ... }' group after an item is that item's
+ * submenu; as in the Wimp original the first token inside the braces is a title
+ * and is discarded, so the same descriptor strings port across unchanged. A
+ * per-token prefix '!' ticks the item, '~' shades (disables) it, and '>'
+ * attaches a submenu pulled as a <tt>const wuss_menu_t *</tt> from the varargs
+ * rather than from a following '{ }' block. A "%s" in a token substitutes the
+ * next <tt>const char *</tt> vararg. The '>' and "%s" varargs are consumed in
+ * the order they are encountered scanning left to right.
+ *
+ * Example: <tt>wuss_menu_create_from_desc(&m, "App, %s { %s, !Grid, ~Export,
+ * |Quit }", "File", "File")</tt>.
+ *
+ * The whole tree, including copied label text, is one heap allocation graph
+ * owned by the caller; free it with wuss_menu_destroy. wuss_menu_open treats a
+ * desc-built tree exactly like a static literal.
+ *
+ * \param[out] out  Filled with the root menu on success, untouched on failure.
+ * \param[in]  desc Descriptor string.
+ * \return \ref result_OK, \ref result_OOM, or \ref result_BAD_ARG for a
+ *         malformed descriptor (unbalanced braces, empty token, too deep).
+ */
+result_t wuss_menu_create_from_desc(wuss_menu_t **out, const char *desc, ...);
+
+/**
+ * Free a tree built by wuss_menu_create_from_desc, including every submenu and
+ * copied label. Safe to pass NULL. Never call this on a static or
+ * caller-assembled wuss_menu_t.
+ *
+ * \param[in] menu Root menu returned by wuss_menu_create_from_desc, or NULL.
+ */
+void wuss_menu_destroy(wuss_menu_t *menu);
+
 #ifdef __cplusplus
 }
 #endif
