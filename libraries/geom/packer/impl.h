@@ -21,6 +21,12 @@ struct packer
   int               allocedareas;
   int               usedareas;
 
+  box_t            *placed;        /* boxes carved out by packer_place_*, kept
+                                    so packer_release can rebuild the free
+                                    list minus the ones still live */
+  int               allocedplaced;
+  int               nplaced;
+
   box_t             dims;          /* page size */
 
   box_t             margins;       /* page size minus margins (but not the
