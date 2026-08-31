@@ -103,10 +103,82 @@ void wuss__icon_draw(wuss_t            *wuss,
 
       if (have_font)
       {
+        point_t        pos;
+        int            interior_w, split_point;
+        bmfont_width_t width;
+
+        interior_w = (b.x1 - b.x0) - 2;
+        if (interior_w < 1)
+          interior_w = 1;
+
+        bmfont_measure(wuss->font, icon->text, (int) strlen(icon->text),
+                       interior_w, &split_point, &width);
+
+        if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_CENTRE)
+          pos.x = b.x0 + ((b.x1 - b.x0) - width) / 2;
+        else if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_RIGHT)
+          pos.x = b.x1 - 1 - width;
+        else
+          pos.x = b.x0 + 1;
+        pos.y = b.y0 + (b.y1 - b.y0 - font_height) / 2;
+
+        bmfont_draw(wuss->font, scr, icon->text, (int) strlen(icon->text),
+                    fg, bg, &pos, NULL);
+      }
+    }
+    break;
+
+  case wuss_ICON_TYPE_FRAME:
+    {
+      colour_t bg;
+      int      cap_w, cap_x, gap_x0, gap_x1, mid_y;
+
+      /* the caption sits over whatever ground the label case would blend
+       * against: an explicit bg, else the window's dominant backdrop, else
+       * fall back to fg so bmfont still has a blend colour */
+      if (icon->bg != wuss_NO_BACKGROUND)
+        bg = wuss->palette[icon->bg];
+      else if (icon->window->bg.colour != wuss_NO_BACKGROUND)
+        bg = (icon->window->bg.pattern != screen_PATTERN_SOLID)
+           ? wuss->palette[icon->window->bg.pattern_bg]
+           : wuss->palette[icon->window->bg.colour];
+      else
+        bg = fg;
+
+      cap_w = 0;
+      if (have_font)
+      {
+        int            split_point;
+        bmfont_width_t width;
+
+        bmfont_measure(wuss->font, icon->text, (int) strlen(icon->text),
+                       (b.x1 - b.x0) - WUSS_FRAME_CAPTION_INSET * 2,
+                       &split_point, &width);
+        cap_w = width;
+      }
+
+      mid_y = b.y0 + font_height / 2;
+
+      /* left, right and bottom edges are unbroken */
+      screen_draw_line(scr, b.x0, mid_y, b.x0, b.y1 - 1, fg);
+      screen_draw_line(scr, b.x1 - 1, mid_y, b.x1 - 1, b.y1 - 1, fg);
+      screen_draw_line(scr, b.x0, b.y1 - 1, b.x1 - 1, b.y1 - 1, fg);
+
+      /* the top edge is broken around the caption */
+      cap_x  = b.x0 + WUSS_FRAME_CAPTION_INSET;
+      gap_x0 = cap_x - WUSS_FRAME_CAPTION_PAD;
+      gap_x1 = cap_x + cap_w + WUSS_FRAME_CAPTION_PAD;
+      if (gap_x0 > b.x0)
+        screen_draw_line(scr, b.x0, mid_y, gap_x0, mid_y, fg);
+      if (gap_x1 < b.x1 - 1)
+        screen_draw_line(scr, gap_x1, mid_y, b.x1 - 1, mid_y, fg);
+
+      if (have_font && cap_w > 0)
+      {
         point_t pos;
 
-        pos.x = b.x0 + 1;
-        pos.y = b.y0 + (b.y1 - b.y0 - font_height) / 2;
+        pos.x = cap_x;
+        pos.y = b.y0;
         bmfont_draw(wuss->font, scr, icon->text, (int) strlen(icon->text),
                     fg, bg, &pos, NULL);
       }

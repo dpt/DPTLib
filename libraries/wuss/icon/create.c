@@ -28,7 +28,8 @@ result_t wuss_icon_create(wuss_window_t          *window,
 
   if (spec->type != wuss_ICON_TYPE_LABEL &&
       spec->type != wuss_ICON_TYPE_BUTTON &&
-      spec->type != wuss_ICON_TYPE_PATTERN)
+      spec->type != wuss_ICON_TYPE_PATTERN &&
+      spec->type != wuss_ICON_TYPE_FRAME)
     return result_WUSS_BAD_ICON;
 
   if ((spec->type == wuss_ICON_TYPE_BUTTON ||
