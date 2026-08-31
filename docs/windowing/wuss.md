@@ -127,6 +127,58 @@ Each window carries a scroll offset, `(0, 0)` by default: the point in the task'
 - window-local `x`/`y` delivered in mouse/scroll events (and expected in `wuss_window_invalidate`'s `local_box`) are in virtual content space, i.e. already shifted by the scroll offset.
 - a redraw event's `content` is still the on-screen (unscrolled) content box; a task reads the offset itself via `wuss_window_get_scroll` to work out which part of its content to paint there.
 
+### How the coordinate spaces relate
+
+Everything a redraw callback gets is *screen space* except `scroll`, which is a
+*virtual content space* offset.
+
+```
+screen (0,0) --- wuss->scr, origin top-left
+  +-------------------------------------------------+
+  |  win->visible  (whole on-screen footprint)     |
+  |  +-----------------------------------------+    |
+  |  | titlebar + 1px outline  (carved off)    |    |
+  |  +--------------------------------+--------+    |     wuss__content_box() =
+  |  | content box = redraw.bounds    | vscroll|    |       visible
+  |  | (bounds.x0,y0) .               | (carve)|    |       - outline
+  |  |   . . +-------------+          .|        |    |       - titlebar
+  |  |   .   | redraw.     |   this   .|        |    |       - furniture carve
+  |  |   .   | content     |   piece  .|        |    |
+  |  |   .   | (one clip   |   only   .|        |    |
+  |  |   .   |  piece)     |          .|        |    |
+  |  |   .   +-------------+          .|        |    |
+  |  |   . . . . . . . . . . . . . . .|        |    |
+  |  +--------------------------------+--------+    |
+  |  |         hscroll  (carve)                |    |
+  |  +-----------------------------------------+    |
+  +-------------------------------------------------+
+
+virtual content space:  size win->doc, its own origin (0,0).
+  win->scroll = which point of doc sits at bounds.x0,y0.
+  doc extends past the content box (right + bottom); that
+  overhang is exactly what scroll ranges over.
+```
+
+- `win->visible` — window's whole on-screen box (screen space); set by Wuss at create/move/resize/toggle. `wuss_window_get_visible_bounds`.
+- content box / `redraw.bounds` — `visible` with outline, titlebar and any scrollbar/resize carve removed (`wuss__content_box`). `wuss_window_get_content_bounds`.
+- `clipped` (internal) — `bounds` intersected with the dirty rect, before subtracting windows above.
+- `redraw.content` — `clipped` minus whatever higher windows cover, split into non-overlapping pieces; the callback fires once per piece with `scr->clip` already set to it. Touch only pixels inside it.
+- `win->scroll` / `redraw.scroll` — document-space offset; the task sets it via `wuss_window_set_scroll`, Wuss clamps it to `[0, doc - viewport]`.
+- `win->doc` — virtual content extent, fixed at window create; drives the scrollbar sausage size and the scroll clamp.
+
+Conversions (as used in `mouse-move.c`, `scroll.c`, `scroll-step.c`):
+
+```
+screen -> document:   doc.x = screen.x - bounds.x0 + scroll.x     (same for y)
+document -> screen:    screen.x = bounds.x0 - scroll.x + doc.x
+scroll clamp:          max = doc - (bounds.x1 - bounds.x0);  clamp(scroll, 0, max)
+```
+
+In a redraw callback: start drawing at `bounds.x0 - scroll.x`,
+`bounds.y0 - scroll.y`, then paint the whole content normally — the framebuffer
+clip (`scr->clip` = `redraw.content`) discards anything outside the piece. See
+`libraries/wuss/test/tasks/text.c`.
+
 ## Redrawing
 
 - `wuss_redraw` repaints every window, back-to-front, unconditionally, having first painted the configured backdrop colour (see Setup) behind them, if any.
