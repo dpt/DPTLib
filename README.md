@@ -80,6 +80,11 @@ DPTLib is my platform independent C library. It contains a wide variety of funct
 
 - [`test/txtscr.h`](https://github.com/dpt/DPTLib/blob/master/include/test/txtscr.h) — text format 'screen'
 
+### Text
+
+- [`text/txtfmt.h`](https://github.com/dpt/DPTLib/blob/master/include/text/txtfmt.h) — word-wrap a string to a character width (for monospaced text)
+- [`text/bmtext.h`](https://github.com/dpt/DPTLib/blob/master/include/text/bmtext.h) — word-wrap and draw a paragraph to a pixel width in a `bmfont`
+
 ### Utilities
 
 - [`utils/array.h`](https://github.com/dpt/DPTLib/blob/master/include/utils/array.h) — array utilities
