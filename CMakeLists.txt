@@ -389,6 +389,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/invalidate.c
     libraries/wuss/icon/screen-box.c
     libraries/wuss/icon/set-hidden.c
+    libraries/wuss/icon/set-hover.c
     libraries/wuss/icon/set-selected.c
     libraries/wuss/icon/set-text.c
     libraries/wuss/icon.h)

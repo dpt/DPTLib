@@ -20,6 +20,8 @@ void wuss_icon_delete(wuss_icon_t *icon)
 
   if (window->wuss->pressed_icon == icon)
     window->wuss->pressed_icon = NULL;
+  if (window->wuss->hover_icon == icon)
+    window->wuss->hover_icon = NULL;
 
   wuss__icon_invalidate(icon);
 

@@ -22,7 +22,7 @@
 #include "icons.h"
 
 #define ICONS_DOC_W 220
-#define ICONS_DOC_H 520 /* taller than the window, so scrolling is exercised */
+#define ICONS_DOC_H 640 /* taller than the window, so scrolling is exercised */
 
 result_t icons_create(wuss_t         *wuss,
                       const colour_t *palette,
@@ -33,8 +33,9 @@ result_t icons_create(wuss_t         *wuss,
   /* [0..3], one swatch per built-in pattern, then [.. +3] a grouping frame
    * with two differently-justified labels inside it, then [.. +5] three grouped
    * radios, a standalone option and a label echoing the selection, then [.. +2]
-   * a decorative bitmap icon and an interactive one that bumps the counter */
-  enum { ICONS_NSPECS = 4 + screen_PATTERN__LIMIT + 3 + 5 + 2 };
+   * a decorative bitmap icon and an interactive one that bumps the counter,
+   * then [.. +4] a strip of menu-entry icons that hover-highlight */
+  enum { ICONS_NSPECS = 4 + screen_PATTERN__LIMIT + 3 + 5 + 2 + 4 };
   wuss_task_t      delegate;
   wuss_icon_spec_t specs[ICONS_NSPECS];
   wuss_icon_t     *made[ICONS_NSPECS];
@@ -42,6 +43,7 @@ result_t icons_create(wuss_t         *wuss,
   int              p;
   int              g;      /* index of the first frame spec */
   int              r;      /* radio index */
+  int              m;      /* index of the first menu-entry spec */
   int              nspecs; /* live spec count (sprite icons are optional) */
   result_t         rc;
 
@@ -196,6 +198,37 @@ result_t icons_create(wuss_t         *wuss,
     nspecs = g + 10;
   }
 
+  /* [nspecs..nspecs+3] a menu-entry strip: plain, ticked, submenu, separator.
+   * Hover the pointer over them to see the highlight track. */
+  m = nspecs;
+
+  specs[m].bbox     = (box_t) BOX_POS_SIZE(28, 524, 160, 16);
+  specs[m].type     = wuss_ICON_TYPE_MENU_ENTRY;
+  specs[m].text     = "Open";
+  specs[m].fg       = palette_PICO8_DARK_BLUE;
+  specs[m].bg       = wuss_NO_BACKGROUND;
+
+  specs[m + 1].bbox = (box_t) BOX_POS_SIZE(28, 542, 160, 16);
+  specs[m + 1].type = wuss_ICON_TYPE_MENU_ENTRY;
+  specs[m + 1].text = "Show grid";
+  specs[m + 1].fg   = palette_PICO8_DARK_BLUE;
+  specs[m + 1].bg   = wuss_NO_BACKGROUND;
+
+  specs[m + 2].bbox  = (box_t) BOX_POS_SIZE(28, 560, 160, 16);
+  specs[m + 2].type  = wuss_ICON_TYPE_MENU_ENTRY;
+  specs[m + 2].text  = "Export";
+  specs[m + 2].fg    = palette_PICO8_DARK_BLUE;
+  specs[m + 2].bg    = wuss_NO_BACKGROUND;
+  specs[m + 2].flags = wuss_ICON_FLAGS_SUBMENU;
+
+  specs[m + 3].bbox  = (box_t) BOX_POS_SIZE(28, 578, 160, 10);
+  specs[m + 3].type  = wuss_ICON_TYPE_MENU_ENTRY;
+  specs[m + 3].fg    = palette_PICO8_DARK_BLUE;
+  specs[m + 3].bg    = wuss_NO_BACKGROUND;
+  specs[m + 3].flags = wuss_ICON_FLAGS_SEPARATOR;
+
+  nspecs = m + 4;
+
   rc = wuss_icon_create_array(task->window, specs, nspecs, made);
   if (rc != result_OK)
     goto failure;
@@ -206,6 +239,7 @@ result_t icons_create(wuss_t         *wuss,
   task->state   = made[g + 7];
   if (task->has_sprite)
     task->hotspot = made[g + 9];
+  wuss_icon_set_selected(made[m + 1], 1); /* "Show grid" starts ticked */
 
   return result_OK;
 

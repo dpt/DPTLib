@@ -356,5 +356,82 @@ void wuss__icon_draw(wuss_t            *wuss,
       screen_draw_bitmap(&clipped, b.x0, b.y0, icon->bitmap);
     }
     break;
+
+  case wuss_ICON_TYPE_MENU_ENTRY:
+    {
+      colour_t ink, ground;
+      int      disabled, highlit, pad, mid_y;
+
+      disabled = (icon->flags & wuss_ICON_FLAGS_DISABLED) != 0;
+      highlit  = icon->hovered && !disabled;
+      pad      = 4;
+
+      /* highlight inverts to the accent colours (the window manager's
+       * emphasis pair); otherwise ink over the row's own/inherited ground */
+      if (highlit)
+      {
+        ground = wuss->palette[wuss->accent_bg];
+        ink    = wuss->palette[wuss->accent_fg];
+      }
+      else
+      {
+        if (icon->bg != wuss_NO_BACKGROUND)
+          ground = wuss->palette[icon->bg];
+        else if (icon->window->bg.colour != wuss_NO_BACKGROUND)
+          ground = (icon->window->bg.pattern != screen_PATTERN_SOLID)
+                 ? wuss->palette[icon->window->bg.pattern_bg]
+                 : wuss->palette[icon->window->bg.colour];
+        else
+          ground = fg; /* bmfont still needs a blend colour */
+        ink = disabled ? wuss->palette[wuss->bevel_dark] : fg;
+      }
+
+      if (highlit || icon->bg != wuss_NO_BACKGROUND)
+        screen_draw_rect(scr, b.x0, b.y0,
+                         SIZE2D(b.x1 - b.x0, b.y1 - b.y0), ground);
+
+      if (icon->flags & wuss_ICON_FLAGS_SEPARATOR)
+      {
+        mid_y = b.y0 + (b.y1 - b.y0) / 2;
+        screen_draw_line(scr, b.x0 + pad, mid_y, b.x1 - 1 - pad, mid_y, ink);
+        break;
+      }
+
+      /* left-edge tick when selected */
+      if (icon->selected)
+      {
+        int cx, cy, h;
+
+        h  = (font_height >= 8) ? font_height : 8;
+        cx = b.x0 + pad;
+        cy = b.y0 + (b.y1 - b.y0 - h) / 2;
+        screen_draw_line(scr, cx, cy + h / 2, cx + h / 2 - 1, cy + h - 2, ink);
+        screen_draw_line(scr, cx + h / 2 - 1, cy + h - 2, cx + h - 2, cy, ink);
+      }
+
+      /* right-edge arrow for a submenu entry */
+      if (icon->flags & wuss_ICON_FLAGS_SUBMENU)
+      {
+        int ax, ay, r, dy;
+
+        r  = (font_height >= 8) ? font_height / 3 : 3;
+        ax = b.x1 - 1 - pad - r;
+        ay = b.y0 + (b.y1 - b.y0) / 2;
+        for (dy = -r; dy <= r; dy++)
+          screen_draw_line(scr, ax, ay + dy,
+                           ax + (r - (dy < 0 ? -dy : dy)), ay + dy, ink);
+      }
+
+      if (have_font)
+      {
+        point_t pos;
+
+        pos.x = b.x0 + pad + font_height; /* leave room for a tick */
+        pos.y = b.y0 + (b.y1 - b.y0 - font_height) / 2;
+        bmfont_draw(wuss->font, scr, icon->text, (int) strlen(icon->text),
+                    ink, ground, &pos, NULL);
+      }
+    }
+    break;
   }
 }

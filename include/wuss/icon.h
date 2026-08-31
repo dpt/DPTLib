@@ -80,7 +80,7 @@ typedef enum wuss_icon_type
                              *   click toggles its own selected state (group is
                              *   ignored), then the task is told via
                              *   wuss_EVENT_ICON. */
-  wuss_ICON_TYPE_BITMAP     /**< A caller-owned bitmap (spec.bitmap) drawn at
+  wuss_ICON_TYPE_BITMAP,    /**< A caller-owned bitmap (spec.bitmap) drawn at
                              *   the top-left of the bounding box, alpha-blended
                              *   against what is already there, clipped to the
                              *   box; no scaling. The bitmap is borrowed, not
@@ -90,6 +90,19 @@ typedef enum wuss_icon_type
                              *   wuss_ICON_FLAGS_INTERACTIVE is set, in which
                              *   case clicks raise wuss_EVENT_ICON like a
                              *   button. */
+  wuss_ICON_TYPE_MENU_ENTRY /**< A menu row: text left-justified across the
+                             *   bounding box, drawn in fg over the window
+                             *   background, or inverted (window manager's title
+                             *   colours) while the pointer is over it. An
+                             *   optional tick at the left edge when the icon is
+                             *   selected (see wuss_icon_set_selected), and an
+                             *   optional submenu arrow at the right edge with
+                             *   wuss_ICON_FLAGS_SUBMENU.
+                             *   wuss_ICON_FLAGS_SEPARATOR draws a horizontal
+                             *   rule instead of text. Interactive: a click
+                             *   raises wuss_EVENT_ICON like a button; a
+                             *   disabled entry never highlights and its clicks
+                             *   fall through. */
 }
 wuss_icon_type_t;
 
@@ -115,7 +128,7 @@ typedef enum wuss_icon_flags
                                           *   (see wuss_config_t::accent)
                                           *   instead of the ordinary bevel.
                                           *   Ignored by other icon types. */
-  wuss_ICON_FLAGS_INTERACTIVE  = 1 << 5  /**< wuss_ICON_TYPE_BITMAP: hit-test
+  wuss_ICON_FLAGS_INTERACTIVE  = 1 << 5, /**< wuss_ICON_TYPE_BITMAP: hit-test
                                           *   the icon and raise wuss_EVENT_ICON
                                           *   on a click, like a button.
                                           *   Without it a bitmap icon is pure
@@ -123,6 +136,16 @@ typedef enum wuss_icon_flags
                                           *   as wuss_EVENT_MOUSE. Ignored by
                                           *   other icon types (interactive or
                                           *   not by their nature). */
+  wuss_ICON_FLAGS_SUBMENU      = 1 << 6, /**< wuss_ICON_TYPE_MENU_ENTRY: draw a
+                                          *   right-pointing arrow at the right
+                                          *   edge, marking an entry that opens
+                                          *   a submenu. Ignored by other
+                                          *   types. */
+  wuss_ICON_FLAGS_SEPARATOR    = 1 << 7  /**< wuss_ICON_TYPE_MENU_ENTRY: draw a
+                                          *   horizontal rule across the
+                                          *   bounding box instead of text; the
+                                          *   entry is inert (not hit-tested).
+                                          *   Ignored by other types. */
 }
 wuss_icon_flags_t;
 
