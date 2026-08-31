@@ -95,10 +95,10 @@ typedef struct wuss_event
   wuss_event_kind_t kind;
   union
   {
-    struct { screen_t *scr; const box_t *content; }                        redraw;
-    struct { wuss_mouse_action_t action; point_t point; wuss_button_t button; } mouse;
+    struct { screen_t *scr; const box_t *content; }                                 redraw;
+    struct { wuss_mouse_action_t action; point_t point; wuss_button_t button; }     mouse;
     struct { wuss_icon_t *icon; wuss_mouse_action_t action; wuss_button_t button; } icon;
-    struct { point_t point; int delta; }                                        scroll;
+    struct { point_t point; int delta; }                                            scroll;
   }
   data;
 }
@@ -129,29 +129,28 @@ Each window carries a scroll offset, `(0, 0)` by default: the point in the task'
 
 ### How the coordinate spaces relate
 
-Everything a redraw callback gets is *screen space* except `scroll`, which is a
-*virtual content space* offset.
+Everything a redraw callback gets is _screen space_ except `scroll`, which is a _virtual content space_ offset.
 
 ```
 screen (0,0) --- wuss->scr, origin top-left
-  +-------------------------------------------------+
-  |  win->visible  (whole on-screen footprint)     |
-  |  +-----------------------------------------+    |
-  |  | titlebar + 1px outline  (carved off)    |    |
-  |  +--------------------------------+--------+    |     wuss__content_box() =
-  |  | content box = redraw.bounds    | vscroll|    |       visible
-  |  | (bounds.x0,y0) .               | (carve)|    |       - outline
-  |  |   . . +-------------+          .|        |    |       - titlebar
-  |  |   .   | redraw.     |   this   .|        |    |       - furniture carve
-  |  |   .   | content     |   piece  .|        |    |
-  |  |   .   | (one clip   |   only   .|        |    |
-  |  |   .   |  piece)     |          .|        |    |
-  |  |   .   +-------------+          .|        |    |
-  |  |   . . . . . . . . . . . . . . .|        |    |
-  |  +--------------------------------+--------+    |
-  |  |         hscroll  (carve)                |    |
-  |  +-----------------------------------------+    |
-  +-------------------------------------------------+
+  +-----------------------------------------------+
+  |  win->visible  (whole on-screen footprint)    |
+  |  +-----------------------------------------+  |
+  |  | titlebar + 1px outline  (carved off)    |  |
+  |  +--------------------------------+--------+  |  wuss__content_box() =
+  |  | content box = redraw.bounds    | vscroll|  |    visible
+  |  | (bounds.x0,y0) .               | (carve)|  |    - outline
+  |  |   . . +-------------+         .|        |  |    - titlebar
+  |  |   .   | redraw.     |  this   .|        |  |    - furniture carve
+  |  |   .   | content     |  piece  .|        |  |
+  |  |   .   | (one clip   |  only   .|        |  |
+  |  |   .   |  piece)     |         .|        |  |
+  |  |   .   +-------------+         .|        |  |
+  |  |   . . . . . . . . . . . . . . .|        |  |
+  |  +--------------------------------+--------+  |
+  |  |         hscroll  (carve)                |  |
+  |  +-----------------------------------------+  |
+  +-----------------------------------------------+
 
 virtual content space:  size win->doc, its own origin (0,0).
   win->scroll = which point of doc sits at bounds.x0,y0.
@@ -169,15 +168,12 @@ virtual content space:  size win->doc, its own origin (0,0).
 Conversions (as used in `mouse-move.c`, `scroll.c`, `scroll-step.c`):
 
 ```
-screen -> document:   doc.x = screen.x - bounds.x0 + scroll.x     (same for y)
-document -> screen:    screen.x = bounds.x0 - scroll.x + doc.x
-scroll clamp:          max = doc - (bounds.x1 - bounds.x0);  clamp(scroll, 0, max)
+screen -> document: doc.x = screen.x - bounds.x0 + scroll.x     (same for y)
+document -> screen: screen.x = bounds.x0 - scroll.x + doc.x
+scroll clamp:       max = doc - (bounds.x1 - bounds.x0);  clamp(scroll, 0, max)
 ```
 
-In a redraw callback: start drawing at `bounds.x0 - scroll.x`,
-`bounds.y0 - scroll.y`, then paint the whole content normally — the framebuffer
-clip (`scr->clip` = `redraw.content`) discards anything outside the piece. See
-`libraries/wuss/test/tasks/text.c`.
+In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scroll.y`, then paint the whole content normally — the framebuffer clip (`scr->clip` = `redraw.content`) discards anything outside the piece. See `libraries/wuss/test/tasks/text.c`.
 
 ## Redrawing
 
