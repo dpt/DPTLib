@@ -389,12 +389,13 @@ void wuss__icon_draw(wuss_t            *wuss,
         screen_draw_rect(scr, b.x0, b.y0,
                          SIZE2D(b.x1 - b.x0, b.y1 - b.y0), ground);
 
+      /* a dashed rule along the entry's top edge, then the text as normal;
+       * drawn in the row's ink so it stays visible when the row is inverted */
       if (icon->flags & wuss_ICON_FLAGS_SEPARATOR)
       {
-        mid_y = b.y0 + (b.y1 - b.y0) / 2;
-        screen_draw_dashed_line(scr, b.x0 + pad, mid_y, b.x1 - 1 - pad, mid_y,
-                                2, 2, ink);
-        break;
+        mid_y = b.y0 + 1;
+        screen_draw_dashed_line(scr, b.x0 + pad, mid_y,
+                                b.x1 - 1 - pad, mid_y, 2, 2, ink);
       }
 
       /* left-edge tick when selected */

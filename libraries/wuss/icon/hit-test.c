@@ -14,8 +14,10 @@ wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point)
   {
     it = window->icons[i];
 
-    /* a bitmap icon is interactive only when it asks to be; a menu separator
-     * never is; the other clickable types always are */
+    /* a bitmap icon is interactive only when it asks to be; a menu entry that
+     * is a bare rule (SEPARATOR flag, no text) is inert, but one that only
+     * carries a rule above its own label stays pickable; the other clickable
+     * types always are */
     if (it->type == wuss_ICON_TYPE_BITMAP)
     {
       if (!(it->flags & wuss_ICON_FLAGS_INTERACTIVE))
@@ -23,7 +25,7 @@ wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point)
     }
     else if (it->type == wuss_ICON_TYPE_MENU_ENTRY)
     {
-      if (it->flags & wuss_ICON_FLAGS_SEPARATOR)
+      if ((it->flags & wuss_ICON_FLAGS_SEPARATOR) && it->text[0] == '\0')
         continue;
     }
     else if (it->type != wuss_ICON_TYPE_BUTTON &&

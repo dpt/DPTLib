@@ -194,7 +194,8 @@ static result_t spawn_porter_duff(void)
 }
 
 /* A static demo menu tree for the pop-up helper: a submenu, a couple of
- * ticked rows and a dashed separator. wuss_menu_open never mutates it. */
+ * ticked rows and a dashed rule above the final entry. wuss_menu_open never
+ * mutates it. */
 static const wuss_menu_item_t g_menu_export_items[] =
 {
   { "As PNG",  wuss_MENU_ITEM_NONE,   NULL },
@@ -212,8 +213,7 @@ static const wuss_menu_item_t g_menu_items[] =
   { "Show grid", wuss_MENU_ITEM_TICKED, NULL },
   { "Wireframe", wuss_MENU_ITEM_TICKED, NULL },
   { "Export",    wuss_MENU_ITEM_NONE,   &g_menu_export },
-  { NULL,        wuss_MENU_ITEM_DASHED, NULL },
-  { "Quit",      wuss_MENU_ITEM_NONE,   NULL }
+  { "Quit",      wuss_MENU_ITEM_DASHED, NULL }
 };
 static const wuss_menu_t g_menu =
 {
@@ -237,6 +237,41 @@ static result_t spawn_menu(void)
                         menu_selected, NULL, NULL);
 }
 
+/* Same menu shape built from a descriptor string, to exercise
+ * wuss_menu_create_from_desc. The tree must outlive the open chain, so it is
+ * kept here and rebuilt (previous one freed) on each open. Freed for good in
+ * run_wuss's teardown. */
+static wuss_menu_t *g_menu_desc;
+
+static const wuss_menu_item_t g_menu_desc_export_items[] =
+{
+  { "As PNG",  wuss_MENU_ITEM_NONE,     NULL },
+  { "As JPEG", wuss_MENU_ITEM_NONE,     NULL },
+  { "As GIF",  wuss_MENU_ITEM_DISABLED, NULL }
+};
+static const wuss_menu_t g_menu_desc_export =
+{
+  "Export", g_menu_desc_export_items, NELEMS(g_menu_desc_export_items)
+};
+
+static result_t spawn_menu_desc(void)
+{
+  wuss_menu_t *m;
+  result_t     rc;
+
+  rc = wuss_menu_create_from_desc(&m,
+         "Display, Open, !Show grid, !Wireframe, >Export, |Quit",
+         &g_menu_desc_export);
+  if (rc != result_OK)
+    return rc;
+
+  wuss_menu_destroy(g_menu_desc);
+  g_menu_desc = m;
+
+  return wuss_menu_open(g_wuss, g_menu_desc, wuss_get_pointer(g_wuss),
+                        menu_selected, NULL, NULL);
+}
+
 static const launcher_entry_t g_launcher_entries[] =
 {
   { "Ball",        spawn_ball        },
@@ -251,7 +286,8 @@ static const launcher_entry_t g_launcher_entries[] =
   { "Gradient",    spawn_gradient    },
   { "Icons",       spawn_icons       },
   { "Porter-Duff", spawn_porter_duff },
-  { "Menu",        spawn_menu        }
+  { "Menu",        spawn_menu        },
+  { "Menu (desc)", spawn_menu_desc   }
 };
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
@@ -578,6 +614,8 @@ static result_t run_wuss(const char *resources)
    * leaks its block. Harmless at process exit; add a wuss close callback if a
    * task ever needs deterministic teardown. */
   launcher_destroy(&launcher_task);
+
+  wuss_menu_destroy(g_menu_desc);
 
   wuss_destroy(wuss);
   bmfont_destroy(font);

@@ -35,8 +35,9 @@ typedef enum wuss_menu_item_flags
 {
   wuss_MENU_ITEM_NONE      = 0,
   wuss_MENU_ITEM_TICKED    = 1 << 0, /**< draw a tick at the item's left edge */
-  wuss_MENU_ITEM_DASHED    = 1 << 1, /**< this item is a separator rule; text
-                                      *   is ignored */
+  wuss_MENU_ITEM_DASHED    = 1 << 1, /**< draw a dashed separator immediately
+                                      *   above this item; the item keeps its
+                                      *   own text and stays selectable */
   wuss_MENU_ITEM_DISABLED  = 1 << 2  /**< greyed, never highlights, not
                                       *   selectable */
 }
@@ -55,9 +56,7 @@ wuss_menu_item_t;
 /** A menu: an array of items the caller owns. */
 typedef struct wuss_menu
 {
-  const char             *title;  /**< titlebar caption; NULL is treated as ""
-                                   *   (wuss_menu_create_from_desc leaves this
-                                   *   NULL) */
+  const char             *title;  /**< titlebar caption; NULL treated as "" */
   const wuss_menu_item_t *items;
   int                     nitems;
 }
@@ -114,26 +113,29 @@ int wuss_menu_is_open(wuss_menu_handle_t handle);
 
 /**
  * Build a wuss_menu_t tree from a compact descriptor string. The syntax is
- * lifted from PrivateEye's menu_create_from_desc. A comma separates items. A
- * leading '|' marks an item a dashed separator above it
- * (wuss_MENU_ITEM_DASHED). A '{ ... }' group after an item is that item's
- * submenu; as in the Wimp original the first token inside the braces is a title
- * and is discarded, so the same descriptor strings port across unchanged. A
- * per-token prefix '!' ticks the item, '~' shades (disables) it, and '>'
- * attaches a submenu pulled as a <tt>const wuss_menu_t *</tt> from the varargs
- * rather than from a following '{ }' block. A "%s" in a token substitutes the
- * next <tt>const char *</tt> vararg. The '>' and "%s" varargs are consumed in
- * the order they are encountered scanning left to right.
+ * lifted from PrivateEye's menu_create_from_desc. A comma separates items. The
+ * very first token is the root menu's titlebar caption, not an item -- exactly
+ * as the first token inside a '{ }' is that submenu's title -- so the same
+ * descriptor strings port across unchanged. Submenus keep the Wimp behaviour of
+ * discarding their title token; only the root's is kept. A leading '|' on an
+ * item sets wuss_MENU_ITEM_DASHED on it: a dashed rule is drawn above the item
+ * while the item keeps its own label and stays selectable. A '{ ... }' group
+ * after an item is that item's submenu. A per-token prefix '!' ticks the item,
+ * '~' shades (disables) it, and '>' attaches a submenu pulled as a <tt>const
+ * wuss_menu_t *</tt> from the varargs rather than from a following '{ }' block.
+ * A "%s" in a token substitutes the next <tt>const char *</tt> vararg. The '>'
+ * and "%s" varargs are consumed in the order they are encountered scanning left
+ * to right.
  *
- * Example: <tt>wuss_menu_create_from_desc(&m, "App, %s { %s, !Grid, ~Export,
- * |Quit }", "File", "File")</tt>.
+ * Example: <tt>wuss_menu_create_from_desc(&m, "Display, Open, !Grid, ~Export,
+ * |Quit")</tt> -- "Display" is the caption, the menu has four rows.
  *
  * The whole tree, including copied label text, is one heap allocation graph
  * owned by the caller; free it with wuss_menu_destroy. wuss_menu_open treats a
  * desc-built tree exactly like a static literal.
  *
  * \param[out] out  Filled with the root menu on success, untouched on failure.
- * \param[in]  desc Descriptor string.
+ * \param[in]  desc Descriptor string; its first token is the root caption.
  * \return \ref result_OK, \ref result_OOM, or \ref result_BAD_ARG for a
  *         malformed descriptor (unbalanced braces, empty token, too deep).
  */
