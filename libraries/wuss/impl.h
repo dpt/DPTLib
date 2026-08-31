@@ -21,6 +21,9 @@
 #ifdef WUSS_ICONS
 #include "icon.h"
 #endif
+#ifdef WUSS_MENUS
+#include "menu.h"
+#endif
 
 #define WUSS_TITLE_MAX               63
 #define WUSS_DEFAULT_TITLEBAR_HEIGHT 20
@@ -93,6 +96,12 @@ struct wuss
                                             * over, NULL when none; drives
                                             * hover-highlight repaint of
                                             * menu-entry icons */
+#endif
+#ifdef WUSS_MENUS
+  struct wuss__menu          *menu_chain;   /* head (root) of the open pop-up
+                                            * menu chain, NULL when none open;
+                                            * consulted by mouse-click.c to
+                                            * dismiss on a click-away */
 #endif
 };
 

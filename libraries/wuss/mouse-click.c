@@ -49,6 +49,14 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   if (hit != NULL)
     *hit = win;
 
+#ifdef WUSS_MENUS
+  /* A press outside every window in the open menu chain dismisses the chain
+   * and is spent doing so. Presses inside the chain fall through to the menu
+   * window's own delegate. */
+  if (action == wuss_MOUSE_DOWN && wuss__menu_click_outside(wuss, win))
+    return result_OK;
+#endif
+
   if (win == NULL)
     return result_OK;
 

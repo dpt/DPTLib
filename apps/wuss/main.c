@@ -20,6 +20,7 @@
 #include "io/path.h"
 #include "wuss/wuss.h"
 #include "wuss/window.h"
+#include "wuss/menu.h"
 
 #include <SDL3/SDL.h>
 
@@ -192,6 +193,50 @@ static result_t spawn_porter_duff(void)
   return result_OK;
 }
 
+/* A static demo menu tree for the pop-up helper: a submenu, a couple of
+ * ticked rows and a dashed separator. wuss_menu_open never mutates it. */
+static const wuss_menu_item_t g_menu_export_items[] =
+{
+  { "As PNG",  wuss_MENU_ITEM_NONE,   NULL },
+  { "As JPEG", wuss_MENU_ITEM_NONE,   NULL },
+  { "As GIF",  wuss_MENU_ITEM_DISABLED, NULL }
+};
+static const wuss_menu_t g_menu_export =
+{
+  g_menu_export_items, NELEMS(g_menu_export_items)
+};
+
+static const wuss_menu_item_t g_menu_items[] =
+{
+  { "Open",      wuss_MENU_ITEM_NONE,   NULL },
+  { "Show grid", wuss_MENU_ITEM_TICKED, NULL },
+  { "Wireframe", wuss_MENU_ITEM_TICKED, NULL },
+  { "Export",    wuss_MENU_ITEM_NONE,   &g_menu_export },
+  { NULL,        wuss_MENU_ITEM_DASHED, NULL },
+  { "Quit",      wuss_MENU_ITEM_NONE,   NULL }
+};
+static const wuss_menu_t g_menu =
+{
+  g_menu_items, NELEMS(g_menu_items)
+};
+
+static void menu_selected(const wuss_menu_t *menu,
+                          int                index,
+                          wuss_button_t      button,
+                          void              *ctx)
+{
+  NOT_USED(button);
+  NOT_USED(ctx);
+  printf("menu: picked \"%s\"\n",
+         menu->items[index].text ? menu->items[index].text : "(sep)");
+}
+
+static result_t spawn_menu(void)
+{
+  return wuss_menu_open(g_wuss, &g_menu, POINT(120, 120),
+                        menu_selected, NULL, NULL);
+}
+
 static const launcher_entry_t g_launcher_entries[] =
 {
   { "Ball",        spawn_ball        },
@@ -205,7 +250,8 @@ static const launcher_entry_t g_launcher_entries[] =
   { "Sofa",        spawn_sofa        },
   { "Gradient",    spawn_gradient    },
   { "Icons",       spawn_icons       },
-  { "Porter-Duff", spawn_porter_duff }
+  { "Porter-Duff", spawn_porter_duff },
+  { "Menu",        spawn_menu        }
 };
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
