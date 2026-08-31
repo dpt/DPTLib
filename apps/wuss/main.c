@@ -357,6 +357,8 @@ static result_t run_wuss(const char *resources)
     config.palette.scroll.sausages  = palette_PICO8_LIGHT_GREY;
     config.bevel.light              = palette_PICO8_WHITE;
     config.bevel.dark               = palette_PICO8_DARK_GREY;
+    config.accent.bg                = palette_PICO8_DARK_BLUE;
+    config.accent.fg                = palette_PICO8_WHITE;
     config.backdrop.colour          = palette_PICO8_WHITE;
     config.backdrop.pattern         = screen_PATTERN_DOTS;
     config.backdrop.pattern_bg      = palette_PICO8_LIGHT_GREY;

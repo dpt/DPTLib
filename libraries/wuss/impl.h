@@ -66,6 +66,8 @@ struct wuss
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
   wuss_colour_t               bevel_light; /* work-area button top/left edge */
   wuss_colour_t               bevel_dark;  /* work-area button bottom/right edge */
+  wuss_colour_t               accent_bg;   /* default action button fill */
+  wuss_colour_t               accent_fg;   /* default action button text */
 #endif
   wuss_backdrop_t             backdrop; /* colour==wuss_NO_BACKGROUND: none */
 #ifdef WUSS_FURNITURE

@@ -187,16 +187,32 @@ void wuss__icon_draw(wuss_t            *wuss,
 
   case wuss_ICON_TYPE_BUTTON:
     {
-      colour_t light, dark, base;
-      int      pressed;
+      colour_t light, dark, base, label;
+      int      pressed, is_default;
 
-      base    = wuss->palette[icon->bg];
-      light   = wuss->palette[wuss->bevel_light];
-      dark    = wuss->palette[wuss->bevel_dark];
-      pressed = icon->pressed;
+      pressed    = icon->pressed;
+      is_default = (icon->flags & wuss_ICON_FLAGS_DEFAULT) != 0;
+
+      if (is_default)
+      {
+        /* default action button: a flat accent-filled rectangle inside a
+         * one-pixel accent-text border, distinct from the bevelled ordinary
+         * buttons around it */
+        base  = wuss->palette[wuss->accent_bg];
+        light = wuss->palette[wuss->accent_fg];
+        dark  = light;
+        label = wuss->palette[wuss->accent_fg];
+      }
+      else
+      {
+        base  = wuss->palette[icon->bg];
+        light = wuss->palette[wuss->bevel_light];
+        dark  = wuss->palette[wuss->bevel_dark];
+        label = fg;
+      }
 
       if (icon->flags & wuss_ICON_FLAGS_DISABLED)
-        fg = dark; /* greyed: label sinks toward the dark bevel shade */
+        label = wuss->palette[wuss->bevel_dark]; /* greyed: sink toward dark */
 
       if (pressed)
         icon_bevel(scr, &b, base, dark, light);
@@ -225,7 +241,7 @@ void wuss__icon_draw(wuss_t            *wuss,
         }
 
         bmfont_draw(wuss->font, scr, icon->text, (int) strlen(icon->text),
-                    fg, base, &pos, NULL);
+                    label, base, &pos, NULL);
       }
     }
     break;

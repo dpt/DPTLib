@@ -73,12 +73,14 @@ result_t icons_create(wuss_t         *wuss,
   specs[0].fg   = palette_PICO8_DARK_BLUE;
   specs[0].bg   = wuss_NO_BACKGROUND;
 
-  /* [1] the button that bumps the counter */
-  specs[1].bbox = (box_t) BOX_POS_SIZE(28, 50, 80, 22);
-  specs[1].type = wuss_ICON_TYPE_BUTTON;
-  specs[1].text = "Press me";
-  specs[1].fg   = palette_PICO8_BLACK;
-  specs[1].bg   = palette_PICO8_LIGHT_GREY;
+  /* [1] the button that bumps the counter -- a default action button, so it
+   * shows the accent styling */
+  specs[1].bbox  = (box_t) BOX_POS_SIZE(28, 50, 80, 22);
+  specs[1].type  = wuss_ICON_TYPE_BUTTON;
+  specs[1].text  = "Press me";
+  specs[1].fg    = palette_PICO8_BLACK;
+  specs[1].bg    = palette_PICO8_LIGHT_GREY;
+  specs[1].flags = wuss_ICON_FLAGS_DEFAULT;
 
   /* [2] the counter label beside it */
   specs[2].bbox = (box_t) BOX_POS_SIZE(120, 50, 120, 22);
