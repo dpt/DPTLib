@@ -32,6 +32,7 @@ option(USE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
 option(WUSS_FURNITURE "Build the Wuss window-furniture subsystem" ON)
 option(WUSS_ICONS "Build the Wuss in-content icon subsystem" ON)
+option(WUSS_MENUS "Build the Wuss pop-up menu helper (implies WUSS_ICONS)" ON)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
 if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
@@ -121,6 +122,9 @@ set(PUBLIC_HEADERS
 
 if(WUSS_ICONS)
     list(APPEND PUBLIC_HEADERS include/wuss/icon.h)
+endif()
+if(WUSS_MENUS)
+    list(APPEND PUBLIC_HEADERS include/wuss/menu.h)
 endif()
 
 # The public headers must be set as properties of the library, not as
@@ -394,12 +398,22 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/set-text.c
     libraries/wuss/icon.h)
 
+set(WUSS_MENU_SOURCES
+    libraries/wuss/menu/menu.c
+    libraries/wuss/menu.h)
+
 set(WUSS_SOURCES ${WUSS_CORE_SOURCES})
 if(WUSS_FURNITURE)
     list(APPEND WUSS_SOURCES ${WUSS_FURNITURE_SOURCES})
 endif()
+if(WUSS_MENUS)
+    set(WUSS_ICONS ON) # the menu helper needs the icon subsystem
+endif()
 if(WUSS_ICONS)
     list(APPEND WUSS_SOURCES ${WUSS_ICON_SOURCES})
+endif()
+if(WUSS_MENUS)
+    list(APPEND WUSS_SOURCES ${WUSS_MENU_SOURCES})
 endif()
 
 set(ALL_SOURCES
@@ -457,6 +471,9 @@ if(WUSS_FURNITURE)
 endif()
 if(WUSS_ICONS)
     target_compile_definitions(DPTLib PUBLIC WUSS_ICONS)
+endif()
+if(WUSS_MENUS)
+    target_compile_definitions(DPTLib PUBLIC WUSS_MENUS)
 endif()
 
 if(NOT TARGET_RISCOS)

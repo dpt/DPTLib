@@ -15,6 +15,12 @@ void wuss_destroy(wuss_t *doomed)
   if (doomed == NULL)
     return;
 
+#ifdef WUSS_MENUS
+  /* Drop any open menu chain first: its windows are freed by the z_order
+   * sweep below, but the chain nodes and their icon-handle arrays are not. */
+  wuss_menu_close(doomed->menu_chain);
+#endif
+
   e = doomed->z_order.next;
   while (e != NULL)
   {
