@@ -55,6 +55,9 @@ wuss_menu_item_t;
 /** A menu: an array of items the caller owns. */
 typedef struct wuss_menu
 {
+  const char             *title;  /**< titlebar caption; NULL is treated as ""
+                                   *   (wuss_menu_create_from_desc leaves this
+                                   *   NULL) */
   const wuss_menu_item_t *items;
   int                     nitems;
 }

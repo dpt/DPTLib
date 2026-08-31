@@ -2591,7 +2591,7 @@ result_t wuss_test(const char *resources)
     };
     static const wuss_menu_t borrowed =
     {
-      borrowed_items, NELEMS(borrowed_items)
+      "Help", borrowed_items, NELEMS(borrowed_items)
     };
     wuss_menu_t *m;
     const wuss_menu_t *sub;

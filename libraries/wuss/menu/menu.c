@@ -176,6 +176,7 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   int                width, height;
   int                i;
   size2d_t           size;
+  box_t              content;
 
   assert(wuss != NULL);
   assert(menu != NULL);
@@ -270,17 +271,24 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   size = SIZE2D(width, height);
   task = wuss_task_start(wuss__menu_handle, node);
 
-  /* ponytail: menus carry no title string yet; a bare titlebar is enough for
-   * the drag/knock-back affordance. Add wuss_menu_t.title if a caption is
-   * wanted. */
-  rc = wuss_window_create_placed(wuss, size, "",
-                                 wuss_WINDOW_NO_OUTLINE
-                                 | wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK
-                                 | wuss_WINDOW_NO_TOGGLE_SIZE
-                                 | wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL
-                                 | wuss_WINDOW_NO_RESIZE,
-                                 wuss_BACKDROP_COLOUR(wuss->white),
-                                 &task, size, size, &node->window);
+  /* `at` is the content top-left, already clamped on screen above. Create the
+   * window there directly -- creating it elsewhere and wuss_window_move-ing it
+   * afterwards would blit its not-yet-rendered pixels and leave the titlebar
+   * unpainted. */
+  content.x0 = at.x;
+  content.y0 = at.y;
+  content.x1 = at.x + width;
+  content.y1 = at.y + height;
+
+  rc = wuss_window_create(wuss, &content,
+                          menu->title ? menu->title : "",
+                          wuss_WINDOW_NO_OUTLINE
+                          | wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK
+                          | wuss_WINDOW_NO_TOGGLE_SIZE
+                          | wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL
+                          | wuss_WINDOW_NO_RESIZE,
+                          wuss_BACKDROP_COLOUR(wuss->white),
+                          &task, size, size, &node->window);
   if (rc != result_OK)
   {
     free(specs);
@@ -288,8 +296,6 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
     free(node);
     return rc;
   }
-
-  wuss_window_move(node->window, at);
 
   rc = wuss_icon_create_array(node->window, specs, menu->nitems, node->icons);
   free(specs);

@@ -125,6 +125,7 @@ void wuss_menu_destroy(wuss_menu_t *menu)
     free((void *) menu->items[i].text);
     wuss_menu_destroy((wuss_menu_t *) menu->items[i].submenu);
   }
+  free((void *) menu->title);
   free((void *) menu->items);
   free(menu);
 }
@@ -147,6 +148,14 @@ static result_t menu_deep_copy(const wuss_menu_t *src, wuss_menu_t **out)
         : NULL;
   if (src->nitems > 0 && items == NULL)
   {
+    free(m);
+    return result_OOM;
+  }
+
+  m->title  = src->title ? strdup(src->title) : NULL;
+  if (src->title != NULL && m->title == NULL)
+  {
+    free(items);
     free(m);
     return result_OOM;
   }
@@ -253,6 +262,10 @@ static wuss_menu_t *build_seal(Building *b)
   if (m == NULL)
     return NULL;
 
+  /* ponytail: the descriptor's { } title token is still discarded, so a
+   * parser-built menu has no caption. Wire it through Building if that
+   * changes. */
+  m->title  = NULL;
   m->items  = b->items;
   m->nitems = b->n;
 
