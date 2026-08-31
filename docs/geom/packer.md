@@ -73,17 +73,9 @@ result_t packer_release(packer_t    *packer,
                         const box_t *area);
 ```
 
-Pass the same box that `packer_place_at()` placed, or the area consumed by
-`packer_place_by()` (the returned footprint plus its gutter strip). The packer
-matches it against its record of placed boxes and rebuilds the free list from
-the container minus every box still live, so repeated place/release cycles
-reclaim the whole area exactly rather than fragmenting it into unusable
-slivers. `area` is clipped to the margins and copied.
+Pass the same box that `packer_place_at()` placed, or the area consumed by `packer_place_by()` (the returned footprint plus its gutter strip). The packer matches it against its record of placed boxes and rebuilds the free list from the container minus every box still live, so repeated place/release cycles reclaim the whole area exactly rather than fragmenting it into unusable slivers. `area` is clipped to the margins and copied.
 
-A release whose box matches no recorded placement (for example after
-`packer_clear()`, which drops the placement record) simply adds the area to
-the free pool without a rebuild. `packer_get_consumed_area()` is not narrowed
-by a release.
+A release whose box matches no recorded placement (for example after `packer_clear()`, which drops the placement record) simply adds the area to the free pool without a rebuild. `packer_get_consumed_area()` is not narrowed by a release.
 
 ## Layout Management
 
@@ -127,8 +119,7 @@ typedef result_t (packer_map_fn_t)(const box_t *area, void *opaque);
 The packer can return these specific result codes:
 
 - `result_PACKER_DIDNT_FIT` - Element couldn't be placed in available space
-- `result_PACKER_EMPTY` - No elements have been placed yet, or a released area
-  lay entirely outside the margins
+- `result_PACKER_EMPTY` - No elements have been placed yet, or a released area lay entirely outside the margins
 
 ## Cleanup
 
