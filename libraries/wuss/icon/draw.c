@@ -422,7 +422,7 @@ void wuss__icon_draw(wuss_t            *wuss,
                            ax + (r - (dy < 0 ? -dy : dy)), ay + dy, ink);
       }
 
-      if (have_font)
+      if (have_font && icon->text != NULL && icon->text[0] != '\0')
       {
         point_t pos;
 

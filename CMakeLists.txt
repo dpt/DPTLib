@@ -400,6 +400,7 @@ set(WUSS_ICON_SOURCES
 
 set(WUSS_MENU_SOURCES
     libraries/wuss/menu/menu.c
+    libraries/wuss/menu/create-from-desc.c
     libraries/wuss/menu.h)
 
 set(WUSS_SOURCES ${WUSS_CORE_SOURCES})
