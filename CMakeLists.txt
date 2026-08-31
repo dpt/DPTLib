@@ -30,8 +30,8 @@ endif(CCACHE_FOUND)
 option(USE_FORTIFY "Use Fortify" OFF)
 option(USE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
-option(WUSS_FURNITURE "Build the wuss window-furniture subsystem" ON)
-option(WUSS_ICONS "Build the wuss in-content icon subsystem" ON)
+option(WUSS_FURNITURE "Build the Wuss window-furniture subsystem" ON)
+option(WUSS_ICONS "Build the Wuss in-content icon subsystem" ON)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
 if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
@@ -564,6 +564,7 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include
 
 option(BUILD_TESTS "Build test program" OFF)
 option(BUILD_SDL_TESTS "Build tests that use SDL" OFF)
+option(BUILD_APPS "Build standalone apps (Wuss interactive demo)" OFF)
 
 if(BUILD_TESTS)
     set(TEST_SOURCES
@@ -591,26 +592,7 @@ if(BUILD_TESTS)
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c
-        libraries/wuss/test/tasks/ball.c
-        libraries/wuss/test/tasks/blank.c
-        libraries/wuss/test/tasks/chars.c
-        libraries/wuss/test/tasks/checker.c
-        libraries/wuss/test/tasks/curve.c
-        libraries/wuss/test/tasks/gradient.c
-        libraries/wuss/test/tasks/image.c
-        libraries/wuss/test/tasks/palette.c
-        libraries/wuss/test/tasks/porter-duff.c
-        libraries/wuss/test/tasks/sofa.c
-        libraries/wuss/test/tasks/text.c
         libraries/wuss/test/wuss-test.c)
-
-    # The icon-driven launcher and the icons task only build when both wuss
-    # subsystems are present; the SDL interactive driver needs them too.
-    if(WUSS_FURNITURE AND WUSS_ICONS)
-        list(APPEND TEST_SOURCES
-            libraries/wuss/test/tasks/icons.c
-            libraries/wuss/test/tasks/launcher.c)
-    endif()
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
 
@@ -634,19 +616,69 @@ if(BUILD_TESTS)
         target_link_libraries(DPTLibTest m)
     endif()
 
+    # Some unit tests (e.g. bmfont-test) gate an interactive SDL mode on
+    # USE_SDL; BUILD_SDL_TESTS links SDL3 and defines it for the test binary.
     if(BUILD_SDL_TESTS)
-        if(NOT (WUSS_FURNITURE AND WUSS_ICONS))
-            message(FATAL_ERROR "BUILD_SDL_TESTS requires WUSS_FURNITURE and WUSS_ICONS")
-        endif()
-
         find_package(SDL3 REQUIRED)
         find_package(SDL3_image REQUIRED)
 
         target_link_libraries(DPTLibTest SDL3::SDL3 SDL3_image::SDL3_image)
-
-        target_compile_definitions(DPTLibTest PUBLIC USE_SDL)
+        target_compile_definitions(DPTLibTest PRIVATE USE_SDL)
     endif()
 
     install(TARGETS DPTLibTest RUNTIME
+        DESTINATION ${CMAKE_INSTALL_PREFIX})
+endif()
+
+
+# Standalone apps
+#
+
+if(BUILD_APPS)
+    # The Wuss interactive demo: its own executable, built from the SDL task
+    # modules plus apps/wuss/main.c (which was the old in-test SDL driver).
+    if(NOT (WUSS_FURNITURE AND WUSS_ICONS))
+        message(FATAL_ERROR "BUILD_APPS requires WUSS_FURNITURE and WUSS_ICONS")
+    endif()
+
+    find_package(SDL3 REQUIRED)
+    find_package(SDL3_image REQUIRED)
+
+    set(WUSS_APP_SOURCES
+        apps/wuss/main.c
+        libraries/wuss/test/tasks/ball.c
+        libraries/wuss/test/tasks/blank.c
+        libraries/wuss/test/tasks/chars.c
+        libraries/wuss/test/tasks/checker.c
+        libraries/wuss/test/tasks/curve.c
+        libraries/wuss/test/tasks/gradient.c
+        libraries/wuss/test/tasks/icons.c
+        libraries/wuss/test/tasks/image.c
+        libraries/wuss/test/tasks/launcher.c
+        libraries/wuss/test/tasks/palette.c
+        libraries/wuss/test/tasks/porter-duff.c
+        libraries/wuss/test/tasks/sofa.c
+        libraries/wuss/test/tasks/text.c)
+
+    source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${WUSS_APP_SOURCES})
+
+    add_executable(wuss ${WUSS_APP_SOURCES})
+
+    set_target_properties(wuss PROPERTIES
+        DESCRIPTION "DPTLib Wuss interactive demo"
+        C_STANDARD 99
+        OUTPUT_NAME_DEBUG wuss-debug
+        OUTPUT_NAME_RELEASE wuss
+        OUTPUT_NAME_RELWITHDEBINFO wuss-relwithdebinfo
+        OUTPUT_NAME_MINSIZEREL wuss-minsizerel)
+
+    target_include_directories(wuss PRIVATE libraries/wuss/test)
+    target_compile_definitions(wuss PRIVATE USE_SDL)
+    target_link_libraries(wuss DPTLib SDL3::SDL3 SDL3_image::SDL3_image)
+    if(NOT MSVC)
+        target_link_libraries(wuss m)
+    endif()
+
+    install(TARGETS wuss RUNTIME
         DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif()
