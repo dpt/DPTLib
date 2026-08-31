@@ -62,45 +62,38 @@ result_t text_create(wuss_t         *wuss,
   return rc;
 }
 
-static result_t text_redraw(const wuss_event_t *event, void *task_data)
+#define INSET      4
+#define LEADING    2
+#define MAX_LINES  64 /* paragraph is short and fixed; overflow is dropped */
+
+typedef struct text_line
 {
-  text_task_t *tcx;
-  screen_t       *scr;
-  const box_t    *bounds;
-  int             font_width, font_height, sx, sy;
-  const char     *string;
-  int             stringlen;
-  point_t         pos0, pos1;
+  const char *str;
+  int         len;
+}
+text_line_t;
 
-  tcx = task_data;
+/* Break "string" into lines that each fit "wrap_width" pixels in "font",
+ * writing up to "max" of them to "lines". Returns the line count. Pure
+ * layout: no drawing, no screen or scroll state. */
+static int text_layout(bmfont_t    *font,
+                       const char  *string,
+                       int          stringlen,
+                       int          wrap_width,
+                       text_line_t *lines,
+                       int          max)
+{
+  int nlines;
 
-  scr    = event->data.redraw.scr;
-  bounds = event->data.redraw.bounds;
-  sx     = event->data.redraw.scroll.x;
-  sy     = event->data.redraw.scroll.y;
+  nlines = 0;
 
-  bmfont_get_info(tcx->font, &font_width, &font_height);
-
-  string    = paragraph;
-  stringlen = (int) strlen(paragraph);
-
-#define INSET   4
-#define LEADING 2
-  
-  pos0.x = bounds->x0 - sx + INSET;
-  pos0.y = bounds->y0 - sy + INSET;
-  pos1.x = bounds->x1 - sx - INSET;
-  pos1.y = bounds->y1 - sy - INSET;
-
-  while (stringlen)
+  while (stringlen > 0 && nlines < max)
   {
-    int            target_width;
     int            absolute_break;
     bmfont_width_t width;
     int            friendly_break;
 
-    target_width = pos1.x - pos0.x;
-    bmfont_measure(tcx->font, string, stringlen, target_width, &absolute_break, &width);
+    bmfont_measure(font, string, stringlen, wrap_width, &absolute_break, &width);
 
     friendly_break = absolute_break;
     if (absolute_break < stringlen)
@@ -113,7 +106,9 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
         friendly_break = absolute_break; /* no space to break at: hard break */
     }
 
-    bmfont_draw(tcx->font, scr, string, friendly_break, tcx->fg, tcx->bg, &pos0, NULL);
+    lines[nlines].str = string;
+    lines[nlines].len = friendly_break;
+    nlines++;
 
     string    += friendly_break;
     stringlen -= friendly_break;
@@ -122,9 +117,63 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
       string++;
       stringlen--;
     }
-
-    pos0.y += font_height + LEADING;
   }
+
+  return nlines;
+}
+
+/* Draw pre-laid-out "lines" stacked from "origin", advancing by the font
+ * height plus LEADING per line. */
+static void text_render(bmfont_t          *font,
+                        screen_t          *scr,
+                        const text_line_t *lines,
+                        int                nlines,
+                        colour_t           fg,
+                        colour_t           bg,
+                        point_t            origin)
+{
+  int     font_width, font_height;
+  point_t pos;
+  int     i;
+
+  bmfont_get_info(font, &font_width, &font_height);
+
+  pos = origin;
+  for (i = 0; i < nlines; i++)
+  {
+    bmfont_draw(font, scr, lines[i].str, lines[i].len, fg, bg, &pos, NULL);
+    pos.y += font_height + LEADING;
+  }
+}
+
+static result_t text_redraw(const wuss_event_t *event, void *task_data)
+{
+  text_task_t *tcx;
+  screen_t    *scr;
+  const box_t *bounds;
+  int          sx, sy;
+  text_line_t  lines[MAX_LINES];
+  int          nlines;
+  point_t      origin;
+
+  tcx = task_data;
+
+  scr    = event->data.redraw.scr;
+  bounds = event->data.redraw.bounds;
+  sx     = event->data.redraw.scroll.x;
+  sy     = event->data.redraw.scroll.y;
+
+  nlines = text_layout(tcx->font,
+                       paragraph,
+                       (int) strlen(paragraph),
+                       (bounds->x1 - INSET) - (bounds->x0 + INSET),
+                       lines,
+                       MAX_LINES);
+
+  origin.x = bounds->x0 - sx + INSET;
+  origin.y = bounds->y0 - sy + INSET;
+
+  text_render(tcx->font, scr, lines, nlines, tcx->fg, tcx->bg, origin);
 
   return result_OK;
 }
