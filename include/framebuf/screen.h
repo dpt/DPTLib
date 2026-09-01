@@ -110,30 +110,19 @@ typedef enum screen_pattern
   screen_PATTERN_CROSSHATCH, /**< Crossed thin lines. */
 
   /**
-   * 4x4 ordered (Bayer) dither, coverage levels 0 (empty) to 16 (solid). Index
-   * by level as `screen_PATTERN_BAYER0 + level`. `screen_PATTERN_BAYER8` is
-   * identical to `screen_PATTERN_GREY50` and `screen_PATTERN_BAYER16` to
-   * `screen_PATTERN_SOLID`; both are kept so the level arithmetic stays simple.
+   * 8x8 ordered (Bayer) dither, one entry per coverage level 0 (empty) to 64
+   * (solid). Index by level as `screen_PATTERN_BAYER0 + level`;
+   * `screen_PATTERN_BAYER_LIMIT` is one past the last. `screen_PATTERN_BAYER0`
+   * matches nothing else here, `screen_PATTERN_BAYER32` equals
+   * `screen_PATTERN_GREY50` and `screen_PATTERN_BAYER64` equals
+   * `screen_PATTERN_SOLID`; the duplicates are kept so the level arithmetic
+   * stays simple.
    */
   screen_PATTERN_BAYER0,
-  screen_PATTERN_BAYER1,
-  screen_PATTERN_BAYER2,
-  screen_PATTERN_BAYER3,
-  screen_PATTERN_BAYER4,
-  screen_PATTERN_BAYER5,
-  screen_PATTERN_BAYER6,
-  screen_PATTERN_BAYER7,
-  screen_PATTERN_BAYER8,
-  screen_PATTERN_BAYER9,
-  screen_PATTERN_BAYER10,
-  screen_PATTERN_BAYER11,
-  screen_PATTERN_BAYER12,
-  screen_PATTERN_BAYER13,
-  screen_PATTERN_BAYER14,
-  screen_PATTERN_BAYER15,
-  screen_PATTERN_BAYER16,
+  screen_PATTERN_BAYER_LIMIT = screen_PATTERN_BAYER0 + 65,
 
-  screen_PATTERN__LIMIT     /**< Count of patterns; not itself a pattern. */
+  screen_PATTERN__LIMIT = screen_PATTERN_BAYER_LIMIT
+                          /**< Count of patterns; not itself a pattern. */
 }
 screen_pattern_t;
 
