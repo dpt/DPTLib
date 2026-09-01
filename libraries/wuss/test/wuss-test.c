@@ -1533,6 +1533,92 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_d);
   }
 
+  printf("test: wuss_window_set_scroll blits the un-occluded content even when the window is not topmost\n");
+
+  {
+    /* A window covered on its right half by another still blits its
+     * un-occluded left half on a programmatic scroll: only the occluded
+     * columns and the newly-exposed edge strip need a repaint. */
+    test_task_t    tc_s, tc_o;
+    wuss_task_t    delegate_s, delegate_o;
+    box_t          box_s, box_o, content;
+    wuss_window_t *win_s, *win_o;
+    int            i, split_x;
+    int            left_x, left_y, right_x, right_y;
+    int            left_dirty, right_dirty;
+
+    tc_s.redraw_count = 0; tc_s.mouse_count = 0;
+    tc_o.redraw_count = 0; tc_o.mouse_count = 0;
+    delegate_s.handle = test_handle; delegate_s.task_data = &tc_s;
+    delegate_o.handle = test_handle; delegate_o.task_data = &tc_o;
+
+    box_s.x0 = 10; box_s.y0 = 10;
+    box_s.x1 = 110; box_s.y1 = 90; /* 100x80 content; doc taller, so scrollable */
+    rc = wuss_window_create(wuss, &box_s, "S", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            &delegate_s,
+                            SIZE2D(100, 200), SIZE2D(0, 0), &win_s);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_s, &content);
+    split_x = (content.x0 + content.x1) / 2;
+
+    box_o.x0 = split_x; box_o.y0 = content.y0 - 5;
+    box_o.x1 = content.x1 + 40; box_o.y1 = content.y1 + 40;
+    rc = wuss_window_create(wuss, &box_o, "O", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            &delegate_o,
+                            SIZE2D(box_o.x1 - box_o.x0, box_o.y1 - box_o.y0),
+                            SIZE2D(0, 0), &win_o);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creates */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* left probe: un-occluded, near the bottom -- content there just slides
+     * up by the scroll delta, so the blit must reuse it. right probe: under
+     * the occluder -- never S's pixels on screen, so it must be repainted. */
+    left_x  = content.x0 + 8;
+    left_y  = content.y1 - 20;
+    right_x = split_x + 8;
+    right_y = content.y1 - 20;
+
+    wuss_window_set_scroll(win_s, POINT(0, 12));
+
+    if (wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+
+    left_dirty  = 0;
+    right_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      box_t region;
+
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, left_x, left_y))
+        left_dirty = 1;
+      if (box_contains_point(&region, right_x, right_y))
+        right_dirty = 1;
+    }
+
+    if (left_dirty)
+      goto Failure; /* un-occluded content must be reused by the blit */
+
+    if (!right_dirty)
+      goto Failure; /* content hidden behind the occluder holds no valid S
+                      * pixels on screen -- it must be repainted */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_o);
+    wuss_window_close(win_s);
+  }
+
   printf("test: wuss_WINDOW_NO_RESIZE_BLIT redraws the whole window instead of blitting\n");
 
   {
