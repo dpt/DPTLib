@@ -29,9 +29,8 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
    * were covering (those areas hold occluder pixels, not this window's), so
    * slide it piece by piece by the scroll delta. The clip keeps every
    * destination inside the content box, so a piece near the trailing edge
-   * shifts partly out and that area falls into the repaint set below along
-   * with the occluded regions. Falls back to a full content invalidate when
-   * the pixel format can't blit. */
+   * shifts partly out and that area falls into the repaint set below. Falls
+   * back to a full content invalidate when the pixel format can't blit. */
   nsrc              = wuss__clip_to_visible(window, &content, src);
   ncopied           = 0;
   window->wuss->scr->clip = content;
@@ -47,9 +46,13 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
 
   if (ncopied > 0)
   {
+    /* Repaint the content box minus what the blit reused, then clip each
+     * survivor to this window's visible area: the parts that were behind an
+     * occluder still show the occluder's own correct pixels, so leaving
+     * them out keeps the scroll from redrawing the occluding window. */
     ndirty = wuss__subtract_boxes(&content, copied, ncopied, dirty);
     for (i = 0; i < ndirty; i++)
-      wuss_invalidate(window->wuss, &dirty[i]);
+      wuss__invalidate_clipped(window, &dirty[i]);
     return;
   }
 
