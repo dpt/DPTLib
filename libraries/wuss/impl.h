@@ -66,9 +66,14 @@ struct wuss
                                           * block this wuss_t owns */
   colour_t                   *palette;   /* owned */
   int                         npalette;
-  wuss_colour_t               white;     /* palette index nearest to white */
+  struct
+  {
+    wuss_colour_t             white;     /* palette index nearest to white */
+    wuss_colour_t             black;     /* palette index nearest to black */
+  }
+  palettecache;
 #ifdef WUSS_FURNITURE
-  wuss_palette_t              furniture_colours;
+  wuss_furniture_palette_t              furniture_colours;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
   wuss_colour_t               bevel_light; /* work-area button top/left edge */
