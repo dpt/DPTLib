@@ -5,6 +5,8 @@
 void wuss_window_set_scroll(wuss_window_t *window, point_t p)
 {
   box_t content;
+  box_t stale[WUSS_MAX_DIRTY];
+  box_t clean[WUSS_MAX_INVALIDATE_PIECES];
   box_t src[WUSS_MAX_INVALIDATE_PIECES];
   box_t blit_src[WUSS_MAX_INVALIDATE_PIECES];
   box_t blit_dest[WUSS_MAX_INVALIDATE_PIECES];
@@ -12,7 +14,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
   box_t dirty[WUSS_MAX_INVALIDATE_PIECES];
   box_t vis[WUSS_MAX_INVALIDATE_PIECES];
   int   order[WUSS_MAX_INVALIDATE_PIECES];
-  int   dx, dy, nsrc, nblit, ncopied, ndirty, nvis, i, j, idx;
+  int   dx, dy, nstale, nclean, nsrc, nblit, ncopied, ndirty, nvis, i, j, idx;
   int   overflow, blit_failed;
 
   dx = p.x - window->scroll.x;
@@ -23,6 +25,18 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
   window->scroll = p;
 
   wuss__content_box(window, &content);
+
+  /* Any content-box area already sitting in the dirty list holds stale pixels
+   * (e.g. the strip exposed by an earlier scroll this frame, not yet
+   * redrawn): a wheel spin can deliver several scrolls before wuss_redraw_dirty
+   * runs, and the blit below is a framebuffer memmove -- feeding it a stale
+   * source would smear that stale content into the interior. Collect those
+   * regions now, before the furniture invalidate adds its own unrelated
+   * rects, and exclude them from the blit source further down. */
+  nstale = 0;
+  for (i = 0; i < window->wuss->ndirty; i++)
+    if (box_intersects(&window->wuss->dirty[i], &content))
+      stale[nstale++] = window->wuss->dirty[i];
 
 #ifdef WUSS_FURNITURE
   /* the scrollbar sausage position depends on scroll, so its well needs
@@ -37,9 +51,34 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
    * clips to the content box, so it would paint over the occluder there.
    * Clip each destination against the occluders too and keep only the
    * surviving sub-pieces, each with its own matching source offset. */
-  nsrc     = wuss__clip_to_visible(window, &content, src);
+  nclean   = wuss__clip_to_visible(window, &content, clean);
   nblit    = 0;
   overflow = 0;
+
+  /* Carve the stale regions out of each clean source piece. Each subtract
+   * can split a piece into up to four bands, so this can overflow the piece
+   * budget on a badly fragmented window -- treat that as "no safe fast
+   * path" and let the blit_failed branch below invalidate what's left. */
+  nsrc = 0;
+  for (i = 0; i < nclean; i++)
+  {
+    box_t kept[WUSS_MAX_INVALIDATE_PIECES];
+    int   nkept, k;
+
+    nkept = wuss__subtract_boxes(&clean[i], stale, nstale, kept);
+    for (k = 0; k < nkept; k++)
+    {
+      if (nsrc == WUSS_MAX_INVALIDATE_PIECES)
+      {
+        overflow = 1;
+        break;
+      }
+      src[nsrc++] = kept[k];
+    }
+    if (overflow)
+      break;
+  }
+
   for (i = 0; i < nsrc && !overflow; i++)
   {
     box_t want;
