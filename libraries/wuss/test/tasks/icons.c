@@ -30,11 +30,12 @@ result_t icons_create(wuss_t         *wuss,
                       const char     *resources,
                       icons_task_t   *task)
 {
-  /* [0..3], one swatch per built-in pattern, then [.. +3] a grouping frame
-   * with two differently-justified labels inside it, then [.. +5] three grouped
-   * radios, a standalone option and a label echoing the selection, then [.. +2]
-   * a decorative bitmap icon and an interactive one that bumps the counter,
-   * then [.. +4] a strip of menu-entry icons that hover-highlight */
+  /* [0..3] heading, counter button, counter label and a scrolled-away button,
+   * then [.. +N] one swatch per built-in fill pattern, then [.. +3] a grouping
+   * frame with two differently-justified labels inside it, then [.. +5] three
+   * grouped radios, a standalone option and a label echoing the selection,
+   * then [.. +2] a decorative bitmap icon and an interactive one that bumps
+   * the counter, then [.. +4] a strip of menu-entry icons that hover-highlight */
   enum { ICONS_NSPECS = 4 + screen_PATTERN__LIMIT + 3 + 5 + 2 + 4 };
   wuss_task_t      delegate;
   wuss_icon_spec_t specs[ICONS_NSPECS];
@@ -119,11 +120,20 @@ result_t icons_create(wuss_t         *wuss,
   specs[3].fg   = palette_PICO8_BLACK;
   specs[3].bg   = palette_PICO8_LIGHT_GREY;
 
-  /* [4..] one swatch per built-in pattern, in a column down the document so
-   * they scroll through the window and stay phase-locked while doing so */
+  /* [4..] one 16x16 swatch per built-in fill pattern, laid out as a grid down
+   * the document so it scrolls through the window and stays phase-locked while
+   * doing so */
   for (p = 0; p < screen_PATTERN__LIMIT; p++)
   {
-    specs[4 + p].bbox    = (box_t) BOX_POS_SIZE(28, 90 + p * 44, 90, 36);
+    enum { ICONS_SWATCH_COLS = 6, ICONS_SWATCH_PITCH = 20 };
+    int col, row;
+
+    col = p % ICONS_SWATCH_COLS;
+    row = p / ICONS_SWATCH_COLS;
+
+    specs[4 + p].bbox    = (box_t) BOX_POS_SIZE(28 + col * ICONS_SWATCH_PITCH,
+                                                90 + row * ICONS_SWATCH_PITCH,
+                                                16, 16);
     specs[4 + p].type    = wuss_ICON_TYPE_PATTERN;
     specs[4 + p].fg      = palette_PICO8_DARK_BLUE;
     specs[4 + p].bg      = palette_PICO8_LIGHT_GREY;
