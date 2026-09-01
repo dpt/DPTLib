@@ -74,6 +74,22 @@ result_t wuss_window_create(wuss_t             *wuss,
   win->visible.y0 += dy; win->visible.y1 += dy;
 
   win->flags      = flags;
+
+  /* clamp so the window can never be born larger than the screen; done
+   * after the on-screen nudge above so it measures from the final
+   * top-left. only the bottom-right corner moves. */
+  {
+    size2d_t max;
+
+    wuss__max_content_on_screen(win, &max);
+    if (win->visible.x1 - win->visible.x0 - 2 * outline_px - carve.x > max.w)
+      win->visible.x1 = win->visible.x0 + 2 * outline_px + carve.x + max.w;
+    if (win->visible.y1 - win->visible.y0 - 2 * outline_px
+        - titlebar_height - carve.y > max.h)
+      win->visible.y1 = win->visible.y0 + 2 * outline_px + titlebar_height
+                      + carve.y + max.h;
+  }
+
   win->scroll.x   = 0;
   win->scroll.y   = 0;
   win->doc        = doc;
