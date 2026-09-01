@@ -16,11 +16,10 @@
 
 #define BORDER 16
 
-result_t image_create(wuss_t         *wuss,
-                      const colour_t *palette,
-                      const char     *path,
-                      const char     *background_path,
-                      image_task_t   *task)
+result_t image_create(wuss_t       *wuss,
+                      const char   *path,
+                      const char   *background_path,
+                      image_task_t *task)
 {
   wuss_task_t delegate;
   result_t    rc;

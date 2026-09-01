@@ -354,15 +354,13 @@ static void draw_vertex_dots(screen_t           *scr,
                        colour);
 }
 
-result_t sofa_create(wuss_t         *wuss,
-                     const colour_t *palette,
-                     sofa_task_t    *task)
+result_t sofa_create(wuss_t*wuss, sofa_task_t*task)
 {
   wuss_task_t delegate;
 
-  task->bg       = palette[palette_PICO8_DARK_PURPLE];
-  task->line     = palette[palette_PICO8_ORANGE];
-  task->dot      = palette[palette_PICO8_WHITE];
+  task->bg       = colour_rgb(0x7E, 0x25, 0x53);
+  task->line     = colour_rgb(0xFF, 0xA3, 0x00);
+  task->dot      = colour_rgb(0xFF, 0xFF, 0xFF);
   task->angle    = 0.0;
   task->zoom     = 1.0;
   task->spinning = true;

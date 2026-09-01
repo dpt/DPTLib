@@ -28,9 +28,7 @@ wuss_event_fn_t lissajous_handle;
 
 /* create the Lissajous window against the given wuss instance; "task" is a
  * per-instance block owned by the window and freed when it closes */
-result_t lissajous_create(wuss_t           *wuss,
-                          const colour_t   *palette,
-                          lissajous_task_t *task);
+result_t lissajous_create(wuss_t *wuss, lissajous_task_t *task);
 
 #endif /* USE_SDL */
 

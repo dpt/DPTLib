@@ -26,6 +26,7 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
   wuss_task_t      delegate;
   wuss_icon_spec_t specs[SWATCHES_NSPECS];
   int              p;
+  wuss_colour_t    fg, bg;
   result_t         rc;
 
   task->window = NULL;
@@ -36,13 +37,16 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
                                  SIZE2D(SWATCHES_DOC_W, 140),
                                  "Swatches",
                                  wuss_WINDOW_NONE,
-                                 wuss_BACKDROP_COLOUR(palette_PICO8_LIGHT_GREY),
+                                 wuss_BACKDROP_COLOUR(wuss_nearest_colour(wuss, 0xDD, 0xDD, 0xDD)),
                                  &delegate,
                                  SIZE2D(SWATCHES_DOC_W, SWATCHES_DOC_H),
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
     return rc;
+  
+  fg = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
+  bg = wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF);
 
   memset(specs, 0, sizeof(specs));
 
@@ -50,7 +54,7 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
   specs[0].bbox = (box_t) BOX_POS_SIZE(12, 12, 140, 14);
   specs[0].type = wuss_ICON_TYPE_LABEL;
   specs[0].text = "Fill patterns:";
-  specs[0].fg   = palette_PICO8_DARK_BLUE;
+  specs[0].fg   = fg;
   specs[0].bg   = wuss_NO_BACKGROUND;
 
   /* [1..] one 16x16 swatch per built-in fill pattern, laid out as a grid down
@@ -68,8 +72,8 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
                                                 34 + row * SWATCHES_PITCH,
                                                 16, 16);
     specs[1 + p].type    = wuss_ICON_TYPE_PATTERN;
-    specs[1 + p].fg      = palette_PICO8_DARK_BLUE;
-    specs[1 + p].bg      = palette_PICO8_LIGHT_GREY;
+    specs[1 + p].fg      = fg;
+    specs[1 + p].bg      = bg;
     specs[1 + p].pattern = (screen_pattern_t) p;
   }
 

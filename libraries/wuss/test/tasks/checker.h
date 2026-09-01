@@ -33,10 +33,7 @@ checker_task_t;
 wuss_event_fn_t checker_handle;
 
 /* create the two checkerboard windows against the given wuss instance */
-result_t checker_create(wuss_t         *wuss,
-                        const colour_t *palette,
-                        checker_task_t *task);
-
+result_t checker_create(wuss_t *wuss, checker_task_t *task);
 
 #endif /* USE_SDL */
 

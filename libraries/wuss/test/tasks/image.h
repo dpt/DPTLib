@@ -23,12 +23,10 @@ wuss_event_fn_t image_handle;
 
 /* load the PNG at path (and the 9-patch PNG at background_path, drawn tiled
  * behind it) and create its window against the given wuss instance */
-result_t image_create(wuss_t         *wuss,
-                      const colour_t *palette,
-                      const char     *path,
-                      const char     *background_path,
-                      image_task_t   *task);
-
+result_t image_create(wuss_t       *wuss,
+                      const char   *path,
+                      const char   *background_path,
+                      image_task_t *task);
 
 #endif /* USE_SDL */
 

@@ -18,15 +18,13 @@
 #define CHECKER_BAND_MIN     1
 #define CHECKER_BAND_MAX     32
 
-result_t checker_create(wuss_t         *wuss,
-                        const colour_t *palette,
-                        checker_task_t *task)
+result_t checker_create(wuss_t*wuss, checker_task_t *task)
 {
   wuss_task_t delegate;
   result_t    rc;
 
-  task->black    = palette[palette_PICO8_BLACK];
-  task->white    = palette[palette_PICO8_WHITE];
+  task->black    = colour_rgb(0x00, 0x00, 0x00);
+  task->white    = colour_rgb(0xFF, 0xFF, 0xFF);
   task->pattern  = checker_PATTERN_CHECKERBOARD;
   task->pattern2 = checker_PATTERN_VERTICAL;
   task->band     = CHECKER_BAND_DEFAULT;
