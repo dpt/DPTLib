@@ -56,7 +56,7 @@ result_t wuss_create(screen_t            *scr,
   wuss_alloc_t   al;
   wuss_t        *w;
 #ifdef WUSS_FURNITURE
-  wuss_palette_t pal;
+  wuss_furniture_palette_t pal;
   wuss_colour_t  bg, fg;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
@@ -98,33 +98,10 @@ result_t wuss_create(screen_t            *scr,
   memcpy(w->palette, palette, npalette * sizeof(*w->palette));
   w->npalette = npalette;
 
-  /* Cache the palette index nearest to opaque white, for menu backdrops and
-   * anything else wanting "paper". Sum-of-squared-channel-distance to white;
-   * ties keep the first. */
-  {
-    unsigned long best_d;
-    int           i;
-
-    w->white = 0;
-    best_d   = ~0UL;
-    for (i = 0; i < npalette; i++)
-    {
-      unsigned int  px;
-      long          dr, dg, db;
-      unsigned long d;
-
-      px = w->palette[i].primary;
-      dr = 255 - (long) ((px >> 16) & 0xFF);
-      dg = 255 - (long) ((px >>  8) & 0xFF);
-      db = 255 - (long) ( px        & 0xFF);
-      d  = (unsigned long) (dr * dr + dg * dg + db * db);
-      if (d < best_d)
-      {
-        best_d  = d;
-        w->white = i;
-      }
-    }
-  }
+  /* Cache the palette indices nearest to opaque white and black, for menu
+   * backdrops/text and anything else wanting "paper" or "ink". */
+  w->palettecache.white = wuss_nearest_colour(w, 255, 255, 255);
+  w->palettecache.black = wuss_nearest_colour(w, 0, 0, 0);
 
   if (config != NULL)
   {
@@ -140,7 +117,7 @@ result_t wuss_create(screen_t            *scr,
 #ifdef WUSS_FURNITURE
   if (config != NULL)
   {
-    pal = config->palette;
+    pal = config->furniture;
     blight = config->bevel.light;
     bdark = config->bevel.dark;
     abg = config->accent.bg;

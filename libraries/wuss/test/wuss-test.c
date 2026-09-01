@@ -212,15 +212,15 @@ result_t wuss_test(const char *resources)
   printf("test: wuss_create with bad titlebar colour index\n");
 
   bad_config.titlebar_height         = 0;
-  bad_config.palette.title.bg        = 999;
-  bad_config.palette.title.fg        = 0;
-  bad_config.palette.back            = 0;
-  bad_config.palette.close           = 0;
-  bad_config.palette.toggle          = 0;
-  bad_config.palette.resize          = 0;
-  bad_config.palette.scroll.arrows   = 0;
-  bad_config.palette.scroll.wells    = 0;
-  bad_config.palette.scroll.sausages = 0;
+  bad_config.furniture.title.bg        = 999;
+  bad_config.furniture.title.fg        = 0;
+  bad_config.furniture.back            = 0;
+  bad_config.furniture.close           = 0;
+  bad_config.furniture.toggle          = 0;
+  bad_config.furniture.resize          = 0;
+  bad_config.furniture.scroll.arrows   = 0;
+  bad_config.furniture.scroll.wells    = 0;
+  bad_config.furniture.scroll.sausages = 0;
   rc = wuss_create(&scr, NULL, NULL, 0, &bad_config, NULL, &bad_wuss);
   if (rc != result_WUSS_BAD_COLOUR)
     goto Failure;
