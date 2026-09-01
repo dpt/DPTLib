@@ -205,8 +205,8 @@ static result_t spawn_porter_duff(void)
 }
 
 /* A static demo menu tree for the pop-up helper: a submenu, a couple of
- * ticked rows and a dashed rule above the final entry. wuss_menu_open never
- * mutates it. */
+ * ticked rows and a standalone dashed rule row above the final entry.
+ * wuss_menu_open never mutates it. */
 static const wuss_menu_item_t g_menu_export_items[] =
 {
   { "As PNG",  wuss_MENU_ITEM_NONE,   NULL },
@@ -224,7 +224,8 @@ static const wuss_menu_item_t g_menu_items[] =
   { "Show grid", wuss_MENU_ITEM_TICKED, NULL },
   { "Wireframe", wuss_MENU_ITEM_TICKED, NULL },
   { "Export",    wuss_MENU_ITEM_NONE,   &g_menu_export },
-  { "Quit",      wuss_MENU_ITEM_DASHED, NULL }
+  { "",          wuss_MENU_ITEM_DASHED, NULL },
+  { "Quit",      wuss_MENU_ITEM_NONE,   NULL }
 };
 static const wuss_menu_t g_menu =
 {
