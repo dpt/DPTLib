@@ -1324,6 +1324,215 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_r);
   }
 
+  printf("test: wuss_window_resize on a topmost window at max scroll blits the still-valid content rather than redrawing it all\n");
+
+  {
+    /* Unlike the toggle-size path above, a direct wuss_window_resize (the
+     * interactive drag-resize path) runs with the screen still showing this
+     * window's content at the old geometry and old scroll offset. When the
+     * grow forces a scroll re-clamp, the overlap of the old and new content
+     * boxes is genuine on-screen content that just needs sliding by the
+     * scroll delta -- only the newly-exposed strip needs a real repaint. */
+    test_task_t    tc_d;
+    wuss_task_t    delegate_d;
+    box_t          box_d, content_before;
+    wuss_window_t *win_d;
+    point_t        scroll_d;
+    int            i;
+    int            top_x, top_y, mid_x, mid_y, bottom_x, bottom_y;
+    int            top_dirty, mid_dirty, bottom_dirty;
+
+    tc_d.redraw_count = 0;
+    tc_d.mouse_count  = 0;
+    delegate_d.handle    = test_handle;
+    delegate_d.task_data = &tc_d;
+
+    box_d.x0 = 10; box_d.y0 = 10;
+    box_d.x1 = 90; box_d.y1 = 90; /* 80x80 content; doc taller, so it starts scrollable */
+    rc = wuss_window_create(wuss, &box_d, "D", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            &delegate_d,
+                            SIZE2D(80, 140), SIZE2D(0, 0), &win_d);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush the create's own invalidate */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_d, &content_before);
+
+    /* scroll to the bottom: max_y = doc.h (140) - content height (80) = 60 */
+    wuss_window_set_scroll(win_d, POINT(0, 60));
+    rc = wuss_redraw_dirty(wuss); /* flush the scroll's own invalidate */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_scroll(win_d, &scroll_d);
+    if (scroll_d.y != 60)
+      goto Failure;
+
+    /* Three probe points at the same x, well clear of the scrollbar column.
+     * The re-clamp drops scroll.y from 60 to 0, so on-screen content slides
+     * DOWN by 60px: the top ~60px of the content box is newly revealed and
+     * must be repainted, everything below it was already on screen and must
+     * be reused by the blit. */
+    top_x    = content_before.x0 + 8;
+    top_y    = content_before.y0 + 8;   /* < 60px down: in the revealed strip */
+    mid_x    = content_before.x0 + 8;
+    mid_y    = content_before.y0 + 70;  /* > 60px down: reused */
+    bottom_x = content_before.x0 + 8;
+    bottom_y = content_before.y1 - 8;   /* near old viewport bottom: reused */
+
+    /* grow the content taller than the doc: content height goes to >= 140,
+     * so max_y drops to 0 and scroll.y is clamped back from 60 to 0 */
+    rc = wuss_window_resize(win_d, SIZE2D(80, 160));
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_scroll(win_d, &scroll_d);
+    if (scroll_d.y != 0)
+      goto Failure; /* the grow must have re-clamped the offset */
+
+    if (wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+
+    top_dirty    = 0;
+    mid_dirty    = 0;
+    bottom_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      box_t region;
+
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, top_x, top_y))
+        top_dirty = 1;
+      if (box_contains_point(&region, mid_x, mid_y))
+        mid_dirty = 1;
+      if (box_contains_point(&region, bottom_x, bottom_y))
+        bottom_dirty = 1;
+    }
+
+    if (!top_dirty)
+      goto Failure; /* the newly-revealed strip must be repainted */
+
+    if (mid_dirty || bottom_dirty)
+      goto Failure; /* content that stayed on screen must be reused by the
+                      * blit-and-shift, not redrawn -- a full content-box
+                      * invalidate has regressed the optimisation */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_d);
+  }
+
+  printf("test: wuss_window_resize blits the un-occluded content even when the window is not topmost\n");
+
+  {
+    /* Same as above, but another window covers the right half of D's
+     * content. The blit source is the old content box MINUS what the
+     * occluder was covering (that area holds the occluder's pixels, not
+     * D's): the un-occluded left half is still slid into place, only the
+     * occluded columns and the newly-revealed top strip need a repaint. */
+    test_task_t    tc_d, tc_o;
+    wuss_task_t    delegate_d, delegate_o;
+    box_t          box_d, box_o, content_before;
+    wuss_window_t *win_d, *win_o;
+    point_t        scroll_d;
+    int            i, split_x;
+    int            left_x, left_y, right_x, right_y;
+    int            left_dirty, right_dirty;
+
+    tc_d.redraw_count = 0; tc_d.mouse_count = 0;
+    tc_o.redraw_count = 0; tc_o.mouse_count = 0;
+    delegate_d.handle = test_handle; delegate_d.task_data = &tc_d;
+    delegate_o.handle = test_handle; delegate_o.task_data = &tc_o;
+
+    box_d.x0 = 10; box_d.y0 = 10;
+    box_d.x1 = 110; box_d.y1 = 90; /* 100x80 content; doc taller, so scrollable */
+    rc = wuss_window_create(wuss, &box_d, "D", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            &delegate_d,
+                            SIZE2D(100, 140), SIZE2D(0, 0), &win_d);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_d, &content_before);
+    split_x = (content_before.x0 + content_before.x1) / 2;
+
+    /* occluder covering the right half of D's content box and beyond */
+    box_o.x0 = split_x; box_o.y0 = content_before.y0 - 5;
+    box_o.x1 = content_before.x1 + 40; box_o.y1 = content_before.y1 + 40;
+    rc = wuss_window_create(wuss, &box_o, "O", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            &delegate_o,
+                            SIZE2D(box_o.x1 - box_o.x0, box_o.y1 - box_o.y0),
+                            SIZE2D(0, 0), &win_o);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creates */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_set_scroll(win_d, POINT(0, 60)); /* max_y = 140 - 80 = 60 */
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_scroll(win_d, &scroll_d);
+    if (scroll_d.y != 60)
+      goto Failure;
+
+    /* left probe: un-occluded, below the ~60px revealed strip -- must be
+     * reused by the blit. right probe: under the occluder -- was never D's
+     * pixels on screen, so it must be repainted. Both at the same y. */
+    left_x  = content_before.x0 + 8;
+    left_y  = content_before.y1 - 8;
+    right_x = split_x + 8;
+    right_y = content_before.y1 - 8;
+
+    rc = wuss_window_resize(win_d, SIZE2D(100, 160)); /* grow past doc height */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_scroll(win_d, &scroll_d);
+    if (scroll_d.y != 0)
+      goto Failure;
+
+    if (wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+
+    left_dirty  = 0;
+    right_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      box_t region;
+
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, left_x, left_y))
+        left_dirty = 1;
+      if (box_contains_point(&region, right_x, right_y))
+        right_dirty = 1;
+    }
+
+    if (left_dirty)
+      goto Failure; /* un-occluded content must be reused by the blit */
+
+    if (!right_dirty)
+      goto Failure; /* content that was hidden behind the occluder holds no
+                      * valid D pixels on screen -- it must be repainted */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_o);
+    wuss_window_close(win_d);
+  }
+
   printf("test: wuss_WINDOW_NO_RESIZE_BLIT redraws the whole window instead of blitting\n");
 
   {
