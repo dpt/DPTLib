@@ -98,7 +98,7 @@ wuss_mouse_action_t;
 /**
  * An index into a wuss_t's system palette (see wuss_create). Not a colour_t.
  */
-typedef int wuss_colour_t;
+typedef unsigned char wuss_colour_t;
 
 /**
  * Sentinel for wuss_window_create's bg meaning "no automatic background
@@ -111,7 +111,7 @@ typedef int wuss_colour_t;
  * flat colour. Ignored when the library is built with WUSS_FURNITURE off.
  * Each value is an index into the system palette (see
  * wuss_create). */
-typedef struct wuss_palette
+typedef struct wuss_furniture_palette
 {
   struct
   {
@@ -131,7 +131,7 @@ typedef struct wuss_palette
   }
   scroll;
 }
-wuss_palette_t;
+wuss_furniture_palette_t;
 
 /**
  * Per-window appearance flags, combinable with bitwise OR.
@@ -255,7 +255,7 @@ typedef struct wuss_config
   int            titlebar_height;
 
   /** Furniture chrome colours. Ignored when WUSS_FURNITURE is off. */
-  wuss_palette_t palette;
+  wuss_furniture_palette_t furniture;
 
   /**
    * Bevelled work-area button edge shades, as indices into the system
@@ -344,6 +344,19 @@ bmfont_t *wuss_get_font(const wuss_t *wuss);
  * \return Last pointer position, screen space.
  */
 point_t wuss_get_pointer(const wuss_t *wuss);
+
+/**
+ * Find the system palette entry (see wuss_create) closest to an RGB value,
+ * by squared Euclidean distance in RGB space. Alpha is ignored. Ties keep
+ * the lower index.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] r    Red component, 0..255.
+ * \param[in] g    Green component, 0..255.
+ * \param[in] b    Blue component, 0..255.
+ * \return Palette index, 0..npalette-1.
+ */
+wuss_colour_t wuss_nearest_colour(const wuss_t *wuss, int r, int g, int b);
 
 /**
  * Redraw every window, back-to-front, having first painted the configured
