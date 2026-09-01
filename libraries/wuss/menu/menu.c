@@ -119,11 +119,17 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
     wuss_window_get_content_bounds(self->window, &wb);
     wuss_icon_get_bbox(icon, &ib);
 
-    /* wb is the content box in screen space; the menu is unscrolled, so a
-     * row's document y is its offset from the content top. The child's own
-     * titlebar sits above `at`, so a submenu row lines up with its parent. */
-    at.x = wb.x1 - WUSS_MENU_SUBMENU_OVERLAP;
-    at.y = wb.y0 + ib.y0;
+    /* wb is the content box in screen space; ib is in document space, so the
+     * row's screen y is its document y less however far the menu is scrolled.
+     * The child's own titlebar sits above `at`, so a submenu row lines up with
+     * its parent. */
+    {
+      point_t scroll;
+
+      wuss_window_get_scroll(self->window, &scroll);
+      at.x = wb.x1 - WUSS_MENU_SUBMENU_OVERLAP;
+      at.y = wb.y0 + ib.y0 - scroll.y;
+    }
 
     if (wuss__menu_spawn(self->wuss, item->submenu, at, self,
                          self->on_select, self->ctx, &self->child) == result_OK)
@@ -192,14 +198,18 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   int                y;
   int                widest;
   int                width, height;
+  int                doc_h;
+  int                max_h;
   int                i;
   int                ndashed;
   int                nspecs;
   int                s;
   int                outline_px;
   int                titlebar_height;
+  point_t            carve;
   wuss_window_flags_t menu_flags;
-  size2d_t           size;
+  size2d_t           doc;
+  size2d_t           min_doc;
   box_t              content;
 
   assert(wuss != NULL);
@@ -213,6 +223,9 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
              | wuss_WINDOW_NO_TOGGLE_SIZE
              | wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL
              | wuss_WINDOW_NO_RESIZE;
+
+  outline_px      = wuss__outline_px_for(menu_flags);
+  titlebar_height = wuss__titlebar_height_for(wuss, menu_flags);
 
   bmfont_get_info(wuss->font, NULL, &fh);
   pitch = fh + 2 * WUSS_MENU_ROW_PAD;
@@ -243,19 +256,36 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
 
   width  = WUSS_MENU_TICK_W + widest + WUSS_MENU_TEXT_PAD + WUSS_MENU_ARROW_W;
 
-  /* every item is a full row now; a dashed item also gets a sep_h rule above */
-  height = menu->nitems * pitch + ndashed * sep_h;
+  /* every item is a full row now; a dashed item also gets a sep_h rule above.
+   * doc_h is the whole menu; `height` is what the window actually shows. When
+   * the menu is taller than the space the screen leaves for it, cap `height`
+   * and give the window a real vertical scrollbar -- the icon draw and hit
+   * test already honour window->scroll, so the rows just move under it. */
+  doc_h = menu->nitems * pitch + ndashed * sep_h;
+
+  max_h = wuss->scr->size.h - 2 * outline_px - titlebar_height;
+
+  if (doc_h > max_h)
+  {
+    height      = max_h;
+    menu_flags &= (wuss_window_flags_t) ~wuss_WINDOW_NO_VSCROLL;
+  }
+  else
+  {
+    height = doc_h;
+  }
+
+  wuss__furniture_carve_for(menu_flags, wuss__button_size_for(wuss, menu_flags),
+                            &carve);
 
   /* Nudge onto the screen where it can be, but keep the top-left on screen.
    * `at` is the content top-left; the window's visible box also spans the
-   * outline on all four sides and the titlebar above, so clamp against that
-   * extent -- otherwise wuss_window_create's own on-screen size clamp trims
-   * the content and the last row (e.g. a trailing "Quit") is cropped. */
-  outline_px      = wuss__outline_px_for(menu_flags);
-  titlebar_height = wuss__titlebar_height_for(wuss, menu_flags);
-
-  if (at.x + width + outline_px > wuss->scr->size.w)
-    at.x = wuss->scr->size.w - width - outline_px;
+   * outline on all four sides, the titlebar above and (for a scrolling menu)
+   * the scrollbar carve on the right, so clamp against that whole extent --
+   * otherwise wuss_window_create's own on-screen size clamp trims the content
+   * and the last row (e.g. a trailing "Quit") is cropped. */
+  if (at.x + width + outline_px + carve.x > wuss->scr->size.w)
+    at.x = wuss->scr->size.w - width - outline_px - carve.x;
   if (at.y + height + outline_px > wuss->scr->size.h)
     at.y = wuss->scr->size.h - height - outline_px;
   if (at.x - outline_px < 0)
@@ -338,8 +368,11 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
     y += pitch;
   }
 
-  size = SIZE2D(width, height);
-  task = wuss_task_start(wuss__menu_handle, node);
+  /* doc spans the whole menu so the window can scroll it; min_doc is what the
+   * window shows, so its own resize floor never exceeds what fits. */
+  doc     = SIZE2D(width, doc_h);
+  min_doc = SIZE2D(width, height);
+  task    = wuss_task_start(wuss__menu_handle, node);
 
   /* `at` is the content top-left, already clamped on screen above. Create the
    * window there directly -- creating it elsewhere and wuss_window_move-ing it
@@ -354,7 +387,7 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
                           menu->title ? menu->title : "",
                           menu_flags,
                           wuss_BACKDROP_COLOUR(wuss->white),
-                          &task, size, size, &node->window);
+                          &task, doc, min_doc, &node->window);
   if (rc != result_OK)
   {
     wuss__free(wuss, made);
