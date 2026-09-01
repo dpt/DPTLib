@@ -53,6 +53,7 @@ static const colour_t     *g_palette;
 static int                 g_npalette;
 static const char         *g_resources;
 static bmfont_t           *g_daydream_font;
+static bool                g_quit; /* set by the "Quit Wuss" task-menu entry */
 
 /* Each spawn allocates a fresh per-instance task block so a task may run in
  * several windows at once; the block is owned by its window and freed by the
@@ -212,6 +213,7 @@ static const wuss_menu_item_t g_menu_export_items[] =
   { "As JPEG", wuss_MENU_ITEM_NONE,   NULL },
   { "As GIF",  wuss_MENU_ITEM_DISABLED, NULL }
 };
+
 static const wuss_menu_t g_menu_export =
 {
   "Export", g_menu_export_items, NELEMS(g_menu_export_items)
@@ -225,6 +227,7 @@ static const wuss_menu_item_t g_menu_items[] =
   { "Export",    wuss_MENU_ITEM_NONE,   &g_menu_export },
   { "Quit",      wuss_MENU_ITEM_DASHED, NULL }
 };
+
 static const wuss_menu_t g_menu =
 {
   "Display", g_menu_items, NELEMS(g_menu_items)
@@ -259,6 +262,7 @@ static const wuss_menu_item_t g_menu_desc_export_items[] =
   { "As JPEG", wuss_MENU_ITEM_NONE,     NULL },
   { "As GIF",  wuss_MENU_ITEM_DISABLED, NULL }
 };
+
 static const wuss_menu_t g_menu_desc_export =
 {
   "Export", g_menu_desc_export_items, NELEMS(g_menu_desc_export_items)
@@ -303,14 +307,24 @@ static const wuss_menu_item_t g_task_items[] =
   { "Icons",       wuss_MENU_ITEM_NONE,   NULL },
   { "Porter-Duff", wuss_MENU_ITEM_NONE,   NULL },
   { "Menu",        wuss_MENU_ITEM_DASHED, NULL },
-  { "Menu (desc)", wuss_MENU_ITEM_NONE,   NULL }
+  { "Menu (desc)", wuss_MENU_ITEM_NONE,   NULL },
+  { "Quit Wuss",   wuss_MENU_ITEM_DASHED, NULL }
 };
+
+static result_t spawn_quit(void)
+{
+  g_quit = true;
+  return result_OK;
+}
+
 static const task_spawn_fn_t g_task_spawn[] =
 {
   spawn_ball, spawn_text, spawn_blank, spawn_chars, spawn_palette,
   spawn_image, spawn_checker, spawn_curve, spawn_lissajous, spawn_sofa,
-  spawn_gradient, spawn_icons, spawn_porter_duff, spawn_menu, spawn_menu_desc
+  spawn_gradient, spawn_icons, spawn_porter_duff, spawn_menu, spawn_menu_desc,
+  spawn_quit
 };
+
 static const wuss_menu_t g_task_menu =
 {
   "Tasks", g_task_items, NELEMS(g_task_items)
@@ -495,12 +509,13 @@ static result_t run_wuss(const char *resources)
   g_daydream_font = daydream_font;
 
   quit                 = false;
+  g_quit               = false;
   garbage_pending      = false;
   pixel_stress_pending = false;
 
   wuss_redraw(wuss);
 
-  while (!quit)
+  while (!quit && !g_quit)
   {
     SDL_Event event;
 
