@@ -33,6 +33,7 @@
 #include "tasks/icons.h"
 #include "tasks/image.h"
 #include "tasks/launcher.h"
+#include "tasks/lissajous.h"
 #include "tasks/palette.h"
 #include "tasks/porter-duff.h"
 #include "tasks/sofa.h"
@@ -149,6 +150,16 @@ static result_t spawn_curve(void)
   result_t      rc;
   if (t == NULL) return result_OOM;
   rc = curve_create(g_wuss, g_palette, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
+static result_t spawn_lissajous(void)
+{
+  lissajous_task_t *t = calloc(1, sizeof(*t));
+  result_t          rc;
+  if (t == NULL) return result_OOM;
+  rc = lissajous_create(g_wuss, g_palette, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -282,6 +293,7 @@ static const launcher_entry_t g_launcher_entries[] =
   { "Image",       spawn_image       },
   { "Checker",     spawn_checker     },
   { "Curve",       spawn_curve       },
+  { "Lissajous",   spawn_lissajous   },
   { "Sofa",        spawn_sofa        },
   { "Gradient",    spawn_gradient    },
   { "Icons",       spawn_icons       },
