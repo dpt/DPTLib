@@ -30,11 +30,11 @@ void wuss_destroy(wuss_t *doomed)
 #ifdef WUSS_ICONS
     wuss__icons_free((wuss_window_t *) e);
 #endif
-    free(e);
+    wuss__free(doomed, e);
     e = next;
   }
 
   packer_destroy(doomed->layout);
-  free(doomed->palette);
-  free(doomed);
+  wuss__free(doomed, doomed->palette);
+  wuss__free(doomed, doomed); /* reads doomed->alloc.free before freeing */
 }

@@ -445,7 +445,8 @@ static result_t run_wuss(const char *resources)
     config.backdrop.pattern         = screen_PATTERN_DOTS;
     config.backdrop.pattern_bg      = palette_PICO8_LIGHT_GREY;
 
-    rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, &wuss);
+    rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, NULL,
+                     &wuss);
     if (rc != result_OK)
       goto Failure;
   }

@@ -51,9 +51,14 @@ static void wuss__menu_close_from(struct wuss__menu *node)
   wuss__menu_close_from(node->child);
   node->child = NULL;
 
-  wuss_window_close(node->window);
-  free(node->icons);
-  free(node);
+  {
+    wuss_t *w;
+
+    w = node->wuss;
+    wuss_window_close(node->window);
+    wuss__free(w, node->icons);
+    wuss__free(w, node);
+  }
 }
 
 /* ----------------------------------------------------------------------- */
@@ -219,19 +224,20 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   if (at.y < 0)
     at.y = 0;
 
-  node = malloc(sizeof(*node));
+  node = wuss__malloc(wuss, sizeof(*node));
   if (node == NULL)
     return result_OOM;
 
-  node->icons = calloc((size_t) menu->nitems, sizeof(*node->icons));
-  specs       = calloc((size_t) menu->nitems, sizeof(*specs));
+  node->icons = wuss__malloc(wuss, (size_t) menu->nitems * sizeof(*node->icons));
+  specs       = wuss__malloc(wuss, (size_t) menu->nitems * sizeof(*specs));
   if (node->icons == NULL || specs == NULL)
   {
-    free(specs);
-    free(node->icons);
-    free(node);
+    wuss__free(wuss, specs);
+    wuss__free(wuss, node->icons);
+    wuss__free(wuss, node);
     return result_OOM;
   }
+  memset(node->icons, 0, (size_t) menu->nitems * sizeof(*node->icons));
 
   node->wuss       = wuss;
   node->window     = NULL;
@@ -291,19 +297,19 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
                           &task, size, size, &node->window);
   if (rc != result_OK)
   {
-    free(specs);
-    free(node->icons);
-    free(node);
+    wuss__free(wuss, specs);
+    wuss__free(wuss, node->icons);
+    wuss__free(wuss, node);
     return rc;
   }
 
   rc = wuss_icon_create_array(node->window, specs, menu->nitems, node->icons);
-  free(specs);
+  wuss__free(wuss, specs);
   if (rc != result_OK)
   {
     wuss_window_close(node->window);
-    free(node->icons);
-    free(node);
+    wuss__free(wuss, node->icons);
+    wuss__free(wuss, node);
     return rc;
   }
 

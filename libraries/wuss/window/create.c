@@ -34,7 +34,7 @@ result_t wuss_window_create(wuss_t             *wuss,
   if (!wuss__size_ok(width, height))
     return result_WUSS_TOO_SMALL;
 
-  win = malloc(sizeof(*win));
+  win = wuss__malloc(wuss, sizeof(*win));
   if (win == NULL)
     return result_OOM;
 
@@ -96,7 +96,7 @@ result_t wuss_window_create(wuss_t             *wuss,
 
   if (wuss__validate_backdrop(wuss, &bg) != result_OK)
   {
-    free(win);
+    wuss__free(wuss, win);
     return result_WUSS_BAD_COLOUR;
   }
   win->bg = bg;

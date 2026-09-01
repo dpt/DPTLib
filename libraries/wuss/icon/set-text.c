@@ -11,19 +11,21 @@
 
 result_t wuss_icon_set_text(wuss_icon_t *icon, const char *text)
 {
+  wuss_t     *w;
   const char *src;
   char       *dup;
   size_t      len;
 
+  w   = icon->window->wuss;
   src = (text != NULL) ? text : "";
   len = strlen(src);
 
-  dup = malloc(len + 1);
+  dup = wuss__malloc(w, len + 1);
   if (dup == NULL)
     return result_OOM;
   memcpy(dup, src, len + 1);
 
-  free(icon->text);
+  wuss__free(w, icon->text);
   icon->text = dup;
 
   wuss__icon_invalidate(icon);

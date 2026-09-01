@@ -177,7 +177,7 @@ result_t wuss_test(const char *resources)
   bad_config.palette.scroll.arrows   = 0;
   bad_config.palette.scroll.wells    = 0;
   bad_config.palette.scroll.sausages = 0;
-  rc = wuss_create(&scr, NULL, NULL, 0, &bad_config, &bad_wuss);
+  rc = wuss_create(&scr, NULL, NULL, 0, &bad_config, NULL, &bad_wuss);
   if (rc != result_WUSS_BAD_COLOUR)
     goto Failure;
 
@@ -186,7 +186,7 @@ result_t wuss_test(const char *resources)
   {
     wuss_t *custom_wuss;
 
-    rc = wuss_create(&scr, NULL, custom_palette, 2, NULL, &custom_wuss);
+    rc = wuss_create(&scr, NULL, custom_palette, 2, NULL, NULL, &custom_wuss);
     if (rc != result_OK)
       goto Failure;
     wuss_destroy(custom_wuss);
@@ -194,7 +194,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: wuss_create with default palette\n");
 
-  rc = wuss_create(&scr, NULL, NULL, 0, NULL, &wuss);
+  rc = wuss_create(&scr, NULL, NULL, 0, NULL, NULL, &wuss);
   if (rc != result_OK)
     goto Failure;
 
@@ -2702,7 +2702,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: wuss_create (core)\n");
 
-  rc = wuss_create(&scr, NULL, NULL, 0, NULL, &wuss);
+  rc = wuss_create(&scr, NULL, NULL, 0, NULL, NULL, &wuss);
   if (rc != result_OK)
     goto Failure;
 

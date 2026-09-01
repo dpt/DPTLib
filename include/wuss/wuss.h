@@ -16,6 +16,8 @@ extern "C"
 {
 #endif
 
+#include <stddef.h>
+
 #include "base/result.h"
 #include "framebuf/bmfont.h"
 #include "framebuf/screen.h"
@@ -45,6 +47,24 @@ typedef struct wuss_window wuss_window_t;
 /** A work-area icon. Full API is in icon.h, and is compiled only when the
  * library is built with the WUSS_ICONS option on. */
 typedef struct wuss_icon wuss_icon_t;
+
+/**
+ * Allocator hooks used by a wuss_t for every heap block it owns (the instance
+ * itself, windows, icons, menu nodes). The three members must behave like the C
+ * library malloc / realloc / free -- same argument and return conventions,
+ * realloc(NULL, n) == malloc(n), free(NULL) a no-op. Passed to wuss_create and
+ * copied in; NULL there selects wuss_alloc (plain stdlib).
+ */
+typedef struct wuss_alloc
+{
+  void *(*malloc)(size_t size);
+  void *(*realloc)(void *ptr, size_t size);
+  void  (*free)(void *ptr);
+}
+wuss_alloc_t;
+
+/** The default allocator: the C library malloc / realloc / free. */
+extern const wuss_alloc_t wuss_alloc;
 
 /**
  * Mouse buttons, RISC OS-style: Select is the primary action, Adjust the
@@ -278,6 +298,9 @@ wuss_config_t;
  * \param[in]  npalette Number of entries in palette. Ignored if palette is
  *                      NULL.
  * \param[in]  config   Creation-time configuration, or NULL for defaults.
+ * \param[in]  alloc    Allocator hooks, copied in, or NULL for \ref wuss_alloc
+ *                      (plain stdlib). Must outlive nothing -- only the three
+ *                      function pointers are kept.
  * \param[out] wuss     Newly created window manager.
  * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if any of
  *         config's palette entries are out of range for the palette, or another
@@ -288,6 +311,7 @@ result_t wuss_create(screen_t            *scr,
                      const colour_t      *palette,
                      int                  npalette,
                      const wuss_config_t *config,
+                     const wuss_alloc_t  *alloc,
                      wuss_t             **wuss);
 
 /**
