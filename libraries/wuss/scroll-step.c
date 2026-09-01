@@ -32,6 +32,16 @@ void wuss__scroll_step(wuss_window_t *window, point_t delta)
 {
   point_t scroll;
 
+  /* A window that declared an axis non-scrollable (e.g. a pop-up menu) has no
+   * scrollbar to clamp against and its geometry assumes scroll == 0, so a wheel
+   * turn over it must not move the content -- doing so corrupts the display. */
+  if (window->flags & wuss_WINDOW_NO_HSCROLL)
+    delta.x = 0;
+  if (window->flags & wuss_WINDOW_NO_VSCROLL)
+    delta.y = 0;
+  if (delta.x == 0 && delta.y == 0)
+    return;
+
   wuss_window_get_scroll(window, &scroll);
   scroll.x += delta.x;
   scroll.y += delta.y;
