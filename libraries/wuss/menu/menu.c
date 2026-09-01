@@ -303,7 +303,8 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
 
   rc = wuss_window_create(wuss, &content,
                           menu->title ? menu->title : "",
-                          wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK
+                          wuss_WINDOW_NO_OUTLINE
+                          | wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK
                           | wuss_WINDOW_NO_TOGGLE_SIZE
                           | wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL
                           | wuss_WINDOW_NO_RESIZE,
