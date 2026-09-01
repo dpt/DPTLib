@@ -173,6 +173,7 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
 {
   struct wuss__menu *node;
   wuss_icon_spec_t  *specs;
+  wuss_icon_t      **made;
   wuss_task_t        task;
   result_t           rc;
   int                fw, fh;
@@ -182,6 +183,9 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   int                widest;
   int                width, height;
   int                i;
+  int                ndashed;
+  int                nspecs;
+  int                s;
   int                outline_px;
   int                titlebar_height;
   wuss_window_flags_t menu_flags;
@@ -205,6 +209,12 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   pitch = fh + 2 * WUSS_MENU_ROW_PAD;
   sep_h = 2 * WUSS_MENU_ROW_PAD;
 
+  ndashed = 0;
+  for (i = 0; i < menu->nitems; i++)
+    if (menu->items[i].flags & wuss_MENU_ITEM_DASHED)
+      ndashed++;
+  nspecs = menu->nitems + ndashed;
+
   widest = 0;
   for (i = 0; i < menu->nitems; i++)
   {
@@ -224,9 +234,8 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
 
   width  = WUSS_MENU_TICK_W + widest + WUSS_MENU_TEXT_PAD + WUSS_MENU_ARROW_W;
 
-  height = 0;
-  for (i = 0; i < menu->nitems; i++)
-    height += (menu->items[i].flags & wuss_MENU_ITEM_DASHED) ? sep_h : pitch;
+  /* every item is a full row now; a dashed item also gets a sep_h rule above */
+  height = menu->nitems * pitch + ndashed * sep_h;
 
   /* Nudge onto the screen where it can be, but keep the top-left on screen.
    * `at` is the content top-left; the window's visible box also spans the
@@ -250,9 +259,11 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
     return result_OOM;
 
   node->icons = wuss__malloc(wuss, (size_t) menu->nitems * sizeof(*node->icons));
-  specs       = wuss__malloc(wuss, (size_t) menu->nitems * sizeof(*specs));
-  if (node->icons == NULL || specs == NULL)
+  specs       = wuss__malloc(wuss, (size_t) nspecs * sizeof(*specs));
+  made        = wuss__malloc(wuss, (size_t) nspecs * sizeof(*made));
+  if (node->icons == NULL || specs == NULL || made == NULL)
   {
+    wuss__free(wuss, made);
     wuss__free(wuss, specs);
     wuss__free(wuss, node->icons);
     wuss__free(wuss, node);
@@ -269,39 +280,53 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   node->ctx        = ctx;
   node->open_index = -1;
 
+  /* One MENU_ENTRY icon per item, in item order, preceded by an inert
+   * wuss_ICON_TYPE_RULE icon for each dashed item. specs[] therefore holds
+   * nspecs entries; s walks it while i walks the items. */
   y = 0;
+  s = 0;
   for (i = 0; i < menu->nitems; i++)
   {
     const wuss_menu_item_t *item;
     wuss_icon_flags_t       flags;
-    int                     row_h;
 
     item  = &menu->items[i];
     flags = wuss_ICON_FLAGS_NONE;
 
     if (item->flags & wuss_MENU_ITEM_DASHED)
+    {
       flags |= wuss_ICON_FLAGS_SEPARATOR;
+
+      specs[s].type    = wuss_ICON_TYPE_RULE;
+      specs[s].bbox.x0 = 0;
+      specs[s].bbox.y0 = y;
+      specs[s].bbox.x1 = width;
+      specs[s].bbox.y1 = y + sep_h;
+      specs[s].text    = "";
+      specs[s].fg      = 0;
+      specs[s].bg      = wuss_NO_BACKGROUND;
+      specs[s].flags   = wuss_ICON_FLAGS_NONE;
+      s++;
+      y += sep_h;
+    }
+
     if (item->flags & wuss_MENU_ITEM_DISABLED)
       flags |= wuss_ICON_FLAGS_DISABLED;
     if (item->submenu != NULL)
       flags |= wuss_ICON_FLAGS_SUBMENU;
 
-    /* a separator is its own short, inert row: force the text empty so
-     * wuss__icon_hit_test treats it as a bare rule */
-    row_h = (flags & wuss_ICON_FLAGS_SEPARATOR) ? sep_h : pitch;
+    specs[s].type    = wuss_ICON_TYPE_MENU_ENTRY;
+    specs[s].bbox.x0 = 0;
+    specs[s].bbox.y0 = y;
+    specs[s].bbox.x1 = width;
+    specs[s].bbox.y1 = y + pitch;
+    specs[s].text    = item->text ? item->text : "";
+    specs[s].fg      = 0;
+    specs[s].bg      = wuss_NO_BACKGROUND;
+    specs[s].flags   = flags;
+    s++;
 
-    specs[i].type    = wuss_ICON_TYPE_MENU_ENTRY;
-    specs[i].bbox.x0 = 0;
-    specs[i].bbox.y0 = y;
-    specs[i].bbox.x1 = width;
-    specs[i].bbox.y1 = y + row_h;
-    specs[i].text    = (flags & wuss_ICON_FLAGS_SEPARATOR)
-                       ? "" : (item->text ? item->text : "");
-    specs[i].fg      = 0;
-    specs[i].bg      = wuss_NO_BACKGROUND;
-    specs[i].flags   = flags;
-
-    y += row_h;
+    y += pitch;
   }
 
   size = SIZE2D(width, height);
@@ -323,27 +348,39 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
                           &task, size, size, &node->window);
   if (rc != result_OK)
   {
+    wuss__free(wuss, made);
     wuss__free(wuss, specs);
     wuss__free(wuss, node->icons);
     wuss__free(wuss, node);
     return rc;
   }
 
-  rc = wuss_icon_create_array(node->window, specs, menu->nitems, node->icons);
+  rc = wuss_icon_create_array(node->window, specs, nspecs, made);
   wuss__free(wuss, specs);
   if (rc != result_OK)
   {
+    wuss__free(wuss, made);
     wuss_window_close(node->window);
     wuss__free(wuss, node->icons);
     wuss__free(wuss, node);
     return rc;
   }
 
+  /* keep only the entry handles, item-indexed; the rule icons stay owned by
+   * the window and need no further handling. Walk made[] with the same
+   * rule-then-entry interleave as the specs loop. */
+  s = 0;
   for (i = 0; i < menu->nitems; i++)
   {
+    if (menu->items[i].flags & wuss_MENU_ITEM_DASHED)
+      s++;
+    node->icons[i] = made[s];
+    s++;
+
     if (menu->items[i].flags & wuss_MENU_ITEM_TICKED)
       wuss_icon_set_selected(node->icons[i], 1);
   }
+  wuss__free(wuss, made);
 
   *out = node;
   return result_OK;

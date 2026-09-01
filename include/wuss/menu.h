@@ -35,10 +35,12 @@ typedef enum wuss_menu_item_flags
 {
   wuss_MENU_ITEM_NONE      = 0,
   wuss_MENU_ITEM_TICKED    = 1 << 0, /**< draw a tick at the item's left edge */
-  wuss_MENU_ITEM_DASHED    = 1 << 1, /**< this item is a separator: its own
-                                      *   short row holding a centred dashed
-                                      *   rule. The text is ignored and the row
-                                      *   does not respond to the pointer */
+  wuss_MENU_ITEM_DASHED    = 1 << 1, /**< draw a dashed rule above this item,
+                                      *   marking a group boundary. The item is
+                                      *   otherwise an ordinary row: it keeps
+                                      *   its label and responds to the pointer.
+                                      *   The rule is laid out and drawn
+                                      *   separately and is not interactive */
   wuss_MENU_ITEM_DISABLED  = 1 << 2  /**< greyed, never highlights, not
                                       *   selectable */
 }
@@ -119,17 +121,17 @@ int wuss_menu_is_open(wuss_menu_handle_t handle);
  * as the first token inside a '{ }' is that submenu's title -- so the same
  * descriptor strings port across unchanged. Submenus keep the Wimp behaviour of
  * discarding their title token; only the root's is kept. A leading '|' on an
- * item inserts a separator row above it: its own short, inert row holding a
- * centred dashed rule. A '{ ... }' group after an item is that item's submenu.
- * A per-token prefix '!' ticks the item, '~' shades (disables) it, and '>'
- * attaches a submenu pulled as a <tt>const wuss_menu_t *</tt> from the varargs
- * rather than from a following '{ }' block. A "%s" in a token substitutes the
- * next <tt>const char *</tt> vararg. The '>' and "%s" varargs are consumed in
- * the order they are encountered scanning left to right.
+ * item draws a dashed rule above it, marking a group boundary; the item itself
+ * stays an ordinary interactive row. A '{ ... }' group after an item is that
+ * item's submenu. A per-token prefix '!' ticks the item, '~' shades (disables)
+ * it, and '>' attaches a submenu pulled as a <tt>const wuss_menu_t *</tt> from
+ * the varargs rather than from a following '{ }' block. A "%s" in a token
+ * substitutes the next <tt>const char *</tt> vararg. The '>' and "%s" varargs
+ * are consumed in the order they are encountered scanning left to right.
  *
  * Example: <tt>wuss_menu_create_from_desc(&m, "Display, Open, !Grid, ~Export,
- * |Quit")</tt> -- "Display" is the caption; the menu has four items plus a
- * separator row before "Quit".
+ * |Quit")</tt> -- "Display" is the caption; the menu has four items, with a
+ * dashed rule above "Quit".
  *
  * The whole tree, including copied label text, is one heap allocation graph
  * owned by the caller; free it with wuss_menu_destroy. wuss_menu_open treats a

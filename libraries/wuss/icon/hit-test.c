@@ -14,22 +14,17 @@ wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point)
   {
     it = window->icons[i];
 
-    /* a bitmap icon is interactive only when it asks to be; a menu entry that
-     * is a separator (SEPARATOR flag, no text) is inert; the other clickable
-     * types always are */
+    /* a bitmap icon is interactive only when it asks to be; RULE and the
+     * static types are always inert; the other types always click */
     if (it->type == wuss_ICON_TYPE_BITMAP)
     {
       if (!(it->flags & wuss_ICON_FLAGS_INTERACTIVE))
         continue;
     }
-    else if (it->type == wuss_ICON_TYPE_MENU_ENTRY)
-    {
-      if ((it->flags & wuss_ICON_FLAGS_SEPARATOR) && it->text[0] == '\0')
-        continue;
-    }
     else if (it->type != wuss_ICON_TYPE_BUTTON &&
              it->type != wuss_ICON_TYPE_RADIO &&
-             it->type != wuss_ICON_TYPE_OPTION)
+             it->type != wuss_ICON_TYPE_OPTION &&
+             it->type != wuss_ICON_TYPE_MENU_ENTRY)
     {
       continue;
     }

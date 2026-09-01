@@ -351,7 +351,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   const wuss_icon_t *icon = c->icon;
   const box_t       *b    = &c->b;
   colour_t           ink, ground, tmp;
-  int                disabled, highlit, pad, mid_y;
+  int                disabled, highlit, pad;
 
   disabled = (icon->flags & wuss_ICON_FLAGS_DISABLED) != 0;
   highlit  = wuss__icon_hovered(icon) && !disabled;
@@ -372,15 +372,6 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   if (highlit || icon->bg != wuss_NO_BACKGROUND)
     screen_fill_rect(c->scr, b->x0, b->y0,
                      SIZE2D(b->x1 - b->x0, b->y1 - b->y0), ground);
-
-  /* a separator is its own short, textless row: a dashed rule centred in it,
-   * drawn in the row's ink so it stays visible if the row is inverted */
-  if (icon->flags & wuss_ICON_FLAGS_SEPARATOR)
-  {
-    mid_y = b->y0 + (b->y1 - b->y0) / 2;
-    screen_draw_dashed_line(c->scr, b->x0 + pad, mid_y,
-                            b->x1 - 1 - pad, mid_y, 2, 2, ink);
-  }
 
   /* left-edge tick when selected */
   if (wuss__icon_selected(icon))
@@ -416,6 +407,21 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     bmfont_draw(c->wuss->font, c->scr, icon->text, (int) strlen(icon->text),
                 ink, ground, &pos, NULL);
   }
+}
+
+/* ----------------------------------------------------------------------- */
+
+/* wuss_ICON_TYPE_RULE: a dashed rule centred in the box, drawn in the icon's
+ * fg over whatever ground it inherits. Inert -- see wuss__icon_hit_test. */
+static void wuss__icon_draw_rule(const icon_draw_ctx_t *c)
+{
+  const box_t *b = &c->b;
+  int          pad, mid_y;
+
+  pad   = 4;
+  mid_y = b->y0 + (b->y1 - b->y0) / 2;
+  screen_draw_dashed_line(c->scr, b->x0 + pad, mid_y,
+                          b->x1 - 1 - pad, mid_y, 2, 2, c->fg);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -477,6 +483,10 @@ void wuss__icon_draw(wuss_t            *wuss,
 
   case wuss_ICON_TYPE_MENU_ENTRY:
     wuss__icon_draw_menu_entry(&c);
+    break;
+
+  case wuss_ICON_TYPE_RULE:
+    wuss__icon_draw_rule(&c);
     break;
   }
 }
