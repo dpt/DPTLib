@@ -97,29 +97,45 @@ static result_t test_handle(wuss_window_t      *window,
   return result_OK;
 }
 
-/* A redraw handler that floods its dirty box with a fixed colour, so a test
- * can read back the framebuffer and tell whose pixels ended up where. The
- * colour is passed via task_data (a pointer to a colour_t). */
+/* A redraw handler that paints its content as one-pixel horizontal lines
+ * whose colour encodes the document-space Y of each row, so a test can read
+ * the framebuffer back and tell not just whose pixels are where but whether
+ * a blit slid them by the right amount. task_data points to a colour_t used
+ * only as a base hue (its blue channel is replaced per row). NULL task_data
+ * means flood with a single fixed colour instead. */
 static result_t paint_handle(wuss_window_t      *window,
                              const wuss_event_t *event,
                              void               *task_data)
 {
-  const colour_t *col;
+  const box_t *clip;
+  const box_t *bounds;
+  point_t      scroll;
+  int          y, doc_y;
 
   NOT_USED(window);
 
   if (event->kind != wuss_EVENT_REDRAW)
     return result_OK;
 
-  col = task_data;
-  screen_fill_rect(event->data.redraw.scr,
-                   event->data.redraw.content->x0,
-                   event->data.redraw.content->y0,
-                   SIZE2D(event->data.redraw.content->x1
-                            - event->data.redraw.content->x0,
-                          event->data.redraw.content->y1
-                            - event->data.redraw.content->y0),
-                   *col);
+  clip   = event->data.redraw.content;
+  bounds = event->data.redraw.bounds;
+  scroll = event->data.redraw.scroll;
+
+  if (task_data == NULL)
+  {
+    screen_fill_rect(event->data.redraw.scr, clip->x0, clip->y0,
+                     SIZE2D(clip->x1 - clip->x0, clip->y1 - clip->y0),
+                     colour_rgb(0xcc, 0xdd, 0xee));
+    return result_OK;
+  }
+
+  for (y = clip->y0; y < clip->y1; y++)
+  {
+    doc_y = y - bounds->y0 + scroll.y;
+    screen_fill_rect(event->data.redraw.scr, clip->x0, y,
+                     SIZE2D(clip->x1 - clip->x0, 1),
+                     colour_rgb(0x20, 0x40, doc_y & 0xff));
+  }
 
   return result_OK;
 }
@@ -1733,7 +1749,7 @@ result_t wuss_test(const char *resources)
      * With the fix each destination is clipped against the occluders and only
      * the un-occluded sub-pieces are blitted, leaving O's own pixels intact.
      * Read the framebuffer behind O to check. */
-    colour_t       cm, co;
+    colour_t       cm;
     uint32_t       fb_m, fb_o;
     test_task_t    tc_m, tc_o;
     wuss_task_t    delegate_m, delegate_o;
@@ -1742,11 +1758,10 @@ result_t wuss_test(const char *resources)
     int            occ_x, occ_y, mid_x, mid_y, delta;
 
     cm = colour_rgb(0x11, 0x22, 0x33);
-    co = colour_rgb(0xcc, 0xdd, 0xee);
     tc_m.redraw_count = 0; tc_m.mouse_count = 0;
     tc_o.redraw_count = 0; tc_o.mouse_count = 0;
     delegate_m.handle = paint_handle; delegate_m.task_data = &cm;
-    delegate_o.handle = paint_handle; delegate_o.task_data = &co;
+    delegate_o.handle = paint_handle; delegate_o.task_data = NULL;
 
     box_m.x0 = 10; box_m.y0 = 10;
     box_m.x1 = 110; box_m.y1 = 110; /* 100x100 content; doc taller, so scrollable */
@@ -1799,6 +1814,90 @@ result_t wuss_test(const char *resources)
     /* the pixel behind O must still be O's, not M's content blitted over it */
     if (((const uint32_t *) pixels)[occ_y * 200 + occ_x] != fb_o)
       goto Failure;
+
+    wuss_window_close(win_o);
+    wuss_window_close(win_m);
+  }
+
+  printf("test: wuss_window_set_scroll orders its blit sub-pieces so one never clobbers another's source\n");
+
+  {
+    /* Regression: a small window O floats in the middle of a larger
+     * scrollable window M, with a gap all round it. wuss__clip_to_visible
+     * carves M's blittable content into bands around O; a vertical scroll
+     * shifts each band by the same delta, and one band's shifted
+     * destination lands on another band's still-unread source. Blitting the
+     * bands in clip-emit order corrupts M's own content -- pixels near O's
+     * bottom edge end up double-shifted. The blit must be ordered (or fall
+     * back). paint_handle paints M as one-pixel rows whose blue channel
+     * encodes document Y, so a mis-shifted row is detectable exactly. */
+    colour_t       cm;
+    test_task_t    tc_m, tc_o;
+    wuss_task_t    delegate_m, delegate_o;
+    box_t          box_m, box_o, content, ovis;
+    wuss_window_t *win_m, *win_o;
+    int            gx, gy, delta, bad;
+
+    cm = colour_rgb(0x11, 0x22, 0x33);
+    tc_m.redraw_count = 0; tc_m.mouse_count = 0;
+    tc_o.redraw_count = 0; tc_o.mouse_count = 0;
+    delegate_m.handle = paint_handle; delegate_m.task_data = &cm;
+    delegate_o.handle = paint_handle; delegate_o.task_data = NULL;
+
+    box_m.x0 = 10; box_m.y0 = 10;
+    box_m.x1 = 110; box_m.y1 = 110; /* 100x100 content; doc taller, scrollable */
+    rc = wuss_window_create(wuss, &box_m, "M", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            &delegate_m,
+                            SIZE2D(100, 300), SIZE2D(0, 0), &win_m);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_m, &content);
+
+    /* O strictly inside M's content, gap on every side */
+    box_o.x0 = content.x0 + 25; box_o.y0 = content.y0 + 25;
+    box_o.x1 = content.x0 + 75; box_o.y1 = content.y0 + 65;
+    rc = wuss_window_create(wuss, &box_o, "O", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            &delegate_o,
+                            SIZE2D(box_o.x1 - box_o.x0, box_o.y1 - box_o.y0),
+                            SIZE2D(0, 0), &win_o);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creates */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* probe the gap column just right of O: pure M content, must slide up by
+     * exactly the scroll delta with no discontinuity */
+    wuss_window_get_visible_bounds(win_o, &ovis);
+    gx    = (ovis.x1 + content.x1) / 2;
+    delta = 20;
+
+    wuss_window_set_scroll(win_m, POINT(0, delta));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* every row in the gap column, across O's vertical span, must show the
+     * document Y that scrolling put there: doc_y = (screen_y - content.y0) +
+     * delta, low byte carried in blue by paint_handle */
+    bad = 0;
+    for (gy = ovis.y0 + 2; gy < ovis.y1 - 2; gy++)
+    {
+      uint32_t px, blue;
+
+      if (gy < content.y0 || gy >= content.y1)
+        continue;
+      px   = ((const uint32_t *) pixels)[gy * 200 + gx];
+      blue = px & 0xff;
+      if (blue != (uint32_t) ((gy - content.y0 + delta) & 0xff))
+        bad = 1;
+    }
+    if (bad)
+      goto Failure; /* a band blit clobbered another band's source */
 
     wuss_window_close(win_o);
     wuss_window_close(win_m);

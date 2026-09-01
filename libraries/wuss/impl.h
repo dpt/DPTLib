@@ -222,6 +222,16 @@ int             wuss__subtract_boxes(const box_t *whole,
                                      int          ncuts,
                                      box_t       *out);
 
+/* Given "n" single-rect blits, each moving "clean[i]" to "dest[i]", find an
+ * order in which no blit's destination overwrites a still-unread source of a
+ * later blit. Writes the piece indices to "order" (capacity
+ * WUSS_MAX_INVALIDATE_PIECES) and returns non-zero on success; returns zero
+ * when the overlap graph has a cycle and no safe order exists. */
+int             wuss__order_pieces(const box_t *clean,
+                                   const box_t *dest,
+                                   int          n,
+                                   int         *order);
+
 /* Notify a window's task that it has been moved or resized, via
  * wuss_EVENT_OPEN; the return value is discarded, matching how furniture
  * drawing and other in-line notifications are treated. */
