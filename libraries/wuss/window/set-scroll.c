@@ -22,7 +22,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
 #ifdef WUSS_FURNITURE
   /* the scrollbar sausage position depends on scroll, so its well needs
    * redrawing too -- content invalidation alone never touches it */
-  wuss__furniture_invalidate(window);
+  window->wuss->furniture_ops->invalidate(window);
 #endif
 
   /* The valid blit source is the content box minus whatever windows above it

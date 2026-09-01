@@ -22,15 +22,15 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
     switch (wuss->furniture.drag_kind)
     {
     case wuss_FURNITURE_DRAG_RESIZE:
-      wuss__furniture_drag_resize(win, POINT(x, y));
+      wuss->furniture_ops->drag_resize(win, POINT(x, y));
       break;
 
     case wuss_FURNITURE_DRAG_VSCROLL_SAUSAGE:
-      wuss__furniture_drag_sausage(win, y - wuss->furniture.drag.y, wuss->furniture.drag_scroll_start, 0);
+      wuss->furniture_ops->drag_sausage(win, y - wuss->furniture.drag.y, wuss->furniture.drag_scroll_start, 0);
       break;
 
     case wuss_FURNITURE_DRAG_HSCROLL_SAUSAGE:
-      wuss__furniture_drag_sausage(win, x - wuss->furniture.drag.x, wuss->furniture.drag_scroll_start, 1);
+      wuss->furniture_ops->drag_sausage(win, x - wuss->furniture.drag.x, wuss->furniture.drag_scroll_start, 1);
       break;
 
     case wuss_FURNITURE_DRAG_MOVE:
@@ -56,7 +56,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   }
 
 #ifdef WUSS_FURNITURE
-  if (wuss__furniture_hit_test(win, POINT(x, y)) != wuss_FURNITURE_CONTENT)
+  if (wuss->furniture_ops->hit_test(win, POINT(x, y)) != wuss_FURNITURE_CONTENT)
   {
 #ifdef WUSS_ICONS
     wuss__icon_set_hover(wuss, NULL);

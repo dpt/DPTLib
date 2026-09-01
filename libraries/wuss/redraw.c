@@ -17,7 +17,7 @@ static void redraw_window(wuss_t        *wuss,
     return; /* offscreen */
 
 #ifdef WUSS_FURNITURE
-  wuss__furniture_draw(wuss, win, full);
+  wuss->furniture_ops->draw(wuss, win, full);
 #endif
 
   wuss__content_box(win, &content);

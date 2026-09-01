@@ -113,7 +113,7 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
       wuss__invalidate_clipped(window, &content);
     }
 #ifdef WUSS_FURNITURE
-    wuss__furniture_invalidate(window);
+    window->wuss->furniture_ops->invalidate(window);
 #endif
   }
 
@@ -146,8 +146,8 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
 #ifdef WUSS_FURNITURE
     if (window->visible.x1 - window->visible.x0 > before.x1 - before.x0 ||
         window->visible.y1 - window->visible.y0 > before.y1 - before.y0)
-      wuss__furniture_invalidate_for(window, &before);
-    wuss__furniture_invalidate(window);
+      window->wuss->furniture_ops->invalidate_for(window, &before);
+    window->wuss->furniture_ops->invalidate(window);
 #endif
   }
 

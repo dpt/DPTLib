@@ -85,6 +85,31 @@ void wuss__furniture_invalidate(wuss_window_t *window);
 void wuss__furniture_invalidate_for(wuss_window_t *window,
                                     const box_t   *visible);
 
+/* Dispatch table the wuss core reaches window furniture through: everything
+ * the core (z-order, mouse routing, redraw, window lifecycle) calls that
+ * lives in the furniture .c files. A caller could point wuss::furniture_ops at its
+ * own table to replace the furniture wholesale; wuss_create defaults it to
+ * wuss__furniture_default_ops. The geometry helpers in impl.h
+ * (wuss__titlebar_box, wuss__content_box, wuss__furniture_carve_for, the
+ * titlebar-height/button-size inlines) are a compile-time seam between the
+ * furniture and no-furniture builds and stay out of this table. */
+typedef struct wuss__furniture_ops
+{
+  wuss_furniture_region_t (*hit_test)(const wuss_window_t *window, point_t p);
+  void (*draw)(wuss_t *wuss, wuss_window_t *window, const box_t *full);
+  void (*invalidate)(wuss_window_t *window);
+  void (*invalidate_for)(wuss_window_t *window, const box_t *visible);
+  void (*toggle_size)(wuss_window_t *window);
+  void (*drag_resize)(wuss_window_t *window, point_t p);
+  void (*drag_sausage)(wuss_window_t *window,
+                       int            delta_px,
+                       int            scroll_start,
+                       int            horizontal);
+}
+wuss__furniture_ops_t;
+
+extern const wuss__furniture_ops_t wuss__furniture_default_ops;
+
 /* geometry: titlebar icons */
 void wuss__back_box(const wuss_window_t *window, box_t *out);
 void wuss__toggle_box(const wuss_window_t *window, box_t *out);
