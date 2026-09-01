@@ -148,6 +148,60 @@ int wuss__subtract_boxes(const box_t *whole,
   return ncur;
 }
 
+/* Sequential single-rect blits (each a self-consistent memmove) can still
+ * corrupt each other when one piece's destination lands on another piece's
+ * still-unread source -- but that only actually matters if no blit order
+ * avoids it. Build the "must happen before" graph (piece j before piece i
+ * whenever dest[i] would overwrite clean[j]'s still-unread source) and
+ * topologically sort it: any window with more than one occluder-carved
+ * piece near a shared edge -- e.g. two bands split by a corner occluder --
+ * routinely has one such pairwise overlap without there being a genuine
+ * cycle, and rejecting those outright regressed plain corner-occlusion
+ * drags into full fallback redraws. Only an actual cycle (i must precede j
+ * and j must precede i) has no safe order and needs the fallback. */
+int wuss__order_pieces(const box_t *clean,
+                       const box_t *dest,
+                       int          n,
+                       int         *order)
+{
+  int adj[WUSS_MAX_INVALIDATE_PIECES][WUSS_MAX_INVALIDATE_PIECES];
+  int indeg[WUSS_MAX_INVALIDATE_PIECES];
+  int queue[WUSS_MAX_INVALIDATE_PIECES];
+  int i, j, head, tail, nout, u;
+
+  for (i = 0; i < n; i++)
+    indeg[i] = 0;
+  for (j = 0; j < n; j++)
+    for (i = 0; i < n; i++)
+      adj[j][i] = 0;
+
+  for (i = 0; i < n; i++)
+    for (j = 0; j < n; j++)
+      if (i != j && !adj[j][i] && box_intersects(&dest[i], &clean[j]))
+      {
+        adj[j][i] = 1; /* j must be blitted before i */
+        indeg[i]++;
+      }
+
+  tail = 0;
+  for (i = 0; i < n; i++)
+    if (indeg[i] == 0)
+      queue[tail++] = i;
+
+  head = nout = 0;
+  while (head < tail)
+  {
+    u = queue[head++];
+    order[nout++] = u;
+
+    for (i = 0; i < n; i++)
+      if (adj[u][i] && --indeg[i] == 0)
+        queue[tail++] = i;
+  }
+
+  return nout == n;
+}
+
 /* Invalidate the parts of "window"'s footprint that are hidden behind other
  * windows at the current z-order -- the rest of its footprint is already
  * showing its own correct pixels, so redrawing that too would just be

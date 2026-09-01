@@ -6,10 +6,14 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
 {
   box_t content;
   box_t src[WUSS_MAX_INVALIDATE_PIECES];
+  box_t blit_src[WUSS_MAX_INVALIDATE_PIECES];
+  box_t blit_dest[WUSS_MAX_INVALIDATE_PIECES];
   box_t copied[WUSS_MAX_INVALIDATE_PIECES];
   box_t dirty[WUSS_MAX_INVALIDATE_PIECES];
   box_t vis[WUSS_MAX_INVALIDATE_PIECES];
-  int   dx, dy, nsrc, ncopied, ndirty, nvis, i, j;
+  int   order[WUSS_MAX_INVALIDATE_PIECES];
+  int   dx, dy, nsrc, nblit, ncopied, ndirty, nvis, i, j, idx;
+  int   overflow, blit_failed;
 
   dx = p.x - window->scroll.x;
   dy = p.y - window->scroll.y;
@@ -31,14 +35,12 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
    * Sliding a source piece by the scroll delta can still land its
    * destination on screen a higher window owns -- screen_copy_rect only
    * clips to the content box, so it would paint over the occluder there.
-   * Clip each destination against the occluders too and blit only the
-   * surviving sub-pieces, each with its own matching source offset; the
-   * rest falls into the repaint set below. Falls back to a full content
-   * invalidate when the pixel format can't blit. */
-  nsrc              = wuss__clip_to_visible(window, &content, src);
-  ncopied           = 0;
-  window->wuss->scr->clip = content;
-  for (i = 0; i < nsrc; i++)
+   * Clip each destination against the occluders too and keep only the
+   * surviving sub-pieces, each with its own matching source offset. */
+  nsrc     = wuss__clip_to_visible(window, &content, src);
+  nblit    = 0;
+  overflow = 0;
+  for (i = 0; i < nsrc && !overflow; i++)
   {
     box_t want;
 
@@ -46,17 +48,44 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
     nvis = wuss__clip_to_visible(window, &want, vis);
     for (j = 0; j < nvis; j++)
     {
-      box_t ssub, got;
-
-      box_translated(&vis[j], dx, dy, &ssub); /* source for this dest piece */
-      if (screen_copy_rect(window->wuss->scr, &ssub,
-                           POINT(ssub.x0 - dx, ssub.y0 - dy), &got) != 0 &&
-          ncopied < WUSS_MAX_INVALIDATE_PIECES)
-        copied[ncopied++] = got;
+      if (nblit == WUSS_MAX_INVALIDATE_PIECES)
+      {
+        overflow = 1;
+        break;
+      }
+      blit_dest[nblit] = vis[j];
+      box_translated(&vis[j], dx, dy, &blit_src[nblit]);
+      nblit++;
     }
   }
 
-  if (ncopied > 0)
+  /* Each sub-piece blit is a self-consistent memmove, but one piece's
+   * destination can land on another piece's still-unread source (e.g. the
+   * bands carved around a floating occluder overlap once shifted). Order
+   * them so that never happens; fall back to a full content invalidate if
+   * no safe order exists or the piece budget overflowed. */
+  window->wuss->scr->clip = content;
+  ncopied     = 0;
+  blit_failed = nsrc == 0 || overflow ||
+               !wuss__order_pieces(blit_src, blit_dest, nblit, order);
+
+  for (i = 0; i < nblit && !blit_failed; i++)
+  {
+    box_t got;
+
+    idx = order[i];
+    if (screen_copy_rect(window->wuss->scr, &blit_src[idx],
+                         POINT(blit_dest[idx].x0, blit_dest[idx].y0),
+                         &got) == 0)
+    {
+      blit_failed = 1;
+      break;
+    }
+    if (ncopied < WUSS_MAX_INVALIDATE_PIECES)
+      copied[ncopied++] = got;
+  }
+
+  if (!blit_failed && ncopied > 0)
   {
     /* Repaint the content box minus what the blit reused, then clip each
      * survivor to this window's visible area: the parts that were behind an
