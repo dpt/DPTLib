@@ -681,6 +681,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/palette.c
         libraries/wuss/test/tasks/porter-duff.c
         libraries/wuss/test/tasks/sofa.c
+        libraries/wuss/test/tasks/swatches.c
         libraries/wuss/test/tasks/text.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${WUSS_APP_SOURCES})
