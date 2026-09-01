@@ -65,7 +65,7 @@ static result_t lissajous_redraw(const wuss_event_t *event, void *task_data)
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  screen_draw_rect(scr, content->x0, content->y0, box_size(content), lc->bg);
+  screen_fill_rect(scr, content->x0, content->y0, box_size(content), lc->bg);
 
   width  = bounds->x1 - bounds->x0;
   height = bounds->y1 - bounds->y0;
@@ -83,7 +83,7 @@ static result_t lissajous_redraw(const wuss_event_t *event, void *task_data)
     px = cx + (int) (rx * sin(lc->a * t + lc->phase));
     py = cy + (int) (ry * sin(lc->b * t));
 
-    screen_draw_pixel(scr, px, py, lc->fg);
+    screen_set_pixel(scr, px, py, lc->fg);
   }
 
   return result_OK;

@@ -57,7 +57,7 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  screen_draw_rect(scr, content->x0, content->y0, box_size(content),
+  screen_fill_rect(scr, content->x0, content->y0, box_size(content),
                    bc->bg);
 
   for (i = 0; i < bc->nballs; i++)
@@ -66,7 +66,7 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 
     b = &bc->balls[i];
 
-    screen_draw_rect(scr, bounds->x0 - sx + b->x - b->radius, bounds->y0 - sy + b->y - b->radius, SIZE2D(b->radius * 2, b->radius * 2), bc->ball);
+    screen_fill_rect(scr, bounds->x0 - sx + b->x - b->radius, bounds->y0 - sy + b->y - b->radius, SIZE2D(b->radius * 2, b->radius * 2), bc->ball);
   }
 
   return result_OK;

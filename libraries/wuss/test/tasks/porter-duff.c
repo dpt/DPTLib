@@ -275,7 +275,7 @@ static void porter_duff_draw_checkerboard(const porter_duff_task_t *pd,
       ly   = y - bounds->y0;
       band = lx / PD_CHECKER_BAND + ly / PD_CHECKER_BAND;
 
-      screen_draw_pixel(scr, x, y, (band & 1) ? pd->dark : pd->light);
+      screen_set_pixel(scr, x, y, (band & 1) ? pd->dark : pd->light);
     }
 }
 

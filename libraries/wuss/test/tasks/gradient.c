@@ -71,7 +71,7 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
       lx = x - bounds->x0 + sx;
       ly = y - bounds->y0 + sy;
 
-      screen_draw_pixel(scr, x, y,
+      screen_set_pixel(scr, x, y,
                         colour_rgb(dither(lx * 255 / GRADIENT_DOC_WIDTH, lx, ly),
                                    dither(ly * 255 / GRADIENT_DOC_HEIGHT, lx, ly),
                                    dither(255 - (lx + ly) * 255 / (GRADIENT_DOC_WIDTH + GRADIENT_DOC_HEIGHT), lx, ly)));

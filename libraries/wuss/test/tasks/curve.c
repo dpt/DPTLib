@@ -75,7 +75,7 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  screen_draw_rect(scr, content->x0, content->y0, box_size(content),
+  screen_fill_rect(scr, content->x0, content->y0, box_size(content),
                    task->bg);
 
   prev = task->points[0];
@@ -98,7 +98,7 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   {
     cur = task->points[i];
     cur.x += bounds->x0 - sx; cur.y += bounds->y0 - sy;
-    screen_draw_square(scr, cur.x - half, cur.y - half, CURVE_BLOBSZ, task->blob);
+    screen_fill_square(scr, cur.x - half, cur.y - half, CURVE_BLOBSZ, task->blob);
   }
 
   return result_OK;
