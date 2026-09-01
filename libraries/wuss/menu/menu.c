@@ -182,6 +182,9 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   int                widest;
   int                width, height;
   int                i;
+  int                outline_px;
+  int                titlebar_height;
+  wuss_window_flags_t menu_flags;
   size2d_t           size;
   box_t              content;
 
@@ -191,6 +194,11 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
 
   if (menu->nitems <= 0)
     return result_WUSS_BAD_ICON;
+
+  menu_flags = wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK
+             | wuss_WINDOW_NO_TOGGLE_SIZE
+             | wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL
+             | wuss_WINDOW_NO_RESIZE;
 
   bmfont_get_info(wuss->font, &fw, &fh);
   NOT_USED(fw);
@@ -220,15 +228,22 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   for (i = 0; i < menu->nitems; i++)
     height += (menu->items[i].flags & wuss_MENU_ITEM_DASHED) ? sep_h : pitch;
 
-  /* Nudge onto the screen where it can be, but keep the top-left on screen. */
-  if (at.x + width > wuss->scr->size.w)
-    at.x = wuss->scr->size.w - width;
-  if (at.y + height > wuss->scr->size.h)
-    at.y = wuss->scr->size.h - height;
-  if (at.x < 0)
-    at.x = 0;
-  if (at.y < 0)
-    at.y = 0;
+  /* Nudge onto the screen where it can be, but keep the top-left on screen.
+   * `at` is the content top-left; the window's visible box also spans the
+   * outline on all four sides and the titlebar above, so clamp against that
+   * extent -- otherwise wuss_window_create's own on-screen size clamp trims
+   * the content and the last row (e.g. a trailing "Quit") is cropped. */
+  outline_px      = wuss__outline_px_for(menu_flags);
+  titlebar_height = wuss__titlebar_height_for(wuss, menu_flags);
+
+  if (at.x + width + outline_px > wuss->scr->size.w)
+    at.x = wuss->scr->size.w - width - outline_px;
+  if (at.y + height + outline_px > wuss->scr->size.h)
+    at.y = wuss->scr->size.h - height - outline_px;
+  if (at.x - outline_px < 0)
+    at.x = outline_px;
+  if (at.y - outline_px - titlebar_height < 0)
+    at.y = outline_px + titlebar_height;
 
   node = wuss__malloc(wuss, sizeof(*node));
   if (node == NULL)
@@ -303,10 +318,7 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
 
   rc = wuss_window_create(wuss, &content,
                           menu->title ? menu->title : "",
-                          wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK
-                          | wuss_WINDOW_NO_TOGGLE_SIZE
-                          | wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL
-                          | wuss_WINDOW_NO_RESIZE,
+                          menu_flags,
                           wuss_BACKDROP_COLOUR(wuss->white),
                           &task, size, size, &node->window);
   if (rc != result_OK)
