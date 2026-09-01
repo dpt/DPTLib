@@ -677,7 +677,6 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/gradient.c
         libraries/wuss/test/tasks/icons.c
         libraries/wuss/test/tasks/image.c
-        libraries/wuss/test/tasks/launcher.c
         libraries/wuss/test/tasks/lissajous.c
         libraries/wuss/test/tasks/palette.c
         libraries/wuss/test/tasks/porter-duff.c
