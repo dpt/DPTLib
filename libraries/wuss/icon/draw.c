@@ -417,12 +417,12 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
 static void wuss__icon_draw_rule(const icon_draw_ctx_t *c)
 {
   const box_t *b = &c->b;
-  int          pad, mid_y;
+  int          mid_y;
 
-  pad   = 4;
   mid_y = b->y0 + (b->y1 - b->y0) / 2;
-  screen_draw_dashed_line(c->scr, b->x0 + pad, mid_y,
-                          b->x1 - 1 - pad, mid_y, 2, 2, c->fg);
+  screen_draw_dashed_line(c->scr,
+                          b->x0, mid_y, b->x1 - 1, mid_y,
+                          2, 2, c->fg);
 }
 
 /* ----------------------------------------------------------------------- */
