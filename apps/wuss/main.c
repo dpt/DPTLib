@@ -47,13 +47,17 @@
 
 /* the launcher's spawn callbacks take no arguments, so the pieces they need
  * are stashed here instead; run_wuss runs at most once per
- * process, so file-scope statics are as good as a context struct */
-static wuss_t             *g_wuss;
-static const colour_t     *g_palette;
-static int                 g_npalette;
-static const char         *g_resources;
-static bmfont_t           *g_daydream_font;
-static bool                g_quit; /* set by the "Quit Wuss" task-menu entry */
+ * process, so a file-scope struct is as good as a passed-around context */
+static struct
+{
+  wuss_t         *wuss;
+  const colour_t *palette;
+  int             npalette;
+  const char     *resources;
+  bmfont_t       *daydream_font;
+  bool            quit; /* set by the "Quit Wuss" task-menu entry */
+}
+g;
 
 /* Each spawn allocates a fresh per-instance task block so a task may run in
  * several windows at once; the block is owned by its window and freed by the
@@ -66,7 +70,7 @@ static result_t spawn_ball(void)
   ball_task_t *t = calloc(1, sizeof(*t));
   result_t     rc;
   if (t == NULL) return result_OOM;
-  rc = ball_create(g_wuss, g_palette, t);
+  rc = ball_create(g.wuss, g.palette, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -76,7 +80,7 @@ static result_t spawn_text(void)
   text_task_t *t = calloc(1, sizeof(*t));
   result_t     rc;
   if (t == NULL) return result_OOM;
-  rc = text_create(g_wuss, g_palette, g_daydream_font, t);
+  rc = text_create(g.wuss, g.palette, g.daydream_font, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -86,7 +90,7 @@ static result_t spawn_blank(void)
   blank_task_t *t = calloc(1, sizeof(*t));
   result_t      rc;
   if (t == NULL) return result_OOM;
-  rc = blank_create(g_wuss, g_npalette, t);
+  rc = blank_create(g.wuss, g.npalette, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -96,7 +100,7 @@ static result_t spawn_chars(void)
   chars_task_t *t = calloc(1, sizeof(*t));
   result_t      rc;
   if (t == NULL) return result_OOM;
-  rc = chars_create(g_wuss, g_palette, t);
+  rc = chars_create(g.wuss, g.palette, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -106,7 +110,7 @@ static result_t spawn_palette(void)
   palette_task_t *t = calloc(1, sizeof(*t));
   result_t        rc;
   if (t == NULL) return result_OOM;
-  rc = palette_create(g_wuss, g_palette, g_npalette, t);
+  rc = palette_create(g.wuss, g.palette, g.npalette, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -124,12 +128,12 @@ static result_t spawn_image(void)
   if (t == NULL) return result_OOM;
 
   leafname  = path_join_leafname("jessica", "png");
-  filename  = path_join_filename(g_resources, 3, "resources", "images", leafname);
+  filename  = path_join_filename(g.resources, 3, "resources", "images", leafname);
   strcpy(buf, filename);
-  ninepatch = path_join_filename(g_resources, 3, "resources", "wuss",
+  ninepatch = path_join_filename(g.resources, 3, "resources", "wuss",
                                  path_join_leafname("9tile", "png"));
 
-  rc = image_create(g_wuss, g_palette, buf, ninepatch, t);
+  rc = image_create(g.wuss, g.palette, buf, ninepatch, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -139,7 +143,7 @@ static result_t spawn_checker(void)
   checker_task_t *t = calloc(1, sizeof(*t));
   result_t        rc;
   if (t == NULL) return result_OOM;
-  rc = checker_create(g_wuss, g_palette, t);
+  rc = checker_create(g.wuss, g.palette, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -149,7 +153,7 @@ static result_t spawn_curve(void)
   curve_task_t *t = calloc(1, sizeof(*t));
   result_t      rc;
   if (t == NULL) return result_OOM;
-  rc = curve_create(g_wuss, g_palette, t);
+  rc = curve_create(g.wuss, g.palette, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -159,7 +163,7 @@ static result_t spawn_lissajous(void)
   lissajous_task_t *t = calloc(1, sizeof(*t));
   result_t          rc;
   if (t == NULL) return result_OOM;
-  rc = lissajous_create(g_wuss, g_palette, t);
+  rc = lissajous_create(g.wuss, g.palette, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -169,7 +173,7 @@ static result_t spawn_sofa(void)
   sofa_task_t *t = calloc(1, sizeof(*t));
   result_t     rc;
   if (t == NULL) return result_OOM;
-  rc = sofa_create(g_wuss, g_palette, t);
+  rc = sofa_create(g.wuss, g.palette, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -179,7 +183,7 @@ static result_t spawn_gradient(void)
   gradient_task_t *t = calloc(1, sizeof(*t));
   result_t         rc;
   if (t == NULL) return result_OOM;
-  rc = gradient_create(g_wuss, t);
+  rc = gradient_create(g.wuss, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -189,7 +193,7 @@ static result_t spawn_icons(void)
   icons_task_t *t = calloc(1, sizeof(*t));
   result_t      rc;
   if (t == NULL) return result_OOM;
-  rc = icons_create(g_wuss, g_palette, g_daydream_font, g_resources, t);
+  rc = icons_create(g.wuss, g.palette, g.daydream_font, g.resources, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -199,7 +203,7 @@ static result_t spawn_porter_duff(void)
   porter_duff_task_t *t = calloc(1, sizeof(*t));
   result_t            rc;
   if (t == NULL) return result_OOM;
-  rc = porter_duff_create(g_wuss, g_palette, g_daydream_font, g_resources, t);
+  rc = porter_duff_create(g.wuss, g.palette, g.daydream_font, g.resources, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -246,7 +250,7 @@ static void menu_selected(const wuss_menu_t *menu,
 
 static result_t spawn_menu(void)
 {
-  return wuss_menu_open(g_wuss, &g_menu, wuss_get_pointer(g_wuss),
+  return wuss_menu_open(g.wuss, &g_menu, wuss_get_pointer(g.wuss),
                         menu_selected, NULL, NULL);
 }
 
@@ -282,7 +286,7 @@ static result_t spawn_menu_desc(void)
   wuss_menu_destroy(g_menu_desc);
   g_menu_desc = m;
 
-  return wuss_menu_open(g_wuss, g_menu_desc, wuss_get_pointer(g_wuss),
+  return wuss_menu_open(g.wuss, g_menu_desc, wuss_get_pointer(g.wuss),
                         menu_selected, NULL, NULL);
 }
 
@@ -313,7 +317,7 @@ static const wuss_menu_item_t g_task_items[] =
 
 static result_t spawn_quit(void)
 {
-  g_quit = true;
+  g.quit = true;
   return result_OK;
 }
 
@@ -502,20 +506,20 @@ static result_t run_wuss(const char *resources)
       goto Failure;
   }
 
-  g_wuss          = wuss;
-  g_palette       = palette;
-  g_npalette      = NELEMS(palette);
-  g_resources     = resources;
-  g_daydream_font = daydream_font;
+  g.wuss          = wuss;
+  g.palette       = palette;
+  g.npalette      = NELEMS(palette);
+  g.resources     = resources;
+  g.daydream_font = daydream_font;
 
   quit                 = false;
-  g_quit               = false;
+  g.quit               = false;
   garbage_pending      = false;
   pixel_stress_pending = false;
 
   wuss_redraw(wuss);
 
-  while (!quit && !g_quit)
+  while (!quit && !g.quit)
   {
     SDL_Event event;
 
