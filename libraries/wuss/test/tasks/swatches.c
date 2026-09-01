@@ -29,6 +29,9 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
   wuss_colour_t    fg, bg;
   result_t         rc;
 
+  fg = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
+  bg = wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF);
+
   task->window = NULL;
 
   delegate = wuss_task_start(swatches_handle, task);
@@ -44,9 +47,6 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
                                  &task->window);
   if (rc != result_OK)
     return rc;
-  
-  fg = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
-  bg = wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF);
 
   memset(specs, 0, sizeof(specs));
 

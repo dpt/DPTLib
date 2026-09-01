@@ -495,45 +495,43 @@ static result_t run_wuss(const char *resources)
   SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST); /* keep pixels crisp when F2 scales the window up */
 
   {
-    wuss_config_t config;
+    /* Furniture/bevel/accent/backdrop colour indices, one row per palette.
+     * Same field order as the assignments below. */
+    static const wuss_colour_t chrome[2][15] =
+    {
+      /* PICO-8 */
+      { palette_PICO8_DARK_BLUE, palette_PICO8_WHITE, palette_PICO8_GREEN,
+        palette_PICO8_RED, palette_PICO8_ORANGE, palette_PICO8_LAVENDER,
+        palette_PICO8_BLUE, palette_PICO8_DARK_BLUE, palette_PICO8_LIGHT_GREY,
+        palette_PICO8_WHITE, palette_PICO8_DARK_GREY, palette_PICO8_DARK_BLUE,
+        palette_PICO8_WHITE, palette_PICO8_WHITE, palette_PICO8_LIGHT_GREY },
+      /* RISC OS 16-colour Wimp */
+      { palette_WIMP16_GREY_75, palette_WIMP16_BLACK, palette_WIMP16_GREEN,
+        palette_WIMP16_RED, palette_WIMP16_ORANGE, palette_WIMP16_LIGHT_BLUE,
+        palette_WIMP16_GREY_50, palette_WIMP16_GREY_62, palette_WIMP16_GREY_87,
+        palette_WIMP16_WHITE, palette_WIMP16_GREY_50, palette_WIMP16_ORANGE,
+        palette_WIMP16_BLACK, palette_WIMP16_GREY_50, palette_WIMP16_GREY_37 }
+    };
+    const wuss_colour_t *c = chrome[use_wimp16 ? 1 : 0];
+    wuss_config_t        config;
 
-    if (!use_wimp16) {
-      config.titlebar_height           = 0;
-      config.furniture.title.bg        = palette_PICO8_DARK_BLUE;
-      config.furniture.title.fg        = palette_PICO8_WHITE;
-      config.furniture.back            = palette_PICO8_GREEN;
-      config.furniture.close           = palette_PICO8_RED;
-      config.furniture.toggle          = palette_PICO8_ORANGE;
-      config.furniture.resize          = palette_PICO8_LAVENDER;
-      config.furniture.scroll.arrows   = palette_PICO8_BLUE;
-      config.furniture.scroll.wells    = palette_PICO8_DARK_BLUE;
-      config.furniture.scroll.sausages = palette_PICO8_LIGHT_GREY;
-      config.bevel.light               = palette_PICO8_WHITE;
-      config.bevel.dark                = palette_PICO8_DARK_GREY;
-      config.accent.bg                 = palette_PICO8_DARK_BLUE;
-      config.accent.fg                 = palette_PICO8_WHITE;
-      config.backdrop.colour           = palette_PICO8_WHITE;
-      config.backdrop.pattern          = screen_PATTERN_DOTS;
-      config.backdrop.pattern_bg       = palette_PICO8_LIGHT_GREY;
-    } else {
-      config.titlebar_height           = 0;
-      config.furniture.title.bg        = palette_WIMP16_GREY_75;
-      config.furniture.title.fg        = palette_WIMP16_BLACK;
-      config.furniture.back            = palette_WIMP16_GREEN;
-      config.furniture.close           = palette_WIMP16_RED;
-      config.furniture.toggle          = palette_WIMP16_ORANGE;
-      config.furniture.resize          = palette_WIMP16_LIGHT_BLUE;
-      config.furniture.scroll.arrows   = palette_WIMP16_GREY_50;
-      config.furniture.scroll.wells    = palette_WIMP16_GREY_62;
-      config.furniture.scroll.sausages = palette_WIMP16_GREY_87;
-      config.bevel.light               = palette_WIMP16_WHITE;
-      config.bevel.dark                = palette_WIMP16_GREY_50;
-      config.accent.bg                 = palette_WIMP16_ORANGE;
-      config.accent.fg                 = palette_WIMP16_BLACK;
-      config.backdrop.colour           = palette_WIMP16_GREY_50;
-      config.backdrop.pattern          = screen_PATTERN_DOTS;
-      config.backdrop.pattern_bg       = palette_WIMP16_GREY_37;
-    }
+    config.titlebar_height           = 0;
+    config.furniture.title.bg        = c[0];
+    config.furniture.title.fg        = c[1];
+    config.furniture.back            = c[2];
+    config.furniture.close           = c[3];
+    config.furniture.toggle          = c[4];
+    config.furniture.resize          = c[5];
+    config.furniture.scroll.arrows   = c[6];
+    config.furniture.scroll.wells    = c[7];
+    config.furniture.scroll.sausages = c[8];
+    config.bevel.light               = c[9];
+    config.bevel.dark                = c[10];
+    config.accent.bg                 = c[11];
+    config.accent.fg                 = c[12];
+    config.backdrop.colour           = c[13];
+    config.backdrop.pattern          = screen_PATTERN_DOTS;
+    config.backdrop.pattern_bg       = c[14];
 
     rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, NULL,
                      &wuss);
