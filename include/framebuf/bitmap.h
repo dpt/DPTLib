@@ -48,6 +48,19 @@ result_t bitmap_init(bitmap_t       *bm,
                      void           *base);
 
 /**
+ * Replace a bitmap's palette, reusing its existing palette buffer when one
+ * is already allocated and it is large enough. A no-op returning \ref
+ * result_OK for formats with no palette (log2bpp > 3).
+ *
+ * \param[in] bm      Bitmap to repalette.
+ * \param[in] palette New palette, copied in, or NULL to drop the bitmap's
+ *                    palette entirely.
+ * \return \ref result_OK on success, \ref result_OOM if a palette buffer
+ *         could not be allocated (the bitmap keeps its old palette).
+ */
+result_t bitmap_set_palette(bitmap_t *bm, const colour_t *palette);
+
+/**
  * Clear the given bitmap to the specified colour.
  *
  * \param[in] bm       Bitmap to clear.

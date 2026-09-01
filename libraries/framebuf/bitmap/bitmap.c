@@ -15,8 +15,6 @@ result_t bitmap_init(bitmap_t       *bm,
                      const colour_t *palette,
                      void           *base)
 {
-  int log2bpp;
-
   assert(bm);
 
   bm->size     = size;
@@ -26,24 +24,42 @@ result_t bitmap_init(bitmap_t       *bm,
   bm->span     = spanregistry_get(fmt);
   bm->base     = base;
 
-  if (palette)
+  return bitmap_set_palette(bm, palette);
+}
+
+result_t bitmap_set_palette(bitmap_t *bm, const colour_t *palette)
+{
+  int       log2bpp;
+  int       nentries;
+  colour_t *pal;
+
+  assert(bm);
+
+  log2bpp = pixelfmt_log2bpp(bm->format);
+  if (log2bpp > 3)
+    return result_OK; /* no palette for this format */
+
+  if (palette == NULL)
   {
-    log2bpp = pixelfmt_log2bpp(fmt);
-    if (log2bpp <= 3)
-    {
-      int       nentries;
-      colour_t *newpal;
-
-      nentries = 1 << (1 << log2bpp);
-      newpal = malloc(nentries * sizeof(*newpal));
-      if (newpal == NULL)
-        return result_OOM;
-
-      memcpy(newpal, palette, nentries * sizeof(*newpal));
-
-      bm->palette = newpal;
-    }
+    free(bm->palette);
+    bm->palette = NULL;
+    return result_OK;
   }
+
+  nentries = 1 << (1 << log2bpp);
+
+  /* the entry count is fixed by the format, so an existing buffer is always
+   * the right size to reuse */
+  pal = bm->palette;
+  if (pal == NULL)
+  {
+    pal = malloc(nentries * sizeof(*pal));
+    if (pal == NULL)
+      return result_OOM;
+  }
+
+  memcpy(pal, palette, nentries * sizeof(*pal));
+  bm->palette = pal;
 
   return result_OK;
 }

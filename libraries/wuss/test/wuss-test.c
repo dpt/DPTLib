@@ -46,6 +46,7 @@ typedef struct test_task
   int                 close_count;
   int                 stop_count;
   int                 open_count;
+  int                 palette_count;
 }
 test_task_t;
 
@@ -88,6 +89,10 @@ static result_t test_handle(wuss_window_t      *window,
 
   case wuss_EVENT_OPEN:
     tc->open_count++;
+    break;
+
+  case wuss_EVENT_PALETTE:
+    tc->palette_count++;
     break;
 
   default:
@@ -3147,6 +3152,33 @@ result_t wuss_test(const char *resources)
 
     for (k = 0; k < 4; k++)
       wuss_window_close(win_p[k]);
+  }
+
+  printf("test: wuss_set_palette broadcasts wuss_EVENT_PALETTE and rejects a length mismatch\n");
+  {
+    /* the wuss under test was made with a 2-entry palette (see top of this
+     * function); a fresh 2-entry palette must broadcast to every task, a
+     * wrong-length one must be refused without broadcasting */
+    static const colour_t swapped[2] = { { 0xFF202020 }, { 0xFFE0E0E0 } };
+    static const colour_t too_long[3] =
+      { { 0xFF000000 }, { 0xFF808080 }, { 0xFFFFFFFF } };
+
+    tc_a.palette_count = 0;
+    tc_b.palette_count = 0;
+
+    rc = wuss_set_palette(wuss, swapped, NELEMS(swapped));
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_a.palette_count != 1 || tc_b.palette_count != 1)
+      goto Failure;
+
+    rc = wuss_set_palette(wuss, too_long, NELEMS(too_long));
+    if (rc != result_BAD_ARG)
+      goto Failure;
+    if (tc_a.palette_count != 1 || tc_b.palette_count != 1)
+      goto Failure; /* rejected call must not have broadcast */
+
+    rc = result_OK;
   }
 
   printf("test: wuss_task_stop sends wuss_EVENT_QUIT to each window's task\n");

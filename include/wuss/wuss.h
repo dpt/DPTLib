@@ -319,6 +319,31 @@ result_t wuss_create(screen_t            *scr,
                      wuss_t             **wuss);
 
 /**
+ * Replace the system palette partway through a session.
+ *
+ * Copies \p palette in over the existing one (same semantics as
+ * wuss_create's palette argument), refreshes the cached nearest-black /
+ * nearest-white indices, broadcasts a \ref wuss_EVENT_PALETTE event to every
+ * window's task so they can recache any wuss_nearest_colour selections, then
+ * invalidates the whole screen. The caller is still responsible for the next
+ * wuss_redraw / wuss_redraw_dirty, and -- on a paletted screen -- for
+ * updating the screen bitmap's own palette to match.
+ *
+ * \param[in] wuss     Window manager.
+ * \param[in] palette  New system palette, copied in.
+ * \param[in] npalette Number of entries in palette. Must equal the count
+ *                     passed to wuss_create.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if npalette does
+ *         not match the current palette length, \ref result_WUSS_BAD_COLOUR
+ *         if a configured furniture/bevel/backdrop colour index is now out
+ *         of range (in which case the palette is left unchanged), else the
+ *         first non-OK result returned by a task's handle callback.
+ */
+result_t wuss_set_palette(wuss_t         *wuss,
+                          const colour_t *palette,
+                          int             npalette);
+
+/**
  * Destroy a window manager, and any windows still open on it.
  *
  * \param[in] doomed Window manager to destroy.

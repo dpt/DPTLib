@@ -368,6 +368,13 @@ static wuss_button_t sdl_button_to_wuss(Uint8 button)
   }
 }
 
+/* Palettes F4 cycles through, in order. Each fills a colour_t[16]. */
+static void (*const g_palettes[])(colour_t *) =
+{
+  define_pico8_palette,
+  define_wimp16_palette
+};
+
 /* SDL delivers mouse coordinates in window space, which F2 can scale away
  * from the fixed-size Wuss screen; map back down to screen space */
 static void sdl_pos_to_scr(SDL_Window *window,
@@ -389,8 +396,8 @@ static void sdl_pos_to_scr(SDL_Window *window,
 /* click windows to bring to front, drag titlebars to move, resize the
  * SDL window to see the Wuss screen scale; F2 doubles the SDL window size,
  * Shift-F2 halves it; F3 redraws the whole screen one pixel at a time, to
- * catch tasks whose drawing routines misbehave under a 1x1 clip; Q or
- * close to quit */
+ * catch tasks whose drawing routines misbehave under a 1x1 clip; F4 cycles
+ * the system palette live (wuss_set_palette); Q or close to quit */
 static result_t run_wuss(const char *resources)
 {
   const int        scr_width  = 640;
@@ -422,16 +429,15 @@ static result_t run_wuss(const char *resources)
   bool             pixel_stress_pending;
   int              i;
   bool             use_wimp16;
+  int              palette_index;
 
   {
     /* "riscos16" selects the RISC OS 16-colour palette; default is PICO-8 */
     const char *palette_name = getenv("WUSS_PALETTE");
 
     use_wimp16 = (palette_name != NULL && strcmp(palette_name, "wimp16") == 0);
-    if (use_wimp16)
-      define_wimp16_palette(palette);
-    else
-      define_pico8_palette(palette);
+    palette_index = use_wimp16 ? 1 : 0;
+    g_palettes[palette_index](palette);
   }
 
   leafname = path_join_leafname("digits", "png");
@@ -573,6 +579,16 @@ static result_t run_wuss(const char *resources)
           garbage_pending = true;
         else if (event.key.key == SDLK_F3)
           pixel_stress_pending = true;
+        else if (event.key.key == SDLK_F4)
+        {
+          /* cycle the system palette live: rebuild the palette, push it into
+           * the framebuffer bitmap, then tell wuss, which refreshes its own
+           * copy and pokes every task to recache */
+          palette_index = (palette_index + 1) % (int) NELEMS(g_palettes);
+          g_palettes[palette_index](palette);
+          bitmap_set_palette(&bm, palette);
+          wuss_set_palette(wuss, palette, NELEMS(palette));
+        }
         else if (event.key.key == SDLK_F2)
         {
           int w, h;
