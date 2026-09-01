@@ -37,5 +37,5 @@ void wuss_window_close(wuss_window_t *doomed)
   wuss__icons_free(doomed);
 #endif
 
-  free(doomed);
+  wuss__free(wuss, doomed);
 }

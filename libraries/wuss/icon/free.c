@@ -10,15 +10,18 @@
 
 void wuss__icons_free(wuss_window_t *window)
 {
-  int i;
+  wuss_t *w;
+  int     i;
+
+  w = window->wuss;
 
   for (i = 0; i < window->nicons; i++)
   {
-    free(window->icons[i]->text);
-    free(window->icons[i]);
+    wuss__free(w, window->icons[i]->text);
+    wuss__free(w, window->icons[i]);
   }
 
-  free(window->icons);
+  wuss__free(w, window->icons);
   window->icons     = NULL;
   window->nicons    = 0;
   window->cap_icons = 0;

@@ -12,6 +12,10 @@
 
 #include "impl.h"
 
+/* The default allocator: plain stdlib. wuss_create copies this in when its
+ * alloc argument is NULL. */
+const wuss_alloc_t wuss_alloc = { malloc, realloc, free };
+
 /* Built-in fallback palette when the caller passes NULL: black and white.
  * wuss makes no other assumptions about palette contents or length. */
 static const colour_t wuss__default_palette[] =
@@ -46,8 +50,10 @@ result_t wuss_create(screen_t            *scr,
                      const colour_t      *palette,
                      int                  npalette,
                      const wuss_config_t *config,
+                     const wuss_alloc_t  *alloc,
                      wuss_t             **wuss)
 {
+  wuss_alloc_t   al;
   wuss_t        *w;
 #ifdef WUSS_FURNITURE
   wuss_palette_t pal;
@@ -65,9 +71,12 @@ result_t wuss_create(screen_t            *scr,
   assert(scr  != NULL);
   assert(wuss != NULL);
 
-  w = malloc(sizeof(*w));
+  al = (alloc != NULL) ? *alloc : wuss_alloc;
+
+  w = al.malloc(sizeof(*w));
   if (w == NULL)
     return result_OOM;
+  w->alloc = al;
 
   if (palette == NULL)
   {
@@ -76,14 +85,14 @@ result_t wuss_create(screen_t            *scr,
   }
   else if (npalette <= 0)
   {
-    free(w);
+    wuss__free(w, w);
     return result_BAD_ARG;
   }
 
-  w->palette = malloc(npalette * sizeof(*w->palette));
+  w->palette = wuss__malloc(w, npalette * sizeof(*w->palette));
   if (w->palette == NULL)
   {
-    free(w);
+    wuss__free(w, w);
     return result_OOM;
   }
   memcpy(w->palette, palette, npalette * sizeof(*w->palette));
@@ -169,8 +178,8 @@ result_t wuss_create(screen_t            *scr,
       pal.scroll.sausages < 0 || pal.scroll.sausages >= w->npalette ||
       validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
   {
-    free(w->palette);
-    free(w);
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
     return result_WUSS_BAD_COLOUR;
   }
 
@@ -212,8 +221,8 @@ result_t wuss_create(screen_t            *scr,
   }
   if (validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
   {
-    free(w->palette);
-    free(w);
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
     return result_WUSS_BAD_COLOUR;
   }
   w->bevel_light = blight;
@@ -223,8 +232,8 @@ result_t wuss_create(screen_t            *scr,
 #else
   if (wuss__validate_backdrop(w, &w->backdrop) != result_OK)
   {
-    free(w->palette);
-    free(w);
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
     return result_WUSS_BAD_COLOUR;
   }
 #endif

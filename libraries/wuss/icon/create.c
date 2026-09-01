@@ -58,23 +58,23 @@ result_t wuss_icon_create(wuss_window_t          *window,
   if (window->nicons == window->cap_icons)
   {
     newcap = (window->cap_icons == 0) ? 4 : window->cap_icons * 2;
-    grown  = realloc(window->icons, newcap * sizeof(*window->icons));
+    grown  = wuss__realloc(w, window->icons, newcap * sizeof(*window->icons));
     if (grown == NULL)
       return result_OOM;
     window->icons     = grown;
     window->cap_icons = newcap;
   }
 
-  it = malloc(sizeof(*it));
+  it = wuss__malloc(w, sizeof(*it));
   if (it == NULL)
     return result_OOM;
 
   src = (spec->text != NULL) ? spec->text : "";
   len = strlen(src);
-  it->text = malloc(len + 1);
+  it->text = wuss__malloc(w, len + 1);
   if (it->text == NULL)
   {
-    free(it);
+    wuss__free(w, it);
     return result_OOM;
   }
   memcpy(it->text, src, len + 1);

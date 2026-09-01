@@ -61,6 +61,9 @@ struct wuss
 {
   screen_t                   *scr;
   bmfont_t                   *font;      /* nullable, not owned */
+  wuss_alloc_t                alloc;     /* malloc/realloc/free hooks, copied in
+                                          * by wuss_create; used for every heap
+                                          * block this wuss_t owns */
   colour_t                   *palette;   /* owned */
   int                         npalette;
   wuss_colour_t               white;     /* palette index nearest to white */
@@ -141,6 +144,24 @@ struct wuss_window
 };
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
+
+/* Allocation through a wuss_t's configured hooks (see struct wuss::alloc).
+ * Every heap block a wuss_t owns -- windows, icons, icon-pointer arrays, menu
+ * nodes -- goes through these so a caller can supply its own allocator. */
+static inline void *wuss__malloc(const wuss_t *wuss, size_t size)
+{
+  return wuss->alloc.malloc(size);
+}
+
+static inline void *wuss__realloc(const wuss_t *wuss, void *ptr, size_t size)
+{
+  return wuss->alloc.realloc(ptr, size);
+}
+
+static inline void wuss__free(const wuss_t *wuss, void *ptr)
+{
+  wuss->alloc.free(ptr);
+}
 
 /* Range-check a backdrop spec against the palette: its colour, and -- when a
  * non-solid pattern is set -- its pattern index and background colour.
