@@ -31,17 +31,17 @@ void wuss__icon_select(wuss_icon_t *icon, int selected)
         continue;
       if (other->type != wuss_ICON_TYPE_RADIO || other->group != icon->group)
         continue;
-      if (!other->selected)
+      if (!wuss__icon_selected(other))
         continue;
-      other->selected = 0;
+      wuss__icon_set_state(other, wuss_ICON_STATE_SELECTED, 0);
       wuss__icon_invalidate(other);
     }
   }
 
-  if (icon->selected == selected)
+  if (wuss__icon_selected(icon) == selected)
     return;
 
-  icon->selected = selected;
+  wuss__icon_set_state(icon, wuss_ICON_STATE_SELECTED, selected);
   wuss__icon_invalidate(icon);
 }
 

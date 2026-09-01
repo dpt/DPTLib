@@ -89,9 +89,7 @@ result_t wuss_icon_create(wuss_window_t          *window,
   it->bitmap   = (spec->type == wuss_ICON_TYPE_BITMAP) ? spec->bitmap : NULL;
   it->group    = (spec->type == wuss_ICON_TYPE_RADIO) ? spec->group : 0;
   it->flags    = spec->flags;
-  it->pressed  = 0;
-  it->selected = 0;
-  it->hovered  = 0;
+  it->state    = wuss_ICON_STATE_NONE;
 
   window->icons[window->nicons++] = it;
 

@@ -8,5 +8,5 @@ int wuss_icon_get_selected(const wuss_icon_t *icon)
 {
   assert(icon != NULL);
 
-  return icon->selected;
+  return wuss__icon_selected(icon);
 }
