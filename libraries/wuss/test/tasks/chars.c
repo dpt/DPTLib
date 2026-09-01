@@ -21,9 +21,7 @@
 #define CHARS_ROWS 8
 #define CHARS_PAD  2
 
-result_t chars_create(wuss_t         *wuss,
-                      const colour_t *palette,
-                      chars_task_t   *task)
+result_t chars_create(wuss_t *wuss, chars_task_t *task)
 {
   wuss_task_t delegate;
   size2d_t    sz;
@@ -42,8 +40,8 @@ result_t chars_create(wuss_t         *wuss,
   cell_h = font_height + CHARS_PAD * 2;
 
   task->font = font;
-  task->fg   = palette[palette_PICO8_BLACK];
-  task->bg   = palette[palette_PICO8_WHITE];
+  task->fg   = colour_rgb(0x00, 0x00, 0x00);
+  task->bg   = colour_rgb(0xFF, 0xFF, 0xFF);
 
   delegate = wuss_task_start(chars_handle, task); /* chars_redraw paints every cell itself */
   sz       = SIZE2D(cell_w * CHARS_COLS, cell_h * CHARS_ROWS);

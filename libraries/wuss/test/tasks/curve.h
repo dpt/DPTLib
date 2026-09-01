@@ -26,10 +26,7 @@ curve_task_t;
 wuss_event_fn_t curve_handle;
 
 /* create the curve window against the given wuss instance */
-result_t curve_create(wuss_t         *wuss,
-                      const colour_t *palette,
-                      curve_task_t   *task);
-
+result_t curve_create(wuss_t *wuss, curve_task_t *task);
 
 #endif /* USE_SDL */
 

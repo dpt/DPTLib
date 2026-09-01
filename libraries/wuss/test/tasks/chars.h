@@ -13,9 +13,9 @@
  * so the whole font can be eyeballed at a glance */
 typedef struct chars_task
 {
-  wuss_window_t  *window;
-  bmfont_t       *font;
-  colour_t        fg, bg;
+  wuss_window_t *window;
+  bmfont_t      *font;
+  colour_t       fg, bg;
 }
 chars_task_t;
 
@@ -23,10 +23,7 @@ wuss_event_fn_t chars_handle;
 
 /* create the glyph-grid window against the given wuss instance; does
  * nothing and returns result_OK if wuss has no system font */
-result_t chars_create(wuss_t         *wuss,
-                      const colour_t *palette,
-                      chars_task_t   *task);
-
+result_t chars_create(wuss_t *wuss, chars_task_t *task);
 
 #endif /* USE_SDL */
 

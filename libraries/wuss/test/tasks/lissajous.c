@@ -21,14 +21,12 @@ static const int lissajous_freqs[][2] =
   { 3, 2 }, { 5, 4 }, { 3, 4 }, { 5, 6 }, { 1, 2 }, { 7, 4 }
 };
 
-result_t lissajous_create(wuss_t           *wuss,
-                          const colour_t   *palette,
-                          lissajous_task_t *task)
+result_t lissajous_create(wuss_t *wuss, lissajous_task_t *task)
 {
   wuss_task_t delegate;
 
-  task->bg         = palette[palette_PICO8_DARK_BLUE];
-  task->fg         = palette[palette_PICO8_YELLOW];
+  task->bg         = colour_rgb(0x00, 0x00, 0x00);
+  task->fg         = colour_rgb(0x00, 0xFF, 0x00);
   task->freq_index = 0;
   task->a          = lissajous_freqs[0][0];
   task->b          = lissajous_freqs[0][1];

@@ -24,11 +24,10 @@
 #define ICONS_DOC_W 220
 #define ICONS_DOC_H 640 /* taller than the window, so scrolling is exercised */
 
-result_t icons_create(wuss_t         *wuss,
-                      const colour_t *palette,
-                      bmfont_t       *font,
-                      const char     *resources,
-                      icons_task_t   *task)
+result_t icons_create(wuss_t       *wuss,
+                      bmfont_t     *font,
+                      const char   *resources,
+                      icons_task_t *task)
 {
   /* [0..3] heading, counter button, counter label and a scrolled-away button,
    * then [.. +3] a grouping frame with two differently-justified labels inside
@@ -38,6 +37,7 @@ result_t icons_create(wuss_t         *wuss,
    * icons that hover-highlight */
   enum { ICONS_NSPECS = 4 + 3 + 5 + 2 + 5 };
   wuss_task_t      delegate;
+  wuss_colour_t    black, grey5, grey6;
   wuss_icon_spec_t specs[ICONS_NSPECS];
   wuss_icon_t     *made[ICONS_NSPECS];
   const char      *sprite_path;
@@ -48,8 +48,8 @@ result_t icons_create(wuss_t         *wuss,
   result_t         rc;
 
   task->font       = font;
-  task->label      = palette[palette_PICO8_DARK_BLUE];
-  task->paper      = palette[palette_PICO8_LIGHT_GREY]; /* the window bg, below */
+  task->label      = colour_rgb(0x00, 0x00, 0x00);
+  task->paper      = colour_rgb(0xDD, 0xDD, 0xDD); /* the window bg, below */
   task->window     = NULL;
   task->button     = NULL;
   task->counter    = NULL;
@@ -65,14 +65,18 @@ result_t icons_create(wuss_t         *wuss,
     task->has_sprite = 1;
 
   delegate = wuss_task_start(icons_handle, task);
+  
+  black = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
+  grey5 = wuss_nearest_colour(wuss, 0xBB, 0xBB, 0xBB);
+  grey6 = wuss_nearest_colour(wuss, 0xDD, 0xDD, 0xDD);
 
   rc = wuss_window_create_placed(wuss,
                                  SIZE2D(ICONS_DOC_W, 160),
                                  "Icons",
                                  wuss_WINDOW_NONE,
-                                 wuss_BACKDROP_PATTERN(palette_PICO8_LAVENDER,
+                                 wuss_BACKDROP_PATTERN(grey5,
                                                        screen_PATTERN_CROSSHATCH,
-                                                       palette_PICO8_LIGHT_GREY),
+                                                       grey6),
                                  &delegate,
                                  SIZE2D(ICONS_DOC_W, ICONS_DOC_H),
                                  SIZE2D(0, 0),
@@ -93,7 +97,7 @@ result_t icons_create(wuss_t         *wuss,
   specs[0].bbox = (box_t) BOX_POS_SIZE(28, 28, 180, 14);
   specs[0].type = wuss_ICON_TYPE_LABEL;
   specs[0].text = "Work-area icons:";
-  specs[0].fg   = palette_PICO8_DARK_BLUE;
+  specs[0].fg   = black;
   specs[0].bg   = wuss_NO_BACKGROUND;
 
   /* [1] the button that bumps the counter -- a default action button, so it
@@ -101,23 +105,23 @@ result_t icons_create(wuss_t         *wuss,
   specs[1].bbox  = (box_t) BOX_POS_SIZE(28, 50, 80, 22);
   specs[1].type  = wuss_ICON_TYPE_BUTTON;
   specs[1].text  = "Press me";
-  specs[1].fg    = palette_PICO8_BLACK;
-  specs[1].bg    = palette_PICO8_LIGHT_GREY;
+  specs[1].fg    = black;
+  specs[1].bg    = grey6;
   specs[1].flags = wuss_ICON_FLAGS_DEFAULT;
 
   /* [2] the counter label beside it */
   specs[2].bbox = (box_t) BOX_POS_SIZE(120, 50, 120, 22);
   specs[2].type = wuss_ICON_TYPE_LABEL;
   specs[2].text = "0";
-  specs[2].fg   = palette_PICO8_DARK_BLUE;
+  specs[2].fg   = black;
   specs[2].bg   = wuss_NO_BACKGROUND;
 
   /* [3] a button far down the document, to prove icons scroll and stay clickable */
   specs[3].bbox = (box_t) BOX_POS_SIZE(28, 460, 90, 52);
   specs[3].type = wuss_ICON_TYPE_BUTTON;
   specs[3].text = "Scrolled";
-  specs[3].fg   = palette_PICO8_BLACK;
-  specs[3].bg   = palette_PICO8_LIGHT_GREY;
+  specs[3].fg   = black;
+  specs[3].bg   = grey6;
 
   /* [g] a grouping frame down the document, with [g+1] a right-justified and
    * [g+2] a centred label sat inside it */
@@ -126,20 +130,20 @@ result_t icons_create(wuss_t         *wuss,
   specs[g].bbox = (box_t) BOX_POS_SIZE(28, 300, 170, 70);
   specs[g].type = wuss_ICON_TYPE_FRAME;
   specs[g].text = "Grouping frame";
-  specs[g].fg   = palette_PICO8_DARK_BLUE;
+  specs[g].fg   = black;
   specs[g].bg   = wuss_NO_BACKGROUND;
 
   specs[g + 1].bbox  = (box_t) BOX_POS_SIZE(38, 320, 150, 14);
   specs[g + 1].type  = wuss_ICON_TYPE_LABEL;
   specs[g + 1].text  = "right";
-  specs[g + 1].fg    = palette_PICO8_DARK_BLUE;
+  specs[g + 1].fg    = black;
   specs[g + 1].bg    = wuss_NO_BACKGROUND;
   specs[g + 1].flags = wuss_ICON_FLAGS_JUSTIFY_RIGHT;
 
   specs[g + 2].bbox  = (box_t) BOX_POS_SIZE(38, 342, 150, 14);
   specs[g + 2].type  = wuss_ICON_TYPE_LABEL;
   specs[g + 2].text  = "centre";
-  specs[g + 2].fg    = palette_PICO8_DARK_BLUE;
+  specs[g + 2].fg    = black;
   specs[g + 2].bg    = wuss_NO_BACKGROUND;
   specs[g + 2].flags = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
 
@@ -150,7 +154,7 @@ result_t icons_create(wuss_t         *wuss,
     specs[g + 3 + r].bbox  = (box_t) BOX_POS_SIZE(28, 380 + r * 20, 150, 16);
     specs[g + 3 + r].type  = wuss_ICON_TYPE_RADIO;
     specs[g + 3 + r].text  = (r == 0) ? "Red" : (r == 1) ? "Green" : "Blue";
-    specs[g + 3 + r].fg    = palette_PICO8_DARK_BLUE;
+    specs[g + 3 + r].fg    = black;
     specs[g + 3 + r].bg    = wuss_NO_BACKGROUND;
     specs[g + 3 + r].group = 1;
   }
@@ -158,13 +162,13 @@ result_t icons_create(wuss_t         *wuss,
   specs[g + 6].bbox = (box_t) BOX_POS_SIZE(28, 444, 150, 16);
   specs[g + 6].type = wuss_ICON_TYPE_OPTION;
   specs[g + 6].text = "Wireframe";
-  specs[g + 6].fg   = palette_PICO8_DARK_BLUE;
+  specs[g + 6].fg   = black;
   specs[g + 6].bg   = wuss_NO_BACKGROUND;
 
   specs[g + 7].bbox = (box_t) BOX_POS_SIZE(28, 464, 180, 14);
   specs[g + 7].type = wuss_ICON_TYPE_LABEL;
   specs[g + 7].text = "(no selection)";
-  specs[g + 7].fg   = palette_PICO8_DARK_BLUE;
+  specs[g + 7].fg   = black;
   specs[g + 7].bg   = wuss_NO_BACKGROUND;
 
   nspecs = g + 8;
@@ -195,31 +199,31 @@ result_t icons_create(wuss_t         *wuss,
   specs[m].bbox     = (box_t) BOX_POS_SIZE(28, 524, 160, 16);
   specs[m].type     = wuss_ICON_TYPE_MENU_ENTRY;
   specs[m].text     = "Open";
-  specs[m].fg       = palette_PICO8_DARK_BLUE;
+  specs[m].fg       = black;
   specs[m].bg       = wuss_NO_BACKGROUND;
 
   specs[m + 1].bbox = (box_t) BOX_POS_SIZE(28, 542, 160, 16);
   specs[m + 1].type = wuss_ICON_TYPE_MENU_ENTRY;
   specs[m + 1].text = "Show grid";
-  specs[m + 1].fg   = palette_PICO8_DARK_BLUE;
+  specs[m + 1].fg   = black;
   specs[m + 1].bg   = wuss_NO_BACKGROUND;
 
   specs[m + 2].bbox  = (box_t) BOX_POS_SIZE(28, 560, 160, 16);
   specs[m + 2].type  = wuss_ICON_TYPE_MENU_ENTRY;
   specs[m + 2].text  = "Export";
-  specs[m + 2].fg    = palette_PICO8_DARK_BLUE;
+  specs[m + 2].fg    = black;
   specs[m + 2].bg    = wuss_NO_BACKGROUND;
   specs[m + 2].flags = wuss_ICON_FLAGS_SUBMENU;
 
   specs[m + 3].bbox  = (box_t) BOX_POS_SIZE(28, 578, 160, 10);
   specs[m + 3].type  = wuss_ICON_TYPE_RULE;
-  specs[m + 3].fg    = palette_PICO8_DARK_BLUE;
+  specs[m + 3].fg    = black;
   specs[m + 3].bg    = wuss_NO_BACKGROUND;
 
   specs[m + 4].bbox  = (box_t) BOX_POS_SIZE(28, 588, 160, 16);
   specs[m + 4].type  = wuss_ICON_TYPE_MENU_ENTRY;
   specs[m + 4].text  = "Quit";
-  specs[m + 4].fg    = palette_PICO8_DARK_BLUE;
+  specs[m + 4].fg    = black;
   specs[m + 4].bg    = wuss_NO_BACKGROUND;
   specs[m + 4].flags = wuss_ICON_FLAGS_SEPARATOR;
 

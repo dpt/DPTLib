@@ -23,15 +23,13 @@
 #define CURVE_SEGMENTS_MIN     4
 #define CURVE_SEGMENTS_MAX     128
 
-result_t curve_create(wuss_t         *wuss,
-                      const colour_t *palette,
-                      curve_task_t   *task)
+result_t curve_create(wuss_t *wuss, curve_task_t *task)
 {
   wuss_task_t delegate;
 
-  task->bg        = palette[palette_PICO8_WHITE];
-  task->line      = palette[palette_PICO8_BLACK];
-  task->blob      = palette[palette_PICO8_RED];
+  task->bg        = colour_rgb(0xFF, 0xFF, 0xFF);
+  task->line      = colour_rgb(0x00, 0x00, 0x00);
+  task->blob      = colour_rgb(0xFF, 0x00, 0x00);
   task->nsegments = CURVE_SEGMENTS_DEFAULT;
   task->dragging  = -1;
 

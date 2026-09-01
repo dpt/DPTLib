@@ -71,7 +71,7 @@ static result_t spawn_ball(void)
   ball_task_t *t = calloc(1, sizeof(*t));
   result_t     rc;
   if (t == NULL) return result_OOM;
-  rc = ball_create(g.wuss, g.palette, t);
+  rc = ball_create(g.wuss, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -81,7 +81,7 @@ static result_t spawn_text(void)
   text_task_t *t = calloc(1, sizeof(*t));
   result_t     rc;
   if (t == NULL) return result_OOM;
-  rc = text_create(g.wuss, g.palette, g.daydream_font, t);
+  rc = text_create(g.wuss, g.daydream_font, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -91,7 +91,7 @@ static result_t spawn_blank(void)
   blank_task_t *t = calloc(1, sizeof(*t));
   result_t      rc;
   if (t == NULL) return result_OOM;
-  rc = blank_create(g.wuss, g.npalette, t);
+  rc = blank_create(g.wuss, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -101,7 +101,7 @@ static result_t spawn_chars(void)
   chars_task_t *t = calloc(1, sizeof(*t));
   result_t      rc;
   if (t == NULL) return result_OOM;
-  rc = chars_create(g.wuss, g.palette, t);
+  rc = chars_create(g.wuss, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -134,7 +134,7 @@ static result_t spawn_image(void)
   ninepatch = path_join_filename(g.resources, 3, "resources", "wuss",
                                  path_join_leafname("9tile", "png"));
 
-  rc = image_create(g.wuss, g.palette, buf, ninepatch, t);
+  rc = image_create(g.wuss, buf, ninepatch, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -144,7 +144,7 @@ static result_t spawn_checker(void)
   checker_task_t *t = calloc(1, sizeof(*t));
   result_t        rc;
   if (t == NULL) return result_OOM;
-  rc = checker_create(g.wuss, g.palette, t);
+  rc = checker_create(g.wuss, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -154,7 +154,7 @@ static result_t spawn_curve(void)
   curve_task_t *t = calloc(1, sizeof(*t));
   result_t      rc;
   if (t == NULL) return result_OOM;
-  rc = curve_create(g.wuss, g.palette, t);
+  rc = curve_create(g.wuss, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -164,7 +164,7 @@ static result_t spawn_lissajous(void)
   lissajous_task_t *t = calloc(1, sizeof(*t));
   result_t          rc;
   if (t == NULL) return result_OOM;
-  rc = lissajous_create(g.wuss, g.palette, t);
+  rc = lissajous_create(g.wuss, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -174,7 +174,7 @@ static result_t spawn_sofa(void)
   sofa_task_t *t = calloc(1, sizeof(*t));
   result_t     rc;
   if (t == NULL) return result_OOM;
-  rc = sofa_create(g.wuss, g.palette, t);
+  rc = sofa_create(g.wuss, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -194,7 +194,7 @@ static result_t spawn_icons(void)
   icons_task_t *t = calloc(1, sizeof(*t));
   result_t      rc;
   if (t == NULL) return result_OOM;
-  rc = icons_create(g.wuss, g.palette, g.daydream_font, g.resources, t);
+  rc = icons_create(g.wuss, g.daydream_font, g.resources, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -421,11 +421,14 @@ static result_t run_wuss(const char *resources)
   bool             garbage_pending;
   bool             pixel_stress_pending;
   int              i;
+  bool             use_wimp16;
 
   {
-    const char *palette_name = getenv("WUSS_PALETTE"); /* "riscos16" selects the RISC OS 16-colour palette; default is PICO-8 */
+    /* "riscos16" selects the RISC OS 16-colour palette; default is PICO-8 */
+    const char *palette_name = getenv("WUSS_PALETTE");
 
-    if (palette_name != NULL && strcmp(palette_name, "wimp16") == 0)
+    use_wimp16 = (palette_name != NULL && strcmp(palette_name, "wimp16") == 0);
+    if (use_wimp16)
       define_wimp16_palette(palette);
     else
       define_pico8_palette(palette);
@@ -494,23 +497,43 @@ static result_t run_wuss(const char *resources)
   {
     wuss_config_t config;
 
-    config.titlebar_height          = 0;
-    config.palette.title.bg         = palette_PICO8_DARK_BLUE;
-    config.palette.title.fg         = palette_PICO8_WHITE;
-    config.palette.back             = palette_PICO8_GREEN;
-    config.palette.close            = palette_PICO8_RED;
-    config.palette.toggle           = palette_PICO8_ORANGE;
-    config.palette.resize           = palette_PICO8_LAVENDER;
-    config.palette.scroll.arrows    = palette_PICO8_BLUE;
-    config.palette.scroll.wells     = palette_PICO8_DARK_BLUE;
-    config.palette.scroll.sausages  = palette_PICO8_LIGHT_GREY;
-    config.bevel.light              = palette_PICO8_WHITE;
-    config.bevel.dark               = palette_PICO8_DARK_GREY;
-    config.accent.bg                = palette_PICO8_DARK_BLUE;
-    config.accent.fg                = palette_PICO8_WHITE;
-    config.backdrop.colour          = palette_PICO8_WHITE;
-    config.backdrop.pattern         = screen_PATTERN_DOTS;
-    config.backdrop.pattern_bg      = palette_PICO8_LIGHT_GREY;
+    if (!use_wimp16) {
+      config.titlebar_height           = 0;
+      config.furniture.title.bg        = palette_PICO8_DARK_BLUE;
+      config.furniture.title.fg        = palette_PICO8_WHITE;
+      config.furniture.back            = palette_PICO8_GREEN;
+      config.furniture.close           = palette_PICO8_RED;
+      config.furniture.toggle          = palette_PICO8_ORANGE;
+      config.furniture.resize          = palette_PICO8_LAVENDER;
+      config.furniture.scroll.arrows   = palette_PICO8_BLUE;
+      config.furniture.scroll.wells    = palette_PICO8_DARK_BLUE;
+      config.furniture.scroll.sausages = palette_PICO8_LIGHT_GREY;
+      config.bevel.light               = palette_PICO8_WHITE;
+      config.bevel.dark                = palette_PICO8_DARK_GREY;
+      config.accent.bg                 = palette_PICO8_DARK_BLUE;
+      config.accent.fg                 = palette_PICO8_WHITE;
+      config.backdrop.colour           = palette_PICO8_WHITE;
+      config.backdrop.pattern          = screen_PATTERN_DOTS;
+      config.backdrop.pattern_bg       = palette_PICO8_LIGHT_GREY;
+    } else {
+      config.titlebar_height           = 0;
+      config.furniture.title.bg        = palette_WIMP16_GREY_75;
+      config.furniture.title.fg        = palette_WIMP16_BLACK;
+      config.furniture.back            = palette_WIMP16_GREEN;
+      config.furniture.close           = palette_WIMP16_RED;
+      config.furniture.toggle          = palette_WIMP16_ORANGE;
+      config.furniture.resize          = palette_WIMP16_LIGHT_BLUE;
+      config.furniture.scroll.arrows   = palette_WIMP16_GREY_50;
+      config.furniture.scroll.wells    = palette_WIMP16_GREY_62;
+      config.furniture.scroll.sausages = palette_WIMP16_GREY_87;
+      config.bevel.light               = palette_WIMP16_WHITE;
+      config.bevel.dark                = palette_WIMP16_GREY_50;
+      config.accent.bg                 = palette_WIMP16_ORANGE;
+      config.accent.fg                 = palette_WIMP16_BLACK;
+      config.backdrop.colour           = palette_WIMP16_GREY_50;
+      config.backdrop.pattern          = screen_PATTERN_DOTS;
+      config.backdrop.pattern_bg       = palette_WIMP16_GREY_37;
+    }
 
     rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, NULL,
                      &wuss);

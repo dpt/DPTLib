@@ -28,18 +28,17 @@ static const char paragraph[] =
   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
   "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
 
-result_t text_create(wuss_t         *wuss,
-                     const colour_t *palette,
-                     bmfont_t       *font,
-                     text_task_t    *task)
+result_t text_create(wuss_t      *wuss,
+                     bmfont_t    *font,
+                     text_task_t *task)
 {
   wuss_task_t delegate;
   size2d_t    sz;
   result_t    rc;
 
   task->font        = font;
-  task->bg          = palette[palette_PICO8_BLUE]; /* matches the "Lorem Ipsum" window's bg, for bmfont_draw's glyph blending */
-  task->fg          = palette[palette_PICO8_WHITE];
+  task->bg          = colour_rgb(0xFF, 0xFF, 0xFF);
+  task->fg          = colour_rgb(0x00, 0x00, 0x00);
   task->frame_count = 0;
   task->resizing    = true;
 
@@ -53,7 +52,7 @@ result_t text_create(wuss_t         *wuss,
                                  sz,
                                  "Lorem Ipsum",
                                  wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                                 wuss_BACKDROP_COLOUR(palette_PICO8_BLUE),
+                                 wuss_BACKDROP_COLOUR(wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF)),
                                  &delegate,
                                  sz,
                                  SIZE2D(0, 0),
