@@ -144,13 +144,11 @@ typedef enum wuss_icon_flags
                                           *   edge, marking an entry that opens
                                           *   a submenu. Ignored by other
                                           *   types. */
-  wuss_ICON_FLAGS_SEPARATOR    = 1 << 7  /**< wuss_ICON_TYPE_MENU_ENTRY: draw a
-                                          *   dashed rule along the entry's top
-                                          *   edge, then the text as normal; the
-                                          *   entry stays interactive. An entry
-                                          *   carrying the flag with no text is
-                                          *   a bare rule and is not hit-tested.
-                                          *   Ignored by other types. */
+  wuss_ICON_FLAGS_SEPARATOR    = 1 << 7  /**< wuss_ICON_TYPE_MENU_ENTRY: the
+                                          *   entry is a separator -- a centred
+                                          *   dashed rule, no text, and not
+                                          *   hit-tested. Ignored by other
+                                          *   types. */
 }
 wuss_icon_flags_t;
 

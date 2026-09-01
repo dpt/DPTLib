@@ -20,6 +20,7 @@
 #endif
 
 #include "base/result.h"
+#include "utils/array.h"
 
 #include "wuss/menu.h"
 
@@ -208,28 +209,17 @@ typedef struct
 }
 Building;
 
-static result_t build_add(Building    *b,
-                          const char  *text,
-                          unsigned int opt,
-                          wuss_menu_t *submenu)
+static result_t build_emit(Building    *b,
+                           const char  *text,
+                           unsigned int flags,
+                           wuss_menu_t *submenu)
 {
   wuss_menu_item_t *it;
   char             *copy;
 
-  if (b->n == b->cap)
-  {
-    int               cap;
-    wuss_menu_item_t *grown;
-
-    /* ponytail: double on demand, no shrink-to-fit -- the array is small and
-     * freed as one block, trailing slack costs nothing */
-    cap   = b->cap ? b->cap * 2 : 4;
-    grown = realloc(b->items, (size_t) cap * sizeof(*grown));
-    if (grown == NULL)
-      return result_OOM;
-    b->items = grown;
-    b->cap   = cap;
-  }
+  if (array_grow((void **) &b->items, sizeof(*b->items),
+                 b->n, &b->cap, 1, 4))
+    return result_OOM;
 
   copy = strdup(text ? text : "");
   if (copy == NULL)
@@ -237,23 +227,36 @@ static result_t build_add(Building    *b,
 
   it = &b->items[b->n++];
   it->text    = copy;
-  it->flags   = wuss_MENU_ITEM_NONE;
+  it->flags   = flags;
   it->submenu = submenu;
+  return result_OK;
+}
 
-  /* '|' before this item means "draw a dashed rule above it"; the item keeps
-   * its own text and stays pickable. */
+static result_t build_add(Building    *b,
+                          const char  *text,
+                          unsigned int opt,
+                          wuss_menu_t *submenu)
+{
+  unsigned int flags;
+  result_t     rc;
+
+  /* '|' before this item means "insert a separator row above it": a distinct
+   * DASHED item with no text of its own, emitted before the real one. */
   if (b->pending_dash)
   {
-    it->flags |= wuss_MENU_ITEM_DASHED;
     b->pending_dash = 0;
+    rc = build_emit(b, "", wuss_MENU_ITEM_DASHED, NULL);
+    if (rc != result_OK)
+      return rc;
   }
 
+  flags = wuss_MENU_ITEM_NONE;
   if (opt & Tick)
-    it->flags |= wuss_MENU_ITEM_TICKED;
+    flags |= wuss_MENU_ITEM_TICKED;
   if (opt & Shade)
-    it->flags |= wuss_MENU_ITEM_DISABLED;
+    flags |= wuss_MENU_ITEM_DISABLED;
 
-  return result_OK;
+  return build_emit(b, text, flags, submenu);
 }
 
 /* Seal a Building into a heap wuss_menu_t, transferring its item array. */
