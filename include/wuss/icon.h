@@ -90,7 +90,7 @@ typedef enum wuss_icon_type
                              *   wuss_ICON_FLAGS_INTERACTIVE is set, in which
                              *   case clicks raise wuss_EVENT_ICON like a
                              *   button. */
-  wuss_ICON_TYPE_MENU_ENTRY /**< A menu row: text left-justified across the
+  wuss_ICON_TYPE_MENU_ENTRY, /**< A menu row: text left-justified across the
                              *   bounding box, drawn in fg over the window
                              *   background, or inverted (window manager's title
                              *   colours) while the pointer is over it. An
@@ -98,14 +98,22 @@ typedef enum wuss_icon_type
                              *   selected (see wuss_icon_set_selected), and an
                              *   optional submenu arrow at the right edge with
                              *   wuss_ICON_FLAGS_SUBMENU.
-                             *   wuss_ICON_FLAGS_SEPARATOR draws a dashed rule
-                             *   along the top edge before the text, marking a
-                             *   group boundary; the entry keeps its label and
-                             *   stays interactive (an entry with the flag and
-                             *   no text is just a bare rule). Interactive: a
-                             *   click raises wuss_EVENT_ICON like a button; a
-                             *   disabled entry never highlights and its clicks
-                             *   fall through. */
+                             *   wuss_ICON_FLAGS_SEPARATOR marks the entry as
+                             *   following a group boundary: the dashed rule
+                             *   itself is a separate wuss_ICON_TYPE_RULE icon
+                             *   laid out above the entry, not drawn by the
+                             *   entry. The entry keeps its label and stays
+                             *   fully interactive. Interactive: a click raises
+                             *   wuss_EVENT_ICON like a button; a disabled
+                             *   entry never highlights and its clicks fall
+                             *   through. */
+  wuss_ICON_TYPE_RULE       /**< A horizontal dashed rule centred in the
+                             *   bounding box, drawn in fg over the window
+                             *   background. Purely decorative: never
+                             *   hit-tested, never highlights. text, bg and
+                             *   pattern are ignored. Used between menu rows to
+                             *   render the line a wuss_ICON_FLAGS_SEPARATOR
+                             *   entry sits below. */
 }
 wuss_icon_type_t;
 
@@ -145,10 +153,13 @@ typedef enum wuss_icon_flags
                                           *   a submenu. Ignored by other
                                           *   types. */
   wuss_ICON_FLAGS_SEPARATOR    = 1 << 7  /**< wuss_ICON_TYPE_MENU_ENTRY: the
-                                          *   entry is a separator -- a centred
-                                          *   dashed rule, no text, and not
-                                          *   hit-tested. Ignored by other
-                                          *   types. */
+                                          *   entry follows a group boundary. It
+                                          *   stays a normal interactive row
+                                          *   with its own label; the dashed
+                                          *   rule above it is laid out and
+                                          *   drawn as a separate
+                                          *   wuss_ICON_TYPE_RULE icon. Ignored
+                                          *   by other types. */
 }
 wuss_icon_flags_t;
 

@@ -2966,8 +2966,8 @@ result_t wuss_test(const char *resources)
 
     /* "Root" is the root caption (first token), then items App,
      * File{ %s title discarded, Grid(!), Export(~), |Quit }, Help(> borrowed),
-     * with "File" substituted for both %s. '|Quit' inserts a standalone DASHED
-     * separator item before Quit, so the submenu holds 4 rows. */
+     * with "File" substituted for both %s. '|Quit' sets DASHED on Quit itself,
+     * so the submenu holds 3 rows. */
     rc = wuss_menu_create_from_desc(&m,
            "Root, App, %s { %s, !Grid, ~Export, |Quit }, >Help",
            "File", "File", &borrowed);
@@ -2980,18 +2980,16 @@ result_t wuss_test(const char *resources)
     if (m->items[0].submenu != NULL)                      goto MenuFail;
 
     /* items[1] "File" carries the { } submenu; its first token was the title
-     * and is not emitted; '|Quit' inserts a separate DASHED separator row
-     * before Quit, which keeps its own text and no DASHED flag */
+     * and is not emitted; '|Quit' sets DASHED on the Quit row itself, which
+     * keeps its label */
     if (strcmp(m->items[1].text, "File") != 0)            goto MenuFail;
     sub = m->items[1].submenu;
-    if (sub == NULL || sub->nitems != 4)                  goto MenuFail;
+    if (sub == NULL || sub->nitems != 3)                  goto MenuFail;
     if (strcmp(sub->items[0].text, "Grid") != 0)          goto MenuFail;
     if (!(sub->items[0].flags & wuss_MENU_ITEM_TICKED))   goto MenuFail;
     if (!(sub->items[1].flags & wuss_MENU_ITEM_DISABLED)) goto MenuFail;
-    if (sub->items[2].text[0] != '\0')                    goto MenuFail;
+    if (strcmp(sub->items[2].text, "Quit") != 0)          goto MenuFail;
     if (!(sub->items[2].flags & wuss_MENU_ITEM_DASHED))   goto MenuFail;
-    if (strcmp(sub->items[3].text, "Quit") != 0)          goto MenuFail;
-    if (sub->items[3].flags & wuss_MENU_ITEM_DASHED)      goto MenuFail;
 
     /* items[2] "Help" got a deep copy of the borrowed menu */
     if (strcmp(m->items[2].text, "Help") != 0)            goto MenuFail;

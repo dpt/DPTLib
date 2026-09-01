@@ -36,7 +36,7 @@ result_t icons_create(wuss_t         *wuss,
    * grouped radios, a standalone option and a label echoing the selection,
    * then [.. +2] a decorative bitmap icon and an interactive one that bumps
    * the counter, then [.. +4] a strip of menu-entry icons that hover-highlight */
-  enum { ICONS_NSPECS = 4 + screen_PATTERN__LIMIT + 3 + 5 + 2 + 4 };
+  enum { ICONS_NSPECS = 4 + screen_PATTERN__LIMIT + 3 + 5 + 2 + 5 };
   wuss_task_t      delegate;
   wuss_icon_spec_t specs[ICONS_NSPECS];
   wuss_icon_t     *made[ICONS_NSPECS];
@@ -208,8 +208,9 @@ result_t icons_create(wuss_t         *wuss,
     nspecs = g + 10;
   }
 
-  /* [nspecs..nspecs+3] a menu-entry strip: plain, ticked, submenu, separator.
-   * Hover the pointer over them to see the highlight track. */
+  /* [nspecs..nspecs+4] a menu-entry strip: plain, ticked, submenu, then a
+   * standalone dashed rule and a SEPARATOR-flagged entry below it. Hover the
+   * pointer over them to see the highlight track; the rule stays inert. */
   m = nspecs;
 
   specs[m].bbox     = (box_t) BOX_POS_SIZE(28, 524, 160, 16);
@@ -232,12 +233,18 @@ result_t icons_create(wuss_t         *wuss,
   specs[m + 2].flags = wuss_ICON_FLAGS_SUBMENU;
 
   specs[m + 3].bbox  = (box_t) BOX_POS_SIZE(28, 578, 160, 10);
-  specs[m + 3].type  = wuss_ICON_TYPE_MENU_ENTRY;
+  specs[m + 3].type  = wuss_ICON_TYPE_RULE;
   specs[m + 3].fg    = palette_PICO8_DARK_BLUE;
   specs[m + 3].bg    = wuss_NO_BACKGROUND;
-  specs[m + 3].flags = wuss_ICON_FLAGS_SEPARATOR;
 
-  nspecs = m + 4;
+  specs[m + 4].bbox  = (box_t) BOX_POS_SIZE(28, 588, 160, 16);
+  specs[m + 4].type  = wuss_ICON_TYPE_MENU_ENTRY;
+  specs[m + 4].text  = "Quit";
+  specs[m + 4].fg    = palette_PICO8_DARK_BLUE;
+  specs[m + 4].bg    = wuss_NO_BACKGROUND;
+  specs[m + 4].flags = wuss_ICON_FLAGS_SEPARATOR;
+
+  nspecs = m + 5;
 
   rc = wuss_icon_create_array(task->window, specs, nspecs, made);
   if (rc != result_OK)

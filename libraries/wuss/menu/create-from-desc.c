@@ -199,7 +199,7 @@ static result_t menu_deep_copy(const wuss_menu_t *src, wuss_menu_t **out)
 /* ----------------------------------------------------------------------- */
 
 /* A menu under construction: a growable wuss_menu_item_t array plus the
- * separator flag owed to the next-emitted item. */
+ * pending '|' dash flag owed to the next-added item. */
 typedef struct
 {
   wuss_menu_item_t *items;
@@ -238,19 +238,17 @@ static result_t build_add(Building    *b,
                           wuss_menu_t *submenu)
 {
   unsigned int flags;
-  result_t     rc;
 
-  /* '|' before this item means "insert a separator row above it": a distinct
-   * DASHED item with no text of its own, emitted before the real one. */
+  flags = wuss_MENU_ITEM_NONE;
+
+  /* '|' before this item draws a dashed rule above it: set DASHED on the item
+   * itself, which stays an ordinary interactive row. */
   if (b->pending_dash)
   {
     b->pending_dash = 0;
-    rc = build_emit(b, "", wuss_MENU_ITEM_DASHED, NULL);
-    if (rc != result_OK)
-      return rc;
+    flags |= wuss_MENU_ITEM_DASHED;
   }
 
-  flags = wuss_MENU_ITEM_NONE;
   if (opt & Tick)
     flags |= wuss_MENU_ITEM_TICKED;
   if (opt & Shade)

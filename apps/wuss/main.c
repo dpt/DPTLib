@@ -224,8 +224,7 @@ static const wuss_menu_item_t g_menu_items[] =
   { "Show grid", wuss_MENU_ITEM_TICKED, NULL },
   { "Wireframe", wuss_MENU_ITEM_TICKED, NULL },
   { "Export",    wuss_MENU_ITEM_NONE,   &g_menu_export },
-  { "",          wuss_MENU_ITEM_DASHED, NULL },
-  { "Quit",      wuss_MENU_ITEM_NONE,   NULL }
+  { "Quit",      wuss_MENU_ITEM_DASHED, NULL }
 };
 static const wuss_menu_t g_menu =
 {

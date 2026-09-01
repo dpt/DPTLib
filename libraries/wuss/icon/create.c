@@ -33,7 +33,8 @@ result_t wuss_icon_create(wuss_window_t          *window,
       spec->type != wuss_ICON_TYPE_RADIO &&
       spec->type != wuss_ICON_TYPE_OPTION &&
       spec->type != wuss_ICON_TYPE_BITMAP &&
-      spec->type != wuss_ICON_TYPE_MENU_ENTRY)
+      spec->type != wuss_ICON_TYPE_MENU_ENTRY &&
+      spec->type != wuss_ICON_TYPE_RULE)
     return result_WUSS_BAD_ICON;
 
   if ((spec->type == wuss_ICON_TYPE_BUTTON ||
