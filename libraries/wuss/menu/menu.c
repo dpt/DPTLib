@@ -25,10 +25,10 @@
 
 /* Row padding above/below the glyph, and the gutters left for the tick (left)
  * and the submenu arrow (right). All in pixels. */
-#define WUSS_MENU_ROW_PAD  3
-#define WUSS_MENU_TICK_W   14
-#define WUSS_MENU_ARROW_W  14
-#define WUSS_MENU_TEXT_PAD 6
+#define WUSS_MENU_ROW_PAD         4
+#define WUSS_MENU_TICK_W         14
+#define WUSS_MENU_ARROW_W        14
+#define WUSS_MENU_TEXT_PAD        6
 #define WUSS_MENU_SUBMENU_OVERLAP 2 /* px a submenu overlaps its parent's right edge */
 
 /* ----------------------------------------------------------------------- */
@@ -176,7 +176,7 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   wuss_icon_t      **made;
   wuss_task_t        task;
   result_t           rc;
-  int                fw, fh;
+  int                fh;
   int                pitch;
   int                sep_h;
   int                y;
@@ -204,8 +204,7 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
              | wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL
              | wuss_WINDOW_NO_RESIZE;
 
-  bmfont_get_info(wuss->font, &fw, &fh);
-  NOT_USED(fw);
+  bmfont_get_info(wuss->font, NULL, &fh);
   pitch = fh + 2 * WUSS_MENU_ROW_PAD;
   sep_h = 2 * WUSS_MENU_ROW_PAD;
 
