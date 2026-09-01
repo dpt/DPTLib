@@ -26,16 +26,22 @@ result_t wuss_icon_create(wuss_window_t          *window,
 
   w = window->wuss;
 
-  if (spec->type != wuss_ICON_TYPE_LABEL &&
-      spec->type != wuss_ICON_TYPE_BUTTON &&
-      spec->type != wuss_ICON_TYPE_PATTERN &&
-      spec->type != wuss_ICON_TYPE_FRAME &&
-      spec->type != wuss_ICON_TYPE_RADIO &&
-      spec->type != wuss_ICON_TYPE_OPTION &&
-      spec->type != wuss_ICON_TYPE_BITMAP &&
-      spec->type != wuss_ICON_TYPE_MENU_ENTRY &&
-      spec->type != wuss_ICON_TYPE_RULE)
+  switch (spec->type)
+  {
+  case wuss_ICON_TYPE_LABEL:
+  case wuss_ICON_TYPE_BUTTON:
+  case wuss_ICON_TYPE_PATTERN:
+  case wuss_ICON_TYPE_FRAME:
+  case wuss_ICON_TYPE_RADIO:
+  case wuss_ICON_TYPE_OPTION:
+  case wuss_ICON_TYPE_BITMAP:
+  case wuss_ICON_TYPE_MENU_ENTRY:
+  case wuss_ICON_TYPE_RULE:
+    break;
+
+  default:
     return result_WUSS_BAD_ICON;
+  }
 
   if ((spec->type == wuss_ICON_TYPE_BUTTON ||
        spec->type == wuss_ICON_TYPE_PATTERN) &&
