@@ -50,7 +50,8 @@ static void icon_bevel(screen_t    *scr,
  * else the window's dominant backdrop colour (a pattern fill blends against its
  * clear-bit colour, not its foreground), else "fallback" so bmfont still has a
  * blend colour. */
-static colour_t icon_blend_ground(const icon_draw_ctx_t *c, colour_t fallback)
+static colour_t icon_blend_ground(const icon_draw_ctx_t *c,
+                                  colour_t               fallback)
 {
   const wuss_icon_t *icon = c->icon;
 

@@ -3,16 +3,16 @@
 /**
  * \file bmtext.h
  *
- * Splits a string into lines that each fit a given pixel width when drawn in a
- * \ref bmfont_t, then draws those lines stacked.
+ * Splits a string into lines that each fit a given pixel width when drawn in
+ * a \ref bmfont_t, then draws those lines stacked.
  *
  * Unlike \ref txtfmt (which wraps at character counts, for monospaced text)
  * this measures each candidate line with \ref bmfont_measure, so it wraps
  * proportional fonts correctly.
  *
- * - Breaks at the last space that still fits; hard-breaks a word with no space
- * in it. - Runs of whitespace at a break are swallowed. - Layout is pure: it
- * touches no screen or scroll state.
+ * - Breaks at the last space that still fits; hard-breaks a word with no
+ * space in it. - Runs of whitespace at a break are swallowed. - Layout is
+ * pure: it touches no screen or scroll state.
  */
 
 #ifndef DPTLIB_BMTEXT_H
@@ -42,7 +42,8 @@ bmtext_line_t;
 /**
  * Break \p string into lines that each fit \p wrap_width pixels in \p font.
  *
- * The line pointers refer into \p string itself, so it must outlive \p lines.
+ * The line pointers refer into \p string itself, so it must outlive \p
+ * lines.
  *
  * \param[in]  font       Bitmap font the lines will be drawn in.
  * \param[in]  string     Text to wrap.

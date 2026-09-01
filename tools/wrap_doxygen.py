@@ -131,7 +131,7 @@ def process(lines, width):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument('files', nargs='+')
-    ap.add_argument('--width', type=int, default=80)
+    ap.add_argument('--width', type=int, default=77)
     ap.add_argument('--check', action='store_true',
                      help="don't write; exit 1 if any file would change")
     args = ap.parse_args()

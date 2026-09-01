@@ -7,7 +7,9 @@
 
 #include "impl.h"
 
-result_t ntree_insert_before(ntree_t *parent, ntree_t *sibling, ntree_t *node)
+result_t ntree_insert_before(ntree_t *parent,
+                             ntree_t *sibling,
+                             ntree_t *node)
 {
   assert(node->parent == NULL);
 

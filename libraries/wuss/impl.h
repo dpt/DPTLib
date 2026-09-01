@@ -267,7 +267,8 @@ static inline void wuss__release_packed(wuss_window_t *window)
  * the client's min_doc where it set one, but never below WUSS_MIN_CONTENT (a
  * window must stay big enough to grab) nor above the window's own doc extent
  * (a window can't be forced larger than the document it shows). */
-static inline void wuss__min_content(const wuss_window_t *window, size2d_t *min)
+static inline void wuss__min_content(const wuss_window_t *window,
+                                     size2d_t            *min)
 {
   min->w = CLAMP(window->min_doc.w, WUSS_MIN_CONTENT, MAX(window->doc.w,
                                                           WUSS_MIN_CONTENT));
@@ -292,7 +293,8 @@ static inline int wuss__window_toggled(const wuss_window_t *window)
   return (window->state & wuss_WINDOW_STATE_TOGGLED) != 0;
 }
 
-static inline void wuss__window_set_toggled(wuss_window_t *window, int toggled)
+static inline void wuss__window_set_toggled(wuss_window_t *window,
+                                            int            toggled)
 {
   if (toggled)
     window->state |= wuss_WINDOW_STATE_TOGGLED;

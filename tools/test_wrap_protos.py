@@ -2,7 +2,7 @@
 """assert-based self-check for wrap_protos.py"""
 from wrap_protos import process, split_top_level
 
-W = 80
+W = 77
 
 
 def one(src):
@@ -41,7 +41,7 @@ def test_idempotent():
 
 
 def test_rewrap_bad_alignment():
-    # joined form is >80, and it arrives already (badly) wrapped
+    # joined form is >77, and it arrives already (badly) wrapped
     src = (
         "static int screen_copy_rectangle_p4(screen_t *scr,\n"
         "    const box_t *s, const box_t *d,\n"
@@ -59,7 +59,7 @@ def test_rewrap_bad_alignment():
 
 
 def test_short_multiline_untouched():
-    # already multi-line but joins to <80 -- leave the hand grouping alone
+    # already multi-line but joins to <77 -- leave the hand grouping alone
     src = (
         "void draw_rect(screen_t *scr,\n"
         "               int x, int y,\n"
@@ -117,7 +117,7 @@ def test_variadic_bails():
 
 def test_call_statement_not_touched():
     src = ("  array_squeeze(v->base, v->used, v->width, width_argument_here); "
-           "// a call, way over 80 columns of course yes indeed\n")
+           "// a call, way over 77 columns of course yes indeed\n")
     assert one(src) is None
 
 

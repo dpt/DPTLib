@@ -61,8 +61,8 @@ layout_spec_t;
  * \param[in]  nelements Number of layout elements given.
  * \param[out] boxes     An array of boxes to be populated.
  * \param[in]  nboxes    Number of boxes available.
- * \return \ref result_OK on success, result_LAYOUT_BUFFER_FULL if too few boxes
- *         were supplied, or appropriate result code otherwise.
+ * \return \ref result_OK on success, result_LAYOUT_BUFFER_FULL if too few
+ *         boxes were supplied, or appropriate result code otherwise.
  */
 result_t layout_place(const layout_spec_t    *spec,
                       const layout_element_t *elements,

@@ -5,8 +5,8 @@
  *
  * Hash is an associative array.
  *
- * The interface presently forces you to malloc all keys, and values passed in,
- * yourself.
+ * The interface presently forces you to malloc all keys, and values passed
+ * in, yourself.
  */
 
 #ifndef DATASTRUCT_HASH_H

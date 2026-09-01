@@ -170,7 +170,9 @@ exit:
   return stream_remaining(s);
 }
 
-result_t stream_packbitsdecomp_create(stream_t *input, int bufsz, stream_t **s)
+result_t stream_packbitsdecomp_create(stream_t  *input,
+                                      int        bufsz,
+                                      stream_t **s)
 {
   stream_packbitsdecomp_t *sp;
 

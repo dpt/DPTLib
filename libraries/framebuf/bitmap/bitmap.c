@@ -167,7 +167,9 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   return rc;
 }
 
-result_t bitmap_convert(const bitmap_t *src, pixelfmt_t newfmt, bitmap_t **dst)
+result_t bitmap_convert(const bitmap_t *src,
+                        pixelfmt_t      newfmt,
+                        bitmap_t      **dst)
 {
   *dst = NULL;
 

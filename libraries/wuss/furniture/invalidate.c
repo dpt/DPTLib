@@ -7,7 +7,8 @@
  * (toggle-size) also mark the *old* furniture strips dirty, since a blit
  * that reused the old pixels leaves stale titlebar/scrollbar/outline
  * pixels sitting wherever those strips used to be. */
-void wuss__furniture_invalidate_for(wuss_window_t *window, const box_t *visible)
+void wuss__furniture_invalidate_for(wuss_window_t *window,
+                                    const box_t   *visible)
 {
   int     outline_px;
   point_t carve;

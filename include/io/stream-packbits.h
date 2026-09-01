@@ -20,7 +20,9 @@ extern "C"
  *                    stream.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t stream_packbitscomp_create(stream_t *input, int bufsz, stream_t **s);
+result_t stream_packbitscomp_create(stream_t  *input,
+                                    int        bufsz,
+                                    stream_t **s);
 
 /**
  * Create a PackBits decompression stream.
@@ -31,7 +33,9 @@ result_t stream_packbitscomp_create(stream_t *input, int bufsz, stream_t **s);
  *                    stream.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t stream_packbitsdecomp_create(stream_t *input, int bufsz, stream_t **s);
+result_t stream_packbitsdecomp_create(stream_t  *input,
+                                      int        bufsz,
+                                      stream_t **s);
 
 #ifdef __cplusplus
 }

@@ -2,7 +2,8 @@
 
 #include "../impl.h"
 
-result_t wuss_window_set_background(wuss_window_t *window, wuss_backdrop_t bg)
+result_t wuss_window_set_background(wuss_window_t  *window,
+                                    wuss_backdrop_t bg)
 {
   box_t content;
 
