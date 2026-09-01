@@ -309,19 +309,19 @@ typedef result_t (*task_spawn_fn_t)(void);
 static const wuss_menu_item_t g_task_items[] =
 {
   { "Ball",        wuss_MENU_ITEM_NONE,   NULL },
-  { "Text",        wuss_MENU_ITEM_NONE,   NULL },
   { "Blank",       wuss_MENU_ITEM_NONE,   NULL },
   { "Chars",       wuss_MENU_ITEM_NONE,   NULL },
-  { "Palette",     wuss_MENU_ITEM_NONE,   NULL },
-  { "Image",       wuss_MENU_ITEM_NONE,   NULL },
   { "Checker",     wuss_MENU_ITEM_NONE,   NULL },
   { "Curve",       wuss_MENU_ITEM_NONE,   NULL },
-  { "Lissajous",   wuss_MENU_ITEM_NONE,   NULL },
-  { "Sofa",        wuss_MENU_ITEM_NONE,   NULL },
   { "Gradient",    wuss_MENU_ITEM_NONE,   NULL },
   { "Icons",       wuss_MENU_ITEM_NONE,   NULL },
-  { "Swatches",    wuss_MENU_ITEM_NONE,   NULL },
+  { "Image",       wuss_MENU_ITEM_NONE,   NULL },
+  { "Lissajous",   wuss_MENU_ITEM_NONE,   NULL },
+  { "Palette",     wuss_MENU_ITEM_NONE,   NULL },
   { "Porter-Duff", wuss_MENU_ITEM_NONE,   NULL },
+  { "Sofa",        wuss_MENU_ITEM_NONE,   NULL },
+  { "Swatches",    wuss_MENU_ITEM_NONE,   NULL },
+  { "Text",        wuss_MENU_ITEM_NONE,   NULL },
   { "Menu",        wuss_MENU_ITEM_DASHED, NULL },
   { "Menu (desc)", wuss_MENU_ITEM_NONE,   NULL },
   { "Quit Wuss",   wuss_MENU_ITEM_DASHED, NULL }
@@ -335,9 +335,9 @@ static result_t spawn_quit(void)
 
 static const task_spawn_fn_t g_task_spawn[] =
 {
-  spawn_ball, spawn_text, spawn_blank, spawn_chars, spawn_palette,
-  spawn_image, spawn_checker, spawn_curve, spawn_lissajous, spawn_sofa,
-  spawn_gradient, spawn_icons, spawn_swatches, spawn_porter_duff, spawn_menu,
+  spawn_ball, spawn_blank, spawn_chars, spawn_checker, spawn_curve,
+  spawn_gradient, spawn_icons, spawn_image, spawn_lissajous, spawn_palette,
+  spawn_porter_duff, spawn_sofa, spawn_swatches, spawn_text, spawn_menu,
   spawn_menu_desc, spawn_quit
 };
 
