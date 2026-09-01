@@ -32,7 +32,6 @@
 #include "tasks/gradient.h"
 #include "tasks/icons.h"
 #include "tasks/image.h"
-#include "tasks/launcher.h"
 #include "tasks/lissajous.h"
 #include "tasks/palette.h"
 #include "tasks/porter-duff.h"
@@ -283,24 +282,51 @@ static result_t spawn_menu_desc(void)
                         menu_selected, NULL, NULL);
 }
 
-static const launcher_entry_t g_launcher_entries[] =
+/* The task launcher is a MENU-button pop-up over the backdrop rather than a
+ * window of buttons. g_task_items and g_task_spawn run in lock-step: picking
+ * item i calls g_task_spawn[i]. */
+typedef result_t (*task_spawn_fn_t)(void);
+
+static const wuss_menu_item_t g_task_items[] =
 {
-  { "Ball",        spawn_ball        },
-  { "Text",        spawn_text        },
-  { "Blank",       spawn_blank       },
-  { "Chars",       spawn_chars       },
-  { "Palette",     spawn_palette     },
-  { "Image",       spawn_image       },
-  { "Checker",     spawn_checker     },
-  { "Curve",       spawn_curve       },
-  { "Lissajous",   spawn_lissajous   },
-  { "Sofa",        spawn_sofa        },
-  { "Gradient",    spawn_gradient    },
-  { "Icons",       spawn_icons       },
-  { "Porter-Duff", spawn_porter_duff },
-  { "Menu",        spawn_menu        },
-  { "Menu (desc)", spawn_menu_desc   }
+  { "Ball",        wuss_MENU_ITEM_NONE,   NULL },
+  { "Text",        wuss_MENU_ITEM_NONE,   NULL },
+  { "Blank",       wuss_MENU_ITEM_NONE,   NULL },
+  { "Chars",       wuss_MENU_ITEM_NONE,   NULL },
+  { "Palette",     wuss_MENU_ITEM_NONE,   NULL },
+  { "Image",       wuss_MENU_ITEM_NONE,   NULL },
+  { "Checker",     wuss_MENU_ITEM_NONE,   NULL },
+  { "Curve",       wuss_MENU_ITEM_NONE,   NULL },
+  { "Lissajous",   wuss_MENU_ITEM_NONE,   NULL },
+  { "Sofa",        wuss_MENU_ITEM_NONE,   NULL },
+  { "Gradient",    wuss_MENU_ITEM_NONE,   NULL },
+  { "Icons",       wuss_MENU_ITEM_NONE,   NULL },
+  { "Porter-Duff", wuss_MENU_ITEM_NONE,   NULL },
+  { "Menu",        wuss_MENU_ITEM_DASHED, NULL },
+  { "Menu (desc)", wuss_MENU_ITEM_NONE,   NULL }
 };
+static const task_spawn_fn_t g_task_spawn[] =
+{
+  spawn_ball, spawn_text, spawn_blank, spawn_chars, spawn_palette,
+  spawn_image, spawn_checker, spawn_curve, spawn_lissajous, spawn_sofa,
+  spawn_gradient, spawn_icons, spawn_porter_duff, spawn_menu, spawn_menu_desc
+};
+static const wuss_menu_t g_task_menu =
+{
+  "Tasks", g_task_items, NELEMS(g_task_items)
+};
+
+static void task_menu_selected(const wuss_menu_t *menu,
+                               int                index,
+                               wuss_button_t      button,
+                               void              *ctx)
+{
+  NOT_USED(menu);
+  NOT_USED(button);
+  NOT_USED(ctx);
+  if (index >= 0 && index < (int) NELEMS(g_task_spawn))
+    (void) g_task_spawn[index]();
+}
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
 {
@@ -358,7 +384,6 @@ static result_t run_wuss(const char *resources)
   screen_t         scr;
   colour_t         palette[16];
   wuss_t          *wuss;
-  launcher_task_t  launcher_task;
   SDL_Window      *window;
   SDL_Renderer    *renderer;
   SDL_Texture     *texture;
@@ -469,10 +494,6 @@ static result_t run_wuss(const char *resources)
   g_resources     = resources;
   g_daydream_font = daydream_font;
 
-  rc = launcher_create(wuss, g_launcher_entries, NELEMS(g_launcher_entries), &launcher_task);
-  if (rc != result_OK)
-    goto Failure;
-
   quit                 = false;
   garbage_pending      = false;
   pixel_stress_pending = false;
@@ -514,10 +535,18 @@ static result_t run_wuss(const char *resources)
 
       case SDL_EVENT_MOUSE_BUTTON_DOWN:
         {
-          int x, y;
+          int            x, y;
+          wuss_button_t  button;
+          wuss_window_t *hit;
 
           sdl_pos_to_scr(window, scr_width, scr_height, event.button.x, event.button.y, &x, &y);
-          wuss_mouse_click(wuss, POINT(x, y), sdl_button_to_wuss(event.button.button), wuss_MOUSE_DOWN, NULL);
+          button = sdl_button_to_wuss(event.button.button);
+          wuss_mouse_click(wuss, POINT(x, y), button, wuss_MOUSE_DOWN, &hit);
+
+          /* MENU click on bare backdrop opens the task launcher there */
+          if (hit == NULL && (button & wuss_BUTTON_MENU))
+            wuss_menu_open(wuss, &g_task_menu, POINT(x, y),
+                           task_menu_selected, NULL, NULL);
         }
         break;
 
@@ -626,8 +655,6 @@ static result_t run_wuss(const char *resources)
    * per-instance task block hung off it, so any task window left open at quit
    * leaks its block. Harmless at process exit; add a wuss close callback if a
    * task ever needs deterministic teardown. */
-  launcher_destroy(&launcher_task);
-
   wuss_menu_destroy(g_menu_desc);
 
   wuss_destroy(wuss);
