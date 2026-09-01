@@ -36,7 +36,9 @@ wuss_event_fn_t ball_handle;
 
 /* create the bouncing-ball window against the given wuss instance; "task" is a
  * per-instance block owned by the window and freed when it closes */
-result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task);
+result_t ball_create(wuss_t         *wuss,
+                     const colour_t *palette,
+                     ball_task_t    *task);
 
 #endif /* USE_SDL */
 

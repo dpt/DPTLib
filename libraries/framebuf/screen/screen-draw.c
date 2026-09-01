@@ -215,7 +215,11 @@ void screen_fill_rect(screen_t *scr,
   }
 }
 
-void screen_fill_square(screen_t *scr, int x, int y, int size, colour_t colour)
+void screen_fill_square(screen_t *scr,
+                        int       x,
+                        int       y,
+                        int       size,
+                        colour_t  colour)
 {
   screen_fill_rect(scr, x, y, SIZE2D(size, size), colour);
 }

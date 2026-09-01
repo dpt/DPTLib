@@ -17,17 +17,17 @@ typedef void (span_copy_t)(void *dst, const void *src, int length);
 /**
  * Type of a "blend constant pixels" function.
  *
- * This will blend the respective source pixels by the specified constant alpha
- * value, writing the results to the destination buffer (like Porter-Duff Source
- * Over Destination).
+ * This will blend the respective source pixels by the specified constant
+ * alpha value, writing the results to the destination buffer (like
+ * Porter-Duff Source Over Destination).
  *
  * \param[out] dst     Destination pixels.
  * \param[in]  src1    Source pixels 1.
  * \param[in]  src2    Source pixels 2.
  * \param[in]  length  Length of pixels to blend.
  * \param[in]  alpha   Constant alpha value (0..255).
- * \param[in]  context Format-specific extra data (e.g. a palette for an indexed
- *                     format); ignored where not needed, pass NULL.
+ * \param[in]  context Format-specific extra data (e.g. a palette for an
+ *                     indexed format); ignored where not needed, pass NULL.
  */
 typedef void (span_blendconst_t)(void       *dst,
                                  const void *src1,
@@ -39,9 +39,9 @@ typedef void (span_blendconst_t)(void       *dst,
 /**
  * Type of a "blend array of pixels" function.
  *
- * This will blend the respective source pixels by the specified alpha values,
- * writing the results to the destination buffer (like Porter-Duff Source Over
- * Destination).
+ * This will blend the respective source pixels by the specified alpha
+ * values, writing the results to the destination buffer (like Porter-Duff
+ * Source Over Destination).
  *
  * \param[out] dst    Destination pixels.
  * \param[in]  src1   Source pixels 1.
@@ -58,8 +58,8 @@ typedef void (span_blendarray_t)(void                *dst,
 /**
  * Defines a span.
  *
- * A span is a group of functions that combine runs of pixels. They are keyed by
- * pixel format.
+ * A span is a group of functions that combine runs of pixels. They are keyed
+ * by pixel format.
  */
 typedef struct span
 {

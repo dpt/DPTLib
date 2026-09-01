@@ -45,7 +45,9 @@ static void box_subtract_into(const box_t *piece,
 /* Clip "box" (screen space) down to the parts not already covered by
  * windows above "window" in the z-order, writing the surviving pieces to
  * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count. */
-int wuss__clip_to_visible(wuss_window_t *window, const box_t *box, box_t *out)
+int wuss__clip_to_visible(wuss_window_t *window,
+                          const box_t   *box,
+                          box_t         *out)
 {
   box_t   scratch[WUSS_MAX_INVALIDATE_PIECES];
   box_t  *cur, *nxt, *tmp;
@@ -240,7 +242,9 @@ void wuss__invalidate_clipped(wuss_window_t *window, const box_t *box)
 /* Invalidate the part of "whole" not already covered by "keep" -- used
  * after a blit has slid a window's pixels from "whole" to "keep", so only
  * the vacated sliver still needs an actual repaint. */
-void wuss__invalidate_minus(wuss_t *wuss, const box_t *whole, const box_t *keep)
+void wuss__invalidate_minus(wuss_t      *wuss,
+                            const box_t *whole,
+                            const box_t *keep)
 {
   box_t pieces[WUSS_MAX_INVALIDATE_PIECES];
   box_t cut;

@@ -279,7 +279,8 @@ static void porter_duff_draw_checkerboard(const porter_duff_task_t *pd,
     }
 }
 
-static result_t porter_duff_redraw(const wuss_event_t *event, void *task_data)
+static result_t porter_duff_redraw(const wuss_event_t *event,
+                                   void               *task_data)
 {
   porter_duff_task_t *pd;
   screen_t           *scr;

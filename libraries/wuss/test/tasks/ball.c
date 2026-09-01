@@ -14,7 +14,9 @@
 
 #include "ball.h"
 
-result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
+result_t ball_create(wuss_t         *wuss,
+                     const colour_t *palette,
+                     ball_task_t    *task)
 {
   wuss_task_t delegate;
 

@@ -5,9 +5,9 @@
  *
  * Arrays of bits.
  *
- * Bit arrays are an array of bits. They are of a fixed length and allocated by
- * the client. The bit array library provides functions to manipulate bit arrays
- * but not allocate them.
+ * Bit arrays are an array of bits. They are of a fixed length and allocated
+ * by the client. The bit array library provides functions to manipulate bit
+ * arrays but not allocate them.
  *
  * \see Bit Vector for manipulating a dynamically allocated bit array.
  *
@@ -54,7 +54,8 @@ typedef unsigned int bitarr_elem_t;
 #define BITARR_MASK (BITARR_BITS - 1)
 
 /**
- * Return the number of elements required to store the specified number of bits.
+ * Return the number of elements required to store the specified number of
+ * bits.
  */
 #define BITARR_ELEMS(nbits) ((nbits + BITARR_BITS - 1) >> BITARR_SHIFT)
 
@@ -62,15 +63,15 @@ typedef unsigned int bitarr_elem_t;
  * Declare a bit array with the specified number of bits.
  *
  * This uses the OSLib trick of declaring a macro to define a type and also
- * declaring an 'equivalent' struct. In practice they're not actually equivalent
- * as the former, bitarr_ARRAY, is an anonymous struct of a given length and the
- * bitarr_t is a struct containing an array of 'UNKNOWN' length, which is
- * actually defined as 1.
+ * declaring an 'equivalent' struct. In practice they're not actually
+ * equivalent as the former, bitarr_ARRAY, is an anonymous struct of a given
+ * length and the bitarr_t is a struct containing an array of 'UNKNOWN'
+ * length, which is actually defined as 1.
  *
  * This works out all right, letting us declare bit arrays by specifying the
- * number of bits we require, but we end up needing to cast out declared entries
- * to (bitarr_t *) when calling a 'real' function, e.g. bitarr_count which looks
- * awkward.
+ * number of bits we require, but we end up needing to cast out declared
+ * entries to (bitarr_t *) when calling a 'real' function, e.g. bitarr_count
+ * which looks awkward.
  */
 #define bitarr_ARRAY(nbits)                     \
   struct {                                      \

@@ -3,8 +3,8 @@
 /**
  * \file task.h
  *
- * A Wuss task: the content delegate a window hands its drawing and input events
- * to, and the events themselves.
+ * A Wuss task: the content delegate a window hands its drawing and input
+ * events to, and the events themselves.
  */
 
 #ifndef WUSS_TASK_H
@@ -25,7 +25,9 @@ extern "C"
 
 /* ----------------------------------------------------------------------- */
 
-/** Which kind of event a wuss_event_t carries; more will be added over time. */
+/**
+ * Which kind of event a wuss_event_t carries; more will be added over time.
+ */
 typedef enum wuss_event_kind
 {
   wuss_EVENT_IDLE,   /**< Wuss has finished its pending tasks. */
@@ -131,7 +133,9 @@ typedef result_t (wuss_event_fn_t)(wuss_window_t      *window,
                                    const wuss_event_t *event,
                                    void               *task_data);
 
-/** A window's content delegate. Copied by value into the window at creation. */
+/**
+ * A window's content delegate. Copied by value into the window at creation.
+ */
 typedef struct wuss_task
 {
   /**

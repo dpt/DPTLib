@@ -354,7 +354,9 @@ static void draw_vertex_dots(screen_t           *scr,
                        colour);
 }
 
-result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task)
+result_t sofa_create(wuss_t         *wuss,
+                     const colour_t *palette,
+                     sofa_task_t    *task)
 {
   wuss_task_t delegate;
 
@@ -516,7 +518,9 @@ static result_t sofa_mouse(wuss_window_t *window,
   return result_OK;
 }
 
-static result_t sofa_scroll(wuss_window_t *window, int delta, void *task_data)
+static result_t sofa_scroll(wuss_window_t *window,
+                            int            delta,
+                            void          *task_data)
 {
   sofa_task_t *sc;
 

@@ -6,8 +6,8 @@
  * Storage of associative arrays.
  *
  * Its name borrowed from Python, this module provides pickle_pickle() and
- * pickle_unpickle() which respectively serialise or deserialise an associative
- * array to a file of the form:
+ * pickle_unpickle() which respectively serialise or deserialise an
+ * associative array to a file of the form:
  *
  *   #<comments> <version> <key><separator><value>  (zero or more)
  *
@@ -240,13 +240,14 @@ pickle_unformat_methods_t;
 /* ----------------------------------------------------------------------- */
 
 /**
- * Serialise associative array 'assocarr' to the file 'filename'. Interpret the
- * contents of the associative array using the methods in 'reader'. Format the
- * keys and values for storage using the methods in 'format'.
+ * Serialise associative array 'assocarr' to the file 'filename'. Interpret
+ * the contents of the associative array using the methods in 'reader'.
+ * Format the keys and values for storage using the methods in 'format'.
  *
  * \param[in]   filename    Filename to save to.
  * \param[in]   assocarr    Associative array to pickle.
- * \param[in]   reader      Interfaces for reading from the associative array.
+ * \param[in]   reader      Interfaces for reading from the associative
+ *                          array.
  * \param[in]   format      Interfaces for formatting the retrieved values.
  * \param[in]   opaque      Opaque pointer passed into interfaces.
  *
@@ -259,9 +260,9 @@ result_t pickle_pickle(const char                    *filename,
                        void                          *opaque);
 
 /**
- * Populate associative array 'assocarr' from the file 'filename'. Insert into
- * the associative array using the methods in 'writer'. Parse the keys and
- * values from storage using the methods in 'unformat'.
+ * Populate associative array 'assocarr' from the file 'filename'. Insert
+ * into the associative array using the methods in 'writer'. Parse the keys
+ * and values from storage using the methods in 'unformat'.
  *
  * \param[in]   filename    Filename to read from.
  * \param[in]   assocarr    Associative array to pickle.
