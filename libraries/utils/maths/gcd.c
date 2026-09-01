@@ -1,4 +1,4 @@
-/* gcd.c -- greatest common divisor */
+/* utils/maths/gcd.c -- greatest common divisor */
 
 #include "utils/maths.h"
 

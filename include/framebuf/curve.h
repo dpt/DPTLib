@@ -1,4 +1,4 @@
-/* curve.h -- bezier calculations */
+/* framebuf/curve.h -- bezier calculations */
 
 #ifndef DPTLIB_CURVE_H
 #define DPTLIB_CURVE_H

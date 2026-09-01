@@ -1,4 +1,4 @@
-/* chars.c -- wuss test - system font glyph grid task */
+/* wuss/test/tasks/chars.c -- system font glyph grid task */
 
 #ifdef USE_SDL
 

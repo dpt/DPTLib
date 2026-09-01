@@ -1,4 +1,4 @@
-/* bmfont.c */
+/* framebuf/bmfont/bmfont.c */
 
 /* TODOS / IDEAS
  *

@@ -1,4 +1,4 @@
-/* get.c */
+/* framebuf/span-registry/get.c */
 
 #include <stddef.h>
 

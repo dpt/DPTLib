@@ -1,4 +1,4 @@
-/* stream-mem.c -- memory block IO stream implementation */
+/* io/stream/stream-mem.c -- memory block IO stream implementation */
 
 #include <assert.h>
 #include <stddef.h>

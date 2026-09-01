@@ -1,4 +1,4 @@
-/* get.c -- vector - flexible array */
+/* datastruct/vector/get.c -- flexible array */
 
 #include <assert.h>
 #include <stdlib.h>

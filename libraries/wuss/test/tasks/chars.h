@@ -1,4 +1,4 @@
-/* chars.h -- wuss test - system font glyph grid task */
+/* wuss/test/tasks/chars.h -- system font glyph grid task */
 
 #ifndef TASKS_CHARS_H
 #define TASKS_CHARS_H

@@ -1,4 +1,4 @@
-/* gradient.c -- wuss test - gradient fill task */
+/* wuss/test/tasks/gradient.c -- gradient fill task */
 
 #ifdef USE_SDL
 

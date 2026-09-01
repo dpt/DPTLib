@@ -1,4 +1,4 @@
-/* menu.h -- wuss pop-up menu helper */
+/* wuss/menu.h -- wuss pop-up menu helper */
 
 /**
  * \file menu.h

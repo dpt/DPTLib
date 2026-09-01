@@ -1,4 +1,4 @@
-/* all-tests.h */
+/* test/all-tests.h */
 
 #ifndef TESTS_ALL_TESTS_H
 #define TESTS_ALL_TESTS_H

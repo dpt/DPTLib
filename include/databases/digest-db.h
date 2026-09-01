@@ -1,4 +1,4 @@
-/* digest-db.h -- digest database */
+/* databases/digest-db.h -- digest database */
 
 /**
  * \file digest-db.h

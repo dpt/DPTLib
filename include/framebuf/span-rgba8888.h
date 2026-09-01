@@ -1,4 +1,4 @@
-/* span-rgba8888.h -- RGBA8888 format plot methods */
+/* framebuf/span-rgba8888.h -- RGBA8888 format plot methods */
 
 #ifndef SPAN_RGBA8888_H
 #define SPAN_RGBA8888_H

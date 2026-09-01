@@ -1,4 +1,4 @@
-/* bitmap.c */
+/* framebuf/bitmap/bitmap.c */
 
 #include <assert.h>
 #include <stddef.h>

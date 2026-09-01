@@ -1,4 +1,4 @@
-/* new.c -- atoms */
+/* datastruct/atom/new.c -- atoms */
 
 #include <assert.h>
 #include <stdlib.h>

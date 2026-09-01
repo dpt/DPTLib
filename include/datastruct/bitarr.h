@@ -1,4 +1,4 @@
-/* bitarr.h -- arrays of bits */
+/* datastruct/bitarr.h -- arrays of bits */
 
 /**
  * \file bitarr.h

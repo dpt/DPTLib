@@ -1,4 +1,4 @@
-/* text.c -- wuss test - static paragraph task */
+/* wuss/test/tasks/text.c -- static paragraph task */
 
 #ifdef USE_SDL
 

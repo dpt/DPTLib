@@ -1,4 +1,4 @@
-/* hit-test.c -- wuss - work-area icon hit testing */
+/* wuss/icon/hit-test.c -- work-area icon hit testing */
 
 #include "geom/box.h"
 

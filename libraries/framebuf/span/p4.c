@@ -1,4 +1,4 @@
-/* p4.c -- P4 (4bpp paletted) format plot methods */
+/* framebuf/span/p4.c -- P4 (4bpp paletted) format plot methods */
 
 #include <stddef.h>
 

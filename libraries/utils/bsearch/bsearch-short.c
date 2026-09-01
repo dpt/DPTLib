@@ -1,4 +1,4 @@
-/* bsearch-short.c -- binary searching arrays */
+/* utils/bsearch/bsearch-short.c -- binary searching arrays */
 
 #define TYPE short
 #define NAME bsearch_short

@@ -1,4 +1,4 @@
-/* atom.h -- indexed data block storage */
+/* datastruct/atom.h -- indexed data block storage */
 
 /**
  * \file atom.h

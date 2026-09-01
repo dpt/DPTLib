@@ -1,4 +1,4 @@
-/* redraw.c -- wuss - minimal window manager */
+/* wuss/redraw.c -- wuss - minimal window manager */
 
 #include "impl.h"
 

@@ -1,4 +1,4 @@
-/* icon.h -- wuss - work-area icons, internal */
+/* wuss/icon.h -- work-area icons, internal */
 
 #ifndef WUSS_ICON_IMPL_H
 #define WUSS_ICON_IMPL_H

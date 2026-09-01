@@ -1,4 +1,4 @@
-/* get-wrapped-width.c -- txtfmt - text formatting */
+/* text/txtfmt/get-wrapped-width.c -- text formatting */
 
 #include "text/txtfmt.h"
 

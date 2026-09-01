@@ -1,4 +1,4 @@
-/* blank.h -- wuss test - colour-cycling task */
+/* wuss/test/tasks/blank.h -- colour-cycling task */
 
 #ifndef TASKS_BLANK_H
 #define TASKS_BLANK_H

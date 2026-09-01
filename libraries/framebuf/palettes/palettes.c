@@ -1,4 +1,4 @@
-/* palettes.c */
+/* framebuf/palettes/palettes.c */
 
 #include "framebuf/colour.h"
 

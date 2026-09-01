@@ -1,4 +1,4 @@
-/* checker.h -- wuss test - checkerboard task */
+/* wuss/test/tasks/checker.h -- checkerboard task */
 
 #ifndef TASKS_CHECKER_H
 #define TASKS_CHECKER_H

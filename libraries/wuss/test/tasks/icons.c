@@ -1,4 +1,4 @@
-/* icons.c -- wuss test - work-area icons task */
+/* wuss/test/tasks/icons.c -- work-area icons task */
 
 #ifdef USE_SDL
 #include "framebuf/palettes.h"

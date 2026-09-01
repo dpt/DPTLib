@@ -1,4 +1,4 @@
-/* get-type.c -- wuss - read a work-area icon's type */
+/* wuss/icon/get-type.c -- read a work-area icon's type */
 
 #include "../impl.h"
 

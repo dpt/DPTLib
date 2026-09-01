@@ -1,4 +1,4 @@
-/* text.h -- wuss test - static paragraph task */
+/* wuss/test/tasks/text.h -- static paragraph task */
 
 #ifndef TASKS_TEXT_H
 #define TASKS_TEXT_H

@@ -1,4 +1,4 @@
-/* span.h -- interface of plotting methods */
+/* framebuf/span.h -- interface of plotting methods */
 
 #ifndef SPAN_H
 #define SPAN_H

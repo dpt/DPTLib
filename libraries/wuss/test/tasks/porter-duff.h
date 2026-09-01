@@ -1,4 +1,4 @@
-/* porter-duff.h -- wuss test - animated Porter-Duff compositing task */
+/* wuss/test/tasks/porter-duff.h -- animated Porter-Duff compositing task */
 
 #ifndef TASKS_PORTER_DUFF_H
 #define TASKS_PORTER_DUFF_H

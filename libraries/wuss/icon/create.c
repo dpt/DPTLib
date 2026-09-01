@@ -1,4 +1,4 @@
-/* create.c -- wuss - create a work-area icon */
+/* wuss/icon/create.c -- create a work-area icon */
 
 #include <assert.h>
 #include <stdlib.h>

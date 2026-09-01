@@ -1,4 +1,4 @@
-/* packer.c -- box packing for layout */
+/* geom/packer/packer.c -- box packing for layout */
 
 #include <assert.h>
 #include <limits.h>

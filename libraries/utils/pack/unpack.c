@@ -1,4 +1,4 @@
-/* unpack.c -- structure unpacking */
+/* utils/pack/unpack.c -- structure unpacking */
 
 #include <assert.h>
 #include <ctype.h>

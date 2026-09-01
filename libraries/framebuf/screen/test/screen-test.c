@@ -1,4 +1,4 @@
-/* screen-test.c -- test screen drawing */
+/* framebuf/screen/test/screen-test.c -- test screen drawing */
 
 #include <stdio.h>
 #include <string.h>

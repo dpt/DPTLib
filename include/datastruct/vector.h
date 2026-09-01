@@ -1,4 +1,4 @@
-/* vector.h -- flexible arrays */
+/* datastruct/vector.h -- flexible arrays */
 
 /**
  * \file vector.h

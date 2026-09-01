@@ -1,4 +1,4 @@
-/* destroy.c -- hash */
+/* datastruct/hash/destroy.c -- hash */
 
 #include <stdlib.h>
 

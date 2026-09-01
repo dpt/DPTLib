@@ -1,4 +1,4 @@
-/* free.c -- wuss - free a window's whole icon store */
+/* wuss/icon/free.c -- free a window's whole icon store */
 
 #include <stdlib.h>
 

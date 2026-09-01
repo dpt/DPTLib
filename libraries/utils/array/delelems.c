@@ -1,3 +1,4 @@
+/* utils/array/delelems.c */
 
 #include <stdlib.h>
 #include <string.h>

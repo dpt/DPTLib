@@ -1,4 +1,4 @@
-/* invalidate.c -- wuss - minimal window manager */
+/* wuss/invalidate.c -- wuss - minimal window manager */
 
 #include <assert.h>
 

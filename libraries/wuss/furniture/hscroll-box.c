@@ -1,4 +1,4 @@
-/* hscroll-box.c -- wuss - minimal window manager */
+/* wuss/furniture/hscroll-box.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

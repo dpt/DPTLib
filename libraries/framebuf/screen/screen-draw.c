@@ -1,4 +1,4 @@
-/* screen-draw.c */
+/* framebuf/screen/screen-draw.c */
 
 #include <assert.h>
 #include <string.h>

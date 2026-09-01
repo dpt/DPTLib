@@ -1,4 +1,4 @@
-/* util.h -- utils for reversing bytesex */
+/* utils/bytesex/util.h -- utils for reversing bytesex */
 
 #include <limits.h>
 

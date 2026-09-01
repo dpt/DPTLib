@@ -1,4 +1,4 @@
-/* translated.c -- translate box "b" by (x,y) producing new box "t" */
+/* geom/box/translated.c -- translate box "b" by (x,y) producing new box "t" */
 
 #include "base/utils.h"
 

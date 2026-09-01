@@ -1,4 +1,4 @@
-/* set.c -- vector - flexible array */
+/* datastruct/vector/set.c -- flexible array */
 
 #include <assert.h>
 #include <string.h>

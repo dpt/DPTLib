@@ -1,4 +1,4 @@
-/* get-visible-bounds.c -- wuss - minimal window manager */
+/* wuss/window/get-visible-bounds.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

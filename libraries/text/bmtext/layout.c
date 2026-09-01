@@ -1,4 +1,4 @@
-/* layout.c -- break a string into pixel-fitted lines */
+/* text/bmtext/layout.c -- break a string into pixel-fitted lines */
 
 #include <ctype.h>
 

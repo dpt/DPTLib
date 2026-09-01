@@ -1,4 +1,4 @@
-/* screen-draw-ninepatch.c -- 9-patch bitmap drawing */
+/* framebuf/screen/screen-draw-ninepatch.c -- 9-patch bitmap drawing */
 
 #include <assert.h>
 

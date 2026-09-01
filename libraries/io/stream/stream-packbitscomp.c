@@ -1,4 +1,4 @@
-/* stream-packbitscomp.c -- PackBits compression */
+/* io/stream/stream-packbitscomp.c -- PackBits compression */
 
 #include <assert.h>
 #include <stddef.h>

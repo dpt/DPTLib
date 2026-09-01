@@ -1,4 +1,4 @@
-/* vscroll-box.c -- wuss - minimal window manager */
+/* wuss/furniture/vscroll-box.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

@@ -1,4 +1,4 @@
-/* intersects.c -- return true if box "a" overlaps box "b" */
+/* geom/box/intersects.c -- return true if box "a" overlaps box "b" */
 
 #include "geom/box.h"
 

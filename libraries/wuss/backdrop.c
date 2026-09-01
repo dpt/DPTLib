@@ -1,4 +1,4 @@
-/* backdrop.c -- wuss - shared backdrop validation and fill */
+/* wuss/backdrop.c -- shared backdrop validation and fill */
 
 #include "framebuf/screen.h"
 

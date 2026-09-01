@@ -1,4 +1,4 @@
-/* get.c -- atoms */
+/* datastruct/atom/get.c -- atoms */
 
 #include <assert.h>
 #include <stddef.h>

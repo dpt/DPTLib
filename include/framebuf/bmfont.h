@@ -1,4 +1,4 @@
-/* bmfont.h -- proportional bitmap font engine */
+/* framebuf/bmfont.h -- proportional bitmap font engine */
 
 #ifndef DPTLIB_BMFONT_H
 #define DPTLIB_BMFONT_H

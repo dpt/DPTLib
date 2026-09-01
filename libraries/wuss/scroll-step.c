@@ -1,4 +1,4 @@
-/* scroll-step.c -- wuss - clamp and apply a scroll offset */
+/* wuss/scroll-step.c -- clamp and apply a scroll offset */
 
 #include "impl.h"
 

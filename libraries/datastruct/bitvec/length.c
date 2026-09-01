@@ -1,4 +1,4 @@
-/* length.c -- bit vectors */
+/* datastruct/bitvec/length.c -- bit vectors */
 
 #include <stddef.h>
 

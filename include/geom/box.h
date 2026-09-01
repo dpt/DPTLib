@@ -1,4 +1,4 @@
-/* box.h -- box type */
+/* geom/box.h -- box type */
 
 #ifndef GEOM_BOX_H
 #define GEOM_BOX_H

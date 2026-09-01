@@ -1,4 +1,4 @@
-/* rev-s-block.c -- reversing bytesex */
+/* utils/bytesex/rev-s-block.c -- reversing bytesex */
 
 #include <assert.h>
 

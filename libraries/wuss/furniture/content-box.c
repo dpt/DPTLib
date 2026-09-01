@@ -1,4 +1,4 @@
-/* content-box.c -- wuss - minimal window manager */
+/* wuss/furniture/content-box.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

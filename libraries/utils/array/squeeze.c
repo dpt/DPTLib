@@ -1,3 +1,4 @@
+/* utils/array/squeeze.c */
 
 #include <assert.h>
 #include <string.h>

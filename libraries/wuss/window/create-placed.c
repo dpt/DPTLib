@@ -1,4 +1,4 @@
-/* create-placed.c -- wuss - window creation with wuss-chosen position */
+/* wuss/window/create-placed.c -- window creation with wuss-chosen position */
 
 #include <assert.h>
 

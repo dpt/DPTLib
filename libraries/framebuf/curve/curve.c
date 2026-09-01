@@ -1,4 +1,4 @@
-/* bezier.c */
+/* framebuf/curve/curve.c */
 
 // TODO
 //

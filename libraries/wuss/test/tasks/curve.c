@@ -1,4 +1,4 @@
-/* curve.c -- wuss test - draggable Bezier curve task */
+/* wuss/test/tasks/curve.c -- draggable Bezier curve task */
 
 #ifdef USE_SDL
 

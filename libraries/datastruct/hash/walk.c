@@ -1,4 +1,4 @@
-/* walk.c -- hash */
+/* datastruct/hash/walk.c -- hash */
 
 #include <stdlib.h>
 

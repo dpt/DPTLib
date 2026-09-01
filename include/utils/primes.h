@@ -1,4 +1,4 @@
-/* primes.h -- cache of prime numbers */
+/* utils/primes.h -- cache of prime numbers */
 
 #ifndef UTILS_PRIMES_H
 #define UTILS_PRIMES_H

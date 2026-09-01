@@ -1,4 +1,4 @@
-/* hash-writer.c -- glue methods to let pickle operate on hashes */
+/* databases/pickle/hash-writer.c -- glue methods to let pickle operate on hashes */
 
 #include <assert.h>
 #include <ctype.h>

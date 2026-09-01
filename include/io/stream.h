@@ -1,4 +1,4 @@
-/* stream.h -- stream system */
+/* io/stream.h -- stream system */
 
 /**
  * \file Stream (interface).

@@ -1,4 +1,4 @@
-/* main.c -- Wuss - interactive minimal window manager demo */
+/* wuss/main.c -- Wuss - interactive minimal window manager demo */
 
 #include <stdio.h>
 #include <stdlib.h>

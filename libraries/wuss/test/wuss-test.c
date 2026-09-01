@@ -1,4 +1,4 @@
-/* wuss-test.c -- wuss - minimal window manager */
+/* wuss/test/wuss-test.c -- wuss - minimal window manager */
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,4 +1,4 @@
-/* grow.c -- increases the size of "box" by "change" */
+/* geom/box/grow.c -- increases the size of "box" by "change" */
 
 #include "geom/box.h"
 

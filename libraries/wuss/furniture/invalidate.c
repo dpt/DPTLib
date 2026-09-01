@@ -1,4 +1,4 @@
-/* invalidate.c -- wuss - minimal window manager */
+/* wuss/furniture/invalidate.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

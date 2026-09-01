@@ -1,4 +1,4 @@
-/* icons.h -- wuss test - work-area icons task */
+/* wuss/test/tasks/icons.h -- work-area icons task */
 
 #ifndef TASKS_ICONS_H
 #define TASKS_ICONS_H

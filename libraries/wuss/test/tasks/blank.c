@@ -1,4 +1,4 @@
-/* blank.c -- wuss test - colour-cycling task */
+/* wuss/test/tasks/blank.c -- colour-cycling task */
 
 #ifdef USE_SDL
 

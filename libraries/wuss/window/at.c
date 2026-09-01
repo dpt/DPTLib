@@ -1,4 +1,4 @@
-/* at.c -- wuss - minimal window manager */
+/* wuss/window/at.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

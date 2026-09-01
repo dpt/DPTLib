@@ -1,4 +1,4 @@
-/* set-text.c -- wuss - replace a work-area icon's label */
+/* wuss/icon/set-text.c -- replace a work-area icon's label */
 
 #include <stdlib.h>
 #include <string.h>

@@ -1,4 +1,4 @@
-/* close.c -- wuss - minimal window manager */
+/* wuss/window/close.c -- wuss - minimal window manager */
 
 #include <stdlib.h>
 

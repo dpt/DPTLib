@@ -1,4 +1,4 @@
-/* sofa.h -- wuss test - rotating wireframe sofa task */
+/* wuss/test/tasks/sofa.h -- rotating wireframe sofa task */
 
 #ifndef TASKS_SOFA_H
 #define TASKS_SOFA_H

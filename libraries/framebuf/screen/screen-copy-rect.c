@@ -1,4 +1,4 @@
-/* screen-copy-rect.c -- screen - same-screen rectangle copy */
+/* framebuf/screen/screen-copy-rect.c -- same-screen rectangle copy */
 
 #include <string.h>
 
