@@ -100,9 +100,13 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
 
     if (ncopied > 0)
     {
+      /* Repaint the content box minus what the blit reused, each survivor
+       * clipped to this window's visible area: parts that were behind an
+       * occluder still show the occluder's own correct pixels, so leaving
+       * them out keeps the resize from redrawing the occluding window. */
       ndirty = wuss__subtract_boxes(&content, copied, ncopied, dirty);
       for (i = 0; i < ndirty; i++)
-        wuss_invalidate(window->wuss, &dirty[i]);
+        wuss__invalidate_clipped(window, &dirty[i]);
     }
     else
     {

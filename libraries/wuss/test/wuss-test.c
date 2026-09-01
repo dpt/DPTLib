@@ -1428,22 +1428,23 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_d);
   }
 
-  printf("test: wuss_window_resize blits the un-occluded content even when the window is not topmost\n");
+  printf("test: wuss_window_resize on a non-topmost window blits the un-occluded content and never dirties the occluder\n");
 
   {
-    /* Same as above, but another window covers the right half of D's
-     * content. The blit source is the old content box MINUS what the
-     * occluder was covering (that area holds the occluder's pixels, not
-     * D's): the un-occluded left half is still slid into place, only the
-     * occluded columns and the newly-revealed top strip need a repaint. */
+    /* Another window covers the right half of D's content. The blit source
+     * is the old content box MINUS what the occluder covered, so the
+     * un-occluded left half is slid into place; the right half still shows
+     * the occluder's own correct pixels, so it must stay clean -- dirtying
+     * it would redraw the occluding window for nothing. Only the un-occluded
+     * newly-revealed top strip needs a repaint. */
     test_task_t    tc_d, tc_o;
     wuss_task_t    delegate_d, delegate_o;
     box_t          box_d, box_o, content_before;
     wuss_window_t *win_d, *win_o;
     point_t        scroll_d;
     int            i, split_x;
-    int            left_x, left_y, right_x, right_y;
-    int            left_dirty, right_dirty;
+    int            occluded_x, occluded_y, kept_x, kept_y, strip_x, strip_y;
+    int            occluded_dirty, kept_dirty, strip_dirty;
 
     tc_d.redraw_count = 0; tc_d.mouse_count = 0;
     tc_o.redraw_count = 0; tc_o.mouse_count = 0;
@@ -1486,13 +1487,15 @@ result_t wuss_test(const char *resources)
     if (scroll_d.y != 60)
       goto Failure;
 
-    /* left probe: un-occluded, below the ~60px revealed strip -- must be
-     * reused by the blit. right probe: under the occluder -- was never D's
-     * pixels on screen, so it must be repainted. Both at the same y. */
-    left_x  = content_before.x0 + 8;
-    left_y  = content_before.y1 - 8;
-    right_x = split_x + 8;
-    right_y = content_before.y1 - 8;
+    /* occluded: under O -- must stay clean. kept: un-occluded, below the
+     * ~60px revealed strip -- reused by the blit, must stay clean. strip:
+     * un-occluded, in the newly-revealed top band -- must be repainted. */
+    occluded_x = split_x + 8;
+    occluded_y = content_before.y1 - 8;
+    kept_x     = content_before.x0 + 8;
+    kept_y     = content_before.y1 - 8;
+    strip_x    = content_before.x0 + 8;
+    strip_y    = content_before.y0 + 8;
 
     rc = wuss_window_resize(win_d, SIZE2D(100, 160)); /* grow past doc height */
     if (rc != result_OK)
@@ -1505,25 +1508,31 @@ result_t wuss_test(const char *resources)
     if (wuss_get_dirty_count(wuss) == 0)
       goto Failure;
 
-    left_dirty  = 0;
-    right_dirty = 0;
+    occluded_dirty = 0;
+    kept_dirty     = 0;
+    strip_dirty    = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
     {
       box_t region;
 
       wuss_get_dirty(wuss, i, &region);
-      if (box_contains_point(&region, left_x, left_y))
-        left_dirty = 1;
-      if (box_contains_point(&region, right_x, right_y))
-        right_dirty = 1;
+      if (box_contains_point(&region, occluded_x, occluded_y))
+        occluded_dirty = 1;
+      if (box_contains_point(&region, kept_x, kept_y))
+        kept_dirty = 1;
+      if (box_contains_point(&region, strip_x, strip_y))
+        strip_dirty = 1;
     }
 
-    if (left_dirty)
+    if (occluded_dirty)
+      goto Failure; /* under the occluder: its pixels are already correct,
+                      * dirtying this would redraw the occluding window */
+
+    if (kept_dirty)
       goto Failure; /* un-occluded content must be reused by the blit */
 
-    if (!right_dirty)
-      goto Failure; /* content that was hidden behind the occluder holds no
-                      * valid D pixels on screen -- it must be repainted */
+    if (!strip_dirty)
+      goto Failure; /* the un-occluded newly-revealed strip must be repainted */
 
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK)
@@ -1533,19 +1542,21 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_d);
   }
 
-  printf("test: wuss_window_set_scroll blits the un-occluded content even when the window is not topmost\n");
+  printf("test: wuss_window_set_scroll on a non-topmost window blits the un-occluded content and never dirties the occluder\n");
 
   {
     /* A window covered on its right half by another still blits its
-     * un-occluded left half on a programmatic scroll: only the occluded
-     * columns and the newly-exposed edge strip need a repaint. */
+     * un-occluded left half on a programmatic scroll. The right half shows
+     * the occluder's own correct pixels, so it must stay clean -- dirtying
+     * it would redraw the occluding window. Only the un-occluded
+     * newly-exposed edge strip needs a repaint. */
     test_task_t    tc_s, tc_o;
     wuss_task_t    delegate_s, delegate_o;
     box_t          box_s, box_o, content;
     wuss_window_t *win_s, *win_o;
     int            i, split_x;
-    int            left_x, left_y, right_x, right_y;
-    int            left_dirty, right_dirty;
+    int            occluded_x, occluded_y, kept_x, kept_y, strip_x, strip_y;
+    int            occluded_dirty, kept_dirty, strip_dirty;
 
     tc_s.redraw_count = 0; tc_s.mouse_count = 0;
     tc_o.redraw_count = 0; tc_o.mouse_count = 0;
@@ -1578,38 +1589,47 @@ result_t wuss_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
 
-    /* left probe: un-occluded, near the bottom -- content there just slides
-     * up by the scroll delta, so the blit must reuse it. right probe: under
-     * the occluder -- never S's pixels on screen, so it must be repainted. */
-    left_x  = content.x0 + 8;
-    left_y  = content.y1 - 20;
-    right_x = split_x + 8;
-    right_y = content.y1 - 20;
+    /* kept: un-occluded, near the bottom -- content there just slides up by
+     * the scroll delta, so the blit must reuse it. occluded: under O -- must
+     * stay clean. strip: un-occluded, in the newly-exposed bottom band --
+     * must be repainted. */
+    kept_x     = content.x0 + 8;
+    kept_y     = content.y0 + 8;
+    occluded_x = split_x + 8;
+    occluded_y = content.y1 - 20;
+    strip_x    = content.x0 + 8;
+    strip_y    = content.y1 - 6;
 
     wuss_window_set_scroll(win_s, POINT(0, 12));
 
     if (wuss_get_dirty_count(wuss) == 0)
       goto Failure;
 
-    left_dirty  = 0;
-    right_dirty = 0;
+    kept_dirty     = 0;
+    occluded_dirty = 0;
+    strip_dirty    = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
     {
       box_t region;
 
       wuss_get_dirty(wuss, i, &region);
-      if (box_contains_point(&region, left_x, left_y))
-        left_dirty = 1;
-      if (box_contains_point(&region, right_x, right_y))
-        right_dirty = 1;
+      if (box_contains_point(&region, kept_x, kept_y))
+        kept_dirty = 1;
+      if (box_contains_point(&region, occluded_x, occluded_y))
+        occluded_dirty = 1;
+      if (box_contains_point(&region, strip_x, strip_y))
+        strip_dirty = 1;
     }
 
-    if (left_dirty)
+    if (occluded_dirty)
+      goto Failure; /* under the occluder: its pixels are already correct,
+                      * dirtying this would redraw the occluding window */
+
+    if (kept_dirty)
       goto Failure; /* un-occluded content must be reused by the blit */
 
-    if (!right_dirty)
-      goto Failure; /* content hidden behind the occluder holds no valid S
-                      * pixels on screen -- it must be repainted */
+    if (!strip_dirty)
+      goto Failure; /* the un-occluded newly-exposed strip must be repainted */
 
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK)
