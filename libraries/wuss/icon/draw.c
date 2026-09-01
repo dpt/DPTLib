@@ -340,12 +340,7 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
    * clip to the icon box (intersected with whatever redraw already set) and
    * blit at the box's top-left */
   clipped = *c->scr;
-  if (clipped.clip.x0 < b->x0) clipped.clip.x0 = b->x0;
-  if (clipped.clip.y0 < b->y0) clipped.clip.y0 = b->y0;
-  if (clipped.clip.x1 > b->x1) clipped.clip.x1 = b->x1;
-  if (clipped.clip.y1 > b->y1) clipped.clip.y1 = b->y1;
-  if (clipped.clip.x1 <= clipped.clip.x0 ||
-      clipped.clip.y1 <= clipped.clip.y0)
+  if (box_intersection(&c->scr->clip, b, &clipped.clip))
     return;
 
   screen_draw_bitmap(&clipped, b->x0, b->y0, c->icon->bitmap);
@@ -440,7 +435,7 @@ void wuss__icon_draw(wuss_t            *wuss,
 
   wuss__icon_box_to_screen(content, scroll, &icon->bbox, &c.b);
 
-  if (c.b.x1 <= c.b.x0 || c.b.y1 <= c.b.y0)
+  if (box_is_empty(&c.b))
     return;
 
   c.wuss = wuss;
