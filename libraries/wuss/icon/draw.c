@@ -188,7 +188,7 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
   colour_t           light, dark, base, label;
   int                pressed, is_default;
 
-  pressed    = icon->pressed;
+  pressed    = wuss__icon_pressed(icon);
   is_default = (icon->flags & wuss_ICON_FLAGS_DEFAULT) != 0;
 
   if (is_default)
@@ -284,7 +284,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     screen_draw_line(c->scr, g.x0 + 2, g.y1 - 1, g.x1 - 3, g.y1 - 1, glyph);
     screen_draw_line(c->scr, g.x0,     g.y0 + 2, g.x0,     g.y1 - 3, glyph);
     screen_draw_line(c->scr, g.x1 - 1, g.y0 + 2, g.x1 - 1, g.y1 - 3, glyph);
-    if (icon->selected)
+    if (wuss__icon_selected(icon))
       screen_fill_rect(c->scr, g.x0 + 3, g.y0 + 3,
                        SIZE2D(gsz - 6, gsz - 6), glyph);
   }
@@ -293,7 +293,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     /* a box; a tick (two strokes) when selected */
     screen_draw_rect(c->scr, g.x0, g.y0,
                              SIZE2D(g.x1 - g.x0, g.y1 - g.y0), glyph);
-    if (icon->selected)
+    if (wuss__icon_selected(icon))
     {
       screen_draw_line(c->scr, g.x0 + 2, g.y0 + gsz / 2,
                        g.x0 + gsz / 2 - 1, g.y1 - 3, glyph);
@@ -354,7 +354,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   int                disabled, highlit, pad, mid_y;
 
   disabled = (icon->flags & wuss_ICON_FLAGS_DISABLED) != 0;
-  highlit  = icon->hovered && !disabled;
+  highlit  = wuss__icon_hovered(icon) && !disabled;
   pad      = 4;
 
   /* resolve the row's own ink over its own/inherited ground */
@@ -383,7 +383,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   }
 
   /* left-edge tick when selected */
-  if (icon->selected)
+  if (wuss__icon_selected(icon))
   {
     int cx, cy, h;
 

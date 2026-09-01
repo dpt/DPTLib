@@ -5,7 +5,7 @@
 #include "../impl.h"
 
 /* Only wuss_ICON_TYPE_MENU_ENTRY changes appearance on hover (see
- * wuss__icon_draw_menu_entry). Buttons and every other type ignore icon->hovered,
+ * wuss__icon_draw_menu_entry). Buttons and every other type ignore the hover state,
  * so redrawing them on pointer enter/leave is wasted work. */
 static int wuss__icon_hover_visible(const wuss_icon_t *icon)
 {
@@ -22,7 +22,7 @@ void wuss__icon_set_hover(wuss_t *wuss, wuss_icon_t *icon)
 
   if (prev != NULL)
   {
-    prev->hovered = 0;
+    wuss__icon_set_state(prev, wuss_ICON_STATE_HOVERED, 0);
     if (wuss__icon_hover_visible(prev))
       wuss__icon_invalidate(prev);
   }
@@ -31,7 +31,7 @@ void wuss__icon_set_hover(wuss_t *wuss, wuss_icon_t *icon)
 
   if (icon != NULL)
   {
-    icon->hovered = 1;
+    wuss__icon_set_state(icon, wuss_ICON_STATE_HOVERED, 1);
     if (wuss__icon_hover_visible(icon))
       wuss__icon_invalidate(icon);
   }

@@ -26,9 +26,9 @@ result_t wuss_mouse_click(wuss_t             *wuss,
     wuss_icon_t *pressed = wuss->pressed_icon;
 
     wuss->pressed_icon = NULL;
-    if (pressed->pressed)
+    if (wuss__icon_pressed(pressed))
     {
-      pressed->pressed = 0;
+      wuss__icon_set_state(pressed, wuss_ICON_STATE_PRESSED, 0);
       wuss__icon_invalidate(pressed);
     }
   }
@@ -209,23 +209,23 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         if (action == wuss_MOUSE_DOWN &&
             (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
         {
-          icon->pressed      = 1;
+          wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 1);
           wuss->pressed_icon = icon;
           wuss__icon_invalidate(icon);
         }
-        else if (action == wuss_MOUSE_UP && icon->pressed)
+        else if (action == wuss_MOUSE_UP && wuss__icon_pressed(icon))
         {
-          icon->pressed      = 0;
+          wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 0);
           wuss->pressed_icon = NULL;
           wuss__icon_invalidate(icon);
 
           /* a completed click latches radio/option state before the task is
            * told, so the wuss_EVENT_ICON handler sees the new value */
           if (icon->type == wuss_ICON_TYPE_OPTION)
-            wuss__icon_select(icon, !icon->selected);
+            wuss__icon_select(icon, !wuss__icon_selected(icon));
           else if (icon->type == wuss_ICON_TYPE_RADIO)
             wuss__icon_select(icon,
-                              (button & wuss_BUTTON_ADJUST) ? !icon->selected
+                              (button & wuss_BUTTON_ADJUST) ? !wuss__icon_selected(icon)
                                                             : 1);
         }
 

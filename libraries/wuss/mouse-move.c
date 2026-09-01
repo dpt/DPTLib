@@ -99,9 +99,9 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
       {
         wuss_icon_t *it = win->icons[k];
 
-        if (it->pressed && it != icon)
+        if (wuss__icon_pressed(it) && it != icon)
         {
-          it->pressed = 0;
+          wuss__icon_set_state(it, wuss_ICON_STATE_PRESSED, 0);
           if (wuss->pressed_icon == it)
             wuss->pressed_icon = NULL;
           wuss__icon_invalidate(it);
