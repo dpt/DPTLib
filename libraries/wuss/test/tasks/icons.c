@@ -47,6 +47,10 @@ result_t icons_create(wuss_t       *wuss,
   int              nspecs; /* live spec count (sprite icons are optional) */
   result_t         rc;
 
+  black = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
+  grey5 = wuss_nearest_colour(wuss, 0xBB, 0xBB, 0xBB);
+  grey6 = wuss_nearest_colour(wuss, 0xDD, 0xDD, 0xDD);
+
   task->font       = font;
   task->label      = colour_rgb(0x00, 0x00, 0x00);
   task->paper      = colour_rgb(0xDD, 0xDD, 0xDD); /* the window bg, below */
@@ -65,10 +69,6 @@ result_t icons_create(wuss_t       *wuss,
     task->has_sprite = 1;
 
   delegate = wuss_task_start(icons_handle, task);
-  
-  black = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
-  grey5 = wuss_nearest_colour(wuss, 0xBB, 0xBB, 0xBB);
-  grey6 = wuss_nearest_colour(wuss, 0xDD, 0xDD, 0xDD);
 
   rc = wuss_window_create_placed(wuss,
                                  SIZE2D(ICONS_DOC_W, 160),

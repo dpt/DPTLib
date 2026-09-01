@@ -37,7 +37,7 @@ result_t image_create(wuss_t       *wuss,
   }
 
   delegate = wuss_task_start(image_handle, task); /* shows through the image's transparent pixels */
-  
+
   sz.w = task->bitmap.size.w + BORDER * 2;
   sz.h = task->bitmap.size.h + BORDER * 2;
 
@@ -72,7 +72,7 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   by     = bounds->y0 - sy + BORDER;
 
 #define NINEPATCHSZ 9
-  
+
   behind.x0 = bx - NINEPATCHSZ;
   behind.y0 = by - NINEPATCHSZ;
   behind.x1 = behind.x0 + ic->bitmap.size.w + NINEPATCHSZ * 2;
