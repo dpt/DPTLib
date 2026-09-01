@@ -528,6 +528,59 @@ result_t wuss_test(const char *resources)
   if (width != 52 || height != 72)
     goto Failure;
 
+  printf("test: window_resize can never grow a window past the screen\n");
+
+  /* screen is 200x200; win_a's visible box sits at (0,25) with a 1px
+   * outline all round and a 20px titlebar. asking for a 500x500 content
+   * area must clamp so the visible box still fits: width 200-0-2,
+   * height 200-25-2-20. */
+  rc = wuss_window_resize(win_a, SIZE2D(500, 500));
+  if (rc != result_OK)
+    goto Failure;
+  wuss_window_get_content_bounds(win_a, &content);
+  if (content.x1 - content.x0 != 198 || content.y1 - content.y0 != 153)
+    goto Failure;
+  wuss_window_get_visible_bounds(win_a, &visible);
+  if (visible.x1 != 200 || visible.y1 != 200)
+    goto Failure;
+
+  /* a request that already fits is honoured verbatim */
+  rc = wuss_window_resize(win_a, SIZE2D(60, 40));
+  if (rc != result_OK)
+    goto Failure;
+  wuss_window_get_content_bounds(win_a, &content);
+  if (content.x1 - content.x0 != 60 || content.y1 - content.y0 != 40)
+    goto Failure;
+
+  /* restore for the tests that follow */
+  rc = wuss_window_resize(win_a, SIZE2D(50, 50));
+  if (rc != result_OK)
+    goto Failure;
+
+  printf("test: window_create can never make a window bigger than the "
+         "screen\n");
+
+  {
+    box_t          box_big;
+    wuss_window_t *win_big;
+
+    /* content box asks for 10,10..400,400; the on-screen nudge pulls the
+     * visible top-left (10-1 outline) back to (0,0), then the clamp caps
+     * the content at 200 - 2*1 - 20(titlebar) tall, 200 - 2*1 wide. */
+    box_big.x0 = 10; box_big.y0 = 10; box_big.x1 = 400; box_big.y1 = 400;
+    rc = wuss_window_create(wuss, &box_big, "BIG", wuss_WINDOW_NO_VSCROLL |
+                            wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND), NULL,
+                            SIZE2D(400, 400), SIZE2D(0, 0), &win_big);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_big, &visible);
+    if (visible.x0 != 0 || visible.y0 != 0 ||
+        visible.x1 != 200 || visible.y1 != 200)
+      goto Failure;
+    wuss_window_close(win_big);
+  }
+
   printf("test: title-less, no-outline window has no furniture, so visible == content\n");
 
   tc_d.redraw_count = 0;
@@ -3059,6 +3112,59 @@ result_t wuss_test(const char *resources)
   if (content.x0 != 0 || content.y0 != 0 ||
       content.x1 != 100 || content.y1 != 100)
     goto Failure;
+
+  printf("test: window_resize can never grow a window past the screen\n");
+
+  /* screen is 200x200; win_a sits at (0,0), chromeless. asking for a
+   * 500x500 content area must clamp to the 200x200 screen. */
+  rc = wuss_window_resize(win_a, SIZE2D(500, 500));
+  if (rc != result_OK)
+    goto Failure;
+  wuss_window_get_content_bounds(win_a, &content);
+  if (content.x1 - content.x0 != 200 || content.y1 - content.y0 != 200)
+    goto Failure;
+
+  /* a request that already fits is left exactly as asked */
+  rc = wuss_window_resize(win_a, SIZE2D(120, 90));
+  if (rc != result_OK)
+    goto Failure;
+  wuss_window_get_content_bounds(win_a, &content);
+  if (content.x1 - content.x0 != 120 || content.y1 - content.y0 != 90)
+    goto Failure;
+
+  /* a window whose top-left is offset only gets the space that is left */
+  wuss_window_move(win_a, POINT(60, 40));
+  rc = wuss_window_resize(win_a, SIZE2D(500, 500));
+  if (rc != result_OK)
+    goto Failure;
+  wuss_window_get_content_bounds(win_a, &content);
+  if (content.x1 - content.x0 != 140 || content.y1 - content.y0 != 160)
+    goto Failure;
+  wuss_window_move(win_a, POINT(0, 0));
+  rc = wuss_window_resize(win_a, SIZE2D(100, 100));
+  if (rc != result_OK)
+    goto Failure;
+
+  printf("test: window_create can never make a window bigger than the "
+         "screen\n");
+
+  {
+    box_t          box_big;
+    wuss_window_t *win_big;
+
+    /* chromeless and the on-screen nudge drags the top-left back to (0,0),
+     * so the clamp caps content at the full 200x200 screen */
+    box_big.x0 = 10; box_big.y0 = 10; box_big.x1 = 400; box_big.y1 = 400;
+    rc = wuss_window_create(wuss, &box_big, "BIG", chromeless,
+                            wuss_NO_BACKGROUND, NULL, SIZE2D(400, 400),
+                            SIZE2D(0, 0), &win_big);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_content_bounds(win_big, &content);
+    if (content.x1 - content.x0 != 200 || content.y1 - content.y0 != 200)
+      goto Failure;
+    wuss_window_close(win_big);
+  }
 
   printf("test: redraw delivers REDRAW events\n");
 
