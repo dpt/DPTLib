@@ -1,5 +1,6 @@
 /* wuss/test/wuss-test.c -- wuss - minimal window manager */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -92,6 +93,33 @@ static result_t test_handle(wuss_window_t      *window,
   default:
     break;
   }
+
+  return result_OK;
+}
+
+/* A redraw handler that floods its dirty box with a fixed colour, so a test
+ * can read back the framebuffer and tell whose pixels ended up where. The
+ * colour is passed via task_data (a pointer to a colour_t). */
+static result_t paint_handle(wuss_window_t      *window,
+                             const wuss_event_t *event,
+                             void               *task_data)
+{
+  const colour_t *col;
+
+  NOT_USED(window);
+
+  if (event->kind != wuss_EVENT_REDRAW)
+    return result_OK;
+
+  col = task_data;
+  screen_fill_rect(event->data.redraw.scr,
+                   event->data.redraw.content->x0,
+                   event->data.redraw.content->y0,
+                   SIZE2D(event->data.redraw.content->x1
+                            - event->data.redraw.content->x0,
+                          event->data.redraw.content->y1
+                            - event->data.redraw.content->y0),
+                   *col);
 
   return result_OK;
 }
@@ -1690,6 +1718,90 @@ result_t wuss_test(const char *resources)
 
     wuss_window_close(win_o);
     wuss_window_close(win_s);
+  }
+
+  printf("test: wuss_window_set_scroll never blits a scrolled window's content over a mid-content occluder\n");
+
+  {
+    /* Regression: a small window O sits in the middle of a larger scrollable
+     * window M's content, covering neither M's top nor bottom edge. A
+     * programmatic vertical scroll of M takes a blit source slice from below
+     * O and shifts it up by the scroll delta, so its destination overlaps O.
+     * screen_copy_rect only clips to the content box, so without the fix it
+     * paints M's content over O and marks that area "copied" -- excluding it
+     * from the repaint set, so O's pixels stay overpainted with M's colour.
+     * With the fix each destination is clipped against the occluders and only
+     * the un-occluded sub-pieces are blitted, leaving O's own pixels intact.
+     * Read the framebuffer behind O to check. */
+    colour_t       cm, co;
+    uint32_t       fb_m, fb_o;
+    test_task_t    tc_m, tc_o;
+    wuss_task_t    delegate_m, delegate_o;
+    box_t          box_m, box_o, content;
+    wuss_window_t *win_m, *win_o;
+    int            occ_x, occ_y, mid_x, mid_y, delta;
+
+    cm = colour_rgb(0x11, 0x22, 0x33);
+    co = colour_rgb(0xcc, 0xdd, 0xee);
+    tc_m.redraw_count = 0; tc_m.mouse_count = 0;
+    tc_o.redraw_count = 0; tc_o.mouse_count = 0;
+    delegate_m.handle = paint_handle; delegate_m.task_data = &cm;
+    delegate_o.handle = paint_handle; delegate_o.task_data = &co;
+
+    box_m.x0 = 10; box_m.y0 = 10;
+    box_m.x1 = 110; box_m.y1 = 110; /* 100x100 content; doc taller, so scrollable */
+    rc = wuss_window_create(wuss, &box_m, "M", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            &delegate_m,
+                            SIZE2D(100, 300), SIZE2D(0, 0), &win_m);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_m, &content);
+
+    /* occluder spanning M's full content width, a band in the vertical
+     * middle -- so wuss__clip_to_visible splits M's blit source into a top
+     * and a bottom band with nothing behind O. Scrolling down slides the
+     * bottom band up; part of its destination lands behind O, yet no dirty
+     * repaint region touches O, so without the fix O stays overpainted. */
+    box_o.x0 = content.x0 - 5;  box_o.y0 = content.y0 + 40;
+    box_o.x1 = content.x1 + 5;  box_o.y1 = content.y0 + 70;
+    rc = wuss_window_create(wuss, &box_o, "O", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            &delegate_o,
+                            SIZE2D(box_o.x1 - box_o.x0, box_o.y1 - box_o.y0),
+                            SIZE2D(0, 0), &win_o);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creates: M then O paint */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* sample the framebuffer: occ_* sits behind O, mid_* sits in M's content
+     * clear of O -- record what each colour actually renders as */
+    occ_x = (box_o.x0 + box_o.x1) / 2;
+    occ_y = box_o.y1 - 3; /* near O's bottom: the bottom band's blit
+                           * destination reaches up to here */
+    mid_x = content.x0 + 5;
+    mid_y = content.y0 + 5;
+    fb_o  = ((const uint32_t *) pixels)[occ_y * 200 + occ_x];
+    fb_m  = ((const uint32_t *) pixels)[mid_y * 200 + mid_x];
+    if (fb_o == fb_m)
+      goto Failure; /* the two windows must render distinguishable pixels */
+
+    delta = 20;
+    wuss_window_set_scroll(win_m, POINT(0, delta));
+    rc = wuss_redraw_dirty(wuss); /* apply the scroll's blit + any repaint */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* the pixel behind O must still be O's, not M's content blitted over it */
+    if (((const uint32_t *) pixels)[occ_y * 200 + occ_x] != fb_o)
+      goto Failure;
+
+    wuss_window_close(win_o);
+    wuss_window_close(win_m);
   }
 
   printf("test: wuss_WINDOW_NO_RESIZE_BLIT redraws the whole window instead of blitting\n");
