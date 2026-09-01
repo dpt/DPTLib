@@ -177,6 +177,8 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   result_t           rc;
   int                fw, fh;
   int                pitch;
+  int                sep_h;
+  int                y;
   int                widest;
   int                width, height;
   int                i;
@@ -193,6 +195,7 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   bmfont_get_info(wuss->font, &fw, &fh);
   NOT_USED(fw);
   pitch = fh + 2 * WUSS_MENU_ROW_PAD;
+  sep_h = 2 * WUSS_MENU_ROW_PAD;
 
   widest = 0;
   for (i = 0; i < menu->nitems; i++)
@@ -212,7 +215,10 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   }
 
   width  = WUSS_MENU_TICK_W + widest + WUSS_MENU_TEXT_PAD + WUSS_MENU_ARROW_W;
-  height = pitch * menu->nitems;
+
+  height = 0;
+  for (i = 0; i < menu->nitems; i++)
+    height += (menu->items[i].flags & wuss_MENU_ITEM_DASHED) ? sep_h : pitch;
 
   /* Nudge onto the screen where it can be, but keep the top-left on screen. */
   if (at.x + width > wuss->scr->size.w)
@@ -248,10 +254,12 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   node->ctx        = ctx;
   node->open_index = -1;
 
+  y = 0;
   for (i = 0; i < menu->nitems; i++)
   {
     const wuss_menu_item_t *item;
     wuss_icon_flags_t       flags;
+    int                     row_h;
 
     item  = &menu->items[i];
     flags = wuss_ICON_FLAGS_NONE;
@@ -263,15 +271,22 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
     if (item->submenu != NULL)
       flags |= wuss_ICON_FLAGS_SUBMENU;
 
+    /* a separator is its own short, inert row: force the text empty so
+     * wuss__icon_hit_test treats it as a bare rule */
+    row_h = (flags & wuss_ICON_FLAGS_SEPARATOR) ? sep_h : pitch;
+
     specs[i].type    = wuss_ICON_TYPE_MENU_ENTRY;
     specs[i].bbox.x0 = 0;
-    specs[i].bbox.y0 = i * pitch;
+    specs[i].bbox.y0 = y;
     specs[i].bbox.x1 = width;
-    specs[i].bbox.y1 = i * pitch + pitch;
-    specs[i].text    = item->text ? item->text : "";
+    specs[i].bbox.y1 = y + row_h;
+    specs[i].text    = (flags & wuss_ICON_FLAGS_SEPARATOR)
+                       ? "" : (item->text ? item->text : "");
     specs[i].fg      = 0;
     specs[i].bg      = wuss_NO_BACKGROUND;
     specs[i].flags   = flags;
+
+    y += row_h;
   }
 
   size = SIZE2D(width, height);
