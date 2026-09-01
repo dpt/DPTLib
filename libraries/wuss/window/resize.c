@@ -1,6 +1,7 @@
 /* wuss/window/resize.c -- wuss - minimal window manager */
 
 #include "base/utils.h"
+#include "geom/box.h"
 
 #include "../impl.h"
 
@@ -33,8 +34,9 @@ static void invalidate_grown_or_shrunk(wuss_window_t *window,
 result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
 {
   int     outline_px, titlebar_height;
-  box_t   before;
+  box_t   before, before_content;
   point_t carve;
+  point_t old_scroll;
   point_t clamped;
 
   if (!wuss__size_ok(size.w, size.h))
@@ -46,6 +48,8 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   outline_px      = wuss__outline_px(window);
   titlebar_height = wuss__titlebar_height(window);
   before          = window->visible;
+  old_scroll      = window->scroll;
+  wuss__content_box(window, &before_content);
   wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
 
   window->visible.x1 = window->visible.x0 + size.w + 2 * outline_px + carve.x;
@@ -55,17 +59,55 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
 
   /* Enlarging the viewport (or growing it past the doc extent) can scroll
    * content that no longer exists into view; pull the offset back so only
-   * the document extent is ever shown. The interior has moved relative to
-   * the window, so the whole content box needs repainting -- the
-   * grown/shrunk-sliver logic below assumes an unchanged interior. */
+   * the document extent is ever shown. The content pixels already on screen
+   * are still this window's own rendering, just at the old scroll offset --
+   * so slide them by the scroll delta and only the newly-exposed strip(s)
+   * need a real repaint. The valid source is the old content box minus
+   * whatever windows above it were covering (those areas hold occluder
+   * pixels, not this window's), so blit it piece by piece; the clip bounds
+   * every destination to the new content box, discarding anything sliding
+   * off the old box's far edge rather than dragging stale pixels in. If the
+   * screen format can't blit, fall back to repainting the whole content
+   * box. Either way the grown/shrunk-sliver logic below still assumes an
+   * unchanged interior, which now holds. */
   clamped = wuss__scroll_clamp(window, window->scroll);
   if (clamped.x != window->scroll.x || clamped.y != window->scroll.y)
   {
     box_t content;
+    box_t src[WUSS_MAX_INVALIDATE_PIECES];
+    box_t copied[WUSS_MAX_INVALIDATE_PIECES];
+    box_t dirty[WUSS_MAX_INVALIDATE_PIECES];
+    int   dx, dy, nsrc, ncopied, ndirty, i;
 
+    dx = clamped.x - old_scroll.x;
+    dy = clamped.y - old_scroll.y;
     window->scroll = clamped;
     wuss__content_box(window, &content);
-    wuss__invalidate_clipped(window, &content);
+
+    nsrc              = wuss__clip_to_visible(window, &before_content, src);
+    ncopied           = 0;
+    window->wuss->scr->clip = content;
+    for (i = 0; i < nsrc; i++)
+    {
+      box_t got;
+
+      if (screen_copy_rect(window->wuss->scr, &src[i],
+                           POINT(src[i].x0 - dx, src[i].y0 - dy),
+                           &got) != 0 &&
+          ncopied < WUSS_MAX_INVALIDATE_PIECES)
+        copied[ncopied++] = got;
+    }
+
+    if (ncopied > 0)
+    {
+      ndirty = wuss__subtract_boxes(&content, copied, ncopied, dirty);
+      for (i = 0; i < ndirty; i++)
+        wuss_invalidate(window->wuss, &dirty[i]);
+    }
+    else
+    {
+      wuss__invalidate_clipped(window, &content);
+    }
 #ifdef WUSS_FURNITURE
     wuss__furniture_invalidate(window);
 #endif
