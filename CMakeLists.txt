@@ -347,6 +347,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/redraw.c
     libraries/wuss/scroll.c
     libraries/wuss/scroll-step.c
+    libraries/wuss/set-palette.c
     libraries/wuss/task/start.c
     libraries/wuss/task/stop.c
     libraries/wuss/window/at.c

@@ -20,33 +20,23 @@
 #define SWATCHES_DOC_W 160
 #define SWATCHES_DOC_H 320 /* taller than the window, so scrolling is exercised */
 
-result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
+/* Delete the current swatch icons and lay a fresh set out, resolving the
+ * heading and swatch colours through the palette as it stands now. Called at
+ * create time and again on wuss_EVENT_PALETTE. */
+static result_t swatches_build(swatches_task_t *task)
 {
-  enum { SWATCHES_NSPECS = 1 + screen_PATTERN__LIMIT };
-  wuss_task_t      delegate;
   wuss_icon_spec_t specs[SWATCHES_NSPECS];
-  int              p;
   wuss_colour_t    fg, bg;
-  result_t         rc;
+  int              p;
 
-  fg = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
-  bg = wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF);
+  for (p = 0; p < SWATCHES_NSPECS; p++)
+  {
+    wuss_icon_delete(task->icons[p]);
+    task->icons[p] = NULL;
+  }
 
-  task->window = NULL;
-
-  delegate = wuss_task_start(swatches_handle, task);
-
-  rc = wuss_window_create_placed(wuss,
-                                 SIZE2D(SWATCHES_DOC_W, 140),
-                                 "Swatches",
-                                 wuss_WINDOW_NONE,
-                                 wuss_BACKDROP_COLOUR(wuss_nearest_colour(wuss, 0xDD, 0xDD, 0xDD)),
-                                 &delegate,
-                                 SIZE2D(SWATCHES_DOC_W, SWATCHES_DOC_H),
-                                 SIZE2D(0, 0),
-                                 &task->window);
-  if (rc != result_OK)
-    return rc;
+  fg = wuss_nearest_colour(task->wuss, 0x00, 0x00, 0x00);
+  bg = wuss_nearest_colour(task->wuss, 0xFF, 0xFF, 0xFF);
 
   memset(specs, 0, sizeof(specs));
 
@@ -77,7 +67,34 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
     specs[1 + p].pattern = (screen_pattern_t) p;
   }
 
-  rc = wuss_icon_create_array(task->window, specs, SWATCHES_NSPECS, NULL);
+  return wuss_icon_create_array(task->window, specs, SWATCHES_NSPECS,
+                                task->icons);
+}
+
+result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
+{
+  wuss_task_t delegate;
+  result_t    rc;
+
+  task->wuss   = wuss;
+  task->window = NULL;
+  memset(task->icons, 0, sizeof(task->icons));
+
+  delegate = wuss_task_start(swatches_handle, task);
+
+  rc = wuss_window_create_placed(wuss,
+                                 SIZE2D(SWATCHES_DOC_W, 140),
+                                 "Swatches",
+                                 wuss_WINDOW_NONE,
+                                 wuss_BACKDROP_COLOUR(wuss_nearest_colour(wuss, 0xDD, 0xDD, 0xDD)),
+                                 &delegate,
+                                 SIZE2D(SWATCHES_DOC_W, SWATCHES_DOC_H),
+                                 SIZE2D(0, 0),
+                                 &task->window);
+  if (rc != result_OK)
+    return rc;
+
+  rc = swatches_build(task);
   if (rc != result_OK)
   {
     wuss_window_close(task->window);
@@ -92,14 +109,23 @@ result_t swatches_handle(wuss_window_t      *window,
                          const wuss_event_t *event,
                          void               *task_data)
 {
-  if (event->kind == wuss_EVENT_CLOSE)
+  swatches_task_t *task;
+
+  task = task_data;
+
+  switch (event->kind)
   {
+  case wuss_EVENT_PALETTE:
+    return swatches_build(task);
+
+  case wuss_EVENT_CLOSE:
     wuss_window_close(window);
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
-  }
 
-  return result_OK;
+  default:
+    return result_OK;
+  }
 }
 
 #endif /* USE_SDL */

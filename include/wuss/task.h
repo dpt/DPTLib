@@ -37,7 +37,9 @@ typedef enum wuss_event_kind
   wuss_EVENT_MOUSE,  /**< Button down/up over the window's content. */
   wuss_EVENT_ICON,   /**< A work-area button icon was clicked or hovered. */
   wuss_EVENT_SCROLL, /**< Mouse wheel used over the window's content. */
-  wuss_EVENT_QUIT    /**< Task shutting down, via wuss_task_stop. */
+  wuss_EVENT_QUIT,   /**< Task shutting down, via wuss_task_stop. */
+  wuss_EVENT_PALETTE /**< System palette changed, via wuss_set_palette;
+                          recache any wuss_nearest_colour selections. */
 }
 wuss_event_kind_t;
 
@@ -114,8 +116,8 @@ typedef struct wuss_event
     }
     scroll;
 
-    /* wuss_EVENT_IDLE, wuss_EVENT_CLOSE, wuss_EVENT_QUIT and
-     * wuss_EVENT_OPEN carry no data. */
+    /* wuss_EVENT_IDLE, wuss_EVENT_CLOSE, wuss_EVENT_QUIT,
+     * wuss_EVENT_OPEN and wuss_EVENT_PALETTE carry no data. */
   }
   data;
 }
