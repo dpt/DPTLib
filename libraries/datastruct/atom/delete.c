@@ -1,4 +1,4 @@
-/* delete.c -- atoms */
+/* datastruct/atom/delete.c -- atoms */
 
 #include <assert.h>
 #include <string.h>

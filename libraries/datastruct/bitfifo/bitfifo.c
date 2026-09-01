@@ -1,4 +1,4 @@
-/* bitfifo.c -- fifo which stores bits */
+/* datastruct/bitfifo/bitfifo.c -- fifo which stores bits */
 
 #include <assert.h>
 #include <string.h>

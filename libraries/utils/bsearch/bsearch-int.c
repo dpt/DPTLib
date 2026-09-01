@@ -1,4 +1,4 @@
-/* bsearch-int.c -- binary searching arrays */
+/* utils/bsearch/bsearch-int.c -- binary searching arrays */
 
 #define TYPE int
 #define NAME bsearch_int

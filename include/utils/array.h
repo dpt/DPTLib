@@ -1,4 +1,4 @@
-/* array.h -- array utilities */
+/* utils/array.h -- array utilities */
 
 /**
  * \file array.h

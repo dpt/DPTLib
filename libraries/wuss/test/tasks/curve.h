@@ -1,4 +1,4 @@
-/* curve.h -- wuss test - draggable Bezier curve task */
+/* wuss/test/tasks/curve.h -- draggable Bezier curve task */
 
 #ifndef TASKS_CURVE_H
 #define TASKS_CURVE_H

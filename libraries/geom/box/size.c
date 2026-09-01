@@ -1,4 +1,4 @@
-/* size.c -- return the size of the specified box */
+/* geom/box/size.c -- return the size of the specified box */
 
 #include "geom/box.h"
 #include "geom/size.h"

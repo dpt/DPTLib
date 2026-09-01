@@ -1,4 +1,4 @@
-/* pack.h -- structure packing and unpacking helpers */
+/* utils/pack.h -- structure packing and unpacking helpers */
 
 /**
  * \file Pack (interface).

@@ -1,4 +1,4 @@
-/* create-from-desc.c -- wuss - build a menu tree from a descriptor string */
+/* wuss/menu/create-from-desc.c -- build a menu tree from a descriptor string */
 
 /* The token machine (Token / Parser / getopt / getname / getnext / isdelim)
  * and the explicit menu stack are ported from PrivateEye's

@@ -1,4 +1,4 @@
-/* layout.h -- laying out elements using the packer */
+/* geom/layout.h -- laying out elements using the packer */
 
 #ifndef GEOM_LAYOUT_H
 #define GEOM_LAYOUT_H

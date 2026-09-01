@@ -1,3 +1,4 @@
+/* utils/array/stretch.c */
 
 #include <assert.h>
 #include <string.h>

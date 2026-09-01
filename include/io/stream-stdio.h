@@ -1,4 +1,4 @@
-/* stream-stdio.c -- C standard IO stream implementation */
+/* io/stream-stdio.h -- C standard IO stream implementation */
 
 #ifndef STREAM_STDIO_H
 #define STREAM_STDIO_H

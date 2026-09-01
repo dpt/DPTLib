@@ -1,4 +1,4 @@
-/* invalidate.c -- wuss - minimal window manager */
+/* wuss/window/invalidate.c -- wuss - minimal window manager */
 
 #include <string.h>
 

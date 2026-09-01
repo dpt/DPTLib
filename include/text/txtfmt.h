@@ -1,4 +1,4 @@
-/* txtfmt.h -- text formatting */
+/* text/txtfmt.h -- text formatting */
 
 /**
  * \file txtfmt.h

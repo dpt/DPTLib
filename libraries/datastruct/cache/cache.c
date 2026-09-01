@@ -1,4 +1,4 @@
-/* cache.c -- generic single block cache */
+/* datastruct/cache/cache.c -- generic single block cache */
 
 #include <assert.h>
 #include <limits.h>

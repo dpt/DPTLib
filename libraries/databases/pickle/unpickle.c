@@ -1,4 +1,4 @@
-/* unpickle.c -- deserialise an associative array from file */
+/* databases/pickle/unpickle.c -- deserialise an associative array from file */
 
 #include <assert.h>
 #include <ctype.h>

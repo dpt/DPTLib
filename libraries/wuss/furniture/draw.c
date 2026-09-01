@@ -1,4 +1,4 @@
-/* draw.c -- wuss - minimal window manager */
+/* wuss/furniture/draw.c -- wuss - minimal window manager */
 
 #include <string.h>
 

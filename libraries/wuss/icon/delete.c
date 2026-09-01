@@ -1,4 +1,4 @@
-/* delete.c -- wuss - destroy a work-area icon */
+/* wuss/icon/delete.c -- destroy a work-area icon */
 
 #include <stdlib.h>
 

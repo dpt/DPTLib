@@ -1,4 +1,4 @@
-/* get-selected.c -- wuss - query a radio/option icon's latched state */
+/* wuss/icon/get-selected.c -- query a radio/option icon's latched state */
 
 #include <assert.h>
 

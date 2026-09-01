@@ -1,4 +1,4 @@
-/* ball.c -- wuss test - bouncing ball task */
+/* wuss/test/tasks/ball.c -- bouncing ball task */
 
 #ifdef USE_SDL
 

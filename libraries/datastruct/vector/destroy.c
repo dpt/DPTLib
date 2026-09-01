@@ -1,4 +1,4 @@
-/* destroy.c -- vector - flexible array */
+/* datastruct/vector/destroy.c -- flexible array */
 
 #include <stdlib.h>
 

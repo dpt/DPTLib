@@ -1,4 +1,4 @@
-/* palette.h -- wuss test - desktop palette swatch grid task */
+/* wuss/test/tasks/palette.h -- desktop palette swatch grid task */
 
 #ifndef TASKS_PALETTE_H
 #define TASKS_PALETTE_H

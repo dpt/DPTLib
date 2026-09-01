@@ -1,4 +1,4 @@
-/* image.h -- wuss test - static bitmap image task */
+/* wuss/test/tasks/image.h -- static bitmap image task */
 
 #ifndef TASKS_IMAGE_H
 #define TASKS_IMAGE_H

@@ -1,4 +1,4 @@
-/* regdata.h */
+/* framebuf/span-registry/regdata.h */
 
 #ifndef SPAN_REGISTRY_REGDATA_H
 #define SPAN_REGISTRY_REGDATA_H

@@ -1,4 +1,4 @@
-/* window.h -- wuss window API */
+/* wuss/window.h -- wuss window API */
 
 /**
  * \file window.h

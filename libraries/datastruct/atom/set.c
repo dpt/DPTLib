@@ -1,4 +1,4 @@
-/* set.c -- atoms */
+/* datastruct/atom/set.c -- atoms */
 
 #include <assert.h>
 #include <string.h>

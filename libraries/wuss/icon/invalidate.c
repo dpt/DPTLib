@@ -1,4 +1,4 @@
-/* invalidate.c -- wuss - mark a work-area icon's bbox dirty */
+/* wuss/icon/invalidate.c -- mark a work-area icon's bbox dirty */
 
 #include "../impl.h"
 

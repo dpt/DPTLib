@@ -1,4 +1,4 @@
-/* destroy.c -- bit vectors */
+/* datastruct/bitvec/destroy.c -- bit vectors */
 
 #include <stdlib.h>
 

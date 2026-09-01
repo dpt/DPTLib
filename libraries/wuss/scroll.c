@@ -1,4 +1,4 @@
-/* scroll.c -- wuss - minimal window manager */
+/* wuss/scroll.c -- wuss - minimal window manager */
 
 #include "impl.h"
 

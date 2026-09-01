@@ -1,4 +1,4 @@
-/* task.h -- wuss task API */
+/* wuss/task.h -- wuss task API */
 
 /**
  * \file task.h

@@ -1,4 +1,4 @@
-/* pack-test.c -- tests for pack/unpack */
+/* utils/pack/test/pack-test.c -- tests for pack/unpack */
 
 #include <limits.h>
 #include <stdio.h>

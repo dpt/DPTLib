@@ -1,4 +1,4 @@
-/* toggle-box.c -- wuss - minimal window manager */
+/* wuss/furniture/toggle-box.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

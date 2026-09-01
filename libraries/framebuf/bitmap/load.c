@@ -1,4 +1,4 @@
-/* load.c */
+/* framebuf/bitmap/load.c */
 
 #include <assert.h>
 #include <stdlib.h>

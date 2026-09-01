@@ -1,4 +1,4 @@
-/* move.c -- wuss - minimal window manager */
+/* wuss/window/move.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

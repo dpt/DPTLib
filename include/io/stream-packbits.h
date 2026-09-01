@@ -1,4 +1,4 @@
-/* stream-packbits.h -- PackBits compression */
+/* io/stream-packbits.h -- PackBits compression */
 
 #ifndef STREAM_PACKBITS_H
 #define STREAM_PACKBITS_H

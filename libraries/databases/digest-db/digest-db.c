@@ -1,4 +1,4 @@
-/* digest-db.c -- digest database */
+/* databases/digest-db/digest-db.c -- digest database */
 
 #include <limits.h>
 #include <stddef.h>

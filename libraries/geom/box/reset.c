@@ -1,4 +1,4 @@
-/* reset.c -- set box 'b' to be invalid */
+/* geom/box/reset.c -- set box 'b' to be invalid */
 
 #include <limits.h>
 

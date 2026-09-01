@@ -1,4 +1,4 @@
-/* line.h -- lines */
+/* geom/line.h -- lines */
 
 #ifndef GEOM_LINE_H
 #define GEOM_LINE_H

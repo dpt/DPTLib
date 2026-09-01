@@ -1,4 +1,4 @@
-/* destroy.c -- wuss - minimal window manager */
+/* wuss/destroy.c -- wuss - minimal window manager */
 
 #include <stdlib.h>
 

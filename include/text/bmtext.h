@@ -1,4 +1,4 @@
-/* bmtext.h -- word-wrap and draw a paragraph in a bitmap font */
+/* text/bmtext.h -- word-wrap and draw a paragraph in a bitmap font */
 
 /**
  * \file bmtext.h

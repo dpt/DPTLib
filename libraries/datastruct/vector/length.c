@@ -1,4 +1,4 @@
-/* length.c -- vector - flexible array */
+/* datastruct/vector/length.c -- flexible array */
 
 #include <stdlib.h>
 

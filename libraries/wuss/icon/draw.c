@@ -1,4 +1,4 @@
-/* draw.c -- wuss - draw a work-area icon */
+/* wuss/icon/draw.c -- draw a work-area icon */
 
 #include <string.h>
 

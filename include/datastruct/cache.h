@@ -1,4 +1,4 @@
-/* cache.h -- generic single-block cache */
+/* datastruct/cache.h -- generic single-block cache */
 
 /**
  * \file cache.h

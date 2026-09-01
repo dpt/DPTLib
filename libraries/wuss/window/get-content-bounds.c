@@ -1,4 +1,4 @@
-/* get-content-bounds.c -- wuss - minimal window manager */
+/* wuss/window/get-content-bounds.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

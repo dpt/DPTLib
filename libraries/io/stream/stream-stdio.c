@@ -1,4 +1,4 @@
-/* stream-stdio.c -- C standard IO stream implementation */
+/* io/stream/stream-stdio.c -- C standard IO stream implementation */
 
 #include <assert.h>
 #include <stddef.h>

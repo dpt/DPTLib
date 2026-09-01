@@ -1,4 +1,4 @@
-/* ntree.h -- n-ary trees */
+/* datastruct/ntree.h -- n-ary trees */
 
 /**
  * \file ntree.h

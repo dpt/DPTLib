@@ -1,4 +1,4 @@
-/* screen-fill-pattern.c -- fill a box with a repeating 8x8 two-colour pattern */
+/* framebuf/screen/screen-fill-pattern.c -- fill a box with a repeating 8x8 two-colour pattern */
 
 #include <assert.h>
 #include <string.h>

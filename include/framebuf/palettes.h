@@ -1,4 +1,4 @@
-/* palettes.h -- standard palettes */
+/* framebuf/palettes.h -- standard palettes */
 
 #ifndef PALETTES_H
 #define PALETTES_H

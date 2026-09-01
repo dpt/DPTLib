@@ -1,4 +1,4 @@
-/* sofa.c -- wuss test - rotating wireframe sofa and spaceship task */
+/* wuss/test/tasks/sofa.c -- rotating wireframe sofa and spaceship task */
 
 #ifdef USE_SDL
 

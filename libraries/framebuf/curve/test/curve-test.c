@@ -1,4 +1,4 @@
-/* curve-test.c */
+/* framebuf/curve/test/curve-test.c */
 
 #include <assert.h>
 #include <ctype.h>

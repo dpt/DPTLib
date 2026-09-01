@@ -1,4 +1,4 @@
-/* launcher.h -- wuss test - clickable list of names that spawn other tasks */
+/* wuss/test/tasks/launcher.h -- clickable list of names that spawn other tasks */
 
 #ifndef TASKS_LAUNCHER_H
 #define TASKS_LAUNCHER_H

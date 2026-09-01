@@ -1,4 +1,4 @@
-/* stream-mtfcomp.c -- "Move to front" adaptive compression stream */
+/* io/stream/stream-mtfcomp.c -- "Move to front" adaptive compression stream */
 
 #include <assert.h>
 #include <stddef.h>

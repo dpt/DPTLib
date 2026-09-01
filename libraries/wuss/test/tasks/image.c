@@ -1,4 +1,4 @@
-/* image.c -- wuss test - static bitmap image task */
+/* wuss/test/tasks/image.c -- static bitmap image task */
 
 #ifdef USE_SDL
 

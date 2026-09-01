@@ -1,4 +1,4 @@
-/* walk-cont.c -- hash */
+/* datastruct/hash/walk-cont.c -- hash */
 
 #include <assert.h>
 #include <stdlib.h>

@@ -1,4 +1,4 @@
-/* impl.h -- wuss - minimal window manager */
+/* wuss/impl.h -- wuss - minimal window manager */
 
 #ifndef IMPL_H
 #define IMPL_H

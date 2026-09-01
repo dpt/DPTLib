@@ -1,4 +1,4 @@
-/* txtscr.c -- text format 'screen' */
+/* test/txtscr/txtscr.c -- text format 'screen' */
 
 #include <stdio.h>
 #include <stdlib.h>

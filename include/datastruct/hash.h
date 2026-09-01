@@ -1,4 +1,4 @@
-/* hash.h -- associative arrays */
+/* datastruct/hash.h -- associative arrays */
 
 /**
  * \file hash.h

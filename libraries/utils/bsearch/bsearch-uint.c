@@ -1,4 +1,4 @@
-/* bsearch-uint.c -- binary searching arrays */
+/* utils/bsearch/bsearch-uint.c -- binary searching arrays */
 
 #define TYPE unsigned int
 #define NAME bsearch_uint

@@ -1,4 +1,4 @@
-/* impl.h -- box packing for layout */
+/* geom/packer/impl.h -- box packing for layout */
 
 #ifndef IMPL_H
 #define IMPL_H

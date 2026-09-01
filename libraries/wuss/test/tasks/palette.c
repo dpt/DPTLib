@@ -1,4 +1,4 @@
-/* palette.c -- wuss test - desktop palette swatch grid task */
+/* wuss/test/tasks/palette.c -- desktop palette swatch grid task */
 
 #ifdef USE_SDL
 

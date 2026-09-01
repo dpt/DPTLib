@@ -1,4 +1,4 @@
-/* tag-db.c -- tag database */
+/* databases/tag-db/tag-db.c -- tag database */
 
 // TODO
 // cope with tags with spaces (quoted for saving and loading)

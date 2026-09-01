@@ -1,4 +1,4 @@
-/* all8888.c */
+/* framebuf/span/all8888.c */
 
 #include <string.h>
 

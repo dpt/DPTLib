@@ -1,4 +1,4 @@
-/* set-hover.c -- wuss - track which work-area icon the pointer is over */
+/* wuss/icon/set-hover.c -- track which work-area icon the pointer is over */
 
 #include <stddef.h>
 

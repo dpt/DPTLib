@@ -1,4 +1,4 @@
-/* colour.c */
+/* framebuf/colour/colour.c */
 
 #include <assert.h>
 #include <stddef.h>

@@ -1,4 +1,4 @@
-/* remove.c -- hash */
+/* datastruct/hash/remove.c -- hash */
 
 #include <stdlib.h>
 

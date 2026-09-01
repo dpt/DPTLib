@@ -1,4 +1,4 @@
-/* create.c -- wuss - minimal window manager */
+/* wuss/window/create.c -- wuss - minimal window manager */
 
 #include <assert.h>
 #include <stdlib.h>

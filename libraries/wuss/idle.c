@@ -1,4 +1,4 @@
-/* idle.c -- wuss - minimal window manager */
+/* wuss/idle.c -- wuss - minimal window manager */
 
 #include "impl.h"
 

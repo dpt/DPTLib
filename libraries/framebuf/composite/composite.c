@@ -1,4 +1,4 @@
-/* composite.c
+/* framebuf/composite/composite.c
  *
  * An implementation of Porter-Duff image compositing.
  *

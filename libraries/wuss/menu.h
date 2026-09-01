@@ -1,4 +1,4 @@
-/* menu.h -- wuss pop-up menu helper, internal */
+/* wuss/menu.h -- wuss pop-up menu helper, internal */
 
 #ifndef WUSS_MENU_IMPL_H
 #define WUSS_MENU_IMPL_H

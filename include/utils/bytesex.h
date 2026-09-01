@@ -1,4 +1,4 @@
-/* bytesex.h -- reversing bytesex */
+/* utils/bytesex.h -- reversing bytesex */
 
 #ifndef UTILS_BYTESEX_H
 #define UTILS_BYTESEX_H

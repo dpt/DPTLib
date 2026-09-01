@@ -1,4 +1,4 @@
-/* destroy.c -- txtfmt - text formatting */
+/* text/txtfmt/destroy.c -- text formatting */
 
 #include <stdlib.h>
 

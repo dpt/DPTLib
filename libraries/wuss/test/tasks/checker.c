@@ -1,4 +1,4 @@
-/* checker.c -- wuss test - checkerboard task */
+/* wuss/test/tasks/checker.c -- checkerboard task */
 
 #ifdef USE_SDL
 

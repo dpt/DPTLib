@@ -1,4 +1,4 @@
-/* menu.c -- wuss pop-up menu helper */
+/* wuss/menu/menu.c -- wuss pop-up menu helper */
 
 #include <assert.h>
 #include <limits.h>

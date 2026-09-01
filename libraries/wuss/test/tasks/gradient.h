@@ -1,4 +1,4 @@
-/* gradient.h -- wuss test - gradient fill task */
+/* wuss/test/tasks/gradient.h -- gradient fill task */
 
 #ifndef TASKS_GRADIENT_H
 #define TASKS_GRADIENT_H

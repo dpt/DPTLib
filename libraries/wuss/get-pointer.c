@@ -1,4 +1,4 @@
-/* get-pointer.c -- wuss - minimal window manager */
+/* wuss/get-pointer.c -- wuss - minimal window manager */
 
 #include <assert.h>
 

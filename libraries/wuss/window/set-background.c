@@ -1,4 +1,4 @@
-/* set-background.c -- wuss - minimal window manager */
+/* wuss/window/set-background.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

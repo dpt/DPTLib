@@ -1,4 +1,4 @@
-/* pickle.h -- (de-)serialising associative arrays */
+/* databases/pickle.h -- (de-)serialising associative arrays */
 
 /**
  * \file pickle.h

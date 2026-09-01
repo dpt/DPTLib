@@ -1,4 +1,4 @@
-/* set-width.c -- vector - flexible array */
+/* datastruct/vector/set-width.c -- flexible array */
 
 #include <stdlib.h>
 

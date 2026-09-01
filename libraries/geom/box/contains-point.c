@@ -1,4 +1,4 @@
-/* contains-point.c -- return true if "box" contains the point (x,y) */
+/* geom/box/contains-point.c -- return true if "box" contains the point (x,y) */
 
 #include "base/utils.h"
 

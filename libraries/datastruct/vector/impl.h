@@ -1,4 +1,4 @@
-/* impl.h -- vector - flexible array */
+/* datastruct/vector/impl.h -- flexible array */
 
 #ifndef IMPL_H
 #define IMPL_H

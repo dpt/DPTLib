@@ -1,4 +1,4 @@
-/* print.c -- txtfmt - text formatting */
+/* text/txtfmt/print.c -- text formatting */
 
 #include <stdio.h>
 

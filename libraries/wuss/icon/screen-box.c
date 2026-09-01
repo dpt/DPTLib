@@ -1,4 +1,4 @@
-/* screen-box.c -- wuss - work-area icon bbox to screen space */
+/* wuss/icon/screen-box.c -- work-area icon bbox to screen space */
 
 #include "geom/box.h"
 #include "geom/point.h"

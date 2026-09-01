@@ -1,4 +1,4 @@
-/* furniture.h -- wuss - minimal window manager */
+/* wuss/furniture.h -- wuss - minimal window manager */
 
 #ifndef WUSS_FURNITURE_IMPL_H
 #define WUSS_FURNITURE_IMPL_H

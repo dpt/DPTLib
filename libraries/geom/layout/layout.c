@@ -1,4 +1,4 @@
-/* layout.c -- laying out elements using the packer */
+/* geom/layout/layout.c -- laying out elements using the packer */
 
 #include <stddef.h>
 

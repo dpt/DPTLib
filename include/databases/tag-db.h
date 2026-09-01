@@ -1,4 +1,4 @@
-/* tag-db.h -- tag database */
+/* databases/tag-db.h -- tag database */
 
 /**
  * \file tag-db.h

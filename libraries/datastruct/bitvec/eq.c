@@ -1,4 +1,4 @@
-/* eq.c -- bit vectors */
+/* datastruct/bitvec/eq.c -- bit vectors */
 
 #include <string.h>
 

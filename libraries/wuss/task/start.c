@@ -1,4 +1,4 @@
-/* start.c -- wuss - minimal window manager */
+/* wuss/task/start.c -- wuss - minimal window manager */
 
 #include <stddef.h>
 

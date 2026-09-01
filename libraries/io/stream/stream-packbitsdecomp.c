@@ -1,4 +1,4 @@
-/* stream-packbitsdecomp.c -- PackBits decompression */
+/* io/stream/stream-packbitsdecomp.c -- PackBits decompression */
 
 #include <assert.h>
 #include <stddef.h>

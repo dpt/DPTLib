@@ -1,4 +1,4 @@
-/* ball.h -- wuss test - bouncing ball task */
+/* wuss/test/tasks/ball.h -- bouncing ball task */
 
 #ifndef TASKS_BALL_H
 #define TASKS_BALL_H

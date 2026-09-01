@@ -1,4 +1,4 @@
-/* draw.c -- draw pre-laid-out bitmap-font lines */
+/* text/bmtext/draw.c -- draw pre-laid-out bitmap-font lines */
 
 #include <stddef.h>
 

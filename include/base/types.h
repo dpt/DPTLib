@@ -1,4 +1,4 @@
-/* types.h -- fixed-width integer types */
+/* base/types.h -- fixed-width integer types */
 
 #ifndef BASE_TYPES_H
 #define BASE_TYPES_H

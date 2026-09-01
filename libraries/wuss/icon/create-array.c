@@ -1,4 +1,4 @@
-/* create-array.c -- wuss - create several work-area icons at once */
+/* wuss/icon/create-array.c -- create several work-area icons at once */
 
 #include <assert.h>
 #include <stddef.h>

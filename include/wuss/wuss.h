@@ -1,4 +1,4 @@
-/* wuss.h -- minimal window manager */
+/* wuss/wuss.h -- minimal window manager */
 
 /**
  * \file wuss.h

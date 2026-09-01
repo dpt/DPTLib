@@ -1,4 +1,4 @@
-/* porter-duff.c -- wuss test - animated Porter-Duff compositing task */
+/* wuss/test/tasks/porter-duff.c -- animated Porter-Duff compositing task */
 
 #ifdef USE_SDL
 

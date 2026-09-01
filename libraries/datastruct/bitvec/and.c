@@ -1,4 +1,4 @@
-/* and.c -- bit vectors */
+/* datastruct/bitvec/and.c -- bit vectors */
 
 #include <stdlib.h>
 

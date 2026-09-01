@@ -1,4 +1,4 @@
-/* toggle-action.c -- wuss - minimal window manager */
+/* wuss/furniture/toggle-action.c -- wuss - minimal window manager */
 
 #include "base/utils.h"
 

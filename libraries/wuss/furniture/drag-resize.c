@@ -1,4 +1,4 @@
-/* drag-resize.c -- wuss - minimal window manager */
+/* wuss/furniture/drag-resize.c -- wuss - minimal window manager */
 
 #include "base/utils.h"
 

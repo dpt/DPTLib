@@ -1,4 +1,4 @@
-/* insert.c -- hash */
+/* datastruct/hash/insert.c -- hash */
 
 #include <stdlib.h>
 

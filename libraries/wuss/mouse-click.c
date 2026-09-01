@@ -1,4 +1,4 @@
-/* mouse-click.c -- wuss - minimal window manager */
+/* wuss/mouse-click.c -- wuss - minimal window manager */
 
 #include "impl.h"
 

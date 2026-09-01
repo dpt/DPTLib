@@ -1,4 +1,4 @@
-/* set-selected.c -- wuss - latch a radio/option icon's selected state */
+/* wuss/icon/set-selected.c -- latch a radio/option icon's selected state */
 
 #include <assert.h>
 

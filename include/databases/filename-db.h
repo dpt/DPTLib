@@ -1,4 +1,4 @@
-/* filename-db.h -- filename database */
+/* databases/filename-db.h -- filename database */
 
 /**
  * \file filename-db.h

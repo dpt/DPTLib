@@ -1,4 +1,4 @@
-/* icon.h -- wuss work-area icons */
+/* wuss/icon.h -- wuss work-area icons */
 
 /**
  * \file icon.h

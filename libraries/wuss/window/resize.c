@@ -1,4 +1,4 @@
-/* resize.c -- wuss - minimal window manager */
+/* wuss/window/resize.c -- wuss - minimal window manager */
 
 #include "base/utils.h"
 

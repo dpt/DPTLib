@@ -1,4 +1,4 @@
-/* launcher.c -- wuss test - clickable list of names that spawn other tasks */
+/* wuss/test/tasks/launcher.c -- clickable list of names that spawn other tasks */
 
 #ifdef USE_SDL
 
