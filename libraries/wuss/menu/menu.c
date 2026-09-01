@@ -134,26 +134,36 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
   if (event->data.icon.action == wuss_MOUSE_UP)
   {
-    wuss_button_t      button;
-    struct wuss__menu *root;
+    wuss_button_t          button;
+    struct wuss__menu     *root;
+    wuss_menu_select_fn_t *on_select;
+    const wuss_menu_t     *menu;
+    void                  *ctx;
 
     button = event->data.icon.button;
 
     if (item->submenu != NULL)
       return result_OK; /* a submenu row opens on hover, it is not a pick */
 
-    if (self->on_select != NULL)
-      self->on_select(self->menu, index, button, self->ctx);
+    /* Capture what the callback needs, then tear the chain down *before*
+     * invoking it: on_select may itself open a new menu (freeing this one),
+     * so `self` must not be touched afterwards. */
+    on_select = self->on_select;
+    menu      = self->menu;
+    ctx       = self->ctx;
 
-    if (button & wuss_BUTTON_ADJUST)
-      return result_OK; /* ADJUST keeps the chain open */
+    if (!(button & wuss_BUTTON_ADJUST))
+    {
+      root = self;
+      while (root->parent != NULL)
+        root = root->parent;
 
-    root = self;
-    while (root->parent != NULL)
-      root = root->parent;
+      root->wuss->menu_chain = NULL;
+      wuss__menu_close_from(root);
+    }
 
-    root->wuss->menu_chain = NULL;
-    wuss__menu_close_from(root);
+    if (on_select != NULL)
+      on_select(menu, index, button, ctx);
   }
 
   return result_OK;
