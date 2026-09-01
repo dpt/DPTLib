@@ -82,7 +82,10 @@ struct wuss
 #endif
   list_t                      z_order;   /* anchor; head = topmost window */
 #ifdef WUSS_FURNITURE
-  struct wuss__furniture      furniture;
+  struct wuss__furniture         furniture;    /* drag state */
+  const wuss__furniture_ops_t   *furniture_ops; /* core->furniture dispatch;
+                                                 * wuss_create defaults it to
+                                                 * wuss__furniture_default_ops */
 #endif
   box_t                       dirty[WUSS_MAX_DIRTY]; /* accumulated by wuss_invalidate; reset by a redraw */
   int                         ndirty;

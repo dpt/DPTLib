@@ -371,6 +371,7 @@ set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/hit-test.c
     libraries/wuss/furniture/hscroll-box.c
     libraries/wuss/furniture/invalidate.c
+    libraries/wuss/furniture/ops.c
     libraries/wuss/furniture/resize-box.c
     libraries/wuss/furniture/scroll-action.c
     libraries/wuss/furniture/titlebar-box.c

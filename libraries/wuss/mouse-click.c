@@ -66,7 +66,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   {
     wuss_furniture_region_t region;
 
-    region = wuss__furniture_hit_test(win, POINT(x, y));
+    region = wuss->furniture_ops->hit_test(win, POINT(x, y));
 
     if (region == wuss_FURNITURE_CLOSE  &&
         action == wuss_MOUSE_DOWN       &&
@@ -111,7 +111,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         {
         case wuss_FURNITURE_TOGGLE_SIZE:
           if (button & wuss_BUTTON_SELECT)
-            wuss__furniture_toggle_size(win);
+            wuss->furniture_ops->toggle_size(win);
           break;
         case wuss_FURNITURE_VSCROLL_UP:
           wuss__scroll_step(win, POINT(0, -step));
