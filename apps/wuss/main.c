@@ -36,6 +36,7 @@
 #include "tasks/palette.h"
 #include "tasks/porter-duff.h"
 #include "tasks/sofa.h"
+#include "tasks/swatches.h"
 #include "tasks/text.h"
 
 /* ----------------------------------------------------------------------- */
@@ -198,6 +199,16 @@ static result_t spawn_icons(void)
   return result_OK;
 }
 
+static result_t spawn_swatches(void)
+{
+  swatches_task_t *t = calloc(1, sizeof(*t));
+  result_t         rc;
+  if (t == NULL) return result_OOM;
+  rc = swatches_create(g.wuss, t);
+  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
 static result_t spawn_porter_duff(void)
 {
   porter_duff_task_t *t = calloc(1, sizeof(*t));
@@ -309,6 +320,7 @@ static const wuss_menu_item_t g_task_items[] =
   { "Sofa",        wuss_MENU_ITEM_NONE,   NULL },
   { "Gradient",    wuss_MENU_ITEM_NONE,   NULL },
   { "Icons",       wuss_MENU_ITEM_NONE,   NULL },
+  { "Swatches",    wuss_MENU_ITEM_NONE,   NULL },
   { "Porter-Duff", wuss_MENU_ITEM_NONE,   NULL },
   { "Menu",        wuss_MENU_ITEM_DASHED, NULL },
   { "Menu (desc)", wuss_MENU_ITEM_NONE,   NULL },
@@ -325,8 +337,8 @@ static const task_spawn_fn_t g_task_spawn[] =
 {
   spawn_ball, spawn_text, spawn_blank, spawn_chars, spawn_palette,
   spawn_image, spawn_checker, spawn_curve, spawn_lissajous, spawn_sofa,
-  spawn_gradient, spawn_icons, spawn_porter_duff, spawn_menu, spawn_menu_desc,
-  spawn_quit
+  spawn_gradient, spawn_icons, spawn_swatches, spawn_porter_duff, spawn_menu,
+  spawn_menu_desc, spawn_quit
 };
 
 static const wuss_menu_t g_task_menu =
