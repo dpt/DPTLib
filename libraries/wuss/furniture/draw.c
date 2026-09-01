@@ -22,7 +22,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
   if (!box_intersection(&titlebar, full, &clipped))
   {
     wuss->scr->clip = clipped;
-    screen_draw_rect(wuss->scr,
+    screen_fill_rect(wuss->scr,
                      titlebar.x0, titlebar.y0, box_size(&titlebar),
                      wuss->palette[wuss->furniture_colours.title.bg]);
 
@@ -86,7 +86,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
       box_t close;
 
       wuss__close_box(window, &close);
-      screen_draw_rect(wuss->scr,
+      screen_fill_rect(wuss->scr,
                        close.x0, close.y0, box_size(&close),
                        wuss->palette[wuss->furniture_colours.close]);
     }
@@ -96,7 +96,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
       box_t back;
 
       wuss__back_box(window, &back);
-      screen_draw_rect(wuss->scr,
+      screen_fill_rect(wuss->scr,
                        back.x0, back.y0, box_size(&back),
                        wuss->palette[wuss->furniture_colours.back]);
     }
@@ -106,7 +106,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
       box_t toggle;
 
       wuss__toggle_box(window, &toggle);
-      screen_draw_rect(wuss->scr,
+      screen_fill_rect(wuss->scr,
                        toggle.x0, toggle.y0, box_size(&toggle),
                        wuss->palette[wuss->furniture_colours.toggle]);
     }
@@ -120,7 +120,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     if (!box_intersection(&resize, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr,
+      screen_fill_rect(wuss->scr,
                        resize.x0, resize.y0, box_size(&resize),
                        wuss->palette[wuss->furniture_colours.resize]);
     }
@@ -134,7 +134,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     if (!box_intersection(&up, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr, up.x0, up.y0, box_size(&up),
+      screen_fill_rect(wuss->scr, up.x0, up.y0, box_size(&up),
                        wuss->palette[wuss->furniture_colours.scroll.arrows]);
     }
 
@@ -142,7 +142,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     if (!box_intersection(&down, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr, down.x0, down.y0, box_size(&down),
+      screen_fill_rect(wuss->scr, down.x0, down.y0, box_size(&down),
                        wuss->palette[wuss->furniture_colours.scroll.arrows]);
     }
 
@@ -150,7 +150,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     if (!box_intersection(&well, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr, well.x0, well.y0, box_size(&well),
+      screen_fill_rect(wuss->scr, well.x0, well.y0, box_size(&well),
                        wuss->palette[wuss->furniture_colours.scroll.wells]);
     }
 
@@ -158,7 +158,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     if (!box_intersection(&sausage, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr, sausage.x0, sausage.y0, box_size(&sausage),
+      screen_fill_rect(wuss->scr, sausage.x0, sausage.y0, box_size(&sausage),
                        wuss->palette[wuss->furniture_colours.scroll.sausages]);
     }
   }
@@ -171,7 +171,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     if (!box_intersection(&left, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr, left.x0, left.y0, box_size(&left),
+      screen_fill_rect(wuss->scr, left.x0, left.y0, box_size(&left),
                        wuss->palette[wuss->furniture_colours.scroll.arrows]);
     }
 
@@ -179,7 +179,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     if (!box_intersection(&right, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr, right.x0, right.y0, box_size(&right),
+      screen_fill_rect(wuss->scr, right.x0, right.y0, box_size(&right),
                        wuss->palette[wuss->furniture_colours.scroll.arrows]);
     }
 
@@ -187,7 +187,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     if (!box_intersection(&well, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr, well.x0, well.y0, box_size(&well),
+      screen_fill_rect(wuss->scr, well.x0, well.y0, box_size(&well),
                        wuss->palette[wuss->furniture_colours.scroll.wells]);
     }
 
@@ -195,7 +195,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     if (!box_intersection(&sausage, full, &clipped))
     {
       wuss->scr->clip = clipped;
-      screen_draw_rect(wuss->scr, sausage.x0, sausage.y0, box_size(&sausage),
+      screen_fill_rect(wuss->scr, sausage.x0, sausage.y0, box_size(&sausage),
                        wuss->palette[wuss->furniture_colours.scroll.sausages]);
     }
   }
@@ -218,7 +218,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
       if (!box_intersection(&rule, full, &clipped))
       {
         wuss->scr->clip = clipped;
-        screen_draw_rect(wuss->scr, rule.x0, rule.y0, box_size(&rule),
+        screen_fill_rect(wuss->scr, rule.x0, rule.y0, box_size(&rule),
                          wuss->palette[wuss->furniture_colours.title.bg]);
       }
     }
@@ -232,7 +232,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
       if (!box_intersection(&rule, full, &clipped))
       {
         wuss->scr->clip = clipped;
-        screen_draw_rect(wuss->scr, rule.x0, rule.y0, box_size(&rule),
+        screen_fill_rect(wuss->scr, rule.x0, rule.y0, box_size(&rule),
                          wuss->palette[wuss->furniture_colours.title.bg]);
       }
     }
@@ -248,9 +248,9 @@ void wuss__furniture_draw(wuss_t        *wuss,
     border = wuss->palette[wuss->furniture_colours.title.bg]; /* no dedicated outline class; matches titlebar chrome */
 
     wuss->scr->clip = visible_clipped;
-    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y0,     SIZE2D(width, 1), border);
-    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y1 - 1, SIZE2D(width, 1), border);
-    screen_draw_rect(wuss->scr, window->visible.x0,     window->visible.y0,     SIZE2D(1, height), border);
-    screen_draw_rect(wuss->scr, window->visible.x1 - 1, window->visible.y0,     SIZE2D(1, height), border);
+    screen_fill_rect(wuss->scr, window->visible.x0,     window->visible.y0,     SIZE2D(width, 1), border);
+    screen_fill_rect(wuss->scr, window->visible.x0,     window->visible.y1 - 1, SIZE2D(width, 1), border);
+    screen_fill_rect(wuss->scr, window->visible.x0,     window->visible.y0,     SIZE2D(1, height), border);
+    screen_fill_rect(wuss->scr, window->visible.x1 - 1, window->visible.y0,     SIZE2D(1, height), border);
   }
 }

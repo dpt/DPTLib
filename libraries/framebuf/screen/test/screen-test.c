@@ -10,6 +10,7 @@
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "geom/point.h"
 #include "utils/fxp.h"
 
 #include "test/all-tests.h"
@@ -256,7 +257,7 @@ static const int np_rgb[3][3][3] =
 static pixelfmt_bgrx8888_t np_encode(testscreen_t *ts, int r, int g, int b)
 {
   testscreen_init(ts);
-  screen_draw_pixel(&ts->scr, 0, 0, colour_rgb(r, g, b));
+  screen_set_pixel(&ts->scr, 0, 0, colour_rgb(r, g, b));
   return ts->pixels[0];
 }
 
@@ -514,6 +515,123 @@ static result_t test_dashed_line(void)
 
 /* ----------------------------------------------------------------------- */
 
+static result_t test_draw_lines(void)
+{
+  static testscreen_t ts;
+  static testscreen_t enc;
+
+  const point_t chain[] = { { 4, 4 }, { 20, 4 }, { 20, 20 } };
+  int           fg, bg;
+  int           x, y;
+
+  fg = (int) np_encode(&enc, 255, 0, 0);
+  bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
+
+  /* An open two-segment polyline: both segments drawn, the shared joint
+   * pixel lit, nothing else. */
+  testscreen_init(&ts);
+  screen_draw_lines(&ts.scr, chain, NELEMS(chain), colour_rgb(255, 0, 0));
+
+  for (x = 4; x <= 20; x++)
+    if (np_at(&ts, x, 4) != fg)
+    {
+      printf("screen: draw_lines gap on segment 1 at x=%d\n", x);
+      return result_TEST_FAILED;
+    }
+  for (y = 4; y <= 20; y++)
+    if (np_at(&ts, 20, y) != fg)
+    {
+      printf("screen: draw_lines gap on segment 2 at y=%d\n", y);
+      return result_TEST_FAILED;
+    }
+  if (np_at(&ts, 5, 5) != bg || np_at(&ts, 4, 20) != bg)
+  {
+    printf("screen: draw_lines drew outside the polyline\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Fewer than two points is a no-op. */
+  testscreen_init(&ts);
+  screen_draw_lines(&ts.scr, chain, 1, colour_rgb(255, 0, 0));
+  screen_draw_lines(&ts.scr, NULL, 5, colour_rgb(255, 0, 0));
+  for (y = 0; y < HEIGHT; y++)
+    for (x = 0; x < WIDTH; x++)
+      if (np_at(&ts, x, y) != bg)
+      {
+        printf("screen: draw_lines with <2 points drew at (%d,%d)\n", x, y);
+        return result_TEST_FAILED;
+      }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
+static result_t test_draw_rect(void)
+{
+  static testscreen_t ts;
+  static testscreen_t enc;
+
+  int fg, bg;
+  int x, y;
+
+  fg = (int) np_encode(&enc, 0, 255, 0);
+  bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
+
+  /* 10x8 outline at (5,5): edges lit, interior and exterior background.
+   * size is inclusive, so the far edges are at x=14, y=12. */
+  testscreen_init(&ts);
+  screen_draw_rect(&ts.scr, 5, 5, SIZE2D(10, 8), colour_rgb(0, 255, 0));
+
+  for (x = 5; x <= 14; x++)
+    if (np_at(&ts, x, 5) != fg || np_at(&ts, x, 12) != fg)
+    {
+      printf("screen: draw_rect horizontal edge gap at x=%d\n", x);
+      return result_TEST_FAILED;
+    }
+  for (y = 5; y <= 12; y++)
+    if (np_at(&ts, 5, y) != fg || np_at(&ts, 14, y) != fg)
+    {
+      printf("screen: draw_rect vertical edge gap at y=%d\n", y);
+      return result_TEST_FAILED;
+    }
+  if (np_at(&ts, 9, 8) != bg)      /* interior */
+  {
+    printf("screen: draw_rect filled its interior\n");
+    return result_TEST_FAILED;
+  }
+  if (np_at(&ts, 4, 5) != bg || np_at(&ts, 15, 5) != bg ||
+      np_at(&ts, 5, 4) != bg || np_at(&ts, 5, 13) != bg)
+  {
+    printf("screen: draw_rect drew outside the rect\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Degenerate size (<= 1 in an axis) falls back to a filled rect. */
+  testscreen_init(&ts);
+  screen_draw_rect(&ts.scr, 3, 3, SIZE2D(1, 6), colour_rgb(0, 255, 0));
+  for (y = 3; y <= 8; y++)
+    if (np_at(&ts, 3, y) != fg)
+    {
+      printf("screen: draw_rect degenerate fallback gap at y=%d\n", y);
+      return result_TEST_FAILED;
+    }
+
+  /* Honours the screen clip. */
+  testscreen_init(&ts);
+  ts.scr.clip = (box_t) { 0, 0, 10, 64 };
+  screen_draw_rect(&ts.scr, 5, 5, SIZE2D(10, 8), colour_rgb(0, 255, 0));
+  if (np_at(&ts, 5, 5) != fg || np_at(&ts, 14, 5) != bg)
+  {
+    printf("screen: draw_rect ignored the screen clip\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t screen_test(const char *resources)
 {
   typedef result_t (*screentestfn)(void);
@@ -525,7 +643,9 @@ result_t screen_test(const char *resources)
     test_wu_fix8_extreme_coords,
     test_ninepatch,
     test_fill_pattern,
-    test_dashed_line
+    test_dashed_line,
+    test_draw_lines,
+    test_draw_rect
   };
 
   result_t rc;

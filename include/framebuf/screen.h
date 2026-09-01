@@ -63,7 +63,7 @@ int screen_get_clip(const screen_t *scr, box_t *clip);
  * \param[in] y       Y coordinate of pixel to draw.
  * \param[in] colour  Colour of pixel.
  */
-void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour);
+void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour);
 
 /**
  * Draws a solid rectangle.
@@ -74,14 +74,14 @@ void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour);
  * \param[in] size    Width and height of rectangle.
  * \param[in] colour  Colour of rectangle.
  */
-void screen_draw_rect(screen_t *scr,
+void screen_fill_rect(screen_t *scr,
                       int       x,
                       int       y,
                       size2d_t  size,
                       colour_t  colour);
 
 /**
- * Special case of `screen_draw_rect`.
+ * Special case of `screen_fill_rect`.
  *
  * \param[in] scr     Screen to draw upon.
  * \param[in] x       X coordinate of leftmost point of rectangle.
@@ -89,7 +89,7 @@ void screen_draw_rect(screen_t *scr,
  * \param[in] size    Size of rectangle.
  * \param[in] colour  Colour of rectangle.
  */
-void screen_draw_square(screen_t *scr,
+void screen_fill_square(screen_t *scr,
                         int x, int y,
                         int size,
                         colour_t colour);
@@ -237,6 +237,43 @@ void screen_draw_line(screen_t *scr,
                       int       y0,
                       int       x1,
                       int       y1,
+                      colour_t  colour);
+
+/**
+ * Draws a connected polyline through `npoints` points: a `screen_draw_line`
+ * segment between each adjacent pair. For a closed shape repeat the first point
+ * as the last. Fewer than 2 points draws nothing.
+ *
+ * Segments share their joint pixel, which is plotted by both adjacent segments;
+ * harmless for a solid colour.
+ *
+ * Coordinates are `int`s and inclusive.
+ *
+ * \param[in] scr      Screen to draw upon.
+ * \param[in] points   Array of `npoints` points.
+ * \param[in] npoints  Number of points in `points`.
+ * \param[in] colour   Colour of the polyline.
+ */
+void screen_draw_lines(screen_t      *scr,
+                       const point_t *points,
+                       int            npoints,
+                       colour_t       colour);
+
+/**
+ * Draws a one-pixel unfilled rectangle outline. `size` is inclusive of both
+ * edges, matching `screen_fill_rect`. A degenerate size (<= 1 in either axis)
+ * falls back to a filled `screen_fill_rect`.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x       X coordinate of leftmost point of rectangle.
+ * \param[in] y       Y coordinate of topmost point of rectangle.
+ * \param[in] size    Width and height of rectangle.
+ * \param[in] colour  Colour of the outline.
+ */
+void screen_draw_rect(screen_t *scr,
+                      int       x,
+                      int       y,
+                      size2d_t  size,
                       colour_t  colour);
 
 /**

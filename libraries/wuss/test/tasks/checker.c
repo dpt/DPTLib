@@ -100,7 +100,7 @@ static result_t checker_redraw(wuss_window_t      *window,
       default:                         band = lx / band_px + ly / band_px; break; /* CHECKERBOARD */
       }
 
-      screen_draw_pixel(scr, x, y, (band & 1) ? cc->black : cc->white);
+      screen_set_pixel(scr, x, y, (band & 1) ? cc->black : cc->white);
     }
   }
 

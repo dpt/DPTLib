@@ -37,7 +37,7 @@ static void icon_bevel(screen_t    *scr,
                        colour_t     light,
                        colour_t     dark)
 {
-  screen_draw_rect(scr, b->x0, b->y0,
+  screen_fill_rect(scr, b->x0, b->y0,
                    SIZE2D(b->x1 - b->x0, b->y1 - b->y0), fill);
 
   screen_draw_line(scr, b->x0,     b->y0,     b->x1 - 1, b->y0,     light);
@@ -99,7 +99,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   if (icon->bg != wuss_NO_BACKGROUND)
   {
     bg = c->wuss->palette[icon->bg];
-    screen_draw_rect(c->scr, b->x0, b->y0,
+    screen_fill_rect(c->scr, b->x0, b->y0,
                      SIZE2D(b->x1 - b->x0, b->y1 - b->y0), bg);
   }
   else
@@ -274,7 +274,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
   bg = icon_blend_ground(c, glyph);
 
   if (icon->bg != wuss_NO_BACKGROUND)
-    screen_draw_rect(c->scr, b->x0, b->y0,
+    screen_fill_rect(c->scr, b->x0, b->y0,
                      SIZE2D(b->x1 - b->x0, b->y1 - b->y0), bg);
 
   if (icon->type == wuss_ICON_TYPE_RADIO)
@@ -285,16 +285,14 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     screen_draw_line(c->scr, g.x0,     g.y0 + 2, g.x0,     g.y1 - 3, glyph);
     screen_draw_line(c->scr, g.x1 - 1, g.y0 + 2, g.x1 - 1, g.y1 - 3, glyph);
     if (icon->selected)
-      screen_draw_rect(c->scr, g.x0 + 3, g.y0 + 3,
+      screen_fill_rect(c->scr, g.x0 + 3, g.y0 + 3,
                        SIZE2D(gsz - 6, gsz - 6), glyph);
   }
   else
   {
     /* a box; a tick (two strokes) when selected */
-    screen_draw_line(c->scr, g.x0,     g.y0,     g.x1 - 1, g.y0,     glyph);
-    screen_draw_line(c->scr, g.x0,     g.y1 - 1, g.x1 - 1, g.y1 - 1, glyph);
-    screen_draw_line(c->scr, g.x0,     g.y0,     g.x0,     g.y1 - 1, glyph);
-    screen_draw_line(c->scr, g.x1 - 1, g.y0,     g.x1 - 1, g.y1 - 1, glyph);
+    screen_draw_rect(c->scr, g.x0, g.y0,
+                             SIZE2D(g.x1 - g.x0, g.y1 - g.y0), glyph);
     if (icon->selected)
     {
       screen_draw_line(c->scr, g.x0 + 2, g.y0 + gsz / 2,
@@ -372,7 +370,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   }
 
   if (highlit || icon->bg != wuss_NO_BACKGROUND)
-    screen_draw_rect(c->scr, b->x0, b->y0,
+    screen_fill_rect(c->scr, b->x0, b->y0,
                      SIZE2D(b->x1 - b->x0, b->y1 - b->y0), ground);
 
   /* a dashed rule along the entry's top edge, then the text as normal; drawn in

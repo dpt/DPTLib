@@ -347,7 +347,7 @@ static void draw_vertex_dots(screen_t           *scr,
   half = SOFA_VERTEX_DOT / 2;
 
   for (i = 0; i < nvertices; i++)
-    screen_draw_square(scr,
+    screen_fill_square(scr,
                        FIX8_ROUND_TO_INT(screen[i].x) - half,
                        FIX8_ROUND_TO_INT(screen[i].y) - half,
                        SOFA_VERTEX_DOT,
@@ -397,7 +397,7 @@ static result_t sofa_redraw(const wuss_event_t *event, void *task_data)
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  screen_draw_rect(scr,
+  screen_fill_rect(scr,
                    content->x0,
                    content->y0, box_size(content),
                    sc->bg);

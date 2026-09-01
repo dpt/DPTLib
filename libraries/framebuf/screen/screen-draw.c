@@ -20,7 +20,7 @@
  * blow the stack (relevant on RISC OS). */
 #define BITMAP_BLIT_CHUNK 256
 
-void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour)
+void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour)
 {
   box_t          clip;
   pixelfmt_any_t pxl;
@@ -138,7 +138,7 @@ static void screen_blend_pixel(screen_t *scr,
 
 /* ----------------------------------------------------------------------- */
 
-void screen_draw_rect(screen_t *scr,
+void screen_fill_rect(screen_t *scr,
                       int       x,
                       int       y,
                       size2d_t  size,
@@ -215,9 +215,9 @@ void screen_draw_rect(screen_t *scr,
   }
 }
 
-void screen_draw_square(screen_t *scr, int x, int y, int size, colour_t colour)
+void screen_fill_square(screen_t *scr, int x, int y, int size, colour_t colour)
 {
-  screen_draw_rect(scr, x, y, SIZE2D(size, size), colour);
+  screen_fill_rect(scr, x, y, SIZE2D(size, size), colour);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -254,7 +254,7 @@ void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
     {
       /* Paletted screen: no linear channel bits to blend, so fall back to
        * alpha-tested (skip fully transparent, else nearest palette match)
-       * rather than true blending, matching screen_draw_pixel's case 2. */
+       * rather than true blending, matching screen_set_pixel's case 2. */
       const unsigned char *srcrow;
       unsigned char        *dstbase;
       int                   yy;
@@ -412,7 +412,7 @@ void screen_draw_line(screen_t *scr,
 
   for (;;)
   {
-    screen_draw_pixel(scr, x0, y0, colour);
+    screen_set_pixel(scr, x0, y0, colour);
 
     if (x0 == x1 && y0 == y1)
       break;
@@ -431,6 +431,51 @@ void screen_draw_line(screen_t *scr,
       y0 += sy;
     }
   }
+}
+
+void screen_draw_lines(screen_t      *scr,
+                       const point_t *points,
+                       int            npoints,
+                       colour_t       colour)
+{
+  int i;
+
+  if (points == NULL || npoints < 2)
+    return;
+
+  /* ponytail: per-segment call; joint pixels double-plot, fine for solid fill */
+  for (i = 1; i < npoints; i++)
+    screen_draw_line(scr,
+                     points[i - 1].x, points[i - 1].y,
+                     points[i].x,     points[i].y,
+                     colour);
+}
+
+void screen_draw_rect(screen_t *scr,
+                      int       x,
+                      int       y,
+                      size2d_t  size,
+                      colour_t  colour)
+{
+  int     x1, y1;
+  point_t p[5];
+
+  if (size.w <= 1 || size.h <= 1)
+  {
+    screen_fill_rect(scr, x, y, size, colour);
+    return;
+  }
+
+  x1 = x + size.w - 1;
+  y1 = y + size.h - 1;
+
+  p[0].x = x;  p[0].y = y;
+  p[1].x = x1; p[1].y = y;
+  p[2].x = x1; p[2].y = y1;
+  p[3].x = x;  p[3].y = y1;
+  p[4].x = x;  p[4].y = y;
+
+  screen_draw_lines(scr, p, 5, colour);
 }
 
 void screen_draw_dashed_line(screen_t *scr,
@@ -485,7 +530,7 @@ void screen_draw_dashed_line(screen_t *scr,
   for (;;)
   {
     if (phase < on)
-      screen_draw_pixel(scr, x0, y0, colour);
+      screen_set_pixel(scr, x0, y0, colour);
     if (++phase >= period)
       phase = 0;
 
@@ -672,7 +717,7 @@ void screen_draw_line_wu_float(screen_t *scr,
     return; /* invalid clipped screen */
 
   /* This discards the fractional part of the coordinates so for now just use it
-   * to discard lines. screen_draw_pixel() will be doing clipping too later. */
+   * to discard lines. screen_set_pixel() will be doing clipping too later. */
   x0 = fx0;
   y0 = fy0;
   x1 = fx1;
