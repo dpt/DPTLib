@@ -39,7 +39,9 @@ extern "C"
  * wider or taller than the screen keeps its top-left corner on-screen
  * instead. The bottom/right edges are not clamped.
  *
- * \param[in]  wuss    Window manager to create the window on.
+ * \param[in]  task    Owning task; the window is created on task's window
+ *                     manager and delivers all its events to task's handle.
+ *                     Immutable once set.
  * \param[in]  content Requested content-area bounds, screen space. Copied
  *                     in.
  * \param[in]  title   Titlebar label, or NULL for none. Copied in, truncated
@@ -56,8 +58,6 @@ extern "C"
  *                     phased to the window's scroll origin so it stays
  *                     locked to the content. Changeable later via
  *                     wuss_window_set_background.
- * \param[in]  task    Content delegate. Copied in. May be NULL for a window
- *                     with no content handling.
  * \param[in]  doc     Virtual document extent, for the scrollbars' sausage
  *                     proportions; pass content's own width and height for a
  *                     window with nothing to scroll. Also the ceiling a
@@ -74,12 +74,11 @@ extern "C"
  *         any of bg's colours are out of range for the palette, or another
  *         appropriate result code.
  */
-result_t wuss_window_create(wuss_t             *wuss,
+result_t wuss_window_create(wuss_task_t        *task,
                             const box_t        *content,
                             const char         *title,
                             wuss_window_flags_t flags,
                             wuss_backdrop_t     bg,
-                            const wuss_task_t  *task,
                             size2d_t            doc,
                             size2d_t            min_doc,
                             wuss_window_t     **window);
@@ -99,13 +98,12 @@ result_t wuss_window_create(wuss_t             *wuss,
  * (after which Wuss no longer tracks its position). A window dragged by its
  * titlebar counts as moved.
  *
- * \param[in]  wuss    Window manager to create the window on.
+ * \param[in]  task    Owning task, as wuss_window_create.
  * \param[in]  size    Requested content-area size. Width and height must
  *                     both be positive.
  * \param[in]  title   Titlebar label, as wuss_window_create.
  * \param[in]  flags   Appearance flags, as wuss_window_create.
  * \param[in]  bg      Content background, as wuss_window_create.
- * \param[in]  task    Content delegate, as wuss_window_create.
  * \param[in]  doc     Virtual document extent, as wuss_window_create.
  * \param[in]  min_doc Minimum content size, as wuss_window_create.
  * \param[out] window  Newly created window. Becomes the topmost window.
@@ -114,22 +112,41 @@ result_t wuss_window_create(wuss_t             *wuss,
  *         tracker could not be created, or another result code from
  *         wuss_window_create.
  */
-result_t wuss_window_create_placed(wuss_t             *wuss,
+result_t wuss_window_create_placed(wuss_task_t        *task,
                                    size2d_t            size,
                                    const char         *title,
                                    wuss_window_flags_t flags,
                                    wuss_backdrop_t     bg,
-                                   const wuss_task_t  *task,
                                    size2d_t            doc,
                                    size2d_t            min_doc,
                                    wuss_window_t     **window);
 
 /**
- * Destroy a window.
+ * Destroy a window. The forced, unvetoable teardown: fires no
+ * wuss_EVENT_PRE_CLOSE / wuss_EVENT_CLOSE. Used by wuss_task_destroy, tests
+ * and error paths. For the user close-icon path, which the task can veto,
+ * see wuss_window_try_close.
  *
- * \param[in] doomed Window to destroy.
+ * \param[in] doomed Window to destroy. NULL is a no-op.
  */
 void wuss_window_close(wuss_window_t *doomed);
+
+/**
+ * Attempt to close a window, giving its task a chance to veto.
+ *
+ * Fires wuss_EVENT_PRE_CLOSE to the task; a non-OK return vetoes the close,
+ * the window stays open and that result is returned. Otherwise fires
+ * wuss_EVENT_CLOSE (while the window is still alive) and then destroys the
+ * window as per wuss_window_close.
+ *
+ * This is the path the titlebar close icon takes.
+ *
+ * \param[in] window Window to close. NULL is a no-op returning \ref
+ *                   result_OK.
+ * \return \ref result_OK if the window was closed (or was NULL), else the
+ *         non-OK result the task returned from wuss_EVENT_PRE_CLOSE.
+ */
+result_t wuss_window_try_close(wuss_window_t *window);
 
 /**
  * Move a window, preserving its size.
@@ -149,10 +166,18 @@ void wuss_window_move(wuss_window_t *window, point_t p);
  * visibility invalidates the window's footprint so the next redraw picks up
  * the change.
  *
+ * Showing a hidden window fires wuss_EVENT_PRE_SHOW to the task first: a
+ * non-OK return vetoes the reveal, the window stays hidden and that result
+ * is returned. On a successful reveal wuss_EVENT_SHOW follows. Hiding a
+ * visible window, and any call that is a no-op (already in the requested
+ * state), fires nothing and returns \ref result_OK.
+ *
  * \param[in] window Window to show or hide.
  * \param[in] hidden Non-zero to hide, zero to show.
+ * \return \ref result_OK on success or a no-op, else the non-OK result the
+ *         task returned from wuss_EVENT_PRE_SHOW.
  */
-void wuss_window_set_hidden(wuss_window_t *window, int hidden);
+result_t wuss_window_set_hidden(wuss_window_t *window, int hidden);
 
 /**
  * Resize a window's content area, preserving its top-left position.
