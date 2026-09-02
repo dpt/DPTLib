@@ -544,11 +544,13 @@ static result_t run_wuss(const char *resources)
 
   rc = wuss_frontend_open(scr_width, scr_height, palette, NELEMS(palette),
                           &pixels, &rowbytes, &fmt, &frontend);
+  logf_info("wuss: wuss_frontend_open -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
 
   rc = bitmap_init(&bm, SIZE2D(scr_width, scr_height), fmt, rowbytes, palette,
                    pixels);
+  logf_info("wuss: bitmap_init -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
 
@@ -563,6 +565,7 @@ static result_t run_wuss(const char *resources)
 
     rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, NULL,
                      &wuss);
+    logf_info("wuss: wuss_create -> rc=0x%X (%s)", rc, result_string(rc));
     if (rc != result_OK)
       goto Failure;
   }
@@ -580,6 +583,8 @@ static result_t run_wuss(const char *resources)
     desc.task_data = NULL;
     desc.name      = "menu";
     rc = wuss_task_create(wuss, &desc, &g.menu_task);
+    logf_info("wuss: wuss_task_create(menu) -> rc=0x%X (%s)", rc,
+              result_string(rc));
     if (rc != result_OK)
       goto Failure;
   }
