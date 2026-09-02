@@ -18,18 +18,34 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   wuss->pointer = p;
 
 #ifdef WUSS_ICONS
-  /* Release a held button icon on any MOUSE_UP, before the hit-test picks a
-   * window: the up may land on a window that opened over the icon's owner on
-   * MOUSE_DOWN, so wuss__window_at would never reach the pressed icon. */
+  /* Release a held button icon on a MOUSE_UP that will NOT reach it through the
+   * normal window hit-test: the up may land on a window that opened over the
+   * icon's owner on MOUSE_DOWN. When the up does land back on the pressed icon,
+   * leave it held so the icon-hit path below completes the click (latch
+   * radio/option state, toggle a menu tick). */
   if (action == wuss_MOUSE_UP && wuss->pressed_icon != NULL)
   {
-    wuss_icon_t *pressed = wuss->pressed_icon;
+    wuss_icon_t   *pressed  = wuss->pressed_icon;
+    wuss_window_t *presswin = pressed->window;
+    box_t          content;
+    point_t        doc_point;
+    int            still_over;
 
-    wuss->pressed_icon = NULL;
-    if (wuss__icon_pressed(pressed))
+    wuss__content_box(presswin, &content);
+    doc_point.x = x - content.x0 + presswin->scroll.x;
+    doc_point.y = y - content.y0 + presswin->scroll.y;
+
+    still_over = (wuss__window_at(wuss, p) == presswin &&
+                  wuss__icon_hit_test(presswin, doc_point) == pressed);
+
+    if (!still_over)
     {
-      wuss__icon_set_state(pressed, wuss_ICON_STATE_PRESSED, 0);
-      wuss__icon_invalidate(pressed);
+      wuss->pressed_icon = NULL;
+      if (wuss__icon_pressed(pressed))
+      {
+        wuss__icon_set_state(pressed, wuss_ICON_STATE_PRESSED, 0);
+        wuss__icon_invalidate(pressed);
+      }
     }
   }
 #endif
