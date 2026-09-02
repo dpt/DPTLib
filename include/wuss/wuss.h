@@ -110,6 +110,43 @@ typedef unsigned char wuss_colour_t;
  */
 #define wuss_NO_BACKGROUND ((wuss_colour_t) -1)
 
+/**
+ * Symbolic wuss_colour_t values. A raw wuss_colour_t is a system-palette
+ * index, 0..wuss_COLOUR_SYMBOLIC-1 (so a palette may hold up to 128 real
+ * entries). Values from wuss_COLOUR_SYMBOLIC up are not palette indices but
+ * roles the window manager resolves to a concrete index against the live
+ * palette (and, for the wuss_COLOUR_*_ chrome roles, the live wuss_config):
+ * the named colours pick the nearest system-palette entry to the RGB the
+ * name implies, the chrome roles echo the matching wuss_config_t field.
+ * Accepted anywhere a wuss_colour_t is: config furniture/bevel/accent/
+ * backdrop, window backgrounds (see wuss_window_create), icon specs.
+ * wuss_NO_BACKGROUND is not symbolic and always passes through unchanged.
+ */
+#define wuss_COLOUR_SYMBOLIC ((wuss_colour_t) 128)
+
+/* Named colours: nearest system-palette entry to the named RGB. */
+#define wuss_COLOUR_BLACK   (wuss_COLOUR_SYMBOLIC + 0)
+#define wuss_COLOUR_WHITE   (wuss_COLOUR_SYMBOLIC + 1)
+#define wuss_COLOUR_RED     (wuss_COLOUR_SYMBOLIC + 2)
+#define wuss_COLOUR_GREEN   (wuss_COLOUR_SYMBOLIC + 3)
+#define wuss_COLOUR_BLUE    (wuss_COLOUR_SYMBOLIC + 4)
+#define wuss_COLOUR_YELLOW  (wuss_COLOUR_SYMBOLIC + 5)
+#define wuss_COLOUR_CYAN    (wuss_COLOUR_SYMBOLIC + 6)
+#define wuss_COLOUR_MAGENTA (wuss_COLOUR_SYMBOLIC + 7)
+#define wuss_COLOUR_GREY    (wuss_COLOUR_SYMBOLIC + 8)
+
+/* Chrome roles: echo the matching wuss_config_t field, resolved to a
+ * concrete index -- e.g. wuss_COLOUR_TITLE_BG is furniture.title.bg,
+ * wuss_COLOUR_BUTTON_HILIGHT is bevel.light, wuss_COLOUR_BUTTON_SHADOW is
+ * bevel.dark, wuss_COLOUR_BACKDROP is backdrop.colour. */
+#define wuss_COLOUR_TITLE_BG       (wuss_COLOUR_SYMBOLIC + 16)
+#define wuss_COLOUR_TITLE_FG       (wuss_COLOUR_SYMBOLIC + 17)
+#define wuss_COLOUR_BUTTON_HILIGHT (wuss_COLOUR_SYMBOLIC + 18)
+#define wuss_COLOUR_BUTTON_SHADOW  (wuss_COLOUR_SYMBOLIC + 19)
+#define wuss_COLOUR_ACCENT_BG      (wuss_COLOUR_SYMBOLIC + 20)
+#define wuss_COLOUR_ACCENT_FG      (wuss_COLOUR_SYMBOLIC + 21)
+#define wuss_COLOUR_BACKDROP       (wuss_COLOUR_SYMBOLIC + 22)
+
 /** Furniture chrome colours, one entry per class of furniture. Title is
  * the only two-tone class (fill + text); the rest are drawn as a single
  * flat colour. Ignored when the library is built with WUSS_FURNITURE off.

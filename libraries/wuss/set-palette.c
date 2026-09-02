@@ -27,8 +27,7 @@ result_t wuss_set_palette(wuss_t         *wuss,
 
   memcpy(wuss->palette, palette, npalette * sizeof(*wuss->palette));
 
-  wuss->palettecache.white = wuss_nearest_colour(wuss, 255, 255, 255);
-  wuss->palettecache.black = wuss_nearest_colour(wuss, 0, 0, 0);
+  wuss__rebuild_palettecache(wuss);
 
   rc = result_OK;
   event.kind = wuss_EVENT_PALETTE;

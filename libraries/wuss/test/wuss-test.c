@@ -372,7 +372,7 @@ result_t wuss_test(const char *resources)
   printf("test: wuss_create with bad titlebar colour index\n");
 
   bad_config.titlebar_height         = 0;
-  bad_config.furniture.title.bg        = 999;
+  bad_config.furniture.title.bg        = 100; /* in range as a byte, but well past any test palette and below wuss_COLOUR_SYMBOLIC */
   bad_config.furniture.title.fg        = 0;
   bad_config.furniture.back            = 0;
   bad_config.furniture.close           = 0;
@@ -401,6 +401,69 @@ result_t wuss_test(const char *resources)
   rc = wuss_create(&scr, NULL, NULL, 0, NULL, NULL, &wuss);
   if (rc != result_OK)
     goto Failure;
+
+  printf("test: symbolic wuss_colour_t resolves against palette and config\n");
+
+  {
+    /* red, green, blue, white, black (colour_t primary is 0xAABBGGRR) --
+     * enough for the named symbolics to land on distinct, checkable
+     * indices. */
+    static const colour_t sympal[5] =
+    {
+      { 0xFF0000FF }, { 0xFF00FF00 }, { 0xFFFF0000 },
+      { 0xFFFFFFFF }, { 0xFF000000 }
+    };
+    wuss_config_t   symcfg;
+    wuss_t         *symw;
+    wuss_window_t  *symwin;
+    wuss_task_t    *symdel;
+    box_t           symbox;
+
+    memset(&symcfg, 0, sizeof(symcfg));
+    symcfg.furniture.title.bg = wuss_COLOUR_BLUE;   /* -> index 2 */
+    symcfg.furniture.title.fg = wuss_COLOUR_WHITE;  /* -> index 3 */
+    symcfg.backdrop = (wuss_backdrop_t) wuss_BACKDROP_COLOUR(wuss_COLOUR_GREEN); /* -> 1 */
+
+    rc = wuss_create(&scr, NULL, sympal, 5, &symcfg, NULL, &symw);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* named colours resolve to nearest-palette-entry; raw indices and
+     * wuss_NO_BACKGROUND pass straight through; chrome roles echo the
+     * resolved config. */
+    if (wuss__resolve_colour(symw, wuss_COLOUR_RED)   != 0 ||
+        wuss__resolve_colour(symw, wuss_COLOUR_GREEN) != 1 ||
+        wuss__resolve_colour(symw, wuss_COLOUR_BLUE)  != 2 ||
+        wuss__resolve_colour(symw, wuss_COLOUR_WHITE) != 3 ||
+        wuss__resolve_colour(symw, wuss_COLOUR_BLACK) != 4 ||
+        wuss__resolve_colour(symw, 2) != 2 ||
+        wuss__resolve_colour(symw, wuss_NO_BACKGROUND) != wuss_NO_BACKGROUND ||
+        wuss__resolve_colour(symw, wuss_COLOUR_TITLE_BG) != 2 ||
+        wuss__resolve_colour(symw, wuss_COLOUR_TITLE_FG) != 3 ||
+        wuss__resolve_colour(symw, wuss_COLOUR_BACKDROP) != 1)
+    {
+      wuss_destroy(symw);
+      goto Failure;
+    }
+
+    /* a symbolic colour is accepted (and stored resolved) where a client
+     * passes a wuss_colour_t. */
+    symdel = mk_task(symw, NULL, NULL);
+    if (symdel == NULL) { wuss_destroy(symw); goto Failure; }
+    symbox.x0 = 0; symbox.y0 = 0; symbox.x1 = 80; symbox.y1 = 80;
+    rc = wuss_window_create(symdel, &symbox, "sym", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_COLOUR_RED),
+                            SIZE2D(80, 80), SIZE2D(80, 80), &symwin);
+    if (rc != result_OK) { wuss_destroy(symw); goto Failure; }
+    if (symwin->bg.colour != 0) /* wuss_COLOUR_RED -> palette index 0 */
+    {
+      wuss_destroy(symw);
+      goto Failure;
+    }
+
+    wuss_destroy(symw); /* sweeps symdel too */
+    mk_task_count = 0;  /* drop the now-stale registry entry */
+  }
 
   printf("test: window_create too small\n");
 
@@ -903,7 +966,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: wuss_window_set_background\n");
 
-  rc = wuss_window_set_background(win_d, wuss_BACKDROP_COLOUR(999));
+  rc = wuss_window_set_background(win_d, wuss_BACKDROP_COLOUR(100));
   if (rc != result_WUSS_BAD_COLOUR)
     goto Failure;
 

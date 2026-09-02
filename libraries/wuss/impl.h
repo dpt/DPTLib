@@ -95,6 +95,11 @@ struct wuss
   {
     wuss_colour_t             white;     /* palette index nearest to white */
     wuss_colour_t             black;     /* palette index nearest to black */
+    /* Concrete 0..npalette-1 index for each symbolic wuss_colour_t, indexed
+     * by (c - wuss_COLOUR_SYMBOLIC). Unused slots hold wuss_NO_BACKGROUND so
+     * a stray symbolic still fails a range check. Rebuilt by
+     * wuss__rebuild_palettecache on create and every palette/config change. */
+    wuss_colour_t             symbolic[128];
   }
   palettecache;
 #ifdef WUSS_FURNITURE
@@ -191,6 +196,23 @@ struct wuss_window
 };
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
+
+/* Rebuild wuss->palettecache (white, black and the symbolic[] table) from
+ * the current palette and the stored chrome colours. Call after the palette
+ * or any chrome colour changes; the chrome fields must already be concrete
+ * indices (resolve config through wuss__resolve_colour before storing). */
+void wuss__rebuild_palettecache(wuss_t *wuss);
+
+/* Concrete 0..npalette-1 palette index for any wuss_colour_t: a symbolic
+ * value (>= wuss_COLOUR_SYMBOLIC, bar wuss_NO_BACKGROUND) via the cache,
+ * everything else -- raw indices, wuss_NO_BACKGROUND -- unchanged. */
+static inline wuss_colour_t wuss__resolve_colour(const wuss_t *wuss,
+                                                 wuss_colour_t c)
+{
+  if (c >= wuss_COLOUR_SYMBOLIC && c != wuss_NO_BACKGROUND)
+    return wuss->palettecache.symbolic[c - wuss_COLOUR_SYMBOLIC];
+  return c;
+}
 
 /* Allocation through a wuss_t's configured hooks (see struct wuss::alloc).
  * Every heap block a wuss_t owns -- windows, icons, icon-pointer arrays, menu
