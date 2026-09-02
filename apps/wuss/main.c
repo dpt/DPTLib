@@ -18,6 +18,7 @@
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "io/path.h"
+#include "wuss/task.h"
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 #include "wuss/menu.h"
@@ -52,6 +53,7 @@
 static struct
 {
   wuss_t         *wuss;
+  wuss_task_t    *menu_task; /* owns the menus and the hidden Details window */
   const colour_t *palette;
   int             npalette;
   const char     *resources;
@@ -254,16 +256,13 @@ static const wuss_menu_t g_menu =
   "Display", g_menu_items, NELEMS(g_menu_items)
 };
 
-static void menu_selected(const wuss_menu_t *menu,
-                          int                index,
-                          wuss_button_t      button,
-                          void              *ctx)
-{
-  NOT_USED(button);
-  NOT_USED(ctx);
-  printf("menu: picked \"%s\"\n",
-         menu->items[index].text ? menu->items[index].text : "(sep)");
-}
+/* g_task_menu picks are dispatched by index; g_menu / g_menu_desc picks just
+ * print. All three menus are opened by g.menu_task, so one handler sees every
+ * wuss_EVENT_MENU_SELECT and tells them apart by data.menu_select.menu.
+ * Defined after g_task_menu / g_task_spawn, which it needs. */
+static result_t menu_handle(wuss_window_t      *window,
+                            const wuss_event_t *event,
+                            void               *task_data);
 
 /* index of the "Details" row in g_menu_items */
 #define G_MENU_DETAILS_INDEX 4
@@ -280,13 +279,12 @@ static result_t spawn_menu(void)
     content.y0 = 0;
     content.x1 = 180;
     content.y1 = 120;
-    rc = wuss_window_create(g.wuss, &content, "Details",
+    rc = wuss_window_create(g.menu_task, &content, "Details",
                             wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK
                             | wuss_WINDOW_NO_TOGGLE_SIZE
                             | wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL
                             | wuss_WINDOW_NO_RESIZE | wuss_WINDOW_HIDDEN,
                             wuss_BACKDROP_COLOUR(1),
-                            NULL,
                             SIZE2D(180, 120), SIZE2D(0, 0),
                             &g_menu_details_window);
     if (rc != result_OK)
@@ -294,8 +292,7 @@ static result_t spawn_menu(void)
     g_menu_items[G_MENU_DETAILS_INDEX].window = g_menu_details_window;
   }
 
-  return wuss_menu_open(g.wuss, &g_menu, wuss_get_pointer(g.wuss),
-                        menu_selected, NULL, NULL);
+  return wuss_menu_open(g.menu_task, &g_menu, wuss_get_pointer(g.wuss), NULL);
 }
 
 /* Same menu shape built from a descriptor string, to exercise
@@ -330,8 +327,8 @@ static result_t spawn_menu_desc(void)
   wuss_menu_destroy(g_menu_desc);
   g_menu_desc = m;
 
-  return wuss_menu_open(g.wuss, g_menu_desc, wuss_get_pointer(g.wuss),
-                        menu_selected, NULL, NULL);
+  return wuss_menu_open(g.menu_task, g_menu_desc, wuss_get_pointer(g.wuss),
+                        NULL);
 }
 
 /* The task launcher is a MENU-button pop-up over the backdrop rather than a
@@ -379,16 +376,32 @@ static const wuss_menu_t g_task_menu =
   "Tasks", g_task_items, NELEMS(g_task_items)
 };
 
-static void task_menu_selected(const wuss_menu_t *menu,
-                               int                index,
-                               wuss_button_t      button,
-                               void              *ctx)
+static result_t menu_handle(wuss_window_t      *window,
+                            const wuss_event_t *event,
+                            void               *task_data)
 {
-  NOT_USED(menu);
-  NOT_USED(button);
-  NOT_USED(ctx);
-  if (index >= 0 && index < (int) NELEMS(g_task_spawn))
-    (void) g_task_spawn[index]();
+  const wuss_menu_t *menu;
+  int                index;
+
+  NOT_USED(window);
+  NOT_USED(task_data);
+
+  if (event->kind != wuss_EVENT_MENU_SELECT)
+    return result_OK;
+
+  menu  = event->data.menu_select.menu;
+  index = event->data.menu_select.index;
+
+  if (menu == &g_task_menu)
+  {
+    if (index >= 0 && index < (int) NELEMS(g_task_spawn))
+      (void) g_task_spawn[index]();
+    return result_OK;
+  }
+
+  printf("menu: picked \"%s\"\n",
+         menu->items[index].text ? menu->items[index].text : "(sep)");
+  return result_OK;
 }
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
@@ -584,6 +597,17 @@ static result_t run_wuss(const char *resources)
   g.resources     = resources;
   g.daydream_font = daydream_font;
 
+  {
+    wuss_task_desc_t desc;
+
+    desc.handle    = menu_handle;
+    desc.task_data = NULL;
+    desc.name      = "menu";
+    rc = wuss_task_create(wuss, &desc, &g.menu_task);
+    if (rc != result_OK)
+      goto Failure;
+  }
+
   quit                 = false;
   g.quit               = false;
   garbage_pending      = false;
@@ -646,8 +670,7 @@ static result_t run_wuss(const char *resources)
 
           /* MENU click on bare backdrop opens the task launcher there */
           if (hit == NULL && (button & wuss_BUTTON_MENU))
-            wuss_menu_open(wuss, &g_task_menu, POINT(x, y),
-                           task_menu_selected, NULL, NULL);
+            wuss_menu_open(g.menu_task, &g_task_menu, POINT(x, y), NULL);
         }
         break;
 
@@ -752,13 +775,13 @@ static result_t run_wuss(const char *resources)
     SDL_Delay(1000 / 60);
   }
 
-  /* ponytail: wuss_destroy() below frees every still-open window but not the
-   * per-instance task block hung off it, so any task window left open at quit
-   * leaks its block. Harmless at process exit; add a wuss close callback if a
-   * task ever needs deterministic teardown. */
+  /* ponytail: wuss_destroy() below force-closes every still-open window and
+   * frees every registered task node, but not the per-instance task_data
+   * block a spawn_* calloc'd, so any task window left open at quit leaks that
+   * block. Harmless at process exit. */
   wuss_menu_destroy(g_menu_desc);
 
-  wuss_destroy(wuss);
+  wuss_destroy(wuss); /* also sweeps g.menu_task */
   bmfont_destroy(font);
   bmfont_destroy(daydream_font);
 

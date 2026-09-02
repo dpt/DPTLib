@@ -32,7 +32,7 @@ typedef struct porter_duff_task
 }
 porter_duff_task_t;
 
-wuss_event_fn_t porter_duff_handle;
+wuss_window_fn_t porter_duff_handle;
 
 /* load the two demo images and create the window against the given wuss
  * instance; resources is the DPTLib repo root, for locating the bundled PNGs */

@@ -19,19 +19,26 @@ result_t palette_create(wuss_t         *wuss,
                         int             npalette,
                         palette_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  result_t         rc;
 
   task->palette  = palette;
   task->npalette = npalette;
 
-  delegate = wuss_task_start(palette_handle, task); /* backdrop for any rounding gap around the grid */
+  /* backdrop for any rounding gap around the grid */
+  delegate_desc.handle    = palette_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "palette";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+    return rc;
 
-  return wuss_window_create_placed(wuss,
+  return wuss_window_create_placed(delegate,
                                    SIZE2D(100, 100),
                                    "Palette",
                                    wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
                                    wuss_BACKDROP_COLOUR(palette_PICO8_BLACK),
-                                   &delegate,
                                    SIZE2D(100, 100),
                                    SIZE2D(0, 0),
                                    &task->window);
@@ -85,7 +92,6 @@ result_t palette_handle(wuss_window_t      *window,
 {
   if (event->kind == wuss_EVENT_CLOSE)
   {
-    wuss_window_close(window);
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
   }

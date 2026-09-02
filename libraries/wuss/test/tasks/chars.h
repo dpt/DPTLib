@@ -19,7 +19,7 @@ typedef struct chars_task
 }
 chars_task_t;
 
-wuss_event_fn_t chars_handle;
+wuss_window_fn_t chars_handle;
 
 /* create the glyph-grid window against the given wuss instance; does
  * nothing and returns result_OK if wuss has no system font */

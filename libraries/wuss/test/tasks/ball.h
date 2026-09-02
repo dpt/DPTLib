@@ -32,7 +32,7 @@ typedef struct ball_task
 }
 ball_task_t;
 
-wuss_event_fn_t ball_handle;
+wuss_window_fn_t ball_handle;
 
 /* create the bouncing-ball window against the given wuss instance; "task" is a
  * per-instance block owned by the window and freed when it closes */

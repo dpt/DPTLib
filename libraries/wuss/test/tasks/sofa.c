@@ -356,7 +356,9 @@ static void draw_vertex_dots(screen_t           *scr,
 
 result_t sofa_create(wuss_t*wuss, sofa_task_t*task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  result_t         rc;
 
   task->bg       = colour_rgb(0x7E, 0x25, 0x53);
   task->line     = colour_rgb(0xFF, 0xA3, 0x00);
@@ -367,14 +369,19 @@ result_t sofa_create(wuss_t*wuss, sofa_task_t*task)
   task->shape    = sofa_SHAPE_SOFA;
   task->turns    = 0;
 
-  delegate = wuss_task_start(sofa_handle, task); /* sofa_redraw paints its own background every frame */
+  /* sofa_redraw paints its own background every frame */
+  delegate_desc.handle    = sofa_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "sofa";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+    return rc;
 
-  return wuss_window_create_placed(wuss,
+  return wuss_window_create_placed(delegate,
                                    SIZE2D(180, 160),
                                    "Sofa",
                                    wuss_WINDOW_NONE,
                                    wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                   &delegate,
                                    SIZE2D(180, 160),
                                    SIZE2D(0, 0),
                                    &task->window);
@@ -582,7 +589,6 @@ result_t sofa_handle(wuss_window_t      *window,
     return sofa_idle(task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
     free(sc); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 

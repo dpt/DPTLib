@@ -20,7 +20,8 @@
 
 result_t checker_create(wuss_t*wuss, checker_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
   result_t    rc;
 
   task->black    = colour_rgb(0x00, 0x00, 0x00);
@@ -30,26 +31,30 @@ result_t checker_create(wuss_t*wuss, checker_task_t *task)
   task->band     = CHECKER_BAND_DEFAULT;
   task->band2    = CHECKER_BAND_DEFAULT;
 
-  delegate = wuss_task_start(checker_handle, task); /* checker_redraw paints every pixel itself */
+  /* checker_redraw paints every pixel itself */
+  delegate_desc.handle    = checker_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "checker";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+    return rc;
 
-  rc = wuss_window_create_placed(wuss,
+  rc = wuss_window_create_placed(delegate,
                                  SIZE2D(160, 160),
                                  "Checker 1",
                                  wuss_WINDOW_NONE,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                 &delegate,
                                  SIZE2D(160, 160),
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
     return rc;
 
-  rc = wuss_window_create_placed(wuss,
+  rc = wuss_window_create_placed(delegate,
                                  SIZE2D(160, 160),
                                  "Checker 2",
                                  wuss_WINDOW_NONE,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                 &delegate,
                                  SIZE2D(160, 160),
                                  SIZE2D(0, 0),
                                  &task->window2);
@@ -160,7 +165,6 @@ result_t checker_handle(wuss_window_t      *window,
     return checker_scroll(window, event->data.scroll.delta, task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
     if (window == cc->window2)
       cc->window2 = NULL;
     else

@@ -35,7 +35,9 @@ static box_t ball_local_box(int     vx0,
 
 result_t ball_create(wuss_t *wuss, ball_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  result_t         rc;
 
   task->bg     = colour_rgb(0xFF, 0x00, 0x00);
   task->ball   = colour_rgb(0xFF, 0xFF, 0xFF);
@@ -47,14 +49,19 @@ result_t ball_create(wuss_t *wuss, ball_task_t *task)
   task->balls[0].dy     = 2;
   task->balls[0].radius = 8;
 
-  delegate = wuss_task_start(ball_handle, task); /* ball_redraw paints its own background every frame */
+  /* ball_redraw paints its own background every frame */
+  delegate_desc.handle    = ball_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "ball";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+    return rc;
 
-  return wuss_window_create_placed(wuss,
+  return wuss_window_create_placed(delegate,
                                    SIZE2D(200, 160),
                                    "Bouncing Ball",
                                    wuss_WINDOW_NONE,
                                    wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                   &delegate,
                                    SIZE2D(200, 160),
                                    SIZE2D(0, 0),
                                    &task->window);
@@ -213,7 +220,6 @@ result_t ball_handle(wuss_window_t      *window,
     return ball_idle(task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
     free(bc); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 

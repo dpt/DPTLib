@@ -32,7 +32,8 @@ result_t text_create(wuss_t      *wuss,
                      bmfont_t    *font,
                      text_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
   size2d_t    sz;
   result_t    rc;
 
@@ -42,18 +43,22 @@ result_t text_create(wuss_t      *wuss,
   task->frame_count = 0;
   task->resizing    = true;
 
-  delegate = wuss_task_start(text_handle, task);
+  delegate_desc.handle    = text_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "text";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+    return rc;
   sz       = SIZE2D(220, 180);
 
   task->base_width  = sz.w;
   task->base_height = sz.h;
 
-  rc = wuss_window_create_placed(wuss,
+  rc = wuss_window_create_placed(delegate,
                                  sz,
                                  "Lorem Ipsum",
                                  wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
                                  wuss_BACKDROP_COLOUR(wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF)),
-                                 &delegate,
                                  sz,
                                  SIZE2D(0, 0),
                                  &task->window);
@@ -155,7 +160,6 @@ result_t text_handle(wuss_window_t      *window,
     return text_mouse(task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
     free(tcx); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 

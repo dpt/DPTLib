@@ -36,7 +36,8 @@ result_t icons_create(wuss_t       *wuss,
    * interactive one that bumps the counter, then [.. +4] a strip of menu-entry
    * icons that hover-highlight */
   enum { ICONS_NSPECS = 4 + 3 + 5 + 2 + 5 };
-  wuss_task_t      delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
   wuss_colour_t    black, grey5, grey6;
   wuss_icon_spec_t specs[ICONS_NSPECS];
   wuss_icon_t     *made[ICONS_NSPECS];
@@ -68,16 +69,20 @@ result_t icons_create(wuss_t       *wuss,
   if (bitmap_load_png(&task->sprite, sprite_path) == result_OK)
     task->has_sprite = 1;
 
-  delegate = wuss_task_start(icons_handle, task);
+  delegate_desc.handle    = icons_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "icons";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+    return rc;
 
-  rc = wuss_window_create_placed(wuss,
+  rc = wuss_window_create_placed(delegate,
                                  SIZE2D(ICONS_DOC_W, 160),
                                  "Icons",
                                  wuss_WINDOW_NONE,
                                  wuss_BACKDROP_PATTERN(grey5,
                                                        screen_PATTERN_CROSSHATCH,
                                                        grey6),
-                                 &delegate,
                                  SIZE2D(ICONS_DOC_W, ICONS_DOC_H),
                                  SIZE2D(0, 0),
                                  &task->window);
@@ -387,7 +392,6 @@ result_t icons_handle(wuss_window_t      *window,
     return icons_icon(event, task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_close(window); /* frees the icons, which only borrowed sprite */
     if (tcx->has_sprite)
       free(tcx->sprite.base);
     free(tcx); /* calloc'd per instance by the spawner */

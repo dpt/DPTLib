@@ -31,7 +31,7 @@ typedef struct icons_task
 }
 icons_task_t;
 
-wuss_event_fn_t icons_handle;
+wuss_window_fn_t icons_handle;
 
 /* create the icons window against the given wuss instance */
 result_t icons_create(wuss_t       *wuss,
