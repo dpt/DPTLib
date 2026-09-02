@@ -10,14 +10,64 @@ _Unreleased_ until one is cut.
 
 ### Added
 
-- `wuss/icon.h` — work-area icons: static labels and clickable bevelled
-  buttons drawn inside a window's content area. Icon boxes are in virtual
-  document space, so they scroll with the content. Wuss hit-tests buttons
-  before the content task sees a click and delivers them as `wuss_EVENT_ICON`;
-  labels and hidden or disabled icons fall through as `wuss_EVENT_MOUSE`.
+- `wuss/menu.h` (new `WUSS_MENUS` option, implies `WUSS_ICONS`) — RISC OS-style
+  pop-up menus. `wuss_menu_open()` shows a caller-owned, immutable
+  `wuss_menu_t` (title plus an array of `wuss_menu_item_t`) as a borderless
+  window, nudged to stay on screen and opened under the pointer; wuss owns
+  layout, submenu chaining on hover and whole-chain dismissal. Per-item flags
+  cover ticks, disabled rows, dashed separators and submenus.
+  `wuss_menu_select_fn_t` reports a leaf pick — SELECT closes the chain, ADJUST
+  keeps it open. `wuss_menu_close()` / `wuss_menu_is_open()` manage a chain by
+  handle. An over-tall menu gets a real vertical scrollbar instead of being
+  cropped.
+- `wuss_menu_create_from_desc()` / `wuss_menu_destroy()` — build a heap
+  `wuss_menu_t` tree from a compact descriptor string (PrivateEye's
+  `menu_create_from_desc` syntax: `,` between items, leading `|` for a dashed
+  separator, `{ ... }` submenus, `!` tick, `~` shade, `>` and `%s` varargs).
+  The whole tree is one owned allocation graph freed by `wuss_menu_destroy()`.
+- `wuss_set_palette()` — swap the system palette mid-session. Copies the new
+  palette in, refreshes the cached nearest-black/white indices, broadcasts a
+  new `wuss_EVENT_PALETTE` to every window's task so it can recache
+  `wuss_nearest_colour()` selections, then invalidates the whole screen.
+  Length must match `wuss_create()`'s; a now-out-of-range furniture/bevel/
+  backdrop index is rejected with the palette left unchanged.
+- `wuss_nearest_colour()` — the system-palette index closest to an RGB value by
+  squared Euclidean distance, ties to the lower index.
+- `wuss_alloc_t` and the `wuss_alloc` stdlib default — pluggable malloc/realloc/
+  free hooks. `wuss_create()` takes a new `const wuss_alloc_t *` argument
+  (NULL selects `wuss_alloc`); every heap block a `wuss_t` owns goes through
+  the hooks.
+- `wuss/icon.h` — work-area icons drawn inside a window's content area, in
+  virtual document space so they scroll with the content. Wuss hit-tests
+  interactive icons before the content task sees a click and delivers them as
+  `wuss_EVENT_ICON`; labels and hidden or disabled icons fall through as
+  `wuss_EVENT_MOUSE`. Icon types: `LABEL` (with `JUSTIFY_RIGHT` / `_CENTRE`
+  flags), bevelled `BUTTON` (`DEFAULT` flag draws it as the default action
+  button), `RADIO` and `OPTION` latching buttons (radios with a non-zero
+  `group` are mutually exclusive), `FRAME` grouping box, `BITMAP` (a
+  caller-owned image, hit-tested only with the `INTERACTIVE` flag), `PATTERN`
+  swatch, `MENU_ENTRY` and inert `RULE` rows.
+- `wuss_icon_get_selected()` / `wuss_icon_set_selected()` — query and set a
+  radio or option icon's latched state; setting a grouped radio clears the
+  others in its group. No task event — the programmatic path.
 - `wuss_icon_create_array()` — creates a batch of icons from a spec array with
   all-or-nothing rollback: on the first failure any icons already created by
   the call are destroyed and no handles are written.
+- `text/bmtext.h` — `bmtext_layout()` word-wraps a string to a pixel width in a
+  `bmfont_t` (measuring each candidate line, so proportional fonts wrap
+  correctly); `bmtext_draw()` draws the laid-out lines stacked. Layout is pure.
+- `screen_draw_lines()` — connected polyline; a `screen_draw_line()` segment
+  between each adjacent pair.
+- `screen_draw_rect()` — one-pixel unfilled rectangle outline (falls back to a
+  fill for a degenerate size). See _Changed_ for the fill-primitive renames.
+- `screen_draw_dashed_line()` — Bresenham line with a dash-period counter.
+- `screen_PATTERN_BAYER0` .. `screen_PATTERN_BAYER0 + 64` — 8x8 ordered dither,
+  one fill pattern per coverage level 0 (empty) to 64 (solid), indexed as
+  `screen_PATTERN_BAYER0 + level`. `BAYER32` == `GREY50`, `BAYER64` == `SOLID`.
+- `define_wimp16_palette()` and the `palette_WIMP16_*` names — the RISC OS
+  desktop 16-colour palette in native Wimp index order.
+- `bitmap_set_palette()` — replace a bitmap's palette in place, reusing the
+  existing palette buffer when it is large enough; NULL drops the palette.
 - `wuss_window_create_placed()` — creates a window from a content size instead
   of a box, letting Wuss pack it (furniture included) into the first free
   screen region. Successive auto-placed windows tile; placement cascades when
@@ -57,6 +107,15 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- **Breaking:** `wuss_create()` takes a `const wuss_alloc_t *alloc` argument
+  after `config`; pass NULL for the stdlib allocator.
+- **Breaking:** `wuss_config_t::palette` is renamed `furniture`, and its type
+  `wuss_palette_t` renamed `wuss_furniture_palette_t`. `wuss_colour_t` narrows
+  from `int` to `unsigned char`.
+- **Breaking:** the framebuf draw primitives split draw/fill in their names:
+  `screen_draw_pixel` → `screen_set_pixel`, `screen_draw_rect` →
+  `screen_fill_rect`, `screen_draw_square` → `screen_fill_square`. `screen_draw_rect`
+  now names a one-pixel outline.
 - **Breaking:** the window/desktop background is now a `wuss_backdrop_t`
   (`{ colour, pattern, pattern_bg }`) instead of a bare `wuss_colour_t`:
   `wuss_config_t::backdrop`, and the `bg` parameter of
@@ -77,16 +136,32 @@ _Unreleased_ until one is cut.
 - Adjust-clicking a scroll arrow now steps against the direction the arrow
   points, so one arrow can be worked both ways without moving the pointer.
   Toggle-size stays Select-only.
+- A window can no longer be resized larger than the screen.
 
 ### Fixed
 
 - Opening a menu from a task's mouse-down handler no longer picks the menu's
   first row on the matching mouse-up: that release is now swallowed.
+- A menu chain is now closed before its `on_select` callback runs, so a
+  callback that opens another menu no longer fights the one being torn down.
+- Menu text is drawn in the nearest-black palette entry rather than assuming
+  a fixed index, so menus stay legible under any system palette.
+- The mouse wheel no longer scrolls a window on an axis it declared
+  non-scrollable.
+- A MENU-button click on window furniture now has no effect, instead of being
+  routed to the content task.
+- A window's scroll offset is re-clamped after a resize reveals content past
+  the document extent.
+- The scrollbar well keeps a 2px gap at each end.
 - Dragging a scrollbar well with Select no longer raises the window; only a
   resize-icon grab restacks it.
 - `wuss_window_move()` no longer repaints already-blitted pixels when a drag
   past an occluded corner slides one clean piece of the window onto ground
   another clean piece just vacated.
+- Several scroll-redraw glitches fixed: stale pixels when scroll events arrive
+  faster than redraws, content blitted over a mid-content occluder, blit
+  sub-pieces clobbering each other's source region, and repaint sets not
+  clipped to the visible area. The hovered icon is re-resolved after a scroll.
 - A work-area button held on mouse-down is now released if the click opens a
   window that covers the button's owner, instead of staying stuck pressed.
 - Resize-corner drag preserves where within the resize icon the mouse-down
