@@ -99,7 +99,7 @@ static result_t spawn_chars(void)
   chars_task_t *t = calloc(1, sizeof(*t));
   result_t      rc;
   if (t == NULL) return result_OOM;
-  rc = chars_create(g.wuss, t);
+  rc = chars_create(g.wuss, g.resources, t);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
