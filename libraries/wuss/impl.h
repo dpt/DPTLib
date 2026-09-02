@@ -116,6 +116,10 @@ struct wuss
                                             * menu chain, NULL when none open;
                                             * consulted by mouse-click.c to
                                             * dismiss on a click-away */
+  int                         menu_eat_up;  /* a menu opened on the last
+                                            * MOUSE_DOWN; swallow its matching
+                                            * MOUSE_UP so the release does not
+                                            * immediately pick row 0 */
 #endif
 };
 

@@ -230,6 +230,7 @@ result_t wuss_create(screen_t            *scr,
 #endif
 #ifdef WUSS_MENUS
   w->menu_chain         = NULL;
+  w->menu_eat_up        = 0;
 #endif
 
   w->ndirty = 0;

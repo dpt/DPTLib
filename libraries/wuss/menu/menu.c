@@ -460,6 +460,13 @@ result_t wuss_menu_open(wuss_t                *wuss,
     return rc;
 
   wuss->menu_chain = root;
+
+  /* A menu is opened from a task's MOUSE_DOWN handler; the matching MOUSE_UP is
+   * still to come and would land on the fresh menu's row 0. Mark it to be
+   * eaten. wuss_mouse_click clears this on the next MOUSE_UP whether or not it
+   * hit the menu. */
+  wuss->menu_eat_up = 1;
+
   if (out != NULL)
     *out = root;
   return result_OK;

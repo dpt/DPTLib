@@ -52,6 +52,19 @@ result_t wuss_mouse_click(wuss_t             *wuss,
     *hit = win;
 
 #ifdef WUSS_MENUS
+  /* The MOUSE_UP that follows the MENU press which opened the chain is spent:
+   * without this it would land on the new menu's row 0 and pick it. */
+  if (action == wuss_MOUSE_UP && wuss->menu_eat_up)
+  {
+    wuss->menu_eat_up = 0;
+    return result_OK;
+  }
+
+  /* Any fresh press ends the eat-up window: the release it pairs with is a
+   * real click, not the tail of the menu-opening press. */
+  if (action == wuss_MOUSE_DOWN)
+    wuss->menu_eat_up = 0;
+
   /* A press outside every window in the open menu chain dismisses the chain
    * and is spent doing so. Presses inside the chain fall through to the menu
    * window's own delegate. */
