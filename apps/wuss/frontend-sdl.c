@@ -179,6 +179,8 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
     case SDL_EVENT_KEY_UP:
       if (ev.key.key == SDLK_Q)
         event->kind = wuss_INPUT_QUIT;
+      else if (ev.key.key == SDLK_F1 && (ev.key.mod & SDL_KMOD_SHIFT))
+        event->kind = wuss_INPUT_GARBAGE;
       else if (ev.key.key == SDLK_F1)
         event->kind = wuss_INPUT_REDRAW_ALL;
       else if (ev.key.key == SDLK_F3)
