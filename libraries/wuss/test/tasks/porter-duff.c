@@ -198,7 +198,7 @@ result_t porter_duff_create(wuss_t             *wuss,
   delegate_desc.name      = "porter-duff";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
-    return rc;
+    goto free_dst; /* nothing registered yet; the spawner will not free task */
   wuss_task_set_autoclose(delegate, 1);
 
   rc = wuss_window_create_placed(delegate,
@@ -210,7 +210,10 @@ result_t porter_duff_create(wuss_t             *wuss,
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
-    goto free_dst;
+  {
+    wuss_task_destroy(delegate); /* QUIT frees the four bitmaps and task */
+    return rc;
+  }
 
   return result_OK;
 
@@ -222,6 +225,7 @@ free_b:
   free(task->b.base);
 free_a:
   free(task->a.base);
+  free(task); /* no task was registered on any goto here; spawner won't free */
 
   return rc;
 }

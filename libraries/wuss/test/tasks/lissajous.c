@@ -41,17 +41,24 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t *task)
   delegate_desc.name      = "lissajous";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
+  }
   wuss_task_set_autoclose(delegate, 1);
 
-  return wuss_window_create_placed(delegate,
-                                   SIZE2D(220, 220),
-                                   "Lissajous",
-                                   wuss_WINDOW_NONE,
-                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                   SIZE2D(220, 220),
-                                   SIZE2D(0, 0),
-                                   &task->window);
+  rc = wuss_window_create_placed(delegate,
+                                 SIZE2D(220, 220),
+                                 "Lissajous",
+                                 wuss_WINDOW_NONE,
+                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 SIZE2D(220, 220),
+                                 SIZE2D(0, 0),
+                                 &task->window);
+  if (rc != result_OK)
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+
+  return rc;
 }
 
 static result_t lissajous_redraw(const wuss_event_t *event, void *task_data)

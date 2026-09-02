@@ -37,7 +37,10 @@ result_t checker_create(wuss_t*wuss, checker_task_t *task)
   delegate_desc.name      = "checker";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
+  }
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(160, 160),
@@ -48,7 +51,10 @@ result_t checker_create(wuss_t*wuss, checker_task_t *task)
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
     return rc;
+  }
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(160, 160),
@@ -60,7 +66,7 @@ result_t checker_create(wuss_t*wuss, checker_task_t *task)
                                  &task->window2);
   if (rc != result_OK)
   {
-    wuss_window_close(task->window);
+    wuss_task_destroy(delegate); /* closes "Checker 1", QUIT frees the block */
     return rc;
   }
 

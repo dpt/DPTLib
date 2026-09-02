@@ -60,9 +60,10 @@ g;
 
 /* Each spawn allocates a fresh per-instance task block so a task may run in
  * several windows at once; the block is owned by its window and freed by the
- * task's wuss_EVENT_CLOSE handler. If create fails, or (for the font-less
- * chars task) returns OK without opening a window, the block is freed here --
- * otherwise it would leak. */
+ * task's wuss_EVENT_QUIT handler. On any create failure X_create has already
+ * torn down whatever it built and freed the block itself, so the only block
+ * the spawner frees is the font-less chars case: create returns OK but opens
+ * no window, leaving the block with no owner. */
 
 static result_t spawn_ball(void)
 {
@@ -70,7 +71,8 @@ static result_t spawn_ball(void)
   result_t     rc;
   if (t == NULL) return result_OOM;
   rc = ball_create(g.wuss, t);
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -80,7 +82,8 @@ static result_t spawn_text(void)
   result_t     rc;
   if (t == NULL) return result_OOM;
   rc = text_create(g.wuss, g.daydream_font, t);
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -90,7 +93,8 @@ static result_t spawn_blank(void)
   result_t      rc;
   if (t == NULL) return result_OOM;
   rc = blank_create(g.wuss, t);
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -100,7 +104,8 @@ static result_t spawn_chars(void)
   result_t      rc;
   if (t == NULL) return result_OOM;
   rc = chars_create(g.wuss, g.resources, t);
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -110,7 +115,8 @@ static result_t spawn_palette(void)
   result_t        rc;
   if (t == NULL) return result_OOM;
   rc = palette_create(g.wuss, g.palette, g.npalette, t);
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -137,7 +143,8 @@ static result_t spawn_image(void)
   if (rc != result_OK)
     logf_error("wuss: image_create(\"%s\") failed, rc=0x%X (%s)", buf, rc,
                result_string(rc));
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -147,7 +154,8 @@ static result_t spawn_checker(void)
   result_t        rc;
   if (t == NULL) return result_OOM;
   rc = checker_create(g.wuss, t);
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -157,7 +165,8 @@ static result_t spawn_curve(void)
   result_t      rc;
   if (t == NULL) return result_OOM;
   rc = curve_create(g.wuss, t);
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -167,7 +176,8 @@ static result_t spawn_lissajous(void)
   result_t          rc;
   if (t == NULL) return result_OOM;
   rc = lissajous_create(g.wuss, t);
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -177,7 +187,8 @@ static result_t spawn_sofa(void)
   result_t     rc;
   if (t == NULL) return result_OOM;
   rc = sofa_create(g.wuss, t);
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -187,7 +198,8 @@ static result_t spawn_gradient(void)
   result_t         rc;
   if (t == NULL) return result_OOM;
   rc = gradient_create(g.wuss, t);
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -200,7 +212,8 @@ static result_t spawn_icons(void)
   if (rc != result_OK)
     logf_error("wuss: icons_create (resources \"%s\") failed, rc=0x%X (%s)",
                g.resources, rc, result_string(rc));
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -210,7 +223,8 @@ static result_t spawn_swatches(void)
   result_t         rc;
   if (t == NULL) return result_OOM;
   rc = swatches_create(g.wuss, t);
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 
@@ -223,7 +237,8 @@ static result_t spawn_porter_duff(void)
   if (rc != result_OK)
     logf_error("wuss: porter_duff_create (resources \"%s\") failed, "
                "rc=0x%X (%s)", g.resources, rc, result_string(rc));
-  if (rc != result_OK || t->window == NULL) { free(t); return rc; }
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
 

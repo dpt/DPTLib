@@ -48,7 +48,10 @@ result_t text_create(wuss_t      *wuss,
   delegate_desc.name      = "text";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
+  }
   wuss_task_set_autoclose(delegate, 1);
   sz       = SIZE2D(220, 180);
 
@@ -63,6 +66,8 @@ result_t text_create(wuss_t      *wuss,
                                  sz,
                                  SIZE2D(0, 0),
                                  &task->window);
+  if (rc != result_OK)
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
 
   return rc;
 }
