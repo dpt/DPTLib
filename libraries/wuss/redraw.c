@@ -13,6 +13,9 @@ static void redraw_window(wuss_t        *wuss,
   box_t pieces[WUSS_MAX_INVALIDATE_PIECES];
   int   npieces, i;
 
+  if (win->flags & wuss_WINDOW_HIDDEN)
+    return; /* not drawn while hidden */
+
   if (box_intersection(&win->visible, full, &visible_clipped))
     return; /* offscreen */
 

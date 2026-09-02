@@ -362,6 +362,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/window/resize.c
     libraries/wuss/window/restack.c
     libraries/wuss/window/set-background.c
+    libraries/wuss/window/set-hidden.c
     libraries/wuss/window/set-scroll.c)
 
 set(WUSS_FURNITURE_SOURCES
