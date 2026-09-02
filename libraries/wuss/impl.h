@@ -3,6 +3,8 @@
 #ifndef IMPL_H
 #define IMPL_H
 
+#include <stddef.h>
+
 #include "base/utils.h"
 #include "datastruct/list.h"
 #include "geom/box.h"
@@ -14,6 +16,7 @@
 
 #include "wuss/wuss.h"
 #include "wuss/window.h"
+#include "wuss/task.h"
 
 #ifdef WUSS_FURNITURE
 #include "furniture.h"
@@ -57,6 +60,20 @@ typedef enum wuss_window_state
 }
 wuss_window_state_t;
 
+/* A registered task. Owns a list of windows (linked through each window's
+ * second embedded list_t, task_link) and is the single delivery target for
+ * their events plus the app-wide IDLE/PALETTE/MENU_SELECT notifications.
+ * Tasks are chained through wuss::tasks in registration order. */
+struct wuss_task
+{
+  list_t             link;      /* anchor node in wuss::tasks; must be first */
+  wuss_t            *wuss;
+  wuss_window_fn_t  *handle;    /* nullable: no events delivered */
+  void              *task_data;
+  const char        *name;      /* borrowed, may be NULL */
+  list_t             windows;   /* anchor; nodes are window->task_link */
+};
+
 struct wuss
 {
   screen_t                   *scr;
@@ -86,6 +103,8 @@ struct wuss
   int                         titlebar_height;
 #endif
   list_t                      z_order;   /* anchor; head = topmost window */
+  list_t                      tasks;     /* anchor; registered tasks, in
+                                          * wuss_task_create order */
 #ifdef WUSS_FURNITURE
   struct wuss__furniture         furniture;    /* drag state */
   const wuss__furniture_ops_t   *furniture_ops; /* core->furniture dispatch;
@@ -116,6 +135,11 @@ struct wuss
                                             * menu chain, NULL when none open;
                                             * consulted by mouse-click.c to
                                             * dismiss on a click-away */
+  wuss_task_t                *menu_task;    /* internal task owning every
+                                            * borderless menu window; created
+                                            * lazily on first wuss_menu_open,
+                                            * freed by wuss_destroy's task
+                                            * sweep */
   int                         menu_eat_up;  /* a menu opened on the last
                                             * MOUSE_DOWN; swallow its matching
                                             * MOUSE_UP so the release does not
@@ -125,11 +149,14 @@ struct wuss
 
 struct wuss_window
 {
-  list_t              link;   /* must be first member */
+  list_t              link;   /* z-order chain; must be first member */
+  list_t              task_link; /* chain through the owning task's window
+                                  * list (wuss_task::windows) */
   wuss_t             *wuss;
   box_t               visible; /* full on-screen footprint: content expanded
                                 * outward by any titlebar/outline furniture */
-  wuss_task_t         task;
+  wuss_task_t        *task;   /* owning task, set at create, immutable; never
+                              * NULL */
   wuss_backdrop_t     bg; /* content background; colour==wuss_NO_BACKGROUND: none */
   wuss_window_flags_t flags;
   point_t             scroll; /* offset into virtual content space of the
@@ -241,6 +268,21 @@ int             wuss__order_pieces(const box_t *clean,
                                    int          n,
                                    int         *order);
 
+/* Recover the owning wuss_window_t from a node in a task's window list
+ * (window->task_link). task_link is not the first member, so a plain cast
+ * won't do. */
+#define wuss__window_from_task_link(node) \
+  ((wuss_window_t *) ((char *) (node) - offsetof(struct wuss_window, task_link)))
+
+/* The single dispatch chokepoint. Delivers "ev" to "task"'s handle, passing
+ * "win_or_null" as the window (NULL for task-view events). No-op (returns
+ * result_OK) when task is NULL or has no handle. A debug build also asserts
+ * ev->kind is valid for the recipient view. Every emit site routes through
+ * here. */
+result_t wuss__deliver(wuss_task_t        *task,
+                       wuss_window_t      *win_or_null,
+                       const wuss_event_t *ev);
+
 /* Notify a window's task that it has been moved or resized, via
  * wuss_EVENT_OPEN; the return value is discarded, matching how furniture
  * drawing and other in-line notifications are treated. */
@@ -248,11 +290,8 @@ static inline void wuss__notify_open(wuss_window_t *window)
 {
   wuss_event_t event;
 
-  if (window->task.handle == NULL)
-    return;
-
   event.kind = wuss_EVENT_OPEN;
-  (void) window->task.handle(window, &event, window->task.task_data);
+  (void) wuss__deliver(window->task, window, &event);
 }
 
 static inline int wuss__size_ok(int width, int height)

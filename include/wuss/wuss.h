@@ -45,6 +45,10 @@ typedef struct wuss wuss_t;
 /** A window. Full API is in window.h. */
 typedef struct wuss_window wuss_window_t;
 
+/** A registered task: owns windows, receives their events. Full API is in
+ * task.h. */
+typedef struct wuss_task wuss_task_t;
+
 /** A work-area icon. Full API is in icon.h, and is compiled only when the
  * library is built with the WUSS_ICONS option on. */
 typedef struct wuss_icon wuss_icon_t;
@@ -334,11 +338,12 @@ result_t wuss_create(screen_t            *scr,
  *
  * Copies \p palette in over the existing one (same semantics as
  * wuss_create's palette argument), refreshes the cached nearest-black /
- * nearest-white indices, broadcasts a \ref wuss_EVENT_PALETTE event to every
- * window's task so they can recache any wuss_nearest_colour selections, then
- * invalidates the whole screen. The caller is still responsible for the next
- * wuss_redraw / wuss_redraw_dirty, and -- on a paletted screen -- for
- * updating the screen bitmap's own palette to match.
+ * nearest-white indices, broadcasts a \ref wuss_EVENT_PALETTE event once to
+ * every registered task (in registration order, window == NULL) so they can
+ * recache any wuss_nearest_colour selections, then invalidates the whole
+ * screen. The caller is still responsible for the next wuss_redraw /
+ * wuss_redraw_dirty, and -- on a paletted screen -- for updating the screen
+ * bitmap's own palette to match.
  *
  * \param[in] wuss     Window manager.
  * \param[in] palette  New system palette, copied in.
@@ -348,7 +353,8 @@ result_t wuss_create(screen_t            *scr,
  *         not match the current palette length, \ref result_WUSS_BAD_COLOUR
  *         if a configured furniture/bevel/backdrop colour index is now out
  *         of range (in which case the palette is left unchanged), else the
- *         first non-OK result returned by a task's handle callback.
+ *         first non-OK result returned by a task's handle callback
+ *         (iteration still continues past it).
  */
 result_t wuss_set_palette(wuss_t         *wuss,
                           const colour_t *palette,
@@ -517,14 +523,15 @@ result_t wuss_scroll(wuss_t         *wuss,
                      wuss_window_t **hit);
 
 /**
- * Broadcast a wuss_EVENT_IDLE event to every window's task, in z-order.
- * Intended to be called once per main-loop iteration, after other pending
- * input has been handled, so tasks can drive their own animation/timers
- * without the caller stepping each one individually.
+ * Broadcast a wuss_EVENT_IDLE event once to every registered task, in
+ * registration order (window == NULL). Intended to be called once per
+ * main-loop iteration, after other pending input has been handled, so tasks
+ * can drive their own animation/timers -- iterating their own window lists
+ * -- without the caller stepping each one individually.
  *
- * \param[in] wuss Window manager whose windows' tasks should go idle.
+ * \param[in] wuss Window manager whose tasks should go idle.
  * \return \ref result_OK on success, else the first non-OK result returned
- *         by a task's handle callback.
+ *         by a task's handle callback (iteration still continues past it).
  */
 result_t wuss_idle(wuss_t *wuss);
 

@@ -348,8 +348,9 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/scroll.c
     libraries/wuss/scroll-step.c
     libraries/wuss/set-palette.c
-    libraries/wuss/task/start.c
-    libraries/wuss/task/stop.c
+    libraries/wuss/task/create.c
+    libraries/wuss/task/destroy.c
+    libraries/wuss/task/deliver.c
     libraries/wuss/window/at.c
     libraries/wuss/window/create.c
     libraries/wuss/window/create-placed.c
