@@ -98,14 +98,17 @@ result_t wuss_create(screen_t            *scr,
   memcpy(w->palette, palette, npalette * sizeof(*w->palette));
   w->npalette = npalette;
 
-  /* Cache the palette indices nearest to opaque white and black, for menu
-   * backdrops/text and anything else wanting "paper" or "ink". */
-  w->palettecache.white = wuss_nearest_colour(w, 255, 255, 255);
-  w->palettecache.black = wuss_nearest_colour(w, 0, 0, 0);
+  /* First pass: white/black and the named symbolic colours (BLACK..GREY).
+   * The chrome-role slots are still the out-of-range sentinel here -- filled
+   * once the config's own colours below are resolved and stored. This lets
+   * wuss__resolve_colour handle a config that uses a named symbolic. */
+  wuss__rebuild_palettecache(w);
 
   if (config != NULL)
   {
-    w->backdrop = config->backdrop;
+    w->backdrop            = config->backdrop;
+    w->backdrop.colour     = wuss__resolve_colour(w, w->backdrop.colour);
+    w->backdrop.pattern_bg = wuss__resolve_colour(w, w->backdrop.pattern_bg);
   }
   else
   {
@@ -118,10 +121,19 @@ result_t wuss_create(screen_t            *scr,
   if (config != NULL)
   {
     pal = config->furniture;
-    blight = config->bevel.light;
-    bdark = config->bevel.dark;
-    abg = config->accent.bg;
-    afg = config->accent.fg;
+    pal.title.bg        = wuss__resolve_colour(w, pal.title.bg);
+    pal.title.fg        = wuss__resolve_colour(w, pal.title.fg);
+    pal.back            = wuss__resolve_colour(w, pal.back);
+    pal.close           = wuss__resolve_colour(w, pal.close);
+    pal.toggle          = wuss__resolve_colour(w, pal.toggle);
+    pal.resize          = wuss__resolve_colour(w, pal.resize);
+    pal.scroll.arrows   = wuss__resolve_colour(w, pal.scroll.arrows);
+    pal.scroll.wells    = wuss__resolve_colour(w, pal.scroll.wells);
+    pal.scroll.sausages = wuss__resolve_colour(w, pal.scroll.sausages);
+    blight = wuss__resolve_colour(w, config->bevel.light);
+    bdark  = wuss__resolve_colour(w, config->bevel.dark);
+    abg    = wuss__resolve_colour(w, config->accent.bg);
+    afg    = wuss__resolve_colour(w, config->accent.fg);
   }
   else
   {
@@ -184,10 +196,10 @@ result_t wuss_create(screen_t            *scr,
 #ifdef WUSS_ICONS
   if (config != NULL)
   {
-    blight = config->bevel.light;
-    bdark  = config->bevel.dark;
-    abg    = config->accent.bg;
-    afg    = config->accent.fg;
+    blight = wuss__resolve_colour(w, config->bevel.light);
+    bdark  = wuss__resolve_colour(w, config->bevel.dark);
+    abg    = wuss__resolve_colour(w, config->accent.bg);
+    afg    = wuss__resolve_colour(w, config->accent.fg);
   }
   else
   {
@@ -215,6 +227,10 @@ result_t wuss_create(screen_t            *scr,
   }
 #endif
 #endif /* WUSS_FURNITURE */
+
+  /* Second pass: the chrome colours are stored and concrete now, so fill in
+   * the chrome-role symbolic slots (wuss_COLOUR_TITLE_BG etc.). */
+  wuss__rebuild_palettecache(w);
 
   w->scr                = scr;
   w->font               = font;

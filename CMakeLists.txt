@@ -348,6 +348,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/mouse-click.c
     libraries/wuss/mouse-move.c
     libraries/wuss/nearest-colour.c
+    libraries/wuss/rebuild-palettecache.c
     libraries/wuss/redraw.c
     libraries/wuss/scroll.c
     libraries/wuss/scroll-step.c

@@ -20,11 +20,15 @@ result_t wuss_icon_create(wuss_window_t          *window,
   const char  *src;
   size_t       len;
   int          newcap;
+  wuss_colour_t fg, bg;
 
   assert(window != NULL);
   assert(spec   != NULL);
 
   w = window->wuss;
+
+  fg = wuss__resolve_colour(w, spec->fg);
+  bg = wuss__resolve_colour(w, spec->bg);
 
   switch (spec->type)
   {
@@ -45,7 +49,7 @@ result_t wuss_icon_create(wuss_window_t          *window,
 
   if ((spec->type == wuss_ICON_TYPE_BUTTON ||
        spec->type == wuss_ICON_TYPE_PATTERN) &&
-      spec->bg == wuss_NO_BACKGROUND)
+      bg == wuss_NO_BACKGROUND)
     return result_WUSS_BAD_ICON;
 
   if (spec->type == wuss_ICON_TYPE_BITMAP && spec->bitmap == NULL)
@@ -55,11 +59,11 @@ result_t wuss_icon_create(wuss_window_t          *window,
       (spec->pattern < 0 || spec->pattern >= screen_PATTERN__LIMIT))
     return result_WUSS_BAD_ICON;
 
-  if (spec->fg < 0 || spec->fg >= w->npalette)
+  if (fg < 0 || fg >= w->npalette)
     return result_WUSS_BAD_COLOUR;
 
-  if (spec->bg != wuss_NO_BACKGROUND &&
-      (spec->bg < 0 || spec->bg >= w->npalette))
+  if (bg != wuss_NO_BACKGROUND &&
+      (bg < 0 || bg >= w->npalette))
     return result_WUSS_BAD_COLOUR;
 
   if (window->nicons == window->cap_icons)
@@ -89,8 +93,8 @@ result_t wuss_icon_create(wuss_window_t          *window,
   it->window   = window;
   it->bbox     = spec->bbox;
   it->type     = spec->type;
-  it->fg       = spec->fg;
-  it->bg       = spec->bg;
+  it->fg       = fg;
+  it->bg       = bg;
   it->pattern  = (spec->type == wuss_ICON_TYPE_PATTERN) ? spec->pattern
                                                         : screen_PATTERN_SOLID;
   it->bitmap   = (spec->type == wuss_ICON_TYPE_BITMAP) ? spec->bitmap : NULL;

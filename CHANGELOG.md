@@ -10,6 +10,19 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- Symbolic `wuss_colour_t` values (`wuss/wuss.h`). A raw `wuss_colour_t` is a
+  palette index, `0..127`; `wuss_COLOUR_SYMBOLIC` (128) and up name roles the
+  window manager resolves to a concrete index. `wuss_COLOUR_BLACK`,
+  `_WHITE`, `_RED`, `_GREEN`, `_BLUE`, `_YELLOW`, `_CYAN`, `_MAGENTA`,
+  `_GREY` pick the nearest system-palette entry to the named RGB;
+  `wuss_COLOUR_TITLE_BG` / `_TITLE_FG` / `_BUTTON_HILIGHT` / `_BUTTON_SHADOW`
+  / `_ACCENT_BG` / `_ACCENT_FG` / `_BACKDROP` echo the matching
+  `wuss_config_t` field. Accepted anywhere a `wuss_colour_t` is taken —
+  config furniture/bevel/accent/backdrop, `wuss_window_create()` /
+  `wuss_window_set_background()` backgrounds, icon specs — and resolved once
+  when the value is stored, so draw code and `wuss_nearest_colour()` are
+  unaffected. Resolutions are recomputed on `wuss_set_palette()` and
+  `wuss_set_backdrop()`.
 - `wuss/menu.h` (new `WUSS_MENUS` option, implies `WUSS_ICONS`) — RISC OS-style
   pop-up menus. `wuss_menu_open()` shows a caller-owned, immutable
   `wuss_menu_t` (title plus an array of `wuss_menu_item_t`) as a borderless
