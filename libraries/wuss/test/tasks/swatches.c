@@ -12,6 +12,7 @@
 #include "framebuf/palettes.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "geom/point.h"
 #include "geom/size.h"
 #include "wuss/icon.h"
 
@@ -37,6 +38,9 @@ static result_t swatches_build(swatches_task_t *task)
 
   fg = wuss_nearest_colour(task->wuss, 0x00, 0x00, 0x00);
   bg = wuss_nearest_colour(task->wuss, 0xFF, 0xFF, 0xFF);
+
+  task->swatch_fg = fg;
+  task->swatch_bg = bg;
 
   memset(specs, 0, sizeof(specs));
 
@@ -65,6 +69,11 @@ static result_t swatches_build(swatches_task_t *task)
     specs[1 + p].fg      = fg;
     specs[1 + p].bg      = bg;
     specs[1 + p].pattern = (screen_pattern_t) p;
+
+    /* PATTERN icons are not interactive, so their clicks fall through to us
+     * as wuss_EVENT_MOUSE in this same content space -- keep each box to
+     * hit-test against */
+    task->swatch_bbox[p] = specs[1 + p].bbox;
   }
 
   return wuss_icon_create_array(task->window, specs, SWATCHES_NSPECS,
@@ -119,6 +128,34 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
   return result_OK;
 }
 
+/* A click landed on the window content. If it is inside a swatch, make that
+ * swatch's fill pattern the desktop backdrop. */
+static result_t swatches_click(swatches_task_t    *task,
+                               const wuss_event_t *event)
+{
+  wuss_backdrop_t backdrop;
+  point_t         pt;
+  int             p;
+
+  if (event->data.mouse.action != wuss_MOUSE_DOWN)
+    return result_OK;
+
+  pt = event->data.mouse.point;
+
+  for (p = 0; p < screen_PATTERN__LIMIT; p++)
+  {
+    if (!box_contains_point(&task->swatch_bbox[p], pt.x, pt.y))
+      continue;
+
+    backdrop = (wuss_backdrop_t) wuss_BACKDROP_PATTERN(task->swatch_fg,
+                                                      (screen_pattern_t) p,
+                                                      task->swatch_bg);
+    return wuss_set_backdrop(task->wuss, &backdrop);
+  }
+
+  return result_OK;
+}
+
 result_t swatches_handle(wuss_window_t      *window,
                          const wuss_event_t *event,
                          void               *task_data)
@@ -129,6 +166,9 @@ result_t swatches_handle(wuss_window_t      *window,
 
   switch (event->kind)
   {
+  case wuss_EVENT_MOUSE:
+    return swatches_click(task, event);
+
   case wuss_EVENT_PALETTE:
     return swatches_build(task);
 

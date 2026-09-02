@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/screen.h"
+#include "geom/box.h"
 #include "wuss/icon.h"
 #include "wuss/window.h"
 
@@ -19,6 +20,9 @@ typedef struct swatches_task
   wuss_t        *wuss;   /* for re-resolving swatch colours on a palette swap */
   wuss_window_t *window;
   wuss_icon_t   *icons[SWATCHES_NSPECS]; /* current icons, deleted on rebuild */
+  box_t          swatch_bbox[screen_PATTERN__LIMIT]; /* content-space hit box per pattern */
+  wuss_colour_t  swatch_fg; /* ink to set the backdrop in when a swatch is picked */
+  wuss_colour_t  swatch_bg; /* paper for the backdrop pattern's clear bits */
 }
 swatches_task_t;
 
