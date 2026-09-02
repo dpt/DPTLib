@@ -26,6 +26,13 @@
 #include "wuss/menu.h"
 #endif
 
+/* white-box: the menu-flash test drives picks through the icon layer and
+ * reads back struct wuss__menu / struct wuss_icon state directly */
+#if defined(WUSS_MENUS) && defined(WUSS_ICONS)
+#include "../impl.h"
+#include "../icon.h"
+#endif
+
 #include "test/all-tests.h"
 
 /* ----------------------------------------------------------------------- */
@@ -227,6 +234,36 @@ static void reap_test_tasks(void)
 
 /* ----------------------------------------------------------------------- */
 
+#if defined(WUSS_MENUS) && defined(WUSS_ICONS)
+/* Click menu row `row` of the open chain level `level` with `button`: a
+ * MOUSE_DOWN then MOUSE_UP at the row's on-screen centre, exactly as the
+ * real event pump would deliver them. */
+static void flash_pick_row(wuss_t            *wuss,
+                           struct wuss__menu *level,
+                           int                row,
+                           wuss_button_t      button)
+{
+  box_t   content;
+  box_t   bbox;
+  box_t   screen_box;
+  point_t scroll;
+  point_t at;
+
+  wuss_window_get_content_bounds(level->window, &content);
+  wuss_window_get_scroll(level->window, &scroll);
+  wuss_icon_get_bbox(level->icons[row], &bbox);
+  wuss__icon_box_to_screen(&content, scroll, &bbox, &screen_box);
+
+  at.x = (screen_box.x0 + screen_box.x1) / 2;
+  at.y = (screen_box.y0 + screen_box.y1) / 2;
+
+  wuss_mouse_click(wuss, at, button, wuss_MOUSE_DOWN, NULL);
+  wuss_mouse_click(wuss, at, button, wuss_MOUSE_UP, NULL);
+}
+#endif
+
+/* ----------------------------------------------------------------------- */
+
 /* Total area covered by the dirty list, counting overlapped pixels once.
  * Summing each region's area instead would double-count wherever two
  * invalidations overlap, which they legitimately do. */
@@ -281,7 +318,9 @@ result_t wuss_test(const char *resources)
   int            width, height;
   const colour_t custom_palette[2] = { 0, 0 };
 
-  NOT_USED(resources);
+#if !(defined(WUSS_MENUS) && defined(WUSS_ICONS))
+  NOT_USED(resources); /* only the menu-flash test reads it */
+#endif
 
   rowbytes = 200 * 4;
   pixels = malloc(rowbytes * 200);
@@ -3468,7 +3507,126 @@ MenuFail:
     return result_TEST_FAILED;
 MenuOK: ;
   }
-#endif
+
+#ifdef WUSS_ICONS
+  printf("test: menu pick flashes then delivers MENU_SELECT; fast ADJUST "
+         "re-picks do not lose a click or leave a row inverted\n");
+  {
+    static const wuss_menu_item_t flash_items[] =
+    {
+      { "One",   wuss_MENU_ITEM_NONE, NULL },
+      { "Two",   wuss_MENU_ITEM_NONE, NULL },
+      { "Three", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_t flash_menu =
+    {
+      "Pick", flash_items, NELEMS(flash_items)
+    };
+
+    const char        *fontfile;
+    bmfont_t          *font;
+    screen_t           fscr;
+    bitmap_t           fbm;
+    void              *fpixels;
+    wuss_t            *fwuss;
+    test_task_t        ftc;
+    wuss_task_t       *fowner;
+    struct wuss__menu *chain;
+    int                i;
+
+    /* a menu needs a font for its row metrics; the core wuss above was made
+     * without one */
+    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
+                                  path_join_leafname("tiny", "png"));
+    rc = bmfont_create(fontfile, &font);
+    if (rc != result_OK)
+    {
+      printf("wuss_test: flash test could not load %s\n", fontfile);
+      goto Failure;
+    }
+
+    fpixels = malloc((size_t) rowbytes * 200);
+    if (fpixels == NULL) { rc = result_OOM; goto FlashFail; }
+    rc = bitmap_init(&fbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, fpixels);
+    if (rc != result_OK) goto FlashFailFree;
+    screen_for_bitmap(&fscr, &fbm);
+
+    rc = wuss_create(&fscr, font, NULL, 0, NULL, NULL, &fwuss);
+    if (rc != result_OK) goto FlashFailFree;
+
+    memset(&ftc, 0, sizeof(ftc));
+    fowner = mk_task(fwuss, test_handle, &ftc);
+    if (fowner == NULL) { rc = result_OOM; goto FlashDestroy; }
+
+    /* --- a plain SELECT pick: flash runs, then one MENU_SELECT --- */
+    rc = wuss_menu_open(fowner, &flash_menu, POINT(40, 40), NULL);
+    if (rc != result_OK) goto FlashDestroy;
+
+    chain = fwuss->menu_chain;
+    if (chain == NULL || chain->menu != &flash_menu) goto FlashCheckFail;
+
+    flash_pick_row(fwuss, chain, 1, wuss_BUTTON_SELECT);
+
+    if (ftc.menu_select_count != 0) goto FlashCheckFail; /* deferred, not yet */
+    if (chain->flash.frames <= 0)   goto FlashCheckFail; /* flash was armed */
+
+    for (i = 0; i < 64; i++) /* longer than any plausible flash */
+      wuss_idle(fwuss);
+
+    if (ftc.menu_select_count != 1)  goto FlashCheckFail;
+    if (ftc.last_menu_index != 1)    goto FlashCheckFail;
+    if (fwuss->menu_chain != NULL)   goto FlashCheckFail; /* SELECT tore it down */
+
+    /* --- fast ADJUST re-picks: row 0, then row 2 mid-flash --- */
+    rc = wuss_menu_open(fowner, &flash_menu, POINT(40, 40), NULL);
+    if (rc != result_OK) goto FlashDestroy;
+    chain = fwuss->menu_chain;
+    ftc.menu_select_count = 0;
+
+    flash_pick_row(fwuss, chain, 0, wuss_BUTTON_ADJUST);
+    wuss_idle(fwuss);
+    wuss_idle(fwuss); /* a couple of flash frames, nowhere near done */
+    flash_pick_row(fwuss, chain, 2, wuss_BUTTON_ADJUST);
+
+    /* the pre-empted row 0 pick must have been delivered, not dropped */
+    if (ftc.menu_select_count != 1) goto FlashCheckFail;
+    if (ftc.last_menu_index != 0)   goto FlashCheckFail;
+    /* and row 0 must not be left highlit */
+    if (wuss__icon_hovered(chain->icons[0])) goto FlashCheckFail;
+
+    for (i = 0; i < 64; i++) /* longer than any plausible flash */
+      wuss_idle(fwuss);
+
+    if (ftc.menu_select_count != 2) goto FlashCheckFail;
+    if (ftc.last_menu_index != 2)   goto FlashCheckFail;
+    /* ADJUST keeps the chain open, but no row may be left inverted */
+    if (fwuss->menu_chain == NULL)  goto FlashCheckFail;
+    for (i = 0; i < flash_menu.nitems; i++)
+      if (wuss__icon_hovered(fwuss->menu_chain->icons[i])) goto FlashCheckFail;
+
+    rc = result_OK;
+    goto FlashDestroy;
+
+FlashCheckFail:
+    printf("wuss_test: menu flash check failed "
+           "(select_count=%d last_index=%d chain=%p)\n",
+           ftc.menu_select_count, ftc.last_menu_index,
+           (void *) fwuss->menu_chain);
+    rc = result_TEST_FAILED;
+
+FlashDestroy:
+    reap_test_tasks();
+    wuss_destroy(fwuss);
+FlashFailFree:
+    free(fpixels);
+FlashFail:
+    bmfont_destroy(font);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+  }
+#endif /* WUSS_ICONS */
+#endif /* WUSS_MENUS */
 
   wuss_destroy(wuss);
 
