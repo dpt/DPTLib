@@ -21,6 +21,10 @@ void wuss_task_destroy(wuss_task_t *doomed)
 
   wuss = doomed->wuss;
 
+  /* Mark the teardown so wuss_window_close's autoclose path doesn't also
+   * fire QUIT and free the node from under us. */
+  doomed->flags |= wuss_TASK__REAPING;
+
   /* One QUIT while every window is still alive. */
   event.kind = wuss_EVENT_QUIT;
   (void) wuss__deliver(doomed, NULL, &event);

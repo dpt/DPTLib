@@ -158,6 +158,11 @@ _Unreleased_ until one is cut.
     const char *name; }` — and tear it down with
     `wuss_task_destroy(wuss_task_t *)`, which closes the task's windows,
     fires one `wuss_EVENT_QUIT` and unregisters it.
+  - `wuss_task_set_autoclose(wuss_task_t *, int)` opts a task into
+    self-destruct: once its last window closes it fires one `wuss_EVENT_QUIT`
+    and unregisters, so it stops receiving `wuss_idle()` / `wuss_set_palette()`
+    broadcasts. Such tasks should free `task_data` from `wuss_EVENT_QUIT`, not
+    `wuss_EVENT_CLOSE`.
   - `wuss_window_create()` and `wuss_window_create_placed()` no longer take a
     leading `wuss_t *` or a task-delegate pointer; their first argument is now
     the owning `wuss_task_t *`. The window inherits that task's handler.

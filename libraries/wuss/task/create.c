@@ -29,6 +29,7 @@ result_t wuss_task_create(wuss_t                 *wuss,
   t->handle    = desc->handle;
   t->task_data = desc->task_data;
   t->name      = desc->name;
+  t->flags     = 0;
   list_init(&t->windows);
 
   list_add_to_tail(&wuss->tasks, &t->link);

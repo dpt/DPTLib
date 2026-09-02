@@ -199,6 +199,7 @@ result_t porter_duff_create(wuss_t             *wuss,
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
     return rc;
+  wuss_task_set_autoclose(delegate, 1);
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
@@ -401,7 +402,7 @@ result_t porter_duff_handle(wuss_window_t      *window,
   case wuss_EVENT_IDLE:
     return porter_duff_idle(task_data);
 
-  case wuss_EVENT_CLOSE:
+  case wuss_EVENT_QUIT:
     free(pd->dst.base);
     free(pd->src.base);
     free(pd->b.base);

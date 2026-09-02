@@ -33,6 +33,7 @@ result_t palette_create(wuss_t         *wuss,
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
     return rc;
+  wuss_task_set_autoclose(delegate, 1);
 
   return wuss_window_create_placed(delegate,
                                    SIZE2D(100, 100),
@@ -90,7 +91,7 @@ result_t palette_handle(wuss_window_t      *window,
                         const wuss_event_t *event,
                         void               *task_data)
 {
-  if (event->kind == wuss_EVENT_CLOSE)
+  if (event->kind == wuss_EVENT_QUIT)
   {
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;

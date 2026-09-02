@@ -49,6 +49,7 @@ result_t text_create(wuss_t      *wuss,
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
     return rc;
+  wuss_task_set_autoclose(delegate, 1);
   sz       = SIZE2D(220, 180);
 
   task->base_width  = sz.w;
@@ -159,7 +160,7 @@ result_t text_handle(wuss_window_t      *window,
       return result_OK;
     return text_mouse(task_data);
 
-  case wuss_EVENT_CLOSE:
+  case wuss_EVENT_QUIT:
     free(tcx); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 

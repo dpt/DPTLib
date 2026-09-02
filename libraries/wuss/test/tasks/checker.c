@@ -64,6 +64,10 @@ result_t checker_create(wuss_t*wuss, checker_task_t *task)
     return rc;
   }
 
+  /* both windows up: from here, closing the last one reaps the task and its
+   * wuss_EVENT_QUIT frees task_data */
+  wuss_task_set_autoclose(delegate, 1);
+
   return result_OK;
 }
 
@@ -169,9 +173,12 @@ result_t checker_handle(wuss_window_t      *window,
       cc->window2 = NULL;
     else
       cc->window = NULL;
-    /* one calloc'd block backs both windows; free it once both are gone */
-    if (cc->window == NULL && cc->window2 == NULL)
-      free(cc);
+    return result_OK;
+
+  case wuss_EVENT_QUIT:
+    /* one calloc'd block backs both windows; the task autocloses once the
+     * second window goes, so free it here */
+    free(cc);
     return result_OK;
 
   default:
