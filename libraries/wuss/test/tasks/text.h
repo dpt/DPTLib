@@ -3,7 +3,7 @@
 #ifndef TASKS_TEXT_H
 #define TASKS_TEXT_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdbool.h>
 
@@ -33,6 +33,6 @@ result_t text_create(wuss_t         *wuss,
                      bmfont_t       *font,
                      text_task_t    *task);
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_TEXT_H */

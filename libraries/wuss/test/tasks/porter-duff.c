@@ -1,6 +1,6 @@
 /* wuss/test/tasks/porter-duff.c -- animated Porter-Duff compositing task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 #include <string.h>
@@ -415,4 +415,4 @@ result_t porter_duff_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

@@ -3,7 +3,7 @@
 #ifndef TASKS_BLANK_H
 #define TASKS_BLANK_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "wuss/window.h"
 #include "wuss/task.h"
@@ -27,6 +27,6 @@ wuss_window_fn_t blank_handle;
 result_t blank_create(wuss_t *wuss, blank_task_t *task);
 
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_BLANK_H */

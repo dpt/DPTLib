@@ -3,7 +3,7 @@
 #ifndef TASKS_PORTER_DUFF_H
 #define TASKS_PORTER_DUFF_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
@@ -43,6 +43,6 @@ result_t porter_duff_create(wuss_t             *wuss,
                             porter_duff_task_t *task);
 
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_PORTER_DUFF_H */

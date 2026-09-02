@@ -1,6 +1,6 @@
 /* wuss/test/tasks/gradient.c -- gradient fill task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -111,4 +111,4 @@ result_t gradient_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

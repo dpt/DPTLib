@@ -1,6 +1,6 @@
 /* wuss/test/tasks/chars.c -- system font glyph grid task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -137,4 +137,4 @@ result_t chars_handle(wuss_window_t      *window,
   return chars_redraw(event, task_data);
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

@@ -1,6 +1,6 @@
 /* wuss/test/tasks/icons.c -- work-area icons task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 #include "framebuf/palettes.h"
 
 #include <stdio.h>
@@ -406,4 +406,4 @@ result_t icons_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

@@ -1,6 +1,6 @@
 /* wuss/test/tasks/curve.c -- draggable Bezier curve task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -191,4 +191,4 @@ result_t curve_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

@@ -664,14 +664,12 @@ endif()
 #
 
 if(BUILD_APPS)
-    # The Wuss interactive demo: its own executable, built from the SDL task
-    # modules plus apps/wuss/main.c (which was the old in-test SDL driver).
+    # The Wuss interactive demo: main.c drives wuss and the task launcher; a
+    # per-platform backend (frontend-*.c) opens the surface and reports input.
+    # RISC OS uses native VDU/OS_Mouse calls; everything else uses SDL.
     if(NOT (WUSS_FURNITURE AND WUSS_ICONS))
         message(FATAL_ERROR "BUILD_APPS requires WUSS_FURNITURE and WUSS_ICONS")
     endif()
-
-    find_package(SDL3 REQUIRED)
-    find_package(SDL3_image REQUIRED)
 
     set(WUSS_APP_SOURCES
         apps/wuss/main.c
@@ -690,6 +688,12 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/swatches.c
         libraries/wuss/test/tasks/text.c)
 
+    if(TARGET_RISCOS)
+        list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-riscos.c)
+    else()
+        list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-sdl.c)
+    endif()
+
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${WUSS_APP_SOURCES})
 
     add_executable(wuss ${WUSS_APP_SOURCES})
@@ -702,9 +706,16 @@ if(BUILD_APPS)
         OUTPUT_NAME_RELWITHDEBINFO wuss-relwithdebinfo
         OUTPUT_NAME_MINSIZEREL wuss-minsizerel)
 
-    target_include_directories(wuss PRIVATE libraries/wuss/test)
-    target_compile_definitions(wuss PRIVATE USE_SDL)
-    target_link_libraries(wuss DPTLib SDL3::SDL3 SDL3_image::SDL3_image)
+    target_include_directories(wuss PRIVATE apps/wuss libraries/wuss/test)
+    target_compile_definitions(wuss PRIVATE WUSS_APP)
+    target_link_libraries(wuss DPTLib)
+
+    if(NOT TARGET_RISCOS)
+        find_package(SDL3 REQUIRED)
+        target_compile_definitions(wuss PRIVATE USE_SDL)
+        target_link_libraries(wuss SDL3::SDL3)
+    endif()
+
     if(NOT MSVC)
         target_link_libraries(wuss m)
     endif()

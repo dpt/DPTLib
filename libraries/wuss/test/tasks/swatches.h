@@ -3,7 +3,7 @@
 #ifndef TASKS_SWATCHES_H
 #define TASKS_SWATCHES_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/screen.h"
 #include "wuss/icon.h"
@@ -28,6 +28,6 @@ wuss_window_fn_t swatches_handle;
 result_t swatches_create(wuss_t *wuss, swatches_task_t *task);
 
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_SWATCHES_H */

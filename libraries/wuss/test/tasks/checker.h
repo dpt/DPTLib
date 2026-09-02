@@ -3,7 +3,7 @@
 #ifndef TASKS_CHECKER_H
 #define TASKS_CHECKER_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/colour.h"
 #include "wuss/window.h"
@@ -35,6 +35,6 @@ wuss_window_fn_t checker_handle;
 /* create the two checkerboard windows against the given wuss instance */
 result_t checker_create(wuss_t *wuss, checker_task_t *task);
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_CHECKER_H */

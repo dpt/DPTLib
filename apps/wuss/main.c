@@ -8,6 +8,7 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "base/debug.h"
 #include "base/result.h"
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
@@ -23,7 +24,7 @@
 #include "wuss/window.h"
 #include "wuss/menu.h"
 
-#include <SDL3/SDL.h>
+#include "frontend.h"
 
 #include "tasks/ball.h"
 #include "tasks/blank.h"
@@ -41,11 +42,6 @@
 #include "tasks/text.h"
 
 /* ----------------------------------------------------------------------- */
-
-/* Screen pixel format for the interactive test: 1 = 32bpp pixelfmt_bgrx8888
- * (feeds SDL directly, no per-frame conversion); 0 = pixelfmt_p4 paletted
- * (exercises screen_copy_rect's nibble-packed blit path instead). */
-#define WUSS_TEST_32BPP 0
 
 /* the launcher's spawn callbacks take no arguments, so the pieces they need
  * are stashed here instead; run_wuss runs at most once per
@@ -136,7 +132,10 @@ static result_t spawn_image(void)
   ninepatch = path_join_filename(g.resources, 3, "resources", "wuss",
                                  path_join_leafname("9tile", "png"));
 
+  logf_info("wuss: image task loading \"%s\" + \"%s\"", buf, ninepatch);
   rc = image_create(g.wuss, buf, ninepatch, t);
+  if (rc != result_OK)
+    logf_error("wuss: image_create(\"%s\") failed, rc=0x%X", buf, rc);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -197,6 +196,9 @@ static result_t spawn_icons(void)
   result_t      rc;
   if (t == NULL) return result_OOM;
   rc = icons_create(g.wuss, g.daydream_font, g.resources, t);
+  if (rc != result_OK)
+    logf_error("wuss: icons_create (resources \"%s\") failed, rc=0x%X",
+               g.resources, rc);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -217,6 +219,9 @@ static result_t spawn_porter_duff(void)
   result_t            rc;
   if (t == NULL) return result_OOM;
   rc = porter_duff_create(g.wuss, g.palette, g.daydream_font, g.resources, t);
+  if (rc != result_OK)
+    logf_error("wuss: porter_duff_create (resources \"%s\") failed, rc=0x%X",
+               g.resources, rc);
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -404,55 +409,88 @@ static result_t menu_handle(wuss_window_t      *window,
   return result_OK;
 }
 
-static wuss_button_t sdl_button_to_wuss(Uint8 button)
-{
-  switch (button)
-  {
-  case SDL_BUTTON_MIDDLE: return wuss_BUTTON_MENU;
-  case SDL_BUTTON_RIGHT:  return wuss_BUTTON_ADJUST;
-  default:                return wuss_BUTTON_SELECT;
-  }
-}
-
-/* Palettes F4 cycles through, in order. Each fills a colour_t[16]. */
+/* Palettes the palette-cycle input steps through, in order. Each fills a
+ * colour_t[16]. */
 static void (*const g_palettes[])(colour_t *) =
 {
   define_pico8_palette,
   define_wimp16_palette
 };
 
-/* SDL delivers mouse coordinates in window space, which F2 can scale away
- * from the fixed-size Wuss screen; map back down to screen space */
-static void sdl_pos_to_scr(SDL_Window *window,
-                           int         scr_width,
-                           int         scr_height,
-                           float       in_x,
-                           float       in_y,
-                           int        *out_x,
-                           int        *out_y)
+/* Furniture/bevel/accent/backdrop colour indices, one row per palette. Same
+ * field order as the assignments in run_wuss. */
+static const wuss_colour_t g_chrome[2][15] =
 {
-  int win_w, win_h;
+  /* PICO-8 */
+  { palette_PICO8_DARK_BLUE, palette_PICO8_WHITE, palette_PICO8_GREEN,
+    palette_PICO8_RED, palette_PICO8_ORANGE, palette_PICO8_LAVENDER,
+    palette_PICO8_BLUE, palette_PICO8_DARK_BLUE, palette_PICO8_LIGHT_GREY,
+    palette_PICO8_WHITE, palette_PICO8_DARK_GREY, palette_PICO8_DARK_BLUE,
+    palette_PICO8_WHITE, palette_PICO8_WHITE, palette_PICO8_LIGHT_GREY },
+  /* RISC OS 16-colour Wimp */
+  { palette_WIMP16_GREY_75, palette_WIMP16_BLACK, palette_WIMP16_GREEN,
+    palette_WIMP16_RED, palette_WIMP16_ORANGE, palette_WIMP16_LIGHT_BLUE,
+    palette_WIMP16_GREY_50, palette_WIMP16_GREY_62, palette_WIMP16_GREY_87,
+    palette_WIMP16_WHITE, palette_WIMP16_GREY_50, palette_WIMP16_ORANGE,
+    palette_WIMP16_BLACK, palette_WIMP16_GREY_50, palette_WIMP16_GREY_37 }
+};
 
-  SDL_GetWindowSize(window, &win_w, &win_h);
+static void fill_chrome_config(wuss_config_t *config, int palette_index)
+{
+  const wuss_colour_t *c = g_chrome[palette_index];
 
-  *out_x = (int) (in_x * scr_width  / win_w);
-  *out_y = (int) (in_y * scr_height / win_h);
+  config->titlebar_height           = 0;
+  config->furniture.title.bg        = c[0];
+  config->furniture.title.fg        = c[1];
+  config->furniture.back            = c[2];
+  config->furniture.close           = c[3];
+  config->furniture.toggle          = c[4];
+  config->furniture.resize          = c[5];
+  config->furniture.scroll.arrows   = c[6];
+  config->furniture.scroll.wells    = c[7];
+  config->furniture.scroll.sausages = c[8];
+  config->bevel.light               = c[9];
+  config->bevel.dark                = c[10];
+  config->accent.bg                 = c[11];
+  config->accent.fg                 = c[12];
+  config->backdrop.colour           = c[13];
+  config->backdrop.pattern          = screen_PATTERN_DOTS;
+  config->backdrop.pattern_bg       = c[14];
 }
 
-/* click windows to bring to front, drag titlebars to move, resize the
- * SDL window to see the Wuss screen scale; F2 doubles the SDL window size,
- * Shift-F2 halves it; F3 redraws the whole screen one pixel at a time, to
- * catch tasks whose drawing routines misbehave under a 1x1 clip; F4 cycles
- * the system palette live (wuss_set_palette); Q or close to quit */
+/* Redraw the whole screen one pixel at a time: each wuss_redraw_dirty call is
+ * flushed before the next pixel is invalidated, so no two pixels are ever
+ * coalesced into one redraw. A task whose drawing routine assumes it always
+ * gets a multi-pixel/aligned clip (rather than trusting scr->clip) will
+ * visibly misdraw here even though it looks fine under larger dirty regions. */
+static void pixel_stress(wuss_t *wuss, int scr_width, int scr_height)
+{
+  int x, y;
+
+  for (y = 0; y < scr_height; y++)
+  {
+    for (x = 0; x < scr_width; x++)
+    {
+      box_t px;
+
+      px.x0 = x;     px.y0 = y;
+      px.x1 = x + 1; px.y1 = y + 1;
+
+      wuss_invalidate(wuss, &px);
+      wuss_redraw_dirty(wuss);
+    }
+  }
+}
+
+/* click windows to bring to front, drag titlebars to move; the redraw-all
+ * input redraws the whole screen, the pixel-stress input does it one pixel at
+ * a time to catch tasks that misbehave under a 1x1 clip; the palette-cycle
+ * input swaps the system palette live (wuss_set_palette); the quit input or
+ * closing the window exits */
 static result_t run_wuss(const char *resources)
 {
   const int        scr_width  = 640;
   const int        scr_height = 480;
-#if WUSS_TEST_32BPP
-  const int        rowbytes   = scr_width * 4; /* pixelfmt_bgrx8888: 4 bytes/pixel */
-#else
-  const int        rowbytes   = scr_width / 2; /* pixelfmt_p4: 2 pixels/byte */
-#endif
 
   result_t         rc;
   const char      *leafname;
@@ -460,25 +498,18 @@ static result_t run_wuss(const char *resources)
   bmfont_t        *font;
   bmfont_t        *daydream_font;
   void            *pixels;
+  int              rowbytes;
+  pixelfmt_t       fmt;
   bitmap_t         bm;
-#if !WUSS_TEST_32BPP
-  bitmap_t        *disp;
-#endif
   screen_t         scr;
   colour_t         palette[16];
   wuss_t          *wuss;
-  SDL_Window      *window;
-  SDL_Renderer    *renderer;
-  SDL_Texture     *texture;
-  bool             quit;
-  bool             garbage_pending;
-  bool             pixel_stress_pending;
-  int              i;
+  wuss_frontend_t *frontend;
   bool             use_wimp16;
   int              palette_index;
 
   {
-    /* "riscos16" selects the RISC OS 16-colour palette; default is PICO-8 */
+    /* "wimp16" selects the RISC OS 16-colour palette; default is PICO-8 */
     const char *palette_name = getenv("WUSS_PALETTE");
 
     use_wimp16 = (palette_name != NULL && strcmp(palette_name, "wimp16") == 0);
@@ -486,27 +517,35 @@ static result_t run_wuss(const char *resources)
     g_palettes[palette_index](palette);
   }
 
+  logf_info("wuss: resources root = \"%s\"", resources);
+
   leafname = path_join_leafname("digits", "png");
   filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
+  logf_info("wuss: loading font \"%s\"", filename);
   rc = bmfont_create(filename, &font);
   if (rc != result_OK)
+  {
+    logf_error("wuss: bmfont_create(\"%s\") failed, rc=0x%X", filename, rc);
     goto Failure;
+  }
 
   leafname = path_join_leafname("daydream", "png");
   filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
+  logf_info("wuss: loading font \"%s\"", filename);
   rc = bmfont_create(filename, &daydream_font);
+  if (rc != result_OK)
+  {
+    logf_error("wuss: bmfont_create(\"%s\") failed, rc=0x%X", filename, rc);
+    goto Failure;
+  }
+
+  rc = wuss_frontend_open(scr_width, scr_height, palette, NELEMS(palette),
+                          &pixels, &rowbytes, &fmt, &frontend);
   if (rc != result_OK)
     goto Failure;
 
-  pixels = malloc(rowbytes * scr_height);
-  if (pixels == NULL)
-    goto Failure;
-
-#if WUSS_TEST_32BPP
-  rc = bitmap_init(&bm, SIZE2D(scr_width, scr_height), pixelfmt_bgrx8888, rowbytes, palette, pixels);
-#else
-  rc = bitmap_init(&bm, SIZE2D(scr_width, scr_height), pixelfmt_p4, rowbytes, palette, pixels);
-#endif
+  rc = bitmap_init(&bm, SIZE2D(scr_width, scr_height), fmt, rowbytes, palette,
+                   pixels);
   if (rc != result_OK)
     goto Failure;
 
@@ -514,76 +553,10 @@ static result_t run_wuss(const char *resources)
 
   screen_for_bitmap(&scr, &bm);
 
-  if (!SDL_Init(SDL_INIT_VIDEO))
   {
-    fprintf(stderr, "Error: SDL_Init: %s\n", SDL_GetError());
-    goto Failure;
-  }
+    wuss_config_t config;
 
-  window = SDL_CreateWindow("Wuss", scr_width, scr_height, 0);
-  if (window == NULL)
-  {
-    fprintf(stderr, "Error: SDL_CreateWindow: %s\n", SDL_GetError());
-    goto Failure;
-  }
-
-  renderer = SDL_CreateRenderer(window, NULL);
-  if (renderer == NULL)
-  {
-    fprintf(stderr, "Error: SDL_CreateRenderer: %s\n", SDL_GetError());
-    goto Failure;
-  }
-
-  texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
-                               SDL_TEXTUREACCESS_STREAMING,
-                               scr_width, scr_height);
-  if (texture == NULL)
-  {
-    fprintf(stderr, "Error: SDL_CreateTexture: %s\n", SDL_GetError());
-    goto Failure;
-  }
-
-  SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
-  SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST); /* keep pixels crisp when F2 scales the window up */
-
-  {
-    /* Furniture/bevel/accent/backdrop colour indices, one row per palette.
-     * Same field order as the assignments below. */
-    static const wuss_colour_t chrome[2][15] =
-    {
-      /* PICO-8 */
-      { palette_PICO8_DARK_BLUE, palette_PICO8_WHITE, palette_PICO8_GREEN,
-        palette_PICO8_RED, palette_PICO8_ORANGE, palette_PICO8_LAVENDER,
-        palette_PICO8_BLUE, palette_PICO8_DARK_BLUE, palette_PICO8_LIGHT_GREY,
-        palette_PICO8_WHITE, palette_PICO8_DARK_GREY, palette_PICO8_DARK_BLUE,
-        palette_PICO8_WHITE, palette_PICO8_WHITE, palette_PICO8_LIGHT_GREY },
-      /* RISC OS 16-colour Wimp */
-      { palette_WIMP16_GREY_75, palette_WIMP16_BLACK, palette_WIMP16_GREEN,
-        palette_WIMP16_RED, palette_WIMP16_ORANGE, palette_WIMP16_LIGHT_BLUE,
-        palette_WIMP16_GREY_50, palette_WIMP16_GREY_62, palette_WIMP16_GREY_87,
-        palette_WIMP16_WHITE, palette_WIMP16_GREY_50, palette_WIMP16_ORANGE,
-        palette_WIMP16_BLACK, palette_WIMP16_GREY_50, palette_WIMP16_GREY_37 }
-    };
-    const wuss_colour_t *c = chrome[use_wimp16 ? 1 : 0];
-    wuss_config_t        config;
-
-    config.titlebar_height           = 0;
-    config.furniture.title.bg        = c[0];
-    config.furniture.title.fg        = c[1];
-    config.furniture.back            = c[2];
-    config.furniture.close           = c[3];
-    config.furniture.toggle          = c[4];
-    config.furniture.resize          = c[5];
-    config.furniture.scroll.arrows   = c[6];
-    config.furniture.scroll.wells    = c[7];
-    config.furniture.scroll.sausages = c[8];
-    config.bevel.light               = c[9];
-    config.bevel.dark                = c[10];
-    config.accent.bg                 = c[11];
-    config.accent.fg                 = c[12];
-    config.backdrop.colour           = c[13];
-    config.backdrop.pattern          = screen_PATTERN_DOTS;
-    config.backdrop.pattern_bg       = c[14];
+    fill_chrome_config(&config, use_wimp16 ? 1 : 0);
 
     rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, NULL,
                      &wuss);
@@ -608,97 +581,64 @@ static result_t run_wuss(const char *resources)
       goto Failure;
   }
 
-  quit                 = false;
-  g.quit               = false;
-  garbage_pending      = false;
-  pixel_stress_pending = false;
+  g.quit = false;
 
   wuss_redraw(wuss);
 
-  while (!quit && !g.quit)
+  while (!g.quit)
   {
-    SDL_Event event;
+    wuss_input_t ev;
+    bool         pixel_stress_pending = false;
 
-    while (SDL_PollEvent(&event))
+    while (wuss_frontend_poll(frontend, &ev))
     {
-      switch (event.type)
+      switch (ev.kind)
       {
-      case SDL_EVENT_QUIT:
-        quit = true;
+      case wuss_INPUT_QUIT:
+        g.quit = true;
         break;
 
-      case SDL_EVENT_KEY_UP:
-        if (event.key.key == SDLK_Q)
-          quit = true;
-        else if (event.key.key == SDLK_F1 && (event.key.mod & SDL_KMOD_SHIFT))
-          wuss_redraw(wuss);
-        else if (event.key.key == SDLK_F1)
-          garbage_pending = true;
-        else if (event.key.key == SDLK_F3)
-          pixel_stress_pending = true;
-        else if (event.key.key == SDLK_F4)
-        {
-          /* cycle the system palette live: rebuild the palette, push it into
-           * the framebuffer bitmap, then tell wuss, which refreshes its own
-           * copy and pokes every task to recache */
-          palette_index = (palette_index + 1) % (int) NELEMS(g_palettes);
-          g_palettes[palette_index](palette);
-          bitmap_set_palette(&bm, palette);
-          wuss_set_palette(wuss, palette, NELEMS(palette));
-        }
-        else if (event.key.key == SDLK_F2)
-        {
-          int w, h;
-
-          SDL_GetWindowSize(window, &w, &h);
-          if (event.key.mod & SDL_KMOD_SHIFT)
-            SDL_SetWindowSize(window, w / 2, h / 2);
-          else
-            SDL_SetWindowSize(window, w * 2, h * 2);
-        }
+      case wuss_INPUT_REDRAW_ALL:
+        wuss_redraw(wuss);
         break;
 
-      case SDL_EVENT_MOUSE_BUTTON_DOWN:
+      case wuss_INPUT_PIXEL_STRESS:
+        pixel_stress_pending = true;
+        break;
+
+      case wuss_INPUT_PALETTE_CYCLE:
+        /* rebuild the palette, push it into the framebuffer bitmap, tell the
+         * backend (which owns any physical palette), then tell wuss, which
+         * refreshes its own copy and pokes every task to recache */
+        palette_index = (palette_index + 1) % (int) NELEMS(g_palettes);
+        g_palettes[palette_index](palette);
+        bitmap_set_palette(&bm, palette);
+        wuss_frontend_set_palette(frontend, palette, NELEMS(palette));
+        wuss_set_palette(wuss, palette, NELEMS(palette));
+        break;
+
+      case wuss_INPUT_MOUSE_DOWN:
         {
-          int            x, y;
-          wuss_button_t  button;
           wuss_window_t *hit;
 
-          sdl_pos_to_scr(window, scr_width, scr_height, event.button.x, event.button.y, &x, &y);
-          button = sdl_button_to_wuss(event.button.button);
-          wuss_mouse_click(wuss, POINT(x, y), button, wuss_MOUSE_DOWN, &hit);
+          wuss_mouse_click(wuss, ev.pos, ev.button, wuss_MOUSE_DOWN, &hit);
 
           /* MENU click on bare backdrop opens the task launcher there */
-          if (hit == NULL && (button & wuss_BUTTON_MENU))
-            wuss_menu_open(g.menu_task, &g_task_menu, POINT(x, y), NULL);
+          if (hit == NULL && (ev.button & wuss_BUTTON_MENU))
+            wuss_menu_open(g.menu_task, &g_task_menu, ev.pos, NULL);
         }
         break;
 
-      case SDL_EVENT_MOUSE_BUTTON_UP:
-        {
-          int x, y;
-
-          sdl_pos_to_scr(window, scr_width, scr_height, event.button.x, event.button.y, &x, &y);
-          wuss_mouse_click(wuss, POINT(x, y), sdl_button_to_wuss(event.button.button), wuss_MOUSE_UP, NULL);
-        }
+      case wuss_INPUT_MOUSE_UP:
+        wuss_mouse_click(wuss, ev.pos, ev.button, wuss_MOUSE_UP, NULL);
         break;
 
-      case SDL_EVENT_MOUSE_MOTION:
-        {
-          int x, y;
-
-          sdl_pos_to_scr(window, scr_width, scr_height, event.motion.x, event.motion.y, &x, &y);
-          wuss_mouse_move(wuss, POINT(x, y), NULL);
-        }
+      case wuss_INPUT_MOUSE_MOVE:
+        wuss_mouse_move(wuss, ev.pos, NULL);
         break;
 
-      case SDL_EVENT_MOUSE_WHEEL:
-        {
-          int x, y;
-
-          sdl_pos_to_scr(window, scr_width, scr_height, event.wheel.mouse_x, event.wheel.mouse_y, &x, &y);
-          wuss_scroll(wuss, POINT(x, y), (int) event.wheel.y, NULL);
-        }
+      case wuss_INPUT_WHEEL:
+        wuss_scroll(wuss, ev.pos, ev.wheel, NULL);
         break;
 
       default:
@@ -708,71 +648,12 @@ static result_t run_wuss(const char *resources)
 
     wuss_idle(wuss);
 
-    if (garbage_pending)
-    {
-      /* full-screen corruption, drawn over whatever's already on screen
-       * (windows included) and left untouched: nothing here is invalidated,
-       * so it stays put until something actually redraws over it, e.g. the
-       * ball's own small per-frame dirty rect eating a trail through it, or
-       * a window being dragged across it */
-      unsigned char *p;
-      size_t         n;
-      size_t         i;
-
-      p = pixels;
-      n = (size_t) rowbytes * scr_height;
-      for (i = 0; i < n; i++)
-        p[i] = (unsigned char) rand();
-
-      garbage_pending = false;
-    }
-    else if (pixel_stress_pending)
-    {
-      /* redraw the whole screen one pixel at a time: each wuss_redraw_dirty
-       * call is flushed before the next pixel is invalidated, so no two
-       * pixels are ever coalesced into one redraw. A task whose drawing
-       * routine assumes it always gets handed a multi-pixel/aligned clip
-       * (rather than trusting scr->clip) will visibly misdraw here even
-       * though it looks fine under normal, larger dirty regions. */
-      int x, y;
-
-      for (y = 0; y < scr_height; y++)
-      {
-        for (x = 0; x < scr_width; x++)
-        {
-          box_t px;
-
-          px.x0 = x;     px.y0 = y;
-          px.x1 = x + 1; px.y1 = y + 1;
-
-          wuss_invalidate(wuss, &px);
-          wuss_redraw_dirty(wuss);
-        }
-      }
-
-      pixel_stress_pending = false;
-    }
+    if (pixel_stress_pending)
+      pixel_stress(wuss, scr_width, scr_height);
     else
-    {
       wuss_redraw_dirty(wuss);
-    }
 
-#if WUSS_TEST_32BPP
-    SDL_UpdateTexture(texture, NULL, bm.base, bm.rowbytes); /* bm is already bgrx8888: no conversion needed */
-#else
-    rc = bitmap_convert(&bm, pixelfmt_bgrx8888, &disp);
-    if (rc == result_OK)
-    {
-      SDL_UpdateTexture(texture, NULL, disp->base, disp->rowbytes);
-      free(disp->base);
-      free(disp);
-    }
-#endif
-
-    SDL_RenderTexture(renderer, texture, NULL, NULL);
-    SDL_RenderPresent(renderer);
-
-    SDL_Delay(1000 / 60);
+    wuss_frontend_present(frontend, &bm);
   }
 
   /* ponytail: wuss_destroy() below force-closes every still-open window and
@@ -785,12 +666,7 @@ static result_t run_wuss(const char *resources)
   bmfont_destroy(font);
   bmfont_destroy(daydream_font);
 
-  SDL_DestroyTexture(texture);
-  SDL_DestroyRenderer(renderer);
-  SDL_DestroyWindow(window);
-  SDL_Quit();
-
-  free(pixels);
+  wuss_frontend_close(frontend);
 
   return result_TEST_PASSED;
 
@@ -806,7 +682,14 @@ Failure:
 
 int main(int argc, char *argv[])
 {
+  /* path_join_filename splices the root and each branch with the platform
+   * separator, so the "here" root differs: "." on Unix, but on RISC OS the
+   * currently-selected directory is "@" ("." there would give "..resources"). */
+#ifdef __riscos
+  const char *resources = "@";
+#else
   const char *resources = ".";
+#endif
   int         i;
   result_t    rc;
 

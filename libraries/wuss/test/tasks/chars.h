@@ -3,7 +3,7 @@
 #ifndef TASKS_CHARS_H
 #define TASKS_CHARS_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
@@ -25,6 +25,6 @@ wuss_window_fn_t chars_handle;
  * nothing and returns result_OK if wuss has no system font */
 result_t chars_create(wuss_t *wuss, chars_task_t *task);
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_CHARS_H */

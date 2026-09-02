@@ -3,7 +3,7 @@
 #ifndef TASKS_ICONS_H
 #define TASKS_ICONS_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
@@ -39,6 +39,6 @@ result_t icons_create(wuss_t       *wuss,
                       const char   *resources,
                       icons_task_t *task);
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_ICONS_H */
