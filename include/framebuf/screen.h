@@ -305,6 +305,40 @@ void screen_draw_rect(screen_t *scr,
                       colour_t  colour);
 
 /**
+ * Draws a one-pixel unfilled circle outline (integer midpoint algorithm, no
+ * anti-aliasing). Clipped to the screen's clip region. A negative radius
+ * draws nothing; a zero radius draws a single pixel at the centre.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] cx      X coordinate of the centre.
+ * \param[in] cy      Y coordinate of the centre.
+ * \param[in] r       Radius in pixels.
+ * \param[in] colour  Colour of the outline.
+ */
+void screen_draw_circle(screen_t *scr,
+                        int       cx,
+                        int       cy,
+                        int       r,
+                        colour_t  colour);
+
+/**
+ * Draws a solid filled disc of the given radius. Clipped to the screen's
+ * clip region. A negative radius draws nothing; a zero radius draws a single
+ * pixel at the centre.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] cx      X coordinate of the centre.
+ * \param[in] cy      Y coordinate of the centre.
+ * \param[in] r       Radius in pixels.
+ * \param[in] colour  Colour of the disc.
+ */
+void screen_fill_circle(screen_t *scr,
+                        int       cx,
+                        int       cy,
+                        int       r,
+                        colour_t  colour);
+
+/**
  * Draws a stippled line: `on` pixels drawn, then `off` skipped, repeating
  * along the line. Bresenham stepping, so the dash period is measured in
  * steps not Euclidean distance. `on` <= 0 draws nothing; `off` <= 0 gives a
