@@ -10,6 +10,7 @@
 
 #include "base/utils.h"
 #include "framebuf/palettes.h"
+#include "framebuf/screen.h"
 #include "geom/box.h"
 
 #include "ball.h"
@@ -100,10 +101,10 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 
     b = &bc->balls[i];
 
-    screen_fill_rect(scr, bounds->x0 - sx + b->x - b->radius,
-                          bounds->y0 - sy + b->y - b->radius,
-                          SIZE2D(b->radius * 2, b->radius * 2),
-                          bc->ball);
+    screen_fill_circle(scr, bounds->x0 - sx + b->x,
+                            bounds->y0 - sy + b->y,
+                            b->radius,
+                            bc->ball);
   }
 
   return result_OK;
