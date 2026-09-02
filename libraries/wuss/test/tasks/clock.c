@@ -2,7 +2,9 @@
 
 #ifdef WUSS_APP
 
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include <math.h>
@@ -12,8 +14,10 @@
 #endif
 
 #include "base/utils.h"
+#include "framebuf/bmfont.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "geom/point.h"
 #include "utils/fxp.h"
 
 #include "clock.h"
@@ -26,9 +30,10 @@
 #define CLOCK_FACE_FRACTION  0.92 /* bezel radius as a fraction of half the smaller side */
 #define CLOCK_HOUR_TICK      0.10 /* hour-tick length, fraction of face radius */
 #define CLOCK_MINUTE_TICK    0.05 /* minute-tick length, fraction of face radius */
-#define CLOCK_HOUR_HAND      0.55 /* hand lengths, fraction of face radius */
-#define CLOCK_MINUTE_HAND    0.80
-#define CLOCK_SECOND_HAND    0.88
+#define CLOCK_NUMERAL_RING   0.75 /* numeral-centre radius, fraction of face radius */
+#define CLOCK_HOUR_HAND      0.50 /* hand lengths, fraction of face radius */
+#define CLOCK_MINUTE_HAND    0.68
+#define CLOCK_SECOND_HAND    0.80
 
 /* a screen-space point in fix8_t, for screen_draw_line_wu_fix8 */
 typedef struct fix8_point { fix8_t x, y; } fix8_point_t;
@@ -61,6 +66,27 @@ static void clock_draw_hand(screen_t *scr,
                            colour);
 }
 
+/* draw text centred on (x,y), background transparent so it sits on the face */
+static void clock_draw_centred(bmfont_t   *font,
+                               screen_t   *scr,
+                               const char *text,
+                               double      x,
+                               double      y,
+                               colour_t    fg)
+{
+  bmfont_width_t width;
+  point_t        pos;
+  int            len, fh;
+
+  len = (int) strlen(text);
+  bmfont_measure(font, text, len, INT_MAX, NULL, &width);
+  bmfont_get_info(font, NULL, &fh);
+
+  pos.x = (int) (x - width / 2.0);
+  pos.y = (int) (y - fh / 2.0);
+  bmfont_draw(font, scr, text, len, fg, colour_rgba(0, 0, 0, 0), &pos, NULL);
+}
+
 static result_t clock_create_window(wuss_t       *wuss,
                                     clock_task_t *task,
                                     wuss_task_t  *delegate)
@@ -75,12 +101,13 @@ static result_t clock_create_window(wuss_t       *wuss,
                                    &task->window);
 }
 
-result_t clock_create(wuss_t *wuss, clock_task_t *task)
+result_t clock_create(wuss_t *wuss, bmfont_t *font, clock_task_t *task)
 {
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   result_t         rc;
 
+  task->font        = font;
   task->bg          = colour_rgb(0x1D, 0x2B, 0x53);
   task->bezel       = colour_rgb(0xFF, 0xF1, 0xE8);
   task->hand        = colour_rgb(0xFF, 0xF1, 0xE8);
@@ -164,6 +191,21 @@ static result_t clock_redraw(const wuss_event_t *event, void *task_data)
     a = clock_polar(cx, cy, r * inner, angle);
     b = clock_polar(cx, cy, r, angle);
     screen_draw_line_wu_fix8(scr, a.x, a.y, b.x, b.y, cc->bezel);
+  }
+
+  /* the 1..12 numerals, centred on a ring inside the hour ticks */
+  for (i = 1; i <= 12; i++)
+  {
+    double       angle;
+    fix8_point_t at;
+    char         buf[3];
+
+    angle = i * 2.0 * M_PI / 12.0;
+    at    = clock_polar(cx, cy, r * CLOCK_NUMERAL_RING, angle);
+    snprintf(buf, sizeof(buf), "%d", i);
+    clock_draw_centred(cc->font, scr, buf,
+                       FIX8_ROUND_TO_INT(at.x), FIX8_ROUND_TO_INT(at.y),
+                       cc->bezel);
   }
 
   now = time(NULL);
