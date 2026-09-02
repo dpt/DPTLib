@@ -1,4 +1,4 @@
-/* sofa.h -- wuss test - rotating wireframe sofa task */
+/* wuss/test/tasks/sofa.h -- rotating wireframe sofa task */
 
 #ifndef TASKS_SOFA_H
 #define TASKS_SOFA_H
@@ -43,8 +43,7 @@ sofa_task_t;
 wuss_event_fn_t sofa_handle;
 
 /* create the sofa window against the given wuss instance */
-result_t sofa_create(wuss_t *wuss, const colour_t *palette, sofa_task_t *task);
-
+result_t sofa_create(wuss_t*wuss, sofa_task_t*task);
 
 #endif /* USE_SDL */
 

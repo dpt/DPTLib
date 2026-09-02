@@ -1,4 +1,4 @@
-/* round4.c -- round a box's coords so they're a multiple of 4 */
+/* geom/box/round4.c -- round a box's coords so they're a multiple of 4 */
 
 #include "geom/box.h"
 

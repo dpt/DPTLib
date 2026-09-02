@@ -1,4 +1,4 @@
-/* debug.h -- debugging and logging macros */
+/* base/debug.h -- debugging and logging macros */
 
 #ifndef BASE_DEBUG_H
 #define BASE_DEBUG_H

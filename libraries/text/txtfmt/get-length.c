@@ -1,4 +1,4 @@
-/* get-length.c -- txtfmt - text formatting */
+/* text/txtfmt/get-length.c -- text formatting */
 
 #include "text/txtfmt.h"
 

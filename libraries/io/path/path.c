@@ -1,4 +1,4 @@
-/* path.c */
+/* io/path/path.c */
 
 #include <assert.h>
 #include <stdio.h>

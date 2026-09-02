@@ -1,12 +1,12 @@
-/* filename-db.h -- filename database */
+/* databases/filename-db.h -- filename database */
 
 /**
  * \file filename-db.h
  *
  * Filename database.
  *
- * The filenamedb is an associative array which maps keys (such as digests) to
- * filenames. The data is stored on disc.
+ * The filenamedb is an associative array which maps keys (such as digests)
+ * to filenames. The data is stored on disc.
  *
  * PrivateEye uses this to find out where an image lives given its digest.
  */

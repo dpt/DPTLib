@@ -1,4 +1,4 @@
-/* fxp.h -- fixed point helpers */
+/* utils/fxp.h -- fixed point helpers */
 
 #ifndef UTILS_FXP_H
 #define UTILS_FXP_H

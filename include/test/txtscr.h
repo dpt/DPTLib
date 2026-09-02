@@ -1,4 +1,4 @@
-/* txtscr.h -- text format 'screen' */
+/* test/txtscr.h -- text format 'screen' */
 
 #ifndef TEST_TXTSCR_H
 #define TEST_TXTSCR_H

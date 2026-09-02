@@ -1,4 +1,4 @@
-/* get-text.c -- wuss - read a work-area icon's label */
+/* wuss/icon/get-text.c -- read a work-area icon's label */
 
 #include "../impl.h"
 

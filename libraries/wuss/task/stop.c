@@ -1,4 +1,4 @@
-/* stop.c -- wuss - minimal window manager */
+/* wuss/task/stop.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

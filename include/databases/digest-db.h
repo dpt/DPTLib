@@ -1,13 +1,13 @@
-/* digest-db.h -- digest database */
+/* databases/digest-db.h -- digest database */
 
 /**
  * \file digest-db.h
  *
  * Digest database.
  *
- * digestdb is a wrapper around an atom set specifically for holding (128-bit)
- * digests. It is used by tagdb and filenamedb to share the cost of storing
- * digest values by replacing 128-bit digests with smaller indices.
+ * digestdb is a wrapper around an atom set specifically for holding
+ * (128-bit) digests. It is used by tagdb and filenamedb to share the cost of
+ * storing digest values by replacing 128-bit digests with smaller indices.
  */
 
 #ifndef DATABASES_DIGEST_DB_H

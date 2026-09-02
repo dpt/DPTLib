@@ -1,4 +1,4 @@
-/* rgbx8888.c */
+/* framebuf/span/rgbx8888.c */
 
 #include <string.h>
 

@@ -1,4 +1,4 @@
-/* n-nodes.c -- n-ary tree */
+/* datastruct/ntree/n-nodes.c -- n-ary tree */
 
 #include "base/utils.h"
 

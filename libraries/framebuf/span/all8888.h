@@ -1,4 +1,4 @@
-/* all8888.h -- span handlers common to all 8888 formats */
+/* framebuf/span/all8888.h -- span handlers common to all 8888 formats */
 
 #ifndef SPAN_ALL8888_H
 #define SPAN_ALL8888_H

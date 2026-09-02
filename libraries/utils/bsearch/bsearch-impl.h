@@ -1,4 +1,4 @@
-/* bsearch-impl.h -- binary searching arrays */
+/* utils/bsearch/bsearch-impl.h -- binary searching arrays */
 
 #if !defined(TYPE) || !defined(NAME)
 #error TYPE and NAME must be defined.

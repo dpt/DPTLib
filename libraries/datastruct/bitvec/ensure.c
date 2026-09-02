@@ -1,4 +1,4 @@
-/* ensure.c -- bit vectors */
+/* datastruct/bitvec/ensure.c -- bit vectors */
 
 #include <stdlib.h>
 #include <string.h>

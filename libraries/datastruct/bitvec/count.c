@@ -1,4 +1,4 @@
-/* count.c -- bit vectors */
+/* datastruct/bitvec/count.c -- bit vectors */
 
 #include "utils/barith.h"
 #include "datastruct/bitvec.h"

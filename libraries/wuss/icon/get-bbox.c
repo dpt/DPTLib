@@ -1,4 +1,4 @@
-/* get-bbox.c -- wuss - read a work-area icon's bounding box */
+/* wuss/icon/get-bbox.c -- read a work-area icon's bounding box */
 
 #include "../impl.h"
 

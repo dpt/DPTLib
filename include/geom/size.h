@@ -1,4 +1,4 @@
-/* size.h -- size type */
+/* geom/size.h -- size type */
 
 #ifndef GEOM_SIZE_H
 #define GEOM_SIZE_H

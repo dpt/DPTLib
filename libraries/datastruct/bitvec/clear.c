@@ -1,4 +1,4 @@
-/* clear.c -- bit vectors */
+/* datastruct/bitvec/clear.c -- bit vectors */
 
 #include "datastruct/bitvec.h"
 

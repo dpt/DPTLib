@@ -1,4 +1,4 @@
-/* insert.c -- vector - flexible array */
+/* datastruct/vector/insert.c -- flexible array */
 
 #include <assert.h>
 #include <stdlib.h>

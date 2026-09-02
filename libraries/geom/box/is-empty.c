@@ -1,4 +1,4 @@
-/* is-empty.c -- return whether the specified box is empty */
+/* geom/box/is-empty.c -- return whether the specified box is empty */
 
 #include "geom/box.h"
 

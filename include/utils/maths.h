@@ -1,4 +1,4 @@
-/* maths.h -- maths utils */
+/* utils/maths.h -- maths utils */
 
 #ifndef UTILS_MATHS_H
 #define UTILS_MATHS_H

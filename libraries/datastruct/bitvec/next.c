@@ -1,4 +1,4 @@
-/* next.c -- bit vectors */
+/* datastruct/bitvec/next.c -- bit vectors */
 
 #include "utils/barith.h"
 #include "datastruct/bitvec.h"

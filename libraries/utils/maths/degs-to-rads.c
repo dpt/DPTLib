@@ -1,4 +1,4 @@
-/* degs-to-rads.c -- degrees to radians */
+/* utils/maths/degs-to-rads.c -- degrees to radians */
 
 #include "utils/maths.h"
 

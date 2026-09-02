@@ -1,4 +1,4 @@
-/* stream-mtfcomp.h -- "move to front" adaptive compression stream */
+/* io/stream-mtfcomp.h -- "move to front" adaptive compression stream */
 
 #ifndef STREAM_MTFCOMP_H
 #define STREAM_MTFCOMP_H

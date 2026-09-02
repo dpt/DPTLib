@@ -1,4 +1,4 @@
-/* point.h -- point type */
+/* geom/point.h -- point type */
 
 #ifndef GEOM_POINT_H
 #define GEOM_POINT_H

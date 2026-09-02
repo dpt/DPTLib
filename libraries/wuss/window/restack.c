@@ -1,4 +1,4 @@
-/* restack.c -- wuss - minimal window manager */
+/* wuss/window/restack.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

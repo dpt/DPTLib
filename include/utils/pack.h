@@ -1,13 +1,13 @@
-/* pack.h -- structure packing and unpacking helpers */
+/* utils/pack.h -- structure packing and unpacking helpers */
 
 /**
  * \file Pack (interface).
  *
  * Structure packing and unpacking routines.
  *
- * Inspired by printf, scanf and the Python 'struct' module these allow a string
- * composed of formatting character to specify how data should be marshalled
- * into memory.
+ * Inspired by printf, scanf and the Python 'struct' module these allow a
+ * string composed of formatting character to specify how data should be
+ * marshalled into memory.
  */
 
 #ifndef UTILS_PACK_H
@@ -42,8 +42,8 @@ extern "C"
  *     pack(outbuf, "2si", 0x2000, 12345, 1 << 31);
  *
  *
- * Using '*' instead of a count invokes array mode: the next argument is used as
- * an array length and the next after that as an array base pointer.
+ * Using '*' instead of a count invokes array mode: the next argument is used
+ * as an array length and the next after that as an array base pointer.
  *
  * Example:
  *
@@ -74,8 +74,8 @@ size_t pack(unsigned char *outbuf, const char *fmt, ...);
  * Retrieves three characters and an int from 'inbuf'.
  *
  *
- * Using '*' instead of a count invokes array mode: the next argument is used as
- * an array length and the next after that as an array base pointer.
+ * Using '*' instead of a count invokes array mode: the next argument is used
+ * as an array length and the next after that as an array base pointer.
  *
  * Example:
  *
@@ -92,8 +92,8 @@ size_t pack(unsigned char *outbuf, const char *fmt, ...);
  * (Note that these specifiers are all different than the formatting
  * characters).
  *
- * With these qualifers, sign becomes important. You can write CSIQ for unsigned
- * arguments, or csiq for signed arguments.
+ * With these qualifers, sign becomes important. You can write CSIQ for
+ * unsigned arguments, or csiq for signed arguments.
  *
  * Example:
  *

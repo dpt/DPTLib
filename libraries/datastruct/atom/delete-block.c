@@ -1,4 +1,4 @@
-/* delete-block.c -- atoms */
+/* datastruct/atom/delete-block.c -- atoms */
 
 #include <stdlib.h>
 

@@ -1,4 +1,4 @@
-/* bitvec.h -- flexible arrays of bits */
+/* datastruct/bitvec.h -- flexible arrays of bits */
 
 /**
  * \file bitvec.h

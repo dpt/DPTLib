@@ -1,4 +1,4 @@
-/* bitfifo.h -- fifo which stores bits */
+/* datastruct/bitfifo.h -- fifo which stores bits */
 
 /**
  * \file bitfifo.h

@@ -1,4 +1,4 @@
-/* create.c -- vector - flexible array */
+/* datastruct/vector/create.c -- flexible array */
 
 #include <stdlib.h>
 

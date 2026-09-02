@@ -1,4 +1,4 @@
-/* blank.c -- wuss test - colour-cycling task */
+/* wuss/test/tasks/blank.c -- colour-cycling task */
 
 #ifdef USE_SDL
 
@@ -17,12 +17,12 @@
 
 #define BLANK_CYCLE_FRAMES 30 /* colour advances every half-second at 60fps */
 
-result_t blank_create(wuss_t *wuss, int npalette, blank_task_t *task)
+result_t blank_create(wuss_t *wuss, blank_task_t *task)
 {
   wuss_task_t delegate;
 
-  task->npalette    = npalette;
-  task->index       = palette_PICO8_GREEN;
+  task->npalette    = 16; // TODO: Read max palette index from wuss
+  task->index       = 0;
   task->frame_count = 0;
 
   delegate = wuss_task_start(blank_handle, task); /* wuss fills the content area itself */
@@ -31,7 +31,7 @@ result_t blank_create(wuss_t *wuss, int npalette, blank_task_t *task)
                                    SIZE2D(200, 160),
                                    NULL,
                                    wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
-                                   palette_PICO8_GREEN,
+                                   wuss_BACKDROP_COLOUR(task->index),
                                    &delegate,
                                    SIZE2D(200, 160),
                                    SIZE2D(0, 0),
@@ -51,7 +51,8 @@ static result_t blank_idle(void *task_data)
   bc->frame_count = 0;
   bc->index       = (bc->index + 1) % bc->npalette;
 
-  rc = wuss_window_set_background(bc->window, bc->index);
+  rc = wuss_window_set_background(bc->window,
+                                  wuss_BACKDROP_COLOUR(bc->index));
   if (rc != result_OK)
     logf_warning("blank_idle: wuss_window_set_background(%d) failed", bc->index);
 

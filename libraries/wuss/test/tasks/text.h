@@ -1,4 +1,4 @@
-/* text.h -- wuss test - static paragraph task */
+/* wuss/test/tasks/text.h -- static paragraph task */
 
 #ifndef TASKS_TEXT_H
 #define TASKS_TEXT_H
@@ -30,10 +30,8 @@ wuss_event_fn_t text_handle;
 
 /* create the paragraph-of-text window against the given wuss instance */
 result_t text_create(wuss_t         *wuss,
-                     const colour_t *palette,
                      bmfont_t       *font,
                      text_task_t    *task);
-
 
 #endif /* USE_SDL */
 

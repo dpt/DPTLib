@@ -1,4 +1,4 @@
-/* destroy.c -- atoms */
+/* datastruct/atom/destroy.c -- atoms */
 
 #include <stdlib.h>
 

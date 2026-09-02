@@ -1,4 +1,4 @@
-/* bsearch.h -- binary searching arrays */
+/* utils/bsearch.h -- binary searching arrays */
 
 #ifndef UTILS_BSEARCH_H
 #define UTILS_BSEARCH_H

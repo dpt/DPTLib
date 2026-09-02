@@ -1,4 +1,4 @@
-/* get-line.c -- txtfmt - text formatting */
+/* text/txtfmt/get-line.c -- text formatting */
 
 #include "text/txtfmt.h"
 

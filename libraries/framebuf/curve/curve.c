@@ -1,4 +1,4 @@
-/* bezier.c */
+/* framebuf/curve/curve.c */
 
 // TODO
 //
@@ -328,14 +328,14 @@ void curve_bezier_cubic(point_t  p0,
 
 #define MULFIX16(x,y) (int) (((long long) (x) * (y)) >> FIX16_SHIFT)
 
-  cx  = 3 * ((p1.x - p0.x) << FIX16_SHIFT);
-  cy  = 3 * ((p1.y - p0.y) << FIX16_SHIFT);
+  cx  = 3 * ((p1.x - p0.x) * FIX16_ONE);
+  cy  = 3 * ((p1.y - p0.y) * FIX16_ONE);
 
-  bx  = 3 * ((p2.x - p1.x) << FIX16_SHIFT) - cx;
-  by  = 3 * ((p2.y - p1.y) << FIX16_SHIFT) - cy;
+  bx  = 3 * ((p2.x - p1.x) * FIX16_ONE) - cx;
+  by  = 3 * ((p2.y - p1.y) * FIX16_ONE) - cy;
 
-  ax  = ((p3.x - p0.x) << FIX16_SHIFT) - cx - bx;
-  ay  = ((p3.y - p0.y) << FIX16_SHIFT) - cy - by;
+  ax  = ((p3.x - p0.x) * FIX16_ONE) - cx - bx;
+  ay  = ((p3.y - p0.y) * FIX16_ONE) - cy - by;
 
   h   = FIX16_ONE / nsteps;
   hh  = MULFIX16(h,h);
@@ -355,8 +355,8 @@ void curve_bezier_cubic(point_t  p0,
 
   point = &points[0];
 
-  curx = p0.x << FIX16_SHIFT;
-  cury = p0.y << FIX16_SHIFT;
+  curx = p0.x * FIX16_ONE;
+  cury = p0.y * FIX16_ONE;
 
   for (i = 0; ; i++)
   {

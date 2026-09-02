@@ -1,4 +1,4 @@
-/* screen.h -- screen type */
+/* framebuf/screen.h -- screen type */
 
 #ifndef FRAMEBUF_SCREEN_H
 #define FRAMEBUF_SCREEN_H
@@ -63,7 +63,7 @@ int screen_get_clip(const screen_t *scr, box_t *clip);
  * \param[in] y       Y coordinate of pixel to draw.
  * \param[in] colour  Colour of pixel.
  */
-void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour);
+void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour);
 
 /**
  * Draws a solid rectangle.
@@ -74,14 +74,14 @@ void screen_draw_pixel(screen_t *scr, int x, int y, colour_t colour);
  * \param[in] size    Width and height of rectangle.
  * \param[in] colour  Colour of rectangle.
  */
-void screen_draw_rect(screen_t *scr,
+void screen_fill_rect(screen_t *scr,
                       int       x,
                       int       y,
                       size2d_t  size,
                       colour_t  colour);
 
 /**
- * Special case of `screen_draw_rect`.
+ * Special case of `screen_fill_rect`.
  *
  * \param[in] scr     Screen to draw upon.
  * \param[in] x       X coordinate of leftmost point of rectangle.
@@ -89,14 +89,15 @@ void screen_draw_rect(screen_t *scr,
  * \param[in] size    Size of rectangle.
  * \param[in] colour  Colour of rectangle.
  */
-void screen_draw_square(screen_t *scr,
-                        int x, int y,
-                        int size,
-                        colour_t colour);
+void screen_fill_square(screen_t *scr,
+                        int       x,
+                        int       y,
+                        int       size,
+                        colour_t  colour);
 
 /**
- * Built-in 8x8 fill patterns for `screen_fill_pattern`. Each is a 1-bit tile:
- * set bits take the foreground colour, clear bits the background.
+ * Built-in 8x8 fill patterns for `screen_fill_pattern`. Each is a 1-bit
+ * tile: set bits take the foreground colour, clear bits the background.
  */
 typedef enum screen_pattern
 {
@@ -108,17 +109,31 @@ typedef enum screen_pattern
   screen_PATTERN_DOTS,      /**< Sparse dots. */
   screen_PATTERN_GRID,      /**< Thin grid lines. */
   screen_PATTERN_CROSSHATCH, /**< Crossed thin lines. */
-  screen_PATTERN__LIMIT     /**< Count of patterns; not itself a pattern. */
+
+  /**
+   * 8x8 ordered (Bayer) dither, one entry per coverage level 0 (empty) to 64
+   * (solid). Index by level as `screen_PATTERN_BAYER0 + level`;
+   * `screen_PATTERN_BAYER_LIMIT` is one past the last.
+   * `screen_PATTERN_BAYER0` matches nothing else here,
+   * `screen_PATTERN_BAYER32` equals `screen_PATTERN_GREY50` and
+   * `screen_PATTERN_BAYER64` equals `screen_PATTERN_SOLID`; the duplicates
+   * are kept so the level arithmetic stays simple.
+   */
+  screen_PATTERN_BAYER0,
+  screen_PATTERN_BAYER_LIMIT = screen_PATTERN_BAYER0 + 65,
+
+  screen_PATTERN__LIMIT = screen_PATTERN_BAYER_LIMIT
+                          /**< Count of patterns; not itself a pattern. */
 }
 screen_pattern_t;
 
 /**
  * Fills a box with a repeating 8x8 two-colour pattern.
  *
- * The tile is phased against (`origin_x`, `origin_y`): that coordinate is the
- * one that would map to the box's top-left corner. Passing the caller's own
- * scroll origin keeps the pattern locked to content as the box moves, rather
- * than crawling with it.
+ * The tile is phased against (`origin_x`, `origin_y`): that coordinate is
+ * the one that would map to the box's top-left corner. Passing the caller's
+ * own scroll origin keeps the pattern locked to content as the box moves,
+ * rather than crawling with it.
  *
  * Clipped to the screen's clip region.
  *
@@ -139,12 +154,13 @@ void screen_fill_pattern(screen_t        *scr,
                          colour_t         bg);
 
 /**
- * Draws a bitmap, alpha-blending it against the screen where the bitmap has an
- * alpha channel. On paletted screens, which have no linear channel bits to
- * blend, this falls back to alpha-tested transparency instead (drawn at full
- * strength, or not at all).
+ * Draws a bitmap, alpha-blending it against the screen where the bitmap has
+ * an alpha channel. On paletted screens, which have no linear channel bits
+ * to blend, this falls back to alpha-tested transparency instead (drawn at
+ * full strength, or not at all).
  *
- * The bitmap is clipped to the screen's clip region. No scaling is performed.
+ * The bitmap is clipped to the screen's clip region. No scaling is
+ * performed.
  *
  * \param[in] scr  Screen to draw upon.
  * \param[in] x    X coordinate of leftmost point to draw bitmap at.
@@ -160,18 +176,18 @@ enum
 };
 
 /**
- * Draws a "9-patch": a resizable frame built from a source image that is a 3x3
- * grid of equal cells. The source width and height must each be a positive
- * multiple of 3; the cell size is a third of each. Given a destination box, the
- * four corner cells are drawn at their natural size in the destination corners,
- * the four edge cells are tiled along the destination edges, and the centre
- * cell is tiled across the interior.
+ * Draws a "9-patch": a resizable frame built from a source image that is a
+ * 3x3 grid of equal cells. The source width and height must each be a
+ * positive multiple of 3; the cell size is a third of each. Given a
+ * destination box, the four corner cells are drawn at their natural size in
+ * the destination corners, the four edge cells are tiled along the
+ * destination edges, and the centre cell is tiled across the interior.
  *
- * If the destination is narrower or shorter than two cells the opposing corners
- * overlap and each is clipped to its own half; the edges and centre are then
- * omitted. Drawing is clipped to both the destination box and the screen's clip
- * region, which is restored on return. Cells are blended exactly as
- * `screen_draw_bitmap` does. No scaling is performed.
+ * If the destination is narrower or shorter than two cells the opposing
+ * corners overlap and each is clipped to its own half; the edges and centre
+ * are then omitted. Drawing is clipped to both the destination box and the
+ * screen's clip region, which is restored on return. Cells are blended
+ * exactly as `screen_draw_bitmap` does. No scaling is performed.
  *
  * \param[in] scr   Screen to draw upon.
  * \param[in] dst   Destination box to fill with the frame.
@@ -192,18 +208,18 @@ void screen_draw_ninepatch(screen_t       *scr,
  * copying is done in the correct row order to handle that safely.
  *
  * Both the source and destination are clipped to the screen's clip region,
- * shrinking together so the copied area always maps source pixel to destination
- * pixel 1:1.
+ * shrinking together so the copied area always maps source pixel to
+ * destination pixel 1:1.
  *
  * Callers must check the return value and fall back to a normal
  * invalidate/redraw when it's false (e.g. out of memory, or an unknown pixel
  * format), since a declined copy leaves the destination untouched.
  *
  * If "src" or the intended destination falls partly off-screen, the actual
- * copied area shrinks to what both ends have in common on-screen: callers must
- * invalidate whatever part of their intended (unclipped) destination falls
- * outside "copied_dst", since it has no valid source pixels to have been copied
- * from and so is left untouched, not merely stale.
+ * copied area shrinks to what both ends have in common on-screen: callers
+ * must invalidate whatever part of their intended (unclipped) destination
+ * falls outside "copied_dst", since it has no valid source pixels to have
+ * been copied from and so is left untouched, not merely stale.
  *
  * \param[in]  scr        Screen to copy within.
  * \param[in]  src        Screen-space region to copy from.
@@ -212,8 +228,8 @@ void screen_draw_ninepatch(screen_t       *scr,
  *                        smaller than intended if either end was partly
  *                        off-screen). Pass NULL if not needed. Left unset if
  *                        the copy was declined.
- * \return True if the copy was performed, false if declined (unsupported pixel
- *         format).
+ * \return True if the copy was performed, false if declined (unsupported
+ *         pixel format).
  */
 int screen_copy_rect(screen_t    *scr,
                      const box_t *src,
@@ -238,6 +254,69 @@ void screen_draw_line(screen_t *scr,
                       int       x1,
                       int       y1,
                       colour_t  colour);
+
+/**
+ * Draws a connected polyline through `npoints` points: a `screen_draw_line`
+ * segment between each adjacent pair. For a closed shape repeat the first
+ * point as the last. Fewer than 2 points draws nothing.
+ *
+ * Segments share their joint pixel, which is plotted by both adjacent
+ * segments; harmless for a solid colour.
+ *
+ * Coordinates are `int`s and inclusive.
+ *
+ * \param[in] scr      Screen to draw upon.
+ * \param[in] points   Array of `npoints` points.
+ * \param[in] npoints  Number of points in `points`.
+ * \param[in] colour   Colour of the polyline.
+ */
+void screen_draw_lines(screen_t      *scr,
+                       const point_t *points,
+                       int            npoints,
+                       colour_t       colour);
+
+/**
+ * Draws a one-pixel unfilled rectangle outline. `size` is inclusive of both
+ * edges, matching `screen_fill_rect`. A degenerate size (<= 1 in either
+ * axis) falls back to a filled `screen_fill_rect`.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x       X coordinate of leftmost point of rectangle.
+ * \param[in] y       Y coordinate of topmost point of rectangle.
+ * \param[in] size    Width and height of rectangle.
+ * \param[in] colour  Colour of the outline.
+ */
+void screen_draw_rect(screen_t *scr,
+                      int       x,
+                      int       y,
+                      size2d_t  size,
+                      colour_t  colour);
+
+/**
+ * Draws a stippled line: `on` pixels drawn, then `off` skipped, repeating
+ * along the line. Bresenham stepping, so the dash period is measured in
+ * steps not Euclidean distance. `on` <= 0 draws nothing; `off` <= 0 gives a
+ * solid line.
+ *
+ * Coordinates are `int`s and inclusive.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x0      X coordinate of first point of line.
+ * \param[in] y0      Y coordinate of first point of line.
+ * \param[in] x1      X coordinate of second point of line.
+ * \param[in] y1      Y coordinate of second point of line.
+ * \param[in] on      Length of each dash, in steps.
+ * \param[in] off     Gap between dashes, in steps.
+ * \param[in] colour  Colour of line.
+ */
+void screen_draw_dashed_line(screen_t *scr,
+                             int       x0,
+                             int       y0,
+                             int       x1,
+                             int       y1,
+                             int       on,
+                             int       off,
+                             colour_t  colour);
 
 /**
  * Draws a line (fixed-point Wu version with anti-aliasing).

@@ -1,4 +1,4 @@
-/* get-window.c -- wuss - read a work-area icon's owning window */
+/* wuss/icon/get-window.c -- read a work-area icon's owning window */
 
 #include "../impl.h"
 

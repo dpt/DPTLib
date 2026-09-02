@@ -1,4 +1,4 @@
-/* txtfmt.h -- text formatting */
+/* text/txtfmt.h -- text formatting */
 
 /**
  * \file txtfmt.h
@@ -80,8 +80,8 @@ int txtfmt_get_nlines(const txtfmt_t *tx);
 /**
  * Returns the wrapped width of a txtfmt.
  *
- * e.g. If you wrap some text containing a word 10 characters long it'll never
- * get any thinner than 10.
+ * e.g. If you wrap some text containing a word 10 characters long it'll
+ * never get any thinner than 10.
  *
  * \param[in] tx Txtfmt to query.
  *
@@ -92,8 +92,8 @@ int txtfmt_get_wrapped_width(const txtfmt_t *tx);
 /**
  * Retrieve a line produced by the last wrap.
  *
- * The returned pointer refers into the txtfmt's own copy of the string and is
- * valid until the next call to txtfmt_wrap or txtfmt_destroy. It is not
+ * The returned pointer refers into the txtfmt's own copy of the string and
+ * is valid until the next call to txtfmt_wrap or txtfmt_destroy. It is not
  * NUL-terminated: use the returned length.
  *
  * \param[in]  tx     Txtfmt to query.

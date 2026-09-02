@@ -1,3 +1,4 @@
+/* datastruct/list/remove.c */
 
 #include <assert.h>
 

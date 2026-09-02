@@ -1,4 +1,4 @@
-/* curve-test.c */
+/* framebuf/curve/test/curve-test.c */
 
 #include <assert.h>
 #include <ctype.h>
@@ -336,7 +336,7 @@ static void draw_all_control_points(curveteststate_t *state)
 
       colour = state->palette[8 + set];
 
-      screen_draw_square(&state->scr, b.x0, b.y0, BLOBSZ, colour);
+      screen_fill_square(&state->scr, b.x0, b.y0, BLOBSZ, colour);
 
       box_union(&b, &state->overalldirty, &state->overalldirty);
 
@@ -366,8 +366,8 @@ static void draw_a_curve(curveteststate_t *state)
 
     if (state->opt.draw_endpoints)
     {
-      screen_draw_pixel(&state->scr, b.x0, b.y0, state->palette[palette_PICO8_GREEN]);
-      screen_draw_pixel(&state->scr, b.x1, b.y1, state->palette[palette_PICO8_RED]);
+      screen_set_pixel(&state->scr, b.x0, b.y0, state->palette[palette_PICO8_GREEN]);
+      screen_set_pixel(&state->scr, b.x1, b.y1, state->palette[palette_PICO8_RED]);
     }
 
     switch (state->opt.method)
@@ -688,7 +688,7 @@ static result_t curve_interactive_test(curveteststate_t *state)
       }
     }
 #else
-    if (frame > 1000)
+    if (frame > 100) /* headless: enough frames to cover every draw path */
       quit = 1;
 #endif
 

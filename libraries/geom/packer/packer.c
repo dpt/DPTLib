@@ -1,4 +1,4 @@
-/* packer.c -- box packing for layout */
+/* geom/packer/packer.c -- box packing for layout */
 
 #include <assert.h>
 #include <limits.h>
@@ -40,6 +40,10 @@ packer_t *packer_create(const box_t *dims)
   p->areas[0]         = *dims;
   p->usedareas        = 1;
 
+  p->placed           = NULL;
+  p->allocedplaced    = 0;
+  p->nplaced          = 0;
+
   p->dims             = *dims;
   p->margins          = *dims;
 
@@ -61,6 +65,7 @@ void packer_destroy(packer_t *doomed)
   if (doomed == NULL)
     return;
 
+  free(doomed->placed);
   free(doomed->areas);
   free(doomed);
 }
@@ -396,9 +401,12 @@ int packer_next_width(packer_t *packer, packer_loc_t loc)
 
 /* ----------------------------------------------------------------------- */
 
+static result_t note_placed(packer_t *packer, const box_t *area);
+
 result_t packer_place_at(packer_t *packer, const box_t *area)
 {
-  box_t b;
+  result_t err;
+  box_t    b;
 
   /* subtract the margins */
 
@@ -407,21 +415,82 @@ result_t packer_place_at(packer_t *packer, const box_t *area)
   if (box_is_empty(&b))
     return result_PACKER_EMPTY;
 
-  return remove_area(packer, &b);
+  err = remove_area(packer, &b);
+  if (err)
+    return err;
+
+  return note_placed(packer, &b);
+}
+
+/* Rebuild the free list from scratch: the whole margin, minus every box
+ * currently recorded as placed. Called after a release so repeated
+ * place/release cycles reclaim the whole page exactly, rather than leaving
+ * the free list fragmented into unusable slivers. O(placed^2); 'placed' is
+ * the live box count, a handful in practice. */
+static result_t rebuild_free_list(packer_t *packer)
+{
+  result_t err;
+  int      i;
+
+  packer->areas[0]  = packer->margins;
+  packer->usedareas = 1;
+  packer->sorted    = 0;
+
+  for (i = 0; i < packer->nplaced; i++)
+  {
+    err = remove_area(packer, &packer->placed[i]);
+    if (err)
+      return err;
+  }
+
+  return result_OK;
+}
+
+/* Record 'area' (a rect just carved out of the free list) as placed, so a
+ * later packer_release can rebuild the free list without it. */
+static result_t note_placed(packer_t *packer, const box_t *area)
+{
+  if (packer->nplaced + 1 > packer->allocedplaced)
+  {
+    int    n;
+    box_t *p;
+
+    n = packer->allocedplaced ? packer->allocedplaced * 2 : INITIALAREAS;
+    p = realloc(packer->placed, n * sizeof(*p));
+    if (p == NULL)
+      return result_OOM;
+
+    packer->placed        = p;
+    packer->allocedplaced = n;
+  }
+
+  packer->placed[packer->nplaced++] = *area;
+
+  return result_OK;
 }
 
 result_t packer_release(packer_t *packer, const box_t *area)
 {
   box_t b;
+  int   i;
 
   (void) box_intersection(&packer->margins, area, &b);
 
   if (box_is_empty(&b))
     return result_PACKER_EMPTY;
 
-  /* ponytail: no coalescing with neighbouring free areas -- a released
-   * fragment is usable on its own, which is all whole-box placement needs;
-   * tile-style reuse spanning two released areas would need a merge pass */
+  /* forget the matching placed box (exact match, else closest by origin);
+   * a release with no recorded placement just adds free space directly */
+  for (i = 0; i < packer->nplaced; i++)
+  {
+    if (packer->placed[i].x0 == b.x0 && packer->placed[i].y0 == b.y0 &&
+        packer->placed[i].x1 == b.x1 && packer->placed[i].y1 == b.y1)
+    {
+      packer->placed[i] = packer->placed[--packer->nplaced];
+      return rebuild_free_list(packer);
+    }
+  }
+
   return add_area(packer, &b);
 }
 
@@ -520,6 +589,10 @@ result_t packer_place_by(packer_t     *packer,
   if (err)
     return err;
 
+  err = note_placed(packer, &consume);
+  if (err)
+    return err;
+
   if (pos)
     *pos = &packer->placed_area;
 
@@ -578,6 +651,11 @@ result_t packer_clear(packer_t *packer, packer_cleardir_t clear)
   err = remove_area(packer, &clearbox);
   if (err)
     return err;
+
+  /* the cleared swathe crosses placed boxes without a matching release; drop
+   * the placed list so a later packer_release falls back to adding free
+   * space directly rather than resurrecting cleared area on a rebuild */
+  packer->nplaced = 0;
 
   return result_OK;
 }

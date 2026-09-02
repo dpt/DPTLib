@@ -1,4 +1,4 @@
-/* span-registry.h -- registry of plotting methods */
+/* framebuf/span-registry.h -- registry of plotting methods */
 
 #ifndef SPAN_REGISTRY_H
 #define SPAN_REGISTRY_H

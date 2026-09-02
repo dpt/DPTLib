@@ -1,4 +1,4 @@
-/* palette.c -- wuss test - desktop palette swatch grid task */
+/* wuss/test/tasks/palette.c -- desktop palette swatch grid task */
 
 #ifdef USE_SDL
 
@@ -30,7 +30,7 @@ result_t palette_create(wuss_t         *wuss,
                                    SIZE2D(100, 100),
                                    "Palette",
                                    wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                                   palette_PICO8_BLACK,
+                                   wuss_BACKDROP_COLOUR(palette_PICO8_BLACK),
                                    &delegate,
                                    SIZE2D(100, 100),
                                    SIZE2D(0, 0),
@@ -73,7 +73,7 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
     x   = bounds->x0 - sx + col * cell_w;
     y   = bounds->y0 - sy + row * cell_h;
 
-    screen_draw_rect(scr, x, y, SIZE2D(cell_w, cell_h), pc->palette[i]);
+    screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), pc->palette[i]);
   }
 
   return result_OK;

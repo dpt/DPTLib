@@ -1,4 +1,4 @@
-/* resize-box.c -- wuss - minimal window manager */
+/* wuss/furniture/resize-box.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

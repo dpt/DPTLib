@@ -1,4 +1,4 @@
-/* umull-fxp16.c -- fixed point helpers */
+/* utils/fxp/umull-fxp16.c -- fixed point helpers */
 
 #include "utils/fxp.h"
 

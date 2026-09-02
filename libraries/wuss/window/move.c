@@ -1,4 +1,4 @@
-/* move.c -- wuss - minimal window manager */
+/* wuss/window/move.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 
@@ -14,60 +14,6 @@ static void translate_box(const box_t *box, int dx, int dy, box_t *out)
 /* p is the window's content top-left; the furniture offset (outline plus
  * any titlebar) is constant for a given window, so the footprint just
  * follows it */
-/* Sequential single-rect blits (each a self-consistent memmove) can still
- * corrupt each other when one piece's destination lands on another piece's
- * still-unread source -- but that only actually matters if no blit order
- * avoids it. Build the "must happen before" graph (piece j before piece i
- * whenever dest[i] would overwrite clean[j]'s still-unread source) and
- * topologically sort it: any window with more than one occluder-carved
- * piece near a shared edge -- e.g. two bands split by a corner occluder --
- * routinely has one such pairwise overlap without there being a genuine
- * cycle, and rejecting those outright regressed plain corner-occlusion
- * drags into full fallback redraws. Only an actual cycle (i must precede j
- * and j must precede i) has no safe order and needs the fallback. */
-static int wuss__order_pieces(const box_t *clean,
-                              const box_t *dest,
-                              int          n,
-                              int         *order)
-{
-  int adj[WUSS_MAX_INVALIDATE_PIECES][WUSS_MAX_INVALIDATE_PIECES];
-  int indeg[WUSS_MAX_INVALIDATE_PIECES];
-  int queue[WUSS_MAX_INVALIDATE_PIECES];
-  int i, j, head, tail, nout, u;
-
-  for (i = 0; i < n; i++)
-    indeg[i] = 0;
-  for (j = 0; j < n; j++)
-    for (i = 0; i < n; i++)
-      adj[j][i] = 0;
-
-  for (i = 0; i < n; i++)
-    for (j = 0; j < n; j++)
-      if (i != j && !adj[j][i] && box_intersects(&dest[i], &clean[j]))
-      {
-        adj[j][i] = 1; /* j must be blitted before i */
-        indeg[i]++;
-      }
-
-  tail = 0;
-  for (i = 0; i < n; i++)
-    if (indeg[i] == 0)
-      queue[tail++] = i;
-
-  head = nout = 0;
-  while (head < tail)
-  {
-    u = queue[head++];
-    order[nout++] = u;
-
-    for (i = 0; i < n; i++)
-      if (adj[u][i] && --indeg[i] == 0)
-        queue[tail++] = i;
-  }
-
-  return nout == n;
-}
-
 void wuss_window_move(wuss_window_t *window, point_t p)
 {
   box_t   clean[WUSS_MAX_INVALIDATE_PIECES];
@@ -89,6 +35,18 @@ void wuss_window_move(wuss_window_t *window, point_t p)
   outline_px      = wuss__outline_px(window);
   titlebar_height = wuss__titlebar_height(window);
   before          = window->visible;
+
+  /* a hidden window has nothing on screen to slide and must paint nothing;
+   * just translate its footprint so it is in place when shown again */
+  if (window->flags & wuss_WINDOW_HIDDEN)
+  {
+    window->visible.x0 = p.x - outline_px;
+    window->visible.y0 = p.y - outline_px - titlebar_height;
+    window->visible.x1 = window->visible.x0 + width;
+    window->visible.y1 = window->visible.y0 + height;
+    wuss__notify_open(window);
+    return;
+  }
 
   /* The clean (non-occluded) pieces of "before" are genuinely this
    * window's own rendering; whatever isn't clean is hidden behind some

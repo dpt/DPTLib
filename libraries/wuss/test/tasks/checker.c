@@ -1,4 +1,4 @@
-/* checker.c -- wuss test - checkerboard task */
+/* wuss/test/tasks/checker.c -- checkerboard task */
 
 #ifdef USE_SDL
 
@@ -18,15 +18,13 @@
 #define CHECKER_BAND_MIN     1
 #define CHECKER_BAND_MAX     32
 
-result_t checker_create(wuss_t         *wuss,
-                        const colour_t *palette,
-                        checker_task_t *task)
+result_t checker_create(wuss_t*wuss, checker_task_t *task)
 {
   wuss_task_t delegate;
   result_t    rc;
 
-  task->black    = palette[palette_PICO8_BLACK];
-  task->white    = palette[palette_PICO8_WHITE];
+  task->black    = colour_rgb(0x00, 0x00, 0x00);
+  task->white    = colour_rgb(0xFF, 0xFF, 0xFF);
   task->pattern  = checker_PATTERN_CHECKERBOARD;
   task->pattern2 = checker_PATTERN_VERTICAL;
   task->band     = CHECKER_BAND_DEFAULT;
@@ -38,7 +36,7 @@ result_t checker_create(wuss_t         *wuss,
                                  SIZE2D(160, 160),
                                  "Checker 1",
                                  wuss_WINDOW_NONE,
-                                 wuss_NO_BACKGROUND,
+                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  &delegate,
                                  SIZE2D(160, 160),
                                  SIZE2D(0, 0),
@@ -50,7 +48,7 @@ result_t checker_create(wuss_t         *wuss,
                                  SIZE2D(160, 160),
                                  "Checker 2",
                                  wuss_WINDOW_NONE,
-                                 wuss_NO_BACKGROUND,
+                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  &delegate,
                                  SIZE2D(160, 160),
                                  SIZE2D(0, 0),
@@ -100,7 +98,7 @@ static result_t checker_redraw(wuss_window_t      *window,
       default:                         band = lx / band_px + ly / band_px; break; /* CHECKERBOARD */
       }
 
-      screen_draw_pixel(scr, x, y, (band & 1) ? cc->black : cc->white);
+      screen_set_pixel(scr, x, y, (band & 1) ? cc->black : cc->white);
     }
   }
 

@@ -1,4 +1,4 @@
-/* prepend.c -- n-ary tree */
+/* datastruct/ntree/prepend.c -- n-ary tree */
 
 #include <stdlib.h>
 

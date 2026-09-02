@@ -1,4 +1,4 @@
-/* rev-s-pair.c -- reversing bytesex */
+/* utils/bytesex/rev-s-pair.c -- reversing bytesex */
 
 #include "utils/bytesex.h"
 

@@ -1,4 +1,4 @@
-/* set-hidden.c -- wuss - show or hide a work-area icon */
+/* wuss/icon/set-hidden.c -- show or hide a work-area icon */
 
 #include "../impl.h"
 

@@ -1,4 +1,4 @@
-/* set.c -- bit vectors */
+/* datastruct/bitvec/set.c -- bit vectors */
 
 #include "base/result.h"
 

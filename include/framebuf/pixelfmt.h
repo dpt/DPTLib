@@ -1,4 +1,4 @@
-/* pixelfmt.h -- pixel formats */
+/* framebuf/pixelfmt.h -- pixel formats */
 
 #ifndef FRAMEBUF_PIXELFMT_H
 #define FRAMEBUF_PIXELFMT_H

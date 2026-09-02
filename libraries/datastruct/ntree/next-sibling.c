@@ -1,4 +1,4 @@
-/* next-sibling.c -- n-ary tree */
+/* datastruct/ntree/next-sibling.c -- n-ary tree */
 
 #include <stdlib.h>
 

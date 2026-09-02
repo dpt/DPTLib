@@ -1,4 +1,4 @@
-/* barith.h -- binary arithmetic */
+/* utils/barith.h -- binary arithmetic */
 
 #ifndef UTILS_BARITH_H
 #define UTILS_BARITH_H

@@ -1,4 +1,4 @@
-/* colour.h -- colour type */
+/* framebuf/colour.h -- colour type */
 
 #ifndef FRAMEBUF_COLOUR_H
 #define FRAMEBUF_COLOUR_H

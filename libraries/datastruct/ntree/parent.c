@@ -1,4 +1,4 @@
-/* parent.c -- n-ary tree */
+/* datastruct/ntree/parent.c -- n-ary tree */
 
 #include <stdlib.h>
 

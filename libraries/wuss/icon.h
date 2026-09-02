@@ -1,4 +1,4 @@
-/* icon.h -- wuss - work-area icons, internal */
+/* wuss/icon.h -- work-area icons, internal */
 
 #ifndef WUSS_ICON_IMPL_H
 #define WUSS_ICON_IMPL_H
@@ -11,18 +11,67 @@
 #include "wuss/wuss.h"
 #include "wuss/icon.h"
 
+/* Per-instance transient state, kept as bitflags with wuss__icon_* accessors
+ * (mirrors wuss_window_state_t) so more can be added without growing the
+ * struct. Not part of the public appearance API. */
+typedef enum wuss_icon_state
+{
+  wuss_ICON_STATE_NONE     = 0,
+  wuss_ICON_STATE_PRESSED  = 1 << 0, /* button: held with the pointer inside */
+  wuss_ICON_STATE_SELECTED = 1 << 1, /* radio/option: latched on; menu entry:
+                                      * draw a tick */
+  wuss_ICON_STATE_HOVERED  = 1 << 2  /* menu entry: pointer is over it */
+}
+wuss_icon_state_t;
+
 struct wuss_icon
 {
   wuss_window_t    *window;  /* owner; back-pointer for invalidate/get_window */
   box_t             bbox;    /* virtual document space */
   wuss_icon_type_t  type;
   char             *text;    /* owned; never NULL ("" instead) */
-  wuss_colour_t     fg;
-  wuss_colour_t     bg;
+  wuss_colour_t     fg, bg;
   screen_pattern_t  pattern; /* wuss_ICON_TYPE_PATTERN tile; 0 otherwise */
+  const bitmap_t   *bitmap;  /* wuss_ICON_TYPE_BITMAP image; borrowed, or NULL */
+  int               group;   /* radio: exclusive-selection group; 0 = none */
   wuss_icon_flags_t flags;
-  int               pressed; /* button: 1 while held with the pointer inside */
+  wuss_icon_state_t state;
 };
+
+static inline int wuss__icon_pressed(const wuss_icon_t *icon)
+{
+  return (icon->state & wuss_ICON_STATE_PRESSED) != 0;
+}
+
+static inline int wuss__icon_selected(const wuss_icon_t *icon)
+{
+  return (icon->state & wuss_ICON_STATE_SELECTED) != 0;
+}
+
+static inline int wuss__icon_hovered(const wuss_icon_t *icon)
+{
+  return (icon->state & wuss_ICON_STATE_HOVERED) != 0;
+}
+
+static inline void wuss__icon_set_state(wuss_icon_t      *icon,
+                                        wuss_icon_state_t bit,
+                                        int               on)
+{
+  if (on)
+    icon->state |= bit;
+  else
+    icon->state &= (wuss_icon_state_t) ~bit;
+}
+
+/* Set icon->selected, invalidating it. For a radio with a non-zero group,
+ * selecting it also clears every other selected radio on the same window with
+ * that group. Ignored for types with no latched state. */
+void wuss__icon_select(wuss_icon_t *icon, int selected);
+
+/* Make "icon" (may be NULL) the hovered icon: clears the hovered flag on the
+ * previous wuss->hover_icon and sets it on the new one, invalidating whichever
+ * of the two changed. A no-op if nothing changed. */
+void wuss__icon_set_hover(wuss_t *wuss, wuss_icon_t *icon);
 
 /* Map an icon bbox (virtual document space) into screen space:
  * screen = content.x0 - scroll.x + bbox. wuss__icon_draw paints through this

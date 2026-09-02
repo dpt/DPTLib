@@ -1,4 +1,4 @@
-/* round.c -- round a box's coords so they're a multiple of log2 x,y */
+/* geom/box/round.c -- round a box's coords so they're a multiple of log2 x,y */
 
 #include "base/utils.h"
 

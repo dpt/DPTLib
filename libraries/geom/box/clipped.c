@@ -1,4 +1,4 @@
-/* clipped.c -- calculate clipped away edge sizes */
+/* geom/box/clipped.c -- calculate clipped away edge sizes */
 
 #include "base/utils.h"
 

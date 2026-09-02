@@ -1,4 +1,4 @@
-/* lookup.c -- hash */
+/* datastruct/hash/lookup.c -- hash */
 
 #include <stdlib.h>
 

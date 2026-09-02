@@ -1,4 +1,4 @@
-/* mouse-click.c -- wuss - minimal window manager */
+/* wuss/mouse-click.c -- wuss - minimal window manager */
 
 #include "impl.h"
 
@@ -15,6 +15,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   x = p.x;
   y = p.y;
 
+  wuss->pointer = p;
+
 #ifdef WUSS_ICONS
   /* Release a held button icon on any MOUSE_UP, before the hit-test picks a
    * window: the up may land on a window that opened over the icon's owner on
@@ -24,9 +26,9 @@ result_t wuss_mouse_click(wuss_t             *wuss,
     wuss_icon_t *pressed = wuss->pressed_icon;
 
     wuss->pressed_icon = NULL;
-    if (pressed->pressed)
+    if (wuss__icon_pressed(pressed))
     {
-      pressed->pressed = 0;
+      wuss__icon_set_state(pressed, wuss_ICON_STATE_PRESSED, 0);
       wuss__icon_invalidate(pressed);
     }
   }
@@ -49,6 +51,27 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   if (hit != NULL)
     *hit = win;
 
+#ifdef WUSS_MENUS
+  /* The MOUSE_UP that follows the MENU press which opened the chain is spent:
+   * without this it would land on the new menu's row 0 and pick it. */
+  if (action == wuss_MOUSE_UP && wuss->menu_eat_up)
+  {
+    wuss->menu_eat_up = 0;
+    return result_OK;
+  }
+
+  /* Any fresh press ends the eat-up window: the release it pairs with is a
+   * real click, not the tail of the menu-opening press. */
+  if (action == wuss_MOUSE_DOWN)
+    wuss->menu_eat_up = 0;
+
+  /* A press outside every window in the open menu chain dismisses the chain
+   * and is spent doing so. Presses inside the chain fall through to the menu
+   * window's own delegate. */
+  if (action == wuss_MOUSE_DOWN && wuss__menu_click_outside(wuss, win))
+    return result_OK;
+#endif
+
   if (win == NULL)
     return result_OK;
 
@@ -56,7 +79,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   {
     wuss_furniture_region_t region;
 
-    region = wuss__furniture_hit_test(win, POINT(x, y));
+    region = wuss->furniture_ops->hit_test(win, POINT(x, y));
 
     if (region == wuss_FURNITURE_CLOSE  &&
         action == wuss_MOUSE_DOWN       &&
@@ -101,7 +124,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         {
         case wuss_FURNITURE_TOGGLE_SIZE:
           if (button & wuss_BUTTON_SELECT)
-            wuss__furniture_toggle_size(win);
+            wuss->furniture_ops->toggle_size(win);
           break;
         case wuss_FURNITURE_VSCROLL_UP:
           wuss__scroll_step(win, POINT(0, -step));
@@ -124,7 +147,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
 
     if (region == wuss_FURNITURE_CLOSE || region == wuss_FURNITURE_TITLE)
     {
-      if (action == wuss_MOUSE_DOWN)
+      if (action == wuss_MOUSE_DOWN &&
+          (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
       {
         box_t content;
 
@@ -144,7 +168,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         region == wuss_FURNITURE_VSCROLL_WELL ||
         region == wuss_FURNITURE_HSCROLL_WELL)
     {
-      if (action == wuss_MOUSE_DOWN)
+      if (action == wuss_MOUSE_DOWN &&
+          (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
       {
         point_t scroll;
 
@@ -197,15 +222,24 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         if (action == wuss_MOUSE_DOWN &&
             (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
         {
-          icon->pressed      = 1;
+          wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 1);
           wuss->pressed_icon = icon;
           wuss__icon_invalidate(icon);
         }
-        else if (action == wuss_MOUSE_UP && icon->pressed)
+        else if (action == wuss_MOUSE_UP && wuss__icon_pressed(icon))
         {
-          icon->pressed      = 0;
+          wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 0);
           wuss->pressed_icon = NULL;
           wuss__icon_invalidate(icon);
+
+          /* a completed click latches radio/option state before the task is
+           * told, so the wuss_EVENT_ICON handler sees the new value */
+          if (icon->type == wuss_ICON_TYPE_OPTION)
+            wuss__icon_select(icon, !wuss__icon_selected(icon));
+          else if (icon->type == wuss_ICON_TYPE_RADIO)
+            wuss__icon_select(icon,
+                              (button & wuss_BUTTON_ADJUST) ? !wuss__icon_selected(icon)
+                                                            : 1);
         }
 
         event.kind             = wuss_EVENT_ICON;

@@ -302,7 +302,7 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('files', nargs='+')
-    ap.add_argument('-w', '--width', type=int, default=80)
+    ap.add_argument('-w', '--width', type=int, default=77)
     ap.add_argument('-n', '--dry-run', action='store_true',
                     help='report files that would change, write nothing')
     args = ap.parse_args()

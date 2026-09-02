@@ -1,4 +1,4 @@
-/* stream-mem.c -- memory block IO stream implementation */
+/* io/stream-mem.h -- memory block IO stream implementation */
 
 #ifndef STREAM_MEM_H
 #define STREAM_MEM_H

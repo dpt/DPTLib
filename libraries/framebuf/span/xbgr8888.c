@@ -1,4 +1,4 @@
-/* xbgr8888.c */
+/* framebuf/span/xbgr8888.c */
 
 #include <string.h>
 

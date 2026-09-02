@@ -1,4 +1,4 @@
-/* box.h -- box type */
+/* geom/box.h -- box type */
 
 #ifndef GEOM_BOX_H
 #define GEOM_BOX_H
@@ -30,8 +30,8 @@ typedef os_box box_t;
 #endif
 
 /**
- * Initialises a box to an invalid state that will still produce a valid result
- * when intersected with.
+ * Initialises a box to an invalid state that will still produce a valid
+ * result when intersected with.
  */
 #define BOX_INIT { INT_MAX, INT_MAX, INT_MIN, INT_MIN }
 
@@ -49,8 +49,8 @@ size2d_t box_size(const box_t *b);
 /**
  * Reset the box to an invalid state.
  *
- * This sets x0,y0 to INT_MAX and the x1,y1 to INT_MIN. This is an invalid box
- * but will still produce a valid result when intersected with.
+ * This sets x0,y0 to INT_MAX and the x1,y1 to INT_MIN. This is an invalid
+ * box but will still produce a valid result when intersected with.
  *
  * \param[in] b The box to reset.
  */
