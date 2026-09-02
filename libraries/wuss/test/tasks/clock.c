@@ -26,7 +26,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#define CLOCK_BEZEL_SEGMENTS 90 /* sides of the polygon standing in for the round bezel */
 #define CLOCK_FACE_FRACTION  0.92 /* bezel radius as a fraction of half the smaller side */
 #define CLOCK_HOUR_TICK      0.10 /* hour-tick length, fraction of face radius */
 #define CLOCK_MINUTE_TICK    0.05 /* minute-tick length, fraction of face radius */
@@ -162,23 +161,9 @@ static result_t clock_redraw(const wuss_event_t *event, void *task_data)
   r  = MIN(bounds->x1 - bounds->x0, bounds->y1 - bounds->y0)
      / 2.0 * CLOCK_FACE_FRACTION;
 
-  /* bezel: a many-sided polygon standing in for the circle */
-  {
-    fix8_point_t prev, first;
-
-    first = clock_polar(cx, cy, r, 0.0);
-    prev  = first;
-    for (i = 1; i <= CLOCK_BEZEL_SEGMENTS; i++)
-    {
-      fix8_point_t p;
-
-      p = clock_polar(cx, cy, r,
-                      i * 2.0 * M_PI / CLOCK_BEZEL_SEGMENTS);
-      screen_draw_line_wu_fix8(scr, prev.x, prev.y, p.x, p.y, cc->bezel);
-      prev = p;
-    }
-    screen_draw_line_wu_fix8(scr, prev.x, prev.y, first.x, first.y, cc->bezel);
-  }
+  /* bezel */
+  screen_draw_circle(scr, (int) (cx + 0.5), (int) (cy + 0.5), (int) (r + 0.5),
+                     cc->bezel);
 
   /* 60 minute ticks, every fifth one an hour tick drawn longer */
   for (i = 0; i < 60; i++)
