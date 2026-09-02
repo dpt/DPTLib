@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "kernel.h"
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -95,6 +97,9 @@ result_t wuss_frontend_open(int               width,
   int              vars[6]; /* 5 indices + a -1 terminator */
   int              vals[5];
   _kernel_oserror *err;
+  char             msg[160]; /* deferred so it prints after the mode restore */
+
+  msg[0] = '\0';
 
   fe = calloc(1, sizeof(*fe));
   if (fe == NULL)
@@ -103,12 +108,19 @@ result_t wuss_frontend_open(int               width,
   /* remember the mode we came in on */
   err = _swix(OS_ScreenMode, _IN(0) | _OUT(1), 1, &fe->entry_mode);
   if (err != NULL)
+  {
+    snprintf(msg, sizeof(msg), "OS_ScreenMode read: %s", err->errmess);
     goto failure;
+  }
 
   /* switch to the 16-colour demo mode */
   err = _swix(OS_ScreenMode, _INR(0,1), 0, WUSS_RISCOS_MODE);
   if (err != NULL)
+  {
+    snprintf(msg, sizeof(msg), "OS_ScreenMode set mode %d: %s",
+             WUSS_RISCOS_MODE, err->errmess);
     goto failure;
+  }
 
   /* read back the geometry we actually got */
   vars[0] = VDUVAR_XEIG;
@@ -119,13 +131,16 @@ result_t wuss_frontend_open(int               width,
   vars[5] = -1; /* OS_ReadVduVariables scans until it hits -1 */
   err = _swix(OS_ReadVduVariables, _INR(0,1), vars, vals);
   if (err != NULL)
+  {
+    snprintf(msg, sizeof(msg), "OS_ReadVduVariables: %s", err->errmess);
     goto failure_restore;
+  }
 
   fe->xeig        = vals[0];
   fe->yeig        = vals[1];
   fe->rowbytes    = vals[2];
-  /* YWIND_LIMIT is max-Y in OS units; >> YEIG turns it into pixel rows */
-  fe->scr_height  = (vals[3] >> fe->yeig) + 1;
+  /* VDU var 11 (YWindLimit) is the top pixel row, in pixels not OS units */
+  fe->scr_height  = vals[3] + 1;
   fe->screen_base = (void *) vals[4];
   fe->scr_width   = fe->rowbytes * 2; /* 4bpp: 2 pixels per byte */
   fe->last_buttons = 0;
@@ -134,12 +149,24 @@ result_t wuss_frontend_open(int               width,
    * would draw off-screen, so bail rather than corrupt memory */
   if (fe->scr_width < width || fe->scr_height < height)
   {
-    fprintf(stderr, "wuss: mode %d gave %dx%d, need %dx%d\n",
-            WUSS_RISCOS_MODE, fe->scr_width, fe->scr_height, width, height);
+    snprintf(msg, sizeof(msg),
+             "mode %d gave %dx%d (xeig=%d yeig=%d linelen=%d ywindlim=%d),"
+             " need %dx%d",
+             WUSS_RISCOS_MODE, fe->scr_width, fe->scr_height,
+             vals[0], vals[1], vals[2], vals[3], width, height);
     goto failure_restore;
   }
 
+  /* the mode may be bigger than the demo; hand wuss only the area it asked
+   * for so a redraw can never run off the end of screen memory */
+  fe->scr_width  = width;
+  fe->scr_height = height;
+
   set_hw_palette(palette, npalette);
+
+  /* hide the text cursor: VDU 23,1,0 -- wuss draws over the whole screen and
+   * a blinking caret in the corner would show through */
+  _swix(OS_WriteN, _INR(0,1), "\x17\x01\x00\x00\x00\x00\x00\x00\x00\x00", 10);
 
   /* OS_ScreenMode leaves the pointer off. Turn on pointer 1 with the default
    * arrow shape (*Pointer 1 == OS_Byte 106, 1) and confine it to the screen.
@@ -159,6 +186,9 @@ failure_restore:
 
 failure:
 
+  /* mode is restored to text by now, so this reaches the screen */
+  if (msg[0] != '\0')
+    fprintf(stderr, "wuss: frontend_open: %s\n", msg);
   free(fe);
   return result_TEST_FAILED;
 }
@@ -300,6 +330,8 @@ void wuss_frontend_close(wuss_frontend_t *fe)
     return;
 
   _swix(OS_Byte, _INR(0,1), 106, 0); /* *Pointer 0: turn the pointer off */
+  _swix(OS_WriteN, _INR(0,1),        /* VDU 23,1,1: text cursor back on */
+        "\x17\x01\x01\x00\x00\x00\x00\x00\x00\x00", 10);
   _swix(OS_ScreenMode, _INR(0,1), 0, fe->entry_mode);
   free(fe);
 }
