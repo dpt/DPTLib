@@ -137,7 +137,8 @@ static result_t swatches_click(swatches_task_t    *task,
   point_t         pt;
   int             p;
 
-  if (event->data.mouse.action != wuss_MOUSE_DOWN)
+  if (event->data.mouse.action != wuss_MOUSE_DOWN ||
+      !(event->data.mouse.button & wuss_BUTTON_SELECT))
     return result_OK;
 
   pt = event->data.mouse.point;

@@ -167,7 +167,8 @@ result_t checker_handle(wuss_window_t      *window,
     return checker_redraw(window, event, task_data);
 
   case wuss_EVENT_MOUSE:
-    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
+        !(event->data.mouse.button & wuss_BUTTON_SELECT))
       return result_OK;
     return checker_mouse(window, task_data);
 

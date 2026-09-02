@@ -121,6 +121,7 @@ static result_t curve_mouse(curve_task_t       *task,
                             wuss_mouse_action_t action,
                             int                 x,
                             int                 y,
+                            wuss_button_t       button,
                             wuss_window_t      *window)
 {
   int i;
@@ -131,6 +132,8 @@ static result_t curve_mouse(curve_task_t       *task,
   switch (action)
   {
   case wuss_MOUSE_DOWN:
+    if (!(button & wuss_BUTTON_SELECT))
+      break;
     for (i = 0; i < CURVE_NCONTROLPTS; i++)
     {
       if (blob_hit(&task->points[i], x, y))
@@ -184,7 +187,8 @@ result_t curve_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MOUSE:
     return curve_mouse(task, event->data.mouse.action,
-                       event->data.mouse.point.x, event->data.mouse.point.y, window);
+                       event->data.mouse.point.x, event->data.mouse.point.y,
+                       event->data.mouse.button, window);
 
   case wuss_EVENT_SCROLL:
     return curve_scroll(task, event->data.scroll.delta, window);

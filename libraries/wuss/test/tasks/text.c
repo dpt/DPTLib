@@ -161,7 +161,8 @@ result_t text_handle(wuss_window_t      *window,
     return text_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
-    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
+        !(event->data.mouse.button & wuss_BUTTON_SELECT))
       return result_OK;
     return text_mouse(task_data);
 
