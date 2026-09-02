@@ -15,11 +15,11 @@ _Unreleased_ until one is cut.
   `wuss_menu_t` (title plus an array of `wuss_menu_item_t`) as a borderless
   window, nudged to stay on screen and opened under the pointer; wuss owns
   layout, submenu chaining on hover and whole-chain dismissal. Per-item flags
-  cover ticks, disabled rows, dashed separators and submenus.
-  `wuss_menu_select_fn_t` reports a leaf pick — SELECT closes the chain, ADJUST
-  keeps it open. `wuss_menu_close()` / `wuss_menu_is_open()` manage a chain by
-  handle. An over-tall menu gets a real vertical scrollbar instead of being
-  cropped.
+  cover ticks, disabled rows, dashed separators and submenus. A leaf pick is
+  delivered to the opening task as `wuss_EVENT_MENU_SELECT` — SELECT closes
+  the chain, ADJUST keeps it open. `wuss_menu_close()` / `wuss_menu_is_open()`
+  manage a chain by handle. An over-tall menu gets a real vertical scrollbar
+  instead of being cropped.
 - `wuss_menu_create_from_desc()` / `wuss_menu_destroy()` — build a heap
   `wuss_menu_t` tree from a compact descriptor string (PrivateEye's
   `menu_create_from_desc` syntax: `,` between items, leading `|` for a dashed
@@ -34,10 +34,12 @@ _Unreleased_ until one is cut.
 - `wuss_window_set_hidden()` and the `wuss_WINDOW_HIDDEN` create flag — a hidden
   window keeps its z-order slot but is not drawn, not hit-tested and occludes
   nothing. `wuss_window_move()` still works on it (translate only, no blit) so
-  it can be parked and re-shown in position.
+  it can be parked and re-shown in position. Revealing one fires a veto-able
+  `wuss_EVENT_PRE_SHOW` then `wuss_EVENT_SHOW`; `wuss_window_set_hidden()`
+  returns `result_t` accordingly.
 - `wuss_set_palette()` — swap the system palette mid-session. Copies the new
   palette in, refreshes the cached nearest-black/white indices, broadcasts a
-  new `wuss_EVENT_PALETTE` to every window's task so it can recache
+  new `wuss_EVENT_PALETTE` to every registered task so it can recache
   `wuss_nearest_colour()` selections, then invalidates the whole screen.
   Length must match `wuss_create()`'s; a now-out-of-range furniture/bevel/
   backdrop index is rejected with the palette left unchanged.
@@ -147,6 +149,36 @@ _Unreleased_ until one is cut.
   points, so one arrow can be worked both ways without moving the pointer.
   Toggle-size stays Select-only.
 - A window can no longer be resized larger than the screen.
+- **Breaking:** event dispatch is reworked around a registered, opaque
+  `wuss_task_t` that owns its windows and is the sole delivery target.
+  - `wuss_task_start()` / `wuss_task_stop()` and the by-value task-delegate
+    struct are gone. Register a task with
+    `wuss_task_create(wuss, const wuss_task_desc_t *, wuss_task_t **)` —
+    `wuss_task_desc_t` is `{ wuss_window_fn_t *handle; void *task_data;
+    const char *name; }` — and tear it down with
+    `wuss_task_destroy(wuss_task_t *)`, which closes the task's windows,
+    fires one `wuss_EVENT_QUIT` and unregisters it.
+  - `wuss_window_create()` and `wuss_window_create_placed()` no longer take a
+    leading `wuss_t *` or a task-delegate pointer; their first argument is now
+    the owning `wuss_task_t *`. The window inherits that task's handler.
+  - `wuss_event_kind_t` is a single master enum
+    (`REDRAW, MOUSE, ICON, SCROLL, OPEN, PRE_SHOW, SHOW, PRE_CLOSE, CLOSE,
+    IDLE, QUIT, PALETTE, MENU_SELECT`). Handlers must handle unknown kinds
+    (fall through / `default:`).
+  - New veto-able pre-events. `wuss_window_set_hidden()` now returns
+    `result_t`: revealing a hidden window fires `wuss_EVENT_PRE_SHOW` first
+    and a non-OK return keeps it hidden and propagates. New
+    `wuss_window_try_close()` fires `wuss_EVENT_PRE_CLOSE` (non-OK vetoes),
+    then `wuss_EVENT_CLOSE`, then closes; the close icon routes through it.
+    `wuss_window_close()` stays the forced, unvetoable teardown and fires no
+    pre-events.
+  - `wuss_set_palette()` and `wuss_idle()` now broadcast once per *registered
+    task* (in registration order, `window == NULL`), not once per open
+    window's task.
+  - `wuss_menu_open()` takes a `wuss_task_t *` as its first argument. A picked
+    leaf now delivers `wuss_EVENT_MENU_SELECT` (with `window == NULL`) to that
+    task — `data.menu_select` carries `{ const struct wuss_menu *menu; int
+    index; wuss_button_t button; }`. `wuss_menu_select_fn_t` is removed.
 
 ### Fixed
 
