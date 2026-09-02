@@ -143,6 +143,42 @@ static result_t test_handle(wuss_window_t      *window,
   return result_OK;
 }
 
+/* An IDLE handler that closes a window the first time it is broadcast to. On
+ * an autoclose task with that as its only window, the close reaps the task
+ * and frees its list node from inside the wuss_idle / wuss_set_palette walk;
+ * the test checks the walk survives it and still reaches the tasks behind. */
+static wuss_window_t *g_close_on_idle_win;
+
+static result_t close_on_idle_handle(wuss_window_t      *window,
+                                     const wuss_event_t *event,
+                                     void               *task_data)
+{
+  test_task_t *tc;
+
+  NOT_USED(window);
+
+  tc = task_data;
+
+  if (event->kind == wuss_EVENT_IDLE)
+  {
+    tc->idle_count++;
+    if (g_close_on_idle_win != NULL)
+    {
+      wuss_window_t *doomed;
+
+      doomed              = g_close_on_idle_win;
+      g_close_on_idle_win = NULL;
+      wuss_window_close(doomed); /* reaps this task mid-walk */
+    }
+    return result_OK;
+  }
+
+  if (event->kind == wuss_EVENT_QUIT)
+    tc->stop_count++;
+
+  return result_OK;
+}
+
 /* A redraw handler that paints its content as one-pixel horizontal lines
  * whose colour encodes the document-space Y of each row, so a test can read
  * the framebuffer back and tell not just whose pixels are where but whether
@@ -3441,6 +3477,73 @@ result_t wuss_test(const char *resources)
       goto Failure;
 
     mk_task_count = 0; /* delegate_ac reaped itself; drop the stale entry */
+  }
+
+  printf("test: a task reaping itself from inside wuss_idle does not derail the task walk\n");
+  {
+    static test_task_t tc_w1, tc_w2, tc_w3;
+    wuss_task_t   *delegate_w1, *delegate_w2, *delegate_w3;
+    box_t          box_w;
+    wuss_window_t *win_w1, *win_w3;
+
+    memset(&tc_w1, 0, sizeof(tc_w1));
+    memset(&tc_w2, 0, sizeof(tc_w2));
+    memset(&tc_w3, 0, sizeof(tc_w3));
+
+    box_w.x0 = 0;  box_w.y0 = 0;
+    box_w.x1 = 40; box_w.y1 = 40;
+
+    /* w1 first, w2 (self-reaping, autoclose) in the middle, w3 last: the
+     * walk must deliver to w1, survive w2 freeing its own node, and still
+     * reach w3. */
+    delegate_w1 = mk_task(wuss, test_handle, &tc_w1);
+    if (delegate_w1 == NULL) goto Failure;
+    wuss_task_set_autoclose(delegate_w1, 1);
+    rc = wuss_window_create(delegate_w1, &box_w, "W1", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            box_size(&box_w), SIZE2D(0, 0), &win_w1);
+    if (rc != result_OK)
+      goto Failure;
+
+    delegate_w2 = mk_task(wuss, close_on_idle_handle, &tc_w2);
+    if (delegate_w2 == NULL) goto Failure;
+    wuss_task_set_autoclose(delegate_w2, 1);
+    rc = wuss_window_create(delegate_w2, &box_w, "W2", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            box_size(&box_w), SIZE2D(0, 0),
+                            &g_close_on_idle_win);
+    if (rc != result_OK)
+      goto Failure;
+
+    delegate_w3 = mk_task(wuss, test_handle, &tc_w3);
+    if (delegate_w3 == NULL) goto Failure;
+    wuss_task_set_autoclose(delegate_w3, 1);
+    rc = wuss_window_create(delegate_w3, &box_w, "W3", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            box_size(&box_w), SIZE2D(0, 0), &win_w3);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_idle(wuss);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_w1.idle_count != 1) /* reached before the reap */
+      goto Failure;
+    if (tc_w2.stop_count != 1) /* self-reaped mid-walk */
+      goto Failure;
+    if (tc_w3.idle_count != 1) /* walk still reached the task behind w2 */
+      goto Failure;
+
+    /* w2 is gone; a second idle must skip it cleanly */
+    rc = wuss_idle(wuss);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_w2.idle_count != 1 || tc_w3.idle_count != 2)
+      goto Failure;
+
+    wuss_window_close(win_w1); /* autoclose: reaps w1 */
+    wuss_window_close(win_w3); /* autoclose: reaps w3 */
+    mk_task_count = 0; /* all three tasks reaped themselves; drop stale entries */
   }
 
 #ifdef WUSS_MENUS

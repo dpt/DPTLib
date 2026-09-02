@@ -32,16 +32,20 @@ result_t wuss_set_palette(wuss_t         *wuss,
 
   rc = result_OK;
   event.kind = wuss_EVENT_PALETTE;
-  for (e = wuss->tasks.next; e != NULL; e = e->next)
+  for (e = wuss->tasks.next; e != NULL; )
   {
     wuss_task_t *task;
+    list_t      *next;
     result_t     crc;
 
     task = (wuss_task_t *) e;
+    next = e->next; /* an autoclose task may free its own node in the handler */
 
     crc = wuss__deliver(task, NULL, &event);
     if (crc != result_OK && rc == result_OK)
       rc = crc;
+
+    e = next;
   }
 
   screen.x0 = 0;
