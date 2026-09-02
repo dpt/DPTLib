@@ -80,6 +80,8 @@ _Unreleased_ until one is cut.
 
 ### Fixed
 
+- Opening a menu from a task's mouse-down handler no longer picks the menu's
+  first row on the matching mouse-up: that release is now swallowed.
 - Dragging a scrollbar well with Select no longer raises the window; only a
   resize-icon grab restacks it.
 - `wuss_window_move()` no longer repaints already-blitted pixels when a drag
