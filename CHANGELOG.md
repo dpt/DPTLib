@@ -25,6 +25,16 @@ _Unreleased_ until one is cut.
   `menu_create_from_desc` syntax: `,` between items, leading `|` for a dashed
   separator, `{ ... }` submenus, `!` tick, `~` shade, `>` and `%s` varargs).
   The whole tree is one owned allocation graph freed by `wuss_menu_destroy()`.
+- `wuss_menu_item_t::window` — a menu row may carry a caller-owned
+  `wuss_window_t` instead of a `submenu` (the two are mutually exclusive).
+  Hovering the row shows that window where a submenu would open, using the same
+  anchor maths; leaving the row, a click outside, a leaf SELECT elsewhere or
+  `wuss_destroy()` hide it again rather than close it, so the same handle is
+  reused on the next hover. Create the window with `wuss_WINDOW_HIDDEN`.
+- `wuss_window_set_hidden()` and the `wuss_WINDOW_HIDDEN` create flag — a hidden
+  window keeps its z-order slot but is not drawn, not hit-tested and occludes
+  nothing. `wuss_window_move()` still works on it (translate only, no blit) so
+  it can be parked and re-shown in position.
 - `wuss_set_palette()` — swap the system palette mid-session. Copies the new
   palette in, refreshes the cached nearest-black/white indices, broadcasts a
   new `wuss_EVENT_PALETTE` to every window's task so it can recache
