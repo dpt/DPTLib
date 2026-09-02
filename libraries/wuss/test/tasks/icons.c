@@ -74,7 +74,12 @@ result_t icons_create(wuss_t       *wuss,
   delegate_desc.name      = "icons";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
+  {
+    if (task->has_sprite)
+      free(task->sprite.base);
+    free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
+  }
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(ICONS_DOC_W, 160),
@@ -88,8 +93,7 @@ result_t icons_create(wuss_t       *wuss,
                                  &task->window);
   if (rc != result_OK)
   {
-    if (task->has_sprite)
-      free(task->sprite.base);
+    wuss_task_destroy(delegate); /* QUIT frees the task block and its sprite */
     return rc;
   }
 
@@ -253,10 +257,7 @@ result_t icons_create(wuss_t       *wuss,
   return result_OK;
 
 failure:
-  wuss_window_close(task->window);
-  task->window = NULL;
-  if (task->has_sprite)
-    free(task->sprite.base);
+  wuss_task_destroy(delegate); /* closes the window; QUIT frees block + sprite */
   return rc;
 }
 

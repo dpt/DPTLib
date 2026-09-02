@@ -28,12 +28,16 @@ result_t image_create(wuss_t       *wuss,
 
   rc = bitmap_load_png(&task->bitmap, path);
   if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
+  }
 
   rc = bitmap_load_png(&task->ninepatch, background_path);
   if (rc != result_OK)
   {
     free(task->bitmap.base);
+    free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
   }
 
@@ -43,21 +47,30 @@ result_t image_create(wuss_t       *wuss,
   delegate_desc.name      = "image";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
+  {
+    free(task->bitmap.base);
+    free(task->ninepatch.base);
+    free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
+  }
   wuss_task_set_autoclose(delegate, 1);
 
   sz.w = task->bitmap.size.w + BORDER * 2;
   sz.h = task->bitmap.size.h + BORDER * 2;
 
-  return wuss_window_create_placed(delegate,
-                                   /* shorter than the bitmap so there's something to scroll through */
-                                   SIZE2D(sz.w, sz.h * 2 / 3),
-                                   "Image",
-                                   wuss_WINDOW_NONE,
-                                   wuss_BACKDROP_COLOUR(palette_PICO8_PINK),
-                                   sz,
-                                   SIZE2D(32, 32),
-                                   &task->window);
+  rc = wuss_window_create_placed(delegate,
+                                 /* shorter than the bitmap so there's something to scroll through */
+                                 SIZE2D(sz.w, sz.h * 2 / 3),
+                                 "Image",
+                                 wuss_WINDOW_NONE,
+                                 wuss_BACKDROP_COLOUR(palette_PICO8_PINK),
+                                 sz,
+                                 SIZE2D(32, 32),
+                                 &task->window);
+  if (rc != result_OK)
+    wuss_task_destroy(delegate); /* QUIT frees the two bitmaps and the block */
+
+  return rc;
 }
 
 static result_t image_redraw(const wuss_event_t *event, void *task_data)

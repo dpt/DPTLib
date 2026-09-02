@@ -86,7 +86,10 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
   delegate_desc.name      = "swatches";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
+  }
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(SWATCHES_DOC_W, 140),
@@ -97,13 +100,15 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
     return rc;
+  }
 
   rc = swatches_build(task);
   if (rc != result_OK)
   {
-    wuss_window_close(task->window);
-    task->window = NULL;
+    wuss_task_destroy(delegate); /* closes the window, QUIT frees the block */
     return rc;
   }
 
