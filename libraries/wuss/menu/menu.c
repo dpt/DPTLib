@@ -315,25 +315,45 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
   return result_OK;
 }
 
-/* End the pick flash on `self` now: leave the flashed row un-highlit (a later
- * MOUSE_MOVE re-highlights it if the pointer is still over it), then deliver
- * the MENU_SELECT the flash stands in for -- tearing the chain down first
- * unless the pick was an ADJUST (keep_open). On a non-keep_open return `self`
- * has been freed. Callers guard against calling this with no flash armed. */
+/* True if the wuss pointer currently sits over icon `icon` in `window`. */
+static int wuss__pointer_over_icon(wuss_window_t     *window,
+                                   const wuss_icon_t *icon)
+{
+  point_t p;
+  box_t   content;
+  point_t doc;
+
+  p = wuss_get_pointer(window->wuss);
+  wuss__content_box(window, &content);
+  doc.x = p.x - content.x0 + window->scroll.x;
+  doc.y = p.y - content.y0 + window->scroll.y;
+
+  return wuss__icon_hit_test(window, doc) == icon;
+}
+
+/* End the pick flash on `self` now: leave the flashed row un-highlit unless the
+ * pointer is still over it (on an ADJUST re-pick no MOUSE_MOVE follows to bring
+ * the highlight back), then deliver the MENU_SELECT the flash stands in for --
+ * tearing the chain down first unless the pick was an ADJUST (keep_open). On a
+ * non-keep_open return `self` has been freed. Callers guard against calling
+ * this with no flash armed. */
 static void wuss__menu_flash_finish(struct wuss__menu *self)
 {
   struct wuss__menu *root;
   wuss_event_t       sel;
+  wuss_icon_t       *row       = self->icons[self->flash.index];
   wuss_task_t       *owner     = self->flash.owner;
   const wuss_menu_t *menu      = self->flash.menu;
   int                index     = self->flash.index;
   wuss_button_t      button    = self->flash.button;
   int                keep_open = self->flash.keep_open;
+  int                on;
 
   self->flash.frames = 0;
 
-  wuss__icon_set_state(self->icons[index], wuss_ICON_STATE_HOVERED, 0);
-  wuss__icon_invalidate(self->icons[index]);
+  on = keep_open && wuss__pointer_over_icon(self->window, row);
+  wuss__icon_set_state(row, wuss_ICON_STATE_HOVERED, on);
+  wuss__icon_invalidate(row);
 
   if (!keep_open)
   {
