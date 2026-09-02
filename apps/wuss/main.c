@@ -30,6 +30,7 @@
 #include "tasks/blank.h"
 #include "tasks/chars.h"
 #include "tasks/checker.h"
+#include "tasks/clock.h"
 #include "tasks/curve.h"
 #include "tasks/gradient.h"
 #include "tasks/icons.h"
@@ -154,6 +155,17 @@ static result_t spawn_checker(void)
   result_t        rc;
   if (t == NULL) return result_OOM;
   rc = checker_create(g.wuss, t);
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
+static result_t spawn_clock(void)
+{
+  clock_task_t *t = calloc(1, sizeof(*t));
+  result_t      rc;
+  if (t == NULL) return result_OOM;
+  rc = clock_create(g.wuss, t);
   if (rc != result_OK) return rc;
   if (t->window == NULL) { free(t); return rc; }
   return result_OK;
@@ -363,6 +375,7 @@ static const wuss_menu_item_t g_task_items[] =
   { "Blank",       wuss_MENU_ITEM_NONE,   NULL },
   { "Chars",       wuss_MENU_ITEM_NONE,   NULL },
   { "Checker",     wuss_MENU_ITEM_NONE,   NULL },
+  { "Clock",       wuss_MENU_ITEM_NONE,   NULL },
   { "Curve",       wuss_MENU_ITEM_NONE,   NULL },
   { "Gradient",    wuss_MENU_ITEM_NONE,   NULL },
   { "Icons",       wuss_MENU_ITEM_NONE,   NULL },
@@ -386,7 +399,7 @@ static result_t spawn_quit(void)
 
 static const task_spawn_fn_t g_task_spawn[] =
 {
-  spawn_ball, spawn_blank, spawn_chars, spawn_checker, spawn_curve,
+  spawn_ball, spawn_blank, spawn_chars, spawn_checker, spawn_clock, spawn_curve,
   spawn_gradient, spawn_icons, spawn_image, spawn_lissajous, spawn_palette,
   spawn_porter_duff, spawn_sofa, spawn_swatches, spawn_text, spawn_menu,
   spawn_menu_desc, spawn_quit
