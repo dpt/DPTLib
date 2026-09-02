@@ -600,6 +600,7 @@ static result_t run_wuss(const char *resources)
   {
     wuss_input_t ev;
     bool         pixel_stress_pending = false;
+    bool         garbage_pending      = false;
 
     while (wuss_frontend_poll(frontend, &ev))
     {
@@ -611,6 +612,10 @@ static result_t run_wuss(const char *resources)
 
       case wuss_INPUT_REDRAW_ALL:
         wuss_redraw(wuss);
+        break;
+
+      case wuss_INPUT_GARBAGE:
+        garbage_pending = true;
         break;
 
       case wuss_INPUT_PIXEL_STRESS:
@@ -659,12 +664,31 @@ static result_t run_wuss(const char *resources)
 
     wuss_idle(wuss);
 
-    if (pixel_stress_pending)
-      pixel_stress(wuss, scr_width, scr_height);
-    else
-      wuss_redraw_dirty(wuss);
+    if (garbage_pending)
+    {
+      /* corrupt the whole framebuffer and present it, then leave it alone --
+       * wuss only repaints what it knows is dirty, so the junk stays put
+       * until something else invalidates the screen */
+      unsigned char *p;
+      size_t         n;
+      size_t         i;
 
-    wuss_frontend_present(frontend, &bm);
+      p = pixels;
+      n = (size_t) rowbytes * scr_height;
+      for (i = 0; i < n; i++)
+        p[i] = (unsigned char) rand();
+
+      wuss_frontend_present(frontend, &bm);
+    }
+    else
+    {
+      if (pixel_stress_pending)
+        pixel_stress(wuss, scr_width, scr_height);
+      else
+        wuss_redraw_dirty(wuss);
+
+      wuss_frontend_present(frontend, &bm);
+    }
   }
 
   /* ponytail: wuss_destroy() below force-closes every still-open window and
