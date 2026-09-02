@@ -13,7 +13,8 @@ void wuss__icon_select(wuss_icon_t *icon, int selected)
   assert(icon != NULL);
 
   if (icon->type != wuss_ICON_TYPE_RADIO &&
-      icon->type != wuss_ICON_TYPE_OPTION)
+      icon->type != wuss_ICON_TYPE_OPTION &&
+      icon->type != wuss_ICON_TYPE_MENU_ENTRY)
     return;
 
   selected = selected ? 1 : 0;
