@@ -497,7 +497,6 @@ static result_t run_wuss(const char *resources)
   const char      *leafname;
   const char      *filename;
   bmfont_t        *font;
-  bmfont_t        *daydream_font;
   void            *pixels;
   int              rowbytes;
   pixelfmt_t       fmt;
@@ -524,17 +523,6 @@ static result_t run_wuss(const char *resources)
   filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
   logf_info("wuss: loading font \"%s\"", filename);
   rc = bmfont_create(filename, &font);
-  if (rc != result_OK)
-  {
-    logf_error("wuss: bmfont_create(\"%s\") failed, rc=0x%X (%s)", filename,
-               rc, result_string(rc));
-    goto Failure;
-  }
-
-  leafname = path_join_leafname("daydream", "png");
-  filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
-  logf_info("wuss: loading font \"%s\"", filename);
-  rc = bmfont_create(filename, &daydream_font);
   if (rc != result_OK)
   {
     logf_error("wuss: bmfont_create(\"%s\") failed, rc=0x%X (%s)", filename,
@@ -574,7 +562,7 @@ static result_t run_wuss(const char *resources)
   g.palette       = palette;
   g.npalette      = NELEMS(palette);
   g.resources     = resources;
-  g.daydream_font = daydream_font;
+  g.daydream_font = font; /* the demo runs on the one font it loads */
 
   {
     wuss_task_desc_t desc;
@@ -672,7 +660,6 @@ static result_t run_wuss(const char *resources)
 
   wuss_destroy(wuss); /* also sweeps g.menu_task */
   bmfont_destroy(font);
-  bmfont_destroy(daydream_font);
 
   wuss_frontend_close(frontend);
 
