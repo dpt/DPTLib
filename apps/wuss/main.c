@@ -165,7 +165,7 @@ static result_t spawn_clock(void)
   clock_task_t *t = calloc(1, sizeof(*t));
   result_t      rc;
   if (t == NULL) return result_OOM;
-  rc = clock_create(g.wuss, t);
+  rc = clock_create(g.wuss, g.daydream_font, t);
   if (rc != result_OK) return rc;
   if (t->window == NULL) { free(t); return rc; }
   return result_OK;
