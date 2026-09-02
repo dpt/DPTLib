@@ -101,29 +101,41 @@ void screen_fill_square(screen_t *scr,
  */
 typedef enum screen_pattern
 {
-  screen_PATTERN_SOLID = 0, /**< Every pixel foreground. */
-  screen_PATTERN_GREY50,    /**< 50% checkerboard. */
-  screen_PATTERN_HSTRIPE,   /**< Horizontal bars. */
-  screen_PATTERN_VSTRIPE,   /**< Vertical bars. */
-  screen_PATTERN_DIAGONAL,  /**< Diagonal lines. */
-  screen_PATTERN_DOTS,      /**< Sparse dots. */
-  screen_PATTERN_GRID,      /**< Thin grid lines. */
-  screen_PATTERN_CROSSHATCH, /**< Crossed thin lines. */
-
   /**
    * 8x8 ordered (Bayer) dither, one entry per coverage level 0 (empty) to 64
    * (solid). Index by level as `screen_PATTERN_BAYER0 + level`;
    * `screen_PATTERN_BAYER_LIMIT` is one past the last.
-   * `screen_PATTERN_BAYER0` matches nothing else here,
-   * `screen_PATTERN_BAYER32` equals `screen_PATTERN_GREY50` and
-   * `screen_PATTERN_BAYER64` equals `screen_PATTERN_SOLID`; the duplicates
-   * are kept so the level arithmetic stays simple.
    */
-  screen_PATTERN_BAYER0,
+  screen_PATTERN_BAYER0 = 0,
   screen_PATTERN_BAYER_LIMIT = screen_PATTERN_BAYER0 + 65,
 
-  screen_PATTERN__LIMIT = screen_PATTERN_BAYER_LIMIT
-                          /**< Count of patterns; not itself a pattern. */
+  /**
+   * A flat fill and a 50% checkerboard are just the ends and midpoint of the
+   * Bayer run, so they are aliases rather than separate tiles. `EMPTY` is
+   * the inverse of `SOLID`; `GREY50` is its own inverse.
+   */
+  screen_PATTERN_EMPTY  = screen_PATTERN_BAYER0,
+  screen_PATTERN_GREY50 = screen_PATTERN_BAYER0 + 32,
+  screen_PATTERN_SOLID  = screen_PATTERN_BAYER0 + 64,
+
+  /* The remaining named tiles follow the Bayer run. */
+  screen_PATTERN_HSTRIPE = screen_PATTERN_BAYER_LIMIT,
+                                 /**< Horizontal bars. */
+  screen_PATTERN_VSTRIPE,        /**< Vertical bars. */
+  screen_PATTERN_DIAGONAL,       /**< Diagonal lines. */
+  screen_PATTERN_DOTS,           /**< Sparse dots. */
+  screen_PATTERN_GRID,           /**< Thin grid lines. */
+  screen_PATTERN_CROSSHATCH,     /**< Crossed thin lines. */
+
+  screen_PATTERN_HSTRIPE_INV,    /**< Inverse of HSTRIPE. */
+  screen_PATTERN_VSTRIPE_INV,    /**< Inverse of VSTRIPE. */
+  screen_PATTERN_DIAGONAL_INV,   /**< Inverse of DIAGONAL. */
+  screen_PATTERN_DOTS_INV,       /**< Inverse of DOTS. */
+  screen_PATTERN_GRID_INV,       /**< Inverse of GRID. */
+  screen_PATTERN_CROSSHATCH_INV, /**< Inverse of CROSSHATCH. */
+
+  screen_PATTERN__LIMIT
+                    /**< Count of patterns; not itself a pattern. */
 }
 screen_pattern_t;
 
