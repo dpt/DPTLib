@@ -107,6 +107,10 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
     return rc;
   }
 
+  /* fully built: from here a last-window close reaps the task and its
+   * wuss_EVENT_QUIT frees task_data */
+  wuss_task_set_autoclose(delegate, 1);
+
   return result_OK;
 }
 
@@ -123,7 +127,7 @@ result_t swatches_handle(wuss_window_t      *window,
   case wuss_EVENT_PALETTE:
     return swatches_build(task);
 
-  case wuss_EVENT_CLOSE:
+  case wuss_EVENT_QUIT:
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
 

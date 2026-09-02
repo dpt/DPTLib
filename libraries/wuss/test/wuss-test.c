@@ -3354,6 +3354,56 @@ result_t wuss_test(const char *resources)
     mk_task_count = 0; /* delegate_q is gone; drop the stale registry entry */
   }
 
+  printf("test: an autoclose task self-destructs when its last window closes and stops receiving broadcasts\n");
+  {
+    static test_task_t tc_ac;
+    wuss_task_t   *delegate_ac;
+    box_t          box_ac;
+    wuss_window_t *win_ac1, *win_ac2;
+
+    memset(&tc_ac, 0, sizeof(tc_ac));
+    delegate_ac = mk_task(wuss, test_handle, &tc_ac);
+    if (delegate_ac == NULL) goto Failure;
+    wuss_task_set_autoclose(delegate_ac, 1);
+
+    box_ac.x0 = 0;  box_ac.y0 = 0;
+    box_ac.x1 = 40; box_ac.y1 = 40;
+    rc = wuss_window_create(delegate_ac, &box_ac, "AC1", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            box_size(&box_ac), SIZE2D(0, 0), &win_ac1);
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_window_create(delegate_ac, &box_ac, "AC2", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            box_size(&box_ac), SIZE2D(0, 0), &win_ac2);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* first close: task still owns a window, so no reap and no QUIT */
+    wuss_window_close(win_ac1);
+    if (tc_ac.stop_count != 0)
+      goto Failure;
+
+    rc = wuss_idle(wuss);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_ac.idle_count != 1) /* still registered, still broadcast to */
+      goto Failure;
+
+    /* last close: reap fires one QUIT and unregisters the task */
+    wuss_window_close(win_ac2);
+    if (tc_ac.stop_count != 1)
+      goto Failure;
+
+    rc = wuss_idle(wuss);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_ac.idle_count != 1) /* gone: no further broadcast */
+      goto Failure;
+
+    mk_task_count = 0; /* delegate_ac reaped itself; drop the stale entry */
+  }
+
 #ifdef WUSS_MENUS
   printf("test: wuss_menu_create_from_desc parses a descriptor tree\n");
   {

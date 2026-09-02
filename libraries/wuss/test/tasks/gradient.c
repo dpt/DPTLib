@@ -46,6 +46,7 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t *task)
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
     return rc;
+  wuss_task_set_autoclose(delegate, 1);
 
   return wuss_window_create_placed(delegate,
                                    SIZE2D(GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT),
@@ -101,7 +102,7 @@ result_t gradient_handle(wuss_window_t      *window,
   case wuss_EVENT_REDRAW:
     return gradient_redraw(event, task_data);
 
-  case wuss_EVENT_CLOSE:
+  case wuss_EVENT_QUIT:
     free(gc); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 

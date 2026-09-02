@@ -44,6 +44,7 @@ result_t image_create(wuss_t       *wuss,
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
     return rc;
+  wuss_task_set_autoclose(delegate, 1);
 
   sz.w = task->bitmap.size.w + BORDER * 2;
   sz.h = task->bitmap.size.h + BORDER * 2;
@@ -103,7 +104,7 @@ result_t image_handle(wuss_window_t      *window,
   case wuss_EVENT_REDRAW:
     return image_redraw(event, task_data);
 
-  case wuss_EVENT_CLOSE:
+  case wuss_EVENT_QUIT:
     free(ic->bitmap.base);
     free(ic->ninepatch.base);
     free(ic); /* task_data was calloc'd per instance by the spawner */

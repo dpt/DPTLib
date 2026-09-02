@@ -265,6 +265,26 @@ result_t wuss_task_create(wuss_t                 *wuss,
  */
 void wuss_task_destroy(wuss_task_t *doomed);
 
+/**
+ * Opt a task into self-destruct once its last window closes.
+ *
+ * With autoclose set, the moment a task's window list becomes empty (whether
+ * via wuss_window_close or the wuss_window_try_close close path) the task
+ * behaves as if wuss_task_destroy had been called: one wuss_EVENT_QUIT is
+ * delivered, then the task is unlinked and freed. Free task_data from the
+ * wuss_EVENT_QUIT case, not wuss_EVENT_CLOSE -- a closing window would
+ * otherwise leave the task registered and still receiving wuss_idle /
+ * wuss_set_palette broadcasts with a stale task_data.
+ *
+ * Suited to fire-and-forget tasks that own exactly the windows they spawn.
+ * Leave it off for tasks that outlive their windows (e.g. one owning a pool
+ * of transient menu windows).
+ *
+ * \param[in] task Task to configure. NULL is a no-op.
+ * \param[in] on   Non-zero to enable autoclose, zero to disable.
+ */
+void wuss_task_set_autoclose(wuss_task_t *task, int on);
+
 #ifdef __cplusplus
 }
 #endif

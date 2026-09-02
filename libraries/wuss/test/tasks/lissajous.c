@@ -42,6 +42,7 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t *task)
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
     return rc;
+  wuss_task_set_autoclose(delegate, 1);
 
   return wuss_window_create_placed(delegate,
                                    SIZE2D(220, 220),
@@ -160,7 +161,7 @@ result_t lissajous_handle(wuss_window_t      *window,
   case wuss_EVENT_IDLE:
     return lissajous_idle(task_data);
 
-  case wuss_EVENT_CLOSE:
+  case wuss_EVENT_QUIT:
     free(lc); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 

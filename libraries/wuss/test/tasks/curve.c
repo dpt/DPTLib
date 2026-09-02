@@ -47,6 +47,7 @@ result_t curve_create(wuss_t *wuss, curve_task_t *task)
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
     return rc;
+  wuss_task_set_autoclose(delegate, 1);
 
   return wuss_window_create_placed(delegate,
                                    SIZE2D(220, 160),
@@ -181,7 +182,7 @@ result_t curve_handle(wuss_window_t      *window,
   case wuss_EVENT_SCROLL:
     return curve_scroll(task, event->data.scroll.delta, window);
 
-  case wuss_EVENT_CLOSE:
+  case wuss_EVENT_QUIT:
     free(task); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 

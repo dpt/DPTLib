@@ -246,6 +246,10 @@ result_t icons_create(wuss_t       *wuss,
     task->hotspot = made[g + 9];
   wuss_icon_set_selected(made[m + 1], 1); /* "Show grid" starts ticked */
 
+  /* fully built: from here a last-window close reaps the task and its
+   * wuss_EVENT_QUIT frees task_data */
+  wuss_task_set_autoclose(delegate, 1);
+
   return result_OK;
 
 failure:
@@ -391,7 +395,7 @@ result_t icons_handle(wuss_window_t      *window,
   case wuss_EVENT_ICON:
     return icons_icon(event, task_data);
 
-  case wuss_EVENT_CLOSE:
+  case wuss_EVENT_QUIT:
     if (tcx->has_sprite)
       free(tcx->sprite.base);
     free(tcx); /* calloc'd per instance by the spawner */

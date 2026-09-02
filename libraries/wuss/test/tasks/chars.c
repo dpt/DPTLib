@@ -52,6 +52,7 @@ result_t chars_create(wuss_t *wuss, chars_task_t *task)
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
     return rc;
+  wuss_task_set_autoclose(delegate, 1);
   sz       = SIZE2D(cell_w * CHARS_COLS, cell_h * CHARS_ROWS);
 
   return wuss_window_create_placed(delegate,
@@ -124,7 +125,7 @@ result_t chars_handle(wuss_window_t      *window,
                       const wuss_event_t *event,
                       void               *task_data)
 {
-  if (event->kind == wuss_EVENT_CLOSE)
+  if (event->kind == wuss_EVENT_QUIT)
   {
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;

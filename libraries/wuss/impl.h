@@ -60,6 +60,13 @@ typedef enum wuss_window_state
 }
 wuss_window_state_t;
 
+/* Internal wuss_task::flags bits. */
+enum
+{
+  wuss_TASK__AUTOCLOSE = 1u << 0, /* self-destruct once the last window closes */
+  wuss_TASK__REAPING   = 1u << 1  /* teardown in progress; suppress autoclose */
+};
+
 /* A registered task. Owns a list of windows (linked through each window's
  * second embedded list_t, task_link) and is the single delivery target for
  * their events plus the app-wide IDLE/PALETTE/MENU_SELECT notifications.
@@ -72,6 +79,7 @@ struct wuss_task
   void              *task_data;
   const char        *name;      /* borrowed, may be NULL */
   list_t             windows;   /* anchor; nodes are window->task_link */
+  unsigned int       flags;     /* wuss_TASK__* */
 };
 
 struct wuss
