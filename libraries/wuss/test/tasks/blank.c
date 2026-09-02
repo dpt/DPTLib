@@ -19,20 +19,27 @@
 
 result_t blank_create(wuss_t *wuss, blank_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  result_t         rc;
 
   task->npalette    = 16; // TODO: Read max palette index from wuss
   task->index       = 0;
   task->frame_count = 0;
 
-  delegate = wuss_task_start(blank_handle, task); /* wuss fills the content area itself */
+  /* wuss fills the content area itself */
+  delegate_desc.handle    = blank_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "blank";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+    return rc;
 
-  return wuss_window_create_placed(wuss,
+  return wuss_window_create_placed(delegate,
                                    SIZE2D(200, 160),
                                    NULL,
                                    wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                                    wuss_BACKDROP_COLOUR(task->index),
-                                   &delegate,
                                    SIZE2D(200, 160),
                                    SIZE2D(0, 0),
                                    &task->window);
@@ -65,7 +72,6 @@ result_t blank_handle(wuss_window_t      *window,
 {
   if (event->kind == wuss_EVENT_CLOSE)
   {
-    wuss_window_close(window);
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
   }

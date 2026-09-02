@@ -73,21 +73,26 @@ static result_t swatches_build(swatches_task_t *task)
 
 result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
   result_t    rc;
 
   task->wuss   = wuss;
   task->window = NULL;
   memset(task->icons, 0, sizeof(task->icons));
 
-  delegate = wuss_task_start(swatches_handle, task);
+  delegate_desc.handle    = swatches_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "swatches";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+    return rc;
 
-  rc = wuss_window_create_placed(wuss,
+  rc = wuss_window_create_placed(delegate,
                                  SIZE2D(SWATCHES_DOC_W, 140),
                                  "Swatches",
                                  wuss_WINDOW_NONE,
                                  wuss_BACKDROP_COLOUR(wuss_nearest_colour(wuss, 0xDD, 0xDD, 0xDD)),
-                                 &delegate,
                                  SIZE2D(SWATCHES_DOC_W, SWATCHES_DOC_H),
                                  SIZE2D(0, 0),
                                  &task->window);
@@ -119,7 +124,6 @@ result_t swatches_handle(wuss_window_t      *window,
     return swatches_build(task);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
 

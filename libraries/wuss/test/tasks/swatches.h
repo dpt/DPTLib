@@ -22,7 +22,7 @@ typedef struct swatches_task
 }
 swatches_task_t;
 
-wuss_event_fn_t swatches_handle;
+wuss_window_fn_t swatches_handle;
 
 /* create the swatches window against the given wuss instance */
 result_t swatches_create(wuss_t *wuss, swatches_task_t *task);

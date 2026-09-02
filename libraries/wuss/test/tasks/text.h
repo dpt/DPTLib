@@ -26,7 +26,7 @@ typedef struct text_task
 }
 text_task_t;
 
-wuss_event_fn_t text_handle;
+wuss_window_fn_t text_handle;
 
 /* create the paragraph-of-text window against the given wuss instance */
 result_t text_create(wuss_t         *wuss,

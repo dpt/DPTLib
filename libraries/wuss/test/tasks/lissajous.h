@@ -24,7 +24,7 @@ typedef struct lissajous_task
 }
 lissajous_task_t;
 
-wuss_event_fn_t lissajous_handle;
+wuss_window_fn_t lissajous_handle;
 
 /* create the Lissajous window against the given wuss instance; "task" is a
  * per-instance block owned by the window and freed when it closes */

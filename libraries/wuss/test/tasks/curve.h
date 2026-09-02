@@ -23,7 +23,7 @@ typedef struct curve_task
 }
 curve_task_t;
 
-wuss_event_fn_t curve_handle;
+wuss_window_fn_t curve_handle;
 
 /* create the curve window against the given wuss instance */
 result_t curve_create(wuss_t *wuss, curve_task_t *task);

@@ -6,6 +6,7 @@
 #ifdef USE_SDL
 
 #include "wuss/window.h"
+#include "wuss/task.h"
 #include "wuss/wuss.h"
 
 /* window C's task: no redraw callback at all, relying entirely on wuss's
@@ -20,7 +21,7 @@ typedef struct blank_task
 }
 blank_task_t;
 
-wuss_event_fn_t blank_handle;
+wuss_window_fn_t blank_handle;
 
 /* create the colour-cycling blank window against the given wuss instance */
 result_t blank_create(wuss_t *wuss, blank_task_t *task);

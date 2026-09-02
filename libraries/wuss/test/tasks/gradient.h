@@ -16,7 +16,7 @@ typedef struct gradient_task
 }
 gradient_task_t;
 
-wuss_event_fn_t gradient_handle;
+wuss_window_fn_t gradient_handle;
 
 /* create the gradient window against the given wuss instance */
 result_t gradient_create(wuss_t *wuss, gradient_task_t *task);

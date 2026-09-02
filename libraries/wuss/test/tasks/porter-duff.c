@@ -163,7 +163,8 @@ result_t porter_duff_create(wuss_t             *wuss,
                             const char         *resources,
                             porter_duff_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
   result_t    rc;
 
   task->font            = font;
@@ -191,14 +192,19 @@ result_t porter_duff_create(wuss_t             *wuss,
   if (rc != result_OK)
     goto free_src;
 
-  delegate = wuss_task_start(porter_duff_handle, task); /* porter_duff_redraw paints every pixel itself */
+  /* porter_duff_redraw paints every pixel itself */
+  delegate_desc.handle    = porter_duff_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "porter-duff";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+    return rc;
 
-  rc = wuss_window_create_placed(wuss,
+  rc = wuss_window_create_placed(delegate,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
                                  "Porter-Duff",
                                  wuss_WINDOW_NONE,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                 &delegate,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
                                  SIZE2D(0, 0),
                                  &task->window);
@@ -396,7 +402,6 @@ result_t porter_duff_handle(wuss_window_t      *window,
     return porter_duff_idle(task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
     free(pd->dst.base);
     free(pd->src.base);
     free(pd->b.base);

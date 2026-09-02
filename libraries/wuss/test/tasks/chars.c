@@ -23,7 +23,9 @@
 
 result_t chars_create(wuss_t *wuss, chars_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  result_t         rc;
   size2d_t    sz;
   bmfont_t   *font;
   int         font_width, font_height, cell_w, cell_h;
@@ -43,10 +45,16 @@ result_t chars_create(wuss_t *wuss, chars_task_t *task)
   task->fg   = colour_rgb(0x00, 0x00, 0x00);
   task->bg   = colour_rgb(0xFF, 0xFF, 0xFF);
 
-  delegate = wuss_task_start(chars_handle, task); /* chars_redraw paints every cell itself */
+  /* chars_redraw paints every cell itself */
+  delegate_desc.handle    = chars_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "chars";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+    return rc;
   sz       = SIZE2D(cell_w * CHARS_COLS, cell_h * CHARS_ROWS);
 
-  return wuss_window_create_placed(wuss,
+  return wuss_window_create_placed(delegate,
                                    sz,
                                    "Chars",
                                    wuss_WINDOW_NO_RESIZE      |
@@ -54,7 +62,6 @@ result_t chars_create(wuss_t *wuss, chars_task_t *task)
                                    wuss_WINDOW_NO_VSCROLL     |
                                    wuss_WINDOW_NO_HSCROLL,
                                    wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                   &delegate,
                                    sz,
                                    SIZE2D(0, 0),
                                    &task->window);
@@ -119,7 +126,6 @@ result_t chars_handle(wuss_window_t      *window,
 {
   if (event->kind == wuss_EVENT_CLOSE)
   {
-    wuss_window_close(window);
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
   }

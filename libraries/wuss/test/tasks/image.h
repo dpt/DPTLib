@@ -19,7 +19,7 @@ typedef struct image_task
 }
 image_task_t;
 
-wuss_event_fn_t image_handle;
+wuss_window_fn_t image_handle;
 
 /* load the PNG at path (and the 9-patch PNG at background_path, drawn tiled
  * behind it) and create its window against the given wuss instance */
