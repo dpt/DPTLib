@@ -3,7 +3,7 @@
 #ifndef TASKS_BALL_H
 #define TASKS_BALL_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/colour.h"
 #include "wuss/window.h"
@@ -38,6 +38,6 @@ wuss_window_fn_t ball_handle;
  * per-instance block owned by the window and freed when it closes */
 result_t ball_create(wuss_t *wuss, ball_task_t *task);
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_BALL_H */

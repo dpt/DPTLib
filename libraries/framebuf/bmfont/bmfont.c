@@ -17,6 +17,7 @@
 
 #include <png.h>
 
+#include "base/debug.h"
 #include "base/utils.h"
 #include "framebuf/bmfont.h"
 #include "utils/array.h"
@@ -361,12 +362,14 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
   fp = fopen(png, "rb");
   if (fp == NULL)
   {
+    logf_error("bmfont_create: cannot open \"%s\"", png);
     rc = result_FILE_NOT_FOUND;
     goto cleanup;
   }
 
   if (!file_is_png(fp))
   {
+    logf_error("bmfont_create: \"%s\" is not a PNG", png);
     rc = result_BAD_ARG;
     goto cleanup;
   }

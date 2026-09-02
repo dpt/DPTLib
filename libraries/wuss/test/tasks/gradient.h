@@ -3,7 +3,7 @@
 #ifndef TASKS_GRADIENT_H
 #define TASKS_GRADIENT_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "wuss/window.h"
 
@@ -22,6 +22,6 @@ wuss_window_fn_t gradient_handle;
 result_t gradient_create(wuss_t *wuss, gradient_task_t *task);
 
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_GRADIENT_H */

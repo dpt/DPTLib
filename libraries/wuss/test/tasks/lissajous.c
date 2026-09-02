@@ -1,6 +1,6 @@
 /* wuss/test/tasks/lissajous.c -- Lissajous figure task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <math.h>
 #include <stdlib.h>
@@ -170,4 +170,4 @@ result_t lissajous_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

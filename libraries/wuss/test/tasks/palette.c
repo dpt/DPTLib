@@ -1,6 +1,6 @@
 /* wuss/test/tasks/palette.c -- desktop palette swatch grid task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -103,4 +103,4 @@ result_t palette_handle(wuss_window_t      *window,
   return palette_redraw(event, task_data);
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

@@ -1,6 +1,6 @@
 /* wuss/test/tasks/ball.c -- bouncing ball task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -229,4 +229,4 @@ result_t ball_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

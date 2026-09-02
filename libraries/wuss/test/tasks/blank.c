@@ -1,6 +1,6 @@
 /* wuss/test/tasks/blank.c -- colour-cycling task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -83,4 +83,4 @@ result_t blank_handle(wuss_window_t      *window,
   return blank_idle(task_data);
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

@@ -1,6 +1,6 @@
 /* wuss/test/tasks/text.c -- static paragraph task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -172,4 +172,4 @@ result_t text_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

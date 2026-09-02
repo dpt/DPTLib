@@ -1,6 +1,6 @@
 /* wuss/test/tasks/swatches.c -- fill-pattern swatch grid task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 #include <string.h>
@@ -136,4 +136,4 @@ result_t swatches_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

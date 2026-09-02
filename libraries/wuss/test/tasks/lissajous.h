@@ -3,7 +3,7 @@
 #ifndef TASKS_LISSAJOUS_H
 #define TASKS_LISSAJOUS_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/colour.h"
 #include "wuss/window.h"
@@ -30,6 +30,6 @@ wuss_window_fn_t lissajous_handle;
  * per-instance block owned by the window and freed when it closes */
 result_t lissajous_create(wuss_t *wuss, lissajous_task_t *task);
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_LISSAJOUS_H */
