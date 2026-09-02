@@ -350,6 +350,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/redraw.c
     libraries/wuss/scroll.c
     libraries/wuss/scroll-step.c
+    libraries/wuss/set-backdrop.c
     libraries/wuss/set-palette.c
     libraries/wuss/task/create.c
     libraries/wuss/task/destroy.c

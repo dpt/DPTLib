@@ -361,6 +361,24 @@ result_t wuss_set_palette(wuss_t         *wuss,
                           int             npalette);
 
 /**
+ * Replace the desktop backdrop partway through a session.
+ *
+ * Validates \p backdrop against the current palette (as wuss_create does its
+ * config->backdrop), copies it in over the existing one, then invalidates
+ * the whole screen so the next wuss_redraw / wuss_redraw_dirty repaints it
+ * behind every window. Tasks are not notified. The caller is still
+ * responsible for the next redraw.
+ *
+ * \param[in] wuss     Window manager.
+ * \param[in] backdrop New backdrop, copied in. Set its colour to
+ *                     wuss_NO_BACKGROUND for no backdrop.
+ * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if a colour
+ *         index in \p backdrop is out of range (the backdrop is left
+ *         unchanged).
+ */
+result_t wuss_set_backdrop(wuss_t *wuss, const wuss_backdrop_t *backdrop);
+
+/**
  * Destroy a window manager, and any windows still open on it.
  *
  * \param[in] doomed Window manager to destroy.
