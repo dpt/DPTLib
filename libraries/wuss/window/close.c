@@ -32,6 +32,7 @@ void wuss_window_close(wuss_window_t *doomed)
   wuss__invalidate_clipped(doomed, &doomed->visible);
 
   list_remove(&wuss->z_order, &doomed->link);
+  list_remove(&doomed->task->windows, &doomed->task_link);
 
 #ifdef WUSS_ICONS
   wuss__icons_free(doomed);

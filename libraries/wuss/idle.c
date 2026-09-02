@@ -11,17 +11,15 @@ result_t wuss_idle(wuss_t *wuss)
   event.kind = wuss_EVENT_IDLE;
 
   rc = result_OK;
-  for (e = wuss->z_order.next; e != NULL; e = e->next)
+  for (e = wuss->tasks.next; e != NULL; e = e->next)
   {
-    wuss_window_t *win;
-    result_t       crc;
+    wuss_task_t *task;
+    result_t     crc;
 
-    win = (wuss_window_t *) e;
-    if (win->task.handle == NULL)
-      continue;
+    task = (wuss_task_t *) e;
 
-    crc = win->task.handle(win, &event, win->task.task_data);
-    if (crc != result_OK)
+    crc = wuss__deliver(task, NULL, &event);
+    if (crc != result_OK && rc == result_OK)
       rc = crc;
   }
 

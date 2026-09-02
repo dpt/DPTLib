@@ -51,7 +51,6 @@ result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
   }
 #endif
 
-  if (win->task.handle != NULL)
   {
     box_t        content;
     wuss_event_t event;
@@ -68,11 +67,6 @@ result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
     wuss__scroll_step(win, POINT(0, delta));
     wuss__scroll_rehover(wuss, win, POINT(x, y));
 
-    return win->task.handle(win, &event, win->task.task_data);
+    return wuss__deliver(win->task, win, &event);
   }
-
-  wuss__scroll_step(win, POINT(0, delta));
-  wuss__scroll_rehover(wuss, win, POINT(x, y));
-
-  return result_OK;
 }

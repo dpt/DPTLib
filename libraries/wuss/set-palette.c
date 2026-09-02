@@ -32,16 +32,14 @@ result_t wuss_set_palette(wuss_t         *wuss,
 
   rc = result_OK;
   event.kind = wuss_EVENT_PALETTE;
-  for (e = wuss->z_order.next; e != NULL; e = e->next)
+  for (e = wuss->tasks.next; e != NULL; e = e->next)
   {
-    wuss_window_t *win;
-    result_t       crc;
+    wuss_task_t *task;
+    result_t     crc;
 
-    win = (wuss_window_t *) e;
-    if (win->task.handle == NULL)
-      continue;
+    task = (wuss_task_t *) e;
 
-    crc = win->task.handle(win, &event, win->task.task_data);
+    crc = wuss__deliver(task, NULL, &event);
     if (crc != result_OK && rc == result_OK)
       rc = crc;
   }

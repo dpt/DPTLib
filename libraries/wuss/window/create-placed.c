@@ -74,16 +74,16 @@ static void next_cascade(wuss_t *wuss, int fw, int fh, point_t *pos)
   wuss->cascade.y += step;
 }
 
-result_t wuss_window_create_placed(wuss_t             *wuss,
+result_t wuss_window_create_placed(wuss_task_t        *task,
                                    size2d_t            size,
                                    const char         *title,
                                    wuss_window_flags_t flags,
                                    wuss_backdrop_t     bg,
-                                   const wuss_task_t  *task,
                                    size2d_t            doc,
                                    size2d_t            min_doc,
                                    wuss_window_t     **window)
 {
+  wuss_t        *wuss;
   result_t       rc;
   int            left, top, right, bottom;
   int            fw, fh;
@@ -92,8 +92,10 @@ result_t wuss_window_create_placed(wuss_t             *wuss,
   const box_t   *slot;
   int            tracked;
 
-  assert(wuss   != NULL);
+  assert(task   != NULL);
   assert(window != NULL);
+
+  wuss = task->wuss;
 
   if (!wuss__size_ok(size.w, size.h))
     return result_WUSS_TOO_SMALL;
@@ -157,7 +159,7 @@ result_t wuss_window_create_placed(wuss_t             *wuss,
     consumed.y1 = slot->y1 + WUSS_PLACE_GUTTER;
   }
 
-  rc = wuss_window_create(wuss, &content, title, flags, bg, task,
+  rc = wuss_window_create(task, &content, title, flags, bg,
                           doc, min_doc, window);
   if (rc != result_OK)
   {
