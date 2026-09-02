@@ -3600,10 +3600,13 @@ MenuOK: ;
 
     if (ftc.menu_select_count != 2) goto FlashCheckFail;
     if (ftc.last_menu_index != 2)   goto FlashCheckFail;
-    /* ADJUST keeps the chain open, but no row may be left inverted */
+    /* ADJUST keeps the chain open. The flash ends un-highlit, but the pointer
+     * is still parked on row 2 (flash_pick_row left it there) so that row --
+     * and only that row -- comes back highlit. */
     if (fwuss->menu_chain == NULL)  goto FlashCheckFail;
     for (i = 0; i < flash_menu.nitems; i++)
-      if (wuss__icon_hovered(fwuss->menu_chain->icons[i])) goto FlashCheckFail;
+      if (wuss__icon_hovered(fwuss->menu_chain->icons[i]) != (i == 2))
+        goto FlashCheckFail;
 
     rc = result_OK;
     goto FlashDestroy;
