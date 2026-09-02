@@ -1,4 +1,4 @@
-/* wuss.h -- minimal window manager */
+/* wuss/wuss.h -- minimal window manager */
 
 /**
  * \file wuss.h
@@ -16,8 +16,11 @@ extern "C"
 {
 #endif
 
+#include <stddef.h>
+
 #include "base/result.h"
 #include "framebuf/bmfont.h"
+#include "framebuf/screen.h"
 #include "geom/box.h"
 #include "geom/point.h"
 #include "geom/size.h"
@@ -29,7 +32,8 @@ extern "C"
 /** A palette index was out of range. */
 #define result_WUSS_BAD_COLOUR (result_BASE_WUSS + 1)
 /**
- * An icon spec was malformed (unknown type, or BUTTON without a fill colour).
+ * An icon spec was malformed (unknown type, or BUTTON without a fill
+ * colour).
  */
 #define result_WUSS_BAD_ICON   (result_BASE_WUSS + 2)
 
@@ -46,13 +50,32 @@ typedef struct wuss_window wuss_window_t;
 typedef struct wuss_icon wuss_icon_t;
 
 /**
+ * Allocator hooks used by a wuss_t for every heap block it owns (the
+ * instance itself, windows, icons, menu nodes). The three members must
+ * behave like the C library malloc / realloc / free -- same argument and
+ * return conventions, realloc(NULL, n) == malloc(n), free(NULL) a no-op.
+ * Passed to wuss_create and copied in; NULL there selects wuss_alloc (plain
+ * stdlib).
+ */
+typedef struct wuss_alloc
+{
+  void *(*malloc)(size_t size);
+  void *(*realloc)(void *ptr, size_t size);
+  void  (*free)(void *ptr);
+}
+wuss_alloc_t;
+
+/** The default allocator: the C library malloc / realloc / free. */
+extern const wuss_alloc_t wuss_alloc;
+
+/**
  * Mouse buttons, RISC OS-style: Select is the primary action, Adjust the
  * secondary action, Menu pops up a menu.
  *
  * These are flags, OR'd together, so that chords (e.g. Select and Adjust
  * pressed together) can be reported. The bit values match the RISC OS button
- * order. Test them with '&' rather than comparing for equality, or a chord will
- * match no button at all.
+ * order. Test them with '&' rather than comparing for equality, or a chord
+ * will match no button at all.
  */
 typedef enum wuss_button
 {
@@ -75,10 +98,11 @@ wuss_mouse_action_t;
 /**
  * An index into a wuss_t's system palette (see wuss_create). Not a colour_t.
  */
-typedef int wuss_colour_t;
+typedef unsigned char wuss_colour_t;
 
 /**
- * Sentinel for wuss_window_create's bg meaning "no automatic background fill".
+ * Sentinel for wuss_window_create's bg meaning "no automatic background
+ * fill".
  */
 #define wuss_NO_BACKGROUND ((wuss_colour_t) -1)
 
@@ -87,7 +111,7 @@ typedef int wuss_colour_t;
  * flat colour. Ignored when the library is built with WUSS_FURNITURE off.
  * Each value is an index into the system palette (see
  * wuss_create). */
-typedef struct wuss_palette
+typedef struct wuss_furniture_palette
 {
   struct
   {
@@ -107,7 +131,7 @@ typedef struct wuss_palette
   }
   scroll;
 }
-wuss_palette_t;
+wuss_furniture_palette_t;
 
 /**
  * Per-window appearance flags, combinable with bitwise OR.
@@ -160,10 +184,21 @@ typedef enum wuss_window_flags
   /**
    * A resize (drag or toggle-size) always fully redraws the window's content
    * instead of blitting the preserved region -- for a task whose rendering
-   * depends on the window's size in ways redraw can't patch incrementally (e.g.
-   * a palette that lays itself out across the whole window).
+   * depends on the window's size in ways redraw can't patch incrementally
+   * (e.g. a palette that lays itself out across the whole window).
    */
-  wuss_WINDOW_NO_RESIZE_BLIT = 1 << 8
+  wuss_WINDOW_NO_RESIZE_BLIT = 1 << 8,
+
+  /**
+   * Created hidden, or hidden later via wuss_window_set_hidden: the window
+   * keeps its place in the z-order but is not drawn and not hit-tested, so
+   * it neither occludes other windows nor catches the pointer. Its position
+   * can still be changed with wuss_window_move while hidden, ready for when
+   * it is shown again. Unlike the wuss_WINDOW_NO_* bits this one is toggled
+   * at runtime, and it is honoured regardless of the WUSS_FURNITURE build
+   * option.
+   */
+  wuss_WINDOW_HIDDEN         = 1 << 9
 }
 wuss_window_flags_t;
 
@@ -177,28 +212,68 @@ typedef enum wuss_zorder
 wuss_zorder_t;
 
 /**
+ * Desktop background specification: a flat colour, or an 8x8 fill pattern.
+ * Used by wuss_config_t. Always honoured regardless of the WUSS_FURNITURE /
+ * WUSS_ICONS options.
+ */
+typedef struct wuss_backdrop
+{
+  /**
+   * Fill colour, or wuss_NO_BACKGROUND to leave the background untouched
+   * (the caller must then repaint it itself before wuss_redraw /
+   * wuss_redraw_dirty). When pattern is not screen_PATTERN_SOLID this is the
+   * pattern's foreground (set-bit) colour.
+   */
+  wuss_colour_t    colour;
+
+  /**
+   * Fill pattern. screen_PATTERN_SOLID (the default) fills flat in colour;
+   * any other value tiles that pattern in colour over pattern_bg, phased to
+   * a fixed screen origin so it stays put across dirty-region redraws.
+   * Ignored when colour is wuss_NO_BACKGROUND.
+   */
+  screen_pattern_t pattern;
+
+  /** Pattern background (clear-bit) colour; used only when pattern is not
+   *  screen_PATTERN_SOLID. */
+  wuss_colour_t    pattern_bg;
+}
+wuss_backdrop_t;
+
+/** A flat-colour wuss_backdrop_t (or wuss_NO_BACKGROUND for none), as a
+ *  compound literal -- the common case where no fill pattern is wanted. */
+#define wuss_BACKDROP_COLOUR(c) \
+  ((wuss_backdrop_t) { (c), screen_PATTERN_SOLID, wuss_NO_BACKGROUND })
+
+/** A patterned wuss_backdrop_t: 8x8 pattern p tiled in colour c over
+ *  background colour b. */
+#define wuss_BACKDROP_PATTERN(c, p, b) ((wuss_backdrop_t) { (c), (p), (b) })
+
+/**
  * Optional creation-time configuration.
  *
- * \note titlebar_height and palette are ignored when the library is built with
- *       WUSS_FURNITURE off; bevel is ignored when built with both
- *       WUSS_FURNITURE and WUSS_ICONS off. backdrop is always honoured.
+ * \note titlebar_height and palette are ignored when the library is built
+ *       with WUSS_FURNITURE off; bevel and accent are ignored when built
+ *       with both WUSS_FURNITURE and WUSS_ICONS off. backdrop is always
+ *       honoured. See the backdrop sub-struct for its own notes.
  */
 typedef struct wuss_config
 {
   /**
-   * Titlebar height in pixels, or 0 to derive from font metrics (or a built-in
-   * fallback if no font). Ignored when WUSS_FURNITURE is off.
+   * Titlebar height in pixels, or 0 to derive from font metrics (or a
+   * built-in fallback if no font). Ignored when WUSS_FURNITURE is off.
    */
   int            titlebar_height;
 
   /** Furniture chrome colours. Ignored when WUSS_FURNITURE is off. */
-  wuss_palette_t palette;
+  wuss_furniture_palette_t furniture;
 
   /**
-   * Bevelled work-area button edge shades, as indices into the system palette:
-   * light on the top/left edges, dark on the bottom/right (swapped when the
-   * button is pressed). Both default to the titlebar fill colour when config is
-   * NULL. Ignored when both WUSS_FURNITURE and WUSS_ICONS are off.
+   * Bevelled work-area button edge shades, as indices into the system
+   * palette: light on the top/left edges, dark on the bottom/right (swapped
+   * when the button is pressed). Both default to the titlebar fill colour
+   * when config is NULL. Ignored when both WUSS_FURNITURE and WUSS_ICONS are
+   * off.
    */
   struct
   {
@@ -208,19 +283,29 @@ typedef struct wuss_config
   bevel;
 
   /**
-   * Desktop background colour, painted behind windows on every redraw, or
-   * wuss_NO_BACKGROUND to leave the background untouched (the caller must then
-   * repaint it itself before wuss_redraw / wuss_redraw_dirty).
+   * Fill and text colours for a default action button -- a work-area button
+   * icon created with wuss_ICON_FLAGS_DEFAULT, drawn to stand out from the
+   * ordinary bevelled buttons around it (RISC OS's "default action button").
+   * Both default to the titlebar colours (bg / fg) when config is NULL.
+   * Ignored when both WUSS_FURNITURE and WUSS_ICONS are off.
    */
-  wuss_colour_t  backdrop;
+  struct
+  {
+    wuss_colour_t bg; /**< Default-button fill. */
+    wuss_colour_t fg; /**< Default-button text. */
+  }
+  accent;
+
+  /** Desktop background, painted behind windows on every redraw. */
+  wuss_backdrop_t backdrop;
 }
 wuss_config_t;
 
 /**
  * Create a window manager.
  *
- * \param[in]  scr      Screen to draw windows onto. Not owned; must outlive the
- *                      wuss_t.
+ * \param[in]  scr      Screen to draw windows onto. Not owned; must outlive
+ *                      the wuss_t.
  * \param[in]  font     Font used to draw titlebar labels, or NULL to draw
  *                      titlebars unlabelled. Not owned.
  * \param[in]  palette  System palette, copied in, or NULL to use a built-in
@@ -228,17 +313,46 @@ wuss_config_t;
  * \param[in]  npalette Number of entries in palette. Ignored if palette is
  *                      NULL.
  * \param[in]  config   Creation-time configuration, or NULL for defaults.
+ * \param[in]  alloc    Allocator hooks, copied in, or NULL for \ref
+ *                      wuss_alloc (plain stdlib). Must outlive nothing --
+ *                      only the three function pointers are kept.
  * \param[out] wuss     Newly created window manager.
  * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if any of
- *         config's palette entries are out of range for the palette, or another
- *         appropriate result code.
+ *         config's palette entries are out of range for the palette, or
+ *         another appropriate result code.
  */
 result_t wuss_create(screen_t            *scr,
                      bmfont_t            *font,
                      const colour_t      *palette,
                      int                  npalette,
                      const wuss_config_t *config,
+                     const wuss_alloc_t  *alloc,
                      wuss_t             **wuss);
+
+/**
+ * Replace the system palette partway through a session.
+ *
+ * Copies \p palette in over the existing one (same semantics as
+ * wuss_create's palette argument), refreshes the cached nearest-black /
+ * nearest-white indices, broadcasts a \ref wuss_EVENT_PALETTE event to every
+ * window's task so they can recache any wuss_nearest_colour selections, then
+ * invalidates the whole screen. The caller is still responsible for the next
+ * wuss_redraw / wuss_redraw_dirty, and -- on a paletted screen -- for
+ * updating the screen bitmap's own palette to match.
+ *
+ * \param[in] wuss     Window manager.
+ * \param[in] palette  New system palette, copied in.
+ * \param[in] npalette Number of entries in palette. Must equal the count
+ *                     passed to wuss_create.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if npalette does
+ *         not match the current palette length, \ref result_WUSS_BAD_COLOUR
+ *         if a configured furniture/bevel/backdrop colour index is now out
+ *         of range (in which case the palette is left unchanged), else the
+ *         first non-OK result returned by a task's handle callback.
+ */
+result_t wuss_set_palette(wuss_t         *wuss,
+                          const colour_t *palette,
+                          int             npalette);
 
 /**
  * Destroy a window manager, and any windows still open on it.
@@ -248,13 +362,37 @@ result_t wuss_create(screen_t            *scr,
 void wuss_destroy(wuss_t *doomed);
 
 /**
- * Fetch the system font (see wuss_create), for tasks to draw their own content
- * in the same face as window titlebars.
+ * Fetch the system font (see wuss_create), for tasks to draw their own
+ * content in the same face as window titlebars.
  *
  * \param[in] wuss Window manager.
  * \return System font, or NULL if none was given to wuss_create.
  */
 bmfont_t *wuss_get_font(const wuss_t *wuss);
+
+/**
+ * The last pointer position seen by wuss_mouse_click or wuss_mouse_move,
+ * screen space. (0,0) until the first mouse event. Handy for opening a
+ * pop-up menu under the pointer from a task's icon handler, which gets no
+ * coordinate of its own.
+ *
+ * \param[in] wuss Window manager.
+ * \return Last pointer position, screen space.
+ */
+point_t wuss_get_pointer(const wuss_t *wuss);
+
+/**
+ * Find the system palette entry (see wuss_create) closest to an RGB value,
+ * by squared Euclidean distance in RGB space. Alpha is ignored. Ties keep
+ * the lower index.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] r    Red component, 0..255.
+ * \param[in] g    Green component, 0..255.
+ * \param[in] b    Blue component, 0..255.
+ * \return Palette index, 0..npalette-1.
+ */
+wuss_colour_t wuss_nearest_colour(const wuss_t *wuss, int r, int g, int b);
 
 /**
  * Redraw every window, back-to-front, having first painted the configured
@@ -268,10 +406,11 @@ bmfont_t *wuss_get_font(const wuss_t *wuss);
 result_t wuss_redraw(wuss_t *wuss);
 
 /**
- * Mark a screen-space region dirty. Window creation, destruction, move, resize
- * and bring-to-front invalidate their own affected regions automatically; tasks
- * must call this themselves when their content changes (e.g. an animation),
- * passing the union of the old and new screen-space areas that need repainting.
+ * Mark a screen-space region dirty. Window creation, destruction, move,
+ * resize and bring-to-front invalidate their own affected regions
+ * automatically; tasks must call this themselves when their content changes
+ * (e.g. an animation), passing the union of the old and new screen-space
+ * areas that need repainting.
  *
  * \param[in] wuss Window manager.
  * \param[in] box  Screen-space region to mark dirty.
@@ -282,8 +421,8 @@ result_t wuss_invalidate(wuss_t *wuss, const box_t *box);
 /**
  * Redraw only the region accumulated by wuss_invalidate calls (and any
  * automatic invalidation from window management) since the last redraw,
- * back-to-front, then clear the dirty region. Does nothing if nothing is dirty.
- * Each dirty region has the configured backdrop colour (see
+ * back-to-front, then clear the dirty region. Does nothing if nothing is
+ * dirty. Each dirty region has the configured backdrop colour (see
  * wuss_config_t::backdrop) painted into it first, if any.
  *
  * \param[in] wuss Window manager.
@@ -295,9 +434,9 @@ result_t wuss_redraw_dirty(wuss_t *wuss);
 /**
  * Fetch the number of dirty regions currently accumulated (see
  * wuss_invalidate). Regions are self-coalescing: an invalidation already
- * covered by an existing region is discarded, and one sharing a complete edge
- * with an existing region extends it in place, so this stays small under most
- * usage.
+ * covered by an existing region is discarded, and one sharing a complete
+ * edge with an existing region extends it in place, so this stays small
+ * under most usage.
  *
  * \param[in] wuss Window manager.
  * \return Number of dirty regions, 0 if nothing is dirty.
@@ -305,28 +444,28 @@ result_t wuss_redraw_dirty(wuss_t *wuss);
 int wuss_get_dirty_count(const wuss_t *wuss);
 
 /**
- * Fetch one of the current accumulated dirty regions (see wuss_invalidate). If
- * no backdrop colour was configured (see wuss_config_t::backdrop), wuss only
- * repaints windows, not background between/behind them, so a caller whose
- * invalidations can expose background (e.g. after a window move) should clear
- * these regions itself before calling wuss_redraw_dirty.
+ * Fetch one of the current accumulated dirty regions (see wuss_invalidate).
+ * If no backdrop colour was configured (see wuss_config_t::backdrop), wuss
+ * only repaints windows, not background between/behind them, so a caller
+ * whose invalidations can expose background (e.g. after a window move)
+ * should clear these regions itself before calling wuss_redraw_dirty.
  *
  * \param[in]  wuss  Window manager.
- * \param[in]  index Index of the region to fetch, 0 to wuss_get_dirty_count() -
- *                   1.
+ * \param[in]  index Index of the region to fetch, 0 to
+ *                   wuss_get_dirty_count() - 1.
  * \param[out] out   Filled in with the dirty region.
  */
 void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
 
 /**
  * Deliver a mouse-down or mouse-up event (action must be wuss_MOUSE_DOWN or
- * wuss_MOUSE_UP). Hit-tests the topmost window at (x,y). On a down, a titlebar
- * click brings the window to front if button is Select (Adjust and Menu leave
- * the z-order unchanged) and starts a drag; on an up, an in-progress drag is
- * ended instead of hit-testing (an Adjust click with no move in between sends
- * the window to the back rather than dragging it). A click on the window's
- * content never changes the z-order and is delivered to the task in
- * window-local content coordinates.
+ * wuss_MOUSE_UP). Hit-tests the topmost window at (x,y). On a down, a
+ * titlebar click brings the window to front if button is Select (Adjust and
+ * Menu leave the z-order unchanged) and starts a drag; on an up, an
+ * in-progress drag is ended instead of hit-testing (an Adjust click with no
+ * move in between sends the window to the back rather than dragging it). A
+ * click on the window's content never changes the z-order and is delivered
+ * to the task in window-local content coordinates.
  *
  * \param[in]  wuss   Window manager.
  * \param[in]  p      Screen coordinate.
@@ -344,10 +483,10 @@ result_t wuss_mouse_click(wuss_t             *wuss,
                           wuss_window_t     **hit);
 
 /**
- * Deliver a mouse-move event. Updates the dragged window's position if a drag
- * is active (invalidating the affected region; call wuss_redraw_dirty to
- * actually repaint it), otherwise hit-tests and delivers to the window's task
- * as per wuss_mouse_click.
+ * Deliver a mouse-move event. Updates the dragged window's position if a
+ * drag is active (invalidating the affected region; call wuss_redraw_dirty
+ * to actually repaint it), otherwise hit-tests and delivers to the window's
+ * task as per wuss_mouse_click.
  *
  * \param[in]  wuss Window manager.
  * \param[in]  p    Screen coordinate.
@@ -360,15 +499,15 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit);
 
 /**
  * Deliver a scroll event. Hit-tests the topmost window at p as per
- * wuss_mouse_click, and delivers to the window's task in window-local content
- * coordinates; dropped if the hit window has no scroll callback, or the pointer
- * is over its titlebar.
+ * wuss_mouse_click, and delivers to the window's task in window-local
+ * content coordinates; dropped if the hit window has no scroll callback, or
+ * the pointer is over its titlebar.
  *
  * \param[in]  wuss  Window manager.
  * \param[in]  p     Screen coordinate.
  * \param[in]  delta Scroll amount; sign and units are caller-defined.
- * \param[out] hit   Window under the pointer, or NULL if none. May be NULL if
- *                   not needed.
+ * \param[out] hit   Window under the pointer, or NULL if none. May be NULL
+ *                   if not needed.
  * \return \ref result_OK, or a result code returned by the task's scroll
  *         callback.
  */
@@ -379,13 +518,13 @@ result_t wuss_scroll(wuss_t         *wuss,
 
 /**
  * Broadcast a wuss_EVENT_IDLE event to every window's task, in z-order.
- * Intended to be called once per main-loop iteration, after other pending input
- * has been handled, so tasks can drive their own animation/timers without the
- * caller stepping each one individually.
+ * Intended to be called once per main-loop iteration, after other pending
+ * input has been handled, so tasks can drive their own animation/timers
+ * without the caller stepping each one individually.
  *
  * \param[in] wuss Window manager whose windows' tasks should go idle.
- * \return \ref result_OK on success, else the first non-OK result returned by a
- *         task's handle callback.
+ * \return \ref result_OK on success, else the first non-OK result returned
+ *         by a task's handle callback.
  */
 result_t wuss_idle(wuss_t *wuss);
 

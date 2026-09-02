@@ -1,4 +1,4 @@
-/* composite.h -- Porter-Duff image compositing */
+/* framebuf/composite.h -- Porter-Duff image compositing */
 
 #ifndef COMPOSITE_H
 #define COMPOSITE_H

@@ -1,4 +1,4 @@
-/* create.c -- wuss - create a work-area icon */
+/* wuss/icon/create.c -- create a work-area icon */
 
 #include <assert.h>
 #include <stdlib.h>
@@ -26,14 +26,29 @@ result_t wuss_icon_create(wuss_window_t          *window,
 
   w = window->wuss;
 
-  if (spec->type != wuss_ICON_TYPE_LABEL &&
-      spec->type != wuss_ICON_TYPE_BUTTON &&
-      spec->type != wuss_ICON_TYPE_PATTERN)
+  switch (spec->type)
+  {
+  case wuss_ICON_TYPE_LABEL:
+  case wuss_ICON_TYPE_BUTTON:
+  case wuss_ICON_TYPE_PATTERN:
+  case wuss_ICON_TYPE_FRAME:
+  case wuss_ICON_TYPE_RADIO:
+  case wuss_ICON_TYPE_OPTION:
+  case wuss_ICON_TYPE_BITMAP:
+  case wuss_ICON_TYPE_MENU_ENTRY:
+  case wuss_ICON_TYPE_RULE:
+    break;
+
+  default:
     return result_WUSS_BAD_ICON;
+  }
 
   if ((spec->type == wuss_ICON_TYPE_BUTTON ||
        spec->type == wuss_ICON_TYPE_PATTERN) &&
       spec->bg == wuss_NO_BACKGROUND)
+    return result_WUSS_BAD_ICON;
+
+  if (spec->type == wuss_ICON_TYPE_BITMAP && spec->bitmap == NULL)
     return result_WUSS_BAD_ICON;
 
   if (spec->type == wuss_ICON_TYPE_PATTERN &&
@@ -50,36 +65,38 @@ result_t wuss_icon_create(wuss_window_t          *window,
   if (window->nicons == window->cap_icons)
   {
     newcap = (window->cap_icons == 0) ? 4 : window->cap_icons * 2;
-    grown  = realloc(window->icons, newcap * sizeof(*window->icons));
+    grown  = wuss__realloc(w, window->icons, newcap * sizeof(*window->icons));
     if (grown == NULL)
       return result_OOM;
     window->icons     = grown;
     window->cap_icons = newcap;
   }
 
-  it = malloc(sizeof(*it));
+  it = wuss__malloc(w, sizeof(*it));
   if (it == NULL)
     return result_OOM;
 
   src = (spec->text != NULL) ? spec->text : "";
   len = strlen(src);
-  it->text = malloc(len + 1);
+  it->text = wuss__malloc(w, len + 1);
   if (it->text == NULL)
   {
-    free(it);
+    wuss__free(w, it);
     return result_OOM;
   }
   memcpy(it->text, src, len + 1);
 
-  it->window  = window;
-  it->bbox    = spec->bbox;
-  it->type    = spec->type;
-  it->fg      = spec->fg;
-  it->bg      = spec->bg;
-  it->pattern = (spec->type == wuss_ICON_TYPE_PATTERN) ? spec->pattern
-                                                       : screen_PATTERN_SOLID;
-  it->flags   = spec->flags;
-  it->pressed = 0;
+  it->window   = window;
+  it->bbox     = spec->bbox;
+  it->type     = spec->type;
+  it->fg       = spec->fg;
+  it->bg       = spec->bg;
+  it->pattern  = (spec->type == wuss_ICON_TYPE_PATTERN) ? spec->pattern
+                                                        : screen_PATTERN_SOLID;
+  it->bitmap   = (spec->type == wuss_ICON_TYPE_BITMAP) ? spec->bitmap : NULL;
+  it->group    = (spec->type == wuss_ICON_TYPE_RADIO) ? spec->group : 0;
+  it->flags    = spec->flags;
+  it->state    = wuss_ICON_STATE_NONE;
 
   window->icons[window->nicons++] = it;
 

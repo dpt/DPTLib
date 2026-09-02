@@ -1,4 +1,4 @@
-/* wrap.c -- txtfmt - text formatting */
+/* text/txtfmt/wrap.c -- text formatting */
 
 #include <stdlib.h>
 #include <string.h>

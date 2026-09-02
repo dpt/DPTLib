@@ -1,4 +1,4 @@
-/* all8888-blend.c -- alpha blending common to all 8888 formats */
+/* framebuf/span/all8888-generic.c -- alpha blending common to all 8888 formats */
 
 #include "base/utils.h"
 

@@ -1,4 +1,4 @@
-/* contains-box.c -- return true if box "inside" is contained by box "outside" */
+/* geom/box/contains-box.c -- return true if box "inside" is contained by box "outside" */
 
 #include "geom/box.h"
 

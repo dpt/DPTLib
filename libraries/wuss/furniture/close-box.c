@@ -1,4 +1,4 @@
-/* close-box.c -- wuss - minimal window manager */
+/* wuss/furniture/close-box.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

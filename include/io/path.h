@@ -1,4 +1,4 @@
-/* path.h -- filename path handling */
+/* io/path.h -- filename path handling */
 
 #ifndef DPTLIB_PATH
 #define DPTLIB_PATH

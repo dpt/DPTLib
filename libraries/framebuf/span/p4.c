@@ -1,4 +1,4 @@
-/* p4.c -- P4 (4bpp paletted) format plot methods */
+/* framebuf/span/p4.c -- P4 (4bpp paletted) format plot methods */
 
 #include <stddef.h>
 
@@ -14,7 +14,7 @@
 /* pixel values here are unpacked palette indices, one per byte (not the
  * two-nibbles-per-byte layout used in screen memory); packing/unpacking
  * into the actual screen bytes is the caller's job, as with
- * screen_draw_pixel's other pixel formats. src2 is an array of colour_t,
+ * screen_set_pixel's other pixel formats. src2 is an array of colour_t,
  * not pre-quantised pixels, so the blend happens in full RGB precision
  * before re-quantising to the nearest palette entry. */
 static void span_p4_blendconst(void       *vdst,

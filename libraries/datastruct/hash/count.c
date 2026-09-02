@@ -1,4 +1,4 @@
-/* count.c -- hash */
+/* datastruct/hash/count.c -- hash */
 
 #include "datastruct/hash.h"
 

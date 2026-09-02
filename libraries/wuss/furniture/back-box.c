@@ -1,4 +1,4 @@
-/* back-box.c -- wuss - minimal window manager */
+/* wuss/furniture/back-box.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

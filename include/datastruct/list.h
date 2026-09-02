@@ -1,4 +1,4 @@
-/* list.h -- linked lists */
+/* datastruct/list.h -- linked lists */
 
 /**
  * \file list.h

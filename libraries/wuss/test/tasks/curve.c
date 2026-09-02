@@ -1,4 +1,4 @@
-/* curve.c -- wuss test - draggable Bezier curve task */
+/* wuss/test/tasks/curve.c -- draggable Bezier curve task */
 
 #ifdef USE_SDL
 
@@ -23,15 +23,13 @@
 #define CURVE_SEGMENTS_MIN     4
 #define CURVE_SEGMENTS_MAX     128
 
-result_t curve_create(wuss_t         *wuss,
-                      const colour_t *palette,
-                      curve_task_t   *task)
+result_t curve_create(wuss_t *wuss, curve_task_t *task)
 {
   wuss_task_t delegate;
 
-  task->bg        = palette[palette_PICO8_WHITE];
-  task->line      = palette[palette_PICO8_BLACK];
-  task->blob      = palette[palette_PICO8_RED];
+  task->bg        = colour_rgb(0xFF, 0xFF, 0xFF);
+  task->line      = colour_rgb(0x00, 0x00, 0x00);
+  task->blob      = colour_rgb(0xFF, 0x00, 0x00);
   task->nsegments = CURVE_SEGMENTS_DEFAULT;
   task->dragging  = -1;
 
@@ -46,7 +44,7 @@ result_t curve_create(wuss_t         *wuss,
                                    SIZE2D(220, 160),
                                    "Curve",
                                    wuss_WINDOW_NONE,
-                                   wuss_NO_BACKGROUND,
+                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                    &delegate,
                                    SIZE2D(220, 160),
                                    SIZE2D(0, 0),
@@ -75,7 +73,7 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  screen_draw_rect(scr, content->x0, content->y0, box_size(content),
+  screen_fill_rect(scr, content->x0, content->y0, box_size(content),
                    task->bg);
 
   prev = task->points[0];
@@ -98,7 +96,7 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   {
     cur = task->points[i];
     cur.x += bounds->x0 - sx; cur.y += bounds->y0 - sy;
-    screen_draw_square(scr, cur.x - half, cur.y - half, CURVE_BLOBSZ, task->blob);
+    screen_fill_square(scr, cur.x - half, cur.y - half, CURVE_BLOBSZ, task->blob);
   }
 
   return result_OK;

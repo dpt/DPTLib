@@ -1,9 +1,10 @@
-/* stream.h -- stream system */
+/* io/stream.h -- stream system */
 
 /**
  * \file Stream (interface).
  *
- * A stream is a generic interface which can be used to wrap sources of bytes.
+ * A stream is a generic interface which can be used to wrap sources of
+ * bytes.
  *
  * Single byte and block operations are supported. Byte access is efficient:
  * implemented as a macro.

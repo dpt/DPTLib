@@ -1,4 +1,4 @@
-/* save.c */
+/* framebuf/bitmap/save.c */
 
 #include <assert.h>
 #include <stdlib.h>

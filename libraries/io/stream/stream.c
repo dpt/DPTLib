@@ -1,4 +1,4 @@
-/* stream.c -- stream system support functions */
+/* io/stream/stream.c -- stream system support functions */
 
 #include <assert.h>
 #include <stdio.h>

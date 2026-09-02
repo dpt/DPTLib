@@ -30,8 +30,9 @@ endif(CCACHE_FOUND)
 option(USE_FORTIFY "Use Fortify" OFF)
 option(USE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
-option(WUSS_FURNITURE "Build the wuss window-furniture subsystem" ON)
-option(WUSS_ICONS "Build the wuss in-content icon subsystem" ON)
+option(WUSS_FURNITURE "Build the Wuss window-furniture subsystem" ON)
+option(WUSS_ICONS "Build the Wuss in-content icon subsystem" ON)
+option(WUSS_MENUS "Build the Wuss pop-up menu helper (implies WUSS_ICONS)" ON)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
 if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
@@ -105,6 +106,7 @@ set(PUBLIC_HEADERS
     include/io/stream.h
     include/test/all-tests.h
     include/test/txtscr.h
+    include/text/bmtext.h
     include/text/txtfmt.h
     include/utils/array.h
     include/utils/barith.h
@@ -120,6 +122,9 @@ set(PUBLIC_HEADERS
 
 if(WUSS_ICONS)
     list(APPEND PUBLIC_HEADERS include/wuss/icon.h)
+endif()
+if(WUSS_MENUS)
+    list(APPEND PUBLIC_HEADERS include/wuss/menu.h)
 endif()
 
 # The public headers must be set as properties of the library, not as
@@ -285,6 +290,8 @@ set(TESTLIB_SOURCES
     libraries/test/txtscr/txtscr.c)
 
 set(TEXT_SOURCES
+    libraries/text/bmtext/draw.c
+    libraries/text/bmtext/layout.c
     libraries/text/txtfmt/create.c
     libraries/text/txtfmt/destroy.c
     libraries/text/txtfmt/get-length.c
@@ -326,17 +333,21 @@ set(UTILS_SOURCES
     libraries/utils/primes/primes.c)
 
 set(WUSS_CORE_SOURCES
+    libraries/wuss/backdrop.c
     libraries/wuss/create.c
     libraries/wuss/destroy.c
     libraries/wuss/get-font.c
+    libraries/wuss/get-pointer.c
     libraries/wuss/idle.c
     libraries/wuss/impl.h
     libraries/wuss/invalidate.c
     libraries/wuss/mouse-click.c
     libraries/wuss/mouse-move.c
+    libraries/wuss/nearest-colour.c
     libraries/wuss/redraw.c
     libraries/wuss/scroll.c
     libraries/wuss/scroll-step.c
+    libraries/wuss/set-palette.c
     libraries/wuss/task/start.c
     libraries/wuss/task/stop.c
     libraries/wuss/window/at.c
@@ -351,6 +362,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/window/resize.c
     libraries/wuss/window/restack.c
     libraries/wuss/window/set-background.c
+    libraries/wuss/window/set-hidden.c
     libraries/wuss/window/set-scroll.c)
 
 set(WUSS_FURNITURE_SOURCES
@@ -362,6 +374,7 @@ set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/hit-test.c
     libraries/wuss/furniture/hscroll-box.c
     libraries/wuss/furniture/invalidate.c
+    libraries/wuss/furniture/ops.c
     libraries/wuss/furniture/resize-box.c
     libraries/wuss/furniture/scroll-action.c
     libraries/wuss/furniture/titlebar-box.c
@@ -377,6 +390,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/draw.c
     libraries/wuss/icon/free.c
     libraries/wuss/icon/get-bbox.c
+    libraries/wuss/icon/get-selected.c
     libraries/wuss/icon/get-text.c
     libraries/wuss/icon/get-type.c
     libraries/wuss/icon/get-window.c
@@ -384,15 +398,28 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/invalidate.c
     libraries/wuss/icon/screen-box.c
     libraries/wuss/icon/set-hidden.c
+    libraries/wuss/icon/set-hover.c
+    libraries/wuss/icon/set-selected.c
     libraries/wuss/icon/set-text.c
     libraries/wuss/icon.h)
+
+set(WUSS_MENU_SOURCES
+    libraries/wuss/menu/menu.c
+    libraries/wuss/menu/create-from-desc.c
+    libraries/wuss/menu.h)
 
 set(WUSS_SOURCES ${WUSS_CORE_SOURCES})
 if(WUSS_FURNITURE)
     list(APPEND WUSS_SOURCES ${WUSS_FURNITURE_SOURCES})
 endif()
+if(WUSS_MENUS)
+    set(WUSS_ICONS ON) # the menu helper needs the icon subsystem
+endif()
 if(WUSS_ICONS)
     list(APPEND WUSS_SOURCES ${WUSS_ICON_SOURCES})
+endif()
+if(WUSS_MENUS)
+    list(APPEND WUSS_SOURCES ${WUSS_MENU_SOURCES})
 endif()
 
 set(ALL_SOURCES
@@ -450,6 +477,9 @@ if(WUSS_FURNITURE)
 endif()
 if(WUSS_ICONS)
     target_compile_definitions(DPTLib PUBLIC WUSS_ICONS)
+endif()
+if(WUSS_MENUS)
+    target_compile_definitions(DPTLib PUBLIC WUSS_MENUS)
 endif()
 
 if(NOT TARGET_RISCOS)
@@ -560,6 +590,7 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include
 
 option(BUILD_TESTS "Build test program" OFF)
 option(BUILD_SDL_TESTS "Build tests that use SDL" OFF)
+option(BUILD_APPS "Build standalone apps (Wuss interactive demo)" OFF)
 
 if(BUILD_TESTS)
     set(TEST_SOURCES
@@ -587,26 +618,7 @@ if(BUILD_TESTS)
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c
-        libraries/wuss/test/tasks/ball.c
-        libraries/wuss/test/tasks/blank.c
-        libraries/wuss/test/tasks/chars.c
-        libraries/wuss/test/tasks/checker.c
-        libraries/wuss/test/tasks/curve.c
-        libraries/wuss/test/tasks/gradient.c
-        libraries/wuss/test/tasks/image.c
-        libraries/wuss/test/tasks/palette.c
-        libraries/wuss/test/tasks/porter-duff.c
-        libraries/wuss/test/tasks/sofa.c
-        libraries/wuss/test/tasks/text.c
         libraries/wuss/test/wuss-test.c)
-
-    # The icon-driven launcher and the icons task only build when both wuss
-    # subsystems are present; the SDL interactive driver needs them too.
-    if(WUSS_FURNITURE AND WUSS_ICONS)
-        list(APPEND TEST_SOURCES
-            libraries/wuss/test/tasks/icons.c
-            libraries/wuss/test/tasks/launcher.c)
-    endif()
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
 
@@ -630,19 +642,70 @@ if(BUILD_TESTS)
         target_link_libraries(DPTLibTest m)
     endif()
 
+    # Some unit tests (e.g. bmfont-test) gate an interactive SDL mode on
+    # USE_SDL; BUILD_SDL_TESTS links SDL3 and defines it for the test binary.
     if(BUILD_SDL_TESTS)
-        if(NOT (WUSS_FURNITURE AND WUSS_ICONS))
-            message(FATAL_ERROR "BUILD_SDL_TESTS requires WUSS_FURNITURE and WUSS_ICONS")
-        endif()
-
         find_package(SDL3 REQUIRED)
         find_package(SDL3_image REQUIRED)
 
         target_link_libraries(DPTLibTest SDL3::SDL3 SDL3_image::SDL3_image)
-
-        target_compile_definitions(DPTLibTest PUBLIC USE_SDL)
+        target_compile_definitions(DPTLibTest PRIVATE USE_SDL)
     endif()
 
     install(TARGETS DPTLibTest RUNTIME
+        DESTINATION ${CMAKE_INSTALL_PREFIX})
+endif()
+
+
+# Standalone apps
+#
+
+if(BUILD_APPS)
+    # The Wuss interactive demo: its own executable, built from the SDL task
+    # modules plus apps/wuss/main.c (which was the old in-test SDL driver).
+    if(NOT (WUSS_FURNITURE AND WUSS_ICONS))
+        message(FATAL_ERROR "BUILD_APPS requires WUSS_FURNITURE and WUSS_ICONS")
+    endif()
+
+    find_package(SDL3 REQUIRED)
+    find_package(SDL3_image REQUIRED)
+
+    set(WUSS_APP_SOURCES
+        apps/wuss/main.c
+        libraries/wuss/test/tasks/ball.c
+        libraries/wuss/test/tasks/blank.c
+        libraries/wuss/test/tasks/chars.c
+        libraries/wuss/test/tasks/checker.c
+        libraries/wuss/test/tasks/curve.c
+        libraries/wuss/test/tasks/gradient.c
+        libraries/wuss/test/tasks/icons.c
+        libraries/wuss/test/tasks/image.c
+        libraries/wuss/test/tasks/lissajous.c
+        libraries/wuss/test/tasks/palette.c
+        libraries/wuss/test/tasks/porter-duff.c
+        libraries/wuss/test/tasks/sofa.c
+        libraries/wuss/test/tasks/swatches.c
+        libraries/wuss/test/tasks/text.c)
+
+    source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${WUSS_APP_SOURCES})
+
+    add_executable(wuss ${WUSS_APP_SOURCES})
+
+    set_target_properties(wuss PROPERTIES
+        DESCRIPTION "DPTLib Wuss interactive demo"
+        C_STANDARD 99
+        OUTPUT_NAME_DEBUG wuss-debug
+        OUTPUT_NAME_RELEASE wuss
+        OUTPUT_NAME_RELWITHDEBINFO wuss-relwithdebinfo
+        OUTPUT_NAME_MINSIZEREL wuss-minsizerel)
+
+    target_include_directories(wuss PRIVATE libraries/wuss/test)
+    target_compile_definitions(wuss PRIVATE USE_SDL)
+    target_link_libraries(wuss DPTLib SDL3::SDL3 SDL3_image::SDL3_image)
+    if(NOT MSVC)
+        target_link_libraries(wuss m)
+    endif()
+
+    install(TARGETS wuss RUNTIME
         DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif()

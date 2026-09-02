@@ -1,4 +1,4 @@
-/* create.c -- bit vectors */
+/* datastruct/bitvec/create.c -- bit vectors */
 
 #include <assert.h>
 #include <stdlib.h>

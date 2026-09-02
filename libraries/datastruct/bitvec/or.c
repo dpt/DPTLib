@@ -1,4 +1,4 @@
-/* or.c -- bit vectors */
+/* datastruct/bitvec/or.c -- bit vectors */
 
 #include <stdlib.h>
 

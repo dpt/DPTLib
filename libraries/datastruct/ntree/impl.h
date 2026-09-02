@@ -1,4 +1,4 @@
-/* impl.h -- n-ary tree */
+/* datastruct/ntree/impl.h -- n-ary tree */
 
 #ifndef NTREE_IMPL_H
 #define NTREE_IMPL_H

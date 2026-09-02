@@ -1,4 +1,4 @@
-/* count.c -- arrays of bits */
+/* datastruct/bitarr/count.c -- arrays of bits */
 
 #include <stddef.h>
 

@@ -1,4 +1,4 @@
-/* ball.c -- wuss test - bouncing ball task */
+/* wuss/test/tasks/ball.c -- bouncing ball task */
 
 #ifdef USE_SDL
 
@@ -14,12 +14,31 @@
 
 #include "ball.h"
 
-result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
+/* Window-local invalidation box covering a ball (or its swept range) whose
+ * centre spans [vx0,vx1] x [vy0,vy1] in virtual content space. */
+static box_t ball_local_box(int     vx0,
+                            int     vy0,
+                            int     vx1,
+                            int     vy1,
+                            int     radius,
+                            point_t scroll)
+{
+  box_t local;
+
+  local.x0 = vx0 - radius - scroll.x;
+  local.y0 = vy0 - radius - scroll.y;
+  local.x1 = vx1 + radius - scroll.x;
+  local.y1 = vy1 + radius - scroll.y;
+
+  return local;
+}
+
+result_t ball_create(wuss_t *wuss, ball_task_t *task)
 {
   wuss_task_t delegate;
 
-  task->bg     = palette[palette_PICO8_RED];
-  task->ball   = palette[palette_PICO8_WHITE];
+  task->bg     = colour_rgb(0xFF, 0x00, 0x00);
+  task->ball   = colour_rgb(0xFF, 0xFF, 0xFF);
   task->nballs = 1;
 
   task->balls[0].x      = 50;
@@ -34,20 +53,20 @@ result_t ball_create(wuss_t *wuss, const colour_t *palette, ball_task_t *task)
                                    SIZE2D(200, 160),
                                    "Bouncing Ball",
                                    wuss_WINDOW_NONE,
-                                   wuss_NO_BACKGROUND,
+                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                    &delegate,
                                    SIZE2D(200, 160),
                                    SIZE2D(0, 0),
                                    &task->window);
 }
 
-
 static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 {
   ball_task_t *bc;
   screen_t    *scr;
   const box_t *content, *bounds;
-  int          i, sx, sy;
+  int          sx, sy;
+  int          i;
 
   bc = task_data;
 
@@ -57,7 +76,7 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  screen_draw_rect(scr, content->x0, content->y0, box_size(content),
+  screen_fill_rect(scr, content->x0, content->y0, box_size(content),
                    bc->bg);
 
   for (i = 0; i < bc->nballs; i++)
@@ -66,7 +85,10 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 
     b = &bc->balls[i];
 
-    screen_draw_rect(scr, bounds->x0 - sx + b->x - b->radius, bounds->y0 - sy + b->y - b->radius, SIZE2D(b->radius * 2, b->radius * 2), bc->ball);
+    screen_fill_rect(scr, bounds->x0 - sx + b->x - b->radius,
+                          bounds->y0 - sy + b->y - b->radius,
+                          SIZE2D(b->radius * 2, b->radius * 2),
+                          bc->ball);
   }
 
   return result_OK;
@@ -107,10 +129,7 @@ static result_t ball_mouse(wuss_window_t      *window,
     b->dy     = (bc->nballs & 2) ? 2 : -2;
     b->radius = 8;
 
-    local.x0 = b->x - b->radius - scroll.x;
-    local.y0 = b->y - b->radius - scroll.y;
-    local.x1 = b->x + b->radius - scroll.x;
-    local.y1 = b->y + b->radius - scroll.y;
+    local = ball_local_box(b->x, b->y, b->x, b->y, b->radius, scroll);
     wuss_window_invalidate(bc->window, &local);
   }
   else if (button & wuss_BUTTON_ADJUST)
@@ -122,10 +141,7 @@ static result_t ball_mouse(wuss_window_t      *window,
 
     b = &bc->balls[--bc->nballs];
 
-    local.x0 = b->x - b->radius - scroll.x;
-    local.y0 = b->y - b->radius - scroll.y;
-    local.x1 = b->x + b->radius - scroll.x;
-    local.y1 = b->y + b->radius - scroll.y;
+    local = ball_local_box(b->x, b->y, b->x, b->y, b->radius, scroll);
     wuss_window_invalidate(bc->window, &local);
   }
 
@@ -166,10 +182,9 @@ static result_t ball_idle(void *task_data)
     if (b->y - b->radius < scroll.y)              { b->y = scroll.y + b->radius;          b->dy = -b->dy; }
     else if (b->y + b->radius > scroll.y + height){ b->y = scroll.y + height - b->radius; b->dy = -b->dy; }
 
-    local.x0 = MIN(old_x, b->x) - b->radius - scroll.x;
-    local.y0 = MIN(old_y, b->y) - b->radius - scroll.y;
-    local.x1 = MAX(old_x, b->x) + b->radius - scroll.x;
-    local.y1 = MAX(old_y, b->y) + b->radius - scroll.y;
+    local = ball_local_box(MIN(old_x, b->x), MIN(old_y, b->y),
+                           MAX(old_x, b->x), MAX(old_y, b->y),
+                           b->radius, scroll);
 
     wuss_window_invalidate(bc->window, &local);
   }

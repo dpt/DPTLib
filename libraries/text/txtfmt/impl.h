@@ -1,4 +1,4 @@
-/* impl.h -- txtfmt - text formatting */
+/* text/txtfmt/impl.h -- text formatting */
 
 #ifndef IMPL_H
 #define IMPL_H

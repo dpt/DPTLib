@@ -1,4 +1,4 @@
-/* primes.c -- cache of prime numbers */
+/* utils/primes/primes.c -- cache of prime numbers */
 
 #include "base/utils.h"
 

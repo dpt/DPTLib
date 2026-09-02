@@ -1,4 +1,4 @@
-/* extend.c -- extend box "b" to include (x,y). */
+/* geom/box/extend.c -- extend box "b" to include (x,y). */
 
 #include <stdarg.h>
 

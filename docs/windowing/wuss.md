@@ -20,7 +20,9 @@ result_t wuss_create(screen_t             *scr,
                      wuss_t              **wuss);
 ```
 
-`font` and `palette` may both be NULL, for unlabelled titlebars and a built-in default palette respectively. `config` may be NULL for default titlebar height/colours. `config->backdrop` sets a desktop background colour painted behind windows on every redraw, or `wuss_NO_BACKGROUND` (the default when `config` is NULL) to leave the background untouched and require the caller to repaint it itself. `wuss_get_font` reads back the font passed in (or NULL), for a task that wants to draw its own content in the same face as titlebars.
+`font` and `palette` may both be NULL, for unlabelled titlebars and a built-in default palette respectively. `config` may be NULL for default titlebar height/colours. `config->backdrop` is a `wuss_backdrop_t` — a flat colour, or an 8x8 fill pattern — painted behind windows on every redraw; set its `colour` to `wuss_NO_BACKGROUND` (the default when `config` is NULL) to leave the background untouched and require the caller to repaint it itself. A non-`screen_PATTERN_SOLID` `pattern` tiles that pattern in `colour` over `pattern_bg`, phased to a fixed screen origin so it does not crawl between full and dirty-region redraws. `wuss_get_font` reads back the font passed in (or NULL), for a task that wants to draw its own content in the same face as titlebars.
+
+A `wuss_backdrop_t` is `{ colour, pattern, pattern_bg }`; the `wuss_BACKDROP_COLOUR(c)` and `wuss_BACKDROP_PATTERN(c, p, b)` macros build one as a compound literal.
 
 Destroy with `wuss_destroy`, which also destroys any windows still open on it.
 
@@ -30,13 +32,13 @@ Create a window with a content bounding box, optional title, appearance flags, a
 
 ```C
 result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *title,
-                            wuss_window_flags_t flags, wuss_colour_t bg,
+                            wuss_window_flags_t flags, wuss_backdrop_t bg,
                             const wuss_task_t *task,
                             size2d_t doc, size2d_t min_doc,
                             wuss_window_t **window);
 ```
 
-`bg` is filled in by wuss before each redraw event, or `wuss_NO_BACKGROUND` for the task to draw its own background (avoids a redundant fill behind an opaque task); changeable later via `wuss_window_set_background`.
+`bg` is a `wuss_backdrop_t` (flat colour or 8x8 pattern, as for `config->backdrop`), filled in by wuss before each redraw event; set its `colour` to `wuss_NO_BACKGROUND` for the task to draw its own background (avoids a redundant fill behind an opaque task). Any pattern is phased to the window's scroll origin so it stays locked to the content as the window scrolls. Changeable later via `wuss_window_set_background`, which also takes a `wuss_backdrop_t`.
 
 `doc` is the virtual document extent behind the horizontal/vertical scrollbars' sausage proportion; pass `content`'s own width/height for a window with nothing to scroll. It is also the ceiling a resize-drag or toggle-size grows the content area to. Set once at creation, immutable thereafter.
 
@@ -93,10 +95,10 @@ typedef struct wuss_event
   wuss_event_kind_t kind;
   union
   {
-    struct { screen_t *scr; const box_t *content; }                        redraw;
-    struct { wuss_mouse_action_t action; point_t point; wuss_button_t button; } mouse;
+    struct { screen_t *scr; const box_t *content; }                                 redraw;
+    struct { wuss_mouse_action_t action; point_t point; wuss_button_t button; }     mouse;
     struct { wuss_icon_t *icon; wuss_mouse_action_t action; wuss_button_t button; } icon;
-    struct { point_t point; int delta; }                                        scroll;
+    struct { point_t point; int delta; }                                            scroll;
   }
   data;
 }
@@ -124,6 +126,54 @@ Each window carries a scroll offset, `(0, 0)` by default: the point in the task'
 
 - window-local `x`/`y` delivered in mouse/scroll events (and expected in `wuss_window_invalidate`'s `local_box`) are in virtual content space, i.e. already shifted by the scroll offset.
 - a redraw event's `content` is still the on-screen (unscrolled) content box; a task reads the offset itself via `wuss_window_get_scroll` to work out which part of its content to paint there.
+
+### How the coordinate spaces relate
+
+Everything a redraw callback gets is _screen space_ except `scroll`, which is a _virtual content space_ offset.
+
+```
+screen (0,0) --- wuss->scr, origin top-left
+  +-----------------------------------------------+
+  |  win->visible  (whole on-screen footprint)    |
+  |  +-----------------------------------------+  |
+  |  | titlebar + 1px outline  (carved off)    |  |
+  |  +--------------------------------+--------+  |  wuss__content_box() =
+  |  | content box = redraw.bounds    | vscroll|  |    visible
+  |  | (bounds.x0,y0) .               | (carve)|  |    - outline
+  |  |   . . +-------------+         .|        |  |    - titlebar
+  |  |   .   | redraw.     |  this   .|        |  |    - furniture carve
+  |  |   .   | content     |  piece  .|        |  |
+  |  |   .   | (one clip   |  only   .|        |  |
+  |  |   .   |  piece)     |         .|        |  |
+  |  |   .   +-------------+         .|        |  |
+  |  |   . . . . . . . . . . . . . . .|        |  |
+  |  +--------------------------------+--------+  |
+  |  |         hscroll  (carve)                |  |
+  |  +-----------------------------------------+  |
+  +-----------------------------------------------+
+
+virtual content space:  size win->doc, its own origin (0,0).
+  win->scroll = which point of doc sits at bounds.x0,y0.
+  doc extends past the content box (right + bottom); that
+  overhang is exactly what scroll ranges over.
+```
+
+- `win->visible` — window's whole on-screen box (screen space); set by Wuss at create/move/resize/toggle. `wuss_window_get_visible_bounds`.
+- content box / `redraw.bounds` — `visible` with outline, titlebar and any scrollbar/resize carve removed (`wuss__content_box`). `wuss_window_get_content_bounds`.
+- `clipped` (internal) — `bounds` intersected with the dirty rect, before subtracting windows above.
+- `redraw.content` — `clipped` minus whatever higher windows cover, split into non-overlapping pieces; the callback fires once per piece with `scr->clip` already set to it. Touch only pixels inside it.
+- `win->scroll` / `redraw.scroll` — document-space offset; the task sets it via `wuss_window_set_scroll`, Wuss clamps it to `[0, doc - viewport]`.
+- `win->doc` — virtual content extent, fixed at window create; drives the scrollbar sausage size and the scroll clamp.
+
+Conversions (as used in `mouse-move.c`, `scroll.c`, `scroll-step.c`):
+
+```
+screen -> document: doc.x = screen.x - bounds.x0 + scroll.x     (same for y)
+document -> screen: screen.x = bounds.x0 - scroll.x + doc.x
+scroll clamp:       max = doc - (bounds.x1 - bounds.x0);  clamp(scroll, 0, max)
+```
+
+In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scroll.y`, then paint the whole content normally — the framebuffer clip (`scr->clip` = `redraw.content`) discards anything outside the piece. See `libraries/wuss/test/tasks/text.c`.
 
 ## Redrawing
 

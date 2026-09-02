@@ -1,4 +1,4 @@
-/* intersection.c -- compute "c" the result of intersecting boxes "a" and "b" */
+/* geom/box/intersection.c -- compute "c" the result of intersecting boxes "a" and "b" */
 
 #include "base/utils.h"
 

@@ -1,4 +1,4 @@
-/* bmfont-test.c */
+/* framebuf/bmfont/test/bmfont-test.c */
 
 #include <assert.h>
 #include <ctype.h>

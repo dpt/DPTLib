@@ -1,4 +1,4 @@
-/* depth.c -- n-ary tree */
+/* datastruct/ntree/depth.c -- n-ary tree */
 
 #include "datastruct/ntree.h"
 

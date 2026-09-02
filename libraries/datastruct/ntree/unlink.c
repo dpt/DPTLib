@@ -1,4 +1,4 @@
-/* unlink.c -- n-ary tree */
+/* datastruct/ntree/unlink.c -- n-ary tree */
 
 #include <assert.h>
 #include <stdlib.h>

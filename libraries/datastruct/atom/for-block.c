@@ -1,4 +1,4 @@
-/* for-block.c -- atoms */
+/* datastruct/atom/for-block.c -- atoms */
 
 #include <assert.h>
 #include <limits.h>

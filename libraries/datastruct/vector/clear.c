@@ -1,4 +1,4 @@
-/* clear.c -- vector - flexible array */
+/* datastruct/vector/clear.c -- flexible array */
 
 #include <stdlib.h>
 

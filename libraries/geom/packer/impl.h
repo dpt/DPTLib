@@ -1,4 +1,4 @@
-/* impl.h -- box packing for layout */
+/* geom/packer/impl.h -- box packing for layout */
 
 #ifndef IMPL_H
 #define IMPL_H
@@ -20,6 +20,12 @@ struct packer
   box_t            *areas;
   int               allocedareas;
   int               usedareas;
+
+  box_t            *placed;        /* boxes carved out by packer_place_*, kept
+                                    so packer_release can rebuild the free
+                                    list minus the ones still live */
+  int               allocedplaced;
+  int               nplaced;
 
   box_t             dims;          /* page size */
 

@@ -1,4 +1,4 @@
-/* barith.c -- define all of barith */
+/* utils/barith/barith.c -- define all of barith */
 
 #define BARITH_INLINE
 

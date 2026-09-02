@@ -1,4 +1,4 @@
-/* get-nlines.c -- txtfmt - text formatting */
+/* text/txtfmt/get-nlines.c -- text formatting */
 
 #include "text/txtfmt.h"
 

@@ -1,4 +1,4 @@
-/* chars.c -- wuss test - system font glyph grid task */
+/* wuss/test/tasks/chars.c -- system font glyph grid task */
 
 #ifdef USE_SDL
 
@@ -21,9 +21,7 @@
 #define CHARS_ROWS 8
 #define CHARS_PAD  2
 
-result_t chars_create(wuss_t         *wuss,
-                      const colour_t *palette,
-                      chars_task_t   *task)
+result_t chars_create(wuss_t *wuss, chars_task_t *task)
 {
   wuss_task_t delegate;
   size2d_t    sz;
@@ -42,8 +40,8 @@ result_t chars_create(wuss_t         *wuss,
   cell_h = font_height + CHARS_PAD * 2;
 
   task->font = font;
-  task->fg   = palette[palette_PICO8_BLACK];
-  task->bg   = palette[palette_PICO8_WHITE];
+  task->fg   = colour_rgb(0x00, 0x00, 0x00);
+  task->bg   = colour_rgb(0xFF, 0xFF, 0xFF);
 
   delegate = wuss_task_start(chars_handle, task); /* chars_redraw paints every cell itself */
   sz       = SIZE2D(cell_w * CHARS_COLS, cell_h * CHARS_ROWS);
@@ -55,7 +53,7 @@ result_t chars_create(wuss_t         *wuss,
                                    wuss_WINDOW_NO_TOGGLE_SIZE |
                                    wuss_WINDOW_NO_VSCROLL     |
                                    wuss_WINDOW_NO_HSCROLL,
-                                   wuss_NO_BACKGROUND,
+                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                    &delegate,
                                    sz,
                                    SIZE2D(0, 0),
@@ -101,7 +99,7 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
     x   = bounds->x0 - sx + col * cell_w;
     y   = bounds->y0 - sy + row * cell_h;
 
-    screen_draw_rect(scr, x, y, SIZE2D(cell_w, cell_h), cc->bg);
+    screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), cc->bg);
 
     if (i < first || i >= first + count)
       continue; /* no glyph for this byte value: leave the cell blank */

@@ -1,4 +1,4 @@
-/* ensure.c -- vector - flexible array */
+/* datastruct/vector/ensure.c -- flexible array */
 
 #include <stdlib.h>
 

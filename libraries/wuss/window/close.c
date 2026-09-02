@@ -1,4 +1,4 @@
-/* close.c -- wuss - minimal window manager */
+/* wuss/window/close.c -- wuss - minimal window manager */
 
 #include <stdlib.h>
 
@@ -23,6 +23,8 @@ void wuss_window_close(wuss_window_t *doomed)
 #ifdef WUSS_ICONS
   if (wuss->pressed_icon != NULL && wuss->pressed_icon->window == doomed)
     wuss->pressed_icon = NULL;
+  if (wuss->hover_icon != NULL && wuss->hover_icon->window == doomed)
+    wuss->hover_icon = NULL;
 #endif
 
   wuss__release_packed(doomed);
@@ -35,5 +37,5 @@ void wuss_window_close(wuss_window_t *doomed)
   wuss__icons_free(doomed);
 #endif
 
-  free(doomed);
+  wuss__free(wuss, doomed);
 }

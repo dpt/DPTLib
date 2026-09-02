@@ -1,4 +1,4 @@
-/* smull-fxp16.c -- fixed point helpers */
+/* utils/fxp/smull-fxp16.c -- fixed point helpers */
 
 #include "utils/fxp.h"
 

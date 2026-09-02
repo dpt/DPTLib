@@ -1,4 +1,4 @@
-/* pack.c -- structure packing */
+/* utils/pack/pack.c -- structure packing */
 
 #include <assert.h>
 #include <ctype.h>

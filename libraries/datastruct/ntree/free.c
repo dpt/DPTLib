@@ -1,4 +1,4 @@
-/* free.c -- n-ary tree */
+/* datastruct/ntree/free.c -- n-ary tree */
 
 #include <assert.h>
 #include <stdlib.h>

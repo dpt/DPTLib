@@ -1,4 +1,4 @@
-/* max-height.c -- n-ary tree */
+/* datastruct/ntree/max-height.c -- n-ary tree */
 
 #include "datastruct/ntree.h"
 

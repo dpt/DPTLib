@@ -1,4 +1,4 @@
-/* vscroll-box.c -- wuss - minimal window manager */
+/* wuss/furniture/vscroll-box.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 
@@ -72,27 +72,33 @@ int wuss__vscroll_well_px(const wuss_window_t *window)
 void wuss__vscroll_sausage_box(const wuss_window_t *window, box_t *out)
 {
   box_t well, content;
-  int   well_px, content_size, doc_size, sausage_px, sausage_y0, inset;
+  int   well_px, track_px, end_gap, content_size, doc_size, sausage_px, sausage_y0, inset;
 
   wuss__vscroll_well_box(window, &well);
   wuss__content_box(window, &content);
 
-  well_px      = well.y1 - well.y0;
+  well_px = well.y1 - well.y0;
+
+  /* Leave a cosmetic gap at each end of the well; drop it if the well is
+   * too short to spare two gaps plus a minimum sausage. */
+  end_gap  = (well_px > 2 * WUSS_SCROLL_END_GAP + WUSS_MIN_SAUSAGE) ? WUSS_SCROLL_END_GAP : 0;
+  track_px = well_px - 2 * end_gap;
+
   content_size = content.y1 - content.y0;
   doc_size     = window->doc.h;
   if (doc_size < content_size)
     doc_size = content_size;
 
-  sausage_px = (doc_size > 0) ? well_px * content_size / doc_size : well_px;
+  sausage_px = (doc_size > 0) ? track_px * content_size / doc_size : track_px;
   if (sausage_px < WUSS_MIN_SAUSAGE)
     sausage_px = WUSS_MIN_SAUSAGE;
-  if (sausage_px > well_px)
-    sausage_px = well_px;
+  if (sausage_px > track_px)
+    sausage_px = track_px;
 
-  if (doc_size > content_size && well_px > sausage_px)
-    sausage_y0 = well.y0 + (well_px - sausage_px) * window->scroll.y / (doc_size - content_size);
+  if (doc_size > content_size && track_px > sausage_px)
+    sausage_y0 = well.y0 + end_gap + (track_px - sausage_px) * window->scroll.y / (doc_size - content_size);
   else
-    sausage_y0 = well.y0;
+    sausage_y0 = well.y0 + end_gap;
 
   /* Inset the sausage from the well's long edges, but only while that
    * leaves something to draw: a tiny titlebar font can make the well

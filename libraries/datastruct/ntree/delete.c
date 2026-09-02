@@ -1,4 +1,4 @@
-/* delete.c -- n-ary tree */
+/* datastruct/ntree/delete.c -- n-ary tree */
 
 #include <assert.h>
 

@@ -16,10 +16,10 @@ int f(int thing);
 int g(void);
 '''.splitlines()
 
-out, overflow = process(src, width=80)
+out, overflow = process(src, width=77)
 
 assert overflow == [], overflow
-assert all(len(l) <= 80 for l in out), [l for l in out if len(l) > 80]
+assert all(len(l) <= 77 for l in out), [l for l in out if len(l) > 77]
 assert out[0] == '/**'
 assert out[1] == ' * A short line.'
 # continuation lines must keep the "*" one column right of "/**", with a
@@ -31,7 +31,7 @@ assert 'int g(void);' in out
 assert out.count('/**') == 2  # original block + the promoted single-liner
 
 # idempotent: reformatting already-reformatted text changes nothing
-out2, overflow2 = process(out, width=80)
+out2, overflow2 = process(out, width=77)
 assert out2 == out
 assert overflow2 == []
 

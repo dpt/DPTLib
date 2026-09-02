@@ -1,4 +1,4 @@
-/* hlist.h -- "Hanson" linked list library */
+/* datastruct/hlist.h -- "Hanson" linked list library */
 
 /* See chapter 5 of C Interfaces and Implementations. */
 

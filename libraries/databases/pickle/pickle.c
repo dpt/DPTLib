@@ -1,4 +1,4 @@
-/* pickle.c -- serialise an associative array to file */
+/* databases/pickle/pickle.c -- serialise an associative array to file */
 
 #include <assert.h>
 #include <ctype.h>

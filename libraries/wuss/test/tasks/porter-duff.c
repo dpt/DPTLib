@@ -1,4 +1,4 @@
-/* porter-duff.c -- wuss test - animated Porter-Duff compositing task */
+/* wuss/test/tasks/porter-duff.c -- animated Porter-Duff compositing task */
 
 #ifdef USE_SDL
 
@@ -197,7 +197,7 @@ result_t porter_duff_create(wuss_t             *wuss,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
                                  "Porter-Duff",
                                  wuss_WINDOW_NONE,
-                                 wuss_NO_BACKGROUND,
+                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  &delegate,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
                                  SIZE2D(0, 0),
@@ -275,11 +275,12 @@ static void porter_duff_draw_checkerboard(const porter_duff_task_t *pd,
       ly   = y - bounds->y0;
       band = lx / PD_CHECKER_BAND + ly / PD_CHECKER_BAND;
 
-      screen_draw_pixel(scr, x, y, (band & 1) ? pd->dark : pd->light);
+      screen_set_pixel(scr, x, y, (band & 1) ? pd->dark : pd->light);
     }
 }
 
-static result_t porter_duff_redraw(const wuss_event_t *event, void *task_data)
+static result_t porter_duff_redraw(const wuss_event_t *event,
+                                   void               *task_data)
 {
   porter_duff_task_t *pd;
   screen_t           *scr;

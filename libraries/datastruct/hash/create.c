@@ -1,4 +1,4 @@
-/* create.c -- hash */
+/* datastruct/hash/create.c -- hash */
 
 #include <stdlib.h>
 #include <string.h>

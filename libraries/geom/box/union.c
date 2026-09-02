@@ -1,4 +1,4 @@
-/* union.c -- return a box "c" that contains both boxes "a" and "b" */
+/* geom/box/union.c -- return a box "c" that contains both boxes "a" and "b" */
 
 #include "base/utils.h"
 

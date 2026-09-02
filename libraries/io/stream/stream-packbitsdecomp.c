@@ -1,4 +1,4 @@
-/* stream-packbitsdecomp.c -- PackBits decompression */
+/* io/stream/stream-packbitsdecomp.c -- PackBits decompression */
 
 #include <assert.h>
 #include <stddef.h>
@@ -170,7 +170,9 @@ exit:
   return stream_remaining(s);
 }
 
-result_t stream_packbitsdecomp_create(stream_t *input, int bufsz, stream_t **s)
+result_t stream_packbitsdecomp_create(stream_t  *input,
+                                      int        bufsz,
+                                      stream_t **s)
 {
   stream_packbitsdecomp_t *sp;
 

@@ -1,4 +1,4 @@
-/* utils.h -- various utilities */
+/* base/utils.h -- various utilities */
 
 #ifndef BASE_UTILS_H
 #define BASE_UTILS_H

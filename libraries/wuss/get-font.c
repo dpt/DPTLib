@@ -1,4 +1,4 @@
-/* get-font.c -- wuss - minimal window manager */
+/* wuss/get-font.c -- wuss - minimal window manager */
 
 #include <assert.h>
 

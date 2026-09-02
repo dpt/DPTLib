@@ -1,4 +1,4 @@
-/* gradient.c -- wuss test - gradient fill task */
+/* wuss/test/tasks/gradient.c -- gradient fill task */
 
 #ifdef USE_SDL
 
@@ -43,7 +43,7 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t *task)
                                    SIZE2D(GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT),
                                    "Gradient",
                                    wuss_WINDOW_NONE,
-                                   wuss_NO_BACKGROUND,
+                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                    &delegate,
                                    SIZE2D(GRADIENT_DOC_WIDTH, GRADIENT_DOC_HEIGHT),
                                    SIZE2D(0, 0),
@@ -71,7 +71,7 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
       lx = x - bounds->x0 + sx;
       ly = y - bounds->y0 + sy;
 
-      screen_draw_pixel(scr, x, y,
+      screen_set_pixel(scr, x, y,
                         colour_rgb(dither(lx * 255 / GRADIENT_DOC_WIDTH, lx, ly),
                                    dither(ly * 255 / GRADIENT_DOC_HEIGHT, lx, ly),
                                    dither(255 - (lx + ly) * 255 / (GRADIENT_DOC_WIDTH + GRADIENT_DOC_HEIGHT), lx, ly)));

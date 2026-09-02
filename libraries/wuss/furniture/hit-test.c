@@ -1,4 +1,4 @@
-/* hit-test.c -- wuss - minimal window manager */
+/* wuss/furniture/hit-test.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

@@ -1,4 +1,4 @@
-/* impl.h -- atoms */
+/* datastruct/atom/impl.h -- atoms */
 
 /* An atom_set consists of a series of block pools and location pools.
  *

@@ -1,3 +1,4 @@
+/* datastruct/hash/test/hash-test.c */
 
 #include <stdio.h>
 #include <string.h>

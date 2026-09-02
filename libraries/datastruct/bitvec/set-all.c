@@ -1,4 +1,4 @@
-/* set-all.c -- bit vectors */
+/* datastruct/bitvec/set-all.c -- bit vectors */
 
 #include <string.h>
 

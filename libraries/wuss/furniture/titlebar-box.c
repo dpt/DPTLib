@@ -1,4 +1,4 @@
-/* titlebar-box.c -- wuss - minimal window manager */
+/* wuss/furniture/titlebar-box.c -- wuss - minimal window manager */
 
 #include "../impl.h"
 

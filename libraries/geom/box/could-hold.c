@@ -1,4 +1,4 @@
-/* could-hold.c -- return true if "box" can hold a box of size (w,h) */
+/* geom/box/could-hold.c -- return true if "box" can hold a box of size (w,h) */
 
 #include "geom/box.h"
 

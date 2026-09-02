@@ -1,4 +1,4 @@
-/* create.c -- wuss - minimal window manager */
+/* wuss/window/create.c -- wuss - minimal window manager */
 
 #include <assert.h>
 #include <stdlib.h>
@@ -14,7 +14,7 @@ result_t wuss_window_create(wuss_t             *wuss,
                             const box_t        *content,
                             const char         *title,
                             wuss_window_flags_t flags,
-                            wuss_colour_t       bg,
+                            wuss_backdrop_t     bg,
                             const wuss_task_t  *task,
                             size2d_t            doc,
                             size2d_t            min_doc,
@@ -34,7 +34,7 @@ result_t wuss_window_create(wuss_t             *wuss,
   if (!wuss__size_ok(width, height))
     return result_WUSS_TOO_SMALL;
 
-  win = malloc(sizeof(*win));
+  win = wuss__malloc(wuss, sizeof(*win));
   if (win == NULL)
     return result_OOM;
 
@@ -74,6 +74,22 @@ result_t wuss_window_create(wuss_t             *wuss,
   win->visible.y0 += dy; win->visible.y1 += dy;
 
   win->flags      = flags;
+
+  /* clamp so the window can never be born larger than the screen; done
+   * after the on-screen nudge above so it measures from the final
+   * top-left. only the bottom-right corner moves. */
+  {
+    size2d_t max;
+
+    wuss__max_content_on_screen(win, &max);
+    if (win->visible.x1 - win->visible.x0 - 2 * outline_px - carve.x > max.w)
+      win->visible.x1 = win->visible.x0 + 2 * outline_px + carve.x + max.w;
+    if (win->visible.y1 - win->visible.y0 - 2 * outline_px
+        - titlebar_height - carve.y > max.h)
+      win->visible.y1 = win->visible.y0 + 2 * outline_px + titlebar_height
+                      + carve.y + max.h;
+  }
+
   win->scroll.x   = 0;
   win->scroll.y   = 0;
   win->doc        = doc;
@@ -94,9 +110,9 @@ result_t wuss_window_create(wuss_t             *wuss,
   else
     memset(&win->task, 0, sizeof(win->task));
 
-  if (bg != wuss_NO_BACKGROUND && (bg < 0 || bg >= wuss->npalette))
+  if (wuss__validate_backdrop(wuss, &bg) != result_OK)
   {
-    free(win);
+    wuss__free(wuss, win);
     return result_WUSS_BAD_COLOUR;
   }
   win->bg = bg;
@@ -117,7 +133,8 @@ result_t wuss_window_create(wuss_t             *wuss,
 
   list_add_to_head(&wuss->z_order, &win->link);
 
-  wuss_invalidate(wuss, &win->visible);
+  if (!(flags & wuss_WINDOW_HIDDEN))
+    wuss_invalidate(wuss, &win->visible);
 
   *window = win;
 

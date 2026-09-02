@@ -1,4 +1,4 @@
-/* create.c -- atoms */
+/* datastruct/atom/create.c -- atoms */
 
 #include <stdlib.h>
 

@@ -1,10 +1,9 @@
-/* text.c -- wuss test - static paragraph task */
+/* wuss/test/tasks/text.c -- static paragraph task */
 
 #ifdef USE_SDL
 
 #include <stdlib.h>
 
-#include <ctype.h>
 #include <math.h>
 #include <string.h>
 
@@ -17,6 +16,7 @@
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "geom/point.h"
+#include "text/bmtext.h"
 
 #include "text.h"
 
@@ -28,18 +28,17 @@ static const char paragraph[] =
   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
   "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
 
-result_t text_create(wuss_t         *wuss,
-                     const colour_t *palette,
-                     bmfont_t       *font,
-                     text_task_t    *task)
+result_t text_create(wuss_t      *wuss,
+                     bmfont_t    *font,
+                     text_task_t *task)
 {
   wuss_task_t delegate;
   size2d_t    sz;
   result_t    rc;
 
   task->font        = font;
-  task->bg          = palette[palette_PICO8_BLUE]; /* matches the "Lorem Ipsum" window's bg, for bmfont_draw's glyph blending */
-  task->fg          = palette[palette_PICO8_WHITE];
+  task->bg          = colour_rgb(0xFF, 0xFF, 0xFF);
+  task->fg          = colour_rgb(0x00, 0x00, 0x00);
   task->frame_count = 0;
   task->resizing    = true;
 
@@ -53,7 +52,7 @@ result_t text_create(wuss_t         *wuss,
                                  sz,
                                  "Lorem Ipsum",
                                  wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                                 palette_PICO8_BLUE,
+                                 wuss_BACKDROP_COLOUR(wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF)),
                                  &delegate,
                                  sz,
                                  SIZE2D(0, 0),
@@ -62,61 +61,38 @@ result_t text_create(wuss_t         *wuss,
   return rc;
 }
 
+#define INSET      4
+#define LEADING    2
+#define MAX_LINES  64 /* paragraph is short and fixed; overflow is dropped */
+
 static result_t text_redraw(const wuss_event_t *event, void *task_data)
 {
-  text_task_t *tcx;
-  screen_t       *scr;
-  const box_t    *bounds;
-  int             font_width, font_height, sy;
-  const char     *string;
-  int             stringlen;
-  point_t         pos;
+  text_task_t  *tcx;
+  screen_t     *scr;
+  const box_t  *bounds;
+  int           sx, sy;
+  bmtext_line_t lines[MAX_LINES];
+  int           nlines;
+  point_t       origin;
 
   tcx = task_data;
 
   scr    = event->data.redraw.scr;
   bounds = event->data.redraw.bounds;
+  sx     = event->data.redraw.scroll.x;
   sy     = event->data.redraw.scroll.y;
 
-  bmfont_get_info(tcx->font, &font_width, &font_height);
+  nlines = bmtext_layout(tcx->font,
+                         paragraph,
+                         (int) strlen(paragraph),
+                         (bounds->x1 - INSET) - (bounds->x0 + INSET),
+                         lines,
+                         MAX_LINES);
 
-  string    = paragraph;
-  stringlen = (int) strlen(paragraph);
+  origin.x = bounds->x0 - sx + INSET;
+  origin.y = bounds->y0 - sy + INSET;
 
-  pos.x = bounds->x0 + 4;
-  pos.y = bounds->y0 - sy + 4;
-
-  while (stringlen > 0 && pos.y + font_height <= bounds->y1)
-  {
-    int            absolute_break, friendly_break;
-    bmfont_width_t width;
-
-    bmfont_measure(tcx->font, string, stringlen, bounds->x1 - 4 - pos.x, &absolute_break, &width);
-
-    friendly_break = absolute_break;
-    if (absolute_break < stringlen)
-    {
-      /* line didn't fit whole: try to break at the last space within it */
-      for (friendly_break = absolute_break - 1; friendly_break > 0; friendly_break--)
-        if (isspace((unsigned char) string[friendly_break]))
-          break;
-      if (friendly_break <= 0)
-        friendly_break = absolute_break; /* no space to break at: hard break */
-    }
-
-    bmfont_draw(tcx->font, scr, string, friendly_break, tcx->fg, tcx->bg, &pos, NULL);
-
-    string    += friendly_break;
-    stringlen -= friendly_break;
-    while (stringlen > 0 && isspace((unsigned char) *string))
-    {
-      string++;
-      stringlen--;
-    }
-
-    pos.x  = bounds->x0 + 4;
-    pos.y += font_height + 2;
-  }
+  bmtext_draw(tcx->font, scr, lines, nlines, tcx->fg, tcx->bg, LEADING, origin);
 
   return result_OK;
 }

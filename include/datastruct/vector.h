@@ -1,12 +1,13 @@
-/* vector.h -- flexible arrays */
+/* datastruct/vector.h -- flexible arrays */
 
 /**
  * \file vector.h
  *
- * Vector is an abstracted array which can be resized by both length and element
- * width.
+ * Vector is an abstracted array which can be resized by both length and
+ * element width.
  *
- * Elements are of a fixed size, stored contiguously and are addressed by index.
+ * Elements are of a fixed size, stored contiguously and are addressed by
+ * index.
  *
  * \warning If the vector is altered then pointers into the vector may be
  *          invalidated (should the block move when reallocated).
@@ -82,8 +83,8 @@ result_t vector_set_length(vector_t *vector, unsigned int length);
 /* ----------------------------------------------------------------------- */
 
 /**
- * Reserve space for at least the specified number of elements in the specified
- * vector.
+ * Reserve space for at least the specified number of elements in the
+ * specified vector.
  *
  * \param[in] vector Vector to change.
  * \param[in] need   Required length.
@@ -106,8 +107,8 @@ size_t vector_width(const vector_t *vector);
 /**
  * Change the byte width of element stored in the specified vector.
  *
- * If the element width is reduced then any extra bytes are lost. If increased,
- * then zeroes are inserted.
+ * If the element width is reduced then any extra bytes are lost. If
+ * increased, then zeroes are inserted.
  *
  * \param[in] vector Vector to change.
  * \param[in] width  New element width.
@@ -154,7 +155,8 @@ void vector_set(vector_t *vector, unsigned int index, const void *value);
 result_t vector_insert(vector_t *vector, const void *value);
 
 /**
- * Insert many elements at the end of the vector, allocating memory if required.
+ * Insert many elements at the end of the vector, allocating memory if
+ * required.
  *
  * \param[in] vector  Vector to change.
  * \param[in] values  Array of values to insert.
@@ -162,7 +164,9 @@ result_t vector_insert(vector_t *vector, const void *value);
  *
  * \return result_OK or result_OOM.
  */
-result_t vector_insert_many(vector_t *vector, const void *values, int nvalues);
+result_t vector_insert_many(vector_t   *vector,
+                            const void *values,
+                            int         nvalues);
 
 /* ----------------------------------------------------------------------- */
 

@@ -1,4 +1,4 @@
-/* txtfmt-test.c -- txtfmt - text formatting */
+/* text/txtfmt/test/txtfmt-test.c -- text formatting */
 
 #include <stdio.h>
 

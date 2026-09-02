@@ -1,4 +1,4 @@
-/* insert-after.c -- n-ary tree */
+/* datastruct/ntree/insert-after.c -- n-ary tree */
 
 #include <assert.h>
 #include <stdlib.h>

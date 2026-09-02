@@ -1,4 +1,4 @@
-/* toggle.c -- bit vectors */
+/* datastruct/bitvec/toggle.c -- bit vectors */
 
 #include "base/result.h"
 

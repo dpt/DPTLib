@@ -1,4 +1,4 @@
-/* line.c -- Cohen-Sutherland line clipping algorithm */
+/* geom/line/line.c -- Cohen-Sutherland line clipping algorithm */
 
 #include "base/utils.h"
 #include "geom/box.h"

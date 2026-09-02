@@ -1,4 +1,4 @@
-/* create.c -- txtfmt - text formatting */
+/* text/txtfmt/create.c -- text formatting */
 
 #include <stdlib.h>
 #include <string.h>

@@ -1,4 +1,4 @@
-/* image.c -- wuss test - static bitmap image task */
+/* wuss/test/tasks/image.c -- static bitmap image task */
 
 #ifdef USE_SDL
 
@@ -16,11 +16,10 @@
 
 #define BORDER 16
 
-result_t image_create(wuss_t         *wuss,
-                      const colour_t *palette,
-                      const char     *path,
-                      const char     *background_path,
-                      image_task_t   *task)
+result_t image_create(wuss_t       *wuss,
+                      const char   *path,
+                      const char   *background_path,
+                      image_task_t *task)
 {
   wuss_task_t delegate;
   result_t    rc;
@@ -38,7 +37,7 @@ result_t image_create(wuss_t         *wuss,
   }
 
   delegate = wuss_task_start(image_handle, task); /* shows through the image's transparent pixels */
-  
+
   sz.w = task->bitmap.size.w + BORDER * 2;
   sz.h = task->bitmap.size.h + BORDER * 2;
 
@@ -47,7 +46,7 @@ result_t image_create(wuss_t         *wuss,
                                    SIZE2D(sz.w, sz.h * 2 / 3),
                                    "Image",
                                    wuss_WINDOW_NONE,
-                                   palette_PICO8_PINK,
+                                   wuss_BACKDROP_COLOUR(palette_PICO8_PINK),
                                    &delegate,
                                    sz,
                                    SIZE2D(32, 32),
@@ -73,7 +72,7 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   by     = bounds->y0 - sy + BORDER;
 
 #define NINEPATCHSZ 9
-  
+
   behind.x0 = bx - NINEPATCHSZ;
   behind.y0 = by - NINEPATCHSZ;
   behind.x1 = behind.x0 + ic->bitmap.size.w + NINEPATCHSZ * 2;

@@ -1,4 +1,4 @@
-/* invalidate.c -- wuss - minimal window manager */
+/* wuss/window/invalidate.c -- wuss - minimal window manager */
 
 #include <string.h>
 
@@ -45,7 +45,9 @@ static void box_subtract_into(const box_t *piece,
 /* Clip "box" (screen space) down to the parts not already covered by
  * windows above "window" in the z-order, writing the surviving pieces to
  * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count. */
-int wuss__clip_to_visible(wuss_window_t *window, const box_t *box, box_t *out)
+int wuss__clip_to_visible(wuss_window_t *window,
+                          const box_t   *box,
+                          box_t         *out)
 {
   box_t   scratch[WUSS_MAX_INVALIDATE_PIECES];
   box_t  *cur, *nxt, *tmp;
@@ -63,6 +65,8 @@ int wuss__clip_to_visible(wuss_window_t *window, const box_t *box, box_t *out)
     int             nnext, p;
 
     occluder = (wuss_window_t *) e;
+    if (occluder->flags & wuss_WINDOW_HIDDEN)
+      continue; /* a hidden window occludes nothing */
     nnext    = 0;
 
     for (p = 0; p < ncur; p++)
@@ -148,6 +152,60 @@ int wuss__subtract_boxes(const box_t *whole,
   return ncur;
 }
 
+/* Sequential single-rect blits (each a self-consistent memmove) can still
+ * corrupt each other when one piece's destination lands on another piece's
+ * still-unread source -- but that only actually matters if no blit order
+ * avoids it. Build the "must happen before" graph (piece j before piece i
+ * whenever dest[i] would overwrite clean[j]'s still-unread source) and
+ * topologically sort it: any window with more than one occluder-carved
+ * piece near a shared edge -- e.g. two bands split by a corner occluder --
+ * routinely has one such pairwise overlap without there being a genuine
+ * cycle, and rejecting those outright regressed plain corner-occlusion
+ * drags into full fallback redraws. Only an actual cycle (i must precede j
+ * and j must precede i) has no safe order and needs the fallback. */
+int wuss__order_pieces(const box_t *clean,
+                       const box_t *dest,
+                       int          n,
+                       int         *order)
+{
+  int adj[WUSS_MAX_INVALIDATE_PIECES][WUSS_MAX_INVALIDATE_PIECES];
+  int indeg[WUSS_MAX_INVALIDATE_PIECES];
+  int queue[WUSS_MAX_INVALIDATE_PIECES];
+  int i, j, head, tail, nout, u;
+
+  for (i = 0; i < n; i++)
+    indeg[i] = 0;
+  for (j = 0; j < n; j++)
+    for (i = 0; i < n; i++)
+      adj[j][i] = 0;
+
+  for (i = 0; i < n; i++)
+    for (j = 0; j < n; j++)
+      if (i != j && !adj[j][i] && box_intersects(&dest[i], &clean[j]))
+      {
+        adj[j][i] = 1; /* j must be blitted before i */
+        indeg[i]++;
+      }
+
+  tail = 0;
+  for (i = 0; i < n; i++)
+    if (indeg[i] == 0)
+      queue[tail++] = i;
+
+  head = nout = 0;
+  while (head < tail)
+  {
+    u = queue[head++];
+    order[nout++] = u;
+
+    for (i = 0; i < n; i++)
+      if (adj[u][i] && --indeg[i] == 0)
+        queue[tail++] = i;
+  }
+
+  return nout == n;
+}
+
 /* Invalidate the parts of "window"'s footprint that are hidden behind other
  * windows at the current z-order -- the rest of its footprint is already
  * showing its own correct pixels, so redrawing that too would just be
@@ -186,7 +244,9 @@ void wuss__invalidate_clipped(wuss_window_t *window, const box_t *box)
 /* Invalidate the part of "whole" not already covered by "keep" -- used
  * after a blit has slid a window's pixels from "whole" to "keep", so only
  * the vacated sliver still needs an actual repaint. */
-void wuss__invalidate_minus(wuss_t *wuss, const box_t *whole, const box_t *keep)
+void wuss__invalidate_minus(wuss_t      *wuss,
+                            const box_t *whole,
+                            const box_t *keep)
 {
   box_t pieces[WUSS_MAX_INVALIDATE_PIECES];
   box_t cut;
@@ -220,10 +280,8 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
     local_box = &whole;
   }
 
-  screen_box.x0 = content.x0 - window->scroll.x + local_box->x0;
-  screen_box.y0 = content.y0 - window->scroll.y + local_box->y0;
-  screen_box.x1 = content.x0 - window->scroll.x + local_box->x1;
-  screen_box.y1 = content.y0 - window->scroll.y + local_box->y1;
+  box_translated(local_box, content.x0 - window->scroll.x,
+                 content.y0 - window->scroll.y, &screen_box);
 
   wuss__invalidate_clipped(window, &screen_box);
 }

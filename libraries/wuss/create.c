@@ -1,4 +1,4 @@
-/* create.c -- wuss - minimal window manager */
+/* wuss/create.c -- wuss - minimal window manager */
 
 #include <assert.h>
 #include <stdlib.h>
@@ -9,22 +9,36 @@
 #endif
 
 #include "base/utils.h"
-#include "framebuf/palettes.h"
 
 #include "impl.h"
 
+/* The default allocator: plain stdlib. wuss_create copies this in when its
+ * alloc argument is NULL. */
+const wuss_alloc_t wuss_alloc = { malloc, realloc, free };
+
+/* Built-in fallback palette when the caller passes NULL: black and white.
+ * wuss makes no other assumptions about palette contents or length. */
+static const colour_t wuss__default_palette[] =
+{
+  { 0xFF000000 }, /* 0: black */
+  { 0xFFFFFFFF }  /* 1: white */
+};
+
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
-/* Range-check the bevel colours and (when set) the backdrop against the
- * palette. Shared by the furniture and icons-only paths so the accepted
- * range, the error code and the freed-pointer set stay in one place. */
+/* Range-check the bevel colours and the backdrop against the palette. Shared
+ * by the furniture and icons-only paths so the accepted range, the error code
+ * and the freed-pointer set stay in one place. */
 static result_t validate_bevel_backdrop(const wuss_t *w,
                                         wuss_colour_t blight,
-                                        wuss_colour_t bdark)
+                                        wuss_colour_t bdark,
+                                        wuss_colour_t abg,
+                                        wuss_colour_t afg)
 {
   if (blight < 0 || blight >= w->npalette ||
       bdark  < 0 || bdark  >= w->npalette ||
-      (w->backdrop != wuss_NO_BACKGROUND &&
-       (w->backdrop < 0 || w->backdrop >= w->npalette)))
+      abg    < 0 || abg    >= w->npalette ||
+      afg    < 0 || afg    >= w->npalette ||
+      wuss__validate_backdrop(w, &w->backdrop) != result_OK)
     return result_WUSS_BAD_COLOUR;
 
   return result_OK;
@@ -36,15 +50,18 @@ result_t wuss_create(screen_t            *scr,
                      const colour_t      *palette,
                      int                  npalette,
                      const wuss_config_t *config,
+                     const wuss_alloc_t  *alloc,
                      wuss_t             **wuss)
 {
+  wuss_alloc_t   al;
   wuss_t        *w;
 #ifdef WUSS_FURNITURE
-  wuss_palette_t pal;
+  wuss_furniture_palette_t pal;
   wuss_colour_t  bg, fg;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
   wuss_colour_t  blight, bdark;
+  wuss_colour_t  abg, afg;
 #endif
 #ifdef WUSS_FURNITURE
   int            font_height;
@@ -54,61 +71,62 @@ result_t wuss_create(screen_t            *scr,
   assert(scr  != NULL);
   assert(wuss != NULL);
 
-  w = malloc(sizeof(*w));
+  al = (alloc != NULL) ? *alloc : wuss_alloc;
+
+  w = al.malloc(sizeof(*w));
   if (w == NULL)
     return result_OOM;
+  w->alloc = al;
 
-  if (palette != NULL)
+  if (palette == NULL)
   {
-    if (npalette <= 0)
-    {
-      free(w);
-      return result_BAD_ARG;
-    }
+    palette  = wuss__default_palette;
+    npalette = NELEMS(wuss__default_palette);
+  }
+  else if (npalette <= 0)
+  {
+    wuss__free(w, w);
+    return result_BAD_ARG;
+  }
 
-    w->palette = malloc(npalette * sizeof(*w->palette));
-    if (w->palette == NULL)
-    {
-      free(w);
-      return result_OOM;
-    }
-    memcpy(w->palette, palette, npalette * sizeof(*w->palette));
-    w->npalette = npalette;
+  w->palette = wuss__malloc(w, npalette * sizeof(*w->palette));
+  if (w->palette == NULL)
+  {
+    wuss__free(w, w);
+    return result_OOM;
+  }
+  memcpy(w->palette, palette, npalette * sizeof(*w->palette));
+  w->npalette = npalette;
+
+  /* Cache the palette indices nearest to opaque white and black, for menu
+   * backdrops/text and anything else wanting "paper" or "ink". */
+  w->palettecache.white = wuss_nearest_colour(w, 255, 255, 255);
+  w->palettecache.black = wuss_nearest_colour(w, 0, 0, 0);
+
+  if (config != NULL)
+  {
+    w->backdrop = config->backdrop;
   }
   else
   {
-    w->palette = malloc(palette_PICO8__LENGTH * sizeof(*w->palette));
-    if (w->palette == NULL)
-    {
-      free(w);
-      return result_OOM;
-    }
-    define_pico8_palette(w->palette);
-    w->npalette = palette_PICO8__LENGTH;
+    w->backdrop.colour     = wuss_NO_BACKGROUND;
+    w->backdrop.pattern    = screen_PATTERN_SOLID;
+    w->backdrop.pattern_bg = wuss_NO_BACKGROUND;
   }
 
 #ifdef WUSS_FURNITURE
   if (config != NULL)
   {
-    pal = config->palette;
+    pal = config->furniture;
     blight = config->bevel.light;
     bdark = config->bevel.dark;
-    w->backdrop = config->backdrop;
+    abg = config->accent.bg;
+    afg = config->accent.fg;
   }
   else
   {
-    w->backdrop = wuss_NO_BACKGROUND;
-
-    if (palette == NULL)
-    {
-      bg = palette_PICO8_DARK_BLUE;
-      fg = palette_PICO8_WHITE;
-    }
-    else
-    {
-      bg = 0;
-      fg = (w->npalette > 1) ? 1 : 0;
-    }
+    bg = 0;
+    fg = (w->npalette > 1) ? 1 : 0;
 
     pal.title.bg        = bg;
     pal.title.fg        = fg;
@@ -122,6 +140,8 @@ result_t wuss_create(screen_t            *scr,
 
     blight = 0;
     bdark  = 0;
+    abg    = bg; /* default action button: the titlebar colours */
+    afg    = fg;
   }
 
   if (pal.title.bg        < 0 || pal.title.bg        >= w->npalette ||
@@ -133,16 +153,18 @@ result_t wuss_create(screen_t            *scr,
       pal.scroll.arrows   < 0 || pal.scroll.arrows   >= w->npalette ||
       pal.scroll.wells    < 0 || pal.scroll.wells    >= w->npalette ||
       pal.scroll.sausages < 0 || pal.scroll.sausages >= w->npalette ||
-      validate_bevel_backdrop(w, blight, bdark) != result_OK)
+      validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
   {
-    free(w->palette);
-    free(w);
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
     return result_WUSS_BAD_COLOUR;
   }
 
   w->furniture_colours = pal;
   w->bevel_light       = blight;
   w->bevel_dark        = bdark;
+  w->accent_bg         = abg;
+  w->accent_fg         = afg;
 
   if (config != NULL && config->titlebar_height > 0)
   {
@@ -159,33 +181,36 @@ result_t wuss_create(screen_t            *scr,
     w->titlebar_height = WUSS_DEFAULT_TITLEBAR_HEIGHT;
   }
 #else /* !WUSS_FURNITURE */
-  w->backdrop = (config != NULL) ? config->backdrop : wuss_NO_BACKGROUND;
-
 #ifdef WUSS_ICONS
   if (config != NULL)
   {
     blight = config->bevel.light;
     bdark  = config->bevel.dark;
+    abg    = config->accent.bg;
+    afg    = config->accent.fg;
   }
   else
   {
     blight = 0;
     bdark  = 0;
+    abg    = 0;
+    afg    = (w->npalette > 1) ? 1 : 0;
   }
-  if (validate_bevel_backdrop(w, blight, bdark) != result_OK)
+  if (validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
   {
-    free(w->palette);
-    free(w);
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
     return result_WUSS_BAD_COLOUR;
   }
   w->bevel_light = blight;
   w->bevel_dark  = bdark;
+  w->accent_bg   = abg;
+  w->accent_fg   = afg;
 #else
-  if (w->backdrop != wuss_NO_BACKGROUND &&
-      (w->backdrop < 0 || w->backdrop >= w->npalette))
+  if (wuss__validate_backdrop(w, &w->backdrop) != result_OK)
   {
-    free(w->palette);
-    free(w);
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
     return result_WUSS_BAD_COLOUR;
   }
 #endif
@@ -197,9 +222,15 @@ result_t wuss_create(screen_t            *scr,
   w->furniture.dragging = NULL;
   w->furniture.drag.x   = 0;
   w->furniture.drag.y   = 0;
+  w->furniture_ops      = &wuss__furniture_default_ops;
 #endif
 #ifdef WUSS_ICONS
   w->pressed_icon       = NULL;
+  w->hover_icon         = NULL;
+#endif
+#ifdef WUSS_MENUS
+  w->menu_chain         = NULL;
+  w->menu_eat_up        = 0;
 #endif
 
   w->ndirty = 0;
@@ -207,6 +238,8 @@ result_t wuss_create(screen_t            *scr,
   w->layout    = NULL;
   w->cascade.x = 0;
   w->cascade.y = 0;
+  w->pointer.x = 0;
+  w->pointer.y = 0;
 
   list_init(&w->z_order);
 

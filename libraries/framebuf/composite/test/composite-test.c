@@ -1,4 +1,4 @@
-/* composite-test.c */
+/* framebuf/composite/test/composite-test.c */
 
 #include <assert.h>
 #include <stdio.h>
