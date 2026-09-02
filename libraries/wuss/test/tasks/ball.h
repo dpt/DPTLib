@@ -13,9 +13,10 @@
 /* one bouncing ball, centre in local content coords */
 typedef struct ball
 {
-  int x, y;
-  int dx, dy;
-  int radius;
+  int      x, y;
+  int      dx, dy;
+  int      radius;
+  colour_t colour;
 }
 ball_t;
 
@@ -26,7 +27,7 @@ ball_t;
 typedef struct ball_task
 {
   wuss_window_t *window;
-  colour_t       bg, ball;
+  colour_t       bg;
   ball_t         balls[BALL_MAX];
   int            nballs;
 }
