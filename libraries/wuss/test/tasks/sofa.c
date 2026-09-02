@@ -523,7 +523,7 @@ static result_t sofa_mouse(wuss_window_t *window,
     sc->turns = 0;
     wuss_window_invalidate_all(window);
   }
-  else
+  else if (button & wuss_BUTTON_SELECT)
   {
     sc->spinning = !sc->spinning;
   }

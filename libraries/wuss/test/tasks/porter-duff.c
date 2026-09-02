@@ -396,7 +396,8 @@ result_t porter_duff_handle(wuss_window_t      *window,
     return porter_duff_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
-    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
+        !(event->data.mouse.button & wuss_BUTTON_SELECT))
       return result_OK;
     return porter_duff_mouse(window, task_data);
 
