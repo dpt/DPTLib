@@ -15,21 +15,20 @@
 
 #include "ball.h"
 
-/* Window-local invalidation box covering a ball (or its swept range) whose
- * centre spans [vx0,vx1] x [vy0,vy1] in virtual content space. */
-static box_t ball_local_box(int     vx0,
-                            int     vy0,
-                            int     vx1,
-                            int     vy1,
-                            int     radius,
-                            point_t scroll)
+/* Invalidation box (virtual content space, as ball positions are held)
+ * covering a ball -- or its swept range -- whose centre spans
+ * [vx0,vx1] x [vy0,vy1]. wuss_window_invalidate maps this to the screen and
+ * applies scroll, so this must not. The circle occupies [c-radius,c+radius]
+ * inclusive, i.e. 2*radius+1 pixels; box_t is half-open so x1/y1 get the
+ * extra 1. */
+static box_t ball_local_box(int vx0, int vy0, int vx1, int vy1, int radius)
 {
   box_t local;
 
-  local.x0 = vx0 - radius - scroll.x;
-  local.y0 = vy0 - radius - scroll.y;
-  local.x1 = vx1 + radius - scroll.x;
-  local.y1 = vy1 + radius - scroll.y;
+  local.x0 = vx0 - radius;
+  local.y0 = vy0 - radius;
+  local.x1 = vx1 + radius + 1;
+  local.y1 = vy1 + radius + 1;
 
   return local;
 }
@@ -119,14 +118,13 @@ static result_t ball_mouse(wuss_window_t      *window,
 {
   ball_task_t *bc;
   box_t        local;
-  point_t      scroll;
 
   bc = task_data;
 
+  NOT_USED(window);
+
   if (action != wuss_MOUSE_DOWN)
     return result_OK;
-
-  wuss_window_get_scroll(window, &scroll);
 
   if (button & wuss_BUTTON_SELECT)
   {
@@ -145,7 +143,7 @@ static result_t ball_mouse(wuss_window_t      *window,
     b->dy     = (bc->nballs & 2) ? 2 : -2;
     b->radius = 8;
 
-    local = ball_local_box(b->x, b->y, b->x, b->y, b->radius, scroll);
+    local = ball_local_box(b->x, b->y, b->x, b->y, b->radius);
     wuss_window_invalidate(bc->window, &local);
   }
   else if (button & wuss_BUTTON_ADJUST)
@@ -157,7 +155,7 @@ static result_t ball_mouse(wuss_window_t      *window,
 
     b = &bc->balls[--bc->nballs];
 
-    local = ball_local_box(b->x, b->y, b->x, b->y, b->radius, scroll);
+    local = ball_local_box(b->x, b->y, b->x, b->y, b->radius);
     wuss_window_invalidate(bc->window, &local);
   }
 
@@ -200,7 +198,7 @@ static result_t ball_idle(void *task_data)
 
     local = ball_local_box(MIN(old_x, b->x), MIN(old_y, b->y),
                            MAX(old_x, b->x), MAX(old_y, b->y),
-                           b->radius, scroll);
+                           b->radius);
 
     wuss_window_invalidate(bc->window, &local);
   }
