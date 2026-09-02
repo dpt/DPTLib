@@ -135,7 +135,8 @@ static result_t spawn_image(void)
   logf_info("wuss: image task loading \"%s\" + \"%s\"", buf, ninepatch);
   rc = image_create(g.wuss, buf, ninepatch, t);
   if (rc != result_OK)
-    logf_error("wuss: image_create(\"%s\") failed, rc=0x%X", buf, rc);
+    logf_error("wuss: image_create(\"%s\") failed, rc=0x%X (%s)", buf, rc,
+               result_string(rc));
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -197,8 +198,8 @@ static result_t spawn_icons(void)
   if (t == NULL) return result_OOM;
   rc = icons_create(g.wuss, g.daydream_font, g.resources, t);
   if (rc != result_OK)
-    logf_error("wuss: icons_create (resources \"%s\") failed, rc=0x%X",
-               g.resources, rc);
+    logf_error("wuss: icons_create (resources \"%s\") failed, rc=0x%X (%s)",
+               g.resources, rc, result_string(rc));
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -220,8 +221,8 @@ static result_t spawn_porter_duff(void)
   if (t == NULL) return result_OOM;
   rc = porter_duff_create(g.wuss, g.palette, g.daydream_font, g.resources, t);
   if (rc != result_OK)
-    logf_error("wuss: porter_duff_create (resources \"%s\") failed, rc=0x%X",
-               g.resources, rc);
+    logf_error("wuss: porter_duff_create (resources \"%s\") failed, "
+               "rc=0x%X (%s)", g.resources, rc, result_string(rc));
   if (rc != result_OK || t->window == NULL) { free(t); return rc; }
   return result_OK;
 }
@@ -525,7 +526,8 @@ static result_t run_wuss(const char *resources)
   rc = bmfont_create(filename, &font);
   if (rc != result_OK)
   {
-    logf_error("wuss: bmfont_create(\"%s\") failed, rc=0x%X", filename, rc);
+    logf_error("wuss: bmfont_create(\"%s\") failed, rc=0x%X (%s)", filename,
+               rc, result_string(rc));
     goto Failure;
   }
 
@@ -535,7 +537,8 @@ static result_t run_wuss(const char *resources)
   rc = bmfont_create(filename, &daydream_font);
   if (rc != result_OK)
   {
-    logf_error("wuss: bmfont_create(\"%s\") failed, rc=0x%X", filename, rc);
+    logf_error("wuss: bmfont_create(\"%s\") failed, rc=0x%X (%s)", filename,
+               rc, result_string(rc));
     goto Failure;
   }
 
@@ -673,7 +676,7 @@ static result_t run_wuss(const char *resources)
 
 Failure:
 
-  printf("run_wuss: failed (rc=0x%X)\n", rc);
+  printf("run_wuss: failed (rc=0x%X: %s)\n", rc, result_string(rc));
 
   return result_TEST_FAILED;
 }
