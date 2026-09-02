@@ -285,15 +285,21 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
      * SELECT tears the whole chain down first; ADJUST keeps it open so the
      * row can be re-picked. Capture everything the notification needs now --
      * a SELECT flash frees `self` when it ends. A re-pick while a flash on
-     * this level is still running (fast ADJUST clicks) finishes that flash
-     * first, so its row is cleared and its MENU_SELECT is not lost. */
+     * this level is still running (fast clicks) finishes that flash first so
+     * its row is cleared and its MENU_SELECT is not lost; if that previous
+     * pick was a SELECT the finish frees the whole chain (including `self`),
+     * so this pick is spent on it and we must not touch `self` again. */
     {
       wuss_icon_t *row;
 
       if (self->flash.frames > 0)
-        wuss__menu_flash_finish(self); /* self survives: previous pick was
-                                        * ADJUST, or a SELECT would have been
-                                        * caught by the frames == 0 guard */
+      {
+        int prev_keep_open = self->flash.keep_open;
+
+        wuss__menu_flash_finish(self);
+        if (!prev_keep_open)
+          return result_OK; /* `self` and the chain are gone */
+      }
 
       row = self->icons[index];
 
