@@ -85,9 +85,9 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         action == wuss_MOUSE_DOWN       &&
         (button & wuss_BUTTON_SELECT))
     {
-      /* User close-icon path: routes through try_close so the task gets
-       * PRE_CLOSE (may veto) then CLOSE. wuss takes no teardown action
-       * itself -- the task closes the window if it wants to. */
+      /* User close-icon path: routes through try_close, so the task gets
+       * PRE_CLOSE (may veto) then CLOSE and, if not vetoed, wuss tears the
+       * window down. A veto's non-OK return propagates to the caller. */
       return wuss_window_try_close(win);
     }
 
