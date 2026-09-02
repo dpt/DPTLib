@@ -230,6 +230,7 @@ result_t wuss_create(screen_t            *scr,
 #endif
 #ifdef WUSS_MENUS
   w->menu_chain         = NULL;
+  w->menu_task          = NULL;
   w->menu_eat_up        = 0;
 #endif
 
@@ -242,6 +243,7 @@ result_t wuss_create(screen_t            *scr,
   w->pointer.y = 0;
 
   list_init(&w->z_order);
+  list_init(&w->tasks);
 
   *wuss = w;
 

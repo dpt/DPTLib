@@ -34,6 +34,19 @@ void wuss_destroy(wuss_t *doomed)
     e = next;
   }
 
+  /* Windows are gone; free any tasks the caller left registered. No QUIT --
+   * wuss_destroy is the whole-manager teardown, past the point of
+   * notification. */
+  e = doomed->tasks.next;
+  while (e != NULL)
+  {
+    list_t *next;
+
+    next = e->next;
+    wuss__free(doomed, e);
+    e = next;
+  }
+
   packer_destroy(doomed->layout);
   wuss__free(doomed, doomed->palette);
   wuss__free(doomed, doomed); /* reads doomed->alloc.free before freeing */
