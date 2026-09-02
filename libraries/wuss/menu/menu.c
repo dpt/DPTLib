@@ -32,6 +32,12 @@
 #define WUSS_MENU_TEXT_PAD        6
 #define WUSS_MENU_SUBMENU_OVERLAP 2 /* px a submenu overlaps its parent's right edge */
 
+/* SELECT-pick flash: toggle the row highlight every WUSS_MENU_FLASH_PERIOD
+ * IDLE frames, for WUSS_MENU_FLASH_FRAMES frames total. At ~60 Hz that is
+ * three quick on/off blinks in about 0.2s -- the RISC OS feel. */
+#define WUSS_MENU_FLASH_FRAMES  12
+#define WUSS_MENU_FLASH_PERIOD  2
+
 /* ----------------------------------------------------------------------- */
 
 static result_t wuss__menu_handle(wuss_window_t      *window,
@@ -45,6 +51,9 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
                                  struct wuss__menu  *parent,
                                  struct wuss__menu **out);
 
+static void wuss__menu_flash_step(struct wuss__menu *self);
+static void wuss__menu_flash_finish(struct wuss__menu *self);
+
 /* The internal task that owns every borderless menu window, created on the
  * first wuss_menu_open of a session. */
 static wuss_task_t *wuss__menu_task(wuss_t *wuss)
@@ -55,7 +64,8 @@ static wuss_task_t *wuss__menu_task(wuss_t *wuss)
     return wuss->menu_task;
 
   desc.handle    = wuss__menu_handle;
-  desc.task_data = NULL; /* per-window node is found by walking the chain */
+  desc.task_data = wuss; /* the ICON path walks the chain by window; the IDLE
+                          * path (window == NULL) needs the wuss_t directly */
   desc.name      = "wuss:menu";
 
   if (wuss_task_create(wuss, &desc, &wuss->menu_task) != result_OK)
@@ -148,6 +158,7 @@ static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
   node->child      = NULL;
   node->open_index = -1;
   node->borrowed   = 1;
+  memset(&node->flash, 0, sizeof(node->flash));
 
   at = wuss__submenu_anchor(self, self->icons[index]);
   wuss_window_move(win, at);
@@ -177,7 +188,21 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
   int                     index;
   int                     i;
 
-  NOT_USED(task_data);
+  /* IDLE arrives with window == NULL; task_data is the wuss_t (see
+   * wuss__menu_task). Drive any running SELECT-pick flash off it. */
+  if (event->kind == wuss_EVENT_IDLE)
+  {
+    struct wuss__menu *node;
+
+    wuss = task_data;
+    for (node = wuss->menu_chain; node != NULL; node = node->child)
+      if (!node->borrowed && node->flash.frames > 0)
+      {
+        wuss__menu_flash_step(node);
+        break; /* node may be freed; the chain is gone if the flash ended */
+      }
+    return result_OK;
+  }
 
   if (event->kind != wuss_EVENT_ICON)
     return result_OK;
@@ -244,39 +269,118 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
   if (event->data.icon.action == wuss_MOUSE_UP)
   {
     wuss_button_t      button;
-    struct wuss__menu *root;
     wuss_task_t       *owner;
     const wuss_menu_t *menu;
-    wuss_event_t       sel;
 
     button = event->data.icon.button;
 
     if (item->submenu != NULL || item->window != NULL)
       return result_OK; /* a submenu/window row opens on hover, not a pick */
 
-    /* Capture what the notification needs, then tear the chain down *before*
-     * delivering it: the task's MENU_SELECT handler may itself open a new
-     * menu (freeing this one), so `self` must not be touched afterwards. */
-    root = self;
-    while (root->parent != NULL)
-      root = root->parent;
-    owner = root->owner;
+    /* owner (the task that opened the chain) is copied onto every level */
+    owner = self->owner;
     menu  = self->menu;
 
-    if (!(button & wuss_BUTTON_ADJUST))
+    /* Flash the picked row, then deliver MENU_SELECT from the IDLE handler.
+     * SELECT tears the whole chain down first; ADJUST keeps it open so the
+     * row can be re-picked. Capture everything the notification needs now --
+     * a SELECT flash frees `self` when it ends. A re-pick while a flash on
+     * this level is still running (fast ADJUST clicks) finishes that flash
+     * first, so its row is cleared and its MENU_SELECT is not lost. */
     {
-      root->wuss->menu_chain = NULL;
-      wuss__menu_close_from(root);
-    }
+      wuss_icon_t *row;
 
-    sel.kind                    = wuss_EVENT_MENU_SELECT;
-    sel.data.menu_select.menu   = menu;
-    sel.data.menu_select.index  = index;
-    sel.data.menu_select.button = button;
-    (void) wuss__deliver(owner, NULL, &sel);
+      if (self->flash.frames > 0)
+        wuss__menu_flash_finish(self); /* self survives: previous pick was
+                                        * ADJUST, or a SELECT would have been
+                                        * caught by the frames == 0 guard */
+
+      row = self->icons[index];
+
+      self->flash.frames    = WUSS_MENU_FLASH_FRAMES;
+      self->flash.index     = index;
+      self->flash.owner     = owner;
+      self->flash.menu      = menu;
+      self->flash.button    = button;
+      self->flash.keep_open = (button & wuss_BUTTON_ADJUST) != 0;
+
+      /* first blink now: the row is already highlit under the pointer, so
+       * drop the highlight this frame for an immediate visible change */
+      wuss__icon_set_state(row, wuss_ICON_STATE_HOVERED, 0);
+      wuss__icon_invalidate(row);
+    }
+    return result_OK;
   }
 
   return result_OK;
+}
+
+/* End the pick flash on `self` now: leave the flashed row un-highlit (a later
+ * MOUSE_MOVE re-highlights it if the pointer is still over it), then deliver
+ * the MENU_SELECT the flash stands in for -- tearing the chain down first
+ * unless the pick was an ADJUST (keep_open). On a non-keep_open return `self`
+ * has been freed. Callers guard against calling this with no flash armed. */
+static void wuss__menu_flash_finish(struct wuss__menu *self)
+{
+  struct wuss__menu *root;
+  wuss_event_t       sel;
+  wuss_task_t       *owner     = self->flash.owner;
+  const wuss_menu_t *menu      = self->flash.menu;
+  int                index     = self->flash.index;
+  wuss_button_t      button    = self->flash.button;
+  int                keep_open = self->flash.keep_open;
+
+  self->flash.frames = 0;
+
+  wuss__icon_set_state(self->icons[index], wuss_ICON_STATE_HOVERED, 0);
+  wuss__icon_invalidate(self->icons[index]);
+
+  if (!keep_open)
+  {
+    root = self;
+    while (root->parent != NULL)
+      root = root->parent;
+
+    root->wuss->menu_chain = NULL;
+    wuss__menu_close_from(root); /* frees `self` */
+  }
+
+  sel.kind                    = wuss_EVENT_MENU_SELECT;
+  sel.data.menu_select.menu   = menu;
+  sel.data.menu_select.index  = index;
+  sel.data.menu_select.button = button;
+  (void) wuss__deliver(owner, NULL, &sel);
+}
+
+/* Advance a running pick flash by one IDLE frame; hand off to
+ * wuss__menu_flash_finish when it runs out. `self` must be a real
+ * (non-borrowed) level. */
+static void wuss__menu_flash_step(struct wuss__menu *self)
+{
+  wuss_icon_t *row;
+
+  if (self->flash.frames <= 0)
+    return;
+
+  row = self->icons[self->flash.index];
+
+  self->flash.frames--;
+
+  if (self->flash.frames == 0)
+  {
+    wuss__menu_flash_finish(self); /* delivers MENU_SELECT; may free `self` */
+    return;
+  }
+
+  /* toggle the highlight at each period boundary; the pick frame already did
+   * the first (off) blink, so phase here starts the row coming back on */
+  if (self->flash.frames % WUSS_MENU_FLASH_PERIOD == 0)
+  {
+    int on = ((self->flash.frames / WUSS_MENU_FLASH_PERIOD) & 1) == 0;
+
+    wuss__icon_set_state(row, wuss_ICON_STATE_HOVERED, on);
+    wuss__icon_invalidate(row);
+  }
 }
 
 /* ----------------------------------------------------------------------- */
@@ -425,6 +529,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   node->child      = NULL;
   node->open_index = -1;
   node->borrowed   = 0;
+  memset(&node->flash, 0, sizeof(node->flash));
 
   /* One MENU_ENTRY icon per item, in item order, preceded by an inert
    * wuss_ICON_TYPE_RULE icon for each dashed item. specs[] therefore holds
