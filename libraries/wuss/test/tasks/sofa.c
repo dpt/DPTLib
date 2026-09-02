@@ -41,10 +41,10 @@ typedef struct box3 { double x0, y0, z0, x1, y1, z1; } box3_t;
 /* the sofa: seat, backrest and two arms, in model units (roughly -1..1) */
 static const box3_t sofa_parts[] =
 {
-  { -0.8, -0.3, -0.6,   0.8,  0.1,  0.6 }, /* seat */
-  { -1.0, -0.3,  0.35,  1.0,  0.9,  0.6 }, /* backrest */
-  { -1.0, -0.3, -0.6,  -0.8,  0.5,  0.6 }, /* left arm */
-  {  0.8, -0.3, -0.6,   1.0,  0.5,  0.6 }, /* right arm */
+  { -0.8, -0.3, -0.5,   0.8,  0.1,  0.5 }, /* seat */
+  { -1.0, -0.3,  0.5,   1.0,  0.9,  0.8 }, /* backrest */
+  { -1.0, -0.3, -0.5,  -0.8,  0.5,  0.5 }, /* left arm */
+  {  0.8, -0.3, -0.5,   1.0,  0.5,  0.5 }, /* right arm */
 };
 
 /* cube corner edges, indexing box3_corners' bit-numbered corners (bit0=x,
