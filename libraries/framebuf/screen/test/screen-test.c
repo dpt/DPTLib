@@ -632,6 +632,101 @@ static result_t test_draw_rect(void)
 
 /* ----------------------------------------------------------------------- */
 
+static result_t test_draw_circle(void)
+{
+  static testscreen_t ts;
+  static testscreen_t enc;
+
+  int fg, bg;
+
+  fg = (int) np_encode(&enc, 0, 255, 0);
+  bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
+
+  /* r=10 about (32,32): the four axis points lie on the circle, the centre
+   * and a point just inside the rim do not. */
+  testscreen_init(&ts);
+  screen_draw_circle(&ts.scr, 32, 32, 10, colour_rgb(0, 255, 0));
+
+  if (np_at(&ts, 42, 32) != fg || np_at(&ts, 22, 32) != fg ||
+      np_at(&ts, 32, 42) != fg || np_at(&ts, 32, 22) != fg)
+  {
+    printf("screen: draw_circle missing an axis point\n");
+    return result_TEST_FAILED;
+  }
+  if (np_at(&ts, 32, 32) != bg || np_at(&ts, 38, 32) != bg)
+  {
+    printf("screen: draw_circle filled its interior\n");
+    return result_TEST_FAILED;
+  }
+
+  /* r=0 draws the centre pixel only. */
+  testscreen_init(&ts);
+  screen_draw_circle(&ts.scr, 5, 5, 0, colour_rgb(0, 255, 0));
+  if (np_at(&ts, 5, 5) != fg || np_at(&ts, 6, 5) != bg)
+  {
+    printf("screen: draw_circle r=0 wrong\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Honours the screen clip: right half of the circle is masked off. */
+  testscreen_init(&ts);
+  ts.scr.clip = (box_t) { 0, 0, 32, 64 };
+  screen_draw_circle(&ts.scr, 32, 32, 10, colour_rgb(0, 255, 0));
+  if (np_at(&ts, 22, 32) != fg || np_at(&ts, 42, 32) != bg)
+  {
+    printf("screen: draw_circle ignored the screen clip\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
+static result_t test_fill_circle(void)
+{
+  static testscreen_t ts;
+  static testscreen_t enc;
+
+  int fg, bg;
+
+  fg = (int) np_encode(&enc, 0, 255, 0);
+  bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
+
+  /* r=10 about (32,32): centre, rim and axis extremes lit; one pixel beyond
+   * the rim is background. */
+  testscreen_init(&ts);
+  screen_fill_circle(&ts.scr, 32, 32, 10, colour_rgb(0, 255, 0));
+
+  if (np_at(&ts, 32, 32) != fg ||               /* centre */
+      np_at(&ts, 38, 32) != fg ||               /* interior */
+      np_at(&ts, 42, 32) != fg || np_at(&ts, 22, 32) != fg ||
+      np_at(&ts, 32, 42) != fg || np_at(&ts, 32, 22) != fg)
+  {
+    printf("screen: fill_circle left a hole\n");
+    return result_TEST_FAILED;
+  }
+  if (np_at(&ts, 43, 32) != bg || np_at(&ts, 32, 43) != bg)
+  {
+    printf("screen: fill_circle spilled past the rim\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Honours the screen clip. */
+  testscreen_init(&ts);
+  ts.scr.clip = (box_t) { 0, 0, 32, 64 };
+  screen_fill_circle(&ts.scr, 32, 32, 10, colour_rgb(0, 255, 0));
+  if (np_at(&ts, 28, 32) != fg || np_at(&ts, 36, 32) != bg)
+  {
+    printf("screen: fill_circle ignored the screen clip\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t screen_test(const char *resources)
 {
   typedef result_t (*screentestfn)(void);
@@ -645,7 +740,9 @@ result_t screen_test(const char *resources)
     test_fill_pattern,
     test_dashed_line,
     test_draw_lines,
-    test_draw_rect
+    test_draw_rect,
+    test_draw_circle,
+    test_fill_circle
   };
 
   result_t rc;
