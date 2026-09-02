@@ -187,7 +187,18 @@ typedef enum wuss_window_flags
    * depends on the window's size in ways redraw can't patch incrementally
    * (e.g. a palette that lays itself out across the whole window).
    */
-  wuss_WINDOW_NO_RESIZE_BLIT = 1 << 8
+  wuss_WINDOW_NO_RESIZE_BLIT = 1 << 8,
+
+  /**
+   * Created hidden, or hidden later via wuss_window_set_hidden: the window
+   * keeps its place in the z-order but is not drawn and not hit-tested, so
+   * it neither occludes other windows nor catches the pointer. Its position
+   * can still be changed with wuss_window_move while hidden, ready for when
+   * it is shown again. Unlike the wuss_WINDOW_NO_* bits this one is toggled
+   * at runtime, and it is honoured regardless of the WUSS_FURNITURE build
+   * option.
+   */
+  wuss_WINDOW_HIDDEN         = 1 << 9
 }
 wuss_window_flags_t;
 

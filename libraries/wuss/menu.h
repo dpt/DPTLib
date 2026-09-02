@@ -14,16 +14,23 @@
 struct wuss__menu
 {
   wuss_t                *wuss;
-  wuss_window_t         *window;   /* the borderless menu window */
-  const wuss_menu_t     *menu;     /* borrowed source description */
+  wuss_window_t         *window;   /* the borderless menu window; for a
+                                    * borrowed-window level (see borrowed) the
+                                    * caller's own window instead */
+  const wuss_menu_t     *menu;     /* borrowed source description; NULL for a
+                                    * borrowed-window level */
   wuss_icon_t          **icons;    /* owned array, menu->nitems entries, in
-                                    * item order */
+                                    * item order; NULL for a borrowed-window
+                                    * level */
   struct wuss__menu     *parent;   /* level this one opened from, NULL at root */
   struct wuss__menu     *child;    /* open submenu level, NULL when none */
   wuss_menu_select_fn_t *on_select;
   void                  *ctx;
   int                    open_index; /* item index whose submenu `child` is,
                                       * -1 when no child open */
+  int                    borrowed;   /* 1: `window` is a caller-owned window
+                                      * shown in place of a submenu -- hide it
+                                      * rather than close it on teardown */
 };
 
 /* Called from wuss_mouse_click on a MOUSE_DOWN before the window hit-test: if a

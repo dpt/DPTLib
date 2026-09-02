@@ -140,6 +140,21 @@ void wuss_window_close(wuss_window_t *doomed);
 void wuss_window_move(wuss_window_t *window, point_t p);
 
 /**
+ * Show or hide a window without destroying it.
+ *
+ * A hidden window keeps its z-order slot and all its state, but is not drawn
+ * and not hit-tested: it neither occludes lower windows nor catches the
+ * pointer. wuss_window_move still works while hidden, so a caller can park a
+ * window off to one side and re-show it in position later. Toggling
+ * visibility invalidates the window's footprint so the next redraw picks up
+ * the change.
+ *
+ * \param[in] window Window to show or hide.
+ * \param[in] hidden Non-zero to hide, zero to show.
+ */
+void wuss_window_set_hidden(wuss_window_t *window, int hidden);
+
+/**
  * Resize a window's content area, preserving its top-left position.
  *
  * \param[in] window Window to resize.

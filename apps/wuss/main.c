@@ -234,13 +234,19 @@ static const wuss_menu_t g_menu_export =
   "Export", g_menu_export_items, NELEMS(g_menu_export_items)
 };
 
-static const wuss_menu_item_t g_menu_items[] =
+/* A caller-owned window wired as a menu item's `.window`: hovering "Details"
+ * shows it where a submenu would open, and moving off the row (or dismissing
+ * the menu) hides it again. Created once, lazily, by spawn_menu. */
+static wuss_window_t *g_menu_details_window;
+
+static wuss_menu_item_t g_menu_items[] =
 {
-  { "Open",      wuss_MENU_ITEM_NONE,   NULL },
-  { "Show grid", wuss_MENU_ITEM_TICKED, NULL },
-  { "Wireframe", wuss_MENU_ITEM_TICKED, NULL },
-  { "Export",    wuss_MENU_ITEM_NONE,   &g_menu_export },
-  { "Quit",      wuss_MENU_ITEM_DASHED, NULL }
+  { "Open",      wuss_MENU_ITEM_NONE,   NULL,          NULL },
+  { "Show grid", wuss_MENU_ITEM_TICKED, NULL,          NULL },
+  { "Wireframe", wuss_MENU_ITEM_TICKED, NULL,          NULL },
+  { "Export",    wuss_MENU_ITEM_NONE,   &g_menu_export, NULL },
+  { "Details",   wuss_MENU_ITEM_NONE,   NULL,          NULL }, /* .window set in spawn_menu */
+  { "Quit",      wuss_MENU_ITEM_DASHED, NULL,          NULL }
 };
 
 static const wuss_menu_t g_menu =
@@ -259,8 +265,35 @@ static void menu_selected(const wuss_menu_t *menu,
          menu->items[index].text ? menu->items[index].text : "(sep)");
 }
 
+/* index of the "Details" row in g_menu_items */
+#define G_MENU_DETAILS_INDEX 4
+
 static result_t spawn_menu(void)
 {
+  if (g_menu_details_window == NULL)
+  {
+    box_t    content;
+    result_t rc;
+
+    /* a small hidden window; wuss fills its background, no task needed */
+    content.x0 = 0;
+    content.y0 = 0;
+    content.x1 = 180;
+    content.y1 = 120;
+    rc = wuss_window_create(g.wuss, &content, "Details",
+                            wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK
+                            | wuss_WINDOW_NO_TOGGLE_SIZE
+                            | wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL
+                            | wuss_WINDOW_NO_RESIZE | wuss_WINDOW_HIDDEN,
+                            wuss_BACKDROP_COLOUR(1),
+                            NULL,
+                            SIZE2D(180, 120), SIZE2D(0, 0),
+                            &g_menu_details_window);
+    if (rc != result_OK)
+      return rc;
+    g_menu_items[G_MENU_DETAILS_INDEX].window = g_menu_details_window;
+  }
+
   return wuss_menu_open(g.wuss, &g_menu, wuss_get_pointer(g.wuss),
                         menu_selected, NULL, NULL);
 }

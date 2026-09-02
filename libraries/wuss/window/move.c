@@ -36,6 +36,18 @@ void wuss_window_move(wuss_window_t *window, point_t p)
   titlebar_height = wuss__titlebar_height(window);
   before          = window->visible;
 
+  /* a hidden window has nothing on screen to slide and must paint nothing;
+   * just translate its footprint so it is in place when shown again */
+  if (window->flags & wuss_WINDOW_HIDDEN)
+  {
+    window->visible.x0 = p.x - outline_px;
+    window->visible.y0 = p.y - outline_px - titlebar_height;
+    window->visible.x1 = window->visible.x0 + width;
+    window->visible.y1 = window->visible.y0 + height;
+    wuss__notify_open(window);
+    return;
+  }
+
   /* The clean (non-occluded) pieces of "before" are genuinely this
    * window's own rendering; whatever isn't clean is hidden behind some
    * other window and has no valid pixels of this window's content to

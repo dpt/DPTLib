@@ -55,10 +55,68 @@ static void wuss__menu_close_from(struct wuss__menu *node)
     wuss_t *w;
 
     w = node->wuss;
-    wuss_window_close(node->window);
-    wuss__free(w, node->icons);
+    if (node->borrowed)
+      wuss_window_set_hidden(node->window, 1); /* caller's window: hide, keep */
+    else
+      wuss_window_close(node->window);
+    wuss__free(w, node->icons); /* NULL for a borrowed level */
     wuss__free(w, node);
   }
+}
+
+/* Compute where a submenu (or a borrowed window standing in for one) opens
+ * off the row `icon` in parent level `self`: content top-left in screen
+ * space, the child's own titlebar then sitting above it so the two rows line
+ * up. Mirrors the maths in wuss__menu_handle's MOUSE_MOVE branch. */
+static point_t wuss__submenu_anchor(struct wuss__menu *self,
+                                    const wuss_icon_t *icon)
+{
+  box_t   wb;
+  box_t   ib;
+  point_t scroll;
+  point_t at;
+
+  wuss_window_get_content_bounds(self->window, &wb);
+  wuss_icon_get_bbox(icon, &ib);
+  wuss_window_get_scroll(self->window, &scroll);
+
+  at.x = wb.x1 - WUSS_MENU_SUBMENU_OVERLAP;
+  at.y = wb.y0 + ib.y0 - scroll.y;
+  return at;
+}
+
+/* Open item `index`'s borrowed window as level `self->child`: position it
+ * where a submenu would appear, un-hide it, bring it to the front. */
+static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
+{
+  struct wuss__menu *node;
+  wuss_window_t     *win;
+  point_t            at;
+
+  win = self->menu->items[index].window;
+
+  node = wuss__malloc(self->wuss, sizeof(*node));
+  if (node == NULL)
+    return result_OOM;
+
+  node->wuss       = self->wuss;
+  node->window     = win;
+  node->menu       = NULL;
+  node->icons      = NULL;
+  node->parent     = self;
+  node->child      = NULL;
+  node->on_select  = self->on_select;
+  node->ctx        = self->ctx;
+  node->open_index = -1;
+  node->borrowed   = 1;
+
+  at = wuss__submenu_anchor(self, self->icons[index]);
+  wuss_window_move(win, at);
+  wuss_window_set_hidden(win, 0);
+  wuss_window_restack(win, wuss_ZORDER_FRONT);
+
+  self->child = node;
+  return result_OK;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -101,8 +159,6 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
   if (event->data.icon.action == wuss_MOUSE_MOVE)
   {
-    box_t   ib;
-    box_t   wb;
     point_t at;
 
     /* Hovering a different row closes any submenu the previous row opened. */
@@ -113,24 +169,23 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
       self->open_index = -1;
     }
 
-    if (item->submenu == NULL || self->child != NULL)
+    if (self->child != NULL)
       return result_OK;
 
-    wuss_window_get_content_bounds(self->window, &wb);
-    wuss_icon_get_bbox(icon, &ib);
-
-    /* wb is the content box in screen space; ib is in document space, so the
-     * row's screen y is its document y less however far the menu is scrolled.
-     * The child's own titlebar sits above `at`, so a submenu row lines up with
-     * its parent. */
+    /* A borrowed window opens where a submenu would; a submenu spawns as a
+     * fresh menu level. Either lines its row 0 up with this row -- the
+     * child's own titlebar sits above `at`. */
+    if (item->window != NULL)
     {
-      point_t scroll;
-
-      wuss_window_get_scroll(self->window, &scroll);
-      at.x = wb.x1 - WUSS_MENU_SUBMENU_OVERLAP;
-      at.y = wb.y0 + ib.y0 - scroll.y;
+      if (wuss__menu_open_window(self, index) == result_OK)
+        self->open_index = index;
+      return result_OK;
     }
 
+    if (item->submenu == NULL)
+      return result_OK;
+
+    at = wuss__submenu_anchor(self, icon);
     if (wuss__menu_spawn(self->wuss, item->submenu, at, self,
                          self->on_select, self->ctx, &self->child) == result_OK)
       self->open_index = index;
@@ -148,8 +203,8 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
     button = event->data.icon.button;
 
-    if (item->submenu != NULL)
-      return result_OK; /* a submenu row opens on hover, it is not a pick */
+    if (item->submenu != NULL || item->window != NULL)
+      return result_OK; /* a submenu/window row opens on hover, not a pick */
 
     /* Capture what the callback needs, then tear the chain down *before*
      * invoking it: on_select may itself open a new menu (freeing this one),
@@ -318,6 +373,7 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   node->on_select  = on_select;
   node->ctx        = ctx;
   node->open_index = -1;
+  node->borrowed   = 0;
 
   /* One MENU_ENTRY icon per item, in item order, preceded by an inert
    * wuss_ICON_TYPE_RULE icon for each dashed item. specs[] therefore holds
@@ -351,7 +407,7 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
 
     if (item->flags & wuss_MENU_ITEM_DISABLED)
       flags |= wuss_ICON_FLAGS_DISABLED;
-    if (item->submenu != NULL)
+    if (item->submenu != NULL || item->window != NULL)
       flags |= wuss_ICON_FLAGS_SUBMENU;
 
     specs[s].type    = wuss_ICON_TYPE_MENU_ENTRY;

@@ -133,7 +133,8 @@ result_t wuss_window_create(wuss_t             *wuss,
 
   list_add_to_head(&wuss->z_order, &win->link);
 
-  wuss_invalidate(wuss, &win->visible);
+  if (!(flags & wuss_WINDOW_HIDDEN))
+    wuss_invalidate(wuss, &win->visible);
 
   *window = win;
 

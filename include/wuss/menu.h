@@ -28,6 +28,7 @@ extern "C"
 #include "geom/point.h"
 
 #include "wuss/wuss.h"
+#include "wuss/window.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -54,6 +55,16 @@ typedef struct wuss_menu_item
   wuss_menu_item_flags_t   flags;  /**< see wuss_menu_item_flags_t */
   const struct wuss_menu  *submenu; /**< non-NULL: draw a right arrow and open
                                      *   this menu to the right on hover */
+  wuss_window_t           *window; /**< non-NULL: draw a right arrow and, on
+                                     *   hover, show this caller-owned window
+                                     *   where a submenu would open, hiding it
+                                     *   again when the pointer leaves the row
+                                     *   or the chain is dismissed. Create it
+                                     *   with wuss_WINDOW_HIDDEN. Mutually
+                                     *   exclusive with \c submenu. The window
+                                     *   must outlive the open chain -- do not
+                                     *   wuss_window_close it while its menu is
+                                     *   open. */
 }
 wuss_menu_item_t;
 
