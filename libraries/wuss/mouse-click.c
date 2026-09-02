@@ -85,11 +85,10 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         action == wuss_MOUSE_DOWN       &&
         (button & wuss_BUTTON_SELECT))
     {
-      if (win->task.handle == NULL)
-        return result_OK;
-
-      event.kind = wuss_EVENT_CLOSE;
-      return win->task.handle(win, &event, win->task.task_data);
+      /* User close-icon path: routes through try_close so the task gets
+       * PRE_CLOSE (may veto) then CLOSE. wuss takes no teardown action
+       * itself -- the task closes the window if it wants to. */
+      return wuss_window_try_close(win);
     }
 
     if (region == wuss_FURNITURE_BACK && action == wuss_MOUSE_DOWN)
@@ -203,7 +202,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   }
 #endif /* WUSS_FURNITURE */
 
-  if (win->task.handle != NULL)
+  if (win->task->handle != NULL)
   {
     box_t        content;
     point_t      doc_point;
@@ -246,7 +245,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         event.data.icon.icon   = icon;
         event.data.icon.action = action;
         event.data.icon.button = button;
-        return win->task.handle(win, &event, win->task.task_data);
+        return wuss__deliver(win->task, win, &event);
       }
     }
 #endif
@@ -255,7 +254,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
     event.data.mouse.action = action;
     event.data.mouse.point  = doc_point;
     event.data.mouse.button = button;
-    return win->task.handle(win, &event, win->task.task_data);
+    return wuss__deliver(win->task, win, &event);
   }
 
   return result_OK;

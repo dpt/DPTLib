@@ -10,24 +10,26 @@
 
 #include "../impl.h"
 
-result_t wuss_window_create(wuss_t             *wuss,
+result_t wuss_window_create(wuss_task_t        *task,
                             const box_t        *content,
                             const char         *title,
                             wuss_window_flags_t flags,
                             wuss_backdrop_t     bg,
-                            const wuss_task_t  *task,
                             size2d_t            doc,
                             size2d_t            min_doc,
                             wuss_window_t     **window)
 {
+  wuss_t        *wuss;
   wuss_window_t *win;
   int             width, height, outline_px, titlebar_height;
   int             scr_width, scr_height, dx, dy;
   point_t         carve;
 
-  assert(wuss    != NULL);
+  assert(task    != NULL);
   assert(content != NULL);
   assert(window  != NULL);
+
+  wuss = task->wuss;
 
   width  = content->x1 - content->x0;
   height = content->y1 - content->y0;
@@ -105,10 +107,7 @@ result_t wuss_window_create(wuss_t             *wuss,
 
   box_reset(&win->packed); /* wuss_window_create_placed fills this in after */
 
-  if (task != NULL)
-    win->task = *task;
-  else
-    memset(&win->task, 0, sizeof(win->task));
+  win->task = task;
 
   if (wuss__validate_backdrop(wuss, &bg) != result_OK)
   {
@@ -132,6 +131,7 @@ result_t wuss_window_create(wuss_t             *wuss,
 #endif
 
   list_add_to_head(&wuss->z_order, &win->link);
+  list_add_to_tail(&task->windows, &win->task_link);
 
   if (!(flags & wuss_WINDOW_HIDDEN))
     wuss_invalidate(wuss, &win->visible);

@@ -65,7 +65,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   }
 #endif
 
-  if (win->task.handle == NULL)
+  if (win->task->handle == NULL)
   {
 #ifdef WUSS_ICONS
     wuss__icon_set_hover(wuss, NULL);
@@ -114,7 +114,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
         event.data.icon.icon   = icon;
         event.data.icon.action = wuss_MOUSE_MOVE;
         event.data.icon.button = wuss_BUTTON_SELECT;
-        return win->task.handle(win, &event, win->task.task_data);
+        return wuss__deliver(win->task, win, &event);
       }
     }
 #endif
@@ -123,7 +123,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
     event.data.mouse.action = wuss_MOUSE_MOVE;
     event.data.mouse.point  = doc_point;
     event.data.mouse.button = wuss_BUTTON_SELECT;
-    return win->task.handle(win, &event, win->task.task_data);
+    return wuss__deliver(win->task, win, &event);
   }
 
   return result_OK;
