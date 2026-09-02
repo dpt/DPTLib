@@ -131,6 +131,9 @@ endif()
 # target_sources. The quoting is essential.
 set_target_properties(DPTLib PROPERTIES PUBLIC_HEADER "${PUBLIC_HEADERS}")
 
+set(BASE_SOURCES
+    libraries/base/result/result-string.c)
+
 set(DATABASE_SOURCES
     libraries/databases/digest-db/digest-db.c
     libraries/databases/filename-db/filename-db.c
@@ -427,6 +430,7 @@ endif()
 
 set(ALL_SOURCES
     ${PUBLIC_HEADERS}
+    ${BASE_SOURCES}
     ${DATABASE_SOURCES}
     ${DATASTRUCT_SOURCES}
     ${FRAMEBUF_SOURCES}
