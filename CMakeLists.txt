@@ -364,7 +364,8 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/window/restack.c
     libraries/wuss/window/set-background.c
     libraries/wuss/window/set-hidden.c
-    libraries/wuss/window/set-scroll.c)
+    libraries/wuss/window/set-scroll.c
+    libraries/wuss/window/try-close.c)
 
 set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/back-box.c
