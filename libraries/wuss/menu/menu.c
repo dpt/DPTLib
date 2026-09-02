@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,13 +34,51 @@
 
 /* ----------------------------------------------------------------------- */
 
-static result_t wuss__menu_spawn(wuss_t                *wuss,
-                                 const wuss_menu_t     *menu,
-                                 point_t                at,
-                                 struct wuss__menu     *parent,
-                                 wuss_menu_select_fn_t *on_select,
-                                 void                  *ctx,
-                                 struct wuss__menu    **out);
+static result_t wuss__menu_handle(wuss_window_t      *window,
+                                  const wuss_event_t *event,
+                                  void               *task_data);
+
+static result_t wuss__menu_spawn(wuss_t             *wuss,
+                                 wuss_task_t        *owner,
+                                 const wuss_menu_t  *menu,
+                                 point_t             at,
+                                 struct wuss__menu  *parent,
+                                 struct wuss__menu **out);
+
+/* The internal task that owns every borderless menu window, created on the
+ * first wuss_menu_open of a session. */
+static wuss_task_t *wuss__menu_task(wuss_t *wuss)
+{
+  wuss_task_desc_t desc;
+
+  if (wuss->menu_task != NULL)
+    return wuss->menu_task;
+
+  desc.handle    = wuss__menu_handle;
+  desc.task_data = NULL; /* per-window node is found by walking the chain */
+  desc.name      = "wuss:menu";
+
+  if (wuss_task_create(wuss, &desc, &wuss->menu_task) != result_OK)
+    return NULL;
+
+  return wuss->menu_task;
+}
+
+/* Find the open chain node whose window is `window` (the menu window whose
+ * delegate fired), or NULL. Borrowed-window levels never fire this handler
+ * (their windows keep the caller's task), so a match is always a real menu
+ * level with icons. */
+static struct wuss__menu *wuss__menu_node_for(wuss_t              *wuss,
+                                              const wuss_window_t *window)
+{
+  struct wuss__menu *node;
+
+  for (node = wuss->menu_chain; node != NULL; node = node->child)
+    if (node->window == window)
+      return node;
+
+  return NULL;
+}
 
 /* Close `node` and everything it opened, leaf-first. The caller clears any
  * parent's child pointer. */
@@ -86,7 +125,8 @@ static point_t wuss__submenu_anchor(struct wuss__menu *self,
 }
 
 /* Open item `index`'s borrowed window as level `self->child`: position it
- * where a submenu would appear, un-hide it, bring it to the front. */
+ * where a submenu would appear, un-hide it, bring it to the front. A
+ * PRE_SHOW veto from the window's own task leaves the row unopened. */
 static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
 {
   struct wuss__menu *node;
@@ -100,19 +140,22 @@ static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
     return result_OOM;
 
   node->wuss       = self->wuss;
+  node->owner      = self->owner;
   node->window     = win;
   node->menu       = NULL;
   node->icons      = NULL;
   node->parent     = self;
   node->child      = NULL;
-  node->on_select  = self->on_select;
-  node->ctx        = self->ctx;
   node->open_index = -1;
   node->borrowed   = 1;
 
   at = wuss__submenu_anchor(self, self->icons[index]);
   wuss_window_move(win, at);
-  wuss_window_set_hidden(win, 0);
+  if (wuss_window_set_hidden(win, 0) != result_OK)
+  {
+    wuss__free(self->wuss, node); /* vetoed: row stays unopened */
+    return result_OK;
+  }
   wuss_window_restack(win, wuss_ZORDER_FRONT);
 
   self->child = node;
@@ -121,7 +164,8 @@ static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
 
 /* ----------------------------------------------------------------------- */
 
-/* The menu window's task delegate. task_data is the struct wuss__menu. */
+/* The menu window's task delegate. Shared across every borderless menu
+ * window; the firing level is located by its window. */
 static result_t wuss__menu_handle(wuss_window_t      *window,
                                   const wuss_event_t *event,
                                   void               *task_data)
@@ -129,14 +173,18 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
   struct wuss__menu      *self;
   const wuss_icon_t      *icon;
   const wuss_menu_item_t *item;
+  wuss_t                 *wuss;
   int                     index;
   int                     i;
 
-  NOT_USED(window);
-
-  self = task_data;
+  NOT_USED(task_data);
 
   if (event->kind != wuss_EVENT_ICON)
+    return result_OK;
+
+  wuss = window->wuss;
+  self = wuss__menu_node_for(wuss, window);
+  if (self == NULL)
     return result_OK;
 
   icon  = event->data.icon.icon;
@@ -177,7 +225,7 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
      * child's own titlebar sits above `at`. */
     if (item->window != NULL)
     {
-      if (wuss__menu_open_window(self, index) == result_OK)
+      if (wuss__menu_open_window(self, index) == result_OK && self->child != NULL)
         self->open_index = index;
       return result_OK;
     }
@@ -186,8 +234,8 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
       return result_OK;
 
     at = wuss__submenu_anchor(self, icon);
-    if (wuss__menu_spawn(self->wuss, item->submenu, at, self,
-                         self->on_select, self->ctx, &self->child) == result_OK)
+    if (wuss__menu_spawn(self->wuss, self->owner, item->submenu, at, self,
+                         &self->child) == result_OK)
       self->open_index = index;
 
     return result_OK;
@@ -195,36 +243,37 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
   if (event->data.icon.action == wuss_MOUSE_UP)
   {
-    wuss_button_t          button;
-    struct wuss__menu     *root;
-    wuss_menu_select_fn_t *on_select;
-    const wuss_menu_t     *menu;
-    void                  *ctx;
+    wuss_button_t      button;
+    struct wuss__menu *root;
+    wuss_task_t       *owner;
+    const wuss_menu_t *menu;
+    wuss_event_t       sel;
 
     button = event->data.icon.button;
 
     if (item->submenu != NULL || item->window != NULL)
       return result_OK; /* a submenu/window row opens on hover, not a pick */
 
-    /* Capture what the callback needs, then tear the chain down *before*
-     * invoking it: on_select may itself open a new menu (freeing this one),
-     * so `self` must not be touched afterwards. */
-    on_select = self->on_select;
-    menu      = self->menu;
-    ctx       = self->ctx;
+    /* Capture what the notification needs, then tear the chain down *before*
+     * delivering it: the task's MENU_SELECT handler may itself open a new
+     * menu (freeing this one), so `self` must not be touched afterwards. */
+    root = self;
+    while (root->parent != NULL)
+      root = root->parent;
+    owner = root->owner;
+    menu  = self->menu;
 
     if (!(button & wuss_BUTTON_ADJUST))
     {
-      root = self;
-      while (root->parent != NULL)
-        root = root->parent;
-
       root->wuss->menu_chain = NULL;
       wuss__menu_close_from(root);
     }
 
-    if (on_select != NULL)
-      on_select(menu, index, button, ctx);
+    sel.kind                    = wuss_EVENT_MENU_SELECT;
+    sel.data.menu_select.menu   = menu;
+    sel.data.menu_select.index  = index;
+    sel.data.menu_select.button = button;
+    (void) wuss__deliver(owner, NULL, &sel);
   }
 
   return result_OK;
@@ -234,18 +283,17 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
 /* Measure the menu, create its borderless window and one MENU_ENTRY icon per
  * item, and hang the node off *out. */
-static result_t wuss__menu_spawn(wuss_t                *wuss,
-                                 const wuss_menu_t     *menu,
-                                 point_t                at,
-                                 struct wuss__menu     *parent,
-                                 wuss_menu_select_fn_t *on_select,
-                                 void                  *ctx,
-                                 struct wuss__menu    **out)
+static result_t wuss__menu_spawn(wuss_t             *wuss,
+                                 wuss_task_t        *owner,
+                                 const wuss_menu_t  *menu,
+                                 point_t             at,
+                                 struct wuss__menu  *parent,
+                                 struct wuss__menu **out)
 {
   struct wuss__menu *node;
+  wuss_task_t       *menu_task;
   wuss_icon_spec_t  *specs;
   wuss_icon_t      **made;
-  wuss_task_t        task;
   result_t           rc;
   int                fh;
   int                pitch;
@@ -273,6 +321,10 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
 
   if (menu->nitems <= 0)
     return result_WUSS_BAD_ICON;
+
+  menu_task = wuss__menu_task(wuss);
+  if (menu_task == NULL)
+    return result_OOM;
 
   menu_flags = wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK
              | wuss_WINDOW_NO_TOGGLE_SIZE
@@ -366,12 +418,11 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   memset(node->icons, 0, (size_t) menu->nitems * sizeof(*node->icons));
 
   node->wuss       = wuss;
+  node->owner      = owner;
   node->window     = NULL;
   node->menu       = menu;
   node->parent     = parent;
   node->child      = NULL;
-  node->on_select  = on_select;
-  node->ctx        = ctx;
   node->open_index = -1;
   node->borrowed   = 0;
 
@@ -428,7 +479,6 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
    * window shows, so its own resize floor never exceeds what fits. */
   doc     = SIZE2D(width, doc_h);
   min_doc = SIZE2D(width, height);
-  task    = wuss_task_start(wuss__menu_handle, node);
 
   /* `at` is the content top-left, already clamped on screen above. Create the
    * window there directly -- creating it elsewhere and wuss_window_move-ing it
@@ -439,11 +489,11 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
   content.x1 = at.x + width;
   content.y1 = at.y + height;
 
-  rc = wuss_window_create(wuss, &content,
+  rc = wuss_window_create(menu_task, &content,
                           menu->title ? menu->title : "",
                           menu_flags,
                           wuss_BACKDROP_COLOUR(wuss->palettecache.white),
-                          &task, doc, min_doc, &node->window);
+                          doc, min_doc, &node->window);
   if (rc != result_OK)
   {
     wuss__free(wuss, made);
@@ -486,18 +536,19 @@ static result_t wuss__menu_spawn(wuss_t                *wuss,
 
 /* ----------------------------------------------------------------------- */
 
-result_t wuss_menu_open(wuss_t                *wuss,
-                        const wuss_menu_t     *menu,
-                        point_t                at,
-                        wuss_menu_select_fn_t *on_select,
-                        void                  *ctx,
-                        wuss_menu_handle_t    *out)
+result_t wuss_menu_open(wuss_task_t        *task,
+                        const wuss_menu_t  *menu,
+                        point_t             at,
+                        wuss_menu_handle_t *out)
 {
   struct wuss__menu *root;
+  wuss_t            *wuss;
   result_t           rc;
 
-  assert(wuss != NULL);
+  assert(task != NULL);
   assert(menu != NULL);
+
+  wuss = task->wuss;
 
   if (wuss->menu_chain != NULL)
   {
@@ -511,7 +562,7 @@ result_t wuss_menu_open(wuss_t                *wuss,
   at.x -= WUSS_MENU_TICK_W;
   at.y -= WUSS_MENU_ROW_PAD;
 
-  rc = wuss__menu_spawn(wuss, menu, at, NULL, on_select, ctx, &root);
+  rc = wuss__menu_spawn(wuss, task, menu, at, NULL, &root);
   if (rc != result_OK)
     return rc;
 

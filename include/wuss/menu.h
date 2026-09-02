@@ -80,20 +80,6 @@ wuss_menu_t;
 /** Opaque handle to an open menu chain. */
 typedef struct wuss__menu *wuss_menu_handle_t;
 
-/**
- * Called when the pointer is released over a selectable leaf item.
- *
- * \param[in] menu   The menu the item belongs to (a submenu, if nested).
- * \param[in] index  Index of the item within \c menu->items.
- * \param[in] button wuss_button_t flags for the release; test with '&'.
- *                   ADJUST keeps the chain open, SELECT closes it.
- * \param[in] ctx    As passed to wuss_menu_open.
- */
-typedef void (wuss_menu_select_fn_t)(const wuss_menu_t *menu,
-                                     int                index,
-                                     wuss_button_t      button,
-                                     void              *ctx);
-
 /* ----------------------------------------------------------------------- */
 
 /**
@@ -102,20 +88,21 @@ typedef void (wuss_menu_select_fn_t)(const wuss_menu_t *menu,
  * a leaf is SELECT-picked, a click lands outside every menu window, or
  * wuss_menu_close is called.
  *
- * \param[in]  wuss      Window manager.
- * \param[in]  menu      Menu to show; borrowed, must outlive the open chain.
- * \param[in]  at        Where to put the menu's top-left, screen space.
- * \param[in]  on_select Leaf-selection callback, or NULL.
- * \param[in]  ctx       Opaque pointer passed back to \p on_select.
- * \param[out] out       Filled with the chain handle, or NULL if not wanted.
+ * When a leaf item is released over, a wuss_EVENT_MENU_SELECT event is
+ * delivered to \p task's handle (with window == NULL); its data.menu_select
+ * carries the (sub)menu, the item index and the release button.
+ *
+ * \param[in]  task Task opening the menu; receives wuss_EVENT_MENU_SELECT.
+ *                  The menu windows are wuss-owned, not task's.
+ * \param[in]  menu Menu to show; borrowed, must outlive the open chain.
+ * \param[in]  at   Where to put the menu's top-left, screen space.
+ * \param[out] out  Filled with the chain handle, or NULL if not wanted.
  * \return \ref result_OK, \ref result_OOM, or a wuss_window_create code.
  */
-result_t wuss_menu_open(wuss_t                *wuss,
-                        const wuss_menu_t     *menu,
-                        point_t                at,
-                        wuss_menu_select_fn_t *on_select,
-                        void                  *ctx,
-                        wuss_menu_handle_t    *out);
+result_t wuss_menu_open(wuss_task_t        *task,
+                        const wuss_menu_t  *menu,
+                        point_t             at,
+                        wuss_menu_handle_t *out);
 
 /** Close a menu chain and every window in it. Safe to pass a stale or NULL
  *  handle. */
