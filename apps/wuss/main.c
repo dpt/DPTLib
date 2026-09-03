@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -512,6 +516,123 @@ static void pixel_stress(wuss_t *wuss, int scr_width, int scr_height)
   }
 }
 
+/* one iteration of the event/redraw loop; a struct because Emscripten drives
+ * it as a callback (emscripten_set_main_loop_arg) rather than a plain while */
+struct wuss_frame_ctx
+{
+  wuss_t          *wuss;
+  wuss_frontend_t *frontend;
+  bitmap_t        *bm;
+  unsigned char   *pixels;
+  int              rowbytes;
+  int              scr_width;
+  int              scr_height;
+  colour_t        *palette;
+  int              npalette;
+  int              palette_index;
+};
+
+static void wuss_frame(void *arg)
+{
+  struct wuss_frame_ctx *c = arg;
+  wuss_input_t           ev;
+  bool                   pixel_stress_pending = false;
+  bool                   garbage_pending      = false;
+
+  while (wuss_frontend_poll(c->frontend, &ev))
+  {
+    switch (ev.kind)
+    {
+    case wuss_INPUT_QUIT:
+      g.quit = true;
+      break;
+
+    case wuss_INPUT_REDRAW_ALL:
+      wuss_redraw(c->wuss);
+      break;
+
+    case wuss_INPUT_GARBAGE:
+      garbage_pending = true;
+      break;
+
+    case wuss_INPUT_PIXEL_STRESS:
+      pixel_stress_pending = true;
+      break;
+
+    case wuss_INPUT_PALETTE_CYCLE:
+      /* rebuild the palette, push it into the framebuffer bitmap, tell the
+       * backend (which owns any physical palette), then tell wuss, which
+       * refreshes its own copy and pokes every task to recache */
+      c->palette_index = (c->palette_index + 1) % (int) NELEMS(g_palettes);
+      g_palettes[c->palette_index](c->palette);
+      bitmap_set_palette(c->bm, c->palette);
+      wuss_frontend_set_palette(c->frontend, c->palette, c->npalette);
+      wuss_set_palette(c->wuss, c->palette, c->npalette);
+      break;
+
+    case wuss_INPUT_MOUSE_DOWN:
+      {
+        wuss_window_t *hit;
+
+        wuss_mouse_click(c->wuss, ev.pos, ev.button, wuss_MOUSE_DOWN, &hit);
+
+        /* MENU click on bare backdrop opens the task launcher there */
+        if (hit == NULL && (ev.button & wuss_BUTTON_MENU))
+          wuss_menu_open(g.menu_task, &g_task_menu, ev.pos, NULL);
+      }
+      break;
+
+    case wuss_INPUT_MOUSE_UP:
+      wuss_mouse_click(c->wuss, ev.pos, ev.button, wuss_MOUSE_UP, NULL);
+      break;
+
+    case wuss_INPUT_MOUSE_MOVE:
+      wuss_mouse_move(c->wuss, ev.pos, NULL);
+      break;
+
+    case wuss_INPUT_WHEEL:
+      wuss_scroll(c->wuss, ev.pos, ev.wheel, NULL);
+      break;
+
+    default:
+      break;
+    }
+  }
+
+  wuss_idle(c->wuss);
+
+  if (garbage_pending)
+  {
+    /* corrupt the whole framebuffer and present it, then leave it alone --
+     * wuss only repaints what it knows is dirty, so the junk stays put
+     * until something else invalidates the screen */
+    unsigned char *p;
+    size_t         n;
+    size_t         i;
+
+    p = c->pixels;
+    n = (size_t) c->rowbytes * c->scr_height;
+    for (i = 0; i < n; i++)
+      p[i] = (unsigned char) rand();
+
+    wuss_frontend_present(c->frontend, c->bm);
+  }
+  else
+  {
+    if (pixel_stress_pending)
+      pixel_stress(c->wuss, c->scr_width, c->scr_height);
+    else
+      wuss_redraw_dirty(c->wuss);
+
+    wuss_frontend_present(c->frontend, c->bm);
+  }
+
+#ifdef __EMSCRIPTEN__
+  if (g.quit)
+    emscripten_cancel_main_loop();
+#endif
+}
+
 /* click windows to bring to front, drag titlebars to move; the redraw-all
  * input redraws the whole screen, the pixel-stress input does it one pixel at
  * a time to catch tasks that misbehave under a 1x1 clip; the palette-cycle
@@ -622,99 +743,30 @@ static result_t run_wuss(const char *resources)
 
   wuss_redraw(wuss);
 
-  while (!g.quit)
   {
-    wuss_input_t ev;
-    bool         pixel_stress_pending = false;
-    bool         garbage_pending      = false;
+    struct wuss_frame_ctx ctx;
 
-    while (wuss_frontend_poll(frontend, &ev))
-    {
-      switch (ev.kind)
-      {
-      case wuss_INPUT_QUIT:
-        g.quit = true;
-        break;
+    ctx.wuss          = wuss;
+    ctx.frontend      = frontend;
+    ctx.bm            = &bm;
+    ctx.pixels        = pixels;
+    ctx.rowbytes      = rowbytes;
+    ctx.scr_width     = scr_width;
+    ctx.scr_height    = scr_height;
+    ctx.palette       = palette;
+    ctx.npalette      = NELEMS(palette);
+    ctx.palette_index = palette_index;
 
-      case wuss_INPUT_REDRAW_ALL:
-        wuss_redraw(wuss);
-        break;
-
-      case wuss_INPUT_GARBAGE:
-        garbage_pending = true;
-        break;
-
-      case wuss_INPUT_PIXEL_STRESS:
-        pixel_stress_pending = true;
-        break;
-
-      case wuss_INPUT_PALETTE_CYCLE:
-        /* rebuild the palette, push it into the framebuffer bitmap, tell the
-         * backend (which owns any physical palette), then tell wuss, which
-         * refreshes its own copy and pokes every task to recache */
-        palette_index = (palette_index + 1) % (int) NELEMS(g_palettes);
-        g_palettes[palette_index](palette);
-        bitmap_set_palette(&bm, palette);
-        wuss_frontend_set_palette(frontend, palette, NELEMS(palette));
-        wuss_set_palette(wuss, palette, NELEMS(palette));
-        break;
-
-      case wuss_INPUT_MOUSE_DOWN:
-        {
-          wuss_window_t *hit;
-
-          wuss_mouse_click(wuss, ev.pos, ev.button, wuss_MOUSE_DOWN, &hit);
-
-          /* MENU click on bare backdrop opens the task launcher there */
-          if (hit == NULL && (ev.button & wuss_BUTTON_MENU))
-            wuss_menu_open(g.menu_task, &g_task_menu, ev.pos, NULL);
-        }
-        break;
-
-      case wuss_INPUT_MOUSE_UP:
-        wuss_mouse_click(wuss, ev.pos, ev.button, wuss_MOUSE_UP, NULL);
-        break;
-
-      case wuss_INPUT_MOUSE_MOVE:
-        wuss_mouse_move(wuss, ev.pos, NULL);
-        break;
-
-      case wuss_INPUT_WHEEL:
-        wuss_scroll(wuss, ev.pos, ev.wheel, NULL);
-        break;
-
-      default:
-        break;
-      }
-    }
-
-    wuss_idle(wuss);
-
-    if (garbage_pending)
-    {
-      /* corrupt the whole framebuffer and present it, then leave it alone --
-       * wuss only repaints what it knows is dirty, so the junk stays put
-       * until something else invalidates the screen */
-      unsigned char *p;
-      size_t         n;
-      size_t         i;
-
-      p = pixels;
-      n = (size_t) rowbytes * scr_height;
-      for (i = 0; i < n; i++)
-        p[i] = (unsigned char) rand();
-
-      wuss_frontend_present(frontend, &bm);
-    }
-    else
-    {
-      if (pixel_stress_pending)
-        pixel_stress(wuss, scr_width, scr_height);
-      else
-        wuss_redraw_dirty(wuss);
-
-      wuss_frontend_present(frontend, &bm);
-    }
+#ifdef __EMSCRIPTEN__
+    /* the browser owns the loop; simulate_infinite_loop=1 means this call
+     * never returns, so &ctx (a stack local) stays live and the teardown
+     * below is unreachable -- fine, the page dies on navigation. fps=0 asks
+     * for requestAnimationFrame pacing. */
+    emscripten_set_main_loop_arg(wuss_frame, &ctx, 0, 1);
+#else
+    while (!g.quit)
+      wuss_frame(&ctx);
+#endif
   }
 
   /* ponytail: wuss_destroy() below force-closes every still-open window and
