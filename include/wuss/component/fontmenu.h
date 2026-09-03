@@ -27,10 +27,12 @@ extern "C"
 
 #include "wuss/menu.h"
 #include "wuss/task.h"
+#include "wuss/wuss.h"
 
 /* ----------------------------------------------------------------------- */
 
-/** Opaque handle: owns the menu tree and the font-name strings in it. */
+/** Opaque handle: owns the menu tree and the font-name strings in it,
+ *  allocated through the hooks passed to wuss_fontmenu_create. */
 typedef struct wuss_fontmenu wuss_fontmenu_t;
 
 /**
@@ -41,13 +43,19 @@ typedef struct wuss_fontmenu wuss_fontmenu_t;
  *                   failure.
  * \param[in]  dir   Directory to scan for fonts.
  * \param[in]  title Menu caption, borrowed and copied; NULL for "Font".
+ * \param[in]  alloc Allocator for every block the handle keeps, copied in;
+ *                   NULL selects \ref wuss_alloc (plain stdlib). Pass the
+ *                   same hooks given to wuss_create so the component and the
+ *                   window manager share a heap. The transient directory
+ *                   scan still uses stdlib.
  * \return \ref result_OK, \ref result_OOM, \ref result_NULL_ARG, or \ref
  *         result_FILE_NOT_FOUND if \p dir cannot be opened. An empty
  *         directory still succeeds, yielding a menu with no items.
  */
-result_t wuss_fontmenu_create(wuss_fontmenu_t **out,
-                              const char       *dir,
-                              const char       *title);
+result_t wuss_fontmenu_create(wuss_fontmenu_t   **out,
+                              const char         *dir,
+                              const char         *title,
+                              const wuss_alloc_t *alloc);
 
 /**
  * Free a font menu and every string in it. Any open menu chain showing it

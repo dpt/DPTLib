@@ -3690,7 +3690,7 @@ MenuOK: ;
 
     dir = path_join_filename(resources, 2, "resources", "bmfonts");
 
-    rc = wuss_fontmenu_create(&fm, dir, "Font");
+    rc = wuss_fontmenu_create(&fm, dir, "Font", NULL);
     if (rc != result_OK)
       goto FontMenuFail;
 
@@ -3731,7 +3731,7 @@ MenuOK: ;
     wuss_fontmenu_destroy(fm);
 
     /* missing directory is surfaced, not swallowed */
-    rc = wuss_fontmenu_create(&fm, "no/such/dir/here", NULL);
+    rc = wuss_fontmenu_create(&fm, "no/such/dir/here", NULL, NULL);
     if (rc != result_FILE_NOT_FOUND)                     goto FontMenuFail;
 
     rc = result_OK;
