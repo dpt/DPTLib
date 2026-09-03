@@ -62,15 +62,51 @@ static result_t screen_copy_rect_p4(screen_t    *scr,
   return result_OK;
 }
 
+/* Whole-byte formats (8/16/32bpp): a row of "width" pixels is "width * bpp"
+ * contiguous bytes, so each row moves in one memmove. Rows can alias across
+ * each other (never within a row) when the vertical shift is smaller than the
+ * copied height, so walk in the direction that always reads a row before it
+ * is overwritten. */
+static result_t screen_copy_rect_bytes(screen_t    *scr,
+                                       const box_t *s,
+                                       const box_t *d,
+                                       int          width,
+                                       int          height,
+                                       int          dy,
+                                       int          bpp)
+{
+  unsigned char *base;
+  int            rowbytes;
+  int            row;
+
+  base     = scr->base;
+  rowbytes = scr->rowbytes;
+
+  if (dy > 0)
+  {
+    for (row = height - 1; row >= 0; row--)
+      memmove(base + (size_t) (d->y0 + row) * rowbytes + (size_t) d->x0 * bpp,
+              base + (size_t) (s->y0 + row) * rowbytes + (size_t) s->x0 * bpp,
+              (size_t) width * bpp);
+  }
+  else
+  {
+    for (row = 0; row < height; row++)
+      memmove(base + (size_t) (d->y0 + row) * rowbytes + (size_t) d->x0 * bpp,
+              base + (size_t) (s->y0 + row) * rowbytes + (size_t) s->x0 * bpp,
+              (size_t) width * bpp);
+  }
+
+  return result_OK;
+}
+
 result_t screen_copy_rect(screen_t    *scr,
                           const box_t *src,
                           point_t      dst,
                           box_t       *copied_dst)
 {
-  box_t          clip_box, s, d, d_clipped;
-  int            dx, dy, width, height, bpp;
-  unsigned char *base;
-  int            rowbytes;
+  box_t clip_box, s, d, d_clipped;
+  int   dx, dy, width, height, bpp;
 
   if (screen_get_clip(scr, &clip_box))
     return result_NOT_SUPPORTED; /* invalid clipped screen */
@@ -122,31 +158,5 @@ result_t screen_copy_rect(screen_t    *scr,
     return result_NOT_SUPPORTED;
   }
 
-  base     = scr->base;
-  rowbytes = scr->rowbytes;
-
-  /* Rows can alias across each other (never within a row, since a row's
-   * bytes never overlap another row's) when the vertical shift is smaller
-   * than the copied height, so walk in the direction that always reads a
-   * row before it's overwritten. */
-  if (dy > 0)
-  {
-    int row;
-
-    for (row = height - 1; row >= 0; row--)
-      memmove(base + (size_t) (d_clipped.y0 + row) * rowbytes + (size_t) d_clipped.x0 * bpp,
-              base + (size_t) (s.y0        + row) * rowbytes + (size_t) s.x0        * bpp,
-              (size_t) width * bpp);
-  }
-  else
-  {
-    int row;
-
-    for (row = 0; row < height; row++)
-      memmove(base + (size_t) (d_clipped.y0 + row) * rowbytes + (size_t) d_clipped.x0 * bpp,
-              base + (size_t) (s.y0        + row) * rowbytes + (size_t) s.x0        * bpp,
-              (size_t) width * bpp);
-  }
-
-  return result_OK;
+  return screen_copy_rect_bytes(scr, &s, &d_clipped, width, height, dy, bpp);
 }

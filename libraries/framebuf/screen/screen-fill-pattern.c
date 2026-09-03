@@ -10,6 +10,104 @@
 
 #include "framebuf/screen.h"
 
+/* runs[row][col] is the pattern's expanded colour for tile row "row" at
+ * screen column (draw_box.x0 + col), i.e. already phase-shifted for x. The
+ * scanline helpers below just index it; stencil paths re-test the pattern
+ * bit per pixel rather than using the run. */
+typedef pixelfmt_any_t pattern_runs_t[8][8];
+
+static void screen_fill_pattern_p4(screen_t            *scr,
+                                   const pattern_t     *pattern,
+                                   const box_t         *draw_box,
+                                   int                  stencil,
+                                   const pattern_runs_t runs)
+{
+  unsigned char *rowp;
+  int            row, col, x, y;
+
+  rowp = (unsigned char *) scr->base + draw_box->y0 * scr->rowbytes;
+  for (y = draw_box->y0; y < draw_box->y1; y++)
+  {
+    const pixelfmt_any_t *run;
+    uint8_t               bits;
+
+    row  = (y - pattern->origin.y) & 7;
+    run  = runs[row];
+    bits = pattern->bits[row];
+    col  = 0;
+    for (x = draw_box->x0; x < draw_box->x1; x++)
+    {
+      if (!stencil ||
+          (bits & (0x80u >> ((x - pattern->origin.x) & 7))))
+      {
+        unsigned char *scrp;
+        int            shift;
+
+        scrp  = rowp + (x >> 1);
+        shift = (x & 1) * 4;
+
+        *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) |
+                                 ((run[col] & 0xF) << shift));
+      }
+      col = (col + 1) & 7;
+    }
+    rowp += scr->rowbytes;
+  }
+}
+
+static void screen_fill_pattern_32(screen_t            *scr,
+                                   const pattern_t     *pattern,
+                                   const box_t         *draw_box,
+                                   int                  stencil,
+                                   pixelfmt_any_t       fg_fmt,
+                                   const pattern_runs_t runs)
+{
+  unsigned char *rowp;
+  int            row, col, x, y;
+
+  rowp = (unsigned char *) scr->base + draw_box->y0 * scr->rowbytes;
+  for (y = draw_box->y0; y < draw_box->y1; y++)
+  {
+    const pixelfmt_any_t *run;
+    uint8_t               bits;
+    pixelfmt_any32_t     *scrp;
+    int                   w;
+    int                   n;
+
+    row  = (y - pattern->origin.y) & 7;
+    run  = runs[row];
+    bits = pattern->bits[row];
+    scrp = (pixelfmt_any32_t *) rowp + draw_box->x0;
+    w    = draw_box->x1 - draw_box->x0;
+
+    if (!stencil)
+    {
+      /* leading partial tile up to an 8-pixel boundary, then whole runs */
+      col = 0;
+      while (w > 0)
+      {
+        n = 8 - col;
+        if (n > w)
+          n = w;
+        memcpy(scrp, run + col, (size_t) n * sizeof(*scrp));
+        scrp += n;
+        w    -= n;
+        col   = 0;
+      }
+    }
+    else
+    {
+      for (x = draw_box->x0; x < draw_box->x1; x++)
+      {
+        if (bits & (0x80u >> ((x - pattern->origin.x) & 7)))
+          *scrp = fg_fmt;
+        scrp++;
+      }
+    }
+    rowp += scr->rowbytes;
+  }
+}
+
 void screen_fill_pattern(screen_t        *scr,
                          const box_t     *box,
                          const pattern_t *pattern)
@@ -18,9 +116,9 @@ void screen_fill_pattern(screen_t        *scr,
   box_t          draw_box;
   int            stencil;
   pixelfmt_any_t fg_fmt, bg_fmt;
-  pixelfmt_any_t runs[8][8]; /* one expanded colour run per tile row */
+  pattern_runs_t runs; /* one expanded colour run per tile row */
   int            xphase;
-  int            row, col, x, y;
+  int            row, col;
 
   assert(scr);
   assert(pattern);
@@ -40,10 +138,6 @@ void screen_fill_pattern(screen_t        *scr,
                            (scr->format == pixelfmt_p4) ? 16 : 0,
                            pattern->bg, scr->format);
 
-  /* The tile is 8x8 and repeats, so there are only eight distinct pixel rows.
-   * Expand each to a colour run once here, already phase-shifted for x, then
-   * the scanline loops just index runs[row][col]. Stencil rows re-test the
-   * pattern bit per pixel rather than using the run. */
   xphase = ((draw_box.x0 - pattern->origin.x) & 7);
   for (row = 0; row < 8; row++)
   {
@@ -58,83 +152,11 @@ void screen_fill_pattern(screen_t        *scr,
   switch (pixelfmt_log2bpp(scr->format))
   {
   case 2:
-    {
-      unsigned char        *rowp;
-      const pixelfmt_any_t *run;
-      uint8_t               bits;
-      unsigned char        *scrp;
-      int                   shift;
-
-      rowp = (unsigned char *) scr->base + draw_box.y0 * scr->rowbytes;
-      for (y = draw_box.y0; y < draw_box.y1; y++)
-      {
-        row  = (y - pattern->origin.y) & 7;
-        run  = runs[row];
-        bits = pattern->bits[row];
-        col  = 0;
-        for (x = draw_box.x0; x < draw_box.x1; x++)
-        {
-          if (!stencil ||
-              (bits & (0x80u >> ((x - pattern->origin.x) & 7))))
-          {
-            scrp  = rowp + (x >> 1);
-            shift = (x & 1) * 4;
-
-            *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) |
-                                     ((run[col] & 0xF) << shift));
-          }
-          col = (col + 1) & 7;
-        }
-        rowp += scr->rowbytes;
-      }
-    }
+    screen_fill_pattern_p4(scr, pattern, &draw_box, stencil, runs);
     break;
 
   case 5:
-    {
-      unsigned char        *rowp;
-      const pixelfmt_any_t *run;
-      pixelfmt_any32_t     *scrp;
-      uint8_t               bits;
-      int                   w;
-      int                   n;
-
-      rowp = (unsigned char *) scr->base + draw_box.y0 * scr->rowbytes;
-      for (y = draw_box.y0; y < draw_box.y1; y++)
-      {
-        row  = (y - pattern->origin.y) & 7;
-        run  = runs[row];
-        bits = pattern->bits[row];
-        scrp = (pixelfmt_any32_t *) rowp + draw_box.x0;
-        w    = draw_box.x1 - draw_box.x0;
-
-        if (!stencil)
-        {
-          /* leading partial tile up to an 8-pixel boundary, then whole runs */
-          col = 0;
-          while (w > 0)
-          {
-            n = 8 - col;
-            if (n > w)
-              n = w;
-            memcpy(scrp, run + col, (size_t) n * sizeof(*scrp));
-            scrp += n;
-            w    -= n;
-            col   = 0;
-          }
-        }
-        else
-        {
-          for (x = draw_box.x0; x < draw_box.x1; x++)
-          {
-            if (bits & (0x80u >> ((x - pattern->origin.x) & 7)))
-              *scrp = fg_fmt;
-            scrp++;
-          }
-        }
-        rowp += scr->rowbytes;
-      }
-    }
+    screen_fill_pattern_32(scr, pattern, &draw_box, stencil, fg_fmt, runs);
     break;
 
   default:

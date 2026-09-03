@@ -9,6 +9,50 @@
 
 /* ----------------------------------------------------------------------- */
 
+/* Each helper fills "width" pixels of one already-clipped row starting at
+ * (x0, y0), in the colour previously resolved to "fmt". */
+
+static void screen_fill_hline_p4(screen_t      *scr,
+                                 int            x0,
+                                 int            y0,
+                                 int            width,
+                                 pixelfmt_any_t fmt)
+{
+  unsigned char *rowp;
+  int            xx;
+
+  rowp = (unsigned char *) scr->base + y0 * scr->rowbytes;
+  for (xx = 0; xx < width; xx++)
+  {
+    int            px;
+    unsigned char *scrp;
+    int            shift;
+
+    px    = x0 + xx;
+    scrp  = rowp + (px >> 1);
+    shift = (px & 1) * 4;
+
+    *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((fmt & 0xF) << shift));
+  }
+}
+
+static void screen_fill_hline_32(screen_t      *scr,
+                                 int            x0,
+                                 int            y0,
+                                 int            width,
+                                 pixelfmt_any_t fmt)
+{
+  pixelfmt_any32_t *scrp;
+  int               ww;
+
+  scrp = scr->base;
+  scrp += y0 * scr->rowbytes / sizeof(*scrp) + x0;
+  for (ww = width; ww > 0; ww--)
+    *scrp++ = fmt;
+}
+
+/* ----------------------------------------------------------------------- */
+
 void screen_fill_hline(screen_t *scr, int x, int y, int w, colour_t colour)
 {
   box_t          clip_box;
@@ -38,36 +82,11 @@ void screen_fill_hline(screen_t *scr, int x, int y, int w, colour_t colour)
   switch (pixelfmt_log2bpp(scr->format))
   {
   case 2:
-    {
-      unsigned char *rowp;
-      int            xx;
-
-      rowp = (unsigned char *) scr->base + draw_box.y0 * scr->rowbytes;
-      for (xx = 0; xx < clipped_width; xx++)
-      {
-        int            px;
-        unsigned char *scrp;
-        int            shift;
-
-        px    = draw_box.x0 + xx;
-        scrp  = rowp + (px >> 1);
-        shift = (px & 1) * 4;
-
-        *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((fmt & 0xF) << shift));
-      }
-    }
+    screen_fill_hline_p4(scr, draw_box.x0, draw_box.y0, clipped_width, fmt);
     break;
 
   case 5:
-    {
-      pixelfmt_any32_t *scrp;
-      int               ww;
-
-      scrp = scr->base;
-      scrp += draw_box.y0 * scr->rowbytes / sizeof(*scrp) + draw_box.x0;
-      for (ww = clipped_width; ww > 0; ww--)
-        *scrp++ = fmt;
-    }
+    screen_fill_hline_32(scr, draw_box.x0, draw_box.y0, clipped_width, fmt);
     break;
 
   default:
