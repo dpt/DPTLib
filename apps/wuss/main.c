@@ -368,20 +368,33 @@ static result_t spawn_menu_desc(void)
 }
 
 #ifdef WUSS_COMPONENTS
-/* A wuss_colourmenu over the current system palette, built lazily on first
- * open (the palette may be cycled before then) and freed in run_wuss's
- * teardown. Picks are reported by menu_handle via wuss_colourmenu_selected. */
+/* A wuss_colourmenu over the current system palette. It snapshots the
+ * palette at create, so a palette cycle only bumps g_palette_gen; the menu
+ * is rebuilt lazily in spawn_colourmenu once its previous chain has been
+ * torn down (wuss_menu keeps dereferencing the source menu for the whole
+ * life of an open chain, so it must not be freed while one is up). The menu
+ * itself is freed after wuss_destroy in run_wuss's teardown -- wuss_destroy
+ * closes any still-open chain first. */
 static wuss_colourmenu_t *g_colourmenu;
+static unsigned int        g_colourmenu_gen; /* g_palette_gen it was built for */
+static unsigned int        g_palette_gen;
 
 static result_t spawn_colourmenu(void)
 {
   result_t rc;
+
+  if (g_colourmenu != NULL && g_colourmenu_gen != g_palette_gen)
+  {
+    wuss_colourmenu_destroy(g_colourmenu);
+    g_colourmenu = NULL;
+  }
 
   if (g_colourmenu == NULL)
   {
     rc = wuss_colourmenu_create(&g_colourmenu, g.wuss, "Colour");
     if (rc != result_OK)
       return rc;
+    g_colourmenu_gen = g_palette_gen;
   }
 
   return wuss_menu_open(g.menu_task, wuss_colourmenu_menu(g_colourmenu),
@@ -691,10 +704,10 @@ static result_t run_wuss(const char *resources)
         wuss_frontend_set_palette(frontend, palette, NELEMS(palette));
         wuss_set_palette(wuss, palette, NELEMS(palette));
 #ifdef WUSS_COMPONENTS
-        /* the colour menu snapshots the palette at create; drop it so the
-         * next open rebuilds against the new one */
-        wuss_colourmenu_destroy(g_colourmenu);
-        g_colourmenu = NULL;
+        /* the colour menu snapshots the palette at create; bump the
+         * generation so spawn_colourmenu rebuilds it on the next open,
+         * once any chain it currently feeds has gone */
+        g_palette_gen++;
 #endif
         break;
 
@@ -760,12 +773,15 @@ static result_t run_wuss(const char *resources)
    * frees every registered task node, but not the per-instance task_data
    * block a spawn_* calloc'd, so any task window left open at quit leaks that
    * block. Harmless at process exit. */
+  wuss_destroy(wuss); /* also sweeps g.menu_task and closes any open chain */
+
+  /* menus are only safe to free once wuss_destroy has torn down any chain
+   * that was still borrowing them */
   wuss_menu_destroy(g_menu_desc);
 #ifdef WUSS_COMPONENTS
   wuss_colourmenu_destroy(g_colourmenu);
 #endif
 
-  wuss_destroy(wuss); /* also sweeps g.menu_task */
   bmfont_destroy(font);
 
   wuss_frontend_close(frontend);
