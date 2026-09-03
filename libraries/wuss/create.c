@@ -14,7 +14,10 @@
 
 /* The default allocator: plain stdlib. wuss_create copies this in when its
  * alloc argument is NULL. */
-const wuss_alloc_t wuss_alloc = { malloc, realloc, free };
+const wuss_alloc_t wuss_alloc =
+{
+  malloc, realloc, free
+};
 
 /* Built-in fallback palette when the caller passes NULL: black and white.
  * wuss makes no other assumptions about palette contents or length. */

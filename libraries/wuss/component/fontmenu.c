@@ -10,13 +10,14 @@
 
 #include "base/result.h"
 #include "framebuf/bmfont.h"
-#include "utils/array.h"
 
 #include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/wuss.h"
 
 #include "wuss/component/fontmenu.h"
+
+#include "../impl.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -29,19 +30,6 @@ struct wuss_fontmenu
   wuss_alloc_t alloc; /* copied hooks; every block below goes through these */
   wuss_menu_t *menu;  /* owned; freed by menu_free, not wuss_menu_destroy */
 };
-
-/* wuss_alloc_t has no strdup; malloc + copy. */
-static char *alloc_strdup(const wuss_alloc_t *a, const char *s)
-{
-  size_t len;
-  char  *copy;
-
-  len  = strlen(s) + 1;
-  copy = a->malloc(len);
-  if (copy != NULL)
-    memcpy(copy, s, len);
-  return copy;
-}
 
 /* Free a menu built here -- text, items, title, node -- through the same
  * hooks it was built with. Tolerates NULL text for partial unwinding. */
@@ -61,14 +49,16 @@ static void menu_free(const wuss_alloc_t *a, wuss_menu_t *m)
 
 /* ----------------------------------------------------------------------- */
 
-/* Growable list of strdup'd font names, filled by the enumerate callback.
- * A transient scratch buffer: plain stdlib, freed before create returns. */
+/* Growable list of name copies, filled by the enumerate callback. Transient:
+ * freed before create returns. Routed through the caller's hooks so even the
+ * scratch never touches raw stdlib. */
 typedef struct namelist
 {
-  char **names;
-  int    n;
-  int    cap;
-  int    oom; /* a strdup/grow failed; stop and unwind */
+  const wuss_alloc_t *alloc; /* borrowed; the resolved hooks */
+  char              **names;
+  int                 n;
+  int                 cap;
+  int                 oom; /* a strdup/grow failed; stop and unwind */
 }
 namelist_t;
 
@@ -81,14 +71,14 @@ static result_t collect_name(const char *name,
 
   (void) path;
 
-  if (array_grow((void **) &nl->names, sizeof(*nl->names),
-                 nl->n, &nl->cap, 1, 8))
+  if (wuss__array_grow(nl->alloc, (void **) &nl->names, sizeof(*nl->names),
+                       nl->n, &nl->cap, 1, 8))
   {
     nl->oom = 1;
     return result_OOM;
   }
 
-  copy = strdup(name);
+  copy = wuss__alloc_strdup(nl->alloc, name);
   if (copy == NULL)
   {
     nl->oom = 1;
@@ -104,8 +94,8 @@ static void namelist_free(namelist_t *nl)
   int i;
 
   for (i = 0; i < nl->n; i++)
-    free(nl->names[i]);
-  free(nl->names);
+    nl->alloc->free(nl->names[i]);
+  nl->alloc->free(nl->names);
   nl->names = NULL;
   nl->n = nl->cap = 0;
 }
@@ -152,7 +142,7 @@ static result_t build_menu(const wuss_alloc_t *a,
     m->nitems = nnames; /* items zeroed: menu_free's NULL-text loop is safe */
   }
 
-  m->title = alloc_strdup(a, title ? title : "Font");
+  m->title = wuss__alloc_strdup(a, title ? title : "Font");
   if (m->title == NULL)
   {
     menu_free(a, m);
@@ -161,7 +151,7 @@ static result_t build_menu(const wuss_alloc_t *a,
 
   for (i = 0; i < nnames; i++)
   {
-    items[i].text = alloc_strdup(a, names[i]);
+    items[i].text = wuss__alloc_strdup(a, names[i]);
     if (items[i].text == NULL)
     {
       menu_free(a, m);
@@ -194,6 +184,7 @@ result_t wuss_fontmenu_create(wuss_fontmenu_t   **out,
     alloc = &wuss_alloc;
 
   memset(&nl, 0, sizeof(nl));
+  nl.alloc = alloc;
 
   rc = bmfont_enumerate(dir, collect_name, &nl);
   if (rc != result_OK)
