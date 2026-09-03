@@ -194,8 +194,18 @@ result_t wuss_create(screen_t            *scr,
   }
   else if (font != NULL)
   {
+    /* titles draw in the bold weight when one was supplied; size the
+     * titlebar to whichever weight is taller */
     bmfont_get_info(font, &font_width, &font_height);
     NOT_USED(font_width);
+    if (nfonts > 1 && fonts[1] != NULL)
+    {
+      int titleh;
+
+      bmfont_get_info(fonts[1], NULL, &titleh);
+      if (titleh > font_height)
+        font_height = titleh;
+    }
     w->titlebar_height = font_height + 4;
   }
   else
