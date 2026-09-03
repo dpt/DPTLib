@@ -67,10 +67,38 @@ static void span_p4_blendconst(void       *vdst,
   }
 }
 
+/* unlike span_p4_blendconst above, this works directly on packed screen
+ * bytes: "dst" is the row base, "first" the nibble (pixel) index into it, so
+ * odd start columns and odd lengths are handled without the caller packing.
+ * "pixel" is a palette index in its low nibble. */
+static void span_p4_fill(void          *vdst,
+                         int            first,
+                         pixelfmt_any_t pixel,
+                         int            length)
+{
+  unsigned char *base;
+  unsigned char  nib;
+  int            x;
+
+  base = vdst;
+  nib  = (unsigned char) (pixel & 0xF);
+
+  for (x = first; x < first + length; x++)
+  {
+    unsigned char *p;
+    int            shift;
+
+    p     = base + (x >> 1);
+    shift = (x & 1) * 4;
+    *p    = (unsigned char) ((*p & ~(0xF << shift)) | (nib << shift));
+  }
+}
+
 const span_t span_p4 =
 {
   pixelfmt_p4,
   NULL, /* copy: unneeded so far (nibble packing makes a generic array copy awkward) */
+  span_p4_fill,
   span_p4_blendconst,
   NULL, /* blendarray: unneeded so far */
 };

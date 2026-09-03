@@ -24,6 +24,7 @@ const span_t span_rgbx8888 =
 {
   pixelfmt_rgbx8888,
   span_all8888_copy,
+  span_all8888_fill,
   span_rgbx8888_blendconst,
   span_rgbx8888_blendarray,
 };

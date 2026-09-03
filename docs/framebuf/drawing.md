@@ -46,8 +46,12 @@ built from the axes in order:
 client or the window manager draws onto. `bitmap_*` drawing ops are for
 off-screen construction and whole-image transforms.
 
-The per-pixel-format `span_t` layer (`copy` / `blendconst` / `blendarray`) sits
-below both and is not a public drawing verb.
+The per-pixel-format `span_t` layer (`copy` / `fill` / `blendconst` /
+`blendarray`) sits below both and is not a public drawing verb. Solid fills go
+through `span->fill(row_base, first_pixel, pixel, length)`; `first_pixel` lets
+the P4 handler address an odd nibble so callers never pre-pack. `screen_fill_hline`
+(and thus `screen_fill_rect` and the circle scanline fill) is a thin wrapper over
+it.
 
 ### Axis 2 — ACTION (what kind of mark)
 
