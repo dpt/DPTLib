@@ -24,33 +24,8 @@
 #define CHARS_ROWS 8
 #define CHARS_PAD  2
 
-/* the fonts the picker offers: menu label and the leafname under
- * resources/bmfonts. Index order is the menu order and the fonts[] slot. */
-static const struct
-{
-  const char *label;
-  const char *leaf;
-}
-chars_fonts[CHARS_NFONTS] =
-{
-  { "Digits",         "digits"       },
-  { "Daydream",       "daydream"     },
-  { "Glider Rider",   "gliderrider"  },
-  { "Henry",          "henry"        },
-  { "MS Sans Serif",  "ms-sans-serif"},
-  { "Tall",           "tall"         },
-  { "Tiny",           "tiny"         }
-};
-
-/* rebuilt before every open so the tick tracks task->current */
-static wuss_menu_item_t chars_menu_items[CHARS_NFONTS];
-static const wuss_menu_t chars_menu =
-{
-  "Font", chars_menu_items, CHARS_NFONTS
-};
-
-/* keep the resources root the task was created with; the picker needs it to
- * load a font on demand and chars_create does not stash it elsewhere.
+/* keep the resources root the task was created with; the picker loads a font
+ * on demand by leafname and chars_create does not stash it elsewhere.
  * ponytail: one demo, one instance at a time -- a file-scope copy is fine. */
 static char chars_resources[256];
 
@@ -66,8 +41,11 @@ static size2d_t chars_window_size(bmfont_t *font)
                 (fh + CHARS_PAD * 2) * CHARS_ROWS);
 }
 
-/* load fonts[idx] if not already in hand; returns it or NULL on failure */
-static bmfont_t *chars_load_font(chars_task_t *task, int idx)
+/* load fonts[idx] if not already in hand; returns it or NULL on failure.
+ * name is the menu label for that row -- the font's leafname sans ".png". */
+static bmfont_t *chars_load_font(chars_task_t *task,
+                                 int           idx,
+                                 const char   *name)
 {
   const char *leaf;
   const char *filename;
@@ -77,7 +55,7 @@ static bmfont_t *chars_load_font(chars_task_t *task, int idx)
   if (task->fonts[idx] != NULL)
     return task->fonts[idx];
 
-  leaf     = path_join_leafname(chars_fonts[idx].leaf, "png");
+  leaf     = path_join_leafname(name, "png");
   filename = path_join_filename(chars_resources, 3, "resources", "bmfonts",
                                leaf);
 
@@ -89,15 +67,15 @@ static bmfont_t *chars_load_font(chars_task_t *task, int idx)
   return font;
 }
 
-/* switch the grid to fonts[idx], resizing the window to suit */
-static result_t chars_set_font(chars_task_t *task, int idx)
+/* switch the grid to the font at menu row idx (label name), resizing to suit */
+static result_t chars_set_font(chars_task_t *task, int idx, const char *name)
 {
   bmfont_t *font;
 
-  if (idx < 0 || idx >= CHARS_NFONTS || idx == task->current)
+  if (idx < 0 || idx >= task->nfonts || idx == task->current)
     return result_OK;
 
-  font = chars_load_font(task, idx);
+  font = chars_load_font(task, idx, name);
   if (font == NULL)
     return result_OK; /* leave the current font in place */
 
@@ -111,18 +89,10 @@ static result_t chars_set_font(chars_task_t *task, int idx)
 
 static result_t chars_open_menu(chars_task_t *task)
 {
-  int i;
-
-  for (i = 0; i < CHARS_NFONTS; i++)
-  {
-    chars_menu_items[i].text    = chars_fonts[i].label;
-    chars_menu_items[i].flags   = (i == task->current) ? wuss_MENU_ITEM_TICKED
-                                                       : wuss_MENU_ITEM_NONE;
-    chars_menu_items[i].submenu = NULL;
-    chars_menu_items[i].window  = NULL;
-  }
-
-  return wuss_menu_open(task->delegate, &chars_menu,
+  /* ponytail: no tick on the current row -- wuss_fontmenu owns its items as
+   * const and offers no way to set one. The window title tracks the font. */
+  return wuss_menu_open(task->delegate,
+                        wuss_fontmenu_menu(task->fontmenu),
                         wuss_get_pointer(task->wuss), NULL);
 }
 
@@ -132,10 +102,12 @@ result_t chars_create(wuss_t       *wuss,
                       const char   *resources,
                       chars_task_t *task)
 {
-  wuss_task_t     *delegate;
-  wuss_task_desc_t delegate_desc;
-  result_t         rc;
-  bmfont_t        *font;
+  wuss_task_t       *delegate;
+  wuss_task_desc_t   delegate_desc;
+  result_t           rc;
+  bmfont_t          *font;
+  const char        *bmfonts_dir;
+  const wuss_menu_t *menu;
 
   font = wuss_get_font(wuss);
   if (font == NULL)
@@ -149,9 +121,28 @@ result_t chars_create(wuss_t       *wuss,
 
   task->wuss    = wuss;
   task->font    = font;
-  task->current = -1; /* the wuss system font is not one of chars_fonts[] */
+  task->current = -1; /* the wuss system font is none of the picker's */
   task->fg      = colour_rgb(0x00, 0x00, 0x00);
   task->bg      = colour_rgb(0xFF, 0xFF, 0xFF);
+
+  /* the picker: every ".png" font under resources/bmfonts, sorted */
+  bmfonts_dir = path_join_filename(chars_resources, 2, "resources", "bmfonts");
+  rc = wuss_fontmenu_create(&task->fontmenu, bmfonts_dir, "Font", NULL);
+  if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
+    return rc;
+  }
+
+  menu          = wuss_fontmenu_menu(task->fontmenu);
+  task->nfonts  = menu->nitems;
+  task->fonts   = calloc((size_t) task->nfonts, sizeof(*task->fonts));
+  if (task->nfonts > 0 && task->fonts == NULL)
+  {
+    wuss_fontmenu_destroy(task->fontmenu);
+    free(task);
+    return result_OOM;
+  }
 
   /* chars_redraw paints every cell itself */
   delegate_desc.handle    = chars_handle;
@@ -160,7 +151,10 @@ result_t chars_create(wuss_t       *wuss,
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
-    free(task); /* nothing registered yet; the spawner will not free it */
+    /* nothing registered yet; the spawner will not free it */
+    wuss_fontmenu_destroy(task->fontmenu);
+    free(task->fonts);
+    free(task);
     return rc;
   }
   wuss_task_set_autoclose(delegate, 1);
@@ -250,9 +244,11 @@ result_t chars_handle(wuss_window_t      *window,
     {
       int i;
 
-      for (i = 0; i < CHARS_NFONTS; i++)
+      for (i = 0; i < cc->nfonts; i++)
         if (cc->fonts[i] != NULL)
           bmfont_destroy(cc->fonts[i]);
+      free(cc->fonts);
+      wuss_fontmenu_destroy(cc->fontmenu);
       free(cc); /* calloc'd per instance by the spawner */
     }
     return result_OK;
@@ -264,8 +260,13 @@ result_t chars_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
-    if (event->data.menu_select.menu == &chars_menu)
-      return chars_set_font(cc, event->data.menu_select.index);
+    {
+      const char *name;
+
+      name = wuss_fontmenu_selected(cc->fontmenu, event);
+      if (name != NULL)
+        return chars_set_font(cc, event->data.menu_select.index, name);
+    }
     return result_OK;
 
   case wuss_EVENT_REDRAW:

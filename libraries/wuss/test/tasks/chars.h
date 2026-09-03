@@ -7,24 +7,25 @@
 
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
+#include "wuss/component/fontmenu.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
 
-/* number of fonts offered by the Chars font-picker menu */
-#define CHARS_NFONTS 7
-
 /* displays every glyph (0-255) of a bitmap font as a 32x8 grid, so the whole
  * font can be eyeballed at a glance. A MENU click on the window opens a
- * picker that swaps the font in place. */
+ * picker -- a wuss_fontmenu over resources/bmfonts -- that swaps the font in
+ * place. */
 typedef struct chars_task
 {
-  wuss_window_t *window;
-  wuss_task_t   *delegate;    /* the wuss task backing this window */
-  wuss_t        *wuss;        /* for wuss_get_pointer when opening the menu */
-  bmfont_t      *font;        /* currently shown; == fonts[current] */
-  bmfont_t      *fonts[CHARS_NFONTS]; /* lazily loaded, NULL until first pick */
-  int            current;    /* index into fonts[] */
-  colour_t       fg, bg;
+  wuss_window_t   *window;
+  wuss_task_t     *delegate;  /* the wuss task backing this window */
+  wuss_t          *wuss;      /* for wuss_get_pointer when opening the menu */
+  wuss_fontmenu_t *fontmenu;  /* the font picker; owns the menu and names */
+  bmfont_t        *font;      /* currently shown; == fonts[current] */
+  bmfont_t       **fonts;     /* one slot per menu item, lazily loaded */
+  int              nfonts;    /* length of fonts[]; == menu item count */
+  int              current;   /* index into fonts[], or -1 for sysfont */
+  colour_t         fg, bg;
 }
 chars_task_t;
 
