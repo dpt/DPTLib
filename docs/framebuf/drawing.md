@@ -183,7 +183,7 @@ spellings going forward.
   `screen_draw_line_wu_fix8`, `screen_draw_line_wu_float`
 - `screen_draw_rect`, `screen_fill_rect`, `screen_fill_square`,
   `screen_fill_hline` (the per-row primitive `screen_fill_rect` and
-  `screen_draw_circle` build on)
+  `screen_draw_circle` build on; itself a thin wrapper over `span->fill`)
 - `screen_draw_circle`, `screen_fill_circle`
 - `screen_fill_pattern` (takes `const pattern_t *`)
 - `screen_copy_bitmap`, `screen_copy_ninepatch`, `screen_copy_rect` — all
