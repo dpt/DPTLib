@@ -75,10 +75,10 @@ static void tile_area(screen_t       *scr,
 
 /* ----------------------------------------------------------------------- */
 
-void screen_copy_ninepatch(screen_t       *scr,
-                           const box_t    *dst,
-                           const bitmap_t *src,
-                           unsigned int    flags)
+result_t screen_copy_ninepatch(screen_t       *scr,
+                               const box_t    *dst,
+                               const bitmap_t *src,
+                               unsigned int    flags)
 {
   box_t    saved;
   box_t    orig_clip;
@@ -91,7 +91,7 @@ void screen_copy_ninepatch(screen_t       *scr,
   assert(src->size.h > 0 && src->size.h % 3 == 0);
 
   if (box_is_empty(dst))
-    return;
+    return result_OK;
 
   pw = src->size.w / 3;
   ph = src->size.h / 3;
@@ -115,7 +115,7 @@ void screen_copy_ninepatch(screen_t       *scr,
   if (box_is_empty(&orig_clip))
     saved = *dst;
   else if (box_intersection(&orig_clip, dst, &saved))
-    return; /* dst entirely outside the clip */
+    return result_OK; /* dst entirely outside the clip */
 
   /* Corners. */
   {
@@ -175,4 +175,6 @@ void screen_copy_ninepatch(screen_t       *scr,
   }
 
   scr->clip = orig_clip;
+
+  return result_OK;
 }

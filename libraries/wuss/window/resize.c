@@ -104,7 +104,7 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
 
       if (screen_copy_rect(window->wuss->scr, &src[i],
                            POINT(src[i].x0 - dx, src[i].y0 - dy),
-                           &got) != 0 &&
+                           &got) == result_OK &&
           ncopied < WUSS_MAX_INVALIDATE_PIECES)
         copied[ncopied++] = got;
     }

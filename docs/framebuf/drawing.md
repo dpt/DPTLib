@@ -96,10 +96,10 @@ screen_fill_box               colour fill, half-open box            [planned]
 screen_draw_circle            1px circle outline                     [shipped]
 screen_fill_circle            solid disc                             [shipped]
 screen_fill_pattern           pattern fill on the screen            [shipped]
-bitmap_fill_pattern           pattern fill on a raw bitmap          [planned; was bitmap_draw_pattern]
+bitmap_fill_pattern           pattern fill on a raw bitmap          [shipped; was bitmap_draw_pattern]
 screen_fill_rect_gradient     gradient fill of a rect              [planned]
-screen_copy_bitmap            blit a bitmap                        [planned; was screen_draw_bitmap]
-screen_copy_ninepatch         blit a resizable 9-patch frame       [planned; was screen_draw_ninepatch]
+screen_copy_bitmap            blit a bitmap                        [shipped; was screen_draw_bitmap]
+screen_copy_ninepatch         blit a resizable 9-patch frame       [shipped; was screen_draw_ninepatch]
 screen_copy_rect              screen-to-screen block move           [shipped]
 screen_draw_line_wu_float     anti-aliased line, float coords       [shipped]
 ```
@@ -154,9 +154,12 @@ New drawing ops return **`result_t`**. An op that clips away to nothing is not a
 error — it returns `result_OK` and draws nothing.
 
 Existing `void`-returning `screen_draw_*` ops keep their return type. The three
-`copy` ops disagree today (`screen_draw_bitmap` / `screen_draw_ninepatch` return
-`void`, `screen_copy_rect` returns `int` plus a `box_t *` out-param); aligning
-them on `result_t` is a signature change tracked separately from the rename.
+`copy` ops are aligned on `result_t`: `screen_copy_bitmap`,
+`screen_copy_ninepatch` and `screen_copy_rect` all return `result_OK` on
+success and `result_NOT_SUPPORTED` when the screen's pixel format has no blit
+path (`screen_copy_rect` also returns `result_NOT_SUPPORTED` when clipping
+leaves nothing to copy, since the caller must then fall back to a full
+redraw). `screen_copy_rect` keeps its `box_t *copied_dst` out-param.
 
 ## Rectangle representation
 
@@ -175,26 +178,18 @@ spellings going forward.
   `screen_draw_line_wu_fix8`, `screen_draw_line_wu_float`
 - `screen_draw_rect`, `screen_fill_rect`, `screen_fill_square`
 - `screen_draw_circle`, `screen_fill_circle`
-- `screen_fill_pattern` (currently takes `screen_pattern_t`; migrates to
-  `const pattern_t *`)
-- `screen_draw_bitmap`, `screen_draw_ninepatch` (rename to `screen_copy_*`
-  pending)
-- `screen_copy_rect`
-- `bitmap_clear`, `bitmap_draw_pattern` (rename to `bitmap_fill_pattern`
-  pending)
+- `screen_fill_pattern` (takes `const pattern_t *`)
+- `screen_copy_bitmap`, `screen_copy_ninepatch`, `screen_copy_rect` — all
+  return `result_t`
+- `bitmap_clear`, `bitmap_fill_pattern` (`const pattern_t *`, returns
+  `result_t`)
 - `bmfont_draw`, `bmtext_draw`
 - `composite` — see [composite.md](composite.md)
 
-**Planned — renames**
-
-| from | to |
-|------|----|
-| `screen_draw_bitmap`    | `screen_copy_bitmap` |
-| `screen_draw_ninepatch` | `screen_copy_ninepatch` |
-| `bitmap_draw_pattern`   | `bitmap_fill_pattern` (+ `pattern_t` argument) |
-
-Hard renames, no compatibility wrappers, all in-tree call sites updated in the
-same change.
+The rename pass was hard renames, no compatibility wrappers, all in-tree call
+sites updated in the same change: `screen_draw_bitmap` → `screen_copy_bitmap`,
+`screen_draw_ninepatch` → `screen_copy_ninepatch`, `bitmap_draw_pattern` →
+`bitmap_fill_pattern` (now taking a `pattern_t`).
 
 **Planned — new primitives** (priority order)
 

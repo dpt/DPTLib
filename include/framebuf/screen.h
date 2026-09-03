@@ -129,8 +129,13 @@ void screen_fill_pattern(screen_t        *scr,
  * \param[in] x    X coordinate of leftmost point to draw bitmap at.
  * \param[in] y    Y coordinate of topmost point to draw bitmap at.
  * \param[in] src  Bitmap to copy.
+ * \return \ref result_OK on success, \ref result_NOT_SUPPORTED if the
+ *         screen's pixel format has no blit path.
  */
-void screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src);
+result_t screen_copy_bitmap(screen_t       *scr,
+                            int             x,
+                            int             y,
+                            const bitmap_t *src);
 
 /** Flags for `screen_copy_ninepatch`. */
 enum
@@ -158,11 +163,13 @@ enum
  * \param[in] flags Bitwise OR of `screen_NINEPATCH_*`, or 0. Pass
  *                  `screen_NINEPATCH_NO_CENTRE` to draw only the border and
  *                  leave the interior untouched.
+ * \return \ref result_OK on success, \ref result_NOT_SUPPORTED if the
+ *         screen's pixel format has no blit path.
  */
-void screen_copy_ninepatch(screen_t       *scr,
-                           const box_t    *dst,
-                           const bitmap_t *src,
-                           unsigned int    flags);
+result_t screen_copy_ninepatch(screen_t       *scr,
+                               const box_t    *dst,
+                               const bitmap_t *src,
+                               unsigned int    flags);
 
 /**
  * Copies a rectangular region of the screen to another position on the same
@@ -175,8 +182,9 @@ void screen_copy_ninepatch(screen_t       *scr,
  * destination pixel 1:1.
  *
  * Callers must check the return value and fall back to a normal
- * invalidate/redraw when it's false (e.g. out of memory, or an unknown pixel
- * format), since a declined copy leaves the destination untouched.
+ * invalidate/redraw when it is not \ref result_OK (an unknown pixel format,
+ * or the source/destination lying wholly off-screen), since a declined copy
+ * leaves the destination untouched.
  *
  * If "src" or the intended destination falls partly off-screen, the actual
  * copied area shrinks to what both ends have in common on-screen: callers
@@ -191,13 +199,14 @@ void screen_copy_ninepatch(screen_t       *scr,
  *                        smaller than intended if either end was partly
  *                        off-screen). Pass NULL if not needed. Left unset if
  *                        the copy was declined.
- * \return True if the copy was performed, false if declined (unsupported
- *         pixel format).
+ * \return \ref result_OK if the copy was performed, \ref
+ *         result_NOT_SUPPORTED if declined (unsupported pixel format, or
+ *         nothing left to copy after clipping).
  */
-int screen_copy_rect(screen_t    *scr,
-                     const box_t *src,
-                     point_t      dst,
-                     box_t       *copied_dst);
+result_t screen_copy_rect(screen_t    *scr,
+                          const box_t *src,
+                          point_t      dst,
+                          box_t       *copied_dst);
 
 /**
  * Draws a line (Bresenham version with aliasing).
