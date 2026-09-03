@@ -30,8 +30,6 @@
 /* Input font PNGs must have 32 characters per row */
 #define CHARS_PER_ROW   (32)
 
-#undef BMFONT_DEBUG
-
 /* -------------------------------------------------------------------------- */
 
 /* Pixel values */
@@ -403,18 +401,14 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
   png_get_IHDR(png_ptr, info_ptr,
               &pngwidth, &pngheight, &pngbitdepth, &pngcolourtype,
                NULL, NULL, NULL);
-#ifdef BMFONT_DEBUG
-  fprintf(stderr, "bmfont load png: w=%d h=%d bit_depth=%d colour_type=%d\n",
-          (int) width, (int) height, bit_depth, colour_type);
-#endif
+  logf_info("bmfont load png: w=%d h=%d bit_depth=%d colour_type=%d",
+            (int) pngwidth, (int) pngheight, pngbitdepth, pngcolourtype);
 
   /* we need a 2bpp paletted PNG */
   if (pngbitdepth != 2 || pngcolourtype != PNG_COLOR_TYPE_PALETTE)
   {
-#ifdef BMFONT_DEBUG
-    fprintf(stderr, "Incompatible PNG format: depth=%d, coltype=%d\n",
-            bit_depth, colour_type);
-#endif
+    logf_error("bmfont: incompatible PNG format: depth=%d, coltype=%d",
+               pngbitdepth, pngcolourtype);
     rc = result_INCOMPATIBLE;
     goto cleanup;
   }
@@ -437,9 +431,7 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
 
     if (gridheight == 0)
     {
-#ifdef BMFONT_DEBUG
-      fprintf(stderr, "Can't determine font height\n");
-#endif
+      logf_error("bmfont: can't determine font height");
       rc = result_BAD_ARG;
       goto cleanup;
     }
@@ -459,11 +451,10 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
   bmfont->totalchars    = CHARS_PER_ROW * pngheight / gridheight;
   bmfont->glyphrowbytes = (gridwidth + 7) / 8; /* byte width of stored glyphs (1 or 2) */
 
-#ifdef BMFONT_DEBUG
-  fprintf(stderr, "bmfont load png: charwidth=%d charheight=%d totalchars=%d glyphrowbytes=%d\n",
-          bmfont->charwidth, bmfont->charheight,
-          bmfont->totalchars, bmfont->glyphrowbytes);
-#endif
+  logf_info("bmfont load png: charwidth=%d charheight=%d totalchars=%d "
+            "glyphrowbytes=%d",
+            bmfont->charwidth, bmfont->charheight,
+            bmfont->totalchars, bmfont->glyphrowbytes);
 
   {
     size_t      pngrowbytes;
