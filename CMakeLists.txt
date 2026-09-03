@@ -242,6 +242,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/load.c
     libraries/framebuf/bitmap/save.c
     libraries/framebuf/bmfont/bmfont.c
+    libraries/framebuf/bmfont/enumerate.c
     libraries/framebuf/colour/colour.c
     libraries/framebuf/composite/composite.c
     libraries/framebuf/curve/curve.c
