@@ -170,6 +170,7 @@ static result_t menu_deep_copy(const wuss_menu_t *src, wuss_menu_t **out)
     items[i].flags = src->items[i].flags;
     items[i].submenu = NULL;
     items[i].window  = src->items[i].window; /* borrowed, as in the source */
+    items[i].swatch  = src->items[i].swatch;
 
     if (items[i].text == NULL)
     {
@@ -230,7 +231,8 @@ static result_t build_emit(Building    *b,
   it->text    = copy;
   it->flags   = flags;
   it->submenu = submenu;
-  it->window  = NULL; /* array_grow leaves this uninitialised otherwise */
+  it->window  = NULL; /* array_grow leaves these uninitialised otherwise */
+  it->swatch  = wuss_NO_BACKGROUND;
   return result_OK;
 }
 

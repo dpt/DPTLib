@@ -20,7 +20,8 @@ result_t wuss_icon_create(wuss_window_t          *window,
   const char  *src;
   size_t       len;
   int          newcap;
-  wuss_colour_t fg, bg;
+  wuss_colour_t fg, bg, swatch;
+  int          has_swatch;
 
   assert(window != NULL);
   assert(spec   != NULL);
@@ -29,6 +30,11 @@ result_t wuss_icon_create(wuss_window_t          *window,
 
   fg = wuss__resolve_colour(w, spec->fg);
   bg = wuss__resolve_colour(w, spec->bg);
+
+  has_swatch = (spec->type == wuss_ICON_TYPE_MENU_ENTRY) &&
+               (spec->flags & wuss_ICON_FLAGS_SWATCH);
+  swatch = has_swatch ? wuss__resolve_colour(w, spec->swatch)
+                      : wuss_NO_BACKGROUND;
 
   switch (spec->type)
   {
@@ -66,6 +72,9 @@ result_t wuss_icon_create(wuss_window_t          *window,
       (bg < 0 || bg >= w->npalette))
     return result_WUSS_BAD_COLOUR;
 
+  if (has_swatch && (swatch < 0 || swatch >= w->npalette))
+    return result_WUSS_BAD_COLOUR;
+
   if (window->nicons == window->cap_icons)
   {
     newcap = (window->cap_icons == 0) ? 4 : window->cap_icons * 2;
@@ -99,6 +108,7 @@ result_t wuss_icon_create(wuss_window_t          *window,
                                                         : screen_PATTERN_SOLID;
   it->bitmap   = (spec->type == wuss_ICON_TYPE_BITMAP) ? spec->bitmap : NULL;
   it->group    = (spec->type == wuss_ICON_TYPE_RADIO) ? spec->group : 0;
+  it->swatch   = swatch;
   it->flags    = spec->flags;
   it->state    = wuss_ICON_STATE_NONE;
 

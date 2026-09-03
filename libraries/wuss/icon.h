@@ -34,6 +34,8 @@ struct wuss_icon
   screen_pattern_t  pattern; /* wuss_ICON_TYPE_PATTERN tile; 0 otherwise */
   const bitmap_t   *bitmap;  /* wuss_ICON_TYPE_BITMAP image; borrowed, or NULL */
   int               group;   /* radio: exclusive-selection group; 0 = none */
+  wuss_colour_t     swatch;  /* menu entry + FLAGS_SWATCH: left-gutter chip
+                              * colour; wuss_NO_BACKGROUND otherwise */
   wuss_icon_flags_t flags;
   wuss_icon_state_t state;
 };

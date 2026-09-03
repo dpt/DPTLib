@@ -135,7 +135,11 @@ typedef enum wuss_icon_flags
    *  normal interactive row with its own label; the dashed rule above it is
    *  laid out and drawn as a separate wuss_ICON_TYPE_RULE icon. Ignored by
    *  other types. */
-  wuss_ICON_FLAGS_SEPARATOR    = 1 << 7
+  wuss_ICON_FLAGS_SEPARATOR    = 1 << 7,
+  /** wuss_ICON_TYPE_MENU_ENTRY: draw a small colour chip (spec.swatch) in the
+   *  row's left gutter, where the tick would sit. Mutually exclusive with a
+   *  selected tick -- the chip wins. Ignored by other types. */
+  wuss_ICON_FLAGS_SWATCH      = 1 << 8
 }
 wuss_icon_flags_t;
 
@@ -173,6 +177,10 @@ typedef struct wuss_icon_spec
    *  (the default) means "no group": such a radio still toggles but never
    *  clears another. Ignored by all other icon types. */
   int               group;
+  /** wuss_ICON_TYPE_MENU_ENTRY with wuss_ICON_FLAGS_SWATCH: the colour chip to
+   *  draw in the left gutter, as an index into the system palette. Ignored
+   *  unless that flag is set; ignored by all other icon types. */
+  wuss_colour_t     swatch;
   /** Appearance/behaviour flags. */
   wuss_icon_flags_t flags;
 }
