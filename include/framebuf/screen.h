@@ -97,6 +97,21 @@ void screen_fill_square(screen_t *scr,
                         colour_t  colour);
 
 /**
+ * Fills a horizontal run of `w` pixels starting at (`x`, `y`).
+ *
+ * A non-positive `w` draws nothing. Clipped to the screen's clip region.
+ * This is the per-row primitive `screen_fill_rect` and `screen_draw_circle`
+ * build on.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x       X coordinate of the leftmost pixel of the run.
+ * \param[in] y       Y coordinate of the run.
+ * \param[in] w       Length of the run in pixels.
+ * \param[in] colour  Colour of the run.
+ */
+void screen_fill_hline(screen_t *scr, int x, int y, int w, colour_t colour);
+
+/**
  * Fills a box with a repeating 8x8 pattern.
  *
  * A plain pattern paints every pixel in the box, set bits taking
