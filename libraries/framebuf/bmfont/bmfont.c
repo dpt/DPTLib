@@ -175,8 +175,11 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
 
     pixels += ((bmfont->gridheight - 1) * rowbytes) / sizeof(*pixels);
 
-    assert(pixels >= (unsigned int *) voidpixels);
-    assert(pixels <= (unsigned int *) voidpixels + (rowbytes * imgheight / 4));
+    /* a malformed grid can walk pixels outside the decoded image; refuse it
+     * rather than read past the buffer on the next row */
+    if (pixels < (unsigned int *) voidpixels ||
+        pixels > (unsigned int *) voidpixels + (rowbytes * imgheight / 4))
+      return result_PARSE_ERROR;
   }
 
   return rc;
