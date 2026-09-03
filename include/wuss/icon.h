@@ -31,6 +31,7 @@ extern "C"
 #include "base/result.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "geom/point.h"
 
 #include "wuss/wuss.h"
 
@@ -227,6 +228,31 @@ result_t wuss_icon_create_array(wuss_window_t          *window,
                                 const wuss_icon_spec_t *specs,
                                 int                     nspecs,
                                 wuss_icon_t           **icons);
+
+/**
+ * Draw an icon from a spec once, retaining nothing: no allocation, no icon
+ * added to the window. For static, non-interactive content a task can redraw
+ * cheaply from its own model -- a large grid of swatches, say -- without a
+ * live icon per cell.
+ *
+ * Call only from a task's wuss_EVENT_REDRAW handler, passing that event's \c
+ * bounds and \c scroll straight through; the icon is painted through the
+ * window manager's screen with the redraw clip already in force. The spec is
+ * validated exactly as \ref wuss_icon_create validates it. The icon's \c
+ * bbox is in virtual document space, as for a created icon.
+ *
+ * \param[in] window  Window being redrawn.
+ * \param[in] spec    Icon description; not retained.
+ * \param[in] content The redraw event's \c bounds (full content box, screen
+ *                    space).
+ * \param[in] scroll  The redraw event's \c scroll offset.
+ * \return \ref result_OK, or the same \ref result_WUSS_BAD_ICON / \ref
+ *         result_WUSS_BAD_COLOUR \ref wuss_icon_create would return.
+ */
+result_t wuss_icon_plot(wuss_window_t          *window,
+                        const wuss_icon_spec_t *spec,
+                        const box_t            *content,
+                        point_t                 scroll);
 
 /**
  * Destroy an icon, unlinking it from its window and invalidating its
