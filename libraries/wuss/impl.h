@@ -91,17 +91,11 @@ struct wuss
                                           * block this wuss_t owns */
   colour_t                   *palette;   /* owned */
   int                         npalette;
-  struct
-  {
-    wuss_colour_t             white;     /* palette index nearest to white */
-    wuss_colour_t             black;     /* palette index nearest to black */
-    /* Concrete 0..npalette-1 index for each symbolic wuss_colour_t, indexed
-     * by (c - wuss_COLOUR_SYMBOLIC). Unused slots hold wuss_NO_BACKGROUND so
-     * a stray symbolic still fails a range check. Rebuilt by
-     * wuss__rebuild_palettecache on create and every palette/config change. */
-    wuss_colour_t             symbolic[128];
-  }
-  palettecache;
+  /* Concrete 0..npalette-1 index for each symbolic wuss_colour_t, indexed by
+   * (c - wuss_COLOUR_SYMBOLIC). Unused slots hold wuss_COLOUR_SYMBOLIC so a
+   * stray symbolic still fails a range check. Rebuilt by
+   * wuss__rebuild_palettecache on create and every palette/config change. */
+  wuss_colour_t               palettecache[128];
 #ifdef WUSS_FURNITURE
   wuss_furniture_palette_t              furniture_colours;
 #endif
@@ -210,7 +204,7 @@ static inline wuss_colour_t wuss__resolve_colour(const wuss_t *wuss,
                                                  wuss_colour_t c)
 {
   if (c >= wuss_COLOUR_SYMBOLIC && c != wuss_NO_BACKGROUND)
-    return wuss->palettecache.symbolic[c - wuss_COLOUR_SYMBOLIC];
+    return wuss->palettecache[c - wuss_COLOUR_SYMBOLIC];
   return c;
 }
 

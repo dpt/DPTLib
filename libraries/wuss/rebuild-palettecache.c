@@ -22,40 +22,37 @@ static const unsigned char wuss__named_rgb[][3] =
 
 void wuss__rebuild_palettecache(wuss_t *wuss)
 {
-  wuss_colour_t *sym;
+  wuss_colour_t *cache;
   size_t         i;
 
-  wuss->palettecache.white = wuss_nearest_colour(wuss, 255, 255, 255);
-  wuss->palettecache.black = wuss_nearest_colour(wuss, 0, 0, 0);
-
-  sym = wuss->palettecache.symbolic;
+  cache = wuss->palettecache;
 
   /* Default every slot to wuss_COLOUR_SYMBOLIC: always >= npalette (palettes
    * hold at most 128 real entries) so an unmapped symbolic still fails every
    * range check, and -- unlike wuss_NO_BACKGROUND -- it is not mistaken for
    * "no background" by wuss__validate_backdrop. */
-  for (i = 0; i < NELEMS(wuss->palettecache.symbolic); i++)
-    sym[i] = wuss_COLOUR_SYMBOLIC;
+  for (i = 0; i < NELEMS(wuss->palettecache); i++)
+    cache[i] = wuss_COLOUR_SYMBOLIC;
 
   for (i = 0; i < NELEMS(wuss__named_rgb); i++)
-    sym[(wuss_COLOUR_BLACK - wuss_COLOUR_SYMBOLIC) + i] =
+    cache[(wuss_COLOUR_BLACK - wuss_COLOUR_SYMBOLIC) + i] =
       wuss_nearest_colour(wuss,
                           wuss__named_rgb[i][0],
                           wuss__named_rgb[i][1],
                           wuss__named_rgb[i][2]);
 
 #ifdef WUSS_FURNITURE
-  sym[wuss_COLOUR_TITLE_BG - wuss_COLOUR_SYMBOLIC] =
+  cache[wuss_COLOUR_TITLE_BG - wuss_COLOUR_SYMBOLIC] =
     wuss->furniture_colours.title.bg;
-  sym[wuss_COLOUR_TITLE_FG - wuss_COLOUR_SYMBOLIC] =
+  cache[wuss_COLOUR_TITLE_FG - wuss_COLOUR_SYMBOLIC] =
     wuss->furniture_colours.title.fg;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
-  sym[wuss_COLOUR_BUTTON_HILIGHT - wuss_COLOUR_SYMBOLIC] = wuss->bevel_light;
-  sym[wuss_COLOUR_BUTTON_SHADOW  - wuss_COLOUR_SYMBOLIC] = wuss->bevel_dark;
-  sym[wuss_COLOUR_ACCENT_BG      - wuss_COLOUR_SYMBOLIC] = wuss->accent_bg;
-  sym[wuss_COLOUR_ACCENT_FG      - wuss_COLOUR_SYMBOLIC] = wuss->accent_fg;
+  cache[wuss_COLOUR_BUTTON_HILIGHT - wuss_COLOUR_SYMBOLIC] = wuss->bevel_light;
+  cache[wuss_COLOUR_BUTTON_SHADOW  - wuss_COLOUR_SYMBOLIC] = wuss->bevel_dark;
+  cache[wuss_COLOUR_ACCENT_BG      - wuss_COLOUR_SYMBOLIC] = wuss->accent_bg;
+  cache[wuss_COLOUR_ACCENT_FG      - wuss_COLOUR_SYMBOLIC] = wuss->accent_fg;
 #endif
   if (wuss->backdrop.colour != wuss_NO_BACKGROUND)
-    sym[wuss_COLOUR_BACKDROP - wuss_COLOUR_SYMBOLIC] = wuss->backdrop.colour;
+    cache[wuss_COLOUR_BACKDROP - wuss_COLOUR_SYMBOLIC] = wuss->backdrop.colour;
 }
