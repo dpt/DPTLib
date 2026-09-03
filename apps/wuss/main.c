@@ -82,7 +82,7 @@ static result_t spawn_text(void)
   text_task_t *t = calloc(1, sizeof(*t));
   result_t     rc;
   if (t == NULL) return result_OOM;
-  rc = text_create(g.wuss, g.daydream_font, t);
+  rc = text_create(g.wuss, g.resources, t);
   if (rc != result_OK) return rc;
   if (t->window == NULL) { free(t); return rc; }
   return result_OK;
