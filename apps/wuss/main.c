@@ -23,9 +23,6 @@
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 #include "wuss/menu.h"
-#ifdef WUSS_COMPONENTS
-#include "wuss/component/colourmenu.h"
-#endif
 
 #include "frontend.h"
 
@@ -367,41 +364,6 @@ static result_t spawn_menu_desc(void)
                         NULL);
 }
 
-#ifdef WUSS_COMPONENTS
-/* A wuss_colourmenu over the current system palette. It snapshots the
- * palette at create, so a palette cycle only bumps g_palette_gen; the menu
- * is rebuilt lazily in spawn_colourmenu once its previous chain has been
- * torn down (wuss_menu keeps dereferencing the source menu for the whole
- * life of an open chain, so it must not be freed while one is up). The menu
- * itself is freed after wuss_destroy in run_wuss's teardown -- wuss_destroy
- * closes any still-open chain first. */
-static wuss_colourmenu_t *g_colourmenu;
-static unsigned int        g_colourmenu_gen; /* g_palette_gen it was built for */
-static unsigned int        g_palette_gen;
-
-static result_t spawn_colourmenu(void)
-{
-  result_t rc;
-
-  if (g_colourmenu != NULL && g_colourmenu_gen != g_palette_gen)
-  {
-    wuss_colourmenu_destroy(g_colourmenu);
-    g_colourmenu = NULL;
-  }
-
-  if (g_colourmenu == NULL)
-  {
-    rc = wuss_colourmenu_create(&g_colourmenu, g.wuss, "Colour");
-    if (rc != result_OK)
-      return rc;
-    g_colourmenu_gen = g_palette_gen;
-  }
-
-  return wuss_menu_open(g.menu_task, wuss_colourmenu_menu(g_colourmenu),
-                        wuss_get_pointer(g.wuss), NULL);
-}
-#endif
-
 /* The task launcher is a MENU-button pop-up over the backdrop rather than a
  * window of buttons. g_task_items and g_task_spawn run in lock-step: picking
  * item i calls g_task_spawn[i]. */
@@ -426,9 +388,6 @@ static const wuss_menu_item_t g_task_items[] =
   { "Text",        wuss_MENU_ITEM_NONE,   NULL },
   { "Menu",        wuss_MENU_ITEM_DASHED, NULL },
   { "Menu (desc)", wuss_MENU_ITEM_NONE,   NULL },
-#ifdef WUSS_COMPONENTS
-  { "Colour menu", wuss_MENU_ITEM_NONE,   NULL },
-#endif
   { "Quit Wuss",   wuss_MENU_ITEM_DASHED, NULL }
 };
 
@@ -444,9 +403,6 @@ static const task_spawn_fn_t g_task_spawn[] =
   spawn_gradient, spawn_icons, spawn_image, spawn_lissajous, spawn_palette,
   spawn_porter_duff, spawn_sofa, spawn_swatches, spawn_text, spawn_menu,
   spawn_menu_desc,
-#ifdef WUSS_COMPONENTS
-  spawn_colourmenu,
-#endif
   spawn_quit
 };
 
@@ -477,20 +433,6 @@ static result_t menu_handle(wuss_window_t      *window,
       (void) g_task_spawn[index]();
     return result_OK;
   }
-
-#ifdef WUSS_COMPONENTS
-  {
-    wuss_colour_t picked;
-    int           mine;
-
-    picked = wuss_colourmenu_selected(g_colourmenu, event, &mine);
-    if (mine)
-    {
-      printf("menu: picked colour index %d\n", (int) picked);
-      return result_OK;
-    }
-  }
-#endif
 
   printf("menu: picked \"%s\"\n",
          menu->items[index].text ? menu->items[index].text : "(sep)");
@@ -703,12 +645,6 @@ static result_t run_wuss(const char *resources)
         bitmap_set_palette(&bm, palette);
         wuss_frontend_set_palette(frontend, palette, NELEMS(palette));
         wuss_set_palette(wuss, palette, NELEMS(palette));
-#ifdef WUSS_COMPONENTS
-        /* the colour menu snapshots the palette at create; bump the
-         * generation so spawn_colourmenu rebuilds it on the next open,
-         * once any chain it currently feeds has gone */
-        g_palette_gen++;
-#endif
         break;
 
       case wuss_INPUT_MOUSE_DOWN:
@@ -778,9 +714,6 @@ static result_t run_wuss(const char *resources)
   /* menus are only safe to free once wuss_destroy has torn down any chain
    * that was still borrowing them */
   wuss_menu_destroy(g_menu_desc);
-#ifdef WUSS_COMPONENTS
-  wuss_colourmenu_destroy(g_colourmenu);
-#endif
 
   bmfont_destroy(font);
 

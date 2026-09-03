@@ -15,6 +15,7 @@
 #include "geom/point.h"
 #include "geom/size.h"
 #include "wuss/icon.h"
+#include "wuss/menu.h"
 
 #include "swatches.h"
 
@@ -29,15 +30,15 @@
 
 #define SWATCHES_PAPER_RGB 0xFF, 0xFF, 0xFF
 
-/* Redraw: plot one 4x4 PATTERN swatch per (pattern, colour) pair -- row =
- * pattern, column = palette index used as the pattern's ink over white. No
- * icons are retained; wuss_icon_plot resolves the palette live, so a palette
- * swap just redraws. */
+/* Redraw: plot one PATTERN swatch per (pattern, colour) pair -- row =
+ * pattern, column = palette index used as the pattern's ink over task->paper
+ * (white until a colour is picked from the pop-up menu). No icons are
+ * retained; wuss_icon_plot resolves the palette live, so a palette or paper
+ * change just redraws. */
 static result_t swatches_redraw(swatches_task_t    *task,
                                 const wuss_event_t *event)
 {
   wuss_icon_spec_t spec;
-  wuss_colour_t    paper;
   const box_t     *bounds;
   point_t          scroll;
   int              pat, col;
@@ -45,11 +46,10 @@ static result_t swatches_redraw(swatches_task_t    *task,
 
   bounds = event->data.redraw.bounds;
   scroll = event->data.redraw.scroll;
-  paper  = wuss_nearest_colour(task->wuss, SWATCHES_PAPER_RGB);
 
   memset(&spec, 0, sizeof(spec));
   spec.type = wuss_ICON_TYPE_PATTERN;
-  spec.bg   = paper;
+  spec.bg   = task->paper;
 
   for (pat = 0; pat < screen_PATTERN__LIMIT; pat++)
   {
@@ -76,8 +76,11 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
   wuss_task_desc_t delegate_desc;
   result_t    rc;
 
-  task->wuss   = wuss;
-  task->window = NULL;
+  task->wuss       = wuss;
+  task->window     = NULL;
+  task->task       = NULL;
+  task->colourmenu = NULL;
+  task->paper      = wuss_nearest_colour(wuss, SWATCHES_PAPER_RGB);
 
   delegate_desc.handle    = swatches_handle;
   delegate_desc.task_data = task;
@@ -86,6 +89,14 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
   if (rc != result_OK)
   {
     free(task); /* nothing registered yet; the spawner will not free it */
+    return rc;
+  }
+  task->task = delegate;
+
+  rc = wuss_colourmenu_create(&task->colourmenu, wuss, "Colour");
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
     return rc;
   }
 
@@ -99,6 +110,7 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
                                  &task->window);
   if (rc != result_OK)
   {
+    wuss_colourmenu_destroy(task->colourmenu);
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
     return rc;
   }
@@ -111,9 +123,10 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
 }
 
 /* A SELECT click on a cell makes that cell -- its fill pattern, its palette
- * colour as the ink, white paper -- the desktop backdrop. The grid has no
- * retained icons, so the cell is found by arithmetic on the click point
- * (virtual content space). */
+ * colour as the ink, the current paper -- the desktop backdrop. A MENU click
+ * pops the colour menu; its pick becomes the paper. The grid has no retained
+ * icons, so the cell is found by arithmetic on the click point (virtual
+ * content space). */
 static result_t swatches_click(swatches_task_t    *task,
                                const wuss_event_t *event)
 {
@@ -121,8 +134,15 @@ static result_t swatches_click(swatches_task_t    *task,
   point_t         pt;
   int             pat, col;
 
-  if (event->data.mouse.action != wuss_MOUSE_DOWN ||
-      !(event->data.mouse.button & wuss_BUTTON_SELECT))
+  if (event->data.mouse.action != wuss_MOUSE_DOWN)
+    return result_OK;
+
+  if (event->data.mouse.button & wuss_BUTTON_MENU)
+    return wuss_menu_open(task->task,
+                          wuss_colourmenu_menu(task->colourmenu),
+                          wuss_get_pointer(task->wuss), NULL);
+
+  if (!(event->data.mouse.button & wuss_BUTTON_SELECT))
     return result_OK;
 
   pt  = event->data.mouse.point;
@@ -133,11 +153,30 @@ static result_t swatches_click(swatches_task_t    *task,
       col >= SWATCHES_NCOLOURS || pat >= screen_PATTERN__LIMIT)
     return result_OK;
 
-  backdrop = (wuss_backdrop_t) wuss_BACKDROP_PATTERN(
-               (wuss_colour_t) col,
-               (screen_pattern_t) pat,
-               wuss_nearest_colour(task->wuss, SWATCHES_PAPER_RGB));
+  backdrop = (wuss_backdrop_t) wuss_BACKDROP_PATTERN((wuss_colour_t) col,
+                                                    (screen_pattern_t) pat,
+                                                    task->paper);
   return wuss_set_backdrop(task->wuss, &backdrop);
+}
+
+/* A pick from the colour menu this task opened: the chosen palette index
+ * becomes the paper the patterns mix over. */
+static result_t swatches_menu_select(swatches_task_t    *task,
+                                     const wuss_event_t *event)
+{
+  wuss_colour_t picked;
+  int           mine;
+
+  picked = wuss_colourmenu_selected(task->colourmenu, event, &mine);
+  if (!mine)
+    return result_OK;
+
+  task->paper = picked;
+
+  /* every cell shares the new paper: dirty the whole document, not just the
+   * visible rectangle wuss_window_invalidate_all covers */
+  wuss_window_invalidate_extent(task->window);
+  return result_OK;
 }
 
 result_t swatches_handle(wuss_window_t      *window,
@@ -156,7 +195,11 @@ result_t swatches_handle(wuss_window_t      *window,
   case wuss_EVENT_MOUSE:
     return swatches_click(task, event);
 
+  case wuss_EVENT_MENU_SELECT:
+    return swatches_menu_select(task, event);
+
   case wuss_EVENT_QUIT:
+    wuss_colourmenu_destroy(task->colourmenu);
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
 

@@ -238,6 +238,18 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
   wuss_window_invalidate((window), NULL)
 
 /**
+ * Mark a window's whole virtual document extent as dirty, not just the part
+ * currently on screen. wuss_window_invalidate_all only covers the visible
+ * content rectangle, which is enough when the document is no bigger than the
+ * window; use this when a change touches the whole document (a colour or
+ * theme swap, say) so every scroll position repaints correctly. The extent
+ * is clipped to what is actually visible before anything is queued.
+ *
+ * \param[in] window Window whose whole document changed.
+ */
+void wuss_window_invalidate_extent(wuss_window_t *window);
+
+/**
  * Set a window's scroll offset: the point in virtual content space that
  * appears at the content area's top-left. Larger offsets bring later content
  * into view. Invalidates the content area so the next redraw picks up the

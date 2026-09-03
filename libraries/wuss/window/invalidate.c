@@ -285,3 +285,15 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
 
   wuss__invalidate_clipped(window, &screen_box);
 }
+
+void wuss_window_invalidate_extent(wuss_window_t *window)
+{
+  box_t extent;
+
+  extent.x0 = 0;
+  extent.y0 = 0;
+  extent.x1 = window->doc.w;
+  extent.y1 = window->doc.h;
+
+  wuss_window_invalidate(window, &extent);
+}
