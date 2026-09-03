@@ -193,6 +193,43 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         if ((button & wuss_BUTTON_SELECT) && region == wuss_FURNITURE_RESIZE)
           wuss_window_restack(win, wuss_ZORDER_FRONT);
 
+        /* A click landing in the well itself (not on the sausage) pages the
+         * content one visible extent towards the click, RISC OS style, keeping
+         * one step of overlap. The drag state is still armed below so a press
+         * that then moves onto the sausage keeps working. */
+        if (region == wuss_FURNITURE_VSCROLL_WELL ||
+            region == wuss_FURNITURE_HSCROLL_WELL)
+        {
+          box_t sausage;
+          box_t content;
+          int   page;
+
+          wuss__content_box(win, &content);
+
+          if (region == wuss_FURNITURE_VSCROLL_WELL)
+          {
+            wuss__vscroll_sausage_box(win, &sausage);
+            page = (content.y1 - content.y0) - WUSS_SCROLL_STEP;
+            if (page < 1)
+              page = 1;
+            if (y < sausage.y0)
+              wuss__scroll_step(win, POINT(0, -page));
+            else if (y > sausage.y1)
+              wuss__scroll_step(win, POINT(0, page));
+          }
+          else
+          {
+            wuss__hscroll_sausage_box(win, &sausage);
+            page = (content.x1 - content.x0) - WUSS_SCROLL_STEP;
+            if (page < 1)
+              page = 1;
+            if (x < sausage.x0)
+              wuss__scroll_step(win, POINT(-page, 0));
+            else if (x > sausage.x1)
+              wuss__scroll_step(win, POINT(page, 0));
+          }
+        }
+
         wuss_window_get_scroll(win, &scroll);
 
         wuss->furniture.dragging          = win;
