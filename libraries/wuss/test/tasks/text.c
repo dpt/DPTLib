@@ -25,8 +25,7 @@
 #endif
 
 static const char paragraph[] =
-  "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
-  "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
+"Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec mattis luctus libero. Donec imperdiet, velit quis venenatis iaculis, metus libero cursus ligula, egestas sagittis dui diam in mi.";
 
 result_t text_create(wuss_t      *wuss,
                      bmfont_t    *font,
