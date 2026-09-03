@@ -548,7 +548,7 @@ static result_t run_wuss(const char *resources)
 
   logf_info("wuss: resources root = \"%s\"", resources);
 
-  leafname = path_join_leafname("digits", "png");
+  leafname = path_join_leafname("Digits-Regular", "png");
   filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
   logf_info("wuss: loading font \"%s\"", filename);
   rc = bmfont_create(filename, &font);
