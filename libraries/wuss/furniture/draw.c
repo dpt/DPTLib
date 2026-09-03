@@ -11,9 +11,16 @@ void wuss__furniture_draw(wuss_t        *wuss,
                           wuss_window_t *window,
                           const box_t   *full)
 {
-  box_t visible_clipped;
-  box_t clipped;
-  box_t titlebar;
+  box_t     visible_clipped;
+  box_t     clipped;
+  box_t     titlebar;
+  bmfont_t *titlefont;
+
+  /* window titles are drawn in the bold weight (font slot 1) when one was
+   * supplied, falling back to the system font */
+  titlefont = (wuss->nfonts > 1 && wuss->fonts[1] != NULL)
+            ? wuss->fonts[1]
+            : wuss->fonts[0];
 
   if (box_intersection(&window->visible, full, &visible_clipped))
     return; /* offscreen */
@@ -26,7 +33,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
                      titlebar.x0, titlebar.y0, box_size(&titlebar),
                      wuss->palette[wuss->furniture_colours.title.bg]);
 
-    if (wuss->fonts[0] != NULL && window->title[0] != '\0')
+    if (titlefont != NULL && window->title[0] != '\0')
     {
       point_t        pos;
       int            text_x0, text_x1, titlelen, split_point;
@@ -69,12 +76,12 @@ void wuss__furniture_draw(wuss_t        *wuss,
       if (text_x1 > text_x0 && !box_intersection(&text_box, &clipped, &text_clip))
       {
         titlelen = (int) strlen(window->title);
-        bmfont_measure(wuss->fonts[0], window->title, titlelen, text_x1 - text_x0, &split_point, &width);
+        bmfont_measure(titlefont, window->title, titlelen, text_x1 - text_x0, &split_point, &width);
 
         pos.x = (split_point < titlelen) ? text_x0 : text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
         pos.y = titlebar.y0 + 2;
         wuss->scr->clip = text_clip;
-        bmfont_draw(wuss->fonts[0], wuss->scr, window->title, titlelen,
+        bmfont_draw(titlefont, wuss->scr, window->title, titlelen,
                    wuss->palette[wuss->furniture_colours.title.fg], wuss->palette[wuss->furniture_colours.title.bg],
                    &pos, NULL);
         wuss->scr->clip = clipped;
