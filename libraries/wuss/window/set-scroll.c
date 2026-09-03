@@ -115,7 +115,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
     idx = order[i];
     if (screen_copy_rect(window->wuss->scr, &blit_src[idx],
                          POINT(blit_dest[idx].x0, blit_dest[idx].y0),
-                         &got) == 0)
+                         &got) != result_OK)
     {
       blit_failed = 1;
       break;

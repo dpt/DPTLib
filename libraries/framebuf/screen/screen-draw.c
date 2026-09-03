@@ -226,7 +226,7 @@ void screen_fill_square(screen_t *scr,
 
 /* ----------------------------------------------------------------------- */
 
-void screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
+result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 {
   box_t clip_box;
   box_t src_box;
@@ -235,14 +235,14 @@ void screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
   int   has_alpha;
 
   if (screen_get_clip(scr, &clip_box))
-    return; /* invalid clipped screen */
+    return result_OK; /* invalid clipped screen: nothing to draw */
 
   src_box.x0 = x;
   src_box.y0 = y;
   src_box.x1 = x + src->size.w;
   src_box.y1 = y + src->size.h;
   if (box_intersection(&clip_box, &src_box, &draw_box))
-    return; /* nothing visible */
+    return result_OK; /* nothing visible */
 
   clipped_width  = draw_box.x1 - draw_box.x0;
   clipped_height = draw_box.y1 - draw_box.y0;
@@ -352,8 +352,10 @@ void screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 
   default:
     assert(!"Unimplemented pixel format");
-    break;
+    return result_NOT_SUPPORTED;
   }
+
+  return result_OK;
 }
 
 /* ----------------------------------------------------------------------- */

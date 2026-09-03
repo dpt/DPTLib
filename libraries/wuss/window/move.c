@@ -108,9 +108,9 @@ void wuss_window_move(wuss_window_t *window, point_t p)
   {
     idx = order[i];
 
-    if (!screen_copy_rect(window->wuss->scr, &blit_src[idx],
-                          POINT(blit_dest[idx].x0, blit_dest[idx].y0),
-                          &copied))
+    if (screen_copy_rect(window->wuss->scr, &blit_src[idx],
+                         POINT(blit_dest[idx].x0, blit_dest[idx].y0),
+                         &copied) != result_OK)
     {
       /* screen_copy_rect refused this piece: either the screen format has no
        * blit path (e.g. paletted -- fails on the first piece, before anything
