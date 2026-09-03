@@ -237,6 +237,7 @@ set(DATASTRUCT_SOURCES
 
 set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/bitmap.c
+    libraries/framebuf/bitmap/draw-pattern.c
     libraries/framebuf/bitmap/load.c
     libraries/framebuf/bitmap/save.c
     libraries/framebuf/bmfont/bmfont.c
