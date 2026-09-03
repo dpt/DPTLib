@@ -4,7 +4,6 @@
 
 #include "base/utils.h"
 #include "geom/box.h"
-#include "geom/size.h"
 
 #include "framebuf/screen.h"
 
@@ -56,7 +55,7 @@ void screen_draw_circle(screen_t *scr,
 }
 
 /* Same octant stepping as the outline, but each step emits a pair of solid
- * horizontal runs (via screen_fill_rect, which clips) rather than eight
+ * horizontal runs (via screen_fill_hline, which clips) rather than eight
  * points. Runs from the two octant families cover every scanline of the
  * disc exactly once. */
 void screen_fill_circle(screen_t *scr,
@@ -83,16 +82,16 @@ void screen_fill_circle(screen_t *scr,
   while (x >= y)
   {
     /* the wide pair: rows cy +/- y, spanning -x..+x */
-    screen_fill_rect(scr, cx - x, cy + y, SIZE2D(2 * x + 1, 1), colour);
+    screen_fill_hline(scr, cx - x, cy + y, 2 * x + 1, colour);
     if (y != 0)
-      screen_fill_rect(scr, cx - x, cy - y, SIZE2D(2 * x + 1, 1), colour);
+      screen_fill_hline(scr, cx - x, cy - y, 2 * x + 1, colour);
 
     /* the tall pair: rows cy +/- x, spanning -y..+y; skip while it would
      * fall inside the wide pair's rows to avoid overdraw */
     if (x != y)
     {
-      screen_fill_rect(scr, cx - y, cy + x, SIZE2D(2 * y + 1, 1), colour);
-      screen_fill_rect(scr, cx - y, cy - x, SIZE2D(2 * y + 1, 1), colour);
+      screen_fill_hline(scr, cx - y, cy + x, 2 * y + 1, colour);
+      screen_fill_hline(scr, cx - y, cy - x, 2 * y + 1, colour);
     }
 
     y++;
