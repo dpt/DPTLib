@@ -379,8 +379,20 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     screen_fill_rect(c->scr, b->x0, b->y0,
                      SIZE2D(b->x1 - b->x0, b->y1 - b->y0), ground);
 
-  /* left-edge tick when selected */
-  if (wuss__icon_selected(icon))
+  /* left-edge colour chip (wins over the tick) or tick when selected */
+  if ((icon->flags & wuss_ICON_FLAGS_SWATCH) &&
+      icon->swatch != wuss_NO_BACKGROUND)
+  {
+    int cx, cy, h;
+
+    h  = (c->font_height >= 8) ? c->font_height : 8;
+    cx = b->x0 + pad;
+    cy = b->y0 + (b->y1 - b->y0 - h) / 2;
+    screen_fill_rect(c->scr, cx, cy, SIZE2D(h, h),
+                     c->wuss->palette[icon->swatch]);
+    screen_draw_rect(c->scr, cx, cy, SIZE2D(h, h), ink); /* 1px border */
+  }
+  else if (wuss__icon_selected(icon))
   {
     int cx, cy, h;
 

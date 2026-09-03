@@ -43,8 +43,10 @@ typedef enum wuss_menu_item_flags
                                       *   its label and responds to the pointer.
                                       *   The rule is laid out and drawn
                                       *   separately and is not interactive */
-  wuss_MENU_ITEM_DISABLED  = 1 << 2  /**< greyed, never highlights, not
+  wuss_MENU_ITEM_DISABLED  = 1 << 2, /**< greyed, never highlights, not
                                       *   selectable */
+  wuss_MENU_ITEM_SWATCH    = 1 << 3  /**< draw a colour chip of \c swatch at the
+                                      *   item's left edge, in place of a tick */
 }
 wuss_menu_item_flags_t;
 
@@ -65,6 +67,11 @@ typedef struct wuss_menu_item
                                      *   must outlive the open chain -- do not
                                      *   wuss_window_close it while its menu is
                                      *   open. */
+  wuss_colour_t            swatch; /**< with wuss_MENU_ITEM_SWATCH: the colour
+                                     *   chip to draw at the row's left edge, as
+                                     *   an index into the system palette.
+                                     *   Ignored without that flag, so a
+                                     *   zero-initialised item is unaffected. */
 }
 wuss_menu_item_t;
 

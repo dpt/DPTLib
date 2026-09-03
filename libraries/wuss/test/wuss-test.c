@@ -27,6 +27,7 @@
 #endif
 #ifdef WUSS_COMPONENTS
 #include "wuss/component/fontmenu.h"
+#include "wuss/component/colourmenu.h"
 #endif
 
 /* white-box: the menu-flash test drives picks through the icon layer and
@@ -3740,6 +3741,70 @@ FontMenuFail:
     printf("wuss_test: fontmenu check failed\n");
     return result_TEST_FAILED;
 FontMenuOK: ;
+  }
+
+  printf("test: wuss_colourmenu covers the palette and resolves a pick\n");
+  {
+    wuss_colourmenu_t *cm;
+    const wuss_menu_t *cmm;
+    wuss_event_t       ev;
+    wuss_colour_t      picked;
+    int                ok;
+    int                i;
+
+    rc = wuss_colourmenu_create(&cm, wuss, "Colour");
+    if (rc != result_OK)
+      goto ColourMenuFail;
+
+    cmm = wuss_colourmenu_menu(cm);
+    if (cmm == NULL)                                     goto ColourMenuFail;
+    if (cmm->title == NULL || strcmp(cmm->title, "Colour") != 0)
+      goto ColourMenuFail;
+    if (cmm->nitems < 2)                                 goto ColourMenuFail;
+
+    /* one swatch row per palette index, in order */
+    for (i = 0; i < cmm->nitems; i++)
+    {
+      if (cmm->items[i].text == NULL)                    goto ColourMenuFail;
+      if ((cmm->items[i].flags & wuss_MENU_ITEM_SWATCH) == 0)
+        goto ColourMenuFail;
+      if (cmm->items[i].swatch != (wuss_colour_t) i)     goto ColourMenuFail;
+    }
+
+    /* a MENU_SELECT for this menu resolves to the row's palette index */
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = cmm;
+    ev.data.menu_select.index  = 1;
+    ev.data.menu_select.button = wuss_BUTTON_SELECT;
+    ok = -1;
+    picked = wuss_colourmenu_selected(cm, &ev, &ok);
+    if (!ok || picked != (wuss_colour_t) 1)             goto ColourMenuFail;
+
+    /* wrong event kind, foreign menu and out-of-range index all decline */
+    ev.kind = wuss_EVENT_IDLE;
+    if (wuss_colourmenu_selected(cm, &ev, &ok) != 0 || ok)
+      goto ColourMenuFail;
+    ev.kind                   = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu  = NULL;
+    if (wuss_colourmenu_selected(cm, &ev, &ok) != 0 || ok)
+      goto ColourMenuFail;
+    ev.data.menu_select.menu  = cmm;
+    ev.data.menu_select.index = cmm->nitems;
+    if (wuss_colourmenu_selected(cm, &ev, &ok) != 0 || ok)
+      goto ColourMenuFail;
+
+    wuss_colourmenu_destroy(cm);
+
+    if (wuss_colourmenu_create(&cm, NULL, "Colour") != result_NULL_ARG)
+      goto ColourMenuFail;
+
+    rc = result_OK;
+    goto ColourMenuOK;
+
+ColourMenuFail:
+    printf("wuss_test: colourmenu check failed\n");
+    return result_TEST_FAILED;
+ColourMenuOK: ;
   }
 #endif /* WUSS_COMPONENTS */
 
