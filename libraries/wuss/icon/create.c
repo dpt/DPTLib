@@ -14,66 +14,23 @@ result_t wuss_icon_create(wuss_window_t          *window,
                           const wuss_icon_spec_t *spec,
                           wuss_icon_t           **icon)
 {
-  wuss_t      *w;
-  wuss_icon_t *it;
+  wuss_t       *w;
+  wuss_icon_t  *it;
   wuss_icon_t **grown;
-  const char  *src;
-  size_t       len;
-  int          newcap;
-  wuss_colour_t fg, bg, swatch;
-  int          has_swatch;
+  wuss_icon_t   scratch;
+  const char   *src;
+  size_t        len;
+  int           newcap;
+  result_t      rc;
 
   assert(window != NULL);
   assert(spec   != NULL);
 
   w = window->wuss;
 
-  fg = wuss__resolve_colour(w, spec->fg);
-  bg = wuss__resolve_colour(w, spec->bg);
-
-  has_swatch = (spec->type == wuss_ICON_TYPE_MENU_ENTRY) &&
-               (spec->flags & wuss_ICON_FLAGS_SWATCH);
-  swatch = has_swatch ? wuss__resolve_colour(w, spec->swatch)
-                      : wuss_NO_BACKGROUND;
-
-  switch (spec->type)
-  {
-  case wuss_ICON_TYPE_LABEL:
-  case wuss_ICON_TYPE_BUTTON:
-  case wuss_ICON_TYPE_PATTERN:
-  case wuss_ICON_TYPE_FRAME:
-  case wuss_ICON_TYPE_RADIO:
-  case wuss_ICON_TYPE_OPTION:
-  case wuss_ICON_TYPE_BITMAP:
-  case wuss_ICON_TYPE_MENU_ENTRY:
-  case wuss_ICON_TYPE_RULE:
-    break;
-
-  default:
-    return result_WUSS_BAD_ICON;
-  }
-
-  if ((spec->type == wuss_ICON_TYPE_BUTTON ||
-       spec->type == wuss_ICON_TYPE_PATTERN) &&
-      bg == wuss_NO_BACKGROUND)
-    return result_WUSS_BAD_ICON;
-
-  if (spec->type == wuss_ICON_TYPE_BITMAP && spec->bitmap == NULL)
-    return result_WUSS_BAD_ICON;
-
-  if (spec->type == wuss_ICON_TYPE_PATTERN &&
-      (spec->pattern < 0 || spec->pattern >= screen_PATTERN__LIMIT))
-    return result_WUSS_BAD_ICON;
-
-  if (fg < 0 || fg >= w->npalette)
-    return result_WUSS_BAD_COLOUR;
-
-  if (bg != wuss_NO_BACKGROUND &&
-      (bg < 0 || bg >= w->npalette))
-    return result_WUSS_BAD_COLOUR;
-
-  if (has_swatch && (swatch < 0 || swatch >= w->npalette))
-    return result_WUSS_BAD_COLOUR;
+  rc = wuss__icon_from_spec(w, spec, &scratch);
+  if (rc != result_OK)
+    return rc;
 
   if (window->nicons == window->cap_icons)
   {
@@ -89,6 +46,9 @@ result_t wuss_icon_create(wuss_window_t          *window,
   if (it == NULL)
     return result_OOM;
 
+  *it = scratch; /* scratch.text aliases spec->text; replaced with an owned copy below */
+  it->window = window;
+
   src = (spec->text != NULL) ? spec->text : "";
   len = strlen(src);
   it->text = wuss__malloc(w, len + 1);
@@ -98,19 +58,6 @@ result_t wuss_icon_create(wuss_window_t          *window,
     return result_OOM;
   }
   memcpy(it->text, src, len + 1);
-
-  it->window   = window;
-  it->bbox     = spec->bbox;
-  it->type     = spec->type;
-  it->fg       = fg;
-  it->bg       = bg;
-  it->pattern  = (spec->type == wuss_ICON_TYPE_PATTERN) ? spec->pattern
-                                                        : screen_PATTERN_SOLID;
-  it->bitmap   = (spec->type == wuss_ICON_TYPE_BITMAP) ? spec->bitmap : NULL;
-  it->group    = (spec->type == wuss_ICON_TYPE_RADIO) ? spec->group : 0;
-  it->swatch   = swatch;
-  it->flags    = spec->flags;
-  it->state    = wuss_ICON_STATE_NONE;
 
   window->icons[window->nicons++] = it;
 

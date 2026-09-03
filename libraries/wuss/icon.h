@@ -87,6 +87,14 @@ void wuss__icon_box_to_screen(const box_t *content,
  * set_text / pressed-state / hide change repaints just the icon. */
 void wuss__icon_invalidate(const wuss_icon_t *icon);
 
+/* Validate a spec against the palette and fill "out" with a detached icon (no
+ * window, no owned text -- out->text is aliased to spec->text or ""). Shared
+ * by wuss_icon_create and wuss_icon_plot. Returns result_WUSS_BAD_ICON /
+ * result_WUSS_BAD_COLOUR as wuss_icon_create documents, else result_OK. */
+result_t wuss__icon_from_spec(const wuss_t           *wuss,
+                              const wuss_icon_spec_t *spec,
+                              wuss_icon_t            *out);
+
 /* Draw one icon. Called from redraw_window with wuss->scr->clip already set to
  * the surviving content piece and the background already filled. "content" is
  * the window's full (unclipped) content box, screen space; "scroll" is
