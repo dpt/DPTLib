@@ -14,6 +14,7 @@
 
 #include "wuss/menu.h"
 #include "wuss/task.h"
+#include "wuss/wuss.h"
 
 #include "wuss/component/colourmenu.h"
 
@@ -26,14 +27,27 @@
  * single pointer compare plus the item index. */
 struct wuss_colourmenu
 {
-  const wuss_t *wuss; /* borrowed; supplies the allocator for teardown */
-  wuss_menu_t  *menu; /* owned; every block via wuss->alloc, see menu_free */
+  wuss_alloc_t alloc; /* copied hooks; the wuss_t itself is not retained */
+  wuss_menu_t *menu;  /* owned; every block via alloc, see menu_free */
 };
 
-/* Free a menu built here: text, items, title, node -- all through wuss's
- * allocator, so wuss_menu_destroy (plain free) must not be used. Tolerates
- * NULL text for partial unwinding. */
-static void menu_free(const wuss_t *wuss, wuss_menu_t *m)
+/* wuss_alloc_t has no strdup; malloc + copy. */
+static char *alloc_strdup(const wuss_alloc_t *a, const char *s)
+{
+  size_t len;
+  char  *copy;
+
+  len  = strlen(s) + 1;
+  copy = a->malloc(len);
+  if (copy != NULL)
+    memcpy(copy, s, len);
+  return copy;
+}
+
+/* Free a menu built here -- text, items, title, node -- through the same
+ * hooks it was built with, so wuss_menu_destroy (plain free) must not be
+ * used. Tolerates NULL text for partial unwinding. */
+static void menu_free(const wuss_alloc_t *a, wuss_menu_t *m)
 {
   int i;
 
@@ -41,52 +55,42 @@ static void menu_free(const wuss_t *wuss, wuss_menu_t *m)
     return;
 
   for (i = 0; i < m->nitems; i++)
-    wuss__free(wuss, (void *) m->items[i].text);
-  wuss__free(wuss, (void *) m->items);
-  wuss__free(wuss, (void *) m->title);
-  wuss__free(wuss, m);
-}
-
-/* wuss__ has no strdup; malloc + copy. */
-static char *wuss__strdup(const wuss_t *wuss, const char *s)
-{
-  size_t len;
-  char  *copy;
-
-  len  = strlen(s) + 1;
-  copy = wuss__malloc(wuss, len);
-  if (copy != NULL)
-    memcpy(copy, s, len);
-  return copy;
+    a->free((void *) m->items[i].text);
+  a->free((void *) m->items);
+  a->free((void *) m->title);
+  a->free(m);
 }
 
 result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
                                 const wuss_t       *wuss,
                                 const char         *title)
 {
-  wuss_colourmenu_t *cm;
-  wuss_menu_t       *m;
-  wuss_menu_item_t  *items;
-  int                n;
-  int                i;
+  const wuss_alloc_t *a;
+  wuss_colourmenu_t  *cm;
+  wuss_menu_t        *m;
+  wuss_menu_item_t   *items;
+  int                 n;
+  int                 i;
 
   items = NULL;
 
   if (out == NULL || wuss == NULL)
     return result_NULL_ARG;
 
+  a = &wuss->alloc;
   n = wuss->npalette;
 
-  cm = wuss__malloc(wuss, sizeof(*cm));
+  cm = a->malloc(sizeof(*cm));
   if (cm == NULL)
     return result_OOM;
-  cm->wuss = wuss;
-  cm->menu = NULL;
+  cm->alloc = *a;
+  cm->menu  = NULL;
+  a = &cm->alloc; /* use the copy from here on -- outlives the wuss_t */
 
-  m = wuss__malloc(wuss, sizeof(*m));
+  m = a->malloc(sizeof(*m));
   if (m == NULL)
   {
-    wuss__free(wuss, cm);
+    a->free(cm);
     return result_OOM;
   }
   m->title  = NULL;
@@ -95,11 +99,11 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
 
   if (n > 0)
   {
-    items = wuss__malloc(wuss, (size_t) n * sizeof(*items));
+    items = a->malloc((size_t) n * sizeof(*items));
     if (items == NULL)
     {
-      menu_free(wuss, m);
-      wuss__free(wuss, cm);
+      menu_free(a, m);
+      a->free(cm);
       return result_OOM;
     }
     memset(items, 0, (size_t) n * sizeof(*items));
@@ -107,11 +111,11 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
     m->nitems = n; /* items zeroed: menu_free's NULL-text loop is safe now */
   }
 
-  m->title = wuss__strdup(wuss, title ? title : "Colour");
+  m->title = alloc_strdup(a, title ? title : "Colour");
   if (m->title == NULL)
   {
-    menu_free(wuss, m);
-    wuss__free(wuss, cm);
+    menu_free(a, m);
+    a->free(cm);
     return result_OOM;
   }
 
@@ -126,11 +130,11 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
              PIXELFMT_xGxx8888(px),
              PIXELFMT_xxBx8888(px));
 
-    items[i].text = wuss__strdup(wuss, label);
+    items[i].text = alloc_strdup(a, label);
     if (items[i].text == NULL)
     {
-      menu_free(wuss, m);
-      wuss__free(wuss, cm);
+      menu_free(a, m);
+      a->free(cm);
       return result_OOM;
     }
 
@@ -145,14 +149,14 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
 
 void wuss_colourmenu_destroy(wuss_colourmenu_t *doomed)
 {
-  const wuss_t *wuss;
+  wuss_alloc_t alloc;
 
   if (doomed == NULL)
     return;
 
-  wuss = doomed->wuss;
-  menu_free(wuss, doomed->menu);
-  wuss__free(wuss, doomed);
+  alloc = doomed->alloc;
+  menu_free(&alloc, doomed->menu);
+  alloc.free(doomed);
 }
 
 const wuss_menu_t *wuss_colourmenu_menu(const wuss_colourmenu_t *cm)
