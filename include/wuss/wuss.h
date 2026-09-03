@@ -342,13 +342,23 @@ typedef struct wuss_config
 }
 wuss_config_t;
 
+/** Most fonts wuss_create will take, and the range an icon's font-select
+ *  flags can name (see wuss_ICON_FONT). */
+#define wuss_MAX_FONTS 4
+
 /**
  * Create a window manager.
  *
  * \param[in]  scr      Screen to draw windows onto. Not owned; must outlive
  *                      the wuss_t.
- * \param[in]  font     Font used to draw titlebar labels, or NULL to draw
- *                      titlebars unlabelled. Not owned.
+ * \param[in]  fonts    Up to \ref wuss_MAX_FONTS font handles, copied into
+ *                      the wuss_t (the handles, not the fonts -- they are
+ *                      not owned and must outlive it). Slot 0 is the system
+ *                      font, used for titlebar labels and any icon that does
+ *                      not select another. NULL, or nfonts 0, leaves
+ *                      titlebars unlabelled.
+ * \param[in]  nfonts   Number of entries in \p fonts, 0..\ref
+ *                      wuss_MAX_FONTS; more than that is an error.
  * \param[in]  palette  System palette, copied in, or NULL to use a built-in
  *                      default palette.
  * \param[in]  npalette Number of entries in palette. Ignored if palette is
@@ -358,12 +368,14 @@ wuss_config_t;
  *                      wuss_alloc (plain stdlib). Must outlive nothing --
  *                      only the three function pointers are kept.
  * \param[out] wuss     Newly created window manager.
- * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if any of
- *         config's palette entries are out of range for the palette, or
- *         another appropriate result code.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if \p nfonts is
+ *         negative or exceeds \ref wuss_MAX_FONTS, \ref
+ *         result_WUSS_BAD_COLOUR if any of config's palette entries are out
+ *         of range for the palette, or another appropriate result code.
  */
 result_t wuss_create(screen_t            *scr,
-                     bmfont_t            *font,
+                     bmfont_t *const     *fonts,
+                     int                  nfonts,
                      const colour_t      *palette,
                      int                  npalette,
                      const wuss_config_t *config,
@@ -424,12 +436,23 @@ void wuss_destroy(wuss_t *doomed);
 
 /**
  * Fetch the system font (see wuss_create), for tasks to draw their own
- * content in the same face as window titlebars.
+ * content in the same face as window titlebars. Equivalent to
+ * wuss_get_font_n(wuss, 0).
  *
  * \param[in] wuss Window manager.
  * \return System font, or NULL if none was given to wuss_create.
  */
 bmfont_t *wuss_get_font(const wuss_t *wuss);
+
+/**
+ * Fetch one of the fonts passed to wuss_create by slot.
+ *
+ * \param[in] wuss  Window manager.
+ * \param[in] index Font slot, 0..\ref wuss_MAX_FONTS - 1.
+ * \return The font in that slot, or NULL if the slot is out of range or was
+ *         not filled.
+ */
+bmfont_t *wuss_get_font_n(const wuss_t *wuss, int index);
 
 /**
  * The last pointer position seen by wuss_mouse_click or wuss_mouse_move,

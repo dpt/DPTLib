@@ -525,7 +525,9 @@ static result_t run_wuss(const char *resources)
   result_t         rc;
   const char      *leafname;
   const char      *filename;
-  bmfont_t        *font;
+  bmfont_t        *fonts[2]; /* [0] regular (system font), [1] bold */
+  int              nfonts;
+  int              i;
   void            *pixels;
   int              rowbytes;
   pixelfmt_t       fmt;
@@ -548,15 +550,25 @@ static result_t run_wuss(const char *resources)
 
   logf_info("wuss: resources root = \"%s\"", resources);
 
-  leafname = path_join_leafname("Digits-Regular", "png");
-  filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
-  logf_info("wuss: loading font \"%s\"", filename);
-  rc = bmfont_create(filename, &font);
-  if (rc != result_OK)
   {
-    logf_error("wuss: bmfont_create(\"%s\") failed, rc=0x%X (%s)", filename,
-               rc, result_string(rc));
-    goto Failure;
+    static const char *const names[2] = { "Digits-Regular", "Digits-Bold" };
+
+    nfonts = 0;
+    for (i = 0; i < 2; i++)
+    {
+      leafname = path_join_leafname(names[i], "png");
+      filename = path_join_filename(resources, 3, "resources", "bmfonts",
+                                    leafname);
+      logf_info("wuss: loading font \"%s\"", filename);
+      rc = bmfont_create(filename, &fonts[i]);
+      if (rc != result_OK)
+      {
+        logf_error("wuss: bmfont_create(\"%s\") failed, rc=0x%X (%s)", filename,
+                   rc, result_string(rc));
+        goto Failure;
+      }
+      nfonts++;
+    }
   }
 
   rc = wuss_frontend_open(scr_width, scr_height, palette, NELEMS(palette),
@@ -580,8 +592,8 @@ static result_t run_wuss(const char *resources)
 
     fill_chrome_config(&config, use_wimp16 ? 1 : 0);
 
-    rc = wuss_create(&scr, font, palette, NELEMS(palette), &config, NULL,
-                     &wuss);
+    rc = wuss_create(&scr, fonts, nfonts, palette, NELEMS(palette), &config,
+                     NULL, &wuss);
     logf_info("wuss: wuss_create -> rc=0x%X (%s)", rc, result_string(rc));
     if (rc != result_OK)
       goto Failure;
@@ -591,7 +603,7 @@ static result_t run_wuss(const char *resources)
   g.palette       = palette;
   g.npalette      = NELEMS(palette);
   g.resources     = resources;
-  g.daydream_font = font; /* the demo runs on the one font it loads */
+  g.daydream_font = fonts[0]; /* tasks draw with the regular weight */
 
   {
     wuss_task_desc_t desc;
@@ -715,7 +727,8 @@ static result_t run_wuss(const char *resources)
    * that was still borrowing them */
   wuss_menu_destroy(g_menu_desc);
 
-  bmfont_destroy(font);
+  for (i = 0; i < nfonts; i++)
+    bmfont_destroy(fonts[i]);
 
   wuss_frontend_close(frontend);
 

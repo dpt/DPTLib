@@ -385,7 +385,7 @@ result_t wuss_test(const char *resources)
   bad_config.furniture.scroll.arrows   = 0;
   bad_config.furniture.scroll.wells    = 0;
   bad_config.furniture.scroll.sausages = 0;
-  rc = wuss_create(&scr, NULL, NULL, 0, &bad_config, NULL, &bad_wuss);
+  rc = wuss_create(&scr, NULL, 0, NULL, 0, &bad_config, NULL, &bad_wuss);
   if (rc != result_WUSS_BAD_COLOUR)
     goto Failure;
 
@@ -394,7 +394,7 @@ result_t wuss_test(const char *resources)
   {
     wuss_t *custom_wuss;
 
-    rc = wuss_create(&scr, NULL, custom_palette, 2, NULL, NULL, &custom_wuss);
+    rc = wuss_create(&scr, NULL, 0, custom_palette, 2, NULL, NULL, &custom_wuss);
     if (rc != result_OK)
       goto Failure;
     wuss_destroy(custom_wuss);
@@ -402,7 +402,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: wuss_create with default palette\n");
 
-  rc = wuss_create(&scr, NULL, NULL, 0, NULL, NULL, &wuss);
+  rc = wuss_create(&scr, NULL, 0, NULL, 0, NULL, NULL, &wuss);
   if (rc != result_OK)
     goto Failure;
 
@@ -428,7 +428,7 @@ result_t wuss_test(const char *resources)
     symcfg.furniture.title.fg = wuss_COLOUR_WHITE;  /* -> index 3 */
     symcfg.backdrop = (wuss_backdrop_t) wuss_BACKDROP_COLOUR(wuss_COLOUR_GREEN); /* -> 1 */
 
-    rc = wuss_create(&scr, NULL, sympal, 5, &symcfg, NULL, &symw);
+    rc = wuss_create(&scr, NULL, 0, sympal, 5, &symcfg, NULL, &symw);
     if (rc != result_OK)
       goto Failure;
 
@@ -3852,7 +3852,7 @@ ColourMenuOK: ;
     if (rc != result_OK) goto FlashFailFree;
     screen_for_bitmap(&fscr, &fbm);
 
-    rc = wuss_create(&fscr, font, NULL, 0, NULL, NULL, &fwuss);
+    rc = wuss_create(&fscr, &font, 1, NULL, 0, NULL, NULL, &fwuss);
     if (rc != result_OK) goto FlashFailFree;
 
     memset(&ftc, 0, sizeof(ftc));
@@ -3987,7 +3987,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: wuss_create (core)\n");
 
-  rc = wuss_create(&scr, NULL, NULL, 0, NULL, NULL, &wuss);
+  rc = wuss_create(&scr, NULL, 0, NULL, 0, NULL, NULL, &wuss);
   if (rc != result_OK)
     goto Failure;
 

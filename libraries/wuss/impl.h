@@ -87,7 +87,9 @@ struct wuss_task
 struct wuss
 {
   screen_t                   *scr;
-  bmfont_t                   *font;      /* nullable, not owned */
+  bmfont_t                   *fonts[wuss_MAX_FONTS]; /* slot 0 is the system
+                                          * font; unset slots NULL; not owned */
+  int                         nfonts;    /* entries filled from wuss_create */
   wuss_alloc_t                alloc;     /* malloc/realloc/free hooks, copied in
                                           * by wuss_create; used for every heap
                                           * block this wuss_t owns */
