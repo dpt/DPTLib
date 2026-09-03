@@ -580,7 +580,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
       specs[s].bbox.x1 = width;
       specs[s].bbox.y1 = y + sep_h;
       specs[s].text    = "";
-      specs[s].fg      = wuss->palettecache.black;
+      specs[s].fg      = wuss_COLOUR_BLACK;
       specs[s].bg      = wuss_NO_BACKGROUND;
       specs[s].flags   = wuss_ICON_FLAGS_NONE;
       s++;
@@ -598,7 +598,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     specs[s].bbox.x1 = width;
     specs[s].bbox.y1 = y + pitch;
     specs[s].text    = item->text ? item->text : "";
-    specs[s].fg      = wuss->palettecache.black;
+    specs[s].fg      = wuss_COLOUR_BLACK;
     specs[s].bg      = wuss_NO_BACKGROUND;
     specs[s].flags   = flags;
     s++;
@@ -623,7 +623,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   rc = wuss_window_create(menu_task, &content,
                           menu->title ? menu->title : "",
                           menu_flags,
-                          wuss_BACKDROP_COLOUR(wuss->palettecache.white),
+                          wuss_BACKDROP_COLOUR(wuss_COLOUR_WHITE),
                           doc, min_doc, &node->window);
   if (rc != result_OK)
   {
