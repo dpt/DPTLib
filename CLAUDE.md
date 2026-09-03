@@ -20,6 +20,14 @@ Build directories are per-config and already created; there is **no** plain
 - `build-nosdl/` — Release, core tests only.
 - `build-riscos/`— GCCSDK cross build. Leave alone unless working on RISC OS.
 - `build.xc/`    — Xcode generator.
+- `build-emscripten/` — WebAssembly build of the `wuss` demo. Not pre-created;
+  configure with `emcmake cmake -B build-emscripten -G Ninja -DBUILD_APPS=ON
+  -DBUILD_TESTS=OFF`, build with `cmake --build build-emscripten --target wuss`,
+  then serve the dir and open `wuss.html` (e.g.
+  `python3 -m http.server -d build-emscripten`). Uses Emscripten's bundled SDL3
+  and libpng ports (`-sUSE_SDL=3`, `-sUSE_LIBPNG=1`); the browser owns the main
+  loop via `emscripten_set_main_loop_arg`; `resources/` is baked into
+  `wuss.data` and mounted at MEMFS `/resources`.
 
 CMake options: `BUILD_TESTS`, `BUILD_SDL_TESTS`, `USE_ASAN` (ASan + UBSan),
 `USE_FORTIFY` (bundled Fortify), `DPTLIB_IMAGES_READ_ONLY` (libpng no write).

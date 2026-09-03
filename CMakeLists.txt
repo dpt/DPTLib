@@ -517,7 +517,12 @@ if(WUSS_COMPONENTS)
     target_compile_definitions(DPTLib PUBLIC WUSS_COMPONENTS)
 endif()
 
-if(NOT TARGET_RISCOS)
+if(EMSCRIPTEN)
+    # Emscripten's bundled libpng port (pulls in its zlib port); provides the
+    # headers at compile time and the archive at link time.
+    target_compile_options(DPTLib PUBLIC "-sUSE_LIBPNG=1")
+    target_link_options(DPTLib PUBLIC "-sUSE_LIBPNG=1")
+elseif(NOT TARGET_RISCOS)
     set(CMAKE_FIND_FRAMEWORK NEVER)
     find_package(PNG REQUIRED MODULE)
     target_link_libraries(DPTLib PRIVATE PNG::PNG)
@@ -743,7 +748,23 @@ if(BUILD_APPS)
     target_compile_definitions(wuss PRIVATE WUSS_APP)
     target_link_libraries(wuss DPTLib)
 
-    if(NOT TARGET_RISCOS)
+    if(TARGET_RISCOS)
+        # native VDU/OS_Mouse frontend, no SDL
+    elseif(EMSCRIPTEN)
+        # Emscripten ships its own SDL3 port; the browser owns the main loop
+        # (see emscripten_set_main_loop_arg in apps/wuss/main.c). resources/ is
+        # baked into wuss.data and mounted at MEMFS /resources so the runtime
+        # file loads and the font picker's opendir() resolve.
+        target_compile_definitions(wuss PRIVATE USE_SDL)
+        target_compile_options(wuss PRIVATE "-sUSE_SDL=3")
+        target_link_options(wuss PRIVATE
+            "-sUSE_SDL=3"
+            "-sALLOW_MEMORY_GROWTH=1"
+            "-sEXIT_RUNTIME=0"
+            "--preload-file"
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources@/resources")
+        set_target_properties(wuss PROPERTIES SUFFIX ".html")
+    else()
         find_package(SDL3 REQUIRED)
         target_compile_definitions(wuss PRIVATE USE_SDL)
         target_link_libraries(wuss SDL3::SDL3)
