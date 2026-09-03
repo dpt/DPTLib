@@ -31,19 +31,6 @@ struct wuss_colourmenu
   wuss_menu_t *menu;  /* owned; every block via alloc, see menu_free */
 };
 
-/* wuss_alloc_t has no strdup; malloc + copy. */
-static char *alloc_strdup(const wuss_alloc_t *a, const char *s)
-{
-  size_t len;
-  char  *copy;
-
-  len  = strlen(s) + 1;
-  copy = a->malloc(len);
-  if (copy != NULL)
-    memcpy(copy, s, len);
-  return copy;
-}
-
 /* Free a menu built here -- text, items, title, node -- through the same
  * hooks it was built with, so wuss_menu_destroy (plain free) must not be
  * used. Tolerates NULL text for partial unwinding. */
@@ -111,7 +98,7 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
     m->nitems = n; /* items zeroed: menu_free's NULL-text loop is safe now */
   }
 
-  m->title = alloc_strdup(a, title ? title : "Colour");
+  m->title = wuss__alloc_strdup(a, title ? title : "Colour");
   if (m->title == NULL)
   {
     menu_free(a, m);
@@ -130,7 +117,7 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
              PIXELFMT_xGxx8888(px),
              PIXELFMT_xxBx8888(px));
 
-    items[i].text = alloc_strdup(a, label);
+    items[i].text = wuss__alloc_strdup(a, label);
     if (items[i].text == NULL)
     {
       menu_free(a, m);

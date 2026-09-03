@@ -55,11 +55,11 @@ typedef struct wuss_icon wuss_icon_t;
 
 /**
  * Allocator hooks used by a wuss_t for every heap block it owns (the
- * instance itself, windows, icons, menu nodes). The three members must
- * behave like the C library malloc / realloc / free -- same argument and
- * return conventions, realloc(NULL, n) == malloc(n), free(NULL) a no-op.
- * Passed to wuss_create and copied in; NULL there selects wuss_alloc (plain
- * stdlib).
+ * instance itself, windows, icons, menu nodes) and by the wuss shared
+ * components. \c malloc, \c realloc and \c free must behave like their C
+ * library namesakes -- same argument and return conventions, realloc(NULL,
+ * n) == malloc(n), free(NULL) a no-op. Passed to wuss_create and copied in;
+ * NULL there selects wuss_alloc (plain stdlib).
  */
 typedef struct wuss_alloc
 {
