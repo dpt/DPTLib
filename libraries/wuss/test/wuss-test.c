@@ -25,6 +25,9 @@
 #ifdef WUSS_MENUS
 #include "wuss/menu.h"
 #endif
+#ifdef WUSS_COMPONENTS
+#include "wuss/component/fontmenu.h"
+#endif
 
 /* white-box: the menu-flash test drives picks through the icon layer and
  * reads back struct wuss__menu / struct wuss_icon state directly */
@@ -3673,6 +3676,72 @@ MenuFail:
     return result_TEST_FAILED;
 MenuOK: ;
   }
+
+#ifdef WUSS_COMPONENTS
+  printf("test: wuss_fontmenu lists the bmfonts dir and resolves a pick\n");
+  {
+    const char        *dir;
+    wuss_fontmenu_t   *fm;
+    const wuss_menu_t *fmm;
+    wuss_event_t       ev;
+    const char        *name;
+    int                i;
+
+    dir = path_join_filename(resources, 2, "resources", "bmfonts");
+
+    rc = wuss_fontmenu_create(&fm, dir, "Font");
+    if (rc != result_OK)
+      goto FontMenuFail;
+
+    fmm = wuss_fontmenu_menu(fm);
+    if (fmm == NULL)                                     goto FontMenuFail;
+    if (fmm->title == NULL || strcmp(fmm->title, "Font") != 0)
+      goto FontMenuFail;
+    if (fmm->nitems < 2)                                 goto FontMenuFail;
+
+    /* items sorted ascending, every row a plain leaf */
+    for (i = 0; i < fmm->nitems; i++)
+    {
+      if (fmm->items[i].text == NULL)                    goto FontMenuFail;
+      if (fmm->items[i].submenu != NULL)                 goto FontMenuFail;
+      if (i > 0 && strcmp(fmm->items[i - 1].text, fmm->items[i].text) >= 0)
+        goto FontMenuFail;
+    }
+
+    /* a MENU_SELECT for this menu resolves to the row's label */
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = fmm;
+    ev.data.menu_select.index  = 1;
+    ev.data.menu_select.button = wuss_BUTTON_SELECT;
+    name = wuss_fontmenu_selected(fm, &ev);
+    if (name == NULL || strcmp(name, fmm->items[1].text) != 0)
+      goto FontMenuFail;
+
+    /* wrong event kind, foreign menu and out-of-range index all decline */
+    ev.kind = wuss_EVENT_IDLE;
+    if (wuss_fontmenu_selected(fm, &ev) != NULL)         goto FontMenuFail;
+    ev.kind                   = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu  = NULL;
+    if (wuss_fontmenu_selected(fm, &ev) != NULL)         goto FontMenuFail;
+    ev.data.menu_select.menu  = fmm;
+    ev.data.menu_select.index = fmm->nitems;
+    if (wuss_fontmenu_selected(fm, &ev) != NULL)         goto FontMenuFail;
+
+    wuss_fontmenu_destroy(fm);
+
+    /* missing directory is surfaced, not swallowed */
+    rc = wuss_fontmenu_create(&fm, "no/such/dir/here", NULL);
+    if (rc != result_FILE_NOT_FOUND)                     goto FontMenuFail;
+
+    rc = result_OK;
+    goto FontMenuOK;
+
+FontMenuFail:
+    printf("wuss_test: fontmenu check failed\n");
+    return result_TEST_FAILED;
+FontMenuOK: ;
+  }
+#endif /* WUSS_COMPONENTS */
 
 #ifdef WUSS_ICONS
   printf("test: menu pick flashes then delivers MENU_SELECT; fast ADJUST "
