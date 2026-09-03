@@ -49,13 +49,15 @@ static result_t validate_bevel_backdrop(const wuss_t *w,
 #endif
 
 result_t wuss_create(screen_t            *scr,
-                     bmfont_t            *font,
+                     bmfont_t *const     *fonts,
+                     int                  nfonts,
                      const colour_t      *palette,
                      int                  npalette,
                      const wuss_config_t *config,
                      const wuss_alloc_t  *alloc,
                      wuss_t             **wuss)
 {
+  bmfont_t      *font;
   wuss_alloc_t   al;
   wuss_t        *w;
 #ifdef WUSS_FURNITURE
@@ -73,6 +75,11 @@ result_t wuss_create(screen_t            *scr,
 
   assert(scr  != NULL);
   assert(wuss != NULL);
+
+  if (nfonts < 0 || nfonts > wuss_MAX_FONTS || (nfonts > 0 && fonts == NULL))
+    return result_BAD_ARG;
+
+  font = (nfonts > 0) ? fonts[0] : NULL;
 
   al = (alloc != NULL) ? *alloc : wuss_alloc;
 
@@ -236,7 +243,15 @@ result_t wuss_create(screen_t            *scr,
   wuss__rebuild_palettecache(w);
 
   w->scr                = scr;
-  w->font               = font;
+  {
+    int i;
+
+    for (i = 0; i < nfonts; i++)
+      w->fonts[i] = fonts[i];
+    for (; i < wuss_MAX_FONTS; i++)
+      w->fonts[i] = NULL;
+    w->nfonts = nfonts;
+  }
 #ifdef WUSS_FURNITURE
   w->furniture.dragging = NULL;
   w->furniture.drag.x   = 0;

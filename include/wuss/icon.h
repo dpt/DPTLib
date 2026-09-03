@@ -140,9 +140,22 @@ typedef enum wuss_icon_flags
   /** wuss_ICON_TYPE_MENU_ENTRY: draw a small colour chip (spec.swatch) in the
    *  row's left gutter, where the tick would sit. Mutually exclusive with a
    *  selected tick -- the chip wins. Ignored by other types. */
-  wuss_ICON_FLAGS_SWATCH      = 1 << 8
+  wuss_ICON_FLAGS_SWATCH      = 1 << 8,
+  /** Two-bit field (bits 9-10) selecting which of wuss_create's fonts draws
+   *  this icon's text: 0 is the system font, 1-3 the further slots. Build it
+   *  with wuss_ICON_FONT(n); read it with wuss_ICON_FONT_OF(flags). A slot
+   *  that was not filled falls back to the system font. */
+  wuss_ICON_FLAGS_FONT_MASK   = 3 << 9
 }
 wuss_icon_flags_t;
+
+/**
+ * Encode font slot \p n (0..3) as icon flags; OR into wuss_icon_spec::flags.
+ */
+#define wuss_ICON_FONT(n)       (((n) & 3) << 9)
+
+/** Decode the font slot (0..3) from an icon's flags. */
+#define wuss_ICON_FONT_OF(f)    (((f) >> 9) & 3)
 
 /**
  * Description of an icon at creation. Copied by value into the icon; the
