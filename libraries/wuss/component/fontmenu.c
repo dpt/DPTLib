@@ -1,5 +1,6 @@
 /* wuss/component/fontmenu.c -- a menu of the available bitmap fonts */
 
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,6 +14,7 @@
 
 #include "wuss/menu.h"
 #include "wuss/task.h"
+#include "wuss/wuss.h"
 
 #include "wuss/component/fontmenu.h"
 
@@ -24,10 +26,43 @@
  * font directory ever gets big enough to want it. */
 struct wuss_fontmenu
 {
-  wuss_menu_t *menu; /* owned; freed by wuss_menu_destroy */
+  wuss_alloc_t alloc; /* copied hooks; every block below goes through these */
+  wuss_menu_t *menu;  /* owned; freed by menu_free, not wuss_menu_destroy */
 };
 
-/* Growable list of strdup'd font names, filled by the enumerate callback. */
+/* wuss_alloc_t has no strdup; malloc + copy. */
+static char *alloc_strdup(const wuss_alloc_t *a, const char *s)
+{
+  size_t len;
+  char  *copy;
+
+  len  = strlen(s) + 1;
+  copy = a->malloc(len);
+  if (copy != NULL)
+    memcpy(copy, s, len);
+  return copy;
+}
+
+/* Free a menu built here -- text, items, title, node -- through the same
+ * hooks it was built with. Tolerates NULL text for partial unwinding. */
+static void menu_free(const wuss_alloc_t *a, wuss_menu_t *m)
+{
+  int i;
+
+  if (m == NULL)
+    return;
+
+  for (i = 0; i < m->nitems; i++)
+    a->free((void *) m->items[i].text);
+  a->free((void *) m->items);
+  a->free((void *) m->title);
+  a->free(m);
+}
+
+/* ----------------------------------------------------------------------- */
+
+/* Growable list of strdup'd font names, filled by the enumerate callback.
+ * A transient scratch buffer: plain stdlib, freed before create returns. */
 typedef struct namelist
 {
   char **names;
@@ -82,47 +117,60 @@ static int name_cmp(const void *a, const void *b)
 
 /* ----------------------------------------------------------------------- */
 
-/* Build a flat wuss_menu_t whose items[i].text is names[i], transferring
- * ownership of each string. On failure every string is freed and *out
- * untouched. */
-static result_t build_menu(char        **names,
-                           int           nnames,
-                           const char   *title,
-                           wuss_menu_t **out)
+/* Build a flat wuss_menu_t through \p a, copying each names[i] in (the
+ * scratch list keeps its own copies). On failure everything taken is freed
+ * through \p a and *out is untouched. */
+static result_t build_menu(const wuss_alloc_t *a,
+                           char              **names,
+                           int                 nnames,
+                           const char         *title,
+                           wuss_menu_t       **out)
 {
   wuss_menu_t      *m;
   wuss_menu_item_t *items;
   int               i;
 
-  m = malloc(sizeof(*m));
+  items = NULL;
+
+  m = a->malloc(sizeof(*m));
   if (m == NULL)
     return result_OOM;
+  m->title  = NULL;
+  m->items  = NULL;
+  m->nitems = 0;
 
-  items = (nnames > 0) ? calloc((size_t) nnames, sizeof(*items)) : NULL;
-  if (nnames > 0 && items == NULL)
+  if (nnames > 0)
   {
-    free(m);
-    return result_OOM;
+    items = a->malloc((size_t) nnames * sizeof(*items));
+    if (items == NULL)
+    {
+      menu_free(a, m);
+      return result_OOM;
+    }
+    memset(items, 0, (size_t) nnames * sizeof(*items));
+    m->items  = items;
+    m->nitems = nnames; /* items zeroed: menu_free's NULL-text loop is safe */
   }
 
-  m->title = strdup(title ? title : "Font");
+  m->title = alloc_strdup(a, title ? title : "Font");
   if (m->title == NULL)
   {
-    free(items);
-    free(m);
+    menu_free(a, m);
     return result_OOM;
   }
 
   for (i = 0; i < nnames; i++)
   {
-    items[i].text    = names[i]; /* ownership transferred */
+    items[i].text = alloc_strdup(a, names[i]);
+    if (items[i].text == NULL)
+    {
+      menu_free(a, m);
+      return result_OOM;
+    }
     items[i].flags   = wuss_MENU_ITEM_NONE;
     items[i].submenu = NULL;
     items[i].window  = NULL;
   }
-
-  m->items  = items;
-  m->nitems = nnames;
 
   *out = m;
   return result_OK;
@@ -130,9 +178,10 @@ static result_t build_menu(char        **names,
 
 /* ----------------------------------------------------------------------- */
 
-result_t wuss_fontmenu_create(wuss_fontmenu_t **out,
-                              const char       *dir,
-                              const char       *title)
+result_t wuss_fontmenu_create(wuss_fontmenu_t   **out,
+                              const char         *dir,
+                              const char         *title,
+                              const wuss_alloc_t *alloc)
 {
   namelist_t       nl;
   wuss_fontmenu_t *fm;
@@ -140,6 +189,9 @@ result_t wuss_fontmenu_create(wuss_fontmenu_t **out,
 
   if (out == NULL || dir == NULL)
     return result_NULL_ARG;
+
+  if (alloc == NULL)
+    alloc = &wuss_alloc;
 
   memset(&nl, 0, sizeof(nl));
 
@@ -153,23 +205,22 @@ result_t wuss_fontmenu_create(wuss_fontmenu_t **out,
   if (nl.n > 1)
     qsort(nl.names, (size_t) nl.n, sizeof(nl.names[0]), name_cmp);
 
-  fm = malloc(sizeof(*fm));
+  fm = alloc->malloc(sizeof(*fm));
   if (fm == NULL)
   {
     namelist_free(&nl);
     return result_OOM;
   }
+  fm->alloc = *alloc;
+  fm->menu  = NULL;
 
-  rc = build_menu(nl.names, nl.n, title, &fm->menu);
+  rc = build_menu(&fm->alloc, nl.names, nl.n, title, &fm->menu);
+  namelist_free(&nl); /* build_menu copied what it needed */
   if (rc != result_OK)
   {
-    namelist_free(&nl); /* build_menu took nothing on failure */
-    free(fm);
+    alloc->free(fm);
     return rc;
   }
-
-  /* build_menu adopted every string; drop the array, keep the pointers. */
-  free(nl.names);
 
   *out = fm;
   return result_OK;
@@ -177,11 +228,14 @@ result_t wuss_fontmenu_create(wuss_fontmenu_t **out,
 
 void wuss_fontmenu_destroy(wuss_fontmenu_t *doomed)
 {
+  wuss_alloc_t alloc;
+
   if (doomed == NULL)
     return;
 
-  wuss_menu_destroy(doomed->menu);
-  free(doomed);
+  alloc = doomed->alloc;
+  menu_free(&alloc, doomed->menu);
+  alloc.free(doomed);
 }
 
 const wuss_menu_t *wuss_fontmenu_menu(const wuss_fontmenu_t *fm)
