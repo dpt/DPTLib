@@ -9,50 +9,6 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* Each helper fills "width" pixels of one already-clipped row starting at
- * (x0, y0), in the colour previously resolved to "fmt". */
-
-static void screen_fill_hline_p4(screen_t      *scr,
-                                 int            x0,
-                                 int            y0,
-                                 int            width,
-                                 pixelfmt_any_t fmt)
-{
-  unsigned char *rowp;
-  int            xx;
-
-  rowp = (unsigned char *) scr->base + y0 * scr->rowbytes;
-  for (xx = 0; xx < width; xx++)
-  {
-    int            px;
-    unsigned char *scrp;
-    int            shift;
-
-    px    = x0 + xx;
-    scrp  = rowp + (px >> 1);
-    shift = (px & 1) * 4;
-
-    *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((fmt & 0xF) << shift));
-  }
-}
-
-static void screen_fill_hline_32(screen_t      *scr,
-                                 int            x0,
-                                 int            y0,
-                                 int            width,
-                                 pixelfmt_any_t fmt)
-{
-  pixelfmt_any32_t *scrp;
-  int               ww;
-
-  scrp = scr->base;
-  scrp += y0 * scr->rowbytes / sizeof(*scrp) + x0;
-  for (ww = width; ww > 0; ww--)
-    *scrp++ = fmt;
-}
-
-/* ----------------------------------------------------------------------- */
-
 void screen_fill_hline(screen_t *scr, int x, int y, int w, colour_t colour)
 {
   box_t          clip_box;
@@ -60,6 +16,7 @@ void screen_fill_hline(screen_t *scr, int x, int y, int w, colour_t colour)
   box_t          draw_box;
   int            clipped_width;
   pixelfmt_any_t fmt;
+  unsigned char *rowp;
 
   if (w <= 0)
     return;
@@ -79,18 +36,11 @@ void screen_fill_hline(screen_t *scr, int x, int y, int w, colour_t colour)
   fmt = colour_to_pixel(scr->palette,
                         (scr->format == pixelfmt_p4) ? 16 : 0,
                         colour, scr->format);
-  switch (pixelfmt_log2bpp(scr->format))
-  {
-  case 2:
-    screen_fill_hline_p4(scr, draw_box.x0, draw_box.y0, clipped_width, fmt);
-    break;
 
-  case 5:
-    screen_fill_hline_32(scr, draw_box.x0, draw_box.y0, clipped_width, fmt);
-    break;
+  /* the per-format run fill lives in the span table; "first" lets it address
+   * an odd P4 nibble so this needn't pack */
+  assert(scr->span && scr->span->fill);
 
-  default:
-    assert(!"Unimplemented pixel format");
-    break;
-  }
+  rowp = (unsigned char *) scr->base + draw_box.y0 * scr->rowbytes;
+  scr->span->fill(rowp, draw_box.x0, fmt, clipped_width);
 }
