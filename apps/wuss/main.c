@@ -137,7 +137,7 @@ static result_t spawn_image(void)
   filename  = path_join_filename(g.resources, 3, "resources", "images", leafname);
   strcpy(buf, filename);
   ninepatch = path_join_filename(g.resources, 3, "resources", "wuss",
-                                 path_join_leafname("9tile", "png"));
+                                 path_join_leafname("ninepatch", "png"));
 
   logf_info("wuss: image task loading \"%s\" + \"%s\"", buf, ninepatch);
   rc = image_create(g.wuss, buf, ninepatch, t);

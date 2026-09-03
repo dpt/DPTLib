@@ -34,10 +34,18 @@ void wuss__fill_backdrop(screen_t              *scr,
     return;
 
   if (backdrop->pattern == screen_PATTERN_SOLID)
+  {
     screen_fill_rect(scr, area->x0, area->y0, box_size(area),
                      palette[backdrop->colour]);
+  }
   else
-    screen_fill_pattern(scr, area, backdrop->pattern, origin_x, origin_y,
-                        palette[backdrop->colour],
-                        palette[backdrop->pattern_bg]);
+  {
+    pattern_t pat;
+
+    pat = pattern_from_preset(backdrop->pattern,
+                              palette[backdrop->colour],
+                              palette[backdrop->pattern_bg]);
+    pat.origin = POINT(origin_x, origin_y);
+    screen_fill_pattern(scr, area, &pat);
+  }
 }

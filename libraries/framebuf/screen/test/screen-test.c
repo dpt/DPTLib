@@ -308,7 +308,7 @@ static result_t test_ninepatch(void)
 
   /* Normal case. */
   testscreen_init(&ts);
-  screen_draw_ninepatch(&ts.scr, &dst, &src, 0);
+  screen_copy_ninepatch(&ts.scr, &dst, &src, 0);
 
   /* Corners: the 3x3 block at each destination corner is that corner colour. */
   if (np_at(&ts, 5, 5)     != exp[0][0] || np_at(&ts, 7, 7)   != exp[0][0] ||
@@ -342,7 +342,7 @@ static result_t test_ninepatch(void)
   /* Clip composition: restrict to the left half, the right half is untouched. */
   testscreen_init(&ts);
   ts.scr.clip = (box_t) { 0, 0, 25, 64 };
-  screen_draw_ninepatch(&ts.scr, &dst, &src, 0);
+  screen_copy_ninepatch(&ts.scr, &dst, &src, 0);
   if (np_at(&ts, 6, 25) != exp[1][0] ||
       np_at(&ts, 30, 25) != (int) (pixelfmt_bgrx8888_t) BACKGROUND)
   {
@@ -362,7 +362,7 @@ static result_t test_ninepatch(void)
   {
     box_t small = { 10, 10, 10 + 2 * NP_CELL, 10 + 2 * NP_CELL };
 
-    screen_draw_ninepatch(&ts.scr, &small, &src, 0);
+    screen_copy_ninepatch(&ts.scr, &small, &src, 0);
     if (np_at(&ts, 10, 10) != exp[0][0] ||
         np_at(&ts, 15, 15) != exp[2][2] ||
         np_at(&ts, 12, 12) == exp[1][1]) /* centre colour must NOT appear */
@@ -374,7 +374,7 @@ static result_t test_ninepatch(void)
 
   /* NO_CENTRE: border drawn, interior stays background. */
   testscreen_init(&ts);
-  screen_draw_ninepatch(&ts.scr, &dst, &src, screen_NINEPATCH_NO_CENTRE);
+  screen_copy_ninepatch(&ts.scr, &dst, &src, screen_NINEPATCH_NO_CENTRE);
   if (np_at(&ts, 5, 5)   != exp[0][0] || /* corner still drawn */
       np_at(&ts, 25, 6)  != exp[0][1] || /* edge still drawn */
       np_at(&ts, 25, 25) != (int) (pixelfmt_bgrx8888_t) BACKGROUND) /* centre skipped */
@@ -402,8 +402,12 @@ static result_t test_fill_pattern(void)
   /* GREY50 is 0xAA,0x55,... : at origin (0,0) pixel (x,y) is fg when
    * ((x ^ y) & 1) == 0. */
   testscreen_init(&ts);
-  screen_fill_pattern(&ts.scr, &box, screen_PATTERN_GREY50, 0, 0,
-                      colour_rgb(255, 0, 0), colour_rgb(0, 0, 255));
+  {
+    pattern_t pat = pattern_from_preset(screen_PATTERN_GREY50,
+                                        colour_rgb(255, 0, 0),
+                                        colour_rgb(0, 0, 255));
+    screen_fill_pattern(&ts.scr, &box, &pat);
+  }
 
   if (np_at(&ts, 8, 8)  != fg ||  /* (0,0) phase -> set bit */
       np_at(&ts, 9, 8)  != bg ||
@@ -425,8 +429,13 @@ static result_t test_fill_pattern(void)
   /* Shift the origin by one in x: every pixel's phase flips, so the same
    * screen coordinate takes the other colour. */
   testscreen_init(&ts);
-  screen_fill_pattern(&ts.scr, &box, screen_PATTERN_GREY50, 1, 0,
-                      colour_rgb(255, 0, 0), colour_rgb(0, 0, 255));
+  {
+    pattern_t pat = pattern_from_preset(screen_PATTERN_GREY50,
+                                        colour_rgb(255, 0, 0),
+                                        colour_rgb(0, 0, 255));
+    pat.origin = POINT(1, 0);
+    screen_fill_pattern(&ts.scr, &box, &pat);
+  }
   if (np_at(&ts, 8, 8) != bg || np_at(&ts, 9, 8) != fg)
   {
     printf("screen: fill_pattern ignored origin phase\n");
@@ -436,8 +445,12 @@ static result_t test_fill_pattern(void)
   /* Honours the screen clip. */
   testscreen_init(&ts);
   ts.scr.clip = (box_t) { 0, 0, 16, 64 };
-  screen_fill_pattern(&ts.scr, &box, screen_PATTERN_SOLID, 0, 0,
-                      colour_rgb(255, 0, 0), colour_rgb(0, 0, 255));
+  {
+    pattern_t pat = pattern_from_preset(screen_PATTERN_SOLID,
+                                        colour_rgb(255, 0, 0),
+                                        colour_rgb(0, 0, 255));
+    screen_fill_pattern(&ts.scr, &box, &pat);
+  }
   if (np_at(&ts, 10, 10) != fg ||
       np_at(&ts, 20, 10) != (int) (pixelfmt_bgrx8888_t) BACKGROUND)
   {

@@ -7,6 +7,7 @@
 
 #include "base/result.h"
 #include "framebuf/colour.h"
+#include "framebuf/pattern.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/span.h"
 #include "geom/box.h"
@@ -85,12 +86,13 @@ void bitmap_clear(bitmap_t *bm, colour_t colour);
 //}
 
 /**
- * Fill a rectangle of the bitmap with a colour, but only where a repeating
- * 8x8 pattern mask has a bit set.
+ * Fill a rectangle of the bitmap with a repeating 8x8 pattern.
  *
- * The mask is eight bytes, one per pattern row, MSB leftmost. It tiles from
- * the bitmap origin, so abutting fills line up. Where a mask bit is clear
- * the destination pixel is left untouched.
+ * A plain pattern paints every pixel in the area, set bits taking
+ * `pattern->fg` and clear bits `pattern->bg`. A stencil pattern (one with
+ * `pattern_FLAG_STENCIL`) paints only the set-bit pixels, leaving the rest
+ * untouched. The tile is phased against `pattern->origin`, so abutting fills
+ * with the same origin line up.
  *
  * Supported for 8bpp and 32bpp formats only; other formats return \ref
  * result_NOT_SUPPORTED.
@@ -98,15 +100,13 @@ void bitmap_clear(bitmap_t *bm, colour_t colour);
  * \param[in] bm      Bitmap to fill.
  * \param[in] area    Rectangle to fill, clipped to the bitmap bounds. NULL
  *                    fills the whole bitmap.
- * \param[in] colour  Colour to fill with.
- * \param[in] mask    Eight-byte 8x8 pattern mask.
+ * \param[in] pattern Pattern to fill with.
  * \return \ref result_OK on success, \ref result_NOT_SUPPORTED for an
  *         unsupported pixel format.
  */
-result_t bitmap_draw_pattern(bitmap_t     *bm,
-                             const box_t  *area,
-                             colour_t      colour,
-                             const uint8_t mask[8]);
+result_t bitmap_fill_pattern(bitmap_t        *bm,
+                             const box_t     *area,
+                             const pattern_t *pattern);
 
 /**
  * Load a PNG image into the given bitmap.

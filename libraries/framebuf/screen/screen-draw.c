@@ -15,7 +15,7 @@
 
 #include "framebuf/screen.h"
 
-/* Number of pixels converted per span call in screen_draw_bitmap(). Bounds
+/* Number of pixels converted per span call in screen_copy_bitmap(). Bounds
  * the size of its stack scratch buffers so arbitrarily wide bitmaps don't
  * blow the stack (relevant on RISC OS). */
 #define BITMAP_BLIT_CHUNK 256
@@ -226,7 +226,7 @@ void screen_fill_square(screen_t *scr,
 
 /* ----------------------------------------------------------------------- */
 
-void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
+void screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 {
   box_t clip_box;
   box_t src_box;

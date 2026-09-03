@@ -97,9 +97,9 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   behind.y0 = by - NINEPATCHSZ;
   behind.x1 = behind.x0 + ic->bitmap.size.w + NINEPATCHSZ * 2;
   behind.y1 = behind.y0 + ic->bitmap.size.h + NINEPATCHSZ * 2;
-  screen_draw_ninepatch(scr, &behind, &ic->ninepatch, 0);
+  screen_copy_ninepatch(scr, &behind, &ic->ninepatch, 0);
 
-  screen_draw_bitmap(scr, bx, by, &ic->bitmap);
+  screen_copy_bitmap(scr, bx, by, &ic->bitmap);
 
   return result_OK;
 }
