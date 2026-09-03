@@ -322,7 +322,7 @@ static result_t porter_duff_redraw(const wuss_event_t *event,
   if (rc != result_OK)
     return rc;
 
-  screen_draw_bitmap(scr, bounds->x0, bounds->y0, &pd->dst);
+  screen_copy_bitmap(scr, bounds->x0, bounds->y0, &pd->dst);
 
   name  = rule_names[pd->rule];
   pos.x = bounds->x0 + 2;

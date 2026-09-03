@@ -81,9 +81,14 @@ static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
          ? c->wuss->palette[icon->bg]
          : c->fg;
 
-  screen_fill_pattern(c->scr, &c->b, icon->pattern,
-                      content->x0 - scroll.x, content->y0 - scroll.y,
-                      pat_fg, c->wuss->palette[icon->bg]);
+  {
+    pattern_t pat;
+
+    pat = pattern_from_preset(icon->pattern,
+                              pat_fg, c->wuss->palette[icon->bg]);
+    pat.origin = POINT(content->x0 - scroll.x, content->y0 - scroll.y);
+    screen_fill_pattern(c->scr, &c->b, &pat);
+  }
 }
 
 /* ----------------------------------------------------------------------- */
@@ -335,14 +340,14 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
   if (c->icon->bitmap == NULL)
     return;
 
-  /* screen_draw_bitmap clips to scr->clip and does not scale, so narrow the
+  /* screen_copy_bitmap clips to scr->clip and does not scale, so narrow the
    * clip to the icon box (intersected with whatever redraw already set) and
    * blit at the box's top-left */
   clipped = *c->scr;
   if (box_intersection(&c->scr->clip, b, &clipped.clip))
     return;
 
-  screen_draw_bitmap(&clipped, b->x0, b->y0, c->icon->bitmap);
+  screen_copy_bitmap(&clipped, b->x0, b->y0, c->icon->bitmap);
 }
 
 /* ----------------------------------------------------------------------- */

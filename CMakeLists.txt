@@ -83,6 +83,7 @@ set(PUBLIC_HEADERS
     include/framebuf/composite.h
     include/framebuf/curve.h
     include/framebuf/palettes.h
+    include/framebuf/pattern.h
     include/framebuf/pixelfmt.h
     include/framebuf/screen.h
     include/framebuf/span-bgrx8888.h
@@ -237,7 +238,7 @@ set(DATASTRUCT_SOURCES
 
 set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/bitmap.c
-    libraries/framebuf/bitmap/draw-pattern.c
+    libraries/framebuf/bitmap/fill-pattern.c
     libraries/framebuf/bitmap/load.c
     libraries/framebuf/bitmap/save.c
     libraries/framebuf/bmfont/bmfont.c
@@ -245,12 +246,13 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/composite/composite.c
     libraries/framebuf/curve/curve.c
     libraries/framebuf/palettes/palettes.c
+    libraries/framebuf/pattern/pattern.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/screen/screen.c
+    libraries/framebuf/screen/screen-copy-ninepatch.c
     libraries/framebuf/screen/screen-copy-rect.c
     libraries/framebuf/screen/screen-draw.c
     libraries/framebuf/screen/screen-draw-circle.c
-    libraries/framebuf/screen/screen-draw-ninepatch.c
     libraries/framebuf/screen/screen-fill-pattern.c
     libraries/framebuf/span-registry/get.c
     libraries/framebuf/span-registry/regdata.h

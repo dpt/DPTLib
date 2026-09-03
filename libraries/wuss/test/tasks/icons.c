@@ -65,7 +65,7 @@ result_t icons_create(wuss_t       *wuss,
   task->hotspot    = NULL;
 
   sprite_path = path_join_filename(resources, 3, "resources", "wuss",
-                                   path_join_leafname("9tile", "png"));
+                                   path_join_leafname("ninepatch", "png"));
   if (bitmap_load_png(&task->sprite, sprite_path) == result_OK)
     task->has_sprite = 1;
 

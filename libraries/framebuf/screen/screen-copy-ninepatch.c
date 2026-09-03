@@ -1,4 +1,4 @@
-/* framebuf/screen/screen-draw-ninepatch.c -- 9-patch bitmap drawing */
+/* framebuf/screen/screen-copy-ninepatch.c -- 9-patch bitmap drawing */
 
 #include <assert.h>
 
@@ -12,7 +12,7 @@
 /* ----------------------------------------------------------------------- */
 
 /* Build a bitmap_t view onto one cell (col,row) of a 3x3 grid within "src".
- * The view shares "src"'s rowbytes, so screen_draw_bitmap walks the parent
+ * The view shares "src"'s rowbytes, so screen_copy_bitmap walks the parent
  * image correctly despite the narrower size. */
 static void ninepatch_cell(bitmap_t       *cell,
                            const bitmap_t *src,
@@ -68,14 +68,14 @@ static void tile_area(screen_t       *scr,
     {
       for (ox = area->x0; ox < area->x1;
            ox += (stepx > 0) ? stepx : (area->x1 - ox))
-        screen_draw_bitmap(scr, ox, oy, cell);
+        screen_copy_bitmap(scr, ox, oy, cell);
     }
   }
 }
 
 /* ----------------------------------------------------------------------- */
 
-void screen_draw_ninepatch(screen_t       *scr,
+void screen_copy_ninepatch(screen_t       *scr,
                            const box_t    *dst,
                            const bitmap_t *src,
                            unsigned int    flags)
