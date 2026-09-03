@@ -102,12 +102,13 @@ result_t icons_create(wuss_t       *wuss,
   /* icons sit past the ruler gutter (see ICONS_GUTTER in icons_redraw) so the
    * axis labels have the top/left strip to themselves */
 
-  /* [0] a heading label */
-  specs[0].bbox = (box_t) BOX_POS_SIZE(28, 28, 180, 14);
-  specs[0].type = wuss_ICON_TYPE_LABEL;
-  specs[0].text = "Work-area icons:";
-  specs[0].fg   = black;
-  specs[0].bg   = wuss_NO_BACKGROUND;
+  /* [0] a heading label, drawn in the bold weight (font slot 1) */
+  specs[0].bbox  = (box_t) BOX_POS_SIZE(28, 28, 180, 14);
+  specs[0].type  = wuss_ICON_TYPE_LABEL;
+  specs[0].text  = "Work-area icons:";
+  specs[0].fg    = black;
+  specs[0].bg    = wuss_NO_BACKGROUND;
+  specs[0].flags = wuss_ICON_FONT(1);
 
   /* [1] the button that bumps the counter -- a default action button, so it
    * shows the accent styling */
