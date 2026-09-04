@@ -488,6 +488,7 @@ if(TARGET_RISCOS)
     # OSLib (& anything else in GCCSDK)
     target_include_directories(DPTLib PUBLIC $ENV{GCCSDK_INSTALL_ENV}/include)
     target_link_libraries(DPTLib PUBLIC $ENV{GCCSDK_INSTALL_ENV}/lib/libOSLib32.a)
+    target_compile_definitions(DPTLib PUBLIC TARGET_RISCOS)
 endif()
 
 if(USE_FORTIFY)
