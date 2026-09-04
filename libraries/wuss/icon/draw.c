@@ -68,6 +68,36 @@ static colour_t icon_blend_ground(const icon_draw_ctx_t *c,
   return fallback;
 }
 
+/* Draw one menu-decoration glyph (a tick or a submenu arrow) from the symbol
+ * font slot, centred on "centre", blending "ink" over "ground". Returns 1 when
+ * the glyph was drawn, 0 when the slot is empty or the font lacks that cell --
+ * the caller then falls back to its vector rendering. */
+static int wuss__draw_symbol_glyph(const wuss_t *wuss,
+                                   screen_t     *scr,
+                                   point_t       centre,
+                                   char          glyph,
+                                   colour_t      ink,
+                                   colour_t      ground)
+{
+  bmfont_t *font;
+  point_t   pos;
+  int       font_width, font_height;
+
+  font = wuss->fonts[WUSS_SYMBOL_FONT];
+  if (font == NULL)
+    return 0;
+
+  if ((unsigned char) glyph < ' ' ||
+      (unsigned char) glyph - ' ' >= bmfont_get_count(font))
+    return 0;
+
+  bmfont_get_info(font, &font_width, &font_height);
+  pos.x = centre.x - font_width / 2;
+  pos.y = centre.y - font_height / 2;
+  bmfont_draw(font, scr, &glyph, 1, ink, ground, &pos, NULL);
+  return 1;
+}
+
 /* ----------------------------------------------------------------------- */
 
 static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
@@ -396,26 +426,40 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   }
   else if (wuss__icon_selected(icon))
   {
-    int cx, cy, h;
+    int     cx, cy, h;
+    point_t centre;
 
     h  = (c->font_height >= 8) ? c->font_height : 8;
     cx = b->x0 + pad;
     cy = b->y0 + (b->y1 - b->y0 - h) / 2;
-    screen_draw_line(c->scr, cx, cy + h / 2, cx + h / 2 - 1, cy + h - 2, ink);
-    screen_draw_line(c->scr, cx + h / 2 - 1, cy + h - 2, cx + h - 2, cy, ink);
+    centre.x = cx + h / 2;
+    centre.y = cy + h / 2;
+    if (!wuss__draw_symbol_glyph(c->wuss, c->scr, centre,
+                                 WUSS_GLYPH_TICK, ink, ground))
+    {
+      screen_draw_line(c->scr, cx, cy + h / 2, cx + h / 2 - 1, cy + h - 2, ink);
+      screen_draw_line(c->scr, cx + h / 2 - 1, cy + h - 2, cx + h - 2, cy, ink);
+    }
   }
 
   /* right-edge arrow for a submenu entry */
   if (icon->flags & wuss_ICON_FLAGS_SUBMENU)
   {
-    int ax, ay, r, dy;
+    int     ax, ay, r, dy;
+    point_t centre;
 
     r  = (c->font_height >= 8) ? c->font_height / 3 : 3;
     ax = b->x1 - 1 - pad - r;
     ay = b->y0 + (b->y1 - b->y0) / 2;
-    for (dy = -r; dy <= r; dy++)
-      screen_draw_line(c->scr, ax, ay + dy,
-                       ax + (r - (dy < 0 ? -dy : dy)), ay + dy, ink);
+    centre.x = ax + r / 2;
+    centre.y = ay;
+    if (!wuss__draw_symbol_glyph(c->wuss, c->scr, centre,
+                                 WUSS_GLYPH_SUBMENU, ink, ground))
+    {
+      for (dy = -r; dy <= r; dy++)
+        screen_draw_line(c->scr, ax, ay + dy,
+                         ax + (r - (dy < 0 ? -dy : dy)), ay + dy, ink);
+    }
   }
 
   if (c->have_font && icon->text != NULL && icon->text[0] != '\0')
