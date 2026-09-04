@@ -781,6 +781,34 @@ int wuss_menu_is_open(wuss_menu_handle_t handle)
   return root->wuss->menu_chain == root;
 }
 
+void wuss_menu_set_ticked(wuss_menu_handle_t handle,
+                          const wuss_menu_t *menu,
+                          int                index)
+{
+  struct wuss__menu *root;
+  struct wuss__menu *node;
+  int                i;
+
+  if (handle == NULL || menu == NULL)
+    return;
+
+  root = handle;
+  while (root->parent != NULL)
+    root = root->parent;
+
+  if (root->wuss->menu_chain != root)
+    return; /* stale handle */
+
+  for (node = root; node != NULL; node = node->child)
+    if (node->menu == menu)
+      break;
+  if (node == NULL)
+    return; /* menu is not a level of this chain */
+
+  for (i = 0; i < menu->nitems; i++)
+    wuss_icon_set_selected(node->icons[i], i == index);
+}
+
 /* ----------------------------------------------------------------------- */
 
 int wuss__menu_click_outside(wuss_t *wuss, const wuss_window_t *hit)

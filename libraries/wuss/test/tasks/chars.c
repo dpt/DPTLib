@@ -94,7 +94,7 @@ static result_t chars_open_menu(chars_task_t *task)
   wuss_fontmenu_set_ticked(task->fontmenu, task->current);
   return wuss_menu_open(task->delegate,
                         wuss_fontmenu_menu(task->fontmenu),
-                        wuss_get_pointer(task->wuss), NULL);
+                        wuss_get_pointer(task->wuss), &task->menu_handle);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -120,11 +120,12 @@ result_t chars_create(wuss_t       *wuss,
   strncpy(chars_resources, resources, sizeof(chars_resources) - 1);
   chars_resources[sizeof(chars_resources) - 1] = '\0';
 
-  task->wuss    = wuss;
-  task->font    = font;
-  task->current = -1; /* the wuss system font is none of the picker's */
-  task->fg      = colour_rgb(0x00, 0x00, 0x00);
-  task->bg      = colour_rgb(0xFF, 0xFF, 0xFF);
+  task->wuss        = wuss;
+  task->font        = font;
+  task->current     = -1; /* the wuss system font is none of the picker's */
+  task->menu_handle = NULL;
+  task->fg          = colour_rgb(0x00, 0x00, 0x00);
+  task->bg          = colour_rgb(0xFF, 0xFF, 0xFF);
 
   /* the picker: every ".png" font under resources/bmfonts, sorted */
   bmfonts_dir = path_join_filename(chars_resources, 2, "resources", "bmfonts");
@@ -263,12 +264,27 @@ result_t chars_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_SELECT:
     {
       const char *name;
+      result_t    rc;
 
       name = wuss_fontmenu_selected(cc->fontmenu, event);
-      if (name != NULL)
-        return chars_set_font(cc, event->data.menu_select.index, name);
+      if (name == NULL)
+        return result_OK;
+
+      rc = chars_set_font(cc, event->data.menu_select.index, name);
+
+      if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
+        /* ADJUST keeps the chain open without rebuilding it, so the
+         * fresh-open tick set in chars_open_menu is now stale on screen;
+         * retick the still-open chain in place to match cc->current */
+        wuss_menu_set_ticked(cc->menu_handle,
+                            wuss_fontmenu_menu(cc->fontmenu), cc->current);
+      else
+        /* SELECT has already closed and freed the chain by the time this
+         * event arrives; the handle is stale, don't touch it */
+        cc->menu_handle = NULL;
+
+      return rc;
     }
-    return result_OK;
 
   case wuss_EVENT_REDRAW:
     return chars_redraw(event, task_data);
