@@ -5,7 +5,7 @@
 #include "base/utils.h"
 #include "geom/point.h"
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 void wuss__furniture_draw(wuss_t        *wuss,
                           wuss_window_t *window,

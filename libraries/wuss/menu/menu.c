@@ -22,7 +22,7 @@
 #include "wuss/window.h"
 #include "wuss/wuss.h"
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 /* Row padding above/below the glyph, and the gutters left for the tick (left)
  * and the submenu arrow (right). All in pixels. */

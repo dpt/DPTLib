@@ -1,6 +1,6 @@
 /* wuss/icon/invalidate.c -- mark a work-area icon's bbox dirty */
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 void wuss__icon_invalidate(const wuss_icon_t *icon)
 {

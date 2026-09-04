@@ -8,7 +8,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 result_t wuss_icon_create(wuss_window_t          *window,
                           const wuss_icon_spec_t *spec,

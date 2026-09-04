@@ -2,7 +2,7 @@
 
 #include "base/utils.h"
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 void wuss__furniture_toggle_size(wuss_window_t *window)
 {

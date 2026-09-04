@@ -1,6 +1,6 @@
 /* wuss/furniture/back-box.c -- wuss - minimal window manager */
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 void wuss__back_box(const wuss_window_t *window, box_t *out)
 {
