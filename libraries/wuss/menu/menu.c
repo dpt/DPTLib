@@ -30,6 +30,7 @@
 #define WUSS_MENU_TICK_W         14
 #define WUSS_MENU_ARROW_W        14
 #define WUSS_MENU_TEXT_PAD        6
+#define WUSS_MENU_TITLE_PAD       2 /* margin either side of the titlebar caption slot, matching wuss__titlebar_draw */
 #define WUSS_MENU_SUBMENU_OVERLAP 2 /* px a submenu overlaps its parent's right edge */
 
 /* SELECT-pick flash: toggle the row highlight every WUSS_MENU_FLASH_PERIOD
@@ -550,6 +551,26 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   }
 
   width  = WUSS_MENU_TICK_W + widest + WUSS_MENU_TEXT_PAD + WUSS_MENU_ARROW_W;
+
+  /* widen for the titlebar caption too, so a title longer than every item
+   * label (e.g. a one-item menu) isn't clipped; titles draw in the bold
+   * weight (font slot 1), falling back to the system font, same as
+   * wuss__titlebar_draw */
+  if (menu->title != NULL && menu->title[0] != '\0')
+  {
+    bmfont_t      *titlefont;
+    int             titlelen;
+    int             split;
+    bmfont_width_t  title_w;
+
+    titlefont = (wuss->nfonts > 1 && wuss->fonts[1] != NULL) ? wuss->fonts[1]
+                                                             : wuss->fonts[0];
+    titlelen  = (int) strlen(menu->title);
+    if (bmfont_measure(titlefont, menu->title, titlelen, INT_MAX, &split,
+                       &title_w) == result_OK &&
+        (int) title_w + 2 * WUSS_MENU_TITLE_PAD > width)
+      width = (int) title_w + 2 * WUSS_MENU_TITLE_PAD;
+  }
 
   /* every item is a full row now; a dashed item also gets a sep_h rule above.
    * doc_h is the whole menu; `height` is what the window actually shows. When
