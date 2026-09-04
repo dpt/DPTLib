@@ -19,9 +19,7 @@ static void redraw_window(wuss_t        *wuss,
   if (box_intersection(&win->visible, full, &visible_clipped))
     return; /* offscreen */
 
-#ifdef WUSS_FURNITURE
-  wuss->furniture_ops->draw(wuss, win, full);
-#endif
+  wuss__chrome_draw(wuss, win, full);
 
   wuss__content_box(win, &content);
   if (box_intersection(&content, full, &clipped))

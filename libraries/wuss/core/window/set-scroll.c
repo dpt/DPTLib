@@ -33,11 +33,9 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
     if (box_intersects(&window->wuss->dirty[i], &content))
       stale[nstale++] = window->wuss->dirty[i];
 
-#ifdef WUSS_FURNITURE
   /* the scrollbar sausage position depends on scroll, so its well needs
    * redrawing too -- content invalidation alone never touches it */
-  window->wuss->furniture_ops->invalidate(window);
-#endif
+  wuss__chrome_repaint(window);
 
   /* The valid blit source is the content box minus whatever windows above it
    * were covering (those areas hold occluder pixels, not this window's),

@@ -193,6 +193,54 @@ struct wuss_window
 #endif
 };
 
+/* Thin wrappers over the furniture_ops dispatch so core call sites that only
+ * poke furniture for a redraw don't each need their own #ifdef WUSS_FURNITURE
+ * guard -- they compile to nothing in a no-furniture build. The routing hooks
+ * (hit_test, toggle_size, drag_*) stay unwrapped: their call sites sit inside
+ * furniture-only logic that is already whole-block guarded. Named "chrome"
+ * rather than "furniture" to steer clear of the wuss__furniture_* dispatch
+ * targets these forward to. */
+#ifdef WUSS_FURNITURE
+static inline void wuss__chrome_draw(wuss_t        *wuss,
+                                     wuss_window_t *window,
+                                     const box_t   *full)
+{
+  wuss->furniture_ops->draw(wuss, window, full);
+}
+
+static inline void wuss__chrome_repaint(wuss_window_t *window)
+{
+  window->wuss->furniture_ops->invalidate(window);
+}
+
+static inline void wuss__chrome_repaint_for(wuss_window_t *window,
+                                            const box_t   *visible)
+{
+  window->wuss->furniture_ops->invalidate_for(window, visible);
+}
+#else
+static inline void wuss__chrome_draw(wuss_t        *wuss,
+                                     wuss_window_t *window,
+                                     const box_t   *full)
+{
+  (void) wuss;
+  (void) window;
+  (void) full;
+}
+
+static inline void wuss__chrome_repaint(wuss_window_t *window)
+{
+  (void) window;
+}
+
+static inline void wuss__chrome_repaint_for(wuss_window_t *window,
+                                            const box_t   *visible)
+{
+  (void) window;
+  (void) visible;
+}
+#endif
+
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
 
 /* Rebuild wuss->palettecache (white, black and the symbolic[] table) from
