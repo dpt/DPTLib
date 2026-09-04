@@ -127,6 +127,7 @@ if(WUSS_ICONS)
 endif()
 if(WUSS_MENUS)
     list(APPEND PUBLIC_HEADERS include/wuss/menu.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/menu-desc.h)
 endif()
 if(WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/component/fontmenu.h)
@@ -426,7 +427,7 @@ set(WUSS_ICON_SOURCES
 
 set(WUSS_MENU_SOURCES
     libraries/wuss/menu/menu.c
-    libraries/wuss/menu/create-from-desc.c
+    libraries/wuss/helpers/create-from-desc.c
     libraries/wuss/menu.h)
 
 set(WUSS_COMPONENT_SOURCES
