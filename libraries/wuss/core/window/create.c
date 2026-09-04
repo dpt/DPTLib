@@ -72,8 +72,7 @@ result_t wuss_window_create(wuss_task_t        *task,
   if (win->visible.y0 + dy < 0)
     dy = -win->visible.y0;
 
-  win->visible.x0 += dx; win->visible.x1 += dx;
-  win->visible.y0 += dy; win->visible.y1 += dy;
+  box_translated(&win->visible, dx, dy, &win->visible);
 
   win->flags      = flags;
 
