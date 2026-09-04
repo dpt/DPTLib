@@ -29,7 +29,7 @@ typedef struct chars_task
   bmfont_t          **fonts;       /* one slot per menu item, lazily loaded */
   int                 nfonts;      /* length of fonts[]; == menu item count */
   int                 current;     /* index into fonts[], or -1 for sysfont */
-  colour_t            fg, bg;
+  colour_t            fg, mg, bg;
 }
 chars_task_t;
 
