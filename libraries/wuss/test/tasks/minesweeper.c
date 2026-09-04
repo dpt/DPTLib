@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -20,10 +21,12 @@
 #include "minesweeper.h"
 
 #define MS_BORDER MINESWEEPER_CELL /* one grid unit all round */
+#define MS_HUD_H  MINESWEEPER_CELL /* extra strip above the border for the
+                                    * mine counter and timer */
 #define MS_GRID_W (MINESWEEPER_COLS * MINESWEEPER_CELL)
 #define MS_GRID_H (MINESWEEPER_ROWS * MINESWEEPER_CELL)
 #define MS_WIDTH  (MS_GRID_W + 2 * MS_BORDER)
-#define MS_HEIGHT (MS_GRID_H + 2 * MS_BORDER)
+#define MS_HEIGHT (MS_GRID_H + 2 * MS_BORDER + MS_HUD_H)
 
 /* MENU click over the board pops this single-item menu */
 static const wuss_menu_item_t g_minesweeper_menu_items[] =
@@ -146,11 +149,23 @@ static bool minesweeper_check_won(minesweeper_task_t *ms)
 
 static void minesweeper_reset(minesweeper_task_t *ms)
 {
-  ms->placed = false;
-  ms->dead   = false;
-  ms->won    = false;
+  ms->placed  = false;
+  ms->dead    = false;
+  ms->won     = false;
+  ms->flags   = 0;
+  ms->elapsed = 0;
   memset(ms->mine,  0, sizeof(ms->mine));
   memset(ms->state, 0, sizeof(ms->state)); /* minesweeper_HIDDEN == 0 */
+}
+
+/* seconds since the first reveal, frozen once the game has ended */
+static void minesweeper_tick_clock(minesweeper_task_t *ms)
+{
+  if (!ms->placed || ms->dead || ms->won)
+    return;
+  ms->elapsed = (int) difftime(time(NULL), ms->start_time);
+  if (ms->elapsed > 999)
+    ms->elapsed = 999; /* keep the HUD's 3-digit field from overflowing */
 }
 
 /* ----------------------------------------------------------------------- */
@@ -252,6 +267,31 @@ static void minesweeper_draw_cell(minesweeper_task_t *ms,
   }
 }
 
+/* mines-remaining counter (left) and elapsed-seconds timer (right), drawn in
+ * the HUD strip above the border */
+static void minesweeper_draw_hud(minesweeper_task_t *ms,
+                                 screen_t           *scr,
+                                 const box_t        *bounds)
+{
+  char    buf[8];
+  point_t pos;
+  colour_t fg, bg;
+  int      fh;
+
+  fg = colour_rgb(0xFF, 0x00, 0x00);
+  bg = colour_rgb(0x00, 0x00, 0x00);
+  bmfont_get_info(ms->font, NULL, &fh);
+
+  sprintf(buf, "%03d", MINESWEEPER_MINES - ms->flags);
+  pos.x = bounds->x0 + MS_BORDER;
+  pos.y = bounds->y0 + (MS_HUD_H - fh) / 2;
+  bmfont_draw(ms->font, scr, buf, 3, fg, bg, &pos, NULL);
+
+  sprintf(buf, "%03d", ms->elapsed);
+  pos.x = bounds->x0 + MS_WIDTH - MS_BORDER - MINESWEEPER_CELL * 2;
+  bmfont_draw(ms->font, scr, buf, 3, fg, bg, &pos, NULL);
+}
+
 /* draws a translucent-looking banner strip across the middle of the board;
  * bmfont has no alpha blend here so the strip is drawn solid first */
 static void minesweeper_draw_banner(minesweeper_task_t *ms,
@@ -269,7 +309,7 @@ static void minesweeper_draw_banner(minesweeper_task_t *ms,
   bmfont_measure(ms->font, text, len, INT_MAX, NULL, &width);
   bmfont_get_info(ms->font, NULL, &fh);
 
-  strip_y = bounds->y0 + (MS_HEIGHT - fh) / 2 - 2;
+  strip_y = bounds->y0 + MS_HUD_H + (MS_GRID_H + 2 * MS_BORDER - fh) / 2 - 2;
   screen_fill_rect(scr, bounds->x0, strip_y, SIZE2D(MS_WIDTH, fh + 4), bg);
 
   pos.x = bounds->x0 + (MS_WIDTH - width) / 2;
@@ -294,12 +334,15 @@ static result_t minesweeper_redraw(const wuss_event_t *event,
   screen_fill_rect(scr, bounds->x0, bounds->y0, SIZE2D(MS_WIDTH, MS_HEIGHT),
                    colour_rgb(0x80, 0x80, 0x80));
 
+  minesweeper_tick_clock(ms);
+  minesweeper_draw_hud(ms, scr, bounds);
+
   /* board is small and fixed, so just repaint every cell rather than working
    * out which ones overlap event->data.redraw.content */
   for (r = 0; r < MINESWEEPER_ROWS; r++)
     for (c = 0; c < MINESWEEPER_COLS; c++)
       minesweeper_draw_cell(ms, scr, r, c, bounds->x0 + MS_BORDER,
-                            bounds->y0 + MS_BORDER);
+                            bounds->y0 + MS_HUD_H + MS_BORDER);
 
   if (ms->dead)
     minesweeper_draw_banner(ms, scr, bounds, "BOOM! Click to retry",
@@ -335,8 +378,8 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
   }
 
   c = (point.x - MS_BORDER) / MINESWEEPER_CELL;
-  r = (point.y - MS_BORDER) / MINESWEEPER_CELL;
-  if (point.x < MS_BORDER || point.y < MS_BORDER ||
+  r = (point.y - MS_HUD_H - MS_BORDER) / MINESWEEPER_CELL;
+  if (point.x < MS_BORDER || point.y < MS_HUD_H + MS_BORDER ||
       !minesweeper_in_bounds(r, c))
     return result_OK;
 
@@ -345,19 +388,29 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
     if (ms->state[r][c] == minesweeper_FLAGGED)
       return result_OK;
     if (!ms->placed)
+    {
       minesweeper_place_mines(ms, r, c);
+      ms->start_time = time(NULL);
+    }
     minesweeper_reveal(ms, r, c);
     if (ms->dead)
       minesweeper_reveal_all_mines(ms);
     else
       ms->won = minesweeper_check_won(ms);
+    minesweeper_tick_clock(ms);
   }
   else if (button & wuss_BUTTON_ADJUST)
   {
     if (ms->state[r][c] == minesweeper_HIDDEN)
+    {
       ms->state[r][c] = minesweeper_FLAGGED;
+      ms->flags++;
+    }
     else if (ms->state[r][c] == minesweeper_FLAGGED)
+    {
       ms->state[r][c] = minesweeper_HIDDEN;
+      ms->flags--;
+    }
   }
   else
   {
@@ -389,6 +442,18 @@ result_t minesweeper_handle(wuss_window_t      *window,
       return result_OK;
     return minesweeper_mouse(ms, event->data.mouse.point,
                              event->data.mouse.button);
+
+  case wuss_EVENT_IDLE:
+    if (ms->placed && !ms->dead && !ms->won)
+    {
+      int was;
+
+      was = ms->elapsed;
+      minesweeper_tick_clock(ms);
+      if (ms->elapsed != was)
+        wuss_window_invalidate_all(ms->window);
+    }
+    return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
     /* only item is "New Game" */

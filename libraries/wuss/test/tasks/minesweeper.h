@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include <stdbool.h>
+#include <time.h>
 
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
@@ -40,6 +41,9 @@ typedef struct minesweeper_task
   bool                     placed;  /* mines placed yet? */
   bool                     dead;    /* a mine was revealed */
   bool                     won;
+  int                      flags;   /* flagged cell count, for the counter */
+  time_t                   start_time; /* set on first reveal */
+  int                      elapsed; /* seconds, frozen on dead/won */
 }
 minesweeper_task_t;
 
