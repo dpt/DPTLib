@@ -1,0 +1,67 @@
+---
+# Build the Wuss WebAssembly demo and publish it to GitHub Pages.
+#
+
+name: Pages
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# Allow one concurrent deployment; let a running one finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Set up Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 4.0.6
+          actions-cache-folder: emsdk-cache
+
+      - name: Configure
+        run: |
+          emcmake cmake -B build-emscripten -G Ninja \
+            -DBUILD_APPS=ON -DBUILD_TESTS=OFF
+
+      - name: Build
+        run: cmake --build build-emscripten --target wuss
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp build-emscripten/wuss.html _site/index.html
+          cp build-emscripten/wuss.js build-emscripten/wuss.wasm \
+             build-emscripten/wuss.data _site/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
