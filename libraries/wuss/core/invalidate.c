@@ -68,11 +68,18 @@ result_t wuss_invalidate(wuss_t *wuss, const box_t *box)
   while (changed);
 
   if (wuss->ndirty < WUSS_MAX_DIRTY)
+  {
     wuss->dirty[wuss->ndirty++] = cur;
+  }
   else
+  {
     /* ponytail: array full, fold into the last entry rather than growing
      * storage; over-approximates that entry's area but stays correct */
+    logf_info("wuss_invalidate: %d dirty regions, coalescing "
+              "(%d,%d)-(%d,%d) into the last entry",
+              WUSS_MAX_DIRTY, cur.x0, cur.y0, cur.x1, cur.y1);
     box_union(&wuss->dirty[WUSS_MAX_DIRTY - 1], &cur, &wuss->dirty[WUSS_MAX_DIRTY - 1]);
+  }
 
   return result_OK;
 }
