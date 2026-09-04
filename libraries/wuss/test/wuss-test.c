@@ -24,6 +24,7 @@
 #include "wuss/window.h"
 #ifdef WUSS_MENUS
 #include "wuss/menu.h"
+#include "wuss/menu-desc.h"
 #endif
 #ifdef WUSS_COMPONENTS
 #include "wuss/component/fontmenu.h"

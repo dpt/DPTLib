@@ -27,6 +27,7 @@
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 #include "wuss/menu.h"
+#include "wuss/menu-desc.h"
 
 #include "frontend.h"
 

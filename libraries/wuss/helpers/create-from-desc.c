@@ -1,4 +1,4 @@
-/* wuss/menu/create-from-desc.c -- build a menu tree from a descriptor string */
+/* wuss/helpers/create-from-desc.c -- build a menu tree from a descriptor string */
 
 /* The token machine (Token / Parser / getopt / getname / getnext / isdelim)
  * and the explicit menu stack are ported from PrivateEye's
@@ -22,7 +22,7 @@
 #include "base/result.h"
 #include "utils/array.h"
 
-#include "wuss/menu.h"
+#include "wuss/menu-desc.h"
 
 /* ----------------------------------------------------------------------- */
 
