@@ -117,9 +117,7 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
     {
       wuss__invalidate_clipped(window, &content);
     }
-#ifdef WUSS_FURNITURE
-    window->wuss->furniture_ops->invalidate(window);
-#endif
+    wuss__chrome_repaint(window);
   }
 
   if (window->flags & wuss_WINDOW_NO_RESIZE_BLIT)
@@ -148,12 +146,10 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
      * as already-valid and so never repaint. Force its old position dirty
      * too. Shrinking needs no such help: old furniture positions only ever
      * land outside the new, smaller box, already covered above. */
-#ifdef WUSS_FURNITURE
     if (window->visible.x1 - window->visible.x0 > before.x1 - before.x0 ||
         window->visible.y1 - window->visible.y0 > before.y1 - before.y0)
-      window->wuss->furniture_ops->invalidate_for(window, &before);
-    window->wuss->furniture_ops->invalidate(window);
-#endif
+      wuss__chrome_repaint_for(window, &before);
+    wuss__chrome_repaint(window);
   }
 
   return result_OK;
