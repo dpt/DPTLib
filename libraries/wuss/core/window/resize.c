@@ -115,6 +115,10 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
     }
     else
     {
+      /* the scroll-reclamp blit copied nothing (paletted screen, or every
+       * piece off-screen): repaint the whole content box */
+      logf_warning("wuss_window_resize: scroll-reclamp blit copied nothing, "
+                   "repainting the whole content box (nsrc=%d)", nsrc);
       wuss__invalidate_clipped(window, &content);
     }
     wuss__chrome_repaint(window);

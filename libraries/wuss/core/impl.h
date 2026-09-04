@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "base/debug.h"
 #include "base/utils.h"
 #include "datastruct/list.h"
 #include "geom/box.h"
