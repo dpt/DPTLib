@@ -294,10 +294,10 @@ static const wuss_menu_t g_menu =
   "Display", g_menu_items, NELEMS(g_menu_items)
 };
 
-/* g_task_menu picks are dispatched by index; g_menu / g_menu_desc picks just
- * print. All three menus are opened by g.menu_task, so one handler sees every
- * wuss_EVENT_MENU_SELECT and tells them apart by data.menu_select.menu.
- * Defined after g_task_menu / g_task_spawn, which it needs. */
+/* g_task_menu / g_launch_menu / g_test_menu picks are dispatched by index;
+ * g_menu / g_menu_desc picks just print. Every menu is opened by g.menu_task,
+ * so one handler sees every wuss_EVENT_MENU_SELECT and tells them apart by
+ * data.menu_select.menu. Defined after the menus / spawn tables it needs. */
 static result_t menu_handle(wuss_window_t      *window,
                             const wuss_event_t *event,
                             void               *task_data);
@@ -370,30 +370,40 @@ static result_t spawn_menu_desc(void)
 }
 
 /* The task launcher is a MENU-button pop-up over the backdrop rather than a
- * window of buttons. g_task_items and g_task_spawn run in lock-step: picking
- * item i calls g_task_spawn[i]. */
+ * window of buttons. Each leaf menu pairs a *_items table with a *_spawn table
+ * in lock-step: picking row i of that menu calls its spawn[i]. */
 typedef result_t (*task_spawn_fn_t)(void);
 
-static const wuss_menu_item_t g_task_items[] =
+/* "Launch" submenu: the demo tasks. */
+static const wuss_menu_item_t g_launch_items[] =
 {
-  { "Ball",        wuss_MENU_ITEM_NONE,   NULL },
-  { "Blank",       wuss_MENU_ITEM_NONE,   NULL },
-  { "Chars",       wuss_MENU_ITEM_NONE,   NULL },
-  { "Checker",     wuss_MENU_ITEM_NONE,   NULL },
-  { "Clock",       wuss_MENU_ITEM_NONE,   NULL },
-  { "Curve",       wuss_MENU_ITEM_NONE,   NULL },
-  { "Gradient",    wuss_MENU_ITEM_NONE,   NULL },
-  { "Icons",       wuss_MENU_ITEM_NONE,   NULL },
-  { "Image",       wuss_MENU_ITEM_NONE,   NULL },
-  { "Lissajous",   wuss_MENU_ITEM_NONE,   NULL },
-  { "Palette",     wuss_MENU_ITEM_NONE,   NULL },
-  { "Porter-Duff", wuss_MENU_ITEM_NONE,   NULL },
-  { "Sofa",        wuss_MENU_ITEM_NONE,   NULL },
-  { "Swatches",    wuss_MENU_ITEM_NONE,   NULL },
-  { "Text",        wuss_MENU_ITEM_NONE,   NULL },
-  { "Menu",        wuss_MENU_ITEM_DASHED, NULL },
-  { "Menu (desc)", wuss_MENU_ITEM_NONE,   NULL },
-  { "Quit Wuss",   wuss_MENU_ITEM_DASHED, NULL }
+  { "Ball",        wuss_MENU_ITEM_NONE, NULL },
+  { "Blank",       wuss_MENU_ITEM_NONE, NULL },
+  { "Chars",       wuss_MENU_ITEM_NONE, NULL },
+  { "Checker",     wuss_MENU_ITEM_NONE, NULL },
+  { "Clock",       wuss_MENU_ITEM_NONE, NULL },
+  { "Curve",       wuss_MENU_ITEM_NONE, NULL },
+  { "Gradient",    wuss_MENU_ITEM_NONE, NULL },
+  { "Icons",       wuss_MENU_ITEM_NONE, NULL },
+  { "Image",       wuss_MENU_ITEM_NONE, NULL },
+  { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
+  { "Palette",     wuss_MENU_ITEM_NONE, NULL },
+  { "Porter-Duff", wuss_MENU_ITEM_NONE, NULL },
+  { "Sofa",        wuss_MENU_ITEM_NONE, NULL },
+  { "Swatches",    wuss_MENU_ITEM_NONE, NULL },
+  { "Text",        wuss_MENU_ITEM_NONE, NULL }
+};
+
+static const task_spawn_fn_t g_launch_spawn[] =
+{
+  spawn_ball, spawn_blank, spawn_chars, spawn_checker, spawn_clock, spawn_curve,
+  spawn_gradient, spawn_icons, spawn_image, spawn_lissajous, spawn_palette,
+  spawn_porter_duff, spawn_sofa, spawn_swatches, spawn_text
+};
+
+static const wuss_menu_t g_launch_menu =
+{
+  "Launch", g_launch_items, NELEMS(g_launch_items)
 };
 
 static result_t spawn_quit(void)
@@ -402,12 +412,34 @@ static result_t spawn_quit(void)
   return result_OK;
 }
 
+/* "Test" submenu: the menu-system exercisers. */
+static const wuss_menu_item_t g_test_items[] =
+{
+  { "Menu",        wuss_MENU_ITEM_NONE, NULL },
+  { "Menu (desc)", wuss_MENU_ITEM_NONE, NULL }
+};
+
+static const task_spawn_fn_t g_test_spawn[] =
+{
+  spawn_menu, spawn_menu_desc
+};
+
+static const wuss_menu_t g_test_menu =
+{
+  "Test", g_test_items, NELEMS(g_test_items)
+};
+
+static const wuss_menu_item_t g_task_items[] =
+{
+  { "Launch",    wuss_MENU_ITEM_NONE,   &g_launch_menu, NULL },
+  { "Test",      wuss_MENU_ITEM_DASHED, &g_test_menu,   NULL },
+  { "Quit Wuss", wuss_MENU_ITEM_DASHED, NULL,           NULL }
+};
+
 static const task_spawn_fn_t g_task_spawn[] =
 {
-  spawn_ball, spawn_blank, spawn_chars, spawn_checker, spawn_clock, spawn_curve,
-  spawn_gradient, spawn_icons, spawn_image, spawn_lissajous, spawn_palette,
-  spawn_porter_duff, spawn_sofa, spawn_swatches, spawn_text, spawn_menu,
-  spawn_menu_desc,
+  NULL,        /* "Launch" -> submenu g_launch_menu */
+  NULL,        /* "Test"   -> submenu g_test_menu */
   spawn_quit
 };
 
@@ -432,9 +464,23 @@ static result_t menu_handle(wuss_window_t      *window,
   menu  = event->data.menu_select.menu;
   index = event->data.menu_select.index;
 
+  if (menu == &g_launch_menu)
+  {
+    if (index >= 0 && index < (int) NELEMS(g_launch_spawn))
+      (void) g_launch_spawn[index]();
+    return result_OK;
+  }
+
+  if (menu == &g_test_menu)
+  {
+    if (index >= 0 && index < (int) NELEMS(g_test_spawn))
+      (void) g_test_spawn[index]();
+    return result_OK;
+  }
+
   if (menu == &g_task_menu)
   {
-    if (index >= 0 && index < (int) NELEMS(g_task_spawn))
+    if (index >= 0 && index < (int) NELEMS(g_task_spawn) && g_task_spawn[index])
       (void) g_task_spawn[index]();
     return result_OK;
   }
