@@ -392,15 +392,14 @@ set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/drag-resize.c
     libraries/wuss/furniture/draw.c
     libraries/wuss/furniture/hit-test.c
-    libraries/wuss/furniture/hscroll-box.c
     libraries/wuss/furniture/invalidate.c
     libraries/wuss/furniture/ops.c
     libraries/wuss/furniture/resize-box.c
     libraries/wuss/furniture/scroll-action.c
+    libraries/wuss/furniture/scroll-box.c
     libraries/wuss/furniture/titlebar-box.c
     libraries/wuss/furniture/toggle-action.c
     libraries/wuss/furniture/toggle-box.c
-    libraries/wuss/furniture/vscroll-box.c
     libraries/wuss/furniture.h)
 
 set(WUSS_ICON_SOURCES
