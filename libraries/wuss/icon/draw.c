@@ -380,8 +380,8 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
 {
   const wuss_icon_t *icon = c->icon;
   const box_t       *b    = &c->b;
-  colour_t           ink, ground, tmp;
-  int                disabled, highlit, pad;
+  colour_t           ink, ground, text_ink, text_ground, tmp;
+  int                disabled, highlit, pad, text_x0, text_x1;
 
   disabled = (icon->flags & wuss_ICON_FLAGS_DISABLED) != 0;
   highlit  = wuss__icon_hovered(icon) && !disabled;
@@ -391,15 +391,26 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   ground = icon_blend_ground(c, c->fg);
   ink = disabled ? c->wuss->palette[c->wuss->bevel_dark] : c->fg;
 
-  /* highlight simply swaps the row's fg/bg */
+  /* the highlight only swaps fg/bg over the text column -- the tick and
+   * submenu-arrow gutters keep the row's normal ink/ground throughout */
+  text_ink    = ink;
+  text_ground = ground;
   if (highlit)
   {
-    tmp    = ink;
-    ink    = ground;
-    ground = tmp;
+    tmp         = text_ink;
+    text_ink    = text_ground;
+    text_ground = tmp;
   }
 
-  if (highlit || icon->bg != wuss_NO_BACKGROUND)
+  text_x0 = b->x0 + pad + c->font_height;      /* past the tick gutter */
+  text_x1 = b->x1 - pad - MAX(c->font_height, 8); /* short of the arrow
+                                                    * gutter, whether or not
+                                                    * this row has an arrow */
+
+  if (highlit)
+    screen_fill_rect(c->scr, text_x0, b->y0,
+                     SIZE2D(text_x1 - text_x0, b->y1 - b->y0), text_ground);
+  else if (icon->bg != wuss_NO_BACKGROUND)
     screen_fill_rect(c->scr, b->x0, b->y0,
                      SIZE2D(b->x1 - b->x0, b->y1 - b->y0), ground);
 
@@ -456,12 +467,20 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
 
   if (c->have_font && icon->text != NULL && icon->text[0] != '\0')
   {
-    point_t pos;
+    point_t        pos;
+    bmfont_width_t space_w;
 
-    pos.x = b->x0 + pad + c->font_height; /* leave room for a tick */
+    /* draw as if a space padded the text either side, without actually
+     * touching the string -- only the left inset matters for pos.x, but
+     * the same width is left spare at text_x1 too since the fill already
+     * spans the full column */
+    space_w = 0;
+    bmfont_measure(c->font, " ", 1, INT_MAX, NULL, &space_w);
+
+    pos.x = text_x0 + (int) space_w;
     pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
     bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                ink, ground, &pos, NULL);
+                text_ink, text_ground, &pos, NULL);
   }
 }
 
