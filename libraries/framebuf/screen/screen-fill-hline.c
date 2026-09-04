@@ -38,8 +38,12 @@ void screen_fill_hline(screen_t *scr, int x, int y, int w, colour_t colour)
                         colour, scr->format);
 
   /* the per-format run fill lives in the span table; "first" lets it address
-   * an odd P4 nibble so this needn't pack */
+   * an odd P4 nibble so this needn't pack. scr->span is NULL for a pixelfmt_t
+   * with no span-registry entry -- the assert catches that in debug builds,
+   * but a release build must still no-op rather than dereference NULL. */
   assert(scr->span && scr->span->fill);
+  if (scr->span == NULL)
+    return;
 
   rowp = (unsigned char *) scr->base + draw_box.y0 * scr->rowbytes;
   scr->span->fill(rowp, draw_box.x0, fmt, clipped_width);
