@@ -169,6 +169,7 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
   result_t      rc = result_OK;
   unsigned char adwtab[256];
   unsigned int *pixels;
+  unsigned int *pixels_end;
   int           bitsperchar;
   unsigned int  mask;
   png_uint_32   y;
@@ -182,6 +183,7 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
   build_adw_tab(adwtab, PIXEL_WIDTH_IDX);
 
   pixels      = (unsigned int *) voidpixels;
+  pixels_end  = pixels + (rowbytes * imgheight) / sizeof(*pixels);
   bitsperchar = bmfont->charwidth * 2; /* 2 because 2bpp */
   mask        = 0xFFFFFFFFu << (32 - bitsperchar);
 
@@ -198,6 +200,8 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
 
     /* maintain two words, a current and a pending so we've always got enough
      * bits ready */
+    if (pixels >= pixels_end)
+      return result_PARSE_ERROR; /* malformed grid: row starts past the buffer */
     currbits  = rev_l(*pixels++);
     ncurrbits = 32; /* bits available in currbits */
     nextbits  = 0;
@@ -211,7 +215,9 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
 
         if (nnextbits == 0) /* refill if needed */
         {
-          nextbits  = rev_l(*pixels++); // TODO: Check for end of buffer
+          if (pixels >= pixels_end)
+            return result_PARSE_ERROR; /* malformed grid: row overruns the buffer */
+          nextbits  = rev_l(*pixels++);
           nnextbits = 32;
         }
 
