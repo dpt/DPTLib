@@ -162,8 +162,10 @@ static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
   struct wuss__menu *node;
   wuss_window_t     *win;
   point_t            at;
+  point_t            prev;
 
-  win = self->menu->items[index].window;
+  win  = self->menu->items[index].window;
+  prev = POINT(win->visible.x0, win->visible.y0);
 
   node = wuss__malloc(self->wuss, sizeof(*node));
   if (node == NULL)
@@ -184,7 +186,8 @@ static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
   wuss_window_move(win, at);
   if (wuss_window_set_hidden(win, 0) != result_OK)
   {
-    wuss__free(self->wuss, node); /* vetoed: row stays unopened */
+    wuss_window_move(win, prev); /* vetoed: undo the anchor move */
+    wuss__free(self->wuss, node); /* row stays unopened */
     return result_OK;
   }
   wuss_window_restack(win, wuss_ZORDER_FRONT);
