@@ -34,15 +34,18 @@ void wuss_destroy(wuss_t *doomed)
     e = next;
   }
 
-  /* Windows are gone; free any tasks the caller left registered. No QUIT --
-   * wuss_destroy is the whole-manager teardown, past the point of
-   * notification. */
+  /* Windows are gone; QUIT then free any tasks the caller left registered,
+   * so a task's client-owned task_data (freed only from its QUIT handler,
+   * per the task_data-ownership contract) is not leaked. */
   e = doomed->tasks.next;
   while (e != NULL)
   {
-    list_t *next;
+    list_t      *next;
+    wuss_event_t event;
 
     next = e->next;
+    event.kind = wuss_EVENT_QUIT;
+    (void) wuss__deliver(wuss__task_from_link(e), NULL, &event);
     wuss__free(doomed, e);
     e = next;
   }
