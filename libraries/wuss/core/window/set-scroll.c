@@ -79,5 +79,9 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
     return;
   }
 
+  /* fast path unavailable (piece budget overflowed, or wuss__blit_pieces
+   * found no safe blit): repaint the whole content box */
+  logf_warning("wuss_window_set_scroll: blit fast path failed, repainting the "
+               "whole content box (overflow=%d)", overflow);
   wuss__invalidate_clipped(window, &content);
 }

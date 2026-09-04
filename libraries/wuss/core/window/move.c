@@ -112,6 +112,8 @@ void wuss_window_move(wuss_window_t *window, point_t p)
     /* Nothing of "before" was clean, splitting overflowed the piece budget,
      * the pieces would have clobbered each other, or the blit was declined:
      * fall back to a normal clipped redraw of the whole moved footprint. */
+    logf_warning("wuss_window_move: blit fast path failed, repainting the "
+                 "whole footprint (nclean=%d)", nclean);
     box_union(&before, &window->visible, &dirty);
     wuss__invalidate_clipped(window, &dirty);
   }
