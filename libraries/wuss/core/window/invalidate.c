@@ -64,7 +64,7 @@ int wuss__clip_to_visible(wuss_window_t *window,
     wuss_window_t *occluder;
     int             nnext, p;
 
-    occluder = (wuss_window_t *) e;
+    occluder = wuss__window_from_link(e);
     if (occluder->flags & wuss_WINDOW_HIDDEN)
       continue; /* a hidden window occludes nothing */
     nnext    = 0;

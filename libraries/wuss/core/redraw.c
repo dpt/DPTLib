@@ -91,7 +91,7 @@ static void redraw_from(wuss_t      *wuss,
     if (last == NULL)
       break;
 
-    redraw_window(wuss, (wuss_window_t *) last, full, rc);
+    redraw_window(wuss, wuss__window_from_link(last), full, rc);
     stop = last;
   }
 }
