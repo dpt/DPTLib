@@ -8,6 +8,7 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "base/utils.h"
 #include "utils/array.h"
 #include "utils/barith.h"
 
@@ -53,8 +54,7 @@ result_t atom_ensure_loc_space(atom_set_t *s)
 
     newallocated = s->l_used + 1;
     /* start with at least this many entries */
-    if (newallocated < LOCPTRMINSZ)
-      newallocated = LOCPTRMINSZ;
+    newallocated = MAX(newallocated, LOCPTRMINSZ);
     /* subtract 1 to make it greater than or equal */
     newallocated = power2gt(newallocated - 1);
 
@@ -120,8 +120,7 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
 
     newallocated = s->b_used + 1;
     /* start with at least this many entries */
-    if (newallocated < BLKPTRMINSZ)
-      newallocated = BLKPTRMINSZ;
+    newallocated = MAX(newallocated, BLKPTRMINSZ);
     /* subtract 1 to make it greater than or equal */
     newallocated = power2gt(newallocated - 1);
 

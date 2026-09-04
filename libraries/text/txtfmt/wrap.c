@@ -7,6 +7,7 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "base/utils.h"
 #include "text/txtfmt.h"
 
 #include "impl.h"
@@ -24,9 +25,7 @@ static result_t emit_line(txtfmt_t *tx, int start, int length)
 
     /* doubling strategy */
 
-    n = tx->allocated * 2;
-    if (n < StartAt)
-      n = StartAt;
+    n = MAX(tx->allocated * 2, StartAt);
 
     newspans = realloc(tx->spans, sizeof(*tx->spans) * n);
     if (newspans == NULL)
@@ -39,8 +38,7 @@ static result_t emit_line(txtfmt_t *tx, int start, int length)
   tx->spans[i].start  = start;
   tx->spans[i].length = length;
 
-  if (length > tx->wrapped_width)
-    tx->wrapped_width = length;
+  tx->wrapped_width = MAX(tx->wrapped_width, length);
 
   tx->nspans = ++i;
 

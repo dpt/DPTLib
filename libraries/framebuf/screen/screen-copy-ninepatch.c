@@ -2,6 +2,7 @@
 
 #include <assert.h>
 
+#include "base/utils.h"
 #include "geom/box.h"
 #include "geom/size.h"
 
@@ -103,10 +104,10 @@ result_t screen_copy_ninepatch(screen_t       *scr,
    * them collapse to nothing. */
   midx = (dst->x0 + dst->x1) / 2;
   midy = (dst->y0 + dst->y1) / 2;
-  lx = dst->x0 + pw; if (lx > midx) lx = midx;
-  rx = dst->x1 - pw; if (rx < midx) rx = midx;
-  ty = dst->y0 + ph; if (ty > midy) ty = midy;
-  by = dst->y1 - ph; if (by < midy) by = midy;
+  lx = MIN(dst->x0 + pw, midx);
+  rx = MAX(dst->x1 - pw, midx);
+  ty = MIN(dst->y0 + ph, midy);
+  by = MAX(dst->y1 - ph, midy);
 
   /* Fold "dst" into the saved clip once, so every tile_area call is bounded by
    * the destination rectangle as well as the caller's clip. An empty caller

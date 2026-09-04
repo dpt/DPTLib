@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "base/utils.h"
 #include "utils/barith.h"
 
 #include "datastruct/cache.h"
@@ -521,8 +522,7 @@ static void purge(cache_t *c, entry_t *purgeent, int entbin)
       }
 
       /* firstfree points to the lowest block */
-      if (free < c->firstfree)
-        c->firstfree = free;
+      c->firstfree = MIN(c->firstfree, free);
     }
 
     cache_check(c, 0);
