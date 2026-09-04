@@ -48,6 +48,19 @@
 #ifdef WUSS_ICONS
 #define WUSS_FRAME_CAPTION_INSET 8 /* x offset of a wuss_ICON_TYPE_FRAME caption from the frame's left edge */
 #define WUSS_FRAME_CAPTION_PAD   2 /* gap left in the frame's top edge either side of the caption */
+
+/* Font slot (see wuss_create's fonts[]) consulted for menu decoration glyphs:
+ * the selection tick and the submenu arrow. When the slot is empty those are
+ * drawn as vector strokes instead. A font in this slot is expected to carry a
+ * checkmark bitmap in its WUSS_GLYPH_TICK cell and an arrowhead in its
+ * WUSS_GLYPH_SUBMENU cell; the ASCII defaults let an ordinary bmfont stand in. */
+#define WUSS_SYMBOL_FONT 2
+#ifndef WUSS_GLYPH_TICK
+#define WUSS_GLYPH_TICK    '*'
+#endif
+#ifndef WUSS_GLYPH_SUBMENU
+#define WUSS_GLYPH_SUBMENU '>'
+#endif
 #endif
 #define WUSS_MIN_CONTENT  20 /* resize-drag floor: content can never be squeezed smaller than this */
 #define WUSS_SCROLL_INSET 2  /* sausage cross-axis margin from its well's edges, purely cosmetic */
