@@ -7,7 +7,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 result_t wuss_icon_set_text(wuss_icon_t *icon, const char *text)
 {

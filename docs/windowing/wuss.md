@@ -24,6 +24,15 @@ result_t wuss_create(screen_t             *scr,
 
 A `wuss_backdrop_t` is `{ colour, pattern, pattern_bg }`; the `wuss_BACKDROP_COLOUR(c)` and `wuss_BACKDROP_PATTERN(c, p, b)` macros build one as a compound literal.
 
+### Symbolic colours
+
+A `wuss_colour_t` is a system-palette index. Values `0..127` are raw indices; `wuss_COLOUR_SYMBOLIC` (128) and above are *symbolic* — roles wuss resolves to a concrete index against the live palette (and, for the chrome roles, the live config):
+
+- `wuss_COLOUR_BLACK`, `_WHITE`, `_RED`, `_GREEN`, `_BLUE`, `_YELLOW`, `_CYAN`, `_MAGENTA`, `_GREY` — nearest system-palette entry to the named RGB, the same lookup as `wuss_nearest_colour`.
+- `wuss_COLOUR_TITLE_BG`, `_TITLE_FG`, `_BUTTON_HILIGHT`, `_BUTTON_SHADOW`, `_ACCENT_BG`, `_ACCENT_FG`, `_BACKDROP` — echo the matching `wuss_config_t` field (`furniture.title.bg`, `bevel.light`, `bevel.dark`, `backdrop.colour`, …).
+
+Pass a symbolic value anywhere a `wuss_colour_t` is taken: config furniture/bevel/accent/backdrop, `wuss_window_create` / `wuss_window_set_background` backgrounds, icon specs. It is resolved once when stored, so drawing never pays for it and reads back a plain index. `wuss_set_palette` and `wuss_set_backdrop` re-resolve. `wuss_NO_BACKGROUND` is not symbolic and always passes through.
+
 Destroy with `wuss_destroy`, which also destroys any windows still open on it.
 
 ## Windows

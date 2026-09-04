@@ -3,7 +3,7 @@
 #ifndef TASKS_PORTER_DUFF_H
 #define TASKS_PORTER_DUFF_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
@@ -32,7 +32,7 @@ typedef struct porter_duff_task
 }
 porter_duff_task_t;
 
-wuss_event_fn_t porter_duff_handle;
+wuss_window_fn_t porter_duff_handle;
 
 /* load the two demo images and create the window against the given wuss
  * instance; resources is the DPTLib repo root, for locating the bundled PNGs */
@@ -43,6 +43,6 @@ result_t porter_duff_create(wuss_t             *wuss,
                             porter_duff_task_t *task);
 
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_PORTER_DUFF_H */

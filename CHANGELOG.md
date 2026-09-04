@@ -10,16 +10,87 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- An Emscripten/WebAssembly build of the interactive `wuss` demo. The
+  run-loop is extracted into `wuss_frame(void *)` over a `wuss_frame_ctx`,
+  driven by `emscripten_set_main_loop_arg` in the browser while desktop and
+  RISC OS still spin it directly. CMake's `EMSCRIPTEN` branch uses the
+  bundled `-sUSE_LIBPNG=1` port instead of `find_package(PNG)`, links
+  Emscripten's SDL3 port (`-sUSE_SDL=3`), and preloads `resources/` into
+  `wuss.data` mounted at MEMFS `/resources`; the target emits `wuss.html`.
+  A GitHub Actions Pages workflow builds and deploys the demo on pushes to
+  `master` and `develop`.
+- `bmfont_enumerate()` — non-recursive scan of a directory's `*.png` files,
+  reporting each as a (name, path) pair (name is the leaf with `.png`
+  stripped) to a caller-supplied callback; the callback may return
+  `result_STOP_WALK` to stop early.
+- `wuss/component/fontmenu.h` and `wuss/component/colourmenu.h` — shared
+  task components (the RISC OS Toolbox analogue), gated on a new
+  `WUSS_COMPONENTS` CMake option (implies `WUSS_MENUS`). `wuss_fontmenu_create()`
+  builds a flat, name-sorted `wuss_menu_t` from the bitmap fonts in a
+  directory (via `bmfont_enumerate()`); `wuss_fontmenu_selected()` recovers
+  the picked font name from a `wuss_EVENT_MENU_SELECT`, and
+  `wuss_fontmenu_set_ticked(fm, index)` mutates the component's own items to
+  tick one row (index -1 clears every tick). `wuss_colourmenu_create()`
+  builds a swatch-row menu, one row per system-palette entry labelled
+  `#RRGGBB`, and resolves a pick back to the palette index. Both components
+  route every allocation through the caller's `wuss_alloc_t` hooks (copied
+  into the handle, not a borrowed `wuss_t *`, so they can safely outlive
+  `wuss_destroy()`).
+- `wuss_menu_item_t` / icon rows gain an optional colour chip
+  (`wuss_MENU_ITEM_SWATCH` / `wuss_ICON_FLAGS_SWATCH` plus a `wuss_colour_t
+  swatch` field), drawn in the left gutter where the tick sits; a chip wins
+  over a selected tick.
+- Font slot 2 (`WUSS_SYMBOL_FONT`) is now consulted to draw the menu
+  selection tick and submenu arrow as glyphs (`WUSS_GLYPH_TICK` `'*'` /
+  `WUSS_GLYPH_SUBMENU` `'>'`) instead of vector strokes, when a font is
+  present in that slot.
+- `wuss_create()`'s `fonts` array elements are now tagged with a
+  `wuss_font_class_t` and a borrowed leafname (`wuss_font_desc_t`), letting
+  a picker such as `wuss_fontmenu` and the system-decoration font (menu
+  ticks/arrows) be identified by class rather than array position.
+  `wuss_FONT_CLASS_SYSTEM` marks a chrome/decoration-only slot.
+- `wuss_icon_plot()` — validates an icon spec exactly as `wuss_icon_create()`
+  does and draws it once through the window manager's screen, retaining
+  nothing; for static content a task can redraw from its own model without
+  a live icon per element.
+- `wuss_window_invalidate_extent()` — marks a window's whole virtual
+  document extent dirty (`window->doc`), not just the visible content
+  rectangle `wuss_window_invalidate_all()` covers, so a change touching the
+  whole document repaints correctly at any scroll position.
+- Clicking in a scrollbar well (not on the sausage) now pages the content
+  one visible extent towards the click, keeping one `WUSS_SCROLL_STEP` of
+  overlap, RISC OS style.
+- `bitmap_fill_pattern()` (see _Changed_ for the rename from
+  `bitmap_draw_pattern`) and `screen_fill_pattern()` now share a single
+  `pattern_t { bits, fg, bg, flags, origin }` describing an 8x8 tile,
+  built via `pattern_from_preset()` (the Bayer ramp and named tiles) or
+  `pattern_from_mask()` (stencil) in the new `framebuf/pattern` module.
+- `screen_fill_hline()` — fills one clipped horizontal run; the per-row
+  primitive `screen_fill_rect()` and `screen_draw_circle()`'s scanline fill
+  now loop over.
+- Symbolic `wuss_colour_t` values (`wuss/wuss.h`). A raw `wuss_colour_t` is a
+  palette index, `0..127`; `wuss_COLOUR_SYMBOLIC` (128) and up name roles the
+  window manager resolves to a concrete index. `wuss_COLOUR_BLACK`,
+  `_WHITE`, `_RED`, `_GREEN`, `_BLUE`, `_YELLOW`, `_CYAN`, `_MAGENTA`,
+  `_GREY` pick the nearest system-palette entry to the named RGB;
+  `wuss_COLOUR_TITLE_BG` / `_TITLE_FG` / `_BUTTON_HILIGHT` / `_BUTTON_SHADOW`
+  / `_ACCENT_BG` / `_ACCENT_FG` / `_BACKDROP` echo the matching
+  `wuss_config_t` field. Accepted anywhere a `wuss_colour_t` is taken —
+  config furniture/bevel/accent/backdrop, `wuss_window_create()` /
+  `wuss_window_set_background()` backgrounds, icon specs — and resolved once
+  when the value is stored, so draw code and `wuss_nearest_colour()` are
+  unaffected. Resolutions are recomputed on `wuss_set_palette()` and
+  `wuss_set_backdrop()`.
 - `wuss/menu.h` (new `WUSS_MENUS` option, implies `WUSS_ICONS`) — RISC OS-style
   pop-up menus. `wuss_menu_open()` shows a caller-owned, immutable
   `wuss_menu_t` (title plus an array of `wuss_menu_item_t`) as a borderless
   window, nudged to stay on screen and opened under the pointer; wuss owns
   layout, submenu chaining on hover and whole-chain dismissal. Per-item flags
-  cover ticks, disabled rows, dashed separators and submenus.
-  `wuss_menu_select_fn_t` reports a leaf pick — SELECT closes the chain, ADJUST
-  keeps it open. `wuss_menu_close()` / `wuss_menu_is_open()` manage a chain by
-  handle. An over-tall menu gets a real vertical scrollbar instead of being
-  cropped.
+  cover ticks, disabled rows, dashed separators and submenus. A leaf pick is
+  delivered to the opening task as `wuss_EVENT_MENU_SELECT` — SELECT closes
+  the chain, ADJUST keeps it open. `wuss_menu_close()` / `wuss_menu_is_open()`
+  manage a chain by handle. An over-tall menu gets a real vertical scrollbar
+  instead of being cropped.
 - `wuss_menu_create_from_desc()` / `wuss_menu_destroy()` — build a heap
   `wuss_menu_t` tree from a compact descriptor string (PrivateEye's
   `menu_create_from_desc` syntax: `,` between items, leading `|` for a dashed
@@ -34,10 +105,12 @@ _Unreleased_ until one is cut.
 - `wuss_window_set_hidden()` and the `wuss_WINDOW_HIDDEN` create flag — a hidden
   window keeps its z-order slot but is not drawn, not hit-tested and occludes
   nothing. `wuss_window_move()` still works on it (translate only, no blit) so
-  it can be parked and re-shown in position.
+  it can be parked and re-shown in position. Revealing one fires a veto-able
+  `wuss_EVENT_PRE_SHOW` then `wuss_EVENT_SHOW`; `wuss_window_set_hidden()`
+  returns `result_t` accordingly.
 - `wuss_set_palette()` — swap the system palette mid-session. Copies the new
   palette in, refreshes the cached nearest-black/white indices, broadcasts a
-  new `wuss_EVENT_PALETTE` to every window's task so it can recache
+  new `wuss_EVENT_PALETTE` to every registered task so it can recache
   `wuss_nearest_colour()` selections, then invalidates the whole screen.
   Length must match `wuss_create()`'s; a now-out-of-range furniture/bevel/
   backdrop index is rejected with the palette left unchanged.
@@ -117,6 +190,45 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- **Breaking:** `wuss_create()`'s `fonts` argument is now
+  `const wuss_font_desc_t *` (handle, `wuss_font_class_t`, borrowed
+  leafname) instead of a bare `bmfont_t *const *` array; up to
+  `wuss_MAX_FONTS` (4) slots are stored, slot 0 remaining the system font
+  used for titlebars and any icon that does not select another.
+  `wuss_get_font_n(wuss, index)` reads a given slot; `wuss_get_font` stays
+  slot 0. An icon's flags gain a two-bit font-select field
+  (`wuss_ICON_FLAGS_FONT_MASK`, bits 9-10) with `wuss_ICON_FONT(n)` /
+  `wuss_ICON_FONT_OF(f)` helpers, and titlebars are drawn in font slot 1
+  (the bold weight) when one is supplied, else slot 0.
+- **Breaking:** `wuss_fontmenu_create()` takes a fourth argument,
+  `const wuss_alloc_t *alloc` (NULL selects `wuss_alloc`), routing every
+  block the handle keeps through those hooks instead of libc
+  malloc/calloc/strdup/free, matching `wuss_colourmenu` and `wuss_create`.
+- **Breaking:** `bitmap_draw_pattern()` is renamed `bitmap_fill_pattern()`
+  and now takes `const pattern_t *` and returns `result_t`.
+  `screen_draw_bitmap()` is renamed `screen_copy_bitmap()` and
+  `screen_draw_ninepatch()` renamed `screen_copy_ninepatch()` (its
+  `screen_NINEPATCH_NO_CENTRE` flag is unchanged) — `copy` is now the verb
+  for all pixel transfer, matching `screen_copy_rect()`. `screen_fill_pattern()`
+  now takes `const pattern_t *` instead of a preset enum. Hard renames, no
+  compatibility wrappers.
+- `screen_copy_bitmap()`, `screen_copy_ninepatch()` and `screen_copy_rect()`
+  now all return `result_t` (`result_OK` / `result_NOT_SUPPORTED`) instead
+  of `void` / `int`; `screen_copy_rect()` also returns
+  `result_NOT_SUPPORTED` when clipping leaves nothing to copy, so a caller
+  must fall back to a full redraw in that case.
+- Resizing a window (`wuss_window_resize()`) no longer clamps the result to
+  the visible on-screen strip when the window's top-left is off-screen —
+  the requested content size is applied verbatim and the window may
+  overhang the screen edge, the same latitude toggle-size and drag already
+  allow. `wuss_window_create()` keeps its own screen cap.
+- Toggle-size now grows a window to fill the whole screen (capped per axis
+  at the window's document extent, or uncapped when that extent is 0),
+  nudging the top-left toward the origin by the minimum needed to fit; it
+  previously pinned the top-left and only grew the bottom-right corner, so
+  a window not already near the origin could never fill the screen and a
+  zero document extent toggled to nothing. Restore returns the exact
+  pre-toggle box, position included.
 - **Breaking:** `wuss_create()` takes a `const wuss_alloc_t *alloc` argument
   after `config`; pass NULL for the stdlib allocator.
 - **Breaking:** `wuss_config_t::palette` is renamed `furniture`, and its type
@@ -147,9 +259,95 @@ _Unreleased_ until one is cut.
   points, so one arrow can be worked both ways without moving the pointer.
   Toggle-size stays Select-only.
 - A window can no longer be resized larger than the screen.
+- **Breaking:** event dispatch is reworked around a registered, opaque
+  `wuss_task_t` that owns its windows and is the sole delivery target.
+  - `wuss_task_start()` / `wuss_task_stop()` and the by-value task-delegate
+    struct are gone. Register a task with
+    `wuss_task_create(wuss, const wuss_task_desc_t *, wuss_task_t **)` —
+    `wuss_task_desc_t` is `{ wuss_window_fn_t *handle; void *task_data;
+    const char *name; }` — and tear it down with
+    `wuss_task_destroy(wuss_task_t *)`, which closes the task's windows,
+    fires one `wuss_EVENT_QUIT` and unregisters it.
+  - `wuss_task_set_autoclose(wuss_task_t *, int)` opts a task into
+    self-destruct: once its last window closes it fires one `wuss_EVENT_QUIT`
+    and unregisters, so it stops receiving `wuss_idle()` / `wuss_set_palette()`
+    broadcasts. Such tasks should free `task_data` from `wuss_EVENT_QUIT`, not
+    `wuss_EVENT_CLOSE`.
+  - `wuss_window_create()` and `wuss_window_create_placed()` no longer take a
+    leading `wuss_t *` or a task-delegate pointer; their first argument is now
+    the owning `wuss_task_t *`. The window inherits that task's handler.
+  - `wuss_event_kind_t` is a single master enum
+    (`REDRAW, MOUSE, ICON, SCROLL, OPEN, PRE_SHOW, SHOW, PRE_CLOSE, CLOSE,
+    IDLE, QUIT, PALETTE, MENU_SELECT`). Handlers must handle unknown kinds
+    (fall through / `default:`).
+  - New veto-able pre-events. `wuss_window_set_hidden()` now returns
+    `result_t`: revealing a hidden window fires `wuss_EVENT_PRE_SHOW` first
+    and a non-OK return keeps it hidden and propagates. New
+    `wuss_window_try_close()` fires `wuss_EVENT_PRE_CLOSE` (non-OK vetoes),
+    then `wuss_EVENT_CLOSE`, then closes; the close icon routes through it.
+    `wuss_window_close()` stays the forced, unvetoable teardown and fires no
+    pre-events.
+  - `wuss_set_palette()` and `wuss_idle()` now broadcast once per *registered
+    task* (in registration order, `window == NULL`), not once per open
+    window's task.
+  - `wuss_menu_open()` takes a `wuss_task_t *` as its first argument. A picked
+    leaf now delivers `wuss_EVENT_MENU_SELECT` (with `window == NULL`) to that
+    task — `data.menu_select` carries `{ const struct wuss_menu *menu; int
+    index; wuss_button_t button; }`. `wuss_menu_select_fn_t` is removed.
 
 ### Fixed
 
+- `wuss_destroy()` now delivers `wuss_EVENT_QUIT` to each still-registered
+  task before freeing it, instead of freeing the task block directly. Per
+  the `task_data`-ownership contract a task's client-owned allocations are
+  freed only from its `QUIT` handler, so a still-registered task (e.g. a
+  menu-spawned demo window not yet closed) previously leaked `task_data`
+  on whole-manager teardown.
+- `wuss_task_destroy()` now closes a live menu chain it owns before freeing
+  the task, matching `wuss_destroy()`'s whole-manager teardown; previously
+  a later row pick or in-flight pick-flash completion could call into the
+  freed task through a dangling chain-owner pointer.
+- A click outside a menu (or another `wuss_menu_open()`/`wuss_menu_close()`)
+  landing during a pick's highlight flash no longer silently drops the
+  `wuss_EVENT_MENU_SELECT` the flash was standing in for.
+- A borrowed window opened by hovering a menu row (`wuss_menu_item_t::window`)
+  no longer sticks at the submenu anchor position when its
+  `wuss_EVENT_PRE_SHOW` vetoes the reveal — its prior position is restored.
+- A submenu now opens only while the pointer is in the row's arrow gutter,
+  not anywhere on the row, and closes on any re-entry rather than staying
+  open for every subsequent mouse move over that row.
+- An ADJUST pick that keeps a menu chain open now re-ticks the picked row
+  in place; previously the tick was only applied at `wuss_menu_open()` time
+  so an ADJUST-kept-open menu's tick state went stale.
+- A window's furniture (titlebar, scrollbars, outline) is now clipped to
+  its unoccluded pieces when redrawing its own dirty region; previously
+  only the content redraw was occlusion-clipped, so a partly-covered
+  window repainted furniture pixels straight over the window on top.
+- Bounds-checked `extract_advance_widths()` pixel reads in `bmfont` before
+  they happen, rather than after: a font PNG whose width is not an exact
+  multiple of the glyphs-per-row count could previously run the inner loop
+  past the row's — or the buffer's — last valid word before any check
+  caught it.
+- `bmfont`'s grid-size detector now decodes the image and verifies each
+  candidate cell height against the advance-width strip's pixel markers,
+  rather than taking the first divisor of the image height at or above the
+  grid width. The old heuristic could miss a valid cell height below the
+  grid width and, when the grid width did not divide the image height
+  cleanly, could latch onto a spurious large divisor and overflow the
+  pixel buffer in `bmfont_draw()`.
+- `bmfont` rejects a malformed font grid with `result_PARSE_ERROR` instead
+  of asserting, when `extract_advance_widths()`'s pixel cursor would walk
+  out of the decoded image (previously two `assert`s, compiled out under
+  `NDEBUG`).
+- `screen_fill_hline()` (and so `screen_fill_rect()`, which calls it per
+  row) is a no-op in release builds for a `screen_t` whose pixel format has
+  no span-registry entry, instead of dereferencing the NULL `scr->span` —
+  the guarding `assert` was compiled out under `NDEBUG` so this previously
+  crashed.
+- `wuss_create()`'s font-slot arrays and loop bound in the interactive demo
+  are now sized from one named, compile-time-checked constant
+  (`WUSS_MAIN_NFONTS`, checked against `wuss_MAX_FONTS`) instead of three
+  independent hardcoded literals that could silently drift apart.
 - Opening a menu from a task's mouse-down handler no longer picks the menu's
   first row on the matching mouse-up: that release is now swallowed.
 - A menu chain is now closed before its `on_select` callback runs, so a

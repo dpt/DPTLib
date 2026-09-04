@@ -183,17 +183,28 @@ bmtestline_t;
 
 /* ----------------------------------------------------------------------- */
 
-#define MAXFONTS 7
+#define MAXFONTS 8
 
 static bmtestfont_t bmfonts[MAXFONTS] =
 {
-  { "daydream",         NULL },
-  { "gliderrider",      NULL },
-  { "tiny",             NULL },
-  { "henry",            NULL },
-  { "tall",             NULL },
-  { "ms-sans-serif",    NULL },
-  { "digits",           NULL }
+  { "Daydream",         NULL },
+  { "GliderRider",      NULL },
+  { "Tiny",             NULL },
+  { "Henry",            NULL },
+  { "CookeTall",        NULL },
+  { "MS Sans Serif",    NULL },
+  { "Digits-Regular",   NULL },
+  { "Digits-Bold",      NULL }
+};
+
+/* Symbols.png isn't Latin text, so it's excluded from bmfonts[] above (used
+ * to draw lorem_ipsum in the clipping/layout tests) but must still show up
+ * in the enumerate test, which just walks the fixture directory. */
+#define MAXFONTS_ENUM 9
+
+static const char *bmfonts_enum_extra[MAXFONTS_ENUM - MAXFONTS] =
+{
+  "Symbols"
 };
 
 /* ----------------------------------------------------------------------- */
@@ -715,6 +726,124 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
   return result_TEST_PASSED;
 }
 
+/* ----------------------------------------------------------------------- */
+
+typedef struct bmfont_enum_check
+{
+  int found[MAXFONTS]; /* parallel to bmfonts[]; set when that name is seen */
+  int found_extra[MAXFONTS_ENUM - MAXFONTS]; /* parallel to bmfonts_enum_extra[] */
+  int total;           /* every callback, including unrecognised names */
+  int stop_after;      /* >0: return result_STOP_WALK once total reaches it */
+}
+bmfont_enum_check_t;
+
+static result_t bmfont_enum_cb(const char *name,
+                               const char *path,
+                               void       *opaque)
+{
+  bmfont_enum_check_t *chk = opaque;
+  int                  i;
+
+  assert(name);
+  assert(path);
+
+  chk->total++;
+
+  for (i = 0; i < MAXFONTS; i++)
+    if (strcmp(name, bmfonts[i].filename) == 0)
+      chk->found[i] = 1;
+
+  for (i = 0; i < MAXFONTS_ENUM - MAXFONTS; i++)
+    if (strcmp(name, bmfonts_enum_extra[i]) == 0)
+      chk->found_extra[i] = 1;
+
+  if (chk->stop_after > 0 && chk->total >= chk->stop_after)
+    return result_STOP_WALK;
+
+  return result_OK;
+}
+
+static result_t bmfont_enumerate_test(const char *resources)
+{
+  const char         *dir;
+  bmfont_enum_check_t  chk;
+  result_t            rc;
+  int                 i;
+
+  dir = path_join_filename(resources, 2, "resources", "bmfonts");
+
+  /* full walk: every fixture font is reported exactly once */
+  memset(&chk, 0, sizeof(chk));
+  rc = bmfont_enumerate(dir, bmfont_enum_cb, &chk);
+  if (rc != result_OK)
+  {
+    fprintf(stderr, "bmfont_enumerate: unexpected rc %x\n", rc);
+    return result_TEST_FAILED;
+  }
+  if (chk.total != MAXFONTS_ENUM)
+  {
+    fprintf(stderr, "bmfont_enumerate: saw %d entries, expected %d\n",
+            chk.total, MAXFONTS_ENUM);
+    return result_TEST_FAILED;
+  }
+  for (i = 0; i < MAXFONTS_ENUM - MAXFONTS; i++)
+  {
+    if (!chk.found_extra[i])
+    {
+      fprintf(stderr, "bmfont_enumerate: missing font %s\n",
+              bmfonts_enum_extra[i]);
+      return result_TEST_FAILED;
+    }
+  }
+  for (i = 0; i < MAXFONTS; i++)
+  {
+    if (!chk.found[i])
+    {
+      fprintf(stderr, "bmfont_enumerate: missing font %s\n",
+              bmfonts[i].filename);
+      return result_TEST_FAILED;
+    }
+  }
+
+  /* stop-walk: callback returns result_STOP_WALK, enumerate still returns OK */
+  memset(&chk, 0, sizeof(chk));
+  chk.stop_after = 3;
+  rc = bmfont_enumerate(dir, bmfont_enum_cb, &chk);
+  if (rc != result_OK)
+  {
+    fprintf(stderr, "bmfont_enumerate stop-walk: rc %x\n", rc);
+    return result_TEST_FAILED;
+  }
+  if (chk.total != 3)
+  {
+    fprintf(stderr, "bmfont_enumerate stop-walk: ran %d times, expected 3\n",
+            chk.total);
+    return result_TEST_FAILED;
+  }
+
+  /* missing directory */
+  memset(&chk, 0, sizeof(chk));
+  rc = bmfont_enumerate("no/such/dir/here", bmfont_enum_cb, &chk);
+  if (rc != result_FILE_NOT_FOUND)
+  {
+    fprintf(stderr, "bmfont_enumerate bad dir: rc %x, expected %x\n",
+            rc, result_FILE_NOT_FOUND);
+    return result_TEST_FAILED;
+  }
+
+  /* NULL arguments */
+  if (bmfont_enumerate(NULL, bmfont_enum_cb, &chk) != result_NULL_ARG ||
+      bmfont_enumerate(dir, NULL, &chk) != result_NULL_ARG)
+  {
+    fprintf(stderr, "bmfont_enumerate: NULL arg not rejected\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t bmfont_test_one_format(const char *resources,
                                 int         scr_width,
                                 int         scr_height,
@@ -837,6 +966,10 @@ result_t bmfont_test(const char *resources)
 
   result_t rc;
   int      i;
+
+  rc = bmfont_enumerate_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
 
   for (i = 0; i < NELEMS(tab); i++)
   {

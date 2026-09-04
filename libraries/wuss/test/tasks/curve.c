@@ -1,6 +1,6 @@
 /* wuss/test/tasks/curve.c -- draggable Bezier curve task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -25,7 +25,9 @@
 
 result_t curve_create(wuss_t *wuss, curve_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  result_t         rc;
 
   task->bg        = colour_rgb(0xFF, 0xFF, 0xFF);
   task->line      = colour_rgb(0x00, 0x00, 0x00);
@@ -38,17 +40,30 @@ result_t curve_create(wuss_t *wuss, curve_task_t *task)
   task->points[2] = POINT(210, 10);
   task->points[3] = POINT(210, 140);
 
-  delegate = wuss_task_start(curve_handle, task); /* curve_redraw paints its own background */
+  /* curve_redraw paints its own background */
+  delegate_desc.handle    = curve_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "curve";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
+    return rc;
+  }
+  wuss_task_set_autoclose(delegate, 1);
 
-  return wuss_window_create_placed(wuss,
-                                   SIZE2D(220, 160),
-                                   "Curve",
-                                   wuss_WINDOW_NONE,
-                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                   &delegate,
-                                   SIZE2D(220, 160),
-                                   SIZE2D(0, 0),
-                                   &task->window);
+  rc = wuss_window_create_placed(delegate,
+                                 SIZE2D(220, 160),
+                                 "Curve",
+                                 wuss_WINDOW_NONE,
+                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 SIZE2D(220, 160),
+                                 SIZE2D(0, 0),
+                                 &task->window);
+  if (rc != result_OK)
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+
+  return rc;
 }
 
 static int blob_hit(const point_t *p, int x, int y)
@@ -106,6 +121,7 @@ static result_t curve_mouse(curve_task_t       *task,
                             wuss_mouse_action_t action,
                             int                 x,
                             int                 y,
+                            wuss_button_t       button,
                             wuss_window_t      *window)
 {
   int i;
@@ -116,6 +132,8 @@ static result_t curve_mouse(curve_task_t       *task,
   switch (action)
   {
   case wuss_MOUSE_DOWN:
+    if (!(button & wuss_BUTTON_SELECT))
+      break;
     for (i = 0; i < CURVE_NCONTROLPTS; i++)
     {
       if (blob_hit(&task->points[i], x, y))
@@ -169,13 +187,13 @@ result_t curve_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MOUSE:
     return curve_mouse(task, event->data.mouse.action,
-                       event->data.mouse.point.x, event->data.mouse.point.y, window);
+                       event->data.mouse.point.x, event->data.mouse.point.y,
+                       event->data.mouse.button, window);
 
   case wuss_EVENT_SCROLL:
     return curve_scroll(task, event->data.scroll.delta, window);
 
-  case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
+  case wuss_EVENT_QUIT:
     free(task); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
@@ -184,4 +202,4 @@ result_t curve_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

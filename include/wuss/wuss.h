@@ -45,17 +45,21 @@ typedef struct wuss wuss_t;
 /** A window. Full API is in window.h. */
 typedef struct wuss_window wuss_window_t;
 
+/** A registered task: owns windows, receives their events. Full API is in
+ * task.h. */
+typedef struct wuss_task wuss_task_t;
+
 /** A work-area icon. Full API is in icon.h, and is compiled only when the
  * library is built with the WUSS_ICONS option on. */
 typedef struct wuss_icon wuss_icon_t;
 
 /**
  * Allocator hooks used by a wuss_t for every heap block it owns (the
- * instance itself, windows, icons, menu nodes). The three members must
- * behave like the C library malloc / realloc / free -- same argument and
- * return conventions, realloc(NULL, n) == malloc(n), free(NULL) a no-op.
- * Passed to wuss_create and copied in; NULL there selects wuss_alloc (plain
- * stdlib).
+ * instance itself, windows, icons, menu nodes) and by the wuss shared
+ * components. \c malloc, \c realloc and \c free must behave like their C
+ * library namesakes -- same argument and return conventions, realloc(NULL,
+ * n) == malloc(n), free(NULL) a no-op. Passed to wuss_create and copied in;
+ * NULL there selects wuss_alloc (plain stdlib).
  */
 typedef struct wuss_alloc
 {
@@ -105,6 +109,43 @@ typedef unsigned char wuss_colour_t;
  * fill".
  */
 #define wuss_NO_BACKGROUND ((wuss_colour_t) -1)
+
+/**
+ * Symbolic wuss_colour_t values. A raw wuss_colour_t is a system-palette
+ * index, 0..wuss_COLOUR_SYMBOLIC-1 (so a palette may hold up to 128 real
+ * entries). Values from wuss_COLOUR_SYMBOLIC up are not palette indices but
+ * roles the window manager resolves to a concrete index against the live
+ * palette (and, for the wuss_COLOUR_*_ chrome roles, the live wuss_config):
+ * the named colours pick the nearest system-palette entry to the RGB the
+ * name implies, the chrome roles echo the matching wuss_config_t field.
+ * Accepted anywhere a wuss_colour_t is: config furniture/bevel/accent/
+ * backdrop, window backgrounds (see wuss_window_create), icon specs.
+ * wuss_NO_BACKGROUND is not symbolic and always passes through unchanged.
+ */
+#define wuss_COLOUR_SYMBOLIC ((wuss_colour_t) 128)
+
+/* Named colours: nearest system-palette entry to the named RGB. */
+#define wuss_COLOUR_BLACK   (wuss_COLOUR_SYMBOLIC + 0)
+#define wuss_COLOUR_WHITE   (wuss_COLOUR_SYMBOLIC + 1)
+#define wuss_COLOUR_RED     (wuss_COLOUR_SYMBOLIC + 2)
+#define wuss_COLOUR_GREEN   (wuss_COLOUR_SYMBOLIC + 3)
+#define wuss_COLOUR_BLUE    (wuss_COLOUR_SYMBOLIC + 4)
+#define wuss_COLOUR_YELLOW  (wuss_COLOUR_SYMBOLIC + 5)
+#define wuss_COLOUR_CYAN    (wuss_COLOUR_SYMBOLIC + 6)
+#define wuss_COLOUR_MAGENTA (wuss_COLOUR_SYMBOLIC + 7)
+#define wuss_COLOUR_GREY    (wuss_COLOUR_SYMBOLIC + 8)
+
+/* Chrome roles: echo the matching wuss_config_t field, resolved to a
+ * concrete index -- e.g. wuss_COLOUR_TITLE_BG is furniture.title.bg,
+ * wuss_COLOUR_BUTTON_HILIGHT is bevel.light, wuss_COLOUR_BUTTON_SHADOW is
+ * bevel.dark, wuss_COLOUR_BACKDROP is backdrop.colour. */
+#define wuss_COLOUR_TITLE_BG       (wuss_COLOUR_SYMBOLIC + 16)
+#define wuss_COLOUR_TITLE_FG       (wuss_COLOUR_SYMBOLIC + 17)
+#define wuss_COLOUR_BUTTON_HILIGHT (wuss_COLOUR_SYMBOLIC + 18)
+#define wuss_COLOUR_BUTTON_SHADOW  (wuss_COLOUR_SYMBOLIC + 19)
+#define wuss_COLOUR_ACCENT_BG      (wuss_COLOUR_SYMBOLIC + 20)
+#define wuss_COLOUR_ACCENT_FG      (wuss_COLOUR_SYMBOLIC + 21)
+#define wuss_COLOUR_BACKDROP       (wuss_COLOUR_SYMBOLIC + 22)
 
 /** Furniture chrome colours, one entry per class of furniture. Title is
  * the only two-tone class (fill + text); the rest are drawn as a single
@@ -301,13 +342,61 @@ typedef struct wuss_config
 }
 wuss_config_t;
 
+/** Most fonts wuss_create will take, and the range an icon's font-select
+ *  flags can name (see wuss_ICON_FONT). */
+#define wuss_MAX_FONTS 4
+
+/**
+ * What a font passed to wuss_create is for. Lets a shared component such as
+ * a font-picker menu tell a decorative/chrome font apart from one meant to
+ * be offered as a user-selectable text face.
+ */
+typedef enum wuss_font_class
+{
+  wuss_FONT_CLASS_NONE, /**< An ordinary text font. */
+
+  /**
+   * Chrome/decoration only, e.g. the symbol font menu ticks and submenu
+   * arrows are drawn from (see \ref WUSS_SYMBOL_FONT). Not meant to be
+   * offered as a text face.
+   */
+  wuss_FONT_CLASS_SYSTEM
+}
+wuss_font_class_t;
+
+/**
+ * One font slot passed to wuss_create: the font itself, what it is for, and
+ * the name a caller-side picker (e.g. wuss_fontmenu) should know it by.
+ */
+typedef struct wuss_font_desc
+{
+  /** Font handle. Not owned; must outlive the wuss_t. */
+  bmfont_t *font;
+
+  wuss_font_class_t font_class; /**< What the font is for. */
+
+  /**
+   * Borrowed; the font's leafname sans ".png", for a picker to match
+   * against. NULL if the slot has no name (e.g. a NONE-class font that no
+   * picker needs to skip).
+   */
+  const char *name;
+}
+wuss_font_desc_t;
+
 /**
  * Create a window manager.
  *
  * \param[in]  scr      Screen to draw windows onto. Not owned; must outlive
  *                      the wuss_t.
- * \param[in]  font     Font used to draw titlebar labels, or NULL to draw
- *                      titlebars unlabelled. Not owned.
+ * \param[in]  fonts    Up to \ref wuss_MAX_FONTS font slots, copied into the
+ *                      wuss_t (the descriptors, not the fonts -- the fonts
+ *                      are not owned and must outlive it). Slot 0 is the
+ *                      system font, used for titlebar labels and any icon
+ *                      that does not select another. NULL, or nfonts 0,
+ *                      leaves titlebars unlabelled.
+ * \param[in]  nfonts   Number of entries in \p fonts, 0..\ref
+ *                      wuss_MAX_FONTS; more than that is an error.
  * \param[in]  palette  System palette, copied in, or NULL to use a built-in
  *                      default palette.
  * \param[in]  npalette Number of entries in palette. Ignored if palette is
@@ -317,28 +406,31 @@ wuss_config_t;
  *                      wuss_alloc (plain stdlib). Must outlive nothing --
  *                      only the three function pointers are kept.
  * \param[out] wuss     Newly created window manager.
- * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if any of
- *         config's palette entries are out of range for the palette, or
- *         another appropriate result code.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if \p nfonts is
+ *         negative or exceeds \ref wuss_MAX_FONTS, \ref
+ *         result_WUSS_BAD_COLOUR if any of config's palette entries are out
+ *         of range for the palette, or another appropriate result code.
  */
-result_t wuss_create(screen_t            *scr,
-                     bmfont_t            *font,
-                     const colour_t      *palette,
-                     int                  npalette,
-                     const wuss_config_t *config,
-                     const wuss_alloc_t  *alloc,
-                     wuss_t             **wuss);
+result_t wuss_create(screen_t               *scr,
+                     const wuss_font_desc_t *fonts,
+                     int                     nfonts,
+                     const colour_t         *palette,
+                     int                     npalette,
+                     const wuss_config_t    *config,
+                     const wuss_alloc_t     *alloc,
+                     wuss_t                **wuss);
 
 /**
  * Replace the system palette partway through a session.
  *
  * Copies \p palette in over the existing one (same semantics as
  * wuss_create's palette argument), refreshes the cached nearest-black /
- * nearest-white indices, broadcasts a \ref wuss_EVENT_PALETTE event to every
- * window's task so they can recache any wuss_nearest_colour selections, then
- * invalidates the whole screen. The caller is still responsible for the next
- * wuss_redraw / wuss_redraw_dirty, and -- on a paletted screen -- for
- * updating the screen bitmap's own palette to match.
+ * nearest-white indices, broadcasts a \ref wuss_EVENT_PALETTE event once to
+ * every registered task (in registration order, window == NULL) so they can
+ * recache any wuss_nearest_colour selections, then invalidates the whole
+ * screen. The caller is still responsible for the next wuss_redraw /
+ * wuss_redraw_dirty, and -- on a paletted screen -- for updating the screen
+ * bitmap's own palette to match.
  *
  * \param[in] wuss     Window manager.
  * \param[in] palette  New system palette, copied in.
@@ -348,11 +440,30 @@ result_t wuss_create(screen_t            *scr,
  *         not match the current palette length, \ref result_WUSS_BAD_COLOUR
  *         if a configured furniture/bevel/backdrop colour index is now out
  *         of range (in which case the palette is left unchanged), else the
- *         first non-OK result returned by a task's handle callback.
+ *         first non-OK result returned by a task's handle callback
+ *         (iteration still continues past it).
  */
 result_t wuss_set_palette(wuss_t         *wuss,
                           const colour_t *palette,
                           int             npalette);
+
+/**
+ * Replace the desktop backdrop partway through a session.
+ *
+ * Validates \p backdrop against the current palette (as wuss_create does its
+ * config->backdrop), copies it in over the existing one, then invalidates
+ * the whole screen so the next wuss_redraw / wuss_redraw_dirty repaints it
+ * behind every window. Tasks are not notified. The caller is still
+ * responsible for the next redraw.
+ *
+ * \param[in] wuss     Window manager.
+ * \param[in] backdrop New backdrop, copied in. Set its colour to
+ *                     wuss_NO_BACKGROUND for no backdrop.
+ * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if a colour
+ *         index in \p backdrop is out of range (the backdrop is left
+ *         unchanged).
+ */
+result_t wuss_set_backdrop(wuss_t *wuss, const wuss_backdrop_t *backdrop);
 
 /**
  * Destroy a window manager, and any windows still open on it.
@@ -363,12 +474,45 @@ void wuss_destroy(wuss_t *doomed);
 
 /**
  * Fetch the system font (see wuss_create), for tasks to draw their own
- * content in the same face as window titlebars.
+ * content in the same face as window titlebars. Equivalent to
+ * wuss_get_font_n(wuss, 0).
  *
  * \param[in] wuss Window manager.
  * \return System font, or NULL if none was given to wuss_create.
  */
 bmfont_t *wuss_get_font(const wuss_t *wuss);
+
+/**
+ * Fetch one of the fonts passed to wuss_create by slot.
+ *
+ * \param[in] wuss  Window manager.
+ * \param[in] index Font slot, 0..\ref wuss_MAX_FONTS - 1.
+ * \return The font in that slot, or NULL if the slot is out of range or was
+ *         not filled.
+ */
+bmfont_t *wuss_get_font_n(const wuss_t *wuss, int index);
+
+/**
+ * Fetch the class of one of the fonts passed to wuss_create by slot (see
+ * \ref wuss_font_desc_t).
+ *
+ * \param[in] wuss  Window manager.
+ * \param[in] index Font slot, 0..\ref wuss_MAX_FONTS - 1.
+ * \return The slot's class, or \ref wuss_FONT_CLASS_NONE if the slot is out
+ *         of range or was not filled.
+ */
+wuss_font_class_t wuss_get_font_class_n(const wuss_t *wuss, int index);
+
+/**
+ * Fetch the name of one of the fonts passed to wuss_create by slot (see \ref
+ * wuss_font_desc_t).
+ *
+ * \param[in] wuss  Window manager.
+ * \param[in] index Font slot, 0..\ref wuss_MAX_FONTS - 1.
+ * \return The slot's name (borrowed, valid until wuss_destroy), or NULL if
+ *         the slot is out of range, was not filled, or was given no name.
+ */
+const char *wuss_get_font_name_n(const wuss_t *wuss, int index);
 
 /**
  * The last pointer position seen by wuss_mouse_click or wuss_mouse_move,
@@ -517,14 +661,15 @@ result_t wuss_scroll(wuss_t         *wuss,
                      wuss_window_t **hit);
 
 /**
- * Broadcast a wuss_EVENT_IDLE event to every window's task, in z-order.
- * Intended to be called once per main-loop iteration, after other pending
- * input has been handled, so tasks can drive their own animation/timers
- * without the caller stepping each one individually.
+ * Broadcast a wuss_EVENT_IDLE event once to every registered task, in
+ * registration order (window == NULL). Intended to be called once per
+ * main-loop iteration, after other pending input has been handled, so tasks
+ * can drive their own animation/timers -- iterating their own window lists
+ * -- without the caller stepping each one individually.
  *
- * \param[in] wuss Window manager whose windows' tasks should go idle.
+ * \param[in] wuss Window manager whose tasks should go idle.
  * \return \ref result_OK on success, else the first non-OK result returned
- *         by a task's handle callback.
+ *         by a task's handle callback (iteration still continues past it).
  */
 result_t wuss_idle(wuss_t *wuss);
 

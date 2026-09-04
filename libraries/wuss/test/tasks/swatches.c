@@ -1,6 +1,6 @@
 /* wuss/test/tasks/swatches.c -- fill-pattern swatch grid task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 #include <string.h>
@@ -9,99 +9,173 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "framebuf/palettes.h"
-#include "framebuf/screen.h"
+#include "base/utils.h"
+#include "framebuf/pattern.h"
 #include "geom/box.h"
+#include "geom/point.h"
 #include "geom/size.h"
 #include "wuss/icon.h"
+#include "wuss/menu.h"
 
 #include "swatches.h"
 
-#define SWATCHES_DOC_W 160
-#define SWATCHES_DOC_H 320 /* taller than the window, so scrolling is exercised */
+/* ponytail: the app builds wuss with a 16-entry palette (apps/wuss/main.c)
+ * and wuss exposes no count. Hardcode it; add a wuss_palette_count() only if
+ * another palette size ever ships. */
+#define SWATCHES_NCOLOURS 16
+#define SWATCHES_CELL     16 /* px; cells butt together, no pitch */
 
-/* Delete the current swatch icons and lay a fresh set out, resolving the
- * heading and swatch colours through the palette as it stands now. Called at
- * create time and again on wuss_EVENT_PALETTE. */
-static result_t swatches_build(swatches_task_t *task)
+#define SWATCHES_DOC_W (SWATCHES_NCOLOURS * SWATCHES_CELL)
+#define SWATCHES_DOC_H (screen_PATTERN__LIMIT * SWATCHES_CELL)
+
+#define SWATCHES_PAPER_RGB 0xFF, 0xFF, 0xFF
+
+/* Redraw: plot one PATTERN swatch per (pattern, colour) pair -- row =
+ * pattern, column = palette index used as the pattern's ink over task->paper
+ * (white until a colour is picked from the pop-up menu). No icons are
+ * retained; wuss_icon_plot resolves the palette live, so a palette or paper
+ * change just redraws. */
+static result_t swatches_redraw(swatches_task_t    *task,
+                                const wuss_event_t *event)
 {
-  wuss_icon_spec_t specs[SWATCHES_NSPECS];
-  wuss_colour_t    fg, bg;
-  int              p;
+  wuss_icon_spec_t spec;
+  const box_t     *bounds;
+  point_t          scroll;
+  int              pat, col;
+  result_t         rc;
 
-  for (p = 0; p < SWATCHES_NSPECS; p++)
+  bounds = event->data.redraw.bounds;
+  scroll = event->data.redraw.scroll;
+
+  memset(&spec, 0, sizeof(spec));
+  spec.type = wuss_ICON_TYPE_PATTERN;
+  spec.bg   = task->paper;
+
+  for (pat = 0; pat < screen_PATTERN__LIMIT; pat++)
   {
-    wuss_icon_delete(task->icons[p]);
-    task->icons[p] = NULL;
+    for (col = 0; col < SWATCHES_NCOLOURS; col++)
+    {
+      spec.bbox    = (box_t) BOX_POS_SIZE(col * SWATCHES_CELL,
+                                          pat * SWATCHES_CELL,
+                                          SWATCHES_CELL, SWATCHES_CELL);
+      spec.fg      = (wuss_colour_t) col;
+      spec.pattern = (screen_pattern_t) pat;
+
+      rc = wuss_icon_plot(task->window, &spec, bounds, scroll);
+      if (rc != result_OK)
+        return rc;
+    }
   }
 
-  fg = wuss_nearest_colour(task->wuss, 0x00, 0x00, 0x00);
-  bg = wuss_nearest_colour(task->wuss, 0xFF, 0xFF, 0xFF);
-
-  memset(specs, 0, sizeof(specs));
-
-  /* [0] a heading label */
-  specs[0].bbox = (box_t) BOX_POS_SIZE(12, 12, 140, 14);
-  specs[0].type = wuss_ICON_TYPE_LABEL;
-  specs[0].text = "Fill patterns:";
-  specs[0].fg   = fg;
-  specs[0].bg   = wuss_NO_BACKGROUND;
-
-  /* [1..] one 16x16 swatch per built-in fill pattern, laid out as a grid down
-   * the document so it scrolls through the window and stays phase-locked while
-   * doing so */
-  for (p = 0; p < screen_PATTERN__LIMIT; p++)
-  {
-    enum { SWATCHES_COLS = 6, SWATCHES_PITCH = 20 };
-    int col, row;
-
-    col = p % SWATCHES_COLS;
-    row = p / SWATCHES_COLS;
-
-    specs[1 + p].bbox    = (box_t) BOX_POS_SIZE(12 + col * SWATCHES_PITCH,
-                                                34 + row * SWATCHES_PITCH,
-                                                16, 16);
-    specs[1 + p].type    = wuss_ICON_TYPE_PATTERN;
-    specs[1 + p].fg      = fg;
-    specs[1 + p].bg      = bg;
-    specs[1 + p].pattern = (screen_pattern_t) p;
-  }
-
-  return wuss_icon_create_array(task->window, specs, SWATCHES_NSPECS,
-                                task->icons);
+  return result_OK;
 }
 
 result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
   result_t    rc;
 
-  task->wuss   = wuss;
-  task->window = NULL;
-  memset(task->icons, 0, sizeof(task->icons));
+  task->wuss       = wuss;
+  task->window     = NULL;
+  task->task       = NULL;
+  task->colourmenu = NULL;
+  task->paper      = wuss_nearest_colour(wuss, SWATCHES_PAPER_RGB);
 
-  delegate = wuss_task_start(swatches_handle, task);
+  delegate_desc.handle    = swatches_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "swatches";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
+    return rc;
+  }
+  task->task = delegate;
 
-  rc = wuss_window_create_placed(wuss,
+  rc = wuss_colourmenu_create(&task->colourmenu, wuss, "Colour");
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  rc = wuss_window_create_placed(delegate,
                                  SIZE2D(SWATCHES_DOC_W, 140),
                                  "Swatches",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_NO_RESIZE_BLIT, /* grid spans the whole window; a resize redraws all of it */
                                  wuss_BACKDROP_COLOUR(wuss_nearest_colour(wuss, 0xDD, 0xDD, 0xDD)),
-                                 &delegate,
                                  SIZE2D(SWATCHES_DOC_W, SWATCHES_DOC_H),
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
-    return rc;
-
-  rc = swatches_build(task);
-  if (rc != result_OK)
   {
-    wuss_window_close(task->window);
-    task->window = NULL;
+    wuss_colourmenu_destroy(task->colourmenu);
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
     return rc;
   }
 
+  /* fully built: from here a last-window close reaps the task and its
+   * wuss_EVENT_QUIT frees task_data */
+  wuss_task_set_autoclose(delegate, 1);
+
+  return result_OK;
+}
+
+/* A SELECT click on a cell makes that cell -- its fill pattern, its palette
+ * colour as the ink, the current paper -- the desktop backdrop. A MENU click
+ * pops the colour menu; its pick becomes the paper. The grid has no retained
+ * icons, so the cell is found by arithmetic on the click point (virtual
+ * content space). */
+static result_t swatches_click(swatches_task_t    *task,
+                               const wuss_event_t *event)
+{
+  wuss_backdrop_t backdrop;
+  point_t         pt;
+  int             pat, col;
+
+  if (event->data.mouse.action != wuss_MOUSE_DOWN)
+    return result_OK;
+
+  if (event->data.mouse.button & wuss_BUTTON_MENU)
+    return wuss_menu_open(task->task,
+                          wuss_colourmenu_menu(task->colourmenu),
+                          wuss_get_pointer(task->wuss), NULL);
+
+  if (!(event->data.mouse.button & wuss_BUTTON_SELECT))
+    return result_OK;
+
+  pt  = event->data.mouse.point;
+  col = pt.x / SWATCHES_CELL;
+  pat = pt.y / SWATCHES_CELL;
+
+  if (pt.x < 0 || pt.y < 0 ||
+      col >= SWATCHES_NCOLOURS || pat >= screen_PATTERN__LIMIT)
+    return result_OK;
+
+  backdrop = (wuss_backdrop_t) wuss_BACKDROP_PATTERN((wuss_colour_t) col,
+                                                    (screen_pattern_t) pat,
+                                                    task->paper);
+  return wuss_set_backdrop(task->wuss, &backdrop);
+}
+
+/* A pick from the colour menu this task opened: the chosen palette index
+ * becomes the paper the patterns mix over. */
+static result_t swatches_menu_select(swatches_task_t    *task,
+                                     const wuss_event_t *event)
+{
+  wuss_colour_t picked;
+  int           mine;
+
+  picked = wuss_colourmenu_selected(task->colourmenu, event, &mine);
+  if (!mine)
+    return result_OK;
+
+  task->paper = picked;
+
+  /* every cell shares the new paper: dirty the whole document, not just the
+   * visible rectangle wuss_window_invalidate_all covers */
+  wuss_window_invalidate_extent(task->window);
   return result_OK;
 }
 
@@ -109,17 +183,23 @@ result_t swatches_handle(wuss_window_t      *window,
                          const wuss_event_t *event,
                          void               *task_data)
 {
-  swatches_task_t *task;
+  swatches_task_t *task = task_data;
 
-  task = task_data;
+  NOT_USED(window);
 
   switch (event->kind)
   {
-  case wuss_EVENT_PALETTE:
-    return swatches_build(task);
+  case wuss_EVENT_REDRAW:
+    return swatches_redraw(task, event);
 
-  case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
+  case wuss_EVENT_MOUSE:
+    return swatches_click(task, event);
+
+  case wuss_EVENT_MENU_SELECT:
+    return swatches_menu_select(task, event);
+
+  case wuss_EVENT_QUIT:
+    wuss_colourmenu_destroy(task->colourmenu);
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
 
@@ -128,4 +208,4 @@ result_t swatches_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

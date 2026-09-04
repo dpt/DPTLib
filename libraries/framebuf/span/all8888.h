@@ -6,5 +6,6 @@
 #include "framebuf/span.h"
 
 span_copy_t span_all8888_copy;
+span_fill_t span_all8888_fill;
 
 #endif /* SPAN_ALL8888_H */

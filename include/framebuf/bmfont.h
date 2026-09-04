@@ -23,6 +23,38 @@ typedef int bmfont_width_t; /* in pixels */
 result_t bmfont_create(const char *png, bmfont_t **bmfont);
 
 /**
+ * Callback for bmfont_enumerate(), invoked once per font found.
+ *
+ * \param[in] name  The font's leafname with the ".png" extension stripped,
+ *                  e.g. "Trinity.Medium" for "Trinity.Medium.png". Borrowed;
+ *                  copy it if it must outlive the call.
+ * \param[in] path  The full path that would be passed to bmfont_create() to
+ *                  load this font. Borrowed.
+ * \param[in] opaque  The pointer passed to bmfont_enumerate().
+ * \return \ref result_OK to continue, \ref result_STOP_WALK to stop early
+ *         (bmfont_enumerate() then also returns \ref result_OK), or any
+ *         other code to abort with that code.
+ */
+typedef result_t (bmfont_enumerate_fn)(const char *name,
+                                       const char *path,
+                                       void       *opaque);
+
+/**
+ * Enumerate the bitmap fonts in a directory: every ".png" file in \p dir is
+ * reported to \p fn (non-recursive, order unspecified).
+ *
+ * \param[in] dir     Directory to scan.
+ * \param[in] fn      Called once per font; see bmfont_enumerate_fn.
+ * \param[in] opaque  Passed through to \p fn.
+ * \return \ref result_OK on success (including a stop-walk), \ref
+ *         result_FILE_NOT_FOUND if \p dir cannot be opened, \ref
+ *         result_NULL_ARG, or a code propagated from \p fn.
+ */
+result_t bmfont_enumerate(const char          *dir,
+                          bmfont_enumerate_fn *fn,
+                          void                *opaque);
+
+/**
  * Destroy a bitmap font.
  *
  * \param[in] bmfont    Bitmap font to destroy.
@@ -33,8 +65,8 @@ void bmfont_destroy(bmfont_t *bmfont);
  * Read the width and height of the specified bitmap font.
  *
  * \param[in]  bmfont   Bitmap font to query.
- * \param[out] width    Width of the font in pixels.
- * \param[out] height   Height of the font in pixels.
+ * \param[out] width    Width of the font in pixels, or NULL if not wanted.
+ * \param[out] height   Height of the font in pixels, or NULL if not wanted.
  */
 void bmfont_get_info(bmfont_t *bmfont, int *width, int *height);
 

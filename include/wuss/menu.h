@@ -35,36 +35,51 @@ extern "C"
 /** Per-item flags for a wuss_menu_item_t. OR'd together. */
 typedef enum wuss_menu_item_flags
 {
-  wuss_MENU_ITEM_NONE      = 0,
-  wuss_MENU_ITEM_TICKED    = 1 << 0, /**< draw a tick at the item's left edge */
-  wuss_MENU_ITEM_DASHED    = 1 << 1, /**< draw a dashed rule above this item,
-                                      *   marking a group boundary. The item is
-                                      *   otherwise an ordinary row: it keeps
-                                      *   its label and responds to the pointer.
-                                      *   The rule is laid out and drawn
-                                      *   separately and is not interactive */
-  wuss_MENU_ITEM_DISABLED  = 1 << 2  /**< greyed, never highlights, not
-                                      *   selectable */
+  wuss_MENU_ITEM_NONE     = 0,
+
+  /** Draw a tick at the item's left edge */
+  wuss_MENU_ITEM_TICKED   = 1 << 0,
+
+  /** Draw a dashed rule above this item, marking a group boundary. The
+   *  item is otherwise an ordinary row: it keeps its label and responds
+   *  to the pointer. The rule is laid out and drawn separately and is not
+   *  interactive */
+  wuss_MENU_ITEM_DASHED   = 1 << 1,
+
+  /** Greyed, never highlights, not selectable */
+  wuss_MENU_ITEM_DISABLED = 1 << 2,
+
+  /** Draw a colour chip of \c swatch at the item's left edge, in place of
+   *  a tick */
+  wuss_MENU_ITEM_SWATCH   = 1 << 3
 }
 wuss_menu_item_flags_t;
 
 /** One row of a menu. */
 typedef struct wuss_menu_item
 {
-  const char             *text;    /**< row label; NULL is treated as "" */
-  wuss_menu_item_flags_t   flags;  /**< see wuss_menu_item_flags_t */
-  const struct wuss_menu  *submenu; /**< non-NULL: draw a right arrow and open
-                                     *   this menu to the right on hover */
-  wuss_window_t           *window; /**< non-NULL: draw a right arrow and, on
-                                     *   hover, show this caller-owned window
-                                     *   where a submenu would open, hiding it
-                                     *   again when the pointer leaves the row
-                                     *   or the chain is dismissed. Create it
-                                     *   with wuss_WINDOW_HIDDEN. Mutually
-                                     *   exclusive with \c submenu. The window
-                                     *   must outlive the open chain -- do not
-                                     *   wuss_window_close it while its menu is
-                                     *   open. */
+  /** Row label; NULL is treated as "" */
+  const char             *text;
+
+  /** See wuss_menu_item_flags_t */
+  wuss_menu_item_flags_t  flags;
+
+  /** Non-NULL: draw a right arrow and open this menu to the right on
+   *  hover */
+  const struct wuss_menu *submenu;
+
+  /** Non-NULL: draw a right arrow and, on hover, show this caller-owned
+   *  window where a submenu would open, hiding it again when the pointer
+   *  leaves the row or the chain is dismissed. Create it with
+   *  wuss_WINDOW_HIDDEN. Mutually exclusive with \c submenu. The window
+   *  must outlive the open chain -- do not wuss_window_close it while its
+   *  menu is open. */
+  wuss_window_t          *window;
+
+  /** With wuss_MENU_ITEM_SWATCH: the colour chip to draw at the row's
+   *  left edge, as an index into the system palette. Ignored without that
+   *  flag, so a zero-initialised item is unaffected. */
+  wuss_colour_t           swatch;
 }
 wuss_menu_item_t;
 
@@ -80,20 +95,6 @@ wuss_menu_t;
 /** Opaque handle to an open menu chain. */
 typedef struct wuss__menu *wuss_menu_handle_t;
 
-/**
- * Called when the pointer is released over a selectable leaf item.
- *
- * \param[in] menu   The menu the item belongs to (a submenu, if nested).
- * \param[in] index  Index of the item within \c menu->items.
- * \param[in] button wuss_button_t flags for the release; test with '&'.
- *                   ADJUST keeps the chain open, SELECT closes it.
- * \param[in] ctx    As passed to wuss_menu_open.
- */
-typedef void (wuss_menu_select_fn_t)(const wuss_menu_t *menu,
-                                     int                index,
-                                     wuss_button_t      button,
-                                     void              *ctx);
-
 /* ----------------------------------------------------------------------- */
 
 /**
@@ -102,20 +103,21 @@ typedef void (wuss_menu_select_fn_t)(const wuss_menu_t *menu,
  * a leaf is SELECT-picked, a click lands outside every menu window, or
  * wuss_menu_close is called.
  *
- * \param[in]  wuss      Window manager.
- * \param[in]  menu      Menu to show; borrowed, must outlive the open chain.
- * \param[in]  at        Where to put the menu's top-left, screen space.
- * \param[in]  on_select Leaf-selection callback, or NULL.
- * \param[in]  ctx       Opaque pointer passed back to \p on_select.
- * \param[out] out       Filled with the chain handle, or NULL if not wanted.
+ * When a leaf item is released over, a wuss_EVENT_MENU_SELECT event is
+ * delivered to \p task's handle (with window == NULL); its data.menu_select
+ * carries the (sub)menu, the item index and the release button.
+ *
+ * \param[in]  task Task opening the menu; receives wuss_EVENT_MENU_SELECT.
+ *                  The menu windows are wuss-owned, not task's.
+ * \param[in]  menu Menu to show; borrowed, must outlive the open chain.
+ * \param[in]  at   Where to put the menu's top-left, screen space.
+ * \param[out] out  Filled with the chain handle, or NULL if not wanted.
  * \return \ref result_OK, \ref result_OOM, or a wuss_window_create code.
  */
-result_t wuss_menu_open(wuss_t                *wuss,
-                        const wuss_menu_t     *menu,
-                        point_t                at,
-                        wuss_menu_select_fn_t *on_select,
-                        void                  *ctx,
-                        wuss_menu_handle_t    *out);
+result_t wuss_menu_open(wuss_task_t        *task,
+                        const wuss_menu_t  *menu,
+                        point_t             at,
+                        wuss_menu_handle_t *out);
 
 /** Close a menu chain and every window in it. Safe to pass a stale or NULL
  *  handle. */
@@ -124,48 +126,35 @@ void wuss_menu_close(wuss_menu_handle_t handle);
 /** Non-zero while \p handle refers to a currently open chain. */
 int wuss_menu_is_open(wuss_menu_handle_t handle);
 
+/**
+ * Re-tick a currently open menu level in place, for a task that keeps an
+ * ADJUST-picked menu open (see wuss_menu_open) and wants its own tick to
+ * change without rebuilding the chain: an ADJUST pick delivers
+ * wuss_EVENT_MENU_SELECT but does not close or redraw the menu, so a task
+ * that only edits its wuss_menu_item_t.flags array never sees it take effect
+ * on screen.
+ *
+ * Ticks item \p index and unticks every other item of the open level whose
+ * \c menu is \p menu (searched from \p handle's chain), then invalidates the
+ * changed rows. A no-op if \p handle is stale/closed, \p menu is not an open
+ * level of its chain, or \p index is out of range (still unticking every row
+ * in that case).
+ *
+ * \param[in] handle Chain handle from wuss_menu_open.
+ * \param[in] menu   The (sub)menu level to update; matched by pointer
+ *                   against the description passed to wuss_menu_open or
+ *                   reached via a wuss_menu_item_t.submenu.
+ * \param[in] index  Row to tick, or -1 to untick every row.
+ */
+void wuss_menu_set_ticked(wuss_menu_handle_t handle,
+                          const wuss_menu_t *menu,
+                          int                index);
+
 /* ----------------------------------------------------------------------- */
 
-/**
- * Build a wuss_menu_t tree from a compact descriptor string. The syntax is
- * lifted from PrivateEye's menu_create_from_desc. A comma separates items.
- * The very first token is the root menu's titlebar caption, not an item --
- * exactly as the first token inside a '{ }' is that submenu's title -- so
- * the same descriptor strings port across unchanged. Submenus keep the Wimp
- * behaviour of discarding their title token; only the root's is kept. A
- * leading '|' on an item draws a dashed rule above it, marking a group
- * boundary; the item itself stays an ordinary interactive row. A '{ ... }'
- * group after an item is that item's submenu. A per-token prefix '!' ticks
- * the item, '~' shades (disables) it, and '>' attaches a submenu pulled as a
- * <tt>const wuss_menu_t *</tt> from the varargs rather than from a following
- * '{ }' block. A "%s" in a token substitutes the next <tt>const char *</tt>
- * vararg. The '>' and "%s" varargs are consumed in the order they are
- * encountered scanning left to right.
- *
- * Example: <tt>wuss_menu_create_from_desc(&m, "Display, Open, !Grid,
- * ~Export, |Quit")</tt> -- "Display" is the caption; the menu has four
- * items, with a dashed rule above "Quit".
- *
- * The whole tree, including copied label text, is one heap allocation graph
- * owned by the caller; free it with wuss_menu_destroy. wuss_menu_open treats
- * a desc-built tree exactly like a static literal.
- *
- * \param[out] out  Filled with the root menu on success, untouched on
- *                  failure.
- * \param[in]  desc Descriptor string; its first token is the root caption.
- * \return \ref result_OK, \ref result_OOM, or \ref result_BAD_ARG for a
- *         malformed descriptor (unbalanced braces, empty token, too deep).
- */
-result_t wuss_menu_create_from_desc(wuss_menu_t **out, const char *desc, ...);
-
-/**
- * Free a tree built by wuss_menu_create_from_desc, including every submenu
- * and copied label. Safe to pass NULL. Never call this on a static or
- * caller-assembled wuss_menu_t.
- *
- * \param[in] menu Root menu returned by wuss_menu_create_from_desc, or NULL.
- */
-void wuss_menu_destroy(wuss_menu_t *menu);
+/* Building a wuss_menu_t tree from a compact descriptor string, and freeing
+ * it again, lives in wuss/menu-desc.h -- a convenience layer on top of this
+ * core helper. */
 
 #ifdef __cplusplus
 }

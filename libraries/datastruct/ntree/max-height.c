@@ -1,5 +1,6 @@
 /* datastruct/ntree/max-height.c -- n-ary tree */
 
+#include "base/utils.h"
 #include "datastruct/ntree.h"
 
 #include "impl.h"
@@ -18,9 +19,8 @@ int ntree_max_height(ntree_t *t)
   {
     int h;
 
-    h = ntree_max_height(child);
-    if (h > max)
-      max = h;
+    h   = ntree_max_height(child);
+    max = MAX(max, h);
   }
 
   return max + 1;

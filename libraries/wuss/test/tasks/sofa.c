@@ -1,6 +1,6 @@
 /* wuss/test/tasks/sofa.c -- rotating wireframe sofa and spaceship task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -41,10 +41,10 @@ typedef struct box3 { double x0, y0, z0, x1, y1, z1; } box3_t;
 /* the sofa: seat, backrest and two arms, in model units (roughly -1..1) */
 static const box3_t sofa_parts[] =
 {
-  { -0.8, -0.3, -0.6,   0.8,  0.1,  0.6 }, /* seat */
-  { -1.0, -0.3,  0.35,  1.0,  0.9,  0.6 }, /* backrest */
-  { -1.0, -0.3, -0.6,  -0.8,  0.5,  0.6 }, /* left arm */
-  {  0.8, -0.3, -0.6,   1.0,  0.5,  0.6 }, /* right arm */
+  { -0.8, -0.3, -0.5,   0.8,  0.1,  0.5 }, /* seat */
+  { -1.0, -0.3,  0.5,   1.0,  0.9,  0.8 }, /* backrest */
+  { -1.0, -0.3, -0.5,  -0.8,  0.5,  0.5 }, /* left arm */
+  {  0.8, -0.3, -0.5,   1.0,  0.5,  0.5 }, /* right arm */
 };
 
 /* cube corner edges, indexing box3_corners' bit-numbered corners (bit0=x,
@@ -356,7 +356,9 @@ static void draw_vertex_dots(screen_t           *scr,
 
 result_t sofa_create(wuss_t*wuss, sofa_task_t*task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  result_t         rc;
 
   task->bg       = colour_rgb(0x7E, 0x25, 0x53);
   task->line     = colour_rgb(0xFF, 0xA3, 0x00);
@@ -367,17 +369,30 @@ result_t sofa_create(wuss_t*wuss, sofa_task_t*task)
   task->shape    = sofa_SHAPE_SOFA;
   task->turns    = 0;
 
-  delegate = wuss_task_start(sofa_handle, task); /* sofa_redraw paints its own background every frame */
+  /* sofa_redraw paints its own background every frame */
+  delegate_desc.handle    = sofa_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "sofa";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
+    return rc;
+  }
+  wuss_task_set_autoclose(delegate, 1);
 
-  return wuss_window_create_placed(wuss,
-                                   SIZE2D(180, 160),
-                                   "Sofa",
-                                   wuss_WINDOW_NONE,
-                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                   &delegate,
-                                   SIZE2D(180, 160),
-                                   SIZE2D(0, 0),
-                                   &task->window);
+  rc = wuss_window_create_placed(delegate,
+                                 SIZE2D(180, 160),
+                                 "Sofa",
+                                 wuss_WINDOW_NONE,
+                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 SIZE2D(180, 160),
+                                 SIZE2D(0, 0),
+                                 &task->window);
+  if (rc != result_OK)
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+
+  return rc;
 }
 
 static result_t sofa_redraw(const wuss_event_t *event, void *task_data)
@@ -508,7 +523,7 @@ static result_t sofa_mouse(wuss_window_t *window,
     sc->turns = 0;
     wuss_window_invalidate_all(window);
   }
-  else
+  else if (button & wuss_BUTTON_SELECT)
   {
     sc->spinning = !sc->spinning;
   }
@@ -581,8 +596,7 @@ result_t sofa_handle(wuss_window_t      *window,
   case wuss_EVENT_IDLE:
     return sofa_idle(task_data);
 
-  case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
+  case wuss_EVENT_QUIT:
     free(sc); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
@@ -591,4 +605,4 @@ result_t sofa_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

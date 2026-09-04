@@ -1,0 +1,300 @@
+/* wuss/create.c -- wuss - minimal window manager */
+
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+
+#ifdef FORTIFY
+#include "fortify/fortify.h"
+#endif
+
+#include "base/utils.h"
+
+#include "impl.h"
+
+/* The default allocator: plain stdlib. wuss_create copies this in when its
+ * alloc argument is NULL. */
+const wuss_alloc_t wuss_alloc =
+{
+  malloc, realloc, free
+};
+
+/* Built-in fallback palette when the caller passes NULL: black and white.
+ * wuss makes no other assumptions about palette contents or length. */
+static const colour_t wuss__default_palette[] =
+{
+  { 0xFF000000 }, /* 0: black */
+  { 0xFFFFFFFF }  /* 1: white */
+};
+
+#if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
+/* Range-check the bevel colours and the backdrop against the palette. Shared
+ * by the furniture and icons-only paths so the accepted range, the error code
+ * and the freed-pointer set stay in one place. */
+static result_t validate_bevel_backdrop(const wuss_t *w,
+                                        wuss_colour_t blight,
+                                        wuss_colour_t bdark,
+                                        wuss_colour_t abg,
+                                        wuss_colour_t afg)
+{
+  if (blight < 0 || blight >= w->npalette ||
+      bdark  < 0 || bdark  >= w->npalette ||
+      abg    < 0 || abg    >= w->npalette ||
+      afg    < 0 || afg    >= w->npalette ||
+      wuss__validate_backdrop(w, &w->backdrop) != result_OK)
+    return result_WUSS_BAD_COLOUR;
+
+  return result_OK;
+}
+#endif
+
+result_t wuss_create(screen_t               *scr,
+                     const wuss_font_desc_t *fonts,
+                     int                     nfonts,
+                     const colour_t         *palette,
+                     int                     npalette,
+                     const wuss_config_t    *config,
+                     const wuss_alloc_t     *alloc,
+                     wuss_t                **wuss)
+{
+  bmfont_t      *font;
+  wuss_alloc_t   al;
+  wuss_t        *w;
+#ifdef WUSS_FURNITURE
+  wuss_furniture_palette_t pal;
+  wuss_colour_t  bg, fg;
+#endif
+#if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
+  wuss_colour_t  blight, bdark;
+  wuss_colour_t  abg, afg;
+#endif
+#ifdef WUSS_FURNITURE
+  int            font_height;
+#endif
+
+  assert(scr  != NULL);
+  assert(wuss != NULL);
+
+  if (nfonts < 0 || nfonts > wuss_MAX_FONTS || (nfonts > 0 && fonts == NULL))
+    return result_BAD_ARG;
+
+  font = (nfonts > 0) ? fonts[0].font : NULL;
+
+  al = (alloc != NULL) ? *alloc : wuss_alloc;
+
+  w = al.malloc(sizeof(*w));
+  if (w == NULL)
+    return result_OOM;
+  w->alloc = al;
+
+  if (palette == NULL)
+  {
+    palette  = wuss__default_palette;
+    npalette = NELEMS(wuss__default_palette);
+  }
+  else if (npalette <= 0)
+  {
+    wuss__free(w, w);
+    return result_BAD_ARG;
+  }
+
+  w->palette = wuss__malloc(w, npalette * sizeof(*w->palette));
+  if (w->palette == NULL)
+  {
+    wuss__free(w, w);
+    return result_OOM;
+  }
+  memcpy(w->palette, palette, npalette * sizeof(*w->palette));
+  w->npalette = npalette;
+
+  /* First pass: white/black and the named symbolic colours (BLACK..GREY).
+   * The chrome-role slots are still the out-of-range sentinel here -- filled
+   * once the config's own colours below are resolved and stored. This lets
+   * wuss__resolve_colour handle a config that uses a named symbolic. */
+  wuss__rebuild_palettecache(w);
+
+  if (config != NULL)
+  {
+    w->backdrop            = config->backdrop;
+    w->backdrop.colour     = wuss__resolve_colour(w, w->backdrop.colour);
+    w->backdrop.pattern_bg = wuss__resolve_colour(w, w->backdrop.pattern_bg);
+  }
+  else
+  {
+    w->backdrop.colour     = wuss_NO_BACKGROUND;
+    w->backdrop.pattern    = screen_PATTERN_SOLID;
+    w->backdrop.pattern_bg = wuss_NO_BACKGROUND;
+  }
+
+#ifdef WUSS_FURNITURE
+  if (config != NULL)
+  {
+    pal = config->furniture;
+    pal.title.bg        = wuss__resolve_colour(w, pal.title.bg);
+    pal.title.fg        = wuss__resolve_colour(w, pal.title.fg);
+    pal.back            = wuss__resolve_colour(w, pal.back);
+    pal.close           = wuss__resolve_colour(w, pal.close);
+    pal.toggle          = wuss__resolve_colour(w, pal.toggle);
+    pal.resize          = wuss__resolve_colour(w, pal.resize);
+    pal.scroll.arrows   = wuss__resolve_colour(w, pal.scroll.arrows);
+    pal.scroll.wells    = wuss__resolve_colour(w, pal.scroll.wells);
+    pal.scroll.sausages = wuss__resolve_colour(w, pal.scroll.sausages);
+    blight = wuss__resolve_colour(w, config->bevel.light);
+    bdark  = wuss__resolve_colour(w, config->bevel.dark);
+    abg    = wuss__resolve_colour(w, config->accent.bg);
+    afg    = wuss__resolve_colour(w, config->accent.fg);
+  }
+  else
+  {
+    bg = 0;
+    fg = (w->npalette > 1) ? 1 : 0;
+
+    pal.title.bg        = bg;
+    pal.title.fg        = fg;
+    pal.back            = fg;
+    pal.close           = fg;
+    pal.toggle          = fg;
+    pal.resize          = bg;
+    pal.scroll.arrows   = bg;
+    pal.scroll.wells    = bg;
+    pal.scroll.sausages = fg;
+
+    blight = 0;
+    bdark  = 0;
+    abg    = bg; /* default action button: the titlebar colours */
+    afg    = fg;
+  }
+
+  if (pal.title.bg        < 0 || pal.title.bg        >= w->npalette ||
+      pal.title.fg        < 0 || pal.title.fg        >= w->npalette ||
+      pal.back            < 0 || pal.back            >= w->npalette ||
+      pal.close           < 0 || pal.close           >= w->npalette ||
+      pal.toggle          < 0 || pal.toggle          >= w->npalette ||
+      pal.resize          < 0 || pal.resize          >= w->npalette ||
+      pal.scroll.arrows   < 0 || pal.scroll.arrows   >= w->npalette ||
+      pal.scroll.wells    < 0 || pal.scroll.wells    >= w->npalette ||
+      pal.scroll.sausages < 0 || pal.scroll.sausages >= w->npalette ||
+      validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
+  {
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
+    return result_WUSS_BAD_COLOUR;
+  }
+
+  w->furniture_colours = pal;
+  w->bevel_light       = blight;
+  w->bevel_dark        = bdark;
+  w->accent_bg         = abg;
+  w->accent_fg         = afg;
+
+  if (config != NULL && config->titlebar_height > 0)
+  {
+    w->titlebar_height = config->titlebar_height;
+  }
+  else if (font != NULL)
+  {
+    /* titles draw in the bold weight when one was supplied; size the
+     * titlebar to whichever weight is taller */
+    bmfont_get_info(font, NULL, &font_height);
+    if (nfonts > 1 && fonts[1].font != NULL)
+    {
+      int titleh;
+
+      bmfont_get_info(fonts[1].font, NULL, &titleh);
+      font_height = MAX(font_height, titleh);
+    }
+    w->titlebar_height = font_height + 4;
+  }
+  else
+  {
+    w->titlebar_height = WUSS_DEFAULT_TITLEBAR_HEIGHT;
+  }
+#else /* !WUSS_FURNITURE */
+#ifdef WUSS_ICONS
+  if (config != NULL)
+  {
+    blight = wuss__resolve_colour(w, config->bevel.light);
+    bdark  = wuss__resolve_colour(w, config->bevel.dark);
+    abg    = wuss__resolve_colour(w, config->accent.bg);
+    afg    = wuss__resolve_colour(w, config->accent.fg);
+  }
+  else
+  {
+    blight = 0;
+    bdark  = 0;
+    abg    = 0;
+    afg    = (w->npalette > 1) ? 1 : 0;
+  }
+  if (validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
+  {
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
+    return result_WUSS_BAD_COLOUR;
+  }
+  w->bevel_light = blight;
+  w->bevel_dark  = bdark;
+  w->accent_bg   = abg;
+  w->accent_fg   = afg;
+#else
+  if (wuss__validate_backdrop(w, &w->backdrop) != result_OK)
+  {
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
+    return result_WUSS_BAD_COLOUR;
+  }
+#endif
+#endif /* WUSS_FURNITURE */
+
+  /* Second pass: the chrome colours are stored and concrete now, so fill in
+   * the chrome-role symbolic slots (wuss_COLOUR_TITLE_BG etc.). */
+  wuss__rebuild_palettecache(w);
+
+  w->scr                = scr;
+  {
+    int i;
+
+    for (i = 0; i < nfonts; i++)
+    {
+      w->fonts[i]        = fonts[i].font;
+      w->font_classes[i] = fonts[i].font_class;
+      w->font_names[i]   = fonts[i].name;
+    }
+    for (; i < wuss_MAX_FONTS; i++)
+    {
+      w->fonts[i]        = NULL;
+      w->font_classes[i] = wuss_FONT_CLASS_NONE;
+      w->font_names[i]   = NULL;
+    }
+    w->nfonts = nfonts;
+  }
+#ifdef WUSS_FURNITURE
+  w->furniture.dragging = NULL;
+  w->furniture.drag.x   = 0;
+  w->furniture.drag.y   = 0;
+  w->furniture_ops      = &wuss__furniture_default_ops;
+#endif
+#ifdef WUSS_ICONS
+  w->pressed_icon       = NULL;
+  w->hover_icon         = NULL;
+#endif
+#ifdef WUSS_MENUS
+  w->menu_chain         = NULL;
+  w->menu_task          = NULL;
+  w->menu_eat_up        = 0;
+#endif
+
+  w->ndirty = 0;
+
+  w->layout    = NULL;
+  w->cascade.x = 0;
+  w->cascade.y = 0;
+  w->pointer.x = 0;
+  w->pointer.y = 0;
+
+  list_init(&w->z_order);
+  list_init(&w->tasks);
+
+  *wuss = w;
+
+  return result_OK;
+}

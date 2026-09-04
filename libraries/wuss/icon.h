@@ -34,6 +34,8 @@ struct wuss_icon
   screen_pattern_t  pattern; /* wuss_ICON_TYPE_PATTERN tile; 0 otherwise */
   const bitmap_t   *bitmap;  /* wuss_ICON_TYPE_BITMAP image; borrowed, or NULL */
   int               group;   /* radio: exclusive-selection group; 0 = none */
+  wuss_colour_t     swatch;  /* menu entry + FLAGS_SWATCH: left-gutter chip
+                              * colour; wuss_NO_BACKGROUND otherwise */
   wuss_icon_flags_t flags;
   wuss_icon_state_t state;
 };
@@ -84,6 +86,14 @@ void wuss__icon_box_to_screen(const box_t *content,
 /* Invalidate exactly this icon's bbox, via wuss_window_invalidate, so a
  * set_text / pressed-state / hide change repaints just the icon. */
 void wuss__icon_invalidate(const wuss_icon_t *icon);
+
+/* Validate a spec against the palette and fill "out" with a detached icon (no
+ * window, no owned text -- out->text is aliased to spec->text or ""). Shared
+ * by wuss_icon_create and wuss_icon_plot. Returns result_WUSS_BAD_ICON /
+ * result_WUSS_BAD_COLOUR as wuss_icon_create documents, else result_OK. */
+result_t wuss__icon_from_spec(const wuss_t           *wuss,
+                              const wuss_icon_spec_t *spec,
+                              wuss_icon_t            *out);
 
 /* Draw one icon. Called from redraw_window with wuss->scr->clip already set to
  * the surviving content piece and the background already filled. "content" is

@@ -3,7 +3,7 @@
 #ifndef TASKS_PALETTE_H
 #define TASKS_PALETTE_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/colour.h"
 #include "wuss/window.h"
@@ -18,7 +18,7 @@ typedef struct palette_task
 }
 palette_task_t;
 
-wuss_event_fn_t palette_handle;
+wuss_window_fn_t palette_handle;
 
 /* create the palette-swatch-grid window against the given wuss instance */
 result_t palette_create(wuss_t         *wuss,
@@ -27,6 +27,6 @@ result_t palette_create(wuss_t         *wuss,
                         palette_task_t *task);
 
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_PALETTE_H */

@@ -3,7 +3,7 @@
 #ifndef TASKS_CURVE_H
 #define TASKS_CURVE_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/colour.h"
 #include "geom/point.h"
@@ -23,11 +23,11 @@ typedef struct curve_task
 }
 curve_task_t;
 
-wuss_event_fn_t curve_handle;
+wuss_window_fn_t curve_handle;
 
 /* create the curve window against the given wuss instance */
 result_t curve_create(wuss_t *wuss, curve_task_t *task);
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_CURVE_H */

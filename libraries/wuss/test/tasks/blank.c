@@ -1,6 +1,6 @@
 /* wuss/test/tasks/blank.c -- colour-cycling task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -19,23 +19,38 @@
 
 result_t blank_create(wuss_t *wuss, blank_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  result_t         rc;
 
   task->npalette    = 16; // TODO: Read max palette index from wuss
   task->index       = 0;
   task->frame_count = 0;
 
-  delegate = wuss_task_start(blank_handle, task); /* wuss fills the content area itself */
+  /* wuss fills the content area itself */
+  delegate_desc.handle    = blank_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "blank";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
+    return rc;
+  }
+  wuss_task_set_autoclose(delegate, 1);
 
-  return wuss_window_create_placed(wuss,
-                                   SIZE2D(200, 160),
-                                   NULL,
-                                   wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
-                                   wuss_BACKDROP_COLOUR(task->index),
-                                   &delegate,
-                                   SIZE2D(200, 160),
-                                   SIZE2D(0, 0),
-                                   &task->window);
+  rc = wuss_window_create_placed(delegate,
+                                 SIZE2D(200, 160),
+                                 NULL,
+                                 wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                                 wuss_BACKDROP_COLOUR(task->index),
+                                 SIZE2D(200, 160),
+                                 SIZE2D(0, 0),
+                                 &task->window);
+  if (rc != result_OK)
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+
+  return rc;
 }
 
 static result_t blank_idle(void *task_data)
@@ -63,9 +78,8 @@ result_t blank_handle(wuss_window_t      *window,
                       const wuss_event_t *event,
                       void               *task_data)
 {
-  if (event->kind == wuss_EVENT_CLOSE)
+  if (event->kind == wuss_EVENT_QUIT)
   {
-    wuss_window_close(window);
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
   }
@@ -76,4 +90,4 @@ result_t blank_handle(wuss_window_t      *window,
   return blank_idle(task_data);
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

@@ -31,6 +31,7 @@ extern "C"
 #include "base/result.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "geom/point.h"
 
 #include "wuss/wuss.h"
 
@@ -135,9 +136,26 @@ typedef enum wuss_icon_flags
    *  normal interactive row with its own label; the dashed rule above it is
    *  laid out and drawn as a separate wuss_ICON_TYPE_RULE icon. Ignored by
    *  other types. */
-  wuss_ICON_FLAGS_SEPARATOR    = 1 << 7
+  wuss_ICON_FLAGS_SEPARATOR    = 1 << 7,
+  /** wuss_ICON_TYPE_MENU_ENTRY: draw a small colour chip (spec.swatch) in the
+   *  row's left gutter, where the tick would sit. Mutually exclusive with a
+   *  selected tick -- the chip wins. Ignored by other types. */
+  wuss_ICON_FLAGS_SWATCH      = 1 << 8,
+  /** Two-bit field (bits 9-10) selecting which of wuss_create's fonts draws
+   *  this icon's text: 0 is the system font, 1-3 the further slots. Build it
+   *  with wuss_ICON_FONT(n); read it with wuss_ICON_FONT_OF(flags). A slot
+   *  that was not filled falls back to the system font. */
+  wuss_ICON_FLAGS_FONT_MASK   = 3 << 9
 }
 wuss_icon_flags_t;
+
+/**
+ * Encode font slot \p n (0..3) as icon flags; OR into wuss_icon_spec::flags.
+ */
+#define wuss_ICON_FONT(n)       (((n) & 3) << 9)
+
+/** Decode the font slot (0..3) from an icon's flags. */
+#define wuss_ICON_FONT_OF(f)    (((f) >> 9) & 3)
 
 /**
  * Description of an icon at creation. Copied by value into the icon; the
@@ -173,6 +191,10 @@ typedef struct wuss_icon_spec
    *  (the default) means "no group": such a radio still toggles but never
    *  clears another. Ignored by all other icon types. */
   int               group;
+  /** wuss_ICON_TYPE_MENU_ENTRY with wuss_ICON_FLAGS_SWATCH: the colour chip to
+   *  draw in the left gutter, as an index into the system palette. Ignored
+   *  unless that flag is set; ignored by all other icon types. */
+  wuss_colour_t     swatch;
   /** Appearance/behaviour flags. */
   wuss_icon_flags_t flags;
 }
@@ -219,6 +241,31 @@ result_t wuss_icon_create_array(wuss_window_t          *window,
                                 const wuss_icon_spec_t *specs,
                                 int                     nspecs,
                                 wuss_icon_t           **icons);
+
+/**
+ * Draw an icon from a spec once, retaining nothing: no allocation, no icon
+ * added to the window. For static, non-interactive content a task can redraw
+ * cheaply from its own model -- a large grid of swatches, say -- without a
+ * live icon per cell.
+ *
+ * Call only from a task's wuss_EVENT_REDRAW handler, passing that event's \c
+ * bounds and \c scroll straight through; the icon is painted through the
+ * window manager's screen with the redraw clip already in force. The spec is
+ * validated exactly as \ref wuss_icon_create validates it. The icon's \c
+ * bbox is in virtual document space, as for a created icon.
+ *
+ * \param[in] window  Window being redrawn.
+ * \param[in] spec    Icon description; not retained.
+ * \param[in] content The redraw event's \c bounds (full content box, screen
+ *                    space).
+ * \param[in] scroll  The redraw event's \c scroll offset.
+ * \return \ref result_OK, or the same \ref result_WUSS_BAD_ICON / \ref
+ *         result_WUSS_BAD_COLOUR \ref wuss_icon_create would return.
+ */
+result_t wuss_icon_plot(wuss_window_t          *window,
+                        const wuss_icon_spec_t *spec,
+                        const box_t            *content,
+                        point_t                 scroll);
 
 /**
  * Destroy an icon, unlinking it from its window and invalidating its

@@ -3,7 +3,7 @@
 #ifndef TASKS_ICONS_H
 #define TASKS_ICONS_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
@@ -11,9 +11,10 @@
 #include "wuss/icon.h"
 #include "wuss/window.h"
 
-/* demonstrates wuss-managed work-area icons: a couple of labels, a button that
- * bumps a counter, and a second button placed far down the document to show
- * icons scroll with the content and stay clickable */
+/* demonstrates wuss-managed work-area icons: labelled groups covering every
+ * icon type (buttons, radios/options, bitmaps, a pattern swatch, a menu-entry
+ * strip) plus a button placed far down the document to show icons scroll with
+ * the content and stay clickable */
 typedef struct icons_task
 {
   wuss_window_t *window;
@@ -31,7 +32,7 @@ typedef struct icons_task
 }
 icons_task_t;
 
-wuss_event_fn_t icons_handle;
+wuss_window_fn_t icons_handle;
 
 /* create the icons window against the given wuss instance */
 result_t icons_create(wuss_t       *wuss,
@@ -39,6 +40,6 @@ result_t icons_create(wuss_t       *wuss,
                       const char   *resources,
                       icons_task_t *task);
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_ICONS_H */
