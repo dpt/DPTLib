@@ -6,7 +6,7 @@
 
 or this:
 
-![Digits Font](../resources/bmfonts/digits.png)
+![Digits Font](../resources/bmfonts/Digits-Regular.png)
 
 or even this:
 
