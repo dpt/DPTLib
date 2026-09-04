@@ -496,7 +496,6 @@ void wuss__icon_draw(wuss_t            *wuss,
                      point_t            scroll)
 {
   icon_draw_ctx_t c;
-  int             font_width;
   int             fontidx;
 
   if (icon->flags & wuss_ICON_FLAGS_HIDDEN)
@@ -520,10 +519,9 @@ void wuss__icon_draw(wuss_t            *wuss,
 
   c.have_font = (c.font != NULL && icon->text[0] != '\0');
   if (c.have_font)
-    bmfont_get_info(c.font, &font_width, &c.font_height);
+    bmfont_get_info(c.font, NULL, &c.font_height);
   else
-    font_width = c.font_height = 0;
-  NOT_USED(font_width);
+    c.font_height = 0;
 
   switch (icon->type)
   {
