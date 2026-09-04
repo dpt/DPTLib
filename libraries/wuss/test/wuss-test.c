@@ -1390,10 +1390,10 @@ result_t wuss_test(const char *resources)
     if (delegate_t == NULL) goto Failure;
 
     box_t_win.x0 = 10; box_t_win.y0 = 10;
-    box_t_win.x1 = 50; box_t_win.y1 = 50; /* 40x40 content, room to grow to a 200x200 doc */
+    box_t_win.x1 = 50; box_t_win.y1 = 50; /* 40x40 content, room to grow to a 150x150 doc without the toggled box needing to be repositioned off (10,10) -- this test is about the in-place grow blit */
     rc = wuss_window_create(delegate_t, &box_t_win, "T", wuss_WINDOW_NONE,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                            SIZE2D(200, 200), SIZE2D(0, 0), &win_t);
+                            SIZE2D(150, 150), SIZE2D(0, 0), &win_t);
     if (rc != result_OK)
       goto Failure;
 
@@ -1487,9 +1487,11 @@ result_t wuss_test(const char *resources)
 
     wuss_window_get_visible_bounds(win_t, &after);
     if (after.x1 > 200 || after.y1 > 200)
-      goto Failure; /* maximizing must stay on-screen: bounded by what's left
-                      * of the screen from T's own x0/y0 (10,10), not by the
-                      * screen's full width/height as if T were at the origin */
+      goto Failure; /* toggling must leave the window fully on-screen */
+    if (after.x0 != before.x0 || after.y0 != before.y0)
+      goto Failure; /* a 150x150 doc toggled from (10,10) fits without moving,
+                      * so the top-left stays put and the in-place grow blit
+                      * (asserted below) applies */
 
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK)
@@ -2367,14 +2369,15 @@ result_t wuss_test(const char *resources)
 
     wuss_window_get_visible_bounds(win_v, &vb);
     if (vb.x1 <= vb.x0 || vb.y1 <= vb.y0)
-      goto Failure; /* screen-limited width/height went negative (x0 is
-                      * further right than the screen edge plus furniture
-                      * can make room for), producing an inverted box --
+      goto Failure; /* a naive "space from x0 to the screen edge" sum goes
+                      * negative from off-screen, producing an inverted box --
                       * un-hit-testable forever after, since box_contains_point
-                      * can never match x0>x1: the window is stuck, unclickable,
-                      * unclosable. Must floor at WUSS_MIN_CONTENT like
-                      * drag-resize.c does, even if that leaves the maximized
-                      * window hanging off the visible screen. */
+                      * can never match x0>x1: the window would be stuck,
+                      * unclickable, unclosable */
+    if (vb.x0 < 0 || vb.y0 < 0 || vb.x1 > 200 || vb.y1 > 200)
+      goto Failure; /* toggle repositions toward the origin by the minimum
+                      * needed, so even a window dragged right off the screen
+                      * comes back fully on-screen when maximized */
 
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK)
@@ -2416,6 +2419,193 @@ result_t wuss_test(const char *resources)
       goto Failure;
 
     wuss_window_close(win_v);
+  }
+
+  printf("test: toggle-size repositions a window near the far edge toward the origin, then restores it exactly\n");
+
+  {
+    wuss_task_t   *delegate_p;
+    box_t          box_p, before, after, titlebar, toggle;
+    wuss_window_t *win_p;
+    int            outline_px, titlebar_height, inset, icon, cx, cy;
+
+    delegate_p = mk_task(wuss, NULL, NULL);
+    if (delegate_p == NULL) goto Failure;
+
+    box_p.x0 = 150; box_p.y0 = 150;
+    box_p.x1 = 190; box_p.y1 = 190; /* 40x40 content, hard against the bottom-
+                                      * right of the 200x200 screen; doc big
+                                      * enough that maximize is screen-limited */
+    rc = wuss_window_create(delegate_p, &box_p, "P", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            SIZE2D(400, 400), SIZE2D(0, 0), &win_p);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    outline_px      = 1;
+    titlebar_height = 20;
+    inset           = 3;
+    icon            = titlebar_height - 2 * inset;
+
+    wuss_window_get_visible_bounds(win_p, &before);
+    titlebar.x1 = before.x1 - outline_px;
+    titlebar.y0 = before.y0 + outline_px;
+    toggle.x1 = titlebar.x1 - inset;
+    toggle.x0 = toggle.x1 - icon;
+    toggle.y0 = titlebar.y0 + inset;
+    toggle.y1 = toggle.y0 + icon;
+    cx = (toggle.x0 + toggle.x1) / 2;
+    cy = (toggle.y0 + toggle.y1) / 2;
+
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+    if (rc != result_OK || hit != win_p)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_p, &after);
+    if (after.x0 >= before.x0 || after.y0 >= before.y0)
+      goto Failure; /* the window had to move toward the origin to fit its
+                      * maximized box on screen */
+    if (after.x0 < 0 || after.y0 < 0 || after.x1 > 200 || after.y1 > 200)
+      goto Failure; /* ...but only as far as needed, and it stays on-screen */
+    if (after.x1 - after.x0 < 190 || after.y1 - after.y0 < 190)
+      goto Failure; /* it genuinely fills (nearly) the whole screen */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* toggle back: the icon moved with the grown/repositioned titlebar */
+    wuss_window_get_visible_bounds(win_p, &after);
+    titlebar.x1 = after.x1 - outline_px;
+    titlebar.y0 = after.y0 + outline_px;
+    toggle.x1 = titlebar.x1 - inset;
+    toggle.x0 = toggle.x1 - icon;
+    toggle.y0 = titlebar.y0 + inset;
+    toggle.y1 = toggle.y0 + icon;
+    cx = (toggle.x0 + toggle.x1) / 2;
+    cy = (toggle.y0 + toggle.y1) / 2;
+
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+    if (rc != result_OK || hit != win_p)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_p, &after);
+    if (after.x0 != before.x0 || after.y0 != before.y0 ||
+        after.x1 != before.x1 || after.y1 != before.y1)
+      goto Failure; /* restore returns the exact pre-toggle box, position too */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_p);
+  }
+
+  printf("test: toggle-size fills the screen for a window with no document extent (doc == 0), and per-axis where only one axis has a doc\n");
+
+  {
+    wuss_task_t   *delegate_z;
+    box_t          box_z, before, after, titlebar, toggle;
+    wuss_window_t *win_z;
+    int            outline_px, titlebar_height, inset, icon, cx, cy, axis;
+
+    outline_px      = 1;
+    titlebar_height = 20;
+    inset           = 3;
+    icon            = titlebar_height - 2 * inset;
+
+    /* axis 0: doc == (0,0) -> both axes fill the screen.
+     * axis 1: doc == (60,0) -> width caps at ~60, height fills the screen. */
+    for (axis = 0; axis < 2; axis++)
+    {
+      delegate_z = mk_task(wuss, NULL, NULL);
+      if (delegate_z == NULL) goto Failure;
+
+      box_z.x0 = 20; box_z.y0 = 20;
+      box_z.x1 = 60; box_z.y1 = 60; /* 40x40 content */
+      rc = wuss_window_create(delegate_z, &box_z, "Z", wuss_WINDOW_NONE,
+                              wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                              axis == 0 ? SIZE2D(0, 0) : SIZE2D(60, 0),
+                              SIZE2D(0, 0), &win_z);
+      if (rc != result_OK)
+        goto Failure;
+
+      rc = wuss_redraw_dirty(wuss);
+      if (rc != result_OK)
+        goto Failure;
+
+      wuss_window_get_visible_bounds(win_z, &before);
+      titlebar.x1 = before.x1 - outline_px;
+      titlebar.y0 = before.y0 + outline_px;
+      toggle.x1 = titlebar.x1 - inset;
+      toggle.x0 = toggle.x1 - icon;
+      toggle.y0 = titlebar.y0 + inset;
+      toggle.y1 = toggle.y0 + icon;
+      cx = (toggle.x0 + toggle.x1) / 2;
+      cy = (toggle.y0 + toggle.y1) / 2;
+
+      rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+      if (rc != result_OK || hit != win_z)
+        goto Failure;
+      rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+      if (rc != result_OK)
+        goto Failure;
+
+      wuss_window_get_content_bounds(win_z, &content);
+      width  = content.x1 - content.x0;
+      height = content.y1 - content.y0;
+
+      if (height < 150)
+        goto Failure; /* the y axis has no doc cap in either case -> fills the
+                        * screen, not stuck at the 40px starting height */
+      if (axis == 0 && width < 150)
+        goto Failure; /* doc == 0 -> the x axis fills the screen too */
+      if (axis == 1 && width != 60)
+        goto Failure; /* doc.w == 60 -> the x axis caps at the doc extent */
+
+      rc = wuss_redraw_dirty(wuss);
+      if (rc != result_OK)
+        goto Failure;
+
+      /* toggle back restores the starting box */
+      wuss_window_get_visible_bounds(win_z, &after);
+      titlebar.x1 = after.x1 - outline_px;
+      titlebar.y0 = after.y0 + outline_px;
+      toggle.x1 = titlebar.x1 - inset;
+      toggle.x0 = toggle.x1 - icon;
+      toggle.y0 = titlebar.y0 + inset;
+      toggle.y1 = toggle.y0 + icon;
+      cx = (toggle.x0 + toggle.x1) / 2;
+      cy = (toggle.y0 + toggle.y1) / 2;
+
+      rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+      if (rc != result_OK || hit != win_z)
+        goto Failure;
+      rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+      if (rc != result_OK)
+        goto Failure;
+
+      wuss_window_get_visible_bounds(win_z, &after);
+      if (after.x0 != before.x0 || after.y0 != before.y0 ||
+          after.x1 != before.x1 || after.y1 != before.y1)
+        goto Failure;
+
+      rc = wuss_redraw_dirty(wuss);
+      if (rc != result_OK)
+        goto Failure;
+
+      wuss_window_close(win_z);
+    }
   }
 
   printf("test: dragging a back-most window with nothing above it still blits\n");

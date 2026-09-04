@@ -566,4 +566,31 @@ static inline void wuss__max_content_on_screen(const wuss_window_t *window,
     max->h = WUSS_MIN_CONTENT;
 }
 
+/* Largest content width/height whose visible box fits the screen when the
+ * window may be repositioned -- i.e. the whole screen less chrome, with no
+ * allowance for the window's current top-left. Toggle-size uses this and
+ * then nudges the top-left toward the origin by the minimum needed to fit.
+ * Floored at WUSS_MIN_CONTENT like wuss__max_content_on_screen.
+ * ponytail: a named helper (~6 lines) to stay parallel with its sibling
+ * above rather than open-coded into toggle-action.c. */
+static inline void wuss__max_content_anywhere_on_screen(const wuss_window_t *window,
+                                                        size2d_t            *max)
+{
+  int     outline_px, titlebar_height;
+  point_t carve;
+
+  outline_px      = wuss__outline_px(window);
+  titlebar_height = wuss__titlebar_height(window);
+  wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
+
+  max->w = window->wuss->scr->size.w - 2 * outline_px - carve.x;
+  max->h = window->wuss->scr->size.h
+         - 2 * outline_px - titlebar_height - carve.y;
+
+  if (max->w < WUSS_MIN_CONTENT)
+    max->w = WUSS_MIN_CONTENT;
+  if (max->h < WUSS_MIN_CONTENT)
+    max->h = WUSS_MIN_CONTENT;
+}
+
 #endif /* IMPL_H */
