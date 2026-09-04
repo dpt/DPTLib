@@ -427,7 +427,7 @@ result_t wuss_test(const char *resources)
     memset(&symcfg, 0, sizeof(symcfg));
     symcfg.furniture.title.bg = wuss_COLOUR_BLUE;   /* -> index 2 */
     symcfg.furniture.title.fg = wuss_COLOUR_WHITE;  /* -> index 3 */
-    symcfg.backdrop = (wuss_backdrop_t) wuss_BACKDROP_COLOUR(wuss_COLOUR_GREEN); /* -> 1 */
+    symcfg.backdrop = wuss_BACKDROP_COLOUR(wuss_COLOUR_GREEN); /* -> 1 */
 
     rc = wuss_create(&scr, NULL, 0, sympal, 5, &symcfg, NULL, &symw);
     if (rc != result_OK)
