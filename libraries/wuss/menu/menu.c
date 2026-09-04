@@ -103,6 +103,23 @@ static void wuss__menu_close_from(struct wuss__menu *node)
   wuss__menu_close_from(node->child);
   node->child = NULL;
 
+  /* A pending pick flash still owes its owner a MENU_SELECT; the chain is
+   * about to be freed out from under it (the caller unlinks it from
+   * wuss->menu_chain first), so delivering the notification here -- rather
+   * than via wuss__menu_flash_finish, whose own teardown would race this
+   * one -- is the only chance the pick has of reaching its owner. */
+  if (node->flash.frames > 0)
+  {
+    wuss_event_t sel;
+
+    node->flash.frames        = 0;
+    sel.kind                    = wuss_EVENT_MENU_SELECT;
+    sel.data.menu_select.menu   = node->flash.menu;
+    sel.data.menu_select.index  = node->flash.index;
+    sel.data.menu_select.button = node->flash.button;
+    (void) wuss__deliver(node->flash.owner, NULL, &sel);
+  }
+
   {
     wuss_t *w;
 
