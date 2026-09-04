@@ -296,7 +296,7 @@ static void screen_copy_bitmap_32(screen_t       *scr,
     {
       int chunk, i;
 
-      chunk = (remaining > BITMAP_BLIT_CHUNK) ? BITMAP_BLIT_CHUNK : remaining;
+      chunk = MIN(remaining, BITMAP_BLIT_CHUNK);
 
       for (i = 0; i < chunk; i++)
       {
@@ -501,8 +501,7 @@ void screen_draw_dashed_line(screen_t *scr,
 
   if (on <= 0)
     return;
-  if (off < 0)
-    off = 0;
+  off    = MAX(off, 0);
   period = on + off;
 
   if (screen_get_clip(scr, &clip_box))

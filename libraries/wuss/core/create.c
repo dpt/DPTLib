@@ -201,8 +201,7 @@ result_t wuss_create(screen_t               *scr,
       int titleh;
 
       bmfont_get_info(fonts[1].font, NULL, &titleh);
-      if (titleh > font_height)
-        font_height = titleh;
+      font_height = MAX(font_height, titleh);
     }
     w->titlebar_height = font_height + 4;
   }

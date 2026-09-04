@@ -461,8 +461,7 @@ result_t tagdb_add(tagdb_t *db, const unsigned char *name, tagdb_tag_t *ptag)
       void        *newarr;
 
       n = power2gt(db->c_allocated);
-      if (n < 8)
-        n = 8;
+      n = MAX(n, 8);
 
       newarr = realloc(db->counts, n * sizeof(*db->counts));
       if (newarr == NULL)

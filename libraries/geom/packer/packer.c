@@ -11,6 +11,7 @@
 
 #include "base/result.h"
 #include "base/debug.h"
+#include "base/utils.h"
 #include "geom/box.h"
 #include "utils/array.h"
 
@@ -496,7 +497,7 @@ result_t packer_release(packer_t *packer, const box_t *area)
 
 void packer_set_gutter(packer_t *packer, int gutter)
 {
-  packer->gutter = (gutter > 0) ? gutter : 0;
+  packer->gutter = MAX(gutter, 0);
 }
 
 result_t packer_place_by(packer_t     *packer,

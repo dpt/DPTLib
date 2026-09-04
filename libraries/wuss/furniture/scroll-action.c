@@ -30,19 +30,14 @@ void wuss__furniture_drag_sausage(wuss_window_t *window,
   end_gap  = (well_px > 2 * WUSS_SCROLL_END_GAP + WUSS_MIN_SAUSAGE) ? WUSS_SCROLL_END_GAP : 0;
   track_px = well_px - 2 * end_gap;
 
-  max_scroll = doc_size - content_size;
-  if (max_scroll < 0)
-    max_scroll = 0;
+  max_scroll = MAX(doc_size - content_size, 0);
 
   if (track_px <= 0 || doc_size <= content_size)
     new_scroll = 0;
   else
     new_scroll = scroll_start + delta_px * doc_size / track_px;
 
-  if (new_scroll < 0)
-    new_scroll = 0;
-  else if (new_scroll > max_scroll)
-    new_scroll = max_scroll;
+  new_scroll = CLAMP(new_scroll, 0, max_scroll);
 
   if (horizontal)
     wuss_window_set_scroll(window, POINT(new_scroll, window->scroll.y));

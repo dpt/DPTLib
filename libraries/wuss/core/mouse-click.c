@@ -210,8 +210,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           {
             wuss__vscroll_sausage_box(win, &sausage);
             page = (content.y1 - content.y0) - WUSS_SCROLL_STEP;
-            if (page < 1)
-              page = 1;
+            page = MAX(page, 1);
             if (y < sausage.y0)
               wuss__scroll_step(win, POINT(0, -page));
             else if (y > sausage.y1)
@@ -221,8 +220,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           {
             wuss__hscroll_sausage_box(win, &sausage);
             page = (content.x1 - content.x0) - WUSS_SCROLL_STEP;
-            if (page < 1)
-              page = 1;
+            page = MAX(page, 1);
             if (x < sausage.x0)
               wuss__scroll_step(win, POINT(-page, 0));
             else if (x > sausage.x1)

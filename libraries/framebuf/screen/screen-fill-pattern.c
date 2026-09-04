@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include "base/utils.h"
 #include "framebuf/colour.h"
 #include "framebuf/pattern.h"
 #include "framebuf/pixelfmt.h"
@@ -86,9 +87,7 @@ static void screen_fill_pattern_32(screen_t            *scr,
       col = 0;
       while (w > 0)
       {
-        n = 8 - col;
-        if (n > w)
-          n = w;
+        n = MIN(8 - col, w);
         memcpy(scrp, run + col, (size_t) n * sizeof(*scrp));
         scrp += n;
         w    -= n;

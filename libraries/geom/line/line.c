@@ -128,7 +128,7 @@ int line_clip(const box_t *clip,
     }
     else
     {
-      oc = oc1 > oc0 ? oc1 : oc0;
+      oc = MAX(oc1, oc0);
       w  = x1 - x0;
       h  = y1 - y0;
 

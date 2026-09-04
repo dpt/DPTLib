@@ -148,9 +148,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   if (!c->have_font)
     return;
 
-  interior_w = (b->x1 - b->x0) - 2;
-  if (interior_w < 1)
-    interior_w = 1;
+  interior_w = MAX((b->x1 - b->x0) - 2, 1);
 
   bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
                  interior_w, &split_point, &width);
@@ -261,9 +259,7 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
     int            interior_w, split_point;
     bmfont_width_t width;
 
-    interior_w = (b->x1 - b->x0) - 2;
-    if (interior_w < 1)
-      interior_w = 1;
+    interior_w = MAX((b->x1 - b->x0) - 2, 1);
 
     bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
                    interior_w, &split_point, &width);
@@ -295,9 +291,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
   box_t              g;
   int                gsz, gy, tx;
 
-  gsz = (c->font_height >= 8) ? c->font_height : 8;
-  if (gsz > b->y1 - b->y0)
-    gsz = b->y1 - b->y0;
+  gsz = CLAMP(c->font_height, 8, b->y1 - b->y0);
   gy = b->y0 + (b->y1 - b->y0 - gsz) / 2;
 
   g.x0 = b->x0;
@@ -347,9 +341,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     bmfont_width_t width;
 
     tx = g.x1 + 4;
-    interior_w = (b->x1 - tx) - 1;
-    if (interior_w < 1)
-      interior_w = 1;
+    interior_w = MAX((b->x1 - tx) - 1, 1);
 
     bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
                    interior_w, &split_point, &width);
@@ -417,7 +409,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   {
     int cx, cy, h;
 
-    h  = (c->font_height >= 8) ? c->font_height : 8;
+    h  = MAX(c->font_height, 8);
     cx = b->x0 + pad;
     cy = b->y0 + (b->y1 - b->y0 - h) / 2;
     screen_fill_rect(c->scr, cx, cy, SIZE2D(h, h),
@@ -429,7 +421,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     int     cx, cy, h;
     point_t centre;
 
-    h  = (c->font_height >= 8) ? c->font_height : 8;
+    h  = MAX(c->font_height, 8);
     cx = b->x0 + pad;
     cy = b->y0 + (b->y1 - b->y0 - h) / 2;
     centre.x = cx + h / 2;

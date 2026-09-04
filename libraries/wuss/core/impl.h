@@ -331,8 +331,7 @@ static inline int wuss__array_grow(const wuss_alloc_t *a,
   void *grown;
 
   need += used;
-  if (need < minimum)
-    need = minimum;
+  need  = MAX(need, minimum);
   if (need <= *allocated)
     return 0;
 
@@ -652,10 +651,8 @@ static inline void wuss__max_content_on_screen(const wuss_window_t *window,
   max->h = window->wuss->scr->size.h - window->visible.y0
          - 2 * outline_px - titlebar_height - carve.y;
 
-  if (max->w < WUSS_MIN_CONTENT)
-    max->w = WUSS_MIN_CONTENT;
-  if (max->h < WUSS_MIN_CONTENT)
-    max->h = WUSS_MIN_CONTENT;
+  max->w = MAX(max->w, WUSS_MIN_CONTENT);
+  max->h = MAX(max->h, WUSS_MIN_CONTENT);
 }
 
 /* Largest content width/height whose visible box fits the screen when the
@@ -679,10 +676,8 @@ static inline void wuss__max_content_anywhere_on_screen(const wuss_window_t *win
   max->h = window->wuss->scr->size.h
          - 2 * outline_px - titlebar_height - carve.y;
 
-  if (max->w < WUSS_MIN_CONTENT)
-    max->w = WUSS_MIN_CONTENT;
-  if (max->h < WUSS_MIN_CONTENT)
-    max->h = WUSS_MIN_CONTENT;
+  max->w = MAX(max->w, WUSS_MIN_CONTENT);
+  max->h = MAX(max->h, WUSS_MIN_CONTENT);
 }
 
 #endif /* IMPL_H */

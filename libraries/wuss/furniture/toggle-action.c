@@ -55,10 +55,8 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
       x0 = window->wuss->scr->size.w - vis_w;
     if (y0 + vis_h > window->wuss->scr->size.h)
       y0 = window->wuss->scr->size.h - vis_h;
-    if (x0 < 0)
-      x0 = 0;
-    if (y0 < 0)
-      y0 = 0;
+    x0 = MAX(x0, 0);
+    y0 = MAX(y0, 0);
 
     window->pre_toggle = window->visible;
 

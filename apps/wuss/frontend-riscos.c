@@ -64,7 +64,7 @@ struct wuss_frontend
 static void set_hw_palette(const colour_t *palette, int npalette)
 {
   int i;
-  int n = (npalette < 16) ? npalette : 16;
+  int n = MIN(npalette, 16);
 
   for (i = 0; i < n; i++)
   {
