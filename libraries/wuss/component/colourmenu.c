@@ -18,7 +18,7 @@
 
 #include "wuss/component/colourmenu.h"
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 /* ----------------------------------------------------------------------- */
 

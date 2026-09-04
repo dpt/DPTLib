@@ -17,7 +17,7 @@
 
 #include "wuss/component/fontmenu.h"
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 /* ----------------------------------------------------------------------- */
 

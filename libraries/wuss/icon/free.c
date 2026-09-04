@@ -6,7 +6,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 void wuss__icons_free(wuss_window_t *window)
 {

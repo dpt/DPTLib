@@ -21,13 +21,13 @@
 #include "wuss/task.h"
 
 #ifdef WUSS_FURNITURE
-#include "furniture.h"
+#include "../furniture.h"
 #endif
 #ifdef WUSS_ICONS
-#include "icon.h"
+#include "../icon.h"
 #endif
 #ifdef WUSS_MENUS
-#include "menu.h"
+#include "../menu.h"
 #endif
 
 #define WUSS_TITLE_MAX               63

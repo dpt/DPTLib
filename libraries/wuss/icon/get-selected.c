@@ -2,7 +2,7 @@
 
 #include <assert.h>
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 int wuss_icon_get_selected(const wuss_icon_t *icon)
 {

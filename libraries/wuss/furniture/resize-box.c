@@ -1,6 +1,6 @@
 /* wuss/furniture/resize-box.c -- wuss - minimal window manager */
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 void wuss__resize_box(const wuss_window_t *window, box_t *out)
 {

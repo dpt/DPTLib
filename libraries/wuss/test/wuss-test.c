@@ -34,7 +34,7 @@
 /* white-box: the menu-flash test drives picks through the icon layer and
  * reads back struct wuss__menu / struct wuss_icon state directly */
 #if defined(WUSS_MENUS) && defined(WUSS_ICONS)
-#include "../impl.h"
+#include "../core/impl.h"
 #include "../icon.h"
 #endif
 

@@ -1,6 +1,6 @@
 /* wuss/furniture/hit-test.c -- wuss - minimal window manager */
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
                                                  point_t              p)

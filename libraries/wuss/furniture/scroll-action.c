@@ -1,6 +1,6 @@
 /* wuss/furniture/scroll-action.c -- wuss - minimal window manager */
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 void wuss__furniture_drag_sausage(wuss_window_t *window,
                                   int            delta_px,

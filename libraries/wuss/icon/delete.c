@@ -6,7 +6,7 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 void wuss_icon_delete(wuss_icon_t *icon)
 {

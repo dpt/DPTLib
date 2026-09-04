@@ -9,7 +9,7 @@
 #include "framebuf/bmfont.h"
 #include "framebuf/screen.h"
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 /* ----------------------------------------------------------------------- */
 
