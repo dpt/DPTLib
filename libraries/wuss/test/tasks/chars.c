@@ -127,9 +127,10 @@ result_t chars_create(wuss_t       *wuss,
   task->fg          = colour_rgb(0x00, 0x00, 0x00);
   task->bg          = colour_rgb(0xFF, 0xFF, 0xFF);
 
-  /* the picker: every ".png" font under resources/bmfonts, sorted */
+  /* the picker: every ".png" font under resources/bmfonts, sorted, less any
+   * SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows from) */
   bmfonts_dir = path_join_filename(chars_resources, 2, "resources", "bmfonts");
-  rc = wuss_fontmenu_create(&task->fontmenu, bmfonts_dir, "Font", NULL);
+  rc = wuss_fontmenu_create(&task->fontmenu, bmfonts_dir, "Font", wuss, NULL);
   if (rc != result_OK)
   {
     free(task); /* nothing registered yet; the spawner will not free it */

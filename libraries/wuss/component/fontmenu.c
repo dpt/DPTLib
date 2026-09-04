@@ -55,12 +55,35 @@ static void menu_free(const wuss_alloc_t *a, wuss_menu_t *m)
 typedef struct namelist
 {
   const wuss_alloc_t *alloc; /* borrowed; the resolved hooks */
+  const wuss_t       *wuss;  /* borrowed; consulted to skip SYSTEM fonts, or
+                              * NULL to skip nothing */
   char              **names;
   int                 n;
   int                 cap;
   int                 oom; /* a strdup/grow failed; stop and unwind */
 }
 namelist_t;
+
+/* True if any wuss_create font slot names \p name and is classed SYSTEM --
+ * chrome-only, not meant to be offered as a text font. */
+static int is_system_font_name(const wuss_t *wuss, const char *name)
+{
+  int i;
+
+  if (wuss == NULL)
+    return 0;
+
+  for (i = 0; i < wuss_MAX_FONTS; i++)
+  {
+    const char *slot_name = wuss_get_font_name_n(wuss, i);
+
+    if (slot_name != NULL && strcmp(slot_name, name) == 0 &&
+        wuss_get_font_class_n(wuss, i) == wuss_FONT_CLASS_SYSTEM)
+      return 1;
+  }
+
+  return 0;
+}
 
 static result_t collect_name(const char *name,
                              const char *path,
@@ -70,6 +93,9 @@ static result_t collect_name(const char *name,
   char       *copy;
 
   (void) path;
+
+  if (is_system_font_name(nl->wuss, name))
+    return result_OK;
 
   if (wuss__array_grow(nl->alloc, (void **) &nl->names, sizeof(*nl->names),
                        nl->n, &nl->cap, 1, 8))
@@ -171,6 +197,7 @@ static result_t build_menu(const wuss_alloc_t *a,
 result_t wuss_fontmenu_create(wuss_fontmenu_t   **out,
                               const char         *dir,
                               const char         *title,
+                              const wuss_t       *wuss,
                               const wuss_alloc_t *alloc)
 {
   namelist_t       nl;
@@ -185,6 +212,7 @@ result_t wuss_fontmenu_create(wuss_fontmenu_t   **out,
 
   memset(&nl, 0, sizeof(nl));
   nl.alloc = alloc;
+  nl.wuss  = wuss;
 
   rc = bmfont_enumerate(dir, collect_name, &nl);
   if (rc != result_OK)

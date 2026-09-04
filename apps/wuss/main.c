@@ -690,23 +690,25 @@ static result_t run_wuss(const char *resources)
   const int        scr_width  = 640;
   const int        scr_height = 480;
 
-  result_t         rc;
-  const char      *leafname;
-  const char      *filename;
-  bmfont_t        *fonts[3]; /* [0] regular (system font), [1] bold,
-                              * [2] symbol (menu tick / submenu arrow) */
-  int              nfonts;
-  int              i;
-  void            *pixels;
-  int              rowbytes;
-  pixelfmt_t       fmt;
-  bitmap_t         bm;
-  screen_t         scr;
-  colour_t         palette[16];
-  wuss_t          *wuss;
-  wuss_frontend_t *frontend;
-  bool             use_wimp16;
-  int              palette_index;
+  result_t           rc;
+  const char        *leafname;
+  const char        *filename;
+  bmfont_t          *fonts[3]; /* [0] regular (system font), [1] bold,
+                                * [2] symbol (menu tick / submenu arrow) */
+  static const char *const names[3] =
+    { "Digits-Regular", "Digits-Bold", "Symbols" };
+  int                nfonts;
+  int                i;
+  void              *pixels;
+  int                rowbytes;
+  pixelfmt_t         fmt;
+  bitmap_t           bm;
+  screen_t           scr;
+  colour_t           palette[16];
+  wuss_t            *wuss;
+  wuss_frontend_t   *frontend;
+  bool               use_wimp16;
+  int                palette_index;
 
   {
     /* "wimp16" selects the RISC OS 16-colour palette; default is PICO-8 */
@@ -720,9 +722,6 @@ static result_t run_wuss(const char *resources)
   logf_info("wuss: resources root = \"%s\"", resources);
 
   {
-    static const char *const names[3] =
-      { "Digits-Regular", "Digits-Bold", "Symbols" };
-
     nfonts = 0;
     for (i = 0; i < 3; i++)
     {
@@ -758,11 +757,22 @@ static result_t run_wuss(const char *resources)
   screen_for_bitmap(&scr, &bm);
 
   {
-    wuss_config_t config;
+    wuss_config_t    config;
+    wuss_font_desc_t descs[3]; /* slot classes/names for the picker menus --
+                                * [2] Symbols is chrome-only, never a text
+                                * font choice */
 
     fill_chrome_config(&config, use_wimp16 ? 1 : 0);
 
-    rc = wuss_create(&scr, fonts, nfonts, palette, NELEMS(palette), &config,
+    for (i = 0; i < nfonts; i++)
+    {
+      descs[i].font       = fonts[i];
+      descs[i].font_class = (i == 2) ? wuss_FONT_CLASS_SYSTEM
+                                     : wuss_FONT_CLASS_NONE;
+      descs[i].name       = names[i];
+    }
+
+    rc = wuss_create(&scr, descs, nfonts, palette, NELEMS(palette), &config,
                      NULL, &wuss);
     logf_info("wuss: wuss_create -> rc=0x%X (%s)", rc, result_string(rc));
     if (rc != result_OK)
