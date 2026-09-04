@@ -419,6 +419,12 @@ int             wuss__blit_pieces(wuss_window_t *window,
 #define wuss__window_from_task_link(node) \
   ((wuss_window_t *) ((char *) (node) - offsetof(struct wuss_window, task_link)))
 
+/* Recover the owning wuss_window_t from a node in the z-order chain
+ * (window->link). link is the first member, so this is just a cast -- but
+ * naming it keeps every z-order walk honest about depending on that. */
+#define wuss__window_from_link(node) \
+  ((wuss_window_t *) (void *) (node))
+
 /* The single dispatch chokepoint. Delivers "ev" to "task"'s handle, passing
  * "win_or_null" as the window (NULL for task-view events). No-op (returns
  * result_OK) when task is NULL or has no handle. A debug build also asserts

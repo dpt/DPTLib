@@ -10,7 +10,7 @@ wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p)
   {
     wuss_window_t *win;
 
-    win = (wuss_window_t *) e;
+    win = wuss__window_from_link(e);
     if (win->flags & wuss_WINDOW_HIDDEN)
       continue;
     if (box_contains_point(&win->visible, p.x, p.y))
