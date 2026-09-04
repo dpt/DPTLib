@@ -45,16 +45,10 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   /* a manual resize desyncs the window from its layout-packer slot */
   wuss__release_packed(window);
 
-  /* a window can never grow larger than the screen */
-  {
-    size2d_t max;
-
-    wuss__max_content_on_screen(window, &max);
-    if (size.w > max.w)
-      size.w = max.w;
-    if (size.h > max.h)
-      size.h = max.h;
-  }
+  /* The requested content size is honoured verbatim: a window may end up
+   * overhanging the screen edge (same as one dragged there, or one whose
+   * far corner is off-screen when toggle-size floors it at WUSS_MIN_CONTENT).
+   * Only wuss_window_create still caps at the screen. */
 
   outline_px      = wuss__outline_px(window);
   titlebar_height = wuss__titlebar_height(window);

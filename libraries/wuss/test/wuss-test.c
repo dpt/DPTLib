@@ -800,23 +800,24 @@ result_t wuss_test(const char *resources)
   if (width != 52 || height != 72)
     goto Failure;
 
-  printf("test: window_resize can never grow a window past the screen\n");
+  printf("test: window_resize honours the requested size even past the "
+         "screen edge\n");
 
   /* screen is 200x200; win_a's visible box sits at (0,25) with a 1px
    * outline all round and a 20px titlebar. asking for a 500x500 content
-   * area must clamp so the visible box still fits: width 200-0-2,
-   * height 200-25-2-20. */
+   * area is honoured verbatim; the visible box simply overhangs the
+   * screen (width 500+2, height 500+2+20). */
   rc = wuss_window_resize(win_a, SIZE2D(500, 500));
   if (rc != result_OK)
     goto Failure;
   wuss_window_get_content_bounds(win_a, &content);
-  if (content.x1 - content.x0 != 198 || content.y1 - content.y0 != 153)
+  if (content.x1 - content.x0 != 500 || content.y1 - content.y0 != 500)
     goto Failure;
   wuss_window_get_visible_bounds(win_a, &visible);
-  if (visible.x1 != 200 || visible.y1 != 200)
+  if (visible.x1 != 502 || visible.y1 != 547)
     goto Failure;
 
-  /* a request that already fits is honoured verbatim */
+  /* a smaller request is likewise honoured verbatim */
   rc = wuss_window_resize(win_a, SIZE2D(60, 40));
   if (rc != result_OK)
     goto Failure;
@@ -4263,18 +4264,19 @@ result_t wuss_test(const char *resources)
       content.x1 != 100 || content.y1 != 100)
     goto Failure;
 
-  printf("test: window_resize can never grow a window past the screen\n");
+  printf("test: window_resize honours the requested size even past the "
+         "screen edge\n");
 
   /* screen is 200x200; win_a sits at (0,0), chromeless. asking for a
-   * 500x500 content area must clamp to the 200x200 screen. */
+   * 500x500 content area is honoured verbatim. */
   rc = wuss_window_resize(win_a, SIZE2D(500, 500));
   if (rc != result_OK)
     goto Failure;
   wuss_window_get_content_bounds(win_a, &content);
-  if (content.x1 - content.x0 != 200 || content.y1 - content.y0 != 200)
+  if (content.x1 - content.x0 != 500 || content.y1 - content.y0 != 500)
     goto Failure;
 
-  /* a request that already fits is left exactly as asked */
+  /* a smaller request is likewise honoured verbatim */
   rc = wuss_window_resize(win_a, SIZE2D(120, 90));
   if (rc != result_OK)
     goto Failure;
@@ -4282,13 +4284,13 @@ result_t wuss_test(const char *resources)
   if (content.x1 - content.x0 != 120 || content.y1 - content.y0 != 90)
     goto Failure;
 
-  /* a window whose top-left is offset only gets the space that is left */
+  /* an offset top-left does not clip the size either */
   wuss_window_move(win_a, POINT(60, 40));
   rc = wuss_window_resize(win_a, SIZE2D(500, 500));
   if (rc != result_OK)
     goto Failure;
   wuss_window_get_content_bounds(win_a, &content);
-  if (content.x1 - content.x0 != 140 || content.y1 - content.y0 != 160)
+  if (content.x1 - content.x0 != 500 || content.y1 - content.y0 != 500)
     goto Failure;
   wuss_window_move(win_a, POINT(0, 0));
   rc = wuss_window_resize(win_a, SIZE2D(100, 100));
