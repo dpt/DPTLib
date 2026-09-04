@@ -2,15 +2,6 @@
 
 #include "../impl.h"
 
-/* Translate "box" by (dx, dy) into "out". */
-static void translate_box(const box_t *box, int dx, int dy, box_t *out)
-{
-  out->x0 = box->x0 + dx;
-  out->y0 = box->y0 + dy;
-  out->x1 = box->x1 + dx;
-  out->y1 = box->y1 + dy;
-}
-
 /* p is the window's content top-left; the furniture offset (outline plus
  * any titlebar) is constant for a given window, so the footprint just
  * follows it */
@@ -18,13 +9,10 @@ void wuss_window_move(wuss_window_t *window, point_t p)
 {
   box_t   clean[WUSS_MAX_INVALIDATE_PIECES];
   box_t   full_dest[WUSS_MAX_INVALIDATE_PIECES];
-  box_t   blit_src[WUSS_MAX_INVALIDATE_PIECES];
-  box_t   blit_dest[WUSS_MAX_INVALIDATE_PIECES];
-  int     order[WUSS_MAX_INVALIDATE_PIECES];
+  box_t   copied[WUSS_MAX_INVALIDATE_PIECES];
   int     width, height, outline_px, titlebar_height;
-  int     dx, dy, nclean, nblit, overflow, i, idx;
-  box_t   before, dirty, copied;
-  int     blit_failed;
+  int     dx, dy, nclean, ncopied, i;
+  box_t   before, dirty;
 
   /* a manual move desyncs the window from its layout-packer slot; hand the
    * slot back and stop tracking this window's position */
@@ -65,72 +53,15 @@ void wuss_window_move(wuss_window_t *window, point_t p)
   dy = window->visible.y0 - before.y0;
 
   for (i = 0; i < nclean; i++)
-    translate_box(&clean[i], dx, dy, &full_dest[i]);
+    box_translated(&clean[i], dx, dy, &full_dest[i]);
 
-  /* Split each clean piece's full (untrimmed) destination down to the parts
-   * not already sitting under an occluder above this window there: that
-   * occluder hasn't moved, so its pixels are already correct, and blitting
-   * this window's stale pixels over them would just have to be repainted
-   * straight back -- cheaper to never touch them at all. Only the surviving,
-   * genuinely-blittable sub-pieces go on to the clobber-ordering/blit below;
-   * the occluded remainder needs no repair because nothing was ever pasted
-   * over it. */
-  nblit    = 0;
-  overflow = 0;
-  for (i = 0; i < nclean && !overflow; i++)
-  {
-    box_t visible_dest[WUSS_MAX_INVALIDATE_PIECES];
-    int   nvisible, v;
-
-    nvisible = wuss__clip_to_visible(window, &full_dest[i], visible_dest);
-
-    for (v = 0; v < nvisible; v++)
-    {
-      if (nblit == WUSS_MAX_INVALIDATE_PIECES)
-      {
-        overflow = 1;
-        break;
-      }
-
-      blit_dest[nblit] = visible_dest[v];
-      translate_box(&visible_dest[v], -dx, -dy, &blit_src[nblit]);
-      nblit++;
-    }
-  }
-
-  /* If no ordering of these single-rect blits avoids one clobbering
-   * another's still-unread source, fall back rather than risk corrupting
-   * this window's own pixels. */
-  blit_failed = nclean == 0 || overflow ||
-               !wuss__order_pieces(blit_src, blit_dest, nblit, order);
-
-  for (i = 0; i < nblit && !blit_failed; i++)
-  {
-    idx = order[i];
-
-    if (screen_copy_rect(window->wuss->scr, &blit_src[idx],
-                         POINT(blit_dest[idx].x0, blit_dest[idx].y0),
-                         &copied) != result_OK)
-    {
-      /* screen_copy_rect refused this piece: either the screen format has no
-       * blit path (e.g. paletted -- fails on the first piece, before anything
-       * has moved) or this piece's source/dest lies off-screen, which can
-       * happen part-way through after earlier pieces have already blitted.
-       * Either way, bail: the pieces done so far are self-consistent and the
-       * caller's fallback full invalidate repaints the whole union. */
-      blit_failed = 1;
-      break;
-    }
-
-    /* "copied" can be smaller than "blit_dest[idx]" if the move was partly
-     * off-screen: the leftover part has no valid source pixels behind it,
-     * so it needs a real repaint too. Safe to invalidate raw, without
-     * re-checking occlusion, since "blit_dest[idx]" (and so its "copied"
-     * subset) was already clipped clear of every occluder above. */
-    wuss__invalidate_minus(window->wuss, &blit_dest[idx], &copied);
-  }
-
-  if (nclean > 0 && !blit_failed)
+  /* Slide the clean pieces by (dx, dy); wuss__blit_pieces clips each
+   * destination clear of the windows above this one -- an occluder there
+   * hasn't moved, so its pixels are already correct and pasting stale ones
+   * over them would just have to be repainted straight back. It also
+   * repairs any piece that slid partly off-screen. */
+  if (nclean > 0 &&
+      wuss__blit_pieces(window, clean, nclean, dx, dy, NULL, copied, &ncopied))
   {
     box_t hidden[WUSS_MAX_INVALIDATE_PIECES];
     int   nhidden;
@@ -172,7 +103,7 @@ void wuss_window_move(wuss_window_t *window, point_t p)
     {
       box_t hidden_dest;
 
-      translate_box(&hidden[i], dx, dy, &hidden_dest);
+      box_translated(&hidden[i], dx, dy, &hidden_dest);
       wuss__invalidate_clipped(window, &hidden_dest);
     }
   }
@@ -184,4 +115,6 @@ void wuss_window_move(wuss_window_t *window, point_t p)
     box_union(&before, &window->visible, &dirty);
     wuss__invalidate_clipped(window, &dirty);
   }
+
+  (void) ncopied; /* move.c repairs via the sliver logic above, not "copied" */
 }

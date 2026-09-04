@@ -206,6 +206,107 @@ int wuss__order_pieces(const box_t *clean,
   return nout == n;
 }
 
+/* Slide the pixels of "src" (nsrc clean pieces -- the caller has already
+ * carved them clear of occluders and any stale regions) by (dx, dy),
+ * clipping every destination against the screen and against the windows
+ * above "window" so the blit never paints over an occluder. Blits are
+ * clobber-ordered (wuss__order_pieces) so no piece overwrites another's
+ * still-unread source. If "clip" is non-NULL scr->clip is pinned to it for
+ * the duration (and restored after) -- pass it when the destinations must
+ * not spill past some box (set-scroll pins the content box); pass NULL to
+ * leave the clip alone and let screen_copy_rect self-clip to the screen.
+ *
+ * On success the pieces actually copied are written to "copied" (capacity
+ * WUSS_MAX_INVALIDATE_PIECES), "*ncopied" is set, and 1 is returned -- the
+ * caller then repaints whatever "copied" did not cover. Returns 0, with
+ * "*ncopied" zeroed, when there is no safe fast path (nothing clean, the
+ * piece budget overflowed, no clobber-free order exists, or screen_copy_rect
+ * declined -- e.g. a paletted screen with no blit path): the caller must
+ * fall back to invalidating its whole dirty region. A piece copied only
+ * partially (its far edge slid off-screen) still has the uncovered remainder
+ * invalidated here, since that ground was already clipped clear of every
+ * occluder. A caller that already invalidates its whole affected region
+ * against "copied" afterwards just sees those strips folded into the dirty
+ * list twice, which is harmless. */
+int wuss__blit_pieces(wuss_window_t *window,
+                      const box_t   *src,
+                      int            nsrc,
+                      int            dx,
+                      int            dy,
+                      const box_t   *clip,
+                      box_t         *copied,
+                      int           *ncopied)
+{
+  box_t blit_src[WUSS_MAX_INVALIDATE_PIECES];
+  box_t blit_dest[WUSS_MAX_INVALIDATE_PIECES];
+  int   order[WUSS_MAX_INVALIDATE_PIECES];
+  int   nblit, overflow, i, j, idx;
+  box_t saved_clip;
+
+  *ncopied = 0;
+
+  nblit    = 0;
+  overflow = 0;
+  for (i = 0; i < nsrc && !overflow; i++)
+  {
+    box_t want, vis[WUSS_MAX_INVALIDATE_PIECES];
+    int   nvis;
+
+    box_translated(&src[i], dx, dy, &want);
+    nvis = wuss__clip_to_visible(window, &want, vis);
+    for (j = 0; j < nvis; j++)
+    {
+      if (nblit == WUSS_MAX_INVALIDATE_PIECES)
+      {
+        overflow = 1;
+        break;
+      }
+      blit_dest[nblit] = vis[j];
+      box_translated(&vis[j], -dx, -dy, &blit_src[nblit]);
+      nblit++;
+    }
+  }
+
+  if (nsrc == 0 || overflow ||
+      !wuss__order_pieces(blit_src, blit_dest, nblit, order))
+    return 0;
+
+  if (clip != NULL)
+  {
+    saved_clip                = window->wuss->scr->clip;
+    window->wuss->scr->clip   = *clip;
+  }
+
+  for (i = 0; i < nblit; i++)
+  {
+    box_t got;
+
+    idx = order[i];
+    if (screen_copy_rect(window->wuss->scr, &blit_src[idx],
+                         POINT(blit_dest[idx].x0, blit_dest[idx].y0),
+                         &got) != result_OK)
+    {
+      if (clip != NULL)
+        window->wuss->scr->clip = saved_clip;
+      *ncopied = 0;
+      return 0;
+    }
+
+    /* "got" can be smaller than blit_dest[idx] if part slid off-screen: the
+     * uncovered remainder has no source pixels and needs a real repaint.
+     * Safe raw -- blit_dest[idx] was already clipped clear of occluders. */
+    wuss__invalidate_minus(window->wuss, &blit_dest[idx], &got);
+
+    if (*ncopied < WUSS_MAX_INVALIDATE_PIECES)
+      copied[(*ncopied)++] = got;
+  }
+
+  if (clip != NULL)
+    window->wuss->scr->clip = saved_clip;
+
+  return 1;
+}
+
 /* Invalidate the parts of "window"'s footprint that are hidden behind other
  * windows at the current z-order -- the rest of its footprint is already
  * showing its own correct pixels, so redrawing that too would just be

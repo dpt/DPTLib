@@ -346,6 +346,25 @@ int             wuss__order_pieces(const box_t *clean,
                                    int          n,
                                    int         *order);
 
+/* Slide the pixels of "src" (nsrc pieces the caller has already carved clear
+ * of occluders and stale regions) by (dx, dy), clipping each destination
+ * against the screen and the windows above "window", clobber-ordered so no
+ * blit steps on another's source; if "clip" is non-NULL scr->clip is pinned
+ * to it for the copy (and restored after), else the clip is left alone. On
+ * success
+ * fills "copied" (capacity WUSS_MAX_INVALIDATE_PIECES) with the pieces
+ * actually blitted, sets "*ncopied" and returns 1 -- the caller repaints
+ * whatever "copied" misses. Returns 0 (with "*ncopied" zeroed) when there is
+ * no safe fast path, and the caller must fall back to a full invalidate. */
+int             wuss__blit_pieces(wuss_window_t *window,
+                                  const box_t   *src,
+                                  int            nsrc,
+                                  int            dx,
+                                  int            dy,
+                                  const box_t   *clip,
+                                  box_t         *copied,
+                                  int           *ncopied);
+
 /* Recover the owning wuss_window_t from a node in a task's window list
  * (window->task_link). task_link is not the first member, so a plain cast
  * won't do. */
