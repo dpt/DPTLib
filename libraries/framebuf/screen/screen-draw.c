@@ -492,12 +492,14 @@ void screen_draw_dashed_line(screen_t *scr,
   box_t clip_box;
   box_t bounds;
   int   rx0, ry0, rx1, ry1;
+  int   ox0, oy0;
   int   dx, dy;
   int   adx, ady;
   int   sx, sy;
   int   error, e2;
   int   period;
   int   phase;
+  int   skipped;
 
   if (on <= 0)
     return;
@@ -514,8 +516,16 @@ void screen_draw_dashed_line(screen_t *scr,
   if (line_clip(&clip_box, &rx0, &ry0, &rx1, &ry1) == 0)
     return;
 
+  ox0 = x0;
+  oy0 = y0;
+
   screen_get_bounds(scr, &bounds);
   (void) line_clip(&bounds, &x0, &y0, &x1, &y1);
+
+  /* line_clip may have moved the start point inward: keep the dash
+   * pattern anchored to the original, unclipped start so it doesn't
+   * shift as the line scrolls on/off screen. */
+  skipped = MAX(abs(x0 - ox0), abs(y0 - oy0));
 
   dx  = x1 - x0;
   adx = abs(dx);
@@ -526,7 +536,7 @@ void screen_draw_dashed_line(screen_t *scr,
   sy  = SGN(dy);
 
   error = adx + ady;
-  phase = 0;
+  phase = skipped % period;
 
   for (;;)
   {
