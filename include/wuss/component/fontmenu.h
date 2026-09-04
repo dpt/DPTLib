@@ -90,6 +90,20 @@ const wuss_menu_t *wuss_fontmenu_menu(const wuss_fontmenu_t *fm);
 const char *wuss_fontmenu_selected(const wuss_fontmenu_t *fm,
                                    const wuss_event_t    *ev);
 
+/**
+ * Tick the item at \p index and untick every other item, so the menu shows
+ * which font is currently in use. The menu is caller-displayed, not redrawn
+ * here -- call before wuss_menu_open (or reopen the menu) for the tick to be
+ * seen.
+ *
+ * \param[in] fm    Handle; a NULL \p fm is a no-op.
+ * \param[in] index Row to tick, or -1 to untick every row (e.g. when a font
+ *                  outside the menu, such as the wuss system font, is in
+ *                  use). Out-of-range values other than -1 still untick
+ *                  every row.
+ */
+void wuss_fontmenu_set_ticked(wuss_fontmenu_t *fm, int index);
+
 #ifdef __cplusplus
 }
 #endif
