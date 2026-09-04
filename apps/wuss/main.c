@@ -680,6 +680,14 @@ static void wuss_frame(void *arg)
 #endif
 }
 
+/* fonts[]/descs[] below hold [0] regular (system font), [1] bold, [2] symbol
+ * (menu tick / submenu arrow); kept <= wuss_MAX_FONTS so wuss_create's own
+ * nfonts check is never reached with arrays it can no longer fit in */
+#define WUSS_MAIN_NFONTS 3
+#if WUSS_MAIN_NFONTS > wuss_MAX_FONTS
+#error WUSS_MAIN_NFONTS exceeds wuss_MAX_FONTS
+#endif
+
 /* click windows to bring to front, drag titlebars to move; the redraw-all
  * input redraws the whole screen, the pixel-stress input does it one pixel at
  * a time to catch tasks that misbehave under a 1x1 clip; the palette-cycle
@@ -693,9 +701,8 @@ static result_t run_wuss(const char *resources)
   result_t           rc;
   const char        *leafname;
   const char        *filename;
-  bmfont_t          *fonts[3]; /* [0] regular (system font), [1] bold,
-                                * [2] symbol (menu tick / submenu arrow) */
-  static const char *const names[3] =
+  bmfont_t          *fonts[WUSS_MAIN_NFONTS];
+  static const char *const names[WUSS_MAIN_NFONTS] =
     { "Digits-Regular", "Digits-Bold", "Symbols" };
   int                nfonts;
   int                i;
@@ -723,7 +730,7 @@ static result_t run_wuss(const char *resources)
 
   {
     nfonts = 0;
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < WUSS_MAIN_NFONTS; i++)
     {
       leafname = path_join_leafname(names[i], "png");
       filename = path_join_filename(resources, 3, "resources", "bmfonts",
@@ -758,9 +765,9 @@ static result_t run_wuss(const char *resources)
 
   {
     wuss_config_t    config;
-    wuss_font_desc_t descs[3]; /* slot classes/names for the picker menus --
-                                * [2] Symbols is chrome-only, never a text
-                                * font choice */
+    wuss_font_desc_t descs[WUSS_MAIN_NFONTS]; /* slot classes/names for the
+                                * picker menus -- [2] Symbols is chrome-only,
+                                * never a text font choice */
 
     fill_chrome_config(&config, use_wimp16 ? 1 : 0);
 
