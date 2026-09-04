@@ -2421,21 +2421,24 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_v);
   }
 
-  printf("test: toggle-size repositions a window near the far edge toward the origin, then restores it exactly\n");
+  printf("test: a toggle-size that repositions the window blits the overlapping content rather than repainting it all, and restores the exact pre-toggle box\n");
 
   {
     wuss_task_t   *delegate_p;
     box_t          box_p, before, after, titlebar, toggle;
     wuss_window_t *win_p;
     int            outline_px, titlebar_height, inset, icon, cx, cy;
+    int            i, dx, dy, kept_x, kept_y, kept_dirty;
 
     delegate_p = mk_task(wuss, NULL, NULL);
     if (delegate_p == NULL) goto Failure;
 
-    box_p.x0 = 150; box_p.y0 = 150;
-    box_p.x1 = 190; box_p.y1 = 190; /* 40x40 content, hard against the bottom-
-                                      * right of the 200x200 screen; doc big
-                                      * enough that maximize is screen-limited */
+    box_p.x0 = 110; box_p.y0 = 110;
+    box_p.x1 = 190; box_p.y1 = 190; /* 80x80 content, well down the bottom-right
+                                      * of the 200x200 screen -- big enough to
+                                      * have a real interior the blit can keep;
+                                      * doc big enough that maximize is
+                                      * screen-limited so the window must move */
     rc = wuss_window_create(delegate_p, &box_p, "P", wuss_WINDOW_NONE,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(400, 400), SIZE2D(0, 0), &win_p);
@@ -2476,6 +2479,32 @@ result_t wuss_test(const char *resources)
       goto Failure; /* ...but only as far as needed, and it stays on-screen */
     if (after.x1 - after.x0 < 190 || after.y1 - after.y0 < 190)
       goto Failure; /* it genuinely fills (nearly) the whole screen */
+
+    dx = after.x0 - before.x0;
+    dy = after.y0 - before.y0;
+
+    /* a point in the old content interior, clear of outline/titlebar/
+     * scrollbar furniture on every side: after the toggle's shift by
+     * (dx,dy) it lands in the new content interior, and the blit must have
+     * carried its pixels there -- so it must NOT be in the dirty list.
+     * (This window starts screen-clamped hard against the bottom-right, so
+     * the maximized footprint is a superset of the old one -- there is no
+     * vacated backdrop strip to check, only the preserved interior.) */
+    kept_x = (before.x0 + outline_px + before.x1 - outline_px - icon) / 2 + dx;
+    kept_y = (before.y0 + outline_px + titlebar_height
+              + before.y1 - outline_px - icon) / 2 + dy;
+
+    kept_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      box_t region;
+
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, kept_x, kept_y))
+        kept_dirty = 1;
+    }
+    if (kept_dirty)
+      goto Failure; /* the shifted interior content was blitted, not repainted */
 
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK)

@@ -6,7 +6,8 @@
 
 void wuss__furniture_toggle_size(wuss_window_t *window)
 {
-  box_t before, new_visible, dirty, copied;
+  box_t before, new_visible, dirty, copied, blit_src, blit_dst;
+  int   dx, dy, blitted;
 
   before = window->visible;
 
@@ -92,40 +93,54 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
     }
   }
 
-  /* ponytail: the sliver-blit fast path below assumes the top-left didn't
-   * move; toggle can now reposition a window to fit it on screen, so gate
-   * it on x0/y0 being unchanged and let the general box_union path handle
-   * the moved case. Restore (pre_toggle) can move the top-left too -- same
-   * gate covers it. */
+  /* The window content is just anchored positions plus furniture, so
+   * wherever "before" and the new footprint overlap the pixels only need
+   * sliding by the top-left delta -- one screen_copy_rect -- with a real
+   * repaint of just the newly-exposed and vacated regions. Only for a
+   * topmost window (nothing above it, so no occluder pixels to preserve or
+   * step on) whose screen format can blit. A pure grow-in-place is the
+   * dx==dy==0 case of the same shift. */
+  dx      = window->visible.x0 - before.x0;
+  dy      = window->visible.y0 - before.y0;
+  blitted = 0;
+
   if (!(window->flags & wuss_WINDOW_NO_RESIZE_BLIT) &&
-      window->wuss->z_order.next == &window->link &&
-      before.x0 == window->visible.x0 && before.y0 == window->visible.y0 &&
-      screen_copy_rect(window->wuss->scr, &before,
-                       POINT(before.x0, before.y0), &copied) == result_OK)
+      window->wuss->z_order.next == &window->link)
   {
-    /* Topmost, the screen format supports the blit, and the top-left has
-     * not moved: re-blitting "before" onto itself is a no-op that just
-     * confirms which of its pixels are still on-screen -- only whatever's
-     * newly exposed (grown) or newly vacated (shrunk) relative to that
-     * needs an actual repaint. */
-    wuss__invalidate_minus(window->wuss, &before, &window->visible);
+    box_t shifted;
+
+    /* the part of "before" that, slid by (dx,dy), lands within the new
+     * footprint: its pixels are the valid source for that overlap */
+    box_translated(&window->visible, -dx, -dy, &shifted);
+    if (box_intersection(&before, &shifted, &blit_src) == 0 &&
+        !box_is_empty(&blit_src))
+    {
+      box_translated(&blit_src, dx, dy, &blit_dst);
+      if (screen_copy_rect(window->wuss->scr, &blit_src,
+                           POINT(blit_dst.x0, blit_dst.y0),
+                           &copied) == result_OK)
+        blitted = 1;
+    }
+  }
+
+  if (blitted)
+  {
+    /* "before" minus the pixels the blit left valid at their new home: the
+     * vacated L-shape (and any bit whose new position fell off-screen). */
+    wuss__invalidate_minus(window->wuss, &before, &copied);
+    /* the new footprint minus what the blit filled: the newly-exposed area. */
     wuss__invalidate_minus(window->wuss, &window->visible, &copied);
 
-    /* Unlike a move, a toggle changes the window's size, so furniture that
-     * lays itself out relative to that size (titlebar icons anchored to its
-     * right edge, scrollbar well/sausage proportions, the resize corner)
-     * reflows even where the blit reused valid content pixels -- e.g. the
-     * old toggle icon location is now mid-titlebar, not redrawn by either
-     * invalidate_minus above since it falls inside both "before" and the
-     * new "visible". Force it dirty regardless of the blit. */
-    if (window->visible.x1 - window->visible.x0 > before.x1 - before.x0 ||
+    /* Furniture lays itself out relative to the window's size/position
+     * (titlebar icons on the right edge, scrollbar proportions, the resize
+     * corner), so it reflows even where the blit reused valid content
+     * pixels. Force the new furniture dirty always, and the old furniture
+     * positions too when the window grew or moved -- either can strand a
+     * stale scrollbar/icon glyph inside what is now interior content, a
+     * region neither invalidate_minus above repaints. */
+    if (dx != 0 || dy != 0 ||
+        window->visible.x1 - window->visible.x0 > before.x1 - before.x0 ||
         window->visible.y1 - window->visible.y0 > before.y1 - before.y0)
-      /* Growing strands old furniture (e.g. the old vscroll column) inside
-       * what's now interior content, a region the blit above treats as
-       * already-valid and so never repaints -- force its old position dirty
-       * too. Shrinking needs no such help: old furniture positions only
-       * ever land outside the new, smaller box, already covered by the
-       * invalidate_minus vacated-region call above. */
       wuss__furniture_invalidate_for(window, &before);
     wuss__furniture_invalidate(window);
   }
