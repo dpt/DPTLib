@@ -2429,6 +2429,7 @@ result_t wuss_test(const char *resources)
     wuss_window_t *win_p;
     int            outline_px, titlebar_height, inset, icon, cx, cy;
     int            i, dx, dy, kept_x, kept_y, kept_dirty;
+    int            ghost_x, ghost_y, ghost_dirty;
 
     delegate_p = mk_task(wuss, NULL, NULL);
     if (delegate_p == NULL) goto Failure;
@@ -2494,7 +2495,16 @@ result_t wuss_test(const char *resources)
     kept_y = (before.y0 + outline_px + titlebar_height
               + before.y1 - outline_px - icon) / 2 + dy;
 
-    kept_dirty = 0;
+    /* where the OLD vertical scrollbar column lands once shifted by (dx,dy):
+     * a whole-footprint blit would drag that stale scrollbar strip here,
+     * into what is now interior content. The blit must be content-only, so
+     * this point must be in the dirty list to be repainted as content. */
+    ghost_x = before.x1 - outline_px - icon / 2 + dx;
+    ghost_y = (before.y0 + outline_px + titlebar_height
+               + before.y1 - outline_px) / 2 + dy;
+
+    kept_dirty  = 0;
+    ghost_dirty = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
     {
       box_t region;
@@ -2502,9 +2512,14 @@ result_t wuss_test(const char *resources)
       wuss_get_dirty(wuss, i, &region);
       if (box_contains_point(&region, kept_x, kept_y))
         kept_dirty = 1;
+      if (box_contains_point(&region, ghost_x, ghost_y))
+        ghost_dirty = 1;
     }
     if (kept_dirty)
       goto Failure; /* the shifted interior content was blitted, not repainted */
+    if (!ghost_dirty)
+      goto Failure; /* the old scrollbar's shifted position must repaint as
+                      * content -- the blit must not have carried furniture */
 
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK)
