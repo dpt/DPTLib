@@ -54,6 +54,9 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
 static void wuss__menu_flash_step(struct wuss__menu *self);
 static void wuss__menu_flash_finish(struct wuss__menu *self);
 
+static int wuss__pointer_over_row_arrow(wuss_window_t     *window,
+                                        const wuss_icon_t *icon);
+
 /* The internal task that owns every borderless menu window, created on the
  * first wuss_menu_open of a session. */
 static wuss_task_t *wuss__menu_task(wuss_t *wuss)
@@ -233,9 +236,17 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
   if (event->data.icon.action == wuss_MOUSE_MOVE)
   {
     point_t at;
+    int     has_child_row;
+    int     on_arrow;
 
-    /* Hovering a different row closes any submenu the previous row opened. */
-    if (self->child != NULL && self->open_index != index)
+    has_child_row = (item->submenu != NULL || item->window != NULL);
+    on_arrow      = has_child_row
+                 && wuss__pointer_over_row_arrow(self->window, icon);
+
+    /* A submenu opens only while the pointer is over its row's arrow. Any
+     * other move that re-enters this level -- onto a different row, or onto
+     * this row's text off the arrow -- closes the child it opened. */
+    if (self->child != NULL && !(self->open_index == index && on_arrow))
     {
       wuss__menu_close_from(self->child);
       self->child      = NULL;
@@ -243,6 +254,9 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
     }
 
     if (self->child != NULL)
+      return result_OK; /* still on the open row's arrow: leave it up */
+
+    if (!on_arrow)
       return result_OK;
 
     /* A borrowed window opens where a submenu would; a submenu spawns as a
@@ -254,9 +268,6 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
         self->open_index = index;
       return result_OK;
     }
-
-    if (item->submenu == NULL)
-      return result_OK;
 
     at = wuss__submenu_anchor(self, icon);
     if (wuss__menu_spawn(self->wuss, self->owner, item->submenu, at, self,
@@ -335,6 +346,29 @@ static int wuss__pointer_over_icon(wuss_window_t     *window,
   doc.y = p.y - content.y0 + window->scroll.y;
 
   return wuss__icon_hit_test(window, doc) == icon;
+}
+
+/* True if the wuss pointer sits over the submenu-arrow gutter of row `icon`
+ * in `window`: the pointer is within the row vertically and inside the
+ * rightmost WUSS_MENU_ARROW_W pixels of it. A submenu opens only from here,
+ * so re-entering the parent anywhere else closes the child. */
+static int wuss__pointer_over_row_arrow(wuss_window_t     *window,
+                                        const wuss_icon_t *icon)
+{
+  point_t p;
+  box_t   content;
+  box_t   bbox;
+  point_t doc;
+
+  p = wuss_get_pointer(window->wuss);
+  wuss__content_box(window, &content);
+  doc.x = p.x - content.x0 + window->scroll.x;
+  doc.y = p.y - content.y0 + window->scroll.y;
+
+  wuss_icon_get_bbox(icon, &bbox);
+
+  return doc.y >= bbox.y0 && doc.y < bbox.y1
+      && doc.x >= bbox.x1 - WUSS_MENU_ARROW_W && doc.x < bbox.x1;
 }
 
 /* End the pick flash on `self` now: leave the flashed row un-highlit unless the
