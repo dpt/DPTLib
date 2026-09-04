@@ -41,6 +41,7 @@
 #include "tasks/icons.h"
 #include "tasks/image.h"
 #include "tasks/lissajous.h"
+#include "tasks/minesweeper.h"
 #include "tasks/palette.h"
 #include "tasks/porter-duff.h"
 #include "tasks/sofa.h"
@@ -60,6 +61,7 @@ static struct
   int             npalette;
   const char     *resources;
   bmfont_t       *daydream_font;
+  bmfont_t       *bold_font;
   bool            quit; /* set by the "Quit Wuss" task-menu entry */
 }
 g;
@@ -193,6 +195,17 @@ static result_t spawn_lissajous(void)
   result_t          rc;
   if (t == NULL) return result_OOM;
   rc = lissajous_create(g.wuss, t);
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
+static result_t spawn_minesweeper(void)
+{
+  minesweeper_task_t *t = calloc(1, sizeof(*t));
+  result_t             rc;
+  if (t == NULL) return result_OOM;
+  rc = minesweeper_create(g.wuss, g.bold_font, t);
   if (rc != result_OK) return rc;
   if (t->window == NULL) { free(t); return rc; }
   return result_OK;
@@ -387,6 +400,7 @@ static const wuss_menu_item_t g_launch_items[] =
   { "Icons",       wuss_MENU_ITEM_NONE, NULL },
   { "Image",       wuss_MENU_ITEM_NONE, NULL },
   { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
+  { "Minesweeper", wuss_MENU_ITEM_NONE, NULL },
   { "Palette",     wuss_MENU_ITEM_NONE, NULL },
   { "Porter-Duff", wuss_MENU_ITEM_NONE, NULL },
   { "Sofa",        wuss_MENU_ITEM_NONE, NULL },
@@ -397,7 +411,8 @@ static const wuss_menu_item_t g_launch_items[] =
 static const task_spawn_fn_t g_launch_spawn[] =
 {
   spawn_ball, spawn_blank, spawn_chars, spawn_checker, spawn_clock, spawn_curve,
-  spawn_gradient, spawn_icons, spawn_image, spawn_lissajous, spawn_palette,
+  spawn_gradient, spawn_icons, spawn_image, spawn_lissajous,
+  spawn_minesweeper, spawn_palette,
   spawn_porter_duff, spawn_sofa, spawn_swatches, spawn_text
 };
 
@@ -791,6 +806,7 @@ static result_t run_wuss(const char *resources)
   g.npalette      = NELEMS(palette);
   g.resources     = resources;
   g.daydream_font = fonts[0]; /* tasks draw with the regular weight */
+  g.bold_font     = fonts[1];
 
   {
     wuss_task_desc_t desc;
