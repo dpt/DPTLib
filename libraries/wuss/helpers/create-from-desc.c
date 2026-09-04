@@ -123,11 +123,11 @@ void wuss_menu_destroy(wuss_menu_t *menu)
 
   for (i = 0; i < menu->nitems; i++)
   {
-    free((void *) menu->items[i].text);
+    free((void *) menu->items[i].text); /* discard const */
     wuss_menu_destroy((wuss_menu_t *) menu->items[i].submenu);
   }
-  free((void *) menu->title);
-  free((void *) menu->items);
+  free((void *) menu->title); /* discard const */
+  free((void *) menu->items); /* discard const */
   free(menu);
 }
 
@@ -290,7 +290,7 @@ static void build_discard(Building *b)
 
   for (i = 0; i < b->n; i++)
   {
-    free((void *) b->items[i].text);
+    free((void *) b->items[i].text); /* discard const */
     wuss_menu_destroy((wuss_menu_t *) b->items[i].submenu);
   }
   free(b->items);
