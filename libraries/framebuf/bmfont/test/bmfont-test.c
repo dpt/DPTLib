@@ -197,6 +197,16 @@ static bmtestfont_t bmfonts[MAXFONTS] =
   { "Digits-Bold",      NULL }
 };
 
+/* Symbols.png isn't Latin text, so it's excluded from bmfonts[] above (used
+ * to draw lorem_ipsum in the clipping/layout tests) but must still show up
+ * in the enumerate test, which just walks the fixture directory. */
+#define MAXFONTS_ENUM 9
+
+static const char *bmfonts_enum_extra[MAXFONTS_ENUM - MAXFONTS] =
+{
+  "Symbols"
+};
+
 /* ----------------------------------------------------------------------- */
 
 static const char lorem_ipsum[] =
@@ -721,6 +731,7 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
 typedef struct bmfont_enum_check
 {
   int found[MAXFONTS]; /* parallel to bmfonts[]; set when that name is seen */
+  int found_extra[MAXFONTS_ENUM - MAXFONTS]; /* parallel to bmfonts_enum_extra[] */
   int total;           /* every callback, including unrecognised names */
   int stop_after;      /* >0: return result_STOP_WALK once total reaches it */
 }
@@ -741,6 +752,10 @@ static result_t bmfont_enum_cb(const char *name,
   for (i = 0; i < MAXFONTS; i++)
     if (strcmp(name, bmfonts[i].filename) == 0)
       chk->found[i] = 1;
+
+  for (i = 0; i < MAXFONTS_ENUM - MAXFONTS; i++)
+    if (strcmp(name, bmfonts_enum_extra[i]) == 0)
+      chk->found_extra[i] = 1;
 
   if (chk->stop_after > 0 && chk->total >= chk->stop_after)
     return result_STOP_WALK;
@@ -765,11 +780,20 @@ static result_t bmfont_enumerate_test(const char *resources)
     fprintf(stderr, "bmfont_enumerate: unexpected rc %x\n", rc);
     return result_TEST_FAILED;
   }
-  if (chk.total != MAXFONTS)
+  if (chk.total != MAXFONTS_ENUM)
   {
     fprintf(stderr, "bmfont_enumerate: saw %d entries, expected %d\n",
-            chk.total, MAXFONTS);
+            chk.total, MAXFONTS_ENUM);
     return result_TEST_FAILED;
+  }
+  for (i = 0; i < MAXFONTS_ENUM - MAXFONTS; i++)
+  {
+    if (!chk.found_extra[i])
+    {
+      fprintf(stderr, "bmfont_enumerate: missing font %s\n",
+              bmfonts_enum_extra[i]);
+      return result_TEST_FAILED;
+    }
   }
   for (i = 0; i < MAXFONTS; i++)
   {
