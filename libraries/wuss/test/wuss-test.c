@@ -3926,7 +3926,7 @@ MenuOK: ;
 
     dir = path_join_filename(resources, 2, "resources", "bmfonts");
 
-    rc = wuss_fontmenu_create(&fm, dir, "Font", NULL);
+    rc = wuss_fontmenu_create(&fm, dir, "Font", NULL, NULL);
     if (rc != result_OK)
       goto FontMenuFail;
 
@@ -3966,8 +3966,57 @@ MenuOK: ;
 
     wuss_fontmenu_destroy(fm);
 
+    /* a SYSTEM-class wuss font is dropped from the menu; NONE-class and
+     * unnamed slots are not */
+    {
+      const char       *sysfontfile;
+      bmfont_t         *sysfont;
+      wuss_font_desc_t  sysdescs[2];
+      wuss_t           *syswuss;
+
+      sysfontfile = path_join_filename(resources, 3, "resources", "bmfonts",
+                                       path_join_leafname("Symbols", "png"));
+      rc = bmfont_create(sysfontfile, &sysfont);
+      if (rc != result_OK)                               goto FontMenuFail;
+
+      sysdescs[0].font       = sysfont;
+      sysdescs[0].font_class = wuss_FONT_CLASS_SYSTEM;
+      sysdescs[0].name       = "Symbols";
+      sysdescs[1].font       = sysfont;
+      sysdescs[1].font_class = wuss_FONT_CLASS_NONE;
+      sysdescs[1].name       = "Tiny"; /* NONE class: not skipped though named */
+
+      rc = wuss_create(&scr, sysdescs, 2, NULL, 0, NULL, NULL, &syswuss);
+      if (rc != result_OK)
+      {
+        bmfont_destroy(sysfont);
+        goto FontMenuFail;
+      }
+
+      /* dir points into path_join_filename's shared scratch buffer, which
+       * sysfontfile's path_join_filename call above just overwrote --
+       * re-derive it rather than reuse the now-stale pointer */
+      dir = path_join_filename(resources, 2, "resources", "bmfonts");
+
+      rc = wuss_fontmenu_create(&fm, dir, "Font", syswuss, NULL);
+      wuss_destroy(syswuss);
+      bmfont_destroy(sysfont);
+      if (rc != result_OK)                               goto FontMenuFail;
+
+      fmm = wuss_fontmenu_menu(fm);
+      if (fmm == NULL)                                    goto FontMenuFail;
+      for (i = 0; i < fmm->nitems; i++)
+        if (strcmp(fmm->items[i].text, "Symbols") == 0)   goto FontMenuFail;
+      for (i = 0; i < fmm->nitems; i++)
+        if (strcmp(fmm->items[i].text, "Tiny") == 0)
+          break;
+      if (i == fmm->nitems)                               goto FontMenuFail;
+
+      wuss_fontmenu_destroy(fm);
+    }
+
     /* missing directory is surfaced, not swallowed */
-    rc = wuss_fontmenu_create(&fm, "no/such/dir/here", NULL, NULL);
+    rc = wuss_fontmenu_create(&fm, "no/such/dir/here", NULL, NULL, NULL);
     if (rc != result_FILE_NOT_FOUND)                     goto FontMenuFail;
 
     rc = result_OK;
@@ -4061,6 +4110,7 @@ ColourMenuOK: ;
 
     const char        *fontfile;
     bmfont_t          *font;
+    wuss_font_desc_t   fdesc;
     screen_t           fscr;
     bitmap_t           fbm;
     void              *fpixels;
@@ -4088,7 +4138,10 @@ ColourMenuOK: ;
     if (rc != result_OK) goto FlashFailFree;
     screen_for_bitmap(&fscr, &fbm);
 
-    rc = wuss_create(&fscr, &font, 1, NULL, 0, NULL, NULL, &fwuss);
+    fdesc.font       = font;
+    fdesc.font_class = wuss_FONT_CLASS_NONE;
+    fdesc.name       = NULL;
+    rc = wuss_create(&fscr, &fdesc, 1, NULL, 0, NULL, NULL, &fwuss);
     if (rc != result_OK) goto FlashFailFree;
 
     memset(&ftc, 0, sizeof(ftc));

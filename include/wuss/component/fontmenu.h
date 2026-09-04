@@ -43,6 +43,13 @@ typedef struct wuss_fontmenu wuss_fontmenu_t;
  *                   failure.
  * \param[in]  dir   Directory to scan for fonts.
  * \param[in]  title Menu caption, borrowed and copied; NULL for "Font".
+ * \param[in]  wuss  Window manager to consult for fonts to leave out, or
+ *                   NULL to include every font found. Any wuss_create font
+ *                   slot (see \ref wuss_font_desc_t) whose class is \ref
+ *                   wuss_FONT_CLASS_SYSTEM and whose name matches a scanned
+ *                   leafname is skipped -- e.g. the symbol font wuss itself
+ *                   draws menu ticks and submenu arrows from, which is not
+ *                   meant to be picked as a text font.
  * \param[in]  alloc Allocator for every block the handle keeps, copied in;
  *                   NULL selects \ref wuss_alloc (plain stdlib). Pass the
  *                   same hooks given to wuss_create so the component and the
@@ -55,6 +62,7 @@ typedef struct wuss_fontmenu wuss_fontmenu_t;
 result_t wuss_fontmenu_create(wuss_fontmenu_t   **out,
                               const char         *dir,
                               const char         *title,
+                              const wuss_t       *wuss,
                               const wuss_alloc_t *alloc);
 
 /**

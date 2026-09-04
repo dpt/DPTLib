@@ -347,16 +347,54 @@ wuss_config_t;
 #define wuss_MAX_FONTS 4
 
 /**
+ * What a font passed to wuss_create is for. Lets a shared component such as
+ * a font-picker menu tell a decorative/chrome font apart from one meant to
+ * be offered as a user-selectable text face.
+ */
+typedef enum wuss_font_class
+{
+  wuss_FONT_CLASS_NONE, /**< An ordinary text font. */
+
+  /**
+   * Chrome/decoration only, e.g. the symbol font menu ticks and submenu
+   * arrows are drawn from (see \ref WUSS_SYMBOL_FONT). Not meant to be
+   * offered as a text face.
+   */
+  wuss_FONT_CLASS_SYSTEM
+}
+wuss_font_class_t;
+
+/**
+ * One font slot passed to wuss_create: the font itself, what it is for, and
+ * the name a caller-side picker (e.g. wuss_fontmenu) should know it by.
+ */
+typedef struct wuss_font_desc
+{
+  /** Font handle. Not owned; must outlive the wuss_t. */
+  bmfont_t *font;
+
+  wuss_font_class_t font_class; /**< What the font is for. */
+
+  /**
+   * Borrowed; the font's leafname sans ".png", for a picker to match
+   * against. NULL if the slot has no name (e.g. a NONE-class font that no
+   * picker needs to skip).
+   */
+  const char *name;
+}
+wuss_font_desc_t;
+
+/**
  * Create a window manager.
  *
  * \param[in]  scr      Screen to draw windows onto. Not owned; must outlive
  *                      the wuss_t.
- * \param[in]  fonts    Up to \ref wuss_MAX_FONTS font handles, copied into
- *                      the wuss_t (the handles, not the fonts -- they are
- *                      not owned and must outlive it). Slot 0 is the system
- *                      font, used for titlebar labels and any icon that does
- *                      not select another. NULL, or nfonts 0, leaves
- *                      titlebars unlabelled.
+ * \param[in]  fonts    Up to \ref wuss_MAX_FONTS font slots, copied into the
+ *                      wuss_t (the descriptors, not the fonts -- the fonts
+ *                      are not owned and must outlive it). Slot 0 is the
+ *                      system font, used for titlebar labels and any icon
+ *                      that does not select another. NULL, or nfonts 0,
+ *                      leaves titlebars unlabelled.
  * \param[in]  nfonts   Number of entries in \p fonts, 0..\ref
  *                      wuss_MAX_FONTS; more than that is an error.
  * \param[in]  palette  System palette, copied in, or NULL to use a built-in
@@ -373,14 +411,14 @@ wuss_config_t;
  *         result_WUSS_BAD_COLOUR if any of config's palette entries are out
  *         of range for the palette, or another appropriate result code.
  */
-result_t wuss_create(screen_t            *scr,
-                     bmfont_t *const     *fonts,
-                     int                  nfonts,
-                     const colour_t      *palette,
-                     int                  npalette,
-                     const wuss_config_t *config,
-                     const wuss_alloc_t  *alloc,
-                     wuss_t             **wuss);
+result_t wuss_create(screen_t               *scr,
+                     const wuss_font_desc_t *fonts,
+                     int                     nfonts,
+                     const colour_t         *palette,
+                     int                     npalette,
+                     const wuss_config_t    *config,
+                     const wuss_alloc_t     *alloc,
+                     wuss_t                **wuss);
 
 /**
  * Replace the system palette partway through a session.
@@ -453,6 +491,28 @@ bmfont_t *wuss_get_font(const wuss_t *wuss);
  *         not filled.
  */
 bmfont_t *wuss_get_font_n(const wuss_t *wuss, int index);
+
+/**
+ * Fetch the class of one of the fonts passed to wuss_create by slot (see
+ * \ref wuss_font_desc_t).
+ *
+ * \param[in] wuss  Window manager.
+ * \param[in] index Font slot, 0..\ref wuss_MAX_FONTS - 1.
+ * \return The slot's class, or \ref wuss_FONT_CLASS_NONE if the slot is out
+ *         of range or was not filled.
+ */
+wuss_font_class_t wuss_get_font_class_n(const wuss_t *wuss, int index);
+
+/**
+ * Fetch the name of one of the fonts passed to wuss_create by slot (see \ref
+ * wuss_font_desc_t).
+ *
+ * \param[in] wuss  Window manager.
+ * \param[in] index Font slot, 0..\ref wuss_MAX_FONTS - 1.
+ * \return The slot's name (borrowed, valid until wuss_destroy), or NULL if
+ *         the slot is out of range, was not filled, or was given no name.
+ */
+const char *wuss_get_font_name_n(const wuss_t *wuss, int index);
 
 /**
  * The last pointer position seen by wuss_mouse_click or wuss_mouse_move,

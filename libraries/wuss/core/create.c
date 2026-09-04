@@ -48,14 +48,14 @@ static result_t validate_bevel_backdrop(const wuss_t *w,
 }
 #endif
 
-result_t wuss_create(screen_t            *scr,
-                     bmfont_t *const     *fonts,
-                     int                  nfonts,
-                     const colour_t      *palette,
-                     int                  npalette,
-                     const wuss_config_t *config,
-                     const wuss_alloc_t  *alloc,
-                     wuss_t             **wuss)
+result_t wuss_create(screen_t               *scr,
+                     const wuss_font_desc_t *fonts,
+                     int                     nfonts,
+                     const colour_t         *palette,
+                     int                     npalette,
+                     const wuss_config_t    *config,
+                     const wuss_alloc_t     *alloc,
+                     wuss_t                **wuss)
 {
   bmfont_t      *font;
   wuss_alloc_t   al;
@@ -79,7 +79,7 @@ result_t wuss_create(screen_t            *scr,
   if (nfonts < 0 || nfonts > wuss_MAX_FONTS || (nfonts > 0 && fonts == NULL))
     return result_BAD_ARG;
 
-  font = (nfonts > 0) ? fonts[0] : NULL;
+  font = (nfonts > 0) ? fonts[0].font : NULL;
 
   al = (alloc != NULL) ? *alloc : wuss_alloc;
 
@@ -198,11 +198,11 @@ result_t wuss_create(screen_t            *scr,
      * titlebar to whichever weight is taller */
     bmfont_get_info(font, &font_width, &font_height);
     NOT_USED(font_width);
-    if (nfonts > 1 && fonts[1] != NULL)
+    if (nfonts > 1 && fonts[1].font != NULL)
     {
       int titleh;
 
-      bmfont_get_info(fonts[1], NULL, &titleh);
+      bmfont_get_info(fonts[1].font, NULL, &titleh);
       if (titleh > font_height)
         font_height = titleh;
     }
@@ -257,9 +257,17 @@ result_t wuss_create(screen_t            *scr,
     int i;
 
     for (i = 0; i < nfonts; i++)
-      w->fonts[i] = fonts[i];
+    {
+      w->fonts[i]        = fonts[i].font;
+      w->font_classes[i] = fonts[i].font_class;
+      w->font_names[i]   = fonts[i].name;
+    }
     for (; i < wuss_MAX_FONTS; i++)
-      w->fonts[i] = NULL;
+    {
+      w->fonts[i]        = NULL;
+      w->font_classes[i] = wuss_FONT_CLASS_NONE;
+      w->font_names[i]   = NULL;
+    }
     w->nfonts = nfonts;
   }
 #ifdef WUSS_FURNITURE
