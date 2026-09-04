@@ -16,43 +16,53 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
   }
   else
   {
-    int      outline_px, titlebar_height, available_width, available_height, width, height;
+    int      outline_px, titlebar_height, target_w, target_h, vis_w, vis_h, x0, y0;
     point_t  carve;
-    size2d_t min;
+    size2d_t min, screen_max;
 
     outline_px      = wuss__outline_px(window);
     titlebar_height = wuss__titlebar_height(window);
     wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
 
-    /* bounded by what's actually left of the screen from the window's
-     * current top-left, not the screen's full width/height -- otherwise a
-     * window not already at the origin grows straight off the edge. Also
-     * account for scrollbar/resize-icon furniture (carve), which sits
-     * outside the content area same as create.c/resize.c do, or the window
-     * ends up carve.x/carve.y short of the doc size it's meant to reach. */
-    available_width  = window->wuss->scr->size.w  - window->visible.x0 - 2 * outline_px - carve.x;
-    available_height = window->wuss->scr->size.h - window->visible.y0 - 2 * outline_px - titlebar_height - carve.y;
+    /* Toggle grows the window to the whole screen (not just the space left
+     * from its current top-left), capped per axis at the window's own doc
+     * extent -- a doc of 0 on an axis means "no cap", fill the screen.
+     * screen_max already accounts for outline/titlebar/scrollbar furniture
+     * sitting outside the content area. */
+    wuss__max_content_anywhere_on_screen(window, &screen_max);
 
-    /* a window dragged far enough off-screen leaves no room at all to the
-     * screen edge, so the above can go negative -- floor it like
-     * drag-resize.c does, or new_visible ends up with x1/y1 less than
-     * x0/y0 (an inverted box), which is never hit-testable again
-     * (box_contains_point can't match x1<x0), leaving the window stuck.
-     * Floor the available space, not the final width/height below, so a
-     * doc smaller than the floor still stops at its own size. */
+    target_w = window->doc.w ? MIN(window->doc.w, screen_max.w) : screen_max.w;
+    target_h = window->doc.h ? MIN(window->doc.h, screen_max.h) : screen_max.h;
+
+    /* a window with a tiny doc still needs to end up big enough to grab;
+     * floor the target like drag-resize.c does, or the toggled box could be
+     * smaller than WUSS_MIN_CONTENT and awkward to un-toggle. */
     wuss__min_content(window, &min);
-    available_width  = MAX(available_width,  min.w);
-    available_height = MAX(available_height, min.h);
+    target_w = MAX(target_w, min.w);
+    target_h = MAX(target_h, min.h);
 
-    width  = MIN(window->doc.w,  available_width);
-    height = MIN(window->doc.h, available_height);
+    vis_w = target_w + 2 * outline_px + carve.x;
+    vis_h = target_h + titlebar_height + 2 * outline_px + carve.y;
+
+    /* nudge the top-left toward the origin by the minimum needed to fit the
+     * grown box on screen; a window that already fits stays put. */
+    x0 = window->visible.x0;
+    y0 = window->visible.y0;
+    if (x0 + vis_w > window->wuss->scr->size.w)
+      x0 = window->wuss->scr->size.w - vis_w;
+    if (y0 + vis_h > window->wuss->scr->size.h)
+      y0 = window->wuss->scr->size.h - vis_h;
+    if (x0 < 0)
+      x0 = 0;
+    if (y0 < 0)
+      y0 = 0;
 
     window->pre_toggle = window->visible;
 
-    new_visible.x0 = window->visible.x0;
-    new_visible.y0 = window->visible.y0;
-    new_visible.x1 = new_visible.x0 + width  + 2 * outline_px + carve.x;
-    new_visible.y1 = new_visible.y0 + height + titlebar_height + 2 * outline_px + carve.y;
+    new_visible.x0 = x0;
+    new_visible.y0 = y0;
+    new_visible.x1 = x0 + vis_w;
+    new_visible.y1 = y0 + vis_h;
   }
 
   window->visible = new_visible;
@@ -82,16 +92,22 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
     }
   }
 
+  /* ponytail: the sliver-blit fast path below assumes the top-left didn't
+   * move; toggle can now reposition a window to fit it on screen, so gate
+   * it on x0/y0 being unchanged and let the general box_union path handle
+   * the moved case. Restore (pre_toggle) can move the top-left too -- same
+   * gate covers it. */
   if (!(window->flags & wuss_WINDOW_NO_RESIZE_BLIT) &&
       window->wuss->z_order.next == &window->link &&
+      before.x0 == window->visible.x0 && before.y0 == window->visible.y0 &&
       screen_copy_rect(window->wuss->scr, &before,
                        POINT(before.x0, before.y0), &copied) == result_OK)
   {
-    /* Topmost, and the screen format supports the blit: the window's
-     * top-left never moves for a toggle, so re-blitting "before" onto
-     * itself is a no-op that just confirms which of its pixels are still
-     * on-screen -- only whatever's newly exposed (grown) or newly vacated
-     * (shrunk) relative to that needs an actual repaint. */
+    /* Topmost, the screen format supports the blit, and the top-left has
+     * not moved: re-blitting "before" onto itself is a no-op that just
+     * confirms which of its pixels are still on-screen -- only whatever's
+     * newly exposed (grown) or newly vacated (shrunk) relative to that
+     * needs an actual repaint. */
     wuss__invalidate_minus(window->wuss, &before, &window->visible);
     wuss__invalidate_minus(window->wuss, &window->visible, &copied);
 
