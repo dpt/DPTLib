@@ -4109,7 +4109,7 @@ ColourMenuOK: ;
     };
 
     const char        *fontfile;
-    bmfont_t          *font;
+    bmfont_t          *font = NULL;
     wuss_font_desc_t   fdesc;
     screen_t           fscr;
     bitmap_t           fbm;
@@ -4123,7 +4123,7 @@ ColourMenuOK: ;
     /* a menu needs a font for its row metrics; the core wuss above was made
      * without one */
     fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                  path_join_leafname("tiny", "png"));
+                                  path_join_leafname("Tiny", "png"));
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
