@@ -126,6 +126,30 @@ void wuss_menu_close(wuss_menu_handle_t handle);
 /** Non-zero while \p handle refers to a currently open chain. */
 int wuss_menu_is_open(wuss_menu_handle_t handle);
 
+/**
+ * Re-tick a currently open menu level in place, for a task that keeps an
+ * ADJUST-picked menu open (see wuss_menu_open) and wants its own tick to
+ * change without rebuilding the chain: an ADJUST pick delivers
+ * wuss_EVENT_MENU_SELECT but does not close or redraw the menu, so a task
+ * that only edits its wuss_menu_item_t.flags array never sees it take effect
+ * on screen.
+ *
+ * Ticks item \p index and unticks every other item of the open level whose
+ * \c menu is \p menu (searched from \p handle's chain), then invalidates the
+ * changed rows. A no-op if \p handle is stale/closed, \p menu is not an open
+ * level of its chain, or \p index is out of range (still unticking every row
+ * in that case).
+ *
+ * \param[in] handle Chain handle from wuss_menu_open.
+ * \param[in] menu   The (sub)menu level to update; matched by pointer
+ *                   against the description passed to wuss_menu_open or
+ *                   reached via a wuss_menu_item_t.submenu.
+ * \param[in] index  Row to tick, or -1 to untick every row.
+ */
+void wuss_menu_set_ticked(wuss_menu_handle_t handle,
+                          const wuss_menu_t *menu,
+                          int                index);
+
 /* ----------------------------------------------------------------------- */
 
 /* Building a wuss_menu_t tree from a compact descriptor string, and freeing

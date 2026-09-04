@@ -17,15 +17,19 @@
  * place. */
 typedef struct chars_task
 {
-  wuss_window_t   *window;
-  wuss_task_t     *delegate;  /* the wuss task backing this window */
-  wuss_t          *wuss;      /* for wuss_get_pointer when opening the menu */
-  wuss_fontmenu_t *fontmenu;  /* the font picker; owns the menu and names */
-  bmfont_t        *font;      /* currently shown; == fonts[current] */
-  bmfont_t       **fonts;     /* one slot per menu item, lazily loaded */
-  int              nfonts;    /* length of fonts[]; == menu item count */
-  int              current;   /* index into fonts[], or -1 for sysfont */
-  colour_t         fg, bg;
+  wuss_window_t      *window;
+  wuss_task_t        *delegate;    /* the wuss task backing this window */
+  wuss_t             *wuss;        /* for wuss_get_pointer when opening the
+                                    * menu */
+  wuss_fontmenu_t    *fontmenu;    /* the font picker; owns the menu and
+                                    * names */
+  wuss_menu_handle_t  menu_handle; /* the open chain, to re-tick it live on
+                                    * an ADJUST pick that keeps it open */
+  bmfont_t           *font;        /* currently shown; == fonts[current] */
+  bmfont_t          **fonts;       /* one slot per menu item, lazily loaded */
+  int                 nfonts;      /* length of fonts[]; == menu item count */
+  int                 current;     /* index into fonts[], or -1 for sysfont */
+  colour_t            fg, bg;
 }
 chars_task_t;
 
