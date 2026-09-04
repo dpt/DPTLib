@@ -1,4 +1,4 @@
-/* wuss/get-font.c -- wuss - minimal window manager */
+/* wuss/core/get-font.c -- look up a registered font slot by index */
 
 #include <assert.h>
 
