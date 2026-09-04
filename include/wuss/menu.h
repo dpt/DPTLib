@@ -35,43 +35,51 @@ extern "C"
 /** Per-item flags for a wuss_menu_item_t. OR'd together. */
 typedef enum wuss_menu_item_flags
 {
-  wuss_MENU_ITEM_NONE      = 0,
-  wuss_MENU_ITEM_TICKED    = 1 << 0, /**< draw a tick at the item's left edge */
-  wuss_MENU_ITEM_DASHED    = 1 << 1, /**< draw a dashed rule above this item,
-                                      *   marking a group boundary. The item is
-                                      *   otherwise an ordinary row: it keeps
-                                      *   its label and responds to the pointer.
-                                      *   The rule is laid out and drawn
-                                      *   separately and is not interactive */
-  wuss_MENU_ITEM_DISABLED  = 1 << 2, /**< greyed, never highlights, not
-                                      *   selectable */
-  wuss_MENU_ITEM_SWATCH    = 1 << 3  /**< draw a colour chip of \c swatch at the
-                                      *   item's left edge, in place of a tick */
+  wuss_MENU_ITEM_NONE     = 0,
+
+  /** Draw a tick at the item's left edge */
+  wuss_MENU_ITEM_TICKED   = 1 << 0,
+
+  /** Draw a dashed rule above this item, marking a group boundary. The
+   *  item is otherwise an ordinary row: it keeps its label and responds
+   *  to the pointer. The rule is laid out and drawn separately and is not
+   *  interactive */
+  wuss_MENU_ITEM_DASHED   = 1 << 1,
+
+  /** Greyed, never highlights, not selectable */
+  wuss_MENU_ITEM_DISABLED = 1 << 2,
+
+  /** Draw a colour chip of \c swatch at the item's left edge, in place of
+   *  a tick */
+  wuss_MENU_ITEM_SWATCH   = 1 << 3
 }
 wuss_menu_item_flags_t;
 
 /** One row of a menu. */
 typedef struct wuss_menu_item
 {
-  const char             *text;    /**< row label; NULL is treated as "" */
-  wuss_menu_item_flags_t   flags;  /**< see wuss_menu_item_flags_t */
-  const struct wuss_menu  *submenu; /**< non-NULL: draw a right arrow and open
-                                     *   this menu to the right on hover */
-  wuss_window_t           *window; /**< non-NULL: draw a right arrow and, on
-                                     *   hover, show this caller-owned window
-                                     *   where a submenu would open, hiding it
-                                     *   again when the pointer leaves the row
-                                     *   or the chain is dismissed. Create it
-                                     *   with wuss_WINDOW_HIDDEN. Mutually
-                                     *   exclusive with \c submenu. The window
-                                     *   must outlive the open chain -- do not
-                                     *   wuss_window_close it while its menu is
-                                     *   open. */
-  wuss_colour_t            swatch; /**< with wuss_MENU_ITEM_SWATCH: the colour
-                                     *   chip to draw at the row's left edge, as
-                                     *   an index into the system palette.
-                                     *   Ignored without that flag, so a
-                                     *   zero-initialised item is unaffected. */
+  /** Row label; NULL is treated as "" */
+  const char             *text;
+
+  /** See wuss_menu_item_flags_t */
+  wuss_menu_item_flags_t  flags;
+
+  /** Non-NULL: draw a right arrow and open this menu to the right on
+   *  hover */
+  const struct wuss_menu *submenu;
+
+  /** Non-NULL: draw a right arrow and, on hover, show this caller-owned
+   *  window where a submenu would open, hiding it again when the pointer
+   *  leaves the row or the chain is dismissed. Create it with
+   *  wuss_WINDOW_HIDDEN. Mutually exclusive with \c submenu. The window
+   *  must outlive the open chain -- do not wuss_window_close it while its
+   *  menu is open. */
+  wuss_window_t          *window;
+
+  /** With wuss_MENU_ITEM_SWATCH: the colour chip to draw at the row's
+   *  left edge, as an index into the system palette. Ignored without that
+   *  flag, so a zero-initialised item is unaffected. */
+  wuss_colour_t           swatch;
 }
 wuss_menu_item_t;
 

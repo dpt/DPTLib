@@ -38,34 +38,41 @@ extern "C"
  */
 typedef enum wuss_event_kind
 {
-  wuss_EVENT_REDRAW,      /**< Part of a window's content needs repaint. */
-  wuss_EVENT_MOUSE,       /**< Button down/up/move over window content. */
-  wuss_EVENT_ICON,        /**< A work-area button icon was clicked or hovered
-                               (window view); or, in the task view, a future
-                               shared/dock element -- reserved, nothing emits
-                               it yet. */
-  wuss_EVENT_SCROLL,      /**< Mouse wheel used over a window's content. */
-  wuss_EVENT_OPEN,        /**< A visible window moved or resized. */
-  wuss_EVENT_PRE_SHOW,    /**< A hidden window is about to become visible; a
-                               non-OK return vetoes the reveal. */
-  wuss_EVENT_SHOW,        /**< A window has become visible (hidden->visible
-                               transition only, not at create). */
-  wuss_EVENT_PRE_CLOSE,   /**< A window is about to close via
-                               wuss_window_try_close; a non-OK return vetoes
-                               it. Never fired by wuss_window_close. */
-  wuss_EVENT_CLOSE,       /**< A window has closed after a successful
-                               wuss_window_try_close. Never fired by
-                               wuss_window_close. */
-  wuss_EVENT_IDLE,        /**< Wuss has finished its pending work; once per
-                               task per wuss_idle. */
-  wuss_EVENT_QUIT,        /**< The task is shutting down, via
-                               wuss_task_destroy; its windows are still
-                               alive. */
-  wuss_EVENT_PALETTE,     /**< System palette changed, via wuss_set_palette;
-                               once per task. Recache any wuss_nearest_colour
-                               selections. */
-  wuss_EVENT_MENU_SELECT  /**< A leaf menu item was picked; delivered to the
-                               task that opened the menu. */
+  /** Part of a window's content needs repaint. */
+  wuss_EVENT_REDRAW,
+  /** Button down/up/move over window content. */
+  wuss_EVENT_MOUSE,
+  /** A work-area button icon was clicked or hovered (window view); or, in
+   *  the task view, a future shared/dock element -- reserved, nothing
+   *  emits it yet. */
+  wuss_EVENT_ICON,
+  /** Mouse wheel used over a window's content. */
+  wuss_EVENT_SCROLL,
+  /** A visible window moved or resized. */
+  wuss_EVENT_OPEN,
+  /** A hidden window is about to become visible; a non-OK return vetoes
+   *  the reveal. */
+  wuss_EVENT_PRE_SHOW,
+  /** A window has become visible (hidden->visible transition only, not at
+   *  create). */
+  wuss_EVENT_SHOW,
+  /** A window is about to close via wuss_window_try_close; a non-OK return
+   *  vetoes it. Never fired by wuss_window_close. */
+  wuss_EVENT_PRE_CLOSE,
+  /** A window has closed after a successful wuss_window_try_close. Never
+   *  fired by wuss_window_close. */
+  wuss_EVENT_CLOSE,
+  /** Wuss has finished its pending work; once per task per wuss_idle. */
+  wuss_EVENT_IDLE,
+  /** The task is shutting down, via wuss_task_destroy; its windows are
+   *  still alive. */
+  wuss_EVENT_QUIT,
+  /** System palette changed, via wuss_set_palette; once per task. Recache
+   *  any wuss_nearest_colour selections. */
+  wuss_EVENT_PALETTE,
+  /** A leaf menu item was picked; delivered to the task that opened the
+   *  menu. */
+  wuss_EVENT_MENU_SELECT
 }
 wuss_event_kind_t;
 
