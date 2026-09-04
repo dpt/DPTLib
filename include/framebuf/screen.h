@@ -4,6 +4,7 @@
 #define FRAMEBUF_SCREEN_H
 
 #include "framebuf/bitmap.h"
+#include "framebuf/pattern.h"
 #include "geom/box.h"
 #include "geom/point.h"
 #include "utils/fxp.h"
@@ -96,68 +97,45 @@ void screen_fill_square(screen_t *scr,
                         colour_t  colour);
 
 /**
- * Built-in 8x8 fill patterns for `screen_fill_pattern`. Each is a 1-bit
- * tile: set bits take the foreground colour, clear bits the background.
+ * Fills a horizontal run of `w` pixels starting at (`x`, `y`).
+ *
+ * A non-positive `w` draws nothing. Clipped to the screen's clip region.
+ * This is the per-row primitive `screen_fill_rect` and `screen_draw_circle`
+ * build on.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x       X coordinate of the leftmost pixel of the run.
+ * \param[in] y       Y coordinate of the run.
+ * \param[in] w       Length of the run in pixels.
+ * \param[in] colour  Colour of the run.
  */
-typedef enum screen_pattern
-{
-  screen_PATTERN_SOLID = 0, /**< Every pixel foreground. */
-  screen_PATTERN_GREY50,    /**< 50% checkerboard. */
-  screen_PATTERN_HSTRIPE,   /**< Horizontal bars. */
-  screen_PATTERN_VSTRIPE,   /**< Vertical bars. */
-  screen_PATTERN_DIAGONAL,  /**< Diagonal lines. */
-  screen_PATTERN_DOTS,      /**< Sparse dots. */
-  screen_PATTERN_GRID,      /**< Thin grid lines. */
-  screen_PATTERN_CROSSHATCH, /**< Crossed thin lines. */
-
-  /**
-   * 8x8 ordered (Bayer) dither, one entry per coverage level 0 (empty) to 64
-   * (solid). Index by level as `screen_PATTERN_BAYER0 + level`;
-   * `screen_PATTERN_BAYER_LIMIT` is one past the last.
-   * `screen_PATTERN_BAYER0` matches nothing else here,
-   * `screen_PATTERN_BAYER32` equals `screen_PATTERN_GREY50` and
-   * `screen_PATTERN_BAYER64` equals `screen_PATTERN_SOLID`; the duplicates
-   * are kept so the level arithmetic stays simple.
-   */
-  screen_PATTERN_BAYER0,
-  screen_PATTERN_BAYER_LIMIT = screen_PATTERN_BAYER0 + 65,
-
-  screen_PATTERN__LIMIT = screen_PATTERN_BAYER_LIMIT
-                          /**< Count of patterns; not itself a pattern. */
-}
-screen_pattern_t;
+void screen_fill_hline(screen_t *scr, int x, int y, int w, colour_t colour);
 
 /**
- * Fills a box with a repeating 8x8 two-colour pattern.
+ * Fills a box with a repeating 8x8 pattern.
  *
- * The tile is phased against (`origin_x`, `origin_y`): that coordinate is
- * the one that would map to the box's top-left corner. Passing the caller's
- * own scroll origin keeps the pattern locked to content as the box moves,
- * rather than crawling with it.
+ * A plain pattern paints every pixel in the box, set bits taking
+ * `pattern->fg` and clear bits `pattern->bg`. A stencil pattern (one with
+ * `pattern_FLAG_STENCIL`) paints only the set-bit pixels. The tile is phased
+ * against `pattern->origin`: that coordinate is the one that maps to the
+ * box's top-left corner. Passing the caller's own scroll origin keeps the
+ * pattern locked to content as the box moves, rather than crawling with it.
  *
  * Clipped to the screen's clip region.
  *
  * \param[in] scr       Screen to draw upon.
  * \param[in] box       Box to fill, inclusive-exclusive.
  * \param[in] pattern   Pattern to fill with.
- * \param[in] origin_x  X coordinate mapping to `box->x0` for tile phase.
- * \param[in] origin_y  Y coordinate mapping to `box->y0` for tile phase.
- * \param[in] fg        Colour for set pattern bits.
- * \param[in] bg        Colour for clear pattern bits.
  */
 void screen_fill_pattern(screen_t        *scr,
                          const box_t     *box,
-                         screen_pattern_t pattern,
-                         int              origin_x,
-                         int              origin_y,
-                         colour_t         fg,
-                         colour_t         bg);
+                         const pattern_t *pattern);
 
 /**
- * Draws a bitmap, alpha-blending it against the screen where the bitmap has
- * an alpha channel. On paletted screens, which have no linear channel bits
- * to blend, this falls back to alpha-tested transparency instead (drawn at
- * full strength, or not at all).
+ * Copies a bitmap onto the screen, alpha-blending it against the screen
+ * where the bitmap has an alpha channel. On paletted screens, which have no
+ * linear channel bits to blend, this falls back to alpha-tested transparency
+ * instead (drawn at full strength, or not at all).
  *
  * The bitmap is clipped to the screen's clip region. No scaling is
  * performed.
@@ -165,29 +143,34 @@ void screen_fill_pattern(screen_t        *scr,
  * \param[in] scr  Screen to draw upon.
  * \param[in] x    X coordinate of leftmost point to draw bitmap at.
  * \param[in] y    Y coordinate of topmost point to draw bitmap at.
- * \param[in] src  Bitmap to draw.
+ * \param[in] src  Bitmap to copy.
+ * \return \ref result_OK on success, \ref result_NOT_SUPPORTED if the
+ *         screen's pixel format has no blit path.
  */
-void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src);
+result_t screen_copy_bitmap(screen_t       *scr,
+                            int             x,
+                            int             y,
+                            const bitmap_t *src);
 
-/** Flags for `screen_draw_ninepatch`. */
+/** Flags for `screen_copy_ninepatch`. */
 enum
 {
   screen_NINEPATCH_NO_CENTRE = 1u << 0 /**< Leave the interior untouched. */
 };
 
 /**
- * Draws a "9-patch": a resizable frame built from a source image that is a
- * 3x3 grid of equal cells. The source width and height must each be a
- * positive multiple of 3; the cell size is a third of each. Given a
- * destination box, the four corner cells are drawn at their natural size in
- * the destination corners, the four edge cells are tiled along the
+ * Copies a "9-patch" onto the screen: a resizable frame built from a source
+ * image that is a 3x3 grid of equal cells. The source width and height must
+ * each be a positive multiple of 3; the cell size is a third of each. Given
+ * a destination box, the four corner cells are drawn at their natural size
+ * in the destination corners, the four edge cells are tiled along the
  * destination edges, and the centre cell is tiled across the interior.
  *
  * If the destination is narrower or shorter than two cells the opposing
  * corners overlap and each is clipped to its own half; the edges and centre
  * are then omitted. Drawing is clipped to both the destination box and the
  * screen's clip region, which is restored on return. Cells are blended
- * exactly as `screen_draw_bitmap` does. No scaling is performed.
+ * exactly as `screen_copy_bitmap` does. No scaling is performed.
  *
  * \param[in] scr   Screen to draw upon.
  * \param[in] dst   Destination box to fill with the frame.
@@ -195,11 +178,13 @@ enum
  * \param[in] flags Bitwise OR of `screen_NINEPATCH_*`, or 0. Pass
  *                  `screen_NINEPATCH_NO_CENTRE` to draw only the border and
  *                  leave the interior untouched.
+ * \return \ref result_OK on success, \ref result_NOT_SUPPORTED if the
+ *         screen's pixel format has no blit path.
  */
-void screen_draw_ninepatch(screen_t       *scr,
-                           const box_t    *dst,
-                           const bitmap_t *src,
-                           unsigned int    flags);
+result_t screen_copy_ninepatch(screen_t       *scr,
+                               const box_t    *dst,
+                               const bitmap_t *src,
+                               unsigned int    flags);
 
 /**
  * Copies a rectangular region of the screen to another position on the same
@@ -212,8 +197,9 @@ void screen_draw_ninepatch(screen_t       *scr,
  * destination pixel 1:1.
  *
  * Callers must check the return value and fall back to a normal
- * invalidate/redraw when it's false (e.g. out of memory, or an unknown pixel
- * format), since a declined copy leaves the destination untouched.
+ * invalidate/redraw when it is not \ref result_OK (an unknown pixel format,
+ * or the source/destination lying wholly off-screen), since a declined copy
+ * leaves the destination untouched.
  *
  * If "src" or the intended destination falls partly off-screen, the actual
  * copied area shrinks to what both ends have in common on-screen: callers
@@ -228,13 +214,14 @@ void screen_draw_ninepatch(screen_t       *scr,
  *                        smaller than intended if either end was partly
  *                        off-screen). Pass NULL if not needed. Left unset if
  *                        the copy was declined.
- * \return True if the copy was performed, false if declined (unsupported
- *         pixel format).
+ * \return \ref result_OK if the copy was performed, \ref
+ *         result_NOT_SUPPORTED if declined (unsupported pixel format, or
+ *         nothing left to copy after clipping).
  */
-int screen_copy_rect(screen_t    *scr,
-                     const box_t *src,
-                     point_t      dst,
-                     box_t       *copied_dst);
+result_t screen_copy_rect(screen_t    *scr,
+                          const box_t *src,
+                          point_t      dst,
+                          box_t       *copied_dst);
 
 /**
  * Draws a line (Bresenham version with aliasing).
@@ -291,6 +278,40 @@ void screen_draw_rect(screen_t *scr,
                       int       y,
                       size2d_t  size,
                       colour_t  colour);
+
+/**
+ * Draws a one-pixel unfilled circle outline (integer midpoint algorithm, no
+ * anti-aliasing). Clipped to the screen's clip region. A negative radius
+ * draws nothing; a zero radius draws a single pixel at the centre.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] cx      X coordinate of the centre.
+ * \param[in] cy      Y coordinate of the centre.
+ * \param[in] r       Radius in pixels.
+ * \param[in] colour  Colour of the outline.
+ */
+void screen_draw_circle(screen_t *scr,
+                        int       cx,
+                        int       cy,
+                        int       r,
+                        colour_t  colour);
+
+/**
+ * Draws a solid filled disc of the given radius. Clipped to the screen's
+ * clip region. A negative radius draws nothing; a zero radius draws a single
+ * pixel at the centre.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] cx      X coordinate of the centre.
+ * \param[in] cy      Y coordinate of the centre.
+ * \param[in] r       Radius in pixels.
+ * \param[in] colour  Colour of the disc.
+ */
+void screen_fill_circle(screen_t *scr,
+                        int       cx,
+                        int       cy,
+                        int       r,
+                        colour_t  colour);
 
 /**
  * Draws a stippled line: `on` pixels drawn, then `off` skipped, repeating

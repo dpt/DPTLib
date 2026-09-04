@@ -2,13 +2,16 @@
 
 #include "base/utils.h"
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 void wuss__furniture_toggle_size(wuss_window_t *window)
 {
-  box_t before, new_visible, dirty, copied;
+  box_t before, before_content, new_visible, dirty, copied, blit_src, blit_dst;
+  int   dx, dy, blitted, scroll_reclamped;
 
   before = window->visible;
+  wuss__content_box(window, &before_content);
+  scroll_reclamped = 0;
 
   if (wuss__window_toggled(window))
   {
@@ -16,43 +19,51 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
   }
   else
   {
-    int      outline_px, titlebar_height, available_width, available_height, width, height;
+    int      outline_px, titlebar_height, target_w, target_h, vis_w, vis_h, x0, y0;
     point_t  carve;
-    size2d_t min;
+    size2d_t min, screen_max;
 
     outline_px      = wuss__outline_px(window);
     titlebar_height = wuss__titlebar_height(window);
     wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
 
-    /* bounded by what's actually left of the screen from the window's
-     * current top-left, not the screen's full width/height -- otherwise a
-     * window not already at the origin grows straight off the edge. Also
-     * account for scrollbar/resize-icon furniture (carve), which sits
-     * outside the content area same as create.c/resize.c do, or the window
-     * ends up carve.x/carve.y short of the doc size it's meant to reach. */
-    available_width  = window->wuss->scr->size.w  - window->visible.x0 - 2 * outline_px - carve.x;
-    available_height = window->wuss->scr->size.h - window->visible.y0 - 2 * outline_px - titlebar_height - carve.y;
+    /* Toggle grows the window to the whole screen (not just the space left
+     * from its current top-left), capped per axis at the window's own doc
+     * extent -- a doc of 0 on an axis means "no cap", fill the screen.
+     * screen_max already accounts for outline/titlebar/scrollbar furniture
+     * sitting outside the content area. */
+    wuss__max_content_anywhere_on_screen(window, &screen_max);
 
-    /* a window dragged far enough off-screen leaves no room at all to the
-     * screen edge, so the above can go negative -- floor it like
-     * drag-resize.c does, or new_visible ends up with x1/y1 less than
-     * x0/y0 (an inverted box), which is never hit-testable again
-     * (box_contains_point can't match x1<x0), leaving the window stuck.
-     * Floor the available space, not the final width/height below, so a
-     * doc smaller than the floor still stops at its own size. */
+    target_w = window->doc.w ? MIN(window->doc.w, screen_max.w) : screen_max.w;
+    target_h = window->doc.h ? MIN(window->doc.h, screen_max.h) : screen_max.h;
+
+    /* a window with a tiny doc still needs to end up big enough to grab;
+     * floor the target like drag-resize.c does, or the toggled box could be
+     * smaller than WUSS_MIN_CONTENT and awkward to un-toggle. */
     wuss__min_content(window, &min);
-    available_width  = MAX(available_width,  min.w);
-    available_height = MAX(available_height, min.h);
+    target_w = MAX(target_w, min.w);
+    target_h = MAX(target_h, min.h);
 
-    width  = MIN(window->doc.w,  available_width);
-    height = MIN(window->doc.h, available_height);
+    vis_w = target_w + 2 * outline_px + carve.x;
+    vis_h = target_h + titlebar_height + 2 * outline_px + carve.y;
+
+    /* nudge the top-left toward the origin by the minimum needed to fit the
+     * grown box on screen; a window that already fits stays put. */
+    x0 = window->visible.x0;
+    y0 = window->visible.y0;
+    if (x0 + vis_w > window->wuss->scr->size.w)
+      x0 = window->wuss->scr->size.w - vis_w;
+    if (y0 + vis_h > window->wuss->scr->size.h)
+      y0 = window->wuss->scr->size.h - vis_h;
+    x0 = MAX(x0, 0);
+    y0 = MAX(y0, 0);
 
     window->pre_toggle = window->visible;
 
-    new_visible.x0 = window->visible.x0;
-    new_visible.y0 = window->visible.y0;
-    new_visible.x1 = new_visible.x0 + width  + 2 * outline_px + carve.x;
-    new_visible.y1 = new_visible.y0 + height + titlebar_height + 2 * outline_px + carve.y;
+    new_visible.x0 = x0;
+    new_visible.y0 = y0;
+    new_visible.x1 = x0 + vis_w;
+    new_visible.y1 = y0 + vis_h;
   }
 
   window->visible = new_visible;
@@ -79,42 +90,69 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
       window->scroll = new_scroll;
       wuss__content_box(window, &content);
       wuss__invalidate_clipped(window, &content);
+      scroll_reclamped = 1;
     }
   }
 
-  if (!(window->flags & wuss_WINDOW_NO_RESIZE_BLIT) &&
-      window->wuss->z_order.next == &window->link &&
-      screen_copy_rect(window->wuss->scr, &before,
-                       POINT(before.x0, before.y0), &copied))
-  {
-    /* Topmost, and the screen format supports the blit: the window's
-     * top-left never moves for a toggle, so re-blitting "before" onto
-     * itself is a no-op that just confirms which of its pixels are still
-     * on-screen -- only whatever's newly exposed (grown) or newly vacated
-     * (shrunk) relative to that needs an actual repaint. */
-    wuss__invalidate_minus(window->wuss, &before, &window->visible);
-    wuss__invalidate_minus(window->wuss, &window->visible, &copied);
+  /* Only the *content* pixels are anchored-position rendering that can just
+   * be slid; the furniture (titlebar, outline, scrollbars) reflows to the
+   * window's new size and position, so it must never be part of the blit --
+   * blitting it would drag a stale titlebar/scrollbar strip into what is
+   * now interior content. Blit the old content box to where it now sits
+   * (shifted by the top-left delta; dx==dy==0 for a pure grow-in-place),
+   * then repaint the newly-exposed content, the vacated region and all the
+   * furniture. Topmost only (nothing above it, so no occluder pixels to
+   * preserve or step on) and only when the screen format can blit. Skipped
+   * when the toggle re-clamped scroll: the whole new content box is already
+   * invalidated above at the corrected offset. */
+  dx      = window->visible.x0 - before.x0;
+  dy      = window->visible.y0 - before.y0;
+  blitted = 0;
 
-    /* Unlike a move, a toggle changes the window's size, so furniture that
-     * lays itself out relative to that size (titlebar icons anchored to its
-     * right edge, scrollbar well/sausage proportions, the resize corner)
-     * reflows even where the blit reused valid content pixels -- e.g. the
-     * old toggle icon location is now mid-titlebar, not redrawn by either
-     * invalidate_minus above since it falls inside both "before" and the
-     * new "visible". Force it dirty regardless of the blit. */
-    if (window->visible.x1 - window->visible.x0 > before.x1 - before.x0 ||
-        window->visible.y1 - window->visible.y0 > before.y1 - before.y0)
-      /* Growing strands old furniture (e.g. the old vscroll column) inside
-       * what's now interior content, a region the blit above treats as
-       * already-valid and so never repaints -- force its old position dirty
-       * too. Shrinking needs no such help: old furniture positions only
-       * ever land outside the new, smaller box, already covered by the
-       * invalidate_minus vacated-region call above. */
-      wuss__furniture_invalidate_for(window, &before);
+  if (!scroll_reclamped &&
+      !(window->flags & wuss_WINDOW_NO_RESIZE_BLIT) &&
+      window->wuss->z_order.next == &window->link)
+  {
+    box_t new_content, shifted;
+
+    wuss__content_box(window, &new_content);
+
+    /* the part of the old content box that, slid by (dx,dy), lands within
+     * the new content box: its pixels are the valid source for that overlap */
+    box_translated(&new_content, -dx, -dy, &shifted);
+    if (box_intersection(&before_content, &shifted, &blit_src) == 0 &&
+        !box_is_empty(&blit_src))
+    {
+      box_translated(&blit_src, dx, dy, &blit_dst);
+      if (screen_copy_rect(window->wuss->scr, &blit_src,
+                           POINT(blit_dst.x0, blit_dst.y0),
+                           &copied) == result_OK)
+        blitted = 1;
+    }
+  }
+
+  if (blitted)
+  {
+    box_t new_content;
+
+    wuss__content_box(window, &new_content);
+
+    /* the old footprint minus the content pixels the blit left valid at
+     * their new home: the vacated region plus every furniture strip. */
+    wuss__invalidate_minus(window->wuss, &before, &copied);
+    /* the new content box minus what the blit filled: newly-exposed content. */
+    wuss__invalidate_minus(window->wuss, &new_content, &copied);
+    /* furniture always reflows -- repaint it at the new position outright. */
     wuss__furniture_invalidate(window);
   }
   else
   {
+    /* No blit: the window is not topmost, its content self-lays-out
+     * (NO_RESIZE_BLIT), the old and new content boxes do not overlap, or
+     * screen_copy_rect declined. Repaint the whole union of old and new
+     * footprint. */
+    logf_info("wuss furniture toggle: no blit fast path, repainting the whole "
+              "old+new footprint");
     box_union(&before, &window->visible, &dirty);
     wuss__invalidate_clipped(window, &dirty);
   }

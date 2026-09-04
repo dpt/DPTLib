@@ -2,7 +2,7 @@
 
 #include "base/utils.h"
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 void wuss__furniture_drag_resize(wuss_window_t *window, point_t p)
 {

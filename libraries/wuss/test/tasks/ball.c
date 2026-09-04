@@ -1,6 +1,6 @@
 /* wuss/test/tasks/ball.c -- bouncing ball task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -10,54 +10,87 @@
 
 #include "base/utils.h"
 #include "framebuf/palettes.h"
+#include "framebuf/screen.h"
 #include "geom/box.h"
 
 #include "ball.h"
 
-/* Window-local invalidation box covering a ball (or its swept range) whose
- * centre spans [vx0,vx1] x [vy0,vy1] in virtual content space. */
-static box_t ball_local_box(int     vx0,
-                            int     vy0,
-                            int     vx1,
-                            int     vy1,
-                            int     radius,
-                            point_t scroll)
+#define BALL_BASE_RADIUS 8 /* +/-50% at spawn -> 4..12 */
+
+/* a fresh radius in [BALL_BASE_RADIUS/2, BALL_BASE_RADIUS*3/2] */
+static int ball_random_radius(void)
+{
+  return BALL_BASE_RADIUS / 2 + rand() % (BALL_BASE_RADIUS + 1);
+}
+
+/* a fresh fully-opaque colour, red channel is at least 0x40 so it stays
+ * visible against the red background */
+static colour_t ball_random_colour(void)
+{
+  int i;
+  
+  i = 0x40 + rand() % 0xC0;
+  return colour_rgb(0xFF, i, i);
+}
+
+/* Invalidation box (virtual content space, as ball positions are held)
+ * covering a ball -- or its swept range -- whose centre spans
+ * [vx0,vx1] x [vy0,vy1]. wuss_window_invalidate maps this to the screen and
+ * applies scroll, so this must not. The circle occupies [c-radius,c+radius]
+ * inclusive, i.e. 2*radius+1 pixels; box_t is half-open so x1/y1 get the
+ * extra 1. */
+static box_t ball_local_box(int vx0, int vy0, int vx1, int vy1, int radius)
 {
   box_t local;
 
-  local.x0 = vx0 - radius - scroll.x;
-  local.y0 = vy0 - radius - scroll.y;
-  local.x1 = vx1 + radius - scroll.x;
-  local.y1 = vy1 + radius - scroll.y;
+  local.x0 = vx0 - radius;
+  local.y0 = vy0 - radius;
+  local.x1 = vx1 + radius + 1;
+  local.y1 = vy1 + radius + 1;
 
   return local;
 }
 
 result_t ball_create(wuss_t *wuss, ball_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  result_t         rc;
 
   task->bg     = colour_rgb(0xFF, 0x00, 0x00);
-  task->ball   = colour_rgb(0xFF, 0xFF, 0xFF);
   task->nballs = 1;
 
   task->balls[0].x      = 50;
   task->balls[0].y      = 50;
   task->balls[0].dx     = 3;
   task->balls[0].dy     = 2;
-  task->balls[0].radius = 8;
+  task->balls[0].radius = ball_random_radius();
+  task->balls[0].colour = ball_random_colour();
 
-  delegate = wuss_task_start(ball_handle, task); /* ball_redraw paints its own background every frame */
+  /* ball_redraw paints its own background every frame */
+  delegate_desc.handle    = ball_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "ball";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
+    return rc;
+  }
+  wuss_task_set_autoclose(delegate, 1);
 
-  return wuss_window_create_placed(wuss,
-                                   SIZE2D(200, 160),
-                                   "Bouncing Ball",
-                                   wuss_WINDOW_NONE,
-                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                   &delegate,
-                                   SIZE2D(200, 160),
-                                   SIZE2D(0, 0),
-                                   &task->window);
+  rc = wuss_window_create_placed(delegate,
+                                 SIZE2D(200, 160),
+                                 "Bouncing Ball",
+                                 wuss_WINDOW_NONE,
+                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 SIZE2D(200, 160),
+                                 SIZE2D(0, 0),
+                                 &task->window);
+  if (rc != result_OK)
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+
+  return rc;
 }
 
 static result_t ball_redraw(const wuss_event_t *event, void *task_data)
@@ -85,10 +118,10 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 
     b = &bc->balls[i];
 
-    screen_fill_rect(scr, bounds->x0 - sx + b->x - b->radius,
-                          bounds->y0 - sy + b->y - b->radius,
-                          SIZE2D(b->radius * 2, b->radius * 2),
-                          bc->ball);
+    screen_fill_circle(scr, bounds->x0 - sx + b->x,
+                            bounds->y0 - sy + b->y,
+                            b->radius,
+                            b->colour);
   }
 
   return result_OK;
@@ -103,45 +136,43 @@ static result_t ball_mouse(wuss_window_t      *window,
 {
   ball_task_t *bc;
   box_t        local;
-  point_t      scroll;
 
   bc = task_data;
+
+  NOT_USED(window);
 
   if (action != wuss_MOUSE_DOWN)
     return result_OK;
 
-  wuss_window_get_scroll(window, &scroll);
-
-  if (button & wuss_BUTTON_SELECT)
+  if (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST))
   {
     ball_t *b;
-
-    if (bc->nballs >= BALL_MAX)
-      return result_OK;
-
-    /* x,y already arrive in virtual content space, as ball positions are
-     * held; only the invalidation boxes below need the scroll offset taking
-     * back off to reach window-local coordinates. */
-    b         = &bc->balls[bc->nballs++];
-    b->x      = x;
-    b->y      = y;
-    b->dx     = (bc->nballs & 1) ? 3 : -3;
-    b->dy     = (bc->nballs & 2) ? 2 : -2;
-    b->radius = 8;
-
-    local = ball_local_box(b->x, b->y, b->x, b->y, b->radius, scroll);
-    wuss_window_invalidate(bc->window, &local);
-  }
-  else if (button & wuss_BUTTON_ADJUST)
-  {
-    ball_t *b;
-
-    if (bc->nballs <= 1)
-      return result_OK; /* keep at least one ball on screen */
-
-    b = &bc->balls[--bc->nballs];
-
-    local = ball_local_box(b->x, b->y, b->x, b->y, b->radius, scroll);
+    
+    if (button & wuss_BUTTON_SELECT)
+    {
+      if (bc->nballs >= BALL_MAX)
+        return result_OK;
+      
+      /* x,y already arrive in virtual content space, as ball positions are
+       * held; only the invalidation boxes below need the scroll offset taking
+       * back off to reach window-local coordinates. */
+      b         = &bc->balls[bc->nballs++];
+      b->x      = x;
+      b->y      = y;
+      b->dx     = (bc->nballs & 1) ? 3 : -3;
+      b->dy     = (bc->nballs & 2) ? 2 : -2;
+      b->radius = ball_random_radius();
+      b->colour = ball_random_colour();
+    }
+    else if (button & wuss_BUTTON_ADJUST)
+    {
+      if (bc->nballs <= 1)
+        return result_OK; /* keep at least one ball on screen */
+      
+      b = &bc->balls[--bc->nballs];
+    }
+    
+    local = ball_local_box(b->x, b->y, b->x, b->y, b->radius);
     wuss_window_invalidate(bc->window, &local);
   }
 
@@ -184,7 +215,7 @@ static result_t ball_idle(void *task_data)
 
     local = ball_local_box(MIN(old_x, b->x), MIN(old_y, b->y),
                            MAX(old_x, b->x), MAX(old_y, b->y),
-                           b->radius, scroll);
+                           b->radius);
 
     wuss_window_invalidate(bc->window, &local);
   }
@@ -212,8 +243,7 @@ result_t ball_handle(wuss_window_t      *window,
   case wuss_EVENT_IDLE:
     return ball_idle(task_data);
 
-  case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
+  case wuss_EVENT_QUIT:
     free(bc); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
@@ -222,4 +252,4 @@ result_t ball_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

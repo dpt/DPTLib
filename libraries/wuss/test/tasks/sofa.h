@@ -3,7 +3,7 @@
 #ifndef TASKS_SOFA_H
 #define TASKS_SOFA_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdbool.h>
 
@@ -40,11 +40,11 @@ typedef struct sofa_task
 }
 sofa_task_t;
 
-wuss_event_fn_t sofa_handle;
+wuss_window_fn_t sofa_handle;
 
 /* create the sofa window against the given wuss instance */
 result_t sofa_create(wuss_t*wuss, sofa_task_t*task);
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_SOFA_H */

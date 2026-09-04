@@ -1,6 +1,6 @@
 /* wuss/test/tasks/gradient.c -- gradient fill task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -35,19 +35,34 @@ static int dither(int v, int x, int y)
 
 result_t gradient_create(wuss_t *wuss, gradient_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  result_t         rc;
 
-  delegate = wuss_task_start(gradient_handle, task); /* gradient_redraw paints every pixel itself */
+  /* gradient_redraw paints every pixel itself */
+  delegate_desc.handle    = gradient_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "gradient";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
+    return rc;
+  }
+  wuss_task_set_autoclose(delegate, 1);
 
-  return wuss_window_create_placed(wuss,
-                                   SIZE2D(GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT),
-                                   "Gradient",
-                                   wuss_WINDOW_NONE,
-                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                   &delegate,
-                                   SIZE2D(GRADIENT_DOC_WIDTH, GRADIENT_DOC_HEIGHT),
-                                   SIZE2D(0, 0),
-                                   &task->window);
+  rc = wuss_window_create_placed(delegate,
+                                 SIZE2D(GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT),
+                                 "Gradient",
+                                 wuss_WINDOW_NONE,
+                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 SIZE2D(GRADIENT_DOC_WIDTH, GRADIENT_DOC_HEIGHT),
+                                 SIZE2D(0, 0),
+                                 &task->window);
+  if (rc != result_OK)
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+
+  return rc;
 }
 
 static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
@@ -94,8 +109,7 @@ result_t gradient_handle(wuss_window_t      *window,
   case wuss_EVENT_REDRAW:
     return gradient_redraw(event, task_data);
 
-  case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
+  case wuss_EVENT_QUIT:
     free(gc); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
@@ -104,4 +118,4 @@ result_t gradient_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

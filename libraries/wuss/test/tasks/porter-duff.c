@@ -1,6 +1,6 @@
 /* wuss/test/tasks/porter-duff.c -- animated Porter-Duff compositing task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 #include <string.h>
@@ -163,7 +163,8 @@ result_t porter_duff_create(wuss_t             *wuss,
                             const char         *resources,
                             porter_duff_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
   result_t    rc;
 
   task->font            = font;
@@ -191,19 +192,28 @@ result_t porter_duff_create(wuss_t             *wuss,
   if (rc != result_OK)
     goto free_src;
 
-  delegate = wuss_task_start(porter_duff_handle, task); /* porter_duff_redraw paints every pixel itself */
+  /* porter_duff_redraw paints every pixel itself */
+  delegate_desc.handle    = porter_duff_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "porter-duff";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+    goto free_dst; /* nothing registered yet; the spawner will not free task */
+  wuss_task_set_autoclose(delegate, 1);
 
-  rc = wuss_window_create_placed(wuss,
+  rc = wuss_window_create_placed(delegate,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
                                  "Porter-Duff",
                                  wuss_WINDOW_NONE,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                 &delegate,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
-    goto free_dst;
+  {
+    wuss_task_destroy(delegate); /* QUIT frees the four bitmaps and task */
+    return rc;
+  }
 
   return result_OK;
 
@@ -215,6 +225,7 @@ free_b:
   free(task->b.base);
 free_a:
   free(task->a.base);
+  free(task); /* no task was registered on any goto here; spawner won't free */
 
   return rc;
 }
@@ -311,7 +322,7 @@ static result_t porter_duff_redraw(const wuss_event_t *event,
   if (rc != result_OK)
     return rc;
 
-  screen_draw_bitmap(scr, bounds->x0, bounds->y0, &pd->dst);
+  screen_copy_bitmap(scr, bounds->x0, bounds->y0, &pd->dst);
 
   name  = rule_names[pd->rule];
   pos.x = bounds->x0 + 2;
@@ -385,7 +396,8 @@ result_t porter_duff_handle(wuss_window_t      *window,
     return porter_duff_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
-    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
+        !(event->data.mouse.button & wuss_BUTTON_SELECT))
       return result_OK;
     return porter_duff_mouse(window, task_data);
 
@@ -395,8 +407,7 @@ result_t porter_duff_handle(wuss_window_t      *window,
   case wuss_EVENT_IDLE:
     return porter_duff_idle(task_data);
 
-  case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
+  case wuss_EVENT_QUIT:
     free(pd->dst.base);
     free(pd->src.base);
     free(pd->b.base);
@@ -409,4 +420,4 @@ result_t porter_duff_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

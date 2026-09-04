@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 /* Only wuss_ICON_TYPE_MENU_ENTRY changes appearance on hover (see
  * wuss__icon_draw_menu_entry). Buttons and every other type ignore the hover state,

@@ -1,6 +1,6 @@
 /* wuss/icon/set-hidden.c -- show or hide a work-area icon */
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 void wuss_icon_set_hidden(wuss_icon_t *icon, int hidden)
 {

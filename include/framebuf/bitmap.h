@@ -3,10 +3,14 @@
 #ifndef FRAMEBUF_BITMAP_H
 #define FRAMEBUF_BITMAP_H
 
+#include <stdint.h>
+
 #include "base/result.h"
 #include "framebuf/colour.h"
+#include "framebuf/pattern.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/span.h"
+#include "geom/box.h"
 #include "geom/size.h"
 
 /** Common bitmap structure members (used for screens too). */
@@ -80,6 +84,29 @@ void bitmap_clear(bitmap_t *bm, colour_t colour);
 //
 //  bm->base = base;
 //}
+
+/**
+ * Fill a rectangle of the bitmap with a repeating 8x8 pattern.
+ *
+ * A plain pattern paints every pixel in the area, set bits taking
+ * `pattern->fg` and clear bits `pattern->bg`. A stencil pattern (one with
+ * `pattern_FLAG_STENCIL`) paints only the set-bit pixels, leaving the rest
+ * untouched. The tile is phased against `pattern->origin`, so abutting fills
+ * with the same origin line up.
+ *
+ * Supported for 8bpp and 32bpp formats only; other formats return \ref
+ * result_NOT_SUPPORTED.
+ *
+ * \param[in] bm      Bitmap to fill.
+ * \param[in] area    Rectangle to fill, clipped to the bitmap bounds. NULL
+ *                    fills the whole bitmap.
+ * \param[in] pattern Pattern to fill with.
+ * \return \ref result_OK on success, \ref result_NOT_SUPPORTED for an
+ *         unsupported pixel format.
+ */
+result_t bitmap_fill_pattern(bitmap_t        *bm,
+                             const box_t     *area,
+                             const pattern_t *pattern);
 
 /**
  * Load a PNG image into the given bitmap.

@@ -1,6 +1,6 @@
 /* wuss/test/tasks/lissajous.c -- Lissajous figure task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <math.h>
 #include <stdlib.h>
@@ -23,7 +23,9 @@ static const int lissajous_freqs[][2] =
 
 result_t lissajous_create(wuss_t *wuss, lissajous_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  result_t         rc;
 
   task->bg         = colour_rgb(0x00, 0x00, 0x00);
   task->fg         = colour_rgb(0x00, 0xFF, 0x00);
@@ -33,17 +35,30 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t *task)
   task->phase      = 0.0;
   task->drift      = 0.01;
 
-  delegate = wuss_task_start(lissajous_handle, task); /* redraw paints its own background every frame */
+  /* redraw paints its own background every frame */
+  delegate_desc.handle    = lissajous_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "lissajous";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
+    return rc;
+  }
+  wuss_task_set_autoclose(delegate, 1);
 
-  return wuss_window_create_placed(wuss,
-                                   SIZE2D(220, 220),
-                                   "Lissajous",
-                                   wuss_WINDOW_NONE,
-                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                   &delegate,
-                                   SIZE2D(220, 220),
-                                   SIZE2D(0, 0),
-                                   &task->window);
+  rc = wuss_window_create_placed(delegate,
+                                 SIZE2D(220, 220),
+                                 "Lissajous",
+                                 wuss_WINDOW_NONE,
+                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 SIZE2D(220, 220),
+                                 SIZE2D(0, 0),
+                                 &task->window);
+  if (rc != result_OK)
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+
+  return rc;
 }
 
 static result_t lissajous_redraw(const wuss_event_t *event, void *task_data)
@@ -153,8 +168,7 @@ result_t lissajous_handle(wuss_window_t      *window,
   case wuss_EVENT_IDLE:
     return lissajous_idle(task_data);
 
-  case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
+  case wuss_EVENT_QUIT:
     free(lc); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
@@ -163,4 +177,4 @@ result_t lissajous_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

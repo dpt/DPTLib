@@ -17,6 +17,7 @@
 
 #include <png.h>
 
+#include "base/debug.h"
 #include "base/utils.h"
 #include "framebuf/bmfont.h"
 #include "utils/array.h"
@@ -28,8 +29,6 @@
 
 /* Input font PNGs must have 32 characters per row */
 #define CHARS_PER_ROW   (32)
-
-#undef BMFONT_DEBUG
 
 /* -------------------------------------------------------------------------- */
 
@@ -92,6 +91,74 @@ static int count_adw(unsigned char tab[256], pixelfmt_any_t adw_px)
          tab[(adw_px >> 24) & 0xFF];
 }
 
+/* -------------------------------------------------------------------------- */
+
+/** True if row \p y of the 2bpp image holds at least one pixel of \p value.
+ *  Pixels are packed four to a byte, most significant pair first. */
+static int row_has_pixel(const unsigned char *pixels,
+                         size_t               rowbytes,
+                         png_uint_32          y,
+                         png_uint_32          width,
+                         int                  value)
+{
+  const unsigned char *row = pixels + rowbytes * y;
+  png_uint_32          x;
+
+  for (x = 0; x < width; x++)
+  {
+    int px = (row[x >> 2] >> (6 - 2 * (x & 3))) & 3;
+    if (px == value)
+      return 1;
+  }
+
+  return 0;
+}
+
+/**
+ * Detect the grid cell height from the decoded pixels.
+ *
+ * The only unknown in the format is the cell height: 32 cells per row, each
+ * an advance-width strip row on top of the glyph rows. A strip row carries
+ * PIXEL_WIDTH_IDX pixels and no glyph ink (PIXEL_FG_IDX); the glyph rows
+ * carry no PIXEL_WIDTH_IDX. A candidate height is correct iff it divides the
+ * image and every row it implies matches its role. Returns 0 if nothing fits.
+ */
+static int detect_gridheight(const unsigned char *pixels,
+                             size_t               rowbytes,
+                             png_uint_32          width,
+                             png_uint_32          height)
+{
+  int gridwidth = (int) (width / CHARS_PER_ROW);
+  int gh;
+
+  /* a cell is at least two rows (one strip, one glyph) and no taller than
+   * a generous multiple of its width */
+  for (gh = 2; gh <= gridwidth * 3 && (png_uint_32) gh <= height; gh++)
+  {
+    png_uint_32 y;
+    int         ok = 1;
+
+    if ((height % (png_uint_32) gh) != 0)
+      continue;
+
+    for (y = 0; y < height && ok; y++)
+    {
+      int has_adw = row_has_pixel(pixels, rowbytes, y, width, PIXEL_WIDTH_IDX);
+      int has_ink = row_has_pixel(pixels, rowbytes, y, width, PIXEL_FG_IDX);
+
+      if ((y % (png_uint_32) gh) == 0)
+        ok = has_adw && !has_ink; /* strip row */
+      else
+        ok = !has_adw;            /* glyph row */
+    }
+
+    if (ok)
+      return gh;
+  }
+
+  return 0;
+}
+
 /** Verify the font format and build the advance width table. */
 static result_t extract_advance_widths(bmfont_t   *bmfont,
                                        void       *voidpixels,
@@ -102,6 +169,7 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
   result_t      rc = result_OK;
   unsigned char adwtab[256];
   unsigned int *pixels;
+  unsigned int *pixels_end;
   int           bitsperchar;
   unsigned int  mask;
   png_uint_32   y;
@@ -115,6 +183,7 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
   build_adw_tab(adwtab, PIXEL_WIDTH_IDX);
 
   pixels      = (unsigned int *) voidpixels;
+  pixels_end  = pixels + (rowbytes * imgheight) / sizeof(*pixels);
   bitsperchar = bmfont->charwidth * 2; /* 2 because 2bpp */
   mask        = 0xFFFFFFFFu << (32 - bitsperchar);
 
@@ -131,6 +200,8 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
 
     /* maintain two words, a current and a pending so we've always got enough
      * bits ready */
+    if (pixels >= pixels_end)
+      return result_PARSE_ERROR; /* malformed grid: row starts past the buffer */
     currbits  = rev_l(*pixels++);
     ncurrbits = 32; /* bits available in currbits */
     nextbits  = 0;
@@ -144,7 +215,9 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
 
         if (nnextbits == 0) /* refill if needed */
         {
-          nextbits  = rev_l(*pixels++); // TODO: Check for end of buffer
+          if (pixels >= pixels_end)
+            return result_PARSE_ERROR; /* malformed grid: row overruns the buffer */
+          nextbits  = rev_l(*pixels++);
           nnextbits = 32;
         }
 
@@ -174,8 +247,11 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
 
     pixels += ((bmfont->gridheight - 1) * rowbytes) / sizeof(*pixels);
 
-    assert(pixels >= (unsigned int *) voidpixels);
-    assert(pixels <= (unsigned int *) voidpixels + (rowbytes * imgheight / 4));
+    /* a malformed grid can walk pixels outside the decoded image; refuse it
+     * rather than read past the buffer on the next row */
+    if (pixels < (unsigned int *) voidpixels ||
+        pixels > (unsigned int *) voidpixels + (rowbytes * imgheight / 4))
+      return result_PARSE_ERROR;
   }
 
   return rc;
@@ -361,12 +437,14 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
   fp = fopen(png, "rb");
   if (fp == NULL)
   {
+    logf_error("bmfont_create: cannot open \"%s\"", png);
     rc = result_FILE_NOT_FOUND;
     goto cleanup;
   }
 
   if (!file_is_png(fp))
   {
+    logf_error("bmfont_create: \"%s\" is not a PNG", png);
     rc = result_BAD_ARG;
     goto cleanup;
   }
@@ -397,67 +475,19 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
   png_get_IHDR(png_ptr, info_ptr,
               &pngwidth, &pngheight, &pngbitdepth, &pngcolourtype,
                NULL, NULL, NULL);
-#ifdef BMFONT_DEBUG
-  fprintf(stderr, "bmfont load png: w=%d h=%d bit_depth=%d colour_type=%d\n",
-          (int) width, (int) height, bit_depth, colour_type);
-#endif
+  logf_info("bmfont load png: w=%d h=%d bit_depth=%d colour_type=%d",
+            (int) pngwidth, (int) pngheight, pngbitdepth, pngcolourtype);
 
   /* we need a 2bpp paletted PNG */
   if (pngbitdepth != 2 || pngcolourtype != PNG_COLOR_TYPE_PALETTE)
   {
-#ifdef BMFONT_DEBUG
-    fprintf(stderr, "Incompatible PNG format: depth=%d, coltype=%d\n",
-            bit_depth, colour_type);
-#endif
+    logf_error("bmfont: incompatible PNG format: depth=%d, coltype=%d",
+               pngbitdepth, pngcolourtype);
     rc = result_INCOMPATIBLE;
     goto cleanup;
   }
 
-  /* work out the font size */
-
-  int gridwidth  = pngwidth / CHARS_PER_ROW;
-  int gridheight = 0; /* to be determined */
-
-  {
-    int h;
-
-    /* starting with gridwidth, increment until we find a height which evenly divides */
-    for (h = gridwidth; h < gridwidth * 3; h++)
-      if ((pngheight % h) == 0)
-      {
-        gridheight = h;
-        break;
-      }
-
-    if (gridheight == 0)
-    {
-#ifdef BMFONT_DEBUG
-      fprintf(stderr, "Can't determine font height\n");
-#endif
-      rc = result_BAD_ARG;
-      goto cleanup;
-    }
-  }
-
-  bmfont = calloc(1, sizeof(*bmfont));
-  if (bmfont == NULL)
-  {
-    rc = result_OOM;
-    goto cleanup;
-  }
-
-  bmfont->gridwidth     = gridwidth;      /* width of glyphs in grid */
-  bmfont->gridheight    = gridheight;     /* height of glyphs in grid */
-  bmfont->charwidth     = gridwidth;      /* currently same as gridwidth */
-  bmfont->charheight    = gridheight - 1; /* -1 to account for advance width pixel row */
-  bmfont->totalchars    = CHARS_PER_ROW * pngheight / gridheight;
-  bmfont->glyphrowbytes = (gridwidth + 7) / 8; /* byte width of stored glyphs (1 or 2) */
-
-#ifdef BMFONT_DEBUG
-  fprintf(stderr, "bmfont load png: charwidth=%d charheight=%d totalchars=%d glyphrowbytes=%d\n",
-          bmfont->charwidth, bmfont->charheight,
-          bmfont->totalchars, bmfont->glyphrowbytes);
-#endif
+  /* decode the image; the size detector needs the pixels */
 
   {
     size_t      pngrowbytes;
@@ -477,8 +507,44 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
       row_pointers[h] = pixels + pngrowbytes * h;
 
     png_read_image(png_ptr, row_pointers);
+  }
 
-    rc = extract_advance_widths(bmfont, pixels, pngwidth, pngheight, pngrowbytes);
+  /* work out the font size */
+
+  {
+    size_t pngrowbytes = png_get_rowbytes(png_ptr, info_ptr);
+    int    gridwidth   = pngwidth / CHARS_PER_ROW;
+    int    gridheight  = detect_gridheight(pixels, pngrowbytes,
+                                           pngwidth, pngheight);
+
+    if (gridheight == 0)
+    {
+      logf_error("bmfont: can't determine font height");
+      rc = result_BAD_ARG;
+      goto cleanup;
+    }
+
+    bmfont = calloc(1, sizeof(*bmfont));
+    if (bmfont == NULL)
+    {
+      rc = result_OOM;
+      goto cleanup;
+    }
+
+    bmfont->gridwidth     = gridwidth;      /* width of glyphs in grid */
+    bmfont->gridheight    = gridheight;     /* height of glyphs in grid */
+    bmfont->charwidth     = gridwidth;      /* currently same as gridwidth */
+    bmfont->charheight    = gridheight - 1; /* -1 for the advance width row */
+    bmfont->totalchars    = CHARS_PER_ROW * pngheight / gridheight;
+    bmfont->glyphrowbytes = (gridwidth + 7) / 8; /* stored glyph row: 1 or 2 */
+
+    logf_info("bmfont load png: charwidth=%d charheight=%d totalchars=%d "
+              "glyphrowbytes=%d",
+              bmfont->charwidth, bmfont->charheight,
+              bmfont->totalchars, bmfont->glyphrowbytes);
+
+    rc = extract_advance_widths(bmfont, pixels, pngwidth, pngheight,
+                                pngrowbytes);
     if (rc)
       goto cleanup;
 

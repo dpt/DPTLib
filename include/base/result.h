@@ -67,4 +67,10 @@ typedef int result_t;
 
 /* ----------------------------------------------------------------------- */
 
+/* Returns a static human-readable string for the given result code, or
+ * "Unknown error" if unrecognised. Never returns NULL. */
+const char *result_string(result_t err);
+
+/* ----------------------------------------------------------------------- */
+
 #endif /* BASE_RESULT_H */

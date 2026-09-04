@@ -1,6 +1,6 @@
 /* wuss/test/tasks/checker.c -- checkerboard task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -20,7 +20,8 @@
 
 result_t checker_create(wuss_t*wuss, checker_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
   result_t    rc;
 
   task->black    = colour_rgb(0x00, 0x00, 0x00);
@@ -30,34 +31,48 @@ result_t checker_create(wuss_t*wuss, checker_task_t *task)
   task->band     = CHECKER_BAND_DEFAULT;
   task->band2    = CHECKER_BAND_DEFAULT;
 
-  delegate = wuss_task_start(checker_handle, task); /* checker_redraw paints every pixel itself */
+  /* checker_redraw paints every pixel itself */
+  delegate_desc.handle    = checker_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "checker";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
+    return rc;
+  }
 
-  rc = wuss_window_create_placed(wuss,
+  rc = wuss_window_create_placed(delegate,
                                  SIZE2D(160, 160),
                                  "Checker 1",
                                  wuss_WINDOW_NONE,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                 &delegate,
                                  SIZE2D(160, 160),
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
     return rc;
+  }
 
-  rc = wuss_window_create_placed(wuss,
+  rc = wuss_window_create_placed(delegate,
                                  SIZE2D(160, 160),
                                  "Checker 2",
                                  wuss_WINDOW_NONE,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                 &delegate,
                                  SIZE2D(160, 160),
                                  SIZE2D(0, 0),
                                  &task->window2);
   if (rc != result_OK)
   {
-    wuss_window_close(task->window);
+    wuss_task_destroy(delegate); /* closes "Checker 1", QUIT frees the block */
     return rc;
   }
+
+  /* both windows up: from here, closing the last one reaps the task and its
+   * wuss_EVENT_QUIT frees task_data */
+  wuss_task_set_autoclose(delegate, 1);
 
   return result_OK;
 }
@@ -152,7 +167,8 @@ result_t checker_handle(wuss_window_t      *window,
     return checker_redraw(window, event, task_data);
 
   case wuss_EVENT_MOUSE:
-    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
+        !(event->data.mouse.button & wuss_BUTTON_SELECT))
       return result_OK;
     return checker_mouse(window, task_data);
 
@@ -160,14 +176,16 @@ result_t checker_handle(wuss_window_t      *window,
     return checker_scroll(window, event->data.scroll.delta, task_data);
 
   case wuss_EVENT_CLOSE:
-    wuss_window_close(window);
     if (window == cc->window2)
       cc->window2 = NULL;
     else
       cc->window = NULL;
-    /* one calloc'd block backs both windows; free it once both are gone */
-    if (cc->window == NULL && cc->window2 == NULL)
-      free(cc);
+    return result_OK;
+
+  case wuss_EVENT_QUIT:
+    /* one calloc'd block backs both windows; the task autocloses once the
+     * second window goes, so free it here */
+    free(cc);
     return result_OK;
 
   default:
@@ -175,4 +193,4 @@ result_t checker_handle(wuss_window_t      *window,
   }
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

@@ -15,10 +15,66 @@
 
 #include "framebuf/screen.h"
 
-/* Number of pixels converted per span call in screen_draw_bitmap(). Bounds
+/* Number of pixels converted per span call in screen_copy_bitmap(). Bounds
  * the size of its stack scratch buffers so arbitrarily wide bitmaps don't
  * blow the stack (relevant on RISC OS). */
 #define BITMAP_BLIT_CHUNK 256
+
+/* Each helper writes the single pixel (x, y), already known to be inside the
+ * clip, with the colour previously resolved to "pxl". */
+
+static void screen_set_pixel_p4(screen_t      *scr,
+                                int            x,
+                                int            y,
+                                pixelfmt_any_t pxl)
+{
+  unsigned char *scrp;
+  int            shift;
+
+  scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 1);
+  shift = (x & 1) * 4;
+
+  *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
+}
+
+static void screen_set_pixel_8(screen_t      *scr,
+                               int            x,
+                               int            y,
+                               pixelfmt_any_t pxl)
+{
+  pixelfmt_any8_t *scrp;
+
+  scrp = scr->base;
+  scrp += y * scr->rowbytes / sizeof(*scrp) + x;
+
+  *scrp = (pixelfmt_any8_t) pxl;
+}
+
+static void screen_set_pixel_16(screen_t      *scr,
+                                int            x,
+                                int            y,
+                                pixelfmt_any_t pxl)
+{
+  pixelfmt_any16_t *scrp;
+
+  scrp = scr->base;
+  scrp += y * scr->rowbytes / sizeof(*scrp) + x;
+
+  *scrp = pxl;
+}
+
+static void screen_set_pixel_32(screen_t      *scr,
+                                int            x,
+                                int            y,
+                                pixelfmt_any_t pxl)
+{
+  pixelfmt_any32_t *scrp;
+
+  scrp = scr->base;
+  scrp += y * scr->rowbytes / sizeof(*scrp) + x;
+
+  *scrp = pxl;
+}
 
 void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour)
 {
@@ -33,55 +89,54 @@ void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour)
                         colour, scr->format);
   switch (pixelfmt_log2bpp(scr->format))
   {
-  case 2:
-    {
-      unsigned char *scrp;
-      int            shift;
-
-      scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 1);
-      shift = (x & 1) * 4;
-
-      *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
-    }
-    break;
-
-  case 3:
-    {
-      pixelfmt_any8_t *scrp;
-
-      scrp = scr->base;
-      scrp += y * scr->rowbytes / sizeof(*scrp) + x;
-
-      *scrp = (pixelfmt_any8_t) pxl;
-    }
-    break;
-
-  case 4:
-    {
-      pixelfmt_any16_t *scrp;
-
-      scrp = scr->base;
-      scrp += y * scr->rowbytes / sizeof(*scrp) + x;
-
-      *scrp = pxl;
-    }
-    break;
-
-  case 5:
-    {
-      pixelfmt_any32_t *scrp;
-
-      scrp = scr->base;
-      scrp += y * scr->rowbytes / sizeof(*scrp) + x;
-
-      *scrp = pxl;
-    }
-    break;
+  case 2: screen_set_pixel_p4(scr, x, y, pxl); break;
+  case 3: screen_set_pixel_8(scr, x, y, pxl);  break;
+  case 4: screen_set_pixel_16(scr, x, y, pxl); break;
+  case 5: screen_set_pixel_32(scr, x, y, pxl); break;
 
   default:
     assert(!"Unimplemented pixel format");
     break;
   }
+}
+
+/* Each helper alpha-blends "colour" at "alpha" into the single pixel (x, y),
+ * already known to be inside the clip. */
+
+static void screen_blend_pixel_p4(screen_t *scr,
+                                  int       x,
+                                  int       y,
+                                  colour_t  colour,
+                                  int       alpha)
+{
+  unsigned char *scrp;
+  int            shift;
+  unsigned char  idx, out;
+
+  scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 1);
+  shift = (x & 1) * 4;
+  idx   = (*scrp >> shift) & 0xF;
+
+  scr->span->blendconst(&out, &idx, &colour, 1, alpha, scr->palette);
+
+  *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((out & 0xF) << shift));
+}
+
+static void screen_blend_pixel_32(screen_t *scr,
+                                  int       x,
+                                  int       y,
+                                  colour_t  colour,
+                                  int       alpha)
+{
+  pixelfmt_any32_t *scrp;
+  pixelfmt_any_t    colpx;
+
+  colpx = colour_to_pixel(NULL, 0, colour, scr->format);
+
+  scrp = scr->base;
+  scrp += y * scr->rowbytes / sizeof(*scrp) + x;
+
+  scr->span->blendconst(scrp, scrp, &colpx, 1, alpha, NULL);
 }
 
 static void screen_blend_pixel(screen_t *scr,
@@ -100,35 +155,8 @@ static void screen_blend_pixel(screen_t *scr,
 
   switch (pixelfmt_log2bpp(scr->format))
   {
-  case 2:
-    {
-      unsigned char *scrp;
-      int            shift;
-      unsigned char  idx, out;
-
-      scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 1);
-      shift = (x & 1) * 4;
-      idx   = (*scrp >> shift) & 0xF;
-
-      scr->span->blendconst(&out, &idx, &colour, 1, alpha, scr->palette);
-
-      *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((out & 0xF) << shift));
-    }
-    break;
-
-  case 5:
-    {
-      pixelfmt_any32_t *scrp;
-      pixelfmt_any_t    colpx;
-
-      colpx = colour_to_pixel(NULL, 0, colour, scr->format);
-
-      scrp = scr->base;
-      scrp += y * scr->rowbytes / sizeof(*scrp) + x;
-
-      scr->span->blendconst(scrp, scrp, &colpx, 1, alpha, NULL);
-    }
-    break;
+  case 2: screen_blend_pixel_p4(scr, x, y, colour, alpha); break;
+  case 5: screen_blend_pixel_32(scr, x, y, colour, alpha); break;
 
   default:
     assert(!"Unimplemented pixel format");
@@ -144,11 +172,10 @@ void screen_fill_rect(screen_t *scr,
                       size2d_t  size,
                       colour_t  colour)
 {
-  box_t          clip_box;
-  box_t          rect_box;
-  box_t          draw_box;
-  int            clipped_width, clipped_height;
-  pixelfmt_any_t fmt;
+  box_t clip_box;
+  box_t rect_box;
+  box_t draw_box;
+  int   yy;
 
   if (screen_get_clip(scr, &clip_box))
     return; /* invalid clipped screen */
@@ -160,59 +187,10 @@ void screen_fill_rect(screen_t *scr,
   if (box_intersection(&clip_box, &rect_box, &draw_box))
     return;
 
-  clipped_width  = draw_box.x1 - draw_box.x0;
-  clipped_height = draw_box.y1 - draw_box.y0;
-
-  fmt = colour_to_pixel(scr->palette,
-                        (scr->format == pixelfmt_p4) ? 16 : 0,
-                        colour, scr->format);
-  switch (pixelfmt_log2bpp(scr->format))
-  {
-  case 2:
-    {
-      unsigned char *rowp;
-      int            yy, xx;
-
-      rowp = (unsigned char *) scr->base + draw_box.y0 * scr->rowbytes;
-      for (yy = 0; yy < clipped_height; yy++)
-      {
-        for (xx = 0; xx < clipped_width; xx++)
-        {
-          int            x;
-          unsigned char *scrp;
-          int            shift;
-
-          x     = draw_box.x0 + xx;
-          scrp  = rowp + (x >> 1);
-          shift = (x & 1) * 4;
-
-          *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((fmt & 0xF) << shift));
-        }
-        rowp += scr->rowbytes;
-      }
-    }
-    break;
-
-  case 5:
-    {
-      pixelfmt_any32_t *scrp;
-      int               w;
-
-      scrp = scr->base;
-      scrp += draw_box.y0 * scr->rowbytes / sizeof(*scrp) + draw_box.x0;
-      while (clipped_height--)
-      {
-        for (w = clipped_width; w > 0; w--)
-          *scrp++ = fmt;
-        scrp += scr->rowbytes / sizeof(*scrp) - clipped_width;
-      }
-    }
-    break;
-
-  default:
-    assert(!"Unimplemented pixel format");
-    break;
-  }
+  /* Each row is already clipped, so hand the pre-clipped span straight to
+   * screen_fill_hline. */
+  for (yy = draw_box.y0; yy < draw_box.y1; yy++)
+    screen_fill_hline(scr, draw_box.x0, yy, draw_box.x1 - draw_box.x0, colour);
 }
 
 void screen_fill_square(screen_t *scr,
@@ -226,26 +204,137 @@ void screen_fill_square(screen_t *scr,
 
 /* ----------------------------------------------------------------------- */
 
-void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
+/* Blit "src" onto the paletted screen, its top-left at (x, y), clipped to
+ * "draw_box". No linear channel bits to blend, so this falls back to
+ * alpha-tested transfer (skip fully transparent, else nearest palette match)
+ * rather than true blending, matching screen_set_pixel's case 2. */
+static void screen_copy_bitmap_p4(screen_t       *scr,
+                                  int             x,
+                                  int             y,
+                                  const bitmap_t *src,
+                                  const box_t    *draw_box,
+                                  int             has_alpha)
+{
+  const unsigned char *srcrow;
+  unsigned char       *dstbase;
+  int                  clipped_width, clipped_height;
+  int                  yy;
+
+  clipped_width  = draw_box->x1 - draw_box->x0;
+  clipped_height = draw_box->y1 - draw_box->y0;
+
+  srcrow  = (const unsigned char *) src->base + (draw_box->y0 - y) * src->rowbytes;
+  dstbase = scr->base;
+
+  for (yy = 0; yy < clipped_height; yy++)
+  {
+    const pixelfmt_rgba8888_t *srcpx;
+    unsigned char             *rowp;
+    int                        xx;
+
+    srcpx = (const pixelfmt_rgba8888_t *) srcrow + (draw_box->x0 - x);
+    rowp  = dstbase + (draw_box->y0 + yy) * scr->rowbytes;
+
+    for (xx = 0; xx < clipped_width; xx++)
+    {
+      colour_t       c;
+      int            dstx;
+      unsigned char *scrp;
+      int            shift;
+      pixelfmt_any_t pxl;
+
+      c.primary = srcpx[xx];
+      if (has_alpha && colour_get_alpha(&c) == 0)
+        continue; /* fully transparent: leave background alone */
+
+      dstx  = draw_box->x0 + xx;
+      scrp  = rowp + (dstx >> 1);
+      shift = (dstx & 1) * 4;
+      pxl   = colour_to_pixel(scr->palette, 16, c, scr->format);
+
+      *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
+    }
+
+    srcrow += src->rowbytes;
+  }
+}
+
+/* Blit "src" onto the 32bpp screen, its top-left at (x, y), clipped to
+ * "draw_box", alpha-blending row spans through the span registry. */
+static void screen_copy_bitmap_32(screen_t       *scr,
+                                  int             x,
+                                  int             y,
+                                  const bitmap_t *src,
+                                  const box_t    *draw_box,
+                                  int             has_alpha)
+{
+  pixelfmt_any32_t     colbuf[BITMAP_BLIT_CHUNK];
+  unsigned char        alphabuf[BITMAP_BLIT_CHUNK];
+  const unsigned char *srcrow;
+  pixelfmt_any32_t    *dstrow;
+  int                  clipped_width, clipped_height;
+  int                  yy;
+
+  clipped_width  = draw_box->x1 - draw_box->x0;
+  clipped_height = draw_box->y1 - draw_box->y0;
+
+  srcrow = (const unsigned char *) src->base + (draw_box->y0 - y) * src->rowbytes;
+  dstrow = scr->base;
+  dstrow += draw_box->y0 * scr->rowbytes / (int) sizeof(*dstrow) + draw_box->x0;
+
+  for (yy = 0; yy < clipped_height; yy++)
+  {
+    const pixelfmt_rgba8888_t *srcpx;
+    pixelfmt_any32_t          *dstpx;
+    int                        remaining;
+
+    srcpx     = (const pixelfmt_rgba8888_t *) srcrow + (draw_box->x0 - x);
+    dstpx     = dstrow;
+    remaining = clipped_width;
+
+    while (remaining > 0)
+    {
+      int chunk, i;
+
+      chunk = MIN(remaining, BITMAP_BLIT_CHUNK);
+
+      for (i = 0; i < chunk; i++)
+      {
+        colour_t c;
+
+        c.primary   = srcpx[i];
+        colbuf[i]   = colour_to_pixel(scr->palette, 0, c, scr->format);
+        alphabuf[i] = has_alpha ? colour_get_alpha(&c) : PIXELFMT_OPAQUE;
+      }
+
+      scr->span->blendarray(dstpx, dstpx, colbuf, chunk, alphabuf);
+
+      srcpx     += chunk;
+      dstpx     += chunk;
+      remaining -= chunk;
+    }
+
+    srcrow += src->rowbytes;
+    dstrow += scr->rowbytes / (int) sizeof(*dstrow);
+  }
+}
+
+result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 {
   box_t clip_box;
   box_t src_box;
   box_t draw_box;
-  int   clipped_width, clipped_height;
   int   has_alpha;
 
   if (screen_get_clip(scr, &clip_box))
-    return; /* invalid clipped screen */
+    return result_OK; /* invalid clipped screen: nothing to draw */
 
   src_box.x0 = x;
   src_box.y0 = y;
   src_box.x1 = x + src->size.w;
   src_box.y1 = y + src->size.h;
   if (box_intersection(&clip_box, &src_box, &draw_box))
-    return; /* nothing visible */
-
-  clipped_width  = draw_box.x1 - draw_box.x0;
-  clipped_height = draw_box.y1 - draw_box.y0;
+    return result_OK; /* nothing visible */
 
   /* Source pixels loaded from PNG are always laid out R,G,B,A/X byte order
    * (see bitmap_load_png()), the same layout colour_t::primary uses, so
@@ -254,106 +343,15 @@ void screen_draw_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 
   switch (pixelfmt_log2bpp(scr->format))
   {
-  case 2:
-    {
-      /* Paletted screen: no linear channel bits to blend, so fall back to
-       * alpha-tested (skip fully transparent, else nearest palette match)
-       * rather than true blending, matching screen_set_pixel's case 2. */
-      const unsigned char *srcrow;
-      unsigned char        *dstbase;
-      int                   yy;
-
-      srcrow  = (const unsigned char *) src->base + (draw_box.y0 - y) * src->rowbytes;
-      dstbase = scr->base;
-
-      for (yy = 0; yy < clipped_height; yy++)
-      {
-        const pixelfmt_rgba8888_t *srcpx;
-        unsigned char              *rowp;
-        int                         xx;
-
-        srcpx = (const pixelfmt_rgba8888_t *) srcrow + (draw_box.x0 - x);
-        rowp  = dstbase + (draw_box.y0 + yy) * scr->rowbytes;
-
-        for (xx = 0; xx < clipped_width; xx++)
-        {
-          colour_t       c;
-          int            dstx;
-          unsigned char *scrp;
-          int            shift;
-          pixelfmt_any_t pxl;
-
-          c.primary = srcpx[xx];
-          if (has_alpha && colour_get_alpha(&c) == 0)
-            continue; /* fully transparent: leave background alone */
-
-          dstx  = draw_box.x0 + xx;
-          scrp  = rowp + (dstx >> 1);
-          shift = (dstx & 1) * 4;
-          pxl   = colour_to_pixel(scr->palette, 16, c, scr->format);
-
-          *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
-        }
-
-        srcrow += src->rowbytes;
-      }
-    }
-    break;
-
-  case 5:
-    {
-      pixelfmt_any32_t     colbuf[BITMAP_BLIT_CHUNK];
-      unsigned char        alphabuf[BITMAP_BLIT_CHUNK];
-      const unsigned char *srcrow;
-      pixelfmt_any32_t    *dstrow;
-      int                  yy;
-
-      srcrow = (const unsigned char *) src->base + (draw_box.y0 - y) * src->rowbytes;
-      dstrow = scr->base;
-      dstrow += draw_box.y0 * scr->rowbytes / (int) sizeof(*dstrow) + draw_box.x0;
-
-      for (yy = 0; yy < clipped_height; yy++)
-      {
-        const pixelfmt_rgba8888_t *srcpx;
-        pixelfmt_any32_t          *dstpx;
-        int                        remaining;
-
-        srcpx     = (const pixelfmt_rgba8888_t *) srcrow + (draw_box.x0 - x);
-        dstpx     = dstrow;
-        remaining = clipped_width;
-
-        while (remaining > 0)
-        {
-          int chunk, i;
-
-          chunk = (remaining > BITMAP_BLIT_CHUNK) ? BITMAP_BLIT_CHUNK : remaining;
-
-          for (i = 0; i < chunk; i++)
-          {
-            colour_t c;
-
-            c.primary   = srcpx[i];
-            colbuf[i]   = colour_to_pixel(scr->palette, 0, c, scr->format);
-            alphabuf[i] = has_alpha ? colour_get_alpha(&c) : PIXELFMT_OPAQUE;
-          }
-
-          scr->span->blendarray(dstpx, dstpx, colbuf, chunk, alphabuf);
-
-          srcpx     += chunk;
-          dstpx     += chunk;
-          remaining -= chunk;
-        }
-
-        srcrow += src->rowbytes;
-        dstrow += scr->rowbytes / (int) sizeof(*dstrow);
-      }
-    }
-    break;
+  case 2: screen_copy_bitmap_p4(scr, x, y, src, &draw_box, has_alpha); break;
+  case 5: screen_copy_bitmap_32(scr, x, y, src, &draw_box, has_alpha); break;
 
   default:
     assert(!"Unimplemented pixel format");
-    break;
+    return result_NOT_SUPPORTED;
   }
+
+  return result_OK;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -503,8 +501,7 @@ void screen_draw_dashed_line(screen_t *scr,
 
   if (on <= 0)
     return;
-  if (off < 0)
-    off = 0;
+  off    = MAX(off, 0);
   period = on + off;
 
   if (screen_get_clip(scr, &clip_box))

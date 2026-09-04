@@ -3,31 +3,37 @@
 #ifndef TASKS_SWATCHES_H
 #define TASKS_SWATCHES_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
-#include "framebuf/screen.h"
-#include "wuss/icon.h"
+/* ponytail: no #ifdef WUSS_COMPONENTS guard -- it is PUBLIC on DPTLib and ON
+ * by default, so the wuss app always has the colourmenu component. */
+#include "wuss/component/colourmenu.h"
+#include "wuss/task.h"
 #include "wuss/window.h"
 
-/* one 16x16 PATTERN icon per built-in screen fill pattern, laid out as a
- * grid down a document taller than the window so the swatches scroll
- * through it and stay phase-locked while doing so */
-enum { SWATCHES_NSPECS = 1 + screen_PATTERN__LIMIT };
+/* Grid of every (fill pattern, palette colour) pair: one row per built-in
+ * screen fill pattern, one column per system-palette entry, each cell a
+ * PATTERN icon packed edge to edge. The document is taller than the window
+ * so the grid scrolls through it. A MENU-button click pops a wuss_colourmenu;
+ * the picked colour becomes the paper the patterns mix over (white until
+ * then). */
 
 typedef struct swatches_task
 {
-  wuss_t        *wuss;   /* for re-resolving swatch colours on a palette swap */
-  wuss_window_t *window;
-  wuss_icon_t   *icons[SWATCHES_NSPECS]; /* current icons, deleted on rebuild */
+  wuss_t            *wuss;
+  wuss_window_t     *window;
+  wuss_task_t       *task;      /* delegate; opens the colour menu */
+  wuss_colourmenu_t *colourmenu;
+  wuss_colour_t      paper;     /* pattern bg; the "mixing" colour */
 }
 swatches_task_t;
 
-wuss_event_fn_t swatches_handle;
+wuss_window_fn_t swatches_handle;
 
 /* create the swatches window against the given wuss instance */
 result_t swatches_create(wuss_t *wuss, swatches_task_t *task);
 
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_SWATCHES_H */

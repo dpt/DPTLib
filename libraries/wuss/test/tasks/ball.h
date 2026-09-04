@@ -3,7 +3,7 @@
 #ifndef TASKS_BALL_H
 #define TASKS_BALL_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/colour.h"
 #include "wuss/window.h"
@@ -13,9 +13,10 @@
 /* one bouncing ball, centre in local content coords */
 typedef struct ball
 {
-  int x, y;
-  int dx, dy;
-  int radius;
+  int      x, y;
+  int      dx, dy;
+  int      radius;
+  colour_t colour;
 }
 ball_t;
 
@@ -26,18 +27,18 @@ ball_t;
 typedef struct ball_task
 {
   wuss_window_t *window;
-  colour_t       bg, ball;
+  colour_t       bg;
   ball_t         balls[BALL_MAX];
   int            nballs;
 }
 ball_task_t;
 
-wuss_event_fn_t ball_handle;
+wuss_window_fn_t ball_handle;
 
 /* create the bouncing-ball window against the given wuss instance; "task" is a
  * per-instance block owned by the window and freed when it closes */
 result_t ball_create(wuss_t *wuss, ball_task_t *task);
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_BALL_H */

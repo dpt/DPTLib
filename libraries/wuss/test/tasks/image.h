@@ -3,7 +3,7 @@
 #ifndef TASKS_IMAGE_H
 #define TASKS_IMAGE_H
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include "framebuf/bitmap.h"
 #include "wuss/window.h"
@@ -19,7 +19,7 @@ typedef struct image_task
 }
 image_task_t;
 
-wuss_event_fn_t image_handle;
+wuss_window_fn_t image_handle;
 
 /* load the PNG at path (and the 9-patch PNG at background_path, drawn tiled
  * behind it) and create its window against the given wuss instance */
@@ -28,6 +28,6 @@ result_t image_create(wuss_t       *wuss,
                       const char   *background_path,
                       image_task_t *task);
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */
 
 #endif /* TASKS_IMAGE_H */

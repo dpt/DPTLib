@@ -33,6 +33,7 @@ option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
 option(WUSS_FURNITURE "Build the Wuss window-furniture subsystem" ON)
 option(WUSS_ICONS "Build the Wuss in-content icon subsystem" ON)
 option(WUSS_MENUS "Build the Wuss pop-up menu helper (implies WUSS_ICONS)" ON)
+option(WUSS_COMPONENTS "Build the Wuss shared task components (implies WUSS_MENUS)" ON)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
 if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
@@ -83,6 +84,7 @@ set(PUBLIC_HEADERS
     include/framebuf/composite.h
     include/framebuf/curve.h
     include/framebuf/palettes.h
+    include/framebuf/pattern.h
     include/framebuf/pixelfmt.h
     include/framebuf/screen.h
     include/framebuf/span-bgrx8888.h
@@ -125,11 +127,19 @@ if(WUSS_ICONS)
 endif()
 if(WUSS_MENUS)
     list(APPEND PUBLIC_HEADERS include/wuss/menu.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/menu-desc.h)
+endif()
+if(WUSS_COMPONENTS)
+    list(APPEND PUBLIC_HEADERS include/wuss/component/fontmenu.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/component/colourmenu.h)
 endif()
 
 # The public headers must be set as properties of the library, not as
 # target_sources. The quoting is essential.
 set_target_properties(DPTLib PROPERTIES PUBLIC_HEADER "${PUBLIC_HEADERS}")
+
+set(BASE_SOURCES
+    libraries/base/result/result-string.c)
 
 set(DATABASE_SOURCES
     libraries/databases/digest-db/digest-db.c
@@ -234,18 +244,23 @@ set(DATASTRUCT_SOURCES
 
 set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/bitmap.c
+    libraries/framebuf/bitmap/fill-pattern.c
     libraries/framebuf/bitmap/load.c
     libraries/framebuf/bitmap/save.c
     libraries/framebuf/bmfont/bmfont.c
+    libraries/framebuf/bmfont/enumerate.c
     libraries/framebuf/colour/colour.c
     libraries/framebuf/composite/composite.c
     libraries/framebuf/curve/curve.c
     libraries/framebuf/palettes/palettes.c
+    libraries/framebuf/pattern/pattern.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/screen/screen.c
+    libraries/framebuf/screen/screen-copy-ninepatch.c
     libraries/framebuf/screen/screen-copy-rect.c
     libraries/framebuf/screen/screen-draw.c
-    libraries/framebuf/screen/screen-draw-ninepatch.c
+    libraries/framebuf/screen/screen-draw-circle.c
+    libraries/framebuf/screen/screen-fill-hline.c
     libraries/framebuf/screen/screen-fill-pattern.c
     libraries/framebuf/span-registry/get.c
     libraries/framebuf/span-registry/regdata.h
@@ -333,37 +348,42 @@ set(UTILS_SOURCES
     libraries/utils/primes/primes.c)
 
 set(WUSS_CORE_SOURCES
-    libraries/wuss/backdrop.c
-    libraries/wuss/create.c
-    libraries/wuss/destroy.c
-    libraries/wuss/get-font.c
-    libraries/wuss/get-pointer.c
-    libraries/wuss/idle.c
-    libraries/wuss/impl.h
-    libraries/wuss/invalidate.c
-    libraries/wuss/mouse-click.c
-    libraries/wuss/mouse-move.c
-    libraries/wuss/nearest-colour.c
-    libraries/wuss/redraw.c
-    libraries/wuss/scroll.c
-    libraries/wuss/scroll-step.c
-    libraries/wuss/set-palette.c
-    libraries/wuss/task/start.c
-    libraries/wuss/task/stop.c
-    libraries/wuss/window/at.c
-    libraries/wuss/window/create.c
-    libraries/wuss/window/create-placed.c
-    libraries/wuss/window/close.c
-    libraries/wuss/window/get-content-bounds.c
-    libraries/wuss/window/get-scroll.c
-    libraries/wuss/window/get-visible-bounds.c
-    libraries/wuss/window/invalidate.c
-    libraries/wuss/window/move.c
-    libraries/wuss/window/resize.c
-    libraries/wuss/window/restack.c
-    libraries/wuss/window/set-background.c
-    libraries/wuss/window/set-hidden.c
-    libraries/wuss/window/set-scroll.c)
+    libraries/wuss/core/backdrop.c
+    libraries/wuss/core/create.c
+    libraries/wuss/core/destroy.c
+    libraries/wuss/core/get-font.c
+    libraries/wuss/core/get-pointer.c
+    libraries/wuss/core/idle.c
+    libraries/wuss/core/impl.h
+    libraries/wuss/core/invalidate.c
+    libraries/wuss/core/mouse-click.c
+    libraries/wuss/core/mouse-move.c
+    libraries/wuss/core/nearest-colour.c
+    libraries/wuss/core/rebuild-palettecache.c
+    libraries/wuss/core/redraw.c
+    libraries/wuss/core/scroll.c
+    libraries/wuss/core/scroll-step.c
+    libraries/wuss/core/set-backdrop.c
+    libraries/wuss/core/set-palette.c
+    libraries/wuss/core/task/create.c
+    libraries/wuss/core/task/destroy.c
+    libraries/wuss/core/task/set-autoclose.c
+    libraries/wuss/core/task/deliver.c
+    libraries/wuss/core/window/at.c
+    libraries/wuss/core/window/create.c
+    libraries/wuss/core/window/create-placed.c
+    libraries/wuss/core/window/close.c
+    libraries/wuss/core/window/get-content-bounds.c
+    libraries/wuss/core/window/get-scroll.c
+    libraries/wuss/core/window/get-visible-bounds.c
+    libraries/wuss/core/window/invalidate.c
+    libraries/wuss/core/window/move.c
+    libraries/wuss/core/window/resize.c
+    libraries/wuss/core/window/restack.c
+    libraries/wuss/core/window/set-background.c
+    libraries/wuss/core/window/set-hidden.c
+    libraries/wuss/core/window/set-scroll.c
+    libraries/wuss/core/window/try-close.c)
 
 set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/back-box.c
@@ -372,15 +392,14 @@ set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/drag-resize.c
     libraries/wuss/furniture/draw.c
     libraries/wuss/furniture/hit-test.c
-    libraries/wuss/furniture/hscroll-box.c
     libraries/wuss/furniture/invalidate.c
     libraries/wuss/furniture/ops.c
     libraries/wuss/furniture/resize-box.c
     libraries/wuss/furniture/scroll-action.c
+    libraries/wuss/furniture/scroll-box.c
     libraries/wuss/furniture/titlebar-box.c
     libraries/wuss/furniture/toggle-action.c
     libraries/wuss/furniture/toggle-box.c
-    libraries/wuss/furniture/vscroll-box.c
     libraries/wuss/furniture.h)
 
 set(WUSS_ICON_SOURCES
@@ -389,6 +408,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/delete.c
     libraries/wuss/icon/draw.c
     libraries/wuss/icon/free.c
+    libraries/wuss/icon/from-spec.c
     libraries/wuss/icon/get-bbox.c
     libraries/wuss/icon/get-selected.c
     libraries/wuss/icon/get-text.c
@@ -396,6 +416,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/get-window.c
     libraries/wuss/icon/hit-test.c
     libraries/wuss/icon/invalidate.c
+    libraries/wuss/icon/plot.c
     libraries/wuss/icon/screen-box.c
     libraries/wuss/icon/set-hidden.c
     libraries/wuss/icon/set-hover.c
@@ -405,12 +426,19 @@ set(WUSS_ICON_SOURCES
 
 set(WUSS_MENU_SOURCES
     libraries/wuss/menu/menu.c
-    libraries/wuss/menu/create-from-desc.c
+    libraries/wuss/helpers/create-from-desc.c
     libraries/wuss/menu.h)
+
+set(WUSS_COMPONENT_SOURCES
+    libraries/wuss/component/fontmenu.c
+    libraries/wuss/component/colourmenu.c)
 
 set(WUSS_SOURCES ${WUSS_CORE_SOURCES})
 if(WUSS_FURNITURE)
     list(APPEND WUSS_SOURCES ${WUSS_FURNITURE_SOURCES})
+endif()
+if(WUSS_COMPONENTS)
+    set(WUSS_MENUS ON) # the shared components build on the menu helper
 endif()
 if(WUSS_MENUS)
     set(WUSS_ICONS ON) # the menu helper needs the icon subsystem
@@ -421,9 +449,13 @@ endif()
 if(WUSS_MENUS)
     list(APPEND WUSS_SOURCES ${WUSS_MENU_SOURCES})
 endif()
+if(WUSS_COMPONENTS)
+    list(APPEND WUSS_SOURCES ${WUSS_COMPONENT_SOURCES})
+endif()
 
 set(ALL_SOURCES
     ${PUBLIC_HEADERS}
+    ${BASE_SOURCES}
     ${DATABASE_SOURCES}
     ${DATASTRUCT_SOURCES}
     ${FRAMEBUF_SOURCES}
@@ -456,6 +488,7 @@ if(TARGET_RISCOS)
     # OSLib (& anything else in GCCSDK)
     target_include_directories(DPTLib PUBLIC $ENV{GCCSDK_INSTALL_ENV}/include)
     target_link_libraries(DPTLib PUBLIC $ENV{GCCSDK_INSTALL_ENV}/lib/libOSLib32.a)
+    target_compile_definitions(DPTLib PUBLIC TARGET_RISCOS)
 endif()
 
 if(USE_FORTIFY)
@@ -481,8 +514,16 @@ endif()
 if(WUSS_MENUS)
     target_compile_definitions(DPTLib PUBLIC WUSS_MENUS)
 endif()
+if(WUSS_COMPONENTS)
+    target_compile_definitions(DPTLib PUBLIC WUSS_COMPONENTS)
+endif()
 
-if(NOT TARGET_RISCOS)
+if(EMSCRIPTEN)
+    # Emscripten's bundled libpng port (pulls in its zlib port); provides the
+    # headers at compile time and the archive at link time.
+    target_compile_options(DPTLib PUBLIC "-sUSE_LIBPNG=1")
+    target_link_options(DPTLib PUBLIC "-sUSE_LIBPNG=1")
+elseif(NOT TARGET_RISCOS)
     set(CMAKE_FIND_FRAMEWORK NEVER)
     find_package(PNG REQUIRED MODULE)
     target_link_libraries(DPTLib PRIVATE PNG::PNG)
@@ -661,14 +702,12 @@ endif()
 #
 
 if(BUILD_APPS)
-    # The Wuss interactive demo: its own executable, built from the SDL task
-    # modules plus apps/wuss/main.c (which was the old in-test SDL driver).
+    # The Wuss interactive demo: main.c drives wuss and the task launcher; a
+    # per-platform backend (frontend-*.c) opens the surface and reports input.
+    # RISC OS uses native VDU/OS_Mouse calls; everything else uses SDL.
     if(NOT (WUSS_FURNITURE AND WUSS_ICONS))
         message(FATAL_ERROR "BUILD_APPS requires WUSS_FURNITURE and WUSS_ICONS")
     endif()
-
-    find_package(SDL3 REQUIRED)
-    find_package(SDL3_image REQUIRED)
 
     set(WUSS_APP_SOURCES
         apps/wuss/main.c
@@ -676,6 +715,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/blank.c
         libraries/wuss/test/tasks/chars.c
         libraries/wuss/test/tasks/checker.c
+        libraries/wuss/test/tasks/clock.c
         libraries/wuss/test/tasks/curve.c
         libraries/wuss/test/tasks/gradient.c
         libraries/wuss/test/tasks/icons.c
@@ -686,6 +726,12 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/sofa.c
         libraries/wuss/test/tasks/swatches.c
         libraries/wuss/test/tasks/text.c)
+
+    if(TARGET_RISCOS)
+        list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-riscos.c)
+    else()
+        list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-sdl.c)
+    endif()
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${WUSS_APP_SOURCES})
 
@@ -699,9 +745,32 @@ if(BUILD_APPS)
         OUTPUT_NAME_RELWITHDEBINFO wuss-relwithdebinfo
         OUTPUT_NAME_MINSIZEREL wuss-minsizerel)
 
-    target_include_directories(wuss PRIVATE libraries/wuss/test)
-    target_compile_definitions(wuss PRIVATE USE_SDL)
-    target_link_libraries(wuss DPTLib SDL3::SDL3 SDL3_image::SDL3_image)
+    target_include_directories(wuss PRIVATE apps/wuss libraries/wuss/test)
+    target_compile_definitions(wuss PRIVATE WUSS_APP)
+    target_link_libraries(wuss DPTLib)
+
+    if(TARGET_RISCOS)
+        # native VDU/OS_Mouse frontend, no SDL
+    elseif(EMSCRIPTEN)
+        # Emscripten ships its own SDL3 port; the browser owns the main loop
+        # (see emscripten_set_main_loop_arg in apps/wuss/main.c). resources/ is
+        # baked into wuss.data and mounted at MEMFS /resources so the runtime
+        # file loads and the font picker's opendir() resolve.
+        target_compile_definitions(wuss PRIVATE USE_SDL)
+        target_compile_options(wuss PRIVATE "-sUSE_SDL=3")
+        target_link_options(wuss PRIVATE
+            "-sUSE_SDL=3"
+            "-sALLOW_MEMORY_GROWTH=1"
+            "-sEXIT_RUNTIME=0"
+            "--preload-file"
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources@/resources")
+        set_target_properties(wuss PROPERTIES SUFFIX ".html")
+    else()
+        find_package(SDL3 REQUIRED)
+        target_compile_definitions(wuss PRIVATE USE_SDL)
+        target_link_libraries(wuss SDL3::SDL3)
+    endif()
+
     if(NOT MSVC)
         target_link_libraries(wuss m)
     endif()

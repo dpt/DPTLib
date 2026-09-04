@@ -7,6 +7,7 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "base/utils.h"
 #include "utils/array.h"
 #include "utils/barith.h"
 
@@ -29,9 +30,7 @@ int array_grow(void **pblock,
   assert(minimum > 0);
 
   need += used;
-
-  if (need < minimum)
-    need = minimum;
+  need  = MAX(need, minimum);
 
   if (need <= *pallocated)
     return 0; /* block has enough spare space */

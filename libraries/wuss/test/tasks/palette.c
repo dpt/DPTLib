@@ -1,6 +1,6 @@
 /* wuss/test/tasks/palette.c -- desktop palette swatch grid task */
 
-#ifdef USE_SDL
+#ifdef WUSS_APP
 
 #include <stdlib.h>
 
@@ -19,22 +19,37 @@ result_t palette_create(wuss_t         *wuss,
                         int             npalette,
                         palette_task_t *task)
 {
-  wuss_task_t delegate;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  result_t         rc;
 
   task->palette  = palette;
   task->npalette = npalette;
 
-  delegate = wuss_task_start(palette_handle, task); /* backdrop for any rounding gap around the grid */
+  /* backdrop for any rounding gap around the grid */
+  delegate_desc.handle    = palette_handle;
+  delegate_desc.task_data = task;
+  delegate_desc.name      = "palette";
+  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  if (rc != result_OK)
+  {
+    free(task); /* nothing registered yet; the spawner will not free it */
+    return rc;
+  }
+  wuss_task_set_autoclose(delegate, 1);
 
-  return wuss_window_create_placed(wuss,
-                                   SIZE2D(100, 100),
-                                   "Palette",
-                                   wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                                   wuss_BACKDROP_COLOUR(palette_PICO8_BLACK),
-                                   &delegate,
-                                   SIZE2D(100, 100),
-                                   SIZE2D(0, 0),
-                                   &task->window);
+  rc = wuss_window_create_placed(delegate,
+                                 SIZE2D(100, 100),
+                                 "Palette",
+                                 wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                                 wuss_BACKDROP_COLOUR(palette_PICO8_BLACK),
+                                 SIZE2D(100, 100),
+                                 SIZE2D(0, 0),
+                                 &task->window);
+  if (rc != result_OK)
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+
+  return rc;
 }
 
 static result_t palette_redraw(const wuss_event_t *event, void *task_data)
@@ -83,9 +98,8 @@ result_t palette_handle(wuss_window_t      *window,
                         const wuss_event_t *event,
                         void               *task_data)
 {
-  if (event->kind == wuss_EVENT_CLOSE)
+  if (event->kind == wuss_EVENT_QUIT)
   {
-    wuss_window_close(window);
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
   }
@@ -96,4 +110,4 @@ result_t palette_handle(wuss_window_t      *window,
   return palette_redraw(event, task_data);
 }
 
-#endif /* USE_SDL */
+#endif /* WUSS_APP */

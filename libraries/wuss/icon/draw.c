@@ -9,19 +9,21 @@
 #include "framebuf/bmfont.h"
 #include "framebuf/screen.h"
 
-#include "../impl.h"
+#include "../core/impl.h"
 
 /* ----------------------------------------------------------------------- */
 
 /* Shared per-draw state, resolved once by wuss__icon_draw and handed to each
  * type's draw helper. "b" is the icon's screen box; "fg" is its resolved
- * foreground; "font_height" is 0 and "have_font" is 0 when there is no font or
- * no text to draw. */
+ * foreground; "font" is the icon's selected weight (falling back to slot 0);
+ * "font_height" is 0 and "have_font" is 0 when there is no font or no text to
+ * draw. */
 typedef struct icon_draw_ctx
 {
   wuss_t            *wuss;
   screen_t          *scr;
   const wuss_icon_t *icon;
+  bmfont_t          *font;
   box_t              b;
   colour_t           fg;
   int                font_height;
@@ -66,6 +68,36 @@ static colour_t icon_blend_ground(const icon_draw_ctx_t *c,
   return fallback;
 }
 
+/* Draw one menu-decoration glyph (a tick or a submenu arrow) from the symbol
+ * font slot, centred on "centre", blending "ink" over "ground". Returns 1 when
+ * the glyph was drawn, 0 when the slot is empty or the font lacks that cell --
+ * the caller then falls back to its vector rendering. */
+static int wuss__draw_symbol_glyph(const wuss_t *wuss,
+                                   screen_t     *scr,
+                                   point_t       centre,
+                                   char          glyph,
+                                   colour_t      ink,
+                                   colour_t      ground)
+{
+  bmfont_t *font;
+  point_t   pos;
+  int       font_width, font_height;
+
+  font = wuss->fonts[WUSS_SYMBOL_FONT];
+  if (font == NULL)
+    return 0;
+
+  if ((unsigned char) glyph < ' ' ||
+      (unsigned char) glyph - ' ' >= bmfont_get_count(font))
+    return 0;
+
+  bmfont_get_info(font, &font_width, &font_height);
+  pos.x = centre.x - font_width / 2;
+  pos.y = centre.y - font_height / 2;
+  bmfont_draw(font, scr, &glyph, 1, ink, ground, &pos, NULL);
+  return 1;
+}
+
 /* ----------------------------------------------------------------------- */
 
 static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
@@ -81,9 +113,14 @@ static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
          ? c->wuss->palette[icon->bg]
          : c->fg;
 
-  screen_fill_pattern(c->scr, &c->b, icon->pattern,
-                      content->x0 - scroll.x, content->y0 - scroll.y,
-                      pat_fg, c->wuss->palette[icon->bg]);
+  {
+    pattern_t pat;
+
+    pat = pattern_from_preset(icon->pattern,
+                              pat_fg, c->wuss->palette[icon->bg]);
+    pat.origin = POINT(content->x0 - scroll.x, content->y0 - scroll.y);
+    screen_fill_pattern(c->scr, &c->b, &pat);
+  }
 }
 
 /* ----------------------------------------------------------------------- */
@@ -111,11 +148,9 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   if (!c->have_font)
     return;
 
-  interior_w = (b->x1 - b->x0) - 2;
-  if (interior_w < 1)
-    interior_w = 1;
+  interior_w = MAX((b->x1 - b->x0) - 2, 1);
 
-  bmfont_measure(c->wuss->font, icon->text, (int) strlen(icon->text),
+  bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
                  interior_w, &split_point, &width);
 
   if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_CENTRE)
@@ -126,7 +161,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
     pos.x = b->x0 + 1;
   pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
 
-  bmfont_draw(c->wuss->font, c->scr, icon->text, (int) strlen(icon->text),
+  bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
               c->fg, bg, &pos, NULL);
 }
 
@@ -147,7 +182,7 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
     int            split_point;
     bmfont_width_t width;
 
-    bmfont_measure(c->wuss->font, icon->text, (int) strlen(icon->text),
+    bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
                    (b->x1 - b->x0) - WUSS_FRAME_CAPTION_INSET * 2,
                    &split_point, &width);
     cap_w = width;
@@ -175,7 +210,7 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
 
     pos.x = cap_x;
     pos.y = b->y0;
-    bmfont_draw(c->wuss->font, c->scr, icon->text, (int) strlen(icon->text),
+    bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
                 c->fg, bg, &pos, NULL);
   }
 }
@@ -224,11 +259,9 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
     int            interior_w, split_point;
     bmfont_width_t width;
 
-    interior_w = (b->x1 - b->x0) - 2;
-    if (interior_w < 1)
-      interior_w = 1;
+    interior_w = MAX((b->x1 - b->x0) - 2, 1);
 
-    bmfont_measure(c->wuss->font, icon->text, (int) strlen(icon->text),
+    bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
                    interior_w, &split_point, &width);
 
     pos.x = b->x0 + ((b->x1 - b->x0) - width) / 2;
@@ -239,7 +272,7 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
       pos.y += 1;
     }
 
-    bmfont_draw(c->wuss->font, c->scr, icon->text, (int) strlen(icon->text),
+    bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
                 label, base, &pos, NULL);
   }
 }
@@ -258,9 +291,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
   box_t              g;
   int                gsz, gy, tx;
 
-  gsz = (c->font_height >= 8) ? c->font_height : 8;
-  if (gsz > b->y1 - b->y0)
-    gsz = b->y1 - b->y0;
+  gsz = CLAMP(c->font_height, 8, b->y1 - b->y0);
   gy = b->y0 + (b->y1 - b->y0 - gsz) / 2;
 
   g.x0 = b->x0;
@@ -310,17 +341,15 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     bmfont_width_t width;
 
     tx = g.x1 + 4;
-    interior_w = (b->x1 - tx) - 1;
-    if (interior_w < 1)
-      interior_w = 1;
+    interior_w = MAX((b->x1 - tx) - 1, 1);
 
-    bmfont_measure(c->wuss->font, icon->text, (int) strlen(icon->text),
+    bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
                    interior_w, &split_point, &width);
     NOT_USED(width);
 
     pos.x = tx;
     pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
-    bmfont_draw(c->wuss->font, c->scr, icon->text, (int) strlen(icon->text),
+    bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
                 glyph, bg, &pos, NULL);
   }
 }
@@ -335,14 +364,14 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
   if (c->icon->bitmap == NULL)
     return;
 
-  /* screen_draw_bitmap clips to scr->clip and does not scale, so narrow the
+  /* screen_copy_bitmap clips to scr->clip and does not scale, so narrow the
    * clip to the icon box (intersected with whatever redraw already set) and
    * blit at the box's top-left */
   clipped = *c->scr;
   if (box_intersection(&c->scr->clip, b, &clipped.clip))
     return;
 
-  screen_draw_bitmap(&clipped, b->x0, b->y0, c->icon->bitmap);
+  screen_copy_bitmap(&clipped, b->x0, b->y0, c->icon->bitmap);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -374,29 +403,55 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     screen_fill_rect(c->scr, b->x0, b->y0,
                      SIZE2D(b->x1 - b->x0, b->y1 - b->y0), ground);
 
-  /* left-edge tick when selected */
-  if (wuss__icon_selected(icon))
+  /* left-edge colour chip (wins over the tick) or tick when selected */
+  if ((icon->flags & wuss_ICON_FLAGS_SWATCH) &&
+      icon->swatch != wuss_NO_BACKGROUND)
   {
     int cx, cy, h;
 
-    h  = (c->font_height >= 8) ? c->font_height : 8;
+    h  = MAX(c->font_height, 8);
     cx = b->x0 + pad;
     cy = b->y0 + (b->y1 - b->y0 - h) / 2;
-    screen_draw_line(c->scr, cx, cy + h / 2, cx + h / 2 - 1, cy + h - 2, ink);
-    screen_draw_line(c->scr, cx + h / 2 - 1, cy + h - 2, cx + h - 2, cy, ink);
+    screen_fill_rect(c->scr, cx, cy, SIZE2D(h, h),
+                     c->wuss->palette[icon->swatch]);
+    screen_draw_rect(c->scr, cx, cy, SIZE2D(h, h), ink); /* 1px border */
+  }
+  else if (wuss__icon_selected(icon))
+  {
+    int     cx, cy, h;
+    point_t centre;
+
+    h  = MAX(c->font_height, 8);
+    cx = b->x0 + pad;
+    cy = b->y0 + (b->y1 - b->y0 - h) / 2;
+    centre.x = cx + h / 2;
+    centre.y = cy + h / 2;
+    if (!wuss__draw_symbol_glyph(c->wuss, c->scr, centre,
+                                 WUSS_GLYPH_TICK, ink, ground))
+    {
+      screen_draw_line(c->scr, cx, cy + h / 2, cx + h / 2 - 1, cy + h - 2, ink);
+      screen_draw_line(c->scr, cx + h / 2 - 1, cy + h - 2, cx + h - 2, cy, ink);
+    }
   }
 
   /* right-edge arrow for a submenu entry */
   if (icon->flags & wuss_ICON_FLAGS_SUBMENU)
   {
-    int ax, ay, r, dy;
+    int     ax, ay, r, dy;
+    point_t centre;
 
     r  = (c->font_height >= 8) ? c->font_height / 3 : 3;
     ax = b->x1 - 1 - pad - r;
     ay = b->y0 + (b->y1 - b->y0) / 2;
-    for (dy = -r; dy <= r; dy++)
-      screen_draw_line(c->scr, ax, ay + dy,
-                       ax + (r - (dy < 0 ? -dy : dy)), ay + dy, ink);
+    centre.x = ax + r / 2;
+    centre.y = ay;
+    if (!wuss__draw_symbol_glyph(c->wuss, c->scr, centre,
+                                 WUSS_GLYPH_SUBMENU, ink, ground))
+    {
+      for (dy = -r; dy <= r; dy++)
+        screen_draw_line(c->scr, ax, ay + dy,
+                         ax + (r - (dy < 0 ? -dy : dy)), ay + dy, ink);
+    }
   }
 
   if (c->have_font && icon->text != NULL && icon->text[0] != '\0')
@@ -405,7 +460,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
 
     pos.x = b->x0 + pad + c->font_height; /* leave room for a tick */
     pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
-    bmfont_draw(c->wuss->font, c->scr, icon->text, (int) strlen(icon->text),
+    bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
                 ink, ground, &pos, NULL);
   }
 }
@@ -433,7 +488,7 @@ void wuss__icon_draw(wuss_t            *wuss,
                      point_t            scroll)
 {
   icon_draw_ctx_t c;
-  int             font_width;
+  int             fontidx;
 
   if (icon->flags & wuss_ICON_FLAGS_HIDDEN)
     return;
@@ -448,12 +503,17 @@ void wuss__icon_draw(wuss_t            *wuss,
   c.icon = icon;
   c.fg   = wuss->palette[icon->fg];
 
-  c.have_font = (wuss->font != NULL && icon->text[0] != '\0');
+  /* pick the icon's requested weight; fall back to the system font */
+  fontidx = wuss_ICON_FONT_OF(icon->flags);
+  c.font  = wuss->fonts[fontidx];
+  if (c.font == NULL)
+    c.font = wuss->fonts[0];
+
+  c.have_font = (c.font != NULL && icon->text[0] != '\0');
   if (c.have_font)
-    bmfont_get_info(wuss->font, &font_width, &c.font_height);
+    bmfont_get_info(c.font, NULL, &c.font_height);
   else
-    font_width = c.font_height = 0;
-  NOT_USED(font_width);
+    c.font_height = 0;
 
   switch (icon->type)
   {

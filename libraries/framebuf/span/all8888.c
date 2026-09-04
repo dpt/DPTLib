@@ -11,3 +11,15 @@ void span_all8888_copy(void *dst, const void *src, int length)
 
   memcpy(dst, src, length * 4);
 }
+
+void span_all8888_fill(void          *dst,
+                       int            first,
+                       pixelfmt_any_t pixel,
+                       int            length)
+{
+  pixelfmt_any32_t *p;
+
+  p = (pixelfmt_any32_t *) dst + first;
+  while (length--)
+    *p++ = pixel;
+}
