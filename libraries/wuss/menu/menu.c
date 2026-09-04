@@ -305,10 +305,14 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
       if (self->flash.frames > 0)
       {
-        int prev_keep_open = self->flash.keep_open;
-
         wuss__menu_flash_finish(self);
-        if (!prev_keep_open)
+
+        /* the finish's own SELECT tears the chain down when it wasn't a
+         * keep_open pick, and even a keep_open pick's MENU_SELECT delivery
+         * may re-enter and close the chain from the client side (e.g. the
+         * owner calling wuss_menu_close()) -- either way `self` is gone the
+         * moment the chain no longer starts at it */
+        if (wuss__menu_node_for(wuss, window) != self)
           return result_OK; /* `self` and the chain are gone */
       }
 
