@@ -70,7 +70,6 @@ result_t wuss_create(screen_t               *scr,
 #endif
 #ifdef WUSS_FURNITURE
   int            font_height;
-  int            font_width;
 #endif
 
   assert(scr  != NULL);
@@ -196,8 +195,7 @@ result_t wuss_create(screen_t               *scr,
   {
     /* titles draw in the bold weight when one was supplied; size the
      * titlebar to whichever weight is taller */
-    bmfont_get_info(font, &font_width, &font_height);
-    NOT_USED(font_width);
+    bmfont_get_info(font, NULL, &font_height);
     if (nfonts > 1 && fonts[1].font != NULL)
     {
       int titleh;

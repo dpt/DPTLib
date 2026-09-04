@@ -65,8 +65,8 @@ void bmfont_destroy(bmfont_t *bmfont);
  * Read the width and height of the specified bitmap font.
  *
  * \param[in]  bmfont   Bitmap font to query.
- * \param[out] width    Width of the font in pixels.
- * \param[out] height   Height of the font in pixels.
+ * \param[out] width    Width of the font in pixels, or NULL if not wanted.
+ * \param[out] height   Height of the font in pixels, or NULL if not wanted.
  */
 void bmfont_get_info(bmfont_t *bmfont, int *width, int *height);
 

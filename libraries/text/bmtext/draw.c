@@ -17,11 +17,11 @@ void bmtext_draw(bmfont_t            *font,
                  int                  leading,
                  point_t              origin)
 {
-  int     font_width, font_height;
+  int     font_height;
   point_t pos;
   int     i;
 
-  bmfont_get_info(font, &font_width, &font_height);
+  bmfont_get_info(font, NULL, &font_height);
 
   pos = origin;
   for (i = 0; i < nlines; i++)
