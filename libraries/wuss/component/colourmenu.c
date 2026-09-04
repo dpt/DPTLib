@@ -42,9 +42,9 @@ static void menu_free(const wuss_alloc_t *a, wuss_menu_t *m)
     return;
 
   for (i = 0; i < m->nitems; i++)
-    a->free((void *) m->items[i].text);
-  a->free((void *) m->items);
-  a->free((void *) m->title);
+    a->free((void *) m->items[i].text); /* discard const */
+  a->free((void *) m->items);           /* discard const */
+  a->free((void *) m->title);           /* discard const */
   a->free(m);
 }
 
