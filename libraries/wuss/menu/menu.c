@@ -27,9 +27,8 @@
 /* Row padding above/below the glyph, and the gutters left for the tick (left)
  * and the submenu arrow (right). All in pixels. */
 #define WUSS_MENU_ROW_PAD         4
-#define WUSS_MENU_TICK_W         14
-#define WUSS_MENU_ARROW_W        14
-#define WUSS_MENU_TEXT_PAD        6
+#define WUSS_MENU_GUTTER_LEFT    14
+#define WUSS_MENU_GUTTER_RIGHT   14
 #define WUSS_MENU_TITLE_PAD       2 /* margin either side of the titlebar caption slot, matching wuss__titlebar_draw */
 #define WUSS_MENU_SUBMENU_OVERLAP 2 /* px a submenu overlaps its parent's right edge */
 
@@ -375,7 +374,7 @@ static int wuss__pointer_over_icon(wuss_window_t     *window,
 
 /* True if the wuss pointer sits over the submenu-arrow gutter of row `icon`
  * in `window`: the pointer is within the row vertically and inside the
- * rightmost WUSS_MENU_ARROW_W pixels of it. A submenu opens only from here,
+ * rightmost WUSS_MENU_GUTTER_RIGHT pixels of it. A submenu opens only from here,
  * so re-entering the parent anywhere else closes the child. */
 static int wuss__pointer_over_row_arrow(wuss_window_t     *window,
                                         const wuss_icon_t *icon)
@@ -393,7 +392,7 @@ static int wuss__pointer_over_row_arrow(wuss_window_t     *window,
   wuss_icon_get_bbox(icon, &bbox);
 
   return doc.y >= bbox.y0 && doc.y < bbox.y1
-      && doc.x >= bbox.x1 - WUSS_MENU_ARROW_W && doc.x < bbox.x1;
+      && doc.x >= bbox.x1 - WUSS_MENU_GUTTER_RIGHT && doc.x < bbox.x1;
 }
 
 /* End the pick flash on `self` now: leave the flashed row un-highlit unless the
@@ -550,7 +549,17 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
       widest = (int) w;
   }
 
-  width  = WUSS_MENU_TICK_W + widest + WUSS_MENU_TEXT_PAD + WUSS_MENU_ARROW_W;
+  /* the row draws its text as if a space padded it either side (see
+   * wuss__icon_draw_menu_entry), so the text column must be wide enough
+   * for two of those */
+  {
+    bmfont_width_t space_w = 0;
+
+    bmfont_measure(wuss->fonts[0], " ", 1, INT_MAX, NULL, &space_w);
+    widest += 2 * (int) space_w;
+  }
+
+  width  = WUSS_MENU_GUTTER_LEFT + widest + WUSS_MENU_GUTTER_RIGHT;
 
   /* widen for the titlebar caption too, so a title longer than every item
    * label (e.g. a one-item menu) isn't clipped; titles draw in the bold
@@ -774,7 +783,7 @@ result_t wuss_menu_open(wuss_task_t        *task,
   /* RISC OS convention: the pointer opens the menu sitting a little inside its
    * first item, not on the top-left corner. Shift the content top-left up and
    * left so `at` (the pointer) lands over row 0. */
-  at.x -= WUSS_MENU_TICK_W;
+  at.x -= WUSS_MENU_GUTTER_LEFT;
   at.y -= WUSS_MENU_ROW_PAD;
 
   rc = wuss__menu_spawn(wuss, task, menu, at, NULL, &root);
