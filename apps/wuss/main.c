@@ -693,7 +693,8 @@ static result_t run_wuss(const char *resources)
   result_t         rc;
   const char      *leafname;
   const char      *filename;
-  bmfont_t        *fonts[2]; /* [0] regular (system font), [1] bold */
+  bmfont_t        *fonts[3]; /* [0] regular (system font), [1] bold,
+                              * [2] symbol (menu tick / submenu arrow) */
   int              nfonts;
   int              i;
   void            *pixels;
@@ -719,10 +720,11 @@ static result_t run_wuss(const char *resources)
   logf_info("wuss: resources root = \"%s\"", resources);
 
   {
-    static const char *const names[2] = { "Digits-Regular", "Digits-Bold" };
+    static const char *const names[3] =
+      { "Digits-Regular", "Digits-Bold", "Symbols" };
 
     nfonts = 0;
-    for (i = 0; i < 2; i++)
+    for (i = 0; i < 3; i++)
     {
       leafname = path_join_leafname(names[i], "png");
       filename = path_join_filename(resources, 3, "resources", "bmfonts",
