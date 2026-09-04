@@ -252,3 +252,21 @@ const char *wuss_fontmenu_selected(const wuss_fontmenu_t *fm,
 
   return fm->menu->items[index].text;
 }
+
+void wuss_fontmenu_set_ticked(wuss_fontmenu_t *fm, int index)
+{
+  wuss_menu_item_t *items;
+  int               i;
+
+  if (fm == NULL)
+    return;
+
+  /* fm->menu is ours to mutate; only wuss_fontmenu_menu hands it out const */
+  items = (wuss_menu_item_t *) fm->menu->items;
+
+  for (i = 0; i < fm->menu->nitems; i++)
+    if (i == index)
+      items[i].flags |= wuss_MENU_ITEM_TICKED;
+    else
+      items[i].flags &= ~(wuss_menu_item_flags_t) wuss_MENU_ITEM_TICKED;
+}

@@ -89,8 +89,9 @@ static result_t chars_set_font(chars_task_t *task, int idx, const char *name)
 
 static result_t chars_open_menu(chars_task_t *task)
 {
-  /* ponytail: no tick on the current row -- wuss_fontmenu owns its items as
-   * const and offers no way to set one. The window title tracks the font. */
+  /* the current font's row is ticked; task->current is -1 for the wuss
+   * system font, which ticks nothing */
+  wuss_fontmenu_set_ticked(task->fontmenu, task->current);
   return wuss_menu_open(task->delegate,
                         wuss_fontmenu_menu(task->fontmenu),
                         wuss_get_pointer(task->wuss), NULL);
