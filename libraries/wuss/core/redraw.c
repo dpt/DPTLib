@@ -2,6 +2,46 @@
 
 #include "impl.h"
 
+/* Fill "area" with the desktop backdrop, except for whatever part of it is
+ * covered by a wuss_NO_BACKGROUND window's content -- that task owns those
+ * pixels outright, so a desktop-coloured pre-fill there would flash (or,
+ * for a task that doesn't repaint every pixel every time, permanently
+ * show) backdrop instead of whatever was already on screen. */
+static void fill_backdrop_excluding_content(wuss_t *wuss, const box_t *area)
+{
+  box_t   cuts[WUSS_MAX_INVALIDATE_PIECES];
+  box_t   pieces[WUSS_MAX_INVALIDATE_PIECES];
+  int     ncuts, npieces, i;
+  list_t *e;
+
+  ncuts = 0;
+  for (e = wuss->z_order.next;
+       e != NULL && ncuts < WUSS_MAX_INVALIDATE_PIECES;
+       e = e->next)
+  {
+    wuss_window_t *win;
+    box_t          content, clipped;
+
+    win = wuss__window_from_link(e);
+    if (win->flags & wuss_WINDOW_HIDDEN)
+      continue;
+    if (win->bg.colour != wuss_NO_BACKGROUND)
+      continue;
+
+    wuss__content_box(win, &content);
+    if (box_intersection(&content, area, &clipped))
+      continue; /* no overlap with the area being filled */
+
+    cuts[ncuts++] = clipped;
+  }
+
+  npieces = wuss__subtract_boxes(area, cuts, ncuts, pieces);
+
+  for (i = 0; i < npieces; i++)
+    wuss__fill_backdrop(wuss->scr, wuss->palette, &wuss->backdrop,
+                        &pieces[i], 0, 0);
+}
+
 static void redraw_window(wuss_t        *wuss,
                           wuss_window_t *win,
                           const box_t   *full,
@@ -19,7 +59,16 @@ static void redraw_window(wuss_t        *wuss,
   if (box_intersection(&win->visible, full, &visible_clipped))
     return; /* offscreen */
 
-  wuss__chrome_draw(wuss, win, full);
+  /* clip chrome to whatever part of the window isn't hidden behind a
+   * higher window, same reasoning as the content clip below -- otherwise
+   * a window redrawing under an overlap would paint its furniture back
+   * over whatever is covering it */
+  npieces = wuss__clip_to_visible(win, &visible_clipped, pieces);
+  for (i = 0; i < npieces; i++)
+  {
+    wuss->scr->clip = pieces[i];
+    wuss__chrome_draw(wuss, win, &pieces[i]);
+  }
 
   wuss__content_box(win, &content);
   if (box_intersection(&content, full, &clipped))
@@ -107,7 +156,7 @@ result_t wuss_redraw(wuss_t *wuss)
   full.y1 = wuss->scr->size.h;
 
   wuss->scr->clip = full;
-  wuss__fill_backdrop(wuss->scr, wuss->palette, &wuss->backdrop, &full, 0, 0);
+  fill_backdrop_excluding_content(wuss, &full);
 
   rc = result_OK;
   redraw_from(wuss, wuss->z_order.next, &full, &rc);
@@ -135,8 +184,7 @@ result_t wuss_redraw_dirty(wuss_t *wuss)
   for (i = 0; i < wuss->ndirty; i++)
   {
     wuss->scr->clip = wuss->dirty[i];
-    wuss__fill_backdrop(wuss->scr, wuss->palette, &wuss->backdrop,
-                        &wuss->dirty[i], 0, 0);
+    fill_backdrop_excluding_content(wuss, &wuss->dirty[i]);
 
     redraw_from(wuss, wuss->z_order.next, &wuss->dirty[i], &rc);
   }
