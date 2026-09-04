@@ -11,9 +11,10 @@
 #include "wuss/icon.h"
 #include "wuss/window.h"
 
-/* demonstrates wuss-managed work-area icons: a couple of labels, a button that
- * bumps a counter, and a second button placed far down the document to show
- * icons scroll with the content and stay clickable */
+/* demonstrates wuss-managed work-area icons: labelled groups covering every
+ * icon type (buttons, radios/options, bitmaps, a pattern swatch, a menu-entry
+ * strip) plus a button placed far down the document to show icons scroll with
+ * the content and stay clickable */
 typedef struct icons_task
 {
   wuss_window_t *window;
