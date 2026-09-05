@@ -14,12 +14,12 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   return result_NOT_SUPPORTED;
 #else
   result_t             rc;
-  pixelfmt_t           fmt;
-  size_t               bytespp;
+  volatile pixelfmt_t  fmt;
+  volatile size_t      bytespp;
   FILE                *fp;
   png_structp          png_ptr  = NULL;
-  png_infop            info_ptr = NULL;
-  png_bytep            outrow   = NULL;
+  png_infop volatile   info_ptr = NULL;
+  png_bytep volatile   outrow   = NULL;
   pixelfmt_xxxa8888_t *inrow; // more like xxxx8888
   int                  x,y;
 
