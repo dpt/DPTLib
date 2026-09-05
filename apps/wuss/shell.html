@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>wuss</title>
+  <style>
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #stage {
+      display: flex;
+    }
+    canvas.emscripten {
+      border: 0;
+      image-rendering: pixelated;
+      max-width: 90vw;
+      max-height: 90vh;
+    }
+    #status {
+      position: fixed;
+      top: 0;
+      color: #999;
+      font: 14px monospace;
+    }
+    #controls {
+      position: fixed;
+      left: 1em;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #999;
+      font: 13px monospace;
+      display: grid;
+      grid-template-columns: auto;
+      gap: 0.35em 0;
+    }
+    #controls span {
+      white-space: nowrap;
+    }
+    #controls kbd {
+      color: #ddd;
+      border: 1px solid #555;
+      border-radius: 3px;
+      padding: 0 0.3em;
+    }
+    @media (max-width: 900px), (max-height: 500px) {
+      #controls {
+        position: static;
+        transform: none;
+        width: 90vw;
+        max-width: 28em;
+        margin: 0.75em 1em 0;
+        order: 1;
+      }
+      #stage {
+        flex-direction: column;
+        align-items: center;
+      }
+      canvas.emscripten {
+        max-width: 95vw;
+        order: 0;
+      }
+    }
+    @media (max-width: 480px) {
+      #controls {
+        font: 12px monospace;
+        gap: 0.2em 0;
+      }
+      #controls kbd {
+        padding: 0 0.2em;
+      }
+    }
+    #about {
+      color: #999;
+      font: 13px sans-serif;
+      max-width: 48em;
+      text-align: center;
+      margin: 0 1em 0.75em;
+      line-height: 1.4;
+    }
+    #about a {
+      color: #7ab8ff;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">Loading...</div>
+  <div id="stage">
+    <div id="controls">
+      <span>Drag titlebars to move windows</span>
+      <span>Click to bring a window to front</span>
+      <span><kbd>F1</kbd> redraw all, <kbd>Shift</kbd>+<kbd>F1</kbd> garbage screen</span>
+      <span><kbd>F2</kbd>/<kbd>Shift</kbd>+<kbd>F2</kbd> zoom window in/out</span>
+      <span><kbd>F3</kbd> pixel stress test</span>
+      <span><kbd>F4</kbd> quit</span>
+    </div>
+    <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+  </div>
+  <div id="about">
+    <p>
+      <em>wuss</em> is the minimal window manager demo from
+      <a href="https://github.com/dpt/DPTLib" target="_blank" rel="noopener">DPTLib</a>,
+      a platform-independent C library shared across the author's projects.
+      It exercises window creation, z-ordering, mouse routing and
+      dirty-region redraw, compiled to
+      <a href="https://webassembly.org/" target="_blank" rel="noopener">WebAssembly</a>
+      via Emscripten's SDL3 port.
+    </p>
+  </div>
+  <script>
+    var Module = {
+      canvas: document.getElementById('canvas'),
+      setStatus: function (text) {
+        var el = document.getElementById('status');
+        if (!text) { el.remove(); return; }
+        el.textContent = text;
+      }
+    };
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

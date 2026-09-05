@@ -767,7 +767,9 @@ if(BUILD_APPS)
             "-sALLOW_MEMORY_GROWTH=1"
             "-sEXIT_RUNTIME=0"
             "--preload-file"
-            "${CMAKE_CURRENT_SOURCE_DIR}/resources@/resources")
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources@/resources"
+            "--shell-file"
+            "${CMAKE_CURRENT_SOURCE_DIR}/apps/wuss/shell.html")
         set_target_properties(wuss PROPERTIES SUFFIX ".html")
     else()
         find_package(SDL3 REQUIRED)
