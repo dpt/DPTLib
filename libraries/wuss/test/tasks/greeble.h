@@ -18,9 +18,8 @@
  * their intended shapes, a set of prefab blocks and a shortlist of stamps
  * that read well standing alone. The generator scatters the prefab blocks
  * without overlap, then fills every remaining cell from the standalone
- * shortlist. Each stamp is blitted 1:1; its four palette slots map to the
- * active Wuss palette, so the pattern recolours with the window-manager
- * theme.
+ * shortlist. Each stamp is blitted 1:1; its four slots index one of the
+ * greeble_palettes[] rows, also picked at random per pattern.
  *
  * A content click reseeds the pattern. */
 typedef struct greeble_task
@@ -28,6 +27,7 @@ typedef struct greeble_task
   wuss_window_t *window;
   unsigned int   seed;   /* current pattern seed; advanced on click */
   int            cols, rows; /* live grid extent, <= the MAX_* caps */
+  unsigned char  palette; /* greeble_palettes[] row for this pattern */
   /* grid[row][col], one stamp index (0..GREEBLE_NTILES-1) per cell;
    * regenerated whenever the seed changes */
   unsigned char  grid[GREEBLE_MAX_ROWS][GREEBLE_MAX_COLS];

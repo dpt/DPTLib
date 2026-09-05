@@ -9,23 +9,11 @@
 #endif
 
 #include "base/utils.h"
-#include "framebuf/palettes.h"
+#include "framebuf/colour.h"
 #include "geom/box.h"
 
 #include "greeble.h"
 #include "greeble-tiles.h"
-
-/* The four stamp palette slots (0..3 in greeble_tiles[]) map to these Wuss
- * palette indices. The source art is PICO-8, so these are its black,
- * dark-purple, red and orange; a non-PICO Wuss palette simply recolours the
- * pattern through the same slots. */
-static const int greeble_palette[4] =
-{
-  palette_PICO8_BLACK,
-  palette_PICO8_DARK_PURPLE,
-  palette_PICO8_RED,
-  palette_PICO8_ORANGE
-};
 
 /* ----------------------------------------------------------------------- */
 
@@ -110,6 +98,9 @@ static void greeble_generate(greeble_task_t *task)
         task->grid[r][c] =
           greeble_filler[s % (unsigned int) GREEBLE_NFILLER];
       }
+
+  GREEBLE_XORSHIFT(s);
+  task->palette = (unsigned char) (s % (unsigned int) GREEBLE_NPALETTE);
 }
 
 /* recompute the grid extent for the window's content box, then regenerate */
@@ -124,9 +115,11 @@ static void greeble_relayout(greeble_task_t *task, const box_t *content)
 
 /* ----------------------------------------------------------------------- */
 
-/* Blit one 8x8 stamp 1:1 at (ox,oy). Clipped implicitly by screen_set_pixel;
- * only pixels inside the redraw's content box need drawing, but the stamp is
- * tiny and wuss clips per pixel, so an unconditional 8x8 loop is fine. */
+/* Blit one 8x8 stamp 1:1 at (ox,oy). palette is the four colours for this
+ * pattern's greeble_palettes[] row, indexed by the stamp's 2-bit slots.
+ * Clipped implicitly by screen_set_pixel; only pixels inside the redraw's
+ * content box need drawing, but the stamp is tiny and wuss clips per pixel,
+ * so an unconditional 8x8 loop is fine. */
 static void greeble_stamp(screen_t       *scr,
                           const colour_t *palette,
                           int             tile_index,
@@ -146,8 +139,7 @@ static void greeble_stamp(screen_t       *scr,
     {
       int slot = (bits >> (2 * x)) & 3;
 
-      screen_set_pixel(scr, ox + x, oy + y,
-                       palette[greeble_palette[slot]]);
+      screen_set_pixel(scr, ox + x, oy + y, palette[slot]);
     }
   }
 }
@@ -157,7 +149,8 @@ static result_t greeble_redraw(const wuss_event_t *event,
 {
   screen_t       *scr;
   const box_t    *content, *bounds;
-  const colour_t *palette;
+  const unsigned int *pal;
+  colour_t        palette[4];
   int             r, c, sx, sy, ox, oy;
 
   scr     = event->data.redraw.scr;
@@ -165,7 +158,14 @@ static result_t greeble_redraw(const wuss_event_t *event,
   bounds  = event->data.redraw.bounds;
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
-  palette = scr->palette;
+
+  /* expand this pattern's palette row into colour_t once for the whole grid */
+  pal = greeble_palettes[task->palette];
+  for (r = 0; r < 4; r++)
+    palette[r] = colour_rgba((int) ( pal[r]        & 0xFF),
+                             (int) ((pal[r] >>  8) & 0xFF),
+                             (int) ((pal[r] >> 16) & 0xFF),
+                             (int) ((pal[r] >> 24) & 0xFF));
 
   for (r = 0; r < task->rows; r++)
   {
