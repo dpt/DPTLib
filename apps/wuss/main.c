@@ -38,6 +38,7 @@
 #include "tasks/clock.h"
 #include "tasks/curve.h"
 #include "tasks/gradient.h"
+#include "tasks/greeble.h"
 #include "tasks/icons.h"
 #include "tasks/image.h"
 #include "tasks/lissajous.h"
@@ -241,6 +242,17 @@ static result_t spawn_gradient(void)
   return result_OK;
 }
 
+static result_t spawn_greeble(void)
+{
+  greeble_task_t *t = calloc(1, sizeof(*t));
+  result_t        rc;
+  if (t == NULL) return result_OOM;
+  rc = greeble_create(g.wuss, t);
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
 static result_t spawn_icons(void)
 {
   icons_task_t *t = calloc(1, sizeof(*t));
@@ -405,6 +417,7 @@ static const wuss_menu_item_t g_launch_items[] =
   { "Clock",       wuss_MENU_ITEM_NONE, NULL },
   { "Curve",       wuss_MENU_ITEM_NONE, NULL },
   { "Gradient",    wuss_MENU_ITEM_NONE, NULL },
+  { "Greeble",     wuss_MENU_ITEM_NONE, NULL },
   { "Icons",       wuss_MENU_ITEM_NONE, NULL },
   { "Image",       wuss_MENU_ITEM_NONE, NULL },
   { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
@@ -419,7 +432,7 @@ static const wuss_menu_item_t g_launch_items[] =
 static const task_spawn_fn_t g_launch_spawn[] =
 {
   spawn_ball, spawn_blank, spawn_chars, spawn_checker, spawn_clock, spawn_curve,
-  spawn_gradient, spawn_icons, spawn_image, spawn_lissajous,
+  spawn_gradient, spawn_greeble, spawn_icons, spawn_image, spawn_lissajous,
   spawn_minesweeper, spawn_palette,
   spawn_porter_duff, spawn_sofa, spawn_swatches, spawn_text
 };
