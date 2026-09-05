@@ -53,17 +53,16 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
     return result_WUSS_BAD_ICON;
 
   if (spec->type == wuss_ICON_TYPE_PATTERN &&
-      (spec->pattern < 0 || spec->pattern >= screen_PATTERN__LIMIT))
+      spec->pattern >= screen_PATTERN__LIMIT)
     return result_WUSS_BAD_ICON;
 
-  if (fg < 0 || fg >= w->npalette)
+  if (fg >= w->npalette)
     return result_WUSS_BAD_COLOUR;
 
-  if (bg != wuss_NO_BACKGROUND &&
-      (bg < 0 || bg >= w->npalette))
+  if (bg != wuss_NO_BACKGROUND && bg >= w->npalette)
     return result_WUSS_BAD_COLOUR;
 
-  if (has_swatch && (swatch < 0 || swatch >= w->npalette))
+  if (has_swatch && swatch >= w->npalette)
     return result_WUSS_BAD_COLOUR;
 
   out->window  = NULL;
