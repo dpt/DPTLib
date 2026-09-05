@@ -18,10 +18,10 @@
  * their intended shapes, a set of prefab blocks and a shortlist of stamps
  * that read well standing alone. The generator scatters the prefab blocks
  * without overlap, then fills every remaining cell from the standalone
- * shortlist. Each stamp is blitted 1:1; its four slots index one of the
- * greeble_palettes[] rows, also picked at random per pattern.
+ * shortlist. Each stamp is blitted 1:1; its four slots index the current
+ * greeble_palettes[] row.
  *
- * A content click reseeds the pattern. */
+ * Select reseeds the pattern; Adjust steps to the next palette. */
 typedef struct greeble_task
 {
   wuss_window_t *window;
