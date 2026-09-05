@@ -1,4 +1,4 @@
-/* wuss/test/tasks/text.c -- static paragraph task with a font picker */
+/* wuss/test/tasks/text.c -- sample-text task with font and sample pickers */
 
 #ifdef WUSS_APP
 
@@ -26,8 +26,48 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-static const char paragraph[] =
-"Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec mattis luctus libero. Donec imperdiet, velit quis venenatis iaculis, metus libero cursus ligula, egestas sagittis dui diam in mi.";
+/* one entry per row of the "Sample" submenu; name is the menu label, text
+ * what text_redraw lays out. Pangrams first, lorem ipsum last (and default,
+ * matching this task's original fixed paragraph). */
+typedef struct text_sample
+{
+  const char *name;
+  const char *text;
+}
+text_sample_t;
+
+static const text_sample_t text_samples[] =
+{
+  { "Quick Brown Fox",
+    "The quick brown fox jumps over the lazy dog." },
+  { "Pangram (Cwm Fjord)",
+    "Cwm fjord bank glyphs vext quiz." },
+  { "Pangram (Waltz)",
+    "Waltz, bad nymph, for quick jigs vex." },
+  { "Lorem Ipsum",
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod "
+    "tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim "
+    "veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea "
+    "commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
+    "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint "
+    "occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
+    "mollit anim id est laborum." }
+};
+
+#define TEXT_DEFAULT_SAMPLE (NELEMS(text_samples) - 1) /* "Lorem Ipsum" */
+
+static const wuss_menu_item_t text_sample_items[] =
+{
+  { "Quick Brown Fox",      wuss_MENU_ITEM_NONE, NULL },
+  { "Pangram (Cwm Fjord)",  wuss_MENU_ITEM_NONE, NULL },
+  { "Pangram (Waltz)",      wuss_MENU_ITEM_NONE, NULL },
+  { "Lorem Ipsum",          wuss_MENU_ITEM_NONE, NULL }
+};
+
+static const wuss_menu_t text_sample_menu =
+{
+  "Sample", text_sample_items, NELEMS(text_sample_items)
+};
 
 /* ----------------------------------------------------------------------- */
 
@@ -76,10 +116,23 @@ static result_t text_set_font(text_task_t *task, int idx, const char *name)
   return result_OK;
 }
 
+/* switch the shown text to text_samples[idx] */
+static result_t text_set_sample(text_task_t *task, int idx)
+{
+  if (idx < 0 || idx >= NELEMS(text_samples) || idx == task->sample)
+    return result_OK;
+
+  task->sample = idx;
+  task->text   = text_samples[idx].text;
+
+  wuss_window_invalidate_all(task->window);
+  return result_OK;
+}
+
 static result_t text_open_menu(text_task_t *task)
 {
   return wuss_menu_open(task->delegate,
-                        wuss_fontmenu_menu(task->fontmenu),
+                        &task->top_menu,
                         wuss_get_pointer(task->wuss), NULL);
 }
 
@@ -99,6 +152,8 @@ result_t text_create(wuss_t      *wuss,
   task->wuss        = wuss;
   task->font        = wuss_get_font(wuss);
   task->current     = -1; /* the wuss system font is none of the picker's */
+  task->sample      = TEXT_DEFAULT_SAMPLE;
+  task->text        = text_samples[TEXT_DEFAULT_SAMPLE].text;
   task->bg          = colour_rgb(0xFF, 0xFF, 0xFF);
   task->fg          = colour_rgb(0x00, 0x00, 0x00);
   task->frame_count = 0;
@@ -127,6 +182,22 @@ result_t text_create(wuss_t      *wuss,
     return result_OOM;
   }
 
+  /* top-level menu: "Font" borrows the fontmenu's own live wuss_menu_t (so
+   * ticks and wuss_fontmenu_selected keep working), "Sample" is the static
+   * text_sample_menu declared above */
+  task->top_items[0].text    = "Font";
+  task->top_items[0].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[0].submenu = menu;
+  task->top_items[0].window  = NULL;
+  task->top_items[1].text    = "Sample";
+  task->top_items[1].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[1].submenu = &text_sample_menu;
+  task->top_items[1].window  = NULL;
+
+  task->top_menu.title  = "Text";
+  task->top_menu.items  = task->top_items;
+  task->top_menu.nitems = NELEMS(task->top_items);
+
   delegate_desc.handle    = text_handle;
   delegate_desc.task_data = task;
   delegate_desc.name      = "text";
@@ -147,7 +218,7 @@ result_t text_create(wuss_t      *wuss,
 
   rc = wuss_window_create_placed(delegate,
                                  sz,
-                                 "Lorem Ipsum",
+                                 "Sample Text",
                                  wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
                                  wuss_BACKDROP_COLOUR(wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF)),
                                  sz,
@@ -181,8 +252,8 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
   sy     = event->data.redraw.scroll.y;
 
   nlines = bmtext_layout(tcx->font,
-                         paragraph,
-                         (int) strlen(paragraph),
+                         tcx->text,
+                         (int) strlen(tcx->text),
                          (bounds->x1 - INSET) - (bounds->x0 + INSET),
                          lines,
                          MAX_LINES);
@@ -265,6 +336,8 @@ result_t text_handle(wuss_window_t      *window,
       name = wuss_fontmenu_selected(tcx->fontmenu, event);
       if (name != NULL)
         return text_set_font(tcx, event->data.menu_select.index, name);
+      if (event->data.menu_select.menu == &text_sample_menu)
+        return text_set_sample(tcx, event->data.menu_select.index);
     }
     return result_OK;
 
