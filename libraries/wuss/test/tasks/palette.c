@@ -13,6 +13,7 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
+#include "io/dirscan.h"
 #include "io/path.h"
 #include "wuss/menu.h"
 
@@ -30,104 +31,39 @@
 
 /* ----------------------------------------------------------------------- */
 /* Scan resources/palettes for *.hex files, collecting each leafname (ext
- * stripped) into task->names, sorted, capped at PALETTE_MAX_FILES. Mirrors
- * bmfont_enumerate's per-platform directory walk (framebuf/bmfont/enumerate.c)
- * but is small and local enough not to warrant its own module. */
+ * stripped) into task->names, sorted, capped at PALETTE_MAX_FILES. */
 
 static int name_cmp(const void *a, const void *b)
 {
   return strcmp(a, b);
 }
 
-static void add_name(palette_task_t *pc, const char *leaf, size_t leaflen)
+static result_t add_name(const char *leaf, void *opaque)
 {
-  size_t namelen;
+  palette_task_t *pc;
+  size_t          leaflen;
+  size_t          namelen;
+
+  pc      = opaque;
+  leaflen = strlen(leaf);
 
   if (pc->nnames >= PALETTE_MAX_FILES)
-    return;
+    return result_STOP_WALK;
   if (leaflen <= PALETTE_HEX_EXT_LEN)
-    return;
+    return result_OK;
   if (strcmp(leaf + leaflen - PALETTE_HEX_EXT_LEN, PALETTE_HEX_EXT) != 0)
-    return;
+    return result_OK;
 
   namelen = leaflen - PALETTE_HEX_EXT_LEN;
   if (namelen >= sizeof(pc->names[0]))
-    return;
+    return result_OK;
 
   memcpy(pc->names[pc->nnames], leaf, namelen);
   pc->names[pc->nnames][namelen] = '\0';
   pc->nnames++;
+
+  return result_OK;
 }
-
-#if defined(TARGET_RISCOS)
-
-#include "oslib/osgbpb.h"
-#include "oslib/os.h"
-
-static void scan_palettes_dir(palette_task_t *pc, const char *dir)
-{
-  os_error *err;
-  int       context;
-  int       read;
-  char      buffer[256];
-
-  context = 0;
-  for (;;)
-  {
-    err = xosgbpb_dir_entries(dir, (osgbpb_string_list *) buffer, 1, context,
-                              sizeof(buffer), "*", &read, &context);
-    if (err != NULL)
-      break;
-    if (read > 0)
-      add_name(pc, buffer, strlen(buffer));
-    if (context == -1)
-      break;
-  }
-}
-
-#elif defined(_MSC_VER)
-
-#include <windows.h>
-
-static void scan_palettes_dir(palette_task_t *pc, const char *dir)
-{
-  WIN32_FIND_DATAA fd;
-  HANDLE           h;
-  char             pattern[DPTLIB_MAXPATH];
-
-  snprintf(pattern, sizeof(pattern), "%s\\*", dir);
-
-  h = FindFirstFileA(pattern, &fd);
-  if (h == INVALID_HANDLE_VALUE)
-    return;
-
-  do
-    add_name(pc, fd.cFileName, strlen(fd.cFileName));
-  while (FindNextFileA(h, &fd));
-
-  FindClose(h);
-}
-
-#else
-
-#include <dirent.h>
-
-static void scan_palettes_dir(palette_task_t *pc, const char *dir)
-{
-  DIR           *dp;
-  struct dirent *de;
-
-  dp = opendir(dir);
-  if (dp == NULL)
-    return;
-
-  while ((de = readdir(dp)) != NULL)
-    add_name(pc, de->d_name, strlen(de->d_name));
-
-  closedir(dp);
-}
-
-#endif
 
 /* ----------------------------------------------------------------------- */
 /* Parse a *.hex file: one "rrggbb" line per colour, no leading '#'. Fails
@@ -191,7 +127,7 @@ result_t palette_create(wuss_t         *wuss,
 
   dir = path_join_filename(resources, 2, "resources", "palettes");
   strcpy(dirbuf, dir); /* path_join_filename's buffer is reused by the scan */
-  scan_palettes_dir(task, dirbuf);
+  dirscan_walk(dirbuf, add_name, task);
   if (task->nnames > 1)
     qsort(task->names, (size_t) task->nnames, sizeof(task->names[0]),
          name_cmp);

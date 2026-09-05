@@ -100,6 +100,7 @@ set(PUBLIC_HEADERS
     include/geom/packer.h
     include/geom/point.h
     include/geom/size.h
+    include/io/dirscan.h
     include/io/path.h
     include/io/stream-mem.h
     include/io/stream-mtfcomp.h
@@ -293,6 +294,7 @@ set(GEOM_SOURCES
     libraries/geom/packer/packer.c)
 
 set(IO_SOURCES
+    libraries/io/dirscan/dirscan.c
     libraries/io/path/path.c
     libraries/io/stream/stream-mem.c
     libraries/io/stream/stream-mtfcomp.c
