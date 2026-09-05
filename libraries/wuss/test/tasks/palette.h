@@ -17,29 +17,20 @@
  * past this. */
 #define PALETTE_MAX_FILES 16
 
-/* Invoked when the user picks a system palette or toggles Invert. `palette`
- * is the newly selected/inverted 16-entry system palette, valid only for the
- * duration of the call; the callee owns installing it (framebuffer bitmap,
- * physical palette, wuss). */
-typedef void (palette_select_fn_t)(void           *user_data,
-                                   const colour_t *palette,
-                                   int             npalette);
-
 /* window D's task: draws every entry of the desktop palette as a square
  * in a grid, so the palette is visible at a glance. A MENU click over the
  * grid opens a picker for every *.hex file under resources/palettes, plus
- * an Invert toggle. */
+ * an Invert toggle. A pick installs the loaded/inverted array via
+ * wuss_set_palette; there is no callback here, since every other interested
+ * party (framebuffer bitmap, physical palette) reacts to the resulting
+ * wuss_EVENT_PALETTE and reads the array back with wuss_get_palette. */
 typedef struct palette_task
 {
   wuss_t              *wuss;
   wuss_task_t         *delegate;
   wuss_window_t       *window;
   const char          *resources;
-  const colour_t      *palette;
-  int                  npalette;
   bool                 invert;
-  palette_select_fn_t *on_select;
-  void                *user_data;
 
   /* *.hex files found under resources/palettes at create time, leafname
    * with the extension stripped (e.g. "PICO-8"), sorted. selected indexes
@@ -72,19 +63,14 @@ result_t palette_load_hex(const char *resources,
 /* create the palette-swatch-grid window against the given wuss instance.
  * `resources` is the resources root (as passed to path_join_filename, i.e.
  * "resources/palettes" holds the *.hex files); it is scanned once here to
- * build the picker menu. `palette`/`npalette` is the current system palette,
- * for the initial swatch grid; `startup_name` is its *.hex leafname (no
- * extension), used to tick the matching row in the picker menu, or NULL if
- * none should be ticked. `on_select`/`user_data` are called back when the
- * user picks a new one or toggles Invert. */
-result_t palette_create(wuss_t              *wuss,
-                        const char          *resources,
-                        const colour_t      *palette,
-                        int                  npalette,
-                        const char          *startup_name,
-                        palette_select_fn_t *on_select,
-                        void                *user_data,
-                        palette_task_t      *task);
+ * build the picker menu. The swatch grid always draws wuss's current system
+ * palette (wuss_get_palette), so `startup_name` -- its *.hex leafname, no
+ * extension -- is used only to tick the matching row in the picker menu; NULL
+ * ticks none. */
+result_t palette_create(wuss_t         *wuss,
+                        const char     *resources,
+                        const char     *startup_name,
+                        palette_task_t *task);
 
 
 #endif /* WUSS_APP */

@@ -352,6 +352,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/create.c
     libraries/wuss/core/destroy.c
     libraries/wuss/core/get-font.c
+    libraries/wuss/core/get-palette.c
     libraries/wuss/core/get-pointer.c
     libraries/wuss/core/idle.c
     libraries/wuss/core/impl.h

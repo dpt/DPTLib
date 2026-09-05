@@ -172,14 +172,10 @@ result_t palette_load_hex(const char *resources,
 
 /* ----------------------------------------------------------------------- */
 
-result_t palette_create(wuss_t              *wuss,
-                        const char          *resources,
-                        const colour_t      *palette,
-                        int                  npalette,
-                        const char          *startup_name,
-                        palette_select_fn_t *on_select,
-                        void                *user_data,
-                        palette_task_t      *task)
+result_t palette_create(wuss_t         *wuss,
+                        const char     *resources,
+                        const char     *startup_name,
+                        palette_task_t *task)
 {
   wuss_task_desc_t delegate_desc;
   const char       *dir;
@@ -189,11 +185,7 @@ result_t palette_create(wuss_t              *wuss,
 
   task->wuss      = wuss;
   task->resources = resources;
-  task->palette   = palette;
-  task->npalette  = npalette;
   task->invert    = false;
-  task->on_select = on_select;
-  task->user_data = user_data;
   task->nnames    = 0;
   task->selected  = 0;
 
@@ -255,15 +247,18 @@ result_t palette_create(wuss_t              *wuss,
 static result_t palette_redraw(const wuss_event_t *event, void *task_data)
 {
   palette_task_t *pc;
+  const colour_t *palette;
+  int              npalette;
   screen_t       *scr;
   const box_t    *bounds;
   int               cols, rows;
   int               cell_w, cell_h;
   int               i, sx, sy;
 
-  pc = task_data;
+  pc      = task_data;
+  palette = wuss_get_palette(pc->wuss, &npalette);
 
-  if (pc->npalette <= 0)
+  if (npalette <= 0)
     return result_OK;
 
   scr    = event->data.redraw.scr;
@@ -272,14 +267,14 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
   sy     = event->data.redraw.scroll.y;
 
   cols = 1;
-  while (cols * cols < pc->npalette)
+  while (cols * cols < npalette)
     cols++;
-  rows = (pc->npalette + cols - 1) / cols;
+  rows = (npalette + cols - 1) / cols;
 
   cell_w = (bounds->x1 - bounds->x0) / cols;
   cell_h = (bounds->y1 - bounds->y0) / rows;
 
-  for (i = 0; i < pc->npalette; i++)
+  for (i = 0; i < npalette; i++)
   {
     int col, row, x, y;
 
@@ -288,7 +283,7 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
     x   = bounds->x0 - sx + col * cell_w;
     y   = bounds->y0 - sy + row * cell_h;
 
-    screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), pc->palette[i]);
+    screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), palette[i]);
   }
 
   return result_OK;
@@ -325,12 +320,14 @@ static result_t palette_click(palette_task_t *pc, const wuss_event_t *event)
 }
 
 /* A pick loads that *.hex file (or re-applies the current one, for a bare
- * Invert toggle) and, on success, hands the built colour_t[] to on_select --
- * the caller owns installing it as the live system palette. A load failure
- * is silently ignored: the picker just stays on the previous selection.
- * Ticks are also updated in place via wuss_menu_set_item_ticked, so an
- * ADJUST pick (which keeps the chain open) shows the new tick without the
- * menu being rebuilt or moved. */
+ * Invert toggle) and, on success, installs it as the live system palette via
+ * wuss_set_palette -- every task, including whichever one owns the
+ * framebuffer bitmap and any physical palette, sees the change via the
+ * resulting wuss_EVENT_PALETTE and reads the new array back with
+ * wuss_get_palette. A load failure is silently ignored: the picker just
+ * stays on the previous selection. Ticks are also updated in place via
+ * wuss_menu_set_item_ticked, so an ADJUST pick (which keeps the chain open)
+ * shows the new tick without the menu being rebuilt or moved. */
 static result_t palette_menu_select(palette_task_t     *pc,
                                     const wuss_event_t *event)
 {
@@ -383,8 +380,7 @@ static result_t palette_menu_select(palette_task_t     *pc,
     for (i = 0; i < PALETTE_NCOLOURS; i++)
       loaded[i].primary ^= 0x00FFFFFFu;
 
-  if (pc->on_select != NULL)
-    pc->on_select(pc->user_data, loaded, PALETTE_NCOLOURS);
+  wuss_set_palette(pc->wuss, loaded, PALETTE_NCOLOURS);
 
   return result_OK;
 }

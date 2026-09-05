@@ -65,18 +65,11 @@ static struct
   bmfont_t        *daydream_font;
   bmfont_t        *bold_font;
   bool             quit; /* set by the "Quit Wuss" task-menu entry */
-  wuss_frontend_t *frontend; /* for pushing a picked palette to any physical
-                              * palette; see palette_on_select */
+  wuss_frontend_t *frontend; /* pushed to on wuss_EVENT_PALETTE; see
+                              * menu_handle */
   bitmap_t        *bm;       /* framebuffer bitmap, likewise */
 }
 g;
-
-/* Called back by the palette task when the user picks a *.hex file or
- * toggles Invert; copies the already-built array into g.palette and pushes
- * it to the framebuffer bitmap, any physical palette, and wuss. */
-static void palette_on_select(void           *user_data,
-                              const colour_t *palette,
-                              int             npalette);
 
 /* Each spawn allocates a fresh per-instance task block so a task may run in
  * several windows at once; the block is owned by its window and freed by the
@@ -134,8 +127,7 @@ static result_t spawn_palette(void)
   palette_task_t *t = calloc(1, sizeof(*t));
   result_t        rc;
   if (t == NULL) return result_OOM;
-  rc = palette_create(g.wuss, g.resources, g.palette, g.npalette,
-                      g.palette_name, palette_on_select, NULL, t);
+  rc = palette_create(g.wuss, g.resources, g.palette_name, t);
   if (rc != result_OK) return rc;
   if (t->window == NULL) { free(t); return rc; }
   return result_OK;
@@ -324,9 +316,9 @@ static const wuss_menu_t g_menu =
  * g_menu / g_menu_desc picks just print. Every menu is opened by g.menu_task,
  * so one handler sees every wuss_EVENT_MENU_SELECT and tells them apart by
  * data.menu_select.menu. Defined after the menus / spawn tables it needs. */
-static result_t menu_handle(wuss_window_t      *window,
-                            const wuss_event_t *event,
-                            void               *task_data);
+static result_t task_handle_event(wuss_window_t      *window,
+                                  const wuss_event_t *event,
+                                  void               *task_data);
 
 /* index of the "Details" row in g_menu_items */
 #define G_MENU_DETAILS_INDEX 4
@@ -476,15 +468,30 @@ static const wuss_menu_t g_task_menu =
   "Tasks", g_task_items, NELEMS(g_task_items)
 };
 
-static result_t menu_handle(wuss_window_t      *window,
-                            const wuss_event_t *event,
-                            void               *task_data)
+static result_t task_handle_event(wuss_window_t      *window,
+                                  const wuss_event_t *event,
+                                  void               *task_data)
 {
   const wuss_menu_t *menu;
   int                index;
 
   NOT_USED(window);
   NOT_USED(task_data);
+
+  if (event->kind == wuss_EVENT_PALETTE)
+  {
+    /* wuss_set_palette already updated wuss's own copy and re-cached
+     * furniture; read the new array back and push it on to the framebuffer
+     * bitmap and any physical palette, so callers (e.g. the palette picker)
+     * never need to know the frontend exists */
+    const colour_t *palette;
+    int              npalette;
+
+    palette = wuss_get_palette(g.wuss, &npalette);
+    bitmap_set_palette(g.bm, palette);
+    wuss_frontend_set_palette(g.frontend, palette, npalette);
+    return result_OK;
+  }
 
   if (event->kind != wuss_EVENT_MENU_SELECT)
     return result_OK;
@@ -516,24 +523,6 @@ static result_t menu_handle(wuss_window_t      *window,
   printf("menu: picked \"%s\"\n",
          menu->items[index].text ? menu->items[index].text : "(sep)");
   return result_OK;
-}
-
-/* Copies the palette task's freshly loaded/inverted array into g.palette,
- * pushes it to the framebuffer bitmap and any physical palette, then tells
- * wuss -- the same three calls the old F4 palette-cycle key made. Chrome
- * (furniture/bevel/backdrop) is set once at wuss_create and is not
- * revisited here. */
-static void palette_on_select(void           *user_data,
-                              const colour_t *palette,
-                              int             npalette)
-{
-  NOT_USED(user_data);
-
-  memcpy(g.palette, palette, (size_t) npalette * sizeof(*palette));
-
-  bitmap_set_palette(g.bm, g.palette);
-  wuss_frontend_set_palette(g.frontend, g.palette, g.npalette);
-  wuss_set_palette(g.wuss, g.palette, g.npalette);
 }
 
 /* Furniture/bevel/accent/backdrop colour indices, one row per palette. Same
@@ -717,8 +706,9 @@ static void wuss_frame(void *arg)
 /* click windows to bring to front, drag titlebars to move; the redraw-all
  * input redraws the whole screen, the pixel-stress input does it one pixel at
  * a time to catch tasks that misbehave under a 1x1 clip; the palette task's
- * picker menu swaps the system palette live (wuss_set_palette, via
- * palette_on_select); the quit input or closing the window exits */
+ * picker menu swaps the system palette live (wuss_set_palette, picked up by
+ * menu_handle's wuss_EVENT_PALETTE case); the quit input or closing the
+ * window exits */
 static result_t run_wuss(const char *resources)
 {
   const int        scr_width  = 640;
@@ -839,7 +829,7 @@ static result_t run_wuss(const char *resources)
   {
     wuss_task_desc_t desc;
 
-    desc.handle    = menu_handle;
+    desc.handle    = task_handle_event;
     desc.task_data = NULL;
     desc.name      = "menu";
     rc = wuss_task_create(wuss, &desc, &g.menu_task);
