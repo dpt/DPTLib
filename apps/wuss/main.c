@@ -139,17 +139,20 @@ static result_t spawn_image(void)
   const char   *leafname;
   const char   *filename;
   char          buf[DPTLIB_MAXPATH];
-  const char   *ninepatch;
+  char          ninepatch[DPTLIB_MAXPATH];
   result_t      rc;
 
   t = calloc(1, sizeof(*t));
   if (t == NULL) return result_OOM;
 
-  leafname  = path_join_leafname("jessica", "png");
-  filename  = path_join_filename(g.resources, 3, "resources", "images", leafname);
+  leafname = path_join_leafname("jessica", "png");
+  filename = path_join_filename(g.resources, 3, "resources", "images", leafname);
   strcpy(buf, filename);
-  ninepatch = path_join_filename(g.resources, 3, "resources", "wuss",
-                                 path_join_leafname("ninepatch", "png"));
+  /* path_join_filename returns a shared static buffer; copy before the next
+   * call (image_create's own dirscan join) clobbers it */
+  filename = path_join_filename(g.resources, 3, "resources", "wuss",
+                                path_join_leafname("ninepatch", "png"));
+  strcpy(ninepatch, filename);
 
   logf_info("wuss: image task loading \"%s\" + \"%s\"", buf, ninepatch);
   rc = image_create(g.wuss, g.resources, buf, ninepatch, t);

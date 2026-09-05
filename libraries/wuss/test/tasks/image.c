@@ -9,6 +9,7 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "base/debug.h"
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
@@ -167,7 +168,10 @@ static result_t image_click(wuss_window_t *window,
 
   rc = bitmap_load_png(&next, buf);
   if (rc != result_OK)
-    return rc; /* keep showing the current image */
+  {
+    logf_warning("image: skipping \"%s\" (rc=0x%X)", buf, rc);
+    return result_OK; /* keep showing the current image */
+  }
 
   free(ic->bitmap.base);
   ic->bitmap = next;
