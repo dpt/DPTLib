@@ -152,7 +152,7 @@ static result_t spawn_image(void)
                                  path_join_leafname("ninepatch", "png"));
 
   logf_info("wuss: image task loading \"%s\" + \"%s\"", buf, ninepatch);
-  rc = image_create(g.wuss, buf, ninepatch, t);
+  rc = image_create(g.wuss, g.resources, buf, ninepatch, t);
   if (rc != result_OK)
     logf_error("wuss: image_create(\"%s\") failed, rc=0x%X (%s)", buf, rc,
                result_string(rc));
