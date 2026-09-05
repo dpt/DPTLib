@@ -76,7 +76,10 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
               &pngwidth, &pngheight, &pngbitdepth, &pngcolourtype,
                NULL, NULL, NULL);
 
-  if (pngbitdepth != 8)
+  /* paletted PNGs may be 1/2/4/8 bpp; png_set_packing() unpacks the
+   * sub-byte cases to one index per byte before the palette expansion
+   * below. every other colour type must already be 8-bit. */
+  if (pngbitdepth != 8 && pngcolourtype != PNG_COLOR_TYPE_PALETTE)
   {
     rc = result_INCOMPATIBLE;
     goto cleanup;
@@ -85,6 +88,7 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
   switch (pngcolourtype)
   {
   case PNG_COLOR_TYPE_PALETTE:
+    png_set_packing(png_ptr);
     png_set_palette_to_rgb(png_ptr);
     if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
     {
