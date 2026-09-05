@@ -427,4 +427,29 @@ static const unsigned char greeble_filler[GREEBLE_NFILLER] =
   184,   4,  33,
 };
 
+/* four-colour palettes: the generator picks one row at random per
+ * pattern and stamp slots 0..3 index straight into it. Each entry is
+ * a packed 0xAABBGGRR value for colour_rgba(). GREEBLE_NPALETTE is 1
+ * (a lone PICO-8 row) when no palette sheet was supplied. */
+#define GREEBLE_NPALETTE 16
+static const unsigned int greeble_palettes[GREEBLE_NPALETTE][4] =
+{
+  { 0xFF532B1DU, 0xFF9C7683U, 0xFFC7C3C2U, 0xFFE8F1FFU }, /* 0 */
+  { 0xFF000000U, 0xFF4F575FU, 0xFFC7C3C2U, 0xFFE8F1FFU }, /* 1 */
+  { 0xFF532B1DU, 0xFF9C7683U, 0xFFAACCFFU, 0xFFE8F1FFU }, /* 2 */
+  { 0xFF532B1DU, 0xFF9C7683U, 0xFFFFAD29U, 0xFFE8F1FFU }, /* 3 */
+  { 0xFF000000U, 0xFF532B1DU, 0xFF9C7683U, 0xFFC7C3C2U }, /* 4 */
+  { 0xFF000000U, 0xFF53257EU, 0xFF4D00FFU, 0xFF00A3FFU }, /* 5 */
+  { 0xFF53257EU, 0xFF4D00FFU, 0xFFA877FFU, 0xFFAACCFFU }, /* 6 */
+  { 0xFF53257EU, 0xFFA877FFU, 0xFFAACCFFU, 0xFFE8F1FFU }, /* 7 */
+  { 0xFF3652ABU, 0xFF00A3FFU, 0xFF27ECFFU, 0xFFE8F1FFU }, /* 8 */
+  { 0xFF3652ABU, 0xFF00A3FFU, 0xFFAACCFFU, 0xFFE8F1FFU }, /* 9 */
+  { 0xFF53257EU, 0xFF3652ABU, 0xFF00A3FFU, 0xFFE8F1FFU }, /* 10 */
+  { 0xFF53257EU, 0xFF3652ABU, 0xFFA877FFU, 0xFFAACCFFU }, /* 11 */
+  { 0xFF532B1DU, 0xFF53257EU, 0xFF3652ABU, 0xFFC7C3C2U }, /* 12 */
+  { 0xFF518700U, 0xFF36E400U, 0xFF27ECFFU, 0xFFE8F1FFU }, /* 13 */
+  { 0xFF000000U, 0xFF518700U, 0xFF36E400U, 0xFFE8F1FFU }, /* 14 */
+  { 0xFF000000U, 0xFF532B1DU, 0xFF518700U, 0xFF36E400U }, /* 15 */
+};
+
 #endif /* TASKS_GREEBLE_TILES_H */

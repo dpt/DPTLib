@@ -18,7 +18,15 @@
 # read well dropped in on their own, so they become greeble_filler[] -- what
 # the generator scatters into whatever space the blocks leave.
 #
-# Usage: tools/gen_greeble_tiles.py <tiles-only.png> [tiles-arranged.png]
+# A third image -- a 4xN sheet, one row per palette, four cells per row -- is
+# baked as:
+#
+#   greeble_palettes[NPALETTE][4]  four packed 0xAABBGGRR colours per row;
+#                                  the generator picks a row at random and
+#                                  stamp slots 0..3 index into it
+#
+# Usage: tools/gen_greeble_tiles.py <tiles-only.png> \
+#            [tiles-arranged.png [pals.png]]
 
 import sys
 from PIL import Image
@@ -117,18 +125,41 @@ def find_prefabs(path, tiles):
     return prefabs, filler
 
 
+def load_palettes(path):
+    """Read a 4xN sheet of 4-colour palette rows, return a list of rows, each
+    a list of four 0xAABBGGRR packed colours (matching PIXELFMT_MAKE_RGBA8888
+    channel order: R low, A high). The sheet runs light-to-dark left-to-right;
+    stamp slots run dark-to-light (0 = outline, 3 = highlight), so each row is
+    reversed on the way in."""
+    img = Image.open(path).convert("RGBA")
+    w, h = img.size
+    if w != 4:
+        sys.exit("expected a 4-pixel-wide palette sheet, one row per palette")
+    px = img.load()
+    rows = []
+    for y in range(h):
+        row = []
+        for x in range(3, -1, -1):
+            r, g, b, a = px[x, y]
+            row.append((a << 24) | (b << 16) | (g << 8) | r)
+        rows.append(row)
+    return rows
+
+
 def main():
-    if not 2 <= len(sys.argv) <= 3:
+    if not 2 <= len(sys.argv) <= 4:
         sys.exit("usage: gen_greeble_tiles.py <tiles-only.png> "
-                 "[tiles-arranged.png]")
+                 "[tiles-arranged.png [pals.png]]")
 
     tiles = load_tiles(sys.argv[1])
     n = len(tiles)
 
-    if len(sys.argv) == 3:
+    if len(sys.argv) >= 3:
         prefabs, filler = find_prefabs(sys.argv[2], tiles)
     else:
         prefabs, filler = [], list(range(n))
+
+    palettes = load_palettes(sys.argv[3]) if len(sys.argv) == 4 else []
 
     L = []
     L += ["/* greeble-tiles.h -- baked 8x8 greeble stamps",
@@ -191,12 +222,28 @@ def main():
         L.append("  %s," % ", ".join("%3d" % v for v in filler[i:i + 12]))
     L += ["};", ""]
 
+    if not palettes:
+        # PICO-8 black / dark-purple / red / orange, so greeble.c always has
+        # at least one row to pick from
+        palettes = [[0xFF000000, 0xFF53257E, 0xFF4D00FF, 0xFF00A3FF]]
+    L += ["/* four-colour palettes: the generator picks one row at random per",
+          " * pattern and stamp slots 0..3 index straight into it. Each entry is",
+          " * a packed 0xAABBGGRR value for colour_rgba(). GREEBLE_NPALETTE is 1",
+          " * (a lone PICO-8 row) when no palette sheet was supplied. */",
+          "#define GREEBLE_NPALETTE %d" % len(palettes),
+          "static const unsigned int greeble_palettes[GREEBLE_NPALETTE][4] =",
+          "{"]
+    for i, row in enumerate(palettes):
+        L.append("  { %s }, /* %d */"
+                 % (", ".join("0x%08XU" % c for c in row), i))
+    L += ["};", ""]
+
     L += ["#endif /* TASKS_GREEBLE_TILES_H */", ""]
 
     with open(OUT, "w") as f:
         f.write("\n".join(L))
-    print("wrote %s: %d tiles, %d prefabs, %d filler"
-          % (OUT, n, len(spans), len(filler)))
+    print("wrote %s: %d tiles, %d prefabs, %d filler, %d palettes"
+          % (OUT, n, len(spans), len(filler), len(palettes)))
 
 
 if __name__ == "__main__":
