@@ -98,9 +98,6 @@ static void greeble_generate(greeble_task_t *task)
         task->grid[r][c] =
           greeble_filler[s % (unsigned int) GREEBLE_NFILLER];
       }
-
-  GREEBLE_XORSHIFT(s);
-  task->palette = (unsigned char) (s % (unsigned int) GREEBLE_NPALETTE);
 }
 
 /* recompute the grid extent for the window's content box, then regenerate */
@@ -117,9 +114,9 @@ static void greeble_relayout(greeble_task_t *task, const box_t *content)
 
 /* Blit one 8x8 stamp 1:1 at (ox,oy). palette is the four colours for this
  * pattern's greeble_palettes[] row, indexed by the stamp's 2-bit slots.
- * Clipped implicitly by screen_set_pixel; only pixels inside the redraw's
- * content box need drawing, but the stamp is tiny and wuss clips per pixel,
- * so an unconditional 8x8 loop is fine. */
+ * Each row is walked as same-slot runs and drawn with screen_fill_hline
+ * (which clips and writes contiguous words) rather than a pixel at a time:
+ * a stamp row is 1-4 runs, not 8 clipped stores. */
 static void greeble_stamp(screen_t       *scr,
                           const colour_t *palette,
                           int             tile_index,
@@ -134,12 +131,20 @@ static void greeble_stamp(screen_t       *scr,
   for (y = 0; y < GREEBLE_TILE_PX; y++)
   {
     unsigned short bits = rows[y];
+    int            run_start = 0;
+    int            run_slot = bits & 3;
 
-    for (x = 0; x < GREEBLE_TILE_PX; x++)
+    for (x = 1; x <= GREEBLE_TILE_PX; x++)
     {
-      int slot = (bits >> (2 * x)) & 3;
+      int slot = (x < GREEBLE_TILE_PX) ? ((bits >> (2 * x)) & 3) : -1;
 
-      screen_set_pixel(scr, ox + x, oy + y, palette[slot]);
+      if (slot != run_slot)
+      {
+        screen_fill_hline(scr, ox + run_start, oy + y,
+                          x - run_start, palette[run_slot]);
+        run_start = x;
+        run_slot  = slot;
+      }
     }
   }
 }
@@ -186,15 +191,26 @@ static result_t greeble_redraw(const wuss_event_t *event,
   return result_OK;
 }
 
-static result_t greeble_mouse(greeble_task_t *task, wuss_window_t *window)
+/* Select: advance to a fresh pattern (new seed, regenerate the grid). */
+static result_t greeble_select(greeble_task_t *task, wuss_window_t *window)
 {
-  /* advance to a fresh pattern; any nonzero state keeps xorshift off its
-   * fixed point */
+  /* LCG step; any nonzero state keeps the pattern xorshift off its fixed
+   * point */
   task->seed = task->seed * 1664525u + 1013904223u;
   if (task->seed == 0)
     task->seed = 1;
 
   greeble_generate(task);
+  wuss_window_invalidate_all(window);
+
+  return result_OK;
+}
+
+/* Adjust: step to the next palette, same pattern. */
+static result_t greeble_adjust(greeble_task_t *task, wuss_window_t *window)
+{
+  task->palette = (unsigned char)
+    ((task->palette + 1) % GREEBLE_NPALETTE);
   wuss_window_invalidate_all(window);
 
   return result_OK;
@@ -214,10 +230,13 @@ result_t greeble_handle(wuss_window_t      *window,
     return greeble_redraw(event, task);
 
   case wuss_EVENT_MOUSE:
-    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
-        !(event->data.mouse.button & wuss_BUTTON_SELECT))
+    if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
-    return greeble_mouse(task, window);
+    if (event->data.mouse.button & wuss_BUTTON_SELECT)
+      return greeble_select(task, window);
+    if (event->data.mouse.button & wuss_BUTTON_ADJUST)
+      return greeble_adjust(task, window);
+    return result_OK;
 
   case wuss_EVENT_QUIT:
     free(task); /* task_data was calloc'd per instance by the spawner */
@@ -235,7 +254,8 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
   box_t            content;
   result_t         rc;
 
-  task->seed = 0x9E3779B9u; /* any nonzero start */
+  task->seed    = 0x9E3779B9u; /* any nonzero start */
+  task->palette = 0;           /* Adjust cycles from here */
 
   /* greeble_redraw paints every pixel itself */
   delegate_desc.handle    = greeble_handle;
