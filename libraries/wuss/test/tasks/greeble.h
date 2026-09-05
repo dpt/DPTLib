@@ -1,4 +1,4 @@
-/* wuss/test/tasks/greeble.h -- random-scatter greebling pattern task */
+/* wuss/test/tasks/greeble.h -- prefab-scatter greebling pattern task */
 
 #ifndef TASKS_GREEBLE_H
 #define TASKS_GREEBLE_H
@@ -13,13 +13,14 @@
 #define GREEBLE_MAX_ROWS 48
 
 /* Fills the content area with a Xenon-2-style circuit-greeble texture built
- * as a tile-placement problem. The tile set is 205 hand-drawn 8x8 PICO-8
- * stamps baked from an artist's sheet (greeble-tiles.h). The sheet is a
- * scrapbook of decorative fragments, not a connective tile set, so each cell
- * simply takes a stamp chosen uniformly at random -- the result reads as the
- * intended greeble texture without any adjacency rule. The stamp is blitted
- * 1:1; its four palette slots map to the active Wuss palette, so the pattern
- * recolours with the window-manager theme.
+ * as a tile-placement problem. greeble-tiles.h bakes 205 hand-drawn 8x8
+ * PICO-8 stamps plus, from a second sheet where the artist laid them out in
+ * their intended shapes, a set of prefab blocks and a shortlist of stamps
+ * that read well standing alone. The generator scatters the prefab blocks
+ * without overlap, then fills every remaining cell from the standalone
+ * shortlist. Each stamp is blitted 1:1; its four palette slots map to the
+ * active Wuss palette, so the pattern recolours with the window-manager
+ * theme.
  *
  * A content click reseeds the pattern. */
 typedef struct greeble_task

@@ -29,27 +29,87 @@ static const int greeble_palette[4] =
 
 /* ----------------------------------------------------------------------- */
 
-/* Fill every cell with a stamp drawn uniformly at random. The tile sheet is a
- * scrapbook of decorative 8x8 fragments rather than a connective tile set, so
- * edge matching only ever collapsed the plane into noise; a flat random
- * scatter reads as the intended greeble texture and needs no adjacency data.
- * greeble_tile_edge[] in greeble-tiles.h is left unused. */
+/* cell value for "nothing placed here yet"; stamp indices are 0..204 so 0xFF
+ * is free. greeble_redraw skips these. */
+#define GREEBLE_EMPTY 0xFF
+
+/* one xorshift32 step on lvalue s; kept local to greeble_generate so the same
+ * seed always yields the same grid */
+#define GREEBLE_XORSHIFT(s) \
+  ((s) ^= (s) << 13, (s) ^= (s) >> 17, (s) ^= (s) << 5)
+
+/* try to drop prefab p with its top-left at (row,col): succeeds only if every
+ * non-hole cell of the prefab lands on an in-bounds, still-empty grid cell, so
+ * blocks never overlap. returns 1 on placement. */
+static int greeble_try_prefab(greeble_task_t *task, int p, int row, int col)
+{
+  const unsigned char *cells;
+  int                  w, h, x, y;
+
+  w     = greeble_prefab[p].w;
+  h     = greeble_prefab[p].h;
+  cells = greeble_prefab_cells + greeble_prefab[p].off;
+
+  if (row < 0 || col < 0 ||
+      row + h > task->rows || col + w > task->cols)
+    return 0;
+
+  for (y = 0; y < h; y++)
+    for (x = 0; x < w; x++)
+      if (cells[y * w + x] != GREEBLE_PREFAB_HOLE &&
+          task->grid[row + y][col + x] != GREEBLE_EMPTY)
+        return 0;
+
+  for (y = 0; y < h; y++)
+    for (x = 0; x < w; x++)
+      if (cells[y * w + x] != GREEBLE_PREFAB_HOLE)
+        task->grid[row + y][col + x] = cells[y * w + x];
+
+  return 1;
+}
+
+/* Fill the grid by scattering the artist's prefab blocks (greeble-tiles.h)
+ * without overlap, then dropping a loose stamp into every cell no block
+ * claimed. The blocks carry the intended circuit shapes; the loose stamps come
+ * from greeble_filler[] -- the stamps the artist drew standing alone, i.e. the
+ * shortlist that reads well without neighbours. GREEBLE_PREFAB_ATTEMPTS
+ * placement tries give a dense but varied cover; more attempts just repaint
+ * cells already taken. */
+#define GREEBLE_PREFAB_ATTEMPTS (GREEBLE_MAX_COLS * GREEBLE_MAX_ROWS)
+
 static void greeble_generate(greeble_task_t *task)
 {
-  int          r, c;
+  int          r, c, i;
   unsigned int s;
 
   s = task->seed;
 
   for (r = 0; r < task->rows; r++)
-  {
     for (c = 0; c < task->cols; c++)
-    {
-      /* xorshift32, kept local so the same seed always yields the same grid */
-      s ^= s << 13; s ^= s >> 17; s ^= s << 5;
-      task->grid[r][c] = (unsigned char) (s % (unsigned int) GREEBLE_NTILES);
-    }
+      task->grid[r][c] = GREEBLE_EMPTY;
+
+  for (i = 0; i < GREEBLE_PREFAB_ATTEMPTS && GREEBLE_NPREFAB > 0; i++)
+  {
+    int p, row, col;
+
+    GREEBLE_XORSHIFT(s);
+    p = (int) (s % (unsigned int) GREEBLE_NPREFAB);
+    GREEBLE_XORSHIFT(s);
+    row = (int) (s % (unsigned int) task->rows);
+    GREEBLE_XORSHIFT(s);
+    col = (int) (s % (unsigned int) task->cols);
+
+    greeble_try_prefab(task, p, row, col);
   }
+
+  for (r = 0; r < task->rows; r++)
+    for (c = 0; c < task->cols; c++)
+      if (task->grid[r][c] == GREEBLE_EMPTY)
+      {
+        GREEBLE_XORSHIFT(s);
+        task->grid[r][c] =
+          greeble_filler[s % (unsigned int) GREEBLE_NFILLER];
+      }
 }
 
 /* recompute the grid extent for the window's content box, then regenerate */
