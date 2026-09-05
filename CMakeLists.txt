@@ -384,6 +384,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/window/resize.c
     libraries/wuss/core/window/restack.c
     libraries/wuss/core/window/set-background.c
+    libraries/wuss/core/window/set-doc.c
     libraries/wuss/core/window/set-hidden.c
     libraries/wuss/core/window/set-scroll.c
     libraries/wuss/core/window/try-close.c)

@@ -4220,6 +4220,41 @@ FlashFail:
 #endif /* WUSS_ICONS */
 #endif /* WUSS_MENUS */
 
+  printf("test: invalidating a box already fully covered by an existing "
+        "dirty rect keeps the larger rect\n");
+
+  {
+    box_t outer, inner, dirty;
+
+    rc = wuss_redraw_dirty(wuss); /* flush anything still pending first */
+    if (rc != result_OK)
+      goto Failure;
+
+    outer.x0 = 10; outer.y0 = 10;
+    outer.x1 = 90; outer.y1 = 90;
+    rc = wuss_invalidate(wuss, &outer);
+    if (rc != result_OK)
+      goto Failure;
+
+    inner.x0 = 30; inner.y0 = 30;
+    inner.x1 = 50; inner.y1 = 50; /* fully inside outer: must not shrink it */
+    rc = wuss_invalidate(wuss, &inner);
+    if (rc != result_OK)
+      goto Failure;
+
+    if (wuss_get_dirty_count(wuss) != 1)
+      goto Failure;
+
+    wuss_get_dirty(wuss, 0, &dirty);
+    if (dirty.x0 != outer.x0 || dirty.y0 != outer.y0 ||
+        dirty.x1 != outer.x1 || dirty.y1 != outer.y1)
+      goto Failure; /* must still cover the whole outer box, not just inner */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+  }
+
   wuss_destroy(wuss);
 
   free(pixels);
