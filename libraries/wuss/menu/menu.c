@@ -835,32 +835,62 @@ int wuss_menu_is_open(wuss_menu_handle_t handle)
   return root->wuss->menu_chain == root;
 }
 
-void wuss_menu_set_ticked(wuss_menu_handle_t handle,
-                          const wuss_menu_t *menu,
-                          int                index)
+/* Find the open chain level showing `menu`, or NULL if `handle` is stale or
+ * `menu` is not a level of its chain. Shared by wuss_menu_set_ticked and
+ * wuss_menu_set_item_ticked. */
+static struct wuss__menu *wuss__menu_open_level(wuss_menu_handle_t handle,
+                                                const wuss_menu_t *menu)
 {
   struct wuss__menu *root;
   struct wuss__menu *node;
-  int                i;
 
   if (handle == NULL || menu == NULL)
-    return;
+    return NULL;
 
   root = handle;
   while (root->parent != NULL)
     root = root->parent;
 
   if (root->wuss->menu_chain != root)
-    return; /* stale handle */
+    return NULL; /* stale handle */
 
   for (node = root; node != NULL; node = node->child)
     if (node->menu == menu)
-      break;
+      return node;
+
+  return NULL; /* menu is not a level of this chain */
+}
+
+void wuss_menu_set_ticked(wuss_menu_handle_t handle,
+                          const wuss_menu_t *menu,
+                          int                index)
+{
+  struct wuss__menu *node;
+  int                i;
+
+  node = wuss__menu_open_level(handle, menu);
   if (node == NULL)
-    return; /* menu is not a level of this chain */
+    return;
 
   for (i = 0; i < menu->nitems; i++)
     wuss_icon_set_selected(node->icons[i], i == index);
+}
+
+void wuss_menu_set_item_ticked(wuss_menu_handle_t handle,
+                               const wuss_menu_t *menu,
+                               int                index,
+                               int                ticked)
+{
+  struct wuss__menu *node;
+
+  node = wuss__menu_open_level(handle, menu);
+  if (node == NULL)
+    return;
+
+  if (index < 0 || index >= menu->nitems)
+    return;
+
+  wuss_icon_set_selected(node->icons[index], ticked);
 }
 
 /* ----------------------------------------------------------------------- */

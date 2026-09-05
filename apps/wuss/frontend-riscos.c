@@ -215,11 +215,10 @@ static const struct
 }
 g_keys[] =
 {
-  { -17,  wuss_INPUT_QUIT          }, /* Q */
-  { -113, wuss_INPUT_QUIT          }, /* Escape */
-  { -114, wuss_INPUT_REDRAW_ALL    }, /* F1 */
-  { -116, wuss_INPUT_PIXEL_STRESS  }, /* F3 */
-  { -117, wuss_INPUT_PALETTE_CYCLE }  /* F4 */
+  { -17,  wuss_INPUT_QUIT         }, /* Q */
+  { -113, wuss_INPUT_QUIT         }, /* Escape */
+  { -114, wuss_INPUT_REDRAW_ALL   }, /* F1 */
+  { -116, wuss_INPUT_PIXEL_STRESS }  /* F3 */
 };
 
 static bool key_down(int scan)

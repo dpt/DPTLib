@@ -150,6 +150,25 @@ void wuss_menu_set_ticked(wuss_menu_handle_t handle,
                           const wuss_menu_t *menu,
                           int                index);
 
+/**
+ * Set or clear a single item's tick on a currently open menu level in place,
+ * leaving every other item's tick untouched. As wuss_menu_set_ticked, but
+ * for a menu that tracks more than one independent tick at the same level
+ * (e.g. a selection plus an unrelated toggle) where unticking every other
+ * row would clobber state the caller wanted to keep.
+ *
+ * \param[in] handle Chain handle from wuss_menu_open.
+ * \param[in] menu   The (sub)menu level to update; matched by pointer
+ *                   against the description passed to wuss_menu_open or
+ *                   reached via a wuss_menu_item_t.submenu.
+ * \param[in] index  Row to update. A no-op if out of range.
+ * \param[in] ticked Non-zero to tick the row, zero to untick it.
+ */
+void wuss_menu_set_item_ticked(wuss_menu_handle_t handle,
+                               const wuss_menu_t *menu,
+                               int                index,
+                               int                ticked);
+
 /* ----------------------------------------------------------------------- */
 
 /* Building a wuss_menu_t tree from a compact descriptor string, and freeing
