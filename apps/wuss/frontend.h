@@ -34,8 +34,7 @@ typedef enum wuss_input_kind
   wuss_INPUT_WHEEL,         /* .pos, .wheel */
   wuss_INPUT_REDRAW_ALL,    /* force a full redraw (F1) */
   wuss_INPUT_GARBAGE,       /* corrupt the whole screen for one frame (Shift-F1) */
-  wuss_INPUT_PIXEL_STRESS,  /* one-pixel-at-a-time redraw (F3) */
-  wuss_INPUT_PALETTE_CYCLE  /* advance to the next system palette (F4) */
+  wuss_INPUT_PIXEL_STRESS   /* one-pixel-at-a-time redraw (F3) */
 }
 wuss_input_kind_t;
 
@@ -78,7 +77,8 @@ bool wuss_frontend_poll(wuss_frontend_t *frontend, wuss_input_t *event);
 void wuss_frontend_present(wuss_frontend_t *frontend, const bitmap_t *bm);
 
 /* Push a new system palette to the physical palette, if the backend owns one.
- * Called after the demo cycles palettes (F4). No-op for SDL. */
+ * Called after the palette task's picker menu changes the system palette.
+ * No-op for SDL. */
 void wuss_frontend_set_palette(wuss_frontend_t *frontend,
                                const colour_t  *palette,
                                int              npalette);

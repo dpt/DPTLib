@@ -185,8 +185,6 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
         event->kind = wuss_INPUT_REDRAW_ALL;
       else if (ev.key.key == SDLK_F3)
         event->kind = wuss_INPUT_PIXEL_STRESS;
-      else if (ev.key.key == SDLK_F4)
-        event->kind = wuss_INPUT_PALETTE_CYCLE;
       else if (ev.key.key == SDLK_F2)
       {
         int w, h;
@@ -265,8 +263,9 @@ void wuss_frontend_present(wuss_frontend_t *fe, const bitmap_t *bm)
   bitmap_t *disp;
 
   /* wuss draws into a paletted bitmap; SDL wants bgrx. bitmap_convert reads
-   * the palette straight off `bm`, which the caller updates on F4, so a live
-   * palette change just shows up in the next converted frame. */
+   * the palette straight off `bm`, which the caller updates when the palette
+   * task's picker menu changes it, so a live palette change just shows up in
+   * the next converted frame. */
   if (bitmap_convert(bm, pixelfmt_bgrx8888, &disp) == result_OK)
   {
     SDL_UpdateTexture(fe->texture, NULL, disp->base, disp->rowbytes);

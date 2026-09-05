@@ -55,16 +55,28 @@
  * process, so a file-scope struct is as good as a passed-around context */
 static struct
 {
-  wuss_t         *wuss;
-  wuss_task_t    *menu_task; /* owns the menus and the hidden Details window */
-  const colour_t *palette;
-  int             npalette;
-  const char     *resources;
-  bmfont_t       *daydream_font;
-  bmfont_t       *bold_font;
-  bool            quit; /* set by the "Quit Wuss" task-menu entry */
+  wuss_t          *wuss;
+  wuss_task_t     *menu_task; /* owns the menus and the hidden Details window */
+  colour_t        *palette;
+  int              npalette;
+  const char      *palette_name; /* startup *.hex leafname, for ticking the
+                                  * picker menu's initial selection */
+  const char      *resources;
+  bmfont_t        *daydream_font;
+  bmfont_t        *bold_font;
+  bool             quit; /* set by the "Quit Wuss" task-menu entry */
+  wuss_frontend_t *frontend; /* for pushing a picked palette to any physical
+                              * palette; see palette_on_select */
+  bitmap_t        *bm;       /* framebuffer bitmap, likewise */
 }
 g;
+
+/* Called back by the palette task when the user picks a *.hex file or
+ * toggles Invert; copies the already-built array into g.palette and pushes
+ * it to the framebuffer bitmap, any physical palette, and wuss. */
+static void palette_on_select(void           *user_data,
+                              const colour_t *palette,
+                              int             npalette);
 
 /* Each spawn allocates a fresh per-instance task block so a task may run in
  * several windows at once; the block is owned by its window and freed by the
@@ -122,7 +134,8 @@ static result_t spawn_palette(void)
   palette_task_t *t = calloc(1, sizeof(*t));
   result_t        rc;
   if (t == NULL) return result_OOM;
-  rc = palette_create(g.wuss, g.palette, g.npalette, t);
+  rc = palette_create(g.wuss, g.resources, g.palette, g.npalette,
+                      g.palette_name, palette_on_select, NULL, t);
   if (rc != result_OK) return rc;
   if (t->window == NULL) { free(t); return rc; }
   return result_OK;
@@ -505,13 +518,23 @@ static result_t menu_handle(wuss_window_t      *window,
   return result_OK;
 }
 
-/* Palettes the palette-cycle input steps through, in order. Each fills a
- * colour_t[16]. */
-static void (*const g_palettes[])(colour_t *) =
+/* Copies the palette task's freshly loaded/inverted array into g.palette,
+ * pushes it to the framebuffer bitmap and any physical palette, then tells
+ * wuss -- the same three calls the old F4 palette-cycle key made. Chrome
+ * (furniture/bevel/backdrop) is set once at wuss_create and is not
+ * revisited here. */
+static void palette_on_select(void           *user_data,
+                              const colour_t *palette,
+                              int             npalette)
 {
-  define_pico8_palette,
-  define_wimp16_palette
-};
+  NOT_USED(user_data);
+
+  memcpy(g.palette, palette, (size_t) npalette * sizeof(*palette));
+
+  bitmap_set_palette(g.bm, g.palette);
+  wuss_frontend_set_palette(g.frontend, g.palette, g.npalette);
+  wuss_set_palette(g.wuss, g.palette, g.npalette);
+}
 
 /* Furniture/bevel/accent/backdrop colour indices, one row per palette. Same
  * field order as the assignments in run_wuss. */
@@ -591,7 +614,6 @@ struct wuss_frame_ctx
   int              scr_height;
   colour_t        *palette;
   int              npalette;
-  int              palette_index;
 };
 
 static void wuss_frame(void *arg)
@@ -619,17 +641,6 @@ static void wuss_frame(void *arg)
 
     case wuss_INPUT_PIXEL_STRESS:
       pixel_stress_pending = true;
-      break;
-
-    case wuss_INPUT_PALETTE_CYCLE:
-      /* rebuild the palette, push it into the framebuffer bitmap, tell the
-       * backend (which owns any physical palette), then tell wuss, which
-       * refreshes its own copy and pokes every task to recache */
-      c->palette_index = (c->palette_index + 1) % (int) NELEMS(g_palettes);
-      g_palettes[c->palette_index](c->palette);
-      bitmap_set_palette(c->bm, c->palette);
-      wuss_frontend_set_palette(c->frontend, c->palette, c->npalette);
-      wuss_set_palette(c->wuss, c->palette, c->npalette);
       break;
 
     case wuss_INPUT_MOUSE_DOWN:
@@ -705,9 +716,9 @@ static void wuss_frame(void *arg)
 
 /* click windows to bring to front, drag titlebars to move; the redraw-all
  * input redraws the whole screen, the pixel-stress input does it one pixel at
- * a time to catch tasks that misbehave under a 1x1 clip; the palette-cycle
- * input swaps the system palette live (wuss_set_palette); the quit input or
- * closing the window exits */
+ * a time to catch tasks that misbehave under a 1x1 clip; the palette task's
+ * picker menu swaps the system palette live (wuss_set_palette, via
+ * palette_on_select); the quit input or closing the window exits */
 static result_t run_wuss(const char *resources)
 {
   const int        scr_width  = 640;
@@ -733,12 +744,27 @@ static result_t run_wuss(const char *resources)
   int                palette_index;
 
   {
-    /* "wimp16" selects the RISC OS 16-colour palette; default is PICO-8 */
+    /* WUSS_PALETTE names a *.hex file under resources/palettes (extension
+     * stripped, e.g. "RISC-OS"); default is PICO-8. Chrome was never derived
+     * from *.hex content (see fill_chrome_config), so it stays keyed by
+     * whether the startup file is "RISC-OS" specifically, not by whatever
+     * the picker menu later loads. */
     const char *palette_name = getenv("WUSS_PALETTE");
 
-    use_wimp16 = (palette_name != NULL && strcmp(palette_name, "wimp16") == 0);
+    if (palette_name == NULL)
+      palette_name = "PICO-8";
+    use_wimp16 = (strcmp(palette_name, "RISC-OS") == 0);
     palette_index = use_wimp16 ? 1 : 0;
-    g_palettes[palette_index](palette);
+
+    rc = palette_load_hex(resources, palette_name, palette);
+    if (rc != result_OK)
+    {
+      logf_error("wuss: palette_load_hex(\"%s\") failed, rc=0x%X (%s)",
+                palette_name, rc, result_string(rc));
+      goto Failure;
+    }
+
+    g.palette_name = palette_name;
   }
 
   logf_info("wuss: resources root = \"%s\"", resources);
@@ -801,12 +827,14 @@ static result_t run_wuss(const char *resources)
       goto Failure;
   }
 
-  g.wuss          = wuss;
-  g.palette       = palette;
-  g.npalette      = NELEMS(palette);
-  g.resources     = resources;
-  g.daydream_font = fonts[0]; /* tasks draw with the regular weight */
-  g.bold_font     = fonts[1];
+  g.wuss           = wuss;
+  g.palette        = palette;
+  g.npalette       = NELEMS(palette);
+  g.resources      = resources;
+  g.daydream_font  = fonts[0]; /* tasks draw with the regular weight */
+  g.bold_font      = fonts[1];
+  g.frontend       = frontend;
+  g.bm             = &bm;
 
   {
     wuss_task_desc_t desc;
@@ -837,7 +865,6 @@ static result_t run_wuss(const char *resources)
     ctx.scr_height    = scr_height;
     ctx.palette       = palette;
     ctx.npalette      = NELEMS(palette);
-    ctx.palette_index = palette_index;
 
 #ifdef __EMSCRIPTEN__
     /* the browser owns the loop; simulate_infinite_loop=1 means this call
