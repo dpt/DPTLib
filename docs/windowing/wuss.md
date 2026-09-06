@@ -198,14 +198,14 @@ In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scro
 
 Taking inspiration from RISC OS, a window can carry **icons**: rectangular UI elements Wuss draws and hit-tests inside the content area. v1 ships two types:
 
-- `wuss_ICON_TYPE_LABEL` — static text. Clicks fall through to the task as `wuss_EVENT_MOUSE`.
+- `wuss_ICON_TYPE_LABEL` — static text, optionally in a 1px raised or sunken border (`spec.border` — `wuss_ICON_BORDER_NONE` / `_RIDGE` / `_GROOVE`, the last a RISC OS-style read-only display field). Clicks fall through to the task as `wuss_EVENT_MOUSE`.
 - `wuss_ICON_TYPE_BUTTON` — a bevelled rectangle with a centred label and pressed-state feedback (the bevel inverts and the label shifts one pixel down-right while held). Clicks and hovers arrive as `wuss_EVENT_ICON`.
 
 The enum is left open for sprite and editable-text types later.
 
 Icons are dynamic and owned by their window:
 
-- `wuss_icon_create(window, spec, &icon)` — returns an opaque `wuss_icon_t *`. The spec gives the bounding box, type, text (copied; `NULL` treated as `""`), foreground and background palette indices, and flags. A `wuss_ICON_TYPE_BUTTON` must pass a real `bg`; passing `wuss_NO_BACKGROUND` is rejected with `result_WUSS_BAD_ICON`. An unknown type is also `result_WUSS_BAD_ICON`; an out-of-range `fg`/`bg` is `result_WUSS_BAD_COLOUR`.
+- `wuss_icon_create(window, spec, &icon)` — returns an opaque `wuss_icon_t *`. The spec gives the bounding box, type, text (copied; `NULL` treated as `""`), foreground and background palette indices, a `border` (label only), and flags. A `wuss_ICON_TYPE_BUTTON` must pass a real `bg`; passing `wuss_NO_BACKGROUND` is rejected with `result_WUSS_BAD_ICON`. An unknown type is also `result_WUSS_BAD_ICON`; an out-of-range `fg`/`bg` is `result_WUSS_BAD_COLOUR`.
 - `wuss_icon_delete(icon)` — NULL-safe.
 - `wuss_icon_set_text(icon, text)`, `wuss_icon_set_hidden(icon, hidden)`.
 - Getters: `wuss_icon_get_bbox`, `wuss_icon_get_type`, `wuss_icon_get_text` (never `NULL`), `wuss_icon_get_window`.

@@ -105,6 +105,24 @@ typedef enum wuss_icon_type
 }
 wuss_icon_type_t;
 
+/**
+ * The border drawn around a wuss_ICON_TYPE_LABEL, inside its bounding box.
+ * Ignored by every other icon type. Uses the window manager's bevel shades
+ * (wuss_config_t::bevel), the same as a button.
+ */
+typedef enum wuss_icon_border
+{
+  /** No border; the label fills its box as before. The default. */
+  wuss_ICON_BORDER_NONE = 0,
+  /** A 1px raised bevel: light top/left, dark bottom/right, like a button at
+   *  rest. */
+  wuss_ICON_BORDER_RIDGE,
+  /** A 1px sunken bevel: dark top/left, light bottom/right -- a RISC OS-style
+   *  read-only display field. */
+  wuss_ICON_BORDER_GROOVE
+}
+wuss_icon_border_t;
+
 /** Icon appearance and behaviour flags, combinable with bitwise OR. */
 typedef enum wuss_icon_flags
 {
@@ -195,6 +213,10 @@ typedef struct wuss_icon_spec
    *  draw in the left gutter, as an index into the system palette. Ignored
    *  unless that flag is set; ignored by all other icon types. */
   wuss_colour_t     swatch;
+  /** wuss_ICON_TYPE_LABEL: border drawn inside the bounding box. Zero
+   *  (wuss_ICON_BORDER_NONE) is the default for zero-initialised specs.
+   *  Ignored by all other icon types. */
+  wuss_icon_border_t border;
   /** Appearance/behaviour flags. */
   wuss_icon_flags_t flags;
 }
