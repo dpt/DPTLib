@@ -730,7 +730,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   rc = wuss_window_create(menu_task, &content,
                           menu->title ? menu->title : "",
                           menu_flags,
-                          wuss_BACKDROP_COLOUR(wuss_COLOUR_WHITE),
+                          wuss_BACKDROP_COLOUR(wuss_COLOUR_MENU),
                           doc, min_doc, &node->window);
   if (rc != result_OK)
   {

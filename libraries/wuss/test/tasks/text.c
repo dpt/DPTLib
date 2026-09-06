@@ -220,7 +220,7 @@ result_t text_create(wuss_t      *wuss,
                                  sz,
                                  "Sample Text",
                                  wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                                 wuss_BACKDROP_COLOUR(wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF)),
+                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  sz,
                                  SIZE2D(0, 0),
                                  &task->window);
