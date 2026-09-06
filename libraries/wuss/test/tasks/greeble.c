@@ -19,17 +19,12 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* MENU click over the content pops this; rows 0..greeble_SYM__LIMIT-1 map 1:1
- * to greeble_SYM_* and are kept mutually exclusive by ticking. The trailing
- * row is an independent toggle for per-prefab random palettes. */
-enum { GREEBLE_MENU_RANDPAL = greeble_SYM__LIMIT };
+/* MENU click over the content pops this. The sole row is an independent
+ * toggle for per-prefab random palettes. */
+enum { GREEBLE_MENU_RANDPAL = 0 };
 
 static wuss_menu_item_t g_greeble_menu_items[] =
 {
-  { "Scatter",  wuss_MENU_ITEM_TICKED, NULL, NULL },
-  { "Mirror <>", wuss_MENU_ITEM_NONE,  NULL, NULL },
-  { "Mirror ^v", wuss_MENU_ITEM_NONE,  NULL, NULL },
-  { "Quad",     wuss_MENU_ITEM_NONE,   NULL, NULL },
   { "Random palettes", wuss_MENU_ITEM_NONE, NULL, NULL }
 };
 
@@ -87,49 +82,13 @@ static int greeble_try_prefab(greeble_task_t *task,
   return 1;
 }
 
-/* Reflect the grid onto itself for task->symmetry: the top-left source region
- * is copied, mirrored, over the rest. A stamp is a fragment with no left/right
- * handedness to speak of, so cells are copied as-is rather than flipped --
- * the mirrored layout alone reads as symmetric. */
-static void greeble_fold(greeble_task_t *task)
-{
-  int r, c, sr, sc;
-
-  if (task->symmetry == greeble_SYM_NONE)
-    return;
-
-  for (r = 0; r < task->rows; r++)
-  {
-    sr = r;
-    if ((task->symmetry == greeble_SYM_MIRROR_Y ||
-         task->symmetry == greeble_SYM_QUAD) &&
-        r >= (task->rows + 1) / 2)
-      sr = task->rows - 1 - r;
-
-    for (c = 0; c < task->cols; c++)
-    {
-      sc = c;
-      if ((task->symmetry == greeble_SYM_MIRROR_X ||
-           task->symmetry == greeble_SYM_QUAD) &&
-          c >= (task->cols + 1) / 2)
-        sc = task->cols - 1 - c;
-
-      if (sr != r || sc != c)
-      {
-        task->grid[r][c]    = task->grid[sr][sc];
-        task->cellpal[r][c] = task->cellpal[sr][sc];
-      }
-    }
-  }
-}
-
 /* Fill the grid by scattering the artist's prefab blocks (greeble-tiles.h)
  * without overlap, then dropping a loose stamp into every cell no block
  * claimed. The blocks carry the intended circuit shapes; the loose stamps come
  * from greeble_filler[] -- the stamps the artist drew standing alone, i.e. the
  * shortlist that reads well without neighbours. GREEBLE_PREFAB_ATTEMPTS
  * placement tries give a dense but varied cover; more attempts just repaint
- * cells already taken. A symmetry mode then folds the result (greeble_fold). */
+ * cells already taken. */
 #define GREEBLE_PREFAB_ATTEMPTS (GREEBLE_MAX_COLS * GREEBLE_MAX_ROWS)
 
 static void greeble_generate(greeble_task_t *task)
@@ -178,8 +137,6 @@ static void greeble_generate(greeble_task_t *task)
         task->grid[r][c] =
           greeble_filler[s % (unsigned int) GREEBLE_NFILLER];
       }
-
-  greeble_fold(task);
 }
 
 /* recompute the grid extent for the window's content box, then regenerate */
@@ -291,55 +248,38 @@ static result_t greeble_select(greeble_task_t *task, wuss_window_t *window)
   return result_OK;
 }
 
-/* Adjust: step to the next base palette, same pattern. Regenerate so filler
- * cells (and prefab cells, when random palettes are off) pick up the new row;
- * the seed is unchanged so the layout is identical. */
-static result_t greeble_adjust(greeble_task_t *task, wuss_window_t *window)
+/* Flip per-prefab random palettes, keep the menu row's tick in step, and
+ * regenerate from the same seed so it is a straight A/B of the pattern.
+ * Shared by the Adjust click and the menu row. */
+static result_t greeble_toggle_randpal(greeble_task_t *task,
+                                       wuss_window_t  *window)
 {
-  task->palette = (unsigned char)
-    ((task->palette + 1) % GREEBLE_NPALETTE);
+  task->random_prefab_palettes = !task->random_prefab_palettes;
+  g_greeble_menu_items[GREEBLE_MENU_RANDPAL].flags =
+    task->random_prefab_palettes ? wuss_MENU_ITEM_TICKED
+                                 : wuss_MENU_ITEM_NONE;
   greeble_generate(task);
   wuss_window_invalidate_all(window);
 
   return result_OK;
 }
 
-/* Menu pick: adopt the chosen symmetry mode and regenerate from the same
- * seed so switching modes is a straight A/B of the current pattern. The
- * rows are mutually exclusive, so tick the chosen one and clear the rest. */
+/* Adjust: toggle per-prefab random palettes on the current pattern. */
+static result_t greeble_adjust(greeble_task_t *task, wuss_window_t *window)
+{
+  return greeble_toggle_randpal(task, window);
+}
+
+/* Menu pick: the sole row toggles per-prefab random palettes. */
 static result_t greeble_menu_select(greeble_task_t     *task,
                                     const wuss_event_t *event)
 {
-  int index, i;
-
   if (event->data.menu_select.menu != &g_greeble_menu)
     return result_OK;
-
-  index = event->data.menu_select.index;
-
-  if (index == GREEBLE_MENU_RANDPAL)
-  {
-    task->random_prefab_palettes = !task->random_prefab_palettes;
-    g_greeble_menu_items[index].flags = task->random_prefab_palettes
-                                          ? wuss_MENU_ITEM_TICKED
-                                          : wuss_MENU_ITEM_NONE;
-    greeble_generate(task);
-    wuss_window_invalidate_all(task->window);
-    return result_OK;
-  }
-
-  if (index < 0 || index >= greeble_SYM__LIMIT)
+  if (event->data.menu_select.index != GREEBLE_MENU_RANDPAL)
     return result_OK;
 
-  for (i = 0; i < greeble_SYM__LIMIT; i++)
-    g_greeble_menu_items[i].flags = (i == index) ? wuss_MENU_ITEM_TICKED
-                                                 : wuss_MENU_ITEM_NONE;
-
-  task->symmetry = (unsigned char) index;
-  greeble_generate(task);
-  wuss_window_invalidate_all(task->window);
-
-  return result_OK;
+  return greeble_toggle_randpal(task, task->window);
 }
 
 result_t greeble_handle(wuss_window_t      *window,
@@ -389,7 +329,6 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
   task->wuss     = wuss;
   task->seed     = 0x9E3779B9u; /* any nonzero start */
   task->palette  = 0;           /* Adjust cycles from here */
-  task->symmetry = greeble_SYM_NONE;
   task->random_prefab_palettes = 0; /* Menu toggles this */
 
   /* greeble_redraw paints every pixel itself */
