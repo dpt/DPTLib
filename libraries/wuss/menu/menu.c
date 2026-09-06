@@ -803,6 +803,37 @@ result_t wuss_menu_open(wuss_task_t        *task,
   return result_OK;
 }
 
+int wuss_menu_should_keep_open(const wuss_event_t *ev)
+{
+  if (ev == NULL || ev->kind != wuss_EVENT_MENU_SELECT)
+    return 0;
+
+  return (ev->data.menu_select.button & wuss_BUTTON_ADJUST) != 0;
+}
+
+result_t wuss_menu_open_ticked(wuss_task_t        *task,
+                               wuss_menu_t        *menu,
+                               const int          *ticked,
+                               point_t             at,
+                               wuss_menu_handle_t *out)
+{
+  wuss_menu_item_t *item;
+  int               i;
+
+  assert(menu != NULL);
+
+  for (i = 0; i < menu->nitems; i++)
+  {
+    item = (wuss_menu_item_t *) &menu->items[i];
+    if (ticked != NULL && ticked[i])
+      item->flags |= wuss_MENU_ITEM_TICKED;
+    else
+      item->flags &= ~(wuss_menu_item_flags_t) wuss_MENU_ITEM_TICKED;
+  }
+
+  return wuss_menu_open(task, menu, at, out);
+}
+
 void wuss_menu_close(wuss_menu_handle_t handle)
 {
   struct wuss__menu *root;
