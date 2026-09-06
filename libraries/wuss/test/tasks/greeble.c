@@ -388,8 +388,14 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
 {
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  size2d_t         grid_px;
   box_t            content;
   result_t         rc;
+
+  /* the full generator grid in pixels: content sized so cols/rows land
+   * exactly on the GREEBLE_MAX_* caps in 8-pixel tiles */
+  grid_px = SIZE2D(GREEBLE_MAX_COLS * GREEBLE_TILE_PX,
+                   GREEBLE_MAX_ROWS * GREEBLE_TILE_PX);
 
   task->wuss        = wuss;
   task->menu_handle = NULL;
@@ -411,11 +417,11 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
   wuss_task_set_autoclose(delegate, 1);
 
   rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(160, 320),
+                                 grid_px,
                                  "Greeble",
                                  wuss_WINDOW_NONE,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                 SIZE2D(160, 320),
+                                 grid_px,
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
