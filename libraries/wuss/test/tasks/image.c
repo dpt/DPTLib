@@ -272,6 +272,9 @@ result_t image_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
+    /* the proginfo dialogue shares this task; only paint our own window */
+    if (window != ic->window)
+      return result_OK;
     return image_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
