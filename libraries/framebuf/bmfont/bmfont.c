@@ -540,7 +540,7 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
 
     if (gridheight == 0)
     {
-      logf_error("bmfont: can't determine font height");
+      logf_error("%s", "bmfont: can't determine font height");
       rc = result_BAD_ARG;
       goto cleanup;
     }

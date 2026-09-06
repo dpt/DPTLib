@@ -195,12 +195,14 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
   screen_draw_line(c->scr, b->x1 - 1, mid_y, b->x1 - 1, b->y1 - 1, c->fg);
   screen_draw_line(c->scr, b->x0, b->y1 - 1, b->x1 - 1, b->y1 - 1, c->fg);
 
-  /* the top edge is broken around the caption */
+  /* the top edge is broken around the caption. INSET (8) always exceeds PAD
+   * (2), so gap_x0 sits a few pixels right of b->x0 and the left stub is
+   * always drawn; only the right stub can vanish, when a wide caption pushes
+   * gap_x1 past the frame's right edge. */
   cap_x  = b->x0 + WUSS_FRAME_CAPTION_INSET;
   gap_x0 = cap_x - WUSS_FRAME_CAPTION_PAD;
   gap_x1 = cap_x + cap_w + WUSS_FRAME_CAPTION_PAD;
-  if (gap_x0 > b->x0)
-    screen_draw_line(c->scr, b->x0, mid_y, gap_x0, mid_y, c->fg);
+  screen_draw_line(c->scr, b->x0, mid_y, gap_x0, mid_y, c->fg);
   if (gap_x1 < b->x1 - 1)
     screen_draw_line(c->scr, gap_x1, mid_y, b->x1 - 1, mid_y, c->fg);
 

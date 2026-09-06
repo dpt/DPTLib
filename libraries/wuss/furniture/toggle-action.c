@@ -151,8 +151,8 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
      * (NO_RESIZE_BLIT), the old and new content boxes do not overlap, or
      * screen_copy_rect declined. Repaint the whole union of old and new
      * footprint. */
-    logf_info("wuss furniture toggle: no blit fast path, repainting the whole "
-              "old+new footprint");
+    logf_info("%s", "wuss furniture toggle: no blit fast path, repainting the "
+                    "whole old+new footprint");
     box_union(&before, &window->visible, &dirty);
     wuss__invalidate_clipped(window, &dirty);
   }

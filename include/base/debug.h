@@ -5,7 +5,14 @@
 
 #include <stdio.h>
 
-/* Log a message - available in all builds. */
+/* Log a message - available in all builds.
+ *
+ * The format argument is mandatory and named separately from "...": that lets
+ * ",##__VA_ARGS__" swallow the comma when no variadic argument follows. The
+ * remaining wrinkle is that the swallow is a GNU extension -std=c99 -pedantic
+ * warns on ("ISO C99 requires rest arguments to be used"); callers with a
+ * fixed message and no substitutions must therefore pass a literal fmt that
+ * needs an argument, e.g. logf_info("%s", "done") rather than logf_info("done"). */
 #define logf_info(fmt, ...)    fprintf(stderr, "(info) " fmt "\n", ##__VA_ARGS__)
 #define logf_warning(fmt, ...) fprintf(stderr, "(warning) " fmt "\n", ##__VA_ARGS__)
 #define logf_error(fmt, ...)   fprintf(stderr, "(ERROR) %s:%d " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
