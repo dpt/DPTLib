@@ -141,4 +141,34 @@ result_t bmfont_draw(bmfont_t      *bmfont,
                      const point_t *pos,
                      point_t       *end_pos);
 
+/**
+ * Draw the given string twice to produce a relief (drop-shadow) effect: a
+ * shadow pass in colour \p shadow at (\p pos + \p offset), then the main
+ * pass in colour \p fg at \p pos.
+ *
+ * Both passes are drawn with a transparent background, so this only makes
+ * sense over existing content and \p fg and \p shadow should have full
+ * alpha.
+ *
+ * \param[in]   bmfont  Bitmap font to draw.
+ * \param[in]   scr     Screen to draw on.
+ * \param[in]   text    String to draw.
+ * \param[in]   len     Length of the string.
+ * \param[in]   fg      Foreground colour, used for the main pass.
+ * \param[in]   shadow  Shadow colour, used for the offset pass.
+ * \param[in]   pos     Position of the main pass in pixels.
+ * \param[in]   offset  Shadow displacement in pixels, e.g. { 1, 1 }.
+ * \param[out]  end_pos End position of the string in pixels.
+ * \return \ref result_OK on success, or appropriate result code otherwise.
+ */
+result_t bmfont_draw_relief(bmfont_t      *bmfont,
+                            screen_t      *scr,
+                            const char    *text,
+                            int            len,
+                            colour_t       fg,
+                            colour_t       shadow,
+                            const point_t *pos,
+                            const point_t *offset,
+                            point_t       *end_pos);
+
 #endif /* DPTLIB_BMFONT_H */

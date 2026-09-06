@@ -313,38 +313,40 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
         if (rc)
           return rc;
 
-        pos.x = centres[i].x - stringwidth / 2 + 1;
-        pos.y = centres[i].y - fontheight  / 2 + 1;
+        pos.x = centres[i].x - stringwidth / 2;
+        pos.y = centres[i].y - fontheight  / 2;
 
         bg = transparent ? state->transparent : state->palette[palette_PICO8_GREEN];
 
         if (transparent)
         {
+          const point_t shadow_offset = {1, 1};
+
+          rc = bmfont_draw_relief(bmfonts[font].bmfont,
+                                 &state->scr,
+                                  lorem_ipsum,
+                                  nchars,
+                                  state->palette[palette_PICO8_WHITE],
+                                  state->palette[palette_PICO8_BLACK],
+                                 &pos,
+                                 &shadow_offset,
+                                  NULL /*endpos*/);
+          if (rc)
+            return rc;
+        }
+        else
+        {
           rc = bmfont_draw(bmfonts[font].bmfont,
                           &state->scr,
                            lorem_ipsum,
                            nchars,
-                           state->palette[palette_PICO8_BLACK],
+                           state->palette[palette_PICO8_WHITE],
                            bg,
                           &pos,
                            NULL /*endpos*/);
           if (rc)
             return rc;
         }
-
-        pos.x--;
-        pos.y--;
-
-        rc = bmfont_draw(bmfonts[font].bmfont,
-                        &state->scr,
-                         lorem_ipsum,
-                         nchars,
-                         state->palette[palette_PICO8_WHITE],
-                         bg,
-                        &pos,
-                         NULL /*endpos*/);
-        if (rc)
-          return rc;
       }
 
       snprintf(leafname, sizeof(leafname),
