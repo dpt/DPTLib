@@ -81,10 +81,14 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   if (action == wuss_MOUSE_DOWN)
     wuss->menu_eat_up = 0;
 
-  /* A press outside every window in the open menu chain dismisses the chain
-   * and is spent doing so. Presses inside the chain fall through to the menu
-   * window's own delegate. */
-  if (action == wuss_MOUSE_DOWN && wuss__menu_click_outside(wuss, win))
+  /* A press outside every window in the open menu chain dismisses the chain.
+   * Presses inside the chain fall through to the menu window's own delegate.
+   * A MENU press that lands on another window is not spent by the dismissal:
+   * it falls through so that window's delegate can open its own menu at the
+   * new spot, matching the RISC OS "MENU moves the menu" feel. */
+  if (action == wuss_MOUSE_DOWN               &&
+      wuss__menu_click_outside(wuss, win)     &&
+      !(win != NULL && (button & wuss_BUTTON_MENU)))
     return result_OK;
 #endif
 

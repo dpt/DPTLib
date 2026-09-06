@@ -301,6 +301,39 @@ static void flash_pick_row(wuss_t            *wuss,
   wuss_mouse_click(wuss, at, button, wuss_MOUSE_DOWN, NULL);
   wuss_mouse_click(wuss, at, button, wuss_MOUSE_UP, NULL);
 }
+
+/* A task that opens its own menu on a MENU press over its window, the way a
+ * real content task (e.g. greeble) does. task_data points to a menu_task_t
+ * so the test can see the press arrived and which menu it raised. */
+typedef struct menu_task
+{
+  wuss_task_t      *self;
+  const wuss_menu_t *menu;
+  int               menu_press_count;
+}
+menu_task_t;
+
+static result_t menu_open_handle(wuss_window_t      *window,
+                                 const wuss_event_t *event,
+                                 void               *task_data)
+{
+  menu_task_t *mt;
+
+  NOT_USED(window);
+
+  mt = task_data;
+
+  if (event->kind == wuss_EVENT_MOUSE                     &&
+      event->data.mouse.action == wuss_MOUSE_DOWN         &&
+      (event->data.mouse.button & wuss_BUTTON_MENU))
+  {
+    mt->menu_press_count++;
+    return wuss_menu_open(mt->self, mt->menu,
+                          event->data.mouse.point, NULL);
+  }
+
+  return result_OK;
+}
 #endif
 
 /* ----------------------------------------------------------------------- */
@@ -4213,6 +4246,138 @@ FlashDestroy:
 FlashFailFree:
     free(fpixels);
 FlashFail:
+    bmfont_destroy(font);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+  }
+
+  printf("test: a MENU press over another window closes the open menu and "
+         "reaches that window's task so it opens its own menu\n");
+  {
+    static const wuss_menu_item_t menu_a_items[] =
+    {
+      { "A-one", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_item_t menu_b_items[] =
+    {
+      { "B-one", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_t menu_a = { "A", menu_a_items, NELEMS(menu_a_items) };
+    static const wuss_menu_t menu_b = { "B", menu_b_items, NELEMS(menu_b_items) };
+
+    const char        *fontfile;
+    bmfont_t          *font = NULL;
+    wuss_font_desc_t   fdesc;
+    screen_t           mscr;
+    bitmap_t           mbm;
+    void              *mpixels;
+    wuss_t            *mwuss;
+    menu_task_t        mta, mtb;
+    wuss_task_t       *task_a, *task_b;
+    wuss_window_t     *wa, *wb;
+    box_t              ba, bb;
+
+    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
+                                  path_join_leafname("Tiny", "png"));
+    rc = bmfont_create(fontfile, &font);
+    if (rc != result_OK)
+    {
+      printf("wuss_test: menu-move test could not load %s\n", fontfile);
+      goto Failure;
+    }
+
+    mpixels = malloc((size_t) rowbytes * 200);
+    if (mpixels == NULL) { rc = result_OOM; goto MoveFail; }
+    rc = bitmap_init(&mbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, mpixels);
+    if (rc != result_OK) goto MoveFailFree;
+    screen_for_bitmap(&mscr, &mbm);
+
+    fdesc.font       = font;
+    fdesc.font_class = wuss_FONT_CLASS_NONE;
+    fdesc.name       = NULL;
+    rc = wuss_create(&mscr, &fdesc, 1, NULL, 0, NULL, NULL, &mwuss);
+    if (rc != result_OK) goto MoveFailFree;
+
+    memset(&mta, 0, sizeof(mta));
+    memset(&mtb, 0, sizeof(mtb));
+    mta.menu = &menu_a;
+    mtb.menu = &menu_b;
+
+    task_a = mk_task(mwuss, menu_open_handle, &mta);
+    task_b = mk_task(mwuss, menu_open_handle, &mtb);
+    if (task_a == NULL || task_b == NULL) { rc = result_OOM; goto MoveDestroy; }
+    mta.self = task_a;
+    mtb.self = task_b;
+
+    /* two well-separated chromeless client windows, so the whole visible box
+     * is content and menu A (which opens at the press point inside A) cannot
+     * reach into B's box */
+    ba.x0 = 6;   ba.y0 = 6;   ba.x1 = 60;  ba.y1 = 60;
+    bb.x0 = 130; bb.y0 = 130; bb.x1 = 190; bb.y1 = 190;
+
+    rc = wuss_window_create(task_a, &ba, "A",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK |
+                            wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
+                            wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            box_size(&ba), SIZE2D(0, 0), &wa);
+    if (rc != result_OK) goto MoveDestroy;
+
+    rc = wuss_window_create(task_b, &bb, "B",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK |
+                            wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
+                            wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            box_size(&bb), SIZE2D(0, 0), &wb);
+    if (rc != result_OK) goto MoveDestroy;
+
+    /* MENU over A: task A opens menu A */
+    wuss_mouse_click(mwuss, POINT(20, 20), wuss_BUTTON_MENU,
+                     wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(mwuss, POINT(20, 20), wuss_BUTTON_MENU,
+                     wuss_MOUSE_UP, NULL);
+
+    if (mta.menu_press_count != 1)            goto MoveCheckFail;
+    if (mwuss->menu_chain == NULL ||
+        mwuss->menu_chain->menu != &menu_a)   goto MoveCheckFail;
+
+    /* MENU over B while menu A is still open: the old chain must close AND
+     * task B must get the press so menu B opens in its place. Regression:
+     * before the mouse-click fix the press was spent closing menu A and B
+     * never heard it. */
+    wuss_mouse_click(mwuss, POINT(160, 160), wuss_BUTTON_MENU,
+                     wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(mwuss, POINT(160, 160), wuss_BUTTON_MENU,
+                     wuss_MOUSE_UP, NULL);
+
+    if (mtb.menu_press_count != 1)            goto MoveCheckFail;
+    if (mwuss->menu_chain == NULL ||
+        mwuss->menu_chain->menu != &menu_b)   goto MoveCheckFail;
+
+    /* a plain SELECT press on bare backdrop still just dismisses */
+    wuss_mouse_click(mwuss, POINT(4, 196), wuss_BUTTON_SELECT,
+                     wuss_MOUSE_DOWN, NULL);
+    if (mwuss->menu_chain != NULL)            goto MoveCheckFail;
+
+    rc = result_OK;
+    goto MoveDestroy;
+
+MoveCheckFail:
+    printf("wuss_test: menu-move check failed "
+           "(a_press=%d b_press=%d chain=%p)\n",
+           mta.menu_press_count, mtb.menu_press_count,
+           (void *) mwuss->menu_chain);
+    rc = result_TEST_FAILED;
+
+MoveDestroy:
+    reap_test_tasks();
+    wuss_destroy(mwuss);
+MoveFailFree:
+    free(mpixels);
+MoveFail:
     bmfont_destroy(font);
     if (rc != result_OK)
       return result_TEST_FAILED;
