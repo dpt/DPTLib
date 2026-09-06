@@ -60,11 +60,11 @@ result_t image_create(wuss_t       *wuss,
   const char      *images_dir;
   size2d_t         sz;
 
-  task->wuss      = wuss;
-  task->delegate  = NULL;
-  task->resources = resources;
-  task->index     = 0;
-  task->nnames    = 0;
+  task->wuss        = wuss;
+  task->delegate    = NULL;
+  task->resources   = resources;
+  task->index       = 0;
+  task->nnames      = 0;
   task->menu        = NULL;
   task->proginfo    = NULL;
   task->menu_handle = NULL;
