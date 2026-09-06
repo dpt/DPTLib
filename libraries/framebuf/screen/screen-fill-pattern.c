@@ -17,11 +17,11 @@
  * bit per pixel rather than using the run. */
 typedef pixelfmt_any_t pattern_runs_t[8][8];
 
-static void screen_fill_pattern_p4(screen_t            *scr,
-                                   const pattern_t     *pattern,
-                                   const box_t         *draw_box,
-                                   int                  stencil,
-                                   const pattern_runs_t runs)
+static void screen_fill_pattern_p4(screen_t        *scr,
+                                   const pattern_t *pattern,
+                                   const box_t     *draw_box,
+                                   int              stencil,
+                                   pattern_runs_t   runs)
 {
   unsigned char *rowp;
   int            row, col, x, y;
@@ -56,12 +56,12 @@ static void screen_fill_pattern_p4(screen_t            *scr,
   }
 }
 
-static void screen_fill_pattern_32(screen_t            *scr,
-                                   const pattern_t     *pattern,
-                                   const box_t         *draw_box,
-                                   int                  stencil,
-                                   pixelfmt_any_t       fg_fmt,
-                                   const pattern_runs_t runs)
+static void screen_fill_pattern_32(screen_t        *scr,
+                                   const pattern_t *pattern,
+                                   const box_t     *draw_box,
+                                   int              stencil,
+                                   pixelfmt_any_t   fg_fmt,
+                                   pattern_runs_t   runs)
 {
   unsigned char *rowp;
   int            row, col, x, y;

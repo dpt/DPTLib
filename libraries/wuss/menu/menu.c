@@ -27,9 +27,9 @@
 /* Row padding above/below the glyph, and the gutters left for the tick (left)
  * and the submenu arrow (right). All in pixels. */
 #define WUSS_MENU_ROW_PAD         4
-#define WUSS_MENU_TICK_W         14
-#define WUSS_MENU_ARROW_W        14
-#define WUSS_MENU_TEXT_PAD        6
+#define WUSS_MENU_GUTTER_LEFT    14
+#define WUSS_MENU_GUTTER_RIGHT   14
+#define WUSS_MENU_TITLE_PAD       2 /* margin either side of the titlebar caption slot, matching wuss__titlebar_draw */
 #define WUSS_MENU_SUBMENU_OVERLAP 2 /* px a submenu overlaps its parent's right edge */
 
 /* SELECT-pick flash: toggle the row highlight every WUSS_MENU_FLASH_PERIOD
@@ -374,7 +374,7 @@ static int wuss__pointer_over_icon(wuss_window_t     *window,
 
 /* True if the wuss pointer sits over the submenu-arrow gutter of row `icon`
  * in `window`: the pointer is within the row vertically and inside the
- * rightmost WUSS_MENU_ARROW_W pixels of it. A submenu opens only from here,
+ * rightmost WUSS_MENU_GUTTER_RIGHT pixels of it. A submenu opens only from here,
  * so re-entering the parent anywhere else closes the child. */
 static int wuss__pointer_over_row_arrow(wuss_window_t     *window,
                                         const wuss_icon_t *icon)
@@ -392,7 +392,7 @@ static int wuss__pointer_over_row_arrow(wuss_window_t     *window,
   wuss_icon_get_bbox(icon, &bbox);
 
   return doc.y >= bbox.y0 && doc.y < bbox.y1
-      && doc.x >= bbox.x1 - WUSS_MENU_ARROW_W && doc.x < bbox.x1;
+      && doc.x >= bbox.x1 - WUSS_MENU_GUTTER_RIGHT && doc.x < bbox.x1;
 }
 
 /* End the pick flash on `self` now: leave the flashed row un-highlit unless the
@@ -549,7 +549,37 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
       widest = (int) w;
   }
 
-  width  = WUSS_MENU_TICK_W + widest + WUSS_MENU_TEXT_PAD + WUSS_MENU_ARROW_W;
+  /* the row draws its text as if a space padded it either side (see
+   * wuss__icon_draw_menu_entry), so the text column must be wide enough
+   * for two of those */
+  {
+    bmfont_width_t space_w = 0;
+
+    bmfont_measure(wuss->fonts[0], " ", 1, INT_MAX, NULL, &space_w);
+    widest += 2 * (int) space_w;
+  }
+
+  width  = WUSS_MENU_GUTTER_LEFT + widest + WUSS_MENU_GUTTER_RIGHT;
+
+  /* widen for the titlebar caption too, so a title longer than every item
+   * label (e.g. a one-item menu) isn't clipped; titles draw in the bold
+   * weight (font slot 1), falling back to the system font, same as
+   * wuss__titlebar_draw */
+  if (menu->title != NULL && menu->title[0] != '\0')
+  {
+    bmfont_t      *titlefont;
+    int             titlelen;
+    int             split;
+    bmfont_width_t  title_w;
+
+    titlefont = (wuss->nfonts > 1 && wuss->fonts[1] != NULL) ? wuss->fonts[1]
+                                                             : wuss->fonts[0];
+    titlelen  = (int) strlen(menu->title);
+    if (bmfont_measure(titlefont, menu->title, titlelen, INT_MAX, &split,
+                       &title_w) == result_OK &&
+        (int) title_w + 2 * WUSS_MENU_TITLE_PAD > width)
+      width = (int) title_w + 2 * WUSS_MENU_TITLE_PAD;
+  }
 
   /* every item is a full row now; a dashed item also gets a sep_h rule above.
    * doc_h is the whole menu; `height` is what the window actually shows. When
@@ -753,7 +783,7 @@ result_t wuss_menu_open(wuss_task_t        *task,
   /* RISC OS convention: the pointer opens the menu sitting a little inside its
    * first item, not on the top-left corner. Shift the content top-left up and
    * left so `at` (the pointer) lands over row 0. */
-  at.x -= WUSS_MENU_TICK_W;
+  at.x -= WUSS_MENU_GUTTER_LEFT;
   at.y -= WUSS_MENU_ROW_PAD;
 
   rc = wuss__menu_spawn(wuss, task, menu, at, NULL, &root);
@@ -771,6 +801,37 @@ result_t wuss_menu_open(wuss_task_t        *task,
   if (out != NULL)
     *out = root;
   return result_OK;
+}
+
+int wuss_menu_should_keep_open(const wuss_event_t *ev)
+{
+  if (ev == NULL || ev->kind != wuss_EVENT_MENU_SELECT)
+    return 0;
+
+  return (ev->data.menu_select.button & wuss_BUTTON_ADJUST) != 0;
+}
+
+result_t wuss_menu_open_ticked(wuss_task_t        *task,
+                               wuss_menu_t        *menu,
+                               const int          *ticked,
+                               point_t             at,
+                               wuss_menu_handle_t *out)
+{
+  wuss_menu_item_t *item;
+  int               i;
+
+  assert(menu != NULL);
+
+  for (i = 0; i < menu->nitems; i++)
+  {
+    item = (wuss_menu_item_t *) &menu->items[i];
+    if (ticked != NULL && ticked[i])
+      item->flags |= wuss_MENU_ITEM_TICKED;
+    else
+      item->flags &= ~(wuss_menu_item_flags_t) wuss_MENU_ITEM_TICKED;
+  }
+
+  return wuss_menu_open(task, menu, at, out);
 }
 
 void wuss_menu_close(wuss_menu_handle_t handle)
@@ -805,32 +866,62 @@ int wuss_menu_is_open(wuss_menu_handle_t handle)
   return root->wuss->menu_chain == root;
 }
 
-void wuss_menu_set_ticked(wuss_menu_handle_t handle,
-                          const wuss_menu_t *menu,
-                          int                index)
+/* Find the open chain level showing `menu`, or NULL if `handle` is stale or
+ * `menu` is not a level of its chain. Shared by wuss_menu_set_ticked and
+ * wuss_menu_set_item_ticked. */
+static struct wuss__menu *wuss__menu_open_level(wuss_menu_handle_t handle,
+                                                const wuss_menu_t *menu)
 {
   struct wuss__menu *root;
   struct wuss__menu *node;
-  int                i;
 
   if (handle == NULL || menu == NULL)
-    return;
+    return NULL;
 
   root = handle;
   while (root->parent != NULL)
     root = root->parent;
 
   if (root->wuss->menu_chain != root)
-    return; /* stale handle */
+    return NULL; /* stale handle */
 
   for (node = root; node != NULL; node = node->child)
     if (node->menu == menu)
-      break;
+      return node;
+
+  return NULL; /* menu is not a level of this chain */
+}
+
+void wuss_menu_set_ticked(wuss_menu_handle_t handle,
+                          const wuss_menu_t *menu,
+                          int                index)
+{
+  struct wuss__menu *node;
+  int                i;
+
+  node = wuss__menu_open_level(handle, menu);
   if (node == NULL)
-    return; /* menu is not a level of this chain */
+    return;
 
   for (i = 0; i < menu->nitems; i++)
     wuss_icon_set_selected(node->icons[i], i == index);
+}
+
+void wuss_menu_set_item_ticked(wuss_menu_handle_t handle,
+                               const wuss_menu_t *menu,
+                               int                index,
+                               int                ticked)
+{
+  struct wuss__menu *node;
+
+  node = wuss__menu_open_level(handle, menu);
+  if (node == NULL)
+    return;
+
+  if (index < 0 || index >= menu->nitems)
+    return;
+
+  wuss_icon_set_selected(node->icons[index], ticked);
 }
 
 /* ----------------------------------------------------------------------- */

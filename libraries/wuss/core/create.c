@@ -37,10 +37,10 @@ static result_t validate_bevel_backdrop(const wuss_t *w,
                                         wuss_colour_t abg,
                                         wuss_colour_t afg)
 {
-  if (blight < 0 || blight >= w->npalette ||
-      bdark  < 0 || bdark  >= w->npalette ||
-      abg    < 0 || abg    >= w->npalette ||
-      afg    < 0 || afg    >= w->npalette ||
+  if (blight >= w->npalette ||
+      bdark  >= w->npalette ||
+      abg    >= w->npalette ||
+      afg    >= w->npalette ||
       wuss__validate_backdrop(w, &w->backdrop) != result_OK)
     return result_WUSS_BAD_COLOUR;
 
@@ -165,15 +165,15 @@ result_t wuss_create(screen_t               *scr,
     afg    = fg;
   }
 
-  if (pal.title.bg        < 0 || pal.title.bg        >= w->npalette ||
-      pal.title.fg        < 0 || pal.title.fg        >= w->npalette ||
-      pal.back            < 0 || pal.back            >= w->npalette ||
-      pal.close           < 0 || pal.close           >= w->npalette ||
-      pal.toggle          < 0 || pal.toggle          >= w->npalette ||
-      pal.resize          < 0 || pal.resize          >= w->npalette ||
-      pal.scroll.arrows   < 0 || pal.scroll.arrows   >= w->npalette ||
-      pal.scroll.wells    < 0 || pal.scroll.wells    >= w->npalette ||
-      pal.scroll.sausages < 0 || pal.scroll.sausages >= w->npalette ||
+  if (pal.title.bg        >= w->npalette ||
+      pal.title.fg        >= w->npalette ||
+      pal.back            >= w->npalette ||
+      pal.close           >= w->npalette ||
+      pal.toggle          >= w->npalette ||
+      pal.resize          >= w->npalette ||
+      pal.scroll.arrows   >= w->npalette ||
+      pal.scroll.wells    >= w->npalette ||
+      pal.scroll.sausages >= w->npalette ||
       validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
   {
     wuss__free(w, w->palette);

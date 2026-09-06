@@ -100,6 +100,7 @@ set(PUBLIC_HEADERS
     include/geom/packer.h
     include/geom/point.h
     include/geom/size.h
+    include/io/dirscan.h
     include/io/path.h
     include/io/stream-mem.h
     include/io/stream-mtfcomp.h
@@ -293,6 +294,7 @@ set(GEOM_SOURCES
     libraries/geom/packer/packer.c)
 
 set(IO_SOURCES
+    libraries/io/dirscan/dirscan.c
     libraries/io/path/path.c
     libraries/io/stream/stream-mem.c
     libraries/io/stream/stream-mtfcomp.c
@@ -352,6 +354,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/create.c
     libraries/wuss/core/destroy.c
     libraries/wuss/core/get-font.c
+    libraries/wuss/core/get-palette.c
     libraries/wuss/core/get-pointer.c
     libraries/wuss/core/idle.c
     libraries/wuss/core/impl.h
@@ -381,6 +384,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/window/resize.c
     libraries/wuss/core/window/restack.c
     libraries/wuss/core/window/set-background.c
+    libraries/wuss/core/window/set-doc.c
     libraries/wuss/core/window/set-hidden.c
     libraries/wuss/core/window/set-scroll.c
     libraries/wuss/core/window/try-close.c)
@@ -702,8 +706,9 @@ endif()
 #
 
 if(BUILD_APPS)
-    # The Wuss interactive demo: main.c drives wuss and the task launcher; a
-    # per-platform backend (frontend-*.c) opens the surface and reports input.
+    # The Wuss interactive demo: main.c drives wuss, tasks.c wires the task
+    # launcher and its menus; a per-platform backend (frontend-*.c) opens the
+    # surface and reports input.
     # RISC OS uses native VDU/OS_Mouse calls; everything else uses SDL.
     if(NOT (WUSS_FURNITURE AND WUSS_ICONS))
         message(FATAL_ERROR "BUILD_APPS requires WUSS_FURNITURE and WUSS_ICONS")
@@ -711,6 +716,7 @@ if(BUILD_APPS)
 
     set(WUSS_APP_SOURCES
         apps/wuss/main.c
+        apps/wuss/tasks.c
         libraries/wuss/test/tasks/ball.c
         libraries/wuss/test/tasks/blank.c
         libraries/wuss/test/tasks/chars.c
@@ -718,9 +724,11 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/clock.c
         libraries/wuss/test/tasks/curve.c
         libraries/wuss/test/tasks/gradient.c
+        libraries/wuss/test/tasks/greeble.c
         libraries/wuss/test/tasks/icons.c
         libraries/wuss/test/tasks/image.c
         libraries/wuss/test/tasks/lissajous.c
+        libraries/wuss/test/tasks/minesweeper.c
         libraries/wuss/test/tasks/palette.c
         libraries/wuss/test/tasks/porter-duff.c
         libraries/wuss/test/tasks/sofa.c
@@ -763,8 +771,12 @@ if(BUILD_APPS)
             "-sALLOW_MEMORY_GROWTH=1"
             "-sEXIT_RUNTIME=0"
             "--preload-file"
-            "${CMAKE_CURRENT_SOURCE_DIR}/resources@/resources")
-        set_target_properties(wuss PROPERTIES SUFFIX ".html")
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources@/resources"
+            "--shell-file"
+            "${CMAKE_CURRENT_SOURCE_DIR}/apps/wuss/shell.html")
+        set_target_properties(wuss PROPERTIES
+            SUFFIX ".html"
+            LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/apps/wuss/shell.html")
     else()
         find_package(SDL3 REQUIRED)
         target_compile_definitions(wuss PRIVATE USE_SDL)
