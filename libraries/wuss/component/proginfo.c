@@ -9,6 +9,7 @@
 #endif
 
 #include "base/result.h"
+#include "base/utils.h"
 #include "framebuf/bmfont.h"
 #include "geom/box.h"
 #include "geom/size.h"
@@ -112,25 +113,18 @@ result_t wuss_proginfo_create(wuss_proginfo_t           **out,
       if (vlen > 0)
         bmfont_measure(font, values[i], (int) vlen, INT_MAX, NULL, &vw);
     }
-    if (lw > namew)
-      namew = lw;
-    if (vw > valuew)
-      valuew = vw;
+    namew  = MAX(namew, (int) lw);
+    valuew = MAX(valuew, (int) vw);
     nrows++;
   }
 
   fonth = 0;
   if (font != NULL)
     bmfont_get_info(font, NULL, &fonth);
-  rowh = fonth + PROGINFO_ROW_PAD;
-  if (rowh < 12)
-    rowh = 12;
+  rowh = MAX(fonth + PROGINFO_ROW_PAD, 12);
 
-  if (namew < 1)
-    namew = 1;
-  if (valuew < 1)
-    valuew = 1;
-  valuew += PROGINFO_FIELD_PAD * 2; /* room for the groove border + inset */
+  namew  = MAX(namew, 1);
+  valuew = MAX(valuew, 1) + PROGINFO_FIELD_PAD * 2; /* groove border + inset */
 
   w = PROGINFO_MARGIN * 2 + namew + PROGINFO_GAP + valuew;
   h = PROGINFO_MARGIN * 2 + rowh * nrows;
