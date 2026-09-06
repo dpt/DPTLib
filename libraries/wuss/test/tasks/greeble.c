@@ -28,7 +28,8 @@ static wuss_menu_item_t g_greeble_menu_items[] =
   { "Random palettes", wuss_MENU_ITEM_NONE, NULL, NULL }
 };
 
-static const wuss_menu_t g_greeble_menu =
+/* non-const: wuss_menu_open_ticked writes the tick back to the item array */
+static wuss_menu_t g_greeble_menu =
 {
   "Greeble", g_greeble_menu_items, NELEMS(g_greeble_menu_items)
 };
@@ -329,7 +330,7 @@ static result_t greeble_menu_select(greeble_task_t     *task,
 
   rc = greeble_toggle_randpal(task, task->window);
 
-  if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
+  if (wuss_menu_should_keep_open(event))
     wuss_menu_set_item_ticked(task->menu_handle, &g_greeble_menu,
                               GREEBLE_MENU_RANDPAL,
                               task->random_prefab_palettes);
@@ -357,14 +358,14 @@ result_t greeble_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
-      /* the menu struct is shared by every greeble window; sync its tick to
-       * this window's state before it opens */
-      g_greeble_menu_items[GREEBLE_MENU_RANDPAL].flags =
-        task->random_prefab_palettes ? wuss_MENU_ITEM_TICKED
-                                     : wuss_MENU_ITEM_NONE;
-      return wuss_menu_open(task->delegate, &g_greeble_menu,
-                            wuss_get_pointer(task->wuss),
-                            &task->menu_handle);
+      /* the menu struct is shared by every greeble window; sync its sole
+       * tick to this window's state before it opens */
+      int ticks[1];
+
+      ticks[GREEBLE_MENU_RANDPAL] = task->random_prefab_palettes;
+      return wuss_menu_open_ticked(task->delegate, &g_greeble_menu, ticks,
+                                   wuss_get_pointer(task->wuss),
+                                   &task->menu_handle);
     }
     if (event->data.mouse.button & wuss_BUTTON_SELECT)
       return greeble_select(task, window);

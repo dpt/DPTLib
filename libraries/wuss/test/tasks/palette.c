@@ -150,6 +150,7 @@ result_t palette_create(wuss_t         *wuss,
   task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].text    = "Invert";
   task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].submenu = NULL;
   task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].window  = NULL;
+  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].flags   = wuss_MENU_ITEM_DASHED;
   task->menu.title  = "Palette";
   task->menu.items  = task->menu_items;
   task->menu.nitems = task->nnames + 1;
@@ -227,21 +228,20 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
 
 /* Set the picker menu's ticks from task->selected/invert, then open it. The
  * menu itself is built once by palette_create and lives in *pc, so it
- * outlives the open chain as wuss_menu_open requires. */
+ * outlives the open chain as wuss_menu_open requires. The invert row's
+ * permanent DASHED flag is set at create time; wuss_menu_open_ticked only
+ * touches the TICKED bit. */
 static result_t palette_menu_open(palette_task_t *pc)
 {
+  int ticks[PALETTE_MAX_FILES + 1];
   int i;
 
   for (i = 0; i < pc->nnames; i++)
-    pc->menu_items[i].flags = (i == pc->selected) ? wuss_MENU_ITEM_TICKED
-                                                  : wuss_MENU_ITEM_NONE;
+    ticks[i] = (i == pc->selected);
+  ticks[PALETTE_MENU_INVERT_INDEX(pc)] = pc->invert;
 
-  pc->menu_items[PALETTE_MENU_INVERT_INDEX(pc)].flags =
-    wuss_MENU_ITEM_DASHED | (pc->invert ? wuss_MENU_ITEM_TICKED
-                                        : wuss_MENU_ITEM_NONE);
-
-  return wuss_menu_open(pc->delegate, &pc->menu, wuss_get_pointer(pc->wuss),
-                        &pc->menu_handle);
+  return wuss_menu_open_ticked(pc->delegate, &pc->menu, ticks,
+                               wuss_get_pointer(pc->wuss), &pc->menu_handle);
 }
 
 static result_t palette_click(palette_task_t *pc, const wuss_event_t *event)
@@ -302,7 +302,7 @@ static result_t palette_menu_select(palette_task_t     *pc,
 
   /* SELECT (as opposed to ADJUST) has already closed and freed the chain by
    * the time this event arrives; the handle is stale, don't touch it */
-  if (!(event->data.menu_select.button & wuss_BUTTON_ADJUST))
+  if (!wuss_menu_should_keep_open(event))
     pc->menu_handle = NULL;
 
   if (pc->nnames == 0)

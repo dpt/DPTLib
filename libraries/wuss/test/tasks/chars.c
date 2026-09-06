@@ -289,7 +289,7 @@ result_t chars_handle(wuss_window_t      *window,
 
       rc = chars_set_font(cc, event->data.menu_select.index, name);
 
-      if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
+      if (wuss_menu_should_keep_open(event))
         /* ADJUST keeps the chain open without rebuilding it, so the
          * fresh-open tick set in chars_open_menu is now stale on screen;
          * retick the still-open chain in place to match cc->current */
