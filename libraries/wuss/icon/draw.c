@@ -1,5 +1,6 @@
 /* wuss/icon/draw.c -- draw a work-area icon */
 
+#include <limits.h>
 #include <string.h>
 
 #include "base/utils.h"
@@ -131,7 +132,6 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   const box_t       *b    = &c->b;
   colour_t           bg;
   point_t            pos;
-  int                interior_w, split_point;
   bmfont_width_t     width;
 
   if (icon->bg != wuss_NO_BACKGROUND)
@@ -165,10 +165,10 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   if (!c->have_font)
     return;
 
-  interior_w = MAX((b->x1 - b->x0) - 2, 1);
-
+  /* Measure the whole string, not the box interior: a clipped measurement
+   * left the widest label of a right-justified set overhanging the rest. */
   bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
-                 interior_w, &split_point, &width);
+                 INT_MAX, NULL, &width);
 
   if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_CENTRE)
     pos.x = b->x0 + ((b->x1 - b->x0) - width) / 2;
