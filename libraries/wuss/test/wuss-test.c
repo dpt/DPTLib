@@ -4484,7 +4484,8 @@ result_t wuss_test(const char *resources)
 
   box_a.x0 = 0; box_a.y0 = 0; box_a.x1 = 100; box_a.y1 = 0;
   rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_a, "toosmall", wuss_WINDOW_NONE,
-                          wuss_NO_BACKGROUND, box_size(&box_a),
+                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          box_size(&box_a),
                           SIZE2D(0, 0), &win_a);
   if (rc != result_WUSS_TOO_SMALL)
     goto Failure;
@@ -4500,14 +4501,16 @@ result_t wuss_test(const char *resources)
 
   box_a.x0 = 0; box_a.y0 = 0; box_a.x1 = 100; box_a.y1 = 100;
   rc = wuss_window_create(delegate_a, &box_a, "A", chromeless,
-                          wuss_NO_BACKGROUND, SIZE2D(400, 400),
+                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          SIZE2D(400, 400),
                           SIZE2D(0, 0), &win_a);
   if (rc != result_OK)
     goto Failure;
 
   box_b.x0 = 50; box_b.y0 = 50; box_b.x1 = 150; box_b.y1 = 150;
   rc = wuss_window_create(delegate_b, &box_b, "B", chromeless,
-                          wuss_NO_BACKGROUND, SIZE2D(400, 400),
+                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          SIZE2D(400, 400),
                           SIZE2D(0, 0), &win_b);
   if (rc != result_OK)
     goto Failure;
@@ -4562,7 +4565,8 @@ result_t wuss_test(const char *resources)
      * so the clamp caps content at the full 200x200 screen */
     box_big.x0 = 10; box_big.y0 = 10; box_big.x1 = 400; box_big.y1 = 400;
     rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_big, "BIG", chromeless,
-                            wuss_NO_BACKGROUND, SIZE2D(400, 400),
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            SIZE2D(400, 400),
                             SIZE2D(0, 0), &win_big);
     if (rc != result_OK)
       goto Failure;
@@ -4622,13 +4626,16 @@ result_t wuss_test(const char *resources)
   if (tc_a.last_x != 10 || tc_a.last_y != 5)
     goto Failure;
 
-  printf("test: wheel scroll delivers SCROLL event and moves offset\n");
+  printf("test: wheel scroll routes to the window but a NO_VSCROLL window "
+         "does not move\n");
 
+  /* chromeless carries NO_VSCROLL, so wuss__scroll_step suppresses the wheel
+   * step: the window is still the hit target but its offset is unchanged. */
   wuss_scroll(wuss, POINT(20, 20), 8, &hit);
   if (hit != win_a)
     goto Failure;
   wuss_window_get_scroll(win_a, &scroll);
-  if (scroll.y != 13)
+  if (scroll.y != 5)
     goto Failure;
 
   printf("test: invalidate marks dirty region\n");
