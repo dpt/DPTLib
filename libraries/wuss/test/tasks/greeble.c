@@ -263,10 +263,16 @@ static result_t greeble_toggle_randpal(greeble_task_t *task,
   return result_OK;
 }
 
-/* Adjust: toggle per-prefab random palettes on the current pattern. */
+/* Adjust: step to the next base palette on the current pattern. Regenerate so
+ * filler cells (and prefab cells, when random palettes are off) pick up the new
+ * row; the seed is unchanged so the layout is identical. */
 static result_t greeble_adjust(greeble_task_t *task, wuss_window_t *window)
 {
-  return greeble_toggle_randpal(task, window);
+  task->palette = (unsigned char) ((task->palette + 1) % GREEBLE_NPALETTE);
+  greeble_generate(task);
+  wuss_window_invalidate_all(window);
+
+  return result_OK;
 }
 
 /* Menu pick: the sole row toggles per-prefab random palettes. An ADJUST pick
