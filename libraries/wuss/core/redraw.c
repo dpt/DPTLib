@@ -90,6 +90,9 @@ static void redraw_window(wuss_t        *wuss,
                         content.x0 - win->scroll.x,
                         content.y0 - win->scroll.y);
 
+    /* NO_REDRAW: the backdrop fill above plus the icons below are the
+     * window's whole appearance, so skip the client redraw entirely */
+    if (!(win->flags & wuss_WINDOW_NO_REDRAW))
     {
       result_t     crc;
       wuss_event_t event;
