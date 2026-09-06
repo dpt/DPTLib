@@ -33,22 +33,24 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* Furniture/bevel/accent/backdrop colour indices, one row per palette. Same
- * field order as the assignments in run_wuss. */
-static const wuss_colour_t g_chrome[2][15] =
+/* Furniture/bevel/accent/backdrop/body colour indices, one row per palette.
+ * Same field order as the assignments in fill_chrome_config. */
+static const wuss_colour_t g_chrome[2][17] =
 {
   /* PICO-8 */
   { palette_PICO8_DARK_BLUE, palette_PICO8_WHITE, palette_PICO8_GREEN,
     palette_PICO8_RED, palette_PICO8_ORANGE, palette_PICO8_LAVENDER,
     palette_PICO8_BLUE, palette_PICO8_DARK_BLUE, palette_PICO8_LIGHT_GREY,
     palette_PICO8_WHITE, palette_PICO8_DARK_GREY, palette_PICO8_DARK_BLUE,
-    palette_PICO8_WHITE, palette_PICO8_WHITE, palette_PICO8_LIGHT_GREY },
+    palette_PICO8_WHITE, palette_PICO8_WHITE, palette_PICO8_LIGHT_GREY,
+    palette_PICO8_LIGHT_GREY, palette_PICO8_WHITE },
   /* RISC OS 16-colour Wimp */
   { palette_WIMP16_GREY_75, palette_WIMP16_BLACK, palette_WIMP16_GREEN,
     palette_WIMP16_RED, palette_WIMP16_ORANGE, palette_WIMP16_LIGHT_BLUE,
     palette_WIMP16_GREY_50, palette_WIMP16_GREY_62, palette_WIMP16_GREY_87,
     palette_WIMP16_WHITE, palette_WIMP16_GREY_50, palette_WIMP16_ORANGE,
-    palette_WIMP16_BLACK, palette_WIMP16_GREY_50, palette_WIMP16_GREY_37 }
+    palette_WIMP16_BLACK, palette_WIMP16_GREY_50, palette_WIMP16_GREY_37,
+    palette_WIMP16_GREY_75, palette_WIMP16_WHITE }
 };
 
 static void fill_chrome_config(wuss_config_t *config, int palette_index)
@@ -72,6 +74,8 @@ static void fill_chrome_config(wuss_config_t *config, int palette_index)
   config->backdrop.colour           = c[13];
   config->backdrop.pattern          = screen_PATTERN_DOTS;
   config->backdrop.pattern_bg       = c[14];
+  config->body.window               = c[15];
+  config->body.menu                 = c[16];
 }
 
 /* Redraw the whole screen one pixel at a time: each wuss_redraw_dirty call is
