@@ -303,6 +303,10 @@ result_t chars_handle(wuss_window_t      *window,
       return rc;
     }
 
+  case wuss_EVENT_MENU_CLOSED:
+    cc->menu_handle = NULL; /* wuss closed the chain under us */
+    return result_OK;
+
   case wuss_EVENT_REDRAW:
     return chars_redraw(event, task_data);
 
