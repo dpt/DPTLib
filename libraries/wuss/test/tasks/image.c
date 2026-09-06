@@ -109,8 +109,7 @@ result_t image_create(wuss_t       *wuss,
   sz.h = task->bitmap.size.h + NINEPATCHSZ * 2;
 
   rc = wuss_window_create_placed(delegate,
-                                 /* shorter than the bitmap so there's something to scroll through */
-                                 SIZE2D(sz.w, sz.h * 2 / 3),
+                                 SIZE2D(sz.w, sz.h),
                                  "Image",
                                  wuss_WINDOW_NONE,
                                  wuss_BACKDROP_COLOUR(palette_PICO8_PINK),
