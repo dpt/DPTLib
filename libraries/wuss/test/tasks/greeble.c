@@ -3,6 +3,7 @@
 #ifdef WUSS_APP
 
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -11,9 +12,31 @@
 #include "base/utils.h"
 #include "framebuf/colour.h"
 #include "geom/box.h"
+#include "wuss/menu.h"
 
 #include "greeble.h"
 #include "greeble-tiles.h"
+
+/* ----------------------------------------------------------------------- */
+
+/* MENU click over the content pops this; rows 0..greeble_SYM__LIMIT-1 map 1:1
+ * to greeble_SYM_* and are kept mutually exclusive by ticking. The trailing
+ * row is an independent toggle for per-prefab random palettes. */
+enum { GREEBLE_MENU_RANDPAL = greeble_SYM__LIMIT };
+
+static wuss_menu_item_t g_greeble_menu_items[] =
+{
+  { "Scatter",  wuss_MENU_ITEM_TICKED, NULL, NULL },
+  { "Mirror <>", wuss_MENU_ITEM_NONE,  NULL, NULL },
+  { "Mirror ^v", wuss_MENU_ITEM_NONE,  NULL, NULL },
+  { "Quad",     wuss_MENU_ITEM_NONE,   NULL, NULL },
+  { "Random palettes", wuss_MENU_ITEM_NONE, NULL, NULL }
+};
+
+static const wuss_menu_t g_greeble_menu =
+{
+  "Greeble", g_greeble_menu_items, NELEMS(g_greeble_menu_items)
+};
 
 /* ----------------------------------------------------------------------- */
 
@@ -28,8 +51,13 @@
 
 /* try to drop prefab p with its top-left at (row,col): succeeds only if every
  * non-hole cell of the prefab lands on an in-bounds, still-empty grid cell, so
- * blocks never overlap. returns 1 on placement. */
-static int greeble_try_prefab(greeble_task_t *task, int p, int row, int col)
+ * blocks never overlap. pal is the greeble_palettes[] row to tag every cell
+ * this block fills with. returns 1 on placement. */
+static int greeble_try_prefab(greeble_task_t *task,
+                              int             p,
+                              int             row,
+                              int             col,
+                              unsigned char   pal)
 {
   const unsigned char *cells;
   int                  w, h, x, y;
@@ -51,9 +79,48 @@ static int greeble_try_prefab(greeble_task_t *task, int p, int row, int col)
   for (y = 0; y < h; y++)
     for (x = 0; x < w; x++)
       if (cells[y * w + x] != GREEBLE_PREFAB_HOLE)
-        task->grid[row + y][col + x] = cells[y * w + x];
+      {
+        task->grid[row + y][col + x]    = cells[y * w + x];
+        task->cellpal[row + y][col + x] = pal;
+      }
 
   return 1;
+}
+
+/* Reflect the grid onto itself for task->symmetry: the top-left source region
+ * is copied, mirrored, over the rest. A stamp is a fragment with no left/right
+ * handedness to speak of, so cells are copied as-is rather than flipped --
+ * the mirrored layout alone reads as symmetric. */
+static void greeble_fold(greeble_task_t *task)
+{
+  int r, c, sr, sc;
+
+  if (task->symmetry == greeble_SYM_NONE)
+    return;
+
+  for (r = 0; r < task->rows; r++)
+  {
+    sr = r;
+    if ((task->symmetry == greeble_SYM_MIRROR_Y ||
+         task->symmetry == greeble_SYM_QUAD) &&
+        r >= (task->rows + 1) / 2)
+      sr = task->rows - 1 - r;
+
+    for (c = 0; c < task->cols; c++)
+    {
+      sc = c;
+      if ((task->symmetry == greeble_SYM_MIRROR_X ||
+           task->symmetry == greeble_SYM_QUAD) &&
+          c >= (task->cols + 1) / 2)
+        sc = task->cols - 1 - c;
+
+      if (sr != r || sc != c)
+      {
+        task->grid[r][c]    = task->grid[sr][sc];
+        task->cellpal[r][c] = task->cellpal[sr][sc];
+      }
+    }
+  }
 }
 
 /* Fill the grid by scattering the artist's prefab blocks (greeble-tiles.h)
@@ -62,7 +129,7 @@ static int greeble_try_prefab(greeble_task_t *task, int p, int row, int col)
  * from greeble_filler[] -- the stamps the artist drew standing alone, i.e. the
  * shortlist that reads well without neighbours. GREEBLE_PREFAB_ATTEMPTS
  * placement tries give a dense but varied cover; more attempts just repaint
- * cells already taken. */
+ * cells already taken. A symmetry mode then folds the result (greeble_fold). */
 #define GREEBLE_PREFAB_ATTEMPTS (GREEBLE_MAX_COLS * GREEBLE_MAX_ROWS)
 
 static void greeble_generate(greeble_task_t *task)
@@ -72,13 +139,19 @@ static void greeble_generate(greeble_task_t *task)
 
   s = task->seed;
 
-  for (r = 0; r < task->rows; r++)
-    for (c = 0; c < task->cols; c++)
-      task->grid[r][c] = GREEBLE_EMPTY;
+  /* grid[][] is contiguous; the cols..MAX_COLS tail of each live row is never
+   * read, so one clear over the live rows is enough. GREEBLE_EMPTY is a byte
+   * value, so memset is exact. cellpal[][] defaults to task->palette; prefab
+   * placements overwrite their own cells when random palettes are on. */
+  memset(task->grid, GREEBLE_EMPTY,
+         (size_t) task->rows * GREEBLE_MAX_COLS);
+  memset(task->cellpal, task->palette,
+         (size_t) task->rows * GREEBLE_MAX_COLS);
 
   for (i = 0; i < GREEBLE_PREFAB_ATTEMPTS && GREEBLE_NPREFAB > 0; i++)
   {
-    int p, row, col;
+    int           p, row, col;
+    unsigned char pal;
 
     GREEBLE_XORSHIFT(s);
     p = (int) (s % (unsigned int) GREEBLE_NPREFAB);
@@ -87,7 +160,14 @@ static void greeble_generate(greeble_task_t *task)
     GREEBLE_XORSHIFT(s);
     col = (int) (s % (unsigned int) task->cols);
 
-    greeble_try_prefab(task, p, row, col);
+    pal = task->palette;
+    if (task->random_prefab_palettes)
+    {
+      GREEBLE_XORSHIFT(s);
+      pal = (unsigned char) (s % (unsigned int) GREEBLE_NPALETTE);
+    }
+
+    greeble_try_prefab(task, p, row, col, pal);
   }
 
   for (r = 0; r < task->rows; r++)
@@ -98,6 +178,8 @@ static void greeble_generate(greeble_task_t *task)
         task->grid[r][c] =
           greeble_filler[s % (unsigned int) GREEBLE_NFILLER];
       }
+
+  greeble_fold(task);
 }
 
 /* recompute the grid extent for the window's content box, then regenerate */
@@ -154,9 +236,8 @@ static result_t greeble_redraw(const wuss_event_t *event,
 {
   screen_t       *scr;
   const box_t    *content, *bounds;
-  const unsigned int *pal;
-  colour_t        palette[4];
-  int             r, c, sx, sy, ox, oy;
+  colour_t        palette[GREEBLE_NPALETTE][4];
+  int             p, r, c, sx, sy, ox, oy;
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
@@ -164,13 +245,16 @@ static result_t greeble_redraw(const wuss_event_t *event,
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  /* expand this pattern's palette row into colour_t once for the whole grid */
-  pal = greeble_palettes[task->palette];
-  for (r = 0; r < 4; r++)
-    palette[r] = colour_rgba((int) ( pal[r]        & 0xFF),
-                             (int) ((pal[r] >>  8) & 0xFF),
-                             (int) ((pal[r] >> 16) & 0xFF),
-                             (int) ((pal[r] >> 24) & 0xFF));
+  /* expand every palette row into colour_t once; cells index by cellpal[][] */
+  for (p = 0; p < GREEBLE_NPALETTE; p++)
+    for (r = 0; r < 4; r++)
+    {
+      unsigned int v = greeble_palettes[p][r];
+      palette[p][r] = colour_rgba((int) ( v        & 0xFF),
+                                  (int) ((v >>  8) & 0xFF),
+                                  (int) ((v >> 16) & 0xFF),
+                                  (int) ((v >> 24) & 0xFF));
+    }
 
   for (r = 0; r < task->rows; r++)
   {
@@ -184,7 +268,8 @@ static result_t greeble_redraw(const wuss_event_t *event,
       if (ox + GREEBLE_TILE_PX <= content->x0 || ox >= content->x1)
         continue;
 
-      greeble_stamp(scr, palette, task->grid[r][c], ox, oy);
+      greeble_stamp(scr, palette[task->cellpal[r][c]],
+                    task->grid[r][c], ox, oy);
     }
   }
 
@@ -206,12 +291,53 @@ static result_t greeble_select(greeble_task_t *task, wuss_window_t *window)
   return result_OK;
 }
 
-/* Adjust: step to the next palette, same pattern. */
+/* Adjust: step to the next base palette, same pattern. Regenerate so filler
+ * cells (and prefab cells, when random palettes are off) pick up the new row;
+ * the seed is unchanged so the layout is identical. */
 static result_t greeble_adjust(greeble_task_t *task, wuss_window_t *window)
 {
   task->palette = (unsigned char)
     ((task->palette + 1) % GREEBLE_NPALETTE);
+  greeble_generate(task);
   wuss_window_invalidate_all(window);
+
+  return result_OK;
+}
+
+/* Menu pick: adopt the chosen symmetry mode and regenerate from the same
+ * seed so switching modes is a straight A/B of the current pattern. The
+ * rows are mutually exclusive, so tick the chosen one and clear the rest. */
+static result_t greeble_menu_select(greeble_task_t     *task,
+                                    const wuss_event_t *event)
+{
+  int index, i;
+
+  if (event->data.menu_select.menu != &g_greeble_menu)
+    return result_OK;
+
+  index = event->data.menu_select.index;
+
+  if (index == GREEBLE_MENU_RANDPAL)
+  {
+    task->random_prefab_palettes = !task->random_prefab_palettes;
+    g_greeble_menu_items[index].flags = task->random_prefab_palettes
+                                          ? wuss_MENU_ITEM_TICKED
+                                          : wuss_MENU_ITEM_NONE;
+    greeble_generate(task);
+    wuss_window_invalidate_all(task->window);
+    return result_OK;
+  }
+
+  if (index < 0 || index >= greeble_SYM__LIMIT)
+    return result_OK;
+
+  for (i = 0; i < greeble_SYM__LIMIT; i++)
+    g_greeble_menu_items[i].flags = (i == index) ? wuss_MENU_ITEM_TICKED
+                                                 : wuss_MENU_ITEM_NONE;
+
+  task->symmetry = (unsigned char) index;
+  greeble_generate(task);
+  wuss_window_invalidate_all(task->window);
 
   return result_OK;
 }
@@ -232,11 +358,17 @@ result_t greeble_handle(wuss_window_t      *window,
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
+    if (event->data.mouse.button & wuss_BUTTON_MENU)
+      return wuss_menu_open(task->delegate, &g_greeble_menu,
+                            wuss_get_pointer(task->wuss), NULL);
     if (event->data.mouse.button & wuss_BUTTON_SELECT)
       return greeble_select(task, window);
     if (event->data.mouse.button & wuss_BUTTON_ADJUST)
       return greeble_adjust(task, window);
     return result_OK;
+
+  case wuss_EVENT_MENU_SELECT:
+    return greeble_menu_select(task, event);
 
   case wuss_EVENT_QUIT:
     free(task); /* task_data was calloc'd per instance by the spawner */
@@ -254,8 +386,11 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
   box_t            content;
   result_t         rc;
 
-  task->seed    = 0x9E3779B9u; /* any nonzero start */
-  task->palette = 0;           /* Adjust cycles from here */
+  task->wuss     = wuss;
+  task->seed     = 0x9E3779B9u; /* any nonzero start */
+  task->palette  = 0;           /* Adjust cycles from here */
+  task->symmetry = greeble_SYM_NONE;
+  task->random_prefab_palettes = 0; /* Menu toggles this */
 
   /* greeble_redraw paints every pixel itself */
   delegate_desc.handle    = greeble_handle;
@@ -267,6 +402,7 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
     free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
   }
+  task->delegate = delegate; /* the task the menu opens against */
   wuss_task_set_autoclose(delegate, 1);
 
   rc = wuss_window_create_placed(delegate,
