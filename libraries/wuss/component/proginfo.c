@@ -147,7 +147,7 @@ result_t wuss_proginfo_create(wuss_proginfo_t           **out,
                           wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_CLOSE |
                           wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
                           wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE |
-                          wuss_WINDOW_HIDDEN,
+                          wuss_WINDOW_NO_REDRAW | wuss_WINDOW_HIDDEN,
                           wuss_BACKDROP_COLOUR(wuss_COLOUR_WHITE),
                           SIZE2D(w, h),
                           SIZE2D(w, h),

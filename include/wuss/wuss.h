@@ -239,7 +239,16 @@ typedef enum wuss_window_flags
    * at runtime, and it is honoured regardless of the WUSS_FURNITURE build
    * option.
    */
-  wuss_WINDOW_HIDDEN         = 1 << 9
+  wuss_WINDOW_HIDDEN         = 1 << 9,
+
+  /**
+   * No wuss_EVENT_REDRAW is delivered for this window: wuss fills its
+   * backdrop and draws its icons unaided, which is the whole of its
+   * appearance. For a window whose content is entirely backdrop colour
+   * and/or icons (a label-only dialogue, say) this saves the task a no-op
+   * redraw handler and a window-handle check in it.
+   */
+  wuss_WINDOW_NO_REDRAW      = 1 << 10
 }
 wuss_window_flags_t;
 
