@@ -17,7 +17,9 @@ static const unsigned char wuss__named_rgb[][3] =
   { 0xFF, 0xFF, 0x00 }, /* wuss_COLOUR_YELLOW  */
   { 0x00, 0xFF, 0xFF }, /* wuss_COLOUR_CYAN    */
   { 0xFF, 0x00, 0xFF }, /* wuss_COLOUR_MAGENTA */
-  { 0x80, 0x80, 0x80 }  /* wuss_COLOUR_GREY    */
+  { 0x80, 0x80, 0x80 }, /* wuss_COLOUR_GREY    */
+  { 0xDD, 0xDD, 0xDD }, /* wuss_COLOUR_WINDOW  -- light grey window body */
+  { 0xFF, 0xFF, 0xFF }  /* wuss_COLOUR_MENU    -- white menu body */
 };
 
 void wuss__rebuild_palettecache(wuss_t *wuss)
