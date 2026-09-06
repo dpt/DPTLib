@@ -29,15 +29,14 @@
       font: 14px monospace;
     }
     #controls {
-      position: fixed;
-      left: 1em;
-      top: 50%;
-      transform: translateY(-50%);
       color: #999;
       font: 13px monospace;
-      display: grid;
-      grid-template-columns: auto;
-      gap: 0.35em 0;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.35em 1.5em;
+      max-width: 90vw;
+      margin: 0 1em 0.75em;
     }
     #controls span {
       white-space: nowrap;
@@ -48,28 +47,9 @@
       border-radius: 3px;
       padding: 0 0.3em;
     }
-    @media (max-width: 900px), (max-height: 500px) {
-      #controls {
-        position: static;
-        transform: none;
-        width: 90vw;
-        max-width: 28em;
-        margin: 0.75em 1em 0;
-        order: 1;
-      }
-      #stage {
-        flex-direction: column;
-        align-items: center;
-      }
-      canvas.emscripten {
-        max-width: 95vw;
-        order: 0;
-      }
-    }
     @media (max-width: 480px) {
       #controls {
         font: 12px monospace;
-        gap: 0.2em 0;
       }
       #controls kbd {
         padding: 0 0.2em;
@@ -91,26 +71,28 @@
 <body>
   <div id="status">Loading...</div>
   <div id="stage">
-    <div id="controls">
-      <span>Drag titlebars to move windows</span>
-      <span>Click to bring a window to front</span>
-      <span><kbd>F1</kbd> redraw all, <kbd>Shift</kbd>+<kbd>F1</kbd> garbage screen</span>
-      <span><kbd>F2</kbd>/<kbd>Shift</kbd>+<kbd>F2</kbd> zoom window in/out</span>
-      <span><kbd>F3</kbd> pixel stress test</span>
-      <span><kbd>F4</kbd> quit</span>
-    </div>
     <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
   </div>
   <div id="about">
     <p>
-      <em>wuss</em> is the minimal window manager demo from
+      <em>Wuss</em> is a sort-of recreation of the RISC OS WindowManager (the Wimp). It's part of my
       <a href="https://github.com/dpt/DPTLib" target="_blank" rel="noopener">DPTLib</a>,
-      a platform-independent C library shared across the author's projects.
+      a platform-independent C library shared across my projects.
       It exercises window creation, z-ordering, mouse routing and
-      dirty-region redraw, compiled to
+      dirty-region redraw. It's compiled to
       <a href="https://webassembly.org/" target="_blank" rel="noopener">WebAssembly</a>
-      via Emscripten's SDL3 port.
+      via Emscripten's SDL3 port. It has a bunch of mini demo apps built into it.
     </p>
+  </div>
+  <div id="controls">
+    <span>Like in RISC OS you need a three-button mouse (buttons = <kbd>Select</kbd>/<kbd>Menu</kbd>/<kbd>Adjust</kbd>).</span>
+    <span>Pop open the main menu with the middle mouse button.</span>
+    <span>Drag titlebars to move windows.</span>
+    <span>Click to bring a window to front.</span>
+    <span><kbd>F1</kbd> redraw all, <kbd>Shift</kbd>+<kbd>F1</kbd> fill screen with random pixels (for testing redraw)</span>
+    <span><kbd>F2</kbd>/<kbd>Shift</kbd>+<kbd>F2</kbd> zoom window in/out</span>
+    <span><kbd>F3</kbd> pixel stress test</span>
+    <span><kbd>F4</kbd> quit</span>
   </div>
   <script>
     var Module = {

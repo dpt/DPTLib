@@ -774,7 +774,9 @@ if(BUILD_APPS)
             "${CMAKE_CURRENT_SOURCE_DIR}/resources@/resources"
             "--shell-file"
             "${CMAKE_CURRENT_SOURCE_DIR}/apps/wuss/shell.html")
-        set_target_properties(wuss PROPERTIES SUFFIX ".html")
+        set_target_properties(wuss PROPERTIES
+            SUFFIX ".html"
+            LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/apps/wuss/shell.html")
     else()
         find_package(SDL3 REQUIRED)
         target_compile_definitions(wuss PRIVATE USE_SDL)
