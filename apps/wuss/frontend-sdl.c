@@ -27,6 +27,13 @@
  * screen_copy_rect's nibble-packed blit path instead). */
 #define WUSS_SDL_32BPP 0
 
+/* Integer window zoom: the fixed Wuss screen is drawn at this many device
+ * pixels per screen pixel. F2 steps it up, Shift-F2 down, clamped to
+ * [WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE]. */
+#define WUSS_SDL_DEFAULT_SCALE 2
+#define WUSS_SDL_MIN_SCALE     1
+#define WUSS_SDL_MAX_SCALE     4
+
 /* ----------------------------------------------------------------------- */
 
 struct wuss_frontend
@@ -36,6 +43,7 @@ struct wuss_frontend
   SDL_Texture  *texture;
   int           scr_width;
   int           scr_height;
+  int           scale; /* device pixels per screen pixel; see WUSS_SDL_*_SCALE */
   void         *pixels; /* the private framebuffer handed to the caller */
 };
 
@@ -98,6 +106,7 @@ result_t wuss_frontend_open(int               width,
 
   fe->scr_width  = width;
   fe->scr_height = height;
+  fe->scale      = WUSS_SDL_DEFAULT_SCALE;
 
   fe->pixels = malloc((size_t) stride * height);
   if (fe->pixels == NULL)
@@ -112,7 +121,8 @@ result_t wuss_frontend_open(int               width,
     goto failure;
   }
 
-  fe->window = SDL_CreateWindow("Wuss", width, height, 0);
+  fe->window = SDL_CreateWindow("Wuss", width * fe->scale, height * fe->scale,
+                                0);
   if (fe->window == NULL)
   {
     fprintf(stderr, "Error: SDL_CreateWindow: %s\n", SDL_GetError());
@@ -187,15 +197,22 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
         event->kind = wuss_INPUT_PIXEL_STRESS;
       else if (ev.key.key == SDLK_F2)
       {
-        int w, h;
+        int scale;
 
-        /* F2 doubles the SDL window, Shift-F2 halves it: a backend-local
-         * zoom the demo loop never sees. */
-        SDL_GetWindowSize(fe->window, &w, &h);
-        if (ev.key.mod & SDL_KMOD_SHIFT)
-          SDL_SetWindowSize(fe->window, w / 2, h / 2);
-        else
-          SDL_SetWindowSize(fe->window, w * 2, h * 2);
+        /* F2 steps the SDL window zoom up, Shift-F2 down, clamped to
+         * [WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE]: a backend-local zoom the
+         * demo loop never sees. */
+        scale = fe->scale + ((ev.key.mod & SDL_KMOD_SHIFT) ? -1 : 1);
+        if (scale < WUSS_SDL_MIN_SCALE)
+          scale = WUSS_SDL_MIN_SCALE;
+        else if (scale > WUSS_SDL_MAX_SCALE)
+          scale = WUSS_SDL_MAX_SCALE;
+        if (scale != fe->scale)
+        {
+          fe->scale = scale;
+          SDL_SetWindowSize(fe->window, fe->scr_width * scale,
+                            fe->scr_height * scale);
+        }
         continue;
       }
       else
