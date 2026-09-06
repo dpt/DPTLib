@@ -89,7 +89,7 @@ New source/header files must be added by hand to the relevant `set(..._SOURCES .
 ## Code style
 
 - C99, `-Wall -Wextra -pedantic`. Allman brace style, 2-space indentation, tabs converted to spaces (see `.astylerc`/`.editorconfig` — astyle is the formatter of record).
-- Declare variables at the top of each scope (pre-C99 style is followed throughout, even though the standard is C99), ordered by first use.
+- Declare variables at the top of each scope (pre-C99 style is followed throughout, even though the standard is C99), ordered by first use. Exception: a `result_t` status local (`rc`, `err`, `crc`, ...) is always declared first in its block, ahead of the use-ordered locals.
 - File header comment format: `/* filename.c -- one-line description */`.
 - Section breaks within files use `/* ----- ... ----- */` rule comments.
 - Public API docs use Doxygen (`\file`, `\param`, `\return`); a `Doxyfile` exists for generating them.
