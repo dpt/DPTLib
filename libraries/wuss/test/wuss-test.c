@@ -302,6 +302,32 @@ static void flash_pick_row(wuss_t            *wuss,
   wuss_mouse_click(wuss, at, button, wuss_MOUSE_UP, NULL);
 }
 
+/* Move the pointer over row `row` of menu level `level`: to the text column
+ * (`over_arrow` == 0) or into the submenu-arrow gutter at the row's right edge
+ * (`over_arrow` == 1). Used to drive submenu open/close from the tests. */
+static void menu_move_over_row(wuss_t            *wuss,
+                               struct wuss__menu *level,
+                               int                row,
+                               int                over_arrow)
+{
+  box_t   content;
+  box_t   bbox;
+  box_t   screen_box;
+  point_t scroll;
+  point_t at;
+
+  wuss_window_get_content_bounds(level->window, &content);
+  wuss_window_get_scroll(level->window, &scroll);
+  wuss_icon_get_bbox(level->icons[row], &bbox);
+  wuss__icon_box_to_screen(&content, scroll, &bbox, &screen_box);
+
+  at.x = over_arrow ? screen_box.x1 - 4
+                    : screen_box.x0 + 4;
+  at.y = (screen_box.y0 + screen_box.y1) / 2;
+
+  wuss_mouse_move(wuss, at, NULL);
+}
+
 /* A task that opens its own menu on a MENU press over its window, the way a
  * real content task (e.g. greeble) does. task_data points to a menu_task_t
  * so the test can see the press arrived and which menu it raised. */
@@ -4246,6 +4272,136 @@ FlashDestroy:
 FlashFailFree:
     free(fpixels);
 FlashFail:
+    bmfont_destroy(font);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+  }
+
+  printf("test: a parent menu row keeps its highlight while its submenu is "
+         "open, and loses it once the submenu closes\n");
+  {
+    static const wuss_menu_item_t sm_sub_items[] =
+    {
+      { "Sub-A", wuss_MENU_ITEM_NONE, NULL },
+      { "Sub-B", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_t sm_sub =
+    {
+      "Sub", sm_sub_items, NELEMS(sm_sub_items)
+    };
+    static const wuss_menu_item_t sm_items[] =
+    {
+      { "Plain",  wuss_MENU_ITEM_NONE, NULL },
+      { "More",   wuss_MENU_ITEM_NONE, &sm_sub }, /* row 1 owns the submenu */
+      { "Bottom", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_t sm_menu =
+    {
+      "Root", sm_items, NELEMS(sm_items)
+    };
+
+    const char        *fontfile;
+    bmfont_t          *font = NULL;
+    wuss_font_desc_t   fdesc;
+    screen_t           sscr;
+    bitmap_t           sbm;
+    void              *spixels;
+    wuss_t            *swuss;
+    test_task_t        stc;
+    wuss_task_t       *sowner;
+    struct wuss__menu *root;
+    struct wuss__menu *sub;
+
+    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
+                                  path_join_leafname("Tiny", "png"));
+    rc = bmfont_create(fontfile, &font);
+    if (rc != result_OK)
+    {
+      printf("wuss_test: submenu-highlight test could not load %s\n", fontfile);
+      goto Failure;
+    }
+
+    spixels = malloc((size_t) rowbytes * 200);
+    if (spixels == NULL) { rc = result_OOM; goto SubHiFail; }
+    rc = bitmap_init(&sbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, spixels);
+    if (rc != result_OK) goto SubHiFailFree;
+    screen_for_bitmap(&sscr, &sbm);
+
+    fdesc.font       = font;
+    fdesc.font_class = wuss_FONT_CLASS_NONE;
+    fdesc.name       = NULL;
+    rc = wuss_create(&sscr, &fdesc, 1, NULL, 0, NULL, NULL, &swuss);
+    if (rc != result_OK) goto SubHiFailFree;
+
+    memset(&stc, 0, sizeof(stc));
+    sowner = mk_task(swuss, test_handle, &stc);
+    if (sowner == NULL) { rc = result_OOM; goto SubHiDestroy; }
+
+    rc = wuss_menu_open(sowner, &sm_menu, POINT(40, 40), NULL);
+    if (rc != result_OK) goto SubHiDestroy;
+
+    root = swuss->menu_chain;
+    if (root == NULL || root->menu != &sm_menu) goto SubHiCheckFail;
+
+    /* pointer onto row 1's arrow gutter: its submenu opens */
+    menu_move_over_row(swuss, root, 1, 1);
+    if (root->child == NULL)             goto SubHiCheckFail;
+    if (root->open_index != 1)           goto SubHiCheckFail;
+    sub = root->child;
+    if (sub->menu != &sm_sub)            goto SubHiCheckFail;
+    if (!wuss__icon_hovered(root->icons[1])) goto SubHiCheckFail; /* parent lit */
+
+    /* pointer travels into the submenu, onto its row 0. The parent row that
+     * spawned it must keep its highlight; the submenu row gets one too. */
+    menu_move_over_row(swuss, sub, 0, 0);
+    if (root->child != sub)                  goto SubHiCheckFail; /* still open */
+    if (!wuss__icon_hovered(root->icons[1])) goto SubHiCheckFail; /* retained */
+    if (!wuss__icon_hovered(sub->icons[0]))  goto SubHiCheckFail;
+
+    /* and while parked over the submenu's own title strip (no row under the
+     * pointer, so no ICON event) the parent highlight still holds */
+    {
+      box_t   cb;
+      point_t p;
+
+      wuss_window_get_content_bounds(sub->window, &cb);
+      p.x = (cb.x0 + cb.x1) / 2;
+      p.y = cb.y0 - 3; /* just above the content: the titlebar */
+      wuss_mouse_move(swuss, p, NULL);
+      if (!wuss__icon_hovered(root->icons[1])) goto SubHiCheckFail;
+    }
+
+    /* pointer re-enters the parent on a different row (row 2, off the arrow):
+     * the submenu closes and row 1 must go dark, row 2 lit */
+    menu_move_over_row(swuss, root, 2, 0);
+    if (root->child != NULL)                 goto SubHiCheckFail; /* closed */
+    if (root->open_index != -1)              goto SubHiCheckFail;
+    if (wuss__icon_hovered(root->icons[1]))  goto SubHiCheckFail; /* dropped */
+    if (!wuss__icon_hovered(root->icons[2])) goto SubHiCheckFail;
+
+    /* re-open, then re-enter the parent on the *same* row's text (off the
+     * arrow): submenu closes, and row 1 stays lit because the pointer is on it */
+    menu_move_over_row(swuss, root, 1, 1);
+    if (root->child == NULL)                 goto SubHiCheckFail;
+    menu_move_over_row(swuss, root, 1, 0);
+    if (root->child != NULL)                 goto SubHiCheckFail;
+    if (!wuss__icon_hovered(root->icons[1])) goto SubHiCheckFail;
+
+    wuss_menu_close(root);
+    rc = result_OK;
+    goto SubHiDestroy;
+
+SubHiCheckFail:
+    printf("wuss_test: submenu-highlight check failed\n");
+    rc = result_TEST_FAILED;
+
+SubHiDestroy:
+    reap_test_tasks();
+    wuss_destroy(swuss);
+SubHiFailFree:
+    free(spixels);
+SubHiFail:
     bmfont_destroy(font);
     if (rc != result_OK)
       return result_TEST_FAILED;
