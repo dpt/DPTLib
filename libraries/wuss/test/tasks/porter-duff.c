@@ -133,9 +133,9 @@ static result_t load_demo_png(bitmap_t   *bm,
                               const char *resources,
                               const char *leafname)
 {
+  result_t    rc;
   const char *leafname_ext;
   const char *filename;
-  result_t    rc;
 
   leafname_ext = path_join_leafname(leafname, "png");
   filename     = path_join_filename(resources, 3,
@@ -163,9 +163,9 @@ result_t porter_duff_create(wuss_t             *wuss,
                             const char         *resources,
                             porter_duff_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t    rc;
 
   task->font            = font;
   task->rule            = composite_RULE_CLEAR;
@@ -293,12 +293,12 @@ static void porter_duff_draw_checkerboard(const porter_duff_task_t *pd,
 static result_t porter_duff_redraw(const wuss_event_t *event,
                                    void               *task_data)
 {
+  result_t            rc;
   porter_duff_task_t *pd;
   screen_t           *scr;
   const box_t        *content, *bounds;
   const char         *name;
   point_t             pos;
-  result_t            rc;
 
   pd = task_data;
 

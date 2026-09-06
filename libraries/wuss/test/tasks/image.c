@@ -54,11 +54,11 @@ result_t image_create(wuss_t       *wuss,
                       const char   *background_path,
                       image_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   const char      *images_dir;
-  result_t    rc;
-  size2d_t    sz;
+  size2d_t         sz;
 
   task->wuss      = wuss;
   task->delegate  = NULL;
@@ -156,12 +156,12 @@ static result_t image_click(wuss_window_t *window,
                             image_task_t  *ic,
                             int            step)
 {
+  result_t    rc;
   const char *leafname;
   const char *filename;
   char        buf[DPTLIB_MAXPATH];
   bitmap_t    next;
   size2d_t    sz;
-  result_t    rc;
 
   if (ic->nnames == 0)
     return result_OK; /* nothing to cycle to */
@@ -206,8 +206,8 @@ static const wuss_menu_t image_menu_export =
 
 static result_t image_open_menu(image_task_t *ic)
 {
-  wuss_menu_t *m;
   result_t     rc;
+  wuss_menu_t *m;
 
   rc = wuss_menu_create_from_desc(&m,
          "Display, Open, !Show grid, !Wireframe, >Export, |Quit",

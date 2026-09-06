@@ -102,9 +102,9 @@ static result_t clock_create_window(wuss_t       *wuss,
 
 result_t clock_create(wuss_t *wuss, bmfont_t *font, clock_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
 
   task->font        = font;
   task->bg          = colour_rgb(0x1D, 0x2B, 0x53);

@@ -8,8 +8,8 @@
 
 result_t wuss_window_set_hidden(wuss_window_t *window, int hidden)
 {
-  wuss_event_t event;
   result_t     rc;
+  wuss_event_t event;
   int          was_hidden;
 
   was_hidden = (window->flags & wuss_WINDOW_HIDDEN) != 0;

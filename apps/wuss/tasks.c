@@ -103,12 +103,12 @@ static result_t spawn_palette(void)
 
 static result_t spawn_image(void)
 {
+  result_t      rc;
   image_task_t *t;
   const char   *leafname;
   const char   *filename;
   char          buf[DPTLIB_MAXPATH];
   char          ninepatch[DPTLIB_MAXPATH];
-  result_t      rc;
 
   t = calloc(1, sizeof(*t));
   if (t == NULL) return result_OOM;

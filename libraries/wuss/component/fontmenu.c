@@ -200,9 +200,9 @@ result_t wuss_fontmenu_create(wuss_fontmenu_t   **out,
                               const wuss_t       *wuss,
                               const wuss_alloc_t *alloc)
 {
+  result_t         rc;
   namelist_t       nl;
   wuss_fontmenu_t *fm;
-  result_t         rc;
 
   if (out == NULL || dir == NULL)
     return result_NULL_ARG;

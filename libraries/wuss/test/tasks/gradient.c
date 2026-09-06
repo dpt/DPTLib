@@ -35,9 +35,9 @@ static int dither(int v, int x, int y)
 
 result_t gradient_create(wuss_t *wuss, gradient_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
 
   /* gradient_redraw paints every pixel itself */
   delegate_desc.handle    = gradient_handle;

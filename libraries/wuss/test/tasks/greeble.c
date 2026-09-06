@@ -387,11 +387,11 @@ result_t greeble_handle(wuss_window_t      *window,
 
 result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   size2d_t         grid_px;
   box_t            content;
-  result_t         rc;
 
   /* the full generator grid in pixels: content sized so cols/rows land
    * exactly on the GREEBLE_MAX_* caps in 8-pixel tiles */

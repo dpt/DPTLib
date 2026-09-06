@@ -767,9 +767,9 @@ static result_t bmfont_enum_cb(const char *name,
 
 static result_t bmfont_enumerate_test(const char *resources)
 {
+  result_t            rc;
   const char         *dir;
   bmfont_enum_check_t  chk;
-  result_t            rc;
   int                 i;
 
   dir = path_join_filename(resources, 2, "resources", "bmfonts");
