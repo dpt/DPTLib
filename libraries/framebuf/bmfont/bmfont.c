@@ -19,6 +19,7 @@
 
 #include "base/debug.h"
 #include "base/utils.h"
+#include "framebuf/colour.h"
 #include "framebuf/bmfont.h"
 #include "utils/array.h"
 #include "utils/bytesex.h"
@@ -1345,6 +1346,33 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   }
 
   return result_OK;
+}
+
+/* -------------------------------------------------------------------------- */
+
+result_t bmfont_draw_relief(bmfont_t      *bmfont,
+                            screen_t      *scr,
+                            const char    *text,
+                            int            len,
+                            colour_t       fg,
+                            colour_t       shadow,
+                            const point_t *pos,
+                            const point_t *offset,
+                            point_t       *end_pos)
+{
+  colour_t transparent;
+  point_t  shadowpos;
+  result_t rc;
+
+  transparent = colour_rgba(0, 0, 0, 0);
+  shadowpos   = POINT(pos->x + offset->x, pos->y + offset->y);
+
+  rc = bmfont_draw(bmfont, scr, text, len, shadow, transparent,
+                  &shadowpos, NULL);
+  if (rc)
+    return rc;
+
+  return bmfont_draw(bmfont, scr, text, len, fg, transparent, pos, end_pos);
 }
 
 /* -------------------------------------------------------------------------- */
