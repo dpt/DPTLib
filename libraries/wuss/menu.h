@@ -57,4 +57,10 @@ struct wuss__menu
  * and return 1 (the click is spent on dismissal). Returns 0 otherwise. */
 int wuss__menu_click_outside(wuss_t *wuss, const wuss_window_t *hit);
 
+/* True if `icon` is a parent row on an open menu chain whose submenu is open --
+ * i.e. some chain level's `open_index` row. Such a row keeps its hover
+ * highlight while the pointer is in a deeper level; wuss__icon_set_hover asks
+ * before dropping a row's highlight. */
+int wuss__menu_row_pinned(const wuss_t *wuss, const wuss_icon_t *icon);
+
 #endif /* WUSS_MENU_IMPL_H */

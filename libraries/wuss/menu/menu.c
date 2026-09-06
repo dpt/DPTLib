@@ -268,9 +268,23 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
      * this row's text off the arrow -- closes the child it opened. */
     if (self->child != NULL && !(self->open_index == index && on_arrow))
     {
+      wuss_icon_t *was_parent;
+
+      was_parent = (self->open_index >= 0) ? self->icons[self->open_index]
+                                           : NULL;
+
       wuss__menu_close_from(self->child);
       self->child      = NULL;
       self->open_index = -1;
+
+      /* The ex-parent row was held highlit while its submenu was open (see
+       * wuss__menu_row_pinned). Now the submenu is gone, drop that highlight
+       * unless the pointer has landed back on that very row. */
+      if (was_parent != NULL && was_parent != icon)
+      {
+        wuss__icon_set_state(was_parent, wuss_ICON_STATE_HOVERED, 0);
+        wuss__icon_invalidate(was_parent);
+      }
     }
 
     if (self->child != NULL)
@@ -925,6 +939,21 @@ void wuss_menu_set_item_ticked(wuss_menu_handle_t handle,
 }
 
 /* ----------------------------------------------------------------------- */
+
+int wuss__menu_row_pinned(const wuss_t *wuss, const wuss_icon_t *icon)
+{
+  const struct wuss__menu *node;
+
+  for (node = wuss->menu_chain; node != NULL; node = node->child)
+  {
+    if (node->borrowed || node->child == NULL || node->open_index < 0)
+      continue;
+    if (node->icons[node->open_index] == icon)
+      return 1;
+  }
+
+  return 0;
+}
 
 int wuss__menu_click_outside(wuss_t *wuss, const wuss_window_t *hit)
 {
