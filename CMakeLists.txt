@@ -706,8 +706,9 @@ endif()
 #
 
 if(BUILD_APPS)
-    # The Wuss interactive demo: main.c drives wuss and the task launcher; a
-    # per-platform backend (frontend-*.c) opens the surface and reports input.
+    # The Wuss interactive demo: main.c drives wuss, tasks.c wires the task
+    # launcher and its menus; a per-platform backend (frontend-*.c) opens the
+    # surface and reports input.
     # RISC OS uses native VDU/OS_Mouse calls; everything else uses SDL.
     if(NOT (WUSS_FURNITURE AND WUSS_ICONS))
         message(FATAL_ERROR "BUILD_APPS requires WUSS_FURNITURE and WUSS_ICONS")
@@ -715,6 +716,7 @@ if(BUILD_APPS)
 
     set(WUSS_APP_SOURCES
         apps/wuss/main.c
+        apps/wuss/tasks.c
         libraries/wuss/test/tasks/ball.c
         libraries/wuss/test/tasks/blank.c
         libraries/wuss/test/tasks/chars.c
