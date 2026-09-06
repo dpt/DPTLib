@@ -36,6 +36,7 @@ struct wuss_icon
   int               group;   /* radio: exclusive-selection group; 0 = none */
   wuss_colour_t     swatch;  /* menu entry + FLAGS_SWATCH: left-gutter chip
                               * colour; wuss_NO_BACKGROUND otherwise */
+  wuss_icon_border_t border; /* label: inside-bbox border; NONE otherwise */
   wuss_icon_flags_t flags;
   wuss_icon_state_t state;
 };

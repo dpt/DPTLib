@@ -56,6 +56,10 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
       spec->pattern >= screen_PATTERN__LIMIT)
     return result_WUSS_BAD_ICON;
 
+  if (spec->type == wuss_ICON_TYPE_LABEL &&
+      spec->border > wuss_ICON_BORDER_GROOVE)
+    return result_WUSS_BAD_ICON;
+
   if (fg >= w->npalette)
     return result_WUSS_BAD_COLOUR;
 
@@ -76,6 +80,8 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   out->bitmap  = (spec->type == wuss_ICON_TYPE_BITMAP) ? spec->bitmap : NULL;
   out->group   = (spec->type == wuss_ICON_TYPE_RADIO) ? spec->group : 0;
   out->swatch  = swatch;
+  out->border  = (spec->type == wuss_ICON_TYPE_LABEL) ? spec->border
+                                                      : wuss_ICON_BORDER_NONE;
   out->flags   = spec->flags;
   out->state   = wuss_ICON_STATE_NONE;
 

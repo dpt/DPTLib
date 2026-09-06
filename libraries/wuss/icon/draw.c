@@ -145,6 +145,23 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
     bg = icon_blend_ground(c, c->fg);
   }
 
+  if (icon->border != wuss_ICON_BORDER_NONE)
+  {
+    colour_t light, dark;
+
+    light = c->wuss->palette[c->wuss->bevel_light];
+    dark  = c->wuss->palette[c->wuss->bevel_dark];
+
+    screen_draw_line(c->scr, b->x0, b->y0, b->x1 - 1, b->y0,
+                     icon->border == wuss_ICON_BORDER_RIDGE ? light : dark);
+    screen_draw_line(c->scr, b->x0, b->y0, b->x0, b->y1 - 1,
+                     icon->border == wuss_ICON_BORDER_RIDGE ? light : dark);
+    screen_draw_line(c->scr, b->x0, b->y1 - 1, b->x1 - 1, b->y1 - 1,
+                     icon->border == wuss_ICON_BORDER_RIDGE ? dark : light);
+    screen_draw_line(c->scr, b->x1 - 1, b->y0, b->x1 - 1, b->y1 - 1,
+                     icon->border == wuss_ICON_BORDER_RIDGE ? dark : light);
+  }
+
   if (!c->have_font)
     return;
 
