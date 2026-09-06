@@ -1,6 +1,5 @@
 /* wuss/tasks.c -- Wuss demo task launcher and menu wiring */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -9,13 +8,11 @@
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
-#include "geom/box.h"
 #include "io/path.h"
 #include "wuss/task.h"
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 #include "wuss/menu.h"
-#include "wuss/menu-desc.h"
 
 #include "frontend.h"
 #include "tasks.h"
@@ -262,108 +259,6 @@ static result_t spawn_porter_duff(void)
   return result_OK;
 }
 
-/* A static demo menu tree for the pop-up helper: a submenu, a couple of
- * ticked rows and a standalone dashed rule row above the final entry.
- * wuss_menu_open never mutates it. */
-static const wuss_menu_item_t g_menu_export_items[] =
-{
-  { "As PNG",  wuss_MENU_ITEM_NONE,   NULL },
-  { "As JPEG", wuss_MENU_ITEM_NONE,   NULL },
-  { "As GIF",  wuss_MENU_ITEM_DISABLED, NULL }
-};
-
-static const wuss_menu_t g_menu_export =
-{
-  "Export", g_menu_export_items, NELEMS(g_menu_export_items)
-};
-
-/* A caller-owned window wired as a menu item's `.window`: hovering "Details"
- * shows it where a submenu would open, and moving off the row (or dismissing
- * the menu) hides it again. Created once, lazily, by spawn_menu. */
-static wuss_window_t *g_menu_details_window;
-
-static wuss_menu_item_t g_menu_items[] =
-{
-  { "Open",      wuss_MENU_ITEM_NONE,   NULL,          NULL },
-  { "Show grid", wuss_MENU_ITEM_TICKED, NULL,          NULL },
-  { "Wireframe", wuss_MENU_ITEM_TICKED, NULL,          NULL },
-  { "Export",    wuss_MENU_ITEM_NONE,   &g_menu_export, NULL },
-  { "Details",   wuss_MENU_ITEM_NONE,   NULL,          NULL }, /* .window set in spawn_menu */
-  { "Quit",      wuss_MENU_ITEM_DASHED, NULL,          NULL }
-};
-
-static const wuss_menu_t g_menu =
-{
-  "Display", g_menu_items, NELEMS(g_menu_items)
-};
-
-/* index of the "Details" row in g_menu_items */
-#define G_MENU_DETAILS_INDEX 4
-
-static result_t spawn_menu(void)
-{
-  if (g_menu_details_window == NULL)
-  {
-    box_t    content;
-    result_t rc;
-
-    /* a small hidden window; wuss fills its background, no task needed */
-    content.x0 = 0;
-    content.y0 = 0;
-    content.x1 = 180;
-    content.y1 = 120;
-    rc = wuss_window_create(g.menu_task, &content, "Details",
-                            wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK
-                            | wuss_WINDOW_NO_TOGGLE_SIZE
-                            | wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL
-                            | wuss_WINDOW_NO_RESIZE | wuss_WINDOW_HIDDEN,
-                            wuss_BACKDROP_COLOUR(1),
-                            SIZE2D(180, 120), SIZE2D(0, 0),
-                            &g_menu_details_window);
-    if (rc != result_OK)
-      return rc;
-    g_menu_items[G_MENU_DETAILS_INDEX].window = g_menu_details_window;
-  }
-
-  return wuss_menu_open(g.menu_task, &g_menu, wuss_get_pointer(g.wuss), NULL);
-}
-
-/* Same menu shape built from a descriptor string, to exercise
- * wuss_menu_create_from_desc. The tree must outlive the open chain, so it is
- * kept here and rebuilt (previous one freed) on each open. Freed for good in
- * tasks_teardown. */
-static wuss_menu_t *g_menu_desc;
-
-static const wuss_menu_item_t g_menu_desc_export_items[] =
-{
-  { "As PNG",  wuss_MENU_ITEM_NONE,     NULL },
-  { "As JPEG", wuss_MENU_ITEM_NONE,     NULL },
-  { "As GIF",  wuss_MENU_ITEM_DISABLED, NULL }
-};
-
-static const wuss_menu_t g_menu_desc_export =
-{
-  "Export", g_menu_desc_export_items, NELEMS(g_menu_desc_export_items)
-};
-
-static result_t spawn_menu_desc(void)
-{
-  wuss_menu_t *m;
-  result_t     rc;
-
-  rc = wuss_menu_create_from_desc(&m,
-         "Display, Open, !Show grid, !Wireframe, >Export, |Quit",
-         &g_menu_desc_export);
-  if (rc != result_OK)
-    return rc;
-
-  wuss_menu_destroy(g_menu_desc);
-  g_menu_desc = m;
-
-  return wuss_menu_open(g.menu_task, g_menu_desc, wuss_get_pointer(g.wuss),
-                        NULL);
-}
-
 /* The task launcher is a MENU-button pop-up over the backdrop rather than a
  * window of buttons. Each leaf menu pairs a *_items table with a *_spawn table
  * in lock-step: picking row i of that menu calls its spawn[i]. */
@@ -410,34 +305,15 @@ static result_t spawn_quit(void)
   return result_OK;
 }
 
-/* "Test" submenu: the menu-system exercisers. */
-static const wuss_menu_item_t g_test_items[] =
-{
-  { "Menu",        wuss_MENU_ITEM_NONE, NULL },
-  { "Menu (desc)", wuss_MENU_ITEM_NONE, NULL }
-};
-
-static const task_spawn_fn_t g_test_spawn[] =
-{
-  spawn_menu, spawn_menu_desc
-};
-
-static const wuss_menu_t g_test_menu =
-{
-  "Test", g_test_items, NELEMS(g_test_items)
-};
-
 static const wuss_menu_item_t g_task_items[] =
 {
   { "Launch",    wuss_MENU_ITEM_NONE,   &g_launch_menu, NULL },
-  { "Test",      wuss_MENU_ITEM_DASHED, &g_test_menu,   NULL },
   { "Quit Wuss", wuss_MENU_ITEM_DASHED, NULL,           NULL }
 };
 
 static const task_spawn_fn_t g_task_spawn[] =
 {
   NULL,        /* "Launch" -> submenu g_launch_menu */
-  NULL,        /* "Test"   -> submenu g_test_menu */
   spawn_quit
 };
 
@@ -446,10 +322,9 @@ static const wuss_menu_t g_task_menu =
   "Tasks", g_task_items, NELEMS(g_task_items)
 };
 
-/* g_task_menu / g_launch_menu / g_test_menu picks are dispatched by index;
- * g_menu / g_menu_desc picks just print. Every menu is opened by g.menu_task,
- * so one handler sees every wuss_EVENT_MENU_SELECT and tells them apart by
- * data.menu_select.menu. */
+/* g_task_menu / g_launch_menu picks are dispatched by index. Every menu is
+ * opened by g.menu_task, so one handler sees every wuss_EVENT_MENU_SELECT and
+ * tells them apart by data.menu_select.menu. */
 result_t task_handle_event(wuss_window_t      *window,
                            const wuss_event_t *event,
                            void               *task_data)
@@ -488,13 +363,6 @@ result_t task_handle_event(wuss_window_t      *window,
     return result_OK;
   }
 
-  if (menu == &g_test_menu)
-  {
-    if (index >= 0 && index < (int) NELEMS(g_test_spawn))
-      (void) g_test_spawn[index]();
-    return result_OK;
-  }
-
   if (menu == &g_task_menu)
   {
     if (index >= 0 && index < (int) NELEMS(g_task_spawn) && g_task_spawn[index])
@@ -502,19 +370,10 @@ result_t task_handle_event(wuss_window_t      *window,
     return result_OK;
   }
 
-  printf("menu: picked \"%s\"\n",
-         menu->items[index].text ? menu->items[index].text : "(sep)");
   return result_OK;
 }
 
 result_t tasks_open_launcher(point_t pos)
 {
   return wuss_menu_open(g.menu_task, &g_task_menu, pos, NULL);
-}
-
-void tasks_teardown(void)
-{
-  /* menus are only safe to free once wuss_destroy has torn down any chain
-   * that was still borrowing them */
-  wuss_menu_destroy(g_menu_desc);
 }

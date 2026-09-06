@@ -2,6 +2,7 @@
 
 #ifdef WUSS_APP
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,6 +16,8 @@
 #include "geom/box.h"
 #include "io/dirscan.h"
 #include "io/path.h"
+#include "wuss/menu.h"
+#include "wuss/menu-desc.h"
 
 #include "image.h"
 
@@ -57,9 +60,12 @@ result_t image_create(wuss_t       *wuss,
   result_t    rc;
   size2d_t    sz;
 
+  task->wuss      = wuss;
+  task->delegate  = NULL;
   task->resources = resources;
   task->index     = 0;
   task->nnames    = 0;
+  task->menu      = NULL;
 
   images_dir = path_join_filename(resources, 2, "resources", "images");
   rc = dirscan_walk(images_dir, image__scan_entry, task);
@@ -96,6 +102,7 @@ result_t image_create(wuss_t       *wuss,
     free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
   }
+  task->delegate = delegate;
   wuss_task_set_autoclose(delegate, 1);
 
   sz.w = task->bitmap.size.w + NINEPATCHSZ * 2;
@@ -181,11 +188,47 @@ static result_t image_click(wuss_window_t *window,
   return wuss_window_set_doc(window, sz);
 }
 
+/* Same menu shape built from a descriptor string, to exercise
+ * wuss_menu_create_from_desc. The tree must outlive the open chain, so it is
+ * kept on the task and rebuilt (previous one freed) on each open. Freed for
+ * good in the QUIT handler. */
+static const wuss_menu_item_t image_menu_export_items[] =
+{
+  { "As PNG",  wuss_MENU_ITEM_NONE,     NULL },
+  { "As JPEG", wuss_MENU_ITEM_NONE,     NULL },
+  { "As GIF",  wuss_MENU_ITEM_DISABLED, NULL }
+};
+
+static const wuss_menu_t image_menu_export =
+{
+  "Export", image_menu_export_items, NELEMS(image_menu_export_items)
+};
+
+static result_t image_open_menu(image_task_t *ic)
+{
+  wuss_menu_t *m;
+  result_t     rc;
+
+  rc = wuss_menu_create_from_desc(&m,
+         "Display, Open, !Show grid, !Wireframe, >Export, |Quit",
+         &image_menu_export);
+  if (rc != result_OK)
+    return rc;
+
+  wuss_menu_destroy(ic->menu);
+  ic->menu = m;
+
+  return wuss_menu_open(ic->delegate, ic->menu, wuss_get_pointer(ic->wuss),
+                        NULL);
+}
+
 result_t image_handle(wuss_window_t      *window,
                       const wuss_event_t *event,
                       void               *task_data)
 {
-  image_task_t *ic;
+  image_task_t      *ic;
+  const wuss_menu_t *menu;
+  int                index;
 
   ic = task_data;
 
@@ -201,9 +244,19 @@ result_t image_handle(wuss_window_t      *window,
       return image_click(window, ic, 1);
     if (event->data.mouse.button & wuss_BUTTON_ADJUST)
       return image_click(window, ic, -1);
+    if (event->data.mouse.button & wuss_BUTTON_MENU)
+      return image_open_menu(ic);
+    return result_OK;
+
+  case wuss_EVENT_MENU_SELECT:
+    menu  = event->data.menu_select.menu;
+    index = event->data.menu_select.index;
+    printf("image menu: picked \"%s\"\n",
+           menu->items[index].text ? menu->items[index].text : "(sep)");
     return result_OK;
 
   case wuss_EVENT_QUIT:
+    wuss_menu_destroy(ic->menu);
     free(ic->bitmap.base);
     free(ic->ninepatch.base);
     free(ic); /* task_data was calloc'd per instance by the spawner */

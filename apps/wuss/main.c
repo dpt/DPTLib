@@ -382,8 +382,6 @@ static result_t run_wuss(const char *resources)
    * block. Harmless at process exit. */
   wuss_destroy(wuss); /* also sweeps g.menu_task and closes any open chain */
 
-  tasks_teardown(); /* frees the descriptor-built menu, now the chain is gone */
-
   for (i = 0; i < nfonts; i++)
     bmfont_destroy(fonts[i]);
 
