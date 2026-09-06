@@ -10,8 +10,8 @@
  * A wuss_proginfo owns one window (titlebar caption only -- no close, back,
  * toggle, scrollbars or resize), created hidden on a task the caller passes
  * in and laid out from a wuss_proginfo_desc_t: one row per non-NULL field,
- * the field name right-justified in a left column and its value
- * left-justified beside it.
+ * the field name right-justified in a left column and its value centred in a
+ * sunken display field beside it.
  *
  * It is meant to be used as a wuss_menu_item_t::window -- point an "Info"
  * menu row at wuss_proginfo_window() and wuss shows it where a submenu would

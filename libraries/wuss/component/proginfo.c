@@ -27,9 +27,10 @@
  * site" action button -- the four text rows are the whole dialogue. Add a
  * button row through here if a task ever needs one. */
 
-#define PROGINFO_MARGIN  12 /* px border around the row block */
-#define PROGINFO_GAP     12 /* px between the name column and the value column */
-#define PROGINFO_ROW_PAD  6 /* px added to the font height for the row pitch */
+#define PROGINFO_MARGIN   12 /* px border around the row block */
+#define PROGINFO_GAP      12 /* px between the name column and the value column */
+#define PROGINFO_ROW_PAD   6 /* px added to the font height for the row pitch */
+#define PROGINFO_FIELD_PAD 4 /* px each side of the text inside a value field */
 
 /* The rows, in display order. Only fields set in the desc get a row. */
 static const char *const proginfo_labels[] =
@@ -129,6 +130,7 @@ result_t wuss_proginfo_create(wuss_proginfo_t           **out,
     namew = 1;
   if (valuew < 1)
     valuew = 1;
+  valuew += PROGINFO_FIELD_PAD * 2; /* room for the groove border + inset */
 
   w = PROGINFO_MARGIN * 2 + namew + PROGINFO_GAP + valuew;
   h = PROGINFO_MARGIN * 2 + rowh * nrows;
@@ -180,13 +182,14 @@ result_t wuss_proginfo_create(wuss_proginfo_t           **out,
     specs[nspecs].flags = wuss_ICON_FLAGS_JUSTIFY_RIGHT;
     nspecs++;
 
-    specs[nspecs].bbox  = (box_t) BOX_POS_SIZE(PROGINFO_MARGIN + namew +
+    specs[nspecs].bbox   = (box_t) BOX_POS_SIZE(PROGINFO_MARGIN + namew +
                                                PROGINFO_GAP, y, valuew, rowh);
-    specs[nspecs].type  = wuss_ICON_TYPE_LABEL;
-    specs[nspecs].text  = values[i];
-    specs[nspecs].fg    = wuss_COLOUR_BLACK;
-    specs[nspecs].bg    = wuss_NO_BACKGROUND;
-    specs[nspecs].flags = wuss_ICON_FLAGS_NONE;
+    specs[nspecs].type   = wuss_ICON_TYPE_LABEL;
+    specs[nspecs].text   = values[i];
+    specs[nspecs].fg     = wuss_COLOUR_BLACK;
+    specs[nspecs].bg     = wuss_NO_BACKGROUND;
+    specs[nspecs].border = wuss_ICON_BORDER_GROOVE; /* RISC OS display field */
+    specs[nspecs].flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
     nspecs++;
   }
 
