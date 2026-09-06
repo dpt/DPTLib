@@ -28,6 +28,12 @@
 #define MS_WIDTH  (MS_GRID_W + 2 * MS_BORDER)
 #define MS_HEIGHT (MS_GRID_H + 2 * MS_BORDER + MS_HUD_H)
 
+/* the timer's 3-digit field, window-local content coords: right-aligned in
+ * the HUD strip, mirroring minesweeper_draw_hud's placement */
+#define MS_TIMER_X0 (MS_WIDTH - MS_BORDER - MINESWEEPER_CELL * 2)
+#define MS_TIMER_BOX \
+  ((box_t) { MS_TIMER_X0, 0, MS_WIDTH - MS_BORDER, MS_HUD_H })
+
 /* MENU click over the board pops this single-item menu */
 static const wuss_menu_item_t g_minesweeper_menu_items[] =
 {
@@ -324,18 +330,37 @@ static result_t minesweeper_redraw(const wuss_event_t *event,
   minesweeper_task_t *ms;
   screen_t            *scr;
   const box_t         *bounds;
+  const box_t         *clip;
+  int                  board_y0;
+  bool                 board_dirty;
   int                  r, c;
 
   ms     = task_data;
   scr    = event->data.redraw.scr;
   bounds = event->data.redraw.bounds;
+  clip   = event->data.redraw.content;
 
-  /* one-cell frame right round the grid */
-  screen_fill_rect(scr, bounds->x0, bounds->y0, SIZE2D(MS_WIDTH, MS_HEIGHT),
-                   colour_rgb(0x80, 0x80, 0x80));
+  /* the HUD strip is cheap and always redrawn; the frame, cells and banner
+   * only when the dirty region reaches below the strip (an idle timer tick
+   * invalidates just the timer field, so it skips all of that) */
+  board_y0    = bounds->y0 + MS_HUD_H;
+  board_dirty = clip->y1 > board_y0;
 
   minesweeper_tick_clock(ms);
+
+  /* the window owns every pixel (wuss_NO_BACKGROUND), so the HUD strip's own
+   * backdrop is painted here before the counters go on top */
+  screen_fill_rect(scr, bounds->x0, bounds->y0, SIZE2D(MS_WIDTH, MS_HUD_H),
+                   colour_rgb(0x80, 0x80, 0x80));
   minesweeper_draw_hud(ms, scr, bounds);
+
+  if (!board_dirty)
+    return result_OK;
+
+  /* one-cell frame right round the grid */
+  screen_fill_rect(scr, bounds->x0, board_y0,
+                   SIZE2D(MS_WIDTH, MS_HEIGHT - MS_HUD_H),
+                   colour_rgb(0x80, 0x80, 0x80));
 
   /* board is small and fixed, so just repaint every cell rather than working
    * out which ones overlap event->data.redraw.content */
@@ -451,7 +476,11 @@ result_t minesweeper_handle(wuss_window_t      *window,
       was = ms->elapsed;
       minesweeper_tick_clock(ms);
       if (ms->elapsed != was)
-        wuss_window_invalidate_all(ms->window);
+      {
+        box_t timer = MS_TIMER_BOX;
+
+        wuss_window_invalidate(ms->window, &timer);
+      }
     }
     return result_OK;
 
