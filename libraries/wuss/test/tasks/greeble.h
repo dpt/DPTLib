@@ -5,6 +5,7 @@
 
 #ifdef WUSS_APP
 
+#include "wuss/menu.h"
 #include "wuss/window.h"
 
 /* Largest grid the generator will fill; the visible grid is whatever fits
@@ -25,20 +26,21 @@
  * random palettes. */
 typedef struct greeble_task
 {
-  wuss_t        *wuss;     /* for wuss_get_pointer when opening the menu */
-  wuss_task_t   *delegate; /* the task that owns the menu */
-  wuss_window_t *window;
-  unsigned int   seed;   /* current pattern seed; advanced on click */
-  int            cols, rows; /* live grid extent, <= the MAX_* caps */
-  unsigned char  palette;  /* greeble_palettes[] row for this pattern */
-  int            random_prefab_palettes; /* nonzero: each scattered prefab
-                                          * gets its own random palette */
+  wuss_t            *wuss;     /* for wuss_get_pointer when opening the menu */
+  wuss_task_t       *delegate; /* the task that owns the menu */
+  wuss_window_t     *window;
+  wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
+  unsigned int       seed;   /* current pattern seed; advanced on click */
+  int                cols, rows; /* live grid extent, <= the MAX_* caps */
+  unsigned char      palette;  /* greeble_palettes[] row for this pattern */
+  int                random_prefab_palettes; /* nonzero: each scattered prefab
+                                              * gets its own random palette */
   /* grid[row][col], one stamp index (0..GREEBLE_NTILES-1) per cell;
    * regenerated whenever the seed changes */
-  unsigned char  grid[GREEBLE_MAX_ROWS][GREEBLE_MAX_COLS];
+  unsigned char      grid[GREEBLE_MAX_ROWS][GREEBLE_MAX_COLS];
   /* cellpal[row][col], the greeble_palettes[] row to draw each cell with;
    * kept in step with grid[][] */
-  unsigned char  cellpal[GREEBLE_MAX_ROWS][GREEBLE_MAX_COLS];
+  unsigned char      cellpal[GREEBLE_MAX_ROWS][GREEBLE_MAX_COLS];
 }
 greeble_task_t;
 

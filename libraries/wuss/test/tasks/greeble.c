@@ -248,16 +248,15 @@ static result_t greeble_select(greeble_task_t *task, wuss_window_t *window)
   return result_OK;
 }
 
-/* Flip per-prefab random palettes, keep the menu row's tick in step, and
- * regenerate from the same seed so it is a straight A/B of the pattern.
- * Shared by the Adjust click and the menu row. */
+/* Flip per-prefab random palettes and regenerate from the same seed so it is a
+ * straight A/B of the pattern. The shared menu struct's tick is not touched
+ * here: a fresh open re-syncs it from task state, and an ADJUST pick reticks
+ * the open chain in place (see greeble_menu_select). Shared by the Adjust
+ * click and the menu row. */
 static result_t greeble_toggle_randpal(greeble_task_t *task,
                                        wuss_window_t  *window)
 {
   task->random_prefab_palettes = !task->random_prefab_palettes;
-  g_greeble_menu_items[GREEBLE_MENU_RANDPAL].flags =
-    task->random_prefab_palettes ? wuss_MENU_ITEM_TICKED
-                                 : wuss_MENU_ITEM_NONE;
   greeble_generate(task);
   wuss_window_invalidate_all(window);
 
@@ -270,16 +269,31 @@ static result_t greeble_adjust(greeble_task_t *task, wuss_window_t *window)
   return greeble_toggle_randpal(task, window);
 }
 
-/* Menu pick: the sole row toggles per-prefab random palettes. */
+/* Menu pick: the sole row toggles per-prefab random palettes. An ADJUST pick
+ * keeps the chain open without rebuilding it, so the tick set at open is now
+ * stale on screen -- retick the still-open level in place. A SELECT pick has
+ * already closed and freed the chain by the time this arrives, so the handle
+ * is stale; drop it. */
 static result_t greeble_menu_select(greeble_task_t     *task,
                                     const wuss_event_t *event)
 {
+  result_t rc;
+
   if (event->data.menu_select.menu != &g_greeble_menu)
     return result_OK;
   if (event->data.menu_select.index != GREEBLE_MENU_RANDPAL)
     return result_OK;
 
-  return greeble_toggle_randpal(task, task->window);
+  rc = greeble_toggle_randpal(task, task->window);
+
+  if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
+    wuss_menu_set_item_ticked(task->menu_handle, &g_greeble_menu,
+                              GREEBLE_MENU_RANDPAL,
+                              task->random_prefab_palettes);
+  else
+    task->menu_handle = NULL;
+
+  return rc;
 }
 
 result_t greeble_handle(wuss_window_t      *window,
@@ -299,8 +313,16 @@ result_t greeble_handle(wuss_window_t      *window,
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_MENU)
+    {
+      /* the menu struct is shared by every greeble window; sync its tick to
+       * this window's state before it opens */
+      g_greeble_menu_items[GREEBLE_MENU_RANDPAL].flags =
+        task->random_prefab_palettes ? wuss_MENU_ITEM_TICKED
+                                     : wuss_MENU_ITEM_NONE;
       return wuss_menu_open(task->delegate, &g_greeble_menu,
-                            wuss_get_pointer(task->wuss), NULL);
+                            wuss_get_pointer(task->wuss),
+                            &task->menu_handle);
+    }
     if (event->data.mouse.button & wuss_BUTTON_SELECT)
       return greeble_select(task, window);
     if (event->data.mouse.button & wuss_BUTTON_ADJUST)
@@ -326,9 +348,10 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
   box_t            content;
   result_t         rc;
 
-  task->wuss     = wuss;
-  task->seed     = 0x9E3779B9u; /* any nonzero start */
-  task->palette  = 0;           /* Adjust cycles from here */
+  task->wuss        = wuss;
+  task->menu_handle = NULL;
+  task->seed        = 0x9E3779B9u; /* any nonzero start */
+  task->palette     = 0;           /* Adjust cycles from here */
   task->random_prefab_palettes = 0; /* Menu toggles this */
 
   /* greeble_redraw paints every pixel itself */
