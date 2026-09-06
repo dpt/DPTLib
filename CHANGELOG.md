@@ -10,6 +10,51 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- `bmfont_draw_relief()` — draws a string twice with a transparent
+  background, a shadow pass in a given colour at `pos + offset` then the
+  main pass at `pos`, factoring the hand-rolled two-call drop-shadow idiom
+  into the library.
+- `bmfont` opt-in monospaced mode: `bmfont_set_flags()` with
+  `bmfont_FLAG_MONOSPACE` forces every glyph to advance by the font's
+  widest advance width (`maxadw`, computed once at load). Glyph bitmaps are
+  unchanged — proportional ink sits left-aligned in the wider fixed cell.
+  `bmfont_measure()` and both `bmfont_draw` paths route their advance
+  lookup through a new `bmfont_advance_for()` helper.
+- `io/dirscan` — a `dirscan_walk()` flat-directory walk (RISC OS
+  `OS_GBPB` / Win32 `FindFirstFile` / POSIX `dirent`) with a per-leafname
+  callback, extracted from the copies `bmfont_enumerate()` and the wuss
+  palette picker each carried.
+- `wuss/menu.h` gains `wuss_menu_should_keep_open(ev)` (the "ADJUST keeps
+  the chain open, SELECT has already freed it" predicate) and
+  `wuss_menu_open_ticked(task, menu, ticks[], at, out)` (sets each row's
+  TICKED bit from a bool array, then opens), factoring the open/close
+  boilerplate tasks hand-rolled.
+- `wuss_menu_set_item_ticked()` — updates a single menu row's tick in
+  place on an ADJUST pick, for a menu tracking more than one independent
+  tick, without reopening or repositioning the chain.
+- `wuss_window_set_doc()` — change a window's virtual document extent after
+  creation (used when cycling to a differently-sized image).
+- `bitmap` now loads 1/2/4-bpp paletted PNGs: the sub-byte indices are
+  unpacked with `png_set_packing()` before the existing palette-to-RGB
+  expansion, and the `pngbitdepth != 8` rejection is restricted to
+  non-palette colour types.
+- `screen_draw_dashed_line()` now anchors its dash phase to the unclipped
+  start point, so a dashed rule scrolled partly off-screen and back no
+  longer smears its pattern.
+- New `wuss` demo tasks: **Minesweeper** (12x12/20-mine board, flood-fill
+  reveal, flags on Adjust, mine counter and elapsed timer HUD) and
+  **greeble** (an edge-matched tile-placement greebling pattern built from
+  205 baked artist stamps, prefab blocks scattered largest-first, a random
+  4-colour palette per pattern, Adjust cycles the base palette).
+- `wuss` text task gains a Sample submenu (pangrams plus the Lorem Ipsum
+  default) and moves the font picker under a root MENU.
+- The `wuss` SDL frontend tracks an integer device-pixel scale in
+  `struct wuss_frontend`, opening at 2x; F2 / Shift-F2 step it, clamped to
+  `[1, 4]`, and the window is sized from `scr_width/height * scale` so
+  repeated halving can't drift it off the grid.
+- A custom Emscripten shell page for the `wuss` demo (`--shell-file`),
+  replacing the default boilerplate with a title, control-key legend and
+  about blurb; `LINK_DEPENDS` on it so editing the shell relinks.
 - An Emscripten/WebAssembly build of the interactive `wuss` demo. The
   run-loop is extracted into `wuss_frame(void *)` over a `wuss_frame_ctx`,
   driven by `emscripten_set_main_loop_arg` in the browser while desktop and
@@ -190,6 +235,35 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- The `wuss` demo task launcher is split out of `apps/wuss/main.c` into
+  `apps/wuss/tasks.c` behind `tasks.h`: the 19 `spawn_*` callbacks, every
+  menu table and `task_handle_event` move over, and the shared file-scope
+  context becomes `struct wuss_app_tasks`. `main.c` keeps the frame loop,
+  `pixel_stress` and the chrome config.
+- The `wuss` palette picker is driven off the `wuss_EVENT_PALETTE`
+  broadcast rather than an app-supplied `on_select` callback:
+  `palette_create()` no longer takes a palette/`on_select`/`user_data`,
+  `palette_menu_select` installs the pick with `wuss_set_palette()`
+  directly, and the swatch grid reads the live array back via a new
+  `wuss_get_palette()` accessor each redraw. The frontend bitmap push
+  moves into `main.c`'s `wuss_EVENT_PALETTE` case.
+- The `wuss` palette-picker menu and the greeble palettes are now scanned
+  from `resources/palettes/*.hex` at runtime instead of hardcoded PICO-8 /
+  WIMP16 tables, so a new palette drops in without a rebuild.
+- The `wuss` menu row highlight now inverts only the text column between
+  the two gutters (padded by a measured space-width either side), not the
+  full item bbox, so the tick and submenu-arrow gutters stay un-darkened.
+  `WUSS_MENU_TICK_W` / `WUSS_MENU_ARROW_W` renamed
+  `WUSS_MENU_GUTTER_LEFT` / `WUSS_MENU_GUTTER_RIGHT`;
+  `WUSS_MENU_TEXT_PAD` dropped.
+- The `wuss` demo quit key moves from `Q` (which collided with text-entry
+  tasks) to `F4`; Escape still quits.
+- `greeble_stamp` blits by same-slot run with `screen_fill_hline()` (1-4
+  run fills per row) instead of 64 `screen_set_pixel()` calls per stamp.
+- `GREEBLE_MAX_COLS` goes 32 → 48 to match `GREEBLE_MAX_ROWS`, and the
+  greeble window opens at the full generator grid size (from
+  `GREEBLE_MAX_COLS/ROWS` × tile pixel size) rather than a hardcoded
+  160x320.
 - **Breaking:** `wuss_create()`'s `fonts` argument is now
   `const wuss_font_desc_t *` (handle, `wuss_font_class_t`, borrowed
   leafname) instead of a bare `bmfont_t *const *` array; up to
@@ -297,6 +371,36 @@ _Unreleased_ until one is cut.
 
 ### Fixed
 
+- `wuss_window_move()`'s fast path no longer slides pixels still queued in
+  `wuss->dirty[]` from an earlier invalidation this frame onto the
+  window's new position: pending dirty regions are stripped from the
+  clean blit-source set before the slide. Emscripten's browser event
+  queue batches several `MOUSE_MOTION` events per frame, so edge-drags hit
+  this every time; native SDL rarely batched enough to expose it.
+- `wuss_mouse_move()` clamps the incoming point to the screen before the
+  drag-move / resize / scrollbar paths, so a pointer report from outside
+  the frame can no longer carry a window off the desktop.
+- The greeble menu's file-scope struct is shared by every greeble window;
+  its single row's tick now follows the window it opened over (synced from
+  task state at open time, re-ticked in place on an ADJUST pick) instead
+  of showing whichever window toggled last.
+- A MENU press that lands on another window is no longer spent closing the
+  open menu chain — the chain still closes but the press falls through to
+  that window's task so it can open its own menu, matching RISC OS and the
+  bare-backdrop path.
+- `wuss__menu_spawn` measures the menu title as well as the widest item
+  label and sizes the window to the wider of the two, so a title longer
+  than every item (e.g. a one-item menu) is no longer clipped by the
+  titlebar.
+- `spawn_image` copies the ninepatch path into its own buffer before
+  `image_create()`, which calls `path_join_filename()` again and clobbers
+  the shared static buffer; `image_click` now swallows a failed reload
+  (warn, keep the current image) instead of propagating `rc`.
+- Dropped dead `< 0` range checks on unsigned `wuss_colour_t` /
+  `screen_pattern_t` fields across `wuss` create and icon-from-spec
+  (`-Wtype-limits`), removed a bogus `const` on `pattern_runs_t`
+  parameters that the RISC OS cross-compiler rejected, and marked
+  `bitmap` PNG-save locals `volatile` against `-Wclobbered`.
 - `wuss_destroy()` now delivers `wuss_EVENT_QUIT` to each still-registered
   task before freeing it, instead of freeing the task block directly. Per
   the `task_data`-ownership contract a task's client-owned allocations are
