@@ -21,17 +21,8 @@
  * shortlist. Each stamp is blitted 1:1; its four slots index the current
  * greeble_palettes[] row.
  *
- * Select reseeds the pattern; Adjust steps to the next palette; Menu picks a
- * symmetry mode that folds the generated grid onto itself. */
-enum
-{
-  greeble_SYM_NONE,    /* raw scatter */
-  greeble_SYM_MIRROR_X, /* left half mirrored to the right */
-  greeble_SYM_MIRROR_Y, /* top half mirrored to the bottom */
-  greeble_SYM_QUAD,    /* top-left quadrant mirrored into the other three */
-  greeble_SYM__LIMIT
-};
-
+ * Select reseeds the pattern; Adjust and the Menu row both toggle per-prefab
+ * random palettes. */
 typedef struct greeble_task
 {
   wuss_t        *wuss;     /* for wuss_get_pointer when opening the menu */
@@ -40,7 +31,6 @@ typedef struct greeble_task
   unsigned int   seed;   /* current pattern seed; advanced on click */
   int            cols, rows; /* live grid extent, <= the MAX_* caps */
   unsigned char  palette;  /* greeble_palettes[] row for this pattern */
-  unsigned char  symmetry; /* one of greeble_SYM_* */
   int            random_prefab_palettes; /* nonzero: each scattered prefab
                                           * gets its own random palette */
   /* grid[row][col], one stamp index (0..GREEBLE_NTILES-1) per cell;
