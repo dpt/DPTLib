@@ -333,9 +333,11 @@ static void menu_move_over_row(wuss_t            *wuss,
  * so the test can see the press arrived and which menu it raised. */
 typedef struct menu_task
 {
-  wuss_task_t      *self;
+  wuss_task_t       *self;
   const wuss_menu_t *menu;
-  int               menu_press_count;
+  int                menu_press_count;
+  wuss_menu_handle_t menu_handle;      /* last chain this task opened */
+  int                menu_closed_count; /* wuss_EVENT_MENU_CLOSED deliveries */
 }
 menu_task_t;
 
@@ -355,7 +357,13 @@ static result_t menu_open_handle(wuss_window_t      *window,
   {
     mt->menu_press_count++;
     return wuss_menu_open(mt->self, mt->menu,
-                          event->data.mouse.point, NULL);
+                          event->data.mouse.point, &mt->menu_handle);
+  }
+
+  if (event->kind == wuss_EVENT_MENU_CLOSED)
+  {
+    mt->menu_closed_count++;
+    mt->menu_handle = NULL; /* chain freed under us; handle now stale */
   }
 
   return result_OK;
@@ -4517,9 +4525,22 @@ SubHiFail:
     if (mwuss->menu_chain == NULL ||
         mwuss->menu_chain->menu != &menu_b)   goto MoveCheckFail;
 
+    /* replacing menu A's chain told task A its handle was gone */
+    if (mta.menu_closed_count != 1)           goto MoveCheckFail;
+    if (mta.menu_handle != NULL)              goto MoveCheckFail;
+
     /* a plain SELECT press on bare backdrop still just dismisses */
     wuss_mouse_click(mwuss, POINT(4, 196), wuss_BUTTON_SELECT,
                      wuss_MOUSE_DOWN, NULL);
+    if (mwuss->menu_chain != NULL)            goto MoveCheckFail;
+
+    /* the click-outside dismissal told task B too. Regression: before the
+     * MENU_CLOSED fix wuss freed the chain here without telling task B, so
+     * mtb.menu_handle dangled and this wuss_menu_close was a use-after-free
+     * (ASan: heap-use-after-free in wuss_menu_close). */
+    if (mtb.menu_closed_count != 1)           goto MoveCheckFail;
+    if (mtb.menu_handle != NULL)              goto MoveCheckFail;
+    wuss_menu_close(mtb.menu_handle); /* NULL now: safe no-op */
     if (mwuss->menu_chain != NULL)            goto MoveCheckFail;
 
     rc = result_OK;

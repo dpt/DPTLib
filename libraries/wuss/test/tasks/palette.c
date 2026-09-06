@@ -325,7 +325,11 @@ result_t palette_handle(wuss_window_t      *window,
                         const wuss_event_t *event,
                         void               *task_data)
 {
+  palette_task_t *pc;
+
   NOT_USED(window);
+
+  pc = task_data;
 
   switch (event->kind)
   {
@@ -337,6 +341,10 @@ result_t palette_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     return palette_menu_select(task_data, event);
+
+  case wuss_EVENT_MENU_CLOSED:
+    pc->menu_handle = NULL; /* wuss closed the chain under us */
+    return result_OK;
 
   case wuss_EVENT_QUIT:
     free(task_data); /* calloc'd per instance by the spawner */

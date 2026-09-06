@@ -72,7 +72,15 @@ typedef enum wuss_event_kind
   wuss_EVENT_PALETTE,
   /** A leaf menu item was picked; delivered to the task that opened the
    *  menu. */
-  wuss_EVENT_MENU_SELECT
+  wuss_EVENT_MENU_SELECT,
+  /** The menu chain the task opened has been closed by wuss itself -- a
+   *  click outside every menu window, or another wuss_menu_open -- rather
+   *  than by a pick or by the task's own wuss_menu_close. Delivered to the
+   *  task that opened it (window == NULL); carries no data. A task that
+   *  stored the wuss_menu_open handle must drop it here: the chain is
+   *  already freed. Not fired for a SELECT pick (a wuss_EVENT_MENU_SELECT
+   *  with a chain-closing button) or for a wuss_menu_close the task made. */
+  wuss_EVENT_MENU_CLOSED
 }
 wuss_event_kind_t;
 
@@ -92,8 +100,8 @@ typedef wuss_event_kind_t wuss_window_event_kind_t;
  * no window (window == NULL): the app-wide notifications.
  *
  * Members: wuss_EVENT_IDLE, wuss_EVENT_QUIT, wuss_EVENT_PALETTE,
- * wuss_EVENT_MENU_SELECT, wuss_EVENT_ICON (reserved for a future shared/dock
- * element; nothing emits it yet).
+ * wuss_EVENT_MENU_SELECT, wuss_EVENT_MENU_CLOSED, wuss_EVENT_ICON (reserved
+ * for a future shared/dock element; nothing emits it yet).
  */
 typedef wuss_event_kind_t wuss_task_event_kind_t;
 
@@ -187,7 +195,8 @@ typedef struct wuss_event
 
     /* wuss_EVENT_OPEN, wuss_EVENT_PRE_SHOW, wuss_EVENT_SHOW,
      * wuss_EVENT_PRE_CLOSE, wuss_EVENT_CLOSE, wuss_EVENT_IDLE,
-     * wuss_EVENT_QUIT and wuss_EVENT_PALETTE carry no data. */
+     * wuss_EVENT_QUIT, wuss_EVENT_PALETTE and wuss_EVENT_MENU_CLOSED carry
+     * no data. */
   }
   data;
 }

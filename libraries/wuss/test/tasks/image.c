@@ -290,6 +290,12 @@ result_t image_handle(wuss_window_t      *window,
     index = event->data.menu_select.index;
     printf("image menu: picked \"%s\"\n",
            menu->items[index].text ? menu->items[index].text : "(sep)");
+    if (!wuss_menu_should_keep_open(event))
+      ic->menu_handle = NULL; /* SELECT pick already freed the chain */
+    return result_OK;
+
+  case wuss_EVENT_MENU_CLOSED:
+    ic->menu_handle = NULL; /* wuss closed the chain under us */
     return result_OK;
 
   case wuss_EVENT_QUIT:

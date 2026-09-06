@@ -376,6 +376,10 @@ result_t greeble_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_SELECT:
     return greeble_menu_select(task, event);
 
+  case wuss_EVENT_MENU_CLOSED:
+    task->menu_handle = NULL; /* wuss closed the chain under us */
+    return result_OK;
+
   case wuss_EVENT_QUIT:
     free(task); /* task_data was calloc'd per instance by the spawner */
     return result_OK;

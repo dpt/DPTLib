@@ -133,6 +133,36 @@ static void wuss__menu_close_from(struct wuss__menu *node)
   }
 }
 
+/* Tear the whole open chain down because wuss decided to, not the client: a
+ * click outside every menu window, or another wuss_menu_open. The task that
+ * opened it still holds the handle wuss_menu_open handed back, so tell it the
+ * chain is gone (wuss_EVENT_MENU_CLOSED) before the nodes are freed -- a pick
+ * has wuss_EVENT_MENU_SELECT for that, but these paths have nothing. Unlinks
+ * wuss->menu_chain first so a re-entrant wuss_menu_close from the handler is a
+ * no-op. */
+static void wuss__menu_abandon(wuss_t *wuss)
+{
+  struct wuss__menu *root;
+  wuss_task_t       *owner;
+
+  root = wuss->menu_chain;
+  if (root == NULL)
+    return;
+
+  owner            = root->owner;
+  wuss->menu_chain = NULL;
+
+  if (owner != NULL)
+  {
+    wuss_event_t ev;
+
+    ev.kind = wuss_EVENT_MENU_CLOSED;
+    (void) wuss__deliver(owner, NULL, &ev);
+  }
+
+  wuss__menu_close_from(root);
+}
+
 /* Compute where a submenu (or a borrowed window standing in for one) opens
  * off the row `icon` in parent level `self`: content top-left in screen
  * space, the child's own titlebar then sitting above it so the two rows line
@@ -789,10 +819,7 @@ result_t wuss_menu_open(wuss_task_t        *task,
   wuss = task->wuss;
 
   if (wuss->menu_chain != NULL)
-  {
-    wuss__menu_close_from(wuss->menu_chain);
-    wuss->menu_chain = NULL;
-  }
+    wuss__menu_abandon(wuss);
 
   /* RISC OS convention: the pointer opens the menu sitting a little inside its
    * first item, not on the top-left corner. Shift the content top-left up and
@@ -968,7 +995,6 @@ int wuss__menu_click_outside(wuss_t *wuss, const wuss_window_t *hit)
       return 0;
   }
 
-  wuss__menu_close_from(wuss->menu_chain);
-  wuss->menu_chain = NULL;
+  wuss__menu_abandon(wuss);
   return 1;
 }
