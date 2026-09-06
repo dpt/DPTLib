@@ -134,6 +134,9 @@ typedef unsigned char wuss_colour_t;
 #define wuss_COLOUR_CYAN    (wuss_COLOUR_SYMBOLIC + 6)
 #define wuss_COLOUR_MAGENTA (wuss_COLOUR_SYMBOLIC + 7)
 #define wuss_COLOUR_GREY    (wuss_COLOUR_SYMBOLIC + 8)
+/* Conventional body fills: window is a light grey, menu is white. */
+#define wuss_COLOUR_WINDOW  (wuss_COLOUR_SYMBOLIC + 9)
+#define wuss_COLOUR_MENU    (wuss_COLOUR_SYMBOLIC + 10)
 
 /* Chrome roles: echo the matching wuss_config_t field, resolved to a
  * concrete index -- e.g. wuss_COLOUR_TITLE_BG is furniture.title.bg,
