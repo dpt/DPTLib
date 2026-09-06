@@ -80,8 +80,9 @@ wuss_task_t;
 - `wuss_WINDOW_NO_HSCROLL` — no horizontal scrollbar on the bottom edge.
 - `wuss_WINDOW_NO_RESIZE` — no resize button in the bottom-right corner.
 - `wuss_WINDOW_NO_RESIZE_BLIT` — a resize (drag or toggle-size) always fully redraws the window's content instead of blitting the preserved region; for a task whose rendering depends on window size in ways a partial redraw can't patch (e.g. a layout that spans the whole window).
+- `wuss_WINDOW_NO_REDRAW` — no `wuss_EVENT_REDRAW` is delivered for this window: Wuss fills its backdrop and draws its icons, and that is its whole appearance. For a window that is nothing but backdrop and/or icons (a label-only dialogue, say) this saves the task a no-op redraw handler — and, when the window shares a task with a window that does paint, a window-handle check in that handler.
 
-`wuss_WINDOW_NO_CLOSE`/`NO_BACK`/`NO_TOGGLE_SIZE` are ignored if `flags` includes `wuss_WINDOW_NO_TITLEBAR`; `NO_VSCROLL`/`NO_HSCROLL`/`NO_RESIZE`/`NO_RESIZE_BLIT` apply regardless.
+`wuss_WINDOW_NO_CLOSE`/`NO_BACK`/`NO_TOGGLE_SIZE` are ignored if `flags` includes `wuss_WINDOW_NO_TITLEBAR`; `NO_VSCROLL`/`NO_HSCROLL`/`NO_RESIZE`/`NO_RESIZE_BLIT`/`NO_REDRAW` apply regardless.
 
 All furniture actions (back, toggle-size, resize-drag, scrollbar arrow/thumb) are handled entirely within Wuss via `wuss_mouse_click`/`wuss_mouse_move` — no new client events.
 
@@ -187,7 +188,7 @@ In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scro
 ## Redrawing
 
 - `wuss_redraw` repaints every window, back-to-front, unconditionally, having first painted the configured backdrop colour (see Setup) behind them, if any.
-- Within a window, Wuss paints in a fixed order: the window background colour, then its icons (see "Icons" below), then the task's `wuss_EVENT_REDRAW` handler — so a task always draws over the background and any icons, never under them.
+- Within a window, Wuss paints in a fixed order: the window background colour, then its icons (see "Icons" below), then the task's `wuss_EVENT_REDRAW` handler — so a task always draws over the background and any icons, never under them. A `wuss_WINDOW_NO_REDRAW` window skips that last step: background and icons are all it gets.
 - `wuss_invalidate` / `wuss_window_invalidate` mark a screen-space or window-local region dirty; window management calls these automatically for its own changes, but a task must call one of them itself whenever its content changes on its own (e.g. an animation), passing the union of the old and new areas that need repainting.
 - `wuss_redraw_dirty` repaints only the accumulated dirty region, then clears it, painting the backdrop colour into each dirty region first if one was configured. Without a configured backdrop, Wuss only repaints windows, not the background between/behind them, so a caller whose invalidation can expose background (e.g. after a window move) should clear that region itself first.
 - `wuss_get_dirty_count`/`wuss_get_dirty(wuss, index, out)` fetch the currently accumulated dirty regions (coalesced as they accumulate, up to a fixed cap after which further regions are merged into the last one) without redrawing.
@@ -216,6 +217,36 @@ An icon's bounding box is in **virtual content space** — the same space as `wu
 Wuss draws icons in creation order (later icons paint on top); hit-testing scans in reverse, so the topmost icon at a point wins. When the pointer leaves a pressed button its pressed state clears; v1 does not re-press on drag-back-in and does not track which mouse button is held.
 
 The bevel's light (top/left) and dark (bottom/right) edge shades come from `config->bevel.light` / `config->bevel.dark` at `wuss_create` time, validated like the other furniture colours; both default to the titlebar fill colour when `config` is `NULL`.
+
+## Components
+
+Built with the `WUSS_COMPONENTS` CMake option, `libraries/wuss/component/` holds small reusable task helpers layered on the core. Their headers are under `include/wuss/component/`.
+
+### Program-information dialogue
+
+`wuss_proginfo` is the RISC OS "Info" / Toolbox ProgInfo dialogue in miniature: a small fixed window of Name / Purpose / Author / Version rows a task fills in once, then typically hangs off its Menu-button pop-up.
+
+```C
+typedef struct wuss_proginfo_desc
+{
+  const char *name;    /* row "Name"    -- required */
+  const char *purpose; /* row "Purpose" */
+  const char *author;  /* row "Author"  */
+  const char *version; /* row "Version" */
+}
+wuss_proginfo_desc_t;
+
+result_t       wuss_proginfo_create(wuss_proginfo_t **out, wuss_task_t *task,
+                                    const wuss_proginfo_desc_t *desc);
+void           wuss_proginfo_destroy(wuss_proginfo_t *doomed);
+wuss_window_t *wuss_proginfo_window(const wuss_proginfo_t *pi);
+```
+
+`wuss_proginfo_create` builds one hidden window on `task`, sized from that task's font metrics and the text in `desc`, one label row per non-NULL field (the name right-justified in a left column, the value left-justified beside it). Each `desc` field is borrowed and copied.
+
+The window is created `wuss_WINDOW_NO_CLOSE` and `wuss_WINDOW_NO_REDRAW` — it is labels on a flat backdrop, so it needs no redraw handler — and stays on `task` until `wuss_proginfo_destroy` closes it. So `task` must **not** be an autoclose task: the hidden window would keep its window list from ever emptying. It must also outlive the handle, and — as for any borrowed menu-item window — any menu chain referencing `wuss_proginfo_window()` must be closed before the dialogue is destroyed.
+
+Point a menu item's `window` field at `wuss_proginfo_window()` to have Wuss show the dialogue where a submenu would open.
 
 ## Glossary
 
