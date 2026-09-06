@@ -88,15 +88,47 @@ static int greeble_try_prefab(greeble_task_t *task,
  * from greeble_filler[] -- the stamps the artist drew standing alone, i.e. the
  * shortlist that reads well without neighbours. GREEBLE_PREFAB_ATTEMPTS
  * placement tries give a dense but varied cover; more attempts just repaint
- * cells already taken. */
+ * cells already taken.
+ *
+ * Blocks are tried largest-footprint first: once small blocks and filler have
+ * fragmented the grid a big prefab's bounding box rarely lands wholly empty,
+ * so a random prefab order leaves the large shapes almost never placed. The
+ * attempt budget is split evenly across prefabs; each prefab gets its slice of
+ * random (row,col) tries in descending-area order. */
 #define GREEBLE_PREFAB_ATTEMPTS (GREEBLE_MAX_COLS * GREEBLE_MAX_ROWS)
 
 static void greeble_generate(greeble_task_t *task)
 {
-  int          r, c, i;
-  unsigned int s;
+  unsigned int  s;
+  int           i;
+  unsigned char order[GREEBLE_NPREFAB]; /* prefab indices, largest area first */
+  int           tries_each;
+  int           r, c;
 
   s = task->seed;
+
+  /* insertion-sort a fresh index list by w*h descending; NPREFAB is small and
+   * this runs once per regenerate */
+  for (i = 0; i < GREEBLE_NPREFAB; i++)
+  {
+    int a, j;
+
+    a = greeble_prefab[i].w * greeble_prefab[i].h;
+    for (j = i; j > 0; j--)
+    {
+      int b = greeble_prefab[order[j - 1]].w * greeble_prefab[order[j - 1]].h;
+      if (b >= a)
+        break;
+      order[j] = order[j - 1];
+    }
+    order[j] = (unsigned char) i;
+  }
+
+  tries_each = GREEBLE_NPREFAB > 0
+             ? GREEBLE_PREFAB_ATTEMPTS / GREEBLE_NPREFAB
+             : 0;
+  if (tries_each < 1)
+    tries_each = 1;
 
   /* grid[][] is contiguous; the cols..MAX_COLS tail of each live row is never
    * read, so one clear over the live rows is enough. GREEBLE_EMPTY is a byte
@@ -107,26 +139,31 @@ static void greeble_generate(greeble_task_t *task)
   memset(task->cellpal, task->palette,
          (size_t) task->rows * GREEBLE_MAX_COLS);
 
-  for (i = 0; i < GREEBLE_PREFAB_ATTEMPTS && GREEBLE_NPREFAB > 0; i++)
+  for (i = 0; i < GREEBLE_NPREFAB; i++)
   {
-    int           p, row, col;
-    unsigned char pal;
+    int p, t;
 
-    GREEBLE_XORSHIFT(s);
-    p = (int) (s % (unsigned int) GREEBLE_NPREFAB);
-    GREEBLE_XORSHIFT(s);
-    row = (int) (s % (unsigned int) task->rows);
-    GREEBLE_XORSHIFT(s);
-    col = (int) (s % (unsigned int) task->cols);
+    p = order[i];
 
-    pal = task->palette;
-    if (task->random_prefab_palettes)
+    for (t = 0; t < tries_each; t++)
     {
-      GREEBLE_XORSHIFT(s);
-      pal = (unsigned char) (s % (unsigned int) GREEBLE_NPALETTE);
-    }
+      int           row, col;
+      unsigned char pal;
 
-    greeble_try_prefab(task, p, row, col, pal);
+      GREEBLE_XORSHIFT(s);
+      row = (int) (s % (unsigned int) task->rows);
+      GREEBLE_XORSHIFT(s);
+      col = (int) (s % (unsigned int) task->cols);
+
+      pal = task->palette;
+      if (task->random_prefab_palettes)
+      {
+        GREEBLE_XORSHIFT(s);
+        pal = (unsigned char) (s % (unsigned int) GREEBLE_NPALETTE);
+      }
+
+      greeble_try_prefab(task, p, row, col, pal);
+    }
   }
 
   for (r = 0; r < task->rows; r++)
