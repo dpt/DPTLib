@@ -133,6 +133,7 @@ endif()
 if(WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/component/fontmenu.h)
     list(APPEND PUBLIC_HEADERS include/wuss/component/colourmenu.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/component/proginfo.h)
 endif()
 
 # The public headers must be set as properties of the library, not as
@@ -435,7 +436,8 @@ set(WUSS_MENU_SOURCES
 
 set(WUSS_COMPONENT_SOURCES
     libraries/wuss/component/fontmenu.c
-    libraries/wuss/component/colourmenu.c)
+    libraries/wuss/component/colourmenu.c
+    libraries/wuss/component/proginfo.c)
 
 set(WUSS_SOURCES ${WUSS_CORE_SOURCES})
 if(WUSS_FURNITURE)

@@ -65,7 +65,9 @@ result_t image_create(wuss_t       *wuss,
   task->resources = resources;
   task->index     = 0;
   task->nnames    = 0;
-  task->menu      = NULL;
+  task->menu        = NULL;
+  task->proginfo    = NULL;
+  task->menu_handle = NULL;
 
   images_dir = path_join_filename(resources, 2, "resources", "images");
   rc = dirscan_walk(images_dir, image__scan_entry, task);
@@ -103,7 +105,10 @@ result_t image_create(wuss_t       *wuss,
     return rc;
   }
   task->delegate = delegate;
-  wuss_task_set_autoclose(delegate, 1);
+  /* No autoclose: the task also owns the hidden proginfo window below, so its
+   * window list never empties while the main window is up. QUIT is delivered
+   * at wuss_destroy instead. Closing the main window early leaks this block
+   * until then -- fine for a demo. */
 
   sz.w = task->bitmap.size.w + NINEPATCHSZ * 2;
   sz.h = task->bitmap.size.h + NINEPATCHSZ * 2;
@@ -117,9 +122,28 @@ result_t image_create(wuss_t       *wuss,
                                  SIZE2D(32, 32),
                                  &task->window);
   if (rc != result_OK)
+  {
     wuss_task_destroy(delegate); /* QUIT frees the two bitmaps and the block */
+    return rc;
+  }
 
-  return rc;
+  /* The "Info" menu row's standard dialogue. Hung off the descriptor menu as
+   * a wuss_menu_item_t.window in image_open_menu. A create failure is
+   * non-fatal -- the task just runs without an Info dialogue. */
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Image",
+      "Cycle the PNGs under resources/images",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+
+    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
+      task->proginfo = NULL;
+  }
+
+  return result_OK;
 }
 
 static result_t image_redraw(const wuss_event_t *event, void *task_data)
@@ -207,18 +231,32 @@ static result_t image_open_menu(image_task_t *ic)
 {
   result_t     rc;
   wuss_menu_t *m;
+  int          i;
 
   rc = wuss_menu_create_from_desc(&m,
-         "Display, Open, !Show grid, !Wireframe, >Export, |Quit",
+         "Image, Info, New..., Open, !Show grid, !Wireframe, >Export, |Quit",
          &image_menu_export);
   if (rc != result_OK)
     return rc;
+
+  /* The descriptor syntax has no "open this window on hover" mark, so point
+   * the "Info" row at the proginfo dialogue by hand: wuss treats a
+   * wuss_menu_item_t.window exactly like a submenu, showing it where one would
+   * open. */
+  if (ic->proginfo != NULL)
+    for (i = 0; i < m->nitems; i++)
+      if (m->items[i].text != NULL && strcmp(m->items[i].text, "Info") == 0)
+      {
+        ((wuss_menu_item_t *) m->items)[i].window =
+          wuss_proginfo_window(ic->proginfo);
+        break;
+      }
 
   wuss_menu_destroy(ic->menu);
   ic->menu = m;
 
   return wuss_menu_open(ic->delegate, ic->menu, wuss_get_pointer(ic->wuss),
-                        NULL);
+                        &ic->menu_handle);
 }
 
 result_t image_handle(wuss_window_t      *window,
@@ -255,7 +293,12 @@ result_t image_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
+    /* close any open chain first: it may hold the proginfo window as a
+     * borrowed wuss_menu_item_t.window, and destroying that below would leave
+     * the chain pointing at freed memory */
+    wuss_menu_close(ic->menu_handle);
     wuss_menu_destroy(ic->menu);
+    wuss_proginfo_destroy(ic->proginfo); /* closes its dialogue window */
     free(ic->bitmap.base);
     free(ic->ninepatch.base);
     free(ic); /* task_data was calloc'd per instance by the spawner */
