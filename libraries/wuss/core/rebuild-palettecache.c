@@ -17,9 +17,7 @@ static const unsigned char wuss__named_rgb[][3] =
   { 0xFF, 0xFF, 0x00 }, /* wuss_COLOUR_YELLOW  */
   { 0x00, 0xFF, 0xFF }, /* wuss_COLOUR_CYAN    */
   { 0xFF, 0x00, 0xFF }, /* wuss_COLOUR_MAGENTA */
-  { 0x80, 0x80, 0x80 }, /* wuss_COLOUR_GREY    */
-  { 0xDD, 0xDD, 0xDD }, /* wuss_COLOUR_WINDOW  -- light grey window body */
-  { 0xFF, 0xFF, 0xFF }  /* wuss_COLOUR_MENU    -- white menu body */
+  { 0x80, 0x80, 0x80 }  /* wuss_COLOUR_GREY    */
 };
 
 void wuss__rebuild_palettecache(wuss_t *wuss)
@@ -57,4 +55,7 @@ void wuss__rebuild_palettecache(wuss_t *wuss)
 #endif
   if (wuss->backdrop.colour != wuss_NO_BACKGROUND)
     cache[wuss_COLOUR_BACKDROP - wuss_COLOUR_SYMBOLIC] = wuss->backdrop.colour;
+
+  cache[wuss_COLOUR_WINDOW - wuss_COLOUR_SYMBOLIC] = wuss->window_bg;
+  cache[wuss_COLOUR_MENU   - wuss_COLOUR_SYMBOLIC] = wuss->menu_bg;
 }

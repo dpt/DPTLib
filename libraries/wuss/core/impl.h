@@ -128,6 +128,8 @@ struct wuss
   wuss_colour_t               accent_bg;   /* default action button fill */
   wuss_colour_t               accent_fg;   /* default action button text */
 #endif
+  wuss_colour_t               window_bg; /* work-area body fill; wuss_COLOUR_WINDOW */
+  wuss_colour_t               menu_bg;   /* menu body fill; wuss_COLOUR_MENU */
   wuss_backdrop_t             backdrop; /* colour==wuss_NO_BACKGROUND: none */
 #ifdef WUSS_FURNITURE
   int                         titlebar_height;
