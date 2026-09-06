@@ -487,6 +487,8 @@ result_t wuss_test(const char *resources)
     symcfg.furniture.title.bg = wuss_COLOUR_BLUE;   /* -> index 2 */
     symcfg.furniture.title.fg = wuss_COLOUR_WHITE;  /* -> index 3 */
     symcfg.backdrop = wuss_BACKDROP_COLOUR(wuss_COLOUR_GREEN); /* -> 1 */
+    symcfg.body.window = wuss_COLOUR_RED;           /* -> index 0 */
+    symcfg.body.menu   = wuss_COLOUR_WHITE;         /* -> index 3 */
 
     rc = wuss_create(&scr, NULL, 0, sympal, 5, &symcfg, NULL, &symw);
     if (rc != result_OK)
@@ -504,7 +506,9 @@ result_t wuss_test(const char *resources)
         wuss__resolve_colour(symw, wuss_NO_BACKGROUND) != wuss_NO_BACKGROUND ||
         wuss__resolve_colour(symw, wuss_COLOUR_TITLE_BG) != 2 ||
         wuss__resolve_colour(symw, wuss_COLOUR_TITLE_FG) != 3 ||
-        wuss__resolve_colour(symw, wuss_COLOUR_BACKDROP) != 1)
+        wuss__resolve_colour(symw, wuss_COLOUR_BACKDROP) != 1 ||
+        wuss__resolve_colour(symw, wuss_COLOUR_WINDOW) != 0 ||
+        wuss__resolve_colour(symw, wuss_COLOUR_MENU) != 3)
     {
       wuss_destroy(symw);
       goto Failure;
