@@ -119,7 +119,7 @@ typedef unsigned char wuss_colour_t;
  * the named colours pick the nearest system-palette entry to the RGB the
  * name implies, the chrome roles echo the matching wuss_config_t field.
  * Accepted anywhere a wuss_colour_t is: config furniture/bevel/accent/
- * backdrop, window backgrounds (see wuss_window_create), icon specs.
+ * body/backdrop, window backgrounds (see wuss_window_create), icon specs.
  * wuss_NO_BACKGROUND is not symbolic and always passes through unchanged.
  */
 #define wuss_COLOUR_SYMBOLIC ((wuss_colour_t) 128)
@@ -134,14 +134,12 @@ typedef unsigned char wuss_colour_t;
 #define wuss_COLOUR_CYAN    (wuss_COLOUR_SYMBOLIC + 6)
 #define wuss_COLOUR_MAGENTA (wuss_COLOUR_SYMBOLIC + 7)
 #define wuss_COLOUR_GREY    (wuss_COLOUR_SYMBOLIC + 8)
-/* Conventional body fills: window is a light grey, menu is white. */
-#define wuss_COLOUR_WINDOW  (wuss_COLOUR_SYMBOLIC + 9)
-#define wuss_COLOUR_MENU    (wuss_COLOUR_SYMBOLIC + 10)
 
 /* Chrome roles: echo the matching wuss_config_t field, resolved to a
  * concrete index -- e.g. wuss_COLOUR_TITLE_BG is furniture.title.bg,
  * wuss_COLOUR_BUTTON_HILIGHT is bevel.light, wuss_COLOUR_BUTTON_SHADOW is
- * bevel.dark, wuss_COLOUR_BACKDROP is backdrop.colour. */
+ * bevel.dark, wuss_COLOUR_BACKDROP is backdrop.colour, wuss_COLOUR_WINDOW is
+ * body.window, wuss_COLOUR_MENU is body.menu. */
 #define wuss_COLOUR_TITLE_BG       (wuss_COLOUR_SYMBOLIC + 16)
 #define wuss_COLOUR_TITLE_FG       (wuss_COLOUR_SYMBOLIC + 17)
 #define wuss_COLOUR_BUTTON_HILIGHT (wuss_COLOUR_SYMBOLIC + 18)
@@ -149,6 +147,8 @@ typedef unsigned char wuss_colour_t;
 #define wuss_COLOUR_ACCENT_BG      (wuss_COLOUR_SYMBOLIC + 20)
 #define wuss_COLOUR_ACCENT_FG      (wuss_COLOUR_SYMBOLIC + 21)
 #define wuss_COLOUR_BACKDROP       (wuss_COLOUR_SYMBOLIC + 22)
+#define wuss_COLOUR_WINDOW         (wuss_COLOUR_SYMBOLIC + 23)
+#define wuss_COLOUR_MENU           (wuss_COLOUR_SYMBOLIC + 24)
 
 /** Furniture chrome colours, one entry per class of furniture. Title is
  * the only two-tone class (fill + text); the rest are drawn as a single
@@ -307,8 +307,8 @@ wuss_backdrop_t;
  *
  * \note titlebar_height and palette are ignored when the library is built
  *       with WUSS_FURNITURE off; bevel and accent are ignored when built
- *       with both WUSS_FURNITURE and WUSS_ICONS off. backdrop is always
- *       honoured. See the backdrop sub-struct for its own notes.
+ *       with both WUSS_FURNITURE and WUSS_ICONS off. backdrop and body are
+ *       always honoured. See the backdrop sub-struct for its own notes.
  */
 typedef struct wuss_config
 {
@@ -348,6 +348,21 @@ typedef struct wuss_config
     wuss_colour_t fg; /**< Default-button text. */
   }
   accent;
+
+  /**
+   * Conventional body fills, as system-palette indices: window is the
+   * work-area behind a task's content, menu the pop-up menu background. Read
+   * back through wuss_COLOUR_WINDOW / wuss_COLOUR_MENU. When config is NULL,
+   * window defaults to wuss_COLOUR_GREY (a light grey) and menu to
+   * wuss_COLOUR_WHITE. Always honoured, regardless of the WUSS_FURNITURE /
+   * WUSS_ICONS / WUSS_MENUS options.
+   */
+  struct
+  {
+    wuss_colour_t window; /**< Work-area body fill. */
+    wuss_colour_t menu;   /**< Menu body fill. */
+  }
+  body;
 
   /** Desktop background, painted behind windows on every redraw. */
   wuss_backdrop_t backdrop;

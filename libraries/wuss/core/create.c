@@ -118,12 +118,23 @@ result_t wuss_create(screen_t               *scr,
     w->backdrop            = config->backdrop;
     w->backdrop.colour     = wuss__resolve_colour(w, w->backdrop.colour);
     w->backdrop.pattern_bg = wuss__resolve_colour(w, w->backdrop.pattern_bg);
+    w->window_bg           = wuss__resolve_colour(w, config->body.window);
+    w->menu_bg             = wuss__resolve_colour(w, config->body.menu);
   }
   else
   {
     w->backdrop.colour     = wuss_NO_BACKGROUND;
     w->backdrop.pattern    = screen_PATTERN_SOLID;
     w->backdrop.pattern_bg = wuss_NO_BACKGROUND;
+    w->window_bg           = wuss__resolve_colour(w, wuss_COLOUR_GREY);
+    w->menu_bg             = wuss__resolve_colour(w, wuss_COLOUR_WHITE);
+  }
+
+  if (w->window_bg >= w->npalette || w->menu_bg >= w->npalette)
+  {
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
+    return result_WUSS_BAD_COLOUR;
   }
 
 #ifdef WUSS_FURNITURE
