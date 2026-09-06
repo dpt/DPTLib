@@ -25,9 +25,9 @@
 
 result_t curve_create(wuss_t *wuss, curve_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
 
   task->bg        = colour_rgb(0xFF, 0xFF, 0xFF);
   task->line      = colour_rgb(0x00, 0x00, 0x00);

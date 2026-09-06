@@ -113,11 +113,11 @@ result_t palette_create(wuss_t         *wuss,
                         const char     *startup_name,
                         palette_task_t *task)
 {
+  result_t          rc;
   wuss_task_desc_t delegate_desc;
   const char       *dir;
   char              dirbuf[DPTLIB_MAXPATH];
   int               i;
-  result_t          rc;
 
   task->wuss      = wuss;
   task->resources = resources;
@@ -267,10 +267,10 @@ static result_t palette_click(palette_task_t *pc, const wuss_event_t *event)
 static result_t palette_menu_select(palette_task_t     *pc,
                                     const wuss_event_t *event)
 {
+  result_t rc;
   int      index;
   int      old;
   colour_t loaded[PALETTE_NCOLOURS];
-  result_t rc;
   int      i;
 
   if (event->data.menu_select.menu != &pc->menu)

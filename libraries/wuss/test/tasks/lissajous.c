@@ -23,9 +23,9 @@ static const int lissajous_freqs[][2] =
 
 result_t lissajous_create(wuss_t *wuss, lissajous_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
 
   task->bg         = colour_rgb(0x00, 0x00, 0x00);
   task->fg         = colour_rgb(0x00, 0xFF, 0x00);

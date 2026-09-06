@@ -91,8 +91,8 @@ static void redraw_window(wuss_t        *wuss,
                         content.y0 - win->scroll.y);
 
     {
-      wuss_event_t event;
       result_t     crc;
+      wuss_event_t event;
 
       event.kind                 = wuss_EVENT_REDRAW;
       event.data.redraw.scr      = wuss->scr;
@@ -147,8 +147,8 @@ static void redraw_from(wuss_t      *wuss,
 
 result_t wuss_redraw(wuss_t *wuss)
 {
-  box_t    full;
   result_t rc;
+  box_t    full;
 
   full.x0 = 0;
   full.y0 = 0;

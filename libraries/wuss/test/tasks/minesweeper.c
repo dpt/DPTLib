@@ -180,9 +180,9 @@ result_t minesweeper_create(wuss_t             *wuss,
                             bmfont_t           *font,
                             minesweeper_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
 
   task->wuss = wuss;
   task->font = font;

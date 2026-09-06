@@ -8,8 +8,8 @@
 
 result_t wuss_window_try_close(wuss_window_t *window)
 {
-  wuss_event_t event;
   result_t     rc;
+  wuss_event_t event;
 
   if (window == NULL)
     return result_OK;

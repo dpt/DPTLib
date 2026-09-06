@@ -20,9 +20,9 @@
 
 result_t checker_create(wuss_t*wuss, checker_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t    rc;
 
   task->black    = colour_rgb(0x00, 0x00, 0x00);
   task->white    = colour_rgb(0xFF, 0xFF, 0xFF);

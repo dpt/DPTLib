@@ -19,9 +19,9 @@
 
 result_t blank_create(wuss_t *wuss, blank_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
 
   task->npalette    = 16; // TODO: Read max palette index from wuss
   task->index       = 0;
@@ -55,8 +55,8 @@ result_t blank_create(wuss_t *wuss, blank_task_t *task)
 
 static result_t blank_idle(void *task_data)
 {
-  blank_task_t *bc;
   result_t      rc;
+  blank_task_t *bc;
 
   bc = task_data;
 

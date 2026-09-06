@@ -72,9 +72,9 @@ static result_t swatches_redraw(swatches_task_t    *task,
 
 result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t    rc;
 
   task->wuss       = wuss;
   task->window     = NULL;

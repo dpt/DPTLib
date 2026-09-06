@@ -492,11 +492,11 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
                                  struct wuss__menu  *parent,
                                  struct wuss__menu **out)
 {
+  result_t           rc;
   struct wuss__menu *node;
   wuss_task_t       *menu_task;
   wuss_icon_spec_t  *specs;
   wuss_icon_t      **made;
-  result_t           rc;
   int                fh;
   int                pitch;
   int                sep_h;
@@ -779,9 +779,9 @@ result_t wuss_menu_open(wuss_task_t        *task,
                         point_t             at,
                         wuss_menu_handle_t *out)
 {
+  result_t           rc;
   struct wuss__menu *root;
   wuss_t            *wuss;
-  result_t           rc;
 
   assert(task != NULL);
   assert(menu != NULL);

@@ -78,10 +78,10 @@ static bmfont_t *text_load_font(text_task_t *task,
                                 int          idx,
                                 const char  *name)
 {
+  result_t    rc;
   const char *leaf;
   const char *filename;
   bmfont_t   *font;
-  result_t    rc;
 
   if (task->fonts[idx] != NULL)
     return task->fonts[idx];
@@ -142,12 +142,12 @@ result_t text_create(wuss_t      *wuss,
                      const char  *resources,
                      text_task_t *task)
 {
+  result_t           rc;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
   const char        *bmfonts_dir;
   const wuss_menu_t *menu;
   size2d_t           sz;
-  result_t           rc;
 
   task->wuss        = wuss;
   task->font        = wuss_get_font(wuss);

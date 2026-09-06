@@ -1360,9 +1360,9 @@ result_t bmfont_draw_relief(bmfont_t      *bmfont,
                             const point_t *offset,
                             point_t       *end_pos)
 {
+  result_t rc;
   colour_t transparent;
   point_t  shadowpos;
-  result_t rc;
 
   transparent = colour_rgba(0, 0, 0, 0);
   shadowpos   = POINT(pos->x + offset->x, pos->y + offset->y);
