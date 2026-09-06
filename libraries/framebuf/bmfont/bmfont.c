@@ -19,6 +19,7 @@
 
 #include "base/debug.h"
 #include "base/utils.h"
+#include "framebuf/colour.h"
 #include "framebuf/bmfont.h"
 #include "utils/array.h"
 #include "utils/bytesex.h"
@@ -52,7 +53,21 @@ struct bmfont
   bmfont_width_t *adw; /* an array of length totalchars */
   int             adw_used;
   int             adw_allocated;
+  bmfont_width_t  maxadw; /* widest advance width, for monospaced mode */
+
+  bmfont_flags_t  flags;
 };
+
+/* -------------------------------------------------------------------------- */
+
+/** The advance width to use for glyph \p gid, honouring the monospace flag. */
+static bmfont_width_t bmfont_advance_for(const bmfont_t *bmfont, int gid)
+{
+  if (bmfont->flags & bmfont_FLAG_MONOSPACE)
+    return bmfont->maxadw;
+
+  return bmfont->adw[gid];
+}
 
 /* -------------------------------------------------------------------------- */
 
@@ -173,6 +188,7 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
   int           bitsperchar;
   unsigned int  mask;
   png_uint_32   y;
+  int           i;
 
   assert(bmfont);
   assert(voidpixels);
@@ -253,6 +269,11 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
         pixels > (unsigned int *) voidpixels + (rowbytes * imgheight / 4))
       return result_PARSE_ERROR;
   }
+
+  bmfont->maxadw = 0;
+  for (i = 0; i < bmfont->adw_used; i++)
+    if (bmfont->adw[i] > bmfont->maxadw)
+      bmfont->maxadw = bmfont->adw[i];
 
   return rc;
 
@@ -519,7 +540,7 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
 
     if (gridheight == 0)
     {
-      logf_error("bmfont: can't determine font height");
+      logf_error("%s", "bmfont: can't determine font height");
       rc = result_BAD_ARG;
       goto cleanup;
     }
@@ -579,6 +600,13 @@ void bmfont_destroy(bmfont_t *bmfont)
 
 /* -------------------------------------------------------------------------- */
 
+void bmfont_set_flags(bmfont_t *bmfont, bmfont_flags_t flags)
+{
+  assert(bmfont);
+
+  bmfont->flags = flags;
+}
+
 void bmfont_get_info(bmfont_t *bmfont, int *width, int *height)
 {
   if (width)
@@ -620,7 +648,7 @@ result_t bmfont_measure(bmfont_t       *bmfont,
       continue;
 
     gid = c - ' ';
-    advance = (gid < bmfont->totalchars) ? bmfont->adw[gid] : 0;
+    advance = (gid < bmfont->totalchars) ? bmfont_advance_for(bmfont, gid) : 0;
 
     next_width = current_width + advance;
     if (next_width > target_width)
@@ -1244,7 +1272,7 @@ result_t bmfont_draw(bmfont_t      *bmfont,
 
     c       = *text++;
     gid     = c - ' ';
-    advance = bmfont->adw[gid] + tracking;
+    advance = bmfont_advance_for(bmfont, gid) + tracking;
 
     x += advance;
 
@@ -1308,7 +1336,7 @@ result_t bmfont_draw(bmfont_t      *bmfont,
 
         c       = *text++;
         gid     = c - ' ';
-        advance = bmfont->adw[gid] + tracking;
+        advance = bmfont_advance_for(bmfont, gid) + tracking;
 
         x += advance;
       }
@@ -1318,6 +1346,33 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   }
 
   return result_OK;
+}
+
+/* -------------------------------------------------------------------------- */
+
+result_t bmfont_draw_relief(bmfont_t      *bmfont,
+                            screen_t      *scr,
+                            const char    *text,
+                            int            len,
+                            colour_t       fg,
+                            colour_t       shadow,
+                            const point_t *pos,
+                            const point_t *offset,
+                            point_t       *end_pos)
+{
+  colour_t transparent;
+  point_t  shadowpos;
+  result_t rc;
+
+  transparent = colour_rgba(0, 0, 0, 0);
+  shadowpos   = POINT(pos->x + offset->x, pos->y + offset->y);
+
+  rc = bmfont_draw(bmfont, scr, text, len, shadow, transparent,
+                  &shadowpos, NULL);
+  if (rc)
+    return rc;
+
+  return bmfont_draw(bmfont, scr, text, len, fg, transparent, pos, end_pos);
 }
 
 /* -------------------------------------------------------------------------- */

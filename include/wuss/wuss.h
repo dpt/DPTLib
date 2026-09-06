@@ -448,6 +448,19 @@ result_t wuss_set_palette(wuss_t         *wuss,
                           int             npalette);
 
 /**
+ * The current system palette (see wuss_create, wuss_set_palette). Handy for
+ * a wuss_EVENT_PALETTE handler that needs the new array without keeping its
+ * own copy in step.
+ *
+ * \param[in]  wuss     Window manager.
+ * \param[out] npalette Filled with the number of entries, or NULL if not
+ *                      wanted.
+ * \return The palette; wuss-owned, valid until the next wuss_set_palette or
+ *         wuss_destroy.
+ */
+const colour_t *wuss_get_palette(const wuss_t *wuss, int *npalette);
+
+/**
  * Replace the desktop backdrop partway through a session.
  *
  * Validates \p backdrop against the current palette (as wuss_create does its

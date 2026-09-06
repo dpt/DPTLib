@@ -301,6 +301,39 @@ static void flash_pick_row(wuss_t            *wuss,
   wuss_mouse_click(wuss, at, button, wuss_MOUSE_DOWN, NULL);
   wuss_mouse_click(wuss, at, button, wuss_MOUSE_UP, NULL);
 }
+
+/* A task that opens its own menu on a MENU press over its window, the way a
+ * real content task (e.g. greeble) does. task_data points to a menu_task_t
+ * so the test can see the press arrived and which menu it raised. */
+typedef struct menu_task
+{
+  wuss_task_t      *self;
+  const wuss_menu_t *menu;
+  int               menu_press_count;
+}
+menu_task_t;
+
+static result_t menu_open_handle(wuss_window_t      *window,
+                                 const wuss_event_t *event,
+                                 void               *task_data)
+{
+  menu_task_t *mt;
+
+  NOT_USED(window);
+
+  mt = task_data;
+
+  if (event->kind == wuss_EVENT_MOUSE                     &&
+      event->data.mouse.action == wuss_MOUSE_DOWN         &&
+      (event->data.mouse.button & wuss_BUTTON_MENU))
+  {
+    mt->menu_press_count++;
+    return wuss_menu_open(mt->self, mt->menu,
+                          event->data.mouse.point, NULL);
+  }
+
+  return result_OK;
+}
 #endif
 
 /* ----------------------------------------------------------------------- */
@@ -4217,8 +4250,175 @@ FlashFail:
     if (rc != result_OK)
       return result_TEST_FAILED;
   }
+
+  printf("test: a MENU press over another window closes the open menu and "
+         "reaches that window's task so it opens its own menu\n");
+  {
+    static const wuss_menu_item_t menu_a_items[] =
+    {
+      { "A-one", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_item_t menu_b_items[] =
+    {
+      { "B-one", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_t menu_a = { "A", menu_a_items, NELEMS(menu_a_items) };
+    static const wuss_menu_t menu_b = { "B", menu_b_items, NELEMS(menu_b_items) };
+
+    const char        *fontfile;
+    bmfont_t          *font = NULL;
+    wuss_font_desc_t   fdesc;
+    screen_t           mscr;
+    bitmap_t           mbm;
+    void              *mpixels;
+    wuss_t            *mwuss;
+    menu_task_t        mta, mtb;
+    wuss_task_t       *task_a, *task_b;
+    wuss_window_t     *wa, *wb;
+    box_t              ba, bb;
+
+    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
+                                  path_join_leafname("Tiny", "png"));
+    rc = bmfont_create(fontfile, &font);
+    if (rc != result_OK)
+    {
+      printf("wuss_test: menu-move test could not load %s\n", fontfile);
+      goto Failure;
+    }
+
+    mpixels = malloc((size_t) rowbytes * 200);
+    if (mpixels == NULL) { rc = result_OOM; goto MoveFail; }
+    rc = bitmap_init(&mbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, mpixels);
+    if (rc != result_OK) goto MoveFailFree;
+    screen_for_bitmap(&mscr, &mbm);
+
+    fdesc.font       = font;
+    fdesc.font_class = wuss_FONT_CLASS_NONE;
+    fdesc.name       = NULL;
+    rc = wuss_create(&mscr, &fdesc, 1, NULL, 0, NULL, NULL, &mwuss);
+    if (rc != result_OK) goto MoveFailFree;
+
+    memset(&mta, 0, sizeof(mta));
+    memset(&mtb, 0, sizeof(mtb));
+    mta.menu = &menu_a;
+    mtb.menu = &menu_b;
+
+    task_a = mk_task(mwuss, menu_open_handle, &mta);
+    task_b = mk_task(mwuss, menu_open_handle, &mtb);
+    if (task_a == NULL || task_b == NULL) { rc = result_OOM; goto MoveDestroy; }
+    mta.self = task_a;
+    mtb.self = task_b;
+
+    /* two well-separated chromeless client windows, so the whole visible box
+     * is content and menu A (which opens at the press point inside A) cannot
+     * reach into B's box */
+    ba.x0 = 6;   ba.y0 = 6;   ba.x1 = 60;  ba.y1 = 60;
+    bb.x0 = 130; bb.y0 = 130; bb.x1 = 190; bb.y1 = 190;
+
+    rc = wuss_window_create(task_a, &ba, "A",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK |
+                            wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
+                            wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            box_size(&ba), SIZE2D(0, 0), &wa);
+    if (rc != result_OK) goto MoveDestroy;
+
+    rc = wuss_window_create(task_b, &bb, "B",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK |
+                            wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
+                            wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            box_size(&bb), SIZE2D(0, 0), &wb);
+    if (rc != result_OK) goto MoveDestroy;
+
+    /* MENU over A: task A opens menu A */
+    wuss_mouse_click(mwuss, POINT(20, 20), wuss_BUTTON_MENU,
+                     wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(mwuss, POINT(20, 20), wuss_BUTTON_MENU,
+                     wuss_MOUSE_UP, NULL);
+
+    if (mta.menu_press_count != 1)            goto MoveCheckFail;
+    if (mwuss->menu_chain == NULL ||
+        mwuss->menu_chain->menu != &menu_a)   goto MoveCheckFail;
+
+    /* MENU over B while menu A is still open: the old chain must close AND
+     * task B must get the press so menu B opens in its place. Regression:
+     * before the mouse-click fix the press was spent closing menu A and B
+     * never heard it. */
+    wuss_mouse_click(mwuss, POINT(160, 160), wuss_BUTTON_MENU,
+                     wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(mwuss, POINT(160, 160), wuss_BUTTON_MENU,
+                     wuss_MOUSE_UP, NULL);
+
+    if (mtb.menu_press_count != 1)            goto MoveCheckFail;
+    if (mwuss->menu_chain == NULL ||
+        mwuss->menu_chain->menu != &menu_b)   goto MoveCheckFail;
+
+    /* a plain SELECT press on bare backdrop still just dismisses */
+    wuss_mouse_click(mwuss, POINT(4, 196), wuss_BUTTON_SELECT,
+                     wuss_MOUSE_DOWN, NULL);
+    if (mwuss->menu_chain != NULL)            goto MoveCheckFail;
+
+    rc = result_OK;
+    goto MoveDestroy;
+
+MoveCheckFail:
+    printf("wuss_test: menu-move check failed "
+           "(a_press=%d b_press=%d chain=%p)\n",
+           mta.menu_press_count, mtb.menu_press_count,
+           (void *) mwuss->menu_chain);
+    rc = result_TEST_FAILED;
+
+MoveDestroy:
+    reap_test_tasks();
+    wuss_destroy(mwuss);
+MoveFailFree:
+    free(mpixels);
+MoveFail:
+    bmfont_destroy(font);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+  }
 #endif /* WUSS_ICONS */
 #endif /* WUSS_MENUS */
+
+  printf("test: invalidating a box already fully covered by an existing "
+        "dirty rect keeps the larger rect\n");
+
+  {
+    box_t outer, inner, dirty;
+
+    rc = wuss_redraw_dirty(wuss); /* flush anything still pending first */
+    if (rc != result_OK)
+      goto Failure;
+
+    outer.x0 = 10; outer.y0 = 10;
+    outer.x1 = 90; outer.y1 = 90;
+    rc = wuss_invalidate(wuss, &outer);
+    if (rc != result_OK)
+      goto Failure;
+
+    inner.x0 = 30; inner.y0 = 30;
+    inner.x1 = 50; inner.y1 = 50; /* fully inside outer: must not shrink it */
+    rc = wuss_invalidate(wuss, &inner);
+    if (rc != result_OK)
+      goto Failure;
+
+    if (wuss_get_dirty_count(wuss) != 1)
+      goto Failure;
+
+    wuss_get_dirty(wuss, 0, &dirty);
+    if (dirty.x0 != outer.x0 || dirty.y0 != outer.y0 ||
+        dirty.x1 != outer.x1 || dirty.y1 != outer.y1)
+      goto Failure; /* must still cover the whole outer box, not just inner */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+  }
 
   wuss_destroy(wuss);
 
@@ -4284,7 +4484,8 @@ result_t wuss_test(const char *resources)
 
   box_a.x0 = 0; box_a.y0 = 0; box_a.x1 = 100; box_a.y1 = 0;
   rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_a, "toosmall", wuss_WINDOW_NONE,
-                          wuss_NO_BACKGROUND, box_size(&box_a),
+                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          box_size(&box_a),
                           SIZE2D(0, 0), &win_a);
   if (rc != result_WUSS_TOO_SMALL)
     goto Failure;
@@ -4300,14 +4501,16 @@ result_t wuss_test(const char *resources)
 
   box_a.x0 = 0; box_a.y0 = 0; box_a.x1 = 100; box_a.y1 = 100;
   rc = wuss_window_create(delegate_a, &box_a, "A", chromeless,
-                          wuss_NO_BACKGROUND, SIZE2D(400, 400),
+                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          SIZE2D(400, 400),
                           SIZE2D(0, 0), &win_a);
   if (rc != result_OK)
     goto Failure;
 
   box_b.x0 = 50; box_b.y0 = 50; box_b.x1 = 150; box_b.y1 = 150;
   rc = wuss_window_create(delegate_b, &box_b, "B", chromeless,
-                          wuss_NO_BACKGROUND, SIZE2D(400, 400),
+                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          SIZE2D(400, 400),
                           SIZE2D(0, 0), &win_b);
   if (rc != result_OK)
     goto Failure;
@@ -4362,7 +4565,8 @@ result_t wuss_test(const char *resources)
      * so the clamp caps content at the full 200x200 screen */
     box_big.x0 = 10; box_big.y0 = 10; box_big.x1 = 400; box_big.y1 = 400;
     rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_big, "BIG", chromeless,
-                            wuss_NO_BACKGROUND, SIZE2D(400, 400),
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            SIZE2D(400, 400),
                             SIZE2D(0, 0), &win_big);
     if (rc != result_OK)
       goto Failure;
@@ -4422,13 +4626,16 @@ result_t wuss_test(const char *resources)
   if (tc_a.last_x != 10 || tc_a.last_y != 5)
     goto Failure;
 
-  printf("test: wheel scroll delivers SCROLL event and moves offset\n");
+  printf("test: wheel scroll routes to the window but a NO_VSCROLL window "
+         "does not move\n");
 
+  /* chromeless carries NO_VSCROLL, so wuss__scroll_step suppresses the wheel
+   * step: the window is still the hit target but its offset is unchanged. */
   wuss_scroll(wuss, POINT(20, 20), 8, &hit);
   if (hit != win_a)
     goto Failure;
   wuss_window_get_scroll(win_a, &scroll);
-  if (scroll.y != 13)
+  if (scroll.y != 5)
     goto Failure;
 
   printf("test: invalidate marks dirty region\n");

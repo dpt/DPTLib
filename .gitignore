@@ -42,3 +42,4 @@ build.xcode/
 .DS_Store
 build-riscos/
 bmfont-*.png
+build-sdl/

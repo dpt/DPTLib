@@ -313,38 +313,40 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
         if (rc)
           return rc;
 
-        pos.x = centres[i].x - stringwidth / 2 + 1;
-        pos.y = centres[i].y - fontheight  / 2 + 1;
+        pos.x = centres[i].x - stringwidth / 2;
+        pos.y = centres[i].y - fontheight  / 2;
 
         bg = transparent ? state->transparent : state->palette[palette_PICO8_GREEN];
 
         if (transparent)
         {
+          const point_t shadow_offset = {1, 1};
+
+          rc = bmfont_draw_relief(bmfonts[font].bmfont,
+                                 &state->scr,
+                                  lorem_ipsum,
+                                  nchars,
+                                  state->palette[palette_PICO8_WHITE],
+                                  state->palette[palette_PICO8_BLACK],
+                                 &pos,
+                                 &shadow_offset,
+                                  NULL /*endpos*/);
+          if (rc)
+            return rc;
+        }
+        else
+        {
           rc = bmfont_draw(bmfonts[font].bmfont,
                           &state->scr,
                            lorem_ipsum,
                            nchars,
-                           state->palette[palette_PICO8_BLACK],
+                           state->palette[palette_PICO8_WHITE],
                            bg,
                           &pos,
                            NULL /*endpos*/);
           if (rc)
             return rc;
         }
-
-        pos.x--;
-        pos.y--;
-
-        rc = bmfont_draw(bmfonts[font].bmfont,
-                        &state->scr,
-                         lorem_ipsum,
-                         nchars,
-                         state->palette[palette_PICO8_WHITE],
-                         bg,
-                        &pos,
-                         NULL /*endpos*/);
-        if (rc)
-          return rc;
       }
 
       snprintf(leafname, sizeof(leafname),
@@ -950,6 +952,71 @@ Failure:
   goto Cleanup;
 }
 
+/* ----------------------------------------------------------------------- */
+
+/* With bmfont_FLAG_MONOSPACE set, every glyph must advance by the same
+ * amount, so an N-character string is exactly N times as wide as one
+ * character and each successive prefix grows by that fixed step. */
+static result_t bmfont_monospace_test(const char *resources)
+{
+  static const char sample[] = "WiWiWi.1jm";
+
+  const char    *leafname;
+  const char    *filename;
+  bmfont_t      *bmfont = NULL;
+  result_t       rc;
+  bmfont_width_t onechar;
+  bmfont_width_t prev;
+  int            i;
+
+  leafname = path_join_leafname("MS Sans Serif", "png");
+  filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
+
+  rc = bmfont_create(filename, &bmfont);
+  if (rc)
+  {
+    fprintf(stderr, "Error: Failed to load font %s\n", filename);
+    return result_TEST_FAILED;
+  }
+
+  bmfont_set_flags(bmfont, bmfont_FLAG_MONOSPACE);
+
+  onechar = 0;
+  prev    = 0;
+  for (i = 1; i <= (int) strlen(sample); i++)
+  {
+    bmfont_width_t width = 0;
+
+    rc = bmfont_measure(bmfont, sample, i, INT_MAX, NULL, &width);
+    if (rc)
+      goto Failure;
+
+    if (i == 1)
+      onechar = width;
+
+    if (width != onechar * i || width - prev != onechar)
+    {
+      fprintf(stderr,
+              "error: monospace width mismatch at len %d: got %d, "
+              "expected %d\n",
+              i, width, onechar * i);
+      goto Failure;
+    }
+
+    prev = width;
+  }
+
+  bmfont_destroy(bmfont);
+  return result_TEST_PASSED;
+
+
+Failure:
+  bmfont_destroy(bmfont);
+  return result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t bmfont_test(const char *resources)
 {
   static const struct
@@ -968,6 +1035,10 @@ result_t bmfont_test(const char *resources)
   int      i;
 
   rc = bmfont_enumerate_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_monospace_test(resources);
   if (rc != result_TEST_PASSED)
     return rc;
 

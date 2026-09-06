@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>wuss</title>
+  <style>
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #stage {
+      display: flex;
+    }
+    canvas.emscripten {
+      border: 0;
+      image-rendering: pixelated;
+      max-width: 90vw;
+      max-height: 90vh;
+    }
+    #status {
+      position: fixed;
+      top: 0;
+      color: #999;
+      font: 14px monospace;
+    }
+    #controls {
+      color: #999;
+      font: 13px monospace;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.35em 1.5em;
+      max-width: 90vw;
+      margin: 0 1em 0.75em;
+    }
+    #controls span {
+      white-space: nowrap;
+    }
+    #controls kbd {
+      color: #ddd;
+      border: 1px solid #555;
+      border-radius: 3px;
+      padding: 0 0.3em;
+    }
+    @media (max-width: 480px) {
+      #controls {
+        font: 12px monospace;
+      }
+      #controls kbd {
+        padding: 0 0.2em;
+      }
+    }
+    #about {
+      color: #999;
+      font: 13px sans-serif;
+      max-width: 48em;
+      text-align: center;
+      margin: 0 1em 0.75em;
+      line-height: 1.4;
+    }
+    #about a {
+      color: #7ab8ff;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">Loading...</div>
+  <div id="stage">
+    <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+  </div>
+  <div id="about">
+    <p>
+      <em>Wuss</em> is a sort-of recreation of the RISC OS WindowManager (the Wimp). It's part of my
+      <a href="https://github.com/dpt/DPTLib" target="_blank" rel="noopener">DPTLib</a>,
+      a platform-independent C library shared across my projects.
+      It exercises window creation, z-ordering, mouse routing and
+      dirty-region redraw. It's compiled to
+      <a href="https://webassembly.org/" target="_blank" rel="noopener">WebAssembly</a>
+      via Emscripten's SDL3 port. It has a bunch of mini demo apps built into it.
+    </p>
+  </div>
+  <div id="controls">
+    <span>Like in RISC OS you need a three-button mouse (buttons = <kbd>Select</kbd>/<kbd>Menu</kbd>/<kbd>Adjust</kbd>).</span>
+    <span>Pop open the main menu with the middle mouse button.</span>
+    <span>Drag titlebars to move windows.</span>
+    <span>Click to bring a window to front.</span>
+    <span><kbd>F1</kbd> redraw all, <kbd>Shift</kbd>+<kbd>F1</kbd> fill screen with random pixels (for testing redraw)</span>
+    <span><kbd>F2</kbd>/<kbd>Shift</kbd>+<kbd>F2</kbd> zoom window in/out</span>
+    <span><kbd>F3</kbd> pixel stress test</span>
+    <span><kbd>F4</kbd> quit</span>
+  </div>
+  <script>
+    var Module = {
+      canvas: document.getElementById('canvas'),
+      setStatus: function (text) {
+        var el = document.getElementById('status');
+        if (!text) { el.remove(); return; }
+        el.textContent = text;
+      }
+    };
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

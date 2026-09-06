@@ -27,6 +27,13 @@
  * screen_copy_rect's nibble-packed blit path instead). */
 #define WUSS_SDL_32BPP 0
 
+/* Integer window zoom: the fixed Wuss screen is drawn at this many device
+ * pixels per screen pixel. F2 steps it up, Shift-F2 down, clamped to
+ * [WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE]. */
+#define WUSS_SDL_DEFAULT_SCALE 2
+#define WUSS_SDL_MIN_SCALE     1
+#define WUSS_SDL_MAX_SCALE     4
+
 /* ----------------------------------------------------------------------- */
 
 struct wuss_frontend
@@ -36,6 +43,7 @@ struct wuss_frontend
   SDL_Texture  *texture;
   int           scr_width;
   int           scr_height;
+  int           scale; /* device pixels per screen pixel; see WUSS_SDL_*_SCALE */
   void         *pixels; /* the private framebuffer handed to the caller */
 };
 
@@ -98,6 +106,7 @@ result_t wuss_frontend_open(int               width,
 
   fe->scr_width  = width;
   fe->scr_height = height;
+  fe->scale      = WUSS_SDL_DEFAULT_SCALE;
 
   fe->pixels = malloc((size_t) stride * height);
   if (fe->pixels == NULL)
@@ -112,7 +121,8 @@ result_t wuss_frontend_open(int               width,
     goto failure;
   }
 
-  fe->window = SDL_CreateWindow("Wuss", width, height, 0);
+  fe->window = SDL_CreateWindow("Wuss", width * fe->scale, height * fe->scale,
+                                0);
   if (fe->window == NULL)
   {
     fprintf(stderr, "Error: SDL_CreateWindow: %s\n", SDL_GetError());
@@ -177,7 +187,7 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
       return true;
 
     case SDL_EVENT_KEY_UP:
-      if (ev.key.key == SDLK_Q)
+      if (ev.key.key == SDLK_F4)
         event->kind = wuss_INPUT_QUIT;
       else if (ev.key.key == SDLK_F1 && (ev.key.mod & SDL_KMOD_SHIFT))
         event->kind = wuss_INPUT_GARBAGE;
@@ -185,19 +195,24 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
         event->kind = wuss_INPUT_REDRAW_ALL;
       else if (ev.key.key == SDLK_F3)
         event->kind = wuss_INPUT_PIXEL_STRESS;
-      else if (ev.key.key == SDLK_F4)
-        event->kind = wuss_INPUT_PALETTE_CYCLE;
       else if (ev.key.key == SDLK_F2)
       {
-        int w, h;
+        int scale;
 
-        /* F2 doubles the SDL window, Shift-F2 halves it: a backend-local
-         * zoom the demo loop never sees. */
-        SDL_GetWindowSize(fe->window, &w, &h);
-        if (ev.key.mod & SDL_KMOD_SHIFT)
-          SDL_SetWindowSize(fe->window, w / 2, h / 2);
-        else
-          SDL_SetWindowSize(fe->window, w * 2, h * 2);
+        /* F2 steps the SDL window zoom up, Shift-F2 down, clamped to
+         * [WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE]: a backend-local zoom the
+         * demo loop never sees. */
+        scale = fe->scale + ((ev.key.mod & SDL_KMOD_SHIFT) ? -1 : 1);
+        if (scale < WUSS_SDL_MIN_SCALE)
+          scale = WUSS_SDL_MIN_SCALE;
+        else if (scale > WUSS_SDL_MAX_SCALE)
+          scale = WUSS_SDL_MAX_SCALE;
+        if (scale != fe->scale)
+        {
+          fe->scale = scale;
+          SDL_SetWindowSize(fe->window, fe->scr_width * scale,
+                            fe->scr_height * scale);
+        }
         continue;
       }
       else
@@ -265,8 +280,9 @@ void wuss_frontend_present(wuss_frontend_t *fe, const bitmap_t *bm)
   bitmap_t *disp;
 
   /* wuss draws into a paletted bitmap; SDL wants bgrx. bitmap_convert reads
-   * the palette straight off `bm`, which the caller updates on F4, so a live
-   * palette change just shows up in the next converted frame. */
+   * the palette straight off `bm`, which the caller updates when the palette
+   * task's picker menu changes it, so a live palette change just shows up in
+   * the next converted frame. */
   if (bitmap_convert(bm, pixelfmt_bgrx8888, &disp) == result_OK)
   {
     SDL_UpdateTexture(fe->texture, NULL, disp->base, disp->rowbytes);

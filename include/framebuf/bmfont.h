@@ -13,6 +13,18 @@ typedef struct bmfont bmfont_t;
 /** The type used for bmfont_measure() measurements. */
 typedef int bmfont_width_t; /* in pixels */
 
+/** Behaviour flags for bmfont_set_flags(). */
+enum
+{
+  /** Force every glyph to advance by the font's widest advance width,
+   *  giving a fixed-pitch layout. Glyph bitmaps are unchanged: proportional
+   *  ink sits left-aligned in the wider fixed cell. */
+  bmfont_FLAG_MONOSPACE = 1 << 0
+};
+
+/** A set of bmfont_FLAG_* values. */
+typedef unsigned int bmfont_flags_t;
+
 /**
  * Create a new bitmap font from a PNG format font file.
  *
@@ -60,6 +72,15 @@ result_t bmfont_enumerate(const char          *dir,
  * \param[in] bmfont    Bitmap font to destroy.
  */
 void bmfont_destroy(bmfont_t *bmfont);
+
+/**
+ * Set behaviour flags on a font.
+ *
+ * \param[in] bmfont    Bitmap font to modify.
+ * \param[in] flags     A set of bmfont_FLAG_* values; replaces any
+ *                      previously set flags.
+ */
+void bmfont_set_flags(bmfont_t *bmfont, bmfont_flags_t flags);
 
 /**
  * Read the width and height of the specified bitmap font.
@@ -119,5 +140,35 @@ result_t bmfont_draw(bmfont_t      *bmfont,
                      colour_t       bg,
                      const point_t *pos,
                      point_t       *end_pos);
+
+/**
+ * Draw the given string twice to produce a relief (drop-shadow) effect: a
+ * shadow pass in colour \p shadow at (\p pos + \p offset), then the main
+ * pass in colour \p fg at \p pos.
+ *
+ * Both passes are drawn with a transparent background, so this only makes
+ * sense over existing content and \p fg and \p shadow should have full
+ * alpha.
+ *
+ * \param[in]   bmfont  Bitmap font to draw.
+ * \param[in]   scr     Screen to draw on.
+ * \param[in]   text    String to draw.
+ * \param[in]   len     Length of the string.
+ * \param[in]   fg      Foreground colour, used for the main pass.
+ * \param[in]   shadow  Shadow colour, used for the offset pass.
+ * \param[in]   pos     Position of the main pass in pixels.
+ * \param[in]   offset  Shadow displacement in pixels, e.g. { 1, 1 }.
+ * \param[out]  end_pos End position of the string in pixels.
+ * \return \ref result_OK on success, or appropriate result code otherwise.
+ */
+result_t bmfont_draw_relief(bmfont_t      *bmfont,
+                            screen_t      *scr,
+                            const char    *text,
+                            int            len,
+                            colour_t       fg,
+                            colour_t       shadow,
+                            const point_t *pos,
+                            const point_t *offset,
+                            point_t       *end_pos);
 
 #endif /* DPTLIB_BMFONT_H */

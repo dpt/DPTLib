@@ -190,6 +190,19 @@ result_t wuss_window_set_hidden(wuss_window_t *window, int hidden);
 result_t wuss_window_resize(wuss_window_t *window, size2d_t size);
 
 /**
+ * Set a window's virtual document extent, as wuss_window_create's doc
+ * parameter. Changes the scrollbar sausage size and re-clamps the current
+ * scroll offset to the new extent; the whole content area is invalidated so
+ * the next redraw repaints against the new extent.
+ *
+ * \param[in] window Window whose document extent changed.
+ * \param[in] doc    New virtual document extent.
+ * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if doc's
+ *         width or height is not positive.
+ */
+result_t wuss_window_set_doc(wuss_window_t *window, size2d_t doc);
+
+/**
  * Move a window to one end of the z-order.
  *
  * \param[in] window Window to restack.

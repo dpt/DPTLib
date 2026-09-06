@@ -7,8 +7,13 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   wuss_window_t *win;
   int            x, y;
 
-  x = p.x;
-  y = p.y;
+  /* Clamp inbound coordinates to the screen so a drag can never carry a
+   * window off the desktop edges on a pointer report from outside the frame. */
+  x = CLAMP(p.x, 0, wuss->scr->size.w - 1);
+  y = CLAMP(p.y, 0, wuss->scr->size.h - 1);
+
+  p.x = x;
+  p.y = y;
 
   wuss->pointer = p;
 

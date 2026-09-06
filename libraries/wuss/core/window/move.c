@@ -42,6 +42,35 @@ void wuss_window_move(wuss_window_t *window, point_t p)
    * slide. Computed against the current z-order, before the move. */
   nclean = wuss__clip_to_visible(window, &before, clean);
 
+  /* A piece can also be "clean" by occlusion yet still not show valid
+   * pixels on screen: an earlier move (or any other invalidation) this same
+   * frame may have queued part of it in wuss->dirty[] without wuss_redraw_
+   * dirty having run yet to actually repaint it -- e.g. several batched
+   * pointer-move events arriving before the next redraw, which pushes a
+   * window on and off the screen edge repeatedly. Sliding that stale ground
+   * would just paste it, untouched, onto the window's new position. Strip
+   * every pending-dirty region out of "clean" first so only pixels already
+   * settled on screen are treated as a valid blit source. */
+  if (window->wuss->ndirty > 0)
+  {
+    box_t settled[WUSS_MAX_INVALIDATE_PIECES];
+    int   nsettled, c;
+
+    nsettled = 0;
+    for (c = 0; c < nclean && nsettled < WUSS_MAX_INVALIDATE_PIECES; c++)
+    {
+      box_t piece[WUSS_MAX_INVALIDATE_PIECES];
+      int   npiece, s;
+
+      npiece = wuss__subtract_boxes(&clean[c], window->wuss->dirty,
+                                    window->wuss->ndirty, piece);
+      for (s = 0; s < npiece && nsettled < WUSS_MAX_INVALIDATE_PIECES; s++)
+        settled[nsettled++] = piece[s];
+    }
+    nclean = nsettled;
+    memcpy(clean, settled, (size_t) nclean * sizeof(*clean));
+  }
+
   window->visible.x0 = p.x - outline_px;
   window->visible.y0 = p.y - outline_px - titlebar_height;
   window->visible.x1 = window->visible.x0 + width;

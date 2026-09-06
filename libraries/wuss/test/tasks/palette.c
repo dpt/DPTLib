@@ -2,7 +2,9 @@
 
 #ifdef WUSS_APP
 
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -11,34 +13,161 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
+#include "io/dirscan.h"
+#include "io/path.h"
+#include "wuss/menu.h"
 
 #include "palette.h"
 
+#define PALETTE_HEX_EXT     ".hex"
+#define PALETTE_HEX_EXT_LEN 4
+#define PALETTE_NCOLOURS    16 /* one colour_t[] row per *.hex file; the
+                                * system palette wuss_create was given is
+                                * fixed at this length */
+
+/* index of the "Invert" row in the picker menu, after one row per *.hex
+ * file and the dashed rule above it */
+#define PALETTE_MENU_INVERT_INDEX(pc) ((pc)->nnames)
+
+/* ----------------------------------------------------------------------- */
+/* Scan resources/palettes for *.hex files, collecting each leafname (ext
+ * stripped) into task->names, sorted, capped at PALETTE_MAX_FILES. */
+
+static int name_cmp(const void *a, const void *b)
+{
+  return strcmp(a, b);
+}
+
+static result_t add_name(const char *leaf, void *opaque)
+{
+  palette_task_t *pc;
+  size_t          leaflen;
+  size_t          namelen;
+
+  pc      = opaque;
+  leaflen = strlen(leaf);
+
+  if (pc->nnames >= PALETTE_MAX_FILES)
+    return result_STOP_WALK;
+  if (leaflen <= PALETTE_HEX_EXT_LEN)
+    return result_OK;
+  if (strcmp(leaf + leaflen - PALETTE_HEX_EXT_LEN, PALETTE_HEX_EXT) != 0)
+    return result_OK;
+
+  namelen = leaflen - PALETTE_HEX_EXT_LEN;
+  if (namelen >= sizeof(pc->names[0]))
+    return result_OK;
+
+  memcpy(pc->names[pc->nnames], leaf, namelen);
+  pc->names[pc->nnames][namelen] = '\0';
+  pc->nnames++;
+
+  return result_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Parse a *.hex file: one "rrggbb" line per colour, no leading '#'. Fails
+ * (leaving *out untouched) unless exactly PALETTE_NCOLOURS well-formed lines
+ * are read, so a malformed or wrongly-sized file can never desync from the
+ * fixed-length system palette wuss was created with. */
+
+result_t palette_load_hex(const char *resources,
+                          const char *name,
+                          colour_t   *out)
+{
+  const char *leaf;
+  const char *path;
+  char        pathbuf[DPTLIB_MAXPATH];
+  FILE       *fp;
+  char        line[16];
+  int         i;
+  unsigned    r, g, b;
+
+  leaf = path_join_leafname(name, "hex");
+  path = path_join_filename(resources, 3, "resources", "palettes", leaf);
+  strcpy(pathbuf, path); /* path_join_filename's buffer is reused by fopen */
+
+  fp = fopen(pathbuf, "r");
+  if (fp == NULL)
+    return result_FILE_NOT_FOUND;
+
+  for (i = 0; i < PALETTE_NCOLOURS; i++)
+  {
+    if (fgets(line, sizeof(line), fp) == NULL ||
+        sscanf(line, "%2x%2x%2x", &r, &g, &b) != 3)
+    {
+      fclose(fp);
+      return result_WUSS_BAD_COLOUR;
+    }
+    out[i] = colour_rgb((int) r, (int) g, (int) b);
+  }
+
+  fclose(fp);
+  return result_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t palette_create(wuss_t         *wuss,
-                        const colour_t *palette,
-                        int             npalette,
+                        const char     *resources,
+                        const char     *startup_name,
                         palette_task_t *task)
 {
-  wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
+  const char       *dir;
+  char              dirbuf[DPTLIB_MAXPATH];
+  int               i;
+  result_t          rc;
 
-  task->palette  = palette;
-  task->npalette = npalette;
+  task->wuss      = wuss;
+  task->resources = resources;
+  task->invert    = false;
+  task->nnames    = 0;
+  task->selected  = 0;
+
+  dir = path_join_filename(resources, 2, "resources", "palettes");
+  strcpy(dirbuf, dir); /* path_join_filename's buffer is reused by the scan */
+  dirscan_walk(dirbuf, add_name, task);
+  if (task->nnames > 1)
+    qsort(task->names, (size_t) task->nnames, sizeof(task->names[0]),
+         name_cmp);
+
+  if (startup_name != NULL)
+    for (i = 0; i < task->nnames; i++)
+      if (strcmp(task->names[i], startup_name) == 0)
+      {
+        task->selected = i;
+        break;
+      }
+
+  /* built once; ticks are refreshed from task->selected/invert on each open */
+  for (i = 0; i < task->nnames; i++)
+  {
+    task->menu_items[i].text    = task->names[i];
+    task->menu_items[i].submenu = NULL;
+    task->menu_items[i].window  = NULL;
+  }
+  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].text    = "Invert";
+  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].submenu = NULL;
+  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].window  = NULL;
+  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].flags   = wuss_MENU_ITEM_DASHED;
+  task->menu.title  = "Palette";
+  task->menu.items  = task->menu_items;
+  task->menu.nitems = task->nnames + 1;
 
   /* backdrop for any rounding gap around the grid */
   delegate_desc.handle    = palette_handle;
   delegate_desc.task_data = task;
   delegate_desc.name      = "palette";
-  rc = wuss_task_create(wuss, &delegate_desc, &delegate);
+  rc = wuss_task_create(wuss, &delegate_desc, &task->delegate);
   if (rc != result_OK)
   {
     free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
   }
-  wuss_task_set_autoclose(delegate, 1);
+  wuss_task_set_autoclose(task->delegate, 1);
 
-  rc = wuss_window_create_placed(delegate,
+  rc = wuss_window_create_placed(task->delegate,
                                  SIZE2D(100, 100),
                                  "Palette",
                                  wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
@@ -47,7 +176,7 @@ result_t palette_create(wuss_t         *wuss,
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
-    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    wuss_task_destroy(task->delegate); /* unregister; its QUIT frees the task block */
 
   return rc;
 }
@@ -55,15 +184,18 @@ result_t palette_create(wuss_t         *wuss,
 static result_t palette_redraw(const wuss_event_t *event, void *task_data)
 {
   palette_task_t *pc;
+  const colour_t *palette;
+  int              npalette;
   screen_t       *scr;
   const box_t    *bounds;
   int               cols, rows;
   int               cell_w, cell_h;
   int               i, sx, sy;
 
-  pc = task_data;
+  pc      = task_data;
+  palette = wuss_get_palette(pc->wuss, &npalette);
 
-  if (pc->npalette <= 0)
+  if (npalette <= 0)
     return result_OK;
 
   scr    = event->data.redraw.scr;
@@ -72,14 +204,14 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
   sy     = event->data.redraw.scroll.y;
 
   cols = 1;
-  while (cols * cols < pc->npalette)
+  while (cols * cols < npalette)
     cols++;
-  rows = (pc->npalette + cols - 1) / cols;
+  rows = (npalette + cols - 1) / cols;
 
   cell_w = (bounds->x1 - bounds->x0) / cols;
   cell_h = (bounds->y1 - bounds->y0) / rows;
 
-  for (i = 0; i < pc->npalette; i++)
+  for (i = 0; i < npalette; i++)
   {
     int col, row, x, y;
 
@@ -88,8 +220,103 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
     x   = bounds->x0 - sx + col * cell_w;
     y   = bounds->y0 - sy + row * cell_h;
 
-    screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), pc->palette[i]);
+    screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), palette[i]);
   }
+
+  return result_OK;
+}
+
+/* Set the picker menu's ticks from task->selected/invert, then open it. The
+ * menu itself is built once by palette_create and lives in *pc, so it
+ * outlives the open chain as wuss_menu_open requires. The invert row's
+ * permanent DASHED flag is set at create time; wuss_menu_open_ticked only
+ * touches the TICKED bit. */
+static result_t palette_menu_open(palette_task_t *pc)
+{
+  int ticks[PALETTE_MAX_FILES + 1];
+  int i;
+
+  for (i = 0; i < pc->nnames; i++)
+    ticks[i] = (i == pc->selected);
+  ticks[PALETTE_MENU_INVERT_INDEX(pc)] = pc->invert;
+
+  return wuss_menu_open_ticked(pc->delegate, &pc->menu, ticks,
+                               wuss_get_pointer(pc->wuss), &pc->menu_handle);
+}
+
+static result_t palette_click(palette_task_t *pc, const wuss_event_t *event)
+{
+  if (event->data.mouse.action != wuss_MOUSE_DOWN)
+    return result_OK;
+
+  if (!(event->data.mouse.button & wuss_BUTTON_MENU))
+    return result_OK;
+
+  return palette_menu_open(pc);
+}
+
+/* A pick loads that *.hex file (or re-applies the current one, for a bare
+ * Invert toggle) and, on success, installs it as the live system palette via
+ * wuss_set_palette -- every task, including whichever one owns the
+ * framebuffer bitmap and any physical palette, sees the change via the
+ * resulting wuss_EVENT_PALETTE and reads the new array back with
+ * wuss_get_palette. A load failure is silently ignored: the picker just
+ * stays on the previous selection. Ticks are also updated in place via
+ * wuss_menu_set_item_ticked, so an ADJUST pick (which keeps the chain open)
+ * shows the new tick without the menu being rebuilt or moved. */
+static result_t palette_menu_select(palette_task_t     *pc,
+                                    const wuss_event_t *event)
+{
+  int      index;
+  int      old;
+  colour_t loaded[PALETTE_NCOLOURS];
+  result_t rc;
+  int      i;
+
+  if (event->data.menu_select.menu != &pc->menu)
+    return result_OK;
+
+  index = event->data.menu_select.index;
+
+  if (index == PALETTE_MENU_INVERT_INDEX(pc))
+  {
+    pc->invert = !pc->invert;
+    if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
+      wuss_menu_set_item_ticked(pc->menu_handle, &pc->menu, index, pc->invert);
+  }
+  else if (index >= 0 && index < pc->nnames)
+  {
+    old          = pc->selected;
+    pc->selected = index;
+    pc->invert   = false;
+    if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
+    {
+      wuss_menu_set_item_ticked(pc->menu_handle, &pc->menu, old, 0);
+      wuss_menu_set_item_ticked(pc->menu_handle, &pc->menu, index, 1);
+      wuss_menu_set_item_ticked(pc->menu_handle, &pc->menu,
+                                PALETTE_MENU_INVERT_INDEX(pc), 0);
+    }
+  }
+  else
+    return result_OK;
+
+  /* SELECT (as opposed to ADJUST) has already closed and freed the chain by
+   * the time this event arrives; the handle is stale, don't touch it */
+  if (!wuss_menu_should_keep_open(event))
+    pc->menu_handle = NULL;
+
+  if (pc->nnames == 0)
+    return result_OK;
+
+  rc = palette_load_hex(pc->resources, pc->names[pc->selected], loaded);
+  if (rc != result_OK)
+    return result_OK;
+
+  if (pc->invert)
+    for (i = 0; i < PALETTE_NCOLOURS; i++)
+      loaded[i].primary ^= 0x00FFFFFFu;
+
+  wuss_set_palette(pc->wuss, loaded, PALETTE_NCOLOURS);
 
   return result_OK;
 }
@@ -98,16 +325,26 @@ result_t palette_handle(wuss_window_t      *window,
                         const wuss_event_t *event,
                         void               *task_data)
 {
-  if (event->kind == wuss_EVENT_QUIT)
+  NOT_USED(window);
+
+  switch (event->kind)
   {
+  case wuss_EVENT_REDRAW:
+    return palette_redraw(event, task_data);
+
+  case wuss_EVENT_MOUSE:
+    return palette_click(task_data, event);
+
+  case wuss_EVENT_MENU_SELECT:
+    return palette_menu_select(task_data, event);
+
+  case wuss_EVENT_QUIT:
     free(task_data); /* calloc'd per instance by the spawner */
     return result_OK;
-  }
 
-  if (event->kind != wuss_EVENT_REDRAW)
+  default:
     return result_OK;
-
-  return palette_redraw(event, task_data);
+  }
 }
 
 #endif /* WUSS_APP */
