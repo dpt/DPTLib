@@ -10,7 +10,7 @@
 
 /* Largest grid the generator will fill; the visible grid is whatever fits
  * the content area in 8-pixel tiles, capped to these. */
-#define GREEBLE_MAX_COLS 32
+#define GREEBLE_MAX_COLS 48
 #define GREEBLE_MAX_ROWS 48
 
 /* Fills the content area with a Xenon-2-style circuit-greeble texture built
