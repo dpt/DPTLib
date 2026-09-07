@@ -31,6 +31,7 @@
 #include "tasks/minesweeper.h"
 #include "tasks/palette.h"
 #include "tasks/porter-duff.h"
+#include "tasks/saturn.h"
 #include "tasks/sofa.h"
 #include "tasks/swatches.h"
 #include "tasks/text.h"
@@ -187,6 +188,17 @@ static result_t spawn_minesweeper(void)
   return result_OK;
 }
 
+static result_t spawn_saturn(void)
+{
+  saturn_task_t *t = calloc(1, sizeof(*t));
+  result_t       rc;
+  if (t == NULL) return result_OOM;
+  rc = saturn_create(g.wuss, t);
+  if (rc != result_OK) return rc;
+  if (t->window == NULL) { free(t); return rc; }
+  return result_OK;
+}
+
 static result_t spawn_sofa(void)
 {
   sofa_task_t *t = calloc(1, sizeof(*t));
@@ -281,6 +293,7 @@ static const wuss_menu_item_t g_launch_items[] =
   { "Minesweeper", wuss_MENU_ITEM_NONE, NULL },
   { "Palette",     wuss_MENU_ITEM_NONE, NULL },
   { "Porter-Duff", wuss_MENU_ITEM_NONE, NULL },
+  { "Saturn",      wuss_MENU_ITEM_NONE, NULL },
   { "Sofa",        wuss_MENU_ITEM_NONE, NULL },
   { "Swatches",    wuss_MENU_ITEM_NONE, NULL },
   { "Text",        wuss_MENU_ITEM_NONE, NULL }
@@ -291,7 +304,7 @@ static const task_spawn_fn_t g_launch_spawn[] =
   spawn_ball, spawn_blank, spawn_chars, spawn_checker, spawn_clock, spawn_curve,
   spawn_gradient, spawn_greeble, spawn_icons, spawn_image, spawn_lissajous,
   spawn_minesweeper, spawn_palette,
-  spawn_porter_duff, spawn_sofa, spawn_swatches, spawn_text
+  spawn_porter_duff, spawn_saturn, spawn_sofa, spawn_swatches, spawn_text
 };
 
 static const wuss_menu_t g_launch_menu =
