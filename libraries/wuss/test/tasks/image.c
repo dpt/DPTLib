@@ -275,6 +275,8 @@ result_t image_handle(wuss_window_t      *window,
     return image_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
+    if (window != ic->window)
+      return result_OK; /* not the image window (e.g. the proginfo dialogue) */
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_SELECT)
