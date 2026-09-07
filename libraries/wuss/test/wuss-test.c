@@ -273,6 +273,14 @@ static void reap_test_tasks(void)
   mk_task_count = 0;
 }
 
+/* Drop the registry without destroying anything -- for a block that hands
+ * its tasks straight to wuss_destroy and wants that teardown path exercised
+ * rather than wuss_task_destroy's. */
+static void forget_test_tasks(void)
+{
+  mk_task_count = 0;
+}
+
 /* ----------------------------------------------------------------------- */
 
 #if defined(WUSS_MENUS) && defined(WUSS_ICONS)
@@ -338,6 +346,8 @@ typedef struct menu_task
   int                menu_press_count;
   wuss_menu_handle_t menu_handle;      /* last chain this task opened */
   int                menu_closed_count; /* wuss_EVENT_MENU_CLOSED deliveries */
+  int                close_chain_on_quit; /* mimic image.c: close a still-open
+                                           * chain from the QUIT handler */
 }
 menu_task_t;
 
@@ -365,6 +375,9 @@ static result_t menu_open_handle(wuss_window_t      *window,
     mt->menu_closed_count++;
     mt->menu_handle = NULL; /* chain freed under us; handle now stale */
   }
+
+  if (event->kind == wuss_EVENT_QUIT && mt->close_chain_on_quit)
+    wuss_menu_close(mt->menu_handle); /* against the menu task, still live */
 
   return result_OK;
 }
@@ -4559,6 +4572,140 @@ MoveDestroy:
 MoveFailFree:
     free(mpixels);
 MoveFail:
+    bmfont_destroy(font);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+  }
+
+  printf("test: a task teardown that leaves a menu chain open is safe -- "
+         "wuss_task_destroy abandons it before QUIT, and wuss_destroy frees "
+         "the internal menu task after every client QUIT\n");
+  {
+    static const wuss_menu_item_t q_items[] =
+    {
+      { "Q-one", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_t q_menu = { "Q", q_items, NELEMS(q_items) };
+
+    const char      *fontfile;
+    bmfont_t        *font = NULL;
+    wuss_font_desc_t fdesc;
+    screen_t         qscr;
+    bitmap_t         qbm;
+    void            *qpixels;
+    wuss_t          *qwuss;
+    menu_task_t      qmt;
+    wuss_task_t     *task_q;
+    wuss_window_t   *wq;
+    box_t            bq;
+
+    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
+                                  path_join_leafname("Tiny", "png"));
+    rc = bmfont_create(fontfile, &font);
+    if (rc != result_OK)
+    {
+      printf("wuss_test: menu-quit test could not load %s\n", fontfile);
+      goto Failure;
+    }
+
+    qwuss   = NULL;
+    qpixels = malloc((size_t) rowbytes * 200);
+    if (qpixels == NULL) { rc = result_OOM; goto QuitFail; }
+    rc = bitmap_init(&qbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, qpixels);
+    if (rc != result_OK) goto QuitFreeOnly;
+    screen_for_bitmap(&qscr, &qbm);
+
+    fdesc.font       = font;
+    fdesc.font_class = wuss_FONT_CLASS_NONE;
+    fdesc.name       = NULL;
+    rc = wuss_create(&qscr, &fdesc, 1, NULL, 0, NULL, NULL, &qwuss);
+    if (rc != result_OK) goto QuitFreeOnly;
+
+    memset(&qmt, 0, sizeof(qmt));
+    qmt.menu                = &q_menu;
+    qmt.close_chain_on_quit = 1;
+
+    /* the client task is registered first; the internal menu task is created
+     * only on the wuss_menu_open below, so it lands *after* the client in
+     * wuss::tasks. wuss_destroy's task sweep therefore reaches the client's
+     * QUIT while the menu task node is still, by list order, pending. */
+    task_q = mk_task(qwuss, menu_open_handle, &qmt);
+    if (task_q == NULL) { rc = result_OOM; goto QuitDestroy; }
+    qmt.self = task_q;
+
+    bq.x0 = 6; bq.y0 = 6; bq.x1 = 60; bq.y1 = 60;
+    rc = wuss_window_create(task_q, &bq, "Q",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK |
+                            wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
+                            wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            box_size(&bq), SIZE2D(0, 0), &wq);
+    if (rc != result_OK) goto QuitDestroy;
+    NOT_USED(wq);
+
+    wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
+                     wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
+                     wuss_MOUSE_UP, NULL);
+    if (qwuss->menu_chain == NULL)           goto QuitCheckFail;
+    if (qmt.menu_handle == NULL)             goto QuitCheckFail;
+
+    /* Phase 1: wuss_task_destroy on the chain's owner. It abandons the chain
+     * (wuss_EVENT_MENU_CLOSED), which nulls qmt.menu_handle, *before* the
+     * QUIT it then delivers -- so the close_chain_on_quit handler's
+     * wuss_menu_close is a NULL no-op, not a double-free of the just-freed
+     * chain (ASan: heap-use-after-free in wuss_menu_close). */
+    reap_test_tasks();
+    if (qmt.menu_handle != NULL)             goto QuitCheckFail;
+    if (qwuss->menu_chain != NULL)           goto QuitCheckFail;
+
+    /* Phase 2: same again but torn down by wuss_destroy's own task sweep,
+     * with task_q left registered. The internal menu task used to be freed by
+     * that sweep before task_q's QUIT, so the QUIT handler's wuss_menu_close
+     * walked a freed task's window list (ASan: heap-use-after-free in
+     * list_remove via wuss_window_close). */
+    memset(&qmt, 0, sizeof(qmt));
+    qmt.menu                = &q_menu;
+    qmt.close_chain_on_quit = 1;
+    task_q = mk_task(qwuss, menu_open_handle, &qmt);
+    if (task_q == NULL) { rc = result_OOM; goto QuitDestroy; }
+    qmt.self = task_q;
+    rc = wuss_window_create(task_q, &bq, "Q2",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK |
+                            wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
+                            wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            box_size(&bq), SIZE2D(0, 0), &wq);
+    if (rc != result_OK) goto QuitDestroy;
+    wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
+                     wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
+                     wuss_MOUSE_UP, NULL);
+    if (qwuss->menu_chain == NULL)           goto QuitCheckFail;
+
+    forget_test_tasks(); /* drop task_q from the registry; wuss_destroy frees it */
+    wuss_destroy(qwuss); /* QUIT -> task_q closes the chain; must not fault */
+    qwuss = NULL;
+
+    rc = result_OK;
+    goto QuitFreeOnly;
+
+QuitCheckFail:
+    printf("wuss_test: menu-quit check failed (chain=%p handle=%p)\n",
+           (void *) qwuss->menu_chain, (void *) qmt.menu_handle);
+    rc = result_TEST_FAILED;
+    goto QuitDestroy;
+
+QuitDestroy:
+    reap_test_tasks();
+    if (qwuss != NULL)
+      wuss_destroy(qwuss);
+QuitFreeOnly:
+    free(qpixels);
+QuitFail:
     bmfont_destroy(font);
     if (rc != result_OK)
       return result_TEST_FAILED;
