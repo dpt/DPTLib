@@ -27,7 +27,7 @@ static void scroll_strip(const wuss_window_t *window,
     out->y1 = window->visible.y1 - outline_px;
     out->y0 = out->y1 - size;
     out->x0 = window->visible.x0 + outline_px;
-    out->x1 = window->visible.x1 - outline_px - size; /* clear of resize corner */
+    out->x1 = window->visible.x1 - outline_px - size - WUSS_DIVIDER_PX; /* seam then resize corner */
   }
   else
   {
@@ -35,7 +35,7 @@ static void scroll_strip(const wuss_window_t *window,
     out->x0 = out->x1 - size;
     wuss__titlebar_box(window, &titlebar);
     out->y0 = titlebar.y1;
-    out->y1 = window->visible.y1 - outline_px - size; /* clear of resize corner */
+    out->y1 = window->visible.y1 - outline_px - size - WUSS_DIVIDER_PX; /* seam then resize corner */
   }
 }
 
