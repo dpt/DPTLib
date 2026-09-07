@@ -10,10 +10,17 @@
 
 void wuss_destroy(wuss_t *doomed)
 {
-  list_t *e;
+  list_t      *e;
+  wuss_task_t *menu_task;
 
   if (doomed == NULL)
     return;
+
+#ifdef WUSS_MENUS
+  menu_task = doomed->menu_task;
+#else
+  menu_task = NULL;
+#endif
 
   /* QUIT then free any tasks the caller left registered, so a task's
    * client-owned task_data (freed only from its QUIT handler, per the
@@ -23,10 +30,11 @@ void wuss_destroy(wuss_t *doomed)
    * against live objects -- the leftover-chain close and the z_order sweep
    * then just find less to do.
    *
-   * ponytail: a task whose QUIT handler leaves an open chain standing, and
-   * whose flashing pick then gets delivered by the wuss_menu_close below to
-   * an already-freed earlier task, would fault. No task does that today; fix
-   * by tracking chain ownership per task if one ever needs to. */
+   * The internal wuss__menu_task is skipped here and torn down last: a client
+   * task's QUIT handler may wuss_menu_close a chain it still holds, which
+   * closes menu windows off wuss__menu_task's window list -- so that task
+   * must outlive every client QUIT, regardless of registration order (it is
+   * created lazily on the first wuss_menu_open, so it can sit anywhere). */
   e = doomed->tasks.next;
   while (e != NULL)
   {
@@ -34,17 +42,38 @@ void wuss_destroy(wuss_t *doomed)
     wuss_event_t event;
 
     next = e->next;
-    event.kind = wuss_EVENT_QUIT;
-    (void) wuss__deliver(wuss__task_from_link(e), NULL, &event);
-    wuss__free(doomed, e);
+    if (wuss__task_from_link(e) != menu_task)
+    {
+      event.kind = wuss_EVENT_QUIT;
+      (void) wuss__deliver(wuss__task_from_link(e), NULL, &event);
+      wuss__free(doomed, e);
+    }
     e = next;
   }
 
 #ifdef WUSS_MENUS
   /* Drop any menu chain a QUIT handler left open: its windows are freed by
    * the z_order sweep below, but the chain nodes and their icon-handle
-   * arrays are not. NULL (the common case now) is a no-op. */
+   * arrays are not. NULL (the common case now) is a no-op. Still runs
+   * against a live wuss__menu_task.
+   *
+   * ponytail: a bare wuss_menu_close, not wuss__menu_abandon -- every client
+   * task is already freed by the sweep above, so the chain's owner (and any
+   * flashing pick's owner) is dangling and must not be delivered to. No path
+   * leaves a mid-flash pick standing at wuss_destroy today; track the flash
+   * owner per task if one ever does. */
   wuss_menu_close(doomed->menu_chain);
+
+  /* Now the menu task has nothing left to own -- QUIT and free it. */
+  if (menu_task != NULL)
+  {
+    wuss_event_t event;
+
+    event.kind = wuss_EVENT_QUIT;
+    (void) wuss__deliver(menu_task, NULL, &event);
+    wuss__free(doomed, &menu_task->link);
+    doomed->menu_task = NULL;
+  }
 #endif
 
   e = doomed->z_order.next;

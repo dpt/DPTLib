@@ -139,8 +139,9 @@ static void wuss__menu_close_from(struct wuss__menu *node)
  * chain is gone (wuss_EVENT_MENU_CLOSED) before the nodes are freed -- a pick
  * has wuss_EVENT_MENU_SELECT for that, but these paths have nothing. Unlinks
  * wuss->menu_chain first so a re-entrant wuss_menu_close from the handler is a
- * no-op. */
-static void wuss__menu_abandon(wuss_t *wuss)
+ * no-op. Also used by wuss_task_destroy when the chain's owner is the task
+ * going away, so declared in core impl.h. */
+void wuss__menu_abandon(wuss_t *wuss)
 {
   struct wuss__menu *root;
   wuss_task_t       *owner;

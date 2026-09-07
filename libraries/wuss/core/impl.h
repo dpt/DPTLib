@@ -460,6 +460,14 @@ result_t wuss__deliver(wuss_task_t        *task,
                        wuss_window_t      *win_or_null,
                        const wuss_event_t *ev);
 
+#ifdef WUSS_MENUS
+/* Tear down the whole open menu chain because wuss decided to (not the
+ * client): unlinks wuss->menu_chain, delivers wuss_EVENT_MENU_CLOSED to its
+ * owner so a stored handle is dropped, then frees the nodes. No-op if no
+ * chain is open. Defined in menu/menu.c. */
+void wuss__menu_abandon(wuss_t *wuss);
+#endif
+
 /* Notify a window's task that it has been moved or resized, via
  * wuss_EVENT_OPEN; the return value is discarded, matching how furniture
  * drawing and other in-line notifications are treated. */
