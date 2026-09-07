@@ -42,11 +42,7 @@ static void icon_bevel(screen_t    *scr,
 {
   screen_fill_rect(scr, b->x0, b->y0,
                    SIZE2D(b->x1 - b->x0, b->y1 - b->y0), fill);
-
-  screen_draw_line(scr, b->x0,     b->y0,     b->x1 - 1, b->y0,     light);
-  screen_draw_line(scr, b->x0,     b->y0,     b->x0,     b->y1 - 1, light);
-  screen_draw_line(scr, b->x0,     b->y1 - 1, b->x1 - 1, b->y1 - 1, dark);
-  screen_draw_line(scr, b->x1 - 1, b->y0,     b->x1 - 1, b->y1 - 1, dark);
+  screen_draw_bevel_edge(scr, b, light, dark);
 }
 
 /* Resolve the ground an icon's text/glyph blends against: an explicit icon bg,
@@ -265,7 +261,7 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
   if (is_default)
   {
     /* default action button: a flat accent-filled rectangle inside a
-     * one-pixel accent-text border, distinct from the bevelled ordinary
+     * two-pixel accent-text border, distinct from the bevelled ordinary
      * buttons around it */
     base  = c->wuss->palette[c->wuss->accent_bg];
     light = c->wuss->palette[c->wuss->accent_fg];
