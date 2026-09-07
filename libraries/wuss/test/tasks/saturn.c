@@ -12,6 +12,7 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
+#include "utils/rng.h"
 
 #include "saturn.h"
 
@@ -50,19 +51,19 @@
 
 #define SATURN_BODY_R2      16384 /* planet body: keep if r1*r1+r2*r2 < this */
 
-/* BBC BASIC RND(n>0) returns an integer 1..n. A small LCG stands in for it so
- * a Select click can re-seed for a fresh sketch. */
-static unsigned long saturn_rnd_state;
+/* BBC BASIC RND(n>0) returns an integer 1..n. utils/rng's LCG stands in for
+ * it (its high bits, which is where an LCG's usable randomness sits) so a
+ * Select click can re-seed for a fresh sketch. */
+static rng_t saturn_rnd_state;
 
 static void saturn_rnd_seed(unsigned long seed)
 {
-  saturn_rnd_state = seed ? seed : 1;
+  rng_seed(&saturn_rnd_state, (uint32_t) seed);
 }
 
 static int saturn_rnd(int n)
 {
-  saturn_rnd_state = saturn_rnd_state * 1664525UL + 1013904223UL;
-  return (int) ((saturn_rnd_state >> 16) % (unsigned long) n) + 1;
+  return (int) ((rng_lcg32(&saturn_rnd_state) >> 16) % (uint32_t) n) + 1;
 }
 
 /* one signed sample in the original -128..127 space */

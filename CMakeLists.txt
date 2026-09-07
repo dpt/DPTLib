@@ -119,6 +119,7 @@ set(PUBLIC_HEADERS
     include/utils/maths.h
     include/utils/pack.h
     include/utils/primes.h
+    include/utils/rng.h
     include/wuss/task.h
     include/wuss/window.h
     include/wuss/wuss.h)
