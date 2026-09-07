@@ -36,7 +36,19 @@
  *           x = sqrt(16384-P)/2                             -> planet body
  */
 
-#define SATURN_SIZE 256 /* window is SATURN_SIZE x SATURN_SIZE */
+#define SATURN_SIZE         256   /* window is SATURN_SIZE x SATURN_SIZE */
+
+/* The original works in a -128..127 sample space (BBC BASIC signed byte). */
+#define SATURN_HALF         128   /* sample-space centre / bias */
+#define SATURN_RANGE        255   /* saturn_rnd() span: 1..255, then -HALF */
+#define SATURN_FLIP         255   /* RISC OS bottom-up -> wuss top-down: FLIP - v */
+#define SATURN_ENERGY_SHIFT 256   /* (x*x+y*y) energy divisor */
+
+#define SATURN_RING_ITERS   477   /* loop 1: the ring */
+#define SATURN_BAND_ITERS   1280  /* loop 2: ring shadow band */
+#define SATURN_BODY_ITERS   1280  /* loop 3: planet body */
+
+#define SATURN_BODY_R2      16384 /* planet body: keep if r1*r1+r2*r2 < this */
 
 /* BBC BASIC RND(n>0) returns an integer 1..n. A small LCG stands in for it so
  * a Select click can re-seed for a fresh sketch. */
@@ -52,6 +64,9 @@ static int saturn_rnd(int n)
   saturn_rnd_state = saturn_rnd_state * 1664525UL + 1013904223UL;
   return (int) ((saturn_rnd_state >> 16) % (unsigned long) n) + 1;
 }
+
+/* one signed sample in the original -128..127 space */
+#define SATURN_SAMPLE() (saturn_rnd(SATURN_RANGE) - SATURN_HALF)
 
 result_t saturn_create(wuss_t *wuss, saturn_task_t *task)
 {
@@ -126,43 +141,44 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
   saturn_rnd_seed(task->seed);
 
   /* loop 1 - the ring: keep points outside the inner disc */
-  for (i = 0; i <= 477; i++)
+  for (i = 0; i <= SATURN_RING_ITERS; i++)
   {
-    x = saturn_rnd(255) - 128;
-    y = saturn_rnd(255) - 128;
-    p = (x * x + y * y) / 256;
+    x = SATURN_SAMPLE();
+    y = SATURN_SAMPLE();
+    p = (x * x + y * y) / SATURN_ENERGY_SHIFT;
     if (p > 17)
-      saturn_plot(scr, ox, oy, x + 128, 255 - (y + 128), task->fg);
+      saturn_plot(scr, ox, oy, x + SATURN_HALF, SATURN_FLIP - (y + SATURN_HALF),
+                  task->fg);
   }
 
   /* loop 2 - ring shadow band: sheared sample with a banded energy gate */
-  for (i = 0; i <= 1280; i++)
+  for (i = 0; i <= SATURN_BAND_ITERS; i++)
   {
     int r5, r6, r7, e;
 
-    r5 = saturn_rnd(255) - 128;
-    r6 = saturn_rnd(255) - 128;
+    r5 = SATURN_SAMPLE();
+    r6 = SATURN_SAMPLE();
     r7 = r5 / 4;
     x  = r6 + r7;
     y  = r6;
-    p  = (x * x + y * y) / 256;
-    e  = ((r6 + r7) * (r6 + r7) + r5 * r5 + r6 * r6) / 256;
+    p  = (x * x + y * y) / SATURN_ENERGY_SHIFT;
+    e  = ((r6 + r7) * (r6 + r7) + r5 * r5 + r6 * r6) / SATURN_ENERGY_SHIFT;
     if (e >= 32 && e < 80 && (r5 < 0 || p > 16))
-      saturn_plot(scr, ox, oy, x + 128, y + 128, task->fg);
+      saturn_plot(scr, ox, oy, x + SATURN_HALF, y + SATURN_HALF, task->fg);
   }
 
   /* loop 3 - planet body: filled half-disc offset right */
-  for (i = 0; i <= 1280; i++)
+  for (i = 0; i <= SATURN_BODY_ITERS; i++)
   {
     int r1, r2;
 
-    r1 = saturn_rnd(255) - 128;
-    r2 = saturn_rnd(255) - 128;
+    r1 = SATURN_SAMPLE();
+    r2 = SATURN_SAMPLE();
     p  = r1 * r1 + r2 * r2;
-    if (p < 16384)
+    if (p < SATURN_BODY_R2)
     {
-      x = (int) (sqrt((double) (16384 - p)) / 2.0) + 128;
-      y = 255 - (r2 / 2 + 128);
+      x = (int) (sqrt((double) (SATURN_BODY_R2 - p)) / 2.0) + SATURN_HALF;
+      y = SATURN_FLIP - (r2 / 2 + SATURN_HALF);
       saturn_plot(scr, ox, oy, x, y, task->fg);
     }
   }
