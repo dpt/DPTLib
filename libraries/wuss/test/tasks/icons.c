@@ -38,9 +38,11 @@ enum
   ICONS_N_RADIOS  = 8, /* frame + 3 radios + option + state label + 2 justified labels */
   ICONS_N_BITMAPS = 3, /* frame + decorative + interactive bitmap */
   ICONS_N_PATTERN = 2, /* frame + one PATTERN swatch */
+  ICONS_N_BORDERS = 3, /* frame + a GROOVE label + a RIDGE label */
   ICONS_N_MENU    = 7, /* plain, ticked, swatch, submenu, disabled, rule, separator entry */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
-                    ICONS_N_BITMAPS + ICONS_N_PATTERN + ICONS_N_MENU
+                    ICONS_N_BITMAPS + ICONS_N_PATTERN + ICONS_N_BORDERS +
+                    ICONS_N_MENU
 };
 
 /* Running state threaded through the icons_add_* helpers: where to write the
@@ -290,6 +292,45 @@ static void icons_add_pattern(icons_layout_t *lay)
   lay->y = top + 76;
 }
 
+/* A grouping frame captioned "Borders", holding a GROOVE-bordered label (a
+ * sunken RISC OS display field) above a RIDGE-bordered one (raised). */
+static void icons_add_borders(icons_layout_t *lay)
+{
+  wuss_icon_spec_t *s;
+  int               top;
+
+  top     = lay->y;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 80);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "Borders";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  s         = &lay->specs[lay->n];
+  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20, 180, 22);
+  s->type   = wuss_ICON_TYPE_LABEL;
+  s->text   = "Groove";
+  s->fg     = lay->black;
+  s->bg     = lay->grey6;
+  s->border = wuss_ICON_BORDER_GROOVE;
+  s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
+  lay->n++;
+
+  s         = &lay->specs[lay->n];
+  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 48, 180, 22);
+  s->type   = wuss_ICON_TYPE_LABEL;
+  s->text   = "Ridge";
+  s->fg     = lay->black;
+  s->bg     = lay->grey6;
+  s->border = wuss_ICON_BORDER_RIDGE;
+  s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
+  lay->n++;
+
+  lay->y = top + 96;
+}
+
 /* A menu-entry strip: plain, ticked, a swatch entry, a submenu entry, a
  * disabled entry, then a dashed rule and a SEPARATOR-flagged entry below it.
  * Hover the pointer over any live entry to see the highlight track; the rule
@@ -445,6 +486,7 @@ result_t icons_create(wuss_t       *wuss,
   icons_add_radios(&lay, &i_opt, &i_state);
   icons_add_bitmaps(&lay, task->has_sprite ? &task->sprite : NULL, &i_hotspot);
   icons_add_pattern(&lay);
+  icons_add_borders(&lay);
   icons_add_menu(&lay, &i_ticked);
 
   rc = wuss_icon_create_array(task->window, specs, lay.n, made);
