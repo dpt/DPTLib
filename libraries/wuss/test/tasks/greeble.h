@@ -5,6 +5,7 @@
 
 #ifdef WUSS_APP
 
+#include "utils/rng.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -30,7 +31,7 @@ typedef struct greeble_task
   wuss_task_t       *delegate; /* the task that owns the menu */
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
-  unsigned int       seed;   /* current pattern seed; advanced on click */
+  rng_t              seed;   /* current pattern seed; advanced on click */
   int                cols, rows; /* live grid extent, <= the MAX_* caps */
   unsigned char      palette;  /* greeble_palettes[] row for this pattern */
   int                random_prefab_palettes; /* nonzero: each scattered prefab
