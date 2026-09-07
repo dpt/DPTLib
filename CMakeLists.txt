@@ -101,6 +101,7 @@ set(PUBLIC_HEADERS
     include/geom/point.h
     include/geom/size.h
     include/io/dirscan.h
+    include/io/namelist.h
     include/io/path.h
     include/io/stream-mem.h
     include/io/stream-mtfcomp.h
@@ -298,6 +299,7 @@ set(GEOM_SOURCES
 
 set(IO_SOURCES
     libraries/io/dirscan/dirscan.c
+    libraries/io/namelist/namelist.c
     libraries/io/path/path.c
     libraries/io/stream/stream-mem.c
     libraries/io/stream/stream-mtfcomp.c

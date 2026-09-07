@@ -14,7 +14,7 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
-#include "io/dirscan.h"
+#include "io/namelist.h"
 #include "io/path.h"
 #include "wuss/menu.h"
 #include "wuss/menu-desc.h"
@@ -23,30 +23,6 @@
 
 #define NINEPATCHSZ 9
 #define IMAGE_EXT     ".png"
-#define IMAGE_EXT_LEN 4
-
-static result_t image__scan_entry(const char *leaf, void *opaque)
-{
-  image_task_t *ic;
-  size_t        leaflen;
-
-  ic      = opaque;
-  leaflen = strlen(leaf);
-
-  if (leaflen <= IMAGE_EXT_LEN ||
-      leaflen - IMAGE_EXT_LEN >= IMAGE_MAX_NAME_LEN)
-    return result_OK;
-  if (strcmp(leaf + leaflen - IMAGE_EXT_LEN, IMAGE_EXT) != 0)
-    return result_OK;
-  if (ic->nnames >= IMAGE_MAX_NAMES)
-    return result_STOP_WALK;
-
-  memcpy(ic->names[ic->nnames], leaf, leaflen - IMAGE_EXT_LEN);
-  ic->names[ic->nnames][leaflen - IMAGE_EXT_LEN] = '\0';
-  ic->nnames++;
-
-  return result_OK;
-}
 
 result_t image_create(wuss_t       *wuss,
                       const char   *resources,
@@ -70,7 +46,9 @@ result_t image_create(wuss_t       *wuss,
   task->menu_handle = NULL;
 
   images_dir = path_join_filename(resources, 2, "resources", "images");
-  rc = dirscan_walk(images_dir, image__scan_entry, task);
+  rc = namelist_scan(images_dir, IMAGE_EXT, task->names[0],
+                     sizeof(task->names[0]), IMAGE_MAX_NAMES, 0 /* unsorted */,
+                     &task->nnames);
   if (rc != result_OK)
   {
     free(task); /* nothing registered yet; the spawner will not free it */
