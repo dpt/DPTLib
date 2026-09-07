@@ -1,5 +1,13 @@
 /* wuss/furniture/draw.c -- wuss - minimal window manager */
 
+/* Two-phase furniture paint. Phase 1 (wuss__furniture_layout_build, cached)
+ * computes every filled rect from the window geometry. Phase 2 (here) walks
+ * the cache clipping each rect to the redraw region "full" and filling it.
+ * The two scrollbar sausages track window->scroll so they are recomputed
+ * each paint rather than cached; the title string is font-dependent and
+ * drawn live. */
+
+#include <assert.h>
 #include <string.h>
 
 #include "base/utils.h"
@@ -25,210 +33,131 @@ static void fill_furniture_rect(wuss_t      *wuss,
   screen_fill_rect(wuss->scr, b->x0, b->y0, box_size(b), colour);
 }
 
-void wuss__furniture_draw(wuss_t        *wuss,
-                          wuss_window_t *window,
-                          const box_t   *full)
+/* Resolve a cached piece's paint class to a concrete palette colour. */
+static colour_t paint_colour(const wuss_t                 *wuss,
+                             wuss__furniture_paint_class_t paint)
 {
-  box_t     visible_clipped;
-  box_t     clipped;
-  box_t     titlebar;
-  bmfont_t *titlefont;
+  const wuss_furniture_palette_t *fc;
+
+  fc = &wuss->furniture_colours;
+
+  switch (paint)
+  {
+  case wuss__FURNITURE_PAINT_TITLE_BG:       return wuss->palette[fc->title.bg];
+  case wuss__FURNITURE_PAINT_CLOSE:          return wuss->palette[fc->close];
+  case wuss__FURNITURE_PAINT_BACK:           return wuss->palette[fc->back];
+  case wuss__FURNITURE_PAINT_TOGGLE:         return wuss->palette[fc->toggle];
+  case wuss__FURNITURE_PAINT_RESIZE:         return wuss->palette[fc->resize];
+  case wuss__FURNITURE_PAINT_SCROLL_ARROWS:  return wuss->palette[fc->scroll.arrows];
+  case wuss__FURNITURE_PAINT_SCROLL_WELLS:   return wuss->palette[fc->scroll.wells];
+  case wuss__FURNITURE_PAINT_OUTLINE:        return wuss->palette[fc->outline];
+  }
+
+  assert(!"unhandled furniture paint class");
+  return wuss->palette[fc->title.bg];
+}
+
+/* The title string, drawn into its titlebar slot. Split out of the main
+ * routine only to keep the phase-2 loop readable; still runs every paint
+ * because measurement depends on the current font. */
+static void draw_title(wuss_t        *wuss,
+                       wuss_window_t *window,
+                       const box_t   *titlebar,
+                       const box_t   *titlebar_clip)
+{
+  bmfont_t      *titlefont;
+  point_t        pos;
+  int            text_x0, text_x1, titlelen, split_point;
+  bmfont_width_t width;
+  box_t          text_box, text_clip;
+
+  if (window->title[0] == '\0')
+    return;
 
   /* window titles are drawn in the bold weight (font slot 1) when one was
    * supplied, falling back to the system font */
   titlefont = (wuss->nfonts > 1 && wuss->fonts[1] != NULL)
             ? wuss->fonts[1]
             : wuss->fonts[0];
+  if (titlefont == NULL)
+    return;
+
+  text_x0 = titlebar->x0 + 2;
+  if (!(window->flags & wuss_WINDOW_NO_CLOSE))
+  {
+    box_t close;
+
+    wuss__close_box(window, &close);
+    text_x0 = close.x1 + 2;
+  }
+  else if (!(window->flags & wuss_WINDOW_NO_BACK))
+  {
+    box_t back;
+
+    wuss__back_box(window, &back);
+    text_x0 = back.x1 + 2;
+  }
+
+  text_x1 = titlebar->x1 - 2;
+  if (!(window->flags & wuss_WINDOW_NO_TOGGLE_SIZE))
+  {
+    box_t toggle;
+
+    wuss__toggle_box(window, &toggle);
+    text_x1 = toggle.x0 - 2;
+  }
+
+  /* A title too wide for its slot mustn't bleed into a neighbouring icon:
+   * clip drawing to the slot itself, not just the whole titlebar, so a
+   * too-long title is cut off cleanly rather than overdrawing whatever
+   * furniture the current redraw didn't happen to touch. */
+  text_box.x0 = text_x0;
+  text_box.y0 = titlebar->y0;
+  text_box.x1 = text_x1;
+  text_box.y1 = titlebar->y1;
+  if (text_x1 <= text_x0 || box_intersection(&text_box, titlebar_clip, &text_clip))
+    return;
+
+  titlelen = (int) strlen(window->title);
+  bmfont_measure(titlefont, window->title, titlelen, text_x1 - text_x0, &split_point, &width);
+
+  pos.x = (split_point < titlelen) ? text_x0 : text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
+  pos.y = titlebar->y0 + 2;
+  wuss->scr->clip = text_clip;
+  bmfont_draw(titlefont, wuss->scr, window->title, titlelen,
+              wuss->palette[wuss->furniture_colours.title.fg],
+              wuss->palette[wuss->furniture_colours.title.bg],
+              &pos, NULL);
+}
+
+void wuss__furniture_draw(wuss_t        *wuss,
+                          wuss_window_t *window,
+                          const box_t   *full)
+{
+  box_t visible_clipped;
+  box_t sausage;
+  int   i;
 
   if (box_intersection(&window->visible, full, &visible_clipped))
     return; /* offscreen */
 
-  wuss__titlebar_box(window, &titlebar);
-  if (!box_intersection(&titlebar, full, &clipped))
+  if (!window->furniture_layout.valid)
+    wuss__furniture_layout_build(window);
+
+  /* phase 2: clip-and-fill every cached rect */
+  for (i = 0; i < window->furniture_layout.npieces; i++)
   {
-    wuss->scr->clip = clipped;
-    screen_fill_rect(wuss->scr,
-                     titlebar.x0, titlebar.y0, box_size(&titlebar),
-                     wuss->palette[wuss->furniture_colours.title.bg]);
+    const wuss__furniture_piece_t *piece;
 
-    if (titlefont != NULL && window->title[0] != '\0')
-    {
-      point_t        pos;
-      int            text_x0, text_x1, titlelen, split_point;
-      bmfont_width_t width;
-      box_t          text_box, text_clip;
-
-      text_x0 = titlebar.x0 + 2;
-      if (!(window->flags & wuss_WINDOW_NO_CLOSE))
-      {
-        box_t close;
-
-        wuss__close_box(window, &close);
-        text_x0 = close.x1 + 2;
-      }
-      else if (!(window->flags & wuss_WINDOW_NO_BACK))
-      {
-        box_t back;
-
-        wuss__back_box(window, &back);
-        text_x0 = back.x1 + 2;
-      }
-
-      text_x1 = titlebar.x1 - 2;
-      if (!(window->flags & wuss_WINDOW_NO_TOGGLE_SIZE))
-      {
-        box_t toggle;
-
-        wuss__toggle_box(window, &toggle);
-        text_x1 = toggle.x0 - 2;
-      }
-
-      /* A title too wide for its slot mustn't bleed into a neighbouring
-       * icon: clip drawing to the slot itself, not just the whole titlebar,
-       * so a too-long title is cut off cleanly rather than overdrawing
-       * whatever furniture the current redraw didn't happen to touch. */
-      text_box.x0 = text_x0;
-      text_box.y0 = titlebar.y0;
-      text_box.x1 = text_x1;
-      text_box.y1 = titlebar.y1;
-      if (text_x1 > text_x0 && !box_intersection(&text_box, &clipped, &text_clip))
-      {
-        titlelen = (int) strlen(window->title);
-        bmfont_measure(titlefont, window->title, titlelen, text_x1 - text_x0, &split_point, &width);
-
-        pos.x = (split_point < titlelen) ? text_x0 : text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
-        pos.y = titlebar.y0 + 2;
-        wuss->scr->clip = text_clip;
-        bmfont_draw(titlefont, wuss->scr, window->title, titlelen,
-                    wuss->palette[wuss->furniture_colours.title.fg],
-                    wuss->palette[wuss->furniture_colours.title.bg],
-                   &pos, NULL);
-        wuss->scr->clip = clipped;
-      }
-    }
-
-    if (!(window->flags & wuss_WINDOW_NO_CLOSE))
-    {
-      box_t close;
-
-      wuss__close_box(window, &close);
-      fill_furniture_rect(wuss, &close, full,
-                          wuss->palette[wuss->furniture_colours.close]);
-    }
-
-    if (!(window->flags & wuss_WINDOW_NO_BACK))
-    {
-      box_t back;
-
-      wuss__back_box(window, &back);
-      fill_furniture_rect(wuss, &back, full,
-                          wuss->palette[wuss->furniture_colours.back]);
-    }
-
-    if (!(window->flags & wuss_WINDOW_NO_TOGGLE_SIZE))
-    {
-      box_t toggle;
-
-      wuss__toggle_box(window, &toggle);
-      fill_furniture_rect(wuss, &toggle, full,
-                          wuss->palette[wuss->furniture_colours.toggle]);
-    }
+    piece = &window->furniture_layout.pieces[i];
+    fill_furniture_rect(wuss, &piece->rect, full,
+                        paint_colour(wuss, piece->paint));
   }
 
-  /* With both scrollbars off but a resize icon on, the content box is still
-   * carved back button_size on its right and bottom (see
-   * wuss__furniture_carve_for) and no scroll strip paints that margin. It is
-   * chrome, so furniture owns it: fill it here. Nothing pre-fills it
-   * (fill_backdrop_excluding_content cuts the whole visible box), so this is
-   * the only paint of the region -- no redundant fill, no flicker. */
-  if ((window->flags & wuss_WINDOW_NO_VSCROLL) &&
-      (window->flags & wuss_WINDOW_NO_HSCROLL) &&
-      !(window->flags & wuss_WINDOW_NO_RESIZE))
-  {
-    box_t   content, band;
-    point_t carve;
-    int     outline_px;
-
-    outline_px = wuss__outline_px(window);
-    wuss__content_box(window, &content);
-    wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
-
-    if (carve.x > 0)
-    {
-      band.x0 = content.x1;
-      band.x1 = window->visible.x1 - outline_px;
-      band.y0 = window->visible.y0 + outline_px
-              + wuss__titlebar_height(window);
-      band.y1 = window->visible.y1 - outline_px;
-      fill_furniture_rect(wuss, &band, full,
-                          wuss->palette[wuss->furniture_colours.title.bg]);
-    }
-
-    if (carve.y > 0)
-    {
-      band.x0 = window->visible.x0 + outline_px;
-      band.x1 = content.x1;
-      band.y0 = content.y1;
-      band.y1 = window->visible.y1 - outline_px;
-      fill_furniture_rect(wuss, &band, full,
-                          wuss->palette[wuss->furniture_colours.title.bg]);
-    }
-  }
-
-  if (!(window->flags & wuss_WINDOW_NO_RESIZE))
-  {
-    box_t resize, rule;
-    int   top_seam, left_seam;
-
-    wuss__resize_box(window, &resize);
-
-    /* Dividing seams in the 1px gap the scroll strips leave (scroll_strip
-     * pulls each end in by WUSS_DIVIDER_PX): a rule along the resize box's top
-     * edge (vscroll strip above) and its left edge (hscroll strip to the
-     * left), in the interior rules' colour. */
-    top_seam  = (window->flags & wuss_WINDOW_NO_VSCROLL) ? 0 : WUSS_DIVIDER_PX;
-    left_seam = (window->flags & wuss_WINDOW_NO_HSCROLL) ? 0 : WUSS_DIVIDER_PX;
-
-    fill_furniture_rect(wuss, &resize, full,
-                        wuss->palette[wuss->furniture_colours.resize]);
-
-    if (top_seam > 0)
-    {
-      rule.x0 = resize.x0 - left_seam;
-      rule.x1 = resize.x1;
-      rule.y0 = resize.y0 - top_seam;
-      rule.y1 = resize.y0;
-      fill_furniture_rect(wuss, &rule, full,
-                          wuss->palette[wuss->furniture_colours.title.bg]);
-    }
-
-    if (left_seam > 0)
-    {
-      rule.x0 = resize.x0 - left_seam;
-      rule.x1 = resize.x0;
-      rule.y0 = resize.y0 - top_seam;
-      rule.y1 = resize.y1;
-      fill_furniture_rect(wuss, &rule, full,
-                          wuss->palette[wuss->furniture_colours.title.bg]);
-    }
-  }
-
+  /* the two scrollbar sausages: geometry depends on window->scroll, so they
+   * are computed live rather than cached */
   if (!(window->flags & wuss_WINDOW_NO_VSCROLL))
   {
-    box_t up, down, well, sausage;
-
-    wuss__vscroll_up_box(window, &up);
-    fill_furniture_rect(wuss, &up, full,
-                        wuss->palette[wuss->furniture_colours.scroll.arrows]);
-
-    wuss__vscroll_down_box(window, &down);
-    fill_furniture_rect(wuss, &down, full,
-                        wuss->palette[wuss->furniture_colours.scroll.arrows]);
-
-    wuss__vscroll_well_box(window, &well);
-    fill_furniture_rect(wuss, &well, full,
-                        wuss->palette[wuss->furniture_colours.scroll.wells]);
-
     wuss__vscroll_sausage_box(window, &sausage);
     fill_furniture_rect(wuss, &sausage, full,
                         wuss->palette[wuss->furniture_colours.scroll.sausages]);
@@ -236,73 +165,17 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
   if (!(window->flags & wuss_WINDOW_NO_HSCROLL))
   {
-    box_t left, right, well, sausage;
-
-    wuss__hscroll_left_box(window, &left);
-    fill_furniture_rect(wuss, &left, full,
-                        wuss->palette[wuss->furniture_colours.scroll.arrows]);
-
-    wuss__hscroll_right_box(window, &right);
-    fill_furniture_rect(wuss, &right, full,
-                        wuss->palette[wuss->furniture_colours.scroll.arrows]);
-
-    wuss__hscroll_well_box(window, &well);
-    fill_furniture_rect(wuss, &well, full,
-                        wuss->palette[wuss->furniture_colours.scroll.wells]);
-
     wuss__hscroll_sausage_box(window, &sausage);
     fill_furniture_rect(wuss, &sausage, full,
                         wuss->palette[wuss->furniture_colours.scroll.sausages]);
   }
 
+  /* the title string, drawn live over its (already-filled) titlebar slot */
+  if (window->furniture_layout.has_titlebar)
   {
-    box_t   content, rule;
-    point_t carve;
+    box_t titlebar_clip;
 
-    /* Interior rules: where furniture is carved off the content area's right
-     * or bottom edge, the last pixel of the carve is a dividing line. */
-    wuss__content_box(window, &content);
-    wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
-
-    if (carve.x > 0)
-    {
-      rule.x0 = content.x1;
-      rule.x1 = content.x1 + WUSS_DIVIDER_PX;
-      rule.y0 = content.y0;
-      rule.y1 = content.y1;
-      fill_furniture_rect(wuss, &rule, full,
-                          wuss->palette[wuss->furniture_colours.title.bg]);
-    }
-
-    if (carve.y > 0)
-    {
-      rule.x0 = content.x0;
-      rule.x1 = content.x1 + ((carve.x > 0) ? WUSS_DIVIDER_PX : 0); /* meet the vertical rule at the corner */
-      rule.y0 = content.y1;
-      rule.y1 = content.y1 + WUSS_DIVIDER_PX;
-      fill_furniture_rect(wuss, &rule, full,
-                          wuss->palette[wuss->furniture_colours.title.bg]);
-    }
-  }
-
-  if (!(window->flags & wuss_WINDOW_NO_OUTLINE))
-  {
-    colour_t border;
-    box_t    edges[4];
-
-    border = wuss->palette[wuss->furniture_colours.outline];
-
-    /* top, bottom, left, right -- one pixel thick each */
-    edges[0].x0 = window->visible.x0;     edges[0].y0 = window->visible.y0;
-    edges[0].x1 = window->visible.x1;     edges[0].y1 = window->visible.y0 + 1;
-    edges[1].x0 = window->visible.x0;     edges[1].y0 = window->visible.y1 - 1;
-    edges[1].x1 = window->visible.x1;     edges[1].y1 = window->visible.y1;
-    edges[2].x0 = window->visible.x0;     edges[2].y0 = window->visible.y0;
-    edges[2].x1 = window->visible.x0 + 1; edges[2].y1 = window->visible.y1;
-    edges[3].x0 = window->visible.x1 - 1; edges[3].y0 = window->visible.y0;
-    edges[3].x1 = window->visible.x1;     edges[3].y1 = window->visible.y1;
-
-    wuss->scr->clip = visible_clipped;
-    screen_fill_rects(wuss->scr, edges, 4, border);
+    if (!box_intersection(&window->furniture_layout.titlebar, full, &titlebar_clip))
+      draw_title(wuss, window, &window->furniture_layout.titlebar, &titlebar_clip);
   }
 }

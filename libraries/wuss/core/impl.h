@@ -207,6 +207,7 @@ struct wuss_window
 #ifdef WUSS_FURNITURE
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];
+  wuss__furniture_layout_t furniture_layout; /* lazily built; see furniture.h */
 #endif
 #ifdef WUSS_ICONS
   wuss_icon_t       **icons;        /* owned; array of owned icon pointers */
@@ -240,6 +241,14 @@ static inline void wuss__chrome_repaint_for(wuss_window_t *window,
 {
   window->wuss->furniture_ops->invalidate_for(window, visible);
 }
+
+/* Drop just the cached furniture layout, without queuing any dirty region --
+ * for a window move, where the caller already handles the repaint but the
+ * cache (absolute coords) must be rebuilt for the new position. */
+static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
+{
+  window->furniture_layout.valid = 0;
+}
 #else
 static inline void wuss__chrome_draw(wuss_t        *wuss,
                                      wuss_window_t *window,
@@ -260,6 +269,11 @@ static inline void wuss__chrome_repaint_for(wuss_window_t *window,
 {
   (void) window;
   (void) visible;
+}
+
+static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
+{
+  (void) window;
 }
 #endif
 

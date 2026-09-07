@@ -12,6 +12,57 @@
 #define WUSS_SCROLL_END_GAP 2  /* sausage along-axis margin from its well's ends, purely cosmetic */
 #define WUSS_SCROLL_STEP    20 /* pixels stepped per scrollbar arrow click */
 
+/* Cached furniture layout ------------------------------------------------- */
+
+/* Which chrome colour a cached furniture rect is painted in. The layout
+ * stores this class rather than a resolved colour so a palette change needs
+ * no layout rebuild: wuss__furniture_draw resolves it through wuss->palette
+ * at paint time. */
+typedef enum wuss__furniture_paint_class
+{
+  wuss__FURNITURE_PAINT_TITLE_BG,   /* titlebar fill, bands, seams, interior rules */
+  wuss__FURNITURE_PAINT_CLOSE,
+  wuss__FURNITURE_PAINT_BACK,
+  wuss__FURNITURE_PAINT_TOGGLE,
+  wuss__FURNITURE_PAINT_RESIZE,
+  wuss__FURNITURE_PAINT_SCROLL_ARROWS,
+  wuss__FURNITURE_PAINT_SCROLL_WELLS,
+  wuss__FURNITURE_PAINT_OUTLINE
+}
+wuss__furniture_paint_class_t;
+
+/* One filled rectangle in the cached layout. */
+typedef struct wuss__furniture_piece
+{
+  box_t                         rect;
+  wuss__furniture_paint_class_t  paint;
+}
+wuss__furniture_piece_t;
+
+/* Upper bound on pieces a single window's furniture can contribute:
+ * titlebar(1) + close/back/toggle(3) + no-scroll resize bands(2) +
+ * resize icon + its two seams(3) + v/h scroll arrows+well(3+3) +
+ * two interior rules(2) + four outline edges(4) = 21. Round up. */
+#define WUSS__FURNITURE_MAX_PIECES 24
+
+/* Per-window cache of the furniture layout: every filled rect except the two
+ * scrollbar sausages (which move with window->scroll and are recomputed each
+ * paint) and the title text (font-dependent, drawn live). Rebuilt lazily by
+ * wuss__furniture_draw when "valid" is 0; wuss__furniture_invalidate* clear
+ * it on any geometry change. */
+typedef struct wuss__furniture_layout
+{
+  int                     valid;
+  int                     npieces;
+  wuss__furniture_piece_t pieces[WUSS__FURNITURE_MAX_PIECES];
+  box_t                   titlebar;   /* for the live title-text pass; empty if no titlebar */
+  int                     has_titlebar;
+}
+wuss__furniture_layout_t;
+
+/* Populate window->furniture_layout from the current geometry and flags. */
+void wuss__furniture_layout_build(wuss_window_t *window);
+
 /* Which region of a window's border (or its content) a point falls in. */
 typedef enum wuss_furniture_region
 {

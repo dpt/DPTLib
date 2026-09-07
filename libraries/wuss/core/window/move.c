@@ -18,6 +18,10 @@ void wuss_window_move(wuss_window_t *window, point_t p)
    * slot back and stop tracking this window's position */
   wuss__release_packed(window);
 
+  /* the cached furniture layout holds absolute screen coords, so a move
+   * stales it -- both exit paths below rewrite window->visible */
+  wuss__chrome_invalidate_layout(window);
+
   width           = window->visible.x1 - window->visible.x0;
   height          = window->visible.y1 - window->visible.y0;
   outline_px      = wuss__outline_px(window);
