@@ -459,6 +459,7 @@ result_t wuss_test(const char *resources)
   bad_config.titlebar_height         = 0;
   bad_config.furniture.title.bg        = 100; /* in range as a byte, but well past any test palette and below wuss_COLOUR_SYMBOLIC */
   bad_config.furniture.title.fg        = 0;
+  bad_config.furniture.outline         = 0;
   bad_config.furniture.back            = 0;
   bad_config.furniture.close           = 0;
   bad_config.furniture.toggle          = 0;

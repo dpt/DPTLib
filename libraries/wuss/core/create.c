@@ -143,6 +143,9 @@ result_t wuss_create(screen_t               *scr,
     pal = config->furniture;
     pal.title.bg        = wuss__resolve_colour(w, pal.title.bg);
     pal.title.fg        = wuss__resolve_colour(w, pal.title.fg);
+    pal.outline         = (pal.outline == wuss_NO_BACKGROUND)
+                        ? pal.title.bg
+                        : wuss__resolve_colour(w, pal.outline);
     pal.back            = wuss__resolve_colour(w, pal.back);
     pal.close           = wuss__resolve_colour(w, pal.close);
     pal.toggle          = wuss__resolve_colour(w, pal.toggle);
@@ -162,6 +165,7 @@ result_t wuss_create(screen_t               *scr,
 
     pal.title.bg        = bg;
     pal.title.fg        = fg;
+    pal.outline         = bg;
     pal.back            = fg;
     pal.close           = fg;
     pal.toggle          = fg;
@@ -178,6 +182,7 @@ result_t wuss_create(screen_t               *scr,
 
   if (pal.title.bg        >= w->npalette ||
       pal.title.fg        >= w->npalette ||
+      pal.outline         >= w->npalette ||
       pal.back            >= w->npalette ||
       pal.close           >= w->npalette ||
       pal.toggle          >= w->npalette ||
