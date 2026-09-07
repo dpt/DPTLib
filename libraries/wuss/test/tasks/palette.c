@@ -13,14 +13,13 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
-#include "io/dirscan.h"
+#include "io/namelist.h"
 #include "io/path.h"
 #include "wuss/menu.h"
 
 #include "palette.h"
 
 #define PALETTE_HEX_EXT     ".hex"
-#define PALETTE_HEX_EXT_LEN 4
 #define PALETTE_NCOLOURS    16 /* one colour_t[] row per *.hex file; the
                                 * system palette wuss_create was given is
                                 * fixed at this length */
@@ -28,42 +27,6 @@
 /* index of the "Invert" row in the picker menu, after one row per *.hex
  * file and the dashed rule above it */
 #define PALETTE_MENU_INVERT_INDEX(pc) ((pc)->nnames)
-
-/* ----------------------------------------------------------------------- */
-/* Scan resources/palettes for *.hex files, collecting each leafname (ext
- * stripped) into task->names, sorted, capped at PALETTE_MAX_FILES. */
-
-static int name_cmp(const void *a, const void *b)
-{
-  return strcmp(a, b);
-}
-
-static result_t add_name(const char *leaf, void *opaque)
-{
-  palette_task_t *pc;
-  size_t          leaflen;
-  size_t          namelen;
-
-  pc      = opaque;
-  leaflen = strlen(leaf);
-
-  if (pc->nnames >= PALETTE_MAX_FILES)
-    return result_STOP_WALK;
-  if (leaflen <= PALETTE_HEX_EXT_LEN)
-    return result_OK;
-  if (strcmp(leaf + leaflen - PALETTE_HEX_EXT_LEN, PALETTE_HEX_EXT) != 0)
-    return result_OK;
-
-  namelen = leaflen - PALETTE_HEX_EXT_LEN;
-  if (namelen >= sizeof(pc->names[0]))
-    return result_OK;
-
-  memcpy(pc->names[pc->nnames], leaf, namelen);
-  pc->names[pc->nnames][namelen] = '\0';
-  pc->nnames++;
-
-  return result_OK;
-}
 
 /* ----------------------------------------------------------------------- */
 /* Parse a *.hex file: one "rrggbb" line per colour, no leading '#'. Fails
@@ -127,10 +90,9 @@ result_t palette_create(wuss_t         *wuss,
 
   dir = path_join_filename(resources, 2, "resources", "palettes");
   strcpy(dirbuf, dir); /* path_join_filename's buffer is reused by the scan */
-  dirscan_walk(dirbuf, add_name, task);
-  if (task->nnames > 1)
-    qsort(task->names, (size_t) task->nnames, sizeof(task->names[0]),
-         name_cmp);
+  namelist_scan(dirbuf, PALETTE_HEX_EXT, task->names[0],
+                sizeof(task->names[0]), PALETTE_MAX_FILES, 1 /* sorted */,
+                &task->nnames);
 
   if (startup_name != NULL)
     for (i = 0; i < task->nnames; i++)
