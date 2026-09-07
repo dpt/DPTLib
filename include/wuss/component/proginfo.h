@@ -7,22 +7,14 @@
  * miniature -- a small fixed window of Name / Purpose / Author / Version
  * rows a task fills in once, then hangs off its Menu-button pop-up.
  *
- * A wuss_proginfo owns one window (titlebar caption only -- no close, back,
- * toggle, scrollbars or resize), created hidden on a task the caller passes
- * in and laid out from a wuss_proginfo_desc_t: one row per non-NULL field,
- * the field name right-justified in a left column and its value centred in a
- * sunken display field beside it.
- *
- * It is meant to be used as a wuss_menu_item_t::window -- point an "Info"
- * menu row at wuss_proginfo_window() and wuss shows it where a submenu would
- * open. A task can equally wuss_window_set_hidden() it directly.
- *
- * The window is created wuss_WINDOW_NO_CLOSE and stays on the caller's task
- * until wuss_proginfo_destroy closes it. That task must therefore not be an
- * autoclose task -- its window list would never empty -- and must outlive
- * the handle. As for any borrowed wuss_menu_item_t::window, the dialogue
- * must also outlive every menu chain that references it: close the chain
- * (wuss_menu_close) before wuss_proginfo_destroy.
+ * This is a thin cap over \ref info.h: wuss_proginfo_create maps the
+ * non-NULL fields of a wuss_proginfo_desc_t to wuss_info_row_t rows and
+ * calls wuss_info_create. wuss_proginfo_t is wuss_info_t, and the destroy /
+ * window calls forward straight through, so all of info.h's lifetime rules
+ * apply verbatim: the window is wuss_WINDOW_NO_CLOSE, stays on the caller's
+ * task until wuss_proginfo_destroy, that task must not be an autoclose task
+ * and must outlive the handle, and the dialogue must outlive every menu
+ * chain that borrows it as a wuss_menu_item_t::window.
  *
  * Built only when WUSS_COMPONENTS is defined (which implies WUSS_MENUS).
  */
@@ -39,6 +31,8 @@ extern "C"
 
 #include "wuss/task.h"
 #include "wuss/window.h"
+
+#include "wuss/component/info.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -57,14 +51,17 @@ typedef struct wuss_proginfo_desc
 }
 wuss_proginfo_desc_t;
 
-/** Opaque handle: owns the dialogue window and the label strings in it. */
-typedef struct wuss_proginfo wuss_proginfo_t;
+/**
+ * Opaque handle: a wuss_info_t. Owns the dialogue window and its strings.
+ */
+typedef wuss_info_t wuss_proginfo_t;
 
 /* ----------------------------------------------------------------------- */
 
 /**
  * Build a program-information dialogue: a hidden window on \p task, laid out
- * from \p desc with one label row per non-NULL field.
+ * with one label row per non-NULL field of \p desc, in the order Name,
+ * Purpose, Author, Version.
  *
  * The window's on-screen size is derived from \p task's font metrics and the
  * text in \p desc; it is created with wuss_WINDOW_HIDDEN, so nothing shows
@@ -78,8 +75,8 @@ typedef struct wuss_proginfo wuss_proginfo_t;
  * \param[in]  desc  Field values; each borrowed and copied. At least \c name
  *                   must be non-NULL.
  * \return \ref result_OK, \ref result_OOM, \ref result_NULL_ARG if \p out,
- *         \p task, \p desc or \c desc->name is NULL, or a wuss_window_create
- *         / wuss_icon_create code.
+ *         \p task, \p desc or \c desc->name is NULL, or a wuss_info_create
+ *         code.
  */
 result_t wuss_proginfo_create(wuss_proginfo_t           **out,
                               wuss_task_t                *task,
@@ -87,21 +84,21 @@ result_t wuss_proginfo_create(wuss_proginfo_t           **out,
 
 /**
  * Free a program-information dialogue: closes its window and frees every
- * string in it. Safe to pass NULL.
+ * string in it. Safe to pass NULL. An alias for wuss_info_destroy.
  *
  * \param[in] doomed Handle to free, or NULL.
  */
-void wuss_proginfo_destroy(wuss_proginfo_t *doomed);
+#define wuss_proginfo_destroy wuss_info_destroy
 
 /**
  * The dialogue's window, for use as a wuss_menu_item_t::window or to show
  * and hide directly. Borrowed; valid until wuss_proginfo_destroy. NULL only
- * if \p pi is NULL.
+ * if \p pi is NULL. An alias for wuss_info_window.
  *
  * \param[in] pi Handle.
  * \return The window, or NULL.
  */
-wuss_window_t *wuss_proginfo_window(const wuss_proginfo_t *pi);
+#define wuss_proginfo_window wuss_info_window
 
 #ifdef __cplusplus
 }
