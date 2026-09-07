@@ -119,7 +119,11 @@ typedef enum wuss_icon_border
   wuss_ICON_BORDER_RIDGE,
   /** A 1px sunken bevel: dark top/left, light bottom/right -- a RISC OS-style
    *  read-only display field. */
-  wuss_ICON_BORDER_GROOVE
+  wuss_ICON_BORDER_GROOVE,
+  /** A 6px-per-edge "action" surround: a 2px raised outset, a 2px moat filled
+   *  with wuss_COLOUR_ACCENT_BG, then a 2px raised inset -- like a RISC OS
+   *  default-action button. */
+  wuss_ICON_BORDER_ACTION
 }
 wuss_icon_border_t;
 
