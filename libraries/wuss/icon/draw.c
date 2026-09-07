@@ -188,7 +188,10 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
     pos.x = b->x1 - 1 - width;
   else
     pos.x = b->x0 + 1;
-  pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
+
+  /* +1 so the centred label sits visually level; integer division of the
+   * leftover vertical space rounds it one pixel high otherwise */
+  pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2 + 1;
 
   bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
               c->fg, bg, &pos, NULL);
