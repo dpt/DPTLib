@@ -29,7 +29,7 @@ A `wuss_backdrop_t` is `{ colour, pattern, pattern_bg }`; the `wuss_BACKDROP_COL
 A `wuss_colour_t` is a system-palette index. Values `0..127` are raw indices; `wuss_COLOUR_SYMBOLIC` (128) and above are *symbolic* — roles wuss resolves to a concrete index against the live palette (and, for the chrome roles, the live config):
 
 - `wuss_COLOUR_BLACK`, `_WHITE`, `_RED`, `_GREEN`, `_BLUE`, `_YELLOW`, `_CYAN`, `_MAGENTA`, `_GREY` — nearest system-palette entry to the named RGB, the same lookup as `wuss_nearest_colour`.
-- `wuss_COLOUR_TITLE_BG`, `_TITLE_FG`, `_BUTTON_HILIGHT`, `_BUTTON_SHADOW`, `_ACCENT_BG`, `_ACCENT_FG`, `_BACKDROP`, `_WINDOW`, `_MENU` — echo the matching `wuss_config_t` field (`furniture.title.bg`, `bevel.light`, `bevel.dark`, `backdrop.colour`, `body.window`, `body.menu`, …). `body.window` (work-area fill) defaults to `wuss_COLOUR_GREY`, `body.menu` (menu fill) to `wuss_COLOUR_WHITE`, when `config` is NULL.
+- `wuss_COLOUR_TITLE_BG`, `_TITLE_FG`, `_BUTTON_HILIGHT`, `_BUTTON_SHADOW`, `_BUTTON_PRESSED`, `_ACCENT_BG`, `_ACCENT_FG`, `_BACKDROP`, `_WINDOW`, `_MENU` — echo the matching `wuss_config_t` field (`furniture.title.bg`, `bevel.light`, `bevel.dark`, `bevel.pressed`, `backdrop.colour`, `body.window`, `body.menu`, …). `body.window` (work-area fill) defaults to `wuss_COLOUR_GREY`, `body.menu` (menu fill) to `wuss_COLOUR_WHITE`, when `config` is NULL.
 
 Pass a symbolic value anywhere a `wuss_colour_t` is taken: config furniture/bevel/accent/body/backdrop, `wuss_window_create` / `wuss_window_set_background` backgrounds, icon specs. It is resolved once when stored, so drawing never pays for it and reads back a plain index. `wuss_set_palette` and `wuss_set_backdrop` re-resolve. `wuss_NO_BACKGROUND` is not symbolic and always passes through.
 
@@ -216,7 +216,7 @@ An icon's bounding box is in **virtual content space** — the same space as `wu
 
 Wuss draws icons in creation order (later icons paint on top); hit-testing scans in reverse, so the topmost icon at a point wins. When the pointer leaves a pressed button its pressed state clears; v1 does not re-press on drag-back-in and does not track which mouse button is held.
 
-The bevel's light (top/left) and dark (bottom/right) edge shades come from `config->bevel.light` / `config->bevel.dark` at `wuss_create` time, validated like the other furniture colours; both default to the titlebar fill colour when `config` is `NULL`.
+The bevel's light (top/left) and dark (bottom/right) edge shades come from `config->bevel.light` / `config->bevel.dark` at `wuss_create` time, validated like the other furniture colours; both default to the titlebar fill colour when `config` is `NULL`. A held button also fills its face with `config->bevel.pressed` in place of the icon's own background; pass `wuss_NO_BACKGROUND` (or `NULL` config) to have it follow `bevel.dark`.
 
 ## Components
 

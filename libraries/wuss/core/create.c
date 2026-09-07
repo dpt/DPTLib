@@ -34,13 +34,15 @@ static const colour_t wuss__default_palette[] =
 static result_t validate_bevel_backdrop(const wuss_t *w,
                                         wuss_colour_t blight,
                                         wuss_colour_t bdark,
+                                        wuss_colour_t bpressed,
                                         wuss_colour_t abg,
                                         wuss_colour_t afg)
 {
-  if (blight >= w->npalette ||
-      bdark  >= w->npalette ||
-      abg    >= w->npalette ||
-      afg    >= w->npalette ||
+  if (blight   >= w->npalette ||
+      bdark    >= w->npalette ||
+      bpressed >= w->npalette ||
+      abg      >= w->npalette ||
+      afg      >= w->npalette ||
       wuss__validate_backdrop(w, &w->backdrop) != result_OK)
     return result_WUSS_BAD_COLOUR;
 
@@ -65,7 +67,7 @@ result_t wuss_create(screen_t               *scr,
   wuss_colour_t  bg, fg;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
-  wuss_colour_t  blight, bdark;
+  wuss_colour_t  blight, bdark, bpressed;
   wuss_colour_t  abg, afg;
 #endif
 #ifdef WUSS_FURNITURE
@@ -153,10 +155,13 @@ result_t wuss_create(screen_t               *scr,
     pal.scroll.arrows   = wuss__resolve_colour(w, pal.scroll.arrows);
     pal.scroll.wells    = wuss__resolve_colour(w, pal.scroll.wells);
     pal.scroll.sausages = wuss__resolve_colour(w, pal.scroll.sausages);
-    blight = wuss__resolve_colour(w, config->bevel.light);
-    bdark  = wuss__resolve_colour(w, config->bevel.dark);
-    abg    = wuss__resolve_colour(w, config->accent.bg);
-    afg    = wuss__resolve_colour(w, config->accent.fg);
+    blight   = wuss__resolve_colour(w, config->bevel.light);
+    bdark    = wuss__resolve_colour(w, config->bevel.dark);
+    bpressed = (config->bevel.pressed == wuss_NO_BACKGROUND)
+             ? bdark
+             : wuss__resolve_colour(w, config->bevel.pressed);
+    abg      = wuss__resolve_colour(w, config->accent.bg);
+    afg      = wuss__resolve_colour(w, config->accent.fg);
   }
   else
   {
@@ -174,10 +179,11 @@ result_t wuss_create(screen_t               *scr,
     pal.scroll.wells    = bg;
     pal.scroll.sausages = fg;
 
-    blight = 0;
-    bdark  = 0;
-    abg    = bg; /* default action button: the titlebar colours */
-    afg    = fg;
+    blight   = 0;
+    bdark    = 0;
+    bpressed = 0;
+    abg      = bg; /* default action button: the titlebar colours */
+    afg      = fg;
   }
 
   if (pal.title.bg        >= w->npalette ||
@@ -190,7 +196,7 @@ result_t wuss_create(screen_t               *scr,
       pal.scroll.arrows   >= w->npalette ||
       pal.scroll.wells    >= w->npalette ||
       pal.scroll.sausages >= w->npalette ||
-      validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
+      validate_bevel_backdrop(w, blight, bdark, bpressed, abg, afg) != result_OK)
   {
     wuss__free(w, w->palette);
     wuss__free(w, w);
@@ -200,6 +206,7 @@ result_t wuss_create(screen_t               *scr,
   w->furniture_colours = pal;
   w->bevel_light       = blight;
   w->bevel_dark        = bdark;
+  w->bevel_pressed     = bpressed;
   w->accent_bg         = abg;
   w->accent_fg         = afg;
 
@@ -229,28 +236,33 @@ result_t wuss_create(screen_t               *scr,
 #ifdef WUSS_ICONS
   if (config != NULL)
   {
-    blight = wuss__resolve_colour(w, config->bevel.light);
-    bdark  = wuss__resolve_colour(w, config->bevel.dark);
-    abg    = wuss__resolve_colour(w, config->accent.bg);
-    afg    = wuss__resolve_colour(w, config->accent.fg);
+    blight   = wuss__resolve_colour(w, config->bevel.light);
+    bdark    = wuss__resolve_colour(w, config->bevel.dark);
+    bpressed = (config->bevel.pressed == wuss_NO_BACKGROUND)
+             ? bdark
+             : wuss__resolve_colour(w, config->bevel.pressed);
+    abg      = wuss__resolve_colour(w, config->accent.bg);
+    afg      = wuss__resolve_colour(w, config->accent.fg);
   }
   else
   {
-    blight = 0;
-    bdark  = 0;
-    abg    = 0;
-    afg    = (w->npalette > 1) ? 1 : 0;
+    blight   = 0;
+    bdark    = 0;
+    bpressed = 0;
+    abg      = 0;
+    afg      = (w->npalette > 1) ? 1 : 0;
   }
-  if (validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
+  if (validate_bevel_backdrop(w, blight, bdark, bpressed, abg, afg) != result_OK)
   {
     wuss__free(w, w->palette);
     wuss__free(w, w);
     return result_WUSS_BAD_COLOUR;
   }
-  w->bevel_light = blight;
-  w->bevel_dark  = bdark;
-  w->accent_bg   = abg;
-  w->accent_fg   = afg;
+  w->bevel_light   = blight;
+  w->bevel_dark    = bdark;
+  w->bevel_pressed = bpressed;
+  w->accent_bg     = abg;
+  w->accent_fg     = afg;
 #else
   if (wuss__validate_backdrop(w, &w->backdrop) != result_OK)
   {

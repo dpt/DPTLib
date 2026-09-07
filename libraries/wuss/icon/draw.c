@@ -285,6 +285,10 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
   dark  = c->wuss->palette[c->wuss->bevel_dark];
   label = c->fg;
 
+  /* a held button fills darker regardless of type */
+  if (pressed)
+    base = c->wuss->palette[c->wuss->bevel_pressed];
+
   if (icon->flags & wuss_ICON_FLAGS_DISABLED)
     label = c->wuss->palette[c->wuss->bevel_dark]; /* greyed: sink toward dark */
 

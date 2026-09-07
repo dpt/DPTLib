@@ -35,7 +35,7 @@
 
 /* Furniture/bevel/accent/backdrop/body colour indices, one row per palette.
  * Same field order as the assignments in fill_chrome_config. */
-static const wuss_colour_t g_chrome[2][18] =
+static const wuss_colour_t g_chrome[2][19] =
 {
   /* PICO-8 */
   {
@@ -51,6 +51,7 @@ static const wuss_colour_t g_chrome[2][18] =
     palette_PICO8_LIGHT_GREY,
     palette_PICO8_WHITE,
     palette_PICO8_DARK_GREY,
+    palette_PICO8_LAVENDER,
     palette_PICO8_ORANGE,
     palette_PICO8_WHITE,
     palette_PICO8_WHITE,
@@ -73,6 +74,7 @@ static const wuss_colour_t g_chrome[2][18] =
     palette_WIMP16_GREY_87,
     palette_WIMP16_WHITE,
     palette_WIMP16_GREY_50,
+    palette_WIMP16_GREY_62,
     palette_WIMP16_ORANGE,
     palette_WIMP16_BLACK,
     palette_WIMP16_GREY_50,
@@ -99,13 +101,14 @@ static void fill_chrome_config(wuss_config_t *config, int palette_index)
   config->furniture.scroll.sausages = c[9];
   config->bevel.light               = c[10];
   config->bevel.dark                = c[11];
-  config->accent.bg                 = c[12];
-  config->accent.fg                 = c[13];
-  config->backdrop.colour           = c[14];
+  config->bevel.pressed             = c[12];
+  config->accent.bg                 = c[13];
+  config->accent.fg                 = c[14];
+  config->backdrop.colour           = c[15];
   config->backdrop.pattern          = screen_PATTERN_DOTS;
-  config->backdrop.pattern_bg       = c[15];
-  config->body.window               = c[16];
-  config->body.menu                 = c[17];
+  config->backdrop.pattern_bg       = c[16];
+  config->body.window               = c[17];
+  config->body.menu                 = c[18];
 }
 
 /* Redraw the whole screen one pixel at a time: each wuss_redraw_dirty call is
