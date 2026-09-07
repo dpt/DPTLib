@@ -10,6 +10,8 @@ LAYER 0 - BUGS (fix before building on top)
 - Auto window placement packer still not working as expected
     blocks: reliable multi-window tasks
 - Image task not shrinking window when new image loads
+- Backgrounds are being drawn behind window furniture.
+- Optimise furniture layout (& cache it)
 
 
 LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)

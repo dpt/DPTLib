@@ -3,10 +3,11 @@
 #include "impl.h"
 
 /* Fill "area" with the desktop backdrop, except for whatever part of it is
- * covered by a wuss_NO_BACKGROUND window's content -- that task owns those
- * pixels outright, so a desktop-coloured pre-fill there would flash (or,
- * for a task that doesn't repaint every pixel every time, permanently
- * show) backdrop instead of whatever was already on screen. */
+ * covered by a window's visible box -- every non-hidden window opaquely
+ * repaints its whole visible box each redraw (furniture over the chrome
+ * band, task/backdrop over the content), so a desktop pre-fill underneath
+ * is wasted work and, for a wuss_NO_BACKGROUND task that doesn't repaint
+ * every pixel, a flash of backdrop over what was there. */
 static void fill_backdrop_excluding_content(wuss_t *wuss, const box_t *area)
 {
   box_t   cuts[WUSS_MAX_INVALIDATE_PIECES];
@@ -20,16 +21,13 @@ static void fill_backdrop_excluding_content(wuss_t *wuss, const box_t *area)
        e = e->next)
   {
     wuss_window_t *win;
-    box_t          content, clipped;
+    box_t          clipped;
 
     win = wuss__window_from_link(e);
     if (win->flags & wuss_WINDOW_HIDDEN)
       continue;
-    if (win->bg.colour != wuss_NO_BACKGROUND)
-      continue;
 
-    wuss__content_box(win, &content);
-    if (box_intersection(&content, area, &clipped))
+    if (box_intersection(&win->visible, area, &clipped))
       continue; /* no overlap with the area being filled */
 
     cuts[ncuts++] = clipped;
