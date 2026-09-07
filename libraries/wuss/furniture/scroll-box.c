@@ -39,6 +39,53 @@ static void scroll_strip(const wuss_window_t *window,
   }
 }
 
+/* The scrollbar strip's HIT box: as scroll_strip, but grown so it tiles the
+ * outline band and the divider seam that the drawn strip leaves for the
+ * outline / interior rule.
+ *
+ *  - breadth (cross axis) grows out to the visible edge it hugs;
+ *  - the content-facing inner edge moves in by WUSS_DIVIDER_PX to the content
+ *    edge, swallowing the seam;
+ *  - the far (resize-corner) end: the VERTICAL strip owns the bottom-right
+ *    corner whenever there is no resize icon; the HORIZONTAL strip stops short
+ *    of the corner whenever either a resize icon OR a vertical scrollbar is
+ *    present, so the drawn-over-nothing overlap at the corner is avoided and
+ *    the tiling stays gap-free. */
+static void scroll_strip_hit(const wuss_window_t *window,
+                             int                  horizontal,
+                             box_t               *out)
+{
+  point_t carve;
+  box_t   titlebar;
+  int     outline_px, size, has_resize, has_vscroll;
+
+  outline_px  = wuss__outline_px(window);
+  size        = wuss__button_size(window);
+  has_resize  = !(window->flags & wuss_WINDOW_NO_RESIZE);
+  has_vscroll = !(window->flags & wuss_WINDOW_NO_VSCROLL);
+  wuss__furniture_carve_for(window->flags, size, &carve);
+
+  if (horizontal)
+  {
+    out->y1 = window->visible.y1;
+    out->y0 = window->visible.y1 - outline_px - carve.y; /* = content bottom edge */
+    out->x0 = window->visible.x0;
+    out->x1 = (has_resize || has_vscroll)
+            ? window->visible.x1 - outline_px - size
+            : window->visible.x1;
+  }
+  else
+  {
+    out->x1 = window->visible.x1;
+    out->x0 = window->visible.x1 - outline_px - carve.x; /* = content right edge */
+    wuss__titlebar_box(window, &titlebar);
+    out->y0 = titlebar.y1;
+    out->y1 = has_resize
+            ? window->visible.y1 - outline_px - size
+            : window->visible.y1;
+  }
+}
+
 /* One "size"-long slice off an end of "strip" along its long axis: the near
  * end (up / left arrow) when far_end is 0, the far end (down / right arrow)
  * when far_end is 1. The cross axis spans the whole strip. */
@@ -200,6 +247,30 @@ void wuss__vscroll_sausage_box(const wuss_window_t *window, box_t *out)
   scroll_sausage(window, 0, out);
 }
 
+void wuss__vscroll_up_hit_box(const wuss_window_t *window, box_t *out)
+{
+  box_t strip;
+
+  scroll_strip_hit(window, 0, &strip);
+  scroll_end_slice(&strip, 0, 0, wuss__button_size(window), out);
+}
+
+void wuss__vscroll_down_hit_box(const wuss_window_t *window, box_t *out)
+{
+  box_t strip;
+
+  scroll_strip_hit(window, 0, &strip);
+  scroll_end_slice(&strip, 0, 1, wuss__button_size(window), out);
+}
+
+void wuss__vscroll_well_hit_box(const wuss_window_t *window, box_t *out)
+{
+  box_t strip;
+
+  scroll_strip_hit(window, 0, &strip);
+  scroll_middle_slice(&strip, 0, wuss__button_size(window), out);
+}
+
 /* ----- horizontal scrollbar -------------------------------------------- */
 
 void wuss__hscroll_left_box(const wuss_window_t *window, box_t *out)
@@ -235,4 +306,28 @@ int wuss__hscroll_well_px(const wuss_window_t *window)
 void wuss__hscroll_sausage_box(const wuss_window_t *window, box_t *out)
 {
   scroll_sausage(window, 1, out);
+}
+
+void wuss__hscroll_left_hit_box(const wuss_window_t *window, box_t *out)
+{
+  box_t strip;
+
+  scroll_strip_hit(window, 1, &strip);
+  scroll_end_slice(&strip, 1, 0, wuss__button_size(window), out);
+}
+
+void wuss__hscroll_right_hit_box(const wuss_window_t *window, box_t *out)
+{
+  box_t strip;
+
+  scroll_strip_hit(window, 1, &strip);
+  scroll_end_slice(&strip, 1, 1, wuss__button_size(window), out);
+}
+
+void wuss__hscroll_well_hit_box(const wuss_window_t *window, box_t *out)
+{
+  box_t strip;
+
+  scroll_strip_hit(window, 1, &strip);
+  scroll_middle_slice(&strip, 1, wuss__button_size(window), out);
 }

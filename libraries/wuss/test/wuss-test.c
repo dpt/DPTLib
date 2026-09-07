@@ -32,9 +32,13 @@
 #endif
 
 /* white-box: the menu-flash test drives picks through the icon layer and
- * reads back struct wuss__menu / struct wuss_icon state directly */
-#if defined(WUSS_MENUS) && defined(WUSS_ICONS)
+ * reads back struct wuss__menu / struct wuss_icon state directly; the
+ * furniture hit-test sweep calls wuss__furniture_hit_test and the box
+ * helpers from impl.h / furniture.h directly */
+#if defined(WUSS_FURNITURE) && defined(WUSS_ICONS)
 #include "../core/impl.h"
+#endif
+#if defined(WUSS_MENUS) && defined(WUSS_ICONS)
 #include "../icon.h"
 #endif
 
@@ -418,6 +422,57 @@ static int dirty_union_area(wuss_t *wuss, const box_t *bounds)
 }
 
 #if defined(WUSS_FURNITURE) && defined(WUSS_ICONS)
+
+/* Sweep every pixel of a window's visible box through wuss__furniture_hit_test
+ * and check the tiling invariant: no pixel is wuss_FURNITURE_NONE, and a pixel
+ * reports wuss_FURNITURE_CONTENT if and only if it lies inside the drawn
+ * content box -- with one documented exception, the bare outline band of a
+ * fully chromeless window (no titlebar, no scrollbars, no resize), where
+ * content_may_leak is passed non-zero to allow CONTENT on 1px-frame pixels
+ * outside the content box too. Returns 1 on pass, 0 on the first breach
+ * (printing the offending pixel). */
+static int furniture_hit_sweep(const wuss_window_t *window,
+                               int                  content_may_leak)
+{
+  box_t visible, content;
+  int   x, y, inside;
+
+  wuss_window_get_visible_bounds((wuss_window_t *) window, &visible);
+  wuss__content_box(window, &content);
+
+  for (y = visible.y0; y < visible.y1; y++)
+  {
+    for (x = visible.x0; x < visible.x1; x++)
+    {
+      wuss_furniture_region_t region;
+
+      region = wuss__furniture_hit_test(window, POINT(x, y));
+      inside = box_contains_point(&content, x, y);
+
+      if (region == wuss_FURNITURE_NONE)
+      {
+        printf("wuss_test: hit sweep: (%d,%d) is FURNITURE_NONE\n", x, y);
+        return 0;
+      }
+
+      if (inside && region != wuss_FURNITURE_CONTENT)
+      {
+        printf("wuss_test: hit sweep: content pixel (%d,%d) reported %d\n",
+               x, y, (int) region);
+        return 0;
+      }
+
+      if (!inside && region == wuss_FURNITURE_CONTENT && !content_may_leak)
+      {
+        printf("wuss_test: hit sweep: chrome pixel (%d,%d) reported CONTENT\n",
+               x, y);
+        return 0;
+      }
+    }
+  }
+
+  return 1;
+}
 
 result_t wuss_test(const char *resources)
 {
@@ -4752,6 +4807,172 @@ QuitFail:
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK)
       goto Failure;
+  }
+
+  printf("test: furniture hit boxes tile the visible box with no leaks\n");
+
+  {
+    static test_task_t tc_hs;
+    wuss_task_t       *delegate_hs;
+    box_t              box_hs, visible, content;
+    box_t              back, close, toggle, resize;
+    box_t              vup, vdown, vwell, hleft, hright, hwell;
+    wuss_window_t     *win_hs;
+    int                midx, midy;
+
+    tc_hs.redraw_count = 0;
+    tc_hs.mouse_count  = 0;
+    delegate_hs = mk_task(wuss, test_handle, &tc_hs);
+    if (delegate_hs == NULL) goto Failure;
+
+    /* 120x80 content: wide enough that BACK, CLOSE and TOGGLE_SIZE do not
+     * overlap in the titlebar. */
+    box_hs.x0 = 5; box_hs.y0 = 5;
+    box_hs.x1 = 125; box_hs.y1 = 85;
+    rc = wuss_window_create(delegate_hs, &box_hs, "HS", wuss_WINDOW_NONE,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            SIZE2D(400, 400), SIZE2D(0, 0), &win_hs);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_hs, &visible);
+    wuss_window_get_content_bounds(win_hs, &content);
+    wuss__back_box(win_hs, &back);
+    wuss__close_box(win_hs, &close);
+    wuss__toggle_box(win_hs, &toggle);
+    wuss__resize_box(win_hs, &resize);
+    wuss__vscroll_up_box(win_hs, &vup);
+    wuss__vscroll_down_box(win_hs, &vdown);
+    wuss__vscroll_well_box(win_hs, &vwell);
+    wuss__hscroll_left_box(win_hs, &hleft);
+    wuss__hscroll_right_box(win_hs, &hright);
+    wuss__hscroll_well_box(win_hs, &hwell);
+
+    midx = (content.x0 + content.x1) / 2;
+    midy = (content.y0 + content.y1) / 2;
+
+    /* outline band, each edge */
+    if (wuss__furniture_hit_test(win_hs, POINT(midx, visible.y0)) != wuss_FURNITURE_TITLE)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT(visible.x0, midy)) != wuss_FURNITURE_HSCROLL_WELL)
+      goto Failure; /* left outline column, level with the content: nearest chrome is the hscroll strip */
+    if (wuss__furniture_hit_test(win_hs, POINT(visible.x1 - 1, midy)) != wuss_FURNITURE_VSCROLL_WELL)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT(midx, visible.y1 - 1)) != wuss_FURNITURE_HSCROLL_WELL)
+      goto Failure;
+
+    /* the four window corners belong to the adjacent furniture */
+    if (wuss__furniture_hit_test(win_hs, POINT(visible.x0, visible.y0)) != wuss_FURNITURE_BACK)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT(visible.x1 - 1, visible.y0)) != wuss_FURNITURE_TOGGLE_SIZE)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT(visible.x1 - 1, visible.y1 - 1)) != wuss_FURNITURE_RESIZE)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT(visible.x0, visible.y1 - 1)) != wuss_FURNITURE_HSCROLL_LEFT)
+      goto Failure;
+
+    /* icon centres */
+    if (wuss__furniture_hit_test(win_hs, POINT((back.x0 + back.x1) / 2, (back.y0 + back.y1) / 2)) != wuss_FURNITURE_BACK)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT((close.x0 + close.x1) / 2, (close.y0 + close.y1) / 2)) != wuss_FURNITURE_CLOSE)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT((toggle.x0 + toggle.x1) / 2, (toggle.y0 + toggle.y1) / 2)) != wuss_FURNITURE_TOGGLE_SIZE)
+      goto Failure;
+
+    /* scroll-part centres */
+    if (wuss__furniture_hit_test(win_hs, POINT((vup.x0 + vup.x1) / 2, (vup.y0 + vup.y1) / 2)) != wuss_FURNITURE_VSCROLL_UP)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT((vdown.x0 + vdown.x1) / 2, (vdown.y0 + vdown.y1) / 2)) != wuss_FURNITURE_VSCROLL_DOWN)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT((vwell.x0 + vwell.x1) / 2, (vwell.y0 + vwell.y1) / 2)) != wuss_FURNITURE_VSCROLL_WELL)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT((hleft.x0 + hleft.x1) / 2, (hleft.y0 + hleft.y1) / 2)) != wuss_FURNITURE_HSCROLL_LEFT)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT((hright.x0 + hright.x1) / 2, (hright.y0 + hright.y1) / 2)) != wuss_FURNITURE_HSCROLL_RIGHT)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT((hwell.x0 + hwell.x1) / 2, (hwell.y0 + hwell.y1) / 2)) != wuss_FURNITURE_HSCROLL_WELL)
+      goto Failure;
+
+    /* divider seam between the content and the scroll strips */
+    if (wuss__furniture_hit_test(win_hs, POINT(content.x1, midy)) != wuss_FURNITURE_VSCROLL_WELL)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT(midx, content.y1)) != wuss_FURNITURE_HSCROLL_WELL)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT(content.x1, content.y1 - 1)) == wuss_FURNITURE_CONTENT)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT(content.x1 - 1, content.y1)) == wuss_FURNITURE_CONTENT)
+      goto Failure;
+
+    /* genuine content */
+    if (wuss__furniture_hit_test(win_hs, POINT(content.x0 + 5, content.y0 + 5)) != wuss_FURNITURE_CONTENT)
+      goto Failure;
+    if (wuss__furniture_hit_test(win_hs, POINT(content.x1 - 1, content.y1 - 1)) != wuss_FURNITURE_CONTENT)
+      goto Failure;
+
+    if (!furniture_hit_sweep(win_hs, 0))
+      goto Failure;
+
+    wuss_window_close(win_hs);
+  }
+
+  printf("test: furniture hit tiling holds for every furniture-flag combo\n");
+
+  {
+    static const wuss_window_flags_t combos[] =
+    {
+      wuss_WINDOW_NO_OUTLINE,
+      wuss_WINDOW_NO_RESIZE,
+      wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
+      wuss_WINDOW_NO_BACK,
+      wuss_WINDOW_NO_TOGGLE_SIZE,
+      wuss_WINDOW_NO_CLOSE,
+      wuss_WINDOW_NO_TITLEBAR
+    };
+    static test_task_t tc_cb;
+    wuss_task_t       *delegate_cb;
+    box_t              box_cb, visible;
+    wuss_window_t     *win_cb;
+    unsigned int       i;
+
+    for (i = 0; i < sizeof combos / sizeof combos[0]; i++)
+    {
+      int leak;
+
+      tc_cb.redraw_count = 0;
+      tc_cb.mouse_count  = 0;
+      delegate_cb = mk_task(wuss, test_handle, &tc_cb);
+      if (delegate_cb == NULL) goto Failure;
+
+      box_cb.x0 = 5; box_cb.y0 = 5;
+      box_cb.x1 = 125; box_cb.y1 = 85;
+      rc = wuss_window_create(delegate_cb, &box_cb, "CB", combos[i],
+                              wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                              SIZE2D(400, 400), SIZE2D(0, 0), &win_cb);
+      if (rc != result_OK)
+        goto Failure;
+
+      /* NO_TITLEBAR still keeps a 1px top frame with nothing behind it: a
+       * click there is the documented CONTENT exception. */
+      leak = (combos[i] & wuss_WINDOW_NO_TITLEBAR) &&
+             !(combos[i] & wuss_WINDOW_NO_OUTLINE);
+
+      if (!furniture_hit_sweep(win_cb, leak))
+      {
+        printf("wuss_test: combo index %u (flags 0x%X) failed the hit sweep\n",
+               i, (unsigned int) combos[i]);
+        goto Failure;
+      }
+
+      if ((combos[i] & wuss_WINDOW_NO_BACK) &&
+          wuss__furniture_hit_test(win_cb, POINT(box_cb.x0, box_cb.y0)) != wuss_FURNITURE_CLOSE)
+      {
+        wuss_window_get_visible_bounds(win_cb, &visible);
+        if (wuss__furniture_hit_test(win_cb, POINT(visible.x0, visible.y0)) != wuss_FURNITURE_CLOSE)
+          goto Failure;
+      }
+
+      wuss_window_close(win_cb);
+    }
   }
 
   wuss_destroy(wuss);
