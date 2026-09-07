@@ -163,6 +163,8 @@ typedef struct wuss_furniture_palette
     wuss_colour_t fg;       /**< Titlebar text. */
   }
   title;
+  wuss_colour_t outline;    /**< Window outline. wuss_NO_BACKGROUND means
+                                 follow the titlebar fill. */
   wuss_colour_t back;       /**< Send-to-back icon. */
   wuss_colour_t close;      /**< Close icon. */
   wuss_colour_t toggle;     /**< Toggle-size icon. */

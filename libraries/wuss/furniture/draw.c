@@ -222,7 +222,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
     width  = window->visible.x1 - window->visible.x0;
     height = window->visible.y1 - window->visible.y0;
-    border = wuss->palette[wuss->furniture_colours.title.bg]; /* no dedicated outline class; matches titlebar chrome */
+    border = wuss->palette[wuss->furniture_colours.outline];
 
     wuss->scr->clip = visible_clipped;
     screen_fill_rect(wuss->scr, window->visible.x0,     window->visible.y0,     SIZE2D(width, 1), border);
