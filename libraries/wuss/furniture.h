@@ -110,22 +110,33 @@ wuss__furniture_ops_t;
 
 extern const wuss__furniture_ops_t wuss__furniture_default_ops;
 
-/* geometry: titlebar icons */
+/* geometry: titlebar icons. The _box helpers are the drawn rectangles; the
+ * _hit_box helpers are the same rectangles grown outward to tile the outline
+ * band and the window corners for hit testing (see furniture/hit-test.c). */
 void wuss__back_box(const wuss_window_t *window, box_t *out);
+void wuss__back_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__toggle_box(const wuss_window_t *window, box_t *out);
+void wuss__toggle_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__resize_box(const wuss_window_t *window, box_t *out);
+void wuss__resize_hit_box(const wuss_window_t *window, box_t *out);
 
 /* geometry: vertical scrollbar */
 void wuss__vscroll_up_box(const wuss_window_t *window, box_t *out);
+void wuss__vscroll_up_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__vscroll_down_box(const wuss_window_t *window, box_t *out);
+void wuss__vscroll_down_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__vscroll_well_box(const wuss_window_t *window, box_t *out);
+void wuss__vscroll_well_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__vscroll_sausage_box(const wuss_window_t *window, box_t *out);
 int  wuss__vscroll_well_px(const wuss_window_t *window);
 
 /* geometry: horizontal scrollbar */
 void wuss__hscroll_left_box(const wuss_window_t *window, box_t *out);
+void wuss__hscroll_left_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__hscroll_right_box(const wuss_window_t *window, box_t *out);
+void wuss__hscroll_right_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__hscroll_well_box(const wuss_window_t *window, box_t *out);
+void wuss__hscroll_well_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__hscroll_sausage_box(const wuss_window_t *window, box_t *out);
 int  wuss__hscroll_well_px(const wuss_window_t *window);
 

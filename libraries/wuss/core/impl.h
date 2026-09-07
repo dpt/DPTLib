@@ -374,7 +374,9 @@ void    wuss__scroll_step(wuss_window_t *window, point_t delta);
 
 #ifdef WUSS_FURNITURE
 void            wuss__titlebar_box(const wuss_window_t *window, box_t *out);
+void            wuss__title_hit_box(const wuss_window_t *window, box_t *out);
 void            wuss__close_box(const wuss_window_t *window, box_t *out);
+void            wuss__close_hit_box(const wuss_window_t *window, box_t *out);
 void            wuss__content_box(const wuss_window_t *window, box_t *out);
 #else
 /* No furniture: the content area is the whole visible footprint. */

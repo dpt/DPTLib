@@ -6,8 +6,6 @@ Items marked (blocks: X) are prerequisites for X.
 
 LAYER 0 - BUGS (fix before building on top)
 
-- Window outline clicks are treated as work area clicks
-    blocks: Snap to edges, Dragging against window edge shuffles window
 - Various window size toggle ops need checking out
 - Auto window placement packer still not working as expected
     blocks: reliable multi-window tasks
@@ -54,8 +52,9 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
   (later: squash-able furniture)
 - Furniture icons toggling state when clicked
 - Scroll: auto repeat on scroll buttons
-- Snap to edges
+- Snap to edges (outline-click bug fixed; unblocked)
 - Dragging against window edge shuffles window in opposite direction
+  (outline-click bug fixed; unblocked)
 - Input focus, text entry, furniture tinting
 
 
