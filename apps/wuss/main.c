@@ -51,7 +51,7 @@ static const wuss_colour_t g_chrome[2][18] =
     palette_PICO8_LIGHT_GREY,
     palette_PICO8_WHITE,
     palette_PICO8_DARK_GREY,
-    palette_PICO8_DARK_BLUE,
+    palette_PICO8_ORANGE,
     palette_PICO8_WHITE,
     palette_PICO8_WHITE,
     palette_PICO8_LIGHT_GREY,
