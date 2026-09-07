@@ -193,6 +193,21 @@ void screen_fill_rect(screen_t *scr,
     screen_fill_hline(scr, draw_box.x0, yy, draw_box.x1 - draw_box.x0, colour);
 }
 
+void screen_fill_rects(screen_t    *scr,
+                       const box_t *boxes,
+                       int          nboxes,
+                       colour_t     colour)
+{
+  int i;
+
+  for (i = 0; i < nboxes; i++)
+    screen_fill_rect(scr,
+                     boxes[i].x0,
+                     boxes[i].y0,
+                     box_size(&boxes[i]),
+                     colour);
+}
+
 void screen_fill_square(screen_t *scr,
                         int       x,
                         int       y,

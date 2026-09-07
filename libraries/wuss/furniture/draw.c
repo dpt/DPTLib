@@ -100,7 +100,8 @@ void wuss__furniture_draw(wuss_t        *wuss,
         pos.y = titlebar.y0 + 2;
         wuss->scr->clip = text_clip;
         bmfont_draw(titlefont, wuss->scr, window->title, titlelen,
-                   wuss->palette[wuss->furniture_colours.title.fg], wuss->palette[wuss->furniture_colours.title.bg],
+                    wuss->palette[wuss->furniture_colours.title.fg],
+                    wuss->palette[wuss->furniture_colours.title.bg],
                    &pos, NULL);
         wuss->scr->clip = clipped;
       }
@@ -286,17 +287,22 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
   if (!(window->flags & wuss_WINDOW_NO_OUTLINE))
   {
-    int      width, height;
     colour_t border;
+    box_t    edges[4];
 
-    width  = window->visible.x1 - window->visible.x0;
-    height = window->visible.y1 - window->visible.y0;
     border = wuss->palette[wuss->furniture_colours.outline];
 
+    /* top, bottom, left, right -- one pixel thick each */
+    edges[0].x0 = window->visible.x0;     edges[0].y0 = window->visible.y0;
+    edges[0].x1 = window->visible.x1;     edges[0].y1 = window->visible.y0 + 1;
+    edges[1].x0 = window->visible.x0;     edges[1].y0 = window->visible.y1 - 1;
+    edges[1].x1 = window->visible.x1;     edges[1].y1 = window->visible.y1;
+    edges[2].x0 = window->visible.x0;     edges[2].y0 = window->visible.y0;
+    edges[2].x1 = window->visible.x0 + 1; edges[2].y1 = window->visible.y1;
+    edges[3].x0 = window->visible.x1 - 1; edges[3].y0 = window->visible.y0;
+    edges[3].x1 = window->visible.x1;     edges[3].y1 = window->visible.y1;
+
     wuss->scr->clip = visible_clipped;
-    screen_fill_rect(wuss->scr, window->visible.x0,     window->visible.y0,     SIZE2D(width, 1), border);
-    screen_fill_rect(wuss->scr, window->visible.x0,     window->visible.y1 - 1, SIZE2D(width, 1), border);
-    screen_fill_rect(wuss->scr, window->visible.x0,     window->visible.y0,     SIZE2D(1, height), border);
-    screen_fill_rect(wuss->scr, window->visible.x1 - 1, window->visible.y0,     SIZE2D(1, height), border);
+    screen_fill_rects(wuss->scr, edges, 4, border);
   }
 }

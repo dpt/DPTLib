@@ -82,6 +82,23 @@ void screen_fill_rect(screen_t *scr,
                       colour_t  colour);
 
 /**
+ * Fills several solid rectangles in one call, all in the same colour.
+ *
+ * Equivalent to calling `screen_fill_rect` once per box. A non-positive
+ * `nboxes` draws nothing. Each box is inclusive-exclusive and clipped
+ * independently to the screen's clip region.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] boxes   Array of boxes to fill.
+ * \param[in] nboxes  Number of boxes in `boxes`.
+ * \param[in] colour  Colour of the rectangles.
+ */
+void screen_fill_rects(screen_t    *scr,
+                       const box_t *boxes,
+                       int          nboxes,
+                       colour_t     colour);
+
+/**
  * Special case of `screen_fill_rect`.
  *
  * \param[in] scr     Screen to draw upon.
