@@ -147,30 +147,34 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 
   if (icon->border != wuss_ICON_BORDER_NONE)
   {
-    colour_t light, dark, hi, lo;
-    int      ridge;
-    int      d;
-    point_t  tl[3]; /* top + left edges */
-    point_t  br[3]; /* bottom + right edges */
+    colour_t light, dark, accent, hi, lo;
+    int      raised;
+    box_t    ring;
 
-    light = c->wuss->palette[c->wuss->bevel_light];
-    dark  = c->wuss->palette[c->wuss->bevel_dark];
-    ridge = (icon->border == wuss_ICON_BORDER_RIDGE);
-    hi    = ridge ? light : dark;
-    lo    = ridge ? dark : light;
+    light  = c->wuss->palette[c->wuss->bevel_light];
+    dark   = c->wuss->palette[c->wuss->bevel_dark];
+    accent = c->wuss->palette[c->wuss->accent_bg]; /* the action-button fill */
 
-    /* two-pixel bevel: the outer L/R pair, then the same pair inset by one */
-    for (d = 0; d < 2; d++)
+    /* RIDGE reads raised (light top/left); GROOVE reads sunken; ACTION uses
+     * both. */
+    raised = (icon->border == wuss_ICON_BORDER_RIDGE);
+    hi     = raised ? light : dark;
+    lo     = raised ? dark : light;
+
+    /* GROOVE/RIDGE: one 2px bevel ring. ACTION: 6px per edge as three nested
+     * 2px rings -- a raised outset, an accent moat, then a raised inset. */
+    ring = *b;
+    screen_draw_bevel_edge(c->scr, &ring, hi, lo);
+
+    if (icon->border == wuss_ICON_BORDER_ACTION)
     {
-      tl[0] = POINT(b->x1 - 1 - d, b->y0 + d);
-      tl[1] = POINT(b->x0 + d,     b->y0 + d);
-      tl[2] = POINT(b->x0 + d,     b->y1 - 1 - d);
-      br[0] = POINT(b->x0 + d,     b->y1 - 1 - d);
-      br[1] = POINT(b->x1 - 1 - d, b->y1 - 1 - d);
-      br[2] = POINT(b->x1 - 1 - d, b->y0 + d);
+      ring = (box_t) BOX_POS_SIZE(b->x0 + 2, b->y0 + 2,
+                                  b->x1 - b->x0 - 4, b->y1 - b->y0 - 4);
+      screen_draw_bevel_edge(c->scr, &ring, accent, accent);
 
-      screen_draw_lines(c->scr, tl, 3, hi);
-      screen_draw_lines(c->scr, br, 3, lo);
+      ring = (box_t) BOX_POS_SIZE(b->x0 + 4, b->y0 + 4,
+                                  b->x1 - b->x0 - 8, b->y1 - b->y0 - 8);
+      screen_draw_bevel_edge(c->scr, &ring, lo, hi); /* swap for inner */
     }
   }
 

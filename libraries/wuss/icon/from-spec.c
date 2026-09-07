@@ -57,7 +57,7 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
     return result_WUSS_BAD_ICON;
 
   if (spec->type == wuss_ICON_TYPE_LABEL &&
-      spec->border > wuss_ICON_BORDER_GROOVE)
+      spec->border > wuss_ICON_BORDER_ACTION)
     return result_WUSS_BAD_ICON;
 
   if (fg >= w->npalette)

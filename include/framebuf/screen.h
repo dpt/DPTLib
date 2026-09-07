@@ -280,6 +280,27 @@ void screen_draw_rect(screen_t *scr,
                       colour_t  colour);
 
 /**
+ * Draws one 2px-wide bevel ring just inside `box`: colour `a` along the top
+ * and left edges, colour `b` along the bottom and right. The bottom edge
+ * owns both bottom corners so the ring closes with no gap or overlap. `box`
+ * is inclusive-exclusive, as elsewhere. Swap `a` and `b` for a sunken rather
+ * than a raised look; pass the same colour for both for a plain 2px frame.
+ * Nest calls on successively inset boxes to build a thicker surround.
+ *
+ * Assumes `box` is at least 4x4; smaller boxes lose their edge shape but
+ * draw harmlessly. Clipped to the screen's clip region.
+ *
+ * \param[in] scr  Screen to draw upon.
+ * \param[in] box  Box whose inner 2px border is drawn.
+ * \param[in] a    Colour of the top and left edges.
+ * \param[in] b    Colour of the bottom and right edges.
+ */
+void screen_draw_bevel_edge(screen_t    *scr,
+                            const box_t *box,
+                            colour_t     a,
+                            colour_t     b);
+
+/**
  * Draws a one-pixel unfilled circle outline (integer midpoint algorithm, no
  * anti-aliasing). Clipped to the screen's clip region. A negative radius
  * draws nothing; a zero radius draws a single pixel at the centre.

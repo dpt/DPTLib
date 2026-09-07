@@ -38,7 +38,7 @@ enum
   ICONS_N_RADIOS  = 8, /* frame + 3 radios + option + state label + 2 justified labels */
   ICONS_N_BITMAPS = 3, /* frame + decorative + interactive bitmap */
   ICONS_N_PATTERN = 2, /* frame + one PATTERN swatch */
-  ICONS_N_BORDERS = 3, /* frame + a GROOVE label + a RIDGE label */
+  ICONS_N_BORDERS = 4, /* frame + GROOVE + RIDGE + ACTION labels */
   ICONS_N_MENU    = 7, /* plain, ticked, swatch, submenu, disabled, rule, separator entry */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
                     ICONS_N_BITMAPS + ICONS_N_PATTERN + ICONS_N_BORDERS +
@@ -292,7 +292,9 @@ static void icons_add_pattern(icons_layout_t *lay)
 }
 
 /* A grouping frame captioned "Borders", holding a GROOVE-bordered label (a
- * sunken RISC OS display field) above a RIDGE-bordered one (raised). */
+ * sunken RISC OS display field), a RIDGE-bordered one (raised), then an
+ * ACTION-bordered one -- a 6px surround: raised outset, accent moat, raised
+ * inset, like a default-action button. */
 static void icons_add_borders(icons_layout_t *lay)
 {
   wuss_icon_spec_t *s;
@@ -300,7 +302,7 @@ static void icons_add_borders(icons_layout_t *lay)
 
   top     = lay->y;
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 80);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 116);
   s->type = wuss_ICON_TYPE_FRAME;
   s->text = "Borders";
   s->fg   = lay->black;
@@ -318,7 +320,7 @@ static void icons_add_borders(icons_layout_t *lay)
   lay->n++;
 
   s         = &lay->specs[lay->n];
-  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 48, 180, 22);
+  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 46, 180, 22);
   s->type   = wuss_ICON_TYPE_LABEL;
   s->text   = "Ridge";
   s->fg     = lay->black;
@@ -327,7 +329,17 @@ static void icons_add_borders(icons_layout_t *lay)
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
 
-  lay->y = top + 96;
+  s         = &lay->specs[lay->n];
+  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 72, 180, 34);
+  s->type   = wuss_ICON_TYPE_LABEL;
+  s->text   = "Action";
+  s->fg     = lay->black;
+  s->bg     = lay->window;
+  s->border = wuss_ICON_BORDER_ACTION;
+  s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
+  lay->n++;
+
+  lay->y = top + 132;
 }
 
 /* A menu-entry strip: plain, ticked, a swatch entry, a submenu entry, a
