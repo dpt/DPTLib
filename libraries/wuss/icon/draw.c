@@ -148,18 +148,23 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   if (icon->border != wuss_ICON_BORDER_NONE)
   {
     colour_t light, dark;
+    int      ridge;
+    point_t  tl[3]; /* top + left edges */
+    point_t  br[3]; /* bottom + right edges */
 
     light = c->wuss->palette[c->wuss->bevel_light];
     dark  = c->wuss->palette[c->wuss->bevel_dark];
+    ridge = (icon->border == wuss_ICON_BORDER_RIDGE);
 
-    screen_draw_line(c->scr, b->x0, b->y0, b->x1 - 1, b->y0,
-                     icon->border == wuss_ICON_BORDER_RIDGE ? light : dark);
-    screen_draw_line(c->scr, b->x0, b->y0, b->x0, b->y1 - 1,
-                     icon->border == wuss_ICON_BORDER_RIDGE ? light : dark);
-    screen_draw_line(c->scr, b->x0, b->y1 - 1, b->x1 - 1, b->y1 - 1,
-                     icon->border == wuss_ICON_BORDER_RIDGE ? dark : light);
-    screen_draw_line(c->scr, b->x1 - 1, b->y0, b->x1 - 1, b->y1 - 1,
-                     icon->border == wuss_ICON_BORDER_RIDGE ? dark : light);
+    tl[0] = POINT(b->x1 - 1, b->y0);
+    tl[1] = POINT(b->x0,     b->y0);
+    tl[2] = POINT(b->x0,     b->y1 - 1);
+    br[0] = POINT(b->x0,     b->y1 - 1);
+    br[1] = POINT(b->x1 - 1, b->y1 - 1);
+    br[2] = POINT(b->x1 - 1, b->y0);
+
+    screen_draw_lines(c->scr, tl, 3, ridge ? light : dark);
+    screen_draw_lines(c->scr, br, 3, ridge ? dark : light);
   }
 
   if (!c->have_font)
