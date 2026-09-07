@@ -28,10 +28,11 @@
  * site" action button -- the four text rows are the whole dialogue. Add a
  * button row through here if a task ever needs one. */
 
-#define PROGINFO_MARGIN   12 /* px border around the row block */
-#define PROGINFO_GAP      12 /* px between the name column and the value column */
-#define PROGINFO_ROW_PAD   6 /* px added to the font height for the row pitch */
-#define PROGINFO_FIELD_PAD 4 /* px each side of the text inside a value field */
+#define PROGINFO_MARGIN      4 /* px border around the row block */
+#define PROGINFO_GAP         4 /* px between the name column and the value column */
+#define PROGINFO_ROW_PAD    12 /* px added to the font height for the row pitch */
+#define PROGINFO_ROW_LEADING 4 /* px leading between rows */
+#define PROGINFO_FIELD_PAD   4 /* px each side of the text inside a value field */
 
 /* The rows, in display order. Only fields set in the desc get a row. */
 static const char *const proginfo_labels[] =
@@ -121,7 +122,7 @@ result_t wuss_proginfo_create(wuss_proginfo_t           **out,
   fonth = 0;
   if (font != NULL)
     bmfont_get_info(font, NULL, &fonth);
-  rowh = MAX(fonth + PROGINFO_ROW_PAD, 12);
+  rowh = MAX(fonth + PROGINFO_ROW_PAD, 12) + PROGINFO_ROW_LEADING;
 
   namew  = MAX(namew, 1);
   valuew = MAX(valuew, 1) + PROGINFO_FIELD_PAD * 2; /* groove border + inset */
@@ -162,13 +163,15 @@ result_t wuss_proginfo_create(wuss_proginfo_t           **out,
   for (i = 0; i < 4; i++)
   {
     int y;
+    int fieldh;
 
     if (values[i] == NULL)
       continue;
 
-    y = PROGINFO_MARGIN + rowh * (nspecs / 2);
+    y      = PROGINFO_MARGIN + rowh * (nspecs / 2);
+    fieldh = rowh - PROGINFO_ROW_LEADING; /* rowh is the pitch; leave a gap */
 
-    specs[nspecs].bbox  = (box_t) BOX_POS_SIZE(PROGINFO_MARGIN, y, namew, rowh);
+    specs[nspecs].bbox  = (box_t) BOX_POS_SIZE(PROGINFO_MARGIN, y, namew, fieldh);
     specs[nspecs].type  = wuss_ICON_TYPE_LABEL;
     specs[nspecs].text  = proginfo_labels[i];
     specs[nspecs].fg    = wuss_COLOUR_BLACK;
@@ -177,7 +180,7 @@ result_t wuss_proginfo_create(wuss_proginfo_t           **out,
     nspecs++;
 
     specs[nspecs].bbox   = (box_t) BOX_POS_SIZE(PROGINFO_MARGIN + namew +
-                                               PROGINFO_GAP, y, valuew, rowh);
+                                               PROGINFO_GAP, y, valuew, fieldh);
     specs[nspecs].type   = wuss_ICON_TYPE_LABEL;
     specs[nspecs].text   = values[i];
     specs[nspecs].fg     = wuss_COLOUR_BLACK;
