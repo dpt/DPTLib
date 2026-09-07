@@ -80,7 +80,9 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
 
   *button = lay->n;
   s       = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN, lay->y, 80, 22);
+  /* 4px larger on every side than a plain button to seat the DEFAULT icon's
+   * 6px action surround */
+  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN - 4, lay->y - 4, 88, 30);
   s->type  = wuss_ICON_TYPE_BUTTON;
   s->text  = "Press me";
   s->fg    = lay->black;
@@ -132,7 +134,9 @@ static void icons_add_buttons(icons_layout_t *lay)
   lay->n++;
 
   s        = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 74, top + 22, 56, 22);
+  /* 4px larger on every side than the plain buttons beside it to seat the
+   * DEFAULT icon's 6px action surround */
+  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 70, top + 18, 64, 30);
   s->type  = wuss_ICON_TYPE_BUTTON;
   s->text  = "Default";
   s->fg    = lay->black;

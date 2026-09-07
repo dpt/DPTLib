@@ -34,15 +34,42 @@ icon_draw_ctx_t;
 
 /* ----------------------------------------------------------------------- */
 
-static void icon_bevel(screen_t    *scr,
-                       const box_t *b,
-                       colour_t     fill,
-                       colour_t     light,
-                       colour_t     dark)
+static void icon_fill_bevel(screen_t    *scr,
+                            const box_t *b,
+                            colour_t     fill,
+                            colour_t     light,
+                            colour_t     dark)
 {
   screen_fill_rect(scr, b->x0, b->y0,
                    SIZE2D(b->x1 - b->x0, b->y1 - b->y0), fill);
   screen_draw_bevel_edge(scr, b, light, dark);
+}
+
+/* The 6px-per-edge "action" surround shared by wuss_ICON_BORDER_ACTION and a
+ * default button: a 2px sunken outset (dark top/left), a 2px accent moat, then
+ * a 2px raised inset. Only the inset tracks the pressed state -- it flips to
+ * sunken -- so a pressed action button reads as pushed in without the whole
+ * surround inverting. */
+static void icon_draw_action_border(screen_t    *scr,
+                                    const box_t *b,
+                                    colour_t     light,
+                                    colour_t     dark,
+                                    colour_t     accent,
+                                    int          pressed)
+{
+  box_t ring;
+
+  ring = *b;
+  screen_draw_bevel_edge(scr, &ring, dark, light);
+
+  ring = (box_t) BOX_POS_SIZE(b->x0 + 2, b->y0 + 2,
+                              b->x1 - b->x0 - 4, b->y1 - b->y0 - 4);
+  screen_draw_bevel_edge(scr, &ring, accent, accent);
+
+  ring = (box_t) BOX_POS_SIZE(b->x0 + 4, b->y0 + 4,
+                              b->x1 - b->x0 - 8, b->y1 - b->y0 - 8);
+  screen_draw_bevel_edge(scr, &ring, pressed ? dark : light,
+                                     pressed ? light : dark);
 }
 
 /* Resolve the ground an icon's text/glyph blends against: an explicit icon bg,
@@ -143,34 +170,26 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 
   if (icon->border != wuss_ICON_BORDER_NONE)
   {
-    colour_t light, dark, accent, hi, lo;
-    int      raised;
-    box_t    ring;
+    colour_t light, dark, accent;
 
     light  = c->wuss->palette[c->wuss->bevel_light];
     dark   = c->wuss->palette[c->wuss->bevel_dark];
     accent = c->wuss->palette[c->wuss->accent_bg]; /* the action-button fill */
 
-    /* RIDGE reads raised (light top/left); GROOVE reads sunken; ACTION uses
-     * both. */
-    raised = (icon->border == wuss_ICON_BORDER_RIDGE);
-    hi     = raised ? light : dark;
-    lo     = raised ? dark : light;
-
-    /* GROOVE/RIDGE: one 2px bevel ring. ACTION: 6px per edge as three nested
-     * 2px rings -- a raised outset, an accent moat, then a raised inset. */
-    ring = *b;
-    screen_draw_bevel_edge(c->scr, &ring, hi, lo);
-
     if (icon->border == wuss_ICON_BORDER_ACTION)
     {
-      ring = (box_t) BOX_POS_SIZE(b->x0 + 2, b->y0 + 2,
-                                  b->x1 - b->x0 - 4, b->y1 - b->y0 - 4);
-      screen_draw_bevel_edge(c->scr, &ring, accent, accent);
+      icon_draw_action_border(c->scr, b, light, dark, accent, 0);
+    }
+    else
+    {
+      /* RIDGE reads raised (light top/left); GROOVE reads sunken. One 2px
+       * bevel ring. */
+      box_t ring = *b;
 
-      ring = (box_t) BOX_POS_SIZE(b->x0 + 4, b->y0 + 4,
-                                  b->x1 - b->x0 - 8, b->y1 - b->y0 - 8);
-      screen_draw_bevel_edge(c->scr, &ring, lo, hi); /* swap for inner */
+      if (icon->border == wuss_ICON_BORDER_RIDGE)
+        screen_draw_bevel_edge(c->scr, &ring, light, dark);
+      else
+        screen_draw_bevel_edge(c->scr, &ring, dark, light);
     }
   }
 
@@ -261,31 +280,29 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
   pressed    = wuss__icon_pressed(icon);
   is_default = (icon->flags & wuss_ICON_FLAGS_DEFAULT) != 0;
 
-  if (is_default)
-  {
-    /* default action button: a flat accent-filled rectangle inside a
-     * two-pixel accent-text border, distinct from the bevelled ordinary
-     * buttons around it */
-    base  = c->wuss->palette[c->wuss->accent_bg];
-    light = c->wuss->palette[c->wuss->accent_fg];
-    dark  = light;
-    label = c->wuss->palette[c->wuss->accent_fg];
-  }
-  else
-  {
-    base  = c->wuss->palette[icon->bg];
-    light = c->wuss->palette[c->wuss->bevel_light];
-    dark  = c->wuss->palette[c->wuss->bevel_dark];
-    label = c->fg;
-  }
+  base  = c->wuss->palette[icon->bg];
+  light = c->wuss->palette[c->wuss->bevel_light];
+  dark  = c->wuss->palette[c->wuss->bevel_dark];
+  label = c->fg;
 
   if (icon->flags & wuss_ICON_FLAGS_DISABLED)
     label = c->wuss->palette[c->wuss->bevel_dark]; /* greyed: sink toward dark */
 
-  if (pressed)
-    icon_bevel(c->scr, b, base, dark, light);
+  if (is_default)
+  {
+    /* default action button: an accent-filled rectangle inside the same 6px
+     * "action" surround as wuss_ICON_BORDER_ACTION, distinct from the plain
+     * bevelled buttons around it */
+    screen_fill_rect(c->scr, b->x0, b->y0,
+                     SIZE2D(b->x1 - b->x0, b->y1 - b->y0), base);
+    icon_draw_action_border(c->scr, b, light, dark,
+                            c->wuss->palette[c->wuss->accent_bg], pressed);
+  }
   else
-    icon_bevel(c->scr, b, base, light, dark);
+  {
+    icon_fill_bevel(c->scr, b, base, pressed ? dark : light,
+                    pressed ? light : dark);
+  }
 
   if (c->have_font)
   {
