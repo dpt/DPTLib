@@ -123,10 +123,11 @@ struct wuss
   wuss_furniture_palette_t              furniture_colours;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
-  wuss_colour_t               bevel_light; /* work-area button top/left edge */
-  wuss_colour_t               bevel_dark;  /* work-area button bottom/right edge */
-  wuss_colour_t               accent_bg;   /* default action button fill */
-  wuss_colour_t               accent_fg;   /* default action button text */
+  wuss_colour_t               bevel_light;   /* work-area button top/left edge */
+  wuss_colour_t               bevel_dark;    /* work-area button bottom/right edge */
+  wuss_colour_t               bevel_pressed; /* work-area button face while held */
+  wuss_colour_t               accent_bg;     /* default action button fill */
+  wuss_colour_t               accent_fg;     /* default action button text */
 #endif
   wuss_colour_t               window_bg; /* work-area body fill; wuss_COLOUR_WINDOW */
   wuss_colour_t               menu_bg;   /* menu body fill; wuss_COLOUR_MENU */

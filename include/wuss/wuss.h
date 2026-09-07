@@ -138,17 +138,19 @@ typedef unsigned char wuss_colour_t;
 /* Chrome roles: echo the matching wuss_config_t field, resolved to a
  * concrete index -- e.g. wuss_COLOUR_TITLE_BG is furniture.title.bg,
  * wuss_COLOUR_BUTTON_HILIGHT is bevel.light, wuss_COLOUR_BUTTON_SHADOW is
- * bevel.dark, wuss_COLOUR_BACKDROP is backdrop.colour, wuss_COLOUR_WINDOW is
- * body.window, wuss_COLOUR_MENU is body.menu. */
-#define wuss_COLOUR_TITLE_BG       (wuss_COLOUR_SYMBOLIC + 16)
-#define wuss_COLOUR_TITLE_FG       (wuss_COLOUR_SYMBOLIC + 17)
-#define wuss_COLOUR_BUTTON_HILIGHT (wuss_COLOUR_SYMBOLIC + 18)
-#define wuss_COLOUR_BUTTON_SHADOW  (wuss_COLOUR_SYMBOLIC + 19)
-#define wuss_COLOUR_ACCENT_BG      (wuss_COLOUR_SYMBOLIC + 20)
-#define wuss_COLOUR_ACCENT_FG      (wuss_COLOUR_SYMBOLIC + 21)
-#define wuss_COLOUR_BACKDROP       (wuss_COLOUR_SYMBOLIC + 22)
-#define wuss_COLOUR_WINDOW         (wuss_COLOUR_SYMBOLIC + 23)
-#define wuss_COLOUR_MENU           (wuss_COLOUR_SYMBOLIC + 24)
+ * bevel.dark, wuss_COLOUR_BUTTON_PRESSED is bevel.pressed,
+ * wuss_COLOUR_BACKDROP is backdrop.colour,
+ * wuss_COLOUR_WINDOW is body.window, wuss_COLOUR_MENU is body.menu. */
+#define wuss_COLOUR_TITLE_BG        (wuss_COLOUR_SYMBOLIC + 16)
+#define wuss_COLOUR_TITLE_FG        (wuss_COLOUR_SYMBOLIC + 17)
+#define wuss_COLOUR_BUTTON_HILIGHT  (wuss_COLOUR_SYMBOLIC + 18)
+#define wuss_COLOUR_BUTTON_SHADOW   (wuss_COLOUR_SYMBOLIC + 19)
+#define wuss_COLOUR_ACCENT_BG       (wuss_COLOUR_SYMBOLIC + 20)
+#define wuss_COLOUR_ACCENT_FG       (wuss_COLOUR_SYMBOLIC + 21)
+#define wuss_COLOUR_BACKDROP        (wuss_COLOUR_SYMBOLIC + 22)
+#define wuss_COLOUR_WINDOW          (wuss_COLOUR_SYMBOLIC + 23)
+#define wuss_COLOUR_MENU            (wuss_COLOUR_SYMBOLIC + 24)
+#define wuss_COLOUR_BUTTON_PRESSED  (wuss_COLOUR_SYMBOLIC + 25)
 
 /** Furniture chrome colours, one entry per class of furniture. Title is
  * the only two-tone class (fill + text); the rest are drawn as a single
@@ -326,14 +328,18 @@ typedef struct wuss_config
   /**
    * Bevelled work-area button edge shades, as indices into the system
    * palette: light on the top/left edges, dark on the bottom/right (swapped
-   * when the button is pressed). Both default to the titlebar fill colour
-   * when config is NULL. Ignored when both WUSS_FURNITURE and WUSS_ICONS are
-   * off.
+   * when the button is pressed). pressed is the button face fill while it is
+   * held down, in place of the icon's own background. light and dark default
+   * to the titlebar fill colour when config is NULL; pressed defaults to
+   * dark. Read back through wuss_COLOUR_BUTTON_HILIGHT /
+   * wuss_COLOUR_BUTTON_SHADOW / wuss_COLOUR_BUTTON_PRESSED. Ignored when
+   * both WUSS_FURNITURE and WUSS_ICONS are off.
    */
   struct
   {
-    wuss_colour_t light; /**< Top/left bevel edge. */
-    wuss_colour_t dark;  /**< Bottom/right bevel edge. */
+    wuss_colour_t light;   /**< Top/left bevel edge. */
+    wuss_colour_t dark;    /**< Bottom/right bevel edge. */
+    wuss_colour_t pressed; /**< Button face fill while held down. */
   }
   bevel;
 
