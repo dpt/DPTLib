@@ -495,20 +495,32 @@ void screen_draw_bevel_edge(screen_t    *scr,
   w  = x1 - x0;
   h  = y1 - y0;
   
-  /* Colour A: a 2px top edge, then a 2px left edge below it. The top runs
-   * full width bar the top-right 2px, which colour B's right edge claims. */
+  /* For a 5x5 box draw like so using colours A and B:
+   *
+   * AAAAB
+   * AAABB
+   * AA BB
+   * AABBB
+   * ABBBB
+   *
+   * Using rects for the bulk of the filling, then single pixel fixups in the
+   * following order:
+   *
+   * 00037
+   * 00044
+   * 11 44
+   * 11555
+   * 26555
+   */
+  
   screen_fill_rect(scr, x0, y0,     SIZE2D(w - 2, 2), a);
   screen_fill_rect(scr, x0, y0 + 2, SIZE2D(2, h - 3), a);
-  
-  /* Colour B: a 2px right edge, then a 2px bottom edge. The right runs from
-   * the top down to the bottom edge; the bottom runs full width, so it owns
-   * both bottom corners (A's left edge stops just above it). */
+  screen_set_pixel(scr, x0, y1 - 1, a);
+  screen_set_pixel(scr, x1 - 2, y0, a);
+
   screen_fill_rect(scr, x1 - 2, y0 + 1, SIZE2D(2, h - 1), b);
   screen_fill_rect(scr, x0 + 2, y1 - 2, SIZE2D(w - 2, 2), b);
-
-  screen_set_pixel(scr, x0, y1 - 1, a);
   screen_set_pixel(scr, x0 + 1, y1 - 1, b);
-  screen_set_pixel(scr, x1 - 2, y0, a);
   screen_set_pixel(scr, x1 - 1, y0, b);
 }
 

@@ -282,10 +282,12 @@ void screen_draw_rect(screen_t *scr,
 /**
  * Draws one 2px-wide bevel ring just inside `box`: colour `a` along the top
  * and left edges, colour `b` along the bottom and right. The bottom edge
- * owns both bottom corners so the ring closes with no gap or overlap. `box`
- * is inclusive-exclusive, as elsewhere. Swap `a` and `b` for a sunken rather
+ * owns both bottom corners so the ring closes with no gap or overlap. Only
+ * the ring is drawn -- fill the interior first if you want one. `box` is
+ * inclusive-exclusive, as elsewhere. Swap `a` and `b` for a sunken rather
  * than a raised look; pass the same colour for both for a plain 2px frame.
- * Nest calls on successively inset boxes to build a thicker surround.
+ * Nest calls on successively inset boxes to build a thicker surround (as the
+ * wuss action-button border does).
  *
  * Assumes `box` is at least 4x4; smaller boxes lose their edge shape but
  * draw harmlessly. Clipped to the screen's clip region.
