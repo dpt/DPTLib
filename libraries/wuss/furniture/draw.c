@@ -136,11 +136,40 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
   if (!(window->flags & wuss_WINDOW_NO_RESIZE))
   {
-    box_t resize;
+    box_t resize, rule;
+    int   top_seam, left_seam;
 
     wuss__resize_box(window, &resize);
+
+    /* Dividing seams in the 1px gap the scroll strips leave (scroll_strip
+     * pulls each end in by WUSS_DIVIDER_PX): a rule along the resize box's top
+     * edge (vscroll strip above) and its left edge (hscroll strip to the
+     * left), in the interior rules' colour. */
+    top_seam  = (window->flags & wuss_WINDOW_NO_VSCROLL) ? 0 : WUSS_DIVIDER_PX;
+    left_seam = (window->flags & wuss_WINDOW_NO_HSCROLL) ? 0 : WUSS_DIVIDER_PX;
+
     fill_furniture_rect(wuss, &resize, full,
                         wuss->palette[wuss->furniture_colours.resize]);
+
+    if (top_seam > 0)
+    {
+      rule.x0 = resize.x0 - left_seam;
+      rule.x1 = resize.x1;
+      rule.y0 = resize.y0 - top_seam;
+      rule.y1 = resize.y0;
+      fill_furniture_rect(wuss, &rule, full,
+                          wuss->palette[wuss->furniture_colours.title.bg]);
+    }
+
+    if (left_seam > 0)
+    {
+      rule.x0 = resize.x0 - left_seam;
+      rule.x1 = resize.x0;
+      rule.y0 = resize.y0 - top_seam;
+      rule.y1 = resize.y1;
+      fill_furniture_rect(wuss, &rule, full,
+                          wuss->palette[wuss->furniture_colours.title.bg]);
+    }
   }
 
   if (!(window->flags & wuss_WINDOW_NO_VSCROLL))
