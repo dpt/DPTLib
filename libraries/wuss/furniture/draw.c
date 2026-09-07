@@ -134,6 +134,46 @@ void wuss__furniture_draw(wuss_t        *wuss,
     }
   }
 
+  /* With both scrollbars off but a resize icon on, the content box is still
+   * carved back button_size on its right and bottom (see
+   * wuss__furniture_carve_for) and no scroll strip paints that margin. It is
+   * chrome, so furniture owns it: fill it here. Nothing pre-fills it
+   * (fill_backdrop_excluding_content cuts the whole visible box), so this is
+   * the only paint of the region -- no redundant fill, no flicker. */
+  if ((window->flags & wuss_WINDOW_NO_VSCROLL) &&
+      (window->flags & wuss_WINDOW_NO_HSCROLL) &&
+      !(window->flags & wuss_WINDOW_NO_RESIZE))
+  {
+    box_t   content, band;
+    point_t carve;
+    int     outline_px;
+
+    outline_px = wuss__outline_px(window);
+    wuss__content_box(window, &content);
+    wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
+
+    if (carve.x > 0)
+    {
+      band.x0 = content.x1;
+      band.x1 = window->visible.x1 - outline_px;
+      band.y0 = window->visible.y0 + outline_px
+              + wuss__titlebar_height(window);
+      band.y1 = window->visible.y1 - outline_px;
+      fill_furniture_rect(wuss, &band, full,
+                          wuss->palette[wuss->furniture_colours.title.bg]);
+    }
+
+    if (carve.y > 0)
+    {
+      band.x0 = window->visible.x0 + outline_px;
+      band.x1 = content.x1;
+      band.y0 = content.y1;
+      band.y1 = window->visible.y1 - outline_px;
+      fill_furniture_rect(wuss, &band, full,
+                          wuss->palette[wuss->furniture_colours.title.bg]);
+    }
+  }
+
   if (!(window->flags & wuss_WINDOW_NO_RESIZE))
   {
     box_t resize, rule;
