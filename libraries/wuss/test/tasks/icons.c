@@ -453,9 +453,9 @@ result_t icons_create(wuss_t       *wuss,
   }
 
   memset(&lay, 0, sizeof(lay));
-  lay.black  = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
+  lay.black  = wuss_COLOUR_BLACK;
   lay.window = wuss_COLOUR_WINDOW; /* the standard work-area fill */
-  lay.red    = wuss_nearest_colour(wuss, 0xCC, 0x33, 0x33);
+  lay.red    = wuss_nearest_colour(wuss, 0xCC, 0x33, 0x33); /* off-primary; no symbol */
 
   /* crosshatch the standard window colour over the standard backdrop colour,
    * so the texture tracks the chrome config rather than fixed greys */
