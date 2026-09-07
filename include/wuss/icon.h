@@ -142,9 +142,10 @@ typedef enum wuss_icon_flags
   /** wuss_ICON_TYPE_LABEL: centre the text in the bounding box. Takes
    *  precedence over wuss_ICON_FLAGS_JUSTIFY_RIGHT. */
   wuss_ICON_FLAGS_JUSTIFY_CENTRE = 1 << 3,
-  /** wuss_ICON_TYPE_BUTTON: draw as a default action button, in the window
-   *  manager's accent colours (see wuss_config_t::accent) instead of the
-   *  ordinary bevel. Ignored by other icon types. */
+  /** wuss_ICON_TYPE_BUTTON: draw as a default action button -- an accent fill
+   *  (see wuss_config_t::accent) inside the same 6px "action" surround as
+   *  wuss_ICON_BORDER_ACTION, instead of the ordinary 1px bevel. Ignored by
+   *  other icon types. */
   wuss_ICON_FLAGS_DEFAULT       = 1 << 4,
   /** wuss_ICON_TYPE_BITMAP: hit-test the icon and raise wuss_EVENT_ICON on a
    *  click, like a button. Without it a bitmap icon is pure decoration and
