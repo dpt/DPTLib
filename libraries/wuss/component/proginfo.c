@@ -128,7 +128,8 @@ result_t wuss_proginfo_create(wuss_proginfo_t           **out,
   valuew = MAX(valuew, 1) + PROGINFO_FIELD_PAD * 2; /* groove border + inset */
 
   w = PROGINFO_MARGIN * 2 + namew + PROGINFO_GAP + valuew;
-  h = PROGINFO_MARGIN * 2 + rowh * nrows;
+  /* rowh is the pitch (field + leading); the last row has no trailing leading */
+  h = PROGINFO_MARGIN * 2 + rowh * nrows - PROGINFO_ROW_LEADING;
 
   pi = a->malloc(sizeof(*pi));
   if (pi == NULL)
