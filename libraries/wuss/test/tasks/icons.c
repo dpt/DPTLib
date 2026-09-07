@@ -53,9 +53,8 @@ typedef struct icons_layout
   int               n;    /* specs[0..n) are filled in */
   int               y;    /* document y of the next group */
   wuss_colour_t     black;
-  wuss_colour_t     grey5;
-  wuss_colour_t     grey6;
-  wuss_colour_t     red;  /* menu swatch demo colour */
+  wuss_colour_t     window; /* wuss_COLOUR_WINDOW: the standard work-area fill */
+  wuss_colour_t     red;    /* menu swatch demo colour */
 }
 icons_layout_t;
 
@@ -85,7 +84,7 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
   s->type  = wuss_ICON_TYPE_BUTTON;
   s->text  = "Press me";
   s->fg    = lay->black;
-  s->bg    = lay->grey6;
+  s->bg    = lay->window;
   s->flags = wuss_ICON_FLAGS_DEFAULT;
   lay->n++;
 
@@ -104,7 +103,7 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
   s->type = wuss_ICON_TYPE_BUTTON;
   s->text = "Scrolled";
   s->fg   = lay->black;
-  s->bg   = lay->grey6;
+  s->bg   = lay->window;
   lay->n++;
 }
 
@@ -129,7 +128,7 @@ static void icons_add_buttons(icons_layout_t *lay)
   s->type  = wuss_ICON_TYPE_BUTTON;
   s->text  = "Normal";
   s->fg    = lay->black;
-  s->bg    = lay->grey6;
+  s->bg    = lay->window;
   lay->n++;
 
   s        = &lay->specs[lay->n];
@@ -137,7 +136,7 @@ static void icons_add_buttons(icons_layout_t *lay)
   s->type  = wuss_ICON_TYPE_BUTTON;
   s->text  = "Default";
   s->fg    = lay->black;
-  s->bg    = lay->grey6;
+  s->bg    = lay->window;
   s->flags = wuss_ICON_FLAGS_DEFAULT;
   lay->n++;
 
@@ -146,7 +145,7 @@ static void icons_add_buttons(icons_layout_t *lay)
   s->type  = wuss_ICON_TYPE_BUTTON;
   s->text  = "Disabled";
   s->fg    = lay->black;
-  s->bg    = lay->grey6;
+  s->bg    = lay->window;
   s->flags = wuss_ICON_FLAGS_DISABLED;
   lay->n++;
 
@@ -285,7 +284,7 @@ static void icons_add_pattern(icons_layout_t *lay)
   s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20, 180, 26);
   s->type   = wuss_ICON_TYPE_PATTERN;
   s->fg     = lay->black;
-  s->bg     = lay->grey6;
+  s->bg     = lay->window;
   s->pattern = screen_PATTERN_DIAGONAL;
   lay->n++;
 
@@ -313,7 +312,7 @@ static void icons_add_borders(icons_layout_t *lay)
   s->type   = wuss_ICON_TYPE_LABEL;
   s->text   = "Groove";
   s->fg     = lay->black;
-  s->bg     = lay->grey6;
+  s->bg     = lay->window;
   s->border = wuss_ICON_BORDER_GROOVE;
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
@@ -323,7 +322,7 @@ static void icons_add_borders(icons_layout_t *lay)
   s->type   = wuss_ICON_TYPE_LABEL;
   s->text   = "Ridge";
   s->fg     = lay->black;
-  s->bg     = lay->grey6;
+  s->bg     = lay->window;
   s->border = wuss_ICON_BORDER_RIDGE;
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
@@ -423,7 +422,10 @@ result_t icons_create(wuss_t       *wuss,
 
   task->font       = font;
   task->label      = colour_rgb(0x00, 0x00, 0x00);
-  task->paper      = colour_rgb(0xDD, 0xDD, 0xDD); /* the window bg, below */
+  /* only the ruler-text glyph blend; approximates the wuss_COLOUR_WINDOW /
+   * wuss_COLOUR_BACKDROP crosshatch the rulers sit on -- no public call
+   * resolves a symbolic wuss_colour_t to a concrete colour_t here */
+  task->paper      = colour_rgb(0xDD, 0xDD, 0xDD);
   task->window     = NULL;
   task->button     = NULL;
   task->counter    = NULL;
@@ -451,18 +453,19 @@ result_t icons_create(wuss_t       *wuss,
   }
 
   memset(&lay, 0, sizeof(lay));
-  lay.black = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
-  lay.grey5 = wuss_nearest_colour(wuss, 0xBB, 0xBB, 0xBB);
-  lay.grey6 = wuss_nearest_colour(wuss, 0xDD, 0xDD, 0xDD);
-  lay.red   = wuss_nearest_colour(wuss, 0xCC, 0x33, 0x33);
+  lay.black  = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
+  lay.window = wuss_COLOUR_WINDOW; /* the standard work-area fill */
+  lay.red    = wuss_nearest_colour(wuss, 0xCC, 0x33, 0x33);
 
+  /* crosshatch the standard window colour over the standard backdrop colour,
+   * so the texture tracks the chrome config rather than fixed greys */
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(ICONS_DOC_W, 200),
                                  "Icons",
                                  wuss_WINDOW_NONE,
-                                 wuss_BACKDROP_PATTERN(lay.grey5,
+                                 wuss_BACKDROP_PATTERN(wuss_COLOUR_GREY,
                                                        screen_PATTERN_CROSSHATCH,
-                                                       lay.grey6),
+                                                       wuss_COLOUR_WINDOW),
                                  SIZE2D(ICONS_DOC_W, ICONS_DOC_H),
                                  SIZE2D(0, 0),
                                  &task->window);
