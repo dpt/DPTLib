@@ -251,6 +251,52 @@ static int test_blit(const char *resources)
     }
   }
 
+  /* --- 4bpp screen: RLE path must match the raw p4 blit --- */
+  {
+    colour_t  pal[16];
+    uint8_t  *p4_ref;
+    uint8_t  *p4_rle;
+    int       p4_rowbytes;
+    int       i;
+
+    /* A spread of greys is enough for colour_to_pixel's nearest match to
+     * exercise more than one entry. */
+    for (i = 0; i < 16; i++)
+    {
+      unsigned int g = (unsigned int) (i * 17);
+      pal[i].primary = 0xFF000000u | (g << 16) | (g << 8) | g;
+    }
+
+    p4_rowbytes = (w + 1) / 2;
+    p4_ref = malloc((size_t) p4_rowbytes * h);
+    p4_rle = malloc((size_t) p4_rowbytes * h);
+    memset(p4_ref, 0, (size_t) p4_rowbytes * h);
+    memset(p4_rle, 0, (size_t) p4_rowbytes * h);
+
+    rc = bitmap_decompress(&cbm);
+    if (rc) { fprintf(stderr, "p4 decompress rc=&%x\n", rc); ok = 0; }
+
+    screen_init(&s, bm.size, pixelfmt_p4, p4_rowbytes, pal, p4_ref);
+    rc = screen_copy_bitmap(&s, 0, 0, &cbm);
+    if (rc) { fprintf(stderr, "p4 raw blit rc=&%x\n", rc); ok = 0; }
+
+    rc = bitmap_compress(&cbm);
+    if (rc) { fprintf(stderr, "p4 compress rc=&%x\n", rc); ok = 0; }
+
+    screen_init(&s, bm.size, pixelfmt_p4, p4_rowbytes, pal, p4_rle);
+    rc = screen_copy_bitmap(&s, 0, 0, &cbm);
+    if (rc) { fprintf(stderr, "p4 rle blit rc=&%x\n", rc); ok = 0; }
+
+    if (ok && memcmp(p4_ref, p4_rle, (size_t) p4_rowbytes * h) != 0)
+    {
+      fprintf(stderr, "blit: 4bpp RLE vs raw mismatch\n");
+      ok = 0;
+    }
+
+    free(p4_ref);
+    free(p4_rle);
+  }
+
 done2:
   free(scr_ref);
   free(scr_rle);

@@ -3,11 +3,13 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "base/result.h"
 
 #include "geom/box.h"
 
+#include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
 
 #include "framebuf/bitmap.h"
@@ -34,6 +36,95 @@ static pixelfmt_t rle__dealpha(pixelfmt_t f)
   }
 }
 
+/* Blit a 32bpp RLE source onto a 4bpp paletted screen. The row codec only
+ * emits whole 4-byte pixels, so each visible row is decoded (skip runs
+ * zero-filled) into a scratch buffer, then converted pixel-by-pixel to the
+ * nearest palette index -- matching screen_copy_bitmap_p4's alpha-tested
+ * transfer. Zero-alpha pixels (skip runs, and genuinely transparent source
+ * pixels) leave the background alone.
+ *
+ * ponytail: an opaque source with a 0x00000000 pixel (only possible for the
+ * no-alpha *x8888 bases) loses that pixel, same trade-off as the raw p4
+ * blit. Carry an explicit mask if opaque-black art shows up. */
+static result_t screen_copy_bitmap_rle_p4(screen_t       *scr,
+                                          int             x,
+                                          int             y,
+                                          const bitmap_t *src,
+                                          const box_t    *draw_box)
+{
+  pixelfmt_t           base;
+  int                  log2bpp;
+  const uint8_t       *blob;
+  const uint8_t       *p;
+  const uint8_t       *end;
+  uint8_t             *dstbase;
+  pixelfmt_rgba8888_t *scratch;
+  int                  firstrow;
+  int                  skip, plot;
+  int                  rows;
+  int                  i;
+
+  base    = pixelfmt_base(src->format);
+  log2bpp = pixelfmt_log2bpp(base);
+
+  if (log2bpp != 5)
+    return result_NOT_SUPPORTED; /* v1: 32bpp source only */
+
+  blob = src->base;
+  p    = blob + bitmap__RLE_HEADER_SIZE;
+  end  = p + bitmap__rle_get32(blob + 4);
+
+  firstrow = draw_box->y0 - y;
+  for (i = 0; i < firstrow; i++)
+    p = bitmap__rle_skip_row(p, end, log2bpp);
+
+  skip = draw_box->x0 - x;
+  plot = draw_box->x1 - draw_box->x0;
+  rows = draw_box->y1 - draw_box->y0;
+
+  scratch = malloc((size_t) plot * sizeof(*scratch));
+  if (scratch == NULL)
+    return result_OOM;
+
+  dstbase = scr->base;
+  for (i = 0; i < rows; i++)
+  {
+    uint8_t *rowp;
+    int      xx;
+
+    for (xx = 0; xx < plot; xx++)
+      scratch[xx] = 0; /* zero_skip below only fills covered skip runs */
+
+    p = bitmap__rle_decode_row(p, log2bpp, scratch, skip, plot, 1);
+
+    rowp = dstbase + (size_t) (draw_box->y0 + i) * scr->rowbytes;
+
+    for (xx = 0; xx < plot; xx++)
+    {
+      colour_t       c;
+      int            dstx;
+      uint8_t       *scrp;
+      int            shift;
+      pixelfmt_any_t pxl;
+
+      c.primary = scratch[xx];
+      if (colour_get_alpha(&c) == 0)
+        continue;
+
+      dstx  = draw_box->x0 + xx;
+      scrp  = rowp + (dstx >> 1);
+      shift = (dstx & 1) * 4;
+      pxl   = colour_to_pixel(scr->palette, 16, c, scr->format);
+
+      *scrp = (uint8_t) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
+    }
+  }
+
+  free(scratch);
+
+  return result_OK;
+}
+
 result_t screen_copy_bitmap_rle(screen_t       *scr,
                                 int             x,
                                 int             y,
@@ -55,6 +146,9 @@ result_t screen_copy_bitmap_rle(screen_t       *scr,
   assert(scr);
   assert(src);
   assert(pixelfmt_is_rle(src->format));
+
+  if (pixelfmt_log2bpp(scr->format) == 2)
+    return screen_copy_bitmap_rle_p4(scr, x, y, src, draw_box);
 
   base = pixelfmt_base(src->format);
 
