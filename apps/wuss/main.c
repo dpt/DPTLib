@@ -59,8 +59,8 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
     config->button.fg                 = palette_WIMP16_BLACK;
     config->button.pressed            = palette_WIMP16_GREY_62;
     config->accent.colour             = palette_WIMP16_ORANGE;
-    config->backdrop.colour           = palette_WIMP16_GREY_50;
-    config->backdrop.pattern_bg       = palette_WIMP16_GREY_37;
+    config->backdrop.colour           = palette_WIMP16_GREY_37;
+    config->backdrop.pattern_bg       = palette_WIMP16_GREY_50;
     config->body.window               = palette_WIMP16_GREY_87;
     config->body.menu                 = palette_WIMP16_WHITE;
   }
