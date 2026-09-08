@@ -119,15 +119,15 @@ static void draw_title(wuss_t        *wuss,
     return;
 
   titlelen = (int) strlen(window->title);
-  bmfont_measure(titlefont, window->title, titlelen, text_x1 - text_x0, &split_point, &width);
+  wuss__text_measure(titlefont, window->title, titlelen, text_x1 - text_x0, &split_point, &width);
 
   pos.x = (split_point < titlelen) ? text_x0 : text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
   pos.y = titlebar->y0 + 2;
   wuss->scr->clip = text_clip;
-  bmfont_draw(titlefont, wuss->scr, window->title, titlelen,
-              wuss->palette[wuss->furniture_colours.title.fg],
-              wuss->palette[wuss->furniture_colours.title.bg],
-              &pos, NULL);
+  wuss__text_draw(titlefont, wuss->scr, window->title, titlelen,
+                  wuss->palette[wuss->furniture_colours.title.fg],
+                  wuss->palette[wuss->furniture_colours.title.bg],
+                  &pos, NULL);
 }
 
 void wuss__furniture_draw(wuss_t        *wuss,

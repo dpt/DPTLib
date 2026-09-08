@@ -50,10 +50,11 @@ void wuss__rebuild_palettecache(wuss_t *wuss)
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
   cache[wuss_COLOUR_BUTTON_HILIGHT - wuss_COLOUR_SYMBOLIC] = wuss->bevel_light;
   cache[wuss_COLOUR_BUTTON_SHADOW  - wuss_COLOUR_SYMBOLIC] = wuss->bevel_dark;
-  cache[wuss_COLOUR_BUTTON_PRESSED - wuss_COLOUR_SYMBOLIC] = wuss->bevel_pressed;
   cache[wuss_COLOUR_BORDER_DIVIDER - wuss_COLOUR_SYMBOLIC] = wuss->bevel_divider;
-  cache[wuss_COLOUR_ACCENT_BG      - wuss_COLOUR_SYMBOLIC] = wuss->accent_bg;
-  cache[wuss_COLOUR_ACCENT_FG      - wuss_COLOUR_SYMBOLIC] = wuss->accent_fg;
+  cache[wuss_COLOUR_BUTTON_BG      - wuss_COLOUR_SYMBOLIC] = wuss->button_bg;
+  cache[wuss_COLOUR_BUTTON_FG      - wuss_COLOUR_SYMBOLIC] = wuss->button_fg;
+  cache[wuss_COLOUR_BUTTON_PRESSED - wuss_COLOUR_SYMBOLIC] = wuss->button_pressed;
+  cache[wuss_COLOUR_ACCENT         - wuss_COLOUR_SYMBOLIC] = wuss->accent;
 #endif
   if (wuss->backdrop.colour != wuss_NO_BACKGROUND)
     cache[wuss_COLOUR_BACKDROP - wuss_COLOUR_SYMBOLIC] = wuss->backdrop.colour;

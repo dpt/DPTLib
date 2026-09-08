@@ -44,9 +44,9 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
     return result_WUSS_BAD_ICON;
   }
 
-  if ((spec->type == wuss_ICON_TYPE_BUTTON ||
-       spec->type == wuss_ICON_TYPE_PATTERN) &&
-      bg == wuss_NO_BACKGROUND)
+  /* a BUTTON may leave bg unset -- it then draws on the config button face
+   * (wuss->button_bg); a PATTERN needs a concrete clear-bit colour */
+  if (spec->type == wuss_ICON_TYPE_PATTERN && bg == wuss_NO_BACKGROUND)
     return result_WUSS_BAD_ICON;
 
   if (spec->type == wuss_ICON_TYPE_BITMAP && spec->bitmap == NULL)

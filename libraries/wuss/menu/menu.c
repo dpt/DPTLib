@@ -589,8 +589,8 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     len  = (int) strlen(text);
     if (len == 0)
       continue; /* empty label (bare rule row); nothing to measure */
-    if (bmfont_measure(wuss->fonts[0], text, len,
-                       INT_MAX, &split, &w) == result_OK && (int) w > widest)
+    if (wuss__text_measure(wuss->fonts[0], text, len,
+                           INT_MAX, &split, &w) == result_OK && (int) w > widest)
       widest = (int) w;
   }
 
@@ -600,7 +600,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   {
     bmfont_width_t space_w = 0;
 
-    bmfont_measure(wuss->fonts[0], " ", 1, INT_MAX, NULL, &space_w);
+    wuss__text_measure(wuss->fonts[0], " ", 1, INT_MAX, NULL, &space_w);
     widest += 2 * (int) space_w;
   }
 
@@ -620,8 +620,8 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     titlefont = (wuss->nfonts > 1 && wuss->fonts[1] != NULL) ? wuss->fonts[1]
                                                              : wuss->fonts[0];
     titlelen  = (int) strlen(menu->title);
-    if (bmfont_measure(titlefont, menu->title, titlelen, INT_MAX, &split,
-                       &title_w) == result_OK &&
+    if (wuss__text_measure(titlefont, menu->title, titlelen, INT_MAX, &split,
+                           &title_w) == result_OK &&
         (int) title_w + 2 * WUSS_MENU_TITLE_PAD > width)
       width = (int) title_w + 2 * WUSS_MENU_TITLE_PAD;
   }

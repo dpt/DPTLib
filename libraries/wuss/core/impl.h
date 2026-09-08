@@ -123,12 +123,13 @@ struct wuss
   wuss_furniture_palette_t              furniture_colours;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
-  wuss_colour_t               bevel_light;   /* work-area button top/left edge */
-  wuss_colour_t               bevel_dark;    /* work-area button bottom/right edge */
-  wuss_colour_t               bevel_pressed; /* work-area button face while held */
-  wuss_colour_t               bevel_divider; /* lighter edge for a DIVIDER border */
-  wuss_colour_t               accent_bg;     /* default action button fill */
-  wuss_colour_t               accent_fg;     /* default action button text */
+  wuss_colour_t               bevel_light;    /* work-area button top/left edge */
+  wuss_colour_t               bevel_dark;     /* work-area button bottom/right edge */
+  wuss_colour_t               bevel_divider;  /* lighter edge for a DIVIDER border */
+  wuss_colour_t               button_bg;      /* button face when spec bg is NONE */
+  wuss_colour_t               button_fg;      /* button label */
+  wuss_colour_t               button_pressed; /* button face while held */
+  wuss_colour_t               accent;         /* default action button fill */
 #endif
   wuss_colour_t               window_bg; /* work-area body fill; wuss_COLOUR_WINDOW */
   wuss_colour_t               menu_bg;   /* menu body fill; wuss_COLOUR_MENU */
@@ -279,6 +280,25 @@ static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
 #endif
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
+
+/* Centralised text rendering. Every wuss text draw goes through
+ * wuss__text_draw so an optical vertical bias (WUSS_TEXT_BASELINE_ADJUST,
+ * default 1px down) is applied uniformly; wuss__text_measure is a plain
+ * pass-through kept alongside for a single point of policy. */
+result_t wuss__text_measure(bmfont_t       *font,
+                            const char     *text,
+                            int             len,
+                            bmfont_width_t  target_width,
+                            int            *split_point,
+                            bmfont_width_t *actual_width);
+result_t wuss__text_draw(bmfont_t      *font,
+                         screen_t      *scr,
+                         const char    *text,
+                         int            len,
+                         colour_t       fg,
+                         colour_t       bg,
+                         const point_t *pos,
+                         point_t       *end_pos);
 
 /* Rebuild wuss->palettecache (white, black and the symbolic[] table) from
  * the current palette and the stored chrome colours. Call after the palette

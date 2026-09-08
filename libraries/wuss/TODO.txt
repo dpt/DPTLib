@@ -10,7 +10,9 @@ LAYER 0 - BUGS (fix before building on top)
 - Auto window placement packer still not working as expected
     blocks: reliable multi-window tasks
 - Image task not shrinking window when new image loads
-- Backgrounds are being drawn behind window furniture.
+- Missing horizontal frame line under title bar
+- Resize-only windows? - check
+- Backdrop colours reversed? - check
 
 
 LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
