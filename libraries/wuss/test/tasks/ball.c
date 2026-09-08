@@ -82,7 +82,7 @@ result_t ball_create(wuss_t *wuss, ball_task_t *task)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(200, 160),
                                  "Bouncing Ball",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  SIZE2D(200, 160),
                                  SIZE2D(0, 0),

@@ -601,7 +601,7 @@ result_t wuss_test(const char *resources)
     symdel = mk_task(symw, NULL, NULL);
     if (symdel == NULL) { wuss_destroy(symw); goto Failure; }
     symbox.x0 = 0; symbox.y0 = 0; symbox.x1 = 80; symbox.y1 = 80;
-    rc = wuss_window_create(symdel, &symbox, "sym", wuss_WINDOW_NONE,
+    rc = wuss_window_create(symdel, &symbox, "sym", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_COLOUR_RED),
                             SIZE2D(80, 80), SIZE2D(80, 80), &symwin);
     if (rc != result_OK) { wuss_destroy(symw); goto Failure; }
@@ -624,7 +624,7 @@ result_t wuss_test(const char *resources)
   rc = wuss_window_create(mk_task(wuss, NULL, NULL),
                           &box_a,
                           "toosmall",
-                          wuss_WINDOW_NONE,
+                          wuss_WINDOW_DEFAULT,
                           wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                           box_size(&box_a),
                           SIZE2D(0, 0),
@@ -1351,7 +1351,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_h,
                             &box_h,
                             "H",
-                            wuss_WINDOW_NONE,
+                            wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             box_size(&box_h),
                             SIZE2D(0, 0),
@@ -1488,7 +1488,7 @@ result_t wuss_test(const char *resources)
 
     box_m.x0 = 10; box_m.y0 = 10;
     box_m.x1 = 210; box_m.y1 = 210; /* 200x200 content, floored at 80x60 */
-    rc = wuss_window_create(delegate_m, &box_m, "M", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_m, &box_m, "M", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(200, 200), SIZE2D(80, 60),
                             &win_m);
@@ -1538,7 +1538,7 @@ result_t wuss_test(const char *resources)
 
     box_t_win.x0 = 10; box_t_win.y0 = 10;
     box_t_win.x1 = 50; box_t_win.y1 = 50; /* 40x40 content, room to grow to a 150x150 doc without the toggled box needing to be repositioned off (10,10) -- this test is about the in-place grow blit */
-    rc = wuss_window_create(delegate_t, &box_t_win, "T", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_t, &box_t_win, "T", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(150, 150), SIZE2D(0, 0), &win_t);
     if (rc != result_OK)
@@ -1705,7 +1705,7 @@ result_t wuss_test(const char *resources)
 
     box_r.x0 = 10; box_r.y0 = 10;
     box_r.x1 = 50; box_r.y1 = 50; /* 40x40 content; doc bigger than that, so it starts scrollable */
-    rc = wuss_window_create(delegate_r, &box_r, "R", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_r, &box_r, "R", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(70, 70), SIZE2D(0, 0), &win_r);
     if (rc != result_OK)
@@ -1810,7 +1810,7 @@ result_t wuss_test(const char *resources)
 
     box_d.x0 = 10; box_d.y0 = 10;
     box_d.x1 = 90; box_d.y1 = 90; /* 80x80 content; doc taller, so it starts scrollable */
-    rc = wuss_window_create(delegate_d, &box_d, "D", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_d, &box_d, "D", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(80, 140), SIZE2D(0, 0), &win_d);
     if (rc != result_OK)
@@ -1915,7 +1915,7 @@ result_t wuss_test(const char *resources)
 
     box_d.x0 = 10; box_d.y0 = 10;
     box_d.x1 = 110; box_d.y1 = 90; /* 100x80 content; doc taller, so scrollable */
-    rc = wuss_window_create(delegate_d, &box_d, "D", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_d, &box_d, "D", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(100, 140), SIZE2D(0, 0), &win_d);
     if (rc != result_OK)
@@ -1927,7 +1927,7 @@ result_t wuss_test(const char *resources)
     /* occluder covering the right half of D's content box and beyond */
     box_o.x0 = split_x; box_o.y0 = content_before.y0 - 5;
     box_o.x1 = content_before.x1 + 40; box_o.y1 = content_before.y1 + 40;
-    rc = wuss_window_create(delegate_o, &box_o, "O", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_o, &box_o, "O", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(box_o.x1 - box_o.x0, box_o.y1 - box_o.y0),
                             SIZE2D(0, 0), &win_o);
@@ -2027,7 +2027,7 @@ result_t wuss_test(const char *resources)
 
     box_s.x0 = 10; box_s.y0 = 10;
     box_s.x1 = 110; box_s.y1 = 90; /* 100x80 content; doc taller, so scrollable */
-    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(100, 200), SIZE2D(0, 0), &win_s);
     if (rc != result_OK)
@@ -2038,7 +2038,7 @@ result_t wuss_test(const char *resources)
 
     box_o.x0 = split_x; box_o.y0 = content.y0 - 5;
     box_o.x1 = content.x1 + 40; box_o.y1 = content.y1 + 40;
-    rc = wuss_window_create(delegate_o, &box_o, "O", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_o, &box_o, "O", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(box_o.x1 - box_o.x0, box_o.y1 - box_o.y0),
                             SIZE2D(0, 0), &win_o);
@@ -2130,7 +2130,7 @@ result_t wuss_test(const char *resources)
 
     box_m.x0 = 10; box_m.y0 = 10;
     box_m.x1 = 110; box_m.y1 = 110; /* 100x100 content; doc taller, so scrollable */
-    rc = wuss_window_create(delegate_m, &box_m, "M", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_m, &box_m, "M", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(100, 300), SIZE2D(0, 0), &win_m);
     if (rc != result_OK)
@@ -2145,7 +2145,7 @@ result_t wuss_test(const char *resources)
      * repaint region touches O, so without the fix O stays overpainted. */
     box_o.x0 = content.x0 - 5;  box_o.y0 = content.y0 + 40;
     box_o.x1 = content.x1 + 5;  box_o.y1 = content.y0 + 70;
-    rc = wuss_window_create(delegate_o, &box_o, "O", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_o, &box_o, "O", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(box_o.x1 - box_o.x0, box_o.y1 - box_o.y0),
                             SIZE2D(0, 0), &win_o);
@@ -2211,7 +2211,7 @@ result_t wuss_test(const char *resources)
 
     box_m.x0 = 10; box_m.y0 = 10;
     box_m.x1 = 110; box_m.y1 = 110; /* 100x100 content; doc taller, scrollable */
-    rc = wuss_window_create(delegate_m, &box_m, "M", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_m, &box_m, "M", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(100, 300), SIZE2D(0, 0), &win_m);
     if (rc != result_OK)
@@ -2222,7 +2222,7 @@ result_t wuss_test(const char *resources)
     /* O strictly inside M's content, gap on every side */
     box_o.x0 = content.x0 + 25; box_o.y0 = content.y0 + 25;
     box_o.x1 = content.x0 + 75; box_o.y1 = content.y0 + 65;
-    rc = wuss_window_create(delegate_o, &box_o, "O", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_o, &box_o, "O", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(box_o.x1 - box_o.x0, box_o.y1 - box_o.y0),
                             SIZE2D(0, 0), &win_o);
@@ -2362,7 +2362,7 @@ result_t wuss_test(const char *resources)
 
     box_u.x0 = 80; box_u.y0 = 80;
     box_u.x1 = 120; box_u.y1 = 120; /* 40x40 content */
-    rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_u, "U", wuss_WINDOW_NONE,
+    rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_u, "U", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(70, 70), SIZE2D(0, 0), &win_u); /* doc size well within the 200x200 screen: growth is doc-limited, not screen-limited */
     if (rc != result_OK)
@@ -2472,7 +2472,7 @@ result_t wuss_test(const char *resources)
                                     * unrelated to toggle-size specifically).
                                     * Doc big enough that maximize is
                                     * screen-limited, not doc-limited. */
-    rc = wuss_window_create(delegate_v, &box_v, "V", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_v, &box_v, "V", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(200, 200), SIZE2D(0, 0), &win_v);
     if (rc != result_OK)
@@ -2587,7 +2587,7 @@ result_t wuss_test(const char *resources)
                                       * have a real interior the blit can keep;
                                       * doc big enough that maximize is
                                       * screen-limited so the window must move */
-    rc = wuss_window_create(delegate_p, &box_p, "P", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_p, &box_p, "P", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(400, 400), SIZE2D(0, 0), &win_p);
     if (rc != result_OK)
@@ -2724,7 +2724,7 @@ result_t wuss_test(const char *resources)
 
       box_z.x0 = 20; box_z.y0 = 20;
       box_z.x1 = 60; box_z.y1 = 60; /* 40x40 content */
-      rc = wuss_window_create(delegate_z, &box_z, "Z", wuss_WINDOW_NONE,
+      rc = wuss_window_create(delegate_z, &box_z, "Z", wuss_WINDOW_DEFAULT,
                               wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                               axis == 0 ? SIZE2D(0, 0) : SIZE2D(60, 0),
                               SIZE2D(0, 0), &win_z);
@@ -3567,7 +3567,7 @@ result_t wuss_test(const char *resources)
 
     box_s.x0 = 10; box_s.y0 = 10;
     box_s.x1 = 60; box_s.y1 = 60; /* 50x50 content onto a 200x200 doc: room to scroll */
-    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(200, 200), SIZE2D(0, 0), &win_s);
     if (rc != result_OK)
@@ -3642,7 +3642,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_r,
                             &box_r,
                             "rules",
-                            wuss_WINDOW_NONE, /* all furniture present */
+                            wuss_WINDOW_DEFAULT, /* all furniture present */
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(400, 400),
                             SIZE2D(0, 0),
@@ -3686,7 +3686,7 @@ result_t wuss_test(const char *resources)
       rc = wuss_window_create_placed(delegate_p,
                                      SIZE2D(40, 30),
                                      "P",
-                                     wuss_WINDOW_NONE,
+                                     wuss_WINDOW_DEFAULT,
                                      wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                      SIZE2D(40, 30),
                                      SIZE2D(0, 0),
@@ -3709,7 +3709,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create_placed(delegate_p,
                                    SIZE2D(40, 30),
                                    "P",
-                                   wuss_WINDOW_NONE,
+                                   wuss_WINDOW_DEFAULT,
                                    wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                    SIZE2D(40, 30),
                                    SIZE2D(0, 0),
@@ -3792,7 +3792,7 @@ result_t wuss_test(const char *resources)
 
     box_ps.x0 = 0;  box_ps.y0 = 0;
     box_ps.x1 = 60; box_ps.y1 = 60;
-    rc = wuss_window_create(delegate_ps, &box_ps, "PS", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_ps, &box_ps, "PS", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             box_size(&box_ps), SIZE2D(0, 0), &win_ps);
     if (rc != result_OK)
@@ -3856,12 +3856,12 @@ result_t wuss_test(const char *resources)
 
     box_q.x0 = 0;  box_q.y0 = 0;
     box_q.x1 = 40; box_q.y1 = 40;
-    rc = wuss_window_create(delegate_q, &box_q, "Q1", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_q, &box_q, "Q1", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             box_size(&box_q), SIZE2D(0, 0), &win_q1);
     if (rc != result_OK)
       goto Failure;
-    rc = wuss_window_create(delegate_q, &box_q, "Q2", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_q, &box_q, "Q2", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             box_size(&box_q), SIZE2D(0, 0), &win_q2);
     if (rc != result_OK)
@@ -3891,12 +3891,12 @@ result_t wuss_test(const char *resources)
 
     box_ac.x0 = 0;  box_ac.y0 = 0;
     box_ac.x1 = 40; box_ac.y1 = 40;
-    rc = wuss_window_create(delegate_ac, &box_ac, "AC1", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_ac, &box_ac, "AC1", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             box_size(&box_ac), SIZE2D(0, 0), &win_ac1);
     if (rc != result_OK)
       goto Failure;
-    rc = wuss_window_create(delegate_ac, &box_ac, "AC2", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_ac, &box_ac, "AC2", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             box_size(&box_ac), SIZE2D(0, 0), &win_ac2);
     if (rc != result_OK)
@@ -3947,7 +3947,7 @@ result_t wuss_test(const char *resources)
     delegate_w1 = mk_task(wuss, test_handle, &tc_w1);
     if (delegate_w1 == NULL) goto Failure;
     wuss_task_set_autoclose(delegate_w1, 1);
-    rc = wuss_window_create(delegate_w1, &box_w, "W1", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_w1, &box_w, "W1", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             box_size(&box_w), SIZE2D(0, 0), &win_w1);
     if (rc != result_OK)
@@ -3956,7 +3956,7 @@ result_t wuss_test(const char *resources)
     delegate_w2 = mk_task(wuss, close_on_idle_handle, &tc_w2);
     if (delegate_w2 == NULL) goto Failure;
     wuss_task_set_autoclose(delegate_w2, 1);
-    rc = wuss_window_create(delegate_w2, &box_w, "W2", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_w2, &box_w, "W2", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             box_size(&box_w), SIZE2D(0, 0),
                             &g_close_on_idle_win);
@@ -3966,7 +3966,7 @@ result_t wuss_test(const char *resources)
     delegate_w3 = mk_task(wuss, test_handle, &tc_w3);
     if (delegate_w3 == NULL) goto Failure;
     wuss_task_set_autoclose(delegate_w3, 1);
-    rc = wuss_window_create(delegate_w3, &box_w, "W3", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_w3, &box_w, "W3", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             box_size(&box_w), SIZE2D(0, 0), &win_w3);
     if (rc != result_OK)
@@ -4829,7 +4829,7 @@ QuitFail:
      * overlap in the titlebar. */
     box_hs.x0 = 5; box_hs.y0 = 5;
     box_hs.x1 = 125; box_hs.y1 = 85;
-    rc = wuss_window_create(delegate_hs, &box_hs, "HS", wuss_WINDOW_NONE,
+    rc = wuss_window_create(delegate_hs, &box_hs, "HS", wuss_WINDOW_DEFAULT,
                             wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                             SIZE2D(400, 400), SIZE2D(0, 0), &win_hs);
     if (rc != result_OK)
@@ -5038,7 +5038,7 @@ result_t wuss_test(const char *resources)
   printf("test: window_create too small\n");
 
   box_a.x0 = 0; box_a.y0 = 0; box_a.x1 = 100; box_a.y1 = 0;
-  rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_a, "toosmall", wuss_WINDOW_NONE,
+  rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_a, "toosmall", wuss_WINDOW_DEFAULT,
                           wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                           box_size(&box_a),
                           SIZE2D(0, 0), &win_a);

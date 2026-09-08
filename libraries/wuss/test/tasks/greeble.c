@@ -413,7 +413,7 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
   rc = wuss_window_create_placed(delegate,
                                  grid_px,
                                  "Greeble",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  grid_px,
                                  SIZE2D(0, 0),
