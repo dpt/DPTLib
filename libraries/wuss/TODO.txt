@@ -10,8 +10,6 @@ LAYER 0 - BUGS (fix before building on top)
 - Auto window placement packer still not working as expected
     blocks: reliable multi-window tasks
 - Image task not shrinking window when new image loads
-- Missing horizontal frame line under title bar
-- Resize-only windows? - check
 - Backdrop colours reversed? - check
 
 
@@ -39,9 +37,8 @@ LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
 LAYER 3 - SPRITES (needs masks, ColourTrans)
 
 - Sprites (with names, with masks, with multiple sprites)
+- Masked sprites/bitmaps. Covered by RLE work?
 - Sprite scaling
-- Icon sprites pool
-- Masked sprites/bitmaps
 - Draw bitmap through (bayer) mask
 - Import Kare style icons
 
