@@ -373,6 +373,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/scroll-step.c
     libraries/wuss/core/set-backdrop.c
     libraries/wuss/core/set-palette.c
+    libraries/wuss/core/text.c
     libraries/wuss/core/task/create.c
     libraries/wuss/core/task/destroy.c
     libraries/wuss/core/task/set-autoclose.c

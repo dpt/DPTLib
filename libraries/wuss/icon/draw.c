@@ -174,7 +174,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 
     light   = c->wuss->palette[c->wuss->bevel_light];
     dark    = c->wuss->palette[c->wuss->bevel_dark];
-    accent  = c->wuss->palette[c->wuss->accent_bg]; /* the action-button fill */
+    accent  = c->wuss->palette[c->wuss->accent]; /* the action-button fill */
     divider = c->wuss->palette[c->wuss->bevel_divider];
 
     if (icon->border == wuss_ICON_BORDER_ACTION)
@@ -212,8 +212,8 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 
   /* Measure the whole string, not the box interior: a clipped measurement
    * left the widest label of a right-justified set overhanging the rest. */
-  bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
-                 INT_MAX, NULL, &width);
+  wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
+                     INT_MAX, NULL, &width);
 
   if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_CENTRE)
     pos.x = b->x0 + ((b->x1 - b->x0) - width) / 2;
@@ -222,12 +222,10 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   else
     pos.x = b->x0 + 1;
 
-  /* +1 so the centred label sits visually level; integer division of the
-   * leftover vertical space rounds it one pixel high otherwise */
-  pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2 + 1;
+  pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
 
-  bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-              c->fg, bg, &pos, NULL);
+  wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
+                  c->fg, bg, &pos, NULL);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -247,9 +245,9 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
     int            split_point;
     bmfont_width_t width;
 
-    bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
-                   (b->x1 - b->x0) - WUSS_FRAME_CAPTION_INSET * 2,
-                   &split_point, &width);
+    wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
+                       (b->x1 - b->x0) - WUSS_FRAME_CAPTION_INSET * 2,
+                       &split_point, &width);
     cap_w = width;
   }
 
@@ -277,8 +275,8 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
 
     pos.x = cap_x;
     pos.y = b->y0;
-    bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                c->fg, bg, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
+                    c->fg, bg, &pos, NULL);
   }
 }
 
@@ -294,14 +292,20 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
   pressed    = wuss__icon_pressed(icon);
   is_default = (icon->flags & wuss_ICON_FLAGS_DEFAULT) != 0;
 
-  base  = c->wuss->palette[icon->bg];
+  /* a plain button whose spec left bg as wuss_NO_BACKGROUND takes the config
+   * button face */
+  base  = (icon->bg != wuss_NO_BACKGROUND)
+        ? c->wuss->palette[icon->bg]
+        : c->wuss->palette[c->wuss->button_bg];
   light = c->wuss->palette[c->wuss->bevel_light];
   dark  = c->wuss->palette[c->wuss->bevel_dark];
-  label = c->fg;
+  /* a default action button labels in button.fg to read against its accent
+   * fill; a plain button uses the icon's own fg */
+  label = is_default ? c->wuss->palette[c->wuss->button_fg] : c->fg;
 
-  /* a held button fills darker regardless of type */
+  /* a held button fills with the pressed shade regardless of type */
   if (pressed)
-    base = c->wuss->palette[c->wuss->bevel_pressed];
+    base = c->wuss->palette[c->wuss->button_pressed];
 
   if (icon->flags & wuss_ICON_FLAGS_DISABLED)
     label = c->wuss->palette[c->wuss->bevel_dark]; /* greyed: sink toward dark */
@@ -310,11 +314,12 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
   {
     /* default action button: an accent-filled rectangle inside the same 6px
      * "action" surround as wuss_ICON_BORDER_ACTION, distinct from the plain
-     * bevelled buttons around it */
+     * bevelled buttons around it. */
+
     screen_fill_rect(c->scr, b->x0, b->y0,
                      SIZE2D(b->x1 - b->x0, b->y1 - b->y0), base);
     icon_draw_action_border(c->scr, b, light, dark,
-                            c->wuss->palette[c->wuss->accent_bg], pressed);
+                            c->wuss->palette[c->wuss->accent], pressed);
   }
   else
   {
@@ -330,8 +335,8 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
 
     interior_w = MAX((b->x1 - b->x0) - 2, 1);
 
-    bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
-                   interior_w, &split_point, &width);
+    wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
+                       interior_w, &split_point, &width);
 
     pos.x = b->x0 + ((b->x1 - b->x0) - width) / 2;
     pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
@@ -341,8 +346,8 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
       pos.y += 1;
     }
 
-    bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                label, base, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
+                    label, base, &pos, NULL);
   }
 }
 
@@ -412,14 +417,14 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     tx = g.x1 + 4;
     interior_w = MAX((b->x1 - tx) - 1, 1);
 
-    bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
-                   interior_w, &split_point, &width);
+    wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
+                       interior_w, &split_point, &width);
     NOT_USED(width);
 
     pos.x = tx;
     pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
-    bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                glyph, bg, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
+                    glyph, bg, &pos, NULL);
   }
 }
 
@@ -544,12 +549,12 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
      * the same width is left spare at text_x1 too since the fill already
      * spans the full column */
     space_w = 0;
-    bmfont_measure(c->font, " ", 1, INT_MAX, NULL, &space_w);
+    wuss__text_measure(c->font, " ", 1, INT_MAX, NULL, &space_w);
 
     pos.x = text_x0 + (int) space_w;
     pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
-    bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                text_ink, text_ground, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
+                    text_ink, text_ground, &pos, NULL);
   }
 }
 

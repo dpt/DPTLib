@@ -524,9 +524,11 @@ result_t wuss_test(const char *resources)
   bad_config.furniture.scroll.sausages = 0;
   bad_config.bevel.light               = 0;
   bad_config.bevel.dark                = 0;
-  bad_config.bevel.pressed             = 0;
-  bad_config.accent.bg                 = 0;
-  bad_config.accent.fg                 = 0;
+  bad_config.bevel.divider             = 0;
+  bad_config.button.bg                 = 0;
+  bad_config.button.fg                 = 0;
+  bad_config.button.pressed            = 0;
+  bad_config.accent.colour             = 0;
   rc = wuss_create(&scr, NULL, 0, NULL, 0, &bad_config, NULL, &bad_wuss);
   if (rc != result_WUSS_BAD_COLOUR)
     goto Failure;
