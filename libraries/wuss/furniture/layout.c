@@ -56,6 +56,19 @@ void wuss__furniture_layout_build(wuss_window_t *window)
 
     push_piece(layout, &titlebar, wuss__FURNITURE_PAINT_TITLE_BG);
 
+    /* dividing rule between the titlebar and the content, full width between
+     * the side outlines. Drawn as the titlebar's own bottom pixel row (no
+     * geometry moves), over the fill just pushed. */
+    {
+      box_t rule;
+
+      rule.x0 = titlebar.x0;
+      rule.x1 = titlebar.x1;
+      rule.y0 = titlebar.y1 - WUSS_DIVIDER_PX;
+      rule.y1 = titlebar.y1;
+      push_piece(layout, &rule, wuss__FURNITURE_PAINT_OUTLINE);
+    }
+
     if (!(window->flags & wuss_WINDOW_NO_CLOSE))
     {
       box_t close;

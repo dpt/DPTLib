@@ -4997,6 +4997,50 @@ QuitFail:
     }
   }
 
+  printf("test: a titlebar carries a full-width divider rule at its foot\n");
+
+  {
+    static test_task_t tc_dv;
+    wuss_task_t       *delegate_dv;
+    box_t              box_dv;
+    wuss_window_t     *win_dv;
+    int                i, found;
+
+    tc_dv.redraw_count = 0;
+    tc_dv.mouse_count  = 0;
+    delegate_dv = mk_task(wuss, test_handle, &tc_dv);
+    if (delegate_dv == NULL) goto Failure;
+
+    box_dv.x0 = 5; box_dv.y0 = 5;
+    box_dv.x1 = 125; box_dv.y1 = 85;
+    rc = wuss_window_create(delegate_dv, &box_dv, "DV", wuss_WINDOW_DEFAULT,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            SIZE2D(400, 400), SIZE2D(0, 0), &win_dv);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss__furniture_layout_build(win_dv);
+
+    /* an OUTLINE piece exactly one pixel tall, sitting on the titlebar's
+     * bottom edge and spanning its full width */
+    found = 0;
+    for (i = 0; i < win_dv->furniture_layout.npieces; i++)
+    {
+      const wuss__furniture_piece_t *p = &win_dv->furniture_layout.pieces[i];
+
+      if (p->paint == wuss__FURNITURE_PAINT_OUTLINE &&
+          p->rect.y1 == win_dv->furniture_layout.titlebar.y1 &&
+          p->rect.y1 - p->rect.y0 == WUSS_DIVIDER_PX &&
+          p->rect.x0 == win_dv->furniture_layout.titlebar.x0 &&
+          p->rect.x1 == win_dv->furniture_layout.titlebar.x1)
+        found = 1;
+    }
+    if (!found)
+      goto Failure;
+
+    wuss_window_close(win_dv);
+  }
+
   printf("test: wuss_icons_load scans resources/wuss/icons and compresses\n");
 
   {
