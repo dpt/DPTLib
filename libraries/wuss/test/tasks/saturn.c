@@ -94,7 +94,7 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t *task)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(SATURN_SIZE, SATURN_SIZE),
                                  "Saturn",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  SIZE2D(SATURN_SIZE, SATURN_SIZE),
                                  SIZE2D(0, 0),
@@ -135,9 +135,10 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
 
   screen_fill_rect(scr, content->x0, content->y0, box_size(content), task->bg);
 
-  /* no scroll: window is fixed at SATURN_SIZE and non-resizable */
-  ox = bounds->x0;
-  oy = bounds->y0;
+  /* plot in doc space (saturn_plot clips to 0..SATURN_SIZE); origin carries
+   * the scroll so a scrolled/shrunk window shows the right slice */
+  ox = bounds->x0 - event->data.redraw.scroll.x;
+  oy = bounds->y0 - event->data.redraw.scroll.y;
 
   saturn_rnd_seed(task->seed);
 

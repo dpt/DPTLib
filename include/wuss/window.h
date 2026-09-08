@@ -49,7 +49,7 @@ extern "C"
  *                     wuss_WINDOW_NO_TITLEBAR.
  * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR /
  *                     wuss_WINDOW_NO_OUTLINE, OR'd together, or
- *                     wuss_WINDOW_NONE for the default furniture.
+ *                     wuss_WINDOW_DEFAULT for the default furniture.
  * \param[in]  bg      Content background, filled by Wuss before each redraw:
  *                     a flat colour or an 8x8 fill pattern (see
  *                     wuss_backdrop_t). Set its colour to wuss_NO_BACKGROUND

@@ -191,7 +191,7 @@ wuss_furniture_palette_t;
 typedef enum wuss_window_flags
 {
   /** Default: every furniture region drawn. */
-  wuss_WINDOW_NONE           = 0,
+  wuss_WINDOW_DEFAULT        = 0,
 
   /**
    * No titlebar; content fills the full visible area, and no drag handle
