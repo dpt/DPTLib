@@ -34,7 +34,7 @@
 enum
 {
   ICONS_N_INTRO   = 4, /* heading, counter button, counter label, scrolled-away button */
-  ICONS_N_BUTTONS = 4, /* frame + normal + default + disabled button */
+  ICONS_N_BUTTONS = 5, /* frame + 2x2 grid: default/normal x plain/disabled */
   ICONS_N_RADIOS  = 8, /* frame + 3 radios + option + state label + 2 justified labels */
   ICONS_N_BITMAPS = 3, /* frame + decorative + interactive bitmap */
   ICONS_N_ICONSET = 5, /* frame + opton + optoff + radon + radoff from the loaded set */
@@ -110,51 +110,61 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
   lay->n++;
 }
 
-/* A grouping frame captioned "Buttons", with a normal, a default (accent) and
- * a disabled button side by side inside it. */
+/* A grouping frame captioned "Buttons", holding a 2x2 grid: column 0 is the
+ * DEFAULT (accent) button, column 1 the plain one; the bottom row adds
+ * DISABLED. The DEFAULT column is inset 4px on every side to seat the accent
+ * icon's 6px action surround. */
 static void icons_add_buttons(icons_layout_t *lay)
 {
   wuss_icon_spec_t *s;
   int               top;
+  int               col;
+  int               row;
+  int               x;
+  int               y;
 
   top     = lay->y;
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 56);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 90);
   s->type = wuss_ICON_TYPE_FRAME;
   s->text = "Buttons";
   s->fg   = lay->black;
   s->bg   = wuss_NO_BACKGROUND;
   lay->n++;
 
-  s        = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 22, 56, 22);
-  s->type  = wuss_ICON_TYPE_BUTTON;
-  s->text  = "Normal";
-  s->fg    = lay->black;
-  s->bg    = lay->window;
-  lay->n++;
+  for (row = 0; row < 2; row++)
+  {
+    for (col = 0; col < 2; col++)
+    {
+      x = ICONS_MARGIN + 10 + col * 100;
+      y = top + 22 + row * 34;
 
-  s        = &lay->specs[lay->n];
-  /* 4px larger on every side than the plain buttons beside it to seat the
-   * DEFAULT icon's 6px action surround */
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 70, top + 18, 64, 30);
-  s->type  = wuss_ICON_TYPE_BUTTON;
-  s->text  = "Default";
-  s->fg    = lay->black;
-  s->bg    = lay->window;
-  s->flags = wuss_ICON_FLAGS_DEFAULT;
-  lay->n++;
+      s       = &lay->specs[lay->n];
+      s->fg   = lay->black;
+      s->bg   = lay->window;
+      s->type = wuss_ICON_TYPE_BUTTON;
 
-  s        = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 138, top + 22, 56, 22);
-  s->type  = wuss_ICON_TYPE_BUTTON;
-  s->text  = "Disabled";
-  s->fg    = lay->black;
-  s->bg    = lay->window;
-  s->flags = wuss_ICON_FLAGS_DISABLED;
-  lay->n++;
+      if (col == 0)
+      {
+        s->bbox  = (box_t) BOX_POS_SIZE(x - 4, y - 4, 64, 30);
+        s->text  = "Default";
+        s->flags = wuss_ICON_FLAGS_DEFAULT;
+      }
+      else
+      {
+        s->bbox  = (box_t) BOX_POS_SIZE(x, y, 56, 22);
+        s->text  = "Normal";
+        s->flags = 0;
+      }
 
-  lay->y = top + 70;
+      if (row == 1)
+        s->flags |= wuss_ICON_FLAGS_DISABLED;
+
+      lay->n++;
+    }
+  }
+
+  lay->y = top + 104;
 }
 
 /* A grouping frame captioned "Radios & options", with two justified labels,
