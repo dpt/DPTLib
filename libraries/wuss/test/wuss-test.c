@@ -4925,7 +4925,9 @@ QuitFail:
       wuss_WINDOW_NO_OUTLINE,
       wuss_WINDOW_NO_RESIZE,
       wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
-      wuss_WINDOW_NO_BACK,
+      wuss_WINDOW_NO_VSCROLL, /* one scrollbar + resize: carve is 0 on the */
+      wuss_WINDOW_NO_HSCROLL, /* stripless axis, so the icon's near edge is */
+      wuss_WINDOW_NO_BACK,    /* the only thing sizing its hit box */
       wuss_WINDOW_NO_TOGGLE_SIZE,
       wuss_WINDOW_NO_CLOSE,
       wuss_WINDOW_NO_TITLEBAR
@@ -4963,6 +4965,24 @@ QuitFail:
         printf("wuss_test: combo index %u (flags 0x%X) failed the hit sweep\n",
                i, (unsigned int) combos[i]);
         goto Failure;
+      }
+
+      /* Where the window keeps its resize icon, the icon's own drawn centre
+       * must hit RESIZE. The sweep alone misses a collapsed hit box: those
+       * pixels just fall to a neighbouring region, still leak-free. */
+      if (!(combos[i] & wuss_WINDOW_NO_RESIZE))
+      {
+        box_t resize;
+
+        wuss__resize_box(win_cb, &resize);
+        if (wuss__furniture_hit_test(win_cb,
+              POINT((resize.x0 + resize.x1) / 2,
+                    (resize.y0 + resize.y1) / 2)) != wuss_FURNITURE_RESIZE)
+        {
+          printf("wuss_test: combo index %u (flags 0x%X): resize icon centre "
+                 "does not hit RESIZE\n", i, (unsigned int) combos[i]);
+          goto Failure;
+        }
       }
 
       if ((combos[i] & wuss_WINDOW_NO_BACK) &&
