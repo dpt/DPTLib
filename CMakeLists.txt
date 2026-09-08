@@ -249,8 +249,10 @@ set(DATASTRUCT_SOURCES
 
 set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/bitmap.c
+    libraries/framebuf/bitmap/compress.c
     libraries/framebuf/bitmap/fill-pattern.c
     libraries/framebuf/bitmap/load.c
+    libraries/framebuf/bitmap/rle.h
     libraries/framebuf/bitmap/save.c
     libraries/framebuf/bmfont/bmfont.c
     libraries/framebuf/bmfont/enumerate.c
@@ -261,6 +263,8 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/pattern/pattern.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/screen/screen.c
+    libraries/framebuf/screen/screen-copy-bitmap-rle.c
+    libraries/framebuf/screen/screen-copy-bitmap-rle.h
     libraries/framebuf/screen/screen-copy-ninepatch.c
     libraries/framebuf/screen/screen-copy-rect.c
     libraries/framebuf/screen/screen-draw.c
@@ -659,6 +663,7 @@ if(BUILD_TESTS)
         libraries/datastruct/hash/test/hash-test.c
         libraries/datastruct/list/test/list-test.c
         libraries/datastruct/ntree/test/ntree-test.c
+        libraries/framebuf/bitmap/test/rle-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c

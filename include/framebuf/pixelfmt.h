@@ -95,6 +95,27 @@ typedef unsigned int   pixelfmt_argb8888_t; /* 32bpp argb8888 */
 
 typedef unsigned int   pixelfmt_xxxa8888_t; /* any 32bpp alpha */
 
+/* ----------------------------------------------------------------------- */
+
+/**
+ * Bit 30 of a bitmap's `format` word flags an RLE-compressed pixel store:
+ * its `base` points at an encoded blob rather than a raw `rowbytes`-strided
+ * buffer. The low bits still hold the real \ref pixelfmt_t of a decoded
+ * pixel, so `size`, `palette` and `span` stay valid while compressed. Bit 30
+ * (not the sign bit) keeps the word non-negative.
+ *
+ * \see pixelfmt_base, pixelfmt_is_rle
+ */
+#define pixelfmt_RLE_FLAG   (1 << 30)
+
+/** Strip any flag bits, yielding the underlying pixel format. */
+#define pixelfmt_base(f)    ((pixelfmt_t) ((f) & (pixelfmt_RLE_FLAG - 1)))
+
+/** Non-zero if `f` names an RLE-compressed pixel store. */
+#define pixelfmt_is_rle(f)  (((f) & pixelfmt_RLE_FLAG) != 0)
+
+/* ----------------------------------------------------------------------- */
+
 typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */
 typedef unsigned char  pixelfmt_any8_t; /* any 8bpp pixel */
 typedef unsigned short pixelfmt_any16_t; /* any 16bpp pixel */

@@ -72,6 +72,12 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
 
   assert(bm);
 
+  if (pixelfmt_is_rle(bm->format))
+  {
+    assert(!"bitmap_clear on compressed bitmap");
+    return;
+  }
+
   log2bpp = pixelfmt_log2bpp(bm->format);
   px = colour_to_pixel(bm->palette,
                        bm->palette ? 1 << (1 << log2bpp) : 0,
@@ -188,6 +194,9 @@ result_t bitmap_convert(const bitmap_t *src,
                         bitmap_t      **dst)
 {
   *dst = NULL;
+
+  if (pixelfmt_is_rle(src->format))
+    return result_NOT_SUPPORTED;
 
   switch (src->format)
   {
