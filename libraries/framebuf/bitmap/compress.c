@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "base/debug.h"
 #include "base/result.h"
 #include "base/utils.h"
 #include "utils/barith.h"
@@ -294,8 +295,8 @@ const uint8_t *bitmap__rle_decode_row(const uint8_t *p,
     uint8_t op;
     int     id;
     int     length;
-    int     take;      /* pixels of this run actually written */
-    int     drop;      /* pixels of this run swallowed by `skip` */
+    int     take; /* pixels of this run actually written */
+    int     drop; /* pixels of this run swallowed by `skip` */
 
     op = *p++;
     id = clz8(op);
@@ -500,20 +501,20 @@ static int rle__format_ok(pixelfmt_t fmt, int *has_alpha)
 
 result_t bitmap_compress(bitmap_t *bm)
 {
-  result_t  rc;
-  pixelfmt_t base;
-  int       has_alpha;
-  int       log2bpp;
-  int       bpp;
-  int       w, h;
-  size_t    worst;
-  size_t    rowworst;
-  uint8_t  *blob;
-  uint8_t  *cursor;
+  result_t       rc;
+  pixelfmt_t     base;
+  int            has_alpha;
+  int            log2bpp;
+  int            bpp;
+  int            w, h;
+  size_t         worst;
+  size_t         rowworst;
+  uint8_t       *blob;
+  uint8_t       *cursor;
   const uint8_t *srcrow;
-  uint32_t  data_len;
-  uint8_t  *shrunk;
-  int       y;
+  uint32_t       data_len;
+  uint8_t       *shrunk;
+  int            y;
 
   assert(bm);
 
@@ -560,6 +561,13 @@ result_t bitmap_compress(bitmap_t *bm)
   }
 
   data_len = (uint32_t) (cursor - blob - bitmap__RLE_HEADER_SIZE);
+
+  if ((size_t) bitmap__RLE_HEADER_SIZE + data_len >= (size_t) bm->rowbytes * h)
+    logf_warning("bitmap_compress: %ux%u RLE grew to %u bytes from %zu",
+                 (unsigned) w, (unsigned) h,
+                 (unsigned) (bitmap__RLE_HEADER_SIZE + data_len),
+                 (size_t) bm->rowbytes * h);
+
   bitmap__rle_put32(blob + 0, (uint32_t) bm->rowbytes);
   bitmap__rle_put32(blob + 4, data_len);
 

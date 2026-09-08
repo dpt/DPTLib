@@ -187,6 +187,13 @@ wuss_icon_flags_t;
 #define wuss_ICON_FONT_OF(f)    (((f) >> 9) & 3)
 
 /**
+ * Encode a 0-based icon-set index (from \ref wuss_icons_lookup) for
+ * wuss_icon_spec::icon_set. The stored value is offset by one so a
+ * zero-initialised spec reads as "no icon-set entry".
+ */
+#define wuss_ICON_SET(i)        ((i) + 1)
+
+/**
  * Description of an icon at creation. Copied by value into the icon; the
  * caller keeps ownership of \c text, which is copied.
  *
@@ -213,8 +220,15 @@ typedef struct wuss_icon_spec
   screen_pattern_t  pattern;
   /** wuss_ICON_TYPE_BITMAP: the image to draw. Borrowed, not copied; must
    *  outlive the icon. Ignored by other types; NULL (the default) is only valid
-   *  when type is not wuss_ICON_TYPE_BITMAP. */
+   *  when type is not wuss_ICON_TYPE_BITMAP, or when \c icon_set selects a
+   *  bitmap from the window manager's loaded icon set instead. */
   const bitmap_t   *bitmap;
+  /** wuss_ICON_TYPE_BITMAP: when \c bitmap is NULL, draw an entry from the
+   *  window manager's loaded icon set (see \ref wuss_icons_load). Zero (the
+   *  default for a zero-initialised spec) means "no icon-set entry"; encode a
+   *  0-based index from \ref wuss_icons_lookup with \ref wuss_ICON_SET.
+   *  Ignored by other types and when \c bitmap is set. */
+  int               icon_set;
   /** wuss_ICON_TYPE_RADIO: exclusive-selection group. Selecting a radio clears
    *  every other selected radio on the same window with the same group. Zero
    *  (the default) means "no group": such a radio still toggles but never
@@ -382,6 +396,59 @@ int wuss_icon_get_selected(const wuss_icon_t *icon);
  * \param[in] selected Non-zero to select, zero to deselect.
  */
 void wuss_icon_set_selected(wuss_icon_t *icon, int selected);
+
+/* ----------------------------------------------------------------------- */
+
+/**
+ * Scan a directory for PNG images and load them as the window manager's icon
+ * set. Each ".png" file becomes one indexed entry: its pixels are loaded and
+ * then RLE-compressed in place (see \ref bitmap_compress), and its leafname
+ * sans ".png" is recorded so \ref wuss_icons_lookup can resolve it back to
+ * the index. Non-".png" entries are ignored. Entry indices are assigned in
+ * the order the platform's directory scan yields, which is unspecified --
+ * address entries by name, not by a hardcoded index.
+ *
+ * Calling this again replaces the previous set (the old bitmaps and names
+ * are freed). \ref wuss_destroy frees the set.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] dir  Directory to scan for "*.png".
+ * \return \ref result_OK on success (including an empty or missing
+ *         directory, which yields a zero-length set), \ref result_OOM on
+ *         allocation failure, or a code propagated from the PNG loader or
+ *         the compressor (the set is left empty on failure).
+ */
+result_t wuss_icons_load(wuss_t *wuss, const char *dir);
+
+/**
+ * Number of entries in the loaded icon set (see \ref wuss_icons_load). Zero
+ * if none has been loaded.
+ *
+ * \param[in] wuss Window manager.
+ * \return The entry count.
+ */
+int wuss_icons_count(const wuss_t *wuss);
+
+/**
+ * Resolve an icon-set entry's name to its index.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] name Entry name: a loaded file's leafname without ".png".
+ * \return The 0-based index, or -1 if no entry has that name. Pass the index
+ *         through \ref wuss_ICON_SET to put it in a spec's \c icon_set.
+ */
+int wuss_icons_lookup(const wuss_t *wuss, const char *name);
+
+/**
+ * Fetch an icon-set entry's (compressed) bitmap by index.
+ *
+ * \param[in] wuss  Window manager.
+ * \param[in] index 0-based index, 0..\ref wuss_icons_count -1.
+ * \return The bitmap, owned by the window manager and valid until the next
+ *         \ref wuss_icons_load or \ref wuss_destroy, or NULL if \p index is
+ *         out of range.
+ */
+const bitmap_t *wuss_icons_bitmap(const wuss_t *wuss, int index);
 
 #endif /* WUSS_ICONS */
 

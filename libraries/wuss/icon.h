@@ -114,4 +114,9 @@ wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point);
  * not invalidate or swap-remove. */
 void wuss__icons_free(wuss_window_t *window);
 
+/* Free the wuss-wide icon set loaded by wuss_icons_load (the atom_set and the
+ * compressed bitmaps), leaving the fields NULL / 0. Safe on an unloaded set.
+ * Called by wuss_icons_load before a reload and by wuss_destroy. */
+void wuss__icons_registry_free(wuss_t *wuss);
+
 #endif /* WUSS_ICON_IMPL_H */

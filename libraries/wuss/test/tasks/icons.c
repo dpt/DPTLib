@@ -23,7 +23,7 @@
 #include "icons.h"
 
 #define ICONS_DOC_W    260
-#define ICONS_DOC_H    1100 /* taller than the window, so scrolling is exercised */
+#define ICONS_DOC_H    1160 /* taller than the window, so scrolling is exercised */
 #define ICONS_MARGIN   28  /* left edge of everything except frame captions */
 #define ICONS_ROW      20  /* vertical pitch between stacked simple icons */
 
@@ -37,12 +37,13 @@ enum
   ICONS_N_BUTTONS = 4, /* frame + normal + default + disabled button */
   ICONS_N_RADIOS  = 8, /* frame + 3 radios + option + state label + 2 justified labels */
   ICONS_N_BITMAPS = 3, /* frame + decorative + interactive bitmap */
+  ICONS_N_ICONSET = 5, /* frame + opton + optoff + radon + radoff from the loaded set */
   ICONS_N_PATTERN = 2, /* frame + one PATTERN swatch */
   ICONS_N_BORDERS = 6, /* frame + GROOVE + RIDGE + ACTION + DIVIDER labels */
   ICONS_N_MENU    = 7, /* plain, ticked, swatch, submenu, disabled, rule, separator entry */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
-                    ICONS_N_BITMAPS + ICONS_N_PATTERN + ICONS_N_BORDERS +
-                    ICONS_N_MENU
+                    ICONS_N_BITMAPS + ICONS_N_ICONSET + ICONS_N_PATTERN +
+                    ICONS_N_BORDERS + ICONS_N_MENU
 };
 
 /* Running state threaded through the icons_add_* helpers: where to write the
@@ -269,6 +270,54 @@ static void icons_add_bitmaps(icons_layout_t *lay,
   lay->y = top + sprite->size.h + 50;
 }
 
+/* A grouping frame captioned "Icon set", holding the four fixtures loaded by
+ * wuss_icons_load -- opton/optoff/radon/radoff -- each drawn as a BITMAP icon
+ * that references the loaded set by index via wuss_ICON_SET. Laid out only
+ * when the set loaded (all four looked up); skipped otherwise. */
+static void icons_add_iconset(icons_layout_t *lay, const wuss_t *wuss)
+{
+  static const char *const names[4] = { "opton", "optoff", "radon", "radoff" };
+  wuss_icon_spec_t        *s;
+  int                      top;
+  int                      idx[4];
+  int                      i;
+
+  for (i = 0; i < 4; i++)
+  {
+    idx[i] = wuss_icons_lookup(wuss, names[i]);
+    if (idx[i] < 0)
+      return;
+  }
+
+  top     = lay->y;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 44);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "Icon set";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  for (i = 0; i < 4; i++)
+  {
+    const bitmap_t *bm;
+    int             w, h;
+
+    bm = wuss_icons_bitmap(wuss, idx[i]);
+    w  = bm ? bm->size.w : 16;
+    h  = bm ? bm->size.h : 16;
+
+    s           = &lay->specs[lay->n];
+    s->bbox     = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10 + i * (w + 6),
+                                       top + 20, w, h);
+    s->type     = wuss_ICON_TYPE_BITMAP;
+    s->icon_set = wuss_ICON_SET(idx[i]);
+    lay->n++;
+  }
+
+  lay->y = top + 60;
+}
+
 /* A grouping frame captioned "Pattern", holding one PATTERN-filled swatch. */
 static void icons_add_pattern(icons_layout_t *lay)
 {
@@ -467,6 +516,18 @@ result_t icons_create(wuss_t       *wuss,
   if (bitmap_load_png(&task->sprite, sprite_path) == result_OK)
     task->has_sprite = 1;
 
+  /* load the wuss-wide icon set; path_join_filename hands back one shared
+   * static buffer and wuss_icons_load re-joins per file, so copy it first */
+  {
+    char icons_dir[256];
+
+    strncpy(icons_dir,
+            path_join_filename(resources, 3, "resources", "wuss", "icons"),
+            sizeof(icons_dir) - 1);
+    icons_dir[sizeof(icons_dir) - 1] = '\0';
+    (void) wuss_icons_load(wuss, icons_dir); /* absent set just skips the group */
+  }
+
   delegate_desc.handle    = icons_handle;
   delegate_desc.task_data = task;
   delegate_desc.name      = "icons";
@@ -515,6 +576,7 @@ result_t icons_create(wuss_t       *wuss,
   icons_add_buttons(&lay);
   icons_add_radios(&lay, &i_opt, &i_state);
   icons_add_bitmaps(&lay, task->has_sprite ? &task->sprite : NULL, &i_hotspot);
+  icons_add_iconset(&lay, wuss);
   icons_add_pattern(&lay);
   icons_add_borders(&lay);
   icons_add_menu(&lay, &i_ticked);
