@@ -51,6 +51,7 @@ void wuss__rebuild_palettecache(wuss_t *wuss)
   cache[wuss_COLOUR_BUTTON_HILIGHT - wuss_COLOUR_SYMBOLIC] = wuss->bevel_light;
   cache[wuss_COLOUR_BUTTON_SHADOW  - wuss_COLOUR_SYMBOLIC] = wuss->bevel_dark;
   cache[wuss_COLOUR_BUTTON_PRESSED - wuss_COLOUR_SYMBOLIC] = wuss->bevel_pressed;
+  cache[wuss_COLOUR_BORDER_DIVIDER - wuss_COLOUR_SYMBOLIC] = wuss->bevel_divider;
   cache[wuss_COLOUR_ACCENT_BG      - wuss_COLOUR_SYMBOLIC] = wuss->accent_bg;
   cache[wuss_COLOUR_ACCENT_FG      - wuss_COLOUR_SYMBOLIC] = wuss->accent_fg;
 #endif

@@ -139,6 +139,7 @@ typedef unsigned char wuss_colour_t;
  * concrete index -- e.g. wuss_COLOUR_TITLE_BG is furniture.title.bg,
  * wuss_COLOUR_BUTTON_HILIGHT is bevel.light, wuss_COLOUR_BUTTON_SHADOW is
  * bevel.dark, wuss_COLOUR_BUTTON_PRESSED is bevel.pressed,
+ * wuss_COLOUR_BORDER_DIVIDER is bevel.divider,
  * wuss_COLOUR_BACKDROP is backdrop.colour,
  * wuss_COLOUR_WINDOW is body.window, wuss_COLOUR_MENU is body.menu. */
 #define wuss_COLOUR_TITLE_BG        (wuss_COLOUR_SYMBOLIC + 16)
@@ -151,6 +152,7 @@ typedef unsigned char wuss_colour_t;
 #define wuss_COLOUR_WINDOW          (wuss_COLOUR_SYMBOLIC + 23)
 #define wuss_COLOUR_MENU            (wuss_COLOUR_SYMBOLIC + 24)
 #define wuss_COLOUR_BUTTON_PRESSED  (wuss_COLOUR_SYMBOLIC + 25)
+#define wuss_COLOUR_BORDER_DIVIDER  (wuss_COLOUR_SYMBOLIC + 26)
 
 /** Furniture chrome colours, one entry per class of furniture. Title is
  * the only two-tone class (fill + text); the rest are drawn as a single
@@ -329,17 +331,21 @@ typedef struct wuss_config
    * Bevelled work-area button edge shades, as indices into the system
    * palette: light on the top/left edges, dark on the bottom/right (swapped
    * when the button is pressed). pressed is the button face fill while it is
-   * held down, in place of the icon's own background. light and dark default
-   * to the titlebar fill colour when config is NULL; pressed defaults to
-   * dark. Read back through wuss_COLOUR_BUTTON_HILIGHT /
-   * wuss_COLOUR_BUTTON_SHADOW / wuss_COLOUR_BUTTON_PRESSED. Ignored when
-   * both WUSS_FURNITURE and WUSS_ICONS are off.
+   * held down, in place of the icon's own background. divider is the lighter
+   * edge shade for a wuss_ICON_BORDER_DIVIDER label surround, paired with
+   * light for its sunken and raised rings. light and dark default to the
+   * titlebar fill colour when config is NULL; pressed defaults to dark;
+   * divider defaults to light. Read back through wuss_COLOUR_BUTTON_HILIGHT
+   * / wuss_COLOUR_BUTTON_SHADOW / wuss_COLOUR_BUTTON_PRESSED /
+   * wuss_COLOUR_BORDER_DIVIDER. Ignored when both WUSS_FURNITURE and
+   * WUSS_ICONS are off.
    */
   struct
   {
     wuss_colour_t light;   /**< Top/left bevel edge. */
     wuss_colour_t dark;    /**< Bottom/right bevel edge. */
     wuss_colour_t pressed; /**< Button face fill while held down. */
+    wuss_colour_t divider; /**< Lighter edge shade for a DIVIDER border. */
   }
   bevel;
 

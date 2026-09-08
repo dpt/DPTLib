@@ -35,52 +35,54 @@
 
 /* Furniture/bevel/accent/backdrop/body colour indices, one row per palette.
  * Same field order as the assignments in fill_chrome_config. */
-static const wuss_colour_t g_chrome[2][19] =
+static const wuss_colour_t g_chrome[2][20] =
 {
   /* PICO-8 */
   {
-    palette_PICO8_DARK_BLUE,
-    palette_PICO8_WHITE,
-    palette_PICO8_DARK_BLUE,
-    palette_PICO8_GREEN,
-    palette_PICO8_RED,
-    palette_PICO8_ORANGE,
-    palette_PICO8_LAVENDER,
-    palette_PICO8_BLUE,
-    palette_PICO8_DARK_BLUE,
-    palette_PICO8_LIGHT_GREY,
-    palette_PICO8_WHITE,
-    palette_PICO8_DARK_GREY,
-    palette_PICO8_LAVENDER,
-    palette_PICO8_ORANGE,
-    palette_PICO8_WHITE,
-    palette_PICO8_WHITE,
-    palette_PICO8_LIGHT_GREY,
-    palette_PICO8_LIGHT_GREY,
-    palette_PICO8_WHITE
+    palette_PICO8_DARK_BLUE,  /* [0]  furniture.title.bg        */
+    palette_PICO8_WHITE,      /* [1]  furniture.title.fg        */
+    palette_PICO8_DARK_BLUE,  /* [2]  furniture.outline         */
+    palette_PICO8_GREEN,      /* [3]  furniture.back            */
+    palette_PICO8_RED,        /* [4]  furniture.close           */
+    palette_PICO8_ORANGE,     /* [5]  furniture.toggle          */
+    palette_PICO8_LAVENDER,   /* [6]  furniture.resize          */
+    palette_PICO8_BLUE,       /* [7]  furniture.scroll.arrows   */
+    palette_PICO8_DARK_BLUE,  /* [8]  furniture.scroll.wells    */
+    palette_PICO8_LIGHT_GREY, /* [9]  furniture.scroll.sausages */
+    palette_PICO8_WHITE,      /* [10] bevel.light               */
+    palette_PICO8_DARK_GREY,  /* [11] bevel.dark                */
+    palette_PICO8_LIGHT_GREY, /* [12] bevel.pressed             */
+    palette_PICO8_LIGHT_GREY, /* [13] bevel.divider             */
+    palette_PICO8_LAVENDER,   /* [14] accent.bg                 */
+    palette_PICO8_ORANGE,     /* [15] accent.fg                 */
+    palette_PICO8_WHITE,      /* [16] backdrop.colour           */
+    palette_PICO8_WHITE,      /* [17] backdrop.pattern_bg       */
+    palette_PICO8_LIGHT_GREY, /* [18] body.window               */
+    palette_PICO8_LIGHT_GREY  /* [19] body.menu                 */
   },
 
   /* RISC OS 16-colour Wimp */
   {
-    palette_WIMP16_GREY_75,
-    palette_WIMP16_BLACK,
-    palette_WIMP16_BLACK,
-    palette_WIMP16_GREEN,
-    palette_WIMP16_RED,
-    palette_WIMP16_ORANGE,
-    palette_WIMP16_LIGHT_BLUE,
-    palette_WIMP16_GREY_50,
-    palette_WIMP16_GREY_62,
-    palette_WIMP16_GREY_87,
-    palette_WIMP16_WHITE,
-    palette_WIMP16_GREY_50,
-    palette_WIMP16_GREY_62,
-    palette_WIMP16_ORANGE,
-    palette_WIMP16_BLACK,
-    palette_WIMP16_GREY_50,
-    palette_WIMP16_GREY_37,
-    palette_WIMP16_GREY_87,
-    palette_WIMP16_WHITE
+    palette_WIMP16_GREY_75,   /* [0]  furniture.title.bg        */
+    palette_WIMP16_BLACK,     /* [1]  furniture.title.fg        */
+    palette_WIMP16_BLACK,     /* [2]  furniture.outline         */
+    palette_WIMP16_GREEN,     /* [3]  furniture.back            */
+    palette_WIMP16_RED,       /* [4]  furniture.close           */
+    palette_WIMP16_ORANGE,    /* [5]  furniture.toggle          */
+    palette_WIMP16_LIGHT_BLUE,/* [6]  furniture.resize          */
+    palette_WIMP16_GREY_50,   /* [7]  furniture.scroll.arrows   */
+    palette_WIMP16_GREY_62,   /* [8]  furniture.scroll.wells    */
+    palette_WIMP16_GREY_87,   /* [9]  furniture.scroll.sausages */
+    palette_WIMP16_WHITE,     /* [10] bevel.light               */
+    palette_WIMP16_GREY_50,   /* [11] bevel.dark                */
+    palette_WIMP16_GREY_87,   /* [12] bevel.pressed             */
+    palette_WIMP16_GREY_87,   /* [13] bevel.divider             */
+    palette_WIMP16_GREY_62,   /* [14] accent.bg                 */
+    palette_WIMP16_ORANGE,    /* [15] accent.fg                 */
+    palette_WIMP16_BLACK,     /* [16] backdrop.colour           */
+    palette_WIMP16_GREY_50,   /* [17] backdrop.pattern_bg       */
+    palette_WIMP16_GREY_37,   /* [18] body.window               */
+    palette_WIMP16_GREY_87    /* [19] body.menu                 */
   }
 };
 
@@ -102,13 +104,14 @@ static void fill_chrome_config(wuss_config_t *config, int palette_index)
   config->bevel.light               = c[10];
   config->bevel.dark                = c[11];
   config->bevel.pressed             = c[12];
-  config->accent.bg                 = c[13];
-  config->accent.fg                 = c[14];
-  config->backdrop.colour           = c[15];
+  config->bevel.divider             = c[13];
+  config->accent.bg                 = c[14];
+  config->accent.fg                 = c[15];
+  config->backdrop.colour           = c[16];
   config->backdrop.pattern          = screen_PATTERN_DOTS;
-  config->backdrop.pattern_bg       = c[16];
-  config->body.window               = c[17];
-  config->body.menu                 = c[18];
+  config->backdrop.pattern_bg       = c[17];
+  config->body.window               = c[18];
+  config->body.menu                 = c[19];
 }
 
 /* Redraw the whole screen one pixel at a time: each wuss_redraw_dirty call is
