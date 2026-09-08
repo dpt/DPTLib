@@ -20,7 +20,7 @@
  * at paint time. */
 typedef enum wuss__furniture_paint_class
 {
-  wuss__FURNITURE_PAINT_TITLE_BG,   /* titlebar fill, bands, seams, interior rules */
+  wuss__FURNITURE_PAINT_TITLE_BG,   /* titlebar fill, resize-carve bands */
   wuss__FURNITURE_PAINT_CLOSE,
   wuss__FURNITURE_PAINT_BACK,
   wuss__FURNITURE_PAINT_TOGGLE,

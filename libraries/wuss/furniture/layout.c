@@ -130,7 +130,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
       rule.x1 = resize.x1;
       rule.y0 = resize.y0 - top_seam;
       rule.y1 = resize.y0;
-      push_piece(layout, &rule, wuss__FURNITURE_PAINT_TITLE_BG);
+      push_piece(layout, &rule, wuss__FURNITURE_PAINT_OUTLINE);
     }
 
     if (left_seam > 0)
@@ -139,7 +139,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
       rule.x1 = resize.x0;
       rule.y0 = resize.y0 - top_seam;
       rule.y1 = resize.y1;
-      push_piece(layout, &rule, wuss__FURNITURE_PAINT_TITLE_BG);
+      push_piece(layout, &rule, wuss__FURNITURE_PAINT_OUTLINE);
     }
   }
 
@@ -182,7 +182,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
     rule.x1 = content.x1 + WUSS_DIVIDER_PX;
     rule.y0 = content.y0;
     rule.y1 = content.y1;
-    push_piece(layout, &rule, wuss__FURNITURE_PAINT_TITLE_BG);
+    push_piece(layout, &rule, wuss__FURNITURE_PAINT_OUTLINE);
   }
 
   if (carve.y > 0)
@@ -193,7 +193,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
     rule.x1 = content.x1 + ((carve.x > 0) ? WUSS_DIVIDER_PX : 0); /* meet the vertical rule at the corner */
     rule.y0 = content.y1;
     rule.y1 = content.y1 + WUSS_DIVIDER_PX;
-    push_piece(layout, &rule, wuss__FURNITURE_PAINT_TITLE_BG);
+    push_piece(layout, &rule, wuss__FURNITURE_PAINT_OUTLINE);
   }
 
   /* window outline: four one-pixel edges ---------------------------- */
