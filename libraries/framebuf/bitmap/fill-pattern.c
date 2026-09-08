@@ -26,6 +26,9 @@ result_t bitmap_fill_pattern(bitmap_t        *bm,
   assert(bm);
   assert(pattern);
 
+  if (pixelfmt_is_rle(bm->format))
+    return result_NOT_SUPPORTED;
+
   log2bpp = pixelfmt_log2bpp(bm->format);
   if (log2bpp != 3 && log2bpp != 5)
     return result_NOT_SUPPORTED;

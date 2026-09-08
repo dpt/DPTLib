@@ -15,6 +15,8 @@
 
 #include "framebuf/screen.h"
 
+#include "screen-copy-bitmap-rle.h"
+
 /* Number of pixels converted per span call in screen_copy_bitmap(). Bounds
  * the size of its stack scratch buffers so arbitrarily wide bitmaps don't
  * blow the stack (relevant on RISC OS). */
@@ -350,6 +352,9 @@ result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
   src_box.y1 = y + src->size.h;
   if (box_intersection(&clip_box, &src_box, &draw_box))
     return result_OK; /* nothing visible */
+
+  if (pixelfmt_is_rle(src->format))
+    return screen_copy_bitmap_rle(scr, x, y, src, &draw_box);
 
   /* Source pixels loaded from PNG are always laid out R,G,B,A/X byte order
    * (see bitmap_load_png()), the same layout colour_t::primary uses, so
