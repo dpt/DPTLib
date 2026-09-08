@@ -72,6 +72,25 @@ static void icon_draw_action_border(screen_t    *scr,
                                      pressed ? light : dark);
 }
 
+/* The wuss_ICON_BORDER_DIVIDER surround: two 2px bevels in a lighter pair
+ * than RIDGE/GROOVE -- bevel_divider against bevel_light rather than the full
+ * light/dark contrast. Outer ring sunken, inner ring raised. Shared by the
+ * bordered label and the grouping frame. */
+static void icon_draw_divider_border(screen_t    *scr,
+                                     const box_t *b,
+                                     colour_t     light,
+                                     colour_t     divider)
+{
+  box_t ring;
+
+  ring = *b;
+  screen_draw_bevel_edge(scr, &ring, divider, light);
+
+  ring = (box_t) BOX_POS_SIZE(b->x0 + 2, b->y0 + 2,
+                              b->x1 - b->x0 - 4, b->y1 - b->y0 - 4);
+  screen_draw_bevel_edge(scr, &ring, light, divider);
+}
+
 /* Resolve the ground an icon's text/glyph blends against: an explicit icon bg,
  * else the window's dominant backdrop colour (a pattern fill blends against its
  * clear-bit colour, not its foreground), else "fallback" so bmfont still has a
@@ -183,16 +202,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
     }
     else if (icon->border == wuss_ICON_BORDER_DIVIDER)
     {
-      /* Two 2px bevels in a lighter pair than RIDGE/GROOVE: bevel_divider
-       * against bevel_light rather than the full light/dark contrast. Outer
-       * ring sunken, inner ring raised. */
-      box_t ring = *b;
-
-      screen_draw_bevel_edge(c->scr, &ring, divider, light);
-
-      ring = (box_t) BOX_POS_SIZE(b->x0 + 2, b->y0 + 2,
-                                  b->x1 - b->x0 - 4, b->y1 - b->y0 - 4);
-      screen_draw_bevel_edge(c->scr, &ring, light, divider);
+      icon_draw_divider_border(c->scr, b, light, divider);
     }
     else
     {
@@ -234,10 +244,12 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
 {
   const wuss_icon_t *icon = c->icon;
   const box_t       *b    = &c->b;
-  colour_t           bg;
-  int                cap_w, cap_x, gap_x0, gap_x1, mid_y;
+  colour_t           bg, light, divider;
+  int                cap_w, cap_x, gap_x0, gap_x1;
 
-  bg = icon_blend_ground(c, c->fg);
+  bg      = icon_blend_ground(c, c->fg);
+  light   = c->wuss->palette[c->wuss->bevel_light];
+  divider = c->wuss->palette[c->wuss->bevel_divider];
 
   cap_w = 0;
   if (c->have_font)
@@ -251,23 +263,20 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
     cap_w = width;
   }
 
-  mid_y = b->y0 + c->font_height / 2;
+  /* the whole surround is a wuss_ICON_BORDER_DIVIDER ring... */
+  icon_draw_divider_border(c->scr, b, light, divider);
 
-  /* left, right and bottom edges are unbroken */
-  screen_draw_line(c->scr, b->x0, mid_y, b->x0, b->y1 - 1, c->fg);
-  screen_draw_line(c->scr, b->x1 - 1, mid_y, b->x1 - 1, b->y1 - 1, c->fg);
-  screen_draw_line(c->scr, b->x0, b->y1 - 1, b->x1 - 1, b->y1 - 1, c->fg);
-
-  /* the top edge is broken around the caption. INSET (8) always exceeds PAD
-   * (2), so gap_x0 sits a few pixels right of b->x0 and the left stub is
-   * always drawn; only the right stub can vanish, when a wide caption pushes
-   * gap_x1 past the frame's right edge. */
+  /* ...with the top edge broken around the caption: overpaint the caption
+   * slot (the ring is 2px, plus a PAD margin either side) back to the frame
+   * ground. INSET (8) always exceeds PAD (2), so gap_x0 sits a few pixels
+   * right of b->x0 and the left stub always survives; only the right stub
+   * can vanish, when a wide caption pushes gap_x1 past the frame edge. */
   cap_x  = b->x0 + WUSS_FRAME_CAPTION_INSET;
   gap_x0 = cap_x - WUSS_FRAME_CAPTION_PAD;
   gap_x1 = cap_x + cap_w + WUSS_FRAME_CAPTION_PAD;
-  screen_draw_line(c->scr, b->x0, mid_y, gap_x0, mid_y, c->fg);
-  if (gap_x1 < b->x1 - 1)
-    screen_draw_line(c->scr, gap_x1, mid_y, b->x1 - 1, mid_y, c->fg);
+  if (gap_x1 > gap_x0)
+    screen_fill_rect(c->scr, gap_x0, b->y0,
+                     SIZE2D(MIN(gap_x1, b->x1) - gap_x0, 2), bg);
 
   if (c->have_font && cap_w > 0)
   {
