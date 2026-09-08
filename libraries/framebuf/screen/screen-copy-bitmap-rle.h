@@ -14,11 +14,12 @@
  * Blit an RLE-compressed bitmap onto a screen, top-left at (x, y), clipped
  * to `draw_box` (already intersected with the screen clip).
  *
- * v1 constraints, else \ref result_NOT_SUPPORTED: - screen must be 32bpp
- * (`pixelfmt_log2bpp(scr->format) == 5`); - `pixelfmt_base(src->format)`
- * must equal `scr->format` (byte copy, no per-pixel conversion); - blit is
- * alpha-tested (transparent runs skipped, opaque runs copied), not
- * alpha-blended.
+ * Constraints, else \ref result_NOT_SUPPORTED: - screen must be 32bpp or
+ * 4bpp paletted; - source must decode to 32bpp; - on a 32bpp screen
+ * `pixelfmt_base(src->format)` must match the screen's channel order (byte
+ * copy, no per-pixel conversion), on a 4bpp screen each pixel is converted
+ * to the nearest palette entry. The blit is alpha-tested (transparent runs
+ * skipped, opaque runs written), not alpha-blended.
  *
  * \param[in] scr      Destination screen.
  * \param[in] x,y      Where the bitmap's top-left lands, screen pixels.
