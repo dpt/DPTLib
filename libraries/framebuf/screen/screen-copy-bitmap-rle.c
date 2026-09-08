@@ -17,6 +17,23 @@
 
 #include "screen-copy-bitmap-rle.h"
 
+/* Map a 32bpp 8888 format to its no-alpha ("x") sibling: bgra->bgrx,
+ * rgba->rgbx, etc. The RLE blit writes whole 4-byte pixels and honours skip
+ * runs for transparency, so an alpha source and its matching x screen (or the
+ * reverse) decode identically -- only the channel order has to agree. Passes
+ * non-8888 formats through unchanged. */
+static pixelfmt_t rle__dealpha(pixelfmt_t f)
+{
+  switch (f)
+  {
+  case pixelfmt_bgra8888: return pixelfmt_bgrx8888;
+  case pixelfmt_rgba8888: return pixelfmt_rgbx8888;
+  case pixelfmt_abgr8888: return pixelfmt_xbgr8888;
+  case pixelfmt_argb8888: return pixelfmt_xrgb8888;
+  default:                return f;
+  }
+}
+
 result_t screen_copy_bitmap_rle(screen_t       *scr,
                                 int             x,
                                 int             y,
@@ -41,10 +58,12 @@ result_t screen_copy_bitmap_rle(screen_t       *scr,
 
   base = pixelfmt_base(src->format);
 
-  /* v1: 32bpp screen, source decodes to the screen's exact byte layout. */
+  /* v1: 32bpp screen, source decodes to the screen's channel order. An alpha
+   * source onto its matching x screen (or vice versa) is fine -- the decode
+   * is byte-identical -- so compare with alpha folded out. */
   if (pixelfmt_log2bpp(scr->format) != 5)
     return result_NOT_SUPPORTED;
-  if (base != scr->format)
+  if (rle__dealpha(base) != rle__dealpha(scr->format))
     return result_NOT_SUPPORTED;
 
   log2bpp = pixelfmt_log2bpp(base);

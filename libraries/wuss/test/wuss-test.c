@@ -4977,6 +4977,87 @@ QuitFail:
     }
   }
 
+  printf("test: wuss_icons_load scans resources/wuss/icons and compresses\n");
+
+  {
+    char            icons_dir[256];
+    const bitmap_t *icon_bm;
+    int             idx, opton;
+
+    /* copy: path_join_filename hands back one shared static buffer, and
+     * wuss_icons_load's own per-file joins would clobber it mid-call */
+    strncpy(icons_dir,
+            path_join_filename(resources, 3, "resources", "wuss", "icons"),
+            sizeof(icons_dir) - 1);
+    icons_dir[sizeof(icons_dir) - 1] = '\0';
+
+    rc = wuss_icons_load(wuss, icons_dir);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* the four fixtures: optoff/opton/radoff/radon */
+    if (wuss_icons_count(wuss) != 4)
+      goto Failure;
+
+    opton = wuss_icons_lookup(wuss, "opton");
+    if (opton < 0 || wuss_icons_lookup(wuss, "radoff") < 0)
+      goto Failure;
+    if (wuss_icons_lookup(wuss, "nonesuch") != -1)
+      goto Failure;
+
+    icon_bm = wuss_icons_bitmap(wuss, opton);
+    if (icon_bm == NULL || !bitmap_is_compressed(icon_bm))
+      goto Failure;
+    if (wuss_icons_bitmap(wuss, 4) != NULL)
+      goto Failure;
+
+    /* an icon spec picks it up by index via wuss_ICON_SET */
+    {
+      static test_task_t tc_ic;
+      wuss_task_t       *delegate_ic;
+      wuss_window_t     *win_ic;
+      wuss_icon_t       *icon;
+      wuss_icon_spec_t   spec;
+      box_t              box_ic;
+
+      memset(&tc_ic, 0, sizeof(tc_ic));
+      delegate_ic = mk_task(wuss, test_handle, &tc_ic);
+      if (delegate_ic == NULL) goto Failure;
+
+      box_ic.x0 = 5; box_ic.y0 = 5; box_ic.x1 = 125; box_ic.y1 = 105;
+      rc = wuss_window_create(delegate_ic, &box_ic, "IC", wuss_WINDOW_DEFAULT,
+                              wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                              SIZE2D(400, 400), SIZE2D(0, 0), &win_ic);
+      if (rc != result_OK)
+        goto Failure;
+
+      memset(&spec, 0, sizeof(spec));
+      spec.bbox     = (box_t) BOX_POS_SIZE(0, 0, 16, 16);
+      spec.type     = wuss_ICON_TYPE_BITMAP;
+      spec.icon_set = wuss_ICON_SET(opton);
+      rc = wuss_icon_create(win_ic, &spec, &icon);
+      if (rc != result_OK)
+        goto Failure;
+
+      /* a bogus index is rejected */
+      spec.icon_set = wuss_ICON_SET(99);
+      if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)
+        goto Failure;
+      rc = result_OK;
+
+      wuss_window_close(win_ic);
+    }
+
+    /* a reload replaces the set cleanly (no leak, ASan would catch it) */
+    rc = wuss_icons_load(wuss, icons_dir);
+    if (rc != result_OK || wuss_icons_count(wuss) != 4)
+      goto Failure;
+
+    idx = wuss_icons_lookup(wuss, "optoff");
+    if (idx < 0)
+      goto Failure;
+  }
+
   wuss_destroy(wuss);
 
   free(pixels);

@@ -164,6 +164,20 @@ struct wuss
                                             * over, NULL when none; drives
                                             * hover-highlight repaint of
                                             * menu-entry icons */
+  /* Icon set loaded by wuss_icons_load. index i is the i-th ".png" the
+   * directory scan yielded (order unspecified -- address by name).
+   * names interns the leafnames-sans-".png"; atoms[i] is entry i's atom
+   * in it (atom values are not array indices, so the position is tracked
+   * explicitly); bitmaps[i] is the matching RLE-compressed bitmap. All
+   * owned; freed by wuss__icons_registry_free. NULL / 0 until first load. */
+  struct
+  {
+    struct atom_set          *names;
+    int                      *atoms;
+    bitmap_t                 *bitmaps;
+    int                       nbitmaps;
+  }
+  icon;
 #endif
 #ifdef WUSS_MENUS
   struct wuss__menu          *menu_chain;   /* head (root) of the open pop-up

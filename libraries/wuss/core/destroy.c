@@ -89,6 +89,10 @@ void wuss_destroy(wuss_t *doomed)
     e = next;
   }
 
+#ifdef WUSS_ICONS
+  wuss__icons_registry_free(doomed);
+#endif
+
   packer_destroy(doomed->layout);
   wuss__free(doomed, doomed->palette);
   wuss__free(doomed, doomed); /* reads doomed->alloc.free before freeing */
