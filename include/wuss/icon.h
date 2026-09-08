@@ -123,7 +123,13 @@ typedef enum wuss_icon_border
   /** A 6px-per-edge "action" surround: a 2px raised outset, a 2px moat filled
    *  with wuss_COLOUR_ACCENT_BG, then a 2px raised inset -- like a RISC OS
    *  default-action button. */
-  wuss_ICON_BORDER_ACTION
+  wuss_ICON_BORDER_ACTION,
+  /** A 4px-per-edge "divider": two 2px bevels, an outer sunken ring wrapping an
+   *  inner raised one. Drawn in a lighter pair of shades than RIDGE/GROOVE --
+   *  the bevel highlight against the icon's own face colour rather than the
+   *  full bevel shadow -- so it reads as a soft inset panel rather than a hard
+   *  button edge. */
+  wuss_ICON_BORDER_DIVIDER
 }
 wuss_icon_border_t;
 

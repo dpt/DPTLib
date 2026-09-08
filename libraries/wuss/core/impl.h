@@ -126,6 +126,7 @@ struct wuss
   wuss_colour_t               bevel_light;   /* work-area button top/left edge */
   wuss_colour_t               bevel_dark;    /* work-area button bottom/right edge */
   wuss_colour_t               bevel_pressed; /* work-area button face while held */
+  wuss_colour_t               bevel_divider; /* lighter edge for a DIVIDER border */
   wuss_colour_t               accent_bg;     /* default action button fill */
   wuss_colour_t               accent_fg;     /* default action button text */
 #endif

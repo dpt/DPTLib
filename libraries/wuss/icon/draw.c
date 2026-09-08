@@ -170,15 +170,29 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 
   if (icon->border != wuss_ICON_BORDER_NONE)
   {
-    colour_t light, dark, accent;
+    colour_t light, dark, accent, divider;
 
-    light  = c->wuss->palette[c->wuss->bevel_light];
-    dark   = c->wuss->palette[c->wuss->bevel_dark];
-    accent = c->wuss->palette[c->wuss->accent_bg]; /* the action-button fill */
+    light   = c->wuss->palette[c->wuss->bevel_light];
+    dark    = c->wuss->palette[c->wuss->bevel_dark];
+    accent  = c->wuss->palette[c->wuss->accent_bg]; /* the action-button fill */
+    divider = c->wuss->palette[c->wuss->bevel_divider];
 
     if (icon->border == wuss_ICON_BORDER_ACTION)
     {
       icon_draw_action_border(c->scr, b, light, dark, accent, 0);
+    }
+    else if (icon->border == wuss_ICON_BORDER_DIVIDER)
+    {
+      /* Two 2px bevels in a lighter pair than RIDGE/GROOVE: bevel_divider
+       * against bevel_light rather than the full light/dark contrast. Outer
+       * ring sunken, inner ring raised. */
+      box_t ring = *b;
+
+      screen_draw_bevel_edge(c->scr, &ring, divider, light);
+
+      ring = (box_t) BOX_POS_SIZE(b->x0 + 2, b->y0 + 2,
+                                  b->x1 - b->x0 - 4, b->y1 - b->y0 - 4);
+      screen_draw_bevel_edge(c->scr, &ring, light, divider);
     }
     else
     {
