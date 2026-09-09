@@ -1022,6 +1022,39 @@ static void bmfont_p1_plot_row(unsigned char *scr,
   }
 }
 
+/* As bmfont_p1_plot_row but for a p2 (2bpp) screen row: two bits per pixel,
+ * "shift" is a bit offset (0, 2, 4 or 6) and pixel column i lands at bit-pair
+ * (shift + 2 * i), MSB-first within the byte. */
+static void bmfont_p2_plot_row(unsigned char *scr,
+                               unsigned int   row,
+                               int            cw,
+                               int            shift,
+                               pixelfmt_any_t fg,
+                               pixelfmt_any_t bg,
+                               int            opaque)
+{
+  int i;
+
+  for (i = 0; i < cw; i++)
+  {
+    int            set;
+    int            bitpos;
+    unsigned char *p;
+    int            b;
+
+    set = (row >> (cw - 1 - i)) & 1;
+    if (!set && !opaque)
+      continue;
+
+    bitpos = shift + (i << 1);
+    p      = scr + (bitpos >> 3);
+    b      = 6 - (bitpos & 7);
+
+    *p = (unsigned char) ((*p & ~(3 << b))
+                        | (((set ? fg : bg) & 3) << b));
+  }
+}
+
 /* Draw a character to a p1 screen. One helper covers 1- and 2-byte glyph rows
  * and both opaque and transparent backgrounds -- the p1 inner loop is a plain
  * per-pixel bit write, so the LUT-driven width unrolling the p4 path needs
@@ -1142,6 +1175,128 @@ static void bmfont_drawchar_p1_2w_t(void          *vscreen,
     unsigned int row = (unsigned int) *gly++ >> right_skip;
 
     bmfont_p1_plot_row(scr, row, charwidth, shift, fg, bg, 0);
+    scr += stride;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+
+static void bmfont_drawchar_p2_1w_o(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char       *scr = vscreen;
+  const unsigned char *gly = vglyph;
+  int                  stride;
+
+  assert(charwidth > 0);
+  assert(charheight > 0);
+
+  gly   += top_skip;
+  stride = rowbytes;
+
+  while (charheight--)
+  {
+    unsigned int row = (unsigned int) *gly++ >> right_skip;
+
+    bmfont_p2_plot_row(scr, row, charwidth, shift, fg, bg, 1);
+    scr += stride;
+  }
+}
+
+static void bmfont_drawchar_p2_1w_t(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char       *scr = vscreen;
+  const unsigned char *gly = vglyph;
+  int                  stride;
+
+  assert(charwidth > 0);
+  assert(charheight > 0);
+
+  gly   += top_skip;
+  stride = rowbytes;
+
+  while (charheight--)
+  {
+    unsigned int row = (unsigned int) *gly++ >> right_skip;
+
+    bmfont_p2_plot_row(scr, row, charwidth, shift, fg, bg, 0);
+    scr += stride;
+  }
+}
+
+static void bmfont_drawchar_p2_2w_o(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char        *scr = vscreen;
+  const unsigned short *gly = vglyph;
+  int                   stride;
+
+  assert(charwidth > 0);
+  assert(charheight > 0);
+
+  gly   += top_skip;
+  stride = rowbytes;
+
+  while (charheight--)
+  {
+    unsigned int row = (unsigned int) *gly++ >> right_skip;
+
+    bmfont_p2_plot_row(scr, row, charwidth, shift, fg, bg, 1);
+    scr += stride;
+  }
+}
+
+static void bmfont_drawchar_p2_2w_t(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char        *scr = vscreen;
+  const unsigned short *gly = vglyph;
+  int                   stride;
+
+  assert(charwidth > 0);
+  assert(charheight > 0);
+
+  gly   += top_skip;
+  stride = rowbytes;
+
+  while (charheight--)
+  {
+    unsigned int row = (unsigned int) *gly++ >> right_skip;
+
+    bmfont_p2_plot_row(scr, row, charwidth, shift, fg, bg, 0);
     scr += stride;
   }
 }
@@ -1365,6 +1520,15 @@ result_t bmfont_draw(bmfont_t      *bmfont,
     {
     case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p1_1w_t : bmfont_drawchar_p1_1w_o; break;
     case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p1_2w_t : bmfont_drawchar_p1_2w_o; break;
+    default: assert(0); return result_NOT_SUPPORTED;
+    }
+    break;
+
+  case pixelfmt_p2:
+    switch (bmfont->glyphrowbytes)
+    {
+    case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p2_1w_t : bmfont_drawchar_p2_1w_o; break;
+    case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p2_2w_t : bmfont_drawchar_p2_2w_o; break;
     default: assert(0); return result_NOT_SUPPORTED;
     }
     break;
