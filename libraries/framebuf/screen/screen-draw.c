@@ -68,10 +68,10 @@ static void screen_set_pixel_p4(screen_t      *scr,
   *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
 }
 
-static void screen_set_pixel_8(screen_t      *scr,
-                               int            x,
-                               int            y,
-                               pixelfmt_any_t pxl)
+static void screen_set_pixel_p8(screen_t      *scr,
+                                int            x,
+                                int            y,
+                                pixelfmt_any_t pxl)
 {
   pixelfmt_any8_t *scrp;
 
@@ -123,7 +123,7 @@ void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour)
   case 0: screen_set_pixel_p1(scr, x, y, pxl); break;
   case 1: screen_set_pixel_p2(scr, x, y, pxl); break;
   case 2: screen_set_pixel_p4(scr, x, y, pxl); break;
-  case 3: screen_set_pixel_8(scr, x, y, pxl);  break;
+  case 3: screen_set_pixel_p8(scr, x, y, pxl); break;
   case 4: screen_set_pixel_16(scr, x, y, pxl); break;
   case 5: screen_set_pixel_32(scr, x, y, pxl); break;
 
