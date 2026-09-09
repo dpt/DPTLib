@@ -42,7 +42,7 @@ result_t bitmap_fill_pattern(bitmap_t        *bm,
   {
     clip = full;
   }
-  else if (!box_intersection(area, &full, &clip))
+  else if (box_intersection(area, &full, &clip))
   {
     return result_OK; /* nothing to fill */
   }
