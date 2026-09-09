@@ -42,7 +42,7 @@ void screen_fill_hline(screen_t *scr, int x, int y, int w, colour_t colour)
    * with no span-registry entry -- the assert catches that in debug builds,
    * but a release build must still no-op rather than dereference NULL. */
   assert(scr->span && scr->span->fill);
-  if (scr->span == NULL)
+  if (scr->span == NULL || scr->span->fill == NULL)
     return;
 
   rowp = (unsigned char *) scr->base + draw_box.y0 * scr->rowbytes;
