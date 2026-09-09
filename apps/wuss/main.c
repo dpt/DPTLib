@@ -426,14 +426,14 @@ typedef struct wuss_options
 {
   const char *resources;    /* -r/--resources: fixture root */
   const char *palette_name; /* -p/--palette: startup *.hex leafname */
-  int         depth;        /* -d/--depth: framebuffer bpp (4 or 32) */
+  int         depth;        /* -d/--depth: framebuffer bpp (1, 4 or 32) */
   int         scale;        /* -s/--scale: initial window zoom, 0 = default */
 }
 wuss_options_t;
 
 static const char wuss_usage[] =
   "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
-  "[-d|--depth 4|32] [-s|--scale N]\n";
+  "[-d|--depth 1|4|32] [-s|--scale N]\n";
 
 #ifndef __riscos
 

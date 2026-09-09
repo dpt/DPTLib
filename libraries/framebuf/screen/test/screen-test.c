@@ -806,6 +806,45 @@ static result_t test_copy_bitmap_p1(void)
     }
   }
 
+  /* screen_set_pixel: white pixel at x=2 sets bit 7-2 of byte 0 */
+  memset(p1pixels, 0, sizeof(p1pixels));
+  screen_set_pixel(&scr, 2, 0, pal[1]);
+  if (p1pixels[0] != (1 << (7 - 2)))
+  {
+    printf("screen: p1 set_pixel packed wrong (0x%02X)\n", p1pixels[0]);
+    return result_TEST_FAILED;
+  }
+
+  /* screen_fill_hline: 8 white pixels from x=0 fill byte 0 */
+  memset(p1pixels, 0, sizeof(p1pixels));
+  screen_fill_hline(&scr, 0, 1, 8, pal[1]);
+  if (p1pixels[P1_ROWBYTES] != 0xFF)
+  {
+    printf("screen: p1 fill_hline packed wrong (0x%02X)\n",
+           p1pixels[P1_ROWBYTES]);
+    return result_TEST_FAILED;
+  }
+
+  /* screen_fill_pattern: solid all-bits pattern in fg colour = 0xFF row */
+  memset(p1pixels, 0, sizeof(p1pixels));
+  {
+    pattern_t pat;
+    box_t     b;
+
+    memset(&pat, 0, sizeof(pat));
+    memset(pat.bits, 0xFF, sizeof(pat.bits));
+    pat.fg = pal[1];
+    pat.bg = pal[0];
+    b.x0 = 0; b.y0 = 2; b.x1 = 8; b.y1 = 3;
+    screen_fill_pattern(&scr, &b, &pat);
+    if (p1pixels[2 * P1_ROWBYTES] != 0xFF)
+    {
+      printf("screen: p1 fill_pattern packed wrong (0x%02X)\n",
+             p1pixels[2 * P1_ROWBYTES]);
+      return result_TEST_FAILED;
+    }
+  }
+
   return result_TEST_PASSED;
 }
 
