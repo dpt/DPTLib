@@ -11,23 +11,34 @@
 
 /* The scrollbar strip: full breadth, running between the titlebar (v) or left
  * outline (h) and the resize corner. "long" axis is y when vertical, x when
- * horizontal. */
+ * horizontal.
+ *
+ * The far end stops short of the bottom-right corner (a seam then a
+ * size x size square) only when something actually owns that corner: a
+ * resize icon, or -- for the horizontal strip -- the vertical scrollbar it
+ * would otherwise draw over. With neither present the strip runs to the
+ * outline. This must match scroll_strip_hit's far-end rule so the drawn
+ * strip and its hit region agree. */
 static void scroll_strip(const wuss_window_t *window,
                          int                  horizontal,
                          box_t               *out)
 {
   box_t titlebar;
-  int   outline_px, size;
+  int   outline_px, size, has_resize, has_vscroll;
 
-  outline_px = wuss__outline_px(window);
-  size       = wuss__button_size(window);
+  outline_px  = wuss__outline_px(window);
+  size        = wuss__button_size(window);
+  has_resize  = !(window->flags & wuss_WINDOW_NO_RESIZE);
+  has_vscroll = !(window->flags & wuss_WINDOW_NO_VSCROLL);
 
   if (horizontal)
   {
     out->y1 = window->visible.y1 - outline_px;
     out->y0 = out->y1 - size;
     out->x0 = window->visible.x0 + outline_px;
-    out->x1 = window->visible.x1 - outline_px - size - WUSS_DIVIDER_PX; /* seam then resize corner */
+    out->x1 = (has_resize || has_vscroll)
+            ? window->visible.x1 - outline_px - size - WUSS_DIVIDER_PX /* seam then resize corner */
+            : window->visible.x1 - outline_px;
   }
   else
   {
@@ -35,7 +46,9 @@ static void scroll_strip(const wuss_window_t *window,
     out->x0 = out->x1 - size;
     wuss__titlebar_box(window, &titlebar);
     out->y0 = titlebar.y1;
-    out->y1 = window->visible.y1 - outline_px - size - WUSS_DIVIDER_PX; /* seam then resize corner */
+    out->y1 = has_resize
+            ? window->visible.y1 - outline_px - size - WUSS_DIVIDER_PX /* seam then resize corner */
+            : window->visible.y1 - outline_px;
   }
 }
 
