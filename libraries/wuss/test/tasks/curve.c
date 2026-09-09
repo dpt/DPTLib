@@ -27,6 +27,58 @@
 #define CURVE_SEGMENTS_MIN     4
 #define CURVE_SEGMENTS_MAX     128
 
+/* 2D cross product of (b - a) and (c - a); > 0 for a left (counter-clockwise)
+ * turn, < 0 for a right turn, 0 if collinear. long to keep the products of
+ * two point coordinates from overflowing an int. */
+static long curve_cross(point_t a, point_t b, point_t c)
+{
+  return (long) (b.x - a.x) * (c.y - a.y) - (long) (b.y - a.y) * (c.x - a.x);
+}
+
+static int curve_point_cmp(const void *va, const void *vb)
+{
+  const point_t *a = va;
+  const point_t *b = vb;
+
+  if (a->x != b->x)
+    return a->x - b->x;
+  return a->y - b->y;
+}
+
+/* Andrew's monotone chain: fill "hull" (capacity 2 * n + 1) with the convex
+ * hull of the first n of "src" as a closed polyline (first point repeated at
+ * the end) and return its point count. n < 3, or all points collinear,
+ * degenerates to the sorted span, still returned closed. */
+static int curve_convex_hull(const point_t *src, int n, point_t *hull)
+{
+  point_t pts[CURVE_MAXCONTROLPTS];
+  int     k, i;
+
+  memcpy(pts, src, (size_t) n * sizeof(*pts));
+  qsort(pts, (size_t) n, sizeof(*pts), curve_point_cmp);
+
+  k = 0;
+  for (i = 0; i < n; i++) /* lower hull */
+  {
+    while (k >= 2 && curve_cross(hull[k - 2], hull[k - 1], pts[i]) <= 0)
+      k--;
+    hull[k++] = pts[i];
+  }
+  {
+    int lower, j;
+
+    lower = k + 1;
+    for (j = n - 2; j >= 0; j--) /* upper hull */
+    {
+      while (k >= lower && curve_cross(hull[k - 2], hull[k - 1], pts[j]) <= 0)
+        k--;
+      hull[k++] = pts[j];
+    }
+  }
+
+  return k; /* hull[0] == hull[k - 1], a closed loop */
+}
+
 result_t curve_create(wuss_t *wuss, curve_task_t *task)
 {
   result_t         rc;
@@ -149,6 +201,21 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   screen_fill_rect(scr, content->x0, content->y0, box_size(content),
                    task->bg);
 
+  /* control polygon's convex hull, drawn first so the curve and the blobs
+   * sit on top of it */
+  {
+    point_t hull[2 * CURVE_MAXCONTROLPTS + 1];
+    int     nhull, k;
+
+    nhull = curve_convex_hull(task->points, task->npoints, hull);
+    for (k = 0; k < nhull; k++)
+    {
+      hull[k].x += bounds->x0 - sx;
+      hull[k].y += bounds->y0 - sy;
+    }
+    screen_draw_lines(scr, hull, nhull, colour_rgb(0xC0, 0xC0, 0xC0));
+  }
+
   prev = task->points[0];
   prev.x += bounds->x0 - sx; prev.y += bounds->y0 - sy;
 
@@ -172,12 +239,13 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
                        blob_colour(task, i));
   }
 
-  /* curve-type label, pinned to the content's top-left corner (not the
-   * scrolled document) so an Adjust click's effect is always readable */
+  /* curve-type label, pinned to the content area's top-left corner (bounds,
+   * not the per-redraw dirty piece "content", and not the scrolled document)
+   * so it stays put and readable on a partial redraw */
   {
     bmfont_t   *font = wuss_get_font(task->wuss);
     const char *name = curve_kind_name(task->npoints);
-    point_t     pos  = POINT(content->x0 + 2, content->y0 + 2);
+    point_t     pos  = POINT(bounds->x0 + 2, bounds->y0 + 2);
 
     if (font != NULL)
       bmfont_draw(font, scr, name, (int) strlen(name),
