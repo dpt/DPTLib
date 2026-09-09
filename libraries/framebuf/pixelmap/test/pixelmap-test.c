@@ -164,6 +164,42 @@ result_t pixelmap_test(const char *resources)
     }
   }
 
+  /* 4c. rgba8888 -> p2 (4:4:4 table): a 4-entry greyscale palette resolves
+   *     each grey band to its nearest index */
+  {
+    const pixelmap_t *pm2;
+    colour_t          grey[4];
+
+    grey[0] = colour_rgb(0x00, 0x00, 0x00);
+    grey[1] = colour_rgb(0x55, 0x55, 0x55);
+    grey[2] = colour_rgb(0xAA, 0xAA, 0xAA);
+    grey[3] = colour_rgb(0xFF, 0xFF, 0xFF);
+
+    pm2 = pixelmap_get(pixelfmt_rgba8888, pixelfmt_p2, grey, 4);
+    if (pm2 == NULL)
+    {
+      printf("pixelmap: get rgba8888->p2 returned NULL\n");
+      return result_TEST_FAILED;
+    }
+    if (pm2->dest_log2bpp != 1 || pm2->nentries != 4096)
+    {
+      printf("pixelmap: p2 layout wrong (dest_log2bpp %d, nentries %u)\n",
+             pm2->dest_log2bpp, pm2->nentries);
+      return result_TEST_FAILED;
+    }
+
+    if (pm_lookup(pm2, pm_index(pm2, colour_rgb(0x08, 0x08, 0x08).primary)) != 0)
+    {
+      printf("pixelmap: p2 black did not resolve to index 0\n");
+      return result_TEST_FAILED;
+    }
+    if (pm_lookup(pm2, pm_index(pm2, colour_rgb(0xF8, 0xF8, 0xF8).primary)) != 3)
+    {
+      printf("pixelmap: p2 white did not resolve to index 3\n");
+      return result_TEST_FAILED;
+    }
+  }
+
   /* 5. paletted -> deep: p4 -> bgrx8888, one deep pixel per palette index */
   {
     const pixelmap_t          *pmd;
