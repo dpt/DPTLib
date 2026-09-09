@@ -535,10 +535,15 @@ result_t bitmap_compress(bitmap_t *bm)
   w       = bm->size.w;
   h       = bm->size.h;
 
-  /* Worst case per row: every pixel literal, one control byte per 128 px,
-   * plus an EOL. */
-  rowworst = (size_t) w * bpp
-           + ((size_t) w / bitmap__RLE_LITERAL_LEN_MAX + 1) * 2
+  /* Worst case per row: the encoder can be driven to a one-byte control per
+   * pixel (e.g. singleton, pair, singleton, pair ... forces a literal-of-1
+   * then a repeat-of-2 for every three source pixels), so budget one control
+   * byte plus the pixel bytes for every pixel, one extra control per 128 px
+   * for the literal-long split, plus an EOL. For bpp >= 4 the w*bpp term
+   * dominates and this is barely above the old estimate; for y8 it is the
+   * difference between fitting and a spurious result_BUFFER_OVERFLOW. */
+  rowworst = (size_t) w * (bpp + 1)
+           + ((size_t) w / bitmap__RLE_LITERAL_LEN_MAX + 1)
            + 1;
   worst = bitmap__RLE_HEADER_SIZE + rowworst * (size_t) h;
 

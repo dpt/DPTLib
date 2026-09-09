@@ -339,6 +339,29 @@ static int test_y8(void)
     ok = 0;
   }
 
+  /* Pathological expansion: singleton, pair, singleton, pair, ... forces a
+   * literal-of-1 then a repeat-of-2 per three pixels, ~1.33*w bytes/row. The
+   * worst-case allocation must cover it rather than returning
+   * result_BUFFER_OVERFLOW on this legal input. (bm.base was freed and
+   * replaced by the round trip above, so allocate afresh.) */
+  {
+    uint8_t *p2 = malloc(n);
+
+    for (i = 0; i < (int) n; i++)
+      p2[i] = (uint8_t) (i % 3 == 0 ? (i / 3 + 1) : 0x80);
+    memcpy(copy, p2, n);
+    bitmap_init(&bm, SIZE2D(W, H), pixelfmt_y8, W, NULL, p2);
+    rc = bitmap_compress(&bm);
+    if (rc) { fprintf(stderr, "y8 pathological compress rc=&%x\n", rc); ok = 0; goto done; }
+    rc = bitmap_decompress(&bm);
+    if (rc) { fprintf(stderr, "y8 pathological decompress rc=&%x\n", rc); ok = 0; goto done; }
+    if (memcmp(bm.base, copy, n) != 0)
+    {
+      fprintf(stderr, "y8 pathological: round trip differs\n");
+      ok = 0;
+    }
+  }
+
 done:
   free(bm.base);
   free(copy);
