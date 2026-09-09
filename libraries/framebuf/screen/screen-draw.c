@@ -296,6 +296,78 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
   return result_OK;
 }
 
+/* Blit "src" onto the 1bpp screen, its top-left at (x, y), clipped to
+ * "draw_box". Like screen_copy_bitmap_p4 this is an alpha-tested transfer
+ * (skip fully transparent, else nearest of the two palette entries) rather
+ * than a blend -- a 1bpp screen has no channel bits to blend. The cached
+ * RGB->index table turns the inner loop into a mask-and-lookup; bit 7 of a
+ * byte is the leftmost pixel. Returns result_NOT_SUPPORTED if there is no
+ * deep->paletted conversion table for the screen's format. */
+static result_t screen_copy_bitmap_p1(screen_t       *scr,
+                                      int             x,
+                                      int             y,
+                                      const bitmap_t *src,
+                                      const box_t    *draw_box,
+                                      int             has_alpha)
+{
+  const unsigned char *srcrow;
+  unsigned char       *dstbase;
+  const pixelmap_t    *pm;
+  int                  clipped_width, clipped_height;
+  int                  yy;
+
+  clipped_width  = draw_box->x1 - draw_box->x0;
+  clipped_height = draw_box->y1 - draw_box->y0;
+
+  srcrow  = (const unsigned char *) src->base + (draw_box->y0 - y) * src->rowbytes;
+  dstbase = scr->base;
+
+  pm = pixelmap_get(pixelfmt_rgba8888, scr->format, scr->palette, 2);
+  if (pm == NULL)
+    return result_NOT_SUPPORTED;
+
+  for (yy = 0; yy < clipped_height; yy++)
+  {
+    const pixelfmt_rgba8888_t *srcpx;
+    unsigned char             *rowp;
+    int                        xx;
+
+    srcpx = (const pixelfmt_rgba8888_t *) srcrow + (draw_box->x0 - x);
+    rowp  = dstbase + (draw_box->y0 + yy) * scr->rowbytes;
+
+    for (xx = 0; xx < clipped_width; xx++)
+    {
+      colour_t       c;
+      unsigned int   r, g, b, idx;
+      int            dstx, shift;
+      unsigned char *scrp;
+      pixelfmt_any_t pxl;
+
+      c.primary = srcpx[xx];
+      if (has_alpha && colour_get_alpha(&c) == 0)
+        continue; /* fully transparent: leave background alone */
+
+      dstx  = draw_box->x0 + xx;
+      scrp  = rowp + (dstx >> 3);
+      shift = 7 - (dstx & 7);
+
+      r   = (c.primary >> pm->rshift) & 0xFF;
+      g   = (c.primary >> pm->gshift) & 0xFF;
+      b   = (c.primary >> pm->bshift) & 0xFF;
+      idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
+          | ((g >> (8 - pm->gbits)) << pm->bbits)
+          | ( b >> (8 - pm->bbits));
+      pxl = (pm->entries[idx >> 3] >> (idx & 7)) & 1;
+
+      *scrp = (unsigned char) ((*scrp & ~(1 << shift)) | ((pxl & 1) << shift));
+    }
+
+    srcrow += src->rowbytes;
+  }
+
+  return result_OK;
+}
+
 /* Blit "src" onto the 32bpp screen, its top-left at (x, y), clipped to
  * "draw_box", alpha-blending row spans through the span registry. */
 static void screen_copy_bitmap_32(screen_t       *scr,
@@ -383,6 +455,7 @@ result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 
   switch (pixelfmt_log2bpp(scr->format))
   {
+  case 0: return screen_copy_bitmap_p1(scr, x, y, src, &draw_box, has_alpha);
   case 2: return screen_copy_bitmap_p4(scr, x, y, src, &draw_box, has_alpha);
   case 5: screen_copy_bitmap_32(scr, x, y, src, &draw_box, has_alpha); break;
 

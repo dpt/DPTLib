@@ -740,6 +740,77 @@ static result_t test_fill_circle(void)
 
 /* ----------------------------------------------------------------------- */
 
+/* Blit an rgba8888 source onto a 1bpp screen: each pixel must quantise to
+ * the nearer of the two palette entries and pack MSB-first, bit 7 leftmost. */
+static result_t test_copy_bitmap_p1(void)
+{
+#define P1_ROWBYTES (WIDTH / 8)
+  static unsigned char       p1pixels[P1_ROWBYTES * HEIGHT];
+  static pixelfmt_rgba8888_t srcbuf[16 * 4];
+
+  screen_t scr;
+  bitmap_t src;
+  colour_t pal[2];
+  int      x, y;
+
+  pal[0] = colour_rgb(0x00, 0x00, 0x00);
+  pal[1] = colour_rgb(0xFF, 0xFF, 0xFF);
+
+  /* 16x4 source: left half dark (-> index 0), right half light (-> index 1) */
+  for (y = 0; y < 4; y++)
+    for (x = 0; x < 16; x++)
+      srcbuf[y * 16 + x] = (x < 8 ? colour_rgb(0x10, 0x10, 0x10)
+                                  : colour_rgb(0xF0, 0xF0, 0xF0)).primary;
+
+  bitmap_init(&src, SIZE2D(16, 4), pixelfmt_rgba8888,
+              16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
+
+  memset(p1pixels, 0, sizeof(p1pixels));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p1, P1_ROWBYTES, pal,
+              p1pixels);
+
+  if (screen_copy_bitmap(&scr, 0, 0, &src) != result_OK)
+  {
+    printf("screen: copy_bitmap to p1 screen failed\n");
+    return result_TEST_FAILED;
+  }
+
+  /* row 0: byte 0 = eight dark pixels = 0x00; byte 1 = eight light = 0xFF */
+  if (p1pixels[0] != 0x00 || p1pixels[1] != 0xFF)
+  {
+    printf("screen: p1 blit packed wrong (0x%02X 0x%02X, want 0x00 0xFF)\n",
+           p1pixels[0], p1pixels[1]);
+    return result_TEST_FAILED;
+  }
+
+  /* an untouched row past the source stays clear */
+  if (p1pixels[4 * P1_ROWBYTES] != 0x00)
+  {
+    printf("screen: p1 blit spilled past the source\n");
+    return result_TEST_FAILED;
+  }
+
+  /* odd x offset: the first light pixel must land in bit 7-(3&7) of byte 0 */
+  memset(p1pixels, 0, sizeof(p1pixels));
+  {
+    pixelfmt_rgba8888_t one = colour_rgb(0xF0, 0xF0, 0xF0).primary;
+    bitmap_t            dot;
+
+    bitmap_init(&dot, SIZE2D(1, 1), pixelfmt_rgba8888,
+                (int) sizeof(one), NULL, &one);
+    screen_copy_bitmap(&scr, 3, 0, &dot);
+    if (p1pixels[0] != (1 << (7 - 3)))
+    {
+      printf("screen: p1 blit odd-x packed wrong (0x%02X)\n", p1pixels[0]);
+      return result_TEST_FAILED;
+    }
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t screen_test(const char *resources)
 {
   typedef result_t (*screentestfn)(void);
@@ -755,7 +826,8 @@ result_t screen_test(const char *resources)
     test_draw_lines,
     test_draw_rect,
     test_draw_circle,
-    test_fill_circle
+    test_fill_circle,
+    test_copy_bitmap_p1
   };
 
   result_t rc;
