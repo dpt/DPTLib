@@ -87,7 +87,7 @@ static result_t chars_set_font(chars_task_t *task, int idx, const char *name)
   task->current = idx;
 
   wuss_window_resize(task->window, chars_window_size(task, font));
-  wuss_window_invalidate_all(task->window);
+  wuss_window_invalidate_visible(task->window);
   return result_OK;
 }
 

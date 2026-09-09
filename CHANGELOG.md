@@ -100,7 +100,7 @@ _Unreleased_ until one is cut.
   a live icon per element.
 - `wuss_window_invalidate_extent()` — marks a window's whole virtual
   document extent dirty (`window->doc`), not just the visible content
-  rectangle `wuss_window_invalidate_all()` covers, so a change touching the
+  rectangle `wuss_window_invalidate_visible()` covers, so a change touching the
   whole document repaints correctly at any scroll position.
 - Clicking in a scrollbar well (not on the sausage) now pages the content
   one visible extent towards the click, keeping one `WUSS_SCROLL_STEP` of
@@ -235,6 +235,10 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- **Breaking:** `wuss_window_invalidate_all()` is renamed
+  `wuss_window_invalidate_visible()` -- "all" misread as the whole document
+  when it only ever covered the visible content rectangle. Same behaviour;
+  use `wuss_window_invalidate_extent()` for the full document.
 - The `wuss` demo task launcher is split out of `apps/wuss/main.c` into
   `apps/wuss/tasks.c` behind `tasks.h`: the 19 `spawn_*` callbacks, every
   menu table and `task_handle_event` move over, and the shared file-scope

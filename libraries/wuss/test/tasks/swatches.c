@@ -174,7 +174,7 @@ static result_t swatches_menu_select(swatches_task_t    *task,
   task->paper = picked;
 
   /* every cell shares the new paper: dirty the whole document, not just the
-   * visible rectangle wuss_window_invalidate_all covers */
+   * visible rectangle wuss_window_invalidate_visible covers */
   wuss_window_invalidate_extent(task->window);
   return result_OK;
 }

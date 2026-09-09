@@ -397,7 +397,7 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
     if (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST))
     {
       minesweeper_reset(ms);
-      wuss_window_invalidate_all(ms->window);
+      wuss_window_invalidate_visible(ms->window);
     }
     return result_OK;
   }
@@ -442,7 +442,7 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
     return result_OK;
   }
 
-  wuss_window_invalidate_all(ms->window);
+  wuss_window_invalidate_visible(ms->window);
 
   return result_OK;
 }
@@ -487,7 +487,7 @@ result_t minesweeper_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_SELECT:
     /* only item is "New Game" */
     minesweeper_reset(ms);
-    wuss_window_invalidate_all(ms->window);
+    wuss_window_invalidate_visible(ms->window);
     return result_OK;
 
   case wuss_EVENT_QUIT:

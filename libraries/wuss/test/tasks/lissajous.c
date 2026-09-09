@@ -121,7 +121,7 @@ static result_t lissajous_mouse(wuss_window_t      *window,
     lc->freq_index = (lc->freq_index + 1) % (int) NELEMS(lissajous_freqs);
     lc->a          = lissajous_freqs[lc->freq_index][0];
     lc->b          = lissajous_freqs[lc->freq_index][1];
-    wuss_window_invalidate_all(lc->window); /* whole figure changes */
+    wuss_window_invalidate_visible(lc->window); /* whole figure changes */
   }
   else if (button & wuss_BUTTON_ADJUST)
   {
@@ -143,7 +143,7 @@ static result_t lissajous_idle(void *task_data)
   else if (lc->phase < 0.0)
     lc->phase += 2.0 * M_PI;
 
-  wuss_window_invalidate_all(lc->window); /* ponytail: repaint whole content; figure fills it and is cheap */
+  wuss_window_invalidate_visible(lc->window); /* ponytail: repaint whole content; figure fills it and is cheap */
 
   return result_OK;
 }
