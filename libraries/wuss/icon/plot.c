@@ -13,8 +13,8 @@ result_t wuss_icon_plot(wuss_window_t          *window,
                         const box_t            *content,
                         point_t                 scroll)
 {
-  wuss_icon_t scratch;
   result_t    rc;
+  wuss_icon_t scratch;
 
   assert(window  != NULL);
   assert(spec    != NULL);

@@ -63,9 +63,9 @@ static result_t cache_test_outer(const cacheconfig_t *config,
                                  size_t               cachelength,
                                  int                  maxkey)
 {
+  result_t       err;
   unsigned char *block;
   cache_t       *cache;
-  result_t       err;
 
   block = malloc(cachelength);
   if (block == NULL)

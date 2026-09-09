@@ -78,10 +78,10 @@ static bmfont_t *text_load_font(text_task_t *task,
                                 int          idx,
                                 const char  *name)
 {
+  result_t    rc;
   const char *leaf;
   const char *filename;
   bmfont_t   *font;
-  result_t    rc;
 
   if (task->fonts[idx] != NULL)
     return task->fonts[idx];
@@ -112,7 +112,7 @@ static result_t text_set_font(text_task_t *task, int idx, const char *name)
   task->font    = font;
   task->current = idx;
 
-  wuss_window_invalidate_all(task->window);
+  wuss_window_invalidate_visible(task->window);
   return result_OK;
 }
 
@@ -125,7 +125,7 @@ static result_t text_set_sample(text_task_t *task, int idx)
   task->sample = idx;
   task->text   = text_samples[idx].text;
 
-  wuss_window_invalidate_all(task->window);
+  wuss_window_invalidate_visible(task->window);
   return result_OK;
 }
 
@@ -142,12 +142,12 @@ result_t text_create(wuss_t      *wuss,
                      const char  *resources,
                      text_task_t *task)
 {
+  result_t           rc;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
   const char        *bmfonts_dir;
   const wuss_menu_t *menu;
   size2d_t           sz;
-  result_t           rc;
 
   task->wuss        = wuss;
   task->font        = wuss_get_font(wuss);
@@ -220,7 +220,7 @@ result_t text_create(wuss_t      *wuss,
                                  sz,
                                  "Sample Text",
                                  wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                                 wuss_BACKDROP_COLOUR(wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF)),
+                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  sz,
                                  SIZE2D(0, 0),
                                  &task->window);

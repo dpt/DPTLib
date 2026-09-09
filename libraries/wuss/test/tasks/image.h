@@ -6,6 +6,8 @@
 #ifdef WUSS_APP
 
 #include "framebuf/bitmap.h"
+#include "wuss/component/proginfo.h"
+#include "wuss/menu.h"
 #include "wuss/window.h"
 
 #define IMAGE_MAX_NAMES 64
@@ -17,6 +19,8 @@
 typedef struct image_task
 {
   wuss_window_t *window;
+  wuss_t        *wuss;      /* for wuss_get_pointer when opening the menu */
+  wuss_task_t   *delegate;  /* the wuss task backing this window */
   bitmap_t       bitmap;    /* owned: base freed by the caller when done */
   bitmap_t       ninepatch; /* owned: 9-patch tiled behind the main image */
   const char    *resources; /* root passed to path_join_filename on click */
@@ -25,6 +29,14 @@ typedef struct image_task
                               * leafnames (extension stripped) found under
                               * resources/images at spawn time */
   int            nnames;
+  wuss_menu_t   *menu;      /* owned: MENU-button demo tree, built from a
+                              * descriptor string; rebuilt on each open,
+                              * freed at QUIT */
+  wuss_proginfo_t *proginfo; /* owned: the "Info" row's standard dialogue,
+                              * hung off the menu as a wuss_menu_item_t.window;
+                              * freed at QUIT */
+  wuss_menu_handle_t menu_handle; /* the open chain, if any -- closed before the
+                              * proginfo it borrows is destroyed at QUIT */
 }
 image_task_t;
 

@@ -72,9 +72,9 @@ static result_t swatches_redraw(swatches_task_t    *task,
 
 result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t    rc;
 
   task->wuss       = wuss;
   task->window     = NULL;
@@ -104,7 +104,7 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
                                  SIZE2D(SWATCHES_DOC_W, 140),
                                  "Swatches",
                                  wuss_WINDOW_NO_RESIZE_BLIT, /* grid spans the whole window; a resize redraws all of it */
-                                 wuss_BACKDROP_COLOUR(wuss_nearest_colour(wuss, 0xDD, 0xDD, 0xDD)),
+                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  SIZE2D(SWATCHES_DOC_W, SWATCHES_DOC_H),
                                  SIZE2D(0, 0),
                                  &task->window);
@@ -174,7 +174,7 @@ static result_t swatches_menu_select(swatches_task_t    *task,
   task->paper = picked;
 
   /* every cell shares the new paper: dirty the whole document, not just the
-   * visible rectangle wuss_window_invalidate_all covers */
+   * visible rectangle wuss_window_invalidate_visible covers */
   wuss_window_invalidate_extent(task->window);
   return result_OK;
 }

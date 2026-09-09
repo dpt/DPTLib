@@ -22,7 +22,7 @@
 extern struct wuss_app_tasks
 {
   wuss_t          *wuss;
-  wuss_task_t     *menu_task; /* owns the menus and the hidden Details window */
+  wuss_task_t     *menu_task; /* owns the task launcher menus */
   colour_t        *palette;
   int              npalette;
   const char      *palette_name; /* startup *.hex leafname, for ticking the
@@ -44,12 +44,8 @@ result_t task_handle_event(wuss_window_t      *window,
                            const wuss_event_t *event,
                            void               *task_data);
 
-/* open the top-level task launcher (Launch / Test / Quit Wuss) at pos; called
- * on a MENU click over bare backdrop */
+/* open the top-level task launcher (Launch / Quit Wuss) at pos; called on a
+ * MENU click over bare backdrop */
 result_t tasks_open_launcher(point_t pos);
-
-/* free the descriptor-built menu tree kept alive across opens; call in
- * run_wuss's teardown after wuss_destroy */
-void tasks_teardown(void);
 
 #endif /* WUSS_APP_TASKS_H */

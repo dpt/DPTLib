@@ -986,6 +986,323 @@ static void bmfont_drawchar_p4_2w_t(void          *vscreen,
 
 /* -------------------------------------------------------------------------- */
 
+/* Plot one glyph row onto a p1 (1bpp) screen row. "row" is the glyph bits
+ * already shifted down by right_skip, so bit (cw - 1) is the leftmost visible
+ * pixel. "scr" points at the byte holding pixel column 0; "shift" (0..7) is
+ * that pixel's bit offset from the byte's MSB, matching the MSB-first 1bpp
+ * packing used elsewhere. When "opaque" is zero, clear glyph bits are left
+ * untouched. */
+static void bmfont_p1_plot_row(unsigned char *scr,
+                               unsigned int   row,
+                               int            cw,
+                               int            shift,
+                               pixelfmt_any_t fg,
+                               pixelfmt_any_t bg,
+                               int            opaque)
+{
+  int i;
+
+  for (i = 0; i < cw; i++)
+  {
+    int            set;
+    int            bitpos;
+    unsigned char *p;
+    int            b;
+
+    set = (row >> (cw - 1 - i)) & 1;
+    if (!set && !opaque)
+      continue;
+
+    bitpos = shift + i;
+    p      = scr + (bitpos >> 3);
+    b      = 7 - (bitpos & 7);
+
+    *p = (unsigned char) ((*p & ~(1 << b))
+                        | (((set ? fg : bg) & 1) << b));
+  }
+}
+
+/* As bmfont_p1_plot_row but for a p2 (2bpp) screen row: two bits per pixel,
+ * "shift" is a bit offset (0, 2, 4 or 6) and pixel column i lands at bit-pair
+ * (shift + 2 * i), MSB-first within the byte. */
+static void bmfont_p2_plot_row(unsigned char *scr,
+                               unsigned int   row,
+                               int            cw,
+                               int            shift,
+                               pixelfmt_any_t fg,
+                               pixelfmt_any_t bg,
+                               int            opaque)
+{
+  int i;
+
+  for (i = 0; i < cw; i++)
+  {
+    int            set;
+    int            bitpos;
+    unsigned char *p;
+    int            b;
+
+    set = (row >> (cw - 1 - i)) & 1;
+    if (!set && !opaque)
+      continue;
+
+    bitpos = shift + (i << 1);
+    p      = scr + (bitpos >> 3);
+    b      = 6 - (bitpos & 7);
+
+    *p = (unsigned char) ((*p & ~(3 << b))
+                        | (((set ? fg : bg) & 3) << b));
+  }
+}
+
+/* Draw a character to a p1 screen. One helper covers 1- and 2-byte glyph rows
+ * and both opaque and transparent backgrounds -- the p1 inner loop is a plain
+ * per-pixel bit write, so the LUT-driven width unrolling the p4 path needs
+ * buys nothing here. */
+static void bmfont_drawchar_p1_1w_o(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char       *scr = vscreen;
+  const unsigned char *gly = vglyph;
+  int                  stride;
+
+  assert(charwidth > 0);
+  assert(charheight > 0);
+
+  gly   += top_skip;
+  stride = rowbytes;
+
+  while (charheight--)
+  {
+    unsigned int row = (unsigned int) *gly++ >> right_skip;
+
+    bmfont_p1_plot_row(scr, row, charwidth, shift, fg, bg, 1);
+    scr += stride;
+  }
+}
+
+static void bmfont_drawchar_p1_1w_t(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char       *scr = vscreen;
+  const unsigned char *gly = vglyph;
+  int                  stride;
+
+  assert(charwidth > 0);
+  assert(charheight > 0);
+
+  gly   += top_skip;
+  stride = rowbytes;
+
+  while (charheight--)
+  {
+    unsigned int row = (unsigned int) *gly++ >> right_skip;
+
+    bmfont_p1_plot_row(scr, row, charwidth, shift, fg, bg, 0);
+    scr += stride;
+  }
+}
+
+static void bmfont_drawchar_p1_2w_o(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char        *scr = vscreen;
+  const unsigned short *gly = vglyph;
+  int                   stride;
+
+  assert(charwidth > 0);
+  assert(charheight > 0);
+
+  gly   += top_skip;
+  stride = rowbytes;
+
+  while (charheight--)
+  {
+    unsigned int row = (unsigned int) *gly++ >> right_skip;
+
+    bmfont_p1_plot_row(scr, row, charwidth, shift, fg, bg, 1);
+    scr += stride;
+  }
+}
+
+static void bmfont_drawchar_p1_2w_t(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char        *scr = vscreen;
+  const unsigned short *gly = vglyph;
+  int                   stride;
+
+  assert(charwidth > 0);
+  assert(charheight > 0);
+
+  gly   += top_skip;
+  stride = rowbytes;
+
+  while (charheight--)
+  {
+    unsigned int row = (unsigned int) *gly++ >> right_skip;
+
+    bmfont_p1_plot_row(scr, row, charwidth, shift, fg, bg, 0);
+    scr += stride;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+
+static void bmfont_drawchar_p2_1w_o(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char       *scr = vscreen;
+  const unsigned char *gly = vglyph;
+  int                  stride;
+
+  assert(charwidth > 0);
+  assert(charheight > 0);
+
+  gly   += top_skip;
+  stride = rowbytes;
+
+  while (charheight--)
+  {
+    unsigned int row = (unsigned int) *gly++ >> right_skip;
+
+    bmfont_p2_plot_row(scr, row, charwidth, shift, fg, bg, 1);
+    scr += stride;
+  }
+}
+
+static void bmfont_drawchar_p2_1w_t(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char       *scr = vscreen;
+  const unsigned char *gly = vglyph;
+  int                  stride;
+
+  assert(charwidth > 0);
+  assert(charheight > 0);
+
+  gly   += top_skip;
+  stride = rowbytes;
+
+  while (charheight--)
+  {
+    unsigned int row = (unsigned int) *gly++ >> right_skip;
+
+    bmfont_p2_plot_row(scr, row, charwidth, shift, fg, bg, 0);
+    scr += stride;
+  }
+}
+
+static void bmfont_drawchar_p2_2w_o(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char        *scr = vscreen;
+  const unsigned short *gly = vglyph;
+  int                   stride;
+
+  assert(charwidth > 0);
+  assert(charheight > 0);
+
+  gly   += top_skip;
+  stride = rowbytes;
+
+  while (charheight--)
+  {
+    unsigned int row = (unsigned int) *gly++ >> right_skip;
+
+    bmfont_p2_plot_row(scr, row, charwidth, shift, fg, bg, 1);
+    scr += stride;
+  }
+}
+
+static void bmfont_drawchar_p2_2w_t(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char        *scr = vscreen;
+  const unsigned short *gly = vglyph;
+  int                   stride;
+
+  assert(charwidth > 0);
+  assert(charheight > 0);
+
+  gly   += top_skip;
+  stride = rowbytes;
+
+  while (charheight--)
+  {
+    unsigned int row = (unsigned int) *gly++ >> right_skip;
+
+    bmfont_p2_plot_row(scr, row, charwidth, shift, fg, bg, 0);
+    scr += stride;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+
 /* Draw a character, a maximum of one byte wide, to any 8888 screen using an
  * opaque background. */
 static void bmfont_drawchar_any8888_1w_o(void          *vscreen,
@@ -1198,6 +1515,24 @@ result_t bmfont_draw(bmfont_t      *bmfont,
 
   switch (scr->format)
   {
+  case pixelfmt_p1:
+    switch (bmfont->glyphrowbytes)
+    {
+    case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p1_1w_t : bmfont_drawchar_p1_1w_o; break;
+    case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p1_2w_t : bmfont_drawchar_p1_2w_o; break;
+    default: assert(0); return result_NOT_SUPPORTED;
+    }
+    break;
+
+  case pixelfmt_p2:
+    switch (bmfont->glyphrowbytes)
+    {
+    case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p2_1w_t : bmfont_drawchar_p2_1w_o; break;
+    case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p2_2w_t : bmfont_drawchar_p2_2w_o; break;
+    default: assert(0); return result_NOT_SUPPORTED;
+    }
+    break;
+
   case pixelfmt_p4:
     switch (bmfont->glyphrowbytes)
     {
@@ -1261,7 +1596,16 @@ result_t bmfont_draw(bmfont_t      *bmfont,
 
   int            x                 = pos->x;
 
+  /* box_intersects said something is visible, but a glyph can still be fully
+   * clipped vertically at a boundary. drawfn's `while (charheight--)` would
+   * then run ~INT_MAX times, so bail rather than trust the assert alone. */
   assert(clippedcharheight > 0);
+  if (clippedcharheight <= 0)
+  {
+    if (end_pos)
+      *end_pos = POINT(pos->x, pos->y);
+    return result_OK;
+  }
 
   while (len--)
   {
@@ -1271,7 +1615,15 @@ result_t bmfont_draw(bmfont_t      *bmfont,
     const void *glyph;
 
     c       = *text++;
-    gid     = c - ' ';
+
+    /* control characters and anything outside the glyph table draw nothing
+     * and advance nothing -- matching bmfont_measure. */
+    if ((unsigned char) c < ' ')
+      continue;
+    gid = (unsigned char) c - ' ';
+    if (gid >= bmfont->totalchars)
+      continue;
+
     advance = bmfont_advance_for(bmfont, gid) + tracking;
 
     x += advance;
@@ -1334,8 +1686,13 @@ result_t bmfont_draw(bmfont_t      *bmfont,
         int gid;
         int advance;
 
-        c       = *text++;
-        gid     = c - ' ';
+        c = *text++;
+        if ((unsigned char) c < ' ')
+          continue;
+        gid = (unsigned char) c - ' ';
+        if (gid >= bmfont->totalchars)
+          continue;
+
         advance = bmfont_advance_for(bmfont, gid) + tracking;
 
         x += advance;
@@ -1360,9 +1717,9 @@ result_t bmfont_draw_relief(bmfont_t      *bmfont,
                             const point_t *offset,
                             point_t       *end_pos)
 {
+  result_t rc;
   colour_t transparent;
   point_t  shadowpos;
-  result_t rc;
 
   transparent = colour_rgba(0, 0, 0, 0);
   shadowpos   = POINT(pos->x + offset->x, pos->y + offset->y);

@@ -9,10 +9,13 @@
 
 /* fills its whole content area with a two-axis colour gradient; opens
  * small (100x100) against a large (400x400) document, so scrollbars
- * appear and the fill can be scrolled around */
+ * appear and the fill can be scrolled around. SELECT/ADJUST clicks cycle
+ * the ordered-dither matrix forward/backward through 2x2, 4x4 and 8x8. */
 typedef struct gradient_task
 {
+  wuss_t        *wuss;   /* borrowed; for wuss_get_font in the redraw */
   wuss_window_t *window;
+  int            dither_index;
 }
 gradient_task_t;
 

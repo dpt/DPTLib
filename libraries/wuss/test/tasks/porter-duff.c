@@ -133,9 +133,9 @@ static result_t load_demo_png(bitmap_t   *bm,
                               const char *resources,
                               const char *leafname)
 {
+  result_t    rc;
   const char *leafname_ext;
   const char *filename;
-  result_t    rc;
 
   leafname_ext = path_join_leafname(leafname, "png");
   filename     = path_join_filename(resources, 3,
@@ -163,9 +163,9 @@ result_t porter_duff_create(wuss_t             *wuss,
                             const char         *resources,
                             porter_duff_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t    rc;
 
   task->font            = font;
   task->rule            = composite_RULE_CLEAR;
@@ -204,7 +204,7 @@ result_t porter_duff_create(wuss_t             *wuss,
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
                                  "Porter-Duff",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
                                  SIZE2D(0, 0),
@@ -293,12 +293,12 @@ static void porter_duff_draw_checkerboard(const porter_duff_task_t *pd,
 static result_t porter_duff_redraw(const wuss_event_t *event,
                                    void               *task_data)
 {
+  result_t            rc;
   porter_duff_task_t *pd;
   screen_t           *scr;
   const box_t        *content, *bounds;
   const char         *name;
   point_t             pos;
-  result_t            rc;
 
   pd = task_data;
 
@@ -345,7 +345,7 @@ static result_t porter_duff_idle(void *task_data)
   }
 
   /* the ramp changes every frame, so the whole pane is stale every frame */
-  wuss_window_invalidate_all(pd->window);
+  wuss_window_invalidate_visible(pd->window);
 
   return result_OK;
 }
@@ -359,7 +359,7 @@ static result_t porter_duff_mouse(wuss_window_t *window, void *task_data)
   pd->rule  = (pd->rule + 1) % composite_RULE__LIMIT;
   pd->frame = 0;
 
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }
@@ -377,7 +377,7 @@ static result_t porter_duff_scroll(wuss_window_t *window,
                                PD_FRAMES_MIN, PD_FRAMES_MAX);
   pd->frame            = MIN(pd->frame, pd->frames_per_rule);
 
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }

@@ -17,6 +17,84 @@
  * bit per pixel rather than using the run. */
 typedef pixelfmt_any_t pattern_runs_t[8][8];
 
+static void screen_fill_pattern_p1(screen_t        *scr,
+                                   const pattern_t *pattern,
+                                   const box_t     *draw_box,
+                                   int              stencil,
+                                   pattern_runs_t   runs)
+{
+  unsigned char *rowp;
+  int            row, col, x, y;
+
+  rowp = (unsigned char *) scr->base + draw_box->y0 * scr->rowbytes;
+  for (y = draw_box->y0; y < draw_box->y1; y++)
+  {
+    const pixelfmt_any_t *run;
+    uint8_t               bits;
+
+    row  = (y - pattern->origin.y) & 7;
+    run  = runs[row];
+    bits = pattern->bits[row];
+    col  = 0;
+    for (x = draw_box->x0; x < draw_box->x1; x++)
+    {
+      if (!stencil ||
+          (bits & (0x80u >> ((x - pattern->origin.x) & 7))))
+      {
+        unsigned char *scrp;
+        int            shift;
+
+        scrp  = rowp + (x >> 3);
+        shift = 7 - (x & 7);
+
+        *scrp = (unsigned char) ((*scrp & ~(1 << shift)) |
+                                 ((run[col] & 1) << shift));
+      }
+      col = (col + 1) & 7;
+    }
+    rowp += scr->rowbytes;
+  }
+}
+
+static void screen_fill_pattern_p2(screen_t        *scr,
+                                   const pattern_t *pattern,
+                                   const box_t     *draw_box,
+                                   int              stencil,
+                                   pattern_runs_t   runs)
+{
+  unsigned char *rowp;
+  int            row, col, x, y;
+
+  rowp = (unsigned char *) scr->base + draw_box->y0 * scr->rowbytes;
+  for (y = draw_box->y0; y < draw_box->y1; y++)
+  {
+    const pixelfmt_any_t *run;
+    uint8_t               bits;
+
+    row  = (y - pattern->origin.y) & 7;
+    run  = runs[row];
+    bits = pattern->bits[row];
+    col  = 0;
+    for (x = draw_box->x0; x < draw_box->x1; x++)
+    {
+      if (!stencil ||
+          (bits & (0x80u >> ((x - pattern->origin.x) & 7))))
+      {
+        unsigned char *scrp;
+        int            shift;
+
+        scrp  = rowp + (x >> 2);
+        shift = 6 - ((x & 3) << 1);
+
+        *scrp = (unsigned char) ((*scrp & ~(3 << shift)) |
+                                 ((run[col] & 3) << shift));
+      }
+      col = (col + 1) & 7;
+    }
+    rowp += scr->rowbytes;
+  }
+}
+
 static void screen_fill_pattern_p4(screen_t        *scr,
                                    const pattern_t *pattern,
                                    const box_t     *draw_box,
@@ -131,10 +209,10 @@ void screen_fill_pattern(screen_t        *scr,
   stencil = (pattern->flags & pattern_FLAG_STENCIL) != 0;
 
   fg_fmt = colour_to_pixel(scr->palette,
-                           (scr->format == pixelfmt_p4) ? 16 : 0,
+                           pixelfmt_paletted_nentries(scr->format),
                            pattern->fg, scr->format);
   bg_fmt = colour_to_pixel(scr->palette,
-                           (scr->format == pixelfmt_p4) ? 16 : 0,
+                           pixelfmt_paletted_nentries(scr->format),
                            pattern->bg, scr->format);
 
   xphase = ((draw_box.x0 - pattern->origin.x) & 7);
@@ -150,6 +228,14 @@ void screen_fill_pattern(screen_t        *scr,
 
   switch (pixelfmt_log2bpp(scr->format))
   {
+  case 0:
+    screen_fill_pattern_p1(scr, pattern, &draw_box, stencil, runs);
+    break;
+
+  case 1:
+    screen_fill_pattern_p2(scr, pattern, &draw_box, stencil, runs);
+    break;
+
   case 2:
     screen_fill_pattern_p4(scr, pattern, &draw_box, stencil, runs);
     break;

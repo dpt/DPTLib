@@ -133,6 +133,37 @@ static void wuss__menu_close_from(struct wuss__menu *node)
   }
 }
 
+/* Tear the whole open chain down because wuss decided to, not the client: a
+ * click outside every menu window, or another wuss_menu_open. The task that
+ * opened it still holds the handle wuss_menu_open handed back, so tell it the
+ * chain is gone (wuss_EVENT_MENU_CLOSED) before the nodes are freed -- a pick
+ * has wuss_EVENT_MENU_SELECT for that, but these paths have nothing. Unlinks
+ * wuss->menu_chain first so a re-entrant wuss_menu_close from the handler is a
+ * no-op. Also used by wuss_task_destroy when the chain's owner is the task
+ * going away, so declared in core impl.h. */
+void wuss__menu_abandon(wuss_t *wuss)
+{
+  struct wuss__menu *root;
+  wuss_task_t       *owner;
+
+  root = wuss->menu_chain;
+  if (root == NULL)
+    return;
+
+  owner            = root->owner;
+  wuss->menu_chain = NULL;
+
+  if (owner != NULL)
+  {
+    wuss_event_t ev;
+
+    ev.kind = wuss_EVENT_MENU_CLOSED;
+    (void) wuss__deliver(owner, NULL, &ev);
+  }
+
+  wuss__menu_close_from(root);
+}
+
 /* Compute where a submenu (or a borrowed window standing in for one) opens
  * off the row `icon` in parent level `self`: content top-left in screen
  * space, the child's own titlebar then sitting above it so the two rows line
@@ -268,9 +299,23 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
      * this row's text off the arrow -- closes the child it opened. */
     if (self->child != NULL && !(self->open_index == index && on_arrow))
     {
+      wuss_icon_t *was_parent;
+
+      was_parent = (self->open_index >= 0) ? self->icons[self->open_index]
+                                           : NULL;
+
       wuss__menu_close_from(self->child);
       self->child      = NULL;
       self->open_index = -1;
+
+      /* The ex-parent row was held highlit while its submenu was open (see
+       * wuss__menu_row_pinned). Now the submenu is gone, drop that highlight
+       * unless the pointer has landed back on that very row. */
+      if (was_parent != NULL && was_parent != icon)
+      {
+        wuss__icon_set_state(was_parent, wuss_ICON_STATE_HOVERED, 0);
+        wuss__icon_invalidate(was_parent);
+      }
     }
 
     if (self->child != NULL)
@@ -478,11 +523,11 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
                                  struct wuss__menu  *parent,
                                  struct wuss__menu **out)
 {
+  result_t           rc;
   struct wuss__menu *node;
   wuss_task_t       *menu_task;
   wuss_icon_spec_t  *specs;
   wuss_icon_t      **made;
-  result_t           rc;
   int                fh;
   int                pitch;
   int                sep_h;
@@ -544,8 +589,8 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     len  = (int) strlen(text);
     if (len == 0)
       continue; /* empty label (bare rule row); nothing to measure */
-    if (bmfont_measure(wuss->fonts[0], text, len,
-                       INT_MAX, &split, &w) == result_OK && (int) w > widest)
+    if (wuss__text_measure(wuss->fonts[0], text, len,
+                           INT_MAX, &split, &w) == result_OK && (int) w > widest)
       widest = (int) w;
   }
 
@@ -555,7 +600,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   {
     bmfont_width_t space_w = 0;
 
-    bmfont_measure(wuss->fonts[0], " ", 1, INT_MAX, NULL, &space_w);
+    wuss__text_measure(wuss->fonts[0], " ", 1, INT_MAX, NULL, &space_w);
     widest += 2 * (int) space_w;
   }
 
@@ -575,8 +620,8 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     titlefont = (wuss->nfonts > 1 && wuss->fonts[1] != NULL) ? wuss->fonts[1]
                                                              : wuss->fonts[0];
     titlelen  = (int) strlen(menu->title);
-    if (bmfont_measure(titlefont, menu->title, titlelen, INT_MAX, &split,
-                       &title_w) == result_OK &&
+    if (wuss__text_measure(titlefont, menu->title, titlelen, INT_MAX, &split,
+                           &title_w) == result_OK &&
         (int) title_w + 2 * WUSS_MENU_TITLE_PAD > width)
       width = (int) title_w + 2 * WUSS_MENU_TITLE_PAD;
   }
@@ -716,7 +761,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   rc = wuss_window_create(menu_task, &content,
                           menu->title ? menu->title : "",
                           menu_flags,
-                          wuss_BACKDROP_COLOUR(wuss_COLOUR_WHITE),
+                          wuss_BACKDROP_COLOUR(wuss_COLOUR_MENU),
                           doc, min_doc, &node->window);
   if (rc != result_OK)
   {
@@ -765,9 +810,9 @@ result_t wuss_menu_open(wuss_task_t        *task,
                         point_t             at,
                         wuss_menu_handle_t *out)
 {
+  result_t           rc;
   struct wuss__menu *root;
   wuss_t            *wuss;
-  result_t           rc;
 
   assert(task != NULL);
   assert(menu != NULL);
@@ -775,10 +820,7 @@ result_t wuss_menu_open(wuss_task_t        *task,
   wuss = task->wuss;
 
   if (wuss->menu_chain != NULL)
-  {
-    wuss__menu_close_from(wuss->menu_chain);
-    wuss->menu_chain = NULL;
-  }
+    wuss__menu_abandon(wuss);
 
   /* RISC OS convention: the pointer opens the menu sitting a little inside its
    * first item, not on the top-left corner. Shift the content top-left up and
@@ -926,6 +968,21 @@ void wuss_menu_set_item_ticked(wuss_menu_handle_t handle,
 
 /* ----------------------------------------------------------------------- */
 
+int wuss__menu_row_pinned(const wuss_t *wuss, const wuss_icon_t *icon)
+{
+  const struct wuss__menu *node;
+
+  for (node = wuss->menu_chain; node != NULL; node = node->child)
+  {
+    if (node->borrowed || node->child == NULL || node->open_index < 0)
+      continue;
+    if (node->icons[node->open_index] == icon)
+      return 1;
+  }
+
+  return 0;
+}
+
 int wuss__menu_click_outside(wuss_t *wuss, const wuss_window_t *hit)
 {
   struct wuss__menu *node;
@@ -939,7 +996,6 @@ int wuss__menu_click_outside(wuss_t *wuss, const wuss_window_t *hit)
       return 0;
   }
 
-  wuss__menu_close_from(wuss->menu_chain);
-  wuss->menu_chain = NULL;
+  wuss__menu_abandon(wuss);
   return 1;
 }

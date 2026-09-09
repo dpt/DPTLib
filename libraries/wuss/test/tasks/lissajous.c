@@ -23,9 +23,9 @@ static const int lissajous_freqs[][2] =
 
 result_t lissajous_create(wuss_t *wuss, lissajous_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
 
   task->bg         = colour_rgb(0x00, 0x00, 0x00);
   task->fg         = colour_rgb(0x00, 0xFF, 0x00);
@@ -50,7 +50,7 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t *task)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(220, 220),
                                  "Lissajous",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  SIZE2D(220, 220),
                                  SIZE2D(0, 0),
@@ -121,7 +121,7 @@ static result_t lissajous_mouse(wuss_window_t      *window,
     lc->freq_index = (lc->freq_index + 1) % (int) NELEMS(lissajous_freqs);
     lc->a          = lissajous_freqs[lc->freq_index][0];
     lc->b          = lissajous_freqs[lc->freq_index][1];
-    wuss_window_invalidate_all(lc->window); /* whole figure changes */
+    wuss_window_invalidate_visible(lc->window); /* whole figure changes */
   }
   else if (button & wuss_BUTTON_ADJUST)
   {
@@ -143,7 +143,7 @@ static result_t lissajous_idle(void *task_data)
   else if (lc->phase < 0.0)
     lc->phase += 2.0 * M_PI;
 
-  wuss_window_invalidate_all(lc->window); /* ponytail: repaint whole content; figure fills it and is cheap */
+  wuss_window_invalidate_visible(lc->window); /* ponytail: repaint whole content; figure fills it and is cheap */
 
   return result_OK;
 }

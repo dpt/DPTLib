@@ -91,6 +91,9 @@ result_t screen_copy_ninepatch(screen_t       *scr,
   assert(src->size.w > 0 && src->size.w % 3 == 0);
   assert(src->size.h > 0 && src->size.h % 3 == 0);
 
+  if (pixelfmt_is_rle(src->format))
+    return result_NOT_SUPPORTED;
+
   if (box_is_empty(dst))
     return result_OK;
 

@@ -34,13 +34,19 @@ static const colour_t wuss__default_palette[] =
 static result_t validate_bevel_backdrop(const wuss_t *w,
                                         wuss_colour_t blight,
                                         wuss_colour_t bdark,
-                                        wuss_colour_t abg,
-                                        wuss_colour_t afg)
+                                        wuss_colour_t bdivider,
+                                        wuss_colour_t btnbg,
+                                        wuss_colour_t btnfg,
+                                        wuss_colour_t btnpressed,
+                                        wuss_colour_t accent)
 {
-  if (blight >= w->npalette ||
-      bdark  >= w->npalette ||
-      abg    >= w->npalette ||
-      afg    >= w->npalette ||
+  if (blight      >= w->npalette ||
+      bdark       >= w->npalette ||
+      bdivider    >= w->npalette ||
+      btnbg       >= w->npalette ||
+      btnfg       >= w->npalette ||
+      btnpressed  >= w->npalette ||
+      accent      >= w->npalette ||
       wuss__validate_backdrop(w, &w->backdrop) != result_OK)
     return result_WUSS_BAD_COLOUR;
 
@@ -65,8 +71,8 @@ result_t wuss_create(screen_t               *scr,
   wuss_colour_t  bg, fg;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
-  wuss_colour_t  blight, bdark;
-  wuss_colour_t  abg, afg;
+  wuss_colour_t  blight, bdark, bdivider;
+  wuss_colour_t  btnbg, btnfg, btnpressed, accent;
 #endif
 #ifdef WUSS_FURNITURE
   int            font_height;
@@ -118,12 +124,23 @@ result_t wuss_create(screen_t               *scr,
     w->backdrop            = config->backdrop;
     w->backdrop.colour     = wuss__resolve_colour(w, w->backdrop.colour);
     w->backdrop.pattern_bg = wuss__resolve_colour(w, w->backdrop.pattern_bg);
+    w->window_bg           = wuss__resolve_colour(w, config->body.window);
+    w->menu_bg             = wuss__resolve_colour(w, config->body.menu);
   }
   else
   {
     w->backdrop.colour     = wuss_NO_BACKGROUND;
     w->backdrop.pattern    = screen_PATTERN_SOLID;
     w->backdrop.pattern_bg = wuss_NO_BACKGROUND;
+    w->window_bg           = wuss__resolve_colour(w, wuss_COLOUR_GREY);
+    w->menu_bg             = wuss__resolve_colour(w, wuss_COLOUR_WHITE);
+  }
+
+  if (w->window_bg >= w->npalette || w->menu_bg >= w->npalette)
+  {
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
+    return result_WUSS_BAD_COLOUR;
   }
 
 #ifdef WUSS_FURNITURE
@@ -132,6 +149,9 @@ result_t wuss_create(screen_t               *scr,
     pal = config->furniture;
     pal.title.bg        = wuss__resolve_colour(w, pal.title.bg);
     pal.title.fg        = wuss__resolve_colour(w, pal.title.fg);
+    pal.outline         = (pal.outline == wuss_NO_BACKGROUND)
+                        ? pal.title.bg
+                        : wuss__resolve_colour(w, pal.outline);
     pal.back            = wuss__resolve_colour(w, pal.back);
     pal.close           = wuss__resolve_colour(w, pal.close);
     pal.toggle          = wuss__resolve_colour(w, pal.toggle);
@@ -139,10 +159,19 @@ result_t wuss_create(screen_t               *scr,
     pal.scroll.arrows   = wuss__resolve_colour(w, pal.scroll.arrows);
     pal.scroll.wells    = wuss__resolve_colour(w, pal.scroll.wells);
     pal.scroll.sausages = wuss__resolve_colour(w, pal.scroll.sausages);
-    blight = wuss__resolve_colour(w, config->bevel.light);
-    bdark  = wuss__resolve_colour(w, config->bevel.dark);
-    abg    = wuss__resolve_colour(w, config->accent.bg);
-    afg    = wuss__resolve_colour(w, config->accent.fg);
+    blight     = wuss__resolve_colour(w, config->bevel.light);
+    bdark      = wuss__resolve_colour(w, config->bevel.dark);
+    bdivider   = (config->bevel.divider == wuss_NO_BACKGROUND)
+               ? blight
+               : wuss__resolve_colour(w, config->bevel.divider);
+    btnbg      = (config->button.bg == wuss_NO_BACKGROUND)
+               ? blight
+               : wuss__resolve_colour(w, config->button.bg);
+    btnfg      = wuss__resolve_colour(w, config->button.fg);
+    btnpressed = (config->button.pressed == wuss_NO_BACKGROUND)
+               ? bdark
+               : wuss__resolve_colour(w, config->button.pressed);
+    accent     = wuss__resolve_colour(w, config->accent.colour);
   }
   else
   {
@@ -151,6 +180,7 @@ result_t wuss_create(screen_t               *scr,
 
     pal.title.bg        = bg;
     pal.title.fg        = fg;
+    pal.outline         = bg;
     pal.back            = fg;
     pal.close           = fg;
     pal.toggle          = fg;
@@ -159,14 +189,18 @@ result_t wuss_create(screen_t               *scr,
     pal.scroll.wells    = bg;
     pal.scroll.sausages = fg;
 
-    blight = 0;
-    bdark  = 0;
-    abg    = bg; /* default action button: the titlebar colours */
-    afg    = fg;
+    blight     = 0;
+    bdark      = 0;
+    bdivider   = 0;
+    btnbg      = 0;
+    btnfg      = fg;
+    btnpressed = 0;
+    accent     = bg; /* default action button: the titlebar fill */
   }
 
   if (pal.title.bg        >= w->npalette ||
       pal.title.fg        >= w->npalette ||
+      pal.outline         >= w->npalette ||
       pal.back            >= w->npalette ||
       pal.close           >= w->npalette ||
       pal.toggle          >= w->npalette ||
@@ -174,7 +208,8 @@ result_t wuss_create(screen_t               *scr,
       pal.scroll.arrows   >= w->npalette ||
       pal.scroll.wells    >= w->npalette ||
       pal.scroll.sausages >= w->npalette ||
-      validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
+      validate_bevel_backdrop(w, blight, bdark, bdivider,
+                              btnbg, btnfg, btnpressed, accent) != result_OK)
   {
     wuss__free(w, w->palette);
     wuss__free(w, w);
@@ -184,8 +219,11 @@ result_t wuss_create(screen_t               *scr,
   w->furniture_colours = pal;
   w->bevel_light       = blight;
   w->bevel_dark        = bdark;
-  w->accent_bg         = abg;
-  w->accent_fg         = afg;
+  w->bevel_divider     = bdivider;
+  w->button_bg         = btnbg;
+  w->button_fg         = btnfg;
+  w->button_pressed    = btnpressed;
+  w->accent            = accent;
 
   if (config != NULL && config->titlebar_height > 0)
   {
@@ -213,28 +251,44 @@ result_t wuss_create(screen_t               *scr,
 #ifdef WUSS_ICONS
   if (config != NULL)
   {
-    blight = wuss__resolve_colour(w, config->bevel.light);
-    bdark  = wuss__resolve_colour(w, config->bevel.dark);
-    abg    = wuss__resolve_colour(w, config->accent.bg);
-    afg    = wuss__resolve_colour(w, config->accent.fg);
+    blight     = wuss__resolve_colour(w, config->bevel.light);
+    bdark      = wuss__resolve_colour(w, config->bevel.dark);
+    bdivider   = (config->bevel.divider == wuss_NO_BACKGROUND)
+               ? blight
+               : wuss__resolve_colour(w, config->bevel.divider);
+    btnbg      = (config->button.bg == wuss_NO_BACKGROUND)
+               ? blight
+               : wuss__resolve_colour(w, config->button.bg);
+    btnfg      = wuss__resolve_colour(w, config->button.fg);
+    btnpressed = (config->button.pressed == wuss_NO_BACKGROUND)
+               ? bdark
+               : wuss__resolve_colour(w, config->button.pressed);
+    accent     = wuss__resolve_colour(w, config->accent.colour);
   }
   else
   {
-    blight = 0;
-    bdark  = 0;
-    abg    = 0;
-    afg    = (w->npalette > 1) ? 1 : 0;
+    blight     = 0;
+    bdark      = 0;
+    bdivider   = 0;
+    btnbg      = 0;
+    btnfg      = (w->npalette > 1) ? 1 : 0;
+    btnpressed = 0;
+    accent     = 0;
   }
-  if (validate_bevel_backdrop(w, blight, bdark, abg, afg) != result_OK)
+  if (validate_bevel_backdrop(w, blight, bdark, bdivider,
+                              btnbg, btnfg, btnpressed, accent) != result_OK)
   {
     wuss__free(w, w->palette);
     wuss__free(w, w);
     return result_WUSS_BAD_COLOUR;
   }
-  w->bevel_light = blight;
-  w->bevel_dark  = bdark;
-  w->accent_bg   = abg;
-  w->accent_fg   = afg;
+  w->bevel_light    = blight;
+  w->bevel_dark     = bdark;
+  w->bevel_divider  = bdivider;
+  w->button_bg      = btnbg;
+  w->button_fg      = btnfg;
+  w->button_pressed = btnpressed;
+  w->accent         = accent;
 #else
   if (wuss__validate_backdrop(w, &w->backdrop) != result_OK)
   {
@@ -276,6 +330,10 @@ result_t wuss_create(screen_t               *scr,
 #ifdef WUSS_ICONS
   w->pressed_icon       = NULL;
   w->hover_icon         = NULL;
+  w->icon.names         = NULL;
+  w->icon.atoms         = NULL;
+  w->icon.bitmaps       = NULL;
+  w->icon.nbitmaps      = 0;
 #endif
 #ifdef WUSS_MENUS
   w->menu_chain         = NULL;

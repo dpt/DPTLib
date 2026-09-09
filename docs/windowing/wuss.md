@@ -29,9 +29,9 @@ A `wuss_backdrop_t` is `{ colour, pattern, pattern_bg }`; the `wuss_BACKDROP_COL
 A `wuss_colour_t` is a system-palette index. Values `0..127` are raw indices; `wuss_COLOUR_SYMBOLIC` (128) and above are *symbolic* — roles wuss resolves to a concrete index against the live palette (and, for the chrome roles, the live config):
 
 - `wuss_COLOUR_BLACK`, `_WHITE`, `_RED`, `_GREEN`, `_BLUE`, `_YELLOW`, `_CYAN`, `_MAGENTA`, `_GREY` — nearest system-palette entry to the named RGB, the same lookup as `wuss_nearest_colour`.
-- `wuss_COLOUR_TITLE_BG`, `_TITLE_FG`, `_BUTTON_HILIGHT`, `_BUTTON_SHADOW`, `_ACCENT_BG`, `_ACCENT_FG`, `_BACKDROP` — echo the matching `wuss_config_t` field (`furniture.title.bg`, `bevel.light`, `bevel.dark`, `backdrop.colour`, …).
+- `wuss_COLOUR_TITLE_BG`, `_TITLE_FG`, `_BUTTON_HILIGHT`, `_BUTTON_SHADOW`, `_BUTTON_PRESSED`, `_ACCENT_BG`, `_ACCENT_FG`, `_BACKDROP`, `_WINDOW`, `_MENU` — echo the matching `wuss_config_t` field (`furniture.title.bg`, `bevel.light`, `bevel.dark`, `bevel.pressed`, `backdrop.colour`, `body.window`, `body.menu`, …). `body.window` (work-area fill) defaults to `wuss_COLOUR_GREY`, `body.menu` (menu fill) to `wuss_COLOUR_WHITE`, when `config` is NULL.
 
-Pass a symbolic value anywhere a `wuss_colour_t` is taken: config furniture/bevel/accent/backdrop, `wuss_window_create` / `wuss_window_set_background` backgrounds, icon specs. It is resolved once when stored, so drawing never pays for it and reads back a plain index. `wuss_set_palette` and `wuss_set_backdrop` re-resolve. `wuss_NO_BACKGROUND` is not symbolic and always passes through.
+Pass a symbolic value anywhere a `wuss_colour_t` is taken: config furniture/bevel/accent/body/backdrop, `wuss_window_create` / `wuss_window_set_background` backgrounds, icon specs. It is resolved once when stored, so drawing never pays for it and reads back a plain index. `wuss_set_palette` and `wuss_set_backdrop` re-resolve. `wuss_NO_BACKGROUND` is not symbolic and always passes through.
 
 Destroy with `wuss_destroy`, which also destroys any windows still open on it.
 
@@ -80,8 +80,9 @@ wuss_task_t;
 - `wuss_WINDOW_NO_HSCROLL` — no horizontal scrollbar on the bottom edge.
 - `wuss_WINDOW_NO_RESIZE` — no resize button in the bottom-right corner.
 - `wuss_WINDOW_NO_RESIZE_BLIT` — a resize (drag or toggle-size) always fully redraws the window's content instead of blitting the preserved region; for a task whose rendering depends on window size in ways a partial redraw can't patch (e.g. a layout that spans the whole window).
+- `wuss_WINDOW_NO_REDRAW` — no `wuss_EVENT_REDRAW` is delivered for this window: Wuss fills its backdrop and draws its icons, and that is its whole appearance. For a window that is nothing but backdrop and/or icons (a label-only dialogue, say) this saves the task a no-op redraw handler — and, when the window shares a task with a window that does paint, a window-handle check in that handler.
 
-`wuss_WINDOW_NO_CLOSE`/`NO_BACK`/`NO_TOGGLE_SIZE` are ignored if `flags` includes `wuss_WINDOW_NO_TITLEBAR`; `NO_VSCROLL`/`NO_HSCROLL`/`NO_RESIZE`/`NO_RESIZE_BLIT` apply regardless.
+`wuss_WINDOW_NO_CLOSE`/`NO_BACK`/`NO_TOGGLE_SIZE` are ignored if `flags` includes `wuss_WINDOW_NO_TITLEBAR`; `NO_VSCROLL`/`NO_HSCROLL`/`NO_RESIZE`/`NO_RESIZE_BLIT`/`NO_REDRAW` apply regardless.
 
 All furniture actions (back, toggle-size, resize-drag, scrollbar arrow/thumb) are handled entirely within Wuss via `wuss_mouse_click`/`wuss_mouse_move` — no new client events.
 
@@ -187,7 +188,7 @@ In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scro
 ## Redrawing
 
 - `wuss_redraw` repaints every window, back-to-front, unconditionally, having first painted the configured backdrop colour (see Setup) behind them, if any.
-- Within a window, Wuss paints in a fixed order: the window background colour, then its icons (see "Icons" below), then the task's `wuss_EVENT_REDRAW` handler — so a task always draws over the background and any icons, never under them.
+- Within a window, Wuss paints in a fixed order: the window background colour, then its icons (see "Icons" below), then the task's `wuss_EVENT_REDRAW` handler — so a task always draws over the background and any icons, never under them. A `wuss_WINDOW_NO_REDRAW` window skips that last step: background and icons are all it gets.
 - `wuss_invalidate` / `wuss_window_invalidate` mark a screen-space or window-local region dirty; window management calls these automatically for its own changes, but a task must call one of them itself whenever its content changes on its own (e.g. an animation), passing the union of the old and new areas that need repainting.
 - `wuss_redraw_dirty` repaints only the accumulated dirty region, then clears it, painting the backdrop colour into each dirty region first if one was configured. Without a configured backdrop, Wuss only repaints windows, not the background between/behind them, so a caller whose invalidation can expose background (e.g. after a window move) should clear that region itself first.
 - `wuss_get_dirty_count`/`wuss_get_dirty(wuss, index, out)` fetch the currently accumulated dirty regions (coalesced as they accumulate, up to a fixed cap after which further regions are merged into the last one) without redrawing.
@@ -197,14 +198,14 @@ In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scro
 
 Taking inspiration from RISC OS, a window can carry **icons**: rectangular UI elements Wuss draws and hit-tests inside the content area. v1 ships two types:
 
-- `wuss_ICON_TYPE_LABEL` — static text. Clicks fall through to the task as `wuss_EVENT_MOUSE`.
+- `wuss_ICON_TYPE_LABEL` — static text, optionally in a 1px raised or sunken border (`spec.border` — `wuss_ICON_BORDER_NONE` / `_RIDGE` / `_GROOVE`, the last a RISC OS-style read-only display field). Clicks fall through to the task as `wuss_EVENT_MOUSE`.
 - `wuss_ICON_TYPE_BUTTON` — a bevelled rectangle with a centred label and pressed-state feedback (the bevel inverts and the label shifts one pixel down-right while held). Clicks and hovers arrive as `wuss_EVENT_ICON`.
 
 The enum is left open for sprite and editable-text types later.
 
 Icons are dynamic and owned by their window:
 
-- `wuss_icon_create(window, spec, &icon)` — returns an opaque `wuss_icon_t *`. The spec gives the bounding box, type, text (copied; `NULL` treated as `""`), foreground and background palette indices, and flags. A `wuss_ICON_TYPE_BUTTON` must pass a real `bg`; passing `wuss_NO_BACKGROUND` is rejected with `result_WUSS_BAD_ICON`. An unknown type is also `result_WUSS_BAD_ICON`; an out-of-range `fg`/`bg` is `result_WUSS_BAD_COLOUR`.
+- `wuss_icon_create(window, spec, &icon)` — returns an opaque `wuss_icon_t *`. The spec gives the bounding box, type, text (copied; `NULL` treated as `""`), foreground and background palette indices, a `border` (label only), and flags. A `wuss_ICON_TYPE_BUTTON` must pass a real `bg`; passing `wuss_NO_BACKGROUND` is rejected with `result_WUSS_BAD_ICON`. An unknown type is also `result_WUSS_BAD_ICON`; an out-of-range `fg`/`bg` is `result_WUSS_BAD_COLOUR`.
 - `wuss_icon_delete(icon)` — NULL-safe.
 - `wuss_icon_set_text(icon, text)`, `wuss_icon_set_hidden(icon, hidden)`.
 - Getters: `wuss_icon_get_bbox`, `wuss_icon_get_type`, `wuss_icon_get_text` (never `NULL`), `wuss_icon_get_window`.
@@ -215,7 +216,47 @@ An icon's bounding box is in **virtual content space** — the same space as `wu
 
 Wuss draws icons in creation order (later icons paint on top); hit-testing scans in reverse, so the topmost icon at a point wins. When the pointer leaves a pressed button its pressed state clears; v1 does not re-press on drag-back-in and does not track which mouse button is held.
 
-The bevel's light (top/left) and dark (bottom/right) edge shades come from `config->bevel.light` / `config->bevel.dark` at `wuss_create` time, validated like the other furniture colours; both default to the titlebar fill colour when `config` is `NULL`.
+The bevel's light (top/left) and dark (bottom/right) edge shades come from `config->bevel.light` / `config->bevel.dark` at `wuss_create` time, validated like the other furniture colours; both default to the titlebar fill colour when `config` is `NULL`. A held button also fills its face with `config->bevel.pressed` in place of the icon's own background; pass `wuss_NO_BACKGROUND` (or `NULL` config) to have it follow `bevel.dark`.
+
+### Loaded icon set
+
+`wuss_icons_load(wuss, dir)` scans a directory for `*.png`, loads each one and RLE-compresses it in place (`bitmap_compress`), and records its leafname sans `.png`. Entries are indexed in the order the platform's directory scan yields — unspecified, so address them by name:
+
+- `wuss_icons_lookup(wuss, name)` → 0-based index, or `-1`.
+- `wuss_icons_bitmap(wuss, index)` → the compressed `bitmap_t *` (window-manager-owned), or `NULL` out of range.
+- `wuss_icons_count(wuss)`.
+
+A `wuss_ICON_TYPE_BITMAP` spec with `bitmap == NULL` and `icon_set = wuss_ICON_SET(idx)` draws the loaded entry at `idx` (the `wuss_ICON_SET` macro offsets by one so a zero-initialised spec means "no entry"). An out-of-range index is `result_WUSS_BAD_INDEX`. Calling `wuss_icons_load` again replaces the set; `wuss_destroy` frees it. A missing directory is not an error — it yields a zero-length set. `dir` is copied internally, so a `path_join_filename` result is safe to pass.
+
+## Components
+
+Built with the `WUSS_COMPONENTS` CMake option, `libraries/wuss/component/` holds small reusable task helpers layered on the core. Their headers are under `include/wuss/component/`.
+
+### Program-information dialogue
+
+`wuss_proginfo` is the RISC OS "Info" / Toolbox ProgInfo dialogue in miniature: a small fixed window of Name / Purpose / Author / Version rows a task fills in once, then typically hangs off its Menu-button pop-up.
+
+```C
+typedef struct wuss_proginfo_desc
+{
+  const char *name;    /* row "Name"    -- required */
+  const char *purpose; /* row "Purpose" */
+  const char *author;  /* row "Author"  */
+  const char *version; /* row "Version" */
+}
+wuss_proginfo_desc_t;
+
+result_t       wuss_proginfo_create(wuss_proginfo_t **out, wuss_task_t *task,
+                                    const wuss_proginfo_desc_t *desc);
+void           wuss_proginfo_destroy(wuss_proginfo_t *doomed);
+wuss_window_t *wuss_proginfo_window(const wuss_proginfo_t *pi);
+```
+
+`wuss_proginfo_create` builds one hidden window on `task`, sized from that task's font metrics and the text in `desc`, one label row per non-NULL field (the name right-justified in a left column, the value left-justified beside it). Each `desc` field is borrowed and copied.
+
+The window is created `wuss_WINDOW_NO_CLOSE` and `wuss_WINDOW_NO_REDRAW` — it is labels on a flat backdrop, so it needs no redraw handler — and stays on `task` until `wuss_proginfo_destroy` closes it. So `task` must **not** be an autoclose task: the hidden window would keep its window list from ever emptying. It must also outlive the handle, and — as for any borrowed menu-item window — any menu chain referencing `wuss_proginfo_window()` must be closed before the dialogue is destroyed.
+
+Point a menu item's `window` field at `wuss_proginfo_window()` to have Wuss show the dialogue where a submenu would open.
 
 ## Glossary
 

@@ -12,12 +12,15 @@
 
 const span_t *spanregistry_get(pixelfmt_t format)
 {
-  static pixelfmt_t    lastformat;
+  /* seed the cache with a value no real pixelfmt_t takes, so the first call
+   * for pixelfmt_p1 (== 0) still does the lookup rather than returning the
+   * zero-initialised lastspan (NULL) */
+  static pixelfmt_t    lastformat = pixelfmt_unknown;
   static const span_t *lastspan;
   int                  i;
 
   /* avoid full lookup where possible */
-  if (lastformat == format)
+  if (lastformat == format && lastspan != NULL)
     return lastspan;
 
   for (i = 0; i < nspans; i++)

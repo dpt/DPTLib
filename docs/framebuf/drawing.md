@@ -53,6 +53,10 @@ the P4 handler address an odd nibble so callers never pre-pack. `screen_fill_hli
 (and thus `screen_fill_rect` and the circle scanline fill) is a thin wrapper over
 it.
 
+`copy` ops that blit a deep bitmap onto a paletted screen turn the per-pixel
+nearest-palette match into a cached mask-and-lookup via
+[pixelmap](pixelmap.md).
+
 ### Axis 2 — ACTION (what kind of mark)
 
 | verb    | mark | object it takes |
@@ -211,3 +215,5 @@ sites updated in the same change: `screen_draw_bitmap` → `screen_copy_bitmap`,
 
 - [composite.md](composite.md) — Porter-Duff bitmap compositing
 - [bmfont.md](bmfont.md) — proportional bitmap fonts
+- [pixelmap.md](pixelmap.md) — cached deep-to-paletted conversion tables
+- [rle-bitmap.md](rle-bitmap.md) — RLE-compressed bitmaps

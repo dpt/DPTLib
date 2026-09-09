@@ -20,9 +20,9 @@
 
 result_t checker_create(wuss_t*wuss, checker_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t    rc;
 
   task->black    = colour_rgb(0x00, 0x00, 0x00);
   task->white    = colour_rgb(0xFF, 0xFF, 0xFF);
@@ -45,7 +45,7 @@ result_t checker_create(wuss_t*wuss, checker_task_t *task)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(160, 160),
                                  "Checker 1",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  SIZE2D(160, 160),
                                  SIZE2D(0, 0),
@@ -59,7 +59,7 @@ result_t checker_create(wuss_t*wuss, checker_task_t *task)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(160, 160),
                                  "Checker 2",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  SIZE2D(160, 160),
                                  SIZE2D(0, 0),
@@ -130,7 +130,7 @@ static result_t checker_mouse(wuss_window_t *window, void *task_data)
   pattern  = (window == cc->window2) ? &cc->pattern2 : &cc->pattern;
   *pattern = (*pattern + 1) % checker_PATTERN__COUNT;
 
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }
@@ -148,7 +148,7 @@ static result_t checker_scroll(wuss_window_t *window,
   *band += delta;
   *band  = CLAMP(*band, CHECKER_BAND_MIN, CHECKER_BAND_MAX);
 
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }

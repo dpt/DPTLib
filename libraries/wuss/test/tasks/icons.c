@@ -23,7 +23,7 @@
 #include "icons.h"
 
 #define ICONS_DOC_W    260
-#define ICONS_DOC_H    900 /* taller than the window, so scrolling is exercised */
+#define ICONS_DOC_H    1160 /* taller than the window, so scrolling is exercised */
 #define ICONS_MARGIN   28  /* left edge of everything except frame captions */
 #define ICONS_ROW      20  /* vertical pitch between stacked simple icons */
 
@@ -34,13 +34,16 @@
 enum
 {
   ICONS_N_INTRO   = 4, /* heading, counter button, counter label, scrolled-away button */
-  ICONS_N_BUTTONS = 4, /* frame + normal + default + disabled button */
+  ICONS_N_BUTTONS = 5, /* frame + 2x2 grid: default/normal x plain/disabled */
   ICONS_N_RADIOS  = 8, /* frame + 3 radios + option + state label + 2 justified labels */
   ICONS_N_BITMAPS = 3, /* frame + decorative + interactive bitmap */
+  ICONS_N_ICONSET = 5, /* frame + opton + optoff + radon + radoff from the loaded set */
   ICONS_N_PATTERN = 2, /* frame + one PATTERN swatch */
-  ICONS_N_MENU    = 7, /* plain, ticked, swatch, submenu, disabled, rule, separator entry */
+  ICONS_N_BORDERS = 6, /* frame + GROOVE + RIDGE + ACTION + DIVIDER labels */
+  ICONS_N_MENU    = 8, /* frame + plain, ticked, swatch, submenu, disabled, rule, separator entry */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
-                    ICONS_N_BITMAPS + ICONS_N_PATTERN + ICONS_N_MENU
+                    ICONS_N_BITMAPS + ICONS_N_ICONSET + ICONS_N_PATTERN +
+                    ICONS_N_BORDERS + ICONS_N_MENU
 };
 
 /* Running state threaded through the icons_add_* helpers: where to write the
@@ -51,9 +54,8 @@ typedef struct icons_layout
   int               n;    /* specs[0..n) are filled in */
   int               y;    /* document y of the next group */
   wuss_colour_t     black;
-  wuss_colour_t     grey5;
-  wuss_colour_t     grey6;
-  wuss_colour_t     red;  /* menu swatch demo colour */
+  wuss_colour_t     window; /* wuss_COLOUR_WINDOW: the standard work-area fill */
+  wuss_colour_t     red;    /* menu swatch demo colour */
 }
 icons_layout_t;
 
@@ -79,11 +81,13 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
 
   *button = lay->n;
   s       = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN, lay->y, 80, 22);
+  /* 4px larger on every side than a plain button to seat the DEFAULT icon's
+   * 6px action surround */
+  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN - 4, lay->y - 4, 88, 30);
   s->type  = wuss_ICON_TYPE_BUTTON;
   s->text  = "Press me";
   s->fg    = lay->black;
-  s->bg    = lay->grey6;
+  s->bg    = lay->window;
   s->flags = wuss_ICON_FLAGS_DEFAULT;
   lay->n++;
 
@@ -98,57 +102,69 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
   lay->y += 46;
 
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, 780, 90, 52);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, 980, 90, 52);
   s->type = wuss_ICON_TYPE_BUTTON;
   s->text = "Scrolled";
   s->fg   = lay->black;
-  s->bg   = lay->grey6;
+  s->bg   = lay->window;
   lay->n++;
 }
 
-/* A grouping frame captioned "Buttons", with a normal, a default (accent) and
- * a disabled button side by side inside it. */
+/* A grouping frame captioned "Buttons", holding a 2x2 grid: column 0 is the
+ * DEFAULT (accent) button, column 1 the plain one; the bottom row adds
+ * DISABLED. The DEFAULT column is inset 4px on every side to seat the accent
+ * icon's 6px action surround. */
 static void icons_add_buttons(icons_layout_t *lay)
 {
   wuss_icon_spec_t *s;
   int               top;
+  int               col;
+  int               row;
+  int               x;
+  int               y;
 
   top     = lay->y;
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 56);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 90);
   s->type = wuss_ICON_TYPE_FRAME;
   s->text = "Buttons";
   s->fg   = lay->black;
   s->bg   = wuss_NO_BACKGROUND;
   lay->n++;
 
-  s        = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 22, 56, 22);
-  s->type  = wuss_ICON_TYPE_BUTTON;
-  s->text  = "Normal";
-  s->fg    = lay->black;
-  s->bg    = lay->grey6;
-  lay->n++;
+  for (row = 0; row < 2; row++)
+  {
+    for (col = 0; col < 2; col++)
+    {
+      x = ICONS_MARGIN + 10 + col * 100;
+      y = top + 22 + row * 34;
 
-  s        = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 74, top + 22, 56, 22);
-  s->type  = wuss_ICON_TYPE_BUTTON;
-  s->text  = "Default";
-  s->fg    = lay->black;
-  s->bg    = lay->grey6;
-  s->flags = wuss_ICON_FLAGS_DEFAULT;
-  lay->n++;
+      s       = &lay->specs[lay->n];
+      s->fg   = lay->black;
+      s->bg   = lay->window;
+      s->type = wuss_ICON_TYPE_BUTTON;
 
-  s        = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 138, top + 22, 56, 22);
-  s->type  = wuss_ICON_TYPE_BUTTON;
-  s->text  = "Disabled";
-  s->fg    = lay->black;
-  s->bg    = lay->grey6;
-  s->flags = wuss_ICON_FLAGS_DISABLED;
-  lay->n++;
+      if (col == 0)
+      {
+        s->bbox  = (box_t) BOX_POS_SIZE(x - 4, y - 4, 64, 30);
+        s->text  = "Default";
+        s->flags = wuss_ICON_FLAGS_DEFAULT;
+      }
+      else
+      {
+        s->bbox  = (box_t) BOX_POS_SIZE(x, y, 56, 22);
+        s->text  = "Normal";
+        s->flags = 0;
+      }
 
-  lay->y = top + 70;
+      if (row == 1)
+        s->flags |= wuss_ICON_FLAGS_DISABLED;
+
+      lay->n++;
+    }
+  }
+
+  lay->y = top + 104;
 }
 
 /* A grouping frame captioned "Radios & options", with two justified labels,
@@ -264,6 +280,54 @@ static void icons_add_bitmaps(icons_layout_t *lay,
   lay->y = top + sprite->size.h + 50;
 }
 
+/* A grouping frame captioned "Icon set", holding the four fixtures loaded by
+ * wuss_icons_load -- opton/optoff/radon/radoff -- each drawn as a BITMAP icon
+ * that references the loaded set by index via wuss_ICON_SET. Laid out only
+ * when the set loaded (all four looked up); skipped otherwise. */
+static void icons_add_iconset(icons_layout_t *lay, const wuss_t *wuss)
+{
+  static const char *const names[4] = { "opton", "optoff", "radon", "radoff" };
+  wuss_icon_spec_t        *s;
+  int                      top;
+  int                      idx[4];
+  int                      i;
+
+  for (i = 0; i < 4; i++)
+  {
+    idx[i] = wuss_icons_lookup(wuss, names[i]);
+    if (idx[i] < 0)
+      return;
+  }
+
+  top     = lay->y;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 44);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "Icon set";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  for (i = 0; i < 4; i++)
+  {
+    const bitmap_t *bm;
+    int             w, h;
+
+    bm = wuss_icons_bitmap(wuss, idx[i]);
+    w  = bm ? bm->size.w : 16;
+    h  = bm ? bm->size.h : 16;
+
+    s           = &lay->specs[lay->n];
+    s->bbox     = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10 + i * (w + 6),
+                                       top + 20, w, h);
+    s->type     = wuss_ICON_TYPE_BITMAP;
+    s->icon_set = wuss_ICON_SET(idx[i]);
+    lay->n++;
+  }
+
+  lay->y = top + 60;
+}
+
 /* A grouping frame captioned "Pattern", holding one PATTERN-filled swatch. */
 static void icons_add_pattern(icons_layout_t *lay)
 {
@@ -283,25 +347,98 @@ static void icons_add_pattern(icons_layout_t *lay)
   s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20, 180, 26);
   s->type   = wuss_ICON_TYPE_PATTERN;
   s->fg     = lay->black;
-  s->bg     = lay->grey6;
+  s->bg     = lay->window;
   s->pattern = screen_PATTERN_DIAGONAL;
   lay->n++;
 
   lay->y = top + 76;
 }
 
-/* A menu-entry strip: plain, ticked, a swatch entry, a submenu entry, a
- * disabled entry, then a dashed rule and a SEPARATOR-flagged entry below it.
- * Hover the pointer over any live entry to see the highlight track; the rule
- * stays inert. Returns the "Show grid" index (started ticked) via *ticked. */
-static void icons_add_menu(icons_layout_t *lay, int *ticked)
+/* A grouping frame captioned "Borders", holding a GROOVE-bordered label (a
+ * sunken RISC OS display field), a RIDGE-bordered one (raised), an
+ * ACTION-bordered one -- a 6px surround: raised outset, accent moat, raised
+ * inset, like a default-action button -- then a DIVIDER-bordered one: a 4px
+ * surround, outer sunken ring around inner raised, in lighter shades. */
+static void icons_add_borders(icons_layout_t *lay)
 {
   wuss_icon_spec_t *s;
   int               top;
 
   top     = lay->y;
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 180, 16);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 150);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "Borders";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  s         = &lay->specs[lay->n];
+  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20, 180, 22);
+  s->type   = wuss_ICON_TYPE_LABEL;
+  s->text   = "Groove";
+  s->fg     = lay->black;
+  s->bg     = lay->window;
+  s->border = wuss_ICON_BORDER_GROOVE;
+  s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
+  lay->n++;
+
+  s         = &lay->specs[lay->n];
+  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 46, 180, 22);
+  s->type   = wuss_ICON_TYPE_LABEL;
+  s->text   = "Ridge";
+  s->fg     = lay->black;
+  s->bg     = lay->window;
+  s->border = wuss_ICON_BORDER_RIDGE;
+  s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
+  lay->n++;
+
+  s         = &lay->specs[lay->n];
+  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 72, 180, 34);
+  s->type   = wuss_ICON_TYPE_LABEL;
+  s->text   = "Action";
+  s->fg     = lay->black;
+  s->bg     = lay->window;
+  s->border = wuss_ICON_BORDER_ACTION;
+  s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
+  lay->n++;
+
+  s         = &lay->specs[lay->n];
+  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 110, 180, 30);
+  s->type   = wuss_ICON_TYPE_LABEL;
+  s->text   = "Divider";
+  s->fg     = lay->black;
+  s->bg     = lay->window;
+  s->border = wuss_ICON_BORDER_DIVIDER;
+  s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
+  lay->n++;
+
+  lay->y = top + 166;
+}
+
+/* A grouping frame captioned "Menu", holding a menu-entry strip: plain,
+ * ticked, a swatch entry, a submenu entry, a disabled entry, then a dashed
+ * rule and a SEPARATOR-flagged entry below it. Hover the pointer over any live
+ * entry to see the highlight track; the rule stays inert. Returns the "Show
+ * grid" index (started ticked) via *ticked. */
+static void icons_add_menu(icons_layout_t *lay, int *ticked)
+{
+  wuss_icon_spec_t *s;
+  int               top;
+  int               row;
+
+  top     = lay->y;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, ICONS_ROW * 7 + 30);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "Menu";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  row     = top + 20;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row, 180, 16);
   s->type = wuss_ICON_TYPE_MENU_ENTRY;
   s->text = "Open";
   s->fg   = lay->black;
@@ -309,7 +446,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   lay->n++;
 
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top + ICONS_ROW, 180, 16);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row + ICONS_ROW, 180, 16);
   s->type = wuss_ICON_TYPE_MENU_ENTRY;
   s->text = "Show grid";
   s->fg   = lay->black;
@@ -318,7 +455,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   lay->n++;
 
   s         = &lay->specs[lay->n];
-  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top + ICONS_ROW * 2, 180, 16);
+  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row + ICONS_ROW * 2, 180, 16);
   s->type   = wuss_ICON_TYPE_MENU_ENTRY;
   s->text   = "Layer colour";
   s->fg     = lay->black;
@@ -328,7 +465,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   lay->n++;
 
   s        = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top + ICONS_ROW * 3, 180, 16);
+  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row + ICONS_ROW * 3, 180, 16);
   s->type  = wuss_ICON_TYPE_MENU_ENTRY;
   s->text  = "Export";
   s->fg    = lay->black;
@@ -337,7 +474,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   lay->n++;
 
   s        = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top + ICONS_ROW * 4, 180, 16);
+  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row + ICONS_ROW * 4, 180, 16);
   s->type  = wuss_ICON_TYPE_MENU_ENTRY;
   s->text  = "Disabled";
   s->fg    = lay->black;
@@ -346,14 +483,14 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   lay->n++;
 
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top + ICONS_ROW * 5, 180, 10);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row + ICONS_ROW * 5, 180, 10);
   s->type = wuss_ICON_TYPE_RULE;
   s->fg   = lay->black;
   s->bg   = wuss_NO_BACKGROUND;
   lay->n++;
 
   s        = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top + ICONS_ROW * 6, 180, 16);
+  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row + ICONS_ROW * 6, 180, 16);
   s->type  = wuss_ICON_TYPE_MENU_ENTRY;
   s->text  = "Quit";
   s->fg    = lay->black;
@@ -361,7 +498,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   s->flags = wuss_ICON_FLAGS_SEPARATOR;
   lay->n++;
 
-  lay->y = top + ICONS_ROW * 7 + 10;
+  lay->y = top + ICONS_ROW * 7 + 46;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -382,7 +519,10 @@ result_t icons_create(wuss_t       *wuss,
 
   task->font       = font;
   task->label      = colour_rgb(0x00, 0x00, 0x00);
-  task->paper      = colour_rgb(0xDD, 0xDD, 0xDD); /* the window bg, below */
+  /* only the ruler-text glyph blend; approximates the wuss_COLOUR_WINDOW /
+   * wuss_COLOUR_BACKDROP crosshatch the rulers sit on -- no public call
+   * resolves a symbolic wuss_colour_t to a concrete colour_t here */
+  task->paper      = colour_rgb(0xDD, 0xDD, 0xDD);
   task->window     = NULL;
   task->button     = NULL;
   task->counter    = NULL;
@@ -397,6 +537,18 @@ result_t icons_create(wuss_t       *wuss,
   if (bitmap_load_png(&task->sprite, sprite_path) == result_OK)
     task->has_sprite = 1;
 
+  /* load the wuss-wide icon set; path_join_filename hands back one shared
+   * static buffer and wuss_icons_load re-joins per file, so copy it first */
+  {
+    char icons_dir[256];
+
+    strncpy(icons_dir,
+            path_join_filename(resources, 3, "resources", "wuss", "icons"),
+            sizeof(icons_dir) - 1);
+    icons_dir[sizeof(icons_dir) - 1] = '\0';
+    (void) wuss_icons_load(wuss, icons_dir); /* absent set just skips the group */
+  }
+
   delegate_desc.handle    = icons_handle;
   delegate_desc.task_data = task;
   delegate_desc.name      = "icons";
@@ -410,18 +562,19 @@ result_t icons_create(wuss_t       *wuss,
   }
 
   memset(&lay, 0, sizeof(lay));
-  lay.black = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
-  lay.grey5 = wuss_nearest_colour(wuss, 0xBB, 0xBB, 0xBB);
-  lay.grey6 = wuss_nearest_colour(wuss, 0xDD, 0xDD, 0xDD);
-  lay.red   = wuss_nearest_colour(wuss, 0xCC, 0x33, 0x33);
+  lay.black  = wuss_COLOUR_BLACK;
+  lay.window = wuss_COLOUR_WINDOW; /* the standard work-area fill */
+  lay.red    = wuss_nearest_colour(wuss, 0xCC, 0x33, 0x33); /* off-primary; no symbol */
 
+  /* crosshatch the standard window colour over the standard backdrop colour,
+   * so the texture tracks the chrome config rather than fixed greys */
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(ICONS_DOC_W, 200),
                                  "Icons",
-                                 wuss_WINDOW_NONE,
-                                 wuss_BACKDROP_PATTERN(lay.grey5,
+                                 wuss_WINDOW_DEFAULT,
+                                 wuss_BACKDROP_PATTERN(wuss_COLOUR_GREY,
                                                        screen_PATTERN_CROSSHATCH,
-                                                       lay.grey6),
+                                                       wuss_COLOUR_WINDOW),
                                  SIZE2D(ICONS_DOC_W, ICONS_DOC_H),
                                  SIZE2D(0, 0),
                                  &task->window);
@@ -444,7 +597,9 @@ result_t icons_create(wuss_t       *wuss,
   icons_add_buttons(&lay);
   icons_add_radios(&lay, &i_opt, &i_state);
   icons_add_bitmaps(&lay, task->has_sprite ? &task->sprite : NULL, &i_hotspot);
+  icons_add_iconset(&lay, wuss);
   icons_add_pattern(&lay);
+  icons_add_borders(&lay);
   icons_add_menu(&lay, &i_ticked);
 
   rc = wuss_icon_create_array(task->window, specs, lay.n, made);

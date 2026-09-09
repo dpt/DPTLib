@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "framebuf/bitmap.h"
+#include "framebuf/pixelmap.h"
 #include "framebuf/span-registry.h"
 
 result_t bitmap_init(bitmap_t       *bm,
@@ -72,6 +73,12 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
 
   assert(bm);
 
+  if (pixelfmt_is_rle(bm->format))
+  {
+    assert(!"bitmap_clear on compressed bitmap");
+    return;
+  }
+
   log2bpp = pixelfmt_log2bpp(bm->format);
   px = colour_to_pixel(bm->palette,
                        bm->palette ? 1 << (1 << log2bpp) : 0,
@@ -126,19 +133,23 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
 
 static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
 {
-  result_t             rc;
-  bitmap_t            *dst;
-  pixelfmt_bgrx8888_t *outpixels;
-  pixelfmt_bgrx8888_t  map[16];
-  int                  i;
-  pixelfmt_p4_t       *inpixels;
-  int                  x,y;
+  result_t                   rc;
+  const pixelmap_t          *pm;
+  const pixelfmt_bgrx8888_t *map;
+  bitmap_t                  *dst;
+  pixelfmt_bgrx8888_t       *outpixels;
+  const unsigned char       *inrow;
+  int                        x, y;
 
   assert(src);
   assert(src->palette);
 
-  for (i = 0; i < 16; i++)
-    map[i] = colour_to_pixel(src->palette, 16, src->palette[i], pixelfmt_bgrx8888);
+  /* cached p4-palette -> bgrx8888 expansion table (built once, shared across
+   * conversions of the same palette) */
+  pm = pixelmap_get(pixelfmt_p4, pixelfmt_bgrx8888, src->palette, 16);
+  if (pm == NULL)
+    return result_NOT_SUPPORTED;
+  map = (const pixelfmt_bgrx8888_t *) pm->entries;
 
   outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h); // rowbytes rounding needed?
   if (outpixels == NULL)
@@ -160,22 +171,120 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   if (rc)
     return rc;
 
-  inpixels = src->base;
+  inrow = src->base;
   for (y = 0; y < src->size.h; y++)
   {
-    for (x = 0; x < src->size.w / 8; x++)
-    {
-      pixelfmt_p4_t in = *inpixels++; // fetches 8 pixels
-      // 0xABCDEFGH is 8 4bpp pixels shown H,G,F,E,D,C,B,A
-      *outpixels++ = map[(in >>  0) & 0xF];
-      *outpixels++ = map[(in >>  4) & 0xF];
-      *outpixels++ = map[(in >>  8) & 0xF];
-      *outpixels++ = map[(in >> 12) & 0xF];
-      *outpixels++ = map[(in >> 16) & 0xF];
-      *outpixels++ = map[(in >> 20) & 0xF];
-      *outpixels++ = map[(in >> 24) & 0xF];
-      *outpixels++ = map[(in >> 28) & 0xF];
-    }
+    /* per-pixel, so widths that aren't a multiple of 8 keep their last
+     * w % 8 pixels, and row padding in src->rowbytes is respected */
+    for (x = 0; x < src->size.w; x++)
+      *outpixels++ = map[(inrow[x >> 1] >> ((x & 1) << 2)) & 0xF];
+    inrow += src->rowbytes;
+  }
+
+  *pdst = dst;
+
+  return rc;
+}
+
+/* As bmconv_p4_to_bgrx8888 but for 1bpp paletted, packed MSB-first (bit 7 is
+ * the leftmost pixel) to match the screen p1 plot helpers. */
+static result_t bmconv_p1_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+{
+  result_t                   rc;
+  const pixelmap_t          *pm;
+  const pixelfmt_bgrx8888_t *map;
+  bitmap_t                  *dst;
+  pixelfmt_bgrx8888_t       *outpixels;
+  const unsigned char       *inrow;
+  int                        x, y;
+
+  assert(src);
+  assert(src->palette);
+
+  pm = pixelmap_get(pixelfmt_p1, pixelfmt_bgrx8888, src->palette, 2);
+  if (pm == NULL)
+    return result_NOT_SUPPORTED;
+  map = (const pixelfmt_bgrx8888_t *) pm->entries;
+
+  outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h);
+  if (outpixels == NULL)
+    return result_OOM;
+
+  dst = malloc(sizeof(*dst));
+  if (dst == NULL)
+  {
+    free(outpixels);
+    return result_OOM;
+  }
+
+  rc = bitmap_init(dst,
+                   src->size,
+                   pixelfmt_bgrx8888,
+                   src->size.w * sizeof(pixelfmt_bgrx8888_t),
+                   NULL,
+                   outpixels);
+  if (rc)
+    return rc;
+
+  inrow = src->base;
+  for (y = 0; y < src->size.h; y++)
+  {
+    for (x = 0; x < src->size.w; x++)
+      *outpixels++ = map[(inrow[x >> 3] >> (7 - (x & 7))) & 1];
+    inrow += src->rowbytes;
+  }
+
+  *pdst = dst;
+
+  return rc;
+}
+
+/* As bmconv_p1_to_bgrx8888 but for 2bpp paletted, packed MSB-first (bits 7..6
+ * are the leftmost pixel) to match the screen p2 plot helpers. */
+static result_t bmconv_p2_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+{
+  result_t                   rc;
+  const pixelmap_t          *pm;
+  const pixelfmt_bgrx8888_t *map;
+  bitmap_t                  *dst;
+  pixelfmt_bgrx8888_t       *outpixels;
+  const unsigned char       *inrow;
+  int                        x, y;
+
+  assert(src);
+  assert(src->palette);
+
+  pm = pixelmap_get(pixelfmt_p2, pixelfmt_bgrx8888, src->palette, 4);
+  if (pm == NULL)
+    return result_NOT_SUPPORTED;
+  map = (const pixelfmt_bgrx8888_t *) pm->entries;
+
+  outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h);
+  if (outpixels == NULL)
+    return result_OOM;
+
+  dst = malloc(sizeof(*dst));
+  if (dst == NULL)
+  {
+    free(outpixels);
+    return result_OOM;
+  }
+
+  rc = bitmap_init(dst,
+                   src->size,
+                   pixelfmt_bgrx8888,
+                   src->size.w * sizeof(pixelfmt_bgrx8888_t),
+                   NULL,
+                   outpixels);
+  if (rc)
+    return rc;
+
+  inrow = src->base;
+  for (y = 0; y < src->size.h; y++)
+  {
+    for (x = 0; x < src->size.w; x++)
+      *outpixels++ = map[(inrow[x >> 2] >> (6 - ((x & 3) << 1))) & 3];
+    inrow += src->rowbytes;
   }
 
   *pdst = dst;
@@ -189,8 +298,33 @@ result_t bitmap_convert(const bitmap_t *src,
 {
   *dst = NULL;
 
+  if (pixelfmt_is_rle(src->format))
+    return result_NOT_SUPPORTED;
+
   switch (src->format)
   {
+  case pixelfmt_p1:
+    switch (newfmt)
+    {
+    case pixelfmt_bgrx8888:
+      return bmconv_p1_to_bgrx8888(src, dst);
+
+    default:
+      return result_NOT_SUPPORTED;
+    }
+    break;
+
+  case pixelfmt_p2:
+    switch (newfmt)
+    {
+    case pixelfmt_bgrx8888:
+      return bmconv_p2_to_bgrx8888(src, dst);
+
+    default:
+      return result_NOT_SUPPORTED;
+    }
+    break;
+
   case pixelfmt_p4:
     switch (newfmt)
     {

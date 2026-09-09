@@ -51,10 +51,10 @@ static bmfont_t *chars_load_font(chars_task_t *task,
                                  int           idx,
                                  const char   *name)
 {
+  result_t    rc;
   const char *leaf;
   const char *filename;
   bmfont_t   *font;
-  result_t    rc;
 
   if (task->fonts[idx] != NULL)
     return task->fonts[idx];
@@ -87,7 +87,7 @@ static result_t chars_set_font(chars_task_t *task, int idx, const char *name)
   task->current = idx;
 
   wuss_window_resize(task->window, chars_window_size(task, font));
-  wuss_window_invalidate_all(task->window);
+  wuss_window_invalidate_visible(task->window);
   return result_OK;
 }
 
@@ -107,9 +107,9 @@ result_t chars_create(wuss_t       *wuss,
                       const char   *resources,
                       chars_task_t *task)
 {
+  result_t           rc;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
-  result_t           rc;
   bmfont_t          *font;
   const char        *bmfonts_dir;
   const wuss_menu_t *menu;
@@ -280,8 +280,8 @@ result_t chars_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     {
-      const char *name;
       result_t    rc;
+      const char *name;
 
       name = wuss_fontmenu_selected(cc->fontmenu, event);
       if (name == NULL)
@@ -302,6 +302,10 @@ result_t chars_handle(wuss_window_t      *window,
 
       return rc;
     }
+
+  case wuss_EVENT_MENU_CLOSED:
+    cc->menu_handle = NULL; /* wuss closed the chain under us */
+    return result_OK;
 
   case wuss_EVENT_REDRAW:
     return chars_redraw(event, task_data);

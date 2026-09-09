@@ -22,13 +22,16 @@
 
 #include "frontend.h"
 
-/* Screen pixel format for the demo: 1 = 32bpp pixelfmt_bgrx8888 (feeds SDL
- * directly, no per-frame conversion); 0 = pixelfmt_p4 paletted (exercises
- * screen_copy_rect's nibble-packed blit path instead). */
-#define WUSS_SDL_32BPP 0
+/* Screen pixel format for the demo, chosen at run time via --depth: 32 =
+ * pixelfmt_bgrx8888 (feeds SDL directly, no per-frame conversion); 4 (the
+ * default) = pixelfmt_p4 paletted (exercises screen_copy_rect's nibble-packed
+ * blit path instead); 2 = pixelfmt_p2; 1 = pixelfmt_p1 monochrome. Paletted
+ * depths are converted to bgrx8888 per frame via bitmap_convert. Stashed in
+ * struct wuss_frontend so present() can branch on it. */
 
 /* Integer window zoom: the fixed Wuss screen is drawn at this many device
- * pixels per screen pixel. F2 steps it up, Shift-F2 down, clamped to
+ * pixels per screen pixel. The initial value comes from -scale (0 => use the
+ * default here); F2 steps it up, Shift-F2 down, clamped to
  * [WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE]. */
 #define WUSS_SDL_DEFAULT_SCALE 2
 #define WUSS_SDL_MIN_SCALE     1
@@ -44,6 +47,7 @@ struct wuss_frontend
   int           scr_width;
   int           scr_height;
   int           scale; /* device pixels per screen pixel; see WUSS_SDL_*_SCALE */
+  int           depth; /* framebuffer bits per pixel: 32 (bgrx8888), 4 (p4), 2 (p2) or 1 (p1) */
   void         *pixels; /* the private framebuffer handed to the caller */
 };
 
@@ -83,6 +87,8 @@ result_t wuss_frontend_open(int               width,
                             int               height,
                             const colour_t   *palette,
                             int               npalette,
+                            int               depth,
+                            int               scale,
                             void            **pixels,
                             int              *rowbytes,
                             pixelfmt_t       *fmt,
@@ -94,11 +100,20 @@ result_t wuss_frontend_open(int               width,
   NOT_USED(palette);
   NOT_USED(npalette);
 
-#if WUSS_SDL_32BPP
-  stride = width * 4; /* pixelfmt_bgrx8888: 4 bytes/pixel */
-#else
-  stride = width / 2; /* pixelfmt_p4: 2 pixels/byte */
-#endif
+  if (depth != 1 && depth != 2 && depth != 4 && depth != 32)
+  {
+    fprintf(stderr, "Error: unsupported depth %d (want 1, 2, 4 or 32)\n", depth);
+    return result_BAD_ARG;
+  }
+
+  if (scale <= 0)
+    scale = WUSS_SDL_DEFAULT_SCALE;
+  scale = CLAMP(scale, WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE);
+
+  stride = (depth == 32) ? width * 4  /* pixelfmt_bgrx8888: 4 bytes/pixel */
+         : (depth == 4)  ? width / 2  /* pixelfmt_p4: 2 pixels/byte */
+         : (depth == 2)  ? (width + 3) / 4 /* pixelfmt_p2: 4 pixels/byte */
+                         : (width + 7) / 8; /* pixelfmt_p1: 8 pixels/byte */
 
   fe = calloc(1, sizeof(*fe));
   if (fe == NULL)
@@ -106,7 +121,8 @@ result_t wuss_frontend_open(int               width,
 
   fe->scr_width  = width;
   fe->scr_height = height;
-  fe->scale      = WUSS_SDL_DEFAULT_SCALE;
+  fe->scale      = scale;
+  fe->depth      = depth;
 
   fe->pixels = malloc((size_t) stride * height);
   if (fe->pixels == NULL)
@@ -148,11 +164,10 @@ result_t wuss_frontend_open(int               width,
   /* keep pixels crisp when F2 scales the window up */
   SDL_SetTextureScaleMode(fe->texture, SDL_SCALEMODE_NEAREST);
 
-#if WUSS_SDL_32BPP
-  *fmt = pixelfmt_bgrx8888;
-#else
-  *fmt = pixelfmt_p4;
-#endif
+  *fmt = (depth == 32) ? pixelfmt_bgrx8888
+       : (depth == 4)  ? pixelfmt_p4
+       : (depth == 2)  ? pixelfmt_p2
+                       : pixelfmt_p1;
 
   *pixels   = fe->pixels;
   *rowbytes = stride;
@@ -274,22 +289,25 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
 
 void wuss_frontend_present(wuss_frontend_t *fe, const bitmap_t *bm)
 {
-#if WUSS_SDL_32BPP
-  SDL_UpdateTexture(fe->texture, NULL, bm->base, bm->rowbytes);
-#else
-  bitmap_t *disp;
-
-  /* wuss draws into a paletted bitmap; SDL wants bgrx. bitmap_convert reads
-   * the palette straight off `bm`, which the caller updates when the palette
-   * task's picker menu changes it, so a live palette change just shows up in
-   * the next converted frame. */
-  if (bitmap_convert(bm, pixelfmt_bgrx8888, &disp) == result_OK)
+  if (fe->depth == 32)
   {
-    SDL_UpdateTexture(fe->texture, NULL, disp->base, disp->rowbytes);
-    free(disp->base);
-    free(disp);
+    SDL_UpdateTexture(fe->texture, NULL, bm->base, bm->rowbytes);
   }
-#endif
+  else
+  {
+    bitmap_t *disp;
+
+    /* wuss draws into a paletted bitmap; SDL wants bgrx. bitmap_convert reads
+     * the palette straight off `bm`, which the caller updates when the palette
+     * task's picker menu changes it, so a live palette change just shows up in
+     * the next converted frame. */
+    if (bitmap_convert(bm, pixelfmt_bgrx8888, &disp) == result_OK)
+    {
+      SDL_UpdateTexture(fe->texture, NULL, disp->base, disp->rowbytes);
+      free(disp->base);
+      free(disp);
+    }
+  }
 
   SDL_RenderTexture(fe->renderer, fe->texture, NULL, NULL);
   SDL_RenderPresent(fe->renderer);

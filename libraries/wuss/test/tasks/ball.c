@@ -53,9 +53,9 @@ static box_t ball_local_box(int vx0, int vy0, int vx1, int vy1, int radius)
 
 result_t ball_create(wuss_t *wuss, ball_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
 
   task->bg     = colour_rgb(0xFF, 0x00, 0x00);
   task->nballs = 1;
@@ -82,7 +82,7 @@ result_t ball_create(wuss_t *wuss, ball_task_t *task)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(200, 160),
                                  "Bouncing Ball",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  SIZE2D(200, 160),
                                  SIZE2D(0, 0),

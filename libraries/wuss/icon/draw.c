@@ -1,5 +1,6 @@
 /* wuss/icon/draw.c -- draw a work-area icon */
 
+#include <limits.h>
 #include <string.h>
 
 #include "base/utils.h"
@@ -33,19 +34,61 @@ icon_draw_ctx_t;
 
 /* ----------------------------------------------------------------------- */
 
-static void icon_bevel(screen_t    *scr,
-                       const box_t *b,
-                       colour_t     fill,
-                       colour_t     light,
-                       colour_t     dark)
+static void icon_fill_bevel(screen_t    *scr,
+                            const box_t *b,
+                            colour_t     fill,
+                            colour_t     light,
+                            colour_t     dark)
 {
   screen_fill_rect(scr, b->x0, b->y0,
                    SIZE2D(b->x1 - b->x0, b->y1 - b->y0), fill);
+  screen_draw_bevel_edge(scr, b, light, dark);
+}
 
-  screen_draw_line(scr, b->x0,     b->y0,     b->x1 - 1, b->y0,     light);
-  screen_draw_line(scr, b->x0,     b->y0,     b->x0,     b->y1 - 1, light);
-  screen_draw_line(scr, b->x0,     b->y1 - 1, b->x1 - 1, b->y1 - 1, dark);
-  screen_draw_line(scr, b->x1 - 1, b->y0,     b->x1 - 1, b->y1 - 1, dark);
+/* The 6px-per-edge "action" surround shared by wuss_ICON_BORDER_ACTION and a
+ * default button: a 2px sunken outset (dark top/left), a 2px accent moat, then
+ * a 2px raised inset. Only the inset tracks the pressed state -- it flips to
+ * sunken -- so a pressed action button reads as pushed in without the whole
+ * surround inverting. */
+static void icon_draw_action_border(screen_t    *scr,
+                                    const box_t *b,
+                                    colour_t     light,
+                                    colour_t     dark,
+                                    colour_t     accent,
+                                    int          pressed)
+{
+  box_t ring;
+
+  ring = *b;
+  screen_draw_bevel_edge(scr, &ring, dark, light);
+
+  ring = (box_t) BOX_POS_SIZE(b->x0 + 2, b->y0 + 2,
+                              b->x1 - b->x0 - 4, b->y1 - b->y0 - 4);
+  screen_draw_bevel_edge(scr, &ring, accent, accent);
+
+  ring = (box_t) BOX_POS_SIZE(b->x0 + 4, b->y0 + 4,
+                              b->x1 - b->x0 - 8, b->y1 - b->y0 - 8);
+  screen_draw_bevel_edge(scr, &ring, pressed ? dark : light,
+                                     pressed ? light : dark);
+}
+
+/* The wuss_ICON_BORDER_DIVIDER surround: two 2px bevels in a lighter pair
+ * than RIDGE/GROOVE -- bevel_divider against bevel_light rather than the full
+ * light/dark contrast. Outer ring sunken, inner ring raised. Shared by the
+ * bordered label and the grouping frame. */
+static void icon_draw_divider_border(screen_t    *scr,
+                                     const box_t *b,
+                                     colour_t     light,
+                                     colour_t     divider)
+{
+  box_t ring;
+
+  ring = *b;
+  screen_draw_bevel_edge(scr, &ring, divider, light);
+
+  ring = (box_t) BOX_POS_SIZE(b->x0 + 2, b->y0 + 2,
+                              b->x1 - b->x0 - 4, b->y1 - b->y0 - 4);
+  screen_draw_bevel_edge(scr, &ring, light, divider);
 }
 
 /* Resolve the ground an icon's text/glyph blends against: an explicit icon bg,
@@ -131,7 +174,6 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   const box_t       *b    = &c->b;
   colour_t           bg;
   point_t            pos;
-  int                interior_w, split_point;
   bmfont_width_t     width;
 
   if (icon->bg != wuss_NO_BACKGROUND)
@@ -145,13 +187,43 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
     bg = icon_blend_ground(c, c->fg);
   }
 
+  if (icon->border != wuss_ICON_BORDER_NONE)
+  {
+    colour_t light, dark, accent, divider;
+
+    light   = c->wuss->palette[c->wuss->bevel_light];
+    dark    = c->wuss->palette[c->wuss->bevel_dark];
+    accent  = c->wuss->palette[c->wuss->accent]; /* the action-button fill */
+    divider = c->wuss->palette[c->wuss->bevel_divider];
+
+    if (icon->border == wuss_ICON_BORDER_ACTION)
+    {
+      icon_draw_action_border(c->scr, b, light, dark, accent, 0);
+    }
+    else if (icon->border == wuss_ICON_BORDER_DIVIDER)
+    {
+      icon_draw_divider_border(c->scr, b, light, divider);
+    }
+    else
+    {
+      /* RIDGE reads raised (light top/left); GROOVE reads sunken. One 2px
+       * bevel ring. */
+      box_t ring = *b;
+
+      if (icon->border == wuss_ICON_BORDER_RIDGE)
+        screen_draw_bevel_edge(c->scr, &ring, light, dark);
+      else
+        screen_draw_bevel_edge(c->scr, &ring, dark, light);
+    }
+  }
+
   if (!c->have_font)
     return;
 
-  interior_w = MAX((b->x1 - b->x0) - 2, 1);
-
-  bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
-                 interior_w, &split_point, &width);
+  /* Measure the whole string, not the box interior: a clipped measurement
+   * left the widest label of a right-justified set overhanging the rest. */
+  wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
+                     INT_MAX, NULL, &width);
 
   if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_CENTRE)
     pos.x = b->x0 + ((b->x1 - b->x0) - width) / 2;
@@ -159,10 +231,11 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
     pos.x = b->x1 - 1 - width;
   else
     pos.x = b->x0 + 1;
+
   pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
 
-  bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-              c->fg, bg, &pos, NULL);
+  wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
+                  c->fg, bg, &pos, NULL);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -171,10 +244,12 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
 {
   const wuss_icon_t *icon = c->icon;
   const box_t       *b    = &c->b;
-  colour_t           bg;
-  int                cap_w, cap_x, gap_x0, gap_x1, mid_y;
+  colour_t           bg, light, divider;
+  int                cap_w, cap_x, gap_x0, gap_x1;
 
-  bg = icon_blend_ground(c, c->fg);
+  bg      = icon_blend_ground(c, c->fg);
+  light   = c->wuss->palette[c->wuss->bevel_light];
+  divider = c->wuss->palette[c->wuss->bevel_divider];
 
   cap_w = 0;
   if (c->have_font)
@@ -182,29 +257,26 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
     int            split_point;
     bmfont_width_t width;
 
-    bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
-                   (b->x1 - b->x0) - WUSS_FRAME_CAPTION_INSET * 2,
-                   &split_point, &width);
+    wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
+                       (b->x1 - b->x0) - WUSS_FRAME_CAPTION_INSET * 2,
+                       &split_point, &width);
     cap_w = width;
   }
 
-  mid_y = b->y0 + c->font_height / 2;
+  /* the whole surround is a wuss_ICON_BORDER_DIVIDER ring... */
+  icon_draw_divider_border(c->scr, b, light, divider);
 
-  /* left, right and bottom edges are unbroken */
-  screen_draw_line(c->scr, b->x0, mid_y, b->x0, b->y1 - 1, c->fg);
-  screen_draw_line(c->scr, b->x1 - 1, mid_y, b->x1 - 1, b->y1 - 1, c->fg);
-  screen_draw_line(c->scr, b->x0, b->y1 - 1, b->x1 - 1, b->y1 - 1, c->fg);
-
-  /* the top edge is broken around the caption. INSET (8) always exceeds PAD
-   * (2), so gap_x0 sits a few pixels right of b->x0 and the left stub is
-   * always drawn; only the right stub can vanish, when a wide caption pushes
-   * gap_x1 past the frame's right edge. */
+  /* ...with the top edge broken around the caption: overpaint the caption
+   * slot (the ring is 2px, plus a PAD margin either side) back to the frame
+   * ground. INSET (8) always exceeds PAD (2), so gap_x0 sits a few pixels
+   * right of b->x0 and the left stub always survives; only the right stub
+   * can vanish, when a wide caption pushes gap_x1 past the frame edge. */
   cap_x  = b->x0 + WUSS_FRAME_CAPTION_INSET;
   gap_x0 = cap_x - WUSS_FRAME_CAPTION_PAD;
   gap_x1 = cap_x + cap_w + WUSS_FRAME_CAPTION_PAD;
-  screen_draw_line(c->scr, b->x0, mid_y, gap_x0, mid_y, c->fg);
-  if (gap_x1 < b->x1 - 1)
-    screen_draw_line(c->scr, gap_x1, mid_y, b->x1 - 1, mid_y, c->fg);
+  if (gap_x1 > gap_x0)
+    screen_fill_rect(c->scr, gap_x0, b->y0,
+                     SIZE2D(MIN(gap_x1, b->x1) - gap_x0, 2), bg);
 
   if (c->have_font && cap_w > 0)
   {
@@ -212,8 +284,8 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
 
     pos.x = cap_x;
     pos.y = b->y0;
-    bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                c->fg, bg, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
+                    c->fg, bg, &pos, NULL);
   }
 }
 
@@ -229,31 +301,40 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
   pressed    = wuss__icon_pressed(icon);
   is_default = (icon->flags & wuss_ICON_FLAGS_DEFAULT) != 0;
 
-  if (is_default)
-  {
-    /* default action button: a flat accent-filled rectangle inside a
-     * one-pixel accent-text border, distinct from the bevelled ordinary
-     * buttons around it */
-    base  = c->wuss->palette[c->wuss->accent_bg];
-    light = c->wuss->palette[c->wuss->accent_fg];
-    dark  = light;
-    label = c->wuss->palette[c->wuss->accent_fg];
-  }
-  else
-  {
-    base  = c->wuss->palette[icon->bg];
-    light = c->wuss->palette[c->wuss->bevel_light];
-    dark  = c->wuss->palette[c->wuss->bevel_dark];
-    label = c->fg;
-  }
+  /* a plain button whose spec left bg as wuss_NO_BACKGROUND takes the config
+   * button face */
+  base  = (icon->bg != wuss_NO_BACKGROUND)
+        ? c->wuss->palette[icon->bg]
+        : c->wuss->palette[c->wuss->button_bg];
+  light = c->wuss->palette[c->wuss->bevel_light];
+  dark  = c->wuss->palette[c->wuss->bevel_dark];
+  /* a default action button labels in button.fg to read against its accent
+   * fill; a plain button uses the icon's own fg */
+  label = is_default ? c->wuss->palette[c->wuss->button_fg] : c->fg;
+
+  /* a held button fills with the pressed shade regardless of type */
+  if (pressed)
+    base = c->wuss->palette[c->wuss->button_pressed];
 
   if (icon->flags & wuss_ICON_FLAGS_DISABLED)
     label = c->wuss->palette[c->wuss->bevel_dark]; /* greyed: sink toward dark */
 
-  if (pressed)
-    icon_bevel(c->scr, b, base, dark, light);
+  if (is_default)
+  {
+    /* default action button: an accent-filled rectangle inside the same 6px
+     * "action" surround as wuss_ICON_BORDER_ACTION, distinct from the plain
+     * bevelled buttons around it. */
+
+    screen_fill_rect(c->scr, b->x0, b->y0,
+                     SIZE2D(b->x1 - b->x0, b->y1 - b->y0), base);
+    icon_draw_action_border(c->scr, b, light, dark,
+                            c->wuss->palette[c->wuss->accent], pressed);
+  }
   else
-    icon_bevel(c->scr, b, base, light, dark);
+  {
+    icon_fill_bevel(c->scr, b, base, pressed ? dark : light,
+                    pressed ? light : dark);
+  }
 
   if (c->have_font)
   {
@@ -263,8 +344,8 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
 
     interior_w = MAX((b->x1 - b->x0) - 2, 1);
 
-    bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
-                   interior_w, &split_point, &width);
+    wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
+                       interior_w, &split_point, &width);
 
     pos.x = b->x0 + ((b->x1 - b->x0) - width) / 2;
     pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
@@ -274,17 +355,54 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
       pos.y += 1;
     }
 
-    bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                label, base, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
+                    label, base, &pos, NULL);
   }
 }
 
 /* ----------------------------------------------------------------------- */
 
+/* Blit the icon-set bitmap for a radio/option's current state, centred in the
+ * glyph square "g", clipped to it. Names are radon/radoff for RADIO and
+ * opton/optoff for OPTION. Returns 1 when a bitmap was drawn, 0 when the set is
+ * absent or lacks that entry -- the caller then draws the vector glyph. */
+static int wuss__icon_blit_radio_option(const icon_draw_ctx_t *c,
+                                        const box_t           *g)
+{
+  const char     *name;
+  const bitmap_t *bm;
+  screen_t        clipped;
+  int             idx, bx, by;
+
+  if (c->icon->type == wuss_ICON_TYPE_RADIO)
+    name = wuss__icon_selected(c->icon) ? "radon" : "radoff";
+  else
+    name = wuss__icon_selected(c->icon) ? "opton" : "optoff";
+
+  idx = wuss_icons_lookup(c->wuss, name);
+  if (idx < 0)
+    return 0;
+
+  bm = wuss_icons_bitmap(c->wuss, idx);
+  if (bm == NULL)
+    return 0;
+
+  bx = g->x0 + ((g->x1 - g->x0) - bm->size.w) / 2;
+  by = g->y0 + ((g->y1 - g->y0) - bm->size.h) / 2;
+
+  clipped = *c->scr;
+  if (box_intersection(&c->scr->clip, g, &clipped.clip))
+    return 1; /* fully clipped away, but still "handled" -- no vector fallback */
+
+  screen_copy_bitmap(&clipped, bx, by, bm);
+  return 1;
+}
+
 /* wuss_ICON_TYPE_RADIO and wuss_ICON_TYPE_OPTION: a font-height square glyph at
- * the left, vertically centred, with the label to its right. RADIO draws a
- * square ring with a solid centre when selected; OPTION draws a box with a tick
- * when selected. */
+ * the left, vertically centred, with the label to its right. If the icon set
+ * carries radon/radoff (RADIO) or opton/optoff (OPTION) those bitmaps are
+ * blitted for the state; otherwise RADIO draws a square ring with a solid
+ * centre when selected and OPTION draws a box with a tick when selected. */
 static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
 {
   const wuss_icon_t *icon = c->icon;
@@ -311,7 +429,11 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     screen_fill_rect(c->scr, b->x0, b->y0,
                      SIZE2D(b->x1 - b->x0, b->y1 - b->y0), bg);
 
-  if (icon->type == wuss_ICON_TYPE_RADIO)
+  if (wuss__icon_blit_radio_option(c, &g))
+  {
+    /* bitmap drawn -- fall through to the label */
+  }
+  else if (icon->type == wuss_ICON_TYPE_RADIO)
   {
     /* a square ring (no circle primitive); a solid centre when selected */
     screen_draw_line(c->scr, g.x0 + 2, g.y0,     g.x1 - 3, g.y0,     glyph);
@@ -345,14 +467,14 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     tx = g.x1 + 4;
     interior_w = MAX((b->x1 - tx) - 1, 1);
 
-    bmfont_measure(c->font, icon->text, (int) strlen(icon->text),
-                   interior_w, &split_point, &width);
+    wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
+                       interior_w, &split_point, &width);
     NOT_USED(width);
 
     pos.x = tx;
     pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
-    bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                glyph, bg, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
+                    glyph, bg, &pos, NULL);
   }
 }
 
@@ -477,12 +599,12 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
      * the same width is left spare at text_x1 too since the fill already
      * spans the full column */
     space_w = 0;
-    bmfont_measure(c->font, " ", 1, INT_MAX, NULL, &space_w);
+    wuss__text_measure(c->font, " ", 1, INT_MAX, NULL, &space_w);
 
     pos.x = text_x0 + (int) space_w;
     pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2;
-    bmfont_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                text_ink, text_ground, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
+                    text_ink, text_ground, &pos, NULL);
   }
 }
 

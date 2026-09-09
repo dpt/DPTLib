@@ -7,17 +7,23 @@
 
 #include "framebuf/colour.h"
 #include "geom/point.h"
+#include "wuss/wuss.h"
 #include "wuss/window.h"
 
-#define CURVE_NCONTROLPTS 4 /* cubic Bezier: start, 2 control points, end */
+#define CURVE_MINCONTROLPTS 2 /* a straight line */
+#define CURVE_MAXCONTROLPTS 6 /* a quintic Bezier */
 
-/* a single cubic Bezier curve with draggable control points, redrawn as
- * nsegments straight line segments; the mouse wheel adjusts nsegments */
+/* a single Bezier curve with draggable control points, redrawn as nsegments
+ * straight line segments. The mouse wheel adjusts nsegments; an Adjust click
+ * cycles the curve type (line, quadratic, cubic, quartic, quintic) by
+ * stepping npoints, the count of points[] actually in play. */
 typedef struct curve_task
 {
+  wuss_t        *wuss;   /* borrowed; for wuss_get_font in the redraw */
   wuss_window_t *window;
   colour_t       bg, line, blob;
-  point_t        points[CURVE_NCONTROLPTS];
+  point_t        points[CURVE_MAXCONTROLPTS];
+  int            npoints;     /* CURVE_MINCONTROLPTS..CURVE_MAXCONTROLPTS */
   int            nsegments;
   int            dragging;    /* index into points, or -1 if not dragging */
 }

@@ -123,11 +123,16 @@ struct wuss
   wuss_furniture_palette_t              furniture_colours;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
-  wuss_colour_t               bevel_light; /* work-area button top/left edge */
-  wuss_colour_t               bevel_dark;  /* work-area button bottom/right edge */
-  wuss_colour_t               accent_bg;   /* default action button fill */
-  wuss_colour_t               accent_fg;   /* default action button text */
+  wuss_colour_t               bevel_light;    /* work-area button top/left edge */
+  wuss_colour_t               bevel_dark;     /* work-area button bottom/right edge */
+  wuss_colour_t               bevel_divider;  /* lighter edge for a DIVIDER border */
+  wuss_colour_t               button_bg;      /* button face when spec bg is NONE */
+  wuss_colour_t               button_fg;      /* button label */
+  wuss_colour_t               button_pressed; /* button face while held */
+  wuss_colour_t               accent;         /* default action button fill */
 #endif
+  wuss_colour_t               window_bg; /* work-area body fill; wuss_COLOUR_WINDOW */
+  wuss_colour_t               menu_bg;   /* menu body fill; wuss_COLOUR_MENU */
   wuss_backdrop_t             backdrop; /* colour==wuss_NO_BACKGROUND: none */
 #ifdef WUSS_FURNITURE
   int                         titlebar_height;
@@ -159,6 +164,20 @@ struct wuss
                                             * over, NULL when none; drives
                                             * hover-highlight repaint of
                                             * menu-entry icons */
+  /* Icon set loaded by wuss_icons_load. index i is the i-th ".png" the
+   * directory scan yielded (order unspecified -- address by name).
+   * names interns the leafnames-sans-".png"; atoms[i] is entry i's atom
+   * in it (atom values are not array indices, so the position is tracked
+   * explicitly); bitmaps[i] is the matching RLE-compressed bitmap. All
+   * owned; freed by wuss__icons_registry_free. NULL / 0 until first load. */
+  struct
+  {
+    struct atom_set          *names;
+    int                      *atoms;
+    bitmap_t                 *bitmaps;
+    int                       nbitmaps;
+  }
+  icon;
 #endif
 #ifdef WUSS_MENUS
   struct wuss__menu          *menu_chain;   /* head (root) of the open pop-up
@@ -204,6 +223,7 @@ struct wuss_window
 #ifdef WUSS_FURNITURE
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];
+  wuss__furniture_layout_t furniture_layout; /* lazily built; see furniture.h */
 #endif
 #ifdef WUSS_ICONS
   wuss_icon_t       **icons;        /* owned; array of owned icon pointers */
@@ -237,6 +257,14 @@ static inline void wuss__chrome_repaint_for(wuss_window_t *window,
 {
   window->wuss->furniture_ops->invalidate_for(window, visible);
 }
+
+/* Drop just the cached furniture layout, without queuing any dirty region --
+ * for a window move, where the caller already handles the repaint but the
+ * cache (absolute coords) must be rebuilt for the new position. */
+static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
+{
+  window->furniture_layout.valid = 0;
+}
 #else
 static inline void wuss__chrome_draw(wuss_t        *wuss,
                                      wuss_window_t *window,
@@ -258,9 +286,33 @@ static inline void wuss__chrome_repaint_for(wuss_window_t *window,
   (void) window;
   (void) visible;
 }
+
+static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
+{
+  (void) window;
+}
 #endif
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
+
+/* Centralised text rendering. Every wuss text draw goes through
+ * wuss__text_draw so an optical vertical bias (WUSS_TEXT_BASELINE_ADJUST,
+ * default 1px down) is applied uniformly; wuss__text_measure is a plain
+ * pass-through kept alongside for a single point of policy. */
+result_t wuss__text_measure(bmfont_t       *font,
+                            const char     *text,
+                            int             len,
+                            bmfont_width_t  target_width,
+                            int            *split_point,
+                            bmfont_width_t *actual_width);
+result_t wuss__text_draw(bmfont_t      *font,
+                         screen_t      *scr,
+                         const char    *text,
+                         int            len,
+                         colour_t       fg,
+                         colour_t       bg,
+                         const point_t *pos,
+                         point_t       *end_pos);
 
 /* Rebuild wuss->palettecache (white, black and the symbolic[] table) from
  * the current palette and the stored chrome colours. Call after the palette
@@ -371,7 +423,9 @@ void    wuss__scroll_step(wuss_window_t *window, point_t delta);
 
 #ifdef WUSS_FURNITURE
 void            wuss__titlebar_box(const wuss_window_t *window, box_t *out);
+void            wuss__title_hit_box(const wuss_window_t *window, box_t *out);
 void            wuss__close_box(const wuss_window_t *window, box_t *out);
+void            wuss__close_hit_box(const wuss_window_t *window, box_t *out);
 void            wuss__content_box(const wuss_window_t *window, box_t *out);
 #else
 /* No furniture: the content area is the whole visible footprint. */
@@ -457,6 +511,14 @@ int             wuss__blit_pieces(wuss_window_t *window,
 result_t wuss__deliver(wuss_task_t        *task,
                        wuss_window_t      *win_or_null,
                        const wuss_event_t *ev);
+
+#ifdef WUSS_MENUS
+/* Tear down the whole open menu chain because wuss decided to (not the
+ * client): unlinks wuss->menu_chain, delivers wuss_EVENT_MENU_CLOSED to its
+ * owner so a stored handle is dropped, then frees the nodes. No-op if no
+ * chain is open. Defined in menu/menu.c. */
+void wuss__menu_abandon(wuss_t *wuss);
+#endif
 
 /* Notify a window's task that it has been moved or resized, via
  * wuss_EVENT_OPEN; the return value is discarded, matching how furniture
