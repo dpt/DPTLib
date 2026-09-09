@@ -34,7 +34,7 @@ void screen_fill_hline(screen_t *scr, int x, int y, int w, colour_t colour)
   clipped_width = draw_box.x1 - draw_box.x0;
 
   fmt = colour_to_pixel(scr->palette,
-                        (scr->format == pixelfmt_p4) ? 16 : 0,
+                        pixelfmt_paletted_nentries(scr->format),
                         colour, scr->format);
 
   /* the per-format run fill lives in the span table; "first" lets it address

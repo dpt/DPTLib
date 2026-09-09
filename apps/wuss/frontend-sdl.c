@@ -22,11 +22,12 @@
 
 #include "frontend.h"
 
-/* Screen pixel format for the demo, chosen at run time via -depth: 32 =
+/* Screen pixel format for the demo, chosen at run time via --depth: 32 =
  * pixelfmt_bgrx8888 (feeds SDL directly, no per-frame conversion); 4 (the
  * default) = pixelfmt_p4 paletted (exercises screen_copy_rect's nibble-packed
- * blit path instead). No other depth is handled yet. Stashed in struct
- * wuss_frontend so present() can branch on it. */
+ * blit path instead); 1 = pixelfmt_p1 monochrome. Paletted depths are converted
+ * to bgrx8888 per frame via bitmap_convert. Stashed in struct wuss_frontend so
+ * present() can branch on it. */
 
 /* Integer window zoom: the fixed Wuss screen is drawn at this many device
  * pixels per screen pixel. The initial value comes from -scale (0 => use the
@@ -46,7 +47,7 @@ struct wuss_frontend
   int           scr_width;
   int           scr_height;
   int           scale; /* device pixels per screen pixel; see WUSS_SDL_*_SCALE */
-  int           depth; /* framebuffer bits per pixel: 32 (bgrx8888) or 4 (p4) */
+  int           depth; /* framebuffer bits per pixel: 32 (bgrx8888), 4 (p4) or 1 (p1) */
   void         *pixels; /* the private framebuffer handed to the caller */
 };
 
@@ -99,9 +100,9 @@ result_t wuss_frontend_open(int               width,
   NOT_USED(palette);
   NOT_USED(npalette);
 
-  if (depth != 4 && depth != 32)
+  if (depth != 1 && depth != 4 && depth != 32)
   {
-    fprintf(stderr, "Error: unsupported -depth %d (want 4 or 32)\n", depth);
+    fprintf(stderr, "Error: unsupported depth %d (want 1, 4 or 32)\n", depth);
     return result_BAD_ARG;
   }
 
@@ -110,7 +111,8 @@ result_t wuss_frontend_open(int               width,
   scale = CLAMP(scale, WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE);
 
   stride = (depth == 32) ? width * 4  /* pixelfmt_bgrx8888: 4 bytes/pixel */
-                         : width / 2; /* pixelfmt_p4: 2 pixels/byte */
+         : (depth == 4)  ? width / 2  /* pixelfmt_p4: 2 pixels/byte */
+                         : (width + 7) / 8; /* pixelfmt_p1: 8 pixels/byte */
 
   fe = calloc(1, sizeof(*fe));
   if (fe == NULL)
@@ -161,7 +163,9 @@ result_t wuss_frontend_open(int               width,
   /* keep pixels crisp when F2 scales the window up */
   SDL_SetTextureScaleMode(fe->texture, SDL_SCALEMODE_NEAREST);
 
-  *fmt = (depth == 32) ? pixelfmt_bgrx8888 : pixelfmt_p4;
+  *fmt = (depth == 32) ? pixelfmt_bgrx8888
+       : (depth == 4)  ? pixelfmt_p4
+                       : pixelfmt_p1;
 
   *pixels   = fe->pixels;
   *rowbytes = stride;

@@ -26,6 +26,20 @@
 /* Each helper writes the single pixel (x, y), already known to be inside the
  * clip, with the colour previously resolved to "pxl". */
 
+static void screen_set_pixel_p1(screen_t      *scr,
+                                int            x,
+                                int            y,
+                                pixelfmt_any_t pxl)
+{
+  unsigned char *scrp;
+  int            shift;
+
+  scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 3);
+  shift = 7 - (x & 7); /* bit 7 is the leftmost pixel */
+
+  *scrp = (unsigned char) ((*scrp & ~(1 << shift)) | ((pxl & 1) << shift));
+}
+
 static void screen_set_pixel_p4(screen_t      *scr,
                                 int            x,
                                 int            y,
@@ -88,10 +102,11 @@ void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour)
     return;
 
   pxl = colour_to_pixel(scr->palette,
-                        (scr->format == pixelfmt_p4) ? 16 : 0,
+                        pixelfmt_paletted_nentries(scr->format),
                         colour, scr->format);
   switch (pixelfmt_log2bpp(scr->format))
   {
+  case 0: screen_set_pixel_p1(scr, x, y, pxl); break;
   case 2: screen_set_pixel_p4(scr, x, y, pxl); break;
   case 3: screen_set_pixel_8(scr, x, y, pxl);  break;
   case 4: screen_set_pixel_16(scr, x, y, pxl); break;
@@ -105,6 +120,25 @@ void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour)
 
 /* Each helper alpha-blends "colour" at "alpha" into the single pixel (x, y),
  * already known to be inside the clip. */
+
+static void screen_blend_pixel_p1(screen_t *scr,
+                                  int       x,
+                                  int       y,
+                                  colour_t  colour,
+                                  int       alpha)
+{
+  unsigned char *scrp;
+  int            shift;
+  unsigned char  idx, out;
+
+  scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 3);
+  shift = 7 - (x & 7);
+  idx   = (*scrp >> shift) & 1;
+
+  scr->span->blendconst(&out, &idx, &colour, 1, alpha, scr->palette);
+
+  *scrp = (unsigned char) ((*scrp & ~(1 << shift)) | ((out & 1) << shift));
+}
 
 static void screen_blend_pixel_p4(screen_t *scr,
                                   int       x,
@@ -158,6 +192,7 @@ static void screen_blend_pixel(screen_t *scr,
 
   switch (pixelfmt_log2bpp(scr->format))
   {
+  case 0: screen_blend_pixel_p1(scr, x, y, colour, alpha); break;
   case 2: screen_blend_pixel_p4(scr, x, y, colour, alpha); break;
   case 5: screen_blend_pixel_32(scr, x, y, colour, alpha); break;
 

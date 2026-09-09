@@ -200,6 +200,17 @@ typedef unsigned int   pixelfmt_any32_t; /* any 32bpp pixel */
  */
 int pixelfmt_log2bpp(pixelfmt_t fmt);
 
+/**
+ * Number of palette entries a packed paletted format addresses: 2 for p1, 4
+ * for p2, 16 for p4, 256 for p8. 0 for any non-paletted format (its
+ * "palette" is not indexed). Useful as the `nentries` argument to \ref
+ * colour_to_pixel when the destination is a fixed-size paletted screen.
+ *
+ * \param fmt Pixel format.
+ * \return Entry count, or 0 if `fmt` is not a packed paletted format.
+ */
+int pixelfmt_paletted_nentries(pixelfmt_t fmt);
+
 /* ----------------------------------------------------------------------- */
 
 #ifdef __cplusplus

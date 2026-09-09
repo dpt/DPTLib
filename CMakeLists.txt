@@ -264,6 +264,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pattern/pattern.c
     libraries/framebuf/pixelfmt/log2bpp.c
+    libraries/framebuf/pixelfmt/paletted-nentries.c
     libraries/framebuf/pixelmap/build.c
     libraries/framebuf/pixelmap/get.c
     libraries/framebuf/pixelmap/impl.h
