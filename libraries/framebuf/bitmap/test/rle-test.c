@@ -24,7 +24,10 @@
 /* ----------------------------------------------------------------------- */
 
 /* Encode one row then decode it unclipped, compare byte-for-byte. */
-static int roundtrip_row(const void *row, int npix, int log2bpp, int has_alpha)
+static int roundtrip_row(const void *row,
+                         int         npix,
+                         int         log2bpp,
+                         int         has_alpha)
 {
   uint8_t  enc[4 * W + W / 64 + 16];
   uint8_t  dec[4 * W];
@@ -44,9 +47,7 @@ static int roundtrip_row(const void *row, int npix, int log2bpp, int has_alpha)
     return 0;
   }
 
-  (void) bitmap__rle_decode_row(enc, log2bpp, dec, 0, npix, 1);
-
-  (void) used;
+  (void) bitmap__rle_decode_row(enc, enc + used, log2bpp, dec, 0, npix, 1);
 
   if (memcmp(dec, row, (size_t) npix * bpp) != 0)
   {
