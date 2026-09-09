@@ -10,7 +10,7 @@ LAYER 0 - BUGS (fix before building on top)
 - Auto window placement packer still not working as expected
     blocks: reliable multi-window tasks
 - Image task not shrinking window when new image loads
-- Saw corruption when loading large image then expanding window size
+
 
 LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
 
@@ -53,6 +53,7 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
 - Dragging against window edge shuffles window in opposite direction
   (outline-click bug fixed; unblocked)
 - Input focus, text entry, furniture tinting
+- Icon layout
 
 
 LAYER 5 - DRAG & TEMPLATES (needs sprites, config-after-the-fact)

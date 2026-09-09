@@ -21,7 +21,9 @@
 
 #include "image.h"
 
-#define NINEPATCHSZ 9
+#define NINEPATCHSZ  9
+#define IMAGE_BORDERSZ 8 /* solid inset band drawn inside the ninepatch */
+#define IMAGE_MARGINSZ (NINEPATCHSZ + IMAGE_BORDERSZ)
 #define IMAGE_EXT     ".png"
 
 result_t image_create(wuss_t       *wuss,
@@ -88,8 +90,8 @@ result_t image_create(wuss_t       *wuss,
    * at wuss_destroy instead. Closing the main window early leaks this block
    * until then -- fine for a demo. */
 
-  sz.w = task->bitmap.size.w + NINEPATCHSZ * 2;
-  sz.h = task->bitmap.size.h + NINEPATCHSZ * 2;
+  sz.w = task->bitmap.size.w + IMAGE_MARGINSZ * 2;
+  sz.h = task->bitmap.size.h + IMAGE_MARGINSZ * 2;
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(sz.w, sz.h),
@@ -132,6 +134,7 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   int           sx, sy;
   int           bx, by;
   box_t         behind;
+  box_t         band[4];
 
   ic = task_data;
 
@@ -139,14 +142,33 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   bounds = event->data.redraw.bounds;
   sx     = event->data.redraw.scroll.x;
   sy     = event->data.redraw.scroll.y;
-  bx     = bounds->x0 - sx + NINEPATCHSZ;
-  by     = bounds->y0 - sy + NINEPATCHSZ;
+  bx     = bounds->x0 - sx + IMAGE_MARGINSZ;
+  by     = bounds->y0 - sy + IMAGE_MARGINSZ;
 
-  behind.x0 = bx - NINEPATCHSZ;
-  behind.y0 = by - NINEPATCHSZ;
-  behind.x1 = behind.x0 + ic->bitmap.size.w + NINEPATCHSZ * 2;
-  behind.y1 = behind.y0 + ic->bitmap.size.h + NINEPATCHSZ * 2;
+  behind.x0 = bx - IMAGE_MARGINSZ;
+  behind.y0 = by - IMAGE_MARGINSZ;
+  behind.x1 = behind.x0 + ic->bitmap.size.w + IMAGE_MARGINSZ * 2;
+  behind.y1 = behind.y0 + ic->bitmap.size.h + IMAGE_MARGINSZ * 2;
   screen_copy_ninepatch(scr, &behind, &ic->ninepatch, 0);
+
+  /* solid 8px band between the ninepatch frame and the image */
+  band[0].x0 = bx - IMAGE_BORDERSZ;
+  band[0].y0 = by - IMAGE_BORDERSZ;
+  band[0].x1 = bx + ic->bitmap.size.w + IMAGE_BORDERSZ;
+  band[0].y1 = by;                                        /* top */
+  band[1].x0 = bx - IMAGE_BORDERSZ;
+  band[1].y0 = by + ic->bitmap.size.h;
+  band[1].x1 = bx + ic->bitmap.size.w + IMAGE_BORDERSZ;
+  band[1].y1 = by + ic->bitmap.size.h + IMAGE_BORDERSZ;   /* bottom */
+  band[2].x0 = bx - IMAGE_BORDERSZ;
+  band[2].y0 = by;
+  band[2].x1 = bx;
+  band[2].y1 = by + ic->bitmap.size.h;                    /* left */
+  band[3].x0 = bx + ic->bitmap.size.w;
+  band[3].y0 = by;
+  band[3].x1 = bx + ic->bitmap.size.w + IMAGE_BORDERSZ;
+  band[3].y1 = by + ic->bitmap.size.h;                    /* right */
+  screen_fill_rects(scr, band, 4, colour_rgb(0xFF, 0x77, 0xA8)); /* PICO-8 pink */
 
   screen_copy_bitmap(scr, bx, by, &ic->bitmap);
 
@@ -184,8 +206,12 @@ static result_t image_click(wuss_window_t *window,
   free(ic->bitmap.base);
   ic->bitmap = next;
 
-  sz.w = ic->bitmap.size.w + NINEPATCHSZ * 2;
-  sz.h = ic->bitmap.size.h + NINEPATCHSZ * 2;
+  sz.w = ic->bitmap.size.w + IMAGE_MARGINSZ * 2;
+  sz.h = ic->bitmap.size.h + IMAGE_MARGINSZ * 2;
+
+  rc = wuss_window_resize(window, sz);
+  if (rc != result_OK)
+    return rc;
   return wuss_window_set_doc(window, sz);
 }
 
