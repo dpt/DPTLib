@@ -848,6 +848,116 @@ static result_t test_copy_bitmap_p1(void)
   return result_TEST_PASSED;
 }
 
+static result_t test_copy_bitmap_p2(void)
+{
+#define P2_ROWBYTES (WIDTH / 4)
+  static unsigned char       p2pixels[P2_ROWBYTES * HEIGHT];
+  static pixelfmt_rgba8888_t srcbuf[16 * 4];
+
+  screen_t scr;
+  bitmap_t src;
+  colour_t pal[4];
+  int      x, y;
+
+  pal[0] = colour_rgb(0x00, 0x00, 0x00);
+  pal[1] = colour_rgb(0x55, 0x55, 0x55);
+  pal[2] = colour_rgb(0xAA, 0xAA, 0xAA);
+  pal[3] = colour_rgb(0xFF, 0xFF, 0xFF);
+
+  /* 16x4 source: left half black (-> index 0), right half white (-> index 3) */
+  for (y = 0; y < 4; y++)
+    for (x = 0; x < 16; x++)
+      srcbuf[y * 16 + x] = (x < 8 ? colour_rgb(0x08, 0x08, 0x08)
+                                  : colour_rgb(0xF8, 0xF8, 0xF8)).primary;
+
+  bitmap_init(&src, SIZE2D(16, 4), pixelfmt_rgba8888,
+              16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
+
+  memset(p2pixels, 0, sizeof(p2pixels));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, P2_ROWBYTES, pal,
+              p2pixels);
+
+  if (screen_copy_bitmap(&scr, 0, 0, &src) != result_OK)
+  {
+    printf("screen: copy_bitmap to p2 screen failed\n");
+    return result_TEST_FAILED;
+  }
+
+  /* row 0: bytes 0..1 = four black pixels each = 0x00; bytes 2..3 = four
+   * white (index 3 = 0b11) each = 0xFF */
+  if (p2pixels[0] != 0x00 || p2pixels[1] != 0x00 ||
+      p2pixels[2] != 0xFF || p2pixels[3] != 0xFF)
+  {
+    printf("screen: p2 blit packed wrong (0x%02X 0x%02X 0x%02X 0x%02X)\n",
+           p2pixels[0], p2pixels[1], p2pixels[2], p2pixels[3]);
+    return result_TEST_FAILED;
+  }
+
+  /* an untouched row past the source stays clear */
+  if (p2pixels[4 * P2_ROWBYTES] != 0x00)
+  {
+    printf("screen: p2 blit spilled past the source\n");
+    return result_TEST_FAILED;
+  }
+
+  /* odd x offset: first white pixel lands in bits 6-((3&3)<<1) = 0 of byte 0 */
+  memset(p2pixels, 0, sizeof(p2pixels));
+  {
+    pixelfmt_rgba8888_t one = colour_rgb(0xF8, 0xF8, 0xF8).primary;
+    bitmap_t            dot;
+
+    bitmap_init(&dot, SIZE2D(1, 1), pixelfmt_rgba8888,
+                (int) sizeof(one), NULL, &one);
+    screen_copy_bitmap(&scr, 3, 0, &dot);
+    if (p2pixels[0] != (3 << 0))
+    {
+      printf("screen: p2 blit odd-x packed wrong (0x%02X)\n", p2pixels[0]);
+      return result_TEST_FAILED;
+    }
+  }
+
+  /* screen_set_pixel: white pixel at x=1 sets bits 6-((1&3)<<1) = 4 of byte 0 */
+  memset(p2pixels, 0, sizeof(p2pixels));
+  screen_set_pixel(&scr, 1, 0, pal[3]);
+  if (p2pixels[0] != (3 << 4))
+  {
+    printf("screen: p2 set_pixel packed wrong (0x%02X)\n", p2pixels[0]);
+    return result_TEST_FAILED;
+  }
+
+  /* screen_fill_hline: 4 white pixels from x=0 fill byte 0 */
+  memset(p2pixels, 0, sizeof(p2pixels));
+  screen_fill_hline(&scr, 0, 1, 4, pal[3]);
+  if (p2pixels[P2_ROWBYTES] != 0xFF)
+  {
+    printf("screen: p2 fill_hline packed wrong (0x%02X)\n",
+           p2pixels[P2_ROWBYTES]);
+    return result_TEST_FAILED;
+  }
+
+  /* screen_fill_pattern: solid all-bits pattern in fg colour = 0xFF row */
+  memset(p2pixels, 0, sizeof(p2pixels));
+  {
+    pattern_t pat;
+    box_t     b;
+
+    memset(&pat, 0, sizeof(pat));
+    memset(pat.bits, 0xFF, sizeof(pat.bits));
+    pat.fg = pal[3];
+    pat.bg = pal[0];
+    b.x0 = 0; b.y0 = 2; b.x1 = 4; b.y1 = 3;
+    screen_fill_pattern(&scr, &b, &pat);
+    if (p2pixels[2 * P2_ROWBYTES] != 0xFF)
+    {
+      printf("screen: p2 fill_pattern packed wrong (0x%02X)\n",
+             p2pixels[2 * P2_ROWBYTES]);
+      return result_TEST_FAILED;
+    }
+  }
+
+  return result_TEST_PASSED;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t screen_test(const char *resources)
@@ -866,7 +976,8 @@ result_t screen_test(const char *resources)
     test_draw_rect,
     test_draw_circle,
     test_fill_circle,
-    test_copy_bitmap_p1
+    test_copy_bitmap_p1,
+    test_copy_bitmap_p2
   };
 
   result_t rc;
