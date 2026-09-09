@@ -1596,7 +1596,16 @@ result_t bmfont_draw(bmfont_t      *bmfont,
 
   int            x                 = pos->x;
 
+  /* box_intersects said something is visible, but a glyph can still be fully
+   * clipped vertically at a boundary. drawfn's `while (charheight--)` would
+   * then run ~INT_MAX times, so bail rather than trust the assert alone. */
   assert(clippedcharheight > 0);
+  if (clippedcharheight <= 0)
+  {
+    if (end_pos)
+      *end_pos = POINT(pos->x, pos->y);
+    return result_OK;
+  }
 
   while (len--)
   {
@@ -1606,7 +1615,15 @@ result_t bmfont_draw(bmfont_t      *bmfont,
     const void *glyph;
 
     c       = *text++;
-    gid     = c - ' ';
+
+    /* control characters and anything outside the glyph table draw nothing
+     * and advance nothing -- matching bmfont_measure. */
+    if ((unsigned char) c < ' ')
+      continue;
+    gid = (unsigned char) c - ' ';
+    if (gid >= bmfont->totalchars)
+      continue;
+
     advance = bmfont_advance_for(bmfont, gid) + tracking;
 
     x += advance;
@@ -1669,8 +1686,13 @@ result_t bmfont_draw(bmfont_t      *bmfont,
         int gid;
         int advance;
 
-        c       = *text++;
-        gid     = c - ' ';
+        c = *text++;
+        if ((unsigned char) c < ' ')
+          continue;
+        gid = (unsigned char) c - ' ';
+        if (gid >= bmfont->totalchars)
+          continue;
+
         advance = bmfont_advance_for(bmfont, gid) + tracking;
 
         x += advance;
