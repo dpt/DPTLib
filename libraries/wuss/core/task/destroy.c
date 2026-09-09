@@ -19,6 +19,12 @@ void wuss_task_destroy(wuss_task_t *doomed)
   if (doomed == NULL)
     return;
 
+  /* Already being reaped -- by wuss_destroy's sweep, or a re-entrant call
+   * from this task's own QUIT handler. The outer teardown owns the unlink
+   * and free; doing it here too would double-free the node. */
+  if (doomed->flags & wuss_TASK__REAPING)
+    return;
+
   wuss = doomed->wuss;
 
   /* Mark the teardown so wuss_window_close's autoclose path doesn't also
