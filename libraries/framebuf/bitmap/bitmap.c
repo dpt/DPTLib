@@ -138,8 +138,8 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   const pixelfmt_bgrx8888_t *map;
   bitmap_t                  *dst;
   pixelfmt_bgrx8888_t       *outpixels;
-  pixelfmt_p4_t             *inpixels;
-  int                        x,y;
+  const unsigned char       *inrow;
+  int                        x, y;
 
   assert(src);
   assert(src->palette);
@@ -171,22 +171,14 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   if (rc)
     return rc;
 
-  inpixels = src->base;
+  inrow = src->base;
   for (y = 0; y < src->size.h; y++)
   {
-    for (x = 0; x < src->size.w / 8; x++)
-    {
-      pixelfmt_p4_t in = *inpixels++; // fetches 8 pixels
-      // 0xABCDEFGH is 8 4bpp pixels shown H,G,F,E,D,C,B,A
-      *outpixels++ = map[(in >>  0) & 0xF];
-      *outpixels++ = map[(in >>  4) & 0xF];
-      *outpixels++ = map[(in >>  8) & 0xF];
-      *outpixels++ = map[(in >> 12) & 0xF];
-      *outpixels++ = map[(in >> 16) & 0xF];
-      *outpixels++ = map[(in >> 20) & 0xF];
-      *outpixels++ = map[(in >> 24) & 0xF];
-      *outpixels++ = map[(in >> 28) & 0xF];
-    }
+    /* per-pixel, so widths that aren't a multiple of 8 keep their last
+     * w % 8 pixels, and row padding in src->rowbytes is respected */
+    for (x = 0; x < src->size.w; x++)
+      *outpixels++ = map[(inrow[x >> 1] >> ((x & 1) << 2)) & 0xF];
+    inrow += src->rowbytes;
   }
 
   *pdst = dst;
