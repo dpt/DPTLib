@@ -232,6 +232,35 @@ _Unreleased_ until one is cut.
   pool. Released areas are not coalesced.
 - `POINT(x, y)` and `SIZE2D(w, h)` compound-literal macros in `geom/point.h`
   and `geom/size.h`.
+- 1bpp and 2bpp paletted pixel formats (`pixelfmt_p1`, `pixelfmt_p2`),
+  packed MSB-first (bit 7 / bits 7..6 are the leftmost pixel) to match PNG
+  and the existing pattern bit order. `span_p1` / `span_p2` (`fill` +
+  `blendconst`) are registered so `bitmap_init()` hands out a valid span;
+  `screen_set_pixel` / `screen_blend_pixel` / `screen_fill_pattern` /
+  `screen_copy_bitmap` gain p1 and p2 cases; `bitmap_convert()` grows
+  `p1 -> bgrx8888` and `p2 -> bgrx8888` paths for the SDL frontend's
+  per-frame display conversion. `pixelmap` already handled both generically.
+- `bmfont_draw()` renders to a `pixelfmt_p1` or `pixelfmt_p2` screen. A
+  single `bmfont_p1_plot_row` / `bmfont_p2_plot_row` does the per-pixel
+  MSB-first bit write for both 1- and 2-byte glyph rows and both opaque
+  and transparent backgrounds.
+- `pixelfmt_paletted_nentries()` — palette entry count for any paletted
+  format, replacing the `(scr->format == pixelfmt_p4) ? 16 : 0` hack at
+  every `colour_to_pixel()` call site (which passed a broken `nentries=0`
+  for any non-p4 paletted screen).
+- The `wuss` SDL demo accepts `-d`/`--depth 1` and `--depth 2`, selecting a
+  `pixelfmt_p1` (stride `(width + 7) / 8`) or `pixelfmt_p2` (stride
+  `(width + 3) / 4`) framebuffer alongside the existing 4 and 32.
+- The `wuss` curve task draws the active control points' convex hull
+  (Andrew's monotone chain) as a closed light-grey polyline before the
+  curve and blobs.
+- The `wuss` gradient task cycles its ordered-dither matrix through 2x2,
+  4x4 and 8x8 on SELECT / ADJUST clicks; each matrix cell maps to a fixed
+  -8..+8 offset so a larger matrix gives a finer pattern, not a noisier
+  one (4x4 output unchanged). The current size is drawn top-left.
+- `tools/ttf2bmfont.py` — renders a TTF into the bmfont PNG format the
+  loader expects. Three small paletted bitmap faces (`04b_03`, `04b_25`,
+  `Nokia`) added under `resources/bmfonts/`.
 
 ### Changed
 
@@ -372,6 +401,14 @@ _Unreleased_ until one is cut.
     leaf now delivers `wuss_EVENT_MENU_SELECT` (with `window == NULL`) to that
     task — `data.menu_select` carries `{ const struct wuss_menu *menu; int
     index; wuss_button_t button; }`. `wuss_menu_select_fn_t` is removed.
+- `screen_set_pixel_8()` is renamed `screen_set_pixel_p8()`, matching the
+  `_p1` / `_p2` / `_p4` naming of the other paletted set-pixel helpers.
+- The greeble prefab tables (`greeble_prefab_cells` / `greeble_prefab`) are
+  regenerated from the current sheet; `GREEBLE_NPREFAB` 103 -> 137.
+- The `wuss` image task resizes the window frame on load (via
+  `wuss_window_resize()` before `wuss_window_set_doc()`, which alone only
+  moved the scroll extent) and insets an 8px solid border inside the
+  ninepatch frame.
 
 ### Fixed
 
@@ -449,9 +486,9 @@ _Unreleased_ until one is cut.
   `NDEBUG`).
 - `screen_fill_hline()` (and so `screen_fill_rect()`, which calls it per
   row) is a no-op in release builds for a `screen_t` whose pixel format has
-  no span-registry entry, instead of dereferencing the NULL `scr->span` —
-  the guarding `assert` was compiled out under `NDEBUG` so this previously
-  crashed.
+  no span-registry entry — or a span with no `fill` — instead of
+  dereferencing the NULL `scr->span` / `scr->span->fill`; the guarding
+  `assert` was compiled out under `NDEBUG` so this previously crashed.
 - `wuss_create()`'s font-slot arrays and loop bound in the interactive demo
   are now sized from one named, compile-time-checked constant
   (`WUSS_MAIN_NFONTS`, checked against `wuss_MAX_FONTS`) instead of three
@@ -488,3 +525,71 @@ _Unreleased_ until one is cut.
   endpoints.
 - `screen_draw_ninepatch()` clamps its corner cells so they no longer overlap
   and double-draw when the destination box is smaller than the source corners.
+- `spanregistry_get()`'s one-slot cache seeded `lastformat` to zero, which
+  equals `pixelfmt_p1` (the first enum member), so the first p1 lookup
+  short-circuited to a NULL span and tripped the `screen_fill_hline()`
+  assert. Seeded with `pixelfmt_unknown` and the fast path guarded on a
+  non-NULL span.
+- The `NO_RESIZE_BLIT` branch of `wuss_window_resize()` invalidated the
+  dirty region but never dropped the cached furniture layout, so
+  `wuss__furniture_draw` kept painting titlebar/carve/outline rects at the
+  previous frame's width. It now calls `wuss__chrome_invalidate_layout`,
+  matching the blit branch's `wuss__chrome_repaint`.
+- `bitmap_fill_pattern()` negated the `box_intersection()` result (which is
+  non-zero when the intersection is *empty*), so any non-NULL `area` that
+  overlapped the bitmap returned early and painted nothing — only
+  `area == NULL` worked. Drop the negation to match `screen_fill_pattern()`.
+- `bitmap__rle_decode_row()` ran a bare `for (;;)` that only stopped on an
+  EOL opcode, so a truncated or corrupt RLE blob read opcodes past the
+  allocation. It now takes an `end` limit (like every other row walker),
+  stops at it, and has a reserved opcode bail to `end` (release builds
+  previously did a bare `break`, desynchronising the caller's row cursor).
+  `bitmap_decompress()` reads `data_len` from the blob header to form
+  `end`.
+- `bmfont_draw()` formed `gid = c - ' '` from a raw signed `char` and
+  indexed `adw[]` and the glyph bitmaps with no bounds check, so a tab, a
+  DEL or any byte `>= 0x80` produced a negative or oversized index and an
+  out-of-bounds read/write. Both draw loops now filter `c < ' '` and
+  `gid >= totalchars`, matching `bmfont_measure()`. The
+  fully-vertically-clipped case (`clippedcharheight <= 0`) also gets a
+  release-build bail rather than entering `drawfn` with a negative height
+  and looping ~`INT_MAX` times.
+- `wuss_destroy()`'s task sweep delivered `wuss_EVENT_QUIT` and freed each
+  task node without first setting `wuss_TASK__REAPING`. A QUIT handler that
+  closed its last autoclose window hit `wuss_window_close`'s self-destruct
+  path, which delivered a second QUIT and freed the node — which the sweep
+  then freed again. `wuss_TASK__REAPING` is now set before QUIT in the
+  sweep, and `wuss_task_destroy()` is a no-op when the task is already
+  being reaped.
+- `bitmap_compress()`'s worst-case row estimate assumed one control byte
+  per 128 pixels, but the encoder emits a 1-byte literal control for every
+  isolated non-repeatable pixel. A legal y8 image of the form singleton,
+  pair, singleton, pair, ... needs ~1.33*w bytes/row, overflowing the
+  allocation and returning `result_BUFFER_OVERFLOW` on valid input. The
+  budget is now `w * (bpp + 1)` plus the literal-long split control and an
+  EOL.
+- `bmconv_p4_to_bgrx8888()` ran `x < src->size.w / 8` and expanded 8 pixels
+  per iteration, so the final `w % 8` pixels of each row were never written
+  — the output had uninitialised garbage columns for any width not a
+  multiple of 8 — and it ignored row padding in `src->rowbytes`. Switched
+  to a per-pixel loop honouring both, matching the p1 and p2 converters.
+- `wuss_window_set_hidden()` marked a window hidden but left
+  `wuss->furniture.dragging`, `wuss->pressed_icon` and `wuss->hover_icon`
+  pointing into it, so hiding a window mid-drag from an event handler meant
+  the next `wuss_mouse_move()` still drove `wuss_window_move()` on an
+  off-screen window every pointer report. It now clears the same pointer
+  state `wuss_window_close()` does.
+- `scroll_strip()` always reserved `size + WUSS_DIVIDER_PX` at the far end
+  for the resize corner, but `scroll_strip_hit()` only reserves it when
+  something owns that corner. With a horizontal scrollbar and `NO_VSCROLL`
+  and `NO_RESIZE` the drawn strip stopped short while the hit box ran to
+  the visible edge: the rightmost band showed stale pixels yet hit-tested
+  as `HSCROLL_WELL` and started a scrollbar drag over empty chrome.
+  `scroll_strip()` gets the same far-end rule.
+- `wuss__furniture_hit_test()`'s `nearest_edge_region()` fallback claimed
+  `wuss_FURNITURE_RESIZE` for a whole bottom or right carve band whenever a
+  resize icon was present, and a scroll well for an edge with no scrollbar
+  strip. A click on the bare carve band left of the corner icon then
+  started a resize far from the visible handle. It now hands off to a
+  scroll well only when that scrollbar's strip runs the full edge;
+  every other edge pixel resolves to `TITLE` or `CONTENT`.
