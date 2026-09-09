@@ -112,7 +112,7 @@ static result_t text_set_font(text_task_t *task, int idx, const char *name)
   task->font    = font;
   task->current = idx;
 
-  wuss_window_invalidate_all(task->window);
+  wuss_window_invalidate_visible(task->window);
   return result_OK;
 }
 
@@ -125,7 +125,7 @@ static result_t text_set_sample(text_task_t *task, int idx)
   task->sample = idx;
   task->text   = text_samples[idx].text;
 
-  wuss_window_invalidate_all(task->window);
+  wuss_window_invalidate_visible(task->window);
   return result_OK;
 }
 

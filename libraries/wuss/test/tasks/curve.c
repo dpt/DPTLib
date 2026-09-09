@@ -208,7 +208,7 @@ static result_t curve_mouse(curve_task_t       *task,
       task->npoints++;
       if (task->npoints > CURVE_MAXCONTROLPTS)
         task->npoints = CURVE_MINCONTROLPTS;
-      wuss_window_invalidate_all(window);
+      wuss_window_invalidate_visible(window);
       break;
     }
     if (!(button & wuss_BUTTON_SELECT))
@@ -228,7 +228,7 @@ static result_t curve_mouse(curve_task_t       *task,
       break;
     task->points[task->dragging].x = x;
     task->points[task->dragging].y = y;
-    wuss_window_invalidate_all(window);
+    wuss_window_invalidate_visible(window);
     break;
 
   case wuss_MOUSE_UP:
@@ -246,7 +246,7 @@ static result_t curve_scroll(curve_task_t  *task,
   task->nsegments += delta;
   task->nsegments  = CLAMP(task->nsegments, CURVE_SEGMENTS_MIN, CURVE_SEGMENTS_MAX);
 
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }

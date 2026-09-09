@@ -345,7 +345,7 @@ static result_t porter_duff_idle(void *task_data)
   }
 
   /* the ramp changes every frame, so the whole pane is stale every frame */
-  wuss_window_invalidate_all(pd->window);
+  wuss_window_invalidate_visible(pd->window);
 
   return result_OK;
 }
@@ -359,7 +359,7 @@ static result_t porter_duff_mouse(wuss_window_t *window, void *task_data)
   pd->rule  = (pd->rule + 1) % composite_RULE__LIMIT;
   pd->frame = 0;
 
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }
@@ -377,7 +377,7 @@ static result_t porter_duff_scroll(wuss_window_t *window,
                                PD_FRAMES_MIN, PD_FRAMES_MAX);
   pd->frame            = MIN(pd->frame, pd->frames_per_rule);
 
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }

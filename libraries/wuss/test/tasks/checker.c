@@ -130,7 +130,7 @@ static result_t checker_mouse(wuss_window_t *window, void *task_data)
   pattern  = (window == cc->window2) ? &cc->pattern2 : &cc->pattern;
   *pattern = (*pattern + 1) % checker_PATTERN__COUNT;
 
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }
@@ -148,7 +148,7 @@ static result_t checker_scroll(wuss_window_t *window,
   *band += delta;
   *band  = CLAMP(*band, CHECKER_BAND_MIN, CHECKER_BAND_MAX);
 
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }

@@ -270,7 +270,7 @@ static result_t greeble_select(greeble_task_t *task, wuss_window_t *window)
     task->seed = 1;
 
   greeble_generate(task);
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_extent(window);
 
   return result_OK;
 }
@@ -285,7 +285,7 @@ static result_t greeble_toggle_randpal(greeble_task_t *task,
 {
   task->random_prefab_palettes = !task->random_prefab_palettes;
   greeble_generate(task);
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_extent(window);
 
   return result_OK;
 }
@@ -297,7 +297,7 @@ static result_t greeble_adjust(greeble_task_t *task, wuss_window_t *window)
 {
   task->palette = (unsigned char) ((task->palette + 1) % GREEBLE_NPALETTE);
   greeble_generate(task);
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_extent(window);
 
   return result_OK;
 }

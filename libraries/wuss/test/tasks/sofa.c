@@ -521,7 +521,7 @@ static result_t sofa_mouse(wuss_window_t *window,
   {
     sc->shape = (sc->shape + 1) % sofa_SHAPE__LIMIT;
     sc->turns = 0;
-    wuss_window_invalidate_all(window);
+    wuss_window_invalidate_visible(window);
   }
   else if (button & wuss_BUTTON_SELECT)
   {
@@ -542,7 +542,7 @@ static result_t sofa_scroll(wuss_window_t *window,
   sc->zoom += delta * SOFA_ZOOM_PER_NOTCH;
   sc->zoom  = CLAMP(sc->zoom, SOFA_ZOOM_MIN, SOFA_ZOOM_MAX);
 
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }
@@ -567,7 +567,7 @@ static result_t sofa_idle(void *task_data)
     }
   }
 
-  wuss_window_invalidate_all(task->window);
+  wuss_window_invalidate_visible(task->window);
 
   return result_OK;
 }

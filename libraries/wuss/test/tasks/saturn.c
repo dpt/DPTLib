@@ -191,7 +191,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
 static result_t saturn_idle(saturn_task_t *task)
 {
   task->seed += 0x9E3779B9UL; /* churn: a fresh sketch every null event */
-  wuss_window_invalidate_all(task->window);
+  wuss_window_invalidate_visible(task->window);
 
   return result_OK;
 }
@@ -207,7 +207,7 @@ static result_t saturn_mouse(saturn_task_t      *task,
   if (button & wuss_BUTTON_SELECT)
   {
     task->seed += 0x9E3779B9UL; /* fresh sketch */
-    wuss_window_invalidate_all(window);
+    wuss_window_invalidate_visible(window);
   }
 
   return result_OK;

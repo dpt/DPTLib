@@ -214,7 +214,7 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
   if (button & wuss_BUTTON_SELECT)
   {
     cc->show_second = !cc->show_second;
-    wuss_window_invalidate_all(cc->window);
+    wuss_window_invalidate_visible(cc->window);
   }
 
   return result_OK;
@@ -241,7 +241,7 @@ result_t clock_handle(wuss_window_t      *window,
     return clock_mouse(cc, event->data.mouse.button);
 
   case wuss_EVENT_IDLE:
-    wuss_window_invalidate_all(cc->window);
+    wuss_window_invalidate_visible(cc->window);
     return result_OK;
 
   case wuss_EVENT_QUIT:
