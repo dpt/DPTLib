@@ -148,12 +148,16 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
   else
   {
     /* No blit: the window is not topmost, its content self-lays-out
-     * (NO_RESIZE_BLIT), the old and new content boxes do not overlap, or
-     * screen_copy_rect declined. Repaint the whole union of old and new
-     * footprint. */
+     * (NO_RESIZE_BLIT), the old and new content boxes do not overlap,
+     * screen_copy_rect declined, or the toggle re-clamped scroll. Repaint
+     * the whole union of old and new footprint, and drop the cached
+     * furniture layout so it rebuilds at the new geometry -- the blit path
+     * above gets this via wuss__furniture_invalidate, this path otherwise
+     * would not. */
     logf_info("%s", "wuss furniture toggle: no blit fast path, repainting the "
                     "whole old+new footprint");
     box_union(&before, &window->visible, &dirty);
     wuss__invalidate_clipped(window, &dirty);
+    wuss__furniture_invalidate(window);
   }
 }

@@ -49,7 +49,7 @@ extern "C"
  *                     wuss_WINDOW_NO_TITLEBAR.
  * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_NO_TITLEBAR /
  *                     wuss_WINDOW_NO_OUTLINE, OR'd together, or
- *                     wuss_WINDOW_NONE for the default furniture.
+ *                     wuss_WINDOW_DEFAULT for the default furniture.
  * \param[in]  bg      Content background, filled by Wuss before each redraw:
  *                     a flat colour or an 8x8 fill pattern (see
  *                     wuss_backdrop_t). Set its colour to wuss_NO_BACKGROUND
@@ -245,18 +245,21 @@ void wuss_window_get_content_bounds(const wuss_window_t *window,
  */
 void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
 
-/** Mark a window's whole content area as dirty. Shorthand for
+/** Mark a window's whole visible content rectangle as dirty -- not the
+ * parts of the document scrolled out of view; use
+ * wuss_window_invalidate_extent for that. Shorthand for
  * wuss_window_invalidate(window, NULL). */
-#define wuss_window_invalidate_all(window) \
+#define wuss_window_invalidate_visible(window) \
   wuss_window_invalidate((window), NULL)
 
 /**
  * Mark a window's whole virtual document extent as dirty, not just the part
- * currently on screen. wuss_window_invalidate_all only covers the visible
- * content rectangle, which is enough when the document is no bigger than the
- * window; use this when a change touches the whole document (a colour or
- * theme swap, say) so every scroll position repaints correctly. The extent
- * is clipped to what is actually visible before anything is queued.
+ * currently on screen. wuss_window_invalidate_visible only covers the
+ * visible content rectangle, which is enough when the document is no bigger
+ * than the window; use this when a change touches the whole document (a
+ * colour or theme swap, say) so every scroll position repaints correctly.
+ * The extent is clipped to what is actually visible before anything is
+ * queued.
  *
  * \param[in] window Window whose whole document changed.
  */

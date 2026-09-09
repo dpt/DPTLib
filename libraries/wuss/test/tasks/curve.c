@@ -10,11 +10,15 @@
 #include "fortify/fortify.h"
 #endif
 
+#include <string.h>
+
 #include "base/utils.h"
+#include "framebuf/bmfont.h"
 #include "framebuf/curve.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "utils/fxp.h"
+#include "wuss/wuss.h"
 
 #include "curve.h"
 
@@ -23,22 +27,78 @@
 #define CURVE_SEGMENTS_MIN     4
 #define CURVE_SEGMENTS_MAX     128
 
+/* 2D cross product of (b - a) and (c - a); > 0 for a left (counter-clockwise)
+ * turn, < 0 for a right turn, 0 if collinear. long to keep the products of
+ * two point coordinates from overflowing an int. */
+static long curve_cross(point_t a, point_t b, point_t c)
+{
+  return (long) (b.x - a.x) * (c.y - a.y) - (long) (b.y - a.y) * (c.x - a.x);
+}
+
+static int curve_point_cmp(const void *va, const void *vb)
+{
+  const point_t *a = va;
+  const point_t *b = vb;
+
+  if (a->x != b->x)
+    return a->x - b->x;
+  return a->y - b->y;
+}
+
+/* Andrew's monotone chain: fill "hull" (capacity 2 * n + 1) with the convex
+ * hull of the first n of "src" as a closed polyline (first point repeated at
+ * the end) and return its point count. n < 3, or all points collinear,
+ * degenerates to the sorted span, still returned closed. */
+static int curve_convex_hull(const point_t *src, int n, point_t *hull)
+{
+  point_t pts[CURVE_MAXCONTROLPTS];
+  int     k, i;
+
+  memcpy(pts, src, (size_t) n * sizeof(*pts));
+  qsort(pts, (size_t) n, sizeof(*pts), curve_point_cmp);
+
+  k = 0;
+  for (i = 0; i < n; i++) /* lower hull */
+  {
+    while (k >= 2 && curve_cross(hull[k - 2], hull[k - 1], pts[i]) <= 0)
+      k--;
+    hull[k++] = pts[i];
+  }
+  {
+    int lower, j;
+
+    lower = k + 1;
+    for (j = n - 2; j >= 0; j--) /* upper hull */
+    {
+      while (k >= lower && curve_cross(hull[k - 2], hull[k - 1], pts[j]) <= 0)
+        k--;
+      hull[k++] = pts[j];
+    }
+  }
+
+  return k; /* hull[0] == hull[k - 1], a closed loop */
+}
+
 result_t curve_create(wuss_t *wuss, curve_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
 
   task->bg        = colour_rgb(0xFF, 0xFF, 0xFF);
   task->line      = colour_rgb(0x00, 0x00, 0x00);
   task->blob      = colour_rgb(0xFF, 0x00, 0x00);
+  task->wuss      = wuss;
   task->nsegments = CURVE_SEGMENTS_DEFAULT;
+  task->npoints   = 4; /* cubic, matching the original task */
   task->dragging  = -1;
 
   task->points[0] = POINT(10,  10);
   task->points[1] = POINT(10, 140);
   task->points[2] = POINT(210, 10);
   task->points[3] = POINT(210, 140);
+  task->points[4] = POINT(110,  10);
+  task->points[5] = POINT(110, 140);
 
   /* curve_redraw paints its own background */
   delegate_desc.handle    = curve_handle;
@@ -55,7 +115,7 @@ result_t curve_create(wuss_t *wuss, curve_task_t *task)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(220, 160),
                                  "Curve",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  SIZE2D(220, 160),
                                  SIZE2D(0, 0),
@@ -72,6 +132,56 @@ static int blob_hit(const point_t *p, int x, int y)
 
   return x >= p->x - half && x < p->x + half &&
          y >= p->y - half && y < p->y + half;
+}
+
+/* Marker colour for control point i of a curve with npoints points: the two
+ * end points (0 and npoints - 1) draw in task->blob (red); the interior
+ * control points cycle through a set of other bright hues so each is
+ * distinct. */
+static colour_t blob_colour(const curve_task_t *task, int i)
+{
+  colour_t control[4];
+
+  if (i == 0 || i == task->npoints - 1)
+    return task->blob;
+
+  control[0] = colour_rgb(0x00, 0xC0, 0x00); /* green  */
+  control[1] = colour_rgb(0x00, 0x80, 0xFF); /* blue   */
+  control[2] = colour_rgb(0xFF, 0xA0, 0x00); /* orange */
+  control[3] = colour_rgb(0xC0, 0x00, 0xFF); /* purple */
+
+  return control[(i - 1) % NELEMS(control)];
+}
+
+/* Curve-type name for each valid task->npoints, indexed by
+ * npoints - CURVE_MINCONTROLPTS. */
+static const char *curve_kind_name(int npoints)
+{
+  static const char *const names[] =
+  {
+    "Line", "Quadratic", "Cubic", "Quartic", "Quintic"
+  };
+
+  return names[npoints - CURVE_MINCONTROLPTS];
+}
+
+/* The point at time t on the curve through the first task->npoints points,
+ * dispatching on the count: 2 is a straight line, 3..6 the quadratic through
+ * quintic Beziers. */
+static point_t curve_point(const curve_task_t *task, fix16_t t)
+{
+  const point_t *p = task->points;
+
+  switch (task->npoints)
+  {
+  case 2:  return curve_point_on_line(p[0], p[1], t);
+  case 3:  return curve_bezier_point_on_quad(p[0], p[1], p[2], t);
+  case 4:  return curve_bezier_point_on_cubic(p[0], p[1], p[2], p[3], t);
+  case 5:  return curve_bezier_point_on_quartic(p[0], p[1], p[2], p[3],
+                                                p[4], t);
+  default: return curve_bezier_point_on_quintic(p[0], p[1], p[2], p[3],
+                                                p[4], p[5], t);
+  }
 }
 
 static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
@@ -91,14 +201,28 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   screen_fill_rect(scr, content->x0, content->y0, box_size(content),
                    task->bg);
 
+  /* control polygon's convex hull, drawn first so the curve and the blobs
+   * sit on top of it */
+  {
+    point_t hull[2 * CURVE_MAXCONTROLPTS + 1];
+    int     nhull, k;
+
+    nhull = curve_convex_hull(task->points, task->npoints, hull);
+    for (k = 0; k < nhull; k++)
+    {
+      hull[k].x += bounds->x0 - sx;
+      hull[k].y += bounds->y0 - sy;
+    }
+    screen_draw_lines(scr, hull, nhull, colour_rgb(0xC0, 0xC0, 0xC0));
+  }
+
   prev = task->points[0];
   prev.x += bounds->x0 - sx; prev.y += bounds->y0 - sy;
 
   for (i = 1; i <= task->nsegments; i++)
   {
     t   = i * FIX16_ONE / task->nsegments;
-    cur = curve_bezier_point_on_cubic(task->points[0], task->points[1],
-                                      task->points[2], task->points[3], t);
+    cur = curve_point(task, t);
     cur.x += bounds->x0 - sx; cur.y += bounds->y0 - sy;
 
     screen_draw_line(scr, prev.x, prev.y, cur.x, cur.y, task->line);
@@ -107,11 +231,25 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   }
 
   half = CURVE_BLOBSZ / 2;
-  for (i = 0; i < CURVE_NCONTROLPTS; i++)
+  for (i = 0; i < task->npoints; i++)
   {
     cur = task->points[i];
     cur.x += bounds->x0 - sx; cur.y += bounds->y0 - sy;
-    screen_fill_square(scr, cur.x - half, cur.y - half, CURVE_BLOBSZ, task->blob);
+    screen_fill_square(scr, cur.x - half, cur.y - half, CURVE_BLOBSZ,
+                       blob_colour(task, i));
+  }
+
+  /* curve-type label, pinned to the content area's top-left corner (bounds,
+   * not the per-redraw dirty piece "content", and not the scrolled document)
+   * so it stays put and readable on a partial redraw */
+  {
+    bmfont_t   *font = wuss_get_font(task->wuss);
+    const char *name = curve_kind_name(task->npoints);
+    point_t     pos  = POINT(bounds->x0 + 2, bounds->y0 + 2);
+
+    if (font != NULL)
+      bmfont_draw(font, scr, name, (int) strlen(name),
+                  task->line, task->bg, &pos, NULL);
   }
 
   return result_OK;
@@ -132,9 +270,18 @@ static result_t curve_mouse(curve_task_t       *task,
   switch (action)
   {
   case wuss_MOUSE_DOWN:
+    if (button & wuss_BUTTON_ADJUST)
+    {
+      /* cycle line -> quad -> cubic -> quartic -> quintic -> line */
+      task->npoints++;
+      if (task->npoints > CURVE_MAXCONTROLPTS)
+        task->npoints = CURVE_MINCONTROLPTS;
+      wuss_window_invalidate_visible(window);
+      break;
+    }
     if (!(button & wuss_BUTTON_SELECT))
       break;
-    for (i = 0; i < CURVE_NCONTROLPTS; i++)
+    for (i = 0; i < task->npoints; i++)
     {
       if (blob_hit(&task->points[i], x, y))
       {
@@ -149,7 +296,7 @@ static result_t curve_mouse(curve_task_t       *task,
       break;
     task->points[task->dragging].x = x;
     task->points[task->dragging].y = y;
-    wuss_window_invalidate_all(window);
+    wuss_window_invalidate_visible(window);
     break;
 
   case wuss_MOUSE_UP:
@@ -167,7 +314,7 @@ static result_t curve_scroll(curve_task_t  *task,
   task->nsegments += delta;
   task->nsegments  = CLAMP(task->nsegments, CURVE_SEGMENTS_MIN, CURVE_SEGMENTS_MAX);
 
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }

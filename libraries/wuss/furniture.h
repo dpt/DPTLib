@@ -12,6 +12,57 @@
 #define WUSS_SCROLL_END_GAP 2  /* sausage along-axis margin from its well's ends, purely cosmetic */
 #define WUSS_SCROLL_STEP    20 /* pixels stepped per scrollbar arrow click */
 
+/* Cached furniture layout ------------------------------------------------- */
+
+/* Which chrome colour a cached furniture rect is painted in. The layout
+ * stores this class rather than a resolved colour so a palette change needs
+ * no layout rebuild: wuss__furniture_draw resolves it through wuss->palette
+ * at paint time. */
+typedef enum wuss__furniture_paint_class
+{
+  wuss__FURNITURE_PAINT_TITLE_BG,   /* titlebar fill, resize-carve bands */
+  wuss__FURNITURE_PAINT_CLOSE,
+  wuss__FURNITURE_PAINT_BACK,
+  wuss__FURNITURE_PAINT_TOGGLE,
+  wuss__FURNITURE_PAINT_RESIZE,
+  wuss__FURNITURE_PAINT_SCROLL_ARROWS,
+  wuss__FURNITURE_PAINT_SCROLL_WELLS,
+  wuss__FURNITURE_PAINT_OUTLINE
+}
+wuss__furniture_paint_class_t;
+
+/* One filled rectangle in the cached layout. */
+typedef struct wuss__furniture_piece
+{
+  box_t                         rect;
+  wuss__furniture_paint_class_t  paint;
+}
+wuss__furniture_piece_t;
+
+/* Upper bound on pieces a single window's furniture can contribute:
+ * titlebar(1) + close/back/toggle(3) + no-scroll resize bands(2) +
+ * resize icon + its two seams(3) + v/h scroll arrows+well(3+3) +
+ * two interior rules(2) + four outline edges(4) = 21. Round up. */
+#define WUSS__FURNITURE_MAX_PIECES 24
+
+/* Per-window cache of the furniture layout: every filled rect except the two
+ * scrollbar sausages (which move with window->scroll and are recomputed each
+ * paint) and the title text (font-dependent, drawn live). Rebuilt lazily by
+ * wuss__furniture_draw when "valid" is 0; wuss__furniture_invalidate* clear
+ * it on any geometry change. */
+typedef struct wuss__furniture_layout
+{
+  int                     valid;
+  int                     npieces;
+  wuss__furniture_piece_t pieces[WUSS__FURNITURE_MAX_PIECES];
+  box_t                   titlebar;   /* for the live title-text pass; empty if no titlebar */
+  int                     has_titlebar;
+}
+wuss__furniture_layout_t;
+
+/* Populate window->furniture_layout from the current geometry and flags. */
+void wuss__furniture_layout_build(wuss_window_t *window);
+
 /* Which region of a window's border (or its content) a point falls in. */
 typedef enum wuss_furniture_region
 {
@@ -110,22 +161,33 @@ wuss__furniture_ops_t;
 
 extern const wuss__furniture_ops_t wuss__furniture_default_ops;
 
-/* geometry: titlebar icons */
+/* geometry: titlebar icons. The _box helpers are the drawn rectangles; the
+ * _hit_box helpers are the same rectangles grown outward to tile the outline
+ * band and the window corners for hit testing (see furniture/hit-test.c). */
 void wuss__back_box(const wuss_window_t *window, box_t *out);
+void wuss__back_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__toggle_box(const wuss_window_t *window, box_t *out);
+void wuss__toggle_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__resize_box(const wuss_window_t *window, box_t *out);
+void wuss__resize_hit_box(const wuss_window_t *window, box_t *out);
 
 /* geometry: vertical scrollbar */
 void wuss__vscroll_up_box(const wuss_window_t *window, box_t *out);
+void wuss__vscroll_up_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__vscroll_down_box(const wuss_window_t *window, box_t *out);
+void wuss__vscroll_down_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__vscroll_well_box(const wuss_window_t *window, box_t *out);
+void wuss__vscroll_well_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__vscroll_sausage_box(const wuss_window_t *window, box_t *out);
 int  wuss__vscroll_well_px(const wuss_window_t *window);
 
 /* geometry: horizontal scrollbar */
 void wuss__hscroll_left_box(const wuss_window_t *window, box_t *out);
+void wuss__hscroll_left_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__hscroll_right_box(const wuss_window_t *window, box_t *out);
+void wuss__hscroll_right_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__hscroll_well_box(const wuss_window_t *window, box_t *out);
+void wuss__hscroll_well_hit_box(const wuss_window_t *window, box_t *out);
 void wuss__hscroll_sausage_box(const wuss_window_t *window, box_t *out);
 int  wuss__hscroll_well_px(const wuss_window_t *window);
 

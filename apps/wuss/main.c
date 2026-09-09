@@ -4,6 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* RISC OS's GCCSDK newlib has getopt() but not the GNU getopt_long()
+ * extension, so parse_args() keeps a hand-rolled fallback there. */
+#ifndef __riscos
+#include <getopt.h>
+#endif
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
@@ -33,45 +39,61 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* Furniture/bevel/accent/backdrop colour indices, one row per palette. Same
- * field order as the assignments in run_wuss. */
-static const wuss_colour_t g_chrome[2][15] =
+/* Fill config with the chrome colours for the PICO-8 (default) or RISC OS
+ * 16-colour Wimp palette. */
+static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
 {
-  /* PICO-8 */
-  { palette_PICO8_DARK_BLUE, palette_PICO8_WHITE, palette_PICO8_GREEN,
-    palette_PICO8_RED, palette_PICO8_ORANGE, palette_PICO8_LAVENDER,
-    palette_PICO8_BLUE, palette_PICO8_DARK_BLUE, palette_PICO8_LIGHT_GREY,
-    palette_PICO8_WHITE, palette_PICO8_DARK_GREY, palette_PICO8_DARK_BLUE,
-    palette_PICO8_WHITE, palette_PICO8_WHITE, palette_PICO8_LIGHT_GREY },
-  /* RISC OS 16-colour Wimp */
-  { palette_WIMP16_GREY_75, palette_WIMP16_BLACK, palette_WIMP16_GREEN,
-    palette_WIMP16_RED, palette_WIMP16_ORANGE, palette_WIMP16_LIGHT_BLUE,
-    palette_WIMP16_GREY_50, palette_WIMP16_GREY_62, palette_WIMP16_GREY_87,
-    palette_WIMP16_WHITE, palette_WIMP16_GREY_50, palette_WIMP16_ORANGE,
-    palette_WIMP16_BLACK, palette_WIMP16_GREY_50, palette_WIMP16_GREY_37 }
-};
+  config->titlebar_height = 0;
+  config->backdrop.pattern = screen_PATTERN_DOTS;
 
-static void fill_chrome_config(wuss_config_t *config, int palette_index)
-{
-  const wuss_colour_t *c = g_chrome[palette_index];
-
-  config->titlebar_height           = 0;
-  config->furniture.title.bg        = c[0];
-  config->furniture.title.fg        = c[1];
-  config->furniture.back            = c[2];
-  config->furniture.close           = c[3];
-  config->furniture.toggle          = c[4];
-  config->furniture.resize          = c[5];
-  config->furniture.scroll.arrows   = c[6];
-  config->furniture.scroll.wells    = c[7];
-  config->furniture.scroll.sausages = c[8];
-  config->bevel.light               = c[9];
-  config->bevel.dark                = c[10];
-  config->accent.bg                 = c[11];
-  config->accent.fg                 = c[12];
-  config->backdrop.colour           = c[13];
-  config->backdrop.pattern          = screen_PATTERN_DOTS;
-  config->backdrop.pattern_bg       = c[14];
+  if (use_wimp16)
+  {
+    config->furniture.title.bg        = palette_WIMP16_GREY_75;
+    config->furniture.title.fg        = palette_WIMP16_BLACK;
+    config->furniture.outline         = palette_WIMP16_BLACK;
+    config->furniture.back            = palette_WIMP16_GREEN;
+    config->furniture.close           = palette_WIMP16_RED;
+    config->furniture.toggle          = palette_WIMP16_ORANGE;
+    config->furniture.resize          = palette_WIMP16_LIGHT_BLUE;
+    config->furniture.scroll.arrows   = palette_WIMP16_GREY_50;
+    config->furniture.scroll.wells    = palette_WIMP16_GREY_62;
+    config->furniture.scroll.sausages = palette_WIMP16_GREY_87;
+    config->bevel.light               = palette_WIMP16_WHITE;
+    config->bevel.dark                = palette_WIMP16_GREY_50;
+    config->bevel.divider             = palette_WIMP16_GREY_75;
+    config->button.bg                 = palette_WIMP16_GREY_87;
+    config->button.fg                 = palette_WIMP16_BLACK;
+    config->button.pressed            = palette_WIMP16_GREY_62;
+    config->accent.colour             = palette_WIMP16_ORANGE;
+    config->backdrop.colour           = palette_WIMP16_GREY_37;
+    config->backdrop.pattern_bg       = palette_WIMP16_GREY_50;
+    config->body.window               = palette_WIMP16_GREY_87;
+    config->body.menu                 = palette_WIMP16_WHITE;
+  }
+  else
+  {
+    config->furniture.title.bg        = palette_PICO8_DARK_BLUE;
+    config->furniture.title.fg        = palette_PICO8_WHITE;
+    config->furniture.outline         = palette_PICO8_BLACK;
+    config->furniture.back            = palette_PICO8_GREEN;
+    config->furniture.close           = palette_PICO8_RED;
+    config->furniture.toggle          = palette_PICO8_ORANGE;
+    config->furniture.resize          = palette_PICO8_LAVENDER;
+    config->furniture.scroll.arrows   = palette_PICO8_BLUE;
+    config->furniture.scroll.wells    = palette_PICO8_DARK_BLUE;
+    config->furniture.scroll.sausages = palette_PICO8_LIGHT_GREY;
+    config->bevel.light               = palette_PICO8_WHITE;
+    config->bevel.dark                = palette_PICO8_DARK_GREY;
+    config->bevel.divider             = palette_PICO8_LAVENDER;
+    config->button.bg                 = palette_PICO8_LIGHT_GREY;
+    config->button.fg                 = palette_PICO8_BLACK;
+    config->button.pressed            = palette_PICO8_LAVENDER;
+    config->accent.colour             = palette_PICO8_ORANGE;
+    config->backdrop.colour           = palette_PICO8_LAVENDER;
+    config->backdrop.pattern_bg       = palette_PICO8_LIGHT_GREY;
+    config->body.window               = palette_PICO8_LIGHT_GREY;
+    config->body.menu                 = palette_PICO8_WHITE;
+  }
 }
 
 /* Redraw the whole screen one pixel at a time: each wuss_redraw_dirty call is
@@ -217,7 +239,10 @@ static void wuss_frame(void *arg)
  * picker menu swaps the system palette live (wuss_set_palette, picked up by
  * menu_handle's wuss_EVENT_PALETTE case); the quit input or closing the
  * window exits */
-static result_t run_wuss(const char *resources)
+static result_t run_wuss(const char *resources,
+                         const char *palette_name,
+                         int         depth,
+                         int         scale)
 {
   const int        scr_width  = 640;
   const int        scr_height = 480;
@@ -242,15 +267,11 @@ static result_t run_wuss(const char *resources)
   int                palette_index;
 
   {
-    /* WUSS_PALETTE names a *.hex file under resources/palettes (extension
-     * stripped, e.g. "RISC-OS"); default is PICO-8. Chrome was never derived
-     * from *.hex content (see fill_chrome_config), so it stays keyed by
-     * whether the startup file is "RISC-OS" specifically, not by whatever
-     * the picker menu later loads. */
-    const char *palette_name = getenv("WUSS_PALETTE");
-
-    if (palette_name == NULL)
-      palette_name = "PICO-8";
+    /* palette_name (from -palette, default "PICO-8") names a *.hex file under
+     * resources/palettes, extension stripped, e.g. "RISC-OS". Chrome was
+     * never derived from *.hex content (see fill_chrome_config), so it stays
+     * keyed by whether the startup file is "RISC-OS" specifically, not by
+     * whatever the picker menu later loads. */
     use_wimp16 = (strcmp(palette_name, "RISC-OS") == 0);
     palette_index = use_wimp16 ? 1 : 0;
 
@@ -287,7 +308,7 @@ static result_t run_wuss(const char *resources)
   }
 
   rc = wuss_frontend_open(scr_width, scr_height, palette, NELEMS(palette),
-                          &pixels, &rowbytes, &fmt, &frontend);
+                          depth, scale, &pixels, &rowbytes, &fmt, &frontend);
   logf_info("wuss: wuss_frontend_open -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
@@ -308,7 +329,7 @@ static result_t run_wuss(const char *resources)
                                 * picker menus -- [2] Symbols is chrome-only,
                                 * never a text font choice */
 
-    fill_chrome_config(&config, use_wimp16 ? 1 : 0);
+    fill_chrome_config(&config, use_wimp16);
 
     for (i = 0; i < nfonts; i++)
     {
@@ -382,8 +403,6 @@ static result_t run_wuss(const char *resources)
    * block. Harmless at process exit. */
   wuss_destroy(wuss); /* also sweeps g.menu_task and closes any open chain */
 
-  tasks_teardown(); /* frees the descriptor-built menu, now the chain is gone */
-
   for (i = 0; i < nfonts; i++)
     bmfont_destroy(fonts[i]);
 
@@ -401,24 +420,105 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+/* Parsed command-line options. Members are use-ordered to match run_wuss's
+ * parameter list. */
+typedef struct wuss_options
+{
+  const char *resources;    /* -r/--resources: fixture root */
+  const char *palette_name; /* -p/--palette: startup *.hex leafname */
+  int         depth;        /* -d/--depth: framebuffer bpp (1, 2, 4 or 32) */
+  int         scale;        /* -s/--scale: initial window zoom, 0 = default */
+}
+wuss_options_t;
+
+static const char wuss_usage[] =
+  "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
+  "[-d|--depth 1|2|4|32] [-s|--scale N]\n";
+
+#ifndef __riscos
+
+/* Desktop: getopt_long. Accepts the short forms and the "--" long forms; the
+ * historical single-dash long spellings (-resources) are no longer accepted.
+ * Returns false and prints usage on an unknown option or missing argument. */
+static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
+{
+  static const struct option longopts[] =
+  {
+    { "resources", required_argument, NULL, 'r' },
+    { "palette",   required_argument, NULL, 'p' },
+    { "depth",     required_argument, NULL, 'd' },
+    { "scale",     required_argument, NULL, 's' },
+    { NULL,        0,                 NULL, 0   }
+  };
+
+  int c;
+
+  for (;;)
+  {
+    c = getopt_long(argc, argv, "r:p:d:s:", longopts, NULL);
+    if (c == -1)
+      break;
+
+    switch (c)
+    {
+    case 'r': opts->resources    = optarg;       break;
+    case 'p': opts->palette_name = optarg;       break;
+    case 'd': opts->depth        = atoi(optarg); break;
+    case 's': opts->scale        = atoi(optarg); break;
+    default:
+      fputs(wuss_usage, stderr);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+#else /* __riscos */
+
+/* RISC OS: no getopt_long. Hand-rolled scan of the same options, single-dash
+ * long spellings only (matches the pre-getopt behaviour). */
+static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
+{
+  int i;
+
+  for (i = 1; i < argc; i++)
+    if (strcmp(argv[i], "-resources") == 0 && i + 1 < argc)
+      opts->resources = argv[++i];
+    else if (strcmp(argv[i], "-palette") == 0 && i + 1 < argc)
+      opts->palette_name = argv[++i];
+    else if (strcmp(argv[i], "-depth") == 0 && i + 1 < argc)
+      opts->depth = atoi(argv[++i]);
+    else if (strcmp(argv[i], "-scale") == 0 && i + 1 < argc)
+      opts->scale = atoi(argv[++i]);
+
+  return true;
+}
+
+#endif /* __riscos */
+
 int main(int argc, char *argv[])
 {
   /* path_join_filename splices the root and each branch with the platform
    * separator, so the "here" root differs: "." on Unix, but on RISC OS the
    * currently-selected directory is "@" ("." there would give "..resources"). */
 #ifdef __riscos
-  const char *resources = "@";
+  const char *default_resources = "@";
 #else
-  const char *resources = ".";
+  const char *default_resources = ".";
 #endif
-  int         i;
-  result_t    rc;
+  wuss_options_t opts;
+  result_t       rc;
 
-  for (i = 1; i < argc; i++)
-    if (strcmp(argv[i], "-resources") == 0 && i + 1 < argc)
-      resources = argv[++i];
+  opts.resources    = default_resources;
+  opts.palette_name = "PICO-8";
+  opts.depth        = 4;
+  opts.scale        = 0; /* 0 = let the frontend pick its default */
 
-  rc = run_wuss(resources);
+  if (!parse_args(argc, argv, &opts))
+    return EXIT_FAILURE;
+
+  rc = run_wuss(opts.resources, opts.palette_name, opts.depth, opts.scale);
 
   return rc == result_TEST_PASSED ? EXIT_SUCCESS : EXIT_FAILURE;
 }

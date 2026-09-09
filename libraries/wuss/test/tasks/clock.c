@@ -93,7 +93,7 @@ static result_t clock_create_window(wuss_t       *wuss,
   return wuss_window_create_placed(delegate,
                                    SIZE2D(160, 160),
                                    "Clock",
-                                   wuss_WINDOW_NONE,
+                                   wuss_WINDOW_DEFAULT,
                                    wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                    SIZE2D(160, 160),
                                    SIZE2D(0, 0),
@@ -102,9 +102,9 @@ static result_t clock_create_window(wuss_t       *wuss,
 
 result_t clock_create(wuss_t *wuss, bmfont_t *font, clock_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
 
   task->font        = font;
   task->bg          = colour_rgb(0x1D, 0x2B, 0x53);
@@ -214,7 +214,7 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
   if (button & wuss_BUTTON_SELECT)
   {
     cc->show_second = !cc->show_second;
-    wuss_window_invalidate_all(cc->window);
+    wuss_window_invalidate_visible(cc->window);
   }
 
   return result_OK;
@@ -241,7 +241,7 @@ result_t clock_handle(wuss_window_t      *window,
     return clock_mouse(cc, event->data.mouse.button);
 
   case wuss_EVENT_IDLE:
-    wuss_window_invalidate_all(cc->window);
+    wuss_window_invalidate_visible(cc->window);
     return result_OK;
 
   case wuss_EVENT_QUIT:

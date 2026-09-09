@@ -180,9 +180,9 @@ result_t minesweeper_create(wuss_t             *wuss,
                             bmfont_t           *font,
                             minesweeper_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
 
   task->wuss = wuss;
   task->font = font;
@@ -203,7 +203,7 @@ result_t minesweeper_create(wuss_t             *wuss,
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(MS_WIDTH, MS_HEIGHT),
                                  "Minesweeper",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  SIZE2D(MS_WIDTH, MS_HEIGHT),
                                  SIZE2D(0, 0),
@@ -397,7 +397,7 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
     if (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST))
     {
       minesweeper_reset(ms);
-      wuss_window_invalidate_all(ms->window);
+      wuss_window_invalidate_visible(ms->window);
     }
     return result_OK;
   }
@@ -442,7 +442,7 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
     return result_OK;
   }
 
-  wuss_window_invalidate_all(ms->window);
+  wuss_window_invalidate_visible(ms->window);
 
   return result_OK;
 }
@@ -487,7 +487,7 @@ result_t minesweeper_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_SELECT:
     /* only item is "New Game" */
     minesweeper_reset(ms);
-    wuss_window_invalidate_all(ms->window);
+    wuss_window_invalidate_visible(ms->window);
     return result_OK;
 
   case wuss_EVENT_QUIT:

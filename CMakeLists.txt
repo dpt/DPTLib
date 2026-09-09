@@ -86,8 +86,11 @@ set(PUBLIC_HEADERS
     include/framebuf/palettes.h
     include/framebuf/pattern.h
     include/framebuf/pixelfmt.h
+    include/framebuf/pixelmap.h
     include/framebuf/screen.h
     include/framebuf/span-bgrx8888.h
+    include/framebuf/span-p1.h
+    include/framebuf/span-p2.h
     include/framebuf/span-p4.h
     include/framebuf/span-registry.h
     include/framebuf/span-rgba8888.h
@@ -101,6 +104,7 @@ set(PUBLIC_HEADERS
     include/geom/point.h
     include/geom/size.h
     include/io/dirscan.h
+    include/io/namelist.h
     include/io/path.h
     include/io/stream-mem.h
     include/io/stream-mtfcomp.h
@@ -119,6 +123,7 @@ set(PUBLIC_HEADERS
     include/utils/maths.h
     include/utils/pack.h
     include/utils/primes.h
+    include/utils/rng.h
     include/wuss/task.h
     include/wuss/window.h
     include/wuss/wuss.h)
@@ -133,6 +138,8 @@ endif()
 if(WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/component/fontmenu.h)
     list(APPEND PUBLIC_HEADERS include/wuss/component/colourmenu.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/component/info.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/component/proginfo.h)
 endif()
 
 # The public headers must be set as properties of the library, not as
@@ -245,8 +252,10 @@ set(DATASTRUCT_SOURCES
 
 set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/bitmap.c
+    libraries/framebuf/bitmap/compress.c
     libraries/framebuf/bitmap/fill-pattern.c
     libraries/framebuf/bitmap/load.c
+    libraries/framebuf/bitmap/rle.h
     libraries/framebuf/bitmap/save.c
     libraries/framebuf/bmfont/bmfont.c
     libraries/framebuf/bmfont/enumerate.c
@@ -256,7 +265,13 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pattern/pattern.c
     libraries/framebuf/pixelfmt/log2bpp.c
+    libraries/framebuf/pixelfmt/paletted-nentries.c
+    libraries/framebuf/pixelmap/build.c
+    libraries/framebuf/pixelmap/get.c
+    libraries/framebuf/pixelmap/impl.h
     libraries/framebuf/screen/screen.c
+    libraries/framebuf/screen/screen-copy-bitmap-rle.c
+    libraries/framebuf/screen/screen-copy-bitmap-rle.h
     libraries/framebuf/screen/screen-copy-ninepatch.c
     libraries/framebuf/screen/screen-copy-rect.c
     libraries/framebuf/screen/screen-draw.c
@@ -268,6 +283,8 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/span/all8888.c
     libraries/framebuf/span/all8888.h
     libraries/framebuf/span/bgrx8888.c
+    libraries/framebuf/span/p1.c
+    libraries/framebuf/span/p2.c
     libraries/framebuf/span/p4.c
     libraries/framebuf/span/rgbx8888.c
     libraries/framebuf/span/xbgr8888.c)
@@ -295,6 +312,7 @@ set(GEOM_SOURCES
 
 set(IO_SOURCES
     libraries/io/dirscan/dirscan.c
+    libraries/io/namelist/namelist.c
     libraries/io/path/path.c
     libraries/io/stream/stream-mem.c
     libraries/io/stream/stream-mtfcomp.c
@@ -368,6 +386,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/scroll-step.c
     libraries/wuss/core/set-backdrop.c
     libraries/wuss/core/set-palette.c
+    libraries/wuss/core/text.c
     libraries/wuss/core/task/create.c
     libraries/wuss/core/task/destroy.c
     libraries/wuss/core/task/set-autoclose.c
@@ -397,6 +416,7 @@ set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/draw.c
     libraries/wuss/furniture/hit-test.c
     libraries/wuss/furniture/invalidate.c
+    libraries/wuss/furniture/layout.c
     libraries/wuss/furniture/ops.c
     libraries/wuss/furniture/resize-box.c
     libraries/wuss/furniture/scroll-action.c
@@ -421,6 +441,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/hit-test.c
     libraries/wuss/icon/invalidate.c
     libraries/wuss/icon/plot.c
+    libraries/wuss/icon/registry.c
     libraries/wuss/icon/screen-box.c
     libraries/wuss/icon/set-hidden.c
     libraries/wuss/icon/set-hover.c
@@ -435,7 +456,9 @@ set(WUSS_MENU_SOURCES
 
 set(WUSS_COMPONENT_SOURCES
     libraries/wuss/component/fontmenu.c
-    libraries/wuss/component/colourmenu.c)
+    libraries/wuss/component/colourmenu.c
+    libraries/wuss/component/info.c
+    libraries/wuss/component/proginfo.c)
 
 set(WUSS_SOURCES ${WUSS_CORE_SOURCES})
 if(WUSS_FURNITURE)
@@ -650,9 +673,11 @@ if(BUILD_TESTS)
         libraries/datastruct/hash/test/hash-test.c
         libraries/datastruct/list/test/list-test.c
         libraries/datastruct/ntree/test/ntree-test.c
+        libraries/framebuf/bitmap/test/rle-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
+        libraries/framebuf/pixelmap/test/pixelmap-test.c
         libraries/framebuf/screen/test/screen-test.c
         libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
@@ -731,6 +756,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/minesweeper.c
         libraries/wuss/test/tasks/palette.c
         libraries/wuss/test/tasks/porter-duff.c
+        libraries/wuss/test/tasks/saturn.c
         libraries/wuss/test/tasks/sofa.c
         libraries/wuss/test/tasks/swatches.c
         libraries/wuss/test/tasks/text.c)

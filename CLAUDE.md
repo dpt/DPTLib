@@ -82,14 +82,14 @@ New source/header files must be added by hand to the relevant `set(..._SOURCES .
 
 **Test structure.** There is a single test binary (`DPTLibTest`, from `apps/test/main.c`) that dispatches to per-module `<module>_test(resources)` functions declared centrally in `include/test/all-tests.h`. Tests return `result_TEST_PASSED`/`result_TEST_FAILED` (`result_BASE_TEST`).
 
-**Notable sub-libraries with their own docs** (`docs/*.md`): `io/stream` (chainable byte-stream sources/transforms, PackBits and move-to-front compression), `framebuf/bmfont` (proportional bitmap fonts loaded from specially-formatted PNGs), `framebuf/composite` (Porter-Duff compositing on RGBA/BGRA bitmaps), `wuss` (minimal window manager: creation, z-ordering, mouse routing, dirty-region redraw, client-delegated content).
+**Notable sub-libraries with their own docs** (`docs/*.md`): `io/stream` (chainable byte-stream sources/transforms, PackBits and move-to-front compression), `framebuf/bmfont` (proportional bitmap fonts loaded from specially-formatted PNGs), `framebuf/composite` (Porter-Duff compositing on RGBA/BGRA bitmaps), `framebuf/pixelmap` (cached deep-to-paletted colour conversion tables for blit inner loops), `wuss` (minimal window manager: creation, z-ordering, mouse routing, dirty-region redraw, client-delegated content).
 
 **RISC OS.** `TARGET_RISCOS` (set by an external toolchain file) switches CMake to fetch/build zlib+libpng from source, link OSLib from `$GCCSDK_INSTALL_ENV`, and applies `riscos_set_flags()`. `pngusr-ro.dfa`/`pngusr-rw.dfa` select libpng's build config depending on `DPTLIB_IMAGES_READ_ONLY`.
 
 ## Code style
 
 - C99, `-Wall -Wextra -pedantic`. Allman brace style, 2-space indentation, tabs converted to spaces (see `.astylerc`/`.editorconfig` — astyle is the formatter of record).
-- Declare variables at the top of each scope (pre-C99 style is followed throughout, even though the standard is C99), ordered by first use.
+- Declare variables at the top of each scope (pre-C99 style is followed throughout, even though the standard is C99), ordered by first use. Exception: a `result_t` status local (`rc`, `err`, `crc`, ...) is always declared first in its block, ahead of the use-ordered locals.
 - File header comment format: `/* filename.c -- one-line description */`.
 - Section breaks within files use `/* ----- ... ----- */` rule comments.
 - Public API docs use Doxygen (`\file`, `\param`, `\return`); a `Doxyfile` exists for generating them.

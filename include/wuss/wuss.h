@@ -36,6 +36,8 @@ extern "C"
  * colour).
  */
 #define result_WUSS_BAD_ICON   (result_BASE_WUSS + 2)
+/** An icon-set index (see wuss_icons_load) was out of range. */
+#define result_WUSS_BAD_INDEX  (result_BASE_WUSS + 3)
 
 /* ----------------------------------------------------------------------- */
 
@@ -119,7 +121,7 @@ typedef unsigned char wuss_colour_t;
  * the named colours pick the nearest system-palette entry to the RGB the
  * name implies, the chrome roles echo the matching wuss_config_t field.
  * Accepted anywhere a wuss_colour_t is: config furniture/bevel/accent/
- * backdrop, window backgrounds (see wuss_window_create), icon specs.
+ * body/backdrop, window backgrounds (see wuss_window_create), icon specs.
  * wuss_NO_BACKGROUND is not symbolic and always passes through unchanged.
  */
 #define wuss_COLOUR_SYMBOLIC ((wuss_colour_t) 128)
@@ -138,14 +140,24 @@ typedef unsigned char wuss_colour_t;
 /* Chrome roles: echo the matching wuss_config_t field, resolved to a
  * concrete index -- e.g. wuss_COLOUR_TITLE_BG is furniture.title.bg,
  * wuss_COLOUR_BUTTON_HILIGHT is bevel.light, wuss_COLOUR_BUTTON_SHADOW is
- * bevel.dark, wuss_COLOUR_BACKDROP is backdrop.colour. */
-#define wuss_COLOUR_TITLE_BG       (wuss_COLOUR_SYMBOLIC + 16)
-#define wuss_COLOUR_TITLE_FG       (wuss_COLOUR_SYMBOLIC + 17)
-#define wuss_COLOUR_BUTTON_HILIGHT (wuss_COLOUR_SYMBOLIC + 18)
-#define wuss_COLOUR_BUTTON_SHADOW  (wuss_COLOUR_SYMBOLIC + 19)
-#define wuss_COLOUR_ACCENT_BG      (wuss_COLOUR_SYMBOLIC + 20)
-#define wuss_COLOUR_ACCENT_FG      (wuss_COLOUR_SYMBOLIC + 21)
-#define wuss_COLOUR_BACKDROP       (wuss_COLOUR_SYMBOLIC + 22)
+ * bevel.dark, wuss_COLOUR_BORDER_DIVIDER is bevel.divider,
+ * wuss_COLOUR_BUTTON_BG is button.bg, wuss_COLOUR_BUTTON_FG is button.fg,
+ * wuss_COLOUR_BUTTON_PRESSED is button.pressed,
+ * wuss_COLOUR_ACCENT is accent.colour,
+ * wuss_COLOUR_BACKDROP is backdrop.colour,
+ * wuss_COLOUR_WINDOW is body.window, wuss_COLOUR_MENU is body.menu. */
+#define wuss_COLOUR_TITLE_BG        (wuss_COLOUR_SYMBOLIC + 16)
+#define wuss_COLOUR_TITLE_FG        (wuss_COLOUR_SYMBOLIC + 17)
+#define wuss_COLOUR_BUTTON_HILIGHT  (wuss_COLOUR_SYMBOLIC + 18)
+#define wuss_COLOUR_BUTTON_SHADOW   (wuss_COLOUR_SYMBOLIC + 19)
+#define wuss_COLOUR_ACCENT          (wuss_COLOUR_SYMBOLIC + 20)
+#define wuss_COLOUR_BUTTON_FG       (wuss_COLOUR_SYMBOLIC + 21)
+#define wuss_COLOUR_BACKDROP        (wuss_COLOUR_SYMBOLIC + 22)
+#define wuss_COLOUR_WINDOW          (wuss_COLOUR_SYMBOLIC + 23)
+#define wuss_COLOUR_MENU            (wuss_COLOUR_SYMBOLIC + 24)
+#define wuss_COLOUR_BUTTON_PRESSED  (wuss_COLOUR_SYMBOLIC + 25)
+#define wuss_COLOUR_BORDER_DIVIDER  (wuss_COLOUR_SYMBOLIC + 26)
+#define wuss_COLOUR_BUTTON_BG       (wuss_COLOUR_SYMBOLIC + 27)
 
 /** Furniture chrome colours, one entry per class of furniture. Title is
  * the only two-tone class (fill + text); the rest are drawn as a single
@@ -160,6 +172,8 @@ typedef struct wuss_furniture_palette
     wuss_colour_t fg;       /**< Titlebar text. */
   }
   title;
+  wuss_colour_t outline;    /**< Window outline. wuss_NO_BACKGROUND means
+                                 follow the titlebar fill. */
   wuss_colour_t back;       /**< Send-to-back icon. */
   wuss_colour_t close;      /**< Close icon. */
   wuss_colour_t toggle;     /**< Toggle-size icon. */
@@ -184,7 +198,7 @@ wuss_furniture_palette_t;
 typedef enum wuss_window_flags
 {
   /** Default: every furniture region drawn. */
-  wuss_WINDOW_NONE           = 0,
+  wuss_WINDOW_DEFAULT        = 0,
 
   /**
    * No titlebar; content fills the full visible area, and no drag handle
@@ -239,7 +253,16 @@ typedef enum wuss_window_flags
    * at runtime, and it is honoured regardless of the WUSS_FURNITURE build
    * option.
    */
-  wuss_WINDOW_HIDDEN         = 1 << 9
+  wuss_WINDOW_HIDDEN         = 1 << 9,
+
+  /**
+   * No wuss_EVENT_REDRAW is delivered for this window: wuss fills its
+   * backdrop and draws its icons unaided, which is the whole of its
+   * appearance. For a window whose content is entirely backdrop colour
+   * and/or icons (a label-only dialogue, say) this saves the task a no-op
+   * redraw handler and a window-handle check in it.
+   */
+  wuss_WINDOW_NO_REDRAW      = 1 << 10
 }
 wuss_window_flags_t;
 
@@ -294,9 +317,9 @@ wuss_backdrop_t;
  * Optional creation-time configuration.
  *
  * \note titlebar_height and palette are ignored when the library is built
- *       with WUSS_FURNITURE off; bevel and accent are ignored when built
- *       with both WUSS_FURNITURE and WUSS_ICONS off. backdrop is always
- *       honoured. See the backdrop sub-struct for its own notes.
+ *       with WUSS_FURNITURE off; bevel, button and accent are ignored when
+ *       built with both WUSS_FURNITURE and WUSS_ICONS off. backdrop and body
+ *       are always honoured. See the backdrop sub-struct for its own notes.
  */
 typedef struct wuss_config
 {
@@ -310,32 +333,72 @@ typedef struct wuss_config
   wuss_furniture_palette_t furniture;
 
   /**
-   * Bevelled work-area button edge shades, as indices into the system
-   * palette: light on the top/left edges, dark on the bottom/right (swapped
-   * when the button is pressed). Both default to the titlebar fill colour
-   * when config is NULL. Ignored when both WUSS_FURNITURE and WUSS_ICONS are
-   * off.
+   * Bevel edge shades for work-area buttons and bordered labels, as indices
+   * into the system palette: light on the top/left edges, dark on the
+   * bottom/right (swapped when a button is pressed). divider is the lighter
+   * edge shade for a wuss_ICON_BORDER_DIVIDER label surround, paired with
+   * light for its sunken and raised rings. light and dark default to the
+   * titlebar fill colour when config is NULL; divider defaults to light.
+   * Read back through wuss_COLOUR_BUTTON_HILIGHT / wuss_COLOUR_BUTTON_SHADOW
+   * / wuss_COLOUR_BORDER_DIVIDER. Ignored when both WUSS_FURNITURE and
+   * WUSS_ICONS are off.
    */
   struct
   {
-    wuss_colour_t light; /**< Top/left bevel edge. */
-    wuss_colour_t dark;  /**< Bottom/right bevel edge. */
+    wuss_colour_t light;   /**< Top/left bevel edge. */
+    wuss_colour_t dark;    /**< Bottom/right bevel edge. */
+    wuss_colour_t divider; /**< Lighter edge shade for a DIVIDER border. */
   }
   bevel;
 
   /**
-   * Fill and text colours for a default action button -- a work-area button
-   * icon created with wuss_ICON_FLAGS_DEFAULT, drawn to stand out from the
-   * ordinary bevelled buttons around it (RISC OS's "default action button").
-   * Both default to the titlebar colours (bg / fg) when config is NULL.
-   * Ignored when both WUSS_FURNITURE and WUSS_ICONS are off.
+   * Work-area button colours, as indices into the system palette. bg is the
+   * button face, used when a wuss_ICON_TYPE_BUTTON spec passes
+   * wuss_NO_BACKGROUND rather than its own fill. fg is the button label.
+   * pressed replaces bg on the face while the button is held down. bg and
+   * pressed default to bevel.light and bevel.dark when config is NULL; fg
+   * defaults to the titlebar text colour. Read back through
+   * wuss_COLOUR_BUTTON_BG / wuss_COLOUR_BUTTON_FG /
+   * wuss_COLOUR_BUTTON_PRESSED. Ignored when both WUSS_FURNITURE and
+   * WUSS_ICONS are off.
    */
   struct
   {
-    wuss_colour_t bg; /**< Default-button fill. */
-    wuss_colour_t fg; /**< Default-button text. */
+    wuss_colour_t bg;      /**< Button face fill. */
+    wuss_colour_t fg;      /**< Button label. */
+    wuss_colour_t pressed; /**< Button face fill while held down. */
+  }
+  button;
+
+  /**
+   * Accent colour for a default action button -- a wuss_ICON_TYPE_BUTTON
+   * created with wuss_ICON_FLAGS_DEFAULT, drawn to stand out from the
+   * ordinary bevelled buttons around it (RISC OS's "default action button"):
+   * its face fill at rest, and the moat of the wuss_ICON_BORDER_ACTION
+   * surround. Its label uses button.fg. Defaults to the titlebar fill colour
+   * when config is NULL. Read back through wuss_COLOUR_ACCENT. Ignored when
+   * both WUSS_FURNITURE and WUSS_ICONS are off.
+   */
+  struct
+  {
+    wuss_colour_t colour; /**< Default-button accent fill. */
   }
   accent;
+
+  /**
+   * Conventional body fills, as system-palette indices: window is the
+   * work-area behind a task's content, menu the pop-up menu background. Read
+   * back through wuss_COLOUR_WINDOW / wuss_COLOUR_MENU. When config is NULL,
+   * window defaults to wuss_COLOUR_GREY (a light grey) and menu to
+   * wuss_COLOUR_WHITE. Always honoured, regardless of the WUSS_FURNITURE /
+   * WUSS_ICONS / WUSS_MENUS options.
+   */
+  struct
+  {
+    wuss_colour_t window; /**< Work-area body fill. */
+    wuss_colour_t menu;   /**< Menu body fill. */
+  }
+  body;
 
   /** Desktop background, painted behind windows on every redraw. */
   wuss_backdrop_t backdrop;

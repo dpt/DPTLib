@@ -20,7 +20,14 @@ void wuss__icon_set_hover(wuss_t *wuss, wuss_icon_t *icon)
   if (prev == icon)
     return;
 
+  /* Every ancestor row on an open menu chain's open-submenu path keeps its
+   * highlight while the pointer is down in a deeper level (RISC OS feel), so
+   * don't drop `prev`'s highlight if it is one of those rows. */
+#ifdef WUSS_MENUS
+  if (prev != NULL && !wuss__menu_row_pinned(wuss, prev))
+#else
   if (prev != NULL)
+#endif
   {
     wuss__icon_set_state(prev, wuss_ICON_STATE_HOVERED, 0);
     if (wuss__icon_hover_visible(prev))

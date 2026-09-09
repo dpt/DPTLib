@@ -8,8 +8,8 @@
 
 result_t wuss_window_set_hidden(wuss_window_t *window, int hidden)
 {
-  wuss_event_t event;
   result_t     rc;
+  wuss_event_t event;
   int          was_hidden;
 
   was_hidden = (window->flags & wuss_WINDOW_HIDDEN) != 0;
@@ -18,8 +18,27 @@ result_t wuss_window_set_hidden(wuss_window_t *window, int hidden)
 
   if (hidden)
   {
+    wuss_t *wuss = window->wuss;
+
+    /* Drop any pointer state that targets this window: an off-screen window
+     * must not keep being driven by the mouse. Same set wuss_window_close
+     * clears. */
+#ifdef WUSS_FURNITURE
+    if (wuss->furniture.dragging == window)
+    {
+      wuss->furniture.dragging  = NULL;
+      wuss->furniture.drag_kind = wuss_FURNITURE_DRAG_NONE;
+    }
+#endif
+#ifdef WUSS_ICONS
+    if (wuss->pressed_icon != NULL && wuss->pressed_icon->window == window)
+      wuss->pressed_icon = NULL;
+    if (wuss->hover_icon != NULL && wuss->hover_icon->window == window)
+      wuss->hover_icon = NULL;
+#endif
+
     /* still on screen: repaint its footprint now, then mark it gone */
-    wuss_invalidate(window->wuss, &window->visible);
+    wuss_invalidate(wuss, &window->visible);
     window->flags |= wuss_WINDOW_HIDDEN;
     return result_OK;
   }

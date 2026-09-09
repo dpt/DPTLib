@@ -12,8 +12,9 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
                               const wuss_icon_spec_t *spec,
                               wuss_icon_t            *out)
 {
-  wuss_colour_t fg, bg, swatch;
-  int           has_swatch;
+  wuss_colour_t   fg, bg, swatch;
+  int             has_swatch;
+  const bitmap_t *bitmap;
 
   assert(w    != NULL);
   assert(spec != NULL);
@@ -44,16 +45,31 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
     return result_WUSS_BAD_ICON;
   }
 
-  if ((spec->type == wuss_ICON_TYPE_BUTTON ||
-       spec->type == wuss_ICON_TYPE_PATTERN) &&
-      bg == wuss_NO_BACKGROUND)
+  /* a BUTTON may leave bg unset -- it then draws on the config button face
+   * (wuss->button_bg); a PATTERN needs a concrete clear-bit colour */
+  if (spec->type == wuss_ICON_TYPE_PATTERN && bg == wuss_NO_BACKGROUND)
     return result_WUSS_BAD_ICON;
 
-  if (spec->type == wuss_ICON_TYPE_BITMAP && spec->bitmap == NULL)
+  /* A BITMAP icon draws spec->bitmap, or -- when that is NULL -- the loaded
+   * icon-set entry spec->icon_set names (wuss_ICON_SET encodes the 0-based
+   * index +1, so 0 means "no entry"). */
+  bitmap = spec->bitmap;
+  if (spec->type == wuss_ICON_TYPE_BITMAP && bitmap == NULL && spec->icon_set > 0)
+  {
+    bitmap = wuss_icons_bitmap(w, spec->icon_set - 1);
+    if (bitmap == NULL)
+      return result_WUSS_BAD_INDEX;
+  }
+
+  if (spec->type == wuss_ICON_TYPE_BITMAP && bitmap == NULL)
     return result_WUSS_BAD_ICON;
 
   if (spec->type == wuss_ICON_TYPE_PATTERN &&
       spec->pattern >= screen_PATTERN__LIMIT)
+    return result_WUSS_BAD_ICON;
+
+  if (spec->type == wuss_ICON_TYPE_LABEL &&
+      spec->border > wuss_ICON_BORDER_DIVIDER)
     return result_WUSS_BAD_ICON;
 
   if (fg >= w->npalette)
@@ -73,9 +89,11 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   out->bg      = bg;
   out->pattern = (spec->type == wuss_ICON_TYPE_PATTERN) ? spec->pattern
                                                         : screen_PATTERN_SOLID;
-  out->bitmap  = (spec->type == wuss_ICON_TYPE_BITMAP) ? spec->bitmap : NULL;
+  out->bitmap  = (spec->type == wuss_ICON_TYPE_BITMAP) ? bitmap : NULL;
   out->group   = (spec->type == wuss_ICON_TYPE_RADIO) ? spec->group : 0;
   out->swatch  = swatch;
+  out->border  = (spec->type == wuss_ICON_TYPE_LABEL) ? spec->border
+                                                      : wuss_ICON_BORDER_NONE;
   out->flags   = spec->flags;
   out->state   = wuss_ICON_STATE_NONE;
 

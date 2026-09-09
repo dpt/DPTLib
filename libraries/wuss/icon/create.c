@@ -14,6 +14,7 @@ result_t wuss_icon_create(wuss_window_t          *window,
                           const wuss_icon_spec_t *spec,
                           wuss_icon_t           **icon)
 {
+  result_t      rc;
   wuss_t       *w;
   wuss_icon_t  *it;
   wuss_icon_t **grown;
@@ -21,7 +22,6 @@ result_t wuss_icon_create(wuss_window_t          *window,
   const char   *src;
   size_t        len;
   int           newcap;
-  result_t      rc;
 
   assert(window != NULL);
   assert(spec   != NULL);

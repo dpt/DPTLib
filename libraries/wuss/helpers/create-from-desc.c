@@ -135,10 +135,10 @@ void wuss_menu_destroy(wuss_menu_t *menu)
  * freed with, the result of wuss_menu_create_from_desc. */
 static result_t menu_deep_copy(const wuss_menu_t *src, wuss_menu_t **out)
 {
+  result_t          rc;
   wuss_menu_t      *m;
   wuss_menu_item_t *items;
   int               i;
-  result_t          rc;
 
   m = malloc(sizeof(*m));
   if (m == NULL)
@@ -302,13 +302,13 @@ static void build_discard(Building *b)
 
 result_t wuss_menu_create_from_desc(wuss_menu_t **out, const char *desc, ...)
 {
+  result_t rc;
   Parser   parser;
   Building stack[WUSS_MENU_DESC_DEPTH];
   int      need_title[WUSS_MENU_DESC_DEPTH];
   char    *titles[WUSS_MENU_DESC_DEPTH];
   int      sp;
   va_list  ap;
-  result_t rc;
   char     text[WUSS_MENU_DESC_TEXT];
   int      i;
 

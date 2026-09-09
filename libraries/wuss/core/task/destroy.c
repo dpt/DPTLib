@@ -19,6 +19,12 @@ void wuss_task_destroy(wuss_task_t *doomed)
   if (doomed == NULL)
     return;
 
+  /* Already being reaped -- by wuss_destroy's sweep, or a re-entrant call
+   * from this task's own QUIT handler. The outer teardown owns the unlink
+   * and free; doing it here too would double-free the node. */
+  if (doomed->flags & wuss_TASK__REAPING)
+    return;
+
   wuss = doomed->wuss;
 
   /* Mark the teardown so wuss_window_close's autoclose path doesn't also
@@ -26,12 +32,14 @@ void wuss_task_destroy(wuss_task_t *doomed)
   doomed->flags |= wuss_TASK__REAPING;
 
 #ifdef WUSS_MENUS
-  /* If this task opened the live menu chain, close it now: MENU_SELECT is
-   * delivered to the chain's owner, and leaving the chain open would leave
-   * its owner (and any pending pick flash's owner) pointing at `doomed`
-   * after it is freed below. */
+  /* If this task opened the live menu chain, tear it down now: leaving it
+   * open would leave its owner (and any pending pick flash's owner) pointing
+   * at `doomed` after it is freed below. wuss__menu_abandon also delivers
+   * wuss_EVENT_MENU_CLOSED to `doomed`, so a wuss_menu_handle_t it still
+   * holds is nulled before the QUIT below -- otherwise a QUIT handler that
+   * calls wuss_menu_close on that stale handle double-frees the chain. */
   if (wuss->menu_chain != NULL && wuss->menu_chain->owner == doomed)
-    wuss_menu_close(wuss->menu_chain);
+    wuss__menu_abandon(wuss);
 #endif
 
   /* One QUIT while every window is still alive. */

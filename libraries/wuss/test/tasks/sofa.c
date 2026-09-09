@@ -356,9 +356,9 @@ static void draw_vertex_dots(screen_t           *scr,
 
 result_t sofa_create(wuss_t*wuss, sofa_task_t*task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  result_t         rc;
 
   task->bg       = colour_rgb(0x7E, 0x25, 0x53);
   task->line     = colour_rgb(0xFF, 0xA3, 0x00);
@@ -384,7 +384,7 @@ result_t sofa_create(wuss_t*wuss, sofa_task_t*task)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(180, 160),
                                  "Sofa",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  SIZE2D(180, 160),
                                  SIZE2D(0, 0),
@@ -521,7 +521,7 @@ static result_t sofa_mouse(wuss_window_t *window,
   {
     sc->shape = (sc->shape + 1) % sofa_SHAPE__LIMIT;
     sc->turns = 0;
-    wuss_window_invalidate_all(window);
+    wuss_window_invalidate_visible(window);
   }
   else if (button & wuss_BUTTON_SELECT)
   {
@@ -542,7 +542,7 @@ static result_t sofa_scroll(wuss_window_t *window,
   sc->zoom += delta * SOFA_ZOOM_PER_NOTCH;
   sc->zoom  = CLAMP(sc->zoom, SOFA_ZOOM_MIN, SOFA_ZOOM_MAX);
 
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }
@@ -567,7 +567,7 @@ static result_t sofa_idle(void *task_data)
     }
   }
 
-  wuss_window_invalidate_all(task->window);
+  wuss_window_invalidate_visible(task->window);
 
   return result_OK;
 }

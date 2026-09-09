@@ -964,6 +964,9 @@ result_t composite(composite_rule_t rule,
       src->format != dst->format)
     return result_BAD_ARG;
 
+  if (pixelfmt_is_rle(src->format) || pixelfmt_is_rle(dst->format))
+    return result_NOT_SUPPORTED;
+
   switch (src->format)
   {
   case pixelfmt_rgba8888:

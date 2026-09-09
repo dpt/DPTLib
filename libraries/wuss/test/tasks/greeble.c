@@ -12,6 +12,7 @@
 #include "base/utils.h"
 #include "framebuf/colour.h"
 #include "geom/box.h"
+#include "utils/rng.h"
 #include "wuss/menu.h"
 
 #include "greeble.h"
@@ -39,11 +40,6 @@ static wuss_menu_t g_greeble_menu =
 /* cell value for "nothing placed here yet"; stamp indices are 0..204 so 0xFF
  * is free. greeble_redraw skips these. */
 #define GREEBLE_EMPTY 0xFF
-
-/* one xorshift32 step on lvalue s; kept local to greeble_generate so the same
- * seed always yields the same grid */
-#define GREEBLE_XORSHIFT(s) \
-  ((s) ^= (s) << 13, (s) ^= (s) >> 17, (s) ^= (s) << 5)
 
 /* try to drop prefab p with its top-left at (row,col): succeeds only if every
  * non-hole cell of the prefab lands on an in-bounds, still-empty grid cell, so
@@ -100,13 +96,13 @@ static int greeble_try_prefab(greeble_task_t *task,
 
 static void greeble_generate(greeble_task_t *task)
 {
-  unsigned int  s;
+  rng_t         s;
   int           i;
   unsigned char order[GREEBLE_NPREFAB]; /* prefab indices, largest area first */
   int           tries_each;
   int           r, c;
 
-  s = task->seed;
+  rng_seed(&s, task->seed);
 
   /* insertion-sort a fresh index list by w*h descending; NPREFAB is small and
    * this runs once per regenerate */
@@ -151,17 +147,12 @@ static void greeble_generate(greeble_task_t *task)
       int           row, col;
       unsigned char pal;
 
-      GREEBLE_XORSHIFT(s);
-      row = (int) (s % (unsigned int) task->rows);
-      GREEBLE_XORSHIFT(s);
-      col = (int) (s % (unsigned int) task->cols);
+      row = rng_range(&s, task->rows);
+      col = rng_range(&s, task->cols);
 
       pal = task->palette;
       if (task->random_prefab_palettes)
-      {
-        GREEBLE_XORSHIFT(s);
-        pal = (unsigned char) (s % (unsigned int) GREEBLE_NPALETTE);
-      }
+        pal = (unsigned char) rng_range(&s, GREEBLE_NPALETTE);
 
       greeble_try_prefab(task, p, row, col, pal);
     }
@@ -170,11 +161,8 @@ static void greeble_generate(greeble_task_t *task)
   for (r = 0; r < task->rows; r++)
     for (c = 0; c < task->cols; c++)
       if (task->grid[r][c] == GREEBLE_EMPTY)
-      {
-        GREEBLE_XORSHIFT(s);
         task->grid[r][c] =
-          greeble_filler[s % (unsigned int) GREEBLE_NFILLER];
-      }
+          greeble_filler[rng_range(&s, GREEBLE_NFILLER)];
 }
 
 /* recompute the grid extent for the window's content box, then regenerate */
@@ -274,14 +262,15 @@ static result_t greeble_redraw(const wuss_event_t *event,
 /* Select: advance to a fresh pattern (new seed, regenerate the grid). */
 static result_t greeble_select(greeble_task_t *task, wuss_window_t *window)
 {
-  /* LCG step; any nonzero state keeps the pattern xorshift off its fixed
-   * point */
-  task->seed = task->seed * 1664525u + 1013904223u;
+  /* LCG-hop to the next start seed; rng_range's xorshift then walks that.
+   * Remap the one zero state so the xorshift never lands on its fixed
+   * point. */
+  rng_lcg32(&task->seed);
   if (task->seed == 0)
     task->seed = 1;
 
   greeble_generate(task);
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_extent(window);
 
   return result_OK;
 }
@@ -296,7 +285,7 @@ static result_t greeble_toggle_randpal(greeble_task_t *task,
 {
   task->random_prefab_palettes = !task->random_prefab_palettes;
   greeble_generate(task);
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_extent(window);
 
   return result_OK;
 }
@@ -308,7 +297,7 @@ static result_t greeble_adjust(greeble_task_t *task, wuss_window_t *window)
 {
   task->palette = (unsigned char) ((task->palette + 1) % GREEBLE_NPALETTE);
   greeble_generate(task);
-  wuss_window_invalidate_all(window);
+  wuss_window_invalidate_extent(window);
 
   return result_OK;
 }
@@ -376,6 +365,10 @@ result_t greeble_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_SELECT:
     return greeble_menu_select(task, event);
 
+  case wuss_EVENT_MENU_CLOSED:
+    task->menu_handle = NULL; /* wuss closed the chain under us */
+    return result_OK;
+
   case wuss_EVENT_QUIT:
     free(task); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
@@ -387,11 +380,11 @@ result_t greeble_handle(wuss_window_t      *window,
 
 result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
 {
+  result_t         rc;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   size2d_t         grid_px;
   box_t            content;
-  result_t         rc;
 
   /* the full generator grid in pixels: content sized so cols/rows land
    * exactly on the GREEBLE_MAX_* caps in 8-pixel tiles */
@@ -420,7 +413,7 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
   rc = wuss_window_create_placed(delegate,
                                  grid_px,
                                  "Greeble",
-                                 wuss_WINDOW_NONE,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
                                  grid_px,
                                  SIZE2D(0, 0),
