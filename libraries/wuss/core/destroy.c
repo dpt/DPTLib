@@ -44,8 +44,17 @@ void wuss_destroy(wuss_t *doomed)
     next = e->next;
     if (wuss__task_from_link(e) != menu_task)
     {
+      wuss_task_t *task = wuss__task_from_link(e);
+
+      /* Mark the teardown before QUIT so a handler that closes its last
+       * autoclose window -- or calls wuss_window_close / wuss_task_destroy
+       * on itself -- doesn't also fire QUIT and free this node from under
+       * the sweep, which would then wuss__free it a second time. Same guard
+       * wuss_task_destroy sets for its own internal QUIT. */
+      task->flags |= wuss_TASK__REAPING;
+
       event.kind = wuss_EVENT_QUIT;
-      (void) wuss__deliver(wuss__task_from_link(e), NULL, &event);
+      (void) wuss__deliver(task, NULL, &event);
       wuss__free(doomed, e);
     }
     e = next;
