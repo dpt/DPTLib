@@ -103,7 +103,7 @@ static result_t screen_copy_bitmap_rle_p4(screen_t       *scr,
     for (xx = 0; xx < plot; xx++)
       scratch[xx] = 0; /* zero_skip below only fills covered skip runs */
 
-    p = bitmap__rle_decode_row(p, log2bpp, scratch, skip, plot, 1);
+    p = bitmap__rle_decode_row(p, end, log2bpp, scratch, skip, plot, 1);
 
     rowp = dstbase + (size_t) (draw_box->y0 + i) * scr->rowbytes;
 
@@ -201,7 +201,7 @@ result_t screen_copy_bitmap_rle(screen_t       *scr,
            + (size_t) (draw_box->y0 + i) * scr->rowbytes
            + (size_t) draw_box->x0 * bpp;
 
-    p = bitmap__rle_decode_row(p, log2bpp, dstrow, skip, plot, 0);
+    p = bitmap__rle_decode_row(p, end, log2bpp, dstrow, skip, plot, 0);
   }
 
   return result_OK;

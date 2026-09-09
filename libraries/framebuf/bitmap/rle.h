@@ -114,6 +114,11 @@ result_t bitmap__rle_encode_row(const void *srcrow,
  * consumed before writing begins and at most `plot` pixels are written.
  *
  * \param[in] p         Cursor at the row's first opcode.
+ * \param[in] end       One past the last valid stream byte. Decoding stops
+ *                      here even if no EOL is seen; a reserved opcode also
+ *                      bails to `end`, so a truncated or corrupt blob
+ *                      decodes to nothing rather than reading past the
+ *                      buffer.
  * \param[in] log2bpp   3 or 5.
  * \param[in] dstrow    Destination, at the first pixel to be written.
  * \param[in] skip      Row pixels to consume before writing.
@@ -121,9 +126,10 @@ result_t bitmap__rle_encode_row(const void *srcrow,
  * \param[in] zero_skip Non-zero to write zero pixels for `skip` runs
  *                      (lossless decode); zero to leave them untouched
  *                      (alpha-tested blit).
- * \return Cursor just past this row's EOL.
+ * \return Cursor just past this row's EOL (clamped to `end`).
  */
 const uint8_t *bitmap__rle_decode_row(const uint8_t *p,
+                                      const uint8_t *end,
                                       int            log2bpp,
                                       void          *dstrow,
                                       int            skip,

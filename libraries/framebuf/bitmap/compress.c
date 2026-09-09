@@ -275,6 +275,7 @@ result_t bitmap__rle_encode_row(const void *srcrow,
 /* ----------------------------------------------------------------------- */
 
 const uint8_t *bitmap__rle_decode_row(const uint8_t *p,
+                                      const uint8_t *end,
                                       int            log2bpp,
                                       void          *dstrow,
                                       int            skip,
@@ -285,12 +286,13 @@ const uint8_t *bitmap__rle_decode_row(const uint8_t *p,
   int      bpp;
 
   assert(p);
+  assert(end);
   assert(log2bpp == 3 || log2bpp == 5);
 
   dst = dstrow;
   bpp = 1 << (log2bpp - 3);
 
-  for (;;)
+  while (p < end)
   {
     uint8_t op;
     int     id;
@@ -302,7 +304,7 @@ const uint8_t *bitmap__rle_decode_row(const uint8_t *p,
     id = clz8(op);
 
     if (id == bitmap__RLE_EOL_ID)
-      break;
+      return p;
 
     /* Decode opcode + length; `srcpx` (literal) / `px` (repeat) set below. */
     if (id == bitmap__RLE_LITERAL_ID)
@@ -343,8 +345,11 @@ const uint8_t *bitmap__rle_decode_row(const uint8_t *p,
     }
     else
     {
+      /* Reserved / forward-incompatible opcode, or a corrupt stream. Bail to
+       * `end` so this row and every later row decode to nothing rather than
+       * garbage from a desynchronised cursor. */
       assert(!"bitmap__rle_decode_row: reserved opcode");
-      break;
+      return end;
     }
 
     /* Clip this run against the remaining left-skip and plot budget. The
@@ -591,7 +596,9 @@ result_t bitmap_decompress(bitmap_t *bm)
   pixelfmt_t     base;
   int            log2bpp;
   uint32_t       rowbytes;
+  const uint8_t *blob;
   const uint8_t *p;
+  const uint8_t *end;
   uint8_t       *raw;
   uint8_t       *dstrow;
   int            y;
@@ -606,8 +613,10 @@ result_t bitmap_decompress(bitmap_t *bm)
   base    = pixelfmt_base(bm->format);
   log2bpp = pixelfmt_log2bpp(base);
 
-  rowbytes = bitmap__rle_get32((const uint8_t *) bm->base + 0);
-  p        = (const uint8_t *) bm->base + bitmap__RLE_HEADER_SIZE;
+  blob     = bm->base;
+  rowbytes = bitmap__rle_get32(blob + 0);
+  p        = blob + bitmap__RLE_HEADER_SIZE;
+  end      = p + bitmap__rle_get32(blob + 4);
 
   raw = malloc((size_t) rowbytes * bm->size.h);
   if (raw == NULL)
@@ -616,7 +625,7 @@ result_t bitmap_decompress(bitmap_t *bm)
   dstrow = raw;
   for (y = 0; y < bm->size.h; y++)
   {
-    p = bitmap__rle_decode_row(p, log2bpp, dstrow, 0, bm->size.w, 1);
+    p = bitmap__rle_decode_row(p, end, log2bpp, dstrow, 0, bm->size.w, 1);
     dstrow += rowbytes;
   }
 
