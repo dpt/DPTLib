@@ -135,6 +135,12 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
 
     box_union(&before, &window->visible, &dirty);
     wuss__invalidate_clipped(window, &dirty);
+
+    /* the dirty box above covers every furniture strip, but nothing here
+     * has dropped the cached furniture layout -- it still holds the old
+     * width's rects. Force a rebuild so the redraw paints furniture at the
+     * new geometry (the else branch gets this via wuss__chrome_repaint). */
+    wuss__chrome_invalidate_layout(window);
   }
   else
   {

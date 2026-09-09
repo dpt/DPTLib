@@ -3030,6 +3030,69 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_nb2);
   }
 
+  printf("test: resizing a wuss_WINDOW_NO_RESIZE_BLIT window drops its cached "
+         "furniture layout so the chrome redraws at the new width\n");
+
+  {
+    static test_task_t  tc_fl;
+    wuss_task_t   *delegate_fl;
+    box_t          box_fl, after_fl;
+    wuss_window_t *win_fl;
+    int            i, old_titlebar_x1, found;
+
+    tc_fl.redraw_count = 0;
+    tc_fl.mouse_count  = 0;
+    delegate_fl = mk_task(wuss, test_handle, &tc_fl);
+    if (delegate_fl == NULL) goto Failure;
+
+    box_fl.x0 = 0; box_fl.y0 = 0;
+    box_fl.x1 = 60; box_fl.y1 = 60;
+    rc = wuss_window_create(delegate_fl, &box_fl, "FL", wuss_WINDOW_NO_RESIZE_BLIT,
+                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            box_size(&box_fl),
+                            SIZE2D(0, 0),
+                            &win_fl);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* build and cache the furniture layout at the creation width */
+    wuss__furniture_layout_build(win_fl);
+    if (!win_fl->furniture_layout.valid)
+      goto Failure;
+    old_titlebar_x1 = win_fl->furniture_layout.titlebar.x1;
+
+    rc = wuss_window_resize(win_fl, SIZE2D(140, 60)); /* grow the width */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* the resize must have invalidated the cache: nothing else here rebuilds
+     * it, so a stale valid==1 means furniture would paint at the old width */
+    if (win_fl->furniture_layout.valid)
+      goto Failure;
+
+    /* rebuilding now must track the new, wider window */
+    wuss__furniture_layout_build(win_fl);
+    wuss_window_get_visible_bounds(win_fl, &after_fl);
+    if (win_fl->furniture_layout.titlebar.x1 <= old_titlebar_x1)
+      goto Failure; /* titlebar still at the old width */
+
+    /* the full-width divider rule must span to the new right edge too */
+    found = 0;
+    for (i = 0; i < win_fl->furniture_layout.npieces; i++)
+    {
+      const wuss__furniture_piece_t *p = &win_fl->furniture_layout.pieces[i];
+
+      if (p->paint == wuss__FURNITURE_PAINT_OUTLINE &&
+          p->rect.y1 == win_fl->furniture_layout.titlebar.y1 &&
+          p->rect.x1 == win_fl->furniture_layout.titlebar.x1)
+        found = 1;
+    }
+    if (!found)
+      goto Failure;
+
+    wuss_window_close(win_fl);
+  }
+
   printf("test: dragging a clear window onto an occluder leaves the occluder untouched\n");
 
   {
