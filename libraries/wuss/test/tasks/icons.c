@@ -40,7 +40,7 @@ enum
   ICONS_N_ICONSET = 5, /* frame + opton + optoff + radon + radoff from the loaded set */
   ICONS_N_PATTERN = 2, /* frame + one PATTERN swatch */
   ICONS_N_BORDERS = 6, /* frame + GROOVE + RIDGE + ACTION + DIVIDER labels */
-  ICONS_N_MENU    = 7, /* plain, ticked, swatch, submenu, disabled, rule, separator entry */
+  ICONS_N_MENU    = 8, /* frame + plain, ticked, swatch, submenu, disabled, rule, separator entry */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
                     ICONS_N_BITMAPS + ICONS_N_ICONSET + ICONS_N_PATTERN +
                     ICONS_N_BORDERS + ICONS_N_MENU
@@ -416,18 +416,29 @@ static void icons_add_borders(icons_layout_t *lay)
   lay->y = top + 166;
 }
 
-/* A menu-entry strip: plain, ticked, a swatch entry, a submenu entry, a
- * disabled entry, then a dashed rule and a SEPARATOR-flagged entry below it.
- * Hover the pointer over any live entry to see the highlight track; the rule
- * stays inert. Returns the "Show grid" index (started ticked) via *ticked. */
+/* A grouping frame captioned "Menu", holding a menu-entry strip: plain,
+ * ticked, a swatch entry, a submenu entry, a disabled entry, then a dashed
+ * rule and a SEPARATOR-flagged entry below it. Hover the pointer over any live
+ * entry to see the highlight track; the rule stays inert. Returns the "Show
+ * grid" index (started ticked) via *ticked. */
 static void icons_add_menu(icons_layout_t *lay, int *ticked)
 {
   wuss_icon_spec_t *s;
   int               top;
+  int               row;
 
   top     = lay->y;
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 180, 16);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, ICONS_ROW * 7 + 30);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "Menu";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  row     = top + 20;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row, 180, 16);
   s->type = wuss_ICON_TYPE_MENU_ENTRY;
   s->text = "Open";
   s->fg   = lay->black;
@@ -435,7 +446,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   lay->n++;
 
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top + ICONS_ROW, 180, 16);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row + ICONS_ROW, 180, 16);
   s->type = wuss_ICON_TYPE_MENU_ENTRY;
   s->text = "Show grid";
   s->fg   = lay->black;
@@ -444,7 +455,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   lay->n++;
 
   s         = &lay->specs[lay->n];
-  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top + ICONS_ROW * 2, 180, 16);
+  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row + ICONS_ROW * 2, 180, 16);
   s->type   = wuss_ICON_TYPE_MENU_ENTRY;
   s->text   = "Layer colour";
   s->fg     = lay->black;
@@ -454,7 +465,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   lay->n++;
 
   s        = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top + ICONS_ROW * 3, 180, 16);
+  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row + ICONS_ROW * 3, 180, 16);
   s->type  = wuss_ICON_TYPE_MENU_ENTRY;
   s->text  = "Export";
   s->fg    = lay->black;
@@ -463,7 +474,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   lay->n++;
 
   s        = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top + ICONS_ROW * 4, 180, 16);
+  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row + ICONS_ROW * 4, 180, 16);
   s->type  = wuss_ICON_TYPE_MENU_ENTRY;
   s->text  = "Disabled";
   s->fg    = lay->black;
@@ -472,14 +483,14 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   lay->n++;
 
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top + ICONS_ROW * 5, 180, 10);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row + ICONS_ROW * 5, 180, 10);
   s->type = wuss_ICON_TYPE_RULE;
   s->fg   = lay->black;
   s->bg   = wuss_NO_BACKGROUND;
   lay->n++;
 
   s        = &lay->specs[lay->n];
-  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top + ICONS_ROW * 6, 180, 16);
+  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, row + ICONS_ROW * 6, 180, 16);
   s->type  = wuss_ICON_TYPE_MENU_ENTRY;
   s->text  = "Quit";
   s->fg    = lay->black;
@@ -487,7 +498,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   s->flags = wuss_ICON_FLAGS_SEPARATOR;
   lay->n++;
 
-  lay->y = top + ICONS_ROW * 7 + 10;
+  lay->y = top + ICONS_ROW * 7 + 46;
 }
 
 /* ----------------------------------------------------------------------- */
