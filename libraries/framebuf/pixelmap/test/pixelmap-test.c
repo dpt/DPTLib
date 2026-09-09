@@ -130,6 +130,40 @@ result_t pixelmap_test(const char *resources)
     }
   }
 
+  /* 4b. rgba8888 -> p1 (2KB 4:4:4 table): a 2-entry black/white palette
+   *     resolves dark colours to index 0 and light ones to index 1 */
+  {
+    const pixelmap_t *pm1;
+    colour_t          bw[2];
+
+    bw[0] = colour_rgb(0x00, 0x00, 0x00);
+    bw[1] = colour_rgb(0xFF, 0xFF, 0xFF);
+
+    pm1 = pixelmap_get(pixelfmt_rgba8888, pixelfmt_p1, bw, 2);
+    if (pm1 == NULL)
+    {
+      printf("pixelmap: get rgba8888->p1 returned NULL\n");
+      return result_TEST_FAILED;
+    }
+    if (pm1->dest_log2bpp != 0 || pm1->nentries != 4096)
+    {
+      printf("pixelmap: p1 layout wrong (dest_log2bpp %d, nentries %u)\n",
+             pm1->dest_log2bpp, pm1->nentries);
+      return result_TEST_FAILED;
+    }
+
+    if (pm_lookup(pm1, pm_index(pm1, colour_rgb(0x10, 0x10, 0x10).primary)) != 0)
+    {
+      printf("pixelmap: p1 dark colour did not resolve to index 0\n");
+      return result_TEST_FAILED;
+    }
+    if (pm_lookup(pm1, pm_index(pm1, colour_rgb(0xF0, 0xF0, 0xF0).primary)) != 1)
+    {
+      printf("pixelmap: p1 light colour did not resolve to index 1\n");
+      return result_TEST_FAILED;
+    }
+  }
+
   /* 5. paletted -> deep: p4 -> bgrx8888, one deep pixel per palette index */
   {
     const pixelmap_t          *pmd;
