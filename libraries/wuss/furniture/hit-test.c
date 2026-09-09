@@ -3,42 +3,42 @@
 #include "../core/impl.h"
 
 /* Attribute a point that is inside window->visible but outside the content box
- * and outside every furniture hit box above -- the 1px outline band on an edge
- * that has no scrollbar or resize icon to absorb it -- to the nearest
- * furniture. Never returns CONTENT except for a fully chromeless outlined
- * window (no titlebar, no scrollbars, no resize), whose bare 1px frame has
- * genuinely no furniture behind it (documented exception). */
+ * and outside every furniture hit box above to the nearest furniture. Such a
+ * point is a bare outline/carve pixel: an edge that has a scrollbar strip
+ * running its full length hands off to that strip's well; every other edge
+ * pixel (including the carve band left over when only a lone resize corner is
+ * present -- the corner itself already has its own hit box) is frame, not a
+ * widget, so it resolves to TITLE or CONTENT rather than starting a resize or
+ * scrollbar drag from somewhere the user cannot see the handle. */
 static wuss_furniture_region_t nearest_edge_region(const wuss_window_t *window,
                                                    point_t              p)
 {
   box_t content;
-  int   has_v, has_h, has_resize, has_title;
+  int   has_v, has_h, has_title;
 
   wuss__content_box(window, &content);
 
-  has_v      = !(window->flags & wuss_WINDOW_NO_VSCROLL);
-  has_h      = !(window->flags & wuss_WINDOW_NO_HSCROLL);
-  has_resize = !(window->flags & wuss_WINDOW_NO_RESIZE);
-  has_title  = !(window->flags & wuss_WINDOW_NO_TITLEBAR);
+  has_v     = !(window->flags & wuss_WINDOW_NO_VSCROLL);
+  has_h     = !(window->flags & wuss_WINDOW_NO_HSCROLL);
+  has_title = !(window->flags & wuss_WINDOW_NO_TITLEBAR);
 
+  /* bottom edge: the hscroll strip runs its full width */
   if (p.y >= content.y1)
-    return has_h      ? wuss_FURNITURE_HSCROLL_WELL
-         : has_resize  ? wuss_FURNITURE_RESIZE
-         : has_v       ? wuss_FURNITURE_VSCROLL_WELL
-         : has_title   ? wuss_FURNITURE_TITLE
+    return has_h    ? wuss_FURNITURE_HSCROLL_WELL
+         : has_title ? wuss_FURNITURE_TITLE
          : wuss_FURNITURE_CONTENT;
 
+  /* right edge: the vscroll strip runs its full height */
   if (p.x >= content.x1)
-    return has_v      ? wuss_FURNITURE_VSCROLL_WELL
-         : has_resize  ? wuss_FURNITURE_RESIZE
-         : has_h       ? wuss_FURNITURE_HSCROLL_WELL
-         : has_title   ? wuss_FURNITURE_TITLE
+    return has_v    ? wuss_FURNITURE_VSCROLL_WELL
+         : has_title ? wuss_FURNITURE_TITLE
          : wuss_FURNITURE_CONTENT;
 
   if (p.y < content.y0)
     return has_title ? wuss_FURNITURE_TITLE : wuss_FURNITURE_CONTENT;
 
-  /* left outline column, level with the content */
+  /* left outline column, level with the content: only the hscroll strip's
+   * grown hit box reaches here, and only if there is one */
   return has_h     ? wuss_FURNITURE_HSCROLL_WELL
        : has_title  ? wuss_FURNITURE_TITLE
        : wuss_FURNITURE_CONTENT;
