@@ -1027,6 +1027,7 @@ result_t bmfont_test(const char *resources)
   }
   tab[] =
   {
+    { 800, 600, pixelfmt_p1       },
     { 800, 600, pixelfmt_p4       },
     { 800, 600, pixelfmt_bgrx8888 }
   };
