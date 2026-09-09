@@ -197,14 +197,19 @@ static bmtestfont_t bmfonts[MAXFONTS] =
   { "Digits-Bold",      NULL }
 };
 
-/* Symbols.png isn't Latin text, so it's excluded from bmfonts[] above (used
- * to draw lorem_ipsum in the clipping/layout tests) but must still show up
- * in the enumerate test, which just walks the fixture directory. */
-#define MAXFONTS_ENUM 9
+/* Fixture PNGs not in bmfonts[] above (which is the Latin-text set the
+ * clipping/layout tests draw lorem_ipsum with) but which the enumerate test
+ * must still see, since it just walks the fixture directory: Symbols.png is
+ * not Latin text; 04b_03, 04b_25 and Nokia are tiny pixel faces added for
+ * the wuss tasks. */
+#define MAXFONTS_ENUM 12
 
 static const char *bmfonts_enum_extra[MAXFONTS_ENUM - MAXFONTS] =
 {
-  "Symbols"
+  "Symbols",
+  "04b_03",
+  "04b_25",
+  "Nokia"
 };
 
 /* ----------------------------------------------------------------------- */
