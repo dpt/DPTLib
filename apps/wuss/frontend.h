@@ -52,6 +52,12 @@ wuss_input_t;
  * `palette` / `npalette` are the initial system palette: a backend that owns
  * the physical palette (RISC OS 16-colour mode) programmes it here.
  *
+ * `depth` is the framebuffer's bits per pixel: 32 for a direct-colour
+ * surface (no per-frame conversion), 4 for a paletted one (exercises the
+ * nibble-packed blit path). Those are the only values the SDL backend
+ * accepts today; a backend with a fixed format (RISC OS 16-colour mode)
+ * ignores it.
+ *
  * On return `*pixels` points at storage for width*height pixels at
  * `*rowbytes` stride, and `*fmt` is the pixel format that storage expects.
  * The caller wraps this in a bitmap_t and hands it to wuss. The backend may
@@ -63,6 +69,7 @@ result_t wuss_frontend_open(int               width,
                             int               height,
                             const colour_t   *palette,
                             int               npalette,
+                            int               depth,
                             void            **pixels,
                             int              *rowbytes,
                             pixelfmt_t       *fmt,

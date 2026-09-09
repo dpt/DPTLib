@@ -233,7 +233,9 @@ static void wuss_frame(void *arg)
  * picker menu swaps the system palette live (wuss_set_palette, picked up by
  * menu_handle's wuss_EVENT_PALETTE case); the quit input or closing the
  * window exits */
-static result_t run_wuss(const char *resources)
+static result_t run_wuss(const char *resources,
+                         const char *palette_name,
+                         int         depth)
 {
   const int        scr_width  = 640;
   const int        scr_height = 480;
@@ -258,15 +260,11 @@ static result_t run_wuss(const char *resources)
   int                palette_index;
 
   {
-    /* WUSS_PALETTE names a *.hex file under resources/palettes (extension
-     * stripped, e.g. "RISC-OS"); default is PICO-8. Chrome was never derived
-     * from *.hex content (see fill_chrome_config), so it stays keyed by
-     * whether the startup file is "RISC-OS" specifically, not by whatever
-     * the picker menu later loads. */
-    const char *palette_name = getenv("WUSS_PALETTE");
-
-    if (palette_name == NULL)
-      palette_name = "PICO-8";
+    /* palette_name (from -palette, default "PICO-8") names a *.hex file under
+     * resources/palettes, extension stripped, e.g. "RISC-OS". Chrome was
+     * never derived from *.hex content (see fill_chrome_config), so it stays
+     * keyed by whether the startup file is "RISC-OS" specifically, not by
+     * whatever the picker menu later loads. */
     use_wimp16 = (strcmp(palette_name, "RISC-OS") == 0);
     palette_index = use_wimp16 ? 1 : 0;
 
@@ -303,7 +301,7 @@ static result_t run_wuss(const char *resources)
   }
 
   rc = wuss_frontend_open(scr_width, scr_height, palette, NELEMS(palette),
-                          &pixels, &rowbytes, &fmt, &frontend);
+                          depth, &pixels, &rowbytes, &fmt, &frontend);
   logf_info("wuss: wuss_frontend_open -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
@@ -425,14 +423,20 @@ int main(int argc, char *argv[])
 #else
   const char *resources = ".";
 #endif
+  const char *palette_name = "PICO-8";
+  int         depth        = 4;
   int         i;
   result_t    rc;
 
   for (i = 1; i < argc; i++)
     if (strcmp(argv[i], "-resources") == 0 && i + 1 < argc)
       resources = argv[++i];
+    else if (strcmp(argv[i], "-palette") == 0 && i + 1 < argc)
+      palette_name = argv[++i];
+    else if (strcmp(argv[i], "-depth") == 0 && i + 1 < argc)
+      depth = atoi(argv[++i]);
 
-  rc = run_wuss(resources);
+  rc = run_wuss(resources, palette_name, depth);
 
   return rc == result_TEST_PASSED ? EXIT_SUCCESS : EXIT_FAILURE;
 }
