@@ -362,10 +362,47 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
 
 /* ----------------------------------------------------------------------- */
 
+/* Blit the icon-set bitmap for a radio/option's current state, centred in the
+ * glyph square "g", clipped to it. Names are radon/radoff for RADIO and
+ * opton/optoff for OPTION. Returns 1 when a bitmap was drawn, 0 when the set is
+ * absent or lacks that entry -- the caller then draws the vector glyph. */
+static int wuss__icon_blit_radio_option(const icon_draw_ctx_t *c,
+                                        const box_t           *g)
+{
+  const char     *name;
+  const bitmap_t *bm;
+  screen_t        clipped;
+  int             idx, bx, by;
+
+  if (c->icon->type == wuss_ICON_TYPE_RADIO)
+    name = wuss__icon_selected(c->icon) ? "radon" : "radoff";
+  else
+    name = wuss__icon_selected(c->icon) ? "opton" : "optoff";
+
+  idx = wuss_icons_lookup(c->wuss, name);
+  if (idx < 0)
+    return 0;
+
+  bm = wuss_icons_bitmap(c->wuss, idx);
+  if (bm == NULL)
+    return 0;
+
+  bx = g->x0 + ((g->x1 - g->x0) - bm->size.w) / 2;
+  by = g->y0 + ((g->y1 - g->y0) - bm->size.h) / 2;
+
+  clipped = *c->scr;
+  if (box_intersection(&c->scr->clip, g, &clipped.clip))
+    return 1; /* fully clipped away, but still "handled" -- no vector fallback */
+
+  screen_copy_bitmap(&clipped, bx, by, bm);
+  return 1;
+}
+
 /* wuss_ICON_TYPE_RADIO and wuss_ICON_TYPE_OPTION: a font-height square glyph at
- * the left, vertically centred, with the label to its right. RADIO draws a
- * square ring with a solid centre when selected; OPTION draws a box with a tick
- * when selected. */
+ * the left, vertically centred, with the label to its right. If the icon set
+ * carries radon/radoff (RADIO) or opton/optoff (OPTION) those bitmaps are
+ * blitted for the state; otherwise RADIO draws a square ring with a solid
+ * centre when selected and OPTION draws a box with a tick when selected. */
 static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
 {
   const wuss_icon_t *icon = c->icon;
@@ -392,7 +429,11 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     screen_fill_rect(c->scr, b->x0, b->y0,
                      SIZE2D(b->x1 - b->x0, b->y1 - b->y0), bg);
 
-  if (icon->type == wuss_ICON_TYPE_RADIO)
+  if (wuss__icon_blit_radio_option(c, &g))
+  {
+    /* bitmap drawn -- fall through to the label */
+  }
+  else if (icon->type == wuss_ICON_TYPE_RADIO)
   {
     /* a square ring (no circle primitive); a solid centre when selected */
     screen_draw_line(c->scr, g.x0 + 2, g.y0,     g.x1 - 3, g.y0,     glyph);
