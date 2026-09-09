@@ -54,6 +54,7 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
   (outline-click bug fixed; unblocked)
 - Input focus, text entry, furniture tinting
 - Icon layout
+- Furniture colour selection needs improvements (e.g. losing menu readability when palette changed)
 
 
 LAYER 5 - DRAG & TEMPLATES (needs sprites, config-after-the-fact)
