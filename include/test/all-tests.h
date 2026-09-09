@@ -27,6 +27,7 @@ extern testfn_t bitmap_rle_test,
                 bmfont_test,
                 composite_test,
                 curve_test,
+                pixelmap_test,
                 screen_test;
 
 /* geom */

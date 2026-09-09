@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "framebuf/bitmap.h"
+#include "framebuf/pixelmap.h"
 #include "framebuf/span-registry.h"
 
 result_t bitmap_init(bitmap_t       *bm,
@@ -132,19 +133,23 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
 
 static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
 {
-  result_t             rc;
-  bitmap_t            *dst;
-  pixelfmt_bgrx8888_t *outpixels;
-  pixelfmt_bgrx8888_t  map[16];
-  int                  i;
-  pixelfmt_p4_t       *inpixels;
-  int                  x,y;
+  result_t                   rc;
+  const pixelmap_t          *pm;
+  const pixelfmt_bgrx8888_t *map;
+  bitmap_t                  *dst;
+  pixelfmt_bgrx8888_t       *outpixels;
+  pixelfmt_p4_t             *inpixels;
+  int                        x,y;
 
   assert(src);
   assert(src->palette);
 
-  for (i = 0; i < 16; i++)
-    map[i] = colour_to_pixel(src->palette, 16, src->palette[i], pixelfmt_bgrx8888);
+  /* cached p4-palette -> bgrx8888 expansion table (built once, shared across
+   * conversions of the same palette) */
+  pm = pixelmap_get(pixelfmt_p4, pixelfmt_bgrx8888, src->palette, 16);
+  if (pm == NULL)
+    return result_NOT_SUPPORTED;
+  map = (const pixelfmt_bgrx8888_t *) pm->entries;
 
   outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h); // rowbytes rounding needed?
   if (outpixels == NULL)

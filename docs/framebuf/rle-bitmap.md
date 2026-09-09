@@ -87,11 +87,19 @@ destination untouched.
 | `pixelfmt_{abgr,argb}8888`                     | yes      | no        |
 | `p1`..`p8`, 12/15/16bpp                        | no (`result_NOT_SUPPORTED`) | — |
 
+## Screen targets
+
+- **32bpp screen** — the source must decode to the screen's exact channel
+  order; the blit is then a byte copy, no per-pixel conversion
+  (`pixelfmt_base(src->format) == scr->format`, alpha folded out).
+- **p4 screen** — each decoded pixel is mapped to the nearest palette index. A
+  cached [pixelmap](pixelmap.md) table (`pixelmap_get(pixelfmt_rgba8888,
+  scr->format, scr->palette, 16)`) turns the inner loop into a mask-and-lookup;
+  if that pair is unsupported the blit declines `result_NOT_SUPPORTED`.
+- **Other depths** decline `result_NOT_SUPPORTED`.
+
 ## v1 limitations
 
-- **32bpp screens only.** A p4 screen target declines `result_NOT_SUPPORTED`.
-- **Source must decode to the screen's exact format** — the blit is a byte
-  copy, no per-pixel conversion. `pixelfmt_base(src->format) == scr->format`.
 - **Alpha-tested, not alpha-blended.** Transparent runs are skipped, opaque
   runs copied. This matches `screen_copy_bitmap`'s p4 path but not its 32bpp
   path (which blends per pixel). A blended RLE path would decode alpha runs
