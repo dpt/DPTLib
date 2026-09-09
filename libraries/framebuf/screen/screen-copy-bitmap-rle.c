@@ -11,6 +11,7 @@
 
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
+#include "framebuf/pixelmap.h"
 
 #include "framebuf/bitmap.h"
 #include "framebuf/screen.h"
@@ -59,6 +60,7 @@ static result_t screen_copy_bitmap_rle_p4(screen_t       *scr,
   const uint8_t       *end;
   uint8_t             *dstbase;
   pixelfmt_rgba8888_t *scratch;
+  const pixelmap_t    *pm;
   int                  firstrow;
   int                  skip, plot;
   int                  rows;
@@ -82,6 +84,12 @@ static result_t screen_copy_bitmap_rle_p4(screen_t       *scr,
   plot = draw_box->x1 - draw_box->x0;
   rows = draw_box->y1 - draw_box->y0;
 
+  /* The decode buffer is RGBA8888 byte order. The cached RGB->index table
+   * turns the per-pixel nearest-palette match into a mask-and-lookup. */
+  pm = pixelmap_get(pixelfmt_rgba8888, scr->format, scr->palette, 16);
+  if (pm == NULL)
+    return result_NOT_SUPPORTED;
+
   scratch = malloc((size_t) plot * sizeof(*scratch));
   if (scratch == NULL)
     return result_OOM;
@@ -102,6 +110,7 @@ static result_t screen_copy_bitmap_rle_p4(screen_t       *scr,
     for (xx = 0; xx < plot; xx++)
     {
       colour_t       c;
+      unsigned int   r, g, b, idx;
       int            dstx;
       uint8_t       *scrp;
       int            shift;
@@ -114,7 +123,14 @@ static result_t screen_copy_bitmap_rle_p4(screen_t       *scr,
       dstx  = draw_box->x0 + xx;
       scrp  = rowp + (dstx >> 1);
       shift = (dstx & 1) * 4;
-      pxl   = colour_to_pixel(scr->palette, 16, c, scr->format);
+
+      r   = (c.primary >> pm->rshift) & 0xFF;
+      g   = (c.primary >> pm->gshift) & 0xFF;
+      b   = (c.primary >> pm->bshift) & 0xFF;
+      idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
+          | ((g >> (8 - pm->gbits)) << pm->bbits)
+          | ( b >> (8 - pm->bbits));
+      pxl = (pm->entries[idx >> 1] >> ((idx & 1) << 2)) & 0xF;
 
       *scrp = (uint8_t) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
     }

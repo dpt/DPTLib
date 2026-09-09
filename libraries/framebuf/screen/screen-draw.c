@@ -9,6 +9,7 @@
 
 #include "base/utils.h"
 #include "framebuf/colour.h"
+#include "framebuf/pixelmap.h"
 #include "framebuf/span-registry.h"
 #include "geom/line.h"
 #include "utils/fxp.h"
@@ -222,18 +223,21 @@ void screen_fill_square(screen_t *scr,
 /* ----------------------------------------------------------------------- */
 
 /* Blit "src" onto the paletted screen, its top-left at (x, y), clipped to
- * "draw_box". No linear channel bits to blend, so this falls back to
- * alpha-tested transfer (skip fully transparent, else nearest palette match)
- * rather than true blending, matching screen_set_pixel's case 2. */
-static void screen_copy_bitmap_p4(screen_t       *scr,
-                                  int             x,
-                                  int             y,
-                                  const bitmap_t *src,
-                                  const box_t    *draw_box,
-                                  int             has_alpha)
+ * "draw_box". No linear channel bits to blend, so this does an alpha-tested
+ * transfer (skip fully transparent, else nearest palette match) rather than
+ * true blending, matching screen_set_pixel's case 2. Returns
+ * result_NOT_SUPPORTED if there is no deep->paletted conversion table for the
+ * screen's format. */
+static result_t screen_copy_bitmap_p4(screen_t       *scr,
+                                      int             x,
+                                      int             y,
+                                      const bitmap_t *src,
+                                      const box_t    *draw_box,
+                                      int             has_alpha)
 {
   const unsigned char *srcrow;
   unsigned char       *dstbase;
+  const pixelmap_t    *pm;
   int                  clipped_width, clipped_height;
   int                  yy;
 
@@ -242,6 +246,12 @@ static void screen_copy_bitmap_p4(screen_t       *scr,
 
   srcrow  = (const unsigned char *) src->base + (draw_box->y0 - y) * src->rowbytes;
   dstbase = scr->base;
+
+  /* Source pixels here are RGBA8888 byte order (see screen_copy_bitmap). The
+   * cached RGB->index table turns the inner loop into a mask-and-lookup. */
+  pm = pixelmap_get(pixelfmt_rgba8888, scr->format, scr->palette, 16);
+  if (pm == NULL)
+    return result_NOT_SUPPORTED;
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -255,6 +265,7 @@ static void screen_copy_bitmap_p4(screen_t       *scr,
     for (xx = 0; xx < clipped_width; xx++)
     {
       colour_t       c;
+      unsigned int   r, g, b, idx;
       int            dstx;
       unsigned char *scrp;
       int            shift;
@@ -267,13 +278,22 @@ static void screen_copy_bitmap_p4(screen_t       *scr,
       dstx  = draw_box->x0 + xx;
       scrp  = rowp + (dstx >> 1);
       shift = (dstx & 1) * 4;
-      pxl   = colour_to_pixel(scr->palette, 16, c, scr->format);
+
+      r   = (c.primary >> pm->rshift) & 0xFF;
+      g   = (c.primary >> pm->gshift) & 0xFF;
+      b   = (c.primary >> pm->bshift) & 0xFF;
+      idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
+          | ((g >> (8 - pm->gbits)) << pm->bbits)
+          | ( b >> (8 - pm->bbits));
+      pxl = (pm->entries[idx >> 1] >> ((idx & 1) << 2)) & 0xF;
 
       *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
     }
 
     srcrow += src->rowbytes;
   }
+
+  return result_OK;
 }
 
 /* Blit "src" onto the 32bpp screen, its top-left at (x, y), clipped to
@@ -363,7 +383,7 @@ result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 
   switch (pixelfmt_log2bpp(scr->format))
   {
-  case 2: screen_copy_bitmap_p4(scr, x, y, src, &draw_box, has_alpha); break;
+  case 2: return screen_copy_bitmap_p4(scr, x, y, src, &draw_box, has_alpha);
   case 5: screen_copy_bitmap_32(scr, x, y, src, &draw_box, has_alpha); break;
 
   default:

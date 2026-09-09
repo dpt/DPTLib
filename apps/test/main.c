@@ -55,6 +55,7 @@ static const test_t tests[] =
   { "composite",  composite_test  },
   { "rle",        bitmap_rle_test },
   { "curve",      curve_test      },
+  { "pixelmap",   pixelmap_test   },
   { "screen",     screen_test     },
 
   { "box",        box_test        },

@@ -86,6 +86,7 @@ set(PUBLIC_HEADERS
     include/framebuf/palettes.h
     include/framebuf/pattern.h
     include/framebuf/pixelfmt.h
+    include/framebuf/pixelmap.h
     include/framebuf/screen.h
     include/framebuf/span-bgrx8888.h
     include/framebuf/span-p4.h
@@ -262,6 +263,9 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pattern/pattern.c
     libraries/framebuf/pixelfmt/log2bpp.c
+    libraries/framebuf/pixelmap/build.c
+    libraries/framebuf/pixelmap/get.c
+    libraries/framebuf/pixelmap/impl.h
     libraries/framebuf/screen/screen.c
     libraries/framebuf/screen/screen-copy-bitmap-rle.c
     libraries/framebuf/screen/screen-copy-bitmap-rle.h
@@ -668,6 +672,7 @@ if(BUILD_TESTS)
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
+        libraries/framebuf/pixelmap/test/pixelmap-test.c
         libraries/framebuf/screen/test/screen-test.c
         libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
