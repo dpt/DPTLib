@@ -4,6 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* RISC OS's GCCSDK newlib has getopt() but not the GNU getopt_long()
+ * extension, so parse_args() keeps a hand-rolled fallback there. */
+#ifndef __riscos
+#include <getopt.h>
+#endif
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
@@ -235,7 +241,8 @@ static void wuss_frame(void *arg)
  * window exits */
 static result_t run_wuss(const char *resources,
                          const char *palette_name,
-                         int         depth)
+                         int         depth,
+                         int         scale)
 {
   const int        scr_width  = 640;
   const int        scr_height = 480;
@@ -301,7 +308,7 @@ static result_t run_wuss(const char *resources,
   }
 
   rc = wuss_frontend_open(scr_width, scr_height, palette, NELEMS(palette),
-                          depth, &pixels, &rowbytes, &fmt, &frontend);
+                          depth, scale, &pixels, &rowbytes, &fmt, &frontend);
   logf_info("wuss: wuss_frontend_open -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
@@ -413,30 +420,105 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+/* Parsed command-line options. Members are use-ordered to match run_wuss's
+ * parameter list. */
+typedef struct wuss_options
+{
+  const char *resources;    /* -r/--resources: fixture root */
+  const char *palette_name; /* -p/--palette: startup *.hex leafname */
+  int         depth;        /* -d/--depth: framebuffer bpp (4 or 32) */
+  int         scale;        /* -s/--scale: initial window zoom, 0 = default */
+}
+wuss_options_t;
+
+static const char wuss_usage[] =
+  "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
+  "[-d|--depth 4|32] [-s|--scale N]\n";
+
+#ifndef __riscos
+
+/* Desktop: getopt_long. Accepts the short forms and the "--" long forms; the
+ * historical single-dash long spellings (-resources) are no longer accepted.
+ * Returns false and prints usage on an unknown option or missing argument. */
+static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
+{
+  static const struct option longopts[] =
+  {
+    { "resources", required_argument, NULL, 'r' },
+    { "palette",   required_argument, NULL, 'p' },
+    { "depth",     required_argument, NULL, 'd' },
+    { "scale",     required_argument, NULL, 's' },
+    { NULL,        0,                 NULL, 0   }
+  };
+
+  int c;
+
+  for (;;)
+  {
+    c = getopt_long(argc, argv, "r:p:d:s:", longopts, NULL);
+    if (c == -1)
+      break;
+
+    switch (c)
+    {
+    case 'r': opts->resources    = optarg;       break;
+    case 'p': opts->palette_name = optarg;       break;
+    case 'd': opts->depth        = atoi(optarg); break;
+    case 's': opts->scale        = atoi(optarg); break;
+    default:
+      fputs(wuss_usage, stderr);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+#else /* __riscos */
+
+/* RISC OS: no getopt_long. Hand-rolled scan of the same options, single-dash
+ * long spellings only (matches the pre-getopt behaviour). */
+static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
+{
+  int i;
+
+  for (i = 1; i < argc; i++)
+    if (strcmp(argv[i], "-resources") == 0 && i + 1 < argc)
+      opts->resources = argv[++i];
+    else if (strcmp(argv[i], "-palette") == 0 && i + 1 < argc)
+      opts->palette_name = argv[++i];
+    else if (strcmp(argv[i], "-depth") == 0 && i + 1 < argc)
+      opts->depth = atoi(argv[++i]);
+    else if (strcmp(argv[i], "-scale") == 0 && i + 1 < argc)
+      opts->scale = atoi(argv[++i]);
+
+  return true;
+}
+
+#endif /* __riscos */
+
 int main(int argc, char *argv[])
 {
   /* path_join_filename splices the root and each branch with the platform
    * separator, so the "here" root differs: "." on Unix, but on RISC OS the
    * currently-selected directory is "@" ("." there would give "..resources"). */
 #ifdef __riscos
-  const char *resources = "@";
+  const char *default_resources = "@";
 #else
-  const char *resources = ".";
+  const char *default_resources = ".";
 #endif
-  const char *palette_name = "PICO-8";
-  int         depth        = 4;
-  int         i;
-  result_t    rc;
+  wuss_options_t opts;
+  result_t       rc;
 
-  for (i = 1; i < argc; i++)
-    if (strcmp(argv[i], "-resources") == 0 && i + 1 < argc)
-      resources = argv[++i];
-    else if (strcmp(argv[i], "-palette") == 0 && i + 1 < argc)
-      palette_name = argv[++i];
-    else if (strcmp(argv[i], "-depth") == 0 && i + 1 < argc)
-      depth = atoi(argv[++i]);
+  opts.resources    = default_resources;
+  opts.palette_name = "PICO-8";
+  opts.depth        = 4;
+  opts.scale        = 0; /* 0 = let the frontend pick its default */
 
-  rc = run_wuss(resources, palette_name, depth);
+  if (!parse_args(argc, argv, &opts))
+    return EXIT_FAILURE;
+
+  rc = run_wuss(opts.resources, opts.palette_name, opts.depth, opts.scale);
 
   return rc == result_TEST_PASSED ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -89,6 +89,7 @@ result_t wuss_frontend_open(int               width,
                             const colour_t   *palette,
                             int               npalette,
                             int               depth,
+                            int               scale,
                             void            **pixels,
                             int              *rowbytes,
                             pixelfmt_t       *fmt,
@@ -100,9 +101,10 @@ result_t wuss_frontend_open(int               width,
   _kernel_oserror *err;
   char             msg[160]; /* deferred so it prints after the mode restore */
 
-  /* this backend is locked to the 16-colour Wimp mode; -depth only makes
-   * sense for the SDL backend */
+  /* this backend is locked to the 16-colour Wimp mode with a fixed 1:1
+   * window; -depth and -scale only make sense for the SDL backend */
   NOT_USED(depth);
+  NOT_USED(scale);
 
   msg[0] = '\0';
 

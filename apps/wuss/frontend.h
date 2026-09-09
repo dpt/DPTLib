@@ -58,6 +58,10 @@ wuss_input_t;
  * accepts today; a backend with a fixed format (RISC OS 16-colour mode)
  * ignores it.
  *
+ * `scale` is the initial integer window zoom (device pixels per screen
+ * pixel) for backends with a resizable window; <= 0 means "backend default".
+ * The RISC OS backend ignores it.
+ *
  * On return `*pixels` points at storage for width*height pixels at
  * `*rowbytes` stride, and `*fmt` is the pixel format that storage expects.
  * The caller wraps this in a bitmap_t and hands it to wuss. The backend may
@@ -70,6 +74,7 @@ result_t wuss_frontend_open(int               width,
                             const colour_t   *palette,
                             int               npalette,
                             int               depth,
+                            int               scale,
                             void            **pixels,
                             int              *rowbytes,
                             pixelfmt_t       *fmt,
