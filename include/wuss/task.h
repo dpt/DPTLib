@@ -60,7 +60,12 @@ typedef enum wuss_event_kind
    *  vetoes it. Never fired by wuss_window_close. */
   wuss_EVENT_PRE_CLOSE,
   /** A window has closed after a successful wuss_window_try_close. Never
-   *  fired by wuss_window_close. */
+   *  fired by wuss_window_close. This is not a veto point: PRE_CLOSE has
+   *  already been accepted and wuss frees the window the instant this
+   *  handler returns, so the task must drop any wuss_window_t it holds for
+   *  this window here -- keeping or using it afterwards is a use-after-free.
+   *  Put "keep the window open" logic (e.g. an unsaved-changes prompt) in
+   *  PRE_CLOSE and veto from there. */
   wuss_EVENT_CLOSE,
   /** Wuss has finished its pending work; once per task per wuss_idle. */
   wuss_EVENT_IDLE,
