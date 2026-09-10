@@ -12,7 +12,12 @@
  * pixel's byte-mates are its immediate horizontal neighbours, walking columns
  * within each row by the same rule applied to "dx" -- the standard two-axis
  * blit-direction trick, so every pixel is read before anything that could
- * overwrite it is written. "bpp_bits" is 1, 2 or 4. */
+ * overwrite it is written. "bpp_bits" is 1, 2 or 4.
+ *
+ * The within-byte pixel order must match the rest of the screen code, which
+ * is not uniform: p1 and p2 are MSB-first (bit 7 / bits 7..6 are the leftmost
+ * pixel -- see screen_set_pixel_p1/p2 and screen_copy_bitmap_p1/p2) while p4
+ * is LSB-first (see screen_set_pixel_p4). "msb_first" carries that. */
 static result_t screen_copy_rect_packed(screen_t    *scr,
                                         const box_t *s,
                                         const box_t *d,
@@ -24,7 +29,7 @@ static result_t screen_copy_rect_packed(screen_t    *scr,
 {
   unsigned char *base;
   int            rowbytes;
-  int            ppb, xshift, xmask;
+  int            ppb, xshift, xmask, msb_first;
   unsigned char  pmask;
   int            row_first, row_last, row_step;
   int            col_first, col_last, col_step;
@@ -33,10 +38,11 @@ static result_t screen_copy_rect_packed(screen_t    *scr,
   base     = scr->base;
   rowbytes = scr->rowbytes;
 
-  ppb    = 8 / bpp_bits;        /* pixels per byte: 8, 4 or 2 */
-  xshift = (bpp_bits == 1) ? 3 : (bpp_bits == 2) ? 2 : 1;
-  xmask  = ppb - 1;
-  pmask  = (unsigned char) ((1u << bpp_bits) - 1);
+  ppb       = 8 / bpp_bits;        /* pixels per byte: 8, 4 or 2 */
+  xshift    = (bpp_bits == 1) ? 3 : (bpp_bits == 2) ? 2 : 1;
+  xmask     = ppb - 1;
+  pmask     = (unsigned char) ((1u << bpp_bits) - 1);
+  msb_first = (bpp_bits != 4);
 
   if (dy > 0) { row_first = height - 1; row_last = -1;     row_step = -1; }
   else        { row_first = 0;          row_last = height; row_step =  1; }
@@ -59,10 +65,14 @@ static result_t screen_copy_rect_packed(screen_t    *scr,
 
       scrp_s  = base + (size_t) sy * rowbytes + (sx >> xshift);
       shift_s = (sx & xmask) * bpp_bits;
+      if (msb_first)
+        shift_s = 8 - bpp_bits - shift_s;
       pix     = (unsigned char) ((*scrp_s >> shift_s) & pmask);
 
       scrp_d  = base + (size_t) dyp * rowbytes + (dxp >> xshift);
       shift_d = (dxp & xmask) * bpp_bits;
+      if (msb_first)
+        shift_d = 8 - bpp_bits - shift_d;
       *scrp_d = (unsigned char) ((*scrp_d & ~(pmask << shift_d))
                                  | (pix << shift_d));
     }

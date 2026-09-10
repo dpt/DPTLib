@@ -1068,40 +1068,29 @@ static result_t test_copy_bitmap_dithered(void)
 
 /* ----------------------------------------------------------------------- */
 
-/* Read/write the "bpp_bits"-deep pixel at column "px" of a byte buffer,
- * LSB-first within the byte -- the same packing screen_copy_rect_packed uses
- * internally. (screen_set_pixel is MSB-first for p1/p2; this test does its own
- * packing so it stays independent of that convention -- a rect copy only has
- * to be self-consistent to be correct.) */
-static int packed_pixel_at(const unsigned char *buf, int px, int bpp_bits)
+/* Read the "bpp_bits"-deep pixel at column "px" of a byte buffer using the
+ * house within-byte order: p1/p2 MSB-first (bit 7 leftmost), p4 LSB-first --
+ * matching screen_set_pixel_p1/p2/p4. The source block is laid down with
+ * screen_set_pixel, so a wrong-endian copy shows up here as a shuffled row. */
+static int house_pixel_at(const unsigned char *buf, int px, int bpp_bits)
 {
   int ppb   = 8 / bpp_bits;
-  int shift = (px % ppb) * bpp_bits;
   int mask  = (1 << bpp_bits) - 1;
+  int shift = (px % ppb) * bpp_bits;
+
+  if (bpp_bits != 4)
+    shift = 8 - bpp_bits - shift; /* MSB-first for p1/p2 */
 
   return (buf[px / ppb] >> shift) & mask;
 }
 
-static void packed_pixel_set(unsigned char *buf,
-                             int            px,
-                             int            bpp_bits,
-                             int            val)
-{
-  int ppb   = 8 / bpp_bits;
-  int shift = (px % ppb) * bpp_bits;
-  int mask  = (1 << bpp_bits) - 1;
-
-  buf[px / ppb] = (unsigned char) ((buf[px / ppb] & ~(mask << shift))
-                                   | ((val & mask) << shift));
-}
-
-/* screen_copy_rect on the sub-byte paletted formats (p1/p2/p4): fill a
- * left-hand column block with a non-zero index, copy it right by an odd
- * (non-byte-aligned) offset, and check the pixels landed at the destination
- * and the untouched column to the right of the source stayed clear (the copy
- * reads before it writes -- no smear). Regression: these formats used to fall
- * through to result_NOT_SUPPORTED, forcing a full repaint on every low-bpp
- * window move. */
+/* screen_copy_rect on the sub-byte paletted formats (p1/p2/p4): lay down an
+ * 8x8 block with screen_set_pixel, copy it right by an odd (non-byte-aligned)
+ * offset, and check the pixels landed at the destination in the right order,
+ * did not smear past it, and left the row below the source clear. Regression:
+ * these formats used to fall through to result_NOT_SUPPORTED (full repaint on
+ * every low-bpp window move); the first packed implementation then copied
+ * p1/p2 with the wrong within-byte order and shuffled the row. */
 static result_t test_copy_rect_packed(void)
 {
   static const struct { pixelfmt_t fmt; int bits; } cases[] =
@@ -1135,10 +1124,14 @@ static result_t test_copy_rect_packed(void)
     memset(buf, 0, sizeof(buf));
     screen_init(&scr, SIZE2D(WIDTH, HEIGHT), cases[ci].fmt, rowbytes, pal, buf);
 
-    /* an 8-wide, 8-tall block at the top-left */
+    /* an 8-wide, 8-tall block at the top-left, laid down the house way. Each
+     * column carries a distinct non-zero index (1 + x % fill; adjacent
+     * columns -- including byte-mates -- differ) so a within-byte reordering
+     * can't hide behind a uniform fill. p1 has only index 1 available, so its
+     * shuffle is caught by the no-smear check below instead. */
     for (y = 0; y < 8; y++)
       for (x = 0; x < 8; x++)
-        packed_pixel_set(buf + (size_t) y * rowbytes, x, cases[ci].bits, fill);
+        screen_set_pixel(&scr, x, y, pal[1 + x % fill]);
 
     src = (box_t) { 0, 0, 8, 8 };
     if (screen_copy_rect(&scr, &src, POINT(5, 0), &got) != result_OK)
@@ -1147,17 +1140,18 @@ static result_t test_copy_rect_packed(void)
       return result_TEST_FAILED;
     }
 
-    /* moved: columns 5..12 of row 0 now carry the fill index */
-    for (x = 5; x < 13; x++)
-      if (packed_pixel_at(buf, x, cases[ci].bits) != fill)
+    /* moved: column c of the source now sits at c+5, same index */
+    for (x = 0; x < 8; x++)
+      if (house_pixel_at(buf, x + 5, cases[ci].bits) != 1 + x % fill)
       {
-        printf("screen: copy_rect p%d did not move pixel at x=%d\n",
-               cases[ci].bits, x);
+        printf("screen: copy_rect p%d wrong pixel at x=%d "
+               "(got %d want %d)\n", cases[ci].bits, x + 5,
+               house_pixel_at(buf, x + 5, cases[ci].bits), 1 + x % fill);
         return result_TEST_FAILED;
       }
 
     /* read-before-write: column 13, just past the destination, is untouched */
-    if (packed_pixel_at(buf, 13, cases[ci].bits) != 0)
+    if (house_pixel_at(buf, 13, cases[ci].bits) != 0)
     {
       printf("screen: copy_rect p%d smeared past its destination\n",
              cases[ci].bits);
@@ -1166,7 +1160,7 @@ static result_t test_copy_rect_packed(void)
 
     /* row 8, the first row below the 8-tall source, stayed clear */
     for (x = 0; x < 16; x++)
-      if (packed_pixel_at(buf + (size_t) 8 * rowbytes, x, cases[ci].bits) != 0)
+      if (house_pixel_at(buf + (size_t) 8 * rowbytes, x, cases[ci].bits) != 0)
       {
         printf("screen: copy_rect p%d touched a row below the source\n",
                cases[ci].bits);
