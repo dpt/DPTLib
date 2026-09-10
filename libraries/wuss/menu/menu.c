@@ -227,6 +227,24 @@ static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
   return result_OK;
 }
 
+/* True if the wuss pointer sits over `window`'s chrome above its content area
+ * -- the titlebar strip. Core routes furniture hovers straight to the window
+ * manager and delivers no event to the menu delegate (see wuss_mouse_move),
+ * so a titlebar hover on a parent level cannot be caught in the ICON handler;
+ * the IDLE tick polls this instead to close a submenu the pointer has slid up
+ * onto the parent's titlebar to reach (e.g. to drag the parent). */
+static int wuss__pointer_over_titlebar(const wuss_window_t *window)
+{
+  point_t p;
+  box_t   content;
+
+  p = wuss_get_pointer(window->wuss);
+  wuss__content_box(window, &content);
+
+  return box_contains_point(&window->visible, p.x, p.y)
+      && p.y < content.y0;
+}
+
 /* ----------------------------------------------------------------------- */
 
 /* The menu window's task delegate. Shared across every borderless menu
@@ -243,18 +261,43 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
   int                     i;
 
   /* IDLE arrives with window == NULL; task_data is the wuss_t (see
-   * wuss__menu_task). Drive any running SELECT-pick flash off it. */
+   * wuss__menu_task). Drive any running SELECT-pick flash off it, and close a
+   * submenu the pointer has slid up onto its parent's titlebar. */
   if (event->kind == wuss_EVENT_IDLE)
   {
     struct wuss__menu *node;
 
     wuss = task_data;
+
     for (node = wuss->menu_chain; node != NULL; node = node->child)
       if (!node->borrowed && node->flash.frames > 0)
       {
         wuss__menu_flash_step(node);
         break; /* node may be freed; the chain is gone if the flash ended */
       }
+
+    for (node = wuss->menu_chain; node != NULL; node = node->child)
+      if (node->child != NULL
+          && node->flash.frames == 0
+          && wuss__pointer_over_titlebar(node->window))
+      {
+        wuss_icon_t *was_parent;
+
+        was_parent = (node->open_index >= 0) ? node->icons[node->open_index]
+                                             : NULL;
+
+        wuss__menu_close_from(node->child);
+        node->child      = NULL;
+        node->open_index = -1;
+
+        if (was_parent != NULL)
+        {
+          wuss__icon_set_state(was_parent, wuss_ICON_STATE_HOVERED, 0);
+          wuss__icon_invalidate(node->window, was_parent);
+        }
+        break; /* closing the child re-shaped the chain past this node */
+      }
+
     return result_OK;
   }
 
