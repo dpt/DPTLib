@@ -105,4 +105,17 @@ pattern_t pattern_from_preset(screen_pattern_t preset,
  */
 pattern_t pattern_from_mask(const uint8_t mask[8], colour_t colour);
 
+/**
+ * The 8x8 ordered (Bayer) dither threshold for screen pixel (`x`, `y`), a
+ * value in the range 0 to 63. This is the recursively-built matrix the
+ * `screen_PATTERN_BAYER*` tiles are derived from, exposed for callers that
+ * dither a continuous value per pixel rather than fill with a fixed-coverage
+ * tile (e.g. `screen_copy_bitmap_dithered`). `x` and `y` may be negative.
+ *
+ * \param[in] x Screen X coordinate.
+ * \param[in] y Screen Y coordinate.
+ * \return The threshold, 0 to 63.
+ */
+int pattern_bayer_threshold(int x, int y);
+
 #endif /* FRAMEBUF_PATTERN_H */

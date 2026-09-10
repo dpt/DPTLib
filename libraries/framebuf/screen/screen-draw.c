@@ -9,6 +9,7 @@
 
 #include "base/utils.h"
 #include "framebuf/colour.h"
+#include "framebuf/pattern.h"
 #include "framebuf/pixelmap.h"
 #include "framebuf/span-registry.h"
 #include "geom/line.h"
@@ -292,27 +293,62 @@ void screen_fill_square(screen_t *scr,
 
 /* ----------------------------------------------------------------------- */
 
+/* Ordered-dither one channel value "v" (0..255) for screen pixel (sx, sy)
+ * before it is matched to the nearest palette entry. "nlevels" is the palette
+ * entry count; the mean gap between adjacent levels of a linear ramp is then
+ * 255 / (nlevels - 1), and the Bayer cell (-32..31 about zero) nudges "v" by
+ * up to half that gap either way, so a value sitting between two entries lands
+ * on one or the other in a fixed 8x8 pattern instead of always snapping to
+ * the nearer. Result clamped to 0..255.
+ *
+ * ponytail: this assumes a roughly even, roughly greyscale palette -- the one
+ * case (shallow paletted screen showing a gradient) the dithered blit is for.
+ * A wildly non-uniform palette dithers weakly, not wrongly; swap in a
+ * per-entry nearest-two search keyed on the real palette if that matters. */
+static unsigned int dither_channel(unsigned int v,
+                                   int          nlevels,
+                                   int          dither,
+                                   int          sx,
+                                   int          sy)
+{
+  int gap;
+  int adj;
+
+  if (!dither || nlevels < 2)
+    return v;
+
+  gap = 255 / (nlevels - 1);
+  adj = ((pattern_bayer_threshold(sx, sy) - 32) * gap) / 64;
+
+  return (unsigned int) CLAMP((int) v + adj, 0, 255);
+}
+
 /* Blit "src" onto the paletted screen, its top-left at (x, y), clipped to
  * "draw_box". No linear channel bits to blend, so this does an alpha-tested
  * transfer (skip fully transparent, else nearest palette match) rather than
- * true blending, matching screen_set_pixel's case 2. Returns
- * result_NOT_SUPPORTED if there is no deep->paletted conversion table for the
- * screen's format. */
+ * true blending, matching screen_set_pixel's case 2. With "dither" set the
+ * source RGB is ordered-dithered per pixel before the nearest-match lookup,
+ * breaking up the banding a shallow palette otherwise shows on a gradient.
+ * Returns result_NOT_SUPPORTED if there is no deep->paletted conversion table
+ * for the screen's format. */
 static result_t screen_copy_bitmap_p4(screen_t       *scr,
                                       int             x,
                                       int             y,
                                       const bitmap_t *src,
                                       const box_t    *draw_box,
-                                      int             has_alpha)
+                                      int             has_alpha,
+                                      int             dither)
 {
   const unsigned char *srcrow;
   unsigned char       *dstbase;
   const pixelmap_t    *pm;
+  int                  nlevels;
   int                  clipped_width, clipped_height;
   int                  yy;
 
   clipped_width  = draw_box->x1 - draw_box->x0;
   clipped_height = draw_box->y1 - draw_box->y0;
+  nlevels        = pixelfmt_paletted_nentries(scr->format);
 
   srcrow  = (const unsigned char *) src->base + (draw_box->y0 - y) * src->rowbytes;
   dstbase = scr->base;
@@ -352,6 +388,9 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
       r   = (c.primary >> pm->rshift) & 0xFF;
       g   = (c.primary >> pm->gshift) & 0xFF;
       b   = (c.primary >> pm->bshift) & 0xFF;
+      r   = dither_channel(r, nlevels, dither, dstx, draw_box->y0 + yy);
+      g   = dither_channel(g, nlevels, dither, dstx, draw_box->y0 + yy);
+      b   = dither_channel(b, nlevels, dither, dstx, draw_box->y0 + yy);
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
           | ( b >> (8 - pm->bbits));
@@ -369,25 +408,29 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
 /* Blit "src" onto the 1bpp screen, its top-left at (x, y), clipped to
  * "draw_box". Like screen_copy_bitmap_p4 this is an alpha-tested transfer
  * (skip fully transparent, else nearest of the two palette entries) rather
- * than a blend -- a 1bpp screen has no channel bits to blend. The cached
- * RGB->index table turns the inner loop into a mask-and-lookup; bit 7 of a
- * byte is the leftmost pixel. Returns result_NOT_SUPPORTED if there is no
- * deep->paletted conversion table for the screen's format. */
+ * than a blend -- a 1bpp screen has no channel bits to blend. "dither"
+ * ordered-dithers the source RGB per pixel first. The cached RGB->index table
+ * turns the inner loop into a mask-and-lookup; bit 7 of a byte is the
+ * leftmost pixel. Returns result_NOT_SUPPORTED if there is no deep->paletted
+ * conversion table for the screen's format. */
 static result_t screen_copy_bitmap_p1(screen_t       *scr,
                                       int             x,
                                       int             y,
                                       const bitmap_t *src,
                                       const box_t    *draw_box,
-                                      int             has_alpha)
+                                      int             has_alpha,
+                                      int             dither)
 {
   const unsigned char *srcrow;
   unsigned char       *dstbase;
   const pixelmap_t    *pm;
+  int                  nlevels;
   int                  clipped_width, clipped_height;
   int                  yy;
 
   clipped_width  = draw_box->x1 - draw_box->x0;
   clipped_height = draw_box->y1 - draw_box->y0;
+  nlevels        = pixelfmt_paletted_nentries(scr->format);
 
   srcrow  = (const unsigned char *) src->base + (draw_box->y0 - y) * src->rowbytes;
   dstbase = scr->base;
@@ -424,6 +467,9 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
       r   = (c.primary >> pm->rshift) & 0xFF;
       g   = (c.primary >> pm->gshift) & 0xFF;
       b   = (c.primary >> pm->bshift) & 0xFF;
+      r   = dither_channel(r, nlevels, dither, dstx, draw_box->y0 + yy);
+      g   = dither_channel(g, nlevels, dither, dstx, draw_box->y0 + yy);
+      b   = dither_channel(b, nlevels, dither, dstx, draw_box->y0 + yy);
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
           | ( b >> (8 - pm->bbits));
@@ -442,23 +488,27 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
  * "draw_box". Alpha-tested transfer to the nearest of the four palette
  * entries, exactly as screen_copy_bitmap_p1 but two bits per pixel: bits
  * 7..6 of a byte are the leftmost pixel and the cached RGB->index table is
- * packed four entries to the byte. Returns result_NOT_SUPPORTED if there is
- * no deep->paletted conversion table for the screen's format. */
+ * packed four entries to the byte. "dither" ordered-dithers the source RGB
+ * per pixel first. Returns result_NOT_SUPPORTED if there is no deep->paletted
+ * conversion table for the screen's format. */
 static result_t screen_copy_bitmap_p2(screen_t       *scr,
                                       int             x,
                                       int             y,
                                       const bitmap_t *src,
                                       const box_t    *draw_box,
-                                      int             has_alpha)
+                                      int             has_alpha,
+                                      int             dither)
 {
   const unsigned char *srcrow;
   unsigned char       *dstbase;
   const pixelmap_t    *pm;
+  int                  nlevels;
   int                  clipped_width, clipped_height;
   int                  yy;
 
   clipped_width  = draw_box->x1 - draw_box->x0;
   clipped_height = draw_box->y1 - draw_box->y0;
+  nlevels        = pixelfmt_paletted_nentries(scr->format);
 
   srcrow  = (const unsigned char *) src->base + (draw_box->y0 - y) * src->rowbytes;
   dstbase = scr->base;
@@ -495,6 +545,9 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
       r   = (c.primary >> pm->rshift) & 0xFF;
       g   = (c.primary >> pm->gshift) & 0xFF;
       b   = (c.primary >> pm->bshift) & 0xFF;
+      r   = dither_channel(r, nlevels, dither, dstx, draw_box->y0 + yy);
+      g   = dither_channel(g, nlevels, dither, dstx, draw_box->y0 + yy);
+      b   = dither_channel(b, nlevels, dither, dstx, draw_box->y0 + yy);
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
           | ( b >> (8 - pm->bbits));
@@ -569,7 +622,16 @@ static void screen_copy_bitmap_32(screen_t       *scr,
   }
 }
 
-result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
+/* Shared body for screen_copy_bitmap and screen_copy_bitmap_dithered. With
+ * "dither" set the paletted (p1/p2/p4) paths ordered-dither the source RGB
+ * before the nearest-match lookup; the 32bpp path and the RLE path ignore it
+ * (a 32bpp screen has the channel depth not to band, and an RLE source is
+ * pre-quantised UI art). */
+static result_t screen_copy_bitmap_i(screen_t       *scr,
+                                     int             x,
+                                     int             y,
+                                     const bitmap_t *src,
+                                     int             dither)
 {
   box_t clip_box;
   box_t src_box;
@@ -596,9 +658,9 @@ result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 
   switch (pixelfmt_log2bpp(scr->format))
   {
-  case 0: return screen_copy_bitmap_p1(scr, x, y, src, &draw_box, has_alpha);
-  case 1: return screen_copy_bitmap_p2(scr, x, y, src, &draw_box, has_alpha);
-  case 2: return screen_copy_bitmap_p4(scr, x, y, src, &draw_box, has_alpha);
+  case 0: return screen_copy_bitmap_p1(scr, x, y, src, &draw_box, has_alpha, dither);
+  case 1: return screen_copy_bitmap_p2(scr, x, y, src, &draw_box, has_alpha, dither);
+  case 2: return screen_copy_bitmap_p4(scr, x, y, src, &draw_box, has_alpha, dither);
   case 5: screen_copy_bitmap_32(scr, x, y, src, &draw_box, has_alpha); break;
 
   default:
@@ -607,6 +669,19 @@ result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
   }
 
   return result_OK;
+}
+
+result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
+{
+  return screen_copy_bitmap_i(scr, x, y, src, 0);
+}
+
+result_t screen_copy_bitmap_dithered(screen_t       *scr,
+                                     int             x,
+                                     int             y,
+                                     const bitmap_t *src)
+{
+  return screen_copy_bitmap_i(scr, x, y, src, 1);
 }
 
 /* ----------------------------------------------------------------------- */

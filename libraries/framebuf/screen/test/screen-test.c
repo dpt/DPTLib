@@ -958,6 +958,114 @@ static result_t test_copy_bitmap_p2(void)
   return result_TEST_PASSED;
 }
 
+/* Unpack the p2 pixel at column "px" of a row's byte buffer (bits 7..6 are
+ * column 0, MSB-first, four to the byte). */
+static int p2_pixel_at(const unsigned char *rowbuf, int px)
+{
+  return (rowbuf[px >> 2] >> (6 - ((px & 3) << 1))) & 3;
+}
+
+/* screen_copy_bitmap_dithered on a p2 screen: a flat mid-grey source, which
+ * screen_copy_bitmap would quantise to one uniform index across the row, must
+ * come out as a stipple of at least two indices; the flat black and white
+ * ends must still be uniform (the Bayer nudge can't push them off their
+ * clamp). */
+static result_t test_copy_bitmap_dithered(void)
+{
+#define PD_ROWBYTES (WIDTH / 4)
+  static unsigned char       pdpixels[PD_ROWBYTES * HEIGHT];
+  static pixelfmt_rgba8888_t srcbuf[16 * 8];
+
+  screen_t      scr;
+  bitmap_t      src;
+  colour_t      pal[4];
+  int           first;
+  int           varied;
+  int           px;
+  int           x, y;
+
+  pal[0] = colour_rgb(0x00, 0x00, 0x00);
+  pal[1] = colour_rgb(0x55, 0x55, 0x55);
+  pal[2] = colour_rgb(0xAA, 0xAA, 0xAA);
+  pal[3] = colour_rgb(0xFF, 0xFF, 0xFF);
+
+  /* 16x8 flat mid-grey (0x80): sits between pal[1] and pal[2]. */
+  for (y = 0; y < 8; y++)
+    for (x = 0; x < 16; x++)
+      srcbuf[y * 16 + x] = colour_rgb(0x80, 0x80, 0x80).primary;
+
+  bitmap_init(&src, SIZE2D(16, 8), pixelfmt_rgba8888,
+              16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
+
+  memset(pdpixels, 0, sizeof(pdpixels));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, PD_ROWBYTES, pal,
+              pdpixels);
+
+  if (screen_copy_bitmap_dithered(&scr, 0, 0, &src) != result_OK)
+  {
+    printf("screen: copy_bitmap_dithered to p2 screen failed\n");
+    return result_TEST_FAILED;
+  }
+
+  /* plain blit of the same source: every one of the first 16 pixels
+   * quantises to the same index. */
+  {
+    unsigned char plain[PD_ROWBYTES * HEIGHT];
+    screen_t      pscr;
+
+    memset(plain, 0, sizeof(plain));
+    screen_init(&pscr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, PD_ROWBYTES, pal,
+                plain);
+    screen_copy_bitmap(&pscr, 0, 0, &src);
+    for (px = 1; px < 16; px++)
+      if (p2_pixel_at(plain, px) != p2_pixel_at(plain, 0))
+      {
+        printf("screen: plain p2 blit of a flat source was not uniform\n");
+        return result_TEST_FAILED;
+      }
+  }
+
+  /* dithered: at least one of the first 16 pixels differs from pixel 0 (the
+   * 8x8 Bayer cell varies across the row). */
+  first  = p2_pixel_at(pdpixels, 0);
+  varied = 0;
+  for (px = 1; px < 16; px++)
+    if (p2_pixel_at(pdpixels, px) != first)
+      varied = 1;
+  if (!varied)
+  {
+    printf("screen: dithered p2 blit of a flat mid-grey did not stipple\n");
+    return result_TEST_FAILED;
+  }
+
+  /* flat black stays index 0 across the row, flat white stays index 3. */
+  for (y = 0; y < 8; y++)
+    for (x = 0; x < 16; x++)
+      srcbuf[y * 16 + x] = colour_rgb(0x00, 0x00, 0x00).primary;
+  memset(pdpixels, 0xAA, sizeof(pdpixels));
+  screen_copy_bitmap_dithered(&scr, 0, 0, &src);
+  if (pdpixels[0] != 0x00 || pdpixels[1] != 0x00 ||
+      pdpixels[2] != 0x00 || pdpixels[3] != 0x00)
+  {
+    printf("screen: dithered p2 blit pushed flat black off index 0\n");
+    return result_TEST_FAILED;
+  }
+
+  for (y = 0; y < 8; y++)
+    for (x = 0; x < 16; x++)
+      srcbuf[y * 16 + x] = colour_rgb(0xFF, 0xFF, 0xFF).primary;
+  memset(pdpixels, 0x00, sizeof(pdpixels));
+  screen_copy_bitmap_dithered(&scr, 0, 0, &src);
+  if (pdpixels[0] != 0xFF || pdpixels[1] != 0xFF ||
+      pdpixels[2] != 0xFF || pdpixels[3] != 0xFF)
+  {
+    printf("screen: dithered p2 blit pushed flat white off index 3\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t screen_test(const char *resources)
@@ -977,7 +1085,8 @@ result_t screen_test(const char *resources)
     test_draw_circle,
     test_fill_circle,
     test_copy_bitmap_p1,
-    test_copy_bitmap_p2
+    test_copy_bitmap_p2,
+    test_copy_bitmap_dithered
   };
 
   result_t rc;

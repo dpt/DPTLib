@@ -46,6 +46,7 @@ result_t image_create(wuss_t       *wuss,
   task->menu        = NULL;
   task->proginfo    = NULL;
   task->menu_handle = NULL;
+  task->dithering   = 1;
 
   images_dir = path_join_filename(resources, 2, "resources", "images");
   rc = namelist_scan(images_dir, IMAGE_EXT, task->names[0],
@@ -114,7 +115,7 @@ result_t image_create(wuss_t       *wuss,
     static const wuss_proginfo_desc_t desc =
     {
       "Image",
-      "Cycle the PNGs under resources/images",
+      "View the PNGs under resources/images",
       "(c) DPTLib contributors",
       "1.0 (" __DATE__ ")"
     };
@@ -170,7 +171,10 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   band[3].y1 = by + ic->bitmap.size.h;                    /* right */
   screen_fill_rects(scr, band, 4, colour_rgb(0xFF, 0x77, 0xA8)); /* PICO-8 pink */
 
-  screen_copy_bitmap(scr, bx, by, &ic->bitmap);
+  if (ic->dithering)
+    screen_copy_bitmap_dithered(scr, bx, by, &ic->bitmap);
+  else
+    screen_copy_bitmap(scr, bx, by, &ic->bitmap);
 
   return result_OK;
 }
@@ -236,9 +240,10 @@ static result_t image_open_menu(image_task_t *ic)
   result_t     rc;
   wuss_menu_t *m;
   int          i;
+  int          ticked[7];
 
   rc = wuss_menu_create_from_desc(&m,
-         "Image, Info, New..., Open, !Show grid, !Wireframe, >Export, |Quit",
+         "Image, Info, New..., Open, !Dithering, !Wireframe, >Export, |Quit",
          &image_menu_export);
   if (rc != result_OK)
     return rc;
@@ -258,9 +263,16 @@ static result_t image_open_menu(image_task_t *ic)
 
   wuss_menu_destroy(ic->menu);
   ic->menu = m;
+  
+  // TODO: Use a bitfield?
+  memset(ticked, 0, sizeof(ticked));
+  ticked[3] = ic->dithering;
 
-  return wuss_menu_open(ic->delegate, ic->menu, wuss_get_pointer(ic->wuss),
-                        &ic->menu_handle);
+  return wuss_menu_open_ticked(ic->delegate,
+                               ic->menu,
+                               ticked,
+                               wuss_get_pointer(ic->wuss),
+                              &ic->menu_handle);
 }
 
 result_t image_handle(wuss_window_t      *window,
@@ -296,8 +308,14 @@ result_t image_handle(wuss_window_t      *window,
     index = event->data.menu_select.index;
     printf("image menu: picked \"%s\"\n",
            menu->items[index].text ? menu->items[index].text : "(sep)");
+    if (index == 3) {
+      ic->dithering = !ic->dithering;
+      wuss_window_invalidate_visible(ic->window);
+    }
     if (!wuss_menu_should_keep_open(event))
       ic->menu_handle = NULL; /* SELECT pick already freed the chain */
+    else if (index == 3)
+      wuss_menu_set_item_ticked(ic->menu_handle, ic->menu, 3, ic->dithering);
     return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
