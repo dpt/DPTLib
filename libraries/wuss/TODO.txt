@@ -6,10 +6,9 @@ Items marked (blocks: X) are prerequisites for X.
 
 LAYER 0 - BUGS (fix before building on top)
 
-- Various window size toggle ops need checking out
+- Various window size toggle ops need checking out - or at least understood
 - Auto window placement packer still not working as expected
     blocks: reliable multi-window tasks
-- Image task not shrinking window when new image loads
 
 
 LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
@@ -19,29 +18,8 @@ LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
     blocks: Draw bitmap through mask, Masked sprites/bitmaps, furniture tinting
 - UTF-8 everywhere
     blocks: text abstraction, window/menu templates
-- Is having font handling in wuss-core a bad thing? Decide arch now.
-    blocks: Wuss text abstraction
 - Icon type taxonomy
 - Window layout / constraint system / stacking primitives?
-
-
-Toolbox (Window) Gadgets:
-Label
-Action
-Display
-Writable
-Number
-String Set
-Labelled Box
-Option
-Radio          -- should be a set
-GRight         -- need?
-Slider (H/V)
-Draggable
-Button
-
-Menu entries are an extra thing
-
 
 
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
@@ -57,8 +35,8 @@ LAYER 3 - SPRITES (needs masks)
 - Sprites (with names, with masks, with multiple sprites)
 - Masked sprites/bitmaps. Covered by RLE work?
 - Sprite scaling
-- Draw bitmap through (bayer) mask
 - Import Kare style icons
+- Sprites noticably brighter / colour matching needs work
 
 
 LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
@@ -73,6 +51,7 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
 - Snap to edges (outline-click bug fixed; unblocked)
 - Dragging against window edge shuffles window in opposite direction
   (outline-click bug fixed; unblocked)
+- 2D Adjust window scroll drag
 - Input focus, text entry, furniture tinting
 - Icon layout
 - Furniture colour selection needs improvements (e.g. losing menu readability when palette changed)
@@ -98,6 +77,7 @@ LAYER 6 - MULTI-TASK (needs stable windows, templates)
 
 LAYER 7 - APPS & POLISH (needs most of the above)
 
+- Post-Its app with explanatory text for newbies
 - Have a Paint app as a target
 - Desktop cohort: Filer, Task Manager, Palette Util
 - Colour Picker component

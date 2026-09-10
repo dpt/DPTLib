@@ -363,17 +363,13 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
 
 /* ----------------------------------------------------------------------- */
 
-/* Blit the icon-set bitmap for a radio/option's current state, centred in the
- * glyph square "g", clipped to it. Names are radon/radoff for RADIO and
- * opton/optoff for OPTION. Returns 1 when a bitmap was drawn, 0 when the set is
- * absent or lacks that entry -- the caller then draws the vector glyph. */
-static int wuss__icon_blit_radio_option(const icon_draw_ctx_t *c,
-                                        const box_t           *g)
+/* The icon-set bitmap for a radio/option's current state, or NULL when the set
+ * is absent or lacks that entry. Names are radon/radoff for RADIO and
+ * opton/optoff for OPTION. */
+static const bitmap_t *wuss__icon_radio_option_bitmap(const icon_draw_ctx_t *c)
 {
-  const char     *name;
-  const bitmap_t *bm;
-  screen_t        clipped;
-  int             idx, bx, by;
+  const char *name;
+  int         idx;
 
   if (c->icon->spec.type == wuss_ICON_TYPE_RADIO)
     name = wuss__icon_selected(c->icon) ? "radon" : "radoff";
@@ -382,43 +378,37 @@ static int wuss__icon_blit_radio_option(const icon_draw_ctx_t *c,
 
   idx = wuss_icons_lookup(c->wuss, name);
   if (idx < 0)
-    return 0;
+    return NULL;
 
-  bm = wuss_icons_bitmap(c->wuss, idx);
-  if (bm == NULL)
-    return 0;
-
-  bx = g->x0 + ((g->x1 - g->x0) - bm->size.w) / 2;
-  by = g->y0 + ((g->y1 - g->y0) - bm->size.h) / 2;
-
-  clipped = *c->scr;
-  if (box_intersection(&c->scr->clip, g, &clipped.clip))
-    return 1; /* fully clipped away, but still "handled" -- no vector fallback */
-
-  screen_copy_bitmap(&clipped, bx, by, bm);
-  return 1;
+  return wuss_icons_bitmap(c->wuss, idx);
 }
 
-/* wuss_ICON_TYPE_RADIO and wuss_ICON_TYPE_OPTION: a font-height square glyph at
- * the left, vertically centred, with the label to its right. If the icon set
- * carries radon/radoff (RADIO) or opton/optoff (OPTION) those bitmaps are
- * blitted for the state; otherwise RADIO draws a square ring with a solid
- * centre when selected and OPTION draws a box with a tick when selected. */
+/* wuss_ICON_TYPE_RADIO and wuss_ICON_TYPE_OPTION: a glyph at the left,
+ * vertically centred, with the label to its right. If the icon set carries
+ * radon/radoff (RADIO) or opton/optoff (OPTION) those bitmaps are blitted for
+ * the state, and the glyph box and label offset follow the bitmap's own size;
+ * otherwise a font-height square is used -- RADIO draws a square ring with a
+ * solid centre when selected and OPTION draws a box with a tick when
+ * selected. */
 static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
 {
   const wuss_icon_spec_t *icon = &c->icon->spec;
   const box_t            *b    = &c->b;
+  const bitmap_t         *bm;
   colour_t                glyph, bg;
   box_t                   g;
-  int                     gsz, gy, tx;
+  int                     gw, gh, gy, tx;
 
-  gsz = CLAMP(c->font_height, 8, b->y1 - b->y0);
-  gy = b->y0 + (b->y1 - b->y0 - gsz) / 2;
+  bm = wuss__icon_radio_option_bitmap(c);
+
+  gw = bm ? bm->size.w : CLAMP(c->font_height, 8, b->x1 - b->x0);
+  gh = bm ? bm->size.h : CLAMP(c->font_height, 8, b->y1 - b->y0);
+  gy = b->y0 + (b->y1 - b->y0 - gh) / 2;
 
   g.x0 = b->x0;
   g.y0 = gy;
-  g.x1 = b->x0 + gsz;
-  g.y1 = gy + gsz;
+  g.x1 = b->x0 + gw;
+  g.y1 = gy + gh;
 
   glyph = (icon->flags & wuss_ICON_FLAGS_DISABLED)
         ? c->wuss->palette[c->wuss->bevel_dark]
@@ -430,9 +420,9 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     screen_fill_rect(c->scr, b->x0, b->y0,
                      SIZE2D(b->x1 - b->x0, b->y1 - b->y0), bg);
 
-  if (wuss__icon_blit_radio_option(c, &g))
+  if (bm != NULL)
   {
-    /* bitmap drawn -- fall through to the label */
+    screen_copy_bitmap(c->scr, g.x0, g.y0, bm);
   }
   else if (icon->type == wuss_ICON_TYPE_RADIO)
   {
@@ -443,7 +433,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     screen_draw_line(c->scr, g.x1 - 1, g.y0 + 2, g.x1 - 1, g.y1 - 3, glyph);
     if (wuss__icon_selected(c->icon))
       screen_fill_rect(c->scr, g.x0 + 3, g.y0 + 3,
-                       SIZE2D(gsz - 6, gsz - 6), glyph);
+                       SIZE2D(gw - 6, gh - 6), glyph);
   }
   else
   {
@@ -452,9 +442,9 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
                              SIZE2D(g.x1 - g.x0, g.y1 - g.y0), glyph);
     if (wuss__icon_selected(c->icon))
     {
-      screen_draw_line(c->scr, g.x0 + 2, g.y0 + gsz / 2,
-                       g.x0 + gsz / 2 - 1, g.y1 - 3, glyph);
-      screen_draw_line(c->scr, g.x0 + gsz / 2 - 1, g.y1 - 3,
+      screen_draw_line(c->scr, g.x0 + 2, g.y0 + gh / 2,
+                       g.x0 + gw / 2 - 1, g.y1 - 3, glyph);
+      screen_draw_line(c->scr, g.x0 + gw / 2 - 1, g.y1 - 3,
                        g.x1 - 3, g.y0 + 2, glyph);
     }
   }
