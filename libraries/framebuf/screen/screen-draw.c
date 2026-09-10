@@ -325,8 +325,10 @@ static int dither_bias_build(int tab[64], int nlevels, int dither)
   return 1;
 }
 
-/* Apply the pre-built bias for screen pixel (sx, sy) to channel value "v"
- * (0..255), result clamped to 0..255. */
+/* Apply the pre-built bias for sprite-local pixel (sx, sy) to channel value
+ * "v" (0..255), result clamped to 0..255. Coordinates are relative to the
+ * source bitmap's top-left, not the screen, so the dither pattern stays fixed
+ * to the sprite as its window moves rather than crawling across it. */
 static unsigned int dither_channel(unsigned int v,
                                    const int    tab[64],
                                    int          sx,
@@ -344,9 +346,10 @@ static unsigned int dither_channel(unsigned int v,
  * transfer (skip fully transparent, else nearest palette match) rather than
  * true blending, matching screen_set_pixel's case 2. With "dither" set the
  * source RGB is ordered-dithered per pixel before the nearest-match lookup,
- * breaking up the banding a shallow palette otherwise shows on a gradient.
- * Returns result_NOT_SUPPORTED if there is no deep->paletted conversion table
- * for the screen's format. */
+ * breaking up the banding a shallow palette otherwise shows on a gradient; the
+ * Bayer cell is keyed on the sprite-local pixel so the pattern travels with
+ * the sprite. Returns result_NOT_SUPPORTED if there is no deep->paletted
+ * conversion table for the screen's format. */
 static result_t screen_copy_bitmap_p4(screen_t       *scr,
                                       int             x,
                                       int             y,
@@ -409,9 +412,9 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
       b   = (c.primary >> pm->bshift) & 0xFF;
       if (do_dither)
       {
-        r = dither_channel(r, bias, dstx, draw_box->y0 + yy);
-        g = dither_channel(g, bias, dstx, draw_box->y0 + yy);
-        b = dither_channel(b, bias, dstx, draw_box->y0 + yy);
+        r = dither_channel(r, bias, dstx - x, draw_box->y0 + yy - y);
+        g = dither_channel(g, bias, dstx - x, draw_box->y0 + yy - y);
+        b = dither_channel(b, bias, dstx - x, draw_box->y0 + yy - y);
       }
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
@@ -494,9 +497,9 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
       b   = (c.primary >> pm->bshift) & 0xFF;
       if (do_dither)
       {
-        r = dither_channel(r, bias, dstx, draw_box->y0 + yy);
-        g = dither_channel(g, bias, dstx, draw_box->y0 + yy);
-        b = dither_channel(b, bias, dstx, draw_box->y0 + yy);
+        r = dither_channel(r, bias, dstx - x, draw_box->y0 + yy - y);
+        g = dither_channel(g, bias, dstx - x, draw_box->y0 + yy - y);
+        b = dither_channel(b, bias, dstx - x, draw_box->y0 + yy - y);
       }
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
@@ -578,9 +581,9 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
       b   = (c.primary >> pm->bshift) & 0xFF;
       if (do_dither)
       {
-        r = dither_channel(r, bias, dstx, draw_box->y0 + yy);
-        g = dither_channel(g, bias, dstx, draw_box->y0 + yy);
-        b = dither_channel(b, bias, dstx, draw_box->y0 + yy);
+        r = dither_channel(r, bias, dstx - x, draw_box->y0 + yy - y);
+        g = dither_channel(g, bias, dstx - x, draw_box->y0 + yy - y);
+        b = dither_channel(b, bias, dstx - x, draw_box->y0 + yy - y);
       }
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
