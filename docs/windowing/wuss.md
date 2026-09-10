@@ -206,9 +206,9 @@ The enum is left open for sprite and editable-text types later.
 Icons are dynamic and owned by their window:
 
 - `wuss_icon_create(window, spec, &icon)` — returns an opaque `wuss_icon_t *`. The spec gives the bounding box, type, text (copied; `NULL` treated as `""`), foreground and background palette indices, a `border` (label only), and flags. A `wuss_ICON_TYPE_ACTION` must pass a real `bg`; passing `wuss_NO_BACKGROUND` is rejected with `result_WUSS_BAD_ICON`. An unknown type is also `result_WUSS_BAD_ICON`; an out-of-range `fg`/`bg` is `result_WUSS_BAD_COLOUR`.
-- `wuss_icon_delete(icon)` — NULL-safe.
-- `wuss_icon_set_text(icon, text)`, `wuss_icon_set_hidden(icon, hidden)`.
-- Getters: `wuss_icon_get_bbox`, `wuss_icon_get_type`, `wuss_icon_get_text` (never `NULL`), `wuss_icon_get_window`.
+- `wuss_icon_delete(window, icon)` — NULL-safe.
+- `wuss_icon_set_text(window, icon, text)`, `wuss_icon_set_hidden(window, icon, hidden)`, `wuss_icon_set_selected(window, icon, selected)`.
+- Getters: `wuss_icon_get_bbox`, `wuss_icon_get_type`, `wuss_icon_get_text` (never `NULL`), `wuss_icon_get_selected`.
 
 Flags: `wuss_ICON_FLAGS_HIDDEN` (not drawn, not hit-tested) and `wuss_ICON_FLAGS_DISABLED` (drawn greyed; clicks fall through as `wuss_EVENT_MOUSE`).
 

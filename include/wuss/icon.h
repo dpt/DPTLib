@@ -338,31 +338,38 @@ result_t wuss_icon_plot(wuss_window_t          *window,
 
 /**
  * Destroy an icon, unlinking it from its window and invalidating its
- * bounding box so the next redraw clears it. Safe to pass NULL.
+ * bounding box so the next redraw clears it. Safe to pass NULL for \p icon.
  *
- * \param[in] icon Icon to destroy, or NULL.
+ * \param[in] window Window the icon belongs to.
+ * \param[in] icon   Icon to destroy, or NULL.
  */
-void wuss_icon_delete(wuss_icon_t *icon);
+void wuss_icon_delete(wuss_window_t *window, wuss_icon_t *icon);
 
 /**
  * Replace an icon's label text. The new text is copied. Invalidates the
  * icon's bounding box.
  *
- * \param[in] icon Icon to change.
- * \param[in] text New NUL-terminated label; copied. NULL means "".
+ * \param[in] window Window the icon belongs to.
+ * \param[in] icon   Icon to change.
+ * \param[in] text   New NUL-terminated label; copied. NULL means "".
  * \return \ref result_OK on success, \ref result_OOM on allocation failure
  *         (the icon keeps its old text).
  */
-result_t wuss_icon_set_text(wuss_icon_t *icon, const char *text);
+result_t wuss_icon_set_text(wuss_window_t *window,
+                            wuss_icon_t   *icon,
+                            const char    *text);
 
 /**
  * Show or hide an icon, toggling wuss_ICON_FLAGS_HIDDEN. Invalidates the
  * icon's bounding box.
  *
+ * \param[in] window Window the icon belongs to.
  * \param[in] icon   Icon to change.
  * \param[in] hidden Non-zero to hide the icon, zero to show it.
  */
-void wuss_icon_set_hidden(wuss_icon_t *icon, int hidden);
+void wuss_icon_set_hidden(wuss_window_t *window,
+                          wuss_icon_t   *icon,
+                          int            hidden);
 
 /**
  * Fetch an icon's bounding box, in virtual document space.
@@ -390,14 +397,6 @@ wuss_icon_type_t wuss_icon_get_type(const wuss_icon_t *icon);
 const char *wuss_icon_get_text(const wuss_icon_t *icon);
 
 /**
- * Fetch the window an icon belongs to.
- *
- * \param[in] icon Icon to query.
- * \return The owning window.
- */
-wuss_window_t *wuss_icon_get_window(const wuss_icon_t *icon);
-
-/**
  * Fetch a radio or option icon's selected (latched) state.
  *
  * \param[in] icon Icon to query.
@@ -414,10 +413,13 @@ int wuss_icon_get_selected(const wuss_icon_t *icon);
  * programmatic path, distinct from a user click. A no-op for icon types with
  * no latched state.
  *
+ * \param[in] window   Window the icon belongs to.
  * \param[in] icon     Icon to change.
  * \param[in] selected Non-zero to select, zero to deselect.
  */
-void wuss_icon_set_selected(wuss_icon_t *icon, int selected);
+void wuss_icon_set_selected(wuss_window_t *window,
+                            wuss_icon_t   *icon,
+                            int            selected);
 
 /* ----------------------------------------------------------------------- */
 

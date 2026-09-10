@@ -329,7 +329,9 @@ result_t wuss_create(screen_t               *scr,
 #endif
 #ifdef WUSS_ICONS
   w->pressed_icon       = NULL;
+  w->pressed_window     = NULL;
   w->hover_icon         = NULL;
+  w->hover_window       = NULL;
   w->icon.names         = NULL;
   w->icon.atoms         = NULL;
   w->icon.bitmaps       = NULL;

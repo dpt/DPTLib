@@ -9,14 +9,16 @@
 
 #include "../core/impl.h"
 
-result_t wuss_icon_set_text(wuss_icon_t *icon, const char *text)
+result_t wuss_icon_set_text(wuss_window_t *window,
+                            wuss_icon_t   *icon,
+                            const char    *text)
 {
   wuss_t     *w;
   const char *src;
   char       *dup;
   size_t      len;
 
-  w   = icon->window->wuss;
+  w   = window->wuss;
   src = (text != NULL) ? text : "";
   len = strlen(src);
 
@@ -28,7 +30,7 @@ result_t wuss_icon_set_text(wuss_icon_t *icon, const char *text)
   wuss__free(w, icon->text);
   icon->text = dup;
 
-  wuss__icon_invalidate(icon);
+  wuss__icon_invalidate(window, icon);
 
   return result_OK;
 }

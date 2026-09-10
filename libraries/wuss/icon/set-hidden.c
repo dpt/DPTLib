@@ -2,12 +2,14 @@
 
 #include "../core/impl.h"
 
-void wuss_icon_set_hidden(wuss_icon_t *icon, int hidden)
+void wuss_icon_set_hidden(wuss_window_t *window,
+                          wuss_icon_t   *icon,
+                          int            hidden)
 {
   if (hidden)
     icon->flags |= wuss_ICON_FLAGS_HIDDEN;
   else
     icon->flags &= (wuss_icon_flags_t) ~wuss_ICON_FLAGS_HIDDEN;
 
-  wuss__icon_invalidate(icon);
+  wuss__icon_invalidate(window, icon);
 }

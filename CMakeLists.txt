@@ -437,7 +437,6 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/get-selected.c
     libraries/wuss/icon/get-text.c
     libraries/wuss/icon/get-type.c
-    libraries/wuss/icon/get-window.c
     libraries/wuss/icon/hit-test.c
     libraries/wuss/icon/invalidate.c
     libraries/wuss/icon/plot.c

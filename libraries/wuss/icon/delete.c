@@ -8,22 +8,25 @@
 
 #include "../core/impl.h"
 
-void wuss_icon_delete(wuss_icon_t *icon)
+void wuss_icon_delete(wuss_window_t *window, wuss_icon_t *icon)
 {
-  wuss_window_t *window;
-  int            i;
+  int i;
 
   if (icon == NULL)
     return;
 
-  window = icon->window;
-
   if (window->wuss->pressed_icon == icon)
-    window->wuss->pressed_icon = NULL;
+  {
+    window->wuss->pressed_icon   = NULL;
+    window->wuss->pressed_window = NULL;
+  }
   if (window->wuss->hover_icon == icon)
-    window->wuss->hover_icon = NULL;
+  {
+    window->wuss->hover_icon   = NULL;
+    window->wuss->hover_window = NULL;
+  }
 
-  wuss__icon_invalidate(icon);
+  wuss__icon_invalidate(window, icon);
 
   for (i = 0; i < window->nicons; i++)
   {

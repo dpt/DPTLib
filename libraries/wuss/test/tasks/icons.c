@@ -612,7 +612,7 @@ result_t icons_create(wuss_t       *wuss,
   task->state   = made[i_state];
   if (i_hotspot >= 0)
     task->hotspot = made[i_hotspot];
-  wuss_icon_set_selected(made[i_ticked], 1); /* "Show grid" starts ticked */
+  wuss_icon_set_selected(task->window, made[i_ticked], 1); /* "Show grid" starts ticked */
 
   /* fully built: from here a last-window close reaps the task and its
    * wuss_EVENT_QUIT frees task_data */
@@ -730,7 +730,7 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
              wuss_icon_get_text(icon),
              wuss_icon_get_selected(icon) ? "on" : "off",
              (icon == tcx->opt) ? "" : " (radio)");
-    return wuss_icon_set_text(tcx->state, buf);
+    return wuss_icon_set_text(tcx->window, tcx->state, buf);
   }
 
   if (event->data.icon.action != wuss_MOUSE_DOWN)
@@ -741,7 +741,7 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
   tcx->count++;
   snprintf(buf, sizeof(buf), "%d", tcx->count);
 
-  return wuss_icon_set_text(tcx->counter, buf);
+  return wuss_icon_set_text(tcx->window, tcx->counter, buf);
 }
 
 result_t icons_handle(wuss_window_t      *window,

@@ -21,14 +21,15 @@
  * draw. */
 typedef struct icon_draw_ctx
 {
-  wuss_t            *wuss;
-  screen_t          *scr;
-  const wuss_icon_t *icon;
-  bmfont_t          *font;
-  box_t              b;
-  colour_t           fg;
-  int                font_height;
-  int                have_font;
+  wuss_t              *wuss;
+  const wuss_window_t *window;
+  screen_t            *scr;
+  const wuss_icon_t   *icon;
+  bmfont_t            *font;
+  box_t                b;
+  colour_t             fg;
+  int                  font_height;
+  int                  have_font;
 }
 icon_draw_ctx_t;
 
@@ -103,10 +104,10 @@ static colour_t icon_blend_ground(const icon_draw_ctx_t *c,
   if (icon->bg != wuss_NO_BACKGROUND)
     return c->wuss->palette[icon->bg];
 
-  if (icon->window->bg.colour != wuss_NO_BACKGROUND)
-    return (icon->window->bg.pattern != screen_PATTERN_SOLID)
-         ? c->wuss->palette[icon->window->bg.pattern_bg]
-         : c->wuss->palette[icon->window->bg.colour];
+  if (c->window->bg.colour != wuss_NO_BACKGROUND)
+    return (c->window->bg.pattern != screen_PATTERN_SOLID)
+         ? c->wuss->palette[c->window->bg.pattern_bg]
+         : c->wuss->palette[c->window->bg.colour];
 
   return fallback;
 }
@@ -159,7 +160,7 @@ static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
   {
     pattern_t pat;
 
-    pat = pattern_from_preset(icon->pattern,
+    pat = pattern_from_preset(icon->u.pattern.tile,
                               pat_fg, c->wuss->palette[icon->bg]);
     pat.origin = POINT(content->x0 - scroll.x, content->y0 - scroll.y);
     screen_fill_pattern(c->scr, &c->b, &pat);
@@ -187,7 +188,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
     bg = icon_blend_ground(c, c->fg);
   }
 
-  if (icon->border != wuss_ICON_BORDER_NONE)
+  if (icon->u.label.border != wuss_ICON_BORDER_NONE)
   {
     colour_t light, dark, accent, divider;
 
@@ -196,11 +197,11 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
     accent  = c->wuss->palette[c->wuss->accent]; /* the action-button fill */
     divider = c->wuss->palette[c->wuss->bevel_divider];
 
-    if (icon->border == wuss_ICON_BORDER_ACTION)
+    if (icon->u.label.border == wuss_ICON_BORDER_ACTION)
     {
       icon_draw_action_border(c->scr, b, light, dark, accent, 0);
     }
-    else if (icon->border == wuss_ICON_BORDER_DIVIDER)
+    else if (icon->u.label.border == wuss_ICON_BORDER_DIVIDER)
     {
       icon_draw_divider_border(c->scr, b, light, divider);
     }
@@ -210,7 +211,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
        * bevel ring. */
       box_t ring = *b;
 
-      if (icon->border == wuss_ICON_BORDER_RIDGE)
+      if (icon->u.label.border == wuss_ICON_BORDER_RIDGE)
         screen_draw_bevel_edge(c->scr, &ring, light, dark);
       else
         screen_draw_bevel_edge(c->scr, &ring, dark, light);
@@ -485,7 +486,7 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
   const box_t *b = &c->b;
   screen_t     clipped;
 
-  if (c->icon->bitmap == NULL)
+  if (c->icon->u.bitmap.image == NULL)
     return;
 
   /* screen_copy_bitmap clips to scr->clip and does not scale, so narrow the
@@ -495,7 +496,7 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
   if (box_intersection(&c->scr->clip, b, &clipped.clip))
     return;
 
-  screen_copy_bitmap(&clipped, b->x0, b->y0, c->icon->bitmap);
+  screen_copy_bitmap(&clipped, b->x0, b->y0, c->icon->u.bitmap.image);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -540,7 +541,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
 
   /* left-edge colour chip (wins over the tick) or tick when selected */
   if ((icon->flags & wuss_ICON_FLAGS_SWATCH) &&
-      icon->swatch != wuss_NO_BACKGROUND)
+      icon->u.menu_entry.swatch != wuss_NO_BACKGROUND)
   {
     int cx, cy, h;
 
@@ -548,7 +549,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     cx = b->x0 + pad;
     cy = b->y0 + (b->y1 - b->y0 - h) / 2;
     screen_fill_rect(c->scr, cx, cy, SIZE2D(h, h),
-                     c->wuss->palette[icon->swatch]);
+                     c->wuss->palette[icon->u.menu_entry.swatch]);
     screen_draw_rect(c->scr, cx, cy, SIZE2D(h, h), ink); /* 1px border */
   }
   else if (wuss__icon_selected(icon))
@@ -625,10 +626,11 @@ static void wuss__icon_draw_rule(const icon_draw_ctx_t *c)
 
 /* ----------------------------------------------------------------------- */
 
-void wuss__icon_draw(wuss_t            *wuss,
-                     const wuss_icon_t *icon,
-                     const box_t       *content,
-                     point_t            scroll)
+void wuss__icon_draw(wuss_t              *wuss,
+                     const wuss_window_t *window,
+                     const wuss_icon_t   *icon,
+                     const box_t         *content,
+                     point_t              scroll)
 {
   icon_draw_ctx_t c;
   int             fontidx;
@@ -641,10 +643,11 @@ void wuss__icon_draw(wuss_t            *wuss,
   if (box_is_empty(&c.b))
     return;
 
-  c.wuss = wuss;
-  c.scr  = wuss->scr;
-  c.icon = icon;
-  c.fg   = wuss->palette[icon->fg];
+  c.wuss   = wuss;
+  c.window = window;
+  c.scr    = wuss->scr;
+  c.icon   = icon;
+  c.fg     = wuss->palette[icon->fg];
 
   /* pick the icon's requested weight; fall back to the system font */
   fontidx = wuss_ICON_FONT_OF(icon->flags);
