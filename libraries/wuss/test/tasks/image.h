@@ -37,6 +37,7 @@ typedef struct image_task
                               * freed at QUIT */
   wuss_menu_handle_t menu_handle; /* the open chain, if any -- closed before the
                               * proginfo it borrows is destroyed at QUIT */
+  int            dithering; /* enable Bayer ordered dithering */
 }
 image_task_t;
 
