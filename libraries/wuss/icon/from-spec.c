@@ -26,7 +26,7 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
 
   has_swatch = (spec->type == wuss_ICON_TYPE_MENU_ENTRY) &&
                (spec->flags & wuss_ICON_FLAGS_SWATCH);
-  swatch = has_swatch ? wuss__resolve_colour(w, spec->swatch)
+  swatch = has_swatch ? wuss__resolve_colour(w, spec->u.menu_entry.swatch)
                       : wuss_NO_BACKGROUND;
 
   switch (spec->type)
@@ -57,13 +57,14 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   if (spec->type == wuss_ICON_TYPE_PATTERN && bg == wuss_NO_BACKGROUND)
     return result_WUSS_BAD_ICON;
 
-  /* A BITMAP icon draws spec->bitmap, or -- when that is NULL -- the loaded
-   * icon-set entry spec->icon_set names (wuss_ICON_SET encodes the 0-based
-   * index +1, so 0 means "no entry"). */
-  bitmap = spec->bitmap;
-  if (spec->type == wuss_ICON_TYPE_BITMAP && bitmap == NULL && spec->icon_set > 0)
+  /* A BITMAP icon draws spec->u.bitmap.image, or -- when that is NULL -- the
+   * loaded icon-set entry spec->u.bitmap.set names (wuss_ICON_SET encodes the
+   * 0-based index +1, so 0 means "no entry"). */
+  bitmap = spec->u.bitmap.image;
+  if (spec->type == wuss_ICON_TYPE_BITMAP && bitmap == NULL &&
+      spec->u.bitmap.set > 0)
   {
-    bitmap = wuss_icons_bitmap(w, spec->icon_set - 1);
+    bitmap = wuss_icons_bitmap(w, spec->u.bitmap.set - 1);
     if (bitmap == NULL)
       return result_WUSS_BAD_INDEX;
   }
@@ -72,11 +73,11 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
     return result_WUSS_BAD_ICON;
 
   if (spec->type == wuss_ICON_TYPE_PATTERN &&
-      spec->pattern >= screen_PATTERN__LIMIT)
+      spec->u.pattern.tile >= screen_PATTERN__LIMIT)
     return result_WUSS_BAD_ICON;
 
   if (spec->type == wuss_ICON_TYPE_LABEL &&
-      spec->border > wuss_ICON_BORDER_DIVIDER)
+      spec->u.label.border > wuss_ICON_BORDER_DIVIDER)
     return result_WUSS_BAD_ICON;
 
   if (fg >= w->npalette)
@@ -98,16 +99,16 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   switch (spec->type)
   {
   case wuss_ICON_TYPE_LABEL:
-    out->u.label.border = spec->border;
+    out->u.label.border = spec->u.label.border;
     break;
   case wuss_ICON_TYPE_PATTERN:
-    out->u.pattern.tile = spec->pattern;
+    out->u.pattern.tile = spec->u.pattern.tile;
     break;
   case wuss_ICON_TYPE_BITMAP:
     out->u.bitmap.image = bitmap;
     break;
   case wuss_ICON_TYPE_RADIO:
-    out->u.radio.group = spec->group;
+    out->u.radio.group = spec->u.radio.group;
     break;
   case wuss_ICON_TYPE_MENU_ENTRY:
     out->u.menu_entry.swatch = swatch;

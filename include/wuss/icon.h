@@ -59,10 +59,10 @@ typedef enum wuss_icon_type
    *  feedback; clicks and hovers are delivered to the task as
    *  wuss_EVENT_ICON. */
   wuss_ICON_TYPE_ACTION,
-  /** Bounding box filled with a repeating two-colour 8x8 tile (spec.pattern) in
-   *  fg/bg, phased to document space so it scrolls rigidly with content. Not
-   *  interactive: clicks fall through to the task as wuss_EVENT_MOUSE. text is
-   *  ignored. */
+  /** Bounding box filled with a repeating two-colour 8x8 tile
+   *  (spec.u.pattern.tile) in fg/bg, phased to document space so it scrolls
+   *  rigidly with content. Not interactive: clicks fall through to the task as
+   *  wuss_EVENT_MOUSE. text is ignored. */
   wuss_ICON_TYPE_PATTERN,
   /** A grouping box: a bevelled rectangle around the bounding box,
    *  broken at the top-left for an optional caption (text) drawn over the
@@ -79,10 +79,10 @@ typedef enum wuss_icon_type
    *  its own selected state (group is ignored), then the task is told via
    *  wuss_EVENT_ICON. */
   wuss_ICON_TYPE_OPTION,
-  /** A caller-owned bitmap (spec.bitmap) drawn at the top-left of the bounding
-   *  box, alpha-blended against what is already there, clipped to the box; no
-   *  scaling. The bitmap is borrowed, not copied, and must outlive the icon
-   *  (unlike text). fg, bg, text and pattern are ignored. Not interactive
+  /** A caller-owned bitmap (spec.u.bitmap.image) drawn at the top-left of the
+   *  bounding box, alpha-blended against what is already there, clipped to the
+   *  box; no scaling. The bitmap is borrowed, not copied, and must outlive the
+   *  icon (unlike text). fg, bg, text and pattern are ignored. Not interactive
    *  unless wuss_ICON_FLAGS_INTERACTIVE is set, in which case clicks raise
    *  wuss_EVENT_ICON like a button. */
   wuss_ICON_TYPE_BITMAP,
@@ -188,7 +188,7 @@ typedef enum wuss_icon_flags
    *  laid out and drawn as a separate wuss_ICON_TYPE_RULE icon. Ignored by
    *  other types. */
   wuss_ICON_FLAGS_SEPARATOR    = 1 << 7,
-  /** wuss_ICON_TYPE_MENU_ENTRY: draw a small colour chip (spec.swatch) in the
+  /** wuss_ICON_TYPE_MENU_ENTRY: draw a small colour chip (spec.u.menu_entry.swatch) in the
    *  row's left gutter, where the tick would sit. Mutually exclusive with a
    *  selected tick -- the chip wins. Ignored by other types. */
   wuss_ICON_FLAGS_SWATCH      = 1 << 8,
@@ -210,10 +210,76 @@ wuss_icon_flags_t;
 
 /**
  * Encode a 0-based icon-set index (from \ref wuss_icons_lookup) for
- * wuss_icon_spec::icon_set. The stored value is offset by one so a
+ * wuss_icon_spec_data::bitmap::set. The stored value is offset by one so a
  * zero-initialised spec reads as "no icon-set entry".
  */
 #define wuss_ICON_SET(i)        ((i) + 1)
+
+/**
+ * Per-type payload in a wuss_icon_spec. Exactly one arm applies, selected by
+ * wuss_icon_spec::type; the arms mirror the icon's internal storage. Types
+ * with no type-specific data (ACTION, FRAME, OPTION, RULE, and the reserved
+ * types) touch no arm, so a zero-initialised spec is valid for them. Each
+ * arm is its own struct so a type can gain fields without disturbing the
+ * others.
+ */
+typedef union wuss_icon_spec_data
+{
+  /** wuss_ICON_TYPE_LABEL */
+  struct
+  {
+    /** Border drawn inside the bounding box. Zero (wuss_ICON_BORDER_NONE) is
+     *  the default for a zero-initialised spec. */
+    wuss_icon_border_t border;
+  }
+  label;
+
+  /** wuss_ICON_TYPE_PATTERN */
+  struct
+  {
+    /** Repeating two-colour 8x8 tile. Zero (screen_PATTERN_SOLID) is a safe
+     *  default for a zero-initialised spec. */
+    screen_pattern_t tile;
+  }
+  pattern;
+
+  /** wuss_ICON_TYPE_BITMAP */
+  struct
+  {
+    /** The image to draw. Borrowed, not copied; must outlive the icon. NULL
+     *  (the default) falls back to \c set. */
+    const bitmap_t *image;
+    /** When \c image is NULL, draw an entry from the window manager's loaded
+     *  icon set (see \ref wuss_icons_load). Zero (the default for a
+     *  zero-initialised spec) means "no icon-set entry"; encode a 0-based
+     *  index from \ref wuss_icons_lookup with \ref wuss_ICON_SET. Ignored
+     *  when \c image is set. */
+    int             set;
+  }
+  bitmap;
+
+  /** wuss_ICON_TYPE_RADIO */
+  struct
+  {
+    /** Exclusive-selection group. Selecting a radio clears every other
+     *  selected radio on the same window with the same group. Zero (the
+     *  default) means "no group": such a radio still toggles but never clears
+     *  another. */
+    int group;
+  }
+  radio;
+
+  /** wuss_ICON_TYPE_MENU_ENTRY */
+  struct
+  {
+    /** With wuss_ICON_FLAGS_SWATCH: the colour chip to draw in the left
+     *  gutter, as an index into the system palette. Ignored unless that flag
+     *  is set. */
+    wuss_colour_t swatch;
+  }
+  menu_entry;
+}
+wuss_icon_spec_data_t;
 
 /**
  * Description of an icon at creation. Copied by value into the icon; the
@@ -226,46 +292,21 @@ wuss_icon_flags_t;
 typedef struct wuss_icon_spec
 {
   /** Bounding box, virtual document space, inclusive-exclusive. */
-  box_t             bbox;
+  box_t                 bbox;
   /** Icon type. */
-  wuss_icon_type_t  type;
+  wuss_icon_type_t      type;
   /** NUL-terminated label; copied. NULL means "". */
-  const char       *text;
+  const char           *text;
   /** Text colour, as an index into the system palette. */
-  wuss_colour_t     fg;
+  wuss_colour_t         fg;
   /** Fill/bevel base colour, as an index into the system palette. A label,
    *  frame, radio or option icon may pass wuss_NO_BACKGROUND for no fill behind
    *  its text/glyph; a button or pattern icon must pass a real index. */
-  wuss_colour_t     bg;
-  /** Tile for wuss_ICON_TYPE_PATTERN; ignored by other types. Zero
-   *  (screen_PATTERN_SOLID) is a safe default for zero-initialised specs. */
-  screen_pattern_t  pattern;
-  /** wuss_ICON_TYPE_BITMAP: the image to draw. Borrowed, not copied; must
-   *  outlive the icon. Ignored by other types; NULL (the default) is only valid
-   *  when type is not wuss_ICON_TYPE_BITMAP, or when \c icon_set selects a
-   *  bitmap from the window manager's loaded icon set instead. */
-  const bitmap_t   *bitmap;
-  /** wuss_ICON_TYPE_BITMAP: when \c bitmap is NULL, draw an entry from the
-   *  window manager's loaded icon set (see \ref wuss_icons_load). Zero (the
-   *  default for a zero-initialised spec) means "no icon-set entry"; encode a
-   *  0-based index from \ref wuss_icons_lookup with \ref wuss_ICON_SET.
-   *  Ignored by other types and when \c bitmap is set. */
-  int               icon_set;
-  /** wuss_ICON_TYPE_RADIO: exclusive-selection group. Selecting a radio clears
-   *  every other selected radio on the same window with the same group. Zero
-   *  (the default) means "no group": such a radio still toggles but never
-   *  clears another. Ignored by all other icon types. */
-  int               group;
-  /** wuss_ICON_TYPE_MENU_ENTRY with wuss_ICON_FLAGS_SWATCH: the colour chip to
-   *  draw in the left gutter, as an index into the system palette. Ignored
-   *  unless that flag is set; ignored by all other icon types. */
-  wuss_colour_t     swatch;
-  /** wuss_ICON_TYPE_LABEL: border drawn inside the bounding box. Zero
-   *  (wuss_ICON_BORDER_NONE) is the default for zero-initialised specs.
-   *  Ignored by all other icon types. */
-  wuss_icon_border_t border;
+  wuss_colour_t         bg;
   /** Appearance/behaviour flags. */
-  wuss_icon_flags_t flags;
+  wuss_icon_flags_t     flags;
+  /** Per-type payload, selected by \c type. */
+  wuss_icon_spec_data_t u;
 }
 wuss_icon_spec_t;
 

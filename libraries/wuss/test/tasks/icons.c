@@ -212,7 +212,7 @@ static void icons_add_radios(icons_layout_t *lay, int *opt, int *state)
     s->text  = (r == 0) ? "Red" : (r == 1) ? "Green" : "Blue";
     s->fg    = lay->black;
     s->bg    = wuss_NO_BACKGROUND;
-    s->group = 1;
+    s->u.radio.group = 1;
     lay->n++;
   }
 
@@ -265,14 +265,14 @@ static void icons_add_bitmaps(icons_layout_t *lay,
   s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20,
                                    sprite->size.w, sprite->size.h);
   s->type   = wuss_ICON_TYPE_BITMAP;
-  s->bitmap = sprite;
+  s->u.bitmap.image = sprite;
   lay->n++;
 
   s         = &lay->specs[lay->n];
   s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 20 + sprite->size.w, top + 20,
                                    sprite->size.w, sprite->size.h);
   s->type   = wuss_ICON_TYPE_BITMAP;
-  s->bitmap = sprite;
+  s->u.bitmap.image = sprite;
   s->flags  = wuss_ICON_FLAGS_INTERACTIVE;
   *hotspot  = lay->n;
   lay->n++;
@@ -321,7 +321,7 @@ static void icons_add_iconset(icons_layout_t *lay, const wuss_t *wuss)
     s->bbox     = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10 + i * (w + 6),
                                        top + 20, w, h);
     s->type     = wuss_ICON_TYPE_BITMAP;
-    s->icon_set = wuss_ICON_SET(idx[i]);
+    s->u.bitmap.set = wuss_ICON_SET(idx[i]);
     lay->n++;
   }
 
@@ -348,7 +348,7 @@ static void icons_add_pattern(icons_layout_t *lay)
   s->type   = wuss_ICON_TYPE_PATTERN;
   s->fg     = lay->black;
   s->bg     = lay->window;
-  s->pattern = screen_PATTERN_DIAGONAL;
+  s->u.pattern.tile = screen_PATTERN_DIAGONAL;
   lay->n++;
 
   lay->y = top + 76;
@@ -379,7 +379,7 @@ static void icons_add_borders(icons_layout_t *lay)
   s->text   = "Groove";
   s->fg     = lay->black;
   s->bg     = lay->window;
-  s->border = wuss_ICON_BORDER_GROOVE;
+  s->u.label.border = wuss_ICON_BORDER_GROOVE;
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
 
@@ -389,7 +389,7 @@ static void icons_add_borders(icons_layout_t *lay)
   s->text   = "Ridge";
   s->fg     = lay->black;
   s->bg     = lay->window;
-  s->border = wuss_ICON_BORDER_RIDGE;
+  s->u.label.border = wuss_ICON_BORDER_RIDGE;
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
 
@@ -399,7 +399,7 @@ static void icons_add_borders(icons_layout_t *lay)
   s->text   = "Action";
   s->fg     = lay->black;
   s->bg     = lay->window;
-  s->border = wuss_ICON_BORDER_ACTION;
+  s->u.label.border = wuss_ICON_BORDER_ACTION;
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
 
@@ -409,7 +409,7 @@ static void icons_add_borders(icons_layout_t *lay)
   s->text   = "Divider";
   s->fg     = lay->black;
   s->bg     = lay->window;
-  s->border = wuss_ICON_BORDER_DIVIDER;
+  s->u.label.border = wuss_ICON_BORDER_DIVIDER;
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
 
@@ -460,7 +460,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   s->text   = "Layer colour";
   s->fg     = lay->black;
   s->bg     = wuss_NO_BACKGROUND;
-  s->swatch = lay->red;
+  s->u.menu_entry.swatch = lay->red;
   s->flags  = wuss_ICON_FLAGS_SWATCH;
   lay->n++;
 

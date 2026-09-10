@@ -90,6 +90,8 @@ result_t wuss_info_create(wuss_info_t          **out,
   if (nrows < 1 || nrows > INFO_MAX_ROWS)
     return result_BAD_ARG;
 
+  memset(specs, 0, sizeof(specs)); /* leave every unset spec.u arm zeroed */
+
   wuss = task->wuss;
   font = wuss_get_font(wuss);
 
@@ -169,7 +171,7 @@ result_t wuss_info_create(wuss_info_t          **out,
     value->text   = rows[i].value;
     value->fg     = wuss_COLOUR_BLACK;
     value->bg     = wuss_NO_BACKGROUND;
-    value->border = wuss_ICON_BORDER_GROOVE; /* RISC OS display field */
+    value->u.label.border = wuss_ICON_BORDER_GROOVE; /* RISC OS display field */
     value->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   }
 

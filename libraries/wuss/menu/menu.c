@@ -715,7 +715,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
       specs[s].text    = "";
       specs[s].fg      = wuss_COLOUR_BLACK;
       specs[s].bg      = wuss_NO_BACKGROUND;
-      specs[s].swatch  = wuss_NO_BACKGROUND;
+      specs[s].u.menu_entry.swatch = wuss_NO_BACKGROUND;
       specs[s].flags   = wuss_ICON_FLAGS_NONE;
       s++;
       y += sep_h;
@@ -736,8 +736,8 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     specs[s].text    = item->text ? item->text : "";
     specs[s].fg      = wuss_COLOUR_BLACK;
     specs[s].bg      = wuss_NO_BACKGROUND;
-    specs[s].swatch  = (item->flags & wuss_MENU_ITEM_SWATCH) ? item->swatch
-                                                             : wuss_NO_BACKGROUND;
+    specs[s].u.menu_entry.swatch =
+      (item->flags & wuss_MENU_ITEM_SWATCH) ? item->swatch : wuss_NO_BACKGROUND;
     specs[s].flags   = flags;
     s++;
 

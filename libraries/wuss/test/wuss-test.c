@@ -5161,13 +5161,13 @@ QuitFail:
       memset(&spec, 0, sizeof(spec));
       spec.bbox     = (box_t) BOX_POS_SIZE(0, 0, 16, 16);
       spec.type     = wuss_ICON_TYPE_BITMAP;
-      spec.icon_set = wuss_ICON_SET(opton);
+      spec.u.bitmap.set = wuss_ICON_SET(opton);
       rc = wuss_icon_create(win_ic, &spec, &icon);
       if (rc != result_OK)
         goto Failure;
 
       /* a bogus index is rejected */
-      spec.icon_set = wuss_ICON_SET(99);
+      spec.u.bitmap.set = wuss_ICON_SET(99);
       if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)
         goto Failure;
       rc = result_OK;
