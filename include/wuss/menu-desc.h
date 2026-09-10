@@ -6,7 +6,8 @@
  * A convenience helper on top of wuss/menu.h: parse a compact
  * PrivateEye-style descriptor string into a heap wuss_menu_t tree the caller
  * owns, and free it again. Nothing in the core menu helper depends on this;
- * a task that hand-assembles its wuss_menu_t arrays never needs to include it.
+ * a task that hand-assembles its wuss_menu_t arrays never needs to include
+ * it.
  *
  * Built only when WUSS_MENUS is defined.
  */
