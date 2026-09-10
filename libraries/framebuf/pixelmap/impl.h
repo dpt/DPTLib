@@ -11,12 +11,13 @@
 /* ----------------------------------------------------------------------- */
 
 /**
- * Fill in the channel layout of `out` (rbits/gbits/bbits, rshift/gshift/bshift,
- * destfmt, dest_log2bpp, nentries) for the given format pair, from the built-in
- * policy table.
+ * Fill in the channel layout of `out` (rbits/gbits/bbits,
+ * rshift/gshift/bshift, destfmt, dest_log2bpp, nentries) for the given
+ * format pair, from the built-in policy table.
  *
- * The source format must be a 32bpp `*8888` format; its channels are extracted
- * with an 8-bit right shift (\ref pixelmap_t rshift/gshift/bshift).
+ * The source format must be a 32bpp `*8888` format; its channels are
+ * extracted with an 8-bit right shift (\ref pixelmap_t
+ * rshift/gshift/bshift).
  *
  * \param[in]  srcfmt  Source pixel format.
  * \param[in]  destfmt Destination format.
