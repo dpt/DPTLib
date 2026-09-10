@@ -93,6 +93,44 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   out->spec.fg   = fg;
   out->spec.bg   = bg;
 
+  /* A RADIO/OPTION glyph is drawn from the icon-set bitmap (radon/radoff,
+   * opton/optoff) when the set carries one, vertically centred in the bbox
+   * and offset from the bbox top-left. If a state bitmap is larger than the
+   * caller's bbox the glyph overhangs it, and a select-time invalidate --
+   * which only covers the bbox -- then leaves the overhanging edges stale.
+   * Grow the bbox to the largest of the two state bitmaps so the drawn glyph
+   * always sits inside the box that hit-test, layout and invalidate use. */
+  if (spec->type == wuss_ICON_TYPE_RADIO || spec->type == wuss_ICON_TYPE_OPTION)
+  {
+    const char     *names[2];
+    const bitmap_t *state_bm;
+    int             idx;
+    int             gw, gh;
+    int             i;
+
+    names[0] = (spec->type == wuss_ICON_TYPE_RADIO) ? "radon"  : "opton";
+    names[1] = (spec->type == wuss_ICON_TYPE_RADIO) ? "radoff" : "optoff";
+
+    gw = 0;
+    gh = 0;
+    for (i = 0; i < 2; i++)
+    {
+      idx = wuss_icons_lookup(w, names[i]);
+      if (idx < 0)
+        continue;
+      state_bm = wuss_icons_bitmap(w, idx);
+      if (state_bm == NULL)
+        continue;
+      gw = MAX(gw, state_bm->size.w);
+      gh = MAX(gh, state_bm->size.h);
+    }
+
+    if (gw > 0 && out->spec.bbox.x1 - out->spec.bbox.x0 < gw)
+      out->spec.bbox.x1 = out->spec.bbox.x0 + gw;
+    if (gh > 0 && out->spec.bbox.y1 - out->spec.bbox.y0 < gh)
+      out->spec.bbox.y1 = out->spec.bbox.y0 + gh;
+  }
+
   /* out->spec.u is already the caller's copy; overwrite only the arms whose
    * value we resolved (bitmap image from the icon set, swatch to a palette
    * index) */

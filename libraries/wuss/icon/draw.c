@@ -419,6 +419,13 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
   if (icon->bg != wuss_NO_BACKGROUND)
     screen_fill_rect(c->scr, b->x0, b->y0,
                      SIZE2D(b->x1 - b->x0, b->y1 - b->y0), bg);
+  else
+    /* no explicit bg to repaint the whole box, but the state we are about to
+     * draw (a smaller radon/radoff swap, or a cleared tick/centre) can leave
+     * fewer pixels than last time -- clear just the glyph box so no stale
+     * glyph shows through. The label to its right never changes on select. */
+    screen_fill_rect(c->scr, g.x0, g.y0,
+                     SIZE2D(g.x1 - g.x0, g.y1 - g.y0), bg);
 
   if (bm != NULL)
   {
