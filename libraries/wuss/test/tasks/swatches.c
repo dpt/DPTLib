@@ -59,7 +59,7 @@ static result_t swatches_redraw(swatches_task_t    *task,
                                           pat * SWATCHES_CELL,
                                           SWATCHES_CELL, SWATCHES_CELL);
       spec.fg      = (wuss_colour_t) col;
-      spec.pattern = (screen_pattern_t) pat;
+      spec.u.pattern.tile = (screen_pattern_t) pat;
 
       rc = wuss_icon_plot(task->window, &spec, bounds, scroll);
       if (rc != result_OK)

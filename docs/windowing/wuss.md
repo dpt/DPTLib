@@ -198,14 +198,14 @@ In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scro
 
 Taking inspiration from RISC OS, a window can carry **icons**: rectangular UI elements Wuss draws and hit-tests inside the content area. v1 ships two types:
 
-- `wuss_ICON_TYPE_LABEL` — static text, optionally in a 1px raised or sunken border (`spec.border` — `wuss_ICON_BORDER_NONE` / `_RIDGE` / `_GROOVE`, the last a RISC OS-style read-only display field). Clicks fall through to the task as `wuss_EVENT_MOUSE`.
+- `wuss_ICON_TYPE_LABEL` — static text, optionally in a 1px raised or sunken border (`spec.u.label.border` — `wuss_ICON_BORDER_NONE` / `_RIDGE` / `_GROOVE`, the last a RISC OS-style read-only display field). Clicks fall through to the task as `wuss_EVENT_MOUSE`.
 - `wuss_ICON_TYPE_ACTION` — a bevelled rectangle with a centred label and pressed-state feedback (the bevel inverts and the label shifts one pixel down-right while held). Clicks and hovers arrive as `wuss_EVENT_ICON`.
 
 The enum is left open for sprite and editable-text types later.
 
 Icons are dynamic and owned by their window:
 
-- `wuss_icon_create(window, spec, &icon)` — returns an opaque `wuss_icon_t *`. The spec gives the bounding box, type, text (copied; `NULL` treated as `""`), foreground and background palette indices, a `border` (label only), and flags. A `wuss_ICON_TYPE_ACTION` must pass a real `bg`; passing `wuss_NO_BACKGROUND` is rejected with `result_WUSS_BAD_ICON`. An unknown type is also `result_WUSS_BAD_ICON`; an out-of-range `fg`/`bg` is `result_WUSS_BAD_COLOUR`.
+- `wuss_icon_create(window, spec, &icon)` — returns an opaque `wuss_icon_t *`. The spec gives the bounding box, type, text (copied; `NULL` treated as `""`), foreground and background palette indices, a per-type payload in the `u` union (`u.label.border`, `u.pattern.tile`, `u.bitmap.image`/`u.bitmap.set`, `u.radio.group`, `u.menu_entry.swatch`), and flags. A `wuss_ICON_TYPE_ACTION` must pass a real `bg`; passing `wuss_NO_BACKGROUND` is rejected with `result_WUSS_BAD_ICON`. An unknown type is also `result_WUSS_BAD_ICON`; an out-of-range `fg`/`bg` is `result_WUSS_BAD_COLOUR`.
 - `wuss_icon_delete(window, icon)` — NULL-safe.
 - `wuss_icon_set_text(window, icon, text)`, `wuss_icon_set_hidden(window, icon, hidden)`, `wuss_icon_set_selected(window, icon, selected)`.
 - Getters: `wuss_icon_get_bbox`, `wuss_icon_get_type`, `wuss_icon_get_text` (never `NULL`), `wuss_icon_get_selected`.
@@ -226,7 +226,7 @@ The bevel's light (top/left) and dark (bottom/right) edge shades come from `conf
 - `wuss_icons_bitmap(wuss, index)` → the compressed `bitmap_t *` (window-manager-owned), or `NULL` out of range.
 - `wuss_icons_count(wuss)`.
 
-A `wuss_ICON_TYPE_BITMAP` spec with `bitmap == NULL` and `icon_set = wuss_ICON_SET(idx)` draws the loaded entry at `idx` (the `wuss_ICON_SET` macro offsets by one so a zero-initialised spec means "no entry"). An out-of-range index is `result_WUSS_BAD_INDEX`. Calling `wuss_icons_load` again replaces the set; `wuss_destroy` frees it. A missing directory is not an error — it yields a zero-length set. `dir` is copied internally, so a `path_join_filename` result is safe to pass.
+A `wuss_ICON_TYPE_BITMAP` spec with `u.bitmap.image == NULL` and `u.bitmap.set = wuss_ICON_SET(idx)` draws the loaded entry at `idx` (the `wuss_ICON_SET` macro offsets by one so a zero-initialised spec means "no entry"). An out-of-range index is `result_WUSS_BAD_INDEX`. Calling `wuss_icons_load` again replaces the set; `wuss_destroy` frees it. A missing directory is not an error — it yields a zero-length set. `dir` is copied internally, so a `path_join_filename` result is safe to pass.
 
 ## Components
 
