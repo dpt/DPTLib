@@ -86,7 +86,17 @@ static result_t chars_set_font(chars_task_t *task, int idx, const char *name)
   task->font    = font;
   task->current = idx;
 
-  wuss_window_resize(task->window, chars_window_size(task, font));
+  /* the grid's cell metrics scale with the font, so both the window and its
+   * scrollable extent have to follow the new size -- resize alone would leave
+   * the doc (and so the scroll range) sized to the font the window was
+   * created with, clipping the far cells of a larger font unreachably */
+  {
+    size2d_t grid;
+
+    grid = chars_window_size(task, font);
+    wuss_window_resize(task->window, grid);
+    wuss_window_set_doc(task->window, grid);
+  }
   wuss_window_invalidate_visible(task->window);
   return result_OK;
 }
@@ -113,6 +123,7 @@ result_t chars_create(wuss_t       *wuss,
   bmfont_t          *font;
   const char        *bmfonts_dir;
   const wuss_menu_t *menu;
+  size2d_t           grid;
 
   font = wuss_get_font(wuss);
   if (font == NULL)
@@ -168,12 +179,13 @@ result_t chars_create(wuss_t       *wuss,
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
+  grid = chars_window_size(task, font);
   rc = wuss_window_create_placed(delegate,
-                                 chars_window_size(task, font),
+                                 grid,
                                  "Chars",
                                  wuss_WINDOW_NO_HSCROLL,
                                  wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                 chars_window_size(task, font),
+                                 grid,
                                  SIZE2D(64, 64),
                                  &task->window);
   if (rc != result_OK)
