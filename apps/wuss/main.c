@@ -252,7 +252,7 @@ static result_t run_wuss(const char *resources,
   const char        *filename;
   bmfont_t          *fonts[WUSS_MAIN_NFONTS];
   static const char *const names[WUSS_MAIN_NFONTS] =
-    { "Digits-Regular", "Digits-Bold", "Symbols" };
+    { "DPT-Digits-Regular", "DPT-Digits-Bold", "Symbols" };
   int                nfonts;
   int                i;
   void              *pixels;
