@@ -187,14 +187,14 @@ bmtestline_t;
 
 static bmtestfont_t bmfonts[MAXFONTS] =
 {
-  { "Daydream",         NULL },
-  { "GliderRider",      NULL },
+  { "DPT-Daydream",     NULL },
+  { "ZX-GliderRider",   NULL },
   { "Tiny",             NULL },
-  { "Henry",            NULL },
-  { "CookeTall",        NULL },
+  { "DPT-Henry",        NULL },
+  { "DPT-CookeTall",    NULL },
   { "MS Sans Serif",    NULL },
-  { "Digits-Regular",   NULL },
-  { "Digits-Bold",      NULL }
+  { "DPT-Digits-Regular", NULL },
+  { "DPT-Digits-Bold",  NULL }
 };
 
 /* Fixture PNGs not in bmfonts[] above (which is the Latin-text set the
