@@ -232,11 +232,14 @@ static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
 }
 
 /* True if the wuss pointer sits over `window`'s chrome above its content area
- * -- the titlebar strip. Core routes furniture hovers straight to the window
- * manager and delivers no event to the menu delegate (see wuss_mouse_move),
- * so a titlebar hover on a parent level cannot be caught in the ICON handler;
- * the IDLE tick polls this instead to close a submenu the pointer has slid up
- * onto the parent's titlebar to reach (e.g. to drag the parent). */
+ * -- the titlebar strip -- and `window` is the frontmost window there. Core
+ * routes furniture hovers straight to the window manager and delivers no event
+ * to the menu delegate (see wuss_mouse_move), so a titlebar hover on a parent
+ * level cannot be caught in the ICON handler; the IDLE tick polls this instead
+ * to close a submenu the pointer has slid up onto the parent's titlebar to
+ * reach (e.g. to drag the parent). The frontmost check stops a child menu
+ * dragged back over its parent's titlebar -- the child window is then on top
+ * at that point -- from being read as a parent-titlebar hover and closed. */
 static int wuss__pointer_over_titlebar(const wuss_window_t *window)
 {
   point_t p;
@@ -246,7 +249,8 @@ static int wuss__pointer_over_titlebar(const wuss_window_t *window)
   wuss__content_box(window, &content);
 
   return box_contains_point(&window->visible, p.x, p.y)
-      && p.y < content.y0;
+      && p.y < content.y0
+      && wuss__window_at(window->wuss, p) == window;
 }
 
 /* ----------------------------------------------------------------------- */
