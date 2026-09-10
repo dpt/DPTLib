@@ -99,7 +99,7 @@ static void icon_draw_divider_border(screen_t    *scr,
 static colour_t icon_blend_ground(const icon_draw_ctx_t *c,
                                   colour_t               fallback)
 {
-  const wuss_icon_t *icon = c->icon;
+  const wuss_icon_spec_t *icon = &c->icon->spec;
 
   if (icon->bg != wuss_NO_BACKGROUND)
     return c->wuss->palette[icon->bg];
@@ -148,8 +148,8 @@ static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
                                     const box_t           *content,
                                     point_t                scroll)
 {
-  const wuss_icon_t *icon = c->icon;
-  colour_t           pat_fg;
+  const wuss_icon_spec_t *icon = &c->icon->spec;
+  colour_t                pat_fg;
 
   /* disabled: fold the pattern into its own ground so it reads as greyed,
    * mirroring the button's fg-swap */
@@ -171,11 +171,11 @@ static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
 
 static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 {
-  const wuss_icon_t *icon = c->icon;
-  const box_t       *b    = &c->b;
-  colour_t           bg;
-  point_t            pos;
-  bmfont_width_t     width;
+  const wuss_icon_spec_t *icon = &c->icon->spec;
+  const box_t            *b    = &c->b;
+  colour_t                bg;
+  point_t                 pos;
+  bmfont_width_t          width;
 
   if (icon->bg != wuss_NO_BACKGROUND)
   {
@@ -243,10 +243,10 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 
 static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
 {
-  const wuss_icon_t *icon = c->icon;
-  const box_t       *b    = &c->b;
-  colour_t           bg, light, divider;
-  int                cap_w, cap_x, gap_x0, gap_x1;
+  const wuss_icon_spec_t *icon = &c->icon->spec;
+  const box_t            *b    = &c->b;
+  colour_t                bg, light, divider;
+  int                     cap_w, cap_x, gap_x0, gap_x1;
 
   bg      = icon_blend_ground(c, c->fg);
   light   = c->wuss->palette[c->wuss->bevel_light];
@@ -294,12 +294,12 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
 
 static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
 {
-  const wuss_icon_t *icon = c->icon;
-  const box_t       *b    = &c->b;
-  colour_t           light, dark, base, label;
-  int                pressed, is_default;
+  const wuss_icon_spec_t *icon = &c->icon->spec;
+  const box_t            *b    = &c->b;
+  colour_t                light, dark, base, label;
+  int                     pressed, is_default;
 
-  pressed    = wuss__icon_pressed(icon);
+  pressed    = wuss__icon_pressed(c->icon);
   is_default = (icon->flags & wuss_ICON_FLAGS_DEFAULT) != 0;
 
   /* a plain button whose spec left bg as wuss_NO_BACKGROUND takes the config
@@ -375,7 +375,7 @@ static int wuss__icon_blit_radio_option(const icon_draw_ctx_t *c,
   screen_t        clipped;
   int             idx, bx, by;
 
-  if (c->icon->type == wuss_ICON_TYPE_RADIO)
+  if (c->icon->spec.type == wuss_ICON_TYPE_RADIO)
     name = wuss__icon_selected(c->icon) ? "radon" : "radoff";
   else
     name = wuss__icon_selected(c->icon) ? "opton" : "optoff";
@@ -406,11 +406,11 @@ static int wuss__icon_blit_radio_option(const icon_draw_ctx_t *c,
  * centre when selected and OPTION draws a box with a tick when selected. */
 static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
 {
-  const wuss_icon_t *icon = c->icon;
-  const box_t       *b    = &c->b;
-  colour_t           glyph, bg;
-  box_t              g;
-  int                gsz, gy, tx;
+  const wuss_icon_spec_t *icon = &c->icon->spec;
+  const box_t            *b    = &c->b;
+  colour_t                glyph, bg;
+  box_t                   g;
+  int                     gsz, gy, tx;
 
   gsz = CLAMP(c->font_height, 8, b->y1 - b->y0);
   gy = b->y0 + (b->y1 - b->y0 - gsz) / 2;
@@ -441,7 +441,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     screen_draw_line(c->scr, g.x0 + 2, g.y1 - 1, g.x1 - 3, g.y1 - 1, glyph);
     screen_draw_line(c->scr, g.x0,     g.y0 + 2, g.x0,     g.y1 - 3, glyph);
     screen_draw_line(c->scr, g.x1 - 1, g.y0 + 2, g.x1 - 1, g.y1 - 3, glyph);
-    if (wuss__icon_selected(icon))
+    if (wuss__icon_selected(c->icon))
       screen_fill_rect(c->scr, g.x0 + 3, g.y0 + 3,
                        SIZE2D(gsz - 6, gsz - 6), glyph);
   }
@@ -450,7 +450,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     /* a box; a tick (two strokes) when selected */
     screen_draw_rect(c->scr, g.x0, g.y0,
                              SIZE2D(g.x1 - g.x0, g.y1 - g.y0), glyph);
-    if (wuss__icon_selected(icon))
+    if (wuss__icon_selected(c->icon))
     {
       screen_draw_line(c->scr, g.x0 + 2, g.y0 + gsz / 2,
                        g.x0 + gsz / 2 - 1, g.y1 - 3, glyph);
@@ -486,7 +486,7 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
   const box_t *b = &c->b;
   screen_t     clipped;
 
-  if (c->icon->u.bitmap.image == NULL)
+  if (c->icon->spec.u.bitmap.image == NULL)
     return;
 
   /* screen_copy_bitmap clips to scr->clip and does not scale, so narrow the
@@ -496,20 +496,20 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
   if (box_intersection(&c->scr->clip, b, &clipped.clip))
     return;
 
-  screen_copy_bitmap(&clipped, b->x0, b->y0, c->icon->u.bitmap.image);
+  screen_copy_bitmap(&clipped, b->x0, b->y0, c->icon->spec.u.bitmap.image);
 }
 
 /* ----------------------------------------------------------------------- */
 
 static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
 {
-  const wuss_icon_t *icon = c->icon;
-  const box_t       *b    = &c->b;
-  colour_t           ink, ground, text_ink, text_ground, tmp;
-  int                disabled, highlit, pad, text_x0, text_x1;
+  const wuss_icon_spec_t *icon = &c->icon->spec;
+  const box_t            *b    = &c->b;
+  colour_t                ink, ground, text_ink, text_ground, tmp;
+  int                     disabled, highlit, pad, text_x0, text_x1;
 
   disabled = (icon->flags & wuss_ICON_FLAGS_DISABLED) != 0;
-  highlit  = wuss__icon_hovered(icon) && !disabled;
+  highlit  = wuss__icon_hovered(c->icon) && !disabled;
   pad      = 4;
 
   /* resolve the row's own ink over its own/inherited ground */
@@ -552,7 +552,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
                      c->wuss->palette[icon->u.menu_entry.swatch]);
     screen_draw_rect(c->scr, cx, cy, SIZE2D(h, h), ink); /* 1px border */
   }
-  else if (wuss__icon_selected(icon))
+  else if (wuss__icon_selected(c->icon))
   {
     int     cx, cy, h;
     point_t centre;
@@ -632,13 +632,14 @@ void wuss__icon_draw(wuss_t              *wuss,
                      const box_t         *content,
                      point_t              scroll)
 {
-  icon_draw_ctx_t c;
-  int             fontidx;
+  const wuss_icon_spec_t *spec = &icon->spec;
+  icon_draw_ctx_t         c;
+  int                     fontidx;
 
-  if (icon->flags & wuss_ICON_FLAGS_HIDDEN)
+  if (spec->flags & wuss_ICON_FLAGS_HIDDEN)
     return;
 
-  wuss__icon_box_to_screen(content, scroll, &icon->bbox, &c.b);
+  wuss__icon_box_to_screen(content, scroll, &spec->bbox, &c.b);
 
   if (box_is_empty(&c.b))
     return;
@@ -647,21 +648,21 @@ void wuss__icon_draw(wuss_t              *wuss,
   c.window = window;
   c.scr    = wuss->scr;
   c.icon   = icon;
-  c.fg     = wuss->palette[icon->fg];
+  c.fg     = wuss->palette[spec->fg];
 
   /* pick the icon's requested weight; fall back to the system font */
-  fontidx = wuss_ICON_FONT_OF(icon->flags);
+  fontidx = wuss_ICON_FONT_OF(spec->flags);
   c.font  = wuss->fonts[fontidx];
   if (c.font == NULL)
     c.font = wuss->fonts[0];
 
-  c.have_font = (c.font != NULL && icon->text[0] != '\0');
+  c.have_font = (c.font != NULL && spec->text[0] != '\0');
   if (c.have_font)
     bmfont_get_info(c.font, NULL, &c.font_height);
   else
     c.font_height = 0;
 
-  switch (icon->type)
+  switch (spec->type)
   {
   case wuss_ICON_TYPE_PATTERN:
     wuss__icon_draw_pattern(&c, content, scroll);

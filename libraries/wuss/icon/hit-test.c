@@ -16,23 +16,23 @@ wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point)
 
     /* a bitmap icon is interactive only when it asks to be; RULE and the
      * static types are always inert; the other types always click */
-    if (it->type == wuss_ICON_TYPE_BITMAP)
+    if (it->spec.type == wuss_ICON_TYPE_BITMAP)
     {
-      if (!(it->flags & wuss_ICON_FLAGS_INTERACTIVE))
+      if (!(it->spec.flags & wuss_ICON_FLAGS_INTERACTIVE))
         continue;
     }
-    else if (it->type != wuss_ICON_TYPE_ACTION &&
-             it->type != wuss_ICON_TYPE_RADIO &&
-             it->type != wuss_ICON_TYPE_OPTION &&
-             it->type != wuss_ICON_TYPE_MENU_ENTRY)
+    else if (it->spec.type != wuss_ICON_TYPE_ACTION &&
+             it->spec.type != wuss_ICON_TYPE_RADIO &&
+             it->spec.type != wuss_ICON_TYPE_OPTION &&
+             it->spec.type != wuss_ICON_TYPE_MENU_ENTRY)
     {
       continue;
     }
 
-    if (it->flags & (wuss_ICON_FLAGS_HIDDEN | wuss_ICON_FLAGS_DISABLED))
+    if (it->spec.flags & (wuss_ICON_FLAGS_HIDDEN | wuss_ICON_FLAGS_DISABLED))
       continue;
 
-    if (box_contains_point(&it->bbox, doc_point.x, doc_point.y))
+    if (box_contains_point(&it->spec.bbox, doc_point.x, doc_point.y))
       return it;
   }
 
