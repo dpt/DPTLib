@@ -85,7 +85,19 @@ typedef enum wuss_event_kind
    *  stored the wuss_menu_open handle must drop it here: the chain is
    *  already freed. Not fired for a SELECT pick (a wuss_EVENT_MENU_SELECT
    *  with a chain-closing button) or for a wuss_menu_close the task made. */
-  wuss_EVENT_MENU_CLOSED
+  wuss_EVENT_MENU_CLOSED,
+  /** The pointer has moved onto this window's on-screen footprint (content
+   *  or furniture) from elsewhere. Exactly one is outstanding per window at
+   *  a time, always balanced by a later wuss_EVENT_POINTER_EXIT. Carries no
+   *  data. Fires only on the window-crossing edge: moving between content
+   *  and furniture within the same window does not re-fire it. */
+  wuss_EVENT_POINTER_ENTER,
+  /** The pointer has left this window's footprint -- onto another window,
+   *  onto no window, or because the window is closing under it. Balances an
+   *  earlier wuss_EVENT_POINTER_ENTER. Carries no data. A task must not
+   *  assume the window is still usable if this arrives during teardown; it
+   *  is safe to read but a wuss_EVENT_CLOSE may follow immediately. */
+  wuss_EVENT_POINTER_EXIT
 }
 wuss_event_kind_t;
 
@@ -96,7 +108,8 @@ wuss_event_kind_t;
  *
  * Members: wuss_EVENT_REDRAW, wuss_EVENT_MOUSE, wuss_EVENT_ICON,
  * wuss_EVENT_SCROLL, wuss_EVENT_OPEN, wuss_EVENT_PRE_SHOW, wuss_EVENT_SHOW,
- * wuss_EVENT_PRE_CLOSE, wuss_EVENT_CLOSE.
+ * wuss_EVENT_PRE_CLOSE, wuss_EVENT_CLOSE, wuss_EVENT_POINTER_ENTER,
+ * wuss_EVENT_POINTER_EXIT.
  */
 typedef wuss_event_kind_t wuss_window_event_kind_t;
 

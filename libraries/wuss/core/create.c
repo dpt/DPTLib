@@ -295,6 +295,7 @@ result_t wuss_create(screen_t               *scr,
   wuss__rebuild_palettecache(w);
 
   w->scr                = scr;
+  w->pointer_window     = NULL;
 #ifdef WUSS_FURNITURE
   w->furniture.dragging = NULL;
   w->furniture.drag.x   = 0;

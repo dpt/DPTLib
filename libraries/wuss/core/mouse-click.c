@@ -68,6 +68,10 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   if (hit != NULL)
     *hit = win;
 
+  /* A click can land the pointer on a window without a preceding move
+   * (window opened under it, or a synthetic tap); keep enter/exit balanced. */
+  wuss__pointer_set_window(wuss, win);
+
 #ifdef WUSS_MENUS
   /* The MOUSE_UP that follows the MENU press which opened the chain is spent:
    * without this it would land on the new menu's row 0 and pick it. */

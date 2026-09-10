@@ -151,6 +151,11 @@ struct wuss
                                           * layout packer has no room left */
   point_t                     pointer;   /* last pointer position, screen
                                           * space, from any mouse click/move */
+  wuss_window_t              *pointer_window; /* window whose on-screen
+                                          * footprint the pointer was last
+                                          * inside (content or furniture),
+                                          * NULL if none; drives
+                                          * wuss_EVENT_POINTER_ENTER/EXIT */
 #ifdef WUSS_ICONS
   wuss_icon_t                *pressed_icon; /* button icon held down, NULL when
                                             * idle; released on any MOUSE_UP
@@ -510,6 +515,45 @@ static inline void wuss__notify_open(wuss_window_t *window)
 
   event.kind = wuss_EVENT_OPEN;
   (void) wuss__deliver(window->task, window, &event);
+}
+
+/* Move the "pointer is inside this window's footprint" tracker to "now"
+ * (which may be NULL). If it changed, deliver wuss_EVENT_POINTER_EXIT to the
+ * window it left and wuss_EVENT_POINTER_ENTER to the one it reached, in that
+ * order. Called from every pointer-position update. Fires only on the
+ * window-crossing edge; content<->furniture moves within one window keep the
+ * same tracker and emit nothing. */
+static inline void wuss__pointer_set_window(wuss_t *wuss, wuss_window_t *now)
+{
+  wuss_window_t *was;
+  wuss_event_t   event;
+
+  was = wuss->pointer_window;
+  if (now == was)
+    return;
+
+  wuss->pointer_window = now;
+
+  if (was != NULL)
+  {
+    event.kind = wuss_EVENT_POINTER_EXIT;
+    (void) wuss__deliver(was->task, was, &event);
+  }
+  if (now != NULL)
+  {
+    event.kind = wuss_EVENT_POINTER_ENTER;
+    (void) wuss__deliver(now->task, now, &event);
+  }
+}
+
+/* Drop "window" from the pointer tracker without delivering EXIT -- for the
+ * window teardown path, where wuss_EVENT_CLOSE already tells the task and the
+ * window is about to be freed. No-op unless the pointer was inside it. */
+static inline void wuss__pointer_forget_window(wuss_t        *wuss,
+                                               wuss_window_t *window)
+{
+  if (wuss->pointer_window == window)
+    wuss->pointer_window = NULL;
 }
 
 static inline int wuss__size_ok(int width, int height)

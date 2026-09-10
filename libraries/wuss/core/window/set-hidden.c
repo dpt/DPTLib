@@ -42,6 +42,9 @@ result_t wuss_window_set_hidden(wuss_window_t *window, int hidden)
       wuss->hover_window = NULL;
     }
 #endif
+    /* A hidden window is off the mouse; drop it from enter/exit tracking. No
+     * EXIT event -- it stops receiving pointer events regardless. */
+    wuss__pointer_forget_window(wuss, window);
 
     /* still on screen: repaint its footprint now, then mark it gone */
     wuss_invalidate(wuss, &window->visible);

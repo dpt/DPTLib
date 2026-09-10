@@ -52,6 +52,10 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   if (hit != NULL)
     *hit = win;
 
+  /* Whole-footprint enter/exit tracking, before any furniture/no-handler
+   * early return -- a furniture hover still counts as "inside the window". */
+  wuss__pointer_set_window(wuss, win);
+
   if (win == NULL)
   {
 #ifdef WUSS_ICONS
