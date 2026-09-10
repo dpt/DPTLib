@@ -550,7 +550,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
 
   assert(wuss != NULL);
   assert(menu != NULL);
-  assert(wuss->fonts[0] != NULL);
+  assert(wuss->fonts.fonts[0] != NULL);
 
   if (menu->nitems <= 0)
     return result_WUSS_BAD_ICON;
@@ -567,7 +567,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   outline_px      = wuss__outline_px_for(menu_flags);
   titlebar_height = wuss__titlebar_height_for(wuss, menu_flags);
 
-  bmfont_get_info(wuss->fonts[0], NULL, &fh);
+  bmfont_get_info(wuss->fonts.fonts[0], NULL, &fh);
   pitch = fh + 2 * WUSS_MENU_ROW_PAD;
   sep_h = 2 * WUSS_MENU_ROW_PAD;
 
@@ -589,7 +589,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     len  = (int) strlen(text);
     if (len == 0)
       continue; /* empty label (bare rule row); nothing to measure */
-    if (wuss__text_measure(wuss->fonts[0], text, len,
+    if (wuss__text_measure(wuss->fonts.fonts[0], text, len,
                            INT_MAX, &split, &w) == result_OK && (int) w > widest)
       widest = (int) w;
   }
@@ -600,7 +600,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   {
     bmfont_width_t space_w = 0;
 
-    wuss__text_measure(wuss->fonts[0], " ", 1, INT_MAX, NULL, &space_w);
+    wuss__text_measure(wuss->fonts.fonts[0], " ", 1, INT_MAX, NULL, &space_w);
     widest += 2 * (int) space_w;
   }
 
@@ -617,8 +617,9 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     int             split;
     bmfont_width_t  title_w;
 
-    titlefont = (wuss->nfonts > 1 && wuss->fonts[1] != NULL) ? wuss->fonts[1]
-                                                             : wuss->fonts[0];
+    titlefont = (wuss->fonts.nfonts > 1 && wuss->fonts.fonts[1] != NULL)
+              ? wuss->fonts.fonts[1]
+              : wuss->fonts.fonts[0];
     titlelen  = (int) strlen(menu->title);
     if (wuss__text_measure(titlefont, menu->title, titlelen, INT_MAX, &split,
                            &title_w) == result_OK &&

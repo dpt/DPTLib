@@ -1,10 +1,10 @@
-/* text.c -- wuss centralised bitmap-font text rendering */
+/* wuss/font/text.c -- wuss centralised bitmap-font text rendering */
 
 #include "geom/point.h"
 #include "framebuf/bmfont.h"
 #include "framebuf/screen.h"
 
-#include "impl.h"
+#include "font.h"
 
 /* Optical vertical bias applied to every text draw so glyphs sit visually
  * centred rather than mathematically centred. Positive shifts text down. */

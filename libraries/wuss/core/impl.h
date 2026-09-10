@@ -21,6 +21,8 @@
 #include "wuss/window.h"
 #include "wuss/task.h"
 
+#include "../font/font.h"
+
 #ifdef WUSS_FURNITURE
 #include "../furniture.h"
 #endif
@@ -101,14 +103,8 @@ struct wuss_task
 struct wuss
 {
   screen_t                   *scr;
-  bmfont_t                   *fonts[wuss_MAX_FONTS]; /* slot 0 is the system
-                                          * font; unset slots NULL; not owned */
-  wuss_font_class_t           font_classes[wuss_MAX_FONTS]; /* parallel to
-                                          * fonts[]; NONE for an unset slot */
-  const char                 *font_names[wuss_MAX_FONTS]; /* parallel to
-                                          * fonts[]; borrowed; NULL if unset
-                                          * or given no name */
-  int                         nfonts;    /* entries filled from wuss_create */
+  struct wuss_fontset         fonts;     /* font slots from wuss_create; slot 0
+                                          * is the system font. See font/font.h */
   wuss_alloc_t                alloc;     /* malloc/realloc/free hooks, copied in
                                           * by wuss_create; used for every heap
                                           * block this wuss_t owns */
@@ -298,25 +294,6 @@ static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
 #endif
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
-
-/* Centralised text rendering. Every wuss text draw goes through
- * wuss__text_draw so an optical vertical bias (WUSS_TEXT_BASELINE_ADJUST,
- * default 1px down) is applied uniformly; wuss__text_measure is a plain
- * pass-through kept alongside for a single point of policy. */
-result_t wuss__text_measure(bmfont_t       *font,
-                            const char     *text,
-                            int             len,
-                            bmfont_width_t  target_width,
-                            int            *split_point,
-                            bmfont_width_t *actual_width);
-result_t wuss__text_draw(bmfont_t      *font,
-                         screen_t      *scr,
-                         const char    *text,
-                         int            len,
-                         colour_t       fg,
-                         colour_t       bg,
-                         const point_t *pos,
-                         point_t       *end_pos);
 
 /* Rebuild wuss->palettecache (white, black and the symbolic[] table) from
  * the current palette and the stored chrome colours. Call after the palette

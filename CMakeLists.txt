@@ -371,7 +371,6 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/backdrop.c
     libraries/wuss/core/create.c
     libraries/wuss/core/destroy.c
-    libraries/wuss/core/get-font.c
     libraries/wuss/core/get-palette.c
     libraries/wuss/core/get-pointer.c
     libraries/wuss/core/idle.c
@@ -386,7 +385,9 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/scroll-step.c
     libraries/wuss/core/set-backdrop.c
     libraries/wuss/core/set-palette.c
-    libraries/wuss/core/text.c
+    libraries/wuss/font/font.h
+    libraries/wuss/font/registry.c
+    libraries/wuss/font/text.c
     libraries/wuss/core/task/create.c
     libraries/wuss/core/task/destroy.c
     libraries/wuss/core/task/set-autoclose.c

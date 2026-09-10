@@ -127,7 +127,7 @@ static int wuss__draw_symbol_glyph(const wuss_t *wuss,
   point_t   pos;
   int       font_width, font_height;
 
-  font = wuss->fonts[WUSS_SYMBOL_FONT];
+  font = wuss->fonts.fonts[WUSS_SYMBOL_FONT];
   if (font == NULL)
     return 0;
 
@@ -652,9 +652,9 @@ void wuss__icon_draw(wuss_t              *wuss,
 
   /* pick the icon's requested weight; fall back to the system font */
   fontidx = wuss_ICON_FONT_OF(spec->flags);
-  c.font  = wuss->fonts[fontidx];
+  c.font  = wuss->fonts.fonts[fontidx];
   if (c.font == NULL)
-    c.font = wuss->fonts[0];
+    c.font = wuss->fonts.fonts[0];
 
   c.have_font = (c.font != NULL && spec->text[0] != '\0');
   if (c.have_font)
