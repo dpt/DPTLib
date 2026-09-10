@@ -773,4 +773,38 @@ static inline void wuss__max_content_anywhere_on_screen(const wuss_window_t *win
   max->h = MAX(max->h, WUSS_MIN_CONTENT);
 }
 
+/* Nudge window->visible back onto the screen by the minimum needed to bring
+ * its top-left (titlebar/close-icon) edge into view: shift right/down if it
+ * is off the top or left, shift left/up if it hangs off the right or bottom,
+ * but never so far that the top-left goes off the opposite edge -- a window
+ * bigger than the screen keeps its top-left on and overhangs bottom-right.
+ * Only the position moves, not the size. Shared by wuss_window_create and the
+ * menu code's borrowed-window opener so no menu can place a window off-screen.
+ */
+static inline void wuss__nudge_visible_onscreen(wuss_window_t *window)
+{
+  int scr_width, scr_height, dx, dy;
+
+  scr_width  = window->wuss->scr->size.w;
+  scr_height = window->wuss->scr->size.h;
+
+  dx = 0;
+  if (window->visible.x0 < 0)
+    dx = -window->visible.x0;
+  else if (window->visible.x1 > scr_width)
+    dx = scr_width - window->visible.x1;
+  if (window->visible.x0 + dx < 0)
+    dx = -window->visible.x0;
+
+  dy = 0;
+  if (window->visible.y0 < 0)
+    dy = -window->visible.y0;
+  else if (window->visible.y1 > scr_height)
+    dy = scr_height - window->visible.y1;
+  if (window->visible.y0 + dy < 0)
+    dy = -window->visible.y0;
+
+  box_translated(&window->visible, dx, dy, &window->visible);
+}
+
 #endif /* IMPL_H */

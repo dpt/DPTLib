@@ -215,6 +215,10 @@ static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
 
   at = wuss__submenu_anchor(self, self->icons[index]);
   wuss_window_move(win, at);
+  /* the anchor sits off the parent's right edge; if the parent menu is near
+   * the screen edge that puts the window (partly) off-screen. wuss_window_move
+   * does not clamp -- drags rely on it not clamping -- so pull it back here. */
+  wuss__nudge_visible_onscreen(win);
   if (wuss_window_set_hidden(win, 0) != result_OK)
   {
     wuss_window_move(win, prev); /* vetoed: undo the anchor move */

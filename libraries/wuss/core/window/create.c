@@ -22,7 +22,6 @@ result_t wuss_window_create(wuss_task_t        *task,
   wuss_t        *wuss;
   wuss_window_t *win;
   int             width, height, outline_px, titlebar_height;
-  int             scr_width, scr_height, dx, dy;
   point_t         carve;
 
   assert(task    != NULL);
@@ -50,31 +49,13 @@ result_t wuss_window_create(wuss_task_t        *task,
   win->visible.x1 = content->x1 + outline_px + carve.x;
   win->visible.y1 = content->y1 + outline_px + carve.y;
 
+  win->flags      = flags;
+
   /* nudge back on-screen so the titlebar/close icon stay reachable; a
    * window bigger than the screen keeps its top-left (titlebar) edge
-   * on-screen rather than being centred or left alone */
-  scr_width  = wuss->scr->size.w;
-  scr_height = wuss->scr->size.h;
-
-  dx = 0;
-  if (win->visible.x0 < 0)
-    dx = -win->visible.x0;
-  else if (win->visible.x1 > scr_width)
-    dx = scr_width - win->visible.x1;
-  if (win->visible.x0 + dx < 0)
-    dx = -win->visible.x0;
-
-  dy = 0;
-  if (win->visible.y0 < 0)
-    dy = -win->visible.y0;
-  else if (win->visible.y1 > scr_height)
-    dy = scr_height - win->visible.y1;
-  if (win->visible.y0 + dy < 0)
-    dy = -win->visible.y0;
-
-  box_translated(&win->visible, dx, dy, &win->visible);
-
-  win->flags      = flags;
+   * on-screen rather than being centred or left alone. Needs win->flags
+   * set (the helper reads the carve off it). */
+  wuss__nudge_visible_onscreen(win);
 
   /* clamp so the window can never be born larger than the screen; done
    * after the on-screen nudge above so it measures from the final
