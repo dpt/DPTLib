@@ -26,7 +26,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   if (action == wuss_MOUSE_UP && wuss->pressed_icon != NULL)
   {
     wuss_icon_t   *pressed  = wuss->pressed_icon;
-    wuss_window_t *presswin = pressed->window;
+    wuss_window_t *presswin = wuss->pressed_window;
     box_t          content;
     point_t        doc_point;
     int            still_over;
@@ -40,11 +40,12 @@ result_t wuss_mouse_click(wuss_t             *wuss,
 
     if (!still_over)
     {
-      wuss->pressed_icon = NULL;
+      wuss->pressed_icon   = NULL;
+      wuss->pressed_window = NULL;
       if (wuss__icon_pressed(pressed))
       {
         wuss__icon_set_state(pressed, wuss_ICON_STATE_PRESSED, 0);
-        wuss__icon_invalidate(pressed);
+        wuss__icon_invalidate(presswin, pressed);
       }
     }
   }
@@ -277,21 +278,23 @@ result_t wuss_mouse_click(wuss_t             *wuss,
             (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
         {
           wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 1);
-          wuss->pressed_icon = icon;
-          wuss__icon_invalidate(icon);
+          wuss->pressed_icon   = icon;
+          wuss->pressed_window = win;
+          wuss__icon_invalidate(win, icon);
         }
         else if (action == wuss_MOUSE_UP && wuss__icon_pressed(icon))
         {
           wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 0);
-          wuss->pressed_icon = NULL;
-          wuss__icon_invalidate(icon);
+          wuss->pressed_icon   = NULL;
+          wuss->pressed_window = NULL;
+          wuss__icon_invalidate(win, icon);
 
           /* a completed click latches radio/option state before the task is
            * told, so the wuss_EVENT_ICON handler sees the new value */
           if (icon->type == wuss_ICON_TYPE_OPTION)
-            wuss__icon_select(icon, !wuss__icon_selected(icon));
+            wuss__icon_select(win, icon, !wuss__icon_selected(icon));
           else if (icon->type == wuss_ICON_TYPE_RADIO)
-            wuss__icon_select(icon,
+            wuss__icon_select(win, icon,
                               (button & wuss_BUTTON_ADJUST) ? !wuss__icon_selected(icon)
                                                             : 1);
         }

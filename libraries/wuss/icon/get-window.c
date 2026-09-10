@@ -1,8 +1,0 @@
-/* wuss/icon/get-window.c -- read a work-area icon's owning window */
-
-#include "../core/impl.h"
-
-wuss_window_t *wuss_icon_get_window(const wuss_icon_t *icon)
-{
-  return icon->window;
-}

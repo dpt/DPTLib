@@ -55,7 +55,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   if (win == NULL)
   {
 #ifdef WUSS_ICONS
-    wuss__icon_set_hover(wuss, NULL);
+    wuss__icon_set_hover(wuss, NULL, NULL);
 #endif
     return result_OK;
   }
@@ -64,7 +64,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   if (wuss->furniture_ops->hit_test(win, POINT(x, y)) != wuss_FURNITURE_CONTENT)
   {
 #ifdef WUSS_ICONS
-    wuss__icon_set_hover(wuss, NULL);
+    wuss__icon_set_hover(wuss, NULL, NULL);
 #endif
     return result_OK;
   }
@@ -73,7 +73,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   if (win->task->handle == NULL)
   {
 #ifdef WUSS_ICONS
-    wuss__icon_set_hover(wuss, NULL);
+    wuss__icon_set_hover(wuss, NULL, NULL);
 #endif
     return result_OK;
   }
@@ -94,7 +94,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
 
       icon = wuss__icon_hit_test(win, doc_point);
 
-      wuss__icon_set_hover(wuss, icon);
+      wuss__icon_set_hover(wuss, win, icon);
 
       /* Clear the pressed state of any button the pointer has left. This does
        * not re-press a button on drag-back-in, and does not track which mouse
@@ -108,8 +108,11 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
         {
           wuss__icon_set_state(it, wuss_ICON_STATE_PRESSED, 0);
           if (wuss->pressed_icon == it)
-            wuss->pressed_icon = NULL;
-          wuss__icon_invalidate(it);
+          {
+            wuss->pressed_icon   = NULL;
+            wuss->pressed_window = NULL;
+          }
+          wuss__icon_invalidate(win, it);
         }
       }
 

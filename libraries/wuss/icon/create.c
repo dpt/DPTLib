@@ -47,7 +47,6 @@ result_t wuss_icon_create(wuss_window_t          *window,
     return result_OOM;
 
   *it = scratch; /* scratch.text aliases spec->text; replaced with an owned copy below */
-  it->window = window;
 
   src = (spec->text != NULL) ? spec->text : "";
   len = strlen(src);
@@ -61,7 +60,7 @@ result_t wuss_icon_create(wuss_window_t          *window,
 
   window->icons[window->nicons++] = it;
 
-  wuss__icon_invalidate(it);
+  wuss__icon_invalidate(window, it);
 
   if (icon != NULL)
     *icon = it;

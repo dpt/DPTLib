@@ -1,6 +1,7 @@
 /* wuss/icon/from-spec.c -- validate an icon spec into a detached icon */
 
 #include <assert.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -87,19 +88,34 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   if (has_swatch && swatch >= w->npalette)
     return result_WUSS_BAD_COLOUR;
 
-  out->window  = NULL;
   out->bbox    = spec->bbox;
   out->type    = spec->type;
   out->text    = (char *) ((spec->text != NULL) ? spec->text : "");
   out->fg      = fg;
   out->bg      = bg;
-  out->pattern = (spec->type == wuss_ICON_TYPE_PATTERN) ? spec->pattern
-                                                        : screen_PATTERN_SOLID;
-  out->bitmap  = (spec->type == wuss_ICON_TYPE_BITMAP) ? bitmap : NULL;
-  out->group   = (spec->type == wuss_ICON_TYPE_RADIO) ? spec->group : 0;
-  out->swatch  = swatch;
-  out->border  = (spec->type == wuss_ICON_TYPE_LABEL) ? spec->border
-                                                      : wuss_ICON_BORDER_NONE;
+
+  memset(&out->u, 0, sizeof(out->u));
+  switch (spec->type)
+  {
+  case wuss_ICON_TYPE_LABEL:
+    out->u.label.border = spec->border;
+    break;
+  case wuss_ICON_TYPE_PATTERN:
+    out->u.pattern.tile = spec->pattern;
+    break;
+  case wuss_ICON_TYPE_BITMAP:
+    out->u.bitmap.image = bitmap;
+    break;
+  case wuss_ICON_TYPE_RADIO:
+    out->u.radio.group = spec->group;
+    break;
+  case wuss_ICON_TYPE_MENU_ENTRY:
+    out->u.menu_entry.swatch = swatch;
+    break;
+  default:
+    break;
+  }
+
   out->flags   = spec->flags;
   out->state   = wuss_ICON_STATE_NONE;
 

@@ -18,7 +18,7 @@ static void wuss__scroll_rehover(wuss_t        *wuss,
   doc_point.x = screen_point.x - content.x0 + win->scroll.x;
   doc_point.y = screen_point.y - content.y0 + win->scroll.y;
 
-  wuss__icon_set_hover(wuss, wuss__icon_hit_test(win, doc_point));
+  wuss__icon_set_hover(wuss, win, wuss__icon_hit_test(win, doc_point));
 #else
   (void) wuss;
   (void) win;

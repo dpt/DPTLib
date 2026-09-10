@@ -160,10 +160,14 @@ struct wuss
                                             * idle; released on any MOUSE_UP
                                             * even if a new window now covers
                                             * its owner */
+  wuss_window_t              *pressed_window; /* the window pressed_icon is on;
+                                              * NULL iff pressed_icon is NULL */
   wuss_icon_t                *hover_icon;   /* icon the pointer is currently
                                             * over, NULL when none; drives
                                             * hover-highlight repaint of
                                             * menu-entry icons */
+  wuss_window_t              *hover_window; /* the window hover_icon is on;
+                                            * NULL iff hover_icon is NULL */
   /* Icon set loaded by wuss_icons_load. index i is the i-th ".png" the
    * directory scan yielded (order unspecified -- address by name).
    * names interns the leafnames-sans-".png"; atoms[i] is entry i's atom

@@ -24,9 +24,7 @@ result_t wuss_icon_plot(wuss_window_t          *window,
   if (rc != result_OK)
     return rc;
 
-  scratch.window = window;
-
-  wuss__icon_draw(window->wuss, &scratch, content, scroll);
+  wuss__icon_draw(window->wuss, window, &scratch, content, scroll);
 
   return result_OK;
 }

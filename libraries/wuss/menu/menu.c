@@ -314,7 +314,7 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
       if (was_parent != NULL && was_parent != icon)
       {
         wuss__icon_set_state(was_parent, wuss_ICON_STATE_HOVERED, 0);
-        wuss__icon_invalidate(was_parent);
+        wuss__icon_invalidate(self->window, was_parent);
       }
     }
 
@@ -393,7 +393,7 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
       /* first blink now: the row is already highlit under the pointer, so
        * drop the highlight this frame for an immediate visible change */
       wuss__icon_set_state(row, wuss_ICON_STATE_HOVERED, 0);
-      wuss__icon_invalidate(row);
+      wuss__icon_invalidate(self->window, row);
     }
     return result_OK;
   }
@@ -462,7 +462,7 @@ static void wuss__menu_flash_finish(struct wuss__menu *self)
 
   on = keep_open && wuss__pointer_over_icon(self->window, row);
   wuss__icon_set_state(row, wuss_ICON_STATE_HOVERED, on);
-  wuss__icon_invalidate(row);
+  wuss__icon_invalidate(self->window, row);
 
   if (!keep_open)
   {
@@ -508,7 +508,7 @@ static void wuss__menu_flash_step(struct wuss__menu *self)
     int on = ((self->flash.frames / WUSS_MENU_FLASH_PERIOD) & 1) == 0;
 
     wuss__icon_set_state(row, wuss_ICON_STATE_HOVERED, on);
-    wuss__icon_invalidate(row);
+    wuss__icon_invalidate(self->window, row);
   }
 }
 
@@ -795,7 +795,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     s++;
 
     if (menu->items[i].flags & wuss_MENU_ITEM_TICKED)
-      wuss_icon_set_selected(node->icons[i], 1);
+      wuss_icon_set_selected(node->window, node->icons[i], 1);
   }
   wuss__free(wuss, made);
 
@@ -946,7 +946,7 @@ void wuss_menu_set_ticked(wuss_menu_handle_t handle,
     return;
 
   for (i = 0; i < menu->nitems; i++)
-    wuss_icon_set_selected(node->icons[i], i == index);
+    wuss_icon_set_selected(node->window, node->icons[i], i == index);
 }
 
 void wuss_menu_set_item_ticked(wuss_menu_handle_t handle,
@@ -963,7 +963,7 @@ void wuss_menu_set_item_ticked(wuss_menu_handle_t handle,
   if (index < 0 || index >= menu->nitems)
     return;
 
-  wuss_icon_set_selected(node->icons[index], ticked);
+  wuss_icon_set_selected(node->window, node->icons[index], ticked);
 }
 
 /* ----------------------------------------------------------------------- */

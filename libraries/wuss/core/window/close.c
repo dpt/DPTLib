@@ -24,10 +24,16 @@ void wuss_window_close(wuss_window_t *doomed)
     wuss->furniture.dragging = NULL;
 #endif
 #ifdef WUSS_ICONS
-  if (wuss->pressed_icon != NULL && wuss->pressed_icon->window == doomed)
-    wuss->pressed_icon = NULL;
-  if (wuss->hover_icon != NULL && wuss->hover_icon->window == doomed)
-    wuss->hover_icon = NULL;
+  if (wuss->pressed_window == doomed)
+  {
+    wuss->pressed_icon   = NULL;
+    wuss->pressed_window = NULL;
+  }
+  if (wuss->hover_window == doomed)
+  {
+    wuss->hover_icon   = NULL;
+    wuss->hover_window = NULL;
+  }
 #endif
 
   wuss__release_packed(doomed);
