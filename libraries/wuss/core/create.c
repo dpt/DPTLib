@@ -63,7 +63,6 @@ result_t wuss_create(screen_t               *scr,
                      const wuss_alloc_t     *alloc,
                      wuss_t                **wuss)
 {
-  bmfont_t      *font;
   wuss_alloc_t   al;
   wuss_t        *w;
 #ifdef WUSS_FURNITURE
@@ -84,14 +83,14 @@ result_t wuss_create(screen_t               *scr,
   if (nfonts < 0 || nfonts > wuss_MAX_FONTS || (nfonts > 0 && fonts == NULL))
     return result_BAD_ARG;
 
-  font = (nfonts > 0) ? fonts[0].font : NULL;
-
   al = (alloc != NULL) ? *alloc : wuss_alloc;
 
   w = al.malloc(sizeof(*w));
   if (w == NULL)
     return result_OOM;
   w->alloc = al;
+
+  wuss__fontset_init(&w->fonts, fonts, nfonts);
 
   if (palette == NULL)
   {
@@ -229,23 +228,15 @@ result_t wuss_create(screen_t               *scr,
   {
     w->titlebar_height = config->titlebar_height;
   }
-  else if (font != NULL)
-  {
-    /* titles draw in the bold weight when one was supplied; size the
-     * titlebar to whichever weight is taller */
-    bmfont_get_info(font, NULL, &font_height);
-    if (nfonts > 1 && fonts[1].font != NULL)
-    {
-      int titleh;
-
-      bmfont_get_info(fonts[1].font, NULL, &titleh);
-      font_height = MAX(font_height, titleh);
-    }
-    w->titlebar_height = font_height + 4;
-  }
   else
   {
-    w->titlebar_height = WUSS_DEFAULT_TITLEBAR_HEIGHT;
+    /* titles draw in the bold weight when one was supplied; size the
+     * titlebar to whichever weight is taller. Both slots empty -> fall back
+     * to the default. */
+    font_height = MAX(wuss__fontset_height(&w->fonts, 0),
+                      wuss__fontset_height(&w->fonts, 1));
+    w->titlebar_height = (font_height > 0) ? font_height + 4
+                                           : WUSS_DEFAULT_TITLEBAR_HEIGHT;
   }
 #else /* !WUSS_FURNITURE */
 #ifdef WUSS_ICONS
@@ -304,23 +295,6 @@ result_t wuss_create(screen_t               *scr,
   wuss__rebuild_palettecache(w);
 
   w->scr                = scr;
-  {
-    int i;
-
-    for (i = 0; i < nfonts; i++)
-    {
-      w->fonts[i]        = fonts[i].font;
-      w->font_classes[i] = fonts[i].font_class;
-      w->font_names[i]   = fonts[i].name;
-    }
-    for (; i < wuss_MAX_FONTS; i++)
-    {
-      w->fonts[i]        = NULL;
-      w->font_classes[i] = wuss_FONT_CLASS_NONE;
-      w->font_names[i]   = NULL;
-    }
-    w->nfonts = nfonts;
-  }
 #ifdef WUSS_FURNITURE
   w->furniture.dragging = NULL;
   w->furniture.drag.x   = 0;
