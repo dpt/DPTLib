@@ -14,25 +14,25 @@ void wuss__icon_select(wuss_window_t *window,
   assert(window != NULL);
   assert(icon   != NULL);
 
-  if (icon->type != wuss_ICON_TYPE_RADIO &&
-      icon->type != wuss_ICON_TYPE_OPTION &&
-      icon->type != wuss_ICON_TYPE_MENU_ENTRY)
+  if (icon->spec.type != wuss_ICON_TYPE_RADIO &&
+      icon->spec.type != wuss_ICON_TYPE_OPTION &&
+      icon->spec.type != wuss_ICON_TYPE_MENU_ENTRY)
     return;
 
   selected = selected ? 1 : 0;
 
   /* selecting a grouped radio clears its siblings first */
   if (selected &&
-      icon->type == wuss_ICON_TYPE_RADIO &&
-      icon->u.radio.group != 0)
+      icon->spec.type == wuss_ICON_TYPE_RADIO &&
+      icon->spec.u.radio.group != 0)
   {
     for (i = 0; i < window->nicons; i++)
     {
       other = window->icons[i];
       if (other == icon)
         continue;
-      if (other->type != wuss_ICON_TYPE_RADIO ||
-          other->u.radio.group != icon->u.radio.group)
+      if (other->spec.type != wuss_ICON_TYPE_RADIO ||
+          other->spec.u.radio.group != icon->spec.u.radio.group)
         continue;
       if (!wuss__icon_selected(other))
         continue;

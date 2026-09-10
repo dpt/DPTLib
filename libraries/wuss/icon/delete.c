@@ -37,6 +37,6 @@ void wuss_icon_delete(wuss_window_t *window, wuss_icon_t *icon)
     }
   }
 
-  wuss__free(window->wuss, icon->text);
+  wuss__free(window->wuss, (char *) icon->spec.text);
   wuss__free(window->wuss, icon);
 }

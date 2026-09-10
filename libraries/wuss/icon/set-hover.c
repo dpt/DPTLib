@@ -9,7 +9,7 @@
  * so redrawing them on pointer enter/leave is wasted work. */
 static int wuss__icon_hover_visible(const wuss_icon_t *icon)
 {
-  return icon->type == wuss_ICON_TYPE_MENU_ENTRY;
+  return icon->spec.type == wuss_ICON_TYPE_MENU_ENTRY;
 }
 
 void wuss__icon_set_hover(wuss_t        *wuss,

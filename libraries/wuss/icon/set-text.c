@@ -27,8 +27,8 @@ result_t wuss_icon_set_text(wuss_window_t *window,
     return result_OOM;
   memcpy(dup, src, len + 1);
 
-  wuss__free(w, icon->text);
-  icon->text = dup;
+  wuss__free(w, (char *) icon->spec.text);
+  icon->spec.text = dup;
 
   wuss__icon_invalidate(window, icon);
 

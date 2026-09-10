@@ -4,5 +4,5 @@
 
 wuss_icon_type_t wuss_icon_get_type(const wuss_icon_t *icon)
 {
-  return icon->type;
+  return icon->spec.type;
 }

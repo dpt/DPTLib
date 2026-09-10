@@ -7,9 +7,9 @@ void wuss_icon_set_hidden(wuss_window_t *window,
                           int            hidden)
 {
   if (hidden)
-    icon->flags |= wuss_ICON_FLAGS_HIDDEN;
+    icon->spec.flags |= wuss_ICON_FLAGS_HIDDEN;
   else
-    icon->flags &= (wuss_icon_flags_t) ~wuss_ICON_FLAGS_HIDDEN;
+    icon->spec.flags &= (wuss_icon_flags_t) ~wuss_ICON_FLAGS_HIDDEN;
 
   wuss__icon_invalidate(window, icon);
 }

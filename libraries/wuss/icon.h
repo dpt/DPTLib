@@ -24,60 +24,15 @@ typedef enum wuss_icon_state
 }
 wuss_icon_state_t;
 
-/* Per-type payload. Exactly one arm is live, selected by wuss_icon::type;
- * wuss__icon_from_spec zeroes the whole union then fills the arm for the
- * icon's type. Types with no type-specific data (ACTION, FRAME, OPTION,
- * RULE, and the reserved types) touch no arm. Each arm is its own struct so
- * a type can gain fields without disturbing the others. */
-typedef union wuss_icon_data
-{
-  /* wuss_ICON_TYPE_LABEL */
-  struct
-  {
-    wuss_icon_border_t border; /* inside-bbox border; NONE otherwise */
-  }
-  label;
-
-  /* wuss_ICON_TYPE_PATTERN */
-  struct
-  {
-    screen_pattern_t tile; /* repeating preset tile */
-  }
-  pattern;
-
-  /* wuss_ICON_TYPE_BITMAP */
-  struct
-  {
-    const bitmap_t *image; /* borrowed, never owned */
-  }
-  bitmap;
-
-  /* wuss_ICON_TYPE_RADIO */
-  struct
-  {
-    int group; /* exclusive-selection group; 0 = none */
-  }
-  radio;
-
-  /* wuss_ICON_TYPE_MENU_ENTRY */
-  struct
-  {
-    wuss_colour_t swatch; /* FLAGS_SWATCH left-gutter chip colour;
-                           * wuss_NO_BACKGROUND otherwise */
-  }
-  menu_entry;
-}
-wuss_icon_data_t;
-
+/* A live icon is its creation spec plus transient runtime state.
+ * wuss__icon_from_spec validates a wuss_icon_spec_t and stores it in "spec"
+ * with fg/bg/swatch resolved to concrete palette indices and, for a BITMAP,
+ * u.bitmap.image resolved from u.bitmap.set. spec.text is owned (strdup'd by
+ * wuss_icon_create, aliased by wuss_icon_plot) -- never NULL, "" instead. */
 struct wuss_icon
 {
-  box_t             bbox;    /* in virtual document space */
-  wuss_icon_type_t  type;
-  char             *text;    /* owned; never NULL ("" instead) */
-  wuss_colour_t     fg, bg;
-  wuss_icon_flags_t flags;
+  wuss_icon_spec_t  spec;    /* bbox in virtual document space; text owned */
   wuss_icon_state_t state;
-  wuss_icon_data_t  u;       /* per-type payload, selected by type */
 };
 
 static inline int wuss__icon_pressed(const wuss_icon_t *icon)
@@ -134,10 +89,13 @@ void wuss__icon_box_to_screen(const box_t *content,
  * must be an icon of "window". */
 void wuss__icon_invalidate(wuss_window_t *window, const wuss_icon_t *icon);
 
-/* Validate a spec against the palette and fill "out" with a detached icon (no
- * owned text -- out->text is aliased to spec->text or ""). Shared by
- * wuss_icon_create and wuss_icon_plot. Returns result_WUSS_BAD_ICON /
- * result_WUSS_BAD_COLOUR as wuss_icon_create documents, else result_OK. */
+/* Validate a spec against the palette and fill "out" with a detached icon:
+ * "out->spec" is a copy of "spec" with fg/bg/swatch resolved to palette
+ * indices and, for a BITMAP, u.bitmap.image resolved from u.bitmap.set.
+ * out->spec.text is not owned -- it aliases spec->text, or "" when that is
+ * NULL. Shared by wuss_icon_create and wuss_icon_plot. Returns
+ * result_WUSS_BAD_ICON / result_WUSS_BAD_COLOUR as wuss_icon_create
+ * documents, else result_OK. */
 result_t wuss__icon_from_spec(const wuss_t           *wuss,
                               const wuss_icon_spec_t *spec,
                               wuss_icon_t            *out);

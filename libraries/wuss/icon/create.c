@@ -46,17 +46,17 @@ result_t wuss_icon_create(wuss_window_t          *window,
   if (it == NULL)
     return result_OOM;
 
-  *it = scratch; /* scratch.text aliases spec->text; replaced with an owned copy below */
+  *it = scratch; /* scratch.spec.text aliases spec->text; replaced with an owned copy below */
 
   src = (spec->text != NULL) ? spec->text : "";
   len = strlen(src);
-  it->text = wuss__malloc(w, len + 1);
-  if (it->text == NULL)
+  it->spec.text = wuss__malloc(w, len + 1);
+  if (it->spec.text == NULL)
   {
     wuss__free(w, it);
     return result_OOM;
   }
-  memcpy(it->text, src, len + 1);
+  memcpy((char *) it->spec.text, src, len + 1);
 
   window->icons[window->nicons++] = it;
 

@@ -291,9 +291,9 @@ result_t wuss_mouse_click(wuss_t             *wuss,
 
           /* a completed click latches radio/option state before the task is
            * told, so the wuss_EVENT_ICON handler sees the new value */
-          if (icon->type == wuss_ICON_TYPE_OPTION)
+          if (icon->spec.type == wuss_ICON_TYPE_OPTION)
             wuss__icon_select(win, icon, !wuss__icon_selected(icon));
-          else if (icon->type == wuss_ICON_TYPE_RADIO)
+          else if (icon->spec.type == wuss_ICON_TYPE_RADIO)
             wuss__icon_select(win, icon,
                               (button & wuss_BUTTON_ADJUST) ? !wuss__icon_selected(icon)
                                                             : 1);
