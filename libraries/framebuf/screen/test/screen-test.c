@@ -1068,6 +1068,117 @@ static result_t test_copy_bitmap_dithered(void)
 
 /* ----------------------------------------------------------------------- */
 
+/* Read/write the "bpp_bits"-deep pixel at column "px" of a byte buffer,
+ * LSB-first within the byte -- the same packing screen_copy_rect_packed uses
+ * internally. (screen_set_pixel is MSB-first for p1/p2; this test does its own
+ * packing so it stays independent of that convention -- a rect copy only has
+ * to be self-consistent to be correct.) */
+static int packed_pixel_at(const unsigned char *buf, int px, int bpp_bits)
+{
+  int ppb   = 8 / bpp_bits;
+  int shift = (px % ppb) * bpp_bits;
+  int mask  = (1 << bpp_bits) - 1;
+
+  return (buf[px / ppb] >> shift) & mask;
+}
+
+static void packed_pixel_set(unsigned char *buf,
+                             int            px,
+                             int            bpp_bits,
+                             int            val)
+{
+  int ppb   = 8 / bpp_bits;
+  int shift = (px % ppb) * bpp_bits;
+  int mask  = (1 << bpp_bits) - 1;
+
+  buf[px / ppb] = (unsigned char) ((buf[px / ppb] & ~(mask << shift))
+                                   | ((val & mask) << shift));
+}
+
+/* screen_copy_rect on the sub-byte paletted formats (p1/p2/p4): fill a
+ * left-hand column block with a non-zero index, copy it right by an odd
+ * (non-byte-aligned) offset, and check the pixels landed at the destination
+ * and the untouched column to the right of the source stayed clear (the copy
+ * reads before it writes -- no smear). Regression: these formats used to fall
+ * through to result_NOT_SUPPORTED, forcing a full repaint on every low-bpp
+ * window move. */
+static result_t test_copy_rect_packed(void)
+{
+  static const struct { pixelfmt_t fmt; int bits; } cases[] =
+  {
+    { pixelfmt_p1, 1 },
+    { pixelfmt_p2, 2 },
+    { pixelfmt_p4, 4 },
+  };
+
+  static unsigned char buf[WIDTH / 2 * HEIGHT]; /* widest sub-byte case */
+
+  colour_t pal[16];
+  size_t   ci;
+  int      i;
+
+  for (i = 0; i < 16; i++)
+    pal[i] = colour_rgb((unsigned char) (i * 17),
+                        (unsigned char) (i * 17),
+                        (unsigned char) (i * 17));
+
+  for (ci = 0; ci < NELEMS(cases); ci++)
+  {
+    screen_t scr;
+    box_t    src;
+    box_t    got;
+    int      rowbytes, fill, x, y;
+
+    rowbytes = WIDTH * cases[ci].bits / 8;
+    fill     = (1 << cases[ci].bits) - 1; /* max index for this depth */
+
+    memset(buf, 0, sizeof(buf));
+    screen_init(&scr, SIZE2D(WIDTH, HEIGHT), cases[ci].fmt, rowbytes, pal, buf);
+
+    /* an 8-wide, 8-tall block at the top-left */
+    for (y = 0; y < 8; y++)
+      for (x = 0; x < 8; x++)
+        packed_pixel_set(buf + (size_t) y * rowbytes, x, cases[ci].bits, fill);
+
+    src = (box_t) { 0, 0, 8, 8 };
+    if (screen_copy_rect(&scr, &src, POINT(5, 0), &got) != result_OK)
+    {
+      printf("screen: copy_rect declined a p%d screen\n", cases[ci].bits);
+      return result_TEST_FAILED;
+    }
+
+    /* moved: columns 5..12 of row 0 now carry the fill index */
+    for (x = 5; x < 13; x++)
+      if (packed_pixel_at(buf, x, cases[ci].bits) != fill)
+      {
+        printf("screen: copy_rect p%d did not move pixel at x=%d\n",
+               cases[ci].bits, x);
+        return result_TEST_FAILED;
+      }
+
+    /* read-before-write: column 13, just past the destination, is untouched */
+    if (packed_pixel_at(buf, 13, cases[ci].bits) != 0)
+    {
+      printf("screen: copy_rect p%d smeared past its destination\n",
+             cases[ci].bits);
+      return result_TEST_FAILED;
+    }
+
+    /* row 8, the first row below the 8-tall source, stayed clear */
+    for (x = 0; x < 16; x++)
+      if (packed_pixel_at(buf + (size_t) 8 * rowbytes, x, cases[ci].bits) != 0)
+      {
+        printf("screen: copy_rect p%d touched a row below the source\n",
+               cases[ci].bits);
+        return result_TEST_FAILED;
+      }
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t screen_test(const char *resources)
 {
   typedef result_t (*screentestfn)(void);
@@ -1086,7 +1197,8 @@ result_t screen_test(const char *resources)
     test_fill_circle,
     test_copy_bitmap_p1,
     test_copy_bitmap_p2,
-    test_copy_bitmap_dithered
+    test_copy_bitmap_dithered,
+    test_copy_rect_packed
   };
 
   result_t rc;

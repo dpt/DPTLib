@@ -4,31 +4,39 @@
 
 #include "framebuf/screen.h"
 
-/* 4bpp paletted screens pack two pixels per byte, so a moving window's
- * source and destination nibbles don't line up on byte boundaries in
- * general. Copied in place, pixel by pixel, masking each nibble out and
- * rolling it into place: safe under self-overlap by walking rows in the
- * direction "dy" dictates (as the byte path already does) and, since a
- * nibble's own byte-mate is its immediate horizontal neighbour, walking
- * columns within each row by the same rule applied to "dx" -- the standard
- * two-axis blit-direction trick, so every pixel is read before anything
- * that could overwrite it is written. */
-static result_t screen_copy_rect_p4(screen_t    *scr,
-                                    const box_t *s,
-                                    const box_t *d,
-                                    int          width,
-                                    int          height,
-                                    int          dx,
-                                    int          dy)
+/* Sub-byte paletted screens (1/2/4bpp) pack several pixels per byte, so a
+ * moving window's source and destination pixels don't line up on byte
+ * boundaries in general. Copied in place, pixel by pixel, masking each one
+ * out and rolling it into place: safe under self-overlap by walking rows in
+ * the direction "dy" dictates (as the byte path already does) and, since a
+ * pixel's byte-mates are its immediate horizontal neighbours, walking columns
+ * within each row by the same rule applied to "dx" -- the standard two-axis
+ * blit-direction trick, so every pixel is read before anything that could
+ * overwrite it is written. "bpp_bits" is 1, 2 or 4. */
+static result_t screen_copy_rect_packed(screen_t    *scr,
+                                        const box_t *s,
+                                        const box_t *d,
+                                        int          width,
+                                        int          height,
+                                        int          dx,
+                                        int          dy,
+                                        int          bpp_bits)
 {
   unsigned char *base;
   int            rowbytes;
+  int            ppb, xshift, xmask;
+  unsigned char  pmask;
   int            row_first, row_last, row_step;
   int            col_first, col_last, col_step;
   int            row, col;
 
   base     = scr->base;
   rowbytes = scr->rowbytes;
+
+  ppb    = 8 / bpp_bits;        /* pixels per byte: 8, 4 or 2 */
+  xshift = (bpp_bits == 1) ? 3 : (bpp_bits == 2) ? 2 : 1;
+  xmask  = ppb - 1;
+  pmask  = (unsigned char) ((1u << bpp_bits) - 1);
 
   if (dy > 0) { row_first = height - 1; row_last = -1;     row_step = -1; }
   else        { row_first = 0;          row_last = height; row_step =  1; }
@@ -44,18 +52,19 @@ static result_t screen_copy_rect_p4(screen_t    *scr,
       const unsigned char *scrp_s;
       unsigned char        *scrp_d;
       int                   shift_s, shift_d;
-      unsigned char         nib;
+      unsigned char         pix;
 
       sx  = s->x0 + col; sy  = s->y0 + row;
       dxp = d->x0 + col; dyp = d->y0 + row;
 
-      scrp_s  = base + (size_t) sy * rowbytes + (sx >> 1);
-      shift_s = (sx & 1) * 4;
-      nib     = (unsigned char) ((*scrp_s >> shift_s) & 0xF);
+      scrp_s  = base + (size_t) sy * rowbytes + (sx >> xshift);
+      shift_s = (sx & xmask) * bpp_bits;
+      pix     = (unsigned char) ((*scrp_s >> shift_s) & pmask);
 
-      scrp_d  = base + (size_t) dyp * rowbytes + (dxp >> 1);
-      shift_d = (dxp & 1) * 4;
-      *scrp_d = (unsigned char) ((*scrp_d & ~(0xF << shift_d)) | (nib << shift_d));
+      scrp_d  = base + (size_t) dyp * rowbytes + (dxp >> xshift);
+      shift_d = (dxp & xmask) * bpp_bits;
+      *scrp_d = (unsigned char) ((*scrp_d & ~(pmask << shift_d))
+                                 | (pix << shift_d));
     }
   }
 
@@ -146,7 +155,12 @@ result_t screen_copy_rect(screen_t    *scr,
 
   switch (pixelfmt_log2bpp(scr->format))
   {
-  case 2: return screen_copy_rect_p4(scr, &s, &d_clipped, width, height, dx, dy);
+  case 0: return screen_copy_rect_packed(scr, &s, &d_clipped,
+                                         width, height, dx, dy, 1);
+  case 1: return screen_copy_rect_packed(scr, &s, &d_clipped,
+                                         width, height, dx, dy, 2);
+  case 2: return screen_copy_rect_packed(scr, &s, &d_clipped,
+                                         width, height, dx, dy, 4);
 
   case 3: bpp = 1; break;
   case 4: bpp = 2; break;
