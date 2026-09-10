@@ -275,15 +275,17 @@ static void porter_duff_ramp_src(porter_duff_task_t *pd, int ramp)
 static void porter_duff_draw_checkerboard(const porter_duff_task_t *pd,
                                           screen_t                 *scr,
                                           const box_t              *content,
-                                          const box_t              *bounds)
+                                          const box_t              *bounds,
+                                          int                       sx,
+                                          int                       sy)
 {
   int x, y, lx, ly, band;
 
   for (y = content->y0; y < content->y1; y++)
     for (x = content->x0; x < content->x1; x++)
     {
-      lx   = x - bounds->x0;
-      ly   = y - bounds->y0;
+      lx   = x - bounds->x0 + sx;
+      ly   = y - bounds->y0 + sy;
       band = lx / PD_CHECKER_BAND + ly / PD_CHECKER_BAND;
 
       screen_set_pixel(scr, x, y, (band & 1) ? pd->dark : pd->light);
@@ -299,14 +301,17 @@ static result_t porter_duff_redraw(const wuss_event_t *event,
   const box_t        *content, *bounds;
   const char         *name;
   point_t             pos;
+  int                 sx, sy;
 
   pd = task_data;
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
   bounds  = event->data.redraw.bounds;
+  sx      = event->data.redraw.scroll.x;
+  sy      = event->data.redraw.scroll.y;
 
-  porter_duff_draw_checkerboard(pd, scr, content, bounds);
+  porter_duff_draw_checkerboard(pd, scr, content, bounds, sx, sy);
 
   /* ponytail: the whole 256x256 pane is recomposited on every redraw -- two
    * full-image memcpys plus two full-image passes. Fine for one window in a
@@ -322,11 +327,11 @@ static result_t porter_duff_redraw(const wuss_event_t *event,
   if (rc != result_OK)
     return rc;
 
-  screen_copy_bitmap(scr, bounds->x0, bounds->y0, &pd->dst);
+  screen_copy_bitmap(scr, bounds->x0 - sx, bounds->y0 - sy, &pd->dst);
 
   name  = rule_names[pd->rule];
-  pos.x = bounds->x0 + 2;
-  pos.y = bounds->y0 + PD_SIZE + 2;
+  pos.x = bounds->x0 - sx + 2;
+  pos.y = bounds->y0 - sy + PD_SIZE + 2;
 
   return bmfont_draw(pd->font, scr, name, (int) strlen(name),
                      pd->fg, pd->bg, &pos, NULL);

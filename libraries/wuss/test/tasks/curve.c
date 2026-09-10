@@ -239,13 +239,14 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
                        blob_colour(task, i));
   }
 
-  /* curve-type label, pinned to the content area's top-left corner (bounds,
-   * not the per-redraw dirty piece "content", and not the scrolled document)
-   * so it stays put and readable on a partial redraw */
+  /* curve-type label, anchored at document (2, 2) so it scrolls with the
+   * content: screen pos = content top-left - scroll + doc offset. Uses bounds,
+   * not the per-redraw dirty piece "content", so it is drawn whole on a
+   * partial redraw */
   {
     bmfont_t   *font = wuss_get_font(task->wuss);
     const char *name = curve_kind_name(task->npoints);
-    point_t     pos  = POINT(bounds->x0 + 2, bounds->y0 + 2);
+    point_t     pos  = POINT(bounds->x0 - sx + 2, bounds->y0 - sy + 2);
 
     if (font != NULL)
       bmfont_draw(font, scr, name, (int) strlen(name),
