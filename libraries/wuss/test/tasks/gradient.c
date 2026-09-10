@@ -143,14 +143,14 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
     }
   }
 
-  /* matrix-size label, pinned to the content area's top-left corner (bounds,
-   * not the per-redraw dirty piece, and not the scrolled document) so it
-   * stays put on a partial redraw */
+  /* matrix-size label, anchored at document (2, 2) so it scrolls with the
+   * content: screen pos = content top-left - scroll + doc offset. Uses bounds,
+   * not the per-redraw dirty piece, so it is drawn whole on a partial redraw */
   {
     bmfont_t   *font = wuss_get_font(gc->wuss);
     int         dim  = gradient_dithers[di].dim;
     char        label[8];
-    point_t     pos  = POINT(bounds->x0 + 2, bounds->y0 + 2);
+    point_t     pos  = POINT(bounds->x0 - sx + 2, bounds->y0 - sy + 2);
     colour_t    ink  = colour_rgb(0xFF, 0xFF, 0xFF);
     colour_t    bg   = colour_rgba(0, 0, 0, 0); /* transparent */
 
