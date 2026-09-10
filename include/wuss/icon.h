@@ -15,7 +15,7 @@
  *
  * Wuss fills a window's background, draws its icons, then delivers
  * wuss_EVENT_REDRAW, so a task is free to paint over or around icon pixels.
- * A click on a wuss_ICON_TYPE_BUTTON reaches the task as wuss_EVENT_ICON;
+ * A click on a wuss_ICON_TYPE_ACTION reaches the task as wuss_EVENT_ICON;
  * clicks on a label, or on a hidden or disabled icon, fall through as
  * wuss_EVENT_MOUSE.
  */
@@ -58,13 +58,13 @@ typedef enum wuss_icon_type
   /** Bevelled rectangle with a centred text label and pressed-state visual
    *  feedback; clicks and hovers are delivered to the task as
    *  wuss_EVENT_ICON. */
-  wuss_ICON_TYPE_BUTTON,
+  wuss_ICON_TYPE_ACTION,
   /** Bounding box filled with a repeating two-colour 8x8 tile (spec.pattern) in
    *  fg/bg, phased to document space so it scrolls rigidly with content. Not
    *  interactive: clicks fall through to the task as wuss_EVENT_MOUSE. text is
    *  ignored. */
   wuss_ICON_TYPE_PATTERN,
-  /** A grouping box: a one-pixel rectangle in fg around the bounding box,
+  /** A grouping box: a bevelled rectangle around the bounding box,
    *  broken at the top-left for an optional caption (text) drawn over the
    *  window background. Not interactive: clicks fall through to the task as
    *  wuss_EVENT_MOUSE. */
@@ -101,7 +101,29 @@ typedef enum wuss_icon_type
    *  window background. Purely decorative: never hit-tested, never highlights.
    *  text, bg and pattern are ignored. Used between menu rows to render the
    *  line a wuss_ICON_FLAGS_SEPARATOR entry sits below. */
-  wuss_ICON_TYPE_RULE
+  wuss_ICON_TYPE_RULE,
+
+  /* The following types are reserved: the enum values and validation exist but
+   * no rendering, hit-testing or event routing is wired up yet. A spec using
+   * one is accepted and currently draws as a plain wuss_ICON_TYPE_LABEL. */
+
+  /** A read-only value field: a bevelled well showing text the task updates but
+   *  the user cannot edit. Not yet implemented. */
+  wuss_ICON_TYPE_DISPLAY,
+  /** An editable single-line text field. Not yet implemented. */
+  wuss_ICON_TYPE_WRITABLE,
+  /** An editable numeric field, optionally with up/down adjusters. Not yet
+   *  implemented. */
+  wuss_ICON_TYPE_NUMBER,
+  /** A field cycling through a fixed set of string values. Not yet
+   *  implemented. */
+  wuss_ICON_TYPE_STRING_SET,
+  /** A slider: a track with a draggable thumb selecting a value in a range.
+   *  Not yet implemented. */
+  wuss_ICON_TYPE_SLIDER,
+  /** A free-drag handle: reports pointer motion to the task while dragged. Not
+   *  yet implemented. */
+  wuss_ICON_TYPE_DRAGGABLE
 }
 wuss_icon_type_t;
 
@@ -148,7 +170,7 @@ typedef enum wuss_icon_flags
   /** wuss_ICON_TYPE_LABEL: centre the text in the bounding box. Takes
    *  precedence over wuss_ICON_FLAGS_JUSTIFY_RIGHT. */
   wuss_ICON_FLAGS_JUSTIFY_CENTRE = 1 << 3,
-  /** wuss_ICON_TYPE_BUTTON: draw as a default action button -- an accent fill
+  /** wuss_ICON_TYPE_ACTION: draw as a default action button -- an accent fill
    *  (see wuss_config_t::accent) inside the same 6px "action" surround as
    *  wuss_ICON_BORDER_ACTION, instead of the ordinary 1px bevel. Ignored by
    *  other icon types. */

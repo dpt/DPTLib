@@ -21,7 +21,7 @@ wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point)
       if (!(it->flags & wuss_ICON_FLAGS_INTERACTIVE))
         continue;
     }
-    else if (it->type != wuss_ICON_TYPE_BUTTON &&
+    else if (it->type != wuss_ICON_TYPE_ACTION &&
              it->type != wuss_ICON_TYPE_RADIO &&
              it->type != wuss_ICON_TYPE_OPTION &&
              it->type != wuss_ICON_TYPE_MENU_ENTRY)

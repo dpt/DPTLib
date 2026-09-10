@@ -84,7 +84,7 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
   /* 4px larger on every side than a plain button to seat the DEFAULT icon's
    * 6px action surround */
   s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN - 4, lay->y - 4, 88, 30);
-  s->type  = wuss_ICON_TYPE_BUTTON;
+  s->type  = wuss_ICON_TYPE_ACTION;
   s->text  = "Press me";
   s->fg    = lay->black;
   s->bg    = lay->window;
@@ -103,7 +103,7 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
 
   s       = &lay->specs[lay->n];
   s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, 980, 90, 52);
-  s->type = wuss_ICON_TYPE_BUTTON;
+  s->type = wuss_ICON_TYPE_ACTION;
   s->text = "Scrolled";
   s->fg   = lay->black;
   s->bg   = lay->window;
@@ -142,7 +142,7 @@ static void icons_add_buttons(icons_layout_t *lay)
       s       = &lay->specs[lay->n];
       s->fg   = lay->black;
       s->bg   = lay->window;
-      s->type = wuss_ICON_TYPE_BUTTON;
+      s->type = wuss_ICON_TYPE_ACTION;
 
       if (col == 0)
       {

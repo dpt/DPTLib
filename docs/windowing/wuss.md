@@ -124,7 +124,7 @@ For `wuss_EVENT_REDRAW`, `event->data.redraw.scr` is called with `scr->clip` alr
 
 For `wuss_EVENT_MOUSE` and `wuss_EVENT_SCROLL`, `event->data.mouse.point` and `event->data.scroll.point` are window-local content coordinates: the content area's top-left is `(0,0)` plus the window's current scroll offset (see "Scrolling" below). `event->data.mouse.action` is `wuss_MOUSE_DOWN`/`wuss_MOUSE_UP`/`wuss_MOUSE_MOVE`. A titlebar click never reaches a task's handle callback: it starts a drag (and, for `wuss_BUTTON_SELECT`, brings the window to front) instead. A content click, even on a `wuss_WINDOW_NO_TITLEBAR` window with no drag handle, never changes z-order — only a titlebar click raises a window — so tasks are free to use content clicks for their own purposes without Wuss reordering windows underneath them.
 
-`wuss_EVENT_ICON` is delivered instead of `wuss_EVENT_MOUSE` whenever the pointer is inside a `wuss_ICON_TYPE_BUTTON` icon's bounding box (see "Icons" below): `event->data.icon.icon` names the icon, `action` and `button` carry the same values a `wuss_EVENT_MOUSE` would. `wuss_ICON_TYPE_LABEL` icons, and hidden or disabled icons, never raise it — clicks over them fall through as `wuss_EVENT_MOUSE`.
+`wuss_EVENT_ICON` is delivered instead of `wuss_EVENT_MOUSE` whenever the pointer is inside a `wuss_ICON_TYPE_ACTION` icon's bounding box (see "Icons" below): `event->data.icon.icon` names the icon, `action` and `button` carry the same values a `wuss_EVENT_MOUSE` would. `wuss_ICON_TYPE_LABEL` icons, and hidden or disabled icons, never raise it — clicks over them fall through as `wuss_EVENT_MOUSE`.
 
 ## Mouse and scroll routing
 
@@ -199,13 +199,13 @@ In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scro
 Taking inspiration from RISC OS, a window can carry **icons**: rectangular UI elements Wuss draws and hit-tests inside the content area. v1 ships two types:
 
 - `wuss_ICON_TYPE_LABEL` — static text, optionally in a 1px raised or sunken border (`spec.border` — `wuss_ICON_BORDER_NONE` / `_RIDGE` / `_GROOVE`, the last a RISC OS-style read-only display field). Clicks fall through to the task as `wuss_EVENT_MOUSE`.
-- `wuss_ICON_TYPE_BUTTON` — a bevelled rectangle with a centred label and pressed-state feedback (the bevel inverts and the label shifts one pixel down-right while held). Clicks and hovers arrive as `wuss_EVENT_ICON`.
+- `wuss_ICON_TYPE_ACTION` — a bevelled rectangle with a centred label and pressed-state feedback (the bevel inverts and the label shifts one pixel down-right while held). Clicks and hovers arrive as `wuss_EVENT_ICON`.
 
 The enum is left open for sprite and editable-text types later.
 
 Icons are dynamic and owned by their window:
 
-- `wuss_icon_create(window, spec, &icon)` — returns an opaque `wuss_icon_t *`. The spec gives the bounding box, type, text (copied; `NULL` treated as `""`), foreground and background palette indices, a `border` (label only), and flags. A `wuss_ICON_TYPE_BUTTON` must pass a real `bg`; passing `wuss_NO_BACKGROUND` is rejected with `result_WUSS_BAD_ICON`. An unknown type is also `result_WUSS_BAD_ICON`; an out-of-range `fg`/`bg` is `result_WUSS_BAD_COLOUR`.
+- `wuss_icon_create(window, spec, &icon)` — returns an opaque `wuss_icon_t *`. The spec gives the bounding box, type, text (copied; `NULL` treated as `""`), foreground and background palette indices, a `border` (label only), and flags. A `wuss_ICON_TYPE_ACTION` must pass a real `bg`; passing `wuss_NO_BACKGROUND` is rejected with `result_WUSS_BAD_ICON`. An unknown type is also `result_WUSS_BAD_ICON`; an out-of-range `fg`/`bg` is `result_WUSS_BAD_COLOUR`.
 - `wuss_icon_delete(icon)` — NULL-safe.
 - `wuss_icon_set_text(icon, text)`, `wuss_icon_set_hidden(icon, hidden)`.
 - Getters: `wuss_icon_get_bbox`, `wuss_icon_get_type`, `wuss_icon_get_text` (never `NULL`), `wuss_icon_get_window`.
@@ -273,7 +273,7 @@ Terms as this document and the API use them. Several are RISC OS conventions, wh
 - **Furniture** — everything Wuss draws around a window's content: outline, titlebar and its buttons, scrollbars, resize button. Drawn outside the content area, never carved out of it. Furniture clicks are handled entirely within Wuss and never reach the task.
 - **Furniture button** — a clickable furniture region in the titlebar or window corner: close, back, toggle-size, resize. (Called an "icon" in earlier revisions; that name now means the work-area element below.)
 - **Handle callback** — a task's single `wuss_event_fn_t`, receiving every event kind and dispatching on `event->kind`. A window whose task has no handle receives no events at all.
-- **Icon** — a rectangular UI element Wuss draws and hit-tests inside a window's content area: a static `wuss_ICON_TYPE_LABEL`, or a clickable bevelled `wuss_ICON_TYPE_BUTTON`. Created with `wuss_icon_create` and owned by its window. Its bounding box is in virtual content space, so it scrolls with the content; its screen position is `content-top-left - scroll + bbox`. See "Icons".
+- **Icon** — a rectangular UI element Wuss draws and hit-tests inside a window's content area: a static `wuss_ICON_TYPE_LABEL`, or a clickable bevelled `wuss_ICON_TYPE_ACTION`. Created with `wuss_icon_create` and owned by its window. Its bounding box is in virtual content space, so it scrolls with the content; its screen position is `content-top-left - scroll + bbox`. See "Icons".
 - **Invalidate** — mark a region dirty for the next `wuss_redraw_dirty`. Window management does this for its own changes; a task must do it for its own content changes.
 - **Menu** — the middle mouse button, `wuss_BUTTON_MENU`. Routed like any other button; Wuss provides no menu widget of its own.
 - **Outline** — the 1px border drawn around a window, suppressed by `wuss_WINDOW_NO_OUTLINE`.

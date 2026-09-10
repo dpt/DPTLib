@@ -161,7 +161,7 @@ typedef struct wuss_event
     mouse;
 
     /** wuss_EVENT_ICON: delivered instead of wuss_EVENT_MOUSE while the
-     * pointer is inside a wuss_ICON_TYPE_BUTTON icon's bounding box.
+     * pointer is inside a wuss_ICON_TYPE_ACTION icon's bounding box.
      * Label, hidden and disabled icons never raise this; those clicks
      * fall through as wuss_EVENT_MOUSE. action is DOWN/UP/MOVE; button
      * is a set of wuss_button_t flags, so test it with '&' rather than
