@@ -672,7 +672,7 @@ void wuss__icon_draw(wuss_t            *wuss,
     wuss__icon_draw_frame(&c);
     break;
 
-  case wuss_ICON_TYPE_BUTTON:
+  case wuss_ICON_TYPE_ACTION:
     wuss__icon_draw_button(&c);
     break;
 
@@ -691,6 +691,16 @@ void wuss__icon_draw(wuss_t            *wuss,
 
   case wuss_ICON_TYPE_RULE:
     wuss__icon_draw_rule(&c);
+    break;
+
+  /* reserved types with no renderer yet: fall back to a plain label */
+  case wuss_ICON_TYPE_DISPLAY:
+  case wuss_ICON_TYPE_WRITABLE:
+  case wuss_ICON_TYPE_NUMBER:
+  case wuss_ICON_TYPE_STRING_SET:
+  case wuss_ICON_TYPE_SLIDER:
+  case wuss_ICON_TYPE_DRAGGABLE:
+    wuss__icon_draw_label(&c);
     break;
   }
 }

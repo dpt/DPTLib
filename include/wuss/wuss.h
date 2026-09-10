@@ -353,7 +353,7 @@ typedef struct wuss_config
 
   /**
    * Work-area button colours, as indices into the system palette. bg is the
-   * button face, used when a wuss_ICON_TYPE_BUTTON spec passes
+   * button face, used when a wuss_ICON_TYPE_ACTION spec passes
    * wuss_NO_BACKGROUND rather than its own fill. fg is the button label.
    * pressed replaces bg on the face while the button is held down. bg and
    * pressed default to bevel.light and bevel.dark when config is NULL; fg
@@ -371,7 +371,7 @@ typedef struct wuss_config
   button;
 
   /**
-   * Accent colour for a default action button -- a wuss_ICON_TYPE_BUTTON
+   * Accent colour for a default action button -- a wuss_ICON_TYPE_ACTION
    * created with wuss_ICON_FLAGS_DEFAULT, drawn to stand out from the
    * ordinary bevelled buttons around it (RISC OS's "default action button"):
    * its face fill at rest, and the moat of the wuss_ICON_BORDER_ACTION

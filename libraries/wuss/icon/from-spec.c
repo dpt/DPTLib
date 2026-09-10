@@ -31,7 +31,7 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   switch (spec->type)
   {
   case wuss_ICON_TYPE_LABEL:
-  case wuss_ICON_TYPE_BUTTON:
+  case wuss_ICON_TYPE_ACTION:
   case wuss_ICON_TYPE_PATTERN:
   case wuss_ICON_TYPE_FRAME:
   case wuss_ICON_TYPE_RADIO:
@@ -39,13 +39,19 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   case wuss_ICON_TYPE_BITMAP:
   case wuss_ICON_TYPE_MENU_ENTRY:
   case wuss_ICON_TYPE_RULE:
+  case wuss_ICON_TYPE_DISPLAY:
+  case wuss_ICON_TYPE_WRITABLE:
+  case wuss_ICON_TYPE_NUMBER:
+  case wuss_ICON_TYPE_STRING_SET:
+  case wuss_ICON_TYPE_SLIDER:
+  case wuss_ICON_TYPE_DRAGGABLE:
     break;
 
   default:
     return result_WUSS_BAD_ICON;
   }
 
-  /* a BUTTON may leave bg unset -- it then draws on the config button face
+  /* an ACTION may leave bg unset -- it then draws on the config button face
    * (wuss->button_bg); a PATTERN needs a concrete clear-bit colour */
   if (spec->type == wuss_ICON_TYPE_PATTERN && bg == wuss_NO_BACKGROUND)
     return result_WUSS_BAD_ICON;
