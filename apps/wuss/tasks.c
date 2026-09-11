@@ -8,6 +8,7 @@
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
+#include "framebuf/pixelfmt.h"
 #include "io/path.h"
 #include "wuss/task.h"
 #include "wuss/wuss.h"
@@ -39,6 +40,24 @@
 /* ----------------------------------------------------------------------- */
 
 struct wuss_app_tasks g;
+
+void tasks_build_screen_palette(colour_t       *out,
+                                int             nout,
+                                const colour_t *ui,
+                                int             nui)
+{
+  int r, g_, b, n;
+
+  memset(out, 0, nout * sizeof(*out));
+
+  n = MIN(nui, nout);
+  memcpy(out, ui, n * sizeof(*out));
+
+  for (r = 0; r < 6 && n < nout; r++)
+    for (g_ = 0; g_ < 6 && n < nout; g_++)
+      for (b = 0; b < 6 && n < nout; b++)
+        out[n++] = colour_rgb(r * 0x33, g_ * 0x33, b * 0x33);
+}
 
 /* Each spawn allocates a fresh per-instance task block so a task may run in
  * several windows at once; the block is owned by its window and freed by the
@@ -353,12 +372,22 @@ result_t task_handle_event(wuss_window_t      *window,
     /* wuss_set_palette already updated wuss's own copy and re-cached
      * furniture; read the new array back and push it on to the framebuffer
      * bitmap and any physical palette, so callers (e.g. the palette picker)
-     * never need to know the frontend exists */
+     * never need to know the frontend exists. bitmap_set_palette reads
+     * every entry g.bm's own format needs (up to 256 for p8), not just
+     * wuss's fixed-size UI palette, so pad out to match -- same as the
+     * startup array run_wuss builds. */
     const colour_t *palette;
     int              npalette;
+    colour_t         scr_palette[256];
+    int              scr_nentries;
 
-    palette = wuss_get_palette(g.wuss, &npalette);
-    bitmap_set_palette(g.bm, palette);
+    palette      = wuss_get_palette(g.wuss, &npalette);
+    scr_nentries = pixelfmt_paletted_nentries(g.bm->format);
+    if (scr_nentries > 0)
+    {
+      tasks_build_screen_palette(scr_palette, scr_nentries, palette, npalette);
+      bitmap_set_palette(g.bm, scr_palette);
+    }
     wuss_frontend_set_palette(g.frontend, palette, npalette);
     return result_OK;
   }

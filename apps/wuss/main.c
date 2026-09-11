@@ -317,21 +317,12 @@ static result_t run_wuss(const char *resources,
     goto Failure;
 
   /* bitmap_set_palette reads every entry a paletted format's bitmap_init
-   * needs (up to 256 for p8); pad scr_palette with palette's 16 UI colours
-   * so closest_palette_entry always has exact matches to find, then the
-   * web-safe 216 (6x6x6 cube, steps of 0x33) so a p8 screen has real range
-   * beyond the UI colours for nearest-match, then black for what's left. */
-  memset(scr_palette, 0, sizeof(scr_palette));
-  memcpy(scr_palette, palette, sizeof(palette));
-  {
-    int r, g, b, n;
-
-    n = NELEMS(palette);
-    for (r = 0; r < 6; r++)
-      for (g = 0; g < 6; g++)
-        for (b = 0; b < 6; b++)
-          scr_palette[n++] = colour_rgb(r * 0x33, g * 0x33, b * 0x33);
-  }
+   * needs (up to 256 for p8); pad scr_palette with palette's 16 UI colours,
+   * then the web-safe 216 (so a p8 screen has real range beyond the UI
+   * colours for nearest-match), then black for what's left. Also done on
+   * a live palette change; see task_handle_event. */
+  tasks_build_screen_palette(scr_palette, NELEMS(scr_palette),
+                             palette, NELEMS(palette));
 
   rc = bitmap_init(&bm, SIZE2D(scr_width, scr_height), fmt, rowbytes,
                    scr_palette, pixels);

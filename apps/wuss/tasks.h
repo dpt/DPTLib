@@ -48,4 +48,14 @@ result_t task_handle_event(wuss_window_t      *window,
  * MENU click over bare backdrop */
 result_t tasks_open_launcher(point_t pos);
 
+/* Fill out[0..nout-1]: ui[0..nui-1] copied in, then as much of the web-safe
+ * 216 (6x6x6 cube, steps of 0x33) as fits, then black for whatever is left.
+ * Used to build a paletted screen's full-size palette (nout = whatever
+ * bitmap_set_palette will read for the screen's format) from wuss's
+ * fixed-size UI palette, both at startup and on a live wuss_EVENT_PALETTE. */
+void tasks_build_screen_palette(colour_t       *out,
+                                int             nout,
+                                const colour_t *ui,
+                                int             nui);
+
 #endif /* WUSS_APP_TASKS_H */
