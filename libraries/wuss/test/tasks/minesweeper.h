@@ -13,10 +13,23 @@
 #include "wuss/task.h"
 #include "wuss/window.h"
 
-#define MINESWEEPER_COLS 12
-#define MINESWEEPER_ROWS 12
-#define MINESWEEPER_MINES 20
 #define MINESWEEPER_CELL 16 /* pixels per cell */
+
+/* board sizes offered on the "Grid Size" menu; arrays are sized for the
+ * largest so a resize just changes ms->rows/cols/mines and re-clears */
+#define MINESWEEPER_MAX_ROWS 24
+#define MINESWEEPER_MAX_COLS 24
+
+typedef enum minesweeper_size
+{
+  minesweeper_SIZE_24X24,
+  minesweeper_SIZE_24X12,
+  minesweeper_SIZE_16X16,
+  minesweeper_SIZE_16X12,
+  minesweeper_SIZE_12X12,
+  minesweeper_NSIZES
+}
+minesweeper_size_t;
 
 typedef enum minesweeper_cell_state
 {
@@ -28,16 +41,18 @@ minesweeper_cell_state_t;
 
 /* classic minesweeper: Select reveals a cell (flood-filling neighbouring
  * zeros), Adjust toggles a flag. Mines are placed on the first reveal so the
- * opening click is never a mine. A MENU-button click pops a "New Game" menu
- * that resets the board. */
+ * opening click is never a mine. A MENU-button click pops a menu with "New
+ * Game" and a "Grid Size" submenu that resets the board at a new size. */
 typedef struct minesweeper_task
 {
   wuss_t                  *wuss;
   wuss_window_t           *window;
   wuss_task_t             *task; /* delegate; opens the New Game menu */
   bmfont_t                *font; /* borrowed; draws the neighbour counts */
-  bool                     mine[MINESWEEPER_ROWS][MINESWEEPER_COLS];
-  minesweeper_cell_state_t state[MINESWEEPER_ROWS][MINESWEEPER_COLS];
+  minesweeper_size_t       size;
+  int                      rows, cols, mines;
+  bool                     mine[MINESWEEPER_MAX_ROWS][MINESWEEPER_MAX_COLS];
+  minesweeper_cell_state_t state[MINESWEEPER_MAX_ROWS][MINESWEEPER_MAX_COLS];
   bool                     placed;  /* mines placed yet? */
   bool                     dead;    /* a mine was revealed */
   bool                     won;
