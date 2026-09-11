@@ -321,6 +321,13 @@ void screen_fill_square(screen_t *scr,
  * snapping to the nearer. Building the table hoists the one divide out of the
  * inner loop -- the per-pixel cost drops to a lookup and an add.
  *
+ * "nlevels" must be the per-channel quantisation level count (e.g. 1 <<
+ * pm->rbits), not the palette's total entry count: pixelmap quantises R/G/B
+ * independently (4:4:4 for p1/p2/p4, 5:6:5 for p8) regardless of how many
+ * palette entries that yields, so a p8 screen has only 32-64 levels per
+ * channel despite 256 total entries. Keying the gap off the entry count
+ * instead makes the bias round to zero on p8 -- the dither vanishes.
+ *
  * dither_bias_build fills "tab" and returns 1 when dithering is on and useful
  * (>= 2 levels), 0 when the caller should skip the bias entirely.
  *
@@ -341,6 +348,14 @@ static int dither_bias_build(int tab[64], int nlevels, int dither)
     tab[i] = ((i - 32) * gap) / 64;
 
   return 1;
+}
+
+/* Per-channel level count driving the dither bias for a deep->paletted
+ * pixelmap: the worst (fewest-level) of R/G/B, since one shared bias table
+ * nudges all three channels. */
+static int dither_levels_for(const pixelmap_t *pm)
+{
+  return 1 << MIN(pm->rbits, MIN(pm->gbits, pm->bbits));
 }
 
 /* Apply the pre-built bias for sprite-local pixel (sx, sy) to channel value
@@ -386,9 +401,6 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
 
   clipped_width  = draw_box->x1 - draw_box->x0;
   clipped_height = draw_box->y1 - draw_box->y0;
-  do_dither      = dither_bias_build(bias,
-                                    pixelfmt_paletted_nentries(scr->format),
-                                    dither);
 
   srcrow  = (const unsigned char *) src->base + (draw_box->y0 - y) * src->rowbytes;
   dstbase = scr->base;
@@ -398,6 +410,8 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
   pm = pixelmap_get(pixelfmt_rgba8888, scr->format, scr->palette, 16);
   if (pm == NULL)
     return result_NOT_SUPPORTED;
+
+  do_dither = dither_bias_build(bias, dither_levels_for(pm), dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -472,9 +486,6 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
 
   clipped_width  = draw_box->x1 - draw_box->x0;
   clipped_height = draw_box->y1 - draw_box->y0;
-  do_dither      = dither_bias_build(bias,
-                                    pixelfmt_paletted_nentries(scr->format),
-                                    dither);
 
   srcrow  = (const unsigned char *) src->base + (draw_box->y0 - y) * src->rowbytes;
   dstbase = scr->base;
@@ -482,6 +493,8 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
   pm = pixelmap_get(pixelfmt_rgba8888, scr->format, scr->palette, 256);
   if (pm == NULL)
     return result_NOT_SUPPORTED;
+
+  do_dither = dither_bias_build(bias, dither_levels_for(pm), dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -552,9 +565,6 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
 
   clipped_width  = draw_box->x1 - draw_box->x0;
   clipped_height = draw_box->y1 - draw_box->y0;
-  do_dither      = dither_bias_build(bias,
-                                    pixelfmt_paletted_nentries(scr->format),
-                                    dither);
 
   srcrow  = (const unsigned char *) src->base + (draw_box->y0 - y) * src->rowbytes;
   dstbase = scr->base;
@@ -562,6 +572,8 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
   pm = pixelmap_get(pixelfmt_rgba8888, scr->format, scr->palette, 2);
   if (pm == NULL)
     return result_NOT_SUPPORTED;
+
+  do_dither = dither_bias_build(bias, dither_levels_for(pm), dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -636,9 +648,6 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
 
   clipped_width  = draw_box->x1 - draw_box->x0;
   clipped_height = draw_box->y1 - draw_box->y0;
-  do_dither      = dither_bias_build(bias,
-                                    pixelfmt_paletted_nentries(scr->format),
-                                    dither);
 
   srcrow  = (const unsigned char *) src->base + (draw_box->y0 - y) * src->rowbytes;
   dstbase = scr->base;
@@ -646,6 +655,8 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
   pm = pixelmap_get(pixelfmt_rgba8888, scr->format, scr->palette, 4);
   if (pm == NULL)
     return result_NOT_SUPPORTED;
+
+  do_dither = dither_bias_build(bias, dither_levels_for(pm), dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
