@@ -11,7 +11,9 @@
 #endif
 
 #include "base/utils.h"
+#include "framebuf/bmfont.h"
 #include "framebuf/palettes.h"
+#include "framebuf/pixelfmt.h"
 #include "geom/box.h"
 #include "io/namelist.h"
 #include "io/path.h"
@@ -127,7 +129,6 @@ result_t palette_create(wuss_t         *wuss,
     free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
   }
-  wuss_task_set_autoclose(task->delegate, 1);
 
   rc = wuss_window_create_placed(task->delegate,
                                  SIZE2D(100, 100),
@@ -138,32 +139,44 @@ result_t palette_create(wuss_t         *wuss,
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
     wuss_task_destroy(task->delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
 
-  return rc;
+  rc = wuss_window_create_placed(task->delegate,
+                                 SIZE2D(100, 100),
+                                 "Screen",
+                                 wuss_WINDOW_NO_RESIZE_BLIT,
+                                 wuss_BACKDROP_COLOUR(palette_PICO8_BLACK),
+                                 SIZE2D(100, 100),
+                                 SIZE2D(0, 0),
+                                 &task->window2);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->delegate); /* closes "Palette", QUIT frees the block */
+    return rc;
+  }
+
+  /* both windows up: from here, closing the last one reaps the task and its
+   * wuss_EVENT_QUIT frees task_data */
+  wuss_task_set_autoclose(task->delegate, 1);
+
+  return result_OK;
 }
 
-static result_t palette_redraw(const wuss_event_t *event, void *task_data)
+/* shared by both windows: paint a roughly-square grid of npalette swatches
+ * across bounds */
+static void palette_draw_grid(screen_t       *scr,
+                              const box_t    *bounds,
+                              int             sx,
+                              int             sy,
+                              const colour_t *palette,
+                              int             npalette)
 {
-  palette_task_t *pc;
-  const colour_t *palette;
-  int              npalette;
-  screen_t       *scr;
-  const box_t    *bounds;
-  int               cols, rows;
-  int               cell_w, cell_h;
-  int               i, sx, sy;
-
-  pc      = task_data;
-  palette = wuss_get_palette(pc->wuss, &npalette);
-
-  if (npalette <= 0)
-    return result_OK;
-
-  scr    = event->data.redraw.scr;
-  bounds = event->data.redraw.bounds;
-  sx     = event->data.redraw.scroll.x;
-  sy     = event->data.redraw.scroll.y;
+  int cols, rows;
+  int cell_w, cell_h;
+  int i;
 
   cols = 1;
   while (cols * cols < npalette)
@@ -184,6 +197,67 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
 
     screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), palette[i]);
   }
+}
+
+static result_t palette_redraw(const wuss_event_t *event, void *task_data)
+{
+  palette_task_t *pc;
+  const colour_t *palette;
+  int              npalette;
+  screen_t       *scr;
+  const box_t    *bounds;
+  int              sx, sy;
+
+  pc      = task_data;
+  palette = wuss_get_palette(pc->wuss, &npalette);
+
+  if (npalette <= 0)
+    return result_OK;
+
+  scr    = event->data.redraw.scr;
+  bounds = event->data.redraw.bounds;
+  sx     = event->data.redraw.scroll.x;
+  sy     = event->data.redraw.scroll.y;
+
+  palette_draw_grid(scr, bounds, sx, sy, palette, npalette);
+
+  return result_OK;
+}
+
+/* "Screen" window: the physical screen bitmap's own palette, whatever size
+ * its pixel format needs (2/4/16/256 for 1/2/4/8bpp); 32bpp has none, so
+ * just label it */
+static result_t palette_redraw_screen(palette_task_t     *pc,
+                                      const wuss_event_t *event)
+{
+  screen_t    *scr;
+  const box_t *bounds;
+  int          sx, sy, npalette;
+
+  scr    = event->data.redraw.scr;
+  bounds = event->data.redraw.bounds;
+  sx     = event->data.redraw.scroll.x;
+  sy     = event->data.redraw.scroll.y;
+
+  if (scr->palette == NULL)
+  {
+    static const char label[] = "32bpp (none)";
+    bmfont_t          *font   = wuss_get_font(pc->wuss);
+    point_t            pos    = POINT(bounds->x0 - sx + 2, bounds->y0 - sy + 2);
+    colour_t           ink    = colour_rgb(0xFF, 0xFF, 0xFF);
+    colour_t           bg     = colour_rgba(0, 0, 0, 0); /* transparent */
+
+    screen_fill_rect(scr, bounds->x0 - sx, bounds->y0 - sy,
+                     SIZE2D(bounds->x1 - bounds->x0, bounds->y1 - bounds->y0),
+                     colour_rgb(0x00, 0x00, 0x00));
+    if (font != NULL)
+      bmfont_draw(font, scr, label, (int) strlen(label), ink, bg, &pos, NULL);
+    return result_OK;
+  }
+
+  npalette = 1 << (1 << pixelfmt_log2bpp(scr->format));
+
+  palette_draw_grid(scr, bounds, sx, sy, scr->palette, npalette);
 
   return result_OK;
 }
@@ -289,13 +363,13 @@ result_t palette_handle(wuss_window_t      *window,
 {
   palette_task_t *pc;
 
-  NOT_USED(window);
-
   pc = task_data;
 
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
+    if (window == pc->window2)
+      return palette_redraw_screen(pc, event);
     return palette_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
@@ -308,8 +382,17 @@ result_t palette_handle(wuss_window_t      *window,
     pc->menu_handle = NULL; /* wuss closed the chain under us */
     return result_OK;
 
+  case wuss_EVENT_CLOSE:
+    if (window == pc->window2)
+      pc->window2 = NULL;
+    else
+      pc->window = NULL;
+    return result_OK;
+
   case wuss_EVENT_QUIT:
-    free(task_data); /* calloc'd per instance by the spawner */
+    free(task_data); /* one calloc'd block backs both windows; the task
+                       * autocloses once the second one goes, so free it
+                       * here */
     return result_OK;
 
   default:
