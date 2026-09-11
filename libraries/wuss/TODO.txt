@@ -24,9 +24,7 @@ LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
 
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
 
-- Wuss text abstraction (wraps bmfont, supplies the Wuss font(s))
 - How to get bold etc. into the system? How to select symbols?
-- bmfont metrics: baselines and leading - button labels look too high (presently bodged)
 - More symbols
 
 

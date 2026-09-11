@@ -256,7 +256,8 @@ static result_t palette_redraw_screen(palette_task_t     *pc,
 
       bmfont_get_info(font, NULL, NULL, &ascent, NULL);
       pos = POINT(bounds->x0 - sx + 2, bounds->y0 - sy + 2 + ascent);
-      bmfont_draw(font, scr, label, (int) strlen(label), ink, bg, &pos, NULL);
+      wuss_text_draw(pc->wuss, 0, scr, label, (int) strlen(label), ink, bg,
+                     &pos, NULL);
     }
     return result_OK;
   }

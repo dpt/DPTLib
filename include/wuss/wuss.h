@@ -591,6 +591,63 @@ wuss_font_class_t wuss_get_font_class_n(const wuss_t *wuss, int index);
 const char *wuss_get_font_name_n(const wuss_t *wuss, int index);
 
 /**
+ * Measure a run of text in one of wuss's configured fonts (see
+ * wuss_get_font_n). Equivalent to bmfont_measure, kept alongside
+ * wuss_text_draw so tasks need not include framebuf/bmfont.h themselves for
+ * simple text.
+ *
+ * \param[in]  wuss          Window manager.
+ * \param[in]  index         Font slot, 0..\ref wuss_MAX_FONTS - 1.
+ * \param[in]  text          Text to measure.
+ * \param[in]  len           Number of characters to consider.
+ * \param[in]  target_width  Width to split within, or \ref
+ *                           bmfont_width_UNLIMITED for none.
+ * \param[out] split_point   Character count that fits within \p
+ *                           target_width, or NULL if not wanted.
+ * \param[out] actual_width  Width of the (possibly split) text, or NULL if
+ *                           not wanted.
+ * \return \ref result_OK on success, \ref result_WUSS_BAD_INDEX if \p index
+ *         is out of range or its slot is empty.
+ */
+result_t wuss_text_measure(const wuss_t   *wuss,
+                           int             index,
+                           const char     *text,
+                           int             len,
+                           bmfont_width_t  target_width,
+                           int            *split_point,
+                           bmfont_width_t *actual_width);
+
+/**
+ * Draw a run of text in one of wuss's configured fonts (see
+ * wuss_get_font_n). Equivalent to bmfont_draw, kept alongside
+ * wuss_text_measure so tasks need not include framebuf/bmfont.h themselves
+ * for simple text.
+ *
+ * \param[in]  wuss    Window manager.
+ * \param[in]  index   Font slot, 0..\ref wuss_MAX_FONTS - 1.
+ * \param[in]  scr     Screen to draw to.
+ * \param[in]  text    Text to draw.
+ * \param[in]  len     Number of characters to consider.
+ * \param[in]  fg      Foreground (ink) colour.
+ * \param[in]  bg      Background colour, or \ref colour_NONE for
+ *                     transparent.
+ * \param[in]  pos     Baseline position to start drawing at.
+ * \param[out] end_pos Baseline position after the drawn text, or NULL if not
+ *                     wanted.
+ * \return \ref result_OK on success, \ref result_WUSS_BAD_INDEX if \p index
+ *         is out of range or its slot is empty.
+ */
+result_t wuss_text_draw(const wuss_t  *wuss,
+                        int            index,
+                        screen_t      *scr,
+                        const char    *text,
+                        int            len,
+                        colour_t       fg,
+                        colour_t       bg,
+                        const point_t *pos,
+                        point_t       *end_pos);
+
+/**
  * The last pointer position seen by wuss_mouse_click or wuss_mouse_move,
  * screen space. (0,0) until the first mouse event. Handy for opening a
  * pop-up menu under the pointer from a task's icon handler, which gets no

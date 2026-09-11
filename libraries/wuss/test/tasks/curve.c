@@ -254,8 +254,8 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
 
       bmfont_get_info(font, NULL, NULL, &ascent, NULL);
       pos = POINT(bounds->x0 - sx + 2, bounds->y0 - sy + 2 + ascent);
-      bmfont_draw(font, scr, name, (int) strlen(name),
-                  task->line, task->bg, &pos, NULL);
+      wuss_text_draw(task->wuss, 0, scr, name, (int) strlen(name),
+                     task->line, task->bg, &pos, NULL);
     }
   }
 
