@@ -4076,11 +4076,13 @@ result_t wuss_test(const char *resources)
 
     /* "Root" is the root caption (first token), then items App,
      * File{ %s title discarded, Grid(!), Export(~), |Quit }, Help(> borrowed),
-     * with "File" substituted for both %s. '|Quit' sets DASHED on Quit itself,
-     * so the submenu holds 3 rows. */
+     * with "File" substituted for both %s. '!'/'~' now pull an int vararg
+     * (nonzero applies the flag) rather than always applying, so Grid's tick
+     * and Export's shade are passed explicitly. '|Quit' sets DASHED on Quit
+     * itself, so the submenu holds 3 rows. */
     rc = wuss_menu_create_from_desc(&m,
            "Root, App, %s { %s, !Grid, ~Export, |Quit }, >Help",
-           "File", "File", &borrowed);
+           "File", "File", 1, 1, &borrowed);
     if (rc != result_OK)
       goto Failure;
 
@@ -4110,8 +4112,25 @@ result_t wuss_test(const char *resources)
 
     wuss_menu_destroy(m);
 
+    /* same desc, both bools false: '!'/'~' apply nothing */
+    rc = wuss_menu_create_from_desc(&m,
+           "Root, App, %s { %s, !Grid, ~Export, |Quit }, >Help",
+           "File", "File", 0, 0, &borrowed);
+    if (rc != result_OK)
+      goto Failure;
+    sub = m->items[1].submenu;
+    if (sub == NULL)                                       goto MenuFail;
+    if (sub->items[0].flags & wuss_MENU_ITEM_TICKED)       goto MenuFail;
+    if (sub->items[1].flags & wuss_MENU_ITEM_DISABLED)     goto MenuFail;
+    wuss_menu_destroy(m);
+
     /* malformed: unbalanced brace */
     rc = wuss_menu_create_from_desc(&m, "T, A { B, C");
+    if (rc != result_BAD_ARG)
+      goto MenuFail;
+
+    /* malformed: '!' vararg not 0/1 */
+    rc = wuss_menu_create_from_desc(&m, "T, !Grid", 2);
     if (rc != result_BAD_ARG)
       goto MenuFail;
 

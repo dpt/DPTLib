@@ -273,11 +273,13 @@ static result_t image_open_menu(image_task_t *ic)
   result_t     rc;
   wuss_menu_t *m;
   int          i;
-  unsigned int ticked;
 
+  /* '!Dithering' pulls ic->dithering directly, so the row's tick already
+   * matches live state -- no separate wuss_menu_open_ticked pass needed.
+   * '!Wireframe' has no backing field; it is a demo row always ticked. */
   rc = wuss_menu_create_from_desc(&m,
          "Image, Info, New..., Open, !Dithering, !Wireframe, >Export, |Quit",
-         &image_menu_export);
+         ic->dithering, 1, &image_menu_export);
   if (rc != result_OK)
     return rc;
 
@@ -296,14 +298,11 @@ static result_t image_open_menu(image_task_t *ic)
 
   wuss_menu_destroy(ic->menu);
   ic->menu = m;
-  
-  ticked = ic->dithering ? (1u << 3) : 0;
 
-  return wuss_menu_open_ticked(ic->delegate,
-                               ic->menu,
-                               ticked,
-                               wuss_get_pointer(ic->wuss),
-                              &ic->menu_handle);
+  return wuss_menu_open(ic->delegate,
+                        ic->menu,
+                        wuss_get_pointer(ic->wuss),
+                       &ic->menu_handle);
 }
 
 result_t image_handle(wuss_window_t      *window,
