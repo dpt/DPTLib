@@ -23,12 +23,21 @@
  * an Invert toggle. A pick installs the loaded/inverted array via
  * wuss_set_palette; there is no callback here, since every other interested
  * party (framebuffer bitmap, physical palette) reacts to the resulting
- * wuss_EVENT_PALETTE and reads the array back with wuss_get_palette. */
+ * wuss_EVENT_PALETTE and reads the array back with wuss_get_palette.
+ *
+ * A second window ("Screen") draws the same kind of grid but for the
+ * physical screen bitmap's own palette (event->data.redraw.scr->palette),
+ * which is whatever size the screen's pixel format needs (2/4/16/256
+ * entries for 1/2/4/8bpp) rather than the fixed 16-entry system palette
+ * above; a NULL screen palette (32bpp, no palette) just shows a label. */
 typedef struct palette_task
 {
   wuss_t              *wuss;
   wuss_task_t         *delegate;
   wuss_window_t       *window;
+  wuss_window_t       *window2; /* "Screen" window: the physical screen's
+                                  * own palette (1/2/4/8bpp) or a "none"
+                                  * label (32bpp has no palette) */
   const char          *resources;
   bool                 invert;
 

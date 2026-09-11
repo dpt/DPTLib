@@ -27,9 +27,11 @@
 #define IMAGE_EXT     ".png"
 
 /* screen_copy_bitmap and screen_copy_ninepatch only understand a deep 32bpp
- * source; bitmap_load_png keeps a palette-type PNG as pixelfmt_p8, so convert
- * one back to bgrx8888 here rather than teach every blitter a paletted
- * source. */
+ * source in R,G,B,A/X byte order (see bitmap_load_png()); bitmap_load_png
+ * keeps a palette-type PNG as pixelfmt_p8, so convert one back to rgbx8888
+ * here rather than teach every blitter a paletted source. rgbx8888, not
+ * bgrx8888: the latter is BGR (SDL display byte order) and would swap red
+ * and blue once the blitters re-read it as rgba8888. */
 static result_t load_png_deep(bitmap_t *bm, const char *filename)
 {
   result_t  rc;
@@ -42,7 +44,7 @@ static result_t load_png_deep(bitmap_t *bm, const char *filename)
   if (bm->format != pixelfmt_p8)
     return result_OK;
 
-  rc = bitmap_convert(bm, pixelfmt_bgrx8888, &deep);
+  rc = bitmap_convert(bm, pixelfmt_rgbx8888, &deep);
   if (rc != result_OK)
   {
     free(bm->base);
