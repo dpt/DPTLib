@@ -43,10 +43,16 @@ typedef struct
 }
 Parser;
 
-static void getopt_(Parser *parser)
+/* '!' and '~' no longer carry a fixed truth -- each pulls the next int
+ * vararg (must be 0 or 1) at the point it is scanned, so a task's live state
+ * drives the flag directly instead of ticking/shading everything then
+ * mutating the string or item array afterwards. Returns 0 on success, -1 if
+ * a pulled vararg was not 0/1. */
+static int getopt_(Parser *parser, va_list *ap)
 {
   const char *p;
   int         c;
+  int         v;
 
   parser->flags = 0;
   p = parser->p;
@@ -54,10 +60,25 @@ static void getopt_(Parser *parser)
   for (;;)
   {
     c = *p;
-    if      (c == '!') parser->flags |= Tick;
-    else if (c == '>') parser->flags |= SubMenu;
-    else if (c == '~') parser->flags |= Shade;
-    else { parser->p = p; return; }
+    switch (c)
+    {
+    case '!':
+      v = va_arg(*ap, int);
+      if (v != 0 && v != 1)
+        return -1;
+      if (v)
+        parser->flags |= Tick;
+      break;
+    case '>': parser->flags |= SubMenu; break;
+    case '~':
+      v = va_arg(*ap, int);
+      if (v != 0 && v != 1)
+        return -1;
+      if (v)
+        parser->flags |= Shade;
+      break;
+    default:  parser->p = p; return 0;
+    }
     p++;
   }
 }
@@ -67,11 +88,12 @@ static int isdelim(int c)
   return c == ',' || c == '|' || c == '{' || c == '}' || c == '\0';
 }
 
-static void getname(Parser *parser)
+static int getname(Parser *parser, va_list *ap)
 {
   const char *p;
 
-  getopt_(parser);
+  if (getopt_(parser, ap))
+    return -1;
   p = parser->p;
   parser->start = p;
 
@@ -85,16 +107,18 @@ static void getname(Parser *parser)
     p--;
 
   parser->end = p;
+  return 0;
 }
 
-static Token getnext(Parser *parser)
+static Token getnext(Parser *parser, va_list *ap)
 {
   while (isspace((unsigned char) *parser->p))
     parser->p++;
 
   if (!isdelim(*parser->p))
   {
-    getname(parser);
+    if (getname(parser, ap))
+      return Error;
     if (parser->start == parser->end)
       return Error;
     return Name;
@@ -339,7 +363,7 @@ result_t wuss_menu_create_from_desc(wuss_menu_t **out, const char *desc, ...)
   {
     Token tok;
 
-    tok = getnext(&parser);
+    tok = getnext(&parser, &ap);
 
     if (tok == End)
       break;
