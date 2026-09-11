@@ -194,6 +194,23 @@ static void screen_blend_pixel_p4(screen_t *scr,
   *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((out & 0xF) << shift));
 }
 
+static void screen_blend_pixel_p8(screen_t *scr,
+                                  int       x,
+                                  int       y,
+                                  colour_t  colour,
+                                  int       alpha)
+{
+  unsigned char *scrp;
+  unsigned char  idx, out;
+
+  scrp = (unsigned char *) scr->base + y * scr->rowbytes + x;
+  idx  = *scrp;
+
+  scr->span->blendconst(&out, &idx, &colour, 1, alpha, scr->palette);
+
+  *scrp = out;
+}
+
 static void screen_blend_pixel_32(screen_t *scr,
                                   int       x,
                                   int       y,
@@ -230,6 +247,7 @@ static void screen_blend_pixel(screen_t *scr,
   case 0: screen_blend_pixel_p1(scr, x, y, colour, alpha); break;
   case 1: screen_blend_pixel_p2(scr, x, y, colour, alpha); break;
   case 2: screen_blend_pixel_p4(scr, x, y, colour, alpha); break;
+  case 3: screen_blend_pixel_p8(scr, x, y, colour, alpha); break;
   case 5: screen_blend_pixel_32(scr, x, y, colour, alpha); break;
 
   default:
@@ -422,6 +440,84 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
       pxl = (pm->entries[idx >> 1] >> ((idx & 1) << 2)) & 0xF;
 
       *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
+    }
+
+    srcrow += src->rowbytes;
+  }
+
+  return result_OK;
+}
+
+/* As screen_copy_bitmap_p4 but for the 8bpp screen: alpha-tested transfer,
+ * optional ordered dither, nearest palette match. p8 is a plain byte per
+ * pixel, so both the deep->index table lookup and the screen store are
+ * straight byte accesses with no sub-byte packing. Returns
+ * result_NOT_SUPPORTED if there is no deep->paletted conversion table for
+ * the screen's format. */
+static result_t screen_copy_bitmap_p8(screen_t       *scr,
+                                      int             x,
+                                      int             y,
+                                      const bitmap_t *src,
+                                      const box_t    *draw_box,
+                                      int             has_alpha,
+                                      int             dither)
+{
+  const unsigned char *srcrow;
+  unsigned char       *dstbase;
+  const pixelmap_t    *pm;
+  int                  bias[64];
+  int                  do_dither;
+  int                  clipped_width, clipped_height;
+  int                  yy;
+
+  clipped_width  = draw_box->x1 - draw_box->x0;
+  clipped_height = draw_box->y1 - draw_box->y0;
+  do_dither      = dither_bias_build(bias,
+                                    pixelfmt_paletted_nentries(scr->format),
+                                    dither);
+
+  srcrow  = (const unsigned char *) src->base + (draw_box->y0 - y) * src->rowbytes;
+  dstbase = scr->base;
+
+  pm = pixelmap_get(pixelfmt_rgba8888, scr->format, scr->palette, 256);
+  if (pm == NULL)
+    return result_NOT_SUPPORTED;
+
+  for (yy = 0; yy < clipped_height; yy++)
+  {
+    const pixelfmt_rgba8888_t *srcpx;
+    unsigned char             *rowp;
+    int                        xx;
+
+    srcpx = (const pixelfmt_rgba8888_t *) srcrow + (draw_box->x0 - x);
+    rowp  = dstbase + (draw_box->y0 + yy) * scr->rowbytes;
+
+    for (xx = 0; xx < clipped_width; xx++)
+    {
+      colour_t     c;
+      unsigned int r, g, b, idx;
+      int          dstx;
+
+      c.primary = srcpx[xx];
+      if (has_alpha && colour_get_alpha(&c) == 0)
+        continue; /* fully transparent: leave background alone */
+
+      dstx = draw_box->x0 + xx;
+
+      r = (c.primary >> pm->rshift) & 0xFF;
+      g = (c.primary >> pm->gshift) & 0xFF;
+      b = (c.primary >> pm->bshift) & 0xFF;
+      if (do_dither)
+      {
+        r = dither_channel(r, bias, dstx - x, draw_box->y0 + yy - y);
+        g = dither_channel(g, bias, dstx - x, draw_box->y0 + yy - y);
+        b = dither_channel(b, bias, dstx - x, draw_box->y0 + yy - y);
+      }
+      idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
+          | ((g >> (8 - pm->gbits)) << pm->bbits)
+          | ( b >> (8 - pm->bbits));
+
+      rowp[dstx] = pm->entries[idx];
     }
 
     srcrow += src->rowbytes;
@@ -698,6 +794,7 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
   case 0: return screen_copy_bitmap_p1(scr, x, y, src, &draw_box, has_alpha, dither);
   case 1: return screen_copy_bitmap_p2(scr, x, y, src, &draw_box, has_alpha, dither);
   case 2: return screen_copy_bitmap_p4(scr, x, y, src, &draw_box, has_alpha, dither);
+  case 3: return screen_copy_bitmap_p8(scr, x, y, src, &draw_box, has_alpha, dither);
   case 5: screen_copy_bitmap_32(scr, x, y, src, &draw_box, has_alpha); break;
 
   default:

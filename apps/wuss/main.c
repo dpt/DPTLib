@@ -260,7 +260,10 @@ static result_t run_wuss(const char *resources,
   pixelfmt_t         fmt;
   bitmap_t           bm;
   screen_t           scr;
-  colour_t           palette[16];
+  colour_t           palette[16]; /* the fixed-size UI palette */
+  colour_t           scr_palette[256]; /* palette[] padded out to whatever
+                                        * count the chosen depth's bitmap
+                                        * needs (p8 reads all 256) */
   wuss_t            *wuss;
   wuss_frontend_t   *frontend;
   bool               use_wimp16;
@@ -313,8 +316,15 @@ static result_t run_wuss(const char *resources,
   if (rc != result_OK)
     goto Failure;
 
-  rc = bitmap_init(&bm, SIZE2D(scr_width, scr_height), fmt, rowbytes, palette,
-                   pixels);
+  /* bitmap_set_palette reads every entry a paletted format's bitmap_init
+   * needs (up to 256 for p8); pad scr_palette with palette's 16 UI colours
+   * so closest_palette_entry always has exact matches to find, then black
+   * for the unused tail. */
+  memset(scr_palette, 0, sizeof(scr_palette));
+  memcpy(scr_palette, palette, sizeof(palette));
+
+  rc = bitmap_init(&bm, SIZE2D(scr_width, scr_height), fmt, rowbytes,
+                   scr_palette, pixels);
   logf_info("wuss: bitmap_init -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
@@ -426,14 +436,14 @@ typedef struct wuss_options
 {
   const char *resources;    /* -r/--resources: fixture root */
   const char *palette_name; /* -p/--palette: startup *.hex leafname */
-  int         depth;        /* -d/--depth: framebuffer bpp (1, 2, 4 or 32) */
+  int         depth;        /* -d/--depth: framebuffer bpp (1, 2, 4, 8 or 32) */
   int         scale;        /* -s/--scale: initial window zoom, 0 = default */
 }
 wuss_options_t;
 
 static const char wuss_usage[] =
   "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
-  "[-d|--depth 1|2|4|32] [-s|--scale N]\n";
+  "[-d|--depth 1|2|4|8|32] [-s|--scale N]\n";
 
 #ifndef __riscos
 

@@ -1497,6 +1497,196 @@ static void bmfont_drawchar_any8888_2w_t(void          *vscreen,
   }
 }
 
+/* Draw a character, a maximum of one byte wide, to a p8 screen using an
+ * opaque background. */
+static void bmfont_drawchar_p8_1w_o(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char       *scr = vscreen;
+  const unsigned char *gly = vglyph;
+  int                  stride;
+
+  NOT_USED(shift);
+
+  gly    += top_skip;
+  stride = rowbytes - charwidth;
+
+  while (charheight--)
+  {
+    unsigned int row = *gly++; /* 1 byte wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
+
+    switch (charwidth) /* jump table test */
+    {
+      case 8: *scr++ = (row & (1u << 7)) ? fg : bg; /* fallthrough! */
+      case 7: *scr++ = (row & (1u << 6)) ? fg : bg;
+      case 6: *scr++ = (row & (1u << 5)) ? fg : bg;
+      case 5: *scr++ = (row & (1u << 4)) ? fg : bg;
+      case 4: *scr++ = (row & (1u << 3)) ? fg : bg;
+      case 3: *scr++ = (row & (1u << 2)) ? fg : bg;
+      case 2: *scr++ = (row & (1u << 1)) ? fg : bg;
+      case 1: *scr++ = (row & (1u << 0)) ? fg : bg;
+    }
+
+    scr += stride;
+  }
+}
+
+/* Draw a character, a maximum of one byte wide, to a p8 screen using a
+ * transparent background. */
+static void bmfont_drawchar_p8_1w_t(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char       *scr = vscreen;
+  const unsigned char *gly = vglyph;
+  int                  stride;
+
+  NOT_USED(shift);
+  NOT_USED(bg);
+
+  gly    += top_skip;
+  stride = rowbytes - charwidth;
+
+  while (charheight--)
+  {
+    unsigned int row = *gly++; /* 1 byte wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
+
+    switch (charwidth) /* jump table test */
+    {
+      case 8: if (row & (1u << 7)) *scr = fg; scr++; /* fallthrough! */
+      case 7: if (row & (1u << 6)) *scr = fg; scr++;
+      case 6: if (row & (1u << 5)) *scr = fg; scr++;
+      case 5: if (row & (1u << 4)) *scr = fg; scr++;
+      case 4: if (row & (1u << 3)) *scr = fg; scr++;
+      case 3: if (row & (1u << 2)) *scr = fg; scr++;
+      case 2: if (row & (1u << 1)) *scr = fg; scr++;
+      case 1: if (row & (1u << 0)) *scr = fg; scr++;
+    }
+
+    scr += stride;
+  }
+}
+
+/* Draw a character, a maximum of two bytes wide, to a p8 screen using an
+ * opaque background. */
+static void bmfont_drawchar_p8_2w_o(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char         *scr = vscreen;
+  const unsigned short  *gly = vglyph;
+  int                    stride;
+
+  NOT_USED(shift);
+
+  gly    += top_skip;
+  stride = rowbytes - charwidth;
+
+  while (charheight--)
+  {
+    unsigned int row = *gly++; /* 2 bytes wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
+
+    switch (charwidth) /* jump table test */
+    {
+      case 16: *scr++ = (row & (1u << 15)) ? fg : bg; /* fallthrough! */
+      case 15: *scr++ = (row & (1u << 14)) ? fg : bg;
+      case 14: *scr++ = (row & (1u << 13)) ? fg : bg;
+      case 13: *scr++ = (row & (1u << 12)) ? fg : bg;
+      case 12: *scr++ = (row & (1u << 11)) ? fg : bg;
+      case 11: *scr++ = (row & (1u << 10)) ? fg : bg;
+      case 10: *scr++ = (row & (1u <<  9)) ? fg : bg;
+      case  9: *scr++ = (row & (1u <<  8)) ? fg : bg;
+      case  8: *scr++ = (row & (1u <<  7)) ? fg : bg;
+      case  7: *scr++ = (row & (1u <<  6)) ? fg : bg;
+      case  6: *scr++ = (row & (1u <<  5)) ? fg : bg;
+      case  5: *scr++ = (row & (1u <<  4)) ? fg : bg;
+      case  4: *scr++ = (row & (1u <<  3)) ? fg : bg;
+      case  3: *scr++ = (row & (1u <<  2)) ? fg : bg;
+      case  2: *scr++ = (row & (1u <<  1)) ? fg : bg;
+      case  1: *scr++ = (row & (1u <<  0)) ? fg : bg;
+    }
+
+    scr += stride;
+  }
+}
+
+/* Draw a character, a maximum of two bytes wide, to a p8 screen using a
+ * transparent background. */
+static void bmfont_drawchar_p8_2w_t(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char        *scr = vscreen;
+  const unsigned short *gly = vglyph;
+  int                   stride;
+
+  NOT_USED(shift);
+  NOT_USED(bg);
+
+  gly    += top_skip;
+  stride = rowbytes - charwidth;
+
+  while (charheight--)
+  {
+    unsigned int row = *gly++; /* 2 bytes wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
+
+    switch (charwidth) /* jump table test */
+    {
+      case 16: if (row & (1u << 15)) *scr = fg; scr++; /* fallthrough! */
+      case 15: if (row & (1u << 14)) *scr = fg; scr++;
+      case 14: if (row & (1u << 13)) *scr = fg; scr++;
+      case 13: if (row & (1u << 12)) *scr = fg; scr++;
+      case 12: if (row & (1u << 11)) *scr = fg; scr++;
+      case 11: if (row & (1u << 10)) *scr = fg; scr++;
+      case 10: if (row & (1u <<  9)) *scr = fg; scr++;
+      case  9: if (row & (1u <<  8)) *scr = fg; scr++;
+      case  8: if (row & (1u <<  7)) *scr = fg; scr++;
+      case  7: if (row & (1u <<  6)) *scr = fg; scr++;
+      case  6: if (row & (1u <<  5)) *scr = fg; scr++;
+      case  5: if (row & (1u <<  4)) *scr = fg; scr++;
+      case  4: if (row & (1u <<  3)) *scr = fg; scr++;
+      case  3: if (row & (1u <<  2)) *scr = fg; scr++;
+      case  2: if (row & (1u <<  1)) *scr = fg; scr++;
+      case  1: if (row & (1u <<  0)) *scr = fg; scr++;
+    }
+
+    scr += stride;
+  }
+}
+
 result_t bmfont_draw(bmfont_t      *bmfont,
                      screen_t      *scr,
                      const char    *text,
@@ -1538,6 +1728,15 @@ result_t bmfont_draw(bmfont_t      *bmfont,
     {
     case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p4_1w_t : bmfont_drawchar_p4_1w_o; break;
     case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p4_2w_t : bmfont_drawchar_p4_2w_o; break;
+    default: assert(0); return result_NOT_SUPPORTED;
+    }
+    break;
+
+  case pixelfmt_p8:
+    switch (bmfont->glyphrowbytes)
+    {
+    case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p8_1w_t : bmfont_drawchar_p8_1w_o; break;
+    case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p8_2w_t : bmfont_drawchar_p8_2w_o; break;
     default: assert(0); return result_NOT_SUPPORTED;
     }
     break;

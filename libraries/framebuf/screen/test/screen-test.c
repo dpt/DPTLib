@@ -958,6 +958,173 @@ static result_t test_copy_bitmap_p2(void)
   return result_TEST_PASSED;
 }
 
+/* Blit an rgba8888 source onto an 8bpp paletted screen: each pixel quantises
+ * to the nearest palette entry and is stored as one plain byte. Also covers
+ * set_pixel / fill_hline / fill_pattern / blend_pixel on the p8 path. */
+static result_t test_copy_bitmap_p8(void)
+{
+#define P8_ROWBYTES (WIDTH)
+  static unsigned char       p8pixels[P8_ROWBYTES * HEIGHT];
+  static pixelfmt_rgba8888_t srcbuf[16 * 4];
+
+  screen_t scr;
+  bitmap_t src;
+  colour_t pal[256];
+  int      x, y;
+
+  /* a grey ramp: entry i is (i, i, i), so nearest-match is predictable */
+  for (x = 0; x < 256; x++)
+    pal[x] = colour_rgb(x, x, x);
+
+  /* 16x4 source: left half near-black (-> index ~16), right half near-white
+   * (-> index ~240) */
+  for (y = 0; y < 4; y++)
+    for (x = 0; x < 16; x++)
+      srcbuf[y * 16 + x] = (x < 8 ? colour_rgb(0x10, 0x10, 0x10)
+                                  : colour_rgb(0xF0, 0xF0, 0xF0)).primary;
+
+  bitmap_init(&src, SIZE2D(16, 4), pixelfmt_rgba8888,
+              16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
+
+  memset(p8pixels, 0, sizeof(p8pixels));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p8, P8_ROWBYTES, pal,
+              p8pixels);
+
+  if (screen_copy_bitmap(&scr, 0, 0, &src) != result_OK)
+  {
+    printf("screen: copy_bitmap to p8 screen failed\n");
+    return result_TEST_FAILED;
+  }
+
+  /* row 0: cols 0..7 quantise near 0x10, cols 8..15 near 0xF0. The pixelmap
+   * quantises via 5:6:5 before the nearest-ramp lookup, so allow a small
+   * slop rather than demanding the exact byte. */
+  for (x = 0; x < 8; x++)
+  {
+    if (p8pixels[x] > 0x20)
+    {
+      printf("screen: p8 blit dark col x=%d too bright (0x%02X)\n",
+             x, p8pixels[x]);
+      return result_TEST_FAILED;
+    }
+    if (p8pixels[x + 8] < 0xE0)
+    {
+      printf("screen: p8 blit light col x=%d too dark (0x%02X)\n",
+             x + 8, p8pixels[x + 8]);
+      return result_TEST_FAILED;
+    }
+  }
+
+  /* an untouched row past the source stays clear */
+  for (x = 0; x < 16; x++)
+    if (p8pixels[4 * P8_ROWBYTES + x] != 0x00)
+    {
+      printf("screen: p8 blit spilled past the source\n");
+      return result_TEST_FAILED;
+    }
+
+  /* screen_set_pixel: entry 200 at x=5 lands as a plain byte */
+  memset(p8pixels, 0, sizeof(p8pixels));
+  screen_set_pixel(&scr, 5, 0, pal[200]);
+  if (p8pixels[5] != 200)
+  {
+    printf("screen: p8 set_pixel wrong (0x%02X)\n", p8pixels[5]);
+    return result_TEST_FAILED;
+  }
+
+  /* screen_fill_hline: 6 pixels of entry 128 from x=2 on row 1 */
+  memset(p8pixels, 0, sizeof(p8pixels));
+  screen_fill_hline(&scr, 2, 1, 6, pal[128]);
+  for (x = 2; x < 8; x++)
+    if (p8pixels[P8_ROWBYTES + x] != 128)
+    {
+      printf("screen: p8 fill_hline wrong at x=%d (0x%02X)\n",
+             x, p8pixels[P8_ROWBYTES + x]);
+      return result_TEST_FAILED;
+    }
+  if (p8pixels[P8_ROWBYTES + 1] != 0 || p8pixels[P8_ROWBYTES + 8] != 0)
+  {
+    printf("screen: p8 fill_hline smeared past its run\n");
+    return result_TEST_FAILED;
+  }
+
+  /* screen_fill_pattern: solid all-bits pattern in fg = entry 77 */
+  memset(p8pixels, 0, sizeof(p8pixels));
+  {
+    pattern_t pat;
+    box_t     b;
+
+    memset(&pat, 0, sizeof(pat));
+    memset(pat.bits, 0xFF, sizeof(pat.bits));
+    pat.fg = pal[77];
+    pat.bg = pal[0];
+    b.x0 = 0; b.y0 = 2; b.x1 = 8; b.y1 = 3;
+    screen_fill_pattern(&scr, &b, &pat);
+    for (x = 0; x < 8; x++)
+      if (p8pixels[2 * P8_ROWBYTES + x] != 77)
+      {
+        printf("screen: p8 fill_pattern wrong at x=%d (0x%02X)\n",
+               x, p8pixels[2 * P8_ROWBYTES + x]);
+        return result_TEST_FAILED;
+      }
+  }
+
+  /* screen_copy_rect on p8 (the whole-byte bytes path, bpp=1): lay down a
+   * distinct-per-column run, slide it right by 5, check it moved intact and
+   * did not smear past its destination */
+  memset(p8pixels, 0, sizeof(p8pixels));
+  for (x = 0; x < 8; x++)
+    screen_set_pixel(&scr, x, 0, pal[1 + x]);
+  {
+    box_t s = { 0, 0, 8, 1 };
+    box_t got;
+
+    if (screen_copy_rect(&scr, &s, POINT(5, 0), &got) != result_OK)
+    {
+      printf("screen: copy_rect declined a p8 screen\n");
+      return result_TEST_FAILED;
+    }
+    for (x = 0; x < 8; x++)
+      if (p8pixels[x + 5] != 1 + x)
+      {
+        printf("screen: copy_rect p8 wrong pixel at x=%d (got %d want %d)\n",
+               x + 5, p8pixels[x + 5], 1 + x);
+        return result_TEST_FAILED;
+      }
+    if (p8pixels[13] != 0)
+    {
+      printf("screen: copy_rect p8 smeared past its destination\n");
+      return result_TEST_FAILED;
+    }
+  }
+
+  /* screen_blend_pixel via an anti-aliased diagonal: the p8 blend path must
+   * write *some* mid-ramp index between the black background and white line,
+   * not leave the pixel at 0 and not slam it to 255 */
+  memset(p8pixels, 0, sizeof(p8pixels));
+  screen_draw_line_wu_float(&scr, 0.0f, 0.0f, 8.0f, 3.0f,
+                            colour_rgb(0xFF, 0xFF, 0xFF));
+  {
+    int seen_partial = 0;
+
+    for (y = 0; y < 4; y++)
+      for (x = 0; x < 9; x++)
+      {
+        unsigned char v = p8pixels[y * P8_ROWBYTES + x];
+        if (v > 0 && v < 255)
+          seen_partial = 1;
+      }
+    if (!seen_partial)
+    {
+      printf("screen: p8 blend_pixel produced no partial-coverage pixel\n");
+      return result_TEST_FAILED;
+    }
+  }
+
+  return result_TEST_PASSED;
+#undef P8_ROWBYTES
+}
+
 /* Unpack the p2 pixel at column "px" of a row's byte buffer (bits 7..6 are
  * column 0, MSB-first, four to the byte). */
 static int p2_pixel_at(const unsigned char *rowbuf, int px)
@@ -1191,6 +1358,7 @@ result_t screen_test(const char *resources)
     test_fill_circle,
     test_copy_bitmap_p1,
     test_copy_bitmap_p2,
+    test_copy_bitmap_p8,
     test_copy_bitmap_dithered,
     test_copy_rect_packed
   };

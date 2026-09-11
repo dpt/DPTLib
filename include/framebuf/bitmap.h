@@ -111,6 +111,10 @@ result_t bitmap_fill_pattern(bitmap_t        *bm,
 /**
  * Load a PNG image into the given bitmap.
  *
+ * A palette-type PNG is kept as \ref pixelfmt_p8 with its PLTE (and any
+ * tRNS) copied into `bm->palette`; RGB and greyscale PNGs are expanded to a
+ * 32bpp `rgbx8888` / `rgba8888` bitmap with no palette.
+ *
  * \param[in] bm       Bitmap to load the image into.
  * \param[in] filename Filename of the image to load.
  * \return \ref result_OK on success, or appropriate result code otherwise.
@@ -119,6 +123,12 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename);
 
 /**
  * Save the given bitmap as a PNG image.
+ *
+ * Supported formats: `bgrx8888` (written as RGB), `bgra8888` (RGBA), and
+ * \ref pixelfmt_p8 (written as a palette-type PNG, its `bm->palette`
+ * becoming the PLTE, plus a tRNS chunk if any palette entry is non-opaque).
+ * Other formats return \ref result_NOT_SUPPORTED, as does a \ref pixelfmt_p8
+ * bitmap with no palette.
  *
  * \param[in] bm       Bitmap to save.
  * \param[in] filename Filename to save the image to.

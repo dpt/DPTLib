@@ -186,6 +186,59 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   return rc;
 }
 
+/* As bmconv_p4_to_bgrx8888 but for 8bpp paletted: one index per byte, so the
+ * inner loop is a plain byte read and table lookup. */
+static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+{
+  result_t                   rc;
+  const pixelmap_t          *pm;
+  const pixelfmt_bgrx8888_t *map;
+  bitmap_t                  *dst;
+  pixelfmt_bgrx8888_t       *outpixels;
+  const unsigned char       *inrow;
+  int                        x, y;
+
+  assert(src);
+  assert(src->palette);
+
+  pm = pixelmap_get(pixelfmt_p8, pixelfmt_bgrx8888, src->palette, 256);
+  if (pm == NULL)
+    return result_NOT_SUPPORTED;
+  map = (const pixelfmt_bgrx8888_t *) pm->entries;
+
+  outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h);
+  if (outpixels == NULL)
+    return result_OOM;
+
+  dst = malloc(sizeof(*dst));
+  if (dst == NULL)
+  {
+    free(outpixels);
+    return result_OOM;
+  }
+
+  rc = bitmap_init(dst,
+                   src->size,
+                   pixelfmt_bgrx8888,
+                   src->size.w * sizeof(pixelfmt_bgrx8888_t),
+                   NULL,
+                   outpixels);
+  if (rc)
+    return rc;
+
+  inrow = src->base;
+  for (y = 0; y < src->size.h; y++)
+  {
+    for (x = 0; x < src->size.w; x++)
+      *outpixels++ = map[inrow[x]];
+    inrow += src->rowbytes;
+  }
+
+  *pdst = dst;
+
+  return rc;
+}
+
 /* As bmconv_p4_to_bgrx8888 but for 1bpp paletted, packed MSB-first (bit 7 is
  * the leftmost pixel) to match the screen p1 plot helpers. */
 static result_t bmconv_p1_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
@@ -330,6 +383,17 @@ result_t bitmap_convert(const bitmap_t *src,
     {
     case pixelfmt_bgrx8888:
       return bmconv_p4_to_bgrx8888(src, dst);
+
+    default:
+      return result_NOT_SUPPORTED;
+    }
+    break;
+
+  case pixelfmt_p8:
+    switch (newfmt)
+    {
+    case pixelfmt_bgrx8888:
+      return bmconv_p8_to_bgrx8888(src, dst);
 
     default:
       return result_NOT_SUPPORTED;
