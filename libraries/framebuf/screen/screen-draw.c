@@ -795,6 +795,14 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
   if (pixelfmt_is_rle(src->format))
     return screen_copy_bitmap_rle(scr, x, y, src, &draw_box);
 
+  /* Every path below reads the source a 32bpp pixel at a time (see the
+   * comment below on byte order). A paletted source (p1/p2/p4/p8, e.g. a PNG
+   * saved with a PLTE chunk) is 1 byte or less per pixel and there is no
+   * paletted->paletted conversion here, so reject it rather than stride a
+   * 32bpp read through a narrower buffer. */
+  if (pixelfmt_log2bpp(src->format) != 5)
+    return result_NOT_SUPPORTED;
+
   /* Source pixels loaded from PNG are always laid out R,G,B,A/X byte order
    * (see bitmap_load_png()), the same layout colour_t::primary uses, so
    * source pixels can be read directly into a colour_t with no conversion. */
