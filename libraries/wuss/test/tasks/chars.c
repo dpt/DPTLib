@@ -307,8 +307,9 @@ result_t chars_handle(wuss_window_t      *window,
         /* ADJUST keeps the chain open without rebuilding it, so the
          * fresh-open tick set in chars_open_menu is now stale on screen;
          * retick the still-open chain in place to match cc->current */
-        wuss_menu_set_ticked(cc->menu_handle,
-                            wuss_fontmenu_menu(cc->fontmenu), cc->current);
+        wuss_menu_tick_exclusive_live(cc->menu_handle,
+                                      wuss_fontmenu_menu(cc->fontmenu),
+                                      cc->current);
       else
         /* SELECT has already closed and freed the chain by the time this
          * event arrives; the handle is stale, don't touch it */

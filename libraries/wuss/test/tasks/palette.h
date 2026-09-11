@@ -53,7 +53,7 @@ typedef struct palette_task
    * copy built fresh on each open would not do */
   wuss_menu_item_t     menu_items[PALETTE_MAX_FILES + 1];
   wuss_menu_t          menu;
-  wuss_menu_handle_t   menu_handle; /* for wuss_menu_set_item_ticked on an
+  wuss_menu_handle_t   menu_handle; /* for wuss_menu_tick_item_live on an
                                      * ADJUST pick, which keeps the chain
                                      * open */
 }

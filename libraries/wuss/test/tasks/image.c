@@ -273,7 +273,7 @@ static result_t image_open_menu(image_task_t *ic)
   result_t     rc;
   wuss_menu_t *m;
   int          i;
-  int          ticked[7];
+  unsigned int ticked;
 
   rc = wuss_menu_create_from_desc(&m,
          "Image, Info, New..., Open, !Dithering, !Wireframe, >Export, |Quit",
@@ -297,9 +297,7 @@ static result_t image_open_menu(image_task_t *ic)
   wuss_menu_destroy(ic->menu);
   ic->menu = m;
   
-  // TODO: Use a bitfield?
-  memset(ticked, 0, sizeof(ticked));
-  ticked[3] = ic->dithering;
+  ticked = ic->dithering ? (1u << 3) : 0;
 
   return wuss_menu_open_ticked(ic->delegate,
                                ic->menu,
@@ -348,7 +346,7 @@ result_t image_handle(wuss_window_t      *window,
     if (!wuss_menu_should_keep_open(event))
       ic->menu_handle = NULL; /* SELECT pick already freed the chain */
     else if (index == 3)
-      wuss_menu_set_item_ticked(ic->menu_handle, ic->menu, 3, ic->dithering);
+      wuss_menu_tick_item_live(ic->menu_handle, ic->menu, 3, ic->dithering);
     return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:

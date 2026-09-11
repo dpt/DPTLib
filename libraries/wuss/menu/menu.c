@@ -907,23 +907,11 @@ int wuss_menu_should_keep_open(const wuss_event_t *ev)
 
 result_t wuss_menu_open_ticked(wuss_task_t        *task,
                                wuss_menu_t        *menu,
-                               const int          *ticked,
+                               unsigned int        ticked,
                                point_t             at,
                                wuss_menu_handle_t *out)
 {
-  wuss_menu_item_t *item;
-  int               i;
-
-  assert(menu != NULL);
-
-  for (i = 0; i < menu->nitems; i++)
-  {
-    item = (wuss_menu_item_t *) &menu->items[i];
-    if (ticked != NULL && ticked[i])
-      item->flags |= wuss_MENU_ITEM_TICKED;
-    else
-      item->flags &= ~(wuss_menu_item_flags_t) wuss_MENU_ITEM_TICKED;
-  }
+  wuss_menu_tick_set(menu, ticked);
 
   return wuss_menu_open(task, menu, at, out);
 }
@@ -961,8 +949,8 @@ int wuss_menu_is_open(wuss_menu_handle_t handle)
 }
 
 /* Find the open chain level showing `menu`, or NULL if `handle` is stale or
- * `menu` is not a level of its chain. Shared by wuss_menu_set_ticked and
- * wuss_menu_set_item_ticked. */
+ * `menu` is not a level of its chain. Shared by wuss_menu_tick_exclusive_live
+ * and wuss_menu_tick_item_live. */
 static struct wuss__menu *wuss__menu_open_level(wuss_menu_handle_t handle,
                                                 const wuss_menu_t *menu)
 {
@@ -986,9 +974,64 @@ static struct wuss__menu *wuss__menu_open_level(wuss_menu_handle_t handle,
   return NULL; /* menu is not a level of this chain */
 }
 
-void wuss_menu_set_ticked(wuss_menu_handle_t handle,
-                          const wuss_menu_t *menu,
-                          int                index)
+/* ----------------------------------------------------------------------- */
+
+void wuss_menu_tick_set(wuss_menu_t *menu, unsigned int ticked)
+{
+  wuss_menu_item_t *item;
+  int               i;
+
+  assert(menu != NULL);
+  assert(menu->nitems <= (int) (sizeof(ticked) * CHAR_BIT));
+
+  for (i = 0; i < menu->nitems; i++)
+  {
+    item = (wuss_menu_item_t *) &menu->items[i];
+    if (ticked & (1u << i))
+      item->flags |= wuss_MENU_ITEM_TICKED;
+    else
+      item->flags &= ~(wuss_menu_item_flags_t) wuss_MENU_ITEM_TICKED;
+  }
+}
+
+void wuss_menu_tick_exclusive(wuss_menu_t *menu, int index)
+{
+  wuss_menu_item_t *item;
+  int               i;
+
+  assert(menu != NULL);
+
+  for (i = 0; i < menu->nitems; i++)
+  {
+    item = (wuss_menu_item_t *) &menu->items[i];
+    if (i == index)
+      item->flags |= wuss_MENU_ITEM_TICKED;
+    else
+      item->flags &= ~(wuss_menu_item_flags_t) wuss_MENU_ITEM_TICKED;
+  }
+}
+
+void wuss_menu_tick_item(wuss_menu_t *menu, int index, int ticked)
+{
+  wuss_menu_item_t *item;
+
+  assert(menu != NULL);
+
+  if (index < 0 || index >= menu->nitems)
+    return;
+
+  item = (wuss_menu_item_t *) &menu->items[index];
+  if (ticked)
+    item->flags |= wuss_MENU_ITEM_TICKED;
+  else
+    item->flags &= ~(wuss_menu_item_flags_t) wuss_MENU_ITEM_TICKED;
+}
+
+/* ----------------------------------------------------------------------- */
+
+void wuss_menu_tick_exclusive_live(wuss_menu_handle_t handle,
+                                   const wuss_menu_t *menu,
+                                   int                index)
 {
   struct wuss__menu *node;
   int                i;
@@ -1001,10 +1044,28 @@ void wuss_menu_set_ticked(wuss_menu_handle_t handle,
     wuss_icon_set_selected(node->window, node->icons[i], i == index);
 }
 
-void wuss_menu_set_item_ticked(wuss_menu_handle_t handle,
-                               const wuss_menu_t *menu,
-                               int                index,
-                               int                ticked)
+void wuss_menu_tick_set_live(wuss_menu_handle_t handle,
+                             const wuss_menu_t *menu,
+                             unsigned int       ticked)
+{
+  struct wuss__menu *node;
+  int                i;
+
+  assert(menu->nitems <= (int) (sizeof(ticked) * CHAR_BIT));
+
+  node = wuss__menu_open_level(handle, menu);
+  if (node == NULL)
+    return;
+
+  for (i = 0; i < menu->nitems; i++)
+    wuss_icon_set_selected(node->window, node->icons[i],
+                           (ticked & (1u << i)) != 0);
+}
+
+void wuss_menu_tick_item_live(wuss_menu_handle_t handle,
+                              const wuss_menu_t *menu,
+                              int                index,
+                              int                ticked)
 {
   struct wuss__menu *node;
 

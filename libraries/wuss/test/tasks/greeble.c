@@ -320,9 +320,9 @@ static result_t greeble_menu_select(greeble_task_t     *task,
   rc = greeble_toggle_randpal(task, task->window);
 
   if (wuss_menu_should_keep_open(event))
-    wuss_menu_set_item_ticked(task->menu_handle, &g_greeble_menu,
-                              GREEBLE_MENU_RANDPAL,
-                              task->random_prefab_palettes);
+    wuss_menu_tick_item_live(task->menu_handle, &g_greeble_menu,
+                             GREEBLE_MENU_RANDPAL,
+                             task->random_prefab_palettes);
   else
     task->menu_handle = NULL;
 
@@ -349,9 +349,9 @@ result_t greeble_handle(wuss_window_t      *window,
     {
       /* the menu struct is shared by every greeble window; sync its sole
        * tick to this window's state before it opens */
-      int ticks[1];
+      unsigned int ticks;
 
-      ticks[GREEBLE_MENU_RANDPAL] = task->random_prefab_palettes;
+      ticks = task->random_prefab_palettes ? 1u << GREEBLE_MENU_RANDPAL : 0;
       return wuss_menu_open_ticked(task->delegate, &g_greeble_menu, ticks,
                                    wuss_get_pointer(task->wuss),
                                    &task->menu_handle);
