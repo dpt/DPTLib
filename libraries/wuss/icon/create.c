@@ -1,8 +1,6 @@
 /* wuss/icon/create.c -- create a work-area icon */
 
 #include <assert.h>
-#include <stdlib.h>
-#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -14,14 +12,10 @@ result_t wuss_icon_create(wuss_window_t          *window,
                           const wuss_icon_spec_t *spec,
                           wuss_icon_t           **icon)
 {
-  result_t      rc;
-  wuss_t       *w;
-  wuss_icon_t  *it;
-  wuss_icon_t **grown;
-  wuss_icon_t   scratch;
-  const char   *src;
-  size_t        len;
-  int           newcap;
+  result_t     rc;
+  wuss_t      *w;
+  wuss_icon_t *it;
+  wuss_icon_t  scratch;
 
   assert(window != NULL);
   assert(spec   != NULL);
@@ -32,15 +26,10 @@ result_t wuss_icon_create(wuss_window_t          *window,
   if (rc != result_OK)
     return rc;
 
-  if (window->nicons == window->cap_icons)
-  {
-    newcap = (window->cap_icons == 0) ? 4 : window->cap_icons * 2;
-    grown  = wuss__realloc(w, window->icons, newcap * sizeof(*window->icons));
-    if (grown == NULL)
-      return result_OOM;
-    window->icons     = grown;
-    window->cap_icons = newcap;
-  }
+  if (wuss__array_grow(&w->alloc, (void **) &window->icons,
+                       sizeof(*window->icons), window->nicons,
+                       &window->cap_icons, 1, 4) != 0)
+    return result_OOM;
 
   it = wuss__malloc(w, sizeof(*it));
   if (it == NULL)
@@ -48,15 +37,13 @@ result_t wuss_icon_create(wuss_window_t          *window,
 
   *it = scratch; /* scratch.spec.text aliases spec->text; replaced with an owned copy below */
 
-  src = (spec->text != NULL) ? spec->text : "";
-  len = strlen(src);
-  it->spec.text = wuss__malloc(w, len + 1);
+  it->spec.text = wuss__alloc_strdup(&w->alloc,
+                                     spec->text != NULL ? spec->text : "");
   if (it->spec.text == NULL)
   {
     wuss__free(w, it);
     return result_OOM;
   }
-  memcpy((char *) it->spec.text, src, len + 1);
 
   window->icons[window->nicons++] = it;
 
