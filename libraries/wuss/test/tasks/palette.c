@@ -276,12 +276,11 @@ static result_t palette_redraw_screen(palette_task_t     *pc,
  * touches the TICKED bit. */
 static result_t palette_menu_open(palette_task_t *pc)
 {
-  int ticks[PALETTE_MAX_FILES + 1];
-  int i;
+  unsigned int ticks;
 
-  for (i = 0; i < pc->nnames; i++)
-    ticks[i] = (i == pc->selected);
-  ticks[PALETTE_MENU_INVERT_INDEX(pc)] = pc->invert;
+  ticks = 1u << pc->selected;
+  if (pc->invert)
+    ticks |= 1u << PALETTE_MENU_INVERT_INDEX(pc);
 
   return wuss_menu_open_ticked(pc->delegate, &pc->menu, ticks,
                                wuss_get_pointer(pc->wuss), &pc->menu_handle);
@@ -305,7 +304,7 @@ static result_t palette_click(palette_task_t *pc, const wuss_event_t *event)
  * resulting wuss_EVENT_PALETTE and reads the new array back with
  * wuss_get_palette. A load failure is silently ignored: the picker just
  * stays on the previous selection. Ticks are also updated in place via
- * wuss_menu_set_item_ticked, so an ADJUST pick (which keeps the chain open)
+ * wuss_menu_tick_item_live, so an ADJUST pick (which keeps the chain open)
  * shows the new tick without the menu being rebuilt or moved. */
 static result_t palette_menu_select(palette_task_t     *pc,
                                     const wuss_event_t *event)
@@ -325,7 +324,7 @@ static result_t palette_menu_select(palette_task_t     *pc,
   {
     pc->invert = !pc->invert;
     if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
-      wuss_menu_set_item_ticked(pc->menu_handle, &pc->menu, index, pc->invert);
+      wuss_menu_tick_item_live(pc->menu_handle, &pc->menu, index, pc->invert);
   }
   else if (index >= 0 && index < pc->nnames)
   {
@@ -334,10 +333,10 @@ static result_t palette_menu_select(palette_task_t     *pc,
     pc->invert   = false;
     if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
     {
-      wuss_menu_set_item_ticked(pc->menu_handle, &pc->menu, old, 0);
-      wuss_menu_set_item_ticked(pc->menu_handle, &pc->menu, index, 1);
-      wuss_menu_set_item_ticked(pc->menu_handle, &pc->menu,
-                                PALETTE_MENU_INVERT_INDEX(pc), 0);
+      wuss_menu_tick_item_live(pc->menu_handle, &pc->menu, old, 0);
+      wuss_menu_tick_item_live(pc->menu_handle, &pc->menu, index, 1);
+      wuss_menu_tick_item_live(pc->menu_handle, &pc->menu,
+                               PALETTE_MENU_INVERT_INDEX(pc), 0);
     }
   }
   else
