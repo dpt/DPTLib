@@ -17,13 +17,14 @@ void bmtext_draw(bmfont_t            *font,
                  int                  leading,
                  point_t              origin)
 {
-  int     font_height;
+  int     font_height, font_ascent;
   point_t pos;
   int     i;
 
-  bmfont_get_info(font, NULL, &font_height);
+  bmfont_get_info(font, NULL, &font_height, &font_ascent, NULL);
 
-  pos = origin;
+  pos   = origin;
+  pos.y += font_ascent; /* origin is top-left; bmfont_draw wants the baseline */
   for (i = 0; i < nlines; i++)
   {
     bmfont_draw(font, scr, lines[i].str, lines[i].len, fg, bg, &pos, NULL);

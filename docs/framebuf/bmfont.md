@@ -20,9 +20,16 @@ or even this:
 
 ## PNG Font Format
 
-The PNG should be 32 characters wide: bmfont works out the character dimensions from the total PNG size.
+The PNG should be 32 characters wide: bmfont works out the character dimensions from the total PNG size. It should be a paletted (colour type 3), 2 bits-per-pixel image with a four-entry palette:
 
-It should be a four colour PNG where pixels of value 1 are font definitions and pixels of value 2 are advance widths. Note: An 8bpp 4-palette-entry image won't do, it must be 4bpp.
+- 0 -- background
+- 1 -- glyph ink
+- 2 -- advance-width marker (row 0 of each glyph cell: one pixel per column, present wherever that column's glyph should draw, sets the advance width)
+- 3 -- grid/baseline (see below)
+
+Pixel value 3 draws the cell's left sidebearing line (cosmetic only) plus two full-width rows that `bmfont_create` reads back to work out `ascent` and `descent`: one at the font's baseline, one at the cell bottom. It scans the space glyph's cell (grid column 0, which carries no ink to interfere) for the first two full-width rows of value-3 pixels within the cell body; the first is the baseline (its offset from the top of the cell is the ascent) and the second is the cell bottom (its offset from the baseline is the descent). A font predating this convention (no such rows found) falls back to treating the whole cell as ascent, with zero descent.
+
+`tools/ttf2bmfont.py` generates conforming PNGs from a TTF automatically. `--no-grid` omits all the value-3 pixels, baseline row included -- don't pass it, or `bmfont_create` will fall back to the no-descender default for that font.
 
 ## Setup
 
@@ -69,7 +76,17 @@ result_t bmfont_draw(bmfont_t      *bmfont,
 
 It requires a font handle, the screen to draw to, a pointer to some text, the number of characters to consider, foreground and background colours, and a start position. It returns an end position (optional - pass `NULL` if not required).
 
-The screen origin is at the top left.
+The screen origin is at the top left. `pos` and `end_pos` are baseline positions, not the top-left of the glyph cells -- use `bmfont_get_info()`'s `ascent` out-param to convert from a top-left layout position (`baseline_y = top_y + ascent`).
+
+```C
+void bmfont_get_info(bmfont_t *bmfont,
+                     int      *width,
+                     int      *height,
+                     int      *ascent,
+                     int      *descent);
+```
+
+Returns the font's cell width, cell height, ascent and descent (any may be `NULL` if not required).
 
 ## Limitations
 

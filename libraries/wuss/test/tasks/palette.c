@@ -243,7 +243,6 @@ static result_t palette_redraw_screen(palette_task_t     *pc,
   {
     static const char label[] = "32bpp (none)";
     bmfont_t          *font   = wuss_get_font(pc->wuss);
-    point_t            pos    = POINT(bounds->x0 - sx + 2, bounds->y0 - sy + 2);
     colour_t           ink    = colour_rgb(0xFF, 0xFF, 0xFF);
     colour_t           bg     = colour_rgba(0, 0, 0, 0); /* transparent */
 
@@ -251,7 +250,14 @@ static result_t palette_redraw_screen(palette_task_t     *pc,
                      SIZE2D(bounds->x1 - bounds->x0, bounds->y1 - bounds->y0),
                      colour_rgb(0x00, 0x00, 0x00));
     if (font != NULL)
+    {
+      int     ascent;
+      point_t pos;
+
+      bmfont_get_info(font, NULL, NULL, &ascent, NULL);
+      pos = POINT(bounds->x0 - sx + 2, bounds->y0 - sy + 2 + ascent);
       bmfont_draw(font, scr, label, (int) strlen(label), ink, bg, &pos, NULL);
+    }
     return result_OK;
   }
 

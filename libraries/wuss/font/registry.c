@@ -42,7 +42,7 @@ int wuss__fontset_height(const struct wuss_fontset *set, int slot)
   if (slot < 0 || slot >= wuss_MAX_FONTS || set->fonts[slot] == NULL)
     return 0;
 
-  bmfont_get_info(set->fonts[slot], NULL, &height);
+  bmfont_get_info(set->fonts[slot], NULL, &height, NULL, NULL);
   return height;
 }
 

@@ -39,10 +39,10 @@ void wuss__fontset_init(struct wuss_fontset     *set,
  * regular and bold faces. */
 int wuss__fontset_height(const struct wuss_fontset *set, int slot);
 
-/* Centralised text rendering. Every wuss text draw goes through
- * wuss__text_draw so an optical vertical bias (WUSS_TEXT_BASELINE_ADJUST,
- * default 1px down) is applied uniformly; wuss__text_measure is a plain
- * pass-through kept alongside for a single point of policy. */
+/* Centralised text rendering. wuss__text_draw is a plain pass-through to
+ * bmfont_draw (pos/end_pos are baseline positions, per bmfont_draw's
+ * contract), kept alongside wuss__text_measure for a single point of
+ * policy. */
 result_t wuss__text_measure(bmfont_t       *font,
                             const char     *text,
                             int             len,

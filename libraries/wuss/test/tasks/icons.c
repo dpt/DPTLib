@@ -657,6 +657,7 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
   int           doc;
   int           x;
   int           y;
+  int           ascent;
 
   tcx = task_data;
 
@@ -667,6 +668,8 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
 
   ox = bounds->x0 - scroll.x;
   oy = bounds->y0 - scroll.y;
+
+  bmfont_get_info(tcx->font, NULL, NULL, &ascent, NULL);
 
   /* Everything this task paints is anchored to the document, not the window,
    * so it scrolls rigidly with the content -- which is what Wuss's scroll
@@ -688,7 +691,7 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
       continue;
 
     snprintf(buf, sizeof(buf), "%d", doc);
-    pos = POINT(x + 2, oy + 2);
+    pos = POINT(x + 2, oy + 2 + ascent);
     bmfont_draw(tcx->font, scr, buf, (int) strlen(buf),
                 tcx->label, tcx->paper, &pos, NULL);
   }
@@ -704,7 +707,7 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
       continue;
 
     snprintf(buf, sizeof(buf), "%d", doc);
-    pos = POINT(ox + 2, y + 2);
+    pos = POINT(ox + 2, y + 2 + ascent);
     bmfont_draw(tcx->font, scr, buf, (int) strlen(buf),
                 tcx->label, tcx->paper, &pos, NULL);
   }

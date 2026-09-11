@@ -295,12 +295,13 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
   {
     for (transparent = 0; transparent < 2; transparent++)
     {
-      int fontwidth, fontheight;
+      int fontwidth, fontheight, fontascent;
       int i;
 
       bitmap_clear(&state->bm, state->palette[palette_PICO8_DARK_GREEN]);
 
-      bmfont_get_info(bmfonts[font].bmfont, &fontwidth, &fontheight);
+      bmfont_get_info(bmfonts[font].bmfont, &fontwidth, &fontheight,
+                      &fontascent, NULL);
 
       for (i = 0; i < NELEMS(centres); i++)
       {
@@ -319,7 +320,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
           return rc;
 
         pos.x = centres[i].x - stringwidth / 2;
-        pos.y = centres[i].y - fontheight  / 2;
+        pos.y = centres[i].y - fontheight  / 2 + fontascent;
 
         bg = transparent ? state->transparent : state->palette[palette_PICO8_GREEN];
 
@@ -377,7 +378,7 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
     for (transparent = 0; transparent < 2; transparent++)
     {
       bmfont_t   *bmfont    = bmfonts[font].bmfont;
-      int         glyphwidth, glyphheight;
+      int         glyphwidth, glyphheight, glyphascent;
       const char *string;
       size_t      stringlen;
       point_t     origin    = {0,0};
@@ -385,7 +386,8 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
 
       bitmap_clear(&state->bm, state->palette[palette_PICO8_DARK_GREEN]);
 
-      bmfont_get_info(bmfont, &glyphwidth, &glyphheight);
+      bmfont_get_info(bmfont, &glyphwidth, &glyphheight, &glyphascent, NULL);
+      origin.y += glyphascent;
 
       for (;;)
       {
@@ -916,7 +918,9 @@ result_t bmfont_test_one_format(const char *resources,
 
     bmfont_get_info(bmfonts[font].bmfont,
                    &bmfonts[font].width,
-                   &bmfonts[font].height);
+                   &bmfonts[font].height,
+                   NULL,
+                   NULL);
   }
 
   /* ------------------------------------------------------------------------ */

@@ -150,14 +150,20 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
     bmfont_t   *font = wuss_get_font(gc->wuss);
     int         dim  = gradient_dithers[di].dim;
     char        label[8];
-    point_t     pos  = POINT(bounds->x0 - sx + 2, bounds->y0 - sy + 2);
     colour_t    ink  = colour_rgb(0xFF, 0xFF, 0xFF);
     colour_t    bg   = colour_rgba(0, 0, 0, 0); /* transparent */
 
     sprintf(label, "%dx%d", dim, dim);
 
     if (font != NULL)
+    {
+      int     ascent;
+      point_t pos;
+
+      bmfont_get_info(font, NULL, NULL, &ascent, NULL);
+      pos = POINT(bounds->x0 - sx + 2, bounds->y0 - sy + 2 + ascent);
       bmfont_draw(font, scr, label, (int) strlen(label), ink, bg, &pos, NULL);
+    }
   }
 
   return result_OK;
