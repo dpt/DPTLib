@@ -1125,6 +1125,98 @@ static result_t test_copy_bitmap_p8(void)
 #undef P8_ROWBYTES
 }
 
+/* screen_copy_bitmap with a *paletted* source (p4) onto a 32bpp screen: the
+ * unpack path in screen_copy_bitmap_i must decode the packed source indices
+ * through its own palette before the 32bpp blit runs, landing exact colours
+ * -- unlike the deep-source tests above there is no quantisation step to
+ * allow slop for. */
+static result_t test_copy_bitmap_paletted_source(void)
+{
+#define P4_SRC_ROWBYTES (8 / 2)
+  static unsigned char p4srcbuf[P4_SRC_ROWBYTES * 2];
+  static pixelfmt_any32_t scrbuf[WIDTH * HEIGHT];
+
+  screen_t scr;
+  bitmap_t src;
+  colour_t srcpal[16];
+  colour_t got;
+  int      x;
+
+  /* row 0: indices 0..7 packed two to the byte -- even x in the low nibble,
+   * odd x in the high nibble (matches screen_set_pixel_p4's own bit order) */
+  for (x = 0; x < 8; x++)
+    p4srcbuf[x >> 1] |= (unsigned char) (x << ((x & 1) ? 4 : 0));
+  memset(p4srcbuf + P4_SRC_ROWBYTES, 0, P4_SRC_ROWBYTES); /* row 1: all index 0 */
+
+  for (x = 0; x < 16; x++)
+    srcpal[x] = colour_rgb((unsigned char) (x * 16),
+                           (unsigned char) (x * 8),
+                           (unsigned char) (255 - x * 16));
+
+  bitmap_init(&src, SIZE2D(8, 2), pixelfmt_p4, P4_SRC_ROWBYTES, srcpal,
+              p4srcbuf);
+
+  memset(scrbuf, 0, sizeof(scrbuf));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_rgbx8888,
+             WIDTH * (int) sizeof(scrbuf[0]), NULL, scrbuf);
+
+  if (screen_copy_bitmap(&scr, 2, 3, &src) != result_OK)
+  {
+    printf("screen: copy_bitmap of a p4 source onto a 32bpp screen failed\n");
+    return result_TEST_FAILED;
+  }
+
+  for (x = 0; x < 8; x++)
+  {
+    got.primary = scrbuf[3 * WIDTH + 2 + x];
+    if (got.primary != srcpal[x].primary)
+    {
+      printf("screen: paletted-source blit wrong at x=%d "
+            "(got 0x%08X want 0x%08X)\n",
+            x, got.primary, srcpal[x].primary);
+      return result_TEST_FAILED;
+    }
+  }
+
+  /* a pixel just outside the blitted box on every side stays clear, i.e. the
+   * unpack scratch buffer's extent matches the clipped draw box exactly */
+  if (scrbuf[3 * WIDTH + 1] != 0 || scrbuf[3 * WIDTH + 10] != 0 ||
+      scrbuf[2 * WIDTH + 2] != 0 || scrbuf[5 * WIDTH + 2] != 0)
+  {
+    printf("screen: paletted-source blit spilled past its box\n");
+    return result_TEST_FAILED;
+  }
+
+  /* a fully-transparent palette entry (as a PNG's tRNS chunk can produce)
+   * must alpha-test out, same as a transparent rgba8888/bgra8888 source
+   * pixel would: the unpack step must carry the tRNS-derived alpha through
+   * rather than baking every unpacked pixel opaque */
+  {
+    pixelfmt_any32_t sentinel = 0xDEADBEEFu;
+
+    srcpal[0] = colour_rgba(0xFF, 0x00, 0x00, 0x00); /* red, fully transparent */
+    bitmap_set_palette(&src, srcpal); /* src.palette is its own copy */
+    scrbuf[3 * WIDTH + 2] = sentinel;
+
+    if (screen_copy_bitmap(&scr, 2, 3, &src) != result_OK)
+    {
+      printf("screen: copy_bitmap of a p4 source (2nd pass) failed\n");
+      return result_TEST_FAILED;
+    }
+
+    if (scrbuf[3 * WIDTH + 2] != sentinel)
+    {
+      printf("screen: paletted-source blit drew a fully-transparent index "
+            "(0x%08X, background was 0x%08X)\n",
+            scrbuf[3 * WIDTH + 2], sentinel);
+      return result_TEST_FAILED;
+    }
+  }
+
+  return result_TEST_PASSED;
+#undef P4_SRC_ROWBYTES
+}
+
 /* Unpack the p2 pixel at column "px" of a row's byte buffer (bits 7..6 are
  * column 0, MSB-first, four to the byte). */
 static int p2_pixel_at(const unsigned char *rowbuf, int px)
@@ -1359,6 +1451,7 @@ result_t screen_test(const char *resources)
     test_copy_bitmap_p1,
     test_copy_bitmap_p2,
     test_copy_bitmap_p8,
+    test_copy_bitmap_paletted_source,
     test_copy_bitmap_dithered,
     test_copy_rect_packed
   };
