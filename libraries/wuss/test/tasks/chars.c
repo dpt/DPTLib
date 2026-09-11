@@ -248,8 +248,8 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
     snprintf(label, 4, "%d", i);
     pos.x = x + CHARS_PAD;
     pos.y = y + CHARS_PAD + sysfont_ascent;
-    bmfont_draw(sysfont, scr, label, (int) strlen(label), cc->mg, cc->bg,
-               &pos, NULL);
+    wuss_text_draw(cc->wuss, 0, scr, label, (int) strlen(label), cc->mg,
+                   cc->bg, &pos, NULL);
 
     if (i < first || i >= first + count)
       continue; /* no glyph for this byte value: leave the cell blank */
