@@ -253,6 +253,16 @@ int wuss__blit_pieces(wuss_window_t *window,
     int   nvis;
 
     box_translated(&src[i], dx, dy, &want);
+
+    /* A shifted piece can slide past "clip" (set-scroll's content box) --
+     * e.g. a fast scroll on a since-shrunk window -- and wuss__clip_to_visible
+     * below only clips against occluding windows, not against "clip". Left
+     * unclamped, the excess ends up in blit_dest and is later handed
+     * unclipped to wuss__invalidate_minus, marking screen outside the window
+     * dirty for the next redraw. */
+    if (clip != NULL && box_intersection(clip, &want, &want))
+      continue;
+
     nvis = wuss__clip_to_visible(window, &want, vis);
     for (j = 0; j < nvis; j++)
     {
