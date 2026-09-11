@@ -405,7 +405,7 @@ static colour_t src_fetch_rgba(const bitmap_t   *src,
     case 0:  idx = (row[srcx >> 3] >> (7 - (srcx & 7))) & 1;        break;
     case 1:  idx = (row[srcx >> 2] >> (6 - ((srcx & 3) << 1))) & 3; break;
     case 2:  idx = (row[srcx >> 1] >> ((srcx & 1) * 4)) & 0xF;      break;
-    default: idx = row[srcx];                                      break;
+    default: idx = row[srcx];                                       break;
     }
 
     c.primary = ((const pixelfmt_rgba8888_t *) srcpm->entries)[idx];
@@ -442,13 +442,13 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
                                       int             has_alpha,
                                       int             dither)
 {
-  unsigned char       *dstbase;
-  const pixelmap_t    *pm;
-  const pixelmap_t    *srcpm;
-  int                  bias[64];
-  int                  do_dither;
-  int                  clipped_width, clipped_height;
-  int                  yy;
+  unsigned char    *dstbase;
+  const pixelmap_t *pm;
+  const pixelmap_t *srcpm;
+  int               bias[64];
+  int               do_dither;
+  int               clipped_width, clipped_height;
+  int               yy;
 
   clipped_width  = draw_box->x1 - draw_box->x0;
   clipped_height = draw_box->y1 - draw_box->y0;
@@ -528,13 +528,13 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
                                       int             has_alpha,
                                       int             dither)
 {
-  unsigned char       *dstbase;
-  const pixelmap_t    *pm;
-  const pixelmap_t    *srcpm;
-  int                  bias[64];
-  int                  do_dither;
-  int                  clipped_width, clipped_height;
-  int                  yy;
+  unsigned char    *dstbase;
+  const pixelmap_t *pm;
+  const pixelmap_t *srcpm;
+  int               bias[64];
+  int               do_dither;
+  int               clipped_width, clipped_height;
+  int               yy;
 
   clipped_width  = draw_box->x1 - draw_box->x0;
   clipped_height = draw_box->y1 - draw_box->y0;
@@ -609,13 +609,13 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
                                       int             has_alpha,
                                       int             dither)
 {
-  unsigned char       *dstbase;
-  const pixelmap_t    *pm;
-  const pixelmap_t    *srcpm;
-  int                  bias[64];
-  int                  do_dither;
-  int                  clipped_width, clipped_height;
-  int                  yy;
+  unsigned char    *dstbase;
+  const pixelmap_t *pm;
+  const pixelmap_t *srcpm;
+  int               bias[64];
+  int               do_dither;
+  int               clipped_width, clipped_height;
+  int               yy;
 
   clipped_width  = draw_box->x1 - draw_box->x0;
   clipped_height = draw_box->y1 - draw_box->y0;
@@ -694,13 +694,13 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
                                       int             has_alpha,
                                       int             dither)
 {
-  unsigned char       *dstbase;
-  const pixelmap_t    *pm;
-  const pixelmap_t    *srcpm;
-  int                  bias[64];
-  int                  do_dither;
-  int                  clipped_width, clipped_height;
-  int                  yy;
+  unsigned char    *dstbase;
+  const pixelmap_t *pm;
+  const pixelmap_t *srcpm;
+  int               bias[64];
+  int               do_dither;
+  int               clipped_width, clipped_height;
+  int               yy;
 
   clipped_width  = draw_box->x1 - draw_box->x0;
   clipped_height = draw_box->y1 - draw_box->y0;
@@ -874,7 +874,7 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
    * so it always carries real per-pixel alpha and must be alpha-tested same
    * as an rgba8888/bgra8888 source would be. */
   has_alpha = pixelfmt_log2bpp(src->format) != 5 ||
-             src->format == pixelfmt_rgba8888 || src->format == pixelfmt_bgra8888;
+             pixelfmt_has_alpha(src->format);
 
   switch (pixelfmt_log2bpp(scr->format))
   {
@@ -882,7 +882,7 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
   case 1: rc = screen_copy_bitmap_p2(scr, x, y, src, &draw_box, has_alpha, dither); break;
   case 2: rc = screen_copy_bitmap_p4(scr, x, y, src, &draw_box, has_alpha, dither); break;
   case 3: rc = screen_copy_bitmap_p8(scr, x, y, src, &draw_box, has_alpha, dither); break;
-  case 5: rc = screen_copy_bitmap_32(scr, x, y, src, &draw_box, has_alpha); break;
+  case 5: rc = screen_copy_bitmap_32(scr, x, y, src, &draw_box, has_alpha);         break;
 
   default:
     assert(!"Unimplemented pixel format");
