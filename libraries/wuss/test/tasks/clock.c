@@ -75,14 +75,14 @@ static void clock_draw_centred(bmfont_t   *font,
 {
   bmfont_width_t width;
   point_t        pos;
-  int            len, fh;
+  int            len, fh, ascent;
 
   len = (int) strlen(text);
   bmfont_measure(font, text, len, INT_MAX, NULL, &width);
-  bmfont_get_info(font, NULL, &fh);
+  bmfont_get_info(font, NULL, &fh, &ascent, NULL);
 
   pos.x = (int) (x - width / 2.0);
-  pos.y = (int) (y - fh / 2.0);
+  pos.y = (int) (y - fh / 2.0) + ascent;
   bmfont_draw(font, scr, text, len, fg, colour_rgba(0, 0, 0, 0), &pos, NULL);
 }
 

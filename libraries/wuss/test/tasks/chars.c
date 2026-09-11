@@ -38,8 +38,8 @@ static size2d_t chars_window_size(chars_task_t *task, bmfont_t *font)
 {
   int fw, fh, ifw, ifh, cell_w, cell_h;
 
-  bmfont_get_info(font, &fw, &fh);
-  bmfont_get_info(wuss_get_font(task->wuss), &ifw, &ifh);
+  bmfont_get_info(font, &fw, &fh, NULL, NULL);
+  bmfont_get_info(wuss_get_font(task->wuss), &ifw, &ifh, NULL, NULL);
   cell_w = MAX(fw, ifw * 3) + CHARS_PAD * 2;
   cell_h = ifh + fh + CHARS_PAD * 3;
   return SIZE2D(cell_w * CHARS_COLS, cell_h * CHARS_ROWS);
@@ -200,7 +200,8 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
   screen_t     *scr;
   bmfont_t     *sysfont;
   const box_t  *bounds;
-  int           font_width, font_height, sysfont_width, sysfont_height;
+  int           font_width, font_height, font_ascent;
+  int           sysfont_width, sysfont_height, sysfont_ascent;
   int           cell_w, cell_h;
   int           first, count;
   int           i, sx, sy;
@@ -214,8 +215,9 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
 
   sysfont = wuss_get_font(cc->wuss);
 
-  bmfont_get_info(cc->font, &font_width, &font_height);
-  bmfont_get_info(sysfont, &sysfont_width, &sysfont_height);
+  bmfont_get_info(cc->font, &font_width, &font_height, &font_ascent, NULL);
+  bmfont_get_info(sysfont, &sysfont_width, &sysfont_height, &sysfont_ascent,
+                  NULL);
   cell_w = MAX(font_width, sysfont_width * 3) + CHARS_PAD * 2;
   cell_h = sysfont_height + font_height + CHARS_PAD * 3;
 
@@ -245,7 +247,7 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
 
     snprintf(label, 4, "%d", i);
     pos.x = x + CHARS_PAD;
-    pos.y = y + CHARS_PAD;
+    pos.y = y + CHARS_PAD + sysfont_ascent;
     bmfont_draw(sysfont, scr, label, (int) strlen(label), cc->mg, cc->bg,
                &pos, NULL);
 
@@ -254,7 +256,7 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
 
     ch    = (char) i;
     pos.x = x + CHARS_PAD;
-    pos.y = y + CHARS_PAD * 2 + sysfont_height;
+    pos.y = y + CHARS_PAD * 2 + sysfont_height + font_ascent;
     bmfont_draw(cc->font, scr, &ch, 1, cc->fg, cc->bg, &pos, NULL);
   }
 

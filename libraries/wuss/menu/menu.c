@@ -618,7 +618,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   outline_px      = wuss__outline_px_for(menu_flags);
   titlebar_height = wuss__titlebar_height_for(wuss, menu_flags);
 
-  bmfont_get_info(wuss->fonts.fonts[0], NULL, &fh);
+  bmfont_get_info(wuss->fonts.fonts[0], NULL, &fh, NULL, NULL);
   pitch = fh + 2 * WUSS_MENU_ROW_PAD;
   sep_h = 2 * WUSS_MENU_ROW_PAD;
 

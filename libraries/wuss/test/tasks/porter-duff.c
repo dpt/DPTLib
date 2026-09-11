@@ -329,9 +329,14 @@ static result_t porter_duff_redraw(const wuss_event_t *event,
 
   screen_copy_bitmap(scr, bounds->x0 - sx, bounds->y0 - sy, &pd->dst);
 
-  name  = rule_names[pd->rule];
-  pos.x = bounds->x0 - sx + 2;
-  pos.y = bounds->y0 - sy + PD_SIZE + 2;
+  {
+    int ascent;
+
+    bmfont_get_info(pd->font, NULL, NULL, &ascent, NULL);
+    name  = rule_names[pd->rule];
+    pos.x = bounds->x0 - sx + 2;
+    pos.y = bounds->y0 - sy + PD_SIZE + 2 + ascent;
+  }
 
   return bmfont_draw(pd->font, scr, name, (int) strlen(name),
                      pd->fg, pd->bg, &pos, NULL);

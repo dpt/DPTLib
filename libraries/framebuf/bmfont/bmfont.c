@@ -37,7 +37,8 @@
 #define PIXEL_BG_IDX    (0) /* background */
 #define PIXEL_FG_IDX    (1) /* font */
 #define PIXEL_WIDTH_IDX (2) /* advance widths */
-#define PIXEL_GRID_IDX  (3) /* grid (not presently interpreted) */
+#define PIXEL_GRID_IDX  (3) /* grid: left sidebearing (cosmetic), baseline and
+                             * cell-bottom rows (read back for ascent/descent) */
 
 /* -------------------------------------------------------------------------- */
 
@@ -45,6 +46,8 @@ struct bmfont
 {
   png_uint_32     gridwidth, gridheight; /* pixels */
   png_uint_32     charwidth, charheight; /* em size in pixels */
+  int             ascent;  /* baseline offset from the top of a glyph cell */
+  int             descent; /* offset from the baseline to the cell bottom */
   int             totalchars;
 
   void           *glyphs;
@@ -169,6 +172,67 @@ static int detect_gridheight(const unsigned char *pixels,
 
     if (ok)
       return gh;
+  }
+
+  return 0;
+}
+
+/** True if row \p y of the cell is full-width PIXEL_GRID_IDX. */
+static int row_is_grid(const unsigned char *pixels,
+                       size_t               rowbytes,
+                       png_uint_32          gridwidth,
+                       png_uint_32          y)
+{
+  const unsigned char *row = pixels + rowbytes * y;
+  png_uint_32           x;
+
+  for (x = 0; x < gridwidth; x++)
+  {
+    int px = (row[x >> 2] >> (6 - 2 * (x & 3))) & 3;
+    if (px != PIXEL_GRID_IDX)
+      return 0;
+  }
+
+  return 1;
+}
+
+/**
+ * Find the baseline and descent within a glyph cell.
+ *
+ * The space glyph (grid cell 0, gid 0) carries no ink, so its grid rows --
+ * drawn by ttf2bmfont.py as full-width rows of PIXEL_GRID_IDX pixels across
+ * the cell, one at the baseline and one at the cell bottom -- are
+ * unambiguous. The first such row within the cell body is the baseline
+ * (*ascent is its offset from the top of the cell); the next one found at or
+ * below it is the cell bottom (*descent is its offset from the baseline).
+ * Returns 0 if no baseline row is found, e.g. a font predating this
+ * convention -- the caller falls back to treating the whole cell body as
+ * ascent, with no descender.
+ */
+static int detect_baseline_metrics(const unsigned char *pixels,
+                                   size_t               rowbytes,
+                                   png_uint_32          gridwidth,
+                                   png_uint_32          gridheight,
+                                   int                 *ascent,
+                                   int                 *descent)
+{
+  png_uint_32 y;
+  int         baseline_y = -1;
+
+  for (y = 1; y < gridheight; y++) /* row 0 is the advance-width strip */
+  {
+    if (!row_is_grid(pixels, rowbytes, gridwidth, y))
+      continue;
+
+    if (baseline_y < 0)
+    {
+      baseline_y = (int) y;
+      continue;
+    }
+
+    *ascent  = baseline_y - 1; /* -1: ascent excludes the strip row */
+    *descent = (int) y - baseline_y;
+    return 1;
   }
 
   return 0;
@@ -558,11 +622,20 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
     bmfont->charheight    = gridheight - 1; /* -1 for the advance width row */
     bmfont->totalchars    = CHARS_PER_ROW * pngheight / gridheight;
     bmfont->glyphrowbytes = (gridwidth + 7) / 8; /* stored glyph row: 1 or 2 */
+    if (!detect_baseline_metrics(pixels, pngrowbytes,
+                                 (png_uint_32) gridwidth,
+                                 (png_uint_32) gridheight,
+                                 &bmfont->ascent, &bmfont->descent))
+    {
+      bmfont->ascent  = bmfont->charheight; /* no grid row: full height, no
+                                             * descender */
+      bmfont->descent = 0;
+    }
 
-    logf_info("bmfont load png: charwidth=%d charheight=%d totalchars=%d "
-              "glyphrowbytes=%d",
-              bmfont->charwidth, bmfont->charheight,
-              bmfont->totalchars, bmfont->glyphrowbytes);
+    logf_info("bmfont load png: charwidth=%d charheight=%d ascent=%d "
+              "descent=%d totalchars=%d glyphrowbytes=%d",
+              bmfont->charwidth, bmfont->charheight, bmfont->ascent,
+              bmfont->descent, bmfont->totalchars, bmfont->glyphrowbytes);
 
     rc = extract_advance_widths(bmfont, pixels, pngwidth, pngheight,
                                 pngrowbytes);
@@ -607,12 +680,20 @@ void bmfont_set_flags(bmfont_t *bmfont, bmfont_flags_t flags)
   bmfont->flags = flags;
 }
 
-void bmfont_get_info(bmfont_t *bmfont, int *width, int *height)
+void bmfont_get_info(bmfont_t *bmfont,
+                     int      *width,
+                     int      *height,
+                     int      *ascent,
+                     int      *descent)
 {
   if (width)
-    *width  = bmfont->charwidth;
+    *width   = bmfont->charwidth;
   if (height)
-    *height = bmfont->charheight;
+    *height  = bmfont->charheight;
+  if (ascent)
+    *ascent  = bmfont->ascent;
+  if (descent)
+    *descent = bmfont->descent;
 }
 
 int bmfont_get_count(bmfont_t *bmfont)
@@ -1700,8 +1781,13 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   box_t              scrclip;
   box_t              drawbox;
   box_t              drawclip;
+  point_t            top;
 
   unsigned int bgalpha = colour_get_alpha(&bg);
+
+  /* pos is the baseline; glyph cells are drawn from their top, ascent above
+   * the baseline */
+  top = POINT(pos->x, pos->y - bmfont->ascent);
 
   switch (scr->format)
   {
@@ -1758,10 +1844,10 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   if (screen_get_clip(scr, &scrclip))
     return result_OK; /* invalid clipped screen */
 
-  drawbox.x0 = pos->x;
-  drawbox.y0 = pos->y;
-  drawbox.x1 = pos->x + bmfont->charwidth * len; /* worst-case estimate */
-  drawbox.y1 = pos->y + bmfont->charheight;
+  drawbox.x0 = top.x;
+  drawbox.y0 = top.y;
+  drawbox.x1 = top.x + bmfont->charwidth * len; /* worst-case estimate */
+  drawbox.y1 = top.y + bmfont->charheight;
 
   if (!box_intersects(&scrclip, &drawbox))
     return result_OK; /* not visible */
@@ -1774,8 +1860,8 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   int            bottom_skip       = drawclip.y1;
 
   /* ensure that any computed positions are inside the clip box */
-  unsigned int   clamped_pos_x     = CLAMP(pos->x, scrclip.x0, scrclip.x1 - 1);
-  unsigned int   clamped_pos_y     = CLAMP(pos->y, scrclip.y0, scrclip.y1 - 1);
+  unsigned int   clamped_pos_x     = CLAMP(top.x, scrclip.x0, scrclip.x1 - 1);
+  unsigned int   clamped_pos_y     = CLAMP(top.y, scrclip.y0, scrclip.y1 - 1);
 
   int            log2bpp           = pixelfmt_log2bpp(scr->format);
   unsigned char *screen            = (unsigned char *) scr->base + clamped_pos_y * scr->rowbytes + ((clamped_pos_x << log2bpp) >> 3);

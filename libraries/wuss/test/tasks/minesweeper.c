@@ -260,14 +260,14 @@ static void minesweeper_draw_cell(minesweeper_task_t *ms,
     char           buf[2];
     point_t        pos;
     bmfont_width_t width;
-    int            fh;
+    int            fh, ascent;
 
     buf[0] = (char) ('0' + n);
     buf[1] = '\0';
     bmfont_measure(ms->font, buf, 1, INT_MAX, NULL, &width);
-    bmfont_get_info(ms->font, NULL, &fh);
+    bmfont_get_info(ms->font, NULL, &fh, &ascent, NULL);
     pos.x = x + (MINESWEEPER_CELL - width) / 2;
-    pos.y = y + (MINESWEEPER_CELL - fh) / 2;
+    pos.y = y + (MINESWEEPER_CELL - fh) / 2 + ascent;
     bmfont_draw(ms->font, scr, buf, 1, minesweeper_number_colour(n),
                colour_rgba(0, 0, 0, 0), &pos, NULL);
   }
@@ -282,15 +282,15 @@ static void minesweeper_draw_hud(minesweeper_task_t *ms,
   char    buf[8];
   point_t pos;
   colour_t fg, bg;
-  int      fh;
+  int      fh, ascent;
 
   fg = colour_rgb(0xFF, 0x00, 0x00);
   bg = colour_rgb(0x00, 0x00, 0x00);
-  bmfont_get_info(ms->font, NULL, &fh);
+  bmfont_get_info(ms->font, NULL, &fh, &ascent, NULL);
 
   sprintf(buf, "%03d", MINESWEEPER_MINES - ms->flags);
   pos.x = bounds->x0 + MS_BORDER;
-  pos.y = bounds->y0 + (MS_HUD_H - fh) / 2;
+  pos.y = bounds->y0 + (MS_HUD_H - fh) / 2 + ascent;
   bmfont_draw(ms->font, scr, buf, 3, fg, bg, &pos, NULL);
 
   sprintf(buf, "%03d", ms->elapsed);
@@ -309,17 +309,17 @@ static void minesweeper_draw_banner(minesweeper_task_t *ms,
 {
   bmfont_width_t width;
   point_t        pos;
-  int            len, fh, strip_y;
+  int            len, fh, ascent, strip_y;
 
   len = (int) strlen(text);
   bmfont_measure(ms->font, text, len, INT_MAX, NULL, &width);
-  bmfont_get_info(ms->font, NULL, &fh);
+  bmfont_get_info(ms->font, NULL, &fh, &ascent, NULL);
 
   strip_y = bounds->y0 + MS_HUD_H + (MS_GRID_H + 2 * MS_BORDER - fh) / 2 - 2;
   screen_fill_rect(scr, bounds->x0, strip_y, SIZE2D(MS_WIDTH, fh + 4), bg);
 
   pos.x = bounds->x0 + (MS_WIDTH - width) / 2;
-  pos.y = strip_y + 2;
+  pos.y = strip_y + 2 + ascent;
   bmfont_draw(ms->font, scr, text, len, fg, colour_rgba(0, 0, 0, 0), &pos,
              NULL);
 }

@@ -83,13 +83,21 @@ void bmfont_destroy(bmfont_t *bmfont);
 void bmfont_set_flags(bmfont_t *bmfont, bmfont_flags_t flags);
 
 /**
- * Read the width and height of the specified bitmap font.
+ * Read the width, height, ascent and descent of the specified bitmap font.
  *
  * \param[in]  bmfont   Bitmap font to query.
  * \param[out] width    Width of the font in pixels, or NULL if not wanted.
  * \param[out] height   Height of the font in pixels, or NULL if not wanted.
+ * \param[out] ascent   Baseline offset from the top of a glyph cell, in
+ *                      pixels, or NULL if not wanted.
+ * \param[out] descent  Offset from the baseline to the bottom of a glyph
+ *                      cell, in pixels, or NULL if not wanted.
  */
-void bmfont_get_info(bmfont_t *bmfont, int *width, int *height);
+void bmfont_get_info(bmfont_t *bmfont,
+                     int      *width,
+                     int      *height,
+                     int      *ascent,
+                     int      *descent);
 
 /**
  * Read the number of glyphs in the specified bitmap font. Glyphs are laid
@@ -128,8 +136,8 @@ result_t bmfont_measure(bmfont_t       *bmfont,
  * \param[in]   len     Length of the string.
  * \param[in]   fg      Foreground colour.
  * \param[in]   bg      Background colour.
- * \param[in]   pos     Position of the string in pixels.
- * \param[out]  end_pos End position of the string in pixels.
+ * \param[in]   pos     Baseline start position of the string in pixels.
+ * \param[out]  end_pos Baseline end position of the string in pixels.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
 result_t bmfont_draw(bmfont_t      *bmfont,
@@ -156,9 +164,9 @@ result_t bmfont_draw(bmfont_t      *bmfont,
  * \param[in]   len     Length of the string.
  * \param[in]   fg      Foreground colour, used for the main pass.
  * \param[in]   shadow  Shadow colour, used for the offset pass.
- * \param[in]   pos     Position of the main pass in pixels.
+ * \param[in]   pos     Baseline position of the main pass in pixels.
  * \param[in]   offset  Shadow displacement in pixels, e.g. { 1, 1 }.
- * \param[out]  end_pos End position of the string in pixels.
+ * \param[out]  end_pos Baseline end position of the string in pixels.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
 result_t bmfont_draw_relief(bmfont_t      *bmfont,

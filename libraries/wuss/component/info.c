@@ -108,7 +108,7 @@ result_t wuss_info_create(wuss_info_t          **out,
 
   fonth = 0;
   if (font != NULL)
-    bmfont_get_info(font, NULL, &fonth);
+    bmfont_get_info(font, NULL, &fonth, NULL, NULL);
   rowh   = MAX(fonth + INFO_ROW_PAD, 12) + INFO_ROW_LEADING;
   fieldh = rowh - INFO_ROW_LEADING; /* rowh is the pitch; leave a gap */
 

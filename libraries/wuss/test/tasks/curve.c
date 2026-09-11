@@ -246,11 +246,17 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
   {
     bmfont_t   *font = wuss_get_font(task->wuss);
     const char *name = curve_kind_name(task->npoints);
-    point_t     pos  = POINT(bounds->x0 - sx + 2, bounds->y0 - sy + 2);
 
     if (font != NULL)
+    {
+      int     ascent;
+      point_t pos;
+
+      bmfont_get_info(font, NULL, NULL, &ascent, NULL);
+      pos = POINT(bounds->x0 - sx + 2, bounds->y0 - sy + 2 + ascent);
       bmfont_draw(font, scr, name, (int) strlen(name),
                   task->line, task->bg, &pos, NULL);
+    }
   }
 
   return result_OK;

@@ -6,12 +6,6 @@
 
 #include "font.h"
 
-/* Optical vertical bias applied to every text draw so glyphs sit visually
- * centred rather than mathematically centred. Positive shifts text down. */
-#ifndef WUSS_TEXT_BASELINE_ADJUST
-#define WUSS_TEXT_BASELINE_ADJUST 1
-#endif
-
 /* ----------------------------------------------------------------------- */
 
 result_t wuss__text_measure(bmfont_t       *font,
@@ -34,10 +28,5 @@ result_t wuss__text_draw(bmfont_t      *font,
                          const point_t *pos,
                          point_t       *end_pos)
 {
-  point_t adjusted;
-
-  adjusted.x = pos->x;
-  adjusted.y = pos->y + WUSS_TEXT_BASELINE_ADJUST;
-
-  return bmfont_draw(font, scr, text, len, fg, bg, &adjusted, end_pos);
+  return bmfont_draw(font, scr, text, len, fg, bg, pos, end_pos);
 }

@@ -67,7 +67,7 @@ static void draw_title(wuss_t        *wuss,
 {
   bmfont_t      *titlefont;
   point_t        pos;
-  int            text_x0, text_x1, titlelen, split_point;
+  int            text_x0, text_x1, titlelen, split_point, ascent;
   bmfont_width_t width;
   box_t          text_box, text_clip;
 
@@ -121,8 +121,10 @@ static void draw_title(wuss_t        *wuss,
   titlelen = (int) strlen(window->title);
   wuss__text_measure(titlefont, window->title, titlelen, text_x1 - text_x0, &split_point, &width);
 
+  bmfont_get_info(titlefont, NULL, NULL, &ascent, NULL);
+
   pos.x = (split_point < titlelen) ? text_x0 : text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
-  pos.y = titlebar->y0 + 2;
+  pos.y = titlebar->y0 + 2 + ascent;
   wuss->scr->clip = text_clip;
   wuss__text_draw(titlefont, wuss->scr, window->title, titlelen,
                   wuss->palette[wuss->furniture_colours.title.fg],
