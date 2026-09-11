@@ -1521,6 +1521,100 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_m);
   }
 
+  printf("test: drag-resize never grows a window's total size past the screen's, on either axis\n");
+
+  {
+    static test_task_t    tc_s;
+    wuss_task_t   *delegate_s;
+    box_t          box_s, content, visible;
+    wuss_window_t *win_s;
+
+    tc_s.redraw_count = 0;
+    tc_s.mouse_count  = 0;
+    delegate_s = mk_task(wuss, test_handle, &tc_s);
+    if (delegate_s == NULL) goto Failure;
+
+    box_s.x0 = 10; box_s.y0 = 10;
+    box_s.x1 = 30; box_s.y1 = 30; /* 20x20 content; doc is 1000x1000, far bigger than the 200x200 screen */
+    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(1000, 1000), SIZE2D(0, 0), &win_s);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_s, &visible);
+
+    rc = wuss_mouse_click(wuss, POINT(visible.x1 - 3, visible.y1 - 3), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* S's resize icon */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_s)
+      goto Failure;
+
+    rc = wuss_mouse_move(wuss, POINT(1000, 1000), &hit); /* drag far past the 200x200 screen */
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, POINT(1000, 1000), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_s, &visible);
+    if (visible.x1 - visible.x0 > 200 || visible.y1 - visible.y0 > 200)
+      goto Failure; /* total footprint capped at the screen size, wherever the window sits */
+
+    wuss_window_close(win_s);
+  }
+
+  {
+    /* Same cap, but for a window moved partway off the top-left of the
+     * screen: the mouse pointer itself is clamped to the screen (see
+     * wuss_mouse_move), so a positive content.x0 can never see a resize
+     * drag reach far enough to overhang -- the gap only shows up once
+     * content.x0 is negative, letting the drag's on-screen pointer range
+     * translate into a width bigger than the screen itself. */
+    static test_task_t    tc_e;
+    wuss_task_t   *delegate_e;
+    box_t          box_e, visible;
+    wuss_window_t *win_e;
+
+    tc_e.redraw_count = 0;
+    tc_e.mouse_count  = 0;
+    delegate_e = mk_task(wuss, test_handle, &tc_e);
+    if (delegate_e == NULL) goto Failure;
+
+    box_e.x0 = 10; box_e.y0 = 10;
+    box_e.x1 = 30; box_e.y1 = 30; /* 20x20 content; doc is 1000x1000, far bigger than the 200x200 screen */
+    rc = wuss_window_create(delegate_e, &box_e, "E", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(1000, 1000), SIZE2D(0, 0), &win_e);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_move(win_e, POINT(-100, -100)); /* content top-left off-screen, top-left corner */
+
+    wuss_window_get_visible_bounds(win_e, &visible);
+
+    rc = wuss_mouse_click(wuss, POINT(visible.x1 - 3, visible.y1 - 3), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* E's resize icon */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_e)
+      goto Failure;
+
+    rc = wuss_mouse_move(wuss, POINT(1000, 1000), &hit); /* drag to the far corner; the pointer itself clamps to (199,199) */
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, POINT(1000, 1000), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_e, &visible);
+    if (visible.x1 - visible.x0 > 200 || visible.y1 - visible.y0 > 200)
+      goto Failure; /* total footprint still capped at the screen size, even with a negative x0/y0 */
+
+    wuss_window_close(win_e);
+  }
+
   printf("test: toggle-size blits rather than redrawing the whole window\n");
 
   {

@@ -7,11 +7,12 @@
 void wuss__furniture_drag_resize(wuss_window_t *window, point_t p)
 {
   box_t    content;
-  size2d_t min;
+  size2d_t min, max;
   int      width, height;
 
   wuss__content_box(window, &content);
   wuss__min_content(window, &min);
+  wuss__max_content_anywhere_on_screen(window, &max);
 
   /* Subtract the offset recorded at drag start so the point originally
    * grabbed on the resize icon stays under the pointer, rather than the
@@ -20,6 +21,8 @@ void wuss__furniture_drag_resize(wuss_window_t *window, point_t p)
   height = p.y - window->wuss->furniture.drag_offset.y - content.y0;
   width  = CLAMP(width,  min.w, MAX(window->doc.w, min.w));
   height = CLAMP(height, min.h, MAX(window->doc.h, min.h));
+  width  = MIN(width,  max.w);
+  height = MIN(height, max.h);
 
   wuss_window_resize(window, SIZE2D(width, height));
 }
