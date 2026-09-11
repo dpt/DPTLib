@@ -94,7 +94,7 @@ static result_t clock_create_window(wuss_t       *wuss,
                                    SIZE2D(160, 160),
                                    "Clock",
                                    wuss_WINDOW_DEFAULT,
-                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                   wuss_NO_BACKDROP,
                                    SIZE2D(160, 160),
                                    SIZE2D(0, 0),
                                    &task->window);

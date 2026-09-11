@@ -116,7 +116,7 @@ result_t curve_create(wuss_t *wuss, curve_task_t *task)
                                  SIZE2D(220, 160),
                                  "Curve",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  SIZE2D(220, 160),
                                  SIZE2D(0, 0),
                                  &task->window);

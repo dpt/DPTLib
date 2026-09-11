@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/bitmap.h"
+#include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -35,9 +36,13 @@ typedef struct image_task
   wuss_proginfo_t *proginfo; /* owned: the "Info" row's standard dialogue,
                               * hung off the menu as a wuss_menu_item_t.window;
                               * freed at QUIT */
+  wuss_colourmenu_t *colourmenu; /* owned: the "Background" row's submenu,
+                              * hung off the menu as a wuss_menu_item_t.submenu;
+                              * freed at QUIT */
   wuss_menu_handle_t menu_handle; /* the open chain, if any -- closed before the
                               * proginfo it borrows is destroyed at QUIT */
   int            dithering; /* enable Bayer ordered dithering */
+  wuss_colour_t  background;
 }
 image_task_t;
 

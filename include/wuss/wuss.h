@@ -309,6 +309,10 @@ wuss_backdrop_t;
 #define wuss_BACKDROP_COLOUR(c) \
   ((wuss_backdrop_t) { (c), screen_PATTERN_SOLID, wuss_NO_BACKGROUND })
 
+/** wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND): no fill at all, background
+ *  painting left to the task. */
+#define wuss_NO_BACKDROP wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND)
+
 /** A patterned wuss_backdrop_t: 8x8 pattern p tiled in colour c over
  *  background colour b. */
 #define wuss_BACKDROP_PATTERN(c, p, b) ((wuss_backdrop_t) { (c), (p), (b) })

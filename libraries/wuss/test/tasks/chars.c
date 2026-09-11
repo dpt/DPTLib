@@ -184,7 +184,7 @@ result_t chars_create(wuss_t       *wuss,
                                  grid,
                                  "Chars",
                                  wuss_WINDOW_NO_HSCROLL,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  grid,
                                  SIZE2D(64, 64),
                                  &task->window);

@@ -46,7 +46,7 @@ result_t checker_create(wuss_t*wuss, checker_task_t *task)
                                  SIZE2D(160, 160),
                                  "Checker 1",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  SIZE2D(160, 160),
                                  SIZE2D(0, 0),
                                  &task->window);
@@ -60,7 +60,7 @@ result_t checker_create(wuss_t*wuss, checker_task_t *task)
                                  SIZE2D(160, 160),
                                  "Checker 2",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  SIZE2D(160, 160),
                                  SIZE2D(0, 0),
                                  &task->window2);

@@ -204,7 +204,7 @@ result_t minesweeper_create(wuss_t             *wuss,
                                  SIZE2D(MS_WIDTH, MS_HEIGHT),
                                  "Minesweeper",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  SIZE2D(MS_WIDTH, MS_HEIGHT),
                                  SIZE2D(0, 0),
                                  &task->window);

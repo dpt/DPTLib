@@ -95,7 +95,7 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t *task)
                                  SIZE2D(SATURN_SIZE, SATURN_SIZE),
                                  "Saturn",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  SIZE2D(SATURN_SIZE, SATURN_SIZE),
                                  SIZE2D(0, 0),
                                  &task->window);

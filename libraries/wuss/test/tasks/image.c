@@ -21,10 +21,10 @@
 
 #include "image.h"
 
-#define NINEPATCHSZ  9
+#define NINEPATCHSZ    9
 #define IMAGE_BORDERSZ 8 /* solid inset band drawn inside the ninepatch */
 #define IMAGE_MARGINSZ (NINEPATCHSZ + IMAGE_BORDERSZ)
-#define IMAGE_EXT     ".png"
+#define IMAGE_EXT      ".png"
 
 /* screen_copy_bitmap and screen_copy_ninepatch only understand a deep 32bpp
  * source in R,G,B,A/X byte order (see bitmap_load_png()); bitmap_load_png
@@ -78,6 +78,7 @@ result_t image_create(wuss_t       *wuss,
   task->nnames      = 0;
   task->menu        = NULL;
   task->proginfo    = NULL;
+  task->colourmenu  = NULL;
   task->menu_handle = NULL;
   task->dithering   = 1;
 
@@ -131,7 +132,7 @@ result_t image_create(wuss_t       *wuss,
                                  SIZE2D(sz.w, sz.h),
                                  "Image",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(palette_PICO8_PINK),
+                                 wuss_NO_BACKDROP,
                                  sz,
                                  SIZE2D(32, 32),
                                  &task->window);
@@ -157,18 +158,26 @@ result_t image_create(wuss_t       *wuss,
       task->proginfo = NULL;
   }
 
+  /* The "Background" menu row's submenu. Hung off the descriptor menu as a
+   * wuss_menu_item_t.submenu in image_open_menu. A create failure is
+   * non-fatal -- the task just runs without a Background submenu. */
+  if (wuss_colourmenu_create(&task->colourmenu, wuss, "Background") != result_OK)
+    task->colourmenu = NULL;
+
   return result_OK;
 }
 
 static result_t image_redraw(const wuss_event_t *event, void *task_data)
 {
-  image_task_t *ic;
-  screen_t     *scr;
-  const box_t  *bounds;
-  int           sx, sy;
-  int           bx, by;
-  box_t         behind;
-  box_t         band[4];
+  image_task_t   *ic;
+  screen_t       *scr;
+  const box_t    *bounds;
+  int             sx, sy;
+  int             bx, by;
+  int             bx0, bx1, by1;
+  box_t           behind;
+  box_t           band[4];
+  const colour_t *palette;
 
   ic = task_data;
 
@@ -178,31 +187,23 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   sy     = event->data.redraw.scroll.y;
   bx     = bounds->x0 - sx + IMAGE_MARGINSZ;
   by     = bounds->y0 - sy + IMAGE_MARGINSZ;
+  bx0    = bx - IMAGE_BORDERSZ;
+  bx1    = bx + ic->bitmap.size.w + IMAGE_BORDERSZ;
+  by1    = by + ic->bitmap.size.h;
 
   behind.x0 = bx - IMAGE_MARGINSZ;
   behind.y0 = by - IMAGE_MARGINSZ;
   behind.x1 = behind.x0 + ic->bitmap.size.w + IMAGE_MARGINSZ * 2;
   behind.y1 = behind.y0 + ic->bitmap.size.h + IMAGE_MARGINSZ * 2;
-  screen_copy_ninepatch(scr, &behind, &ic->ninepatch, 0);
+  screen_copy_ninepatch(scr, &behind, &ic->ninepatch, screen_NINEPATCH_NO_CENTRE);
 
   /* solid 8px band between the ninepatch frame and the image */
-  band[0].x0 = bx - IMAGE_BORDERSZ;
-  band[0].y0 = by - IMAGE_BORDERSZ;
-  band[0].x1 = bx + ic->bitmap.size.w + IMAGE_BORDERSZ;
-  band[0].y1 = by;                                        /* top */
-  band[1].x0 = bx - IMAGE_BORDERSZ;
-  band[1].y0 = by + ic->bitmap.size.h;
-  band[1].x1 = bx + ic->bitmap.size.w + IMAGE_BORDERSZ;
-  band[1].y1 = by + ic->bitmap.size.h + IMAGE_BORDERSZ;   /* bottom */
-  band[2].x0 = bx - IMAGE_BORDERSZ;
-  band[2].y0 = by;
-  band[2].x1 = bx;
-  band[2].y1 = by + ic->bitmap.size.h;                    /* left */
-  band[3].x0 = bx + ic->bitmap.size.w;
-  band[3].y0 = by;
-  band[3].x1 = bx + ic->bitmap.size.w + IMAGE_BORDERSZ;
-  band[3].y1 = by + ic->bitmap.size.h;                    /* right */
-  screen_fill_rects(scr, band, 4, colour_rgb(0xFF, 0x77, 0xA8)); /* PICO-8 pink */
+  band[0] = (box_t) { bx0, by - IMAGE_BORDERSZ, bx1, by };    /* top */
+  band[1] = (box_t) { bx0, by1, bx1, by1 + IMAGE_BORDERSZ };  /* bottom */
+  band[2] = (box_t) { bx0, by, bx, by1 };                     /* left */
+  band[3] = (box_t) { bx + ic->bitmap.size.w, by, bx1, by1 }; /* right */
+  palette = wuss_get_palette(ic->wuss, NULL);
+  screen_fill_rects(scr, band, 4, palette[ic->background]);
 
   if (ic->dithering)
     screen_copy_bitmap_dithered(scr, bx, by, &ic->bitmap);
@@ -278,7 +279,8 @@ static result_t image_open_menu(image_task_t *ic)
    * matches live state -- no separate wuss_menu_open_ticked pass needed.
    * '!Wireframe' has no backing field; it is a demo row always ticked. */
   rc = wuss_menu_create_from_desc(&m,
-         "Image, Info, New..., Open, !Dithering, !Wireframe, >Export, |Quit",
+         "Image, Info, New..., Open, !Dithering, !Wireframe, >Export, "
+         "Background, |Quit",
          ic->dithering, 1, &image_menu_export);
   if (rc != result_OK)
     return rc;
@@ -293,6 +295,22 @@ static result_t image_open_menu(image_task_t *ic)
       {
         ((wuss_menu_item_t *) m->items)[i].window =
           wuss_proginfo_window(ic->proginfo);
+        break;
+      }
+
+  /* Same trick for "Background": point it at the colourmenu's own menu tree
+   * as a submenu, so it gets the usual arrow-and-hover behaviour. Marked
+   * BORROWED_SUBMENU so wuss_menu_destroy leaves it alone -- it is owned by
+   * ic->colourmenu, built once at task creation and reused on every open,
+   * not by this per-open tree. */
+  if (ic->colourmenu != NULL)
+    for (i = 0; i < m->nitems; i++)
+      if (m->items[i].text != NULL && strcmp(m->items[i].text, "Background") == 0)
+      {
+        wuss_menu_item_t *it = (wuss_menu_item_t *) &m->items[i];
+
+        it->submenu = wuss_colourmenu_menu(ic->colourmenu);
+        it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
         break;
       }
 
@@ -334,6 +352,21 @@ result_t image_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
+    {
+      wuss_colour_t picked;
+      int           mine;
+
+      picked = wuss_colourmenu_selected(ic->colourmenu, event, &mine);
+      if (mine)
+      {
+        ic->background = picked;
+        wuss_window_invalidate_visible(ic->window);
+        if (!wuss_menu_should_keep_open(event))
+          ic->menu_handle = NULL; /* SELECT pick already freed the chain */
+        return result_OK;
+      }
+    }
+
     menu  = event->data.menu_select.menu;
     index = event->data.menu_select.index;
     printf("image menu: picked \"%s\"\n",
@@ -359,6 +392,7 @@ result_t image_handle(wuss_window_t      *window,
     wuss_menu_close(ic->menu_handle);
     wuss_menu_destroy(ic->menu);
     wuss_proginfo_destroy(ic->proginfo); /* closes its dialogue window */
+    wuss_colourmenu_destroy(ic->colourmenu);
     free(ic->bitmap.base);
     free(ic->ninepatch.base);
     free(ic); /* task_data was calloc'd per instance by the spawner */

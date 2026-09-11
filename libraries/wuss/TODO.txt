@@ -20,6 +20,7 @@ LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
     blocks: text abstraction, window/menu templates
 - Icon type taxonomy
 - Window layout / constraint system / stacking primitives?
+- I still think there's over-draw when toggling window sizes.
 
 
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
@@ -35,13 +36,13 @@ LAYER 3 - SPRITES (needs masks)
 - Sprite scaling
 - Import Kare style icons
 - Sprites noticably brighter / colour matching needs work
+- App sprites
 
 
 LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
 
 - Set wuss window config after the fact (goes with palette work)
     blocks: Furniture icons toggling state, min window size
-- Proper furniture: close, minimise, maximise, scrolling (half done)
 - Minimum window size based on furniture requested
   (later: squash-able furniture)
 - Furniture icons toggling state when clicked
@@ -51,7 +52,6 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
   (outline-click bug fixed; unblocked)
 - 2D Adjust window scroll drag
 - Input focus, text entry, furniture tinting
-- Icon layout
 - Furniture colour selection needs improvements (e.g. losing menu readability when palette changed)
 
 
@@ -68,9 +68,9 @@ LAYER 6 - MULTI-TASK (needs stable windows, templates)
 - Messaging between tasks
     blocks: Desktop cohort
 - Backdrop: register events, or a task that covers it like Pinboard
-- Icon bar - a separate task?
+- Icon bar - a separate task or module?
 - Test submenu dialogues
-- Dialogue abstraction from app engine?
+- Pull in dialogue abstraction from app engine?
 
 
 LAYER 7 - APPS & POLISH (needs most of the above)
@@ -91,7 +91,6 @@ NO STRONG DEPS (do any time)
 
 - Optimise
 - Generalise APIs (make more Wimp-like)
-- Make as much use of DPTLib functions as possible
 - Fix coordinates to be exactly like Wimp/RO?
 - Set overall UI scale (like EIG values)
 - Window stacks (a-la nested wimp)
