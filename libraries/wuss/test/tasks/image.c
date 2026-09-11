@@ -26,6 +26,37 @@
 #define IMAGE_MARGINSZ (NINEPATCHSZ + IMAGE_BORDERSZ)
 #define IMAGE_EXT     ".png"
 
+/* screen_copy_bitmap and screen_copy_ninepatch only understand a deep 32bpp
+ * source; bitmap_load_png keeps a palette-type PNG as pixelfmt_p8, so convert
+ * one back to bgrx8888 here rather than teach every blitter a paletted
+ * source. */
+static result_t load_png_deep(bitmap_t *bm, const char *filename)
+{
+  result_t  rc;
+  bitmap_t *deep;
+
+  rc = bitmap_load_png(bm, filename);
+  if (rc != result_OK)
+    return rc;
+
+  if (bm->format != pixelfmt_p8)
+    return result_OK;
+
+  rc = bitmap_convert(bm, pixelfmt_bgrx8888, &deep);
+  if (rc != result_OK)
+  {
+    free(bm->base);
+    return rc;
+  }
+
+  free(bm->base);
+  free(bm->palette);
+  *bm = *deep;
+  free(deep);
+
+  return result_OK;
+}
+
 result_t image_create(wuss_t       *wuss,
                       const char   *resources,
                       const char   *path,
@@ -58,14 +89,14 @@ result_t image_create(wuss_t       *wuss,
     return rc;
   }
 
-  rc = bitmap_load_png(&task->bitmap, path);
+  rc = load_png_deep(&task->bitmap, path);
   if (rc != result_OK)
   {
     free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
   }
 
-  rc = bitmap_load_png(&task->ninepatch, background_path);
+  rc = load_png_deep(&task->ninepatch, background_path);
   if (rc != result_OK)
   {
     free(task->bitmap.base);
@@ -200,7 +231,7 @@ static result_t image_click(wuss_window_t *window,
                                 leafname);
   strcpy(buf, filename);
 
-  rc = bitmap_load_png(&next, buf);
+  rc = load_png_deep(&next, buf);
   if (rc != result_OK)
   {
     logf_warning("image: skipping \"%s\" (rc=0x%X)", buf, rc);

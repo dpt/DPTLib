@@ -34,6 +34,8 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
   png_bytep     *row_pointers = NULL;
   pixelfmt_t     bm_fmt;
   int            bm_rowbytes;
+  colour_t       plte[256];
+  colour_t      *bm_palette   = NULL;
   png_uint_32    h;
 
   fp = fopen(filename, "rb");
@@ -77,8 +79,8 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
                NULL, NULL, NULL);
 
   /* paletted PNGs may be 1/2/4/8 bpp; png_set_packing() unpacks the
-   * sub-byte cases to one index per byte before the palette expansion
-   * below. every other colour type must already be 8-bit. */
+   * sub-byte cases to one index per byte. every other colour type must
+   * already be 8-bit. */
   if (pngbitdepth != 8 && pngcolourtype != PNG_COLOR_TYPE_PALETTE)
   {
     rc = result_INCOMPATIBLE;
@@ -88,17 +90,41 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
   switch (pngcolourtype)
   {
   case PNG_COLOR_TYPE_PALETTE:
-    png_set_packing(png_ptr);
-    png_set_palette_to_rgb(png_ptr);
-    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
+    /* keep a native paletted PNG as pixelfmt_p8 (one index per byte),
+     * carrying its PLTE across as the bitmap's palette, rather than
+     * expanding to RGB */
     {
-      png_set_tRNS_to_alpha(png_ptr);
-      bm_fmt = pixelfmt_rgba8888;
-    }
-    else
-    {
-      bm_fmt = pixelfmt_rgbx8888;
-      png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
+      png_colorp  png_palette;
+      int         nplte;
+      png_bytep   trns       = NULL;
+      int         ntrns      = 0;
+      int         i;
+
+      png_set_packing(png_ptr);
+
+      if (png_get_PLTE(png_ptr, info_ptr, &png_palette, &nplte) == 0)
+      {
+        rc = result_INCOMPATIBLE;
+        goto cleanup;
+      }
+      if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
+        png_get_tRNS(png_ptr, info_ptr, &trns, &ntrns, NULL);
+
+      for (i = 0; i < nplte; i++)
+      {
+        int a;
+
+        a = (i < ntrns) ? trns[i] : 0xFF;
+        plte[i] = colour_rgba(png_palette[i].red,
+                              png_palette[i].green,
+                              png_palette[i].blue,
+                              a);
+      }
+      for (; i < 256; i++)
+        plte[i] = colour_rgba(0, 0, 0, 0xFF);
+
+      bm_fmt     = pixelfmt_p8;
+      bm_palette = plte;
     }
     break;
   case PNG_COLOR_TYPE_RGB:
@@ -128,15 +154,16 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
 
   png_read_image(png_ptr, row_pointers);
 
-  bitmap_init(bm, SIZE2D(pngwidth, pngheight),
-              bm_fmt,
-              bm_rowbytes,
-              NULL, /* no palette */
-              pixels);
+  rc = bitmap_init(bm, SIZE2D(pngwidth, pngheight),
+                   bm_fmt,
+                   bm_rowbytes,
+                   bm_palette, /* p8: PLTE copied in; NULL for deep formats */
+                   pixels);
+  if (rc != result_OK)
+    goto cleanup;
 
   pixels = NULL; /* belongs to bitmap now */
 
-  rc = result_OK;
   goto cleanup;
 
 oom:

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "base/result.h"
 #include "io/path.h"
@@ -370,12 +371,126 @@ done:
 
 /* ----------------------------------------------------------------------- */
 
+/* Synthesise a p8 bitmap with a known palette, save it as a palette-type PNG,
+ * reload it and check the format, palette (RGB + tRNS alpha) and pixel indices
+ * survive the round trip. Then bitmap_convert it to bgrx8888 and spot-check a
+ * pixel against its palette entry. */
+static int test_p8_png(void)
+{
+#ifdef DPTLIB_IMAGES_READ_ONLY
+  return 1; /* ponytail: save disabled at build time, nothing to round trip */
+#else
+#define P8W 24
+#define P8H 8
+  bitmap_t     bm;
+  bitmap_t     rt;
+  bitmap_t    *deep = NULL;
+  colour_t     pal[256];
+  colour_t     rtpal[256];
+  unsigned char pix[P8W * P8H];
+  char          fn[] = "/tmp/dptlib-p8-XXXXXX.png";
+  int           fd;
+  result_t      rc;
+  int           i;
+  int           ok = 1;
+
+  /* palette: greyscale ramp, plus a few non-opaque entries to exercise tRNS */
+  for (i = 0; i < 256; i++)
+    pal[i] = colour_rgba((unsigned char) i, (unsigned char) i,
+                         (unsigned char) i, 0xFF);
+  pal[0]   = colour_rgba(0, 0, 0, 0x00);
+  pal[1]   = colour_rgba(255, 0, 0, 0x80);
+  pal[200] = colour_rgba(10, 20, 30, 0xFF);
+
+  for (i = 0; i < P8W * P8H; i++)
+    pix[i] = (unsigned char) ((i * 7 + i / P8W) & 0xFF);
+
+  bitmap_init(&bm, SIZE2D(P8W, P8H), pixelfmt_p8, P8W, pal, pix);
+
+  fd = mkstemps(fn, 4); /* keep the ".png" suffix */
+  if (fd < 0) { fprintf(stderr, "p8 png: mkstemps failed\n"); return 0; }
+  close(fd);
+
+  rc = bitmap_save_png(&bm, fn);
+  if (rc) { fprintf(stderr, "p8 png: save rc=&%x\n", rc); return 0; }
+
+  rc = bitmap_load_png(&rt, fn);
+  remove(fn);
+  if (rc) { fprintf(stderr, "p8 png: load rc=&%x\n", rc); return 0; }
+
+  if (rt.format != pixelfmt_p8)
+  {
+    fprintf(stderr, "p8 png: reloaded format &%x not p8\n", rt.format);
+    ok = 0; goto done;
+  }
+  if (rt.size.w != P8W || rt.size.h != P8H)
+  {
+    fprintf(stderr, "p8 png: reloaded size wrong\n");
+    ok = 0; goto done;
+  }
+  if (rt.palette == NULL)
+  {
+    fprintf(stderr, "p8 png: reloaded bitmap has no palette\n");
+    ok = 0; goto done;
+  }
+
+  memcpy(rtpal, rt.palette, sizeof rtpal);
+  for (i = 0; i < 256; i++)
+  {
+    if (rtpal[i].primary != pal[i].primary)
+    {
+      fprintf(stderr, "p8 png: palette entry %d &%08x != &%08x\n",
+              i, rtpal[i].primary, pal[i].primary);
+      ok = 0; goto done;
+    }
+  }
+
+  for (i = 0; i < P8W * P8H; i++)
+  {
+    if (((const unsigned char *) rt.base)[i] != pix[i])
+    {
+      fprintf(stderr, "p8 png: pixel %d %u != %u\n",
+              i, ((const unsigned char *) rt.base)[i], pix[i]);
+      ok = 0; goto done;
+    }
+  }
+
+  rc = bitmap_convert(&rt, pixelfmt_bgrx8888, &deep);
+  if (rc) { fprintf(stderr, "p8 png: convert rc=&%x\n", rc); ok = 0; goto done; }
+
+  {
+    unsigned int        idx = pix[0];
+    pixelfmt_bgrx8888_t  got = ((const pixelfmt_bgrx8888_t *) deep->base)[0];
+    pixelfmt_rgba8888_t  want = pal[idx].primary;
+
+    if (PIXELFMT_xxRx8888(got) != PIXELFMT_Rxxx8888(want)
+     || PIXELFMT_xGxx8888(got) != PIXELFMT_xGxx8888(want)
+     || PIXELFMT_Bxxx8888(got) != PIXELFMT_xxBx8888(want))
+    {
+      fprintf(stderr, "p8 png: converted pixel 0 &%08x != palette &%08x\n",
+              got, want);
+      ok = 0;
+    }
+  }
+
+done:
+  if (deep != NULL) { free(deep->base); free(deep); }
+  free(rt.base);
+  return ok;
+#undef P8W
+#undef P8H
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t bitmap_rle_test(const char *resources)
 {
   int ok = 1;
 
   ok &= test_synthetic();
   ok &= test_y8();
+  ok &= test_p8_png();
   ok &= test_blit(resources);
 
   return ok ? result_TEST_PASSED : result_TEST_FAILED;
