@@ -83,7 +83,7 @@ result_t ball_create(wuss_t *wuss, ball_task_t *task)
                                  SIZE2D(200, 160),
                                  "Bouncing Ball",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  SIZE2D(200, 160),
                                  SIZE2D(0, 0),
                                  &task->window);

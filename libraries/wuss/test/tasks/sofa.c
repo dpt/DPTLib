@@ -385,7 +385,7 @@ result_t sofa_create(wuss_t*wuss, sofa_task_t*task)
                                  SIZE2D(180, 160),
                                  "Sofa",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  SIZE2D(180, 160),
                                  SIZE2D(0, 0),
                                  &task->window);

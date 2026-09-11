@@ -148,7 +148,8 @@ void wuss_menu_destroy(wuss_menu_t *menu)
   for (i = 0; i < menu->nitems; i++)
   {
     free((void *) menu->items[i].text); /* discard const */
-    wuss_menu_destroy((wuss_menu_t *) menu->items[i].submenu);
+    if (!(menu->items[i].flags & wuss_MENU_ITEM_BORROWED_SUBMENU))
+      wuss_menu_destroy((wuss_menu_t *) menu->items[i].submenu);
   }
   free((void *) menu->title); /* discard const */
   free((void *) menu->items); /* discard const */

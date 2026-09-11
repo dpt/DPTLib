@@ -52,7 +52,13 @@ typedef enum wuss_menu_item_flags
 
   /** Draw a colour chip of \c swatch at the item's left edge, in place of
    *  a tick */
-  wuss_MENU_ITEM_SWATCH   = 1 << 3
+  wuss_MENU_ITEM_SWATCH   = 1 << 3,
+
+  /** \c submenu is borrowed (e.g. patched in after the menu was built) and
+   *  must outlive the tree, not be freed with it: wuss_menu_destroy leaves
+   *  it alone instead of recursing into it. Ignored on an item with no
+   *  \c submenu. */
+  wuss_MENU_ITEM_BORROWED_SUBMENU = 1 << 4
 }
 wuss_menu_item_flags_t;
 

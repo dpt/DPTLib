@@ -51,7 +51,7 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t *task)
                                  SIZE2D(220, 220),
                                  "Lissajous",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  SIZE2D(220, 220),
                                  SIZE2D(0, 0),
                                  &task->window);

@@ -414,7 +414,7 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
                                  grid_px,
                                  "Greeble",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  grid_px,
                                  SIZE2D(0, 0),
                                  &task->window);
