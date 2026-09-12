@@ -4,7 +4,9 @@
 
 /* p is the window's content top-left; the furniture offset (outline plus
  * any titlebar) is constant for a given window, so the footprint just
- * follows it */
+ * follows it. The cached furniture layout is translated in place below
+ * rather than invalidated -- a pure move changes no piece's size, so there
+ * is nothing to rebuild. */
 void wuss_window_move(wuss_window_t *window, point_t p)
 {
   box_t   clean[WUSS_MAX_INVALIDATE_PIECES];
@@ -18,10 +20,6 @@ void wuss_window_move(wuss_window_t *window, point_t p)
    * slot back and stop tracking this window's position */
   wuss__release_packed(window);
 
-  /* the cached furniture layout holds absolute screen coords, so a move
-   * stales it -- both exit paths below rewrite window->visible */
-  wuss__chrome_invalidate_layout(window);
-
   width           = window->visible.x1 - window->visible.x0;
   height          = window->visible.y1 - window->visible.y0;
   outline_px      = wuss__outline_px(window);
@@ -32,6 +30,11 @@ void wuss_window_move(wuss_window_t *window, point_t p)
    * just translate its footprint so it is in place when shown again */
   if (window->flags & wuss_WINDOW_HIDDEN)
   {
+    /* nothing is drawn from the cache while hidden, but the next unhide must
+     * not paint it back at the old position, so just drop it -- there's no
+     * screen-visible dirty region to queue either way */
+    wuss__chrome_invalidate_layout(window);
+
     window->visible.x0 = p.x - outline_px;
     window->visible.y0 = p.y - outline_px - titlebar_height;
     window->visible.x1 = window->visible.x0 + width;
@@ -84,6 +87,13 @@ void wuss_window_move(wuss_window_t *window, point_t p)
 
   dx = window->visible.x0 - before.x0;
   dy = window->visible.y0 - before.y0;
+
+  /* a pure translation leaves every cached rect correct relative to the
+   * window, just offset in screen space -- shift it instead of dropping the
+   * cache and rebuilding all pieces on the next paint of even a thin
+   * sliver */
+  if (window->furniture_layout.valid)
+    wuss__furniture_layout_translate(window, dx, dy);
 
   for (i = 0; i < nclean; i++)
     box_translated(&clean[i], dx, dy, &full_dest[i]);
