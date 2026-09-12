@@ -2754,6 +2754,130 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_e);
   }
 
+  printf("test: a long unflushed batch of resize calls (matching a high-poll-rate mouse) never blits a not-yet-painted sliver\n");
+
+  {
+    /* The tests above batch only 1-2 resize calls per redraw; a real SDL
+     * drag drains its whole event queue before ever calling
+     * wuss_redraw_dirty (see apps/wuss/main.c's wuss_frame), so a fast
+     * high-poll-rate mouse can deliver dozens of resize calls in one
+     * batch. Stress that scale directly, using a cheap deterministic
+     * pseudo-random walk rather than a fixed table, so the sequence covers
+     * far more shapes (including piece-budget overflow) than a short
+     * hand-picked list ever would. */
+    static test_task_t tc_f, tc_occ;
+    wuss_task_t        *delegate_f, *delegate_occ;
+    box_t               box_f, box_occ, content_f;
+    wuss_window_t      *win_f, *win_occ;
+    colour_t            f_colour;
+    point_t             scroll;
+    unsigned int        seed;
+    int                 sy, sx, bad, batch, step, sizew, sizeh;
+
+    f_colour = colour_rgb(0x44, 0x55, 0x66);
+    tc_f.redraw_count = 0; tc_f.mouse_count = 0;
+    delegate_f = mk_task(wuss, paint_handle, &f_colour);
+    if (delegate_f == NULL) goto Failure;
+
+    box_f.x0 = 10; box_f.y0 = 10;
+    box_f.x1 = 40; box_f.y1 = 40;
+    rc = wuss_window_create(delegate_f, &box_f, "F", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(1000, 1000), SIZE2D(30, 30), &win_f);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* An occluder created after (so it lands on top of) win_f, sat over its
+     * corner: real desktops are rarely a single window, and
+     * wuss__clip_to_visible's occlusion-carving path (untouched by every
+     * test above) can only interact with the reclamp blit's stale-region
+     * exclusion when there is something to occlude. New windows land at the
+     * z_order head (topmost) -- see wuss_window_create. A NULL task_data
+     * gives paint_handle's flat-fill branch, so the occluded area's colour
+     * can be told apart from win_f's doc-row pattern by eye if this ever
+     * fails; the pixel check below instead uses win_occ->visible (its real,
+     * furniture-adjusted footprint) rather than the requested box, since
+     * wuss__nudge_visible_onscreen/carve can move or grow it. */
+    tc_occ.redraw_count = 0; tc_occ.mouse_count = 0;
+    delegate_occ = mk_task(wuss, paint_handle, NULL);
+    if (delegate_occ == NULL) goto Failure;
+
+    box_occ.x0 = 25; box_occ.y0 = 25;
+    box_occ.x1 = 60; box_occ.y1 = 60;
+    rc = wuss_window_create(delegate_occ, &box_occ, "OCC", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(20, 20), SIZE2D(20, 20), &win_occ);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_set_scroll(win_f, POINT(970, 970));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    seed  = 12345u;
+    sizew = 30;
+    sizeh = 30;
+    for (batch = 0; batch < 20; batch++)
+    {
+      for (step = 0; step < 25; step++)
+      {
+        seed   = seed * 1103515245u + 12345u;
+        sizew += (int) (seed >> 24) % 21 - 10; /* +/-10 px per call */
+        seed   = seed * 1103515245u + 12345u;
+        sizeh += (int) (seed >> 24) % 21 - 10;
+        sizew  = CLAMP(sizew, 30, 150);
+        sizeh  = CLAMP(sizeh, 30, 150);
+
+        rc = wuss_window_resize(win_f, SIZE2D(sizew, sizeh));
+        if (rc != result_OK)
+          goto Failure;
+      }
+
+      rc = wuss_redraw_dirty(wuss);
+      if (rc != result_OK)
+        goto Failure;
+
+      wuss_window_get_content_bounds(win_f, &content_f);
+      wuss_window_get_scroll(win_f, &scroll);
+      content_f.x1 = MIN(content_f.x1, 200);
+      content_f.y1 = MIN(content_f.y1, 200);
+      bad = 0;
+      for (sy = content_f.y0; sy < content_f.y1 && !bad; sy++)
+      {
+        uint32_t px, blue, want;
+
+        want = (uint32_t) ((sy - content_f.y0 + scroll.y) & 0xff);
+        for (sx = content_f.x0; sx < content_f.x1; sx++)
+        {
+          /* skip ground legitimately covered by the occluder's real,
+           * furniture-adjusted footprint -- it shows win_occ's own colour
+           * there, not win_f's doc-row pattern */
+          if (sx >= win_occ->visible.x0 && sx < win_occ->visible.x1 &&
+              sy >= win_occ->visible.y0 && sy < win_occ->visible.y1)
+            continue;
+
+          px   = ((const uint32_t *) pixels)[sy * 200 + sx];
+          blue = px & 0xff;
+          if (blue != want)
+          {
+            bad = 1;
+            break;
+          }
+        }
+      }
+      if (bad)
+        goto Failure; /* a not-yet-painted sliver got blitted as if settled */
+    }
+
+    wuss_window_close(win_occ);
+    wuss_window_close(win_f);
+  }
+
   printf("test: wuss_window_invalidate_visible on a shrunk, scrolled window only dirties its own visible box\n");
 
   {
