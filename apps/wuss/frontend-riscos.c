@@ -213,8 +213,14 @@ static wuss_button_t mouse_buttons_to_wuss(int buttons)
   return b;
 }
 
+/* INKEY scan codes for keys tested individually, outside g_keys[] below: F1
+ * (checked with Shift to pick REDRAW_ALL vs GARBAGE) and Shift itself. */
+#define KEY_SCAN_F1    (-114)
+#define KEY_SCAN_SHIFT (-1)
+
 /* Keys the demo reacts to: negative INKEY scan code -> input kind. F4 and
- * Escape both quit. */
+ * Escape both quit. F1 is handled separately in wuss_frontend_poll, not in
+ * this table, so it can vary its kind with Shift. */
 static const struct
 {
   int               scan;
@@ -223,7 +229,6 @@ static const struct
 g_keys[] =
 {
   { -113, wuss_INPUT_QUIT         }, /* Escape */
-  { -114, wuss_INPUT_REDRAW_ALL   }, /* F1 */
   { -116, wuss_INPUT_PIXEL_STRESS }, /* F3 */
   { -117, wuss_INPUT_QUIT         }  /* F4 */
 };
@@ -242,6 +247,7 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
   static unsigned int key_was; /* bit i = g_keys[i] was down last poll */
 
   unsigned int key_now = 0;
+  unsigned int f1_bit = 1u << NELEMS(g_keys); /* one bit past the table */
   int          mx, my, buttons, t;
   int          px, py;
   size_t       i;
@@ -251,6 +257,18 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
   for (i = 0; i < NELEMS(g_keys); i++)
     if (key_down(g_keys[i].scan))
       key_now |= 1u << i;
+  if (key_down(KEY_SCAN_F1))
+    key_now |= f1_bit;
+
+  /* F1 is handled here rather than in g_keys[]: its kind depends on Shift,
+   * which a static table entry can't express. */
+  if ((key_now & f1_bit) && !(key_was & f1_bit))
+  {
+    key_was = key_now;
+    event->kind = key_down(KEY_SCAN_SHIFT) ? wuss_INPUT_GARBAGE
+                                            : wuss_INPUT_REDRAW_ALL;
+    return true;
+  }
 
   for (i = 0; i < NELEMS(g_keys); i++)
   {
