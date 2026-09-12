@@ -2672,6 +2672,88 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_s);
   }
 
+  printf("test: a fast resize drag that jumps size and reverses direction never blits a not-yet-painted sliver\n");
+
+  {
+    /* Same hazard as the paired-grow test above, but matching a real
+     * interactive drag more closely: the pointer can jump the size by a
+     * large delta in one event (not just 1px), and can reverse from
+     * growing to shrinking and back within the same unflushed batch. A
+     * shrink never re-enters the reclamp path itself (it only ever raises
+     * the clamp ceiling), but it still queues its own shrunk-away sliver
+     * dirty -- and the very next call, if it grows back past the clamp,
+     * must not treat that still-unpainted sliver as settled ground either. */
+    static test_task_t tc_e;
+    wuss_task_t        *delegate_e;
+    box_t               box_e, content_e;
+    wuss_window_t      *win_e;
+    colour_t            e_colour;
+    point_t             scroll;
+    int                 sy, sx, bad, step;
+    int                 sizes[] = { 30, 90, 35, 120, 31, 90, 30, 60, 110, 30 };
+
+    e_colour = colour_rgb(0x11, 0x22, 0x33);
+    tc_e.redraw_count = 0; tc_e.mouse_count = 0;
+    delegate_e = mk_task(wuss, paint_handle, &e_colour);
+    if (delegate_e == NULL) goto Failure;
+
+    box_e.x0 = 10; box_e.y0 = 10;
+    box_e.x1 = 40; box_e.y1 = 40;
+    rc = wuss_window_create(delegate_e, &box_e, "E", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(1000, 1000), SIZE2D(30, 30), &win_e);
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_set_scroll(win_e, POINT(970, 970));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    for (step = 0; step < 9; step += 2)
+    {
+      rc = wuss_window_resize(win_e, SIZE2D(sizes[step], sizes[step]));
+      if (rc != result_OK)
+        goto Failure;
+      rc = wuss_window_resize(win_e, SIZE2D(sizes[step + 1], sizes[step + 1]));
+      if (rc != result_OK)
+        goto Failure;
+
+      rc = wuss_redraw_dirty(wuss);
+      if (rc != result_OK)
+        goto Failure;
+
+      wuss_window_get_content_bounds(win_e, &content_e);
+      wuss_window_get_scroll(win_e, &scroll);
+      content_e.x1 = MIN(content_e.x1, 200);
+      content_e.y1 = MIN(content_e.y1, 200);
+      bad = 0;
+      for (sy = content_e.y0; sy < content_e.y1 && !bad; sy++)
+      {
+        uint32_t px, blue, want;
+
+        want = (uint32_t) ((sy - content_e.y0 + scroll.y) & 0xff);
+        for (sx = content_e.x0; sx < content_e.x1; sx++)
+        {
+          px   = ((const uint32_t *) pixels)[sy * 200 + sx];
+          blue = px & 0xff;
+          if (blue != want)
+          {
+            bad = 1;
+            break;
+          }
+        }
+      }
+      if (bad)
+        goto Failure; /* a not-yet-painted sliver got blitted as if settled */
+    }
+
+    wuss_window_close(win_e);
+  }
+
   printf("test: wuss_window_invalidate_visible on a shrunk, scrolled window only dirties its own visible box\n");
 
   {

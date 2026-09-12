@@ -94,7 +94,7 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
     box_t src[WUSS_MAX_INVALIDATE_PIECES];
     box_t copied[WUSS_MAX_INVALIDATE_PIECES];
     box_t dirty[WUSS_MAX_INVALIDATE_PIECES];
-    int   dx, dy, nstale, nclean, nsrc, ncopied, ndirty, i;
+    int   dx, dy, nstale, nclean, nsrc, ncopied, ndirty, i, overflow;
 
     dx = clamped.x - old_scroll.x;
     dy = clamped.y - old_scroll.y;
@@ -111,29 +111,50 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
       if (box_intersects(&window->wuss->dirty[i], &before_content))
         stale[nstale++] = window->wuss->dirty[i];
 
+    /* Each subtract can split a piece into up to four bands, so this can
+     * overflow the piece budget on a badly fragmented window -- treat that
+     * as "no safe fast path" (see wuss_window_set_scroll) rather than
+     * silently dropping survivors: a dropped clean piece never gets
+     * invalidated either, since the invalidate below only covers "content
+     * minus copied", not "content minus every clean piece found" -- so a
+     * silently-dropped piece would leave genuinely stale pre-resize pixels
+     * on screen with nothing left to repaint them. */
     nclean            = wuss__clip_to_visible(window, &before_content, clean);
     nsrc              = 0;
+    overflow          = 0;
     for (i = 0; i < nclean; i++)
     {
       box_t kept[WUSS_MAX_INVALIDATE_PIECES];
       int   nkept, k;
 
       nkept = wuss__subtract_boxes(&clean[i], stale, nstale, kept);
-      for (k = 0; k < nkept && nsrc < WUSS_MAX_INVALIDATE_PIECES; k++)
+      for (k = 0; k < nkept; k++)
+      {
+        if (nsrc == WUSS_MAX_INVALIDATE_PIECES)
+        {
+          overflow = 1;
+          break;
+        }
         src[nsrc++] = kept[k];
+      }
+      if (overflow)
+        break;
     }
 
     ncopied           = 0;
-    window->wuss->scr->clip = content;
-    for (i = 0; i < nsrc; i++)
+    if (!overflow)
     {
-      box_t got;
+      window->wuss->scr->clip = content;
+      for (i = 0; i < nsrc; i++)
+      {
+        box_t got;
 
-      if (screen_copy_rect(window->wuss->scr, &src[i],
-                           POINT(src[i].x0 - dx, src[i].y0 - dy),
-                           &got) == result_OK &&
-          ncopied < WUSS_MAX_INVALIDATE_PIECES)
-        copied[ncopied++] = got;
+        if (screen_copy_rect(window->wuss->scr, &src[i],
+                             POINT(src[i].x0 - dx, src[i].y0 - dy),
+                             &got) == result_OK &&
+            ncopied < WUSS_MAX_INVALIDATE_PIECES)
+          copied[ncopied++] = got;
+      }
     }
 
     if (ncopied > 0)
@@ -148,10 +169,12 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
     }
     else
     {
-      /* the scroll-reclamp blit copied nothing (paletted screen, or every
-       * piece off-screen): repaint the whole content box */
+      /* the scroll-reclamp blit copied nothing (paletted screen, every
+       * piece off-screen, or the piece budget overflowed): repaint the
+       * whole content box */
       logf_warning("wuss_window_resize: scroll-reclamp blit copied nothing, "
-                   "repainting the whole content box (nsrc=%d)", nsrc);
+                   "repainting the whole content box (nsrc=%d, overflow=%d)",
+                   nsrc, overflow);
       wuss__invalidate_clipped(window, &content);
     }
     wuss__chrome_repaint(window);
