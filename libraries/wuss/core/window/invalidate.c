@@ -384,10 +384,13 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
 
   if (local_box == NULL)
   {
-    whole.x0 = 0;
-    whole.y0 = 0;
-    whole.x1 = content.x1 - content.x0;
-    whole.y1 = content.y1 - content.y0;
+    /* doc-space box of the visible rect at the current scroll, so the
+     * "+ content.x0 - scroll" translation below lands back on the window's
+     * actual screen box instead of sliding it by scroll a second time. */
+    whole.x0 = window->scroll.x;
+    whole.y0 = window->scroll.y;
+    whole.x1 = window->scroll.x + (content.x1 - content.x0);
+    whole.y1 = window->scroll.y + (content.y1 - content.y0);
     local_box = &whole;
   }
 
