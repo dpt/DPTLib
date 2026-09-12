@@ -42,9 +42,6 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   if (!wuss__size_ok(size.w, size.h))
     return result_WUSS_TOO_SMALL;
 
-  /* a manual resize desyncs the window from its layout-packer slot */
-  wuss__release_packed(window);
-
   /* The requested content size is honoured verbatim: a window may end up
    * overhanging the screen edge (same as one dragged there, or one whose
    * far corner is off-screen when toggle-size floors it at WUSS_MIN_CONTENT).
@@ -56,6 +53,19 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   old_scroll      = window->scroll;
   wuss__content_box(window, &before_content);
   wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
+
+  /* a resize drag delivers one call per pointer-move event, not one per
+   * actual change of size -- a window pinned against the screen edge or
+   * the minimum-size clamp can call this repeatedly at the size it's
+   * already at. The top-left corner never moves here, so an unchanged
+   * bottom-right corner means an unchanged box; skip the packer release
+   * and the invalidate/blit machinery entirely. */
+  if (window->visible.x0 + size.w + 2 * outline_px + carve.x == before.x1 &&
+      window->visible.y0 + size.h + titlebar_height + 2 * outline_px + carve.y == before.y1)
+    return result_OK;
+
+  /* a manual resize desyncs the window from its layout-packer slot */
+  wuss__release_packed(window);
 
   window->visible.x1 = window->visible.x0 + size.w + 2 * outline_px + carve.x;
   window->visible.y1 = window->visible.y0 + size.h + titlebar_height + 2 * outline_px + carve.y;
