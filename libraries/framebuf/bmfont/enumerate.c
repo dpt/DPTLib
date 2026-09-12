@@ -2,16 +2,15 @@
 
 #include <stddef.h>
 #include <stdio.h>
-#include <string.h>
 
 #include "base/result.h"
 #include "framebuf/bmfont.h"
 #include "io/dirscan.h"
+#include "io/path.h"
 
 /* ----------------------------------------------------------------------- */
 
-#define BMFONT_EXT     ".png"
-#define BMFONT_EXT_LEN 4
+#define BMFONT_EXT ".png"
 
 typedef struct
 {
@@ -24,22 +23,18 @@ bmfont_enumerate_ctx_t;
 static result_t bmfont_enumerate_entry(const char *leaf, void *opaque)
 {
   bmfont_enumerate_ctx_t *ctx;
-  size_t                   leaflen;
   char                     name[256];
   char                     path[512];
 
-  ctx     = opaque;
-  leaflen = strlen(leaf);
+  ctx = opaque;
 
-  if (leaflen <= BMFONT_EXT_LEN || leaflen - BMFONT_EXT_LEN >= sizeof(name))
-    return result_OK;
-  if (strcmp(leaf + leaflen - BMFONT_EXT_LEN, BMFONT_EXT) != 0)
+  if (!path_leaf_strip_ext(leaf, BMFONT_EXT, name, sizeof(name)))
     return result_OK;
 
-  memcpy(name, leaf, leaflen - BMFONT_EXT_LEN);
-  name[leaflen - BMFONT_EXT_LEN] = '\0';
-
-#ifdef TARGET_RISCOS
+  /* Built locally rather than via path_join_filename: that returns a single
+   * static buffer, which one call per entry here would repeatedly clobber
+   * from under the caller's own "dir" pointer. */
+#ifdef __riscos
   snprintf(path, sizeof(path), "%s.%s", ctx->dir, leaf);
 #else
   snprintf(path, sizeof(path), "%s/%s", ctx->dir, leaf);
