@@ -38,6 +38,19 @@
 #define MS_TIMER_BOX(ms) \
   ((box_t) { MS_TIMER_X0(ms), 0, MS_WIDTH(ms) - MS_BORDER, MS_HUD_H })
 
+/* the mines-remaining field, window-local content coords: left-aligned in
+ * the HUD strip, mirroring minesweeper_draw_hud's placement */
+#define MS_MINES_BOX(ms) \
+  ((box_t) { MS_BORDER, 0, MS_BORDER + MINESWEEPER_CELL * 2, MS_HUD_H })
+
+/* window-local pixel box of the cell range [r0,r1) x [c0,c1); mirrors
+ * minesweeper_draw_cell's own x,y placement */
+#define MS_CELLS_BOX(r0, c0, r1, c1) \
+  ((box_t) { MS_BORDER + (c0) * MINESWEEPER_CELL, \
+            MS_HUD_H + MS_BORDER + (r0) * MINESWEEPER_CELL, \
+            MS_BORDER + (c1) * MINESWEEPER_CELL, \
+            MS_HUD_H + MS_BORDER + (r1) * MINESWEEPER_CELL })
+
 /* rows, cols, mines offered by the "Grid Size" submenu, indexed by
  * minesweeper_size_t; mine counts follow the classic ~14% density */
 static const struct { int rows, cols, mines; }
@@ -138,11 +151,24 @@ static void minesweeper_place_mines(minesweeper_task_t *ms,
   ms->placed = true;
 }
 
+/* inclusive-exclusive board-cell range [r0,r1) x [c0,c1) touched by a flood
+ * reveal, accumulated by minesweeper_reveal so the caller can invalidate
+ * just that area instead of the whole board */
+typedef struct { int r0, c0, r1, c1; } minesweeper_cellbox_t;
+
 /* reveals (r,c) and, if it has no adjacent mines, floods outward to its
  * neighbours; recursion depth is bounded by the (small, fixed) board size */
-static void minesweeper_reveal(minesweeper_task_t *ms, int r, int c)
+static void minesweeper_reveal(minesweeper_task_t    *ms,
+                               int                    r,
+                               int                    c,
+                               minesweeper_cellbox_t *touched)
 {
   int dr, dc;
+
+  if (r < touched->r0) touched->r0 = r;
+  if (c < touched->c0) touched->c0 = c;
+  if (r + 1 > touched->r1) touched->r1 = r + 1;
+  if (c + 1 > touched->c1) touched->c1 = c + 1;
 
   if (!minesweeper_in_bounds(ms, r, c) || ms->state[r][c] != minesweeper_HIDDEN)
     return;
@@ -159,7 +185,7 @@ static void minesweeper_reveal(minesweeper_task_t *ms, int r, int c)
     for (dr = -1; dr <= 1; dr++)
       for (dc = -1; dc <= 1; dc++)
         if (dr || dc)
-          minesweeper_reveal(ms, r + dr, c + dc);
+          minesweeper_reveal(ms, r + dr, c + dc, touched);
 }
 
 /* on death, reveal every mine so the player sees where they all were */
@@ -377,7 +403,7 @@ static result_t minesweeper_redraw(const wuss_event_t *event,
   const box_t         *bounds;
   const box_t         *clip;
   int                  board_y0;
-  bool                 board_dirty;
+  int                  r0, c0, r1, c1;
   int                  r, c;
 
   ms     = task_data;
@@ -385,32 +411,46 @@ static result_t minesweeper_redraw(const wuss_event_t *event,
   bounds = event->data.redraw.bounds;
   clip   = event->data.redraw.content;
 
-  /* the HUD strip is cheap and always redrawn; the frame, cells and banner
-   * only when the dirty region reaches below the strip (an idle timer tick
-   * invalidates just the timer field, so it skips all of that) */
-  board_y0    = bounds->y0 + MS_HUD_H;
-  board_dirty = clip->y1 > board_y0;
+  /* the HUD strip and the board below are repainted independently, each only
+   * when the dirty region actually reaches it -- a flag toggle invalidates
+   * one cell plus the mine counter, a timer tick just the timer field, so
+   * either half alone is the common case and this keeps both cheap */
+  board_y0 = bounds->y0 + MS_HUD_H;
 
   minesweeper_tick_clock(ms);
 
-  /* the window owns every pixel (wuss_NO_BACKGROUND), so the HUD strip's own
-   * backdrop is painted here before the counters go on top */
-  screen_fill_rect(scr, bounds->x0, bounds->y0, SIZE2D(MS_WIDTH(ms), MS_HUD_H),
-                   colour_rgb(0x80, 0x80, 0x80));
-  minesweeper_draw_hud(ms, scr, bounds);
+  if (clip->y0 < board_y0)
+  {
+    /* the window owns every pixel (wuss_NO_BACKGROUND), so the HUD strip's
+     * own backdrop is painted here before the counters go on top */
+    screen_fill_rect(scr, bounds->x0, bounds->y0,
+                     SIZE2D(MS_WIDTH(ms), MS_HUD_H),
+                     colour_rgb(0x80, 0x80, 0x80));
+    minesweeper_draw_hud(ms, scr, bounds);
+  }
 
-  if (!board_dirty)
+  if (clip->y1 <= board_y0)
     return result_OK;
 
-  /* one-cell frame right round the grid */
+  /* one-cell frame right round the grid; drawn under the cells, so only the
+   * margin strip actually needs filling -- but that strip is thin and
+   * irregular to clip precisely, and it changes only on a resize/new game,
+   * which already invalidates the whole window, so no clipping is worth
+   * doing here */
   screen_fill_rect(scr, bounds->x0, board_y0,
                    SIZE2D(MS_WIDTH(ms), MS_HEIGHT(ms) - MS_HUD_H),
                    colour_rgb(0x80, 0x80, 0x80));
 
-  /* board is small (max 24x24), so just repaint every cell rather than
-   * working out which ones overlap event->data.redraw.content */
-  for (r = 0; r < ms->rows; r++)
-    for (c = 0; c < ms->cols; c++)
+  /* only the cells overlapping the dirty rect need redrawing */
+  r0 = MAX(0, (clip->y0 - board_y0 - MS_BORDER) / MINESWEEPER_CELL);
+  c0 = MAX(0, (clip->x0 - bounds->x0 - MS_BORDER) / MINESWEEPER_CELL);
+  r1 = MIN(ms->rows, (clip->y1 - board_y0 - MS_BORDER + MINESWEEPER_CELL - 1) /
+                     MINESWEEPER_CELL);
+  c1 = MIN(ms->cols, (clip->x1 - bounds->x0 - MS_BORDER + MINESWEEPER_CELL - 1) /
+                     MINESWEEPER_CELL);
+
+  for (r = r0; r < r1; r++)
+    for (c = c0; c < c1; c++)
       minesweeper_draw_cell(ms, scr, r, c, bounds->x0 + MS_BORDER,
                             bounds->y0 + MS_HUD_H + MS_BORDER);
 
@@ -459,6 +499,9 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
 
   if (button & wuss_BUTTON_SELECT)
   {
+    minesweeper_cellbox_t touched;
+    box_t                 local;
+
     if (ms->state[r][c] == minesweeper_FLAGGED)
       return result_OK;
     if (!ms->placed)
@@ -466,15 +509,33 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
       minesweeper_place_mines(ms, r, c);
       ms->start_time = time(NULL);
     }
-    minesweeper_reveal(ms, r, c);
+
+    touched.r0 = touched.r1 = r;
+    touched.c0 = touched.c1 = c;
+    minesweeper_reveal(ms, r, c, &touched);
+
     if (ms->dead)
+    {
       minesweeper_reveal_all_mines(ms);
+      wuss_window_invalidate_visible(ms->window); /* every mine, plus banner */
+    }
     else
+    {
       ms->won = minesweeper_check_won(ms);
+      if (ms->won)
+        wuss_window_invalidate_visible(ms->window); /* banner covers the lot */
+      else
+      {
+        local = MS_CELLS_BOX(touched.r0, touched.c0, touched.r1, touched.c1);
+        wuss_window_invalidate(ms->window, &local);
+      }
+    }
     minesweeper_tick_clock(ms);
   }
   else if (button & wuss_BUTTON_ADJUST)
   {
+    box_t local = MS_CELLS_BOX(r, c, r + 1, c + 1);
+
     if (ms->state[r][c] == minesweeper_HIDDEN)
     {
       ms->state[r][c] = minesweeper_FLAGGED;
@@ -485,13 +546,23 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
       ms->state[r][c] = minesweeper_HIDDEN;
       ms->flags--;
     }
+    else
+    {
+      return result_OK;
+    }
+
+    /* the flag count in the HUD changed too */
+    {
+      box_t mines_box = MS_MINES_BOX(ms);
+
+      wuss_window_invalidate(ms->window, &mines_box);
+    }
+    wuss_window_invalidate(ms->window, &local);
   }
   else
   {
     return result_OK;
   }
-
-  wuss_window_invalidate_visible(ms->window);
 
   return result_OK;
 }
