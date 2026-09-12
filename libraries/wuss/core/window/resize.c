@@ -177,7 +177,6 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
                    nsrc, overflow);
       wuss__invalidate_clipped(window, &content);
     }
-    wuss__chrome_repaint(window);
   }
 
   if (window->flags & wuss_WINDOW_NO_RESIZE_BLIT)
