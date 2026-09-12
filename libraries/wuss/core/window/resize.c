@@ -89,17 +89,40 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   if (clamped.x != window->scroll.x || clamped.y != window->scroll.y)
   {
     box_t content;
+    box_t stale[WUSS_MAX_DIRTY];
+    box_t clean[WUSS_MAX_INVALIDATE_PIECES];
     box_t src[WUSS_MAX_INVALIDATE_PIECES];
     box_t copied[WUSS_MAX_INVALIDATE_PIECES];
     box_t dirty[WUSS_MAX_INVALIDATE_PIECES];
-    int   dx, dy, nsrc, ncopied, ndirty, i;
+    int   dx, dy, nstale, nclean, nsrc, ncopied, ndirty, i;
 
     dx = clamped.x - old_scroll.x;
     dy = clamped.y - old_scroll.y;
     window->scroll = clamped;
     wuss__content_box(window, &content);
 
-    nsrc              = wuss__clip_to_visible(window, &before_content, src);
+    /* A resize drag delivers several calls per frame, same as a fast wheel
+     * spin (see wuss_window_set_scroll): an earlier call this frame may have
+     * queued part of "before_content" in wuss->dirty[] without a redraw
+     * having painted it yet. Sliding that stale ground would smear garbage
+     * into the window instead of this window's own settled pixels. */
+    nstale = 0;
+    for (i = 0; i < window->wuss->ndirty; i++)
+      if (box_intersects(&window->wuss->dirty[i], &before_content))
+        stale[nstale++] = window->wuss->dirty[i];
+
+    nclean            = wuss__clip_to_visible(window, &before_content, clean);
+    nsrc              = 0;
+    for (i = 0; i < nclean; i++)
+    {
+      box_t kept[WUSS_MAX_INVALIDATE_PIECES];
+      int   nkept, k;
+
+      nkept = wuss__subtract_boxes(&clean[i], stale, nstale, kept);
+      for (k = 0; k < nkept && nsrc < WUSS_MAX_INVALIDATE_PIECES; k++)
+        src[nsrc++] = kept[k];
+    }
+
     ncopied           = 0;
     window->wuss->scr->clip = content;
     for (i = 0; i < nsrc; i++)
