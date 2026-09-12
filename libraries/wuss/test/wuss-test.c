@@ -2480,6 +2480,198 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_s);
   }
 
+  printf("test: shrinking a window repaints its content right up to the new content box's own edge\n");
+
+  {
+    /* Regression: dragging a resize handle to make a window smaller must
+     * leave no stale sliver between the client's repainted content and the
+     * furniture (scrollbar/outline) now sitting at the new, smaller edge. */
+    static test_task_t tc_s;
+    wuss_task_t        *delegate_s;
+    box_t               box_s, content_s;
+    wuss_window_t      *win_s;
+    colour_t            s_colour;
+    int                 nx, ny, bad;
+
+    s_colour = colour_rgb(0xcc, 0xdd, 0xee);
+    tc_s.redraw_count = 0; tc_s.mouse_count = 0;
+    delegate_s = mk_task(wuss, flood_full_bounds_handle, &s_colour);
+    if (delegate_s == NULL) goto Failure;
+
+    box_s.x0 = 10; box_s.y0 = 10;
+    box_s.x1 = 90; box_s.y1 = 90;
+    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(80, 80), SIZE2D(200, 200), &win_s);
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss); /* flush the create, paint S's initial content */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* scroll before shrinking -- the shrink must not leave a stale sliver
+     * at the new content edge regardless of scroll offset */
+    wuss_window_set_scroll(win_s, POINT(20, 20));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* an interactive drag delivers many small pointer-move events, each
+     * calling wuss_window_resize, before the display ever gets to redraw --
+     * shrink one pixel at a time with no flush between them, matching that;
+     * throw in an overshoot-and-correct wobble too, as a real drag does */
+    {
+      int step, w;
+
+      for (step = 0, w = 80; w > 30; w--, step++)
+      {
+        rc = wuss_window_resize(win_s, SIZE2D(w, w));
+        if (rc != result_OK)
+          goto Failure;
+      }
+      rc = wuss_window_resize(win_s, SIZE2D(35, 35)); /* overshoot back out */
+      if (rc != result_OK)
+        goto Failure;
+      rc = wuss_window_resize(win_s, SIZE2D(30, 30)); /* settle */
+      if (rc != result_OK)
+        goto Failure;
+    }
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* every pixel of S's own (new, smaller) content box must show S's
+     * flood colour right up to content_s.x1-1 / content_s.y1-1 -- no gap
+     * between the repainted content and the furniture now abutting it */
+    wuss_window_get_content_bounds(win_s, &content_s);
+    bad = 0;
+    for (ny = content_s.y0; ny < content_s.y1 && !bad; ny++)
+      for (nx = content_s.x0; nx < content_s.x1; nx++)
+      {
+        uint32_t px;
+
+        px = ((const uint32_t *) pixels)[ny * 200 + nx];
+        if ((px & 0xffffff) != 0xccddee)
+        {
+          bad = 1;
+          break;
+        }
+      }
+    if (bad)
+      goto Failure; /* stale sliver left along the new content box's edge */
+
+    wuss_window_close(win_s);
+  }
+
+  printf("test: a fast resize-grow past the scroll clamp never blits a not-yet-painted sliver\n");
+
+  {
+    /* Regression: wuss_window_resize's scroll-reclamp blit (window scrolled
+     * to the document's bottom/right, then grown so the bigger viewport
+     * needs less scroll and the clamp pulls the offset back) reads its blit
+     * source straight from wuss__clip_to_visible over the *old* content box,
+     * unlike wuss_window_move/wuss_window_set_scroll which both also strip
+     * anything still sitting in wuss->dirty[] (queued by an earlier call this
+     * same frame, not yet painted). An interactive drag delivers several
+     * resize calls before a redraw ever runs: one grow queues its
+     * newly-exposed sliver dirty without painting it; that sliver sits
+     * inside the *next* call's "old content box", so the next call's
+     * scroll-reclamp blit slides it as if it were this window's own settled
+     * rendering -- smearing a stale/undrawn sliver that no later invalidate
+     * ever repaints. paint_handle's per-row blue-encoded doc_y makes a
+     * wrongly-slid row detectable exactly. */
+    static test_task_t tc_s;
+    wuss_task_t        *delegate_s;
+    box_t               box_s, content_s;
+    wuss_window_t      *win_s;
+    colour_t            s_colour;
+    point_t             scroll;
+    int                 sy, sx, bad;
+
+    s_colour = colour_rgb(0x11, 0x22, 0x33);
+    tc_s.redraw_count = 0; tc_s.mouse_count = 0;
+    delegate_s = mk_task(wuss, paint_handle, &s_colour);
+    if (delegate_s == NULL) goto Failure;
+
+    box_s.x0 = 10; box_s.y0 = 10;
+    box_s.x1 = 40; box_s.y1 = 40; /* 30x30 content; a doc far bigger than the
+                                   * screen so growing 1px at a time pulls the
+                                   * scroll clamp back by exactly 1px per
+                                   * call, keeping it non-zero (and so
+                                   * re-triggering the reclamp path) across
+                                   * the whole grow range below */
+    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(1000, 1000), SIZE2D(30, 30), &win_s);
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss); /* flush the create, paint S's initial content */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* scroll to the document's bottom-right: no further offset possible at
+     * this size */
+    wuss_window_set_scroll(win_s, POINT(970, 970));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* grow two calls at a time with no flush between them, as an interactive
+     * drag delivers several pointer-move events per rendered frame -- each
+     * bigger size pulls the scroll clamp back by 1px, so every single call
+     * re-enters the reclamp path, and the second call of each pair reads its
+     * blit source over ground the first call of the pair only just
+     * invalidated (its own grown sliver) but never painted. Flushing after
+     * every pair (rather than only once at the end) matches a real redraw
+     * loop -- it also stops one pair's leftover full-footprint dirty rect
+     * from coalescing over a later pair's corruption and masking it. */
+    {
+      int w;
+
+      for (w = 30; w <= 90; w += 2)
+      {
+        rc = wuss_window_resize(win_s, SIZE2D(w, w));
+        if (rc != result_OK)
+          goto Failure;
+        rc = wuss_window_resize(win_s, SIZE2D(w + 1, w + 1));
+        if (rc != result_OK)
+          goto Failure;
+
+        rc = wuss_redraw_dirty(wuss);
+        if (rc != result_OK)
+          goto Failure;
+
+        /* every row of S's current content box must show exactly the
+         * document Y that its current scroll offset puts there -- a
+         * stale-sliver blit leaves some row(s) showing a stale doc_y (or
+         * whatever else was sitting in the framebuffer) instead */
+        wuss_window_get_content_bounds(win_s, &content_s);
+        wuss_window_get_scroll(win_s, &scroll);
+        bad = 0;
+        for (sy = content_s.y0; sy < content_s.y1 && !bad; sy++)
+        {
+          uint32_t px, blue, want;
+
+          want = (uint32_t) ((sy - content_s.y0 + scroll.y) & 0xff);
+          for (sx = content_s.x0; sx < content_s.x1; sx++)
+          {
+            px   = ((const uint32_t *) pixels)[sy * 200 + sx];
+            blue = px & 0xff;
+            if (blue != want)
+            {
+              bad = 1;
+              break;
+            }
+          }
+        }
+        if (bad)
+          goto Failure; /* a not-yet-painted sliver got blitted as if settled */
+      }
+    }
+
+    wuss_window_close(win_s);
+  }
+
   printf("test: wuss_window_invalidate_visible on a shrunk, scrolled window only dirties its own visible box\n");
 
   {
