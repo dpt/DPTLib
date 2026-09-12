@@ -12,17 +12,23 @@ const char *path_join_leafname(const char *leaf, const char *ext)
 {
   static char buf[DPTLIB_MAXPATH];
 
-  const char *fmt =
-#ifdef __riscos
-    "%s/%s";
-#else
-    "%s.%s";
-#endif
-
   assert(leaf);
   assert(ext);
 
-  snprintf(buf, sizeof(buf), fmt, leaf, ext);
+#ifdef __riscos
+
+  /* No dotted extension in a RISC OS leafname -- file type is separate
+   * filesystem metadata, set with OS_File 18 (Set_Type), never part of the
+   * pathname string -- so there is nothing to append. */
+  NOT_USED(ext);
+
+  snprintf(buf, sizeof(buf), "%s", leaf);
+
+#else
+
+  snprintf(buf, sizeof(buf), "%s.%s", leaf, ext);
+
+#endif
 
   return buf;
 }
