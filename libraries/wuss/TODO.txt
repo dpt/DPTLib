@@ -4,9 +4,14 @@ Ordered by dependency. Each layer builds on the ones above it.
 Items marked (blocks: X) are prerequisites for X.
 
 
+Add a panic redraw indicator?
+Furniture clicks / scrolls still invalidate the entire furniture set - fix.
+  (window move fixed: layout cache is now translated in place, not rebuilt)
+
+
+
 LAYER 0 - BUGS (fix before building on top)
 
-- Various window size toggle ops need checking out - or at least understood
 - Auto window placement packer still not working as expected
     blocks: reliable multi-window tasks
 

@@ -237,3 +237,17 @@ void wuss__furniture_layout_build(wuss_window_t *window)
 
   layout->valid = 1;
 }
+
+void wuss__furniture_layout_translate(wuss_window_t *window, int dx, int dy)
+{
+  wuss__furniture_layout_t *layout;
+  int                       i;
+
+  layout = &window->furniture_layout;
+
+  for (i = 0; i < layout->npieces; i++)
+    box_translated(&layout->pieces[i].rect, dx, dy, &layout->pieces[i].rect);
+
+  if (layout->has_titlebar)
+    box_translated(&layout->titlebar, dx, dy, &layout->titlebar);
+}
