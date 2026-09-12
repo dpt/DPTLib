@@ -378,7 +378,7 @@ void wuss__invalidate_minus(wuss_t      *wuss,
 
 void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
 {
-  box_t screen_box, content, whole;
+  box_t screen_box, content, whole, clipped;
 
   wuss__content_box(window, &content);
 
@@ -397,7 +397,13 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
   box_translated(local_box, content.x0 - window->scroll.x,
                  content.y0 - window->scroll.y, &screen_box);
 
-  wuss__invalidate_clipped(window, &screen_box);
+  /* clients pass arbitrary boxes (e.g. a ball's swept box near an edge);
+   * clamp to the content area so a client can never dirty the furniture
+   * around it. */
+  if (box_intersection(&screen_box, &content, &clipped))
+    return; /* no overlap with content at all */
+
+  wuss__invalidate_clipped(window, &clipped);
 }
 
 void wuss_window_invalidate_extent(wuss_window_t *window)

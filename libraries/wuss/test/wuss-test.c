@@ -5278,6 +5278,112 @@ QuitFail:
     wuss_window_close(win_hs);
   }
 
+  printf("test: wuss_window_invalidate clamps a client box to the content "
+        "area, never dirtying the furniture around it\n");
+
+  {
+    static test_task_t tc_iv;
+    wuss_task_t       *delegate_iv;
+    wuss_window_t     *win_iv;
+    box_t              box_iv, content, local, dirty;
+    int                i, w, h;
+
+    tc_iv.redraw_count = 0;
+    tc_iv.mouse_count  = 0;
+    delegate_iv = mk_task(wuss, test_handle, &tc_iv);
+    if (delegate_iv == NULL) goto Failure;
+
+    box_iv.x0 = 5; box_iv.y0 = 5;
+    box_iv.x1 = 125; box_iv.y1 = 85;
+    rc = wuss_window_create(delegate_iv, &box_iv, "IV", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(400, 400), SIZE2D(0, 0), &win_iv);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_iv, &content);
+
+    rc = wuss_redraw_dirty(wuss); /* flush the create's own dirty region first */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* a box like a ball's swept range at the bottom-right corner, straddling
+     * both the content and the furniture (titlebar/outline/scrollbars)
+     * around it -- content-local, so translate content's screen origin
+     * back off before building it. */
+    w = content.x1 - content.x0;
+    h = content.y1 - content.y0;
+    local.x0 = w - 10;
+    local.y0 = h - 10;
+    local.x1 = w + 10; /* runs past content.x1 into the furniture */
+    local.y1 = h + 10; /* runs past content.y1 into the furniture */
+    wuss_window_invalidate(win_iv, &local);
+
+    if (wuss_get_dirty_count(wuss) != 1)
+      goto Failure;
+    wuss_get_dirty(wuss, 0, &dirty);
+    if (dirty.x0 < content.x0 || dirty.y0 < content.y0 ||
+        dirty.x1 > content.x1 || dirty.y1 > content.y1)
+      goto Failure; /* must be clamped to content, not spill into furniture */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* a box entirely outside the content (pure furniture, e.g. a client bug
+     * that never clamped at all) must not dirty anything. */
+    before_a = tc_iv.redraw_count;
+    local.x0 = -50; local.y0 = -50;
+    local.x1 = -10; local.y1 = -10;
+    wuss_window_invalidate(win_iv, &local);
+    if (wuss_get_dirty_count(wuss) != 0)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_iv.redraw_count != before_a)
+      goto Failure;
+
+    /* sweep every furniture-adjacent edge: a content-local box straddling
+     * that edge must clamp to it, never crossing into visible's outline. */
+    for (i = 0; i < 4; i++)
+    {
+      switch (i)
+      {
+      case 0: /* left edge */
+        local.x0 = -10; local.y0 = 0;
+        local.x1 = 10;  local.y1 = 10;
+        break;
+      case 1: /* top edge */
+        local.x0 = 0;   local.y0 = -10;
+        local.x1 = 10;  local.y1 = 10;
+        break;
+      case 2: /* right edge */
+        local.x0 = w - 10; local.y0 = 0;
+        local.x1 = w + 10; local.y1 = 10;
+        break;
+      default: /* bottom edge */
+        local.x0 = 0;       local.y0 = h - 10;
+        local.x1 = 10;      local.y1 = h + 10;
+        break;
+      }
+
+      wuss_window_invalidate(win_iv, &local);
+      if (wuss_get_dirty_count(wuss) > 0)
+      {
+        wuss_get_dirty(wuss, 0, &dirty);
+        if (dirty.x0 < content.x0 || dirty.y0 < content.y0 ||
+            dirty.x1 > content.x1 || dirty.y1 > content.y1)
+          goto Failure;
+      }
+      rc = wuss_redraw_dirty(wuss);
+      if (rc != result_OK)
+        goto Failure;
+    }
+
+    wuss_window_close(win_iv);
+  }
+
   printf("test: furniture hit tiling holds for every furniture-flag combo\n");
 
   {
