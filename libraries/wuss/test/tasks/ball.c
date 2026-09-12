@@ -208,10 +208,10 @@ static result_t ball_idle(void *task_data)
     b->x += b->dx;
     b->y += b->dy;
 
-    if (b->x - b->radius < scroll.x)              { b->x = scroll.x + b->radius;          b->dx = -b->dx; }
-    else if (b->x + b->radius > scroll.x + width) { b->x = scroll.x + width - b->radius;  b->dx = -b->dx; }
-    if (b->y - b->radius < scroll.y)              { b->y = scroll.y + b->radius;          b->dy = -b->dy; }
-    else if (b->y + b->radius > scroll.y + height){ b->y = scroll.y + height - b->radius; b->dy = -b->dy; }
+    if (b->x - b->radius < scroll.x)               { b->x = scroll.x + b->radius;              b->dx = -b->dx; }
+    else if (b->x + b->radius >= scroll.x + width) { b->x = scroll.x + width - 1 - b->radius;  b->dx = -b->dx; }
+    if (b->y - b->radius < scroll.y)               { b->y = scroll.y + b->radius;              b->dy = -b->dy; }
+    else if (b->y + b->radius >= scroll.y + height){ b->y = scroll.y + height - 1 - b->radius; b->dy = -b->dy; }
 
     local = ball_local_box(MIN(old_x, b->x), MIN(old_y, b->y),
                            MAX(old_x, b->x), MAX(old_y, b->y),
