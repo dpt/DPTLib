@@ -39,23 +39,6 @@ typedef struct icons_load
 }
 icons_load_t;
 
-/* True when "leaf" ends in ".png" (case-sensitive, matching the fixtures).
- * Writes the leaf sans that suffix into "name" (capacity "cap"). */
-static int png_leaf(const char *leaf, char *name, size_t cap)
-{
-  size_t len;
-
-  len = strlen(leaf);
-  if (len < 4 || len - 4 >= cap)
-    return 0;
-  if (strcmp(leaf + len - 4, ".png") != 0)
-    return 0;
-
-  memcpy(name, leaf, len - 4);
-  name[len - 4] = '\0';
-  return 1;
-}
-
 /* The RLE blit (screen_copy_bitmap_rle) decodes straight into the screen's
  * byte layout -- no per-pixel format convert -- so a compressed icon must
  * already be in screen order. bitmap_load_png yields rgb(x|a)8888; the screen
@@ -116,7 +99,7 @@ static result_t icons_load_entry(const char *leaf, void *opaque)
   atom_t        atom;
   int           oldcap;
 
-  if (!png_leaf(leaf, name, sizeof(name)))
+  if (!path_leaf_strip_ext(leaf, ".png", name, sizeof(name)))
     return result_OK; /* not a ".png", or name too long -- skip */
 
   path = path_join_filename(st->dir, 1, leaf);

@@ -60,3 +60,53 @@ const char *path_join_filename(const char *root, int nbranches, ...)
 
   return buf;
 }
+
+int path_leaf_strip_ext(const char *leaf,
+                        const char *ext,
+                        char       *name,
+                        size_t      cap)
+{
+  assert(leaf);
+  assert(ext);
+  assert(name);
+
+#ifdef __riscos
+
+  {
+    size_t leaflen;
+
+    /* No extension in the string to match against -- filetype is separate
+     * metadata -- so every leaf matches, unchanged. */
+    NOT_USED(ext);
+
+    leaflen = strlen(leaf);
+    if (leaflen + 1 > cap)
+      return 0;
+
+    memcpy(name, leaf, leaflen + 1);
+
+    return 1;
+  }
+
+#else
+
+  {
+    size_t leaflen;
+    size_t extlen;
+
+    leaflen = strlen(leaf);
+    extlen  = strlen(ext);
+
+    if (leaflen <= extlen || leaflen - extlen >= cap)
+      return 0;
+    if (strcmp(leaf + leaflen - extlen, ext) != 0)
+      return 0;
+
+    memcpy(name, leaf, leaflen - extlen);
+    name[leaflen - extlen] = '\0';
+
+    return 1;
+  }
+
+#endif
+}
