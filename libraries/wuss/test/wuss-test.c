@@ -231,6 +231,33 @@ static result_t paint_handle(wuss_window_t      *window,
   return result_OK;
 }
 
+/* A redraw handler that ignores "clip" and always floods its whole content
+ * box with the colour_t task_data points to, relying entirely on wuss-core's
+ * own clipping (scr->clip during the redraw dispatch) to keep the fill
+ * inside the window -- matching a task such as saturn.c that redraws its
+ * full fixed sample space every call rather than restricting itself to the
+ * dirty piece it was handed. */
+static result_t flood_full_bounds_handle(wuss_window_t      *window,
+                                         const wuss_event_t *event,
+                                         void               *task_data)
+{
+  const box_t    *bounds;
+  const colour_t *colour;
+
+  NOT_USED(window);
+
+  if (event->kind != wuss_EVENT_REDRAW)
+    return result_OK;
+
+  bounds = event->data.redraw.bounds;
+  colour = task_data;
+  screen_fill_rect(event->data.redraw.scr, bounds->x0, bounds->y0,
+                   SIZE2D(bounds->x1 - bounds->x0, bounds->y1 - bounds->y0),
+                   *colour);
+
+  return result_OK;
+}
+
 /* ----------------------------------------------------------------------- */
 
 /* Most tests declare their test_task_t on the block stack. A registered
@@ -2360,6 +2387,164 @@ result_t wuss_test(const char *resources)
 
     wuss_window_close(win_o);
     wuss_window_close(win_m);
+  }
+
+  printf("test: scrolling a window shrunk below its document size never marks a neighbour's screen area dirty\n");
+
+  {
+    /* Regression: a window resized down below its document extent (so it
+     * becomes scrollable), then scrolled by wheel/scrollbar, must not touch
+     * a neighbour window's own screen area. flood_full_bounds_handle ignores
+     * "clip" entirely, mirroring a real task (e.g. saturn.c) that redraws
+     * its full sample space every call rather than honouring clip -- the
+     * wuss-core clip machinery, not the task, must be what keeps such a
+     * task's pixels inside its own window. */
+    colour_t       s_colour, n_colour;
+    static test_task_t    tc_s, tc_n;
+    wuss_task_t   *delegate_s, *delegate_n;
+    box_t          box_s, box_n, content_n;
+    wuss_window_t *win_s, *win_n;
+    int            nx, ny, bad;
+
+    s_colour = colour_rgb(0xcc, 0xdd, 0xee);
+    n_colour = colour_rgb(0x40, 0x60, 0x80);
+    tc_s.redraw_count = 0; tc_s.mouse_count = 0;
+    tc_n.redraw_count = 0; tc_n.mouse_count = 0;
+    delegate_s = mk_task(wuss, flood_full_bounds_handle, &s_colour);
+    if (delegate_s == NULL) goto Failure;
+    delegate_n = mk_task(wuss, flood_full_bounds_handle, &n_colour);
+    if (delegate_n == NULL) goto Failure;
+
+    /* S starts full-sized (matches its document, so no scrollbars yet), then
+     * gets shrunk -- exercising wuss_window_resize's scroll-reclamp path,
+     * distinct from creating it small to begin with. */
+    box_s.x0 = 10; box_s.y0 = 10;
+    box_s.x1 = 90; box_s.y1 = 90;
+    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(80, 80), SIZE2D(0, 0), &win_s);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* N sits immediately to the right of S's outer box, close enough that a
+     * blit destination sliding even a few pixels past S's own bounds lands
+     * on N. */
+    box_n.x0 = box_s.x1 + 2; box_n.y0 = 10;
+    box_n.x1 = box_n.x0 + 40; box_n.y1 = 90;
+    rc = wuss_window_create(delegate_n, &box_n, "N", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(box_n.x1 - box_n.x0, box_n.y1 - box_n.y0),
+                            SIZE2D(0, 0), &win_n);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creates */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* shrink S well below its 80x80 document -- this window is now
+     * scrollable */
+    rc = wuss_window_resize(win_s, SIZE2D(30, 30));
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* scroll it, as a wheel/scrollbar-drag would */
+    wuss_window_set_scroll(win_s, POINT(20, 20));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* every pixel of N's own content (not its titlebar/outline chrome) must
+     * still show exactly N's own flood colour */
+    wuss_window_get_content_bounds(win_n, &content_n);
+    bad = 0;
+    for (ny = content_n.y0; ny < content_n.y1 && !bad; ny++)
+      for (nx = content_n.x0; nx < content_n.x1; nx++)
+      {
+        uint32_t px;
+
+        px = ((const uint32_t *) pixels)[ny * 200 + nx];
+        if ((px & 0xffffff) != 0x406080)
+        {
+          bad = 1;
+          break;
+        }
+      }
+    if (bad)
+      goto Failure; /* S's scroll blit painted over N's screen area */
+
+    wuss_window_close(win_n);
+    wuss_window_close(win_s);
+  }
+
+  printf("test: wuss_window_invalidate_visible on a shrunk, scrolled window only dirties its own visible box\n");
+
+  {
+    /* Regression: wuss_window_invalidate(window, NULL) built its "whole
+     * visible rect" box already in screen space (offset by content.x0/y0),
+     * then translated it a second time by "content.x0 - scroll", so a
+     * scrolled window's dirty rect ended up shifted by -scroll off to one
+     * side of the window rather than sitting over it -- e.g. saturn.c's
+     * per-idle-tick wuss_window_invalidate_visible(), once its window was
+     * shrunk below its document and then scrolled, queued a dirty rect
+     * outside the window's own screen area (fill_backdrop_excluding_content
+     * then repaints that stray area as bare desktop every frame). */
+    static test_task_t tc_s;
+    wuss_task_t        *delegate_s;
+    box_t               box_s, dirty;
+    wuss_window_t      *win_s;
+    colour_t            s_colour;
+
+    s_colour = colour_rgb(0xcc, 0xdd, 0xee);
+    tc_s.redraw_count = 0; tc_s.mouse_count = 0;
+    delegate_s = mk_task(wuss, flood_full_bounds_handle, &s_colour);
+    if (delegate_s == NULL) goto Failure;
+
+    box_s.x0 = 60; box_s.y0 = 60;
+    box_s.x1 = 140; box_s.y1 = 140;
+    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(80, 80), SIZE2D(0, 0), &win_s);
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss); /* flush the create */
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_window_resize(win_s, SIZE2D(30, 30));
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_set_scroll(win_s, POINT(20, 20));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* mirrors saturn_idle: invalidate the whole visible rect with no
+     * explicit local_box, exactly what a task's idle handler calls every
+     * frame -- inspect the queued dirty rect directly rather than via
+     * pixels, since every window (including S itself) re-clips to its own
+     * content box on redraw regardless of what the dirty list says, so a
+     * stray dirty rect only ever shows up as a wasted backdrop repaint, not
+     * as a colour mismatch. */
+    wuss_window_invalidate_visible(win_s);
+    if (wuss_get_dirty_count(wuss) != 1)
+      goto Failure;
+    wuss_get_dirty(wuss, 0, &dirty);
+    if (!box_contains_box(&dirty, &win_s->visible))
+      goto Failure; /* dirty rect strayed outside S's own visible box */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_s);
   }
 
   printf("test: wuss_WINDOW_NO_RESIZE_BLIT redraws the whole window instead of blitting\n");
