@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "base/result.h"
 #include "io/path.h"
@@ -388,11 +387,12 @@ static int test_p8_png(void)
   colour_t     pal[256];
   colour_t     rtpal[256];
   unsigned char pix[P8W * P8H];
-  char          fn[] = "/tmp/dptlib-p8-XXXXXX.png";
-  int           fd;
+  const char   *fn;
   result_t      rc;
   int           i;
   int           ok = 1;
+
+  fn = path_join_leafname("rle-test-p8", "png");
 
   /* palette: greyscale ramp, plus a few non-opaque entries to exercise tRNS */
   for (i = 0; i < 256; i++)
@@ -406,10 +406,6 @@ static int test_p8_png(void)
     pix[i] = (unsigned char) ((i * 7 + i / P8W) & 0xFF);
 
   bitmap_init(&bm, SIZE2D(P8W, P8H), pixelfmt_p8, P8W, pal, pix);
-
-  fd = mkstemps(fn, 4); /* keep the ".png" suffix */
-  if (fd < 0) { fprintf(stderr, "p8 png: mkstemps failed\n"); return 0; }
-  close(fd);
 
   rc = bitmap_save_png(&bm, fn);
   if (rc) { fprintf(stderr, "p8 png: save rc=&%x\n", rc); return 0; }
