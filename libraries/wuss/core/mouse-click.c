@@ -204,16 +204,19 @@ result_t wuss_mouse_click(wuss_t             *wuss,
 
         /* A click landing in the well itself (not on the sausage) pages the
          * content one visible extent towards the click, RISC OS style, keeping
-         * one step of overlap. The drag state is still armed below so a press
-         * that then moves onto the sausage keeps working. */
+         * one step of overlap. ADJUST reverses that -- it pages away from the
+         * click instead, matching RISC OS's SELECT/ADJUST mirroring elsewhere
+         * (e.g. the arrow icons). The drag state is still armed below so a
+         * press that then moves onto the sausage keeps working. */
         if (region == wuss_FURNITURE_VSCROLL_WELL ||
             region == wuss_FURNITURE_HSCROLL_WELL)
         {
           box_t sausage;
           box_t content;
-          int   page;
+          int   sign, page;
 
           wuss__content_box(win, &content);
+          sign = (button & wuss_BUTTON_ADJUST) ? -1 : 1;
 
           if (region == wuss_FURNITURE_VSCROLL_WELL)
           {
@@ -221,9 +224,9 @@ result_t wuss_mouse_click(wuss_t             *wuss,
             page = (content.y1 - content.y0) - WUSS_SCROLL_STEP;
             page = MAX(page, 1);
             if (y < sausage.y0)
-              wuss__scroll_step(win, POINT(0, -page));
+              wuss__scroll_step(win, POINT(0, -page * sign));
             else if (y > sausage.y1)
-              wuss__scroll_step(win, POINT(0, page));
+              wuss__scroll_step(win, POINT(0, page * sign));
           }
           else
           {
@@ -231,9 +234,9 @@ result_t wuss_mouse_click(wuss_t             *wuss,
             page = (content.x1 - content.x0) - WUSS_SCROLL_STEP;
             page = MAX(page, 1);
             if (x < sausage.x0)
-              wuss__scroll_step(win, POINT(-page, 0));
+              wuss__scroll_step(win, POINT(-page * sign, 0));
             else if (x > sausage.x1)
-              wuss__scroll_step(win, POINT(page, 0));
+              wuss__scroll_step(win, POINT(page * sign, 0));
           }
         }
 
