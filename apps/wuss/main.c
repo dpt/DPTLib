@@ -216,20 +216,30 @@ static void wuss_frame(void *arg)
   }
   else
   {
-    box_t dirty, region;
-    int   ndirty, i;
+    box_t dirty, region, touched;
+    int   ndirty, i, have_touched, have_any;
 
     ndirty = wuss_get_dirty_count(c->wuss);
-    dirty = (box_t) BOX_INIT;
+    dirty  = (box_t) BOX_INIT;
     for (i = 0; i < ndirty; i++)
     {
       wuss_get_dirty(c->wuss, i, &region);
       box_union(&dirty, &region, &dirty);
     }
 
-    wuss_redraw_dirty(c->wuss);
+    /* Pixels a fast blit path (window move/resize, scroll) slid to a new
+     * position without a repaint: wuss_redraw_dirty won't touch them, but
+     * present() still has to re-upload them -- fold them into the same
+     * bounding box before wuss_clear_touched drops them. */
+    have_touched = wuss_get_touched_extent(c->wuss, &touched);
+    have_any     = (ndirty > 0) || have_touched;
+    if (have_touched)
+      box_union(&dirty, &touched, &dirty);
 
-    wuss_frontend_present(c->frontend, c->bm, ndirty > 0 ? &dirty : NULL);
+    wuss_redraw_dirty(c->wuss);
+    wuss_clear_touched(c->wuss);
+
+    wuss_frontend_present(c->frontend, c->bm, have_any ? &dirty : NULL);
   }
 
 #ifdef __EMSCRIPTEN__

@@ -127,7 +127,13 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
       if (screen_copy_rect(window->wuss->scr, &blit_src,
                            POINT(blit_dst.x0, blit_dst.y0),
                            &copied) == result_OK)
+      {
+        /* "copied" is already correct on screen -- the blit reused it --
+         * but a frontend re-uploading only wuss_get_touched_extent still
+         * needs to know it moved. */
+        wuss__touch(window->wuss, &copied);
         blitted = 1;
+      }
     }
   }
 
