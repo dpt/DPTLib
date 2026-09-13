@@ -9,6 +9,7 @@
  * by default, so the wuss app always has the colourmenu component. */
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
+#include "wuss/icon.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
@@ -20,17 +21,24 @@
  * planet body. Select re-seeds the RNG for a fresh sketch; the idle
  * handler re-seeds every null event so it churns. The plot is
  * deterministic in the seed. */
-/* iteration counts for the three rejection-sampling loops; saturn_create
+/* iteration counts for the three rejection-sampling loops, plus the window's
+ * size, in document pixels (the window is always square); saturn_create
  * fills in SATURN_CONFIG_DEFAULT values when the caller passes NULL */
 typedef struct saturn_config
 {
   int ring_iters; /* loop 1: the ring */
   int band_iters; /* loop 2: ring shadow band */
   int body_iters; /* loop 3: planet body */
+  int size;       /* window size (both axes); set via the Size... dialogue */
 }
 saturn_config_t;
 
-#define SATURN_CONFIG_DEFAULT { 477, 1280, 1280 }
+#define SATURN_CONFIG_DEFAULT { 477, 1280, 1280, 256 }
+
+/* the "Size..." dialogue's slider: [min,max] and the step it snaps to */
+#define SATURN_SIZE_MIN  128
+#define SATURN_SIZE_MAX  512
+#define SATURN_SIZE_STEP 64
 
 typedef struct saturn_task
 {
@@ -42,6 +50,11 @@ typedef struct saturn_task
   saturn_config_t    config;
   wuss_colourmenu_t *fg_colourmenu, *bg_colourmenu;
   wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
+  wuss_window_t     *size_dialogue;   /* built once, hidden; a menu leaf */
+  wuss_icon_t       *size_slider;
+  wuss_icon_t       *size_value_label;
+  wuss_icon_t       *size_cancel;
+  wuss_icon_t       *size_apply;
 }
 saturn_task_t;
 
