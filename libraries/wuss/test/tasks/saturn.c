@@ -402,11 +402,14 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
 }
 
 /* wuss_EVENT_ICON on the size dialogue: slider drag updates the echo label
- * (snapped to SATURN_SIZE_STEP); Cancel just dismisses the menu chain;
- * Apply resizes the planet window to the chosen size, stores it as the new
- * default and dismisses. Dismissing goes through wuss_menu_close rather
- * than touching the (borrowed, reused) window directly -- that is what
- * hides it, same as a click outside the chain would. */
+ * (snapped to SATURN_SIZE_STEP) live on DOWN/MOVE; Cancel/Apply act on a
+ * Select UP, so a press that drags off the button before release is not
+ * taken as a click, and an Adjust click leaves the dialogue open (RISC OS
+ * "Adjust doesn't dismiss" convention). Cancel just dismisses the menu
+ * chain; Apply resizes the planet window to the chosen size, stores it as
+ * the new default and dismisses. Dismissing goes through wuss_menu_close
+ * rather than touching the (borrowed, reused) window directly -- that is
+ * what hides it, same as a click outside the chain would. */
 static result_t saturn_size_icon(saturn_task_t      *task,
                                  const wuss_event_t *event)
 {
@@ -429,7 +432,8 @@ static result_t saturn_size_icon(saturn_task_t      *task,
                               buf);
   }
 
-  if (event->data.icon.action != wuss_MOUSE_DOWN)
+  if (event->data.icon.action != wuss_MOUSE_UP ||
+      !(event->data.icon.button & wuss_BUTTON_SELECT))
     return result_OK;
 
   if (icon == task->size_cancel)
