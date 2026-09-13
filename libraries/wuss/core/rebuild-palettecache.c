@@ -56,6 +56,11 @@ void wuss__rebuild_palettecache(wuss_t *wuss)
   cache[wuss_COLOUR_BUTTON_PRESSED - wuss_COLOUR_SYMBOLIC] = wuss->button_pressed;
   cache[wuss_COLOUR_ACCENT         - wuss_COLOUR_SYMBOLIC] = wuss->accent;
 #endif
+#ifdef WUSS_ICONS
+  cache[wuss_COLOUR_SLIDER_TRACK    - wuss_COLOUR_SYMBOLIC] = wuss->slider_track;
+  cache[wuss_COLOUR_SLIDER_VALUE    - wuss_COLOUR_SYMBOLIC] = wuss->slider_value;
+  cache[wuss_COLOUR_SLIDER_SURROUND - wuss_COLOUR_SYMBOLIC] = wuss->slider_surround;
+#endif
   if (wuss->backdrop.colour != wuss_NO_BACKGROUND)
     cache[wuss_COLOUR_BACKDROP - wuss_COLOUR_SYMBOLIC] = wuss->backdrop.colour;
 

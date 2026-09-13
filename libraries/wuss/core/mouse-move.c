@@ -92,6 +92,27 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
     doc_point.y = y - content.y0 + win->scroll.y;
 
 #ifdef WUSS_ICONS
+    /* a slider drag keeps tracking the pointer even once it strays outside
+     * the icon's own bbox, matching a furniture sausage drag */
+    if (wuss->pressed_icon != NULL && wuss->pressed_window == win &&
+        wuss->pressed_icon->spec.type == wuss_ICON_TYPE_SLIDER)
+    {
+      wuss_icon_t *icon = wuss->pressed_icon;
+
+      wuss__icon_set_value(win, icon,
+                           wuss__slider_value_for_point(win, icon,
+                                                        POINT(x, y)));
+
+      event.kind             = wuss_EVENT_ICON;
+      event.data.icon.icon   = icon;
+      event.data.icon.action = wuss_MOUSE_MOVE;
+      event.data.icon.button = wuss_BUTTON_SELECT;
+      event.data.icon.value  = icon->value;
+      return wuss__deliver(win->task, win, &event);
+    }
+#endif
+
+#ifdef WUSS_ICONS
     {
       wuss_icon_t *icon;
       int          k;
@@ -126,6 +147,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
         event.data.icon.icon   = icon;
         event.data.icon.action = wuss_MOUSE_MOVE;
         event.data.icon.button = wuss_BUTTON_SELECT;
+        event.data.icon.value  = icon->value;
         return wuss__deliver(win->task, win, &event);
       }
     }

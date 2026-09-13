@@ -178,7 +178,10 @@ typedef struct wuss_event
      * Label, hidden and disabled icons never raise this; those clicks
      * fall through as wuss_EVENT_MOUSE. action is DOWN/UP/MOVE; button
      * is a set of wuss_button_t flags, so test it with '&' rather than
-     * comparing for equality. In the task view (window == NULL) this is
+     * comparing for equality. value is the icon's current value for a
+     * wuss_ICON_TYPE_SLIDER (updated before this event is delivered, so it
+     * always reflects the click/drag that raised it); meaningless for every
+     * other icon type. In the task view (window == NULL) this is
      * reserved for a future shared/dock element and is never currently
      * emitted. */
     struct
@@ -186,6 +189,7 @@ typedef struct wuss_event
       wuss_icon_t        *icon;
       wuss_mouse_action_t action;
       wuss_button_t       button;
+      int                 value;
     }
     icon;
 

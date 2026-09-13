@@ -69,6 +69,9 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
     config->backdrop.pattern_bg       = palette_WIMP16_GREY_50;
     config->body.window               = palette_WIMP16_GREY_87;
     config->body.menu                 = palette_WIMP16_WHITE;
+    config->slider.track              = palette_WIMP16_WHITE;
+    config->slider.value              = palette_WIMP16_GREY_50;
+    config->slider.surround           = wuss_NO_BACKGROUND;
   }
   else
   {
@@ -93,6 +96,9 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
     config->backdrop.pattern_bg       = palette_PICO8_LIGHT_GREY;
     config->body.window               = palette_PICO8_LIGHT_GREY;
     config->body.menu                 = palette_PICO8_WHITE;
+    config->slider.track              = palette_PICO8_WHITE;
+    config->slider.value              = palette_PICO8_DARK_GREY;
+    config->slider.surround           = wuss_NO_BACKGROUND;
   }
 }
 

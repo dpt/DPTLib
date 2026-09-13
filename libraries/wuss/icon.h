@@ -33,6 +33,9 @@ struct wuss_icon
 {
   wuss_icon_spec_t  spec;    /* bbox in virtual document space; text owned */
   wuss_icon_state_t state;
+  int               value;   /* wuss_ICON_TYPE_SLIDER: current value, in
+                              * [spec.u.slider.min,max]; spec.u.slider.default_value
+                              * is creation input only, never updated */
 };
 
 static inline int wuss__icon_pressed(const wuss_icon_t *icon)
@@ -68,6 +71,15 @@ void wuss__icon_select(wuss_window_t *window,
                        wuss_icon_t   *icon,
                        int            selected);
 
+/* Set icon->value, clamped to spec.u.slider.min/max, invalidating it if the
+ * clamped value changed. Ignored for types with no value. "icon" must be an
+ * icon of "window". Shared by wuss_icon_set_value and the slider drag path
+ * (core/mouse-click.c, core/mouse-move.c), which additionally raise
+ * wuss_EVENT_ICON with the new value -- this helper never does. */
+void wuss__icon_set_value(wuss_window_t *window,
+                          wuss_icon_t   *icon,
+                          int            value);
+
 /* Make "icon" (an icon of "window", or NULL) the hovered icon: clears the
  * hovered flag on the previous wuss->hover_icon and sets it on the new one,
  * invalidating whichever of the two changed. "window" is ignored when "icon"
@@ -83,6 +95,47 @@ void wuss__icon_box_to_screen(const box_t *content,
                               point_t      scroll,
                               const box_t *bbox,
                               box_t       *out);
+
+/* wuss_ICON_TYPE_SLIDER geometry and value/pixel conversion, shared by
+ * wuss__icon_draw and the click/drag path (core/mouse-click.c,
+ * core/mouse-move.c) so hit-testing cannot drift from what is drawn.
+ * "screen_box" is the icon's screen-space box, as wuss__icon_box_to_screen
+ * gives it. */
+
+/* The inner rect: "screen_box" (the icon's full bbox) inset by
+ * WUSS_SLIDER_GAP on all four sides. This is both the groove drawn inside it
+ * and the only area wuss__icon_hit_test accepts clicks/drags on; the gap and
+ * the rest of "screen_box" are painted with slider.surround and never
+ * interactive. */
+void wuss__slider_groove_box(const box_t *screen_box, box_t *out);
+
+/* Convert "value" (clamped to [lo,hi], lo <= hi) to a fill length in pixels
+ * along "groove"'s long axis, 0 at lo and the full long-axis extent at hi.
+ * For wuss_SLIDER_HORIZONTAL pixel 0 is the groove's left (x0); for VERTICAL
+ * it is the groove's bottom (y1), so value grows upward on screen even
+ * though screen y grows downward. */
+int wuss__slider_value_to_px(const box_t              *groove,
+                             wuss_slider_orientation_t orientation,
+                             int                       value,
+                             int                       lo,
+                             int                       hi);
+
+/* Convert a screen-space point's long-axis coordinate back to a value in
+ * [lo,hi] (lo <= hi), inverting wuss__slider_value_to_px (same pixel-0 end
+ * per orientation). */
+int wuss__slider_px_to_value(const box_t              *groove,
+                             wuss_slider_orientation_t orientation,
+                             point_t                   screen_point,
+                             int                       lo,
+                             int                       hi);
+
+/* "icon" (a slider icon of "window") maps a raw screen-space point (as passed
+ * to wuss_mouse_click/wuss_mouse_move) to the value its groove would read at
+ * that point, honouring a min > max reversed fill. Shared by the click-jump
+ * and drag-continuation paths (core/mouse-click.c, core/mouse-move.c). */
+int wuss__slider_value_for_point(wuss_window_t     *window,
+                                 const wuss_icon_t *icon,
+                                 point_t            screen_point);
 
 /* Invalidate exactly this icon's bbox on "window", via wuss_window_invalidate,
  * so a set_text / pressed-state / hide change repaints just the icon. "icon"
