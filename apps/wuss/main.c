@@ -207,16 +207,29 @@ static void wuss_frame(void *arg)
     for (i = 0; i < n; i++)
       p[i] = (unsigned char) rand();
 
-    wuss_frontend_present(c->frontend, c->bm);
+    wuss_frontend_present(c->frontend, c->bm, NULL);
+  }
+  else if (pixel_stress_pending)
+  {
+    pixel_stress(c->wuss, c->scr_width, c->scr_height);
+    wuss_frontend_present(c->frontend, c->bm, NULL);
   }
   else
   {
-    if (pixel_stress_pending)
-      pixel_stress(c->wuss, c->scr_width, c->scr_height);
-    else
-      wuss_redraw_dirty(c->wuss);
+    box_t dirty, region;
+    int   ndirty, i;
 
-    wuss_frontend_present(c->frontend, c->bm);
+    ndirty = wuss_get_dirty_count(c->wuss);
+    dirty = (box_t) BOX_INIT;
+    for (i = 0; i < ndirty; i++)
+    {
+      wuss_get_dirty(c->wuss, i, &region);
+      box_union(&dirty, &region, &dirty);
+    }
+
+    wuss_redraw_dirty(c->wuss);
+
+    wuss_frontend_present(c->frontend, c->bm, ndirty > 0 ? &dirty : NULL);
   }
 
 #ifdef __EMSCRIPTEN__
