@@ -104,6 +104,7 @@ set(PUBLIC_HEADERS
     include/geom/packer.h
     include/geom/point.h
     include/geom/size.h
+    include/geom/stack.h
     include/io/dirscan.h
     include/io/namelist.h
     include/io/path.h
@@ -310,7 +311,10 @@ set(GEOM_SOURCES
     libraries/geom/layout/layout.c
     libraries/geom/line/line.c
     libraries/geom/packer/impl.h
-    libraries/geom/packer/packer.c)
+    libraries/geom/packer/packer.c
+    libraries/geom/stack/impl.h
+    libraries/geom/stack/solve.c
+    libraries/geom/stack/valid-tree.c)
 
 set(IO_SOURCES
     libraries/io/dirscan/dirscan.c
@@ -687,6 +691,7 @@ if(BUILD_TESTS)
         libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
+        libraries/geom/stack/test/stack-test.c
         libraries/io/stream/test/stream-test.c
         libraries/text/txtfmt/test/txtfmt-test.c
         libraries/utils/array/test/array-test.c

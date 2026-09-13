@@ -33,7 +33,8 @@ extern testfn_t bitmap_rle_test,
 /* geom */
 extern testfn_t box_test,
                 layout_test,
-                packer_test;
+                packer_test,
+                stack_test;
 
 /* io */
 extern testfn_t stream_test;
