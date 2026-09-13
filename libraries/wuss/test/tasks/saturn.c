@@ -3,7 +3,9 @@
 #ifdef WUSS_APP
 
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -12,6 +14,7 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
+#include "geom/size.h"
 #include "utils/rng.h"
 #include "wuss/menu.h"
 
@@ -38,7 +41,12 @@
  *           x = sqrt(16384-P)/2                             -> planet body
  */
 
-#define SATURN_SIZE         256 /* window size is this value squared */
+/* the sample space below (and so the sketch itself) is always 256 pixels
+ * square, matching the original's -128..127 signed-byte range; the window's
+ * on-screen size (task->config.size, set via the Size... dialogue) scales
+ * independently, so a larger window just shows more margin around the same
+ * sketch and a smaller one clips it. */
+#define SATURN_SIZE         256
 
 /* The original works in a -128..127 sample space (BBC BASIC signed byte). */
 #define SATURN_HALF         (SATURN_SIZE / 2) /* sample-space centre / bias */
@@ -69,9 +77,16 @@ static int saturn_rnd(int n)
 /* MENU click over the content pops this. "Colours" leads to a submenu with
  * one row per task->fg/task->bg, each of which pops a wuss_colourmenu (see
  * saturn_create -- the two leaf items' submenu pointers are patched in there,
- * once the colourmenus exist). */
-enum { SATURN_MENU_COLOURS = 0 };
+ * once the colourmenus exist). "Size" hover-opens task->size_dialogue, a
+ * borrowed window built once in saturn_create and patched into
+ * g_saturn_menu_items[SATURN_MENU_SIZE].window there, the same way. */
+enum { SATURN_MENU_COLOURS = 0, SATURN_MENU_SIZE };
 enum { SATURN_COLOURS_MENU_FOREGROUND = 0, SATURN_COLOURS_MENU_BACKGROUND };
+
+/* the size dialogue's icons, in creation order (see saturn_size_dialogue_create) */
+enum { SATURN_SIZE_ICON_LABEL = 0, SATURN_SIZE_ICON_SLIDER,
+       SATURN_SIZE_ICON_VALUE, SATURN_SIZE_ICON_CANCEL,
+       SATURN_SIZE_ICON_APPLY, SATURN_SIZE_NICONS };
 
 static wuss_menu_item_t g_saturn_colours_items[] =
 {
@@ -86,13 +101,16 @@ static wuss_menu_t g_saturn_colours_menu =
 
 static wuss_menu_item_t g_saturn_menu_items[] =
 {
-  { "Colours", wuss_MENU_ITEM_NONE, &g_saturn_colours_menu, NULL, 0 }
+  { "Colours", wuss_MENU_ITEM_NONE, &g_saturn_colours_menu, NULL, 0 },
+  { "Size", wuss_MENU_ITEM_BORROWED_SUBMENU, NULL, NULL, 0 }
 };
 
 static wuss_menu_t g_saturn_menu =
 {
   "Saturn", g_saturn_menu_items, NELEMS(g_saturn_menu_items)
 };
+
+static result_t saturn_size_dialogue_create(saturn_task_t *task);
 
 result_t saturn_create(wuss_t                *wuss,
                        saturn_task_t         *task,
@@ -108,9 +126,14 @@ result_t saturn_create(wuss_t                *wuss,
   task->fg            = colour_rgb(0xFF, 0xFF, 0xFF);
   task->seed          = 1;
   task->config        = (config != NULL) ? *config : default_config;
-  task->fg_colourmenu = NULL;
-  task->bg_colourmenu = NULL;
-  task->menu_handle   = NULL;
+  task->fg_colourmenu     = NULL;
+  task->bg_colourmenu     = NULL;
+  task->menu_handle       = NULL;
+  task->size_dialogue     = NULL;
+  task->size_slider       = NULL;
+  task->size_value_label  = NULL;
+  task->size_cancel       = NULL;
+  task->size_apply        = NULL;
 
   /* saturn_redraw paints its own background */
   delegate_desc.handle    = saturn_handle;
@@ -146,11 +169,11 @@ result_t saturn_create(wuss_t                *wuss,
     wuss_colourmenu_menu(task->bg_colourmenu);
 
   rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(SATURN_SIZE, SATURN_SIZE),
+                                 SIZE2D(task->config.size, task->config.size),
                                  "Saturn",
                                  wuss_WINDOW_DEFAULT,
                                  wuss_NO_BACKDROP,
-                                 SIZE2D(SATURN_SIZE, SATURN_SIZE),
+                                 SIZE2D(task->config.size, task->config.size),
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
@@ -158,9 +181,20 @@ result_t saturn_create(wuss_t                *wuss,
     wuss_colourmenu_destroy(task->bg_colourmenu);
     wuss_colourmenu_destroy(task->fg_colourmenu);
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
   }
 
-  return rc;
+  rc = saturn_size_dialogue_create(task);
+  if (rc != result_OK)
+  {
+    wuss_colourmenu_destroy(task->bg_colourmenu);
+    wuss_colourmenu_destroy(task->fg_colourmenu);
+    wuss_task_destroy(delegate); /* closes task->window too; QUIT frees the block */
+    return rc;
+  }
+  g_saturn_menu_items[SATURN_MENU_SIZE].window = task->size_dialogue;
+
+  return result_OK;
 }
 
 /* plot one point in window content space, clipped to the window. x,y are
@@ -251,7 +285,7 @@ static result_t saturn_mouse(saturn_task_t      *task,
                              wuss_button_t       button,
                              wuss_window_t      *window)
 {
-  if (action != wuss_MOUSE_DOWN)
+  if (action != wuss_MOUSE_DOWN || window != task->window)
     return result_OK;
 
   if (button & wuss_BUTTON_MENU)
@@ -268,8 +302,174 @@ static result_t saturn_mouse(saturn_task_t      *task,
   return result_OK;
 }
 
-/* A pick from either colour submenu: resolve against whichever colourmenu it
- * came from and store into the matching field. */
+/* nearest multiple of SATURN_SIZE_STEP to v, clamped to
+ * [SATURN_SIZE_MIN,SATURN_SIZE_MAX] */
+static int saturn_size_snap(int v)
+{
+  v = ((v - SATURN_SIZE_MIN + SATURN_SIZE_STEP / 2) / SATURN_SIZE_STEP) *
+      SATURN_SIZE_STEP + SATURN_SIZE_MIN;
+
+  return CLAMP(v, SATURN_SIZE_MIN, SATURN_SIZE_MAX);
+}
+
+/* Build the size dialogue once: a label, a slider snapped to
+ * SATURN_SIZE_STEP, a label echoing the slider's current value, and
+ * Cancel/Apply buttons. Created hidden -- wuss shows and hides it itself,
+ * as a menu leaf's borrowed window (see g_saturn_menu_items[SATURN_MENU_SIZE]
+ * and wuss_menu_item_t::window), so it must outlive the open menu chain and
+ * is never closed here, only hidden. */
+static result_t saturn_size_dialogue_create(saturn_task_t *task)
+{
+  wuss_icon_spec_t specs[SATURN_SIZE_NICONS];
+  wuss_icon_t     *made[SATURN_SIZE_NICONS];
+  wuss_icon_spec_t *s;
+  char              buf[16];
+  result_t          rc;
+
+  rc = wuss_window_create_placed(task->delegate,
+                                 SIZE2D(160, 112),
+                                 "Size",
+                                 wuss_WINDOW_HIDDEN | wuss_WINDOW_NO_CLOSE |
+                                 wuss_WINDOW_NO_BACK |
+                                 wuss_WINDOW_NO_TOGGLE_SIZE |
+                                 wuss_WINDOW_NO_VSCROLL |
+                                 wuss_WINDOW_NO_HSCROLL |
+                                 wuss_WINDOW_NO_RESIZE,
+                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                                 SIZE2D(160, 112),
+                                 SIZE2D(160, 112),
+                                 &task->size_dialogue);
+  if (rc != result_OK)
+    return rc;
+
+  memset(specs, 0, sizeof(specs));
+
+  s        = &specs[SATURN_SIZE_ICON_LABEL];
+  s->bbox  = (box_t) BOX_POS_SIZE(12, 10, 60, 16);
+  s->type  = wuss_ICON_TYPE_LABEL;
+  s->text  = "Size";
+  s->fg    = wuss_COLOUR_BLACK;
+  s->bg    = wuss_NO_BACKGROUND;
+
+  s       = &specs[SATURN_SIZE_ICON_SLIDER];
+  s->bbox = (box_t) BOX_POS_SIZE(12, 30, 136, 20);
+  s->type = wuss_ICON_TYPE_SLIDER;
+  s->fg   = wuss_COLOUR_BLACK;
+  s->bg   = wuss_NO_BACKGROUND;
+  s->u.slider.orientation   = wuss_SLIDER_HORIZONTAL;
+  s->u.slider.min           = SATURN_SIZE_MIN;
+  s->u.slider.max           = SATURN_SIZE_MAX;
+  s->u.slider.default_value = saturn_size_snap(task->config.size);
+
+  snprintf(buf, sizeof(buf), "%d", s->u.slider.default_value);
+  s        = &specs[SATURN_SIZE_ICON_VALUE];
+  s->bbox  = (box_t) BOX_POS_SIZE(12, 56, 60, 16);
+  s->type  = wuss_ICON_TYPE_LABEL;
+  s->text  = buf; /* copied by wuss_icon_create_array */
+  s->fg    = wuss_COLOUR_BLACK;
+  s->bg    = wuss_NO_BACKGROUND;
+
+  s        = &specs[SATURN_SIZE_ICON_CANCEL];
+  s->bbox  = (box_t) BOX_POS_SIZE(12, 74, 60, 22);
+  s->type  = wuss_ICON_TYPE_ACTION;
+  s->text  = "Cancel";
+  s->fg    = wuss_COLOUR_BLACK;
+  s->bg    = wuss_COLOUR_WINDOW;
+
+  s        = &specs[SATURN_SIZE_ICON_APPLY];
+  s->bbox  = (box_t) BOX_POS_SIZE(88, 74, 60, 34);
+  s->type  = wuss_ICON_TYPE_ACTION;
+  s->text  = "Apply";
+  s->fg    = wuss_COLOUR_BLACK;
+  s->bg    = wuss_COLOUR_WINDOW;
+  s->flags = wuss_ICON_FLAGS_DEFAULT;
+
+  rc = wuss_icon_create_array(task->size_dialogue, specs, SATURN_SIZE_NICONS,
+                              made);
+  if (rc != result_OK)
+  {
+    wuss_window_close(task->size_dialogue); /* not yet a menu leaf: safe to close */
+    task->size_dialogue = NULL;
+    return rc;
+  }
+
+  task->size_slider      = made[SATURN_SIZE_ICON_SLIDER];
+  task->size_value_label = made[SATURN_SIZE_ICON_VALUE];
+  task->size_cancel      = made[SATURN_SIZE_ICON_CANCEL];
+  task->size_apply       = made[SATURN_SIZE_ICON_APPLY];
+
+  return result_OK;
+}
+
+/* wuss_EVENT_ICON on the size dialogue: slider drag updates the echo label
+ * (snapped to SATURN_SIZE_STEP); Cancel just dismisses the menu chain;
+ * Apply resizes the planet window to the chosen size, stores it as the new
+ * default and dismisses. Dismissing goes through wuss_menu_close rather
+ * than touching the (borrowed, reused) window directly -- that is what
+ * hides it, same as a click outside the chain would. */
+static result_t saturn_size_icon(saturn_task_t      *task,
+                                 const wuss_event_t *event)
+{
+  wuss_icon_t *icon;
+  int          value;
+  char         buf[16];
+
+  icon = event->data.icon.icon;
+
+  if (icon == task->size_slider)
+  {
+    if (event->data.icon.action != wuss_MOUSE_DOWN &&
+        event->data.icon.action != wuss_MOUSE_MOVE)
+      return result_OK;
+
+    value = saturn_size_snap(event->data.icon.value);
+    wuss_icon_set_value(task->size_dialogue, task->size_slider, value);
+    snprintf(buf, sizeof(buf), "%d", value);
+    return wuss_icon_set_text(task->size_dialogue, task->size_value_label,
+                              buf);
+  }
+
+  if (event->data.icon.action != wuss_MOUSE_DOWN)
+    return result_OK;
+
+  if (icon == task->size_cancel)
+  {
+    wuss_menu_close(task->menu_handle);
+    task->menu_handle = NULL;
+    return result_OK;
+  }
+
+  if (icon == task->size_apply)
+  {
+    value = wuss_icon_get_value(task->size_slider);
+    task->config.size = value;
+    wuss_menu_close(task->menu_handle);
+    task->menu_handle = NULL;
+    return wuss_window_resize(task->window, SIZE2D(value, value));
+  }
+
+  return result_OK;
+}
+
+/* wuss_EVENT_PRE_SHOW on the size dialogue: resync the slider and its echo
+ * label to task->config.size, in case Apply (or a config passed to
+ * saturn_create) changed it since the dialogue was last shown. Always
+ * allows the show. */
+static result_t saturn_size_pre_show(saturn_task_t *task)
+{
+  int  value;
+  char buf[16];
+
+  value = saturn_size_snap(task->config.size);
+  wuss_icon_set_value(task->size_dialogue, task->size_slider, value);
+  snprintf(buf, sizeof(buf), "%d", value);
+
+  return wuss_icon_set_text(task->size_dialogue, task->size_value_label, buf);
+}
+
+/* A pick from either colour submenu, resolved against whichever colourmenu
+ * it came from. "Size" is a wuss_menu_item_t::window leaf, not a leaf pick,
+ * so it never reaches here -- see saturn_size_icon and saturn_size_pre_show. */
 static result_t saturn_menu_select(saturn_task_t      *task,
                                    const wuss_event_t *event)
 {
@@ -311,11 +511,25 @@ result_t saturn_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
+    /* the size dialogue has no content of its own -- just its icons, which
+     * wuss already drew */
+    if (window == task->size_dialogue)
+      return result_OK;
     return saturn_redraw(event, task);
 
   case wuss_EVENT_MOUSE:
     return saturn_mouse(task, event->data.mouse.action,
                         event->data.mouse.button, window);
+
+  case wuss_EVENT_ICON:
+    if (window == task->size_dialogue)
+      return saturn_size_icon(task, event);
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+    if (window == task->size_dialogue)
+      return saturn_size_pre_show(task);
+    return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
     return saturn_menu_select(task, event);
