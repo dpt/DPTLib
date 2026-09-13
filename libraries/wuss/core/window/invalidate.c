@@ -307,6 +307,11 @@ int wuss__blit_pieces(wuss_window_t *window,
      * Safe raw -- blit_dest[idx] was already clipped clear of occluders. */
     wuss__invalidate_minus(window->wuss, &blit_dest[idx], &got);
 
+    /* "got" itself needs no repaint -- screen_copy_rect already gave it
+     * correct pixels -- but a frontend that only re-uploads what
+     * wuss_get_touched_extent reports still needs to know they moved. */
+    wuss__touch(window->wuss, &got);
+
     if (*ncopied < WUSS_MAX_INVALIDATE_PIECES)
       copied[(*ncopied)++] = got;
   }

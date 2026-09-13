@@ -144,6 +144,8 @@ struct wuss
 #endif
   box_t                       dirty[WUSS_MAX_DIRTY]; /* accumulated by wuss_invalidate; reset by a redraw */
   int                         ndirty;
+  box_t                       touched[WUSS_MAX_DIRTY]; /* accumulated by wuss__touch; reset by wuss_clear_touched */
+  int                         ntouched;
   packer_t                   *layout;    /* owned; occupied screen area for
                                           * wuss_window_create_placed, lazily
                                           * created on first auto-placement */
@@ -426,6 +428,7 @@ void            wuss__invalidate_minus(wuss_t      *wuss,
                                        const box_t *whole,
                                        const box_t *keep);
 void            wuss__invalidate_uncovered(wuss_window_t *window);
+void            wuss__touch(wuss_t *wuss, const box_t *box);
 
 /* Clip "box" (screen space) down to the parts not already covered by
  * windows above "window" in the z-order, writing the surviving pieces to

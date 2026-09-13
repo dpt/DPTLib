@@ -151,9 +151,16 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
 
         if (screen_copy_rect(window->wuss->scr, &src[i],
                              POINT(src[i].x0 - dx, src[i].y0 - dy),
-                             &got) == result_OK &&
-            ncopied < WUSS_MAX_INVALIDATE_PIECES)
-          copied[ncopied++] = got;
+                             &got) == result_OK)
+        {
+          /* "got" is already correct on screen -- the blit reused it --
+           * but a frontend re-uploading only wuss_get_touched_extent still
+           * needs to know it moved. */
+          wuss__touch(window->wuss, &got);
+
+          if (ncopied < WUSS_MAX_INVALIDATE_PIECES)
+            copied[ncopied++] = got;
+        }
       }
     }
 

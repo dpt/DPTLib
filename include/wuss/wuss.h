@@ -739,6 +739,31 @@ int wuss_get_dirty_count(const wuss_t *wuss);
 void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
 
 /**
+ * Fetch the bounding box of every screen-space region "touched" since the
+ * last wuss_clear_touched -- pixels a fast blit path (window move/resize,
+ * scroll) slid to a new position without a repaint, because the backing
+ * bitmap was already correct there. wuss_redraw_dirty never repaints these;
+ * they exist for a frontend that re-uploads the screen to a display surface
+ * (e.g. a GPU texture) piecemeal and needs to know such pixels moved even
+ * though wuss itself did no drawing there this frame.
+ *
+ * \param[in]  wuss Window manager.
+ * \param[out] out  Filled in with the union of every touched region.
+ * \return 1 if anything was touched (and \p out was filled in), 0 if nothing
+ *         was.
+ */
+int wuss_get_touched_extent(const wuss_t *wuss, box_t *out);
+
+/**
+ * Clear the regions accumulated for wuss_get_touched_extent. A frontend
+ * calls this once it has folded the touched extent into whatever it presents
+ * this frame, so the next frame starts from empty.
+ *
+ * \param[in] wuss Window manager.
+ */
+void wuss_clear_touched(wuss_t *wuss);
+
+/**
  * Deliver a mouse-down or mouse-up event (action must be wuss_MOUSE_DOWN or
  * wuss_MOUSE_UP). Hit-tests the topmost window at (x,y). On a down, a
  * titlebar click brings the window to front if button is Select (Adjust and

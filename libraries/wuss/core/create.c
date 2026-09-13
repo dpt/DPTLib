@@ -318,7 +318,8 @@ result_t wuss_create(screen_t               *scr,
   w->menu_eat_up        = 0;
 #endif
 
-  w->ndirty = 0;
+  w->ndirty   = 0;
+  w->ntouched = 0;
 
   w->layout    = NULL;
   w->cascade.x = 0;
