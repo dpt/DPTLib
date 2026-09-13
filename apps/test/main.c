@@ -61,6 +61,7 @@ static const test_t tests[] =
   { "box",        box_test        },
   { "layout",     layout_test     },
   { "packer",     packer_test     },
+  { "stack",      stack_test      },
 
   { "stream",     stream_test     },
 
