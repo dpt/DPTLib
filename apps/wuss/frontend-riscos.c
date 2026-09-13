@@ -331,10 +331,13 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
   return false;
 }
 
-void wuss_frontend_present(wuss_frontend_t *fe, const bitmap_t *bm)
+void wuss_frontend_present(wuss_frontend_t *fe,
+                           const bitmap_t  *bm,
+                           const box_t     *dirty)
 {
   NOT_USED(fe);
   NOT_USED(bm);
+  NOT_USED(dirty);
 
   /* wuss drew straight into screen memory; just pace to the frame rate */
   _swix(OS_Byte, _IN(0), 19);
