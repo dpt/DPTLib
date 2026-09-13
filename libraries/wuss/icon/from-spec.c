@@ -43,8 +43,13 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   case wuss_ICON_TYPE_WRITABLE:
   case wuss_ICON_TYPE_NUMBER:
   case wuss_ICON_TYPE_STRING_SET:
-  case wuss_ICON_TYPE_SLIDER:
   case wuss_ICON_TYPE_DRAGGABLE:
+    break;
+
+  case wuss_ICON_TYPE_SLIDER:
+    if (spec->u.slider.orientation != wuss_SLIDER_HORIZONTAL &&
+        spec->u.slider.orientation != wuss_SLIDER_VERTICAL)
+      return result_WUSS_BAD_ICON;
     break;
 
   default:
@@ -147,6 +152,19 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   }
 
   out->state = wuss_ICON_STATE_NONE;
+
+  if (spec->type == wuss_ICON_TYPE_SLIDER)
+  {
+    int lo, hi;
+
+    lo = MIN(spec->u.slider.min, spec->u.slider.max);
+    hi = MAX(spec->u.slider.min, spec->u.slider.max);
+    out->value = CLAMP(spec->u.slider.default_value, lo, hi);
+  }
+  else
+  {
+    out->value = 0;
+  }
 
   return result_OK;
 }

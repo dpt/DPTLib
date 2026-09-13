@@ -290,6 +290,42 @@ result_t wuss_create(screen_t               *scr,
 #endif
 #endif /* WUSS_FURNITURE */
 
+#ifdef WUSS_ICONS
+  {
+    wuss_colour_t track, value, surround;
+
+    if (config != NULL)
+    {
+      track = (config->slider.track == wuss_NO_BACKGROUND)
+            ? w->window_bg
+            : wuss__resolve_colour(w, config->slider.track);
+      value = (config->slider.value == wuss_NO_BACKGROUND)
+            ? w->button_bg
+            : wuss__resolve_colour(w, config->slider.value);
+      surround = (config->slider.surround == wuss_NO_BACKGROUND)
+               ? w->button_bg
+               : wuss__resolve_colour(w, config->slider.surround);
+    }
+    else
+    {
+      track    = w->window_bg;
+      value    = w->button_bg;
+      surround = w->button_bg;
+    }
+
+    if (track >= w->npalette || value >= w->npalette || surround >= w->npalette)
+    {
+      wuss__free(w, w->palette);
+      wuss__free(w, w);
+      return result_WUSS_BAD_COLOUR;
+    }
+
+    w->slider_track    = track;
+    w->slider_value    = value;
+    w->slider_surround = surround;
+  }
+#endif
+
   /* Second pass: the chrome colours are stored and concrete now, so fill in
    * the chrome-role symbolic slots (wuss_COLOUR_TITLE_BG etc.). */
   wuss__rebuild_palettecache(w);

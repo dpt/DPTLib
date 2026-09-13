@@ -145,7 +145,10 @@ typedef unsigned char wuss_colour_t;
  * wuss_COLOUR_BUTTON_PRESSED is button.pressed,
  * wuss_COLOUR_ACCENT is accent.colour,
  * wuss_COLOUR_BACKDROP is backdrop.colour,
- * wuss_COLOUR_WINDOW is body.window, wuss_COLOUR_MENU is body.menu. */
+ * wuss_COLOUR_WINDOW is body.window, wuss_COLOUR_MENU is body.menu,
+ * wuss_COLOUR_SLIDER_TRACK is slider.track,
+ * wuss_COLOUR_SLIDER_VALUE is slider.value,
+ * wuss_COLOUR_SLIDER_SURROUND is slider.surround. */
 #define wuss_COLOUR_TITLE_BG        (wuss_COLOUR_SYMBOLIC + 16)
 #define wuss_COLOUR_TITLE_FG        (wuss_COLOUR_SYMBOLIC + 17)
 #define wuss_COLOUR_BUTTON_HILIGHT  (wuss_COLOUR_SYMBOLIC + 18)
@@ -158,6 +161,9 @@ typedef unsigned char wuss_colour_t;
 #define wuss_COLOUR_BUTTON_PRESSED  (wuss_COLOUR_SYMBOLIC + 25)
 #define wuss_COLOUR_BORDER_DIVIDER  (wuss_COLOUR_SYMBOLIC + 26)
 #define wuss_COLOUR_BUTTON_BG       (wuss_COLOUR_SYMBOLIC + 27)
+#define wuss_COLOUR_SLIDER_TRACK    (wuss_COLOUR_SYMBOLIC + 28)
+#define wuss_COLOUR_SLIDER_VALUE    (wuss_COLOUR_SYMBOLIC + 29)
+#define wuss_COLOUR_SLIDER_SURROUND (wuss_COLOUR_SYMBOLIC + 30)
 
 /** Furniture chrome colours, one entry per class of furniture. Title is
  * the only two-tone class (fill + text); the rest are drawn as a single
@@ -388,6 +394,25 @@ typedef struct wuss_config
     wuss_colour_t colour; /**< Default-button accent fill. */
   }
   accent;
+
+  /**
+   * wuss_ICON_TYPE_SLIDER colours, as indices into the system palette:
+   * surround is the icon's full bounding box, including the fixed 4px gap
+   * around the inner slider rect; track is the sunken groove's ground (the
+   * unfilled portion) within that inner rect; value is the fill marking the
+   * current value. surround and value default to button.bg and track to
+   * body.window when config is NULL. Read back through
+   * wuss_COLOUR_SLIDER_SURROUND / wuss_COLOUR_SLIDER_TRACK /
+   * wuss_COLOUR_SLIDER_VALUE. Ignored when WUSS_ICONS is off.
+   */
+  struct
+  {
+    wuss_colour_t surround; /**< Bounding box and gap around the
+                             *   inner rect. */
+    wuss_colour_t track;    /**< Groove ground (unfilled portion). */
+    wuss_colour_t value;    /**< Fill marking the current value. */
+  }
+  slider;
 
   /**
    * Conventional body fills, as system-palette indices: window is the

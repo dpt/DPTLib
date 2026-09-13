@@ -38,7 +38,7 @@
 #if defined(WUSS_FURNITURE) && defined(WUSS_ICONS)
 #include "../core/impl.h"
 #endif
-#if defined(WUSS_MENUS) && defined(WUSS_ICONS)
+#if defined(WUSS_ICONS)
 #include "../icon.h"
 #endif
 
@@ -5904,6 +5904,154 @@ QuitFail:
       goto Failure;
 
     wuss_window_close(win_dv);
+  }
+
+  printf("test: wuss__slider_value_to_px / wuss__slider_px_to_value convert "
+        "and round-trip\n");
+
+  {
+    box_t   groove;
+    point_t pt;
+
+    groove.x0 = 0; groove.y0 = 0;
+    groove.x1 = 100; groove.y1 = 20;
+
+    /* endpoints and midpoint of a [0,100] range over a 100px groove: exact,
+     * no rounding needed */
+    if (wuss__slider_value_to_px(&groove, wuss_SLIDER_HORIZONTAL,
+                                 0, 0, 100) != 0)
+      goto Failure;
+    if (wuss__slider_value_to_px(&groove, wuss_SLIDER_HORIZONTAL,
+                                 100, 0, 100) != 100)
+      goto Failure;
+    if (wuss__slider_value_to_px(&groove, wuss_SLIDER_HORIZONTAL,
+                                 50, 0, 100) != 50)
+      goto Failure;
+
+    /* a degenerate [lo,hi] span always reads back as pixel 0 */
+    if (wuss__slider_value_to_px(&groove, wuss_SLIDER_HORIZONTAL,
+                                 7, 7, 7) != 0)
+      goto Failure;
+
+    /* px_to_value rounds to the nearest value rather than truncating: a 10px
+     * groove over [0,3] places value 1 at 3.33px, so pixel 3 (0.9 of the way
+     * to value 1) must round up to 1, not truncate down to 0 */
+    groove.x0 = 0; groove.y0 = 0;
+    groove.x1 = 10; groove.y1 = 20;
+
+    pt.x = 3; pt.y = 10;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_HORIZONTAL,
+                                 pt, 0, 3) != 1)
+      goto Failure;
+
+    /* pixel 1 (0.3 of the way to value 1) is closer to 0, and must round
+     * down rather than up */
+    pt.x = 1; pt.y = 10;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_HORIZONTAL,
+                                 pt, 0, 3) != 0)
+      goto Failure;
+
+    /* an exact half-way pixel rounds up to the higher value: a 4px groove
+     * over [0,1] puts the 0/1 boundary at pixel 2 */
+    groove.x0 = 0; groove.y0 = 0;
+    groove.x1 = 4; groove.y1 = 20;
+
+    pt.x = 2; pt.y = 10;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_HORIZONTAL,
+                                 pt, 0, 1) != 1)
+      goto Failure;
+
+    /* a point left of the groove clamps to lo, one past its right edge
+     * clamps to hi */
+    pt.x = -50; pt.y = 10;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_HORIZONTAL,
+                                 pt, 0, 1) != 0)
+      goto Failure;
+    pt.x = 50; pt.y = 10;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_HORIZONTAL,
+                                 pt, 0, 1) != 1)
+      goto Failure;
+
+    /* VERTICAL: pixel 0 is the groove's bottom (y1), value grows upward */
+    groove.x0 = 0; groove.y0 = 0;
+    groove.x1 = 20; groove.y1 = 10;
+
+    pt.x = 10; pt.y = groove.y1;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_VERTICAL,
+                                 pt, 0, 100) != 0)
+      goto Failure;
+    pt.x = 10; pt.y = groove.y0;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_VERTICAL,
+                                 pt, 0, 100) != 100)
+      goto Failure;
+  }
+
+  printf("test: wuss__slider_value_for_point maps a screen click through a "
+        "real slider icon, honouring the groove gap and a reversed "
+        "min > max\n");
+
+  {
+    static test_task_t tc_sl;
+    wuss_task_t       *delegate_sl;
+    wuss_window_t     *win_sl;
+    wuss_icon_t       *icon_sl;
+    wuss_icon_spec_t   spec_sl;
+    box_t              box_sl, content_sl, screen_box_sl, groove_sl;
+    point_t            scroll_sl, pt_sl;
+
+    delegate_sl = mk_task(wuss, test_handle, &tc_sl);
+    if (delegate_sl == NULL) goto Failure;
+
+    box_sl.x0 = 5; box_sl.y0 = 5; box_sl.x1 = 125; box_sl.y1 = 105;
+    rc = wuss_window_create(delegate_sl, &box_sl, "SL", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(400, 400), SIZE2D(0, 0), &win_sl);
+    if (rc != result_OK)
+      goto Failure;
+
+    memset(&spec_sl, 0, sizeof(spec_sl));
+    spec_sl.bbox                  = (box_t) BOX_POS_SIZE(0, 0, 108, 20);
+    spec_sl.type                  = wuss_ICON_TYPE_SLIDER;
+    spec_sl.u.slider.orientation  = wuss_SLIDER_HORIZONTAL;
+    spec_sl.u.slider.min          = 0;
+    spec_sl.u.slider.max          = 100;
+    spec_sl.u.slider.default_value = 0;
+    rc = wuss_icon_create(win_sl, &spec_sl, &icon_sl);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_sl, &content_sl);
+    wuss_window_get_scroll(win_sl, &scroll_sl);
+    wuss__icon_box_to_screen(&content_sl, scroll_sl, &spec_sl.bbox,
+                             &screen_box_sl);
+    wuss__slider_groove_box(&screen_box_sl, &groove_sl);
+
+    /* a click at the groove's on-screen left/right edges reads back as the
+     * slider's min/max, confirming wuss__slider_value_for_point applies the
+     * WUSS_SLIDER_GAP inset rather than reading off the full icon bbox */
+    pt_sl.x = groove_sl.x0; pt_sl.y = (groove_sl.y0 + groove_sl.y1) / 2;
+    if (wuss__slider_value_for_point(win_sl, icon_sl, pt_sl) != 0)
+      goto Failure;
+
+    pt_sl.x = groove_sl.x1; pt_sl.y = (groove_sl.y0 + groove_sl.y1) / 2;
+    if (wuss__slider_value_for_point(win_sl, icon_sl, pt_sl) != 100)
+      goto Failure;
+
+    /* a reversed min > max mirrors the reading: the groove's left pixel
+     * (nominally "pixel 0") now yields the high end of [lo,hi] */
+    wuss_icon_set_value(win_sl, icon_sl, 100);
+    icon_sl->spec.u.slider.min = 100;
+    icon_sl->spec.u.slider.max = 0;
+
+    pt_sl.x = groove_sl.x0; pt_sl.y = (groove_sl.y0 + groove_sl.y1) / 2;
+    if (wuss__slider_value_for_point(win_sl, icon_sl, pt_sl) != 100)
+      goto Failure;
+
+    pt_sl.x = groove_sl.x1; pt_sl.y = (groove_sl.y0 + groove_sl.y1) / 2;
+    if (wuss__slider_value_for_point(win_sl, icon_sl, pt_sl) != 0)
+      goto Failure;
+
+    wuss_window_close(win_sl);
   }
 
   printf("test: wuss_icons_load scans resources/wuss/icons and compresses\n");

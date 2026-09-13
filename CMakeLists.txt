@@ -440,6 +440,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/get-selected.c
     libraries/wuss/icon/get-text.c
     libraries/wuss/icon/get-type.c
+    libraries/wuss/icon/get-value.c
     libraries/wuss/icon/hit-test.c
     libraries/wuss/icon/invalidate.c
     libraries/wuss/icon/plot.c
@@ -449,6 +450,8 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/set-hover.c
     libraries/wuss/icon/set-selected.c
     libraries/wuss/icon/set-text.c
+    libraries/wuss/icon/set-value.c
+    libraries/wuss/icon/slider-box.c
     libraries/wuss/icon.h)
 
 set(WUSS_MENU_SOURCES
@@ -759,6 +762,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/palette.c
         libraries/wuss/test/tasks/porter-duff.c
         libraries/wuss/test/tasks/saturn.c
+        libraries/wuss/test/tasks/slider.c
         libraries/wuss/test/tasks/sofa.c
         libraries/wuss/test/tasks/swatches.c
         libraries/wuss/test/tasks/text.c)

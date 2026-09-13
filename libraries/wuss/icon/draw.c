@@ -44,8 +44,7 @@ static void icon_fill_bevel(screen_t    *scr,
                             colour_t     light,
                             colour_t     dark)
 {
-  screen_fill_rect(scr, b->x0, b->y0,
-                   SIZE2D(b->x1 - b->x0, b->y1 - b->y0), fill);
+  screen_fill_rect(scr, b->x0, b->y0, box_size(b), fill);
   screen_draw_bevel_edge(scr, b, light, dark);
 }
 
@@ -66,12 +65,10 @@ static void icon_draw_action_border(screen_t    *scr,
   ring = *b;
   screen_draw_bevel_edge(scr, &ring, dark, light);
 
-  ring = (box_t) BOX_POS_SIZE(b->x0 + 2, b->y0 + 2,
-                              b->x1 - b->x0 - 4, b->y1 - b->y0 - 4);
+  ring = box_grown(b, -2);
   screen_draw_bevel_edge(scr, &ring, accent, accent);
 
-  ring = (box_t) BOX_POS_SIZE(b->x0 + 4, b->y0 + 4,
-                              b->x1 - b->x0 - 8, b->y1 - b->y0 - 8);
+  ring = box_grown(b, -4);
   screen_draw_bevel_edge(scr, &ring, pressed ? dark : light,
                                      pressed ? light : dark);
 }
@@ -90,8 +87,7 @@ static void icon_draw_divider_border(screen_t    *scr,
   ring = *b;
   screen_draw_bevel_edge(scr, &ring, divider, light);
 
-  ring = (box_t) BOX_POS_SIZE(b->x0 + 2, b->y0 + 2,
-                              b->x1 - b->x0 - 4, b->y1 - b->y0 - 4);
+  ring = box_grown(b, -2);
   screen_draw_bevel_edge(scr, &ring, light, divider);
 }
 
@@ -183,8 +179,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   if (icon->bg != wuss_NO_BACKGROUND)
   {
     bg = c->wuss->palette[icon->bg];
-    screen_fill_rect(c->scr, b->x0, b->y0,
-                     SIZE2D(b->x1 - b->x0, b->y1 - b->y0), bg);
+    screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), bg);
   }
   else
   {
@@ -329,8 +324,7 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
      * "action" surround as wuss_ICON_BORDER_ACTION, distinct from the plain
      * bevelled buttons around it. */
 
-    screen_fill_rect(c->scr, b->x0, b->y0,
-                     SIZE2D(b->x1 - b->x0, b->y1 - b->y0), base);
+    screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), base);
     icon_draw_action_border(c->scr, b, light, dark,
                             c->wuss->palette[c->wuss->accent], pressed);
   }
@@ -420,15 +414,13 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
   bg = icon_blend_ground(c, glyph);
 
   if (icon->bg != wuss_NO_BACKGROUND)
-    screen_fill_rect(c->scr, b->x0, b->y0,
-                     SIZE2D(b->x1 - b->x0, b->y1 - b->y0), bg);
+    screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), bg);
   else
     /* no explicit bg to repaint the whole box, but the state we are about to
      * draw (a smaller radon/radoff swap, or a cleared tick/centre) can leave
      * fewer pixels than last time -- clear just the glyph box so no stale
      * glyph shows through. The label to its right never changes on select. */
-    screen_fill_rect(c->scr, g.x0, g.y0,
-                     SIZE2D(g.x1 - g.x0, g.y1 - g.y0), bg);
+    screen_fill_rect(c->scr, g.x0, g.y0, box_size(&g), bg);
 
   if (bm != NULL)
   {
@@ -448,8 +440,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
   else
   {
     /* a box; a tick (two strokes) when selected */
-    screen_draw_rect(c->scr, g.x0, g.y0,
-                             SIZE2D(g.x1 - g.x0, g.y1 - g.y0), glyph);
+    screen_draw_rect(c->scr, g.x0, g.y0, box_size(&g), glyph);
     if (wuss__icon_selected(c->icon))
     {
       screen_draw_line(c->scr, g.x0 + 2, g.y0 + gh / 2,
@@ -536,8 +527,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     screen_fill_rect(c->scr, text_x0, b->y0,
                      SIZE2D(text_x1 - text_x0, b->y1 - b->y0), text_ground);
   else if (icon->bg != wuss_NO_BACKGROUND)
-    screen_fill_rect(c->scr, b->x0, b->y0,
-                     SIZE2D(b->x1 - b->x0, b->y1 - b->y0), ground);
+    screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), ground);
 
   /* left-edge colour chip (wins over the tick) or tick when selected */
   if ((icon->flags & wuss_ICON_FLAGS_SWATCH) &&
@@ -626,6 +616,55 @@ static void wuss__icon_draw_rule(const icon_draw_ctx_t *c)
 
 /* ----------------------------------------------------------------------- */
 
+static void wuss__icon_draw_slider(const icon_draw_ctx_t *c)
+{
+  const wuss_icon_spec_t *icon = &c->icon->spec;
+  colour_t                surround, track, value, light, dark;
+  box_t                   surround_box, groove, fill;
+  int                     lo, hi, px;
+
+  surround = c->wuss->palette[c->wuss->slider_surround];
+  track    = c->wuss->palette[c->wuss->slider_track];
+  value    = c->wuss->palette[c->wuss->slider_value];
+  light    = c->wuss->palette[c->wuss->bevel_light];
+  dark     = c->wuss->palette[c->wuss->bevel_dark];
+
+  /* draw the surround */
+  
+  surround_box = box_grown(&c->b, -2); /* inset by bevel width to avoid overdraw */
+  screen_fill_rect(c->scr, surround_box.x0, surround_box.y0,
+                   box_size(&surround_box), surround);
+
+  /* draw the bevel */
+  
+  screen_draw_bevel_edge(c->scr, &c->b, dark, light);
+
+  wuss__slider_groove_box(&c->b, &groove);
+  
+  /* draw the track */
+
+  lo = MIN(icon->u.slider.min, icon->u.slider.max);
+  hi = MAX(icon->u.slider.min, icon->u.slider.max);
+  px = wuss__slider_value_to_px(&groove, icon->u.slider.orientation,
+                                c->icon->value, lo, hi);
+  if (icon->u.slider.min > icon->u.slider.max)
+    px = (icon->u.slider.orientation == wuss_SLIDER_HORIZONTAL)
+       ? (groove.x1 - groove.x0) - px
+       : (groove.y1 - groove.y0) - px;
+
+  fill = groove;
+  if (icon->u.slider.orientation == wuss_SLIDER_HORIZONTAL)
+    fill.x1 = fill.x0 + px;
+  else
+    fill.y0 = fill.y1 - px;
+
+  screen_fill_rect(c->scr, groove.x0, groove.y0, box_size(&groove), track);
+  if (px > 0)
+    screen_fill_rect(c->scr, fill.x0, fill.y0, box_size(&fill), value);
+}
+
+/* ----------------------------------------------------------------------- */
+
 void wuss__icon_draw(wuss_t              *wuss,
                      const wuss_window_t *window,
                      const wuss_icon_t   *icon,
@@ -700,12 +739,15 @@ void wuss__icon_draw(wuss_t              *wuss,
     wuss__icon_draw_rule(&c);
     break;
 
+  case wuss_ICON_TYPE_SLIDER:
+    wuss__icon_draw_slider(&c);
+    break;
+
   /* reserved types with no renderer yet: fall back to a plain label */
   case wuss_ICON_TYPE_DISPLAY:
   case wuss_ICON_TYPE_WRITABLE:
   case wuss_ICON_TYPE_NUMBER:
   case wuss_ICON_TYPE_STRING_SET:
-  case wuss_ICON_TYPE_SLIDER:
   case wuss_ICON_TYPE_DRAGGABLE:
     wuss__icon_draw_label(&c);
     break;

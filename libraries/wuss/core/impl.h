@@ -51,6 +51,8 @@
 #define WUSS_FRAME_CAPTION_INSET 8 /* x offset of a wuss_ICON_TYPE_FRAME caption from the frame's left edge */
 #define WUSS_FRAME_CAPTION_PAD   2 /* gap left in the frame's top edge either side of the caption */
 
+#define WUSS_SLIDER_GAP 4 /* fixed inset on all four sides of a wuss_ICON_TYPE_SLIDER bbox, between the surround and the inner (clickable) rect */
+
 /* Font slot (see wuss_create's fonts[]) consulted for menu decoration glyphs:
  * the selection tick and the submenu arrow. When the slot is empty those are
  * drawn as vector strokes instead. A font in this slot is expected to carry a
@@ -126,6 +128,11 @@ struct wuss
   wuss_colour_t               button_fg;      /* button label */
   wuss_colour_t               button_pressed; /* button face while held */
   wuss_colour_t               accent;         /* default action button fill */
+#endif
+#ifdef WUSS_ICONS
+  wuss_colour_t               slider_track;    /* slider groove ground */
+  wuss_colour_t               slider_value;    /* slider fill */
+  wuss_colour_t               slider_surround; /* slider bbox and gap */
 #endif
   wuss_colour_t               window_bg; /* work-area body fill; wuss_COLOUR_WINDOW */
   wuss_colour_t               menu_bg;   /* menu body fill; wuss_COLOUR_MENU */

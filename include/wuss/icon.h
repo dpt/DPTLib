@@ -102,6 +102,14 @@ typedef enum wuss_icon_type
    *  text, bg and pattern are ignored. Used between menu rows to render the
    *  line a wuss_ICON_FLAGS_SEPARATOR entry sits below. */
   wuss_ICON_TYPE_RULE,
+  /** A slider: the bounding box is filled with slider.surround, with a fixed
+   *  4px gap (also slider.surround) around an inner sunken groove
+   *  (spec.u.slider) that fills the remaining space on both axes; its fill
+   *  marks a value between min and max. A click or drag anywhere in the
+   *  inner rect -- fill or bare groove, but not the surround or gap -- jumps
+   *  the value straight to the pointer position; the task is told via
+   *  wuss_EVENT_ICON, continuously while dragging. */
+  wuss_ICON_TYPE_SLIDER,
 
   /* The following types are reserved: the enum values and validation exist but
    * no rendering, hit-testing or event routing is wired up yet. A spec using
@@ -118,9 +126,6 @@ typedef enum wuss_icon_type
   /** A field cycling through a fixed set of string values. Not yet
    *  implemented. */
   wuss_ICON_TYPE_STRING_SET,
-  /** A slider: a track with a draggable thumb selecting a value in a range.
-   *  Not yet implemented. */
-  wuss_ICON_TYPE_SLIDER,
   /** A free-drag handle: reports pointer motion to the task while dragged. Not
    *  yet implemented. */
   wuss_ICON_TYPE_DRAGGABLE
@@ -216,6 +221,23 @@ wuss_icon_flags_t;
 #define wuss_ICON_SET(i)        ((i) + 1)
 
 /**
+ * A wuss_ICON_TYPE_SLIDER's axis: which way its groove runs and, so, which
+ * end of the groove (inset from the bounding box by the fixed 4px gap on all
+ * four sides, filling the rest) is pixel 0 of the value fill.
+ */
+typedef enum wuss_slider_orientation
+{
+  /** Groove runs left-to-right; value grows rightward, pixel 0 at the
+   *  groove's left. */
+  wuss_SLIDER_HORIZONTAL = 0,
+  /** Groove runs top-to-bottom; value grows upward (low at the bottom, high
+   *  at the top), matching a volume-slider convention -- pixel 0 at the
+   *  groove's bottom. */
+  wuss_SLIDER_VERTICAL
+}
+wuss_slider_orientation_t;
+
+/**
  * Per-type payload in a wuss_icon_spec. Exactly one arm applies, selected by
  * wuss_icon_spec::type; the arms mirror the icon's internal storage. Types
  * with no type-specific data (ACTION, FRAME, OPTION, RULE, and the reserved
@@ -278,6 +300,24 @@ typedef union wuss_icon_spec_data
     wuss_colour_t swatch;
   }
   menu_entry;
+
+  /** wuss_ICON_TYPE_SLIDER */
+  struct
+  {
+    /** Which way the groove runs. wuss_SLIDER_HORIZONTAL (0) is the default
+     *  for a zero-initialised spec. */
+    wuss_slider_orientation_t orientation;
+    /** Value at the groove's start (left for wuss_SLIDER_HORIZONTAL, bottom
+     *  for VERTICAL). May be greater than max to run the fill backwards. */
+    int                       min;
+    /**
+     * Value at the groove's end (right for HORIZONTAL, top for VERTICAL).
+     */
+    int                       max;
+    /** Initial value, clamped to [min,max] (or [max,min] if min > max). */
+    int                       default_value;
+  }
+  slider;
 }
 wuss_icon_spec_data_t;
 
@@ -461,6 +501,29 @@ int wuss_icon_get_selected(const wuss_icon_t *icon);
 void wuss_icon_set_selected(wuss_window_t *window,
                             wuss_icon_t   *icon,
                             int            selected);
+
+/**
+ * Fetch a slider icon's current value.
+ *
+ * \param[in] icon Icon to query.
+ * \return The value, in [min,max] (or [max,min]) as given at creation.
+ *         Always 0 for icon types with no value.
+ */
+int wuss_icon_get_value(const wuss_icon_t *icon);
+
+/**
+ * Set a slider icon's value programmatically, invalidating it so the next
+ * redraw repaints it. No task event is delivered -- this is the programmatic
+ * path, distinct from a user click or drag. A no-op for icon types with no
+ * value.
+ *
+ * \param[in] window Window the icon belongs to.
+ * \param[in] icon   Icon to change.
+ * \param[in] value  New value; clamped to the icon's [min,max] range.
+ */
+void wuss_icon_set_value(wuss_window_t *window,
+                         wuss_icon_t   *icon,
+                         int            value);
 
 /* ----------------------------------------------------------------------- */
 

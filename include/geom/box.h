@@ -139,6 +139,15 @@ void box_scalelog2(box_t *b, int log2scale);
 void box_grow(box_t *b, int change);
 
 /**
+ * Populates "result" with a copy of "b" grown outwards by "change".
+ *
+ * \param[in]  b      The source box.
+ * \param[in]  change Amount to grow (negative to shrink).
+ * \return The resulting box.
+ */
+box_t box_grown(const box_t *b, int change);
+
+/**
  * Rounds a box's coordinates so that they're a multiple of log2 x,y.
  *
  * x0 and y0 are rounded down. x1 and y1 are rounded up.

@@ -308,6 +308,14 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           wuss->pressed_icon   = icon;
           wuss->pressed_window = win;
           wuss__icon_invalidate(win, icon);
+
+          /* a slider jumps straight to the click point rather than waiting
+           * for a completed press/release, and keeps updating on MOVE while
+           * held (core/mouse-move.c) */
+          if (icon->spec.type == wuss_ICON_TYPE_SLIDER)
+            wuss__icon_set_value(win, icon,
+                                 wuss__slider_value_for_point(win, icon,
+                                                              POINT(x, y)));
         }
         else if (action == wuss_MOUSE_UP && wuss__icon_pressed(icon))
         {
@@ -330,6 +338,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         event.data.icon.icon   = icon;
         event.data.icon.action = action;
         event.data.icon.button = button;
+        event.data.icon.value  = icon->value;
         return wuss__deliver(win->task, win, &event);
       }
     }
