@@ -212,7 +212,7 @@ static result_t spawn_saturn(void)
   saturn_task_t *t = calloc(1, sizeof(*t));
   result_t       rc;
   if (t == NULL) return result_OOM;
-  rc = saturn_create(g.wuss, t);
+  rc = saturn_create(g.wuss, t, NULL);
   if (rc != result_OK) return rc;
   if (t->window == NULL) { free(t); return rc; }
   return result_OK;

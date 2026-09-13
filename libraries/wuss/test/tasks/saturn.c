@@ -13,6 +13,7 @@
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "utils/rng.h"
+#include "wuss/menu.h"
 
 #include "saturn.h"
 
@@ -37,19 +38,15 @@
  *           x = sqrt(16384-P)/2                             -> planet body
  */
 
-#define SATURN_SIZE         256   /* window is SATURN_SIZE x SATURN_SIZE */
+#define SATURN_SIZE         256 /* window size is this value squared */
 
 /* The original works in a -128..127 sample space (BBC BASIC signed byte). */
-#define SATURN_HALF         128   /* sample-space centre / bias */
-#define SATURN_RANGE        255   /* saturn_rnd() span: 1..255, then -HALF */
-#define SATURN_FLIP         255   /* RISC OS bottom-up -> wuss top-down: FLIP - v */
-#define SATURN_ENERGY_SHIFT 256   /* (x*x+y*y) energy divisor */
+#define SATURN_HALF         (SATURN_SIZE / 2) /* sample-space centre / bias */
+#define SATURN_RANGE        (SATURN_SIZE - 1) /* saturn_rnd() span: 1..255, then -HALF */
+#define SATURN_FLIP         (SATURN_SIZE - 1) /* RISC OS bottom-up -> wuss top-down: FLIP - v */
+#define SATURN_ENERGY_SHIFT SATURN_SIZE /* (x*x+y*y) energy divisor */
 
-#define SATURN_RING_ITERS   477   /* loop 1: the ring */
-#define SATURN_BAND_ITERS   1280  /* loop 2: ring shadow band */
-#define SATURN_BODY_ITERS   1280  /* loop 3: planet body */
-
-#define SATURN_BODY_R2      16384 /* planet body: keep if r1*r1+r2*r2 < this */
+#define SATURN_BODY_R2    16384 /* planet body: keep if r1*r1+r2*r2 < this */
 
 /* BBC BASIC RND(n>0) returns an integer 1..n. utils/rng's LCG stands in for
  * it (its high bits, which is where an LCG's usable randomness sits) so a
@@ -69,15 +66,51 @@ static int saturn_rnd(int n)
 /* one signed sample in the original -128..127 space */
 #define SATURN_SAMPLE() (saturn_rnd(SATURN_RANGE) - SATURN_HALF)
 
-result_t saturn_create(wuss_t *wuss, saturn_task_t *task)
-{
-  result_t         rc;
-  wuss_task_t     *delegate;
-  wuss_task_desc_t delegate_desc;
+/* MENU click over the content pops this. "Colours" leads to a submenu with
+ * one row per task->fg/task->bg, each of which pops a wuss_colourmenu (see
+ * saturn_create -- the two leaf items' submenu pointers are patched in there,
+ * once the colourmenus exist). */
+enum { SATURN_MENU_COLOURS = 0 };
+enum { SATURN_COLOURS_MENU_FOREGROUND = 0, SATURN_COLOURS_MENU_BACKGROUND };
 
-  task->bg   = colour_rgb(0x00, 0x00, 0x00);
-  task->fg   = colour_rgb(0xFF, 0xFF, 0xFF);
-  task->seed = 1;
+static wuss_menu_item_t g_saturn_colours_items[] =
+{
+  { "Foreground", wuss_MENU_ITEM_BORROWED_SUBMENU, NULL, NULL, 0 },
+  { "Background", wuss_MENU_ITEM_BORROWED_SUBMENU, NULL, NULL, 0 }
+};
+
+static wuss_menu_t g_saturn_colours_menu =
+{
+  "Colours", g_saturn_colours_items, NELEMS(g_saturn_colours_items)
+};
+
+static wuss_menu_item_t g_saturn_menu_items[] =
+{
+  { "Colours", wuss_MENU_ITEM_NONE, &g_saturn_colours_menu, NULL, 0 }
+};
+
+static wuss_menu_t g_saturn_menu =
+{
+  "Saturn", g_saturn_menu_items, NELEMS(g_saturn_menu_items)
+};
+
+result_t saturn_create(wuss_t                *wuss,
+                       saturn_task_t         *task,
+                       const saturn_config_t *config)
+{
+  static const saturn_config_t default_config = SATURN_CONFIG_DEFAULT;
+  result_t                     rc;
+  wuss_task_t                 *delegate;
+  wuss_task_desc_t             delegate_desc;
+
+  task->wuss          = wuss;
+  task->bg            = colour_rgb(0x00, 0x00, 0x00);
+  task->fg            = colour_rgb(0xFF, 0xFF, 0xFF);
+  task->seed          = 1;
+  task->config        = (config != NULL) ? *config : default_config;
+  task->fg_colourmenu = NULL;
+  task->bg_colourmenu = NULL;
+  task->menu_handle   = NULL;
 
   /* saturn_redraw paints its own background */
   delegate_desc.handle    = saturn_handle;
@@ -89,7 +122,28 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t *task)
     free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
   }
+  task->delegate = delegate; /* the task the menu opens against */
   wuss_task_set_autoclose(delegate, 1);
+
+  rc = wuss_colourmenu_create(&task->fg_colourmenu, wuss, "Foreground");
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  rc = wuss_colourmenu_create(&task->bg_colourmenu, wuss, "Background");
+  if (rc != result_OK)
+  {
+    wuss_colourmenu_destroy(task->fg_colourmenu);
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  g_saturn_colours_items[SATURN_COLOURS_MENU_FOREGROUND].submenu =
+    wuss_colourmenu_menu(task->fg_colourmenu);
+  g_saturn_colours_items[SATURN_COLOURS_MENU_BACKGROUND].submenu =
+    wuss_colourmenu_menu(task->bg_colourmenu);
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(SATURN_SIZE, SATURN_SIZE),
@@ -100,7 +154,11 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t *task)
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
+    wuss_colourmenu_destroy(task->bg_colourmenu);
+    wuss_colourmenu_destroy(task->fg_colourmenu);
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+  }
 
   return rc;
 }
@@ -143,7 +201,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
   saturn_rnd_seed(task->seed);
 
   /* loop 1 - the ring: keep points outside the inner disc */
-  for (i = 0; i <= SATURN_RING_ITERS; i++)
+  for (i = 0; i <= task->config.ring_iters; i++)
   {
     x = SATURN_SAMPLE();
     y = SATURN_SAMPLE();
@@ -154,7 +212,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
   }
 
   /* loop 2 - ring shadow band: sheared sample with a banded energy gate */
-  for (i = 0; i <= SATURN_BAND_ITERS; i++)
+  for (i = 0; i <= task->config.band_iters; i++)
   {
     int r5, r6, r7, e;
 
@@ -170,7 +228,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
   }
 
   /* loop 3 - planet body: filled half-disc offset right */
-  for (i = 0; i <= SATURN_BODY_ITERS; i++)
+  for (i = 0; i <= task->config.body_iters; i++)
   {
     int r1, r2;
 
@@ -188,14 +246,6 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
   return result_OK;
 }
 
-static result_t saturn_idle(saturn_task_t *task)
-{
-  task->seed += 0x9E3779B9UL; /* churn: a fresh sketch every null event */
-  wuss_window_invalidate_visible(task->window);
-
-  return result_OK;
-}
-
 static result_t saturn_mouse(saturn_task_t      *task,
                              wuss_mouse_action_t action,
                              wuss_button_t       button,
@@ -204,10 +254,47 @@ static result_t saturn_mouse(saturn_task_t      *task,
   if (action != wuss_MOUSE_DOWN)
     return result_OK;
 
+  if (button & wuss_BUTTON_MENU)
+    return wuss_menu_open(task->delegate, &g_saturn_menu,
+                          wuss_get_pointer(task->wuss),
+                          &task->menu_handle);
+
   if (button & wuss_BUTTON_SELECT)
   {
     task->seed += 0x9E3779B9UL; /* fresh sketch */
     wuss_window_invalidate_visible(window);
+  }
+
+  return result_OK;
+}
+
+/* A pick from either colour submenu: resolve against whichever colourmenu it
+ * came from and store into the matching field. */
+static result_t saturn_menu_select(saturn_task_t      *task,
+                                   const wuss_event_t *event)
+{
+  const colour_t *palette;
+  wuss_colour_t   picked;
+  int             npalette, mine;
+
+  palette = wuss_get_palette(task->wuss, &npalette);
+
+  picked = wuss_colourmenu_selected(task->fg_colourmenu, event, &mine);
+  if (mine)
+  {
+    if (picked < npalette)
+      task->fg = palette[picked];
+    wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
+
+  picked = wuss_colourmenu_selected(task->bg_colourmenu, event, &mine);
+  if (mine)
+  {
+    if (picked < npalette)
+      task->bg = palette[picked];
+    wuss_window_invalidate_visible(task->window);
+    return result_OK;
   }
 
   return result_OK;
@@ -230,10 +317,16 @@ result_t saturn_handle(wuss_window_t      *window,
     return saturn_mouse(task, event->data.mouse.action,
                         event->data.mouse.button, window);
 
-  case wuss_EVENT_IDLE:
-    return saturn_idle(task);
+  case wuss_EVENT_MENU_SELECT:
+    return saturn_menu_select(task, event);
+
+  case wuss_EVENT_MENU_CLOSED:
+    task->menu_handle = NULL; /* wuss closed the chain under us */
+    return result_OK;
 
   case wuss_EVENT_QUIT:
+    wuss_colourmenu_destroy(task->fg_colourmenu);
+    wuss_colourmenu_destroy(task->bg_colourmenu);
     free(task); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 

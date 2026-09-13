@@ -5,7 +5,12 @@
 
 #ifdef WUSS_APP
 
+/* ponytail: no #ifdef WUSS_COMPONENTS guard -- it is PUBLIC on DPTLib and ON
+ * by default, so the wuss app always has the colourmenu component. */
 #include "framebuf/colour.h"
+#include "wuss/component/colourmenu.h"
+#include "wuss/menu.h"
+#include "wuss/task.h"
 #include "wuss/window.h"
 
 /* window task: recreates the ringed planet from the loading screen of
@@ -15,19 +20,39 @@
  * planet body. Select re-seeds the RNG for a fresh sketch; the idle
  * handler re-seeds every null event so it churns. The plot is
  * deterministic in the seed. */
+/* iteration counts for the three rejection-sampling loops; saturn_create
+ * fills in SATURN_CONFIG_DEFAULT values when the caller passes NULL */
+typedef struct saturn_config
+{
+  int ring_iters; /* loop 1: the ring */
+  int band_iters; /* loop 2: ring shadow band */
+  int body_iters; /* loop 3: planet body */
+}
+saturn_config_t;
+
+#define SATURN_CONFIG_DEFAULT { 477, 1280, 1280 }
+
 typedef struct saturn_task
 {
-  wuss_window_t *window;
-  colour_t       bg, fg;
-  unsigned long  seed; /* RNG state; a Select click bumps it */
+  wuss_t            *wuss;     /* for wuss_get_pointer/wuss_get_palette */
+  wuss_window_t     *window;
+  wuss_task_t       *delegate; /* the task that owns the menu */
+  colour_t           bg, fg;
+  unsigned long      seed; /* RNG state; a Select click bumps it */
+  saturn_config_t    config;
+  wuss_colourmenu_t *fg_colourmenu, *bg_colourmenu;
+  wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
 }
 saturn_task_t;
 
 wuss_window_fn_t saturn_handle;
 
 /* create the planet window against the given wuss instance; "task" is a
- * per-instance block owned by the window and freed when it closes */
-result_t saturn_create(wuss_t *wuss, saturn_task_t *task);
+ * per-instance block owned by the window and freed when it closes. "config"
+ * may be NULL for SATURN_CONFIG_DEFAULT. */
+result_t saturn_create(wuss_t                *wuss,
+                       saturn_task_t         *task,
+                       const saturn_config_t *config);
 
 #endif /* WUSS_APP */
 
