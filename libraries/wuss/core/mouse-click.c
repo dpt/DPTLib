@@ -196,6 +196,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
       {
         point_t scroll;
+        int     paged = 0;
 
         /* Only resize raises the window; dragging a scrollbar well must not
          * reorder the stack. */
@@ -206,8 +207,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
          * content one visible extent towards the click, RISC OS style, keeping
          * one step of overlap. ADJUST reverses that -- it pages away from the
          * click instead, matching RISC OS's SELECT/ADJUST mirroring elsewhere
-         * (e.g. the arrow icons). The drag state is still armed below so a
-         * press that then moves onto the sausage keeps working. */
+         * (e.g. the arrow icons). A direct hit on the sausage itself pages
+         * nothing and falls through to arm the drag below. */
         if (region == wuss_FURNITURE_VSCROLL_WELL ||
             region == wuss_FURNITURE_HSCROLL_WELL)
         {
@@ -224,9 +225,15 @@ result_t wuss_mouse_click(wuss_t             *wuss,
             page = (content.y1 - content.y0) - WUSS_SCROLL_STEP;
             page = MAX(page, 1);
             if (y < sausage.y0)
+            {
               wuss__scroll_step(win, POINT(0, -page * sign));
+              paged = 1;
+            }
             else if (y > sausage.y1)
+            {
               wuss__scroll_step(win, POINT(0, page * sign));
+              paged = 1;
+            }
           }
           else
           {
@@ -234,17 +241,23 @@ result_t wuss_mouse_click(wuss_t             *wuss,
             page = (content.x1 - content.x0) - WUSS_SCROLL_STEP;
             page = MAX(page, 1);
             if (x < sausage.x0)
+            {
               wuss__scroll_step(win, POINT(-page * sign, 0));
+              paged = 1;
+            }
             else if (x > sausage.x1)
+            {
               wuss__scroll_step(win, POINT(page * sign, 0));
+              paged = 1;
+            }
           }
         }
 
-        /* A well click only pages once; it must not also arm a sausage drag,
-         * or holding the button after the page would start scrolling live
-         * as though the pointer had grabbed the sausage itself. */
-        if (region != wuss_FURNITURE_VSCROLL_WELL &&
-            region != wuss_FURNITURE_HSCROLL_WELL)
+        /* A well click that paged must not also arm a sausage drag, or
+         * holding the button after the page would start scrolling live as
+         * though the pointer had grabbed the sausage itself. A direct hit on
+         * the sausage (paged == 0 for a well region) still arms normally. */
+        if (!paged)
         {
           wuss_window_get_scroll(win, &scroll);
 
