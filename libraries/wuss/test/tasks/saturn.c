@@ -587,10 +587,6 @@ result_t saturn_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    /* the size dialogue has no content of its own -- just its icons, which
-     * wuss already drew */
-    if (window == task->size_dialogue)
-      return result_OK;
     return saturn_redraw(event, task);
 
   case wuss_EVENT_MOUSE:
