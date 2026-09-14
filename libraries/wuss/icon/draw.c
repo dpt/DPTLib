@@ -639,7 +639,7 @@ static void wuss__icon_draw_slider(const icon_draw_ctx_t *c)
   
   screen_draw_bevel_edge(c->scr, &c->b, dark, light);
 
-  wuss__slider_groove_box(&c->b, &groove);
+  wuss__slider_groove_box(&surround_box, &groove);
   
   /* draw the track */
 
