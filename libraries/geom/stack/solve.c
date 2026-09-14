@@ -47,7 +47,7 @@ static int stack__distribute(const stack_item_t *items,
       continue;
 
     children[nchildren].index   = i;
-    children[nchildren].extent  = items[i].size ? items[i].size : items[i].min;
+    children[nchildren].extent  = items[i].axis_size ? items[i].axis_size : items[i].min;
     children[nchildren].clamped = (items[i].flex == 0);
 
     used += children[nchildren].extent;
@@ -185,16 +185,16 @@ static void stack__place_container(const stack_item_t *items,
       cross_pos    = cross0;
       break;
     case stack_ALIGN_CENTRE:
-      cross_extent = items[ci].size ? items[ci].size : (cross1 - cross0);
+      cross_extent = items[ci].cross_size ? items[ci].cross_size : (cross1 - cross0);
       cross_pos    = cross0 + (cross1 - cross0 - cross_extent) / 2;
       break;
     case stack_ALIGN_END:
-      cross_extent = items[ci].size ? items[ci].size : (cross1 - cross0);
+      cross_extent = items[ci].cross_size ? items[ci].cross_size : (cross1 - cross0);
       cross_pos    = cross1 - cross_extent;
       break;
     case stack_ALIGN_START:
     default:
-      cross_extent = items[ci].size ? items[ci].size : (cross1 - cross0);
+      cross_extent = items[ci].cross_size ? items[ci].cross_size : (cross1 - cross0);
       cross_pos    = cross0;
       break;
     }

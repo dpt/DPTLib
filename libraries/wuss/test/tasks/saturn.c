@@ -15,6 +15,7 @@
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "geom/size.h"
+#include "geom/stack.h"
 #include "utils/rng.h"
 #include "wuss/menu.h"
 
@@ -312,47 +313,115 @@ static int saturn_size_snap(int v)
   return CLAMP(v, SATURN_SIZE_MIN, SATURN_SIZE_MAX);
 }
 
+/* stack items for the size dialogue's layout: a VBOX of label / slider /
+ * value-echo / button-row, with fixed-size spacers standing in for the
+ * (non-uniform) gaps between them. BTN_ROW is an HBOX with Cancel and
+ * Apply side by side, gapped and top-aligned (Apply is taller than
+ * Cancel, both start flush with the row's top edge). */
+enum
+{
+  ST_ROOT,
+  ST_ROW,
+  ST_LABL,
+  ST_SLDR,
+  ST_VAL,
+
+  ST_BTNS,
+  ST_SPCR,
+  ST_CNCL,
+  ST_APLY,
+  
+  SIZE_STACK__LIMIT
+};
+
+#define G 4
+#define wuss_STD_SLIDER_HEIGHT           18
+#define wuss_STD_SECONDARY_BUTTON_HEIGHT 26
+#define wuss_STD_PRIMARY_BUTTON_HEIGHT   34
+
+static const stack_item_t g_saturn_size_stack[SIZE_STACK__LIMIT] =
+{
+  [ST_ROOT] = { .kind = stack_KIND_VBOX,   .parent = -1,      .gap = G, .pad_l = G, .pad_t = G, .pad_r = G, .pad_b = G },
+
+  [ST_ROW]  = { .kind = stack_KIND_HBOX,   .parent = ST_ROOT, .axis_size = wuss_STD_SLIDER_HEIGHT, .gap = G,                   .align = stack_ALIGN_START },
+  [ST_LABL] = { .kind = stack_KIND_LEAF,   .parent = ST_ROW,  .axis_size = 24, .cross_size = 16,                               .align = stack_ALIGN_CENTRE },
+  [ST_SLDR] = { .kind = stack_KIND_LEAF,   .parent = ST_ROW,  .flex = 1, .min = 64, .cross_size = wuss_STD_SLIDER_HEIGHT,      .align = stack_ALIGN_CENTRE },
+  [ST_VAL]  = { .kind = stack_KIND_LEAF,   .parent = ST_ROW,  .axis_size = 24, .cross_size = 16,                               .align = stack_ALIGN_CENTRE },
+  
+  [ST_BTNS] = { .kind = stack_KIND_HBOX,   .parent = ST_ROOT, .axis_size = wuss_STD_PRIMARY_BUTTON_HEIGHT, .gap = G,           .align = stack_ALIGN_END },
+  [ST_SPCR] = { .kind = stack_KIND_SPACER, .parent = ST_BTNS, .flex = 1 },
+  [ST_CNCL] = { .kind = stack_KIND_LEAF,   .parent = ST_BTNS, .axis_size = 48, .cross_size = wuss_STD_SECONDARY_BUTTON_HEIGHT, .align = stack_ALIGN_CENTRE },
+  [ST_APLY] = { .kind = stack_KIND_LEAF,   .parent = ST_BTNS, .axis_size = 56, .cross_size = wuss_STD_PRIMARY_BUTTON_HEIGHT,   .align = stack_ALIGN_CENTRE },
+};
+
 /* Build the size dialogue once: a label, a slider snapped to
  * SATURN_SIZE_STEP, a label echoing the slider's current value, and
- * Cancel/Apply buttons. Created hidden -- wuss shows and hides it itself,
- * as a menu leaf's borrowed window (see g_saturn_menu_items[SATURN_MENU_SIZE]
- * and wuss_menu_item_t::window), so it must outlive the open menu chain and
- * is never closed here, only hidden. */
+ * Cancel/Apply buttons, positioned by stack_solve. Created hidden -- wuss
+ * shows and hides it itself, as a menu leaf's borrowed window (see
+ * g_saturn_menu_items[SATURN_MENU_SIZE] and wuss_menu_item_t::window), so
+ * it must outlive the open menu chain and is never closed here, only
+ * hidden. */
 static result_t saturn_size_dialogue_create(saturn_task_t *task)
 {
-  wuss_icon_spec_t specs[SATURN_SIZE_NICONS];
-  wuss_icon_t     *made[SATURN_SIZE_NICONS];
+  wuss_icon_spec_t  specs[SATURN_SIZE_NICONS];
+  wuss_icon_t      *made[SATURN_SIZE_NICONS];
   wuss_icon_spec_t *s;
+  box_t             boxes[SIZE_STACK__LIMIT];
+  box_t             root;
   char              buf[16];
   result_t          rc;
+  int               row_w, btns_w;
+  size2d_t          sz;
+
+  /* stack_solve distributes into a box it's given; it can't report a
+   * subtree's intrinsic minimum size in one call, since flex/spacer items
+   * always consume whatever slack the root provides. So the minimum
+   * window size is hand-computed here from the same constants the table
+   * uses, rather than measured by solving. */
+  row_w  = 24 + G + 64 + G + 24;
+  btns_w = 48 + G + 56;
+  sz.w   = MAX(row_w, btns_w) + 2 * G;
+  sz.h   = wuss_STD_SLIDER_HEIGHT + G + wuss_STD_PRIMARY_BUTTON_HEIGHT + 2 * G;
 
   rc = wuss_window_create_placed(task->delegate,
-                                 SIZE2D(160, 112),
+                                 sz,
                                  "Size",
-                                 wuss_WINDOW_HIDDEN | wuss_WINDOW_NO_CLOSE |
-                                 wuss_WINDOW_NO_BACK |
+                                 wuss_WINDOW_HIDDEN         |
+                                 wuss_WINDOW_NO_CLOSE       |
+                                 wuss_WINDOW_NO_BACK        |
                                  wuss_WINDOW_NO_TOGGLE_SIZE |
-                                 wuss_WINDOW_NO_VSCROLL |
-                                 wuss_WINDOW_NO_HSCROLL |
-                                 wuss_WINDOW_NO_RESIZE,
+                                 wuss_WINDOW_NO_HSCROLL     |
+                                 wuss_WINDOW_NO_VSCROLL     |
+                                 wuss_WINDOW_NO_RESIZE      |
+                                 wuss_WINDOW_NO_REDRAW,
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                                 SIZE2D(160, 112),
-                                 SIZE2D(160, 112),
+                                 sz,
+                                 sz,
                                  &task->size_dialogue);
   if (rc != result_OK)
     return rc;
 
+  root = (box_t) BOX_POS_SIZE(0, 0, sz.w, sz.h);
+  rc = stack_solve(g_saturn_size_stack, NELEMS(g_saturn_size_stack), &root, boxes);
+  if (rc != result_OK)
+  {
+    wuss_window_close(task->size_dialogue);
+    task->size_dialogue = NULL;
+    return rc;
+  }
+
   memset(specs, 0, sizeof(specs));
 
   s        = &specs[SATURN_SIZE_ICON_LABEL];
-  s->bbox  = (box_t) BOX_POS_SIZE(12, 10, 60, 16);
+  s->bbox  = boxes[ST_LABL];
   s->type  = wuss_ICON_TYPE_LABEL;
   s->text  = "Size";
   s->fg    = wuss_COLOUR_BLACK;
   s->bg    = wuss_NO_BACKGROUND;
+  s->flags = wuss_ICON_FLAGS_JUSTIFY_RIGHT;
 
   s       = &specs[SATURN_SIZE_ICON_SLIDER];
-  s->bbox = (box_t) BOX_POS_SIZE(12, 30, 136, 20);
+  s->bbox = boxes[ST_SLDR];
   s->type = wuss_ICON_TYPE_SLIDER;
   s->fg   = wuss_COLOUR_BLACK;
   s->bg   = wuss_NO_BACKGROUND;
@@ -363,21 +432,21 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
 
   snprintf(buf, sizeof(buf), "%d", s->u.slider.default_value);
   s        = &specs[SATURN_SIZE_ICON_VALUE];
-  s->bbox  = (box_t) BOX_POS_SIZE(12, 56, 60, 16);
+  s->bbox  = boxes[ST_VAL];
   s->type  = wuss_ICON_TYPE_LABEL;
   s->text  = buf; /* copied by wuss_icon_create_array */
   s->fg    = wuss_COLOUR_BLACK;
   s->bg    = wuss_NO_BACKGROUND;
 
   s        = &specs[SATURN_SIZE_ICON_CANCEL];
-  s->bbox  = (box_t) BOX_POS_SIZE(12, 74, 60, 22);
+  s->bbox  = boxes[ST_CNCL];
   s->type  = wuss_ICON_TYPE_ACTION;
   s->text  = "Cancel";
   s->fg    = wuss_COLOUR_BLACK;
   s->bg    = wuss_COLOUR_WINDOW;
 
   s        = &specs[SATURN_SIZE_ICON_APPLY];
-  s->bbox  = (box_t) BOX_POS_SIZE(88, 74, 60, 34);
+  s->bbox  = boxes[ST_APLY];
   s->type  = wuss_ICON_TYPE_ACTION;
   s->text  = "Apply";
   s->fg    = wuss_COLOUR_BLACK;
