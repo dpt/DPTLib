@@ -9,11 +9,16 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* Three flex-1 children in a 100px box divide 34/33/33, abutting exactly. */
+/*   0        34    67        100
+ *   +---------+-----+---------+
+ *   |  A f=1  | B f1|  C f=1  |
+ *   +---------+-----+---------+
+ *
+ * Three flex-1 children in a 100px box divide 34/33/33, abutting exactly. */
 static result_t test_flex_split(void)
 {
   enum { ROOT, A, B, C, N };
-  static const box_t   root = { 0, 0, 100, 10 };
+  static const box_t        root = { 0, 0, 100, 10 };
   static const stack_item_t items[N] =
   {
     [ROOT] = { .kind = stack_KIND_HBOX, .parent = -1 },
@@ -39,7 +44,14 @@ static result_t test_flex_split(void)
   return result_TEST_PASSED;
 }
 
-/* Two independent rows with label leaves fed the same fixed width line up
+/*   0          40                    200
+ *   +----------+----------------------+
+ *   | LBL1(40) | FLD1 flex=1          |  ROW1 (h=20)
+ *   +----------+----------------------+
+ *   | LBL2(40) | FLD2 flex=1          |  ROW2 (h=20)
+ *   +----------+----------------------+
+ *
+ * Two independent rows with label leaves fed the same fixed width line up
  * their field boxes at a common x0. */
 static result_t test_aligned_labels(void)
 {
@@ -71,7 +83,352 @@ static result_t test_aligned_labels(void)
   return result_TEST_PASSED;
 }
 
-/* A parent index pointing forward (or at itself) is rejected. */
+/*   0,0 +--------+ 10,0
+ *       |   A    |  flex=1   y: 0..50
+ *       +--------+
+ *       |   B    |  flex=1   y: 50..100
+ *       +--------+
+ *   0,100        10,100
+ *
+ * A VBOX splits its children top to bottom, cross axis is x not y. */
+static result_t test_vbox_flex_split(void)
+{
+  enum { ROOT, A, B, N };
+  static const box_t        root = { 0, 0, 10, 100 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1 },
+    [B]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1 },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[A].y0 != 0  || out[A].y1 != 50)
+    return result_TEST_FAILED;
+  if (out[B].y0 != 50 || out[B].y1 != 100)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   0         45  gap=10  55        100
+ *   +---------+   ....   +---------+
+ *   | A flex=1|   ....   | B flex=1|
+ *   +---------+   ....   +---------+
+ *
+ * A gap is inserted between adjacent children but not before the first or
+ * after the last. */
+static result_t test_gap(void)
+{
+  enum { ROOT, A, B, N };
+  static const box_t        root = { 0, 0, 100, 10 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_HBOX, .parent = -1, .gap = 10 },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1 },
+    [B]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1 },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[A].x0 != 0  || out[A].x1 != 45)
+    return result_TEST_FAILED;
+  if (out[B].x0 != 55 || out[B].x1 != 100)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   0,0 +------------------------+ 100,0
+ *       |        pad_t=6         |
+ *       |   +----------------+   |
+ *       |pl |     A (fill)   |pr |   pad_l=5, pad_r=7
+ *       |   +----------------+   |
+ *       |        pad_b=8         |
+ *       +------------------------+
+ *   0,100                    100,100
+ *
+ * Container padding insets the area available to its children on every
+ * edge. */
+static result_t test_padding(void)
+{
+  enum { ROOT, A, N };
+  static const box_t        root = { 0, 0, 100, 100 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_HBOX, .parent = -1,
+               .pad_l = 5, .pad_t = 6, .pad_r = 7, .pad_b = 8 },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1,
+               .align = stack_ALIGN_FILL },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[A].x0 != 5  || out[A].x1 != 93)
+    return result_TEST_FAILED;
+  if (out[A].y0 != 6  || out[A].y1 != 92)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   0                   80        100
+ *   +-------------------+---------+
+ *   |     A min=80      | B flex=1|
+ *   +-------------------+---------+
+ *
+ * A child's 'min' floors its extent below what an even flex split would
+ * give it; the remaining flex child absorbs the rest. */
+static result_t test_min_clamp(void)
+{
+  enum { ROOT, A, B, N };
+  static const box_t        root = { 0, 0, 100, 10 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_HBOX, .parent = -1 },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .min = 80 },
+    [B]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1 },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[A].x1 - out[A].x0 != 80)
+    return result_TEST_FAILED;
+  if (out[B].x1 - out[B].x0 != 20)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   0        20                    100
+ *   +--------+----------------------+
+ *   |A flex=1|   B flex=1 (absorbs  |
+ *   |max=20  |   the excess slack)  |
+ *   +--------+----------------------+
+ *
+ * A child's 'max' ceilings the space handed to it by flex growth; the
+ * excess slack is returned to its sibling. */
+static result_t test_max_clamp(void)
+{
+  enum { ROOT, A, B, N };
+  static const box_t        root = { 0, 0, 100, 10 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_HBOX, .parent = -1 },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1, .max = 20 },
+    [B]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1 },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[A].x1 - out[A].x0 != 20)
+    return result_TEST_FAILED;
+  if (out[B].x1 - out[B].x0 != 80)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   0      10                  90      100
+ *   +------+--------------------+------+
+ *   |A sz10|   SPACER flex=1    |B sz10|
+ *   +------+--------------------+------+
+ *
+ * A SPACER consumes main-axis space like a leaf but is otherwise just
+ * another flexible child. */
+static result_t test_spacer(void)
+{
+  enum { ROOT, A, SPACER, B, N };
+  static const box_t        root = { 0, 0, 100, 10 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT]   = { .kind = stack_KIND_HBOX,   .parent = -1 },
+    [A]      = { .kind = stack_KIND_LEAF,   .parent = ROOT, .size = 10 },
+    [SPACER] = { .kind = stack_KIND_SPACER, .parent = ROOT, .flex = 1 },
+    [B]      = { .kind = stack_KIND_LEAF,   .parent = ROOT, .size = 10 },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[A].x0 != 0  || out[A].x1 != 10)
+    return result_TEST_FAILED;
+  if (out[B].x0 != 90 || out[B].x1 != 100)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   y=0  +----------------------+
+ *        |                      |
+ *        |          A           |  fills full 40px cross extent
+ *        |                      |
+ *   y=40 +----------------------+
+ *
+ * ALIGN_FILL spans the full cross extent of the container. */
+static result_t test_align_fill(void)
+{
+  enum { ROOT, A, N };
+  static const box_t        root = { 0, 0, 100, 40 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_HBOX, .parent = -1 },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1,
+               .align = stack_ALIGN_FILL },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[A].y0 != 0 || out[A].y1 != 40)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   y=0  +----------------------+
+ *        |                      |
+ *   y=15 |     +---A(10)---+    |
+ *        |     +-----------+    |
+ *   y=25 |                      |
+ *   y=40 +----------------------+
+ *
+ * ALIGN_CENTRE centres a sized child within the container's cross
+ * extent. */
+static result_t test_align_centre(void)
+{
+  enum { ROOT, A, N };
+  static const box_t        root = { 0, 0, 100, 40 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_HBOX, .parent = -1 },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1, .size = 10,
+               .align = stack_ALIGN_CENTRE },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[A].y0 != 15 || out[A].y1 != 25)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   0,0                          100,0
+ *   +------------------------------+
+ *   |      ROW (HBOX, fill)        |
+ *   | +------------+-------------+ |
+ *   | |  A flex=1  |  B flex=1   | |
+ *   | +------------+-------------+ |
+ *   +------------------------------+
+ *   0,50                        100,50
+ *
+ * An HBOX nested inside a VBOX is itself placed and then lays out its own
+ * children, recursing correctly through mixed axes. */
+static result_t test_nested_containers(void)
+{
+  enum { ROOT, ROW, A, B, N };
+  static const box_t        root = { 0, 0, 100, 50 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
+    [ROW]  = { .kind = stack_KIND_HBOX, .parent = ROOT, .flex = 1,
+               .align = stack_ALIGN_FILL },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = ROW,  .flex = 1 },
+    [B]    = { .kind = stack_KIND_LEAF, .parent = ROW,  .flex = 1 },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[ROW].x0 != 0 || out[ROW].x1 != 100)
+    return result_TEST_FAILED;
+  if (out[A].x0 != 0   || out[A].x1 != 50)
+    return result_TEST_FAILED;
+  if (out[B].x0 != 50  || out[B].x1 != 100)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   1,2  +------+  3,2
+ *        | ROOT |       no children
+ *        +------+
+ *   1,4            3,4
+ *
+ * A tree of just the root, with no children, solves trivially to the root
+ * box itself. */
+static result_t test_root_only(void)
+{
+  enum { ROOT, N };
+  static const box_t        root = { 1, 2, 3, 4 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_HBOX, .parent = -1 },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[ROOT].x0 != 1 || out[ROOT].y0 != 2 ||
+      out[ROOT].x1 != 3 || out[ROOT].y1 != 4)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   ROOT
+ *    |
+ *    A ---parent---> A   (self-loop, invalid)
+ *
+ * A parent index pointing forward (or at itself) is rejected. */
 static result_t test_bad_tree(void)
 {
   enum { ROOT, A, N };
@@ -105,6 +462,46 @@ result_t stack_test(const char *resources)
     return err;
 
   err = test_aligned_labels();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_vbox_flex_split();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_gap();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_padding();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_min_clamp();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_max_clamp();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_spacer();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_align_fill();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_align_centre();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_nested_containers();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_root_only();
   if (err != result_TEST_PASSED)
     return err;
 
