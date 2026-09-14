@@ -18,8 +18,8 @@
  * menu row at wuss_info_window() and wuss shows it where a submenu would
  * open. A task can equally wuss_window_set_hidden() it directly.
  *
- * The window is created wuss_WINDOW_NO_CLOSE and stays on the caller's task
- * until wuss_info_destroy closes it. That task must therefore not be an
+ * The window is created without wuss_WINDOW_CLOSE and stays on the caller's
+ * task until wuss_info_destroy closes it. That task must therefore not be an
  * autoclose task -- its window list would never empty -- and must outlive
  * the handle. As for any borrowed wuss_menu_item_t::window, the dialogue
  * must also outlive every menu chain that references it: close the chain

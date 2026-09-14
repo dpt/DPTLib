@@ -83,14 +83,14 @@ static void draw_title(wuss_t        *wuss,
     return;
 
   text_x0 = titlebar->x0 + 2;
-  if (!(window->flags & wuss_WINDOW_NO_CLOSE))
+  if (window->flags & wuss_WINDOW_CLOSE)
   {
     box_t close;
 
     wuss__close_box(window, &close);
     text_x0 = close.x1 + 2;
   }
-  else if (!(window->flags & wuss_WINDOW_NO_BACK))
+  else if (window->flags & wuss_WINDOW_BACK)
   {
     box_t back;
 
@@ -99,7 +99,7 @@ static void draw_title(wuss_t        *wuss,
   }
 
   text_x1 = titlebar->x1 - 2;
-  if (!(window->flags & wuss_WINDOW_NO_TOGGLE_SIZE))
+  if (window->flags & wuss_WINDOW_TOGGLE_SIZE)
   {
     box_t toggle;
 
@@ -158,14 +158,14 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
   /* the two scrollbar sausages: geometry depends on window->scroll, so they
    * are computed live rather than cached */
-  if (!(window->flags & wuss_WINDOW_NO_VSCROLL))
+  if (window->flags & wuss_WINDOW_VSCROLL)
   {
     wuss__vscroll_sausage_box(window, &sausage);
     fill_furniture_rect(wuss, &sausage, full,
                         wuss->palette[wuss->furniture_colours.scroll.sausages]);
   }
 
-  if (!(window->flags & wuss_WINDOW_NO_HSCROLL))
+  if (window->flags & wuss_WINDOW_HSCROLL)
   {
     wuss__hscroll_sausage_box(window, &sausage);
     fill_furniture_rect(wuss, &sausage, full,

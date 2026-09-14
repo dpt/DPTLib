@@ -610,10 +610,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   if (menu_task == NULL)
     return result_OOM;
 
-  menu_flags = wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK
-             | wuss_WINDOW_NO_TOGGLE_SIZE
-             | wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL
-             | wuss_WINDOW_NO_RESIZE;
+  menu_flags = wuss_WINDOW_TITLEBAR | wuss_WINDOW_OUTLINE;
 
   outline_px      = wuss__outline_px_for(menu_flags);
   titlebar_height = wuss__titlebar_height_for(wuss, menu_flags);
@@ -690,7 +687,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   if (doc_h > max_h)
   {
     height      = max_h;
-    menu_flags &= (wuss_window_flags_t) ~wuss_WINDOW_NO_VSCROLL;
+    menu_flags |= wuss_WINDOW_VSCROLL;
   }
   else
   {
