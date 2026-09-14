@@ -321,10 +321,15 @@ enum
 {
   ST_ROOT,
   
-  ST_ROW,
-  ST_LABL,
-  ST_SLDR,
-  ST_VAL,
+  ST_ROW1,
+  ST_LABL1,
+  ST_SLDR1,
+  ST_VAL1,
+
+  ST_ROW2,
+  ST_LABL2,
+  ST_SLDR2,
+  ST_VAL2,
 
   ST_BTNS,
   ST_SPCR,
@@ -339,24 +344,29 @@ enum
 /* Leaf main-axis sizes, named so saturn_size_dialogue_create's hand-computed
  * minimum window size can share them with the table below instead of
  * repeating the numbers as bare literals. */
-#define ST_LABEL_W  24
+#define ST_LABEL_W      24
 #define ST_SLIDER_MIN_W 64
-#define ST_CANCEL_W 48
-#define ST_APPLY_W  56
+#define ST_CANCEL_W     48
+#define ST_APPLY_W      56
 
 static const stack_item_t g_saturn_size_stack[SIZE_STACK__LIMIT] =
 {
-  [ST_ROOT] = STACK_VBOX_EX(-1, 0, G, G, G, G, G),
+  [ST_ROOT]  = STACK_VBOX_EX(-1, 0, G, G, G, G, G),
 
-  [ST_ROW]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, G, stack_ALIGN_START),
-  [ST_LABL] = STACK_LEAF(ST_ROW, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
-  [ST_SLDR] = STACK_LEAF_EX(ST_ROW, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
-  [ST_VAL]  = STACK_LEAF(ST_ROW, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_ROW1]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, G, stack_ALIGN_START),
+  [ST_LABL1] = STACK_LEAF(ST_ROW1, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_SLDR1] = STACK_LEAF_EX(ST_ROW1, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
+  [ST_VAL1]  = STACK_LEAF(ST_ROW1, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
 
-  [ST_BTNS] = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, G, stack_ALIGN_END),
-  [ST_SPCR] = STACK_SPACER(ST_BTNS, 1),
-  [ST_CNCL] = STACK_LEAF(ST_BTNS, ST_CANCEL_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
-  [ST_APLY] = STACK_LEAF(ST_BTNS, ST_APPLY_W, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [ST_ROW2]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, G, stack_ALIGN_START),
+  [ST_LABL2] = STACK_LEAF(ST_ROW2, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_SLDR2] = STACK_LEAF_EX(ST_ROW2, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
+  [ST_VAL2]  = STACK_LEAF(ST_ROW2, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+
+  [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, G, stack_ALIGN_END),
+  [ST_SPCR]  = STACK_SPACER(ST_BTNS, 1),
+  [ST_CNCL]  = STACK_LEAF(ST_BTNS, ST_CANCEL_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [ST_APLY]  = STACK_LEAF(ST_BTNS, ST_APPLY_W, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
 };
 
 /* Build the size dialogue once: a label, a slider snapped to
@@ -368,15 +378,15 @@ static const stack_item_t g_saturn_size_stack[SIZE_STACK__LIMIT] =
  * hidden. */
 static result_t saturn_size_dialogue_create(saturn_task_t *task)
 {
-  wuss_icon_spec_t  specs[SATURN_SIZE_NICONS];
-  wuss_icon_t      *made[SATURN_SIZE_NICONS];
-  wuss_icon_spec_t *s;
-  box_t             boxes[SIZE_STACK__LIMIT];
-  box_t             root;
-  char              buf[16];
-  result_t          rc;
-  int               row_w, btns_w;
-  size2d_t          sz;
+  wuss_icon_spec_t specs[SATURN_SIZE_NICONS];
+  wuss_icon_t     *made[SATURN_SIZE_NICONS];
+  box_t            boxes[SIZE_STACK__LIMIT];
+  box_t            root;
+  char             buf[16];
+  result_t         rc;
+  int              row_w, btns_w;
+  int              value;
+  size2d_t         sz;
 
   /* stack_solve distributes into a box it's given; it can't report a
    * subtree's intrinsic minimum size in one call, since flex/spacer items
@@ -386,7 +396,7 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
   row_w  = ST_LABEL_W + G + ST_SLIDER_MIN_W + G + ST_LABEL_W;
   btns_w = ST_CANCEL_W + G + ST_APPLY_W;
   sz.w   = MAX(row_w, btns_w) + 2 * G;
-  sz.h   = wuss_STD_SLIDER_HEIGHT + G + wuss_STD_PRIMARY_BUTTON_HEIGHT + 2 * G;
+  sz.h   = (wuss_STD_SLIDER_HEIGHT + G) * 2 + wuss_STD_PRIMARY_BUTTON_HEIGHT + 2 * G;
 
   rc = wuss_window_create_placed(task->delegate,
                                  sz,
@@ -405,63 +415,28 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
   root = (box_t) BOX_POS_SIZE(0, 0, sz.w, sz.h);
   rc = stack_solve(g_saturn_size_stack, NELEMS(g_saturn_size_stack), &root, boxes);
   if (rc != result_OK)
-  {
-    wuss_window_close(task->size_dialogue);
-    task->size_dialogue = NULL;
-    return rc;
-  }
+    goto exit;
 
-  memset(specs, 0, sizeof(specs));
+  value = saturn_size_snap(task->config.size);
+  snprintf(buf, sizeof(buf), "%d", value);
 
-  s        = &specs[SATURN_SIZE_ICON_LABEL];
-  s->bbox  = boxes[ST_LABL];
-  s->type  = wuss_ICON_TYPE_LABEL;
-  s->text  = "Size";
-  s->fg    = wuss_COLOUR_BLACK;
-  s->bg    = wuss_NO_BACKGROUND;
-  s->flags = wuss_ICON_FLAGS_JUSTIFY_RIGHT;
-
-  s       = &specs[SATURN_SIZE_ICON_SLIDER];
-  s->bbox = boxes[ST_SLDR];
-  s->type = wuss_ICON_TYPE_SLIDER;
-  s->fg   = wuss_COLOUR_BLACK;
-  s->bg   = wuss_NO_BACKGROUND;
-  s->u.slider.orientation   = wuss_SLIDER_HORIZONTAL;
-  s->u.slider.min           = SATURN_SIZE_MIN;
-  s->u.slider.max           = SATURN_SIZE_MAX;
-  s->u.slider.default_value = saturn_size_snap(task->config.size);
-
-  snprintf(buf, sizeof(buf), "%d", s->u.slider.default_value);
-  s        = &specs[SATURN_SIZE_ICON_VALUE];
-  s->bbox  = boxes[ST_VAL];
-  s->type  = wuss_ICON_TYPE_LABEL;
-  s->text  = buf; /* copied by wuss_icon_create_array */
-  s->fg    = wuss_COLOUR_BLACK;
-  s->bg    = wuss_NO_BACKGROUND;
-
-  s        = &specs[SATURN_SIZE_ICON_CANCEL];
-  s->bbox  = boxes[ST_CNCL];
-  s->type  = wuss_ICON_TYPE_ACTION;
-  s->text  = "Cancel";
-  s->fg    = wuss_COLOUR_BLACK;
-  s->bg    = wuss_COLOUR_WINDOW;
-
-  s        = &specs[SATURN_SIZE_ICON_APPLY];
-  s->bbox  = boxes[ST_APLY];
-  s->type  = wuss_ICON_TYPE_ACTION;
-  s->text  = "Apply";
-  s->fg    = wuss_COLOUR_BLACK;
-  s->bg    = wuss_COLOUR_WINDOW;
-  s->flags = wuss_ICON_FLAGS_DEFAULT;
+  wuss_icon_spec_label(&specs[SATURN_SIZE_ICON_LABEL], boxes[ST_LABL1],
+                       "Size", wuss_COLOUR_BLACK, 1);
+  wuss_icon_spec_slider(&specs[SATURN_SIZE_ICON_SLIDER], boxes[ST_SLDR1],
+                        wuss_COLOUR_BLACK, wuss_SLIDER_HORIZONTAL,
+                        SATURN_SIZE_MIN, SATURN_SIZE_MAX, value);
+  wuss_icon_spec_label(&specs[SATURN_SIZE_ICON_VALUE], boxes[ST_VAL1],
+                       buf, wuss_COLOUR_BLACK, 0); /* buf copied by
+                                                       wuss_icon_create_array */
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_CANCEL], boxes[ST_CNCL],
+                        "Cancel", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 0);
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY],
+                        "Apply", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 1);
 
   rc = wuss_icon_create_array(task->size_dialogue, specs, SATURN_SIZE_NICONS,
                               made);
   if (rc != result_OK)
-  {
-    wuss_window_close(task->size_dialogue); /* not yet a menu leaf: safe to close */
-    task->size_dialogue = NULL;
-    return rc;
-  }
+    goto exit;
 
   task->size_slider      = made[SATURN_SIZE_ICON_SLIDER];
   task->size_value_label = made[SATURN_SIZE_ICON_VALUE];
@@ -469,6 +444,12 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
   task->size_apply       = made[SATURN_SIZE_ICON_APPLY];
 
   return result_OK;
+  
+  
+exit:
+  wuss_window_close(task->size_dialogue); /* not yet a menu leaf: safe to close */
+  task->size_dialogue = NULL;
+  return rc;
 }
 
 /* wuss_EVENT_PRE_SHOW on the size dialogue: resync the slider and its echo
