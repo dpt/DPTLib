@@ -120,19 +120,19 @@ result_t saturn_create(wuss_t                *wuss,
   wuss_task_t                 *delegate;
   wuss_task_desc_t             delegate_desc;
 
-  task->wuss          = wuss;
-  task->bg            = colour_rgb(0x00, 0x00, 0x00);
-  task->fg            = colour_rgb(0xFF, 0xFF, 0xFF);
-  task->seed          = 1;
-  task->config        = (config != NULL) ? *config : default_config;
-  task->fg_colourmenu     = NULL;
-  task->bg_colourmenu     = NULL;
-  task->menu_handle       = NULL;
-  task->size_dialogue     = NULL;
-  task->size_slider       = NULL;
-  task->size_value_label  = NULL;
-  task->size_cancel       = NULL;
-  task->size_apply        = NULL;
+  task->wuss             = wuss;
+  task->bg               = colour_rgb(0x00, 0x00, 0x00);
+  task->fg               = colour_rgb(0xFF, 0xFF, 0xFF);
+  task->seed             = 1;
+  task->config           = (config != NULL) ? *config : default_config;
+  task->fg_colourmenu    = NULL;
+  task->bg_colourmenu    = NULL;
+  task->menu_handle      = NULL;
+  task->size_dialogue    = NULL;
+  task->size_slider      = NULL;
+  task->size_value_label = NULL;
+  task->size_cancel      = NULL;
+  task->size_apply       = NULL;
 
   /* saturn_redraw paints its own background */
   delegate_desc.handle    = saturn_handle;
@@ -335,9 +335,6 @@ enum
 };
 
 #define G 4
-#define wuss_STD_SLIDER_HEIGHT           18
-#define wuss_STD_SECONDARY_BUTTON_HEIGHT 26
-#define wuss_STD_PRIMARY_BUTTON_HEIGHT   34
 
 /* Leaf main-axis sizes, named so saturn_size_dialogue_create's hand-computed
  * minimum window size can share them with the table below instead of

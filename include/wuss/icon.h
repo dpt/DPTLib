@@ -352,6 +352,17 @@ wuss_icon_spec_t;
 
 /* ----------------------------------------------------------------------- */
 
+/** Standard main-axis size (px) for a wuss_ICON_TYPE_SLIDER. */
+#define wuss_STD_SLIDER_HEIGHT           18
+/** Standard main-axis size (px) for a non-default wuss_ICON_TYPE_ACTION
+ *  button, e.g. Cancel. */
+#define wuss_STD_SECONDARY_BUTTON_HEIGHT 26
+/** Standard main-axis size (px) for a wuss_ICON_FLAGS_DEFAULT
+ *  wuss_ICON_TYPE_ACTION button, e.g. OK/Apply. */
+#define wuss_STD_PRIMARY_BUTTON_HEIGHT   34
+
+/* ----------------------------------------------------------------------- */
+
 /**
  * Create an icon on a window. The icon is owned by the window and freed when
  * the window is closed (or the window manager destroyed). Its bounding box
