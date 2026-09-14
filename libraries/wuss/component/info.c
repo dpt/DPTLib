@@ -36,8 +36,8 @@
 #define INFO_FIELD_PAD    4 /* px each side of the text inside a value field */
 #define INFO_MAX_ROWS    16
 
-/* The dialogue is one window on a task the caller passes in. It carries
- * wuss_WINDOW_NO_CLOSE so a menu chain that borrows it as a
+/* The dialogue is one window on a task the caller passes in. It omits
+ * wuss_WINDOW_CLOSE so a menu chain that borrows it as a
  * wuss_menu_item_t::window can't have it pulled from under it, and
  * wuss_info_destroy closes it explicitly. The task must therefore not be an
  * autoclose one -- its window list would never empty -- and must outlive the
@@ -129,9 +129,7 @@ result_t wuss_info_create(wuss_info_t          **out,
   rc = wuss_window_create(task,
                           &content,
                           title,
-                          wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_CLOSE |
-                          wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
-                          wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE |
+                          wuss_WINDOW_TITLEBAR | wuss_WINDOW_OUTLINE |
                           wuss_WINDOW_NO_REDRAW | wuss_WINDOW_HIDDEN,
                           wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                           SIZE2D(w, h),

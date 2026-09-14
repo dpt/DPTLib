@@ -600,7 +600,7 @@ static inline void wuss__min_content(const wuss_window_t *window,
 static inline int wuss__titlebar_height_for(const wuss_t       *wuss,
                                             wuss_window_flags_t flags)
 {
-  return (flags & wuss_WINDOW_NO_TITLEBAR) ? 0 : wuss->titlebar_height;
+  return (flags & wuss_WINDOW_TITLEBAR) ? wuss->titlebar_height : 0;
 }
 
 static inline int wuss__titlebar_height(const wuss_window_t *window)
@@ -624,7 +624,7 @@ static inline void wuss__window_set_toggled(wuss_window_t *window,
 
 static inline int wuss__outline_px_for(wuss_window_flags_t flags)
 {
-  return (flags & wuss_WINDOW_NO_OUTLINE) ? 0 : 1;
+  return (flags & wuss_WINDOW_OUTLINE) ? 1 : 0;
 }
 
 static inline int wuss__outline_px(const wuss_window_t *window)
@@ -633,7 +633,7 @@ static inline int wuss__outline_px(const wuss_window_t *window)
 }
 
 /* ponytail: falls back to wuss's own titlebar height when the window has
- * none, so NO_TITLEBAR windows that still opt into scrollbars/resize match
+ * none, so titleless windows that still opt into scrollbars/resize match
  * their titled siblings instead of a hardcoded size; the hardcoded default
  * is only a last-resort floor if even that isn't positive */
 static inline int wuss__button_size_for(const wuss_t       *wuss,
@@ -664,12 +664,12 @@ static inline void wuss__furniture_carve_for(wuss_window_flags_t flags,
                                              int                 button_size,
                                              point_t            *carve)
 {
-  carve->x = (flags & wuss_WINDOW_NO_VSCROLL) ? 0 : button_size;
-  carve->y = (flags & wuss_WINDOW_NO_HSCROLL) ? 0 : button_size;
+  carve->x = (flags & wuss_WINDOW_VSCROLL) ? button_size : 0;
+  carve->y = (flags & wuss_WINDOW_HSCROLL) ? button_size : 0;
 
-  if (!(flags & wuss_WINDOW_NO_RESIZE) &&
-      (flags & wuss_WINDOW_NO_VSCROLL) &&
-      (flags & wuss_WINDOW_NO_HSCROLL))
+  if ((flags & wuss_WINDOW_RESIZE) &&
+      !(flags & wuss_WINDOW_VSCROLL) &&
+      !(flags & wuss_WINDOW_HSCROLL))
   {
     carve->x = button_size;
     carve->y = button_size;

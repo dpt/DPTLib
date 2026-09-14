@@ -27,7 +27,7 @@ void wuss__furniture_invalidate_for(wuss_window_t *window,
    * on still reserves both strips, for the resize icon and the rules. */
   wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
 
-  if (!(window->flags & wuss_WINDOW_NO_TITLEBAR))
+  if (window->flags & wuss_WINDOW_TITLEBAR)
   {
     box_t titlebar;
 

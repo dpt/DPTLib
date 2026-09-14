@@ -11,10 +11,10 @@
  * non-NULL fields of a wuss_proginfo_desc_t to wuss_info_row_t rows and
  * calls wuss_info_create. wuss_proginfo_t is wuss_info_t, and the destroy /
  * window calls forward straight through, so all of info.h's lifetime rules
- * apply verbatim: the window is wuss_WINDOW_NO_CLOSE, stays on the caller's
- * task until wuss_proginfo_destroy, that task must not be an autoclose task
- * and must outlive the handle, and the dialogue must outlive every menu
- * chain that borrows it as a wuss_menu_item_t::window.
+ * apply verbatim: the window is created without wuss_WINDOW_CLOSE, stays on
+ * the caller's task until wuss_proginfo_destroy, that task must not be an
+ * autoclose task and must outlive the handle, and the dialogue must outlive
+ * every menu chain that borrows it as a wuss_menu_item_t::window.
  *
  * Built only when WUSS_COMPONENTS is defined (which implies WUSS_MENUS).
  */

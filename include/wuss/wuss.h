@@ -199,48 +199,53 @@ wuss_furniture_palette_t;
  *
  * \note When the library is built with the WUSS_FURNITURE CMake option off,
  *       every window is chromeless regardless of these flags and the
- *       wuss_WINDOW_NO_* bits are ignored.
+ *       furniture bits (wuss_WINDOW_TITLEBAR and below) are ignored.
  */
 typedef enum wuss_window_flags
 {
+  /**
+   * Titlebar present; content is inset below it, and it offers a drag
+   * handle. Without it, content fills the full visible area and
+   * wuss_WINDOW_CLOSE/BACK/TOGGLE_SIZE are ignored.
+   */
+  wuss_WINDOW_TITLEBAR    = 1 << 0,
+
+  /** 1px border drawn around the visible area. */
+  wuss_WINDOW_OUTLINE     = 1 << 1,
+
+  /**
+   * Close icon in the titlebar. Ignored unless flags also includes
+   * wuss_WINDOW_TITLEBAR.
+   */
+  wuss_WINDOW_CLOSE       = 1 << 2,
+
+  /**
+   * Send-to-back icon in the titlebar. Ignored unless flags also includes
+   * wuss_WINDOW_TITLEBAR.
+   */
+  wuss_WINDOW_BACK        = 1 << 3,
+
+  /**
+   * Toggle-size icon in the titlebar. Ignored unless flags also includes
+   * wuss_WINDOW_TITLEBAR.
+   */
+  wuss_WINDOW_TOGGLE_SIZE = 1 << 4,
+
+  /** Vertical scrollbar on the right edge. */
+  wuss_WINDOW_VSCROLL     = 1 << 5,
+
+  /** Horizontal scrollbar on the bottom edge. */
+  wuss_WINDOW_HSCROLL     = 1 << 6,
+
+  /** Resize icon in the bottom-right corner. */
+  wuss_WINDOW_RESIZE      = 1 << 7,
+
   /** Default: every furniture region drawn. */
-  wuss_WINDOW_DEFAULT        = 0,
-
-  /**
-   * No titlebar; content fills the full visible area, and no drag handle
-   * exists.
-   */
-  wuss_WINDOW_NO_TITLEBAR    = 1 << 0,
-
-  /** No 1px border drawn around the visible area. */
-  wuss_WINDOW_NO_OUTLINE     = 1 << 1,
-
-  /**
-   * No close icon in the titlebar. Ignored if flags includes
-   * wuss_WINDOW_NO_TITLEBAR.
-   */
-  wuss_WINDOW_NO_CLOSE       = 1 << 2,
-
-  /**
-   * No send-to-back icon in the titlebar. Ignored if flags includes
-   * wuss_WINDOW_NO_TITLEBAR.
-   */
-  wuss_WINDOW_NO_BACK        = 1 << 3,
-
-  /**
-   * No toggle-size icon in the titlebar. Ignored if flags includes
-   * wuss_WINDOW_NO_TITLEBAR.
-   */
-  wuss_WINDOW_NO_TOGGLE_SIZE = 1 << 4,
-
-  /** No vertical scrollbar on the right edge. */
-  wuss_WINDOW_NO_VSCROLL     = 1 << 5,
-
-  /** No horizontal scrollbar on the bottom edge. */
-  wuss_WINDOW_NO_HSCROLL     = 1 << 6,
-
-  /** No resize icon in the bottom-right corner. */
-  wuss_WINDOW_NO_RESIZE      = 1 << 7,
+  wuss_WINDOW_DEFAULT     = wuss_WINDOW_TITLEBAR | wuss_WINDOW_OUTLINE |
+                            wuss_WINDOW_CLOSE    | wuss_WINDOW_BACK    |
+                            wuss_WINDOW_TOGGLE_SIZE |
+                            wuss_WINDOW_VSCROLL  | wuss_WINDOW_HSCROLL |
+                            wuss_WINDOW_RESIZE,
 
   /**
    * A resize (drag or toggle-size) always fully redraws the window's content
@@ -255,8 +260,8 @@ typedef enum wuss_window_flags
    * keeps its place in the z-order but is not drawn and not hit-tested, so
    * it neither occludes other windows nor catches the pointer. Its position
    * can still be changed with wuss_window_move while hidden, ready for when
-   * it is shown again. Unlike the wuss_WINDOW_NO_* bits this one is toggled
-   * at runtime, and it is honoured regardless of the WUSS_FURNITURE build
+   * it is shown again. Unlike the furniture bits this one is toggled at
+   * runtime, and it is honoured regardless of the WUSS_FURNITURE build
    * option.
    */
   wuss_WINDOW_HIDDEN         = 1 << 9,

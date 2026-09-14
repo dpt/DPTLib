@@ -386,13 +386,9 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
   rc = wuss_window_create_placed(task->delegate,
                                  sz,
                                  "Size",
-                                 wuss_WINDOW_HIDDEN         |
-                                 wuss_WINDOW_NO_CLOSE       |
-                                 wuss_WINDOW_NO_BACK        |
-                                 wuss_WINDOW_NO_TOGGLE_SIZE |
-                                 wuss_WINDOW_NO_HSCROLL     |
-                                 wuss_WINDOW_NO_VSCROLL     |
-                                 wuss_WINDOW_NO_RESIZE      |
+                                 wuss_WINDOW_TITLEBAR |
+                                 wuss_WINDOW_OUTLINE  |
+                                 wuss_WINDOW_HIDDEN   |
                                  wuss_WINDOW_NO_REDRAW,
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  sz,

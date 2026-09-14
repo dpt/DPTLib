@@ -49,7 +49,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
 
   /* titlebar fill + its icons ------------------------------------------- */
   wuss__titlebar_box(window, &titlebar);
-  if (!(window->flags & wuss_WINDOW_NO_TITLEBAR))
+  if (window->flags & wuss_WINDOW_TITLEBAR)
   {
     layout->titlebar     = titlebar;
     layout->has_titlebar = 1;
@@ -69,7 +69,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
       push_piece(layout, &rule, wuss__FURNITURE_PAINT_OUTLINE);
     }
 
-    if (!(window->flags & wuss_WINDOW_NO_CLOSE))
+    if (window->flags & wuss_WINDOW_CLOSE)
     {
       box_t close;
 
@@ -77,7 +77,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
       push_piece(layout, &close, wuss__FURNITURE_PAINT_CLOSE);
     }
 
-    if (!(window->flags & wuss_WINDOW_NO_BACK))
+    if (window->flags & wuss_WINDOW_BACK)
     {
       box_t back;
 
@@ -85,7 +85,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
       push_piece(layout, &back, wuss__FURNITURE_PAINT_BACK);
     }
 
-    if (!(window->flags & wuss_WINDOW_NO_TOGGLE_SIZE))
+    if (window->flags & wuss_WINDOW_TOGGLE_SIZE)
     {
       box_t toggle;
 
@@ -98,9 +98,9 @@ void wuss__furniture_layout_build(wuss_window_t *window)
    * Both scrollbars off but a resize icon on: the content box is still
    * carved back on its right and bottom and no scroll strip paints that
    * margin, so furniture fills it (see the note in the old draw.c). */
-  if ((window->flags & wuss_WINDOW_NO_VSCROLL) &&
-      (window->flags & wuss_WINDOW_NO_HSCROLL) &&
-      !(window->flags & wuss_WINDOW_NO_RESIZE))
+  if (!(window->flags & wuss_WINDOW_VSCROLL) &&
+      !(window->flags & wuss_WINDOW_HSCROLL) &&
+      (window->flags & wuss_WINDOW_RESIZE))
   {
     box_t band;
 
@@ -125,15 +125,15 @@ void wuss__furniture_layout_build(wuss_window_t *window)
   }
 
   /* resize icon + its dividing seams ---------------------------------- */
-  if (!(window->flags & wuss_WINDOW_NO_RESIZE))
+  if (window->flags & wuss_WINDOW_RESIZE)
   {
     box_t resize, rule;
     int   top_seam, left_seam;
 
     wuss__resize_box(window, &resize);
 
-    top_seam  = (window->flags & wuss_WINDOW_NO_VSCROLL) ? 0 : WUSS_DIVIDER_PX;
-    left_seam = (window->flags & wuss_WINDOW_NO_HSCROLL) ? 0 : WUSS_DIVIDER_PX;
+    top_seam  = (window->flags & wuss_WINDOW_VSCROLL) ? WUSS_DIVIDER_PX : 0;
+    left_seam = (window->flags & wuss_WINDOW_HSCROLL) ? WUSS_DIVIDER_PX : 0;
 
     push_piece(layout, &resize, wuss__FURNITURE_PAINT_RESIZE);
 
@@ -157,7 +157,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
   }
 
   /* vertical scrollbar: arrows + well (sausage is drawn live) --------- */
-  if (!(window->flags & wuss_WINDOW_NO_VSCROLL))
+  if (window->flags & wuss_WINDOW_VSCROLL)
   {
     box_t up, down, well;
 
@@ -172,7 +172,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
   }
 
   /* horizontal scrollbar: arrows + well ----------------------------- */
-  if (!(window->flags & wuss_WINDOW_NO_HSCROLL))
+  if (window->flags & wuss_WINDOW_HSCROLL)
   {
     box_t left, right, well;
 
@@ -210,7 +210,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
   }
 
   /* window outline: four one-pixel edges ---------------------------- */
-  if (!(window->flags & wuss_WINDOW_NO_OUTLINE))
+  if (window->flags & wuss_WINDOW_OUTLINE)
   {
     box_t edge;
 
