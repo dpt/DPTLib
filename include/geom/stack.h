@@ -72,6 +72,47 @@ typedef struct stack_item
 }
 stack_item_t;
 
+/* ----------------------------------------------------------------------- */
+
+/* Compact initialisers for a static stack_item_t[] table, covering the
+ * fields each kind needs in the common case. Parent is still given
+ * explicitly -- a flat initializer list has no nesting to infer it from --
+ * but the field names and .kind are no longer spelled out per item. The
+ * _EX variants add the fields the plain macro omits, for the occasional
+ * item that needs them (e.g. root padding, or a leaf that both flexes and
+ * clamps). There is no non-EX/EX split for stack_KIND_SPACER: flex is its
+ * only field. */
+
+#define STACK_VBOX(p_, axis_, gap_) \
+  { .kind = stack_KIND_VBOX, .parent = (p_), \
+    .axis_size = (axis_), .gap = (gap_) }
+
+#define STACK_VBOX_EX(p_, axis_, gap_, padl_, padt_, padr_, padb_) \
+  { .kind = stack_KIND_VBOX, .parent = (p_), \
+    .axis_size = (axis_), .gap = (gap_), \
+    .pad_l = (padl_), .pad_t = (padt_), .pad_r = (padr_), .pad_b = (padb_) }
+
+#define STACK_HBOX(p_, axis_, gap_, align_) \
+  { .kind = stack_KIND_HBOX, .parent = (p_), \
+    .axis_size = (axis_), .gap = (gap_), .align = (align_) }
+
+#define STACK_HBOX_EX(p_, axis_, gap_, align_, padl_, padt_, padr_, padb_) \
+  { .kind = stack_KIND_HBOX, .parent = (p_), \
+    .axis_size = (axis_), .gap = (gap_), .align = (align_), \
+    .pad_l = (padl_), .pad_t = (padt_), .pad_r = (padr_), .pad_b = (padb_) }
+
+#define STACK_LEAF(p_, axis_, cross_, align_) \
+  { .kind = stack_KIND_LEAF, .parent = (p_), \
+    .axis_size = (axis_), .cross_size = (cross_), .align = (align_) }
+
+#define STACK_LEAF_EX(p_, axis_, cross_, align_, flex_, min_, max_) \
+  { .kind = stack_KIND_LEAF, .parent = (p_), \
+    .axis_size = (axis_), .cross_size = (cross_), .align = (align_), \
+    .flex = (flex_), .min = (min_), .max = (max_) }
+
+#define STACK_SPACER(p_, flex_) \
+  { .kind = stack_KIND_SPACER, .parent = (p_), .flex = (flex_) }
+
 /**
  * Solve a box-stack tree into boxes.
  *
