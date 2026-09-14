@@ -151,18 +151,11 @@ result_t saturn_create(wuss_t                *wuss,
 
   rc = wuss_colourmenu_create(&task->fg_colourmenu, wuss, "Foreground");
   if (rc != result_OK)
-  {
-    wuss_task_destroy(delegate);
-    return rc;
-  }
+    goto fail_delegate;
 
   rc = wuss_colourmenu_create(&task->bg_colourmenu, wuss, "Background");
   if (rc != result_OK)
-  {
-    wuss_colourmenu_destroy(task->fg_colourmenu);
-    wuss_task_destroy(delegate);
-    return rc;
-  }
+    goto fail_fg_colourmenu;
 
   g_saturn_colours_items[SATURN_COLOURS_MENU_FOREGROUND].submenu =
     wuss_colourmenu_menu(task->fg_colourmenu);
@@ -178,24 +171,22 @@ result_t saturn_create(wuss_t                *wuss,
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
-  {
-    wuss_colourmenu_destroy(task->bg_colourmenu);
-    wuss_colourmenu_destroy(task->fg_colourmenu);
-    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
-    return rc;
-  }
+    goto fail_bg_colourmenu;
 
   rc = saturn_size_dialogue_create(task);
   if (rc != result_OK)
-  {
-    wuss_colourmenu_destroy(task->bg_colourmenu);
-    wuss_colourmenu_destroy(task->fg_colourmenu);
-    wuss_task_destroy(delegate); /* closes task->window too; QUIT frees the block */
-    return rc;
-  }
+    goto fail_bg_colourmenu; /* wuss_task_destroy closes task->window too */
   g_saturn_menu_items[SATURN_MENU_SIZE].window = task->size_dialogue;
 
   return result_OK;
+
+fail_bg_colourmenu:
+  wuss_colourmenu_destroy(task->bg_colourmenu);
+fail_fg_colourmenu:
+  wuss_colourmenu_destroy(task->fg_colourmenu);
+fail_delegate:
+  wuss_task_destroy(delegate); /* unregisters; its QUIT frees the task block */
+  return rc;
 }
 
 /* plot one point in window content space, clipped to the window. x,y are
@@ -340,19 +331,27 @@ enum
 #define wuss_STD_SECONDARY_BUTTON_HEIGHT 26
 #define wuss_STD_PRIMARY_BUTTON_HEIGHT   34
 
+/* Leaf main-axis sizes, named so saturn_size_dialogue_create's hand-computed
+ * minimum window size can share them with the table below instead of
+ * repeating the numbers as bare literals. */
+#define ST_LABEL_W  24
+#define ST_SLIDER_MIN_W 64
+#define ST_CANCEL_W 48
+#define ST_APPLY_W  56
+
 static const stack_item_t g_saturn_size_stack[SIZE_STACK__LIMIT] =
 {
   [ST_ROOT] = STACK_VBOX_EX(-1, 0, G, G, G, G, G),
 
   [ST_ROW]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, G, stack_ALIGN_START),
-  [ST_LABL] = STACK_LEAF(ST_ROW, 24, 16, stack_ALIGN_CENTRE),
-  [ST_SLDR] = STACK_LEAF_EX(ST_ROW, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, 64, 0),
-  [ST_VAL]  = STACK_LEAF(ST_ROW, 24, 16, stack_ALIGN_CENTRE),
+  [ST_LABL] = STACK_LEAF(ST_ROW, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_SLDR] = STACK_LEAF_EX(ST_ROW, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
+  [ST_VAL]  = STACK_LEAF(ST_ROW, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
 
   [ST_BTNS] = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, G, stack_ALIGN_END),
   [ST_SPCR] = STACK_SPACER(ST_BTNS, 1),
-  [ST_CNCL] = STACK_LEAF(ST_BTNS, 48, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
-  [ST_APLY] = STACK_LEAF(ST_BTNS, 56, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [ST_CNCL] = STACK_LEAF(ST_BTNS, ST_CANCEL_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [ST_APLY] = STACK_LEAF(ST_BTNS, ST_APPLY_W, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
 };
 
 /* Build the size dialogue once: a label, a slider snapped to
@@ -379,8 +378,8 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
    * always consume whatever slack the root provides. So the minimum
    * window size is hand-computed here from the same constants the table
    * uses, rather than measured by solving. */
-  row_w  = 24 + G + 64 + G + 24;
-  btns_w = 48 + G + 56;
+  row_w  = ST_LABEL_W + G + ST_SLIDER_MIN_W + G + ST_LABEL_W;
+  btns_w = ST_CANCEL_W + G + ST_APPLY_W;
   sz.w   = MAX(row_w, btns_w) + 2 * G;
   sz.h   = wuss_STD_SLIDER_HEIGHT + G + wuss_STD_PRIMARY_BUTTON_HEIGHT + 2 * G;
 
@@ -541,6 +540,26 @@ static result_t saturn_size_pre_show(saturn_task_t *task)
   return wuss_icon_set_text(task->size_dialogue, task->size_value_label, buf);
 }
 
+/* Applies event to *colour if it's a pick from colourmenu, returns whether
+ * it was. Shared by saturn_menu_select's fg/bg attempts below. */
+static int saturn_menu_select_apply(const wuss_colourmenu_t *colourmenu,
+                                    colour_t                *colour,
+                                    const colour_t          *palette,
+                                    int                      npalette,
+                                    const wuss_event_t      *event)
+{
+  wuss_colour_t picked;
+  int           mine;
+
+  picked = wuss_colourmenu_selected(colourmenu, event, &mine);
+  if (!mine)
+    return 0;
+
+  if (picked < npalette)
+    *colour = palette[picked];
+  return 1;
+}
+
 /* A pick from either colour submenu, resolved against whichever colourmenu
  * it came from. "Size" is a wuss_menu_item_t::window leaf, not a leaf pick,
  * so it never reaches here -- see saturn_size_icon and saturn_size_pre_show. */
@@ -548,28 +567,15 @@ static result_t saturn_menu_select(saturn_task_t      *task,
                                    const wuss_event_t *event)
 {
   const colour_t *palette;
-  wuss_colour_t   picked;
-  int             npalette, mine;
+  int             npalette;
 
   palette = wuss_get_palette(task->wuss, &npalette);
 
-  picked = wuss_colourmenu_selected(task->fg_colourmenu, event, &mine);
-  if (mine)
-  {
-    if (picked < npalette)
-      task->fg = palette[picked];
+  if (saturn_menu_select_apply(task->fg_colourmenu, &task->fg, palette,
+                               npalette, event) ||
+      saturn_menu_select_apply(task->bg_colourmenu, &task->bg, palette,
+                               npalette, event))
     wuss_window_invalidate_visible(task->window);
-    return result_OK;
-  }
-
-  picked = wuss_colourmenu_selected(task->bg_colourmenu, event, &mine);
-  if (mine)
-  {
-    if (picked < npalette)
-      task->bg = palette[picked];
-    wuss_window_invalidate_visible(task->window);
-    return result_OK;
-  }
 
   return result_OK;
 }
