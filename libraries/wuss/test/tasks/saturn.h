@@ -9,6 +9,7 @@
  * by default, so the wuss app always has the colourmenu component. */
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
+#include "wuss/icon-spec.h"
 #include "wuss/icon.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"

@@ -132,6 +132,7 @@ set(PUBLIC_HEADERS
 
 if(WUSS_ICONS)
     list(APPEND PUBLIC_HEADERS include/wuss/icon.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/icon-spec.h)
 endif()
 if(WUSS_MENUS)
     list(APPEND PUBLIC_HEADERS include/wuss/menu.h)
@@ -440,6 +441,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/draw.c
     libraries/wuss/icon/free.c
     libraries/wuss/icon/from-spec.c
+    libraries/wuss/helpers/icon-spec.c
     libraries/wuss/icon/get-bbox.c
     libraries/wuss/icon/get-selected.c
     libraries/wuss/icon/get-text.c
