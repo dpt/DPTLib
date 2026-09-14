@@ -118,6 +118,7 @@ result_t saturn_create(wuss_t                *wuss,
                        const saturn_config_t *config)
 {
   static const saturn_config_t default_config = SATURN_CONFIG_DEFAULT;
+
   result_t                     rc;
   wuss_task_t                 *delegate;
   wuss_task_desc_t             delegate_desc;

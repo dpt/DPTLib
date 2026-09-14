@@ -28,13 +28,13 @@ result_t pack_test(const char *resources)
                                };
 
     static const char fmt[] = "2c2s2i";
-    const size_t       sz = 14;
 
-    unsigned char     buf[100];
-    size_t            n;
-    signed char       c1, c2;
-    short             s1, s2;
-    int               l1, l2;
+    const size_t   sz = 14;
+    unsigned char  buf[100];
+    size_t         n;
+    signed char    c1, c2;
+    short          s1, s2;
+    int            l1, l2;
 
     n = pack(buf, fmt, data[0], data[1], data[2], data[3], data[4], data[5]);
     if (n != sz)
@@ -103,10 +103,10 @@ result_t pack_test(const char *resources)
                                                  0x00, 0xff
                                                };
     static const char           fmt[]        = "*c*s*i";
-    const size_t                 sz           = 2 + 4 + 8;
 
-    unsigned char               buf[100];
-    size_t                      n;
+    const size_t   sz = 2 + 4 + 8;
+    unsigned char  buf[100];
+    size_t         n;
 
     n = pack(buf, fmt, 2, cdata, 2, sdata, 2, ldata);
     if (n != sz)

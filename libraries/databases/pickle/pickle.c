@@ -27,6 +27,7 @@ static result_t pickle__write_header(FILE       *f,
                                      size_t      commentslen)
 {
   static const char commentchar[] = "# ";
+
   int rc;
 
   rc = fprintf(f, "%s%.*s\n%s\n",

@@ -273,15 +273,15 @@ static result_t run_wuss(const char *resources,
                          int         depth,
                          int         scale)
 {
-  const int        scr_width  = 640;
-  const int        scr_height = 480;
+  static const char *const names[WUSS_MAIN_NFONTS] =
+    { "DPT-Digits-Regular", "DPT-Digits-Bold", "Symbols" };
 
+  const int          scr_width  = 640;
+  const int          scr_height = 480;
   result_t           rc;
   const char        *leafname;
   const char        *filename;
   bmfont_t          *fonts[WUSS_MAIN_NFONTS];
-  static const char *const names[WUSS_MAIN_NFONTS] =
-    { "DPT-Digits-Regular", "DPT-Digits-Bold", "Symbols" };
   int                nfonts;
   int                i;
   void              *pixels;
