@@ -41,26 +41,34 @@ stack_align_t;
 typedef struct stack_item
 {
   stack_kind_t  kind;
-  int           parent;  /**< Index of the containing item; -1 for the
-                               root. */
+  int           parent;     /**< Index of the containing item; -1 for the
+                                  root. */
 
-  int           size;    /**< Fixed main-axis extent in px; 0 means "use
-                               flex". */
-  int           flex;    /**< Weight for sharing leftover main-axis space;
-                               0 means "do not grow". */
-  int           min;     /**< Main-axis lower clamp in px; 0 means none. */
-  int           max;     /**< Main-axis upper clamp in px; 0 means
-                               unbounded. */
+  int           axis_size;  /**< Fixed main-axis extent in px; 0 means "use
+                                  flex". */
+  int           flex;       /**< Weight for sharing leftover main-axis
+                                  space; 0 means "do not grow". */
+  int           min;        /**< Main-axis lower clamp in px; 0 means
+                                  none. */
+  int           max;        /**< Main-axis upper clamp in px; 0 means
+                                  unbounded. */
 
-  stack_align_t align;   /**< Cross-axis placement of this item within its
-                               container. */
+  stack_align_t align;      /**< Cross-axis placement of this item within
+                                  its container. */
+  int           cross_size; /**< Cross-axis extent in px for
+                                  stack_ALIGN_CENTRE/stack_ALIGN_END; 0 means
+                                  span the container's full cross extent.
+                                  Unused for stack_ALIGN_START/FILL. */
 
-  int           gap;     /**< Containers only: px between adjacent
-                               children. */
-  int           pad_l;   /**< Containers only: inner inset, left edge.   */
-  int           pad_t;   /**< Containers only: inner inset, top edge.    */
-  int           pad_r;   /**< Containers only: inner inset, right edge.  */
-  int           pad_b;   /**< Containers only: inner inset, bottom edge. */
+  int           gap;        /**< Containers only: px between adjacent
+                                  children. */
+  int           pad_l;      /**< Containers only: inner inset, left
+                                  edge. */
+  int           pad_t;      /**< Containers only: inner inset, top edge. */
+  int           pad_r;      /**< Containers only: inner inset, right
+                                  edge. */
+  int           pad_b;      /**< Containers only: inner inset, bottom
+                                  edge. */
 }
 stack_item_t;
 

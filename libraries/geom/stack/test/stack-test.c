@@ -56,15 +56,17 @@ static result_t test_flex_split(void)
 static result_t test_aligned_labels(void)
 {
   enum { ROOT, ROW1, LBL1, FLD1, ROW2, LBL2, FLD2, N };
-  static const box_t   root = { 0, 0, 200, 40 };
+  static const box_t        root = { 0, 0, 200, 40 };
   static const stack_item_t items[N] =
   {
     [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
-    [ROW1] = { .kind = stack_KIND_HBOX, .parent = ROOT, .size = 20 },
-    [LBL1] = { .kind = stack_KIND_LEAF, .parent = ROW1, .size = 40, .align = stack_ALIGN_END },
+    
+    [ROW1] = { .kind = stack_KIND_HBOX, .parent = ROOT, .axis_size = 20 },
+    [LBL1] = { .kind = stack_KIND_LEAF, .parent = ROW1, .axis_size = 40, .align = stack_ALIGN_END },
     [FLD1] = { .kind = stack_KIND_LEAF, .parent = ROW1, .flex = 1 },
-    [ROW2] = { .kind = stack_KIND_HBOX, .parent = ROOT, .size = 20 },
-    [LBL2] = { .kind = stack_KIND_LEAF, .parent = ROW2, .size = 40, .align = stack_ALIGN_END },
+
+    [ROW2] = { .kind = stack_KIND_HBOX, .parent = ROOT, .axis_size = 20 },
+    [LBL2] = { .kind = stack_KIND_LEAF, .parent = ROW2, .axis_size = 40, .align = stack_ALIGN_END },
     [FLD2] = { .kind = stack_KIND_LEAF, .parent = ROW2, .flex = 1 },
   };
 
@@ -269,9 +271,9 @@ static result_t test_spacer(void)
   static const stack_item_t items[N] =
   {
     [ROOT]   = { .kind = stack_KIND_HBOX,   .parent = -1 },
-    [A]      = { .kind = stack_KIND_LEAF,   .parent = ROOT, .size = 10 },
+    [A]      = { .kind = stack_KIND_LEAF,   .parent = ROOT, .axis_size = 10 },
     [SPACER] = { .kind = stack_KIND_SPACER, .parent = ROOT, .flex = 1 },
-    [B]      = { .kind = stack_KIND_LEAF,   .parent = ROOT, .size = 10 },
+    [B]      = { .kind = stack_KIND_LEAF,   .parent = ROOT, .axis_size = 10 },
   };
 
   result_t err;
@@ -336,8 +338,8 @@ static result_t test_align_centre(void)
   static const stack_item_t items[N] =
   {
     [ROOT] = { .kind = stack_KIND_HBOX, .parent = -1 },
-    [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1, .size = 10,
-               .align = stack_ALIGN_CENTRE },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1,
+               .cross_size = 10, .align = stack_ALIGN_CENTRE },
   };
 
   result_t err;
