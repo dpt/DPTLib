@@ -287,6 +287,7 @@ static void icons_add_bitmaps(icons_layout_t *lay,
 static void icons_add_iconset(icons_layout_t *lay, const wuss_t *wuss)
 {
   static const char *const names[4] = { "opton", "optoff", "radon", "radoff" };
+
   wuss_icon_spec_t        *s;
   int                      top;
   int                      idx[4];

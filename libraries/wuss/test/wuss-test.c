@@ -588,6 +588,7 @@ result_t wuss_test(const char *resources)
       { 0xFF0000FF }, { 0xFF00FF00 }, { 0xFFFF0000 },
       { 0xFFFFFFFF }, { 0xFF000000 }
     };
+
     wuss_config_t   symcfg;
     wuss_t         *symw;
     wuss_window_t  *symwin;
@@ -4722,6 +4723,7 @@ result_t wuss_test(const char *resources)
     {
       "Help", borrowed_items, NELEMS(borrowed_items)
     };
+
     wuss_menu_t *m;
     const wuss_menu_t *sub;
 
@@ -5761,6 +5763,7 @@ QuitFail:
       wuss_WINDOW_DEFAULT & ~wuss_WINDOW_CLOSE,
       wuss_WINDOW_DEFAULT & ~wuss_WINDOW_TITLEBAR
     };
+
     static test_task_t tc_cb;
     wuss_task_t       *delegate_cb;
     box_t              box_cb, visible;

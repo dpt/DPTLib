@@ -242,6 +242,7 @@ static result_t palette_redraw_screen(palette_task_t     *pc,
   if (scr->palette == NULL)
   {
     static const char label[] = "32bpp (none)";
+
     bmfont_t          *font   = wuss_get_font(pc->wuss);
     colour_t           ink    = colour_rgb(0xFF, 0xFF, 0xFF);
     colour_t           bg     = colour_rgba(0, 0, 0, 0); /* transparent */

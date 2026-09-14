@@ -970,10 +970,10 @@ static result_t bmfont_monospace_test(const char *resources)
 {
   static const char sample[] = "WiWiWi.1jm";
 
+  result_t       rc;
   const char    *leafname;
   const char    *filename;
   bmfont_t      *bmfont = NULL;
-  result_t       rc;
   bmfont_width_t onechar;
   bmfont_width_t prev;
   int            i;
