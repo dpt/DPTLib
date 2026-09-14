@@ -321,6 +321,7 @@ static int saturn_size_snap(int v)
 enum
 {
   ST_ROOT,
+  
   ST_ROW,
   ST_LABL,
   ST_SLDR,
@@ -341,17 +342,17 @@ enum
 
 static const stack_item_t g_saturn_size_stack[SIZE_STACK__LIMIT] =
 {
-  [ST_ROOT] = { .kind = stack_KIND_VBOX,   .parent = -1,      .gap = G, .pad_l = G, .pad_t = G, .pad_r = G, .pad_b = G },
+  [ST_ROOT] = STACK_VBOX_EX(-1, 0, G, G, G, G, G),
 
-  [ST_ROW]  = { .kind = stack_KIND_HBOX,   .parent = ST_ROOT, .axis_size = wuss_STD_SLIDER_HEIGHT, .gap = G,                   .align = stack_ALIGN_START },
-  [ST_LABL] = { .kind = stack_KIND_LEAF,   .parent = ST_ROW,  .axis_size = 24, .cross_size = 16,                               .align = stack_ALIGN_CENTRE },
-  [ST_SLDR] = { .kind = stack_KIND_LEAF,   .parent = ST_ROW,  .flex = 1, .min = 64, .cross_size = wuss_STD_SLIDER_HEIGHT,      .align = stack_ALIGN_CENTRE },
-  [ST_VAL]  = { .kind = stack_KIND_LEAF,   .parent = ST_ROW,  .axis_size = 24, .cross_size = 16,                               .align = stack_ALIGN_CENTRE },
-  
-  [ST_BTNS] = { .kind = stack_KIND_HBOX,   .parent = ST_ROOT, .axis_size = wuss_STD_PRIMARY_BUTTON_HEIGHT, .gap = G,           .align = stack_ALIGN_END },
-  [ST_SPCR] = { .kind = stack_KIND_SPACER, .parent = ST_BTNS, .flex = 1 },
-  [ST_CNCL] = { .kind = stack_KIND_LEAF,   .parent = ST_BTNS, .axis_size = 48, .cross_size = wuss_STD_SECONDARY_BUTTON_HEIGHT, .align = stack_ALIGN_CENTRE },
-  [ST_APLY] = { .kind = stack_KIND_LEAF,   .parent = ST_BTNS, .axis_size = 56, .cross_size = wuss_STD_PRIMARY_BUTTON_HEIGHT,   .align = stack_ALIGN_CENTRE },
+  [ST_ROW]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, G, stack_ALIGN_START),
+  [ST_LABL] = STACK_LEAF(ST_ROW, 24, 16, stack_ALIGN_CENTRE),
+  [ST_SLDR] = STACK_LEAF_EX(ST_ROW, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, 64, 0),
+  [ST_VAL]  = STACK_LEAF(ST_ROW, 24, 16, stack_ALIGN_CENTRE),
+
+  [ST_BTNS] = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, G, stack_ALIGN_END),
+  [ST_SPCR] = STACK_SPACER(ST_BTNS, 1),
+  [ST_CNCL] = STACK_LEAF(ST_BTNS, 48, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [ST_APLY] = STACK_LEAF(ST_BTNS, 56, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
 };
 
 /* Build the size dialogue once: a label, a slider snapped to
