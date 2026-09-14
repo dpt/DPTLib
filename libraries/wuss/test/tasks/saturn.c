@@ -42,20 +42,17 @@
  *           x = sqrt(16384-P)/2                             -> planet body
  */
 
-/* the sample space below (and so the sketch itself) is always 256 pixels
- * square, matching the original's -128..127 signed-byte range; the window's
- * on-screen size (task->config.size, set via the Size... dialogue) scales
- * independently, so a larger window just shows more margin around the same
- * sketch and a smaller one clips it. */
-#define SATURN_SIZE         256
+/* the sample space matches task->config.size (square), scaling the original
+ * -128..127 signed-byte range up or down with it; SATURN_SIZE_DEFAULT is
+ * only the value saturn_create falls back to when the caller passes NULL
+ * (see SATURN_CONFIG_DEFAULT in saturn.h). */
+#define SATURN_SIZE_DEFAULT 256
 
-/* The original works in a -128..127 sample space (BBC BASIC signed byte). */
-#define SATURN_HALF         (SATURN_SIZE / 2) /* sample-space centre / bias */
-#define SATURN_RANGE        (SATURN_SIZE - 1) /* saturn_rnd() span: 1..255, then -HALF */
-#define SATURN_FLIP         (SATURN_SIZE - 1) /* RISC OS bottom-up -> wuss top-down: FLIP - v */
-#define SATURN_ENERGY_SHIFT SATURN_SIZE /* (x*x+y*y) energy divisor */
+/* The original works in a -128..127 sample space (BBC BASIC signed byte),
+ * here scaled to whatever size is live; saturn_redraw derives these per-call
+ * as half/range/flip/energy_shift from task->config.size. */
 
-#define SATURN_BODY_R2    16384 /* planet body: keep if r1*r1+r2*r2 < this */
+#define SATURN_BODY_R2(half) ((half) * (half)) /* planet body: keep if r1*r1+r2*r2 < this */
 
 /* BBC BASIC RND(n>0) returns an integer 1..n. utils/rng's LCG stands in for
  * it (its high bits, which is where an LCG's usable randomness sits) so a
@@ -72,8 +69,8 @@ static int saturn_rnd(int n)
   return (int) ((rng_lcg32(&saturn_rnd_state) >> 16) % (uint32_t) n) + 1;
 }
 
-/* one signed sample in the original -128..127 space */
-#define SATURN_SAMPLE() (saturn_rnd(SATURN_RANGE) - SATURN_HALF)
+/* one signed sample in the original -128..127 space, scaled to half/range */
+#define SATURN_SAMPLE(half, range) (saturn_rnd(range) - (half))
 
 /* MENU click over the content pops this. "Colours" leads to a submenu with
  * one row per task->fg/task->bg, each of which pops a wuss_colourmenu (see
@@ -196,11 +193,12 @@ fail_delegate:
 static void saturn_plot(screen_t *scr,
                         int       ox,
                         int       oy,
+                        int       size,
                         int       x,
                         int       y,
                         colour_t  c)
 {
-  if (x < 0 || x >= SATURN_SIZE || y < 0 || y >= SATURN_SIZE)
+  if (x < 0 || x >= size || y < 0 || y >= size)
     return;
 
   screen_set_pixel(scr, ox + x, oy + y, c);
@@ -210,6 +208,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
 {
   screen_t    *scr;
   const box_t *content, *bounds;
+  int          size, half, range, flip, energy_shift;
   int          ox, oy;
   int          i;
   int          x, y, p;
@@ -220,8 +219,16 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
 
   screen_fill_rect(scr, content->x0, content->y0, box_size(content), task->bg);
 
-  /* plot in doc space (saturn_plot clips to 0..SATURN_SIZE); origin carries
-   * the scroll so a scrolled/shrunk window shows the right slice */
+  /* sample space scales with the window: -size/2..size/2-1, matching the
+   * original's -128..127 at task->config.size == SATURN_SIZE_DEFAULT */
+  size         = task->config.size;
+  half         = size / 2;
+  range        = size - 1;
+  flip         = size - 1;
+  energy_shift = size;
+
+  /* plot in doc space (saturn_plot clips to 0..size); origin carries the
+   * scroll so a scrolled/shrunk window shows the right slice */
   ox = bounds->x0 - event->data.redraw.scroll.x;
   oy = bounds->y0 - event->data.redraw.scroll.y;
 
@@ -230,12 +237,11 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
   /* loop 1 - the ring: keep points outside the inner disc */
   for (i = 0; i <= task->config.ring_iters; i++)
   {
-    x = SATURN_SAMPLE();
-    y = SATURN_SAMPLE();
-    p = (x * x + y * y) / SATURN_ENERGY_SHIFT;
+    x = SATURN_SAMPLE(half, range);
+    y = SATURN_SAMPLE(half, range);
+    p = (x * x + y * y) / energy_shift;
     if (p > 17)
-      saturn_plot(scr, ox, oy, x + SATURN_HALF, SATURN_FLIP - (y + SATURN_HALF),
-                  task->fg);
+      saturn_plot(scr, ox, oy, size, x + half, flip - (y + half), task->fg);
   }
 
   /* loop 2 - ring shadow band: sheared sample with a banded energy gate */
@@ -243,30 +249,31 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
   {
     int r5, r6, r7, e;
 
-    r5 = SATURN_SAMPLE();
-    r6 = SATURN_SAMPLE();
+    r5 = SATURN_SAMPLE(half, range);
+    r6 = SATURN_SAMPLE(half, range);
     r7 = r5 / 4;
     x  = r6 + r7;
     y  = r6;
-    p  = (x * x + y * y) / SATURN_ENERGY_SHIFT;
-    e  = ((r6 + r7) * (r6 + r7) + r5 * r5 + r6 * r6) / SATURN_ENERGY_SHIFT;
+    p  = (x * x + y * y) / energy_shift;
+    e  = ((r6 + r7) * (r6 + r7) + r5 * r5 + r6 * r6) / energy_shift;
     if (e >= 32 && e < 80 && (r5 < 0 || p > 16))
-      saturn_plot(scr, ox, oy, x + SATURN_HALF, y + SATURN_HALF, task->fg);
+      saturn_plot(scr, ox, oy, size, x + half, y + half, task->fg);
   }
 
   /* loop 3 - planet body: filled half-disc offset right */
   for (i = 0; i <= task->config.body_iters; i++)
   {
-    int r1, r2;
+    int r1, r2, body_r2;
 
-    r1 = SATURN_SAMPLE();
-    r2 = SATURN_SAMPLE();
-    p  = r1 * r1 + r2 * r2;
-    if (p < SATURN_BODY_R2)
+    r1      = SATURN_SAMPLE(half, range);
+    r2      = SATURN_SAMPLE(half, range);
+    p       = r1 * r1 + r2 * r2;
+    body_r2 = SATURN_BODY_R2(half);
+    if (p < body_r2)
     {
-      x = (int) (sqrt((double) (SATURN_BODY_R2 - p)) / 2.0) + SATURN_HALF;
-      y = SATURN_FLIP - (r2 / 2 + SATURN_HALF);
-      saturn_plot(scr, ox, oy, x, y, task->fg);
+      x = (int) (sqrt((double) (body_r2 - p)) / 2.0) + half;
+      y = flip - (r2 / 2 + half);
+      saturn_plot(scr, ox, oy, size, x, y, task->fg);
     }
   }
 
@@ -467,15 +474,48 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
   return result_OK;
 }
 
+/* wuss_EVENT_PRE_SHOW on the size dialogue: resync the slider and its echo
+ * label to task->config.size, in case Apply (or a config passed to
+ * saturn_create) changed it since the dialogue was last shown. Always
+ * allows the show. Also used directly by saturn_size_icon to reset the
+ * dialogue on an Adjust-Cancel click. */
+static result_t saturn_size_pre_show(saturn_task_t *task)
+{
+  int  value;
+  char buf[16];
+
+  value = saturn_size_snap(task->config.size);
+  wuss_icon_set_value(task->size_dialogue, task->size_slider, value);
+  snprintf(buf, sizeof(buf), "%d", value);
+
+  return wuss_icon_set_text(task->size_dialogue, task->size_value_label, buf);
+}
+
+/* Applies the slider's current value to task->window (resize + doc extent),
+ * shared by a Select and an Adjust click on Apply. */
+static result_t saturn_size_apply(saturn_task_t *task)
+{
+  result_t rc;
+  int      value;
+
+  value = wuss_icon_get_value(task->size_slider);
+  task->config.size = value;
+  rc = wuss_window_resize(task->window, SIZE2D(value, value));
+  if (rc != result_OK)
+    return rc;
+  return wuss_window_set_doc(task->window, SIZE2D(value, value));
+}
+
 /* wuss_EVENT_ICON on the size dialogue: slider drag updates the echo label
- * (snapped to SATURN_SIZE_STEP) live on DOWN/MOVE; Cancel/Apply act on a
- * Select UP, so a press that drags off the button before release is not
- * taken as a click, and an Adjust click leaves the dialogue open (RISC OS
- * "Adjust doesn't dismiss" convention). Cancel just dismisses the menu
- * chain; Apply resizes the planet window to the chosen size, stores it as
- * the new default and dismisses. Dismissing goes through wuss_menu_close
- * rather than touching the (borrowed, reused) window directly -- that is
- * what hides it, same as a click outside the chain would. */
+ * (snapped to SATURN_SIZE_STEP) live on DOWN/MOVE; Cancel/Apply act on
+ * UP (a press that drags off the button before release is not taken as a
+ * click), split by button per the RISC OS "Adjust doesn't dismiss"
+ * convention: Select-Cancel and Select-Apply both dismiss the menu chain
+ * (Select-Apply after applying); Adjust-Cancel resets the dialogue to
+ * task->config.size instead of dismissing; Adjust-Apply applies but leaves
+ * the dialogue open. Dismissing goes through wuss_menu_close rather than
+ * touching the (borrowed, reused) window directly -- that is what hides it,
+ * same as a click outside the chain would. */
 static result_t saturn_size_icon(saturn_task_t      *task,
                                  const wuss_event_t *event)
 {
@@ -498,43 +538,36 @@ static result_t saturn_size_icon(saturn_task_t      *task,
                               buf);
   }
 
-  if (event->data.icon.action != wuss_MOUSE_UP ||
-      !(event->data.icon.button & wuss_BUTTON_SELECT))
+  if (event->data.icon.action != wuss_MOUSE_UP)
     return result_OK;
 
   if (icon == task->size_cancel)
   {
-    wuss_menu_close(task->menu_handle);
-    task->menu_handle = NULL;
+    if (event->data.icon.button & wuss_BUTTON_SELECT)
+    {
+      wuss_menu_close(task->menu_handle);
+      task->menu_handle = NULL;
+      return result_OK;
+    }
+    if (event->data.icon.button & wuss_BUTTON_ADJUST)
+      return saturn_size_pre_show(task);
     return result_OK;
   }
 
   if (icon == task->size_apply)
   {
-    value = wuss_icon_get_value(task->size_slider);
-    task->config.size = value;
-    wuss_menu_close(task->menu_handle);
-    task->menu_handle = NULL;
-    return wuss_window_resize(task->window, SIZE2D(value, value));
+    if (event->data.icon.button & wuss_BUTTON_SELECT)
+    {
+      wuss_menu_close(task->menu_handle);
+      task->menu_handle = NULL;
+      return saturn_size_apply(task);
+    }
+    if (event->data.icon.button & wuss_BUTTON_ADJUST)
+      return saturn_size_apply(task);
+    return result_OK;
   }
 
   return result_OK;
-}
-
-/* wuss_EVENT_PRE_SHOW on the size dialogue: resync the slider and its echo
- * label to task->config.size, in case Apply (or a config passed to
- * saturn_create) changed it since the dialogue was last shown. Always
- * allows the show. */
-static result_t saturn_size_pre_show(saturn_task_t *task)
-{
-  int  value;
-  char buf[16];
-
-  value = saturn_size_snap(task->config.size);
-  wuss_icon_set_value(task->size_dialogue, task->size_slider, value);
-  snprintf(buf, sizeof(buf), "%d", value);
-
-  return wuss_icon_set_text(task->size_dialogue, task->size_value_label, buf);
 }
 
 /* Applies event to *colour if it's a pick from colourmenu, returns whether
