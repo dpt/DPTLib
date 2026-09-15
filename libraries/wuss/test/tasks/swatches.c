@@ -103,7 +103,7 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(SWATCHES_DOC_W, 140),
                                  "Swatches",
-                                 wuss_WINDOW_NO_RESIZE_BLIT, /* grid spans the whole window; a resize redraws all of it */
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT, /* grid spans the whole window; a resize redraws all of it */
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  SIZE2D(SWATCHES_DOC_W, SWATCHES_DOC_H),
                                  SIZE2D(0, 0),
