@@ -23,7 +23,7 @@
 #include "icons.h"
 
 #define ICONS_DOC_W    260
-#define ICONS_DOC_H    1160 /* taller than the window, so scrolling is exercised */
+#define ICONS_DOC_H    1310 /* taller than the window, so scrolling is exercised */
 #define ICONS_MARGIN   28  /* left edge of everything except frame captions */
 #define ICONS_ROW      20  /* vertical pitch between stacked simple icons */
 
@@ -40,10 +40,11 @@ enum
   ICONS_N_ICONSET = 5, /* frame + opton + optoff + radon + radoff from the loaded set */
   ICONS_N_PATTERN = 2, /* frame + one PATTERN swatch */
   ICONS_N_BORDERS = 6, /* frame + GROOVE + RIDGE + ACTION + DIVIDER labels */
+  ICONS_N_SLIDERS = 4, /* frame + horizontal + vertical slider + state label */
   ICONS_N_MENU    = 8, /* frame + plain, ticked, swatch, submenu, disabled, rule, separator entry */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
                     ICONS_N_BITMAPS + ICONS_N_ICONSET + ICONS_N_PATTERN +
-                    ICONS_N_BORDERS + ICONS_N_MENU
+                    ICONS_N_BORDERS + ICONS_N_SLIDERS + ICONS_N_MENU
 };
 
 /* Running state threaded through the icons_add_* helpers: where to write the
@@ -417,6 +418,63 @@ static void icons_add_borders(icons_layout_t *lay)
   lay->y = top + 166;
 }
 
+/* A grouping frame captioned "Sliders", holding a horizontal slider, a
+ * vertical slider beside it and a label echoing whichever last moved.
+ * Returns the horizontal/vertical slider and echo-label indices via
+ * horiz/vert/state. */
+static void icons_add_sliders(icons_layout_t *lay,
+                              int            *horiz,
+                              int            *vert,
+                              int            *state)
+{
+  wuss_icon_spec_t *s;
+  int               top;
+
+  top     = lay->y;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 130);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "Sliders";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  *horiz  = lay->n;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20, 160, 20);
+  s->type = wuss_ICON_TYPE_SLIDER;
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  s->u.slider.orientation   = wuss_SLIDER_HORIZONTAL;
+  s->u.slider.min           = 0;
+  s->u.slider.max           = 100;
+  s->u.slider.default_value = 25;
+  lay->n++;
+
+  *vert   = lay->n;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 160, top + 50, 20, 70);
+  s->type = wuss_ICON_TYPE_SLIDER;
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  s->u.slider.orientation   = wuss_SLIDER_VERTICAL;
+  s->u.slider.min           = 0;
+  s->u.slider.max           = 10;
+  s->u.slider.default_value = 10;
+  lay->n++;
+
+  *state  = lay->n;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 50, 140, 14);
+  s->type = wuss_ICON_TYPE_LABEL;
+  s->text = "horizontal: 25";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  lay->y = top + 146;
+}
+
 /* A grouping frame captioned "Menu", holding a menu-entry strip: plain,
  * ticked, a swatch entry, a submenu entry, a disabled entry, then a dashed
  * rule and a SEPARATOR-flagged entry below it. Hover the pointer over any live
@@ -516,6 +574,7 @@ result_t icons_create(wuss_t       *wuss,
   icons_layout_t   lay;
   const char      *sprite_path;
   int              i_button, i_counter, i_opt, i_state, i_hotspot, i_ticked;
+  int              i_shoriz, i_svert, i_sstate;
   result_t         rc;
 
   task->font       = font;
@@ -530,8 +589,11 @@ result_t icons_create(wuss_t       *wuss,
   task->count      = 0;
   task->opt        = NULL;
   task->state      = NULL;
-  task->has_sprite = 0;
-  task->hotspot    = NULL;
+  task->has_sprite   = 0;
+  task->hotspot      = NULL;
+  task->slider_horiz = NULL;
+  task->slider_vert  = NULL;
+  task->slider_state = NULL;
 
   sprite_path = path_join_filename(resources, 3, "resources", "wuss",
                                    path_join_leafname("ninepatch", "png"));
@@ -601,6 +663,7 @@ result_t icons_create(wuss_t       *wuss,
   icons_add_iconset(&lay, wuss);
   icons_add_pattern(&lay);
   icons_add_borders(&lay);
+  icons_add_sliders(&lay, &i_shoriz, &i_svert, &i_sstate);
   icons_add_menu(&lay, &i_ticked);
 
   rc = wuss_icon_create_array(task->window, specs, lay.n, made);
@@ -613,6 +676,9 @@ result_t icons_create(wuss_t       *wuss,
   task->state   = made[i_state];
   if (i_hotspot >= 0)
     task->hotspot = made[i_hotspot];
+  task->slider_horiz = made[i_shoriz];
+  task->slider_vert  = made[i_svert];
+  task->slider_state = made[i_sstate];
   wuss_icon_set_selected(task->window, made[i_ticked], 1); /* "Show grid" starts ticked */
 
   /* fully built: from here a last-window close reaps the task and its
@@ -724,6 +790,15 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
 
   tcx  = task_data;
   icon = event->data.icon.icon;
+
+  if (icon == tcx->slider_horiz || icon == tcx->slider_vert)
+  {
+    const char *name;
+
+    name = (icon == tcx->slider_horiz) ? "horizontal" : "vertical";
+    snprintf(buf, sizeof(buf), "%s: %d", name, event->data.icon.value);
+    return wuss_icon_set_text(tcx->window, tcx->slider_state, buf);
+  }
 
   /* a radio/option latches on MOUSE_UP -- report the state then */
   if (event->data.icon.action == wuss_MOUSE_UP &&

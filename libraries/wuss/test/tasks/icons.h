@@ -12,9 +12,9 @@
 #include "wuss/window.h"
 
 /* demonstrates wuss-managed work-area icons: labelled groups covering every
- * icon type (buttons, radios/options, bitmaps, a pattern swatch, a menu-entry
- * strip) plus a button placed far down the document to show icons scroll with
- * the content and stay clickable */
+ * icon type (buttons, radios/options, bitmaps, a pattern swatch, sliders, a
+ * menu-entry strip) plus a button placed far down the document to show icons
+ * scroll with the content and stay clickable */
 typedef struct icons_task
 {
   wuss_window_t *window;
@@ -28,7 +28,10 @@ typedef struct icons_task
   wuss_icon_t   *state;   /* label echoing radio/option selection */
   bitmap_t       sprite;  /* borrowed by the two BITMAP icons; freed on close */
   int            has_sprite;
-  wuss_icon_t   *hotspot; /* the interactive BITMAP icon */
+  wuss_icon_t   *hotspot;      /* the interactive BITMAP icon */
+  wuss_icon_t   *slider_horiz; /* horizontal slider */
+  wuss_icon_t   *slider_vert;  /* vertical slider */
+  wuss_icon_t   *slider_state; /* label echoing whichever slider last moved */
 }
 icons_task_t;
 
