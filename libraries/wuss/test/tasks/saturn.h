@@ -41,6 +41,17 @@ saturn_config_t;
 #define SATURN_SIZE_MAX  512
 #define SATURN_SIZE_STEP 64
 
+/* the size dialogue's slider rows, in creation/layout order */
+enum
+{
+  SATURN_SIZEDLG_ROW_SIZE = 0,
+  SATURN_SIZEDLG_ROW_STARS,
+  SATURN_SIZEDLG_ROW_RING,
+  SATURN_SIZEDLG_ROW_BODY,
+
+  SATURN_SIZEDLG_NROWS
+};
+
 typedef struct saturn_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer/wuss_get_palette */
@@ -52,14 +63,7 @@ typedef struct saturn_task
   wuss_colourmenu_t *fg_colourmenu, *bg_colourmenu;
   wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
   wuss_window_t     *size_dialogue;   /* built once, hidden; a menu leaf */
-  wuss_icon_t       *size_slider;
-  wuss_icon_t       *size_value_label;
-  wuss_icon_t       *size_slider2;
-  wuss_icon_t       *size_value2_label;
-  wuss_icon_t       *size_slider3;
-  wuss_icon_t       *size_value3_label;
-  wuss_icon_t       *size_slider4;
-  wuss_icon_t       *size_value4_label;
+  wuss_slider_row_t  size_rows[SATURN_SIZEDLG_NROWS]; /* size, stars, ring, body */
   wuss_icon_t       *size_cancel;
   wuss_icon_t       *size_apply;
 }
