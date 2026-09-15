@@ -17,6 +17,7 @@
 #include "geom/box.h"
 #include "geom/point.h"
 #include "io/path.h"
+#include "wuss/icon.h"
 #include "wuss/menu.h"
 
 #include "chars.h"
@@ -32,17 +33,41 @@ static char chars_resources[256];
 
 /* ----------------------------------------------------------------------- */
 
-/* content size for the grid at the given font's cell metrics. Each cell
+/* the rows of the CHARS_COLS x CHARS_ROWS grid that hold at least one glyph
+ * of font: [*first_row, *first_row + *nrows). first_row * CHARS_COLS is the
+ * byte value of the top-left cell of the first such row. */
+static void chars_row_range(bmfont_t *font, int *first_row, int *nrows)
+{
+  int first, count, last_row;
+
+  first = ' '; /* bmfont glyphs are laid out contiguously starting here */
+  count = bmfont_get_count(font);
+  /* bmfont indexes its glyph table off a plain char, so a byte value above
+   * CHAR_MAX would index negatively on a signed-char platform. Never draw
+   * one, however many glyphs the font claims. */
+  if (first + count > CHAR_MAX + 1)
+    count = CHAR_MAX + 1 - first;
+
+  *first_row = first / CHARS_COLS;
+  last_row   = (first + count - 1) / CHARS_COLS;
+  *nrows     = last_row - *first_row + 1;
+}
+
+/* content size for the grid at the given font's cell metrics, less any
+ * contiguous leading/trailing rows the font has no glyphs in. Each cell
  * stacks the index (drawn in the wuss system font) above the glyph. */
 static size2d_t chars_window_size(chars_task_t *task, bmfont_t *font)
 {
   int fw, fh, ifw, ifh, cell_w, cell_h;
+  int first_row, nrows;
 
   bmfont_get_info(font, &fw, &fh, NULL, NULL);
   bmfont_get_info(wuss_get_font(task->wuss), &ifw, &ifh, NULL, NULL);
   cell_w = MAX(fw, ifw * 3) + CHARS_PAD * 2;
   cell_h = ifh + fh + CHARS_PAD * 3;
-  return SIZE2D(cell_w * CHARS_COLS, cell_h * CHARS_ROWS);
+  chars_row_range(font, &first_row, &nrows);
+  return SIZE2D(cell_w * CHARS_COLS + wuss_STD_INSET * 2,
+               cell_h * nrows + wuss_STD_INSET * 2);
 }
 
 /* load fonts[idx] if not already in hand; returns it or NULL on failure.
@@ -204,6 +229,7 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
   int           sysfont_width, sysfont_height, sysfont_ascent;
   int           cell_w, cell_h;
   int           first, count;
+  int           first_row, nrows;
   int           i, sx, sy;
 
   cc = task_data;
@@ -228,35 +254,46 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
    * one, however many glyphs the font claims. */
   if (first + count > CHAR_MAX + 1)
     count = CHAR_MAX + 1 - first;
+  chars_row_range(cc->font, &first_row, &nrows);
 
-  for (i = 0; i < CHARS_COLS * CHARS_ROWS; i++)
+  /* the wuss_STD_INSET margin around the grid falls outside every cell's own
+   * fill below, so paint the whole dirty rect first -- covers that margin
+   * and any dirty strip past the last row/column of cells too. */
+  screen_fill_rect(scr, bounds->x0, bounds->y0,
+                   SIZE2D(bounds->x1 - bounds->x0,
+                          bounds->y1 - bounds->y0), cc->bg);
+
+  for (i = 0; i < CHARS_COLS * nrows; i++)
   {
-    int     col, row, x, y;
+    int     col, row, x, y, byte;
     char    ch;
     char    label[4];
     point_t pos;
 
-    col = i % CHARS_COLS;
-    row = i / CHARS_COLS;
-    x   = bounds->x0 - sx + col * cell_w;
-    y   = bounds->y0 - sy + row * cell_h;
+    col  = i % CHARS_COLS;
+    row  = i / CHARS_COLS;
+    byte = (first_row + row) * CHARS_COLS + col;
+    x    = bounds->x0 - sx + wuss_STD_INSET + col * cell_w;
+    y    = bounds->y0 - sy + wuss_STD_INSET + row * cell_h;
 
     screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), cc->bg);
     screen_draw_line(scr, x, y, x + cell_w - 1, y, cc->mg);
     screen_draw_line(scr, x, y, x, y + cell_h - 1, cc->mg);
 
-    snprintf(label, 4, "%d", i);
+    snprintf(label, 4, "%d", byte);
     pos.x = x + CHARS_PAD;
     pos.y = y + CHARS_PAD + sysfont_ascent;
     wuss_text_draw(cc->wuss, 0, scr, label, (int) strlen(label), cc->mg,
                    cc->bg, &pos, NULL);
 
-    if (i < first || i >= first + count)
+    if (byte < first || byte >= first + count)
       continue; /* no glyph for this byte value: leave the cell blank */
 
-    ch    = (char) i;
+    ch    = (char) byte;
     pos.x = x + CHARS_PAD;
     pos.y = y + CHARS_PAD * 2 + sysfont_height + font_ascent;
+    screen_draw_dashed_line(scr, x + CHARS_PAD, pos.y,
+                            x + cell_w - 1 - CHARS_PAD, pos.y, 1, 1, cc->mg);
     bmfont_draw(cc->font, scr, &ch, 1, cc->fg, cc->bg, &pos, NULL);
   }
 
