@@ -18,9 +18,11 @@
  * type's draw helper. "b" is the icon's screen box; "fg" is its resolved
  * foreground; "font" is the icon's selected weight (falling back to slot 0);
  * "font_height", "font_ascent" and "have_font" are 0 when there is no font or
- * no text to draw. Draw helpers vertically centre by "font_height" then add
- * "font_ascent" to convert the resulting top-left y to the baseline
- * wuss__text_draw expects. */
+ * no text to draw. Draw helpers vertically centre by "font_ascent" alone (not
+ * the descender too, so a run of ascender-only text -- e.g. all caps and
+ * digits -- sits visually centred rather than pulled high by unused descender
+ * space) then add "font_ascent" again to convert the resulting top-left y to
+ * the baseline wuss__text_draw expects. */
 typedef struct icon_draw_ctx
 {
   wuss_t              *wuss;
@@ -231,7 +233,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   else
     pos.x = b->x0 + 1;
 
-  pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2 + c->font_ascent;
+  pos.y = b->y0 + (b->y1 - b->y0 - c->font_ascent) / 2 + c->font_ascent;
 
   wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
                   c->fg, bg, &pos, NULL);
@@ -346,7 +348,7 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
                        interior_w, &split_point, &width);
 
     pos.x = b->x0 + ((b->x1 - b->x0) - width) / 2;
-    pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2 + c->font_ascent;
+    pos.y = b->y0 + (b->y1 - b->y0 - c->font_ascent) / 2 + c->font_ascent;
     if (pressed)
     {
       pos.x += 1;
@@ -464,7 +466,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     NOT_USED(width);
 
     pos.x = tx;
-    pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2 + c->font_ascent;
+    pos.y = b->y0 + (b->y1 - b->y0 - c->font_ascent) / 2 + c->font_ascent;
     wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
                     glyph, bg, &pos, NULL);
   }
@@ -593,7 +595,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     wuss__text_measure(c->font, " ", 1, INT_MAX, NULL, &space_w);
 
     pos.x = text_x0 + (int) space_w;
-    pos.y = b->y0 + (b->y1 - b->y0 - c->font_height) / 2 + c->font_ascent;
+    pos.y = b->y0 + (b->y1 - b->y0 - c->font_ascent) / 2 + c->font_ascent;
     wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
                     text_ink, text_ground, &pos, NULL);
   }
