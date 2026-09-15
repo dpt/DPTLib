@@ -335,12 +335,12 @@ static void minesweeper_draw_cell(minesweeper_task_t *ms,
 
     buf[0] = (char) ('0' + n);
     buf[1] = '\0';
-    bmfont_measure(ms->font, buf, 1, INT_MAX, NULL, &width);
+    bmfont_measure(ms->font, buf, 1, NULL, INT_MAX, NULL, &width);
     bmfont_get_info(ms->font, NULL, &fh, &ascent, NULL);
     pos.x = x + (MINESWEEPER_CELL - width) / 2;
     pos.y = y + (MINESWEEPER_CELL - fh) / 2 + ascent;
     bmfont_draw(ms->font, scr, buf, 1, minesweeper_number_colour(n),
-               colour_rgba(0, 0, 0, 0), &pos, NULL);
+               colour_rgba(0, 0, 0, 0), NULL, &pos, NULL);
   }
 }
 
@@ -362,11 +362,11 @@ static void minesweeper_draw_hud(minesweeper_task_t *ms,
   sprintf(buf, "%03d", ms->mines - ms->flags);
   pos.x = bounds->x0 + MS_BORDER;
   pos.y = bounds->y0 + (MS_HUD_H - fh) / 2 + ascent;
-  bmfont_draw(ms->font, scr, buf, 3, fg, bg, &pos, NULL);
+  bmfont_draw(ms->font, scr, buf, 3, fg, bg, NULL, &pos, NULL);
 
   sprintf(buf, "%03d", ms->elapsed);
   pos.x = bounds->x0 + MS_WIDTH(ms) - MS_BORDER - MINESWEEPER_CELL * 2;
-  bmfont_draw(ms->font, scr, buf, 3, fg, bg, &pos, NULL);
+  bmfont_draw(ms->font, scr, buf, 3, fg, bg, NULL, &pos, NULL);
 }
 
 /* draws a translucent-looking banner strip across the middle of the board;
@@ -383,7 +383,7 @@ static void minesweeper_draw_banner(minesweeper_task_t *ms,
   int            len, fh, ascent, strip_y;
 
   len = (int) strlen(text);
-  bmfont_measure(ms->font, text, len, INT_MAX, NULL, &width);
+  bmfont_measure(ms->font, text, len, NULL, INT_MAX, NULL, &width);
   bmfont_get_info(ms->font, NULL, &fh, &ascent, NULL);
 
   strip_y = bounds->y0 + MS_HUD_H + (MS_GRID_H(ms) + 2 * MS_BORDER - fh) / 2 - 2;
@@ -391,8 +391,8 @@ static void minesweeper_draw_banner(minesweeper_task_t *ms,
 
   pos.x = bounds->x0 + (MS_WIDTH(ms) - width) / 2;
   pos.y = strip_y + 2 + ascent;
-  bmfont_draw(ms->font, scr, text, len, fg, colour_rgba(0, 0, 0, 0), &pos,
-             NULL);
+  bmfont_draw(ms->font, scr, text, len, fg, colour_rgba(0, 0, 0, 0), NULL,
+             &pos, NULL);
 }
 
 static result_t minesweeper_redraw(const wuss_event_t *event,

@@ -67,14 +67,28 @@ struct bmfont
 
 /* -------------------------------------------------------------------------- */
 
-/** The advance width to use for glyph \p gid, honouring the monospace flag.
- *  Includes the LETTER_SPACING pixel not stored in the font. */
-static bmfont_width_t bmfont_advance_for(const bmfont_t *bmfont, int gid)
+/** The advance width to use for glyph \p gid, honouring the monospace flag
+ *  and any caller-supplied extra letter/word spacing. Includes the
+ *  LETTER_SPACING pixel not stored in the font. */
+static bmfont_width_t bmfont_advance_for(const bmfont_t         *bmfont,
+                                         int                     gid,
+                                         int                     c,
+                                         const bmfont_spacing_t *spacing)
 {
-  if (bmfont->flags & bmfont_FLAG_MONOSPACE)
-    return bmfont->maxadw + LETTER_SPACING;
+  bmfont_width_t adw;
 
-  return bmfont->adw[gid] + LETTER_SPACING;
+  adw = (bmfont->flags & bmfont_FLAG_MONOSPACE) ? bmfont->maxadw :
+                                                  bmfont->adw[gid];
+  adw += LETTER_SPACING;
+
+  if (spacing)
+  {
+    adw += spacing->letter_spacing;
+    if (c == ' ')
+      adw += spacing->word_spacing;
+  }
+
+  return adw;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -706,16 +720,18 @@ int bmfont_get_count(bmfont_t *bmfont)
   return bmfont->totalchars;
 }
 
-result_t bmfont_measure(bmfont_t       *bmfont,
-                        const char     *text,
-                        int             textlen,
-                        bmfont_width_t  target_width,
-                        int            *split_point,
-                        bmfont_width_t *actual_width)
+result_t bmfont_measure(bmfont_t               *bmfont,
+                        const char             *text,
+                        int                     textlen,
+                        const bmfont_spacing_t *spacing,
+                        bmfont_width_t          target_width,
+                        int                    *split_point,
+                        bmfont_width_t         *actual_width)
 {
   bmfont_width_t current_width;
   int            len;
   int            any_drawn;
+  int            last_c;
 
   assert(bmfont);
   assert(text);
@@ -725,6 +741,7 @@ result_t bmfont_measure(bmfont_t       *bmfont,
 
   current_width = 0;
   any_drawn      = 0;
+  last_c         = 0;
   for (len = textlen; len; len--)
   {
     int c;
@@ -736,7 +753,8 @@ result_t bmfont_measure(bmfont_t       *bmfont,
       continue;
 
     gid = c - ' ';
-    advance = (gid < bmfont->totalchars) ? bmfont_advance_for(bmfont, gid) : 0;
+    advance = (gid < bmfont->totalchars) ?
+              bmfont_advance_for(bmfont, gid, c, spacing) : 0;
 
     next_width = current_width + advance;
     if (next_width > target_width)
@@ -744,12 +762,28 @@ result_t bmfont_measure(bmfont_t       *bmfont,
 
     current_width = next_width;
     any_drawn      = 1;
+    last_c         = c;
   }
 
   if (split_point)
     *split_point  = textlen - len;
   if (actual_width)
-    *actual_width = current_width - (any_drawn ? LETTER_SPACING : 0);
+  {
+    bmfont_width_t trailing_trim = 0;
+
+    if (any_drawn)
+    {
+      trailing_trim = LETTER_SPACING;
+      if (spacing)
+      {
+        trailing_trim += spacing->letter_spacing;
+        if (last_c == ' ')
+          trailing_trim += spacing->word_spacing;
+      }
+    }
+
+    *actual_width = current_width - trailing_trim;
+  }
 
   return result_OK;
 }
@@ -1776,14 +1810,15 @@ static void bmfont_drawchar_p8_2w_t(void          *vscreen,
   }
 }
 
-result_t bmfont_draw(bmfont_t      *bmfont,
-                     screen_t      *scr,
-                     const char    *text,
-                     int            len,
-                     colour_t       fg,
-                     colour_t       bg,
-                     const point_t *pos,
-                     point_t       *end_pos)
+result_t bmfont_draw(bmfont_t               *bmfont,
+                     screen_t               *scr,
+                     const char             *text,
+                     int                     len,
+                     colour_t                fg,
+                     colour_t                bg,
+                     const bmfont_spacing_t *spacing,
+                     const point_t          *pos,
+                     point_t                *end_pos)
 {
   bmfont_drawchar_t *drawfn;
   box_t              scrclip;
@@ -1852,10 +1887,17 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   if (screen_get_clip(scr, &scrclip))
     return result_OK; /* invalid clipped screen */
 
-  drawbox.x0 = top.x;
-  drawbox.y0 = top.y;
-  drawbox.x1 = top.x + bmfont->charwidth * len; /* worst-case estimate */
-  drawbox.y1 = top.y + bmfont->charheight;
+  {
+    int extra_per_char;
+
+    extra_per_char = spacing ?
+      MAX(spacing->letter_spacing + spacing->word_spacing, 0) : 0;
+
+    drawbox.x0 = top.x;
+    drawbox.y0 = top.y;
+    drawbox.x1 = top.x + (bmfont->charwidth + extra_per_char) * len; /* worst-case estimate */
+    drawbox.y1 = top.y + bmfont->charheight;
+  }
 
   if (!box_intersects(&scrclip, &drawbox))
     return result_OK; /* not visible */
@@ -1884,8 +1926,6 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   pixelfmt_any_t nativefg          = colour_to_pixel(scr->palette, scr->palette ? 1 << (1 << log2bpp) : 0, fg, scr->format);
   pixelfmt_any_t nativebg          = colour_to_pixel(scr->palette, scr->palette ? 1 << (1 << log2bpp) : 0, bg, scr->format);
   int            remaining         = scrclip.x1 - clamped_pos_x; /* in pixels */
-
-  const int      tracking          = 0; /* note: +ve can break stuff! */
 
   int            x                 = pos->x;
 
@@ -1917,7 +1957,7 @@ result_t bmfont_draw(bmfont_t      *bmfont,
     if (gid >= bmfont->totalchars)
       continue;
 
-    advance = bmfont_advance_for(bmfont, gid) + tracking;
+    advance = bmfont_advance_for(bmfont, gid, c, spacing);
 
     x += advance;
 
@@ -1937,12 +1977,12 @@ result_t bmfont_draw(bmfont_t      *bmfont,
       static const unsigned char zero_glyph[128] = { 0 };
 
       int cellwidth;
-      int spacing;
+      int cellpad;
       int clippedcellwidth;
 
       glyph     = (unsigned char *) bmfont->glyphs + gid * glyphbytes;
       cellwidth = MIN(advance, charwidth);
-      spacing   = advance - cellwidth;
+      cellpad   = advance - cellwidth;
 
       clippedcellwidth = MIN(remaining, cellwidth - left_skip); /* in pixels */
 
@@ -1978,9 +2018,9 @@ result_t bmfont_draw(bmfont_t      *bmfont,
         left_skip -= cellwidth;
       }
 
-      if (spacing > 0 && left_skip < spacing)
+      if (cellpad > 0 && left_skip < cellpad)
       {
-        int clippedspacing = MIN(remaining, spacing - left_skip);
+        int clippedspacing = MIN(remaining, cellpad - left_skip);
 
         if (clippedspacing > 0)
         {
@@ -2006,9 +2046,9 @@ result_t bmfont_draw(bmfont_t      *bmfont,
 
         left_skip = 0;
       }
-      else if (spacing > 0)
+      else if (cellpad > 0)
       {
-        left_skip -= spacing;
+        left_skip -= cellpad;
       }
     }
   }
@@ -2031,7 +2071,7 @@ result_t bmfont_draw(bmfont_t      *bmfont,
         if (gid >= bmfont->totalchars)
           continue;
 
-        advance = bmfont_advance_for(bmfont, gid) + tracking;
+        advance = bmfont_advance_for(bmfont, gid, c, spacing);
 
         x += advance;
       }
@@ -2045,15 +2085,16 @@ result_t bmfont_draw(bmfont_t      *bmfont,
 
 /* -------------------------------------------------------------------------- */
 
-result_t bmfont_draw_relief(bmfont_t      *bmfont,
-                            screen_t      *scr,
-                            const char    *text,
-                            int            len,
-                            colour_t       fg,
-                            colour_t       shadow,
-                            const point_t *pos,
-                            const point_t *offset,
-                            point_t       *end_pos)
+result_t bmfont_draw_relief(bmfont_t               *bmfont,
+                            screen_t               *scr,
+                            const char             *text,
+                            int                     len,
+                            colour_t                fg,
+                            colour_t                shadow,
+                            const bmfont_spacing_t *spacing,
+                            const point_t          *pos,
+                            const point_t          *offset,
+                            point_t                *end_pos)
 {
   result_t rc;
   colour_t transparent;
@@ -2062,12 +2103,13 @@ result_t bmfont_draw_relief(bmfont_t      *bmfont,
   transparent = colour_rgba(0, 0, 0, 0);
   shadowpos   = POINT(pos->x + offset->x, pos->y + offset->y);
 
-  rc = bmfont_draw(bmfont, scr, text, len, shadow, transparent,
+  rc = bmfont_draw(bmfont, scr, text, len, shadow, transparent, spacing,
                   &shadowpos, NULL);
   if (rc)
     return rc;
 
-  return bmfont_draw(bmfont, scr, text, len, fg, transparent, pos, end_pos);
+  return bmfont_draw(bmfont, scr, text, len, fg, transparent, spacing, pos,
+                     end_pos);
 }
 
 /* -------------------------------------------------------------------------- */

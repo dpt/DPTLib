@@ -694,7 +694,7 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
     snprintf(buf, sizeof(buf), "%d", doc);
     pos = POINT(x + 2, oy + 2 + ascent);
     bmfont_draw(tcx->font, scr, buf, (int) strlen(buf),
-                tcx->label, tcx->paper, &pos, NULL);
+                tcx->label, tcx->paper, NULL, &pos, NULL);
   }
 
   /* y-axis ruler: document y printed just right of the x=0 line, at each
@@ -710,7 +710,7 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
     snprintf(buf, sizeof(buf), "%d", doc);
     pos = POINT(ox + 2, y + 2 + ascent);
     bmfont_draw(tcx->font, scr, buf, (int) strlen(buf),
-                tcx->label, tcx->paper, &pos, NULL);
+                tcx->label, tcx->paper, NULL, &pos, NULL);
   }
 
   return result_OK;

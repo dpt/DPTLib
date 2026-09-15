@@ -78,12 +78,13 @@ static void clock_draw_centred(bmfont_t   *font,
   int            len, fh, ascent;
 
   len = (int) strlen(text);
-  bmfont_measure(font, text, len, INT_MAX, NULL, &width);
+  bmfont_measure(font, text, len, NULL, INT_MAX, NULL, &width);
   bmfont_get_info(font, NULL, &fh, &ascent, NULL);
 
   pos.x = (int) (x - width / 2.0);
   pos.y = (int) (y - fh / 2.0) + ascent;
-  bmfont_draw(font, scr, text, len, fg, colour_rgba(0, 0, 0, 0), &pos, NULL);
+  bmfont_draw(font, scr, text, len, fg, colour_rgba(0, 0, 0, 0), NULL, &pos,
+             NULL);
 }
 
 static result_t clock_create_window(wuss_t       *wuss,

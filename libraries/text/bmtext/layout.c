@@ -1,6 +1,7 @@
 /* text/bmtext/layout.c -- break a string into pixel-fitted lines */
 
 #include <ctype.h>
+#include <stddef.h>
 
 #include "framebuf/bmfont.h"
 
@@ -23,7 +24,8 @@ int bmtext_layout(bmfont_t      *font,
     bmfont_width_t width;
     int            friendly_break;
 
-    bmfont_measure(font, string, stringlen, wrap_width, &absolute_break, &width);
+    bmfont_measure(font, string, stringlen, NULL, wrap_width, &absolute_break,
+                   &width);
 
     friendly_break = absolute_break;
     if (absolute_break < stringlen)
