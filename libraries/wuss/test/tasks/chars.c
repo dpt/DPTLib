@@ -295,6 +295,19 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
     screen_draw_dashed_line(scr, x + CHARS_PAD, pos.y,
                             x + cell_w - 1 - CHARS_PAD, pos.y, 1, 1, cc->mg);
     bmfont_draw(cc->font, scr, &ch, 1, cc->fg, cc->bg, &pos, NULL);
+
+    /* advance width: a blue rule under the glyph spanning pos.x..pos.x+advance,
+     * a ruler for how far this glyph pushes the pen */
+    {
+      bmfont_width_t advance;
+      colour_t       blue;
+      int            adv_y;
+
+      bmfont_measure(cc->font, &ch, 1, INT_MAX, NULL, &advance);
+      blue  = colour_rgb(0x66, 0x66, 0xFF);
+      adv_y = y + cell_h - 1 - CHARS_PAD;
+      screen_draw_line(scr, pos.x, adv_y, pos.x + advance - 1, adv_y, blue);
+    }
   }
 
   return result_OK;
