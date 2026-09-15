@@ -120,7 +120,7 @@ def measure_cell(glyphs, pad, advance_source):
 def _ink_advance(g):
     if not g["bits"]:
         return 0
-    return g["left"] + g["width"] + 1
+    return g["left"] + g["width"]
 
 
 def advance_for(g, cell_w, advance_source):
@@ -257,7 +257,7 @@ def main(argv):
     p.add_argument("--pad", type=int, default=1,
                    help="extra pixels added to the glyph bbox for grid lines")
     p.add_argument("--advance-source", choices=("ttf", "ink"), default="ttf",
-                   help="'ttf' uses the font's advance, 'ink' uses ink width+1")
+                   help="'ttf' uses the font's advance, 'ink' uses exact ink width")
     p.add_argument("--no-grid", action="store_true",
                    help="omit the grey guide lines")
     p.add_argument("--first", type=lambda s: int(s, 0), default=0x20)
