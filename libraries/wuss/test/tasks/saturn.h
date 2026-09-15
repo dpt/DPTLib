@@ -27,8 +27,8 @@
  * fills in SATURN_CONFIG_DEFAULT values when the caller passes NULL */
 typedef struct saturn_config
 {
-  int ring_iters; /* loop 1: the ring */
-  int band_iters; /* loop 2: ring shadow band */
+  int stars_iters; /* loop 1: the ring */
+  int ring_iters; /* loop 2: ring shadow band */
   int body_iters; /* loop 3: planet body */
   int size;       /* window size (both axes); set via the Size... dialogue */
 }
@@ -54,6 +54,8 @@ typedef struct saturn_task
   wuss_window_t     *size_dialogue;   /* built once, hidden; a menu leaf */
   wuss_icon_t       *size_slider;
   wuss_icon_t       *size_value_label;
+  wuss_icon_t       *size_slider2;
+  wuss_icon_t       *size_value2_label;
   wuss_icon_t       *size_cancel;
   wuss_icon_t       *size_apply;
 }
