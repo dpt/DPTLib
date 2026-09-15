@@ -141,7 +141,12 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
         }
       }
 
-      if (icon != NULL)
+      /* a slider only wants MOVE while its own drag is tracked above; without
+       * this it would also get one on every plain hover, with no button
+       * actually held. Other icon types (menu rows, buttons) rely on this
+       * hover MOVE to light up/open on mouse-over, so keep it for them. */
+      if (icon != NULL &&
+          (icon->spec.type != wuss_ICON_TYPE_SLIDER || icon == wuss->pressed_icon))
       {
         event.kind             = wuss_EVENT_ICON;
         event.data.icon.icon   = icon;

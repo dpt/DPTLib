@@ -436,12 +436,12 @@ static const stack_item_t g_saturn_size_stack[SIZE_STACK__LIMIT] =
  * hidden. */
 static result_t saturn_size_dialogue_create(saturn_task_t *task)
 {
-  static const int label_box[SATURN_SIZEDLG_NROWS] = { ST_LABL1, ST_LABL2, ST_LABL3, ST_LABL4 };
-  static const int slider_box[SATURN_SIZEDLG_NROWS] = { ST_SLDR1, ST_SLDR2, ST_SLDR3, ST_SLDR4 };
-  static const int value_box[SATURN_SIZEDLG_NROWS] = { ST_VAL1, ST_VAL2, ST_VAL3, ST_VAL4 };
-  static const int label_icon[SATURN_SIZEDLG_NROWS] = { SATURN_SIZE_ICON_LABEL1, SATURN_SIZE_ICON_LABEL2, SATURN_SIZE_ICON_LABEL3, SATURN_SIZE_ICON_LABEL4 };
+  static const int label_box[SATURN_SIZEDLG_NROWS]   = { ST_LABL1, ST_LABL2, ST_LABL3, ST_LABL4 };
+  static const int slider_box[SATURN_SIZEDLG_NROWS]  = { ST_SLDR1, ST_SLDR2, ST_SLDR3, ST_SLDR4 };
+  static const int value_box[SATURN_SIZEDLG_NROWS]   = { ST_VAL1, ST_VAL2, ST_VAL3, ST_VAL4 };
+  static const int label_icon[SATURN_SIZEDLG_NROWS]  = { SATURN_SIZE_ICON_LABEL1, SATURN_SIZE_ICON_LABEL2, SATURN_SIZE_ICON_LABEL3, SATURN_SIZE_ICON_LABEL4 };
   static const int slider_icon[SATURN_SIZEDLG_NROWS] = { SATURN_SIZE_ICON_SLIDER1, SATURN_SIZE_ICON_SLIDER2, SATURN_SIZE_ICON_SLIDER3, SATURN_SIZE_ICON_SLIDER4 };
-  static const int value_icon[SATURN_SIZEDLG_NROWS] = { SATURN_SIZE_ICON_VALUE1, SATURN_SIZE_ICON_VALUE2, SATURN_SIZE_ICON_VALUE3, SATURN_SIZE_ICON_VALUE4 };
+  static const int value_icon[SATURN_SIZEDLG_NROWS]  = { SATURN_SIZE_ICON_VALUE1, SATURN_SIZE_ICON_VALUE2, SATURN_SIZE_ICON_VALUE3, SATURN_SIZE_ICON_VALUE4 };
 
   result_t         rc;
   wuss_icon_spec_t specs[SATURN_SIZE_NICONS];
@@ -576,8 +576,6 @@ static result_t saturn_size_dialogue_icon(saturn_task_t      *task,
   int          row;
 
   icon = event->data.icon.icon;
-
-  // FIXME DPT: mouse move events arrive even when not dragging the bar...
 
   /* wuss_slider_row_event snaps to row->step (Size only) and reformats the
    * value label itself, so a hit here needs nothing further. */
