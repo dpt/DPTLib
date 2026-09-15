@@ -31,6 +31,10 @@
 /* Input font PNGs must have 32 characters per row */
 #define CHARS_PER_ROW   (32)
 
+/* Input advance widths are encoded 1px short of the true glyph advance; the
+ * missing pixel is letter spacing, added back in at use, not storage. */
+#define LETTER_SPACING  (1)
+
 /* -------------------------------------------------------------------------- */
 
 /* Pixel values */
@@ -63,13 +67,14 @@ struct bmfont
 
 /* -------------------------------------------------------------------------- */
 
-/** The advance width to use for glyph \p gid, honouring the monospace flag. */
+/** The advance width to use for glyph \p gid, honouring the monospace flag.
+ *  Includes the LETTER_SPACING pixel not stored in the font. */
 static bmfont_width_t bmfont_advance_for(const bmfont_t *bmfont, int gid)
 {
   if (bmfont->flags & bmfont_FLAG_MONOSPACE)
-    return bmfont->maxadw;
+    return bmfont->maxadw + LETTER_SPACING;
 
-  return bmfont->adw[gid];
+  return bmfont->adw[gid] + LETTER_SPACING;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -710,6 +715,7 @@ result_t bmfont_measure(bmfont_t       *bmfont,
 {
   bmfont_width_t current_width;
   int            len;
+  int            any_drawn;
 
   assert(bmfont);
   assert(text);
@@ -718,6 +724,7 @@ result_t bmfont_measure(bmfont_t       *bmfont,
   /* split_point, actual_width may be NULL */
 
   current_width = 0;
+  any_drawn      = 0;
   for (len = textlen; len; len--)
   {
     int c;
@@ -736,12 +743,13 @@ result_t bmfont_measure(bmfont_t       *bmfont,
       break;
 
     current_width = next_width;
+    any_drawn      = 1;
   }
 
   if (split_point)
     *split_point  = textlen - len;
   if (actual_width)
-    *actual_width = current_width;
+    *actual_width = current_width - (any_drawn ? LETTER_SPACING : 0);
 
   return result_OK;
 }

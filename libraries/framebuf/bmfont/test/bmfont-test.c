@@ -975,6 +975,7 @@ static result_t bmfont_monospace_test(const char *resources)
   const char    *filename;
   bmfont_t      *bmfont = NULL;
   bmfont_width_t onechar;
+  bmfont_width_t step;
   bmfont_width_t prev;
   int            i;
 
@@ -991,24 +992,32 @@ static result_t bmfont_monospace_test(const char *resources)
   bmfont_set_flags(bmfont, bmfont_FLAG_MONOSPACE);
 
   onechar = 0;
+  step    = 0;
   prev    = 0;
   for (i = 1; i <= (int) strlen(sample); i++)
   {
     bmfont_width_t width = 0;
+    bmfont_width_t expected;
 
     rc = bmfont_measure(bmfont, sample, i, INT_MAX, NULL, &width);
     if (rc)
       goto Failure;
 
     if (i == 1)
+    {
       onechar = width;
+      step    = width + 1; /* per-glyph advance, including letter spacing
+                             * trimmed from the measured string's end */
+    }
 
-    if (width != onechar * i || width - prev != onechar)
+    expected = onechar + (i - 1) * step;
+
+    if (width != expected || (i > 1 && width - prev != step))
     {
       fprintf(stderr,
               "error: monospace width mismatch at len %d: got %d, "
               "expected %d\n",
-              i, width, onechar * i);
+              i, width, expected);
       goto Failure;
     }
 
