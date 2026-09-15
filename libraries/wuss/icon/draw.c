@@ -144,7 +144,7 @@ static int wuss__draw_symbol_glyph(const wuss_t *wuss,
   bmfont_get_info(font, &font_width, &font_height, &font_ascent, NULL);
   pos.x = centre.x - font_width / 2;
   pos.y = centre.y - font_height / 2 + font_ascent;
-  bmfont_draw(font, scr, &glyph, 1, ink, ground, &pos, NULL);
+  bmfont_draw(font, scr, &glyph, 1, ink, ground, NULL, &pos, NULL);
   return 1;
 }
 

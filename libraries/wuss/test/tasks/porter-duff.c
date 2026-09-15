@@ -339,7 +339,7 @@ static result_t porter_duff_redraw(const wuss_event_t *event,
   }
 
   return bmfont_draw(pd->font, scr, name, (int) strlen(name),
-                     pd->fg, pd->bg, &pos, NULL);
+                     pd->fg, pd->bg, NULL, &pos, NULL);
 }
 
 static result_t porter_duff_idle(void *task_data)

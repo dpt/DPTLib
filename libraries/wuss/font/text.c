@@ -15,7 +15,7 @@ result_t wuss__text_measure(bmfont_t       *font,
                             int            *split_point,
                             bmfont_width_t *actual_width)
 {
-  return bmfont_measure(font, text, len, target_width, split_point,
+  return bmfont_measure(font, text, len, NULL, target_width, split_point,
                         actual_width);
 }
 
@@ -28,7 +28,7 @@ result_t wuss__text_draw(bmfont_t      *font,
                          const point_t *pos,
                          point_t       *end_pos)
 {
-  return bmfont_draw(font, scr, text, len, fg, bg, pos, end_pos);
+  return bmfont_draw(font, scr, text, len, fg, bg, NULL, pos, end_pos);
 }
 
 /* ----------------------------------------------------------------------- */

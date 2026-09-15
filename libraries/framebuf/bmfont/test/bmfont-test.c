@@ -313,6 +313,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
         rc = bmfont_measure(bmfonts[font].bmfont,
                             lorem_ipsum,
                             nchars,
+                            NULL,
                             INT_MAX,
                             NULL,
                            &stringwidth);
@@ -334,6 +335,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
                                   nchars,
                                   state->palette[palette_PICO8_WHITE],
                                   state->palette[palette_PICO8_BLACK],
+                                  NULL,
                                  &pos,
                                  &shadow_offset,
                                   NULL /*endpos*/);
@@ -348,6 +350,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
                            nchars,
                            state->palette[palette_PICO8_WHITE],
                            bg,
+                           NULL,
                           &pos,
                            NULL /*endpos*/);
           if (rc)
@@ -406,6 +409,7 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
           (void) bmfont_measure(bmfont,
                                 string,
                           (int) stringlen,
+                                NULL,
                                 state->scr_width - origin.x,
                                &absolute_break, /* if no break returns strlen */
                                &width);
@@ -441,6 +445,7 @@ static result_t bmfont_layout_test(bmfontteststate_t *state)
                            friendly_break,
                            state->palette[palette_PICO8_WHITE],
                            bg,
+                           NULL,
                           &origin,
                           &endpos);
           if (rc)
@@ -630,6 +635,7 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
                              message,
                        (int) msglen,
                              state->palette[palette_PICO8_BLACK], bg,
+                             NULL,
                             &origin,
                              NULL /*endpos*/);
 
@@ -641,6 +647,7 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
                              message,
                              (int) msglen,
                              fg, bg,
+                             NULL,
                              &origin,
                              NULL /*endpos*/);
 
@@ -654,6 +661,7 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
                              message,
                              (int) msglen,
                              fg, bg,
+                             NULL,
                              &origin,
                              NULL /*endpos*/);
 
@@ -999,7 +1007,7 @@ static result_t bmfont_monospace_test(const char *resources)
     bmfont_width_t width = 0;
     bmfont_width_t expected;
 
-    rc = bmfont_measure(bmfont, sample, i, INT_MAX, NULL, &width);
+    rc = bmfont_measure(bmfont, sample, i, NULL, INT_MAX, NULL, &width);
     if (rc)
       goto Failure;
 
@@ -1022,6 +1030,154 @@ static result_t bmfont_monospace_test(const char *resources)
     }
 
     prev = width;
+  }
+
+  bmfont_destroy(bmfont);
+  return result_TEST_PASSED;
+
+
+Failure:
+  bmfont_destroy(bmfont);
+  return result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
+/* letter_spacing adds a fixed amount between every pair of glyphs (N-1 gaps
+ * for N glyphs); word_spacing adds on top of that for space glyphs only.
+ * Also exercises bmfont_draw with a non-NULL spacing -- this is the path
+ * whose worst-case clip-box estimate used to go stale when tracking was
+ * nonzero, so a mismatch here would show up as dropped or corrupted glyphs
+ * under ASan/UBSan rather than just a wrong measurement. */
+static result_t bmfont_spacing_test(const char *resources)
+{
+  static const char letters[] = "WiWiWiWiWi";
+  static const char worded[]  = "a a";
+
+  const bmfont_spacing_t letter_only = { 3, 0 };
+  const bmfont_spacing_t word_only   = { 0, 5 };
+
+  result_t       rc;
+  const char    *leafname;
+  const char    *filename;
+  bmfont_t      *bmfont = NULL;
+  bmfont_width_t plain_word_width;
+  bmfont_width_t spaced_word_width;
+  point_t        pos;
+  point_t        end_pos;
+  int            i;
+
+  leafname = path_join_leafname("MS Sans Serif", "png");
+  filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
+
+  rc = bmfont_create(filename, &bmfont);
+  if (rc)
+  {
+    fprintf(stderr, "Error: Failed to load font %s\n", filename);
+    return result_TEST_FAILED;
+  }
+
+  /* letter_spacing adds a fixed gap between glyphs, not after the last one
+   * (bmfont_measure trims the trailing gap, same as it already does for the
+   * font's own built-in letter spacing) -- so an N-character run has N-1
+   * spaced gaps. "WiWiWiWiWi" mixes glyphs of different base advance widths,
+   * so the per-character step isn't itself constant in a proportional font
+   * (unlike bmfont_monospace_test) -- only the total added width is, so
+   * that's the invariant checked here. */
+  for (i = 1; i <= (int) strlen(letters); i++)
+  {
+    bmfont_width_t unspaced = 0;
+    bmfont_width_t spaced   = 0;
+
+    rc = bmfont_measure(bmfont, letters, i, NULL, INT_MAX, NULL, &unspaced);
+    if (rc)
+      goto Failure;
+    rc = bmfont_measure(bmfont, letters, i, &letter_only, INT_MAX, NULL,
+                        &spaced);
+    if (rc)
+      goto Failure;
+
+    if (spaced - unspaced != letter_only.letter_spacing * (i - 1))
+    {
+      fprintf(stderr,
+              "error: letter_spacing total mismatch at len %d: "
+              "spaced=%d unspaced=%d\n",
+              i, spaced, unspaced);
+      goto Failure;
+    }
+  }
+
+  /* word_spacing: only the two space glyphs in "a a" should widen, by
+   * exactly word_spacing each -- the letters either side are untouched. */
+  rc = bmfont_measure(bmfont, worded, (int) strlen(worded), NULL, INT_MAX,
+                      NULL, &plain_word_width);
+  if (rc)
+    goto Failure;
+  rc = bmfont_measure(bmfont, worded, (int) strlen(worded), &word_only,
+                      INT_MAX, NULL, &spaced_word_width);
+  if (rc)
+    goto Failure;
+
+  if (spaced_word_width - plain_word_width != word_only.word_spacing)
+  {
+    fprintf(stderr,
+            "error: word_spacing mismatch: plain=%d spaced=%d "
+            "expected delta=%d\n",
+            plain_word_width, spaced_word_width, word_only.word_spacing);
+    goto Failure;
+  }
+
+  /* bmfont_draw with spacing must not mis-clip: end_pos is the pen position
+   * (unlike bmfont_measure's ink width, it includes the trailing glyph's
+   * own advance -- the font's built-in LETTER_SPACING pixel, uninvolved
+   * here since word_only has zero letter_spacing and "a a" ends on 'a' not
+   * ' '), on a screen wide enough that clipping cannot silently truncate
+   * the string. */
+  {
+    bitmap_t       bm;
+    screen_t       scr;
+    colour_t       black = colour_rgb(0, 0, 0);
+    colour_t       white = colour_rgb(0xFF, 0xFF, 0xFF);
+    bmfont_width_t expected_end_x;
+    int            scr_width;
+    int            rowbytes;
+    void          *pixels;
+
+    scr_width = spaced_word_width + 32;
+    rowbytes  = (scr_width << pixelfmt_log2bpp(pixelfmt_bgrx8888)) / 8;
+    pixels    = malloc(rowbytes * 32);
+    if (pixels == NULL)
+    {
+      rc = result_OOM;
+      goto Failure;
+    }
+
+    bitmap_init(&bm, SIZE2D(scr_width, 32), pixelfmt_bgrx8888, rowbytes,
+                 NULL, pixels);
+    bitmap_clear(&bm, black);
+    screen_for_bitmap(&scr, &bm);
+
+    pos = POINT(4, 16);
+    rc  = bmfont_draw(bmfont, &scr, worded, (int) strlen(worded), white,
+                      black, &word_only, &pos, &end_pos);
+    free(pixels);
+    if (rc)
+      goto Failure;
+
+    /* "a a" ends on 'a': measure trims one pixel of the font's built-in
+     * letter spacing (no custom letter_spacing or trailing word_spacing
+     * here -- see bmfont_monospace_test's "width + 1" for the same
+     * constant), so the untrimmed pen position is the measured width plus
+     * that one pixel back. */
+    expected_end_x = pos.x + spaced_word_width + 1;
+    if (end_pos.x != expected_end_x || end_pos.y != pos.y)
+    {
+      fprintf(stderr,
+              "error: bmfont_draw end_pos mismatch with spacing: "
+              "got (%d,%d), expected (%d,%d)\n",
+              end_pos.x, end_pos.y, expected_end_x, pos.y);
+      goto Failure;
+    }
   }
 
   bmfont_destroy(bmfont);
@@ -1059,6 +1215,10 @@ result_t bmfont_test(const char *resources)
     return rc;
 
   rc = bmfont_monospace_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_spacing_test(resources);
   if (rc != result_TEST_PASSED)
     return rc;
 

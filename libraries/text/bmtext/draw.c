@@ -27,7 +27,8 @@ void bmtext_draw(bmfont_t            *font,
   pos.y += font_ascent; /* origin is top-left; bmfont_draw wants the baseline */
   for (i = 0; i < nlines; i++)
   {
-    bmfont_draw(font, scr, lines[i].str, lines[i].len, fg, bg, &pos, NULL);
+    bmfont_draw(font, scr, lines[i].str, lines[i].len, fg, bg, NULL, &pos,
+               NULL);
     pos.y += font_height + leading;
   }
 }
