@@ -38,7 +38,9 @@ extern "C"
  * text is formatted by \c fmt (a single printf-style "%d" conversion; NULL
  * defaults to "%d") every time \ref wuss_slider_row_set or \ref
  * wuss_slider_row_event changes the value, so callers never format it by
- * hand.
+ * hand. If \c step is non-zero, both functions also snap the value to the
+ * nearest multiple of \c step above \c min, so callers never hand-roll that
+ * either.
  */
 typedef struct wuss_slider_row
 {
@@ -50,6 +52,12 @@ typedef struct wuss_slider_row
    *  Borrowed; must outlive the row (a string literal in practice). NULL
    *  means "%d". */
   const char  *fmt;
+  /** Value at the slider's groove start and end; snapping rounds to a
+   *  multiple of \c step away from \c min and clamps to [min,max]. Match
+   *  the \c min/\c max passed to \ref wuss_icon_spec_slider_row. */
+  int          min, max;
+  /** Snapping step; 0 means "no snapping" (any value is kept as-is). */
+  int          step;
 }
 wuss_slider_row_t;
 
@@ -69,10 +77,13 @@ wuss_slider_row_t;
  * \param[in]  orientation   Groove direction.
  * \param[in]  min           Value at the groove's start.
  * \param[in]  max           Value at the groove's end.
- * \param[in]  default_value Initial value, clamped to [min,max].
+ * \param[in]  default_value Initial value, clamped to [min,max] and (if \p
+ *                           step is non-zero) snapped to a multiple of it.
  * \param[in]  fmt           printf-style format for the value label, one
  *                           "%d" conversion; NULL for "%d". Borrowed; must
  *                           outlive the row.
+ * \param[in]  step          Snapping step passed through to \ref
+ *                           wuss_slider_row_bind; 0 for none.
  */
 void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
                                wuss_icon_spec_t         *value_spec,
@@ -83,7 +94,8 @@ void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
                                int                       min,
                                int                       max,
                                int                       default_value,
-                               const char               *fmt);
+                               const char               *fmt,
+                               int                       step);
 
 /**
  * Bind a \ref wuss_slider_row_t to the icons \ref wuss_icon_create_array
@@ -95,11 +107,18 @@ void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
  * \param[in]  fmt    Same format string passed to \ref
  *                    wuss_icon_spec_slider_row; borrowed, must outlive the
  *                    row. NULL for "%d".
+ * \param[in]  min    Same \c min passed to \ref wuss_icon_spec_slider_row.
+ * \param[in]  max    Same \c max passed to \ref wuss_icon_spec_slider_row.
+ * \param[in]  step   Same \c step passed to \ref wuss_icon_spec_slider_row;
+ *                    0 for no snapping.
  */
 void wuss_slider_row_bind(wuss_slider_row_t *row,
                           wuss_icon_t       *slider,
                           wuss_icon_t       *value,
-                          const char        *fmt);
+                          const char        *fmt,
+                          int                min,
+                          int                max,
+                          int                step);
 
 /**
  * Set a slider row's value programmatically -- the slider fill and its
@@ -109,7 +128,8 @@ void wuss_slider_row_bind(wuss_slider_row_t *row,
  *
  * \param[in] window Window the row's icons belong to.
  * \param[in] row    Row to change.
- * \param[in] value  New value; clamped to the slider's [min,max] range.
+ * \param[in] value  New value; snapped to \c row->step (if non-zero) and
+ *                   clamped to [row->min,row->max].
  * \return \ref result_OK, or \ref result_OOM from formatting the label.
  */
 result_t wuss_slider_row_set(wuss_window_t           *window,
@@ -118,14 +138,16 @@ result_t wuss_slider_row_set(wuss_window_t           *window,
 
 /**
  * Handle a wuss_EVENT_ICON delivered to the row's window: if it names this
- * row's slider and is a drag (MOUSE_DOWN or MOUSE_MOVE), reformats the value
- * label to match and reports the new value. Any other icon or action is left
- * untouched.
+ * row's slider and is a drag (MOUSE_DOWN or MOUSE_MOVE), snaps the value to
+ * \c row->step (if non-zero, re-setting the slider itself so it visibly
+ * jumps to the snapped position), reformats the value label to match, and
+ * reports the new value. Any other icon or action is left untouched.
  *
  * \param[in]  window Window the row's icons belong to.
  * \param[in]  row    Row to check against.
  * \param[in]  event  The wuss_EVENT_ICON event.
- * \param[out] value  Set to the new value when handled. May be NULL.
+ * \param[out] value  Set to the new (already-snapped) value when handled.
+ *                    May be NULL.
  * \return Non-zero if \p event was a drag on this row's slider (and so was
  *         handled), zero otherwise.
  */

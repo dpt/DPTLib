@@ -115,17 +115,17 @@ enum {
 typedef struct saturn_sizedlg_rowdesc
 {
   const char *label;
-  int         min, max;
+  int         min, max, step;
   size_t      config_offset;
 }
 saturn_sizedlg_rowdesc_t;
 
 static const saturn_sizedlg_rowdesc_t g_saturn_sizedlg_rows[SATURN_SIZEDLG_NROWS] =
 {
-  [SATURN_SIZEDLG_ROW_SIZE]  = { "Size",  SATURN_SIZE_MIN, SATURN_SIZE_MAX, offsetof(saturn_config_t, size) },
-  [SATURN_SIZEDLG_ROW_STARS] = { "Stars", 10, 1000, offsetof(saturn_config_t, stars_iters) },
-  [SATURN_SIZEDLG_ROW_RING]  = { "Ring",  10, 4000, offsetof(saturn_config_t, ring_iters) },
-  [SATURN_SIZEDLG_ROW_BODY]  = { "Body",  10, 4000, offsetof(saturn_config_t, body_iters) },
+  [SATURN_SIZEDLG_ROW_SIZE]  = { "Size",  SATURN_SIZE_MIN, SATURN_SIZE_MAX, SATURN_SIZE_STEP, offsetof(saturn_config_t, size) },
+  [SATURN_SIZEDLG_ROW_STARS] = { "Stars", 1, 9999, 0, offsetof(saturn_config_t, stars_iters) },
+  [SATURN_SIZEDLG_ROW_RING]  = { "Ring",  1, 9999, 0, offsetof(saturn_config_t, ring_iters) },
+  [SATURN_SIZEDLG_ROW_BODY]  = { "Body",  1, 9999, 0, offsetof(saturn_config_t, body_iters) },
 };
 
 /* task->config field a row reads/writes, per g_saturn_sizedlg_rows */
@@ -351,16 +351,6 @@ static result_t saturn_mouse(saturn_task_t      *task,
   return result_OK;
 }
 
-/* nearest multiple of SATURN_SIZE_STEP to v, clamped to
- * [SATURN_SIZE_MIN,SATURN_SIZE_MAX] */
-static int saturn_size_snap(int v)
-{
-  v = ((v - SATURN_SIZE_MIN + SATURN_SIZE_STEP / 2) / SATURN_SIZE_STEP) *
-      SATURN_SIZE_STEP + SATURN_SIZE_MIN;
-
-  return CLAMP(v, SATURN_SIZE_MIN, SATURN_SIZE_MAX);
-}
-
 /* stack items for the size dialogue's layout: a VBOX of label / slider /
  * value-echo / button-row, with fixed-size spacers standing in for the
  * (non-uniform) gaps between them. BTN_ROW is an HBOX with Cancel and
@@ -446,17 +436,18 @@ static const stack_item_t g_saturn_size_stack[SIZE_STACK__LIMIT] =
  * hidden. */
 static result_t saturn_size_dialogue_create(saturn_task_t *task)
 {
-  wuss_icon_spec_t specs[SATURN_SIZE_NICONS];
-  wuss_icon_t     *made[SATURN_SIZE_NICONS];
-  box_t            boxes[SIZE_STACK__LIMIT];
   static const int label_box[SATURN_SIZEDLG_NROWS] = { ST_LABL1, ST_LABL2, ST_LABL3, ST_LABL4 };
   static const int slider_box[SATURN_SIZEDLG_NROWS] = { ST_SLDR1, ST_SLDR2, ST_SLDR3, ST_SLDR4 };
   static const int value_box[SATURN_SIZEDLG_NROWS] = { ST_VAL1, ST_VAL2, ST_VAL3, ST_VAL4 };
   static const int label_icon[SATURN_SIZEDLG_NROWS] = { SATURN_SIZE_ICON_LABEL1, SATURN_SIZE_ICON_LABEL2, SATURN_SIZE_ICON_LABEL3, SATURN_SIZE_ICON_LABEL4 };
   static const int slider_icon[SATURN_SIZEDLG_NROWS] = { SATURN_SIZE_ICON_SLIDER1, SATURN_SIZE_ICON_SLIDER2, SATURN_SIZE_ICON_SLIDER3, SATURN_SIZE_ICON_SLIDER4 };
   static const int value_icon[SATURN_SIZEDLG_NROWS] = { SATURN_SIZE_ICON_VALUE1, SATURN_SIZE_ICON_VALUE2, SATURN_SIZE_ICON_VALUE3, SATURN_SIZE_ICON_VALUE4 };
-  box_t            root;
+
   result_t         rc;
+  wuss_icon_spec_t specs[SATURN_SIZE_NICONS];
+  wuss_icon_t     *made[SATURN_SIZE_NICONS];
+  box_t            boxes[SIZE_STACK__LIMIT];
+  box_t            root;
   int              row_w, btns_w;
   int              value, row;
   size2d_t         sz;
@@ -494,16 +485,14 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
   {
     const saturn_sizedlg_rowdesc_t *desc = &g_saturn_sizedlg_rows[row];
 
-    value = (row == SATURN_SIZEDLG_ROW_SIZE) ?
-              saturn_size_snap(task->config.size) :
-              *saturn_sizedlg_field(task, row);
+    value = *saturn_sizedlg_field(task, row);
 
     wuss_icon_spec_label(&specs[label_icon[row]], boxes[label_box[row]],
                          desc->label, wuss_COLOUR_BLACK, 1);
     wuss_icon_spec_slider_row(&specs[slider_icon[row]], &specs[value_icon[row]],
                               boxes[slider_box[row]], boxes[value_box[row]],
                               wuss_COLOUR_BLACK, wuss_SLIDER_HORIZONTAL,
-                              desc->min, desc->max, value, NULL);
+                              desc->min, desc->max, value, NULL, desc->step);
   }
 
   wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_CANCEL], boxes[ST_CNCL], "Cancel", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 0);
@@ -516,7 +505,10 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
 
   for (row = 0; row < SATURN_SIZEDLG_NROWS; row++)
     wuss_slider_row_bind(&task->size_rows[row], made[slider_icon[row]],
-                         made[value_icon[row]], NULL);
+                         made[value_icon[row]], NULL,
+                         g_saturn_sizedlg_rows[row].min,
+                         g_saturn_sizedlg_rows[row].max,
+                         g_saturn_sizedlg_rows[row].step);
   task->size_cancel = made[SATURN_SIZE_ICON_CANCEL];
   task->size_apply  = made[SATURN_SIZE_ICON_APPLY];
 
@@ -542,9 +534,7 @@ static result_t saturn_sizedlg_pre_show(saturn_task_t *task)
   rc = result_OK;
   for (row = 0; row < SATURN_SIZEDLG_NROWS; row++)
   {
-    value = (row == SATURN_SIZEDLG_ROW_SIZE) ?
-              saturn_size_snap(task->config.size) :
-              *saturn_sizedlg_field(task, row);
+    value = *saturn_sizedlg_field(task, row);
     rc = wuss_slider_row_set(task->size_dialogue, &task->size_rows[row], value);
   }
 
@@ -583,26 +573,18 @@ static result_t saturn_size_dialogue_icon(saturn_task_t      *task,
                                           const wuss_event_t *event)
 {
   wuss_icon_t *icon;
-  int          row, value;
+  int          row;
 
   icon = event->data.icon.icon;
 
   // FIXME DPT: mouse move events arrive even when not dragging the bar...
 
-  /* row 0 (Size) additionally snaps to SATURN_SIZE_STEP; the others take the
-   * dragged value as-is. wuss_slider_row_event already reformats the value
-   * label -- row 0 just re-derives and re-sets the snapped value on top. */
+  /* wuss_slider_row_event snaps to row->step (Size only) and reformats the
+   * value label itself, so a hit here needs nothing further. */
   for (row = 0; row < SATURN_SIZEDLG_NROWS; row++)
-  {
-    if (!wuss_slider_row_event(task->size_dialogue, &task->size_rows[row],
-                               event, &value))
-      continue;
-
-    if (row == SATURN_SIZEDLG_ROW_SIZE)
-      return wuss_slider_row_set(task->size_dialogue, &task->size_rows[row],
-                                 saturn_size_snap(value));
-    return result_OK;
-  }
+    if (wuss_slider_row_event(task->size_dialogue, &task->size_rows[row],
+                              event, NULL))
+      return result_OK;
 
   if (event->data.icon.action != wuss_MOUSE_UP)
     return result_OK;
