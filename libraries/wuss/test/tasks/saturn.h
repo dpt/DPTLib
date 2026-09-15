@@ -56,6 +56,10 @@ typedef struct saturn_task
   wuss_icon_t       *size_value_label;
   wuss_icon_t       *size_slider2;
   wuss_icon_t       *size_value2_label;
+  wuss_icon_t       *size_slider3;
+  wuss_icon_t       *size_value3_label;
+  wuss_icon_t       *size_slider4;
+  wuss_icon_t       *size_value4_label;
   wuss_icon_t       *size_cancel;
   wuss_icon_t       *size_apply;
 }
