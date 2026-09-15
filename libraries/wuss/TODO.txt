@@ -5,9 +5,14 @@ Items marked (blocks: X) are prerequisites for X.
 
 
 Add a panic redraw indicator?
+
 Furniture clicks / scrolls still invalidate the entire furniture set - fix.
   (window move fixed: layout cache is now translated in place, not rebuilt)
 
+Fast scrolling can invalidate areas and fail to copy the expected known good screen content.
+ -- Tried and tried to get Claude to fix but no good.
+
+Too much slider boilerplate -- need to make label+slider+value a standard component.
 
 
 LAYER 0 - BUGS (fix before building on top)

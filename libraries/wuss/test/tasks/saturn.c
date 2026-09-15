@@ -33,11 +33,11 @@
  * bottom-up and wuss's run top-down, so that same expression - kept verbatim
  * here, only without the *4 - lands the sketch the same way up as it drew on
  * a BBC/RISC OS screen. The shear in loop 2 is asymmetric in y, so this is
- * the term that actually decides which way the ring's shadow band tilts.
+ * the term that actually decides which way the ring's shadow tilts.
  *
- *   loop 1: X%,Y% in -127..127; keep if (X*X+Y*Y)/256 > 17  -> the ring
+ *   loop 1: X%,Y% in -127..127; keep if (X*X+Y*Y)/256 > 17  -> the stars
  *   loop 2: sheared X% = R6+R5/4, Y% = R6; keep if 32<=E<80 and
- *           (R5<0 or (X*X+Y*Y)/256 > 16)                    -> ring shadow band
+ *           (R5<0 or (X*X+Y*Y)/256 > 16)                    -> the ring
  *   loop 3: R1,R2 random; keep if R1*R1+R2*R2 < 16384;
  *           x = sqrt(16384-P)/2                             -> planet body
  */
@@ -82,9 +82,20 @@ enum { SATURN_MENU_COLOURS = 0, SATURN_MENU_SIZE };
 enum { SATURN_COLOURS_MENU_FOREGROUND = 0, SATURN_COLOURS_MENU_BACKGROUND };
 
 /* the size dialogue's icons, in creation order (see saturn_size_dialogue_create) */
-enum { SATURN_SIZE_ICON_LABEL = 0, SATURN_SIZE_ICON_SLIDER,
-       SATURN_SIZE_ICON_VALUE, SATURN_SIZE_ICON_CANCEL,
-       SATURN_SIZE_ICON_APPLY, SATURN_SIZE_NICONS };
+enum {
+  SATURN_SIZE_ICON_LABEL1 = 0,
+  SATURN_SIZE_ICON_SLIDER1,
+  SATURN_SIZE_ICON_VALUE1,
+
+  SATURN_SIZE_ICON_LABEL2,
+  SATURN_SIZE_ICON_SLIDER2,
+  SATURN_SIZE_ICON_VALUE2,
+
+  SATURN_SIZE_ICON_CANCEL,
+  SATURN_SIZE_ICON_APPLY,
+
+  SATURN_SIZE_NICONS
+};
 
 static wuss_menu_item_t g_saturn_colours_items[] =
 {
@@ -234,8 +245,8 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
 
   saturn_rnd_seed(task->seed);
 
-  /* loop 1 - the ring: keep points outside the inner disc */
-  for (i = 0; i <= task->config.ring_iters; i++)
+  /* loop 1 - the stars: keep points outside the inner disc */
+  for (i = 0; i <= task->config.stars_iters; i++)
   {
     x = SATURN_SAMPLE(half, range);
     y = SATURN_SAMPLE(half, range);
@@ -244,8 +255,8 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
       saturn_plot(scr, ox, oy, size, x + half, flip - (y + half), task->fg);
   }
 
-  /* loop 2 - ring shadow band: sheared sample with a banded energy gate */
-  for (i = 0; i <= task->config.band_iters; i++)
+  /* loop 2 - the ring: sheared sample with a banded energy gate */
+  for (i = 0; i <= task->config.ring_iters; i++)
   {
     int r5, r6, r7, e;
 
@@ -320,7 +331,7 @@ static int saturn_size_snap(int v)
 enum
 {
   ST_ROOT,
-  
+
   ST_ROW1,
   ST_LABL1,
   ST_SLDR1,
@@ -335,14 +346,15 @@ enum
   ST_SPCR,
   ST_CNCL,
   ST_APLY,
-  
+
   SIZE_STACK__LIMIT
 };
 
 /* Leaf main-axis sizes, named so saturn_size_dialogue_create's hand-computed
  * minimum window size can share them with the table below instead of
  * repeating the numbers as bare literals. */
-#define ST_LABEL_W      24
+#define ST_LABEL_W      (5*6) /* enough for "Iters" */
+#define ST_LABEL2_W     (4*6) /* enough for "100%" ? */
 #define ST_SLIDER_MIN_W 64
 #define ST_CANCEL_W     48
 #define ST_APPLY_W      56
@@ -354,12 +366,12 @@ static const stack_item_t g_saturn_size_stack[SIZE_STACK__LIMIT] =
   [ST_ROW1]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
   [ST_LABL1] = STACK_LEAF(ST_ROW1, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
   [ST_SLDR1] = STACK_LEAF_EX(ST_ROW1, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
-  [ST_VAL1]  = STACK_LEAF(ST_ROW1, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_VAL1]  = STACK_LEAF(ST_ROW1, ST_LABEL2_W, 16, stack_ALIGN_CENTRE),
 
   [ST_ROW2]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
   [ST_LABL2] = STACK_LEAF(ST_ROW2, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
   [ST_SLDR2] = STACK_LEAF_EX(ST_ROW2, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
-  [ST_VAL2]  = STACK_LEAF(ST_ROW2, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_VAL2]  = STACK_LEAF(ST_ROW2, ST_LABEL2_W, 16, stack_ALIGN_CENTRE),
 
   [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
   [ST_SPCR]  = STACK_SPACER(ST_BTNS, 1),
@@ -391,7 +403,7 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
    * always consume whatever slack the root provides. So the minimum
    * window size is hand-computed here from the same constants the table
    * uses, rather than measured by solving. */
-  row_w  = ST_LABEL_W + wuss_STD_GAP + ST_SLIDER_MIN_W + wuss_STD_GAP + ST_LABEL_W;
+  row_w  = ST_LABEL_W + wuss_STD_GAP + ST_SLIDER_MIN_W + wuss_STD_GAP + ST_LABEL2_W;
   btns_w = ST_CANCEL_W + wuss_STD_GAP + ST_APPLY_W;
   sz.w   = MAX(row_w, btns_w) + 2 * wuss_STD_INSET;
   sz.h   = (wuss_STD_SLIDER_HEIGHT + wuss_STD_GAP) * 2 + wuss_STD_PRIMARY_BUTTON_HEIGHT + 2 * wuss_STD_INSET;
@@ -418,32 +430,32 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
   value = saturn_size_snap(task->config.size);
   snprintf(buf, sizeof(buf), "%d", value);
 
-  wuss_icon_spec_label(&specs[SATURN_SIZE_ICON_LABEL], boxes[ST_LABL1],
-                       "Size", wuss_COLOUR_BLACK, 1);
-  wuss_icon_spec_slider(&specs[SATURN_SIZE_ICON_SLIDER], boxes[ST_SLDR1],
-                        wuss_COLOUR_BLACK, wuss_SLIDER_HORIZONTAL,
-                        SATURN_SIZE_MIN, SATURN_SIZE_MAX, value);
-  wuss_icon_spec_label(&specs[SATURN_SIZE_ICON_VALUE], boxes[ST_VAL1],
-                       buf, wuss_COLOUR_BLACK, 0); /* buf copied by
-                                                       wuss_icon_create_array */
-  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_CANCEL], boxes[ST_CNCL],
-                        "Cancel", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 0);
-  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY],
-                        "Apply", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 1);
+  wuss_icon_spec_label(&specs[SATURN_SIZE_ICON_LABEL1], boxes[ST_LABL1], "Size", wuss_COLOUR_BLACK, 1);
+  wuss_icon_spec_slider(&specs[SATURN_SIZE_ICON_SLIDER1], boxes[ST_SLDR1], wuss_COLOUR_BLACK, wuss_SLIDER_HORIZONTAL, SATURN_SIZE_MIN, SATURN_SIZE_MAX, value);
+  wuss_icon_spec_label(&specs[SATURN_SIZE_ICON_VALUE1], boxes[ST_VAL1], buf, wuss_COLOUR_BLACK, 0); /* buf copied by wuss_icon_create_array */
+
+  wuss_icon_spec_label(&specs[SATURN_SIZE_ICON_LABEL2], boxes[ST_LABL2], "Iters", wuss_COLOUR_BLACK, 1);
+  wuss_icon_spec_slider(&specs[SATURN_SIZE_ICON_SLIDER2], boxes[ST_SLDR2], wuss_COLOUR_BLACK, wuss_SLIDER_HORIZONTAL, 10, 1000, value);
+  wuss_icon_spec_label(&specs[SATURN_SIZE_ICON_VALUE2], boxes[ST_VAL2], buf, wuss_COLOUR_BLACK, 0); /* buf copied by wuss_icon_create_array */
+
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_CANCEL], boxes[ST_CNCL], "Cancel", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 0);
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY], "Apply", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 1);
 
   rc = wuss_icon_create_array(task->size_dialogue, specs, SATURN_SIZE_NICONS,
                               made);
   if (rc != result_OK)
     goto exit;
 
-  task->size_slider      = made[SATURN_SIZE_ICON_SLIDER];
-  task->size_value_label = made[SATURN_SIZE_ICON_VALUE];
-  task->size_cancel      = made[SATURN_SIZE_ICON_CANCEL];
-  task->size_apply       = made[SATURN_SIZE_ICON_APPLY];
+  task->size_slider       = made[SATURN_SIZE_ICON_SLIDER1];
+  task->size_value_label  = made[SATURN_SIZE_ICON_VALUE1];
+  task->size_slider2      = made[SATURN_SIZE_ICON_SLIDER2];
+  task->size_value2_label = made[SATURN_SIZE_ICON_VALUE2];
+  task->size_cancel       = made[SATURN_SIZE_ICON_CANCEL];
+  task->size_apply        = made[SATURN_SIZE_ICON_APPLY];
 
   return result_OK;
-  
-  
+
+
 exit:
   wuss_window_close(task->size_dialogue); /* not yet a menu leaf: safe to close */
   task->size_dialogue = NULL;
@@ -453,33 +465,43 @@ exit:
 /* wuss_EVENT_PRE_SHOW on the size dialogue: resync the slider and its echo
  * label to task->config.size, in case Apply (or a config passed to
  * saturn_create) changed it since the dialogue was last shown. Always
- * allows the show. Also used directly by saturn_size_icon to reset the
- * dialogue on an Adjust-Cancel click. */
-static result_t saturn_size_pre_show(saturn_task_t *task)
+ * allows the show. Also used directly by saturn_size_dialogue_icon to reset
+ * the dialogue on an Adjust-Cancel click. */
+static result_t saturn_sizedlg_pre_show(saturn_task_t *task)
 {
-  int  value;
-  char buf[16];
+  result_t rc;
+  int      value;
+  char     buf[16];
 
   value = saturn_size_snap(task->config.size);
   wuss_icon_set_value(task->size_dialogue, task->size_slider, value);
   snprintf(buf, sizeof(buf), "%d", value);
+  rc = wuss_icon_set_text(task->size_dialogue, task->size_value_label, buf);
 
-  return wuss_icon_set_text(task->size_dialogue, task->size_value_label, buf);
+  value = task->config.stars_iters;
+  wuss_icon_set_value(task->size_dialogue, task->size_slider2, value);
+  snprintf(buf, sizeof(buf), "%d", value);
+  rc = wuss_icon_set_text(task->size_dialogue, task->size_value2_label, buf);
+
+  return rc;
 }
 
 /* Applies the slider's current value to task->window (resize + doc extent),
  * shared by a Select and an Adjust click on Apply. */
-static result_t saturn_size_apply(saturn_task_t *task)
+static result_t saturn_sizedlg_apply(saturn_task_t *task)
 {
   result_t rc;
-  int      value;
+  int      size_value;
+  int      iters_value;
 
-  value = wuss_icon_get_value(task->size_slider);
-  task->config.size = value;
-  rc = wuss_window_resize(task->window, SIZE2D(value, value));
+  size_value = wuss_icon_get_value(task->size_slider);
+  task->config.size = size_value;
+  iters_value = wuss_icon_get_value(task->size_slider2);
+  task->config.stars_iters = iters_value;
+  rc = wuss_window_resize(task->window, SIZE2D(size_value, size_value));
   if (rc != result_OK)
     return rc;
-  return wuss_window_set_doc(task->window, SIZE2D(value, value));
+  return wuss_window_set_doc(task->window, SIZE2D(size_value, size_value));
 }
 
 /* wuss_EVENT_ICON on the size dialogue: slider drag updates the echo label
@@ -492,14 +514,16 @@ static result_t saturn_size_apply(saturn_task_t *task)
  * the dialogue open. Dismissing goes through wuss_menu_close rather than
  * touching the (borrowed, reused) window directly -- that is what hides it,
  * same as a click outside the chain would. */
-static result_t saturn_size_icon(saturn_task_t      *task,
-                                 const wuss_event_t *event)
+static result_t saturn_size_dialogue_icon(saturn_task_t      *task,
+                                          const wuss_event_t *event)
 {
   wuss_icon_t *icon;
   int          value;
   char         buf[16];
 
   icon = event->data.icon.icon;
+
+  // FIXME DPT: mouse move events arrive even when not dragging the bar...
 
   if (icon == task->size_slider)
   {
@@ -508,9 +532,22 @@ static result_t saturn_size_icon(saturn_task_t      *task,
       return result_OK;
 
     value = saturn_size_snap(event->data.icon.value);
-    wuss_icon_set_value(task->size_dialogue, task->size_slider, value);
+    wuss_icon_set_value(task->size_dialogue, task->size_slider, value); /* set again once snapped */
     snprintf(buf, sizeof(buf), "%d", value);
     return wuss_icon_set_text(task->size_dialogue, task->size_value_label,
+                              buf);
+  }
+
+  if (icon == task->size_slider2)
+  {
+    if (event->data.icon.action != wuss_MOUSE_DOWN &&
+        event->data.icon.action != wuss_MOUSE_MOVE)
+      return result_OK;
+
+    value = event->data.icon.value;
+    // not snapping -- wuss_icon_set_value(task->size_dialogue, task->size_slider2, value);
+    snprintf(buf, sizeof(buf), "%d", value);
+    return wuss_icon_set_text(task->size_dialogue, task->size_value2_label,
                               buf);
   }
 
@@ -526,7 +563,7 @@ static result_t saturn_size_icon(saturn_task_t      *task,
       return result_OK;
     }
     if (event->data.icon.button & wuss_BUTTON_ADJUST)
-      return saturn_size_pre_show(task);
+      return saturn_sizedlg_pre_show(task);
     return result_OK;
   }
 
@@ -536,10 +573,10 @@ static result_t saturn_size_icon(saturn_task_t      *task,
     {
       wuss_menu_close(task->menu_handle);
       task->menu_handle = NULL;
-      return saturn_size_apply(task);
+      return saturn_sizedlg_apply(task);
     }
     if (event->data.icon.button & wuss_BUTTON_ADJUST)
-      return saturn_size_apply(task);
+      return saturn_sizedlg_apply(task);
     return result_OK;
   }
 
@@ -568,7 +605,8 @@ static int saturn_menu_select_apply(const wuss_colourmenu_t *colourmenu,
 
 /* A pick from either colour submenu, resolved against whichever colourmenu
  * it came from. "Size" is a wuss_menu_item_t::window leaf, not a leaf pick,
- * so it never reaches here -- see saturn_size_icon and saturn_size_pre_show. */
+ * so it never reaches here -- see saturn_size_dialogue_icon and
+ * saturn_sizedlg_pre_show. */
 static result_t saturn_menu_select(saturn_task_t      *task,
                                    const wuss_event_t *event)
 {
@@ -605,12 +643,12 @@ result_t saturn_handle(wuss_window_t      *window,
 
   case wuss_EVENT_ICON:
     if (window == task->size_dialogue)
-      return saturn_size_icon(task, event);
+      return saturn_size_dialogue_icon(task, event);
     return result_OK;
 
   case wuss_EVENT_PRE_SHOW:
     if (window == task->size_dialogue)
-      return saturn_size_pre_show(task);
+      return saturn_sizedlg_pre_show(task);
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
