@@ -360,6 +360,10 @@ wuss_icon_spec_t;
 /** Standard main-axis size (px) for a wuss_ICON_FLAGS_DEFAULT
  *  wuss_ICON_TYPE_ACTION button, e.g. OK/Apply. */
 #define wuss_STD_PRIMARY_BUTTON_HEIGHT   34
+/** Standard gap (px) between two sibling icons/components in a layout. */
+#define wuss_STD_GAP                     4
+/** Standard gap (px) between an icon/component and the window edge. */
+#define wuss_STD_INSET                   4
 
 /* ----------------------------------------------------------------------- */
 

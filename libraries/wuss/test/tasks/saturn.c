@@ -339,8 +339,6 @@ enum
   SIZE_STACK__LIMIT
 };
 
-#define G 4
-
 /* Leaf main-axis sizes, named so saturn_size_dialogue_create's hand-computed
  * minimum window size can share them with the table below instead of
  * repeating the numbers as bare literals. */
@@ -351,19 +349,19 @@ enum
 
 static const stack_item_t g_saturn_size_stack[SIZE_STACK__LIMIT] =
 {
-  [ST_ROOT]  = STACK_VBOX_EX(-1, 0, G, G, G, G, G),
+  [ST_ROOT]  = STACK_VBOX_EX(-1, 0, wuss_STD_GAP, wuss_STD_INSET, wuss_STD_INSET, wuss_STD_INSET, wuss_STD_INSET),
 
-  [ST_ROW1]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, G, stack_ALIGN_START),
+  [ST_ROW1]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
   [ST_LABL1] = STACK_LEAF(ST_ROW1, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
   [ST_SLDR1] = STACK_LEAF_EX(ST_ROW1, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
   [ST_VAL1]  = STACK_LEAF(ST_ROW1, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
 
-  [ST_ROW2]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, G, stack_ALIGN_START),
+  [ST_ROW2]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
   [ST_LABL2] = STACK_LEAF(ST_ROW2, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
   [ST_SLDR2] = STACK_LEAF_EX(ST_ROW2, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
   [ST_VAL2]  = STACK_LEAF(ST_ROW2, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
 
-  [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, G, stack_ALIGN_END),
+  [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
   [ST_SPCR]  = STACK_SPACER(ST_BTNS, 1),
   [ST_CNCL]  = STACK_LEAF(ST_BTNS, ST_CANCEL_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
   [ST_APLY]  = STACK_LEAF(ST_BTNS, ST_APPLY_W, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
@@ -393,10 +391,10 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
    * always consume whatever slack the root provides. So the minimum
    * window size is hand-computed here from the same constants the table
    * uses, rather than measured by solving. */
-  row_w  = ST_LABEL_W + G + ST_SLIDER_MIN_W + G + ST_LABEL_W;
-  btns_w = ST_CANCEL_W + G + ST_APPLY_W;
-  sz.w   = MAX(row_w, btns_w) + 2 * G;
-  sz.h   = (wuss_STD_SLIDER_HEIGHT + G) * 2 + wuss_STD_PRIMARY_BUTTON_HEIGHT + 2 * G;
+  row_w  = ST_LABEL_W + wuss_STD_GAP + ST_SLIDER_MIN_W + wuss_STD_GAP + ST_LABEL_W;
+  btns_w = ST_CANCEL_W + wuss_STD_GAP + ST_APPLY_W;
+  sz.w   = MAX(row_w, btns_w) + 2 * wuss_STD_INSET;
+  sz.h   = (wuss_STD_SLIDER_HEIGHT + wuss_STD_GAP) * 2 + wuss_STD_PRIMARY_BUTTON_HEIGHT + 2 * wuss_STD_INSET;
 
   rc = wuss_window_create_placed(task->delegate,
                                  sz,
