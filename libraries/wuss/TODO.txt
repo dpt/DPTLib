@@ -13,6 +13,8 @@ Fast scrolling can invalidate areas and fail to copy the expected known good scr
  -- Tried and tried to get Claude to fix but no good.
 
 Too much slider boilerplate -- need to make label+slider+value a standard component.
+It also has the client do the rounding/snapping which isn't ideal.
+Also saw some pointer drift?
 
 
 LAYER 0 - BUGS (fix before building on top)
