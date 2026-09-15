@@ -21,13 +21,118 @@ extern "C"
 {
 #endif
 
+#include "base/result.h"
 #include "geom/box.h"
 
 #include "wuss/icon.h"
+#include "wuss/window.h"
 
 #ifdef WUSS_ICONS
 
 /* ----------------------------------------------------------------------- */
+
+/**
+ * A slider paired with a label that echoes its current value, the recurring
+ * "Label: [slider] value" row seen in dialogues across the test tasks (see
+ * saturn.c's size dialogue and icons.c's Sliders group). The value label's
+ * text is formatted by \c fmt (a single printf-style "%d" conversion; NULL
+ * defaults to "%d") every time \ref wuss_slider_row_set or \ref
+ * wuss_slider_row_event changes the value, so callers never format it by
+ * hand.
+ */
+typedef struct wuss_slider_row
+{
+  /** The slider icon. Not owned; destroyed with its window as normal. */
+  wuss_icon_t *slider;
+  /** The label icon echoing the slider's value. Not owned. */
+  wuss_icon_t *value;
+  /** printf-style format for the value label, one "%d" conversion.
+   *  Borrowed; must outlive the row (a string literal in practice). NULL
+   *  means "%d". */
+  const char  *fmt;
+}
+wuss_slider_row_t;
+
+/**
+ * Fill \p slider_spec and \p value_spec as a wuss_ICON_TYPE_SLIDER and its
+ * paired wuss_ICON_TYPE_LABEL value echo, ready for \ref
+ * wuss_icon_create_array alongside the row's own text label (built
+ * separately with \ref wuss_icon_spec_label). Call \ref wuss_slider_row_bind
+ * on the two created icons afterwards to get a usable \ref
+ * wuss_slider_row_t.
+ *
+ * \param[out] slider_spec   Spec to fill as the slider; overwritten.
+ * \param[out] value_spec    Spec to fill as the value label; overwritten.
+ * \param[in]  slider_bbox   Slider's bounding box.
+ * \param[in]  value_bbox    Value label's bounding box.
+ * \param[in]  fg            Groove/fill and text colour.
+ * \param[in]  orientation   Groove direction.
+ * \param[in]  min           Value at the groove's start.
+ * \param[in]  max           Value at the groove's end.
+ * \param[in]  default_value Initial value, clamped to [min,max].
+ * \param[in]  fmt           printf-style format for the value label, one
+ *                           "%d" conversion; NULL for "%d". Borrowed; must
+ *                           outlive the row.
+ */
+void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
+                               wuss_icon_spec_t         *value_spec,
+                               box_t                     slider_bbox,
+                               box_t                     value_bbox,
+                               wuss_colour_t             fg,
+                               wuss_slider_orientation_t orientation,
+                               int                       min,
+                               int                       max,
+                               int                       default_value,
+                               const char               *fmt);
+
+/**
+ * Bind a \ref wuss_slider_row_t to the icons \ref wuss_icon_create_array
+ * made from a pair of specs filled by \ref wuss_icon_spec_slider_row.
+ *
+ * \param[out] row    Row to fill.
+ * \param[in]  slider The created slider icon.
+ * \param[in]  value  The created value-label icon.
+ * \param[in]  fmt    Same format string passed to \ref
+ *                    wuss_icon_spec_slider_row; borrowed, must outlive the
+ *                    row. NULL for "%d".
+ */
+void wuss_slider_row_bind(wuss_slider_row_t *row,
+                          wuss_icon_t       *slider,
+                          wuss_icon_t       *value,
+                          const char        *fmt);
+
+/**
+ * Set a slider row's value programmatically -- the slider fill and its
+ * formatted value label both update, invalidating each so the next redraw
+ * repaints them. No task event is delivered, matching \ref
+ * wuss_icon_set_value.
+ *
+ * \param[in] window Window the row's icons belong to.
+ * \param[in] row    Row to change.
+ * \param[in] value  New value; clamped to the slider's [min,max] range.
+ * \return \ref result_OK, or \ref result_OOM from formatting the label.
+ */
+result_t wuss_slider_row_set(wuss_window_t           *window,
+                             const wuss_slider_row_t *row,
+                             int                      value);
+
+/**
+ * Handle a wuss_EVENT_ICON delivered to the row's window: if it names this
+ * row's slider and is a drag (MOUSE_DOWN or MOUSE_MOVE), reformats the value
+ * label to match and reports the new value. Any other icon or action is left
+ * untouched.
+ *
+ * \param[in]  window Window the row's icons belong to.
+ * \param[in]  row    Row to check against.
+ * \param[in]  event  The wuss_EVENT_ICON event.
+ * \param[out] value  Set to the new value when handled. May be NULL.
+ * \return Non-zero if \p event was a drag on this row's slider (and so was
+ *         handled), zero otherwise.
+ */
+int wuss_slider_row_event(wuss_window_t           *window,
+                          const wuss_slider_row_t *row,
+                          const wuss_event_t       *event,
+                          int                      *value);
 
 /**
  * Fill \p spec as a wuss_ICON_TYPE_LABEL.
