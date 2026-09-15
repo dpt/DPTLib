@@ -28,9 +28,9 @@
 typedef struct saturn_config
 {
   int stars_iters; /* loop 1: the ring */
-  int ring_iters; /* loop 2: ring shadow band */
-  int body_iters; /* loop 3: planet body */
-  int size;       /* window size (both axes); set via the Size... dialogue */
+  int ring_iters;  /* loop 2: ring shadow band */
+  int body_iters;  /* loop 3: planet body */
+  int size;        /* window size (both axes) */
 }
 saturn_config_t;
 
@@ -52,20 +52,28 @@ enum
   SATURN_SIZEDLG_NROWS
 };
 
+/* the size dialogue: built once, hidden; a menu leaf (see
+ * g_saturn_menu_items[SATURN_MENU_SIZE].window) */
+typedef struct saturn_conf
+{
+  wuss_window_t     *dialogue;
+  wuss_slider_row_t  rows[SATURN_SIZEDLG_NROWS]; /* size, stars, ring, body */
+  wuss_icon_t       *cancel;
+  wuss_icon_t       *apply;
+}
+saturn_conf_t;
+
 typedef struct saturn_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer/wuss_get_palette */
   wuss_window_t     *window;
   wuss_task_t       *delegate; /* the task that owns the menu */
   colour_t           bg, fg;
-  unsigned long      seed; /* RNG state; a Select click bumps it */
+  unsigned long      seed;     /* RNG state; a Select click bumps it */
   saturn_config_t    config;
   wuss_colourmenu_t *fg_colourmenu, *bg_colourmenu;
   wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
-  wuss_window_t     *size_dialogue;   /* built once, hidden; a menu leaf */
-  wuss_slider_row_t  size_rows[SATURN_SIZEDLG_NROWS]; /* size, stars, ring, body */
-  wuss_icon_t       *size_cancel;
-  wuss_icon_t       *size_apply;
+  saturn_conf_t      conf;
 }
 saturn_task_t;
 

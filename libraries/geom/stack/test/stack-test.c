@@ -451,6 +451,53 @@ static result_t test_bad_tree(void)
   return result_TEST_PASSED;
 }
 
+/*   ROOT (VBOX, pad 2 all round)
+ *    |
+ *    +-- ROW (HBOX, gap=3)
+ *         +-- LBL  min=20
+ *         +-- FLD  flex=1, min=15
+ *
+ * ROW's minimum main axis is 20+3+15=38; ROOT's minimum is that plus its own
+ * padding (2+2=4) on each axis -- width 42, height (ROW has no explicit
+ * axis_size/min, so 0) 4. Measuring, then solving into exactly that size,
+ * must leave every leaf at its minimum (no slack for FLD's flex to grow
+ * into). */
+static result_t test_measure_min(void)
+{
+  enum { ROOT, ROW, LBL, FLD, N };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
+               .pad_l = 2, .pad_t = 2, .pad_r = 2, .pad_b = 2 },
+    [ROW]  = { .kind = stack_KIND_HBOX, .parent = ROOT, .gap = 3 },
+    [LBL]  = { .kind = stack_KIND_LEAF, .parent = ROW, .min = 20 },
+    [FLD]  = { .kind = stack_KIND_LEAF, .parent = ROW, .flex = 1, .min = 15 },
+  };
+
+  result_t err;
+  size2d_t sz;
+  box_t    root, out[N];
+
+  err = stack_smallest(items, N, &sz);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (sz.w != 42 || sz.h != 4)
+    return result_TEST_FAILED;
+
+  root = (box_t) BOX_POS_SIZE(0, 0, sz.w, sz.h);
+  err  = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[LBL].x1 - out[LBL].x0 != 20)
+    return result_TEST_FAILED;
+  if (out[FLD].x1 - out[FLD].x0 != 15)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t stack_test(const char *resources)
@@ -508,6 +555,10 @@ result_t stack_test(const char *resources)
     return err;
 
   err = test_bad_tree();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_measure_min();
   if (err != result_TEST_PASSED)
     return err;
 

@@ -10,6 +10,7 @@ extern "C"
 
 #include "base/result.h"
 #include "geom/box.h"
+#include "geom/size.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -134,6 +135,27 @@ result_t stack_solve(const stack_item_t *items,
                      int                 n,
                      const box_t        *root,
                      box_t              *out);
+
+/**
+ * Measure the smallest root box the tree can be solved into without any
+ * flexible item shrinking below its `min`/`axis_size` -- the size to pass
+ * `stack_solve` (and, typically, a window's create call) so every item sits
+ * at its minimum rather than being handed extra slack. Each container's
+ * minimum main-axis extent is the sum of its children's minima plus gaps and
+ * insets; its minimum cross-axis extent is the largest of its children's (a
+ * child contributes its `cross_size`, or 0 if unset, since an unset cross
+ * size means "span the parent" rather than "needs this much").
+ *
+ * \param[in]  items Array of stack items describing the tree.
+ * \param[in]  n     Number of items in the array.
+ * \param[out] out   Set to the root item's minimum size.
+ * \return \ref result_OK on success, result_STACK_BAD_TREE if the parent
+ *         indices are not a valid parents-before-children forest rooted at
+ *         0.
+ */
+result_t stack_smallest(const stack_item_t *items,
+                        int                 n,
+                        size2d_t           *out);
 
 #ifdef __cplusplus
 }
