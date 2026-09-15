@@ -1928,44 +1928,89 @@ result_t bmfont_draw(bmfont_t      *bmfont,
       continue;
     }
 
-    /* draw */
+    /* draw: the glyph cell itself, then any leftover advance (letter
+     * spacing, or monospace padding) as a second, glyph-less segment of
+     * the same width the drawfn already knows how to paint as pure
+     * background (opaque) or leave untouched (transparent) -- a row of
+     * zero bits reads as "no ink" either way. */
     {
-      glyph = (unsigned char *) bmfont->glyphs + gid * glyphbytes;
+      static const unsigned char zero_glyph[128] = { 0 };
 
-      int clippedcharwidth = MIN(remaining, advance - left_skip); /* in pixels */
+      int cellwidth;
+      int spacing;
+      int clippedcellwidth;
 
-      if (clippedcharwidth <= 0)
+      glyph     = (unsigned char *) bmfont->glyphs + gid * glyphbytes;
+      cellwidth = MIN(advance, charwidth);
+      spacing   = advance - cellwidth;
+
+      clippedcellwidth = MIN(remaining, cellwidth - left_skip); /* in pixels */
+
+      if (clippedcellwidth > 0)
+      {
+        int right_skip = charwidth - left_skip - clippedcellwidth;
+
+        drawfn(screen, glyph,
+               top_skip, right_skip,
+               shift, rowbytes,
+               clippedcellwidth, clippedcharheight,
+               nativefg, nativebg);
+
+        if ((remaining -= clippedcellwidth) <= 0)
+          break; /* stop drawing */
+
+        {
+          int pixelsused_bits = clippedcellwidth << log2bpp;
+          int nbits           = shift + pixelsused_bits;
+          screen = (unsigned char *) screen + (nbits >> 3);
+          shift  = nbits & 7;
+        }
+
+        left_skip = 0;
+      }
+      else
       {
         /* still entirely left-clipped: the visible clip is narrower than
          * this character's remaining left-clip amount. Skip it exactly
          * like the whole-character skip above, without touching
          * "remaining" or the screen pointer/shift, since nothing of it
          * was drawn. */
-        left_skip -= advance;
-        continue;
+        left_skip -= cellwidth;
       }
 
+      if (spacing > 0 && left_skip < spacing)
       {
-        int right_skip = charwidth - left_skip - clippedcharwidth;
+        int clippedspacing = MIN(remaining, spacing - left_skip);
 
-        drawfn(screen, glyph,
-               top_skip, right_skip,
-               shift, rowbytes,
-               clippedcharwidth, clippedcharheight,
-               nativefg, nativebg);
+        if (clippedspacing > 0)
+        {
+          assert((size_t) clippedcharheight * bmfont->glyphrowbytes <=
+                 sizeof(zero_glyph));
+
+          drawfn(screen, zero_glyph,
+                 top_skip, 0,
+                 shift, rowbytes,
+                 clippedspacing, clippedcharheight,
+                 nativefg, nativebg);
+
+          if ((remaining -= clippedspacing) <= 0)
+            break; /* stop drawing */
+
+          {
+            int pixelsused_bits = clippedspacing << log2bpp;
+            int nbits           = shift + pixelsused_bits;
+            screen = (unsigned char *) screen + (nbits >> 3);
+            shift  = nbits & 7;
+          }
+        }
+
+        left_skip = 0;
       }
-
-      if ((remaining -= clippedcharwidth) <= 0)
-        break; /* stop drawing */
-
-      /* advance the screen pointer */
-      int pixelsused_bits = clippedcharwidth << log2bpp;
-      int nbits           = shift + pixelsused_bits;
-      screen = (unsigned char *) screen + (nbits >> 3);
-      shift  = nbits & 7;
+      else if (spacing > 0)
+      {
+        left_skip -= spacing;
+      }
     }
-
-    left_skip = 0;
   }
 
   if (end_pos)
