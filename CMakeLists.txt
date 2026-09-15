@@ -314,6 +314,7 @@ set(GEOM_SOURCES
     libraries/geom/packer/impl.h
     libraries/geom/packer/packer.c
     libraries/geom/stack/impl.h
+    libraries/geom/stack/measure-min.c
     libraries/geom/stack/solve.c
     libraries/geom/stack/valid-tree.c)
 

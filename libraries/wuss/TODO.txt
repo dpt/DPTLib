@@ -14,7 +14,6 @@ Fast scrolling can invalidate areas and fail to copy the expected known good scr
 
 Too much slider boilerplate -- need to make label+slider+value a standard component.
 It also has the client do the rounding/snapping which isn't ideal.
-Also saw some pointer drift?
 
 
 LAYER 0 - BUGS (fix before building on top)
@@ -83,6 +82,11 @@ LAYER 6 - MULTI-TASK (needs stable windows, templates)
 - Icon bar - a separate task or module?
 - Test submenu dialogues
 - Pull in dialogue abstraction from app engine?
+- Dynamic submenus: a pre-open event (like RISC OS's MenuWarning) fired
+  before a submenu-style item opens, so a task can retitle/retarget a
+  shared submenu instance first. Currently only item->window leaves get
+  a pre-open hook (wuss_EVENT_PRE_SHOW); item->submenu leaves have none.
+  (see saturn.c's fg/bg colourmenu split, kept as two instances for this reason)
 
 
 LAYER 7 - APPS & POLISH (needs most of the above)
