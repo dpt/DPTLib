@@ -75,7 +75,7 @@ static int saturn_rnd(int n)
 /* MENU click over the content pops this. "Colours" leads to a submenu with
  * one row per task->fg/task->bg, each of which pops a wuss_colourmenu (see
  * saturn_create -- the two leaf items' submenu pointers are patched in there,
- * once the colourmenus exist). "Size" hover-opens task->size_dialogue, a
+ * once the colourmenus exist). "Configuration" hover-opens task->size_dialogue, a
  * borrowed window built once in saturn_create and patched into
  * g_saturn_menu_items[SATURN_MENU_SIZE].window there, the same way. */
 enum { SATURN_MENU_COLOURS = 0, SATURN_MENU_SIZE };
@@ -119,7 +119,7 @@ static wuss_menu_t g_saturn_colours_menu =
 static wuss_menu_item_t g_saturn_menu_items[] =
 {
   { "Colours", wuss_MENU_ITEM_NONE, &g_saturn_colours_menu, NULL, 0 },
-  { "Size", wuss_MENU_ITEM_BORROWED_SUBMENU, NULL, NULL, 0 }
+  { "Configuration", wuss_MENU_ITEM_BORROWED_SUBMENU, NULL, NULL, 0 }
 };
 
 static wuss_menu_t g_saturn_menu =
@@ -171,6 +171,8 @@ result_t saturn_create(wuss_t                *wuss,
   }
   task->delegate = delegate; /* the task the menu opens against */
   wuss_task_set_autoclose(delegate, 1);
+  
+  // DPT FIXME: why have multiple colour menus when only one can be visible at a time?
 
   rc = wuss_colourmenu_create(&task->fg_colourmenu, wuss, "Foreground");
   if (rc != result_OK)
@@ -378,7 +380,7 @@ enum
  * minimum window size can share them with the table below instead of
  * repeating the numbers as bare literals. */
 #define ST_LABEL_W      (5*6) /* enough for "Iters" */
-#define ST_LABEL2_W     (4*6) /* enough for "100%" ? */
+#define ST_LABEL2_W     (4*6) /* enough for "1280" */
 #define ST_SLIDER_MIN_W 64
 #define ST_CANCEL_W     48
 #define ST_APPLY_W      56
@@ -444,7 +446,7 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
 
   rc = wuss_window_create_placed(task->delegate,
                                  sz,
-                                 "Size",
+                                 "Configuration",
                                  wuss_WINDOW_TITLEBAR |
                                  wuss_WINDOW_OUTLINE  |
                                  wuss_WINDOW_HIDDEN   |
@@ -468,7 +470,7 @@ static result_t saturn_size_dialogue_create(saturn_task_t *task)
   wuss_icon_spec_slider(&specs[SATURN_SIZE_ICON_SLIDER1], boxes[ST_SLDR1], wuss_COLOUR_BLACK, wuss_SLIDER_HORIZONTAL, SATURN_SIZE_MIN, SATURN_SIZE_MAX, value);
   wuss_icon_spec_label(&specs[SATURN_SIZE_ICON_VALUE1], boxes[ST_VAL1], buf, wuss_COLOUR_BLACK, 0); /* buf copied by wuss_icon_create_array */
 
-  wuss_icon_spec_label(&specs[SATURN_SIZE_ICON_LABEL2], boxes[ST_LABL2], "Iters", wuss_COLOUR_BLACK, 1);
+  wuss_icon_spec_label(&specs[SATURN_SIZE_ICON_LABEL2], boxes[ST_LABL2], "Stars", wuss_COLOUR_BLACK, 1);
   wuss_icon_spec_slider(&specs[SATURN_SIZE_ICON_SLIDER2], boxes[ST_SLDR2], wuss_COLOUR_BLACK, wuss_SLIDER_HORIZONTAL, 10, 1000, value);
   wuss_icon_spec_label(&specs[SATURN_SIZE_ICON_VALUE2], boxes[ST_VAL2], buf, wuss_COLOUR_BLACK, 0); /* buf copied by wuss_icon_create_array */
 
@@ -692,7 +694,7 @@ static int saturn_menu_select_apply(const wuss_colourmenu_t *colourmenu,
 }
 
 /* A pick from either colour submenu, resolved against whichever colourmenu
- * it came from. "Size" is a wuss_menu_item_t::window leaf, not a leaf pick,
+ * it came from. "Configuration" is a wuss_menu_item_t::window leaf, not a leaf pick,
  * so it never reaches here -- see saturn_size_dialogue_icon and
  * saturn_sizedlg_pre_show. */
 static result_t saturn_menu_select(saturn_task_t      *task,
