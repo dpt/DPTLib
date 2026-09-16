@@ -104,6 +104,7 @@ enum {
   SATURN_SIZE_ICON_SLIDER4,
   SATURN_SIZE_ICON_VALUE4,
 
+  SATURN_SIZE_ICON_DEFAULT,
   SATURN_SIZE_ICON_CANCEL,
   SATURN_SIZE_ICON_APPLY,
 
@@ -164,6 +165,8 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task);
 static result_t saturn_conf_fillout(void *opaque);
 static result_t saturn_conf_cancel(void *opaque, wuss_button_t button);
 static result_t saturn_conf_apply_action(void *opaque, wuss_button_t button);
+static result_t saturn_conf_default_action(void         *opaque,
+                                           wuss_button_t button);
 
 result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
 {
@@ -188,6 +191,7 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   task->menu_handle      = NULL;
   task->conf.dialogue    = NULL;
   memset(task->conf.rows, 0, sizeof(task->conf.rows));
+  task->conf.deflt       = NULL;
   task->conf.cancel      = NULL;
   task->conf.apply       = NULL;
   task->proginfo         = NULL;
@@ -447,7 +451,7 @@ enum
   ST_VAL4,
 
   ST_BTNS,
-  ST_SPCR,
+  ST_DFLT,
   ST_CNCL,
   ST_APLY,
 
@@ -457,11 +461,14 @@ enum
 /* Leaf main-axis sizes, named so saturn_conf_dialogue_create's hand-computed
  * minimum window size can share them with the table below instead of
  * repeating the numbers as bare literals. */
-#define ST_LABEL_W      (5*6) /* enough for "Iters" */
-#define ST_LABEL2_W     (4*6) /* enough for "1280" */
-#define ST_SLIDER_MIN_W 64
-#define ST_CANCEL_W     48
-#define ST_APPLY_W      56
+#define ST_LABEL_W          (5*6) /* enough for "Iters" */
+#define ST_LABEL2_W         (4*6) /* enough for "9999" */
+#define ST_SLIDER_MIN_W     (64)
+#define ST_ACTION_WIDTH(W)  ((W)*6+2*4)
+#define ST_DEFAULT_WIDTH(W) ((W)*6+2*6)
+#define ST_DEFAULT_W        ST_ACTION_WIDTH(9)
+#define ST_CANCEL_W         ST_ACTION_WIDTH(9)
+#define ST_APPLY_W          ST_DEFAULT_WIDTH(9)
 
 static const stack_item_t g_saturn_conf_stack[SIZE_STACK__LIMIT] =
 {
@@ -488,7 +495,7 @@ static const stack_item_t g_saturn_conf_stack[SIZE_STACK__LIMIT] =
   [ST_VAL4]  = STACK_LEAF(ST_ROW4, ST_LABEL2_W, 16, stack_ALIGN_CENTRE),
 
   [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
-  [ST_SPCR]  = STACK_SPACER(ST_BTNS, 1),
+  [ST_DFLT]  = STACK_LEAF(ST_BTNS, ST_DEFAULT_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
   [ST_CNCL]  = STACK_LEAF(ST_BTNS, ST_CANCEL_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
   [ST_APLY]  = STACK_LEAF(ST_BTNS, ST_APPLY_W, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
 };
@@ -547,6 +554,7 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
                               desc->min, desc->max, value, NULL, desc->step);
   }
 
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_DEFAULT], boxes[ST_DFLT], "Default", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 0);
   wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_CANCEL], boxes[ST_CNCL], "Cancel", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 0);
   wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY], "Apply", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 1);
 
@@ -561,16 +569,19 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
                          g_saturn_sizedlg_rows[row].min,
                          g_saturn_sizedlg_rows[row].max,
                          g_saturn_sizedlg_rows[row].step);
+  task->conf.deflt  = made[SATURN_SIZE_ICON_DEFAULT];
   task->conf.cancel = made[SATURN_SIZE_ICON_CANCEL];
   task->conf.apply  = made[SATURN_SIZE_ICON_APPLY];
 
   {
-    wuss_dialogue_action_t actions[2];
+    wuss_dialogue_action_t actions[3];
 
-    actions[0].icon = task->conf.cancel;
-    actions[0].fn   = saturn_conf_cancel;
-    actions[1].icon = task->conf.apply;
-    actions[1].fn   = saturn_conf_apply_action;
+    actions[0].icon = task->conf.deflt;
+    actions[0].fn   = saturn_conf_default_action;
+    actions[1].icon = task->conf.cancel;
+    actions[1].fn   = saturn_conf_cancel;
+    actions[2].icon = task->conf.apply;
+    actions[2].fn   = saturn_conf_apply_action;
 
     rc = wuss_dialogue_set_actions(task->conf.dialogue, actions,
                                    NELEMS(actions));
@@ -659,6 +670,37 @@ static result_t saturn_conf_apply_action(void *opaque, wuss_button_t button)
   saturn_task_t *task;
 
   task = opaque;
+
+  if (button & wuss_BUTTON_SELECT)
+  {
+    wuss_menu_close(task->menu_handle);
+    task->menu_handle = NULL;
+    return saturn_conf_apply(task);
+  }
+  if (button & wuss_BUTTON_ADJUST)
+    return saturn_conf_apply(task);
+  return result_OK;
+}
+
+/* Dialogue action callback for Default: resets task->config to
+ * SATURN_CONFIG_DEFAULT, refills the sliders/echo labels to match, and
+ * applies it (window resize + doc extent) -- Select then dismisses the
+ * menu chain same as Apply's Select; Adjust leaves the dialogue open,
+ * showing the reset values. */
+static result_t saturn_conf_default_action(void         *opaque,
+                                           wuss_button_t button)
+{
+  static const saturn_config_t default_config = SATURN_CONFIG_DEFAULT;
+
+  result_t       rc;
+  saturn_task_t *task;
+
+  task = opaque;
+
+  task->config = default_config;
+  rc = saturn_conf_fillout(task);
+  if (rc != result_OK)
+    return rc;
 
   if (button & wuss_BUTTON_SELECT)
   {
