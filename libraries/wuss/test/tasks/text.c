@@ -105,7 +105,7 @@ static result_t text_set_font(text_task_t *task, int idx, const char *name)
   if (idx < 0 || idx >= task->nfonts || idx == task->current)
     return result_OK;
 
-  font = text_load_font(task, task->resources, idx, name);
+  font = text_load_font(task, wuss_get_resources(task->wuss), idx, name);
   if (font == NULL)
     return result_OK; /* leave the current font in place */
 
@@ -138,14 +138,13 @@ static result_t text_open_menu(text_task_t *task)
 
 /* ----------------------------------------------------------------------- */
 
-result_t text_create(wuss_t       *wuss,
-                     const char   *resources,
-                     text_task_t **out)
+result_t text_create(wuss_t *wuss, text_task_t **out)
 {
   result_t           rc;
   text_task_t       *task;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
+  const char        *resources;
   const char        *bmfonts_dir;
   const wuss_menu_t *menu;
   size2d_t           sz;
@@ -164,12 +163,11 @@ result_t text_create(wuss_t       *wuss,
   task->frame_count = 0;
   task->resizing    = true;
 
-  strncpy(task->resources, resources, sizeof(task->resources) - 1);
-  task->resources[sizeof(task->resources) - 1] = '\0';
+  resources = wuss_get_resources(wuss);
 
   /* the picker: every ".png" font under resources/bmfonts, sorted, less any
    * SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows from) */
-  bmfonts_dir = path_join_filename(task->resources, 2, "resources", "bmfonts");
+  bmfonts_dir = path_join_filename(resources, 2, "resources", "bmfonts");
   rc = wuss_fontmenu_create(&task->fontmenu, bmfonts_dir, "Font", wuss, NULL);
   if (rc != result_OK)
   {

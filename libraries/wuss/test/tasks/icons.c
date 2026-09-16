@@ -564,7 +564,6 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
 
 result_t icons_create(wuss_t        *wuss,
                       bmfont_t      *font,
-                      const char    *resources,
                       icons_task_t **out)
 {
   wuss_task_t     *delegate;
@@ -573,6 +572,7 @@ result_t icons_create(wuss_t        *wuss,
   wuss_icon_t     *made[ICONS_NSPECS];
   icons_layout_t   lay;
   icons_task_t    *task;
+  const char      *resources;
   const char      *sprite_path;
   int              i_button, i_counter, i_opt, i_state, i_hotspot, i_ticked;
   int              i_shoriz, i_svert, i_sstate;
@@ -600,6 +600,7 @@ result_t icons_create(wuss_t        *wuss,
   task->slider_vert  = NULL;
   task->slider_state = NULL;
 
+  resources   = wuss_get_resources(wuss);
   sprite_path = path_join_filename(resources, 3, "resources", "wuss",
                                    path_join_leafname("ninepatch", "png"));
   if (bitmap_load_png(&task->sprite, sprite_path) == result_OK)

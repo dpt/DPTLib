@@ -499,11 +499,16 @@ wuss_font_desc_t;
  *                      default palette.
  * \param[in]  npalette Number of entries in palette. Ignored if palette is
  *                      NULL.
- * \param[in]  config   Creation-time configuration, or NULL for defaults.
- * \param[in]  alloc    Allocator hooks, copied in, or NULL for \ref
- *                      wuss_alloc (plain stdlib). Must outlive nothing --
- *                      only the three function pointers are kept.
- * \param[out] wuss     Newly created window manager.
+ * \param[in]  config    Creation-time configuration, or NULL for defaults.
+ * \param[in]  alloc     Allocator hooks, copied in, or NULL for \ref
+ *                       wuss_alloc (plain stdlib). Must outlive nothing --
+ *                       only the three function pointers are kept.
+ * \param[in]  resources Borrowed root path a caller-defined convention (e.g.
+ *                       a demo app's task modules) can use to locate its own
+ *                       bundled files; wuss itself never reads it. Must
+ *                       outlive the wuss_t. NULL if not needed -- see
+ *                       wuss_get_resources.
+ * \param[out] wuss      Newly created window manager.
  * \return \ref result_OK on success, \ref result_BAD_ARG if \p nfonts is
  *         negative or exceeds \ref wuss_MAX_FONTS, \ref
  *         result_WUSS_BAD_COLOUR if any of config's palette entries are out
@@ -516,7 +521,19 @@ result_t wuss_create(screen_t               *scr,
                      int                     npalette,
                      const wuss_config_t    *config,
                      const wuss_alloc_t     *alloc,
+                     const char             *resources,
                      wuss_t                **wuss);
+
+/**
+ * Fetch the resources root path passed to wuss_create (see its \p resources
+ * parameter), for a task to locate its own bundled files without every
+ * caller threading the path through its own create function.
+ *
+ * \param[in] wuss Window manager.
+ * \return The resources root, borrowed, valid until wuss_destroy; or NULL if
+ *         wuss_create was given none.
+ */
+const char *wuss_get_resources(const wuss_t *wuss);
 
 /**
  * Replace the system palette partway through a session.

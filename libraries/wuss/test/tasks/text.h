@@ -38,7 +38,6 @@ typedef struct text_task
   const char      *text;       /* text_samples[sample].text; what text_redraw
                                  * lays out and draws */
   colour_t         bg, fg;
-  char             resources[256]; /* root the picker loads bmfonts from */
   int              base_width;  /* content width when the window was made */
   int              base_height; /* content height when the window was made */
   int              frame_count;
@@ -49,13 +48,11 @@ text_task_t;
 
 wuss_window_fn_t text_handle;
 
-/* create the sample-text window against the given wuss instance.
- * resources is the root the font picker loads bmfonts from
- * (resources/bmfonts/<name>.png). if out is non-NULL, the task block is also
- * returned through it */
-result_t text_create(wuss_t       *wuss,
-                     const char   *resources,
-                     text_task_t **out);
+/* create the sample-text window against the given wuss instance; the font
+ * picker loads bmfonts from wuss_get_resources(wuss)/resources/bmfonts/
+ * <name>.png. if out is non-NULL, the task block is also returned through
+ * it */
+result_t text_create(wuss_t *wuss, text_task_t **out);
 
 /* free a task block allocated by text_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */

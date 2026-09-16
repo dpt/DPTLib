@@ -160,13 +160,13 @@ static result_t load_demo_png(bitmap_t   *bm,
 result_t porter_duff_create(wuss_t              *wuss,
                             const colour_t      *palette,
                             bmfont_t            *font,
-                            const char          *resources,
                             porter_duff_task_t **out)
 {
   result_t            rc;
   porter_duff_task_t *task;
   wuss_task_t        *delegate;
   wuss_task_desc_t    delegate_desc;
+  const char         *resources;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -180,6 +180,8 @@ result_t porter_duff_create(wuss_t              *wuss,
   task->dark            = palette[palette_PICO8_DARK_GREY];
   task->fg              = palette[palette_PICO8_WHITE];
   task->bg              = palette[palette_PICO8_BLACK];
+
+  resources = wuss_get_resources(wuss);
 
   rc = load_demo_png(&task->a, resources, "A");
   if (rc != result_OK)

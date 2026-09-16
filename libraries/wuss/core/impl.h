@@ -105,6 +105,9 @@ struct wuss_task
 struct wuss
 {
   screen_t                   *scr;
+  const char                 *resources; /* borrowed root path from wuss_create,
+                                          * for wuss_get_resources; caller
+                                          * convention only, unused internally */
   struct wuss_fontset         fonts;     /* font slots from wuss_create; slot 0
                                           * is the system font. See font/font.h */
   wuss_alloc_t                alloc;     /* malloc/realloc/free hooks, copied in

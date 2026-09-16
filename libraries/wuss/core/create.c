@@ -61,6 +61,7 @@ result_t wuss_create(screen_t               *scr,
                      int                     npalette,
                      const wuss_config_t    *config,
                      const wuss_alloc_t     *alloc,
+                     const char             *resources,
                      wuss_t                **wuss)
 {
   wuss_alloc_t al;
@@ -331,6 +332,7 @@ result_t wuss_create(screen_t               *scr,
   wuss__rebuild_palettecache(w);
 
   w->scr                = scr;
+  w->resources          = resources;
   w->pointer_window     = NULL;
 #ifdef WUSS_FURNITURE
   w->furniture.dragging = NULL;

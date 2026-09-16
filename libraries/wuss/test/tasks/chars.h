@@ -36,14 +36,12 @@ chars_task_t;
 wuss_window_fn_t chars_handle;
 
 /* create the glyph-grid window against the given wuss instance; does
- * nothing and returns result_OK if wuss has no system font. resources is the
- * root the font picker loads bmfonts from (resources/bmfonts/<name>.png).
+ * nothing and returns result_OK if wuss has no system font. the font picker
+ * loads bmfonts from wuss_get_resources(wuss)/resources/bmfonts/<name>.png.
  * if out is non-NULL, the task block is also returned through it -- but only
  * on the path where one is actually allocated; *out is left untouched on the
  * font-less early return, same as on any other non-result_OK path */
-result_t chars_create(wuss_t        *wuss,
-                      const char    *resources,
-                      chars_task_t **out);
+result_t chars_create(wuss_t *wuss, chars_task_t **out);
 
 /* free a task block allocated by chars_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
