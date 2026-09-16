@@ -6,7 +6,6 @@
 #include <stdbool.h>
 
 #include "framebuf/bitmap.h"
-#include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
 #include "geom/point.h"
 #include "wuss/task.h"
@@ -26,12 +25,6 @@ extern struct wuss_app_tasks
   wuss_task_t     *menu_task; /* owns the task launcher menus */
   wuss_proginfo_t *proginfo; /* shared "Info" dialogue on menu_task; see
                               * tasks_open_launcher's "Info" row */
-  colour_t        *palette;
-  int              npalette;
-  const char      *palette_name; /* startup *.hex leafname, for ticking the
-                                  * picker menu's initial selection */
-  bmfont_t        *daydream_font;
-  bmfont_t        *bold_font;
   bool             quit; /* set by the "Quit Wuss" task-menu entry */
   wuss_frontend_t *frontend; /* pushed to on wuss_EVENT_PALETTE; see
                               * task_handle_event */

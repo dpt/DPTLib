@@ -314,8 +314,6 @@ static result_t run_wuss(const char *resources,
                 palette_name, rc, result_string(rc));
       goto Failure;
     }
-
-    g.palette_name = palette_name;
   }
 
   logf_info("wuss: resources root = \"%s\"", resources);
@@ -387,10 +385,6 @@ static result_t run_wuss(const char *resources,
   }
 
   g.wuss           = wuss;
-  g.palette        = palette;
-  g.npalette       = NELEMS(palette);
-  g.daydream_font  = fonts[0]; /* tasks draw with the regular weight */
-  g.bold_font      = fonts[1];
   g.frontend       = frontend;
   g.bm             = &bm;
 

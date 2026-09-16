@@ -73,9 +73,7 @@ result_t palette_load_hex(const char *resources,
 
 /* ----------------------------------------------------------------------- */
 
-result_t palette_create(wuss_t          *wuss,
-                        const char      *startup_name,
-                        palette_task_t **out)
+result_t palette_create(wuss_t *wuss, palette_task_t **out)
 {
   result_t         rc;
   palette_task_t  *task;
@@ -83,6 +81,8 @@ result_t palette_create(wuss_t          *wuss,
   const char      *resources;
   const char      *dir;
   char             dirbuf[DPTLIB_MAXPATH];
+  const colour_t  *current;
+  int              ncurrent;
   int              i;
 
   task = calloc(1, sizeof(*task));
@@ -101,13 +101,22 @@ result_t palette_create(wuss_t          *wuss,
                 sizeof(task->names[0]), PALETTE_MAX_FILES, 1 /* sorted */,
                 &task->nnames);
 
-  if (startup_name != NULL)
+  /* tick whichever *.hex file matches wuss's current system palette, so the
+   * picker starts in sync with what wuss_create actually loaded, without the
+   * caller having to tell us its leafname separately */
+  current = wuss_get_palette(wuss, &ncurrent);
+  if (ncurrent == PALETTE_NCOLOURS)
     for (i = 0; i < task->nnames; i++)
-      if (strcmp(task->names[i], startup_name) == 0)
+    {
+      colour_t candidate[PALETTE_NCOLOURS];
+
+      if (palette_load_hex(resources, task->names[i], candidate) == result_OK &&
+          memcmp(candidate, current, sizeof(candidate)) == 0)
       {
         task->selected = i;
         break;
       }
+    }
 
   /* built once; ticks are refreshed from task->selected/invert on each open */
   for (i = 0; i < task->nnames; i++)

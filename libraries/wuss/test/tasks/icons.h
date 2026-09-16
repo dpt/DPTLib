@@ -37,12 +37,12 @@ icons_task_t;
 
 wuss_window_fn_t icons_handle;
 
-/* create the icons window against the given wuss instance; the sprite and
- * icon set are loaded from wuss_get_resources(wuss)/resources/wuss/. if out
- * is non-NULL, the task block is also returned through it */
-result_t icons_create(wuss_t        *wuss,
-                      bmfont_t      *font,
-                      icons_task_t **out);
+/* create the icons window against the given wuss instance, lettering the
+ * axis rulers with wuss's own regular font (wuss_get_font_n(wuss, 0)); the
+ * sprite and icon set are loaded from
+ * wuss_get_resources(wuss)/resources/wuss/. if out is non-NULL, the task
+ * block is also returned through it */
+result_t icons_create(wuss_t *wuss, icons_task_t **out);
 
 /* free a task block allocated by icons_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */

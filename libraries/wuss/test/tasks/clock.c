@@ -101,7 +101,7 @@ static result_t clock_create_window(wuss_t       *wuss,
                                    &task->window);
 }
 
-result_t clock_create(wuss_t *wuss, bmfont_t *font, clock_task_t **out)
+result_t clock_create(wuss_t *wuss, clock_task_t **out)
 {
   result_t         rc;
   clock_task_t    *task;
@@ -112,7 +112,7 @@ result_t clock_create(wuss_t *wuss, bmfont_t *font, clock_task_t **out)
   if (task == NULL)
     return result_OOM;
 
-  task->font        = font;
+  task->font        = wuss_get_font_n(wuss, 0);
   task->bg          = colour_rgb(0x1D, 0x2B, 0x53);
   task->bezel       = colour_rgb(0xFF, 0xF1, 0xE8);
   task->hand        = colour_rgb(0xFF, 0xF1, 0xE8);

@@ -157,22 +157,21 @@ static result_t load_demo_png(bitmap_t   *bm,
 
 /* ----------------------------------------------------------------------- */
 
-result_t porter_duff_create(wuss_t              *wuss,
-                            const colour_t      *palette,
-                            bmfont_t            *font,
-                            porter_duff_task_t **out)
+result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
 {
   result_t            rc;
   porter_duff_task_t *task;
   wuss_task_t        *delegate;
   wuss_task_desc_t    delegate_desc;
   const char         *resources;
+  const colour_t     *palette;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
     return result_OOM;
 
-  task->font            = font;
+  palette               = wuss_get_palette(wuss, NULL);
+  task->font            = wuss_get_font_n(wuss, 0);
   task->rule            = composite_RULE_CLEAR;
   task->frame           = 0;
   task->frames_per_rule = PD_FRAMES_DEFAULT;
