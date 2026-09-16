@@ -22,11 +22,17 @@
 /* The window is created hidden, without wuss_WINDOW_CLOSE, for the same
  * reason as wuss/component/info.c: it may be borrowed as a
  * wuss_menu_item_t::window, and the caller (not this component) decides when
- * a Cancel/OK click dismisses it. */
+ * a Cancel/OK click dismisses it.
+ *
+ * owns_window is 0 for a dialogue built via wuss_dialogue_create_on_window
+ * (e.g. composed with a wuss_info_t, which owns and resizes the window
+ * itself): wuss_dialogue_destroy must then leave the window alone, for the
+ * other component's own destroy call to close. */
 struct wuss_dialogue
 {
   wuss_alloc_t                alloc;   /* copied hooks; wuss_t itself not retained */
-  wuss_window_t              *window;  /* owned; closed by wuss_dialogue_destroy */
+  wuss_window_t              *window;
+  int                         owns_window;
   wuss_dialogue_fillout_fn_t *fillout;
   void                       *opaque;
   wuss_dialogue_action_t      actions[WUSS_DIALOGUE_MAX_ACTIONS];
@@ -34,6 +40,25 @@ struct wuss_dialogue
 };
 
 /* ----------------------------------------------------------------------- */
+
+static wuss_dialogue_t *dialogue_alloc(wuss_alloc_t                alloc,
+                                       wuss_dialogue_fillout_fn_t *fillout,
+                                       void                       *opaque)
+{
+  wuss_dialogue_t *dialogue;
+
+  dialogue = alloc.malloc(sizeof(*dialogue));
+  if (dialogue == NULL)
+    return NULL;
+
+  dialogue->alloc    = alloc;
+  dialogue->window   = NULL;
+  dialogue->fillout  = fillout;
+  dialogue->opaque   = opaque;
+  dialogue->nactions = 0;
+
+  return dialogue;
+}
 
 result_t wuss_dialogue_create(wuss_dialogue_t           **out,
                               wuss_task_t                *task,
@@ -49,15 +74,10 @@ result_t wuss_dialogue_create(wuss_dialogue_t           **out,
   if (out == NULL || task == NULL)
     return result_NULL_ARG;
 
-  dialogue = task->wuss->alloc.malloc(sizeof(*dialogue));
+  dialogue = dialogue_alloc(task->wuss->alloc, fillout, opaque);
   if (dialogue == NULL)
     return result_OOM;
-
-  dialogue->alloc    = task->wuss->alloc;
-  dialogue->window   = NULL;
-  dialogue->fillout  = fillout;
-  dialogue->opaque   = opaque;
-  dialogue->nactions = 0;
+  dialogue->owns_window = 1;
 
   content = (box_t) BOX_POS_SIZE(0, 0, size.w, size.h);
   rc = wuss_window_create(task,
@@ -78,6 +98,27 @@ result_t wuss_dialogue_create(wuss_dialogue_t           **out,
   return result_OK;
 }
 
+result_t wuss_dialogue_create_on_window(wuss_dialogue_t           **out,
+                                        wuss_t                     *wuss,
+                                        wuss_window_t              *window,
+                                        wuss_dialogue_fillout_fn_t *fillout,
+                                        void                       *opaque)
+{
+  wuss_dialogue_t *dialogue;
+
+  if (out == NULL || wuss == NULL || window == NULL)
+    return result_NULL_ARG;
+
+  dialogue = dialogue_alloc(wuss->alloc, fillout, opaque);
+  if (dialogue == NULL)
+    return result_OOM;
+  dialogue->owns_window = 0;
+  dialogue->window      = window;
+
+  *out = dialogue;
+  return result_OK;
+}
+
 void wuss_dialogue_destroy(wuss_dialogue_t *doomed)
 {
   wuss_alloc_t alloc;
@@ -86,11 +127,17 @@ void wuss_dialogue_destroy(wuss_dialogue_t *doomed)
     return;
 
   alloc = doomed->alloc;
-  wuss_window_close(doomed->window); /* frees the window and its icons */
+  if (doomed->owns_window)
+    wuss_window_close(doomed->window); /* frees the window and its icons */
   alloc.free(doomed);
 }
 
 /* ----------------------------------------------------------------------- */
+
+void wuss_dialogue_set_opaque(wuss_dialogue_t *dialogue, void *opaque)
+{
+  dialogue->opaque = opaque;
+}
 
 result_t wuss_dialogue_set_actions(wuss_dialogue_t              *dialogue,
                                    const wuss_dialogue_action_t *actions,

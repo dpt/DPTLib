@@ -408,6 +408,22 @@ static result_t run_wuss(const char *resources,
       goto Failure;
   }
 
+  {
+    /* The "Info" task-menu row's shared dialogue. Hung off g_task_menu as a
+     * wuss_menu_item_t.window in tasks.c. A create failure is non-fatal --
+     * the row just does nothing. */
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Wuss demo",
+      "Window manager test environment",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+
+    if (wuss_proginfo_create(&g.proginfo, g.menu_task, &desc) != result_OK)
+      g.proginfo = NULL;
+  }
+
   g.quit = false;
 
   wuss_redraw(wuss);
@@ -441,6 +457,7 @@ static result_t run_wuss(const char *resources,
    * frees every registered task node, but not the per-instance task_data
    * block a spawn_* calloc'd, so any task window left open at quit leaks that
    * block. Harmless at process exit. */
+  wuss_proginfo_destroy(g.proginfo); /* closes its dialogue window */
   wuss_destroy(wuss); /* also sweeps g.menu_task and closes any open chain */
 
   for (i = 0; i < nfonts; i++)

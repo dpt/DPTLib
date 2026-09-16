@@ -466,7 +466,7 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
     return rc;
 
   rc = wuss_dialogue_create(&task->conf.dialogue, task->delegate, sz,
-                               "Configuration", saturn_conf_fillout, task);
+                            "Configuration", saturn_conf_fillout, task);
   if (rc != result_OK)
     return rc;
 
