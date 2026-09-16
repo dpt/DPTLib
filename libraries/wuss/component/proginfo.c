@@ -140,6 +140,9 @@ void wuss_proginfo_destroy(wuss_proginfo_t *doomed)
 void wuss_proginfo_set_desc(wuss_proginfo_t            *pi,
                             const wuss_proginfo_desc_t *desc)
 {
+  if (pi == NULL || desc == NULL)
+    return;
+
   pi->pending = *desc;
 }
 
