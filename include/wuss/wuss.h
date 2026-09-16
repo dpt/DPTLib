@@ -199,35 +199,37 @@ wuss_furniture_palette_t;
  *
  * \note When the library is built with the WUSS_FURNITURE CMake option off,
  *       every window is chromeless regardless of these flags and the
- *       furniture bits (wuss_WINDOW_TITLEBAR and below) are ignored.
+ *       furniture bits (wuss_WINDOW_NO_TITLEBAR and below) are ignored.
  */
 typedef enum wuss_window_flags
 {
   /**
-   * Titlebar present; content is inset below it, and it offers a drag
-   * handle. Without it, content fills the full visible area and
-   * wuss_WINDOW_CLOSE/BACK/TOGGLE_SIZE are ignored.
+   * Titlebar suppressed; content fills the full visible area and
+   * wuss_WINDOW_CLOSE/BACK/TOGGLE_SIZE are ignored. Without this flag, a
+   * titlebar is present, content is inset below it, and it offers a drag
+   * handle.
    */
-  wuss_WINDOW_TITLEBAR    = 1 << 0,
+  wuss_WINDOW_NO_TITLEBAR = 1 << 0,
 
-  /** 1px border drawn around the visible area. */
-  wuss_WINDOW_OUTLINE     = 1 << 1,
+  /** 1px border suppressed; without this flag it is drawn around the
+   *  visible area. */
+  wuss_WINDOW_NO_OUTLINE  = 1 << 1,
 
   /**
-   * Close icon in the titlebar. Ignored unless flags also includes
-   * wuss_WINDOW_TITLEBAR.
+   * Close icon in the titlebar. Ignored if flags also includes
+   * wuss_WINDOW_NO_TITLEBAR.
    */
   wuss_WINDOW_CLOSE       = 1 << 2,
 
   /**
-   * Send-to-back icon in the titlebar. Ignored unless flags also includes
-   * wuss_WINDOW_TITLEBAR.
+   * Send-to-back icon in the titlebar. Ignored if flags also includes
+   * wuss_WINDOW_NO_TITLEBAR.
    */
   wuss_WINDOW_BACK        = 1 << 3,
 
   /**
-   * Toggle-size icon in the titlebar. Ignored unless flags also includes
-   * wuss_WINDOW_TITLEBAR.
+   * Toggle-size icon in the titlebar. Ignored if flags also includes
+   * wuss_WINDOW_NO_TITLEBAR.
    */
   wuss_WINDOW_TOGGLE_SIZE = 1 << 4,
 
@@ -241,8 +243,7 @@ typedef enum wuss_window_flags
   wuss_WINDOW_RESIZE      = 1 << 7,
 
   /** Default: every furniture region drawn. */
-  wuss_WINDOW_DEFAULT     = wuss_WINDOW_TITLEBAR | wuss_WINDOW_OUTLINE |
-                            wuss_WINDOW_CLOSE    | wuss_WINDOW_BACK    |
+  wuss_WINDOW_DEFAULT     = wuss_WINDOW_CLOSE    | wuss_WINDOW_BACK    |
                             wuss_WINDOW_TOGGLE_SIZE |
                             wuss_WINDOW_VSCROLL  | wuss_WINDOW_HSCROLL |
                             wuss_WINDOW_RESIZE,

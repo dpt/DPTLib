@@ -20,7 +20,7 @@ static wuss_furniture_region_t nearest_edge_region(const wuss_window_t *window,
 
   has_v     = (window->flags & wuss_WINDOW_VSCROLL) != 0;
   has_h     = (window->flags & wuss_WINDOW_HSCROLL) != 0;
-  has_title = (window->flags & wuss_WINDOW_TITLEBAR) != 0;
+  has_title = (window->flags & wuss_WINDOW_NO_TITLEBAR) == 0;
 
   /* bottom edge: the hscroll strip runs its full width */
   if (p.y >= content.y1)
@@ -59,7 +59,7 @@ wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
 {
   box_t box;
 
-  if (window->flags & wuss_WINDOW_TITLEBAR)
+  if (!(window->flags & wuss_WINDOW_NO_TITLEBAR))
   {
     if (window->flags & wuss_WINDOW_BACK)
     {

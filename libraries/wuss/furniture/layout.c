@@ -49,7 +49,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
 
   /* titlebar fill + its icons ------------------------------------------- */
   wuss__titlebar_box(window, &titlebar);
-  if (window->flags & wuss_WINDOW_TITLEBAR)
+  if (!(window->flags & wuss_WINDOW_NO_TITLEBAR))
   {
     layout->titlebar     = titlebar;
     layout->has_titlebar = 1;
@@ -210,7 +210,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
   }
 
   /* window outline: four one-pixel edges ---------------------------- */
-  if (window->flags & wuss_WINDOW_OUTLINE)
+  if (!(window->flags & wuss_WINDOW_NO_OUTLINE))
   {
     box_t edge;
 

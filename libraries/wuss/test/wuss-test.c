@@ -1043,7 +1043,8 @@ result_t wuss_test(const char *resources)
   rc = wuss_window_create(delegate_d,
                           &box_d,
                           "ignored",
-                          0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                          /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                          wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                           wuss_NO_BACKDROP,
                           box_size(&box_d),
                           SIZE2D(0, 0),
@@ -1088,7 +1089,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_e,
                             &box_e,
                             NULL,
-                            wuss_WINDOW_OUTLINE,
+                            wuss_WINDOW_NO_TITLEBAR,
                             wuss_NO_BACKDROP,
                             box_size(&box_e),
                             SIZE2D(0, 0),
@@ -1106,7 +1107,7 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_f,
                             &box_f,
                             NULL,
-                            wuss_WINDOW_OUTLINE,
+                            wuss_WINDOW_NO_TITLEBAR,
                             wuss_NO_BACKDROP,
                             box_size(&box_f),
                             SIZE2D(0, 0),
@@ -1171,7 +1172,8 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_h,
                             &box_h,
                             NULL,
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_h),
                             SIZE2D(0, 0),
@@ -1189,7 +1191,8 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_g,
                             &box_g,
                             NULL,
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_g),
                             SIZE2D(0, 0),
@@ -1248,7 +1251,8 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_i,
                             &box_i,
                             NULL,
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_i),
                             SIZE2D(0, 0),
@@ -1266,7 +1270,8 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_j,
                             &box_j,
                             NULL,
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_j),
                             SIZE2D(0, 0),
@@ -1314,7 +1319,8 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_m,
                             &box_m,
                             NULL,
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_m),
                             SIZE2D(0, 0),
@@ -3880,7 +3886,8 @@ result_t wuss_test(const char *resources)
     box_b.x0 = 20; box_b.y0 = 10; /* left half will sit under A */
     box_b.x1 = 80; box_b.y1 = 50;
     rc = wuss_window_create(delegate_b, &box_b, "B",
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_b),
                             SIZE2D(0, 0),
@@ -3896,7 +3903,8 @@ result_t wuss_test(const char *resources)
     box_a.x0 = 0; box_a.y0 = 0; /* created after B, so A is topmost */
     box_a.x1 = 40; box_a.y1 = 100;
     rc = wuss_window_create(delegate_a, &box_a, "A",
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_a),
                             SIZE2D(0, 0),
@@ -3977,7 +3985,8 @@ result_t wuss_test(const char *resources)
     box_b.x0 = 0; box_b.y0 = 0; /* right part sits under A throughout */
     box_b.x1 = 60; box_b.y1 = 40;
     rc = wuss_window_create(delegate_b, &box_b, "B",
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_b),
                             SIZE2D(0, 0),
@@ -3993,7 +4002,8 @@ result_t wuss_test(const char *resources)
     box_a.x0 = 40; box_a.y0 = 0; /* created after B, so A is topmost */
     box_a.x1 = 100; box_a.y1 = 40;
     rc = wuss_window_create(delegate_a, &box_a, "A",
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_a),
                             SIZE2D(0, 0),
@@ -4051,7 +4061,8 @@ result_t wuss_test(const char *resources)
     box_b.x0 = 0; box_b.y0 = 0; /* middle band sits under A */
     box_b.x1 = 60; box_b.y1 = 60;
     rc = wuss_window_create(delegate_b, &box_b, "B",
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_b),
                             SIZE2D(0, 0),
@@ -4067,7 +4078,8 @@ result_t wuss_test(const char *resources)
     box_a.x0 = 0; box_a.y0 = 20; /* created after B, so A is topmost */
     box_a.x1 = 60; box_a.y1 = 40;
     rc = wuss_window_create(delegate_a, &box_a, "A",
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_a),
                             SIZE2D(0, 0),
@@ -4158,7 +4170,8 @@ result_t wuss_test(const char *resources)
     box_b.x0 = 80; box_b.y0 = 80; /* corner already under A */
     box_b.x1 = 140; box_b.y1 = 140;
     rc = wuss_window_create(delegate_b, &box_b, "B",
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_b),
                             SIZE2D(0, 0),
@@ -4174,7 +4187,8 @@ result_t wuss_test(const char *resources)
     box_a.x0 = 0; box_a.y0 = 0; /* created after B, so A is topmost */
     box_a.x1 = 100; box_a.y1 = 100;
     rc = wuss_window_create(delegate_a, &box_a, "A",
-                            0, /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&box_a),
                             SIZE2D(0, 0),
@@ -5296,13 +5310,15 @@ SubHiFail:
     bb.x0 = 130; bb.y0 = 130; bb.x1 = 190; bb.y1 = 190;
 
     rc = wuss_window_create(task_a, &ba, "A",
-                            0, /* fully chromeless */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&ba), SIZE2D(0, 0), &wa);
     if (rc != result_OK) goto MoveDestroy;
 
     rc = wuss_window_create(task_b, &bb, "B",
-                            0, /* fully chromeless */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&bb), SIZE2D(0, 0), &wb);
     if (rc != result_OK) goto MoveDestroy;
@@ -5428,7 +5444,8 @@ MoveFail:
 
     bq.x0 = 6; bq.y0 = 6; bq.x1 = 60; bq.y1 = 60;
     rc = wuss_window_create(task_q, &bq, "Q",
-                            0, /* fully chromeless */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&bq), SIZE2D(0, 0), &wq);
     if (rc != result_OK) goto QuitDestroy;
@@ -5462,7 +5479,8 @@ MoveFail:
     if (task_q == NULL) { rc = result_OOM; goto QuitDestroy; }
     qmt.self = task_q;
     rc = wuss_window_create(task_q, &bq, "Q2",
-                            0, /* fully chromeless */
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
                             wuss_NO_BACKDROP,
                             box_size(&bq), SIZE2D(0, 0), &wq);
     if (rc != result_OK) goto QuitDestroy;
@@ -5751,7 +5769,7 @@ QuitFail:
   {
     static const wuss_window_flags_t combos[] =
     {
-      wuss_WINDOW_DEFAULT & ~wuss_WINDOW_OUTLINE,
+      wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_OUTLINE,
       wuss_WINDOW_DEFAULT & ~wuss_WINDOW_RESIZE,
       wuss_WINDOW_DEFAULT & ~wuss_WINDOW_VSCROLL & ~wuss_WINDOW_HSCROLL,
       /* one scrollbar + resize: carve is 0 on the stripless axis, so the
@@ -5761,7 +5779,7 @@ QuitFail:
       wuss_WINDOW_DEFAULT & ~wuss_WINDOW_BACK,
       wuss_WINDOW_DEFAULT & ~wuss_WINDOW_TOGGLE_SIZE,
       wuss_WINDOW_DEFAULT & ~wuss_WINDOW_CLOSE,
-      wuss_WINDOW_DEFAULT & ~wuss_WINDOW_TITLEBAR
+      wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_TITLEBAR
     };
 
     static test_task_t tc_cb;
@@ -5789,8 +5807,8 @@ QuitFail:
 
       /* No titlebar still keeps a 1px top frame with nothing behind it: a
        * click there is the documented CONTENT exception. */
-      leak = !(combos[i] & wuss_WINDOW_TITLEBAR) &&
-             (combos[i] & wuss_WINDOW_OUTLINE);
+      leak = (combos[i] & wuss_WINDOW_NO_TITLEBAR) &&
+             !(combos[i] & wuss_WINDOW_NO_OUTLINE);
 
       if (!furniture_hit_sweep(win_cb, leak))
       {
@@ -6137,7 +6155,8 @@ result_t wuss_test(const char *resources)
 
   /* Force a chromeless window even in a build that still has furniture, so the
    * assertions below (content box == visible box) hold in every config. */
-  const wuss_window_flags_t chromeless = 0;
+  const wuss_window_flags_t chromeless = wuss_WINDOW_NO_TITLEBAR |
+                                         wuss_WINDOW_NO_OUTLINE;
 
   NOT_USED(resources);
 
