@@ -37,11 +37,16 @@ icons_task_t;
 
 wuss_window_fn_t icons_handle;
 
-/* create the icons window against the given wuss instance */
-result_t icons_create(wuss_t       *wuss,
-                      bmfont_t     *font,
-                      const char   *resources,
-                      icons_task_t *task);
+/* create the icons window against the given wuss instance; if out is
+ * non-NULL, the task block is also returned through it */
+result_t icons_create(wuss_t        *wuss,
+                      bmfont_t      *font,
+                      const char    *resources,
+                      icons_task_t **out);
+
+/* free a task block allocated by icons_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void icons_destroy(icons_task_t *task);
 
 #endif /* WUSS_APP */
 

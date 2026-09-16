@@ -21,9 +21,13 @@ gradient_task_t;
 
 wuss_window_fn_t gradient_handle;
 
-/* create the gradient window against the given wuss instance */
-result_t gradient_create(wuss_t *wuss, gradient_task_t *task);
+/* create the gradient window against the given wuss instance; if out is
+ * non-NULL, the task block is also returned through it */
+result_t gradient_create(wuss_t *wuss, gradient_task_t **out);
 
+/* free a task block allocated by gradient_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void gradient_destroy(gradient_task_t *task);
 
 #endif /* WUSS_APP */
 

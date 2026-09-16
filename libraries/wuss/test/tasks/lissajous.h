@@ -27,8 +27,13 @@ lissajous_task_t;
 wuss_window_fn_t lissajous_handle;
 
 /* create the Lissajous window against the given wuss instance; "task" is a
- * per-instance block owned by the window and freed when it closes */
-result_t lissajous_create(wuss_t *wuss, lissajous_task_t *task);
+ * per-instance block owned by the window and freed when it closes. if out is
+ * non-NULL, the task block is also returned through it */
+result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out);
+
+/* free a task block allocated by lissajous_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void lissajous_destroy(lissajous_task_t *task);
 
 #endif /* WUSS_APP */
 

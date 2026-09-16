@@ -73,16 +73,21 @@ result_t palette_load_hex(const char *resources,
 
 /* ----------------------------------------------------------------------- */
 
-result_t palette_create(wuss_t         *wuss,
-                        const char     *resources,
-                        const char     *startup_name,
-                        palette_task_t *task)
+result_t palette_create(wuss_t          *wuss,
+                        const char      *resources,
+                        const char      *startup_name,
+                        palette_task_t **out)
 {
-  result_t          rc;
+  result_t         rc;
+  palette_task_t  *task;
   wuss_task_desc_t delegate_desc;
-  const char       *dir;
-  char              dirbuf[DPTLIB_MAXPATH];
-  int               i;
+  const char      *dir;
+  char             dirbuf[DPTLIB_MAXPATH];
+  int              i;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->wuss      = wuss;
   task->resources = resources;
@@ -162,7 +167,15 @@ result_t palette_create(wuss_t         *wuss,
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(task->delegate, 1);
 
+  if (out)
+    *out = task;
+
   return result_OK;
+}
+
+void palette_destroy(palette_task_t *task)
+{
+  free(task);
 }
 
 /* shared by both windows: paint a roughly-square grid of npalette swatches
@@ -203,10 +216,10 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
 {
   palette_task_t *pc;
   const colour_t *palette;
-  int              npalette;
+  int             npalette;
   screen_t       *scr;
   const box_t    *bounds;
-  int              sx, sy;
+  int             sx, sy;
 
   pc      = task_data;
   palette = wuss_get_palette(pc->wuss, &npalette);
@@ -397,9 +410,9 @@ result_t palette_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    free(task_data); /* one calloc'd block backs both windows; the task
-                       * autocloses once the second one goes, so free it
-                       * here */
+    /* one calloc'd block backs both windows; the task autocloses once the
+     * second one goes, so free it here */
+    palette_destroy(pc);
     return result_OK;
 
   default:

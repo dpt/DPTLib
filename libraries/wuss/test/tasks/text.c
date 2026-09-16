@@ -138,16 +138,21 @@ static result_t text_open_menu(text_task_t *task)
 
 /* ----------------------------------------------------------------------- */
 
-result_t text_create(wuss_t      *wuss,
-                     const char  *resources,
-                     text_task_t *task)
+result_t text_create(wuss_t       *wuss,
+                     const char   *resources,
+                     text_task_t **out)
 {
   result_t           rc;
+  text_task_t       *task;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
   const char        *bmfonts_dir;
   const wuss_menu_t *menu;
   size2d_t           sz;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->wuss        = wuss;
   task->font        = wuss_get_font(wuss);
@@ -225,9 +230,27 @@ result_t text_create(wuss_t      *wuss,
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
 
-  return rc;
+  if (out)
+    *out = task;
+
+  return result_OK;
+}
+
+void text_destroy(text_task_t *task)
+{
+  int i;
+
+  for (i = 0; i < task->nfonts; i++)
+    if (task->fonts[i] != NULL)
+      bmfont_destroy(task->fonts[i]);
+  free(task->fonts);
+  wuss_fontmenu_destroy(task->fontmenu);
+  free(task);
 }
 
 #define INSET      4
@@ -342,16 +365,7 @@ result_t text_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    {
-      int i;
-
-      for (i = 0; i < tcx->nfonts; i++)
-        if (tcx->fonts[i] != NULL)
-          bmfont_destroy(tcx->fonts[i]);
-      free(tcx->fonts);
-      wuss_fontmenu_destroy(tcx->fontmenu);
-      free(tcx); /* task_data was calloc'd per instance by the spawner */
-    }
+    text_destroy(tcx);
     return result_OK;
 
   case wuss_EVENT_IDLE:

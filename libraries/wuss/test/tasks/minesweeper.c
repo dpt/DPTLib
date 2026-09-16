@@ -247,13 +247,18 @@ static void minesweeper_tick_clock(minesweeper_task_t *ms)
 
 /* ----------------------------------------------------------------------- */
 
-result_t minesweeper_create(wuss_t             *wuss,
-                            bmfont_t           *font,
-                            minesweeper_task_t *task)
+result_t minesweeper_create(wuss_t              *wuss,
+                            bmfont_t            *font,
+                            minesweeper_task_t **out)
 {
-  result_t         rc;
-  wuss_task_t     *delegate;
-  wuss_task_desc_t delegate_desc;
+  result_t            rc;
+  minesweeper_task_t *task;
+  wuss_task_t        *delegate;
+  wuss_task_desc_t    delegate_desc;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->wuss = wuss;
   task->font = font;
@@ -265,7 +270,7 @@ result_t minesweeper_create(wuss_t             *wuss,
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
-    free(task); /* nothing registered yet; the spawner will not free it */
+    free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
   task->task = delegate;
@@ -280,9 +285,20 @@ result_t minesweeper_create(wuss_t             *wuss,
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
 
-  return rc;
+  if (out)
+    *out = task;
+
+  return result_OK;
+}
+
+void minesweeper_destroy(minesweeper_task_t *task)
+{
+  free(task);
 }
 
 static void minesweeper_draw_cell(minesweeper_task_t *ms,
@@ -350,8 +366,8 @@ static void minesweeper_draw_hud(minesweeper_task_t *ms,
                                  screen_t           *scr,
                                  const box_t        *bounds)
 {
-  char    buf[8];
-  point_t pos;
+  char     buf[8];
+  point_t  pos;
   colour_t fg, bg;
   int      fh, ascent;
 
@@ -399,12 +415,12 @@ static result_t minesweeper_redraw(const wuss_event_t *event,
                                    void               *task_data)
 {
   minesweeper_task_t *ms;
-  screen_t            *scr;
-  const box_t         *bounds;
-  const box_t         *clip;
-  int                  board_y0;
-  int                  r0, c0, r1, c1;
-  int                  r, c;
+  screen_t           *scr;
+  const box_t        *bounds;
+  const box_t        *clip;
+  int                 board_y0;
+  int                 r0, c0, r1, c1;
+  int                 r, c;
 
   ms     = task_data;
   scr    = event->data.redraw.scr;
@@ -621,7 +637,7 @@ result_t minesweeper_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    free(ms); /* task_data was calloc'd per instance by the spawner */
+    minesweeper_destroy(ms);
     return result_OK;
 
   default:

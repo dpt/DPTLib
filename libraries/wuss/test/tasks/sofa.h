@@ -42,8 +42,13 @@ sofa_task_t;
 
 wuss_window_fn_t sofa_handle;
 
-/* create the sofa window against the given wuss instance */
-result_t sofa_create(wuss_t*wuss, sofa_task_t*task);
+/* create the sofa window against the given wuss instance; if out is
+ * non-NULL, the task block is also returned through it */
+result_t sofa_create(wuss_t *wuss, sofa_task_t **out);
+
+/* free a task block allocated by sofa_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void sofa_destroy(sofa_task_t *task);
 
 #endif /* WUSS_APP */
 

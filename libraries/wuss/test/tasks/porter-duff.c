@@ -157,15 +157,20 @@ static result_t load_demo_png(bitmap_t   *bm,
 
 /* ----------------------------------------------------------------------- */
 
-result_t porter_duff_create(wuss_t             *wuss,
-                            const colour_t     *palette,
-                            bmfont_t           *font,
-                            const char         *resources,
-                            porter_duff_task_t *task)
+result_t porter_duff_create(wuss_t              *wuss,
+                            const colour_t      *palette,
+                            bmfont_t            *font,
+                            const char          *resources,
+                            porter_duff_task_t **out)
 {
-  result_t         rc;
-  wuss_task_t     *delegate;
-  wuss_task_desc_t delegate_desc;
+  result_t            rc;
+  porter_duff_task_t *task;
+  wuss_task_t        *delegate;
+  wuss_task_desc_t    delegate_desc;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->font            = font;
   task->rule            = composite_RULE_CLEAR;
@@ -198,7 +203,7 @@ result_t porter_duff_create(wuss_t             *wuss,
   delegate_desc.name      = "porter-duff";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
-    goto free_dst; /* nothing registered yet; the spawner will not free task */
+    goto free_dst; /* nothing registered yet; nobody else owns task */
   wuss_task_set_autoclose(delegate, 1);
 
   rc = wuss_window_create_placed(delegate,
@@ -215,6 +220,9 @@ result_t porter_duff_create(wuss_t             *wuss,
     return rc;
   }
 
+  if (out)
+    *out = task;
+
   return result_OK;
 
 free_dst:
@@ -225,9 +233,18 @@ free_b:
   free(task->b.base);
 free_a:
   free(task->a.base);
-  free(task); /* no task was registered on any goto here; spawner won't free */
+  free(task); /* no task was registered on any goto here; nobody else owns it */
 
   return rc;
+}
+
+void porter_duff_destroy(porter_duff_task_t *task)
+{
+  free(task->dst.base);
+  free(task->src.base);
+  free(task->b.base);
+  free(task->a.base);
+  free(task);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -418,11 +435,7 @@ result_t porter_duff_handle(wuss_window_t      *window,
     return porter_duff_idle(task_data);
 
   case wuss_EVENT_QUIT:
-    free(pd->dst.base);
-    free(pd->src.base);
-    free(pd->b.base);
-    free(pd->a.base);
-    free(pd); /* calloc'd per instance by the spawner */
+    porter_duff_destroy(pd);
     return result_OK;
 
   default:

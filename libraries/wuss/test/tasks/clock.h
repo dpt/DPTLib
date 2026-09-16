@@ -26,8 +26,13 @@ clock_task_t;
 wuss_window_fn_t clock_handle;
 
 /* create the clock window against the given wuss instance, lettering the
- * face with the given (caller-owned) font */
-result_t clock_create(wuss_t *wuss, bmfont_t *font, clock_task_t *task);
+ * face with the given (caller-owned) font. if out is non-NULL, the task
+ * block is also returned through it */
+result_t clock_create(wuss_t *wuss, bmfont_t *font, clock_task_t **out);
+
+/* free a task block allocated by clock_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void clock_destroy(clock_task_t *task);
 
 #endif /* WUSS_APP */
 
