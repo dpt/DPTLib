@@ -18,6 +18,7 @@
 #include "geom/size.h"
 #include "geom/stack.h"
 #include "utils/rng.h"
+#include "wuss/component/dialogue.h"
 #include "wuss/menu.h"
 
 #include "saturn.h"
@@ -157,6 +158,9 @@ static wuss_menu_t g_saturn_menu =
 };
 
 static result_t saturn_conf_dialogue_create(saturn_task_t *task);
+static result_t saturn_conf_fillout(void *opaque);
+static result_t saturn_conf_cancel(void *opaque, wuss_button_t button);
+static result_t saturn_conf_apply_action(void *opaque, wuss_button_t button);
 
 result_t saturn_create(wuss_t                *wuss,
                        saturn_task_t         *task,
@@ -226,7 +230,8 @@ result_t saturn_create(wuss_t                *wuss,
   if (rc != result_OK)
     goto fail_bg_colourmenu; /* wuss_task_destroy closes task->window too */
   
-  g_saturn_menu_items[SATURN_MENU_SIZE].window = task->conf.dialogue;
+  g_saturn_menu_items[SATURN_MENU_SIZE].window =
+    wuss_dialogue_window(task->conf.dialogue);
 
   return result_OK;
 
@@ -460,14 +465,8 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
   if (rc != result_OK)
     return rc;
 
-  rc = wuss_window_create_placed(task->delegate,
-                                 sz,
-                                 "Configuration",
-                                 wuss_WINDOW_HIDDEN | wuss_WINDOW_NO_REDRAW,
-                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                                 sz,
-                                 sz,
-                                 &task->conf.dialogue);
+  rc = wuss_dialogue_create(&task->conf.dialogue, task->delegate, sz,
+                               "Configuration", saturn_conf_fillout, task);
   if (rc != result_OK)
     return rc;
 
@@ -493,8 +492,8 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
   wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_CANCEL], boxes[ST_CNCL], "Cancel", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 0);
   wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY], "Apply", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 1);
 
-  rc = wuss_icon_create_array(task->conf.dialogue, specs, SATURN_SIZE_NICONS,
-                              made);
+  rc = wuss_icon_create_array(wuss_dialogue_window(task->conf.dialogue),
+                              specs, SATURN_SIZE_NICONS, made);
   if (rc != result_OK)
     goto exit;
 
@@ -507,30 +506,48 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
   task->conf.cancel = made[SATURN_SIZE_ICON_CANCEL];
   task->conf.apply  = made[SATURN_SIZE_ICON_APPLY];
 
+  {
+    wuss_dialogue_action_t actions[2];
+
+    actions[0].icon = task->conf.cancel;
+    actions[0].fn   = saturn_conf_cancel;
+    actions[1].icon = task->conf.apply;
+    actions[1].fn   = saturn_conf_apply_action;
+
+    rc = wuss_dialogue_set_actions(task->conf.dialogue, actions,
+                                   NELEMS(actions));
+    if (rc != result_OK)
+      goto exit;
+  }
+
   return result_OK;
 
 
 exit:
-  wuss_window_close(task->conf.dialogue); /* not yet a menu leaf: safe to close */
+  wuss_dialogue_destroy(task->conf.dialogue); /* not yet a menu leaf: safe to close */
   task->conf.dialogue = NULL;
   return rc;
 }
 
-/* wuss_EVENT_PRE_SHOW on the size dialogue: resync the slider and its echo
- * label to task->config.size, in case Apply (or a config passed to
- * saturn_create) changed it since the dialogue was last shown. Always
- * allows the show. Also used directly by saturn_conf_dialogue_icon to reset
- * the dialogue on an Adjust-Cancel click. */
-static result_t saturn_conf_pre_show(saturn_task_t *task)
+/* Dialogue fillout callback: resync the slider and its echo label to
+ * task->config.size, in case Apply (or a config passed to saturn_create)
+ * changed it since the dialogue was last shown. Called by
+ * wuss_dialogue_handle_pre_show on every reveal, and directly by
+ * saturn_conf_cancel to reset the dialogue on an Adjust-Cancel click. */
+static result_t saturn_conf_fillout(void *opaque)
 {
-  result_t rc;
-  int      row, value;
+  result_t       rc;
+  saturn_task_t *task;
+  int            row, value;
+
+  task = opaque;
 
   rc = result_OK;
   for (row = 0; row < SATURN_SIZEDLG_NROWS; row++)
   {
     value = *saturn_sizedlg_field(task, row);
-    rc = wuss_slider_row_set(task->conf.dialogue, &task->conf.rows[row], value);
+    rc = wuss_slider_row_set(wuss_dialogue_window(task->conf.dialogue),
+                             &task->conf.rows[row], value);
   }
 
   return rc;
@@ -554,59 +571,66 @@ static result_t saturn_conf_apply(saturn_task_t *task)
   return wuss_window_set_doc(task->window, SIZE2D(size_value, size_value));
 }
 
+/* Dialogue action callback for Cancel, split by button per the RISC OS
+ * "Adjust doesn't dismiss" convention: Select dismisses the menu chain;
+ * Adjust resets the dialogue to task->config.size instead. Dismissing goes
+ * through wuss_menu_close rather than touching the (borrowed, reused) window
+ * directly -- that is what hides it, same as a click outside the chain
+ * would. */
+static result_t saturn_conf_cancel(void *opaque, wuss_button_t button)
+{
+  saturn_task_t *task;
+
+  task = opaque;
+
+  if (button & wuss_BUTTON_SELECT)
+  {
+    wuss_menu_close(task->menu_handle);
+    task->menu_handle = NULL;
+    return result_OK;
+  }
+  if (button & wuss_BUTTON_ADJUST)
+    return saturn_conf_fillout(task);
+  return result_OK;
+}
+
+/* Dialogue action callback for Apply: Select applies and dismisses; Adjust
+ * applies but leaves the dialogue open. */
+static result_t saturn_conf_apply_action(void *opaque, wuss_button_t button)
+{
+  saturn_task_t *task;
+
+  task = opaque;
+
+  if (button & wuss_BUTTON_SELECT)
+  {
+    wuss_menu_close(task->menu_handle);
+    task->menu_handle = NULL;
+    return saturn_conf_apply(task);
+  }
+  if (button & wuss_BUTTON_ADJUST)
+    return saturn_conf_apply(task);
+  return result_OK;
+}
+
 /* wuss_EVENT_ICON on the size dialogue: slider drag updates the echo label
- * (snapped to SATURN_SIZE_STEP) live on DOWN/MOVE; Cancel/Apply act on
- * UP (a press that drags off the button before release is not taken as a
- * click), split by button per the RISC OS "Adjust doesn't dismiss"
- * convention: Select-Cancel and Select-Apply both dismiss the menu chain
- * (Select-Apply after applying); Adjust-Cancel resets the dialogue to
- * task->config.size instead of dismissing; Adjust-Apply applies but leaves
- * the dialogue open. Dismissing goes through wuss_menu_close rather than
- * touching the (borrowed, reused) window directly -- that is what hides it,
- * same as a click outside the chain would. */
+ * (snapped to SATURN_SIZE_STEP) live on DOWN/MOVE, handled here directly;
+ * a Cancel/Apply click (UP only -- a press that drags off the button before
+ * release is not taken as a click) is dispatched through the dialogue's
+ * action table. */
 static result_t saturn_conf_dialogue_icon(saturn_task_t      *task,
                                           const wuss_event_t *event)
 {
-  wuss_icon_t *icon;
-  int          row;
+  result_t rc;
+  int      row;
 
-  icon = event->data.icon.icon;
-
-  /* wuss_slider_row_event snaps to row->step (Size only) and reformats the
-   * value label itself, so a hit here needs nothing further. */
   for (row = 0; row < SATURN_SIZEDLG_NROWS; row++)
-    if (wuss_slider_row_event(task->conf.dialogue, &task->conf.rows[row],
-                              event, NULL))
+    if (wuss_slider_row_event(wuss_dialogue_window(task->conf.dialogue),
+                              &task->conf.rows[row], event, NULL))
       return result_OK;
 
-  if (event->data.icon.action != wuss_MOUSE_UP)
-    return result_OK;
-
-  if (icon == task->conf.cancel)
-  {
-    if (event->data.icon.button & wuss_BUTTON_SELECT)
-    {
-      wuss_menu_close(task->menu_handle);
-      task->menu_handle = NULL;
-      return result_OK;
-    }
-    if (event->data.icon.button & wuss_BUTTON_ADJUST)
-      return saturn_conf_pre_show(task);
-    return result_OK;
-  }
-
-  if (icon == task->conf.apply)
-  {
-    if (event->data.icon.button & wuss_BUTTON_SELECT)
-    {
-      wuss_menu_close(task->menu_handle);
-      task->menu_handle = NULL;
-      return saturn_conf_apply(task);
-    }
-    if (event->data.icon.button & wuss_BUTTON_ADJUST)
-      return saturn_conf_apply(task);
-    return result_OK;
-  }
+  if (wuss_dialogue_handle_icon(task->conf.dialogue, event, &rc))
+    return rc;
 
   return result_OK;
 }
@@ -670,13 +694,13 @@ result_t saturn_handle(wuss_window_t      *window,
                         event->data.mouse.button, window);
 
   case wuss_EVENT_ICON:
-    if (window == task->conf.dialogue)
+    if (window == wuss_dialogue_window(task->conf.dialogue))
       return saturn_conf_dialogue_icon(task, event);
     return result_OK;
 
   case wuss_EVENT_PRE_SHOW:
-    if (window == task->conf.dialogue)
-      return saturn_conf_pre_show(task);
+    if (window == wuss_dialogue_window(task->conf.dialogue))
+      return wuss_dialogue_handle_pre_show(task->conf.dialogue);
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
@@ -689,6 +713,7 @@ result_t saturn_handle(wuss_window_t      *window,
   case wuss_EVENT_QUIT:
     wuss_colourmenu_destroy(task->fg_colourmenu);
     wuss_colourmenu_destroy(task->bg_colourmenu);
+    wuss_dialogue_destroy(task->conf.dialogue);
     free(task); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
