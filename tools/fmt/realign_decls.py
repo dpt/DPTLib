@@ -171,9 +171,8 @@ def reformat_block(lines, start, end, entries):
         lines[idx] = new_line
 
 
-def process_file(path):
-    with open(path, 'r') as f:
-        text = f.read()
+def reformat_text(text):
+    """Reformat declaration blocks in `text`. Returns (new_text, changed)."""
     had_trailing_newline = text.endswith('\n')
     lines = text.split('\n')
     if had_trailing_newline:
@@ -191,10 +190,17 @@ def process_file(path):
         if lines[start:end] != before:
             changed = True
 
+    out = '\n'.join(lines)
+    if had_trailing_newline:
+        out += '\n'
+    return out, changed
+
+
+def process_file(path):
+    with open(path, 'r') as f:
+        text = f.read()
+    out, changed = reformat_text(text)
     if changed:
-        out = '\n'.join(lines)
-        if had_trailing_newline:
-            out += '\n'
         with open(path, 'w') as f:
             f.write(out)
     return changed
