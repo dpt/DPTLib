@@ -45,10 +45,10 @@ extern "C"
  * \param[in]  content Requested content-area bounds, screen space. Copied
  *                     in.
  * \param[in]  title   Titlebar label, or NULL for none. Copied in, truncated
- *                     if too long. Ignored unless flags includes
- *                     wuss_WINDOW_TITLEBAR.
- * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_TITLEBAR /
- *                     wuss_WINDOW_OUTLINE, OR'd together, or
+ *                     if too long. Ignored if flags includes
+ *                     wuss_WINDOW_NO_TITLEBAR.
+ * \param[in]  flags   Appearance flags, e.g. wuss_WINDOW_CLOSE /
+ *                     wuss_WINDOW_VSCROLL, OR'd together, or
  *                     wuss_WINDOW_DEFAULT for the default furniture.
  * \param[in]  bg      Content background, filled by Wuss before each redraw:
  *                     a flat colour or an 8x8 fill pattern (see

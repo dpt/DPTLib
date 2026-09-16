@@ -129,7 +129,6 @@ result_t wuss_info_create(wuss_info_t          **out,
   rc = wuss_window_create(task,
                           &content,
                           title,
-                          wuss_WINDOW_TITLEBAR | wuss_WINDOW_OUTLINE |
                           wuss_WINDOW_NO_REDRAW | wuss_WINDOW_HIDDEN,
                           wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                           SIZE2D(w, h),

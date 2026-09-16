@@ -463,10 +463,7 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
   rc = wuss_window_create_placed(task->delegate,
                                  sz,
                                  "Configuration",
-                                 wuss_WINDOW_TITLEBAR |
-                                 wuss_WINDOW_OUTLINE  |
-                                 wuss_WINDOW_HIDDEN   |
-                                 wuss_WINDOW_NO_REDRAW,
+                                 wuss_WINDOW_HIDDEN | wuss_WINDOW_NO_REDRAW,
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  sz,
                                  sz,

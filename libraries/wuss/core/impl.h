@@ -600,7 +600,7 @@ static inline void wuss__min_content(const wuss_window_t *window,
 static inline int wuss__titlebar_height_for(const wuss_t       *wuss,
                                             wuss_window_flags_t flags)
 {
-  return (flags & wuss_WINDOW_TITLEBAR) ? wuss->titlebar_height : 0;
+  return (flags & wuss_WINDOW_NO_TITLEBAR) ? 0 : wuss->titlebar_height;
 }
 
 static inline int wuss__titlebar_height(const wuss_window_t *window)
@@ -624,7 +624,7 @@ static inline void wuss__window_set_toggled(wuss_window_t *window,
 
 static inline int wuss__outline_px_for(wuss_window_flags_t flags)
 {
-  return (flags & wuss_WINDOW_OUTLINE) ? 1 : 0;
+  return (flags & wuss_WINDOW_NO_OUTLINE) ? 0 : 1;
 }
 
 static inline int wuss__outline_px(const wuss_window_t *window)

@@ -610,7 +610,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   if (menu_task == NULL)
     return result_OOM;
 
-  menu_flags = wuss_WINDOW_TITLEBAR | wuss_WINDOW_OUTLINE;
+  menu_flags = 0;
 
   outline_px      = wuss__outline_px_for(menu_flags);
   titlebar_height = wuss__titlebar_height_for(wuss, menu_flags);
