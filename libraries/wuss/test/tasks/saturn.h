@@ -10,6 +10,7 @@
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/dialogue.h"
+#include "wuss/component/proginfo.h"
 #include "wuss/icon-spec.h"
 #include "wuss/icon.h"
 #include "wuss/menu.h"
@@ -75,6 +76,7 @@ typedef struct saturn_task
   wuss_colourmenu_t *fg_colourmenu, *bg_colourmenu;
   wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
   saturn_conf_t      conf;
+  wuss_proginfo_t   *proginfo;
 }
 saturn_task_t;
 
