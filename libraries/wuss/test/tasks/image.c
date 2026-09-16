@@ -385,6 +385,11 @@ result_t image_handle(wuss_window_t      *window,
     ic->menu_handle = NULL; /* wuss closed the chain under us */
     return result_OK;
 
+  case wuss_EVENT_PRE_SHOW:
+    if (window == wuss_proginfo_window(ic->proginfo))
+      return wuss_proginfo_handle_pre_show(ic->proginfo);
+    return result_OK;
+
   case wuss_EVENT_QUIT:
     /* close any open chain first: it may hold the proginfo window as a
      * borrowed wuss_menu_item_t.window, and destroying that below would leave

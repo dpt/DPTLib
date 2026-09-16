@@ -338,14 +338,28 @@ static result_t spawn_quit(void)
   return result_OK;
 }
 
-static const wuss_menu_item_t g_task_items[] =
+/* Indices into g_task_items / g_task_spawn -- keep both tables in this
+ * order. */
+enum
 {
-  { "Launch",    wuss_MENU_ITEM_NONE,   &g_launch_menu, NULL },
-  { "Quit Wuss", wuss_MENU_ITEM_DASHED, NULL,           NULL }
+  TASK_ITEM_INFO,
+  TASK_ITEM_LAUNCH,
+  TASK_ITEM_QUIT
+};
+
+/* g_task_items' "Info" row's .window is filled in by tasks_open_launcher
+ * (built from g.proginfo, which does not exist until run_wuss creates it) --
+ * the table itself cannot name it at compile time. */
+static wuss_menu_item_t g_task_items[] =
+{
+  { "Info",      wuss_MENU_ITEM_NONE, NULL,           NULL },
+  { "Launch",    wuss_MENU_ITEM_NONE, &g_launch_menu, NULL },
+  { "Quit Wuss", wuss_MENU_ITEM_NONE, NULL,           NULL }
 };
 
 static const task_spawn_fn_t g_task_spawn[] =
 {
+  NULL,        /* "Info" -> wuss_menu_item_t.window leaf, no spawn */
   NULL,        /* "Launch" -> submenu g_launch_menu */
   spawn_quit
 };
@@ -365,7 +379,6 @@ result_t task_handle_event(wuss_window_t      *window,
   const wuss_menu_t *menu;
   int                index;
 
-  NOT_USED(window);
   NOT_USED(task_data);
 
   if (event->kind == wuss_EVENT_PALETTE)
@@ -390,6 +403,13 @@ result_t task_handle_event(wuss_window_t      *window,
       bitmap_set_palette(g.bm, scr_palette);
     }
     wuss_frontend_set_palette(g.frontend, palette, npalette);
+    return result_OK;
+  }
+
+  if (event->kind == wuss_EVENT_PRE_SHOW)
+  {
+    if (window == wuss_proginfo_window(g.proginfo))
+      return wuss_proginfo_handle_pre_show(g.proginfo);
     return result_OK;
   }
 
@@ -418,5 +438,7 @@ result_t task_handle_event(wuss_window_t      *window,
 
 result_t tasks_open_launcher(point_t pos)
 {
+  g_task_items[TASK_ITEM_INFO].window = wuss_proginfo_window(g.proginfo);
+
   return wuss_menu_open(g.menu_task, &g_task_menu, pos, NULL);
 }

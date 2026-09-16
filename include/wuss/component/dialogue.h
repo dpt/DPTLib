@@ -46,6 +46,7 @@ extern "C"
 #include "wuss/icon.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
+#include "wuss/wuss.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -121,12 +122,52 @@ result_t wuss_dialogue_create(wuss_dialogue_t           **out,
                               void                       *opaque);
 
 /**
- * Free a dialogue: closes its window (and so the icons on it). Safe to pass
- * NULL.
+ * Create a dialogue wrapping an already-created window, e.g. one owned and
+ * laid out by another component such as wuss_info_t, instead of creating its
+ * own. wuss_dialogue_destroy then leaves \p window alone -- the caller (or
+ * the component that owns it) is responsible for closing it.
+ *
+ * Use this to give an existing window fillout/action-table dispatch without
+ * duplicating its layout logic; see wuss_proginfo_t for the motivating case
+ * of one dialogue shared and refilled by several callers.
+ *
+ * \param[out] out     Filled with the new handle on success, untouched on
+ *                     failure.
+ * \param[in]  wuss    The window's owning wuss instance.
+ * \param[in]  window  Existing window; borrowed, not closed by
+ *                     wuss_dialogue_destroy.
+ * \param[in]  fillout Called by wuss_dialogue_handle_pre_show on every
+ *                     reveal, or NULL for none.
+ * \param[in]  opaque  Passed back to \p fillout and to every action
+ *                     callback; see also wuss_dialogue_set_opaque.
+ * \return \ref result_OK on success, \ref result_OOM, \ref result_NULL_ARG
+ *         if \p out, \p wuss or \p window is NULL.
+ */
+result_t wuss_dialogue_create_on_window(wuss_dialogue_t           **out,
+                                        wuss_t                     *wuss,
+                                        wuss_window_t              *window,
+                                        wuss_dialogue_fillout_fn_t *fillout,
+                                        void                       *opaque);
+
+/**
+ * Free a dialogue: closes its window (and so the icons on it), unless it was
+ * built with wuss_dialogue_create_on_window, in which case the window is
+ * left for its owning component to close. Safe to pass NULL.
  *
  * \param[in] doomed Handle to free, or NULL.
  */
 void wuss_dialogue_destroy(wuss_dialogue_t *doomed);
+
+/**
+ * Change the opaque pointer passed to the fillout and action callbacks,
+ * replacing the one given at creation. For a dialogue shared by several
+ * callers (e.g. one wuss_proginfo_t reused across tasks), call this to
+ * retarget it at the caller about to show it, before revealing it.
+ *
+ * \param[in] dialogue Handle.
+ * \param[in] opaque   New opaque pointer.
+ */
+void wuss_dialogue_set_opaque(wuss_dialogue_t *dialogue, void *opaque);
 
 /**
  * Register the dialogue's action table, replacing any previous one. Does not

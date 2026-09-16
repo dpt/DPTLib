@@ -87,6 +87,26 @@ result_t wuss_info_create(wuss_info_t          **out,
                           int                    nrows);
 
 /**
+ * Replace an info dialogue's rows in place: recomputes column widths and row
+ * pitch for \p rows, resizes the window to fit, and rebuilds its label:value
+ * icons. For a dialogue shared by several callers (e.g. one wuss_proginfo_t
+ * reused by every task), call this from a wuss_dialogue_fillout_fn_t just
+ * before each reveal so the window is always sized for whichever caller is
+ * about to show it.
+ *
+ * \param[in] info  Handle.
+ * \param[in] rows  Row array; each label and value is borrowed and copied.
+ * \param[in] nrows Number of rows; must be >= 1. Need not match the count \p
+ *                  info was created with.
+ * \return \ref result_OK, \ref result_OOM, \ref result_NULL_ARG if \p info
+ *         or \p rows is NULL, \ref result_BAD_ARG if \p nrows is < 1, or a
+ *         wuss_window_resize / wuss_icon_create_array code.
+ */
+result_t wuss_info_set_rows(wuss_info_t           *info,
+                            const wuss_info_row_t *rows,
+                            int                    nrows);
+
+/**
  * Free an info dialogue: closes its window and frees every string in it.
  * Safe to pass NULL.
  *

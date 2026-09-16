@@ -11,6 +11,7 @@
 #include "geom/point.h"
 #include "wuss/task.h"
 #include "wuss/wuss.h"
+#include "wuss/component/proginfo.h"
 
 #include "frontend.h"
 
@@ -23,6 +24,8 @@ extern struct wuss_app_tasks
 {
   wuss_t          *wuss;
   wuss_task_t     *menu_task; /* owns the task launcher menus */
+  wuss_proginfo_t *proginfo; /* shared "Info" dialogue on menu_task; see
+                              * tasks_open_launcher's "Info" row */
   colour_t        *palette;
   int              npalette;
   const char      *palette_name; /* startup *.hex leafname, for ticking the
