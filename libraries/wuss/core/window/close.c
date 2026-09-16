@@ -10,9 +10,9 @@
 
 void wuss_window_close(wuss_window_t *doomed)
 {
-  wuss_task_t  *task;
-  wuss_event_t  event;
-  wuss_t       *wuss;
+  wuss_task_t *task;
+  wuss_event_t event;
+  wuss_t      *wuss;
 
   if (doomed == NULL)
     return;
@@ -24,11 +24,20 @@ void wuss_window_close(wuss_window_t *doomed)
     wuss->furniture.dragging = NULL;
 #endif
 #ifdef WUSS_ICONS
-  if (wuss->pressed_icon != NULL && wuss->pressed_icon->window == doomed)
-    wuss->pressed_icon = NULL;
-  if (wuss->hover_icon != NULL && wuss->hover_icon->window == doomed)
-    wuss->hover_icon = NULL;
+  if (wuss->pressed_window == doomed)
+  {
+    wuss->pressed_icon   = NULL;
+    wuss->pressed_window = NULL;
+  }
+  if (wuss->hover_window == doomed)
+  {
+    wuss->hover_icon   = NULL;
+    wuss->hover_window = NULL;
+  }
 #endif
+  /* No wuss_EVENT_POINTER_EXIT: the task hears about this window going away
+   * through PRE_CLOSE/CLOSE, and the struct is freed below. */
+  wuss__pointer_forget_window(wuss, doomed);
 
   wuss__release_packed(doomed);
 

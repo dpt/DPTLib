@@ -32,8 +32,13 @@ checker_task_t;
 
 wuss_window_fn_t checker_handle;
 
-/* create the two checkerboard windows against the given wuss instance */
-result_t checker_create(wuss_t *wuss, checker_task_t *task);
+/* create the two checkerboard windows against the given wuss instance;
+ * if out is non-NULL, the task block is also returned through it */
+result_t checker_create(wuss_t *wuss, checker_task_t **out);
+
+/* free a task block allocated by checker_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void checker_destroy(checker_task_t *task);
 
 #endif /* WUSS_APP */
 

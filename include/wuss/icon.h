@@ -15,7 +15,7 @@
  *
  * Wuss fills a window's background, draws its icons, then delivers
  * wuss_EVENT_REDRAW, so a task is free to paint over or around icon pixels.
- * A click on a wuss_ICON_TYPE_BUTTON reaches the task as wuss_EVENT_ICON;
+ * A click on a wuss_ICON_TYPE_ACTION reaches the task as wuss_EVENT_ICON;
  * clicks on a label, or on a hidden or disabled icon, fall through as
  * wuss_EVENT_MOUSE.
  */
@@ -58,13 +58,13 @@ typedef enum wuss_icon_type
   /** Bevelled rectangle with a centred text label and pressed-state visual
    *  feedback; clicks and hovers are delivered to the task as
    *  wuss_EVENT_ICON. */
-  wuss_ICON_TYPE_BUTTON,
-  /** Bounding box filled with a repeating two-colour 8x8 tile (spec.pattern) in
-   *  fg/bg, phased to document space so it scrolls rigidly with content. Not
-   *  interactive: clicks fall through to the task as wuss_EVENT_MOUSE. text is
-   *  ignored. */
+  wuss_ICON_TYPE_ACTION,
+  /** Bounding box filled with a repeating two-colour 8x8 tile
+   *  (spec.u.pattern.tile) in fg/bg, phased to document space so it scrolls
+   *  rigidly with content. Not interactive: clicks fall through to the task as
+   *  wuss_EVENT_MOUSE. text is ignored. */
   wuss_ICON_TYPE_PATTERN,
-  /** A grouping box: a one-pixel rectangle in fg around the bounding box,
+  /** A grouping box: a bevelled rectangle around the bounding box,
    *  broken at the top-left for an optional caption (text) drawn over the
    *  window background. Not interactive: clicks fall through to the task as
    *  wuss_EVENT_MOUSE. */
@@ -79,10 +79,10 @@ typedef enum wuss_icon_type
    *  its own selected state (group is ignored), then the task is told via
    *  wuss_EVENT_ICON. */
   wuss_ICON_TYPE_OPTION,
-  /** A caller-owned bitmap (spec.bitmap) drawn at the top-left of the bounding
-   *  box, alpha-blended against what is already there, clipped to the box; no
-   *  scaling. The bitmap is borrowed, not copied, and must outlive the icon
-   *  (unlike text). fg, bg, text and pattern are ignored. Not interactive
+  /** A caller-owned bitmap (spec.u.bitmap.image) drawn at the top-left of the
+   *  bounding box, alpha-blended against what is already there, clipped to the
+   *  box; no scaling. The bitmap is borrowed, not copied, and must outlive the
+   *  icon (unlike text). fg, bg, text and pattern are ignored. Not interactive
    *  unless wuss_ICON_FLAGS_INTERACTIVE is set, in which case clicks raise
    *  wuss_EVENT_ICON like a button. */
   wuss_ICON_TYPE_BITMAP,
@@ -101,7 +101,34 @@ typedef enum wuss_icon_type
    *  window background. Purely decorative: never hit-tested, never highlights.
    *  text, bg and pattern are ignored. Used between menu rows to render the
    *  line a wuss_ICON_FLAGS_SEPARATOR entry sits below. */
-  wuss_ICON_TYPE_RULE
+  wuss_ICON_TYPE_RULE,
+  /** A slider: the bounding box is filled with slider.surround, with a fixed
+   *  4px gap (also slider.surround) around an inner sunken groove
+   *  (spec.u.slider) that fills the remaining space on both axes; its fill
+   *  marks a value between min and max. A click or drag anywhere in the
+   *  inner rect -- fill or bare groove, but not the surround or gap -- jumps
+   *  the value straight to the pointer position; the task is told via
+   *  wuss_EVENT_ICON, continuously while dragging. */
+  wuss_ICON_TYPE_SLIDER,
+
+  /* The following types are reserved: the enum values and validation exist but
+   * no rendering, hit-testing or event routing is wired up yet. A spec using
+   * one is accepted and currently draws as a plain wuss_ICON_TYPE_LABEL. */
+
+  /** A read-only value field: a bevelled well showing text the task updates but
+   *  the user cannot edit. Not yet implemented. */
+  wuss_ICON_TYPE_DISPLAY,
+  /** An editable single-line text field. Not yet implemented. */
+  wuss_ICON_TYPE_WRITABLE,
+  /** An editable numeric field, optionally with up/down adjusters. Not yet
+   *  implemented. */
+  wuss_ICON_TYPE_NUMBER,
+  /** A field cycling through a fixed set of string values. Not yet
+   *  implemented. */
+  wuss_ICON_TYPE_STRING_SET,
+  /** A free-drag handle: reports pointer motion to the task while dragged. Not
+   *  yet implemented. */
+  wuss_ICON_TYPE_DRAGGABLE
 }
 wuss_icon_type_t;
 
@@ -148,7 +175,7 @@ typedef enum wuss_icon_flags
   /** wuss_ICON_TYPE_LABEL: centre the text in the bounding box. Takes
    *  precedence over wuss_ICON_FLAGS_JUSTIFY_RIGHT. */
   wuss_ICON_FLAGS_JUSTIFY_CENTRE = 1 << 3,
-  /** wuss_ICON_TYPE_BUTTON: draw as a default action button -- an accent fill
+  /** wuss_ICON_TYPE_ACTION: draw as a default action button -- an accent fill
    *  (see wuss_config_t::accent) inside the same 6px "action" surround as
    *  wuss_ICON_BORDER_ACTION, instead of the ordinary 1px bevel. Ignored by
    *  other icon types. */
@@ -166,7 +193,7 @@ typedef enum wuss_icon_flags
    *  laid out and drawn as a separate wuss_ICON_TYPE_RULE icon. Ignored by
    *  other types. */
   wuss_ICON_FLAGS_SEPARATOR    = 1 << 7,
-  /** wuss_ICON_TYPE_MENU_ENTRY: draw a small colour chip (spec.swatch) in the
+  /** wuss_ICON_TYPE_MENU_ENTRY: draw a small colour chip (spec.u.menu_entry.swatch) in the
    *  row's left gutter, where the tick would sit. Mutually exclusive with a
    *  selected tick -- the chip wins. Ignored by other types. */
   wuss_ICON_FLAGS_SWATCH      = 1 << 8,
@@ -188,10 +215,111 @@ wuss_icon_flags_t;
 
 /**
  * Encode a 0-based icon-set index (from \ref wuss_icons_lookup) for
- * wuss_icon_spec::icon_set. The stored value is offset by one so a
+ * wuss_icon_spec_data::bitmap::set. The stored value is offset by one so a
  * zero-initialised spec reads as "no icon-set entry".
  */
 #define wuss_ICON_SET(i)        ((i) + 1)
+
+/**
+ * A wuss_ICON_TYPE_SLIDER's axis: which way its groove runs and, so, which
+ * end of the groove (inset from the bounding box by the fixed 4px gap on all
+ * four sides, filling the rest) is pixel 0 of the value fill.
+ */
+typedef enum wuss_slider_orientation
+{
+  /** Groove runs left-to-right; value grows rightward, pixel 0 at the
+   *  groove's left. */
+  wuss_SLIDER_HORIZONTAL = 0,
+  /** Groove runs top-to-bottom; value grows upward (low at the bottom, high
+   *  at the top), matching a volume-slider convention -- pixel 0 at the
+   *  groove's bottom. */
+  wuss_SLIDER_VERTICAL
+}
+wuss_slider_orientation_t;
+
+/**
+ * Per-type payload in a wuss_icon_spec. Exactly one arm applies, selected by
+ * wuss_icon_spec::type; the arms mirror the icon's internal storage. Types
+ * with no type-specific data (ACTION, FRAME, OPTION, RULE, and the reserved
+ * types) touch no arm, so a zero-initialised spec is valid for them. Each
+ * arm is its own struct so a type can gain fields without disturbing the
+ * others.
+ */
+typedef union wuss_icon_spec_data
+{
+  /** wuss_ICON_TYPE_LABEL */
+  struct
+  {
+    /** Border drawn inside the bounding box. Zero (wuss_ICON_BORDER_NONE) is
+     *  the default for a zero-initialised spec. */
+    wuss_icon_border_t border;
+  }
+  label;
+
+  /** wuss_ICON_TYPE_PATTERN */
+  struct
+  {
+    /** Repeating two-colour 8x8 tile. Zero (screen_PATTERN_SOLID) is a safe
+     *  default for a zero-initialised spec. */
+    screen_pattern_t tile;
+  }
+  pattern;
+
+  /** wuss_ICON_TYPE_BITMAP */
+  struct
+  {
+    /** The image to draw. Borrowed, not copied; must outlive the icon. NULL
+     *  (the default) falls back to \c set. */
+    const bitmap_t *image;
+    /** When \c image is NULL, draw an entry from the window manager's loaded
+     *  icon set (see \ref wuss_icons_load). Zero (the default for a
+     *  zero-initialised spec) means "no icon-set entry"; encode a 0-based
+     *  index from \ref wuss_icons_lookup with \ref wuss_ICON_SET. Ignored
+     *  when \c image is set. */
+    int             set;
+  }
+  bitmap;
+
+  /** wuss_ICON_TYPE_RADIO */
+  struct
+  {
+    /** Exclusive-selection group. Selecting a radio clears every other
+     *  selected radio on the same window with the same group. Zero (the
+     *  default) means "no group": such a radio still toggles but never clears
+     *  another. */
+    int group;
+  }
+  radio;
+
+  /** wuss_ICON_TYPE_MENU_ENTRY */
+  struct
+  {
+    /** With wuss_ICON_FLAGS_SWATCH: the colour chip to draw in the left
+     *  gutter, as an index into the system palette. Ignored unless that flag
+     *  is set. */
+    wuss_colour_t swatch;
+  }
+  menu_entry;
+
+  /** wuss_ICON_TYPE_SLIDER */
+  struct
+  {
+    /** Which way the groove runs. wuss_SLIDER_HORIZONTAL (0) is the default
+     *  for a zero-initialised spec. */
+    wuss_slider_orientation_t orientation;
+    /** Value at the groove's start (left for wuss_SLIDER_HORIZONTAL, bottom
+     *  for VERTICAL). May be greater than max to run the fill backwards. */
+    int                       min;
+    /**
+     * Value at the groove's end (right for HORIZONTAL, top for VERTICAL).
+     */
+    int                       max;
+    /** Initial value, clamped to [min,max] (or [max,min] if min > max). */
+    int                       default_value;
+  }
+  slider;
+}
+wuss_icon_spec_data_t;
 
 /**
  * Description of an icon at creation. Copied by value into the icon; the
@@ -204,48 +332,38 @@ wuss_icon_flags_t;
 typedef struct wuss_icon_spec
 {
   /** Bounding box, virtual document space, inclusive-exclusive. */
-  box_t             bbox;
+  box_t                 bbox;
   /** Icon type. */
-  wuss_icon_type_t  type;
+  wuss_icon_type_t      type;
   /** NUL-terminated label; copied. NULL means "". */
-  const char       *text;
+  const char           *text;
   /** Text colour, as an index into the system palette. */
-  wuss_colour_t     fg;
+  wuss_colour_t         fg;
   /** Fill/bevel base colour, as an index into the system palette. A label,
    *  frame, radio or option icon may pass wuss_NO_BACKGROUND for no fill behind
    *  its text/glyph; a button or pattern icon must pass a real index. */
-  wuss_colour_t     bg;
-  /** Tile for wuss_ICON_TYPE_PATTERN; ignored by other types. Zero
-   *  (screen_PATTERN_SOLID) is a safe default for zero-initialised specs. */
-  screen_pattern_t  pattern;
-  /** wuss_ICON_TYPE_BITMAP: the image to draw. Borrowed, not copied; must
-   *  outlive the icon. Ignored by other types; NULL (the default) is only valid
-   *  when type is not wuss_ICON_TYPE_BITMAP, or when \c icon_set selects a
-   *  bitmap from the window manager's loaded icon set instead. */
-  const bitmap_t   *bitmap;
-  /** wuss_ICON_TYPE_BITMAP: when \c bitmap is NULL, draw an entry from the
-   *  window manager's loaded icon set (see \ref wuss_icons_load). Zero (the
-   *  default for a zero-initialised spec) means "no icon-set entry"; encode a
-   *  0-based index from \ref wuss_icons_lookup with \ref wuss_ICON_SET.
-   *  Ignored by other types and when \c bitmap is set. */
-  int               icon_set;
-  /** wuss_ICON_TYPE_RADIO: exclusive-selection group. Selecting a radio clears
-   *  every other selected radio on the same window with the same group. Zero
-   *  (the default) means "no group": such a radio still toggles but never
-   *  clears another. Ignored by all other icon types. */
-  int               group;
-  /** wuss_ICON_TYPE_MENU_ENTRY with wuss_ICON_FLAGS_SWATCH: the colour chip to
-   *  draw in the left gutter, as an index into the system palette. Ignored
-   *  unless that flag is set; ignored by all other icon types. */
-  wuss_colour_t     swatch;
-  /** wuss_ICON_TYPE_LABEL: border drawn inside the bounding box. Zero
-   *  (wuss_ICON_BORDER_NONE) is the default for zero-initialised specs.
-   *  Ignored by all other icon types. */
-  wuss_icon_border_t border;
+  wuss_colour_t         bg;
   /** Appearance/behaviour flags. */
-  wuss_icon_flags_t flags;
+  wuss_icon_flags_t     flags;
+  /** Per-type payload, selected by \c type. */
+  wuss_icon_spec_data_t u;
 }
 wuss_icon_spec_t;
+
+/* ----------------------------------------------------------------------- */
+
+/** Standard main-axis size (px) for a wuss_ICON_TYPE_SLIDER. */
+#define wuss_STD_SLIDER_HEIGHT           18
+/** Standard main-axis size (px) for a non-default wuss_ICON_TYPE_ACTION
+ *  button, e.g. Cancel. */
+#define wuss_STD_SECONDARY_BUTTON_HEIGHT 26
+/** Standard main-axis size (px) for a wuss_ICON_FLAGS_DEFAULT
+ *  wuss_ICON_TYPE_ACTION button, e.g. OK/Apply. */
+#define wuss_STD_PRIMARY_BUTTON_HEIGHT   34
+/** Standard gap (px) between two sibling icons/components in a layout. */
+#define wuss_STD_GAP                     4
+/** Standard gap (px) between an icon/component and the window edge. */
+#define wuss_STD_INSET                   4
 
 /* ----------------------------------------------------------------------- */
 
@@ -316,31 +434,38 @@ result_t wuss_icon_plot(wuss_window_t          *window,
 
 /**
  * Destroy an icon, unlinking it from its window and invalidating its
- * bounding box so the next redraw clears it. Safe to pass NULL.
+ * bounding box so the next redraw clears it. Safe to pass NULL for \p icon.
  *
- * \param[in] icon Icon to destroy, or NULL.
+ * \param[in] window Window the icon belongs to.
+ * \param[in] icon   Icon to destroy, or NULL.
  */
-void wuss_icon_delete(wuss_icon_t *icon);
+void wuss_icon_delete(wuss_window_t *window, wuss_icon_t *icon);
 
 /**
  * Replace an icon's label text. The new text is copied. Invalidates the
  * icon's bounding box.
  *
- * \param[in] icon Icon to change.
- * \param[in] text New NUL-terminated label; copied. NULL means "".
+ * \param[in] window Window the icon belongs to.
+ * \param[in] icon   Icon to change.
+ * \param[in] text   New NUL-terminated label; copied. NULL means "".
  * \return \ref result_OK on success, \ref result_OOM on allocation failure
  *         (the icon keeps its old text).
  */
-result_t wuss_icon_set_text(wuss_icon_t *icon, const char *text);
+result_t wuss_icon_set_text(wuss_window_t *window,
+                            wuss_icon_t   *icon,
+                            const char    *text);
 
 /**
  * Show or hide an icon, toggling wuss_ICON_FLAGS_HIDDEN. Invalidates the
  * icon's bounding box.
  *
+ * \param[in] window Window the icon belongs to.
  * \param[in] icon   Icon to change.
  * \param[in] hidden Non-zero to hide the icon, zero to show it.
  */
-void wuss_icon_set_hidden(wuss_icon_t *icon, int hidden);
+void wuss_icon_set_hidden(wuss_window_t *window,
+                          wuss_icon_t   *icon,
+                          int            hidden);
 
 /**
  * Fetch an icon's bounding box, in virtual document space.
@@ -368,14 +493,6 @@ wuss_icon_type_t wuss_icon_get_type(const wuss_icon_t *icon);
 const char *wuss_icon_get_text(const wuss_icon_t *icon);
 
 /**
- * Fetch the window an icon belongs to.
- *
- * \param[in] icon Icon to query.
- * \return The owning window.
- */
-wuss_window_t *wuss_icon_get_window(const wuss_icon_t *icon);
-
-/**
  * Fetch a radio or option icon's selected (latched) state.
  *
  * \param[in] icon Icon to query.
@@ -392,10 +509,36 @@ int wuss_icon_get_selected(const wuss_icon_t *icon);
  * programmatic path, distinct from a user click. A no-op for icon types with
  * no latched state.
  *
+ * \param[in] window   Window the icon belongs to.
  * \param[in] icon     Icon to change.
  * \param[in] selected Non-zero to select, zero to deselect.
  */
-void wuss_icon_set_selected(wuss_icon_t *icon, int selected);
+void wuss_icon_set_selected(wuss_window_t *window,
+                            wuss_icon_t   *icon,
+                            int            selected);
+
+/**
+ * Fetch a slider icon's current value.
+ *
+ * \param[in] icon Icon to query.
+ * \return The value, in [min,max] (or [max,min]) as given at creation.
+ *         Always 0 for icon types with no value.
+ */
+int wuss_icon_get_value(const wuss_icon_t *icon);
+
+/**
+ * Set a slider icon's value programmatically, invalidating it so the next
+ * redraw repaints it. No task event is delivered -- this is the programmatic
+ * path, distinct from a user click or drag. A no-op for icon types with no
+ * value.
+ *
+ * \param[in] window Window the icon belongs to.
+ * \param[in] icon   Icon to change.
+ * \param[in] value  New value; clamped to the icon's [min,max] range.
+ */
+void wuss_icon_set_value(wuss_window_t *window,
+                         wuss_icon_t   *icon,
+                         int            value);
 
 /* ----------------------------------------------------------------------- */
 

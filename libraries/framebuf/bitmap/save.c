@@ -16,12 +16,16 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   result_t             rc;
   volatile pixelfmt_t  fmt;
   volatile size_t      bytespp;
-  FILE                *fp;
-  png_structp          png_ptr  = NULL;
+  volatile int paletted;
+  FILE        *fp;
+  png_structp  png_ptr  = NULL;
   png_infop volatile   info_ptr = NULL;
   png_bytep volatile   outrow   = NULL;
+  png_colorp volatile  png_plte = NULL;
   pixelfmt_xxxa8888_t *inrow; // more like xxxx8888
   int                  x,y;
+
+  paletted = 0;
 
   switch (bm->format)
   {
@@ -32,6 +36,13 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   case pixelfmt_bgra8888:
     fmt     = PNG_COLOR_TYPE_RGBA;
     bytespp = 4;
+    break;
+  case pixelfmt_p8:
+    if (bm->palette == NULL)
+      return result_NOT_SUPPORTED;
+    fmt      = PNG_COLOR_TYPE_PALETTE;
+    bytespp  = 1;
+    paletted = 1;
     break;
   default:
     return result_NOT_SUPPORTED;
@@ -74,6 +85,38 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
                PNG_COMPRESSION_TYPE_DEFAULT,
                PNG_FILTER_TYPE_DEFAULT);
 
+  if (paletted)
+  {
+    png_byte trns[256];
+    int      have_trns;
+    int      i;
+
+    png_plte = png_malloc(png_ptr, 256 * sizeof(*png_plte));
+    if (png_plte == NULL)
+    {
+      rc = result_OOM;
+      goto cleanup;
+    }
+
+    have_trns = 0;
+    for (i = 0; i < 256; i++)
+    {
+      pixelfmt_rgba8888_t px = bm->palette[i].primary;
+
+      png_plte[i].red   = PIXELFMT_Rxxx8888(px);
+      png_plte[i].green = PIXELFMT_xGxx8888(px);
+      png_plte[i].blue  = PIXELFMT_xxBx8888(px);
+
+      trns[i] = PIXELFMT_xxxA8888(px);
+      if (trns[i] != 0xFF)
+        have_trns = 1;
+    }
+
+    png_set_PLTE(png_ptr, info_ptr, png_plte, 256);
+    if (have_trns)
+      png_set_tRNS(png_ptr, info_ptr, trns, 256, NULL);
+  }
+
   png_write_info(png_ptr, info_ptr);
 
   // consider:
@@ -89,6 +132,21 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   }
 
   inrow = bm->base;
+
+  if (paletted)
+  {
+    const unsigned char *srcrow = bm->base;
+
+    for (y = 0; y < bm->size.h; y++)
+    {
+      png_write_row(png_ptr, srcrow);
+      srcrow += bm->rowbytes;
+    }
+
+    png_write_end(png_ptr, NULL);
+    rc = result_OK;
+    goto cleanup;
+  }
 
   for (y = 0; y < bm->size.h; y++)
   {
@@ -131,6 +189,8 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
 
 cleanup:
   fclose(fp);
+  if (png_plte != NULL)
+    png_free(png_ptr, png_plte);
   png_free_data(png_ptr, info_ptr, PNG_FREE_ALL, -1);
   png_destroy_write_struct(&png_ptr, NULL);
   free(outrow);

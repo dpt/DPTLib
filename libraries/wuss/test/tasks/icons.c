@@ -23,7 +23,7 @@
 #include "icons.h"
 
 #define ICONS_DOC_W    260
-#define ICONS_DOC_H    1160 /* taller than the window, so scrolling is exercised */
+#define ICONS_DOC_H    1310 /* taller than the window, so scrolling is exercised */
 #define ICONS_MARGIN   28  /* left edge of everything except frame captions */
 #define ICONS_ROW      20  /* vertical pitch between stacked simple icons */
 
@@ -40,10 +40,11 @@ enum
   ICONS_N_ICONSET = 5, /* frame + opton + optoff + radon + radoff from the loaded set */
   ICONS_N_PATTERN = 2, /* frame + one PATTERN swatch */
   ICONS_N_BORDERS = 6, /* frame + GROOVE + RIDGE + ACTION + DIVIDER labels */
+  ICONS_N_SLIDERS = 4, /* frame + horizontal + vertical slider + state label */
   ICONS_N_MENU    = 8, /* frame + plain, ticked, swatch, submenu, disabled, rule, separator entry */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
                     ICONS_N_BITMAPS + ICONS_N_ICONSET + ICONS_N_PATTERN +
-                    ICONS_N_BORDERS + ICONS_N_MENU
+                    ICONS_N_BORDERS + ICONS_N_SLIDERS + ICONS_N_MENU
 };
 
 /* Running state threaded through the icons_add_* helpers: where to write the
@@ -84,7 +85,7 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
   /* 4px larger on every side than a plain button to seat the DEFAULT icon's
    * 6px action surround */
   s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN - 4, lay->y - 4, 88, 30);
-  s->type  = wuss_ICON_TYPE_BUTTON;
+  s->type  = wuss_ICON_TYPE_ACTION;
   s->text  = "Press me";
   s->fg    = lay->black;
   s->bg    = lay->window;
@@ -103,7 +104,7 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
 
   s       = &lay->specs[lay->n];
   s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, 980, 90, 52);
-  s->type = wuss_ICON_TYPE_BUTTON;
+  s->type = wuss_ICON_TYPE_ACTION;
   s->text = "Scrolled";
   s->fg   = lay->black;
   s->bg   = lay->window;
@@ -142,7 +143,7 @@ static void icons_add_buttons(icons_layout_t *lay)
       s       = &lay->specs[lay->n];
       s->fg   = lay->black;
       s->bg   = lay->window;
-      s->type = wuss_ICON_TYPE_BUTTON;
+      s->type = wuss_ICON_TYPE_ACTION;
 
       if (col == 0)
       {
@@ -212,7 +213,7 @@ static void icons_add_radios(icons_layout_t *lay, int *opt, int *state)
     s->text  = (r == 0) ? "Red" : (r == 1) ? "Green" : "Blue";
     s->fg    = lay->black;
     s->bg    = wuss_NO_BACKGROUND;
-    s->group = 1;
+    s->u.radio.group = 1;
     lay->n++;
   }
 
@@ -265,14 +266,14 @@ static void icons_add_bitmaps(icons_layout_t *lay,
   s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20,
                                    sprite->size.w, sprite->size.h);
   s->type   = wuss_ICON_TYPE_BITMAP;
-  s->bitmap = sprite;
+  s->u.bitmap.image = sprite;
   lay->n++;
 
   s         = &lay->specs[lay->n];
   s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 20 + sprite->size.w, top + 20,
                                    sprite->size.w, sprite->size.h);
   s->type   = wuss_ICON_TYPE_BITMAP;
-  s->bitmap = sprite;
+  s->u.bitmap.image = sprite;
   s->flags  = wuss_ICON_FLAGS_INTERACTIVE;
   *hotspot  = lay->n;
   lay->n++;
@@ -287,10 +288,11 @@ static void icons_add_bitmaps(icons_layout_t *lay,
 static void icons_add_iconset(icons_layout_t *lay, const wuss_t *wuss)
 {
   static const char *const names[4] = { "opton", "optoff", "radon", "radoff" };
-  wuss_icon_spec_t        *s;
-  int                      top;
-  int                      idx[4];
-  int                      i;
+
+  wuss_icon_spec_t *s;
+  int               top;
+  int               idx[4];
+  int               i;
 
   for (i = 0; i < 4; i++)
   {
@@ -321,7 +323,7 @@ static void icons_add_iconset(icons_layout_t *lay, const wuss_t *wuss)
     s->bbox     = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10 + i * (w + 6),
                                        top + 20, w, h);
     s->type     = wuss_ICON_TYPE_BITMAP;
-    s->icon_set = wuss_ICON_SET(idx[i]);
+    s->u.bitmap.set = wuss_ICON_SET(idx[i]);
     lay->n++;
   }
 
@@ -348,7 +350,7 @@ static void icons_add_pattern(icons_layout_t *lay)
   s->type   = wuss_ICON_TYPE_PATTERN;
   s->fg     = lay->black;
   s->bg     = lay->window;
-  s->pattern = screen_PATTERN_DIAGONAL;
+  s->u.pattern.tile = screen_PATTERN_DIAGONAL;
   lay->n++;
 
   lay->y = top + 76;
@@ -379,7 +381,7 @@ static void icons_add_borders(icons_layout_t *lay)
   s->text   = "Groove";
   s->fg     = lay->black;
   s->bg     = lay->window;
-  s->border = wuss_ICON_BORDER_GROOVE;
+  s->u.label.border = wuss_ICON_BORDER_GROOVE;
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
 
@@ -389,7 +391,7 @@ static void icons_add_borders(icons_layout_t *lay)
   s->text   = "Ridge";
   s->fg     = lay->black;
   s->bg     = lay->window;
-  s->border = wuss_ICON_BORDER_RIDGE;
+  s->u.label.border = wuss_ICON_BORDER_RIDGE;
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
 
@@ -399,7 +401,7 @@ static void icons_add_borders(icons_layout_t *lay)
   s->text   = "Action";
   s->fg     = lay->black;
   s->bg     = lay->window;
-  s->border = wuss_ICON_BORDER_ACTION;
+  s->u.label.border = wuss_ICON_BORDER_ACTION;
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
 
@@ -409,11 +411,68 @@ static void icons_add_borders(icons_layout_t *lay)
   s->text   = "Divider";
   s->fg     = lay->black;
   s->bg     = lay->window;
-  s->border = wuss_ICON_BORDER_DIVIDER;
+  s->u.label.border = wuss_ICON_BORDER_DIVIDER;
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
 
   lay->y = top + 166;
+}
+
+/* A grouping frame captioned "Sliders", holding a horizontal slider, a
+ * vertical slider beside it and a label echoing whichever last moved.
+ * Returns the horizontal/vertical slider and echo-label indices via
+ * horiz/vert/state. */
+static void icons_add_sliders(icons_layout_t *lay,
+                              int            *horiz,
+                              int            *vert,
+                              int            *state)
+{
+  wuss_icon_spec_t *s;
+  int               top;
+
+  top     = lay->y;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 130);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "Sliders";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  *horiz  = lay->n;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20, 160, 20);
+  s->type = wuss_ICON_TYPE_SLIDER;
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  s->u.slider.orientation   = wuss_SLIDER_HORIZONTAL;
+  s->u.slider.min           = 0;
+  s->u.slider.max           = 100;
+  s->u.slider.default_value = 25;
+  lay->n++;
+
+  *vert   = lay->n;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 160, top + 50, 20, 70);
+  s->type = wuss_ICON_TYPE_SLIDER;
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  s->u.slider.orientation   = wuss_SLIDER_VERTICAL;
+  s->u.slider.min           = 0;
+  s->u.slider.max           = 10;
+  s->u.slider.default_value = 10;
+  lay->n++;
+
+  *state  = lay->n;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 50, 140, 14);
+  s->type = wuss_ICON_TYPE_LABEL;
+  s->text = "horizontal: 25";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  lay->y = top + 146;
 }
 
 /* A grouping frame captioned "Menu", holding a menu-entry strip: plain,
@@ -460,7 +519,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   s->text   = "Layer colour";
   s->fg     = lay->black;
   s->bg     = wuss_NO_BACKGROUND;
-  s->swatch = lay->red;
+  s->u.menu_entry.swatch = lay->red;
   s->flags  = wuss_ICON_FLAGS_SWATCH;
   lay->n++;
 
@@ -503,21 +562,25 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
 
 /* ----------------------------------------------------------------------- */
 
-result_t icons_create(wuss_t       *wuss,
-                      bmfont_t     *font,
-                      const char   *resources,
-                      icons_task_t *task)
+result_t icons_create(wuss_t *wuss, icons_task_t **out)
 {
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   wuss_icon_spec_t specs[ICONS_NSPECS];
   wuss_icon_t     *made[ICONS_NSPECS];
   icons_layout_t   lay;
+  icons_task_t    *task;
+  const char      *resources;
   const char      *sprite_path;
   int              i_button, i_counter, i_opt, i_state, i_hotspot, i_ticked;
+  int              i_shoriz, i_svert, i_sstate;
   result_t         rc;
 
-  task->font       = font;
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
+
+  task->font       = wuss_get_font_n(wuss, 0);
   task->label      = colour_rgb(0x00, 0x00, 0x00);
   /* only the ruler-text glyph blend; approximates the wuss_COLOUR_WINDOW /
    * wuss_COLOUR_BACKDROP crosshatch the rulers sit on -- no public call
@@ -529,9 +592,13 @@ result_t icons_create(wuss_t       *wuss,
   task->count      = 0;
   task->opt        = NULL;
   task->state      = NULL;
-  task->has_sprite = 0;
-  task->hotspot    = NULL;
+  task->has_sprite   = 0;
+  task->hotspot      = NULL;
+  task->slider_horiz = NULL;
+  task->slider_vert  = NULL;
+  task->slider_state = NULL;
 
+  resources   = wuss_get_resources(wuss);
   sprite_path = path_join_filename(resources, 3, "resources", "wuss",
                                    path_join_leafname("ninepatch", "png"));
   if (bitmap_load_png(&task->sprite, sprite_path) == result_OK)
@@ -557,7 +624,7 @@ result_t icons_create(wuss_t       *wuss,
   {
     if (task->has_sprite)
       free(task->sprite.base);
-    free(task); /* nothing registered yet; the spawner will not free it */
+    free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
 
@@ -600,6 +667,7 @@ result_t icons_create(wuss_t       *wuss,
   icons_add_iconset(&lay, wuss);
   icons_add_pattern(&lay);
   icons_add_borders(&lay);
+  icons_add_sliders(&lay, &i_shoriz, &i_svert, &i_sstate);
   icons_add_menu(&lay, &i_ticked);
 
   rc = wuss_icon_create_array(task->window, specs, lay.n, made);
@@ -612,17 +680,30 @@ result_t icons_create(wuss_t       *wuss,
   task->state   = made[i_state];
   if (i_hotspot >= 0)
     task->hotspot = made[i_hotspot];
-  wuss_icon_set_selected(made[i_ticked], 1); /* "Show grid" starts ticked */
+  task->slider_horiz = made[i_shoriz];
+  task->slider_vert  = made[i_svert];
+  task->slider_state = made[i_sstate];
+  wuss_icon_set_selected(task->window, made[i_ticked], 1); /* "Show grid" starts ticked */
 
   /* fully built: from here a last-window close reaps the task and its
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
+
+  if (out)
+    *out = task;
 
   return result_OK;
 
 failure:
   wuss_task_destroy(delegate); /* closes the window; QUIT frees block + sprite */
   return rc;
+}
+
+void icons_destroy(icons_task_t *task)
+{
+  if (task->has_sprite)
+    free(task->sprite.base);
+  free(task);
 }
 
 #define ICONS_GRID       16 /* document-space pitch of the backdrop grid */
@@ -657,6 +738,7 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
   int           doc;
   int           x;
   int           y;
+  int           ascent;
 
   tcx = task_data;
 
@@ -667,6 +749,8 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
 
   ox = bounds->x0 - scroll.x;
   oy = bounds->y0 - scroll.y;
+
+  bmfont_get_info(tcx->font, NULL, NULL, &ascent, NULL);
 
   /* Everything this task paints is anchored to the document, not the window,
    * so it scrolls rigidly with the content -- which is what Wuss's scroll
@@ -688,9 +772,9 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
       continue;
 
     snprintf(buf, sizeof(buf), "%d", doc);
-    pos = POINT(x + 2, oy + 2);
+    pos = POINT(x + 2, oy + 2 + ascent);
     bmfont_draw(tcx->font, scr, buf, (int) strlen(buf),
-                tcx->label, tcx->paper, &pos, NULL);
+                tcx->label, tcx->paper, NULL, &pos, NULL);
   }
 
   /* y-axis ruler: document y printed just right of the x=0 line, at each
@@ -704,9 +788,9 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
       continue;
 
     snprintf(buf, sizeof(buf), "%d", doc);
-    pos = POINT(ox + 2, y + 2);
+    pos = POINT(ox + 2, y + 2 + ascent);
     bmfont_draw(tcx->font, scr, buf, (int) strlen(buf),
-                tcx->label, tcx->paper, &pos, NULL);
+                tcx->label, tcx->paper, NULL, &pos, NULL);
   }
 
   return result_OK;
@@ -721,6 +805,15 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
   tcx  = task_data;
   icon = event->data.icon.icon;
 
+  if (icon == tcx->slider_horiz || icon == tcx->slider_vert)
+  {
+    const char *name;
+
+    name = (icon == tcx->slider_horiz) ? "horizontal" : "vertical";
+    snprintf(buf, sizeof(buf), "%s: %d", name, event->data.icon.value);
+    return wuss_icon_set_text(tcx->window, tcx->slider_state, buf);
+  }
+
   /* a radio/option latches on MOUSE_UP -- report the state then */
   if (event->data.icon.action == wuss_MOUSE_UP &&
       (wuss_icon_get_type(icon) == wuss_ICON_TYPE_RADIO ||
@@ -730,7 +823,7 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
              wuss_icon_get_text(icon),
              wuss_icon_get_selected(icon) ? "on" : "off",
              (icon == tcx->opt) ? "" : " (radio)");
-    return wuss_icon_set_text(tcx->state, buf);
+    return wuss_icon_set_text(tcx->window, tcx->state, buf);
   }
 
   if (event->data.icon.action != wuss_MOUSE_DOWN)
@@ -741,7 +834,7 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
   tcx->count++;
   snprintf(buf, sizeof(buf), "%d", tcx->count);
 
-  return wuss_icon_set_text(tcx->counter, buf);
+  return wuss_icon_set_text(tcx->window, tcx->counter, buf);
 }
 
 result_t icons_handle(wuss_window_t      *window,
@@ -761,9 +854,7 @@ result_t icons_handle(wuss_window_t      *window,
     return icons_icon(event, task_data);
 
   case wuss_EVENT_QUIT:
-    if (tcx->has_sprite)
-      free(tcx->sprite.base);
-    free(tcx); /* calloc'd per instance by the spawner */
+    icons_destroy(tcx);
     return result_OK;
 
   default:

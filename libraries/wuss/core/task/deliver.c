@@ -23,6 +23,8 @@ static int wuss__kind_ok_for(wuss_event_kind_t kind, int have_window)
   case wuss_EVENT_SHOW:
   case wuss_EVENT_PRE_CLOSE:
   case wuss_EVENT_CLOSE:
+  case wuss_EVENT_POINTER_ENTER:
+  case wuss_EVENT_POINTER_EXIT:
     return have_window;
 
   case wuss_EVENT_IDLE:

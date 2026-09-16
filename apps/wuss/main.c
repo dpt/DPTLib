@@ -36,6 +36,7 @@
 #include "tasks.h"
 
 #include "tasks/palette.h" /* palette_load_hex for the startup *.hex */
+#include "tasks/saturn.h"  /* saturn_create at startup */
 
 /* ----------------------------------------------------------------------- */
 
@@ -69,6 +70,9 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
     config->backdrop.pattern_bg       = palette_WIMP16_GREY_50;
     config->body.window               = palette_WIMP16_GREY_87;
     config->body.menu                 = palette_WIMP16_WHITE;
+    config->slider.track              = palette_WIMP16_WHITE;
+    config->slider.value              = palette_WIMP16_GREY_50;
+    config->slider.surround           = wuss_NO_BACKGROUND;
   }
   else
   {
@@ -93,6 +97,9 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
     config->backdrop.pattern_bg       = palette_PICO8_LIGHT_GREY;
     config->body.window               = palette_PICO8_LIGHT_GREY;
     config->body.menu                 = palette_PICO8_WHITE;
+    config->slider.track              = palette_PICO8_WHITE;
+    config->slider.value              = palette_PICO8_DARK_GREY;
+    config->slider.surround           = wuss_NO_BACKGROUND;
   }
 }
 
@@ -138,16 +145,16 @@ struct wuss_frame_ctx
 static void wuss_frame(void *arg)
 {
   struct wuss_frame_ctx *c = arg;
-  wuss_input_t           ev;
-  bool                   pixel_stress_pending = false;
-  bool                   garbage_pending      = false;
+  wuss_input_t ev;
+  bool         pixel_stress_pending = false;
+  bool         garbage_pending      = false;
 
   while (wuss_frontend_poll(c->frontend, &ev))
   {
     switch (ev.kind)
     {
     case wuss_INPUT_QUIT:
-      g.quit = true;
+      g_tasks.quit = true;
       break;
 
     case wuss_INPUT_REDRAW_ALL:
@@ -207,16 +214,39 @@ static void wuss_frame(void *arg)
     for (i = 0; i < n; i++)
       p[i] = (unsigned char) rand();
 
-    wuss_frontend_present(c->frontend, c->bm);
+    wuss_frontend_present(c->frontend, c->bm, NULL);
+  }
+  else if (pixel_stress_pending)
+  {
+    pixel_stress(c->wuss, c->scr_width, c->scr_height);
+    wuss_frontend_present(c->frontend, c->bm, NULL);
   }
   else
   {
-    if (pixel_stress_pending)
-      pixel_stress(c->wuss, c->scr_width, c->scr_height);
-    else
-      wuss_redraw_dirty(c->wuss);
+    box_t dirty, region, touched;
+    int   ndirty, i, have_touched, have_any;
 
-    wuss_frontend_present(c->frontend, c->bm);
+    ndirty = wuss_get_dirty_count(c->wuss);
+    dirty  = (box_t) BOX_INIT;
+    for (i = 0; i < ndirty; i++)
+    {
+      wuss_get_dirty(c->wuss, i, &region);
+      box_union(&dirty, &region, &dirty);
+    }
+
+    /* Pixels a fast blit path (window move/resize, scroll) slid to a new
+     * position without a repaint: wuss_redraw_dirty won't touch them, but
+     * present() still has to re-upload them -- fold them into the same
+     * bounding box before wuss_clear_touched drops them. */
+    have_touched = wuss_get_touched_extent(c->wuss, &touched);
+    have_any     = (ndirty > 0) || have_touched;
+    if (have_touched)
+      box_union(&dirty, &touched, &dirty);
+
+    wuss_redraw_dirty(c->wuss);
+    wuss_clear_touched(c->wuss);
+
+    wuss_frontend_present(c->frontend, c->bm, have_any ? &dirty : NULL);
   }
 
 #ifdef __EMSCRIPTEN__
@@ -244,27 +274,30 @@ static result_t run_wuss(const char *resources,
                          int         depth,
                          int         scale)
 {
-  const int        scr_width  = 640;
-  const int        scr_height = 480;
-
-  result_t           rc;
-  const char        *leafname;
-  const char        *filename;
-  bmfont_t          *fonts[WUSS_MAIN_NFONTS];
   static const char *const names[WUSS_MAIN_NFONTS] =
-    { "Digits-Regular", "Digits-Bold", "Symbols" };
-  int                nfonts;
-  int                i;
-  void              *pixels;
-  int                rowbytes;
-  pixelfmt_t         fmt;
-  bitmap_t           bm;
-  screen_t           scr;
-  colour_t           palette[16];
-  wuss_t            *wuss;
-  wuss_frontend_t   *frontend;
-  bool               use_wimp16;
-  int                palette_index;
+    { "DPT-Digits-Regular", "DPT-Digits-Bold", "Symbols" };
+
+  const int   scr_width  = 640;
+  const int   scr_height = 480;
+  result_t    rc;
+  const char *leafname;
+  const char *filename;
+  bmfont_t   *fonts[WUSS_MAIN_NFONTS];
+  int         nfonts;
+  int         i;
+  void       *pixels;
+  int         rowbytes;
+  pixelfmt_t  fmt;
+  bitmap_t    bm;
+  screen_t    scr;
+  colour_t    palette[16]; /* the fixed-size UI palette */
+  colour_t    scr_palette[256]; /* palette[] padded out to whatever
+                                        * count the chosen depth's bitmap
+                                        * needs (p8 reads all 256) */
+  wuss_t          *wuss;
+  wuss_frontend_t *frontend;
+  bool             use_wimp16;
+  int              palette_index;
 
   {
     /* palette_name (from -palette, default "PICO-8") names a *.hex file under
@@ -282,8 +315,6 @@ static result_t run_wuss(const char *resources,
                 palette_name, rc, result_string(rc));
       goto Failure;
     }
-
-    g.palette_name = palette_name;
   }
 
   logf_info("wuss: resources root = \"%s\"", resources);
@@ -313,8 +344,16 @@ static result_t run_wuss(const char *resources,
   if (rc != result_OK)
     goto Failure;
 
-  rc = bitmap_init(&bm, SIZE2D(scr_width, scr_height), fmt, rowbytes, palette,
-                   pixels);
+  /* bitmap_set_palette reads every entry a paletted format's bitmap_init
+   * needs (up to 256 for p8); pad scr_palette with palette's 16 UI colours,
+   * then the web-safe 216 (so a p8 screen has real range beyond the UI
+   * colours for nearest-match), then black for what's left. Also done on
+   * a live palette change; see task_handle_event. */
+  tasks_build_screen_palette(scr_palette, NELEMS(scr_palette),
+                             palette, NELEMS(palette));
+
+  rc = bitmap_init(&bm, SIZE2D(scr_width, scr_height), fmt, rowbytes,
+                   scr_palette, pixels);
   logf_info("wuss: bitmap_init -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
@@ -340,20 +379,15 @@ static result_t run_wuss(const char *resources,
     }
 
     rc = wuss_create(&scr, descs, nfonts, palette, NELEMS(palette), &config,
-                     NULL, &wuss);
+                     NULL, resources, &wuss);
     logf_info("wuss: wuss_create -> rc=0x%X (%s)", rc, result_string(rc));
     if (rc != result_OK)
       goto Failure;
   }
 
-  g.wuss           = wuss;
-  g.palette        = palette;
-  g.npalette       = NELEMS(palette);
-  g.resources      = resources;
-  g.daydream_font  = fonts[0]; /* tasks draw with the regular weight */
-  g.bold_font      = fonts[1];
-  g.frontend       = frontend;
-  g.bm             = &bm;
+  g_tasks.wuss           = wuss;
+  g_tasks.frontend       = frontend;
+  g_tasks.bm             = &bm;
 
   {
     wuss_task_desc_t desc;
@@ -361,14 +395,35 @@ static result_t run_wuss(const char *resources,
     desc.handle    = task_handle_event;
     desc.task_data = NULL;
     desc.name      = "menu";
-    rc = wuss_task_create(wuss, &desc, &g.menu_task);
+    rc = wuss_task_create(wuss, &desc, &g_tasks.menu_task);
     logf_info("wuss: wuss_task_create(menu) -> rc=0x%X (%s)", rc,
               result_string(rc));
     if (rc != result_OK)
       goto Failure;
   }
 
-  g.quit = false;
+  {
+    /* The "Info" task-menu row's shared dialogue. Hung off g_task_menu as a
+     * wuss_menu_item_t.window in tasks.c. A create failure is non-fatal --
+     * the row just does nothing. */
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Wuss demo",
+      "Window manager test environment",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+
+    if (wuss_proginfo_create(&g_tasks.proginfo, g_tasks.menu_task, &desc) != result_OK)
+      g_tasks.proginfo = NULL;
+  }
+
+  g_tasks.quit = false;
+
+  rc = saturn_create(wuss, NULL);
+  logf_info("wuss: saturn_create -> rc=0x%X (%s)", rc, result_string(rc));
+  if (rc != result_OK)
+    goto Failure;
 
   wuss_redraw(wuss);
 
@@ -392,7 +447,7 @@ static result_t run_wuss(const char *resources,
      * for requestAnimationFrame pacing. */
     emscripten_set_main_loop_arg(wuss_frame, &ctx, 0, 1);
 #else
-    while (!g.quit)
+    while (!g_tasks.quit)
       wuss_frame(&ctx);
 #endif
   }
@@ -401,6 +456,7 @@ static result_t run_wuss(const char *resources,
    * frees every registered task node, but not the per-instance task_data
    * block a spawn_* calloc'd, so any task window left open at quit leaks that
    * block. Harmless at process exit. */
+  wuss_proginfo_destroy(g_tasks.proginfo); /* closes its dialogue window */
   wuss_destroy(wuss); /* also sweeps g.menu_task and closes any open chain */
 
   for (i = 0; i < nfonts; i++)
@@ -426,14 +482,14 @@ typedef struct wuss_options
 {
   const char *resources;    /* -r/--resources: fixture root */
   const char *palette_name; /* -p/--palette: startup *.hex leafname */
-  int         depth;        /* -d/--depth: framebuffer bpp (1, 2, 4 or 32) */
+  int         depth;        /* -d/--depth: framebuffer bpp (1, 2, 4, 8 or 32) */
   int         scale;        /* -s/--scale: initial window zoom, 0 = default */
 }
 wuss_options_t;
 
 static const char wuss_usage[] =
   "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
-  "[-d|--depth 1|2|4|32] [-s|--scale N]\n";
+  "[-d|--depth 1|2|4|8|32] [-s|--scale N]\n";
 
 #ifndef __riscos
 

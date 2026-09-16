@@ -9,18 +9,48 @@
 
 ## Setup
 
-Create a window manager onto a `screen_t`, with an optional font for titlebar labels and an optional system palette:
+Create a window manager onto a `screen_t`, with an array of font slots, an optional system palette, optional creation config and optional allocator hooks:
 
 ```C
-result_t wuss_create(screen_t             *scr,
-                     bmfont_t             *font,
-                     const colour_t       *palette,
-                     int                   npalette,
-                     const wuss_config_t  *config,
-                     wuss_t              **wuss);
+result_t wuss_create(screen_t               *scr,
+                     const wuss_font_desc_t *fonts,
+                     int                     nfonts,
+                     const colour_t         *palette,
+                     int                     npalette,
+                     const wuss_config_t    *config,
+                     const wuss_alloc_t     *alloc,
+                     wuss_t                **wuss);
 ```
 
-`font` and `palette` may both be NULL, for unlabelled titlebars and a built-in default palette respectively. `config` may be NULL for default titlebar height/colours. `config->backdrop` is a `wuss_backdrop_t` — a flat colour, or an 8x8 fill pattern — painted behind windows on every redraw; set its `colour` to `wuss_NO_BACKGROUND` (the default when `config` is NULL) to leave the background untouched and require the caller to repaint it itself. A non-`screen_PATTERN_SOLID` `pattern` tiles that pattern in `colour` over `pattern_bg`, phased to a fixed screen origin so it does not crawl between full and dirty-region redraws. `wuss_get_font` reads back the font passed in (or NULL), for a task that wants to draw its own content in the same face as titlebars.
+`fonts` (or `nfonts` 0) may be NULL, for unlabelled titlebars; `palette` may be NULL for a built-in default palette; `alloc` may be NULL for plain stdlib `malloc`/`realloc`/`free`. `config` may be NULL for default titlebar height/colours. `config->backdrop` is a `wuss_backdrop_t` — a flat colour, or an 8x8 fill pattern — painted behind windows on every redraw; set its `colour` to `wuss_NO_BACKGROUND` (the default when `config` is NULL) to leave the background untouched and require the caller to repaint it itself. A non-`screen_PATTERN_SOLID` `pattern` tiles that pattern in `colour` over `pattern_bg`, phased to a fixed screen origin so it does not crawl between full and dirty-region redraws.
+
+### Fonts
+
+Text drawing lives in its own module, `libraries/wuss/font/`: the region core delegates it the same way it delegates furniture, icons and menus. It owns the font slots a `wuss_t` was created with and the one text-rendering primitive furniture, menus and icons all call, so region handling can be used without pulling any font code in beyond the slot storage.
+
+`wuss_create` takes up to `wuss_MAX_FONTS` (4) slots as an array of `wuss_font_desc_t`:
+
+```C
+typedef struct wuss_font_desc
+{
+  bmfont_t         *font;       /* not owned; must outlive the wuss_t */
+  wuss_font_class_t font_class; /* wuss_FONT_CLASS_NONE (a text face) or
+                                 * wuss_FONT_CLASS_SYSTEM (chrome only) */
+  const char       *name;       /* borrowed; the font's leafname sans ".png",
+                                 * for a picker to match against; may be NULL */
+}
+wuss_font_desc_t;
+```
+
+The descriptors are copied in; the fonts are not owned. Slot use:
+
+- **slot 0** — the system font: titlebar labels, menu rows, and any icon that does not select another weight. Also what `wuss_get_font` reads back, for a task that wants to draw its own content in the same face.
+- **slot 1** — the bold weight, if supplied: window and menu titles draw from it, falling back to slot 0.
+- **slot `WUSS_SYMBOL_FONT` (2)** — an optional symbol font the menu tick and submenu arrow are drawn from as glyphs; without it they are drawn as vector strokes.
+
+An empty slot is NULL and callers degrade to slot 0 or a stroke fallback. When no `config->titlebar_height` is set, the titlebar is sized to the taller of the slot-0 and slot-1 faces, or `WUSS_DEFAULT_TITLEBAR_HEIGHT` if both are empty.
+
+Read the slots back with `wuss_get_font` (slot 0), `wuss_get_font_n(wuss, i)`, `wuss_get_font_class_n(wuss, i)` and `wuss_get_font_name_n(wuss, i)` — the last two let a picker such as `wuss_fontmenu` tell a chrome font apart from a selectable text face. All text wuss itself draws goes through one internal primitive so a uniform optical baseline nudge is applied everywhere.
 
 A `wuss_backdrop_t` is `{ colour, pattern, pattern_bg }`; the `wuss_BACKDROP_COLOUR(c)` and `wuss_BACKDROP_PATTERN(c, p, b)` macros build one as a compound literal.
 
@@ -124,7 +154,7 @@ For `wuss_EVENT_REDRAW`, `event->data.redraw.scr` is called with `scr->clip` alr
 
 For `wuss_EVENT_MOUSE` and `wuss_EVENT_SCROLL`, `event->data.mouse.point` and `event->data.scroll.point` are window-local content coordinates: the content area's top-left is `(0,0)` plus the window's current scroll offset (see "Scrolling" below). `event->data.mouse.action` is `wuss_MOUSE_DOWN`/`wuss_MOUSE_UP`/`wuss_MOUSE_MOVE`. A titlebar click never reaches a task's handle callback: it starts a drag (and, for `wuss_BUTTON_SELECT`, brings the window to front) instead. A content click, even on a `wuss_WINDOW_NO_TITLEBAR` window with no drag handle, never changes z-order — only a titlebar click raises a window — so tasks are free to use content clicks for their own purposes without Wuss reordering windows underneath them.
 
-`wuss_EVENT_ICON` is delivered instead of `wuss_EVENT_MOUSE` whenever the pointer is inside a `wuss_ICON_TYPE_BUTTON` icon's bounding box (see "Icons" below): `event->data.icon.icon` names the icon, `action` and `button` carry the same values a `wuss_EVENT_MOUSE` would. `wuss_ICON_TYPE_LABEL` icons, and hidden or disabled icons, never raise it — clicks over them fall through as `wuss_EVENT_MOUSE`.
+`wuss_EVENT_ICON` is delivered instead of `wuss_EVENT_MOUSE` whenever the pointer is inside a `wuss_ICON_TYPE_ACTION` icon's bounding box (see "Icons" below): `event->data.icon.icon` names the icon, `action` and `button` carry the same values a `wuss_EVENT_MOUSE` would. `wuss_ICON_TYPE_LABEL` icons, and hidden or disabled icons, never raise it — clicks over them fall through as `wuss_EVENT_MOUSE`.
 
 ## Mouse and scroll routing
 
@@ -198,17 +228,17 @@ In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scro
 
 Taking inspiration from RISC OS, a window can carry **icons**: rectangular UI elements Wuss draws and hit-tests inside the content area. v1 ships two types:
 
-- `wuss_ICON_TYPE_LABEL` — static text, optionally in a 1px raised or sunken border (`spec.border` — `wuss_ICON_BORDER_NONE` / `_RIDGE` / `_GROOVE`, the last a RISC OS-style read-only display field). Clicks fall through to the task as `wuss_EVENT_MOUSE`.
-- `wuss_ICON_TYPE_BUTTON` — a bevelled rectangle with a centred label and pressed-state feedback (the bevel inverts and the label shifts one pixel down-right while held). Clicks and hovers arrive as `wuss_EVENT_ICON`.
+- `wuss_ICON_TYPE_LABEL` — static text, optionally in a 1px raised or sunken border (`spec.u.label.border` — `wuss_ICON_BORDER_NONE` / `_RIDGE` / `_GROOVE`, the last a RISC OS-style read-only display field). Clicks fall through to the task as `wuss_EVENT_MOUSE`.
+- `wuss_ICON_TYPE_ACTION` — a bevelled rectangle with a centred label and pressed-state feedback (the bevel inverts and the label shifts one pixel down-right while held). Clicks and hovers arrive as `wuss_EVENT_ICON`.
 
 The enum is left open for sprite and editable-text types later.
 
 Icons are dynamic and owned by their window:
 
-- `wuss_icon_create(window, spec, &icon)` — returns an opaque `wuss_icon_t *`. The spec gives the bounding box, type, text (copied; `NULL` treated as `""`), foreground and background palette indices, a `border` (label only), and flags. A `wuss_ICON_TYPE_BUTTON` must pass a real `bg`; passing `wuss_NO_BACKGROUND` is rejected with `result_WUSS_BAD_ICON`. An unknown type is also `result_WUSS_BAD_ICON`; an out-of-range `fg`/`bg` is `result_WUSS_BAD_COLOUR`.
-- `wuss_icon_delete(icon)` — NULL-safe.
-- `wuss_icon_set_text(icon, text)`, `wuss_icon_set_hidden(icon, hidden)`.
-- Getters: `wuss_icon_get_bbox`, `wuss_icon_get_type`, `wuss_icon_get_text` (never `NULL`), `wuss_icon_get_window`.
+- `wuss_icon_create(window, spec, &icon)` — returns an opaque `wuss_icon_t *`. The spec gives the bounding box, type, text (copied; `NULL` treated as `""`), foreground and background palette indices, a per-type payload in the `u` union (`u.label.border`, `u.pattern.tile`, `u.bitmap.image`/`u.bitmap.set`, `u.radio.group`, `u.menu_entry.swatch`), and flags. A `wuss_ICON_TYPE_ACTION` must pass a real `bg`; passing `wuss_NO_BACKGROUND` is rejected with `result_WUSS_BAD_ICON`. An unknown type is also `result_WUSS_BAD_ICON`; an out-of-range `fg`/`bg` is `result_WUSS_BAD_COLOUR`.
+- `wuss_icon_delete(window, icon)` — NULL-safe.
+- `wuss_icon_set_text(window, icon, text)`, `wuss_icon_set_hidden(window, icon, hidden)`, `wuss_icon_set_selected(window, icon, selected)`.
+- Getters: `wuss_icon_get_bbox`, `wuss_icon_get_type`, `wuss_icon_get_text` (never `NULL`), `wuss_icon_get_selected`.
 
 Flags: `wuss_ICON_FLAGS_HIDDEN` (not drawn, not hit-tested) and `wuss_ICON_FLAGS_DISABLED` (drawn greyed; clicks fall through as `wuss_EVENT_MOUSE`).
 
@@ -226,7 +256,7 @@ The bevel's light (top/left) and dark (bottom/right) edge shades come from `conf
 - `wuss_icons_bitmap(wuss, index)` → the compressed `bitmap_t *` (window-manager-owned), or `NULL` out of range.
 - `wuss_icons_count(wuss)`.
 
-A `wuss_ICON_TYPE_BITMAP` spec with `bitmap == NULL` and `icon_set = wuss_ICON_SET(idx)` draws the loaded entry at `idx` (the `wuss_ICON_SET` macro offsets by one so a zero-initialised spec means "no entry"). An out-of-range index is `result_WUSS_BAD_INDEX`. Calling `wuss_icons_load` again replaces the set; `wuss_destroy` frees it. A missing directory is not an error — it yields a zero-length set. `dir` is copied internally, so a `path_join_filename` result is safe to pass.
+A `wuss_ICON_TYPE_BITMAP` spec with `u.bitmap.image == NULL` and `u.bitmap.set = wuss_ICON_SET(idx)` draws the loaded entry at `idx` (the `wuss_ICON_SET` macro offsets by one so a zero-initialised spec means "no entry"). An out-of-range index is `result_WUSS_BAD_INDEX`. Calling `wuss_icons_load` again replaces the set; `wuss_destroy` frees it. A missing directory is not an error — it yields a zero-length set. `dir` is copied internally, so a `path_join_filename` result is safe to pass.
 
 ## Components
 
@@ -268,12 +298,13 @@ Terms as this document and the API use them. Several are RISC OS conventions, wh
 - **Chord** — two or more mouse buttons held together, e.g. Select+Adjust. Wuss's own furniture handling resolves an ambiguous chord in Select's favour.
 - **Content area** — the part of a window belonging to its task. Its bounds are exactly what was passed to `wuss_window_create`, furniture being added outside it; read back with `wuss_window_get_content_bounds`.
 - **Dirty region** — the accumulated set of screen-space boxes needing repaint, coalesced as they accumulate. `wuss_redraw_dirty` repaints and clears it.
+- **Font slot** — one of up to `wuss_MAX_FONTS` `wuss_font_desc_t` entries passed to `wuss_create` and owned by the `libraries/wuss/font/` module. Slot 0 is the system font, slot 1 the bold weight, slot 2 (`WUSS_SYMBOL_FONT`) an optional glyph font for menu decoration. Read back with `wuss_get_font` / `wuss_get_font_n`. See "Fonts".
 - **Document extent** — `doc`, the size of a task's virtual content space, fixed at window creation. Sets how far a window can scroll, the scrollbar sausages' proportions, and the size a resize-drag or toggle-size can grow the content area to.
 - **Minimum extent** — `min_doc`, the smallest content size a resize-drag or toggle-size will leave a window at, fixed at window creation. `(0, 0)` means the built-in floor.
 - **Furniture** — everything Wuss draws around a window's content: outline, titlebar and its buttons, scrollbars, resize button. Drawn outside the content area, never carved out of it. Furniture clicks are handled entirely within Wuss and never reach the task.
 - **Furniture button** — a clickable furniture region in the titlebar or window corner: close, back, toggle-size, resize. (Called an "icon" in earlier revisions; that name now means the work-area element below.)
 - **Handle callback** — a task's single `wuss_event_fn_t`, receiving every event kind and dispatching on `event->kind`. A window whose task has no handle receives no events at all.
-- **Icon** — a rectangular UI element Wuss draws and hit-tests inside a window's content area: a static `wuss_ICON_TYPE_LABEL`, or a clickable bevelled `wuss_ICON_TYPE_BUTTON`. Created with `wuss_icon_create` and owned by its window. Its bounding box is in virtual content space, so it scrolls with the content; its screen position is `content-top-left - scroll + bbox`. See "Icons".
+- **Icon** — a rectangular UI element Wuss draws and hit-tests inside a window's content area: a static `wuss_ICON_TYPE_LABEL`, or a clickable bevelled `wuss_ICON_TYPE_ACTION`. Created with `wuss_icon_create` and owned by its window. Its bounding box is in virtual content space, so it scrolls with the content; its screen position is `content-top-left - scroll + bbox`. See "Icons".
 - **Invalidate** — mark a region dirty for the next `wuss_redraw_dirty`. Window management does this for its own changes; a task must do it for its own content changes.
 - **Menu** — the middle mouse button, `wuss_BUTTON_MENU`. Routed like any other button; Wuss provides no menu widget of its own.
 - **Outline** — the 1px border drawn around a window, suppressed by `wuss_WINDOW_NO_OUTLINE`.

@@ -38,7 +38,7 @@
 #if defined(WUSS_FURNITURE) && defined(WUSS_ICONS)
 #include "../core/impl.h"
 #endif
-#if defined(WUSS_MENUS) && defined(WUSS_ICONS)
+#if defined(WUSS_ICONS)
 #include "../icon.h"
 #endif
 
@@ -231,6 +231,33 @@ static result_t paint_handle(wuss_window_t      *window,
   return result_OK;
 }
 
+/* A redraw handler that ignores "clip" and always floods its whole content
+ * box with the colour_t task_data points to, relying entirely on wuss-core's
+ * own clipping (scr->clip during the redraw dispatch) to keep the fill
+ * inside the window -- matching a task such as saturn.c that redraws its
+ * full fixed sample space every call rather than restricting itself to the
+ * dirty piece it was handed. */
+static result_t flood_full_bounds_handle(wuss_window_t      *window,
+                                         const wuss_event_t *event,
+                                         void               *task_data)
+{
+  const box_t    *bounds;
+  const colour_t *colour;
+
+  NOT_USED(window);
+
+  if (event->kind != wuss_EVENT_REDRAW)
+    return result_OK;
+
+  bounds = event->data.redraw.bounds;
+  colour = task_data;
+  screen_fill_rect(event->data.redraw.scr, bounds->x0, bounds->y0,
+                   SIZE2D(bounds->x1 - bounds->x0, bounds->y1 - bounds->y0),
+                   *colour);
+
+  return result_OK;
+}
+
 /* ----------------------------------------------------------------------- */
 
 /* Most tests declare their test_task_t on the block stack. A registered
@@ -396,8 +423,8 @@ static int dirty_union_area(wuss_t *wuss, const box_t *bounds)
 {
   static unsigned char covered[512 * 512];
 
-  box_t region;
-  int   w, h, i, x, y, area;
+  box_t                region;
+  int                  w, h, i, x, y, area;
 
   w = bounds->x1 - bounds->x0;
   h = bounds->y1 - bounds->y0;
@@ -529,7 +556,7 @@ result_t wuss_test(const char *resources)
   bad_config.button.fg                 = 0;
   bad_config.button.pressed            = 0;
   bad_config.accent.colour             = 0;
-  rc = wuss_create(&scr, NULL, 0, NULL, 0, &bad_config, NULL, &bad_wuss);
+  rc = wuss_create(&scr, NULL, 0, NULL, 0, &bad_config, NULL, NULL, &bad_wuss);
   if (rc != result_WUSS_BAD_COLOUR)
     goto Failure;
 
@@ -538,7 +565,7 @@ result_t wuss_test(const char *resources)
   {
     wuss_t *custom_wuss;
 
-    rc = wuss_create(&scr, NULL, 0, custom_palette, 2, NULL, NULL, &custom_wuss);
+    rc = wuss_create(&scr, NULL, 0, custom_palette, 2, NULL, NULL, NULL, &custom_wuss);
     if (rc != result_OK)
       goto Failure;
     wuss_destroy(custom_wuss);
@@ -546,7 +573,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: wuss_create with default palette\n");
 
-  rc = wuss_create(&scr, NULL, 0, NULL, 0, NULL, NULL, &wuss);
+  rc = wuss_create(&scr, NULL, 0, NULL, 0, NULL, NULL, NULL, &wuss);
   if (rc != result_OK)
     goto Failure;
 
@@ -561,11 +588,12 @@ result_t wuss_test(const char *resources)
       { 0xFF0000FF }, { 0xFF00FF00 }, { 0xFFFF0000 },
       { 0xFFFFFFFF }, { 0xFF000000 }
     };
-    wuss_config_t   symcfg;
-    wuss_t         *symw;
-    wuss_window_t  *symwin;
-    wuss_task_t    *symdel;
-    box_t           symbox;
+
+    wuss_config_t  symcfg;
+    wuss_t        *symw;
+    wuss_window_t *symwin;
+    wuss_task_t   *symdel;
+    box_t          symbox;
 
     memset(&symcfg, 0, sizeof(symcfg));
     symcfg.furniture.title.bg = wuss_COLOUR_BLUE;   /* -> index 2 */
@@ -574,7 +602,7 @@ result_t wuss_test(const char *resources)
     symcfg.body.window = wuss_COLOUR_RED;           /* -> index 0 */
     symcfg.body.menu   = wuss_COLOUR_WHITE;         /* -> index 3 */
 
-    rc = wuss_create(&scr, NULL, 0, sympal, 5, &symcfg, NULL, &symw);
+    rc = wuss_create(&scr, NULL, 0, sympal, 5, &symcfg, NULL, NULL, &symw);
     if (rc != result_OK)
       goto Failure;
 
@@ -627,7 +655,7 @@ result_t wuss_test(const char *resources)
                           &box_a,
                           "toosmall",
                           wuss_WINDOW_DEFAULT,
-                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          wuss_NO_BACKDROP,
                           box_size(&box_a),
                           SIZE2D(0, 0),
                           &win_a);
@@ -647,10 +675,10 @@ result_t wuss_test(const char *resources)
   rc = wuss_window_create(delegate_a,
                           &box_a,
                           "A",
-                          wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
-                          wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                          wuss_WINDOW_NO_RESIZE,
-                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          wuss_WINDOW_DEFAULT & ~wuss_WINDOW_BACK &
+                          ~wuss_WINDOW_TOGGLE_SIZE & ~wuss_WINDOW_VSCROLL &
+                          ~wuss_WINDOW_HSCROLL & ~wuss_WINDOW_RESIZE,
+                          wuss_NO_BACKDROP,
                           box_size(&box_a),
                           SIZE2D(0, 0),
                           &win_a);
@@ -668,10 +696,10 @@ result_t wuss_test(const char *resources)
   rc = wuss_window_create(delegate_b,
                           &box_b,
                           "B",
-                          wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
-                          wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                          wuss_WINDOW_NO_RESIZE,
-                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          wuss_WINDOW_DEFAULT & ~wuss_WINDOW_BACK &
+                          ~wuss_WINDOW_TOGGLE_SIZE & ~wuss_WINDOW_VSCROLL &
+                          ~wuss_WINDOW_HSCROLL & ~wuss_WINDOW_RESIZE,
+                          wuss_NO_BACKDROP,
                           box_size(&box_b),
                           SIZE2D(0, 0),
                           &win_b);
@@ -989,9 +1017,10 @@ result_t wuss_test(const char *resources)
      * visible top-left (10-1 outline) back to (0,0), then the clamp caps
      * the content at 200 - 2*1 - 20(titlebar) tall, 200 - 2*1 wide. */
     box_big.x0 = 10; box_big.y0 = 10; box_big.x1 = 400; box_big.y1 = 400;
-    rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_big, "BIG", wuss_WINDOW_NO_VSCROLL |
-                            wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+    rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_big, "BIG",
+                            wuss_WINDOW_DEFAULT & ~wuss_WINDOW_VSCROLL &
+                            ~wuss_WINDOW_HSCROLL & ~wuss_WINDOW_RESIZE,
+                            wuss_NO_BACKDROP,
                             SIZE2D(400, 400), SIZE2D(0, 0), &win_big);
     if (rc != result_OK)
       goto Failure;
@@ -1014,10 +1043,9 @@ result_t wuss_test(const char *resources)
   rc = wuss_window_create(delegate_d,
                           &box_d,
                           "ignored",
-                          wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                          wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                          wuss_WINDOW_NO_RESIZE,
-                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                          wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                          wuss_NO_BACKDROP,
                           box_size(&box_d),
                           SIZE2D(0, 0),
                           &win_d);
@@ -1046,10 +1074,10 @@ result_t wuss_test(const char *resources)
   printf("test: content click on a title-less window does not change z-order\n");
 
   {
-    static test_task_t    tc_e, tc_f;
-    wuss_task_t   *delegate_e, *delegate_f;
-    box_t          box_e, box_f;
-    wuss_window_t *win_e, *win_f;
+    static test_task_t tc_e, tc_f;
+    wuss_task_t       *delegate_e, *delegate_f;
+    box_t              box_e, box_f;
+    wuss_window_t     *win_e, *win_f;
 
     tc_e.redraw_count = 0;
     tc_e.mouse_count  = 0;
@@ -1061,10 +1089,8 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_e,
                             &box_e,
                             NULL,
-                            wuss_WINDOW_NO_TITLEBAR |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_WINDOW_NO_TITLEBAR,
+                            wuss_NO_BACKDROP,
                             box_size(&box_e),
                             SIZE2D(0, 0),
                             &win_e);
@@ -1081,10 +1107,8 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_f,
                             &box_f,
                             NULL,
-                            wuss_WINDOW_NO_TITLEBAR |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_WINDOW_NO_TITLEBAR,
+                            wuss_NO_BACKDROP,
                             box_size(&box_f),
                             SIZE2D(0, 0),
                             &win_f);
@@ -1132,11 +1156,11 @@ result_t wuss_test(const char *resources)
   printf("test: moving/resizing a window entirely behind an occluder has no visible effect\n");
 
   {
-    static test_task_t    tc_h, tc_g;
-    wuss_task_t   *delegate_h, *delegate_g;
-    box_t          box_h, box_g;
-    wuss_window_t *win_h, *win_g;
-    int            before_h, before_g;
+    static test_task_t tc_h, tc_g;
+    wuss_task_t       *delegate_h, *delegate_g;
+    box_t              box_h, box_g;
+    wuss_window_t     *win_h, *win_g;
+    int                before_h, before_g;
 
     tc_h.redraw_count = 0;
     tc_h.mouse_count  = 0;
@@ -1148,10 +1172,9 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_h,
                             &box_h,
                             NULL,
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_h),
                             SIZE2D(0, 0),
                             &win_h);
@@ -1168,10 +1191,9 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_g,
                             &box_g,
                             NULL,
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_g),
                             SIZE2D(0, 0),
                             &win_g);
@@ -1214,10 +1236,10 @@ result_t wuss_test(const char *resources)
   printf("test: bring-to-front only invalidates the newly-uncovered part\n");
 
   {
-    static test_task_t    tc_i, tc_j;
-    wuss_task_t   *delegate_i, *delegate_j;
-    box_t          box_i, box_j, dirty;
-    wuss_window_t *win_i, *win_j;
+    static test_task_t tc_i, tc_j;
+    wuss_task_t       *delegate_i, *delegate_j;
+    box_t              box_i, box_j, dirty;
+    wuss_window_t     *win_i, *win_j;
 
     tc_i.redraw_count = 0;
     tc_i.mouse_count  = 0;
@@ -1229,10 +1251,9 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_i,
                             &box_i,
                             NULL,
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_i),
                             SIZE2D(0, 0),
                             &win_i);
@@ -1249,10 +1270,9 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_j,
                             &box_j,
                             NULL,
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_j),
                             SIZE2D(0, 0),
                             &win_j);
@@ -1283,11 +1303,11 @@ result_t wuss_test(const char *resources)
   printf("test: dragging off-screen and back on repaints the reappearing edge\n");
 
   {
-    static test_task_t    tc_m;
-    wuss_task_t   *delegate_m;
-    box_t          box_m;
-    wuss_window_t *win_m;
-    int            before_m;
+    static test_task_t tc_m;
+    wuss_task_t       *delegate_m;
+    box_t              box_m;
+    wuss_window_t     *win_m;
+    int                before_m;
 
     tc_m.redraw_count = 0;
     tc_m.mouse_count  = 0;
@@ -1299,10 +1319,9 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_m,
                             &box_m,
                             NULL,
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_m),
                             SIZE2D(0, 0),
                             &win_m);
@@ -1338,10 +1357,10 @@ result_t wuss_test(const char *resources)
   printf("test: Adjust-click on a window's back icon brings it to front\n");
 
   {
-    static test_task_t    tc_g, tc_h;
-    wuss_task_t   *delegate_g, *delegate_h;
-    box_t          box_g, box_h;
-    wuss_window_t *win_g, *win_h;
+    static test_task_t tc_g, tc_h;
+    wuss_task_t       *delegate_g, *delegate_h;
+    box_t              box_g, box_h;
+    wuss_window_t     *win_g, *win_h;
 
     tc_h.redraw_count = 0;
     tc_h.mouse_count  = 0;
@@ -1354,7 +1373,7 @@ result_t wuss_test(const char *resources)
                             &box_h,
                             "H",
                             wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             box_size(&box_h),
                             SIZE2D(0, 0),
                             &win_h);
@@ -1371,8 +1390,9 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_g,
                             &box_g,
                             "G",
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_WINDOW_DEFAULT & ~wuss_WINDOW_VSCROLL &
+                            ~wuss_WINDOW_HSCROLL,
+                            wuss_NO_BACKDROP,
                             box_size(&box_g),
                             SIZE2D(0, 0),
                             &win_g);
@@ -1478,10 +1498,10 @@ result_t wuss_test(const char *resources)
   printf("test: drag-resize stops at min_doc, not just WUSS_MIN_CONTENT\n");
 
   {
-    static test_task_t    tc_m;
-    wuss_task_t   *delegate_m;
-    box_t          box_m, content, visible;
-    wuss_window_t *win_m;
+    static test_task_t tc_m;
+    wuss_task_t       *delegate_m;
+    box_t              box_m, content, visible;
+    wuss_window_t     *win_m;
 
     tc_m.redraw_count    = 0;
     tc_m.mouse_count     = 0;
@@ -1491,7 +1511,7 @@ result_t wuss_test(const char *resources)
     box_m.x0 = 10; box_m.y0 = 10;
     box_m.x1 = 210; box_m.y1 = 210; /* 200x200 content, floored at 80x60 */
     rc = wuss_window_create(delegate_m, &box_m, "M", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(200, 200), SIZE2D(80, 60),
                             &win_m);
     if (rc != result_OK)
@@ -1521,17 +1541,111 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_m);
   }
 
+  printf("test: drag-resize never grows a window's total size past the screen's, on either axis\n");
+
+  {
+    static test_task_t tc_s;
+    wuss_task_t       *delegate_s;
+    box_t              box_s, content, visible;
+    wuss_window_t     *win_s;
+
+    tc_s.redraw_count = 0;
+    tc_s.mouse_count  = 0;
+    delegate_s = mk_task(wuss, test_handle, &tc_s);
+    if (delegate_s == NULL) goto Failure;
+
+    box_s.x0 = 10; box_s.y0 = 10;
+    box_s.x1 = 30; box_s.y1 = 30; /* 20x20 content; doc is 1000x1000, far bigger than the 200x200 screen */
+    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(1000, 1000), SIZE2D(0, 0), &win_s);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_s, &visible);
+
+    rc = wuss_mouse_click(wuss, POINT(visible.x1 - 3, visible.y1 - 3), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* S's resize icon */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_s)
+      goto Failure;
+
+    rc = wuss_mouse_move(wuss, POINT(1000, 1000), &hit); /* drag far past the 200x200 screen */
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, POINT(1000, 1000), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_s, &visible);
+    if (visible.x1 - visible.x0 > 200 || visible.y1 - visible.y0 > 200)
+      goto Failure; /* total footprint capped at the screen size, wherever the window sits */
+
+    wuss_window_close(win_s);
+  }
+
+  {
+    /* Same cap, but for a window moved partway off the top-left of the
+     * screen: the mouse pointer itself is clamped to the screen (see
+     * wuss_mouse_move), so a positive content.x0 can never see a resize
+     * drag reach far enough to overhang -- the gap only shows up once
+     * content.x0 is negative, letting the drag's on-screen pointer range
+     * translate into a width bigger than the screen itself. */
+    static test_task_t tc_e;
+    wuss_task_t       *delegate_e;
+    box_t              box_e, visible;
+    wuss_window_t     *win_e;
+
+    tc_e.redraw_count = 0;
+    tc_e.mouse_count  = 0;
+    delegate_e = mk_task(wuss, test_handle, &tc_e);
+    if (delegate_e == NULL) goto Failure;
+
+    box_e.x0 = 10; box_e.y0 = 10;
+    box_e.x1 = 30; box_e.y1 = 30; /* 20x20 content; doc is 1000x1000, far bigger than the 200x200 screen */
+    rc = wuss_window_create(delegate_e, &box_e, "E", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(1000, 1000), SIZE2D(0, 0), &win_e);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_move(win_e, POINT(-100, -100)); /* content top-left off-screen, top-left corner */
+
+    wuss_window_get_visible_bounds(win_e, &visible);
+
+    rc = wuss_mouse_click(wuss, POINT(visible.x1 - 3, visible.y1 - 3), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* E's resize icon */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_e)
+      goto Failure;
+
+    rc = wuss_mouse_move(wuss, POINT(1000, 1000), &hit); /* drag to the far corner; the pointer itself clamps to (199,199) */
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, POINT(1000, 1000), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_e, &visible);
+    if (visible.x1 - visible.x0 > 200 || visible.y1 - visible.y0 > 200)
+      goto Failure; /* total footprint still capped at the screen size, even with a negative x0/y0 */
+
+    wuss_window_close(win_e);
+  }
+
   printf("test: toggle-size blits rather than redrawing the whole window\n");
 
   {
-    static test_task_t    tc_t;
-    wuss_task_t   *delegate_t;
-    box_t          box_t_win, before, after, titlebar, toggle;
-    wuss_window_t *win_t;
-    int            outline_px, titlebar_height, inset, icon;
-    int            i, dirty_area, full_area, cx, cy, old_icon_x, old_icon_y, found;
-    int            interior_x, interior_y, interior_dirty;
-    int            old_vscroll_x, old_vscroll_y, old_vscroll_found;
+    static test_task_t tc_t;
+    wuss_task_t       *delegate_t;
+    box_t              box_t_win, before, after, titlebar, toggle;
+    wuss_window_t     *win_t;
+    int                outline_px, titlebar_height, inset, icon;
+    int                i, dirty_area, full_area, cx, cy, old_icon_x, old_icon_y, found;
+    int                interior_x, interior_y, interior_dirty;
+    int                old_vscroll_x, old_vscroll_y, old_vscroll_found;
 
     tc_t.redraw_count = 0;
     tc_t.mouse_count  = 0;
@@ -1541,7 +1655,7 @@ result_t wuss_test(const char *resources)
     box_t_win.x0 = 10; box_t_win.y0 = 10;
     box_t_win.x1 = 50; box_t_win.y1 = 50; /* 40x40 content, room to grow to a 150x150 doc without the toggled box needing to be repositioned off (10,10) -- this test is about the in-place grow blit */
     rc = wuss_window_create(delegate_t, &box_t_win, "T", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(150, 150), SIZE2D(0, 0), &win_t);
     if (rc != result_OK)
       goto Failure;
@@ -1693,12 +1807,12 @@ result_t wuss_test(const char *resources)
   printf("test: toggle-size that forces a scroll re-clamp invalidates the content it's about to redraw at the new offset, not just the blit's edge sliver\n");
 
   {
-    static test_task_t    tc_r;
-    wuss_task_t   *delegate_r;
-    box_t          box_r, before, titlebar, toggle;
-    wuss_window_t *win_r;
-    int            outline_px, titlebar_height, inset, icon;
-    int            i, interior_x, interior_y, interior_dirty, cx, cy;
+    static test_task_t tc_r;
+    wuss_task_t       *delegate_r;
+    box_t              box_r, before, titlebar, toggle;
+    wuss_window_t     *win_r;
+    int                outline_px, titlebar_height, inset, icon;
+    int                i, interior_x, interior_y, interior_dirty, cx, cy;
 
     tc_r.redraw_count = 0;
     tc_r.mouse_count  = 0;
@@ -1708,7 +1822,7 @@ result_t wuss_test(const char *resources)
     box_r.x0 = 10; box_r.y0 = 10;
     box_r.x1 = 50; box_r.y1 = 50; /* 40x40 content; doc bigger than that, so it starts scrollable */
     rc = wuss_window_create(delegate_r, &box_r, "R", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(70, 70), SIZE2D(0, 0), &win_r);
     if (rc != result_OK)
       goto Failure;
@@ -1796,14 +1910,14 @@ result_t wuss_test(const char *resources)
      * grow forces a scroll re-clamp, the overlap of the old and new content
      * boxes is genuine on-screen content that just needs sliding by the
      * scroll delta -- only the newly-exposed strip needs a real repaint. */
-    static test_task_t    tc_d;
-    wuss_task_t   *delegate_d;
-    box_t          box_d, content_before;
-    wuss_window_t *win_d;
-    point_t        scroll_d;
-    int            i;
-    int            top_x, top_y, mid_x, mid_y, bottom_x, bottom_y;
-    int            top_dirty, mid_dirty, bottom_dirty;
+    static test_task_t tc_d;
+    wuss_task_t       *delegate_d;
+    box_t              box_d, content_before;
+    wuss_window_t     *win_d;
+    point_t            scroll_d;
+    int                i;
+    int                top_x, top_y, mid_x, mid_y, bottom_x, bottom_y;
+    int                top_dirty, mid_dirty, bottom_dirty;
 
     tc_d.redraw_count = 0;
     tc_d.mouse_count  = 0;
@@ -1813,7 +1927,7 @@ result_t wuss_test(const char *resources)
     box_d.x0 = 10; box_d.y0 = 10;
     box_d.x1 = 90; box_d.y1 = 90; /* 80x80 content; doc taller, so it starts scrollable */
     rc = wuss_window_create(delegate_d, &box_d, "D", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(80, 140), SIZE2D(0, 0), &win_d);
     if (rc != result_OK)
       goto Failure;
@@ -1899,14 +2013,14 @@ result_t wuss_test(const char *resources)
      * the occluder's own correct pixels, so it must stay clean -- dirtying
      * it would redraw the occluding window for nothing. Only the un-occluded
      * newly-revealed top strip needs a repaint. */
-    static test_task_t    tc_d, tc_o;
-    wuss_task_t   *delegate_d, *delegate_o;
-    box_t          box_d, box_o, content_before;
-    wuss_window_t *win_d, *win_o;
-    point_t        scroll_d;
-    int            i, split_x;
-    int            occluded_x, occluded_y, kept_x, kept_y, strip_x, strip_y;
-    int            occluded_dirty, kept_dirty, strip_dirty;
+    static test_task_t tc_d, tc_o;
+    wuss_task_t       *delegate_d, *delegate_o;
+    box_t              box_d, box_o, content_before;
+    wuss_window_t     *win_d, *win_o;
+    point_t            scroll_d;
+    int                i, split_x;
+    int                occluded_x, occluded_y, kept_x, kept_y, strip_x, strip_y;
+    int                occluded_dirty, kept_dirty, strip_dirty;
 
     tc_d.redraw_count = 0; tc_d.mouse_count = 0;
     tc_o.redraw_count = 0; tc_o.mouse_count = 0;
@@ -1918,7 +2032,7 @@ result_t wuss_test(const char *resources)
     box_d.x0 = 10; box_d.y0 = 10;
     box_d.x1 = 110; box_d.y1 = 90; /* 100x80 content; doc taller, so scrollable */
     rc = wuss_window_create(delegate_d, &box_d, "D", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(100, 140), SIZE2D(0, 0), &win_d);
     if (rc != result_OK)
       goto Failure;
@@ -1930,7 +2044,7 @@ result_t wuss_test(const char *resources)
     box_o.x0 = split_x; box_o.y0 = content_before.y0 - 5;
     box_o.x1 = content_before.x1 + 40; box_o.y1 = content_before.y1 + 40;
     rc = wuss_window_create(delegate_o, &box_o, "O", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(box_o.x1 - box_o.x0, box_o.y1 - box_o.y0),
                             SIZE2D(0, 0), &win_o);
     if (rc != result_OK)
@@ -2012,13 +2126,13 @@ result_t wuss_test(const char *resources)
      * the occluder's own correct pixels, so it must stay clean -- dirtying
      * it would redraw the occluding window. Only the un-occluded
      * newly-exposed edge strip needs a repaint. */
-    static test_task_t    tc_s, tc_o;
-    wuss_task_t   *delegate_s, *delegate_o;
-    box_t          box_s, box_o, content;
-    wuss_window_t *win_s, *win_o;
-    int            i, split_x;
-    int            occluded_x, occluded_y, kept_x, kept_y, strip_x, strip_y;
-    int            occluded_dirty, kept_dirty, strip_dirty;
+    static test_task_t tc_s, tc_o;
+    wuss_task_t       *delegate_s, *delegate_o;
+    box_t              box_s, box_o, content;
+    wuss_window_t     *win_s, *win_o;
+    int                i, split_x;
+    int                occluded_x, occluded_y, kept_x, kept_y, strip_x, strip_y;
+    int                occluded_dirty, kept_dirty, strip_dirty;
 
     tc_s.redraw_count = 0; tc_s.mouse_count = 0;
     tc_o.redraw_count = 0; tc_o.mouse_count = 0;
@@ -2030,7 +2144,7 @@ result_t wuss_test(const char *resources)
     box_s.x0 = 10; box_s.y0 = 10;
     box_s.x1 = 110; box_s.y1 = 90; /* 100x80 content; doc taller, so scrollable */
     rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(100, 200), SIZE2D(0, 0), &win_s);
     if (rc != result_OK)
       goto Failure;
@@ -2041,7 +2155,7 @@ result_t wuss_test(const char *resources)
     box_o.x0 = split_x; box_o.y0 = content.y0 - 5;
     box_o.x1 = content.x1 + 40; box_o.y1 = content.y1 + 40;
     rc = wuss_window_create(delegate_o, &box_o, "O", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(box_o.x1 - box_o.x0, box_o.y1 - box_o.y0),
                             SIZE2D(0, 0), &win_o);
     if (rc != result_OK)
@@ -2114,13 +2228,13 @@ result_t wuss_test(const char *resources)
      * With the fix each destination is clipped against the occluders and only
      * the un-occluded sub-pieces are blitted, leaving O's own pixels intact.
      * Read the framebuffer behind O to check. */
-    colour_t       cm;
-    uint32_t       fb_m, fb_o;
-    static test_task_t    tc_m, tc_o;
-    wuss_task_t   *delegate_m, *delegate_o;
-    box_t          box_m, box_o, content;
-    wuss_window_t *win_m, *win_o;
-    int            occ_x, occ_y, mid_x, mid_y, delta;
+    colour_t           cm;
+    uint32_t           fb_m, fb_o;
+    static test_task_t tc_m, tc_o;
+    wuss_task_t       *delegate_m, *delegate_o;
+    box_t              box_m, box_o, content;
+    wuss_window_t     *win_m, *win_o;
+    int                occ_x, occ_y, mid_x, mid_y, delta;
 
     cm = colour_rgb(0x11, 0x22, 0x33);
     tc_m.redraw_count = 0; tc_m.mouse_count = 0;
@@ -2133,7 +2247,7 @@ result_t wuss_test(const char *resources)
     box_m.x0 = 10; box_m.y0 = 10;
     box_m.x1 = 110; box_m.y1 = 110; /* 100x100 content; doc taller, so scrollable */
     rc = wuss_window_create(delegate_m, &box_m, "M", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(100, 300), SIZE2D(0, 0), &win_m);
     if (rc != result_OK)
       goto Failure;
@@ -2148,7 +2262,7 @@ result_t wuss_test(const char *resources)
     box_o.x0 = content.x0 - 5;  box_o.y0 = content.y0 + 40;
     box_o.x1 = content.x1 + 5;  box_o.y1 = content.y0 + 70;
     rc = wuss_window_create(delegate_o, &box_o, "O", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(box_o.x1 - box_o.x0, box_o.y1 - box_o.y0),
                             SIZE2D(0, 0), &win_o);
     if (rc != result_OK)
@@ -2196,12 +2310,12 @@ result_t wuss_test(const char *resources)
      * bottom edge end up double-shifted. The blit must be ordered (or fall
      * back). paint_handle paints M as one-pixel rows whose blue channel
      * encodes document Y, so a mis-shifted row is detectable exactly. */
-    colour_t       cm;
-    static test_task_t    tc_m, tc_o;
-    wuss_task_t   *delegate_m, *delegate_o;
-    box_t          box_m, box_o, content, ovis;
-    wuss_window_t *win_m, *win_o;
-    int            gx, gy, delta, bad;
+    colour_t           cm;
+    static test_task_t tc_m, tc_o;
+    wuss_task_t       *delegate_m, *delegate_o;
+    box_t              box_m, box_o, content, ovis;
+    wuss_window_t     *win_m, *win_o;
+    int                gx, gy, delta, bad;
 
     cm = colour_rgb(0x11, 0x22, 0x33);
     tc_m.redraw_count = 0; tc_m.mouse_count = 0;
@@ -2214,7 +2328,7 @@ result_t wuss_test(const char *resources)
     box_m.x0 = 10; box_m.y0 = 10;
     box_m.x1 = 110; box_m.y1 = 110; /* 100x100 content; doc taller, scrollable */
     rc = wuss_window_create(delegate_m, &box_m, "M", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(100, 300), SIZE2D(0, 0), &win_m);
     if (rc != result_OK)
       goto Failure;
@@ -2225,7 +2339,7 @@ result_t wuss_test(const char *resources)
     box_o.x0 = content.x0 + 25; box_o.y0 = content.y0 + 25;
     box_o.x1 = content.x0 + 75; box_o.y1 = content.y0 + 65;
     rc = wuss_window_create(delegate_o, &box_o, "O", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(box_o.x1 - box_o.x0, box_o.y1 - box_o.y0),
                             SIZE2D(0, 0), &win_o);
     if (rc != result_OK)
@@ -2268,15 +2382,571 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_m);
   }
 
+  printf("test: scrolling a window shrunk below its document size never marks a neighbour's screen area dirty\n");
+
+  {
+    /* Regression: a window resized down below its document extent (so it
+     * becomes scrollable), then scrolled by wheel/scrollbar, must not touch
+     * a neighbour window's own screen area. flood_full_bounds_handle ignores
+     * "clip" entirely, mirroring a real task (e.g. saturn.c) that redraws
+     * its full sample space every call rather than honouring clip -- the
+     * wuss-core clip machinery, not the task, must be what keeps such a
+     * task's pixels inside its own window. */
+    colour_t           s_colour, n_colour;
+    static test_task_t tc_s, tc_n;
+    wuss_task_t       *delegate_s, *delegate_n;
+    box_t              box_s, box_n, content_n;
+    wuss_window_t     *win_s, *win_n;
+    int                nx, ny, bad;
+
+    s_colour = colour_rgb(0xcc, 0xdd, 0xee);
+    n_colour = colour_rgb(0x40, 0x60, 0x80);
+    tc_s.redraw_count = 0; tc_s.mouse_count = 0;
+    tc_n.redraw_count = 0; tc_n.mouse_count = 0;
+    delegate_s = mk_task(wuss, flood_full_bounds_handle, &s_colour);
+    if (delegate_s == NULL) goto Failure;
+    delegate_n = mk_task(wuss, flood_full_bounds_handle, &n_colour);
+    if (delegate_n == NULL) goto Failure;
+
+    /* S starts full-sized (matches its document, so no scrollbars yet), then
+     * gets shrunk -- exercising wuss_window_resize's scroll-reclamp path,
+     * distinct from creating it small to begin with. */
+    box_s.x0 = 10; box_s.y0 = 10;
+    box_s.x1 = 90; box_s.y1 = 90;
+    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(80, 80), SIZE2D(0, 0), &win_s);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* N sits immediately to the right of S's outer box, close enough that a
+     * blit destination sliding even a few pixels past S's own bounds lands
+     * on N. */
+    box_n.x0 = box_s.x1 + 2; box_n.y0 = 10;
+    box_n.x1 = box_n.x0 + 40; box_n.y1 = 90;
+    rc = wuss_window_create(delegate_n, &box_n, "N", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(box_n.x1 - box_n.x0, box_n.y1 - box_n.y0),
+                            SIZE2D(0, 0), &win_n);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creates */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* shrink S well below its 80x80 document -- this window is now
+     * scrollable */
+    rc = wuss_window_resize(win_s, SIZE2D(30, 30));
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* scroll it, as a wheel/scrollbar-drag would */
+    wuss_window_set_scroll(win_s, POINT(20, 20));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* every pixel of N's own content (not its titlebar/outline chrome) must
+     * still show exactly N's own flood colour */
+    wuss_window_get_content_bounds(win_n, &content_n);
+    bad = 0;
+    for (ny = content_n.y0; ny < content_n.y1 && !bad; ny++)
+      for (nx = content_n.x0; nx < content_n.x1; nx++)
+      {
+        uint32_t px;
+
+        px = ((const uint32_t *) pixels)[ny * 200 + nx];
+        if ((px & 0xffffff) != 0x406080)
+        {
+          bad = 1;
+          break;
+        }
+      }
+    if (bad)
+      goto Failure; /* S's scroll blit painted over N's screen area */
+
+    wuss_window_close(win_n);
+    wuss_window_close(win_s);
+  }
+
+  printf("test: shrinking a window repaints its content right up to the new content box's own edge\n");
+
+  {
+    /* Regression: dragging a resize handle to make a window smaller must
+     * leave no stale sliver between the client's repainted content and the
+     * furniture (scrollbar/outline) now sitting at the new, smaller edge. */
+    static test_task_t tc_s;
+    wuss_task_t       *delegate_s;
+    box_t              box_s, content_s;
+    wuss_window_t     *win_s;
+    colour_t           s_colour;
+    int                nx, ny, bad;
+
+    s_colour = colour_rgb(0xcc, 0xdd, 0xee);
+    tc_s.redraw_count = 0; tc_s.mouse_count = 0;
+    delegate_s = mk_task(wuss, flood_full_bounds_handle, &s_colour);
+    if (delegate_s == NULL) goto Failure;
+
+    box_s.x0 = 10; box_s.y0 = 10;
+    box_s.x1 = 90; box_s.y1 = 90;
+    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(80, 80), SIZE2D(200, 200), &win_s);
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss); /* flush the create, paint S's initial content */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* scroll before shrinking -- the shrink must not leave a stale sliver
+     * at the new content edge regardless of scroll offset */
+    wuss_window_set_scroll(win_s, POINT(20, 20));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* an interactive drag delivers many small pointer-move events, each
+     * calling wuss_window_resize, before the display ever gets to redraw --
+     * shrink one pixel at a time with no flush between them, matching that;
+     * throw in an overshoot-and-correct wobble too, as a real drag does */
+    {
+      int step, w;
+
+      for (step = 0, w = 80; w > 30; w--, step++)
+      {
+        rc = wuss_window_resize(win_s, SIZE2D(w, w));
+        if (rc != result_OK)
+          goto Failure;
+      }
+      rc = wuss_window_resize(win_s, SIZE2D(35, 35)); /* overshoot back out */
+      if (rc != result_OK)
+        goto Failure;
+      rc = wuss_window_resize(win_s, SIZE2D(30, 30)); /* settle */
+      if (rc != result_OK)
+        goto Failure;
+    }
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* every pixel of S's own (new, smaller) content box must show S's
+     * flood colour right up to content_s.x1-1 / content_s.y1-1 -- no gap
+     * between the repainted content and the furniture now abutting it */
+    wuss_window_get_content_bounds(win_s, &content_s);
+    bad = 0;
+    for (ny = content_s.y0; ny < content_s.y1 && !bad; ny++)
+      for (nx = content_s.x0; nx < content_s.x1; nx++)
+      {
+        uint32_t px;
+
+        px = ((const uint32_t *) pixels)[ny * 200 + nx];
+        if ((px & 0xffffff) != 0xccddee)
+        {
+          bad = 1;
+          break;
+        }
+      }
+    if (bad)
+      goto Failure; /* stale sliver left along the new content box's edge */
+
+    wuss_window_close(win_s);
+  }
+
+  printf("test: a fast resize-grow past the scroll clamp never blits a not-yet-painted sliver\n");
+
+  {
+    /* Regression: wuss_window_resize's scroll-reclamp blit (window scrolled
+     * to the document's bottom/right, then grown so the bigger viewport
+     * needs less scroll and the clamp pulls the offset back) reads its blit
+     * source straight from wuss__clip_to_visible over the *old* content box,
+     * unlike wuss_window_move/wuss_window_set_scroll which both also strip
+     * anything still sitting in wuss->dirty[] (queued by an earlier call this
+     * same frame, not yet painted). An interactive drag delivers several
+     * resize calls before a redraw ever runs: one grow queues its
+     * newly-exposed sliver dirty without painting it; that sliver sits
+     * inside the *next* call's "old content box", so the next call's
+     * scroll-reclamp blit slides it as if it were this window's own settled
+     * rendering -- smearing a stale/undrawn sliver that no later invalidate
+     * ever repaints. paint_handle's per-row blue-encoded doc_y makes a
+     * wrongly-slid row detectable exactly. */
+    static test_task_t tc_s;
+    wuss_task_t       *delegate_s;
+    box_t              box_s, content_s;
+    wuss_window_t     *win_s;
+    colour_t           s_colour;
+    point_t            scroll;
+    int                sy, sx, bad;
+
+    s_colour = colour_rgb(0x11, 0x22, 0x33);
+    tc_s.redraw_count = 0; tc_s.mouse_count = 0;
+    delegate_s = mk_task(wuss, paint_handle, &s_colour);
+    if (delegate_s == NULL) goto Failure;
+
+    box_s.x0 = 10; box_s.y0 = 10;
+    box_s.x1 = 40; box_s.y1 = 40; /* 30x30 content; a doc far bigger than the
+                                   * screen so growing 1px at a time pulls the
+                                   * scroll clamp back by exactly 1px per
+                                   * call, keeping it non-zero (and so
+                                   * re-triggering the reclamp path) across
+                                   * the whole grow range below */
+    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(1000, 1000), SIZE2D(30, 30), &win_s);
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss); /* flush the create, paint S's initial content */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* scroll to the document's bottom-right: no further offset possible at
+     * this size */
+    wuss_window_set_scroll(win_s, POINT(970, 970));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* grow two calls at a time with no flush between them, as an interactive
+     * drag delivers several pointer-move events per rendered frame -- each
+     * bigger size pulls the scroll clamp back by 1px, so every single call
+     * re-enters the reclamp path, and the second call of each pair reads its
+     * blit source over ground the first call of the pair only just
+     * invalidated (its own grown sliver) but never painted. Flushing after
+     * every pair (rather than only once at the end) matches a real redraw
+     * loop -- it also stops one pair's leftover full-footprint dirty rect
+     * from coalescing over a later pair's corruption and masking it. */
+    {
+      int w;
+
+      for (w = 30; w <= 90; w += 2)
+      {
+        rc = wuss_window_resize(win_s, SIZE2D(w, w));
+        if (rc != result_OK)
+          goto Failure;
+        rc = wuss_window_resize(win_s, SIZE2D(w + 1, w + 1));
+        if (rc != result_OK)
+          goto Failure;
+
+        rc = wuss_redraw_dirty(wuss);
+        if (rc != result_OK)
+          goto Failure;
+
+        /* every row of S's current content box must show exactly the
+         * document Y that its current scroll offset puts there -- a
+         * stale-sliver blit leaves some row(s) showing a stale doc_y (or
+         * whatever else was sitting in the framebuffer) instead */
+        wuss_window_get_content_bounds(win_s, &content_s);
+        wuss_window_get_scroll(win_s, &scroll);
+        bad = 0;
+        for (sy = content_s.y0; sy < content_s.y1 && !bad; sy++)
+        {
+          uint32_t px, blue, want;
+
+          want = (uint32_t) ((sy - content_s.y0 + scroll.y) & 0xff);
+          for (sx = content_s.x0; sx < content_s.x1; sx++)
+          {
+            px   = ((const uint32_t *) pixels)[sy * 200 + sx];
+            blue = px & 0xff;
+            if (blue != want)
+            {
+              bad = 1;
+              break;
+            }
+          }
+        }
+        if (bad)
+          goto Failure; /* a not-yet-painted sliver got blitted as if settled */
+      }
+    }
+
+    wuss_window_close(win_s);
+  }
+
+  printf("test: a fast resize drag that jumps size and reverses direction never blits a not-yet-painted sliver\n");
+
+  {
+    /* Same hazard as the paired-grow test above, but matching a real
+     * interactive drag more closely: the pointer can jump the size by a
+     * large delta in one event (not just 1px), and can reverse from
+     * growing to shrinking and back within the same unflushed batch. A
+     * shrink never re-enters the reclamp path itself (it only ever raises
+     * the clamp ceiling), but it still queues its own shrunk-away sliver
+     * dirty -- and the very next call, if it grows back past the clamp,
+     * must not treat that still-unpainted sliver as settled ground either. */
+    static test_task_t tc_e;
+    wuss_task_t       *delegate_e;
+    box_t              box_e, content_e;
+    wuss_window_t     *win_e;
+    colour_t           e_colour;
+    point_t            scroll;
+    int                sy, sx, bad, step;
+    int                sizes[] = { 30, 90, 35, 120, 31, 90, 30, 60, 110, 30 };
+
+    e_colour = colour_rgb(0x11, 0x22, 0x33);
+    tc_e.redraw_count = 0; tc_e.mouse_count = 0;
+    delegate_e = mk_task(wuss, paint_handle, &e_colour);
+    if (delegate_e == NULL) goto Failure;
+
+    box_e.x0 = 10; box_e.y0 = 10;
+    box_e.x1 = 40; box_e.y1 = 40;
+    rc = wuss_window_create(delegate_e, &box_e, "E", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(1000, 1000), SIZE2D(30, 30), &win_e);
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_set_scroll(win_e, POINT(970, 970));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    for (step = 0; step < 9; step += 2)
+    {
+      rc = wuss_window_resize(win_e, SIZE2D(sizes[step], sizes[step]));
+      if (rc != result_OK)
+        goto Failure;
+      rc = wuss_window_resize(win_e, SIZE2D(sizes[step + 1], sizes[step + 1]));
+      if (rc != result_OK)
+        goto Failure;
+
+      rc = wuss_redraw_dirty(wuss);
+      if (rc != result_OK)
+        goto Failure;
+
+      wuss_window_get_content_bounds(win_e, &content_e);
+      wuss_window_get_scroll(win_e, &scroll);
+      content_e.x1 = MIN(content_e.x1, 200);
+      content_e.y1 = MIN(content_e.y1, 200);
+      bad = 0;
+      for (sy = content_e.y0; sy < content_e.y1 && !bad; sy++)
+      {
+        uint32_t px, blue, want;
+
+        want = (uint32_t) ((sy - content_e.y0 + scroll.y) & 0xff);
+        for (sx = content_e.x0; sx < content_e.x1; sx++)
+        {
+          px   = ((const uint32_t *) pixels)[sy * 200 + sx];
+          blue = px & 0xff;
+          if (blue != want)
+          {
+            bad = 1;
+            break;
+          }
+        }
+      }
+      if (bad)
+        goto Failure; /* a not-yet-painted sliver got blitted as if settled */
+    }
+
+    wuss_window_close(win_e);
+  }
+
+  printf("test: a long unflushed batch of resize calls (matching a high-poll-rate mouse) never blits a not-yet-painted sliver\n");
+
+  {
+    /* The tests above batch only 1-2 resize calls per redraw; a real SDL
+     * drag drains its whole event queue before ever calling
+     * wuss_redraw_dirty (see apps/wuss/main.c's wuss_frame), so a fast
+     * high-poll-rate mouse can deliver dozens of resize calls in one
+     * batch. Stress that scale directly, using a cheap deterministic
+     * pseudo-random walk rather than a fixed table, so the sequence covers
+     * far more shapes (including piece-budget overflow) than a short
+     * hand-picked list ever would. */
+    static test_task_t tc_f, tc_occ;
+    wuss_task_t       *delegate_f, *delegate_occ;
+    box_t              box_f, box_occ, content_f;
+    wuss_window_t     *win_f, *win_occ;
+    colour_t           f_colour;
+    point_t            scroll;
+    unsigned int       seed;
+    int                sy, sx, bad, batch, step, sizew, sizeh;
+
+    f_colour = colour_rgb(0x44, 0x55, 0x66);
+    tc_f.redraw_count = 0; tc_f.mouse_count = 0;
+    delegate_f = mk_task(wuss, paint_handle, &f_colour);
+    if (delegate_f == NULL) goto Failure;
+
+    box_f.x0 = 10; box_f.y0 = 10;
+    box_f.x1 = 40; box_f.y1 = 40;
+    rc = wuss_window_create(delegate_f, &box_f, "F", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(1000, 1000), SIZE2D(30, 30), &win_f);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* An occluder created after (so it lands on top of) win_f, sat over its
+     * corner: real desktops are rarely a single window, and
+     * wuss__clip_to_visible's occlusion-carving path (untouched by every
+     * test above) can only interact with the reclamp blit's stale-region
+     * exclusion when there is something to occlude. New windows land at the
+     * z_order head (topmost) -- see wuss_window_create. A NULL task_data
+     * gives paint_handle's flat-fill branch, so the occluded area's colour
+     * can be told apart from win_f's doc-row pattern by eye if this ever
+     * fails; the pixel check below instead uses win_occ->visible (its real,
+     * furniture-adjusted footprint) rather than the requested box, since
+     * wuss__nudge_visible_onscreen/carve can move or grow it. */
+    tc_occ.redraw_count = 0; tc_occ.mouse_count = 0;
+    delegate_occ = mk_task(wuss, paint_handle, NULL);
+    if (delegate_occ == NULL) goto Failure;
+
+    box_occ.x0 = 25; box_occ.y0 = 25;
+    box_occ.x1 = 60; box_occ.y1 = 60;
+    rc = wuss_window_create(delegate_occ, &box_occ, "OCC", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(20, 20), SIZE2D(20, 20), &win_occ);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_set_scroll(win_f, POINT(970, 970));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    seed  = 12345u;
+    sizew = 30;
+    sizeh = 30;
+    for (batch = 0; batch < 20; batch++)
+    {
+      for (step = 0; step < 25; step++)
+      {
+        seed   = seed * 1103515245u + 12345u;
+        sizew += (int) (seed >> 24) % 21 - 10; /* +/-10 px per call */
+        seed   = seed * 1103515245u + 12345u;
+        sizeh += (int) (seed >> 24) % 21 - 10;
+        sizew  = CLAMP(sizew, 30, 150);
+        sizeh  = CLAMP(sizeh, 30, 150);
+
+        rc = wuss_window_resize(win_f, SIZE2D(sizew, sizeh));
+        if (rc != result_OK)
+          goto Failure;
+      }
+
+      rc = wuss_redraw_dirty(wuss);
+      if (rc != result_OK)
+        goto Failure;
+
+      wuss_window_get_content_bounds(win_f, &content_f);
+      wuss_window_get_scroll(win_f, &scroll);
+      content_f.x1 = MIN(content_f.x1, 200);
+      content_f.y1 = MIN(content_f.y1, 200);
+      bad = 0;
+      for (sy = content_f.y0; sy < content_f.y1 && !bad; sy++)
+      {
+        uint32_t px, blue, want;
+
+        want = (uint32_t) ((sy - content_f.y0 + scroll.y) & 0xff);
+        for (sx = content_f.x0; sx < content_f.x1; sx++)
+        {
+          /* skip ground legitimately covered by the occluder's real,
+           * furniture-adjusted footprint -- it shows win_occ's own colour
+           * there, not win_f's doc-row pattern */
+          if (sx >= win_occ->visible.x0 && sx < win_occ->visible.x1 &&
+              sy >= win_occ->visible.y0 && sy < win_occ->visible.y1)
+            continue;
+
+          px   = ((const uint32_t *) pixels)[sy * 200 + sx];
+          blue = px & 0xff;
+          if (blue != want)
+          {
+            bad = 1;
+            break;
+          }
+        }
+      }
+      if (bad)
+        goto Failure; /* a not-yet-painted sliver got blitted as if settled */
+    }
+
+    wuss_window_close(win_occ);
+    wuss_window_close(win_f);
+  }
+
+  printf("test: wuss_window_invalidate_visible on a shrunk, scrolled window only dirties its own visible box\n");
+
+  {
+    /* Regression: wuss_window_invalidate(window, NULL) built its "whole
+     * visible rect" box already in screen space (offset by content.x0/y0),
+     * then translated it a second time by "content.x0 - scroll", so a
+     * scrolled window's dirty rect ended up shifted by -scroll off to one
+     * side of the window rather than sitting over it -- e.g. saturn.c's
+     * per-idle-tick wuss_window_invalidate_visible(), once its window was
+     * shrunk below its document and then scrolled, queued a dirty rect
+     * outside the window's own screen area (fill_backdrop_excluding_content
+     * then repaints that stray area as bare desktop every frame). */
+    static test_task_t tc_s;
+    wuss_task_t       *delegate_s;
+    box_t              box_s, dirty;
+    wuss_window_t     *win_s;
+    colour_t           s_colour;
+
+    s_colour = colour_rgb(0xcc, 0xdd, 0xee);
+    tc_s.redraw_count = 0; tc_s.mouse_count = 0;
+    delegate_s = mk_task(wuss, flood_full_bounds_handle, &s_colour);
+    if (delegate_s == NULL) goto Failure;
+
+    box_s.x0 = 60; box_s.y0 = 60;
+    box_s.x1 = 140; box_s.y1 = 140;
+    rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(80, 80), SIZE2D(0, 0), &win_s);
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss); /* flush the create */
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_window_resize(win_s, SIZE2D(30, 30));
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_set_scroll(win_s, POINT(20, 20));
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* mirrors saturn_idle: invalidate the whole visible rect with no
+     * explicit local_box, exactly what a task's idle handler calls every
+     * frame -- inspect the queued dirty rect directly rather than via
+     * pixels, since every window (including S itself) re-clips to its own
+     * content box on redraw regardless of what the dirty list says, so a
+     * stray dirty rect only ever shows up as a wasted backdrop repaint, not
+     * as a colour mismatch. */
+    wuss_window_invalidate_visible(win_s);
+    if (wuss_get_dirty_count(wuss) != 1)
+      goto Failure;
+    wuss_get_dirty(wuss, 0, &dirty);
+    if (!box_contains_box(&dirty, &win_s->visible))
+      goto Failure; /* dirty rect strayed outside S's own visible box */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_s);
+  }
+
   printf("test: wuss_WINDOW_NO_RESIZE_BLIT redraws the whole window instead of blitting\n");
 
   {
-    static test_task_t    tc_nb;
-    wuss_task_t   *delegate_nb;
-    box_t          box_nb, before, titlebar, toggle;
-    wuss_window_t *win_nb;
-    int            outline_px, titlebar_height, inset, icon;
-    int            i, cx, cy, interior_x, interior_y, interior_dirty;
+    static test_task_t tc_nb;
+    wuss_task_t       *delegate_nb;
+    box_t              box_nb, before, titlebar, toggle;
+    wuss_window_t     *win_nb;
+    int                outline_px, titlebar_height, inset, icon;
+    int                i, cx, cy, interior_x, interior_y, interior_dirty;
 
     tc_nb.redraw_count = 0;
     tc_nb.mouse_count  = 0;
@@ -2285,8 +2955,9 @@ result_t wuss_test(const char *resources)
 
     box_nb.x0 = 10; box_nb.y0 = 10;
     box_nb.x1 = 50; box_nb.y1 = 50; /* 40x40 content, room to grow to a 200x200 doc */
-    rc = wuss_window_create(delegate_nb, &box_nb, "NB", wuss_WINDOW_NO_RESIZE_BLIT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+    rc = wuss_window_create(delegate_nb, &box_nb, "NB",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT,
+                            wuss_NO_BACKDROP,
                             SIZE2D(200, 200), SIZE2D(0, 0), &win_nb);
     if (rc != result_OK)
       goto Failure;
@@ -2350,12 +3021,12 @@ result_t wuss_test(const char *resources)
   printf("test: toggle-size maximize accounts for scrollbar furniture, not just outline/titlebar\n");
 
   {
-    static test_task_t    tc_u;
-    wuss_task_t   *delegate_u;
-    box_t          box_u, ub, titlebar, toggle;
-    wuss_window_t *win_u;
-    int            outline_px, titlebar_height, inset, icon;
-    int            cx, cy;
+    static test_task_t tc_u;
+    wuss_task_t       *delegate_u;
+    box_t              box_u, ub, titlebar, toggle;
+    wuss_window_t     *win_u;
+    int                outline_px, titlebar_height, inset, icon;
+    int                cx, cy;
 
     tc_u.redraw_count = 0;
     tc_u.mouse_count  = 0;
@@ -2365,7 +3036,7 @@ result_t wuss_test(const char *resources)
     box_u.x0 = 80; box_u.y0 = 80;
     box_u.x1 = 120; box_u.y1 = 120; /* 40x40 content */
     rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_u, "U", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(70, 70), SIZE2D(0, 0), &win_u); /* doc size well within the 200x200 screen: growth is doc-limited, not screen-limited */
     if (rc != result_OK)
       goto Failure;
@@ -2448,12 +3119,12 @@ result_t wuss_test(const char *resources)
   printf("test: toggle-size maximize stays a valid box for a window dragged off the right/bottom edge\n");
 
   {
-    static test_task_t    tc_v;
-    wuss_task_t   *delegate_v;
-    box_t          box_v, vb, titlebar, toggle;
-    wuss_window_t *win_v;
-    int            outline_px, titlebar_height, inset, icon;
-    int            cx, cy;
+    static test_task_t tc_v;
+    wuss_task_t       *delegate_v;
+    box_t              box_v, vb, titlebar, toggle;
+    wuss_window_t     *win_v;
+    int                outline_px, titlebar_height, inset, icon;
+    int                cx, cy;
 
     memset(&tc_v, 0, sizeof(tc_v));
     tc_v.veto_pre_close = 1; /* this test pokes furniture with a window in a
@@ -2475,7 +3146,7 @@ result_t wuss_test(const char *resources)
                                     * Doc big enough that maximize is
                                     * screen-limited, not doc-limited. */
     rc = wuss_window_create(delegate_v, &box_v, "V", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(200, 200), SIZE2D(0, 0), &win_v);
     if (rc != result_OK)
       goto Failure;
@@ -2590,7 +3261,7 @@ result_t wuss_test(const char *resources)
                                       * doc big enough that maximize is
                                       * screen-limited so the window must move */
     rc = wuss_window_create(delegate_p, &box_p, "P", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(400, 400), SIZE2D(0, 0), &win_p);
     if (rc != result_OK)
       goto Failure;
@@ -2727,7 +3398,7 @@ result_t wuss_test(const char *resources)
       box_z.x0 = 20; box_z.y0 = 20;
       box_z.x1 = 60; box_z.y1 = 60; /* 40x40 content */
       rc = wuss_window_create(delegate_z, &box_z, "Z", wuss_WINDOW_DEFAULT,
-                              wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                              wuss_NO_BACKDROP,
                               axis == 0 ? SIZE2D(0, 0) : SIZE2D(60, 0),
                               SIZE2D(0, 0), &win_z);
       if (rc != result_OK)
@@ -2804,11 +3475,11 @@ result_t wuss_test(const char *resources)
   printf("test: dragging a back-most window with nothing above it still blits\n");
 
   {
-    static test_task_t    tc_k, tc_l;
-    wuss_task_t   *delegate_k, *delegate_l;
-    box_t          box_k, box_l;
-    wuss_window_t *win_k, *win_l;
-    int            before_k, before_l;
+    static test_task_t tc_k, tc_l;
+    wuss_task_t       *delegate_k, *delegate_l;
+    box_t              box_k, box_l;
+    wuss_window_t     *win_k, *win_l;
+    int                before_k, before_l;
 
     tc_k.redraw_count = 0;
     tc_k.mouse_count  = 0;
@@ -2820,10 +3491,10 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_k,
                             &box_k,
                             "K",
-                            wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_WINDOW_DEFAULT & ~wuss_WINDOW_BACK &
+                            ~wuss_WINDOW_TOGGLE_SIZE & ~wuss_WINDOW_VSCROLL &
+                            ~wuss_WINDOW_HSCROLL & ~wuss_WINDOW_RESIZE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_k),
                             SIZE2D(0, 0),
                             &win_k);
@@ -2840,10 +3511,10 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_l,
                             &box_l,
                             "L",
-                            wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_WINDOW_DEFAULT & ~wuss_WINDOW_BACK &
+                            ~wuss_WINDOW_TOGGLE_SIZE & ~wuss_WINDOW_VSCROLL &
+                            ~wuss_WINDOW_HSCROLL & ~wuss_WINDOW_RESIZE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_l),
                             SIZE2D(0, 0),
                             &win_l);
@@ -2891,11 +3562,11 @@ result_t wuss_test(const char *resources)
   printf("test: resizing a window only invalidates the grown/shrunk sliver\n");
 
   {
-    static test_task_t    tc_m2;
-    wuss_task_t   *delegate_m2;
-    box_t          box_m2, before2, after2, region;
-    wuss_window_t *win_m2;
-    int            i, dirty_area, full_area, interior_x, interior_y, interior_dirty;
+    static test_task_t tc_m2;
+    wuss_task_t       *delegate_m2;
+    box_t              box_m2, before2, after2, region;
+    wuss_window_t     *win_m2;
+    int                i, dirty_area, full_area, interior_x, interior_y, interior_dirty;
 
     tc_m2.redraw_count = 0;
     tc_m2.mouse_count  = 0;
@@ -2907,9 +3578,10 @@ result_t wuss_test(const char *resources)
     rc = wuss_window_create(delegate_m2,
                             &box_m2,
                             "M2",
-                            wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_WINDOW_DEFAULT & ~wuss_WINDOW_BACK &
+                            ~wuss_WINDOW_TOGGLE_SIZE & ~wuss_WINDOW_VSCROLL &
+                            ~wuss_WINDOW_HSCROLL,
+                            wuss_NO_BACKDROP,
                             box_size(&box_m2),
                             SIZE2D(0, 0),
                             &win_m2);
@@ -2985,11 +3657,11 @@ result_t wuss_test(const char *resources)
   printf("test: resizing a wuss_WINDOW_NO_RESIZE_BLIT window redraws it fully\n");
 
   {
-    static test_task_t    tc_nb2;
-    wuss_task_t   *delegate_nb2;
-    box_t          box_nb2, before3, after3, region;
-    wuss_window_t *win_nb2;
-    int            i, dirty_area, full_area;
+    static test_task_t tc_nb2;
+    wuss_task_t       *delegate_nb2;
+    box_t              box_nb2, before3, after3, region;
+    wuss_window_t     *win_nb2;
+    int                i, dirty_area, full_area;
 
     tc_nb2.redraw_count = 0;
     tc_nb2.mouse_count  = 0;
@@ -2998,8 +3670,9 @@ result_t wuss_test(const char *resources)
 
     box_nb2.x0 = 0; box_nb2.y0 = 0;
     box_nb2.x1 = 40; box_nb2.y1 = 40;
-    rc = wuss_window_create(delegate_nb2, &box_nb2, "NB2", wuss_WINDOW_NO_RESIZE_BLIT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+    rc = wuss_window_create(delegate_nb2, &box_nb2, "NB2",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT,
+                            wuss_NO_BACKDROP,
                             box_size(&box_nb2),
                             SIZE2D(0, 0),
                             &win_nb2);
@@ -3034,11 +3707,11 @@ result_t wuss_test(const char *resources)
          "furniture layout so the chrome redraws at the new width\n");
 
   {
-    static test_task_t  tc_fl;
-    wuss_task_t   *delegate_fl;
-    box_t          box_fl, after_fl;
-    wuss_window_t *win_fl;
-    int            i, old_titlebar_x1, found;
+    static test_task_t tc_fl;
+    wuss_task_t       *delegate_fl;
+    box_t              box_fl, after_fl;
+    wuss_window_t     *win_fl;
+    int                i, old_titlebar_x1, found;
 
     tc_fl.redraw_count = 0;
     tc_fl.mouse_count  = 0;
@@ -3047,8 +3720,9 @@ result_t wuss_test(const char *resources)
 
     box_fl.x0 = 0; box_fl.y0 = 0;
     box_fl.x1 = 60; box_fl.y1 = 60;
-    rc = wuss_window_create(delegate_fl, &box_fl, "FL", wuss_WINDOW_NO_RESIZE_BLIT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+    rc = wuss_window_create(delegate_fl, &box_fl, "FL",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT,
+                            wuss_NO_BACKDROP,
                             box_size(&box_fl),
                             SIZE2D(0, 0),
                             &win_fl);
@@ -3096,11 +3770,11 @@ result_t wuss_test(const char *resources)
   printf("test: dragging a clear window onto an occluder leaves the occluder untouched\n");
 
   {
-    static test_task_t    tc_n, tc_o;
-    wuss_task_t   *delegate_n, *delegate_o;
-    box_t          box_n, box_o, visible_o, exposed, occluded, region;
-    wuss_window_t *win_n, *win_o;
-    int            i, exposed_dirty, occluded_dirty;
+    static test_task_t tc_n, tc_o;
+    wuss_task_t       *delegate_n, *delegate_o;
+    box_t              box_n, box_o, visible_o, exposed, occluded, region;
+    wuss_window_t     *win_n, *win_o;
+    int                i, exposed_dirty, occluded_dirty;
 
     tc_n.redraw_count = 0;
     tc_n.mouse_count  = 0;
@@ -3110,10 +3784,10 @@ result_t wuss_test(const char *resources)
     box_n.x0 = 0; box_n.y0 = 140; /* clear of any occluder to start */
     box_n.x1 = 60; box_n.y1 = 170;
     rc = wuss_window_create(delegate_n, &box_n, "N",
-                            wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_WINDOW_DEFAULT & ~wuss_WINDOW_BACK &
+                            ~wuss_WINDOW_TOGGLE_SIZE & ~wuss_WINDOW_VSCROLL &
+                            ~wuss_WINDOW_HSCROLL & ~wuss_WINDOW_RESIZE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_n),
                             SIZE2D(0, 0),
                             &win_n);
@@ -3128,10 +3802,10 @@ result_t wuss_test(const char *resources)
     box_o.x0 = 90; box_o.y0 = 140; /* N will be dragged partly on top of O */
     box_o.x1 = 130; box_o.y1 = 180;
     rc = wuss_window_create(delegate_o, &box_o, "O",
-                            wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_WINDOW_DEFAULT & ~wuss_WINDOW_BACK &
+                            ~wuss_WINDOW_TOGGLE_SIZE & ~wuss_WINDOW_VSCROLL &
+                            ~wuss_WINDOW_HSCROLL & ~wuss_WINDOW_RESIZE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_o),
                             SIZE2D(0, 0),
                             &win_o);
@@ -3197,12 +3871,12 @@ result_t wuss_test(const char *resources)
   printf("test: moving a partly-occluded window blits its clean part and only repaints the occluded part\n");
 
   {
-    static test_task_t    tc_a, tc_b;
-    wuss_task_t   *delegate_a, *delegate_b;
-    box_t          box_a, box_b, visible_a, visible_b_before;
-    box_t          clean_new, hidden_new, region;
-    wuss_window_t *win_a, *win_b;
-    int            i, dx, clean_dirty, hidden_dirty;
+    static test_task_t tc_a, tc_b;
+    wuss_task_t       *delegate_a, *delegate_b;
+    box_t              box_a, box_b, visible_a, visible_b_before;
+    box_t              clean_new, hidden_new, region;
+    wuss_window_t     *win_a, *win_b;
+    int                i, dx, clean_dirty, hidden_dirty;
 
     tc_b.redraw_count = 0;
     tc_b.mouse_count  = 0;
@@ -3212,10 +3886,9 @@ result_t wuss_test(const char *resources)
     box_b.x0 = 20; box_b.y0 = 10; /* left half will sit under A */
     box_b.x1 = 80; box_b.y1 = 50;
     rc = wuss_window_create(delegate_b, &box_b, "B",
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_b),
                             SIZE2D(0, 0),
                             &win_b);
@@ -3230,10 +3903,9 @@ result_t wuss_test(const char *resources)
     box_a.x0 = 0; box_a.y0 = 0; /* created after B, so A is topmost */
     box_a.x1 = 40; box_a.y1 = 100;
     rc = wuss_window_create(delegate_a, &box_a, "A",
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_a),
                             SIZE2D(0, 0),
                             &win_a);
@@ -3298,12 +3970,12 @@ result_t wuss_test(const char *resources)
   printf("test: moving a window whose occluded piece was never blitted doesn't redraw the occluder\n");
 
   {
-    static test_task_t    tc_a, tc_b;
-    wuss_task_t   *delegate_a, *delegate_b;
-    box_t          box_a, box_b, visible_a, visible_b_before;
-    box_t          region;
-    wuss_window_t *win_a, *win_b;
-    int            i, occluder_dirty;
+    static test_task_t tc_a, tc_b;
+    wuss_task_t       *delegate_a, *delegate_b;
+    box_t              box_a, box_b, visible_a, visible_b_before;
+    box_t              region;
+    wuss_window_t     *win_a, *win_b;
+    int                i, occluder_dirty;
 
     tc_b.redraw_count = 0;
     tc_b.mouse_count  = 0;
@@ -3313,10 +3985,9 @@ result_t wuss_test(const char *resources)
     box_b.x0 = 0; box_b.y0 = 0; /* right part sits under A throughout */
     box_b.x1 = 60; box_b.y1 = 40;
     rc = wuss_window_create(delegate_b, &box_b, "B",
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_b),
                             SIZE2D(0, 0),
                             &win_b);
@@ -3331,10 +4002,9 @@ result_t wuss_test(const char *resources)
     box_a.x0 = 40; box_a.y0 = 0; /* created after B, so A is topmost */
     box_a.x1 = 100; box_a.y1 = 40;
     rc = wuss_window_create(delegate_a, &box_a, "A",
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_a),
                             SIZE2D(0, 0),
                             &win_a);
@@ -3376,12 +4046,12 @@ result_t wuss_test(const char *resources)
   printf("test: moving a window split by a mid-band occluder past the gap between bands blits both bands in a safe order\n");
 
   {
-    static test_task_t    tc_a, tc_b;
-    wuss_task_t   *delegate_a, *delegate_b;
-    box_t          box_a, box_b, visible_b_before;
-    box_t          occluded_overlap, hidden_new, region;
-    wuss_window_t *win_a, *win_b;
-    int            i, occluded_dirty, hidden_dirty;
+    static test_task_t tc_a, tc_b;
+    wuss_task_t       *delegate_a, *delegate_b;
+    box_t              box_a, box_b, visible_b_before;
+    box_t              occluded_overlap, hidden_new, region;
+    wuss_window_t     *win_a, *win_b;
+    int                i, occluded_dirty, hidden_dirty;
 
     tc_b.redraw_count = 0;
     tc_b.mouse_count  = 0;
@@ -3391,10 +4061,9 @@ result_t wuss_test(const char *resources)
     box_b.x0 = 0; box_b.y0 = 0; /* middle band sits under A */
     box_b.x1 = 60; box_b.y1 = 60;
     rc = wuss_window_create(delegate_b, &box_b, "B",
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_b),
                             SIZE2D(0, 0),
                             &win_b);
@@ -3409,10 +4078,9 @@ result_t wuss_test(const char *resources)
     box_a.x0 = 0; box_a.y0 = 20; /* created after B, so A is topmost */
     box_a.x1 = 60; box_a.y1 = 40;
     rc = wuss_window_create(delegate_a, &box_a, "A",
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_a),
                             SIZE2D(0, 0),
                             &win_a);
@@ -3488,11 +4156,11 @@ result_t wuss_test(const char *resources)
   printf("test: dragging a window deeper under a corner occluder blits both L-shaped pieces in a safe order\n");
 
   {
-    static test_task_t    tc_a, tc_b;
-    wuss_task_t   *delegate_a, *delegate_b;
-    box_t          box_a, box_b, visible_b_before, visible_a, region;
-    wuss_window_t *win_a, *win_b;
-    int            i;
+    static test_task_t tc_a, tc_b;
+    wuss_task_t       *delegate_a, *delegate_b;
+    box_t              box_a, box_b, visible_b_before, visible_a, region;
+    wuss_window_t     *win_a, *win_b;
+    int                i;
 
     tc_b.redraw_count = 0;
     tc_b.mouse_count  = 0;
@@ -3502,10 +4170,9 @@ result_t wuss_test(const char *resources)
     box_b.x0 = 80; box_b.y0 = 80; /* corner already under A */
     box_b.x1 = 140; box_b.y1 = 140;
     rc = wuss_window_create(delegate_b, &box_b, "B",
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_b),
                             SIZE2D(0, 0),
                             &win_b);
@@ -3520,10 +4187,9 @@ result_t wuss_test(const char *resources)
     box_a.x0 = 0; box_a.y0 = 0; /* created after B, so A is topmost */
     box_a.x1 = 100; box_a.y1 = 100;
     rc = wuss_window_create(delegate_a, &box_a, "A",
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                            wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&box_a),
                             SIZE2D(0, 0),
                             &win_a);
@@ -3554,8 +4220,8 @@ result_t wuss_test(const char *resources)
     /* The blit must have actually happened, not fallen back: B's own
      * footprint (outside A) must not be dirtied wholesale. */
     {
-      box_t  visible_b_after, whole_footprint, dirty_area_box;
-      int    dirty_area, footprint_area;
+      box_t visible_b_after, whole_footprint, dirty_area_box;
+      int   dirty_area, footprint_area;
 
       wuss_window_get_visible_bounds(win_b, &visible_b_after);
       box_union(&visible_b_before, &visible_b_after, &whole_footprint);
@@ -3596,10 +4262,10 @@ result_t wuss_test(const char *resources)
   rc = wuss_window_create(delegate_c,
                           &box_c,
                           "C",
-                          wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE |
-                          wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL |
-                          wuss_WINDOW_NO_RESIZE,
-                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          wuss_WINDOW_DEFAULT & ~wuss_WINDOW_BACK &
+                          ~wuss_WINDOW_TOGGLE_SIZE & ~wuss_WINDOW_VSCROLL &
+                          ~wuss_WINDOW_HSCROLL & ~wuss_WINDOW_RESIZE,
+                          wuss_NO_BACKDROP,
                           box_size(&box_c),
                           SIZE2D(0, 0),
                           &win_c);
@@ -3621,11 +4287,11 @@ result_t wuss_test(const char *resources)
   printf("test: mouse and scroll events arrive in virtual content space, with the scroll offset applied exactly once\n");
 
   {
-    static test_task_t    tc_s = { 0 };
-    wuss_task_t   *delegate_s;
-    box_t          box_s, content_s;
-    wuss_window_t *win_s;
-    point_t        scroll;
+    static test_task_t tc_s = { 0 };
+    wuss_task_t       *delegate_s;
+    box_t              box_s, content_s;
+    wuss_window_t     *win_s;
+    point_t            scroll;
 
     delegate_s = mk_task(wuss, test_handle, &tc_s);
     if (delegate_s == NULL) goto Failure;
@@ -3633,7 +4299,7 @@ result_t wuss_test(const char *resources)
     box_s.x0 = 10; box_s.y0 = 10;
     box_s.x1 = 60; box_s.y1 = 60; /* 50x50 content onto a 200x200 doc: room to scroll */
     rc = wuss_window_create(delegate_s, &box_s, "S", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(200, 200), SIZE2D(0, 0), &win_s);
     if (rc != result_OK)
       goto Failure;
@@ -3691,10 +4357,10 @@ result_t wuss_test(const char *resources)
      * content from them -- is added outside the requested content box, never
      * carved out of it, so what the caller asks for is what it gets, both at
      * creation and after a resize. */
-    static test_task_t    tc_r;
-    wuss_task_t   *delegate_r;
-    box_t          box_r, content_r;
-    wuss_window_t *win_r;
+    static test_task_t tc_r;
+    wuss_task_t       *delegate_r;
+    box_t              box_r, content_r;
+    wuss_window_t     *win_r;
 
     memset(&tc_r, 0, sizeof(tc_r));
     delegate_r = mk_task(wuss, test_handle, &tc_r);
@@ -3708,7 +4374,7 @@ result_t wuss_test(const char *resources)
                             &box_r,
                             "rules",
                             wuss_WINDOW_DEFAULT, /* all furniture present */
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(400, 400),
                             SIZE2D(0, 0),
                             &win_r);
@@ -3736,11 +4402,11 @@ result_t wuss_test(const char *resources)
   {
     /* Windows created without a position are packed towards the top-left and
      * must not overlap; closing one frees its slot for the next create. */
-    static test_task_t    tc_p[4];
-    wuss_task_t   *delegate_p;
-    wuss_window_t *win_p[4];
-    box_t          vis[4], probe;
-    int            k, m;
+    static test_task_t tc_p[4];
+    wuss_task_t       *delegate_p;
+    wuss_window_t     *win_p[4];
+    box_t              vis[4], probe;
+    int                k, m;
 
     memset(tc_p, 0, sizeof(tc_p));
     delegate_p = mk_task(wuss, test_handle, &tc_p[0]);
@@ -3752,7 +4418,7 @@ result_t wuss_test(const char *resources)
                                      SIZE2D(40, 30),
                                      "P",
                                      wuss_WINDOW_DEFAULT,
-                                     wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                     wuss_NO_BACKDROP,
                                      SIZE2D(40, 30),
                                      SIZE2D(0, 0),
                                      &win_p[k]);
@@ -3775,7 +4441,7 @@ result_t wuss_test(const char *resources)
                                    SIZE2D(40, 30),
                                    "P",
                                    wuss_WINDOW_DEFAULT,
-                                   wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                   wuss_NO_BACKDROP,
                                    SIZE2D(40, 30),
                                    SIZE2D(0, 0),
                                    &win_p[1]);
@@ -3803,8 +4469,8 @@ result_t wuss_test(const char *resources)
     static const colour_t too_long[3] =
       { { 0xFF000000 }, { 0xFF808080 }, { 0xFFFFFFFF } };
 
-    static test_task_t  tc_pa, tc_pb;
-    wuss_task_t *delegate_pa, *delegate_pb;
+    static test_task_t tc_pa, tc_pb;
+    wuss_task_t       *delegate_pa, *delegate_pb;
 
     /* every earlier block-local test_task_t is out of scope now; drop the
      * tasks that still point at it so the broadcast counts are exactly the
@@ -3845,10 +4511,10 @@ result_t wuss_test(const char *resources)
 
   printf("test: wuss_window_set_hidden fires PRE_SHOW; a veto keeps the window hidden\n");
   {
-    static test_task_t  tc_ps;
-    wuss_task_t   *delegate_ps;
-    box_t          box_ps;
-    wuss_window_t *win_ps;
+    static test_task_t tc_ps;
+    wuss_task_t       *delegate_ps;
+    box_t              box_ps;
+    wuss_window_t     *win_ps;
 
     memset(&tc_ps, 0, sizeof(tc_ps));
     delegate_ps = mk_task(wuss, test_handle, &tc_ps);
@@ -3858,7 +4524,7 @@ result_t wuss_test(const char *resources)
     box_ps.x0 = 0;  box_ps.y0 = 0;
     box_ps.x1 = 60; box_ps.y1 = 60;
     rc = wuss_window_create(delegate_ps, &box_ps, "PS", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             box_size(&box_ps), SIZE2D(0, 0), &win_ps);
     if (rc != result_OK)
       goto Failure;
@@ -3910,10 +4576,10 @@ result_t wuss_test(const char *resources)
 
   printf("test: wuss_task_destroy sends one wuss_EVENT_QUIT and closes the task's windows\n");
   {
-    static test_task_t    tc_q;
-    wuss_task_t   *delegate_q;
-    box_t          box_q;
-    wuss_window_t *win_q1, *win_q2;
+    static test_task_t tc_q;
+    wuss_task_t       *delegate_q;
+    box_t              box_q;
+    wuss_window_t     *win_q1, *win_q2;
 
     memset(&tc_q, 0, sizeof(tc_q));
     delegate_q = mk_task(wuss, test_handle, &tc_q);
@@ -3922,12 +4588,12 @@ result_t wuss_test(const char *resources)
     box_q.x0 = 0;  box_q.y0 = 0;
     box_q.x1 = 40; box_q.y1 = 40;
     rc = wuss_window_create(delegate_q, &box_q, "Q1", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             box_size(&box_q), SIZE2D(0, 0), &win_q1);
     if (rc != result_OK)
       goto Failure;
     rc = wuss_window_create(delegate_q, &box_q, "Q2", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             box_size(&box_q), SIZE2D(0, 0), &win_q2);
     if (rc != result_OK)
       goto Failure;
@@ -3945,9 +4611,9 @@ result_t wuss_test(const char *resources)
   printf("test: an autoclose task self-destructs when its last window closes and stops receiving broadcasts\n");
   {
     static test_task_t tc_ac;
-    wuss_task_t   *delegate_ac;
-    box_t          box_ac;
-    wuss_window_t *win_ac1, *win_ac2;
+    wuss_task_t       *delegate_ac;
+    box_t              box_ac;
+    wuss_window_t     *win_ac1, *win_ac2;
 
     memset(&tc_ac, 0, sizeof(tc_ac));
     delegate_ac = mk_task(wuss, test_handle, &tc_ac);
@@ -3957,12 +4623,12 @@ result_t wuss_test(const char *resources)
     box_ac.x0 = 0;  box_ac.y0 = 0;
     box_ac.x1 = 40; box_ac.y1 = 40;
     rc = wuss_window_create(delegate_ac, &box_ac, "AC1", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             box_size(&box_ac), SIZE2D(0, 0), &win_ac1);
     if (rc != result_OK)
       goto Failure;
     rc = wuss_window_create(delegate_ac, &box_ac, "AC2", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             box_size(&box_ac), SIZE2D(0, 0), &win_ac2);
     if (rc != result_OK)
       goto Failure;
@@ -3995,9 +4661,9 @@ result_t wuss_test(const char *resources)
   printf("test: a task reaping itself from inside wuss_idle does not derail the task walk\n");
   {
     static test_task_t tc_w1, tc_w2, tc_w3;
-    wuss_task_t   *delegate_w1, *delegate_w2, *delegate_w3;
-    box_t          box_w;
-    wuss_window_t *win_w1, *win_w3;
+    wuss_task_t       *delegate_w1, *delegate_w2, *delegate_w3;
+    box_t              box_w;
+    wuss_window_t     *win_w1, *win_w3;
 
     memset(&tc_w1, 0, sizeof(tc_w1));
     memset(&tc_w2, 0, sizeof(tc_w2));
@@ -4013,7 +4679,7 @@ result_t wuss_test(const char *resources)
     if (delegate_w1 == NULL) goto Failure;
     wuss_task_set_autoclose(delegate_w1, 1);
     rc = wuss_window_create(delegate_w1, &box_w, "W1", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             box_size(&box_w), SIZE2D(0, 0), &win_w1);
     if (rc != result_OK)
       goto Failure;
@@ -4022,7 +4688,7 @@ result_t wuss_test(const char *resources)
     if (delegate_w2 == NULL) goto Failure;
     wuss_task_set_autoclose(delegate_w2, 1);
     rc = wuss_window_create(delegate_w2, &box_w, "W2", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             box_size(&box_w), SIZE2D(0, 0),
                             &g_close_on_idle_win);
     if (rc != result_OK)
@@ -4032,7 +4698,7 @@ result_t wuss_test(const char *resources)
     if (delegate_w3 == NULL) goto Failure;
     wuss_task_set_autoclose(delegate_w3, 1);
     rc = wuss_window_create(delegate_w3, &box_w, "W3", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             box_size(&box_w), SIZE2D(0, 0), &win_w3);
     if (rc != result_OK)
       goto Failure;
@@ -4071,16 +4737,19 @@ result_t wuss_test(const char *resources)
     {
       "Help", borrowed_items, NELEMS(borrowed_items)
     };
-    wuss_menu_t *m;
+
+    wuss_menu_t       *m;
     const wuss_menu_t *sub;
 
     /* "Root" is the root caption (first token), then items App,
      * File{ %s title discarded, Grid(!), Export(~), |Quit }, Help(> borrowed),
-     * with "File" substituted for both %s. '|Quit' sets DASHED on Quit itself,
-     * so the submenu holds 3 rows. */
+     * with "File" substituted for both %s. '!'/'~' now pull an int vararg
+     * (nonzero applies the flag) rather than always applying, so Grid's tick
+     * and Export's shade are passed explicitly. '|Quit' sets DASHED on Quit
+     * itself, so the submenu holds 3 rows. */
     rc = wuss_menu_create_from_desc(&m,
            "Root, App, %s { %s, !Grid, ~Export, |Quit }, >Help",
-           "File", "File", &borrowed);
+           "File", "File", 1, 1, &borrowed);
     if (rc != result_OK)
       goto Failure;
 
@@ -4110,8 +4779,25 @@ result_t wuss_test(const char *resources)
 
     wuss_menu_destroy(m);
 
+    /* same desc, both bools false: '!'/'~' apply nothing */
+    rc = wuss_menu_create_from_desc(&m,
+           "Root, App, %s { %s, !Grid, ~Export, |Quit }, >Help",
+           "File", "File", 0, 0, &borrowed);
+    if (rc != result_OK)
+      goto Failure;
+    sub = m->items[1].submenu;
+    if (sub == NULL)                                       goto MenuFail;
+    if (sub->items[0].flags & wuss_MENU_ITEM_TICKED)       goto MenuFail;
+    if (sub->items[1].flags & wuss_MENU_ITEM_DISABLED)     goto MenuFail;
+    wuss_menu_destroy(m);
+
     /* malformed: unbalanced brace */
     rc = wuss_menu_create_from_desc(&m, "T, A { B, C");
+    if (rc != result_BAD_ARG)
+      goto MenuFail;
+
+    /* malformed: '!' vararg not 0/1 */
+    rc = wuss_menu_create_from_desc(&m, "T, !Grid", 2);
     if (rc != result_BAD_ARG)
       goto MenuFail;
 
@@ -4179,10 +4865,10 @@ MenuOK: ;
     /* a SYSTEM-class wuss font is dropped from the menu; NONE-class and
      * unnamed slots are not */
     {
-      const char       *sysfontfile;
-      bmfont_t         *sysfont;
-      wuss_font_desc_t  sysdescs[2];
-      wuss_t           *syswuss;
+      const char      *sysfontfile;
+      bmfont_t        *sysfont;
+      wuss_font_desc_t sysdescs[2];
+      wuss_t          *syswuss;
 
       sysfontfile = path_join_filename(resources, 3, "resources", "bmfonts",
                                        path_join_leafname("Symbols", "png"));
@@ -4196,7 +4882,7 @@ MenuOK: ;
       sysdescs[1].font_class = wuss_FONT_CLASS_NONE;
       sysdescs[1].name       = "Tiny"; /* NONE class: not skipped though named */
 
-      rc = wuss_create(&scr, sysdescs, 2, NULL, 0, NULL, NULL, &syswuss);
+      rc = wuss_create(&scr, sysdescs, 2, NULL, 0, NULL, NULL, NULL, &syswuss);
       if (rc != result_OK)
       {
         bmfont_destroy(sysfont);
@@ -4318,15 +5004,15 @@ ColourMenuOK: ;
       "Pick", flash_items, NELEMS(flash_items)
     };
 
-    const char        *fontfile;
-    bmfont_t          *font = NULL;
-    wuss_font_desc_t   fdesc;
-    screen_t           fscr;
-    bitmap_t           fbm;
-    void              *fpixels;
-    wuss_t            *fwuss;
-    test_task_t        ftc;
-    wuss_task_t       *fowner;
+    const char      *fontfile;
+    bmfont_t        *font = NULL;
+    wuss_font_desc_t fdesc;
+    screen_t         fscr;
+    bitmap_t         fbm;
+    void            *fpixels;
+    wuss_t          *fwuss;
+    test_task_t      ftc;
+    wuss_task_t     *fowner;
     struct wuss__menu *chain;
     int                i;
 
@@ -4351,7 +5037,7 @@ ColourMenuOK: ;
     fdesc.font       = font;
     fdesc.font_class = wuss_FONT_CLASS_NONE;
     fdesc.name       = NULL;
-    rc = wuss_create(&fscr, &fdesc, 1, NULL, 0, NULL, NULL, &fwuss);
+    rc = wuss_create(&fscr, &fdesc, 1, NULL, 0, NULL, NULL, NULL, &fwuss);
     if (rc != result_OK) goto FlashFailFree;
 
     memset(&ftc, 0, sizeof(ftc));
@@ -4451,15 +5137,15 @@ FlashFail:
       "Root", sm_items, NELEMS(sm_items)
     };
 
-    const char        *fontfile;
-    bmfont_t          *font = NULL;
-    wuss_font_desc_t   fdesc;
-    screen_t           sscr;
-    bitmap_t           sbm;
-    void              *spixels;
-    wuss_t            *swuss;
-    test_task_t        stc;
-    wuss_task_t       *sowner;
+    const char      *fontfile;
+    bmfont_t        *font = NULL;
+    wuss_font_desc_t fdesc;
+    screen_t         sscr;
+    bitmap_t         sbm;
+    void            *spixels;
+    wuss_t          *swuss;
+    test_task_t      stc;
+    wuss_task_t     *sowner;
     struct wuss__menu *root;
     struct wuss__menu *sub;
 
@@ -4482,7 +5168,7 @@ FlashFail:
     fdesc.font       = font;
     fdesc.font_class = wuss_FONT_CLASS_NONE;
     fdesc.name       = NULL;
-    rc = wuss_create(&sscr, &fdesc, 1, NULL, 0, NULL, NULL, &swuss);
+    rc = wuss_create(&sscr, &fdesc, 1, NULL, 0, NULL, NULL, NULL, &swuss);
     if (rc != result_OK) goto SubHiFailFree;
 
     memset(&stc, 0, sizeof(stc));
@@ -4572,17 +5258,17 @@ SubHiFail:
     static const wuss_menu_t menu_a = { "A", menu_a_items, NELEMS(menu_a_items) };
     static const wuss_menu_t menu_b = { "B", menu_b_items, NELEMS(menu_b_items) };
 
-    const char        *fontfile;
-    bmfont_t          *font = NULL;
-    wuss_font_desc_t   fdesc;
-    screen_t           mscr;
-    bitmap_t           mbm;
-    void              *mpixels;
-    wuss_t            *mwuss;
-    menu_task_t        mta, mtb;
-    wuss_task_t       *task_a, *task_b;
-    wuss_window_t     *wa, *wb;
-    box_t              ba, bb;
+    const char      *fontfile;
+    bmfont_t        *font = NULL;
+    wuss_font_desc_t fdesc;
+    screen_t         mscr;
+    bitmap_t         mbm;
+    void            *mpixels;
+    wuss_t          *mwuss;
+    menu_task_t      mta, mtb;
+    wuss_task_t     *task_a, *task_b;
+    wuss_window_t   *wa, *wb;
+    box_t            ba, bb;
 
     fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
                                   path_join_leafname("Tiny", "png"));
@@ -4603,7 +5289,7 @@ SubHiFail:
     fdesc.font       = font;
     fdesc.font_class = wuss_FONT_CLASS_NONE;
     fdesc.name       = NULL;
-    rc = wuss_create(&mscr, &fdesc, 1, NULL, 0, NULL, NULL, &mwuss);
+    rc = wuss_create(&mscr, &fdesc, 1, NULL, 0, NULL, NULL, NULL, &mwuss);
     if (rc != result_OK) goto MoveFailFree;
 
     memset(&mta, 0, sizeof(mta));
@@ -4624,20 +5310,16 @@ SubHiFail:
     bb.x0 = 130; bb.y0 = 130; bb.x1 = 190; bb.y1 = 190;
 
     rc = wuss_window_create(task_a, &ba, "A",
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK |
-                            wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
-                            wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&ba), SIZE2D(0, 0), &wa);
     if (rc != result_OK) goto MoveDestroy;
 
     rc = wuss_window_create(task_b, &bb, "B",
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK |
-                            wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
-                            wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&bb), SIZE2D(0, 0), &wb);
     if (rc != result_OK) goto MoveDestroy;
 
@@ -4745,7 +5427,7 @@ MoveFail:
     fdesc.font       = font;
     fdesc.font_class = wuss_FONT_CLASS_NONE;
     fdesc.name       = NULL;
-    rc = wuss_create(&qscr, &fdesc, 1, NULL, 0, NULL, NULL, &qwuss);
+    rc = wuss_create(&qscr, &fdesc, 1, NULL, 0, NULL, NULL, NULL, &qwuss);
     if (rc != result_OK) goto QuitFreeOnly;
 
     memset(&qmt, 0, sizeof(qmt));
@@ -4762,11 +5444,9 @@ MoveFail:
 
     bq.x0 = 6; bq.y0 = 6; bq.x1 = 60; bq.y1 = 60;
     rc = wuss_window_create(task_q, &bq, "Q",
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK |
-                            wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
-                            wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&bq), SIZE2D(0, 0), &wq);
     if (rc != result_OK) goto QuitDestroy;
     NOT_USED(wq);
@@ -4799,11 +5479,9 @@ MoveFail:
     if (task_q == NULL) { rc = result_OOM; goto QuitDestroy; }
     qmt.self = task_q;
     rc = wuss_window_create(task_q, &bq, "Q2",
-                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
-                            wuss_WINDOW_NO_CLOSE | wuss_WINDOW_NO_BACK |
-                            wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
-                            wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            /* fully chromeless: no titlebar, outline, scrollbars or resize */
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
                             box_size(&bq), SIZE2D(0, 0), &wq);
     if (rc != result_OK) goto QuitDestroy;
     wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
@@ -4895,7 +5573,7 @@ QuitFail:
     box_hs.x0 = 5; box_hs.y0 = 5;
     box_hs.x1 = 125; box_hs.y1 = 85;
     rc = wuss_window_create(delegate_hs, &box_hs, "HS", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(400, 400), SIZE2D(0, 0), &win_hs);
     if (rc != result_OK)
       goto Failure;
@@ -4980,21 +5658,130 @@ QuitFail:
     wuss_window_close(win_hs);
   }
 
+  printf("test: wuss_window_invalidate clamps a client box to the content "
+        "area, never dirtying the furniture around it\n");
+
+  {
+    static test_task_t tc_iv;
+    wuss_task_t       *delegate_iv;
+    wuss_window_t     *win_iv;
+    box_t              box_iv, content, local, dirty;
+    int                i, w, h;
+
+    tc_iv.redraw_count = 0;
+    tc_iv.mouse_count  = 0;
+    delegate_iv = mk_task(wuss, test_handle, &tc_iv);
+    if (delegate_iv == NULL) goto Failure;
+
+    box_iv.x0 = 5; box_iv.y0 = 5;
+    box_iv.x1 = 125; box_iv.y1 = 85;
+    rc = wuss_window_create(delegate_iv, &box_iv, "IV", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(400, 400), SIZE2D(0, 0), &win_iv);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_iv, &content);
+
+    rc = wuss_redraw_dirty(wuss); /* flush the create's own dirty region first */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* a box like a ball's swept range at the bottom-right corner, straddling
+     * both the content and the furniture (titlebar/outline/scrollbars)
+     * around it -- content-local, so translate content's screen origin
+     * back off before building it. */
+    w = content.x1 - content.x0;
+    h = content.y1 - content.y0;
+    local.x0 = w - 10;
+    local.y0 = h - 10;
+    local.x1 = w + 10; /* runs past content.x1 into the furniture */
+    local.y1 = h + 10; /* runs past content.y1 into the furniture */
+    wuss_window_invalidate(win_iv, &local);
+
+    if (wuss_get_dirty_count(wuss) != 1)
+      goto Failure;
+    wuss_get_dirty(wuss, 0, &dirty);
+    if (dirty.x0 < content.x0 || dirty.y0 < content.y0 ||
+        dirty.x1 > content.x1 || dirty.y1 > content.y1)
+      goto Failure; /* must be clamped to content, not spill into furniture */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* a box entirely outside the content (pure furniture, e.g. a client bug
+     * that never clamped at all) must not dirty anything. */
+    before_a = tc_iv.redraw_count;
+    local.x0 = -50; local.y0 = -50;
+    local.x1 = -10; local.y1 = -10;
+    wuss_window_invalidate(win_iv, &local);
+    if (wuss_get_dirty_count(wuss) != 0)
+      goto Failure;
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_iv.redraw_count != before_a)
+      goto Failure;
+
+    /* sweep every furniture-adjacent edge: a content-local box straddling
+     * that edge must clamp to it, never crossing into visible's outline. */
+    for (i = 0; i < 4; i++)
+    {
+      switch (i)
+      {
+      case 0: /* left edge */
+        local.x0 = -10; local.y0 = 0;
+        local.x1 = 10;  local.y1 = 10;
+        break;
+      case 1: /* top edge */
+        local.x0 = 0;   local.y0 = -10;
+        local.x1 = 10;  local.y1 = 10;
+        break;
+      case 2: /* right edge */
+        local.x0 = w - 10; local.y0 = 0;
+        local.x1 = w + 10; local.y1 = 10;
+        break;
+      default: /* bottom edge */
+        local.x0 = 0;       local.y0 = h - 10;
+        local.x1 = 10;      local.y1 = h + 10;
+        break;
+      }
+
+      wuss_window_invalidate(win_iv, &local);
+      if (wuss_get_dirty_count(wuss) > 0)
+      {
+        wuss_get_dirty(wuss, 0, &dirty);
+        if (dirty.x0 < content.x0 || dirty.y0 < content.y0 ||
+            dirty.x1 > content.x1 || dirty.y1 > content.y1)
+          goto Failure;
+      }
+      rc = wuss_redraw_dirty(wuss);
+      if (rc != result_OK)
+        goto Failure;
+    }
+
+    wuss_window_close(win_iv);
+  }
+
   printf("test: furniture hit tiling holds for every furniture-flag combo\n");
 
   {
     static const wuss_window_flags_t combos[] =
     {
-      wuss_WINDOW_NO_OUTLINE,
-      wuss_WINDOW_NO_RESIZE,
-      wuss_WINDOW_NO_VSCROLL | wuss_WINDOW_NO_HSCROLL,
-      wuss_WINDOW_NO_VSCROLL, /* one scrollbar + resize: carve is 0 on the */
-      wuss_WINDOW_NO_HSCROLL, /* stripless axis, so the icon's near edge is */
-      wuss_WINDOW_NO_BACK,    /* the only thing sizing its hit box */
-      wuss_WINDOW_NO_TOGGLE_SIZE,
-      wuss_WINDOW_NO_CLOSE,
-      wuss_WINDOW_NO_TITLEBAR
+      wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_OUTLINE,
+      wuss_WINDOW_DEFAULT & ~wuss_WINDOW_RESIZE,
+      wuss_WINDOW_DEFAULT & ~wuss_WINDOW_VSCROLL & ~wuss_WINDOW_HSCROLL,
+      /* one scrollbar + resize: carve is 0 on the stripless axis, so the
+       * icon's near edge is the only thing sizing its hit box */
+      wuss_WINDOW_DEFAULT & ~wuss_WINDOW_VSCROLL,
+      wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL,
+      wuss_WINDOW_DEFAULT & ~wuss_WINDOW_BACK,
+      wuss_WINDOW_DEFAULT & ~wuss_WINDOW_TOGGLE_SIZE,
+      wuss_WINDOW_DEFAULT & ~wuss_WINDOW_CLOSE,
+      wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_TITLEBAR
     };
+
     static test_task_t tc_cb;
     wuss_task_t       *delegate_cb;
     box_t              box_cb, visible;
@@ -5013,12 +5800,12 @@ QuitFail:
       box_cb.x0 = 5; box_cb.y0 = 5;
       box_cb.x1 = 125; box_cb.y1 = 85;
       rc = wuss_window_create(delegate_cb, &box_cb, "CB", combos[i],
-                              wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                              wuss_NO_BACKDROP,
                               SIZE2D(400, 400), SIZE2D(0, 0), &win_cb);
       if (rc != result_OK)
         goto Failure;
 
-      /* NO_TITLEBAR still keeps a 1px top frame with nothing behind it: a
+      /* No titlebar still keeps a 1px top frame with nothing behind it: a
        * click there is the documented CONTENT exception. */
       leak = (combos[i] & wuss_WINDOW_NO_TITLEBAR) &&
              !(combos[i] & wuss_WINDOW_NO_OUTLINE);
@@ -5033,7 +5820,7 @@ QuitFail:
       /* Where the window keeps its resize icon, the icon's own drawn centre
        * must hit RESIZE. The sweep alone misses a collapsed hit box: those
        * pixels just fall to a neighbouring region, still leak-free. */
-      if (!(combos[i] & wuss_WINDOW_NO_RESIZE))
+      if (combos[i] & wuss_WINDOW_RESIZE)
       {
         box_t resize;
 
@@ -5048,7 +5835,7 @@ QuitFail:
         }
       }
 
-      if ((combos[i] & wuss_WINDOW_NO_BACK) &&
+      if (!(combos[i] & wuss_WINDOW_BACK) &&
           wuss__furniture_hit_test(win_cb, POINT(box_cb.x0, box_cb.y0)) != wuss_FURNITURE_CLOSE)
       {
         wuss_window_get_visible_bounds(win_cb, &visible);
@@ -5077,7 +5864,7 @@ QuitFail:
     box_dv.x0 = 5; box_dv.y0 = 5;
     box_dv.x1 = 125; box_dv.y1 = 85;
     rc = wuss_window_create(delegate_dv, &box_dv, "DV", wuss_WINDOW_DEFAULT,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(400, 400), SIZE2D(0, 0), &win_dv);
     if (rc != result_OK)
       goto Failure;
@@ -5102,6 +5889,154 @@ QuitFail:
       goto Failure;
 
     wuss_window_close(win_dv);
+  }
+
+  printf("test: wuss__slider_value_to_px / wuss__slider_px_to_value convert "
+        "and round-trip\n");
+
+  {
+    box_t   groove;
+    point_t pt;
+
+    groove.x0 = 0; groove.y0 = 0;
+    groove.x1 = 100; groove.y1 = 20;
+
+    /* endpoints and midpoint of a [0,100] range over a 100px groove: exact,
+     * no rounding needed */
+    if (wuss__slider_value_to_px(&groove, wuss_SLIDER_HORIZONTAL,
+                                 0, 0, 100) != 0)
+      goto Failure;
+    if (wuss__slider_value_to_px(&groove, wuss_SLIDER_HORIZONTAL,
+                                 100, 0, 100) != 100)
+      goto Failure;
+    if (wuss__slider_value_to_px(&groove, wuss_SLIDER_HORIZONTAL,
+                                 50, 0, 100) != 50)
+      goto Failure;
+
+    /* a degenerate [lo,hi] span always reads back as pixel 0 */
+    if (wuss__slider_value_to_px(&groove, wuss_SLIDER_HORIZONTAL,
+                                 7, 7, 7) != 0)
+      goto Failure;
+
+    /* px_to_value rounds to the nearest value rather than truncating: a 10px
+     * groove over [0,3] places value 1 at 3.33px, so pixel 3 (0.9 of the way
+     * to value 1) must round up to 1, not truncate down to 0 */
+    groove.x0 = 0; groove.y0 = 0;
+    groove.x1 = 10; groove.y1 = 20;
+
+    pt.x = 3; pt.y = 10;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_HORIZONTAL,
+                                 pt, 0, 3) != 1)
+      goto Failure;
+
+    /* pixel 1 (0.3 of the way to value 1) is closer to 0, and must round
+     * down rather than up */
+    pt.x = 1; pt.y = 10;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_HORIZONTAL,
+                                 pt, 0, 3) != 0)
+      goto Failure;
+
+    /* an exact half-way pixel rounds up to the higher value: a 4px groove
+     * over [0,1] puts the 0/1 boundary at pixel 2 */
+    groove.x0 = 0; groove.y0 = 0;
+    groove.x1 = 4; groove.y1 = 20;
+
+    pt.x = 2; pt.y = 10;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_HORIZONTAL,
+                                 pt, 0, 1) != 1)
+      goto Failure;
+
+    /* a point left of the groove clamps to lo, one past its right edge
+     * clamps to hi */
+    pt.x = -50; pt.y = 10;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_HORIZONTAL,
+                                 pt, 0, 1) != 0)
+      goto Failure;
+    pt.x = 50; pt.y = 10;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_HORIZONTAL,
+                                 pt, 0, 1) != 1)
+      goto Failure;
+
+    /* VERTICAL: pixel 0 is the groove's bottom (y1), value grows upward */
+    groove.x0 = 0; groove.y0 = 0;
+    groove.x1 = 20; groove.y1 = 10;
+
+    pt.x = 10; pt.y = groove.y1;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_VERTICAL,
+                                 pt, 0, 100) != 0)
+      goto Failure;
+    pt.x = 10; pt.y = groove.y0;
+    if (wuss__slider_px_to_value(&groove, wuss_SLIDER_VERTICAL,
+                                 pt, 0, 100) != 100)
+      goto Failure;
+  }
+
+  printf("test: wuss__slider_value_for_point maps a screen click through a "
+        "real slider icon, honouring the groove gap and a reversed "
+        "min > max\n");
+
+  {
+    static test_task_t tc_sl;
+    wuss_task_t       *delegate_sl;
+    wuss_window_t     *win_sl;
+    wuss_icon_t       *icon_sl;
+    wuss_icon_spec_t   spec_sl;
+    box_t              box_sl, content_sl, screen_box_sl, groove_sl;
+    point_t            scroll_sl, pt_sl;
+
+    delegate_sl = mk_task(wuss, test_handle, &tc_sl);
+    if (delegate_sl == NULL) goto Failure;
+
+    box_sl.x0 = 5; box_sl.y0 = 5; box_sl.x1 = 125; box_sl.y1 = 105;
+    rc = wuss_window_create(delegate_sl, &box_sl, "SL", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(400, 400), SIZE2D(0, 0), &win_sl);
+    if (rc != result_OK)
+      goto Failure;
+
+    memset(&spec_sl, 0, sizeof(spec_sl));
+    spec_sl.bbox                  = (box_t) BOX_POS_SIZE(0, 0, 108, 20);
+    spec_sl.type                  = wuss_ICON_TYPE_SLIDER;
+    spec_sl.u.slider.orientation  = wuss_SLIDER_HORIZONTAL;
+    spec_sl.u.slider.min          = 0;
+    spec_sl.u.slider.max          = 100;
+    spec_sl.u.slider.default_value = 0;
+    rc = wuss_icon_create(win_sl, &spec_sl, &icon_sl);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_sl, &content_sl);
+    wuss_window_get_scroll(win_sl, &scroll_sl);
+    wuss__icon_box_to_screen(&content_sl, scroll_sl, &spec_sl.bbox,
+                             &screen_box_sl);
+    wuss__slider_groove_box(&screen_box_sl, &groove_sl);
+
+    /* a click at the groove's on-screen left/right edges reads back as the
+     * slider's min/max, confirming wuss__slider_value_for_point applies the
+     * WUSS_SLIDER_GAP inset rather than reading off the full icon bbox */
+    pt_sl.x = groove_sl.x0; pt_sl.y = (groove_sl.y0 + groove_sl.y1) / 2;
+    if (wuss__slider_value_for_point(win_sl, icon_sl, pt_sl) != 0)
+      goto Failure;
+
+    pt_sl.x = groove_sl.x1; pt_sl.y = (groove_sl.y0 + groove_sl.y1) / 2;
+    if (wuss__slider_value_for_point(win_sl, icon_sl, pt_sl) != 100)
+      goto Failure;
+
+    /* a reversed min > max mirrors the reading: the groove's left pixel
+     * (nominally "pixel 0") now yields the high end of [lo,hi] */
+    wuss_icon_set_value(win_sl, icon_sl, 100);
+    icon_sl->spec.u.slider.min = 100;
+    icon_sl->spec.u.slider.max = 0;
+
+    pt_sl.x = groove_sl.x0; pt_sl.y = (groove_sl.y0 + groove_sl.y1) / 2;
+    if (wuss__slider_value_for_point(win_sl, icon_sl, pt_sl) != 100)
+      goto Failure;
+
+    pt_sl.x = groove_sl.x1; pt_sl.y = (groove_sl.y0 + groove_sl.y1) / 2;
+    if (wuss__slider_value_for_point(win_sl, icon_sl, pt_sl) != 0)
+      goto Failure;
+
+    wuss_window_close(win_sl);
   }
 
   printf("test: wuss_icons_load scans resources/wuss/icons and compresses\n");
@@ -5153,7 +6088,7 @@ QuitFail:
 
       box_ic.x0 = 5; box_ic.y0 = 5; box_ic.x1 = 125; box_ic.y1 = 105;
       rc = wuss_window_create(delegate_ic, &box_ic, "IC", wuss_WINDOW_DEFAULT,
-                              wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                              wuss_NO_BACKDROP,
                               SIZE2D(400, 400), SIZE2D(0, 0), &win_ic);
       if (rc != result_OK)
         goto Failure;
@@ -5161,13 +6096,13 @@ QuitFail:
       memset(&spec, 0, sizeof(spec));
       spec.bbox     = (box_t) BOX_POS_SIZE(0, 0, 16, 16);
       spec.type     = wuss_ICON_TYPE_BITMAP;
-      spec.icon_set = wuss_ICON_SET(opton);
+      spec.u.bitmap.set = wuss_ICON_SET(opton);
       rc = wuss_icon_create(win_ic, &spec, &icon);
       if (rc != result_OK)
         goto Failure;
 
       /* a bogus index is rejected */
-      spec.icon_set = wuss_ICON_SET(99);
+      spec.u.bitmap.set = wuss_ICON_SET(99);
       if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)
         goto Failure;
       rc = result_OK;
@@ -5220,10 +6155,8 @@ result_t wuss_test(const char *resources)
 
   /* Force a chromeless window even in a build that still has furniture, so the
    * assertions below (content box == visible box) hold in every config. */
-  const wuss_window_flags_t chromeless =
-    wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE | wuss_WINDOW_NO_CLOSE |
-    wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
-    wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE;
+  const wuss_window_flags_t chromeless = wuss_WINDOW_NO_TITLEBAR |
+                                         wuss_WINDOW_NO_OUTLINE;
 
   NOT_USED(resources);
 
@@ -5241,7 +6174,7 @@ result_t wuss_test(const char *resources)
 
   printf("test: wuss_create (core)\n");
 
-  rc = wuss_create(&scr, NULL, 0, NULL, 0, NULL, NULL, &wuss);
+  rc = wuss_create(&scr, NULL, 0, NULL, 0, NULL, NULL, NULL, &wuss);
   if (rc != result_OK)
     goto Failure;
 
@@ -5249,7 +6182,7 @@ result_t wuss_test(const char *resources)
 
   box_a.x0 = 0; box_a.y0 = 0; box_a.x1 = 100; box_a.y1 = 0;
   rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_a, "toosmall", wuss_WINDOW_DEFAULT,
-                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          wuss_NO_BACKDROP,
                           box_size(&box_a),
                           SIZE2D(0, 0), &win_a);
   if (rc != result_WUSS_TOO_SMALL)
@@ -5266,7 +6199,7 @@ result_t wuss_test(const char *resources)
 
   box_a.x0 = 0; box_a.y0 = 0; box_a.x1 = 100; box_a.y1 = 100;
   rc = wuss_window_create(delegate_a, &box_a, "A", chromeless,
-                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          wuss_NO_BACKDROP,
                           SIZE2D(400, 400),
                           SIZE2D(0, 0), &win_a);
   if (rc != result_OK)
@@ -5274,7 +6207,7 @@ result_t wuss_test(const char *resources)
 
   box_b.x0 = 50; box_b.y0 = 50; box_b.x1 = 150; box_b.y1 = 150;
   rc = wuss_window_create(delegate_b, &box_b, "B", chromeless,
-                          wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                          wuss_NO_BACKDROP,
                           SIZE2D(400, 400),
                           SIZE2D(0, 0), &win_b);
   if (rc != result_OK)
@@ -5330,7 +6263,7 @@ result_t wuss_test(const char *resources)
      * so the clamp caps content at the full 200x200 screen */
     box_big.x0 = 10; box_big.y0 = 10; box_big.x1 = 400; box_big.y1 = 400;
     rc = wuss_window_create(mk_task(wuss, NULL, NULL), &box_big, "BIG", chromeless,
-                            wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                            wuss_NO_BACKDROP,
                             SIZE2D(400, 400),
                             SIZE2D(0, 0), &win_big);
     if (rc != result_OK)

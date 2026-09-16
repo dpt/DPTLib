@@ -92,6 +92,7 @@ set(PUBLIC_HEADERS
     include/framebuf/span-p1.h
     include/framebuf/span-p2.h
     include/framebuf/span-p4.h
+    include/framebuf/span-p8.h
     include/framebuf/span-registry.h
     include/framebuf/span-rgba8888.h
     include/framebuf/span-rgbx8888.h
@@ -103,6 +104,7 @@ set(PUBLIC_HEADERS
     include/geom/packer.h
     include/geom/point.h
     include/geom/size.h
+    include/geom/stack.h
     include/io/dirscan.h
     include/io/namelist.h
     include/io/path.h
@@ -130,6 +132,7 @@ set(PUBLIC_HEADERS
 
 if(WUSS_ICONS)
     list(APPEND PUBLIC_HEADERS include/wuss/icon.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/icon-spec.h)
 endif()
 if(WUSS_MENUS)
     list(APPEND PUBLIC_HEADERS include/wuss/menu.h)
@@ -140,6 +143,7 @@ if(WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/component/colourmenu.h)
     list(APPEND PUBLIC_HEADERS include/wuss/component/info.h)
     list(APPEND PUBLIC_HEADERS include/wuss/component/proginfo.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/component/dialogue.h)
 endif()
 
 # The public headers must be set as properties of the library, not as
@@ -286,6 +290,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/span/p1.c
     libraries/framebuf/span/p2.c
     libraries/framebuf/span/p4.c
+    libraries/framebuf/span/p8.c
     libraries/framebuf/span/rgbx8888.c
     libraries/framebuf/span/xbgr8888.c)
 
@@ -308,7 +313,11 @@ set(GEOM_SOURCES
     libraries/geom/layout/layout.c
     libraries/geom/line/line.c
     libraries/geom/packer/impl.h
-    libraries/geom/packer/packer.c)
+    libraries/geom/packer/packer.c
+    libraries/geom/stack/impl.h
+    libraries/geom/stack/measure-min.c
+    libraries/geom/stack/solve.c
+    libraries/geom/stack/valid-tree.c)
 
 set(IO_SOURCES
     libraries/io/dirscan/dirscan.c
@@ -371,9 +380,9 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/backdrop.c
     libraries/wuss/core/create.c
     libraries/wuss/core/destroy.c
-    libraries/wuss/core/get-font.c
     libraries/wuss/core/get-palette.c
     libraries/wuss/core/get-pointer.c
+    libraries/wuss/core/get-resources.c
     libraries/wuss/core/idle.c
     libraries/wuss/core/impl.h
     libraries/wuss/core/invalidate.c
@@ -386,7 +395,9 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/scroll-step.c
     libraries/wuss/core/set-backdrop.c
     libraries/wuss/core/set-palette.c
-    libraries/wuss/core/text.c
+    libraries/wuss/font/font.h
+    libraries/wuss/font/registry.c
+    libraries/wuss/font/text.c
     libraries/wuss/core/task/create.c
     libraries/wuss/core/task/destroy.c
     libraries/wuss/core/task/set-autoclose.c
@@ -433,11 +444,12 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/draw.c
     libraries/wuss/icon/free.c
     libraries/wuss/icon/from-spec.c
+    libraries/wuss/helpers/icon-spec.c
     libraries/wuss/icon/get-bbox.c
     libraries/wuss/icon/get-selected.c
     libraries/wuss/icon/get-text.c
     libraries/wuss/icon/get-type.c
-    libraries/wuss/icon/get-window.c
+    libraries/wuss/icon/get-value.c
     libraries/wuss/icon/hit-test.c
     libraries/wuss/icon/invalidate.c
     libraries/wuss/icon/plot.c
@@ -447,6 +459,8 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/set-hover.c
     libraries/wuss/icon/set-selected.c
     libraries/wuss/icon/set-text.c
+    libraries/wuss/icon/set-value.c
+    libraries/wuss/icon/slider-box.c
     libraries/wuss/icon.h)
 
 set(WUSS_MENU_SOURCES
@@ -458,7 +472,8 @@ set(WUSS_COMPONENT_SOURCES
     libraries/wuss/component/fontmenu.c
     libraries/wuss/component/colourmenu.c
     libraries/wuss/component/info.c
-    libraries/wuss/component/proginfo.c)
+    libraries/wuss/component/proginfo.c
+    libraries/wuss/component/dialogue.c)
 
 set(WUSS_SOURCES ${WUSS_CORE_SOURCES})
 if(WUSS_FURNITURE)
@@ -682,6 +697,7 @@ if(BUILD_TESTS)
         libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
+        libraries/geom/stack/test/stack-test.c
         libraries/io/stream/test/stream-test.c
         libraries/text/txtfmt/test/txtfmt-test.c
         libraries/utils/array/test/array-test.c

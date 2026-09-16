@@ -34,16 +34,14 @@ static void invalidate_grown_or_shrunk(wuss_window_t *window,
 result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
 {
   int     outline_px, titlebar_height;
-  box_t   before, before_content;
-  point_t carve;
+  box_t   before;
   point_t old_scroll;
+  box_t   before_content;
+  point_t carve;
   point_t clamped;
 
   if (!wuss__size_ok(size.w, size.h))
     return result_WUSS_TOO_SMALL;
-
-  /* a manual resize desyncs the window from its layout-packer slot */
-  wuss__release_packed(window);
 
   /* The requested content size is honoured verbatim: a window may end up
    * overhanging the screen edge (same as one dragged there, or one whose
@@ -56,6 +54,19 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   old_scroll      = window->scroll;
   wuss__content_box(window, &before_content);
   wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
+
+  /* a resize drag delivers one call per pointer-move event, not one per
+   * actual change of size -- a window pinned against the screen edge or
+   * the minimum-size clamp can call this repeatedly at the size it's
+   * already at. The top-left corner never moves here, so an unchanged
+   * bottom-right corner means an unchanged box; skip the packer release
+   * and the invalidate/blit machinery entirely. */
+  if (window->visible.x0 + size.w + 2 * outline_px + carve.x == before.x1 &&
+      window->visible.y0 + size.h + titlebar_height + 2 * outline_px + carve.y == before.y1)
+    return result_OK;
+
+  /* a manual resize desyncs the window from its layout-packer slot */
+  wuss__release_packed(window);
 
   window->visible.x1 = window->visible.x0 + size.w + 2 * outline_px + carve.x;
   window->visible.y1 = window->visible.y0 + size.h + titlebar_height + 2 * outline_px + carve.y;
@@ -79,28 +90,62 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   if (clamped.x != window->scroll.x || clamped.y != window->scroll.y)
   {
     box_t content;
-    box_t src[WUSS_MAX_INVALIDATE_PIECES];
+    box_t stale[WUSS_MAX_DIRTY];
+    box_t clean[WUSS_MAX_INVALIDATE_PIECES];
     box_t copied[WUSS_MAX_INVALIDATE_PIECES];
     box_t dirty[WUSS_MAX_INVALIDATE_PIECES];
-    int   dx, dy, nsrc, ncopied, ndirty, i;
+    int   dx, dy, nstale, nclean, nsrc, ncopied, ndirty, i, overflow;
 
     dx = clamped.x - old_scroll.x;
     dy = clamped.y - old_scroll.y;
     window->scroll = clamped;
     wuss__content_box(window, &content);
 
-    nsrc              = wuss__clip_to_visible(window, &before_content, src);
-    ncopied           = 0;
-    window->wuss->scr->clip = content;
-    for (i = 0; i < nsrc; i++)
-    {
-      box_t got;
+    /* A resize drag delivers several calls per frame, same as a fast wheel
+     * spin (see wuss_window_set_scroll): an earlier call this frame may have
+     * queued part of "before_content" in wuss->dirty[] without a redraw
+     * having painted it yet. Sliding that stale ground would smear garbage
+     * into the window instead of this window's own settled pixels. */
+    nstale = 0;
+    for (i = 0; i < window->wuss->ndirty; i++)
+      if (box_intersects(&window->wuss->dirty[i], &before_content))
+        stale[nstale++] = window->wuss->dirty[i];
 
-      if (screen_copy_rect(window->wuss->scr, &src[i],
-                           POINT(src[i].x0 - dx, src[i].y0 - dy),
-                           &got) == result_OK &&
-          ncopied < WUSS_MAX_INVALIDATE_PIECES)
-        copied[ncopied++] = got;
+    /* Each subtract can split a piece into up to four bands, so this can
+     * overflow the piece budget on a badly fragmented window -- treat that
+     * as "no safe fast path" (see wuss_window_set_scroll) rather than
+     * silently dropping survivors: a dropped clean piece never gets
+     * invalidated either, since the invalidate below only covers "content
+     * minus copied", not "content minus every clean piece found" -- so a
+     * silently-dropped piece would leave genuinely stale pre-resize pixels
+     * on screen with nothing left to repaint them. wuss__filter_settled caps
+     * at WUSS_MAX_INVALIDATE_PIECES the same way, so treat a full result as
+     * a possible overflow too. */
+    nclean            = wuss__clip_to_visible(window, &before_content, clean);
+    nsrc              = wuss__filter_settled(clean, nclean, stale, nstale);
+    overflow          = (nsrc == WUSS_MAX_INVALIDATE_PIECES);
+
+    ncopied           = 0;
+    if (!overflow)
+    {
+      window->wuss->scr->clip = content;
+      for (i = 0; i < nsrc; i++)
+      {
+        box_t got;
+
+        if (screen_copy_rect(window->wuss->scr, &clean[i],
+                             POINT(clean[i].x0 - dx, clean[i].y0 - dy),
+                             &got) == result_OK)
+        {
+          /* "got" is already correct on screen -- the blit reused it --
+           * but a frontend re-uploading only wuss_get_touched_extent still
+           * needs to know it moved. */
+          wuss__touch(window->wuss, &got);
+
+          if (ncopied < WUSS_MAX_INVALIDATE_PIECES)
+            copied[ncopied++] = got;
+        }
+      }
     }
 
     if (ncopied > 0)
@@ -115,13 +160,14 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
     }
     else
     {
-      /* the scroll-reclamp blit copied nothing (paletted screen, or every
-       * piece off-screen): repaint the whole content box */
+      /* the scroll-reclamp blit copied nothing (paletted screen, every
+       * piece off-screen, or the piece budget overflowed): repaint the
+       * whole content box */
       logf_warning("wuss_window_resize: scroll-reclamp blit copied nothing, "
-                   "repainting the whole content box (nsrc=%d)", nsrc);
+                   "repainting the whole content box (nsrc=%d, overflow=%d)",
+                   nsrc, overflow);
       wuss__invalidate_clipped(window, &content);
     }
-    wuss__chrome_repaint(window);
   }
 
   if (window->flags & wuss_WINDOW_NO_RESIZE_BLIT)

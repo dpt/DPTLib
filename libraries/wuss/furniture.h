@@ -63,6 +63,12 @@ wuss__furniture_layout_t;
 /* Populate window->furniture_layout from the current geometry and flags. */
 void wuss__furniture_layout_build(wuss_window_t *window);
 
+/* Shift an already-valid window->furniture_layout by (dx, dy) in place --
+ * for a pure window move, where every cached rect stays correct relative to
+ * the window, just offset in screen space, so there is no need to drop the
+ * cache and rebuild all pieces from scratch. */
+void wuss__furniture_layout_translate(wuss_window_t *window, int dx, int dy);
+
 /* Which region of a window's border (or its content) a point falls in. */
 typedef enum wuss_furniture_region
 {

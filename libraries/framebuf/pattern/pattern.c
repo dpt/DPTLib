@@ -137,3 +137,25 @@ pattern_t pattern_from_mask(const uint8_t mask[8], colour_t colour)
 
   return pat;
 }
+
+/* ----------------------------------------------------------------------- */
+
+/* The recursively-built 8x8 ordered dither matrix, cell values 0..63. The
+ * BAYER* tiles above are this same matrix thresholded at each coverage
+ * level; here it is kept whole for per-pixel continuous dithering. */
+static const uint8_t bayer8x8[8][8] =
+{
+  {  0, 32,  8, 40,  2, 34, 10, 42 },
+  { 48, 16, 56, 24, 50, 18, 58, 26 },
+  { 12, 44,  4, 36, 14, 46,  6, 38 },
+  { 60, 28, 52, 20, 62, 30, 54, 22 },
+  {  3, 35, 11, 43,  1, 33,  9, 41 },
+  { 51, 19, 59, 27, 49, 17, 57, 25 },
+  { 15, 47,  7, 39, 13, 45,  5, 37 },
+  { 63, 31, 55, 23, 61, 29, 53, 21 }
+};
+
+int pattern_bayer_threshold(int x, int y)
+{
+  return bayer8x8[y & 7][x & 7];
+}

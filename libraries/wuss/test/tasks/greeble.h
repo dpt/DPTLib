@@ -47,8 +47,13 @@ greeble_task_t;
 
 wuss_window_fn_t greeble_handle;
 
-/* create the greebling window against the given wuss instance */
-result_t greeble_create(wuss_t *wuss, greeble_task_t *task);
+/* create the greebling window against the given wuss instance; if out is
+ * non-NULL, the task block is also returned through it */
+result_t greeble_create(wuss_t *wuss, greeble_task_t **out);
+
+/* free a task block allocated by greeble_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void greeble_destroy(greeble_task_t *task);
 
 #endif /* WUSS_APP */
 

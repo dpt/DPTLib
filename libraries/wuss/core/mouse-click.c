@@ -8,9 +8,9 @@ result_t wuss_mouse_click(wuss_t             *wuss,
                           wuss_mouse_action_t action,
                           wuss_window_t     **hit)
 {
-  wuss_window_t          *win;
-  wuss_event_t            event;
-  int                     x, y;
+  wuss_window_t *win;
+  wuss_event_t   event;
+  int            x, y;
 
   x = p.x;
   y = p.y;
@@ -26,7 +26,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   if (action == wuss_MOUSE_UP && wuss->pressed_icon != NULL)
   {
     wuss_icon_t   *pressed  = wuss->pressed_icon;
-    wuss_window_t *presswin = pressed->window;
+    wuss_window_t *presswin = wuss->pressed_window;
     box_t          content;
     point_t        doc_point;
     int            still_over;
@@ -40,11 +40,12 @@ result_t wuss_mouse_click(wuss_t             *wuss,
 
     if (!still_over)
     {
-      wuss->pressed_icon = NULL;
+      wuss->pressed_icon   = NULL;
+      wuss->pressed_window = NULL;
       if (wuss__icon_pressed(pressed))
       {
         wuss__icon_set_state(pressed, wuss_ICON_STATE_PRESSED, 0);
-        wuss__icon_invalidate(pressed);
+        wuss__icon_invalidate(presswin, pressed);
       }
     }
   }
@@ -66,6 +67,10 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   win = wuss__window_at(wuss, p);
   if (hit != NULL)
     *hit = win;
+
+  /* A click can land the pointer on a window without a preceding move
+   * (window opened under it, or a synthetic tap); keep enter/exit balanced. */
+  wuss__pointer_set_window(wuss, win);
 
 #ifdef WUSS_MENUS
   /* The MOUSE_UP that follows the MENU press which opened the chain is spent:
@@ -191,6 +196,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
       {
         point_t scroll;
+        int     paged = 0;
 
         /* Only resize raises the window; dragging a scrollbar well must not
          * reorder the stack. */
@@ -199,16 +205,19 @@ result_t wuss_mouse_click(wuss_t             *wuss,
 
         /* A click landing in the well itself (not on the sausage) pages the
          * content one visible extent towards the click, RISC OS style, keeping
-         * one step of overlap. The drag state is still armed below so a press
-         * that then moves onto the sausage keeps working. */
+         * one step of overlap. ADJUST reverses that -- it pages away from the
+         * click instead, matching RISC OS's SELECT/ADJUST mirroring elsewhere
+         * (e.g. the arrow icons). A direct hit on the sausage itself pages
+         * nothing and falls through to arm the drag below. */
         if (region == wuss_FURNITURE_VSCROLL_WELL ||
             region == wuss_FURNITURE_HSCROLL_WELL)
         {
           box_t sausage;
           box_t content;
-          int   page;
+          int   sign, page;
 
           wuss__content_box(win, &content);
+          sign = (button & wuss_BUTTON_ADJUST) ? -1 : 1;
 
           if (region == wuss_FURNITURE_VSCROLL_WELL)
           {
@@ -216,9 +225,15 @@ result_t wuss_mouse_click(wuss_t             *wuss,
             page = (content.y1 - content.y0) - WUSS_SCROLL_STEP;
             page = MAX(page, 1);
             if (y < sausage.y0)
-              wuss__scroll_step(win, POINT(0, -page));
+            {
+              wuss__scroll_step(win, POINT(0, -page * sign));
+              paged = 1;
+            }
             else if (y > sausage.y1)
-              wuss__scroll_step(win, POINT(0, page));
+            {
+              wuss__scroll_step(win, POINT(0, page * sign));
+              paged = 1;
+            }
           }
           else
           {
@@ -226,30 +241,43 @@ result_t wuss_mouse_click(wuss_t             *wuss,
             page = (content.x1 - content.x0) - WUSS_SCROLL_STEP;
             page = MAX(page, 1);
             if (x < sausage.x0)
-              wuss__scroll_step(win, POINT(-page, 0));
+            {
+              wuss__scroll_step(win, POINT(-page * sign, 0));
+              paged = 1;
+            }
             else if (x > sausage.x1)
-              wuss__scroll_step(win, POINT(page, 0));
+            {
+              wuss__scroll_step(win, POINT(page * sign, 0));
+              paged = 1;
+            }
           }
         }
 
-        wuss_window_get_scroll(win, &scroll);
-
-        wuss->furniture.dragging          = win;
-        wuss->furniture.drag_kind         = wuss__furniture_drag_kind(region);
-        wuss->furniture.drag.x            = x;
-        wuss->furniture.drag.y            = y;
-        wuss->furniture.drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_WELL) ? scroll.y : scroll.x;
-
-        /* Resize needs the pointer's offset from the content box's current
-         * bottom-right corner, so the point grabbed on the resize icon stays
-         * under the pointer as it moves, rather than that corner jumping to
-         * meet the pointer on the very first move. */
-        if (region == wuss_FURNITURE_RESIZE)
+        /* A well click that paged must not also arm a sausage drag, or
+         * holding the button after the page would start scrolling live as
+         * though the pointer had grabbed the sausage itself. A direct hit on
+         * the sausage (paged == 0 for a well region) still arms normally. */
+        if (!paged)
         {
-          box_t content;
-          wuss__content_box(win, &content);
-          wuss->furniture.drag_offset.x = x - content.x1;
-          wuss->furniture.drag_offset.y = y - content.y1;
+          wuss_window_get_scroll(win, &scroll);
+
+          wuss->furniture.dragging          = win;
+          wuss->furniture.drag_kind         = wuss__furniture_drag_kind(region);
+          wuss->furniture.drag.x            = x;
+          wuss->furniture.drag.y            = y;
+          wuss->furniture.drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_WELL) ? scroll.y : scroll.x;
+
+          /* Resize needs the pointer's offset from the content box's current
+           * bottom-right corner, so the point grabbed on the resize icon stays
+           * under the pointer as it moves, rather than that corner jumping to
+           * meet the pointer on the very first move. */
+          if (region == wuss_FURNITURE_RESIZE)
+          {
+            box_t content;
+            wuss__content_box(win, &content);
+            wuss->furniture.drag_offset.x = x - content.x1;
+            wuss->furniture.drag_offset.y = y - content.y1;
+          }
         }
       }
       return result_OK;
@@ -259,8 +287,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
 
   if (win->task->handle != NULL)
   {
-    box_t        content;
-    point_t      doc_point;
+    box_t   content;
+    point_t doc_point;
 
     wuss__content_box(win, &content);
     doc_point.x = x - content.x0 + win->scroll.x;
@@ -277,21 +305,31 @@ result_t wuss_mouse_click(wuss_t             *wuss,
             (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
         {
           wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 1);
-          wuss->pressed_icon = icon;
-          wuss__icon_invalidate(icon);
+          wuss->pressed_icon   = icon;
+          wuss->pressed_window = win;
+          wuss__icon_invalidate(win, icon);
+
+          /* a slider jumps straight to the click point rather than waiting
+           * for a completed press/release, and keeps updating on MOVE while
+           * held (core/mouse-move.c) */
+          if (icon->spec.type == wuss_ICON_TYPE_SLIDER)
+            wuss__icon_set_value(win, icon,
+                                 wuss__slider_value_for_point(win, icon,
+                                                              POINT(x, y)));
         }
         else if (action == wuss_MOUSE_UP && wuss__icon_pressed(icon))
         {
           wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 0);
-          wuss->pressed_icon = NULL;
-          wuss__icon_invalidate(icon);
+          wuss->pressed_icon   = NULL;
+          wuss->pressed_window = NULL;
+          wuss__icon_invalidate(win, icon);
 
           /* a completed click latches radio/option state before the task is
            * told, so the wuss_EVENT_ICON handler sees the new value */
-          if (icon->type == wuss_ICON_TYPE_OPTION)
-            wuss__icon_select(icon, !wuss__icon_selected(icon));
-          else if (icon->type == wuss_ICON_TYPE_RADIO)
-            wuss__icon_select(icon,
+          if (icon->spec.type == wuss_ICON_TYPE_OPTION)
+            wuss__icon_select(win, icon, !wuss__icon_selected(icon));
+          else if (icon->spec.type == wuss_ICON_TYPE_RADIO)
+            wuss__icon_select(win, icon,
                               (button & wuss_BUTTON_ADJUST) ? !wuss__icon_selected(icon)
                                                             : 1);
         }
@@ -300,6 +338,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         event.data.icon.icon   = icon;
         event.data.icon.action = action;
         event.data.icon.button = button;
+        event.data.icon.value  = icon->value;
         return wuss__deliver(win->task, win, &event);
       }
     }

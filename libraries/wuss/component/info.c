@@ -36,16 +36,22 @@
 #define INFO_FIELD_PAD    4 /* px each side of the text inside a value field */
 #define INFO_MAX_ROWS    16
 
-/* The dialogue is one window on a task the caller passes in. It carries
- * wuss_WINDOW_NO_CLOSE so a menu chain that borrows it as a
+/* The dialogue is one window on a task the caller passes in. It omits
+ * wuss_WINDOW_CLOSE so a menu chain that borrows it as a
  * wuss_menu_item_t::window can't have it pulled from under it, and
  * wuss_info_destroy closes it explicitly. The task must therefore not be an
  * autoclose one -- its window list would never empty -- and must outlive the
- * handle. */
+ * handle.
+ *
+ * icons/nicons track the live label:value icons so wuss_info_set_rows can
+ * delete them before rebuilding at a new size -- wuss has no "clear all
+ * icons on this window" call. */
 struct wuss_info
 {
-  wuss_alloc_t   alloc;  /* copied hooks; the wuss_t itself is not retained */
-  wuss_window_t *window; /* owned; closed by wuss_info_destroy */
+  wuss_alloc_t   alloc;              /* copied hooks; wuss_t itself not retained */
+  wuss_window_t *window;             /* owned; closed by wuss_info_destroy */
+  wuss_icon_t   *icons[INFO_MAX_ROWS * 2];
+  int            nicons;
 };
 
 /* ----------------------------------------------------------------------- */
@@ -64,34 +70,24 @@ static int info_widen(bmfont_t *font, const char *s, int cur)
   return MAX(cur, (int) w);
 }
 
-result_t wuss_info_create(wuss_info_t          **out,
-                          wuss_task_t           *task,
-                          const char            *title,
-                          const wuss_info_row_t *rows,
-                          int                    nrows)
+/* Computes the label:value grid's column widths, row pitch and overall size
+ * for \p rows against \p font (may be NULL). Shared by wuss_info_create (to
+ * size the window it creates) and wuss_info_set_rows (to resize the window
+ * it reuses). */
+static void info_measure(bmfont_t              *font,
+                         const wuss_info_row_t *rows,
+                         int                    nrows,
+                         int                   *out_labelw,
+                         int                   *out_valuew,
+                         int                   *out_rowh,
+                         int                   *out_fieldh,
+                         int                   *out_w,
+                         int                   *out_h)
 {
-  result_t         rc;
-  wuss_t          *wuss;
-  bmfont_t        *font;
-  wuss_info_t     *info;
-  int              fonth;
-  int              rowh;
-  int              fieldh;
-  int              labelw;
-  int              valuew;
-  int              w;
-  int              h;
-  box_t            content;
-  wuss_icon_spec_t specs[INFO_MAX_ROWS * 2];
-  int              i;
-
-  if (out == NULL || task == NULL || title == NULL || rows == NULL)
-    return result_NULL_ARG;
-  if (nrows < 1 || nrows > INFO_MAX_ROWS)
-    return result_BAD_ARG;
-
-  wuss = task->wuss;
-  font = wuss_get_font(wuss);
+  int fonth;
+  int labelw, valuew;
+  int rowh, fieldh;
+  int i;
 
   /* Column widths: the widest label on the left, the widest value on the
    * right. A NULL font leaves both at 0; the icons still lay out, just with
@@ -106,46 +102,37 @@ result_t wuss_info_create(wuss_info_t          **out,
 
   fonth = 0;
   if (font != NULL)
-    bmfont_get_info(font, NULL, &fonth);
+    bmfont_get_info(font, NULL, &fonth, NULL, NULL);
   rowh   = MAX(fonth + INFO_ROW_PAD, 12) + INFO_ROW_LEADING;
   fieldh = rowh - INFO_ROW_LEADING; /* rowh is the pitch; leave a gap */
 
   labelw = MAX(labelw, 1);
   valuew = MAX(valuew, 1) + INFO_FIELD_PAD * 2; /* groove border + inset */
 
-  w = INFO_MARGIN * 2 + labelw + INFO_GAP + valuew;
+  *out_labelw = labelw;
+  *out_valuew = valuew;
+  *out_rowh   = rowh;
+  *out_fieldh = fieldh;
+  *out_w      = INFO_MARGIN * 2 + labelw + INFO_GAP + valuew;
   /* rowh is the pitch (field + leading); the last row has no trailing leading */
-  h = INFO_MARGIN * 2 + rowh * nrows - INFO_ROW_LEADING;
+  *out_h      = INFO_MARGIN * 2 + rowh * nrows - INFO_ROW_LEADING;
+}
 
-  info = wuss->alloc.malloc(sizeof(*info));
-  if (info == NULL)
-    return result_OOM;
-  info->alloc  = wuss->alloc; /* the copy outlives the wuss_t */
-  info->window = NULL;
+/* Fills \p specs (>= nrows * 2 entries) with one right-justified label and
+ * one centred value per row, laid out per info_measure's labelw/valuew/rowh/
+ * fieldh. Zeroed first so the icon-spec fields this component does not set
+ * (pattern, bitmap, group, swatch) are their safe defaults. */
+static void info_fill_specs(wuss_icon_spec_t      *specs,
+                            const wuss_info_row_t *rows,
+                            int                    nrows,
+                            int                    labelw,
+                            int                    valuew,
+                            int                    rowh,
+                            int                    fieldh)
+{
+  int i;
 
-  content = (box_t) BOX_POS_SIZE(0, 0, w, h);
-  rc = wuss_window_create(task,
-                          &content,
-                          title,
-                          wuss_WINDOW_NO_BACK | wuss_WINDOW_NO_CLOSE |
-                          wuss_WINDOW_NO_TOGGLE_SIZE | wuss_WINDOW_NO_VSCROLL |
-                          wuss_WINDOW_NO_HSCROLL | wuss_WINDOW_NO_RESIZE |
-                          wuss_WINDOW_NO_REDRAW | wuss_WINDOW_HIDDEN,
-                          wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                          SIZE2D(w, h),
-                          SIZE2D(w, h),
-                          &info->window);
-  if (rc != result_OK)
-  {
-    info->alloc.free(info);
-    return rc;
-  }
-
-  /* One right-justified label and one centred value per row. Zeroed so the
-   * icon-spec fields this component does not set (pattern, bitmap, group,
-   * swatch) are their safe defaults. wuss_icon_create deep-copies each spec
-   * and its text, so this stack array can go out of scope after the call. */
-  memset(specs, 0, sizeof(specs));
+  memset(specs, 0, sizeof(*specs) * (size_t) nrows * 2);
   for (i = 0; i < nrows; i++)
   {
     wuss_icon_spec_t *label;
@@ -169,19 +156,112 @@ result_t wuss_info_create(wuss_info_t          **out,
     value->text   = rows[i].value;
     value->fg     = wuss_COLOUR_BLACK;
     value->bg     = wuss_NO_BACKGROUND;
-    value->border = wuss_ICON_BORDER_GROOVE; /* RISC OS display field */
+    value->u.label.border = wuss_ICON_BORDER_GROOVE; /* RISC OS display field */
     value->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   }
+}
 
-  rc = wuss_icon_create_array(info->window, specs, nrows * 2, NULL);
+result_t wuss_info_create(wuss_info_t          **out,
+                          wuss_task_t           *task,
+                          const char            *title,
+                          const wuss_info_row_t *rows,
+                          int                    nrows)
+{
+  result_t         rc;
+  wuss_t          *wuss;
+  bmfont_t        *font;
+  wuss_info_t     *info;
+  int              labelw, valuew;
+  int              rowh, fieldh;
+  int              w, h;
+  box_t            content;
+  wuss_icon_spec_t specs[INFO_MAX_ROWS * 2];
+
+  if (out == NULL || task == NULL || title == NULL || rows == NULL)
+    return result_NULL_ARG;
+  if (nrows < 1 || nrows > INFO_MAX_ROWS)
+    return result_BAD_ARG;
+
+  wuss = task->wuss;
+  font = wuss_get_font(wuss);
+  info_measure(font, rows, nrows, &labelw, &valuew, &rowh, &fieldh, &w, &h);
+
+  info = wuss->alloc.malloc(sizeof(*info));
+  if (info == NULL)
+    return result_OOM;
+  info->alloc  = wuss->alloc; /* the copy outlives the wuss_t */
+  info->window = NULL;
+  info->nicons = 0;
+
+  content = (box_t) BOX_POS_SIZE(0, 0, w, h);
+  rc = wuss_window_create(task,
+                          &content,
+                          title,
+                          wuss_WINDOW_NO_REDRAW | wuss_WINDOW_HIDDEN,
+                          wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                          SIZE2D(w, h),
+                          SIZE2D(w, h),
+                          &info->window);
+  if (rc != result_OK)
+  {
+    info->alloc.free(info);
+    return rc;
+  }
+
+  /* wuss_icon_create deep-copies each spec and its text, so this stack array
+   * can go out of scope once wuss_icon_create_array returns. */
+  info_fill_specs(specs, rows, nrows, labelw, valuew, rowh, fieldh);
+  rc = wuss_icon_create_array(info->window, specs, nrows * 2, info->icons);
   if (rc != result_OK)
   {
     wuss_window_close(info->window); /* frees the window and any icons on it */
     info->alloc.free(info);
     return rc;
   }
+  info->nicons = nrows * 2;
 
   *out = info;
+  return result_OK;
+}
+
+result_t wuss_info_set_rows(wuss_info_t           *info,
+                            const wuss_info_row_t *rows,
+                            int                    nrows)
+{
+  result_t         rc;
+  bmfont_t        *font;
+  int              labelw, valuew;
+  int              rowh, fieldh;
+  int              w, h;
+  wuss_icon_spec_t specs[INFO_MAX_ROWS * 2];
+  wuss_icon_t     *made[INFO_MAX_ROWS * 2];
+  int              i;
+
+  if (info == NULL || rows == NULL)
+    return result_NULL_ARG;
+  if (nrows < 1 || nrows > INFO_MAX_ROWS)
+    return result_BAD_ARG;
+
+  font = wuss_get_font(info->window->wuss);
+  info_measure(font, rows, nrows, &labelw, &valuew, &rowh, &fieldh, &w, &h);
+
+  rc = wuss_window_resize(info->window, SIZE2D(w, h));
+  if (rc != result_OK)
+    return rc;
+  rc = wuss_window_set_doc(info->window, SIZE2D(w, h));
+  if (rc != result_OK)
+    return rc;
+
+  info_fill_specs(specs, rows, nrows, labelw, valuew, rowh, fieldh);
+  rc = wuss_icon_create_array(info->window, specs, nrows * 2, made);
+  if (rc != result_OK)
+    return rc;
+
+  for (i = 0; i < info->nicons; i++)
+    wuss_icon_delete(info->window, info->icons[i]);
+  memcpy(info->icons, made, sizeof(*made) * (size_t) nrows * 2);
+  info->nicons = nrows * 2;
+
   return result_OK;
 }
 

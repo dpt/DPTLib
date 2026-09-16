@@ -35,13 +35,16 @@ porter_duff_task_t;
 wuss_window_fn_t porter_duff_handle;
 
 /* load the two demo images and create the window against the given wuss
- * instance; resources is the DPTLib repo root, for locating the bundled PNGs */
-result_t porter_duff_create(wuss_t             *wuss,
-                            const colour_t     *palette,
-                            bmfont_t           *font,
-                            const char         *resources,
-                            porter_duff_task_t *task);
+ * instance, colouring the checkerboard/label from wuss's own palette
+ * (wuss_get_palette) and lettering the rule name with wuss's own regular
+ * font (wuss_get_font_n(wuss, 0)); the images are loaded from
+ * wuss_get_resources(wuss) (the DPTLib repo root); if out is non-NULL, the
+ * task block is also returned through it */
+result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out);
 
+/* free a task block allocated by porter_duff_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void porter_duff_destroy(porter_duff_task_t *task);
 
 #endif /* WUSS_APP */
 

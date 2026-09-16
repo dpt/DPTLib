@@ -145,7 +145,10 @@ typedef unsigned char wuss_colour_t;
  * wuss_COLOUR_BUTTON_PRESSED is button.pressed,
  * wuss_COLOUR_ACCENT is accent.colour,
  * wuss_COLOUR_BACKDROP is backdrop.colour,
- * wuss_COLOUR_WINDOW is body.window, wuss_COLOUR_MENU is body.menu. */
+ * wuss_COLOUR_WINDOW is body.window, wuss_COLOUR_MENU is body.menu,
+ * wuss_COLOUR_SLIDER_TRACK is slider.track,
+ * wuss_COLOUR_SLIDER_VALUE is slider.value,
+ * wuss_COLOUR_SLIDER_SURROUND is slider.surround. */
 #define wuss_COLOUR_TITLE_BG        (wuss_COLOUR_SYMBOLIC + 16)
 #define wuss_COLOUR_TITLE_FG        (wuss_COLOUR_SYMBOLIC + 17)
 #define wuss_COLOUR_BUTTON_HILIGHT  (wuss_COLOUR_SYMBOLIC + 18)
@@ -158,6 +161,9 @@ typedef unsigned char wuss_colour_t;
 #define wuss_COLOUR_BUTTON_PRESSED  (wuss_COLOUR_SYMBOLIC + 25)
 #define wuss_COLOUR_BORDER_DIVIDER  (wuss_COLOUR_SYMBOLIC + 26)
 #define wuss_COLOUR_BUTTON_BG       (wuss_COLOUR_SYMBOLIC + 27)
+#define wuss_COLOUR_SLIDER_TRACK    (wuss_COLOUR_SYMBOLIC + 28)
+#define wuss_COLOUR_SLIDER_VALUE    (wuss_COLOUR_SYMBOLIC + 29)
+#define wuss_COLOUR_SLIDER_SURROUND (wuss_COLOUR_SYMBOLIC + 30)
 
 /** Furniture chrome colours, one entry per class of furniture. Title is
  * the only two-tone class (fill + text); the rest are drawn as a single
@@ -193,48 +199,54 @@ wuss_furniture_palette_t;
  *
  * \note When the library is built with the WUSS_FURNITURE CMake option off,
  *       every window is chromeless regardless of these flags and the
- *       wuss_WINDOW_NO_* bits are ignored.
+ *       furniture bits (wuss_WINDOW_NO_TITLEBAR and below) are ignored.
  */
 typedef enum wuss_window_flags
 {
+  /**
+   * Titlebar suppressed; content fills the full visible area and
+   * wuss_WINDOW_CLOSE/BACK/TOGGLE_SIZE are ignored. Without this flag, a
+   * titlebar is present, content is inset below it, and it offers a drag
+   * handle.
+   */
+  wuss_WINDOW_NO_TITLEBAR = 1 << 0,
+
+  /** 1px border suppressed; without this flag it is drawn around the
+   *  visible area. */
+  wuss_WINDOW_NO_OUTLINE  = 1 << 1,
+
+  /**
+   * Close icon in the titlebar. Ignored if flags also includes
+   * wuss_WINDOW_NO_TITLEBAR.
+   */
+  wuss_WINDOW_CLOSE       = 1 << 2,
+
+  /**
+   * Send-to-back icon in the titlebar. Ignored if flags also includes
+   * wuss_WINDOW_NO_TITLEBAR.
+   */
+  wuss_WINDOW_BACK        = 1 << 3,
+
+  /**
+   * Toggle-size icon in the titlebar. Ignored if flags also includes
+   * wuss_WINDOW_NO_TITLEBAR.
+   */
+  wuss_WINDOW_TOGGLE_SIZE = 1 << 4,
+
+  /** Vertical scrollbar on the right edge. */
+  wuss_WINDOW_VSCROLL     = 1 << 5,
+
+  /** Horizontal scrollbar on the bottom edge. */
+  wuss_WINDOW_HSCROLL     = 1 << 6,
+
+  /** Resize icon in the bottom-right corner. */
+  wuss_WINDOW_RESIZE      = 1 << 7,
+
   /** Default: every furniture region drawn. */
-  wuss_WINDOW_DEFAULT        = 0,
-
-  /**
-   * No titlebar; content fills the full visible area, and no drag handle
-   * exists.
-   */
-  wuss_WINDOW_NO_TITLEBAR    = 1 << 0,
-
-  /** No 1px border drawn around the visible area. */
-  wuss_WINDOW_NO_OUTLINE     = 1 << 1,
-
-  /**
-   * No close icon in the titlebar. Ignored if flags includes
-   * wuss_WINDOW_NO_TITLEBAR.
-   */
-  wuss_WINDOW_NO_CLOSE       = 1 << 2,
-
-  /**
-   * No send-to-back icon in the titlebar. Ignored if flags includes
-   * wuss_WINDOW_NO_TITLEBAR.
-   */
-  wuss_WINDOW_NO_BACK        = 1 << 3,
-
-  /**
-   * No toggle-size icon in the titlebar. Ignored if flags includes
-   * wuss_WINDOW_NO_TITLEBAR.
-   */
-  wuss_WINDOW_NO_TOGGLE_SIZE = 1 << 4,
-
-  /** No vertical scrollbar on the right edge. */
-  wuss_WINDOW_NO_VSCROLL     = 1 << 5,
-
-  /** No horizontal scrollbar on the bottom edge. */
-  wuss_WINDOW_NO_HSCROLL     = 1 << 6,
-
-  /** No resize icon in the bottom-right corner. */
-  wuss_WINDOW_NO_RESIZE      = 1 << 7,
+  wuss_WINDOW_DEFAULT     = wuss_WINDOW_CLOSE    | wuss_WINDOW_BACK    |
+                            wuss_WINDOW_TOGGLE_SIZE |
+                            wuss_WINDOW_VSCROLL  | wuss_WINDOW_HSCROLL |
+                            wuss_WINDOW_RESIZE,
 
   /**
    * A resize (drag or toggle-size) always fully redraws the window's content
@@ -249,8 +261,8 @@ typedef enum wuss_window_flags
    * keeps its place in the z-order but is not drawn and not hit-tested, so
    * it neither occludes other windows nor catches the pointer. Its position
    * can still be changed with wuss_window_move while hidden, ready for when
-   * it is shown again. Unlike the wuss_WINDOW_NO_* bits this one is toggled
-   * at runtime, and it is honoured regardless of the WUSS_FURNITURE build
+   * it is shown again. Unlike the furniture bits this one is toggled at
+   * runtime, and it is honoured regardless of the WUSS_FURNITURE build
    * option.
    */
   wuss_WINDOW_HIDDEN         = 1 << 9,
@@ -309,6 +321,10 @@ wuss_backdrop_t;
 #define wuss_BACKDROP_COLOUR(c) \
   ((wuss_backdrop_t) { (c), screen_PATTERN_SOLID, wuss_NO_BACKGROUND })
 
+/** wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND): no fill at all, background
+ *  painting left to the task. */
+#define wuss_NO_BACKDROP wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND)
+
 /** A patterned wuss_backdrop_t: 8x8 pattern p tiled in colour c over
  *  background colour b. */
 #define wuss_BACKDROP_PATTERN(c, p, b) ((wuss_backdrop_t) { (c), (p), (b) })
@@ -353,7 +369,7 @@ typedef struct wuss_config
 
   /**
    * Work-area button colours, as indices into the system palette. bg is the
-   * button face, used when a wuss_ICON_TYPE_BUTTON spec passes
+   * button face, used when a wuss_ICON_TYPE_ACTION spec passes
    * wuss_NO_BACKGROUND rather than its own fill. fg is the button label.
    * pressed replaces bg on the face while the button is held down. bg and
    * pressed default to bevel.light and bevel.dark when config is NULL; fg
@@ -371,7 +387,7 @@ typedef struct wuss_config
   button;
 
   /**
-   * Accent colour for a default action button -- a wuss_ICON_TYPE_BUTTON
+   * Accent colour for a default action button -- a wuss_ICON_TYPE_ACTION
    * created with wuss_ICON_FLAGS_DEFAULT, drawn to stand out from the
    * ordinary bevelled buttons around it (RISC OS's "default action button"):
    * its face fill at rest, and the moat of the wuss_ICON_BORDER_ACTION
@@ -384,6 +400,25 @@ typedef struct wuss_config
     wuss_colour_t colour; /**< Default-button accent fill. */
   }
   accent;
+
+  /**
+   * wuss_ICON_TYPE_SLIDER colours, as indices into the system palette:
+   * surround is the icon's full bounding box, including the fixed 4px gap
+   * around the inner slider rect; track is the sunken groove's ground (the
+   * unfilled portion) within that inner rect; value is the fill marking the
+   * current value. surround and value default to button.bg and track to
+   * body.window when config is NULL. Read back through
+   * wuss_COLOUR_SLIDER_SURROUND / wuss_COLOUR_SLIDER_TRACK /
+   * wuss_COLOUR_SLIDER_VALUE. Ignored when WUSS_ICONS is off.
+   */
+  struct
+  {
+    wuss_colour_t surround; /**< Bounding box and gap around the
+                             *   inner rect. */
+    wuss_colour_t track;    /**< Groove ground (unfilled portion). */
+    wuss_colour_t value;    /**< Fill marking the current value. */
+  }
+  slider;
 
   /**
    * Conventional body fills, as system-palette indices: window is the
@@ -464,11 +499,16 @@ wuss_font_desc_t;
  *                      default palette.
  * \param[in]  npalette Number of entries in palette. Ignored if palette is
  *                      NULL.
- * \param[in]  config   Creation-time configuration, or NULL for defaults.
- * \param[in]  alloc    Allocator hooks, copied in, or NULL for \ref
- *                      wuss_alloc (plain stdlib). Must outlive nothing --
- *                      only the three function pointers are kept.
- * \param[out] wuss     Newly created window manager.
+ * \param[in]  config    Creation-time configuration, or NULL for defaults.
+ * \param[in]  alloc     Allocator hooks, copied in, or NULL for \ref
+ *                       wuss_alloc (plain stdlib). Must outlive nothing --
+ *                       only the three function pointers are kept.
+ * \param[in]  resources Borrowed root path a caller-defined convention (e.g.
+ *                       a demo app's task modules) can use to locate its own
+ *                       bundled files; wuss itself never reads it. Must
+ *                       outlive the wuss_t. NULL if not needed -- see
+ *                       wuss_get_resources.
+ * \param[out] wuss      Newly created window manager.
  * \return \ref result_OK on success, \ref result_BAD_ARG if \p nfonts is
  *         negative or exceeds \ref wuss_MAX_FONTS, \ref
  *         result_WUSS_BAD_COLOUR if any of config's palette entries are out
@@ -481,7 +521,19 @@ result_t wuss_create(screen_t               *scr,
                      int                     npalette,
                      const wuss_config_t    *config,
                      const wuss_alloc_t     *alloc,
+                     const char             *resources,
                      wuss_t                **wuss);
+
+/**
+ * Fetch the resources root path passed to wuss_create (see its \p resources
+ * parameter), for a task to locate its own bundled files without every
+ * caller threading the path through its own create function.
+ *
+ * \param[in] wuss Window manager.
+ * \return The resources root, borrowed, valid until wuss_destroy; or NULL if
+ *         wuss_create was given none.
+ */
+const char *wuss_get_resources(const wuss_t *wuss);
 
 /**
  * Replace the system palette partway through a session.
@@ -591,6 +643,63 @@ wuss_font_class_t wuss_get_font_class_n(const wuss_t *wuss, int index);
 const char *wuss_get_font_name_n(const wuss_t *wuss, int index);
 
 /**
+ * Measure a run of text in one of wuss's configured fonts (see
+ * wuss_get_font_n). Equivalent to bmfont_measure, kept alongside
+ * wuss_text_draw so tasks need not include framebuf/bmfont.h themselves for
+ * simple text.
+ *
+ * \param[in]  wuss          Window manager.
+ * \param[in]  index         Font slot, 0..\ref wuss_MAX_FONTS - 1.
+ * \param[in]  text          Text to measure.
+ * \param[in]  len           Number of characters to consider.
+ * \param[in]  target_width  Width to split within, or \ref
+ *                           bmfont_width_UNLIMITED for none.
+ * \param[out] split_point   Character count that fits within \p
+ *                           target_width, or NULL if not wanted.
+ * \param[out] actual_width  Width of the (possibly split) text, or NULL if
+ *                           not wanted.
+ * \return \ref result_OK on success, \ref result_WUSS_BAD_INDEX if \p index
+ *         is out of range or its slot is empty.
+ */
+result_t wuss_text_measure(const wuss_t   *wuss,
+                           int             index,
+                           const char     *text,
+                           int             len,
+                           bmfont_width_t  target_width,
+                           int            *split_point,
+                           bmfont_width_t *actual_width);
+
+/**
+ * Draw a run of text in one of wuss's configured fonts (see
+ * wuss_get_font_n). Equivalent to bmfont_draw, kept alongside
+ * wuss_text_measure so tasks need not include framebuf/bmfont.h themselves
+ * for simple text.
+ *
+ * \param[in]  wuss    Window manager.
+ * \param[in]  index   Font slot, 0..\ref wuss_MAX_FONTS - 1.
+ * \param[in]  scr     Screen to draw to.
+ * \param[in]  text    Text to draw.
+ * \param[in]  len     Number of characters to consider.
+ * \param[in]  fg      Foreground (ink) colour.
+ * \param[in]  bg      Background colour, or \ref colour_NONE for
+ *                     transparent.
+ * \param[in]  pos     Baseline position to start drawing at.
+ * \param[out] end_pos Baseline position after the drawn text, or NULL if not
+ *                     wanted.
+ * \return \ref result_OK on success, \ref result_WUSS_BAD_INDEX if \p index
+ *         is out of range or its slot is empty.
+ */
+result_t wuss_text_draw(const wuss_t  *wuss,
+                        int            index,
+                        screen_t      *scr,
+                        const char    *text,
+                        int            len,
+                        colour_t       fg,
+                        colour_t       bg,
+                        const point_t *pos,
+                        point_t       *end_pos);
+
+/**
  * The last pointer position seen by wuss_mouse_click or wuss_mouse_move,
  * screen space. (0,0) until the first mouse event. Handy for opening a
  * pop-up menu under the pointer from a task's icon handler, which gets no
@@ -676,6 +785,31 @@ int wuss_get_dirty_count(const wuss_t *wuss);
  * \param[out] out   Filled in with the dirty region.
  */
 void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out);
+
+/**
+ * Fetch the bounding box of every screen-space region "touched" since the
+ * last wuss_clear_touched -- pixels a fast blit path (window move/resize,
+ * scroll) slid to a new position without a repaint, because the backing
+ * bitmap was already correct there. wuss_redraw_dirty never repaints these;
+ * they exist for a frontend that re-uploads the screen to a display surface
+ * (e.g. a GPU texture) piecemeal and needs to know such pixels moved even
+ * though wuss itself did no drawing there this frame.
+ *
+ * \param[in]  wuss Window manager.
+ * \param[out] out  Filled in with the union of every touched region.
+ * \return 1 if anything was touched (and \p out was filled in), 0 if nothing
+ *         was.
+ */
+int wuss_get_touched_extent(const wuss_t *wuss, box_t *out);
+
+/**
+ * Clear the regions accumulated for wuss_get_touched_extent. A frontend
+ * calls this once it has folded the touched extent into whatever it presents
+ * this frame, so the next frame starts from empty.
+ *
+ * \param[in] wuss Window manager.
+ */
+void wuss_clear_touched(wuss_t *wuss);
 
 /**
  * Deliver a mouse-down or mouse-up event (action must be wuss_MOUSE_DOWN or

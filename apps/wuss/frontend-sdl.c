@@ -23,11 +23,12 @@
 #include "frontend.h"
 
 /* Screen pixel format for the demo, chosen at run time via --depth: 32 =
- * pixelfmt_bgrx8888 (feeds SDL directly, no per-frame conversion); 4 (the
- * default) = pixelfmt_p4 paletted (exercises screen_copy_rect's nibble-packed
- * blit path instead); 2 = pixelfmt_p2; 1 = pixelfmt_p1 monochrome. Paletted
- * depths are converted to bgrx8888 per frame via bitmap_convert. Stashed in
- * struct wuss_frontend so present() can branch on it. */
+ * pixelfmt_bgrx8888 (feeds SDL directly, no per-frame conversion); 8 =
+ * pixelfmt_p8; 4 (the default) = pixelfmt_p4 paletted (exercises
+ * screen_copy_rect's nibble-packed blit path instead); 2 = pixelfmt_p2; 1 =
+ * pixelfmt_p1 monochrome. Paletted depths are converted to bgrx8888 per
+ * frame via bitmap_convert. Stashed in struct wuss_frontend so present() can
+ * branch on it. */
 
 /* Integer window zoom: the fixed Wuss screen is drawn at this many device
  * pixels per screen pixel. The initial value comes from -scale (0 => use the
@@ -47,7 +48,7 @@ struct wuss_frontend
   int           scr_width;
   int           scr_height;
   int           scale; /* device pixels per screen pixel; see WUSS_SDL_*_SCALE */
-  int           depth; /* framebuffer bits per pixel: 32 (bgrx8888), 4 (p4), 2 (p2) or 1 (p1) */
+  int           depth; /* framebuffer bits per pixel: 32 (bgrx8888), 8 (p8), 4 (p4), 2 (p2) or 1 (p1) */
   void         *pixels; /* the private framebuffer handed to the caller */
 };
 
@@ -100,9 +101,10 @@ result_t wuss_frontend_open(int               width,
   NOT_USED(palette);
   NOT_USED(npalette);
 
-  if (depth != 1 && depth != 2 && depth != 4 && depth != 32)
+  if (depth != 1 && depth != 2 && depth != 4 && depth != 8 && depth != 32)
   {
-    fprintf(stderr, "Error: unsupported depth %d (want 1, 2, 4 or 32)\n", depth);
+    fprintf(stderr,
+            "Error: unsupported depth %d (want 1, 2, 4, 8 or 32)\n", depth);
     return result_BAD_ARG;
   }
 
@@ -110,10 +112,7 @@ result_t wuss_frontend_open(int               width,
     scale = WUSS_SDL_DEFAULT_SCALE;
   scale = CLAMP(scale, WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE);
 
-  stride = (depth == 32) ? width * 4  /* pixelfmt_bgrx8888: 4 bytes/pixel */
-         : (depth == 4)  ? width / 2  /* pixelfmt_p4: 2 pixels/byte */
-         : (depth == 2)  ? (width + 3) / 4 /* pixelfmt_p2: 4 pixels/byte */
-                         : (width + 7) / 8; /* pixelfmt_p1: 8 pixels/byte */
+  stride = (width * depth + 7) >> 3;
 
   fe = calloc(1, sizeof(*fe));
   if (fe == NULL)
@@ -165,6 +164,7 @@ result_t wuss_frontend_open(int               width,
   SDL_SetTextureScaleMode(fe->texture, SDL_SCALEMODE_NEAREST);
 
   *fmt = (depth == 32) ? pixelfmt_bgrx8888
+       : (depth == 8)  ? pixelfmt_p8
        : (depth == 4)  ? pixelfmt_p4
        : (depth == 2)  ? pixelfmt_p2
                        : pixelfmt_p1;
@@ -202,36 +202,42 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
       return true;
 
     case SDL_EVENT_KEY_UP:
-      if (ev.key.key == SDLK_F4)
-        event->kind = wuss_INPUT_QUIT;
-      else if (ev.key.key == SDLK_F1 && (ev.key.mod & SDL_KMOD_SHIFT))
-        event->kind = wuss_INPUT_GARBAGE;
-      else if (ev.key.key == SDLK_F1)
-        event->kind = wuss_INPUT_REDRAW_ALL;
-      else if (ev.key.key == SDLK_F3)
-        event->kind = wuss_INPUT_PIXEL_STRESS;
-      else if (ev.key.key == SDLK_F2)
+      switch (ev.key.key)
       {
-        int scale;
-
-        /* F2 steps the SDL window zoom up, Shift-F2 down, clamped to
-         * [WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE]: a backend-local zoom the
-         * demo loop never sees. */
-        scale = fe->scale + ((ev.key.mod & SDL_KMOD_SHIFT) ? -1 : 1);
-        if (scale < WUSS_SDL_MIN_SCALE)
-          scale = WUSS_SDL_MIN_SCALE;
-        else if (scale > WUSS_SDL_MAX_SCALE)
-          scale = WUSS_SDL_MAX_SCALE;
-        if (scale != fe->scale)
+      case SDLK_F1:
+        event->kind = (ev.key.mod & SDL_KMOD_SHIFT)
+          ? wuss_INPUT_GARBAGE
+          : wuss_INPUT_REDRAW_ALL;
+        break;
+      case SDLK_F2:
         {
-          fe->scale = scale;
-          SDL_SetWindowSize(fe->window, fe->scr_width * scale,
-                            fe->scr_height * scale);
+          int scale;
+
+          /* F2 steps the SDL window zoom up, Shift-F2 down, clamped to
+           * [WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE]: a backend-local zoom the
+           * demo loop never sees. */
+          scale = fe->scale + ((ev.key.mod & SDL_KMOD_SHIFT) ? -1 : 1);
+          if (scale < WUSS_SDL_MIN_SCALE)
+            scale = WUSS_SDL_MIN_SCALE;
+          else if (scale > WUSS_SDL_MAX_SCALE)
+            scale = WUSS_SDL_MAX_SCALE;
+          if (scale != fe->scale)
+          {
+            fe->scale = scale;
+            SDL_SetWindowSize(fe->window, fe->scr_width * scale,
+                              fe->scr_height * scale);
+          }
+          continue;
         }
+      case SDLK_F3:
+        event->kind = wuss_INPUT_PIXEL_STRESS;
+        break;
+      case SDLK_F4:
+        event->kind = wuss_INPUT_QUIT;
+        break;
+      default:
         continue;
       }
-      else
-        continue;
       return true;
 
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -287,7 +293,9 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
   }
 }
 
-void wuss_frontend_present(wuss_frontend_t *fe, const bitmap_t *bm)
+void wuss_frontend_present(wuss_frontend_t *fe,
+                           const bitmap_t  *bm,
+                           const box_t     *dirty)
 {
   if (fe->depth == 32)
   {
@@ -295,20 +303,46 @@ void wuss_frontend_present(wuss_frontend_t *fe, const bitmap_t *bm)
   }
   else
   {
-    bitmap_t *disp;
+    result_t    rc;
+    bitmap_t    rows, *disp;
+    int         y0, y1;
+    SDL_Rect    rect;
+
+    /* Sub-byte formats (p1/p2/p4) pack several pixels per byte, so only a
+     * whole-row crop is safe without redoing their bit-unpacking maths for an
+     * arbitrary x0; a dirty rect just narrows which rows get converted. */
+    y0 = (dirty != NULL) ? CLAMP(dirty->y0, 0, bm->size.h) : 0;
+    y1 = (dirty != NULL) ? CLAMP(dirty->y1, 0, bm->size.h) : bm->size.h;
+    if (y1 <= y0)
+      goto present;
+
+    rc = bitmap_init(&rows,
+                     SIZE2D(bm->size.w, y1 - y0),
+                     bm->format,
+                     bm->rowbytes,
+                     bm->palette,
+                     (unsigned char *) bm->base + y0 * bm->rowbytes);
+    if (rc != result_OK)
+      goto present;
 
     /* wuss draws into a paletted bitmap; SDL wants bgrx. bitmap_convert reads
      * the palette straight off `bm`, which the caller updates when the palette
      * task's picker menu changes it, so a live palette change just shows up in
      * the next converted frame. */
-    if (bitmap_convert(bm, pixelfmt_bgrx8888, &disp) == result_OK)
+    if (bitmap_convert(&rows, pixelfmt_bgrx8888, &disp) == result_OK)
     {
-      SDL_UpdateTexture(fe->texture, NULL, disp->base, disp->rowbytes);
+      rect.x = 0;
+      rect.y = y0;
+      rect.w = bm->size.w;
+      rect.h = y1 - y0;
+
+      SDL_UpdateTexture(fe->texture, &rect, disp->base, disp->rowbytes);
       free(disp->base);
       free(disp);
     }
   }
 
+present:
   SDL_RenderTexture(fe->renderer, fe->texture, NULL, NULL);
   SDL_RenderPresent(fe->renderer);
 

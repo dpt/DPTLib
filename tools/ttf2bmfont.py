@@ -6,7 +6,8 @@ proportional bitmap fonts from a very specific 2bpp paletted PNG:
 
   * 4-entry palette, order is the contract:
       0 = background, 1 = glyph ink, 2 = advance-width marker, 3 = grid
-    (index 3 is loaded but never interpreted -- it is a visual aid only).
+    (the left-sidebearing line index 3 draws is a visual aid only, but its
+    baseline and cell-bottom rows are load-bearing -- see below).
   * exactly 32 glyph cells per row, packed edge to edge; cellW = pngW / 32,
     and cellW must be <= 16.
   * the top row of every cell is the "advance strip": it holds `advance`
@@ -15,8 +16,14 @@ proportional bitmap fonts from a very specific 2bpp paletted PNG:
   * the remaining cellH-1 rows are the glyph bitmap; index-1 pixels are ink.
   * cell 0 is U+0020 (space); codepoints run contiguously upward. There is no
     character map and no stored first-codepoint.
-  * there is no baseline in the format; the grey grid lines this script draws
-    (left sidebearing, baseline, cell bottom) are purely cosmetic.
+  * the loader derives the font's ascent and descent from cell 0 (space,
+    which carries no ink to interfere): the first two full-width rows of
+    index-3 pixels within the cell body are the baseline and the cell
+    bottom -- ascent is the baseline's offset from the cell top, descent is
+    the cell bottom's offset from the baseline. This script draws those rows
+    at `ascent` and `char_h - 1` (see draw_grid below). --no-grid omits them
+    along with the other grid lines, and the loader then falls back to no
+    descender space for that font.
 
 Requires freetype-py ( pip install freetype-py ). PNG is written by hand so
 Pillow is not needed.
@@ -113,7 +120,7 @@ def measure_cell(glyphs, pad, advance_source):
 def _ink_advance(g):
     if not g["bits"]:
         return 0
-    return g["left"] + g["width"] + 1
+    return g["left"] + g["width"]
 
 
 def advance_for(g, cell_w, advance_source):
@@ -250,7 +257,7 @@ def main(argv):
     p.add_argument("--pad", type=int, default=1,
                    help="extra pixels added to the glyph bbox for grid lines")
     p.add_argument("--advance-source", choices=("ttf", "ink"), default="ttf",
-                   help="'ttf' uses the font's advance, 'ink' uses ink width+1")
+                   help="'ttf' uses the font's advance, 'ink' uses exact ink width")
     p.add_argument("--no-grid", action="store_true",
                    help="omit the grey guide lines")
     p.add_argument("--first", type=lambda s: int(s, 0), default=0x20)

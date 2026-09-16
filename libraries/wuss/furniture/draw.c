@@ -67,7 +67,7 @@ static void draw_title(wuss_t        *wuss,
 {
   bmfont_t      *titlefont;
   point_t        pos;
-  int            text_x0, text_x1, titlelen, split_point;
+  int            text_x0, text_x1, titlelen, split_point, ascent;
   bmfont_width_t width;
   box_t          text_box, text_clip;
 
@@ -76,21 +76,21 @@ static void draw_title(wuss_t        *wuss,
 
   /* window titles are drawn in the bold weight (font slot 1) when one was
    * supplied, falling back to the system font */
-  titlefont = (wuss->nfonts > 1 && wuss->fonts[1] != NULL)
-            ? wuss->fonts[1]
-            : wuss->fonts[0];
+  titlefont = (wuss->fonts.nfonts > 1 && wuss->fonts.fonts[1] != NULL)
+            ? wuss->fonts.fonts[1]
+            : wuss->fonts.fonts[0];
   if (titlefont == NULL)
     return;
 
   text_x0 = titlebar->x0 + 2;
-  if (!(window->flags & wuss_WINDOW_NO_CLOSE))
+  if (window->flags & wuss_WINDOW_CLOSE)
   {
     box_t close;
 
     wuss__close_box(window, &close);
     text_x0 = close.x1 + 2;
   }
-  else if (!(window->flags & wuss_WINDOW_NO_BACK))
+  else if (window->flags & wuss_WINDOW_BACK)
   {
     box_t back;
 
@@ -99,7 +99,7 @@ static void draw_title(wuss_t        *wuss,
   }
 
   text_x1 = titlebar->x1 - 2;
-  if (!(window->flags & wuss_WINDOW_NO_TOGGLE_SIZE))
+  if (window->flags & wuss_WINDOW_TOGGLE_SIZE)
   {
     box_t toggle;
 
@@ -121,8 +121,10 @@ static void draw_title(wuss_t        *wuss,
   titlelen = (int) strlen(window->title);
   wuss__text_measure(titlefont, window->title, titlelen, text_x1 - text_x0, &split_point, &width);
 
+  bmfont_get_info(titlefont, NULL, NULL, &ascent, NULL);
+
   pos.x = (split_point < titlelen) ? text_x0 : text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
-  pos.y = titlebar->y0 + 2;
+  pos.y = titlebar->y0 + 2 + ascent;
   wuss->scr->clip = text_clip;
   wuss__text_draw(titlefont, wuss->scr, window->title, titlelen,
                   wuss->palette[wuss->furniture_colours.title.fg],
@@ -156,14 +158,14 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
   /* the two scrollbar sausages: geometry depends on window->scroll, so they
    * are computed live rather than cached */
-  if (!(window->flags & wuss_WINDOW_NO_VSCROLL))
+  if (window->flags & wuss_WINDOW_VSCROLL)
   {
     wuss__vscroll_sausage_box(window, &sausage);
     fill_furniture_rect(wuss, &sausage, full,
                         wuss->palette[wuss->furniture_colours.scroll.sausages]);
   }
 
-  if (!(window->flags & wuss_WINDOW_NO_HSCROLL))
+  if (window->flags & wuss_WINDOW_HSCROLL)
   {
     wuss__hscroll_sausage_box(window, &sausage);
     fill_furniture_rect(wuss, &sausage, full,

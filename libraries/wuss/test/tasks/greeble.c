@@ -217,10 +217,10 @@ static void greeble_stamp(screen_t       *scr,
 static result_t greeble_redraw(const wuss_event_t *event,
                                greeble_task_t     *task)
 {
-  screen_t       *scr;
-  const box_t    *content, *bounds;
-  colour_t        palette[GREEBLE_NPALETTE][4];
-  int             p, r, c, sx, sy, ox, oy;
+  screen_t    *scr;
+  const box_t *content, *bounds;
+  colour_t     palette[GREEBLE_NPALETTE][4];
+  int          p, r, c, sx, sy, ox, oy;
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
@@ -320,9 +320,9 @@ static result_t greeble_menu_select(greeble_task_t     *task,
   rc = greeble_toggle_randpal(task, task->window);
 
   if (wuss_menu_should_keep_open(event))
-    wuss_menu_set_item_ticked(task->menu_handle, &g_greeble_menu,
-                              GREEBLE_MENU_RANDPAL,
-                              task->random_prefab_palettes);
+    wuss_menu_tick_item_live(task->menu_handle, &g_greeble_menu,
+                             GREEBLE_MENU_RANDPAL,
+                             task->random_prefab_palettes);
   else
     task->menu_handle = NULL;
 
@@ -349,9 +349,9 @@ result_t greeble_handle(wuss_window_t      *window,
     {
       /* the menu struct is shared by every greeble window; sync its sole
        * tick to this window's state before it opens */
-      int ticks[1];
+      unsigned int ticks;
 
-      ticks[GREEBLE_MENU_RANDPAL] = task->random_prefab_palettes;
+      ticks = task->random_prefab_palettes ? 1u << GREEBLE_MENU_RANDPAL : 0;
       return wuss_menu_open_ticked(task->delegate, &g_greeble_menu, ticks,
                                    wuss_get_pointer(task->wuss),
                                    &task->menu_handle);
@@ -370,7 +370,7 @@ result_t greeble_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    free(task); /* task_data was calloc'd per instance by the spawner */
+    greeble_destroy(task);
     return result_OK;
 
   default:
@@ -378,13 +378,18 @@ result_t greeble_handle(wuss_window_t      *window,
   }
 }
 
-result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
+result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
 {
   result_t         rc;
+  greeble_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   size2d_t         grid_px;
   box_t            content;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   /* the full generator grid in pixels: content sized so cols/rows land
    * exactly on the GREEBLE_MAX_* caps in 8-pixel tiles */
@@ -414,7 +419,7 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
                                  grid_px,
                                  "Greeble",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  grid_px,
                                  SIZE2D(0, 0),
                                  &task->window);
@@ -427,7 +432,15 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
   wuss_window_get_content_bounds(task->window, &content);
   greeble_relayout(task, &content);
 
+  if (out)
+    *out = task;
+
   return result_OK;
+}
+
+void greeble_destroy(greeble_task_t *task)
+{
+  free(task);
 }
 
 #endif /* WUSS_APP */

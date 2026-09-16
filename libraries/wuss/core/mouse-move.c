@@ -52,10 +52,14 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   if (hit != NULL)
     *hit = win;
 
+  /* Whole-footprint enter/exit tracking, before any furniture/no-handler
+   * early return -- a furniture hover still counts as "inside the window". */
+  wuss__pointer_set_window(wuss, win);
+
   if (win == NULL)
   {
 #ifdef WUSS_ICONS
-    wuss__icon_set_hover(wuss, NULL);
+    wuss__icon_set_hover(wuss, NULL, NULL);
 #endif
     return result_OK;
   }
@@ -64,7 +68,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   if (wuss->furniture_ops->hit_test(win, POINT(x, y)) != wuss_FURNITURE_CONTENT)
   {
 #ifdef WUSS_ICONS
-    wuss__icon_set_hover(wuss, NULL);
+    wuss__icon_set_hover(wuss, NULL, NULL);
 #endif
     return result_OK;
   }
@@ -73,7 +77,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   if (win->task->handle == NULL)
   {
 #ifdef WUSS_ICONS
-    wuss__icon_set_hover(wuss, NULL);
+    wuss__icon_set_hover(wuss, NULL, NULL);
 #endif
     return result_OK;
   }
@@ -88,13 +92,34 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
     doc_point.y = y - content.y0 + win->scroll.y;
 
 #ifdef WUSS_ICONS
+    /* a slider drag keeps tracking the pointer even once it strays outside
+     * the icon's own bbox, matching a furniture sausage drag */
+    if (wuss->pressed_icon != NULL && wuss->pressed_window == win &&
+        wuss->pressed_icon->spec.type == wuss_ICON_TYPE_SLIDER)
+    {
+      wuss_icon_t *icon = wuss->pressed_icon;
+
+      wuss__icon_set_value(win, icon,
+                           wuss__slider_value_for_point(win, icon,
+                                                        POINT(x, y)));
+
+      event.kind             = wuss_EVENT_ICON;
+      event.data.icon.icon   = icon;
+      event.data.icon.action = wuss_MOUSE_MOVE;
+      event.data.icon.button = wuss_BUTTON_SELECT;
+      event.data.icon.value  = icon->value;
+      return wuss__deliver(win->task, win, &event);
+    }
+#endif
+
+#ifdef WUSS_ICONS
     {
       wuss_icon_t *icon;
       int          k;
 
       icon = wuss__icon_hit_test(win, doc_point);
 
-      wuss__icon_set_hover(wuss, icon);
+      wuss__icon_set_hover(wuss, win, icon);
 
       /* Clear the pressed state of any button the pointer has left. This does
        * not re-press a button on drag-back-in, and does not track which mouse
@@ -108,17 +133,26 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
         {
           wuss__icon_set_state(it, wuss_ICON_STATE_PRESSED, 0);
           if (wuss->pressed_icon == it)
-            wuss->pressed_icon = NULL;
-          wuss__icon_invalidate(it);
+          {
+            wuss->pressed_icon   = NULL;
+            wuss->pressed_window = NULL;
+          }
+          wuss__icon_invalidate(win, it);
         }
       }
 
-      if (icon != NULL)
+      /* a slider only wants MOVE while its own drag is tracked above; without
+       * this it would also get one on every plain hover, with no button
+       * actually held. Other icon types (menu rows, buttons) rely on this
+       * hover MOVE to light up/open on mouse-over, so keep it for them. */
+      if (icon != NULL &&
+          (icon->spec.type != wuss_ICON_TYPE_SLIDER || icon == wuss->pressed_icon))
       {
         event.kind             = wuss_EVENT_ICON;
         event.data.icon.icon   = icon;
         event.data.icon.action = wuss_MOUSE_MOVE;
         event.data.icon.button = wuss_BUTTON_SELECT;
+        event.data.icon.value  = icon->value;
         return wuss__deliver(win->task, win, &event);
       }
     }

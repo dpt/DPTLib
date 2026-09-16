@@ -31,13 +31,18 @@
 /* Input font PNGs must have 32 characters per row */
 #define CHARS_PER_ROW   (32)
 
+/* Input advance widths are encoded 1px short of the true glyph advance; the
+ * missing pixel is letter spacing, added back in at use, not storage. */
+#define LETTER_SPACING  (1)
+
 /* -------------------------------------------------------------------------- */
 
 /* Pixel values */
 #define PIXEL_BG_IDX    (0) /* background */
 #define PIXEL_FG_IDX    (1) /* font */
 #define PIXEL_WIDTH_IDX (2) /* advance widths */
-#define PIXEL_GRID_IDX  (3) /* grid (not presently interpreted) */
+#define PIXEL_GRID_IDX  (3) /* grid: left sidebearing (cosmetic), baseline and
+                             * cell-bottom rows (read back for ascent/descent) */
 
 /* -------------------------------------------------------------------------- */
 
@@ -45,6 +50,8 @@ struct bmfont
 {
   png_uint_32     gridwidth, gridheight; /* pixels */
   png_uint_32     charwidth, charheight; /* em size in pixels */
+  int             ascent;  /* baseline offset from the top of a glyph cell */
+  int             descent; /* offset from the baseline to the cell bottom */
   int             totalchars;
 
   void           *glyphs;
@@ -60,13 +67,28 @@ struct bmfont
 
 /* -------------------------------------------------------------------------- */
 
-/** The advance width to use for glyph \p gid, honouring the monospace flag. */
-static bmfont_width_t bmfont_advance_for(const bmfont_t *bmfont, int gid)
+/** The advance width to use for glyph \p gid, honouring the monospace flag
+ *  and any caller-supplied extra letter/word spacing. Includes the
+ *  LETTER_SPACING pixel not stored in the font. */
+static bmfont_width_t bmfont_advance_for(const bmfont_t         *bmfont,
+                                         int                     gid,
+                                         int                     c,
+                                         const bmfont_spacing_t *spacing)
 {
-  if (bmfont->flags & bmfont_FLAG_MONOSPACE)
-    return bmfont->maxadw;
+  bmfont_width_t adw;
 
-  return bmfont->adw[gid];
+  adw = (bmfont->flags & bmfont_FLAG_MONOSPACE) ? bmfont->maxadw :
+                                                  bmfont->adw[gid];
+  adw += LETTER_SPACING;
+
+  if (spacing)
+  {
+    adw += spacing->letter_spacing;
+    if (c == ' ')
+      adw += spacing->word_spacing;
+  }
+
+  return adw;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -169,6 +191,67 @@ static int detect_gridheight(const unsigned char *pixels,
 
     if (ok)
       return gh;
+  }
+
+  return 0;
+}
+
+/** True if row \p y of the cell is full-width PIXEL_GRID_IDX. */
+static int row_is_grid(const unsigned char *pixels,
+                       size_t               rowbytes,
+                       png_uint_32          gridwidth,
+                       png_uint_32          y)
+{
+  const unsigned char *row = pixels + rowbytes * y;
+  png_uint_32          x;
+
+  for (x = 0; x < gridwidth; x++)
+  {
+    int px = (row[x >> 2] >> (6 - 2 * (x & 3))) & 3;
+    if (px != PIXEL_GRID_IDX)
+      return 0;
+  }
+
+  return 1;
+}
+
+/**
+ * Find the baseline and descent within a glyph cell.
+ *
+ * The space glyph (grid cell 0, gid 0) carries no ink, so its grid rows --
+ * drawn by ttf2bmfont.py as full-width rows of PIXEL_GRID_IDX pixels across
+ * the cell, one at the baseline and one at the cell bottom -- are
+ * unambiguous. The first such row within the cell body is the baseline
+ * (*ascent is its offset from the top of the cell); the next one found at or
+ * below it is the cell bottom (*descent is its offset from the baseline).
+ * Returns 0 if no baseline row is found, e.g. a font predating this
+ * convention -- the caller falls back to treating the whole cell body as
+ * ascent, with no descender.
+ */
+static int detect_baseline_metrics(const unsigned char *pixels,
+                                   size_t               rowbytes,
+                                   png_uint_32          gridwidth,
+                                   png_uint_32          gridheight,
+                                   int                 *ascent,
+                                   int                 *descent)
+{
+  png_uint_32 y;
+  int         baseline_y = -1;
+
+  for (y = 1; y < gridheight; y++) /* row 0 is the advance-width strip */
+  {
+    if (!row_is_grid(pixels, rowbytes, gridwidth, y))
+      continue;
+
+    if (baseline_y < 0)
+    {
+      baseline_y = (int) y;
+      continue;
+    }
+
+    *ascent  = baseline_y - 1; /* -1: ascent excludes the strip row */
+    *descent = (int) y - baseline_y;
+    return 1;
   }
 
   return 0;
@@ -558,11 +641,20 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
     bmfont->charheight    = gridheight - 1; /* -1 for the advance width row */
     bmfont->totalchars    = CHARS_PER_ROW * pngheight / gridheight;
     bmfont->glyphrowbytes = (gridwidth + 7) / 8; /* stored glyph row: 1 or 2 */
+    if (!detect_baseline_metrics(pixels, pngrowbytes,
+                                 (png_uint_32) gridwidth,
+                                 (png_uint_32) gridheight,
+                                 &bmfont->ascent, &bmfont->descent))
+    {
+      bmfont->ascent  = bmfont->charheight; /* no grid row: full height, no
+                                             * descender */
+      bmfont->descent = 0;
+    }
 
-    logf_info("bmfont load png: charwidth=%d charheight=%d totalchars=%d "
-              "glyphrowbytes=%d",
-              bmfont->charwidth, bmfont->charheight,
-              bmfont->totalchars, bmfont->glyphrowbytes);
+    logf_info("bmfont load png: charwidth=%d charheight=%d ascent=%d "
+              "descent=%d totalchars=%d glyphrowbytes=%d",
+              bmfont->charwidth, bmfont->charheight, bmfont->ascent,
+              bmfont->descent, bmfont->totalchars, bmfont->glyphrowbytes);
 
     rc = extract_advance_widths(bmfont, pixels, pngwidth, pngheight,
                                 pngrowbytes);
@@ -607,12 +699,20 @@ void bmfont_set_flags(bmfont_t *bmfont, bmfont_flags_t flags)
   bmfont->flags = flags;
 }
 
-void bmfont_get_info(bmfont_t *bmfont, int *width, int *height)
+void bmfont_get_info(bmfont_t *bmfont,
+                     int      *width,
+                     int      *height,
+                     int      *ascent,
+                     int      *descent)
 {
   if (width)
-    *width  = bmfont->charwidth;
+    *width   = bmfont->charwidth;
   if (height)
-    *height = bmfont->charheight;
+    *height  = bmfont->charheight;
+  if (ascent)
+    *ascent  = bmfont->ascent;
+  if (descent)
+    *descent = bmfont->descent;
 }
 
 int bmfont_get_count(bmfont_t *bmfont)
@@ -620,15 +720,18 @@ int bmfont_get_count(bmfont_t *bmfont)
   return bmfont->totalchars;
 }
 
-result_t bmfont_measure(bmfont_t       *bmfont,
-                        const char     *text,
-                        int             textlen,
-                        bmfont_width_t  target_width,
-                        int            *split_point,
-                        bmfont_width_t *actual_width)
+result_t bmfont_measure(bmfont_t               *bmfont,
+                        const char             *text,
+                        int                     textlen,
+                        const bmfont_spacing_t *spacing,
+                        bmfont_width_t          target_width,
+                        int                    *split_point,
+                        bmfont_width_t         *actual_width)
 {
   bmfont_width_t current_width;
   int            len;
+  int            any_drawn;
+  int            last_c;
 
   assert(bmfont);
   assert(text);
@@ -637,6 +740,8 @@ result_t bmfont_measure(bmfont_t       *bmfont,
   /* split_point, actual_width may be NULL */
 
   current_width = 0;
+  any_drawn      = 0;
+  last_c         = 0;
   for (len = textlen; len; len--)
   {
     int c;
@@ -648,19 +753,37 @@ result_t bmfont_measure(bmfont_t       *bmfont,
       continue;
 
     gid = c - ' ';
-    advance = (gid < bmfont->totalchars) ? bmfont_advance_for(bmfont, gid) : 0;
+    advance = (gid < bmfont->totalchars) ?
+              bmfont_advance_for(bmfont, gid, c, spacing) : 0;
 
     next_width = current_width + advance;
     if (next_width > target_width)
       break;
 
     current_width = next_width;
+    any_drawn      = 1;
+    last_c         = c;
   }
 
   if (split_point)
     *split_point  = textlen - len;
   if (actual_width)
-    *actual_width = current_width;
+  {
+    bmfont_width_t trailing_trim = 0;
+
+    if (any_drawn)
+    {
+      trailing_trim = LETTER_SPACING;
+      if (spacing)
+      {
+        trailing_trim += spacing->letter_spacing;
+        if (last_c == ' ')
+          trailing_trim += spacing->word_spacing;
+      }
+    }
+
+    *actual_width = current_width - trailing_trim;
+  }
 
   return result_OK;
 }
@@ -1497,21 +1620,217 @@ static void bmfont_drawchar_any8888_2w_t(void          *vscreen,
   }
 }
 
-result_t bmfont_draw(bmfont_t      *bmfont,
-                     screen_t      *scr,
-                     const char    *text,
-                     int            len,
-                     colour_t       fg,
-                     colour_t       bg,
-                     const point_t *pos,
-                     point_t       *end_pos)
+/* Draw a character, a maximum of one byte wide, to a p8 screen using an
+ * opaque background. */
+static void bmfont_drawchar_p8_1w_o(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char       *scr = vscreen;
+  const unsigned char *gly = vglyph;
+  int                  stride;
+
+  NOT_USED(shift);
+
+  gly    += top_skip;
+  stride = rowbytes - charwidth;
+
+  while (charheight--)
+  {
+    unsigned int row = *gly++; /* 1 byte wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
+
+    switch (charwidth) /* jump table test */
+    {
+      case 8: *scr++ = (row & (1u << 7)) ? fg : bg; /* fallthrough! */
+      case 7: *scr++ = (row & (1u << 6)) ? fg : bg;
+      case 6: *scr++ = (row & (1u << 5)) ? fg : bg;
+      case 5: *scr++ = (row & (1u << 4)) ? fg : bg;
+      case 4: *scr++ = (row & (1u << 3)) ? fg : bg;
+      case 3: *scr++ = (row & (1u << 2)) ? fg : bg;
+      case 2: *scr++ = (row & (1u << 1)) ? fg : bg;
+      case 1: *scr++ = (row & (1u << 0)) ? fg : bg;
+    }
+
+    scr += stride;
+  }
+}
+
+/* Draw a character, a maximum of one byte wide, to a p8 screen using a
+ * transparent background. */
+static void bmfont_drawchar_p8_1w_t(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char       *scr = vscreen;
+  const unsigned char *gly = vglyph;
+  int                  stride;
+
+  NOT_USED(shift);
+  NOT_USED(bg);
+
+  gly    += top_skip;
+  stride = rowbytes - charwidth;
+
+  while (charheight--)
+  {
+    unsigned int row = *gly++; /* 1 byte wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
+
+    switch (charwidth) /* jump table test */
+    {
+      case 8: if (row & (1u << 7)) *scr = fg; scr++; /* fallthrough! */
+      case 7: if (row & (1u << 6)) *scr = fg; scr++;
+      case 6: if (row & (1u << 5)) *scr = fg; scr++;
+      case 5: if (row & (1u << 4)) *scr = fg; scr++;
+      case 4: if (row & (1u << 3)) *scr = fg; scr++;
+      case 3: if (row & (1u << 2)) *scr = fg; scr++;
+      case 2: if (row & (1u << 1)) *scr = fg; scr++;
+      case 1: if (row & (1u << 0)) *scr = fg; scr++;
+    }
+
+    scr += stride;
+  }
+}
+
+/* Draw a character, a maximum of two bytes wide, to a p8 screen using an
+ * opaque background. */
+static void bmfont_drawchar_p8_2w_o(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char        *scr = vscreen;
+  const unsigned short *gly = vglyph;
+  int                   stride;
+
+  NOT_USED(shift);
+
+  gly    += top_skip;
+  stride = rowbytes - charwidth;
+
+  while (charheight--)
+  {
+    unsigned int row = *gly++; /* 2 bytes wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
+
+    switch (charwidth) /* jump table test */
+    {
+      case 16: *scr++ = (row & (1u << 15)) ? fg : bg; /* fallthrough! */
+      case 15: *scr++ = (row & (1u << 14)) ? fg : bg;
+      case 14: *scr++ = (row & (1u << 13)) ? fg : bg;
+      case 13: *scr++ = (row & (1u << 12)) ? fg : bg;
+      case 12: *scr++ = (row & (1u << 11)) ? fg : bg;
+      case 11: *scr++ = (row & (1u << 10)) ? fg : bg;
+      case 10: *scr++ = (row & (1u <<  9)) ? fg : bg;
+      case  9: *scr++ = (row & (1u <<  8)) ? fg : bg;
+      case  8: *scr++ = (row & (1u <<  7)) ? fg : bg;
+      case  7: *scr++ = (row & (1u <<  6)) ? fg : bg;
+      case  6: *scr++ = (row & (1u <<  5)) ? fg : bg;
+      case  5: *scr++ = (row & (1u <<  4)) ? fg : bg;
+      case  4: *scr++ = (row & (1u <<  3)) ? fg : bg;
+      case  3: *scr++ = (row & (1u <<  2)) ? fg : bg;
+      case  2: *scr++ = (row & (1u <<  1)) ? fg : bg;
+      case  1: *scr++ = (row & (1u <<  0)) ? fg : bg;
+    }
+
+    scr += stride;
+  }
+}
+
+/* Draw a character, a maximum of two bytes wide, to a p8 screen using a
+ * transparent background. */
+static void bmfont_drawchar_p8_2w_t(void          *vscreen,
+                                    const void    *vglyph,
+                                    int            top_skip,
+                                    int            right_skip,
+                                    int            shift,
+                                    int            rowbytes,
+                                    int            charwidth,
+                                    int            charheight,
+                                    pixelfmt_any_t fg,
+                                    pixelfmt_any_t bg)
+{
+  unsigned char        *scr = vscreen;
+  const unsigned short *gly = vglyph;
+  int                   stride;
+
+  NOT_USED(shift);
+  NOT_USED(bg);
+
+  gly    += top_skip;
+  stride = rowbytes - charwidth;
+
+  while (charheight--)
+  {
+    unsigned int row = *gly++; /* 2 bytes wide font data */
+    row >>= right_skip; /* compensate when right hand clipping */
+
+    switch (charwidth) /* jump table test */
+    {
+      case 16: if (row & (1u << 15)) *scr = fg; scr++; /* fallthrough! */
+      case 15: if (row & (1u << 14)) *scr = fg; scr++;
+      case 14: if (row & (1u << 13)) *scr = fg; scr++;
+      case 13: if (row & (1u << 12)) *scr = fg; scr++;
+      case 12: if (row & (1u << 11)) *scr = fg; scr++;
+      case 11: if (row & (1u << 10)) *scr = fg; scr++;
+      case 10: if (row & (1u <<  9)) *scr = fg; scr++;
+      case  9: if (row & (1u <<  8)) *scr = fg; scr++;
+      case  8: if (row & (1u <<  7)) *scr = fg; scr++;
+      case  7: if (row & (1u <<  6)) *scr = fg; scr++;
+      case  6: if (row & (1u <<  5)) *scr = fg; scr++;
+      case  5: if (row & (1u <<  4)) *scr = fg; scr++;
+      case  4: if (row & (1u <<  3)) *scr = fg; scr++;
+      case  3: if (row & (1u <<  2)) *scr = fg; scr++;
+      case  2: if (row & (1u <<  1)) *scr = fg; scr++;
+      case  1: if (row & (1u <<  0)) *scr = fg; scr++;
+    }
+
+    scr += stride;
+  }
+}
+
+result_t bmfont_draw(bmfont_t               *bmfont,
+                     screen_t               *scr,
+                     const char             *text,
+                     int                     len,
+                     colour_t                fg,
+                     colour_t                bg,
+                     const bmfont_spacing_t *spacing,
+                     const point_t          *pos,
+                     point_t                *end_pos)
 {
   bmfont_drawchar_t *drawfn;
   box_t              scrclip;
   box_t              drawbox;
   box_t              drawclip;
+  point_t            top;
 
   unsigned int bgalpha = colour_get_alpha(&bg);
+
+  /* pos is the baseline; glyph cells are drawn from their top, ascent above
+   * the baseline */
+  top = POINT(pos->x, pos->y - bmfont->ascent);
 
   switch (scr->format)
   {
@@ -1542,6 +1861,15 @@ result_t bmfont_draw(bmfont_t      *bmfont,
     }
     break;
 
+  case pixelfmt_p8:
+    switch (bmfont->glyphrowbytes)
+    {
+    case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p8_1w_t : bmfont_drawchar_p8_1w_o; break;
+    case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p8_2w_t : bmfont_drawchar_p8_2w_o; break;
+    default: assert(0); return result_NOT_SUPPORTED;
+    }
+    break;
+
   case pixelfmt_bgra8888:
   case pixelfmt_bgrx8888:
     switch (bmfont->glyphrowbytes)
@@ -1559,10 +1887,17 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   if (screen_get_clip(scr, &scrclip))
     return result_OK; /* invalid clipped screen */
 
-  drawbox.x0 = pos->x;
-  drawbox.y0 = pos->y;
-  drawbox.x1 = pos->x + bmfont->charwidth * len; /* worst-case estimate */
-  drawbox.y1 = pos->y + bmfont->charheight;
+  {
+    int extra_per_char;
+
+    extra_per_char = spacing ?
+      MAX(spacing->letter_spacing + spacing->word_spacing, 0) : 0;
+
+    drawbox.x0 = top.x;
+    drawbox.y0 = top.y;
+    drawbox.x1 = top.x + (bmfont->charwidth + extra_per_char) * len; /* worst-case estimate */
+    drawbox.y1 = top.y + bmfont->charheight;
+  }
 
   if (!box_intersects(&scrclip, &drawbox))
     return result_OK; /* not visible */
@@ -1575,8 +1910,8 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   int            bottom_skip       = drawclip.y1;
 
   /* ensure that any computed positions are inside the clip box */
-  unsigned int   clamped_pos_x     = CLAMP(pos->x, scrclip.x0, scrclip.x1 - 1);
-  unsigned int   clamped_pos_y     = CLAMP(pos->y, scrclip.y0, scrclip.y1 - 1);
+  unsigned int   clamped_pos_x     = CLAMP(top.x, scrclip.x0, scrclip.x1 - 1);
+  unsigned int   clamped_pos_y     = CLAMP(top.y, scrclip.y0, scrclip.y1 - 1);
 
   int            log2bpp           = pixelfmt_log2bpp(scr->format);
   unsigned char *screen            = (unsigned char *) scr->base + clamped_pos_y * scr->rowbytes + ((clamped_pos_x << log2bpp) >> 3);
@@ -1591,8 +1926,6 @@ result_t bmfont_draw(bmfont_t      *bmfont,
   pixelfmt_any_t nativefg          = colour_to_pixel(scr->palette, scr->palette ? 1 << (1 << log2bpp) : 0, fg, scr->format);
   pixelfmt_any_t nativebg          = colour_to_pixel(scr->palette, scr->palette ? 1 << (1 << log2bpp) : 0, bg, scr->format);
   int            remaining         = scrclip.x1 - clamped_pos_x; /* in pixels */
-
-  const int      tracking          = 0; /* note: +ve can break stuff! */
 
   int            x                 = pos->x;
 
@@ -1624,7 +1957,7 @@ result_t bmfont_draw(bmfont_t      *bmfont,
     if (gid >= bmfont->totalchars)
       continue;
 
-    advance = bmfont_advance_for(bmfont, gid) + tracking;
+    advance = bmfont_advance_for(bmfont, gid, c, spacing);
 
     x += advance;
 
@@ -1635,44 +1968,89 @@ result_t bmfont_draw(bmfont_t      *bmfont,
       continue;
     }
 
-    /* draw */
+    /* draw: the glyph cell itself, then any leftover advance (letter
+     * spacing, or monospace padding) as a second, glyph-less segment of
+     * the same width the drawfn already knows how to paint as pure
+     * background (opaque) or leave untouched (transparent) -- a row of
+     * zero bits reads as "no ink" either way. */
     {
-      glyph = (unsigned char *) bmfont->glyphs + gid * glyphbytes;
+      static const unsigned char zero_glyph[128] = { 0 };
 
-      int clippedcharwidth = MIN(remaining, advance - left_skip); /* in pixels */
+      int cellwidth;
+      int cellpad;
+      int clippedcellwidth;
 
-      if (clippedcharwidth <= 0)
+      glyph     = (unsigned char *) bmfont->glyphs + gid * glyphbytes;
+      cellwidth = MIN(advance, charwidth);
+      cellpad   = advance - cellwidth;
+
+      clippedcellwidth = MIN(remaining, cellwidth - left_skip); /* in pixels */
+
+      if (clippedcellwidth > 0)
+      {
+        int right_skip = charwidth - left_skip - clippedcellwidth;
+
+        drawfn(screen, glyph,
+               top_skip, right_skip,
+               shift, rowbytes,
+               clippedcellwidth, clippedcharheight,
+               nativefg, nativebg);
+
+        if ((remaining -= clippedcellwidth) <= 0)
+          break; /* stop drawing */
+
+        {
+          int pixelsused_bits = clippedcellwidth << log2bpp;
+          int nbits           = shift + pixelsused_bits;
+          screen = (unsigned char *) screen + (nbits >> 3);
+          shift  = nbits & 7;
+        }
+
+        left_skip = 0;
+      }
+      else
       {
         /* still entirely left-clipped: the visible clip is narrower than
          * this character's remaining left-clip amount. Skip it exactly
          * like the whole-character skip above, without touching
          * "remaining" or the screen pointer/shift, since nothing of it
          * was drawn. */
-        left_skip -= advance;
-        continue;
+        left_skip -= cellwidth;
       }
 
+      if (cellpad > 0 && left_skip < cellpad)
       {
-        int right_skip = charwidth - left_skip - clippedcharwidth;
+        int clippedspacing = MIN(remaining, cellpad - left_skip);
 
-        drawfn(screen, glyph,
-               top_skip, right_skip,
-               shift, rowbytes,
-               clippedcharwidth, clippedcharheight,
-               nativefg, nativebg);
+        if (clippedspacing > 0)
+        {
+          assert((size_t) clippedcharheight * bmfont->glyphrowbytes <=
+                 sizeof(zero_glyph));
+
+          drawfn(screen, zero_glyph,
+                 top_skip, 0,
+                 shift, rowbytes,
+                 clippedspacing, clippedcharheight,
+                 nativefg, nativebg);
+
+          if ((remaining -= clippedspacing) <= 0)
+            break; /* stop drawing */
+
+          {
+            int pixelsused_bits = clippedspacing << log2bpp;
+            int nbits           = shift + pixelsused_bits;
+            screen = (unsigned char *) screen + (nbits >> 3);
+            shift  = nbits & 7;
+          }
+        }
+
+        left_skip = 0;
       }
-
-      if ((remaining -= clippedcharwidth) <= 0)
-        break; /* stop drawing */
-
-      /* advance the screen pointer */
-      int pixelsused_bits = clippedcharwidth << log2bpp;
-      int nbits           = shift + pixelsused_bits;
-      screen = (unsigned char *) screen + (nbits >> 3);
-      shift  = nbits & 7;
+      else if (cellpad > 0)
+      {
+        left_skip -= cellpad;
+      }
     }
-
-    left_skip = 0;
   }
 
   if (end_pos)
@@ -1693,7 +2071,7 @@ result_t bmfont_draw(bmfont_t      *bmfont,
         if (gid >= bmfont->totalchars)
           continue;
 
-        advance = bmfont_advance_for(bmfont, gid) + tracking;
+        advance = bmfont_advance_for(bmfont, gid, c, spacing);
 
         x += advance;
       }
@@ -1707,15 +2085,16 @@ result_t bmfont_draw(bmfont_t      *bmfont,
 
 /* -------------------------------------------------------------------------- */
 
-result_t bmfont_draw_relief(bmfont_t      *bmfont,
-                            screen_t      *scr,
-                            const char    *text,
-                            int            len,
-                            colour_t       fg,
-                            colour_t       shadow,
-                            const point_t *pos,
-                            const point_t *offset,
-                            point_t       *end_pos)
+result_t bmfont_draw_relief(bmfont_t               *bmfont,
+                            screen_t               *scr,
+                            const char             *text,
+                            int                     len,
+                            colour_t                fg,
+                            colour_t                shadow,
+                            const bmfont_spacing_t *spacing,
+                            const point_t          *pos,
+                            const point_t          *offset,
+                            point_t                *end_pos)
 {
   result_t rc;
   colour_t transparent;
@@ -1724,12 +2103,13 @@ result_t bmfont_draw_relief(bmfont_t      *bmfont,
   transparent = colour_rgba(0, 0, 0, 0);
   shadowpos   = POINT(pos->x + offset->x, pos->y + offset->y);
 
-  rc = bmfont_draw(bmfont, scr, text, len, shadow, transparent,
+  rc = bmfont_draw(bmfont, scr, text, len, shadow, transparent, spacing,
                   &shadowpos, NULL);
   if (rc)
     return rc;
 
-  return bmfont_draw(bmfont, scr, text, len, fg, transparent, pos, end_pos);
+  return bmfont_draw(bmfont, scr, text, len, fg, transparent, spacing, pos,
+                     end_pos);
 }
 
 /* -------------------------------------------------------------------------- */

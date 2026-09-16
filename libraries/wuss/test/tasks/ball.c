@@ -51,11 +51,16 @@ static box_t ball_local_box(int vx0, int vy0, int vx1, int vy1, int radius)
   return local;
 }
 
-result_t ball_create(wuss_t *wuss, ball_task_t *task)
+result_t ball_create(wuss_t *wuss, ball_task_t **out)
 {
   result_t         rc;
+  ball_task_t     *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->bg     = colour_rgb(0xFF, 0x00, 0x00);
   task->nballs = 1;
@@ -74,7 +79,7 @@ result_t ball_create(wuss_t *wuss, ball_task_t *task)
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
-    free(task); /* nothing registered yet; the spawner will not free it */
+    free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
   wuss_task_set_autoclose(delegate, 1);
@@ -83,14 +88,25 @@ result_t ball_create(wuss_t *wuss, ball_task_t *task)
                                  SIZE2D(200, 160),
                                  "Bouncing Ball",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  SIZE2D(200, 160),
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
 
-  return rc;
+  if (out)
+    *out = task;
+
+  return result_OK;
+}
+
+void ball_destroy(ball_task_t *task)
+{
+  free(task);
 }
 
 static result_t ball_redraw(const wuss_event_t *event, void *task_data)
@@ -208,10 +224,10 @@ static result_t ball_idle(void *task_data)
     b->x += b->dx;
     b->y += b->dy;
 
-    if (b->x - b->radius < scroll.x)              { b->x = scroll.x + b->radius;          b->dx = -b->dx; }
-    else if (b->x + b->radius > scroll.x + width) { b->x = scroll.x + width - b->radius;  b->dx = -b->dx; }
-    if (b->y - b->radius < scroll.y)              { b->y = scroll.y + b->radius;          b->dy = -b->dy; }
-    else if (b->y + b->radius > scroll.y + height){ b->y = scroll.y + height - b->radius; b->dy = -b->dy; }
+    if (b->x - b->radius < scroll.x)               { b->x = scroll.x + b->radius;              b->dx = -b->dx; }
+    else if (b->x + b->radius >= scroll.x + width) { b->x = scroll.x + width - 1 - b->radius;  b->dx = -b->dx; }
+    if (b->y - b->radius < scroll.y)               { b->y = scroll.y + b->radius;              b->dy = -b->dy; }
+    else if (b->y + b->radius >= scroll.y + height){ b->y = scroll.y + height - 1 - b->radius; b->dy = -b->dy; }
 
     local = ball_local_box(MIN(old_x, b->x), MIN(old_y, b->y),
                            MAX(old_x, b->x), MAX(old_y, b->y),
@@ -244,7 +260,7 @@ result_t ball_handle(wuss_window_t      *window,
     return ball_idle(task_data);
 
   case wuss_EVENT_QUIT:
-    free(bc); /* task_data was calloc'd per instance by the spawner */
+    ball_destroy(bc);
     return result_OK;
 
   default:

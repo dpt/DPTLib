@@ -405,10 +405,10 @@ static int test3(void)
 {
   static const box_t pagedims = { 0, 0, 100, 100 };
 
+  result_t     err;
   packer_t    *packer;
   const box_t *a, *b, *c;
   box_t        freed;
-  result_t     err;
 
   printf("test3: packer_release\n");
 
@@ -542,12 +542,12 @@ static int test4(void)
   static const int w[6] = { 40, 55, 40, 70, 40, 50 };
   static const int h[6] = { 30, 40, 30, 35, 30, 45 };
 
+  result_t     err;
   packer_t    *packer;
   const box_t *slot;
   box_t        held[6];
   box_t        full;
   struct scan  s;
-  result_t     err;
   int          cycle;
   int          i;
 

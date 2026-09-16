@@ -61,18 +61,18 @@ result_t wuss_create(screen_t               *scr,
                      int                     npalette,
                      const wuss_config_t    *config,
                      const wuss_alloc_t     *alloc,
+                     const char             *resources,
                      wuss_t                **wuss)
 {
-  bmfont_t      *font;
-  wuss_alloc_t   al;
-  wuss_t        *w;
+  wuss_alloc_t al;
+  wuss_t      *w;
 #ifdef WUSS_FURNITURE
   wuss_furniture_palette_t pal;
-  wuss_colour_t  bg, fg;
+  wuss_colour_t            bg, fg;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
-  wuss_colour_t  blight, bdark, bdivider;
-  wuss_colour_t  btnbg, btnfg, btnpressed, accent;
+  wuss_colour_t blight, bdark, bdivider;
+  wuss_colour_t btnbg, btnfg, btnpressed, accent;
 #endif
 #ifdef WUSS_FURNITURE
   int            font_height;
@@ -84,14 +84,14 @@ result_t wuss_create(screen_t               *scr,
   if (nfonts < 0 || nfonts > wuss_MAX_FONTS || (nfonts > 0 && fonts == NULL))
     return result_BAD_ARG;
 
-  font = (nfonts > 0) ? fonts[0].font : NULL;
-
   al = (alloc != NULL) ? *alloc : wuss_alloc;
 
   w = al.malloc(sizeof(*w));
   if (w == NULL)
     return result_OOM;
   w->alloc = al;
+
+  wuss__fontset_init(&w->fonts, fonts, nfonts);
 
   if (palette == NULL)
   {
@@ -229,23 +229,15 @@ result_t wuss_create(screen_t               *scr,
   {
     w->titlebar_height = config->titlebar_height;
   }
-  else if (font != NULL)
-  {
-    /* titles draw in the bold weight when one was supplied; size the
-     * titlebar to whichever weight is taller */
-    bmfont_get_info(font, NULL, &font_height);
-    if (nfonts > 1 && fonts[1].font != NULL)
-    {
-      int titleh;
-
-      bmfont_get_info(fonts[1].font, NULL, &titleh);
-      font_height = MAX(font_height, titleh);
-    }
-    w->titlebar_height = font_height + 4;
-  }
   else
   {
-    w->titlebar_height = WUSS_DEFAULT_TITLEBAR_HEIGHT;
+    /* titles draw in the bold weight when one was supplied; size the
+     * titlebar to whichever weight is taller. Both slots empty -> fall back
+     * to the default. */
+    font_height = MAX(wuss__fontset_height(&w->fonts, 0),
+                      wuss__fontset_height(&w->fonts, 1));
+    w->titlebar_height = (font_height > 0) ? font_height + 4
+                                           : WUSS_DEFAULT_TITLEBAR_HEIGHT;
   }
 #else /* !WUSS_FURNITURE */
 #ifdef WUSS_ICONS
@@ -299,28 +291,49 @@ result_t wuss_create(screen_t               *scr,
 #endif
 #endif /* WUSS_FURNITURE */
 
+#ifdef WUSS_ICONS
+  {
+    wuss_colour_t track, value, surround;
+
+    if (config != NULL)
+    {
+      track = (config->slider.track == wuss_NO_BACKGROUND)
+            ? w->window_bg
+            : wuss__resolve_colour(w, config->slider.track);
+      value = (config->slider.value == wuss_NO_BACKGROUND)
+            ? w->button_bg
+            : wuss__resolve_colour(w, config->slider.value);
+      surround = (config->slider.surround == wuss_NO_BACKGROUND)
+               ? w->button_bg
+               : wuss__resolve_colour(w, config->slider.surround);
+    }
+    else
+    {
+      track    = w->window_bg;
+      value    = w->button_bg;
+      surround = w->button_bg;
+    }
+
+    if (track >= w->npalette || value >= w->npalette || surround >= w->npalette)
+    {
+      wuss__free(w, w->palette);
+      wuss__free(w, w);
+      return result_WUSS_BAD_COLOUR;
+    }
+
+    w->slider_track    = track;
+    w->slider_value    = value;
+    w->slider_surround = surround;
+  }
+#endif
+
   /* Second pass: the chrome colours are stored and concrete now, so fill in
    * the chrome-role symbolic slots (wuss_COLOUR_TITLE_BG etc.). */
   wuss__rebuild_palettecache(w);
 
   w->scr                = scr;
-  {
-    int i;
-
-    for (i = 0; i < nfonts; i++)
-    {
-      w->fonts[i]        = fonts[i].font;
-      w->font_classes[i] = fonts[i].font_class;
-      w->font_names[i]   = fonts[i].name;
-    }
-    for (; i < wuss_MAX_FONTS; i++)
-    {
-      w->fonts[i]        = NULL;
-      w->font_classes[i] = wuss_FONT_CLASS_NONE;
-      w->font_names[i]   = NULL;
-    }
-    w->nfonts = nfonts;
-  }
+  w->resources          = resources;
+  w->pointer_window     = NULL;
 #ifdef WUSS_FURNITURE
   w->furniture.dragging = NULL;
   w->furniture.drag.x   = 0;
@@ -329,7 +342,9 @@ result_t wuss_create(screen_t               *scr,
 #endif
 #ifdef WUSS_ICONS
   w->pressed_icon       = NULL;
+  w->pressed_window     = NULL;
   w->hover_icon         = NULL;
+  w->hover_window       = NULL;
   w->icon.names         = NULL;
   w->icon.atoms         = NULL;
   w->icon.bitmaps       = NULL;
@@ -341,7 +356,8 @@ result_t wuss_create(screen_t               *scr,
   w->menu_eat_up        = 0;
 #endif
 
-  w->ndirty = 0;
+  w->ndirty   = 0;
+  w->ntouched = 0;
 
   w->layout    = NULL;
   w->cascade.x = 0;

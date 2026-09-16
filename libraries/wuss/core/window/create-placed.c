@@ -83,14 +83,14 @@ result_t wuss_window_create_placed(wuss_task_t        *task,
                                    size2d_t            min_doc,
                                    wuss_window_t     **window)
 {
-  result_t       rc;
-  wuss_t        *wuss;
-  int            left, top, right, bottom;
-  int            fw, fh;
-  box_t          screen, content, consumed;
-  point_t        origin;
-  const box_t   *slot;
-  int            tracked;
+  result_t     rc;
+  wuss_t      *wuss;
+  int          left, top, right, bottom;
+  int          fw, fh;
+  box_t        screen, content, consumed;
+  point_t      origin;
+  const box_t *slot;
+  int          tracked;
 
   assert(task   != NULL);
   assert(window != NULL);
