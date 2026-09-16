@@ -193,7 +193,7 @@ static void scroll_sausage(const wuss_window_t *window,
   doc_size = MAX(doc_size, content_size);
 
   sausage_px = (doc_size > 0) ? track_px * content_size / doc_size : track_px;
-  sausage_px = CLAMP(sausage_px, WUSS_MIN_SAUSAGE, track_px);
+  sausage_px = CLAMP(sausage_px, WUSS_MIN_SAUSAGE, MAX(WUSS_MIN_SAUSAGE, track_px));
 
   scroll = horizontal ? window->scroll.x : window->scroll.y;
 
