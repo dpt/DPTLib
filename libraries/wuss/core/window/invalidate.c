@@ -42,38 +42,41 @@ static void box_subtract_into(const box_t *piece,
   }
 }
 
-/* Clip "box" (screen space) down to the parts not already covered by
- * windows above "window" in the z-order, writing the surviving pieces to
- * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count. */
-int wuss__clip_to_visible(wuss_window_t *window,
-                          const box_t   *box,
-                          box_t         *out)
+/* Shared ping-pong carve loop: whittle "box" down by subtracting, in turn,
+ * each of "ncuts" cut boxes fetched one at a time via "get_cut" (opaque
+ * "ctx" threaded through), writing the surviving pieces to "out" (capacity
+ * WUSS_MAX_INVALIDATE_PIECES) and returning their count. A cut for which
+ * get_cut returns 0 is skipped (used to drop hidden occluders without the
+ * caller pre-filtering its list). */
+static int carve_by_cuts(const box_t *box,
+                         int          ncuts,
+                         int          (*get_cut)(void *ctx, int i, box_t *cut),
+                         void        *ctx,
+                         box_t       *out)
 {
-  box_t   scratch[WUSS_MAX_INVALIDATE_PIECES];
-  box_t  *cur, *nxt, *tmp;
-  int     ncur;
-  list_t *e;
+  box_t  scratch[WUSS_MAX_INVALIDATE_PIECES];
+  box_t *cur, *nxt, *tmp;
+  int    ncur, i;
 
   cur    = out;
   nxt    = scratch;
   cur[0] = *box;
   ncur   = 1;
 
-  for (e = window->wuss->z_order.next; e != &window->link; e = e->next)
+  for (i = 0; i < ncuts; i++)
   {
-    wuss_window_t *occluder;
-    int            nnext, p;
+    box_t occluder;
+    int   p, nnext;
 
-    occluder = wuss__window_from_link(e);
-    if (occluder->flags & wuss_WINDOW_HIDDEN)
-      continue; /* a hidden window occludes nothing */
-    nnext    = 0;
+    if (!get_cut(ctx, i, &occluder))
+      continue; /* e.g. a hidden window occludes nothing */
+    nnext = 0;
 
     for (p = 0; p < ncur; p++)
     {
       box_t cut;
 
-      if (box_intersection(&occluder->visible, &cur[p], &cut))
+      if (box_intersection(&occluder, &cur[p], &cut))
       {
         if (nnext < WUSS_MAX_INVALIDATE_PIECES)
           nxt[nnext++] = cur[p]; /* no overlap: piece survives untouched */
@@ -99,6 +102,63 @@ int wuss__clip_to_visible(wuss_window_t *window,
   return ncur;
 }
 
+/* carve_by_cuts callback context/fetcher for wuss__clip_to_visible: walks
+ * the z-order list occluder-by-occluder, in the same order carve_by_cuts
+ * counts "i", skipping hidden windows. */
+typedef struct
+{
+  list_t *e;
+}
+zorder_ctx_t;
+
+static int zorder_get_cut(void *vctx, int i, box_t *cut)
+{
+  zorder_ctx_t  *ctx;
+  wuss_window_t *occluder;
+
+  (void) i;
+
+  ctx      = vctx;
+  occluder = wuss__window_from_link(ctx->e);
+  ctx->e   = ctx->e->next;
+
+  if (occluder->flags & wuss_WINDOW_HIDDEN)
+    return 0; /* a hidden window occludes nothing */
+
+  *cut = occluder->visible;
+  return 1;
+}
+
+/* carve_by_cuts callback fetcher for wuss__subtract_boxes: plain indexed
+ * array lookup, every entry used. */
+static int array_get_cut(void *vctx, int i, box_t *cut)
+{
+  const box_t *cuts = vctx;
+
+  *cut = cuts[i];
+  return 1;
+}
+
+/* Clip "box" (screen space) down to the parts not already covered by
+ * windows above "window" in the z-order, writing the surviving pieces to
+ * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count. */
+int wuss__clip_to_visible(wuss_window_t *window,
+                          const box_t   *box,
+                          box_t         *out)
+{
+  zorder_ctx_t ctx;
+  list_t      *e;
+  int          n;
+
+  n = 0;
+  for (e = window->wuss->z_order.next; e != &window->link; e = e->next)
+    n++;
+
+  ctx.e = window->wuss->z_order.next;
+
+  return carve_by_cuts(box, n, zorder_get_cut, &ctx, out);
+}
+
 /* Subtract each of "cuts" (an array of "ncuts" boxes) from "whole", writing
  * the surviving pieces to "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and
  * returning their count. */
@@ -107,49 +167,7 @@ int wuss__subtract_boxes(const box_t *whole,
                          int          ncuts,
                          box_t       *out)
 {
-  box_t  scratch[WUSS_MAX_INVALIDATE_PIECES];
-  box_t *cur, *nxt, *tmp;
-  int    ncur, i;
-
-  cur    = out;
-  nxt    = scratch;
-  cur[0] = *whole;
-  ncur   = 1;
-
-  for (i = 0; i < ncuts; i++)
-  {
-    int p, nnext;
-
-    nnext = 0;
-
-    for (p = 0; p < ncur; p++)
-    {
-      box_t cut;
-
-      if (box_intersection(&cuts[i], &cur[p], &cut))
-      {
-        if (nnext < WUSS_MAX_INVALIDATE_PIECES)
-          nxt[nnext++] = cur[p]; /* no overlap: piece survives untouched */
-      }
-      else
-      {
-        box_subtract_into(&cur[p], &cut, nxt, &nnext);
-      }
-    }
-
-    ncur = nnext;
-    tmp  = cur;
-    cur  = nxt;
-    nxt  = tmp;
-
-    if (ncur == 0)
-      break;
-  }
-
-  if (cur != out)
-    memcpy(out, cur, ncur * sizeof(*out));
-
-  return ncur;
+  return carve_by_cuts(whole, ncuts, array_get_cut, (void *) cuts, out);
 }
 
 /* Sequential single-rect blits (each a self-consistent memmove) can still
