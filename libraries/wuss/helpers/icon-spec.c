@@ -15,12 +15,19 @@
 /* value label buffer: ample for any int plus a short unit suffix in fmt */
 #define SLIDER_ROW_BUF 32
 
-/* nearest multiple of step above min, clamped to [min,max] */
+/* nearest multiple of step above min, clamped to [min,max] -- min may be
+ * greater than max for a reversed (fill-backwards) slider, so clamp against
+ * the ordered pair rather than assuming min <= max */
 static int wuss__slider_row_snap(int v, int min, int max, int step)
 {
+  int lo, hi;
+
   v = ((v - min + step / 2) / step) * step + min;
 
-  return CLAMP(v, min, max);
+  lo = MIN(min, max);
+  hi = MAX(min, max);
+
+  return CLAMP(v, lo, hi);
 }
 
 /* ----------------------------------------------------------------------- */
