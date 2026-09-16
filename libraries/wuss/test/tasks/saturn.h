@@ -9,6 +9,7 @@
  * by default, so the wuss app always has the colourmenu component. */
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
+#include "wuss/component/dialogue.h"
 #include "wuss/icon-spec.h"
 #include "wuss/icon.h"
 #include "wuss/menu.h"
@@ -56,7 +57,7 @@ enum
  * g_saturn_menu_items[SATURN_MENU_SIZE].window) */
 typedef struct saturn_conf
 {
-  wuss_window_t     *dialogue;
+  wuss_dialogue_t   *dialogue;
   wuss_slider_row_t  rows[SATURN_SIZEDLG_NROWS]; /* size, stars, ring, body */
   wuss_icon_t       *cancel;
   wuss_icon_t       *apply;
