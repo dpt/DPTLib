@@ -34,9 +34,10 @@ static void invalidate_grown_or_shrunk(wuss_window_t *window,
 result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
 {
   int     outline_px, titlebar_height;
-  box_t   before, before_content;
-  point_t carve;
+  box_t   before;
   point_t old_scroll;
+  box_t   before_content;
+  point_t carve;
   point_t clamped;
 
   if (!wuss__size_ok(size.w, size.h))
