@@ -30,9 +30,9 @@ struct wuss_fontset
 
 /* Copy the first "nfonts" descriptors into "set" and NULL the rest. "nfonts"
  * has already been range-checked by the caller (0..wuss_MAX_FONTS). */
-void wuss__fontset_init(struct wuss_fontset     *set,
-                        const wuss_font_desc_t  *fonts,
-                        int                      nfonts);
+void wuss__fontset_init(struct wuss_fontset    *set,
+                        const wuss_font_desc_t *fonts,
+                        int                     nfonts);
 
 /* Pixel height of the font in "slot", or 0 if that slot is empty or out of
  * range. Used by wuss_create to size the titlebar to the tallest of the

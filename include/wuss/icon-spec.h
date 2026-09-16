@@ -153,8 +153,8 @@ result_t wuss_slider_row_set(wuss_window_t           *window,
  */
 int wuss_slider_row_event(wuss_window_t           *window,
                           const wuss_slider_row_t *row,
-                          const wuss_event_t       *event,
-                          int                      *value);
+                          const wuss_event_t      *event,
+                          int                     *value);
 
 /**
  * Fill \p spec as a wuss_ICON_TYPE_LABEL.

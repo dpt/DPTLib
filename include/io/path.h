@@ -37,7 +37,9 @@ const char *path_join_filename(const char *root, int nbranches, ...);
  * \return Nonzero on a match, zero if "leaf" lacks 'ext' or does not fit
  *         'cap'.
  */
-int path_leaf_strip_ext(const char *leaf, const char *ext, char *name,
+int path_leaf_strip_ext(const char *leaf,
+                        const char *ext,
+                        char       *name,
                         size_t      cap);
 
 #endif /* DPTLIB_PATH */
