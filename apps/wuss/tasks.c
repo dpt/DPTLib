@@ -83,61 +83,99 @@ static result_t spawn_task(const char *name, task_create_fn_t create)
  * in lock-step: picking row i of that menu calls its spawn[i]. */
 typedef result_t (*task_spawn_fn_t)(void);
 
-/* "Launch" submenu: the demo tasks. g_launch_items[i] and g_launch_tasks[i]
- * are picked by the same menu row index i -- keep both tables in this
- * order. */
+/* Category submenus, hung directly off the top-level task menu (see
+ * g_task_items below): g_*_items[i] and g_*_tasks[i] are picked by the same
+ * menu row index i -- keep each pair's tables in that order. Each category
+ * menu is dispatched in task_handle_event by matching
+ * event->data.menu_select.menu against the category's g_*_menu address. */
 static const struct
 {
   const char      *name;
   task_create_fn_t create;
 }
-g_launch_tasks[] =
+g_games_tasks[] =
 {
   { "Ball",        (task_create_fn_t) ball_create        },
-  { "Blank",       (task_create_fn_t) blank_create       },
-  { "Chars",       (task_create_fn_t) chars_create       },
+  { "Minesweeper", (task_create_fn_t) minesweeper_create }
+},
+g_tests_tasks[] =
+{
   { "Checker",     (task_create_fn_t) checker_create     },
-  { "Clock",       (task_create_fn_t) clock_create       },
   { "Curve",       (task_create_fn_t) curve_create       },
-  { "Gradient",    (task_create_fn_t) gradient_create    },
   { "Greeble",     (task_create_fn_t) greeble_create     },
   { "Icons",       (task_create_fn_t) icons_create       },
+  { "Porter-Duff", (task_create_fn_t) porter_duff_create },
+  { "Sofa",        (task_create_fn_t) sofa_create        },
+  { "Text",        (task_create_fn_t) text_create        }
+},
+g_utilities_tasks[] =
+{
+  { "Chars",       (task_create_fn_t) chars_create       },
+  { "Clock",       (task_create_fn_t) clock_create       },
+  { "Palette",     (task_create_fn_t) palette_create     },
+  { "Swatches",    (task_create_fn_t) swatches_create    }
+},
+g_visuals_tasks[] =
+{
+  { "Blank",       (task_create_fn_t) blank_create       },
+  { "Gradient",    (task_create_fn_t) gradient_create    },
   { "Image",       (task_create_fn_t) image_create       },
   { "Lissajous",   (task_create_fn_t) lissajous_create   },
-  { "Minesweeper", (task_create_fn_t) minesweeper_create },
-  { "Palette",     (task_create_fn_t) palette_create     },
-  { "Porter-Duff", (task_create_fn_t) porter_duff_create },
-  { "Saturn",      (task_create_fn_t) saturn_create      },
-  { "Sofa",        (task_create_fn_t) sofa_create        },
-  { "Swatches",    (task_create_fn_t) swatches_create    },
-  { "Text",        (task_create_fn_t) text_create        }
+  { "Saturn",      (task_create_fn_t) saturn_create      }
 };
 
-static const wuss_menu_item_t g_launch_items[] =
+static const wuss_menu_item_t g_games_items[] =
 {
   { "Ball",        wuss_MENU_ITEM_NONE, NULL },
-  { "Blank",       wuss_MENU_ITEM_NONE, NULL },
-  { "Chars",       wuss_MENU_ITEM_NONE, NULL },
+  { "Minesweeper", wuss_MENU_ITEM_NONE, NULL }
+};
+
+static const wuss_menu_item_t g_tests_items[] =
+{
   { "Checker",     wuss_MENU_ITEM_NONE, NULL },
-  { "Clock",       wuss_MENU_ITEM_NONE, NULL },
   { "Curve",       wuss_MENU_ITEM_NONE, NULL },
-  { "Gradient",    wuss_MENU_ITEM_NONE, NULL },
   { "Greeble",     wuss_MENU_ITEM_NONE, NULL },
   { "Icons",       wuss_MENU_ITEM_NONE, NULL },
-  { "Image",       wuss_MENU_ITEM_NONE, NULL },
-  { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
-  { "Minesweeper", wuss_MENU_ITEM_NONE, NULL },
-  { "Palette",     wuss_MENU_ITEM_NONE, NULL },
   { "Porter-Duff", wuss_MENU_ITEM_NONE, NULL },
-  { "Saturn",      wuss_MENU_ITEM_NONE, NULL },
   { "Sofa",        wuss_MENU_ITEM_NONE, NULL },
-  { "Swatches",    wuss_MENU_ITEM_NONE, NULL },
   { "Text",        wuss_MENU_ITEM_NONE, NULL }
 };
 
-static const wuss_menu_t g_launch_menu =
+static const wuss_menu_item_t g_utilities_items[] =
 {
-  "Launch", g_launch_items, NELEMS(g_launch_items)
+  { "Chars",       wuss_MENU_ITEM_NONE, NULL },
+  { "Clock",       wuss_MENU_ITEM_NONE, NULL },
+  { "Palette",     wuss_MENU_ITEM_NONE, NULL },
+  { "Swatches",    wuss_MENU_ITEM_NONE, NULL }
+};
+
+static const wuss_menu_item_t g_visuals_items[] =
+{
+  { "Blank",       wuss_MENU_ITEM_NONE, NULL },
+  { "Gradient",    wuss_MENU_ITEM_NONE, NULL },
+  { "Image",       wuss_MENU_ITEM_NONE, NULL },
+  { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
+  { "Saturn",      wuss_MENU_ITEM_NONE, NULL }
+};
+
+static const wuss_menu_t g_games_menu =
+{
+  "Games", g_games_items, NELEMS(g_games_items)
+};
+
+static const wuss_menu_t g_tests_menu =
+{
+  "Tests", g_tests_items, NELEMS(g_tests_items)
+};
+
+static const wuss_menu_t g_utilities_menu =
+{
+  "Utilities", g_utilities_items, NELEMS(g_utilities_items)
+};
+
+static const wuss_menu_t g_visuals_menu =
+{
+  "Visuals", g_visuals_items, NELEMS(g_visuals_items)
 };
 
 static result_t spawn_quit(void)
@@ -151,7 +189,10 @@ static result_t spawn_quit(void)
 enum
 {
   TASK_ITEM_INFO,
-  TASK_ITEM_LAUNCH,
+  TASK_ITEM_GAMES,
+  TASK_ITEM_TESTS,
+  TASK_ITEM_UTILITIES,
+  TASK_ITEM_VISUALS,
   TASK_ITEM_QUIT
 };
 
@@ -160,26 +201,33 @@ enum
  * the table itself cannot name it at compile time. */
 static wuss_menu_item_t g_task_items[] =
 {
-  { "Info",      wuss_MENU_ITEM_NONE, NULL,           NULL },
-  { "Launch",    wuss_MENU_ITEM_NONE, &g_launch_menu, NULL },
-  { "Quit Wuss", wuss_MENU_ITEM_NONE, NULL,           NULL }
+  { "Info",      wuss_MENU_ITEM_NONE, NULL,               NULL },
+  { "Games",     wuss_MENU_ITEM_NONE, &g_games_menu,      NULL },
+  { "Tests",     wuss_MENU_ITEM_NONE, &g_tests_menu,      NULL },
+  { "Utilities", wuss_MENU_ITEM_NONE, &g_utilities_menu,  NULL },
+  { "Visuals",   wuss_MENU_ITEM_NONE, &g_visuals_menu,    NULL },
+  { "Quit Wuss", wuss_MENU_ITEM_NONE, NULL,               NULL }
 };
 
 static const task_spawn_fn_t g_task_spawn[] =
 {
   NULL,        /* "Info" -> wuss_menu_item_t.window leaf, no spawn */
-  NULL,        /* "Launch" -> submenu g_launch_menu */
+  NULL,        /* "Games" -> submenu g_games_menu */
+  NULL,        /* "Tests" -> submenu g_tests_menu */
+  NULL,        /* "Utilities" -> submenu g_utilities_menu */
+  NULL,        /* "Visuals" -> submenu g_visuals_menu */
   spawn_quit
 };
 
 static const wuss_menu_t g_task_menu =
 {
-  "Tasks", g_task_items, NELEMS(g_task_items)
+  "Wuss", g_task_items, NELEMS(g_task_items)
 };
 
-/* g_task_menu / g_launch_menu picks are dispatched by index. Every menu is
- * opened by g.menu_task, so one handler sees every wuss_EVENT_MENU_SELECT and
- * tells them apart by data.menu_select.menu. */
+/* g_task_menu picks are dispatched by index; g_games_menu/g_tests_menu/
+ * g_utilities_menu/g_visuals_menu picks by pointer identity below. Every
+ * menu is opened by g.menu_task, so one handler sees every
+ * wuss_EVENT_MENU_SELECT and tells them apart by data.menu_select.menu. */
 result_t task_handle_event(wuss_window_t      *window,
                            const wuss_event_t *event,
                            void               *task_data)
@@ -227,11 +275,33 @@ result_t task_handle_event(wuss_window_t      *window,
   menu  = event->data.menu_select.menu;
   index = event->data.menu_select.index;
 
-  if (menu == &g_launch_menu)
+  if (menu == &g_games_menu)
   {
-    if (index >= 0 && index < (int) NELEMS(g_launch_tasks))
-      (void) spawn_task(g_launch_tasks[index].name,
-                        g_launch_tasks[index].create);
+    if (index >= 0 && index < (int) NELEMS(g_games_tasks))
+      (void) spawn_task(g_games_tasks[index].name, g_games_tasks[index].create);
+    return result_OK;
+  }
+
+  if (menu == &g_tests_menu)
+  {
+    if (index >= 0 && index < (int) NELEMS(g_tests_tasks))
+      (void) spawn_task(g_tests_tasks[index].name, g_tests_tasks[index].create);
+    return result_OK;
+  }
+
+  if (menu == &g_utilities_menu)
+  {
+    if (index >= 0 && index < (int) NELEMS(g_utilities_tasks))
+      (void) spawn_task(g_utilities_tasks[index].name,
+                        g_utilities_tasks[index].create);
+    return result_OK;
+  }
+
+  if (menu == &g_visuals_menu)
+  {
+    if (index >= 0 && index < (int) NELEMS(g_visuals_tasks))
+      (void) spawn_task(g_visuals_tasks[index].name,
+                        g_visuals_tasks[index].create);
     return result_OK;
   }
 
