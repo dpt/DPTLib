@@ -75,8 +75,8 @@ static int proginfo_rows(const wuss_proginfo_desc_t *desc,
 static result_t proginfo_fillout(void *opaque)
 {
   wuss_proginfo_t *pi;
-  wuss_info_row_t   rows[4];
-  int               nrows;
+  wuss_info_row_t  rows[4];
+  int              nrows;
 
   pi    = opaque;
   nrows = proginfo_rows(&pi->pending, rows);
@@ -88,10 +88,10 @@ result_t wuss_proginfo_create(wuss_proginfo_t           **out,
                               wuss_task_t                *task,
                               const wuss_proginfo_desc_t *desc)
 {
-  result_t          rc;
-  wuss_proginfo_t   *pi;
-  wuss_info_row_t    rows[4];
-  int                nrows;
+  result_t         rc;
+  wuss_proginfo_t *pi;
+  wuss_info_row_t  rows[4];
+  int              nrows;
 
   if (out == NULL || task == NULL || desc == NULL || desc->name == NULL)
     return result_NULL_ARG;

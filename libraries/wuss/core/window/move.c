@@ -9,12 +9,12 @@
  * is nothing to rebuild. */
 void wuss_window_move(wuss_window_t *window, point_t p)
 {
-  box_t   clean[WUSS_MAX_INVALIDATE_PIECES];
-  box_t   full_dest[WUSS_MAX_INVALIDATE_PIECES];
-  box_t   copied[WUSS_MAX_INVALIDATE_PIECES];
-  int     width, height, outline_px, titlebar_height;
-  int     dx, dy, nclean, ncopied, i;
-  box_t   before, dirty;
+  box_t clean[WUSS_MAX_INVALIDATE_PIECES];
+  box_t full_dest[WUSS_MAX_INVALIDATE_PIECES];
+  box_t copied[WUSS_MAX_INVALIDATE_PIECES];
+  int   width, height, outline_px, titlebar_height;
+  int   dx, dy, nclean, ncopied, i;
+  box_t before, dirty;
 
   width           = window->visible.x1 - window->visible.x0;
   height          = window->visible.y1 - window->visible.y0;

@@ -62,7 +62,7 @@ int wuss__clip_to_visible(wuss_window_t *window,
   for (e = window->wuss->z_order.next; e != &window->link; e = e->next)
   {
     wuss_window_t *occluder;
-    int             nnext, p;
+    int            nnext, p;
 
     occluder = wuss__window_from_link(e);
     if (occluder->flags & wuss_WINDOW_HIDDEN)

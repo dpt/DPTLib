@@ -16,9 +16,9 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   result_t             rc;
   volatile pixelfmt_t  fmt;
   volatile size_t      bytespp;
-  volatile int         paletted;
-  FILE                *fp;
-  png_structp          png_ptr  = NULL;
+  volatile int paletted;
+  FILE        *fp;
+  png_structp  png_ptr  = NULL;
   png_infop volatile   info_ptr = NULL;
   png_bytep volatile   outrow   = NULL;
   png_colorp volatile  png_plte = NULL;

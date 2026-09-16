@@ -581,8 +581,8 @@ result_t cache_put(cache_t   *c,
 {
   const size_t quantum = sizeof(free_t);
 
-  size_t  rounded_length;
-  void   *storeptr;
+  size_t rounded_length;
+  void  *storeptr;
 
   assert(c    != NULL);
   assert(data != NULL);

@@ -43,9 +43,9 @@ const char *path_join_filename(const char *root, int nbranches, ...)
 #else
     "/";
 #endif
-  va_list     args;
-  size_t      used;
-  int         rc;
+  va_list args;
+  size_t  used;
+  int     rc;
 
   assert(root);
   assert(nbranches < 1000);

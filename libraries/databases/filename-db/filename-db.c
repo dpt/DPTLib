@@ -106,7 +106,7 @@ static result_t unformat_key(const char *buf,
                              void      **key,
                              void       *opaque)
 {
-  result_t         err;
+  result_t      err;
   unsigned char hash[digestdb_DIGESTSZ];
   int           kindex;
 
@@ -134,7 +134,7 @@ static result_t unformat_value(const char *buf,
                                void      **value,
                                void       *opaque)
 {
-  result_t         err;
+  result_t      err;
   filenamedb_t *db = opaque;
   atom_t        vindex;
 
@@ -164,7 +164,7 @@ static const pickle_unformat_methods_t unformat_methods =
 
 result_t filenamedb_open(const char *filename, filenamedb_t **pdb)
 {
-  result_t         err;
+  result_t      err;
   char         *filenamecopy = NULL;
   atom_set_t   *filenames    = NULL;
   hash_t       *hash         = NULL;
@@ -316,7 +316,7 @@ result_t filenamedb_add(filenamedb_t *db,
                         const char   *id,
                         const char   *filename)
 {
-  result_t                err;
+  result_t             err;
   int                  kindex;
   atom_t               vindex;
   const unsigned char *key;

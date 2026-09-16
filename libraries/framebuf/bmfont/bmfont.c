@@ -203,7 +203,7 @@ static int row_is_grid(const unsigned char *pixels,
                        png_uint_32          y)
 {
   const unsigned char *row = pixels + rowbytes * y;
-  png_uint_32           x;
+  png_uint_32          x;
 
   for (x = 0; x < gridwidth; x++)
   {
@@ -1720,9 +1720,9 @@ static void bmfont_drawchar_p8_2w_o(void          *vscreen,
                                     pixelfmt_any_t fg,
                                     pixelfmt_any_t bg)
 {
-  unsigned char         *scr = vscreen;
-  const unsigned short  *gly = vglyph;
-  int                    stride;
+  unsigned char        *scr = vscreen;
+  const unsigned short *gly = vglyph;
+  int                   stride;
 
   NOT_USED(shift);
 

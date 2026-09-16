@@ -15,9 +15,9 @@
 
 result_t vector_set_width(vector_t *v, size_t width)
 {
-  void   *newbase;
-  size_t  currsz;
-  size_t  newsz;
+  void  *newbase;
+  size_t currsz;
+  size_t newsz;
 
   if (width == 0)
     return result_BAD_ARG;

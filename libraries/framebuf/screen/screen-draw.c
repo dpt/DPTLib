@@ -798,8 +798,8 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
   for (yy = 0; yy < clipped_height; yy++)
   {
     pixelfmt_any32_t *dstpx;
-    int                srcy;
-    int                remaining, done;
+    int               srcy;
+    int               remaining, done;
 
     srcy      = draw_box->y0 - y + yy;
     dstpx     = dstrow;

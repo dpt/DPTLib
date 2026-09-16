@@ -94,11 +94,11 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
      * carrying its PLTE across as the bitmap's palette, rather than
      * expanding to RGB */
     {
-      png_colorp  png_palette;
-      int         nplte;
-      png_bytep   trns       = NULL;
-      int         ntrns      = 0;
-      int         i;
+      png_colorp png_palette;
+      int        nplte;
+      png_bytep  trns       = NULL;
+      int        ntrns      = 0;
+      int        i;
 
       png_set_packing(png_ptr);
 

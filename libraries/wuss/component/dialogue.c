@@ -67,9 +67,9 @@ result_t wuss_dialogue_create(wuss_dialogue_t           **out,
                               wuss_dialogue_fillout_fn_t *fillout,
                               void                       *opaque)
 {
-  result_t          rc;
-  wuss_dialogue_t   *dialogue;
-  box_t              content;
+  result_t         rc;
+  wuss_dialogue_t *dialogue;
+  box_t            content;
 
   if (out == NULL || task == NULL)
     return result_NULL_ARG;
