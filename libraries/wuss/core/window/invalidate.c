@@ -173,6 +173,15 @@ int wuss__order_pieces(const box_t *clean,
   int queue[WUSS_MAX_INVALIDATE_PIECES];
   int i, j, head, tail, nout, u;
 
+  if (n <= 1)
+  {
+    /* a single piece (or none) can't clobber itself: skip the O(n^2) graph
+     * build, the common case on every plain move/resize/scroll blit */
+    if (n == 1)
+      order[0] = 0;
+    return 1;
+  }
+
   for (i = 0; i < n; i++)
     indeg[i] = 0;
   for (j = 0; j < n; j++)
