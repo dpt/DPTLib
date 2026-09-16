@@ -76,8 +76,10 @@ result_t stack_smallest(const stack_item_t *items,
                         int                 n,
                         size2d_t           *out)
 {
-  size2d_t mins[n];
+  size2d_t mins[STACK_MAX_ITEMS];
 
+  if (n > STACK_MAX_ITEMS)
+    return result_STACK_BAD_TREE;
   if (!stack__valid_tree(items, n))
     return result_STACK_BAD_TREE;
 
