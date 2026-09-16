@@ -165,9 +165,7 @@ static result_t saturn_conf_fillout(void *opaque);
 static result_t saturn_conf_cancel(void *opaque, wuss_button_t button);
 static result_t saturn_conf_apply_action(void *opaque, wuss_button_t button);
 
-result_t saturn_create(wuss_t                *wuss,
-                       const saturn_config_t *config,
-                       saturn_task_t        **out)
+result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
 {
   static const saturn_config_t default_config = SATURN_CONFIG_DEFAULT;
 
@@ -184,7 +182,7 @@ result_t saturn_create(wuss_t                *wuss,
   task->bg               = colour_rgb(0x00, 0x00, 0x00);
   task->fg               = colour_rgb(0xFF, 0xFF, 0xFF);
   task->seed             = 1;
-  task->config           = (config != NULL) ? *config : default_config;
+  task->config           = default_config;
   task->fg_colourmenu    = NULL;
   task->bg_colourmenu    = NULL;
   task->menu_handle      = NULL;

@@ -70,14 +70,10 @@ result_t palette_load_hex(const char *resources,
 
 /* create the palette-swatch-grid window against the given wuss instance.
  * wuss_get_resources(wuss)/resources/palettes holds the *.hex files; it is
- * scanned once here to build the picker menu. The swatch grid always draws
- * wuss's current system palette (wuss_get_palette), so `startup_name` -- its
- * *.hex leafname, no extension -- is used only to tick the matching row in
- * the picker menu; NULL ticks none. if out is non-NULL, the task block is
- * also returned through it. */
-result_t palette_create(wuss_t          *wuss,
-                        const char      *startup_name,
-                        palette_task_t **out);
+ * scanned once here to build the picker menu, ticking whichever file's
+ * content matches wuss's current system palette (wuss_get_palette), if any.
+ * if out is non-NULL, the task block is also returned through it. */
+result_t palette_create(wuss_t *wuss, palette_task_t **out);
 
 /* free a task block allocated by palette_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */

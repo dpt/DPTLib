@@ -247,9 +247,7 @@ static void minesweeper_tick_clock(minesweeper_task_t *ms)
 
 /* ----------------------------------------------------------------------- */
 
-result_t minesweeper_create(wuss_t              *wuss,
-                            bmfont_t            *font,
-                            minesweeper_task_t **out)
+result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
 {
   result_t            rc;
   minesweeper_task_t *task;
@@ -261,7 +259,7 @@ result_t minesweeper_create(wuss_t              *wuss,
     return result_OOM;
 
   task->wuss = wuss;
-  task->font = font;
+  task->font = wuss_get_font_n(wuss, 1);
   minesweeper_set_size(task, minesweeper_SIZE_12X12);
 
   delegate_desc.handle    = minesweeper_handle;

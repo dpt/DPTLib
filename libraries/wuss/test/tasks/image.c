@@ -59,10 +59,7 @@ static result_t load_png_deep(bitmap_t *bm, const char *filename)
   return result_OK;
 }
 
-result_t image_create(wuss_t        *wuss,
-                      const char    *path,
-                      const char    *background_path,
-                      image_task_t **out)
+result_t image_create(wuss_t *wuss, image_task_t **out)
 {
   result_t         rc;
   image_task_t    *task;
@@ -70,6 +67,8 @@ result_t image_create(wuss_t        *wuss,
   wuss_task_desc_t delegate_desc;
   const char      *resources;
   const char      *images_dir;
+  const char      *path;
+  const char      *background_path;
   size2d_t         sz;
 
   task = calloc(1, sizeof(*task));
@@ -96,7 +95,14 @@ result_t image_create(wuss_t        *wuss,
     free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
+  if (task->nnames == 0)
+  {
+    free(task); /* nothing registered yet; nobody else owns it */
+    return result_BAD_ARG; /* no PNGs found under resources/images */
+  }
 
+  path = path_join_filename(resources, 3, "resources", "images",
+                            path_join_leafname(task->names[0], "png"));
   rc = load_png_deep(&task->bitmap, path);
   if (rc != result_OK)
   {
@@ -104,6 +110,8 @@ result_t image_create(wuss_t        *wuss,
     return rc;
   }
 
+  background_path = path_join_filename(resources, 2, "resources", "wuss",
+                                       path_join_leafname("ninepatch", "png"));
   rc = load_png_deep(&task->ninepatch, background_path);
   if (rc != result_OK)
   {

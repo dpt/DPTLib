@@ -562,9 +562,7 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
 
 /* ----------------------------------------------------------------------- */
 
-result_t icons_create(wuss_t        *wuss,
-                      bmfont_t      *font,
-                      icons_task_t **out)
+result_t icons_create(wuss_t *wuss, icons_task_t **out)
 {
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
@@ -582,7 +580,7 @@ result_t icons_create(wuss_t        *wuss,
   if (task == NULL)
     return result_OOM;
 
-  task->font       = font;
+  task->font       = wuss_get_font_n(wuss, 0);
   task->label      = colour_rgb(0x00, 0x00, 0x00);
   /* only the ruler-text glyph blend; approximates the wuss_COLOUR_WINDOW /
    * wuss_COLOUR_BACKDROP crosshatch the rulers sit on -- no public call
