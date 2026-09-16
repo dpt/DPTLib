@@ -32,11 +32,11 @@ static int stack__distribute(const stack_item_t *items,
                              int                 avail,
                              stack__child_t     *children)
 {
-  int            nchildren;
-  int            used;
-  int            slack;
-  int            i;
-  int            round;
+  int nchildren;
+  int used;
+  int slack;
+  int i;
+  int round;
 
   nchildren = 0;
   used      = 0;
@@ -86,7 +86,7 @@ static int stack__distribute(const stack_item_t *items,
 
       share = slack * items[children[c].index].flex / flexweight;
       children[c].extent += share;
-      given               += share;
+      given              += share;
     }
 
     for (c = 0; c < nchildren && given < slack; c++)
@@ -108,7 +108,7 @@ static int stack__distribute(const stack_item_t *items,
       if (item_max > 0 && children[c].extent > item_max)
       {
         given -= children[c].extent - item_max;
-        children[c].extent = item_max;
+        children[c].extent  = item_max;
         children[c].clamped = 1;
       }
     }
@@ -126,15 +126,15 @@ static void stack__place_container(const stack_item_t *items,
                                    int                 index,
                                    box_t              *out)
 {
-  int                horiz;
-  stack__child_t      children[n]; /* upper bound: at most n-1 children */
-  int                nchildren;
-  const box_t       *box;
-  int                inner_main0, inner_main1;
-  int                cross0, cross1;
-  int                avail;
-  int                pos;
-  int                c;
+  int            horiz;
+  stack__child_t children[n]; /* upper bound: at most n-1 children */
+  int            nchildren;
+  const box_t   *box;
+  int            inner_main0, inner_main1;
+  int            cross0, cross1;
+  int            avail;
+  int            pos;
+  int            c;
 
   horiz = (items[index].kind == stack_KIND_HBOX);
   box   = &out[index];
@@ -167,10 +167,10 @@ static void stack__place_container(const stack_item_t *items,
 
   for (c = 0; c < nchildren; c++)
   {
-    int          ci;
-    box_t       *cbox;
-    int          cross_extent;
-    int          cross_pos;
+    int    ci;
+    box_t *cbox;
+    int    cross_extent;
+    int    cross_pos;
 
     ci   = children[c].index;
     cbox = &out[ci];
