@@ -354,11 +354,16 @@ static void draw_vertex_dots(screen_t           *scr,
                        colour);
 }
 
-result_t sofa_create(wuss_t*wuss, sofa_task_t*task)
+result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
 {
   result_t         rc;
+  sofa_task_t     *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->bg       = colour_rgb(0x7E, 0x25, 0x53);
   task->line     = colour_rgb(0xFF, 0xA3, 0x00);
@@ -390,9 +395,20 @@ result_t sofa_create(wuss_t*wuss, sofa_task_t*task)
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
 
-  return rc;
+  if (out)
+    *out = task;
+
+  return result_OK;
+}
+
+void sofa_destroy(sofa_task_t *task)
+{
+  free(task);
 }
 
 static result_t sofa_redraw(const wuss_event_t *event, void *task_data)
@@ -487,7 +503,7 @@ static result_t sofa_redraw(const wuss_event_t *event, void *task_data)
   {
     const wireframe_t *wf;
     fix8_point_t        screen[NELEMS(dodeca_vertices)]; /* largest solid */
-    int                  i;
+    int                i;
 
     wf = &polyhedra[sc->shape - sofa_SHAPE_TETRAHEDRON];
 
@@ -597,7 +613,7 @@ result_t sofa_handle(wuss_window_t      *window,
     return sofa_idle(task_data);
 
   case wuss_EVENT_QUIT:
-    free(sc); /* task_data was calloc'd per instance by the spawner */
+    sofa_destroy(sc);
     return result_OK;
 
   default:

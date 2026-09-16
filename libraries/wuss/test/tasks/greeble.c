@@ -217,10 +217,10 @@ static void greeble_stamp(screen_t       *scr,
 static result_t greeble_redraw(const wuss_event_t *event,
                                greeble_task_t     *task)
 {
-  screen_t       *scr;
-  const box_t    *content, *bounds;
-  colour_t        palette[GREEBLE_NPALETTE][4];
-  int             p, r, c, sx, sy, ox, oy;
+  screen_t    *scr;
+  const box_t *content, *bounds;
+  colour_t     palette[GREEBLE_NPALETTE][4];
+  int          p, r, c, sx, sy, ox, oy;
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
@@ -370,7 +370,7 @@ result_t greeble_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    free(task); /* task_data was calloc'd per instance by the spawner */
+    greeble_destroy(task);
     return result_OK;
 
   default:
@@ -378,13 +378,18 @@ result_t greeble_handle(wuss_window_t      *window,
   }
 }
 
-result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
+result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
 {
   result_t         rc;
+  greeble_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   size2d_t         grid_px;
   box_t            content;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   /* the full generator grid in pixels: content sized so cols/rows land
    * exactly on the GREEBLE_MAX_* caps in 8-pixel tiles */
@@ -427,7 +432,15 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t *task)
   wuss_window_get_content_bounds(task->window, &content);
   greeble_relayout(task, &content);
 
+  if (out)
+    *out = task;
+
   return result_OK;
+}
+
+void greeble_destroy(greeble_task_t *task)
+{
+  free(task);
 }
 
 #endif /* WUSS_APP */

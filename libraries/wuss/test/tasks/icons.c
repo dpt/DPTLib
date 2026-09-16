@@ -289,10 +289,10 @@ static void icons_add_iconset(icons_layout_t *lay, const wuss_t *wuss)
 {
   static const char *const names[4] = { "opton", "optoff", "radon", "radoff" };
 
-  wuss_icon_spec_t        *s;
-  int                      top;
-  int                      idx[4];
-  int                      i;
+  wuss_icon_spec_t *s;
+  int               top;
+  int               idx[4];
+  int               i;
 
   for (i = 0; i < 4; i++)
   {
@@ -562,20 +562,25 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
 
 /* ----------------------------------------------------------------------- */
 
-result_t icons_create(wuss_t       *wuss,
-                      bmfont_t     *font,
-                      const char   *resources,
-                      icons_task_t *task)
+result_t icons_create(wuss_t        *wuss,
+                      bmfont_t      *font,
+                      const char    *resources,
+                      icons_task_t **out)
 {
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   wuss_icon_spec_t specs[ICONS_NSPECS];
   wuss_icon_t     *made[ICONS_NSPECS];
   icons_layout_t   lay;
+  icons_task_t    *task;
   const char      *sprite_path;
   int              i_button, i_counter, i_opt, i_state, i_hotspot, i_ticked;
   int              i_shoriz, i_svert, i_sstate;
   result_t         rc;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->font       = font;
   task->label      = colour_rgb(0x00, 0x00, 0x00);
@@ -620,7 +625,7 @@ result_t icons_create(wuss_t       *wuss,
   {
     if (task->has_sprite)
       free(task->sprite.base);
-    free(task); /* nothing registered yet; the spawner will not free it */
+    free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
 
@@ -685,11 +690,21 @@ result_t icons_create(wuss_t       *wuss,
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
 
+  if (out)
+    *out = task;
+
   return result_OK;
 
 failure:
   wuss_task_destroy(delegate); /* closes the window; QUIT frees block + sprite */
   return rc;
+}
+
+void icons_destroy(icons_task_t *task)
+{
+  if (task->has_sprite)
+    free(task->sprite.base);
+  free(task);
 }
 
 #define ICONS_GRID       16 /* document-space pitch of the backdrop grid */
@@ -840,9 +855,7 @@ result_t icons_handle(wuss_window_t      *window,
     return icons_icon(event, task_data);
 
   case wuss_EVENT_QUIT:
-    if (tcx->has_sprite)
-      free(tcx->sprite.base);
-    free(tcx); /* calloc'd per instance by the spawner */
+    icons_destroy(tcx);
     return result_OK;
 
   default:

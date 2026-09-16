@@ -35,9 +35,14 @@ ball_task_t;
 
 wuss_window_fn_t ball_handle;
 
-/* create the bouncing-ball window against the given wuss instance; "task" is a
- * per-instance block owned by the window and freed when it closes */
-result_t ball_create(wuss_t *wuss, ball_task_t *task);
+/* create the bouncing-ball window against the given wuss instance; the task
+ * block is allocated here, owned by the window, and freed when it closes.
+ * if out is non-NULL, the task block is also returned through it */
+result_t ball_create(wuss_t *wuss, ball_task_t **out);
+
+/* free a task block allocated by ball_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void ball_destroy(ball_task_t *task);
 
 #endif /* WUSS_APP */
 

@@ -30,8 +30,13 @@ swatches_task_t;
 
 wuss_window_fn_t swatches_handle;
 
-/* create the swatches window against the given wuss instance */
-result_t swatches_create(wuss_t *wuss, swatches_task_t *task);
+/* create the swatches window against the given wuss instance; if out is
+ * non-NULL, the task block is also returned through it */
+result_t swatches_create(wuss_t *wuss, swatches_task_t **out);
+
+/* free a task block allocated by swatches_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void swatches_destroy(swatches_task_t *task);
 
 
 #endif /* WUSS_APP */

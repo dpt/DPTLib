@@ -51,12 +51,17 @@ wuss_window_fn_t image_handle;
 /* load the PNG at path (and the 9-patch PNG at background_path, drawn tiled
  * behind it) and create its window against the given wuss instance.
  * resources is the root resource directory, kept so a click can cycle
- * through resources/images (PNG files) by reloading a different leafname. */
-result_t image_create(wuss_t       *wuss,
-                      const char   *resources,
-                      const char   *path,
-                      const char   *background_path,
-                      image_task_t *task);
+ * through resources/images (PNG files) by reloading a different leafname.
+ * if out is non-NULL, the task block is also returned through it */
+result_t image_create(wuss_t        *wuss,
+                      const char    *resources,
+                      const char    *path,
+                      const char    *background_path,
+                      image_task_t **out);
+
+/* free a task block allocated by image_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void image_destroy(image_task_t *task);
 
 #endif /* WUSS_APP */
 

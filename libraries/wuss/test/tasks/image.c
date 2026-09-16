@@ -59,17 +59,22 @@ static result_t load_png_deep(bitmap_t *bm, const char *filename)
   return result_OK;
 }
 
-result_t image_create(wuss_t       *wuss,
-                      const char   *resources,
-                      const char   *path,
-                      const char   *background_path,
-                      image_task_t *task)
+result_t image_create(wuss_t        *wuss,
+                      const char    *resources,
+                      const char    *path,
+                      const char    *background_path,
+                      image_task_t **out)
 {
   result_t         rc;
+  image_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   const char      *images_dir;
   size2d_t         sz;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->wuss        = wuss;
   task->delegate    = NULL;
@@ -88,14 +93,14 @@ result_t image_create(wuss_t       *wuss,
                      &task->nnames);
   if (rc != result_OK)
   {
-    free(task); /* nothing registered yet; the spawner will not free it */
+    free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
 
   rc = load_png_deep(&task->bitmap, path);
   if (rc != result_OK)
   {
-    free(task); /* nothing registered yet; the spawner will not free it */
+    free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
 
@@ -103,7 +108,7 @@ result_t image_create(wuss_t       *wuss,
   if (rc != result_OK)
   {
     free(task->bitmap.base);
-    free(task); /* nothing registered yet; the spawner will not free it */
+    free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
 
@@ -116,7 +121,7 @@ result_t image_create(wuss_t       *wuss,
   {
     free(task->bitmap.base);
     free(task->ninepatch.base);
-    free(task); /* nothing registered yet; the spawner will not free it */
+    free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
   task->delegate = delegate;
@@ -164,7 +169,24 @@ result_t image_create(wuss_t       *wuss,
   if (wuss_colourmenu_create(&task->colourmenu, wuss, "Background") != result_OK)
     task->colourmenu = NULL;
 
+  if (out)
+    *out = task;
+
   return result_OK;
+}
+
+void image_destroy(image_task_t *task)
+{
+  /* close any open chain first: it may hold the proginfo window as a
+   * borrowed wuss_menu_item_t.window, and destroying that below would leave
+   * the chain pointing at freed memory */
+  wuss_menu_close(task->menu_handle);
+  wuss_menu_destroy(task->menu);
+  wuss_proginfo_destroy(task->proginfo); /* closes its dialogue window */
+  wuss_colourmenu_destroy(task->colourmenu);
+  free(task->bitmap.base);
+  free(task->ninepatch.base);
+  free(task); /* task_data was calloc'd per instance by the spawner */
 }
 
 static result_t image_redraw(const wuss_event_t *event, void *task_data)
@@ -391,16 +413,7 @@ result_t image_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    /* close any open chain first: it may hold the proginfo window as a
-     * borrowed wuss_menu_item_t.window, and destroying that below would leave
-     * the chain pointing at freed memory */
-    wuss_menu_close(ic->menu_handle);
-    wuss_menu_destroy(ic->menu);
-    wuss_proginfo_destroy(ic->proginfo); /* closes its dialogue window */
-    wuss_colourmenu_destroy(ic->colourmenu);
-    free(ic->bitmap.base);
-    free(ic->ninepatch.base);
-    free(ic); /* task_data was calloc'd per instance by the spawner */
+    image_destroy(ic);
     return result_OK;
 
   default:

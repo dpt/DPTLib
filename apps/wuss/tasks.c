@@ -59,79 +59,45 @@ void tasks_build_screen_palette(colour_t       *out,
         out[n++] = colour_rgb(r * 0x33, g_ * 0x33, b * 0x33);
 }
 
-/* Each spawn allocates a fresh per-instance task block so a task may run in
- * several windows at once; the block is owned by its window and freed by the
- * task's wuss_EVENT_QUIT handler. On any create failure X_create has already
- * torn down whatever it built and freed the block itself, so the only block
- * the spawner frees is the font-less chars case: create returns OK but opens
- * no window, leaving the block with no owner. */
+/* Each spawn is a thin passthrough to its module's X_create, which allocates
+ * the per-instance task block itself; the block is owned by its window and
+ * freed by X_destroy, called from the task's wuss_EVENT_QUIT handler (or,
+ * for the font-less chars case, never allocated at all -- see
+ * chars_create). None of these spawns need the task pointer X_create can
+ * hand back, so they all pass NULL for it. */
 
 static result_t spawn_ball(void)
 {
-  ball_task_t *t = calloc(1, sizeof(*t));
-  result_t     rc;
-  if (t == NULL) return result_OOM;
-  rc = ball_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return ball_create(g.wuss, NULL);
 }
 
 static result_t spawn_text(void)
 {
-  text_task_t *t = calloc(1, sizeof(*t));
-  result_t     rc;
-  if (t == NULL) return result_OOM;
-  rc = text_create(g.wuss, g.resources, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return text_create(g.wuss, g.resources, NULL);
 }
 
 static result_t spawn_blank(void)
 {
-  blank_task_t *t = calloc(1, sizeof(*t));
-  result_t      rc;
-  if (t == NULL) return result_OOM;
-  rc = blank_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return blank_create(g.wuss, NULL);
 }
 
 static result_t spawn_chars(void)
 {
-  chars_task_t *t = calloc(1, sizeof(*t));
-  result_t      rc;
-  if (t == NULL) return result_OOM;
-  rc = chars_create(g.wuss, g.resources, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return chars_create(g.wuss, g.resources, NULL);
 }
 
 static result_t spawn_palette(void)
 {
-  palette_task_t *t = calloc(1, sizeof(*t));
-  result_t        rc;
-  if (t == NULL) return result_OOM;
-  rc = palette_create(g.wuss, g.resources, g.palette_name, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return palette_create(g.wuss, g.resources, g.palette_name, NULL);
 }
 
 static result_t spawn_image(void)
 {
-  result_t      rc;
-  image_task_t *t;
-  const char   *leafname;
-  const char   *filename;
-  char          buf[DPTLIB_MAXPATH];
-  char          ninepatch[DPTLIB_MAXPATH];
-
-  t = calloc(1, sizeof(*t));
-  if (t == NULL) return result_OOM;
+  result_t    rc;
+  const char *leafname;
+  const char *filename;
+  char        buf[DPTLIB_MAXPATH];
+  char        ninepatch[DPTLIB_MAXPATH];
 
   leafname = path_join_leafname("jessica", "png");
   filename = path_join_filename(g.resources, 3, "resources", "images", leafname);
@@ -143,151 +109,83 @@ static result_t spawn_image(void)
   strcpy(ninepatch, filename);
 
   logf_info("wuss: image task loading \"%s\" + \"%s\"", buf, ninepatch);
-  rc = image_create(g.wuss, g.resources, buf, ninepatch, t);
+  rc = image_create(g.wuss, g.resources, buf, ninepatch, NULL);
   if (rc != result_OK)
     logf_error("wuss: image_create(\"%s\") failed, rc=0x%X (%s)", buf, rc,
                result_string(rc));
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return rc;
 }
 
 static result_t spawn_checker(void)
 {
-  checker_task_t *t = calloc(1, sizeof(*t));
-  result_t        rc;
-  if (t == NULL) return result_OOM;
-  rc = checker_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return checker_create(g.wuss, NULL);
 }
 
 static result_t spawn_clock(void)
 {
-  clock_task_t *t = calloc(1, sizeof(*t));
-  result_t      rc;
-  if (t == NULL) return result_OOM;
-  rc = clock_create(g.wuss, g.daydream_font, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return clock_create(g.wuss, g.daydream_font, NULL);
 }
 
 static result_t spawn_curve(void)
 {
-  curve_task_t *t = calloc(1, sizeof(*t));
-  result_t      rc;
-  if (t == NULL) return result_OOM;
-  rc = curve_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return curve_create(g.wuss, NULL);
 }
 
 static result_t spawn_lissajous(void)
 {
-  lissajous_task_t *t = calloc(1, sizeof(*t));
-  result_t          rc;
-  if (t == NULL) return result_OOM;
-  rc = lissajous_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return lissajous_create(g.wuss, NULL);
 }
 
 static result_t spawn_minesweeper(void)
 {
-  minesweeper_task_t *t = calloc(1, sizeof(*t));
-  result_t             rc;
-  if (t == NULL) return result_OOM;
-  rc = minesweeper_create(g.wuss, g.bold_font, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return minesweeper_create(g.wuss, g.bold_font, NULL);
 }
 
 static result_t spawn_saturn(void)
 {
-  saturn_task_t *t = calloc(1, sizeof(*t));
-  result_t       rc;
-  if (t == NULL) return result_OOM;
-  rc = saturn_create(g.wuss, t, NULL);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return saturn_create(g.wuss, NULL, NULL);
 }
 
 static result_t spawn_sofa(void)
 {
-  sofa_task_t *t = calloc(1, sizeof(*t));
-  result_t     rc;
-  if (t == NULL) return result_OOM;
-  rc = sofa_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return sofa_create(g.wuss, NULL);
 }
 
 static result_t spawn_gradient(void)
 {
-  gradient_task_t *t = calloc(1, sizeof(*t));
-  result_t         rc;
-  if (t == NULL) return result_OOM;
-  rc = gradient_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return gradient_create(g.wuss, NULL);
 }
 
 static result_t spawn_greeble(void)
 {
-  greeble_task_t *t = calloc(1, sizeof(*t));
-  result_t        rc;
-  if (t == NULL) return result_OOM;
-  rc = greeble_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return greeble_create(g.wuss, NULL);
 }
 
 static result_t spawn_icons(void)
 {
-  icons_task_t *t = calloc(1, sizeof(*t));
-  result_t      rc;
-  if (t == NULL) return result_OOM;
-  rc = icons_create(g.wuss, g.daydream_font, g.resources, t);
+  result_t rc;
+
+  rc = icons_create(g.wuss, g.daydream_font, g.resources, NULL);
   if (rc != result_OK)
     logf_error("wuss: icons_create (resources \"%s\") failed, rc=0x%X (%s)",
                g.resources, rc, result_string(rc));
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return rc;
 }
 
 static result_t spawn_swatches(void)
 {
-  swatches_task_t *t = calloc(1, sizeof(*t));
-  result_t         rc;
-  if (t == NULL) return result_OOM;
-  rc = swatches_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return swatches_create(g.wuss, NULL);
 }
 
 static result_t spawn_porter_duff(void)
 {
-  porter_duff_task_t *t = calloc(1, sizeof(*t));
-  result_t            rc;
-  if (t == NULL) return result_OOM;
-  rc = porter_duff_create(g.wuss, g.palette, g.daydream_font, g.resources, t);
+  result_t rc;
+
+  rc = porter_duff_create(g.wuss, g.palette, g.daydream_font, g.resources, NULL);
   if (rc != result_OK)
     logf_error("wuss: porter_duff_create (resources \"%s\") failed, "
                "rc=0x%X (%s)", g.resources, rc, result_string(rc));
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return rc;
 }
 
 /* The task launcher is a MENU-button pop-up over the backdrop rather than a
@@ -391,9 +289,9 @@ result_t task_handle_event(wuss_window_t      *window,
      * wuss's fixed-size UI palette, so pad out to match -- same as the
      * startup array run_wuss builds. */
     const colour_t *palette;
-    int              npalette;
-    colour_t         scr_palette[256];
-    int              scr_nentries;
+    int             npalette;
+    colour_t        scr_palette[256];
+    int             scr_nentries;
 
     palette      = wuss_get_palette(g.wuss, &npalette);
     scr_nentries = pixelfmt_paletted_nentries(g.bm->format);

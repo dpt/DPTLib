@@ -79,11 +79,16 @@ static int curve_convex_hull(const point_t *src, int n, point_t *hull)
   return k; /* hull[0] == hull[k - 1], a closed loop */
 }
 
-result_t curve_create(wuss_t *wuss, curve_task_t *task)
+result_t curve_create(wuss_t *wuss, curve_task_t **out)
 {
   result_t         rc;
+  curve_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->bg        = colour_rgb(0xFF, 0xFF, 0xFF);
   task->line      = colour_rgb(0x00, 0x00, 0x00);
@@ -121,9 +126,20 @@ result_t curve_create(wuss_t *wuss, curve_task_t *task)
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
 
-  return rc;
+  if (out)
+    *out = task;
+
+  return result_OK;
+}
+
+void curve_destroy(curve_task_t *task)
+{
+  free(task);
 }
 
 static int blob_hit(const point_t *p, int x, int y)
@@ -348,7 +364,7 @@ result_t curve_handle(wuss_window_t      *window,
     return curve_scroll(task, event->data.scroll.delta, window);
 
   case wuss_EVENT_QUIT:
-    free(task); /* task_data was calloc'd per instance by the spawner */
+    curve_destroy(task);
     return result_OK;
 
   default:

@@ -78,11 +78,16 @@ static int dither(int index, int v, int x, int y)
   return CLAMP(v + (m * 16 / (n - 1)) - 8, 0, 255);
 }
 
-result_t gradient_create(wuss_t *wuss, gradient_task_t *task)
+result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
 {
   result_t         rc;
+  gradient_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->wuss         = wuss;
   task->dither_index = 1; /* 4x4, matching the original */
@@ -108,9 +113,20 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t *task)
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
 
-  return rc;
+  if (out)
+    *out = task;
+
+  return result_OK;
+}
+
+void gradient_destroy(gradient_task_t *task)
+{
+  free(task);
 }
 
 static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
@@ -148,8 +164,8 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
    * not the per-redraw dirty piece, so it is drawn whole on a partial redraw */
   {
     bmfont_t   *font = wuss_get_font(gc->wuss);
-    int         dim  = gradient_dithers[di].dim;
-    char        label[8];
+    int       dim  = gradient_dithers[di].dim;
+    char      label[8];
     colour_t    ink  = colour_rgb(0xFF, 0xFF, 0xFF);
     colour_t    bg   = colour_rgba(0, 0, 0, 0); /* transparent */
 
@@ -215,7 +231,7 @@ result_t gradient_handle(wuss_window_t      *window,
     return gradient_mouse(event, task_data);
 
   case wuss_EVENT_QUIT:
-    free(gc); /* task_data was calloc'd per instance by the spawner */
+    gradient_destroy(gc);
     return result_OK;
 
   default:

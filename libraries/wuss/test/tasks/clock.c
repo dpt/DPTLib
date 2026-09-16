@@ -101,11 +101,16 @@ static result_t clock_create_window(wuss_t       *wuss,
                                    &task->window);
 }
 
-result_t clock_create(wuss_t *wuss, bmfont_t *font, clock_task_t *task)
+result_t clock_create(wuss_t *wuss, bmfont_t *font, clock_task_t **out)
 {
   result_t         rc;
+  clock_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->font        = font;
   task->bg          = colour_rgb(0x1D, 0x2B, 0x53);
@@ -128,9 +133,20 @@ result_t clock_create(wuss_t *wuss, bmfont_t *font, clock_task_t *task)
 
   rc = clock_create_window(wuss, task, delegate);
   if (rc != result_OK)
+  {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
 
-  return rc;
+  if (out)
+    *out = task;
+
+  return result_OK;
+}
+
+void clock_destroy(clock_task_t *task)
+{
+  free(task);
 }
 
 static result_t clock_redraw(const wuss_event_t *event, void *task_data)
@@ -140,9 +156,9 @@ static result_t clock_redraw(const wuss_event_t *event, void *task_data)
   const box_t  *content, *bounds;
   time_t        now;
   struct tm    *lt;
-  double        cx, cy, r;
-  double        hour_angle, minute_angle, second_angle;
-  int           i, sx, sy;
+  double cx, cy, r;
+  double hour_angle, minute_angle, second_angle;
+  int    i, sx, sy;
 
   cc = task_data;
 
@@ -246,7 +262,7 @@ result_t clock_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    free(cc); /* task_data was calloc'd per instance by the spawner */
+    clock_destroy(cc);
     return result_OK;
 
   default:

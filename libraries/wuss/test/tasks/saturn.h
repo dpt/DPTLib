@@ -82,12 +82,17 @@ saturn_task_t;
 
 wuss_window_fn_t saturn_handle;
 
-/* create the planet window against the given wuss instance; "task" is a
- * per-instance block owned by the window and freed when it closes. "config"
- * may be NULL for SATURN_CONFIG_DEFAULT. */
+/* create the planet window against the given wuss instance; the task block is
+ * allocated here, owned by the window and freed when it closes. "config" may
+ * be NULL for SATURN_CONFIG_DEFAULT.
+ * if out is non-NULL, the task block is also returned through it */
 result_t saturn_create(wuss_t                *wuss,
-                       saturn_task_t         *task,
-                       const saturn_config_t *config);
+                       const saturn_config_t *config,
+                       saturn_task_t        **out);
+
+/* free a task block allocated by saturn_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void saturn_destroy(saturn_task_t *task);
 
 #endif /* WUSS_APP */
 

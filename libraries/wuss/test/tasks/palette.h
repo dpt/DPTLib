@@ -75,12 +75,16 @@ result_t palette_load_hex(const char *resources,
  * build the picker menu. The swatch grid always draws wuss's current system
  * palette (wuss_get_palette), so `startup_name` -- its *.hex leafname, no
  * extension -- is used only to tick the matching row in the picker menu; NULL
- * ticks none. */
-result_t palette_create(wuss_t         *wuss,
-                        const char     *resources,
-                        const char     *startup_name,
-                        palette_task_t *task);
+ * ticks none. if out is non-NULL, the task block is also returned through
+ * it. */
+result_t palette_create(wuss_t          *wuss,
+                        const char      *resources,
+                        const char      *startup_name,
+                        palette_task_t **out);
 
+/* free a task block allocated by palette_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void palette_destroy(palette_task_t *task);
 
 #endif /* WUSS_APP */
 

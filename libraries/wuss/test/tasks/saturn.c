@@ -166,14 +166,19 @@ static result_t saturn_conf_cancel(void *opaque, wuss_button_t button);
 static result_t saturn_conf_apply_action(void *opaque, wuss_button_t button);
 
 result_t saturn_create(wuss_t                *wuss,
-                       saturn_task_t         *task,
-                       const saturn_config_t *config)
+                       const saturn_config_t *config,
+                       saturn_task_t        **out)
 {
   static const saturn_config_t default_config = SATURN_CONFIG_DEFAULT;
 
   result_t         rc;
+  saturn_task_t   *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->wuss             = wuss;
   task->bg               = colour_rgb(0x00, 0x00, 0x00);
@@ -196,7 +201,7 @@ result_t saturn_create(wuss_t                *wuss,
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
-    free(task); /* nothing registered yet; the spawner will not free it */
+    free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
   task->delegate = delegate; /* the task the menu opens against */
@@ -254,6 +259,9 @@ result_t saturn_create(wuss_t                *wuss,
   g_saturn_menu_items[SATURN_MENU_INFO].window =
     wuss_proginfo_window(task->proginfo);
 
+  if (out)
+    *out = task;
+
   return result_OK;
 
 fail_bg_colourmenu:
@@ -263,6 +271,15 @@ fail_fg_colourmenu:
 fail_delegate:
   wuss_task_destroy(delegate); /* unregisters; its QUIT frees the task block */
   return rc;
+}
+
+void saturn_destroy(saturn_task_t *task)
+{
+  wuss_colourmenu_destroy(task->fg_colourmenu);
+  wuss_colourmenu_destroy(task->bg_colourmenu);
+  wuss_dialogue_destroy(task->conf.dialogue);
+  wuss_proginfo_destroy(task->proginfo);
+  free(task); /* task_data was calloc'd per instance by the spawner */
 }
 
 /* plot one point in window content space, clipped to the window. x,y are
@@ -734,11 +751,7 @@ result_t saturn_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    wuss_colourmenu_destroy(task->fg_colourmenu);
-    wuss_colourmenu_destroy(task->bg_colourmenu);
-    wuss_dialogue_destroy(task->conf.dialogue);
-    wuss_proginfo_destroy(task->proginfo);
-    free(task); /* task_data was calloc'd per instance by the spawner */
+    saturn_destroy(task);
     return result_OK;
 
   default:

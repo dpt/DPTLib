@@ -65,10 +65,15 @@ minesweeper_task_t;
 wuss_window_fn_t minesweeper_handle;
 
 /* create the minesweeper window against the given wuss instance, lettering
- * neighbour counts with the given (caller-owned) font */
-result_t minesweeper_create(wuss_t             *wuss,
-                            bmfont_t           *font,
-                            minesweeper_task_t *task);
+ * neighbour counts with the given (caller-owned) font.
+ * if out is non-NULL, the task block is also returned through it */
+result_t minesweeper_create(wuss_t              *wuss,
+                            bmfont_t            *font,
+                            minesweeper_task_t **out);
+
+/* free a task block allocated by minesweeper_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void minesweeper_destroy(minesweeper_task_t *task);
 
 #endif /* WUSS_APP */
 

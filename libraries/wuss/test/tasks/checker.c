@@ -18,11 +18,16 @@
 #define CHECKER_BAND_MIN     1
 #define CHECKER_BAND_MAX     32
 
-result_t checker_create(wuss_t*wuss, checker_task_t *task)
+result_t checker_create(wuss_t *wuss, checker_task_t **out)
 {
   result_t         rc;
+  checker_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->black    = colour_rgb(0x00, 0x00, 0x00);
   task->white    = colour_rgb(0xFF, 0xFF, 0xFF);
@@ -74,7 +79,15 @@ result_t checker_create(wuss_t*wuss, checker_task_t *task)
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
 
+  if (out)
+    *out = task;
+
   return result_OK;
+}
+
+void checker_destroy(checker_task_t *task)
+{
+  free(task);
 }
 
 static result_t checker_redraw(wuss_window_t      *window,
@@ -185,7 +198,7 @@ result_t checker_handle(wuss_window_t      *window,
   case wuss_EVENT_QUIT:
     /* one calloc'd block backs both windows; the task autocloses once the
      * second window goes, so free it here */
-    free(cc);
+    checker_destroy(cc);
     return result_OK;
 
   default:

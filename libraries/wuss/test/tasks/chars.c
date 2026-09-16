@@ -138,11 +138,12 @@ static result_t chars_open_menu(chars_task_t *task)
 
 /* ----------------------------------------------------------------------- */
 
-result_t chars_create(wuss_t       *wuss,
-                      const char   *resources,
-                      chars_task_t *task)
+result_t chars_create(wuss_t        *wuss,
+                      const char    *resources,
+                      chars_task_t **out)
 {
   result_t           rc;
+  chars_task_t      *task;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
   bmfont_t          *font;
@@ -152,10 +153,11 @@ result_t chars_create(wuss_t       *wuss,
 
   font = wuss_get_font(wuss);
   if (font == NULL)
-  {
-    task->window = NULL;
-    return result_OK;
-  }
+    return result_OK; /* no window opened; nothing to free */
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   strncpy(chars_resources, resources, sizeof(chars_resources) - 1);
   chars_resources[sizeof(chars_resources) - 1] = '\0';
@@ -214,9 +216,27 @@ result_t chars_create(wuss_t       *wuss,
                                  SIZE2D(64, 64),
                                  &task->window);
   if (rc != result_OK)
+  {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
 
-  return rc;
+  if (out)
+    *out = task;
+
+  return result_OK;
+}
+
+void chars_destroy(chars_task_t *task)
+{
+  int i;
+
+  for (i = 0; i < task->nfonts; i++)
+    if (task->fonts[i] != NULL)
+      bmfont_destroy(task->fonts[i]);
+  free(task->fonts);
+  wuss_fontmenu_destroy(task->fontmenu);
+  free(task);
 }
 
 static result_t chars_redraw(const wuss_event_t *event, void *task_data)
@@ -324,16 +344,7 @@ result_t chars_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_QUIT:
-    {
-      int i;
-
-      for (i = 0; i < cc->nfonts; i++)
-        if (cc->fonts[i] != NULL)
-          bmfont_destroy(cc->fonts[i]);
-      free(cc->fonts);
-      wuss_fontmenu_destroy(cc->fontmenu);
-      free(cc); /* calloc'd per instance by the spawner */
-    }
+    chars_destroy(cc);
     return result_OK;
 
   case wuss_EVENT_MOUSE:
