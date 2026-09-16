@@ -7,12 +7,13 @@
 
 #include "text/bmtext.h"
 
-int bmtext_layout(bmfont_t      *font,
-                  const char    *string,
-                  int            stringlen,
-                  int            wrap_width,
-                  bmtext_line_t *lines,
-                  int            max)
+int bmtext_layout(bmfont_t               *font,
+                  const char             *string,
+                  int                     stringlen,
+                  int                     wrap_width,
+                  const bmfont_spacing_t *spacing,
+                  bmtext_line_t          *lines,
+                  int                     max)
 {
   int nlines;
 
@@ -24,8 +25,8 @@ int bmtext_layout(bmfont_t      *font,
     bmfont_width_t width;
     int            friendly_break;
 
-    bmfont_measure(font, string, stringlen, NULL, wrap_width, &absolute_break,
-                   &width);
+    bmfont_measure(font, string, stringlen, spacing, wrap_width,
+                   &absolute_break, &width);
 
     friendly_break = absolute_break;
     if (absolute_break < stringlen)

@@ -8,14 +8,15 @@
 
 #include "text/bmtext.h"
 
-void bmtext_draw(bmfont_t            *font,
-                 screen_t            *scr,
-                 const bmtext_line_t *lines,
-                 int                  nlines,
-                 colour_t             fg,
-                 colour_t             bg,
-                 int                  leading,
-                 point_t              origin)
+void bmtext_draw(bmfont_t               *font,
+                 screen_t               *scr,
+                 const bmtext_line_t    *lines,
+                 int                     nlines,
+                 colour_t                fg,
+                 colour_t                bg,
+                 int                     leading,
+                 point_t                 origin,
+                 const bmfont_spacing_t *spacing)
 {
   int     font_height, font_ascent;
   point_t pos;
@@ -27,7 +28,7 @@ void bmtext_draw(bmfont_t            *font,
   pos.y += font_ascent; /* origin is top-left; bmfont_draw wants the baseline */
   for (i = 0; i < nlines; i++)
   {
-    bmfont_draw(font, scr, lines[i].str, lines[i].len, fg, bg, NULL, &pos,
+    bmfont_draw(font, scr, lines[i].str, lines[i].len, fg, bg, spacing, &pos,
                NULL);
     pos.y += font_height + leading;
   }
