@@ -352,6 +352,20 @@ _Unreleased_ until one is cut.
 - `tools/ttf2bmfont.py` — renders a TTF into the bmfont PNG format the
   loader expects. Three small paletted bitmap faces (`04b_03`, `04b_25`,
   `Nokia`) added under `resources/bmfonts/`.
+- `bmtext_layout()` / `bmtext_draw()` take an optional
+  `const bmfont_spacing_t *spacing` (NULL for none), threading letter/word
+  spacing through the paragraph word-wrap and draw paths, not just the
+  lower-level `bmfont_measure`/`bmfont_draw`.
+- The `wuss` text task's menu gains a Spacing submenu (Normal/Letter/Word/
+  Letter+Word presets), Foreground/Background colourmenus
+  (`wuss_colourmenu_t`) and a tickable No Background entry that draws
+  glyphs with a transparent background instead of the picked colour.
+- The `wuss` demo launcher's Launch submenu is split into Games/Tests/
+  Utilities/Visuals category submenus hung directly off the top-level task
+  menu.
+- The saturn task's Configure dialogue gains a Default button that resets
+  `task->config` to `SATURN_CONFIG_DEFAULT`, refills the sliders and
+  applies it.
 
 ### Changed
 
@@ -560,6 +574,10 @@ _Unreleased_ until one is cut.
   `wuss_window_resize()` before `wuss_window_set_doc()`, which alone only
   moved the scroll extent) and insets an 8px solid border inside the
   ninepatch frame.
+- The `wuss` demo's global task-list variable is renamed `g` -> `g_tasks`,
+  avoiding a shadow of the `g`/`b` loop locals in
+  `tasks_build_screen_palette`; the saturn task now spawns at startup
+  instead of only via the launcher.
 
 ### Fixed
 
@@ -858,3 +876,10 @@ _Unreleased_ until one is cut.
   started a resize far from the visible handle. It now hands off to a
   scroll well only when that scrollbar's strip runs the full edge;
   every other edge pixel resolves to `TITLE` or `CONTENT`.
+- The saturn task's stars/ring energy-gate exclusion thresholds were literal
+  constants tuned for `size==256`; since `p`'s range grows linearly with
+  size, a larger window shrank the exclusion disc relative to half and let
+  stars/ring points land inside the planet body. Scaled by
+  `size/SATURN_SIZE_DEFAULT`.
+- `DPT-Digits-Bold` and `MS Sans Serif` bmfonts had an oversized space glyph
+  width; reduced.
