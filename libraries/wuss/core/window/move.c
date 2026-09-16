@@ -4,23 +4,17 @@
 
 /* p is the window's content top-left; the furniture offset (outline plus
  * any titlebar) is constant for a given window, so the footprint just
- * follows it */
+ * follows it. The cached furniture layout is translated in place below
+ * rather than invalidated -- a pure move changes no piece's size, so there
+ * is nothing to rebuild. */
 void wuss_window_move(wuss_window_t *window, point_t p)
 {
-  box_t   clean[WUSS_MAX_INVALIDATE_PIECES];
-  box_t   full_dest[WUSS_MAX_INVALIDATE_PIECES];
-  box_t   copied[WUSS_MAX_INVALIDATE_PIECES];
-  int     width, height, outline_px, titlebar_height;
-  int     dx, dy, nclean, ncopied, i;
-  box_t   before, dirty;
-
-  /* a manual move desyncs the window from its layout-packer slot; hand the
-   * slot back and stop tracking this window's position */
-  wuss__release_packed(window);
-
-  /* the cached furniture layout holds absolute screen coords, so a move
-   * stales it -- both exit paths below rewrite window->visible */
-  wuss__chrome_invalidate_layout(window);
+  box_t clean[WUSS_MAX_INVALIDATE_PIECES];
+  box_t full_dest[WUSS_MAX_INVALIDATE_PIECES];
+  box_t copied[WUSS_MAX_INVALIDATE_PIECES];
+  int   width, height, outline_px, titlebar_height;
+  int   dx, dy, nclean, ncopied, i;
+  box_t before, dirty;
 
   width           = window->visible.x1 - window->visible.x0;
   height          = window->visible.y1 - window->visible.y0;
@@ -28,10 +22,29 @@ void wuss_window_move(wuss_window_t *window, point_t p)
   titlebar_height = wuss__titlebar_height(window);
   before          = window->visible;
 
+  /* a drag delivers one call per pointer-move event, not one per actual
+   * change of position -- a window pinned against the screen edge, or a
+   * backend that reports redundant motion, can call this with the same
+   * target it's already at. width/height never change here, so an
+   * unchanged origin means an unchanged box; skip the packer release,
+   * layout translate and blit/invalidate machinery entirely. */
+  if (p.x - outline_px == before.x0 &&
+      p.y - outline_px - titlebar_height == before.y0)
+    return;
+
+  /* a manual move desyncs the window from its layout-packer slot; hand the
+   * slot back and stop tracking this window's position */
+  wuss__release_packed(window);
+
   /* a hidden window has nothing on screen to slide and must paint nothing;
    * just translate its footprint so it is in place when shown again */
   if (window->flags & wuss_WINDOW_HIDDEN)
   {
+    /* nothing is drawn from the cache while hidden, but the next unhide must
+     * not paint it back at the old position, so just drop it -- there's no
+     * screen-visible dirty region to queue either way */
+    wuss__chrome_invalidate_layout(window);
+
     window->visible.x0 = p.x - outline_px;
     window->visible.y0 = p.y - outline_px - titlebar_height;
     window->visible.x1 = window->visible.x0 + width;
@@ -55,25 +68,8 @@ void wuss_window_move(wuss_window_t *window, point_t p)
    * would just paste it, untouched, onto the window's new position. Strip
    * every pending-dirty region out of "clean" first so only pixels already
    * settled on screen are treated as a valid blit source. */
-  if (window->wuss->ndirty > 0)
-  {
-    box_t settled[WUSS_MAX_INVALIDATE_PIECES];
-    int   nsettled, c;
-
-    nsettled = 0;
-    for (c = 0; c < nclean && nsettled < WUSS_MAX_INVALIDATE_PIECES; c++)
-    {
-      box_t piece[WUSS_MAX_INVALIDATE_PIECES];
-      int   npiece, s;
-
-      npiece = wuss__subtract_boxes(&clean[c], window->wuss->dirty,
-                                    window->wuss->ndirty, piece);
-      for (s = 0; s < npiece && nsettled < WUSS_MAX_INVALIDATE_PIECES; s++)
-        settled[nsettled++] = piece[s];
-    }
-    nclean = nsettled;
-    memcpy(clean, settled, (size_t) nclean * sizeof(*clean));
-  }
+  nclean = wuss__filter_settled(clean, nclean, window->wuss->dirty,
+                                window->wuss->ndirty);
 
   window->visible.x0 = p.x - outline_px;
   window->visible.y0 = p.y - outline_px - titlebar_height;
@@ -84,6 +80,13 @@ void wuss_window_move(wuss_window_t *window, point_t p)
 
   dx = window->visible.x0 - before.x0;
   dy = window->visible.y0 - before.y0;
+
+  /* a pure translation leaves every cached rect correct relative to the
+   * window, just offset in screen space -- shift it instead of dropping the
+   * cache and rebuilding all pieces on the next paint of even a thin
+   * sliver */
+  if (window->furniture_layout.valid)
+    wuss__furniture_layout_translate(window, dx, dy);
 
   for (i = 0; i < nclean; i++)
     box_translated(&clean[i], dx, dy, &full_dest[i]);

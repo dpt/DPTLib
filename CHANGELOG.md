@@ -10,6 +10,97 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- `wuss_ICON_TYPE_SLIDER` — horizontal/vertical slider icon: bevelled surround
+  with a sunken groove inset by a fixed gap, drag/click value mapping that
+  rounds to the nearest value rather than truncating, and a min > max
+  reversed-fill mode. `wuss_icon_get_value()` / `wuss_icon_set_value()` read
+  and write it.
+- `geom/stack` — a nested HBox/VBox box-stack layout solver with flex
+  weights, cross-axis alignment, per-item min/max clamps and container
+  padding/gap (`docs/windowing/stack-sketch.md`); `STACK_VBOX`/`STACK_HBOX`/
+  `STACK_LEAF`/`STACK_SPACER` (plus `_EX` variants) compact a static
+  `stack_item_t` table to one designated-init literal per row. The saturn
+  Size dialogue is laid out through it.
+- `wuss/icon-spec.h` — `wuss_icon_spec_label()` / `_slider()` / `_action()`
+  fill a `wuss_icon_spec_t` for the common cases, replacing manual
+  field-by-field assignment (following the `create-from-desc.c` helper
+  precedent).
+- `wuss_STD_GAP` / `wuss_STD_INSET` / `wuss_STD_SLIDER_HEIGHT` /
+  `wuss_STD_SECONDARY_BUTTON_HEIGHT` / `wuss_STD_PRIMARY_BUTTON_HEIGHT` —
+  standard sibling-gap, edge-inset and icon-height constants in
+  `wuss/icon.h`, generalised out of what was local to `saturn.c`.
+- The saturn task gets a Colours menu (Foreground/Background via
+  `wuss_colourmenu_t`) and a Size... submenu — a hover-opened dialogue
+  (`wuss_menu_item_t::window`) with a slider for the sketch size and a
+  second slider for the stars-loop iteration count, Apply/Cancel/
+  Adjust-Apply/Adjust-Cancel following RISC OS convention.
+- The `wuss` chars task draws a dotted baseline rule and a light-blue
+  advance-width rule under each glyph (useful for eyeballing advance-width
+  drift), trims contiguous leading/trailing blank grid rows, and gains a
+  `wuss_STD_INSET` margin.
+- `pixelfmt_p8` — 8bpp paletted screen support across the
+  framebuf/wuss/image-io stack: `span_p8`, screen blend/copy/fill-pattern/
+  RLE-blit p8 branches, `bmfont` p8 glyph drawing, `bitmap_convert()`
+  p8→bgrx8888/rgbx8888, PNG load/save keeping a palette-type PNG as
+  `pixelfmt_p8` instead of expanding it, and `--depth 8` on the `wuss` SDL
+  frontend. The palette task gains a second "Screen" window showing the
+  physical screen bitmap's own palette; the p8 tail beyond the 16 UI colours
+  is filled with the web-safe 216-colour cube.
+- `screen_copy_bitmap_dithered()` — blits onto a paletted screen with
+  per-pixel 8x8 Bayer ordered dithering before the nearest-palette lookup,
+  phased to screen coordinates so it stays put across redraws;
+  `pattern_bayer_threshold()` exposes the underlying matrix. The `wuss`
+  image task gains a Dithering menu toggle.
+- `screen_copy_bitmap()` now blits a paletted (p1/p2/p4/p8) source bitmap
+  onto a screen of any format via a shared `src_fetch_rgba()` decode
+  helper, reusing the existing paletted→deep `pixelmap_get()` table with no
+  extra allocation or pass; a paletted source's tRNS-derived alpha is
+  honoured.
+- `screen_copy_rect()` now supports 1bpp and 2bpp screens (generalised from
+  the existing 4bpp packed-pixel path), so window move/scroll blit fast
+  paths work on low-bpp screens instead of falling back to a full repaint.
+- `wuss_EVENT_POINTER_ENTER` / `wuss_EVENT_POINTER_EXIT` — window-scoped
+  events fired when the pointer crosses onto or off a window's whole
+  on-screen footprint (content or furniture alike); exactly one ENTER is
+  outstanding per window, always balanced by a later EXIT.
+- `wuss_text_draw()` / `wuss_text_measure()` — public wrappers exposing the
+  existing internal `bmfont_draw`/`bmfont_measure` pass-throughs, so a
+  client task can draw/measure text in a wuss system font without including
+  `framebuf/bmfont.h`.
+- The minesweeper task gains a Grid Size submenu (24x24 down to 12x12,
+  radio-ticked to the current size); board dimensions move from
+  compile-time defines to runtime task fields.
+- The image task gains a Background colour menu (`wuss_colourmenu_t`) for
+  the fill behind the 9-patch border band; `wuss_MENU_ITEM_BORROWED_SUBMENU`
+  marks a submenu `wuss_menu_destroy()` should not recurse into, and
+  `wuss_NO_BACKDROP` replaces the `wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND)`
+  idiom.
+- `wuss_menu_create_from_desc()`'s `!`/`~` (tick/shade) prefixes now
+  optionally pull a bool vararg at the point they're scanned instead of
+  always applying, so a descriptor can encode live state (e.g. a toggle's
+  current value) directly.
+- `wuss_menu_tick_exclusive()` / `wuss_menu_tick_item()` /
+  `wuss_menu_tick_set_live()` — data-level tick setters (for editing menu
+  items before a (re)open) completing the existing live-chain setter family
+  (`wuss_menu_tick_exclusive_live`, `wuss_menu_tick_item_live`, renamed from
+  `wuss_menu_set_ticked`/`wuss_menu_set_item_ticked`).
+- Shift-F1 on the RISC OS frontend now forces `wuss_INPUT_GARBAGE`
+  (single-frame screen corruption), matching the existing SDL frontend and
+  `frontend.h`'s documented F1/Shift-F1 intent.
+- `path_leaf_strip_ext()` — host-aware `.ext`-stripping helper; on RISC OS a
+  leafname carries no dotted extension at all (file type is separate
+  metadata), so the three call sites hand-rolling `strcmp`-based stripping
+  (namelist, bmfont enumerate, wuss icon registry) previously matched
+  nothing there.
+- `bmfont` glyphs are now drawn at the text baseline rather than the
+  glyph-cell top-left: `bmfont_create()` derives ascent/descent at load
+  time from the space glyph's grid rows, `bmfont_get_info()` gains ascent/
+  descent out-params, and every caller doing manual top-left positioning is
+  updated to add ascent.
+- Six reserved `wuss_ICON_TYPE_*` constants (`DISPLAY`, `WRITABLE`,
+  `NUMBER`, `STRING_SET`, `SLIDER`, `DRAGGABLE`) after `RULE`, validated
+  from a spec but (bar SLIDER, now implemented) not yet drawn/hit-tested/
+  routed.
 - `bmfont_draw_relief()` — draws a string twice with a transparent
   background, a shadow pass in a given colour at `pos + offset` then the
   main pass at `pos`, factoring the hand-rolled two-call drop-shadow idiom
@@ -261,9 +352,83 @@ _Unreleased_ until one is cut.
 - `tools/ttf2bmfont.py` — renders a TTF into the bmfont PNG format the
   loader expects. Three small paletted bitmap faces (`04b_03`, `04b_25`,
   `Nokia`) added under `resources/bmfonts/`.
+- `bmtext_layout()` / `bmtext_draw()` take an optional
+  `const bmfont_spacing_t *spacing` (NULL for none), threading letter/word
+  spacing through the paragraph word-wrap and draw paths, not just the
+  lower-level `bmfont_measure`/`bmfont_draw`.
+- The `wuss` text task's menu gains a Spacing submenu (Normal/Letter/Word/
+  Letter+Word presets), Foreground/Background colourmenus
+  (`wuss_colourmenu_t`) and a tickable No Background entry that draws
+  glyphs with a transparent background instead of the picked colour.
+- The `wuss` demo launcher's Launch submenu is split into Games/Tests/
+  Utilities/Visuals category submenus hung directly off the top-level task
+  menu.
+- The saturn task's Configure dialogue gains a Default button that resets
+  `task->config` to `SATURN_CONFIG_DEFAULT`, refills the sliders and
+  applies it.
 
 ### Changed
 
+- **Breaking:** furniture window flags flip to opt-in:
+  `wuss_WINDOW_NO_TITLEBAR`/`_OUTLINE`/`_CLOSE`/`_BACK`/`_TOGGLE_SIZE`/
+  `_VSCROLL`/`_HSCROLL`/`_RESIZE` become `wuss_WINDOW_TITLEBAR`/`_OUTLINE`/
+  `_CLOSE`/`_BACK`/`_TOGGLE_SIZE`/`_VSCROLL`/`_HSCROLL`/`_RESIZE` (set to
+  show, not set to hide); `wuss_WINDOW_DEFAULT` is the OR of all eight, so a
+  bare-`DEFAULT` caller needs no change, but any caller that combined
+  `DEFAULT` with a single furniture flag (e.g. `wuss_WINDOW_NO_RESIZE_BLIT`
+  alone) must now OR `DEFAULT` in explicitly to keep its chrome.
+- **Breaking:** menu tick setters are renamed to separate data-level and
+  live-chain variants: `wuss_menu_set_ticked` → `wuss_menu_tick_exclusive_live`,
+  `wuss_menu_set_item_ticked` → `wuss_menu_tick_item_live`;
+  `wuss_menu_open_ticked` and the new `wuss_menu_tick_set` take a bit-vector
+  (`unsigned int`) instead of an `int` array.
+- struct `wuss_icon`'s mutually-exclusive per-type fields (label border,
+  pattern tile, bitmap image, radio group, menu-entry swatch) move into a
+  per-type union, mirrored on `wuss_icon_spec_t`, then the spec is nested
+  directly inside `struct wuss_icon` as `{ spec; state; }` —
+  `icon->FIELD` becomes `icon->spec.FIELD`. `wuss_icon_get_window()` and the
+  icon→window back-pointer are removed; the four mutators that needed it
+  (delete, set_text, set_hidden, set_selected) now take the window as an
+  explicit argument.
+- `wuss_ICON_TYPE_BUTTON` is renamed `wuss_ICON_TYPE_ACTION` throughout the
+  icon API, implementation, tests and docs.
+- Fonts move out of loose `struct wuss` fields into a core-owned
+  `libraries/wuss/font/` module (`struct wuss_fontset`,
+  `wuss__fontset_init/_height`, the `wuss_get_font*` accessors, the
+  centralised text renderer); `wuss`'s four loose font fields collapse to
+  one embedded fontset.
+- The `wuss` demo's SDL present path converts and uploads only dirty rows
+  instead of the whole screen every frame (`wuss_frontend_present` now
+  takes a dirty box); a new `wuss->touched` region list (distinct from
+  `wuss->dirty`) tracks pixels written directly by `wuss__blit_pieces`/
+  resize/toggle-size so the frontend still re-uploads blitted-but-not-
+  repainted destinations.
+- `wuss_window_move()` translates the cached furniture-layout rects by the
+  move delta instead of invalidating and rebuilding the whole per-window
+  layout cache on every drag tick; `wuss_window_move()` and the resize path
+  both now early-return once the target box is found equal to the window's
+  current one, skipping the blit/invalidate machinery for a no-op drag tick.
+- Toggle-size now grows a window to fill the whole screen (capped per axis
+  at the document extent, or uncapped when that's 0), nudging the top-left
+  toward the origin by the minimum needed to fit, rather than pinning the
+  top-left and only growing the bottom-right; restore returns the exact
+  pre-toggle box.
+- Adjust-clicking a scroll well now pages away from the click point
+  (mirroring Select's page-towards), matching RISC OS's usual Select/Adjust
+  reversal elsewhere in the furniture.
+- `screen_set_pixel_8()` is renamed `screen_set_pixel_p8()`, matching the
+  `_p1`/`_p2`/`_p4` naming of the other paletted set-pixel helpers.
+- Advance widths encoded in font PNGs are now 1px shorter than the true pen
+  advance (`bmfont_advance_for()` adds the missing pixel back in as letter
+  spacing at every use site); the bundled bitmap fonts (`04b_03`, `04b_25`,
+  the `DPT-*` faces, `Nokia`, `Symbols`, `Tiny`) are regenerated to match,
+  and `tools/ttf2bmfont.py`'s ink-advance mode drops a spurious extra pixel
+  it previously added.
+- The bundled bitmap fonts are renamed with a provenance prefix (`DPT-` for
+  the in-house faces, `ZX-` for GliderRider).
+- `screen_copy_bitmap_i`'s has-alpha-channel check is hoisted into a general
+  `pixelfmt_has_alpha()` macro alongside `pixelfmt_is_rle`/
+  `pixelfmt_paletted_nentries`.
 - **Breaking:** `wuss_window_invalidate_all()` is renamed
   `wuss_window_invalidate_visible()` -- "all" misread as the whole document
   when it only ever covered the visible content rectangle. Same behaviour;
@@ -409,9 +574,134 @@ _Unreleased_ until one is cut.
   `wuss_window_resize()` before `wuss_window_set_doc()`, which alone only
   moved the scroll extent) and insets an 8px solid border inside the
   ninepatch frame.
+- The `wuss` demo's global task-list variable is renamed `g` -> `g_tasks`,
+  avoiding a shadow of the `g`/`b` loop locals in
+  `tasks_build_screen_palette`; the saturn task now spawns at startup
+  instead of only via the launcher.
+- `wuss__clip_to_visible()` and `wuss__subtract_boxes()`'s near-identical
+  ping-pong carve loops are factored into a shared `carve_by_cuts()` driven
+  by a `get_cut` callback, with z-order and plain-array adapters for the two
+  call sites.
+- `wuss_window_move()` and `wuss_window_resize()`'s duplicated "filter clean
+  pieces against `wuss->dirty[]`" loops are factored into a shared
+  `wuss__filter_settled()`.
 
 ### Fixed
 
+- `bmfont_draw()` clipped full-width glyphs (M, W, ...) out of existence:
+  `bmfont_advance_for()`'s advance (cell width + the new 1px letter
+  spacing) was used directly as the drawable pixel width, pushing
+  `clippedcharwidth` past `charwidth` and driving `right_skip` negative.
+  Each glyph's draw now splits into the cell itself (clamped to
+  `charwidth`) and any leftover advance, drawn from a zero-filled glyph
+  buffer.
+- Several furniture task windows (swatches, text, palette) passed
+  `wuss_WINDOW_NO_RESIZE_BLIT` alone as their window flags, zeroing every
+  furniture bit under the new opt-in flag polarity instead of just opting
+  out of blit-based resize; now OR'd with `wuss_WINDOW_DEFAULT`.
+- The saturn Size dialogue's Cancel/Apply buttons now act on Select release
+  (`wuss_MOUSE_UP`) instead of press, so a press dragged off the button no
+  longer commits and an Adjust click leaves the dialogue open per RISC OS
+  convention; the slider groove now derives from the surround box rather
+  than the bevel box.
+- Icon text was vertically centred using ascender+descender (`font_height`),
+  pulling label/button/radio-option/menu-entry text visually high since
+  most glyphs never touch the descender band; centred by `font_ascent`
+  instead, factored into a shared `icon_text_baseline_y()` helper.
+- The chars grid's document extent wasn't updated on a font switch, so the
+  scroll range stayed sized to the original font — a larger font put grid
+  cells out of scroll reach, a smaller one left dead scroll space.
+- A borrowed-window menu item (`wuss_menu_item_t::window`) could open
+  off-screen near the parent menu's right edge, since `wuss_window_move`
+  deliberately doesn't clamp; extracted `wuss_window_create()`'s on-screen
+  nudge into a shared helper and applied it after the anchor move.
+- The RADIO/OPTION icon glyph square was always font-height, truncating a
+  larger state-sprite blit and ignoring its real width for the label
+  offset; now sized from the state bitmap when present. Its box now also
+  grows to fit the larger of its two state bitmaps so a select-time
+  invalidate covers the whole overhanging sprite, and the box is now
+  cleared before redraw when the icon has no explicit background
+  (previously a shrinking glyph swap left stale pixels).
+- A submenu dragged back over its own parent's titlebar was closed
+  mid-drag, because the IDLE-tick "pointer over parent titlebar" check
+  didn't verify the parent was actually frontmost there; now requires
+  `wuss__window_at` to resolve to the parent itself. Separately, a menu
+  chain's submenu now only opens while the pointer is in the row's arrow
+  gutter (not anywhere on the row) and closes on re-entry; and the parent
+  menu's title bar being hovered now closes an open child chain (previously
+  `wuss_mouse_move`'s early-return over furniture meant nothing heard about
+  it).
+- `screen_copy_bitmap()` read a paletted source bitmap (e.g. a PLTE-chunk
+  PNG) as if it were 32bpp RGBA, running past the buffer end; first
+  hardened to reject non-32bpp sources, then given real paletted-source
+  support via a shared `src_fetch_rgba()` decode path.
+- The ordered-dither bias table was keyed on raw palette entry count
+  instead of the true per-channel quantisation level (4:4:4 for p1/p2/p4,
+  5:6:5 for p8), collapsing the p8 Bayer bias to `{-1,0}` and making
+  dithering invisible; and the dither cell was keyed on destination screen
+  coordinates rather than sprite-local ones, so the pattern crawled across
+  a moving sprite instead of staying fixed to it.
+- The generalised packed-copy path (`screen_copy_rect_packed`, covering
+  p1/p2/p4) used LSB-first within-byte indexing for every depth, but p1/p2
+  are packed MSB-first — a non-byte-aligned move on a 2bpp screen picked
+  the wrong pixel and shuffled the row.
+- The screen palette wasn't repadded on a live palette change, only at
+  startup: picking a palette entry while running p8 fed wuss's bare
+  16-entry UI palette straight to `bitmap_set_palette()`, which reads 256
+  entries for p8 — a heap-buffer-overflow. The pad-to-screen-size logic is
+  now shared between startup and the live-change handler.
+- A p8-loaded PNG converted to `bgrx8888` before reaching
+  `screen_copy_bitmap`/`screen_copy_ninepatch` produced dull/wrong-hue
+  composites, since that blit family assumes `rgba8888` byte order;
+  switched to a matching `bmconv_p8_to_rgbx8888`.
+- `wuss_window_invalidate(window, NULL)` built its whole-visible-rect
+  placeholder already in screen space then ran it through the doc-space-
+  to-screen translation a second time, double-applying scroll once a
+  window was shrunk below its document and scrolled, sliding queued dirty
+  rects off to one side; the placeholder is now built in doc space.
+- A client-supplied `wuss_window_invalidate()` box was never clipped
+  against the window's own furniture (only against occluding windows above
+  it), so an edge-hugging client could dirty the titlebar/scrollbars/
+  outline around its content; now intersected with the content box first.
+- The ball task's edge-clamp was off-by-one on the right/bottom (content
+  being a half-open box), poking the invalidation 1px into the furniture
+  strip.
+- A resize drag's scroll-reclamp fast-path blit read its source without
+  checking `wuss->dirty[]` (unlike move/set-scroll), letting an earlier
+  unpainted dirty region in the same frame get slid forward as settled
+  content; a follow-up guarded the same path against
+  `WUSS_MAX_INVALIDATE_PIECES` overflow (falling back to a full repaint
+  instead of silently dropping survivor pieces), and a duplicate
+  furniture-repaint call on the same reclamp path was removed.
+- `wuss__blit_pieces` translated clean source pieces by the scroll delta
+  and clipped only against occluding windows, never against the content
+  box itself — a fast scroll (especially after a shrink) could blit and
+  then invalidate screen area outside the window, painted with stale/
+  garbage content on the next redraw; now intersected against the content
+  box first.
+- A scroll-well click's page-and-hold also armed a sausage drag, turning a
+  held button into a live scroll; then, once guarded off by region, that
+  guard also blocked a *direct* sausage hit from arming a drag at all —
+  now gated on whether the click actually paged, not on which region it
+  hit.
+- Interactive resize-drag could be dragged past the screen's own
+  width/height when the window's top-left was off-screen (negative x0/y0),
+  since the clamp measured room left from the window's current position
+  rather than the screen's total size.
+- `path_join_leafname()` on RISC OS produced invalid pathnames like
+  `Nokia/png` (`/` is a literal leafname character there, not a separator,
+  and file type isn't part of the string at all).
+- `mkstemps` (a GNU/BSD extension absent from the RISC OS GCCSDK libc) in
+  `rle-test.c` broke the RISC OS build; replaced with a fixed leafname via
+  `path_join_leafname`.
+- Minesweeper repainted the whole HUD strip and every board cell on any
+  click, even a single flag toggle; reveal now accumulates just the
+  board-cell range its flood fill touched and redraw skips the HUD/
+  off-dirty cells accordingly, cutting the flicker.
+- curve/porter-duff/gradient task content (a type label, a checkerboard, a
+  composited bitmap) was pinned to the window corner instead of tracking
+  the document scroll offset, so it stayed visually fixed while the rest
+  of the content scrolled underneath it.
 - `wuss_window_move()`'s fast path no longer slides pixels still queued in
   `wuss->dirty[]` from an earlier invalidation this frame onto the
   window's new position: pending dirty regions are stripped from the
@@ -593,3 +883,34 @@ _Unreleased_ until one is cut.
   started a resize far from the visible handle. It now hands off to a
   scroll well only when that scrollbar's strip runs the full edge;
   every other edge pixel resolves to `TITLE` or `CONTENT`.
+- The saturn task's stars/ring energy-gate exclusion thresholds were literal
+  constants tuned for `size==256`; since `p`'s range grows linearly with
+  size, a larger window shrank the exclusion disc relative to half and let
+  stars/ring points land inside the planet body. Scaled by
+  `size/SATURN_SIZE_DEFAULT`.
+- `DPT-Digits-Bold` and `MS Sans Serif` bmfonts had an oversized space glyph
+  width; reduced.
+- `wuss__slider_row_snap()`'s `CLAMP(v, min, max)` assumed `min <= max`, so a
+  reversed (fill-backwards) slider's `CLAMP` always returned `max` regardless
+  of drag position; clamps against `MIN(min,max)`/`MAX(min,max)` instead.
+- `wuss_colourmenu_create()` handed out `wuss_colour_t` swatches up to
+  `wuss->npalette` with no upper bound, so a palette with more than 128
+  entries produced swatches aliasing the symbolic/chrome-role colour
+  namespace; capped at `wuss_COLOUR_SYMBOLIC`.
+- A disabled menu row's `wuss_MOUSE_MOVE` handling was skipped entirely, so
+  hovering off an open submenu onto a disabled sibling never ran the
+  close-on-move-away logic, leaving the stale submenu open; the disabled
+  check now only suppresses opening a submenu, not the move-away close.
+- `wuss_dialogue_handle_icon()` lacked the `NULL`/action-kind guard every
+  other component's icon handler has, risking a crash for a task
+  multiplexing `ICON` dispatch across an optionally-created dialogue.
+- `wuss__order_pieces()` built its full overlap graph even for a single
+  piece, which by construction cannot clobber itself; added an `n <= 1` fast
+  path, the common case on every plain move/resize/scroll blit.
+- `scroll_sausage()`'s `CLAMP(sausage_px, WUSS_MIN_SAUSAGE, track_px)`
+  silently dropped below `WUSS_MIN_SAUSAGE` whenever the well was shorter
+  than the minimum sausage; the upper bound is now clamped against
+  `WUSS_MIN_SAUSAGE` too so the floor always wins.
+- `wuss_proginfo_set_desc()` dereferenced a borrowed `desc` with no `NULL`
+  check; guarded, matching the idiom used elsewhere in the component
+  helpers.

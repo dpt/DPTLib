@@ -24,21 +24,18 @@ typedef enum wuss_icon_state
 }
 wuss_icon_state_t;
 
+/* A live icon is its creation spec plus transient runtime state.
+ * wuss__icon_from_spec validates a wuss_icon_spec_t and stores it in "spec"
+ * with fg/bg/swatch resolved to concrete palette indices and, for a BITMAP,
+ * u.bitmap.image resolved from u.bitmap.set. spec.text is owned (strdup'd by
+ * wuss_icon_create, aliased by wuss_icon_plot) -- never NULL, "" instead. */
 struct wuss_icon
 {
-  wuss_window_t    *window;  /* owner; back-pointer for invalidate/get_window */
-  box_t             bbox;    /* virtual document space */
-  wuss_icon_type_t  type;
-  char             *text;    /* owned; never NULL ("" instead) */
-  wuss_colour_t     fg, bg;
-  screen_pattern_t  pattern; /* wuss_ICON_TYPE_PATTERN tile; 0 otherwise */
-  const bitmap_t   *bitmap;  /* wuss_ICON_TYPE_BITMAP image; borrowed, or NULL */
-  int               group;   /* radio: exclusive-selection group; 0 = none */
-  wuss_colour_t     swatch;  /* menu entry + FLAGS_SWATCH: left-gutter chip
-                              * colour; wuss_NO_BACKGROUND otherwise */
-  wuss_icon_border_t border; /* label: inside-bbox border; NONE otherwise */
-  wuss_icon_flags_t flags;
+  wuss_icon_spec_t  spec;    /* bbox in virtual document space; text owned */
   wuss_icon_state_t state;
+  int               value;   /* wuss_ICON_TYPE_SLIDER: current value, in
+                              * [spec.u.slider.min,max]; spec.u.slider.default_value
+                              * is creation input only, never updated */
 };
 
 static inline int wuss__icon_pressed(const wuss_icon_t *icon)
@@ -67,14 +64,29 @@ static inline void wuss__icon_set_state(wuss_icon_t      *icon,
 }
 
 /* Set icon->selected, invalidating it. For a radio with a non-zero group,
- * selecting it also clears every other selected radio on the same window with
- * that group. Ignored for types with no latched state. */
-void wuss__icon_select(wuss_icon_t *icon, int selected);
+ * selecting it also clears every other selected radio on "window" with that
+ * group. Ignored for types with no latched state. "icon" must be an icon of
+ * "window". */
+void wuss__icon_select(wuss_window_t *window,
+                       wuss_icon_t   *icon,
+                       int            selected);
 
-/* Make "icon" (may be NULL) the hovered icon: clears the hovered flag on the
- * previous wuss->hover_icon and sets it on the new one, invalidating whichever
- * of the two changed. A no-op if nothing changed. */
-void wuss__icon_set_hover(wuss_t *wuss, wuss_icon_t *icon);
+/* Set icon->value, clamped to spec.u.slider.min/max, invalidating it if the
+ * clamped value changed. Ignored for types with no value. "icon" must be an
+ * icon of "window". Shared by wuss_icon_set_value and the slider drag path
+ * (core/mouse-click.c, core/mouse-move.c), which additionally raise
+ * wuss_EVENT_ICON with the new value -- this helper never does. */
+void wuss__icon_set_value(wuss_window_t *window,
+                          wuss_icon_t   *icon,
+                          int            value);
+
+/* Make "icon" (an icon of "window", or NULL) the hovered icon: clears the
+ * hovered flag on the previous wuss->hover_icon and sets it on the new one,
+ * invalidating whichever of the two changed. "window" is ignored when "icon"
+ * is NULL. A no-op if nothing changed. */
+void wuss__icon_set_hover(wuss_t        *wuss,
+                          wuss_window_t *window,
+                          wuss_icon_t   *icon);
 
 /* Map an icon bbox (virtual document space) into screen space:
  * screen = content.x0 - scroll.x + bbox. wuss__icon_draw paints through this
@@ -84,14 +96,59 @@ void wuss__icon_box_to_screen(const box_t *content,
                               const box_t *bbox,
                               box_t       *out);
 
-/* Invalidate exactly this icon's bbox, via wuss_window_invalidate, so a
- * set_text / pressed-state / hide change repaints just the icon. */
-void wuss__icon_invalidate(const wuss_icon_t *icon);
+/* wuss_ICON_TYPE_SLIDER geometry and value/pixel conversion, shared by
+ * wuss__icon_draw and the click/drag path (core/mouse-click.c,
+ * core/mouse-move.c) so hit-testing cannot drift from what is drawn.
+ * "screen_box" is the icon's screen-space box, as wuss__icon_box_to_screen
+ * gives it. */
 
-/* Validate a spec against the palette and fill "out" with a detached icon (no
- * window, no owned text -- out->text is aliased to spec->text or ""). Shared
- * by wuss_icon_create and wuss_icon_plot. Returns result_WUSS_BAD_ICON /
- * result_WUSS_BAD_COLOUR as wuss_icon_create documents, else result_OK. */
+/* The inner rect: "screen_box" (the icon's full bbox) inset by
+ * WUSS_SLIDER_GAP on all four sides. This is both the groove drawn inside it
+ * and the only area wuss__icon_hit_test accepts clicks/drags on; the gap and
+ * the rest of "screen_box" are painted with slider.surround and never
+ * interactive. */
+void wuss__slider_groove_box(const box_t *screen_box, box_t *out);
+
+/* Convert "value" (clamped to [lo,hi], lo <= hi) to a fill length in pixels
+ * along "groove"'s long axis, 0 at lo and the full long-axis extent at hi.
+ * For wuss_SLIDER_HORIZONTAL pixel 0 is the groove's left (x0); for VERTICAL
+ * it is the groove's bottom (y1), so value grows upward on screen even
+ * though screen y grows downward. */
+int wuss__slider_value_to_px(const box_t              *groove,
+                             wuss_slider_orientation_t orientation,
+                             int                       value,
+                             int                       lo,
+                             int                       hi);
+
+/* Convert a screen-space point's long-axis coordinate back to a value in
+ * [lo,hi] (lo <= hi), inverting wuss__slider_value_to_px (same pixel-0 end
+ * per orientation). */
+int wuss__slider_px_to_value(const box_t              *groove,
+                             wuss_slider_orientation_t orientation,
+                             point_t                   screen_point,
+                             int                       lo,
+                             int                       hi);
+
+/* "icon" (a slider icon of "window") maps a raw screen-space point (as passed
+ * to wuss_mouse_click/wuss_mouse_move) to the value its groove would read at
+ * that point, honouring a min > max reversed fill. Shared by the click-jump
+ * and drag-continuation paths (core/mouse-click.c, core/mouse-move.c). */
+int wuss__slider_value_for_point(wuss_window_t     *window,
+                                 const wuss_icon_t *icon,
+                                 point_t            screen_point);
+
+/* Invalidate exactly this icon's bbox on "window", via wuss_window_invalidate,
+ * so a set_text / pressed-state / hide change repaints just the icon. "icon"
+ * must be an icon of "window". */
+void wuss__icon_invalidate(wuss_window_t *window, const wuss_icon_t *icon);
+
+/* Validate a spec against the palette and fill "out" with a detached icon:
+ * "out->spec" is a copy of "spec" with fg/bg/swatch resolved to palette
+ * indices and, for a BITMAP, u.bitmap.image resolved from u.bitmap.set.
+ * out->spec.text is not owned -- it aliases spec->text, or "" when that is
+ * NULL. Shared by wuss_icon_create and wuss_icon_plot. Returns
+ * result_WUSS_BAD_ICON / result_WUSS_BAD_COLOUR as wuss_icon_create
+ * documents, else result_OK. */
 result_t wuss__icon_from_spec(const wuss_t           *wuss,
                               const wuss_icon_spec_t *spec,
                               wuss_icon_t            *out);
@@ -100,10 +157,11 @@ result_t wuss__icon_from_spec(const wuss_t           *wuss,
  * the surviving content piece and the background already filled. "content" is
  * the window's full (unclipped) content box, screen space; "scroll" is
  * window->scroll. */
-void wuss__icon_draw(wuss_t            *wuss,
-                     const wuss_icon_t *icon,
-                     const box_t       *content,
-                     point_t            scroll);
+void wuss__icon_draw(wuss_t              *wuss,
+                     const wuss_window_t *window,
+                     const wuss_icon_t   *icon,
+                     const box_t         *content,
+                     point_t              scroll);
 
 /* Hit-test every visible, enabled button icon of "window" against a point given
  * in virtual document space. Returns the topmost (last-created wins) match, or

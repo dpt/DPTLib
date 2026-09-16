@@ -49,17 +49,19 @@ bmtext_line_t;
  * \param[in]  string     Text to wrap.
  * \param[in]  stringlen  Length of \p string in bytes.
  * \param[in]  wrap_width Width to wrap to, in pixels.
+ * \param[in]  spacing    Extra letter/word spacing, or NULL for none.
  * \param[out] lines      Filled with up to \p max lines.
  * \param[in]  max        Capacity of \p lines. Lines past this are dropped.
  *
  * \return Number of lines written to \p lines.
  */
-int bmtext_layout(bmfont_t      *font,
-                  const char    *string,
-                  int            stringlen,
-                  int            wrap_width,
-                  bmtext_line_t *lines,
-                  int            max);
+int bmtext_layout(bmfont_t               *font,
+                  const char             *string,
+                  int                     stringlen,
+                  int                     wrap_width,
+                  const bmfont_spacing_t *spacing,
+                  bmtext_line_t          *lines,
+                  int                     max);
 
 /**
  * Draw \p nlines pre-laid-out \p lines stacked downward from \p origin,
@@ -73,15 +75,17 @@ int bmtext_layout(bmfont_t      *font,
  * \param[in] bg      Background colour, for glyph blending.
  * \param[in] leading Extra pixels between lines.
  * \param[in] origin  Top-left of the first line, in pixels.
+ * \param[in] spacing Extra letter/word spacing, or NULL for none.
  */
-void bmtext_draw(bmfont_t            *font,
-                 screen_t            *scr,
-                 const bmtext_line_t *lines,
-                 int                  nlines,
-                 colour_t             fg,
-                 colour_t             bg,
-                 int                  leading,
-                 point_t              origin);
+void bmtext_draw(bmfont_t               *font,
+                 screen_t               *scr,
+                 const bmtext_line_t    *lines,
+                 int                     nlines,
+                 colour_t                fg,
+                 colour_t                bg,
+                 int                     leading,
+                 point_t                 origin,
+                 const bmfont_spacing_t *spacing);
 
 #ifdef __cplusplus
 }

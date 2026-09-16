@@ -17,6 +17,7 @@
 #include "geom/box.h"
 #include "geom/point.h"
 #include "io/path.h"
+#include "wuss/icon.h"
 #include "wuss/menu.h"
 
 #include "chars.h"
@@ -25,24 +26,43 @@
 #define CHARS_ROWS 16
 #define CHARS_PAD  1
 
-/* keep the resources root the task was created with; the picker loads a font
- * on demand by leafname and chars_create does not stash it elsewhere.
- * ponytail: one demo, one instance at a time -- a file-scope copy is fine. */
-static char chars_resources[256];
-
 /* ----------------------------------------------------------------------- */
 
-/* content size for the grid at the given font's cell metrics. Each cell
+/* the rows of the CHARS_COLS x CHARS_ROWS grid that hold at least one glyph
+ * of font: [*first_row, *first_row + *nrows). first_row * CHARS_COLS is the
+ * byte value of the top-left cell of the first such row. */
+static void chars_row_range(bmfont_t *font, int *first_row, int *nrows)
+{
+  int first, count, last_row;
+
+  first = ' '; /* bmfont glyphs are laid out contiguously starting here */
+  count = bmfont_get_count(font);
+  /* bmfont indexes its glyph table off a plain char, so a byte value above
+   * CHAR_MAX would index negatively on a signed-char platform. Never draw
+   * one, however many glyphs the font claims. */
+  if (first + count > CHAR_MAX + 1)
+    count = CHAR_MAX + 1 - first;
+
+  *first_row = first / CHARS_COLS;
+  last_row   = (first + count - 1) / CHARS_COLS;
+  *nrows     = last_row - *first_row + 1;
+}
+
+/* content size for the grid at the given font's cell metrics, less any
+ * contiguous leading/trailing rows the font has no glyphs in. Each cell
  * stacks the index (drawn in the wuss system font) above the glyph. */
 static size2d_t chars_window_size(chars_task_t *task, bmfont_t *font)
 {
   int fw, fh, ifw, ifh, cell_w, cell_h;
+  int first_row, nrows;
 
-  bmfont_get_info(font, &fw, &fh);
-  bmfont_get_info(wuss_get_font(task->wuss), &ifw, &ifh);
+  bmfont_get_info(font, &fw, &fh, NULL, NULL);
+  bmfont_get_info(wuss_get_font(task->wuss), &ifw, &ifh, NULL, NULL);
   cell_w = MAX(fw, ifw * 3) + CHARS_PAD * 2;
   cell_h = ifh + fh + CHARS_PAD * 3;
-  return SIZE2D(cell_w * CHARS_COLS, cell_h * CHARS_ROWS);
+  chars_row_range(font, &first_row, &nrows);
+  return SIZE2D(cell_w * CHARS_COLS + wuss_STD_INSET * 2,
+               cell_h * nrows + wuss_STD_INSET * 2);
 }
 
 /* load fonts[idx] if not already in hand; returns it or NULL on failure.
@@ -52,6 +72,7 @@ static bmfont_t *chars_load_font(chars_task_t *task,
                                  const char   *name)
 {
   result_t    rc;
+  const char *resources;
   const char *leaf;
   const char *filename;
   bmfont_t   *font;
@@ -59,8 +80,9 @@ static bmfont_t *chars_load_font(chars_task_t *task,
   if (task->fonts[idx] != NULL)
     return task->fonts[idx];
 
-  leaf     = path_join_leafname(name, "png");
-  filename = path_join_filename(chars_resources, 3, "resources", "bmfonts",
+  resources = wuss_get_resources(task->wuss);
+  leaf      = path_join_leafname(name, "png");
+  filename  = path_join_filename(resources, 3, "resources", "bmfonts",
                                leaf);
 
   rc = bmfont_create(filename, &font);
@@ -86,7 +108,17 @@ static result_t chars_set_font(chars_task_t *task, int idx, const char *name)
   task->font    = font;
   task->current = idx;
 
-  wuss_window_resize(task->window, chars_window_size(task, font));
+  /* the grid's cell metrics scale with the font, so both the window and its
+   * scrollable extent have to follow the new size -- resize alone would leave
+   * the doc (and so the scroll range) sized to the font the window was
+   * created with, clipping the far cells of a larger font unreachably */
+  {
+    size2d_t grid;
+
+    grid = chars_window_size(task, font);
+    wuss_window_resize(task->window, grid);
+    wuss_window_set_doc(task->window, grid);
+  }
   wuss_window_invalidate_visible(task->window);
   return result_OK;
 }
@@ -103,26 +135,27 @@ static result_t chars_open_menu(chars_task_t *task)
 
 /* ----------------------------------------------------------------------- */
 
-result_t chars_create(wuss_t       *wuss,
-                      const char   *resources,
-                      chars_task_t *task)
+result_t chars_create(wuss_t *wuss, chars_task_t **out)
 {
   result_t           rc;
+  chars_task_t      *task;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
   bmfont_t          *font;
+  const char        *resources;
   const char        *bmfonts_dir;
   const wuss_menu_t *menu;
+  size2d_t           grid;
 
   font = wuss_get_font(wuss);
   if (font == NULL)
-  {
-    task->window = NULL;
-    return result_OK;
-  }
+    return result_OK; /* no window opened; nothing to free */
 
-  strncpy(chars_resources, resources, sizeof(chars_resources) - 1);
-  chars_resources[sizeof(chars_resources) - 1] = '\0';
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
+
+  resources = wuss_get_resources(wuss);
 
   task->wuss        = wuss;
   task->font        = font;
@@ -134,7 +167,7 @@ result_t chars_create(wuss_t       *wuss,
 
   /* the picker: every ".png" font under resources/bmfonts, sorted, less any
    * SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows from) */
-  bmfonts_dir = path_join_filename(chars_resources, 2, "resources", "bmfonts");
+  bmfonts_dir = path_join_filename(resources, 2, "resources", "bmfonts");
   rc = wuss_fontmenu_create(&task->fontmenu, bmfonts_dir, "Font", wuss, NULL);
   if (rc != result_OK)
   {
@@ -168,18 +201,37 @@ result_t chars_create(wuss_t       *wuss,
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
+  grid = chars_window_size(task, font);
   rc = wuss_window_create_placed(delegate,
-                                 chars_window_size(task, font),
+                                 grid,
                                  "Chars",
-                                 wuss_WINDOW_NO_HSCROLL,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
-                                 chars_window_size(task, font),
+                                 wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL,
+                                 wuss_NO_BACKDROP,
+                                 grid,
                                  SIZE2D(64, 64),
                                  &task->window);
   if (rc != result_OK)
+  {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
 
-  return rc;
+  if (out)
+    *out = task;
+
+  return result_OK;
+}
+
+void chars_destroy(chars_task_t *task)
+{
+  int i;
+
+  for (i = 0; i < task->nfonts; i++)
+    if (task->fonts[i] != NULL)
+      bmfont_destroy(task->fonts[i]);
+  free(task->fonts);
+  wuss_fontmenu_destroy(task->fontmenu);
+  free(task);
 }
 
 static result_t chars_redraw(const wuss_event_t *event, void *task_data)
@@ -188,9 +240,11 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
   screen_t     *scr;
   bmfont_t     *sysfont;
   const box_t  *bounds;
-  int           font_width, font_height, sysfont_width, sysfont_height;
+  int           font_width, font_height, font_ascent;
+  int           sysfont_width, sysfont_height, sysfont_ascent;
   int           cell_w, cell_h;
   int           first, count;
+  int           first_row, nrows;
   int           i, sx, sy;
 
   cc = task_data;
@@ -202,8 +256,9 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
 
   sysfont = wuss_get_font(cc->wuss);
 
-  bmfont_get_info(cc->font, &font_width, &font_height);
-  bmfont_get_info(sysfont, &sysfont_width, &sysfont_height);
+  bmfont_get_info(cc->font, &font_width, &font_height, &font_ascent, NULL);
+  bmfont_get_info(sysfont, &sysfont_width, &sysfont_height, &sysfont_ascent,
+                  NULL);
   cell_w = MAX(font_width, sysfont_width * 3) + CHARS_PAD * 2;
   cell_h = sysfont_height + font_height + CHARS_PAD * 3;
 
@@ -214,36 +269,60 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
    * one, however many glyphs the font claims. */
   if (first + count > CHAR_MAX + 1)
     count = CHAR_MAX + 1 - first;
+  chars_row_range(cc->font, &first_row, &nrows);
 
-  for (i = 0; i < CHARS_COLS * CHARS_ROWS; i++)
+  /* the wuss_STD_INSET margin around the grid falls outside every cell's own
+   * fill below, so paint the whole dirty rect first -- covers that margin
+   * and any dirty strip past the last row/column of cells too. */
+  screen_fill_rect(scr, bounds->x0, bounds->y0,
+                   SIZE2D(bounds->x1 - bounds->x0,
+                          bounds->y1 - bounds->y0), cc->bg);
+
+  for (i = 0; i < CHARS_COLS * nrows; i++)
   {
-    int     col, row, x, y;
+    int     col, row, x, y, byte;
     char    ch;
     char    label[4];
     point_t pos;
 
-    col = i % CHARS_COLS;
-    row = i / CHARS_COLS;
-    x   = bounds->x0 - sx + col * cell_w;
-    y   = bounds->y0 - sy + row * cell_h;
+    col  = i % CHARS_COLS;
+    row  = i / CHARS_COLS;
+    byte = (first_row + row) * CHARS_COLS + col;
+    x    = bounds->x0 - sx + wuss_STD_INSET + col * cell_w;
+    y    = bounds->y0 - sy + wuss_STD_INSET + row * cell_h;
 
     screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), cc->bg);
     screen_draw_line(scr, x, y, x + cell_w - 1, y, cc->mg);
     screen_draw_line(scr, x, y, x, y + cell_h - 1, cc->mg);
 
-    snprintf(label, 4, "%d", i);
+    snprintf(label, 4, "%d", byte);
     pos.x = x + CHARS_PAD;
-    pos.y = y + CHARS_PAD;
-    bmfont_draw(sysfont, scr, label, (int) strlen(label), cc->mg, cc->bg,
-               &pos, NULL);
+    pos.y = y + CHARS_PAD + sysfont_ascent;
+    wuss_text_draw(cc->wuss, 0, scr, label, (int) strlen(label), cc->mg,
+                   cc->bg, &pos, NULL);
 
-    if (i < first || i >= first + count)
+    if (byte < first || byte >= first + count)
       continue; /* no glyph for this byte value: leave the cell blank */
 
-    ch    = (char) i;
+    ch    = (char) byte;
     pos.x = x + CHARS_PAD;
-    pos.y = y + CHARS_PAD * 2 + sysfont_height;
-    bmfont_draw(cc->font, scr, &ch, 1, cc->fg, cc->bg, &pos, NULL);
+    pos.y = y + CHARS_PAD * 2 + sysfont_height + font_ascent;
+    screen_draw_dashed_line(scr, x + CHARS_PAD, pos.y,
+                            x + cell_w - 1 - CHARS_PAD, pos.y, 1, 1, cc->mg);
+    bmfont_draw(cc->font, scr, &ch, 1, cc->fg, cc->bg, NULL, &pos, NULL);
+
+    /* advance width: a blue rule under the glyph spanning pos.x..pos.x+advance,
+     * a ruler for how far this glyph pushes the pen */
+    {
+      bmfont_width_t advance;
+      colour_t       blue;
+      int            adv_y;
+
+      bmfont_measure(cc->font, &ch, 1, NULL, INT_MAX, NULL, &advance);
+      blue  = colour_rgb(0x66, 0x66, 0xFF);
+      adv_y = y + cell_h - 1 - CHARS_PAD;
+      screen_draw_line(scr, pos.x, adv_y, pos.x + advance - 1, adv_y, blue);
+    }
   }
 
   return result_OK;
@@ -260,16 +339,7 @@ result_t chars_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_QUIT:
-    {
-      int i;
-
-      for (i = 0; i < cc->nfonts; i++)
-        if (cc->fonts[i] != NULL)
-          bmfont_destroy(cc->fonts[i]);
-      free(cc->fonts);
-      wuss_fontmenu_destroy(cc->fontmenu);
-      free(cc); /* calloc'd per instance by the spawner */
-    }
+    chars_destroy(cc);
     return result_OK;
 
   case wuss_EVENT_MOUSE:
@@ -293,8 +363,9 @@ result_t chars_handle(wuss_window_t      *window,
         /* ADJUST keeps the chain open without rebuilding it, so the
          * fresh-open tick set in chars_open_menu is now stale on screen;
          * retick the still-open chain in place to match cc->current */
-        wuss_menu_set_ticked(cc->menu_handle,
-                            wuss_fontmenu_menu(cc->fontmenu), cc->current);
+        wuss_menu_tick_exclusive_live(cc->menu_handle,
+                                      wuss_fontmenu_menu(cc->fontmenu),
+                                      cc->current);
       else
         /* SELECT has already closed and freed the chain by the time this
          * event arrives; the handle is stale, don't touch it */

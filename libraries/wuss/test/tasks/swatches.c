@@ -59,7 +59,7 @@ static result_t swatches_redraw(swatches_task_t    *task,
                                           pat * SWATCHES_CELL,
                                           SWATCHES_CELL, SWATCHES_CELL);
       spec.fg      = (wuss_colour_t) col;
-      spec.pattern = (screen_pattern_t) pat;
+      spec.u.pattern.tile = (screen_pattern_t) pat;
 
       rc = wuss_icon_plot(task->window, &spec, bounds, scroll);
       if (rc != result_OK)
@@ -70,11 +70,16 @@ static result_t swatches_redraw(swatches_task_t    *task,
   return result_OK;
 }
 
-result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
+result_t swatches_create(wuss_t *wuss, swatches_task_t **out)
 {
   result_t         rc;
+  swatches_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->wuss       = wuss;
   task->window     = NULL;
@@ -103,7 +108,7 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(SWATCHES_DOC_W, 140),
                                  "Swatches",
-                                 wuss_WINDOW_NO_RESIZE_BLIT, /* grid spans the whole window; a resize redraws all of it */
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT, /* grid spans the whole window; a resize redraws all of it */
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  SIZE2D(SWATCHES_DOC_W, SWATCHES_DOC_H),
                                  SIZE2D(0, 0),
@@ -119,7 +124,16 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t *task)
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
 
+  if (out)
+    *out = task;
+
   return result_OK;
+}
+
+void swatches_destroy(swatches_task_t *task)
+{
+  wuss_colourmenu_destroy(task->colourmenu);
+  free(task);
 }
 
 /* A SELECT click on a cell makes that cell -- its fill pattern, its palette
@@ -199,8 +213,7 @@ result_t swatches_handle(wuss_window_t      *window,
     return swatches_menu_select(task, event);
 
   case wuss_EVENT_QUIT:
-    wuss_colourmenu_destroy(task->colourmenu);
-    free(task_data); /* calloc'd per instance by the spawner */
+    swatches_destroy(task);
     return result_OK;
 
   default:

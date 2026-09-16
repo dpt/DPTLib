@@ -114,6 +114,13 @@ typedef unsigned int   pixelfmt_xxxa8888_t; /* any 32bpp alpha */
 /** Non-zero if `f` names an RLE-compressed pixel store. */
 #define pixelfmt_is_rle(f)  (((f) & pixelfmt_RLE_FLAG) != 0)
 
+/** Non-zero if `f` is one of the four 32bpp formats with a real alpha
+ * channel (`bgra8888`/`rgba8888`/`abgr8888`/`argb8888`), as opposed to a
+ * 32bpp format with a padding byte (`*x8888`) or a paletted/other format. */
+#define pixelfmt_has_alpha(f) \
+  ((f) == pixelfmt_bgra8888 || (f) == pixelfmt_rgba8888 || \
+   (f) == pixelfmt_abgr8888 || (f) == pixelfmt_argb8888)
+
 /* ----------------------------------------------------------------------- */
 
 typedef unsigned int   pixelfmt_any_t; /* generic/unspecified pixel */

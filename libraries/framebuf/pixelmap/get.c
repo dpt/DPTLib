@@ -175,12 +175,12 @@ const pixelmap_t *pixelmap_get(pixelfmt_t      srcfmt,
                                int             nentries)
 {
   static struct pixelmap__cacheent cache[PIXELMAP_CACHE_SIZE];
-  static unsigned int              clock;
+  static unsigned int clock;
 
-  unsigned int palhash;
-  int          victim;
-  unsigned int oldest;
-  int          i;
+  unsigned int        palhash;
+  int                 victim;
+  unsigned int        oldest;
+  int                 i;
 
   if (palette == NULL)
     return NULL;

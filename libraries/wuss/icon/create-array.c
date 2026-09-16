@@ -31,7 +31,7 @@ result_t wuss_icon_create_array(wuss_window_t          *window,
       /* all-or-nothing: unwind the icons this call already created. They are
        * the last (i) entries on the window's icon list, newest last. */
       for (j = 0; j < i; j++)
-        wuss_icon_delete(window->icons[window->nicons - 1]);
+        wuss_icon_delete(window, window->icons[window->nicons - 1]);
       return rc;
     }
 

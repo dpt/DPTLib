@@ -6,7 +6,8 @@
  * A convenience helper on top of wuss/menu.h: parse a compact
  * PrivateEye-style descriptor string into a heap wuss_menu_t tree the caller
  * owns, and free it again. Nothing in the core menu helper depends on this;
- * a task that hand-assembles its wuss_menu_t arrays never needs to include it.
+ * a task that hand-assembles its wuss_menu_t arrays never needs to include
+ * it.
  *
  * Built only when WUSS_MENUS is defined.
  */
@@ -35,15 +36,20 @@ extern "C"
  * leading '|' on an item draws a dashed rule above it, marking a group
  * boundary; the item itself stays an ordinary interactive row. A '{ ... }'
  * group after an item is that item's submenu. A per-token prefix '!' ticks
- * the item, '~' shades (disables) it, and '>' attaches a submenu pulled as a
- * <tt>const wuss_menu_t *</tt> from the varargs rather than from a following
- * '{ }' block. A "%s" in a token substitutes the next <tt>const char *</tt>
- * vararg. The '>' and "%s" varargs are consumed in the order they are
- * encountered scanning left to right.
+ * the item and '~' shades (disables) it, each pulling the next <tt>int</tt>
+ * vararg -- must be 0 or 1, applying the flag iff 1 -- rather than applying
+ * unconditionally, so a task's live state drives the tick/shade directly
+ * instead of building the menu ticked/shaded throughout and mutating it
+ * afterwards. '>' attaches a submenu pulled as a <tt>const wuss_menu_t
+ * *</tt> from the varargs rather than from a following '{ }' block. A "%s"
+ * in a token substitutes the next <tt>const char *</tt> vararg. All of '!',
+ * '~', '>' and "%s" pull their vararg in the order encountered scanning left
+ * to right.
  *
  * Example: <tt>wuss_menu_create_from_desc(&m, "Display, Open, !Grid,
- * ~Export, |Quit")</tt> -- "Display" is the caption; the menu has four
- * items, with a dashed rule above "Quit".
+ * ~Export, |Quit", grid_on, !can_export)</tt> -- "Display" is the caption;
+ * the menu has four items, with a dashed rule above "Quit", "Grid" ticked
+ * iff \c grid_on and "Export" shaded iff \c can_export is false.
  *
  * The whole tree, including copied label text, is one heap allocation graph
  * owned by the caller; free it with wuss_menu_destroy. wuss_menu_open treats
@@ -53,7 +59,8 @@ extern "C"
  *                  failure.
  * \param[in]  desc Descriptor string; its first token is the root caption.
  * \return \ref result_OK, \ref result_OOM, or \ref result_BAD_ARG for a
- *         malformed descriptor (unbalanced braces, empty token, too deep).
+ *         malformed descriptor (unbalanced braces, empty token, too deep, or
+ *         a '!'/'~' vararg that is not 0 or 1).
  */
 result_t wuss_menu_create_from_desc(wuss_menu_t **out, const char *desc, ...);
 

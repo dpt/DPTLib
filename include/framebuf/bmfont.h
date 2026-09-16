@@ -26,6 +26,22 @@ enum
 typedef unsigned int bmfont_flags_t;
 
 /**
+ * Extra spacing to apply on top of a font's own advance widths, passed to
+ * bmfont_measure(), bmfont_draw() and bmfont_draw_relief(). A NULL pointer
+ * means no extra spacing (as if both fields were zero).
+ */
+typedef struct bmfont_spacing
+{
+  int letter_spacing; /**< Added to every glyph's advance width, in pixels.
+                        *   May be negative to tighten; a large negative
+                        *   value can make glyphs overlap or run
+                        *   backwards. */
+  int word_spacing;    /**< Added to space (' ') glyphs, on top of
+                         *   letter_spacing, in pixels. */
+}
+bmfont_spacing_t;
+
+/**
  * Create a new bitmap font from a PNG format font file.
  *
  * \param[in]  png      Filename of the font file to load.
@@ -83,13 +99,21 @@ void bmfont_destroy(bmfont_t *bmfont);
 void bmfont_set_flags(bmfont_t *bmfont, bmfont_flags_t flags);
 
 /**
- * Read the width and height of the specified bitmap font.
+ * Read the width, height, ascent and descent of the specified bitmap font.
  *
  * \param[in]  bmfont   Bitmap font to query.
  * \param[out] width    Width of the font in pixels, or NULL if not wanted.
  * \param[out] height   Height of the font in pixels, or NULL if not wanted.
+ * \param[out] ascent   Baseline offset from the top of a glyph cell, in
+ *                      pixels, or NULL if not wanted.
+ * \param[out] descent  Offset from the baseline to the bottom of a glyph
+ *                      cell, in pixels, or NULL if not wanted.
  */
-void bmfont_get_info(bmfont_t *bmfont, int *width, int *height);
+void bmfont_get_info(bmfont_t *bmfont,
+                     int      *width,
+                     int      *height,
+                     int      *ascent,
+                     int      *descent);
 
 /**
  * Read the number of glyphs in the specified bitmap font. Glyphs are laid
@@ -107,17 +131,19 @@ int bmfont_get_count(bmfont_t *bmfont);
  * \param[in]  bmfont       Bitmap font to measure.
  * \param[in]  text         String to measure.
  * \param[in]  len          Length of the string.
+ * \param[in]  spacing      Extra letter/word spacing, or NULL for none.
  * \param[in]  target_width Target width in pixels.
  * \param[out] split_point  Split point in pixels.
  * \param[out] actual_width Actual width of the split string in pixels.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bmfont_measure(bmfont_t       *bmfont,
-                        const char     *text,
-                        int             len,
-                        bmfont_width_t  target_width,
-                        int            *split_point,
-                        bmfont_width_t *actual_width);
+result_t bmfont_measure(bmfont_t               *bmfont,
+                        const char             *text,
+                        int                     len,
+                        const bmfont_spacing_t *spacing,
+                        bmfont_width_t          target_width,
+                        int                    *split_point,
+                        bmfont_width_t         *actual_width);
 
 /**
  * Draw the given string using the specified font, position and colours.
@@ -128,18 +154,20 @@ result_t bmfont_measure(bmfont_t       *bmfont,
  * \param[in]   len     Length of the string.
  * \param[in]   fg      Foreground colour.
  * \param[in]   bg      Background colour.
- * \param[in]   pos     Position of the string in pixels.
- * \param[out]  end_pos End position of the string in pixels.
+ * \param[in]   spacing Extra letter/word spacing, or NULL for none.
+ * \param[in]   pos     Baseline start position of the string in pixels.
+ * \param[out]  end_pos Baseline end position of the string in pixels.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bmfont_draw(bmfont_t      *bmfont,
-                     screen_t      *scr,
-                     const char    *text,
-                     int            len,
-                     colour_t       fg,
-                     colour_t       bg,
-                     const point_t *pos,
-                     point_t       *end_pos);
+result_t bmfont_draw(bmfont_t               *bmfont,
+                     screen_t               *scr,
+                     const char             *text,
+                     int                     len,
+                     colour_t                fg,
+                     colour_t                bg,
+                     const bmfont_spacing_t *spacing,
+                     const point_t          *pos,
+                     point_t                *end_pos);
 
 /**
  * Draw the given string twice to produce a relief (drop-shadow) effect: a
@@ -156,19 +184,21 @@ result_t bmfont_draw(bmfont_t      *bmfont,
  * \param[in]   len     Length of the string.
  * \param[in]   fg      Foreground colour, used for the main pass.
  * \param[in]   shadow  Shadow colour, used for the offset pass.
- * \param[in]   pos     Position of the main pass in pixels.
+ * \param[in]   spacing Extra letter/word spacing, or NULL for none.
+ * \param[in]   pos     Baseline position of the main pass in pixels.
  * \param[in]   offset  Shadow displacement in pixels, e.g. { 1, 1 }.
- * \param[out]  end_pos End position of the string in pixels.
+ * \param[out]  end_pos Baseline end position of the string in pixels.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bmfont_draw_relief(bmfont_t      *bmfont,
-                            screen_t      *scr,
-                            const char    *text,
-                            int            len,
-                            colour_t       fg,
-                            colour_t       shadow,
-                            const point_t *pos,
-                            const point_t *offset,
-                            point_t       *end_pos);
+result_t bmfont_draw_relief(bmfont_t               *bmfont,
+                            screen_t               *scr,
+                            const char             *text,
+                            int                     len,
+                            colour_t                fg,
+                            colour_t                shadow,
+                            const bmfont_spacing_t *spacing,
+                            const point_t          *pos,
+                            const point_t          *offset,
+                            point_t                *end_pos);
 
 #endif /* DPTLIB_BMFONT_H */

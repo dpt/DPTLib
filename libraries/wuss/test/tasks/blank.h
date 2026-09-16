@@ -23,9 +23,13 @@ blank_task_t;
 
 wuss_window_fn_t blank_handle;
 
-/* create the colour-cycling blank window against the given wuss instance */
-result_t blank_create(wuss_t *wuss, blank_task_t *task);
+/* create the colour-cycling blank window against the given wuss instance;
+ * if out is non-NULL, the task block is also returned through it */
+result_t blank_create(wuss_t *wuss, blank_task_t **out);
 
+/* free a task block allocated by blank_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void blank_destroy(blank_task_t *task);
 
 #endif /* WUSS_APP */
 

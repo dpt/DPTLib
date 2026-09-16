@@ -46,13 +46,13 @@ static result_t unpickle__parse_line(unpickle__state_t *state,
 {
   result_t err;
 
-  char *key;
-  char *keyend;
-  void *fmtkey;
+  char    *key;
+  char    *keyend;
+  void    *fmtkey;
 
-  char *value;
-  char *valueend;
-  void *fmtvalue;
+  char    *value;
+  char    *valueend;
+  void    *fmtvalue;
 
 
   key = buf;

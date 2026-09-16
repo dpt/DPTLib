@@ -21,6 +21,8 @@
 #include "wuss/window.h"
 #include "wuss/task.h"
 
+#include "../font/font.h"
+
 #ifdef WUSS_FURNITURE
 #include "../furniture.h"
 #endif
@@ -48,6 +50,8 @@
 #ifdef WUSS_ICONS
 #define WUSS_FRAME_CAPTION_INSET 8 /* x offset of a wuss_ICON_TYPE_FRAME caption from the frame's left edge */
 #define WUSS_FRAME_CAPTION_PAD   2 /* gap left in the frame's top edge either side of the caption */
+
+#define WUSS_SLIDER_GAP 4 /* fixed inset on all four sides of a wuss_ICON_TYPE_SLIDER bbox, between the surround and the inner (clickable) rect */
 
 /* Font slot (see wuss_create's fonts[]) consulted for menu decoration glyphs:
  * the selection tick and the submenu arrow. When the slot is empty those are
@@ -101,14 +105,11 @@ struct wuss_task
 struct wuss
 {
   screen_t                   *scr;
-  bmfont_t                   *fonts[wuss_MAX_FONTS]; /* slot 0 is the system
-                                          * font; unset slots NULL; not owned */
-  wuss_font_class_t           font_classes[wuss_MAX_FONTS]; /* parallel to
-                                          * fonts[]; NONE for an unset slot */
-  const char                 *font_names[wuss_MAX_FONTS]; /* parallel to
-                                          * fonts[]; borrowed; NULL if unset
-                                          * or given no name */
-  int                         nfonts;    /* entries filled from wuss_create */
+  const char                 *resources; /* borrowed root path from wuss_create,
+                                          * for wuss_get_resources; caller
+                                          * convention only, unused internally */
+  struct wuss_fontset         fonts;     /* font slots from wuss_create; slot 0
+                                          * is the system font. See font/font.h */
   wuss_alloc_t                alloc;     /* malloc/realloc/free hooks, copied in
                                           * by wuss_create; used for every heap
                                           * block this wuss_t owns */
@@ -131,6 +132,11 @@ struct wuss
   wuss_colour_t               button_pressed; /* button face while held */
   wuss_colour_t               accent;         /* default action button fill */
 #endif
+#ifdef WUSS_ICONS
+  wuss_colour_t               slider_track;    /* slider groove ground */
+  wuss_colour_t               slider_value;    /* slider fill */
+  wuss_colour_t               slider_surround; /* slider bbox and gap */
+#endif
   wuss_colour_t               window_bg; /* work-area body fill; wuss_COLOUR_WINDOW */
   wuss_colour_t               menu_bg;   /* menu body fill; wuss_COLOUR_MENU */
   wuss_backdrop_t             backdrop; /* colour==wuss_NO_BACKGROUND: none */
@@ -148,6 +154,8 @@ struct wuss
 #endif
   box_t                       dirty[WUSS_MAX_DIRTY]; /* accumulated by wuss_invalidate; reset by a redraw */
   int                         ndirty;
+  box_t                       touched[WUSS_MAX_DIRTY]; /* accumulated by wuss__touch; reset by wuss_clear_touched */
+  int                         ntouched;
   packer_t                   *layout;    /* owned; occupied screen area for
                                           * wuss_window_create_placed, lazily
                                           * created on first auto-placement */
@@ -155,15 +163,24 @@ struct wuss
                                           * layout packer has no room left */
   point_t                     pointer;   /* last pointer position, screen
                                           * space, from any mouse click/move */
+  wuss_window_t              *pointer_window; /* window whose on-screen
+                                          * footprint the pointer was last
+                                          * inside (content or furniture),
+                                          * NULL if none; drives
+                                          * wuss_EVENT_POINTER_ENTER/EXIT */
 #ifdef WUSS_ICONS
   wuss_icon_t                *pressed_icon; /* button icon held down, NULL when
                                             * idle; released on any MOUSE_UP
                                             * even if a new window now covers
                                             * its owner */
+  wuss_window_t              *pressed_window; /* the window pressed_icon is on;
+                                              * NULL iff pressed_icon is NULL */
   wuss_icon_t                *hover_icon;   /* icon the pointer is currently
                                             * over, NULL when none; drives
                                             * hover-highlight repaint of
                                             * menu-entry icons */
+  wuss_window_t              *hover_window; /* the window hover_icon is on;
+                                            * NULL iff hover_icon is NULL */
   /* Icon set loaded by wuss_icons_load. index i is the i-th ".png" the
    * directory scan yielded (order unspecified -- address by name).
    * names interns the leafnames-sans-".png"; atoms[i] is entry i's atom
@@ -295,25 +312,6 @@ static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
 
-/* Centralised text rendering. Every wuss text draw goes through
- * wuss__text_draw so an optical vertical bias (WUSS_TEXT_BASELINE_ADJUST,
- * default 1px down) is applied uniformly; wuss__text_measure is a plain
- * pass-through kept alongside for a single point of policy. */
-result_t wuss__text_measure(bmfont_t       *font,
-                            const char     *text,
-                            int             len,
-                            bmfont_width_t  target_width,
-                            int            *split_point,
-                            bmfont_width_t *actual_width);
-result_t wuss__text_draw(bmfont_t      *font,
-                         screen_t      *scr,
-                         const char    *text,
-                         int            len,
-                         colour_t       fg,
-                         colour_t       bg,
-                         const point_t *pos,
-                         point_t       *end_pos);
-
 /* Rebuild wuss->palettecache (white, black and the symbolic[] table) from
  * the current palette and the stored chrome colours. Call after the palette
  * or any chrome colour changes; the chrome fields must already be concrete
@@ -440,6 +438,7 @@ void            wuss__invalidate_minus(wuss_t      *wuss,
                                        const box_t *whole,
                                        const box_t *keep);
 void            wuss__invalidate_uncovered(wuss_window_t *window);
+void            wuss__touch(wuss_t *wuss, const box_t *box);
 
 /* Clip "box" (screen space) down to the parts not already covered by
  * windows above "window" in the z-order, writing the surviving pieces to
@@ -455,6 +454,17 @@ int             wuss__subtract_boxes(const box_t *whole,
                                      const box_t *cuts,
                                      int          ncuts,
                                      box_t       *out);
+
+/* Filter "clean" (nclean pieces already clipped clear of occluders) down to
+ * the parts not also covered by "stale" (nstale pending-dirty boxes not yet
+ * repainted), writing survivors back into "clean" and returning the new
+ * count. Each piece is subtracted independently, so the result can hold more
+ * than "nclean" entries; excess beyond WUSS_MAX_INVALIDATE_PIECES is
+ * dropped. */
+int             wuss__filter_settled(box_t       *clean,
+                                     int          nclean,
+                                     const box_t *stale,
+                                     int          nstale);
 
 /* Given "n" single-rect blits, each moving "clean[i]" to "dest[i]", find an
  * order in which no blit's destination overwrites a still-unread source of a
@@ -531,6 +541,45 @@ static inline void wuss__notify_open(wuss_window_t *window)
   (void) wuss__deliver(window->task, window, &event);
 }
 
+/* Move the "pointer is inside this window's footprint" tracker to "now"
+ * (which may be NULL). If it changed, deliver wuss_EVENT_POINTER_EXIT to the
+ * window it left and wuss_EVENT_POINTER_ENTER to the one it reached, in that
+ * order. Called from every pointer-position update. Fires only on the
+ * window-crossing edge; content<->furniture moves within one window keep the
+ * same tracker and emit nothing. */
+static inline void wuss__pointer_set_window(wuss_t *wuss, wuss_window_t *now)
+{
+  wuss_window_t *was;
+  wuss_event_t   event;
+
+  was = wuss->pointer_window;
+  if (now == was)
+    return;
+
+  wuss->pointer_window = now;
+
+  if (was != NULL)
+  {
+    event.kind = wuss_EVENT_POINTER_EXIT;
+    (void) wuss__deliver(was->task, was, &event);
+  }
+  if (now != NULL)
+  {
+    event.kind = wuss_EVENT_POINTER_ENTER;
+    (void) wuss__deliver(now->task, now, &event);
+  }
+}
+
+/* Drop "window" from the pointer tracker without delivering EXIT -- for the
+ * window teardown path, where wuss_EVENT_CLOSE already tells the task and the
+ * window is about to be freed. No-op unless the pointer was inside it. */
+static inline void wuss__pointer_forget_window(wuss_t        *wuss,
+                                               wuss_window_t *window)
+{
+  if (wuss->pointer_window == window)
+    wuss->pointer_window = NULL;
+}
+
 static inline int wuss__size_ok(int width, int height)
 {
   return width > 0 && height > 0;
@@ -598,7 +647,7 @@ static inline int wuss__outline_px(const wuss_window_t *window)
 }
 
 /* ponytail: falls back to wuss's own titlebar height when the window has
- * none, so NO_TITLEBAR windows that still opt into scrollbars/resize match
+ * none, so titleless windows that still opt into scrollbars/resize match
  * their titled siblings instead of a hardcoded size; the hardcoded default
  * is only a last-resort floor if even that isn't positive */
 static inline int wuss__button_size_for(const wuss_t       *wuss,
@@ -629,12 +678,12 @@ static inline void wuss__furniture_carve_for(wuss_window_flags_t flags,
                                              int                 button_size,
                                              point_t            *carve)
 {
-  carve->x = (flags & wuss_WINDOW_NO_VSCROLL) ? 0 : button_size;
-  carve->y = (flags & wuss_WINDOW_NO_HSCROLL) ? 0 : button_size;
+  carve->x = (flags & wuss_WINDOW_VSCROLL) ? button_size : 0;
+  carve->y = (flags & wuss_WINDOW_HSCROLL) ? button_size : 0;
 
-  if (!(flags & wuss_WINDOW_NO_RESIZE) &&
-      (flags & wuss_WINDOW_NO_VSCROLL) &&
-      (flags & wuss_WINDOW_NO_HSCROLL))
+  if ((flags & wuss_WINDOW_RESIZE) &&
+      !(flags & wuss_WINDOW_VSCROLL) &&
+      !(flags & wuss_WINDOW_HSCROLL))
   {
     carve->x = button_size;
     carve->y = button_size;
@@ -746,6 +795,40 @@ static inline void wuss__max_content_anywhere_on_screen(const wuss_window_t *win
 
   max->w = MAX(max->w, WUSS_MIN_CONTENT);
   max->h = MAX(max->h, WUSS_MIN_CONTENT);
+}
+
+/* Nudge window->visible back onto the screen by the minimum needed to bring
+ * its top-left (titlebar/close-icon) edge into view: shift right/down if it
+ * is off the top or left, shift left/up if it hangs off the right or bottom,
+ * but never so far that the top-left goes off the opposite edge -- a window
+ * bigger than the screen keeps its top-left on and overhangs bottom-right.
+ * Only the position moves, not the size. Shared by wuss_window_create and the
+ * menu code's borrowed-window opener so no menu can place a window off-screen.
+ */
+static inline void wuss__nudge_visible_onscreen(wuss_window_t *window)
+{
+  int scr_width, scr_height, dx, dy;
+
+  scr_width  = window->wuss->scr->size.w;
+  scr_height = window->wuss->scr->size.h;
+
+  dx = 0;
+  if (window->visible.x0 < 0)
+    dx = -window->visible.x0;
+  else if (window->visible.x1 > scr_width)
+    dx = scr_width - window->visible.x1;
+  if (window->visible.x0 + dx < 0)
+    dx = -window->visible.x0;
+
+  dy = 0;
+  if (window->visible.y0 < 0)
+    dy = -window->visible.y0;
+  else if (window->visible.y1 > scr_height)
+    dy = scr_height - window->visible.y1;
+  if (window->visible.y0 + dy < 0)
+    dy = -window->visible.y0;
+
+  box_translated(&window->visible, dx, dy, &window->visible);
 }
 
 #endif /* IMPL_H */

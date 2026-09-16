@@ -31,8 +31,13 @@ curve_task_t;
 
 wuss_window_fn_t curve_handle;
 
-/* create the curve window against the given wuss instance */
-result_t curve_create(wuss_t *wuss, curve_task_t *task);
+/* create the curve window against the given wuss instance; if out is
+ * non-NULL, the task block is also returned through it */
+result_t curve_create(wuss_t *wuss, curve_task_t **out);
+
+/* free a task block allocated by curve_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void curve_destroy(curve_task_t *task);
 
 #endif /* WUSS_APP */
 

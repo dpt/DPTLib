@@ -18,8 +18,8 @@
  * menu row at wuss_info_window() and wuss shows it where a submenu would
  * open. A task can equally wuss_window_set_hidden() it directly.
  *
- * The window is created wuss_WINDOW_NO_CLOSE and stays on the caller's task
- * until wuss_info_destroy closes it. That task must therefore not be an
+ * The window is created without wuss_WINDOW_CLOSE and stays on the caller's
+ * task until wuss_info_destroy closes it. That task must therefore not be an
  * autoclose task -- its window list would never empty -- and must outlive
  * the handle. As for any borrowed wuss_menu_item_t::window, the dialogue
  * must also outlive every menu chain that references it: close the chain
@@ -85,6 +85,26 @@ result_t wuss_info_create(wuss_info_t          **out,
                           const char            *title,
                           const wuss_info_row_t *rows,
                           int                    nrows);
+
+/**
+ * Replace an info dialogue's rows in place: recomputes column widths and row
+ * pitch for \p rows, resizes the window to fit, and rebuilds its label:value
+ * icons. For a dialogue shared by several callers (e.g. one wuss_proginfo_t
+ * reused by every task), call this from a wuss_dialogue_fillout_fn_t just
+ * before each reveal so the window is always sized for whichever caller is
+ * about to show it.
+ *
+ * \param[in] info  Handle.
+ * \param[in] rows  Row array; each label and value is borrowed and copied.
+ * \param[in] nrows Number of rows; must be >= 1. Need not match the count \p
+ *                  info was created with.
+ * \return \ref result_OK, \ref result_OOM, \ref result_NULL_ARG if \p info
+ *         or \p rows is NULL, \ref result_BAD_ARG if \p nrows is < 1, or a
+ *         wuss_window_resize / wuss_icon_create_array code.
+ */
+result_t wuss_info_set_rows(wuss_info_t           *info,
+                            const wuss_info_row_t *rows,
+                            int                    nrows);
 
 /**
  * Free an info dialogue: closes its window and frees every string in it.

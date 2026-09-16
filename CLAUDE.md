@@ -94,7 +94,8 @@ New source/header files must be added by hand to the relevant `set(..._SOURCES .
 - Section breaks within files use `/* ----- ... ----- */` rule comments.
 - Public API docs use Doxygen (`\file`, `\param`, `\return`); a `Doxyfile` exists for generating them.
 - Edit `.c`/`.h` files with the Edit tool, never `sed -i` line-range splices — they corrupt the Allman/2-space layout and can't be verified without re-reading. To inspect exact bytes or indentation, Read the file; don't shell out to `cat -A`/`cat -v`.
-- After editing any `.c`/`.h` function prototype or definition, run `python3 tools/wrap_protos.py <file>`; after editing a header's Doxygen, run `python3 tools/wrap_doxygen.py <file>` (skip vendored headers).
+- After editing any `.c`/`.h` function prototype or definition, run `python3 tools/fmt/wrap_protos.py <file>`; after editing a header's Doxygen, run `python3 tools/fmt/wrap_doxygen.py <file>` (skip vendored headers).
+- Before committing any `.c`/`.h` changes, run `python3 tools/fmt/realign_decls.py <file>` (declaration-block alignment) alongside `wrap_protos.py`/`wrap_doxygen.py` on the same files.
 
 ## Commit messages
 

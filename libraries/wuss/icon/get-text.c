@@ -4,5 +4,5 @@
 
 const char *wuss_icon_get_text(const wuss_icon_t *icon)
 {
-  return icon->text;
+  return icon->spec.text;
 }

@@ -8,8 +8,8 @@
 
 result_t wuss_set_backdrop(wuss_t *wuss, const wuss_backdrop_t *backdrop)
 {
-  result_t       rc;
-  box_t          screen;
+  result_t        rc;
+  box_t           screen;
   wuss_backdrop_t resolved;
 
   assert(wuss     != NULL);

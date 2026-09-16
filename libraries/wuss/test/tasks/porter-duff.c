@@ -157,17 +157,21 @@ static result_t load_demo_png(bitmap_t   *bm,
 
 /* ----------------------------------------------------------------------- */
 
-result_t porter_duff_create(wuss_t             *wuss,
-                            const colour_t     *palette,
-                            bmfont_t           *font,
-                            const char         *resources,
-                            porter_duff_task_t *task)
+result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
 {
-  result_t         rc;
-  wuss_task_t     *delegate;
-  wuss_task_desc_t delegate_desc;
+  result_t            rc;
+  porter_duff_task_t *task;
+  wuss_task_t        *delegate;
+  wuss_task_desc_t    delegate_desc;
+  const char         *resources;
+  const colour_t     *palette;
 
-  task->font            = font;
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
+
+  palette               = wuss_get_palette(wuss, NULL);
+  task->font            = wuss_get_font_n(wuss, 0);
   task->rule            = composite_RULE_CLEAR;
   task->frame           = 0;
   task->frames_per_rule = PD_FRAMES_DEFAULT;
@@ -175,6 +179,8 @@ result_t porter_duff_create(wuss_t             *wuss,
   task->dark            = palette[palette_PICO8_DARK_GREY];
   task->fg              = palette[palette_PICO8_WHITE];
   task->bg              = palette[palette_PICO8_BLACK];
+
+  resources = wuss_get_resources(wuss);
 
   rc = load_demo_png(&task->a, resources, "A");
   if (rc != result_OK)
@@ -198,14 +204,14 @@ result_t porter_duff_create(wuss_t             *wuss,
   delegate_desc.name      = "porter-duff";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
-    goto free_dst; /* nothing registered yet; the spawner will not free task */
+    goto free_dst; /* nothing registered yet; nobody else owns task */
   wuss_task_set_autoclose(delegate, 1);
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
                                  "Porter-Duff",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
                                  SIZE2D(0, 0),
                                  &task->window);
@@ -214,6 +220,9 @@ result_t porter_duff_create(wuss_t             *wuss,
     wuss_task_destroy(delegate); /* QUIT frees the four bitmaps and task */
     return rc;
   }
+
+  if (out)
+    *out = task;
 
   return result_OK;
 
@@ -225,9 +234,18 @@ free_b:
   free(task->b.base);
 free_a:
   free(task->a.base);
-  free(task); /* no task was registered on any goto here; spawner won't free */
+  free(task); /* no task was registered on any goto here; nobody else owns it */
 
   return rc;
+}
+
+void porter_duff_destroy(porter_duff_task_t *task)
+{
+  free(task->dst.base);
+  free(task->src.base);
+  free(task->b.base);
+  free(task->a.base);
+  free(task);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -275,15 +293,17 @@ static void porter_duff_ramp_src(porter_duff_task_t *pd, int ramp)
 static void porter_duff_draw_checkerboard(const porter_duff_task_t *pd,
                                           screen_t                 *scr,
                                           const box_t              *content,
-                                          const box_t              *bounds)
+                                          const box_t              *bounds,
+                                          int                       sx,
+                                          int                       sy)
 {
   int x, y, lx, ly, band;
 
   for (y = content->y0; y < content->y1; y++)
     for (x = content->x0; x < content->x1; x++)
     {
-      lx   = x - bounds->x0;
-      ly   = y - bounds->y0;
+      lx   = x - bounds->x0 + sx;
+      ly   = y - bounds->y0 + sy;
       band = lx / PD_CHECKER_BAND + ly / PD_CHECKER_BAND;
 
       screen_set_pixel(scr, x, y, (band & 1) ? pd->dark : pd->light);
@@ -299,14 +319,17 @@ static result_t porter_duff_redraw(const wuss_event_t *event,
   const box_t        *content, *bounds;
   const char         *name;
   point_t             pos;
+  int                 sx, sy;
 
   pd = task_data;
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
   bounds  = event->data.redraw.bounds;
+  sx      = event->data.redraw.scroll.x;
+  sy      = event->data.redraw.scroll.y;
 
-  porter_duff_draw_checkerboard(pd, scr, content, bounds);
+  porter_duff_draw_checkerboard(pd, scr, content, bounds, sx, sy);
 
   /* ponytail: the whole 256x256 pane is recomposited on every redraw -- two
    * full-image memcpys plus two full-image passes. Fine for one window in a
@@ -322,14 +345,19 @@ static result_t porter_duff_redraw(const wuss_event_t *event,
   if (rc != result_OK)
     return rc;
 
-  screen_copy_bitmap(scr, bounds->x0, bounds->y0, &pd->dst);
+  screen_copy_bitmap(scr, bounds->x0 - sx, bounds->y0 - sy, &pd->dst);
 
-  name  = rule_names[pd->rule];
-  pos.x = bounds->x0 + 2;
-  pos.y = bounds->y0 + PD_SIZE + 2;
+  {
+    int ascent;
+
+    bmfont_get_info(pd->font, NULL, NULL, &ascent, NULL);
+    name  = rule_names[pd->rule];
+    pos.x = bounds->x0 - sx + 2;
+    pos.y = bounds->y0 - sy + PD_SIZE + 2 + ascent;
+  }
 
   return bmfont_draw(pd->font, scr, name, (int) strlen(name),
-                     pd->fg, pd->bg, &pos, NULL);
+                     pd->fg, pd->bg, NULL, &pos, NULL);
 }
 
 static result_t porter_duff_idle(void *task_data)
@@ -408,11 +436,7 @@ result_t porter_duff_handle(wuss_window_t      *window,
     return porter_duff_idle(task_data);
 
   case wuss_EVENT_QUIT:
-    free(pd->dst.base);
-    free(pd->src.base);
-    free(pd->b.base);
-    free(pd->a.base);
-    free(pd); /* calloc'd per instance by the spawner */
+    porter_duff_destroy(pd);
     return result_OK;
 
   default:

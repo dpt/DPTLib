@@ -17,7 +17,7 @@ void wuss__icons_free(wuss_window_t *window)
 
   for (i = 0; i < window->nicons; i++)
   {
-    wuss__free(w, window->icons[i]->text);
+    wuss__free(w, (char *) window->icons[i]->spec.text);
     wuss__free(w, window->icons[i]);
   }
 

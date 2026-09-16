@@ -79,11 +79,16 @@ static int curve_convex_hull(const point_t *src, int n, point_t *hull)
   return k; /* hull[0] == hull[k - 1], a closed loop */
 }
 
-result_t curve_create(wuss_t *wuss, curve_task_t *task)
+result_t curve_create(wuss_t *wuss, curve_task_t **out)
 {
   result_t         rc;
+  curve_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->bg        = colour_rgb(0xFF, 0xFF, 0xFF);
   task->line      = colour_rgb(0x00, 0x00, 0x00);
@@ -116,14 +121,25 @@ result_t curve_create(wuss_t *wuss, curve_task_t *task)
                                  SIZE2D(220, 160),
                                  "Curve",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND),
+                                 wuss_NO_BACKDROP,
                                  SIZE2D(220, 160),
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
 
-  return rc;
+  if (out)
+    *out = task;
+
+  return result_OK;
+}
+
+void curve_destroy(curve_task_t *task)
+{
+  free(task);
 }
 
 static int blob_hit(const point_t *p, int x, int y)
@@ -239,17 +255,24 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
                        blob_colour(task, i));
   }
 
-  /* curve-type label, pinned to the content area's top-left corner (bounds,
-   * not the per-redraw dirty piece "content", and not the scrolled document)
-   * so it stays put and readable on a partial redraw */
+  /* curve-type label, anchored at document (2, 2) so it scrolls with the
+   * content: screen pos = content top-left - scroll + doc offset. Uses bounds,
+   * not the per-redraw dirty piece "content", so it is drawn whole on a
+   * partial redraw */
   {
     bmfont_t   *font = wuss_get_font(task->wuss);
     const char *name = curve_kind_name(task->npoints);
-    point_t     pos  = POINT(bounds->x0 + 2, bounds->y0 + 2);
 
     if (font != NULL)
-      bmfont_draw(font, scr, name, (int) strlen(name),
-                  task->line, task->bg, &pos, NULL);
+    {
+      int     ascent;
+      point_t pos;
+
+      bmfont_get_info(font, NULL, NULL, &ascent, NULL);
+      pos = POINT(bounds->x0 - sx + 2, bounds->y0 - sy + 2 + ascent);
+      wuss_text_draw(task->wuss, 0, scr, name, (int) strlen(name),
+                     task->line, task->bg, &pos, NULL);
+    }
   }
 
   return result_OK;
@@ -341,7 +364,7 @@ result_t curve_handle(wuss_window_t      *window,
     return curve_scroll(task, event->data.scroll.delta, window);
 
   case wuss_EVENT_QUIT:
-    free(task); /* task_data was calloc'd per instance by the spawner */
+    curve_destroy(task);
     return result_OK;
 
   default:

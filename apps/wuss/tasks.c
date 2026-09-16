@@ -8,7 +8,7 @@
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
-#include "io/path.h"
+#include "framebuf/pixelfmt.h"
 #include "wuss/task.h"
 #include "wuss/wuss.h"
 #include "wuss/window.h"
@@ -38,237 +38,44 @@
 
 /* ----------------------------------------------------------------------- */
 
-struct wuss_app_tasks g;
+struct wuss_app_tasks g_tasks;
 
-/* Each spawn allocates a fresh per-instance task block so a task may run in
- * several windows at once; the block is owned by its window and freed by the
- * task's wuss_EVENT_QUIT handler. On any create failure X_create has already
- * torn down whatever it built and freed the block itself, so the only block
- * the spawner frees is the font-less chars case: create returns OK but opens
- * no window, leaving the block with no owner. */
-
-static result_t spawn_ball(void)
+void tasks_build_screen_palette(colour_t       *out,
+                                int             nout,
+                                const colour_t *ui,
+                                int             nui)
 {
-  ball_task_t *t = calloc(1, sizeof(*t));
-  result_t     rc;
-  if (t == NULL) return result_OOM;
-  rc = ball_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  int r, g, b, n;
+
+  memset(out, 0, nout * sizeof(*out));
+
+  n = MIN(nui, nout);
+  memcpy(out, ui, n * sizeof(*out));
+
+  for (r = 0; r < 6 && n < nout; r++)
+    for (g = 0; g < 6 && n < nout; g++)
+      for (b = 0; b < 6 && n < nout; b++)
+        out[n++] = colour_rgb(r * 0x33, g * 0x33, b * 0x33);
 }
 
-static result_t spawn_text(void)
+/* Every demo task's X_create now shares one shape: (wuss_t *, X_task_t **).
+ * The task block it allocates is owned by its window and freed by
+ * X_destroy, called from the task's wuss_EVENT_QUIT handler; callers here
+ * never need the block back, so every X_create is invoked with NULL for it,
+ * which is type-compatible however the second parameter is spelt. That lets
+ * a single generic spawn walk a table of {name, X_create} instead of one
+ * hand-written wrapper per task. */
+typedef result_t (*task_create_fn_t)(wuss_t *wuss, void **out);
+
+static result_t spawn_task(const char *name, task_create_fn_t create)
 {
-  text_task_t *t = calloc(1, sizeof(*t));
-  result_t     rc;
-  if (t == NULL) return result_OOM;
-  rc = text_create(g.wuss, g.resources, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
+  result_t rc;
 
-static result_t spawn_blank(void)
-{
-  blank_task_t *t = calloc(1, sizeof(*t));
-  result_t      rc;
-  if (t == NULL) return result_OOM;
-  rc = blank_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_chars(void)
-{
-  chars_task_t *t = calloc(1, sizeof(*t));
-  result_t      rc;
-  if (t == NULL) return result_OOM;
-  rc = chars_create(g.wuss, g.resources, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_palette(void)
-{
-  palette_task_t *t = calloc(1, sizeof(*t));
-  result_t        rc;
-  if (t == NULL) return result_OOM;
-  rc = palette_create(g.wuss, g.resources, g.palette_name, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_image(void)
-{
-  result_t      rc;
-  image_task_t *t;
-  const char   *leafname;
-  const char   *filename;
-  char          buf[DPTLIB_MAXPATH];
-  char          ninepatch[DPTLIB_MAXPATH];
-
-  t = calloc(1, sizeof(*t));
-  if (t == NULL) return result_OOM;
-
-  leafname = path_join_leafname("jessica", "png");
-  filename = path_join_filename(g.resources, 3, "resources", "images", leafname);
-  strcpy(buf, filename);
-  /* path_join_filename returns a shared static buffer; copy before the next
-   * call (image_create's own dirscan join) clobbers it */
-  filename = path_join_filename(g.resources, 3, "resources", "wuss",
-                                path_join_leafname("ninepatch", "png"));
-  strcpy(ninepatch, filename);
-
-  logf_info("wuss: image task loading \"%s\" + \"%s\"", buf, ninepatch);
-  rc = image_create(g.wuss, g.resources, buf, ninepatch, t);
+  rc = create(g_tasks.wuss, NULL);
   if (rc != result_OK)
-    logf_error("wuss: image_create(\"%s\") failed, rc=0x%X (%s)", buf, rc,
+    logf_error("wuss: %s_create failed, rc=0x%X (%s)", name, rc,
                result_string(rc));
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_checker(void)
-{
-  checker_task_t *t = calloc(1, sizeof(*t));
-  result_t        rc;
-  if (t == NULL) return result_OOM;
-  rc = checker_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_clock(void)
-{
-  clock_task_t *t = calloc(1, sizeof(*t));
-  result_t      rc;
-  if (t == NULL) return result_OOM;
-  rc = clock_create(g.wuss, g.daydream_font, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_curve(void)
-{
-  curve_task_t *t = calloc(1, sizeof(*t));
-  result_t      rc;
-  if (t == NULL) return result_OOM;
-  rc = curve_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_lissajous(void)
-{
-  lissajous_task_t *t = calloc(1, sizeof(*t));
-  result_t          rc;
-  if (t == NULL) return result_OOM;
-  rc = lissajous_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_minesweeper(void)
-{
-  minesweeper_task_t *t = calloc(1, sizeof(*t));
-  result_t             rc;
-  if (t == NULL) return result_OOM;
-  rc = minesweeper_create(g.wuss, g.bold_font, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_saturn(void)
-{
-  saturn_task_t *t = calloc(1, sizeof(*t));
-  result_t       rc;
-  if (t == NULL) return result_OOM;
-  rc = saturn_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_sofa(void)
-{
-  sofa_task_t *t = calloc(1, sizeof(*t));
-  result_t     rc;
-  if (t == NULL) return result_OOM;
-  rc = sofa_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_gradient(void)
-{
-  gradient_task_t *t = calloc(1, sizeof(*t));
-  result_t         rc;
-  if (t == NULL) return result_OOM;
-  rc = gradient_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_greeble(void)
-{
-  greeble_task_t *t = calloc(1, sizeof(*t));
-  result_t        rc;
-  if (t == NULL) return result_OOM;
-  rc = greeble_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_icons(void)
-{
-  icons_task_t *t = calloc(1, sizeof(*t));
-  result_t      rc;
-  if (t == NULL) return result_OOM;
-  rc = icons_create(g.wuss, g.daydream_font, g.resources, t);
-  if (rc != result_OK)
-    logf_error("wuss: icons_create (resources \"%s\") failed, rc=0x%X (%s)",
-               g.resources, rc, result_string(rc));
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_swatches(void)
-{
-  swatches_task_t *t = calloc(1, sizeof(*t));
-  result_t         rc;
-  if (t == NULL) return result_OOM;
-  rc = swatches_create(g.wuss, t);
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
-}
-
-static result_t spawn_porter_duff(void)
-{
-  porter_duff_task_t *t = calloc(1, sizeof(*t));
-  result_t            rc;
-  if (t == NULL) return result_OOM;
-  rc = porter_duff_create(g.wuss, g.palette, g.daydream_font, g.resources, t);
-  if (rc != result_OK)
-    logf_error("wuss: porter_duff_create (resources \"%s\") failed, "
-               "rc=0x%X (%s)", g.resources, rc, result_string(rc));
-  if (rc != result_OK) return rc;
-  if (t->window == NULL) { free(t); return rc; }
-  return result_OK;
+  return rc;
 }
 
 /* The task launcher is a MENU-button pop-up over the backdrop rather than a
@@ -276,68 +83,151 @@ static result_t spawn_porter_duff(void)
  * in lock-step: picking row i of that menu calls its spawn[i]. */
 typedef result_t (*task_spawn_fn_t)(void);
 
-/* "Launch" submenu: the demo tasks. */
-static const wuss_menu_item_t g_launch_items[] =
+/* Category submenus, hung directly off the top-level task menu (see
+ * g_task_items below): g_*_items[i] and g_*_tasks[i] are picked by the same
+ * menu row index i -- keep each pair's tables in that order. Each category
+ * menu is dispatched in task_handle_event by matching
+ * event->data.menu_select.menu against the category's g_*_menu address. */
+static const struct
+{
+  const char      *name;
+  task_create_fn_t create;
+}
+g_games_tasks[] =
+{
+  { "Ball",        (task_create_fn_t) ball_create        },
+  { "Minesweeper", (task_create_fn_t) minesweeper_create }
+},
+g_tests_tasks[] =
+{
+  { "Checker",     (task_create_fn_t) checker_create     },
+  { "Curve",       (task_create_fn_t) curve_create       },
+  { "Greeble",     (task_create_fn_t) greeble_create     },
+  { "Icons",       (task_create_fn_t) icons_create       },
+  { "Porter-Duff", (task_create_fn_t) porter_duff_create },
+  { "Sofa",        (task_create_fn_t) sofa_create        },
+  { "Text",        (task_create_fn_t) text_create        }
+},
+g_utilities_tasks[] =
+{
+  { "Chars",       (task_create_fn_t) chars_create       },
+  { "Clock",       (task_create_fn_t) clock_create       },
+  { "Palette",     (task_create_fn_t) palette_create     },
+  { "Swatches",    (task_create_fn_t) swatches_create    }
+},
+g_visuals_tasks[] =
+{
+  { "Blank",       (task_create_fn_t) blank_create       },
+  { "Gradient",    (task_create_fn_t) gradient_create    },
+  { "Image",       (task_create_fn_t) image_create       },
+  { "Lissajous",   (task_create_fn_t) lissajous_create   },
+  { "Saturn",      (task_create_fn_t) saturn_create      }
+};
+
+static const wuss_menu_item_t g_games_items[] =
 {
   { "Ball",        wuss_MENU_ITEM_NONE, NULL },
-  { "Blank",       wuss_MENU_ITEM_NONE, NULL },
-  { "Chars",       wuss_MENU_ITEM_NONE, NULL },
+  { "Minesweeper", wuss_MENU_ITEM_NONE, NULL }
+};
+
+static const wuss_menu_item_t g_tests_items[] =
+{
   { "Checker",     wuss_MENU_ITEM_NONE, NULL },
-  { "Clock",       wuss_MENU_ITEM_NONE, NULL },
   { "Curve",       wuss_MENU_ITEM_NONE, NULL },
-  { "Gradient",    wuss_MENU_ITEM_NONE, NULL },
   { "Greeble",     wuss_MENU_ITEM_NONE, NULL },
   { "Icons",       wuss_MENU_ITEM_NONE, NULL },
-  { "Image",       wuss_MENU_ITEM_NONE, NULL },
-  { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
-  { "Minesweeper", wuss_MENU_ITEM_NONE, NULL },
-  { "Palette",     wuss_MENU_ITEM_NONE, NULL },
   { "Porter-Duff", wuss_MENU_ITEM_NONE, NULL },
-  { "Saturn",      wuss_MENU_ITEM_NONE, NULL },
   { "Sofa",        wuss_MENU_ITEM_NONE, NULL },
-  { "Swatches",    wuss_MENU_ITEM_NONE, NULL },
   { "Text",        wuss_MENU_ITEM_NONE, NULL }
 };
 
-static const task_spawn_fn_t g_launch_spawn[] =
+static const wuss_menu_item_t g_utilities_items[] =
 {
-  spawn_ball, spawn_blank, spawn_chars, spawn_checker, spawn_clock, spawn_curve,
-  spawn_gradient, spawn_greeble, spawn_icons, spawn_image, spawn_lissajous,
-  spawn_minesweeper, spawn_palette,
-  spawn_porter_duff, spawn_saturn, spawn_sofa, spawn_swatches, spawn_text
+  { "Chars",       wuss_MENU_ITEM_NONE, NULL },
+  { "Clock",       wuss_MENU_ITEM_NONE, NULL },
+  { "Palette",     wuss_MENU_ITEM_NONE, NULL },
+  { "Swatches",    wuss_MENU_ITEM_NONE, NULL }
 };
 
-static const wuss_menu_t g_launch_menu =
+static const wuss_menu_item_t g_visuals_items[] =
 {
-  "Launch", g_launch_items, NELEMS(g_launch_items)
+  { "Blank",       wuss_MENU_ITEM_NONE, NULL },
+  { "Gradient",    wuss_MENU_ITEM_NONE, NULL },
+  { "Image",       wuss_MENU_ITEM_NONE, NULL },
+  { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
+  { "Saturn",      wuss_MENU_ITEM_NONE, NULL }
+};
+
+static const wuss_menu_t g_games_menu =
+{
+  "Games", g_games_items, NELEMS(g_games_items)
+};
+
+static const wuss_menu_t g_tests_menu =
+{
+  "Tests", g_tests_items, NELEMS(g_tests_items)
+};
+
+static const wuss_menu_t g_utilities_menu =
+{
+  "Utilities", g_utilities_items, NELEMS(g_utilities_items)
+};
+
+static const wuss_menu_t g_visuals_menu =
+{
+  "Visuals", g_visuals_items, NELEMS(g_visuals_items)
 };
 
 static result_t spawn_quit(void)
 {
-  g.quit = true;
+  g_tasks.quit = true;
   return result_OK;
 }
 
-static const wuss_menu_item_t g_task_items[] =
+/* Indices into g_task_items / g_task_spawn -- keep both tables in this
+ * order. */
+enum
 {
-  { "Launch",    wuss_MENU_ITEM_NONE,   &g_launch_menu, NULL },
-  { "Quit Wuss", wuss_MENU_ITEM_DASHED, NULL,           NULL }
+  TASK_ITEM_INFO,
+  TASK_ITEM_GAMES,
+  TASK_ITEM_TESTS,
+  TASK_ITEM_UTILITIES,
+  TASK_ITEM_VISUALS,
+  TASK_ITEM_QUIT
+};
+
+/* g_task_items' "Info" row's .window is filled in by tasks_open_launcher
+ * (built from g.proginfo, which does not exist until run_wuss creates it) --
+ * the table itself cannot name it at compile time. */
+static wuss_menu_item_t g_task_items[] =
+{
+  { "Info",      wuss_MENU_ITEM_NONE, NULL,               NULL },
+  { "Games",     wuss_MENU_ITEM_NONE, &g_games_menu,      NULL },
+  { "Tests",     wuss_MENU_ITEM_NONE, &g_tests_menu,      NULL },
+  { "Utilities", wuss_MENU_ITEM_NONE, &g_utilities_menu,  NULL },
+  { "Visuals",   wuss_MENU_ITEM_NONE, &g_visuals_menu,    NULL },
+  { "Quit Wuss", wuss_MENU_ITEM_NONE, NULL,               NULL }
 };
 
 static const task_spawn_fn_t g_task_spawn[] =
 {
-  NULL,        /* "Launch" -> submenu g_launch_menu */
+  NULL,        /* "Info" -> wuss_menu_item_t.window leaf, no spawn */
+  NULL,        /* "Games" -> submenu g_games_menu */
+  NULL,        /* "Tests" -> submenu g_tests_menu */
+  NULL,        /* "Utilities" -> submenu g_utilities_menu */
+  NULL,        /* "Visuals" -> submenu g_visuals_menu */
   spawn_quit
 };
 
 static const wuss_menu_t g_task_menu =
 {
-  "Tasks", g_task_items, NELEMS(g_task_items)
+  "Wuss", g_task_items, NELEMS(g_task_items)
 };
 
-/* g_task_menu / g_launch_menu picks are dispatched by index. Every menu is
- * opened by g.menu_task, so one handler sees every wuss_EVENT_MENU_SELECT and
- * tells them apart by data.menu_select.menu. */
+/* g_task_menu picks are dispatched by index; g_games_menu/g_tests_menu/
+ * g_utilities_menu/g_visuals_menu picks by pointer identity below. Every
+ * menu is opened by g.menu_task, so one handler sees every
+ * wuss_EVENT_MENU_SELECT and tells them apart by data.menu_select.menu. */
 result_t task_handle_event(wuss_window_t      *window,
                            const wuss_event_t *event,
                            void               *task_data)
@@ -345,7 +235,6 @@ result_t task_handle_event(wuss_window_t      *window,
   const wuss_menu_t *menu;
   int                index;
 
-  NOT_USED(window);
   NOT_USED(task_data);
 
   if (event->kind == wuss_EVENT_PALETTE)
@@ -353,13 +242,30 @@ result_t task_handle_event(wuss_window_t      *window,
     /* wuss_set_palette already updated wuss's own copy and re-cached
      * furniture; read the new array back and push it on to the framebuffer
      * bitmap and any physical palette, so callers (e.g. the palette picker)
-     * never need to know the frontend exists */
+     * never need to know the frontend exists. bitmap_set_palette reads
+     * every entry g.bm's own format needs (up to 256 for p8), not just
+     * wuss's fixed-size UI palette, so pad out to match -- same as the
+     * startup array run_wuss builds. */
     const colour_t *palette;
-    int              npalette;
+    int             npalette;
+    colour_t        scr_palette[256];
+    int             scr_nentries;
 
-    palette = wuss_get_palette(g.wuss, &npalette);
-    bitmap_set_palette(g.bm, palette);
-    wuss_frontend_set_palette(g.frontend, palette, npalette);
+    palette      = wuss_get_palette(g_tasks.wuss, &npalette);
+    scr_nentries = pixelfmt_paletted_nentries(g_tasks.bm->format);
+    if (scr_nentries > 0)
+    {
+      tasks_build_screen_palette(scr_palette, scr_nentries, palette, npalette);
+      bitmap_set_palette(g_tasks.bm, scr_palette);
+    }
+    wuss_frontend_set_palette(g_tasks.frontend, palette, npalette);
+    return result_OK;
+  }
+
+  if (event->kind == wuss_EVENT_PRE_SHOW)
+  {
+    if (window == wuss_proginfo_window(g_tasks.proginfo))
+      return wuss_proginfo_handle_pre_show(g_tasks.proginfo);
     return result_OK;
   }
 
@@ -369,10 +275,33 @@ result_t task_handle_event(wuss_window_t      *window,
   menu  = event->data.menu_select.menu;
   index = event->data.menu_select.index;
 
-  if (menu == &g_launch_menu)
+  if (menu == &g_games_menu)
   {
-    if (index >= 0 && index < (int) NELEMS(g_launch_spawn))
-      (void) g_launch_spawn[index]();
+    if (index >= 0 && index < (int) NELEMS(g_games_tasks))
+      (void) spawn_task(g_games_tasks[index].name, g_games_tasks[index].create);
+    return result_OK;
+  }
+
+  if (menu == &g_tests_menu)
+  {
+    if (index >= 0 && index < (int) NELEMS(g_tests_tasks))
+      (void) spawn_task(g_tests_tasks[index].name, g_tests_tasks[index].create);
+    return result_OK;
+  }
+
+  if (menu == &g_utilities_menu)
+  {
+    if (index >= 0 && index < (int) NELEMS(g_utilities_tasks))
+      (void) spawn_task(g_utilities_tasks[index].name,
+                        g_utilities_tasks[index].create);
+    return result_OK;
+  }
+
+  if (menu == &g_visuals_menu)
+  {
+    if (index >= 0 && index < (int) NELEMS(g_visuals_tasks))
+      (void) spawn_task(g_visuals_tasks[index].name,
+                        g_visuals_tasks[index].create);
     return result_OK;
   }
 
@@ -388,5 +317,7 @@ result_t task_handle_event(wuss_window_t      *window,
 
 result_t tasks_open_launcher(point_t pos)
 {
-  return wuss_menu_open(g.menu_task, &g_task_menu, pos, NULL);
+  g_task_items[TASK_ITEM_INFO].window = wuss_proginfo_window(g_tasks.proginfo);
+
+  return wuss_menu_open(g_tasks.menu_task, &g_task_menu, pos, NULL);
 }

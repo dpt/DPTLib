@@ -38,36 +38,65 @@ text_sample_t;
 
 static const text_sample_t text_samples[] =
 {
+  { "Lorem Ipsum",
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed eros lacus, imperdiet eget finibus ac, tempus vel risus. Donec scelerisque, elit quis pretium imperdiet, orci magna varius tellus, sit amet sodales ante orci nec nibh. Pellentesque placerat eu diam vitae pharetra. Nunc aliquet ante mi, vulputate commodo dui placerat eu. Morbi velit ex, scelerisque vel mi elementum, tristique viverra enim. Integer a interdum eros, id fringilla nunc. Nunc non felis nisi. Aliquam nec ullamcorper tellus. Maecenas sed aliquam diam. Duis pretium aliquet metus. Suspendisse rhoncus turpis vel dui euismod fringilla. Vivamus efficitur leo vel metus condimentum, tempor bibendum augue vehicula. Nunc eleifend sagittis tortor eget pretium. Fusce interdum tortor eget sapien blandit consectetur. Aliquam vestibulum euismod eros a luctus. Etiam nec nisl et diam imperdiet lobortis. Sed in eros sed tellus commodo bibendum. Sed ipsum velit, sodales a pulvinar non, pharetra ut est. Curabitur eu odio id magna posuere eleifend non id erat. Pellentesque commodo blandit mauris, ac consequat nisi dapibus eget. Mauris sollicitudin molestie urna, sit amet ornare turpis tincidunt bibendum. Vivamus interdum bibendum luctus. Suspendisse in arcu velit. Aenean eget bibendum dolor. Quisque tristique porta purus ornare tincidunt. Etiam hendrerit nunc tellus, et tempus ligula laoreet eu. Quisque pellentesque malesuada tempor. Mauris eu lectus ut neque fringilla hendrerit. Sed scelerisque laoreet felis a eleifend. Fusce sit amet mauris tellus. Sed orci ipsum, consectetur vitae blandit ut, egestas vehicula dolor. Integer ullamcorper, metus a vulputate mattis, elit orci accumsan ligula, eget elementum nibh tortor sit amet mauris. In aliquet nibh at scelerisque suscipit. Sed elit purus, sagittis eu accumsan ultricies, lobortis a odio. Duis libero sem, tempus in fringilla nec, bibendum eu metus. Nulla eget justo metus. In luctus ante massa, pellentesque commodo lorem pretium sed. Cras ultricies est lacus, ut dictum lorem gravida sed. Ut augue mauris, dignissim a pulvinar eget, pharetra ac turpis. Sed ultricies nulla mauris, id dictum ex scelerisque sit amet. Morbi et placerat enim. Phasellus arcu nisl, tempor vitae lacinia et, finibus quis justo. Fusce ipsum mi, porttitor nec faucibus at, fermentum ut massa. Cras faucibus molestie mauris. Sed et metus eget lectus luctus cursus a sit amet eros. Sed enim ligula, gravida eget magna eu, suscipit fermentum lorem. Maecenas vestibulum mollis lacus nec accumsan. Nullam molestie justo eu turpis facilisis tempus quis quis velit. Phasellus gravida mollis condimentum. Nam fringilla mollis dolor, quis posuere quam iaculis ac. Suspendisse ac maximus mi. Pellentesque aliquam ante ante, sed facilisis sapien dictum ac. Nullam pulvinar ante vitae dictum rhoncus. Praesent in pretium justo. Quisque pellentesque at sapien at pulvinar. Aenean a lorem at sapien molestie ullamcorper in dignissim ante. Nunc sagittis mi at dolor accumsan laoreet. Ut id congue elit, ut semper metus. Praesent tellus orci, feugiat suscipit diam sit amet, malesuada efficitur metus. Phasellus condimentum justo ipsum, et lobortis mi ultrices a. Interdum et malesuada fames ac ante ipsum primis in faucibus. Nunc vestibulum volutpat laoreet. Vestibulum convallis lectus at accumsan imperdiet. Aliquam suscipit, justo condimentum sodales iaculis, tellus enim fermentum lacus, quis volutpat sapien tortor quis enim. Vestibulum vehicula turpis eu lorem gravida, nec volutpat massa dapibus. Mauris egestas accumsan mattis. Nullam ex risus, imperdiet ut vestibulum a, malesuada at odio. Praesent congue, nulla a eleifend dignissim, ligula arcu tincidunt tortor, vel vestibulum quam ipsum vitae metus. Nullam lacinia interdum enim id bibendum. Praesent quis elit id turpis cursus auctor. Etiam turpis massa, finibus sed odio quis, dapibus tristique magna. Morbi quis commodo tortor. Pellentesque hendrerit non libero non pretium. Aenean nunc est, aliquet eget tincidunt id, auctor ultrices orci velit." },
   { "Quick Brown Fox",
     "The quick brown fox jumps over the lazy dog." },
   { "Pangram (Cwm Fjord)",
     "Cwm fjord bank glyphs vext quiz." },
   { "Pangram (Waltz)",
-    "Waltz, bad nymph, for quick jigs vex." },
-  { "Lorem Ipsum",
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod "
-    "tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim "
-    "veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea "
-    "commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
-    "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint "
-    "occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
-    "mollit anim id est laborum." }
+    "Waltz, bad nymph, for quick jigs vex." }
 };
 
-#define TEXT_DEFAULT_SAMPLE (NELEMS(text_samples) - 1) /* "Lorem Ipsum" */
+#define TEXT_DEFAULT_SAMPLE (0) /* "Lorem Ipsum" */
 
 static const wuss_menu_item_t text_sample_items[] =
 {
+  { "Lorem Ipsum",          wuss_MENU_ITEM_NONE, NULL },
   { "Quick Brown Fox",      wuss_MENU_ITEM_NONE, NULL },
   { "Pangram (Cwm Fjord)",  wuss_MENU_ITEM_NONE, NULL },
-  { "Pangram (Waltz)",      wuss_MENU_ITEM_NONE, NULL },
-  { "Lorem Ipsum",          wuss_MENU_ITEM_NONE, NULL }
+  { "Pangram (Waltz)",      wuss_MENU_ITEM_NONE, NULL }
 };
 
 static const wuss_menu_t text_sample_menu =
 {
   "Sample", text_sample_items, NELEMS(text_sample_items)
 };
+
+/* one entry per row of the "Spacing" submenu */
+typedef struct text_spacing_preset
+{
+  const char *name;
+  int         letter_spacing;
+  int         word_spacing;
+}
+text_spacing_preset_t;
+
+static const text_spacing_preset_t text_spacing_presets[] =
+{
+  { "Normal",      0, 0 },
+  { "Letter",      1, 0 },
+  { "Word",        0, 1 },
+  { "Letter+Word", 1, 1 }
+};
+
+#define TEXT_DEFAULT_SPACING 0 /* "Normal" */
+
+static wuss_menu_item_t text_spacing_items[] =
+{
+  { "Normal",      wuss_MENU_ITEM_TICKED, NULL },
+  { "Letter",      wuss_MENU_ITEM_NONE,   NULL },
+  { "Word",        wuss_MENU_ITEM_NONE,   NULL },
+  { "Letter+Word", wuss_MENU_ITEM_NONE,   NULL }
+};
+
+static wuss_menu_t text_spacing_menu =
+{
+  "Spacing", text_spacing_items, NELEMS(text_spacing_items)
+};
+
+/* index into task->top_items[] of the tickable "No Background" leaf */
+#define TEXT_MENU_NO_BACKGROUND 5
 
 /* ----------------------------------------------------------------------- */
 
@@ -105,7 +134,7 @@ static result_t text_set_font(text_task_t *task, int idx, const char *name)
   if (idx < 0 || idx >= task->nfonts || idx == task->current)
     return result_OK;
 
-  font = text_load_font(task, task->resources, idx, name);
+  font = text_load_font(task, wuss_get_resources(task->wuss), idx, name);
   if (font == NULL)
     return result_OK; /* leave the current font in place */
 
@@ -129,42 +158,99 @@ static result_t text_set_sample(text_task_t *task, int idx)
   return result_OK;
 }
 
+/* toggle whether the paragraph is drawn with its picked background colour or
+ * none, so glyphs blend straight onto whatever is already behind the
+ * window's content */
+static result_t text_toggle_bg(text_task_t *task)
+{
+  wuss_menu_item_t *item;
+
+  task->bg_transparent = !task->bg_transparent;
+
+  item = &task->top_items[TEXT_MENU_NO_BACKGROUND];
+  if (task->bg_transparent)
+    item->flags |= wuss_MENU_ITEM_TICKED;
+  else
+    item->flags &= ~(wuss_menu_item_flags_t) wuss_MENU_ITEM_TICKED;
+
+  wuss_window_invalidate_visible(task->window);
+  return result_OK;
+}
+
+/* switch the paragraph's foreground to system palette index "picked" */
+static result_t text_set_fg(text_task_t *task, wuss_colour_t picked)
+{
+  task->fg_index = picked;
+  wuss_window_invalidate_visible(task->window);
+  return result_OK;
+}
+
+/* switch the paragraph's background to system palette index "picked" */
+static result_t text_set_bg(text_task_t *task, wuss_colour_t picked)
+{
+  task->bg_index = picked;
+  wuss_window_invalidate_visible(task->window);
+  return result_OK;
+}
+
+/* switch letter/word spacing to text_spacing_presets[idx] */
+static result_t text_set_spacing(text_task_t *task, int idx)
+{
+  if (idx < 0 || idx >= NELEMS(text_spacing_presets) || idx == task->spacing_idx)
+    return result_OK;
+
+  task->spacing_idx           = idx;
+  task->spacing.letter_spacing = text_spacing_presets[idx].letter_spacing;
+  task->spacing.word_spacing   = text_spacing_presets[idx].word_spacing;
+
+  wuss_menu_tick_exclusive(&text_spacing_menu, idx);
+  wuss_menu_tick_exclusive_live(task->menu_handle, &text_spacing_menu, idx);
+  wuss_window_invalidate_visible(task->window);
+  return result_OK;
+}
+
 static result_t text_open_menu(text_task_t *task)
 {
   return wuss_menu_open(task->delegate,
                         &task->top_menu,
-                        wuss_get_pointer(task->wuss), NULL);
+                        wuss_get_pointer(task->wuss), &task->menu_handle);
 }
 
 /* ----------------------------------------------------------------------- */
 
-result_t text_create(wuss_t      *wuss,
-                     const char  *resources,
-                     text_task_t *task)
+result_t text_create(wuss_t *wuss, text_task_t **out)
 {
   result_t           rc;
+  text_task_t       *task;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
+  const char        *resources;
   const char        *bmfonts_dir;
   const wuss_menu_t *menu;
   size2d_t           sz;
+
+  task = calloc(1, sizeof(*task));
+  if (task == NULL)
+    return result_OOM;
 
   task->wuss        = wuss;
   task->font        = wuss_get_font(wuss);
   task->current     = -1; /* the wuss system font is none of the picker's */
   task->sample      = TEXT_DEFAULT_SAMPLE;
   task->text        = text_samples[TEXT_DEFAULT_SAMPLE].text;
-  task->bg          = colour_rgb(0xFF, 0xFF, 0xFF);
-  task->fg          = colour_rgb(0x00, 0x00, 0x00);
+  task->spacing_idx = TEXT_DEFAULT_SPACING;
+  task->spacing.letter_spacing = text_spacing_presets[TEXT_DEFAULT_SPACING].letter_spacing;
+  task->spacing.word_spacing   = text_spacing_presets[TEXT_DEFAULT_SPACING].word_spacing;
+  task->fg_index    = 0; /* wuss__default_palette: 0 is black */
+  task->bg_index    = 7; /* wuss__default_palette: 7 is white */
   task->frame_count = 0;
   task->resizing    = true;
 
-  strncpy(task->resources, resources, sizeof(task->resources) - 1);
-  task->resources[sizeof(task->resources) - 1] = '\0';
+  resources = wuss_get_resources(wuss);
 
   /* the picker: every ".png" font under resources/bmfonts, sorted, less any
    * SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows from) */
-  bmfonts_dir = path_join_filename(task->resources, 2, "resources", "bmfonts");
+  bmfonts_dir = path_join_filename(resources, 2, "resources", "bmfonts");
   rc = wuss_fontmenu_create(&task->fontmenu, bmfonts_dir, "Font", wuss, NULL);
   if (rc != result_OK)
   {
@@ -182,9 +268,29 @@ result_t text_create(wuss_t      *wuss,
     return result_OOM;
   }
 
+  rc = wuss_colourmenu_create(&task->fgmenu, wuss, "Foreground");
+  if (rc != result_OK)
+  {
+    wuss_fontmenu_destroy(task->fontmenu);
+    free(task->fonts);
+    free(task);
+    return rc;
+  }
+
+  rc = wuss_colourmenu_create(&task->bgmenu, wuss, "Background");
+  if (rc != result_OK)
+  {
+    wuss_colourmenu_destroy(task->fgmenu);
+    wuss_fontmenu_destroy(task->fontmenu);
+    free(task->fonts);
+    free(task);
+    return rc;
+  }
+
   /* top-level menu: "Font" borrows the fontmenu's own live wuss_menu_t (so
    * ticks and wuss_fontmenu_selected keep working), "Sample" is the static
-   * text_sample_menu declared above */
+   * text_sample_menu declared above, "Foreground"/"Background" each borrow
+   * their colourmenu's live wuss_menu_t the same way */
   task->top_items[0].text    = "Font";
   task->top_items[0].flags   = wuss_MENU_ITEM_NONE;
   task->top_items[0].submenu = menu;
@@ -193,6 +299,22 @@ result_t text_create(wuss_t      *wuss,
   task->top_items[1].flags   = wuss_MENU_ITEM_NONE;
   task->top_items[1].submenu = &text_sample_menu;
   task->top_items[1].window  = NULL;
+  task->top_items[2].text    = "Spacing";
+  task->top_items[2].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[2].submenu = &text_spacing_menu;
+  task->top_items[2].window  = NULL;
+  task->top_items[3].text    = "Foreground";
+  task->top_items[3].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[3].submenu = wuss_colourmenu_menu(task->fgmenu);
+  task->top_items[3].window  = NULL;
+  task->top_items[4].text    = "Background";
+  task->top_items[4].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[4].submenu = wuss_colourmenu_menu(task->bgmenu);
+  task->top_items[4].window  = NULL;
+  task->top_items[5].text    = "No Background";
+  task->top_items[5].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[5].submenu = NULL;
+  task->top_items[5].window  = NULL;
 
   task->top_menu.title  = "Text";
   task->top_menu.items  = task->top_items;
@@ -212,22 +334,42 @@ result_t text_create(wuss_t      *wuss,
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
-  sz               = SIZE2D(220, 180);
+  sz                = SIZE2D(220, 220);
   task->base_width  = sz.w;
   task->base_height = sz.h;
 
   rc = wuss_window_create_placed(delegate,
                                  sz,
                                  "Sample Text",
-                                 wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                                 sz,
+                                 SIZE2D(sz.w, 220 * 4),
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
+  {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
 
-  return rc;
+  if (out)
+    *out = task;
+
+  return result_OK;
+}
+
+void text_destroy(text_task_t *task)
+{
+  int i;
+
+  for (i = 0; i < task->nfonts; i++)
+    if (task->fonts[i] != NULL)
+      bmfont_destroy(task->fonts[i]);
+  free(task->fonts);
+  wuss_fontmenu_destroy(task->fontmenu);
+  wuss_colourmenu_destroy(task->fgmenu);
+  wuss_colourmenu_destroy(task->bgmenu);
+  free(task);
 }
 
 #define INSET      4
@@ -236,13 +378,15 @@ result_t text_create(wuss_t      *wuss,
 
 static result_t text_redraw(const wuss_event_t *event, void *task_data)
 {
-  text_task_t  *tcx;
-  screen_t     *scr;
-  const box_t  *bounds;
-  int           sx, sy;
-  bmtext_line_t lines[MAX_LINES];
-  int           nlines;
-  point_t       origin;
+  text_task_t    *tcx;
+  screen_t       *scr;
+  const box_t    *bounds;
+  int             sx, sy;
+  const colour_t *palette;
+  colour_t        fg, bg;
+  bmtext_line_t   lines[MAX_LINES];
+  int             nlines;
+  point_t         origin;
 
   tcx = task_data;
 
@@ -251,17 +395,23 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
   sx     = event->data.redraw.scroll.x;
   sy     = event->data.redraw.scroll.y;
 
+  palette = wuss_get_palette(tcx->wuss, NULL);
+  fg      = palette[tcx->fg_index];
+  bg      = tcx->bg_transparent ? colour_rgba(0, 0, 0, 0) : palette[tcx->bg_index];
+
   nlines = bmtext_layout(tcx->font,
                          tcx->text,
                          (int) strlen(tcx->text),
                          (bounds->x1 - INSET) - (bounds->x0 + INSET),
+                         &tcx->spacing,
                          lines,
                          MAX_LINES);
 
   origin.x = bounds->x0 - sx + INSET;
   origin.y = bounds->y0 - sy + INSET;
 
-  bmtext_draw(tcx->font, scr, lines, nlines, tcx->fg, tcx->bg, LEADING, origin);
+  bmtext_draw(tcx->font, scr, lines, nlines, fg, bg, LEADING, origin,
+             &tcx->spacing);
 
   return result_OK;
 }
@@ -331,27 +481,31 @@ result_t text_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     {
-      const char *name;
+      const char   *name;
+      wuss_colour_t picked;
+      int           mine;
 
       name = wuss_fontmenu_selected(tcx->fontmenu, event);
       if (name != NULL)
         return text_set_font(tcx, event->data.menu_select.index, name);
       if (event->data.menu_select.menu == &text_sample_menu)
         return text_set_sample(tcx, event->data.menu_select.index);
+      if (event->data.menu_select.menu == &text_spacing_menu)
+        return text_set_spacing(tcx, event->data.menu_select.index);
+      picked = wuss_colourmenu_selected(tcx->fgmenu, event, &mine);
+      if (mine)
+        return text_set_fg(tcx, picked);
+      picked = wuss_colourmenu_selected(tcx->bgmenu, event, &mine);
+      if (mine)
+        return text_set_bg(tcx, picked);
+      if (event->data.menu_select.menu == &tcx->top_menu &&
+          event->data.menu_select.index == TEXT_MENU_NO_BACKGROUND)
+        return text_toggle_bg(tcx);
     }
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    {
-      int i;
-
-      for (i = 0; i < tcx->nfonts; i++)
-        if (tcx->fonts[i] != NULL)
-          bmfont_destroy(tcx->fonts[i]);
-      free(tcx->fonts);
-      wuss_fontmenu_destroy(tcx->fontmenu);
-      free(tcx); /* task_data was calloc'd per instance by the spawner */
-    }
+    text_destroy(tcx);
     return result_OK;
 
   case wuss_EVENT_IDLE:

@@ -31,11 +31,20 @@ result_t wuss_window_set_hidden(wuss_window_t *window, int hidden)
     }
 #endif
 #ifdef WUSS_ICONS
-    if (wuss->pressed_icon != NULL && wuss->pressed_icon->window == window)
-      wuss->pressed_icon = NULL;
-    if (wuss->hover_icon != NULL && wuss->hover_icon->window == window)
-      wuss->hover_icon = NULL;
+    if (wuss->pressed_window == window)
+    {
+      wuss->pressed_icon   = NULL;
+      wuss->pressed_window = NULL;
+    }
+    if (wuss->hover_window == window)
+    {
+      wuss->hover_icon   = NULL;
+      wuss->hover_window = NULL;
+    }
 #endif
+    /* A hidden window is off the mouse; drop it from enter/exit tracking. No
+     * EXIT event -- it stops receiving pointer events regardless. */
+    wuss__pointer_forget_window(wuss, window);
 
     /* still on screen: repaint its footprint now, then mark it gone */
     wuss_invalidate(wuss, &window->visible);

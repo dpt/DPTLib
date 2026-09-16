@@ -112,7 +112,7 @@ static void redraw_window(wuss_t        *wuss,
       /* draw in array order so later-created icons paint on top, matching
        * wuss__icon_hit_test's reverse scan */
       for (k = 0; k < win->nicons; k++)
-        wuss__icon_draw(wuss, win->icons[k], &content, win->scroll);
+        wuss__icon_draw(wuss, win, win->icons[k], &content, win->scroll);
     }
 #endif
   }

@@ -4,12 +4,22 @@ Ordered by dependency. Each layer builds on the ones above it.
 Items marked (blocks: X) are prerequisites for X.
 
 
+Add a panic redraw indicator?
+
+Furniture clicks / scrolls still invalidate the entire furniture set - fix.
+  (window move fixed: layout cache is now translated in place, not rebuilt)
+
+Fast scrolling can invalidate areas and fail to copy the expected known good screen content.
+ -- Tried and tried to get Claude to fix but no good.
+
+Too much slider boilerplate -- need to make label+slider+value a standard component.
+It also has the client do the rounding/snapping which isn't ideal.
+
+
 LAYER 0 - BUGS (fix before building on top)
 
-- Various window size toggle ops need checking out
 - Auto window placement packer still not working as expected
     blocks: reliable multi-window tasks
-- Image task not shrinking window when new image loads
 
 
 LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
@@ -19,15 +29,14 @@ LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
     blocks: Draw bitmap through mask, Masked sprites/bitmaps, furniture tinting
 - UTF-8 everywhere
     blocks: text abstraction, window/menu templates
-- Is having font handling in wuss-core a bad thing? Decide arch now.
-    blocks: Wuss text abstraction
+- Icon type taxonomy
+- Window layout / constraint system / stacking primitives?
+- I still think there's over-draw when toggling window sizes.
 
 
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
 
-- Wuss text abstraction (wraps bmfont, supplies the Wuss font(s))
 - How to get bold etc. into the system? How to select symbols?
-- bmfont metrics: baselines and leading - button labels look too high (presently bodged)
 - More symbols
 
 
@@ -36,15 +45,15 @@ LAYER 3 - SPRITES (needs masks)
 - Sprites (with names, with masks, with multiple sprites)
 - Masked sprites/bitmaps. Covered by RLE work?
 - Sprite scaling
-- Draw bitmap through (bayer) mask
 - Import Kare style icons
+- Sprites noticably brighter / colour matching needs work
+- App sprites
 
 
 LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
 
 - Set wuss window config after the fact (goes with palette work)
     blocks: Furniture icons toggling state, min window size
-- Proper furniture: close, minimise, maximise, scrolling (half done)
 - Minimum window size based on furniture requested
   (later: squash-able furniture)
 - Furniture icons toggling state when clicked
@@ -52,8 +61,8 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
 - Snap to edges (outline-click bug fixed; unblocked)
 - Dragging against window edge shuffles window in opposite direction
   (outline-click bug fixed; unblocked)
+- 2D Adjust window scroll drag
 - Input focus, text entry, furniture tinting
-- Icon layout
 - Furniture colour selection needs improvements (e.g. losing menu readability when palette changed)
 
 
@@ -70,13 +79,19 @@ LAYER 6 - MULTI-TASK (needs stable windows, templates)
 - Messaging between tasks
     blocks: Desktop cohort
 - Backdrop: register events, or a task that covers it like Pinboard
-- Icon bar - a separate task?
+- Icon bar - a separate task or module?
 - Test submenu dialogues
-- Dialogue abstraction from app engine?
+- Pull in dialogue abstraction from app engine?
+- Dynamic submenus: a pre-open event (like RISC OS's MenuWarning) fired
+  before a submenu-style item opens, so a task can retitle/retarget a
+  shared submenu instance first. Currently only item->window leaves get
+  a pre-open hook (wuss_EVENT_PRE_SHOW); item->submenu leaves have none.
+  (see saturn.c's fg/bg colourmenu split, kept as two instances for this reason)
 
 
 LAYER 7 - APPS & POLISH (needs most of the above)
 
+- Post-Its app with explanatory text for newbies
 - Have a Paint app as a target
 - Desktop cohort: Filer, Task Manager, Palette Util
 - Colour Picker component
@@ -92,7 +107,6 @@ NO STRONG DEPS (do any time)
 
 - Optimise
 - Generalise APIs (make more Wimp-like)
-- Make as much use of DPTLib functions as possible
 - Fix coordinates to be exactly like Wimp/RO?
 - Set overall UI scale (like EIG values)
 - Window stacks (a-la nested wimp)

@@ -11,6 +11,7 @@
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
+#include "geom/box.h"
 #include "geom/point.h"
 #include "wuss/wuss.h"
 
@@ -85,8 +86,15 @@ result_t wuss_frontend_open(int               width,
 bool wuss_frontend_poll(wuss_frontend_t *frontend, wuss_input_t *event);
 
 /* Push the current framebuffer contents to the screen and pace the frame. A
- * backend rendering straight into screen memory only waits for vsync here. */
-void wuss_frontend_present(wuss_frontend_t *frontend, const bitmap_t *bm);
+ * backend rendering straight into screen memory only waits for vsync here.
+ *
+ * `dirty`, if non-NULL, bounds the region that actually changed since the
+ * last present; a backend that has to convert `bm` (paletted -> display
+ * format) may use it to convert only that rect instead of the whole
+ * bitmap. NULL means "assume the whole bitmap changed". */
+void wuss_frontend_present(wuss_frontend_t *frontend,
+                           const bitmap_t  *bm,
+                           const box_t     *dirty);
 
 /* Push a new system palette to the physical palette, if the backend owns one.
  * Called after the palette task's picker menu changes the system palette.

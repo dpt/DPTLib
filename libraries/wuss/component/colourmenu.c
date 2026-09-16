@@ -66,6 +66,11 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
 
   a = &wuss->alloc;
   n = wuss->npalette;
+  if (n > wuss_COLOUR_SYMBOLIC)
+    n = wuss_COLOUR_SYMBOLIC; /* wuss_colour_t indices above this are the
+                               * symbolic/chrome-role namespace, not real
+                               * palette slots -- don't hand them out as
+                               * swatches */
 
   cm = a->malloc(sizeof(*cm));
   if (cm == NULL)

@@ -17,3 +17,15 @@ void box_grow(box_t *box, int change)
   box->x1 += change;
   box->y1 += change;
 }
+
+box_t box_grown(const box_t *b, int change)
+{
+  box_t result;
+  
+  result.x0 = b->x0 - change;
+  result.y0 = b->y0 - change;
+  result.x1 = b->x1 + change;
+  result.y1 = b->y1 + change;
+  
+  return result;
+}

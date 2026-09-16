@@ -169,6 +169,31 @@ result_t screen_copy_bitmap(screen_t       *scr,
                             int             y,
                             const bitmap_t *src);
 
+/**
+ * As `screen_copy_bitmap`, but on a paletted screen the source colour is
+ * ordered-dithered (8x8 Bayer) per pixel before the nearest-palette-entry
+ * lookup, so a smooth gradient stipples between the available entries
+ * instead of banding at each quantisation step. The dither is phased to
+ * screen coordinates, so it stays put when the same content is redrawn at
+ * the same place.
+ *
+ * On a 32bpp screen, and for an RLE-compressed source, this is identical to
+ * `screen_copy_bitmap` (a deep screen has no banding to break up; an RLE
+ * source is already quantised UI art). Alpha handling, clipping and the lack
+ * of scaling are all as `screen_copy_bitmap`.
+ *
+ * \param[in] scr  Screen to draw upon.
+ * \param[in] x    X coordinate of leftmost point to draw bitmap at.
+ * \param[in] y    Y coordinate of topmost point to draw bitmap at.
+ * \param[in] src  Bitmap to copy.
+ * \return \ref result_OK on success, \ref result_NOT_SUPPORTED if the
+ *         screen's pixel format has no blit path.
+ */
+result_t screen_copy_bitmap_dithered(screen_t       *scr,
+                                     int             x,
+                                     int             y,
+                                     const bitmap_t *src);
+
 /** Flags for `screen_copy_ninepatch`. */
 enum
 {

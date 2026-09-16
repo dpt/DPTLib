@@ -958,6 +958,478 @@ static result_t test_copy_bitmap_p2(void)
   return result_TEST_PASSED;
 }
 
+/* Blit an rgba8888 source onto an 8bpp paletted screen: each pixel quantises
+ * to the nearest palette entry and is stored as one plain byte. Also covers
+ * set_pixel / fill_hline / fill_pattern / blend_pixel on the p8 path. */
+static result_t test_copy_bitmap_p8(void)
+{
+#define P8_ROWBYTES (WIDTH)
+  static unsigned char       p8pixels[P8_ROWBYTES * HEIGHT];
+  static pixelfmt_rgba8888_t srcbuf[16 * 4];
+
+  screen_t scr;
+  bitmap_t src;
+  colour_t pal[256];
+  int      x, y;
+
+  /* a grey ramp: entry i is (i, i, i), so nearest-match is predictable */
+  for (x = 0; x < 256; x++)
+    pal[x] = colour_rgb(x, x, x);
+
+  /* 16x4 source: left half near-black (-> index ~16), right half near-white
+   * (-> index ~240) */
+  for (y = 0; y < 4; y++)
+    for (x = 0; x < 16; x++)
+      srcbuf[y * 16 + x] = (x < 8 ? colour_rgb(0x10, 0x10, 0x10)
+                                  : colour_rgb(0xF0, 0xF0, 0xF0)).primary;
+
+  bitmap_init(&src, SIZE2D(16, 4), pixelfmt_rgba8888,
+              16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
+
+  memset(p8pixels, 0, sizeof(p8pixels));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p8, P8_ROWBYTES, pal,
+              p8pixels);
+
+  if (screen_copy_bitmap(&scr, 0, 0, &src) != result_OK)
+  {
+    printf("screen: copy_bitmap to p8 screen failed\n");
+    return result_TEST_FAILED;
+  }
+
+  /* row 0: cols 0..7 quantise near 0x10, cols 8..15 near 0xF0. The pixelmap
+   * quantises via 5:6:5 before the nearest-ramp lookup, so allow a small
+   * slop rather than demanding the exact byte. */
+  for (x = 0; x < 8; x++)
+  {
+    if (p8pixels[x] > 0x20)
+    {
+      printf("screen: p8 blit dark col x=%d too bright (0x%02X)\n",
+             x, p8pixels[x]);
+      return result_TEST_FAILED;
+    }
+    if (p8pixels[x + 8] < 0xE0)
+    {
+      printf("screen: p8 blit light col x=%d too dark (0x%02X)\n",
+             x + 8, p8pixels[x + 8]);
+      return result_TEST_FAILED;
+    }
+  }
+
+  /* an untouched row past the source stays clear */
+  for (x = 0; x < 16; x++)
+    if (p8pixels[4 * P8_ROWBYTES + x] != 0x00)
+    {
+      printf("screen: p8 blit spilled past the source\n");
+      return result_TEST_FAILED;
+    }
+
+  /* screen_set_pixel: entry 200 at x=5 lands as a plain byte */
+  memset(p8pixels, 0, sizeof(p8pixels));
+  screen_set_pixel(&scr, 5, 0, pal[200]);
+  if (p8pixels[5] != 200)
+  {
+    printf("screen: p8 set_pixel wrong (0x%02X)\n", p8pixels[5]);
+    return result_TEST_FAILED;
+  }
+
+  /* screen_fill_hline: 6 pixels of entry 128 from x=2 on row 1 */
+  memset(p8pixels, 0, sizeof(p8pixels));
+  screen_fill_hline(&scr, 2, 1, 6, pal[128]);
+  for (x = 2; x < 8; x++)
+    if (p8pixels[P8_ROWBYTES + x] != 128)
+    {
+      printf("screen: p8 fill_hline wrong at x=%d (0x%02X)\n",
+             x, p8pixels[P8_ROWBYTES + x]);
+      return result_TEST_FAILED;
+    }
+  if (p8pixels[P8_ROWBYTES + 1] != 0 || p8pixels[P8_ROWBYTES + 8] != 0)
+  {
+    printf("screen: p8 fill_hline smeared past its run\n");
+    return result_TEST_FAILED;
+  }
+
+  /* screen_fill_pattern: solid all-bits pattern in fg = entry 77 */
+  memset(p8pixels, 0, sizeof(p8pixels));
+  {
+    pattern_t pat;
+    box_t     b;
+
+    memset(&pat, 0, sizeof(pat));
+    memset(pat.bits, 0xFF, sizeof(pat.bits));
+    pat.fg = pal[77];
+    pat.bg = pal[0];
+    b.x0 = 0; b.y0 = 2; b.x1 = 8; b.y1 = 3;
+    screen_fill_pattern(&scr, &b, &pat);
+    for (x = 0; x < 8; x++)
+      if (p8pixels[2 * P8_ROWBYTES + x] != 77)
+      {
+        printf("screen: p8 fill_pattern wrong at x=%d (0x%02X)\n",
+               x, p8pixels[2 * P8_ROWBYTES + x]);
+        return result_TEST_FAILED;
+      }
+  }
+
+  /* screen_copy_rect on p8 (the whole-byte bytes path, bpp=1): lay down a
+   * distinct-per-column run, slide it right by 5, check it moved intact and
+   * did not smear past its destination */
+  memset(p8pixels, 0, sizeof(p8pixels));
+  for (x = 0; x < 8; x++)
+    screen_set_pixel(&scr, x, 0, pal[1 + x]);
+  {
+    box_t s = { 0, 0, 8, 1 };
+    box_t got;
+
+    if (screen_copy_rect(&scr, &s, POINT(5, 0), &got) != result_OK)
+    {
+      printf("screen: copy_rect declined a p8 screen\n");
+      return result_TEST_FAILED;
+    }
+    for (x = 0; x < 8; x++)
+      if (p8pixels[x + 5] != 1 + x)
+      {
+        printf("screen: copy_rect p8 wrong pixel at x=%d (got %d want %d)\n",
+               x + 5, p8pixels[x + 5], 1 + x);
+        return result_TEST_FAILED;
+      }
+    if (p8pixels[13] != 0)
+    {
+      printf("screen: copy_rect p8 smeared past its destination\n");
+      return result_TEST_FAILED;
+    }
+  }
+
+  /* screen_blend_pixel via an anti-aliased diagonal: the p8 blend path must
+   * write *some* mid-ramp index between the black background and white line,
+   * not leave the pixel at 0 and not slam it to 255 */
+  memset(p8pixels, 0, sizeof(p8pixels));
+  screen_draw_line_wu_float(&scr, 0.0f, 0.0f, 8.0f, 3.0f,
+                            colour_rgb(0xFF, 0xFF, 0xFF));
+  {
+    int seen_partial = 0;
+
+    for (y = 0; y < 4; y++)
+      for (x = 0; x < 9; x++)
+      {
+        unsigned char v = p8pixels[y * P8_ROWBYTES + x];
+        if (v > 0 && v < 255)
+          seen_partial = 1;
+      }
+    if (!seen_partial)
+    {
+      printf("screen: p8 blend_pixel produced no partial-coverage pixel\n");
+      return result_TEST_FAILED;
+    }
+  }
+
+  return result_TEST_PASSED;
+#undef P8_ROWBYTES
+}
+
+/* screen_copy_bitmap with a *paletted* source (p4) onto a 32bpp screen: the
+ * unpack path in screen_copy_bitmap_i must decode the packed source indices
+ * through its own palette before the 32bpp blit runs, landing exact colours
+ * -- unlike the deep-source tests above there is no quantisation step to
+ * allow slop for. */
+static result_t test_copy_bitmap_paletted_source(void)
+{
+#define P4_SRC_ROWBYTES (8 / 2)
+  static unsigned char p4srcbuf[P4_SRC_ROWBYTES * 2];
+  static pixelfmt_any32_t scrbuf[WIDTH * HEIGHT];
+
+  screen_t scr;
+  bitmap_t src;
+  colour_t srcpal[16];
+  colour_t got;
+  int      x;
+
+  /* row 0: indices 0..7 packed two to the byte -- even x in the low nibble,
+   * odd x in the high nibble (matches screen_set_pixel_p4's own bit order) */
+  for (x = 0; x < 8; x++)
+    p4srcbuf[x >> 1] |= (unsigned char) (x << ((x & 1) ? 4 : 0));
+  memset(p4srcbuf + P4_SRC_ROWBYTES, 0, P4_SRC_ROWBYTES); /* row 1: all index 0 */
+
+  for (x = 0; x < 16; x++)
+    srcpal[x] = colour_rgb((unsigned char) (x * 16),
+                           (unsigned char) (x * 8),
+                           (unsigned char) (255 - x * 16));
+
+  bitmap_init(&src, SIZE2D(8, 2), pixelfmt_p4, P4_SRC_ROWBYTES, srcpal,
+              p4srcbuf);
+
+  memset(scrbuf, 0, sizeof(scrbuf));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_rgbx8888,
+             WIDTH * (int) sizeof(scrbuf[0]), NULL, scrbuf);
+
+  if (screen_copy_bitmap(&scr, 2, 3, &src) != result_OK)
+  {
+    printf("screen: copy_bitmap of a p4 source onto a 32bpp screen failed\n");
+    return result_TEST_FAILED;
+  }
+
+  for (x = 0; x < 8; x++)
+  {
+    got.primary = scrbuf[3 * WIDTH + 2 + x];
+    if (got.primary != srcpal[x].primary)
+    {
+      printf("screen: paletted-source blit wrong at x=%d "
+            "(got 0x%08X want 0x%08X)\n",
+            x, got.primary, srcpal[x].primary);
+      return result_TEST_FAILED;
+    }
+  }
+
+  /* a pixel just outside the blitted box on every side stays clear, i.e. the
+   * unpack scratch buffer's extent matches the clipped draw box exactly */
+  if (scrbuf[3 * WIDTH + 1] != 0 || scrbuf[3 * WIDTH + 10] != 0 ||
+      scrbuf[2 * WIDTH + 2] != 0 || scrbuf[5 * WIDTH + 2] != 0)
+  {
+    printf("screen: paletted-source blit spilled past its box\n");
+    return result_TEST_FAILED;
+  }
+
+  /* a fully-transparent palette entry (as a PNG's tRNS chunk can produce)
+   * must alpha-test out, same as a transparent rgba8888/bgra8888 source
+   * pixel would: the unpack step must carry the tRNS-derived alpha through
+   * rather than baking every unpacked pixel opaque */
+  {
+    pixelfmt_any32_t sentinel = 0xDEADBEEFu;
+
+    srcpal[0] = colour_rgba(0xFF, 0x00, 0x00, 0x00); /* red, fully transparent */
+    bitmap_set_palette(&src, srcpal); /* src.palette is its own copy */
+    scrbuf[3 * WIDTH + 2] = sentinel;
+
+    if (screen_copy_bitmap(&scr, 2, 3, &src) != result_OK)
+    {
+      printf("screen: copy_bitmap of a p4 source (2nd pass) failed\n");
+      return result_TEST_FAILED;
+    }
+
+    if (scrbuf[3 * WIDTH + 2] != sentinel)
+    {
+      printf("screen: paletted-source blit drew a fully-transparent index "
+            "(0x%08X, background was 0x%08X)\n",
+            scrbuf[3 * WIDTH + 2], sentinel);
+      return result_TEST_FAILED;
+    }
+  }
+
+  return result_TEST_PASSED;
+#undef P4_SRC_ROWBYTES
+}
+
+/* Unpack the p2 pixel at column "px" of a row's byte buffer (bits 7..6 are
+ * column 0, MSB-first, four to the byte). */
+static int p2_pixel_at(const unsigned char *rowbuf, int px)
+{
+  return (rowbuf[px >> 2] >> (6 - ((px & 3) << 1))) & 3;
+}
+
+/* screen_copy_bitmap_dithered on a p2 screen: a flat mid-grey source, which
+ * screen_copy_bitmap would quantise to one uniform index across the row, must
+ * come out as a stipple of at least two indices; the flat black and white
+ * ends must still be uniform (the Bayer nudge can't push them off their
+ * clamp). */
+static result_t test_copy_bitmap_dithered(void)
+{
+#define PD_ROWBYTES (WIDTH / 4)
+  static unsigned char       pdpixels[PD_ROWBYTES * HEIGHT];
+  static pixelfmt_rgba8888_t srcbuf[16 * 8];
+
+  screen_t      scr;
+  bitmap_t      src;
+  colour_t      pal[4];
+  int           first;
+  int           varied;
+  int           px;
+  int           x, y;
+
+  pal[0] = colour_rgb(0x00, 0x00, 0x00);
+  pal[1] = colour_rgb(0x55, 0x55, 0x55);
+  pal[2] = colour_rgb(0xAA, 0xAA, 0xAA);
+  pal[3] = colour_rgb(0xFF, 0xFF, 0xFF);
+
+  /* 16x8 flat mid-grey (0x80): sits between pal[1] and pal[2]. */
+  for (y = 0; y < 8; y++)
+    for (x = 0; x < 16; x++)
+      srcbuf[y * 16 + x] = colour_rgb(0x80, 0x80, 0x80).primary;
+
+  bitmap_init(&src, SIZE2D(16, 8), pixelfmt_rgba8888,
+              16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
+
+  memset(pdpixels, 0, sizeof(pdpixels));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, PD_ROWBYTES, pal,
+              pdpixels);
+
+  if (screen_copy_bitmap_dithered(&scr, 0, 0, &src) != result_OK)
+  {
+    printf("screen: copy_bitmap_dithered to p2 screen failed\n");
+    return result_TEST_FAILED;
+  }
+
+  /* plain blit of the same source: every one of the first 16 pixels
+   * quantises to the same index. */
+  {
+    unsigned char plain[PD_ROWBYTES * HEIGHT];
+    screen_t      pscr;
+
+    memset(plain, 0, sizeof(plain));
+    screen_init(&pscr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, PD_ROWBYTES, pal,
+                plain);
+    screen_copy_bitmap(&pscr, 0, 0, &src);
+    for (px = 1; px < 16; px++)
+      if (p2_pixel_at(plain, px) != p2_pixel_at(plain, 0))
+      {
+        printf("screen: plain p2 blit of a flat source was not uniform\n");
+        return result_TEST_FAILED;
+      }
+  }
+
+  /* dithered: at least one of the first 16 pixels differs from pixel 0 (the
+   * 8x8 Bayer cell varies across the row). */
+  first  = p2_pixel_at(pdpixels, 0);
+  varied = 0;
+  for (px = 1; px < 16; px++)
+    if (p2_pixel_at(pdpixels, px) != first)
+      varied = 1;
+  if (!varied)
+  {
+    printf("screen: dithered p2 blit of a flat mid-grey did not stipple\n");
+    return result_TEST_FAILED;
+  }
+
+  /* flat black stays index 0 across the row, flat white stays index 3. */
+  for (y = 0; y < 8; y++)
+    for (x = 0; x < 16; x++)
+      srcbuf[y * 16 + x] = colour_rgb(0x00, 0x00, 0x00).primary;
+  memset(pdpixels, 0xAA, sizeof(pdpixels));
+  screen_copy_bitmap_dithered(&scr, 0, 0, &src);
+  if (pdpixels[0] != 0x00 || pdpixels[1] != 0x00 ||
+      pdpixels[2] != 0x00 || pdpixels[3] != 0x00)
+  {
+    printf("screen: dithered p2 blit pushed flat black off index 0\n");
+    return result_TEST_FAILED;
+  }
+
+  for (y = 0; y < 8; y++)
+    for (x = 0; x < 16; x++)
+      srcbuf[y * 16 + x] = colour_rgb(0xFF, 0xFF, 0xFF).primary;
+  memset(pdpixels, 0x00, sizeof(pdpixels));
+  screen_copy_bitmap_dithered(&scr, 0, 0, &src);
+  if (pdpixels[0] != 0xFF || pdpixels[1] != 0xFF ||
+      pdpixels[2] != 0xFF || pdpixels[3] != 0xFF)
+  {
+    printf("screen: dithered p2 blit pushed flat white off index 3\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
+/* Read the "bpp_bits"-deep pixel at column "px" of a byte buffer using the
+ * house within-byte order: p1/p2 MSB-first (bit 7 leftmost), p4 LSB-first --
+ * matching screen_set_pixel_p1/p2/p4. The source block is laid down with
+ * screen_set_pixel, so a wrong-endian copy shows up here as a shuffled row. */
+static int house_pixel_at(const unsigned char *buf, int px, int bpp_bits)
+{
+  int ppb   = 8 / bpp_bits;
+  int mask  = (1 << bpp_bits) - 1;
+  int shift = (px % ppb) * bpp_bits;
+
+  if (bpp_bits != 4)
+    shift = 8 - bpp_bits - shift; /* MSB-first for p1/p2 */
+
+  return (buf[px / ppb] >> shift) & mask;
+}
+
+/* screen_copy_rect on the sub-byte paletted formats (p1/p2/p4): lay down an
+ * 8x8 block with screen_set_pixel, copy it right by an odd (non-byte-aligned)
+ * offset, and check the pixels landed at the destination in the right order,
+ * did not smear past it, and left the row below the source clear. Regression:
+ * these formats used to fall through to result_NOT_SUPPORTED (full repaint on
+ * every low-bpp window move); the first packed implementation then copied
+ * p1/p2 with the wrong within-byte order and shuffled the row. */
+static result_t test_copy_rect_packed(void)
+{
+  static const struct { pixelfmt_t fmt; int bits; } cases[] =
+  {
+    { pixelfmt_p1, 1 },
+    { pixelfmt_p2, 2 },
+    { pixelfmt_p4, 4 },
+  };
+
+  static unsigned char buf[WIDTH / 2 * HEIGHT]; /* widest sub-byte case */
+
+  colour_t pal[16];
+  size_t   ci;
+  int      i;
+
+  for (i = 0; i < 16; i++)
+    pal[i] = colour_rgb((unsigned char) (i * 17),
+                        (unsigned char) (i * 17),
+                        (unsigned char) (i * 17));
+
+  for (ci = 0; ci < NELEMS(cases); ci++)
+  {
+    screen_t scr;
+    box_t    src;
+    box_t    got;
+    int      rowbytes, fill, x, y;
+
+    rowbytes = WIDTH * cases[ci].bits / 8;
+    fill     = (1 << cases[ci].bits) - 1; /* max index for this depth */
+
+    memset(buf, 0, sizeof(buf));
+    screen_init(&scr, SIZE2D(WIDTH, HEIGHT), cases[ci].fmt, rowbytes, pal, buf);
+
+    /* an 8-wide, 8-tall block at the top-left, laid down the house way. Each
+     * column carries a distinct non-zero index (1 + x % fill; adjacent
+     * columns -- including byte-mates -- differ) so a within-byte reordering
+     * can't hide behind a uniform fill. p1 has only index 1 available, so its
+     * shuffle is caught by the no-smear check below instead. */
+    for (y = 0; y < 8; y++)
+      for (x = 0; x < 8; x++)
+        screen_set_pixel(&scr, x, y, pal[1 + x % fill]);
+
+    src = (box_t) { 0, 0, 8, 8 };
+    if (screen_copy_rect(&scr, &src, POINT(5, 0), &got) != result_OK)
+    {
+      printf("screen: copy_rect declined a p%d screen\n", cases[ci].bits);
+      return result_TEST_FAILED;
+    }
+
+    /* moved: column c of the source now sits at c+5, same index */
+    for (x = 0; x < 8; x++)
+      if (house_pixel_at(buf, x + 5, cases[ci].bits) != 1 + x % fill)
+      {
+        printf("screen: copy_rect p%d wrong pixel at x=%d "
+               "(got %d want %d)\n", cases[ci].bits, x + 5,
+               house_pixel_at(buf, x + 5, cases[ci].bits), 1 + x % fill);
+        return result_TEST_FAILED;
+      }
+
+    /* read-before-write: column 13, just past the destination, is untouched */
+    if (house_pixel_at(buf, 13, cases[ci].bits) != 0)
+    {
+      printf("screen: copy_rect p%d smeared past its destination\n",
+             cases[ci].bits);
+      return result_TEST_FAILED;
+    }
+
+    /* row 8, the first row below the 8-tall source, stayed clear */
+    for (x = 0; x < 16; x++)
+      if (house_pixel_at(buf + (size_t) 8 * rowbytes, x, cases[ci].bits) != 0)
+      {
+        printf("screen: copy_rect p%d touched a row below the source\n",
+               cases[ci].bits);
+        return result_TEST_FAILED;
+      }
+  }
+
+  return result_TEST_PASSED;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t screen_test(const char *resources)
@@ -977,7 +1449,11 @@ result_t screen_test(const char *resources)
     test_draw_circle,
     test_fill_circle,
     test_copy_bitmap_p1,
-    test_copy_bitmap_p2
+    test_copy_bitmap_p2,
+    test_copy_bitmap_p8,
+    test_copy_bitmap_paletted_source,
+    test_copy_bitmap_dithered,
+    test_copy_rect_packed
   };
 
   result_t rc;

@@ -23,13 +23,21 @@
  * an Invert toggle. A pick installs the loaded/inverted array via
  * wuss_set_palette; there is no callback here, since every other interested
  * party (framebuffer bitmap, physical palette) reacts to the resulting
- * wuss_EVENT_PALETTE and reads the array back with wuss_get_palette. */
+ * wuss_EVENT_PALETTE and reads the array back with wuss_get_palette.
+ *
+ * A second window ("Screen") draws the same kind of grid but for the
+ * physical screen bitmap's own palette (event->data.redraw.scr->palette),
+ * which is whatever size the screen's pixel format needs (2/4/16/256
+ * entries for 1/2/4/8bpp) rather than the fixed 16-entry system palette
+ * above; a NULL screen palette (32bpp, no palette) just shows a label. */
 typedef struct palette_task
 {
   wuss_t              *wuss;
   wuss_task_t         *delegate;
   wuss_window_t       *window;
-  const char          *resources;
+  wuss_window_t       *window2; /* "Screen" window: the physical screen's
+                                  * own palette (1/2/4/8bpp) or a "none"
+                                  * label (32bpp has no palette) */
   bool                 invert;
 
   /* *.hex files found under resources/palettes at create time, leafname
@@ -44,7 +52,7 @@ typedef struct palette_task
    * copy built fresh on each open would not do */
   wuss_menu_item_t     menu_items[PALETTE_MAX_FILES + 1];
   wuss_menu_t          menu;
-  wuss_menu_handle_t   menu_handle; /* for wuss_menu_set_item_ticked on an
+  wuss_menu_handle_t   menu_handle; /* for wuss_menu_tick_item_live on an
                                      * ADJUST pick, which keeps the chain
                                      * open */
 }
@@ -61,17 +69,15 @@ result_t palette_load_hex(const char *resources,
                           colour_t   *out);
 
 /* create the palette-swatch-grid window against the given wuss instance.
- * `resources` is the resources root (as passed to path_join_filename, i.e.
- * "resources/palettes" holds the *.hex files); it is scanned once here to
- * build the picker menu. The swatch grid always draws wuss's current system
- * palette (wuss_get_palette), so `startup_name` -- its *.hex leafname, no
- * extension -- is used only to tick the matching row in the picker menu; NULL
- * ticks none. */
-result_t palette_create(wuss_t         *wuss,
-                        const char     *resources,
-                        const char     *startup_name,
-                        palette_task_t *task);
+ * wuss_get_resources(wuss)/resources/palettes holds the *.hex files; it is
+ * scanned once here to build the picker menu, ticking whichever file's
+ * content matches wuss's current system palette (wuss_get_palette), if any.
+ * if out is non-NULL, the task block is also returned through it. */
+result_t palette_create(wuss_t *wuss, palette_task_t **out);
 
+/* free a task block allocated by palette_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void palette_destroy(palette_task_t *task);
 
 #endif /* WUSS_APP */
 

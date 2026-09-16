@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/bitmap.h"
+#include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -23,7 +24,6 @@ typedef struct image_task
   wuss_task_t   *delegate;  /* the wuss task backing this window */
   bitmap_t       bitmap;    /* owned: base freed by the caller when done */
   bitmap_t       ninepatch; /* owned: 9-patch tiled behind the main image */
-  const char    *resources; /* root passed to path_join_filename on click */
   int            index;     /* current position in names[] */
   char           names[IMAGE_MAX_NAMES][IMAGE_MAX_NAME_LEN]; /* owned:
                               * leafnames (extension stripped) found under
@@ -35,22 +35,29 @@ typedef struct image_task
   wuss_proginfo_t *proginfo; /* owned: the "Info" row's standard dialogue,
                               * hung off the menu as a wuss_menu_item_t.window;
                               * freed at QUIT */
+  wuss_colourmenu_t *colourmenu; /* owned: the "Background" row's submenu,
+                              * hung off the menu as a wuss_menu_item_t.submenu;
+                              * freed at QUIT */
   wuss_menu_handle_t menu_handle; /* the open chain, if any -- closed before the
                               * proginfo it borrows is destroyed at QUIT */
+  int            dithering; /* enable Bayer ordered dithering */
+  wuss_colour_t  background;
 }
 image_task_t;
 
 wuss_window_fn_t image_handle;
 
-/* load the PNG at path (and the 9-patch PNG at background_path, drawn tiled
- * behind it) and create its window against the given wuss instance.
- * resources is the root resource directory, kept so a click can cycle
- * through resources/images (PNG files) by reloading a different leafname. */
-result_t image_create(wuss_t       *wuss,
-                      const char   *resources,
-                      const char   *path,
-                      const char   *background_path,
-                      image_task_t *task);
+/* scan wuss_get_resources(wuss)/resources/images for PNGs, load the first
+ * one found (and the 9-patch PNG at
+ * wuss_get_resources(wuss)/resources/wuss/ninepatch.png, drawn tiled behind
+ * it), and create its window against the given wuss instance. a click cycles
+ * to a different leafname from the scan. if out is non-NULL, the task block
+ * is also returned through it */
+result_t image_create(wuss_t *wuss, image_task_t **out);
+
+/* free a task block allocated by image_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void image_destroy(image_task_t *task);
 
 #endif /* WUSS_APP */
 

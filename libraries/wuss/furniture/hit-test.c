@@ -18,9 +18,9 @@ static wuss_furniture_region_t nearest_edge_region(const wuss_window_t *window,
 
   wuss__content_box(window, &content);
 
-  has_v     = !(window->flags & wuss_WINDOW_NO_VSCROLL);
-  has_h     = !(window->flags & wuss_WINDOW_NO_HSCROLL);
-  has_title = !(window->flags & wuss_WINDOW_NO_TITLEBAR);
+  has_v     = (window->flags & wuss_WINDOW_VSCROLL) != 0;
+  has_h     = (window->flags & wuss_WINDOW_HSCROLL) != 0;
+  has_title = (window->flags & wuss_WINDOW_NO_TITLEBAR) == 0;
 
   /* bottom edge: the hscroll strip runs its full width */
   if (p.y >= content.y1)
@@ -61,21 +61,21 @@ wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
 
   if (!(window->flags & wuss_WINDOW_NO_TITLEBAR))
   {
-    if (!(window->flags & wuss_WINDOW_NO_BACK))
+    if (window->flags & wuss_WINDOW_BACK)
     {
       wuss__back_hit_box(window, &box);
       if (box_contains_point(&box, p.x, p.y))
         return wuss_FURNITURE_BACK;
     }
 
-    if (!(window->flags & wuss_WINDOW_NO_CLOSE))
+    if (window->flags & wuss_WINDOW_CLOSE)
     {
       wuss__close_hit_box(window, &box);
       if (box_contains_point(&box, p.x, p.y))
         return wuss_FURNITURE_CLOSE;
     }
 
-    if (!(window->flags & wuss_WINDOW_NO_TOGGLE_SIZE))
+    if (window->flags & wuss_WINDOW_TOGGLE_SIZE)
     {
       wuss__toggle_hit_box(window, &box);
       if (box_contains_point(&box, p.x, p.y))
@@ -87,14 +87,14 @@ wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
       return wuss_FURNITURE_TITLE;
   }
 
-  if (!(window->flags & wuss_WINDOW_NO_RESIZE))
+  if (window->flags & wuss_WINDOW_RESIZE)
   {
     wuss__resize_hit_box(window, &box);
     if (box_contains_point(&box, p.x, p.y))
       return wuss_FURNITURE_RESIZE;
   }
 
-  if (!(window->flags & wuss_WINDOW_NO_VSCROLL))
+  if (window->flags & wuss_WINDOW_VSCROLL)
   {
     wuss__vscroll_up_hit_box(window, &box);
     if (box_contains_point(&box, p.x, p.y))
@@ -109,7 +109,7 @@ wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
       return wuss_FURNITURE_VSCROLL_WELL;
   }
 
-  if (!(window->flags & wuss_WINDOW_NO_HSCROLL))
+  if (window->flags & wuss_WINDOW_HSCROLL)
   {
     wuss__hscroll_left_hit_box(window, &box);
     if (box_contains_point(&box, p.x, p.y))
