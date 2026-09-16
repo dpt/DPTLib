@@ -332,16 +332,17 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
   item = &self->menu->items[index];
 
-  if (item->flags & wuss_MENU_ITEM_DISABLED)
-    return result_OK;
-
   if (event->data.icon.action == wuss_MOUSE_MOVE)
   {
     point_t at;
     int     has_child_row;
     int     on_arrow;
 
-    has_child_row = (item->submenu != NULL || item->window != NULL);
+    /* A disabled row still has to run the close-on-move-away logic below --
+     * hovering off an open submenu onto a disabled sibling must collapse it
+     * -- but can never itself open a submenu. */
+    has_child_row = !(item->flags & wuss_MENU_ITEM_DISABLED)
+                 && (item->submenu != NULL || item->window != NULL);
     on_arrow      = has_child_row
                  && wuss__pointer_over_row_arrow(self->window, icon);
 
@@ -398,6 +399,9 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
     wuss_button_t      button;
     wuss_task_t       *owner;
     const wuss_menu_t *menu;
+
+    if (item->flags & wuss_MENU_ITEM_DISABLED)
+      return result_OK;
 
     button = event->data.icon.button;
 
