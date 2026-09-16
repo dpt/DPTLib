@@ -9,6 +9,7 @@
 
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
+#include "wuss/component/colourmenu.h"
 #include "wuss/component/fontmenu.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
@@ -16,33 +17,61 @@
 
 /* window B's task: flows a chosen sample string over its wuss-filled
  * background, one line per bmfont_draw call. A MENU click on the window opens
- * a top-level menu with two submenus: "Font" -- a wuss_fontmenu over
- * resources/bmfonts, swapping the paragraph font in place -- and "Sample",
- * which swaps the shown string (a choice of pangrams and a lorem ipsum
- * paragraph). */
+ * a top-level menu with three submenus -- "Font" (a wuss_fontmenu over
+ * resources/bmfonts, swapping the paragraph font in place), "Sample" (swaps
+ * the shown string: a choice of pangrams and a lorem ipsum paragraph) and
+ * "Spacing" (swaps the letter/word spacing), "Foreground" and "Background"
+ * (each a wuss_colourmenu over the system palette) -- plus a tickable "No
+ * Background" leaf that unsets the paragraph's background colour so glyphs
+ * blend straight onto whatever is already behind the window's content. */
 typedef struct text_task
 {
-  wuss_window_t   *window;
-  wuss_task_t     *delegate;   /* the wuss task backing this window */
-  wuss_t          *wuss;       /* for wuss_get_pointer when opening the menu */
-  wuss_fontmenu_t *fontmenu;   /* the font picker; owns the menu and names */
-  bmfont_t        *font;       /* currently shown; fonts[current] or sysfont */
-  bmfont_t       **fonts;      /* one slot per menu item, lazily loaded */
-  int              nfonts;     /* length of fonts[]; == menu item count */
-  int              current;    /* index into fonts[], or -1 for sysfont */
-  wuss_menu_item_t top_items[2]; /* "Font" and "Sample", built once the
-                                 * fontmenu exists so items[0].submenu can
-                                 * borrow its live wuss_menu_t */
-  wuss_menu_t      top_menu;   /* root menu passed to wuss_menu_open */
-  int              sample;     /* index into text_samples[] currently shown */
-  const char      *text;       /* text_samples[sample].text; what text_redraw
-                                 * lays out and draws */
-  colour_t         bg, fg;
-  int              base_width;  /* content width when the window was made */
-  int              base_height; /* content height when the window was made */
-  int              frame_count;
-  bool             resizing;    /* toggled by a content click; text_step only
-                                 * resizes the window while this is true */
+  wuss_window_t      *window;
+  wuss_task_t        *delegate;   /* the wuss task backing this window */
+  wuss_t             *wuss;       /* for wuss_get_pointer when opening the
+                                   * menu */
+  wuss_fontmenu_t    *fontmenu;   /* the font picker; owns the menu and
+                                   * names */
+  bmfont_t           *font;       /* currently shown; fonts[current] or
+                                   * sysfont */
+  bmfont_t          **fonts;      /* one slot per menu item, lazily loaded */
+  int                 nfonts;     /* length of fonts[]; == menu item count */
+  int                 current;    /* index into fonts[], or -1 for sysfont */
+  wuss_colourmenu_t  *fgmenu;      /* the "Foreground" picker; owns its menu */
+  wuss_colourmenu_t  *bgmenu;      /* the "Background" picker; owns its menu */
+  wuss_menu_item_t    top_items[6]; /* "Font", "Sample", "Spacing",
+                                   * "Foreground", "Background" and "No
+                                   * Background", built once the fontmenu and
+                                   * colourmenus exist so items[0/3/4].submenu
+                                   * can borrow their live wuss_menu_t */
+  wuss_menu_t         top_menu;   /* root menu passed to wuss_menu_open */
+  wuss_menu_handle_t  menu_handle; /* chain handle from the last
+                                   * wuss_menu_open, for the _live tick calls
+                                   * when an ADJUST pick keeps the chain
+                                   * open; NULL if closed */
+  int                 sample;     /* index into text_samples[] currently
+                                   * shown */
+  const char         *text;       /* text_samples[sample].text; what
+                                   * text_redraw lays out and draws */
+  int                 spacing_idx; /* index into text_spacing_presets[]
+                                   * currently applied */
+  bmfont_spacing_t    spacing;    /* text_spacing_presets[spacing_idx],
+                                   * passed to bmtext_layout/bmtext_draw */
+  wuss_colour_t       fg_index;   /* system palette index picked from
+                                   * "Foreground" */
+  wuss_colour_t       bg_index;   /* system palette index picked from
+                                   * "Background" */
+  bool                bg_transparent; /* "No Background" tick; bg drawn
+                                   * transparent while set, overriding
+                                   * bg_index */
+  int                 base_width;  /* content width when the window was
+                                   * made */
+  int                 base_height; /* content height when the window was
+                                   * made */
+  int                 frame_count;
+  bool                resizing;    /* toggled by a content click; text_step
+                                   * only resizes the window while this is
+                                   * true */
 }
 text_task_t;
 
