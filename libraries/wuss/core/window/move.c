@@ -68,25 +68,8 @@ void wuss_window_move(wuss_window_t *window, point_t p)
    * would just paste it, untouched, onto the window's new position. Strip
    * every pending-dirty region out of "clean" first so only pixels already
    * settled on screen are treated as a valid blit source. */
-  if (window->wuss->ndirty > 0)
-  {
-    box_t settled[WUSS_MAX_INVALIDATE_PIECES];
-    int   nsettled, c;
-
-    nsettled = 0;
-    for (c = 0; c < nclean && nsettled < WUSS_MAX_INVALIDATE_PIECES; c++)
-    {
-      box_t piece[WUSS_MAX_INVALIDATE_PIECES];
-      int   npiece, s;
-
-      npiece = wuss__subtract_boxes(&clean[c], window->wuss->dirty,
-                                    window->wuss->ndirty, piece);
-      for (s = 0; s < npiece && nsettled < WUSS_MAX_INVALIDATE_PIECES; s++)
-        settled[nsettled++] = piece[s];
-    }
-    nclean = nsettled;
-    memcpy(clean, settled, (size_t) nclean * sizeof(*clean));
-  }
+  nclean = wuss__filter_settled(clean, nclean, window->wuss->dirty,
+                                window->wuss->ndirty);
 
   window->visible.x0 = p.x - outline_px;
   window->visible.y0 = p.y - outline_px - titlebar_height;

@@ -91,7 +91,6 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
     box_t content;
     box_t stale[WUSS_MAX_DIRTY];
     box_t clean[WUSS_MAX_INVALIDATE_PIECES];
-    box_t src[WUSS_MAX_INVALIDATE_PIECES];
     box_t copied[WUSS_MAX_INVALIDATE_PIECES];
     box_t dirty[WUSS_MAX_INVALIDATE_PIECES];
     int   dx, dy, nstale, nclean, nsrc, ncopied, ndirty, i, overflow;
@@ -118,28 +117,12 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
      * invalidated either, since the invalidate below only covers "content
      * minus copied", not "content minus every clean piece found" -- so a
      * silently-dropped piece would leave genuinely stale pre-resize pixels
-     * on screen with nothing left to repaint them. */
+     * on screen with nothing left to repaint them. wuss__filter_settled caps
+     * at WUSS_MAX_INVALIDATE_PIECES the same way, so treat a full result as
+     * a possible overflow too. */
     nclean            = wuss__clip_to_visible(window, &before_content, clean);
-    nsrc              = 0;
-    overflow          = 0;
-    for (i = 0; i < nclean; i++)
-    {
-      box_t kept[WUSS_MAX_INVALIDATE_PIECES];
-      int   nkept, k;
-
-      nkept = wuss__subtract_boxes(&clean[i], stale, nstale, kept);
-      for (k = 0; k < nkept; k++)
-      {
-        if (nsrc == WUSS_MAX_INVALIDATE_PIECES)
-        {
-          overflow = 1;
-          break;
-        }
-        src[nsrc++] = kept[k];
-      }
-      if (overflow)
-        break;
-    }
+    nsrc              = wuss__filter_settled(clean, nclean, stale, nstale);
+    overflow          = (nsrc == WUSS_MAX_INVALIDATE_PIECES);
 
     ncopied           = 0;
     if (!overflow)
@@ -149,8 +132,8 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
       {
         box_t got;
 
-        if (screen_copy_rect(window->wuss->scr, &src[i],
-                             POINT(src[i].x0 - dx, src[i].y0 - dy),
+        if (screen_copy_rect(window->wuss->scr, &clean[i],
+                             POINT(clean[i].x0 - dx, clean[i].y0 - dy),
                              &got) == result_OK)
         {
           /* "got" is already correct on screen -- the blit reused it --

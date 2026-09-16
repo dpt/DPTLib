@@ -455,6 +455,17 @@ int             wuss__subtract_boxes(const box_t *whole,
                                      int          ncuts,
                                      box_t       *out);
 
+/* Filter "clean" (nclean pieces already clipped clear of occluders) down to
+ * the parts not also covered by "stale" (nstale pending-dirty boxes not yet
+ * repainted), writing survivors back into "clean" and returning the new
+ * count. Each piece is subtracted independently, so the result can hold more
+ * than "nclean" entries; excess beyond WUSS_MAX_INVALIDATE_PIECES is
+ * dropped. */
+int             wuss__filter_settled(box_t       *clean,
+                                     int          nclean,
+                                     const box_t *stale,
+                                     int          nstale);
+
 /* Given "n" single-rect blits, each moving "clean[i]" to "dest[i]", find an
  * order in which no blit's destination overwrites a still-unread source of a
  * later blit. Writes the piece indices to "order" (capacity

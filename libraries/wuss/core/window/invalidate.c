@@ -170,6 +170,32 @@ int wuss__subtract_boxes(const box_t *whole,
   return carve_by_cuts(whole, ncuts, array_get_cut, (void *) cuts, out);
 }
 
+int wuss__filter_settled(box_t       *clean,
+                         int          nclean,
+                         const box_t *stale,
+                         int          nstale)
+{
+  box_t settled[WUSS_MAX_INVALIDATE_PIECES];
+  int   nsettled, c;
+
+  if (nstale == 0)
+    return nclean;
+
+  nsettled = 0;
+  for (c = 0; c < nclean && nsettled < WUSS_MAX_INVALIDATE_PIECES; c++)
+  {
+    box_t piece[WUSS_MAX_INVALIDATE_PIECES];
+    int   npiece, s;
+
+    npiece = wuss__subtract_boxes(&clean[c], stale, nstale, piece);
+    for (s = 0; s < npiece && nsettled < WUSS_MAX_INVALIDATE_PIECES; s++)
+      settled[nsettled++] = piece[s];
+  }
+
+  memcpy(clean, settled, (size_t) nsettled * sizeof(*clean));
+  return nsettled;
+}
+
 /* Sequential single-rect blits (each a self-consistent memmove) can still
  * corrupt each other when one piece's destination lands on another piece's
  * still-unread source -- but that only actually matters if no blit order
