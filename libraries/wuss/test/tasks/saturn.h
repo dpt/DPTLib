@@ -60,6 +60,7 @@ typedef struct saturn_conf
 {
   wuss_dialogue_t   *dialogue;
   wuss_slider_row_t  rows[SATURN_SIZEDLG_NROWS]; /* size, stars, ring, body */
+  wuss_icon_t       *deflt;
   wuss_icon_t       *cancel;
   wuss_icon_t       *apply;
 }
