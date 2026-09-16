@@ -382,6 +382,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/destroy.c
     libraries/wuss/core/get-palette.c
     libraries/wuss/core/get-pointer.c
+    libraries/wuss/core/get-resources.c
     libraries/wuss/core/idle.c
     libraries/wuss/core/impl.h
     libraries/wuss/core/invalidate.c

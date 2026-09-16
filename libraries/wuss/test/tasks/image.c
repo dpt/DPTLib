@@ -60,7 +60,6 @@ static result_t load_png_deep(bitmap_t *bm, const char *filename)
 }
 
 result_t image_create(wuss_t        *wuss,
-                      const char    *resources,
                       const char    *path,
                       const char    *background_path,
                       image_task_t **out)
@@ -69,6 +68,7 @@ result_t image_create(wuss_t        *wuss,
   image_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  const char      *resources;
   const char      *images_dir;
   size2d_t         sz;
 
@@ -78,7 +78,6 @@ result_t image_create(wuss_t        *wuss,
 
   task->wuss        = wuss;
   task->delegate    = NULL;
-  task->resources   = resources;
   task->index       = 0;
   task->nnames      = 0;
   task->menu        = NULL;
@@ -87,6 +86,7 @@ result_t image_create(wuss_t        *wuss,
   task->menu_handle = NULL;
   task->dithering   = 1;
 
+  resources  = wuss_get_resources(wuss);
   images_dir = path_join_filename(resources, 2, "resources", "images");
   rc = namelist_scan(images_dir, IMAGE_EXT, task->names[0],
                      sizeof(task->names[0]), IMAGE_MAX_NAMES, 0 /* unsorted */,
@@ -240,6 +240,7 @@ static result_t image_click(wuss_window_t *window,
                             int            step)
 {
   result_t    rc;
+  const char *resources;
   const char *leafname;
   const char *filename;
   char        buf[DPTLIB_MAXPATH];
@@ -251,9 +252,10 @@ static result_t image_click(wuss_window_t *window,
 
   ic->index = (ic->index + step + ic->nnames) % ic->nnames;
 
-  leafname = path_join_leafname(ic->names[ic->index], "png");
-  filename = path_join_filename(ic->resources, 3, "resources", "images",
-                                leafname);
+  resources = wuss_get_resources(ic->wuss);
+  leafname  = path_join_leafname(ic->names[ic->index], "png");
+  filename  = path_join_filename(resources, 3, "resources", "images",
+                                 leafname);
   strcpy(buf, filename);
 
   rc = load_png_deep(&next, buf);

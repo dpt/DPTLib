@@ -144,9 +144,9 @@ struct wuss_frame_ctx
 static void wuss_frame(void *arg)
 {
   struct wuss_frame_ctx *c = arg;
-  wuss_input_t           ev;
-  bool                   pixel_stress_pending = false;
-  bool                   garbage_pending      = false;
+  wuss_input_t ev;
+  bool         pixel_stress_pending = false;
+  bool         garbage_pending      = false;
 
   while (wuss_frontend_poll(c->frontend, &ev))
   {
@@ -276,27 +276,27 @@ static result_t run_wuss(const char *resources,
   static const char *const names[WUSS_MAIN_NFONTS] =
     { "DPT-Digits-Regular", "DPT-Digits-Bold", "Symbols" };
 
-  const int          scr_width  = 640;
-  const int          scr_height = 480;
-  result_t           rc;
-  const char        *leafname;
-  const char        *filename;
-  bmfont_t          *fonts[WUSS_MAIN_NFONTS];
-  int                nfonts;
-  int                i;
-  void              *pixels;
-  int                rowbytes;
-  pixelfmt_t         fmt;
-  bitmap_t           bm;
-  screen_t           scr;
-  colour_t           palette[16]; /* the fixed-size UI palette */
-  colour_t           scr_palette[256]; /* palette[] padded out to whatever
+  const int   scr_width  = 640;
+  const int   scr_height = 480;
+  result_t    rc;
+  const char *leafname;
+  const char *filename;
+  bmfont_t   *fonts[WUSS_MAIN_NFONTS];
+  int         nfonts;
+  int         i;
+  void       *pixels;
+  int         rowbytes;
+  pixelfmt_t  fmt;
+  bitmap_t    bm;
+  screen_t    scr;
+  colour_t    palette[16]; /* the fixed-size UI palette */
+  colour_t    scr_palette[256]; /* palette[] padded out to whatever
                                         * count the chosen depth's bitmap
                                         * needs (p8 reads all 256) */
-  wuss_t            *wuss;
-  wuss_frontend_t   *frontend;
-  bool               use_wimp16;
-  int                palette_index;
+  wuss_t          *wuss;
+  wuss_frontend_t *frontend;
+  bool             use_wimp16;
+  int              palette_index;
 
   {
     /* palette_name (from -palette, default "PICO-8") names a *.hex file under
@@ -380,7 +380,7 @@ static result_t run_wuss(const char *resources,
     }
 
     rc = wuss_create(&scr, descs, nfonts, palette, NELEMS(palette), &config,
-                     NULL, &wuss);
+                     NULL, resources, &wuss);
     logf_info("wuss: wuss_create -> rc=0x%X (%s)", rc, result_string(rc));
     if (rc != result_OK)
       goto Failure;
@@ -389,7 +389,6 @@ static result_t run_wuss(const char *resources,
   g.wuss           = wuss;
   g.palette        = palette;
   g.npalette       = NELEMS(palette);
-  g.resources      = resources;
   g.daydream_font  = fonts[0]; /* tasks draw with the regular weight */
   g.bold_font      = fonts[1];
   g.frontend       = frontend;

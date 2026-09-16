@@ -74,13 +74,13 @@ result_t palette_load_hex(const char *resources,
 /* ----------------------------------------------------------------------- */
 
 result_t palette_create(wuss_t          *wuss,
-                        const char      *resources,
                         const char      *startup_name,
                         palette_task_t **out)
 {
   result_t         rc;
   palette_task_t  *task;
   wuss_task_desc_t delegate_desc;
+  const char      *resources;
   const char      *dir;
   char             dirbuf[DPTLIB_MAXPATH];
   int              i;
@@ -90,12 +90,12 @@ result_t palette_create(wuss_t          *wuss,
     return result_OOM;
 
   task->wuss      = wuss;
-  task->resources = resources;
   task->invert    = false;
   task->nnames    = 0;
   task->selected  = 0;
 
-  dir = path_join_filename(resources, 2, "resources", "palettes");
+  resources = wuss_get_resources(wuss);
+  dir       = path_join_filename(resources, 2, "resources", "palettes");
   strcpy(dirbuf, dir); /* path_join_filename's buffer is reused by the scan */
   namelist_scan(dirbuf, PALETTE_HEX_EXT, task->names[0],
                 sizeof(task->names[0]), PALETTE_MAX_FILES, 1 /* sorted */,
@@ -364,7 +364,8 @@ static result_t palette_menu_select(palette_task_t     *pc,
   if (pc->nnames == 0)
     return result_OK;
 
-  rc = palette_load_hex(pc->resources, pc->names[pc->selected], loaded);
+  rc = palette_load_hex(wuss_get_resources(pc->wuss), pc->names[pc->selected],
+                        loaded);
   if (rc != result_OK)
     return result_OK;
 

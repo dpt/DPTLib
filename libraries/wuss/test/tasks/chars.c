@@ -26,11 +26,6 @@
 #define CHARS_ROWS 16
 #define CHARS_PAD  1
 
-/* keep the resources root the task was created with; the picker loads a font
- * on demand by leafname and chars_create does not stash it elsewhere.
- * ponytail: one demo, one instance at a time -- a file-scope copy is fine. */
-static char chars_resources[256];
-
 /* ----------------------------------------------------------------------- */
 
 /* the rows of the CHARS_COLS x CHARS_ROWS grid that hold at least one glyph
@@ -77,6 +72,7 @@ static bmfont_t *chars_load_font(chars_task_t *task,
                                  const char   *name)
 {
   result_t    rc;
+  const char *resources;
   const char *leaf;
   const char *filename;
   bmfont_t   *font;
@@ -84,8 +80,9 @@ static bmfont_t *chars_load_font(chars_task_t *task,
   if (task->fonts[idx] != NULL)
     return task->fonts[idx];
 
-  leaf     = path_join_leafname(name, "png");
-  filename = path_join_filename(chars_resources, 3, "resources", "bmfonts",
+  resources = wuss_get_resources(task->wuss);
+  leaf      = path_join_leafname(name, "png");
+  filename  = path_join_filename(resources, 3, "resources", "bmfonts",
                                leaf);
 
   rc = bmfont_create(filename, &font);
@@ -138,15 +135,14 @@ static result_t chars_open_menu(chars_task_t *task)
 
 /* ----------------------------------------------------------------------- */
 
-result_t chars_create(wuss_t        *wuss,
-                      const char    *resources,
-                      chars_task_t **out)
+result_t chars_create(wuss_t *wuss, chars_task_t **out)
 {
   result_t           rc;
   chars_task_t      *task;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
   bmfont_t          *font;
+  const char        *resources;
   const char        *bmfonts_dir;
   const wuss_menu_t *menu;
   size2d_t           grid;
@@ -159,8 +155,7 @@ result_t chars_create(wuss_t        *wuss,
   if (task == NULL)
     return result_OOM;
 
-  strncpy(chars_resources, resources, sizeof(chars_resources) - 1);
-  chars_resources[sizeof(chars_resources) - 1] = '\0';
+  resources = wuss_get_resources(wuss);
 
   task->wuss        = wuss;
   task->font        = font;
@@ -172,7 +167,7 @@ result_t chars_create(wuss_t        *wuss,
 
   /* the picker: every ".png" font under resources/bmfonts, sorted, less any
    * SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows from) */
-  bmfonts_dir = path_join_filename(chars_resources, 2, "resources", "bmfonts");
+  bmfonts_dir = path_join_filename(resources, 2, "resources", "bmfonts");
   rc = wuss_fontmenu_create(&task->fontmenu, bmfonts_dir, "Font", wuss, NULL);
   if (rc != result_OK)
   {

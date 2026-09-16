@@ -38,7 +38,6 @@ typedef struct palette_task
   wuss_window_t       *window2; /* "Screen" window: the physical screen's
                                   * own palette (1/2/4/8bpp) or a "none"
                                   * label (32bpp has no palette) */
-  const char          *resources;
   bool                 invert;
 
   /* *.hex files found under resources/palettes at create time, leafname
@@ -70,15 +69,13 @@ result_t palette_load_hex(const char *resources,
                           colour_t   *out);
 
 /* create the palette-swatch-grid window against the given wuss instance.
- * `resources` is the resources root (as passed to path_join_filename, i.e.
- * "resources/palettes" holds the *.hex files); it is scanned once here to
- * build the picker menu. The swatch grid always draws wuss's current system
- * palette (wuss_get_palette), so `startup_name` -- its *.hex leafname, no
- * extension -- is used only to tick the matching row in the picker menu; NULL
- * ticks none. if out is non-NULL, the task block is also returned through
- * it. */
+ * wuss_get_resources(wuss)/resources/palettes holds the *.hex files; it is
+ * scanned once here to build the picker menu. The swatch grid always draws
+ * wuss's current system palette (wuss_get_palette), so `startup_name` -- its
+ * *.hex leafname, no extension -- is used only to tick the matching row in
+ * the picker menu; NULL ticks none. if out is non-NULL, the task block is
+ * also returned through it. */
 result_t palette_create(wuss_t          *wuss,
-                        const char      *resources,
                         const char      *startup_name,
                         palette_task_t **out);
 

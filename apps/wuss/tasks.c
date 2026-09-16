@@ -73,7 +73,7 @@ static result_t spawn_ball(void)
 
 static result_t spawn_text(void)
 {
-  return text_create(g.wuss, g.resources, NULL);
+  return text_create(g.wuss, NULL);
 }
 
 static result_t spawn_blank(void)
@@ -83,33 +83,35 @@ static result_t spawn_blank(void)
 
 static result_t spawn_chars(void)
 {
-  return chars_create(g.wuss, g.resources, NULL);
+  return chars_create(g.wuss, NULL);
 }
 
 static result_t spawn_palette(void)
 {
-  return palette_create(g.wuss, g.resources, g.palette_name, NULL);
+  return palette_create(g.wuss, g.palette_name, NULL);
 }
 
 static result_t spawn_image(void)
 {
   result_t    rc;
+  const char *resources;
   const char *leafname;
   const char *filename;
   char        buf[DPTLIB_MAXPATH];
   char        ninepatch[DPTLIB_MAXPATH];
 
-  leafname = path_join_leafname("jessica", "png");
-  filename = path_join_filename(g.resources, 3, "resources", "images", leafname);
+  resources = wuss_get_resources(g.wuss);
+  leafname  = path_join_leafname("jessica", "png");
+  filename  = path_join_filename(resources, 3, "resources", "images", leafname);
   strcpy(buf, filename);
   /* path_join_filename returns a shared static buffer; copy before the next
    * call (image_create's own dirscan join) clobbers it */
-  filename = path_join_filename(g.resources, 3, "resources", "wuss",
+  filename = path_join_filename(resources, 3, "resources", "wuss",
                                 path_join_leafname("ninepatch", "png"));
   strcpy(ninepatch, filename);
 
   logf_info("wuss: image task loading \"%s\" + \"%s\"", buf, ninepatch);
-  rc = image_create(g.wuss, g.resources, buf, ninepatch, NULL);
+  rc = image_create(g.wuss, buf, ninepatch, NULL);
   if (rc != result_OK)
     logf_error("wuss: image_create(\"%s\") failed, rc=0x%X (%s)", buf, rc,
                result_string(rc));
@@ -165,10 +167,10 @@ static result_t spawn_icons(void)
 {
   result_t rc;
 
-  rc = icons_create(g.wuss, g.daydream_font, g.resources, NULL);
+  rc = icons_create(g.wuss, g.daydream_font, NULL);
   if (rc != result_OK)
-    logf_error("wuss: icons_create (resources \"%s\") failed, rc=0x%X (%s)",
-               g.resources, rc, result_string(rc));
+    logf_error("wuss: icons_create failed, rc=0x%X (%s)",
+               rc, result_string(rc));
   return rc;
 }
 
@@ -181,10 +183,10 @@ static result_t spawn_porter_duff(void)
 {
   result_t rc;
 
-  rc = porter_duff_create(g.wuss, g.palette, g.daydream_font, g.resources, NULL);
+  rc = porter_duff_create(g.wuss, g.palette, g.daydream_font, NULL);
   if (rc != result_OK)
-    logf_error("wuss: porter_duff_create (resources \"%s\") failed, "
-               "rc=0x%X (%s)", g.resources, rc, result_string(rc));
+    logf_error("wuss: porter_duff_create failed, rc=0x%X (%s)",
+               rc, result_string(rc));
   return rc;
 }
 

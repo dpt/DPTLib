@@ -30,7 +30,6 @@ extern struct wuss_app_tasks
   int              npalette;
   const char      *palette_name; /* startup *.hex leafname, for ticking the
                                   * picker menu's initial selection */
-  const char      *resources;
   bmfont_t        *daydream_font;
   bmfont_t        *bold_font;
   bool             quit; /* set by the "Quit Wuss" task-menu entry */
