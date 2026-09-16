@@ -127,14 +127,16 @@ static void stack__place_container(const stack_item_t *items,
                                    box_t              *out)
 {
   int            horiz;
-  stack__child_t children[n]; /* upper bound: at most n-1 children */
-  int            nchildren;
-  const box_t   *box;
-  int            inner_main0, inner_main1;
-  int            cross0, cross1;
-  int            avail;
-  int            pos;
-  int            c;
+  stack__child_t children[STACK_MAX_ITEMS]; /* upper bound: at most n-1
+                                              * children, n capped by the
+                                              * caller (stack_solve) */
+  int          nchildren;
+  const box_t *box;
+  int          inner_main0, inner_main1;
+  int          cross0, cross1;
+  int          avail;
+  int          pos;
+  int          c;
 
   horiz = (items[index].kind == stack_KIND_HBOX);
   box   = &out[index];
@@ -228,6 +230,8 @@ result_t stack_solve(const stack_item_t *items,
                      const box_t        *root,
                      box_t              *out)
 {
+  if (n > STACK_MAX_ITEMS)
+    return result_STACK_BAD_TREE;
   if (!stack__valid_tree(items, n))
     return result_STACK_BAD_TREE;
 

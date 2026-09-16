@@ -16,6 +16,11 @@ extern "C"
 
 #define result_STACK_BAD_TREE (result_BASE_STACK + 0)
 
+/** Largest item-array size stack_solve()/stack_smallest() will accept
+ * (they use fixed-size internal scratch arrays, not a VLA, for MSVC
+ * portability). Ample for any hand-written table. */
+#define STACK_MAX_ITEMS 64
+
 /* ----------------------------------------------------------------------- */
 
 /** The kind of a stack item. */
@@ -129,7 +134,7 @@ stack_item_t;
  *                   for `items[i]`, in the same coordinate space as `root`.
  * \return \ref result_OK on success, result_STACK_BAD_TREE if the parent
  *         indices are not a valid parents-before-children forest rooted at
- *         0.
+ *         0, or if `n` exceeds \ref STACK_MAX_ITEMS.
  */
 result_t stack_solve(const stack_item_t *items,
                      int                 n,
@@ -151,7 +156,7 @@ result_t stack_solve(const stack_item_t *items,
  * \param[out] out   Set to the root item's minimum size.
  * \return \ref result_OK on success, result_STACK_BAD_TREE if the parent
  *         indices are not a valid parents-before-children forest rooted at
- *         0.
+ *         0, or if `n` exceeds \ref STACK_MAX_ITEMS.
  */
 result_t stack_smallest(const stack_item_t *items,
                         int                 n,
