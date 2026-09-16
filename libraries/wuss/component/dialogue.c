@@ -159,6 +159,8 @@ int wuss_dialogue_handle_icon(wuss_dialogue_t    *dialogue,
 {
   int i;
 
+  if (dialogue == NULL || event == NULL)
+    return 0;
   if (event->data.icon.action != wuss_MOUSE_UP)
     return 0;
 
