@@ -250,7 +250,7 @@ static void wuss_frame(void *arg)
   }
 
 #ifdef __EMSCRIPTEN__
-  if (g.quit)
+  if (g_tasks.quit)
     emscripten_cancel_main_loop();
 #endif
 }
