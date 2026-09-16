@@ -314,6 +314,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
   screen_t    *scr;
   const box_t *content, *bounds;
   int          size, half, range, flip, energy_shift;
+  int          stars_p, ring_p, e_lo, e_hi;
   int          ox, oy;
   int          i;
   int          x, y, p;
@@ -332,6 +333,15 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
   flip         = size - 1;
   energy_shift = size;
 
+  /* p's range grows linearly with size (p_max = size/2), so the original's
+   * fixed energy-gate constants (17, 16, 32, 80 at size==256) must scale
+   * with size too, or the exclusion disc shrinks relative to half as size
+   * grows and the stars/ring creep into the planet body. */
+  stars_p = 17 * size / SATURN_SIZE_DEFAULT;
+  ring_p  = 16 * size / SATURN_SIZE_DEFAULT;
+  e_lo    = 32 * size / SATURN_SIZE_DEFAULT;
+  e_hi    = 80 * size / SATURN_SIZE_DEFAULT;
+
   /* plot in doc space (saturn_plot clips to 0..size); origin carries the
    * scroll so a scrolled/shrunk window shows the right slice */
   ox = bounds->x0 - event->data.redraw.scroll.x;
@@ -345,7 +355,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
     x = SATURN_SAMPLE(half, range);
     y = SATURN_SAMPLE(half, range);
     p = (x * x + y * y) / energy_shift;
-    if (p > 17)
+    if (p > stars_p)
       saturn_plot(scr, ox, oy, size, x + half, flip - (y + half), task->fg);
   }
 
@@ -361,7 +371,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
     y  = r6;
     p  = (x * x + y * y) / energy_shift;
     e  = ((r6 + r7) * (r6 + r7) + r5 * r5 + r6 * r6) / energy_shift;
-    if (e >= 32 && e < 80 && (r5 < 0 || p > 16))
+    if (e >= e_lo && e < e_hi && (r5 < 0 || p > ring_p))
       saturn_plot(scr, ox, oy, size, x + half, y + half, task->fg);
   }
 
