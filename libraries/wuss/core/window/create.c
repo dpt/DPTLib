@@ -21,8 +21,8 @@ result_t wuss_window_create(wuss_task_t        *task,
 {
   wuss_t        *wuss;
   wuss_window_t *win;
-  int             width, height, outline_px, titlebar_height;
-  point_t         carve;
+  int            width, height, outline_px, titlebar_height;
+  point_t        carve;
 
   assert(task    != NULL);
   assert(content != NULL);

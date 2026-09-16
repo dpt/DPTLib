@@ -23,8 +23,8 @@ bmfont_enumerate_ctx_t;
 static result_t bmfont_enumerate_entry(const char *leaf, void *opaque)
 {
   bmfont_enumerate_ctx_t *ctx;
-  char                     name[256];
-  char                     path[512];
+  char                    name[256];
+  char                    path[512];
 
   ctx = opaque;
 

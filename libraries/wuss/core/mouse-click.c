@@ -8,9 +8,9 @@ result_t wuss_mouse_click(wuss_t             *wuss,
                           wuss_mouse_action_t action,
                           wuss_window_t     **hit)
 {
-  wuss_window_t          *win;
-  wuss_event_t            event;
-  int                     x, y;
+  wuss_window_t *win;
+  wuss_event_t   event;
+  int            x, y;
 
   x = p.x;
   y = p.y;
@@ -287,8 +287,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
 
   if (win->task->handle != NULL)
   {
-    box_t        content;
-    point_t      doc_point;
+    box_t   content;
+    point_t doc_point;
 
     wuss__content_box(win, &content);
     doc_point.x = x - content.x0 + win->scroll.x;

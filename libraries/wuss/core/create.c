@@ -63,15 +63,15 @@ result_t wuss_create(screen_t               *scr,
                      const wuss_alloc_t     *alloc,
                      wuss_t                **wuss)
 {
-  wuss_alloc_t   al;
-  wuss_t        *w;
+  wuss_alloc_t al;
+  wuss_t      *w;
 #ifdef WUSS_FURNITURE
   wuss_furniture_palette_t pal;
-  wuss_colour_t  bg, fg;
+  wuss_colour_t            bg, fg;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
-  wuss_colour_t  blight, bdark, bdivider;
-  wuss_colour_t  btnbg, btnfg, btnpressed, accent;
+  wuss_colour_t blight, bdark, bdivider;
+  wuss_colour_t btnbg, btnfg, btnpressed, accent;
 #endif
 #ifdef WUSS_FURNITURE
   int            font_height;

@@ -111,8 +111,8 @@ result_t dirscan_walk(const char *dir, dirscan_fn *fn, void *opaque)
 
 result_t dirscan_walk(const char *dir, dirscan_fn *fn, void *opaque)
 {
-  result_t       rc;
-  DIR           *dp;
+  result_t rc;
+  DIR     *dp;
   struct dirent *de;
 
   if (dir == NULL || fn == NULL)

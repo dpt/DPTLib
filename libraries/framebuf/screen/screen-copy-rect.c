@@ -56,9 +56,9 @@ static result_t screen_copy_rect_packed(screen_t    *scr,
     {
       int                  sx, sy, dxp, dyp;
       const unsigned char *scrp_s;
-      unsigned char        *scrp_d;
-      int                   shift_s, shift_d;
-      unsigned char         pix;
+      unsigned char       *scrp_d;
+      int                  shift_s, shift_d;
+      unsigned char        pix;
 
       sx  = s->x0 + col; sy  = s->y0 + row;
       dxp = d->x0 + col; dyp = d->y0 + row;

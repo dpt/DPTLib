@@ -10,9 +10,9 @@
 
 void wuss_window_close(wuss_window_t *doomed)
 {
-  wuss_task_t  *task;
-  wuss_event_t  event;
-  wuss_t       *wuss;
+  wuss_task_t *task;
+  wuss_event_t event;
+  wuss_t      *wuss;
 
   if (doomed == NULL)
     return;

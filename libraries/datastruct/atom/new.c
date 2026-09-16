@@ -155,14 +155,14 @@ result_t atom_new(atom_set_t          *s,
                   size_t               sizet_length,
                   atom_t              *patom)
 {
-  result_t      err;
-  atom_t        atom;
-  int           length;
-  locpool_t    *pend;
-  locpool_t    *p;
-  loc_t        *lend;
-  loc_t        *l;
-  unsigned int  i;
+  result_t     err;
+  atom_t       atom;
+  int          length;
+  locpool_t   *pend;
+  locpool_t   *p;
+  loc_t       *lend;
+  loc_t       *l;
+  unsigned int i;
 
   assert(s);
   assert(block);

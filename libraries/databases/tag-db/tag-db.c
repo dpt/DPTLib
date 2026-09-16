@@ -210,7 +210,7 @@ static void destroy_hash_value(void *value)
 
 result_t tagdb_open(const char *filename, tagdb_t **pdb)
 {
-  result_t       err;
+  result_t    err;
   char       *filenamecopy = NULL;
   atom_set_t *tags         = NULL;
   hash_t     *hash         = NULL;
@@ -890,9 +890,9 @@ static int getidbytags_cb(const void *key, const void *value, void *opaque)
 {
   result_t                   err;
   struct enumerate_state *state = opaque;
-  const bitvec_t         *v;
-  bitvec_t               *have;
-  int                     eq;
+  const bitvec_t *v;
+  bitvec_t       *have;
+  int             eq;
 
   /* work out where we are by counting callbacks (ugh) */
   if (state->count++ < state->start)
@@ -927,9 +927,9 @@ result_t tagdb_enumerate_ids_by_tags(tagdb_t           *db,
                                      unsigned char     *buf,
                                      size_t             bufsz)
 {
-  result_t                  err;
-  bitvec_t              *want = NULL;
-  int                    i;
+  result_t  err;
+  bitvec_t *want = NULL;
+  int       i;
   struct enumerate_state state;
 
   assert(db);

@@ -661,9 +661,9 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   if (menu->title != NULL && menu->title[0] != '\0')
   {
     bmfont_t      *titlefont;
-    int             titlelen;
-    int             split;
-    bmfont_width_t  title_w;
+    int            titlelen;
+    int            split;
+    bmfont_width_t title_w;
 
     titlefont = (wuss->fonts.nfonts > 1 && wuss->fonts.fonts[1] != NULL)
               ? wuss->fonts.fonts[1]

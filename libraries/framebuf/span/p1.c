@@ -36,11 +36,11 @@ static void span_p1_blendconst(void       *vdst,
 
   while (length--)
   {
-    colour_t old_colour, new_colour, blended;
+    colour_t            old_colour, new_colour, blended;
     pixelfmt_rgba8888_t oldpx, newpx;
-    int old_r, old_g, old_b;
-    int new_r, new_g, new_b;
-    int blend_r, blend_g, blend_b;
+    int                 old_r, old_g, old_b;
+    int                 new_r, new_g, new_b;
+    int                 blend_r, blend_g, blend_b;
 
     old_colour = palette[*psrc1 & 1];
     oldpx = old_colour.primary;
