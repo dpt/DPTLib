@@ -53,25 +53,22 @@ static void stack__measure(const stack_item_t *items,
       child_cross = items[i].cross_size;
     }
 
-    main_min  = main_min + child_main + (nchildren > 0 ? items[index].gap : 0);
+    main_min += child_main + (nchildren > 0 ? items[index].gap : 0);
     cross_min = MAX(cross_min, child_cross);
     nchildren++;
   }
 
-  if (items[index].axis_size)
-    main_min = MAX(main_min, items[index].axis_size);
-  else
-    main_min = MAX(main_min, items[index].min);
+  main_min = MAX(main_min, items[index].axis_size ? items[index].axis_size : items[index].min);
 
   if (horiz)
   {
-    mins[index].w = main_min + items[index].pad_l + items[index].pad_r;
+    mins[index].w = main_min  + items[index].pad_l + items[index].pad_r;
     mins[index].h = cross_min + items[index].pad_t + items[index].pad_b;
   }
   else
   {
     mins[index].w = cross_min + items[index].pad_l + items[index].pad_r;
-    mins[index].h = main_min + items[index].pad_t + items[index].pad_b;
+    mins[index].h = main_min  + items[index].pad_t + items[index].pad_b;
   }
 }
 
