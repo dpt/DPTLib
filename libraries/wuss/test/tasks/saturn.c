@@ -19,6 +19,7 @@
 #include "geom/stack.h"
 #include "utils/rng.h"
 #include "wuss/component/dialogue.h"
+#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 
 #include "saturn.h"
@@ -77,10 +78,11 @@ static int saturn_rnd(int n)
 /* MENU click over the content pops this. "Colours" leads to a submenu with
  * one row per task->fg/task->bg, each of which pops a wuss_colourmenu (see
  * saturn_create -- the two leaf items' submenu pointers are patched in there,
- * once the colourmenus exist). "Configuration" hover-opens task->size_dialogue, a
- * borrowed window built once in saturn_create and patched into
- * g_saturn_menu_items[SATURN_MENU_SIZE].window there, the same way. */
-enum { SATURN_MENU_COLOURS = 0, SATURN_MENU_SIZE };
+ * once the colourmenus exist). "Configuration" and "Info" hover-open
+ * task->size_dialogue / task->proginfo's window, both borrowed windows built
+ * once in saturn_create and patched into g_saturn_menu_items[...].window
+ * there, the same way. */
+enum { SATURN_MENU_INFO = 0, SATURN_MENU_COLOURS, SATURN_MENU_SIZE };
 enum { SATURN_COLOURS_MENU_FOREGROUND = 0, SATURN_COLOURS_MENU_BACKGROUND };
 
 /* the size dialogue's icons, in creation order (see saturn_conf_dialogue_create):
@@ -148,6 +150,7 @@ static wuss_menu_t g_saturn_colours_menu =
 
 static wuss_menu_item_t g_saturn_menu_items[] =
 {
+  { "Info", wuss_MENU_ITEM_BORROWED_SUBMENU, NULL, NULL, 0 },
   { "Colours", wuss_MENU_ITEM_NONE, &g_saturn_colours_menu, NULL, 0 },
   { "Configuration", wuss_MENU_ITEM_BORROWED_SUBMENU, NULL, NULL, 0 }
 };
@@ -184,6 +187,7 @@ result_t saturn_create(wuss_t                *wuss,
   memset(task->conf.rows, 0, sizeof(task->conf.rows));
   task->conf.cancel      = NULL;
   task->conf.apply       = NULL;
+  task->proginfo         = NULL;
 
   /* saturn_redraw paints its own background */
   delegate_desc.handle    = saturn_handle;
@@ -229,9 +233,26 @@ result_t saturn_create(wuss_t                *wuss,
   rc = saturn_conf_dialogue_create(task);
   if (rc != result_OK)
     goto fail_bg_colourmenu; /* wuss_task_destroy closes task->window too */
-  
+
   g_saturn_menu_items[SATURN_MENU_SIZE].window =
     wuss_dialogue_window(task->conf.dialogue);
+
+  /* The "Info" menu row's standard dialogue. A create failure is non-fatal
+   * -- the task just runs without an Info dialogue (see image.c). */
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Saturn",
+      "Elite loading-screen planet, recreated",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+
+    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
+      task->proginfo = NULL;
+  }
+  g_saturn_menu_items[SATURN_MENU_INFO].window =
+    wuss_proginfo_window(task->proginfo);
 
   return result_OK;
 
@@ -701,6 +722,8 @@ result_t saturn_handle(wuss_window_t      *window,
   case wuss_EVENT_PRE_SHOW:
     if (window == wuss_dialogue_window(task->conf.dialogue))
       return wuss_dialogue_handle_pre_show(task->conf.dialogue);
+    if (window == wuss_proginfo_window(task->proginfo))
+      return wuss_proginfo_handle_pre_show(task->proginfo);
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
@@ -714,6 +737,7 @@ result_t saturn_handle(wuss_window_t      *window,
     wuss_colourmenu_destroy(task->fg_colourmenu);
     wuss_colourmenu_destroy(task->bg_colourmenu);
     wuss_dialogue_destroy(task->conf.dialogue);
+    wuss_proginfo_destroy(task->proginfo);
     free(task); /* task_data was calloc'd per instance by the spawner */
     return result_OK;
 
