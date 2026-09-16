@@ -38,14 +38,14 @@
 
 /* ----------------------------------------------------------------------- */
 
-struct wuss_app_tasks g;
+struct wuss_app_tasks g_tasks;
 
 void tasks_build_screen_palette(colour_t       *out,
                                 int             nout,
                                 const colour_t *ui,
                                 int             nui)
 {
-  int r, g_, b, n;
+  int r, g, b, n;
 
   memset(out, 0, nout * sizeof(*out));
 
@@ -53,9 +53,9 @@ void tasks_build_screen_palette(colour_t       *out,
   memcpy(out, ui, n * sizeof(*out));
 
   for (r = 0; r < 6 && n < nout; r++)
-    for (g_ = 0; g_ < 6 && n < nout; g_++)
+    for (g = 0; g < 6 && n < nout; g++)
       for (b = 0; b < 6 && n < nout; b++)
-        out[n++] = colour_rgb(r * 0x33, g_ * 0x33, b * 0x33);
+        out[n++] = colour_rgb(r * 0x33, g * 0x33, b * 0x33);
 }
 
 /* Every demo task's X_create now shares one shape: (wuss_t *, X_task_t **).
@@ -71,7 +71,7 @@ static result_t spawn_task(const char *name, task_create_fn_t create)
 {
   result_t rc;
 
-  rc = create(g.wuss, NULL);
+  rc = create(g_tasks.wuss, NULL);
   if (rc != result_OK)
     logf_error("wuss: %s_create failed, rc=0x%X (%s)", name, rc,
                result_string(rc));
@@ -142,7 +142,7 @@ static const wuss_menu_t g_launch_menu =
 
 static result_t spawn_quit(void)
 {
-  g.quit = true;
+  g_tasks.quit = true;
   return result_OK;
 }
 
@@ -203,21 +203,21 @@ result_t task_handle_event(wuss_window_t      *window,
     colour_t        scr_palette[256];
     int             scr_nentries;
 
-    palette      = wuss_get_palette(g.wuss, &npalette);
-    scr_nentries = pixelfmt_paletted_nentries(g.bm->format);
+    palette      = wuss_get_palette(g_tasks.wuss, &npalette);
+    scr_nentries = pixelfmt_paletted_nentries(g_tasks.bm->format);
     if (scr_nentries > 0)
     {
       tasks_build_screen_palette(scr_palette, scr_nentries, palette, npalette);
-      bitmap_set_palette(g.bm, scr_palette);
+      bitmap_set_palette(g_tasks.bm, scr_palette);
     }
-    wuss_frontend_set_palette(g.frontend, palette, npalette);
+    wuss_frontend_set_palette(g_tasks.frontend, palette, npalette);
     return result_OK;
   }
 
   if (event->kind == wuss_EVENT_PRE_SHOW)
   {
-    if (window == wuss_proginfo_window(g.proginfo))
-      return wuss_proginfo_handle_pre_show(g.proginfo);
+    if (window == wuss_proginfo_window(g_tasks.proginfo))
+      return wuss_proginfo_handle_pre_show(g_tasks.proginfo);
     return result_OK;
   }
 
@@ -247,7 +247,7 @@ result_t task_handle_event(wuss_window_t      *window,
 
 result_t tasks_open_launcher(point_t pos)
 {
-  g_task_items[TASK_ITEM_INFO].window = wuss_proginfo_window(g.proginfo);
+  g_task_items[TASK_ITEM_INFO].window = wuss_proginfo_window(g_tasks.proginfo);
 
-  return wuss_menu_open(g.menu_task, &g_task_menu, pos, NULL);
+  return wuss_menu_open(g_tasks.menu_task, &g_task_menu, pos, NULL);
 }
