@@ -36,6 +36,7 @@
 #include "tasks.h"
 
 #include "tasks/palette.h" /* palette_load_hex for the startup *.hex */
+#include "tasks/saturn.h"  /* saturn_create at startup */
 
 /* ----------------------------------------------------------------------- */
 
@@ -153,7 +154,7 @@ static void wuss_frame(void *arg)
     switch (ev.kind)
     {
     case wuss_INPUT_QUIT:
-      g.quit = true;
+      g_tasks.quit = true;
       break;
 
     case wuss_INPUT_REDRAW_ALL:
@@ -384,9 +385,9 @@ static result_t run_wuss(const char *resources,
       goto Failure;
   }
 
-  g.wuss           = wuss;
-  g.frontend       = frontend;
-  g.bm             = &bm;
+  g_tasks.wuss           = wuss;
+  g_tasks.frontend       = frontend;
+  g_tasks.bm             = &bm;
 
   {
     wuss_task_desc_t desc;
@@ -394,7 +395,7 @@ static result_t run_wuss(const char *resources,
     desc.handle    = task_handle_event;
     desc.task_data = NULL;
     desc.name      = "menu";
-    rc = wuss_task_create(wuss, &desc, &g.menu_task);
+    rc = wuss_task_create(wuss, &desc, &g_tasks.menu_task);
     logf_info("wuss: wuss_task_create(menu) -> rc=0x%X (%s)", rc,
               result_string(rc));
     if (rc != result_OK)
@@ -413,11 +414,16 @@ static result_t run_wuss(const char *resources,
       "1.0 (" __DATE__ ")"
     };
 
-    if (wuss_proginfo_create(&g.proginfo, g.menu_task, &desc) != result_OK)
-      g.proginfo = NULL;
+    if (wuss_proginfo_create(&g_tasks.proginfo, g_tasks.menu_task, &desc) != result_OK)
+      g_tasks.proginfo = NULL;
   }
 
-  g.quit = false;
+  g_tasks.quit = false;
+
+  rc = saturn_create(wuss, NULL);
+  logf_info("wuss: saturn_create -> rc=0x%X (%s)", rc, result_string(rc));
+  if (rc != result_OK)
+    goto Failure;
 
   wuss_redraw(wuss);
 
@@ -441,7 +447,7 @@ static result_t run_wuss(const char *resources,
      * for requestAnimationFrame pacing. */
     emscripten_set_main_loop_arg(wuss_frame, &ctx, 0, 1);
 #else
-    while (!g.quit)
+    while (!g_tasks.quit)
       wuss_frame(&ctx);
 #endif
   }
@@ -450,7 +456,7 @@ static result_t run_wuss(const char *resources,
    * frees every registered task node, but not the per-instance task_data
    * block a spawn_* calloc'd, so any task window left open at quit leaks that
    * block. Harmless at process exit. */
-  wuss_proginfo_destroy(g.proginfo); /* closes its dialogue window */
+  wuss_proginfo_destroy(g_tasks.proginfo); /* closes its dialogue window */
   wuss_destroy(wuss); /* also sweeps g.menu_task and closes any open chain */
 
   for (i = 0; i < nfonts; i++)

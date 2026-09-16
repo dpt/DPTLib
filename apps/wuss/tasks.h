@@ -30,7 +30,7 @@ extern struct wuss_app_tasks
                               * task_handle_event */
   bitmap_t        *bm;       /* framebuffer bitmap, likewise */
 }
-g;
+g_tasks;
 
 /* the menu-task event handler: dispatches every wuss_EVENT_MENU_SELECT and
  * relays wuss_EVENT_PALETTE to the frontend. Passed as wuss_task_desc.handle
