@@ -578,6 +578,13 @@ _Unreleased_ until one is cut.
   avoiding a shadow of the `g`/`b` loop locals in
   `tasks_build_screen_palette`; the saturn task now spawns at startup
   instead of only via the launcher.
+- `wuss__clip_to_visible()` and `wuss__subtract_boxes()`'s near-identical
+  ping-pong carve loops are factored into a shared `carve_by_cuts()` driven
+  by a `get_cut` callback, with z-order and plain-array adapters for the two
+  call sites.
+- `wuss_window_move()` and `wuss_window_resize()`'s duplicated "filter clean
+  pieces against `wuss->dirty[]`" loops are factored into a shared
+  `wuss__filter_settled()`.
 
 ### Fixed
 
@@ -883,3 +890,27 @@ _Unreleased_ until one is cut.
   `size/SATURN_SIZE_DEFAULT`.
 - `DPT-Digits-Bold` and `MS Sans Serif` bmfonts had an oversized space glyph
   width; reduced.
+- `wuss__slider_row_snap()`'s `CLAMP(v, min, max)` assumed `min <= max`, so a
+  reversed (fill-backwards) slider's `CLAMP` always returned `max` regardless
+  of drag position; clamps against `MIN(min,max)`/`MAX(min,max)` instead.
+- `wuss_colourmenu_create()` handed out `wuss_colour_t` swatches up to
+  `wuss->npalette` with no upper bound, so a palette with more than 128
+  entries produced swatches aliasing the symbolic/chrome-role colour
+  namespace; capped at `wuss_COLOUR_SYMBOLIC`.
+- A disabled menu row's `wuss_MOUSE_MOVE` handling was skipped entirely, so
+  hovering off an open submenu onto a disabled sibling never ran the
+  close-on-move-away logic, leaving the stale submenu open; the disabled
+  check now only suppresses opening a submenu, not the move-away close.
+- `wuss_dialogue_handle_icon()` lacked the `NULL`/action-kind guard every
+  other component's icon handler has, risking a crash for a task
+  multiplexing `ICON` dispatch across an optionally-created dialogue.
+- `wuss__order_pieces()` built its full overlap graph even for a single
+  piece, which by construction cannot clobber itself; added an `n <= 1` fast
+  path, the common case on every plain move/resize/scroll blit.
+- `scroll_sausage()`'s `CLAMP(sausage_px, WUSS_MIN_SAUSAGE, track_px)`
+  silently dropped below `WUSS_MIN_SAUSAGE` whenever the well was shorter
+  than the minimum sausage; the upper bound is now clamped against
+  `WUSS_MIN_SAUSAGE` too so the floor always wins.
+- `wuss_proginfo_set_desc()` dereferenced a borrowed `desc` with no `NULL`
+  check; guarded, matching the idiom used elsewhere in the component
+  helpers.
