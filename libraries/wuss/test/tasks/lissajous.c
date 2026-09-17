@@ -15,6 +15,12 @@
 
 #include "lissajous.h"
 
+/* MENU click pops this single-item menu; the item table and wuss_menu_t
+ * live per-instance in lissajous_task_t, not as a file-scope static, so that
+ * each window's Info row points at its own proginfo rather than every
+ * instance sharing (and overwriting) one global .window pointer */
+enum { LISSAJOUS_MENU_INFO };
+
 /* frequency pairs cycled by a Select click */
 static const int lissajous_freqs[][2] =
 {
@@ -32,6 +38,7 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
   if (task == NULL)
     return result_OOM;
 
+  task->wuss       = wuss;
   task->bg         = colour_rgb(0x00, 0x00, 0x00);
   task->fg         = colour_rgb(0x00, 0xFF, 0x00);
   task->freq_index = 0;
@@ -51,6 +58,7 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
     return rc;
   }
   wuss_task_set_autoclose(delegate, 1);
+  task->delegate = delegate;
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(220, 220),
@@ -66,6 +74,24 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
     return rc;
   }
 
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Lissajous",
+      "Lissajous figure drifting through frequency pairs",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
+      task->proginfo = NULL;
+  }
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, LISSAJOUS_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        wuss_proginfo_window(task->proginfo));
+
+  WUSS_MENU_TITLE(task->menu, "Lissajous", task->menu_items,
+                 NELEMS(task->menu_items));
+
   if (out)
     *out = task;
 
@@ -74,6 +100,9 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
 
 void lissajous_destroy(lissajous_task_t *task)
 {
+  if (task->menu_handle != NULL)
+    wuss_menu_close(task->menu_handle);
+  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -132,6 +161,10 @@ static result_t lissajous_mouse(wuss_window_t      *window,
   if (action != wuss_MOUSE_DOWN)
     return result_OK;
 
+  if (button & wuss_BUTTON_MENU)
+    return wuss_menu_open(lc->delegate, &lc->menu,
+                          wuss_get_pointer(lc->wuss), &lc->menu_handle);
+
   if (button & wuss_BUTTON_SELECT)
   {
     lc->freq_index = (lc->freq_index + 1) % (int) NELEMS(lissajous_freqs);
@@ -152,6 +185,13 @@ static result_t lissajous_idle(void *task_data)
   lissajous_task_t *lc;
 
   lc = task_data;
+
+  /* the proginfo dialogue is a second window on this same (autoclose)
+   * delegate, so closing the main window alone never empties task->windows
+   * and the task lingers until the dialogue closes too -- guard against the
+   * dangling window in the meantime */
+  if (lc->window == NULL)
+    return result_OK;
 
   lc->phase += lc->drift;
   if (lc->phase > 2.0 * M_PI)
@@ -183,6 +223,31 @@ result_t lissajous_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     return lissajous_idle(task_data);
+
+  case wuss_EVENT_MENU_CLOSED:
+    lc->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_CLOSE:
+    if (window == lc->window)
+      lc->window = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == wuss_proginfo_window(lc->proginfo))
+      rc = wuss_proginfo_handle_pre_show(lc->proginfo);
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_QUIT:
     lissajous_destroy(lc);

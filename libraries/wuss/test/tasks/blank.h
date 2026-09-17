@@ -5,8 +5,10 @@
 
 #ifdef WUSS_APP
 
-#include "wuss/window.h"
+#include "wuss/component/proginfo.h"
+#include "wuss/menu.h"
 #include "wuss/task.h"
+#include "wuss/window.h"
 #include "wuss/wuss.h"
 
 /* window C's task: no redraw callback at all, relying entirely on wuss's
@@ -14,10 +16,18 @@
  * palette index so the fill colour cycles over time */
 typedef struct blank_task
 {
-  wuss_window_t *window;
-  int            npalette;
-  int            index;
-  int            frame_count;
+  wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
+  wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_window_t      *window;
+  wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
+  wuss_proginfo_t    *proginfo;
+  wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
+                                       * leak one instance's proginfo window
+                                       * pointer into another's menu */
+  wuss_menu_t         menu;
+  int                 npalette;
+  int                 index;
+  int                 frame_count;
 }
 blank_task_t;
 

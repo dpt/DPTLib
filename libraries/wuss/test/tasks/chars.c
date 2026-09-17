@@ -26,6 +26,12 @@
 #define CHARS_ROWS 16
 #define CHARS_PAD  1
 
+/* MENU click pops this menu; the item table and wuss_menu_t live
+ * per-instance in chars_task_t, not as a file-scope static, so that each
+ * window's Info row points at its own proginfo rather than every instance
+ * sharing (and overwriting) one global .window pointer */
+enum { CHARS_MENU_INFO = 0, CHARS_MENU_FONT };
+
 /* ----------------------------------------------------------------------- */
 
 /* the rows of the CHARS_COLS x CHARS_ROWS grid that hold at least one glyph
@@ -125,12 +131,27 @@ static result_t chars_set_font(chars_task_t *task, int idx, const char *name)
 
 static result_t chars_open_menu(chars_task_t *task)
 {
-  /* the current font's row is ticked; task->current is -1 for the wuss
-   * system font, which ticks nothing */
-  wuss_fontmenu_set_ticked(task->fontmenu, task->current);
-  return wuss_menu_open(task->delegate,
-                        wuss_fontmenu_menu(task->fontmenu),
+  return wuss_menu_open(task->delegate, &task->menu,
                         wuss_get_pointer(task->wuss), &task->menu_handle);
+}
+
+/* "Font"'s hover: ticks the current font's row before handing the fontmenu
+ * back as the submenu to open (task->current is -1 for the wuss system
+ * font, which ticks nothing). "Info" has no retargeting to do. */
+static result_t chars_pre_submenu_open(chars_task_t       *task,
+                                       const wuss_event_t *event)
+{
+  wuss_menu_handle_t handle;
+  int                index;
+
+  handle = event->data.pre_submenu_open.handle;
+  index  = event->data.pre_submenu_open.index;
+
+  if (index == CHARS_MENU_FONT)
+    wuss_fontmenu_set_ticked(task->fontmenu, task->current);
+
+  return wuss_menu_open_submenu_now(handle, index,
+                                    task->menu_items[index].submenu);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -164,6 +185,7 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   task->fg          = colour_rgb(0x00, 0x00, 0x00);
   task->mg          = colour_rgb(0xBB, 0xBB, 0xBB);
   task->bg          = colour_rgb(0xFF, 0xFF, 0xFF);
+  task->proginfo    = NULL;
 
   /* the picker: every ".png" font under resources/bmfonts, sorted, less any
    * SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows from) */
@@ -216,6 +238,33 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
     return rc;
   }
 
+  WUSS_MENU_ITEM(task->menu_items, CHARS_MENU_INFO, "Info",
+                wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, CHARS_MENU_FONT, "Font",
+                      wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                      wuss_fontmenu_menu(task->fontmenu));
+
+  WUSS_MENU_TITLE(task->menu, "Chars", task->menu_items,
+                 NELEMS(task->menu_items));
+
+  /* The "Info" menu row's standard dialogue. A create failure is non-fatal
+   * -- the task just runs without an Info dialogue (see image.c). */
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Chars",
+      "Bitmap font glyph grid",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+
+    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
+      task->proginfo = NULL;
+  }
+  task->menu_items[CHARS_MENU_INFO].window =
+    wuss_proginfo_window(task->proginfo);
+
   if (out)
     *out = task;
 
@@ -226,11 +275,18 @@ void chars_destroy(chars_task_t *task)
 {
   int i;
 
+  if (task->menu_handle != NULL)
+  {
+    wuss_menu_close(task->menu_handle);
+    task->menu_handle = NULL;
+  }
+
   for (i = 0; i < task->nfonts; i++)
     if (task->fonts[i] != NULL)
       bmfont_destroy(task->fonts[i]);
   free(task->fonts);
   wuss_fontmenu_destroy(task->fontmenu);
+  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -334,8 +390,6 @@ result_t chars_handle(wuss_window_t      *window,
 {
   chars_task_t *cc = task_data;
 
-  NOT_USED(window);
-
   switch (event->kind)
   {
   case wuss_EVENT_QUIT:
@@ -377,6 +431,27 @@ result_t chars_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_CLOSED:
     cc->menu_handle = NULL; /* wuss closed the chain under us */
     return result_OK;
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    return chars_pre_submenu_open(cc, event);
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == wuss_proginfo_window(cc->proginfo))
+    {
+      rc = wuss_proginfo_handle_pre_show(cc->proginfo);
+      if (rc != result_OK)
+        return rc;
+    }
+
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_REDRAW:
     return chars_redraw(event, task_data);

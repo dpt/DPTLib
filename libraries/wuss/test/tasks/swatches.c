@@ -30,6 +30,12 @@
 
 #define SWATCHES_PAPER_RGB 0xFF, 0xFF, 0xFF
 
+/* MENU click pops this menu; the item table and wuss_menu_t live
+ * per-instance in swatches_task_t, not as a file-scope static, so that each
+ * window's Info row points at its own proginfo rather than every instance
+ * sharing (and overwriting) one global .window pointer */
+enum { SWATCHES_MENU_INFO = 0, SWATCHES_MENU_COLOUR };
+
 /* Redraw: plot one PATTERN swatch per (pattern, colour) pair -- row =
  * pattern, column = palette index used as the pattern's ink over task->paper
  * (white until a colour is picked from the pop-up menu). No icons are
@@ -81,11 +87,13 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t **out)
   if (task == NULL)
     return result_OOM;
 
-  task->wuss       = wuss;
-  task->window     = NULL;
-  task->task       = NULL;
-  task->colourmenu = NULL;
-  task->paper      = wuss_nearest_colour(wuss, SWATCHES_PAPER_RGB);
+  task->wuss        = wuss;
+  task->window      = NULL;
+  task->task        = NULL;
+  task->colourmenu  = NULL;
+  task->proginfo    = NULL;
+  task->menu_handle = NULL;
+  task->paper       = wuss_nearest_colour(wuss, SWATCHES_PAPER_RGB);
 
   delegate_desc.handle    = swatches_handle;
   delegate_desc.task_data = task;
@@ -124,6 +132,33 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t **out)
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
 
+  WUSS_MENU_ITEM(task->menu_items, SWATCHES_MENU_INFO, "Info",
+                wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, SWATCHES_MENU_COLOUR, "Colour",
+                      wuss_MENU_ITEM_BORROWED_SUBMENU,
+                      wuss_colourmenu_menu(task->colourmenu));
+
+  WUSS_MENU_TITLE(task->menu, "Swatches", task->menu_items,
+                 NELEMS(task->menu_items));
+
+  /* The "Info" menu row's standard dialogue. A create failure is non-fatal
+   * -- the task just runs without an Info dialogue (see image.c). */
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Swatches",
+      "Fill-pattern swatch grid",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+
+    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
+      task->proginfo = NULL;
+  }
+  task->menu_items[SWATCHES_MENU_INFO].window =
+    wuss_proginfo_window(task->proginfo);
+
   if (out)
     *out = task;
 
@@ -132,7 +167,14 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t **out)
 
 void swatches_destroy(swatches_task_t *task)
 {
+  if (task->menu_handle != NULL)
+  {
+    wuss_menu_close(task->menu_handle);
+    task->menu_handle = NULL;
+  }
+
   wuss_colourmenu_destroy(task->colourmenu);
+  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -152,9 +194,8 @@ static result_t swatches_click(swatches_task_t    *task,
     return result_OK;
 
   if (event->data.mouse.button & wuss_BUTTON_MENU)
-    return wuss_menu_open(task->task,
-                          wuss_colourmenu_menu(task->colourmenu),
-                          wuss_get_pointer(task->wuss), NULL);
+    return wuss_menu_open(task->task, &task->menu,
+                          wuss_get_pointer(task->wuss), &task->menu_handle);
 
   if (!(event->data.mouse.button & wuss_BUTTON_SELECT))
     return result_OK;
@@ -199,8 +240,6 @@ result_t swatches_handle(wuss_window_t      *window,
 {
   swatches_task_t *task = task_data;
 
-  NOT_USED(window);
-
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
@@ -211,6 +250,28 @@ result_t swatches_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     return swatches_menu_select(task, event);
+
+  case wuss_EVENT_MENU_CLOSED:
+    task->menu_handle = NULL; /* wuss closed the chain under us */
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == wuss_proginfo_window(task->proginfo))
+    {
+      rc = wuss_proginfo_handle_pre_show(task->proginfo);
+      if (rc != result_OK)
+        return rc;
+    }
+
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_QUIT:
     swatches_destroy(task);

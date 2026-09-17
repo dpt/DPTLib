@@ -8,6 +8,7 @@
 #include <stdbool.h>
 
 #include "framebuf/colour.h"
+#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -50,11 +51,12 @@ typedef struct palette_task
   /* the picker menu: per-instance (not static const) because its ticks
    * track selected/invert and it must outlive the open chain, so a stack
    * copy built fresh on each open would not do */
-  wuss_menu_item_t     menu_items[PALETTE_MAX_FILES + 1];
+  wuss_menu_item_t     menu_items[PALETTE_MAX_FILES + 2]; /* + Invert + Info */
   wuss_menu_t          menu;
   wuss_menu_handle_t   menu_handle; /* for wuss_menu_tick_item_live on an
                                      * ADJUST pick, which keeps the chain
                                      * open */
+  wuss_proginfo_t     *proginfo;
 }
 palette_task_t;
 

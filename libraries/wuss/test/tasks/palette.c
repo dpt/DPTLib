@@ -30,6 +30,9 @@
  * file and the dashed rule above it */
 #define PALETTE_MENU_INVERT_INDEX(pc) ((pc)->nnames)
 
+/* index of the "Info" row, after Invert */
+#define PALETTE_MENU_INFO_INDEX(pc) ((pc)->nnames + 1)
+
 /* ----------------------------------------------------------------------- */
 /* Parse a *.hex file: one "rrggbb" line per colour, no leading '#'. Fails
  * (leaving *out untouched) unless exactly PALETTE_NCOLOURS well-formed lines
@@ -121,17 +124,15 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   /* built once; ticks are refreshed from task->selected/invert on each open */
   for (i = 0; i < task->nnames; i++)
   {
-    task->menu_items[i].text    = task->names[i];
-    task->menu_items[i].submenu = NULL;
-    task->menu_items[i].window  = NULL;
+    WUSS_MENU_ITEM(task->menu_items, i, task->names[i],
+                  wuss_MENU_ITEM_NONE);
   }
-  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].text    = "Invert";
-  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].submenu = NULL;
-  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].window  = NULL;
-  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].flags   = wuss_MENU_ITEM_DASHED;
-  task->menu.title  = "Palette";
-  task->menu.items  = task->menu_items;
-  task->menu.nitems = task->nnames + 1;
+  WUSS_MENU_ITEM(task->menu_items, PALETTE_MENU_INVERT_INDEX(task),
+                "Invert", wuss_MENU_ITEM_DASHED);
+  WUSS_MENU_ITEM(task->menu_items, PALETTE_MENU_INFO_INDEX(task), "Info",
+                wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
+  WUSS_MENU_TITLE(task->menu, "Palette", task->menu_items,
+                 task->nnames + 2);
 
   /* backdrop for any rounding gap around the grid */
   delegate_desc.handle    = palette_handle;
@@ -176,6 +177,21 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(task->delegate, 1);
 
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Palette",
+      "Desktop and screen palette swatch grid",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+    if (wuss_proginfo_create(&task->proginfo, task->delegate, &desc) !=
+        result_OK)
+      task->proginfo = NULL;
+  }
+  task->menu_items[PALETTE_MENU_INFO_INDEX(task)].window =
+    wuss_proginfo_window(task->proginfo);
+
   if (out)
     *out = task;
 
@@ -184,6 +200,9 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
 
 void palette_destroy(palette_task_t *task)
 {
+  if (task->menu_handle != NULL)
+    wuss_menu_close(task->menu_handle);
+  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -411,6 +430,22 @@ result_t palette_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_CLOSED:
     pc->menu_handle = NULL; /* wuss closed the chain under us */
     return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == wuss_proginfo_window(pc->proginfo))
+      rc = wuss_proginfo_handle_pre_show(pc->proginfo);
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_CLOSE:
     if (window == pc->window2)

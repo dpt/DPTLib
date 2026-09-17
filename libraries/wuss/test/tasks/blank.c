@@ -17,6 +17,12 @@
 
 #define BLANK_CYCLE_FRAMES 30 /* colour advances every half-second at 60fps */
 
+/* MENU click pops this single-item menu; the item table and wuss_menu_t
+ * live per-instance in blank_task_t, not as a file-scope static, so that
+ * each window's Info row points at its own proginfo rather than every
+ * instance sharing (and overwriting) one global .window pointer */
+enum { BLANK_MENU_INFO };
+
 result_t blank_create(wuss_t *wuss, blank_task_t **out)
 {
   result_t         rc;
@@ -28,6 +34,7 @@ result_t blank_create(wuss_t *wuss, blank_task_t **out)
   if (task == NULL)
     return result_OOM;
 
+  task->wuss        = wuss;
   task->npalette    = 16; // TODO: Read max palette index from wuss
   task->index       = 0;
   task->frame_count = 0;
@@ -43,6 +50,7 @@ result_t blank_create(wuss_t *wuss, blank_task_t **out)
     return rc;
   }
   wuss_task_set_autoclose(delegate, 1);
+  task->delegate = delegate;
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(200, 160),
@@ -59,6 +67,24 @@ result_t blank_create(wuss_t *wuss, blank_task_t **out)
     return rc;
   }
 
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Blank",
+      "Colour-cycling backdrop, no redraw callback",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
+      task->proginfo = NULL;
+  }
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, BLANK_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        wuss_proginfo_window(task->proginfo));
+
+  WUSS_MENU_TITLE(task->menu, "Blank", task->menu_items,
+                 NELEMS(task->menu_items));
+
   if (out)
     *out = task;
 
@@ -67,6 +93,9 @@ result_t blank_create(wuss_t *wuss, blank_task_t **out)
 
 void blank_destroy(blank_task_t *task)
 {
+  if (task->menu_handle != NULL)
+    wuss_menu_close(task->menu_handle);
+  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -76,6 +105,13 @@ static result_t blank_idle(void *task_data)
   blank_task_t *bc;
 
   bc = task_data;
+
+  /* the proginfo dialogue is a second window on this same (autoclose)
+   * delegate, so closing the main window alone never empties task->windows
+   * and the task lingers until the dialogue closes too -- guard against the
+   * dangling window in the meantime */
+  if (bc->window == NULL)
+    return result_OK;
 
   if (++bc->frame_count < BLANK_CYCLE_FRAMES)
     return result_OK;
@@ -95,16 +131,54 @@ result_t blank_handle(wuss_window_t      *window,
                       const wuss_event_t *event,
                       void               *task_data)
 {
-  if (event->kind == wuss_EVENT_QUIT)
+  blank_task_t *bc;
+
+  bc = task_data;
+
+  switch (event->kind)
   {
-    blank_destroy(task_data);
+  case wuss_EVENT_IDLE:
+    return blank_idle(task_data);
+
+  case wuss_EVENT_MOUSE:
+    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
+        !(event->data.mouse.button & wuss_BUTTON_MENU))
+      return result_OK;
+    return wuss_menu_open(bc->delegate, &bc->menu,
+                          wuss_get_pointer(bc->wuss), &bc->menu_handle);
+
+  case wuss_EVENT_MENU_CLOSED:
+    bc->menu_handle = NULL;
     return result_OK;
+
+  case wuss_EVENT_CLOSE:
+    if (window == bc->window)
+      bc->window = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == wuss_proginfo_window(bc->proginfo))
+      rc = wuss_proginfo_handle_pre_show(bc->proginfo);
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
   }
 
-  if (event->kind != wuss_EVENT_IDLE)
+  case wuss_EVENT_QUIT:
+    blank_destroy(bc);
     return result_OK;
 
-  return blank_idle(task_data);
+  default:
+    return result_OK;
+  }
 }
 
 #endif /* WUSS_APP */

@@ -50,19 +50,6 @@ static const text_sample_t text_samples[] =
 
 #define TEXT_DEFAULT_SAMPLE (0) /* "Lorem Ipsum" */
 
-static const wuss_menu_item_t text_sample_items[] =
-{
-  { "Lorem Ipsum",          wuss_MENU_ITEM_NONE, NULL },
-  { "Quick Brown Fox",      wuss_MENU_ITEM_NONE, NULL },
-  { "Pangram (Cwm Fjord)",  wuss_MENU_ITEM_NONE, NULL },
-  { "Pangram (Waltz)",      wuss_MENU_ITEM_NONE, NULL }
-};
-
-static const wuss_menu_t text_sample_menu =
-{
-  "Sample", text_sample_items, NELEMS(text_sample_items)
-};
-
 /* one entry per row of the "Spacing" submenu */
 typedef struct text_spacing_preset
 {
@@ -82,21 +69,11 @@ static const text_spacing_preset_t text_spacing_presets[] =
 
 #define TEXT_DEFAULT_SPACING 0 /* "Normal" */
 
-static wuss_menu_item_t text_spacing_items[] =
-{
-  { "Normal",      wuss_MENU_ITEM_TICKED, NULL },
-  { "Letter",      wuss_MENU_ITEM_NONE,   NULL },
-  { "Word",        wuss_MENU_ITEM_NONE,   NULL },
-  { "Letter+Word", wuss_MENU_ITEM_NONE,   NULL }
-};
-
-static wuss_menu_t text_spacing_menu =
-{
-  "Spacing", text_spacing_items, NELEMS(text_spacing_items)
-};
-
 /* index into task->top_items[] of the tickable "No Background" leaf */
 #define TEXT_MENU_NO_BACKGROUND 5
+
+/* index into task->top_items[] of the "Info" leaf */
+#define TEXT_MENU_INFO 6
 
 /* ----------------------------------------------------------------------- */
 
@@ -203,8 +180,8 @@ static result_t text_set_spacing(text_task_t *task, int idx)
   task->spacing.letter_spacing = text_spacing_presets[idx].letter_spacing;
   task->spacing.word_spacing   = text_spacing_presets[idx].word_spacing;
 
-  wuss_menu_tick_exclusive(&text_spacing_menu, idx);
-  wuss_menu_tick_exclusive_live(task->menu_handle, &text_spacing_menu, idx);
+  wuss_menu_tick_exclusive(&task->spacing_menu, idx);
+  wuss_menu_tick_exclusive_live(task->menu_handle, &task->spacing_menu, idx);
   wuss_window_invalidate_visible(task->window);
   return result_OK;
 }
@@ -287,21 +264,61 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
     return rc;
   }
 
+  task->sample_items[0].text    = "Lorem Ipsum";
+  task->sample_items[0].flags   = wuss_MENU_ITEM_NONE;
+  task->sample_items[0].submenu = NULL;
+  task->sample_items[0].window  = NULL;
+  task->sample_items[1].text    = "Quick Brown Fox";
+  task->sample_items[1].flags   = wuss_MENU_ITEM_NONE;
+  task->sample_items[1].submenu = NULL;
+  task->sample_items[1].window  = NULL;
+  task->sample_items[2].text    = "Pangram (Cwm Fjord)";
+  task->sample_items[2].flags   = wuss_MENU_ITEM_NONE;
+  task->sample_items[2].submenu = NULL;
+  task->sample_items[2].window  = NULL;
+  task->sample_items[3].text    = "Pangram (Waltz)";
+  task->sample_items[3].flags   = wuss_MENU_ITEM_NONE;
+  task->sample_items[3].submenu = NULL;
+  task->sample_items[3].window  = NULL;
+
+  WUSS_MENU_TITLE(task->sample_menu, "Sample", task->sample_items,
+                 NELEMS(task->sample_items));
+
+  task->spacing_items[0].text    = "Normal";
+  task->spacing_items[0].flags   = wuss_MENU_ITEM_TICKED;
+  task->spacing_items[0].submenu = NULL;
+  task->spacing_items[0].window  = NULL;
+  task->spacing_items[1].text    = "Letter";
+  task->spacing_items[1].flags   = wuss_MENU_ITEM_NONE;
+  task->spacing_items[1].submenu = NULL;
+  task->spacing_items[1].window  = NULL;
+  task->spacing_items[2].text    = "Word";
+  task->spacing_items[2].flags   = wuss_MENU_ITEM_NONE;
+  task->spacing_items[2].submenu = NULL;
+  task->spacing_items[2].window  = NULL;
+  task->spacing_items[3].text    = "Letter+Word";
+  task->spacing_items[3].flags   = wuss_MENU_ITEM_NONE;
+  task->spacing_items[3].submenu = NULL;
+  task->spacing_items[3].window  = NULL;
+
+  WUSS_MENU_TITLE(task->spacing_menu, "Spacing", task->spacing_items,
+                 NELEMS(task->spacing_items));
+
   /* top-level menu: "Font" borrows the fontmenu's own live wuss_menu_t (so
-   * ticks and wuss_fontmenu_selected keep working), "Sample" is the static
-   * text_sample_menu declared above, "Foreground"/"Background" each borrow
-   * their colourmenu's live wuss_menu_t the same way */
+   * ticks and wuss_fontmenu_selected keep working), "Sample"/"Spacing" are
+   * the per-instance menus built above, "Foreground"/"Background" each
+   * borrow their colourmenu's live wuss_menu_t the same way */
   task->top_items[0].text    = "Font";
   task->top_items[0].flags   = wuss_MENU_ITEM_NONE;
   task->top_items[0].submenu = menu;
   task->top_items[0].window  = NULL;
   task->top_items[1].text    = "Sample";
   task->top_items[1].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[1].submenu = &text_sample_menu;
+  task->top_items[1].submenu = &task->sample_menu;
   task->top_items[1].window  = NULL;
   task->top_items[2].text    = "Spacing";
   task->top_items[2].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[2].submenu = &text_spacing_menu;
+  task->top_items[2].submenu = &task->spacing_menu;
   task->top_items[2].window  = NULL;
   task->top_items[3].text    = "Foreground";
   task->top_items[3].flags   = wuss_MENU_ITEM_NONE;
@@ -315,10 +332,14 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   task->top_items[5].flags   = wuss_MENU_ITEM_NONE;
   task->top_items[5].submenu = NULL;
   task->top_items[5].window  = NULL;
+  task->top_items[6].text    = "Info";
+  task->top_items[6].flags   =
+    wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN;
+  task->top_items[6].submenu = NULL;
+  task->top_items[6].window  = NULL;
 
-  task->top_menu.title  = "Text";
-  task->top_menu.items  = task->top_items;
-  task->top_menu.nitems = NELEMS(task->top_items);
+  WUSS_MENU_TITLE(task->top_menu, "Text", task->top_items,
+                 NELEMS(task->top_items));
 
   delegate_desc.handle    = text_handle;
   delegate_desc.task_data = task;
@@ -352,6 +373,20 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
     return rc;
   }
 
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Text",
+      "Sample-text layout with font/colour/spacing pickers",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
+      task->proginfo = NULL;
+  }
+  task->top_items[TEXT_MENU_INFO].window =
+    wuss_proginfo_window(task->proginfo);
+
   if (out)
     *out = task;
 
@@ -362,6 +397,9 @@ void text_destroy(text_task_t *task)
 {
   int i;
 
+  if (task->menu_handle != NULL)
+    wuss_menu_close(task->menu_handle);
+
   for (i = 0; i < task->nfonts; i++)
     if (task->fonts[i] != NULL)
       bmfont_destroy(task->fonts[i]);
@@ -369,6 +407,7 @@ void text_destroy(text_task_t *task)
   wuss_fontmenu_destroy(task->fontmenu);
   wuss_colourmenu_destroy(task->fgmenu);
   wuss_colourmenu_destroy(task->bgmenu);
+  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -439,6 +478,13 @@ static result_t text_idle(void *task_data)
 
   tcx = task_data;
 
+  /* the proginfo dialogue is a second window on this same (autoclose)
+   * delegate, so closing the main window alone never empties task->windows
+   * and the task lingers until the dialogue closes too -- guard against the
+   * dangling window in the meantime */
+  if (tcx->window == NULL)
+    return result_OK;
+
   if (!tcx->resizing)
     return result_OK;
 
@@ -463,8 +509,6 @@ result_t text_handle(wuss_window_t      *window,
 
   tcx = task_data;
 
-  NOT_USED(window);
-
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
@@ -488,9 +532,9 @@ result_t text_handle(wuss_window_t      *window,
       name = wuss_fontmenu_selected(tcx->fontmenu, event);
       if (name != NULL)
         return text_set_font(tcx, event->data.menu_select.index, name);
-      if (event->data.menu_select.menu == &text_sample_menu)
+      if (event->data.menu_select.menu == &tcx->sample_menu)
         return text_set_sample(tcx, event->data.menu_select.index);
-      if (event->data.menu_select.menu == &text_spacing_menu)
+      if (event->data.menu_select.menu == &tcx->spacing_menu)
         return text_set_spacing(tcx, event->data.menu_select.index);
       picked = wuss_colourmenu_selected(tcx->fgmenu, event, &mine);
       if (mine)
@@ -503,6 +547,31 @@ result_t text_handle(wuss_window_t      *window,
         return text_toggle_bg(tcx);
     }
     return result_OK;
+
+  case wuss_EVENT_MENU_CLOSED:
+    tcx->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_CLOSE:
+    if (window == tcx->window)
+      tcx->window = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == wuss_proginfo_window(tcx->proginfo))
+      rc = wuss_proginfo_handle_pre_show(tcx->proginfo);
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_QUIT:
     text_destroy(tcx);

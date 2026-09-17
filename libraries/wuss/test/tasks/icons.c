@@ -11,6 +11,7 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "base/utils.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/palettes.h"
 #include "framebuf/pattern.h"
@@ -21,6 +22,12 @@
 #include "io/path.h"
 
 #include "icons.h"
+
+/* MENU click pops this single-item menu; the item table and wuss_menu_t
+ * live per-instance in icons_task_t, not as a file-scope static, so that
+ * each window's Info row points at its own proginfo rather than every
+ * instance sharing (and overwriting) one global .window pointer */
+enum { ICONS_MENU_INFO };
 
 #define ICONS_DOC_W    260
 #define ICONS_DOC_H    1310 /* taller than the window, so scrolling is exercised */
@@ -580,6 +587,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   if (task == NULL)
     return result_OOM;
 
+  task->wuss       = wuss;
   task->font       = wuss_get_font_n(wuss, 0);
   task->label      = colour_rgb(0x00, 0x00, 0x00);
   /* only the ruler-text glyph blend; approximates the wuss_COLOUR_WINDOW /
@@ -627,6 +635,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
     free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
+  task->delegate = delegate;
 
   memset(&lay, 0, sizeof(lay));
   lay.black  = wuss_COLOUR_BLACK;
@@ -685,6 +694,24 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   task->slider_state = made[i_sstate];
   wuss_icon_set_selected(task->window, made[i_ticked], 1); /* "Show grid" starts ticked */
 
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Icons",
+      "Work-area icons covering every icon type",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
+      task->proginfo = NULL;
+  }
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, ICONS_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        wuss_proginfo_window(task->proginfo));
+
+  WUSS_MENU_TITLE(task->menu, "Icons", task->menu_items,
+                 NELEMS(task->menu_items));
+
   /* fully built: from here a last-window close reaps the task and its
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
@@ -701,6 +728,9 @@ failure:
 
 void icons_destroy(icons_task_t *task)
 {
+  if (task->menu_handle != NULL)
+    wuss_menu_close(task->menu_handle);
+  wuss_proginfo_destroy(task->proginfo);
   if (task->has_sprite)
     free(task->sprite.base);
   free(task);
@@ -852,6 +882,34 @@ result_t icons_handle(wuss_window_t      *window,
 
   case wuss_EVENT_ICON:
     return icons_icon(event, task_data);
+
+  case wuss_EVENT_MOUSE:
+    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+      return result_OK;
+    if (event->data.mouse.button & wuss_BUTTON_MENU)
+      return wuss_menu_open(tcx->delegate, &tcx->menu,
+                            wuss_get_pointer(tcx->wuss), &tcx->menu_handle);
+    return result_OK;
+
+  case wuss_EVENT_MENU_CLOSED:
+    tcx->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == wuss_proginfo_window(tcx->proginfo))
+      rc = wuss_proginfo_handle_pre_show(tcx->proginfo);
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_QUIT:
     icons_destroy(tcx);

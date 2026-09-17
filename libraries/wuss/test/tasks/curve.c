@@ -22,6 +22,12 @@
 
 #include "curve.h"
 
+/* MENU click pops this single-item menu; the item table and wuss_menu_t
+ * live per-instance in curve_task_t, not as a file-scope static, so that
+ * each window's Info row points at its own proginfo rather than every
+ * instance sharing (and overwriting) one global .window pointer */
+enum { CURVE_MENU_INFO };
+
 #define CURVE_BLOBSZ           8  /* side length of a control-point marker, matches curve-test.c */
 #define CURVE_SEGMENTS_DEFAULT 32
 #define CURVE_SEGMENTS_MIN     4
@@ -116,6 +122,7 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
     return rc;
   }
   wuss_task_set_autoclose(delegate, 1);
+  task->delegate = delegate;
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(220, 160),
@@ -131,6 +138,24 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
     return rc;
   }
 
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Curve",
+      "Draggable Bezier curve",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
+      task->proginfo = NULL;
+  }
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, CURVE_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        wuss_proginfo_window(task->proginfo));
+
+  WUSS_MENU_TITLE(task->menu, "Curve", task->menu_items,
+                 NELEMS(task->menu_items));
+
   if (out)
     *out = task;
 
@@ -139,6 +164,9 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
 
 void curve_destroy(curve_task_t *task)
 {
+  if (task->menu_handle != NULL)
+    wuss_menu_close(task->menu_handle);
+  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -293,6 +321,9 @@ static result_t curve_mouse(curve_task_t       *task,
   switch (action)
   {
   case wuss_MOUSE_DOWN:
+    if (button & wuss_BUTTON_MENU)
+      return wuss_menu_open(task->delegate, &task->menu,
+                            wuss_get_pointer(task->wuss), &task->menu_handle);
     if (button & wuss_BUTTON_ADJUST)
     {
       /* cycle line -> quad -> cubic -> quartic -> quintic -> line */
@@ -362,6 +393,26 @@ result_t curve_handle(wuss_window_t      *window,
 
   case wuss_EVENT_SCROLL:
     return curve_scroll(task, event->data.scroll.delta, window);
+
+  case wuss_EVENT_MENU_CLOSED:
+    task->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == wuss_proginfo_window(task->proginfo))
+      rc = wuss_proginfo_handle_pre_show(task->proginfo);
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_QUIT:
     curve_destroy(task);

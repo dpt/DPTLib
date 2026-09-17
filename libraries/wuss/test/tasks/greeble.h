@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "utils/rng.h"
+#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -42,6 +43,11 @@ typedef struct greeble_task
   /* cellpal[row][col], the greeble_palettes[] row to draw each cell with;
    * kept in step with grid[][] */
   unsigned char      cellpal[GREEBLE_MAX_ROWS][GREEBLE_MAX_COLS];
+  wuss_proginfo_t   *proginfo; /* this window's "Info" row */
+  wuss_menu_item_t   menu_items[2]; /* per-instance: a shared static would
+                                     * leak one instance's proginfo window
+                                     * pointer into another's menu */
+  wuss_menu_t        menu;
 }
 greeble_task_t;
 

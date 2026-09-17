@@ -18,6 +18,12 @@
 #define CHECKER_BAND_MIN     1
 #define CHECKER_BAND_MAX     32
 
+/* MENU click pops this single-item menu; the item table and wuss_menu_t
+ * live per-instance in checker_task_t, not as a file-scope static, so that
+ * each window's Info row points at its own proginfo rather than every
+ * instance sharing (and overwriting) one global .window pointer */
+enum { CHECKER_MENU_INFO };
+
 result_t checker_create(wuss_t *wuss, checker_task_t **out)
 {
   result_t         rc;
@@ -29,6 +35,7 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
   if (task == NULL)
     return result_OOM;
 
+  task->wuss     = wuss;
   task->black    = colour_rgb(0x00, 0x00, 0x00);
   task->white    = colour_rgb(0xFF, 0xFF, 0xFF);
   task->pattern  = checker_PATTERN_CHECKERBOARD;
@@ -46,6 +53,7 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
     free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
   }
+  task->delegate = delegate;
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(160, 160),
@@ -79,6 +87,24 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
 
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Checker",
+      "Two independent cycling checkerboard patterns",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
+      task->proginfo = NULL;
+  }
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, CHECKER_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        wuss_proginfo_window(task->proginfo));
+
+  WUSS_MENU_TITLE(task->menu, "Checker", task->menu_items,
+                 NELEMS(task->menu_items));
+
   if (out)
     *out = task;
 
@@ -87,6 +113,9 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
 
 void checker_destroy(checker_task_t *task)
 {
+  if (task->menu_handle != NULL)
+    wuss_menu_close(task->menu_handle);
+  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -180,13 +209,37 @@ result_t checker_handle(wuss_window_t      *window,
     return checker_redraw(window, event, task_data);
 
   case wuss_EVENT_MOUSE:
-    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
-        !(event->data.mouse.button & wuss_BUTTON_SELECT))
+    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+      return result_OK;
+    if (event->data.mouse.button & wuss_BUTTON_MENU)
+      return wuss_menu_open(cc->delegate, &cc->menu,
+                            wuss_get_pointer(cc->wuss), &cc->menu_handle);
+    if (!(event->data.mouse.button & wuss_BUTTON_SELECT))
       return result_OK;
     return checker_mouse(window, task_data);
 
   case wuss_EVENT_SCROLL:
     return checker_scroll(window, event->data.scroll.delta, task_data);
+
+  case wuss_EVENT_MENU_CLOSED:
+    cc->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == wuss_proginfo_window(cc->proginfo))
+      rc = wuss_proginfo_handle_pre_show(cc->proginfo);
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_CLOSE:
     if (window == cc->window2)
