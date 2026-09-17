@@ -28,11 +28,15 @@
 
 /* screen_copy_bitmap and screen_copy_ninepatch only understand a deep 32bpp
  * source in R,G,B,A/X byte order (see bitmap_load_png()); bitmap_load_png
- * keeps a palette-type PNG as pixelfmt_p8, so convert one back to rgbx8888
- * here rather than teach every blitter a paletted source. rgbx8888, not
- * bgrx8888: the latter is BGR (SDL display byte order) and would swap red
- * and blue once the blitters re-read it as rgba8888. */
-static result_t load_png_deep(bitmap_t *bm, const char *filename)
+ * keeps a palette-type PNG as pixelfmt_p8, so convert one back to a deep
+ * format here rather than teach every blitter a paletted source. Callers
+ * wanting an untouched load (e.g. to inspect the palette) pass
+ * pixelfmt_unknown to skip conversion. rgbx8888, not bgrx8888: the latter is
+ * BGR (SDL display byte order) and would swap red and blue once the
+ * blitters re-read it as rgba8888. */
+static result_t load_png_deep(bitmap_t   *bm,
+                              const char *filename,
+                              pixelfmt_t  fmt)
 {
   result_t  rc;
   bitmap_t *deep;
@@ -41,10 +45,10 @@ static result_t load_png_deep(bitmap_t *bm, const char *filename)
   if (rc != result_OK)
     return rc;
 
-  if (bm->format != pixelfmt_p8)
+  if (fmt == pixelfmt_unknown || bm->format != pixelfmt_p8)
     return result_OK;
 
-  rc = bitmap_convert(bm, pixelfmt_rgbx8888, &deep);
+  rc = bitmap_convert(bm, fmt, &deep);
   if (rc != result_OK)
   {
     free(bm->base);
@@ -103,7 +107,7 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
 
   path = path_join_filename(resources, 3, "resources", "images",
                             path_join_leafname(task->names[0], "png"));
-  rc = load_png_deep(&task->bitmap, path);
+  rc = load_png_deep(&task->bitmap, path, pixelfmt_rgbx8888);
   if (rc != result_OK)
   {
     free(task); /* nothing registered yet; nobody else owns it */
@@ -112,7 +116,7 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
 
   background_path = path_join_filename(resources, 3, "resources", "wuss",
                                        path_join_leafname("ninepatch", "png"));
-  rc = load_png_deep(&task->ninepatch, background_path);
+  rc = load_png_deep(&task->ninepatch, background_path, pixelfmt_rgbx8888);
   if (rc != result_OK)
   {
     free(task->bitmap.base);
@@ -266,7 +270,7 @@ static result_t image_click(wuss_window_t *window,
                                  leafname);
   strcpy(buf, filename);
 
-  rc = load_png_deep(&next, buf);
+  rc = load_png_deep(&next, buf, pixelfmt_rgbx8888);
   if (rc != result_OK)
   {
     logf_warning("image: skipping \"%s\" (rc=0x%X)", buf, rc);
