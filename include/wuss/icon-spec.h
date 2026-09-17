@@ -197,12 +197,12 @@ void wuss_icon_spec_slider(wuss_icon_spec_t         *spec,
 /**
  * Fill \p spec as a wuss_ICON_TYPE_ACTION button.
  *
+ * Drawn with wuss_COLOUR_BLACK text on a wuss_COLOUR_WINDOW fill.
+ *
  * \param[out] spec    Spec to fill; any prior contents are overwritten.
  * \param[in]  bbox    Bounding box.
  * \param[in]  text    Button text, borrowed until wuss_icon_create(_array)
  *                     copies it.
- * \param[in]  fg      Text colour.
- * \param[in]  bg      Fill colour.
  * \param[in]  is_default Non-zero to draw as the dialogue's default action
  *                        (wuss_ICON_FLAGS_DEFAULT) instead of an ordinary
  *                        button.
@@ -210,8 +210,6 @@ void wuss_icon_spec_slider(wuss_icon_spec_t         *spec,
 void wuss_icon_spec_action(wuss_icon_spec_t *spec,
                            box_t             bbox,
                            const char       *text,
-                           wuss_colour_t     fg,
-                           wuss_colour_t     bg,
                            int               is_default);
 
 #endif /* WUSS_ICONS */
