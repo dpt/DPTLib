@@ -16,8 +16,8 @@
 #include "io/dirscan.h"
 #include "io/path.h"
 
-/* path_join_filename returns a single static buffer, so the per-entry join in
- * the callback would clobber a caller's dir pointer if we held it directly --
+/* pathf returns a single static buffer, so the per-entry join in the
+ * callback would clobber a caller's dir pointer if we held it directly --
  * keep our own copy. Bounded by that buffer's own DPTLIB_MAXPATH. */
 #define ICONS_DIR_MAX 256
 
@@ -102,7 +102,7 @@ static result_t icons_load_entry(const char *leaf, void *opaque)
   if (!path_leaf_strip_ext(leaf, ".png", name, sizeof(name)))
     return result_OK; /* not a ".png", or name too long -- skip */
 
-  path = path_join_filename(st->dir, 1, leaf);
+  path = pathf("%s/%s", st->dir, leaf);
 
   rc = bitmap_load_png(&bm, path);
   if (rc != result_OK)

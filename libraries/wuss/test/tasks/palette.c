@@ -43,19 +43,15 @@ result_t palette_load_hex(const char *resources,
                           const char *name,
                           colour_t   *out)
 {
-  const char *leaf;
   const char *path;
-  char        pathbuf[DPTLIB_MAXPATH];
   FILE       *fp;
   char        line[16];
   int         i;
   unsigned    r, g, b;
 
-  leaf = path_join_leafname(name, "hex");
-  path = path_join_filename(resources, 3, "resources", "palettes", leaf);
-  strcpy(pathbuf, path); /* path_join_filename's buffer is reused by fopen */
+  path = pathf("%s/resources/palettes/%s.hex", resources, name);
 
-  fp = fopen(pathbuf, "r");
+  fp = fopen(path, "r");
   if (fp == NULL)
     return result_FILE_NOT_FOUND;
 
@@ -83,7 +79,6 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   wuss_task_desc_t delegate_desc;
   const char      *resources;
   const char      *dir;
-  char             dirbuf[DPTLIB_MAXPATH];
   const colour_t  *current;
   int              ncurrent;
   int              i;
@@ -98,9 +93,8 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   task->selected  = 0;
 
   resources = wuss_get_resources(wuss);
-  dir       = path_join_filename(resources, 2, "resources", "palettes");
-  strcpy(dirbuf, dir); /* path_join_filename's buffer is reused by the scan */
-  namelist_scan(dirbuf, PALETTE_HEX_EXT, task->names[0],
+  dir       = pathf("%s/resources/palettes", resources);
+  namelist_scan(dir, PALETTE_HEX_EXT, task->names[0],
                 sizeof(task->names[0]), PALETTE_MAX_FILES, 1 /* sorted */,
                 &task->nnames);
 

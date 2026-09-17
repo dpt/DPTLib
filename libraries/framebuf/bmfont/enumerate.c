@@ -14,9 +14,9 @@
 
 typedef struct
 {
-  const char          *dir;
-  bmfont_enumerate_fn *fn;
-  void                *opaque;
+  char                  dir[512]; /* own copy: see bmfont_enumerate */
+  bmfont_enumerate_fn  *fn;
+  void                 *opaque;
 }
 bmfont_enumerate_ctx_t;
 
@@ -31,14 +31,10 @@ static result_t bmfont_enumerate_entry(const char *leaf, void *opaque)
   if (!path_leaf_strip_ext(leaf, BMFONT_EXT, name, sizeof(name)))
     return result_OK;
 
-  /* Built locally rather than via path_join_filename: that returns a single
-   * static buffer, which one call per entry here would repeatedly clobber
-   * from under the caller's own "dir" pointer. */
-#ifdef __riscos
-  snprintf(path, sizeof(path), "%s.%s", ctx->dir, leaf);
-#else
-  snprintf(path, sizeof(path), "%s/%s", ctx->dir, leaf);
-#endif
+  /* Copied out of pathf's shared static buffer immediately: one call per
+   * entry here would otherwise repeatedly clobber it from under the
+   * caller's own "dir" pointer. */
+  snprintf(path, sizeof(path), "%s", pathf("%s/%s", ctx->dir, leaf));
 
   return ctx->fn(name, path, ctx->opaque);
 }
@@ -52,7 +48,9 @@ result_t bmfont_enumerate(const char          *dir,
   if (dir == NULL || fn == NULL)
     return result_NULL_ARG;
 
-  ctx.dir    = dir;
+  /* own copy: dir may point into pathf's shared static buffer, which the
+   * per-entry pathf call below would otherwise clobber mid-walk */
+  snprintf(ctx.dir, sizeof(ctx.dir), "%s", dir);
   ctx.fn     = fn;
   ctx.opaque = opaque;
 

@@ -280,7 +280,6 @@ static result_t run_wuss(const char *resources,
   const int   scr_width  = 640;
   const int   scr_height = 480;
   result_t    rc;
-  const char *leafname;
   const char *filename;
   bmfont_t   *fonts[WUSS_MAIN_NFONTS];
   int         nfonts;
@@ -323,9 +322,7 @@ static result_t run_wuss(const char *resources,
     nfonts = 0;
     for (i = 0; i < WUSS_MAIN_NFONTS; i++)
     {
-      leafname = path_join_leafname(names[i], "png");
-      filename = path_join_filename(resources, 3, "resources", "bmfonts",
-                                    leafname);
+      filename = pathf("%s/resources/bmfonts/%s.png", resources, names[i]);
       logf_info("wuss: loading font \"%s\"", filename);
       rc = bmfont_create(filename, &fonts[i]);
       if (rc != result_OK)
@@ -555,8 +552,8 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
 
 int main(int argc, char *argv[])
 {
-  /* path_join_filename splices the root and each branch with the platform
-   * separator, so the "here" root differs: "." on Unix, but on RISC OS the
+  /* pathf splices the root and each branch with the platform separator, so
+   * the "here" root differs: "." on Unix, but on RISC OS the
    * currently-selected directory is "@" ("." there would give "..resources"). */
 #ifdef __riscos
   const char *default_resources = "@";
