@@ -506,6 +506,10 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
     button = event->data.icon.button;
 
+    if (!(button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+      return result_OK; /* MENU release picks nothing -- core never arms the
+                         * row's press for it, so this UP is unpaired */
+
     if (item->submenu != NULL || item->window != NULL)
       return result_OK; /* a submenu/window row opens on hover, not a pick */
 
