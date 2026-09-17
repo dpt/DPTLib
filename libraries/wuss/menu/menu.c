@@ -124,7 +124,7 @@ static void wuss__menu_close_from(struct wuss__menu *node)
     wuss_t *w;
 
     w = node->wuss;
-    if (node->borrowed)
+    if (node->flags & wuss_MENU__BORROWED)
       wuss_window_set_hidden(node->window, 1); /* caller's window: hide, keep */
     else
       wuss_window_close(node->window);
@@ -198,6 +198,7 @@ static result_t wuss__menu_link_borrowed(struct wuss__menu *self,
   if (node == NULL)
     return result_OOM;
 
+  node->flags         = wuss_MENU__BORROWED;
   node->wuss          = self->wuss;
   node->owner         = self->owner;
   node->window        = win;
@@ -206,7 +207,6 @@ static result_t wuss__menu_link_borrowed(struct wuss__menu *self,
   node->parent        = self;
   node->child         = NULL;
   node->open_index    = -1;
-  node->borrowed      = 1;
   node->pending_index = -1;
   memset(&node->flash, 0, sizeof(node->flash));
 
@@ -355,7 +355,7 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
     wuss = task_data;
 
     for (node = wuss->menu_chain; node != NULL; node = node->child)
-      if (!node->borrowed && node->flash.frames > 0)
+      if (!(node->flags & wuss_MENU__BORROWED) && node->flash.frames > 0)
       {
         wuss__menu_flash_step(node);
         break; /* node may be freed; the chain is gone if the flash ended */
@@ -834,6 +834,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   }
   memset(node->icons, 0, (size_t) menu->nitems * sizeof(*node->icons));
 
+  node->flags      = 0;
   node->wuss       = wuss;
   node->owner      = owner;
   node->window     = NULL;
@@ -841,7 +842,6 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   node->parent     = parent;
   node->child      = NULL;
   node->open_index = -1;
-  node->borrowed   = 0;
   memset(&node->flash, 0, sizeof(node->flash));
 
   /* One MENU_ENTRY icon per item, in item order, preceded by an inert
@@ -1198,7 +1198,8 @@ int wuss__menu_row_pinned(const wuss_t *wuss, const wuss_icon_t *icon)
 
   for (node = wuss->menu_chain; node != NULL; node = node->child)
   {
-    if (node->borrowed || node->child == NULL || node->open_index < 0)
+    if ((node->flags & wuss_MENU__BORROWED) || node->child == NULL ||
+        node->open_index < 0)
       continue;
     if (node->icons[node->open_index] == icon)
       return 1;
