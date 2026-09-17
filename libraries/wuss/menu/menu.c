@@ -539,12 +539,15 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
       row = self->icons[index];
 
-      self->flash.frames    = WUSS_MENU_FLASH_FRAMES;
-      self->flash.index     = index;
-      self->flash.owner     = owner;
-      self->flash.menu      = menu;
-      self->flash.button    = button;
-      self->flash.keep_open = (button & wuss_BUTTON_ADJUST) != 0;
+      self->flash.frames = WUSS_MENU_FLASH_FRAMES;
+      self->flash.index  = index;
+      self->flash.owner  = owner;
+      self->flash.menu   = menu;
+      self->flash.button = button;
+      if (button & wuss_BUTTON_ADJUST)
+        self->flags |= wuss_MENU__FLASH_KEEP_OPEN;
+      else
+        self->flags &= ~wuss_MENU__FLASH_KEEP_OPEN;
 
       /* first blink now: the row is already highlit under the pointer, so
        * drop the highlight this frame for an immediate visible change */
@@ -611,7 +614,7 @@ static void wuss__menu_flash_finish(struct wuss__menu *self)
   const wuss_menu_t *menu      = self->flash.menu;
   int                index     = self->flash.index;
   wuss_button_t      button    = self->flash.button;
-  int                keep_open = self->flash.keep_open;
+  int                keep_open = (self->flags & wuss_MENU__FLASH_KEEP_OPEN) != 0;
   int                on;
 
   self->flash.frames = 0;
