@@ -141,6 +141,9 @@ result_t blank_handle(wuss_window_t      *window,
     return blank_idle(task_data);
 
   case wuss_EVENT_MOUSE:
+    if (window != bc->window)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
     if (event->data.mouse.action != wuss_MOUSE_DOWN ||
         !(event->data.mouse.button & wuss_BUTTON_MENU))
       return result_OK;

@@ -184,7 +184,9 @@ static result_t ball_mouse(wuss_window_t      *window,
 
   bc = task_data;
 
-  NOT_USED(window);
+  if (window != bc->window)
+    return result_OK; /* the proginfo dialogue has no click behaviour of
+                       * its own */
 
   if (action != wuss_MOUSE_DOWN)
     return result_OK;

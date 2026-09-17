@@ -209,6 +209,9 @@ result_t checker_handle(wuss_window_t      *window,
     return checker_redraw(window, event, task_data);
 
   case wuss_EVENT_MOUSE:
+    if (window != cc->window && window != cc->window2)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_MENU)

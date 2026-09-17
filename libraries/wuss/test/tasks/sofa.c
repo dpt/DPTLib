@@ -642,6 +642,9 @@ result_t sofa_handle(wuss_window_t      *window,
     return sofa_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
+    if (window != sc->window)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     return sofa_mouse(window, event->data.mouse.button, task_data);

@@ -336,6 +336,9 @@ result_t greeble_handle(wuss_window_t      *window,
     return greeble_redraw(event, task);
 
   case wuss_EVENT_MOUSE:
+    if (window != task->window)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_MENU)

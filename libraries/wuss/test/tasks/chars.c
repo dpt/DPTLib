@@ -397,6 +397,9 @@ result_t chars_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_MOUSE:
+    if (window != cc->window)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
     if (event->data.mouse.action == wuss_MOUSE_DOWN &&
         (event->data.mouse.button & wuss_BUTTON_MENU))
       return chars_open_menu(cc);

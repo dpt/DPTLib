@@ -246,6 +246,9 @@ result_t swatches_handle(wuss_window_t      *window,
     return swatches_redraw(task, event);
 
   case wuss_EVENT_MOUSE:
+    if (window != task->window)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
     return swatches_click(task, event);
 
   case wuss_EVENT_MENU_SELECT:

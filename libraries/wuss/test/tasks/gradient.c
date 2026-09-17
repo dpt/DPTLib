@@ -258,6 +258,9 @@ result_t gradient_handle(wuss_window_t      *window,
     return gradient_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
+    if (window != gc->window)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
     return gradient_mouse(event, task_data);
 
   case wuss_EVENT_MENU_CLOSED:
