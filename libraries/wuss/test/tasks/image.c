@@ -285,22 +285,9 @@ static result_t image_click(wuss_window_t *window,
   return wuss_window_set_doc(window, sz);
 }
 
-/* Same menu shape built from a descriptor string, to exercise
- * wuss_menu_create_from_desc. The tree must outlive the open chain, so it is
- * kept on the task and rebuilt (previous one freed) on each open. Freed for
- * good in the QUIT handler. */
-static const wuss_menu_item_t image_menu_export_items[] =
-{
-  { "As PNG",  wuss_MENU_ITEM_NONE,     NULL },
-  { "As JPEG", wuss_MENU_ITEM_NONE,     NULL },
-  { "As GIF",  wuss_MENU_ITEM_DISABLED, NULL }
-};
-
-static const wuss_menu_t image_menu_export =
-{
-  "Export", image_menu_export_items, NELEMS(image_menu_export_items)
-};
-
+/* Menu shape built from a descriptor string. The tree must outlive the open
+ * chain, so it is kept on the task and rebuilt (previous one freed) on each
+ * open. Freed for good in the QUIT handler. */
 static result_t image_open_menu(image_task_t *ic)
 {
   result_t     rc;
@@ -308,12 +295,10 @@ static result_t image_open_menu(image_task_t *ic)
   int          i;
 
   /* '!Dithering' pulls ic->dithering directly, so the row's tick already
-   * matches live state -- no separate wuss_menu_open_ticked pass needed.
-   * '!Wireframe' has no backing field; it is a demo row always ticked. */
+   * matches live state -- no separate wuss_menu_open_ticked pass needed. */
   rc = wuss_menu_create_from_desc(&m,
-         "Image, Info, New..., Open, !Dithering, !Wireframe, >Export, "
-         "Background, |Quit",
-         ic->dithering, 1, &image_menu_export);
+         "Image, Info, Open, !Dithering, Background, |Quit",
+         ic->dithering);
   if (rc != result_OK)
     return rc;
 
@@ -403,14 +388,14 @@ result_t image_handle(wuss_window_t      *window,
     index = event->data.menu_select.index;
     printf("image menu: picked \"%s\"\n",
            menu->items[index].text ? menu->items[index].text : "(sep)");
-    if (index == 3) {
+    if (index == 2) {
       ic->dithering = !ic->dithering;
       wuss_window_invalidate_visible(ic->window);
     }
     if (!wuss_menu_should_keep_open(event))
       ic->menu_handle = NULL; /* SELECT pick already freed the chain */
-    else if (index == 3)
-      wuss_menu_tick_item_live(ic->menu_handle, ic->menu, 3, ic->dithering);
+    else if (index == 2)
+      wuss_menu_tick_item_live(ic->menu_handle, ic->menu, 2, ic->dithering);
     return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
