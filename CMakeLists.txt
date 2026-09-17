@@ -698,6 +698,7 @@ if(BUILD_TESTS)
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
         libraries/geom/stack/test/stack-test.c
+        libraries/io/path/test/path-test.c
         libraries/io/stream/test/stream-test.c
         libraries/text/txtfmt/test/txtfmt-test.c
         libraries/utils/array/test/array-test.c

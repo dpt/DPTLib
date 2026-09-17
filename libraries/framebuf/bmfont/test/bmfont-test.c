@@ -363,7 +363,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
                font,
                transparent ? "-transparent" : "-filled",
                1 << pixelfmt_log2bpp(state->scr.format));
-      bitmap_save_png(&state->bm, path_join_leafname(leafname, "png"));
+      bitmap_save_png(&state->bm, pathf("%s.png", leafname));
     }
   }
 
@@ -475,7 +475,7 @@ stop:
                font,
                transparent ? "-transparent" : "-filled",
                1 << pixelfmt_log2bpp(state->scr.format));
-      bitmap_save_png(&state->bm, path_join_leafname(leafname, "png"));
+      bitmap_save_png(&state->bm, pathf("%s.png", leafname));
     }
   }
 
@@ -592,13 +592,13 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
     }
 
     {
-      point_t    origin  = {mx,my};
-      const int  height  = bmfonts[currfont].height;
-      const int  rows    = state->scr_height / height;
-      box_t      dirty;
-      int        i;
-      char       buf[256];
-      int        j;
+      point_t   origin  = {mx,my};
+      const int height  = bmfonts[currfont].height;
+      const int rows    = state->scr_height / height;
+      box_t     dirty;
+      int       i;
+      char      buf[256];
+      int       j;
 
       for (i = 0; i < rows; i++)
       {
@@ -782,12 +782,15 @@ static result_t bmfont_enum_cb(const char *name,
 
 static result_t bmfont_enumerate_test(const char *resources)
 {
-  result_t            rc;
-  const char         *dir;
-  bmfont_enum_check_t  chk;
+  result_t rc;
+  char     dir[512]; /* own copy: bmfont_enumerate's per-entry
+                                  * pathf calls would otherwise clobber a
+                                  * pointer straight into pathf's shared
+                                  * buffer */
+  bmfont_enum_check_t chk;
   int                 i;
 
-  dir = path_join_filename(resources, 2, "resources", "bmfonts");
+  snprintf(dir, sizeof(dir), "%s", pathf("%s/resources/bmfonts", resources));
 
   /* full walk: every fixture font is reported exactly once */
   memset(&chk, 0, sizeof(chk));
@@ -912,11 +915,10 @@ result_t bmfont_test_one_format(const char *resources,
 
   for (font = 0; font < NELEMS(bmfonts); font++)
   {
-    const char *leafname;
     const char *filename;
 
-    leafname = path_join_leafname(bmfonts[font].filename, "png");
-    filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
+    filename = pathf("%s/resources/bmfonts/%s.png",
+                     resources, bmfonts[font].filename);
     rc = bmfont_create(filename, &bmfonts[font].bmfont);
     if (rc)
     {
@@ -979,7 +981,6 @@ static result_t bmfont_monospace_test(const char *resources)
   static const char sample[] = "WiWiWi.1jm";
 
   result_t       rc;
-  const char    *leafname;
   const char    *filename;
   bmfont_t      *bmfont = NULL;
   bmfont_width_t onechar;
@@ -987,8 +988,7 @@ static result_t bmfont_monospace_test(const char *resources)
   bmfont_width_t prev;
   int            i;
 
-  leafname = path_join_leafname("MS Sans Serif", "png");
-  filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
+  filename = pathf("%s/resources/bmfonts/MS Sans Serif.png", resources);
 
   rc = bmfont_create(filename, &bmfont);
   if (rc)
@@ -1051,14 +1051,13 @@ Failure:
  * under ASan/UBSan rather than just a wrong measurement. */
 static result_t bmfont_spacing_test(const char *resources)
 {
-  static const char letters[] = "WiWiWiWiWi";
-  static const char worded[]  = "a a";
+  static const char      letters[] = "WiWiWiWiWi";
+  static const char      worded[]  = "a a";
 
   const bmfont_spacing_t letter_only = { 3, 0 };
   const bmfont_spacing_t word_only   = { 0, 5 };
 
   result_t       rc;
-  const char    *leafname;
   const char    *filename;
   bmfont_t      *bmfont = NULL;
   bmfont_width_t plain_word_width;
@@ -1067,8 +1066,7 @@ static result_t bmfont_spacing_test(const char *resources)
   point_t        end_pos;
   int            i;
 
-  leafname = path_join_leafname("MS Sans Serif", "png");
-  filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
+  filename = pathf("%s/resources/bmfonts/MS Sans Serif.png", resources);
 
   rc = bmfont_create(filename, &bmfont);
   if (rc)

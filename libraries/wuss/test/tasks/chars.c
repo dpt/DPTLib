@@ -79,7 +79,6 @@ static bmfont_t *chars_load_font(chars_task_t *task,
 {
   result_t    rc;
   const char *resources;
-  const char *leaf;
   const char *filename;
   bmfont_t   *font;
 
@@ -87,9 +86,7 @@ static bmfont_t *chars_load_font(chars_task_t *task,
     return task->fonts[idx];
 
   resources = wuss_get_resources(task->wuss);
-  leaf      = path_join_leafname(name, "png");
-  filename  = path_join_filename(resources, 3, "resources", "bmfonts",
-                               leaf);
+  filename  = pathf("%s/resources/bmfonts/%s.png", resources, name);
 
   rc = bmfont_create(filename, &font);
   if (rc != result_OK)
@@ -189,7 +186,7 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
 
   /* the picker: every ".png" font under resources/bmfonts, sorted, less any
    * SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows from) */
-  bmfonts_dir = path_join_filename(resources, 2, "resources", "bmfonts");
+  bmfonts_dir = pathf("%s/resources/bmfonts", resources);
   rc = wuss_fontmenu_create(&task->fontmenu, bmfonts_dir, "Font", wuss, NULL);
   if (rc != result_OK)
   {

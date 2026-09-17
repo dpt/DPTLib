@@ -4886,7 +4886,7 @@ MenuOK: ;
     const char        *name;
     int                i;
 
-    dir = path_join_filename(resources, 2, "resources", "bmfonts");
+    dir = pathf("%s/resources/bmfonts", resources);
 
     rc = wuss_fontmenu_create(&fm, dir, "Font", NULL, NULL);
     if (rc != result_OK)
@@ -4936,8 +4936,7 @@ MenuOK: ;
       wuss_font_desc_t sysdescs[2];
       wuss_t          *syswuss;
 
-      sysfontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                       path_join_leafname("Symbols", "png"));
+      sysfontfile = pathf("%s/resources/bmfonts/Symbols.png", resources);
       rc = bmfont_create(sysfontfile, &sysfont);
       if (rc != result_OK)                               goto FontMenuFail;
 
@@ -4955,10 +4954,10 @@ MenuOK: ;
         goto FontMenuFail;
       }
 
-      /* dir points into path_join_filename's shared scratch buffer, which
-       * sysfontfile's path_join_filename call above just overwrote --
-       * re-derive it rather than reuse the now-stale pointer */
-      dir = path_join_filename(resources, 2, "resources", "bmfonts");
+      /* dir points into pathf's shared scratch buffer, which sysfontfile's
+       * pathf call above just overwrote -- re-derive it rather than reuse
+       * the now-stale pointer */
+      dir = pathf("%s/resources/bmfonts", resources);
 
       rc = wuss_fontmenu_create(&fm, dir, "Font", syswuss, NULL);
       wuss_destroy(syswuss);
@@ -5084,8 +5083,7 @@ ColourMenuOK: ;
 
     /* a menu needs a font for its row metrics; the core wuss above was made
      * without one */
-    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                  path_join_leafname("Tiny", "png"));
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -5215,8 +5213,7 @@ FlashFail:
     struct wuss__menu *root;
     struct wuss__menu *sub;
 
-    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                  path_join_leafname("Tiny", "png"));
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -5357,8 +5354,7 @@ SubHiFail:
     wuss_task_t     *powner;
     struct wuss__menu *proot;
 
-    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                  path_join_leafname("Tiny", "png"));
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -5459,8 +5455,7 @@ PreOpenFail:
     wuss_window_t   *win_plain, *win_flagged;
     struct wuss__menu  *proot;
 
-    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                  path_join_leafname("Tiny", "png"));
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -5589,8 +5584,7 @@ PwFail:
     wuss_window_t   *wa, *wb;
     box_t            ba, bb;
 
-    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                  path_join_leafname("Tiny", "png"));
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -5726,8 +5720,7 @@ MoveFail:
     wuss_window_t   *wq;
     box_t            bq;
 
-    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                  path_join_leafname("Tiny", "png"));
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -6365,10 +6358,10 @@ QuitFail:
     const bitmap_t *icon_bm;
     int             idx, opton;
 
-    /* copy: path_join_filename hands back one shared static buffer, and
-     * wuss_icons_load's own per-file joins would clobber it mid-call */
+    /* copy: pathf hands back one shared static buffer, and wuss_icons_load's
+     * own per-file joins would clobber it mid-call */
     strncpy(icons_dir,
-            path_join_filename(resources, 3, "resources", "wuss", "icons"),
+            pathf("%s/resources/wuss/icons", resources),
             sizeof(icons_dir) - 1);
     icons_dir[sizeof(icons_dir) - 1] = '\0';
 

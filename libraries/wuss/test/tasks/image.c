@@ -90,7 +90,7 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
   task->dithering   = 1;
 
   resources  = wuss_get_resources(wuss);
-  images_dir = path_join_filename(resources, 2, "resources", "images");
+  images_dir = pathf("%s/resources/images", resources);
   rc = namelist_scan(images_dir, IMAGE_EXT, task->names[0],
                      sizeof(task->names[0]), IMAGE_MAX_NAMES, 0 /* unsorted */,
                      &task->nnames);
@@ -105,8 +105,7 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
     return result_BAD_ARG; /* no PNGs found under resources/images */
   }
 
-  path = path_join_filename(resources, 3, "resources", "images",
-                            path_join_leafname(task->names[0], "png"));
+  path = pathf("%s/resources/images/%s.png", resources, task->names[0]);
   rc = load_png_deep(&task->bitmap, path, pixelfmt_rgbx8888);
   if (rc != result_OK)
   {
@@ -114,8 +113,7 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
     return rc;
   }
 
-  background_path = path_join_filename(resources, 3, "resources", "wuss",
-                                       path_join_leafname("ninepatch", "png"));
+  background_path = pathf("%s/resources/wuss/ninepatch.png", resources);
   rc = load_png_deep(&task->ninepatch, background_path, pixelfmt_rgbx8888);
   if (rc != result_OK)
   {
@@ -253,9 +251,7 @@ static result_t image_click(wuss_window_t *window,
 {
   result_t    rc;
   const char *resources;
-  const char *leafname;
   const char *filename;
-  char        buf[DPTLIB_MAXPATH];
   bitmap_t    next;
   size2d_t    sz;
 
@@ -265,15 +261,13 @@ static result_t image_click(wuss_window_t *window,
   ic->index = (ic->index + step + ic->nnames) % ic->nnames;
 
   resources = wuss_get_resources(ic->wuss);
-  leafname  = path_join_leafname(ic->names[ic->index], "png");
-  filename  = path_join_filename(resources, 3, "resources", "images",
-                                 leafname);
-  strcpy(buf, filename);
+  filename  = pathf("%s/resources/images/%s.png", resources,
+                    ic->names[ic->index]);
 
-  rc = load_png_deep(&next, buf, pixelfmt_rgbx8888);
+  rc = load_png_deep(&next, filename, pixelfmt_rgbx8888);
   if (rc != result_OK)
   {
-    logf_warning("image: skipping \"%s\" (rc=0x%X)", buf, rc);
+    logf_warning("image: skipping \"%s\" (rc=0x%X)", filename, rc);
     return result_OK; /* keep showing the current image */
   }
 
