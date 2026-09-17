@@ -74,7 +74,13 @@ typedef struct saturn_task
   colour_t           bg, fg;
   unsigned long      seed;     /* RNG state; a Select click bumps it */
   saturn_config_t    config;
-  wuss_colourmenu_t *fg_colourmenu, *bg_colourmenu;
+  wuss_colourmenu_t *colourmenu;        /* shared fg/bg colour picker,
+                                         * retargeted per hover in
+                                         * saturn_pre_submenu_open */
+  colour_t          *colourmenu_target; /* &task->fg or &task->bg: which
+                                         * field the open colourmenu picks
+                                         * into, set by
+                                         * saturn_pre_submenu_open */
   wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
   saturn_conf_t      conf;
   wuss_proginfo_t   *proginfo;

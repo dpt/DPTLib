@@ -211,6 +211,15 @@ struct wuss
                                             * MOUSE_UP so the release does not
                                             * immediately pick row 0 */
 #endif
+  int                         pre_show_proceed; /* set by
+                                                 * wuss_window_reveal_now /
+                                                 * wuss_menu_open_window_now
+                                                 * while a wuss_EVENT_PRE_SHOW
+                                                 * is being delivered, to opt
+                                                 * in to the reveal; read
+                                                 * and cleared by
+                                                 * wuss__window_set_hidden_ex
+                                                 * once delivery returns */
 };
 
 struct wuss_window
@@ -521,6 +530,21 @@ int             wuss__blit_pieces(wuss_window_t *window,
 result_t wuss__deliver(wuss_task_t        *task,
                        wuss_window_t      *win_or_null,
                        const wuss_event_t *ev);
+
+/* wuss_window_set_hidden's real body. `handle`/`index` (menu builds only)
+ * are threaded through into wuss_EVENT_PRE_SHOW's payload so a flagged menu
+ * leaf's recipient can call wuss_menu_open_window_now(handle, index) to opt
+ * in to the reveal. NULL/-1 (a plain window, or an unflagged menu leaf --
+ * both reach this same path, PRE_SHOW always fires) makes the reveal
+ * proceed by default. Defined in window/set-hidden.c. */
+#ifdef WUSS_MENUS
+result_t wuss__window_set_hidden_ex(wuss_window_t     *window,
+                                    int                hidden,
+                                    struct wuss__menu *handle,
+                                    int                index);
+#else
+result_t wuss__window_set_hidden_ex(wuss_window_t *window, int hidden);
+#endif
 
 #ifdef WUSS_MENUS
 /* Tear down the whole open menu chain because wuss decided to (not the

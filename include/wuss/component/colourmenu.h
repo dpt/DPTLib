@@ -69,6 +69,17 @@ void wuss_colourmenu_destroy(wuss_colourmenu_t *doomed);
 const wuss_menu_t *wuss_colourmenu_menu(const wuss_colourmenu_t *cm);
 
 /**
+ * Change a colour menu's titlebar caption -- the hook for retitling a shared
+ * instance (e.g. from a wuss_EVENT_PRE_SUBMENU_OPEN handler) before handing
+ * it back as the menu to open for a particular row.
+ *
+ * \param[in] cm    Handle.
+ * \param[in] title New caption, borrowed and copied; NULL for "Colour".
+ * \return \ref result_OK, or \ref result_OOM leaving the old title in place.
+ */
+result_t wuss_colourmenu_set_title(wuss_colourmenu_t *cm, const char *title);
+
+/**
  * Resolve a wuss_EVENT_MENU_SELECT event to the picked palette index.
  *
  * Call from the task's wuss_EVENT_MENU_SELECT case. Returns 0 with \p ok
