@@ -11,6 +11,7 @@
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/fontmenu.h"
+#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
@@ -39,12 +40,22 @@ typedef struct text_task
   int                 current;    /* index into fonts[], or -1 for sysfont */
   wuss_colourmenu_t  *fgmenu;      /* the "Foreground" picker; owns its menu */
   wuss_colourmenu_t  *bgmenu;      /* the "Background" picker; owns its menu */
-  wuss_menu_item_t    top_items[6]; /* "Font", "Sample", "Spacing",
-                                   * "Foreground", "Background" and "No
-                                   * Background", built once the fontmenu and
-                                   * colourmenus exist so items[0/3/4].submenu
-                                   * can borrow their live wuss_menu_t */
+  wuss_menu_item_t    sample_items[4]; /* "Sample" submenu rows; per-instance
+                                   * so ticks/selection state can't bleed
+                                   * across two Text windows */
+  wuss_menu_t         sample_menu;
+  wuss_menu_item_t    spacing_items[4]; /* "Spacing" submenu rows; per-
+                                   * instance for the same reason -- each
+                                   * carries its own tick state */
+  wuss_menu_t         spacing_menu;
+  wuss_menu_item_t    top_items[7]; /* "Font", "Sample", "Spacing",
+                                   * "Foreground", "Background", "No
+                                   * Background" and "Info", built once the
+                                   * fontmenu and colourmenus exist so
+                                   * items[0/3/4].submenu can borrow their
+                                   * live wuss_menu_t */
   wuss_menu_t         top_menu;   /* root menu passed to wuss_menu_open */
+  wuss_proginfo_t    *proginfo;
   wuss_menu_handle_t  menu_handle; /* chain handle from the last
                                    * wuss_menu_open, for the _live tick calls
                                    * when an ADJUST pick keeps the chain

@@ -17,6 +17,12 @@
 
 #include "sofa.h"
 
+/* MENU click pops this single-item menu; the item table and wuss_menu_t
+ * live per-instance in sofa_task_t, not as a file-scope static, so that
+ * each window's Info row points at its own proginfo rather than every
+ * instance sharing (and overwriting) one global .window pointer */
+enum { SOFA_MENU_INFO };
+
 #define SOFA_VERTEX_DOT 2 /* side, px, of the white marker square drawn at each vertex */
 
 #ifndef M_PI
@@ -365,6 +371,7 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
   if (task == NULL)
     return result_OOM;
 
+  task->wuss     = wuss;
   task->bg       = colour_rgb(0x7E, 0x25, 0x53);
   task->line     = colour_rgb(0xFF, 0xA3, 0x00);
   task->dot      = colour_rgb(0xFF, 0xFF, 0xFF);
@@ -385,6 +392,7 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
     return rc;
   }
   wuss_task_set_autoclose(delegate, 1);
+  task->delegate = delegate;
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(180, 160),
@@ -400,6 +408,24 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
     return rc;
   }
 
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Sofa",
+      "Rotating wireframe sofa and other shapes",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
+      task->proginfo = NULL;
+  }
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, SOFA_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        wuss_proginfo_window(task->proginfo));
+
+  WUSS_MENU_TITLE(task->menu, "Sofa", task->menu_items,
+                 NELEMS(task->menu_items));
+
   if (out)
     *out = task;
 
@@ -408,6 +434,9 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
 
 void sofa_destroy(sofa_task_t *task)
 {
+  if (task->menu_handle != NULL)
+    wuss_menu_close(task->menu_handle);
+  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -533,6 +562,10 @@ static result_t sofa_mouse(wuss_window_t *window,
 
   sc = task_data;
 
+  if (button & wuss_BUTTON_MENU)
+    return wuss_menu_open(sc->delegate, &sc->menu,
+                          wuss_get_pointer(sc->wuss), &sc->menu_handle);
+
   if (button & wuss_BUTTON_ADJUST)
   {
     sc->shape = (sc->shape + 1) % sofa_SHAPE__LIMIT;
@@ -568,6 +601,13 @@ static result_t sofa_idle(void *task_data)
   sofa_task_t *task;
 
   task = task_data;
+
+  /* the proginfo dialogue is a second window on this same (autoclose)
+   * delegate, so closing the main window alone never empties task->windows
+   * and the task lingers until the dialogue closes too -- guard against the
+   * dangling window in the meantime */
+  if (task->window == NULL)
+    return result_OK;
 
   if (!task->spinning)
     return result_OK;
@@ -611,6 +651,31 @@ result_t sofa_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     return sofa_idle(task_data);
+
+  case wuss_EVENT_MENU_CLOSED:
+    sc->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_CLOSE:
+    if (window == sc->window)
+      sc->window = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == wuss_proginfo_window(sc->proginfo))
+      rc = wuss_proginfo_handle_pre_show(sc->proginfo);
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_QUIT:
     sofa_destroy(sc);

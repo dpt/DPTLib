@@ -63,31 +63,18 @@ g_minesweeper_sizes[minesweeper_NSIZES] =
   { 12, 12, 20 }
 };
 
-static wuss_menu_item_t g_minesweeper_size_items[] =
+static const char *const g_minesweeper_size_names[minesweeper_NSIZES] =
 {
-  { "24x24", wuss_MENU_ITEM_NONE, NULL, NULL },
-  { "24x12", wuss_MENU_ITEM_NONE, NULL, NULL },
-  { "16x16", wuss_MENU_ITEM_NONE, NULL, NULL },
-  { "16x12", wuss_MENU_ITEM_NONE, NULL, NULL },
-  { "12x12", wuss_MENU_ITEM_NONE, NULL, NULL }
+  "24x24", "24x12", "16x16", "16x12", "12x12"
 };
 
-static const wuss_menu_t g_minesweeper_size_menu =
-{
-  "Grid Size", g_minesweeper_size_items, NELEMS(g_minesweeper_size_items)
-};
-
-/* MENU click over the board pops this menu */
-static const wuss_menu_item_t g_minesweeper_menu_items[] =
-{
-  { "New Game",  wuss_MENU_ITEM_NONE, NULL,                    NULL },
-  { "Grid Size", wuss_MENU_ITEM_NONE, &g_minesweeper_size_menu, NULL }
-};
-
-static const wuss_menu_t g_minesweeper_menu =
-{
-  "Minesweeper", g_minesweeper_menu_items, NELEMS(g_minesweeper_menu_items)
-};
+/* MENU click over the board pops this menu; the item tables and wuss_menu_t
+ * values live per-instance in minesweeper_task_t, not as file-scope
+ * statics, so that each window's Info row points at its own proginfo
+ * rather than every instance sharing (and overwriting) one global .window
+ * pointer -- and so two instances don't fight over one shared tick mark on
+ * the Grid Size submenu */
+enum { MINESWEEPER_MENU_INFO, MINESWEEPER_MENU_NEW_GAME, MINESWEEPER_MENU_SIZE };
 
 /* neighbour-count colour, classic minesweeper palette; index 0 is never
  * drawn (an empty cell shows no digit) */
@@ -288,6 +275,42 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
     return rc;
   }
 
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Minesweeper",
+      "Classic minesweeper",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
+      task->proginfo = NULL;
+  }
+  {
+    int i;
+
+    for (i = 0; i < minesweeper_NSIZES; i++)
+    {
+      WUSS_MENU_ITEM(task->size_items, i, g_minesweeper_size_names[i],
+                    wuss_MENU_ITEM_NONE);
+    }
+    WUSS_MENU_TITLE(task->size_menu, "Grid Size", task->size_items,
+                   NELEMS(task->size_items));
+  }
+
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, MINESWEEPER_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        wuss_proginfo_window(task->proginfo));
+
+  WUSS_MENU_ITEM(task->menu_items, MINESWEEPER_MENU_NEW_GAME,
+                "New Game", wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, MINESWEEPER_MENU_SIZE, "Grid Size",
+                      wuss_MENU_ITEM_NONE, &task->size_menu);
+
+  WUSS_MENU_TITLE(task->menu, "Minesweeper", task->menu_items,
+                 NELEMS(task->menu_items));
+
   if (out)
     *out = task;
 
@@ -296,6 +319,9 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
 
 void minesweeper_destroy(minesweeper_task_t *task)
 {
+  if (task->menu_handle != NULL)
+    wuss_menu_close(task->menu_handle);
+  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -488,10 +514,9 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
 
   if (button & wuss_BUTTON_MENU)
   {
-    wuss_menu_tick_exclusive((wuss_menu_t *) &g_minesweeper_size_menu,
-                             ms->size);
-    return wuss_menu_open(ms->task, &g_minesweeper_menu,
-                          wuss_get_pointer(ms->wuss), NULL);
+    wuss_menu_tick_exclusive(&ms->size_menu, ms->size);
+    return wuss_menu_open(ms->task, &ms->menu,
+                          wuss_get_pointer(ms->wuss), &ms->menu_handle);
   }
 
   if (ms->dead || ms->won)
@@ -589,8 +614,6 @@ result_t minesweeper_handle(wuss_window_t      *window,
 
   ms = task_data;
 
-  NOT_USED(window);
-
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
@@ -603,6 +626,12 @@ result_t minesweeper_handle(wuss_window_t      *window,
                              event->data.mouse.button);
 
   case wuss_EVENT_IDLE:
+    /* the proginfo dialogue is a second window on this same (autoclose)
+     * delegate, so closing the board window alone never empties
+     * task->windows and the task lingers until the dialogue closes too --
+     * guard against the dangling window in the meantime */
+    if (ms->window == NULL)
+      return result_OK;
     if (ms->placed && !ms->dead && !ms->won)
     {
       int was;
@@ -619,11 +648,13 @@ result_t minesweeper_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
-    if (event->data.menu_select.menu == &g_minesweeper_size_menu)
+    if (event->data.menu_select.menu == &ms->size_menu)
       minesweeper_set_size(ms, (minesweeper_size_t)
                            event->data.menu_select.index);
-    else /* top-level menu; only other item is "New Game" */
+    else if (event->data.menu_select.index == MINESWEEPER_MENU_NEW_GAME)
       minesweeper_reset(ms);
+    else
+      return result_OK; /* Info row: nothing to do here */
 
     {
       size2d_t sz = SIZE2D(MS_WIDTH(ms), MS_HEIGHT(ms));
@@ -633,6 +664,31 @@ result_t minesweeper_handle(wuss_window_t      *window,
     }
     wuss_window_invalidate_visible(ms->window);
     return result_OK;
+
+  case wuss_EVENT_MENU_CLOSED:
+    ms->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_CLOSE:
+    if (window == ms->window)
+      ms->window = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == wuss_proginfo_window(ms->proginfo))
+      rc = wuss_proginfo_handle_pre_show(ms->proginfo);
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_QUIT:
     minesweeper_destroy(ms);

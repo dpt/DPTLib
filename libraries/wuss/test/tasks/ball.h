@@ -6,6 +6,8 @@
 #ifdef WUSS_APP
 
 #include "framebuf/colour.h"
+#include "wuss/component/proginfo.h"
+#include "wuss/menu.h"
 #include "wuss/window.h"
 
 #define BALL_MAX 32 /* Select clicks beyond this are ignored */
@@ -26,10 +28,18 @@ ball_t;
  * recently added one. */
 typedef struct ball_task
 {
-  wuss_window_t *window;
-  colour_t       bg;
-  ball_t         balls[BALL_MAX];
-  int            nballs;
+  wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
+  wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_window_t      *window;
+  wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
+  wuss_proginfo_t    *proginfo;
+  wuss_menu_item_t    menu_items[1]; /* per-instance: shared static "Info" row
+                                       * would leak one instance's proginfo
+                                       * window pointer into another's menu */
+  wuss_menu_t         menu;
+  colour_t            bg;
+  ball_t              balls[BALL_MAX];
+  int                 nballs;
 }
 ball_task_t;
 

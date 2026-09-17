@@ -7,8 +7,10 @@
 
 #include "framebuf/colour.h"
 #include "geom/point.h"
-#include "wuss/wuss.h"
+#include "wuss/component/proginfo.h"
+#include "wuss/menu.h"
 #include "wuss/window.h"
+#include "wuss/wuss.h"
 
 #define CURVE_MINCONTROLPTS 2 /* a straight line */
 #define CURVE_MAXCONTROLPTS 6 /* a quintic Bezier */
@@ -19,13 +21,20 @@
  * stepping npoints, the count of points[] actually in play. */
 typedef struct curve_task
 {
-  wuss_t        *wuss;   /* borrowed; for wuss_get_font in the redraw */
-  wuss_window_t *window;
-  colour_t       bg, line, blob;
-  point_t        points[CURVE_MAXCONTROLPTS];
-  int            npoints;     /* CURVE_MINCONTROLPTS..CURVE_MAXCONTROLPTS */
-  int            nsegments;
-  int            dragging;    /* index into points, or -1 if not dragging */
+  wuss_t             *wuss;   /* borrowed; for wuss_get_font in the redraw */
+  wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_window_t      *window;
+  wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
+  wuss_proginfo_t    *proginfo;
+  wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
+                                       * leak one instance's proginfo window
+                                       * pointer into another's menu */
+  wuss_menu_t         menu;
+  colour_t             bg, line, blob;
+  point_t              points[CURVE_MAXCONTROLPTS];
+  int                  npoints;     /* CURVE_MINCONTROLPTS..CURVE_MAXCONTROLPTS */
+  int                  nsegments;
+  int                  dragging;    /* index into points, or -1 if not dragging */
 }
 curve_task_t;
 
