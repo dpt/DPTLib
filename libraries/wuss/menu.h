@@ -14,35 +14,41 @@
 struct wuss__menu
 {
   wuss_t                *wuss;
-  wuss_task_t           *owner;    /* task that opened the chain (from
-                                    * wuss_menu_open); MENU_SELECT is
-                                    * delivered here. Only meaningful on the
-                                    * root; children copy it for convenience */
-  wuss_window_t         *window;   /* the borderless menu window; for a
-                                    * borrowed-window level (see borrowed) the
-                                    * caller's own window instead */
-  const wuss_menu_t     *menu;     /* borrowed source description; NULL for a
-                                    * borrowed-window level */
-  wuss_icon_t          **icons;    /* owned array, menu->nitems entries, in
-                                    * item order; NULL for a borrowed-window
-                                    * level */
-  struct wuss__menu     *parent;   /* level this one opened from, NULL at root */
-  struct wuss__menu     *child;    /* open submenu level, NULL when none */
-  int                    open_index; /* item index whose submenu `child` is,
-                                      * -1 when no child open */
-  int                    borrowed;   /* 1: `window` is a caller-owned window
-                                      * shown in place of a submenu -- hide it
-                                      * rather than close it on teardown */
 
-  int                    pending_index; /* item index whose PRE_SHOW /
-                                         * PRE_SUBMENU_OPEN is being
-                                         * delivered on this level right
-                                         * now, else -1. Set immediately
-                                         * before wuss__deliver, consumed by
-                                         * wuss_menu_open_window_now /
-                                         * wuss_menu_open_submenu_now if the
-                                         * handler calls back synchronously,
-                                         * cleared once delivery returns. */
+  /* task that opened the chain (from wuss_menu_open); MENU_SELECT is
+   * delivered here. Only meaningful on the root; children copy it for
+   * convenience */
+  wuss_task_t           *owner;
+
+  /* the borderless menu window; for a borrowed-window level (see borrowed)
+   * the caller's own window instead */
+  wuss_window_t         *window;
+
+  /* borrowed source description; NULL for a borrowed-window level */
+  const wuss_menu_t     *menu;
+
+  /* owned array, menu->nitems entries, in item order; NULL for a
+   * borrowed-window level */
+  wuss_icon_t          **icons;
+
+  /* level this one opened from, NULL at root */
+  struct wuss__menu     *parent;
+
+  /* open submenu level, NULL when none */
+  struct wuss__menu     *child;
+
+  /* item index whose submenu `child` is, -1 when no child open */
+  int                    open_index;
+
+  /* 1: `window` is a caller-owned window shown in place of a submenu --
+   * hide it rather than close it on teardown */
+  int                    borrowed;
+
+  /* item index whose PRE_SHOW / PRE_SUBMENU_OPEN is being delivered on this
+   * level right now, else -1. Set immediately before wuss__deliver,
+   * consumed by wuss_menu_open_window_now / wuss_menu_open_submenu_now if
+   * the handler calls back synchronously, cleared once delivery returns. */
+  int                    pending_index;
 
   /* SELECT-pick flash: the picked row's highlight is toggled a few times off
    * wuss_EVENT_IDLE before the chain closes and MENU_SELECT is delivered.
@@ -51,13 +57,24 @@ struct wuss__menu
    * is freed before the deferred notification goes out. */
   struct
   {
-    int                  frames;    /* IDLE frames left in the flash */
-    int                  index;     /* item index being flashed */
-    int                  keep_open; /* 1 (ADJUST pick): flash but do not tear
-                                     * the chain down before MENU_SELECT */
-    wuss_task_t         *owner;     /* captured MENU_SELECT target */
-    const wuss_menu_t   *menu;      /* captured menu for the notification */
-    wuss_button_t        button;    /* captured release button */
+    /* IDLE frames left in the flash */
+    int                  frames;
+
+    /* item index being flashed */
+    int                  index;
+
+    /* 1 (ADJUST pick): flash but do not tear the chain down before
+     * MENU_SELECT */
+    int                  keep_open;
+
+    /* captured MENU_SELECT target */
+    wuss_task_t         *owner;
+
+    /* captured menu for the notification */
+    const wuss_menu_t   *menu;
+
+    /* captured release button */
+    wuss_button_t        button;
   }
   flash;
 };
