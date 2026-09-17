@@ -13,7 +13,11 @@ enum
 {
   /* `window` is a caller-owned window shown in place of a submenu -- hide it
    * rather than close it on teardown */
-  wuss_MENU__BORROWED = 1u << 0
+  wuss_MENU__BORROWED         = 1u << 0,
+
+  /* an ADJUST pick's flash in progress (see flash below): do not tear the
+   * chain down before MENU_SELECT */
+  wuss_MENU__FLASH_KEEP_OPEN  = 1u << 1
 };
 
 /* One open level of a menu chain: its window and per-item icon handles, plus a
@@ -68,10 +72,6 @@ struct wuss__menu
 
     /* item index being flashed */
     int                  index;
-
-    /* 1 (ADJUST pick): flash but do not tear the chain down before
-     * MENU_SELECT */
-    int                  keep_open;
 
     /* captured MENU_SELECT target */
     wuss_task_t         *owner;
