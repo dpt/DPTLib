@@ -110,7 +110,7 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
     return rc;
   }
 
-  background_path = path_join_filename(resources, 2, "resources", "wuss",
+  background_path = path_join_filename(resources, 3, "resources", "wuss",
                                        path_join_leafname("ninepatch", "png"));
   rc = load_png_deep(&task->ninepatch, background_path);
   if (rc != result_OK)
