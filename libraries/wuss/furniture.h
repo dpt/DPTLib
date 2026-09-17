@@ -45,18 +45,26 @@ wuss__furniture_piece_t;
  * two interior rules(2) + four outline edges(4) = 21. Round up. */
 #define WUSS__FURNITURE_MAX_PIECES 24
 
+/* Internal wuss__furniture_layout::flags bits. */
+enum
+{
+  /* the cache is up to date. Rebuilt lazily by wuss__furniture_draw when
+   * clear; wuss__furniture_invalidate* clear it on any geometry change. */
+  wuss_FURNITURE_LAYOUT__VALID       = 1u << 0,
+
+  /* `titlebar` holds a real rect for the live title-text pass */
+  wuss_FURNITURE_LAYOUT__HAS_TITLEBAR = 1u << 1
+};
+
 /* Per-window cache of the furniture layout: every filled rect except the two
  * scrollbar sausages (which move with window->scroll and are recomputed each
- * paint) and the title text (font-dependent, drawn live). Rebuilt lazily by
- * wuss__furniture_draw when "valid" is 0; wuss__furniture_invalidate* clear
- * it on any geometry change. */
+ * paint) and the title text (font-dependent, drawn live). */
 typedef struct wuss__furniture_layout
 {
-  int                     valid;
+  unsigned int            flags;
   int                     npieces;
   wuss__furniture_piece_t pieces[WUSS__FURNITURE_MAX_PIECES];
   box_t                   titlebar;   /* for the live title-text pass; empty if no titlebar */
-  int                     has_titlebar;
 }
 wuss__furniture_layout_t;
 

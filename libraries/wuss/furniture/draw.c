@@ -143,7 +143,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
   if (box_intersection(&window->visible, full, &visible_clipped))
     return; /* offscreen */
 
-  if (!window->furniture_layout.valid)
+  if (!(window->furniture_layout.flags & wuss_FURNITURE_LAYOUT__VALID))
     wuss__furniture_layout_build(window);
 
   /* phase 2: clip-and-fill every cached rect */
@@ -173,7 +173,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
   }
 
   /* the title string, drawn live over its (already-filled) titlebar slot */
-  if (window->furniture_layout.has_titlebar)
+  if (window->furniture_layout.flags & wuss_FURNITURE_LAYOUT__HAS_TITLEBAR)
   {
     box_t titlebar_clip;
 

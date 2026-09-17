@@ -289,7 +289,7 @@ static inline void wuss__chrome_repaint_for(wuss_window_t *window,
  * cache (absolute coords) must be rebuilt for the new position. */
 static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
 {
-  window->furniture_layout.valid = 0;
+  window->furniture_layout.flags &= ~wuss_FURNITURE_LAYOUT__VALID;
 }
 #else
 static inline void wuss__chrome_draw(wuss_t        *wuss,
