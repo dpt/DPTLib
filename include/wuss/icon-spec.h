@@ -69,11 +69,12 @@ wuss_slider_row_t;
  * on the two created icons afterwards to get a usable \ref
  * wuss_slider_row_t.
  *
+ * Drawn with wuss_COLOUR_BLACK groove/fill and text.
+ *
  * \param[out] slider_spec   Spec to fill as the slider; overwritten.
  * \param[out] value_spec    Spec to fill as the value label; overwritten.
  * \param[in]  slider_bbox   Slider's bounding box.
  * \param[in]  value_bbox    Value label's bounding box.
- * \param[in]  fg            Groove/fill and text colour.
  * \param[in]  orientation   Groove direction.
  * \param[in]  min           Value at the groove's start.
  * \param[in]  max           Value at the groove's end.
@@ -89,7 +90,6 @@ void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
                                wuss_icon_spec_t         *value_spec,
                                box_t                     slider_bbox,
                                box_t                     value_bbox,
-                               wuss_colour_t             fg,
                                wuss_slider_orientation_t orientation,
                                int                       min,
                                int                       max,
@@ -159,11 +159,12 @@ int wuss_slider_row_event(wuss_window_t           *window,
 /**
  * Fill \p spec as a wuss_ICON_TYPE_LABEL.
  *
+ * Drawn with wuss_COLOUR_BLACK text.
+ *
  * \param[out] spec        Spec to fill; any prior contents are overwritten.
  * \param[in]  bbox         Bounding box.
  * \param[in]  text         Label text, borrowed until
  *                          wuss_icon_create(_array) copies it.
- * \param[in]  fg           Text colour.
  * \param[in]  justify_right Non-zero to right-justify
  *                           (wuss_ICON_FLAGS_JUSTIFY_RIGHT) instead of the
  *                           default left justification.
@@ -171,16 +172,16 @@ int wuss_slider_row_event(wuss_window_t           *window,
 void wuss_icon_spec_label(wuss_icon_spec_t *spec,
                           box_t             bbox,
                           const char       *text,
-                          wuss_colour_t     fg,
                           int               justify_right);
 
 /**
  * Fill \p spec as a wuss_ICON_TYPE_SLIDER.
  *
+ * Drawn with wuss_COLOUR_BLACK groove/fill.
+ *
  * \param[out] spec          Spec to fill; any prior contents are
  *                           overwritten.
  * \param[in]  bbox          Bounding box.
- * \param[in]  fg            Groove/fill colour.
  * \param[in]  orientation   Groove direction.
  * \param[in]  min           Value at the groove's start.
  * \param[in]  max           Value at the groove's end.
@@ -188,7 +189,6 @@ void wuss_icon_spec_label(wuss_icon_spec_t *spec,
  */
 void wuss_icon_spec_slider(wuss_icon_spec_t         *spec,
                            box_t                     bbox,
-                           wuss_colour_t             fg,
                            wuss_slider_orientation_t orientation,
                            int                       min,
                            int                       max,

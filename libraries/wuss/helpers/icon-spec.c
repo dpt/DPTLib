@@ -35,14 +35,13 @@ static int wuss__slider_row_snap(int v, int min, int max, int step)
 void wuss_icon_spec_label(wuss_icon_spec_t *spec,
                           box_t             bbox,
                           const char       *text,
-                          wuss_colour_t     fg,
                           int               justify_right)
 {
   memset(spec, 0, sizeof(*spec));
   spec->bbox  = bbox;
   spec->type  = wuss_ICON_TYPE_LABEL;
   spec->text  = text;
-  spec->fg    = fg;
+  spec->fg    = wuss_COLOUR_BLACK;
   spec->bg    = wuss_NO_BACKGROUND;
   spec->flags = justify_right ? wuss_ICON_FLAGS_JUSTIFY_RIGHT
                               : wuss_ICON_FLAGS_NONE;
@@ -50,7 +49,6 @@ void wuss_icon_spec_label(wuss_icon_spec_t *spec,
 
 void wuss_icon_spec_slider(wuss_icon_spec_t         *spec,
                            box_t                     bbox,
-                           wuss_colour_t             fg,
                            wuss_slider_orientation_t orientation,
                            int                       min,
                            int                       max,
@@ -59,7 +57,7 @@ void wuss_icon_spec_slider(wuss_icon_spec_t         *spec,
   memset(spec, 0, sizeof(*spec));
   spec->bbox = bbox;
   spec->type = wuss_ICON_TYPE_SLIDER;
-  spec->fg   = fg;
+  spec->fg   = wuss_COLOUR_BLACK;
   spec->bg   = wuss_NO_BACKGROUND;
   spec->u.slider.orientation   = orientation;
   spec->u.slider.min           = min;
@@ -85,7 +83,6 @@ void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
                                wuss_icon_spec_t         *value_spec,
                                box_t                     slider_bbox,
                                box_t                     value_bbox,
-                               wuss_colour_t             fg,
                                wuss_slider_orientation_t orientation,
                                int                       min,
                                int                       max,
@@ -97,10 +94,10 @@ void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
 
   if (step != 0)
     default_value = wuss__slider_row_snap(default_value, min, max, step);
-  wuss_icon_spec_slider(slider_spec, slider_bbox, fg, orientation, min, max,
+  wuss_icon_spec_slider(slider_spec, slider_bbox, orientation, min, max,
                         default_value);
   snprintf(buf, sizeof(buf), fmt ? fmt : "%d", default_value);
-  wuss_icon_spec_label(value_spec, value_bbox, buf, fg, 0);
+  wuss_icon_spec_label(value_spec, value_bbox, buf, 0);
 }
 
 void wuss_slider_row_bind(wuss_slider_row_t *row,

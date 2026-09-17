@@ -73,7 +73,7 @@ static result_t spawn_task(const char *name, task_create_fn_t create)
 
   rc = create(g_tasks.wuss, NULL);
   if (rc != result_OK)
-    logf_error("wuss: %s_create failed, rc=0x%X (%s)", name, rc,
+    logf_error("wuss: %s create failed, rc=0x%X (%s)", name, rc,
                result_string(rc));
   return rc;
 }

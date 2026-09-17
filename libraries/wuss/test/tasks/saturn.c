@@ -521,20 +521,20 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
   box_t            boxes[SIZE_STACK__LIMIT];
   box_t            root;
   int              value, row;
-  size2d_t         sz;
+  size2d_t         min_sz;
 
   /* smallest window the layout can be solved into without any flex item
    * (the sliders) growing past its minimum */
-  rc = stack_smallest(g_saturn_conf_stack, NELEMS(g_saturn_conf_stack), &sz);
+  rc = stack_smallest(g_saturn_conf_stack, NELEMS(g_saturn_conf_stack), &min_sz);
   if (rc != result_OK)
     return rc;
 
-  rc = wuss_dialogue_create(&task->conf.dialogue, task->delegate, sz,
+  rc = wuss_dialogue_create(&task->conf.dialogue, task->delegate, min_sz,
                             "Configuration", saturn_conf_fillout, task);
   if (rc != result_OK)
     return rc;
 
-  root = (box_t) BOX_POS_SIZE(0, 0, sz.w, sz.h);
+  root = (box_t) BOX_POS_SIZE(0, 0, min_sz.w, min_sz.h);
   rc = stack_solve(g_saturn_conf_stack, NELEMS(g_saturn_conf_stack), &root, boxes);
   if (rc != result_OK)
     goto exit;
@@ -546,10 +546,10 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
     value = *saturn_sizedlg_field(task, row);
 
     wuss_icon_spec_label(&specs[label_icon[row]], boxes[label_box[row]],
-                         desc->label, wuss_COLOUR_BLACK, 1);
+                         desc->label, 1);
     wuss_icon_spec_slider_row(&specs[slider_icon[row]], &specs[value_icon[row]],
                               boxes[slider_box[row]], boxes[value_box[row]],
-                              wuss_COLOUR_BLACK, wuss_SLIDER_HORIZONTAL,
+                              wuss_SLIDER_HORIZONTAL,
                               desc->min, desc->max, value, NULL, desc->step);
   }
 
