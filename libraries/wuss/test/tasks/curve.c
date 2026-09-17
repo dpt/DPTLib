@@ -387,6 +387,9 @@ result_t curve_handle(wuss_window_t      *window,
     return curve_redraw(event, task);
 
   case wuss_EVENT_MOUSE:
+    if (window != task->window)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
     return curve_mouse(task, event->data.mouse.action,
                        event->data.mouse.point.x, event->data.mouse.point.y,
                        event->data.mouse.button, window);

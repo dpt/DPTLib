@@ -422,6 +422,9 @@ result_t palette_handle(wuss_window_t      *window,
     return palette_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
+    if (window != pc->window && window != pc->window2)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
     return palette_click(task_data, event);
 
   case wuss_EVENT_MENU_SELECT:

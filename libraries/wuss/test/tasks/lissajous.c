@@ -154,9 +154,11 @@ static result_t lissajous_mouse(wuss_window_t      *window,
 {
   lissajous_task_t *lc;
 
-  NOT_USED(window);
-
   lc = task_data;
+
+  if (window != lc->window)
+    return result_OK; /* the proginfo dialogue has no click behaviour of
+                       * its own */
 
   if (action != wuss_MOUSE_DOWN)
     return result_OK;

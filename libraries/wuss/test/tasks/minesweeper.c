@@ -620,6 +620,9 @@ result_t minesweeper_handle(wuss_window_t      *window,
     return minesweeper_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
+    if (window != ms->window)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     return minesweeper_mouse(ms, event->data.mouse.point,
