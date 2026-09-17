@@ -54,5 +54,9 @@ result_t bmfont_enumerate(const char          *dir,
   ctx.fn     = fn;
   ctx.opaque = opaque;
 
-  return dirscan_walk(dir, bmfont_enumerate_entry, &ctx);
+  /* ctx.dir, not dir: dirscan_walk holds this pointer across the whole
+   * scan, calling bmfont_enumerate_entry (and its pathf call) between
+   * reads -- passing the original dir would let that clobber it mid-walk
+   * if it still pointed into pathf's shared buffer. */
+  return dirscan_walk(ctx.dir, bmfont_enumerate_entry, &ctx);
 }
