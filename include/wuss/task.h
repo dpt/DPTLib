@@ -50,9 +50,22 @@ typedef enum wuss_event_kind
   wuss_EVENT_SCROLL,
   /** A visible window moved or resized. */
   wuss_EVENT_OPEN,
-  /** A hidden window is about to become visible; a non-OK return vetoes
-   *  the reveal. */
+  /** A hidden window (item->window "borrowed window" menu leaf flagged
+   *  wuss_MENU_ITEM_PRE_OPEN) is about to become visible. Call
+   *  wuss_menu_open_window_now from the handler to proceed; not calling it
+   *  leaves the window hidden and the row inert. A non-OK return is a
+   *  genuine failure, not a veto. Only fires for a flagged row -- an
+   *  unflagged item->window leaf just opens on hover, no event. */
   wuss_EVENT_PRE_SHOW,
+  /** An item->submenu menu leaf flagged wuss_MENU_ITEM_PRE_OPEN is about to
+   *  open. Delivered to the task that opened the chain (window == NULL),
+   *  like wuss_EVENT_MENU_SELECT. Call wuss_menu_open_submenu_now from the
+   *  handler, supplying the menu to open (allowing a shared instance to be
+   *  retitled/retargeted first); not calling it leaves the row inert. A
+   *  non-OK return is a genuine failure, not a veto. Only fires for a
+   *  flagged row -- an unflagged item->submenu leaf just opens on hover,
+   *  no event. */
+  wuss_EVENT_PRE_SUBMENU_OPEN,
   /** A window has become visible (hidden->visible transition only, not at
    *  create). */
   wuss_EVENT_SHOW,
@@ -118,8 +131,9 @@ typedef wuss_event_kind_t wuss_window_event_kind_t;
  * no window (window == NULL): the app-wide notifications.
  *
  * Members: wuss_EVENT_IDLE, wuss_EVENT_QUIT, wuss_EVENT_PALETTE,
- * wuss_EVENT_MENU_SELECT, wuss_EVENT_MENU_CLOSED, wuss_EVENT_ICON (reserved
- * for a future shared/dock element; nothing emits it yet).
+ * wuss_EVENT_MENU_SELECT, wuss_EVENT_MENU_CLOSED,
+ * wuss_EVENT_PRE_SUBMENU_OPEN, wuss_EVENT_ICON (reserved for a future
+ * shared/dock element; nothing emits it yet).
  */
 typedef wuss_event_kind_t wuss_task_event_kind_t;
 
@@ -202,6 +216,27 @@ typedef struct wuss_event
     }
     scroll;
 
+    /** wuss_EVENT_PRE_SHOW (menu window leaf only): index is the row's
+     * position in the hovering menu level's items. Call
+     * wuss_menu_open_window_now(handle, index) to proceed. */
+    struct
+    {
+      struct wuss__menu *handle;
+      int                index;
+    }
+    pre_show;
+
+    /** wuss_EVENT_PRE_SUBMENU_OPEN: index is the row's position in the
+     * hovering menu level's items. Call
+     * wuss_menu_open_submenu_now(handle, index, menu) to proceed,
+     * supplying the (possibly retitled/retargeted) menu to open. */
+    struct
+    {
+      struct wuss__menu *handle;
+      int                index;
+    }
+    pre_submenu_open;
+
     /** wuss_EVENT_MENU_SELECT: delivered to the task that called
      * wuss_menu_open. menu is the (sub)menu the item belongs to; index is
      * its position in menu->items; button is the wuss_button_t flags for the
@@ -215,10 +250,9 @@ typedef struct wuss_event
     }
     menu_select;
 
-    /* wuss_EVENT_OPEN, wuss_EVENT_PRE_SHOW, wuss_EVENT_SHOW,
-     * wuss_EVENT_PRE_CLOSE, wuss_EVENT_CLOSE, wuss_EVENT_IDLE,
-     * wuss_EVENT_QUIT, wuss_EVENT_PALETTE and wuss_EVENT_MENU_CLOSED carry
-     * no data. */
+    /* wuss_EVENT_OPEN, wuss_EVENT_SHOW, wuss_EVENT_PRE_CLOSE,
+     * wuss_EVENT_CLOSE, wuss_EVENT_IDLE, wuss_EVENT_QUIT,
+     * wuss_EVENT_PALETTE and wuss_EVENT_MENU_CLOSED carry no data. */
   }
   data;
 }
@@ -231,8 +265,10 @@ wuss_event_t;
  * \param[in] event     The event; see wuss_event_t.
  * \param[in] task_data As passed to wuss_task_create.
  * \return \ref result_OK on success, else an appropriate result code. For
- *         wuss_EVENT_PRE_SHOW / wuss_EVENT_PRE_CLOSE a non-OK return vetoes
- *         the transition.
+ *         wuss_EVENT_PRE_CLOSE a non-OK return vetoes the transition. For
+ *         wuss_EVENT_PRE_SHOW a non-OK return is a genuine failure, not a
+ *         veto -- proceeding is opt-in via wuss_window_reveal_now /
+ *         wuss_menu_open_window_now.
  */
 typedef result_t (wuss_window_fn_t)(wuss_window_t      *window,
                                     const wuss_event_t *event,
@@ -246,7 +282,9 @@ typedef result_t (wuss_window_fn_t)(wuss_window_t      *window,
  *                      kept so a single handle can serve both views.
  * \param[in] event     The event; see wuss_event_t.
  * \param[in] task_data As passed to wuss_task_create.
- * \return \ref result_OK on success, else an appropriate result code.
+ * \return \ref result_OK on success, else an appropriate result code. For
+ *         wuss_EVENT_PRE_SUBMENU_OPEN a non-OK return is a genuine failure,
+ *         not a veto -- proceeding is opt-in via wuss_menu_open_submenu_now.
  */
 typedef result_t (wuss_task_fn_t)(wuss_window_t      *window,
                                   const wuss_event_t *event,

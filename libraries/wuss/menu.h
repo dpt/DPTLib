@@ -34,6 +34,16 @@ struct wuss__menu
                                       * shown in place of a submenu -- hide it
                                       * rather than close it on teardown */
 
+  int                    pending_index; /* item index whose PRE_SHOW /
+                                         * PRE_SUBMENU_OPEN is being
+                                         * delivered on this level right
+                                         * now, else -1. Set immediately
+                                         * before wuss__deliver, consumed by
+                                         * wuss_menu_open_window_now /
+                                         * wuss_menu_open_submenu_now if the
+                                         * handler calls back synchronously,
+                                         * cleared once delivery returns. */
+
   /* SELECT-pick flash: the picked row's highlight is toggled a few times off
    * wuss_EVENT_IDLE before the chain closes and MENU_SELECT is delivered.
    * Set on the picked level; frames == 0 means no flash in progress. The

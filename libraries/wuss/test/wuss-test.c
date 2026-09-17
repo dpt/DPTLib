@@ -70,6 +70,9 @@ typedef struct test_task
   int                 idle_count;
   int                 veto_pre_close;
   int                 veto_pre_show;
+  int                 open_window_via_handle;
+  const wuss_menu_t  *submenu_to_open;
+  int                 pre_submenu_open_count;
   int                 menu_select_count;
   int                 last_menu_index;
 }
@@ -80,8 +83,6 @@ static result_t test_handle(wuss_window_t      *window,
                             void               *task_data)
 {
   test_task_t *tc;
-
-  NOT_USED(window);
 
   tc = task_data;
 
@@ -121,8 +122,29 @@ static result_t test_handle(wuss_window_t      *window,
   case wuss_EVENT_PRE_SHOW:
     tc->pre_show_count++;
     if (tc->veto_pre_show)
-      return result_BAD_ARG; /* any non-OK return vetoes the reveal */
-    break;
+      break; /* not calling wuss_window_reveal_now still shows: default proceed */
+    if (tc->open_window_via_handle)
+    {
+      /* the correct guard: a plain window's PRE_SHOW carries handle == NULL
+       * (already proceeding by default), and calling
+       * wuss_menu_open_window_now with a NULL/non-menu handle is a caller
+       * error -- regression coverage for a real crash where saturn.c and
+       * apps/wuss/tasks.c called it unconditionally */
+      if (event->data.pre_show.handle == NULL)
+        return result_OK;
+      return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                       event->data.pre_show.index);
+    }
+    return wuss_window_reveal_now(window);
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    tc->pre_submenu_open_count++;
+    if (tc->submenu_to_open == NULL)
+      break; /* this only fires for a flagged row; not calling
+              * wuss_menu_open_submenu_now leaves it inert */
+    return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
+                                      event->data.pre_submenu_open.index,
+                                      tc->submenu_to_open);
 
   case wuss_EVENT_MENU_SELECT:
     tc->menu_select_count++;
@@ -4509,7 +4531,7 @@ result_t wuss_test(const char *resources)
     rc = result_OK;
   }
 
-  printf("test: wuss_window_set_hidden fires PRE_SHOW; a veto keeps the window hidden\n");
+  printf("test: wuss_window_set_hidden fires PRE_SHOW; not opting in still shows the window\n");
   {
     static test_task_t tc_ps;
     wuss_task_t       *delegate_ps;
@@ -4540,27 +4562,30 @@ result_t wuss_test(const char *resources)
     (void) wuss_mouse_click(wuss, POINT(10, 10), wuss_BUTTON_SELECT,
                             wuss_MOUSE_UP, &hit);
 
-    /* vetoed reveal: PRE_SHOW fires, returns the veto rc, no SHOW, window
-     * stays hidden */
+    /* handler does not call wuss_window_reveal_now: PRE_SHOW still fires,
+     * but the window shows anyway (default proceed) */
     tc_ps.veto_pre_show = 1;
     rc = wuss_window_set_hidden(win_ps, 0);
-    if (rc != result_BAD_ARG)
+    if (rc != result_OK)
       goto Failure;
-    if (tc_ps.pre_show_count != 1 || tc_ps.show_count != 0)
+    if (tc_ps.pre_show_count != 1 || tc_ps.show_count != 1)
       goto Failure;
     rc = wuss_mouse_click(wuss, POINT(10, 10), wuss_BUTTON_SELECT,
                           wuss_MOUSE_DOWN, &hit);
-    if (rc != result_OK || hit == win_ps)
-      goto Failure; /* still hidden */
+    if (rc != result_OK || hit != win_ps)
+      goto Failure;
     (void) wuss_mouse_click(wuss, POINT(10, 10), wuss_BUTTON_SELECT,
                             wuss_MOUSE_UP, &hit);
+    rc = wuss_window_set_hidden(win_ps, 1);
+    if (rc != result_OK)
+      goto Failure;
 
-    /* allow it: PRE_SHOW then SHOW, and now it catches the pointer */
+    /* handler calls wuss_window_reveal_now explicitly: same result */
     tc_ps.veto_pre_show = 0;
     rc = wuss_window_set_hidden(win_ps, 0);
     if (rc != result_OK)
       goto Failure;
-    if (tc_ps.pre_show_count != 2 || tc_ps.show_count != 1)
+    if (tc_ps.pre_show_count != 2 || tc_ps.show_count != 2)
       goto Failure;
     rc = wuss_mouse_click(wuss, POINT(10, 10), wuss_BUTTON_SELECT,
                           wuss_MOUSE_DOWN, &hit);
@@ -4571,6 +4596,47 @@ result_t wuss_test(const char *resources)
 
     wuss_task_destroy(delegate_ps);
     mk_task_count = 0; /* delegate_ps is gone; drop the stale registry entry */
+    rc = result_OK;
+  }
+
+  printf("test: a plain window's PRE_SHOW carries a NULL handle -- calling "
+         "wuss_menu_open_window_now only when handle is non-NULL does not "
+         "crash (regression: saturn.c/tasks.c called it unconditionally)\n");
+  {
+    static test_task_t tc_psh;
+    wuss_task_t       *delegate_psh;
+    box_t              box_psh;
+    wuss_window_t     *win_psh;
+
+    memset(&tc_psh, 0, sizeof(tc_psh));
+    tc_psh.open_window_via_handle = 1;
+    delegate_psh = mk_task(wuss, test_handle, &tc_psh);
+    if (delegate_psh == NULL)
+      goto Failure;
+
+    box_psh.x0 = 0;  box_psh.y0 = 0;
+    box_psh.x1 = 60; box_psh.y1 = 60;
+    rc = wuss_window_create(delegate_psh, &box_psh, "PSH", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            box_size(&box_psh), SIZE2D(0, 0), &win_psh);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_window_set_hidden(win_psh, 1);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* handle == NULL for a plain window; the handler's NULL guard must
+     * take the early return and the window still shows (already
+     * defaulted to proceed before the handler ran) */
+    rc = wuss_window_set_hidden(win_psh, 0);
+    if (rc != result_OK || tc_psh.pre_show_count != 1)
+      goto Failure;
+    if (win_psh->flags & wuss_WINDOW_HIDDEN)
+      goto Failure;
+
+    wuss_task_destroy(delegate_psh);
+    mk_task_count = 0;
     rc = result_OK;
   }
 
@@ -5172,6 +5238,7 @@ FlashFail:
     if (rc != result_OK) goto SubHiFailFree;
 
     memset(&stc, 0, sizeof(stc));
+    stc.submenu_to_open = &sm_sub;
     sowner = mk_task(swuss, test_handle, &stc);
     if (sowner == NULL) { rc = result_OOM; goto SubHiDestroy; }
 
@@ -5239,6 +5306,258 @@ SubHiDestroy:
 SubHiFailFree:
     free(spixels);
 SubHiFail:
+    bmfont_destroy(font);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+  }
+
+  printf("test: wuss_MENU_ITEM_PRE_OPEN gates wuss_EVENT_PRE_SUBMENU_OPEN -- "
+         "unflagged opens the static submenu with no event, flagged requires "
+         "opting in\n");
+  {
+    static const wuss_menu_item_t po_sub_a_items[] =
+    {
+      { "A-one", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_t po_sub_a =
+    {
+      "A", po_sub_a_items, NELEMS(po_sub_a_items)
+    };
+    static const wuss_menu_item_t po_sub_b_items[] =
+    {
+      { "B-one", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_t po_sub_b =
+    {
+      "B", po_sub_b_items, NELEMS(po_sub_b_items)
+    };
+    static const wuss_menu_item_t po_items[] =
+    {
+      { "Plain", wuss_MENU_ITEM_NONE, &po_sub_a },       /* unflagged: opens
+                                                            * po_sub_a directly,
+                                                            * no event */
+      { "Flagged", wuss_MENU_ITEM_PRE_OPEN, &po_sub_a }  /* flagged: fires
+                                                            * wuss_EVENT_PRE_SUBMENU_OPEN,
+                                                            * handler must opt
+                                                            * in */
+    };
+    static const wuss_menu_t po_menu =
+    {
+      "Root", po_items, NELEMS(po_items)
+    };
+
+    const char      *fontfile;
+    bmfont_t        *font = NULL;
+    wuss_font_desc_t fdesc;
+    screen_t         pscr;
+    bitmap_t         pbm;
+    void            *ppixels;
+    wuss_t          *pwuss;
+    test_task_t      ptc;
+    wuss_task_t     *powner;
+    struct wuss__menu *proot;
+
+    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
+                                  path_join_leafname("Tiny", "png"));
+    rc = bmfont_create(fontfile, &font);
+    if (rc != result_OK)
+    {
+      printf("wuss_test: PRE_SUBMENU_OPEN test could not load %s\n", fontfile);
+      goto Failure;
+    }
+
+    ppixels = malloc((size_t) rowbytes * 200);
+    if (ppixels == NULL) { rc = result_OOM; goto PreOpenFail; }
+    rc = bitmap_init(&pbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, ppixels);
+    if (rc != result_OK) goto PreOpenFailFree;
+    screen_for_bitmap(&pscr, &pbm);
+
+    fdesc.font       = font;
+    fdesc.font_class = wuss_FONT_CLASS_NONE;
+    fdesc.name       = NULL;
+    rc = wuss_create(&pscr, &fdesc, 1, NULL, 0, NULL, NULL, NULL, &pwuss);
+    if (rc != result_OK) goto PreOpenFailFree;
+
+    memset(&ptc, 0, sizeof(ptc));
+    powner = mk_task(pwuss, test_handle, &ptc);
+    if (powner == NULL) { rc = result_OOM; goto PreOpenDestroy; }
+
+    rc = wuss_menu_open(powner, &po_menu, POINT(40, 40), NULL);
+    if (rc != result_OK) goto PreOpenDestroy;
+
+    proot = pwuss->menu_chain;
+    if (proot == NULL || proot->menu != &po_menu) goto PreOpenCheckFail;
+
+    /* row 0 unflagged: opens po_sub_a directly, no PRE_SUBMENU_OPEN fired */
+    menu_move_over_row(pwuss, proot, 0, 1);
+    if (ptc.pre_submenu_open_count != 0)     goto PreOpenCheckFail;
+    if (proot->child == NULL)                goto PreOpenCheckFail;
+    if (proot->child->menu != &po_sub_a)     goto PreOpenCheckFail;
+
+    menu_move_over_row(pwuss, proot, 0, 0); /* off the arrow: closes the child */
+    if (proot->child != NULL)                goto PreOpenCheckFail;
+
+    /* row 1 flagged, not opting in: PRE_SUBMENU_OPEN fires but nobody calls
+     * wuss_menu_open_submenu_now, so the row stays inert */
+    menu_move_over_row(pwuss, proot, 1, 1);
+    if (ptc.pre_submenu_open_count != 1)     goto PreOpenCheckFail;
+    if (proot->child != NULL)                goto PreOpenCheckFail;
+
+    /* move off and back on, this time opting in with po_sub_b -- a
+     * different menu from the row's own static .submenu (po_sub_a) --
+     * proves the callback's menu argument, not the static leaf, decides
+     * what opens */
+    menu_move_over_row(pwuss, proot, 1, 0);
+    ptc.submenu_to_open = &po_sub_b;
+    menu_move_over_row(pwuss, proot, 1, 1);
+    if (ptc.pre_submenu_open_count != 2)     goto PreOpenCheckFail;
+    if (proot->child == NULL)                goto PreOpenCheckFail;
+    if (proot->child->menu != &po_sub_b)     goto PreOpenCheckFail;
+
+    wuss_menu_close(proot);
+    rc = result_OK;
+    goto PreOpenDestroy;
+
+PreOpenCheckFail:
+    printf("wuss_test: PRE_SUBMENU_OPEN check failed "
+           "(count=%d child=%p)\n",
+           ptc.pre_submenu_open_count, (void *) proot->child);
+    rc = result_TEST_FAILED;
+
+PreOpenDestroy:
+    reap_test_tasks();
+    wuss_destroy(pwuss);
+PreOpenFailFree:
+    free(ppixels);
+PreOpenFail:
+    bmfont_destroy(font);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+  }
+
+  printf("test: wuss_MENU_ITEM_PRE_OPEN gates wuss_EVENT_PRE_SHOW for a "
+         "borrowed-window leaf -- unflagged opens it with no event, flagged "
+         "requires opting in\n");
+  {
+    static wuss_menu_item_t pw_items[2];
+    static const wuss_menu_t pw_menu =
+    {
+      "Root", pw_items, NELEMS(pw_items)
+    };
+
+    const char      *fontfile;
+    bmfont_t        *font = NULL;
+    wuss_font_desc_t fdesc;
+    screen_t         pscr;
+    bitmap_t         pbm;
+    void            *ppixels;
+    wuss_t          *pwuss;
+    test_task_t      ptc;
+    wuss_task_t     *powner;
+    box_t            winbox;
+    wuss_window_t   *win_plain, *win_flagged;
+    struct wuss__menu  *proot;
+
+    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
+                                  path_join_leafname("Tiny", "png"));
+    rc = bmfont_create(fontfile, &font);
+    if (rc != result_OK)
+    {
+      printf("wuss_test: PRE_SHOW window-leaf test could not load %s\n",
+             fontfile);
+      goto Failure;
+    }
+
+    ppixels = malloc((size_t) rowbytes * 200);
+    if (ppixels == NULL) { rc = result_OOM; goto PwFail; }
+    rc = bitmap_init(&pbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, ppixels);
+    if (rc != result_OK) goto PwFailFree;
+    screen_for_bitmap(&pscr, &pbm);
+
+    fdesc.font       = font;
+    fdesc.font_class = wuss_FONT_CLASS_NONE;
+    fdesc.name       = NULL;
+    rc = wuss_create(&pscr, &fdesc, 1, NULL, 0, NULL, NULL, NULL, &pwuss);
+    if (rc != result_OK) goto PwFailFree;
+
+    memset(&ptc, 0, sizeof(ptc));
+    powner = mk_task(pwuss, test_handle, &ptc);
+    if (powner == NULL) { rc = result_OOM; goto PwDestroy; }
+
+    winbox.x0 = 0;  winbox.y0 = 0;
+    winbox.x1 = 40; winbox.y1 = 20;
+    rc = wuss_window_create(powner, &winbox, "Plain",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_HIDDEN,
+                            wuss_NO_BACKDROP, box_size(&winbox),
+                            SIZE2D(0, 0), &win_plain);
+    if (rc != result_OK) goto PwDestroy;
+    rc = wuss_window_create(powner, &winbox, "Flagged",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_HIDDEN,
+                            wuss_NO_BACKDROP, box_size(&winbox),
+                            SIZE2D(0, 0), &win_flagged);
+    if (rc != result_OK) goto PwDestroy;
+
+    pw_items[0].text   = "Plain";
+    pw_items[0].flags  = wuss_MENU_ITEM_NONE;
+    pw_items[0].submenu = NULL;
+    pw_items[0].window  = win_plain;
+    pw_items[1].text   = "Flagged";
+    pw_items[1].flags  = wuss_MENU_ITEM_PRE_OPEN;
+    pw_items[1].submenu = NULL;
+    pw_items[1].window  = win_flagged;
+
+    rc = wuss_menu_open(powner, &pw_menu, POINT(40, 40), NULL);
+    if (rc != result_OK) goto PwDestroy;
+
+    proot = pwuss->menu_chain;
+    if (proot == NULL || proot->menu != &pw_menu) goto PwCheckFail;
+
+    /* row 0 unflagged: still goes through the plain wuss_window_set_hidden
+     * path, so PRE_SHOW fires with handle == NULL (default-proceed, no
+     * opt-in required) -- unlike PRE_SUBMENU_OPEN, this is the one
+     * pre-existing production call site the flag does not gate */
+    menu_move_over_row(pwuss, proot, 0, 1);
+    if (ptc.pre_show_count != 1)                    goto PwCheckFail;
+    if (win_plain->flags & wuss_WINDOW_HIDDEN)      goto PwCheckFail;
+
+    menu_move_over_row(pwuss, proot, 0, 0); /* off the arrow: closes it */
+    if (!(win_plain->flags & wuss_WINDOW_HIDDEN))   goto PwCheckFail;
+
+    /* row 1 flagged, handler does not opt in: PRE_SHOW fires (handle
+     * non-NULL) but the row stays inert */
+    ptc.veto_pre_show = 1;
+    menu_move_over_row(pwuss, proot, 1, 1);
+    if (ptc.pre_show_count != 2)                    goto PwCheckFail;
+    if (!(win_flagged->flags & wuss_WINDOW_HIDDEN)) goto PwCheckFail;
+
+    /* opting in via wuss_menu_open_window_now shows it */
+    menu_move_over_row(pwuss, proot, 1, 0);
+    ptc.veto_pre_show          = 0;
+    ptc.open_window_via_handle = 1;
+    menu_move_over_row(pwuss, proot, 1, 1);
+    if (ptc.pre_show_count != 3)                    goto PwCheckFail;
+    if (win_flagged->flags & wuss_WINDOW_HIDDEN)    goto PwCheckFail;
+
+    wuss_menu_close(proot);
+    rc = result_OK;
+    goto PwDestroy;
+
+PwCheckFail:
+    printf("wuss_test: PRE_SHOW window-leaf check failed "
+           "(count=%d plain_hidden=%d flagged_hidden=%d)\n",
+           ptc.pre_show_count,
+           (win_plain->flags & wuss_WINDOW_HIDDEN) != 0,
+           (win_flagged->flags & wuss_WINDOW_HIDDEN) != 0);
+    rc = result_TEST_FAILED;
+
+PwDestroy:
+    reap_test_tasks();
+    wuss_destroy(pwuss);
+PwFailFree:
+    free(ppixels);
+PwFail:
     bmfont_destroy(font);
     if (rc != result_OK)
       return result_TEST_FAILED;

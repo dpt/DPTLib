@@ -201,7 +201,7 @@ enum
  * the table itself cannot name it at compile time. */
 static wuss_menu_item_t g_task_items[] =
 {
-  { "Info",      wuss_MENU_ITEM_NONE, NULL,               NULL },
+  { "Info",      wuss_MENU_ITEM_PRE_OPEN, NULL,           NULL },
   { "Games",     wuss_MENU_ITEM_NONE, &g_games_menu,      NULL },
   { "Tests",     wuss_MENU_ITEM_NONE, &g_tests_menu,      NULL },
   { "Utilities", wuss_MENU_ITEM_NONE, &g_utilities_menu,  NULL },
@@ -264,9 +264,21 @@ result_t task_handle_event(wuss_window_t      *window,
 
   if (event->kind == wuss_EVENT_PRE_SHOW)
   {
+    result_t rc;
+
     if (window == wuss_proginfo_window(g_tasks.proginfo))
-      return wuss_proginfo_handle_pre_show(g_tasks.proginfo);
-    return result_OK;
+      rc = wuss_proginfo_handle_pre_show(g_tasks.proginfo);
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+
+    if (event->data.pre_show.handle == NULL)
+      return result_OK; /* plain window reveal, not a flagged menu leaf:
+                          * already proceeding by default */
+
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
   }
 
   if (event->kind != wuss_EVENT_MENU_SELECT)

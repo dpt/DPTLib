@@ -58,7 +58,15 @@ typedef enum wuss_menu_item_flags
    *  must outlive the tree, not be freed with it: wuss_menu_destroy leaves
    *  it alone instead of recursing into it. Ignored on an item with no
    *  \c submenu. */
-  wuss_MENU_ITEM_BORROWED_SUBMENU = 1 << 4
+  wuss_MENU_ITEM_BORROWED_SUBMENU = 1 << 4,
+
+  /** On hover, fire wuss_EVENT_PRE_SUBMENU_OPEN / wuss_EVENT_PRE_SHOW
+   *  (whichever matches \c submenu / \c window) before opening the row.
+   *  The handler must call wuss_menu_open_submenu_now /
+   *  wuss_menu_open_window_now to proceed -- not calling it leaves the row
+   *  inert. Without this flag, no event fires and the row's static \c
+   *  submenu / \c window just opens. */
+  wuss_MENU_ITEM_PRE_OPEN = 1 << 5
 }
 wuss_menu_item_flags_t;
 
@@ -71,12 +79,17 @@ typedef struct wuss_menu_item
   /** See wuss_menu_item_flags_t */
   wuss_menu_item_flags_t  flags;
 
-  /** Non-NULL: draw a right arrow and open this menu to the right on
-   *  hover */
+  /** Non-NULL: draw a right arrow and open this submenu on hover. With
+   *  wuss_MENU_ITEM_PRE_OPEN, hover instead fires
+   *  wuss_EVENT_PRE_SUBMENU_OPEN and the handler must call
+   *  wuss_menu_open_submenu_now to open a menu (\c submenu itself, or
+   *  another one retitled/retargeted for this row). */
   const struct wuss_menu *submenu;
 
-  /** Non-NULL: draw a right arrow and, on hover, show this caller-owned
-   *  window where a submenu would open, hiding it again when the pointer
+  /** Non-NULL: draw a right arrow and show this caller-owned window where a
+   *  submenu would open, on hover. With wuss_MENU_ITEM_PRE_OPEN, hover
+   *  instead fires wuss_EVENT_PRE_SHOW and the handler must call
+   *  wuss_menu_open_window_now to proceed. Hidden again when the pointer
    *  leaves the row or the chain is dismissed. Create it with
    *  wuss_WINDOW_HIDDEN. Mutually exclusive with \c submenu. The window
    *  must outlive the open chain -- do not wuss_window_close it while its
@@ -140,6 +153,18 @@ void wuss_menu_close(wuss_menu_handle_t handle);
 int wuss_menu_is_open(wuss_menu_handle_t handle);
 
 /**
+ * The menu a level's handle is showing -- lets a task that shares one
+ * PRE_SUBMENU_OPEN handler across several submenu leaves tell which level
+ * fired the event (e.g. \c event->data.pre_submenu_open.handle) before
+ * deciding how to answer it.
+ *
+ * \param[in] handle Handle from a pre-open event's payload.
+ * \return The level's menu; borrowed, same pointer passed to wuss_menu_open
+ *         or wuss_menu_open_submenu_now.
+ */
+const wuss_menu_t *wuss_menu_handle_menu(wuss_menu_handle_t handle);
+
+/**
  * True when \p ev is a wuss_EVENT_MENU_SELECT whose pick keeps the chain
  * open -- an ADJUST-button release (see wuss_menu_open). A SELECT-button
  * pick has already closed and freed the chain by the time the event arrives,
@@ -152,6 +177,44 @@ int wuss_menu_is_open(wuss_menu_handle_t handle);
  * \return Non-zero if \p ev is a MENU_SELECT that leaves the chain open.
  */
 int wuss_menu_should_keep_open(const wuss_event_t *ev);
+
+/* ----------------------------------------------------------------------- */
+
+/* Pre-open callbacks: called synchronously, from inside a
+ * wuss_EVENT_PRE_SHOW / wuss_EVENT_PRE_SUBMENU_OPEN handler, to opt in to
+ * the row actually opening. These events only fire for a row flagged
+ * wuss_MENU_ITEM_PRE_OPEN; not calling the matching one of these leaves the
+ * row inert -- no window is shown, no submenu spawned -- and the event
+ * fires again the next time the pointer re-enters the row's arrow gutter.
+ * Calling the wrong one for the row's static leaf kind, or for a
+ * stale/non-pending index, is a caller error (asserted in debug builds). */
+
+/**
+ * Proceed with a pending wuss_EVENT_PRE_SHOW: reveal the item->window
+ * "borrowed window" leaf at \p index. Must be called synchronously from
+ * within the handler that received the event.
+ *
+ * \param[in] handle Handle from event->data.pre_show.handle.
+ * \param[in] index  Row index from event->data.pre_show.index.
+ * \return \ref result_OK on success, else an appropriate result code.
+ */
+result_t wuss_menu_open_window_now(wuss_menu_handle_t handle, int index);
+
+/**
+ * Proceed with a pending wuss_EVENT_PRE_SUBMENU_OPEN: spawn \p menu as the
+ * item->submenu leaf at \p index. \p menu need not be the item's statically
+ * wired submenu -- this is the hook for retitling/retargeting a shared
+ * submenu instance before it opens. Must be called synchronously from within
+ * the handler that received the event.
+ *
+ * \param[in] handle Handle from event->data.pre_submenu_open.handle.
+ * \param[in] index  Row index from event->data.pre_submenu_open.index.
+ * \param[in] menu   Menu to open; borrowed, must outlive the submenu level.
+ * \return \ref result_OK on success, else an appropriate result code.
+ */
+result_t wuss_menu_open_submenu_now(wuss_menu_handle_t handle,
+                                    int                index,
+                                    const wuss_menu_t *menu);
 
 /* ----------------------------------------------------------------------- */
 

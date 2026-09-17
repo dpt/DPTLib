@@ -151,6 +151,22 @@ void wuss_colourmenu_destroy(wuss_colourmenu_t *doomed)
   alloc.free(doomed);
 }
 
+result_t wuss_colourmenu_set_title(wuss_colourmenu_t *cm, const char *title)
+{
+  const wuss_alloc_t *a;
+  char               *copy;
+
+  a    = &cm->alloc;
+  copy = wuss__alloc_strdup(a, title ? title : "Colour");
+  if (copy == NULL)
+    return result_OOM;
+
+  a->free((void *) cm->menu->title); /* discard const */
+  cm->menu->title = copy;
+
+  return result_OK;
+}
+
 const wuss_menu_t *wuss_colourmenu_menu(const wuss_colourmenu_t *cm)
 {
   return cm ? cm->menu : NULL;
