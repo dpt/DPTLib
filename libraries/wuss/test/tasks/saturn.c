@@ -553,9 +553,9 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
                               desc->min, desc->max, value, NULL, desc->step);
   }
 
-  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_DEFAULT], boxes[ST_DFLT], "Default", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 0);
-  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_CANCEL], boxes[ST_CNCL], "Cancel", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 0);
-  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY], "Apply", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 1);
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_DEFAULT], boxes[ST_DFLT], "Default", 0);
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_CANCEL], boxes[ST_CNCL], "Cancel", 0);
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY], "Apply", 1);
 
   rc = wuss_icon_create_array(wuss_dialogue_window(task->conf.dialogue),
                               specs, SATURN_SIZE_NICONS, made);

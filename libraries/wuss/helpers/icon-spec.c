@@ -70,16 +70,14 @@ void wuss_icon_spec_slider(wuss_icon_spec_t         *spec,
 void wuss_icon_spec_action(wuss_icon_spec_t *spec,
                            box_t             bbox,
                            const char       *text,
-                           wuss_colour_t     fg,
-                           wuss_colour_t     bg,
                            int               is_default)
 {
   memset(spec, 0, sizeof(*spec));
   spec->bbox  = bbox;
   spec->type  = wuss_ICON_TYPE_ACTION;
   spec->text  = text;
-  spec->fg    = fg;
-  spec->bg    = bg;
+  spec->fg    = wuss_COLOUR_BLACK;
+  spec->bg    = wuss_COLOUR_WINDOW;
   spec->flags = is_default ? wuss_ICON_FLAGS_DEFAULT : wuss_ICON_FLAGS_NONE;
 }
 
