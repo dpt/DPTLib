@@ -39,9 +39,9 @@ void wuss__furniture_layout_build(wuss_window_t *window)
   point_t                   carve;
   int                       outline_px;
 
-  layout               = &window->furniture_layout;
-  layout->npieces      = 0;
-  layout->has_titlebar = 0;
+  layout          = &window->furniture_layout;
+  layout->npieces = 0;
+  layout->flags  &= ~wuss_FURNITURE_LAYOUT__HAS_TITLEBAR;
 
   outline_px = wuss__outline_px(window);
   wuss__content_box(window, &content);
@@ -51,8 +51,8 @@ void wuss__furniture_layout_build(wuss_window_t *window)
   wuss__titlebar_box(window, &titlebar);
   if (!(window->flags & wuss_WINDOW_NO_TITLEBAR))
   {
-    layout->titlebar     = titlebar;
-    layout->has_titlebar = 1;
+    layout->titlebar = titlebar;
+    layout->flags   |= wuss_FURNITURE_LAYOUT__HAS_TITLEBAR;
 
     push_piece(layout, &titlebar, wuss__FURNITURE_PAINT_TITLE_BG);
 
@@ -235,7 +235,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
     push_piece(layout, &edge, wuss__FURNITURE_PAINT_OUTLINE); /* right */
   }
 
-  layout->valid = 1;
+  layout->flags |= wuss_FURNITURE_LAYOUT__VALID;
 }
 
 void wuss__furniture_layout_translate(wuss_window_t *window, int dx, int dy)
@@ -248,6 +248,6 @@ void wuss__furniture_layout_translate(wuss_window_t *window, int dx, int dy)
   for (i = 0; i < layout->npieces; i++)
     box_translated(&layout->pieces[i].rect, dx, dy, &layout->pieces[i].rect);
 
-  if (layout->has_titlebar)
+  if (layout->flags & wuss_FURNITURE_LAYOUT__HAS_TITLEBAR)
     box_translated(&layout->titlebar, dx, dy, &layout->titlebar);
 }

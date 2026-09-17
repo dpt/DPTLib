@@ -3753,7 +3753,7 @@ result_t wuss_test(const char *resources)
 
     /* build and cache the furniture layout at the creation width */
     wuss__furniture_layout_build(win_fl);
-    if (!win_fl->furniture_layout.valid)
+    if (!(win_fl->furniture_layout.flags & wuss_FURNITURE_LAYOUT__VALID))
       goto Failure;
     old_titlebar_x1 = win_fl->furniture_layout.titlebar.x1;
 
@@ -3763,7 +3763,7 @@ result_t wuss_test(const char *resources)
 
     /* the resize must have invalidated the cache: nothing else here rebuilds
      * it, so a stale valid==1 means furniture would paint at the old width */
-    if (win_fl->furniture_layout.valid)
+    if (win_fl->furniture_layout.flags & wuss_FURNITURE_LAYOUT__VALID)
       goto Failure;
 
     /* rebuilding now must track the new, wider window */

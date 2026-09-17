@@ -19,7 +19,7 @@ void wuss__furniture_invalidate_for(wuss_window_t *window,
 
   /* Every geometry change routes through here, so it is also the one place
    * the cached furniture layout is dropped. */
-  window->furniture_layout.valid = 0;
+  window->furniture_layout.flags &= ~wuss_FURNITURE_LAYOUT__VALID;
 
   outline_px = wuss__outline_px(window);
   /* Ask for the same carve the layout uses rather than reading the
