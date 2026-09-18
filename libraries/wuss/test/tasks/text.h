@@ -48,11 +48,10 @@ typedef struct text_task
                                    * instance for the same reason -- each
                                    * carries its own tick state */
   wuss_menu_t         spacing_menu;
-  wuss_menu_item_t    top_items[7]; /* "Font", "Sample", "Spacing",
-                                   * "Foreground", "Background", "No
-                                   * Background" and "Info", built once the
-                                   * fontmenu and colourmenus exist so
-                                   * items[0/3/4].submenu can borrow their
+  wuss_menu_item_t    top_items[6]; /* "Info", "Font", "Sample", "Spacing",
+                                   * "Foreground" and "Background", built
+                                   * once the fontmenu and colourmenus exist
+                                   * so items[1/4/5].submenu can borrow their
                                    * live wuss_menu_t */
   wuss_menu_t         top_menu;   /* root menu passed to wuss_menu_open */
   wuss_proginfo_t    *proginfo;
@@ -72,9 +71,9 @@ typedef struct text_task
                                    * "Foreground" */
   wuss_colour_t       bg_index;   /* system palette index picked from
                                    * "Background" */
-  bool                bg_transparent; /* "No Background" tick; bg drawn
-                                   * transparent while set, overriding
-                                   * bg_index */
+  bool                bg_transparent; /* set from the "Background" menu's
+                                   * "None" row; bg drawn transparent while
+                                   * set, overriding bg_index */
   int                 base_width;  /* content width when the window was
                                    * made */
   int                 base_height; /* content height when the window was

@@ -9,7 +9,10 @@
  *
  * A wuss_colourmenu owns a plain wuss_menu_t (see wuss/menu.h): item i is
  * palette index i, its swatch that colour, its label a "#RRGGBB" hex string.
- * A task opens it with wuss_menu_open and, in its wuss_EVENT_MENU_SELECT
+ * With \p with_none, a final "None" row follows the palette rows, set off by
+ * a dashed separator and a hatched black/white chip in place of a real
+ * colour; wuss_colourmenu_selected reports it as wuss_NO_BACKGROUND. A task
+ * opens the menu with wuss_menu_open and, in its wuss_EVENT_MENU_SELECT
  * case, calls wuss_colourmenu_selected to turn the event back into a
  * wuss_colour_t palette index.
  *
@@ -44,12 +47,16 @@ typedef struct wuss_colourmenu wuss_colourmenu_t;
  * \param[in]  wuss  Owner; its palette is read now (not retained). The menu
  *                   outlives changes to the palette -- rebuild it after a
  *                   wuss_set_palette if the rows should follow.
- * \param[in]  title Menu caption, borrowed and copied; NULL for "Colour".
+ * \param[in]  title     Menu caption, borrowed and copied; NULL for
+ *                       "Colour".
+ * \param[in]  with_none Non-zero to append a dashed-off "None" row (hatched
+ *                       chip) resolving to wuss_NO_BACKGROUND.
  * \return \ref result_OK, \ref result_OOM, or \ref result_NULL_ARG.
  */
 result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
                                 const wuss_t       *wuss,
-                                const char         *title);
+                                const char         *title,
+                                int                 with_none);
 
 /**
  * Free a colour menu and every string in it. Any open menu chain showing it
@@ -91,8 +98,9 @@ result_t wuss_colourmenu_set_title(wuss_colourmenu_t *cm, const char *title);
  * \param[in]  ev The event passed to the task's handle callback.
  * \param[out] ok Set non-zero if \p ev was this colourmenu's, else zero. May
  *                be NULL.
- * \return The selected palette index, or 0 if \p ev is not this colourmenu's
- *         (check \p ok to tell that from a real index 0).
+ * \return The selected palette index, wuss_NO_BACKGROUND for the "None" row,
+ *         or 0 if \p ev is not this colourmenu's (check \p ok to tell that
+ *         from a real index 0).
  */
 wuss_colour_t wuss_colourmenu_selected(const wuss_colourmenu_t *cm,
                                        const wuss_event_t      *ev,

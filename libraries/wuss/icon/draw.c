@@ -8,6 +8,8 @@
 #include "geom/point.h"
 #include "geom/size.h"
 #include "framebuf/bmfont.h"
+#include "framebuf/colour.h"
+#include "framebuf/pattern.h"
 #include "framebuf/screen.h"
 
 #include "../core/impl.h"
@@ -537,16 +539,31 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), ground);
 
   /* left-edge colour chip (wins over the tick) or tick when selected */
-  if ((icon->flags & wuss_ICON_FLAGS_SWATCH) &&
-      icon->u.menu_entry.swatch != wuss_NO_BACKGROUND)
+  if (icon->flags & wuss_ICON_FLAGS_SWATCH)
   {
     int cx, cy, h;
 
     h  = MAX(c->font_height, 8);
     cx = b->x0 + pad;
     cy = b->y0 + (b->y1 - b->y0 - h) / 2;
-    screen_fill_rect(c->scr, cx, cy, SIZE2D(h, h),
-                     c->wuss->palette[icon->u.menu_entry.swatch]);
+    if (icon->u.menu_entry.swatch == wuss_NO_BACKGROUND)
+    {
+      /* "None" row: hatched black/white chip, no real palette colour */
+      pattern_t hatch;
+      box_t     chip;
+
+      chip.x0 = cx;
+      chip.y0 = cy;
+      chip.x1 = cx + h;
+      chip.y1 = cy + h;
+      hatch = pattern_from_preset(screen_PATTERN_DIAGONAL,
+                                  colour_rgb(0, 0, 0),
+                                  colour_rgb(255, 255, 255));
+      screen_fill_pattern(c->scr, &chip, &hatch);
+    }
+    else
+      screen_fill_rect(c->scr, cx, cy, SIZE2D(h, h),
+                       c->wuss->palette[icon->u.menu_entry.swatch]);
     screen_draw_rect(c->scr, cx, cy, SIZE2D(h, h), ink); /* 1px border */
   }
   else if (wuss__icon_selected(c->icon))

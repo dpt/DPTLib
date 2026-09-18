@@ -50,12 +50,14 @@ static void menu_free(const wuss_alloc_t *a, wuss_menu_t *m)
 
 result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
                                 const wuss_t       *wuss,
-                                const char         *title)
+                                const char         *title,
+                                int                 with_none)
 {
   const wuss_alloc_t *a;
   wuss_colourmenu_t  *cm;
   wuss_menu_t        *m;
   wuss_menu_item_t   *items;
+  int                 npalette;
   int                 n;
   int                 i;
 
@@ -65,12 +67,13 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
     return result_NULL_ARG;
 
   a = &wuss->alloc;
-  n = wuss->npalette;
-  if (n > wuss_COLOUR_SYMBOLIC)
-    n = wuss_COLOUR_SYMBOLIC; /* wuss_colour_t indices above this are the
-                               * symbolic/chrome-role namespace, not real
-                               * palette slots -- don't hand them out as
-                               * swatches */
+  npalette = wuss->npalette;
+  if (npalette > wuss_COLOUR_SYMBOLIC)
+    npalette = wuss_COLOUR_SYMBOLIC; /* wuss_colour_t indices above this are
+                                       * the symbolic/chrome-role namespace,
+                                       * not real palette slots -- don't hand
+                                       * them out as swatches */
+  n = npalette + (with_none ? 1 : 0); /* the last row is "None" when present */
 
   cm = a->malloc(sizeof(*cm));
   if (cm == NULL)
@@ -111,7 +114,7 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
     return result_OOM;
   }
 
-  for (i = 0; i < n; i++)
+  for (i = 0; i < npalette; i++)
   {
     pixelfmt_rgba8888_t px;
     char                label[8];
@@ -132,6 +135,19 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
 
     items[i].flags  = wuss_MENU_ITEM_SWATCH;
     items[i].swatch = (wuss_colour_t) i;
+  }
+
+  if (with_none)
+  {
+    items[npalette].text   = wuss__alloc_strdup(a, "None");
+    items[npalette].flags  = wuss_MENU_ITEM_SWATCH | wuss_MENU_ITEM_DASHED;
+    items[npalette].swatch = wuss_NO_BACKGROUND;
+    if (items[npalette].text == NULL)
+    {
+      menu_free(a, m);
+      a->free(cm);
+      return result_OOM;
+    }
   }
 
   cm->menu = m;

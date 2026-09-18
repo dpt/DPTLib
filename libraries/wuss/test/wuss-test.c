@@ -4998,7 +4998,7 @@ FontMenuOK: ;
     int                ok;
     int                i;
 
-    rc = wuss_colourmenu_create(&cm, wuss, "Colour");
+    rc = wuss_colourmenu_create(&cm, wuss, "Colour", 0);
     if (rc != result_OK)
       goto ColourMenuFail;
 
@@ -5041,8 +5041,95 @@ FontMenuOK: ;
 
     wuss_colourmenu_destroy(cm);
 
-    if (wuss_colourmenu_create(&cm, NULL, "Colour") != result_NULL_ARG)
+    if (wuss_colourmenu_create(&cm, NULL, "Colour", 0) != result_NULL_ARG)
       goto ColourMenuFail;
+
+    /* with_none appends a dashed-off "None" row resolving to
+     * wuss_NO_BACKGROUND */
+    rc = wuss_colourmenu_create(&cm, wuss, "Colour", 1);
+    if (rc != result_OK)
+      goto ColourMenuFail;
+
+    cmm = wuss_colourmenu_menu(cm);
+    if (cmm == NULL)                                     goto ColourMenuFail;
+    if (cmm->items[0].swatch != (wuss_colour_t) 0)       goto ColourMenuFail;
+    if ((cmm->items[cmm->nitems - 1].flags &
+         (wuss_MENU_ITEM_SWATCH | wuss_MENU_ITEM_DASHED)) !=
+        (wuss_MENU_ITEM_SWATCH | wuss_MENU_ITEM_DASHED))
+      goto ColourMenuFail;
+    if (cmm->items[cmm->nitems - 1].swatch != wuss_NO_BACKGROUND)
+      goto ColourMenuFail;
+
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = cmm;
+    ev.data.menu_select.index  = cmm->nitems - 1;
+    ev.data.menu_select.button = wuss_BUTTON_SELECT;
+    ok = -1;
+    picked = wuss_colourmenu_selected(cm, &ev, &ok);
+    if (!ok || picked != wuss_NO_BACKGROUND)             goto ColourMenuFail;
+
+    /* actually open and redraw it, so the "None" row's hatched chip gets
+     * rasterised for real, not just checked as data -- needs its own
+     * font-equipped wuss, unlike the shared fontless "wuss" above */
+    {
+      const char        *cmfontfile;
+      bmfont_t          *cmfont;
+      screen_t           cmscr;
+      bitmap_t           cmbm;
+      void              *cmpixels;
+      wuss_t            *cmwuss;
+      wuss_font_desc_t   cmfdesc;
+      wuss_task_desc_t   cmdesc;
+      static test_task_t cmtc;
+      wuss_task_t       *cmowner;
+      wuss_colourmenu_t *cmreal;
+      const wuss_menu_t *cmrealm;
+      int                cmrowbytes;
+
+      cmfontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+      rc = bmfont_create(cmfontfile, &cmfont);
+      if (rc != result_OK) goto ColourMenuFail;
+
+      cmrowbytes = 200 * 4;
+      cmpixels = malloc((size_t) cmrowbytes * 200);
+      if (cmpixels == NULL) { rc = result_OOM; goto ColourMenuFail; }
+      rc = bitmap_init(&cmbm, SIZE2D(200, 200), pixelfmt_bgrx8888,
+                       cmrowbytes, NULL, cmpixels);
+      if (rc != result_OK) { free(cmpixels); goto ColourMenuFail; }
+      screen_for_bitmap(&cmscr, &cmbm);
+
+      cmfdesc.font       = cmfont;
+      cmfdesc.font_class = wuss_FONT_CLASS_NONE;
+      cmfdesc.name       = NULL;
+      rc = wuss_create(&cmscr, &cmfdesc, 1, NULL, 0, NULL, NULL, NULL,
+                       &cmwuss);
+      if (rc != result_OK) { free(cmpixels); goto ColourMenuFail; }
+
+      memset(&cmtc, 0, sizeof(cmtc));
+      cmdesc.handle    = test_handle;
+      cmdesc.task_data = &cmtc;
+      cmdesc.name      = "wuss-test";
+      rc = wuss_task_create(cmwuss, &cmdesc, &cmowner);
+      if (rc != result_OK) { free(cmpixels); goto ColourMenuFail; }
+
+      rc = wuss_colourmenu_create(&cmreal, cmwuss, "Colour", 1);
+      if (rc != result_OK) goto ColourMenuFail;
+      cmrealm = wuss_colourmenu_menu(cmreal);
+
+      rc = wuss_menu_open(cmowner, cmrealm, POINT(40, 40), NULL);
+      if (rc != result_OK) goto ColourMenuFail;
+
+      rc = wuss_redraw_dirty(cmwuss);
+      if (rc != result_OK) goto ColourMenuFail;
+
+      wuss_menu_close(cmwuss->menu_chain);
+      wuss_colourmenu_destroy(cmreal);
+      wuss_destroy(cmwuss);
+      free(cmpixels);
+      bmfont_destroy(cmfont);
+    }
+
+    wuss_colourmenu_destroy(cm);
 
     rc = result_OK;
     goto ColourMenuOK;
