@@ -19,8 +19,8 @@
 
 /* MENU click pops this single-item menu; the item table and wuss_menu_t
  * live per-instance in sofa_task_t, not as a file-scope static, so that
- * each window's Info row points at its own proginfo rather than every
- * instance sharing (and overwriting) one global .window pointer */
+ * each window's Info row can hold its own .window pointer to the shared
+ * proginfo singleton, retargeted just before wuss_menu_open */
 enum { SOFA_MENU_INFO };
 
 #define SOFA_VERTEX_DOT 2 /* side, px, of the white marker square drawn at each vertex */
@@ -408,20 +408,10 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
     return rc;
   }
 
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Sofa",
-      "Rotating wireframe sofa and other shapes",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
-      task->proginfo = NULL;
-  }
   WUSS_MENU_ITEM_WINDOW(task->menu_items, SOFA_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        wuss_proginfo_window(task->proginfo));
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in sofa_mouse */
 
   WUSS_MENU_TITLE(task->menu, "Sofa", task->menu_items,
                  NELEMS(task->menu_items));
@@ -436,7 +426,6 @@ void sofa_destroy(sofa_task_t *task)
 {
   if (task->menu_handle != NULL)
     wuss_menu_close(task->menu_handle);
-  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -563,8 +552,21 @@ static result_t sofa_mouse(wuss_window_t *window,
   sc = task_data;
 
   if (button & wuss_BUTTON_MENU)
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Sofa",
+      "Rotating wireframe sofa and other shapes",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+
+    wuss_proginfo_set_desc(&desc);
+    sc->menu_items[SOFA_MENU_INFO].window = wuss_proginfo_window(sc->delegate);
+
     return wuss_menu_open(sc->delegate, &sc->menu,
                           wuss_get_pointer(sc->wuss), &sc->menu_handle);
+  }
 
   if (button & wuss_BUTTON_ADJUST)
   {
@@ -602,10 +604,10 @@ static result_t sofa_idle(void *task_data)
 
   task = task_data;
 
-  /* the proginfo dialogue is a second window on this same (autoclose)
-   * delegate, so closing the main window alone never empties task->windows
-   * and the task lingers until the dialogue closes too -- guard against the
-   * dangling window in the meantime */
+  /* the shared proginfo singleton is a second window on this same
+   * (autoclose) delegate while its dialogue is open, so closing the main
+   * window alone doesn't necessarily empty task->windows immediately --
+   * guard against the dangling window in the meantime */
   if (task->window == NULL)
     return result_OK;
 
@@ -668,8 +670,8 @@ result_t sofa_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == wuss_proginfo_window(sc->proginfo))
-      rc = wuss_proginfo_handle_pre_show(sc->proginfo);
+    if (window == sc->menu_items[SOFA_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
     if (rc != result_OK)

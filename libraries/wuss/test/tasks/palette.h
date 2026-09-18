@@ -56,7 +56,6 @@ typedef struct palette_task
   wuss_menu_handle_t   menu_handle; /* for wuss_menu_tick_item_live on an
                                      * ADJUST pick, which keeps the chain
                                      * open */
-  wuss_proginfo_t     *proginfo;
 }
 palette_task_t;
 

@@ -10,7 +10,6 @@
 #include "geom/point.h"
 #include "wuss/task.h"
 #include "wuss/wuss.h"
-#include "wuss/component/proginfo.h"
 
 #include "frontend.h"
 
@@ -22,9 +21,9 @@
 extern struct wuss_app_tasks
 {
   wuss_t          *wuss;
-  wuss_task_t     *menu_task; /* owns the task launcher menus */
-  wuss_proginfo_t *proginfo; /* shared "Info" dialogue on menu_task; see
-                              * tasks_open_launcher's "Info" row */
+  wuss_task_t     *menu_task; /* owns the task launcher menus; also the home
+                               * task for the shared proginfo singleton, see
+                               * tasks_open_launcher's "Info" row */
   bool             quit; /* set by the "Quit Wuss" task-menu entry */
   wuss_frontend_t *frontend; /* pushed to on wuss_EVENT_PALETTE; see
                               * task_handle_event */

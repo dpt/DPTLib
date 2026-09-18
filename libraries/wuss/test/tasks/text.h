@@ -61,7 +61,6 @@ typedef struct text_task
                                    * exists so items[1].submenu can borrow
                                    * its live wuss_menu_t */
   wuss_menu_t         top_menu;   /* root menu passed to wuss_menu_open */
-  wuss_proginfo_t    *proginfo;
   wuss_menu_handle_t  menu_handle; /* chain handle from the last
                                    * wuss_menu_open, for the _live tick calls
                                    * when an ADJUST pick keeps the chain

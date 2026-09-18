@@ -22,10 +22,11 @@
 
 /* MENU click over the content pops this. "Random palettes" is an independent
  * toggle for per-prefab random palettes. "Info" is a wuss_menu_item_t.window
- * leaf pointing at this window's own task->proginfo. The item table and
- * wuss_menu_t live per-instance in greeble_task_t, not as a file-scope
- * static, so that each window's Info row and tick state are its own rather
- * than every instance sharing (and overwriting) one global. */
+ * leaf retargeted at the shared proginfo singleton just before the menu
+ * opens. The item table and wuss_menu_t live per-instance in greeble_task_t,
+ * not as a file-scope static, so that each window's Info row and tick state
+ * are its own rather than every instance sharing (and overwriting) one
+ * global. */
 enum { GREEBLE_MENU_INFO = 0, GREEBLE_MENU_RANDPAL };
 
 /* ----------------------------------------------------------------------- */
@@ -343,7 +344,18 @@ result_t greeble_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
+      static const wuss_proginfo_desc_t desc =
+      {
+        "Greeble",
+        "Prefab-scatter greebling pattern",
+        "(c) DPTLib contributors",
+        "1.0 (" __DATE__ ")"
+      };
       unsigned int ticks;
+
+      wuss_proginfo_set_desc(&desc);
+      task->menu_items[GREEBLE_MENU_INFO].window =
+        wuss_proginfo_window(task->delegate);
 
       ticks = task->random_prefab_palettes ? 1u << GREEBLE_MENU_RANDPAL : 0;
       return wuss_menu_open_ticked(task->delegate, &task->menu, ticks,
@@ -367,9 +379,9 @@ result_t greeble_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == wuss_proginfo_window(task->proginfo))
+    if (window == task->menu_items[GREEBLE_MENU_INFO].window)
     {
-      rc = wuss_proginfo_handle_pre_show(task->proginfo);
+      rc = wuss_proginfo_handle_pre_show();
       if (rc != result_OK)
         return rc;
     }
@@ -410,7 +422,6 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
 
   task->wuss        = wuss;
   task->menu_handle = NULL;
-  task->proginfo    = NULL;
   task->seed        = 0x9E3779B9u; /* any nonzero start */
   task->palette     = 0;           /* Adjust cycles from here */
   task->random_prefab_palettes = 0; /* Menu toggles this */
@@ -445,24 +456,11 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
   wuss_window_get_content_bounds(task->window, &content);
   greeble_relayout(task, &content);
 
-  /* The "Info" menu row's standard dialogue. A create failure is non-fatal
-   * -- the task just runs without an Info dialogue (see image.c). */
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Greeble",
-      "Prefab-scatter greebling pattern",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-
-    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
-      task->proginfo = NULL;
-  }
-
   WUSS_MENU_ITEM_WINDOW(task->menu_items, GREEBLE_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        wuss_proginfo_window(task->proginfo));
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open_ticked, in
+                                * greeble_handle */
 
   WUSS_MENU_ITEM(task->menu_items, GREEBLE_MENU_RANDPAL,
                 "Random palettes", wuss_MENU_ITEM_NONE);
@@ -484,7 +482,6 @@ void greeble_destroy(greeble_task_t *task)
     task->menu_handle = NULL;
   }
 
-  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 

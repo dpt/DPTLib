@@ -25,8 +25,8 @@
 
 /* MENU click pops this single-item menu; the item table and wuss_menu_t
  * live per-instance in icons_task_t, not as a file-scope static, so that
- * each window's Info row points at its own proginfo rather than every
- * instance sharing (and overwriting) one global .window pointer */
+ * each window's Info row can hold its own .window pointer to the shared
+ * proginfo singleton, retargeted just before wuss_menu_open */
 enum { ICONS_MENU_INFO };
 
 #define ICONS_DOC_W    260
@@ -692,20 +692,10 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   task->slider_state = made[i_sstate];
   wuss_icon_set_selected(task->window, made[i_ticked], 1); /* "Show grid" starts ticked */
 
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Icons",
-      "Work-area icons covering every icon type",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
-      task->proginfo = NULL;
-  }
   WUSS_MENU_ITEM_WINDOW(task->menu_items, ICONS_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        wuss_proginfo_window(task->proginfo));
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in icons_handle */
 
   WUSS_MENU_TITLE(task->menu, "Icons", task->menu_items,
                  NELEMS(task->menu_items));
@@ -728,7 +718,6 @@ void icons_destroy(icons_task_t *task)
 {
   if (task->menu_handle != NULL)
     wuss_menu_close(task->menu_handle);
-  wuss_proginfo_destroy(task->proginfo);
   if (task->has_sprite)
     free(task->sprite.base);
   free(task);
@@ -888,8 +877,21 @@ result_t icons_handle(wuss_window_t      *window,
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_MENU)
+    {
+      static const wuss_proginfo_desc_t desc =
+      {
+        "Icons",
+        "Work-area icons covering every icon type",
+        "(c) DPTLib contributors",
+        "1.0 (" __DATE__ ")"
+      };
+      wuss_proginfo_set_desc(&desc);
+      tcx->menu_items[ICONS_MENU_INFO].window =
+        wuss_proginfo_window(tcx->delegate);
+
       return wuss_menu_open(tcx->delegate, &tcx->menu,
                             wuss_get_pointer(tcx->wuss), &tcx->menu_handle);
+    }
     return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
@@ -900,8 +902,8 @@ result_t icons_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == wuss_proginfo_window(tcx->proginfo))
-      rc = wuss_proginfo_handle_pre_show(tcx->proginfo);
+    if (window == tcx->menu_items[ICONS_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
     if (rc != result_OK)

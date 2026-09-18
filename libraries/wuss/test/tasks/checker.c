@@ -20,8 +20,8 @@
 
 /* MENU click pops this single-item menu; the item table and wuss_menu_t
  * live per-instance in checker_task_t, not as a file-scope static, so that
- * each window's Info row points at its own proginfo rather than every
- * instance sharing (and overwriting) one global .window pointer */
+ * each window's Info row can hold its own .window pointer to the shared
+ * proginfo singleton, retargeted just before wuss_menu_open */
 enum { CHECKER_MENU_INFO };
 
 result_t checker_create(wuss_t *wuss, checker_task_t **out)
@@ -87,20 +87,11 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
 
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Checker",
-      "Two independent cycling checkerboard patterns",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
-      task->proginfo = NULL;
-  }
   WUSS_MENU_ITEM_WINDOW(task->menu_items, CHECKER_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        wuss_proginfo_window(task->proginfo));
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in
+                                * checker_handle */
 
   WUSS_MENU_TITLE(task->menu, "Checker", task->menu_items,
                  NELEMS(task->menu_items));
@@ -115,7 +106,6 @@ void checker_destroy(checker_task_t *task)
 {
   if (task->menu_handle != NULL)
     wuss_menu_close(task->menu_handle);
-  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -215,8 +205,21 @@ result_t checker_handle(wuss_window_t      *window,
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_MENU)
+    {
+      static const wuss_proginfo_desc_t desc =
+      {
+        "Checker",
+        "Two independent cycling checkerboard patterns",
+        "(c) DPTLib contributors",
+        "1.0 (" __DATE__ ")"
+      };
+      wuss_proginfo_set_desc(&desc);
+      cc->menu_items[CHECKER_MENU_INFO].window =
+        wuss_proginfo_window(cc->delegate);
+
       return wuss_menu_open(cc->delegate, &cc->menu,
                             wuss_get_pointer(cc->wuss), &cc->menu_handle);
+    }
     if (!(event->data.mouse.button & wuss_BUTTON_SELECT))
       return result_OK;
     return checker_mouse(window, task_data);
@@ -232,8 +235,8 @@ result_t checker_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == wuss_proginfo_window(cc->proginfo))
-      rc = wuss_proginfo_handle_pre_show(cc->proginfo);
+    if (window == cc->menu_items[CHECKER_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
     if (rc != result_OK)
