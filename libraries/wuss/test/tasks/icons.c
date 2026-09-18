@@ -611,16 +611,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   if (bitmap_load_png(&task->sprite, sprite_path) == result_OK)
     task->has_sprite = 1;
 
-  /* load the wuss-wide icon set; pathf hands back one shared static buffer
-   * and wuss_icons_load re-joins per file, so copy it first */
-  {
-    char icons_dir[256];
-
-    strncpy(icons_dir, pathf("%s/resources/wuss/icons", resources),
-           sizeof(icons_dir) - 1);
-    icons_dir[sizeof(icons_dir) - 1] = '\0';
-    (void) wuss_icons_load(wuss, icons_dir); /* absent set just skips the group */
-  }
+  /* the wuss-wide icon set is loaded once by wuss_create itself */
 
   delegate_desc.handle    = icons_handle;
   delegate_desc.task_data = task;
