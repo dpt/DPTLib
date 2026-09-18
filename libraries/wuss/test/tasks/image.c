@@ -84,7 +84,6 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
   task->index       = 0;
   task->nnames      = 0;
   task->menu        = NULL;
-  task->proginfo    = NULL;
   task->menu_handle = NULL;
   task->dithering   = 1;
 
@@ -134,10 +133,8 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
     return rc;
   }
   task->delegate = delegate;
-  /* No autoclose: the task also owns the hidden proginfo window below, so its
-   * window list never empties while the main window is up. QUIT is delivered
-   * at wuss_destroy instead. Closing the main window early leaks this block
-   * until then -- fine for a demo. */
+  /* No autoclose: QUIT is delivered at wuss_destroy instead. Closing the
+   * main window early leaks this block until then -- fine for a demo. */
 
   sz.w = task->bitmap.size.w + IMAGE_MARGINSZ * 2;
   sz.h = task->bitmap.size.h + IMAGE_MARGINSZ * 2;
@@ -156,22 +153,6 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
     return rc;
   }
 
-  /* The "Info" menu row's standard dialogue. Hung off the descriptor menu as
-   * a wuss_menu_item_t.window in image_open_menu. A create failure is
-   * non-fatal -- the task just runs without an Info dialogue. */
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Image",
-      "View the PNGs under resources/images",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-
-    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
-      task->proginfo = NULL;
-  }
-
   if (out)
     *out = task;
 
@@ -180,12 +161,11 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
 
 void image_destroy(image_task_t *task)
 {
-  /* close any open chain first: it may hold the proginfo window as a
-   * borrowed wuss_menu_item_t.window, and destroying that below would leave
-   * the chain pointing at freed memory */
+  /* close any open chain first: it may hold the proginfo singleton's window
+   * as a borrowed wuss_menu_item_t.window, and destroying the menu below
+   * would leave the chain pointing at freed memory */
   wuss_menu_close(task->menu_handle);
   wuss_menu_destroy(task->menu);
-  wuss_proginfo_destroy(task->proginfo); /* closes its dialogue window */
   free(task->bitmap.base);
   free(task->ninepatch.base);
   free(task); /* task_data was calloc'd per instance by the spawner */
@@ -280,6 +260,14 @@ static result_t image_click(wuss_window_t *window,
  * open. Freed for good in the QUIT handler. */
 static result_t image_open_menu(image_task_t *ic)
 {
+  static const wuss_proginfo_desc_t desc =
+  {
+    "Image",
+    "View the PNGs under resources/images",
+    "(c) DPTLib contributors",
+    "1.0 (" __DATE__ ")"
+  };
+
   result_t     rc;
   wuss_menu_t *m;
   int          i;
@@ -293,17 +281,17 @@ static result_t image_open_menu(image_task_t *ic)
     return rc;
 
   /* The descriptor syntax has no "open this window on hover" mark, so point
-   * the "Info" row at the proginfo dialogue by hand: wuss treats a
+   * the "Info" row at the shared proginfo singleton by hand: wuss treats a
    * wuss_menu_item_t.window exactly like a submenu, showing it where one would
    * open. */
-  if (ic->proginfo != NULL)
-    for (i = 0; i < m->nitems; i++)
-      if (m->items[i].text != NULL && strcmp(m->items[i].text, "Info") == 0)
-      {
-        ((wuss_menu_item_t *) m->items)[i].window =
-          wuss_proginfo_window(ic->proginfo);
-        break;
-      }
+  wuss_proginfo_set_desc(&desc);
+  for (i = 0; i < m->nitems; i++)
+    if (m->items[i].text != NULL && strcmp(m->items[i].text, "Info") == 0)
+    {
+      ((wuss_menu_item_t *) m->items)[i].window =
+        wuss_proginfo_window(ic->delegate);
+      break;
+    }
 
   /* Same trick for "Background": point it at the shared colourmenu
    * singleton as a submenu, so it gets the usual arrow-and-hover behaviour.
@@ -393,8 +381,10 @@ result_t image_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_PRE_SHOW:
-    if (window == wuss_proginfo_window(ic->proginfo))
-      return wuss_proginfo_handle_pre_show(ic->proginfo);
+    if (ic->menu != NULL)
+      for (index = 0; index < ic->menu->nitems; index++)
+        if (ic->menu->items[index].window == window)
+          return wuss_proginfo_handle_pre_show();
     return result_OK;
 
   case wuss_EVENT_QUIT:

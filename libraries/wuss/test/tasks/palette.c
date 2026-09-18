@@ -123,8 +123,11 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   }
   WUSS_MENU_ITEM(task->menu_items, PALETTE_MENU_INVERT_INDEX(task),
                 "Invert", wuss_MENU_ITEM_DASHED);
-  WUSS_MENU_ITEM(task->menu_items, PALETTE_MENU_INFO_INDEX(task), "Info",
-                wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, PALETTE_MENU_INFO_INDEX(task), "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in
+                                * palette_menu_open */
   WUSS_MENU_TITLE(task->menu, "Palette", task->menu_items,
                  task->nnames + 2);
 
@@ -171,21 +174,6 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(task->delegate, 1);
 
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Palette",
-      "Desktop and screen palette swatch grid",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-    if (wuss_proginfo_create(&task->proginfo, task->delegate, &desc) !=
-        result_OK)
-      task->proginfo = NULL;
-  }
-  task->menu_items[PALETTE_MENU_INFO_INDEX(task)].window =
-    wuss_proginfo_window(task->proginfo);
-
   if (out)
     *out = task;
 
@@ -196,7 +184,6 @@ void palette_destroy(palette_task_t *task)
 {
   if (task->menu_handle != NULL)
     wuss_menu_close(task->menu_handle);
-  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -312,7 +299,19 @@ static result_t palette_redraw_screen(palette_task_t     *pc,
  * touches the TICKED bit. */
 static result_t palette_menu_open(palette_task_t *pc)
 {
+  static const wuss_proginfo_desc_t desc =
+  {
+    "Palette",
+    "Desktop and screen palette swatch grid",
+    "(c) DPTLib contributors",
+    "1.0 (" __DATE__ ")"
+  };
+
   unsigned int ticks;
+
+  wuss_proginfo_set_desc(&desc);
+  pc->menu_items[PALETTE_MENU_INFO_INDEX(pc)].window =
+    wuss_proginfo_window(pc->delegate);
 
   ticks = 1u << pc->selected;
   if (pc->invert)
@@ -432,8 +431,8 @@ result_t palette_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == wuss_proginfo_window(pc->proginfo))
-      rc = wuss_proginfo_handle_pre_show(pc->proginfo);
+    if (window == pc->menu_items[PALETTE_MENU_INFO_INDEX(pc)].window)
+      rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
     if (rc != result_OK)

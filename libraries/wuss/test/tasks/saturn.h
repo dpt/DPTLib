@@ -80,10 +80,9 @@ typedef struct saturn_task
                                          * saturn_pre_submenu_open */
   wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
   saturn_conf_t      conf;
-  wuss_proginfo_t   *proginfo;
   wuss_menu_item_t   colours_items[2]; /* per-instance: a shared static
                                         * would leak one instance's
-                                        * colourmenu/window pointers into
+                                        * colourmenu/.window pointers into
                                         * another's menu */
   wuss_menu_t        colours_menu;
   wuss_menu_item_t   menu_items[3];

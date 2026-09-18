@@ -31,10 +31,9 @@ typedef struct chars_task
   int                 nfonts;      /* length of fonts[]; == menu item count */
   int                 current;     /* index into fonts[], or -1 for sysfont */
   colour_t            fg, mg, bg;
-  wuss_proginfo_t    *proginfo;
   wuss_menu_item_t    menu_items[2]; /* per-instance: a shared static would
-                                      * leak one instance's proginfo window
-                                      * pointer into another's menu */
+                                      * leak one instance's .window pointer
+                                      * into another's menu */
   wuss_menu_t         menu;
 }
 chars_task_t;

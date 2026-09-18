@@ -78,10 +78,12 @@ static int saturn_rnd(int n)
 /* MENU click over the content pops this. "Colours" leads to a submenu with
  * one row per task->fg/task->bg; both rows share task->colourmenu, retargeted
  * per hover by saturn_pre_submenu_open (wuss_EVENT_PRE_SUBMENU_OPEN) so one
- * instance serves either row. "Configuration" and "Info" hover-open
- * task->size_dialogue / task->proginfo's window, both borrowed windows built
- * once in saturn_create and stored into task->menu_items[...].window
- * there. */
+ * instance serves either row. "Configuration" hover-opens
+ * task->conf.dialogue's window, a borrowed window built once in
+ * saturn_create and stored into task->menu_items[SATURN_MENU_SIZE].window
+ * there. "Info" hover-opens the shared proginfo singleton's window,
+ * retargeted into task->menu_items[SATURN_MENU_INFO].window just before
+ * wuss_menu_open, in saturn_mouse. */
 enum { SATURN_MENU_INFO = 0, SATURN_MENU_COLOURS, SATURN_MENU_SIZE };
 enum { SATURN_COLOURS_MENU_FOREGROUND = 0, SATURN_COLOURS_MENU_BACKGROUND };
 
@@ -145,8 +147,8 @@ static int *saturn_sizedlg_field(saturn_task_t *task, int row)
  * colourmenu before handing it back as the menu to actually open. The item
  * tables and wuss_menu_t values live per-instance in saturn_task_t, not as
  * file-scope statics, so that each window's Info/Configuration rows point at
- * their own proginfo/dialogue windows rather than every instance sharing
- * (and overwriting) one global .window pointer. */
+ * their own .window pointers rather than every instance sharing (and
+ * overwriting) one global .window pointer. */
 
 static result_t saturn_conf_dialogue_create(saturn_task_t *task);
 static result_t saturn_conf_fillout(void *opaque);
@@ -180,7 +182,6 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   task->conf.deflt       = NULL;
   task->conf.cancel      = NULL;
   task->conf.apply       = NULL;
-  task->proginfo         = NULL;
 
   /* saturn_redraw paints its own background */
   delegate_desc.handle    = saturn_handle;
@@ -213,8 +214,11 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
                  NELEMS(task->colours_items));
 
-  WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_INFO, "Info",
-                wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, SATURN_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in
+                                * saturn_mouse */
 
   WUSS_MENU_ITEM_MENU(task->menu_items, SATURN_MENU_COLOURS, "Colours",
                       wuss_MENU_ITEM_NONE, &task->colours_menu);
@@ -243,23 +247,6 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   task->menu_items[SATURN_MENU_SIZE].window =
     wuss_dialogue_window(task->conf.dialogue);
 
-  /* The "Info" menu row's standard dialogue. A create failure is non-fatal
-   * -- the task just runs without an Info dialogue (see image.c). */
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Saturn",
-      "Elite loading-screen planet, recreated",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-
-    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
-      task->proginfo = NULL;
-  }
-  task->menu_items[SATURN_MENU_INFO].window =
-    wuss_proginfo_window(task->proginfo);
-
   if (out)
     *out = task;
 
@@ -285,7 +272,6 @@ void saturn_destroy(saturn_task_t *task)
   }
 
   wuss_dialogue_destroy(task->conf.dialogue);
-  wuss_proginfo_destroy(task->proginfo);
   free(task); /* task_data was calloc'd per instance by the spawner */
 }
 
@@ -401,9 +387,23 @@ static result_t saturn_mouse(saturn_task_t      *task,
     return result_OK;
 
   if (button & wuss_BUTTON_MENU)
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Saturn",
+      "Elite loading-screen planet, recreated",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+
+    wuss_proginfo_set_desc(&desc);
+    task->menu_items[SATURN_MENU_INFO].window =
+      wuss_proginfo_window(task->delegate);
+
     return wuss_menu_open(task->delegate, &task->menu,
                           wuss_get_pointer(task->wuss),
                           &task->menu_handle);
+  }
 
   if (button & wuss_BUTTON_SELECT)
   {
@@ -819,8 +819,8 @@ result_t saturn_handle(wuss_window_t      *window,
 
     if (window == wuss_dialogue_window(task->conf.dialogue))
       rc = wuss_dialogue_handle_pre_show(task->conf.dialogue);
-    else if (window == wuss_proginfo_window(task->proginfo))
-      rc = wuss_proginfo_handle_pre_show(task->proginfo);
+    else if (window == task->menu_items[SATURN_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
     if (rc != result_OK)

@@ -20,23 +20,26 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* Owns a wuss_info_t (window, layout) wrapped by a wuss_dialogue_t (fillout
- * dispatch only -- wuss_dialogue_create_on_window, so it does not own or
- * close info's window). pending is the desc last passed to
+/* One process-wide singleton -- no per-task instances, no create/destroy --
+ * rebuilt lazily when the caller's task changes, since the dialogue's window
+ * belongs to one "home" task at a time. pending is the desc last passed to
  * wuss_proginfo_set_desc, applied to info by wuss_proginfo_handle_pre_show;
- * it is only read back then, so no copy is needed. */
-struct wuss_proginfo
+ * it is only read back then, so no copy beyond the struct assignment is
+ * needed. */
+static struct
 {
-  wuss_alloc_t           alloc;   /* copied hooks; wuss_t itself not retained */
-  wuss_info_t          *info;
-  wuss_dialogue_t       *dialogue;
-  wuss_proginfo_desc_t   pending;
-};
+  wuss_alloc_t         alloc;   /* copied hooks; wuss_t itself not retained */
+  wuss_task_t         *task;    /* home task the dialogue was built on */
+  wuss_info_t         *info;
+  wuss_dialogue_t     *dialogue;
+  wuss_proginfo_desc_t pending;
+}
+g;
 
 /* ----------------------------------------------------------------------- */
 
 /* Fills rows (>= 4 entries) from desc's non-NULL fields, in Name, Purpose,
- * Author, Version order. Shared by wuss_proginfo_create (initial layout) and
+ * Author, Version order. Shared by proginfo_build (initial layout) and
  * proginfo_fillout (relayout on show). */
 static int proginfo_rows(const wuss_proginfo_desc_t *desc,
                          wuss_info_row_t            *rows)
@@ -74,84 +77,82 @@ static int proginfo_rows(const wuss_proginfo_desc_t *desc,
 
 static result_t proginfo_fillout(void *opaque)
 {
-  wuss_proginfo_t *pi;
-  wuss_info_row_t  rows[4];
-  int              nrows;
+  wuss_info_row_t rows[4];
+  int             nrows;
 
-  pi    = opaque;
-  nrows = proginfo_rows(&pi->pending, rows);
+  (void) opaque;
 
-  return wuss_info_set_rows(pi->info, rows, nrows);
+  nrows = proginfo_rows(&g.pending, rows);
+
+  return wuss_info_set_rows(g.info, rows, nrows);
 }
 
-result_t wuss_proginfo_create(wuss_proginfo_t           **out,
-                              wuss_task_t                *task,
-                              const wuss_proginfo_desc_t *desc)
+/* Free the singleton's owned window/dialogue, leaving g.task cleared so the
+ * next call rebuilds from scratch. */
+static void proginfo_free(void)
 {
-  result_t         rc;
-  wuss_proginfo_t *pi;
-  wuss_info_row_t  rows[4];
-  int              nrows;
+  if (g.task == NULL)
+    return; /* never built, or already freed -- g.alloc may be unset */
 
-  if (out == NULL || task == NULL || desc == NULL || desc->name == NULL)
-    return result_NULL_ARG;
+  wuss_dialogue_destroy(g.dialogue);
+  wuss_info_destroy(g.info);
+  g.dialogue = NULL;
+  g.info     = NULL;
+  g.task     = NULL;
+}
 
-  pi = task->wuss->alloc.malloc(sizeof(*pi));
-  if (pi == NULL)
-    return result_OOM;
-  pi->alloc   = task->wuss->alloc;
-  pi->pending = *desc;
+/* (Re)build the singleton's dialogue window on task. */
+static result_t proginfo_build(wuss_task_t *task)
+{
+  result_t        rc;
+  wuss_info_row_t rows[4];
+  int             nrows;
 
-  nrows = proginfo_rows(desc, rows);
-  rc = wuss_info_create(&pi->info, task, "About this program", rows, nrows);
+  proginfo_free();
+
+  g.alloc = task->wuss->alloc;
+
+  nrows = proginfo_rows(&g.pending, rows);
+  rc = wuss_info_create(&g.info, task, "About this program", rows, nrows);
+  if (rc != result_OK)
+    return rc;
+
+  rc = wuss_dialogue_create_on_window(&g.dialogue, task->wuss,
+                                      wuss_info_window(g.info),
+                                      proginfo_fillout, NULL);
   if (rc != result_OK)
   {
-    task->wuss->alloc.free(pi);
+    wuss_info_destroy(g.info);
+    g.info = NULL;
     return rc;
   }
 
-  rc = wuss_dialogue_create_on_window(&pi->dialogue, task->wuss,
-                                      wuss_info_window(pi->info),
-                                      proginfo_fillout, pi);
-  if (rc != result_OK)
-  {
-    wuss_info_destroy(pi->info);
-    task->wuss->alloc.free(pi);
-    return rc;
-  }
+  g.task = task;
 
-  *out = pi;
   return result_OK;
 }
 
-void wuss_proginfo_destroy(wuss_proginfo_t *doomed)
+wuss_window_t *wuss_proginfo_window(wuss_task_t *task)
 {
-  wuss_alloc_t alloc;
+  if (task == NULL)
+    return NULL;
 
-  if (doomed == NULL)
+  if (task != g.task)
+    if (proginfo_build(task) != result_OK)
+      return NULL;
+
+  return wuss_dialogue_window(g.dialogue);
+}
+
+void wuss_proginfo_set_desc(const wuss_proginfo_desc_t *desc)
+{
+  if (desc == NULL)
     return;
 
-  alloc = doomed->alloc;
-  wuss_dialogue_destroy(doomed->dialogue);
-  wuss_info_destroy(doomed->info);
-  alloc.free(doomed);
+  g.pending = *desc;
 }
 
-void wuss_proginfo_set_desc(wuss_proginfo_t            *pi,
-                            const wuss_proginfo_desc_t *desc)
+result_t wuss_proginfo_handle_pre_show(void)
 {
-  if (pi == NULL || desc == NULL)
-    return;
-
-  pi->pending = *desc;
-}
-
-result_t wuss_proginfo_handle_pre_show(wuss_proginfo_t *pi)
-{
-  return wuss_dialogue_handle_pre_show(pi->dialogue);
-}
-
-wuss_window_t *wuss_proginfo_window(const wuss_proginfo_t *pi)
-{
-  return pi ? wuss_dialogue_window(pi->dialogue) : NULL;
+  return wuss_dialogue_handle_pre_show(g.dialogue);
 }

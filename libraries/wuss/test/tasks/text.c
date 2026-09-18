@@ -175,6 +175,17 @@ static result_t text_set_spacing(text_task_t *task, int idx)
 
 static result_t text_open_menu(text_task_t *task)
 {
+  static const wuss_proginfo_desc_t desc =
+  {
+    "Text",
+    "Sample-text layout with font/colour/spacing pickers",
+    "(c) DPTLib contributors",
+    "1.0 (" __DATE__ ")"
+  };
+
+  wuss_proginfo_set_desc(&desc);
+  task->top_items[TEXT_MENU_INFO].window = wuss_proginfo_window(task->delegate);
+
   return wuss_menu_open(task->delegate,
                         &task->top_menu,
                         wuss_get_pointer(task->wuss), &task->menu_handle);
@@ -391,20 +402,6 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
     return rc;
   }
 
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Text",
-      "Sample-text layout with font/colour/spacing pickers",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
-      task->proginfo = NULL;
-  }
-  task->top_items[TEXT_MENU_INFO].window =
-    wuss_proginfo_window(task->proginfo);
-
   if (out)
     *out = task;
 
@@ -423,7 +420,6 @@ void text_destroy(text_task_t *task)
       bmfont_destroy(task->fonts[i]);
   free(task->fonts);
   wuss_fontmenu_destroy(task->fontmenu);
-  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -582,8 +578,8 @@ result_t text_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == wuss_proginfo_window(tcx->proginfo))
-      rc = wuss_proginfo_handle_pre_show(tcx->proginfo);
+    if (window == tcx->top_items[TEXT_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
     if (rc != result_OK)

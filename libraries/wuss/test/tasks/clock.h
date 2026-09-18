@@ -22,10 +22,9 @@ typedef struct clock_task
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_proginfo_t    *proginfo;
   wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
-                                       * leak one instance's proginfo window
-                                       * pointer into another's menu */
+                                       * leak one instance's .window pointer
+                                       * into another's menu */
   wuss_menu_t         menu;
   bmfont_t           *font; /* borrowed; the numerals are drawn with it */
   colour_t            bg, bezel, hand, second_hand;

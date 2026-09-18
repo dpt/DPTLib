@@ -32,8 +32,8 @@
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
  * per-instance in swatches_task_t, not as a file-scope static, so that each
- * window's Info row points at its own proginfo rather than every instance
- * sharing (and overwriting) one global .window pointer */
+ * window's Info row can hold its own .window pointer to the shared proginfo
+ * singleton, retargeted just before wuss_menu_open */
 enum { SWATCHES_MENU_INFO = 0, SWATCHES_MENU_COLOUR };
 
 /* Redraw: plot one PATTERN swatch per (pattern, colour) pair -- row =
@@ -90,7 +90,6 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t **out)
   task->wuss        = wuss;
   task->window      = NULL;
   task->task        = NULL;
-  task->proginfo    = NULL;
   task->menu_handle = NULL;
   task->paper       = wuss_nearest_colour(wuss, SWATCHES_PAPER_RGB);
 
@@ -123,8 +122,11 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t **out)
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
 
-  WUSS_MENU_ITEM(task->menu_items, SWATCHES_MENU_INFO, "Info",
-                wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, SWATCHES_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in
+                                * swatches_click */
 
   wuss_colourmenu_set_none(0);
   WUSS_MENU_ITEM_MENU(task->menu_items, SWATCHES_MENU_COLOUR, "Colour",
@@ -133,23 +135,6 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t **out)
 
   WUSS_MENU_TITLE(task->menu, "Swatches", task->menu_items,
                  NELEMS(task->menu_items));
-
-  /* The "Info" menu row's standard dialogue. A create failure is non-fatal
-   * -- the task just runs without an Info dialogue (see image.c). */
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Swatches",
-      "Fill-pattern swatch grid",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-
-    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
-      task->proginfo = NULL;
-  }
-  task->menu_items[SWATCHES_MENU_INFO].window =
-    wuss_proginfo_window(task->proginfo);
 
   if (out)
     *out = task;
@@ -165,7 +150,6 @@ void swatches_destroy(swatches_task_t *task)
     task->menu_handle = NULL;
   }
 
-  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -185,8 +169,22 @@ static result_t swatches_click(swatches_task_t    *task,
     return result_OK;
 
   if (event->data.mouse.button & wuss_BUTTON_MENU)
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Swatches",
+      "Fill-pattern swatch grid",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+
+    wuss_proginfo_set_desc(&desc);
+    task->menu_items[SWATCHES_MENU_INFO].window =
+      wuss_proginfo_window(task->task);
+
     return wuss_menu_open(task->task, &task->menu,
                           wuss_get_pointer(task->wuss), &task->menu_handle);
+  }
 
   if (!(event->data.mouse.button & wuss_BUTTON_SELECT))
     return result_OK;
@@ -253,9 +251,9 @@ result_t swatches_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == wuss_proginfo_window(task->proginfo))
+    if (window == task->menu_items[SWATCHES_MENU_INFO].window)
     {
-      rc = wuss_proginfo_handle_pre_show(task->proginfo);
+      rc = wuss_proginfo_handle_pre_show();
       if (rc != result_OK)
         return rc;
     }

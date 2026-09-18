@@ -70,10 +70,11 @@ static const char *const g_minesweeper_size_names[minesweeper_NSIZES] =
 
 /* MENU click over the board pops this menu; the item tables and wuss_menu_t
  * values live per-instance in minesweeper_task_t, not as file-scope
- * statics, so that each window's Info row points at its own proginfo
- * rather than every instance sharing (and overwriting) one global .window
- * pointer -- and so two instances don't fight over one shared tick mark on
- * the Grid Size submenu */
+ * statics, so that each window's Info row points at its own .window pointer
+ * (retargeted at the shared proginfo singleton just before wuss_menu_open,
+ * in minesweeper_mouse) rather than every instance sharing (and overwriting)
+ * one global .window pointer -- and so two instances don't fight over one
+ * shared tick mark on the Grid Size submenu */
 enum { MINESWEEPER_MENU_INFO, MINESWEEPER_MENU_NEW_GAME, MINESWEEPER_MENU_SIZE };
 
 /* neighbour-count colour, classic minesweeper palette; index 0 is never
@@ -276,17 +277,6 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
   }
 
   {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Minesweeper",
-      "Classic minesweeper",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
-      task->proginfo = NULL;
-  }
-  {
     int i;
 
     for (i = 0; i < minesweeper_NSIZES; i++)
@@ -300,7 +290,9 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
 
   WUSS_MENU_ITEM_WINDOW(task->menu_items, MINESWEEPER_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        wuss_proginfo_window(task->proginfo));
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in
+                                * minesweeper_mouse */
 
   WUSS_MENU_ITEM(task->menu_items, MINESWEEPER_MENU_NEW_GAME,
                 "New Game", wuss_MENU_ITEM_NONE);
@@ -321,7 +313,6 @@ void minesweeper_destroy(minesweeper_task_t *task)
 {
   if (task->menu_handle != NULL)
     wuss_menu_close(task->menu_handle);
-  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -514,6 +505,17 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
 
   if (button & wuss_BUTTON_MENU)
   {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Minesweeper",
+      "Classic minesweeper",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+
+    wuss_proginfo_set_desc(&desc);
+    ms->menu_items[MINESWEEPER_MENU_INFO].window = wuss_proginfo_window(ms->task);
+
     wuss_menu_tick_exclusive(&ms->size_menu, ms->size);
     return wuss_menu_open(ms->task, &ms->menu,
                           wuss_get_pointer(ms->wuss), &ms->menu_handle);
@@ -629,9 +631,9 @@ result_t minesweeper_handle(wuss_window_t      *window,
                              event->data.mouse.button);
 
   case wuss_EVENT_IDLE:
-    /* the proginfo dialogue is a second window on this same (autoclose)
-     * delegate, so closing the board window alone never empties
-     * task->windows and the task lingers until the dialogue closes too --
+    /* the shared proginfo singleton is a second window on this same
+     * (autoclose) delegate while its dialogue is open, so closing the board
+     * window alone doesn't necessarily empty task->windows immediately --
      * guard against the dangling window in the meantime */
     if (ms->window == NULL)
       return result_OK;
@@ -681,8 +683,8 @@ result_t minesweeper_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == wuss_proginfo_window(ms->proginfo))
-      rc = wuss_proginfo_handle_pre_show(ms->proginfo);
+    if (window == ms->menu_items[MINESWEEPER_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
     if (rc != result_OK)

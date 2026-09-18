@@ -13,6 +13,7 @@
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 #include "wuss/menu.h"
+#include "wuss/component/proginfo.h"
 
 #include "frontend.h"
 #include "tasks.h"
@@ -196,9 +197,9 @@ enum
   TASK_ITEM_QUIT
 };
 
-/* g_task_items' "Info" row's .window is filled in by tasks_open_launcher
- * (built from g.proginfo, which does not exist until run_wuss creates it) --
- * the table itself cannot name it at compile time. */
+/* g_task_items' "Info" row's .window is filled in by tasks_open_launcher,
+ * retargeting the shared proginfo singleton at g_tasks.menu_task each time
+ * -- the table itself cannot name it at compile time. */
 static wuss_menu_item_t g_task_items[] =
 {
   { "Info",      wuss_MENU_ITEM_PRE_OPEN, NULL,           NULL },
@@ -266,8 +267,8 @@ result_t task_handle_event(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == wuss_proginfo_window(g_tasks.proginfo))
-      rc = wuss_proginfo_handle_pre_show(g_tasks.proginfo);
+    if (window == g_task_items[TASK_ITEM_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
     if (rc != result_OK)
@@ -329,7 +330,16 @@ result_t task_handle_event(wuss_window_t      *window,
 
 result_t tasks_open_launcher(point_t pos)
 {
-  g_task_items[TASK_ITEM_INFO].window = wuss_proginfo_window(g_tasks.proginfo);
+  static const wuss_proginfo_desc_t desc =
+  {
+    "Wuss demo",
+    "Window manager test environment",
+    "(c) DPTLib contributors",
+    "1.0 (" __DATE__ ")"
+  };
+
+  wuss_proginfo_set_desc(&desc);
+  g_task_items[TASK_ITEM_INFO].window = wuss_proginfo_window(g_tasks.menu_task);
 
   return wuss_menu_open(g_tasks.menu_task, &g_task_menu, pos, NULL);
 }

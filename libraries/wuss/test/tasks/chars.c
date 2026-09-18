@@ -28,8 +28,8 @@
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
  * per-instance in chars_task_t, not as a file-scope static, so that each
- * window's Info row points at its own proginfo rather than every instance
- * sharing (and overwriting) one global .window pointer */
+ * window's Info row can hold its own .window pointer to the shared proginfo
+ * singleton, retargeted just before wuss_menu_open */
 enum { CHARS_MENU_INFO = 0, CHARS_MENU_FONT };
 
 /* ----------------------------------------------------------------------- */
@@ -128,6 +128,18 @@ static result_t chars_set_font(chars_task_t *task, int idx, const char *name)
 
 static result_t chars_open_menu(chars_task_t *task)
 {
+  static const wuss_proginfo_desc_t desc =
+  {
+    "Chars",
+    "Bitmap font glyph grid",
+    "(c) DPTLib contributors",
+    "1.0 (" __DATE__ ")"
+  };
+
+  wuss_proginfo_set_desc(&desc);
+  task->menu_items[CHARS_MENU_INFO].window =
+    wuss_proginfo_window(task->delegate);
+
   return wuss_menu_open(task->delegate, &task->menu,
                         wuss_get_pointer(task->wuss), &task->menu_handle);
 }
@@ -182,7 +194,6 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   task->fg          = colour_rgb(0x00, 0x00, 0x00);
   task->mg          = colour_rgb(0xBB, 0xBB, 0xBB);
   task->bg          = colour_rgb(0xFF, 0xFF, 0xFF);
-  task->proginfo    = NULL;
 
   /* the picker: every ".png" font under resources/bmfonts, sorted, less any
    * SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows from) */
@@ -235,8 +246,11 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM(task->menu_items, CHARS_MENU_INFO, "Info",
-                wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, CHARS_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in
+                                * chars_open_menu */
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CHARS_MENU_FONT, "Font",
                       wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
@@ -244,23 +258,6 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
 
   WUSS_MENU_TITLE(task->menu, "Chars", task->menu_items,
                  NELEMS(task->menu_items));
-
-  /* The "Info" menu row's standard dialogue. A create failure is non-fatal
-   * -- the task just runs without an Info dialogue (see image.c). */
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Chars",
-      "Bitmap font glyph grid",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-
-    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
-      task->proginfo = NULL;
-  }
-  task->menu_items[CHARS_MENU_INFO].window =
-    wuss_proginfo_window(task->proginfo);
 
   if (out)
     *out = task;
@@ -283,7 +280,6 @@ void chars_destroy(chars_task_t *task)
       bmfont_destroy(task->fonts[i]);
   free(task->fonts);
   wuss_fontmenu_destroy(task->fontmenu);
-  wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
 
@@ -439,9 +435,9 @@ result_t chars_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == wuss_proginfo_window(cc->proginfo))
+    if (window == cc->menu_items[CHARS_MENU_INFO].window)
     {
-      rc = wuss_proginfo_handle_pre_show(cc->proginfo);
+      rc = wuss_proginfo_handle_pre_show();
       if (rc != result_OK)
         return rc;
     }
