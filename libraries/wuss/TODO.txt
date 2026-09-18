@@ -27,10 +27,6 @@ Keyboard input
 - bmfont needs to be able to draw a caret
 
 
-Check: colourmenu allows middle click seelction
-
-Colourmenu should optionally allow 'no colour / clear / transparent'
-
 Adjust click on a menu should pop to front once the action is complete
 
 

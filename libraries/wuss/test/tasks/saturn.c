@@ -201,7 +201,7 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
    * don't need their own colourmenu. Both rows' .submenu just need to be
    * non-NULL to draw an arrow and become hoverable; which menu they name
    * doesn't matter since the handler always supplies the menu to open. */
-  rc = wuss_colourmenu_create(&task->colourmenu, wuss, "Colour");
+  rc = wuss_colourmenu_create(&task->colourmenu, wuss, "Colour", 0);
   if (rc != result_OK)
     goto fail_delegate;
 

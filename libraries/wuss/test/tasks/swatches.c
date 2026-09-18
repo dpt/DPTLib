@@ -106,7 +106,7 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t **out)
   }
   task->task = delegate;
 
-  rc = wuss_colourmenu_create(&task->colourmenu, wuss, "Colour");
+  rc = wuss_colourmenu_create(&task->colourmenu, wuss, "Colour", 0);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

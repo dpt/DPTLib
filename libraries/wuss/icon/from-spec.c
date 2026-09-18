@@ -90,7 +90,7 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   if (bg != wuss_NO_BACKGROUND && bg >= w->npalette)
     return result_WUSS_BAD_COLOUR;
 
-  if (has_swatch && swatch >= w->npalette)
+  if (has_swatch && swatch != wuss_NO_BACKGROUND && swatch >= w->npalette)
     return result_WUSS_BAD_COLOUR;
 
   out->spec      = *spec;

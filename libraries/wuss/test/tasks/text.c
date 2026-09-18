@@ -69,11 +69,8 @@ static const text_spacing_preset_t text_spacing_presets[] =
 
 #define TEXT_DEFAULT_SPACING 0 /* "Normal" */
 
-/* index into task->top_items[] of the tickable "No Background" leaf */
-#define TEXT_MENU_NO_BACKGROUND 5
-
 /* index into task->top_items[] of the "Info" leaf */
-#define TEXT_MENU_INFO 6
+#define TEXT_MENU_INFO 0
 
 /* ----------------------------------------------------------------------- */
 
@@ -133,25 +130,6 @@ static result_t text_set_sample(text_task_t *task, int idx)
   return result_OK;
 }
 
-/* toggle whether the paragraph is drawn with its picked background colour or
- * none, so glyphs blend straight onto whatever is already behind the
- * window's content */
-static result_t text_toggle_bg(text_task_t *task)
-{
-  wuss_menu_item_t *item;
-
-  task->bg_transparent = !task->bg_transparent;
-
-  item = &task->top_items[TEXT_MENU_NO_BACKGROUND];
-  if (task->bg_transparent)
-    item->flags |= wuss_MENU_ITEM_TICKED;
-  else
-    item->flags &= ~(wuss_menu_item_flags_t) wuss_MENU_ITEM_TICKED;
-
-  wuss_window_invalidate_visible(task->window);
-  return result_OK;
-}
-
 /* switch the paragraph's foreground to system palette index "picked" */
 static result_t text_set_fg(text_task_t *task, wuss_colour_t picked)
 {
@@ -160,10 +138,14 @@ static result_t text_set_fg(text_task_t *task, wuss_colour_t picked)
   return result_OK;
 }
 
-/* switch the paragraph's background to system palette index "picked" */
+/* switch the paragraph's background to system palette index "picked", or to
+ * none (glyphs blend straight onto whatever is behind the window's content)
+ * for wuss_NO_BACKGROUND, the colourmenu's "None" row */
 static result_t text_set_bg(text_task_t *task, wuss_colour_t picked)
 {
-  task->bg_index = picked;
+  task->bg_transparent = (picked == wuss_NO_BACKGROUND);
+  if (!task->bg_transparent)
+    task->bg_index = picked;
   wuss_window_invalidate_visible(task->window);
   return result_OK;
 }
@@ -243,7 +225,7 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
     return result_OOM;
   }
 
-  rc = wuss_colourmenu_create(&task->fgmenu, wuss, "Foreground");
+  rc = wuss_colourmenu_create(&task->fgmenu, wuss, "Foreground", 0);
   if (rc != result_OK)
   {
     wuss_fontmenu_destroy(task->fontmenu);
@@ -252,7 +234,7 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
     return rc;
   }
 
-  rc = wuss_colourmenu_create(&task->bgmenu, wuss, "Background");
+  rc = wuss_colourmenu_create(&task->bgmenu, wuss, "Background", 1);
   if (rc != result_OK)
   {
     wuss_colourmenu_destroy(task->fgmenu);
@@ -306,35 +288,31 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
    * ticks and wuss_fontmenu_selected keep working), "Sample"/"Spacing" are
    * the per-instance menus built above, "Foreground"/"Background" each
    * borrow their colourmenu's live wuss_menu_t the same way */
-  task->top_items[0].text    = "Font";
-  task->top_items[0].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[0].submenu = menu;
-  task->top_items[0].window  = NULL;
-  task->top_items[1].text    = "Sample";
-  task->top_items[1].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[1].submenu = &task->sample_menu;
-  task->top_items[1].window  = NULL;
-  task->top_items[2].text    = "Spacing";
-  task->top_items[2].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[2].submenu = &task->spacing_menu;
-  task->top_items[2].window  = NULL;
-  task->top_items[3].text    = "Foreground";
-  task->top_items[3].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[3].submenu = wuss_colourmenu_menu(task->fgmenu);
-  task->top_items[3].window  = NULL;
-  task->top_items[4].text    = "Background";
-  task->top_items[4].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[4].submenu = wuss_colourmenu_menu(task->bgmenu);
-  task->top_items[4].window  = NULL;
-  task->top_items[5].text    = "No Background";
-  task->top_items[5].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[5].submenu = NULL;
-  task->top_items[5].window  = NULL;
-  task->top_items[6].text    = "Info";
-  task->top_items[6].flags   =
+  task->top_items[0].text    = "Info";
+  task->top_items[0].flags   =
     wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN;
-  task->top_items[6].submenu = NULL;
-  task->top_items[6].window  = NULL;
+  task->top_items[0].submenu = NULL;
+  task->top_items[0].window  = NULL;
+  task->top_items[1].text    = "Font";
+  task->top_items[1].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[1].submenu = menu;
+  task->top_items[1].window  = NULL;
+  task->top_items[2].text    = "Sample";
+  task->top_items[2].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[2].submenu = &task->sample_menu;
+  task->top_items[2].window  = NULL;
+  task->top_items[3].text    = "Spacing";
+  task->top_items[3].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[3].submenu = &task->spacing_menu;
+  task->top_items[3].window  = NULL;
+  task->top_items[4].text    = "Foreground";
+  task->top_items[4].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[4].submenu = wuss_colourmenu_menu(task->fgmenu);
+  task->top_items[4].window  = NULL;
+  task->top_items[5].text    = "Background";
+  task->top_items[5].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[5].submenu = wuss_colourmenu_menu(task->bgmenu);
+  task->top_items[5].window  = NULL;
 
   WUSS_MENU_TITLE(task->top_menu, "Text", task->top_items,
                  NELEMS(task->top_items));
@@ -543,9 +521,6 @@ result_t text_handle(wuss_window_t      *window,
       picked = wuss_colourmenu_selected(tcx->bgmenu, event, &mine);
       if (mine)
         return text_set_bg(tcx, picked);
-      if (event->data.menu_select.menu == &tcx->top_menu &&
-          event->data.menu_select.index == TEXT_MENU_NO_BACKGROUND)
-        return text_toggle_bg(tcx);
     }
     return result_OK;
 

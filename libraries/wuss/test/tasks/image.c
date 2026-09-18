@@ -176,7 +176,8 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
   /* The "Background" menu row's submenu. Hung off the descriptor menu as a
    * wuss_menu_item_t.submenu in image_open_menu. A create failure is
    * non-fatal -- the task just runs without a Background submenu. */
-  if (wuss_colourmenu_create(&task->colourmenu, wuss, "Background") != result_OK)
+  if (wuss_colourmenu_create(&task->colourmenu, wuss, "Background", 1) !=
+      result_OK)
     task->colourmenu = NULL;
 
   if (out)
