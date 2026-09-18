@@ -517,6 +517,7 @@ if(MSVC)
     target_compile_definitions(DPTLib PRIVATE _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_WARNINGS)
 else()
     target_compile_options(DPTLib PRIVATE -Wall -Wextra -pedantic)
+    target_compile_options(DPTLib PRIVATE -ffunction-sections -fdata-sections)
 endif()
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -799,6 +800,15 @@ if(BUILD_APPS)
     target_include_directories(wuss PRIVATE apps/wuss libraries/wuss/test)
     target_compile_definitions(wuss PRIVATE WUSS_APP)
     target_link_libraries(wuss DPTLib)
+
+    if(NOT MSVC)
+        target_compile_options(wuss PRIVATE -ffunction-sections -fdata-sections)
+        if(APPLE)
+            target_link_options(wuss PRIVATE -Wl,-dead_strip)
+        elseif(NOT EMSCRIPTEN)
+            target_link_options(wuss PRIVATE -Wl,--gc-sections)
+        endif()
+    endif()
 
     if(TARGET_RISCOS)
         # native VDU/OS_Mouse frontend, no SDL
