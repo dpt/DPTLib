@@ -35,6 +35,7 @@
 #include "frontend.h"
 #include "tasks.h"
 
+#include "tasks/config.h"  /* config_create at startup */
 #include "tasks/palette.h" /* palette_load_hex for the startup *.hex */
 #include "tasks/saturn.h"  /* saturn_create at startup */
 
@@ -403,6 +404,11 @@ static result_t run_wuss(const char *resources,
 
   rc = saturn_create(wuss, NULL);
   logf_info("wuss: saturn_create -> rc=0x%X (%s)", rc, result_string(rc));
+  if (rc != result_OK)
+    goto Failure;
+
+  rc = config_create(wuss, NULL);
+  logf_info("wuss: config_create -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
 

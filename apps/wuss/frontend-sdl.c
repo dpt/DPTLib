@@ -21,6 +21,7 @@
 #include <SDL3/SDL.h>
 
 #include "frontend.h"
+#include "tasks.h" /* g_tasks.swap_mouse_buttons */
 
 /* Screen pixel format for the demo, chosen at run time via --depth: 32 =
  * pixelfmt_bgrx8888 (feeds SDL directly, no per-frame conversion); 8 =
@@ -56,6 +57,16 @@ struct wuss_frontend
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
 {
+  if (g_tasks.swap_mouse_buttons)
+  {
+    switch (button)
+    {
+    case SDL_BUTTON_MIDDLE: return wuss_BUTTON_ADJUST;
+    case SDL_BUTTON_RIGHT:  return wuss_BUTTON_MENU;
+    default:                return wuss_BUTTON_SELECT;
+    }
+  }
+
   switch (button)
   {
   case SDL_BUTTON_MIDDLE: return wuss_BUTTON_MENU;
@@ -303,10 +314,10 @@ void wuss_frontend_present(wuss_frontend_t *fe,
   }
   else
   {
-    result_t    rc;
-    bitmap_t    rows, *disp;
-    int         y0, y1;
-    SDL_Rect    rect;
+    result_t rc;
+    bitmap_t rows, *disp;
+    int      y0, y1;
+    SDL_Rect rect;
 
     /* Sub-byte formats (p1/p2/p4) pack several pixels per byte, so only a
      * whole-row crop is safe without redoing their bit-unpacking maths for an

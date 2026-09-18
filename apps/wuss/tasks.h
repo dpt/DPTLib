@@ -28,6 +28,11 @@ extern struct wuss_app_tasks
   wuss_frontend_t *frontend; /* pushed to on wuss_EVENT_PALETTE; see
                               * task_handle_event */
   bitmap_t        *bm;       /* framebuffer bitmap, likewise */
+  bool             swap_mouse_buttons; /* set by the Configure task's option
+                                        * icon; read by each frontend's raw
+                                        * button translator
+                                        * (sdl_button_to_wuss,
+                                        * mouse_buttons_to_wuss) */
 }
 g_tasks;
 
