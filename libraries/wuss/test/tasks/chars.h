@@ -14,16 +14,14 @@
 
 /* displays every glyph (0-255) of a bitmap font as a 32x8 grid, so the whole
  * font can be eyeballed at a glance. A MENU click on the window opens a
- * picker -- a wuss_fontmenu over resources/bmfonts -- that swaps the font in
- * place. */
+ * picker -- the shared wuss_fontmenu singleton over resources/bmfonts --
+ * that swaps the font in place. */
 typedef struct chars_task
 {
   wuss_window_t      *window;
   wuss_task_t        *delegate;    /* the wuss task backing this window */
   wuss_t             *wuss;        /* for wuss_get_pointer when opening the
                                     * menu */
-  wuss_fontmenu_t    *fontmenu;    /* the font picker; owns the menu and
-                                    * names */
   wuss_menu_handle_t  menu_handle; /* the open chain, to re-tick it live on
                                     * an ADJUST pick that keeps it open */
   bmfont_t           *font;        /* currently shown; == fonts[current] */

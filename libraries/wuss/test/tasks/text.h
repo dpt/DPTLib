@@ -18,22 +18,20 @@
 
 /* window B's task: flows a chosen sample string over its wuss-filled
  * background, one line per bmfont_draw call. A MENU click on the window opens
- * a top-level menu with three submenus -- "Font" (a wuss_fontmenu over
- * resources/bmfonts, swapping the paragraph font in place), "Sample" (swaps
- * the shown string: a choice of pangrams and a lorem ipsum paragraph) and
- * "Spacing" (swaps the letter/word spacing) and "Colours" (a submenu of
- * "Foreground"/"Background", each retargeting the shared wuss_colourmenu
- * singleton on hover) -- whose "Background" row also offers a "None" chip
- * that unsets the paragraph's background colour so glyphs blend straight
- * onto whatever is already behind the window's content. */
+ * a top-level menu with three submenus -- "Font" (the shared wuss_fontmenu
+ * singleton over resources/bmfonts, swapping the paragraph font in place),
+ * "Sample" (swaps the shown string: a choice of pangrams and a lorem ipsum
+ * paragraph) and "Spacing" (swaps the letter/word spacing) and "Colours" (a
+ * submenu of "Foreground"/"Background", each retargeting the shared
+ * wuss_colourmenu singleton on hover) -- whose "Background" row also offers
+ * a "None" chip that unsets the paragraph's background colour so glyphs
+ * blend straight onto whatever is already behind the window's content. */
 typedef struct text_task
 {
   wuss_window_t      *window;
   wuss_task_t        *delegate;   /* the wuss task backing this window */
   wuss_t             *wuss;       /* for wuss_get_pointer when opening the
                                    * menu */
-  wuss_fontmenu_t    *fontmenu;   /* the font picker; owns the menu and
-                                   * names */
   bmfont_t           *font;       /* currently shown; fonts[current] or
                                    * sysfont */
   bmfont_t          **fonts;      /* one slot per menu item, lazily loaded */

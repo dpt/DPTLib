@@ -4880,7 +4880,6 @@ MenuOK: ;
   printf("test: wuss_fontmenu lists the bmfonts dir and resolves a pick\n");
   {
     const char        *dir;
-    wuss_fontmenu_t   *fm;
     const wuss_menu_t *fmm;
     wuss_event_t       ev;
     const char        *name;
@@ -4888,11 +4887,7 @@ MenuOK: ;
 
     dir = pathf("%s/resources/bmfonts", resources);
 
-    rc = wuss_fontmenu_create(&fm, dir, "Font", NULL, NULL);
-    if (rc != result_OK)
-      goto FontMenuFail;
-
-    fmm = wuss_fontmenu_menu(fm);
+    fmm = wuss_fontmenu_menu(dir, "Font", NULL);
     if (fmm == NULL)                                     goto FontMenuFail;
     if (fmm->title == NULL || strcmp(fmm->title, "Font") != 0)
       goto FontMenuFail;
@@ -4912,24 +4907,25 @@ MenuOK: ;
     ev.data.menu_select.menu   = fmm;
     ev.data.menu_select.index  = 1;
     ev.data.menu_select.button = wuss_BUTTON_SELECT;
-    name = wuss_fontmenu_selected(fm, &ev);
+    name = wuss_fontmenu_selected(&ev);
     if (name == NULL || strcmp(name, fmm->items[1].text) != 0)
       goto FontMenuFail;
 
     /* wrong event kind, foreign menu and out-of-range index all decline */
     ev.kind = wuss_EVENT_IDLE;
-    if (wuss_fontmenu_selected(fm, &ev) != NULL)         goto FontMenuFail;
+    if (wuss_fontmenu_selected(&ev) != NULL)             goto FontMenuFail;
     ev.kind                   = wuss_EVENT_MENU_SELECT;
     ev.data.menu_select.menu  = NULL;
-    if (wuss_fontmenu_selected(fm, &ev) != NULL)         goto FontMenuFail;
+    if (wuss_fontmenu_selected(&ev) != NULL)             goto FontMenuFail;
     ev.data.menu_select.menu  = fmm;
     ev.data.menu_select.index = fmm->nitems;
-    if (wuss_fontmenu_selected(fm, &ev) != NULL)         goto FontMenuFail;
+    if (wuss_fontmenu_selected(&ev) != NULL)             goto FontMenuFail;
 
-    wuss_fontmenu_destroy(fm);
+    if (wuss_fontmenu_menu(NULL, "Font", NULL) != NULL)  goto FontMenuFail;
 
     /* a SYSTEM-class wuss font is dropped from the menu; NONE-class and
-     * unnamed slots are not */
+     * unnamed slots are not -- also exercises the singleton rebuilding when
+     * handed a different wuss_t for the same dir */
     {
       const char      *sysfontfile;
       bmfont_t        *sysfont;
@@ -4959,12 +4955,9 @@ MenuOK: ;
        * the now-stale pointer */
       dir = pathf("%s/resources/bmfonts", resources);
 
-      rc = wuss_fontmenu_create(&fm, dir, "Font", syswuss, NULL);
+      fmm = wuss_fontmenu_menu(dir, "Font", syswuss);
       wuss_destroy(syswuss);
       bmfont_destroy(sysfont);
-      if (rc != result_OK)                               goto FontMenuFail;
-
-      fmm = wuss_fontmenu_menu(fm);
       if (fmm == NULL)                                    goto FontMenuFail;
       for (i = 0; i < fmm->nitems; i++)
         if (strcmp(fmm->items[i].text, "Symbols") == 0)   goto FontMenuFail;
@@ -4972,13 +4965,12 @@ MenuOK: ;
         if (strcmp(fmm->items[i].text, "Tiny") == 0)
           break;
       if (i == fmm->nitems)                               goto FontMenuFail;
-
-      wuss_fontmenu_destroy(fm);
     }
 
-    /* missing directory is surfaced, not swallowed */
-    rc = wuss_fontmenu_create(&fm, "no/such/dir/here", NULL, NULL, NULL);
-    if (rc != result_FILE_NOT_FOUND)                     goto FontMenuFail;
+    /* missing directory is surfaced by leaving the singleton unbuilt, not
+     * swallowed */
+    if (wuss_fontmenu_menu("no/such/dir/here", NULL, NULL) != NULL)
+      goto FontMenuFail;
 
     rc = result_OK;
     goto FontMenuOK;
