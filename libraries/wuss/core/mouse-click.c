@@ -298,7 +298,12 @@ result_t wuss_mouse_click(wuss_t             *wuss,
     {
       wuss_icon_t *icon;
 
-      icon = wuss__icon_hit_test(win, doc_point);
+      /* MENU is never an icon gesture -- press/select/adjust are. Skipping
+       * the hit test lets a MENU click over an icon fall through to the
+       * plain wuss_EVENT_MOUSE below, so the task's own MENU handling (e.g.
+       * popping a work-area menu) sees it instead of the click being eaten
+       * here. */
+      icon = (button & wuss_BUTTON_MENU) ? NULL : wuss__icon_hit_test(win, doc_point);
       if (icon != NULL)
       {
         if (action == wuss_MOUSE_DOWN &&
