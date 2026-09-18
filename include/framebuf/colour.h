@@ -55,4 +55,17 @@ pixelfmt_any_t colour_to_pixel(const colour_t *palette,
  */
 unsigned int colour_get_alpha(const colour_t *c);
 
+/**
+ * Return the RGB components of the specified colour.
+ *
+ * \param[in]  c Colour.
+ * \param[out] r Red component.
+ * \param[out] g Green component.
+ * \param[out] b Blue component.
+ */
+void colour_get_rgb(const colour_t *c,
+                    unsigned int   *r,
+                    unsigned int   *g,
+                    unsigned int   *b);
+
 #endif /* FRAMEBUF_COLOUR_H */
