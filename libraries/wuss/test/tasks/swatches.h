@@ -25,7 +25,6 @@ typedef struct swatches_task
   wuss_t             *wuss;
   wuss_window_t      *window;
   wuss_task_t        *task;      /* delegate; opens the menu */
-  wuss_colourmenu_t  *colourmenu;
   wuss_proginfo_t    *proginfo;
   wuss_menu_item_t    menu_items[2]; /* per-instance: a shared static would
                                        * leak one instance's proginfo window

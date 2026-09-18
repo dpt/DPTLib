@@ -90,7 +90,6 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t **out)
   task->wuss        = wuss;
   task->window      = NULL;
   task->task        = NULL;
-  task->colourmenu  = NULL;
   task->proginfo    = NULL;
   task->menu_handle = NULL;
   task->paper       = wuss_nearest_colour(wuss, SWATCHES_PAPER_RGB);
@@ -106,13 +105,6 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t **out)
   }
   task->task = delegate;
 
-  rc = wuss_colourmenu_create(&task->colourmenu, wuss, "Colour", 0);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(delegate);
-    return rc;
-  }
-
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(SWATCHES_DOC_W, 140),
                                  "Swatches",
@@ -123,7 +115,6 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t **out)
                                  &task->window);
   if (rc != result_OK)
   {
-    wuss_colourmenu_destroy(task->colourmenu);
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
     return rc;
   }
@@ -135,9 +126,10 @@ result_t swatches_create(wuss_t *wuss, swatches_task_t **out)
   WUSS_MENU_ITEM(task->menu_items, SWATCHES_MENU_INFO, "Info",
                 wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
 
+  wuss_colourmenu_set_none(0);
   WUSS_MENU_ITEM_MENU(task->menu_items, SWATCHES_MENU_COLOUR, "Colour",
                       wuss_MENU_ITEM_BORROWED_SUBMENU,
-                      wuss_colourmenu_menu(task->colourmenu));
+                      wuss_colourmenu_menu(wuss));
 
   WUSS_MENU_TITLE(task->menu, "Swatches", task->menu_items,
                  NELEMS(task->menu_items));
@@ -173,7 +165,6 @@ void swatches_destroy(swatches_task_t *task)
     task->menu_handle = NULL;
   }
 
-  wuss_colourmenu_destroy(task->colourmenu);
   wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
@@ -222,7 +213,7 @@ static result_t swatches_menu_select(swatches_task_t    *task,
   wuss_colour_t picked;
   int           mine;
 
-  picked = wuss_colourmenu_selected(task->colourmenu, event, &mine);
+  picked = wuss_colourmenu_selected(event, &mine);
   if (!mine)
     return result_OK;
 

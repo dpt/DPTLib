@@ -21,10 +21,11 @@
  * a top-level menu with three submenus -- "Font" (a wuss_fontmenu over
  * resources/bmfonts, swapping the paragraph font in place), "Sample" (swaps
  * the shown string: a choice of pangrams and a lorem ipsum paragraph) and
- * "Spacing" (swaps the letter/word spacing), "Foreground" and "Background"
- * (each a wuss_colourmenu over the system palette) -- plus a tickable "No
- * Background" leaf that unsets the paragraph's background colour so glyphs
- * blend straight onto whatever is already behind the window's content. */
+ * "Spacing" (swaps the letter/word spacing) and "Colours" (a submenu of
+ * "Foreground"/"Background", each retargeting the shared wuss_colourmenu
+ * singleton on hover) -- whose "Background" row also offers a "None" chip
+ * that unsets the paragraph's background colour so glyphs blend straight
+ * onto whatever is already behind the window's content. */
 typedef struct text_task
 {
   wuss_window_t      *window;
@@ -38,8 +39,10 @@ typedef struct text_task
   bmfont_t          **fonts;      /* one slot per menu item, lazily loaded */
   int                 nfonts;     /* length of fonts[]; == menu item count */
   int                 current;    /* index into fonts[], or -1 for sysfont */
-  wuss_colourmenu_t  *fgmenu;      /* the "Foreground" picker; owns its menu */
-  wuss_colourmenu_t  *bgmenu;      /* the "Background" picker; owns its menu */
+  wuss_colour_t      *colourmenu_target; /* &task->fg_index or
+                                   * &task->bg_index: which field the open
+                                   * colourmenu picks into, set by
+                                   * text_pre_submenu_open */
   wuss_menu_item_t    sample_items[4]; /* "Sample" submenu rows; per-instance
                                    * so ticks/selection state can't bleed
                                    * across two Text windows */
@@ -48,11 +51,15 @@ typedef struct text_task
                                    * instance for the same reason -- each
                                    * carries its own tick state */
   wuss_menu_t         spacing_menu;
-  wuss_menu_item_t    top_items[6]; /* "Info", "Font", "Sample", "Spacing",
-                                   * "Foreground" and "Background", built
-                                   * once the fontmenu and colourmenus exist
-                                   * so items[1/4/5].submenu can borrow their
-                                   * live wuss_menu_t */
+  wuss_menu_item_t    colours_items[2]; /* "Foreground"/"Background" rows;
+                                   * both share the colourmenu singleton,
+                                   * retargeted per hover in
+                                   * text_pre_submenu_open */
+  wuss_menu_t         colours_menu;
+  wuss_menu_item_t    top_items[5]; /* "Info", "Font", "Sample", "Spacing",
+                                   * "Colours", built once the fontmenu
+                                   * exists so items[1].submenu can borrow
+                                   * its live wuss_menu_t */
   wuss_menu_t         top_menu;   /* root menu passed to wuss_menu_open */
   wuss_proginfo_t    *proginfo;
   wuss_menu_handle_t  menu_handle; /* chain handle from the last
