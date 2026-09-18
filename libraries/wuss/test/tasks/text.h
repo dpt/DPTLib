@@ -16,6 +16,18 @@
 #include "wuss/task.h"
 #include "wuss/window.h"
 
+/* one styled run within a task's markdown_text, produced by
+ * text__markdown_parse: [start, start+len) is drawn in colour instead of
+ * the paragraph's normal foreground. Runs never overlap and are sorted by
+ * start. */
+typedef struct text_span
+{
+  int      start;
+  int      len;
+  colour_t colour;
+}
+text_span_t;
+
 /* window B's task: flows a chosen sample string over its wuss-filled
  * background, one line per bmfont_draw call. A MENU click on the window opens
  * a top-level menu with three submenus -- "Font" (the shared wuss_fontmenu
@@ -41,7 +53,7 @@ typedef struct text_task
                                    * &task->bg_index: which field the open
                                    * colourmenu picks into, set by
                                    * text_pre_submenu_open */
-  wuss_menu_item_t    sample_items[4]; /* "Sample" submenu rows; per-instance
+  wuss_menu_item_t    sample_items[5]; /* "Sample" submenu rows; per-instance
                                    * so ticks/selection state can't bleed
                                    * across two Text windows */
   wuss_menu_t         sample_menu;
@@ -65,8 +77,19 @@ typedef struct text_task
                                    * open; NULL if closed */
   int                 sample;     /* index into text_samples[] currently
                                    * shown */
-  const char         *text;       /* text_samples[sample].text; what
-                                   * text_redraw lays out and draws */
+  const char         *text;       /* what text_redraw lays out and draws;
+                                   * either text_samples[sample].text
+                                   * directly, or task->markdown_text if
+                                   * text_samples[sample].markdown is set */
+  char               *markdown_text; /* owned buffer holding the stripped
+                                   * plain text produced by
+                                   * text__markdown_parse from the current
+                                   * markdown sample; NULL when the current
+                                   * sample isn't Markdown */
+  text_span_t        *markdown_spans; /* owned array of styled runs into
+                                   * markdown_text, from the same parse;
+                                   * NULL when markdown_text is NULL */
+  int                 markdown_nspans; /* length of markdown_spans */
   int                 spacing_idx; /* index into text_spacing_presets[]
                                    * currently applied */
   bmfont_spacing_t    spacing;    /* text_spacing_presets[spacing_idx],
