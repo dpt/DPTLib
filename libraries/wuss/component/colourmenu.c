@@ -70,14 +70,15 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
   npalette = wuss->npalette;
   if (npalette > wuss_COLOUR_SYMBOLIC)
     npalette = wuss_COLOUR_SYMBOLIC; /* wuss_colour_t indices above this are
-                                       * the symbolic/chrome-role namespace,
-                                       * not real palette slots -- don't hand
-                                       * them out as swatches */
+                                      * the symbolic/chrome-role namespace,
+                                      * not real palette slots -- don't hand
+                                      * them out as swatches */
   n = npalette + (with_none ? 1 : 0); /* the last row is "None" when present */
 
   cm = a->malloc(sizeof(*cm));
   if (cm == NULL)
     return result_OOM;
+  
   cm->alloc = *a;
   cm->menu  = NULL;
   a = &cm->alloc; /* use the copy from here on -- outlives the wuss_t */
@@ -88,20 +89,22 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
     a->free(cm);
     return result_OOM;
   }
+  
   m->title  = NULL;
   m->items  = NULL;
   m->nitems = 0;
 
   if (n > 0)
   {
-    items = a->malloc((size_t) n * sizeof(*items));
+    items = a->malloc(n * sizeof(*items));
     if (items == NULL)
     {
       menu_free(a, m);
       a->free(cm);
       return result_OOM;
     }
-    memset(items, 0, (size_t) n * sizeof(*items));
+    
+    memset(items, 0, n * sizeof(*items));
     m->items  = items;
     m->nitems = n; /* items zeroed: menu_free's NULL-text loop is safe now */
   }

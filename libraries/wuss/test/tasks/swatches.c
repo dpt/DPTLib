@@ -208,9 +208,9 @@ static result_t swatches_click(swatches_task_t    *task,
       col >= SWATCHES_NCOLOURS || pat >= screen_PATTERN__LIMIT)
     return result_OK;
 
-  backdrop = (wuss_backdrop_t) wuss_BACKDROP_PATTERN((wuss_colour_t) col,
-                                                    (screen_pattern_t) pat,
-                                                    task->paper);
+  backdrop = wuss_BACKDROP_PATTERN((wuss_colour_t) col,
+                                   (screen_pattern_t) pat,
+                                   task->paper);
   return wuss_set_backdrop(task->wuss, &backdrop);
 }
 
