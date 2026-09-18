@@ -24,27 +24,40 @@
 /* ponytail: flat list, one item per font, no family/weight grouping into
  * submenus. wuss_fontmenu_selected then needs only a single pointer compare.
  * Add a grouping pass (and widen the identity check to the submenus) if a
- * font directory ever gets big enough to want it. */
-struct wuss_fontmenu
+ * font directory ever gets big enough to want it. One process-wide
+ * singleton -- no per-task instances, no create/destroy -- rebuilt lazily
+ * when the caller's dir or wuss_t changes. */
+static struct
 {
-  wuss_alloc_t alloc; /* copied hooks; every block below goes through these */
-  wuss_menu_t *menu;  /* owned; freed by menu_free, not wuss_menu_destroy */
-};
+  wuss_alloc_t  alloc;
+  char         *dir;   /* owned copy; whose fonts the menu was built from --
+                        * callers pass a pathf() scratch pointer, so this
+                        * cannot just borrow it */
+  const wuss_t *wuss;  /* borrowed; consulted to skip SYSTEM fonts */
+  wuss_menu_t  *menu;
+}
+g;
 
-/* Free a menu built here -- text, items, title, node -- through the same
- * hooks it was built with. Tolerates NULL text for partial unwinding. */
-static void menu_free(const wuss_alloc_t *a, wuss_menu_t *m)
+/* Free the singleton's owned blocks -- text, items, title, node, dir --
+ * through the same hooks it was built with, leaving g.menu/g.dir/g.wuss
+ * cleared so the next call rebuilds from scratch. Tolerates NULL text for
+ * partial unwinding. */
+static void fontmenu_free(void)
 {
   int i;
 
-  if (m == NULL)
-    return;
+  if (g.menu == NULL)
+    return; /* never built, or already freed -- g.alloc may be unset */
 
-  for (i = 0; i < m->nitems; i++)
-    a->free((void *) m->items[i].text); /* discard const */
-  a->free((void *) m->items);           /* discard const */
-  a->free((void *) m->title);           /* discard const */
-  a->free(m);
+  for (i = 0; i < g.menu->nitems; i++)
+    g.alloc.free((void *) g.menu->items[i].text); /* discard const */
+  g.alloc.free((void *) g.menu->items);           /* discard const */
+  g.alloc.free((void *) g.menu->title);           /* discard const */
+  g.alloc.free(g.menu);
+  g.alloc.free(g.dir);
+  g.menu = NULL;
+  g.dir  = NULL;
+  g.wuss = NULL;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -133,54 +146,50 @@ static int name_cmp(const void *a, const void *b)
 
 /* ----------------------------------------------------------------------- */
 
-/* Build a flat wuss_menu_t through \p a, copying each names[i] in (the
- * scratch list keeps its own copies). On failure everything taken is freed
- * through \p a and *out is untouched. */
-static result_t build_menu(const wuss_alloc_t *a,
-                           char              **names,
-                           int                 nnames,
-                           const char         *title,
-                           wuss_menu_t       **out)
+/* Build the singleton's g.menu, copying each names[i] in (the scratch list
+ * keeps its own copies). On failure everything taken is freed and g.menu is
+ * left NULL. */
+static result_t build_menu(char **names, int nnames, const char *title)
 {
-  wuss_menu_t      *m;
   wuss_menu_item_t *items;
   int               i;
 
   items = NULL;
 
-  m = a->malloc(sizeof(*m));
-  if (m == NULL)
+  g.menu = g.alloc.malloc(sizeof(*g.menu));
+  if (g.menu == NULL)
     return result_OOM;
-  m->title  = NULL;
-  m->items  = NULL;
-  m->nitems = 0;
+  g.menu->title  = NULL;
+  g.menu->items  = NULL;
+  g.menu->nitems = 0;
 
   if (nnames > 0)
   {
-    items = a->malloc((size_t) nnames * sizeof(*items));
+    items = g.alloc.malloc((size_t) nnames * sizeof(*items));
     if (items == NULL)
     {
-      menu_free(a, m);
+      fontmenu_free();
       return result_OOM;
     }
     memset(items, 0, (size_t) nnames * sizeof(*items));
-    m->items  = items;
-    m->nitems = nnames; /* items zeroed: menu_free's NULL-text loop is safe */
+    g.menu->items  = items;
+    g.menu->nitems = nnames; /* items zeroed: fontmenu_free's NULL-text loop
+                              * is safe */
   }
 
-  m->title = wuss__alloc_strdup(a, title ? title : "Font");
-  if (m->title == NULL)
+  g.menu->title = wuss__alloc_strdup(&g.alloc, title ? title : "Font");
+  if (g.menu->title == NULL)
   {
-    menu_free(a, m);
+    fontmenu_free();
     return result_OOM;
   }
 
   for (i = 0; i < nnames; i++)
   {
-    items[i].text = wuss__alloc_strdup(a, names[i]);
+    items[i].text = wuss__alloc_strdup(&g.alloc, names[i]);
     if (items[i].text == NULL)
     {
-      menu_free(a, m);
+      fontmenu_free();
       return result_OOM;
     }
     items[i].flags   = wuss_MENU_ITEM_NONE;
@@ -188,30 +197,25 @@ static result_t build_menu(const wuss_alloc_t *a,
     items[i].window  = NULL;
   }
 
-  *out = m;
   return result_OK;
 }
 
-/* ----------------------------------------------------------------------- */
-
-result_t wuss_fontmenu_create(wuss_fontmenu_t   **out,
-                              const char         *dir,
-                              const char         *title,
-                              const wuss_t       *wuss,
-                              const wuss_alloc_t *alloc)
+/* (Re)build the singleton from dir's fonts, less any wuss's SYSTEM-class
+ * ones. */
+static result_t fontmenu_build(const char   *dir,
+                               const char   *title,
+                               const wuss_t *wuss)
 {
-  result_t         rc;
-  namelist_t       nl;
-  wuss_fontmenu_t *fm;
+  result_t     rc;
+  wuss_alloc_t alloc;
+  namelist_t   nl;
 
-  if (out == NULL || dir == NULL)
-    return result_NULL_ARG;
+  fontmenu_free();
 
-  if (alloc == NULL)
-    alloc = &wuss_alloc;
+  alloc = wuss ? wuss->alloc : wuss_alloc;
 
   memset(&nl, 0, sizeof(nl));
-  nl.alloc = alloc;
+  nl.alloc = &alloc;
   nl.wuss  = wuss;
 
   rc = bmfont_enumerate(dir, collect_name, &nl);
@@ -224,75 +228,71 @@ result_t wuss_fontmenu_create(wuss_fontmenu_t   **out,
   if (nl.n > 1)
     qsort(nl.names, (size_t) nl.n, sizeof(nl.names[0]), name_cmp);
 
-  fm = alloc->malloc(sizeof(*fm));
-  if (fm == NULL)
-  {
-    namelist_free(&nl);
-    return result_OOM;
-  }
-  fm->alloc = *alloc;
-  fm->menu  = NULL;
+  g.alloc = alloc;
 
-  rc = build_menu(&fm->alloc, nl.names, nl.n, title, &fm->menu);
+  rc = build_menu(nl.names, nl.n, title);
   namelist_free(&nl); /* build_menu copied what it needed */
   if (rc != result_OK)
-  {
-    alloc->free(fm);
     return rc;
-  }
 
-  *out = fm;
+  g.dir = wuss__alloc_strdup(&g.alloc, dir);
+  if (g.dir == NULL)
+  {
+    fontmenu_free();
+    return result_OOM;
+  }
+  g.wuss = wuss;
+
   return result_OK;
 }
 
-void wuss_fontmenu_destroy(wuss_fontmenu_t *doomed)
+/* ----------------------------------------------------------------------- */
+
+const wuss_menu_t *wuss_fontmenu_menu(const char   *dir,
+                                      const char   *title,
+                                      const wuss_t *wuss)
 {
-  wuss_alloc_t alloc;
+  if (dir == NULL)
+    return NULL;
 
-  if (doomed == NULL)
-    return;
+  if (g.menu == NULL || g.dir == NULL || strcmp(dir, g.dir) != 0 ||
+      wuss != g.wuss)
+    if (fontmenu_build(dir, title, wuss) != result_OK)
+      return NULL;
 
-  alloc = doomed->alloc;
-  menu_free(&alloc, doomed->menu);
-  alloc.free(doomed);
+  return g.menu;
 }
 
-const wuss_menu_t *wuss_fontmenu_menu(const wuss_fontmenu_t *fm)
-{
-  return fm ? fm->menu : NULL;
-}
-
-const char *wuss_fontmenu_selected(const wuss_fontmenu_t *fm,
-                                   const wuss_event_t    *ev)
+const char *wuss_fontmenu_selected(const wuss_event_t *ev)
 {
   int index;
 
-  if (fm == NULL || ev == NULL)
+  if (ev == NULL || g.menu == NULL)
     return NULL;
   if (ev->kind != wuss_EVENT_MENU_SELECT)
     return NULL;
-  if (ev->data.menu_select.menu != fm->menu)
+  if (ev->data.menu_select.menu != g.menu)
     return NULL;
 
   index = ev->data.menu_select.index;
-  if (index < 0 || index >= fm->menu->nitems)
+  if (index < 0 || index >= g.menu->nitems)
     return NULL;
 
-  return fm->menu->items[index].text;
+  return g.menu->items[index].text;
 }
 
-void wuss_fontmenu_set_ticked(wuss_fontmenu_t *fm, int index)
+void wuss_fontmenu_set_ticked(int index)
 {
   wuss_menu_item_t *items;
   int               i;
 
-  if (fm == NULL)
+  if (g.menu == NULL)
     return;
 
-  /* fm->menu is ours to mutate; only wuss_fontmenu_menu hands it out const */
-  items = (wuss_menu_item_t *) fm->menu->items;
+  /* g.menu is ours to mutate; only wuss_fontmenu_menu hands it out const */
+  items = (wuss_menu_item_t *) g.menu->items;
 
-  for (i = 0; i < fm->menu->nitems; i++)
+  for (i = 0; i < g.menu->nitems; i++)
     if (i == index)
       items[i].flags |= wuss_MENU_ITEM_TICKED;
     else
