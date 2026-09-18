@@ -629,12 +629,21 @@ static void wuss__menu_flash_finish(struct wuss__menu *self)
 
   if (!keep_open)
   {
+    wuss_event_t closed;
+
     root = self;
     while (root->parent != NULL)
       root = root->parent;
 
     root->wuss->menu_chain = NULL;
     wuss__menu_close_from(root); /* frees `self` */
+
+    /* The chain is gone and the owner's wuss_menu_handle_t with it: tell it
+     * so, same as wuss__menu_abandon, before MENU_SELECT below -- otherwise
+     * the handle sits stale until a later wuss_menu_close (e.g. from the
+     * owner's own QUIT handler) walks freed nodes. */
+    closed.kind = wuss_EVENT_MENU_CLOSED;
+    (void) wuss__deliver(owner, NULL, &closed);
   }
 
   sel.kind                    = wuss_EVENT_MENU_SELECT;

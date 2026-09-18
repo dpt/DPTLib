@@ -53,6 +53,17 @@ void wuss_destroy(wuss_t *doomed)
        * wuss_task_destroy sets for its own internal QUIT. */
       task->flags |= wuss_TASK__REAPING;
 
+#ifdef WUSS_MENUS
+      /* If this task owns the live menu chain, abandon it before QUIT, same
+       * as wuss_task_destroy does for a standalone task teardown: this also
+       * delivers wuss_EVENT_MENU_CLOSED to `task`, nulling any
+       * wuss_menu_handle_t it holds, so a QUIT handler's own
+       * wuss_menu_close on that handle doesn't walk an already-freed chain
+       * -- the leftover-chain close below then just finds nothing to do. */
+      if (doomed->menu_chain != NULL && doomed->menu_chain->owner == task)
+        wuss__menu_abandon(doomed);
+#endif
+
       event.kind = wuss_EVENT_QUIT;
       (void) wuss__deliver(task, NULL, &event);
       wuss__free(doomed, e);
