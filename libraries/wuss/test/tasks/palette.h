@@ -51,7 +51,10 @@ typedef struct palette_task
   /* the picker menu: per-instance (not static const) because its ticks
    * track selected/invert and it must outlive the open chain, so a stack
    * copy built fresh on each open would not do */
-  wuss_menu_item_t     menu_items[PALETTE_MAX_FILES + 2]; /* + Invert + Info */
+  wuss_menu_item_t     load_items[PALETTE_MAX_FILES]; /* one row per
+                                                        * *.hex file */
+  wuss_menu_t          load_menu; /* "Load" submenu, opened off menu_items */
+  wuss_menu_item_t     menu_items[3]; /* Info, Load, Invert */
   wuss_menu_t          menu;
   wuss_menu_handle_t   menu_handle; /* for wuss_menu_tick_item_live on an
                                      * ADJUST pick, which keeps the chain

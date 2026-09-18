@@ -26,12 +26,10 @@
                                 * system palette wuss_create was given is
                                 * fixed at this length */
 
-/* index of the "Invert" row in the picker menu, after one row per *.hex
- * file and the dashed rule above it */
-#define PALETTE_MENU_INVERT_INDEX(pc) ((pc)->nnames)
-
-/* index of the "Info" row, after Invert */
-#define PALETTE_MENU_INFO_INDEX(pc) ((pc)->nnames + 1)
+/* indices of the top-level menu's fixed rows */
+#define PALETTE_MENU_INFO_INDEX    0
+#define PALETTE_MENU_LOAD_INDEX    1
+#define PALETTE_MENU_INVERT_INDEX  2
 
 /* ----------------------------------------------------------------------- */
 /* Parse a *.hex file: one "rrggbb" line per colour, no leading '#'. Fails
@@ -118,18 +116,21 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   /* built once; ticks are refreshed from task->selected/invert on each open */
   for (i = 0; i < task->nnames; i++)
   {
-    WUSS_MENU_ITEM(task->menu_items, i, task->names[i],
+    WUSS_MENU_ITEM(task->load_items, i, task->names[i],
                   wuss_MENU_ITEM_NONE);
   }
-  WUSS_MENU_ITEM(task->menu_items, PALETTE_MENU_INVERT_INDEX(task),
-                "Invert", wuss_MENU_ITEM_DASHED);
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, PALETTE_MENU_INFO_INDEX(task), "Info",
+  WUSS_MENU_TITLE(task->load_menu, "Load", task->load_items, task->nnames);
+
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, PALETTE_MENU_INFO_INDEX, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in
                                 * palette_menu_open */
-  WUSS_MENU_TITLE(task->menu, "Palette", task->menu_items,
-                 task->nnames + 2);
+  WUSS_MENU_ITEM_MENU(task->menu_items, PALETTE_MENU_LOAD_INDEX, "Load",
+                      wuss_MENU_ITEM_NONE, &task->load_menu);
+  WUSS_MENU_ITEM(task->menu_items, PALETTE_MENU_INVERT_INDEX,
+                "Invert", wuss_MENU_ITEM_NONE);
+  WUSS_MENU_TITLE(task->menu, "Palette", task->menu_items, 3);
 
   /* backdrop for any rounding gap around the grid */
   delegate_desc.handle    = palette_handle;
@@ -310,12 +311,12 @@ static result_t palette_menu_open(palette_task_t *pc)
   unsigned int ticks;
 
   wuss_proginfo_set_desc(&desc);
-  pc->menu_items[PALETTE_MENU_INFO_INDEX(pc)].window =
+  pc->menu_items[PALETTE_MENU_INFO_INDEX].window =
     wuss_proginfo_window(pc->delegate);
 
-  ticks = 1u << pc->selected;
-  if (pc->invert)
-    ticks |= 1u << PALETTE_MENU_INVERT_INDEX(pc);
+  wuss_menu_tick_exclusive(&pc->load_menu, pc->selected);
+
+  ticks = pc->invert ? 1u << PALETTE_MENU_INVERT_INDEX : 0;
 
   return wuss_menu_open_ticked(pc->delegate, &pc->menu, ticks,
                                wuss_get_pointer(pc->wuss), &pc->menu_handle);
@@ -350,28 +351,27 @@ static result_t palette_menu_select(palette_task_t     *pc,
   colour_t loaded[PALETTE_NCOLOURS];
   int      i;
 
-  if (event->data.menu_select.menu != &pc->menu)
-    return result_OK;
-
   index = event->data.menu_select.index;
 
-  if (index == PALETTE_MENU_INVERT_INDEX(pc))
+  if (event->data.menu_select.menu == &pc->menu &&
+      index == PALETTE_MENU_INVERT_INDEX)
   {
     pc->invert = !pc->invert;
     if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
       wuss_menu_tick_item_live(pc->menu_handle, &pc->menu, index, pc->invert);
   }
-  else if (index >= 0 && index < pc->nnames)
+  else if (event->data.menu_select.menu == &pc->load_menu &&
+          index >= 0 && index < pc->nnames)
   {
     old          = pc->selected;
     pc->selected = index;
     pc->invert   = false;
     if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
     {
-      wuss_menu_tick_item_live(pc->menu_handle, &pc->menu, old, 0);
-      wuss_menu_tick_item_live(pc->menu_handle, &pc->menu, index, 1);
+      wuss_menu_tick_item_live(pc->menu_handle, &pc->load_menu, old, 0);
+      wuss_menu_tick_item_live(pc->menu_handle, &pc->load_menu, index, 1);
       wuss_menu_tick_item_live(pc->menu_handle, &pc->menu,
-                               PALETTE_MENU_INVERT_INDEX(pc), 0);
+                               PALETTE_MENU_INVERT_INDEX, 0);
     }
   }
   else
@@ -431,7 +431,7 @@ result_t palette_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == pc->menu_items[PALETTE_MENU_INFO_INDEX(pc)].window)
+    if (window == pc->menu_items[PALETTE_MENU_INFO_INDEX].window)
       rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
