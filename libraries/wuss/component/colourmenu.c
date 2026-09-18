@@ -116,14 +116,11 @@ result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
 
   for (i = 0; i < npalette; i++)
   {
-    pixelfmt_rgba8888_t px;
-    char                label[8];
+    unsigned int r, g, b;
+    char         label[8];
 
-    px = wuss->palette[i].primary;
-    snprintf(label, sizeof(label), "#%02X%02X%02X",
-             PIXELFMT_Rxxx8888(px),
-             PIXELFMT_xGxx8888(px),
-             PIXELFMT_xxBx8888(px));
+    colour_get_rgb(&wuss->palette[i], &r, &g, &b);
+    snprintf(label, sizeof(label), "#%02X%02X%02X", r, g, b);
 
     items[i].text = wuss__alloc_strdup(a, label);
     if (items[i].text == NULL)
