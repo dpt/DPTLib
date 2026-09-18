@@ -26,6 +26,13 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+/* "Colours" leads to a submenu with one row per task->fg_index/bg_index;
+ * both rows share the colourmenu singleton, retargeted per hover by
+ * text_pre_submenu_open (wuss_EVENT_PRE_SUBMENU_OPEN) so one instance
+ * serves either row -- see saturn.c's SATURN_COLOURS_MENU_* for the same
+ * pattern. */
+enum { TEXT_COLOURS_MENU_FOREGROUND = 0, TEXT_COLOURS_MENU_BACKGROUND };
+
 /* one entry per row of the "Sample" submenu; name is the menu label, text
  * what text_redraw lays out. Pangrams first, lorem ipsum last (and default,
  * matching this task's original fixed paragraph). */
@@ -173,6 +180,42 @@ static result_t text_open_menu(text_task_t *task)
                         wuss_get_pointer(task->wuss), &task->menu_handle);
 }
 
+/* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN, not just the
+ * Foreground/Background rows -- "Font"/"Sample"/"Spacing" are each one too
+ * (their submenu never changes, so they just open unchanged). Only the
+ * Foreground/Background level needs to retarget the shared colourmenu
+ * singleton before opening it -- see saturn.c's saturn_pre_submenu_open for
+ * the same pattern. */
+static result_t text_pre_submenu_open(text_task_t        *task,
+                                      const wuss_event_t *event)
+{
+  wuss_menu_handle_t handle;
+  int                index;
+
+  handle = event->data.pre_submenu_open.handle;
+  index  = event->data.pre_submenu_open.index;
+
+  if (wuss_menu_handle_menu(handle) != &task->colours_menu)
+    return wuss_menu_open_submenu_now(handle, index,
+                                      task->top_items[index].submenu);
+
+  if (index == TEXT_COLOURS_MENU_FOREGROUND)
+  {
+    task->colourmenu_target = &task->fg_index;
+    wuss_colourmenu_set_none(0);
+    wuss_colourmenu_set_title("Foreground");
+  }
+  else
+  {
+    task->colourmenu_target = &task->bg_index;
+    wuss_colourmenu_set_none(1);
+    wuss_colourmenu_set_title("Background");
+  }
+
+  return wuss_menu_open_submenu_now(handle, index,
+                                    wuss_colourmenu_menu(task->wuss));
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t text_create(wuss_t *wuss, text_task_t **out)
@@ -200,6 +243,7 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   task->spacing.word_spacing   = text_spacing_presets[TEXT_DEFAULT_SPACING].word_spacing;
   task->fg_index    = 0; /* wuss__default_palette: 0 is black */
   task->bg_index    = 7; /* wuss__default_palette: 7 is white */
+  task->colourmenu_target = NULL;
   task->frame_count = 0;
   task->resizing    = true;
 
@@ -225,23 +269,12 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
     return result_OOM;
   }
 
-  rc = wuss_colourmenu_create(&task->fgmenu, wuss, "Foreground", 0);
-  if (rc != result_OK)
+  if (wuss_colourmenu_menu(wuss) == NULL)
   {
     wuss_fontmenu_destroy(task->fontmenu);
     free(task->fonts);
     free(task);
-    return rc;
-  }
-
-  rc = wuss_colourmenu_create(&task->bgmenu, wuss, "Background", 1);
-  if (rc != result_OK)
-  {
-    wuss_colourmenu_destroy(task->fgmenu);
-    wuss_fontmenu_destroy(task->fontmenu);
-    free(task->fonts);
-    free(task);
-    return rc;
+    return result_OOM;
   }
 
   task->sample_items[0].text    = "Lorem Ipsum";
@@ -284,10 +317,23 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   WUSS_MENU_TITLE(task->spacing_menu, "Spacing", task->spacing_items,
                  NELEMS(task->spacing_items));
 
+  /* Both rows' .submenu just need to be non-NULL to draw an arrow and
+   * become hoverable; which menu they name doesn't matter since
+   * text_pre_submenu_open always supplies the menu to open (see saturn.c's
+   * SATURN_COLOURS_MENU_* for the same pattern). */
+  WUSS_MENU_ITEM_MENU(task->colours_items, TEXT_COLOURS_MENU_FOREGROUND,
+                      "Foreground", wuss_MENU_ITEM_PRE_OPEN,
+                      wuss_colourmenu_menu(wuss));
+  WUSS_MENU_ITEM_MENU(task->colours_items, TEXT_COLOURS_MENU_BACKGROUND,
+                      "Background", wuss_MENU_ITEM_PRE_OPEN,
+                      wuss_colourmenu_menu(wuss));
+
+  WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
+                 NELEMS(task->colours_items));
+
   /* top-level menu: "Font" borrows the fontmenu's own live wuss_menu_t (so
-   * ticks and wuss_fontmenu_selected keep working), "Sample"/"Spacing" are
-   * the per-instance menus built above, "Foreground"/"Background" each
-   * borrow their colourmenu's live wuss_menu_t the same way */
+   * ticks and wuss_fontmenu_selected keep working), "Sample"/"Spacing"/
+   * "Colours" are the per-instance menus built above */
   task->top_items[0].text    = "Info";
   task->top_items[0].flags   =
     wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN;
@@ -305,14 +351,10 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   task->top_items[3].flags   = wuss_MENU_ITEM_NONE;
   task->top_items[3].submenu = &task->spacing_menu;
   task->top_items[3].window  = NULL;
-  task->top_items[4].text    = "Foreground";
+  task->top_items[4].text    = "Colours";
   task->top_items[4].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[4].submenu = wuss_colourmenu_menu(task->fgmenu);
+  task->top_items[4].submenu = &task->colours_menu;
   task->top_items[4].window  = NULL;
-  task->top_items[5].text    = "Background";
-  task->top_items[5].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[5].submenu = wuss_colourmenu_menu(task->bgmenu);
-  task->top_items[5].window  = NULL;
 
   WUSS_MENU_TITLE(task->top_menu, "Text", task->top_items,
                  NELEMS(task->top_items));
@@ -381,8 +423,6 @@ void text_destroy(text_task_t *task)
       bmfont_destroy(task->fonts[i]);
   free(task->fonts);
   wuss_fontmenu_destroy(task->fontmenu);
-  wuss_colourmenu_destroy(task->fgmenu);
-  wuss_colourmenu_destroy(task->bgmenu);
   wuss_proginfo_destroy(task->proginfo);
   free(task);
 }
@@ -515,14 +555,19 @@ result_t text_handle(wuss_window_t      *window,
         return text_set_sample(tcx, event->data.menu_select.index);
       if (event->data.menu_select.menu == &tcx->spacing_menu)
         return text_set_spacing(tcx, event->data.menu_select.index);
-      picked = wuss_colourmenu_selected(tcx->fgmenu, event, &mine);
-      if (mine)
+      if (tcx->colourmenu_target == NULL)
+        return result_OK;
+      picked = wuss_colourmenu_selected(event, &mine);
+      if (!mine)
+        return result_OK;
+      if (tcx->colourmenu_target == &tcx->fg_index)
         return text_set_fg(tcx, picked);
-      picked = wuss_colourmenu_selected(tcx->bgmenu, event, &mine);
-      if (mine)
-        return text_set_bg(tcx, picked);
+      return text_set_bg(tcx, picked);
     }
     return result_OK;
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    return text_pre_submenu_open(tcx, event);
 
   case wuss_EVENT_MENU_CLOSED:
     tcx->menu_handle = NULL;

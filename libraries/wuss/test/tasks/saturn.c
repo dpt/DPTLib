@@ -173,7 +173,6 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   task->fg               = colour_rgb(0xFF, 0xFF, 0xFF);
   task->seed             = 1;
   task->config           = default_config;
-  task->colourmenu       = NULL;
   task->colourmenu_target = NULL;
   task->menu_handle      = NULL;
   task->conf.dialogue    = NULL;
@@ -196,22 +195,20 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   task->delegate = delegate; /* the task the menu opens against */
   wuss_task_set_autoclose(delegate, 1);
 
-  /* one shared instance: wuss_EVENT_PRE_SUBMENU_OPEN retitles/retargets it
-   * per hover (see saturn_pre_submenu_open), so Foreground and Background
-   * don't need their own colourmenu. Both rows' .submenu just need to be
-   * non-NULL to draw an arrow and become hoverable; which menu they name
-   * doesn't matter since the handler always supplies the menu to open. */
-  rc = wuss_colourmenu_create(&task->colourmenu, wuss, "Colour", 0);
-  if (rc != result_OK)
-    goto fail_delegate;
-
+  /* shared colourmenu singleton: wuss_EVENT_PRE_SUBMENU_OPEN retitles/
+   * retargets it per hover (see saturn_pre_submenu_open), so Foreground and
+   * Background don't need their own instance. Both rows' .submenu just need
+   * to be non-NULL to draw an arrow and become hoverable; which menu they
+   * name doesn't matter since the handler always supplies the menu to
+   * open. */
+  wuss_colourmenu_set_none(0);
   WUSS_MENU_ITEM_MENU(task->colours_items, SATURN_COLOURS_MENU_FOREGROUND,
                       "Foreground", wuss_MENU_ITEM_PRE_OPEN,
-                      wuss_colourmenu_menu(task->colourmenu));
+                      wuss_colourmenu_menu(wuss));
 
   WUSS_MENU_ITEM_MENU(task->colours_items, SATURN_COLOURS_MENU_BACKGROUND,
                       "Background", wuss_MENU_ITEM_PRE_OPEN,
-                      wuss_colourmenu_menu(task->colourmenu));
+                      wuss_colourmenu_menu(wuss));
 
   WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
                  NELEMS(task->colours_items));
@@ -237,11 +234,11 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
-    goto fail_colourmenu;
+    goto fail_delegate;
 
   rc = saturn_conf_dialogue_create(task);
   if (rc != result_OK)
-    goto fail_colourmenu; /* wuss_task_destroy closes task->window too */
+    goto fail_delegate; /* wuss_task_destroy closes task->window too */
 
   task->menu_items[SATURN_MENU_SIZE].window =
     wuss_dialogue_window(task->conf.dialogue);
@@ -268,8 +265,6 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
 
   return result_OK;
 
-fail_colourmenu:
-  wuss_colourmenu_destroy(task->colourmenu);
 fail_delegate:
   wuss_task_destroy(delegate); /* unregisters; its QUIT frees the task block */
   return rc;
@@ -289,7 +284,6 @@ void saturn_destroy(saturn_task_t *task)
     task->menu_handle = NULL;
   }
 
-  wuss_colourmenu_destroy(task->colourmenu);
   wuss_dialogue_destroy(task->conf.dialogue);
   wuss_proginfo_destroy(task->proginfo);
   free(task); /* task_data was calloc'd per instance by the spawner */
@@ -755,16 +749,16 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
   if (index == SATURN_COLOURS_MENU_FOREGROUND)
   {
     task->colourmenu_target = &task->fg;
-    wuss_colourmenu_set_title(task->colourmenu, "Foreground");
+    wuss_colourmenu_set_title("Foreground");
   }
   else
   {
     task->colourmenu_target = &task->bg;
-    wuss_colourmenu_set_title(task->colourmenu, "Background");
+    wuss_colourmenu_set_title("Background");
   }
 
   return wuss_menu_open_submenu_now(handle, index,
-                                    wuss_colourmenu_menu(task->colourmenu));
+                                    wuss_colourmenu_menu(task->wuss));
 }
 
 /* A pick from the shared colour submenu, applied to whichever field it was
@@ -783,7 +777,7 @@ static result_t saturn_menu_select(saturn_task_t      *task,
   if (task->colourmenu_target == NULL)
     return result_OK;
 
-  picked = wuss_colourmenu_selected(task->colourmenu, event, &mine);
+  picked = wuss_colourmenu_selected(event, &mine);
   if (!mine)
     return result_OK;
 

@@ -85,7 +85,6 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
   task->nnames      = 0;
   task->menu        = NULL;
   task->proginfo    = NULL;
-  task->colourmenu  = NULL;
   task->menu_handle = NULL;
   task->dithering   = 1;
 
@@ -173,13 +172,6 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
       task->proginfo = NULL;
   }
 
-  /* The "Background" menu row's submenu. Hung off the descriptor menu as a
-   * wuss_menu_item_t.submenu in image_open_menu. A create failure is
-   * non-fatal -- the task just runs without a Background submenu. */
-  if (wuss_colourmenu_create(&task->colourmenu, wuss, "Background", 1) !=
-      result_OK)
-    task->colourmenu = NULL;
-
   if (out)
     *out = task;
 
@@ -194,7 +186,6 @@ void image_destroy(image_task_t *task)
   wuss_menu_close(task->menu_handle);
   wuss_menu_destroy(task->menu);
   wuss_proginfo_destroy(task->proginfo); /* closes its dialogue window */
-  wuss_colourmenu_destroy(task->colourmenu);
   free(task->bitmap.base);
   free(task->ninepatch.base);
   free(task); /* task_data was calloc'd per instance by the spawner */
@@ -314,21 +305,21 @@ static result_t image_open_menu(image_task_t *ic)
         break;
       }
 
-  /* Same trick for "Background": point it at the colourmenu's own menu tree
-   * as a submenu, so it gets the usual arrow-and-hover behaviour. Marked
-   * BORROWED_SUBMENU so wuss_menu_destroy leaves it alone -- it is owned by
-   * ic->colourmenu, built once at task creation and reused on every open,
-   * not by this per-open tree. */
-  if (ic->colourmenu != NULL)
-    for (i = 0; i < m->nitems; i++)
-      if (m->items[i].text != NULL && strcmp(m->items[i].text, "Background") == 0)
-      {
-        wuss_menu_item_t *it = (wuss_menu_item_t *) &m->items[i];
+  /* Same trick for "Background": point it at the shared colourmenu
+   * singleton as a submenu, so it gets the usual arrow-and-hover behaviour.
+   * Marked BORROWED_SUBMENU so wuss_menu_destroy leaves it alone -- it is
+   * owned by the singleton, not by this per-open tree. */
+  wuss_colourmenu_set_none(1);
+  wuss_colourmenu_set_title("Background");
+  for (i = 0; i < m->nitems; i++)
+    if (m->items[i].text != NULL && strcmp(m->items[i].text, "Background") == 0)
+    {
+      wuss_menu_item_t *it = (wuss_menu_item_t *) &m->items[i];
 
-        it->submenu = wuss_colourmenu_menu(ic->colourmenu);
-        it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
-        break;
-      }
+      it->submenu = wuss_colourmenu_menu(ic->wuss);
+      it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
+      break;
+    }
 
   wuss_menu_destroy(ic->menu);
   ic->menu = m;
@@ -372,7 +363,7 @@ result_t image_handle(wuss_window_t      *window,
       wuss_colour_t picked;
       int           mine;
 
-      picked = wuss_colourmenu_selected(ic->colourmenu, event, &mine);
+      picked = wuss_colourmenu_selected(event, &mine);
       if (mine)
       {
         ic->background = picked;
