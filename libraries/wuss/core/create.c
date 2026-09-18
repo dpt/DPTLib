@@ -368,6 +368,14 @@ result_t wuss_create(screen_t               *scr,
   list_init(&w->z_order);
   list_init(&w->tasks);
 
+#ifdef WUSS_ICONS
+  /* load the wuss-wide icon set now that w->resources is set; a missing
+   * resources root or icons directory just leaves the set empty, not an
+   * error -- callers needing the icon set check wuss_icons_count/_lookup */
+  if (resources != NULL)
+    (void) wuss_icons_load_resource(w, resources);
+#endif
+
   *wuss = w;
 
   return result_OK;

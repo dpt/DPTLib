@@ -12,11 +12,6 @@ Furniture clicks / scrolls still invalidate the entire furniture set - fix.
 Fast scrolling can invalidate areas and fail to copy the expected known good screen content.
  -- Tried and tried to get Claude to fix but no good.
 
-Too much slider boilerplate -- need to make label+slider+value a standard component.
-It also has the client do the rounding/snapping which isn't ideal.
-
-Mouse button switcher
-
 Filled screen with apps then used swatches - backdrop didn't fully redraw.
 
 Scrolled (which app?) then expanded the window - got a full redraw of the window.
@@ -26,9 +21,7 @@ Windows hidden by default (unless a flag is set)
 Keyboard input
 - bmfont needs to be able to draw a caret
 
-
 Adjust click on a menu should pop to front once the action is complete
-
 
 
 

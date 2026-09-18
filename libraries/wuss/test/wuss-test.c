@@ -6422,18 +6422,10 @@ QuitFail:
   printf("test: wuss_icons_load scans resources/wuss/icons and compresses\n");
 
   {
-    char            icons_dir[256];
     const bitmap_t *icon_bm;
     int             idx, opton;
 
-    /* copy: pathf hands back one shared static buffer, and wuss_icons_load's
-     * own per-file joins would clobber it mid-call */
-    strncpy(icons_dir,
-            pathf("%s/resources/wuss/icons", resources),
-            sizeof(icons_dir) - 1);
-    icons_dir[sizeof(icons_dir) - 1] = '\0';
-
-    rc = wuss_icons_load(wuss, icons_dir);
+    rc = wuss_icons_load_resource(wuss, resources);
     if (rc != result_OK)
       goto Failure;
 
@@ -6491,7 +6483,7 @@ QuitFail:
     }
 
     /* a reload replaces the set cleanly (no leak, ASan would catch it) */
-    rc = wuss_icons_load(wuss, icons_dir);
+    rc = wuss_icons_load_resource(wuss, resources);
     if (rc != result_OK || wuss_icons_count(wuss) != 4)
       goto Failure;
 

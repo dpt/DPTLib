@@ -564,6 +564,19 @@ void wuss_icon_set_value(wuss_window_t *window,
 result_t wuss_icons_load(wuss_t *wuss, const char *dir);
 
 /**
+ * Convenience wrapper for \ref wuss_icons_load: loads the wuss-wide icon set
+ * from "<resources>/resources/wuss/icons", the fixed location every demo
+ * task uses. \p resources is joined via \c pathf and copied before the load,
+ * so the caller need not worry about \c pathf's single shared return buffer.
+ *
+ * \param[in] wuss      Window manager.
+ * \param[in] resources Resource root, as returned by \ref
+ *                      wuss_get_resources.
+ * \return As \ref wuss_icons_load.
+ */
+result_t wuss_icons_load_resource(wuss_t *wuss, const char *resources);
+
+/**
  * Number of entries in the loaded icon set (see \ref wuss_icons_load). Zero
  * if none has been loaded.
  *

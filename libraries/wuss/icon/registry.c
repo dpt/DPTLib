@@ -246,6 +246,23 @@ result_t wuss_icons_load(wuss_t *wuss, const char *dir)
   return result_OK;
 }
 
+result_t wuss_icons_load_resource(wuss_t *wuss, const char *resources)
+{
+  char dir[ICONS_DIR_MAX];
+
+  assert(wuss != NULL);
+
+  if (resources == NULL)
+    return result_NULL_ARG;
+
+  /* copy: pathf hands back one shared static buffer, and wuss_icons_load's
+   * own per-file joins would clobber it mid-call */
+  strncpy(dir, pathf("%s/resources/wuss/icons", resources), sizeof(dir) - 1);
+  dir[sizeof(dir) - 1] = '\0';
+
+  return wuss_icons_load(wuss, dir);
+}
+
 int wuss_icons_count(const wuss_t *wuss)
 {
   assert(wuss != NULL);
