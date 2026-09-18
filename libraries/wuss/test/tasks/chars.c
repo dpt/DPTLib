@@ -34,6 +34,19 @@ enum { CHARS_MENU_INFO = 0, CHARS_MENU_FONT };
 
 /* ----------------------------------------------------------------------- */
 
+/* the shared fontmenu singleton, retargeted at task->wuss's bmfonts dir --
+ * cheap to call repeatedly since wuss_fontmenu_menu only rebuilds when the
+ * dir or wuss_t actually changes */
+static const wuss_menu_t *chars_fontmenu(chars_task_t *task)
+{
+  const char *resources;
+  const char *bmfonts_dir;
+
+  resources   = wuss_get_resources(task->wuss);
+  bmfonts_dir = pathf("%s/resources/bmfonts", resources);
+  return wuss_fontmenu_menu(bmfonts_dir, "Font", task->wuss);
+}
+
 /* the rows of the CHARS_COLS x CHARS_ROWS grid that hold at least one glyph
  * of font: [*first_row, *first_row + *nrows). first_row * CHARS_COLS is the
  * byte value of the top-left cell of the first such row. */
@@ -157,7 +170,14 @@ static result_t chars_pre_submenu_open(chars_task_t       *task,
   index  = event->data.pre_submenu_open.index;
 
   if (index == CHARS_MENU_FONT)
-    wuss_fontmenu_set_ticked(task->fontmenu, task->current);
+  {
+    wuss_fontmenu_set_ticked(task->current);
+    /* the fontmenu singleton may have been rebuilt (at a new address) by
+     * another task since task->menu_items[index].submenu was cached in
+     * chars_create -- re-fetch instead of handing the spawner a stale
+     * pointer */
+    return wuss_menu_open_submenu_now(handle, index, chars_fontmenu(task));
+  }
 
   return wuss_menu_open_submenu_now(handle, index,
                                     task->menu_items[index].submenu);
@@ -172,8 +192,6 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
   bmfont_t          *font;
-  const char        *resources;
-  const char        *bmfonts_dir;
   const wuss_menu_t *menu;
   size2d_t           grid;
 
@@ -185,8 +203,6 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   if (task == NULL)
     return result_OOM;
 
-  resources = wuss_get_resources(wuss);
-
   task->wuss        = wuss;
   task->font        = font;
   task->current     = -1; /* the wuss system font is none of the picker's */
@@ -195,22 +211,20 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   task->mg          = colour_rgb(0xBB, 0xBB, 0xBB);
   task->bg          = colour_rgb(0xFF, 0xFF, 0xFF);
 
-  /* the picker: every ".png" font under resources/bmfonts, sorted, less any
-   * SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows from) */
-  bmfonts_dir = pathf("%s/resources/bmfonts", resources);
-  rc = wuss_fontmenu_create(&task->fontmenu, bmfonts_dir, "Font", wuss, NULL);
-  if (rc != result_OK)
+  /* the shared picker: every ".png" font under resources/bmfonts, sorted,
+   * less any SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows
+   * from) */
+  menu = chars_fontmenu(task);
+  if (menu == NULL)
   {
     free(task); /* nothing registered yet; the spawner will not free it */
-    return rc;
+    return result_OOM;
   }
 
-  menu          = wuss_fontmenu_menu(task->fontmenu);
   task->nfonts  = menu->nitems;
   task->fonts   = calloc((size_t) task->nfonts, sizeof(*task->fonts));
   if (task->nfonts > 0 && task->fonts == NULL)
   {
-    wuss_fontmenu_destroy(task->fontmenu);
     free(task);
     return result_OOM;
   }
@@ -223,7 +237,6 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   if (rc != result_OK)
   {
     /* nothing registered yet; the spawner will not free it */
-    wuss_fontmenu_destroy(task->fontmenu);
     free(task->fonts);
     free(task);
     return rc;
@@ -254,7 +267,7 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CHARS_MENU_FONT, "Font",
                       wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                      wuss_fontmenu_menu(task->fontmenu));
+                      menu);
 
   WUSS_MENU_TITLE(task->menu, "Chars", task->menu_items,
                  NELEMS(task->menu_items));
@@ -279,7 +292,6 @@ void chars_destroy(chars_task_t *task)
     if (task->fonts[i] != NULL)
       bmfont_destroy(task->fonts[i]);
   free(task->fonts);
-  wuss_fontmenu_destroy(task->fontmenu);
   free(task);
 }
 
@@ -403,7 +415,7 @@ result_t chars_handle(wuss_window_t      *window,
       result_t    rc;
       const char *name;
 
-      name = wuss_fontmenu_selected(cc->fontmenu, event);
+      name = wuss_fontmenu_selected(event);
       if (name == NULL)
         return result_OK;
 
@@ -412,9 +424,13 @@ result_t chars_handle(wuss_window_t      *window,
       if (wuss_menu_should_keep_open(event))
         /* ADJUST keeps the chain open without rebuilding it, so the
          * fresh-open tick set in chars_open_menu is now stale on screen;
-         * retick the still-open chain in place to match cc->current */
+         * retick the still-open chain in place to match cc->current. Use
+         * the handle's own live menu, not a fresh chars_fontmenu(cc) --
+         * that can rebuild the fontmenu singleton at a new address while
+         * this handle's chain node still points at the old one, which
+         * would leave the open submenu's node->menu dangling. */
         wuss_menu_tick_exclusive_live(cc->menu_handle,
-                                      wuss_fontmenu_menu(cc->fontmenu),
+                                      wuss_menu_handle_menu(cc->menu_handle),
                                       cc->current);
       else
         /* SELECT has already closed and freed the chain by the time this

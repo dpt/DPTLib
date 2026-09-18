@@ -79,7 +79,23 @@ static const text_spacing_preset_t text_spacing_presets[] =
 /* index into task->top_items[] of the "Info" leaf */
 #define TEXT_MENU_INFO 0
 
+/* index into task->top_items[] of the "Font" leaf */
+#define TEXT_MENU_FONT 1
+
 /* ----------------------------------------------------------------------- */
+
+/* the shared fontmenu singleton, retargeted at task->wuss's bmfonts dir --
+ * cheap to call repeatedly since wuss_fontmenu_menu only rebuilds when the
+ * dir or wuss_t actually changes */
+static const wuss_menu_t *text_fontmenu(text_task_t *task)
+{
+  const char *resources;
+  const char *bmfonts_dir;
+
+  resources   = wuss_get_resources(task->wuss);
+  bmfonts_dir = pathf("%s/resources/bmfonts", resources);
+  return wuss_fontmenu_menu(bmfonts_dir, "Font", task->wuss);
+}
 
 /* load fonts[idx] if not already in hand; returns it or NULL on failure.
  * name is the menu label for that row -- the font's leafname sans ".png". */
@@ -207,8 +223,17 @@ static result_t text_pre_submenu_open(text_task_t        *task,
   index  = event->data.pre_submenu_open.index;
 
   if (wuss_menu_handle_menu(handle) != &task->colours_menu)
+  {
+    if (index == TEXT_MENU_FONT)
+      /* the fontmenu singleton may have been rebuilt (at a new address) by
+       * another task since top_items[TEXT_MENU_FONT].submenu was cached in
+       * text_create -- re-fetch instead of handing the spawner a stale
+       * pointer */
+      return wuss_menu_open_submenu_now(handle, index, text_fontmenu(task));
+
     return wuss_menu_open_submenu_now(handle, index,
                                       task->top_items[index].submenu);
+  }
 
   if (index == TEXT_COLOURS_MENU_FOREGROUND)
   {
@@ -235,8 +260,6 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   text_task_t       *task;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
-  const char        *resources;
-  const char        *bmfonts_dir;
   const wuss_menu_t *menu;
   size2d_t           sz;
 
@@ -258,31 +281,26 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   task->frame_count = 0;
   task->resizing    = true;
 
-  resources = wuss_get_resources(wuss);
-
-  /* the picker: every ".png" font under resources/bmfonts, sorted, less any
-   * SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows from) */
-  bmfonts_dir = pathf("%s/resources/bmfonts", resources);
-  rc = wuss_fontmenu_create(&task->fontmenu, bmfonts_dir, "Font", wuss, NULL);
-  if (rc != result_OK)
+  /* the shared picker: every ".png" font under resources/bmfonts, sorted,
+   * less any SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows
+   * from) */
+  menu = text_fontmenu(task);
+  if (menu == NULL)
   {
     free(task); /* nothing registered yet; the spawner will not free it */
-    return rc;
+    return result_OOM;
   }
 
-  menu         = wuss_fontmenu_menu(task->fontmenu);
   task->nfonts = menu->nitems;
   task->fonts  = calloc((size_t) task->nfonts, sizeof(*task->fonts));
   if (task->nfonts > 0 && task->fonts == NULL)
   {
-    wuss_fontmenu_destroy(task->fontmenu);
     free(task);
     return result_OOM;
   }
 
   if (wuss_colourmenu_menu(wuss) == NULL)
   {
-    wuss_fontmenu_destroy(task->fontmenu);
     free(task->fonts);
     free(task);
     return result_OOM;
@@ -351,7 +369,7 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   task->top_items[0].submenu = NULL;
   task->top_items[0].window  = NULL;
   task->top_items[1].text    = "Font";
-  task->top_items[1].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[1].flags   = wuss_MENU_ITEM_PRE_OPEN;
   task->top_items[1].submenu = menu;
   task->top_items[1].window  = NULL;
   task->top_items[2].text    = "Sample";
@@ -376,7 +394,6 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
-    wuss_fontmenu_destroy(task->fontmenu);
     free(task->fonts);
     free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
@@ -419,7 +436,6 @@ void text_destroy(text_task_t *task)
     if (task->fonts[i] != NULL)
       bmfont_destroy(task->fonts[i]);
   free(task->fonts);
-  wuss_fontmenu_destroy(task->fontmenu);
   free(task);
 }
 
@@ -544,7 +560,7 @@ result_t text_handle(wuss_window_t      *window,
       wuss_colour_t picked;
       int           mine;
 
-      name = wuss_fontmenu_selected(tcx->fontmenu, event);
+      name = wuss_fontmenu_selected(event);
       if (name != NULL)
         return text_set_font(tcx, event->data.menu_select.index, name);
       if (event->data.menu_select.menu == &tcx->sample_menu)
