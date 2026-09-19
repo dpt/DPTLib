@@ -9,37 +9,49 @@
  * redraw_from repaints them: a task that leaves gaps via
  * wuss_NO_BACKGROUND won't get those gaps refreshed by this either. */
 
-/* Append "piece" minus its intersection "cut" with an occluder to "out",
- * as up to four non-overlapping bands. */
-static void box_subtract_into(const box_t *piece,
-                              const box_t *cut,
-                              box_t       *out,
-                              int         *pnout)
+/* Append "piece" minus its intersection "cut" with an occluder to "out", as
+ * up to four non-overlapping bands. Returns 0 and appends nothing further
+ * once "out" (capacity WUSS_MAX_INVALIDATE_PIECES) is full, so the caller can
+ * fall back rather than silently under-drawing. */
+static int box_subtract_into(const box_t *piece,
+                             const box_t *cut,
+                             box_t       *out,
+                             int         *pnout)
 {
-  if (cut->y0 > piece->y0 && *pnout < WUSS_MAX_INVALIDATE_PIECES)
+  if (cut->y0 > piece->y0)
   {
+    if (*pnout >= WUSS_MAX_INVALIDATE_PIECES)
+      return 0;
     out[*pnout].x0 = piece->x0; out[*pnout].y0 = piece->y0;
     out[*pnout].x1 = piece->x1; out[*pnout].y1 = cut->y0;
     (*pnout)++;
   }
-  if (cut->y1 < piece->y1 && *pnout < WUSS_MAX_INVALIDATE_PIECES)
+  if (cut->y1 < piece->y1)
   {
+    if (*pnout >= WUSS_MAX_INVALIDATE_PIECES)
+      return 0;
     out[*pnout].x0 = piece->x0; out[*pnout].y0 = cut->y1;
     out[*pnout].x1 = piece->x1; out[*pnout].y1 = piece->y1;
     (*pnout)++;
   }
-  if (cut->x0 > piece->x0 && *pnout < WUSS_MAX_INVALIDATE_PIECES)
+  if (cut->x0 > piece->x0)
   {
+    if (*pnout >= WUSS_MAX_INVALIDATE_PIECES)
+      return 0;
     out[*pnout].x0 = piece->x0; out[*pnout].y0 = cut->y0;
     out[*pnout].x1 = cut->x0;   out[*pnout].y1 = cut->y1;
     (*pnout)++;
   }
-  if (cut->x1 < piece->x1 && *pnout < WUSS_MAX_INVALIDATE_PIECES)
+  if (cut->x1 < piece->x1)
   {
+    if (*pnout >= WUSS_MAX_INVALIDATE_PIECES)
+      return 0;
     out[*pnout].x0 = cut->x1;   out[*pnout].y0 = cut->y0;
     out[*pnout].x1 = piece->x1; out[*pnout].y1 = cut->y1;
     (*pnout)++;
   }
+
+  return 1;
 }
 
 /* Shared ping-pong carve loop: whittle "box" down by subtracting, in turn,
@@ -47,7 +59,13 @@ static void box_subtract_into(const box_t *piece,
  * "ctx" threaded through), writing the surviving pieces to "out" (capacity
  * WUSS_MAX_INVALIDATE_PIECES) and returning their count. A cut for which
  * get_cut returns 0 is skipped (used to drop hidden occluders without the
- * caller pre-filtering its list). */
+ * caller pre-filtering its list).
+ *
+ * A heavily-fragmented carve (many overlapping occluders) can need more than
+ * WUSS_MAX_INVALIDATE_PIECES pieces; silently dropping the excess would leave
+ * a hole that never gets redrawn, so on overflow this falls back to "box"
+ * itself, unfragmented -- over-painting whatever the cuts would have removed
+ * rather than under-painting what they wouldn't. */
 static int carve_by_cuts(const box_t *box,
                          int          ncuts,
                          int          (*get_cut)(void *ctx, int i, box_t *cut),
@@ -78,12 +96,28 @@ static int carve_by_cuts(const box_t *box,
 
       if (box_intersection(&occluder, &cur[p], &cut))
       {
-        if (nnext < WUSS_MAX_INVALIDATE_PIECES)
-          nxt[nnext++] = cur[p]; /* no overlap: piece survives untouched */
+        if (nnext >= WUSS_MAX_INVALIDATE_PIECES)
+        {
+          logf_info("wuss: carve_by_cuts panic redraw -- %d cuts, "
+                    "overflowed at cut %d/piece %d, falling back to "
+                    "(%d,%d)-(%d,%d) unfragmented",
+                    ncuts, i, p, box->x0, box->y0, box->x1, box->y1);
+          out[0] = *box;
+          return 1;
+        }
+        nxt[nnext++] = cur[p]; /* no overlap: piece survives untouched */
       }
       else
       {
-        box_subtract_into(&cur[p], &cut, nxt, &nnext);
+        if (!box_subtract_into(&cur[p], &cut, nxt, &nnext))
+        {
+          logf_info("wuss: carve_by_cuts panic redraw -- %d cuts, "
+                    "overflowed at cut %d/piece %d, falling back to "
+                    "(%d,%d)-(%d,%d) unfragmented",
+                    ncuts, i, p, box->x0, box->y0, box->x1, box->y1);
+          out[0] = *box;
+          return 1;
+        }
       }
     }
 
