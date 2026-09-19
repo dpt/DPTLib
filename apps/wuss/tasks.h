@@ -33,6 +33,9 @@ extern struct wuss_app_tasks
                                         * button translator
                                         * (sdl_button_to_wuss,
                                         * mouse_buttons_to_wuss) */
+  bool             reverse_scroll; /* set by the Configure task's option
+                                    * icon; read where each frontend fills
+                                    * wuss_input_event_t.wheel */
 }
 g_tasks;
 
