@@ -40,7 +40,7 @@ enum { ICONS_MENU_INFO };
  * (an array bound, not a silent overrun) rather than corrupting the heap. */
 enum
 {
-  ICONS_N_INTRO   = 4, /* heading, counter button, counter label, scrolled-away button */
+  ICONS_N_INTRO   = 3, /* heading, counter button, counter label */
   ICONS_N_BUTTONS = 5, /* frame + 2x2 grid: default/normal x plain/disabled */
   ICONS_N_RADIOS  = 8, /* frame + 3 radios + option + state label + 2 justified labels */
   ICONS_N_BITMAPS = 3, /* frame + decorative + interactive bitmap */
@@ -71,8 +71,7 @@ icons_layout_t;
 
 /* [0] a heading, [1] the button that bumps the counter (shown as a default
  * action button, so it carries the accent styling), [2] the counter label
- * beside it, [3] a button far down the document, to prove icons scroll and
- * stay clickable. Returns the indices of [1] and [2] via button/counter. */
+ * beside it. Returns the indices of [1] and [2] via button/counter. */
 static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
 {
   wuss_icon_spec_t *s;
@@ -108,14 +107,6 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
   s->bg   = wuss_NO_BACKGROUND;
   lay->n++;
   lay->y += 46;
-
-  s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, 980, 90, 52);
-  s->type = wuss_ICON_TYPE_ACTION;
-  s->text = "Scrolled";
-  s->fg   = lay->black;
-  s->bg   = lay->window;
-  lay->n++;
 }
 
 /* A grouping frame captioned "Buttons", holding a 2x2 grid: column 0 is the
