@@ -96,6 +96,18 @@ void wuss_frontend_present(wuss_frontend_t *frontend,
                            const bitmap_t  *bm,
                            const box_t     *dirty);
 
+/* Resize the drawing surface to width x height, keeping the current scale
+ * and depth. On success, *pixels / *rowbytes describe the new backing storage
+ * exactly as wuss_frontend_open's did -- any previous *pixels value is
+ * invalid whether or not it happened to be reused. Returns
+ * result_NOT_SUPPORTED on a backend with a fixed screen mode (RISC OS),
+ * leaving the surface untouched. */
+result_t wuss_frontend_resize(wuss_frontend_t *frontend,
+                              int              width,
+                              int              height,
+                              void           **pixels,
+                              int             *rowbytes);
+
 /* Push a new system palette to the physical palette, if the backend owns one.
  * Called after the palette task's picker menu changes the system palette.
  * No-op for SDL. */

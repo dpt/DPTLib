@@ -41,6 +41,13 @@
 
 /* ----------------------------------------------------------------------- */
 
+/* run_wuss's framebuffer bitmap and the screen_t wrapping it for wuss:
+ * file-scope, like g_tasks, since run_wuss runs at most once per process
+ * and app_resize (called from the Display task, well after run_wuss's own
+ * locals have gone out of scope) needs to reallocate and re-derive them. */
+static bitmap_t g_bm;
+static screen_t g_scr;
+
 /* Fill config with the chrome colours for the PICO-8 (default) or RISC OS
  * 16-colour Wimp palette. */
 static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
@@ -142,6 +149,11 @@ struct wuss_frame_ctx
   colour_t        *palette;
   int              npalette;
 };
+
+/* file scope so app_resize (called from the Display task, long after
+ * run_wuss's own locals are gone) can update pixels/rowbytes/scr_width/
+ * scr_height on the very instance the main loop below is reading */
+static struct wuss_frame_ctx g_frame_ctx;
 
 static void wuss_frame(void *arg)
 {
@@ -288,10 +300,8 @@ static result_t run_wuss(const char *resources,
   void       *pixels;
   int         rowbytes;
   pixelfmt_t  fmt;
-  bitmap_t    bm;
   bitmap_t    logo; /* desktop backdrop image; left unset (rc != result_OK)
                      * if resources/wuss/wuss.png fails to load */
-  screen_t scr;
   colour_t palette[16]; /* the fixed-size UI palette */
   colour_t scr_palette[256]; /* palette[] padded out to whatever
                                         * count the chosen depth's bitmap
@@ -352,15 +362,15 @@ static result_t run_wuss(const char *resources,
   tasks_build_screen_palette(scr_palette, NELEMS(scr_palette),
                              palette, NELEMS(palette));
 
-  rc = bitmap_init(&bm, SIZE2D(scr_width, scr_height), fmt, rowbytes,
+  rc = bitmap_init(&g_bm, SIZE2D(scr_width, scr_height), fmt, rowbytes,
                    scr_palette, pixels);
   logf_info("wuss: bitmap_init -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
 
-  bitmap_clear(&bm, palette[palette_PICO8_WHITE]);
+  bitmap_clear(&g_bm, palette[palette_PICO8_WHITE]);
 
-  screen_for_bitmap(&scr, &bm);
+  screen_for_bitmap(&g_scr, &g_bm);
 
   filename = pathf("%s/resources/wuss/wuss.png", resources);
   logf_info("wuss: loading backdrop image \"%s\"", filename);
@@ -387,7 +397,7 @@ static result_t run_wuss(const char *resources,
       descs[i].name       = names[i];
     }
 
-    rc = wuss_create(&scr, descs, nfonts, palette, NELEMS(palette), &config,
+    rc = wuss_create(&g_scr, descs, nfonts, palette, NELEMS(palette), &config,
                      NULL, resources, &wuss);
     logf_info("wuss: wuss_create -> rc=0x%X (%s)", rc, result_string(rc));
     if (rc != result_OK)
@@ -396,7 +406,7 @@ static result_t run_wuss(const char *resources,
 
   g_tasks.wuss           = wuss;
   g_tasks.frontend       = frontend;
-  g_tasks.bm             = &bm;
+  g_tasks.bm             = &g_bm;
 
   {
     wuss_task_desc_t desc;
@@ -425,30 +435,25 @@ static result_t run_wuss(const char *resources,
 
   wuss_redraw(wuss);
 
-  {
-    struct wuss_frame_ctx ctx;
-
-    ctx.wuss          = wuss;
-    ctx.frontend      = frontend;
-    ctx.bm            = &bm;
-    ctx.pixels        = pixels;
-    ctx.rowbytes      = rowbytes;
-    ctx.scr_width     = scr_width;
-    ctx.scr_height    = scr_height;
-    ctx.palette       = palette;
-    ctx.npalette      = NELEMS(palette);
+  g_frame_ctx.wuss          = wuss;
+  g_frame_ctx.frontend      = frontend;
+  g_frame_ctx.bm            = &g_bm;
+  g_frame_ctx.pixels        = pixels;
+  g_frame_ctx.rowbytes      = rowbytes;
+  g_frame_ctx.scr_width     = scr_width;
+  g_frame_ctx.scr_height    = scr_height;
+  g_frame_ctx.palette       = palette;
+  g_frame_ctx.npalette      = NELEMS(palette);
 
 #ifdef __EMSCRIPTEN__
-    /* the browser owns the loop; simulate_infinite_loop=1 means this call
-     * never returns, so &ctx (a stack local) stays live and the teardown
-     * below is unreachable -- fine, the page dies on navigation. fps=0 asks
-     * for requestAnimationFrame pacing. */
-    emscripten_set_main_loop_arg(wuss_frame, &ctx, 0, 1);
+  /* the browser owns the loop; simulate_infinite_loop=1 means this call
+   * never returns -- fine, the page dies on navigation. fps=0 asks for
+   * requestAnimationFrame pacing. */
+  emscripten_set_main_loop_arg(wuss_frame, &g_frame_ctx, 0, 1);
 #else
-    while (!g_tasks.quit)
-      wuss_frame(&ctx);
+  while (!g_tasks.quit)
+    wuss_frame(&g_frame_ctx);
 #endif
-  }
 
   /* ponytail: wuss_destroy() below force-closes every still-open window and
    * frees every registered task node, but not the per-instance task_data
@@ -470,6 +475,49 @@ Failure:
   printf("run_wuss: failed (rc=0x%X: %s)\n", rc, result_string(rc));
 
   return result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
+result_t app_resize(size2d_t size)
+{
+  result_t        rc;
+  void           *pixels;
+  int             rowbytes;
+  const colour_t *palette;
+  int             npalette;
+  colour_t        scr_palette[256];
+  int             scr_nentries;
+
+  rc = wuss_frontend_resize(g_tasks.frontend, size.w, size.h,
+                            &pixels, &rowbytes);
+  if (rc != result_OK)
+    return rc;
+
+  rc = bitmap_init(&g_bm, size, g_bm.format, rowbytes, g_bm.palette, pixels);
+  if (rc != result_OK)
+    return rc;
+
+  palette      = wuss_get_palette(g_tasks.wuss, &npalette);
+  scr_nentries = pixelfmt_paletted_nentries(g_bm.format);
+  if (scr_nentries > 0)
+  {
+    tasks_build_screen_palette(scr_palette, scr_nentries, palette, npalette);
+    bitmap_set_palette(&g_bm, scr_palette);
+  }
+
+  screen_for_bitmap(&g_scr, &g_bm);
+
+  rc = wuss_resize(g_tasks.wuss, &g_scr);
+  if (rc != result_OK)
+    return rc;
+
+  g_frame_ctx.pixels     = pixels;
+  g_frame_ctx.rowbytes   = rowbytes;
+  g_frame_ctx.scr_width  = size.w;
+  g_frame_ctx.scr_height = size.h;
+
+  return result_OK;
 }
 
 /* ----------------------------------------------------------------------- */

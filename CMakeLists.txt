@@ -383,6 +383,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/get-palette.c
     libraries/wuss/core/get-pointer.c
     libraries/wuss/core/get-resources.c
+    libraries/wuss/core/get-screen-size.c
     libraries/wuss/core/idle.c
     libraries/wuss/core/impl.h
     libraries/wuss/core/invalidate.c
@@ -391,6 +392,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/nearest-colour.c
     libraries/wuss/core/rebuild-palettecache.c
     libraries/wuss/core/redraw.c
+    libraries/wuss/core/resize.c
     libraries/wuss/core/scroll.c
     libraries/wuss/core/scroll-step.c
     libraries/wuss/core/set-backdrop.c
@@ -767,6 +769,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/clock.c
         libraries/wuss/test/tasks/config.c
         libraries/wuss/test/tasks/curve.c
+        libraries/wuss/test/tasks/display.c
         libraries/wuss/test/tasks/gradient.c
         libraries/wuss/test/tasks/greeble.c
         libraries/wuss/test/tasks/icons.c
