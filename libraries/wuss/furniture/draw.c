@@ -15,6 +15,11 @@
 
 #include "../core/impl.h"
 
+/* Titlebar text is drawn with a one-pixel drop shadow in the button-shadow
+ * bevel colour, matching the existing bevel/relief look of furniture icons
+ * rather than adding a separate configurable title-shadow colour. */
+static const point_t WUSS_TITLE_SHADOW_OFFSET = { 1, 1 };
+
 /* Paint one furniture rectangle "b" in "colour", clipped to the part of it
  * that falls inside "full" (the redraw region). A no-op when "b" is wholly
  * outside "full". Pins scr->clip to the clipped rect -- the caller's next
@@ -126,10 +131,18 @@ static void draw_title(wuss_t        *wuss,
   pos.x = (split_point < titlelen) ? text_x0 : text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
   pos.y = titlebar->y0 + 2 + ascent;
   wuss->scr->clip = text_clip;
-  wuss__text_draw(titlefont, wuss->scr, window->title, titlelen,
-                  wuss->palette[wuss->furniture_colours.title.fg],
-                  wuss->palette[wuss->furniture_colours.title.bg],
-                  &pos, NULL);
+
+  /* filled titlebar first, so the relief pass's transparent background
+   * shows the fill rather than punching through to whatever was under the
+   * slot before this redraw */
+  screen_fill_rect(wuss->scr, text_x0, titlebar->y0,
+                   SIZE2D(text_x1 - text_x0, titlebar->y1 - titlebar->y0),
+                   wuss->palette[wuss->furniture_colours.title.bg]);
+
+  bmfont_draw_relief(titlefont, wuss->scr, window->title, titlelen,
+                     wuss->palette[wuss->furniture_colours.title.fg],
+                     wuss->palette[wuss->bevel_dark],
+                     NULL, &pos, &WUSS_TITLE_SHADOW_OFFSET, NULL);
 }
 
 void wuss__furniture_draw(wuss_t        *wuss,
