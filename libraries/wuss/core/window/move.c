@@ -122,10 +122,8 @@ void wuss_window_move(wuss_window_t *window, point_t p)
       box_t sliver[WUSS_MAX_INVALIDATE_PIECES];
       int   nsliver, s;
 
-      /* ponytail: nclean is a handful, so this can't approach the
-       * WUSS_MAX_INVALIDATE_PIECES cap; if that ever changes, a dropped
-       * piece here means a missed repaint (visible corruption), not just
-       * wasted work -- revisit then. */
+      /* on overflow wuss__subtract_boxes falls back to clean[i] whole
+       * (over-invalidating, not dropping it) -- see carve_by_cuts. */
       nsliver = wuss__subtract_boxes(&clean[i], full_dest, nclean, sliver);
       for (s = 0; s < nsliver; s++)
         wuss_invalidate(window->wuss, &sliver[s]);
