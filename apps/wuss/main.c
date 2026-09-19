@@ -160,6 +160,7 @@ static void wuss_frame(void *arg)
   wuss_input_t ev;
   bool         pixel_stress_pending = false;
   bool         garbage_pending      = false;
+  bool         redraw_all_pending   = false;
 
   while (wuss_frontend_poll(c->frontend, &ev))
   {
@@ -171,6 +172,7 @@ static void wuss_frame(void *arg)
 
     case wuss_INPUT_REDRAW_ALL:
       wuss_redraw(c->wuss);
+      redraw_all_pending = true;
       break;
 
     case wuss_INPUT_GARBAGE:
@@ -258,7 +260,13 @@ static void wuss_frame(void *arg)
     wuss_redraw_dirty(c->wuss);
     wuss_clear_touched(c->wuss);
 
-    wuss_frontend_present(c->frontend, c->bm, have_any ? &dirty : NULL);
+    /* a REDRAW_ALL earlier this frame already repainted the whole pixel
+     * buffer; any dirty/touched region collected afterwards (e.g. a mouse
+     * move) is narrower than that and must not shrink the present rect
+     * below full-screen, or the frontend only re-uploads the narrow rect
+     * and leaves the rest of the previous frame's pixels on screen. */
+    wuss_frontend_present(c->frontend, c->bm,
+                          (have_any && !redraw_all_pending) ? &dirty : NULL);
   }
 
 #ifdef __EMSCRIPTEN__
