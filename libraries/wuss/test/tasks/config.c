@@ -1,4 +1,5 @@
-/* wuss/test/tasks/config.c -- startup settings task (mouse button swap) */
+/* wuss/test/tasks/config.c -- startup settings task (mouse button swap,
+ * reverse scroll) */
 
 #ifdef WUSS_APP
 
@@ -20,7 +21,8 @@
 
 #define CONFIG_MARGIN 8
 #define CONFIG_DOC_W  220
-#define CONFIG_DOC_H  32
+#define CONFIG_ROW    20
+#define CONFIG_DOC_H  (CONFIG_MARGIN * 2 + CONFIG_ROW + 16)
 
 /* MENU click pops this single-item menu; the item table and wuss_menu_t live
  * per-instance in config_task_t, not as a file-scope static, so that each
@@ -84,6 +86,23 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   wuss_icon_set_selected(task->window, task->swap_icon,
                          g_tasks.swap_mouse_buttons);
 
+  memset(&spec, 0, sizeof(spec));
+  spec.bbox = (box_t) BOX_POS_SIZE(CONFIG_MARGIN, CONFIG_MARGIN + CONFIG_ROW,
+                                   CONFIG_DOC_W - 2 * CONFIG_MARGIN, 16);
+  spec.type = wuss_ICON_TYPE_OPTION;
+  spec.text = "Reverse mouse scroll direction";
+  spec.fg   = wuss_COLOUR_BLACK;
+  spec.bg   = wuss_NO_BACKGROUND;
+
+  rc = wuss_icon_create(task->window, &spec, &task->reverse_scroll_icon);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate); /* closes the window; QUIT frees task block */
+    return rc;
+  }
+  wuss_icon_set_selected(task->window, task->reverse_scroll_icon,
+                         g_tasks.reverse_scroll);
+
   /* fully built: from here a last-window close reaps the task and its
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
@@ -118,10 +137,13 @@ static result_t config_icon(const wuss_event_t *event, void *task_data)
   cc   = task_data;
   icon = event->data.icon.icon;
 
-  if (icon != cc->swap_icon || event->data.icon.action != wuss_MOUSE_UP)
+  if (event->data.icon.action != wuss_MOUSE_UP)
     return result_OK;
 
-  g_tasks.swap_mouse_buttons = wuss_icon_get_selected(icon) ? true : false;
+  if (icon == cc->swap_icon)
+    g_tasks.swap_mouse_buttons = wuss_icon_get_selected(icon) ? true : false;
+  else if (icon == cc->reverse_scroll_icon)
+    g_tasks.reverse_scroll = wuss_icon_get_selected(icon) ? true : false;
 
   return result_OK;
 }
@@ -150,7 +172,7 @@ result_t config_handle(wuss_window_t      *window,
       static const wuss_proginfo_desc_t desc =
       {
         "Configure",
-        "Startup settings: mouse button swap",
+        "Startup settings: mouse button swap, reverse scroll",
         "(c) DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };

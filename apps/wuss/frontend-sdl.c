@@ -294,7 +294,7 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
                        ev.wheel.mouse_x, ev.wheel.mouse_y, &x, &y);
         event->kind  = wuss_INPUT_WHEEL;
         event->pos   = POINT(x, y);
-        event->wheel = (int) ev.wheel.y;
+        event->wheel = g_tasks.reverse_scroll ? -(int) ev.wheel.y : (int) ev.wheel.y;
       }
       return true;
 
