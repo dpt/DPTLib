@@ -51,6 +51,9 @@ struct wuss_frontend
   int           scale; /* device pixels per screen pixel; see WUSS_SDL_*_SCALE */
   int           depth; /* framebuffer bits per pixel: 32 (bgrx8888), 8 (p8), 4 (p4), 2 (p2) or 1 (p1) */
   void         *pixels; /* the private framebuffer handed to the caller */
+  bitmap_t      conv; /* scratch bgrx8888 buffer for present()'s paletted
+                        * depths, sized scr_width x scr_height and reused
+                        * every frame instead of allocating one per present */
 };
 
 /* ----------------------------------------------------------------------- */
@@ -141,6 +144,18 @@ result_t wuss_frontend_open(int               width,
     return result_OOM;
   }
 
+  fe->conv.base = NULL;
+  if (depth != 32)
+  {
+    fe->conv.base = malloc((size_t) width * sizeof(pixelfmt_bgrx8888_t) * height);
+    if (fe->conv.base == NULL)
+    {
+      free(fe->pixels);
+      free(fe);
+      return result_OOM;
+    }
+  }
+
   if (!SDL_Init(SDL_INIT_VIDEO))
   {
     fprintf(stderr, "Error: SDL_Init: %s\n", SDL_GetError());
@@ -180,6 +195,10 @@ result_t wuss_frontend_open(int               width,
        : (depth == 2)  ? pixelfmt_p2
                        : pixelfmt_p1;
 
+  if (fe->conv.base != NULL)
+    bitmap_init(&fe->conv, SIZE2D(width, height), pixelfmt_bgrx8888,
+               width * sizeof(pixelfmt_bgrx8888_t), NULL, fe->conv.base);
+
   *pixels   = fe->pixels;
   *rowbytes = stride;
   *frontend = fe;
@@ -192,6 +211,7 @@ failure:
   if (fe->renderer) SDL_DestroyRenderer(fe->renderer);
   if (fe->window)   SDL_DestroyWindow(fe->window);
   SDL_Quit();
+  free(fe->conv.base);
   free(fe->pixels);
   free(fe);
   return result_TEST_FAILED;
@@ -205,6 +225,7 @@ result_t wuss_frontend_resize(wuss_frontend_t *fe,
 {
   int          stride;
   void        *new_pixels;
+  void        *new_conv;
   SDL_Texture *new_texture;
 
   stride = (width * fe->depth + 7) >> 3;
@@ -213,10 +234,22 @@ result_t wuss_frontend_resize(wuss_frontend_t *fe,
   if (new_pixels == NULL)
     return result_OOM;
 
+  new_conv = NULL;
+  if (fe->depth != 32)
+  {
+    new_conv = malloc((size_t) width * sizeof(pixelfmt_bgrx8888_t) * height);
+    if (new_conv == NULL)
+    {
+      free(new_pixels);
+      return result_OOM;
+    }
+  }
+
   new_texture = SDL_CreateTexture(fe->renderer, SDL_PIXELFORMAT_ARGB8888,
                                   SDL_TEXTUREACCESS_STREAMING, width, height);
   if (new_texture == NULL)
   {
+    free(new_conv);
     free(new_pixels);
     return result_TEST_FAILED;
   }
@@ -225,11 +258,17 @@ result_t wuss_frontend_resize(wuss_frontend_t *fe,
 
   SDL_DestroyTexture(fe->texture);
   free(fe->pixels);
+  free(fe->conv.base);
 
   fe->texture    = new_texture;
   fe->pixels     = new_pixels;
   fe->scr_width  = width;
   fe->scr_height = height;
+
+  fe->conv.base = new_conv;
+  if (new_conv != NULL)
+    bitmap_init(&fe->conv, SIZE2D(width, height), pixelfmt_bgrx8888,
+               width * sizeof(pixelfmt_bgrx8888_t), NULL, new_conv);
 
   SDL_SetWindowSize(fe->window, width * fe->scale, height * fe->scale);
 
@@ -356,7 +395,7 @@ void wuss_frontend_present(wuss_frontend_t *fe,
   else
   {
     result_t rc;
-    bitmap_t rows, *disp;
+    bitmap_t rows, out;
     int      y0, y1;
     SDL_Rect rect;
 
@@ -377,20 +416,23 @@ void wuss_frontend_present(wuss_frontend_t *fe,
     if (rc != result_OK)
       goto present;
 
-    /* wuss draws into a paletted bitmap; SDL wants bgrx. bitmap_convert reads
-     * the palette straight off `bm`, which the caller updates when the palette
-     * task's picker menu changes it, so a live palette change just shows up in
-     * the next converted frame. */
-    if (bitmap_convert(&rows, pixelfmt_bgrx8888, &disp) == result_OK)
+    /* wuss draws into a paletted bitmap; SDL wants bgrx. bitmap_convert_into
+     * reads the palette straight off `bm`, which the caller updates when the
+     * palette task's picker menu changes it, so a live palette change just
+     * shows up in the next converted frame. `fe->conv`'s buffer is sized for
+     * the full screen, so any dirty-row subset fits; only its size/rowbytes
+     * need to match this call's row count. */
+    bitmap_init(&out, rows.size, pixelfmt_bgrx8888,
+               bm->size.w * sizeof(pixelfmt_bgrx8888_t), NULL, fe->conv.base);
+
+    if (bitmap_convert_into(&rows, pixelfmt_bgrx8888, &out) == result_OK)
     {
       rect.x = 0;
       rect.y = y0;
       rect.w = bm->size.w;
       rect.h = y1 - y0;
 
-      SDL_UpdateTexture(fe->texture, &rect, disp->base, disp->rowbytes);
-      free(disp->base);
-      free(disp);
+      SDL_UpdateTexture(fe->texture, &rect, out.base, out.rowbytes);
     }
   }
 
@@ -423,6 +465,7 @@ void wuss_frontend_close(wuss_frontend_t *fe)
   SDL_DestroyWindow(fe->window);
   SDL_Quit();
 
+  free(fe->conv.base);
   free(fe->pixels);
   free(fe);
 }

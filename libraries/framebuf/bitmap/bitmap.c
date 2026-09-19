@@ -131,12 +131,14 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
   }
 }
 
-static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+/* Pixel loop only: `dst` must already be initialised (size, format, rowbytes,
+ * base) by the caller, e.g. by \ref bmconv_p4_to_bgrx8888 or by a caller
+ * reusing a persistent buffer via \ref bitmap_convert_into. */
+static result_t bmconv_p4_to_bgrx8888_into(const bitmap_t *src,
+                                           bitmap_t       *dst)
 {
-  result_t                   rc;
   const pixelmap_t          *pm;
   const pixelfmt_bgrx8888_t *map;
-  bitmap_t                  *dst;
   pixelfmt_bgrx8888_t       *outpixels;
   const unsigned char       *inrow;
   int                        x, y;
@@ -150,6 +152,26 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   if (pm == NULL)
     return result_NOT_SUPPORTED;
   map = (const pixelfmt_bgrx8888_t *) pm->entries;
+
+  outpixels = dst->base;
+  inrow = src->base;
+  for (y = 0; y < src->size.h; y++)
+  {
+    /* per-pixel, so widths that aren't a multiple of 8 keep their last
+     * w % 8 pixels, and row padding in src->rowbytes is respected */
+    for (x = 0; x < src->size.w; x++)
+      *outpixels++ = map[(inrow[x >> 1] >> ((x & 1) << 2)) & 0xF];
+    inrow += src->rowbytes;
+  }
+
+  return result_OK;
+}
+
+static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+{
+  result_t             rc;
+  bitmap_t            *dst;
+  pixelfmt_bgrx8888_t *outpixels;
 
   outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h); // rowbytes rounding needed?
   if (outpixels == NULL)
@@ -169,16 +191,18 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
                    NULL,
                    outpixels);
   if (rc)
-    return rc;
-
-  inrow = src->base;
-  for (y = 0; y < src->size.h; y++)
   {
-    /* per-pixel, so widths that aren't a multiple of 8 keep their last
-     * w % 8 pixels, and row padding in src->rowbytes is respected */
-    for (x = 0; x < src->size.w; x++)
-      *outpixels++ = map[(inrow[x >> 1] >> ((x & 1) << 2)) & 0xF];
-    inrow += src->rowbytes;
+    free(outpixels);
+    free(dst);
+    return rc;
+  }
+
+  rc = bmconv_p4_to_bgrx8888_into(src, dst);
+  if (rc)
+  {
+    free(outpixels);
+    free(dst);
+    return rc;
   }
 
   *pdst = dst;
@@ -186,14 +210,13 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   return rc;
 }
 
-/* As bmconv_p4_to_bgrx8888 but for 8bpp paletted: one index per byte, so the
- * inner loop is a plain byte read and table lookup. */
-static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+/* As bmconv_p4_to_bgrx8888_into but for 8bpp paletted: one index per byte, so
+ * the inner loop is a plain byte read and table lookup. */
+static result_t bmconv_p8_to_bgrx8888_into(const bitmap_t *src,
+                                           bitmap_t       *dst)
 {
-  result_t                   rc;
   const pixelmap_t          *pm;
   const pixelfmt_bgrx8888_t *map;
-  bitmap_t                  *dst;
   pixelfmt_bgrx8888_t       *outpixels;
   const unsigned char       *inrow;
   int                        x, y;
@@ -205,6 +228,24 @@ static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   if (pm == NULL)
     return result_NOT_SUPPORTED;
   map = (const pixelfmt_bgrx8888_t *) pm->entries;
+
+  outpixels = dst->base;
+  inrow = src->base;
+  for (y = 0; y < src->size.h; y++)
+  {
+    for (x = 0; x < src->size.w; x++)
+      *outpixels++ = map[inrow[x]];
+    inrow += src->rowbytes;
+  }
+
+  return result_OK;
+}
+
+static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+{
+  result_t             rc;
+  bitmap_t            *dst;
+  pixelfmt_bgrx8888_t *outpixels;
 
   outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h);
   if (outpixels == NULL)
@@ -224,14 +265,18 @@ static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
                    NULL,
                    outpixels);
   if (rc)
-    return rc;
-
-  inrow = src->base;
-  for (y = 0; y < src->size.h; y++)
   {
-    for (x = 0; x < src->size.w; x++)
-      *outpixels++ = map[inrow[x]];
-    inrow += src->rowbytes;
+    free(outpixels);
+    free(dst);
+    return rc;
+  }
+
+  rc = bmconv_p8_to_bgrx8888_into(src, dst);
+  if (rc)
+  {
+    free(outpixels);
+    free(dst);
+    return rc;
   }
 
   *pdst = dst;
@@ -243,12 +288,11 @@ static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
  * screen_copy_bitmap) that assumes the R,G,B,A/X byte order documented on
  * bitmap_load_png(), rather than the SDL-display byte order the *_to_bgrx8888
  * family targets. */
-static result_t bmconv_p8_to_rgbx8888(const bitmap_t *src, bitmap_t **pdst)
+static result_t bmconv_p8_to_rgbx8888_into(const bitmap_t *src,
+                                           bitmap_t       *dst)
 {
-  result_t                   rc;
   const pixelmap_t          *pm;
   const pixelfmt_rgbx8888_t *map;
-  bitmap_t                  *dst;
   pixelfmt_rgbx8888_t       *outpixels;
   const unsigned char       *inrow;
   int                        x, y;
@@ -260,6 +304,24 @@ static result_t bmconv_p8_to_rgbx8888(const bitmap_t *src, bitmap_t **pdst)
   if (pm == NULL)
     return result_NOT_SUPPORTED;
   map = (const pixelfmt_rgbx8888_t *) pm->entries;
+
+  outpixels = dst->base;
+  inrow = src->base;
+  for (y = 0; y < src->size.h; y++)
+  {
+    for (x = 0; x < src->size.w; x++)
+      *outpixels++ = map[inrow[x]];
+    inrow += src->rowbytes;
+  }
+
+  return result_OK;
+}
+
+static result_t bmconv_p8_to_rgbx8888(const bitmap_t *src, bitmap_t **pdst)
+{
+  result_t             rc;
+  bitmap_t            *dst;
+  pixelfmt_rgbx8888_t *outpixels;
 
   outpixels = malloc(src->size.w * sizeof(pixelfmt_rgbx8888_t) * src->size.h);
   if (outpixels == NULL)
@@ -279,14 +341,18 @@ static result_t bmconv_p8_to_rgbx8888(const bitmap_t *src, bitmap_t **pdst)
                    NULL,
                    outpixels);
   if (rc)
-    return rc;
-
-  inrow = src->base;
-  for (y = 0; y < src->size.h; y++)
   {
-    for (x = 0; x < src->size.w; x++)
-      *outpixels++ = map[inrow[x]];
-    inrow += src->rowbytes;
+    free(outpixels);
+    free(dst);
+    return rc;
+  }
+
+  rc = bmconv_p8_to_rgbx8888_into(src, dst);
+  if (rc)
+  {
+    free(outpixels);
+    free(dst);
+    return rc;
   }
 
   *pdst = dst;
@@ -296,12 +362,11 @@ static result_t bmconv_p8_to_rgbx8888(const bitmap_t *src, bitmap_t **pdst)
 
 /* As bmconv_p4_to_bgrx8888 but for 1bpp paletted, packed MSB-first (bit 7 is
  * the leftmost pixel) to match the screen p1 plot helpers. */
-static result_t bmconv_p1_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+static result_t bmconv_p1_to_bgrx8888_into(const bitmap_t *src,
+                                           bitmap_t       *dst)
 {
-  result_t                   rc;
   const pixelmap_t          *pm;
   const pixelfmt_bgrx8888_t *map;
-  bitmap_t                  *dst;
   pixelfmt_bgrx8888_t       *outpixels;
   const unsigned char       *inrow;
   int                        x, y;
@@ -314,6 +379,24 @@ static result_t bmconv_p1_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
     return result_NOT_SUPPORTED;
   map = (const pixelfmt_bgrx8888_t *) pm->entries;
 
+  outpixels = dst->base;
+  inrow = src->base;
+  for (y = 0; y < src->size.h; y++)
+  {
+    for (x = 0; x < src->size.w; x++)
+      *outpixels++ = map[(inrow[x >> 3] >> (7 - (x & 7))) & 1];
+    inrow += src->rowbytes;
+  }
+
+  return result_OK;
+}
+
+static result_t bmconv_p1_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+{
+  result_t             rc;
+  bitmap_t            *dst;
+  pixelfmt_bgrx8888_t *outpixels;
+
   outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h);
   if (outpixels == NULL)
     return result_OOM;
@@ -332,14 +415,18 @@ static result_t bmconv_p1_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
                    NULL,
                    outpixels);
   if (rc)
-    return rc;
-
-  inrow = src->base;
-  for (y = 0; y < src->size.h; y++)
   {
-    for (x = 0; x < src->size.w; x++)
-      *outpixels++ = map[(inrow[x >> 3] >> (7 - (x & 7))) & 1];
-    inrow += src->rowbytes;
+    free(outpixels);
+    free(dst);
+    return rc;
+  }
+
+  rc = bmconv_p1_to_bgrx8888_into(src, dst);
+  if (rc)
+  {
+    free(outpixels);
+    free(dst);
+    return rc;
   }
 
   *pdst = dst;
@@ -349,12 +436,11 @@ static result_t bmconv_p1_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
 
 /* As bmconv_p1_to_bgrx8888 but for 2bpp paletted, packed MSB-first (bits 7..6
  * are the leftmost pixel) to match the screen p2 plot helpers. */
-static result_t bmconv_p2_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+static result_t bmconv_p2_to_bgrx8888_into(const bitmap_t *src,
+                                           bitmap_t       *dst)
 {
-  result_t                   rc;
   const pixelmap_t          *pm;
   const pixelfmt_bgrx8888_t *map;
-  bitmap_t                  *dst;
   pixelfmt_bgrx8888_t       *outpixels;
   const unsigned char       *inrow;
   int                        x, y;
@@ -367,6 +453,24 @@ static result_t bmconv_p2_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
     return result_NOT_SUPPORTED;
   map = (const pixelfmt_bgrx8888_t *) pm->entries;
 
+  outpixels = dst->base;
+  inrow = src->base;
+  for (y = 0; y < src->size.h; y++)
+  {
+    for (x = 0; x < src->size.w; x++)
+      *outpixels++ = map[(inrow[x >> 2] >> (6 - ((x & 3) << 1))) & 3];
+    inrow += src->rowbytes;
+  }
+
+  return result_OK;
+}
+
+static result_t bmconv_p2_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+{
+  result_t             rc;
+  bitmap_t            *dst;
+  pixelfmt_bgrx8888_t *outpixels;
+
   outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h);
   if (outpixels == NULL)
     return result_OOM;
@@ -385,14 +489,18 @@ static result_t bmconv_p2_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
                    NULL,
                    outpixels);
   if (rc)
-    return rc;
-
-  inrow = src->base;
-  for (y = 0; y < src->size.h; y++)
   {
-    for (x = 0; x < src->size.w; x++)
-      *outpixels++ = map[(inrow[x >> 2] >> (6 - ((x & 3) << 1))) & 3];
-    inrow += src->rowbytes;
+    free(outpixels);
+    free(dst);
+    return rc;
+  }
+
+  rc = bmconv_p2_to_bgrx8888_into(src, dst);
+  if (rc)
+  {
+    free(outpixels);
+    free(dst);
+    return rc;
   }
 
   *pdst = dst;
@@ -457,6 +565,63 @@ result_t bitmap_convert(const bitmap_t *src,
       return result_NOT_SUPPORTED;
     }
     break;
+
+  default:
+    return result_NOT_SUPPORTED;
+  }
+}
+
+result_t bitmap_convert_into(const bitmap_t *src,
+                             pixelfmt_t      newfmt,
+                             bitmap_t       *dst)
+{
+  if (pixelfmt_is_rle(src->format))
+    return result_NOT_SUPPORTED;
+
+  switch (src->format)
+  {
+  case pixelfmt_p1:
+    switch (newfmt)
+    {
+    case pixelfmt_bgrx8888:
+      return bmconv_p1_to_bgrx8888_into(src, dst);
+
+    default:
+      return result_NOT_SUPPORTED;
+    }
+
+  case pixelfmt_p2:
+    switch (newfmt)
+    {
+    case pixelfmt_bgrx8888:
+      return bmconv_p2_to_bgrx8888_into(src, dst);
+
+    default:
+      return result_NOT_SUPPORTED;
+    }
+
+  case pixelfmt_p4:
+    switch (newfmt)
+    {
+    case pixelfmt_bgrx8888:
+      return bmconv_p4_to_bgrx8888_into(src, dst);
+
+    default:
+      return result_NOT_SUPPORTED;
+    }
+
+  case pixelfmt_p8:
+    switch (newfmt)
+    {
+    case pixelfmt_bgrx8888:
+      return bmconv_p8_to_bgrx8888_into(src, dst);
+
+    case pixelfmt_rgbx8888:
+      return bmconv_p8_to_rgbx8888_into(src, dst);
+
+    default:
+      return result_NOT_SUPPORTED;
+    }
 
   default:
     return result_NOT_SUPPORTED;
