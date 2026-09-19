@@ -458,11 +458,21 @@ int             wuss__clip_to_visible(wuss_window_t *window,
 
 /* Subtract each of "cuts" (an array of "ncuts" boxes) from "whole", writing
  * the surviving pieces to "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and
- * returning their count. */
+ * returning their count.
+ *
+ * A carve that needs more than WUSS_MAX_INVALIDATE_PIECES pieces falls back
+ * to either "whole" unfragmented (overpaint_safe true: the result only ever
+ * gets painted/invalidated, and nothing downstream depends on it excluding
+ * the cuts, so claiming the cuts contributed nothing just repaints a bit
+ * more) or to zero pieces (overpaint_safe false: the result is a blit
+ * source or other "known-good pixels" set that must exclude every cut, so
+ * claiming survivors where fragmentation was actually too complex to prove
+ * would copy or keep pixels the cuts should have excluded). */
 int             wuss__subtract_boxes(const box_t *whole,
                                      const box_t *cuts,
                                      int          ncuts,
-                                     box_t       *out);
+                                     box_t       *out,
+                                     int          overpaint_safe);
 
 /* Filter "clean" (nclean pieces already clipped clear of occluders) down to
  * the parts not also covered by "stale" (nstale pending-dirty boxes not yet

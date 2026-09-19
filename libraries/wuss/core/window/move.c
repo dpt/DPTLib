@@ -122,9 +122,10 @@ void wuss_window_move(wuss_window_t *window, point_t p)
       box_t sliver[WUSS_MAX_INVALIDATE_PIECES];
       int   nsliver, s;
 
-      /* on overflow wuss__subtract_boxes falls back to clean[i] whole
-       * (over-invalidating, not dropping it) -- see carve_by_cuts. */
-      nsliver = wuss__subtract_boxes(&clean[i], full_dest, nclean, sliver);
+      /* result only feeds wuss_invalidate, so on overflow overpaint_safe
+       * lets wuss__subtract_boxes fall back to clean[i] whole rather than
+       * dropping pieces -- over-invalidating, not under. */
+      nsliver = wuss__subtract_boxes(&clean[i], full_dest, nclean, sliver, 1);
       for (s = 0; s < nsliver; s++)
         wuss_invalidate(window->wuss, &sliver[s]);
     }
@@ -132,7 +133,7 @@ void wuss_window_move(wuss_window_t *window, point_t p)
     /* Whatever of "before" wasn't clean has no valid source pixels: its
      * translated destination needs a genuine repaint, clipped against
      * whatever's above this window there now. */
-    nhidden = wuss__subtract_boxes(&before, clean, nclean, hidden);
+    nhidden = wuss__subtract_boxes(&before, clean, nclean, hidden, 1);
     for (i = 0; i < nhidden; i++)
     {
       box_t hidden_dest;

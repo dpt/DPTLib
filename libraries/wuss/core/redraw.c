@@ -33,7 +33,7 @@ static void fill_backdrop_excluding_content(wuss_t *wuss, const box_t *area)
     cuts[ncuts++] = clipped;
   }
 
-  npieces = wuss__subtract_boxes(area, cuts, ncuts, pieces);
+  npieces = wuss__subtract_boxes(area, cuts, ncuts, pieces, 1);
 
   for (i = 0; i < npieces; i++)
     wuss__fill_backdrop(wuss->scr, wuss->palette, &wuss->backdrop,
