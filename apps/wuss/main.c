@@ -430,6 +430,7 @@ static result_t run_wuss(const char *resources,
     goto Failure;
 
   wuss_redraw(wuss);
+  wuss_frontend_present(frontend, &g_bm, NULL);
 
   g_frame_ctx.wuss          = wuss;
   g_frame_ctx.frontend      = frontend;
