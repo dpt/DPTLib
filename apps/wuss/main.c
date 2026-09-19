@@ -273,13 +273,13 @@ static void wuss_frame(void *arg)
 static result_t run_wuss(const char *resources,
                          const char *palette_name,
                          int         depth,
-                         int         scale)
+                         int         scale,
+                         int         scr_width,
+                         int         scr_height)
 {
   static const char *const names[WUSS_MAIN_NFONTS] =
     { "DPT-Digits-Regular", "DPT-Digits-Bold", "Symbols" };
 
-  const int   scr_width  = 640;
-  const int   scr_height = 480;
   result_t    rc;
   const char *filename;
   bmfont_t   *fonts[WUSS_MAIN_NFONTS];
@@ -471,14 +471,41 @@ typedef struct wuss_options
   const char *palette_name; /* -p/--palette: startup *.hex leafname */
   int         depth;        /* -d/--depth: framebuffer bpp (1, 2, 4, 8 or 32) */
   int         scale;        /* -s/--scale: initial window zoom, 0 = default */
+  int         res_width;    /* --res WIDTHxHEIGHT: screen size in pixels */
+  int         res_height;
 }
 wuss_options_t;
 
 static const char wuss_usage[] =
   "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
-  "[-d|--depth 1|2|4|8|32] [-s|--scale N]\n";
+  "[-d|--depth 1|2|4|8|32] [-s|--scale N] [--res WIDTHxHEIGHT]\n";
+
+/* Parses "WIDTHxHEIGHT" (e.g. "1024x768") into w and h. Returns false,
+ * leaving them untouched, on anything else -- a missing 'x', a non-positive
+ * dimension, or trailing junk after the height. */
+static bool parse_res(const char *s, int *w, int *h)
+{
+  char *end;
+  long  width, height;
+
+  width = strtol(s, &end, 10);
+  if (end == s || *end != 'x')
+    return false;
+
+  height = strtol(end + 1, &end, 10);
+  if (*end != '\0' || width <= 0 || height <= 0)
+    return false;
+
+  *w = (int) width;
+  *h = (int) height;
+  return true;
+}
 
 #ifndef __riscos
+
+/* --res has no short form, so it is given a longopt-only code past the ASCII
+ * range getopt_long uses for short options. */
+enum { OPT_RES = 256 };
 
 /* Desktop: getopt_long. Accepts the short forms and the "--" long forms; the
  * historical single-dash long spellings (-resources) are no longer accepted.
@@ -487,11 +514,12 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
 {
   static const struct option longopts[] =
   {
-    { "resources", required_argument, NULL, 'r' },
-    { "palette",   required_argument, NULL, 'p' },
-    { "depth",     required_argument, NULL, 'd' },
-    { "scale",     required_argument, NULL, 's' },
-    { NULL,        0,                 NULL, 0   }
+    { "resources", required_argument, NULL, 'r'     },
+    { "palette",   required_argument, NULL, 'p'     },
+    { "depth",     required_argument, NULL, 'd'     },
+    { "scale",     required_argument, NULL, 's'     },
+    { "res",       required_argument, NULL, OPT_RES },
+    { NULL,        0,                 NULL, 0       }
   };
 
   int c;
@@ -508,6 +536,13 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
     case 'p': opts->palette_name = optarg;       break;
     case 'd': opts->depth        = atoi(optarg); break;
     case 's': opts->scale        = atoi(optarg); break;
+    case OPT_RES:
+      if (!parse_res(optarg, &opts->res_width, &opts->res_height))
+      {
+        fprintf(stderr, "wuss: --res expects WIDTHxHEIGHT, got \"%s\"\n", optarg);
+        return false;
+      }
+      break;
     default:
       fputs(wuss_usage, stderr);
       return false;
@@ -534,6 +569,8 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
       opts->depth = atoi(argv[++i]);
     else if (strcmp(argv[i], "-scale") == 0 && i + 1 < argc)
       opts->scale = atoi(argv[++i]);
+    else if (strcmp(argv[i], "-res") == 0 && i + 1 < argc)
+      parse_res(argv[++i], &opts->res_width, &opts->res_height);
 
   return true;
 }
@@ -557,11 +594,14 @@ int main(int argc, char *argv[])
   opts.palette_name = "PICO-8";
   opts.depth        = 4;
   opts.scale        = 0; /* 0 = let the frontend pick its default */
+  opts.res_width    = 640;
+  opts.res_height   = 480;
 
   if (!parse_args(argc, argv, &opts))
     return EXIT_FAILURE;
 
-  rc = run_wuss(opts.resources, opts.palette_name, opts.depth, opts.scale);
+  rc = run_wuss(opts.resources, opts.palette_name, opts.depth, opts.scale,
+               opts.res_width, opts.res_height);
 
   return rc == result_TEST_PASSED ? EXIT_SUCCESS : EXIT_FAILURE;
 }
