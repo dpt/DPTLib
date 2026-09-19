@@ -23,6 +23,7 @@
 #include "tasks/chars.h"
 #include "tasks/checker.h"
 #include "tasks/clock.h"
+#include "tasks/config.h"
 #include "tasks/curve.h"
 #include "tasks/gradient.h"
 #include "tasks/greeble.h"
@@ -194,8 +195,14 @@ enum
   TASK_ITEM_TESTS,
   TASK_ITEM_UTILITIES,
   TASK_ITEM_VISUALS,
+  TASK_ITEM_CONFIGURE,
   TASK_ITEM_QUIT
 };
+
+static result_t spawn_configure(void)
+{
+  return spawn_task("Configure", (task_create_fn_t) config_create);
+}
 
 /* g_task_items' "Info" row's .window is filled in by tasks_open_launcher,
  * retargeting the shared proginfo singleton at g_tasks.menu_task each time
@@ -207,6 +214,7 @@ static wuss_menu_item_t g_task_items[] =
   { "Tests",     wuss_MENU_ITEM_NONE, &g_tests_menu,      NULL },
   { "Utilities", wuss_MENU_ITEM_NONE, &g_utilities_menu,  NULL },
   { "Visuals",   wuss_MENU_ITEM_NONE, &g_visuals_menu,    NULL },
+  { "Configure", wuss_MENU_ITEM_NONE, NULL,               NULL },
   { "Quit Wuss", wuss_MENU_ITEM_NONE, NULL,               NULL }
 };
 
@@ -217,6 +225,7 @@ static const task_spawn_fn_t g_task_spawn[] =
   NULL,        /* "Tests" -> submenu g_tests_menu */
   NULL,        /* "Utilities" -> submenu g_utilities_menu */
   NULL,        /* "Visuals" -> submenu g_visuals_menu */
+  spawn_configure,
   spawn_quit
 };
 
