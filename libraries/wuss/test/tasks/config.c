@@ -24,7 +24,7 @@
 
 /* ----------------------------------------------------------------------- */
 
-#define CONFIG_ROW    20  /* px; System frame's option-icon row pitch */
+#define CONFIG_ROW        20  /* px; System frame's option-icon row pitch */
 
 /* Backdrop swatches: colour/pattern cells are 22px square, butted together
  * (no pitch) as in swatches.c; the result swatch is double that. */
@@ -36,18 +36,17 @@
                                            * the colour rows, so all three
                                            * line up */
 
-/* "Solid" patterns (the Bayer run's flat ends, EMPTY and SOLID) come first,
- * on their own row; every other pattern -- the remaining Bayer dither
- * levels, then the named hatches (stripes, diagonal, dots, grid,
- * crosshatch, and their inverses) -- follows on the rows below, after a
- * blank spacer row. */
-#define CONFIG_NSOLID     2
-#define CONFIG_NDITHER    (screen_PATTERN_BAYER_LIMIT - screen_PATTERN_BAYER0 - \
-                           CONFIG_NSOLID) /* Bayer levels 1..63 */
+/* The named hatch patterns (stripes, diagonal, dots, grid, crosshatch, and
+ * their inverses) come first, padded out with blank cells to the next row
+ * boundary. The full Bayer run (screen_PATTERN_BAYER0..BAYER_LIMIT-1, which
+ * includes the EMPTY and SOLID flat ends) follows in order, filling the
+ * rows below that. */
 #define CONFIG_NHATCH     (screen_PATTERN__LIMIT - screen_PATTERN_BAYER_LIMIT)
-#define CONFIG_NREST      (CONFIG_NDITHER + CONFIG_NHATCH)
-#define CONFIG_REST_ROWS  ((CONFIG_NREST + CONFIG_GRID_COLS - 1) / CONFIG_GRID_COLS)
-#define CONFIG_GRID_ROWS  (1 /* solids */ + 1 /* space */ + CONFIG_REST_ROWS)
+#define CONFIG_HATCH_ROWS ((CONFIG_NHATCH + CONFIG_GRID_COLS - 1) / CONFIG_GRID_COLS)
+#define CONFIG_NBAYER     (screen_PATTERN_BAYER_LIMIT - screen_PATTERN_BAYER0)
+#define CONFIG_NPATTERNS  (CONFIG_NHATCH + CONFIG_NBAYER)
+#define CONFIG_BAYER_ROWS ((CONFIG_NBAYER + CONFIG_GRID_COLS - 1) / CONFIG_GRID_COLS)
+#define CONFIG_GRID_ROWS  (CONFIG_HATCH_ROWS + CONFIG_BAYER_ROWS)
 
 #define CONFIG_LABEL_W    70 /* px; enough for "Background" at 6px/char */
 
@@ -124,46 +123,39 @@ static void config_layout_backdrop(const box_t              *frame,
                                    config_backdrop_layout_t *out)
 {
   out->frame    = *frame;
-  out->swatch_x = frame->x0 + CONFIG_LABEL_W;
-  out->fg_y     = frame->y0 + 20;
-  out->bg_y     = out->fg_y + CONFIG_CELL + wuss_STD_GAP;
-  out->grid_y   = out->bg_y + CONFIG_CELL + wuss_STD_GAP;
-  out->result_y = out->grid_y + CONFIG_GRID_H + wuss_STD_GAP;
+  out->swatch_x = frame->x0     + CONFIG_LABEL_W;
+  out->fg_y     = frame->y0     + 20;
+  out->bg_y     = out->fg_y     + CONFIG_CELL   + wuss_STD_GAP;
+  out->grid_y   = out->bg_y     + CONFIG_CELL   + wuss_STD_GAP;
+  out->result_y = out->grid_y   + CONFIG_GRID_H + wuss_STD_GAP;
   out->button_y = out->result_y + CONFIG_RESULT + wuss_STD_GAP;
 }
 
-/* The pattern shown in grid cell i, 0 <= i < CONFIG_NSOLID + CONFIG_NREST:
- * the two solids (EMPTY, then SOLID) first, each alone on row 0; every other
- * pattern next (Bayer levels 1..63, then the named hatches), starting on
- * row 2 (row 1 left as the "space to the next row" the brief asks for). */
+/* The pattern shown in grid cell i, 0 <= i < CONFIG_NPATTERNS: the named
+ * hatches first, then the full Bayer run (EMPTY, dither levels 1..63,
+ * SOLID) in order. */
 static screen_pattern_t config_grid_pattern(int i)
 {
-  if (i == 0)
-    return screen_PATTERN_EMPTY;
-  if (i == 1)
-    return screen_PATTERN_SOLID;
-
-  i -= CONFIG_NSOLID;
-  if (i < CONFIG_NDITHER)
-    return (screen_pattern_t) (screen_PATTERN_BAYER0 + 1 + i);
-  return (screen_pattern_t) (screen_PATTERN_BAYER_LIMIT + (i - CONFIG_NDITHER));
+  if (i < CONFIG_NHATCH)
+    return (screen_pattern_t) (screen_PATTERN_BAYER_LIMIT + i);
+  return (screen_pattern_t) (screen_PATTERN_BAYER0 + (i - CONFIG_NHATCH));
 }
 
-/* Cell (col,row) for grid pattern index i: the solids sit at columns 0/1 of
- * row 0; every Bayer level starts a fresh row 2 (row 1 is the blank
- * spacer), wrapping at CONFIG_GRID_COLS. */
+/* Cell (col,row) for grid pattern index i: the named hatches fill row 0
+ * onward, padded to a row boundary; the Bayer run starts its own fresh row
+ * after that padding, wrapping at CONFIG_GRID_COLS. */
 static void config_grid_cell(int i, int *col, int *row)
 {
-  if (i < CONFIG_NSOLID)
+  if (i < CONFIG_NHATCH)
   {
-    *col = i;
-    *row = 0;
+    *col = i % CONFIG_GRID_COLS;
+    *row = i / CONFIG_GRID_COLS;
     return;
   }
 
-  i    -= CONFIG_NSOLID;
+  i    -= CONFIG_NHATCH;
   *col  = i % CONFIG_GRID_COLS;
-  *row  = 2 + i / CONFIG_GRID_COLS;
+  *row  = CONFIG_HATCH_ROWS + i / CONFIG_GRID_COLS;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -180,6 +172,7 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   wuss_icon_spec_t         specs[CONFIG_NICONS];
   wuss_icon_t             *made[CONFIG_NICONS];
   size2d_t                 doc;
+  size2d_t                 min_sz;
   int                      y;
 
   task = calloc(1, sizeof(*task));
@@ -200,15 +193,18 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
     free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
   }
+
   task->delegate = delegate;
 
-  doc = SIZE2D(CONFIG_DOC_W,
-              wuss_STD_INSET * 3 + CONFIG_SYSTEM_H + CONFIG_BACKDROP_H);
+  rc = stack_smallest(g_config_stack, NELEMS(g_config_stack), &min_sz);
+  if (rc != result_OK)
+    goto fail_delegate;
+  doc = SIZE2D(CONFIG_DOC_W, min_sz.h);
 
   rc = wuss_window_create_placed(delegate,
                                  doc,
                                  "Configure",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT,
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  doc,
                                  SIZE2D(0, 0),
@@ -409,7 +405,7 @@ static result_t config_redraw(config_task_t *task, const wuss_event_t *event)
 
   spec.fg = task->fg;
   spec.bg = task->bg;
-  for (i = 0; i < CONFIG_NSOLID + CONFIG_NREST; i++)
+  for (i = 0; i < CONFIG_NPATTERNS; i++)
   {
     int row, gcol;
 
@@ -487,7 +483,7 @@ static result_t config_click(config_task_t *task, const wuss_event_t *event)
     int i;
 
     row = (pt.y - lay.grid_y) / CONFIG_CELL;
-    for (i = 0; i < CONFIG_NSOLID + CONFIG_NREST; i++)
+    for (i = 0; i < CONFIG_NPATTERNS; i++)
     {
       int gcol, grow;
 
