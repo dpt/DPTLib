@@ -17,6 +17,7 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   volatile pixelfmt_t  fmt;
   volatile size_t      bytespp;
   volatile int paletted;
+  volatile int bitdepth;
   FILE        *fp;
   png_structp  png_ptr  = NULL;
   png_infop volatile   info_ptr = NULL;
@@ -26,6 +27,7 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   int                  x,y;
 
   paletted = 0;
+  bitdepth = 8;
 
   switch (bm->format)
   {
@@ -37,12 +39,16 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
     fmt     = PNG_COLOR_TYPE_RGBA;
     bytespp = 4;
     break;
+  case pixelfmt_p1:
+  case pixelfmt_p2:
+  case pixelfmt_p4:
   case pixelfmt_p8:
     if (bm->palette == NULL)
       return result_NOT_SUPPORTED;
     fmt      = PNG_COLOR_TYPE_PALETTE;
     bytespp  = 1;
     paletted = 1;
+    bitdepth = 1 << pixelfmt_log2bpp(bm->format);
     break;
   default:
     return result_NOT_SUPPORTED;
@@ -79,7 +85,7 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
 
   png_set_IHDR(png_ptr, info_ptr,
                bm->size.w, bm->size.h,
-               8,
+               bitdepth,
                fmt,
                PNG_INTERLACE_NONE,
                PNG_COMPRESSION_TYPE_DEFAULT,
@@ -89,9 +95,11 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   {
     png_byte trns[256];
     int      have_trns;
+    int      nplte;
     int      i;
 
-    png_plte = png_malloc(png_ptr, 256 * sizeof(*png_plte));
+    nplte    = 1 << bitdepth;
+    png_plte = png_malloc(png_ptr, nplte * sizeof(*png_plte));
     if (png_plte == NULL)
     {
       rc = result_OOM;
@@ -99,7 +107,7 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
     }
 
     have_trns = 0;
-    for (i = 0; i < 256; i++)
+    for (i = 0; i < nplte; i++)
     {
       pixelfmt_rgba8888_t px = bm->palette[i].primary;
 
@@ -112,9 +120,9 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
         have_trns = 1;
     }
 
-    png_set_PLTE(png_ptr, info_ptr, png_plte, 256);
+    png_set_PLTE(png_ptr, info_ptr, png_plte, nplte);
     if (have_trns)
-      png_set_tRNS(png_ptr, info_ptr, trns, 256, NULL);
+      png_set_tRNS(png_ptr, info_ptr, trns, nplte, NULL);
   }
 
   png_write_info(png_ptr, info_ptr);
