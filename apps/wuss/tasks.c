@@ -25,6 +25,7 @@
 #include "tasks/clock.h"
 #include "tasks/config.h"
 #include "tasks/curve.h"
+#include "tasks/display.h"
 #include "tasks/gradient.h"
 #include "tasks/greeble.h"
 #include "tasks/icons.h"
@@ -110,11 +111,15 @@ g_tests_tasks[] =
   { "Sofa",        (task_create_fn_t) sofa_create        },
   { "Text",        (task_create_fn_t) text_create        }
 },
+g_system_tasks[] =
+{
+  { "Display",     (task_create_fn_t) display_create     },
+  { "Palette",     (task_create_fn_t) palette_create     }
+},
 g_utilities_tasks[] =
 {
   { "Chars",       (task_create_fn_t) chars_create       },
   { "Clock",       (task_create_fn_t) clock_create       },
-  { "Palette",     (task_create_fn_t) palette_create     },
   { "Swatches",    (task_create_fn_t) swatches_create    }
 },
 g_visuals_tasks[] =
@@ -143,11 +148,16 @@ static const wuss_menu_item_t g_tests_items[] =
   { "Text",        wuss_MENU_ITEM_NONE, NULL }
 };
 
+static const wuss_menu_item_t g_system_items[] =
+{
+  { "Display",     wuss_MENU_ITEM_NONE, NULL },
+  { "Palette",     wuss_MENU_ITEM_NONE, NULL }
+};
+
 static const wuss_menu_item_t g_utilities_items[] =
 {
   { "Chars",       wuss_MENU_ITEM_NONE, NULL },
   { "Clock",       wuss_MENU_ITEM_NONE, NULL },
-  { "Palette",     wuss_MENU_ITEM_NONE, NULL },
   { "Swatches",    wuss_MENU_ITEM_NONE, NULL }
 };
 
@@ -168,6 +178,11 @@ static const wuss_menu_t g_games_menu =
 static const wuss_menu_t g_tests_menu =
 {
   "Tests", g_tests_items, NELEMS(g_tests_items)
+};
+
+static const wuss_menu_t g_system_menu =
+{
+  "System", g_system_items, NELEMS(g_system_items)
 };
 
 static const wuss_menu_t g_utilities_menu =
@@ -193,6 +208,7 @@ enum
   TASK_ITEM_INFO,
   TASK_ITEM_GAMES,
   TASK_ITEM_TESTS,
+  TASK_ITEM_SYSTEM,
   TASK_ITEM_UTILITIES,
   TASK_ITEM_VISUALS,
   TASK_ITEM_CONFIGURE,
@@ -212,6 +228,7 @@ static wuss_menu_item_t g_task_items[] =
   { "Info",      wuss_MENU_ITEM_PRE_OPEN, NULL,           NULL },
   { "Games",     wuss_MENU_ITEM_NONE, &g_games_menu,      NULL },
   { "Tests",     wuss_MENU_ITEM_NONE, &g_tests_menu,      NULL },
+  { "System",    wuss_MENU_ITEM_NONE, &g_system_menu,     NULL },
   { "Utilities", wuss_MENU_ITEM_NONE, &g_utilities_menu,  NULL },
   { "Visuals",   wuss_MENU_ITEM_NONE, &g_visuals_menu,    NULL },
   { "Configure", wuss_MENU_ITEM_NONE, NULL,               NULL },
@@ -223,6 +240,7 @@ static const task_spawn_fn_t g_task_spawn[] =
   NULL,        /* "Info" -> wuss_menu_item_t.window leaf, no spawn */
   NULL,        /* "Games" -> submenu g_games_menu */
   NULL,        /* "Tests" -> submenu g_tests_menu */
+  NULL,        /* "System" -> submenu g_system_menu */
   NULL,        /* "Utilities" -> submenu g_utilities_menu */
   NULL,        /* "Visuals" -> submenu g_visuals_menu */
   spawn_configure,
@@ -308,6 +326,13 @@ result_t task_handle_event(wuss_window_t      *window,
   {
     if (index >= 0 && index < (int) NELEMS(g_tests_tasks))
       (void) spawn_task(g_tests_tasks[index].name, g_tests_tasks[index].create);
+    return result_OK;
+  }
+
+  if (menu == &g_system_menu)
+  {
+    if (index >= 0 && index < (int) NELEMS(g_system_tasks))
+      (void) spawn_task(g_system_tasks[index].name, g_system_tasks[index].create);
     return result_OK;
   }
 

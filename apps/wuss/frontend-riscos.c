@@ -242,6 +242,23 @@ g_keys[] =
   { -117, wuss_INPUT_QUIT         }  /* F4 */
 };
 
+result_t wuss_frontend_resize(wuss_frontend_t *fe,
+                              int              width,
+                              int              height,
+                              void           **pixels,
+                              int             *rowbytes)
+{
+  NOT_USED(fe);
+  NOT_USED(width);
+  NOT_USED(height);
+  NOT_USED(pixels);
+  NOT_USED(rowbytes);
+
+  /* RISC OS runs in a fixed screen mode chosen at wuss_frontend_open time;
+   * there is no runtime path to change it here. */
+  return result_NOT_SUPPORTED;
+}
+
 static bool key_down(int scan)
 {
   int r1, r2;

@@ -603,6 +603,35 @@ const colour_t *wuss_get_palette(const wuss_t *wuss, int *npalette);
 result_t wuss_set_backdrop(wuss_t *wuss, const wuss_backdrop_t *backdrop);
 
 /**
+ * Fetch the current screen size (the size of the screen_t passed to
+ * wuss_create, or since applied by wuss_resize).
+ *
+ * \param[in] wuss Window manager.
+ * \return Current screen size in pixels.
+ */
+size2d_t wuss_get_screen_size(const wuss_t *wuss);
+
+/**
+ * Change the screen wuss draws onto and update every window to fit it.
+ *
+ * \p scr must already reflect the new size (and any new backing bitmap);
+ * wuss only reads it back via the same borrowed pointer given to wuss_create
+ * -- typically the same screen_t, mutated in place after the caller has
+ * resized its backing bitmap. Every window is nudged back on-screen (see
+ * wuss_window_move) and, only if it no longer fits, shrunk down to the
+ * largest content size that does (see wuss_window_resize); a window is never
+ * grown by a resize. The whole new screen is invalidated so the next
+ * wuss_redraw / wuss_redraw_dirty repaints it in full.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] scr  Screen to draw windows onto from now on. Not owned; must
+ *                 outlive the wuss_t. May be the same pointer given to
+ *                 wuss_create, already updated in place.
+ * \return \ref result_OK.
+ */
+result_t wuss_resize(wuss_t *wuss, screen_t *scr);
+
+/**
  * Destroy a window manager, and any windows still open on it.
  *
  * \param[in] doomed Window manager to destroy.

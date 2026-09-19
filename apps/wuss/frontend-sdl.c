@@ -197,6 +197,47 @@ failure:
   return result_TEST_FAILED;
 }
 
+result_t wuss_frontend_resize(wuss_frontend_t *fe,
+                              int              width,
+                              int              height,
+                              void           **pixels,
+                              int             *rowbytes)
+{
+  int          stride;
+  void        *new_pixels;
+  SDL_Texture *new_texture;
+
+  stride = (width * fe->depth + 7) >> 3;
+
+  new_pixels = malloc((size_t) stride * height);
+  if (new_pixels == NULL)
+    return result_OOM;
+
+  new_texture = SDL_CreateTexture(fe->renderer, SDL_PIXELFORMAT_ARGB8888,
+                                  SDL_TEXTUREACCESS_STREAMING, width, height);
+  if (new_texture == NULL)
+  {
+    free(new_pixels);
+    return result_TEST_FAILED;
+  }
+  SDL_SetTextureBlendMode(new_texture, SDL_BLENDMODE_NONE);
+  SDL_SetTextureScaleMode(new_texture, SDL_SCALEMODE_NEAREST);
+
+  SDL_DestroyTexture(fe->texture);
+  free(fe->pixels);
+
+  fe->texture    = new_texture;
+  fe->pixels     = new_pixels;
+  fe->scr_width  = width;
+  fe->scr_height = height;
+
+  SDL_SetWindowSize(fe->window, width * fe->scale, height * fe->scale);
+
+  *pixels   = fe->pixels;
+  *rowbytes = stride;
+  return result_OK;
+}
+
 bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
 {
   SDL_Event ev;
