@@ -63,11 +63,13 @@ result_t task_handle_event(wuss_window_t      *window,
  * MENU click over bare backdrop */
 result_t tasks_open_launcher(point_t pos);
 
-/* spawn one instance of every task in the launcher menus (games, tests,
- * system, utilities, visuals), in table order. Logs and continues past any
- * individual create failure rather than aborting the rest. Called once at
- * startup, after g_tasks.wuss is set. */
-void tasks_spawn_all(void);
+/* Spawn the tasks named in names, a comma-separated list of launcher-menu
+ * task names (e.g. "Saturn,Clock"), or "all" to spawn every task in every
+ * category (games, tests, system, utilities, visuals), in table order; an
+ * empty string spawns nothing. Logs and continues past any individual
+ * create failure or unknown name rather than aborting the rest. Called
+ * once at startup, after g_tasks.wuss is set. */
+void tasks_spawn(const char *names);
 
 /* Fill out[0..nout-1]: ui[0..nui-1] copied in, then as much of the web-safe
  * 216 (6x6x6 cube, steps of 0x33) as fits, then black for whatever is left.

@@ -90,11 +90,14 @@ typedef result_t (*task_spawn_fn_t)(void);
  * menu row index i -- keep each pair's tables in that order. Each category
  * menu is dispatched in task_handle_event by matching
  * event->data.menu_select.menu against the category's g_*_menu address. */
-static const struct
+typedef struct
 {
   const char      *name;
   task_create_fn_t create;
 }
+task_entry_t;
+
+static const task_entry_t
 g_games_tasks[] =
 {
   { "Ball",        (task_create_fn_t) ball_create        },
@@ -375,30 +378,81 @@ result_t tasks_open_launcher(point_t pos)
   return wuss_menu_open(g_tasks.menu_task, &g_task_menu, pos, NULL);
 }
 
-void tasks_spawn_all(void)
+/* tasks_spawn walks every category's table by name, regardless of which
+ * category a task lives in. */
+static const struct
 {
-  static const struct
-  {
-    const void *tasks;
-    int         count;
-  }
-  categories[] =
-  {
-    { g_games_tasks,     NELEMS(g_games_tasks)     },
-    { g_tests_tasks,     NELEMS(g_tests_tasks)     },
-    { g_system_tasks,    NELEMS(g_system_tasks)    },
-    { g_utilities_tasks, NELEMS(g_utilities_tasks) },
-    { g_visuals_tasks,   NELEMS(g_visuals_tasks)   }
-  };
+  const task_entry_t *tasks;
+  int                  count;
+}
+g_task_categories[] =
+{
+  { g_games_tasks,     NELEMS(g_games_tasks)     },
+  { g_tests_tasks,     NELEMS(g_tests_tasks)     },
+  { g_system_tasks,    NELEMS(g_system_tasks)    },
+  { g_utilities_tasks, NELEMS(g_utilities_tasks) },
+  { g_visuals_tasks,   NELEMS(g_visuals_tasks)   }
+};
 
+/* Spawns every task in every category, in table order. */
+static void tasks_spawn_all(void)
+{
   int c, i;
 
-  for (c = 0; c < (int) NELEMS(categories); c++)
-  {
-    const struct { const char *name; task_create_fn_t create; } *tasks;
+  for (c = 0; c < (int) NELEMS(g_task_categories); c++)
+    for (i = 0; i < g_task_categories[c].count; i++)
+      (void) spawn_task(g_task_categories[c].tasks[i].name,
+                        g_task_categories[c].tasks[i].create);
+}
 
-    tasks = categories[c].tasks;
-    for (i = 0; i < categories[c].count; i++)
-      (void) spawn_task(tasks[i].name, tasks[i].create);
+/* Finds and spawns the single task named name (case-sensitive, matching the
+ * launcher menu's spelling) across every category. Returns false, having
+ * logged an error, if no category has a task by that name. */
+static bool tasks_spawn_one(const char *name)
+{
+  int c, i;
+
+  for (c = 0; c < (int) NELEMS(g_task_categories); c++)
+    for (i = 0; i < g_task_categories[c].count; i++)
+      if (strcmp(g_task_categories[c].tasks[i].name, name) == 0)
+      {
+        (void) spawn_task(name, g_task_categories[c].tasks[i].create);
+        return true;
+      }
+
+  logf_error("wuss: -tasks: no such task \"%s\"", name);
+  return false;
+}
+
+void tasks_spawn(const char *names)
+{
+  const char *p;
+
+  if (strcmp(names, "all") == 0)
+  {
+    tasks_spawn_all();
+    return;
+  }
+
+  p = names;
+  while (*p != '\0')
+  {
+    const char *comma;
+    size_t      len;
+    char        name[32];
+
+    comma = strchr(p, ',');
+    len   = comma ? (size_t) (comma - p) : strlen(p);
+    if (len >= sizeof(name))
+      len = sizeof(name) - 1;
+    memcpy(name, p, len);
+    name[len] = '\0';
+
+    if (name[0] != '\0')
+      (void) tasks_spawn_one(name);
+
+    p += len;
+    if (*p == ',')
+      p++;
   }
 }
