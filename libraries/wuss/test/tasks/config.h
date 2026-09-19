@@ -1,11 +1,13 @@
 /* wuss/test/tasks/config.h -- startup settings task (mouse button swap,
- * reverse scroll) */
+ * reverse scroll, backdrop swatches) */
 
 #ifndef TASKS_CONFIG_H
 #define TASKS_CONFIG_H
 
 #ifdef WUSS_APP
 
+#include "framebuf/pattern.h"
+#include "geom/box.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/icon.h"
 #include "wuss/menu.h"
@@ -13,11 +15,15 @@
 #include "wuss/window.h"
 #include "wuss/wuss.h"
 
-/* Startup settings window: two option icons -- right/middle mouse button
- * swap (g_tasks.swap_mouse_buttons, read by each frontend's raw-button
- * translator) and reversed scroll direction (g_tasks.reverse_scroll, read
- * where each frontend fills wuss_input_event_t.wheel). Opened once from
- * run_wuss, not from the task launcher menu. */
+/* Startup settings window: a "System" frame with the two original option
+ * icons (right/middle mouse button swap -- g_tasks.swap_mouse_buttons, read
+ * by each frontend's raw-button translator -- and reversed scroll direction
+ * -- g_tasks.reverse_scroll, read where each frontend fills
+ * wuss_input_event_t.wheel), plus a "Backdrop" frame: a foreground and a
+ * background colour swatch row, a fill-pattern grid, a result swatch mixing
+ * the three, and a "Set backdrop" action applying the result via
+ * wuss_set_backdrop. Opened once from run_wuss, not from the task launcher
+ * menu. */
 typedef struct config_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the
@@ -26,6 +32,18 @@ typedef struct config_task
   wuss_window_t      *window;
   wuss_icon_t         *swap_icon;
   wuss_icon_t         *reverse_scroll_icon;
+  box_t                backdrop_frame; /* the "Backdrop" frame's box,
+                                        * document space; set once by
+                                        * config_create, read by
+                                        * config_layout_backdrop so redraw
+                                        * and click hit-testing always agree */
+  wuss_colour_t        fg;      /* selected foreground swatch (palette
+                                 * index); also the result's ink */
+  wuss_colour_t        bg;      /* selected background swatch (palette
+                                 * index); also the result's paper */
+  screen_pattern_t     pattern; /* selected pattern swatch; also the
+                                 * result's tile */
+  wuss_icon_t         *set_backdrop_icon;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
   wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
                                        * leak one instance's Info row .window

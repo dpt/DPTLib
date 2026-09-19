@@ -36,7 +36,6 @@
 #include "tasks/porter-duff.h"
 #include "tasks/saturn.h"
 #include "tasks/sofa.h"
-#include "tasks/swatches.h"
 #include "tasks/text.h"
 
 /* ----------------------------------------------------------------------- */
@@ -119,8 +118,7 @@ g_system_tasks[] =
 g_utilities_tasks[] =
 {
   { "Chars",       (task_create_fn_t) chars_create       },
-  { "Clock",       (task_create_fn_t) clock_create       },
-  { "Swatches",    (task_create_fn_t) swatches_create    }
+  { "Clock",       (task_create_fn_t) clock_create       }
 },
 g_visuals_tasks[] =
 {
@@ -157,8 +155,7 @@ static const wuss_menu_item_t g_system_items[] =
 static const wuss_menu_item_t g_utilities_items[] =
 {
   { "Chars",       wuss_MENU_ITEM_NONE, NULL },
-  { "Clock",       wuss_MENU_ITEM_NONE, NULL },
-  { "Swatches",    wuss_MENU_ITEM_NONE, NULL }
+  { "Clock",       wuss_MENU_ITEM_NONE, NULL }
 };
 
 static const wuss_menu_item_t g_visuals_items[] =
