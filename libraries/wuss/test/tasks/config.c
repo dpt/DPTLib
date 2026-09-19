@@ -172,7 +172,7 @@ result_t config_handle(wuss_window_t      *window,
       static const wuss_proginfo_desc_t desc =
       {
         "Configure",
-        "Startup settings: mouse button swap, reverse scroll",
+        "Startup settings: buttons, scroll",
         "(c) DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };

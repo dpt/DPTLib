@@ -158,7 +158,7 @@ static result_t lissajous_mouse(wuss_window_t      *window,
     static const wuss_proginfo_desc_t desc =
     {
       "Lissajous",
-      "Lissajous figure drifting through frequency pairs",
+      "Lissajous figure, drifting frequencies",
       "(c) DPTLib contributors",
       "1.0 (" __DATE__ ")"
     };

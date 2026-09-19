@@ -185,7 +185,7 @@ static result_t ball_mouse(wuss_window_t      *window,
     static const wuss_proginfo_desc_t desc =
     {
       "Bouncing Ball",
-      "Balls bouncing off the content box's edges",
+      "Balls bouncing off content edges",
       "(c) DPTLib contributors",
       "1.0 (" __DATE__ ")"
     };
