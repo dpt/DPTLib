@@ -294,7 +294,8 @@ static result_t run_wuss(const char *resources,
                          int         depth,
                          int         scale,
                          int         scr_width,
-                         int         scr_height)
+                         int         scr_height,
+                         const char *tasks)
 {
   static const char *const names[WUSS_MAIN_NFONTS] =
     { "DPT-Digits-Regular", "DPT-Digits-Bold", "Symbols" };
@@ -430,7 +431,7 @@ static result_t run_wuss(const char *resources,
 
   g_tasks.quit = false;
 
-  tasks_spawn_all();
+  tasks_spawn(tasks);
 
   rc = config_create(wuss, NULL);
   logf_info("wuss: config_create -> rc=0x%X (%s)", rc, result_string(rc));
@@ -537,12 +538,16 @@ typedef struct wuss_options
   int         scale;        /* -s/--scale: initial window zoom, 0 = default */
   int         res_width;    /* --res WIDTHxHEIGHT: screen size in pixels */
   int         res_height;
+  const char *tasks;        /* -t/--tasks: comma-separated launcher task
+                             * names to auto-open at startup, or "all";
+                             * default "" opens none */
 }
 wuss_options_t;
 
 static const char wuss_usage[] =
   "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
-  "[-d|--depth 1|2|4|8|32] [-s|--scale N] [--res WIDTHxHEIGHT]\n";
+  "[-d|--depth 1|2|4|8|32] [-s|--scale N] [--res WIDTHxHEIGHT] "
+  "[-t|--tasks all|NAME[,NAME...]]\n";
 
 /* Parses "WIDTHxHEIGHT" (e.g. "1024x768") into w and h. Returns false,
  * leaving them untouched, on anything else -- a missing 'x', a non-positive
@@ -583,6 +588,7 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
     { "depth",     required_argument, NULL, 'd'     },
     { "scale",     required_argument, NULL, 's'     },
     { "res",       required_argument, NULL, OPT_RES },
+    { "tasks",     required_argument, NULL, 't'     },
     { NULL,        0,                 NULL, 0       }
   };
 
@@ -590,7 +596,7 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
 
   for (;;)
   {
-    c = getopt_long(argc, argv, "r:p:d:s:", longopts, NULL);
+    c = getopt_long(argc, argv, "r:p:d:s:t:", longopts, NULL);
     if (c == -1)
       break;
 
@@ -600,6 +606,7 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
     case 'p': opts->palette_name = optarg;       break;
     case 'd': opts->depth        = atoi(optarg); break;
     case 's': opts->scale        = atoi(optarg); break;
+    case 't': opts->tasks        = optarg;       break;
     case OPT_RES:
       if (!parse_res(optarg, &opts->res_width, &opts->res_height))
       {
@@ -635,6 +642,8 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
       opts->scale = atoi(argv[++i]);
     else if (strcmp(argv[i], "-res") == 0 && i + 1 < argc)
       parse_res(argv[++i], &opts->res_width, &opts->res_height);
+    else if (strcmp(argv[i], "-tasks") == 0 && i + 1 < argc)
+      opts->tasks = argv[++i];
 
   return true;
 }
@@ -660,12 +669,13 @@ int main(int argc, char *argv[])
   opts.scale        = 0; /* 0 = let the frontend pick its default */
   opts.res_width    = 640;
   opts.res_height   = 480;
+  opts.tasks        = "";
 
   if (!parse_args(argc, argv, &opts))
     return EXIT_FAILURE;
 
   rc = run_wuss(opts.resources, opts.palette_name, opts.depth, opts.scale,
-               opts.res_width, opts.res_height);
+               opts.res_width, opts.res_height, opts.tasks);
 
   return rc == result_TEST_PASSED ? EXIT_SUCCESS : EXIT_FAILURE;
 }
