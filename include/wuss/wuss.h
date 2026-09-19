@@ -313,13 +313,21 @@ typedef struct wuss_backdrop
   /** Pattern background (clear-bit) colour; used only when pattern is not
    *  screen_PATTERN_SOLID. */
   wuss_colour_t    pattern_bg;
+
+  /**
+   * Optional image centred over the colour/pattern fill, or NULL for none.
+   * Drawn once per exposed backdrop area after that area's colour/pattern
+   * fill, via screen_copy_bitmap (no scaling; clipped as usual). Not owned:
+   * the caller must keep it alive for as long as it's set.
+   */
+  const bitmap_t  *image;
 }
 wuss_backdrop_t;
 
 /** A flat-colour wuss_backdrop_t (or wuss_NO_BACKGROUND for none), as a
  *  compound literal -- the common case where no fill pattern is wanted. */
 #define wuss_BACKDROP_COLOUR(c) \
-  ((wuss_backdrop_t) { (c), screen_PATTERN_SOLID, wuss_NO_BACKGROUND })
+  ((wuss_backdrop_t) { (c), screen_PATTERN_SOLID, wuss_NO_BACKGROUND, NULL })
 
 /** wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND): no fill at all, background
  *  painting left to the task. */
@@ -327,7 +335,8 @@ wuss_backdrop_t;
 
 /** A patterned wuss_backdrop_t: 8x8 pattern p tiled in colour c over
  *  background colour b. */
-#define wuss_BACKDROP_PATTERN(c, p, b) ((wuss_backdrop_t) { (c), (p), (b) })
+#define wuss_BACKDROP_PATTERN(c, p, b) \
+  ((wuss_backdrop_t) { (c), (p), (b), NULL })
 
 /**
  * Optional creation-time configuration.

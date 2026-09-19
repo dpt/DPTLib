@@ -289,9 +289,11 @@ static result_t run_wuss(const char *resources,
   int         rowbytes;
   pixelfmt_t  fmt;
   bitmap_t    bm;
-  screen_t    scr;
-  colour_t    palette[16]; /* the fixed-size UI palette */
-  colour_t    scr_palette[256]; /* palette[] padded out to whatever
+  bitmap_t    logo; /* desktop backdrop image; left unset (rc != result_OK)
+                     * if resources/wuss/wuss.png fails to load */
+  screen_t scr;
+  colour_t palette[16]; /* the fixed-size UI palette */
+  colour_t scr_palette[256]; /* palette[] padded out to whatever
                                         * count the chosen depth's bitmap
                                         * needs (p8 reads all 256) */
   wuss_t          *wuss;
@@ -360,6 +362,13 @@ static result_t run_wuss(const char *resources,
 
   screen_for_bitmap(&scr, &bm);
 
+  filename = pathf("%s/resources/wuss/wuss.png", resources);
+  logf_info("wuss: loading backdrop image \"%s\"", filename);
+  rc = bitmap_load_png(&logo, filename);
+  if (rc != result_OK)
+    logf_error("wuss: bitmap_load_png(\"%s\") failed, rc=0x%X (%s) -- "
+              "backdrop drawn without it", filename, rc, result_string(rc));
+
   {
     wuss_config_t    config;
     wuss_font_desc_t descs[WUSS_MAIN_NFONTS]; /* slot classes/names for the
@@ -367,6 +376,8 @@ static result_t run_wuss(const char *resources,
                                 * never a text font choice */
 
     fill_chrome_config(&config, use_wimp16);
+    if (rc == result_OK)
+      config.backdrop.image = &logo;
 
     for (i = 0; i < nfonts; i++)
     {

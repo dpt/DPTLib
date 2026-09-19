@@ -48,4 +48,18 @@ void wuss__fill_backdrop(screen_t              *scr,
     pat.origin = POINT(origin_x, origin_y);
     screen_fill_pattern(scr, area, &pat);
   }
+
+  if (backdrop->image != NULL)
+  {
+    int cx, cy;
+
+    /* centred on the whole screen, not "area" -- area is only whatever
+     * piece of the backdrop this call is repainting (e.g. one exposed
+     * sliver around a window), so the image must sit at a position fixed
+     * relative to the screen for pieces to line back up into one picture.
+     * scr->clip (set by the caller to "area") crops the blit to it. */
+    cx = (scr->size.w - backdrop->image->size.w) / 2;
+    cy = (scr->size.h - backdrop->image->size.h) / 2;
+    screen_copy_bitmap(scr, cx, cy, backdrop->image);
+  }
 }
