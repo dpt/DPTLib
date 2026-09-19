@@ -438,6 +438,13 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
 {
   box_t screen_box, content, whole, clipped;
 
+  /* a hidden window draws nothing -- invalidating any part of it would just
+   * force a pointless repaint of whatever visible window/backdrop actually
+   * occupies that screen area (e.g. every icon a hidden dialogue creates,
+   * each punching its own bbox-shaped hole otherwise). */
+  if (window->flags & wuss_WINDOW_HIDDEN)
+    return;
+
   wuss__content_box(window, &content);
 
   if (local_box == NULL)
