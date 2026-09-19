@@ -303,7 +303,7 @@ static result_t palette_menu_open(palette_task_t *pc)
   static const wuss_proginfo_desc_t desc =
   {
     "Palette",
-    "Desktop and screen palette swatch grid",
+    "Desktop and screen palette grid",
     "(c) DPTLib contributors",
     "1.0 (" __DATE__ ")"
   };
