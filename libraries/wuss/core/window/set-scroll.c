@@ -43,7 +43,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
    * each destination against the occluders too. Each subtract can split a
    * piece into up to four bands, so this can overflow the piece budget on a
    * badly fragmented window -- treat that as "no safe fast path". */
-  nclean   = wuss__clip_to_visible(window, &content, clean);
+  nclean   = wuss__clip_to_visible(window, &content, clean, 0);
   nsrc     = 0;
   overflow = 0;
   for (i = 0; i < nclean; i++)

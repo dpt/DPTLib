@@ -190,10 +190,16 @@ static int array_get_cut(void *vctx, int i, box_t *cut)
 
 /* Clip "box" (screen space) down to the parts not already covered by
  * windows above "window" in the z-order, writing the surviving pieces to
- * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count. */
+ * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count.
+ *
+ * "overpaint_safe" picks the overflow fallback direction, same as
+ * wuss__subtract_boxes: pass 1 when the result only feeds a paint or
+ * invalidate (over-including is just wasted repaint work), 0 when it
+ * feeds a blit source (over-including would copy occluded pixels). */
 int wuss__clip_to_visible(wuss_window_t *window,
                           const box_t   *box,
-                          box_t         *out)
+                          box_t         *out,
+                          int            overpaint_safe)
 {
   zorder_ctx_t ctx;
   list_t      *e;
@@ -205,7 +211,7 @@ int wuss__clip_to_visible(wuss_window_t *window,
 
   ctx.e = window->wuss->z_order.next;
 
-  return carve_by_cuts(box, n, zorder_get_cut, &ctx, out, 0);
+  return carve_by_cuts(box, n, zorder_get_cut, &ctx, out, overpaint_safe);
 }
 
 /* Subtract each of "cuts" (an array of "ncuts" boxes) from "whole", writing
@@ -367,7 +373,7 @@ int wuss__blit_pieces(wuss_window_t *window,
     if (clip != NULL && box_intersection(clip, &want, &want))
       continue;
 
-    nvis = wuss__clip_to_visible(window, &want, vis);
+    nvis = wuss__clip_to_visible(window, &want, vis, 0);
     for (j = 0; j < nvis; j++)
     {
       if (nblit == WUSS_MAX_INVALIDATE_PIECES)
@@ -439,7 +445,7 @@ void wuss__invalidate_uncovered(wuss_window_t *window)
   box_t hidden[WUSS_MAX_INVALIDATE_PIECES];
   int   nvisible, nhidden, i;
 
-  nvisible = wuss__clip_to_visible(window, &window->visible, visible);
+  nvisible = wuss__clip_to_visible(window, &window->visible, visible, 1);
   nhidden  = wuss__subtract_boxes(&window->visible, visible, nvisible, hidden,
                                   1);
 
@@ -456,7 +462,7 @@ void wuss__invalidate_clipped(wuss_window_t *window, const box_t *box)
   box_t pieces[WUSS_MAX_INVALIDATE_PIECES];
   int   npieces, i;
 
-  npieces = wuss__clip_to_visible(window, box, pieces);
+  npieces = wuss__clip_to_visible(window, box, pieces, 1);
 
   for (i = 0; i < npieces; i++)
     wuss_invalidate(window->wuss, &pieces[i]);

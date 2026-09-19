@@ -121,7 +121,8 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
      * on screen with nothing left to repaint them. wuss__filter_settled caps
      * at WUSS_MAX_INVALIDATE_PIECES the same way, so treat a full result as
      * a possible overflow too. */
-    nclean            = wuss__clip_to_visible(window, &before_content, clean);
+    nclean            = wuss__clip_to_visible(window, &before_content, clean,
+                                              0);
     nsrc              = wuss__filter_settled(clean, nclean, stale, nstale);
     overflow          = (nsrc == WUSS_MAX_INVALIDATE_PIECES);
 

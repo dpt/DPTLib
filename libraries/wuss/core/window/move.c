@@ -57,7 +57,7 @@ void wuss_window_move(wuss_window_t *window, point_t p)
    * window's own rendering; whatever isn't clean is hidden behind some
    * other window and has no valid pixels of this window's content to
    * slide. Computed against the current z-order, before the move. */
-  nclean = wuss__clip_to_visible(window, &before, clean);
+  nclean = wuss__clip_to_visible(window, &before, clean, 0);
 
   /* A piece can also be "clean" by occlusion yet still not show valid
    * pixels on screen: an earlier move (or any other invalidation) this same
