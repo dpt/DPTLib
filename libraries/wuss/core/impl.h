@@ -451,10 +451,16 @@ void            wuss__touch(wuss_t *wuss, const box_t *box);
 
 /* Clip "box" (screen space) down to the parts not already covered by
  * windows above "window" in the z-order, writing the surviving pieces to
- * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count. */
+ * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count.
+ *
+ * "overpaint_safe" picks the overflow fallback direction, same as
+ * wuss__subtract_boxes: pass 1 when the result only feeds a paint or
+ * invalidate (over-including is just wasted repaint work), 0 when it
+ * feeds a blit source (over-including would copy occluded pixels). */
 int             wuss__clip_to_visible(wuss_window_t *window,
                                       const box_t   *box,
-                                      box_t         *out);
+                                      box_t         *out,
+                                      int            overpaint_safe);
 
 /* Subtract each of "cuts" (an array of "ncuts" boxes) from "whole", writing
  * the surviving pieces to "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and
