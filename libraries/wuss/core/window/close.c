@@ -41,7 +41,12 @@ void wuss_window_close(wuss_window_t *doomed)
 
   wuss__release_packed(doomed);
 
-  wuss__invalidate_clipped(doomed, &doomed->visible);
+  /* A hidden window was never actually drawn at "visible" -- whatever is
+   * genuinely on screen there (backdrop, or another window's content) is
+   * already correct and showing through, so invalidating it would force a
+   * pointless repaint of somebody else's pixels. */
+  if (!(doomed->flags & wuss_WINDOW_HIDDEN))
+    wuss__invalidate_clipped(doomed, &doomed->visible);
 
   list_remove(&wuss->z_order, &doomed->link);
   list_remove(&task->windows, &doomed->task_link);

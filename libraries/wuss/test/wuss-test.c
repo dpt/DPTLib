@@ -1826,6 +1826,244 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_t);
   }
 
+  printf("test: toggle-size still blits when a hidden window sits above it in z-order\n");
+
+  {
+    static test_task_t tc_h;
+    wuss_task_t       *delegate_h;
+    box_t              box_h_win, hidden_box, before, toggle, titlebar;
+    wuss_window_t     *win_h, *win_hidden;
+    int                outline_px, titlebar_height, inset, icon, cx, cy;
+    int                i, interior_x, interior_y, interior_dirty;
+
+    tc_h.redraw_count = 0;
+    tc_h.mouse_count  = 0;
+    delegate_h = mk_task(wuss, test_handle, &tc_h);
+    if (delegate_h == NULL) goto Failure;
+
+    box_h_win.x0 = 10; box_h_win.y0 = 10;
+    box_h_win.x1 = 50; box_h_win.y1 = 50; /* same in-place grow shape as the
+                                            * plain toggle-blit test above */
+    rc = wuss_window_create(delegate_h, &box_h_win, "H", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(150, 150), SIZE2D(0, 0), &win_h);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* a hidden window created afterwards still lands at the z-order head
+     * (list_add_to_head in window/create.c, unconditional on
+     * wuss_WINDOW_HIDDEN) -- it must not be mistaken for an occluder sitting
+     * above win_h, or wuss__furniture_toggle_size's topmost check wrongly
+     * declines the blit and falls back to a full old+new footprint repaint */
+    hidden_box.x0 = 60; hidden_box.y0 = 60;
+    hidden_box.x1 = 100; hidden_box.y1 = 100;
+    rc = wuss_window_create(delegate_h, &hidden_box, "Hidden",
+                            wuss_WINDOW_HIDDEN, wuss_NO_BACKDROP,
+                            SIZE2D(40, 40), SIZE2D(0, 0), &win_hidden);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creates' own invalidates */
+    if (rc != result_OK)
+      goto Failure;
+
+    outline_px      = 1;
+    titlebar_height = 20;
+    inset           = 3;
+    icon            = titlebar_height - 2 * inset;
+
+    wuss_window_get_visible_bounds(win_h, &before);
+    titlebar.x0 = before.x0 + outline_px;
+    titlebar.x1 = before.x1 - outline_px;
+    titlebar.y0 = before.y0 + outline_px;
+    toggle.x1 = titlebar.x1 - inset;
+    toggle.x0 = toggle.x1 - icon;
+    toggle.y0 = titlebar.y0 + inset;
+    toggle.y1 = toggle.y0 + icon;
+    cx = (toggle.x0 + toggle.x1) / 2;
+    cy = (toggle.y0 + toggle.y1) / 2;
+
+    /* pre-grow content interior, well clear of outline/titlebar/scrollbar
+     * furniture on every side -- same reasoning as the plain toggle-blit
+     * test above: a pixel the blit must have reused rather than repainted */
+    interior_x = (before.x0 + outline_px + before.x1 - outline_px - icon) / 2;
+    interior_y = (before.y0 + outline_px + titlebar_height + before.y1 - outline_px - icon) / 2;
+
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* H's toggle-size icon: grow */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_h)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    if (wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+
+    interior_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      box_t region;
+
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, interior_x, interior_y))
+        interior_dirty = 1;
+    }
+    if (interior_dirty)
+      goto Failure; /* a hidden occluder above in z-order must not defeat the
+                      * blit fast path -- if it did, this interior content
+                      * pixel (which the blit alone would have reused
+                      * untouched) would be swept into the no-blit
+                      * fallback's full old+new footprint repaint instead */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_hidden);
+    wuss_window_close(win_h);
+  }
+
+  printf("test: closing a hidden window never dirties the visible window sitting under its old footprint\n");
+
+  {
+    static test_task_t tc_c;
+    wuss_task_t       *delegate_c;
+    box_t              box_visible, box_hidden, region;
+    wuss_window_t     *win_visible, *win_hidden_c;
+    int                i, overlap_x, overlap_y, overlap_dirty;
+
+    tc_c.redraw_count = 0;
+    tc_c.mouse_count  = 0;
+    delegate_c = mk_task(wuss, test_handle, &tc_c);
+    if (delegate_c == NULL) goto Failure;
+
+    /* a visible window occupying the screen's top-left, matching where a
+     * hidden singleton dialogue (e.g. wuss_proginfo_window) is always
+     * created (content box (0,0)-(w,h): see wuss_info_create) */
+    box_visible.x0 = 0; box_visible.y0 = 0;
+    box_visible.x1 = 80; box_visible.y1 = 80;
+    rc = wuss_window_create(delegate_c, &box_visible, "V", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_visible);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* hidden window whose footprint overlaps win_visible's -- never drawn,
+     * so closing it must not touch pixels that belong to win_visible */
+    box_hidden.x0 = 0; box_hidden.y0 = 0;
+    box_hidden.x1 = 40; box_hidden.y1 = 40;
+    rc = wuss_window_create(delegate_c, &box_hidden, "Hidden",
+                            wuss_WINDOW_HIDDEN, wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_hidden_c);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creates' own invalidates */
+    if (rc != result_OK)
+      goto Failure;
+
+    overlap_x = (box_hidden.x0 + box_hidden.x1) / 2;
+    overlap_y = (box_hidden.y0 + box_hidden.y1) / 2;
+
+    wuss_window_close(win_hidden_c);
+
+    overlap_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, overlap_x, overlap_y))
+        overlap_dirty = 1;
+    }
+    if (overlap_dirty)
+      goto Failure; /* closing a hidden window must not force a repaint of
+                      * whatever visible window/backdrop actually occupies
+                      * its old, never-drawn footprint */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_visible);
+  }
+
+  printf("test: creating icons on a hidden window never dirties the visible window sitting under its footprint\n");
+
+  {
+    static test_task_t tc_i;
+    wuss_task_t       *delegate_i;
+    box_t              box_visible2, box_hidden2, region;
+    wuss_window_t     *win_visible2, *win_hidden_i;
+    wuss_icon_t       *icon;
+    wuss_icon_spec_t   spec;
+    int                i, overlap_x, overlap_y, overlap_dirty;
+
+    tc_i.redraw_count = 0;
+    tc_i.mouse_count  = 0;
+    delegate_i = mk_task(wuss, test_handle, &tc_i);
+    if (delegate_i == NULL) goto Failure;
+
+    /* same overlap shape as the close test above: a visible window at the
+     * screen's top-left, and a hidden dialogue-style window over the same
+     * area (e.g. wuss_proginfo_window, always built at content (0,0)) */
+    box_visible2.x0 = 0; box_visible2.y0 = 0;
+    box_visible2.x1 = 80; box_visible2.y1 = 80;
+    rc = wuss_window_create(delegate_i, &box_visible2, "V2", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_visible2);
+    if (rc != result_OK)
+      goto Failure;
+
+    box_hidden2.x0 = 0; box_hidden2.y0 = 0;
+    box_hidden2.x1 = 40; box_hidden2.y1 = 40;
+    rc = wuss_window_create(delegate_i, &box_hidden2, "Hidden2",
+                            wuss_WINDOW_HIDDEN, wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_hidden_i);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creates' own invalidates */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* an icon near the hidden window's own top-left, in window-local
+     * (pre-scroll) coordinates -- wuss_info_create builds proginfo's rows
+     * this way, each icon punching its own bbox-shaped invalidate */
+    memset(&spec, 0, sizeof(spec));
+    spec.bbox = (box_t) BOX_POS_SIZE(2, 2, 16, 16);
+    spec.type = wuss_ICON_TYPE_LABEL;
+    spec.text = "x";
+    rc = wuss_icon_create(win_hidden_i, &spec, &icon);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* content sits inset from the hidden window's own content-space origin
+     * by its outline + titlebar (default furniture: 1px outline, 20px
+     * titlebar -- same constants the other tests in this file use) */
+    overlap_x = box_hidden2.x0 + 1 + 2 + 8; /* centre of the icon's bbox, in screen space */
+    overlap_y = box_hidden2.y0 + 1 + 20 + 2 + 8;
+
+    overlap_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, overlap_x, overlap_y))
+        overlap_dirty = 1;
+    }
+    if (overlap_dirty)
+      goto Failure; /* an icon created on a hidden window must not force a
+                      * repaint of whatever visible window/backdrop actually
+                      * occupies that screen area */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_hidden_i);
+    wuss_window_close(win_visible2);
+  }
+
   printf("test: toggle-size that forces a scroll re-clamp invalidates the content it's about to redraw at the new offset, not just the blit's edge sliver\n");
 
   {
