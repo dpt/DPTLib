@@ -4,24 +4,31 @@ Ordered by dependency. Each layer builds on the ones above it.
 Items marked (blocks: X) are prerequisites for X.
 
 
-Add a panic redraw indicator?
-
 Furniture clicks / scrolls still invalidate the entire furniture set - fix.
   (window move fixed: layout cache is now translated in place, not rebuilt)
 
 Fast scrolling can invalidate areas and fail to copy the expected known good screen content.
  -- Tried and tried to get Claude to fix but no good.
 
-Filled screen with apps then used swatches - backdrop didn't fully redraw.
-
 Scrolled (which app?) then expanded the window - got a full redraw of the window.
+Swatches?
 
-Windows hidden by default (unless a flag is set)
+Policy? Windows hidden by default (unless a flag is set)
+Wuss lets hidden windows exist in its window stack which complicates the code a bit. RISC OS allows hidden (closed) windows by putting them "behind the backwindow".
 
 Keyboard input
 - bmfont needs to be able to draw a caret
 
-Adjust click on a menu should pop to front once the action is complete
+Large fonts for titles, italic font, ...
+
+SDL? Random mouse focus issue that stops us receiving initial clicks.
+
+Add Configure app
+
+closest_palette_entry getting hammered
+
+Allow a build with no apps installed
+
 
 
 
@@ -72,6 +79,7 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
 - 2D Adjust window scroll drag
 - Input focus, text entry, furniture tinting
 - Furniture colour selection needs improvements (e.g. losing menu readability when palette changed)
+- Adjust click on a menu should pop to front once the action is complete
 
 
 LAYER 5 - DRAG & TEMPLATES (needs sprites, config-after-the-fact)
@@ -93,7 +101,7 @@ LAYER 6 - MULTI-TASK (needs stable windows, templates)
 LAYER 7 - APPS & POLISH (needs most of the above)
 
 - Post-Its app with explanatory text for newbies
-  - Markdown rendering component?
+  (Markdown rendering done in the Text task sample; reuse from there)
 - Have a Paint app as a target
 - Desktop cohort: Filer, Task Manager, Palette Util
 - Colour Picker component
