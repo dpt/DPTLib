@@ -377,3 +377,31 @@ result_t tasks_open_launcher(point_t pos)
 
   return wuss_menu_open(g_tasks.menu_task, &g_task_menu, pos, NULL);
 }
+
+void tasks_spawn_all(void)
+{
+  static const struct
+  {
+    const void *tasks;
+    int         count;
+  }
+  categories[] =
+  {
+    { g_games_tasks,     NELEMS(g_games_tasks)     },
+    { g_tests_tasks,     NELEMS(g_tests_tasks)     },
+    { g_system_tasks,    NELEMS(g_system_tasks)    },
+    { g_utilities_tasks, NELEMS(g_utilities_tasks) },
+    { g_visuals_tasks,   NELEMS(g_visuals_tasks)   }
+  };
+
+  int c, i;
+
+  for (c = 0; c < (int) NELEMS(categories); c++)
+  {
+    const struct { const char *name; task_create_fn_t create; } *tasks;
+
+    tasks = categories[c].tasks;
+    for (i = 0; i < categories[c].count; i++)
+      (void) spawn_task(tasks[i].name, tasks[i].create);
+  }
+}
