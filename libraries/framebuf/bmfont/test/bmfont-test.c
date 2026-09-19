@@ -183,7 +183,7 @@ bmtestline_t;
 
 /* ----------------------------------------------------------------------- */
 
-#define MAXFONTS 8
+#define MAXFONTS 9
 
 static bmtestfont_t bmfonts[MAXFONTS] =
 {
@@ -194,22 +194,26 @@ static bmtestfont_t bmfonts[MAXFONTS] =
   { "DPT-CookeTall",    NULL },
   { "MS Sans Serif",    NULL },
   { "DPT-Digits-Regular", NULL },
-  { "DPT-Digits-Bold",  NULL }
+  { "DPT-Digits-Bold",  NULL },
+  { "DPT-Digits-Bold-Lg", NULL } /* 24px-wide glyphs: exercises the _4w_
+                                  * (17-32px) draw variants */
 };
 
 /* Fixture PNGs not in bmfonts[] above (which is the Latin-text set the
  * clipping/layout tests draw lorem_ipsum with) but which the enumerate test
  * must still see, since it just walks the fixture directory: Symbols.png is
  * not Latin text; 04b_03, 04b_25 and Nokia are tiny pixel faces added for
- * the wuss tasks. */
-#define MAXFONTS_ENUM 12
+ * the wuss tasks; DPT-Digits-Regular-Lg is the regular-weight counterpart of
+ * the bold -Lg font already covered above. */
+#define MAXFONTS_ENUM 14
 
 static const char *bmfonts_enum_extra[MAXFONTS_ENUM - MAXFONTS] =
 {
   "Symbols",
   "04b_03",
   "04b_25",
-  "Nokia"
+  "Nokia",
+  "DPT-Digits-Regular-Lg"
 };
 
 /* ----------------------------------------------------------------------- */
