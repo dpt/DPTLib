@@ -780,7 +780,6 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/porter-duff.c
         libraries/wuss/test/tasks/saturn.c
         libraries/wuss/test/tasks/sofa.c
-        libraries/wuss/test/tasks/swatches.c
         libraries/wuss/test/tasks/text.c)
 
     if(TARGET_RISCOS)
