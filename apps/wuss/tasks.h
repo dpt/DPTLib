@@ -63,6 +63,12 @@ result_t task_handle_event(wuss_window_t      *window,
  * MENU click over bare backdrop */
 result_t tasks_open_launcher(point_t pos);
 
+/* spawn one instance of every task in the launcher menus (games, tests,
+ * system, utilities, visuals), in table order. Logs and continues past any
+ * individual create failure rather than aborting the rest. Called once at
+ * startup, after g_tasks.wuss is set. */
+void tasks_spawn_all(void);
+
 /* Fill out[0..nout-1]: ui[0..nui-1] copied in, then as much of the web-safe
  * 216 (6x6x6 cube, steps of 0x33) as fits, then black for whatever is left.
  * Used to build a paletted screen's full-size palette (nout = whatever
