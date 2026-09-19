@@ -51,7 +51,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
     box_t kept[WUSS_MAX_INVALIDATE_PIECES];
     int   nkept, k;
 
-    nkept = wuss__subtract_boxes(&clean[i], stale, nstale, kept);
+    nkept = wuss__subtract_boxes(&clean[i], stale, nstale, kept, 0);
     for (k = 0; k < nkept; k++)
     {
       if (nsrc == WUSS_MAX_INVALIDATE_PIECES)
@@ -73,7 +73,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
      * clipped to this window's visible area: parts that were behind an
      * occluder still show the occluder's own correct pixels, so leaving
      * them out keeps the scroll from redrawing the occluding window. */
-    ndirty = wuss__subtract_boxes(&content, copied, ncopied, dirty);
+    ndirty = wuss__subtract_boxes(&content, copied, ncopied, dirty, 1);
     for (i = 0; i < ndirty; i++)
       wuss__invalidate_clipped(window, &dirty[i]);
     return;

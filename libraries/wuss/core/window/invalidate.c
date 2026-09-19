@@ -62,15 +62,28 @@ static int box_subtract_into(const box_t *piece,
  * caller pre-filtering its list).
  *
  * A heavily-fragmented carve (many overlapping occluders) can need more than
- * WUSS_MAX_INVALIDATE_PIECES pieces; silently dropping the excess would leave
- * a hole that never gets redrawn, so on overflow this falls back to "box"
- * itself, unfragmented -- over-painting whatever the cuts would have removed
- * rather than under-painting what they wouldn't. */
+ * WUSS_MAX_INVALIDATE_PIECES pieces; silently dropping the excess would
+ * misrepresent the result either way, so on overflow this takes whichever
+ * fallback "overpaint_safe" says won't corrupt the screen:
+ *
+ * - wuss__subtract_boxes (fill_backdrop_excluding_content, the vacated-sliver
+ *   maths in move/resize/set-scroll) is finding what still needs *painting*;
+ *   the caller always paints its result and nothing else runs over it
+ *   afterwards for that area, so falling back to "box" itself (unfragmented)
+ *   over-paints -- wasted work, never a hole.
+ * - wuss__clip_to_visible is finding what's safe to treat as already-correct
+ *   pixels (a blit source for a window slide, or "occludes nothing further
+ *   to draw"); claiming the whole box survives when most of it is actually
+ *   sat under other windows would blit-copy garbage or skip painting real
+ *   content, and nothing repaints over it afterwards to fix that. Falling
+ *   back to zero pieces instead makes every caller treat the box as fully
+ *   occluded, which only ever costs a real repaint it didn't strictly need. */
 static int carve_by_cuts(const box_t *box,
                          int          ncuts,
                          int          (*get_cut)(void *ctx, int i, box_t *cut),
                          void        *ctx,
-                         box_t       *out)
+                         box_t       *out,
+                         int          overpaint_safe)
 {
   box_t  scratch[WUSS_MAX_INVALIDATE_PIECES];
   box_t *cur, *nxt, *tmp;
@@ -84,41 +97,43 @@ static int carve_by_cuts(const box_t *box,
   for (i = 0; i < ncuts; i++)
   {
     box_t occluder;
-    int   p, nnext;
+    int   p, nnext, overflowed;
 
     if (!get_cut(ctx, i, &occluder))
       continue; /* e.g. a hidden window occludes nothing */
-    nnext = 0;
+    nnext      = 0;
+    overflowed = 0;
 
-    for (p = 0; p < ncur; p++)
+    for (p = 0; p < ncur && !overflowed; p++)
     {
       box_t cut;
 
       if (box_intersection(&occluder, &cur[p], &cut))
       {
         if (nnext >= WUSS_MAX_INVALIDATE_PIECES)
-        {
-          logf_info("wuss: carve_by_cuts panic redraw -- %d cuts, "
-                    "overflowed at cut %d/piece %d, falling back to "
-                    "(%d,%d)-(%d,%d) unfragmented",
-                    ncuts, i, p, box->x0, box->y0, box->x1, box->y1);
-          out[0] = *box;
-          return 1;
-        }
-        nxt[nnext++] = cur[p]; /* no overlap: piece survives untouched */
+          overflowed = 1;
+        else
+          nxt[nnext++] = cur[p]; /* no overlap: piece survives untouched */
       }
       else
       {
         if (!box_subtract_into(&cur[p], &cut, nxt, &nnext))
-        {
-          logf_info("wuss: carve_by_cuts panic redraw -- %d cuts, "
-                    "overflowed at cut %d/piece %d, falling back to "
-                    "(%d,%d)-(%d,%d) unfragmented",
-                    ncuts, i, p, box->x0, box->y0, box->x1, box->y1);
-          out[0] = *box;
-          return 1;
-        }
+          overflowed = 1;
       }
+    }
+
+    if (overflowed)
+    {
+      logf_info("wuss: carve_by_cuts overflow -- %d cuts, overflowed at "
+                "cut %d/piece %d, falling back to %s for (%d,%d)-(%d,%d)",
+                ncuts, i, p, overpaint_safe ? "unfragmented" : "nothing",
+                box->x0, box->y0, box->x1, box->y1);
+      if (overpaint_safe)
+      {
+        out[0] = *box;
+        return 1;
+      }
+      return 0;
     }
 
     ncur = nnext;
@@ -190,7 +205,7 @@ int wuss__clip_to_visible(wuss_window_t *window,
 
   ctx.e = window->wuss->z_order.next;
 
-  return carve_by_cuts(box, n, zorder_get_cut, &ctx, out);
+  return carve_by_cuts(box, n, zorder_get_cut, &ctx, out, 0);
 }
 
 /* Subtract each of "cuts" (an array of "ncuts" boxes) from "whole", writing
@@ -199,9 +214,11 @@ int wuss__clip_to_visible(wuss_window_t *window,
 int wuss__subtract_boxes(const box_t *whole,
                          const box_t *cuts,
                          int          ncuts,
-                         box_t       *out)
+                         box_t       *out,
+                         int          overpaint_safe)
 {
-  return carve_by_cuts(whole, ncuts, array_get_cut, (void *) cuts, out);
+  return carve_by_cuts(whole, ncuts, array_get_cut, (void *) cuts, out,
+                       overpaint_safe);
 }
 
 int wuss__filter_settled(box_t       *clean,
@@ -221,7 +238,7 @@ int wuss__filter_settled(box_t       *clean,
     box_t piece[WUSS_MAX_INVALIDATE_PIECES];
     int   npiece, s;
 
-    npiece = wuss__subtract_boxes(&clean[c], stale, nstale, piece);
+    npiece = wuss__subtract_boxes(&clean[c], stale, nstale, piece, 0);
     for (s = 0; s < npiece && nsettled < WUSS_MAX_INVALIDATE_PIECES; s++)
       settled[nsettled++] = piece[s];
   }
@@ -423,7 +440,8 @@ void wuss__invalidate_uncovered(wuss_window_t *window)
   int   nvisible, nhidden, i;
 
   nvisible = wuss__clip_to_visible(window, &window->visible, visible);
-  nhidden  = wuss__subtract_boxes(&window->visible, visible, nvisible, hidden);
+  nhidden  = wuss__subtract_boxes(&window->visible, visible, nvisible, hidden,
+                                  1);
 
   for (i = 0; i < nhidden; i++)
     wuss_invalidate(window->wuss, &hidden[i]);
