@@ -275,7 +275,7 @@ static result_t image_open_menu(image_task_t *ic)
   /* '!Dithering' pulls ic->dithering directly, so the row's tick already
    * matches live state -- no separate wuss_menu_open_ticked pass needed. */
   rc = wuss_menu_create_from_desc(&m,
-         "Image, Info, Open, !Dithering, Background, |Quit",
+         "Image, Info, !Dithering, Background, |Quit",
          ic->dithering);
   if (rc != result_OK)
     return rc;
@@ -366,14 +366,14 @@ result_t image_handle(wuss_window_t      *window,
     index = event->data.menu_select.index;
     printf("image menu: picked \"%s\"\n",
            menu->items[index].text ? menu->items[index].text : "(sep)");
-    if (index == 2) {
+    if (index == 1) {
       ic->dithering = !ic->dithering;
       wuss_window_invalidate_visible(ic->window);
     }
     if (!wuss_menu_should_keep_open(event))
       ic->menu_handle = NULL; /* SELECT pick already freed the chain */
-    else if (index == 2)
-      wuss_menu_tick_item_live(ic->menu_handle, ic->menu, 2, ic->dithering);
+    else if (index == 1)
+      wuss_menu_tick_item_live(ic->menu_handle, ic->menu, 1, ic->dithering);
     return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
