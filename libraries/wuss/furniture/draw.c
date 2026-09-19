@@ -134,9 +134,12 @@ static void draw_title(wuss_t        *wuss,
 
   /* filled titlebar first, so the relief pass's transparent background
    * shows the fill rather than punching through to whatever was under the
-   * slot before this redraw */
+   * slot before this redraw. Stops above the bottom divider rule (already
+   * painted as its own cached piece, see furniture/layout.c) so the fill
+   * doesn't cover it back over. */
   screen_fill_rect(wuss->scr, text_x0, titlebar->y0,
-                   SIZE2D(text_x1 - text_x0, titlebar->y1 - titlebar->y0),
+                   SIZE2D(text_x1 - text_x0,
+                          titlebar->y1 - titlebar->y0 - WUSS_DIVIDER_PX),
                    wuss->palette[wuss->furniture_colours.title.bg]);
 
   bmfont_draw_relief(titlefont, wuss->scr, window->title, titlelen,
