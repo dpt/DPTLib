@@ -170,7 +170,7 @@ static result_t test_padding(void)
   static const stack_item_t items[N] =
   {
     [ROOT] = { .kind = stack_KIND_HBOX, .parent = -1,
-               .pad_l = 5, .pad_t = 6, .pad_r = 7, .pad_b = 8 },
+               .pad = { 6, 7, 8, 5 } },
     [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1,
                .align = stack_ALIGN_FILL },
   };
@@ -468,7 +468,7 @@ static result_t test_measure_min(void)
   static const stack_item_t items[N] =
   {
     [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
-               .pad_l = 2, .pad_t = 2, .pad_r = 2, .pad_b = 2 },
+               .pad = { 2, 2, 2, 2 } },
     [ROW]  = { .kind = stack_KIND_HBOX, .parent = ROOT, .gap = 3 },
     [LBL]  = { .kind = stack_KIND_LEAF, .parent = ROW, .min = 20 },
     [FLD]  = { .kind = stack_KIND_LEAF, .parent = ROW, .flex = 1, .min = 15 },
@@ -516,7 +516,7 @@ static result_t test_hug(void)
   {
     [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
     [HUG]  = { .kind = stack_KIND_VBOX, .parent = ROOT, .axis_size = STACK_HUG,
-               .gap = 4, .pad_t = 2, .pad_b = 3, .align = stack_ALIGN_FILL },
+               .gap = 4, .pad = { 2, 0, 3, 0 }, .align = stack_ALIGN_FILL },
     [A]    = { .kind = stack_KIND_LEAF, .parent = HUG, .axis_size = 10 },
     [B]    = { .kind = stack_KIND_LEAF, .parent = HUG, .axis_size = 15 },
   };

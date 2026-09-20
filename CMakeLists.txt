@@ -99,6 +99,7 @@ set(PUBLIC_HEADERS
     include/framebuf/span-xbgr8888.h
     include/framebuf/span.h
     include/geom/box.h
+    include/geom/inset.h
     include/geom/layout.h
     include/geom/line.h
     include/geom/packer.h

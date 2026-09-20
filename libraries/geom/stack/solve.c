@@ -78,9 +78,9 @@ static void stack__resolve_hug(const stack_item_t *items,
   if (items[index].axis_size == STACK_HUG)
   {
     if (horiz)
-      resolved[index] = main_sum + items[index].pad_l + items[index].pad_r;
+      resolved[index] = main_sum + items[index].pad.l + items[index].pad.r;
     else
-      resolved[index] = main_sum + items[index].pad_t + items[index].pad_b;
+      resolved[index] = main_sum + items[index].pad.t + items[index].pad.b;
   }
 }
 
@@ -209,17 +209,17 @@ static void stack__place_container(const stack_item_t *items,
 
   if (horiz)
   {
-    inner_main0 = box->x0 + items[index].pad_l;
-    inner_main1 = box->x1 - items[index].pad_r;
-    cross0      = box->y0 + items[index].pad_t;
-    cross1      = box->y1 - items[index].pad_b;
+    inner_main0 = box->x0 + items[index].pad.l;
+    inner_main1 = box->x1 - items[index].pad.r;
+    cross0      = box->y0 + items[index].pad.t;
+    cross1      = box->y1 - items[index].pad.b;
   }
   else
   {
-    inner_main0 = box->y0 + items[index].pad_t;
-    inner_main1 = box->y1 - items[index].pad_b;
-    cross0      = box->x0 + items[index].pad_l;
-    cross1      = box->x1 - items[index].pad_r;
+    inner_main0 = box->y0 + items[index].pad.t;
+    inner_main1 = box->y1 - items[index].pad.b;
+    cross0      = box->x0 + items[index].pad.l;
+    cross1      = box->x1 - items[index].pad.r;
   }
 
   nchildren = 0;
