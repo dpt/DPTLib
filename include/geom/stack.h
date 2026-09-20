@@ -21,6 +21,14 @@ extern "C"
  * portability). Ample for any hand-written table. */
 #define STACK_MAX_ITEMS 64
 
+/** Special `axis_size` value for a `stack_KIND_HBOX`/`stack_KIND_VBOX` item:
+ * `stack_solve` sizes the container's main axis to the sum of its children's
+ * main-axis extents (plus gaps and padding) instead of a fixed size or flex.
+ * Not valid on the root item, on a `stack_KIND_LEAF`/`stack_KIND_SPACER`, or
+ * combined with a non-zero `flex` -- `stack_solve` rejects all three with
+ * `result_STACK_BAD_TREE`. */
+#define STACK_HUG (-1)
+
 /* ----------------------------------------------------------------------- */
 
 /** The kind of a stack item. */
