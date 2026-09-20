@@ -59,10 +59,9 @@ enum
 };
 
 /* Root layout: a "System" frame (the two option icons) above a "Backdrop"
- * frame (colour/pattern swatches). Each frame is a single stack leaf --
- * its children are hand-placed inside the solved box below, the same way
- * icons.c positions a grouping frame's contents, rather than being
- * descended from the stack tree themselves. */
+ * frame (colour/pattern swatches). Both frames are stack containers, their
+ * children descended from the stack tree and solved by stack_solve, rather
+ * than being hand-placed inside a single leaf box. */
 enum
 {
   CONFIG_ST_ROOT,
@@ -70,6 +69,11 @@ enum
   CONFIG_ST_SWAP,
   CONFIG_ST_REVERSE_SCROLL,
   CONFIG_ST_BACKDROP,
+  CONFIG_ST_FG_ROW,
+  CONFIG_ST_BG_ROW,
+  CONFIG_ST_GRID,
+  CONFIG_ST_RESULT,
+  CONFIG_ST_BUTTON,
   CONFIG_ST__LIMIT
 };
 
@@ -77,48 +81,83 @@ enum
 
 #define CONFIG_GRID_H           (CONFIG_GRID_ROWS * CONFIG_CELL)
 
-#define CONFIG_BACKDROP_H       (20 + CONFIG_CELL + wuss_STD_GAP + CONFIG_CELL + wuss_STD_GAP + CONFIG_GRID_H + wuss_STD_GAP + CONFIG_RESULT + wuss_STD_GAP + wuss_STD_SECONDARY_BUTTON_HEIGHT + 8)
-
 /* CONFIG_ST_SYSTEM is itself the container the two option icons stack
  * inside (a VBOX, not a leaf, so stack_solve descends into it): padded off
  * the frame's caption row on top and off the frame edges on the other three
- * sides, its children laid out at CONFIG_ROW pitch. The Backdrop frame's
- * contents remain hand-placed inside its solved leaf box, the same way
- * icons.c positions a grouping frame's contents. */
+ * sides, its children laid out at CONFIG_ROW pitch. CONFIG_ST_BACKDROP is
+ * likewise a VBOX -- its fg/bg swatch rows, pattern grid, result square and
+ * "Set backdrop" button are each a leaf, hugging the frame's caption row on
+ * top and its bottom edge below; none of them carry a retained icon (the
+ * swatches/grid/result are redrawn from task state via wuss_icon_plot), but
+ * their solved boxes still drive both the redraw and the click hit-test, so
+ * the two can never drift apart. */
 static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
 {
-  [CONFIG_ST_ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
-                      .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
+  [CONFIG_ST_ROOT] =
+  {
+    .kind = stack_KIND_VBOX,
+    .parent = -1,
+    .gap = wuss_STD_GAP,
+    .pad = wuss_STD_INSETS
+  },
 
   [CONFIG_ST_SYSTEM] =
   {
     .kind      = stack_KIND_VBOX,
     .parent    = CONFIG_ST_ROOT,
     .axis_size = STACK_HUG,
-    .gap       = CONFIG_ROW - 16, /* CONFIG_ROW is the option icon's outer
-                                   * pitch; the leaf itself is 16px tall, so
-                                   * this gap closes the pitch back up */
+    .gap       = 4,
     .align     = stack_ALIGN_FILL,
-    .pad       = INSET(wuss_STD_FRAME_INSET + wuss_STD_INSET,
+    .pad       = INSET(wuss_STD_FRAME_INSET + wuss_STD_INSET + 6,
                        wuss_STD_FRAME_INSET + wuss_STD_INSET,
                        wuss_STD_FRAME_INSET + wuss_STD_INSET,
                        wuss_STD_FRAME_INSET + wuss_STD_INSET),
   },
 
   [CONFIG_ST_SWAP] = STACK_LEAF(CONFIG_ST_SYSTEM,
-                                16,
+                                22,
                                 0,
                                 stack_ALIGN_FILL),
 
   [CONFIG_ST_REVERSE_SCROLL] = STACK_LEAF(CONFIG_ST_SYSTEM,
-                                          16,
+                                          22,
                                           0,
                                           stack_ALIGN_FILL),
 
-  [CONFIG_ST_BACKDROP] = STACK_LEAF(CONFIG_ST_ROOT,
-                                    CONFIG_BACKDROP_H,
-                                    0,
-                                    stack_ALIGN_FILL),
+  [CONFIG_ST_BACKDROP] =
+  {
+    .kind      = stack_KIND_VBOX,
+    .parent    = CONFIG_ST_ROOT,
+    .axis_size = STACK_HUG,
+    .gap       = wuss_STD_GAP,
+    .align     = stack_ALIGN_FILL,
+    .pad       = INSET(20, 0, 8, 0),
+  },
+
+  [CONFIG_ST_FG_ROW] = STACK_LEAF(CONFIG_ST_BACKDROP,
+                                  CONFIG_CELL,
+                                  0,
+                                  stack_ALIGN_FILL),
+
+  [CONFIG_ST_BG_ROW] = STACK_LEAF(CONFIG_ST_BACKDROP,
+                                  CONFIG_CELL,
+                                  0,
+                                  stack_ALIGN_FILL),
+
+  [CONFIG_ST_GRID] = STACK_LEAF(CONFIG_ST_BACKDROP,
+                                CONFIG_GRID_H,
+                                0,
+                                stack_ALIGN_FILL),
+
+  [CONFIG_ST_RESULT] = STACK_LEAF(CONFIG_ST_BACKDROP,
+                                  CONFIG_RESULT,
+                                  0,
+                                  stack_ALIGN_FILL),
+
+  [CONFIG_ST_BUTTON] = STACK_LEAF(CONFIG_ST_BACKDROP,
+                                  wuss_STD_SECONDARY_BUTTON_HEIGHT,
+                                  0,
+                                  stack_ALIGN_FILL),
 };
 
 /* ----------------------------------------------------------------------- */
@@ -140,33 +179,6 @@ enum
   CONFIG_ICON_SET_BACKDROP,
   CONFIG_NICONS
 };
-
-/* Backdrop-frame-relative Y of each row/block, filled once by
- * config_layout_backdrop and reused by both the redraw and the click
- * hit-test so the two can never drift apart. */
-typedef struct config_backdrop_layout
-{
-  box_t frame;   /* the Backdrop frame's own box, document space */
-  int   fg_y;
-  int   bg_y;
-  int   grid_y;
-  int   result_y;
-  int   button_y;
-  int   swatch_x; /* left edge of every swatch column and the grid */
-}
-config_backdrop_layout_t;
-
-static void config_layout_backdrop(const box_t              *frame,
-                                   config_backdrop_layout_t *out)
-{
-  out->frame    = *frame;
-  out->swatch_x = frame->x0     + CONFIG_LABEL_W;
-  out->fg_y     = frame->y0     + 20;
-  out->bg_y     = out->fg_y     + CONFIG_CELL   + wuss_STD_GAP;
-  out->grid_y   = out->bg_y     + CONFIG_CELL   + wuss_STD_GAP;
-  out->result_y = out->grid_y   + CONFIG_GRID_H + wuss_STD_GAP;
-  out->button_y = out->result_y + CONFIG_RESULT + wuss_STD_GAP;
-}
 
 /* The pattern shown in grid cell i, 0 <= i < CONFIG_NPATTERNS: the named
  * hatches first, then the full Bayer run (EMPTY, dither levels 1..63,
@@ -199,17 +211,17 @@ static void config_grid_cell(int i, int *col, int *row)
 
 result_t config_create(wuss_t *wuss, config_task_t **out)
 {
-  result_t                 rc;
-  config_task_t           *task;
-  wuss_task_t             *delegate;
-  wuss_task_desc_t         delegate_desc;
-  box_t                    boxes[CONFIG_ST__LIMIT];
-  box_t                    root;
-  config_backdrop_layout_t lay;
-  wuss_icon_spec_t         specs[CONFIG_NICONS];
-  wuss_icon_t             *made[CONFIG_NICONS];
-  size2d_t                 doc;
-  size2d_t                 min_sz;
+  result_t         rc;
+  config_task_t   *task;
+  wuss_task_t     *delegate;
+  wuss_task_desc_t delegate_desc;
+  box_t            boxes[CONFIG_ST__LIMIT];
+  box_t            root;
+  box_t            backdrop_frame;
+  wuss_icon_spec_t specs[CONFIG_NICONS];
+  wuss_icon_t     *made[CONFIG_NICONS];
+  size2d_t         doc;
+  size2d_t         min_sz;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -257,35 +269,40 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   if (rc != result_OK)
     goto fail_delegate;
 
-  task->backdrop_frame = boxes[CONFIG_ST_BACKDROP];
-  config_layout_backdrop(&task->backdrop_frame, &lay);
+  backdrop_frame  = boxes[CONFIG_ST_BACKDROP];
+  task->swatch_x  = backdrop_frame.x0 + CONFIG_LABEL_W;
+  task->fg_y      = boxes[CONFIG_ST_FG_ROW].y0;
+  task->bg_y      = boxes[CONFIG_ST_BG_ROW].y0;
+  task->grid_y    = boxes[CONFIG_ST_GRID].y0;
+  task->result_y  = boxes[CONFIG_ST_RESULT].y0;
 
   memset(specs, 0, sizeof(specs));
 
   wuss_icon_spec_frame(&specs[CONFIG_ICON_SYSTEM_FRAME],
                        boxes[CONFIG_ST_SYSTEM], "System");
 
-  wuss_icon_spec_frame(&specs[CONFIG_ICON_BACKDROP_FRAME], lay.frame,
+  wuss_icon_spec_frame(&specs[CONFIG_ICON_BACKDROP_FRAME], backdrop_frame,
                        "Backdrop");
 
   wuss_icon_spec_label(&specs[CONFIG_ICON_FG_LABEL],
-                       (box_t) BOX_POS_SIZE(lay.frame.x0 + wuss_STD_INSET,
-                                            lay.fg_y, CONFIG_LABEL_W - wuss_STD_INSET,
+                       (box_t) BOX_POS_SIZE(backdrop_frame.x0 + wuss_STD_INSET,
+                                            task->fg_y, CONFIG_LABEL_W - wuss_STD_INSET,
                                             CONFIG_CELL),
                        "Foreground", 0);
   wuss_icon_spec_label(&specs[CONFIG_ICON_BG_LABEL],
-                       (box_t) BOX_POS_SIZE(lay.frame.x0 + wuss_STD_INSET,
-                                            lay.bg_y, CONFIG_LABEL_W - wuss_STD_INSET,
+                       (box_t) BOX_POS_SIZE(backdrop_frame.x0 + wuss_STD_INSET,
+                                            task->bg_y, CONFIG_LABEL_W - wuss_STD_INSET,
                                             CONFIG_CELL),
                        "Background", 0);
   wuss_icon_spec_label(&specs[CONFIG_ICON_PATTERNS_LABEL],
-                       (box_t) BOX_POS_SIZE(lay.frame.x0 + wuss_STD_INSET,
-                                            lay.grid_y, CONFIG_LABEL_W - wuss_STD_INSET,
+                       (box_t) BOX_POS_SIZE(backdrop_frame.x0 + wuss_STD_INSET,
+                                            task->grid_y, CONFIG_LABEL_W - wuss_STD_INSET,
                                             CONFIG_CELL),
                        "Patterns", 0);
 
   wuss_icon_spec_action(&specs[CONFIG_ICON_SET_BACKDROP],
-                        (box_t) BOX_POS_SIZE(lay.swatch_x, lay.button_y,
+                        (box_t) BOX_POS_SIZE(task->swatch_x,
+                                             boxes[CONFIG_ST_BUTTON].y0,
                                              CONFIG_GRID_COLS * CONFIG_CELL,
                                              wuss_STD_SECONDARY_BUTTON_HEIGHT),
                         "Set backdrop", 0);
@@ -391,14 +408,11 @@ static result_t config_plot_swatch(wuss_window_t *window,
  * redraws. */
 static result_t config_redraw(config_task_t *task, const wuss_event_t *event)
 {
-  result_t                 rc;
-  config_backdrop_layout_t lay;
-  wuss_icon_spec_t         spec;
-  const box_t             *bounds;
-  point_t                  scroll;
-  int                      col, i;
-
-  config_layout_backdrop(&task->backdrop_frame, &lay);
+  result_t         rc;
+  wuss_icon_spec_t spec;
+  const box_t     *bounds;
+  point_t          scroll;
+  int              col, i;
 
   bounds = event->data.redraw.bounds;
   scroll = event->data.redraw.scroll;
@@ -409,8 +423,8 @@ static result_t config_redraw(config_task_t *task, const wuss_event_t *event)
   for (col = 0; col < CONFIG_NCOLOURS; col++)
   {
     rc = config_plot_swatch(task->window,
-                            lay.swatch_x + col * CONFIG_CELL,
-                            lay.fg_y,
+                            task->swatch_x + col * CONFIG_CELL,
+                            task->fg_y,
                             (wuss_colour_t) col, col == task->fg,
                             bounds,
                             scroll);
@@ -418,8 +432,8 @@ static result_t config_redraw(config_task_t *task, const wuss_event_t *event)
       return rc;
 
     rc = config_plot_swatch(task->window,
-                            lay.swatch_x + col * CONFIG_CELL,
-                            lay.bg_y,
+                            task->swatch_x + col * CONFIG_CELL,
+                            task->bg_y,
                             (wuss_colour_t) col, col == task->bg,
                             bounds,
                             scroll);
@@ -435,8 +449,8 @@ static result_t config_redraw(config_task_t *task, const wuss_event_t *event)
     int row, gcol;
 
     config_grid_cell(i, &gcol, &row);
-    spec.bbox = (box_t) BOX_POS_SIZE(lay.swatch_x + gcol * CONFIG_CELL,
-                                     lay.grid_y   + row  * CONFIG_CELL,
+    spec.bbox = (box_t) BOX_POS_SIZE(task->swatch_x + gcol * CONFIG_CELL,
+                                     task->grid_y   + row  * CONFIG_CELL,
                                      CONFIG_CELL, CONFIG_CELL);
     spec.u.pattern.tile = config_grid_pattern(i);
 
@@ -445,7 +459,7 @@ static result_t config_redraw(config_task_t *task, const wuss_event_t *event)
       return rc;
   }
 
-  spec.bbox = (box_t) BOX_POS_SIZE(lay.swatch_x, lay.result_y,
+  spec.bbox = (box_t) BOX_POS_SIZE(task->swatch_x, task->result_y,
                                    CONFIG_RESULT, CONFIG_RESULT);
   spec.u.pattern.tile = task->pattern;
   rc = wuss_icon_plot(task->window, &spec, bounds, scroll);
@@ -487,27 +501,24 @@ static result_t config_icon(const wuss_event_t *event, void *task_data)
  * outside every swatch fall through untouched. */
 static result_t config_click(config_task_t *task, const wuss_event_t *event)
 {
-  config_backdrop_layout_t lay;
-  point_t                  pt;
-  int                      col, row;
-
-  config_layout_backdrop(&task->backdrop_frame, &lay);
+  point_t pt;
+  int     col, row;
 
   pt  = event->data.mouse.point;
-  col = (pt.x - lay.swatch_x) / CONFIG_CELL;
+  col = (pt.x - task->swatch_x) / CONFIG_CELL;
 
-  if (pt.x < lay.swatch_x || col >= CONFIG_NCOLOURS)
+  if (pt.x < task->swatch_x || col >= CONFIG_NCOLOURS)
     return result_OK;
 
-  if (pt.y >= lay.fg_y && pt.y < lay.fg_y + CONFIG_CELL)
+  if (pt.y >= task->fg_y && pt.y < task->fg_y + CONFIG_CELL)
     task->fg = (wuss_colour_t) col;
-  else if (pt.y >= lay.bg_y && pt.y < lay.bg_y + CONFIG_CELL)
+  else if (pt.y >= task->bg_y && pt.y < task->bg_y + CONFIG_CELL)
     task->bg = (wuss_colour_t) col;
-  else if (pt.y >= lay.grid_y && pt.y < lay.grid_y + CONFIG_GRID_H)
+  else if (pt.y >= task->grid_y && pt.y < task->grid_y + CONFIG_GRID_H)
   {
     int i;
 
-    row = (pt.y - lay.grid_y) / CONFIG_CELL;
+    row = (pt.y - task->grid_y) / CONFIG_CELL;
     for (i = 0; i < CONFIG_NPATTERNS; i++)
     {
       int gcol, grow;

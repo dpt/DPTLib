@@ -32,11 +32,15 @@ typedef struct config_task
   wuss_window_t      *window;
   wuss_icon_t         *swap_icon;
   wuss_icon_t         *reverse_scroll_icon;
-  box_t                backdrop_frame; /* the "Backdrop" frame's box,
-                                        * document space; set once by
-                                        * config_create, read by
-                                        * config_layout_backdrop so redraw
-                                        * and click hit-testing always agree */
+  int                  swatch_x;    /* left edge of every swatch column and
+                                     * the grid, document space; set once by
+                                     * config_create, read by redraw and
+                                     * click hit-testing so the two always
+                                     * agree */
+  int                  fg_y;
+  int                  bg_y;
+  int                  grid_y;
+  int                  result_y;
   wuss_colour_t        fg;      /* selected foreground swatch (palette
                                  * index); also the result's ink */
   wuss_colour_t        bg;      /* selected background swatch (palette
