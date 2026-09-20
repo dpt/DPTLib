@@ -79,9 +79,6 @@ enum
 
 #define CONFIG_BACKDROP_H       (20 + CONFIG_CELL + wuss_STD_GAP + CONFIG_CELL + wuss_STD_GAP + CONFIG_GRID_H + wuss_STD_GAP + CONFIG_RESULT + wuss_STD_GAP + wuss_STD_SECONDARY_BUTTON_HEIGHT + 8)
 
-#define CONFIG_FRAME_WIDTH      4 /* px; frame icon's border thickness */
-#define CONFIG_FRAME_TOP        4 /* px; frame icon's caption row height */
-
 /* CONFIG_ST_SYSTEM is itself the container the two option icons stack
  * inside (a VBOX, not a leaf, so stack_solve descends into it): padded off
  * the frame's caption row on top and off the frame edges on the other three
@@ -107,10 +104,10 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
                                    * pitch; the leaf itself is 16px tall, so
                                    * this gap closes the pitch back up */
     .align     = stack_ALIGN_FILL,
-    .pad_l     = CONFIG_FRAME_WIDTH + wuss_STD_INSET,
-    .pad_t     = CONFIG_FRAME_TOP   + wuss_STD_INSET,
-    .pad_r     = CONFIG_FRAME_WIDTH + wuss_STD_INSET,
-    .pad_b     = CONFIG_FRAME_WIDTH + wuss_STD_INSET,
+    .pad_l     = wuss_STD_FRAME_INSET + wuss_STD_INSET,
+    .pad_t     = wuss_STD_FRAME_INSET + wuss_STD_INSET,
+    .pad_r     = wuss_STD_FRAME_INSET + wuss_STD_INSET,
+    .pad_b     = wuss_STD_FRAME_INSET + wuss_STD_INSET,
   },
 
   [CONFIG_ST_SWAP] = STACK_LEAF(CONFIG_ST_SYSTEM,
