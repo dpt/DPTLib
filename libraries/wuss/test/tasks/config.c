@@ -24,14 +24,13 @@
 
 /* ----------------------------------------------------------------------- */
 
-#define CONFIG_ROW        20  /* px; System frame's option-icon row pitch */
+#define CONFIG_ROW        22  /* px; System frame's option-icon row pitch */
 
 /* Backdrop swatches: colour/pattern cells are 22px square, butted together
  * (no pitch) as in swatches.c; the result swatch is double that. */
 #define CONFIG_CELL       22
 #define CONFIG_RESULT     (CONFIG_CELL * 2)
-#define CONFIG_NCOLOURS   16 /* see swatches.c's SWATCHES_NCOLOURS ponytail
-                              * note: same hardcoded system-palette size */
+#define CONFIG_NCOLOURS   wuss_SYSTEM_PALETTE_LENGTH
 #define CONFIG_GRID_COLS  CONFIG_NCOLOURS /* patterns grid is no wider than
                                            * the colour rows, so all three
                                            * line up */
@@ -48,41 +47,88 @@
 #define CONFIG_BAYER_ROWS ((CONFIG_NBAYER + CONFIG_GRID_COLS - 1) / CONFIG_GRID_COLS)
 #define CONFIG_GRID_ROWS  (CONFIG_HATCH_ROWS + CONFIG_BAYER_ROWS)
 
-#define CONFIG_LABEL_W    70 /* px; enough for "Background" at 6px/char */
+#define CONFIG_LABEL_W    (10 * 6) /* px; enough for "Background" at 6px/char */
 
 /* MENU click pops this single-item menu; the item table and wuss_menu_t live
  * per-instance in config_task_t, not as a file-scope static, so that each
  * window's Info row can hold its own .window pointer to the shared proginfo
  * singleton, retargeted just before wuss_menu_open */
-enum { CONFIG_MENU_INFO };
+enum
+{
+  CONFIG_MENU_INFO
+};
 
 /* Root layout: a "System" frame (the two option icons) above a "Backdrop"
  * frame (colour/pattern swatches). Each frame is a single stack leaf --
  * its children are hand-placed inside the solved box below, the same way
  * icons.c positions a grouping frame's contents, rather than being
  * descended from the stack tree themselves. */
-enum { CONFIG_ST_ROOT, CONFIG_ST_SYSTEM, CONFIG_ST_BACKDROP, CONFIG_ST__LIMIT };
-
-#define CONFIG_SYSTEM_H   (20 + CONFIG_ROW * 2 + 8) /* caption + 2 rows + pad */
-#define CONFIG_GRID_H     (CONFIG_GRID_ROWS * CONFIG_CELL)
-#define CONFIG_BACKDROP_H (20 + CONFIG_CELL + wuss_STD_GAP + CONFIG_CELL + \
-                          wuss_STD_GAP + CONFIG_GRID_H + wuss_STD_GAP + \
-                          CONFIG_RESULT + wuss_STD_GAP + \
-                          wuss_STD_SECONDARY_BUTTON_HEIGHT + 8)
-
-static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
+enum
 {
-  [CONFIG_ST_ROOT]     = STACK_VBOX_EX(-1, 0, wuss_STD_GAP,
-                                       wuss_STD_INSET, wuss_STD_INSET,
-                                       wuss_STD_INSET, wuss_STD_INSET),
-  [CONFIG_ST_SYSTEM]   = STACK_LEAF(CONFIG_ST_ROOT, CONFIG_SYSTEM_H, 0,
-                                    stack_ALIGN_FILL),
-  [CONFIG_ST_BACKDROP] = STACK_LEAF(CONFIG_ST_ROOT, CONFIG_BACKDROP_H, 0,
-                                    stack_ALIGN_FILL),
+  CONFIG_ST_ROOT,
+  CONFIG_ST_SYSTEM,
+  CONFIG_ST_SWAP,
+  CONFIG_ST_REVERSE_SCROLL,
+  CONFIG_ST_BACKDROP,
+  CONFIG_ST__LIMIT
 };
 
-#define CONFIG_DOC_W (wuss_STD_INSET * 2 + CONFIG_LABEL_W + \
-                     CONFIG_GRID_COLS * CONFIG_CELL)
+#define CONFIG_DOC_W            (wuss_STD_INSET * 4 + CONFIG_LABEL_W + CONFIG_GRID_COLS * CONFIG_CELL)
+
+#define CONFIG_GRID_H           (CONFIG_GRID_ROWS * CONFIG_CELL)
+
+#define CONFIG_BACKDROP_H       (20 + CONFIG_CELL + wuss_STD_GAP + CONFIG_CELL + wuss_STD_GAP + CONFIG_GRID_H + wuss_STD_GAP + CONFIG_RESULT + wuss_STD_GAP + wuss_STD_SECONDARY_BUTTON_HEIGHT + 8)
+
+#define CONFIG_FRAME_WIDTH      4 /* px; frame icon's border thickness */
+#define CONFIG_FRAME_TOP        4 /* px; frame icon's caption row height */
+#define CONFIG_SYSTEM_H         122 /* px; caption + 2 option rows + pad,
+                                     * tuned to match the frame icon's own
+                                     * caption/border metrics */
+
+/* CONFIG_ST_SYSTEM is itself the container the two option icons stack
+ * inside (a VBOX, not a leaf, so stack_solve descends into it): padded off
+ * the frame's caption row on top and off the frame edges on the other three
+ * sides, its children laid out at CONFIG_ROW pitch. The Backdrop frame's
+ * contents remain hand-placed inside its solved leaf box, the same way
+ * icons.c positions a grouping frame's contents. */
+static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
+{
+  [CONFIG_ST_ROOT] = STACK_VBOX_EX(-1,
+                                   0,
+                                   wuss_STD_GAP,
+                                   wuss_STD_INSET,
+                                   wuss_STD_INSET,
+                                   wuss_STD_INSET,
+                                   wuss_STD_INSET),
+
+  [CONFIG_ST_SYSTEM] =
+  {
+    .kind      = stack_KIND_VBOX,
+    .parent    = CONFIG_ST_ROOT,
+    .axis_size = CONFIG_SYSTEM_H,
+    .gap       = CONFIG_ROW - 16, /* CONFIG_ROW is the option icon's outer
+                                   * pitch; the leaf itself is 16px tall, so
+                                   * this gap closes the pitch back up */
+    .align     = stack_ALIGN_FILL,
+    .pad_l     = CONFIG_FRAME_WIDTH + wuss_STD_INSET,
+    .pad_t     = CONFIG_FRAME_TOP   + wuss_STD_INSET,
+  },
+
+  [CONFIG_ST_SWAP] = STACK_LEAF(CONFIG_ST_SYSTEM,
+                                16,
+                                0,
+                                stack_ALIGN_FILL),
+
+  [CONFIG_ST_REVERSE_SCROLL] = STACK_LEAF(CONFIG_ST_SYSTEM,
+                                          16,
+                                          0,
+                                          stack_ALIGN_FILL),
+
+  [CONFIG_ST_BACKDROP] = STACK_LEAF(CONFIG_ST_ROOT,
+                                    CONFIG_BACKDROP_H,
+                                    0,
+                                    stack_ALIGN_FILL),
+};
 
 /* ----------------------------------------------------------------------- */
 
@@ -173,7 +219,6 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   wuss_icon_t             *made[CONFIG_NICONS];
   size2d_t                 doc;
   size2d_t                 min_sz;
-  int                      y;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -199,6 +244,7 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   rc = stack_smallest(g_config_stack, NELEMS(g_config_stack), &min_sz);
   if (rc != result_OK)
     goto fail_delegate;
+
   doc = SIZE2D(CONFIG_DOC_W, min_sz.h);
 
   rc = wuss_window_create_placed(delegate,
@@ -225,17 +271,11 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
 
   memset(specs, 0, sizeof(specs));
 
-  specs[CONFIG_ICON_SYSTEM_FRAME].bbox = boxes[CONFIG_ST_SYSTEM];
-  specs[CONFIG_ICON_SYSTEM_FRAME].type = wuss_ICON_TYPE_FRAME;
-  specs[CONFIG_ICON_SYSTEM_FRAME].text = "System";
-  specs[CONFIG_ICON_SYSTEM_FRAME].fg   = wuss_COLOUR_BLACK;
-  specs[CONFIG_ICON_SYSTEM_FRAME].bg   = wuss_NO_BACKGROUND;
+  wuss_icon_spec_frame(&specs[CONFIG_ICON_SYSTEM_FRAME],
+                       boxes[CONFIG_ST_SYSTEM], "System");
 
-  specs[CONFIG_ICON_BACKDROP_FRAME].bbox = lay.frame;
-  specs[CONFIG_ICON_BACKDROP_FRAME].type = wuss_ICON_TYPE_FRAME;
-  specs[CONFIG_ICON_BACKDROP_FRAME].text = "Backdrop";
-  specs[CONFIG_ICON_BACKDROP_FRAME].fg   = wuss_COLOUR_BLACK;
-  specs[CONFIG_ICON_BACKDROP_FRAME].bg   = wuss_NO_BACKGROUND;
+  wuss_icon_spec_frame(&specs[CONFIG_ICON_BACKDROP_FRAME], lay.frame,
+                       "Backdrop");
 
   wuss_icon_spec_label(&specs[CONFIG_ICON_FG_LABEL],
                        (box_t) BOX_POS_SIZE(lay.frame.x0 + wuss_STD_INSET,
@@ -259,8 +299,6 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
                                              wuss_STD_SECONDARY_BUTTON_HEIGHT),
                         "Set backdrop", 0);
 
-  y = boxes[CONFIG_ST_SYSTEM].y0 + 20;
-
   rc = wuss_icon_create_array(task->window, specs, CONFIG_NICONS, made);
   if (rc != result_OK)
     goto fail_delegate;
@@ -270,31 +308,21 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   {
     wuss_icon_spec_t spec;
 
-    memset(&spec, 0, sizeof(spec));
-    spec.bbox = (box_t) BOX_POS_SIZE(boxes[CONFIG_ST_SYSTEM].x0 + wuss_STD_INSET,
-                                     y,
-                                     box_size(&boxes[CONFIG_ST_SYSTEM]).w - 2 * wuss_STD_INSET,
-                                     16);
-    spec.type = wuss_ICON_TYPE_OPTION;
-    spec.text = "Swap right/middle mouse buttons";
-    spec.fg   = wuss_COLOUR_BLACK;
-    spec.bg   = wuss_NO_BACKGROUND;
-
+    wuss_icon_spec_option(&spec, boxes[CONFIG_ST_SWAP],
+                          "Swap right/middle mouse buttons");
     rc = wuss_icon_create(task->window, &spec, &task->swap_icon);
     if (rc != result_OK)
       goto fail_delegate;
+
     wuss_icon_set_selected(task->window, task->swap_icon,
                            g_tasks.swap_mouse_buttons);
 
-    spec.bbox = (box_t) BOX_POS_SIZE(boxes[CONFIG_ST_SYSTEM].x0 + wuss_STD_INSET,
-                                     y + CONFIG_ROW,
-                                     box_size(&boxes[CONFIG_ST_SYSTEM]).w - 2 * wuss_STD_INSET,
-                                     16);
-    spec.text = "Reverse mouse scroll direction";
-
+    wuss_icon_spec_option(&spec, boxes[CONFIG_ST_REVERSE_SCROLL],
+                          "Reverse mouse scroll direction");
     rc = wuss_icon_create(task->window, &spec, &task->reverse_scroll_icon);
     if (rc != result_OK)
       goto fail_delegate;
+
     wuss_icon_set_selected(task->window, task->reverse_scroll_icon,
                            g_tasks.reverse_scroll);
   }
@@ -324,8 +352,7 @@ fail_delegate:
 
 void config_destroy(config_task_t *task)
 {
-  if (task->menu_handle != NULL)
-    wuss_menu_close(task->menu_handle);
+  wuss_menu_close(task->menu_handle);
   free(task);
 }
 
@@ -390,28 +417,35 @@ static result_t config_redraw(config_task_t *task, const wuss_event_t *event)
 
   for (col = 0; col < CONFIG_NCOLOURS; col++)
   {
-    rc = config_plot_swatch(task->window, lay.swatch_x + col * CONFIG_CELL,
-                            lay.fg_y, (wuss_colour_t) col, col == task->fg,
-                            bounds, scroll);
+    rc = config_plot_swatch(task->window,
+                            lay.swatch_x + col * CONFIG_CELL,
+                            lay.fg_y,
+                            (wuss_colour_t) col, col == task->fg,
+                            bounds,
+                            scroll);
     if (rc != result_OK)
       return rc;
 
-    rc = config_plot_swatch(task->window, lay.swatch_x + col * CONFIG_CELL,
-                            lay.bg_y, (wuss_colour_t) col, col == task->bg,
-                            bounds, scroll);
+    rc = config_plot_swatch(task->window,
+                            lay.swatch_x + col * CONFIG_CELL,
+                            lay.bg_y,
+                            (wuss_colour_t) col, col == task->bg,
+                            bounds,
+                            scroll);
     if (rc != result_OK)
       return rc;
   }
 
   spec.fg = task->fg;
   spec.bg = task->bg;
+
   for (i = 0; i < CONFIG_NPATTERNS; i++)
   {
     int row, gcol;
 
     config_grid_cell(i, &gcol, &row);
     spec.bbox = (box_t) BOX_POS_SIZE(lay.swatch_x + gcol * CONFIG_CELL,
-                                     lay.grid_y + row * CONFIG_CELL,
+                                     lay.grid_y   + row  * CONFIG_CELL,
                                      CONFIG_CELL, CONFIG_CELL);
     spec.u.pattern.tile = config_grid_pattern(i);
 
@@ -442,9 +476,9 @@ static result_t config_icon(const wuss_event_t *event, void *task_data)
     return result_OK;
 
   if (icon == cc->swap_icon)
-    g_tasks.swap_mouse_buttons = wuss_icon_get_selected(icon) ? true : false;
+    g_tasks.swap_mouse_buttons = !!wuss_icon_get_selected(icon);
   else if (icon == cc->reverse_scroll_icon)
-    g_tasks.reverse_scroll = wuss_icon_get_selected(icon) ? true : false;
+    g_tasks.reverse_scroll = !!wuss_icon_get_selected(icon);
   else if (icon == cc->set_backdrop_icon)
   {
     wuss_backdrop_t backdrop;
@@ -522,17 +556,20 @@ result_t config_handle(wuss_window_t      *window,
     if (window != cc->window)
       return result_OK; /* the proginfo dialogue has no click behaviour of
                          * its own */
+
     if (event->data.mouse.action == wuss_MOUSE_DOWN &&
         (event->data.mouse.button & wuss_BUTTON_SELECT))
       return config_click(cc, event);
+
     if (event->data.mouse.action != wuss_MOUSE_DOWN ||
         !(event->data.mouse.button & wuss_BUTTON_MENU))
       return result_OK;
+
     {
       static const wuss_proginfo_desc_t desc =
       {
         "Configure",
-        "Startup settings: buttons, scroll, backdrop",
+        "System settings",
         "(c) DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };

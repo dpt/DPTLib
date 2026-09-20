@@ -21,16 +21,16 @@ Keyboard input
 
 Large fonts for titles, italic font, ...
 
-SDL? Random mouse focus issue that stops us receiving initial clicks.
+SDL bug? Random mouse focus issue that stops us receiving initial clicks.
 
-Add Configure app
-
-closest_palette_entry getting hammered
+closest_palette_entry getting hammered?
 
 Allow a build with no apps installed
 
+Menus which could have ticks AND colour swatches
 
-
+formatting: Ensure spaces afer return statements/blocks
+formatting: Balanced braces rule
 
 LAYER 0 - BUGS (fix before building on top)
 
