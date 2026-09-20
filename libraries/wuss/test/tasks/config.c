@@ -87,13 +87,8 @@ enum
  * icons.c positions a grouping frame's contents. */
 static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
 {
-  [CONFIG_ST_ROOT] = STACK_VBOX_EX(-1,
-                                   0,
-                                   wuss_STD_GAP,
-                                   wuss_STD_INSET,
-                                   wuss_STD_INSET,
-                                   wuss_STD_INSET,
-                                   wuss_STD_INSET),
+  [CONFIG_ST_ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
+                      .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
 
   [CONFIG_ST_SYSTEM] =
   {

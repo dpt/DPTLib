@@ -465,7 +465,8 @@ enum
 
 static const stack_item_t g_saturn_conf_stack[SIZE_STACK__LIMIT] =
 {
-  [ST_ROOT]  = STACK_VBOX_EX(-1, 0, wuss_STD_GAP, wuss_STD_INSET, wuss_STD_INSET, wuss_STD_INSET, wuss_STD_INSET),
+  [ST_ROOT]  = { .kind = stack_KIND_VBOX, .parent = -1,
+                .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
 
   [ST_ROW1]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
   [ST_LABL1] = STACK_LEAF(ST_ROW1, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
