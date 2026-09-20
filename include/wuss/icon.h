@@ -31,6 +31,7 @@ extern "C"
 #include "base/result.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "geom/inset.h"
 #include "geom/point.h"
 
 #include "wuss/wuss.h"
@@ -364,6 +365,10 @@ wuss_icon_spec_t;
 #define wuss_STD_GAP                     4
 /** Standard gap (px) between an icon/component and the window edge. */
 #define wuss_STD_INSET                   4
+/** wuss_STD_INSET on every edge, e.g. a stack_item_t.pad value for a
+ *  window's root item. */
+#define wuss_STD_INSETS \
+  INSET(wuss_STD_INSET, wuss_STD_INSET, wuss_STD_INSET, wuss_STD_INSET)
 /** Standard gap (px) between a wuss_ICON_TYPE_FRAME's contents and the
  *  frame's own border/caption, on every edge. */
 #define wuss_STD_FRAME_INSET             4

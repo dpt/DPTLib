@@ -719,7 +719,7 @@ void text_destroy(text_task_t *task)
   free(task);
 }
 
-#define INSET      4
+#define TEXT_INSET 4
 #define LEADING    2
 #define MAX_LINES  64 /* paragraph is short and fixed; overflow is dropped */
 
@@ -887,13 +887,13 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
 
   nlines = text__layout_lines(tcx->font,
                               tcx->text,
-                              (bounds->x1 - INSET) - (bounds->x0 + INSET),
+                              (bounds->x1 - TEXT_INSET) - (bounds->x0 + TEXT_INSET),
                               &tcx->spacing,
                               lines,
                               MAX_LINES);
 
-  origin.x = bounds->x0 - sx + INSET;
-  origin.y = bounds->y0 - sy + INSET;
+  origin.x = bounds->x0 - sx + TEXT_INSET;
+  origin.y = bounds->y0 - sy + TEXT_INSET;
 
   if (tcx->markdown_nspans > 0)
     text__draw_styled(tcx, scr, lines, nlines, fg, bg, origin);
