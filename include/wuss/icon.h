@@ -364,6 +364,9 @@ wuss_icon_spec_t;
 #define wuss_STD_GAP                     4
 /** Standard gap (px) between an icon/component and the window edge. */
 #define wuss_STD_INSET                   4
+/** Standard gap (px) between a wuss_ICON_TYPE_FRAME's contents and the
+ *  frame's own border/caption, on every edge. */
+#define wuss_STD_FRAME_INSET             4
 
 /* ----------------------------------------------------------------------- */
 
