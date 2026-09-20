@@ -22,9 +22,10 @@
 #include "palette.h"
 
 #define PALETTE_HEX_EXT     ".hex"
-#define PALETTE_NCOLOURS    16 /* one colour_t[] row per *.hex file; the
-                                * system palette wuss_create was given is
-                                * fixed at this length */
+#define PALETTE_NCOLOURS    wuss_SYSTEM_PALETTE_LENGTH /* one colour_t[] row
+                                * per *.hex file; the system palette
+                                * wuss_create was given is fixed at this
+                                * length */
 
 /* indices of the top-level menu's fixed rows */
 #define PALETTE_MENU_INFO_INDEX    0

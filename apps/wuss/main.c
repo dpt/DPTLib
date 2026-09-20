@@ -310,7 +310,7 @@ static result_t run_wuss(const char *resources,
   pixelfmt_t  fmt;
   bitmap_t    logo; /* desktop backdrop image; left unset (rc != result_OK)
                      * if resources/wuss/wuss.png fails to load */
-  colour_t palette[16]; /* the fixed-size UI palette */
+  colour_t palette[wuss_SYSTEM_PALETTE_LENGTH]; /* the fixed-size UI palette */
   colour_t scr_palette[256]; /* palette[] padded out to whatever
                                         * count the chosen depth's bitmap
                                         * needs (p8 reads all 256) */

@@ -113,6 +113,16 @@ typedef unsigned char wuss_colour_t;
 #define wuss_NO_BACKGROUND ((wuss_colour_t) -1)
 
 /**
+ * Entry count of the fixed-size UI system palette every wuss frontend loads
+ * (see palette_load_hex and apps/wuss/main.c) -- distinct from a screen
+ * bitmap's own palette, whose size follows the pixel format's depth
+ * (2/4/16/256 entries for 1/2/4/8bpp). wuss_create itself takes an arbitrary
+ * npalette and makes no assumption of this length; it is a convention of the
+ * wuss frontend/tasks, not the library core.
+ */
+#define wuss_SYSTEM_PALETTE_LENGTH 16
+
+/**
  * Symbolic wuss_colour_t values. A raw wuss_colour_t is a system-palette
  * index, 0..wuss_COLOUR_SYMBOLIC-1 (so a palette may hold up to 128 real
  * entries). Values from wuss_COLOUR_SYMBOLIC up are not palette indices but
