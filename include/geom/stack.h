@@ -10,6 +10,7 @@ extern "C"
 
 #include "base/result.h"
 #include "geom/box.h"
+#include "geom/inset.h"
 #include "geom/size.h"
 
 /* ----------------------------------------------------------------------- */
@@ -76,13 +77,7 @@ typedef struct stack_item
 
   int           gap;        /**< Containers only: px between adjacent
                                   children. */
-  int           pad_l;      /**< Containers only: inner inset, left
-                                  edge. */
-  int           pad_t;      /**< Containers only: inner inset, top edge. */
-  int           pad_r;      /**< Containers only: inner inset, right
-                                  edge. */
-  int           pad_b;      /**< Containers only: inner inset, bottom
-                                  edge. */
+  inset_t       pad;        /**< Containers only: inner inset. */
 }
 stack_item_t;
 
@@ -101,19 +96,19 @@ stack_item_t;
   { .kind = stack_KIND_VBOX, .parent = (p_), \
     .axis_size = (axis_), .gap = (gap_) }
 
-#define STACK_VBOX_EX(p_, axis_, gap_, padl_, padt_, padr_, padb_) \
+#define STACK_VBOX_EX(p_, axis_, gap_, padt_, padr_, padb_, padl_) \
   { .kind = stack_KIND_VBOX, .parent = (p_), \
     .axis_size = (axis_), .gap = (gap_), \
-    .pad_l = (padl_), .pad_t = (padt_), .pad_r = (padr_), .pad_b = (padb_) }
+    .pad = INSET((padt_), (padr_), (padb_), (padl_)) }
 
 #define STACK_HBOX(p_, axis_, gap_, align_) \
   { .kind = stack_KIND_HBOX, .parent = (p_), \
     .axis_size = (axis_), .gap = (gap_), .align = (align_) }
 
-#define STACK_HBOX_EX(p_, axis_, gap_, align_, padl_, padt_, padr_, padb_) \
+#define STACK_HBOX_EX(p_, axis_, gap_, align_, padt_, padr_, padb_, padl_) \
   { .kind = stack_KIND_HBOX, .parent = (p_), \
     .axis_size = (axis_), .gap = (gap_), .align = (align_), \
-    .pad_l = (padl_), .pad_t = (padt_), .pad_r = (padr_), .pad_b = (padb_) }
+    .pad = INSET((padt_), (padr_), (padb_), (padl_)) }
 
 #define STACK_LEAF(p_, axis_, cross_, align_) \
   { .kind = stack_KIND_LEAF, .parent = (p_), \

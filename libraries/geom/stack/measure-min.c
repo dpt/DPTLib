@@ -62,13 +62,13 @@ static void stack__measure(const stack_item_t *items,
 
   if (horiz)
   {
-    mins[index].w = main_min  + items[index].pad_l + items[index].pad_r;
-    mins[index].h = cross_min + items[index].pad_t + items[index].pad_b;
+    mins[index].w = main_min  + items[index].pad.l + items[index].pad.r;
+    mins[index].h = cross_min + items[index].pad.t + items[index].pad.b;
   }
   else
   {
-    mins[index].w = cross_min + items[index].pad_l + items[index].pad_r;
-    mins[index].h = main_min  + items[index].pad_t + items[index].pad_b;
+    mins[index].w = cross_min + items[index].pad.l + items[index].pad.r;
+    mins[index].h = main_min  + items[index].pad.t + items[index].pad.b;
   }
 }
 

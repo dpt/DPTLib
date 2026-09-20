@@ -104,10 +104,10 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
                                    * pitch; the leaf itself is 16px tall, so
                                    * this gap closes the pitch back up */
     .align     = stack_ALIGN_FILL,
-    .pad_l     = wuss_STD_FRAME_INSET + wuss_STD_INSET,
-    .pad_t     = wuss_STD_FRAME_INSET + wuss_STD_INSET,
-    .pad_r     = wuss_STD_FRAME_INSET + wuss_STD_INSET,
-    .pad_b     = wuss_STD_FRAME_INSET + wuss_STD_INSET,
+    .pad       = INSET(wuss_STD_FRAME_INSET + wuss_STD_INSET,
+                       wuss_STD_FRAME_INSET + wuss_STD_INSET,
+                       wuss_STD_FRAME_INSET + wuss_STD_INSET,
+                       wuss_STD_FRAME_INSET + wuss_STD_INSET),
   },
 
   [CONFIG_ST_SWAP] = STACK_LEAF(CONFIG_ST_SYSTEM,
