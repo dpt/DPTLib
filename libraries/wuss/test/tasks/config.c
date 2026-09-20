@@ -81,9 +81,6 @@ enum
 
 #define CONFIG_FRAME_WIDTH      4 /* px; frame icon's border thickness */
 #define CONFIG_FRAME_TOP        4 /* px; frame icon's caption row height */
-#define CONFIG_SYSTEM_H         122 /* px; caption + 2 option rows + pad,
-                                     * tuned to match the frame icon's own
-                                     * caption/border metrics */
 
 /* CONFIG_ST_SYSTEM is itself the container the two option icons stack
  * inside (a VBOX, not a leaf, so stack_solve descends into it): padded off
@@ -105,13 +102,15 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
   {
     .kind      = stack_KIND_VBOX,
     .parent    = CONFIG_ST_ROOT,
-    .axis_size = CONFIG_SYSTEM_H,
+    .axis_size = STACK_HUG,
     .gap       = CONFIG_ROW - 16, /* CONFIG_ROW is the option icon's outer
                                    * pitch; the leaf itself is 16px tall, so
                                    * this gap closes the pitch back up */
     .align     = stack_ALIGN_FILL,
     .pad_l     = CONFIG_FRAME_WIDTH + wuss_STD_INSET,
     .pad_t     = CONFIG_FRAME_TOP   + wuss_STD_INSET,
+    .pad_r     = CONFIG_FRAME_WIDTH + wuss_STD_INSET,
+    .pad_b     = CONFIG_FRAME_WIDTH + wuss_STD_INSET,
   },
 
   [CONFIG_ST_SWAP] = STACK_LEAF(CONFIG_ST_SYSTEM,
