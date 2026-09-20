@@ -212,6 +212,54 @@ void wuss_icon_spec_action(wuss_icon_spec_t *spec,
                            const char       *text,
                            int               is_default);
 
+/**
+ * Fill \p spec as a wuss_ICON_TYPE_FRAME.
+ *
+ * Drawn with wuss_COLOUR_BLACK text/rule on no background.
+ *
+ * \param[out] spec Spec to fill; any prior contents are overwritten.
+ * \param[in]  bbox Bounding box.
+ * \param[in]  text Caption text, borrowed until wuss_icon_create(_array)
+ *                  copies it.
+ */
+void wuss_icon_spec_frame(wuss_icon_spec_t *spec,
+                          box_t             bbox,
+                          const char       *text);
+
+/**
+ * Fill \p spec as a wuss_ICON_TYPE_OPTION.
+ *
+ * Drawn with wuss_COLOUR_BLACK text on no background. The initial selected
+ * state is set separately with wuss_icon_set_selected once the icon is
+ * created.
+ *
+ * \param[out] spec Spec to fill; any prior contents are overwritten.
+ * \param[in]  bbox Bounding box.
+ * \param[in]  text Label text, borrowed until wuss_icon_create(_array)
+ *                  copies it.
+ */
+void wuss_icon_spec_option(wuss_icon_spec_t *spec,
+                           box_t             bbox,
+                           const char       *text);
+
+/**
+ * Fill \p spec as a wuss_ICON_TYPE_RADIO.
+ *
+ * Drawn with wuss_COLOUR_BLACK text on no background. The initial selected
+ * state is set separately with wuss_icon_set_selected once the icon is
+ * created.
+ *
+ * \param[out] spec  Spec to fill; any prior contents are overwritten.
+ * \param[in]  bbox  Bounding box.
+ * \param[in]  text  Label text, borrowed until wuss_icon_create(_array)
+ *                   copies it.
+ * \param[in]  group Exclusive-selection group; 0 for none.
+ */
+void wuss_icon_spec_radio(wuss_icon_spec_t *spec,
+                          box_t             bbox,
+                          const char       *text,
+                          int               group);
+
 #endif /* WUSS_ICONS */
 
 #ifdef __cplusplus

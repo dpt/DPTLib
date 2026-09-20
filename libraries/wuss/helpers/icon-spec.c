@@ -79,6 +79,44 @@ void wuss_icon_spec_action(wuss_icon_spec_t *spec,
   spec->flags = is_default ? wuss_ICON_FLAGS_DEFAULT : wuss_ICON_FLAGS_NONE;
 }
 
+void wuss_icon_spec_frame(wuss_icon_spec_t *spec,
+                          box_t             bbox,
+                          const char       *text)
+{
+  memset(spec, 0, sizeof(*spec));
+  spec->bbox = bbox;
+  spec->type = wuss_ICON_TYPE_FRAME;
+  spec->text = text;
+  spec->fg   = wuss_COLOUR_BLACK;
+  spec->bg   = wuss_NO_BACKGROUND;
+}
+
+void wuss_icon_spec_option(wuss_icon_spec_t *spec,
+                           box_t             bbox,
+                           const char       *text)
+{
+  memset(spec, 0, sizeof(*spec));
+  spec->bbox = bbox;
+  spec->type = wuss_ICON_TYPE_OPTION;
+  spec->text = text;
+  spec->fg   = wuss_COLOUR_BLACK;
+  spec->bg   = wuss_NO_BACKGROUND;
+}
+
+void wuss_icon_spec_radio(wuss_icon_spec_t *spec,
+                          box_t             bbox,
+                          const char       *text,
+                          int               group)
+{
+  memset(spec, 0, sizeof(*spec));
+  spec->bbox           = bbox;
+  spec->type           = wuss_ICON_TYPE_RADIO;
+  spec->text           = text;
+  spec->fg             = wuss_COLOUR_BLACK;
+  spec->bg             = wuss_NO_BACKGROUND;
+  spec->u.radio.group = group;
+}
+
 void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
                                wuss_icon_spec_t         *value_spec,
                                box_t                     slider_bbox,
