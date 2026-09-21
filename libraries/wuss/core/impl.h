@@ -48,8 +48,9 @@
 #define WUSS_BUTTON_INSET 3  /* shared by close/back/toggle/resize furniture buttons and scrollbar breadth */
 
 #ifdef WUSS_ICONS
-#define WUSS_FRAME_CAPTION_INSET 8 /* x offset of a wuss_ICON_TYPE_FRAME caption from the frame's left edge */
-#define WUSS_FRAME_CAPTION_PAD   2 /* gap left in the frame's top edge either side of the caption */
+#define WUSS_FRAME_CAPTION_TOP   4  /* y shift to make frame neatly meet caption */
+#define WUSS_FRAME_CAPTION_INSET 8  /* x offset of a wuss_ICON_TYPE_FRAME caption from the frame's left edge */
+#define WUSS_FRAME_CAPTION_PAD   22 /* gap left in the frame's top edge either side of the caption */
 
 #define WUSS_SLIDER_GAP 4 /* fixed inset on all four sides of a wuss_ICON_TYPE_SLIDER bbox, between the surround and the inner (clickable) rect */
 
