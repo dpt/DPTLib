@@ -107,7 +107,11 @@ static void info_measure(bmfont_t              *font,
   rowh   = MAX(fonth + INFO_ROW_PAD, 12) + INFO_ROW_LEADING;
   fieldh = rowh - INFO_ROW_LEADING; /* rowh is the pitch; leave a gap */
 
-  labelw = MAX(labelw, 1);
+  /* +1: wuss__icon_draw_label insets a right-justified label 1px off the
+   * box's right edge, same as it does for a left-justified one off the left
+   * edge; without slack here the widest label (which set labelw) lands 1px
+   * left of the box altogether. */
+  labelw = MAX(labelw, 1) + 1;
   valuew = MAX(valuew, 1) + INFO_FIELD_PAD * 2; /* groove border + inset */
 
   *out_labelw = labelw;
