@@ -26,6 +26,7 @@
 #include "tasks/config.h"
 #include "tasks/curve.h"
 #include "tasks/display.h"
+#include "tasks/donut.h"
 #include "tasks/gradient.h"
 #include "tasks/greeble.h"
 #include "tasks/icons.h"
@@ -126,6 +127,7 @@ g_utilities_tasks[] =
 g_visuals_tasks[] =
 {
   { "Blank",       (task_create_fn_t) blank_create       },
+  { "Donut",       (task_create_fn_t) donut_create       },
   { "Gradient",    (task_create_fn_t) gradient_create    },
   { "Image",       (task_create_fn_t) image_create       },
   { "Lissajous",   (task_create_fn_t) lissajous_create   },
@@ -164,6 +166,7 @@ static const wuss_menu_item_t g_utilities_items[] =
 static const wuss_menu_item_t g_visuals_items[] =
 {
   { "Blank",       wuss_MENU_ITEM_NONE, NULL },
+  { "Donut",       wuss_MENU_ITEM_NONE, NULL },
   { "Gradient",    wuss_MENU_ITEM_NONE, NULL },
   { "Image",       wuss_MENU_ITEM_NONE, NULL },
   { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
