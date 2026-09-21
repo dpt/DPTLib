@@ -70,7 +70,7 @@ static int donut_project(double  costheta,
   z = DONUT_K2 + cosa * circlex * sinphi + circley * sina;
   ooz = 1.0 / z;
 
-  xp = (int) (width  / 2 + k1 * ooz * x * 2.0);
+  xp = (int) (width  / 2 + k1 * ooz * x);
   yp = (int) (height / 2 - k1 * ooz * y);
 
   if (xp < 0 || xp >= width || yp < 0 || yp >= height)
@@ -247,8 +247,15 @@ static result_t donut_redraw(const wuss_event_t *event, donut_task_t *task)
   return result_OK;
 }
 
+/* radians of a/b rotation per pixel of Adjust drag, chosen to roughly match
+ * the idle auto-rotation's feel (0.04/0.02 rad per tick) over a normal drag
+ * speed */
+#define DONUT_DRAG_SCALE 0.01
+
 static result_t donut_mouse(donut_task_t       *task,
                             wuss_mouse_action_t action,
+                            int                 x,
+                            int                 y,
                             wuss_button_t       button,
                             wuss_window_t      *window)
 {
@@ -256,27 +263,50 @@ static result_t donut_mouse(donut_task_t       *task,
     return result_OK; /* the proginfo dialogue has no click behaviour of
                        * its own */
 
-  if (action != wuss_MOUSE_DOWN)
-    return result_OK;
-
-  if (button & wuss_BUTTON_MENU)
+  switch (action)
   {
-    static const wuss_proginfo_desc_t desc =
+  case wuss_MOUSE_DOWN:
+    if (button & wuss_BUTTON_MENU)
     {
-      "Donut",
-      "Spinning torus, ray-marched and shaded per pixel",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-    wuss_proginfo_set_desc(&desc);
-    task->menu_items[DONUT_MENU_INFO].window = wuss_proginfo_window(task->delegate);
+      static const wuss_proginfo_desc_t desc =
+      {
+        "Donut",
+        "Spinning torus, ray-marched and shaded per pixel",
+        "(c) DPTLib contributors",
+        "1.0 (" __DATE__ ")"
+      };
+      wuss_proginfo_set_desc(&desc);
+      task->menu_items[DONUT_MENU_INFO].window = wuss_proginfo_window(task->delegate);
 
-    return wuss_menu_open(task->delegate, &task->menu,
-                          wuss_get_pointer(task->wuss), &task->menu_handle);
+      return wuss_menu_open(task->delegate, &task->menu,
+                            wuss_get_pointer(task->wuss), &task->menu_handle);
+    }
+
+    if (button & wuss_BUTTON_SELECT)
+      task->paused = !task->paused;
+
+    if (button & wuss_BUTTON_ADJUST)
+    {
+      task->dragging = 1;
+      task->drag_x   = x;
+      task->drag_y   = y;
+    }
+    break;
+
+  case wuss_MOUSE_MOVE:
+    if (!task->dragging)
+      break;
+    task->b += (x - task->drag_x) * DONUT_DRAG_SCALE;
+    task->a += (y - task->drag_y) * DONUT_DRAG_SCALE;
+    task->drag_x = x;
+    task->drag_y = y;
+    wuss_window_invalidate_visible(window);
+    break;
+
+  case wuss_MOUSE_UP:
+    task->dragging = 0;
+    break;
   }
-
-  if (button & wuss_BUTTON_SELECT)
-    task->paused = !task->paused;
 
   return result_OK;
 }
@@ -303,8 +333,8 @@ static result_t donut_idle(donut_task_t *task)
                        * window on this same autoclose delegate -- is still
                        * open, keeping the task alive */
 
-  if (task->paused)
-    return result_OK;
+  if (task->paused || task->dragging)
+    return result_OK; /* an Adjust drag is driving a/b directly */
 
   task->a += 0.04;
   task->b += 0.02;
@@ -363,6 +393,7 @@ result_t donut_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MOUSE:
     return donut_mouse(task, event->data.mouse.action,
+                       event->data.mouse.point.x, event->data.mouse.point.y,
                        event->data.mouse.button, window);
 
   case wuss_EVENT_SCROLL:
