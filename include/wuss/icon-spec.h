@@ -165,14 +165,15 @@ int wuss_slider_row_event(wuss_window_t           *window,
  * \param[in]  bbox         Bounding box.
  * \param[in]  text         Label text, borrowed until
  *                          wuss_icon_create(_array) copies it.
- * \param[in]  justify_right Non-zero to right-justify
- *                           (wuss_ICON_FLAGS_JUSTIFY_RIGHT) instead of the
- *                           default left justification.
+ * \param[in]  flags        wuss_icon_flags_t bits, e.g.
+ *                          wuss_ICON_FLAGS_JUSTIFY_RIGHT or
+ *                          wuss_ICON_FLAGS_JUSTIFY_CENTRE; 0 for the default
+ *                          left justification.
  */
 void wuss_icon_spec_label(wuss_icon_spec_t *spec,
                           box_t             bbox,
                           const char       *text,
-                          int               justify_right);
+                          int               flags);
 
 /**
  * Fill \p spec as a wuss_ICON_TYPE_SLIDER.

@@ -541,7 +541,7 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
     value = *saturn_sizedlg_field(task, row);
 
     wuss_icon_spec_label(&specs[label_icon[row]], boxes[label_box[row]],
-                         desc->label, 1);
+                         desc->label, wuss_ICON_FLAGS_JUSTIFY_RIGHT);
     wuss_icon_spec_slider_row(&specs[slider_icon[row]], &specs[value_icon[row]],
                               boxes[slider_box[row]], boxes[value_box[row]],
                               wuss_SLIDER_HORIZONTAL,

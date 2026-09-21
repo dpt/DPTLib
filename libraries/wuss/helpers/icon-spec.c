@@ -35,7 +35,7 @@ static int wuss__slider_row_snap(int v, int min, int max, int step)
 void wuss_icon_spec_label(wuss_icon_spec_t *spec,
                           box_t             bbox,
                           const char       *text,
-                          int               justify_right)
+                          int               flags)
 {
   memset(spec, 0, sizeof(*spec));
   spec->bbox  = bbox;
@@ -43,8 +43,7 @@ void wuss_icon_spec_label(wuss_icon_spec_t *spec,
   spec->text  = text;
   spec->fg    = wuss_COLOUR_BLACK;
   spec->bg    = wuss_NO_BACKGROUND;
-  spec->flags = justify_right ? wuss_ICON_FLAGS_JUSTIFY_RIGHT
-                              : wuss_ICON_FLAGS_NONE;
+  spec->flags = flags;
 }
 
 void wuss_icon_spec_slider(wuss_icon_spec_t         *spec,

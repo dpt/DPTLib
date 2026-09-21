@@ -128,7 +128,7 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .axis_size = STACK_HUG,
     .gap       = wuss_STD_GAP,
     .align     = stack_ALIGN_FILL,
-    .pad       = INSET(20, 0, 8, 0),
+    .pad       = wuss_STD_FRAME_INSETS,
   },
 
   [CONFIG_ST_FG_ROW] = STACK_LEAF(CONFIG_ST_BACKDROP,
@@ -291,29 +291,27 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
                        "Backdrop");
 
   wuss_icon_spec_label(&specs[CONFIG_ICON_FG_LABEL],
-                       (box_t) BOX_POS_SIZE(backdrop_frame.x0 + wuss_STD_INSET,
-                                            task->fg_y,
-                                            CONFIG_LABEL_W - wuss_STD_INSET,
-                                            CONFIG_CELL),
-                       "Foreground", 0);
+                       boxes[CONFIG_ST_FG_ROW],
+                       "Foreground", wuss_ICON_FLAGS_JUSTIFY_LEFT);
+  
   wuss_icon_spec_label(&specs[CONFIG_ICON_BG_LABEL],
-                       (box_t) BOX_POS_SIZE(backdrop_frame.x0 + wuss_STD_INSET,
-                                            task->bg_y,
-                                            CONFIG_LABEL_W - wuss_STD_INSET,
-                                            CONFIG_CELL),
+                       boxes[CONFIG_ST_BG_ROW],
                        "Background", 0);
+  
   wuss_icon_spec_label(&specs[CONFIG_ICON_PATTERNS_LABEL],
-                       (box_t) BOX_POS_SIZE(backdrop_frame.x0 + wuss_STD_INSET,
-                                            task->grid_y,
-                                            CONFIG_LABEL_W - wuss_STD_INSET,
-                                            CONFIG_CELL),
+                       boxes[CONFIG_ST_GRID],
+//                       (box_t) BOX_POS_SIZE(backdrop_frame.x0 + wuss_STD_INSET,
+//                                            task->grid_y,
+//                                            CONFIG_LABEL_W - wuss_STD_INSET,
+//                                            CONFIG_CELL),
                        "Patterns", 0);
 
   wuss_icon_spec_action(&specs[CONFIG_ICON_SET_BACKDROP],
-                        (box_t) BOX_POS_SIZE(task->swatch_x,
-                                             boxes[CONFIG_ST_BUTTON].y0,
-                                             CONFIG_GRID_COLS * CONFIG_CELL,
-                                             wuss_STD_SECONDARY_BUTTON_HEIGHT),
+                        boxes[CONFIG_ST_BUTTON],
+//                        (box_t) BOX_POS_SIZE(task->swatch_x,
+//                                             boxes[CONFIG_ST_BUTTON].y0,
+//                                             CONFIG_GRID_COLS * CONFIG_CELL,
+//                                             wuss_STD_SECONDARY_BUTTON_HEIGHT),
                         "Set backdrop", 0);
 
   rc = wuss_icon_create_array(task->window, specs, CONFIG_NICONS, icons);
