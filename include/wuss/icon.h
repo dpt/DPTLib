@@ -170,6 +170,10 @@ typedef enum wuss_icon_flags
   /** Drawn greyed; clicks fall through to the task as wuss_EVENT_MOUSE rather
    *  than raising wuss_EVENT_ICON. */
   wuss_ICON_FLAGS_DISABLED      = 1 << 1,
+  /** wuss_ICON_TYPE_LABEL: left-align the text in the bounding box. This is
+   *  the default (value 0); named for call sites that want to state the
+   *  justification explicitly. */
+  wuss_ICON_FLAGS_JUSTIFY_LEFT  = 0,
   /** wuss_ICON_TYPE_LABEL: right-align the text in the bounding box instead of
    *  the default left. */
   wuss_ICON_FLAGS_JUSTIFY_RIGHT = 1 << 2,
