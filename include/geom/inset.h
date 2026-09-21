@@ -10,7 +10,9 @@ typedef struct inset
 }
 inset_t;
 
-/** Construct an inset_t compound literal. */
-#define INSET(t, r, b, l) ((inset_t) { (t), (r), (b), (l) })
+/** Construct an inset_t initialiser; valid both as an expression and inside
+ *  a static aggregate initialiser (a compound literal is not a constant
+ *  expression on RISC OS's GCCSDK). */
+#define INSET(t, r, b, l) { (t), (r), (b), (l) }
 
 #endif /* GEOM_INSET_H */
