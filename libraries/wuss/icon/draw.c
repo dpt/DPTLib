@@ -184,6 +184,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   colour_t                bg;
   point_t                 pos;
   bmfont_width_t          width;
+  int                     len;
 
   if (icon->bg != wuss_NO_BACKGROUND)
   {
@@ -230,8 +231,8 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 
   /* Measure the whole string, not the box interior: a clipped measurement
    * left the widest label of a right-justified set overhanging the rest. */
-  wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
-                     INT_MAX, NULL, &width);
+  len = (int) strlen(icon->text);
+  wuss__text_measure(c->font, icon->text, len, INT_MAX, NULL, &width);
 
   if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_CENTRE)
     pos.x = b->x0 + ((b->x1 - b->x0) - width) / 2;
@@ -242,8 +243,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 
   pos.y = icon_text_baseline_y(c, b);
 
-  wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                  c->fg, bg, &pos, NULL);
+  wuss__text_draw(c->font, c->scr, icon->text, len, c->fg, bg, &pos, NULL);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -333,13 +333,14 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
   if (c->have_font)
   {
     point_t        pos;
-    int            interior_w, split_point;
+    int            interior_w, split_point, len;
     bmfont_width_t width;
 
     interior_w = MAX((b->x1 - b->x0) - 2, 1);
+    len        = (int) strlen(icon->text);
 
-    wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
-                       interior_w, &split_point, &width);
+    wuss__text_measure(c->font, icon->text, len, interior_w, &split_point,
+                       &width);
 
     pos.x = b->x0 + ((b->x1 - b->x0) - width) / 2;
     pos.y = icon_text_baseline_y(c, b);
@@ -349,8 +350,8 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
       pos.y += 1;
     }
 
-    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                    label, base, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, icon->text, len, label, base, &pos,
+                    NULL);
   }
 }
 
@@ -449,20 +450,20 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
   if (c->have_font)
   {
     point_t        pos;
-    int            interior_w, split_point;
+    int            interior_w, split_point, len;
     bmfont_width_t width;
 
     tx = g.x1 + 4;
     interior_w = MAX((b->x1 - tx) - 1, 1);
+    len        = (int) strlen(icon->text);
 
-    wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
-                       interior_w, &split_point, &width);
+    wuss__text_measure(c->font, icon->text, len, interior_w, &split_point,
+                       &width);
     NOT_USED(width);
 
     pos.x = tx;
     pos.y = icon_text_baseline_y(c, b);
-    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                    glyph, bg, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, icon->text, len, glyph, bg, &pos, NULL);
   }
 }
 
