@@ -46,6 +46,15 @@ void wuss_icon_spec_label(wuss_icon_spec_t *spec,
   spec->flags = flags;
 }
 
+void wuss_icon_spec_display(wuss_icon_spec_t *spec,
+                            box_t             bbox,
+                            const char       *text,
+                            int               flags)
+{
+  wuss_icon_spec_label(spec, bbox, text, flags);
+  spec->u.label.border = wuss_ICON_BORDER_GROOVE;
+}
+
 void wuss_icon_spec_slider(wuss_icon_spec_t         *spec,
                            box_t                     bbox,
                            wuss_slider_orientation_t orientation,

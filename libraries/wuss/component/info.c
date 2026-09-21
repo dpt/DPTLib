@@ -15,6 +15,7 @@
 #include "geom/size.h"
 
 #include "wuss/icon.h"
+#include "wuss/icon-spec.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
 
@@ -29,11 +30,11 @@
  * through here if a component ever needs one. The spec array is on the stack,
  * so the row count is capped; INFO_MAX_ROWS is well past any real dialogue. */
 
-#define INFO_MARGIN       4 /* px border around the row block */
-#define INFO_GAP          4 /* px between the label column and the value column */
-#define INFO_ROW_PAD     12 /* px added to the font height for the row pitch */
-#define INFO_ROW_LEADING  4 /* px leading between rows */
-#define INFO_FIELD_PAD    4 /* px each side of the text inside a value field */
+#define INFO_INSET       wuss_STD_INSET
+#define INFO_GAP         wuss_STD_GAP   /* px between the label column and the value column */
+#define INFO_ROW_PAD     12             /* px added to the font height for the row pitch */
+#define INFO_ROW_LEADING 4              /* px leading between rows */
+#define INFO_FIELD_PAD   12             /* px each side of the text inside a value field */
 #define INFO_MAX_ROWS    16
 
 /* The dialogue is one window on a task the caller passes in. It omits
@@ -113,15 +114,16 @@ static void info_measure(bmfont_t              *font,
   *out_valuew = valuew;
   *out_rowh   = rowh;
   *out_fieldh = fieldh;
-  *out_w      = INFO_MARGIN * 2 + labelw + INFO_GAP + valuew;
+  *out_w      = INFO_INSET * 2 + labelw + INFO_GAP + valuew;
   /* rowh is the pitch (field + leading); the last row has no trailing leading */
-  *out_h      = INFO_MARGIN * 2 + rowh * nrows - INFO_ROW_LEADING;
+  *out_h      = INFO_INSET * 2 + rowh * nrows - INFO_ROW_LEADING;
 }
 
 /* Fills \p specs (>= nrows * 2 entries) with one right-justified label and
  * one centred value per row, laid out per info_measure's labelw/valuew/rowh/
- * fieldh. Zeroed first so the icon-spec fields this component does not set
- * (pattern, bitmap, group, swatch) are their safe defaults. */
+ * fieldh. wuss_icon_spec_label zeroes each spec first, so the icon-spec
+ * fields this component does not set (pattern, bitmap, group, swatch) are
+ * their safe defaults. */
 static void info_fill_specs(wuss_icon_spec_t      *specs,
                             const wuss_info_row_t *rows,
                             int                    nrows,
@@ -132,7 +134,6 @@ static void info_fill_specs(wuss_icon_spec_t      *specs,
 {
   int i;
 
-  memset(specs, 0, sizeof(*specs) * (size_t) nrows * 2);
   for (i = 0; i < nrows; i++)
   {
     wuss_icon_spec_t *label;
@@ -141,23 +142,18 @@ static void info_fill_specs(wuss_icon_spec_t      *specs,
 
     label = &specs[i * 2];
     value = &specs[i * 2 + 1];
-    y     = INFO_MARGIN + rowh * i;
+    y     = INFO_INSET + rowh * i;
 
-    label->bbox  = (box_t) BOX_POS_SIZE(INFO_MARGIN, y, labelw, fieldh);
-    label->type  = wuss_ICON_TYPE_LABEL;
-    label->text  = rows[i].label;
-    label->fg    = wuss_COLOUR_BLACK;
-    label->bg    = wuss_NO_BACKGROUND;
-    label->flags = wuss_ICON_FLAGS_JUSTIFY_RIGHT;
+    wuss_icon_spec_label(label,
+                         (box_t) BOX_POS_SIZE(INFO_INSET, y, labelw, fieldh),
+                         rows[i].label,
+                         wuss_ICON_FLAGS_JUSTIFY_RIGHT);
 
-    value->bbox   = (box_t) BOX_POS_SIZE(INFO_MARGIN + labelw + INFO_GAP,
-                                        y, valuew, fieldh);
-    value->type   = wuss_ICON_TYPE_LABEL;
-    value->text   = rows[i].value;
-    value->fg     = wuss_COLOUR_BLACK;
-    value->bg     = wuss_NO_BACKGROUND;
-    value->u.label.border = wuss_ICON_BORDER_GROOVE; /* RISC OS display field */
-    value->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
+    wuss_icon_spec_display(value,
+                           (box_t) BOX_POS_SIZE(INFO_INSET + labelw + INFO_GAP,
+                                                y, valuew, fieldh),
+                           rows[i].value,
+                           wuss_ICON_FLAGS_JUSTIFY_CENTRE);
   }
 }
 
