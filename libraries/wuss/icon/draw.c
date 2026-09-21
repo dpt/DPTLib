@@ -250,50 +250,37 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 
 static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
 {
-  const wuss_icon_spec_t *icon = &c->icon->spec;
+  const wuss_icon_spec_t *spec = &c->icon->spec;
   const box_t            *b    = &c->b;
-  colour_t                bg, light, divider;
-  int                     cap_w, cap_x, gap_x0, gap_x1;
+  colour_t                light, divider;
+  bmfont_width_t          cap_w;
+  int                     len;
+  box_t                   frame;
+  colour_t                bg;
+  point_t                 pos;
 
-  bg      = icon_blend_ground(c, c->fg);
   light   = c->wuss->palette[c->wuss->bevel_light];
   divider = c->wuss->palette[c->wuss->bevel_divider];
 
   cap_w = 0;
   if (c->have_font)
   {
-    int            split_point;
-    bmfont_width_t width;
-
-    wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
+    len = (int) strlen(spec->text);
+    wuss__text_measure(c->font, spec->text, len,
                        (b->x1 - b->x0) - WUSS_FRAME_CAPTION_INSET * 2,
-                       &split_point, &width);
-    cap_w = width;
+                       NULL, &cap_w);
   }
 
-  /* the whole surround is a wuss_ICON_BORDER_DIVIDER ring... */
-  icon_draw_divider_border(c->scr, b, light, divider);
+  frame    = c->b;
+  frame.y0 += WUSS_FRAME_CAPTION_TOP;
+  icon_draw_divider_border(c->scr, &frame, light, divider);
 
-  /* ...with the top edge broken around the caption: overpaint the caption
-   * slot (the ring is 2px, plus a PAD margin either side) back to the frame
-   * ground. INSET (8) always exceeds PAD (2), so gap_x0 sits a few pixels
-   * right of b->x0 and the left stub always survives; only the right stub
-   * can vanish, when a wide caption pushes gap_x1 past the frame edge. */
-  cap_x  = b->x0 + WUSS_FRAME_CAPTION_INSET;
-  gap_x0 = cap_x - WUSS_FRAME_CAPTION_PAD;
-  gap_x1 = cap_x + cap_w + WUSS_FRAME_CAPTION_PAD;
-  if (gap_x1 > gap_x0)
-    screen_fill_rect(c->scr, gap_x0, b->y0,
-                     SIZE2D(MIN(gap_x1, b->x1) - gap_x0, 2), bg);
-
-  if (c->have_font && cap_w > 0)
+  if (cap_w > 0)
   {
-    point_t pos;
-
-    pos.x = cap_x;
+    bg = icon_blend_ground(c, c->fg);
+    pos.x = b->x0 + WUSS_FRAME_CAPTION_INSET;
     pos.y = b->y0 + c->font_ascent;
-    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                    c->fg, bg, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, spec->text, len, c->fg, bg, &pos, NULL);
   }
 }
 

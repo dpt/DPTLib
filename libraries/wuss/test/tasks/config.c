@@ -108,10 +108,7 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .axis_size = STACK_HUG,
     .gap       = 4,
     .align     = stack_ALIGN_FILL,
-    .pad       = INSET(wuss_STD_FRAME_INSET + wuss_STD_INSET + 6,
-                       wuss_STD_FRAME_INSET + wuss_STD_INSET,
-                       wuss_STD_FRAME_INSET + wuss_STD_INSET,
-                       wuss_STD_FRAME_INSET + wuss_STD_INSET),
+    .pad       = wuss_STD_FRAME_INSETS,
   },
 
   [CONFIG_ST_SWAP] = STACK_LEAF(CONFIG_ST_SYSTEM,

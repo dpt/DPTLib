@@ -355,23 +355,42 @@ wuss_icon_spec_t;
 
 /** Standard main-axis size (px) for a wuss_ICON_TYPE_SLIDER. */
 #define wuss_STD_SLIDER_HEIGHT           18
+
 /** Standard main-axis size (px) for a non-default wuss_ICON_TYPE_ACTION
  *  button, e.g. Cancel. */
 #define wuss_STD_SECONDARY_BUTTON_HEIGHT 26
+
 /** Standard main-axis size (px) for a wuss_ICON_FLAGS_DEFAULT
  *  wuss_ICON_TYPE_ACTION button, e.g. OK/Apply. */
 #define wuss_STD_PRIMARY_BUTTON_HEIGHT   34
+
 /** Standard gap (px) between two sibling icons/components in a layout. */
 #define wuss_STD_GAP                     4
+
 /** Standard gap (px) between an icon/component and the window edge. */
 #define wuss_STD_INSET                   4
+
 /** wuss_STD_INSET on every edge, e.g. a stack_item_t.pad value for a
  *  window's root item. */
 #define wuss_STD_INSETS \
   INSET(wuss_STD_INSET, wuss_STD_INSET, wuss_STD_INSET, wuss_STD_INSET)
+
 /** Standard gap (px) between a wuss_ICON_TYPE_FRAME's contents and the
- *  frame's own border/caption, on every edge. */
+ *  frame's own border/caption, on every edge except for the top. */
 #define wuss_STD_FRAME_INSET             4
+
+/** Standard gap (px) between a wuss_ICON_TYPE_FRAME's contents and the
+ *  frame's own border/caption, on the top edge. */
+#define wuss_STD_FRAME_TOP_INSET         8
+
+/** wuss_STD_FRAME_INSET plus wuss_STD_INSET on every edge except the top,
+ *  which gets a further 6px, e.g. a stack_item_t.pad value for a frame's
+ *  contents below a caption. */
+#define wuss_STD_FRAME_INSETS \
+  INSET(wuss_STD_FRAME_INSET + wuss_STD_FRAME_TOP_INSET, \
+        wuss_STD_FRAME_INSET + wuss_STD_INSET, \
+        wuss_STD_FRAME_INSET + wuss_STD_INSET, \
+        wuss_STD_FRAME_INSET + wuss_STD_INSET)
 
 /* ----------------------------------------------------------------------- */
 
