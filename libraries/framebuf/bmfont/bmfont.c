@@ -800,7 +800,7 @@ result_t bmfont_measure(bmfont_t               *bmfont,
 
     if (any_drawn)
     {
-      trailing_trim = LETTER_SPACING + 1;
+      trailing_trim = LETTER_SPACING;
       if (spacing)
       {
         trailing_trim += spacing->letter_spacing;
