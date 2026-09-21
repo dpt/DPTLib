@@ -112,12 +112,12 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
   },
 
   [CONFIG_ST_SWAP] = STACK_LEAF(CONFIG_ST_SYSTEM,
-                                22,
+                                CONFIG_ROW,
                                 0,
                                 stack_ALIGN_FILL),
 
   [CONFIG_ST_REVERSE_SCROLL] = STACK_LEAF(CONFIG_ST_SYSTEM,
-                                          22,
+                                          CONFIG_ROW,
                                           0,
                                           stack_ALIGN_FILL),
 
@@ -169,6 +169,8 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
 enum
 {
   CONFIG_ICON_SYSTEM_FRAME,
+  CONFIG_ICON_SWAP,
+  CONFIG_ICON_REVERSE_SCROLL,
   CONFIG_ICON_BACKDROP_FRAME,
   CONFIG_ICON_FG_LABEL,
   CONFIG_ICON_BG_LABEL,
@@ -216,7 +218,7 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   box_t            root;
   box_t            backdrop_frame;
   wuss_icon_spec_t specs[CONFIG_NICONS];
-  wuss_icon_t     *made[CONFIG_NICONS];
+  wuss_icon_t     *icons[CONFIG_NICONS];
   size2d_t         doc;
   size2d_t         min_sz;
 
@@ -278,6 +280,13 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   wuss_icon_spec_frame(&specs[CONFIG_ICON_SYSTEM_FRAME],
                        boxes[CONFIG_ST_SYSTEM], "System");
 
+  wuss_icon_spec_option(&specs[CONFIG_ICON_SWAP], boxes[CONFIG_ST_SWAP],
+                        "Swap right/middle mouse buttons");
+
+  wuss_icon_spec_option(&specs[CONFIG_ICON_REVERSE_SCROLL],
+                        boxes[CONFIG_ST_REVERSE_SCROLL],
+                        "Reverse mouse scroll direction");
+
   wuss_icon_spec_frame(&specs[CONFIG_ICON_BACKDROP_FRAME], backdrop_frame,
                        "Backdrop");
 
@@ -304,33 +313,18 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
                                              wuss_STD_SECONDARY_BUTTON_HEIGHT),
                         "Set backdrop", 0);
 
-  rc = wuss_icon_create_array(task->window, specs, CONFIG_NICONS, made);
+  rc = wuss_icon_create_array(task->window, specs, CONFIG_NICONS, icons);
   if (rc != result_OK)
     goto fail_delegate;
 
-  task->set_backdrop_icon = made[CONFIG_ICON_SET_BACKDROP];
+  task->set_backdrop_icon     = icons[CONFIG_ICON_SET_BACKDROP];
+  task->swap_icon             = icons[CONFIG_ICON_SWAP];
+  task->reverse_scroll_icon   = icons[CONFIG_ICON_REVERSE_SCROLL];
 
-  {
-    wuss_icon_spec_t spec;
-
-    wuss_icon_spec_option(&spec, boxes[CONFIG_ST_SWAP],
-                          "Swap right/middle mouse buttons");
-    rc = wuss_icon_create(task->window, &spec, &task->swap_icon);
-    if (rc != result_OK)
-      goto fail_delegate;
-
-    wuss_icon_set_selected(task->window, task->swap_icon,
-                           g_tasks.swap_mouse_buttons);
-
-    wuss_icon_spec_option(&spec, boxes[CONFIG_ST_REVERSE_SCROLL],
-                          "Reverse mouse scroll direction");
-    rc = wuss_icon_create(task->window, &spec, &task->reverse_scroll_icon);
-    if (rc != result_OK)
-      goto fail_delegate;
-
-    wuss_icon_set_selected(task->window, task->reverse_scroll_icon,
-                           g_tasks.reverse_scroll);
-  }
+  wuss_icon_set_selected(task->window, task->swap_icon,
+                        g_tasks.swap_mouse_buttons);
+  wuss_icon_set_selected(task->window, task->reverse_scroll_icon,
+                        g_tasks.reverse_scroll);
 
   /* fully built: from here a last-window close reaps the task and its
    * wuss_EVENT_QUIT frees task_data */
