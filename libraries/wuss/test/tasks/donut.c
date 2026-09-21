@@ -34,7 +34,8 @@ enum { DONUT_MENU_INFO = 0, DONUT_MENU_BACKGROUND };
 /* one theta/phi surface sample, projected and shaded into out_x/out_y/
  * out_z/out_lum; returns 0 if the projected point falls outside [0,width)x
  * [0,height) so the caller can skip it */
-static int donut_project(double  theta,
+static int donut_project(double  costheta,
+                         double  sintheta,
                          double  phi,
                          double  a,
                          double  b,
@@ -46,7 +47,7 @@ static int donut_project(double  theta,
                          double *out_z,
                          double *out_lum)
 {
-  double costheta, sintheta, cosphi, sinphi;
+  double cosphi, sinphi;
   double cosa, sina, cosb, sinb;
   double circlex, circley;
   double x, y, z, ooz;
@@ -54,8 +55,6 @@ static int donut_project(double  theta,
   double lum;
   int    xp, yp;
 
-  costheta = cos(theta);
-  sintheta = sin(theta);
   cosphi   = cos(phi);
   sinphi   = sin(phi);
   cosa     = cos(a);
@@ -204,12 +203,18 @@ static result_t donut_redraw(const wuss_event_t *event, donut_task_t *task)
   k1 = width * DONUT_K2 * 3.0 / (8.0 * (DONUT_R1 + DONUT_R2)) * task->zoom;
 
   for (theta = 0.0; theta < 2.0 * M_PI; theta += 0.07)
+  {
+    double costheta, sintheta;
+
+    costheta = cos(theta);
+    sintheta = sin(theta);
+
     for (phi = 0.0; phi < 2.0 * M_PI; phi += 0.02)
     {
       int cell;
 
-      if (!donut_project(theta, phi, task->a, task->b, width, height, k1,
-                         &x, &y, &z, &lum))
+      if (!donut_project(costheta, sintheta, phi, task->a, task->b, width,
+                         height, k1, &x, &y, &z, &lum))
         continue;
 
       cell = y * width + x;
@@ -224,6 +229,7 @@ static result_t donut_redraw(const wuss_event_t *event, donut_task_t *task)
         shade[cell] = colour_rgb(grey, grey, grey);
       }
     }
+  }
 
   for (y = 0; y < height; y++)
     for (x = 0; x < width; x++)
