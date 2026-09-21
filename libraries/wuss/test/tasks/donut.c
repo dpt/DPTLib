@@ -29,7 +29,7 @@
 #define DONUT_R2 2.0 /* ring radius */
 #define DONUT_K2 5.0 /* viewer distance */
 
-#define DONUT_MENU_INFO 0
+enum { DONUT_MENU_INFO = 0, DONUT_MENU_BACKGROUND };
 
 /* one theta/phi surface sample, projected and shaded into out_x/out_y/
  * out_z/out_lum; returns 0 if the projected point falls outside [0,width)x
@@ -112,6 +112,7 @@ result_t donut_create(wuss_t *wuss, donut_task_t **out)
     return result_OOM;
 
   task->wuss = wuss;
+  task->bg   = colour_rgb(0x00, 0x00, 0x00);
   task->a    = 1.0;
   task->b    = 1.0;
   task->zoom = 1.0;
@@ -148,6 +149,10 @@ result_t donut_create(wuss_t *wuss, donut_task_t **out)
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in donut_mouse */
 
+  wuss_colourmenu_set_none(0);
+  WUSS_MENU_ITEM_MENU(task->menu_items, DONUT_MENU_BACKGROUND, "Background",
+                     wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
   WUSS_MENU_TITLE(task->menu, "Donut", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -182,11 +187,10 @@ static result_t donut_redraw(const wuss_event_t *event, donut_task_t *task)
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  width  = box_size(content).w;
-  height = box_size(content).h;
+  width  = box_size(bounds).w;
+  height = box_size(bounds).h;
 
-  screen_fill_rect(scr, content->x0, content->y0, box_size(content),
-                   colour_rgb(0x00, 0x00, 0x00));
+  screen_fill_rect(scr, content->x0, content->y0, box_size(content), task->bg);
 
   zbuf  = calloc((size_t) (width * height), sizeof(*zbuf));
   shade = calloc((size_t) (width * height), sizeof(*shade));
@@ -305,6 +309,40 @@ static result_t donut_idle(donut_task_t *task)
   return result_OK;
 }
 
+/* The "Background" row's only submenu leaf: always hand back the shared
+ * colourmenu singleton, unretargeted -- there is nothing else to pick into.
+ */
+static result_t donut_pre_submenu_open(donut_task_t       *task,
+                                       const wuss_event_t *event)
+{
+  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
+                                    event->data.pre_submenu_open.index,
+                                    wuss_colourmenu_menu(task->wuss));
+}
+
+static result_t donut_menu_select(donut_task_t       *task,
+                                  const wuss_event_t *event)
+{
+  const colour_t *palette;
+  int             npalette;
+  wuss_colour_t   picked;
+  int             mine;
+
+  picked = wuss_colourmenu_selected(event, &mine);
+  if (!mine)
+    return result_OK;
+
+  palette = wuss_get_palette(task->wuss, &npalette);
+  if (picked < npalette)
+  {
+    task->bg = palette[picked];
+    if (task->window != NULL)
+      wuss_window_invalidate_visible(task->window);
+  }
+
+  return result_OK;
+}
+
 result_t donut_handle(wuss_window_t      *window,
                       const wuss_event_t *event,
                       void               *task_data)
@@ -327,6 +365,12 @@ result_t donut_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     return donut_idle(task);
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    return donut_pre_submenu_open(task, event);
+
+  case wuss_EVENT_MENU_SELECT:
+    return donut_menu_select(task, event);
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
