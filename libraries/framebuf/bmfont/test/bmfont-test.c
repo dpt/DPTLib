@@ -1193,6 +1193,133 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+/* Measures "Purpose" then draws it and checks the rendered ink's bounding
+ * box against the measurement: ink must fall entirely within the cell that
+ * bmfont_measure/bmfont_get_info predict, i.e. [pos.x, pos.x+width) x
+ * [pos.y-ascent, pos.y-ascent+height). A 1px offset between glyph border art
+ * and text drawn to fill it shows up here as ink starting or ending one
+ * pixel outside that box. */
+static result_t bmfont_measure_render_match_test(const char *resources)
+{
+  static const char sample[] = "Purpose";
+  static const int  margin   = 8;
+
+  result_t       rc;
+  const char    *filename;
+  bmfont_t      *bmfont = NULL;
+  bmfont_width_t width;
+  int            height, ascent;
+  bitmap_t       bm;
+  screen_t       scr;
+  colour_t       white = colour_rgb(0xFF, 0xFF, 0xFF);
+  colour_t       black = colour_rgb(0x00, 0x00, 0x00);
+  point_t        pos;
+  int            bm_width, bm_height, rowbytes;
+  void          *pixels = NULL;
+  int            ink_x0, ink_y0, ink_x1, ink_y1;
+  int            x, y;
+
+  filename = pathf("%s/resources/bmfonts/DPT-Digits-Regular.png", resources);
+
+  rc = bmfont_create(filename, &bmfont);
+  if (rc)
+  {
+    fprintf(stderr, "Error: Failed to load font %s\n", filename);
+    return result_TEST_FAILED;
+  }
+
+  rc = bmfont_measure(bmfont, sample, (int) strlen(sample), NULL, INT_MAX,
+                      NULL, &width);
+  if (rc)
+    goto Failure;
+
+  bmfont_get_info(bmfont, NULL, &height, &ascent, NULL);
+
+  bm_width  = width + margin * 2;
+  bm_height = height + margin * 2;
+  rowbytes  = (bm_width << pixelfmt_log2bpp(pixelfmt_bgrx8888)) / 8;
+
+  pixels = malloc(rowbytes * bm_height);
+  if (pixels == NULL)
+  {
+    rc = result_OOM;
+    goto Failure;
+  }
+
+  bitmap_init(&bm, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888, rowbytes,
+               NULL, pixels);
+  bitmap_clear(&bm, white);
+  screen_for_bitmap(&scr, &bm);
+
+  pos.x = margin;
+  pos.y = margin + ascent;
+
+  rc = bmfont_draw(bmfont, &scr, sample, (int) strlen(sample), black, white,
+                   NULL, &pos, NULL);
+  if (rc)
+    goto Failure;
+
+  /* Find the bounding box of non-white ("ink") pixels. */
+
+  ink_x0 = bm_width;
+  ink_y0 = bm_height;
+  ink_x1 = 0;
+  ink_y1 = 0;
+
+  for (y = 0; y < bm_height; y++)
+  {
+    const pixelfmt_bgrx8888_t *row =
+      (const pixelfmt_bgrx8888_t *) ((const char *) pixels + y * rowbytes);
+
+    for (x = 0; x < bm_width; x++)
+    {
+      if ((row[x] & 0x00FFFFFFu) != 0x00FFFFFFu) /* not white */
+      {
+        if (x < ink_x0) ink_x0 = x;
+        if (y < ink_y0) ink_y0 = y;
+        if (x + 1 > ink_x1) ink_x1 = x + 1;
+        if (y + 1 > ink_y1) ink_y1 = y + 1;
+      }
+    }
+  }
+
+  if (ink_x1 <= ink_x0 || ink_y1 <= ink_y0)
+  {
+    fprintf(stderr, "error: no ink rendered for \"%s\"\n", sample);
+    goto Failure;
+  }
+
+  {
+    const int cell_x0 = pos.x;
+    const int cell_x1 = pos.x + width;
+    const int cell_y0 = pos.y - ascent;
+    const int cell_y1 = cell_y0 + height;
+
+    if (ink_x0 < cell_x0 || ink_x1 > cell_x1 ||
+        ink_y0 < cell_y0 || ink_y1 > cell_y1)
+    {
+      fprintf(stderr,
+              "error: rendered ink [%d,%d)x[%d,%d) outside measured cell "
+              "[%d,%d)x[%d,%d)\n",
+              ink_x0, ink_x1, ink_y0, ink_y1,
+              cell_x0, cell_x1, cell_y0, cell_y1);
+      goto Failure;
+    }
+  }
+
+  free(pixels);
+  bmfont_destroy(bmfont);
+  return result_TEST_PASSED;
+
+
+Failure:
+  free(pixels);
+  bmfont_destroy(bmfont);
+  return result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t bmfont_test(const char *resources)
 {
   static const struct
@@ -1221,6 +1348,10 @@ result_t bmfont_test(const char *resources)
     return rc;
 
   rc = bmfont_spacing_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_measure_render_match_test(resources);
   if (rc != result_TEST_PASSED)
     return rc;
 
