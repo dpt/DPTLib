@@ -163,8 +163,7 @@ result_t donut_create(wuss_t *wuss, donut_task_t **out)
 
 void donut_destroy(donut_task_t *task)
 {
-  if (task->menu_handle != NULL)
-    wuss_menu_close(task->menu_handle);
+  wuss_menu_close(task->menu_handle);
   free(task);
 }
 
