@@ -159,7 +159,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
   /* vertical scrollbar: arrows + well (sausage is drawn live) --------- */
   if (window->flags & wuss_WINDOW_VSCROLL)
   {
-    box_t up, down, well;
+    box_t up, down, well, rule;
 
     wuss__vscroll_up_box(window, &up);
     push_piece(layout, &up, wuss__FURNITURE_PAINT_SCROLL_ARROWS);
@@ -169,12 +169,25 @@ void wuss__furniture_layout_build(wuss_window_t *window)
 
     wuss__vscroll_well_box(window, &well);
     push_piece(layout, &well, wuss__FURNITURE_PAINT_SCROLL_WELLS);
+
+    /* dividing rules in the gap row scroll_well leaves between each arrow
+     * and the well, full strip breadth. The arrow keeps its full size x size
+     * footprint; the rule occupies the row scroll_well carved out for it. */
+    rule.x0 = up.x0;
+    rule.x1 = up.x1;
+    rule.y0 = up.y1;
+    rule.y1 = up.y1 + WUSS_DIVIDER_PX;
+    push_piece(layout, &rule, wuss__FURNITURE_PAINT_OUTLINE);
+
+    rule.y0 = down.y0 - WUSS_DIVIDER_PX;
+    rule.y1 = down.y0;
+    push_piece(layout, &rule, wuss__FURNITURE_PAINT_OUTLINE);
   }
 
   /* horizontal scrollbar: arrows + well ----------------------------- */
   if (window->flags & wuss_WINDOW_HSCROLL)
   {
-    box_t left, right, well;
+    box_t left, right, well, rule;
 
     wuss__hscroll_left_box(window, &left);
     push_piece(layout, &left, wuss__FURNITURE_PAINT_SCROLL_ARROWS);
@@ -184,6 +197,19 @@ void wuss__furniture_layout_build(wuss_window_t *window)
 
     wuss__hscroll_well_box(window, &well);
     push_piece(layout, &well, wuss__FURNITURE_PAINT_SCROLL_WELLS);
+
+    /* dividing rules in the gap column scroll_well leaves between each arrow
+     * and the well, full strip breadth. The arrow keeps its full size x size
+     * footprint; the rule occupies the column scroll_well carved out for it. */
+    rule.y0 = left.y0;
+    rule.y1 = left.y1;
+    rule.x0 = left.x1;
+    rule.x1 = left.x1 + WUSS_DIVIDER_PX;
+    push_piece(layout, &rule, wuss__FURNITURE_PAINT_OUTLINE);
+
+    rule.x0 = right.x0 - WUSS_DIVIDER_PX;
+    rule.x1 = right.x0;
+    push_piece(layout, &rule, wuss__FURNITURE_PAINT_OUTLINE);
   }
 
   /* interior rules where furniture is carved off the content edges --- */
