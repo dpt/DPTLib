@@ -8,7 +8,7 @@
 
 #include "wuss/wuss.h"
 
-#define WUSS_MIN_SAUSAGE    6  /* scrollbar sausage never shrinks below this, however small the content fraction */
+#define WUSS_MIN_SAUSAGE    1  /* scrollbar sausage never shrinks below this, however small the content fraction */
 #define WUSS_SCROLL_END_GAP 2  /* sausage along-axis margin from its well's ends, purely cosmetic */
 #define WUSS_SCROLL_STEP    20 /* pixels stepped per scrollbar arrow click */
 
