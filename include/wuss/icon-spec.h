@@ -176,6 +176,27 @@ void wuss_icon_spec_label(wuss_icon_spec_t *spec,
                           int               flags);
 
 /**
+ * Fill \p spec as a wuss_ICON_TYPE_LABEL with a wuss_ICON_BORDER_GROOVE
+ * border -- the RISC OS "display field" look for a read-only value, e.g. a
+ * label:value info dialogue row (see wuss/component/info.c).
+ *
+ * Drawn with wuss_COLOUR_BLACK text.
+ *
+ * \param[out] spec  Spec to fill; any prior contents are overwritten.
+ * \param[in]  bbox  Bounding box.
+ * \param[in]  text  Value text, borrowed until wuss_icon_create(_array)
+ *                   copies it.
+ * \param[in]  flags wuss_icon_flags_t bits, e.g.
+ *                   wuss_ICON_FLAGS_JUSTIFY_RIGHT or
+ *                   wuss_ICON_FLAGS_JUSTIFY_CENTRE; 0 for the default left
+ *                   justification.
+ */
+void wuss_icon_spec_display(wuss_icon_spec_t *spec,
+                            box_t             bbox,
+                            const char       *text,
+                            int               flags);
+
+/**
  * Fill \p spec as a wuss_ICON_TYPE_SLIDER.
  *
  * Drawn with wuss_COLOUR_BLACK groove/fill.
