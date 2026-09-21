@@ -69,15 +69,28 @@ enum
   CONFIG_ST_SWAP,
   CONFIG_ST_REVERSE_SCROLL,
   CONFIG_ST_BACKDROP,
+  CONFIG_ST_FG_HBOX,
+  CONFIG_ST_FG_LABEL,
   CONFIG_ST_FG_ROW,
+  CONFIG_ST_BG_HBOX,
+  CONFIG_ST_BG_LABEL,
   CONFIG_ST_BG_ROW,
+  CONFIG_ST_GRID_HBOX,
+  CONFIG_ST_GRID_LABEL,
   CONFIG_ST_GRID,
+  CONFIG_ST_RESULT_HBOX,
+  CONFIG_ST_RESULT_SPACER,
   CONFIG_ST_RESULT,
+  CONFIG_ST_BUTTON_HBOX,
+  CONFIG_ST_BUTTON_SPACER,
   CONFIG_ST_BUTTON,
   CONFIG_ST__LIMIT
 };
 
-#define CONFIG_DOC_W            (wuss_STD_INSET * 4 + CONFIG_LABEL_W + CONFIG_GRID_COLS * CONFIG_CELL)
+#define CONFIG_DOC_W            (wuss_STD_INSET * 2 + \
+                                 (wuss_STD_FRAME_INSET + wuss_STD_INSET) * 2 + \
+                                 CONFIG_LABEL_W + wuss_STD_GAP + \
+                                 CONFIG_GRID_COLS * CONFIG_CELL)
 
 #define CONFIG_GRID_H           (CONFIG_GRID_ROWS * CONFIG_CELL)
 
@@ -131,29 +144,99 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .pad       = wuss_STD_FRAME_INSETS,
   },
 
-  [CONFIG_ST_FG_ROW] = STACK_LEAF(CONFIG_ST_BACKDROP,
+  [CONFIG_ST_FG_HBOX] =
+  {
+    .kind      = stack_KIND_HBOX,
+    .parent    = CONFIG_ST_BACKDROP,
+    .axis_size = CONFIG_CELL,
+    .gap       = 4,
+    .align     = stack_ALIGN_FILL,
+  },
+
+  [CONFIG_ST_FG_LABEL] = STACK_LEAF(CONFIG_ST_FG_HBOX,
+                                    CONFIG_LABEL_W,
+                                    CONFIG_CELL,
+                                    stack_ALIGN_FILL),
+
+  [CONFIG_ST_FG_ROW] = STACK_LEAF(CONFIG_ST_FG_HBOX,
+                                  CONFIG_GRID_COLS * CONFIG_CELL,
                                   CONFIG_CELL,
-                                  0,
                                   stack_ALIGN_FILL),
 
-  [CONFIG_ST_BG_ROW] = STACK_LEAF(CONFIG_ST_BACKDROP,
+  [CONFIG_ST_BG_HBOX] =
+  {
+    .kind      = stack_KIND_HBOX,
+    .parent    = CONFIG_ST_BACKDROP,
+    .axis_size = CONFIG_CELL,
+    .gap       = 4,
+    .align     = stack_ALIGN_FILL,
+  },
+
+  [CONFIG_ST_BG_LABEL] = STACK_LEAF(CONFIG_ST_BG_HBOX,
+                                    CONFIG_LABEL_W,
+                                    CONFIG_CELL,
+                                    stack_ALIGN_FILL),
+
+  [CONFIG_ST_BG_ROW] = STACK_LEAF(CONFIG_ST_BG_HBOX,
+                                  CONFIG_GRID_COLS * CONFIG_CELL,
                                   CONFIG_CELL,
-                                  0,
                                   stack_ALIGN_FILL),
 
-  [CONFIG_ST_GRID] = STACK_LEAF(CONFIG_ST_BACKDROP,
+  [CONFIG_ST_GRID_HBOX] =
+  {
+    .kind      = stack_KIND_HBOX,
+    .parent    = CONFIG_ST_BACKDROP,
+    .axis_size = CONFIG_GRID_H,
+    .gap       = 4,
+    .align     = stack_ALIGN_FILL,
+  },
+
+  [CONFIG_ST_GRID_LABEL] = STACK_LEAF(CONFIG_ST_GRID_HBOX,
+                                      CONFIG_LABEL_W,
+                                      CONFIG_CELL,
+                                      stack_ALIGN_START),
+
+  [CONFIG_ST_GRID] = STACK_LEAF(CONFIG_ST_GRID_HBOX,
+                                CONFIG_GRID_COLS * CONFIG_CELL,
                                 CONFIG_GRID_H,
-                                0,
                                 stack_ALIGN_FILL),
 
-  [CONFIG_ST_RESULT] = STACK_LEAF(CONFIG_ST_BACKDROP,
+  [CONFIG_ST_RESULT_HBOX] =
+  {
+    .kind      = stack_KIND_HBOX,
+    .parent    = CONFIG_ST_BACKDROP,
+    .axis_size = CONFIG_RESULT,
+    .gap       = 4,
+    .align     = stack_ALIGN_FILL,
+  },
+
+  [CONFIG_ST_RESULT_SPACER] = STACK_LEAF(CONFIG_ST_RESULT_HBOX,
+                                         CONFIG_LABEL_W,
+                                         CONFIG_RESULT,
+                                         stack_ALIGN_FILL),
+
+  [CONFIG_ST_RESULT] = STACK_LEAF(CONFIG_ST_RESULT_HBOX,
+                                  CONFIG_GRID_COLS * CONFIG_CELL,
                                   CONFIG_RESULT,
-                                  0,
                                   stack_ALIGN_FILL),
 
-  [CONFIG_ST_BUTTON] = STACK_LEAF(CONFIG_ST_BACKDROP,
+  [CONFIG_ST_BUTTON_HBOX] =
+  {
+    .kind      = stack_KIND_HBOX,
+    .parent    = CONFIG_ST_BACKDROP,
+    .axis_size = wuss_STD_SECONDARY_BUTTON_HEIGHT,
+    .gap       = 4,
+    .align     = stack_ALIGN_FILL,
+  },
+
+  [CONFIG_ST_BUTTON_SPACER] = STACK_LEAF(CONFIG_ST_BUTTON_HBOX,
+                                         CONFIG_LABEL_W,
+                                         wuss_STD_SECONDARY_BUTTON_HEIGHT,
+                                         stack_ALIGN_FILL),
+
+  [CONFIG_ST_BUTTON] = STACK_LEAF(CONFIG_ST_BUTTON_HBOX,
+                                  CONFIG_GRID_COLS * CONFIG_CELL,
                                   wuss_STD_SECONDARY_BUTTON_HEIGHT,
-                                  0,
                                   stack_ALIGN_FILL),
 };
 
@@ -269,7 +352,7 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
     goto fail_delegate;
 
   backdrop_frame  = boxes[CONFIG_ST_BACKDROP];
-  task->swatch_x  = backdrop_frame.x0 + CONFIG_LABEL_W;
+  task->swatch_x  = boxes[CONFIG_ST_FG_ROW].x0;
   task->fg_y      = boxes[CONFIG_ST_FG_ROW].y0;
   task->bg_y      = boxes[CONFIG_ST_BG_ROW].y0;
   task->grid_y    = boxes[CONFIG_ST_GRID].y0;
@@ -291,27 +374,19 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
                        "Backdrop");
 
   wuss_icon_spec_label(&specs[CONFIG_ICON_FG_LABEL],
-                       boxes[CONFIG_ST_FG_ROW],
-                       "Foreground", wuss_ICON_FLAGS_JUSTIFY_LEFT);
-  
+                       boxes[CONFIG_ST_FG_LABEL],
+                       "Foreground", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+
   wuss_icon_spec_label(&specs[CONFIG_ICON_BG_LABEL],
-                       boxes[CONFIG_ST_BG_ROW],
-                       "Background", 0);
-  
+                       boxes[CONFIG_ST_BG_LABEL],
+                       "Background", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+
   wuss_icon_spec_label(&specs[CONFIG_ICON_PATTERNS_LABEL],
-                       boxes[CONFIG_ST_GRID],
-//                       (box_t) BOX_POS_SIZE(backdrop_frame.x0 + wuss_STD_INSET,
-//                                            task->grid_y,
-//                                            CONFIG_LABEL_W - wuss_STD_INSET,
-//                                            CONFIG_CELL),
-                       "Patterns", 0);
+                       boxes[CONFIG_ST_GRID_LABEL],
+                       "Patterns", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
 
   wuss_icon_spec_action(&specs[CONFIG_ICON_SET_BACKDROP],
                         boxes[CONFIG_ST_BUTTON],
-//                        (box_t) BOX_POS_SIZE(task->swatch_x,
-//                                             boxes[CONFIG_ST_BUTTON].y0,
-//                                             CONFIG_GRID_COLS * CONFIG_CELL,
-//                                             wuss_STD_SECONDARY_BUTTON_HEIGHT),
                         "Set backdrop", 0);
 
   rc = wuss_icon_create_array(task->window, specs, CONFIG_NICONS, icons);
