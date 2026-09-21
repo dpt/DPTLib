@@ -292,17 +292,20 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
 
   wuss_icon_spec_label(&specs[CONFIG_ICON_FG_LABEL],
                        (box_t) BOX_POS_SIZE(backdrop_frame.x0 + wuss_STD_INSET,
-                                            task->fg_y, CONFIG_LABEL_W - wuss_STD_INSET,
+                                            task->fg_y,
+                                            CONFIG_LABEL_W - wuss_STD_INSET,
                                             CONFIG_CELL),
                        "Foreground", 0);
   wuss_icon_spec_label(&specs[CONFIG_ICON_BG_LABEL],
                        (box_t) BOX_POS_SIZE(backdrop_frame.x0 + wuss_STD_INSET,
-                                            task->bg_y, CONFIG_LABEL_W - wuss_STD_INSET,
+                                            task->bg_y,
+                                            CONFIG_LABEL_W - wuss_STD_INSET,
                                             CONFIG_CELL),
                        "Background", 0);
   wuss_icon_spec_label(&specs[CONFIG_ICON_PATTERNS_LABEL],
                        (box_t) BOX_POS_SIZE(backdrop_frame.x0 + wuss_STD_INSET,
-                                            task->grid_y, CONFIG_LABEL_W - wuss_STD_INSET,
+                                            task->grid_y,
+                                            CONFIG_LABEL_W - wuss_STD_INSET,
                                             CONFIG_CELL),
                        "Patterns", 0);
 
