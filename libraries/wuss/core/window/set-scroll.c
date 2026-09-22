@@ -35,7 +35,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
 
   /* the scrollbar sausage position depends on scroll, so its well needs
    * redrawing too -- content invalidation alone never touches it */
-  wuss__chrome_repaint(window);
+  wuss__chrome_repaint_scroll(window, dx, dy);
 
   /* The valid blit source is the content box minus whatever windows above it
    * were covering (those areas hold occluder pixels, not this window's),
