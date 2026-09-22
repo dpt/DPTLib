@@ -2516,7 +2516,36 @@ result_t bmfont_draw(bmfont_t               *bmfont,
   }
 
   if (!box_intersects(&scrclip, &drawbox))
+  {
+    /* nothing to paint, but callers that chain draws by feeding this
+     * call's end_pos in as the next call's pos (e.g. drawing a line as
+     * several separately-coloured runs) still need the correct advance,
+     * or the run after this one starts from a stale x and every
+     * following run on the line shifts left by this run's width */
+    if (end_pos)
+    {
+      int x;
+
+      x = pos->x;
+      while (len--)
+      {
+        int c;
+        int gid;
+
+        c = *text++;
+        if ((unsigned char) c < ' ')
+          continue;
+        gid = (unsigned char) c - ' ';
+        if (gid >= bmfont->totalchars)
+          continue;
+
+        x += bmfont_advance_for(bmfont, gid, c, spacing);
+      }
+      *end_pos = POINT(x, pos->y);
+    }
+
     return result_OK; /* not visible */
+  }
 
   box_clipped(&scrclip, &drawbox, &drawclip); /* note: drawclip isn't a proper box */
 
