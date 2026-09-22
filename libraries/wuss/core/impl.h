@@ -285,6 +285,32 @@ static inline void wuss__chrome_repaint_for(wuss_window_t *window,
   window->wuss->furniture_ops->invalidate_for(window, visible);
 }
 
+void wuss__invalidate_clipped(wuss_window_t *window, const box_t *box);
+
+/* Just the scrollbar well(s) whose axis actually moved -- the sausage
+ * position depends on scroll, so its well needs redrawing when its own axis
+ * scrolls, but nothing else in the furniture does, and the other axis's
+ * well (if any) is untouched. Narrower than wuss__chrome_repaint, which
+ * invalidates the whole titlebar/outline/carve strips. */
+static inline void wuss__chrome_repaint_scroll(wuss_window_t *window,
+                                               int            dx,
+                                               int            dy)
+{
+  box_t well;
+
+  if (dy != 0 && (window->flags & wuss_WINDOW_VSCROLL))
+  {
+    wuss__vscroll_well_box(window, &well);
+    wuss__invalidate_clipped(window, &well);
+  }
+
+  if (dx != 0 && (window->flags & wuss_WINDOW_HSCROLL))
+  {
+    wuss__hscroll_well_box(window, &well);
+    wuss__invalidate_clipped(window, &well);
+  }
+}
+
 /* Drop just the cached furniture layout, without queuing any dirty region --
  * for a window move, where the caller already handles the repaint but the
  * cache (absolute coords) must be rebuilt for the new position. */
@@ -312,6 +338,15 @@ static inline void wuss__chrome_repaint_for(wuss_window_t *window,
 {
   (void) window;
   (void) visible;
+}
+
+static inline void wuss__chrome_repaint_scroll(wuss_window_t *window,
+                                               int            dx,
+                                               int            dy)
+{
+  (void) window;
+  (void) dx;
+  (void) dy;
 }
 
 static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
