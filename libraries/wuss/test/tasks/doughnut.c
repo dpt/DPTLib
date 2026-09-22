@@ -25,9 +25,11 @@
  * character cell; here it drives colour_grey brightness on a screen pixel
  * instead. */
 
-#define DOUGHNUT_R1 1.0 /* tube radius */
-#define DOUGHNUT_R2 2.0 /* ring radius */
-#define DOUGHNUT_K2 5.0 /* viewer distance */
+#define DOUGHNUT_R1   1.0  /* tube radius */
+#define DOUGHNUT_R2   2.0  /* ring radius */
+#define DOUGHNUT_K2   5.0  /* viewer distance */
+#define DOUGHNUT_P1 314.15 /* points around the tube */
+#define DOUGHNUT_P2  90.0  /* points around the ring */
 
 enum { DOUGHNUT_MENU_INFO = 0, DOUGHNUT_MENU_BACKGROUND };
 
@@ -202,14 +204,14 @@ static result_t doughnut_redraw(const wuss_event_t *event,
 
   k1 = width * DOUGHNUT_K2 * 3.0 / (8.0 * (DOUGHNUT_R1 + DOUGHNUT_R2)) * task->zoom;
 
-  for (theta = 0.0; theta < 2.0 * M_PI; theta += 0.07)
+  for (theta = 0.0; theta < 2.0 * M_PI; theta += 2.0 * M_PI / DOUGHNUT_P2)
   {
     double costheta, sintheta;
 
     costheta = cos(theta);
     sintheta = sin(theta);
 
-    for (phi = 0.0; phi < 2.0 * M_PI; phi += 0.02)
+    for (phi = 0.0; phi < 2.0 * M_PI; phi += 2.0 * M_PI / DOUGHNUT_P1)
     {
       int cell;
 
