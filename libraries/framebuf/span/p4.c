@@ -70,10 +70,12 @@ static void span_p4_blendconst(void       *vdst,
     {
       unsigned int idx;
 
+      /* table is nibble-packed, two entries per byte (see
+       * pixelmap__build_table): unpack the low or high nibble. */
       idx = ((unsigned int) blend_r >> (8 - pm->rbits) << (pm->gbits + pm->bbits)) |
             ((unsigned int) blend_g >> (8 - pm->gbits) << pm->bbits) |
             ((unsigned int) blend_b >> (8 - pm->bbits));
-      *pdst = pm->entries[idx];
+      *pdst = (pm->entries[idx >> 1] >> ((idx & 1) << 2)) & 0xF;
     }
     else
     {
