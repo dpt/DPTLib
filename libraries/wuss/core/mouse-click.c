@@ -57,6 +57,16 @@ result_t wuss_mouse_click(wuss_t             *wuss,
     win = wuss->furniture.dragging;
     if (hit != NULL)
       *hit = win;
+
+    if (wuss->furniture.pressed_region != wuss_FURNITURE_NONE)
+    {
+      box_t pressed;
+
+      wuss__furniture_pressed_box(win, wuss->furniture.pressed_region, &pressed);
+      wuss__invalidate_clipped(win, &pressed);
+      wuss->furniture.pressed_region = wuss_FURNITURE_NONE;
+    }
+
     wuss->furniture.dragging  = NULL;
     wuss->furniture.drag_kind = wuss_FURNITURE_DRAG_NONE;
 
@@ -164,6 +174,21 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           break;
         default:
           break;
+        }
+
+        /* light the arrow up while held; MOUSE_UP's generic dragging==NULL
+         * check above clears it and repaints it plain. Toggle-size has no
+         * press highlight -- it isn't a scroll/resize button. */
+        if (region != wuss_FURNITURE_TOGGLE_SIZE)
+        {
+          box_t pressed;
+
+          wuss->furniture.dragging       = win;
+          wuss->furniture.drag_kind      = wuss_FURNITURE_DRAG_NONE;
+          wuss->furniture.pressed_region = region;
+
+          wuss__furniture_pressed_box(win, region, &pressed);
+          wuss__invalidate_clipped(win, &pressed);
         }
       }
       return result_OK;
@@ -273,10 +298,15 @@ result_t wuss_mouse_click(wuss_t             *wuss,
            * meet the pointer on the very first move. */
           if (region == wuss_FURNITURE_RESIZE)
           {
-            box_t content;
+            box_t content, pressed;
+
             wuss__content_box(win, &content);
             wuss->furniture.drag_offset.x = x - content.x1;
             wuss->furniture.drag_offset.y = y - content.y1;
+
+            wuss->furniture.pressed_region = region;
+            wuss__furniture_pressed_box(win, region, &pressed);
+            wuss__invalidate_clipped(win, &pressed);
           }
         }
       }

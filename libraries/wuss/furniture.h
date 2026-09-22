@@ -121,6 +121,11 @@ struct wuss__furniture
                                             * of the window's edge snapping to
                                             * it on the first move */
   int                         drag_scroll_start; /* *_SAUSAGE: scroll.x/scroll.y at drag start */
+  wuss_furniture_region_t     pressed_region; /* RESIZE or a scroll arrow while
+                                               * held down, drawn in
+                                               * button_pressed; NONE
+                                               * otherwise. Only "dragging"'s
+                                               * window is ever pressed. */
 };
 
 static inline wuss_furniture_drag_kind_t wuss__furniture_drag_kind(wuss_furniture_region_t region)
@@ -143,6 +148,13 @@ static inline wuss_furniture_drag_kind_t wuss__furniture_drag_kind(wuss_furnitur
 
 wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
                                                  point_t              p);
+
+/* The drawn (un-grown) box for a pressable region -- RESIZE or one of the
+ * four scroll arrows -- used to invalidate/highlight it while held. "region"
+ * must be one of those five; any other value is a caller error. */
+void wuss__furniture_pressed_box(const wuss_window_t    *window,
+                                 wuss_furniture_region_t region,
+                                 box_t                  *out);
 void wuss__furniture_draw(wuss_t        *wuss,
                           wuss_window_t *window,
                           const box_t   *full);
