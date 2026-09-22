@@ -148,6 +148,24 @@ static void draw_title(wuss_t        *wuss,
                      NULL, &pos, &WUSS_TITLE_SHADOW_OFFSET, NULL);
 }
 
+void wuss__furniture_pressed_box(const wuss_window_t    *window,
+                                 wuss_furniture_region_t region,
+                                 box_t                  *out)
+{
+  switch (region)
+  {
+  case wuss_FURNITURE_RESIZE:        wuss__resize_box(window, out);       break;
+  case wuss_FURNITURE_VSCROLL_UP:    wuss__vscroll_up_box(window, out);   break;
+  case wuss_FURNITURE_VSCROLL_DOWN:  wuss__vscroll_down_box(window, out); break;
+  case wuss_FURNITURE_HSCROLL_LEFT:  wuss__hscroll_left_box(window, out); break;
+  case wuss_FURNITURE_HSCROLL_RIGHT: wuss__hscroll_right_box(window, out); break;
+  default:
+    assert(!"wuss__furniture_pressed_box: region is not pressable");
+    out->x0 = out->y0 = out->x1 = out->y1 = 0;
+    break;
+  }
+}
+
 void wuss__furniture_draw(wuss_t        *wuss,
                           wuss_window_t *window,
                           const box_t   *full)
@@ -186,6 +204,19 @@ void wuss__furniture_draw(wuss_t        *wuss,
     wuss__hscroll_sausage_box(window, &sausage);
     fill_furniture_rect(wuss, &sausage, full,
                         wuss->palette[wuss->furniture_colours.scroll.sausages]);
+  }
+
+  /* RESIZE or a scroll arrow held down on this window: painted live, over the
+   * cached fill just laid down, same as the sausages above and for the same
+   * reason -- press state isn't part of the geometry the cache tracks. */
+  if (window->wuss->furniture.dragging == window &&
+      window->wuss->furniture.pressed_region != wuss_FURNITURE_NONE)
+  {
+    box_t pressed;
+
+    wuss__furniture_pressed_box(window, window->wuss->furniture.pressed_region, &pressed);
+    fill_furniture_rect(wuss, &pressed, full,
+                        wuss->palette[wuss->button_pressed]);
   }
 
   /* the title string, drawn live over its (already-filled) titlebar slot */

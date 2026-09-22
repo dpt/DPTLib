@@ -335,10 +335,11 @@ result_t wuss_create(screen_t               *scr,
   w->resources          = resources;
   w->pointer_window     = NULL;
 #ifdef WUSS_FURNITURE
-  w->furniture.dragging = NULL;
-  w->furniture.drag.x   = 0;
-  w->furniture.drag.y   = 0;
-  w->furniture_ops      = &wuss__furniture_default_ops;
+  w->furniture.dragging       = NULL;
+  w->furniture.drag.x         = 0;
+  w->furniture.drag.y         = 0;
+  w->furniture.pressed_region = wuss_FURNITURE_NONE;
+  w->furniture_ops            = &wuss__furniture_default_ops;
 #endif
 #ifdef WUSS_ICONS
   w->pressed_icon       = NULL;
