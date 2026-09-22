@@ -149,9 +149,10 @@ static inline wuss_furniture_drag_kind_t wuss__furniture_drag_kind(wuss_furnitur
 wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
                                                  point_t              p);
 
-/* The drawn (un-grown) box for a pressable region -- RESIZE or one of the
- * four scroll arrows -- used to invalidate/highlight it while held. "region"
- * must be one of those five; any other value is a caller error. */
+/* The drawn (un-grown) box for a pressable region -- RESIZE, TOGGLE_SIZE,
+ * CLOSE, BACK or one of the four scroll arrows -- used to invalidate/
+ * highlight it while held. "region" must be one of those eight; any other
+ * value is a caller error. */
 void wuss__furniture_pressed_box(const wuss_window_t    *window,
                                  wuss_furniture_region_t region,
                                  box_t                  *out);

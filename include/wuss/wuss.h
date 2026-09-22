@@ -201,6 +201,8 @@ typedef struct wuss_furniture_palette
     wuss_colour_t sausages; /**< Scrollbar sausages. */
   }
   scroll;
+  wuss_colour_t pressed;    /**< A scroll arrow, RESIZE, TOGGLE_SIZE, CLOSE
+                                 or BACK while held down. */
 }
 wuss_furniture_palette_t;
 

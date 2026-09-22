@@ -159,6 +159,7 @@ result_t wuss_create(screen_t               *scr,
     pal.scroll.arrows   = wuss__resolve_colour(w, pal.scroll.arrows);
     pal.scroll.wells    = wuss__resolve_colour(w, pal.scroll.wells);
     pal.scroll.sausages = wuss__resolve_colour(w, pal.scroll.sausages);
+    pal.pressed         = wuss__resolve_colour(w, pal.pressed);
     blight     = wuss__resolve_colour(w, config->bevel.light);
     bdark      = wuss__resolve_colour(w, config->bevel.dark);
     bdivider   = (config->bevel.divider == wuss_NO_BACKGROUND)
@@ -188,6 +189,7 @@ result_t wuss_create(screen_t               *scr,
     pal.scroll.arrows   = bg;
     pal.scroll.wells    = bg;
     pal.scroll.sausages = fg;
+    pal.pressed         = fg;
 
     blight     = 0;
     bdark      = 0;
@@ -208,6 +210,7 @@ result_t wuss_create(screen_t               *scr,
       pal.scroll.arrows   >= w->npalette ||
       pal.scroll.wells    >= w->npalette ||
       pal.scroll.sausages >= w->npalette ||
+      pal.pressed         >= w->npalette ||
       validate_bevel_backdrop(w, blight, bdark, bdivider,
                               btnbg, btnfg, btnpressed, accent) != result_OK)
   {
