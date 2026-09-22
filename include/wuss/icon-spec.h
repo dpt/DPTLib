@@ -21,6 +21,8 @@ extern "C"
 {
 #endif
 
+#include <stddef.h>
+
 #include "base/result.h"
 #include "geom/box.h"
 
@@ -30,6 +32,10 @@ extern "C"
 #ifdef WUSS_ICONS
 
 /* ----------------------------------------------------------------------- */
+
+/** Minimum buf_size to pass to \ref wuss_icon_spec_slider_row: ample for
+ *  any int plus a short unit suffix in fmt. */
+#define WUSS_SLIDER_ROW_BUF 32
 
 /**
  * A slider paired with a label that echoes its current value, the recurring
@@ -85,6 +91,12 @@ wuss_slider_row_t;
  *                           outlive the row.
  * \param[in]  step          Snapping step passed through to \ref
  *                           wuss_slider_row_bind; 0 for none.
+ * \param[out] buf           Caller-owned storage for the formatted value
+ *                           label text; must outlive the following \ref
+ *                           wuss_icon_create_array call, since \c
+ *                           value_spec->text borrows it until then. At least
+ *                           \ref WUSS_SLIDER_ROW_BUF bytes.
+ * \param[in]  buf_size      Size of \p buf in bytes.
  */
 void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
                                wuss_icon_spec_t         *value_spec,
@@ -95,7 +107,9 @@ void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
                                int                       max,
                                int                       default_value,
                                const char               *fmt,
-                               int                       step);
+                               int                       step,
+                               char                     *buf,
+                               size_t                    buf_size);
 
 /**
  * Bind a \ref wuss_slider_row_t to the icons \ref wuss_icon_create_array

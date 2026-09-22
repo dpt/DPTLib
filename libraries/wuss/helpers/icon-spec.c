@@ -12,9 +12,6 @@
 
 #ifdef WUSS_ICONS
 
-/* value label buffer: ample for any int plus a short unit suffix in fmt */
-#define SLIDER_ROW_BUF 32
-
 /* nearest multiple of step above min, clamped to [min,max] -- min may be
  * greater than max for a reversed (fill-backwards) slider, so clamp against
  * the ordered pair rather than assuming min <= max */
@@ -134,15 +131,15 @@ void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
                                int                       max,
                                int                       default_value,
                                const char               *fmt,
-                               int                       step)
+                               int                       step,
+                               char                     *buf,
+                               size_t                    buf_size)
 {
-  char buf[SLIDER_ROW_BUF];
-
   if (step != 0)
     default_value = wuss__slider_row_snap(default_value, min, max, step);
   wuss_icon_spec_slider(slider_spec, slider_bbox, orientation, min, max,
                         default_value);
-  snprintf(buf, sizeof(buf), fmt ? fmt : "%d", default_value);
+  snprintf(buf, buf_size, fmt ? fmt : "%d", default_value);
   wuss_icon_spec_label(value_spec, value_bbox, buf, 0);
 }
 
@@ -166,7 +163,7 @@ result_t wuss_slider_row_set(wuss_window_t           *window,
                              const wuss_slider_row_t *row,
                              int                      value)
 {
-  char buf[SLIDER_ROW_BUF];
+  char buf[WUSS_SLIDER_ROW_BUF];
 
   if (row->step != 0)
     value = wuss__slider_row_snap(value, row->min, row->max, row->step);
@@ -181,7 +178,7 @@ int wuss_slider_row_event(wuss_window_t           *window,
                           const wuss_event_t      *event,
                           int                     *value)
 {
-  char buf[SLIDER_ROW_BUF];
+  char buf[WUSS_SLIDER_ROW_BUF];
   int  v;
 
   if (event->kind != wuss_EVENT_ICON || event->data.icon.icon != row->slider)
