@@ -515,6 +515,7 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
   wuss_icon_t     *made[SATURN_SIZE_NICONS];
   box_t            boxes[SIZE_STACK__LIMIT];
   box_t            root;
+  char             value_bufs[SATURN_SIZEDLG_NROWS][WUSS_SLIDER_ROW_BUF];
   int              value, row;
   size2d_t         min_sz;
 
@@ -545,7 +546,8 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
     wuss_icon_spec_slider_row(&specs[slider_icon[row]], &specs[value_icon[row]],
                               boxes[slider_box[row]], boxes[value_box[row]],
                               wuss_SLIDER_HORIZONTAL,
-                              desc->min, desc->max, value, NULL, desc->step);
+                              desc->min, desc->max, value, NULL, desc->step,
+                              value_bufs[row], sizeof(value_bufs[row]));
   }
 
   wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_DEFAULT], boxes[ST_DFLT], "Default", 0);
