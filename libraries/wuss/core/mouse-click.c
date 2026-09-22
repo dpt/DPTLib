@@ -120,6 +120,19 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         action == wuss_MOUSE_DOWN       &&
         (button & wuss_BUTTON_SELECT))
     {
+      box_t pressed;
+
+      /* Lit even though the window may not survive the call below: a veto
+       * leaves it armed for the ordinary MOUSE_UP release below, and a
+       * successful close tears the window (and this pressed state along
+       * with it, see wuss_window_close) down anyway. */
+      wuss->furniture.dragging       = win;
+      wuss->furniture.drag_kind      = wuss_FURNITURE_DRAG_NONE;
+      wuss->furniture.pressed_region = region;
+
+      wuss__furniture_pressed_box(win, region, &pressed);
+      wuss__invalidate_clipped(win, &pressed);
+
       /* User close-icon path: routes through try_close, so the task gets
        * PRE_CLOSE (may veto) then CLOSE and, if not vetoed, wuss tears the
        * window down. A veto's non-OK return propagates to the caller. */
@@ -132,6 +145,18 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         wuss_window_restack(win, wuss_ZORDER_BACK);
       else if (button & wuss_BUTTON_ADJUST)
         wuss_window_restack(win, wuss_ZORDER_FRONT);
+
+      if (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST))
+      {
+        box_t pressed;
+
+        wuss->furniture.dragging       = win;
+        wuss->furniture.drag_kind      = wuss_FURNITURE_DRAG_NONE;
+        wuss->furniture.pressed_region = region;
+
+        wuss__furniture_pressed_box(win, region, &pressed);
+        wuss__invalidate_clipped(win, &pressed);
+      }
       return result_OK;
     }
 
@@ -176,10 +201,11 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           break;
         }
 
-        /* light the arrow up while held; MOUSE_UP's generic dragging==NULL
-         * check above clears it and repaints it plain. Toggle-size has no
-         * press highlight -- it isn't a scroll/resize button. */
-        if (region != wuss_FURNITURE_TOGGLE_SIZE)
+        /* light the icon/arrow up while held; MOUSE_UP's generic
+         * dragging==NULL check above clears it and repaints it plain.
+         * Toggle-size takes no action on Adjust (above), so it stays
+         * unlit for that button too. */
+        if (region != wuss_FURNITURE_TOGGLE_SIZE || (button & wuss_BUTTON_SELECT))
         {
           box_t pressed;
 

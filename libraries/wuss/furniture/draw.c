@@ -159,6 +159,9 @@ void wuss__furniture_pressed_box(const wuss_window_t    *window,
   case wuss_FURNITURE_VSCROLL_DOWN:  wuss__vscroll_down_box(window, out); break;
   case wuss_FURNITURE_HSCROLL_LEFT:  wuss__hscroll_left_box(window, out); break;
   case wuss_FURNITURE_HSCROLL_RIGHT: wuss__hscroll_right_box(window, out); break;
+  case wuss_FURNITURE_CLOSE:         wuss__close_box(window, out);        break;
+  case wuss_FURNITURE_BACK:          wuss__back_box(window, out);         break;
+  case wuss_FURNITURE_TOGGLE_SIZE:   wuss__toggle_box(window, out);       break;
   default:
     assert(!"wuss__furniture_pressed_box: region is not pressable");
     out->x0 = out->y0 = out->x1 = out->y1 = 0;
@@ -216,7 +219,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
     wuss__furniture_pressed_box(window, window->wuss->furniture.pressed_region, &pressed);
     fill_furniture_rect(wuss, &pressed, full,
-                        wuss->palette[wuss->button_pressed]);
+                        wuss->palette[wuss->furniture_colours.pressed]);
   }
 
   /* the title string, drawn live over its (already-filled) titlebar slot */
