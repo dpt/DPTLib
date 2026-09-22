@@ -771,7 +771,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/config.c
         libraries/wuss/test/tasks/curve.c
         libraries/wuss/test/tasks/display.c
-        libraries/wuss/test/tasks/donut.c
+        libraries/wuss/test/tasks/doughnut.c
         libraries/wuss/test/tasks/gradient.c
         libraries/wuss/test/tasks/greeble.c
         libraries/wuss/test/tasks/icons.c

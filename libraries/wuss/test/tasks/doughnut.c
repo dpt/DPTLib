@@ -1,4 +1,4 @@
-/* wuss/test/tasks/donut.c -- spinning ASCII-donut torus, rendered in pixels */
+/* wuss/test/tasks/doughnut.c -- spinning ASCII-doughnut torus, rendered in pixels */
 
 #ifdef WUSS_APP
 
@@ -14,9 +14,9 @@
 #include "framebuf/screen.h"
 #include "geom/box.h"
 
-#include "donut.h"
+#include "doughnut.h"
 
-/* Andy Sloane's "donut.c" (https://www.a1k0n.net/2011/07/20/donut-math.html):
+/* Andy Sloane's "donut.c" (www.a1k0n.net/2011/07/20/donut-math.html):
  * a torus (tube radius R1, ring radius R2) is swept over its two surface
  * angles theta/phi; each surface point is rotated by A (about x) and B (about
  * z), projected with a simple z/(K2+z) perspective divide, and z-buffered per
@@ -25,27 +25,27 @@
  * character cell; here it drives colour_grey brightness on a screen pixel
  * instead. */
 
-#define DONUT_R1 1.0 /* tube radius */
-#define DONUT_R2 2.0 /* ring radius */
-#define DONUT_K2 5.0 /* viewer distance */
+#define DOUGHNUT_R1 1.0 /* tube radius */
+#define DOUGHNUT_R2 2.0 /* ring radius */
+#define DOUGHNUT_K2 5.0 /* viewer distance */
 
-enum { DONUT_MENU_INFO = 0, DONUT_MENU_BACKGROUND };
+enum { DOUGHNUT_MENU_INFO = 0, DOUGHNUT_MENU_BACKGROUND };
 
 /* one theta/phi surface sample, projected and shaded into out_x/out_y/
  * out_z/out_lum; returns 0 if the projected point falls outside [0,width)x
  * [0,height) so the caller can skip it */
-static int donut_project(double  costheta,
-                         double  sintheta,
-                         double  phi,
-                         double  a,
-                         double  b,
-                         int     width,
-                         int     height,
-                         double  k1,
-                         int    *out_x,
-                         int    *out_y,
-                         double *out_z,
-                         double *out_lum)
+static int doughnut_project(double  costheta,
+                            double  sintheta,
+                            double  phi,
+                            double  a,
+                            double  b,
+                            int     width,
+                            int     height,
+                            double  k1,
+                            int    *out_x,
+                            int    *out_y,
+                            double *out_z,
+                            double *out_lum)
 {
   double cosphi, sinphi;
   double cosa, sina, cosb, sinb;
@@ -62,12 +62,12 @@ static int donut_project(double  costheta,
   cosb     = cos(b);
   sinb     = sin(b);
 
-  circlex = DONUT_R2 + DONUT_R1 * costheta;
-  circley = DONUT_R1 * sintheta;
+  circlex = DOUGHNUT_R2 + DOUGHNUT_R1 * costheta;
+  circley = DOUGHNUT_R1 * sintheta;
 
   x = circlex * (cosb * cosphi + sina * sinb * sinphi) - circley * cosa * sinb;
   y = circlex * (sinb * cosphi - sina * cosb * sinphi) + circley * cosa * cosb;
-  z = DONUT_K2 + cosa * circlex * sinphi + circley * sina;
+  z = DOUGHNUT_K2 + cosa * circlex * sinphi + circley * sina;
   ooz = 1.0 / z;
 
   xp = (int) (width  / 2 + k1 * ooz * x);
@@ -99,10 +99,10 @@ static int donut_project(double  costheta,
   return 1;
 }
 
-result_t donut_create(wuss_t *wuss, donut_task_t **out)
+result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
 {
   result_t         rc;
-  donut_task_t    *task;
+  doughnut_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
 
@@ -116,10 +116,10 @@ result_t donut_create(wuss_t *wuss, donut_task_t **out)
   task->b    = 1.0;
   task->zoom = 1.0;
 
-  /* donut_redraw paints its own background every frame */
-  delegate_desc.handle    = donut_handle;
+  /* doughnut_redraw paints its own background every frame */
+  delegate_desc.handle    = doughnut_handle;
   delegate_desc.task_data = task;
-  delegate_desc.name      = "donut";
+  delegate_desc.name      = "doughnut";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
@@ -131,7 +131,7 @@ result_t donut_create(wuss_t *wuss, donut_task_t **out)
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(200, 200),
-                                 "Donut",
+                                 "Doughnut",
                                  wuss_WINDOW_DEFAULT,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(200, 200),
@@ -143,16 +143,16 @@ result_t donut_create(wuss_t *wuss, donut_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, DONUT_MENU_INFO, "Info",
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, DOUGHNUT_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in donut_mouse */
+                                * just before wuss_menu_open, in doughnut_mouse */
 
   wuss_colourmenu_set_none(0);
-  WUSS_MENU_ITEM_MENU(task->menu_items, DONUT_MENU_BACKGROUND, "Background",
+  WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_BACKGROUND, "Background",
                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
-  WUSS_MENU_TITLE(task->menu, "Donut", task->menu_items,
+  WUSS_MENU_TITLE(task->menu, "Doughnut", task->menu_items,
                  NELEMS(task->menu_items));
 
   if (out)
@@ -161,13 +161,14 @@ result_t donut_create(wuss_t *wuss, donut_task_t **out)
   return result_OK;
 }
 
-void donut_destroy(donut_task_t *task)
+void doughnut_destroy(doughnut_task_t *task)
 {
   wuss_menu_close(task->menu_handle);
   free(task);
 }
 
-static result_t donut_redraw(const wuss_event_t *event, donut_task_t *task)
+static result_t doughnut_redraw(const wuss_event_t *event,
+                                doughnut_task_t    *task)
 {
   screen_t    *scr;
   const box_t *content, *bounds;
@@ -199,7 +200,7 @@ static result_t donut_redraw(const wuss_event_t *event, donut_task_t *task)
     return result_OOM;
   }
 
-  k1 = width * DONUT_K2 * 3.0 / (8.0 * (DONUT_R1 + DONUT_R2)) * task->zoom;
+  k1 = width * DOUGHNUT_K2 * 3.0 / (8.0 * (DOUGHNUT_R1 + DOUGHNUT_R2)) * task->zoom;
 
   for (theta = 0.0; theta < 2.0 * M_PI; theta += 0.07)
   {
@@ -212,7 +213,7 @@ static result_t donut_redraw(const wuss_event_t *event, donut_task_t *task)
     {
       int cell;
 
-      if (!donut_project(costheta, sintheta, phi, task->a, task->b, width,
+      if (!doughnut_project(costheta, sintheta, phi, task->a, task->b, width,
                          height, k1, &x, &y, &z, &lum))
         continue;
 
@@ -250,14 +251,14 @@ static result_t donut_redraw(const wuss_event_t *event, donut_task_t *task)
 /* radians of a/b rotation per pixel of Adjust drag, chosen to roughly match
  * the idle auto-rotation's feel (0.04/0.02 rad per tick) over a normal drag
  * speed */
-#define DONUT_DRAG_SCALE 0.01
+#define DOUGHNUT_DRAG_SCALE 0.01
 
-static result_t donut_mouse(donut_task_t       *task,
-                            wuss_mouse_action_t action,
-                            int                 x,
-                            int                 y,
-                            wuss_button_t       button,
-                            wuss_window_t      *window)
+static result_t doughnut_mouse(doughnut_task_t    *task,
+                               wuss_mouse_action_t action,
+                               int                 x,
+                               int                 y,
+                               wuss_button_t       button,
+                               wuss_window_t      *window)
 {
   if (window != task->window)
     return result_OK; /* the proginfo dialogue has no click behaviour of
@@ -270,13 +271,13 @@ static result_t donut_mouse(donut_task_t       *task,
     {
       static const wuss_proginfo_desc_t desc =
       {
-        "Donut",
+        "Doughnut",
         "Spinning torus, ray-marched and shaded per pixel",
         "(c) DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };
       wuss_proginfo_set_desc(&desc);
-      task->menu_items[DONUT_MENU_INFO].window = wuss_proginfo_window(task->delegate);
+      task->menu_items[DOUGHNUT_MENU_INFO].window = wuss_proginfo_window(task->delegate);
 
       return wuss_menu_open(task->delegate, &task->menu,
                             wuss_get_pointer(task->wuss), &task->menu_handle);
@@ -296,8 +297,8 @@ static result_t donut_mouse(donut_task_t       *task,
   case wuss_MOUSE_MOVE:
     if (!task->dragging)
       break;
-    task->b += (x - task->drag_x) * DONUT_DRAG_SCALE;
-    task->a += (y - task->drag_y) * DONUT_DRAG_SCALE;
+    task->b += (x - task->drag_x) * DOUGHNUT_DRAG_SCALE;
+    task->a += (y - task->drag_y) * DOUGHNUT_DRAG_SCALE;
     task->drag_x = x;
     task->drag_y = y;
     wuss_window_invalidate_visible(window);
@@ -311,22 +312,22 @@ static result_t donut_mouse(donut_task_t       *task,
   return result_OK;
 }
 
-static result_t donut_scroll(donut_task_t  *task,
-                             wuss_window_t *window,
-                             int            delta)
+static result_t doughnut_scroll(doughnut_task_t *task,
+                                wuss_window_t   *window,
+                                int              delta)
 {
   if (window != task->window)
     return result_OK;
 
-  task->zoom += (delta > 0 ? 1 : -1) * DONUT_ZOOM_STEP;
-  task->zoom  = CLAMP(task->zoom, DONUT_ZOOM_MIN, DONUT_ZOOM_MAX);
+  task->zoom += (delta > 0 ? 1 : -1) * DOUGHNUT_ZOOM_STEP;
+  task->zoom  = CLAMP(task->zoom, DOUGHNUT_ZOOM_MIN, DOUGHNUT_ZOOM_MAX);
 
   wuss_window_invalidate_visible(task->window);
 
   return result_OK;
 }
 
-static result_t donut_idle(donut_task_t *task)
+static result_t doughnut_idle(doughnut_task_t *task)
 {
   if (task->window == NULL)
     return result_OK; /* window closed but the proginfo dialogue -- a second
@@ -347,16 +348,16 @@ static result_t donut_idle(donut_task_t *task)
 /* The "Background" row's only submenu leaf: always hand back the shared
  * colourmenu singleton, unretargeted -- there is nothing else to pick into.
  */
-static result_t donut_pre_submenu_open(donut_task_t       *task,
-                                       const wuss_event_t *event)
+static result_t doughnut_pre_submenu_open(doughnut_task_t    *task,
+                                          const wuss_event_t *event)
 {
   return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
                                     event->data.pre_submenu_open.index,
                                     wuss_colourmenu_menu(task->wuss));
 }
 
-static result_t donut_menu_select(donut_task_t       *task,
-                                  const wuss_event_t *event)
+static result_t doughnut_menu_select(doughnut_task_t    *task,
+                                     const wuss_event_t *event)
 {
   const colour_t *palette;
   int             npalette;
@@ -378,35 +379,35 @@ static result_t donut_menu_select(donut_task_t       *task,
   return result_OK;
 }
 
-result_t donut_handle(wuss_window_t      *window,
-                      const wuss_event_t *event,
-                      void               *task_data)
+result_t doughnut_handle(wuss_window_t      *window,
+                         const wuss_event_t *event,
+                         void               *task_data)
 {
-  donut_task_t *task;
+  doughnut_task_t *task;
 
   task = task_data;
 
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return donut_redraw(event, task);
+    return doughnut_redraw(event, task);
 
   case wuss_EVENT_MOUSE:
-    return donut_mouse(task, event->data.mouse.action,
+    return doughnut_mouse(task, event->data.mouse.action,
                        event->data.mouse.point.x, event->data.mouse.point.y,
                        event->data.mouse.button, window);
 
   case wuss_EVENT_SCROLL:
-    return donut_scroll(task, window, event->data.scroll.delta);
+    return doughnut_scroll(task, window, event->data.scroll.delta);
 
   case wuss_EVENT_IDLE:
-    return donut_idle(task);
+    return doughnut_idle(task);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    return donut_pre_submenu_open(task, event);
+    return doughnut_pre_submenu_open(task, event);
 
   case wuss_EVENT_MENU_SELECT:
-    return donut_menu_select(task, event);
+    return doughnut_menu_select(task, event);
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
@@ -421,7 +422,7 @@ result_t donut_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == task->menu_items[DONUT_MENU_INFO].window)
+    if (window == task->menu_items[DOUGHNUT_MENU_INFO].window)
       rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
@@ -434,7 +435,7 @@ result_t donut_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_QUIT:
-    donut_destroy(task);
+    doughnut_destroy(task);
     return result_OK;
 
   default:

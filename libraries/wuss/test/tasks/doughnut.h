@@ -1,7 +1,7 @@
-/* wuss/test/tasks/donut.h -- spinning ASCII-donut torus, in pixels */
+/* wuss/test/tasks/doughnut.h -- spinning ASCII-doughnut torus, in pixels */
 
-#ifndef TASKS_DONUT_H
-#define TASKS_DONUT_H
+#ifndef TASKS_DOUGHNUT_H
+#define TASKS_DOUGHNUT_H
 
 #ifdef WUSS_APP
 
@@ -12,12 +12,12 @@
 #include "wuss/window.h"
 
 /* window task: Andy Sloane's "donut.c" torus render (the classic terminal
- * spinning-donut demo), ray-marched per pixel and shaded by surface-normal
- * brightness, redrawn every idle tick with the two rotation angles advanced
- * a little. Select toggles pause; the wheel zooms in/out; an Adjust drag
- * spins the torus directly, overriding the idle auto-rotation for as long
- * as it's held. */
-typedef struct donut_task
+ * spinning-doughnut demo), ray-marched per pixel and shaded by
+ * surface-normal brightness, redrawn every idle tick with the two rotation
+ * angles advanced a little. Select toggles pause; the wheel zooms in/out;
+ * an Adjust drag spins the torus directly, overriding the idle
+ * auto-rotation for as long as it's held. */
+typedef struct doughnut_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
   wuss_task_t       *delegate; /* the task that owns the menu */
@@ -35,25 +35,25 @@ typedef struct donut_task
   int                dragging;   /* non-zero while an Adjust drag is live */
   int                drag_x, drag_y; /* last drag point, content space */
 }
-donut_task_t;
+doughnut_task_t;
 
 /* zoom range/step for the wheel: 1.0 is the original framing, larger zooms
  * in, smaller zooms out */
-#define DONUT_ZOOM_MIN  0.3
-#define DONUT_ZOOM_MAX  3.0
-#define DONUT_ZOOM_STEP 0.1
+#define DOUGHNUT_ZOOM_MIN  0.3
+#define DOUGHNUT_ZOOM_MAX  3.0
+#define DOUGHNUT_ZOOM_STEP 0.1
 
-wuss_window_fn_t donut_handle;
+wuss_window_fn_t doughnut_handle;
 
-/* create the spinning-donut window against the given wuss instance; the task
- * block is allocated here, owned by the window, and freed when it closes.
- * if out is non-NULL, the task block is also returned through it */
-result_t donut_create(wuss_t *wuss, donut_task_t **out);
+/* create the spinning-doughnut window against the given wuss instance; the
+ * task block is allocated here, owned by the window, and freed when it
+ * closes. if out is non-NULL, the task block is also returned through it */
+result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out);
 
-/* free a task block allocated by donut_create; normally called by the
+/* free a task block allocated by doughnut_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
-void donut_destroy(donut_task_t *task);
+void doughnut_destroy(doughnut_task_t *task);
 
 #endif /* WUSS_APP */
 
-#endif /* TASKS_DONUT_H */
+#endif /* TASKS_DOUGHNUT_H */
