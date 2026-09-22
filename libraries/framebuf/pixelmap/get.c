@@ -157,11 +157,7 @@ static unsigned int pixelmap__hash(const colour_t *palette, int nentries)
 
 /* ----------------------------------------------------------------------- */
 
-/* generous: callers can hold a pm across a whole blit loop while another
- * nested pixelmap_get (e.g. a per-pixel span blend on a different format)
- * competes for slots in the same frame. Tables are small (<=2KB each), so
- * sizing up removes eviction pressure rather than trying to track holders. */
-#define PIXELMAP_CACHE_SIZE 16
+#define PIXELMAP_CACHE_SIZE 4
 
 struct pixelmap__cacheent
 {
