@@ -106,18 +106,10 @@ g_games_tasks[] =
 },
 g_tests_tasks[] =
 {
-  { "Checker",     (task_create_fn_t) checker_create     },
-  { "Curve",       (task_create_fn_t) curve_create       },
-  { "Greeble",     (task_create_fn_t) greeble_create     },
+  { "Blank",       (task_create_fn_t) blank_create       },
   { "Icons",       (task_create_fn_t) icons_create       },
   { "Porter-Duff", (task_create_fn_t) porter_duff_create },
-  { "Sofa",        (task_create_fn_t) sofa_create        },
   { "Text",        (task_create_fn_t) text_create        }
-},
-g_system_tasks[] =
-{
-  { "Display",     (task_create_fn_t) display_create     },
-  { "Palette",     (task_create_fn_t) palette_create     }
 },
 g_utilities_tasks[] =
 {
@@ -126,12 +118,20 @@ g_utilities_tasks[] =
 },
 g_visuals_tasks[] =
 {
-  { "Blank",       (task_create_fn_t) blank_create       },
+  { "Checker",     (task_create_fn_t) checker_create     },
+  { "Curve",       (task_create_fn_t) curve_create       },
   { "Doughnut",    (task_create_fn_t) doughnut_create    },
   { "Gradient",    (task_create_fn_t) gradient_create    },
+  { "Greeble",     (task_create_fn_t) greeble_create     },
   { "Image",       (task_create_fn_t) image_create       },
   { "Lissajous",   (task_create_fn_t) lissajous_create   },
-  { "Saturn",      (task_create_fn_t) saturn_create      }
+  { "Saturn",      (task_create_fn_t) saturn_create      },
+  { "Sofa",        (task_create_fn_t) sofa_create        }
+},
+g_system_tasks[] =
+{
+  { "Display",     (task_create_fn_t) display_create     },
+  { "Palette",     (task_create_fn_t) palette_create     }
 };
 
 static const wuss_menu_item_t g_games_items[] =
@@ -142,19 +142,10 @@ static const wuss_menu_item_t g_games_items[] =
 
 static const wuss_menu_item_t g_tests_items[] =
 {
-  { "Checker",     wuss_MENU_ITEM_NONE, NULL },
-  { "Curve",       wuss_MENU_ITEM_NONE, NULL },
-  { "Greeble",     wuss_MENU_ITEM_NONE, NULL },
+  { "Blank",       wuss_MENU_ITEM_NONE, NULL },
   { "Icons",       wuss_MENU_ITEM_NONE, NULL },
   { "Porter-Duff", wuss_MENU_ITEM_NONE, NULL },
-  { "Sofa",        wuss_MENU_ITEM_NONE, NULL },
   { "Text",        wuss_MENU_ITEM_NONE, NULL }
-};
-
-static const wuss_menu_item_t g_system_items[] =
-{
-  { "Display",     wuss_MENU_ITEM_NONE, NULL },
-  { "Palette",     wuss_MENU_ITEM_NONE, NULL }
 };
 
 static const wuss_menu_item_t g_utilities_items[] =
@@ -165,17 +156,36 @@ static const wuss_menu_item_t g_utilities_items[] =
 
 static const wuss_menu_item_t g_visuals_items[] =
 {
-  { "Blank",       wuss_MENU_ITEM_NONE, NULL },
+  { "Checker",     wuss_MENU_ITEM_NONE, NULL },
+  { "Curve",       wuss_MENU_ITEM_NONE, NULL },
   { "Doughnut",    wuss_MENU_ITEM_NONE, NULL },
   { "Gradient",    wuss_MENU_ITEM_NONE, NULL },
+  { "Greeble",     wuss_MENU_ITEM_NONE, NULL },
   { "Image",       wuss_MENU_ITEM_NONE, NULL },
   { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
-  { "Saturn",      wuss_MENU_ITEM_NONE, NULL }
+  { "Saturn",      wuss_MENU_ITEM_NONE, NULL },
+  { "Sofa",        wuss_MENU_ITEM_NONE, NULL }
+};
+
+static const wuss_menu_item_t g_system_items[] =
+{
+  { "Display",     wuss_MENU_ITEM_NONE, NULL },
+  { "Palette",     wuss_MENU_ITEM_NONE, NULL }
 };
 
 static const wuss_menu_t g_games_menu =
 {
   "Games", g_games_items, NELEMS(g_games_items)
+};
+
+static const wuss_menu_t g_visuals_menu =
+{
+  "Visuals", g_visuals_items, NELEMS(g_visuals_items)
+};
+
+static const wuss_menu_t g_utilities_menu =
+{
+  "Utilities", g_utilities_items, NELEMS(g_utilities_items)
 };
 
 static const wuss_menu_t g_tests_menu =
@@ -186,16 +196,6 @@ static const wuss_menu_t g_tests_menu =
 static const wuss_menu_t g_system_menu =
 {
   "System", g_system_items, NELEMS(g_system_items)
-};
-
-static const wuss_menu_t g_utilities_menu =
-{
-  "Utilities", g_utilities_items, NELEMS(g_utilities_items)
-};
-
-static const wuss_menu_t g_visuals_menu =
-{
-  "Visuals", g_visuals_items, NELEMS(g_visuals_items)
 };
 
 static result_t spawn_quit(void)
@@ -210,10 +210,10 @@ enum
 {
   TASK_ITEM_INFO,
   TASK_ITEM_GAMES,
+  TASK_ITEM_VISUALS,
+  TASK_ITEM_UTILITIES,
   TASK_ITEM_TESTS,
   TASK_ITEM_SYSTEM,
-  TASK_ITEM_UTILITIES,
-  TASK_ITEM_VISUALS,
   TASK_ITEM_CONFIGURE,
   TASK_ITEM_QUIT
 };
@@ -230,10 +230,10 @@ static wuss_menu_item_t g_task_items[] =
 {
   { "Info",      wuss_MENU_ITEM_PRE_OPEN, NULL,           NULL },
   { "Games",     wuss_MENU_ITEM_NONE, &g_games_menu,      NULL },
+  { "Visuals",   wuss_MENU_ITEM_NONE, &g_visuals_menu,    NULL },
+  { "Utilities", wuss_MENU_ITEM_NONE, &g_utilities_menu,  NULL },
   { "Tests",     wuss_MENU_ITEM_NONE, &g_tests_menu,      NULL },
   { "System",    wuss_MENU_ITEM_NONE, &g_system_menu,     NULL },
-  { "Utilities", wuss_MENU_ITEM_NONE, &g_utilities_menu,  NULL },
-  { "Visuals",   wuss_MENU_ITEM_NONE, &g_visuals_menu,    NULL },
   { "Configure", wuss_MENU_ITEM_NONE, NULL,               NULL },
   { "Quit Wuss", wuss_MENU_ITEM_NONE, NULL,               NULL }
 };
@@ -242,10 +242,10 @@ static const task_spawn_fn_t g_task_spawn[] =
 {
   NULL,        /* "Info" -> wuss_menu_item_t.window leaf, no spawn */
   NULL,        /* "Games" -> submenu g_games_menu */
+  NULL,        /* "Visuals" -> submenu g_visuals_menu */
+  NULL,        /* "Utilities" -> submenu g_utilities_menu */
   NULL,        /* "Tests" -> submenu g_tests_menu */
   NULL,        /* "System" -> submenu g_system_menu */
-  NULL,        /* "Utilities" -> submenu g_utilities_menu */
-  NULL,        /* "Visuals" -> submenu g_visuals_menu */
   spawn_configure,
   spawn_quit
 };
