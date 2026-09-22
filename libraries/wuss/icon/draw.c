@@ -547,6 +547,13 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
       hatch = pattern_from_preset(screen_PATTERN_DIAGONAL,
                                   colour_rgb(0, 0, 0),
                                   colour_rgb(255, 255, 255));
+      /* phase against the chip's own corner, not the screen origin the
+       * preset defaults to -- otherwise a window-move fast path that
+       * blits already-settled pixels to their new position (leaving
+       * their old screen-relative phase baked in) meets a freshly
+       * repainted sliver phased against the new position, and the two
+       * halves' hatching no longer lines up at the seam */
+      hatch.origin = POINT(chip.x0, chip.y0);
       screen_fill_pattern(c->scr, &chip, &hatch);
     }
     else
