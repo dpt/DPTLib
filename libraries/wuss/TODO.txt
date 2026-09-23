@@ -14,7 +14,7 @@ Policy? Windows hidden by default (unless a flag is set)
 Wuss lets hidden windows exist in its window stack which complicates the code a bit. RISC OS allows hidden (closed) windows by putting them "behind the backwindow".
 
 Keyboard input
-- bmfont needs to be able to draw a caret bmfont_find_caret?
+- bmfont caret: done (bmfont_find_caret, bmfont_caret_x, bmfont_draw_caret)
 
 Large fonts for titles, italic font, ...
 
