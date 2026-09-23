@@ -7003,6 +7003,18 @@ QuitFail:
       if (rc != result_OK)
         goto Failure;
 
+      /* a pressed image resolves the same way */
+      spec.u.bitmap.pressed_set =
+        wuss_ICON_SET(wuss_icons_lookup(wuss, "radon"));
+      rc = wuss_icon_create(win_ic, &spec, &icon);
+      if (rc != result_OK)
+        goto Failure;
+
+      spec.u.bitmap.pressed_set = wuss_ICON_SET(99);
+      if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)
+        goto Failure;
+      spec.u.bitmap.pressed_set = 0;
+
       /* a bogus index is rejected */
       spec.u.bitmap.set = wuss_ICON_SET(99);
       if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)

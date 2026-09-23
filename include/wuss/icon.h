@@ -294,6 +294,10 @@ typedef union wuss_icon_spec_data
      *  index from \ref wuss_icons_lookup with \ref wuss_ICON_SET. Ignored
      *  when \c image is set. */
     int             set;
+    /** Icon-set entry drawn instead while the icon is pressed (see \c set
+     *  for the encoding). Zero (the default) draws the normal image
+     *  throughout. */
+    int             pressed_set;
   }
   bitmap;
 

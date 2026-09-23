@@ -80,6 +80,11 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   if (spec->type == wuss_ICON_TYPE_BITMAP && bitmap == NULL)
     return result_WUSS_BAD_ICON;
 
+  /* the pressed image is looked up at draw time; just check it exists */
+  if (spec->type == wuss_ICON_TYPE_BITMAP && spec->u.bitmap.pressed_set > 0 &&
+      wuss_icons_bitmap(w, spec->u.bitmap.pressed_set - 1) == NULL)
+    return result_WUSS_BAD_INDEX;
+
   if (spec->type == wuss_ICON_TYPE_PATTERN &&
       spec->u.pattern.tile >= screen_PATTERN__LIMIT)
     return result_WUSS_BAD_ICON;
