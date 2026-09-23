@@ -45,7 +45,9 @@ minesweeper_cell_state_t;
 /* classic minesweeper: Select reveals a cell (flood-filling neighbouring
  * zeros), Adjust toggles a flag. Mines are placed on the first reveal so the
  * opening click is never a mine. A MENU-button click pops a menu with "New
- * Game" and a "Grid Size" submenu that resets the board at a new size. */
+ * Game" and a "Grid Size" submenu that resets the board at a new size. With
+ * the input focus, the arrow keys move a cursor cell, Return reveals it and
+ * Space toggles its flag. */
 typedef struct minesweeper_task
 {
   wuss_t                  *wuss;
@@ -77,6 +79,7 @@ typedef struct minesweeper_task
   int                      flags;   /* flagged cell count, for the counter */
   time_t                   start_time; /* set on first reveal */
   int                      elapsed; /* seconds, frozen on dead/won */
+  int                      cur_r, cur_c; /* keyboard cursor cell */
   struct
   {
     colour_t number[9];     /* [1..8] neighbour-count colours; [0] unused */
@@ -89,6 +92,7 @@ typedef struct minesweeper_task
     colour_t dead_bg;       /* banner background on death */
     colour_t won_bg;        /* banner background on win */
     colour_t banner_fg;
+    colour_t cursor;        /* keyboard cursor outline */
   }                          colours;
 }
 minesweeper_task_t;
