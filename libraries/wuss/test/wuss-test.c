@@ -6662,14 +6662,16 @@ QuitFail:
 
   {
     const bitmap_t *icon_bm;
-    int             idx, opton;
+    int             idx, opton, count;
 
     rc = wuss_icons_load_resource(wuss, resources);
     if (rc != result_OK)
       goto Failure;
 
-    /* the four fixtures: optoff/opton/radoff/radon */
-    if (wuss_icons_count(wuss) != 4)
+    /* resources/wuss/icons/ may carry more than these four fixtures
+     * (optoff/opton/radoff/radon), so just require they're all present. */
+    count = wuss_icons_count(wuss);
+    if (count < 4)
       goto Failure;
 
     opton = wuss_icons_lookup(wuss, "opton");
@@ -6681,7 +6683,7 @@ QuitFail:
     icon_bm = wuss_icons_bitmap(wuss, opton);
     if (icon_bm == NULL || !bitmap_is_compressed(icon_bm))
       goto Failure;
-    if (wuss_icons_bitmap(wuss, 4) != NULL)
+    if (wuss_icons_bitmap(wuss, count) != NULL)
       goto Failure;
 
     /* an icon spec picks it up by index via wuss_ICON_SET */
@@ -6723,7 +6725,7 @@ QuitFail:
 
     /* a reload replaces the set cleanly (no leak, ASan would catch it) */
     rc = wuss_icons_load_resource(wuss, resources);
-    if (rc != result_OK || wuss_icons_count(wuss) != 4)
+    if (rc != result_OK || wuss_icons_count(wuss) != count)
       goto Failure;
 
     idx = wuss_icons_lookup(wuss, "optoff");
