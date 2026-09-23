@@ -768,7 +768,6 @@ if(BUILD_APPS)
         apps/wuss/main.c
         apps/wuss/tasks.c
         libraries/wuss/test/tasks/ball.c
-        libraries/wuss/test/tasks/blank.c
         libraries/wuss/test/tasks/chars.c
         libraries/wuss/test/tasks/checker.c
         libraries/wuss/test/tasks/clock.c
@@ -783,6 +782,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/lissajous.c
         libraries/wuss/test/tasks/minesweeper.c
         libraries/wuss/test/tasks/palette.c
+        libraries/wuss/test/tasks/patterns.c
         libraries/wuss/test/tasks/porter-duff.c
         libraries/wuss/test/tasks/saturn.c
         libraries/wuss/test/tasks/sofa.c
