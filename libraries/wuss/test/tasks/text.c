@@ -707,8 +707,7 @@ void text_destroy(text_task_t *task)
 {
   int i;
 
-  if (task->menu_handle != NULL)
-    wuss_menu_close(task->menu_handle);
+  wuss_menu_close(task->menu_handle);
 
   for (i = 0; i < task->nfonts; i++)
     if (task->fonts[i] != NULL)

@@ -120,8 +120,7 @@ result_t display_create(wuss_t *wuss, display_task_t **out)
 
 void display_destroy(display_task_t *task)
 {
-  if (task->menu_handle != NULL)
-    wuss_menu_close(task->menu_handle);
+  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

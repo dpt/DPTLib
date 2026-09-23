@@ -84,8 +84,7 @@ result_t blank_create(wuss_t *wuss, blank_task_t **out)
 
 void blank_destroy(blank_task_t *task)
 {
-  if (task->menu_handle != NULL)
-    wuss_menu_close(task->menu_handle);
+  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

@@ -91,8 +91,7 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
 
 void lissajous_destroy(lissajous_task_t *task)
 {
-  if (task->menu_handle != NULL)
-    wuss_menu_close(task->menu_handle);
+  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

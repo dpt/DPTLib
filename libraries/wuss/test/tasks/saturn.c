@@ -265,11 +265,8 @@ void saturn_destroy(saturn_task_t *task)
    * node->window would dangle once wuss_dialogue_destroy below frees it.
    * Close our own chain first, same as wuss_destroy expects every task to
    * do for whatever it still holds. */
-  if (task->menu_handle != NULL)
-  {
-    wuss_menu_close(task->menu_handle);
-    task->menu_handle = NULL;
-  }
+  wuss_menu_close(task->menu_handle);
+  task->menu_handle = NULL;
 
   wuss_dialogue_destroy(task->conf.dialogue);
   free(task); /* task_data was calloc'd per instance by the spawner */
