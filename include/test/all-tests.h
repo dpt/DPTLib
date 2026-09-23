@@ -25,6 +25,7 @@ extern testfn_t pickle_test,
 /* framebuf */
 extern testfn_t bitmap_rle_test,
                 bmfont_test,
+                bmfontcache_test,
                 composite_test,
                 curve_test,
                 pixelmap_test,
