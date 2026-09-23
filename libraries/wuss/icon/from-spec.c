@@ -46,7 +46,6 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
    * caller building one in debug builds */
   case wuss_ICON_TYPE_DISPLAY:
   case wuss_ICON_TYPE_NUMBER:
-  case wuss_ICON_TYPE_STRING_SET:
   case wuss_ICON_TYPE_DRAGGABLE:
     assert(!"reserved wuss icon type constructed");
     break;

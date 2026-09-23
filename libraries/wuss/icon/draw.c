@@ -819,7 +819,6 @@ void wuss__icon_draw(wuss_t              *wuss,
   /* reserved types with no renderer yet: fall back to a plain label */
   case wuss_ICON_TYPE_DISPLAY:
   case wuss_ICON_TYPE_NUMBER:
-  case wuss_ICON_TYPE_STRING_SET:
   case wuss_ICON_TYPE_DRAGGABLE:
     wuss__icon_draw_label(&c);
     break;
