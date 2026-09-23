@@ -20,6 +20,7 @@ extern "C"
 
 #include "base/result.h"
 #include "framebuf/bmfont.h"
+#include "framebuf/bmfontcache.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "geom/point.h"
@@ -691,6 +692,19 @@ wuss_font_class_t wuss_get_font_class_n(const wuss_t *wuss, int index);
  *         the slot is out of range, was not filled, or was given no name.
  */
 const char *wuss_get_font_name_n(const wuss_t *wuss, int index);
+
+/**
+ * Fetch the font cache owned by this window manager, for a task to load
+ * fonts beyond the fixed slots passed to wuss_create (e.g. a font-picker
+ * menu offering every face under a resources directory) without loading the
+ * same file twice when another task, or window, already has it open. See
+ * framebuf/bmfontcache.h. Destroyed, along with every font still held in it,
+ * by wuss_destroy.
+ *
+ * \param[in] wuss Window manager.
+ * \return The font cache. Never NULL.
+ */
+bmfontcache_t *wuss_get_font_cache(const wuss_t *wuss);
 
 /**
  * Measure a run of text in one of wuss's configured fonts (see

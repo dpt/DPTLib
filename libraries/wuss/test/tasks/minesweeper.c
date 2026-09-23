@@ -262,7 +262,8 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
 
   resources = wuss_get_resources(wuss);
   filename  = pathf("%s/resources/bmfonts/DPT-Digits-Bold-Lg.png", resources);
-  rc = bmfont_create(filename, &task->hud_font);
+  rc = bmfontcache_acquire(wuss_get_font_cache(wuss), filename,
+                           &task->hud_font);
   if (rc != result_OK)
   {
     free(task); /* nothing registered yet; nobody else owns it */
@@ -282,7 +283,7 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
   rc = bitmap_load_png(&task->mine_bm, filename);
   if (rc != result_OK)
   {
-    bmfont_destroy(task->hud_font);
+    bmfontcache_release(wuss_get_font_cache(wuss), task->hud_font);
     free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
@@ -292,7 +293,7 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
   if (rc != result_OK)
   {
     free(task->mine_bm.base);
-    bmfont_destroy(task->hud_font);
+    bmfontcache_release(wuss_get_font_cache(wuss), task->hud_font);
     free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
@@ -305,7 +306,7 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
   {
     free(task->flag_bm.base);
     free(task->mine_bm.base);
-    bmfont_destroy(task->hud_font);
+    bmfontcache_release(wuss_get_font_cache(wuss), task->hud_font);
     free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
@@ -364,7 +365,7 @@ void minesweeper_destroy(minesweeper_task_t *task)
   wuss_menu_close(task->menu_handle);
   free(task->flag_bm.base);
   free(task->mine_bm.base);
-  bmfont_destroy(task->hud_font);
+  bmfontcache_release(wuss_get_font_cache(task->wuss), task->hud_font);
   free(task);
 }
 

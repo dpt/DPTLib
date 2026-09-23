@@ -380,6 +380,16 @@ result_t wuss_create(screen_t               *scr,
     (void) wuss_icons_load_resource(w, resources);
 #endif
 
+  if (bmfontcache_create(&w->font_cache) != result_OK)
+  {
+#ifdef WUSS_ICONS
+    wuss__icons_registry_free(w);
+#endif
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
+    return result_OOM;
+  }
+
   *wuss = w;
 
   return result_OK;

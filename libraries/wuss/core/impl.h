@@ -15,6 +15,7 @@
 #include "geom/size.h"
 #include "framebuf/screen.h"
 #include "framebuf/bmfont.h"
+#include "framebuf/bmfontcache.h"
 #include "utils/barith.h"
 
 #include "wuss/wuss.h"
@@ -111,6 +112,11 @@ struct wuss
                                           * convention only, unused internally */
   struct wuss_fontset         fonts;     /* font slots from wuss_create; slot 0
                                           * is the system font. See font/font.h */
+  bmfontcache_t               *font_cache; /* owned; shared loader for fonts
+                                          * tasks pick beyond the fixed
+                                          * fonts[] slots above, e.g. via a
+                                          * font-picker menu. See
+                                          * wuss_get_font_cache. */
   wuss_alloc_t                alloc;     /* malloc/realloc/free hooks, copied in
                                           * by wuss_create; used for every heap
                                           * block this wuss_t owns */

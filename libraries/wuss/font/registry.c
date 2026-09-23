@@ -84,3 +84,10 @@ const char *wuss_get_font_name_n(const wuss_t *wuss, int index)
 
   return wuss->fonts.font_names[index];
 }
+
+bmfontcache_t *wuss_get_font_cache(const wuss_t *wuss)
+{
+  assert(wuss != NULL);
+
+  return wuss->font_cache;
+}

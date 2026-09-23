@@ -101,7 +101,7 @@ static bmfont_t *chars_load_font(chars_task_t *task,
   resources = wuss_get_resources(task->wuss);
   filename  = pathf("%s/resources/bmfonts/%s.png", resources, name);
 
-  rc = bmfont_create(filename, &font);
+  rc = bmfontcache_acquire(wuss_get_font_cache(task->wuss), filename, &font);
   if (rc != result_OK)
     return NULL;
 
@@ -287,7 +287,7 @@ void chars_destroy(chars_task_t *task)
 
   for (i = 0; i < task->nfonts; i++)
     if (task->fonts[i] != NULL)
-      bmfont_destroy(task->fonts[i]);
+      bmfontcache_release(wuss_get_font_cache(task->wuss), task->fonts[i]);
   free(task->fonts);
   free(task);
 }

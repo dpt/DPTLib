@@ -80,6 +80,7 @@ set(PUBLIC_HEADERS
     include/framebuf/bitmap-set.h
     include/framebuf/bitmap.h
     include/framebuf/bmfont.h
+    include/framebuf/bmfontcache.h
     include/framebuf/colour.h
     include/framebuf/composite.h
     include/framebuf/curve.h
@@ -263,6 +264,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/rle.h
     libraries/framebuf/bitmap/save.c
     libraries/framebuf/bmfont/bmfont.c
+    libraries/framebuf/bmfont/cache.c
     libraries/framebuf/bmfont/enumerate.c
     libraries/framebuf/colour/colour.c
     libraries/framebuf/composite/composite.c
@@ -694,6 +696,7 @@ if(BUILD_TESTS)
         libraries/datastruct/ntree/test/ntree-test.c
         libraries/framebuf/bitmap/test/rle-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
+        libraries/framebuf/bmfont/test/bmfontcache-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
         libraries/framebuf/pixelmap/test/pixelmap-test.c
