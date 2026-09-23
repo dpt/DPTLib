@@ -6,6 +6,7 @@
 #include "geom/box.h"
 #include "geom/point.h"
 
+#include "framebuf/bmfont.h"
 #include "framebuf/screen.h"
 
 #include "wuss/wuss.h"
@@ -36,7 +37,18 @@ struct wuss_icon
   int               value;   /* wuss_ICON_TYPE_SLIDER: current value, in
                               * [spec.u.slider.min,max]; spec.u.slider.default_value
                               * is creation input only, never updated */
+  int               text_scroll; /* wuss_ICON_TYPE_WRITABLE: pixels the text
+                                  * is scrolled left to keep the caret in
+                                  * view */
 };
+
+/* A writable's text sits this far inside its bbox: the 1px outline plus a
+ * 3px gap. */
+#define WUSS_WRITABLE_INSET 4
+
+/* The font an icon's text is drawn with: its requested slot, falling back to
+ * the system font. NULL when wuss has no fonts. */
+bmfont_t *wuss__icon_font(const wuss_t *wuss, const wuss_icon_t *icon);
 
 static inline int wuss__icon_pressed(const wuss_icon_t *icon)
 {
@@ -167,6 +179,33 @@ void wuss__icon_draw(wuss_t              *wuss,
  * in virtual document space. Returns the topmost (last-created wins) match, or
  * NULL. Label, hidden and disabled icons are skipped. */
 wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point);
+
+/* wuss_ICON_TYPE_WRITABLE editing (icon/writable.c). */
+
+/* Move the caret to byte "index" (clamped to the text) of writable "icon" on
+ * "window", scrolling the text to keep it in view and invalidating whichever
+ * icons changed. Assumes "window" already holds the focus. */
+void wuss__writable_place_caret(wuss_window_t *window,
+                                wuss_icon_t   *icon,
+                                int            index);
+
+/* The caret index nearest document-space x "doc_x" in writable "icon". */
+int wuss__writable_index_for_x(const wuss_t      *wuss,
+                               const wuss_icon_t *icon,
+                               int                doc_x);
+
+/* Copy "text" into a writable's "size"-byte buffer "buf", truncating. */
+void wuss__writable_copy(char *buf, int size, const char *text);
+
+/* Remove the caret, invalidating its icon. No-op when there is none. */
+void wuss__caret_clear(wuss_t *wuss);
+
+/* Offer a key to the caret icon. Sets *claimed and returns the result of any
+ * wuss_EVENT_ICON delivered; a key it does not use leaves *claimed 0. */
+result_t wuss__writable_key(wuss_t              *wuss,
+                            int                  code,
+                            wuss_key_modifiers_t modifiers,
+                            int                 *claimed);
 
 /* Free a window's whole icon store (text + nodes + array). Teardown only: does
  * not invalidate or swap-remove. */

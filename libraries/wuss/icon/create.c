@@ -16,6 +16,7 @@ result_t wuss_icon_create(wuss_window_t          *window,
   wuss_t      *w;
   wuss_icon_t *it;
   wuss_icon_t  scratch;
+  char        *buf;
 
   assert(window != NULL);
   assert(spec   != NULL);
@@ -37,8 +38,17 @@ result_t wuss_icon_create(wuss_window_t          *window,
 
   *it = scratch; /* scratch.spec.text aliases spec->text; replaced with an owned copy below */
 
-  it->spec.text = wuss__alloc_strdup(&w->alloc,
-                                     spec->text != NULL ? spec->text : "");
+  if (spec->type == wuss_ICON_TYPE_WRITABLE)
+  {
+    buf = wuss__malloc(w, (size_t) spec->u.writable.size);
+    if (buf != NULL)
+      wuss__writable_copy(buf, spec->u.writable.size, scratch.spec.text);
+    it->spec.text = buf;
+  }
+  else
+  {
+    it->spec.text = wuss__alloc_strdup(&w->alloc, scratch.spec.text);
+  }
   if (it->spec.text == NULL)
   {
     wuss__free(w, it);

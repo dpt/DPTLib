@@ -34,6 +34,11 @@ void wuss_window_close(wuss_window_t *doomed)
     wuss->hover_icon   = NULL;
     wuss->hover_window = NULL;
   }
+  if (wuss->caret_window == doomed)
+  {
+    wuss->caret_icon   = NULL;
+    wuss->caret_window = NULL;
+  }
 #endif
   /* No wuss_EVENT_POINTER_EXIT: the task hears about this window going away
    * through PRE_CLOSE/CLOSE, and the struct is freed below. */

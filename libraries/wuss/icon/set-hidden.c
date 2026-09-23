@@ -6,6 +6,9 @@ void wuss_icon_set_hidden(wuss_window_t *window,
                           wuss_icon_t   *icon,
                           int            hidden)
 {
+  if (hidden && window->wuss->caret_icon == icon)
+    wuss__caret_clear(window->wuss);
+
   if (hidden)
     icon->spec.flags |= wuss_ICON_FLAGS_HIDDEN;
   else

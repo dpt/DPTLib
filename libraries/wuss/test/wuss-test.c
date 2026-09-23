@@ -39,6 +39,7 @@
 #include "../core/impl.h"
 #endif
 #if defined(WUSS_ICONS)
+#include "wuss/icon-spec.h"
 #include "../icon.h"
 #endif
 
@@ -81,6 +82,7 @@ typedef struct test_task
   int                 last_key;
   int                 last_key_mods;
   int                 unclaim_keys;
+  int                 icon_count;
 }
 test_task_t;
 
@@ -179,6 +181,10 @@ static result_t test_handle(wuss_window_t      *window,
 
   case wuss_EVENT_LOSE_FOCUS:
     tc->lose_focus_count++;
+    break;
+
+  case wuss_EVENT_ICON:
+    tc->icon_count++;
     break;
 
   case wuss_EVENT_KEY:
@@ -2129,6 +2135,148 @@ result_t wuss_test(const char *resources)
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK) goto Failure;
   }
+
+#if defined(WUSS_FURNITURE) && defined(WUSS_ICONS)
+  printf("test: writable icons: click for caret, edit keys, full buffer, Tab, caret loss\n");
+
+  {
+    static test_task_t tc_w;
+    wuss_task_t       *delegate_w;
+    box_t              box_w, content_w;
+    wuss_window_t     *win_w;
+    wuss_icon_spec_t   specs[3];
+    wuss_icon_t       *icons[3];
+    int                claimed;
+
+    delegate_w = mk_task(wuss, test_handle, &tc_w);
+    if (delegate_w == NULL) goto Failure;
+
+    box_w.x0 = 10; box_w.y0 = 30; box_w.x1 = 110; box_w.y1 = 130;
+    rc = wuss_window_create(delegate_w, &box_w, "W",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_w);
+    if (rc != result_OK) goto Failure;
+
+    /* a zero-size buffer is rejected */
+    wuss_icon_spec_writable(&specs[0], (box_t) { 0, 0, 80, 16 }, NULL, 0, 0);
+    if (wuss_icon_create(win_w, &specs[0], NULL) != result_WUSS_BAD_ICON)
+      goto Failure;
+
+    wuss_icon_spec_writable(&specs[0], (box_t) { 0, 0, 80, 16 }, "toolong", 4, 0);
+    wuss_icon_spec_writable(&specs[1], (box_t) { 0, 20, 80, 36 }, NULL, 16, 0);
+    wuss_icon_spec_writable(&specs[2], (box_t) { 0, 40, 80, 56 }, "x", 8,
+                            wuss_ICON_FLAGS_HIDDEN);
+    rc = wuss_icon_create_array(win_w, specs, 3, icons);
+    if (rc != result_OK) goto Failure;
+
+    /* the seed text is truncated to fit */
+    if (strcmp(wuss_icon_get_text(icons[0]), "too") != 0) goto Failure;
+
+    /* a click takes the focus and the caret (no font: caret at the end) */
+    wuss_window_get_content_bounds(win_w, &content_w);
+    wuss_mouse_click(wuss, POINT(content_w.x0 + 5, content_w.y0 + 25),
+                     wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(wuss, POINT(content_w.x0 + 5, content_w.y0 + 25),
+                     wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    if (wuss_get_focus(wuss) != win_w || wuss->caret_icon != icons[1] ||
+        wuss->caret_index != 0)
+      goto Failure;
+
+    /* typing inserts at the caret and raises an icon event per edit */
+    tc_w.icon_count = 0;
+    wuss_key(wuss, 'a', wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, 'c', wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, 'b', wuss_KEY_MOD_NONE, &claimed);
+    if (!claimed || strcmp(wuss_icon_get_text(icons[1]), "abc") != 0 ||
+        wuss->caret_index != 2 || tc_w.icon_count != 3 ||
+        tc_w.key_count != 0)
+      goto Failure;
+
+    /* Home, Delete, End, Backspace */
+    wuss_key(wuss, wuss_KEY_HOME, wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, wuss_KEY_DELETE, wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, wuss_KEY_END, wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, 8, wuss_KEY_MOD_NONE, &claimed);
+    if (strcmp(wuss_icon_get_text(icons[1]), "b") != 0 ||
+        wuss->caret_index != 1 || tc_w.icon_count != 5)
+      goto Failure;
+
+    /* keys the field doesn't use reach the task */
+    wuss_key(wuss, 13, wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, 'z', wuss_KEY_MOD_CTRL, &claimed);
+    wuss_key(wuss, 0x263A, wuss_KEY_MOD_NONE, &claimed);
+    if (tc_w.key_count != 3 || strcmp(wuss_icon_get_text(icons[1]), "b") != 0)
+      goto Failure;
+
+    /* Ctrl+Left/Right jump to the ends; Shift+Left/Right move by words */
+    wuss_icon_set_text(win_w, icons[1], "ab cd  ef");
+    wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_CTRL, &claimed);
+    if (!claimed || wuss->caret_index != 0) goto Failure;
+    wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_SHIFT, &claimed);
+    if (wuss->caret_index != 2) goto Failure;
+    wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_SHIFT, &claimed);
+    if (wuss->caret_index != 5) goto Failure;
+    wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_SHIFT, &claimed);
+    if (wuss->caret_index != 9) goto Failure;
+    wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_SHIFT, &claimed);
+    if (wuss->caret_index != 7) goto Failure;
+    wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_SHIFT, &claimed);
+    if (wuss->caret_index != 3) goto Failure;
+    wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_CTRL, &claimed);
+    if (wuss->caret_index != 9) goto Failure;
+
+    /* Ctrl+U clears the field and raises an icon event */
+    tc_w.icon_count = 0;
+    wuss_key(wuss, 'u', wuss_KEY_MOD_CTRL, &claimed);
+    if (!claimed || wuss_icon_get_text(icons[1])[0] != '\0' ||
+        wuss->caret_index != 0 || tc_w.icon_count != 1 ||
+        tc_w.key_count != 3)
+      goto Failure;
+
+    /* Tab wraps over the hidden field; Shift-Tab goes back */
+    wuss_key(wuss, 9, wuss_KEY_MOD_NONE, &claimed);
+    if (!claimed || wuss->caret_icon != icons[0] || wuss->caret_index != 3)
+      goto Failure;
+    wuss_key(wuss, 9, wuss_KEY_MOD_SHIFT, &claimed);
+    if (wuss->caret_icon != icons[1]) goto Failure;
+
+    /* a full buffer swallows further characters */
+    wuss_icon_set_caret(win_w, icons[0], -1);
+    tc_w.icon_count = 0;
+    wuss_key(wuss, 'q', wuss_KEY_MOD_NONE, &claimed);
+    if (!claimed || strcmp(wuss_icon_get_text(icons[0]), "too") != 0 ||
+        tc_w.icon_count != 0)
+      goto Failure;
+
+    /* set_text truncates and moves the caret to the end */
+    rc = wuss_icon_set_text(win_w, icons[0], "hi");
+    if (rc != result_OK || strcmp(wuss_icon_get_text(icons[0]), "hi") != 0 ||
+        wuss->caret_index != 2)
+      goto Failure;
+
+    /* a hidden field can't take the caret; hiding the caret field drops it */
+    if (wuss_icon_set_caret(win_w, icons[2], 0) != result_BAD_ARG)
+      goto Failure;
+    wuss_icon_set_hidden(win_w, icons[0], 1);
+    if (wuss->caret_icon != NULL) goto Failure;
+
+    /* losing the focus drops the caret; deleting the caret icon clears it */
+    wuss_icon_set_caret(win_w, icons[1], 0);
+    if (wuss_set_focus(wuss, NULL) != result_OK || wuss->caret_icon != NULL)
+      goto Failure;
+    wuss_icon_set_caret(win_w, icons[1], 0);
+    wuss_icon_delete(win_w, icons[1]);
+    if (wuss->caret_icon != NULL) goto Failure;
+
+    wuss_icon_set_caret(win_w, icons[2], 0); /* hidden: refused */
+    wuss_window_close(win_w);
+    if (wuss->caret_window != NULL) goto Failure;
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK) goto Failure;
+  }
+#endif
 
   printf("test: creating icons on a hidden window never dirties the visible window sitting under its footprint\n");
 

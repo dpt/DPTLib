@@ -10,12 +10,26 @@ result_t wuss_key(wuss_t              *wuss,
                   int                 *claimed)
 {
   result_t     rc;
+#ifdef WUSS_ICONS
+  int          used;
+#endif
   wuss_event_t event;
 
   assert(wuss != NULL);
 
   if (claimed != NULL)
     *claimed = 0;
+
+#ifdef WUSS_ICONS
+  /* the caret's writable gets first refusal */
+  rc = wuss__writable_key(wuss, code, modifiers, &used);
+  if (used)
+  {
+    if (claimed != NULL)
+      *claimed = 1;
+    return rc;
+  }
+#endif
 
   if (wuss->focus == NULL || wuss->focus->task->handle == NULL)
     return result_OK;

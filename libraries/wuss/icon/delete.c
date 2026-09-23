@@ -26,6 +26,12 @@ void wuss_icon_delete(wuss_window_t *window, wuss_icon_t *icon)
     window->wuss->hover_window = NULL;
   }
 
+  if (window->wuss->caret_icon == icon)
+  {
+    window->wuss->caret_icon   = NULL;
+    window->wuss->caret_window = NULL;
+  }
+
   wuss__icon_invalidate(window, icon);
 
   for (i = 0; i < window->nicons; i++)

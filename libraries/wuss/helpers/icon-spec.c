@@ -52,6 +52,22 @@ void wuss_icon_spec_display(wuss_icon_spec_t *spec,
   spec->u.label.border = wuss_ICON_BORDER_GROOVE;
 }
 
+void wuss_icon_spec_writable(wuss_icon_spec_t *spec,
+                             box_t             bbox,
+                             const char       *text,
+                             int               size,
+                             int               flags)
+{
+  memset(spec, 0, sizeof(*spec));
+  spec->bbox            = bbox;
+  spec->type            = wuss_ICON_TYPE_WRITABLE;
+  spec->text            = text;
+  spec->fg              = wuss_COLOUR_BLACK;
+  spec->bg              = wuss_COLOUR_WHITE;
+  spec->flags           = flags;
+  spec->u.writable.size = size;
+}
+
 void wuss_icon_spec_slider(wuss_icon_spec_t         *spec,
                            box_t                     bbox,
                            wuss_slider_orientation_t orientation,

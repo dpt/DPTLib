@@ -41,6 +41,7 @@ typedef struct icons_task
   wuss_icon_t   *slider_horiz; /* horizontal slider */
   wuss_icon_t   *slider_vert;  /* vertical slider */
   wuss_icon_t   *slider_state; /* label echoing whichever slider last moved */
+  wuss_icon_t   *echo;         /* label echoing whichever writable last changed */
 }
 icons_task_t;
 
