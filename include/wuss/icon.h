@@ -170,7 +170,10 @@ typedef enum wuss_icon_border
    *  bevel.divider against bevel.light rather than the full light/dark
    *  contrast -- so it reads as a soft inset panel rather than a hard button
    *  edge. */
-  wuss_ICON_BORDER_DIVIDER
+  wuss_ICON_BORDER_DIVIDER,
+  /** A 1px outline in the icon's fg colour, as drawn around a
+   *  wuss_ICON_TYPE_WRITABLE. */
+  wuss_ICON_BORDER_PLAIN
 }
 wuss_icon_border_t;
 
