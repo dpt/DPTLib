@@ -1,4 +1,4 @@
-/* wuss/test/tasks/blank.c -- dithered colour-blending task */
+/* wuss/test/tasks/patterns.c -- dithered colour-blending task */
 
 #ifdef WUSS_APP
 
@@ -16,17 +16,34 @@
 #include "geom/box.h"
 #include "utils/rng.h"
 
-#include "blank.h"
+#include "patterns.h"
 
-#define BLANK_BLEND_FRAMES 300 /* five seconds per a-to-b blend at 60fps */
+#define PATTERNS_FPS 60 /* idle ticks per second */
 
-/* MENU click pops this single-item menu; the item table and wuss_menu_t
- * live per-instance in blank_task_t, not as a file-scope static, so that
+/* MENU click pops this menu; the item table and wuss_menu_t live
+ * per-instance in patterns_task_t, not as a file-scope static, so that
  * each window's Info row can hold its own .window pointer to the shared
  * proginfo singleton, retargeted just before wuss_menu_open */
-enum { BLANK_MENU_INFO };
+enum { PATTERNS_MENU_INFO, PATTERNS_MENU_SPEED };
 
-static colour_t blank_random_colour(rng_t *rng)
+/* one entry per row of the "Speed" submenu: seconds per a-to-b blend */
+static const struct
+{
+  const char *name;
+  int         seconds;
+}
+patterns_speeds[PATTERNS_NSPEEDS] =
+{
+  { "1s",   1 },
+  { "2s",   2 },
+  { "5s",   5 },
+  { "10s", 10 },
+  { "15s", 15 }
+};
+
+#define PATTERNS_DEFAULT_SPEED 2 /* index into patterns_speeds: 5s */
+
+static colour_t patterns_random_colour(rng_t *rng)
 {
   int r, g, b;
 
@@ -37,18 +54,19 @@ static colour_t blank_random_colour(rng_t *rng)
   return colour_rgb(r, g, b);
 }
 
-/* channel c0 -> c1, f frames into the blend */
-static int blank_lerp(unsigned int c0, unsigned int c1, int f)
+/* channel c0 -> c1, f of n frames into the blend */
+static int patterns_lerp(unsigned int c0, unsigned int c1, int f, int n)
 {
-  return (int) (c0 * (BLANK_BLEND_FRAMES - f) + c1 * f) / BLANK_BLEND_FRAMES;
+  return (int) (c0 * (n - f) + c1 * f) / n;
 }
 
 /* blend a->b by frame_count and pick the nearest dither of the result */
-static void blank_update_pattern(blank_task_t *bc)
+static void patterns_update_pattern(patterns_task_t *bc)
 {
   unsigned int    ar, ag, ab;
   unsigned int    br, bg, bb;
   int             f;
+  int             n;
   colour_t        mix;
   const colour_t *palette;
   int             npalette;
@@ -57,20 +75,41 @@ static void blank_update_pattern(blank_task_t *bc)
   colour_get_rgb(&bc->b, &br, &bg, &bb);
 
   f   = bc->frame_count;
-  mix = colour_rgb(blank_lerp(ar, br, f),
-                   blank_lerp(ag, bg, f),
-                   blank_lerp(ab, bb, f));
+  n   = bc->blend_frames;
+  mix = colour_rgb(patterns_lerp(ar, br, f, n),
+                   patterns_lerp(ag, bg, f, n),
+                   patterns_lerp(ab, bb, f, n));
 
   palette     = wuss_get_palette(bc->wuss, &npalette);
   bc->pattern = pattern_from_colour(palette, npalette, mix);
 }
 
-result_t blank_create(wuss_t *wuss, blank_task_t **out)
+/* switch the blend period to patterns_speeds[idx], rescaling frame_count so
+ * the current blend carries on from the same colour */
+static result_t patterns_set_speed(patterns_task_t *bc, int idx)
+{
+  int n;
+
+  if (idx < 0 || idx >= PATTERNS_NSPEEDS)
+    return result_OK;
+
+  n                = patterns_speeds[idx].seconds * PATTERNS_FPS;
+  bc->frame_count  = bc->frame_count * n / bc->blend_frames;
+  bc->blend_frames = n;
+
+  wuss_menu_tick_exclusive(&bc->speed_menu, idx);
+  wuss_menu_tick_exclusive_live(bc->menu_handle, &bc->speed_menu, idx);
+
+  return result_OK;
+}
+
+result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
 {
   result_t         rc;
-  blank_task_t    *task;
+  patterns_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -78,15 +117,17 @@ result_t blank_create(wuss_t *wuss, blank_task_t **out)
 
   task->wuss        = wuss;
   rng_seed(&task->rng, (uint32_t) time(NULL));
-  task->a           = blank_random_colour(&task->rng);
-  task->b           = blank_random_colour(&task->rng);
-  task->frame_count = 0;
-  blank_update_pattern(task);
+  task->a           = patterns_random_colour(&task->rng);
+  task->b           = patterns_random_colour(&task->rng);
+  task->blend_frames = patterns_speeds[PATTERNS_DEFAULT_SPEED].seconds *
+                       PATTERNS_FPS;
+  task->frame_count  = 0;
+  patterns_update_pattern(task);
 
-  /* blank_redraw paints every pixel itself */
-  delegate_desc.handle    = blank_handle;
+  /* patterns_redraw paints every pixel itself */
+  delegate_desc.handle    = patterns_handle;
   delegate_desc.task_data = task;
-  delegate_desc.name      = "blank";
+  delegate_desc.name      = "patterns";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
@@ -98,9 +139,8 @@ result_t blank_create(wuss_t *wuss, blank_task_t **out)
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(200, 160),
-                                 NULL,
-                                 wuss_WINDOW_CLOSE | wuss_WINDOW_VSCROLL | wuss_WINDOW_HSCROLL |
-                                 wuss_WINDOW_RESIZE,
+                                 "Patterns",
+                                 wuss_WINDOW_DEFAULT,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(200, 160),
                                  SIZE2D(0, 0),
@@ -111,13 +151,24 @@ result_t blank_create(wuss_t *wuss, blank_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, BLANK_MENU_INFO, "Info",
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, PATTERNS_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in
-                                * blank_handle */
+                                * patterns_handle */
 
-  WUSS_MENU_TITLE(task->menu, "Blank", task->menu_items,
+  for (i = 0; i < PATTERNS_NSPEEDS; i++)
+    WUSS_MENU_ITEM(task->speed_items, i, patterns_speeds[i].name,
+                   i == PATTERNS_DEFAULT_SPEED ? wuss_MENU_ITEM_TICKED
+                                               : wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->speed_menu, "Speed", task->speed_items,
+                  NELEMS(task->speed_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, PATTERNS_MENU_SPEED, "Speed",
+                      wuss_MENU_ITEM_NONE, &task->speed_menu);
+
+  WUSS_MENU_TITLE(task->menu, "Patterns", task->menu_items,
                  NELEMS(task->menu_items));
 
   if (out)
@@ -126,15 +177,15 @@ result_t blank_create(wuss_t *wuss, blank_task_t **out)
   return result_OK;
 }
 
-void blank_destroy(blank_task_t *task)
+void patterns_destroy(patterns_task_t *task)
 {
   wuss_menu_close(task->menu_handle);
   free(task);
 }
 
-static result_t blank_idle(void *task_data)
+static result_t patterns_idle(void *task_data)
 {
-  blank_task_t *bc;
+  patterns_task_t *bc;
 
   bc = task_data;
 
@@ -145,25 +196,25 @@ static result_t blank_idle(void *task_data)
   if (bc->window == NULL)
     return result_OK;
 
-  if (++bc->frame_count >= BLANK_BLEND_FRAMES)
+  if (++bc->frame_count >= bc->blend_frames)
   {
     bc->frame_count = 0;
     bc->a           = bc->b;
-    bc->b           = blank_random_colour(&bc->rng);
+    bc->b           = patterns_random_colour(&bc->rng);
   }
 
-  blank_update_pattern(bc);
+  patterns_update_pattern(bc);
   wuss_window_invalidate_visible(bc->window);
 
   return result_OK;
 }
 
-static result_t blank_redraw(const wuss_event_t *event, void *task_data)
+static result_t patterns_redraw(const wuss_event_t *event, void *task_data)
 {
-  blank_task_t *bc;
-  const box_t  *content;
-  const box_t  *bounds;
-  pattern_t     pat;
+  patterns_task_t *bc;
+  const box_t     *content;
+  const box_t     *bounds;
+  pattern_t        pat;
 
   bc = task_data;
 
@@ -181,21 +232,21 @@ static result_t blank_redraw(const wuss_event_t *event, void *task_data)
   return result_OK;
 }
 
-result_t blank_handle(wuss_window_t      *window,
-                      const wuss_event_t *event,
-                      void               *task_data)
+result_t patterns_handle(wuss_window_t      *window,
+                         const wuss_event_t *event,
+                         void               *task_data)
 {
-  blank_task_t *bc;
+  patterns_task_t *bc;
 
   bc = task_data;
 
   switch (event->kind)
   {
   case wuss_EVENT_IDLE:
-    return blank_idle(task_data);
+    return patterns_idle(task_data);
 
   case wuss_EVENT_REDRAW:
-    return blank_redraw(event, task_data);
+    return patterns_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
     if (window != bc->window)
@@ -207,17 +258,29 @@ result_t blank_handle(wuss_window_t      *window,
     {
       static const wuss_proginfo_desc_t desc =
       {
-        "Blank",
+        "Patterns",
         "Ordered-dither blend between random colours",
         "(c) DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };
       wuss_proginfo_set_desc(&desc);
-      bc->menu_items[BLANK_MENU_INFO].window =
+      bc->menu_items[PATTERNS_MENU_INFO].window =
         wuss_proginfo_window(bc->delegate);
     }
     return wuss_menu_open(bc->delegate, &bc->menu,
                           wuss_get_pointer(bc->wuss), &bc->menu_handle);
+
+  case wuss_EVENT_MENU_SELECT:
+    {
+      result_t rc;
+
+      rc = result_OK;
+      if (event->data.menu_select.menu == &bc->speed_menu)
+        rc = patterns_set_speed(bc, event->data.menu_select.index);
+      if (!wuss_menu_should_keep_open(event))
+        bc->menu_handle = NULL;
+      return rc;
+    }
 
   case wuss_EVENT_MENU_CLOSED:
     bc->menu_handle = NULL;
@@ -232,7 +295,7 @@ result_t blank_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == bc->menu_items[BLANK_MENU_INFO].window)
+    if (window == bc->menu_items[PATTERNS_MENU_INFO].window)
       rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
@@ -245,7 +308,7 @@ result_t blank_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_QUIT:
-    blank_destroy(bc);
+    patterns_destroy(bc);
     return result_OK;
 
   default:

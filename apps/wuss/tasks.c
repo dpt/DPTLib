@@ -19,7 +19,6 @@
 #include "tasks.h"
 
 #include "tasks/ball.h"
-#include "tasks/blank.h"
 #include "tasks/chars.h"
 #include "tasks/checker.h"
 #include "tasks/clock.h"
@@ -34,6 +33,7 @@
 #include "tasks/lissajous.h"
 #include "tasks/minesweeper.h"
 #include "tasks/palette.h"
+#include "tasks/patterns.h"
 #include "tasks/porter-duff.h"
 #include "tasks/saturn.h"
 #include "tasks/sofa.h"
@@ -106,8 +106,8 @@ g_games_tasks[] =
 },
 g_tests_tasks[] =
 {
-  { "Blank",       (task_create_fn_t) blank_create       },
   { "Icons",       (task_create_fn_t) icons_create       },
+  { "Patterns",    (task_create_fn_t) patterns_create    },
   { "Porter-Duff", (task_create_fn_t) porter_duff_create },
   { "Text",        (task_create_fn_t) text_create        }
 },
@@ -142,8 +142,8 @@ static const wuss_menu_item_t g_games_items[] =
 
 static const wuss_menu_item_t g_tests_items[] =
 {
-  { "Blank",       wuss_MENU_ITEM_NONE, NULL },
   { "Icons",       wuss_MENU_ITEM_NONE, NULL },
+  { "Patterns",    wuss_MENU_ITEM_NONE, NULL },
   { "Porter-Duff", wuss_MENU_ITEM_NONE, NULL },
   { "Text",        wuss_MENU_ITEM_NONE, NULL }
 };
