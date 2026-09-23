@@ -162,8 +162,7 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
 
 void clock_destroy(clock_task_t *task)
 {
-  if (task->menu_handle != NULL)
-    wuss_menu_close(task->menu_handle);
+  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

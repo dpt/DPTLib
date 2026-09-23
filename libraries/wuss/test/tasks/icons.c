@@ -698,8 +698,7 @@ failure:
 
 void icons_destroy(icons_task_t *task)
 {
-  if (task->menu_handle != NULL)
-    wuss_menu_close(task->menu_handle);
+  wuss_menu_close(task->menu_handle);
   if (task->has_sprite)
     free(task->sprite.base);
   free(task);

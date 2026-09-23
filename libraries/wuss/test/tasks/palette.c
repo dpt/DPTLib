@@ -184,8 +184,7 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
 
 void palette_destroy(palette_task_t *task)
 {
-  if (task->menu_handle != NULL)
-    wuss_menu_close(task->menu_handle);
+  wuss_menu_close(task->menu_handle);
   free(task);
 }
 
