@@ -202,10 +202,10 @@ static bmtestfont_t bmfonts[MAXFONTS] =
 /* Fixture PNGs not in bmfonts[] above (which is the Latin-text set the
  * clipping/layout tests draw lorem_ipsum with) but which the enumerate test
  * must still see, since it just walks the fixture directory: Symbols.png is
- * not Latin text; 04b_03, 04b_25, GrongyUI and Nokia are tiny pixel faces
- * added for the wuss tasks; DPT-Digits-Regular-Lg is the regular-weight
- * counterpart of the bold -Lg font already covered above. */
-#define MAXFONTS_ENUM 15
+ * not Latin text; 04b_03, 04b_25, GrongyUI, Nokia and SF-Embers are tiny
+ * pixel faces added for the wuss tasks; DPT-Digits-Regular-Lg is the
+ * regular-weight counterpart of the bold -Lg font already covered above. */
+#define MAXFONTS_ENUM 16
 
 static const char *bmfonts_enum_extra[MAXFONTS_ENUM - MAXFONTS] =
 {
@@ -214,6 +214,7 @@ static const char *bmfonts_enum_extra[MAXFONTS_ENUM - MAXFONTS] =
   "04b_25",
   "GrongyUI",
   "Nokia",
+  "SF-Embers",
   "DPT-Digits-Regular-Lg"
 };
 
