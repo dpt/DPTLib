@@ -77,6 +77,19 @@ typedef struct minesweeper_task
   int                      flags;   /* flagged cell count, for the counter */
   time_t                   start_time; /* set on first reveal */
   int                      elapsed; /* seconds, frozen on dead/won */
+  struct
+  {
+    colour_t number[9];     /* [1..8] neighbour-count colours; [0] unused */
+    colour_t cell_revealed;
+    colour_t cell_hidden;
+    colour_t cell_border;
+    colour_t hud_fg;
+    colour_t hud_bg;
+    colour_t fill;          /* HUD strip and board frame */
+    colour_t dead_bg;       /* banner background on death */
+    colour_t won_bg;        /* banner background on win */
+    colour_t banner_fg;
+  }                          colours;
 }
 minesweeper_task_t;
 
