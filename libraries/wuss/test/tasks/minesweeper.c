@@ -107,6 +107,7 @@ static void minesweeper_prepare_colours(minesweeper_task_t *ms)
   ms->colours.dead_bg       = colour_rgb(0x80, 0x00, 0x00);
   ms->colours.won_bg        = colour_rgb(0x00, 0x60, 0x00);
   ms->colours.banner_fg     = colour_rgb(0xFF, 0xFF, 0xFF);
+  ms->colours.cursor        = colour_rgb(0xFF, 0x80, 0x00);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -235,6 +236,8 @@ static void minesweeper_set_size(minesweeper_task_t *ms,
   ms->rows  = g_minesweeper_sizes[size].rows;
   ms->cols  = g_minesweeper_sizes[size].cols;
   ms->mines = g_minesweeper_sizes[size].mines;
+  ms->cur_r = MIN(ms->cur_r, ms->rows - 1);
+  ms->cur_c = MIN(ms->cur_c, ms->cols - 1);
   minesweeper_reset(ms);
 }
 
@@ -323,7 +326,7 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(MS_WIDTH(task), MS_HEIGHT(task)),
                                  "Minesweeper",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(MS_WIDTH(task), MS_HEIGHT(task)),
                                  SIZE2D(0, 0),
@@ -544,6 +547,14 @@ static result_t minesweeper_redraw(const wuss_event_t *event,
       minesweeper_draw_cell(ms, scr, r, c, bounds->x0 + MS_BORDER,
                             bounds->y0 + MS_HUD_H(ms) + MS_BORDER);
 
+  /* keyboard cursor: an inset outline, shown only while focused */
+  if (wuss_get_focus(ms->wuss) == ms->window)
+    screen_draw_rect(scr,
+                     bounds->x0 + MS_BORDER + ms->cur_c * MINESWEEPER_CELL + 1,
+                     board_y0 + MS_BORDER + ms->cur_r * MINESWEEPER_CELL + 1,
+                     SIZE2D(MINESWEEPER_CELL - 2, MINESWEEPER_CELL - 2),
+                     ms->colours.cursor);
+
   banner = ms->dead ? "BOOM! Click to retry"   :
            ms->won  ? "You win! Click to retry" : NULL;
   if (banner != NULL)
@@ -554,30 +565,13 @@ static result_t minesweeper_redraw(const wuss_event_t *event,
   return result_OK;
 }
 
-static result_t minesweeper_mouse(minesweeper_task_t *ms,
-                                  point_t             point,
-                                  wuss_button_t       button)
+/* Select reveals cell (r,c), Adjust toggles its flag; either restarts a
+ * finished game wherever it lands. (r,c) may be off the board. */
+static result_t minesweeper_act(minesweeper_task_t *ms,
+                                int                 r,
+                                int                 c,
+                                wuss_button_t       button)
 {
-  int r, c;
-
-  if (button & wuss_BUTTON_MENU)
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Minesweeper",
-      "Classic minesweeper",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-
-    wuss_proginfo_set_desc(&desc);
-    ms->menu_items[MINESWEEPER_MENU_INFO].window = wuss_proginfo_window(ms->task);
-
-    wuss_menu_tick_exclusive(&ms->size_menu, ms->size);
-    return wuss_menu_open(ms->task, &ms->menu,
-                          wuss_get_pointer(ms->wuss), &ms->menu_handle);
-  }
-
   if (ms->dead || ms->won)
   {
     /* any click on a finished board starts a fresh game */
@@ -589,10 +583,7 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
     return result_OK;
   }
 
-  c = (point.x - MS_BORDER) / MINESWEEPER_CELL;
-  r = (point.y - MS_HUD_H(ms) - MS_BORDER) / MINESWEEPER_CELL;
-  if (point.x < MS_BORDER || point.y < MS_HUD_H(ms) + MS_BORDER ||
-      !minesweeper_in_bounds(ms, r, c))
+  if (!minesweeper_in_bounds(ms, r, c))
     return result_OK;
 
   if (button & wuss_BUTTON_SELECT)
@@ -602,6 +593,7 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
 
     if (ms->state[r][c] == minesweeper_FLAGGED)
       return result_OK;
+
     if (!ms->placed)
     {
       minesweeper_place_mines(ms, r, c);
@@ -658,12 +650,82 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
     }
     wuss_window_invalidate(ms->window, &local);
   }
-  else
-  {
-    return result_OK;
-  }
 
   return result_OK;
+}
+
+static void minesweeper_invalidate_cursor(minesweeper_task_t *ms)
+{
+  box_t local;
+
+  local = MS_CELLS_BOX(ms, ms->cur_r, ms->cur_c, ms->cur_r + 1, ms->cur_c + 1);
+  wuss_window_invalidate(ms->window, &local);
+}
+
+/* arrows move the cursor (clamped at the edges), Return acts as Select and
+ * Space as Adjust on the cursor cell; everything else is passed back
+ * unclaimed */
+static result_t minesweeper_key(minesweeper_task_t *ms, int code)
+{
+  int r, c;
+
+  r = ms->cur_r;
+  c = ms->cur_c;
+
+  switch (code)
+  {
+  case wuss_KEY_UP:    r--; break;
+  case wuss_KEY_DOWN:  r++; break;
+  case wuss_KEY_LEFT:  c--; break;
+  case wuss_KEY_RIGHT: c++; break;
+  case 13:             return minesweeper_act(ms, r, c, wuss_BUTTON_SELECT);
+  case ' ':            return minesweeper_act(ms, r, c, wuss_BUTTON_ADJUST);
+  default:             return result_WUSS_KEY_UNCLAIMED;
+  }
+
+  r = CLAMP(r, 0, ms->rows - 1);
+  c = CLAMP(c, 0, ms->cols - 1);
+  if (r == ms->cur_r && c == ms->cur_c)
+    return result_OK;
+
+  minesweeper_invalidate_cursor(ms);
+  ms->cur_r = r;
+  ms->cur_c = c;
+  minesweeper_invalidate_cursor(ms);
+
+  return result_OK;
+}
+
+static result_t minesweeper_mouse(minesweeper_task_t *ms,
+                                  point_t             point,
+                                  wuss_button_t       button)
+{
+  int r, c;
+
+  if (button & wuss_BUTTON_MENU)
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Minesweeper",
+      "Classic minesweeper",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+
+    wuss_proginfo_set_desc(&desc);
+    ms->menu_items[MINESWEEPER_MENU_INFO].window = wuss_proginfo_window(ms->task);
+
+    wuss_menu_tick_exclusive(&ms->size_menu, ms->size);
+    return wuss_menu_open(ms->task, &ms->menu,
+                          wuss_get_pointer(ms->wuss), &ms->menu_handle);
+  }
+
+  c = (point.x - MS_BORDER) / MINESWEEPER_CELL;
+  r = (point.y - MS_HUD_H(ms) - MS_BORDER) / MINESWEEPER_CELL;
+  if (point.x < MS_BORDER || point.y < MS_HUD_H(ms) + MS_BORDER)
+    r = c = -1; /* in the frame or HUD: division truncates towards zero */
+
+  return minesweeper_act(ms, r, c, button);
 }
 
 result_t minesweeper_handle(wuss_window_t      *window,
@@ -687,6 +749,14 @@ result_t minesweeper_handle(wuss_window_t      *window,
       return result_OK;
     return minesweeper_mouse(ms, event->data.mouse.point,
                              event->data.mouse.button);
+
+  case wuss_EVENT_KEY:
+    return minesweeper_key(ms, event->data.key.code);
+
+  case wuss_EVENT_GAIN_FOCUS:
+  case wuss_EVENT_LOSE_FOCUS:
+    minesweeper_invalidate_cursor(ms); /* show or hide the cursor */
+    return result_OK;
 
   case wuss_EVENT_IDLE:
     /* the shared proginfo singleton is a second window on this same
