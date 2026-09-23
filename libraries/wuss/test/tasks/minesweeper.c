@@ -102,7 +102,7 @@ static void minesweeper_prepare_colours(minesweeper_task_t *ms)
   ms->colours.cell_hidden   = colour_rgb(0xC0, 0xC0, 0xC0);
   ms->colours.cell_border   = colour_rgb(0x80, 0x80, 0x80);
   ms->colours.hud_fg        = colour_rgb(0xFF, 0x00, 0x00);
-  ms->colours.hud_bg        = colour_rgb(0x00, 0x00, 0x00);
+  ms->colours.hud_bg        = colour_rgba(0x00, 0x00, 0x00, 0x00);
   ms->colours.fill          = colour_rgb(0x80, 0x80, 0x80);
   ms->colours.dead_bg       = colour_rgb(0x80, 0x00, 0x00);
   ms->colours.won_bg        = colour_rgb(0x00, 0x60, 0x00);
@@ -492,6 +492,7 @@ static result_t minesweeper_redraw(const wuss_event_t *event,
 {
   minesweeper_task_t *ms;
   screen_t           *scr;
+  box_t               origin;
   const box_t        *bounds;
   const box_t        *clip;
   int                 board_y0;
@@ -499,10 +500,16 @@ static result_t minesweeper_redraw(const wuss_event_t *event,
   int                 r, c;
   const char         *banner;
 
-  ms     = task_data;
-  scr    = event->data.redraw.scr;
-  bounds = event->data.redraw.bounds;
-  clip   = event->data.redraw.content;
+  ms  = task_data;
+  scr = event->data.redraw.scr;
+
+  /* everything below lays out from bounds' top-left, so shift it back by the
+   * scroll offset: its x0,y0 are then the document origin, screen space */
+  origin     = *event->data.redraw.bounds;
+  origin.x0 -= event->data.redraw.scroll.x;
+  origin.y0 -= event->data.redraw.scroll.y;
+  bounds     = &origin;
+  clip       = event->data.redraw.content;
 
   /* the HUD strip and the board below are repainted independently, each only
    * when the dirty region actually reaches it -- a flag toggle invalidates
