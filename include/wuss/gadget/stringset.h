@@ -13,9 +13,10 @@
  * icon set lacks them. The icons belong to the window and are freed with it.
  *
  * A Select or Adjust click on the arrow opens the menu beside it, the
- * current entry ticked. The task forwards its wuss_EVENT_ICON and
- * wuss_EVENT_MENU_SELECT events to \ref wuss_stringset_handle_event; a pick
- * updates the field and calls the changed callback.
+ * current entry ticked. The task forwards its wuss_EVENT_ICON,
+ * wuss_EVENT_MENU_SELECT and wuss_EVENT_MENU_CLOSED events to \ref
+ * wuss_stringset_handle_event; a pick updates the field and calls the
+ * changed callback.
  *
  * Built only when WUSS_GADGETS is defined (which implies WUSS_MENUS).
  */
@@ -100,7 +101,9 @@ void wuss_stringset_destroy(wuss_stringset_t *doomed);
 /**
  * Offer an event from the task's own handler: a wuss_EVENT_ICON on the
  * gadget's arrow, or a wuss_EVENT_MENU_SELECT from its menu. An Adjust pick
- * keeps the menu open with the tick moved.
+ * keeps the menu open with the tick moved. A wuss_EVENT_MENU_CLOSED must be
+ * offered too, so the gadget drops its handle on the freed chain; it is
+ * noted but never consumed.
  *
  * \param[in]  stringset  Handle.
  * \param[in]  event      The event, of any kind.

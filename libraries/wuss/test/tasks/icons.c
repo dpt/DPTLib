@@ -1023,8 +1023,14 @@ result_t icons_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_MENU_CLOSED:
+  {
+    result_t rc;
+
+    if (tcx->sset != NULL) /* never consumed; lets it drop its own handle */
+      (void) wuss_stringset_handle_event(tcx->sset, event, &rc);
     tcx->menu_handle = NULL;
     return result_OK;
+  }
 
   case wuss_EVENT_PRE_SHOW:
   {
