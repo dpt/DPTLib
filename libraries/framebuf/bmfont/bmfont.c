@@ -776,7 +776,7 @@ result_t bmfont_measure(bmfont_t               *bmfont,
     int advance;
     int next_width;
 
-    if ((c = *text++) < ' ')
+    if ((c = (unsigned char) *text++) < ' ')
       continue;
 
     gid = c - ' ';
