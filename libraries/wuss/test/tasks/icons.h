@@ -9,14 +9,15 @@
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/gadget/stringset.h"
 #include "wuss/icon.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
 /* demonstrates wuss-managed work-area icons: labelled groups covering every
  * icon type (buttons, radios/options, bitmaps, a pattern swatch, sliders, a
- * menu-entry strip) plus a button placed far down the document to show icons
- * scroll with the content and stay clickable */
+ * menu-entry strip, a string set gadget) plus a button placed far down the
+ * document to show icons scroll with the content and stay clickable */
 typedef struct icons_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
@@ -42,6 +43,8 @@ typedef struct icons_task
   wuss_icon_t   *slider_vert;  /* vertical slider */
   wuss_icon_t   *slider_state; /* label echoing whichever slider last moved */
   wuss_icon_t   *echo;         /* label echoing whichever writable last changed */
+  wuss_stringset_t *sset;      /* gadget; its icons belong to the window */
+  wuss_icon_t   *sset_echo;    /* label echoing the string set's pick */
 }
 icons_task_t;
 
