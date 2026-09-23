@@ -136,9 +136,6 @@ typedef enum wuss_icon_type
   /** An editable numeric field, optionally with up/down adjusters. Not yet
    *  implemented. */
   wuss_ICON_TYPE_NUMBER,
-  /** A field cycling through a fixed set of string values. Not yet
-   *  implemented. */
-  wuss_ICON_TYPE_STRING_SET,
   /** A free-drag handle: reports pointer motion to the task while dragged. Not
    *  yet implemented. */
   wuss_ICON_TYPE_DRAGGABLE
