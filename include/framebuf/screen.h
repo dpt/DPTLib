@@ -134,9 +134,11 @@ void screen_fill_hline(screen_t *scr, int x, int y, int w, colour_t colour);
  * A plain pattern paints every pixel in the box, set bits taking
  * `pattern->fg` and clear bits `pattern->bg`. A stencil pattern (one with
  * `pattern_FLAG_STENCIL`) paints only the set-bit pixels. The tile is phased
- * against `pattern->origin`: that coordinate is the one that maps to the
- * box's top-left corner. Passing the caller's own scroll origin keeps the
- * pattern locked to content as the box moves, rather than crawling with it.
+ * against `pattern->origin`: the absolute screen coordinate where the tile's
+ * top-left bit lands, whatever the box. Setting it to the screen position of
+ * the caller's content origin (e.g. window bounds minus scroll) keeps
+ * partial redraws in phase and the pattern locked to content, rather than
+ * crawling.
  *
  * Clipped to the screen's clip region.
  *

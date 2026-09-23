@@ -74,9 +74,10 @@ typedef struct pattern
   colour_t fg;      /**< Colour for set bits. */
   colour_t bg;      /**< Colour for clear bits, unless a stencil. */
   unsigned flags;   /**< Bitwise OR of `pattern_FLAG_*`, or 0. */
-  point_t  origin;  /**< Tile phase: the coordinate mapping to the fill box's
-                         top-left corner. Passing a scroll origin keeps the
-                         pattern locked to content rather than crawling. */
+  point_t  origin;  /**< Tile phase: the absolute coordinate where the
+                         tile's top-left bit lands, independent of the fill
+                         box. Passing a scroll origin keeps the pattern
+                         locked to content rather than crawling. */
 }
 pattern_t;
 
