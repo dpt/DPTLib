@@ -203,7 +203,7 @@ static result_t lissajous_idle(void *task_data)
   else if (lc->phase < 0.0)
     lc->phase += 2.0 * M_PI;
 
-  wuss_window_invalidate_visible(lc->window); /* ponytail: repaint whole content; figure fills it and is cheap */
+  wuss_window_invalidate_visible(lc->window);
 
   return result_OK;
 }

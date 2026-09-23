@@ -35,7 +35,7 @@ result_t blank_create(wuss_t *wuss, blank_task_t **out)
     return result_OOM;
 
   task->wuss        = wuss;
-  task->npalette    = 16; // TODO: Read max palette index from wuss
+  task->npalette    = 16;
   task->index       = 0;
   task->frame_count = 0;
 
