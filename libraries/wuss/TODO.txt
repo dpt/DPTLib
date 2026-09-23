@@ -76,7 +76,7 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
 - Dragging against window edge shuffles window in opposite direction
   (outline-click bug fixed; unblocked)
 - 2D Adjust window scroll drag
-- Input focus, text entry, furniture tinting
+- Text entry (writable icons, caret); input focus and furniture tinting done
 - Furniture colour selection needs improvements (e.g. losing menu readability when palette changed)
 - Adjust click on a menu should pop to front once the action is complete
 

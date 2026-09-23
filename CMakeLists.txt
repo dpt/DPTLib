@@ -383,6 +383,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/backdrop.c
     libraries/wuss/core/create.c
     libraries/wuss/core/destroy.c
+    libraries/wuss/core/get-focus.c
     libraries/wuss/core/get-palette.c
     libraries/wuss/core/get-pointer.c
     libraries/wuss/core/get-resources.c
@@ -390,6 +391,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/idle.c
     libraries/wuss/core/impl.h
     libraries/wuss/core/invalidate.c
+    libraries/wuss/core/key.c
     libraries/wuss/core/mouse-click.c
     libraries/wuss/core/mouse-move.c
     libraries/wuss/core/nearest-colour.c
@@ -399,6 +401,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/scroll.c
     libraries/wuss/core/scroll-step.c
     libraries/wuss/core/set-backdrop.c
+    libraries/wuss/core/set-focus.c
     libraries/wuss/core/set-palette.c
     libraries/wuss/font/font.h
     libraries/wuss/font/registry.c
@@ -779,6 +782,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/greeble.c
         libraries/wuss/test/tasks/icons.c
         libraries/wuss/test/tasks/image.c
+        libraries/wuss/test/tasks/keys.c
         libraries/wuss/test/tasks/lissajous.c
         libraries/wuss/test/tasks/minesweeper.c
         libraries/wuss/test/tasks/palette.c

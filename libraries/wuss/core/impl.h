@@ -175,6 +175,8 @@ struct wuss
                                           * inside (content or furniture),
                                           * NULL if none; drives
                                           * wuss_EVENT_POINTER_ENTER/EXIT */
+  wuss_window_t              *focus;     /* window holding the input focus,
+                                          * NULL if none; see wuss_set_focus */
 #ifdef WUSS_ICONS
   wuss_icon_t                *pressed_icon; /* button icon held down, NULL when
                                             * idle; released on any MOUSE_UP
@@ -660,6 +662,16 @@ static inline void wuss__pointer_forget_window(wuss_t        *wuss,
 {
   if (wuss->pointer_window == window)
     wuss->pointer_window = NULL;
+}
+
+/* Drop "window" from the input focus without delivering LOSE_FOCUS -- for
+ * the forced teardown path, which fires no events. No-op unless it held the
+ * focus. */
+static inline void wuss__focus_forget_window(wuss_t        *wuss,
+                                             wuss_window_t *window)
+{
+  if (wuss->focus == window)
+    wuss->focus = NULL;
 }
 
 static inline int wuss__size_ok(int width, int height)

@@ -38,8 +38,20 @@ static void fill_furniture_rect(wuss_t      *wuss,
   screen_fill_rect(wuss->scr, b->x0, b->y0, box_size(b), colour);
 }
 
+/* The titlebar fill: the focus tint while "window" holds the input focus. */
+static colour_t title_bg(const wuss_t *wuss, const wuss_window_t *window)
+{
+  const wuss_furniture_palette_t *fc;
+
+  fc = &wuss->furniture_colours;
+
+  return wuss->palette[(wuss->focus == window) ? fc->title.focus_bg
+                                               : fc->title.bg];
+}
+
 /* Resolve a cached piece's paint class to a concrete palette colour. */
 static colour_t paint_colour(const wuss_t                 *wuss,
+                             const wuss_window_t          *window,
                              wuss__furniture_paint_class_t paint)
 {
   const wuss_furniture_palette_t *fc;
@@ -48,18 +60,20 @@ static colour_t paint_colour(const wuss_t                 *wuss,
 
   switch (paint)
   {
-  case wuss__FURNITURE_PAINT_TITLE_BG:       return wuss->palette[fc->title.bg];
+  case wuss__FURNITURE_PAINT_TITLE_BG:       return title_bg(wuss, window);
   case wuss__FURNITURE_PAINT_CLOSE:          return wuss->palette[fc->close];
   case wuss__FURNITURE_PAINT_BACK:           return wuss->palette[fc->back];
   case wuss__FURNITURE_PAINT_TOGGLE:         return wuss->palette[fc->toggle];
   case wuss__FURNITURE_PAINT_RESIZE:         return wuss->palette[fc->resize];
   case wuss__FURNITURE_PAINT_SCROLL_ARROWS:  return wuss->palette[fc->scroll.arrows];
   case wuss__FURNITURE_PAINT_SCROLL_WELLS:   return wuss->palette[fc->scroll.wells];
-  case wuss__FURNITURE_PAINT_OUTLINE:        return wuss->palette[fc->outline];
+  case wuss__FURNITURE_PAINT_OUTLINE:
+    return (fc->outline == wuss_NO_BACKGROUND) ? title_bg(wuss, window)
+                                               : wuss->palette[fc->outline];
   }
 
   assert(!"unhandled furniture paint class");
-  return wuss->palette[fc->title.bg];
+  return title_bg(wuss, window);
 }
 
 /* The title string, drawn into its titlebar slot. Split out of the main
@@ -140,7 +154,7 @@ static void draw_title(wuss_t        *wuss,
   screen_fill_rect(wuss->scr, text_x0, titlebar->y0,
                    SIZE2D(text_x1 - text_x0,
                           titlebar->y1 - titlebar->y0 - WUSS_DIVIDER_PX),
-                   wuss->palette[wuss->furniture_colours.title.bg]);
+                   title_bg(wuss, window));
 
   bmfont_draw_relief(titlefont, wuss->scr, window->title, titlelen,
                      wuss->palette[wuss->furniture_colours.title.fg],
@@ -190,7 +204,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
     piece = &window->furniture_layout.pieces[i];
     fill_furniture_rect(wuss, &piece->rect, full,
-                        paint_colour(wuss, piece->paint));
+                        paint_colour(wuss, window, piece->paint));
   }
 
   /* the two scrollbar sausages: geometry depends on window->scroll, so they

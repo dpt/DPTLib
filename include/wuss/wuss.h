@@ -39,6 +39,11 @@ extern "C"
 #define result_WUSS_BAD_ICON   (result_BASE_WUSS + 2)
 /** An icon-set index (see wuss_icons_load) was out of range. */
 #define result_WUSS_BAD_INDEX  (result_BASE_WUSS + 3)
+/**
+ * Returned by a task's handle from wuss_EVENT_KEY to decline the key; see
+ * wuss_key.
+ */
+#define result_WUSS_KEY_UNCLAIMED (result_BASE_WUSS + 4)
 
 /* ----------------------------------------------------------------------- */
 
@@ -101,6 +106,38 @@ typedef enum wuss_mouse_action
   wuss_MOUSE_MOVE
 }
 wuss_mouse_action_t;
+
+/**
+ * Key codes for wuss_key / wuss_EVENT_KEY. A printable key is its Unicode
+ * codepoint; Return, Backspace, Tab and Escape are their ASCII control codes
+ * (13, 8, 9, 27), as on RISC OS. Keys with no codepoint use the constants
+ * below, which sit above the Unicode range.
+ */
+enum
+{
+  wuss_KEY_UP = 0x110000,
+  wuss_KEY_DOWN,
+  wuss_KEY_LEFT,
+  wuss_KEY_RIGHT,
+  wuss_KEY_HOME,
+  wuss_KEY_END,
+  wuss_KEY_PAGE_UP,
+  wuss_KEY_PAGE_DOWN,
+  wuss_KEY_INSERT,
+  wuss_KEY_DELETE,
+  wuss_KEY_F1, /* F2..F12 follow contiguously: wuss_KEY_F1 + n - 1 */
+  wuss_KEY_F12 = wuss_KEY_F1 + 11
+};
+
+/** Modifier keys held during a keypress, OR'd together. */
+typedef enum wuss_key_modifiers
+{
+  wuss_KEY_MOD_NONE  = 0,
+  wuss_KEY_MOD_SHIFT = 1 << 0,
+  wuss_KEY_MOD_CTRL  = 1 << 1,
+  wuss_KEY_MOD_ALT   = 1 << 2
+}
+wuss_key_modifiers_t;
 
 /**
  * An index into a wuss_t's system palette (see wuss_create). Not a colour_t.
@@ -187,6 +224,9 @@ typedef struct wuss_furniture_palette
   {
     wuss_colour_t bg;       /**< Titlebar fill. */
     wuss_colour_t fg;       /**< Titlebar text. */
+    wuss_colour_t focus_bg; /**< Titlebar fill while the window has input
+                                 focus. wuss_NO_BACKGROUND means no tint:
+                                 use bg. */
   }
   title;
   wuss_colour_t outline;    /**< Window outline. wuss_NO_BACKGROUND means
@@ -287,7 +327,15 @@ typedef enum wuss_window_flags
    * and/or icons (a label-only dialogue, say) this saves the task a no-op
    * redraw handler and a window-handle check in it.
    */
-  wuss_WINDOW_NO_REDRAW      = 1 << 10
+  wuss_WINDOW_NO_REDRAW      = 1 << 10,
+
+  /**
+   * The window can take the input focus: a Select or Adjust press on its
+   * content gives it focus, as does wuss_set_focus. The focused window
+   * receives wuss_EVENT_KEY and has its titlebar drawn in the focus tint.
+   * Not part of wuss_WINDOW_DEFAULT.
+   */
+  wuss_WINDOW_FOCUSABLE      = 1 << 11
 }
 wuss_window_flags_t;
 
@@ -946,6 +994,47 @@ result_t wuss_scroll(wuss_t         *wuss,
  *         by a task's handle callback (iteration still continues past it).
  */
 result_t wuss_idle(wuss_t *wuss);
+
+/**
+ * Give the input focus to a window, or clear it. There is one focus per
+ * window manager. The window losing focus is sent wuss_EVENT_LOSE_FOCUS,
+ * then the window gaining it wuss_EVENT_GAIN_FOCUS, and both titlebars are
+ * repainted. Setting the focus to the window already holding it does
+ * nothing. Focus does not affect the z-order.
+ *
+ * \param[in] wuss   Window manager.
+ * \param[in] window Window to focus, or NULL to clear the focus.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if window lacks
+ *         wuss_WINDOW_FOCUSABLE or is hidden.
+ */
+result_t wuss_set_focus(wuss_t *wuss, wuss_window_t *window);
+
+/**
+ * Fetch the window holding the input focus.
+ *
+ * \param[in] wuss Window manager.
+ * \return The focused window, or NULL if none.
+ */
+wuss_window_t *wuss_get_focus(const wuss_t *wuss);
+
+/**
+ * Deliver a keypress (including autorepeats) to the focused window as
+ * wuss_EVENT_KEY. Key releases are not reported.
+ *
+ * \param[in]  wuss      Window manager.
+ * \param[in]  code      Unicode codepoint or wuss_KEY_* constant.
+ * \param[in]  modifiers Modifier keys held.
+ * \param[out] claimed   Set non-zero if a window took the key, zero if no
+ *                       window has focus or its task returned \ref
+ *                       result_WUSS_KEY_UNCLAIMED -- the caller may then act
+ *                       on the key itself. May be NULL if not needed.
+ * \return \ref result_OK, or another result code returned by the task's
+ *         handle.
+ */
+result_t wuss_key(wuss_t              *wuss,
+                  int                  code,
+                  wuss_key_modifiers_t modifiers,
+                  int                 *claimed);
 
 #ifdef __cplusplus
 }
