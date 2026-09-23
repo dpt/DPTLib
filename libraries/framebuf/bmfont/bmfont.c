@@ -2539,6 +2539,38 @@ result_t bmfont_draw(bmfont_t               *bmfont,
                      const point_t          *pos,
                      point_t                *end_pos)
 {
+  static bmfont_drawchar_t *const drawfns[5][3][2] =
+  {
+    { /* pixelfmt_p1 */
+      { bmfont_drawchar_p1_1w_o,      bmfont_drawchar_p1_1w_t      },
+      { bmfont_drawchar_p1_2w_o,      bmfont_drawchar_p1_2w_t      },
+      { bmfont_drawchar_p1_4w_o,      bmfont_drawchar_p1_4w_t      },
+    },
+    { /* pixelfmt_p2 */
+      { bmfont_drawchar_p2_1w_o,      bmfont_drawchar_p2_1w_t      },
+      { bmfont_drawchar_p2_2w_o,      bmfont_drawchar_p2_2w_t      },
+      { bmfont_drawchar_p2_4w_o,      bmfont_drawchar_p2_4w_t      },
+    },
+    { /* pixelfmt_p4 */
+      { bmfont_drawchar_p4_1w_o,      bmfont_drawchar_p4_1w_t      },
+      { bmfont_drawchar_p4_2w_o,      bmfont_drawchar_p4_2w_t      },
+      { bmfont_drawchar_p4_4w_o,      bmfont_drawchar_p4_4w_t      },
+    },
+    { /* pixelfmt_p8 */
+      { bmfont_drawchar_p8_1w_o,      bmfont_drawchar_p8_1w_t      },
+      { bmfont_drawchar_p8_2w_o,      bmfont_drawchar_p8_2w_t      },
+      { bmfont_drawchar_p8_4w_o,      bmfont_drawchar_p8_4w_t      },
+    },
+    { /* pixelfmt_bgra8888 / pixelfmt_bgrx8888 */
+      { bmfont_drawchar_any8888_1w_o, bmfont_drawchar_any8888_1w_t },
+      { bmfont_drawchar_any8888_2w_o, bmfont_drawchar_any8888_2w_t },
+      { bmfont_drawchar_any8888_4w_o, bmfont_drawchar_any8888_4w_t },
+    },
+  };
+
+  /* glyphrowbytes 1/2/4 maps to drawfns column 0/1/2; -1 flags an invalid value */
+  static const int rowbytes_to_idx[5] = { -1, 0, 1, -1, 2 };
+
   bmfont_drawchar_t *drawfn;
   box_t              scrclip;
   box_t              drawbox;
@@ -2551,61 +2583,25 @@ result_t bmfont_draw(bmfont_t               *bmfont,
    * the baseline */
   top = POINT(pos->x, pos->y - bmfont->ascent);
 
-  switch (scr->format)
   {
-  case pixelfmt_p1:
-    switch (bmfont->glyphrowbytes)
+    int fmt_idx;
+    int rb_idx;
+
+    switch (scr->format)
     {
-    case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p1_1w_t : bmfont_drawchar_p1_1w_o; break;
-    case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p1_2w_t : bmfont_drawchar_p1_2w_o; break;
-    case 4: drawfn = (bgalpha < 255) ? bmfont_drawchar_p1_4w_t : bmfont_drawchar_p1_4w_o; break;
+    case pixelfmt_p1:       fmt_idx = 0; break;
+    case pixelfmt_p2:       fmt_idx = 1; break;
+    case pixelfmt_p4:       fmt_idx = 2; break;
+    case pixelfmt_p8:       fmt_idx = 3; break;
+    case pixelfmt_bgra8888:
+    case pixelfmt_bgrx8888: fmt_idx = 4; break;
     default: assert(0); return result_NOT_SUPPORTED;
     }
-    break;
 
-  case pixelfmt_p2:
-    switch (bmfont->glyphrowbytes)
-    {
-    case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p2_1w_t : bmfont_drawchar_p2_1w_o; break;
-    case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p2_2w_t : bmfont_drawchar_p2_2w_o; break;
-    case 4: drawfn = (bgalpha < 255) ? bmfont_drawchar_p2_4w_t : bmfont_drawchar_p2_4w_o; break;
-    default: assert(0); return result_NOT_SUPPORTED;
-    }
-    break;
+    rb_idx = (bmfont->glyphrowbytes > 4) ? -1 : rowbytes_to_idx[bmfont->glyphrowbytes];
+    if (rb_idx < 0) { assert(0); return result_NOT_SUPPORTED; }
 
-  case pixelfmt_p4:
-    switch (bmfont->glyphrowbytes)
-    {
-    case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p4_1w_t : bmfont_drawchar_p4_1w_o; break;
-    case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p4_2w_t : bmfont_drawchar_p4_2w_o; break;
-    case 4: drawfn = (bgalpha < 255) ? bmfont_drawchar_p4_4w_t : bmfont_drawchar_p4_4w_o; break;
-    default: assert(0); return result_NOT_SUPPORTED;
-    }
-    break;
-
-  case pixelfmt_p8:
-    switch (bmfont->glyphrowbytes)
-    {
-    case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_p8_1w_t : bmfont_drawchar_p8_1w_o; break;
-    case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_p8_2w_t : bmfont_drawchar_p8_2w_o; break;
-    case 4: drawfn = (bgalpha < 255) ? bmfont_drawchar_p8_4w_t : bmfont_drawchar_p8_4w_o; break;
-    default: assert(0); return result_NOT_SUPPORTED;
-    }
-    break;
-
-  case pixelfmt_bgra8888:
-  case pixelfmt_bgrx8888:
-    switch (bmfont->glyphrowbytes)
-    {
-    case 1: drawfn = (bgalpha < 255) ? bmfont_drawchar_any8888_1w_t : bmfont_drawchar_any8888_1w_o; break;
-    case 2: drawfn = (bgalpha < 255) ? bmfont_drawchar_any8888_2w_t : bmfont_drawchar_any8888_2w_o; break;
-    case 4: drawfn = (bgalpha < 255) ? bmfont_drawchar_any8888_4w_t : bmfont_drawchar_any8888_4w_o; break;
-    default: assert(0); return result_NOT_SUPPORTED;
-    }
-    break;
-
-  default:
-    assert(0); return result_NOT_SUPPORTED;
+    drawfn = drawfns[fmt_idx][rb_idx][bgalpha < 255];
   }
 
   if (screen_get_clip(scr, &scrclip))
