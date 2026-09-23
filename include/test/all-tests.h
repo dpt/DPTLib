@@ -28,6 +28,7 @@ extern testfn_t bitmap_rle_test,
                 bmfontcache_test,
                 composite_test,
                 curve_test,
+                pattern_test,
                 pixelmap_test,
                 screen_test;
 

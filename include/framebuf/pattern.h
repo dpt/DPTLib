@@ -106,6 +106,26 @@ pattern_t pattern_from_preset(screen_pattern_t preset,
 pattern_t pattern_from_mask(const uint8_t mask[8], colour_t colour);
 
 /**
+ * Build an ordered-dither `pattern_t` approximating an arbitrary colour from
+ * a palette. Every pair of palette entries is tried; the pair whose Bayer
+ * mix lies closest to `target` wins, with the mix ratio choosing the
+ * `screen_PATTERN_BAYER*` coverage level. Widely-spaced pairs are penalised
+ * so a near solid entry is preferred over, say, a black/white stipple for a
+ * grey. An exact palette match comes back as a single-colour tile. Alpha is
+ * ignored. The result has no flags set and a zero origin.
+ *
+ * O(nentries²): fine for occasional fills, not per-pixel use.
+ *
+ * \param[in] palette  Palette to choose from.
+ * \param[in] nentries Number of entries in the palette; at least one.
+ * \param[in] target   Colour to approximate.
+ * \return The pattern.
+ */
+pattern_t pattern_from_colour(const colour_t *palette,
+                              int             nentries,
+                              colour_t        target);
+
+/**
  * The 8x8 ordered (Bayer) dither threshold for screen pixel (`x`, `y`), a
  * value in the range 0 to 63. This is the recursively-built matrix the
  * `screen_PATTERN_BAYER*` tiles are derived from, exposed for callers that
