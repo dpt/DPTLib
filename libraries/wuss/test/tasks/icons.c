@@ -1,8 +1,6 @@
 /* wuss/test/tasks/icons.c -- work-area icons task */
 
 #ifdef WUSS_APP
-#include "framebuf/palettes.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -102,12 +100,12 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
   lay->n++;
 
   *counter = lay->n;
-  s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 92, lay->y, 120, 22);
-  s->type = wuss_ICON_TYPE_LABEL;
-  s->text = "0";
-  s->fg   = lay->black;
-  s->bg   = wuss_NO_BACKGROUND;
+  s        = &lay->specs[lay->n];
+  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 92, lay->y, 120, 22);
+  s->type  = wuss_ICON_TYPE_LABEL;
+  s->text  = "0";
+  s->fg    = lay->black;
+  s->bg    = wuss_NO_BACKGROUND;
   lay->n++;
   lay->y += 46;
 }
@@ -314,7 +312,8 @@ static void icons_add_iconset(icons_layout_t *lay, const wuss_t *wuss)
   for (i = 0; i < 4; i++)
   {
     const bitmap_t *bm;
-    int             w, h;
+    int             w;
+    int             h;
 
     bm = wuss_icons_bitmap(wuss, idx[i]);
     w  = bm ? bm->size.w : 16;
@@ -688,9 +687,9 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   memset(specs, 0, sizeof(specs));
   lay.specs = specs;
   lay.n     = 0;
-  lay.y     = 28; /* icons sit past the ruler gutter -- see ICONS_GUTTER-ish
-                    * axis labels drawn by icons_redraw, which keep the top/
-                    * left strip to themselves */
+  lay.y     = 28; /* icons sit past the ruler gutter -- the axis labels
+                    * drawn by icons_redraw keep the top/left strip to
+                    * themselves */
 
   i_hotspot = -1;
 
@@ -883,6 +882,7 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
 
   if (event->data.icon.action != wuss_MOUSE_DOWN)
     return result_OK;
+
   if (icon != tcx->button && icon != tcx->hotspot)
     return result_OK;
 
@@ -912,8 +912,10 @@ result_t icons_handle(wuss_window_t      *window,
     if (window != tcx->window)
       return result_OK; /* the proginfo dialogue has no click behaviour of
                          * its own */
+
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
+
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
       static const wuss_proginfo_desc_t desc =
