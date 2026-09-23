@@ -678,6 +678,58 @@ static void wuss__icon_draw_slider(const icon_draw_ctx_t *c)
 
 /* ----------------------------------------------------------------------- */
 
+/* wuss_ICON_TYPE_WRITABLE: bg fill in a 1px fg outline, the text left-aligned
+ * and scrolled by text_scroll, clipped inside the outline, plus the caret when
+ * this icon holds it. */
+static void wuss__icon_draw_writable(const icon_draw_ctx_t *c)
+{
+  const wuss_icon_t *icon = c->icon;
+  const box_t       *b    = &c->b;
+  colour_t           bg;
+  colour_t           ink;
+  box_t              inner;
+  screen_t           clipped;
+  int                ascent;
+  point_t            pos;
+  point_t            caret;
+
+  bg = icon_blend_ground(c, c->fg);
+  if (icon->spec.bg != wuss_NO_BACKGROUND)
+    screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), bg);
+
+  ink = (icon->spec.flags & wuss_ICON_FLAGS_DISABLED)
+      ? c->wuss->palette[c->wuss->bevel_dark]
+      : c->fg;
+  screen_draw_rect(c->scr, b->x0, b->y0, box_size(b), ink);
+
+  if (c->font == NULL)
+    return;
+
+  inner   = box_grown(b, -1);
+  clipped = *c->scr;
+  if (box_intersection(&c->scr->clip, &inner, &clipped.clip))
+    return;
+
+  bmfont_get_info(c->font, NULL, NULL, &ascent, NULL);
+  pos.x = b->x0 + WUSS_WRITABLE_INSET - icon->text_scroll;
+  pos.y = b->y0 + (b->y1 - b->y0 - ascent) / 2 + ascent;
+  wuss__text_draw(c->font, &clipped, icon->spec.text,
+                  (int) strlen(icon->spec.text), ink, bg, &pos, NULL);
+
+  if (c->wuss->caret_icon == icon)
+  {
+    caret.x = pos.x + (int) bmfont_caret_x(c->font, icon->spec.text,
+                                           c->wuss->caret_index, NULL);
+    caret.y = pos.y;
+    bmfont_draw_caret(c->font, &clipped,
+                      c->wuss->palette[wuss__resolve_colour(c->wuss,
+                                                            wuss_COLOUR_RED)],
+                      &caret);
+  }
+}
+
+/* ----------------------------------------------------------------------- */
+
 void wuss__icon_draw(wuss_t              *wuss,
                      const wuss_window_t *window,
                      const wuss_icon_t   *icon,
@@ -756,9 +808,12 @@ void wuss__icon_draw(wuss_t              *wuss,
     wuss__icon_draw_slider(&c);
     break;
 
+  case wuss_ICON_TYPE_WRITABLE:
+    wuss__icon_draw_writable(&c);
+    break;
+
   /* reserved types with no renderer yet: fall back to a plain label */
   case wuss_ICON_TYPE_DISPLAY:
-  case wuss_ICON_TYPE_WRITABLE:
   case wuss_ICON_TYPE_NUMBER:
   case wuss_ICON_TYPE_STRING_SET:
   case wuss_ICON_TYPE_DRAGGABLE:

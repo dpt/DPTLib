@@ -84,6 +84,9 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
       spec->u.label.border > wuss_ICON_BORDER_DIVIDER)
     return result_WUSS_BAD_ICON;
 
+  if (spec->type == wuss_ICON_TYPE_WRITABLE && spec->u.writable.size < 1)
+    return result_WUSS_BAD_ICON;
+
   if (fg >= w->npalette)
     return result_WUSS_BAD_COLOUR;
 
@@ -151,7 +154,8 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
     break;
   }
 
-  out->state = wuss_ICON_STATE_NONE;
+  out->state       = wuss_ICON_STATE_NONE;
+  out->text_scroll = 0;
 
   if (spec->type == wuss_ICON_TYPE_SLIDER)
   {

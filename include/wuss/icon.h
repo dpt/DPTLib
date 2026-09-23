@@ -112,14 +112,27 @@ typedef enum wuss_icon_type
    *  wuss_EVENT_ICON, continuously while dragging. */
   wuss_ICON_TYPE_SLIDER,
 
-  /* The following types are reserved: the enum values and validation exist but
-   * no rendering, hit-testing or event routing is wired up yet. A spec using
-   * one is accepted and currently draws as a plain wuss_ICON_TYPE_LABEL. */
+  /* The following types, other than wuss_ICON_TYPE_WRITABLE, are reserved:
+   * the enum values and validation exist but no rendering, hit-testing or
+   * event routing is wired up yet. A spec using one is accepted and currently
+   * draws as a plain wuss_ICON_TYPE_LABEL. */
 
   /** A read-only value field: a bevelled well showing text the task updates but
    *  the user cannot edit. Not yet implemented. */
   wuss_ICON_TYPE_DISPLAY,
-  /** An editable single-line text field. Not yet implemented. */
+  /** An editable single-line text field: the bounding box filled with bg
+   *  inside a 1px fg outline, the text left-aligned in fg. Its buffer is
+   *  owned by the icon and holds up to spec.u.writable.size - 1 bytes,
+   *  seeded from text; read it back with wuss_icon_get_text. A Select or
+   *  Adjust click on a focusable window's writable places the caret (see
+   *  wuss_icon_set_caret) at the nearest character. While it holds the
+   *  caret, wuss_key edits the buffer -- printable Latin-1, Backspace,
+   *  Delete, Left, Right, Home and End, Shift+Left / Shift+Right by words,
+   *  Ctrl+Left / Ctrl+Right to the start / end and Ctrl+U to clear -- and
+   *  Tab / Shift-Tab move the caret to the next / previous writable on the
+   *  window; other keys reach the task as wuss_EVENT_KEY. Every edit raises
+   *  wuss_EVENT_ICON with button 0. Text wider than the box scrolls to keep
+   *  the caret in view. */
   wuss_ICON_TYPE_WRITABLE,
   /** An editable numeric field, optionally with up/down adjusters. Not yet
    *  implemented. */
@@ -323,6 +336,15 @@ typedef union wuss_icon_spec_data
     int                       default_value;
   }
   slider;
+
+  /** wuss_ICON_TYPE_WRITABLE */
+  struct
+  {
+    /** Buffer size in bytes, including the terminator: the field holds at
+     *  most size - 1 characters. Must be at least 1. */
+    int size;
+  }
+  writable;
 }
 wuss_icon_spec_data_t;
 
@@ -474,7 +496,8 @@ void wuss_icon_delete(wuss_window_t *window, wuss_icon_t *icon);
 
 /**
  * Replace an icon's label text. The new text is copied. Invalidates the
- * icon's bounding box.
+ * icon's bounding box. A wuss_ICON_TYPE_WRITABLE truncates the text to its
+ * buffer and, if it holds the caret, moves the caret to the end.
  *
  * \param[in] window Window the icon belongs to.
  * \param[in] icon   Icon to change.
@@ -570,6 +593,24 @@ int wuss_icon_get_value(const wuss_icon_t *icon);
 void wuss_icon_set_value(wuss_window_t *window,
                          wuss_icon_t   *icon,
                          int            value);
+
+/**
+ * Place the text caret in a wuss_ICON_TYPE_WRITABLE icon, giving its window
+ * the input focus, or remove the caret. There is one caret per window
+ * manager; it is removed whenever its window loses the focus. No task event
+ * is delivered for the caret move itself.
+ *
+ * \param[in] window Window the icon belongs to.
+ * \param[in] icon   Writable icon to take the caret, or NULL to remove the
+ *                   caret if it is on \p window.
+ * \param[in] index  Caret position in bytes; negative or past the end of the
+ *                   text means the end.
+ * \return \ref result_OK, or \ref result_BAD_ARG if \p icon is not a
+ *         visible, enabled writable or \p window cannot take the focus.
+ */
+result_t wuss_icon_set_caret(wuss_window_t *window,
+                             wuss_icon_t   *icon,
+                             int            index);
 
 /* ----------------------------------------------------------------------- */
 

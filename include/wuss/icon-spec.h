@@ -211,6 +211,25 @@ void wuss_icon_spec_display(wuss_icon_spec_t *spec,
                             int               flags);
 
 /**
+ * Fill \p spec as a wuss_ICON_TYPE_WRITABLE.
+ *
+ * Drawn with wuss_COLOUR_BLACK text and outline on wuss_COLOUR_WHITE.
+ *
+ * \param[out] spec  Spec to fill; any prior contents are overwritten.
+ * \param[in]  bbox  Bounding box.
+ * \param[in]  text  Initial text, borrowed until wuss_icon_create(_array)
+ *                   copies it; truncated to fit. NULL means "".
+ * \param[in]  size  Buffer size in bytes, including the terminator.
+ * \param[in]  flags wuss_icon_flags_t bits, e.g. wuss_ICON_FONT(n); 0 for
+ *                   none.
+ */
+void wuss_icon_spec_writable(wuss_icon_spec_t *spec,
+                             box_t             bbox,
+                             const char       *text,
+                             int               size,
+                             int               flags);
+
+/**
  * Fill \p spec as a wuss_ICON_TYPE_SLIDER.
  *
  * Drawn with wuss_COLOUR_BLACK groove/fill.

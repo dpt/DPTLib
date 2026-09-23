@@ -190,6 +190,13 @@ struct wuss
                                             * menu-entry icons */
   wuss_window_t              *hover_window; /* the window hover_icon is on;
                                             * NULL iff hover_icon is NULL */
+  wuss_icon_t                *caret_icon;   /* writable holding the text
+                                            * caret, NULL when none */
+  wuss_window_t              *caret_window; /* the window caret_icon is on;
+                                            * NULL iff caret_icon is NULL, and
+                                            * always the focus window */
+  int                         caret_index;  /* caret byte offset into
+                                            * caret_icon's text */
   /* Icon set loaded by wuss_icons_load. index i is the i-th ".png" the
    * directory scan yielded (order unspecified -- address by name).
    * names interns the leafnames-sans-".png"; atoms[i] is entry i's atom

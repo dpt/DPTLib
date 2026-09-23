@@ -384,6 +384,13 @@ result_t wuss_mouse_click(wuss_t             *wuss,
             wuss__icon_set_value(win, icon,
                                  wuss__slider_value_for_point(win, icon,
                                                               POINT(x, y)));
+
+          /* a writable takes the caret at the click, if the press above
+           * gave its window the focus */
+          if (icon->spec.type == wuss_ICON_TYPE_WRITABLE && wuss->focus == win)
+            wuss__writable_place_caret(win, icon,
+                                       wuss__writable_index_for_x(wuss, icon,
+                                                                  doc_point.x));
         }
         else if (action == wuss_MOUSE_UP && wuss__icon_pressed(icon))
         {

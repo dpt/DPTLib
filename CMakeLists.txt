@@ -469,6 +469,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/set-text.c
     libraries/wuss/icon/set-value.c
     libraries/wuss/icon/slider-box.c
+    libraries/wuss/icon/writable.c
     libraries/wuss/icon.h)
 
 set(WUSS_MENU_SOURCES

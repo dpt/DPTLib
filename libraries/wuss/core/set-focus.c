@@ -24,6 +24,12 @@ result_t wuss_set_focus(wuss_t *wuss, wuss_window_t *window)
    * already see the new owner. */
   wuss->focus = window;
 
+#ifdef WUSS_ICONS
+  /* the caret only ever lives in the focus window */
+  if (wuss->caret_window != window)
+    wuss__caret_clear(wuss);
+#endif
+
   if (was != NULL)
   {
     wuss__chrome_repaint(was);

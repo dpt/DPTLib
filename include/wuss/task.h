@@ -206,9 +206,10 @@ typedef struct wuss_event
      * comparing for equality. value is the icon's current value for a
      * wuss_ICON_TYPE_SLIDER (updated before this event is delivered, so it
      * always reflects the click/drag that raised it); meaningless for every
-     * other icon type. In the task view (window == NULL) this is
-     * reserved for a future shared/dock element and is never currently
-     * emitted. */
+     * other icon type. A wuss_ICON_TYPE_WRITABLE also raises this, with
+     * button 0 and action wuss_MOUSE_UP, after every edit to its text. In
+     * the task view (window == NULL) this is reserved for a future
+     * shared/dock element and is never currently emitted. */
     struct
     {
       wuss_icon_t        *icon;

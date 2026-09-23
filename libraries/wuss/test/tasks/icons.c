@@ -20,6 +20,7 @@
 #include "geom/point.h"
 #include "geom/size.h"
 #include "io/path.h"
+#include "wuss/icon-spec.h"
 
 #include "icons.h"
 
@@ -30,7 +31,7 @@
 enum { ICONS_MENU_INFO };
 
 #define ICONS_DOC_W    260
-#define ICONS_DOC_H    1310 /* taller than the window, so scrolling is exercised */
+#define ICONS_DOC_H    1420 /* taller than the window, so scrolling is exercised */
 #define ICONS_MARGIN   28  /* left edge of everything except frame captions */
 #define ICONS_ROW      20  /* vertical pitch between stacked simple icons */
 
@@ -49,9 +50,11 @@ enum
   ICONS_N_BORDERS = 6, /* frame + GROOVE + RIDGE + ACTION + DIVIDER labels */
   ICONS_N_SLIDERS = 4, /* frame + horizontal + vertical slider + state label */
   ICONS_N_MENU    = 8, /* frame + plain, ticked, swatch, submenu, disabled, rule, separator entry */
+  ICONS_N_WRITE   = 4, /* frame + two writables + echo label */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
                     ICONS_N_BITMAPS + ICONS_N_ICONSET + ICONS_N_PATTERN +
-                    ICONS_N_BORDERS + ICONS_N_SLIDERS + ICONS_N_MENU
+                    ICONS_N_BORDERS + ICONS_N_SLIDERS + ICONS_N_MENU +
+                    ICONS_N_WRITE
 };
 
 /* Running state threaded through the icons_add_* helpers: where to write the
@@ -558,6 +561,46 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   lay->y = top + ICONS_ROW * 7 + 46;
 }
 
+/* A grouping frame captioned "Writables" holding two editable fields -- the
+ * second small enough to fill up -- and a label echoing whichever was last
+ * edited. Click a field for the caret; Tab / Shift-Tab hop between them.
+ * Returns the echo label's index via *echo. */
+static void icons_add_writables(icons_layout_t *lay, int *echo)
+{
+  wuss_icon_spec_t *s;
+  int               top;
+
+  top     = lay->y;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 90);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "Writables";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  wuss_icon_spec_writable(&lay->specs[lay->n],
+                          (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20, 180, 18),
+                          "Edit me", 64, 0);
+  lay->n++;
+
+  wuss_icon_spec_writable(&lay->specs[lay->n],
+                          (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 42, 60, 18),
+                          NULL, 6, 0);
+  lay->n++;
+
+  *echo   = lay->n;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 64, 180, 14);
+  s->type = wuss_ICON_TYPE_LABEL;
+  s->text = "";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  lay->y = top + 106;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t icons_create(wuss_t *wuss, icons_task_t **out)
@@ -572,6 +615,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   const char      *sprite_path;
   int              i_button, i_counter, i_opt, i_state, i_hotspot, i_ticked;
   int              i_shoriz, i_svert, i_sstate;
+  int              i_echo;
   result_t         rc;
 
   task = calloc(1, sizeof(*task));
@@ -596,6 +640,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   task->slider_horiz = NULL;
   task->slider_vert  = NULL;
   task->slider_state = NULL;
+  task->echo         = NULL;
 
   resources   = wuss_get_resources(wuss);
   sprite_path = pathf("%s/resources/wuss/ninepatch.png", resources);
@@ -627,7 +672,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(ICONS_DOC_W, 200),
                                  "Icons",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_BACKDROP_PATTERN(wuss_COLOUR_GREY,
                                                        screen_PATTERN_CROSSHATCH,
                                                        wuss_COLOUR_WINDOW),
@@ -658,6 +703,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   icons_add_borders(&lay);
   icons_add_sliders(&lay, &i_shoriz, &i_svert, &i_sstate);
   icons_add_menu(&lay, &i_ticked);
+  icons_add_writables(&lay, &i_echo);
 
   rc = wuss_icon_create_array(task->window, specs, lay.n, made);
   if (rc != result_OK)
@@ -672,6 +718,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   task->slider_horiz = made[i_shoriz];
   task->slider_vert  = made[i_svert];
   task->slider_state = made[i_sstate];
+  task->echo         = made[i_echo];
   wuss_icon_set_selected(task->window, made[i_ticked], 1); /* "Show grid" starts ticked */
 
   WUSS_MENU_ITEM_WINDOW(task->menu_items, ICONS_MENU_INFO, "Info",
@@ -810,6 +857,16 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
     name = (icon == tcx->slider_horiz) ? "horizontal" : "vertical";
     snprintf(buf, sizeof(buf), "%s: %d", name, event->data.icon.value);
     return wuss_icon_set_text(tcx->window, tcx->slider_state, buf);
+  }
+
+  /* a writable reports every edit */
+  if (wuss_icon_get_type(icon) == wuss_ICON_TYPE_WRITABLE)
+  {
+    if (event->data.icon.button != wuss_BUTTON_NONE)
+      return result_OK; /* just a click placing the caret */
+
+    snprintf(buf, sizeof(buf), "\"%s\"", wuss_icon_get_text(icon));
+    return wuss_icon_set_text(tcx->window, tcx->echo, buf);
   }
 
   /* a radio/option latches on MOUSE_UP -- report the state then */
