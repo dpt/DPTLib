@@ -4,33 +4,34 @@ Ordered by dependency. Each layer builds on the ones above it.
 Items marked (blocks: X) are prerequisites for X.
 
 
-Furniture clicks / scrolls still invalidate the entire furniture set - fix.
-  (window move fixed: layout cache is now translated in place, not rebuilt)
 
 Fast scrolling can invalidate areas and fail to copy the expected known good screen content.
  -- Tried and tried to get Claude to fix but no good.
 
 Scrolled (which app?) then expanded the window - got a full redraw of the window.
-Swatches?
 
 Policy? Windows hidden by default (unless a flag is set)
 Wuss lets hidden windows exist in its window stack which complicates the code a bit. RISC OS allows hidden (closed) windows by putting them "behind the backwindow".
 
 Keyboard input
-- bmfont needs to be able to draw a caret
+- bmfont needs to be able to draw a caret bmfont_find_caret?
 
 Large fonts for titles, italic font, ...
 
 SDL bug? Random mouse focus issue that stops us receiving initial clicks.
 
-closest_palette_entry getting hammered?
-
-Allow a build with no apps installed
-
 Menus which could have ticks AND colour swatches
 
-formatting: Ensure spaces afer return statements/blocks
 formatting: Balanced braces rule
+
+nick Melkhior's mansion font
+
+Pop-to-front of 'running' apps
+
+Text alignment with window border failed to convince me. I think it's still off by 1px and the Wuss measurement was bodged.
+
+
+
 
 LAYER 0 - BUGS (fix before building on top)
 
@@ -61,7 +62,6 @@ LAYER 3 - SPRITES (needs masks)
 - Masked sprites/bitmaps. Covered by RLE work?
 - Sprite scaling
 - Import Kare style icons
-- Sprites noticably brighter / colour matching needs work
 - App sprites
 
 
@@ -71,7 +71,6 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
     blocks: Furniture icons toggling state, min window size
 - Minimum window size based on furniture requested
   (later: squash-able furniture)
-- Furniture icons toggling state when clicked
 - Scroll: auto repeat on scroll buttons
 - Snap to edges (outline-click bug fixed; unblocked)
 - Dragging against window edge shuffles window in opposite direction
