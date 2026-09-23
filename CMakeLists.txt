@@ -699,6 +699,7 @@ if(BUILD_TESTS)
         libraries/framebuf/bmfont/test/bmfontcache-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
+        libraries/framebuf/pattern/test/pattern-test.c
         libraries/framebuf/pixelmap/test/pixelmap-test.c
         libraries/framebuf/screen/test/screen-test.c
         libraries/geom/box/test/box-test.c
