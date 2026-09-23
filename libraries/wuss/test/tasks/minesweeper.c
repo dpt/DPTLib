@@ -705,8 +705,12 @@ result_t minesweeper_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &ms->size_menu)
+    {
       minesweeper_set_size(ms, (minesweeper_size_t)
                            event->data.menu_select.index);
+      wuss_menu_tick_exclusive_live(ms->menu_handle, &ms->size_menu,
+                                    ms->size);
+    }
     else if (event->data.menu_select.index == MINESWEEPER_MENU_NEW_GAME)
       minesweeper_reset(ms);
     else
