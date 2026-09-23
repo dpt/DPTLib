@@ -475,10 +475,16 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
 
 static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
 {
-  const box_t *b = &c->b;
-  screen_t     clipped;
+  const box_t    *b = &c->b;
+  const bitmap_t *bm;
+  screen_t        clipped;
 
-  if (c->icon->spec.u.bitmap.image == NULL)
+  bm = NULL;
+  if (wuss__icon_pressed(c->icon) && c->icon->spec.u.bitmap.pressed_set > 0)
+    bm = wuss_icons_bitmap(c->wuss, c->icon->spec.u.bitmap.pressed_set - 1);
+  if (bm == NULL)
+    bm = c->icon->spec.u.bitmap.image;
+  if (bm == NULL)
     return;
 
   /* screen_copy_bitmap clips to scr->clip and does not scale, so narrow the
@@ -488,7 +494,7 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
   if (box_intersection(&c->scr->clip, b, &clipped.clip))
     return;
 
-  screen_copy_bitmap(&clipped, b->x0, b->y0, c->icon->spec.u.bitmap.image);
+  screen_copy_bitmap(&clipped, b->x0, b->y0, bm);
 }
 
 /* ----------------------------------------------------------------------- */
