@@ -99,8 +99,8 @@ _Unreleased_ until one is cut.
   updated to add ascent.
 - Six reserved `wuss_ICON_TYPE_*` constants (`DISPLAY`, `WRITABLE`,
   `NUMBER`, `STRING_SET`, `SLIDER`, `DRAGGABLE`) after `RULE`, validated
-  from a spec but (bar SLIDER, now implemented) not yet drawn/hit-tested/
-  routed.
+  from a spec but (bar SLIDER and WRITABLE, now implemented) not yet
+  drawn/hit-tested/routed.
 - `bmfont_draw_relief()` — draws a string twice with a transparent
   background, a shadow pass in a given colour at `pos + offset` then the
   main pass at `pos`, factoring the hand-rolled two-call drop-shadow idiom
@@ -366,6 +366,99 @@ _Unreleased_ until one is cut.
 - The saturn task's Configure dialogue gains a Default button that resets
   `task->config` to `SATURN_CONFIG_DEFAULT`, refills the sliders and
   applies it.
+- `wuss_ICON_TYPE_WRITABLE` — an editable single-line text field with an
+  icon-owned fixed-size buffer. A click places a red I-beam caret at the
+  nearest character (one caret per `wuss`, dropped on focus loss, hide,
+  delete or window close). The field takes printable Latin-1, Backspace,
+  Delete, Left/Right, Home/End, Shift+Left/Right (by word), Ctrl+Left/Right
+  (start/end) and Ctrl+U (clear); Tab/Shift-Tab cycle through the window's
+  writables. Text scrolls to keep the caret in view and every edit raises
+  `wuss_EVENT_ICON`. Adds `wuss_icon_set_caret()`, the
+  `wuss_icon_spec_writable()` helper and a demo group in the icons task.
+- `wuss` input focus and key events: windows opt in with
+  `wuss_WINDOW_FOCUSABLE`; a Select/Adjust press on a focusable window's
+  content takes the focus, and `wuss_set_focus()`/`wuss_get_focus()`
+  manage it directly. Focus changes send `wuss_EVENT_GAIN_FOCUS`/
+  `LOSE_FOCUS` and tint the titlebar with the new `title.focus_bg` palette
+  entry. `wuss_key()` routes presses to the focused window as
+  `wuss_EVENT_KEY` (code plus Shift/Ctrl/Alt modifiers); a task returns
+  `result_WUSS_KEY_UNCLAIMED` to pass a key on. The SDL demo translates
+  key-down and text-input events, runs its F1-F4 hotkeys only for
+  unclaimed keys and adds a Keys test task.
+- `bmfont_find_caret()` (pointer x to nearest character boundary),
+  `bmfont_caret_x()` (index to caret x, in the letter-spacing gap) and
+  `bmfont_draw_caret()` (I-beam spanning the ascent with a 2px overhang).
+- `framebuf/bmfontcache` — `bmfontcache_t`, a refcounted acquire/release
+  wrapper so callers loading the same font file share one `bmfont_t`.
+  `wuss_t` owns one via `wuss_get_font_cache()`; the chars, text and
+  minesweeper tasks acquire through it.
+- `bmfont` supports glyphs up to 32px wide (64-bit extraction accumulators,
+  a 4-byte glyph-row tier and `_4w_` draw variants for every pixel format).
+  New fixture fonts: DPT-Digits-Bold-Lg (24px) and its regular weight,
+  GrongyUI and SF-Embers.
+- `pattern_from_colour()` — picks the palette pair whose Bayer mix best
+  approximates an arbitrary colour, with a spread penalty so a near-solid
+  entry beats a wide stipple.
+- `pathf()` — a printf-like path builder that substitutes `%s` arguments
+  then rewrites `/` to the host separator (dropping the final leaf's
+  extension on RISC OS). Covered by a new `path` test.
+- `bitmap_convert_into()` — a caller-owned-buffer sibling of
+  `bitmap_convert()`; both share each `bmconv_*` pixel loop.
+- `colour_get_rgb()`, mirroring `colour_get_alpha()`.
+- `bitmap_save_png()` writes p1/p2/p4 paletted bitmaps, deriving bit depth
+  and PLTE/tRNS size from the pixel format.
+- `geom/inset.h` — `inset_t` (t,r,b,l) and an `INSET()` brace initialiser.
+- `STACK_HUG` — a nested stack container sized to the sum of its
+  children's extents (plus gaps/padding), resolved bottom-up before the
+  top-down solve.
+- `wuss_STD_INSETS`, `wuss_STD_FRAME_INSET`/`_TOP_INSET` and
+  `wuss_STD_FRAME_INSETS` standard padding constants,
+  `wuss_SYSTEM_PALETTE_LENGTH`, `wuss_ICON_FLAGS_JUSTIFY_LEFT` (0, for
+  explicitness) and `wuss_ICON_BORDER_PLAIN` (a 1px fg-colour outline).
+- `wuss_icon_spec_frame()`/`_option()`/`_radio()`/`_display()` helpers;
+  `_display()` is a label with a groove border (the RISC OS display-field
+  look).
+- `wuss_MENU_ITEM_PRE_OPEN`: a flagged submenu or window row fires
+  `wuss_EVENT_PRE_SUBMENU_OPEN`/`wuss_EVENT_PRE_SHOW` on hover and opens
+  only if the handler calls the matching open-now function, letting a task
+  retarget one shared submenu per row. `WUSS_MENU_ITEM`/`_MENU`/`_WINDOW`
+  and `WUSS_MENU_TITLE` macros build menu tables one call per item.
+- The colourmenu gains an optional None row (hatched chip, resolving to
+  `wuss_NO_BACKGROUND`), toggled at runtime with `wuss_colourmenu_set_none()`.
+- `wuss_resize()` and `wuss_frontend_resize()` change the desktop
+  resolution live, shrinking/nudging open windows back on-screen (RISC OS
+  returns `result_NOT_SUPPORTED`). A new Display task picks from fixed
+  resolutions, under a new top-level System menu alongside Palette.
+- `wuss_backdrop_t` gains an `image` drawn centred over the backdrop fill;
+  the demo app shows `resources/wuss/wuss.png`.
+- Window titles are drawn with a `bmfont_draw_relief()` drop shadow in the
+  bevel-dark colour.
+- Scroll arrows, the resize icon, toggle-size, close and back icons light
+  up while held, in a new `wuss_furniture_palette_t.pressed` colour
+  (yellow by default).
+- `wuss_icons_load_resource()`; `wuss_create()` now loads the icon set once
+  itself instead of per task.
+- A Configure task (also on the main Wuss menu): System frame options to
+  swap the Menu/Adjust mouse buttons and reverse scroll-wheel direction,
+  and a Backdrop frame with foreground/background colours, a fill-pattern
+  grid, a result swatch and a Set backdrop action, laid out with
+  `geom/stack`.
+- `wuss` demo command-line options `--res WIDTHxHEIGHT` and `-t/--tasks`
+  (comma-separated launcher task names, or `all`, to open at startup).
+- A Doughnut task (Andy Sloane's spinning torus): Select pauses, the wheel
+  zooms, an Adjust drag spins it directly, arrow keys rotate it while
+  paused, plus a Background colour picker.
+- The text task gains a Markdown Demo sample (headers plus inline bold/
+  italic/code as colour-tagged runs).
+- Minesweeper draws its HUD with DPT-Digits-Bold-Lg, uses mine/flag
+  bitmaps (cells grow to 22px), caches its colours (rebuilt on
+  `wuss_EVENT_PALETTE`) and is keyboard-playable: arrows move an orange
+  cell cursor, Return reveals and Space flags.
+- `tools/extract_glyphs.py` — extracts unique 8-connected glyph shapes from
+  a PNG into a grid image sorted by area.
+- Release builds dead-strip unused code (`-ffunction-sections`/
+  `-fdata-sections` with `-dead_strip` or `--gc-sections`), shrinking the
+  release `wuss` binary by ~6%.
 
 ### Changed
 
@@ -585,6 +678,51 @@ _Unreleased_ until one is cut.
 - `wuss_window_move()` and `wuss_window_resize()`'s duplicated "filter clean
   pieces against `wuss->dirty[]`" loops are factored into a shared
   `wuss__filter_settled()`.
+- **Breaking:** `path_join_filename()`/`path_join_leafname()` are removed;
+  every caller now uses `pathf()`.
+- **Breaking:** the colourmenu, fontmenu and proginfo components are
+  process-wide singletons. `wuss_colourmenu_create/destroy`,
+  `wuss_fontmenu_create/destroy` (and the `wuss_fontmenu_t` handle) and
+  `wuss_proginfo_create/destroy` are replaced by
+  `wuss_colourmenu_menu(wuss)`, `wuss_fontmenu_menu(dir, title, wuss)` and
+  `wuss_proginfo_window(task)`, rebuilt only when their inputs change;
+  `wuss_colourmenu_set_none/_set_title` and `wuss_proginfo_set_desc`
+  retarget the shared instance.
+- **Breaking:** `wuss_icon_spec_action()` drops its fg/bg parameters and
+  `wuss_icon_spec_label()`/`_slider()`/`_slider_row()` drop fg (always
+  black); `wuss_icon_spec_label()` takes icon flags instead of a
+  `justify_right` bool; `wuss_icon_spec_slider_row()`'s caller now supplies
+  the value text buffer.
+- **Breaking:** `stack_item_t`'s `pad_l/pad_t/pad_r/pad_b` become one
+  `inset_t pad`, and `STACK_VBOX_EX`/`STACK_HBOX_EX` take padding in
+  (t,r,b,l) order.
+- `wuss_ICON_TYPE_WRITABLE` moves out of the reserved types, swapping its
+  numeric value with `DISPLAY`. Constructing a reserved type (`DISPLAY`,
+  `NUMBER`, `STRING_SET`, `DRAGGABLE`) now asserts in debug builds.
+- Demo task menus are stored per task instance rather than as file-scope
+  statics, so two instances of one task no longer share menu state.
+- `wuss__menu`'s `borrowed` and `flash.keep_open` and
+  `wuss__furniture_layout`'s `valid`/`has_titlebar` fold into `flags`
+  bitmasks.
+- Scrolling dirties only the moved axis's scrollbar well instead of all the
+  furniture; scroll arrows get their own divider row/column rather than
+  losing one to it; the sausage may shrink to 1px.
+- Frame captions are drawn above a shifted border rather than overpainting
+  a gap in it.
+- p8 blending and p4 span blending use the cached `pixelmap` table instead
+  of a linear palette scan per pixel; `screen_fill_rect()` hoists its clip/
+  colour lookup out of the row loop; the SDL present path reuses a
+  persistent scratch bitmap instead of allocating per frame.
+- `bmfont_draw()` selects its draw function from a
+  `[format][rowbytes][transparent]` table.
+- The `wuss` demo opens no tasks at startup by default (see `-t`). The
+  Swatches task is removed (superseded by Configure), Blank is renamed
+  Patterns (a timed ordered-dither blend between random colours, with a
+  Speed submenu and full furniture), the Image task drops its unwired
+  menu rows, the Palette task moves its palettes to a Load submenu and
+  menu categories are reordered.
+- `pattern_t.origin` is documented as the absolute coordinate of the
+  tile's top-left bit.
 
 ### Fixed
 
@@ -914,3 +1052,58 @@ _Unreleased_ until one is cut.
 - `wuss_proginfo_set_desc()` dereferenced a borrowed `desc` with no `NULL`
   check; guarded, matching the idiom used elsewhere in the component
   helpers.
+- RISC OS `dirscan_walk()`: subdirectories were reported as files (now uses
+  OS_GBPB 10 and skips non-files), HostFS `/DS_Store`-style entries
+  aborted the scan (skipped), SWI errors are logged, and a mid-scan failure
+  returns what was found instead of `result_FILE_NOT_FOUND`.
+- `bmfont_enumerate()` kept a pointer into `pathf()`'s shared buffer, so
+  later entries (and the RISC OS multi-call scan) clobbered it; it copies
+  the directory first.
+- `pixelmap` matched each quantised bucket using its top edge, biasing
+  deep-to-paletted conversion towards brighter entries; uses the bucket
+  centre.
+- `span_p4_blendconst` indexed the nibble-packed p4 pixelmap table as if
+  byte-per-entry, reading up to 2x past its end.
+- `bmfont_draw()` left `*end_pos` unset when fully clipped, garbling
+  chained multi-colour runs on partial redraws.
+- `bmfont_measure()` skipped bytes >= 0x80 that `bmfont_draw()` renders.
+- `bmtext_layout` ignored newlines.
+- The `bmconv_*` allocating wrappers leaked their buffer when
+  `bitmap_init` failed.
+- PRE_SHOW handlers in the demo app and saturn called
+  `wuss_menu_open_window_now()` with a `NULL` handle for plain windows.
+- A task's stale main-window pointer was used after close while its
+  proginfo dialogue stayed open (use-after-free via `wuss_idle`).
+- The chars/text font menus cached the fontmenu singleton's submenu and
+  could open or re-tick it after a rebuild freed it.
+- A menu chain owner's handle went stale: a normal pick now also delivers
+  `MENU_CLOSED`, and `wuss_destroy()` abandons a task's chain before QUIT.
+- A Menu-button release on a menu row selected it.
+- Demo task mouse handlers acted on clicks in any window, e.g. a Menu
+  click on the Info dialogue opened the task menu.
+- A Menu click over an icon never reached the window's mouse handler.
+- The Image task's ninepatch path dropped its leafname.
+- `wuss__icon_from_spec` rejected `wuss_NO_BACKGROUND` swatches.
+- Hidden windows forced repaints of visible content (toggle-size occlusion
+  check, close invalidation, icon invalidation).
+- Occlusion carving silently dropped pieces on overflow; paint callers now
+  fall back to the whole box and blit-source callers to nothing
+  (`overpaint_safe` on `carve_by_cuts`/`wuss__subtract_boxes`/
+  `wuss__clip_to_visible`).
+- The SDL frontend didn't present the initial full redraw, and a
+  REDRAW_ALL input could be narrowed by later events in the same batch,
+  leaving stale texture rows.
+- The title shadow fill covered the titlebar divider rule.
+- `wuss_icon_spec_slider_row()` left the value text pointing at a dead
+  stack buffer.
+- The proginfo dialogue's widest right-justified label sat 1px left of the
+  rest.
+- Scroll/resize press highlighting dragged the window by a stale offset.
+- The colourmenu None chip's hatch was phased against the screen rather
+  than the chip, tearing after a move.
+- Minesweeper's Grid Size tick didn't update on an Adjust pick, and its
+  redraw ignored the scroll offset.
+- The doughnut render was sized from the dirty box rather than the window,
+  and recomputed theta trig in its inner loop.
+- `INSET` was a compound literal, not a constant expression under GCCSDK.
+- The `wuss` and `bmfont` enumerate tests hardcoded fixture counts.
