@@ -13,6 +13,7 @@
 #include "framebuf/palettes.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "wuss/task.h"
 
 #include "doughnut.h"
 
@@ -30,6 +31,7 @@
 #define DOUGHNUT_K2   5.0  /* viewer distance */
 #define DOUGHNUT_P1 314.15 /* points around the tube */
 #define DOUGHNUT_P2  90.0  /* points around the ring */
+#define DOUGHNUT_KEY_STEP 0.1 /* radians per arrow press while paused */
 
 enum { DOUGHNUT_MENU_INFO = 0, DOUGHNUT_MENU_BACKGROUND };
 
@@ -134,7 +136,7 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(200, 200),
                                  "Doughnut",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(200, 200),
                                  SIZE2D(0, 0),
@@ -347,6 +349,28 @@ static result_t doughnut_idle(doughnut_task_t *task)
   return result_OK;
 }
 
+/* While paused, the arrow keys step the rotation: Up/Down about x (a),
+ * Left/Right about z (b). Anything else, or any key while spinning, is passed
+ * back unclaimed. */
+static result_t doughnut_key(doughnut_task_t *task, int code)
+{
+  if (!task->paused)
+    return result_WUSS_KEY_UNCLAIMED;
+
+  switch (code)
+  {
+  case wuss_KEY_UP:    task->a -= DOUGHNUT_KEY_STEP; break;
+  case wuss_KEY_DOWN:  task->a += DOUGHNUT_KEY_STEP; break;
+  case wuss_KEY_LEFT:  task->b -= DOUGHNUT_KEY_STEP; break;
+  case wuss_KEY_RIGHT: task->b += DOUGHNUT_KEY_STEP; break;
+  default:             return result_WUSS_KEY_UNCLAIMED;
+  }
+
+  wuss_window_invalidate_visible(task->window);
+
+  return result_OK;
+}
+
 /* The "Background" row's only submenu leaf: always hand back the shared
  * colourmenu singleton, unretargeted -- there is nothing else to pick into.
  */
@@ -404,6 +428,9 @@ result_t doughnut_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     return doughnut_idle(task);
+
+  case wuss_EVENT_KEY:
+    return doughnut_key(task, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return doughnut_pre_submenu_open(task, event);

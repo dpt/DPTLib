@@ -14,9 +14,10 @@
 /* window task: Andy Sloane's "donut.c" torus render (the classic terminal
  * spinning-doughnut demo), ray-marched per pixel and shaded by
  * surface-normal brightness, redrawn every idle tick with the two rotation
- * angles advanced a little. Select toggles pause; the wheel zooms in/out;
- * an Adjust drag spins the torus directly, overriding the idle
- * auto-rotation for as long as it's held. */
+ * angles advanced a little. Select toggles pause (and takes the input focus);
+ * the wheel zooms in/out; an Adjust drag spins the torus directly, overriding
+ * the idle auto-rotation for as long as it's held. While paused the arrow
+ * keys step the rotation. */
 typedef struct doughnut_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
@@ -31,7 +32,8 @@ typedef struct doughnut_task
                                 * colourmenu */
   double             a, b;    /* rotation angles about the x and z axes */
   double             zoom;    /* scales k1; wheel steps this, clamped */
-  int                paused;  /* Select toggles; idle skips advancing a/b */
+  int                paused;  /* Select toggles; idle skips advancing a/b,
+                               * arrow keys step them */
   int                dragging;   /* non-zero while an Adjust drag is live */
   int                drag_x, drag_y; /* last drag point, content space */
 }
