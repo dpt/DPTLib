@@ -30,6 +30,9 @@
 #include "wuss/component/fontmenu.h"
 #include "wuss/component/colourmenu.h"
 #endif
+#ifdef WUSS_GADGETS
+#include "wuss/gadget/stringset.h"
+#endif
 
 /* white-box: the menu-flash test drives picks through the icon layer and
  * reads back struct wuss__menu / struct wuss_icon state directly; the
@@ -85,6 +88,20 @@ typedef struct test_task
   int                 icon_count;
 }
 test_task_t;
+
+#ifdef WUSS_GADGETS
+/* stringset changed callback: counts calls into the int at opaque */
+static result_t stringset_test_changed(wuss_stringset_t *stringset,
+                                       int               index,
+                                       void             *opaque)
+{
+  NOT_USED(stringset);
+  NOT_USED(index);
+
+  (*(int *) opaque)++;
+  return result_OK;
+}
+#endif
 
 static result_t test_handle(wuss_window_t      *window,
                             const wuss_event_t *event,
@@ -5649,6 +5666,125 @@ ColourMenuFail:
 ColourMenuOK: ;
   }
 #endif /* WUSS_COMPONENTS */
+
+#ifdef WUSS_GADGETS
+  printf("test: wuss_stringset opens its menu and tracks picks\n");
+  {
+    static const char *const ss_strings[] = { "Red", "Green", "Blue" };
+
+    const char       *ssfontfile;
+    bmfont_t         *ssfont;
+    screen_t          ssscr;
+    bitmap_t          ssbm;
+    void             *sspixels;
+    wuss_t           *sswuss;
+    wuss_font_desc_t  ssfdesc;
+    test_task_t       sstc;
+    wuss_task_t      *ssowner;
+    wuss_window_t    *sswin;
+    wuss_stringset_t *ss;
+    wuss_icon_t      *arrow;
+    wuss_event_t      ev;
+    box_t             sscontent;
+    result_t          ssrc;
+    int               calls;
+
+    /* a menu needs a font, and the arrow the icon set, so neither the
+     * shared fontless wuss nor a resource-less one will do */
+    ssfontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    rc = bmfont_create(ssfontfile, &ssfont);
+    if (rc != result_OK) goto StringSetFail;
+
+    sspixels = malloc((size_t) rowbytes * 200);
+    if (sspixels == NULL) { rc = result_OOM; goto StringSetFail; }
+    rc = bitmap_init(&ssbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, sspixels);
+    if (rc != result_OK) goto StringSetFail;
+    screen_for_bitmap(&ssscr, &ssbm);
+
+    ssfdesc.font       = ssfont;
+    ssfdesc.font_class = wuss_FONT_CLASS_NONE;
+    ssfdesc.name       = NULL;
+    rc = wuss_create(&ssscr, &ssfdesc, 1, NULL, 0, NULL, NULL, resources,
+                     &sswuss);
+    if (rc != result_OK) goto StringSetFail;
+
+    memset(&sstc, 0, sizeof(sstc));
+    ssowner = mk_task(sswuss, test_handle, &sstc);
+    if (ssowner == NULL) { rc = result_OOM; goto StringSetFail; }
+
+    sscontent = (box_t) BOX_POS_SIZE(10, 10, 150, 100);
+    rc = wuss_window_create(ssowner, &sscontent, "SS", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP, SIZE2D(150, 100), SIZE2D(0, 0),
+                            &sswin);
+    if (rc != result_OK) goto StringSetFail;
+
+    /* a zero count is refused */
+    if (wuss_stringset_create(&ss, sswin, (box_t) BOX_POS_SIZE(4, 4, 120, 22),
+                              "Colour", ss_strings, 0, NULL, NULL) !=
+        result_BAD_ARG)
+      goto StringSetFail;
+
+    calls = 0;
+    rc = wuss_stringset_create(&ss, sswin, (box_t) BOX_POS_SIZE(4, 4, 120, 22),
+                               "Colour", ss_strings, NELEMS(ss_strings),
+                               stringset_test_changed, &calls);
+    if (rc != result_OK) goto StringSetFail;
+    if (wuss_stringset_get_index(ss) != 0) goto StringSetFail;
+
+    /* the arrow sits at the right edge, drawn from the icon set */
+    arrow = wuss__icon_hit_test(sswin, POINT(4 + 120 - 2, 4 + 11));
+    if (arrow == NULL || wuss_icon_get_type(arrow) != wuss_ICON_TYPE_BITMAP)
+      goto StringSetFail;
+
+    /* a foreign event is declined */
+    ev.kind = wuss_EVENT_IDLE;
+    if (wuss_stringset_handle_event(ss, &ev, &ssrc)) goto StringSetFail;
+
+    /* a Select click on the arrow opens the gadget's menu */
+    ev.kind              = wuss_EVENT_ICON;
+    ev.data.icon.icon    = arrow;
+    ev.data.icon.action  = wuss_MOUSE_UP;
+    ev.data.icon.button  = wuss_BUTTON_SELECT;
+    ev.data.icon.value   = 0;
+    if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
+      goto StringSetFail;
+    if (sswuss->menu_chain == NULL) goto StringSetFail;
+
+    /* a pick of another entry updates the index and fires the callback */
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu_chain);
+    ev.data.menu_select.index  = 2;
+    ev.data.menu_select.button = wuss_BUTTON_ADJUST;
+    if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
+      goto StringSetFail;
+    if (wuss_stringset_get_index(ss) != 2 || calls != 1) goto StringSetFail;
+
+    /* re-picking the current entry does not */
+    if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || calls != 1)
+      goto StringSetFail;
+
+    /* the programmatic path is range-checked and silent */
+    if (wuss_stringset_set_index(ss, 3) != result_BAD_ARG) goto StringSetFail;
+    if (wuss_stringset_set_index(ss, 1) != result_OK)      goto StringSetFail;
+    if (wuss_stringset_get_index(ss) != 1 || calls != 1)   goto StringSetFail;
+
+    /* destroying it closes the menu */
+    wuss_stringset_destroy(ss);
+    if (sswuss->menu_chain != NULL) goto StringSetFail;
+
+    reap_test_tasks();
+    wuss_destroy(sswuss);
+    free(sspixels);
+    bmfont_destroy(ssfont);
+    goto StringSetOK;
+
+StringSetFail:
+    printf("wuss_test: stringset check failed\n");
+    return result_TEST_FAILED;
+StringSetOK: ;
+  }
+#endif /* WUSS_GADGETS */
 
 #ifdef WUSS_ICONS
   printf("test: menu pick flashes then delivers MENU_SELECT; fast ADJUST "

@@ -33,7 +33,8 @@ option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
 option(WUSS_FURNITURE "Build the Wuss window-furniture subsystem" ON)
 option(WUSS_ICONS "Build the Wuss in-content icon subsystem" ON)
 option(WUSS_MENUS "Build the Wuss pop-up menu helper (implies WUSS_ICONS)" ON)
-option(WUSS_COMPONENTS "Build the Wuss shared task components (implies WUSS_MENUS)" ON)
+option(WUSS_GADGETS "Build the Wuss compound in-window gadgets (implies WUSS_MENUS)" ON)
+option(WUSS_COMPONENTS "Build the Wuss shared task components (implies WUSS_GADGETS)" ON)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
 if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
@@ -139,6 +140,9 @@ endif()
 if(WUSS_MENUS)
     list(APPEND PUBLIC_HEADERS include/wuss/menu.h)
     list(APPEND PUBLIC_HEADERS include/wuss/menu-desc.h)
+endif()
+if(WUSS_GADGETS OR WUSS_COMPONENTS)
+    list(APPEND PUBLIC_HEADERS include/wuss/gadget/stringset.h)
 endif()
 if(WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/component/fontmenu.h)
@@ -477,6 +481,9 @@ set(WUSS_MENU_SOURCES
     libraries/wuss/helpers/create-from-desc.c
     libraries/wuss/menu.h)
 
+set(WUSS_GADGET_SOURCES
+    libraries/wuss/gadget/stringset.c)
+
 set(WUSS_COMPONENT_SOURCES
     libraries/wuss/component/fontmenu.c
     libraries/wuss/component/colourmenu.c
@@ -489,7 +496,10 @@ if(WUSS_FURNITURE)
     list(APPEND WUSS_SOURCES ${WUSS_FURNITURE_SOURCES})
 endif()
 if(WUSS_COMPONENTS)
-    set(WUSS_MENUS ON) # the shared components build on the menu helper
+    set(WUSS_GADGETS ON) # the shared components build on the gadgets
+endif()
+if(WUSS_GADGETS)
+    set(WUSS_MENUS ON) # the gadgets build on the menu helper
 endif()
 if(WUSS_MENUS)
     set(WUSS_ICONS ON) # the menu helper needs the icon subsystem
@@ -499,6 +509,9 @@ if(WUSS_ICONS)
 endif()
 if(WUSS_MENUS)
     list(APPEND WUSS_SOURCES ${WUSS_MENU_SOURCES})
+endif()
+if(WUSS_GADGETS)
+    list(APPEND WUSS_SOURCES ${WUSS_GADGET_SOURCES})
 endif()
 if(WUSS_COMPONENTS)
     list(APPEND WUSS_SOURCES ${WUSS_COMPONENT_SOURCES})
@@ -565,6 +578,9 @@ if(WUSS_ICONS)
 endif()
 if(WUSS_MENUS)
     target_compile_definitions(DPTLib PUBLIC WUSS_MENUS)
+endif()
+if(WUSS_GADGETS)
+    target_compile_definitions(DPTLib PUBLIC WUSS_GADGETS)
 endif()
 if(WUSS_COMPONENTS)
     target_compile_definitions(DPTLib PUBLIC WUSS_COMPONENTS)
