@@ -1340,7 +1340,7 @@ static result_t bmfont_caret_test(const char *resources)
   bmfont_width_t caret_x;
   int            i;
   bmfont_width_t width;
-  int            height, ascent;
+  int            ascent, height;
   bitmap_t       bm;
   screen_t       scr;
   colour_t       white = colour_rgb(0xFF, 0xFF, 0xFF);
@@ -1420,9 +1420,12 @@ static result_t bmfont_caret_test(const char *resources)
     }
   }
 
-  /* draw an I-beam and check it's a stem plus two 3px bars */
+  /* draw an I-beam and check it's a stem between two pairs of end dots */
 
-  bmfont_get_info(bmfont, NULL, &height, &ascent, NULL);
+  bmfont_get_info(bmfont, NULL, NULL, &ascent, NULL);
+
+  height = ascent + 1 + 2 * 2; /* top of cell to baseline, plus 2px overhang
+                                * at each end */
 
   bm_width  = margin * 2 + 1;
   bm_height = margin * 2 + height;
@@ -1438,7 +1441,7 @@ static result_t bmfont_caret_test(const char *resources)
   screen_for_bitmap(&scr, &bm);
 
   pos.x = margin;
-  pos.y = margin + ascent;
+  pos.y = margin + 2 + ascent;
 
   bmfont_draw_caret(bmfont, &scr, black, &pos);
 
@@ -1452,9 +1455,9 @@ static result_t bmfont_caret_test(const char *resources)
     {
       int want;
 
-      want = (x == margin && y >= margin && y < margin + height) ||
+      want = (x == margin && y > margin && y < margin + height - 1) ||
              ((y == margin || y == margin + height - 1) &&
-              x >= margin - 1 && x <= margin + 1);
+              (x == margin - 1 || x == margin + 1));
 
       if (((row[x] & 0x00FFFFFFu) != 0x00FFFFFFu) != want)
       {
@@ -1466,7 +1469,7 @@ static result_t bmfont_caret_test(const char *resources)
     }
   }
 
-  if (inked != height + 4)
+  if (inked != height + 2)
     goto Failure;
 
   free(pixels);
