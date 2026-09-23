@@ -228,7 +228,7 @@ In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scro
 
 Taking inspiration from RISC OS, a window can carry **icons**: rectangular UI elements Wuss draws and hit-tests inside the content area. v1 ships two types:
 
-- `wuss_ICON_TYPE_LABEL` — static text, optionally in a 1px raised or sunken border (`spec.u.label.border` — `wuss_ICON_BORDER_NONE` / `_RIDGE` / `_GROOVE`, the last a RISC OS-style read-only display field). Clicks fall through to the task as `wuss_EVENT_MOUSE`.
+- `wuss_ICON_TYPE_LABEL` — static text, optionally bordered (`spec.u.label.border` — `wuss_ICON_BORDER_NONE` / `_RIDGE` / `_GROOVE` / `_ACTION` / `_DIVIDER` / `_PLAIN`; `_GROOVE` is a RISC OS-style read-only display field, `_PLAIN` a 1px fg outline like a writable's). Clicks fall through to the task as `wuss_EVENT_MOUSE`.
 - `wuss_ICON_TYPE_ACTION` — a bevelled rectangle with a centred label and pressed-state feedback (the bevel inverts and the label shifts one pixel down-right while held). Clicks and hovers arrive as `wuss_EVENT_ICON`.
 
 The enum is left open for sprite and editable-text types later.

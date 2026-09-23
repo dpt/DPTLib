@@ -45,7 +45,7 @@ enum
   ICONS_N_BITMAPS = 3, /* frame + decorative + interactive bitmap */
   ICONS_N_ICONSET = 5, /* frame + opton + optoff + radon + radoff from the loaded set */
   ICONS_N_PATTERN = 2, /* frame + one PATTERN swatch */
-  ICONS_N_BORDERS = 6, /* frame + GROOVE + RIDGE + ACTION + DIVIDER labels */
+  ICONS_N_BORDERS = 6, /* frame + GROOVE + RIDGE + ACTION + DIVIDER + PLAIN labels */
   ICONS_N_SLIDERS = 4, /* frame + horizontal + vertical slider + state label */
   ICONS_N_MENU    = 8, /* frame + plain, ticked, swatch, submenu, disabled, rule, separator entry */
   ICONS_N_WRITE   = 4, /* frame + two writables + echo label */
@@ -360,7 +360,8 @@ static void icons_add_pattern(icons_layout_t *lay)
  * sunken RISC OS display field), a RIDGE-bordered one (raised), an
  * ACTION-bordered one -- a 6px surround: raised outset, accent moat, raised
  * inset, like a default-action button -- then a DIVIDER-bordered one: a 4px
- * surround, outer sunken ring around inner raised, in lighter shades. */
+ * surround, outer sunken ring around inner raised, in lighter shades -- and
+ * a PLAIN-bordered one: a 1px fg outline, as a writable draws. */
 static void icons_add_borders(icons_layout_t *lay)
 {
   wuss_icon_spec_t *s;
@@ -368,7 +369,7 @@ static void icons_add_borders(icons_layout_t *lay)
 
   top     = lay->y;
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 150);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 176);
   s->type = wuss_ICON_TYPE_FRAME;
   s->text = "Borders";
   s->fg   = lay->black;
@@ -415,7 +416,17 @@ static void icons_add_borders(icons_layout_t *lay)
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
 
-  lay->y = top + 166;
+  s         = &lay->specs[lay->n];
+  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 144, 180, 22);
+  s->type   = wuss_ICON_TYPE_LABEL;
+  s->text   = "Plain";
+  s->fg     = lay->black;
+  s->bg     = lay->window;
+  s->u.label.border = wuss_ICON_BORDER_PLAIN;
+  s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
+  lay->n++;
+
+  lay->y = top + 192;
 }
 
 /* A grouping frame captioned "Sliders", holding a horizontal slider, a

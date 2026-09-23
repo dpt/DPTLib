@@ -213,6 +213,10 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
     {
       icon_draw_divider_border(c->scr, b, light, divider);
     }
+    else if (icon->u.label.border == wuss_ICON_BORDER_PLAIN)
+    {
+      screen_draw_rect(c->scr, b->x0, b->y0, box_size(b), c->fg);
+    }
     else
     {
       /* RIDGE reads raised (light top/left); GROOVE reads sunken. One 2px
