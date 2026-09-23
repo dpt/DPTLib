@@ -1,27 +1,69 @@
-/* wuss/test/tasks/blank.c -- colour-cycling task */
+/* wuss/test/tasks/blank.c -- dithered colour-blending task */
 
 #ifdef WUSS_APP
 
 #include <stdlib.h>
+#include <time.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
 
-#include "base/debug.h"
 #include "base/utils.h"
-#include "framebuf/palettes.h"
+#include "framebuf/colour.h"
+#include "framebuf/pattern.h"
+#include "framebuf/screen.h"
 #include "geom/box.h"
+#include "utils/rng.h"
 
 #include "blank.h"
 
-#define BLANK_CYCLE_FRAMES 30 /* colour advances every half-second at 60fps */
+#define BLANK_BLEND_FRAMES 300 /* five seconds per a-to-b blend at 60fps */
 
 /* MENU click pops this single-item menu; the item table and wuss_menu_t
  * live per-instance in blank_task_t, not as a file-scope static, so that
  * each window's Info row can hold its own .window pointer to the shared
  * proginfo singleton, retargeted just before wuss_menu_open */
 enum { BLANK_MENU_INFO };
+
+static colour_t blank_random_colour(rng_t *rng)
+{
+  int r, g, b;
+
+  r = rng_range(rng, 256);
+  g = rng_range(rng, 256);
+  b = rng_range(rng, 256);
+
+  return colour_rgb(r, g, b);
+}
+
+/* channel c0 -> c1, f frames into the blend */
+static int blank_lerp(unsigned int c0, unsigned int c1, int f)
+{
+  return (int) (c0 * (BLANK_BLEND_FRAMES - f) + c1 * f) / BLANK_BLEND_FRAMES;
+}
+
+/* blend a->b by frame_count and pick the nearest dither of the result */
+static void blank_update_pattern(blank_task_t *bc)
+{
+  unsigned int    ar, ag, ab;
+  unsigned int    br, bg, bb;
+  int             f;
+  colour_t        mix;
+  const colour_t *palette;
+  int             npalette;
+
+  colour_get_rgb(&bc->a, &ar, &ag, &ab);
+  colour_get_rgb(&bc->b, &br, &bg, &bb);
+
+  f   = bc->frame_count;
+  mix = colour_rgb(blank_lerp(ar, br, f),
+                   blank_lerp(ag, bg, f),
+                   blank_lerp(ab, bb, f));
+
+  palette     = wuss_get_palette(bc->wuss, &npalette);
+  bc->pattern = pattern_from_colour(palette, npalette, mix);
+}
 
 result_t blank_create(wuss_t *wuss, blank_task_t **out)
 {
@@ -35,11 +77,13 @@ result_t blank_create(wuss_t *wuss, blank_task_t **out)
     return result_OOM;
 
   task->wuss        = wuss;
-  task->npalette    = 16;
-  task->index       = 0;
+  rng_seed(&task->rng, (uint32_t) time(NULL));
+  task->a           = blank_random_colour(&task->rng);
+  task->b           = blank_random_colour(&task->rng);
   task->frame_count = 0;
+  blank_update_pattern(task);
 
-  /* wuss fills the content area itself */
+  /* blank_redraw paints every pixel itself */
   delegate_desc.handle    = blank_handle;
   delegate_desc.task_data = task;
   delegate_desc.name      = "blank";
@@ -57,7 +101,7 @@ result_t blank_create(wuss_t *wuss, blank_task_t **out)
                                  NULL,
                                  wuss_WINDOW_CLOSE | wuss_WINDOW_VSCROLL | wuss_WINDOW_HSCROLL |
                                  wuss_WINDOW_RESIZE,
-                                 wuss_BACKDROP_COLOUR(task->index),
+                                 wuss_NO_BACKDROP,
                                  SIZE2D(200, 160),
                                  SIZE2D(0, 0),
                                  &task->window);
@@ -90,7 +134,6 @@ void blank_destroy(blank_task_t *task)
 
 static result_t blank_idle(void *task_data)
 {
-  result_t      rc;
   blank_task_t *bc;
 
   bc = task_data;
@@ -102,18 +145,40 @@ static result_t blank_idle(void *task_data)
   if (bc->window == NULL)
     return result_OK;
 
-  if (++bc->frame_count < BLANK_CYCLE_FRAMES)
-    return result_OK;
+  if (++bc->frame_count >= BLANK_BLEND_FRAMES)
+  {
+    bc->frame_count = 0;
+    bc->a           = bc->b;
+    bc->b           = blank_random_colour(&bc->rng);
+  }
 
-  bc->frame_count = 0;
-  bc->index       = (bc->index + 1) % bc->npalette;
+  blank_update_pattern(bc);
+  wuss_window_invalidate_visible(bc->window);
 
-  rc = wuss_window_set_background(bc->window,
-                                  wuss_BACKDROP_COLOUR(bc->index));
-  if (rc != result_OK)
-    logf_warning("blank_idle: wuss_window_set_background(%d) failed", bc->index);
+  return result_OK;
+}
 
-  return rc;
+static result_t blank_redraw(const wuss_event_t *event, void *task_data)
+{
+  blank_task_t *bc;
+  const box_t  *content;
+  const box_t  *bounds;
+  pattern_t     pat;
+
+  bc = task_data;
+
+  content = event->data.redraw.content;
+  bounds  = event->data.redraw.bounds;
+
+  /* anchor the tile at the work area's (0,0) in screen space, so every
+   * dirty rectangle shares one phase and it scrolls with the content */
+  pat          = bc->pattern;
+  pat.origin.x = bounds->x0 - event->data.redraw.scroll.x;
+  pat.origin.y = bounds->y0 - event->data.redraw.scroll.y;
+
+  screen_fill_pattern(event->data.redraw.scr, content, &pat);
+
+  return result_OK;
 }
 
 result_t blank_handle(wuss_window_t      *window,
@@ -129,6 +194,9 @@ result_t blank_handle(wuss_window_t      *window,
   case wuss_EVENT_IDLE:
     return blank_idle(task_data);
 
+  case wuss_EVENT_REDRAW:
+    return blank_redraw(event, task_data);
+
   case wuss_EVENT_MOUSE:
     if (window != bc->window)
       return result_OK; /* the proginfo dialogue has no click behaviour of
@@ -140,7 +208,7 @@ result_t blank_handle(wuss_window_t      *window,
       static const wuss_proginfo_desc_t desc =
       {
         "Blank",
-        "Colour-cycling backdrop, no redraw callback",
+        "Ordered-dither blend between random colours",
         "(c) DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };
