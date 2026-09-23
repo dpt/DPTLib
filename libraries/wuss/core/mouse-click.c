@@ -341,6 +341,13 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   }
 #endif /* WUSS_FURNITURE */
 
+  /* A Select/Adjust press on a focusable window's content takes the input
+   * focus, before the press itself is delivered. Menu never moves it. */
+  if (action == wuss_MOUSE_DOWN                          &&
+      (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)) &&
+      (win->flags & wuss_WINDOW_FOCUSABLE))
+    (void) wuss_set_focus(wuss, win);
+
   if (win->task->handle != NULL)
   {
     box_t   content;

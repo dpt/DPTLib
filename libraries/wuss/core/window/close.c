@@ -38,6 +38,7 @@ void wuss_window_close(wuss_window_t *doomed)
   /* No wuss_EVENT_POINTER_EXIT: the task hears about this window going away
    * through PRE_CLOSE/CLOSE, and the struct is freed below. */
   wuss__pointer_forget_window(wuss, doomed);
+  wuss__focus_forget_window(wuss, doomed);
 
   wuss__release_packed(doomed);
 

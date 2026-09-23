@@ -30,6 +30,7 @@
 #include "tasks/greeble.h"
 #include "tasks/icons.h"
 #include "tasks/image.h"
+#include "tasks/keys.h"
 #include "tasks/lissajous.h"
 #include "tasks/minesweeper.h"
 #include "tasks/palette.h"
@@ -107,6 +108,7 @@ g_games_tasks[] =
 g_tests_tasks[] =
 {
   { "Icons",       (task_create_fn_t) icons_create       },
+  { "Keys",        (task_create_fn_t) keys_create        },
   { "Patterns",    (task_create_fn_t) patterns_create    },
   { "Porter-Duff", (task_create_fn_t) porter_duff_create },
   { "Text",        (task_create_fn_t) text_create        }
@@ -143,6 +145,7 @@ static const wuss_menu_item_t g_games_items[] =
 static const wuss_menu_item_t g_tests_items[] =
 {
   { "Icons",       wuss_MENU_ITEM_NONE, NULL },
+  { "Keys",        wuss_MENU_ITEM_NONE, NULL },
   { "Patterns",    wuss_MENU_ITEM_NONE, NULL },
   { "Porter-Duff", wuss_MENU_ITEM_NONE, NULL },
   { "Text",        wuss_MENU_ITEM_NONE, NULL }

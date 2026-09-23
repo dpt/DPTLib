@@ -58,6 +58,7 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
   {
     config->furniture.title.bg        = palette_WIMP16_GREY_75;
     config->furniture.title.fg        = palette_WIMP16_BLACK;
+    config->furniture.title.focus_bg  = palette_WIMP16_CREAM;
     config->furniture.outline         = palette_WIMP16_BLACK;
     config->furniture.back            = palette_WIMP16_GREEN;
     config->furniture.close           = palette_WIMP16_RED;
@@ -86,6 +87,7 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
   {
     config->furniture.title.bg        = palette_PICO8_DARK_BLUE;
     config->furniture.title.fg        = palette_PICO8_WHITE;
+    config->furniture.title.focus_bg  = palette_PICO8_BLUE;
     config->furniture.outline         = palette_PICO8_BLACK;
     config->furniture.back            = palette_PICO8_GREEN;
     config->furniture.close           = palette_PICO8_RED;
@@ -207,6 +209,45 @@ static void wuss_frame(void *arg)
 
     case wuss_INPUT_WHEEL:
       wuss_scroll(c->wuss, ev.pos, ev.wheel, NULL);
+      break;
+
+    case wuss_INPUT_KEY:
+      {
+        int claimed;
+        int shift;
+
+        wuss_key(c->wuss, ev.key, ev.mods, &claimed);
+        if (claimed)
+          break;
+
+        /* driver hotkeys, only when the focused window passed on the key */
+        shift = (ev.mods & wuss_KEY_MOD_SHIFT) != 0;
+        switch (ev.key)
+        {
+        case wuss_KEY_F1:
+          if (shift)
+          {
+            garbage_pending = true;
+          }
+          else
+          {
+            wuss_redraw(c->wuss);
+            redraw_all_pending = true;
+          }
+          break;
+        case wuss_KEY_F1 + 1:
+          wuss_frontend_zoom(c->frontend, shift ? -1 : 1);
+          break;
+        case wuss_KEY_F1 + 2:
+          pixel_stress_pending = true;
+          break;
+        case wuss_KEY_F1 + 3:
+          g_tasks.quit = true;
+          break;
+        default:
+          break;
+        }
+      }
       break;
 
     default:

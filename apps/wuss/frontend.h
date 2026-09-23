@@ -35,16 +35,19 @@ typedef enum wuss_input_kind
   wuss_INPUT_WHEEL,         /* .pos, .wheel */
   wuss_INPUT_REDRAW_ALL,    /* force a full redraw (F1) */
   wuss_INPUT_GARBAGE,       /* corrupt the whole screen for one frame (Shift-F1) */
-  wuss_INPUT_PIXEL_STRESS   /* one-pixel-at-a-time redraw (F3) */
+  wuss_INPUT_PIXEL_STRESS,  /* one-pixel-at-a-time redraw (F3) */
+  wuss_INPUT_KEY            /* .key, .mods: a press or autorepeat */
 }
 wuss_input_kind_t;
 
 typedef struct wuss_input
 {
-  wuss_input_kind_t kind;
-  point_t           pos;    /* screen-space pixel coordinates */
-  wuss_button_t     button;
-  int               wheel;  /* wheel delta, +ve = up */
+  wuss_input_kind_t    kind;
+  point_t              pos;    /* screen-space pixel coordinates */
+  wuss_button_t        button;
+  int                  wheel;  /* wheel delta, +ve = up */
+  int                  key;    /* Unicode code point or wuss_KEY_* */
+  wuss_key_modifiers_t mods;
 }
 wuss_input_t;
 
@@ -114,6 +117,10 @@ result_t wuss_frontend_resize(wuss_frontend_t *frontend,
 void wuss_frontend_set_palette(wuss_frontend_t *frontend,
                                const colour_t  *palette,
                                int              npalette);
+
+/* Step the window zoom by `delta` (F2 / Shift-F2), clamped to the backend's
+ * range. No-op on a backend without a resizable window (RISC OS). */
+void wuss_frontend_zoom(wuss_frontend_t *frontend, int delta);
 
 /* Tear down the surface and free everything wuss_frontend_open allocated. */
 void wuss_frontend_close(wuss_frontend_t *frontend);

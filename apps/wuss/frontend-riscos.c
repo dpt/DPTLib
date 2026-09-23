@@ -377,6 +377,13 @@ void wuss_frontend_set_palette(wuss_frontend_t *fe,
   set_hw_palette(palette, npalette);
 }
 
+void wuss_frontend_zoom(wuss_frontend_t *fe, int delta)
+{
+  NOT_USED(fe);
+  NOT_USED(delta);
+  /* fixed screen mode: nothing to zoom */
+}
+
 void wuss_frontend_close(wuss_frontend_t *fe)
 {
   if (fe == NULL)

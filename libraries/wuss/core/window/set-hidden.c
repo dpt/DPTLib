@@ -70,6 +70,9 @@ result_t wuss__window_set_hidden_ex(wuss_window_t *window, int hidden)
      * EXIT event -- it stops receiving pointer events regardless. */
     wuss__pointer_forget_window(wuss, window);
 
+    if (wuss->focus == window)
+      (void) wuss_set_focus(wuss, NULL);
+
     /* still on screen: repaint its footprint now, then mark it gone */
     wuss_invalidate(wuss, &window->visible);
     window->flags |= wuss_WINDOW_HIDDEN;

@@ -43,17 +43,20 @@
 
 struct wuss_frontend
 {
-  SDL_Window   *window;
-  SDL_Renderer *renderer;
-  SDL_Texture  *texture;
-  int           scr_width;
-  int           scr_height;
-  int           scale; /* device pixels per screen pixel; see WUSS_SDL_*_SCALE */
-  int           depth; /* framebuffer bits per pixel: 32 (bgrx8888), 8 (p8), 4 (p4), 2 (p2) or 1 (p1) */
-  void         *pixels; /* the private framebuffer handed to the caller */
-  bitmap_t      conv; /* scratch bgrx8888 buffer for present()'s paletted
-                        * depths, sized scr_width x scr_height and reused
-                        * every frame instead of allocating one per present */
+  SDL_Window          *window;
+  SDL_Renderer        *renderer;
+  SDL_Texture         *texture;
+  int                  scr_width;
+  int                  scr_height;
+  int                  scale; /* device pixels per screen pixel; see WUSS_SDL_*_SCALE */
+  int                  depth; /* framebuffer bits per pixel: 32 (bgrx8888), 8 (p8), 4 (p4), 2 (p2) or 1 (p1) */
+  void                *pixels; /* the private framebuffer handed to the caller */
+  bitmap_t             conv; /* scratch bgrx8888 buffer for present()'s paletted
+                               * depths, sized scr_width x scr_height and reused
+                               * every frame instead of allocating one per present */
+  char                 text[64]; /* pending TEXT_INPUT, UTF-8 */
+  const char          *text_pos; /* next code point in text to hand out */
+  wuss_key_modifiers_t text_mods;
 };
 
 /* ----------------------------------------------------------------------- */
@@ -75,6 +78,52 @@ static wuss_button_t sdl_button_to_wuss(Uint8 button)
   case SDL_BUTTON_MIDDLE: return wuss_BUTTON_MENU;
   case SDL_BUTTON_RIGHT:  return wuss_BUTTON_ADJUST;
   default:                return wuss_BUTTON_SELECT;
+  }
+}
+
+static wuss_key_modifiers_t sdl_mods_to_wuss(SDL_Keymod mod)
+{
+  wuss_key_modifiers_t mods;
+
+  mods = wuss_KEY_MOD_NONE;
+  if (mod & SDL_KMOD_SHIFT)
+    mods |= wuss_KEY_MOD_SHIFT;
+  if (mod & SDL_KMOD_CTRL)
+    mods |= wuss_KEY_MOD_CTRL;
+#ifdef __APPLE__
+  if (mod & SDL_KMOD_GUI) /* Cmd plays the role of Ctrl */
+    mods |= wuss_KEY_MOD_CTRL;
+#endif
+  if (mod & SDL_KMOD_ALT)
+    mods |= wuss_KEY_MOD_ALT;
+
+  return mods;
+}
+
+/* Map a non-printing SDL key to its wuss code, or 0 if it is not one. */
+static int sdl_special_key(SDL_Keycode key)
+{
+  if (key >= SDLK_F1 && key <= SDLK_F12)
+    return wuss_KEY_F1 + (int) (key - SDLK_F1);
+
+  switch (key)
+  {
+  case SDLK_RETURN:    return 13;
+  case SDLK_KP_ENTER:  return 13;
+  case SDLK_BACKSPACE: return 8;
+  case SDLK_TAB:       return 9;
+  case SDLK_ESCAPE:    return 27;
+  case SDLK_UP:        return wuss_KEY_UP;
+  case SDLK_DOWN:      return wuss_KEY_DOWN;
+  case SDLK_LEFT:      return wuss_KEY_LEFT;
+  case SDLK_RIGHT:     return wuss_KEY_RIGHT;
+  case SDLK_HOME:      return wuss_KEY_HOME;
+  case SDLK_END:       return wuss_KEY_END;
+  case SDLK_PAGEUP:    return wuss_KEY_PAGE_UP;
+  case SDLK_PAGEDOWN:  return wuss_KEY_PAGE_DOWN;
+  case SDLK_INSERT:    return wuss_KEY_INSERT;
+  case SDLK_DELETE:    return wuss_KEY_DELETE;
+  default:             return 0;
   }
 }
 
@@ -169,6 +218,8 @@ result_t wuss_frontend_open(int               width,
     fprintf(stderr, "Error: SDL_CreateWindow: %s\n", SDL_GetError());
     goto failure;
   }
+
+  SDL_StartTextInput(fe->window);
 
   fe->renderer = SDL_CreateRenderer(fe->window, NULL);
   if (fe->renderer == NULL)
@@ -283,6 +334,15 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
 
   for (;;)
   {
+    /* hand out a TEXT_INPUT string one code point per call */
+    if (fe->text_pos != NULL && *fe->text_pos != '\0')
+    {
+      event->kind = wuss_INPUT_KEY;
+      event->key  = (int) SDL_StepUTF8(&fe->text_pos, NULL);
+      event->mods = fe->text_mods;
+      return true;
+    }
+
     if (!SDL_PollEvent(&ev))
       return false;
 
@@ -292,44 +352,41 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
       event->kind = wuss_INPUT_QUIT;
       return true;
 
-    case SDL_EVENT_KEY_UP:
-      switch (ev.key.key)
+    case SDL_EVENT_KEY_DOWN:
       {
-      case SDLK_F1:
-        event->kind = (ev.key.mod & SDL_KMOD_SHIFT)
-          ? wuss_INPUT_GARBAGE
-          : wuss_INPUT_REDRAW_ALL;
-        break;
-      case SDLK_F2:
-        {
-          int scale;
+        wuss_key_modifiers_t mods;
+        int                  key;
 
-          /* F2 steps the SDL window zoom up, Shift-F2 down, clamped to
-           * [WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE]: a backend-local zoom the
-           * demo loop never sees. */
-          scale = fe->scale + ((ev.key.mod & SDL_KMOD_SHIFT) ? -1 : 1);
-          if (scale < WUSS_SDL_MIN_SCALE)
-            scale = WUSS_SDL_MIN_SCALE;
-          else if (scale > WUSS_SDL_MAX_SCALE)
-            scale = WUSS_SDL_MAX_SCALE;
-          if (scale != fe->scale)
-          {
-            fe->scale = scale;
-            SDL_SetWindowSize(fe->window, fe->scr_width * scale,
-                              fe->scr_height * scale);
-          }
+        mods = sdl_mods_to_wuss(ev.key.mod);
+        key  = sdl_special_key(ev.key.key);
+        /* Plain printables arrive via TEXT_INPUT; only take them here when
+         * Ctrl or Alt turns them into a command. */
+        if (key == 0 &&
+            (mods & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT)) &&
+            !(ev.key.key & SDLK_SCANCODE_MASK))
+          key = (int) ev.key.key;
+        if (key == 0)
           continue;
-        }
-      case SDLK_F3:
-        event->kind = wuss_INPUT_PIXEL_STRESS;
-        break;
-      case SDLK_F4:
-        event->kind = wuss_INPUT_QUIT;
-        break;
-      default:
-        continue;
+
+        event->kind = wuss_INPUT_KEY;
+        event->key  = key;
+        event->mods = mods;
       }
       return true;
+
+    case SDL_EVENT_TEXT_INPUT:
+      /* KEY_DOWN already sent Ctrl/Alt combinations (and on macOS Alt would
+       * compose a different character here): drop the duplicate. */
+      if (sdl_mods_to_wuss(SDL_GetModState()) &
+          (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+        continue;
+
+      /* ponytail: text past sizeof(fe->text) is dropped; IME bursts that
+       * long are not expected in the demo */
+      SDL_strlcpy(fe->text, ev.text.text, sizeof(fe->text));
+      fe->text_pos  = fe->text;
+      fe->text_mods = sdl_mods_to_wuss(SDL_GetModState());
+      continue;
 
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
       {
@@ -441,6 +498,18 @@ present:
   SDL_RenderPresent(fe->renderer);
 
   SDL_Delay(1000 / 60);
+}
+
+void wuss_frontend_zoom(wuss_frontend_t *fe, int delta)
+{
+  int scale;
+
+  scale = CLAMP(fe->scale + delta, WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE);
+  if (scale == fe->scale)
+    return;
+
+  fe->scale = scale;
+  SDL_SetWindowSize(fe->window, fe->scr_width * scale, fe->scr_height * scale);
 }
 
 void wuss_frontend_set_palette(wuss_frontend_t *fe,
