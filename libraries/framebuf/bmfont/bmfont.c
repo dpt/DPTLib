@@ -817,6 +817,114 @@ result_t bmfont_measure(bmfont_t               *bmfont,
 
 /* -------------------------------------------------------------------------- */
 
+/* The advance of text[i] for caret purposes: zero for control characters
+ * and anything outside the glyph table, as in bmfont_draw. */
+static bmfont_width_t bmfont_caret_advance(const bmfont_t         *bmfont,
+                                           const char             *text,
+                                           int                     i,
+                                           const bmfont_spacing_t *spacing)
+{
+  int c;
+  int gid;
+
+  c = (unsigned char) text[i];
+  if (c < ' ')
+    return 0;
+
+  gid = c - ' ';
+  if (gid >= bmfont->totalchars)
+    return 0;
+
+  return bmfont_advance_for(bmfont, gid, c, spacing);
+}
+
+/* The caret sits in the last pixel of the preceding glyph's advance -- its
+ * letter spacing gap -- so it never overlaps ink. */
+static bmfont_width_t bmfont_caret_x_for(bmfont_width_t left)
+{
+  return MAX(0, left - 1);
+}
+
+void bmfont_find_caret(bmfont_t               *bmfont,
+                       const char             *text,
+                       int                     len,
+                       const bmfont_spacing_t *spacing,
+                       int                     x,
+                       int                    *index,
+                       bmfont_width_t         *caret_x)
+{
+  bmfont_width_t left;
+  int            i;
+
+  assert(bmfont);
+  assert(text || len == 0);
+  assert(len >= 0);
+  /* index, caret_x may be NULL */
+
+  left = 0;
+  for (i = 0; i < len; i++)
+  {
+    bmfont_width_t advance;
+
+    advance = bmfont_caret_advance(bmfont, text, i, spacing);
+
+    /* stop before this glyph if x is in its left half; an exact midpoint
+     * goes to the lower index */
+    if (2 * (x - left) <= advance)
+      break;
+
+    left += advance;
+  }
+
+  if (index)
+    *index = i;
+  if (caret_x)
+    *caret_x = bmfont_caret_x_for(left);
+}
+
+bmfont_width_t bmfont_caret_x(bmfont_t               *bmfont,
+                              const char             *text,
+                              int                     index,
+                              const bmfont_spacing_t *spacing)
+{
+  bmfont_width_t left;
+  int            i;
+
+  assert(bmfont);
+  assert(text || index == 0);
+  assert(index >= 0);
+
+  left = 0;
+  for (i = 0; i < index; i++)
+    left += bmfont_caret_advance(bmfont, text, i, spacing);
+
+  return bmfont_caret_x_for(left);
+}
+
+void bmfont_draw_caret(bmfont_t      *bmfont,
+                       screen_t      *scr,
+                       colour_t       colour,
+                       const point_t *pos)
+{
+  int top;
+  int height;
+
+  assert(bmfont);
+  assert(scr);
+  assert(pos);
+
+  top    = pos->y - bmfont->ascent;
+  height = bmfont->charheight;
+
+  /* I-beam: a full cell height stem with 3px bars on its first and last
+   * rows. At the text origin the left bars fall at x-1; clipping copes. */
+  screen_fill_rect(scr, pos->x, top, SIZE2D(1, height), colour);
+  screen_fill_rect(scr, pos->x - 1, top, SIZE2D(3, 1), colour);
+  screen_fill_rect(scr, pos->x - 1, top + height - 1, SIZE2D(3, 1), colour);
+}
+
+/* -------------------------------------------------------------------------- */
+
 /* bmfont_drawchar_<pixel format>_<width>w_<o/t>
  * where width is in bytes and o => opaque, t => transparent */
 typedef void bmfont_drawchar_t(void          *vscreen,

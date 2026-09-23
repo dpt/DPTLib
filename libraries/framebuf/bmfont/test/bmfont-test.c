@@ -1324,6 +1324,164 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+/* Checks caret hit-testing against bmfont_caret_x and bmfont_measure, then
+ * draws an I-beam and checks its pixels. */
+static result_t bmfont_caret_test(const char *resources)
+{
+  static const char sample[] = "Wim";
+  static const int  margin   = 4;
+
+  result_t       rc;
+  const char    *filename;
+  bmfont_t      *bmfont = NULL;
+  int            len;
+  bmfont_width_t adv0;
+  int            index;
+  bmfont_width_t caret_x;
+  int            i;
+  bmfont_width_t width;
+  int            height, ascent;
+  bitmap_t       bm;
+  screen_t       scr;
+  colour_t       white = colour_rgb(0xFF, 0xFF, 0xFF);
+  colour_t       black = colour_rgb(0x00, 0x00, 0x00);
+  point_t        pos;
+  int            bm_width, bm_height, rowbytes;
+  void          *pixels = NULL;
+  int            inked;
+  int            x, y;
+
+  filename = pathf("%s/resources/bmfonts/DPT-Digits-Regular.png", resources);
+
+  rc = bmfont_create(filename, &bmfont);
+  if (rc)
+  {
+    fprintf(stderr, "Error: Failed to load font %s\n", filename);
+    return result_TEST_FAILED;
+  }
+
+  len  = (int) strlen(sample);
+  adv0 = bmfont_caret_x(bmfont, sample, 1, NULL) + 1; /* advance of 'W' */
+
+  /* left half of the first glyph, midpoint included, gives index 0 */
+  bmfont_find_caret(bmfont, sample, len, NULL, adv0 / 2, &index, &caret_x);
+  if (index != 0 || caret_x != 0)
+  {
+    fprintf(stderr, "error: caret left half: index %d x %d\n", index,
+            caret_x);
+    goto Failure;
+  }
+
+  /* right half gives index 1 */
+  bmfont_find_caret(bmfont, sample, len, NULL, adv0 / 2 + 1, &index,
+                    &caret_x);
+  if (index != 1 || caret_x != adv0 - 1)
+  {
+    fprintf(stderr, "error: caret right half: index %d x %d\n", index,
+            caret_x);
+    goto Failure;
+  }
+
+  /* clamping and the empty string */
+  bmfont_find_caret(bmfont, sample, len, NULL, -5, &index, &caret_x);
+  if (index != 0 || caret_x != 0)
+    goto Failure;
+
+  bmfont_find_caret(bmfont, sample, len, NULL, 10000, &index, &caret_x);
+  if (index != len || caret_x != bmfont_caret_x(bmfont, sample, len, NULL))
+    goto Failure;
+
+  bmfont_find_caret(bmfont, NULL, 0, NULL, 7, &index, &caret_x);
+  if (index != 0 || caret_x != 0)
+    goto Failure;
+
+  /* round trip: a click at each glyph's left edge lands on its index; the
+   * caret x matches the measured (trailing-trimmed) prefix width */
+  for (i = 0; i <= len; i++)
+  {
+    caret_x = bmfont_caret_x(bmfont, sample, i, NULL);
+
+    bmfont_find_caret(bmfont, sample, len, NULL, caret_x + 1, &index, NULL);
+    if (index != i)
+    {
+      fprintf(stderr, "error: caret round trip %d gave %d\n", i, index);
+      goto Failure;
+    }
+
+    if (i > 0)
+    {
+      rc = bmfont_measure(bmfont, sample, i, NULL, INT_MAX, NULL, &width);
+      if (rc || width != caret_x)
+      {
+        fprintf(stderr, "error: caret x %d vs measure %d at %d\n", caret_x,
+                width, i);
+        goto Failure;
+      }
+    }
+  }
+
+  /* draw an I-beam and check it's a stem plus two 3px bars */
+
+  bmfont_get_info(bmfont, NULL, &height, &ascent, NULL);
+
+  bm_width  = margin * 2 + 1;
+  bm_height = margin * 2 + height;
+  rowbytes  = (bm_width << pixelfmt_log2bpp(pixelfmt_bgrx8888)) / 8;
+
+  pixels = malloc(rowbytes * bm_height);
+  if (pixels == NULL)
+    goto Failure;
+
+  bitmap_init(&bm, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888, rowbytes,
+              NULL, pixels);
+  bitmap_clear(&bm, white);
+  screen_for_bitmap(&scr, &bm);
+
+  pos.x = margin;
+  pos.y = margin + ascent;
+
+  bmfont_draw_caret(bmfont, &scr, black, &pos);
+
+  inked = 0;
+  for (y = 0; y < bm_height; y++)
+  {
+    const pixelfmt_bgrx8888_t *row =
+      (const pixelfmt_bgrx8888_t *) ((const char *) pixels + y * rowbytes);
+
+    for (x = 0; x < bm_width; x++)
+    {
+      int want;
+
+      want = (x == margin && y >= margin && y < margin + height) ||
+             ((y == margin || y == margin + height - 1) &&
+              x >= margin - 1 && x <= margin + 1);
+
+      if (((row[x] & 0x00FFFFFFu) != 0x00FFFFFFu) != want)
+      {
+        fprintf(stderr, "error: caret pixel (%d,%d) wrong\n", x, y);
+        goto Failure;
+      }
+
+      inked += want;
+    }
+  }
+
+  if (inked != height + 4)
+    goto Failure;
+
+  free(pixels);
+  bmfont_destroy(bmfont);
+  return result_TEST_PASSED;
+
+
+Failure:
+  free(pixels);
+  bmfont_destroy(bmfont);
+  return result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t bmfont_test(const char *resources)
 {
   static const struct
@@ -1356,6 +1514,10 @@ result_t bmfont_test(const char *resources)
     return rc;
 
   rc = bmfont_measure_render_match_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_caret_test(resources);
   if (rc != result_TEST_PASSED)
     return rc;
 
