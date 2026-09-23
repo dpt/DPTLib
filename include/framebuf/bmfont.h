@@ -188,8 +188,9 @@ bmfont_width_t bmfont_caret_x(bmfont_t               *bmfont,
                               const bmfont_spacing_t *spacing);
 
 /**
- * Draw an I-beam text caret: a 1px stem the full height of a glyph cell,
- * with 3px wide bars across its top and bottom rows.
+ * Draw an I-beam text caret: a 1px stem spanning the glyph cell's ascent,
+ * from the top of the cell down to the baseline row, extended by 2px at each
+ * end, with a dot either side of the stem on its top and bottom rows.
  *
  * \param[in]  bmfont  Bitmap font whose cell height to use.
  * \param[in]  scr     Screen to draw on.

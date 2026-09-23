@@ -906,6 +906,8 @@ void bmfont_draw_caret(bmfont_t      *bmfont,
                        colour_t       colour,
                        const point_t *pos)
 {
+  static const int overhang = 2; /* extra pixels beyond each end */
+
   int top;
   int height;
 
@@ -913,14 +915,18 @@ void bmfont_draw_caret(bmfont_t      *bmfont,
   assert(scr);
   assert(pos);
 
-  top    = pos->y - bmfont->ascent;
-  height = bmfont->charheight;
+  top    = pos->y - bmfont->ascent - overhang;
+  height = bmfont->ascent + 1 + 2 * overhang;
 
-  /* I-beam: a full cell height stem with 3px bars on its first and last
-   * rows. At the text origin the left bars fall at x-1; clipping copes. */
-  screen_fill_rect(scr, pos->x, top, SIZE2D(1, height), colour);
-  screen_fill_rect(scr, pos->x - 1, top, SIZE2D(3, 1), colour);
-  screen_fill_rect(scr, pos->x - 1, top + height - 1, SIZE2D(3, 1), colour);
+  /* I-beam: a stem from the top of the cell down to the baseline row,
+   * inset by the overhang at both ends, with dots on its first and
+   * last rows. At the text origin the left bars fall at x-1; clipping
+   * copes. */
+  screen_set_pixel(scr, pos->x - 1, top, colour);
+  screen_set_pixel(scr, pos->x - 1, top + height - 1, colour);
+  screen_fill_rect(scr, pos->x + 0, top + overhang / 2, SIZE2D(1, height - overhang), colour);
+  screen_set_pixel(scr, pos->x + 1, top, colour);
+  screen_set_pixel(scr, pos->x + 1, top + height - 1, colour);
 }
 
 /* -------------------------------------------------------------------------- */
