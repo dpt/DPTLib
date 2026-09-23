@@ -25,8 +25,9 @@
 /* ----------------------------------------------------------------------- */
 
 /* The menu's items[] trails the struct, one per string, so the whole gadget
- * is a single allocation. handle may be stale once the chain has closed;
- * wuss_menu_close and wuss_menu_tick_exclusive_live both tolerate that. */
+ * is a single allocation. handle is non-NULL only while the gadget's chain
+ * is open: a closing pick or a wuss_EVENT_MENU_CLOSED drops it, since the
+ * chain is freed by then and wuss_menu_close would dereference it. */
 struct wuss_stringset
 {
   wuss_alloc_t                 alloc;  /* copied hooks; wuss_t not retained */
@@ -206,9 +207,18 @@ int wuss_stringset_handle_event(wuss_stringset_t   *ss,
     /* an Adjust pick leaves the menu open: move its tick too */
     if (wuss_menu_should_keep_open(event))
       wuss_menu_tick_exclusive_live(ss->handle, &ss->menu, ss->index);
+    else
+      ss->handle = NULL;
 
     *out_result = rc;
     return 1;
+
+  case wuss_EVENT_MENU_CLOSED:
+    /* carries no menu, but only one chain is ever open: if ours was live it
+     * is the one that closed. Not consumed -- the task may hold a handle of
+     * its own to drop. */
+    ss->handle = NULL;
+    return 0;
 
   default:
     return 0;

@@ -5688,6 +5688,7 @@ ColourMenuOK: ;
     box_t             sscontent;
     result_t          ssrc;
     int               calls;
+    int               i;
 
     /* a menu needs a font, and the arrow the icon set, so neither the
      * shared fontless wuss nor a resource-less one will do */
@@ -5772,6 +5773,44 @@ ColourMenuOK: ;
     /* destroying it closes the menu */
     wuss_stringset_destroy(ss);
     if (sswuss->menu_chain != NULL) goto StringSetFail;
+
+    /* once the chain is freed behind the gadget -- after a Select pick, or
+     * a wuss-initiated close reported by MENU_CLOSED -- destroying it must
+     * not touch the dead handle (ASan catches it) */
+    for (i = 0; i < 2; i++)
+    {
+      rc = wuss_stringset_create(&ss, sswin,
+                                 (box_t) BOX_POS_SIZE(4, 40, 120, 22), "Colour",
+                                 ss_strings, NELEMS(ss_strings), NULL, NULL);
+      if (rc != result_OK) goto StringSetFail;
+
+      ev.kind             = wuss_EVENT_ICON;
+      ev.data.icon.icon   = wuss__icon_hit_test(sswin, POINT(122, 51));
+      ev.data.icon.action = wuss_MOUSE_UP;
+      ev.data.icon.button = wuss_BUTTON_SELECT;
+      ev.data.icon.value  = 0;
+      if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
+        goto StringSetFail;
+      if (sswuss->menu_chain == NULL) goto StringSetFail;
+
+      if (i == 0)
+      {
+        ev.kind                    = wuss_EVENT_MENU_SELECT;
+        ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu_chain);
+        ev.data.menu_select.index  = 1;
+        ev.data.menu_select.button = wuss_BUTTON_SELECT;
+        if (!wuss_stringset_handle_event(ss, &ev, &ssrc)) goto StringSetFail;
+        wuss_menu_close(sswuss->menu_chain); /* as wuss does after Select */
+      }
+      else
+      {
+        wuss_menu_close(sswuss->menu_chain); /* as a click outside does */
+        ev.kind = wuss_EVENT_MENU_CLOSED;
+        if (wuss_stringset_handle_event(ss, &ev, &ssrc)) goto StringSetFail;
+      }
+
+      wuss_stringset_destroy(ss);
+    }
 
     reap_test_tasks();
     wuss_destroy(sswuss);
