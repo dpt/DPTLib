@@ -48,8 +48,7 @@ extern "C"
 
 /**
  * What an icon looks like and how it behaves. The enum is left open so
- * sprite and editable-text icons can be added later without breaking
- * existing specs.
+ * further types can be added later without breaking existing specs.
  */
 typedef enum wuss_icon_type
 {
@@ -111,15 +110,6 @@ typedef enum wuss_icon_type
    *  the value straight to the pointer position; the task is told via
    *  wuss_EVENT_ICON, continuously while dragging. */
   wuss_ICON_TYPE_SLIDER,
-
-  /* The following types, other than wuss_ICON_TYPE_WRITABLE, are reserved:
-   * the enum values and validation exist but no rendering, hit-testing or
-   * event routing is wired up yet. A spec using one is accepted and currently
-   * draws as a plain wuss_ICON_TYPE_LABEL. */
-
-  /** A read-only value field: a bevelled well showing text the task updates but
-   *  the user cannot edit. Not yet implemented. */
-  wuss_ICON_TYPE_DISPLAY,
   /** An editable single-line text field: the bounding box filled with bg
    *  inside a 1px fg outline, the text left-aligned in fg. Its buffer is
    *  owned by the icon and holds up to spec.u.writable.size - 1 bytes,
@@ -134,6 +124,15 @@ typedef enum wuss_icon_type
    *  wuss_EVENT_ICON with button 0. Text wider than the box scrolls to keep
    *  the caret in view. */
   wuss_ICON_TYPE_WRITABLE,
+
+  /* The following types are reserved: the enum values and validation exist
+   * but no rendering, hit-testing or event routing is wired up yet. A spec
+   * using one is accepted and currently draws as a plain
+   * wuss_ICON_TYPE_LABEL. */
+
+  /** A read-only value field: a bevelled well showing text the task updates but
+   *  the user cannot edit. Not yet implemented. */
+  wuss_ICON_TYPE_DISPLAY,
   /** An editable numeric field, optionally with up/down adjusters. Not yet
    *  implemented. */
   wuss_ICON_TYPE_NUMBER,

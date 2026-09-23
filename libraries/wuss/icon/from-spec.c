@@ -39,11 +39,16 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   case wuss_ICON_TYPE_BITMAP:
   case wuss_ICON_TYPE_MENU_ENTRY:
   case wuss_ICON_TYPE_RULE:
-  case wuss_ICON_TYPE_DISPLAY:
   case wuss_ICON_TYPE_WRITABLE:
+    break;
+
+  /* reserved: accepted (drawn as a label) but not implemented -- flag any
+   * caller building one in debug builds */
+  case wuss_ICON_TYPE_DISPLAY:
   case wuss_ICON_TYPE_NUMBER:
   case wuss_ICON_TYPE_STRING_SET:
   case wuss_ICON_TYPE_DRAGGABLE:
+    assert(!"reserved wuss icon type constructed");
     break;
 
   case wuss_ICON_TYPE_SLIDER:
