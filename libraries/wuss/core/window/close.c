@@ -21,7 +21,11 @@ void wuss_window_close(wuss_window_t *doomed)
   task = doomed->task;
 #ifdef WUSS_FURNITURE
   if (wuss->furniture.dragging == doomed)
-    wuss->furniture.dragging = NULL;
+  {
+    wuss->furniture.dragging       = NULL;
+    wuss->furniture.drag_kind      = wuss_FURNITURE_DRAG_NONE;
+    wuss->furniture.pressed_region = wuss_FURNITURE_NONE;
+  }
 #endif
 #ifdef WUSS_ICONS
   if (wuss->pressed_window == doomed)
