@@ -10,6 +10,21 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- `wuss_ICON_TYPE_DISPLAY` leaves the reserved set: `wuss_icon_spec_display()`
+  now builds one rather than a grooved LABEL. It draws via the label
+  renderer. The icons demo gains a Display fields group.
+- Gadget tier (`WUSS_GADGETS`) between menus and components for compound
+  in-window widgets. First gadget: `wuss_stringset`, a display field plus a
+  pop-up arrow (`gright`/`gright-p`, or an ACTION ">" fallback) opening a
+  menu of fixed strings. Tasks forward ICON, MENU_SELECT and MENU_CLOSED
+  events to `wuss_stringset_handle_event()`.
+- Bitmap icons gain `pressed_set`, an icon-set entry drawn while the icon is
+  held.
+- The text task loads its samples from `.md`/`.txt` files under
+  `resources/text`, sorted by leafname, with an "About Wuss" introduction as
+  the default. Window auto-sizing gains an "Auto-size" menu entry.
+- `wuss` opens the Configure window before `--tasks` windows so task
+  windows stack in front of it.
 - `wuss_ICON_TYPE_SLIDER` — horizontal/vertical slider icon: bevelled surround
   with a sunken groove inset by a fixed gap, drag/click value mapping that
   rounds to the nearest value rather than truncating, and a min > max
@@ -462,6 +477,19 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- **Breaking:** reserved `wuss_ICON_TYPE_STRING_SET` removed (reimplemented
+  as the `wuss_stringset` gadget); `DRAGGABLE`'s numeric value drops by one.
+- `wuss_nearest_colour()` defers to `colour_to_pixel()`, matching the
+  renderer's luma-weighted palette matching.
+- Text task: window auto-sizing off by default; background defaults to
+  none. Doughnut task background lightened to dark grey. Image task menu
+  loses its unhandled Quit entry.
+- Label border widths named (`WUSS_*_BORDER_WIDTH`, `WUSS_BEVEL_WIDTH`,
+  `WUSS_LABEL_TEXT_GAP`/`_PAD`).
+- Internal: furniture hit testing, layout, pressed-box lookup and drag kind
+  driven from one element table; icon draw and validation driven from a
+  type table (`wuss__icon_types[]`); shared press-and-highlight, icon font
+  lookup and radio/option sprite names.
 - **Breaking:** furniture window flags flip to opt-in:
   `wuss_WINDOW_NO_TITLEBAR`/`_OUTLINE`/`_CLOSE`/`_BACK`/`_TOGGLE_SIZE`/
   `_VSCROLL`/`_HSCROLL`/`_RESIZE` become `wuss_WINDOW_TITLEBAR`/`_OUTLINE`/
@@ -726,6 +754,23 @@ _Unreleased_ until one is cut.
 
 ### Fixed
 
+- `wuss_stringset` kept its menu handle after the chain closed, so
+  `wuss_stringset_destroy()` used it after free.
+- Left/right-justified text on bordered LABEL/DISPLAY icons overlapped the
+  border; now inset by the border width plus clear space.
+- Text task default colours gave white text under the Wimp16 palette; now
+  picked by nearest palette entry. The Sample menu ticks the loaded sample
+  and keeps the first samples by name regardless of readdir order.
+- Furniture pressed state survived window close/hide, drawing the next
+  window's close icon pressed.
+- `wuss_destroy()`'s QUIT sweep could free its saved next node when a
+  handler closed another task; all tasks are now marked reaping first.
+- `wuss_icon_delete()` swapped the last icon into the freed slot, changing
+  draw and hit-test order; the rest now shift down.
+- `pathf()` on RISC OS stripped a '.' "extension" from output with no '/',
+  truncating native paths.
+- `run_wuss` leaked the backdrop, and on early failure the fonts, frontend
+  and wuss instance.
 - `bmfont_draw()` clipped full-width glyphs (M, W, ...) out of existence:
   `bmfont_advance_for()`'s advance (cell width + the new 1px letter
   spacing) was used directly as the drawable pixel width, pushing
