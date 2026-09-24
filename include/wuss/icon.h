@@ -125,14 +125,15 @@ typedef enum wuss_icon_type
    *  the caret in view. */
   wuss_ICON_TYPE_WRITABLE,
 
+  /** A read-only value field: a bevelled well showing text the task updates
+   *  but the user cannot edit. Build with wuss_icon_spec_display. */
+  wuss_ICON_TYPE_DISPLAY,
+
   /* The following types are reserved: the enum values and validation exist
    * but no rendering, hit-testing or event routing is wired up yet. A spec
    * using one is accepted and currently draws as a plain
    * wuss_ICON_TYPE_LABEL. */
 
-  /** A read-only value field: a bevelled well showing text the task updates but
-   *  the user cannot edit. Not yet implemented. */
-  wuss_ICON_TYPE_DISPLAY,
   /** An editable numeric field, optionally with up/down adjusters. Not yet
    *  implemented. */
   wuss_ICON_TYPE_NUMBER,
