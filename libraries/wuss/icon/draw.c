@@ -388,13 +388,14 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
  * opton/optoff for OPTION. */
 static const bitmap_t *wuss__icon_radio_option_bitmap(const icon_draw_ctx_t *c)
 {
+  int         sel;
   const char *name;
   int         idx;
 
-  if (c->icon->spec.type == wuss_ICON_TYPE_RADIO)
-    name = wuss__icon_selected(c->icon) ? "radon" : "radoff";
-  else
-    name = wuss__icon_selected(c->icon) ? "opton" : "optoff";
+  sel  = wuss__icon_selected(c->icon);
+  name = (c->icon->spec.type == wuss_ICON_TYPE_RADIO)
+       ? (sel ? "radon" : "radoff")
+       : (sel ? "opton" : "optoff");
 
   idx = wuss_icons_lookup(c->wuss, name);
   if (idx < 0)
