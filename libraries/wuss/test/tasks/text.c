@@ -606,8 +606,8 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   task->spacing_idx = TEXT_DEFAULT_SPACING;
   task->spacing.letter_spacing = text_spacing_presets[TEXT_DEFAULT_SPACING].letter_spacing;
   task->spacing.word_spacing   = text_spacing_presets[TEXT_DEFAULT_SPACING].word_spacing;
-  task->fg_index    = 0; /* wuss__default_palette: 0 is black */
-  task->bg_index    = 7; /* wuss__default_palette: 7 is white */
+  task->fg_index    = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
+  task->bg_index    = wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF);
   task->bg_transparent = true; /* "None": blend onto the window backdrop */
   task->colourmenu_target = NULL;
   task->frame_count = 0;
