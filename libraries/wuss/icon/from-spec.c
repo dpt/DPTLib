@@ -28,37 +28,18 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   swatch = has_swatch ? wuss__resolve_colour(w, spec->u.menu_entry.swatch)
                       : wuss_NO_BACKGROUND;
 
-  switch (spec->type)
-  {
-  case wuss_ICON_TYPE_LABEL:
-  case wuss_ICON_TYPE_ACTION:
-  case wuss_ICON_TYPE_PATTERN:
-  case wuss_ICON_TYPE_FRAME:
-  case wuss_ICON_TYPE_RADIO:
-  case wuss_ICON_TYPE_OPTION:
-  case wuss_ICON_TYPE_BITMAP:
-  case wuss_ICON_TYPE_MENU_ENTRY:
-  case wuss_ICON_TYPE_RULE:
-  case wuss_ICON_TYPE_WRITABLE:
-  case wuss_ICON_TYPE_DISPLAY:
-    break;
+  if ((unsigned) spec->type >= wuss__ICON_TYPE_COUNT)
+    return result_WUSS_BAD_ICON;
 
   /* reserved: accepted (drawn as a label) but not implemented -- flag any
    * caller building one in debug builds */
-  case wuss_ICON_TYPE_NUMBER:
-  case wuss_ICON_TYPE_DRAGGABLE:
+  if (wuss__icon_types[spec->type].reserved)
     assert(!"reserved wuss icon type constructed");
-    break;
 
-  case wuss_ICON_TYPE_SLIDER:
-    if (spec->u.slider.orientation != wuss_SLIDER_HORIZONTAL &&
-        spec->u.slider.orientation != wuss_SLIDER_VERTICAL)
-      return result_WUSS_BAD_ICON;
-    break;
-
-  default:
+  if (spec->type == wuss_ICON_TYPE_SLIDER &&
+      spec->u.slider.orientation != wuss_SLIDER_HORIZONTAL &&
+      spec->u.slider.orientation != wuss_SLIDER_VERTICAL)
     return result_WUSS_BAD_ICON;
-  }
 
   /* an ACTION may leave bg unset -- it then draws on the config button face
    * (wuss->button_bg); a PATTERN needs a concrete clear-bit colour */
