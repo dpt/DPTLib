@@ -49,13 +49,17 @@ Requires libpng (`find_package(PNG)` on non-RISC OS). On RISC OS the build fetch
 
 Run from the **repo root** so `-resources .` resolves the fixture files:
 ```
-./build-asan/DPTLibTest -resources .
+./build-asan/DPTLibTest-debug -resources .
 ```
 
 Run a subset by naming tests (names come from the `tests[]` table in `apps/test/main.c`, e.g. `atom`, `bitvec`, `curve`, `pickle`, `stream`, `packer`, `wuss`):
 ```
-./build-asan/DPTLibTest -resources . atom bitvec
+./build-asan/DPTLibTest-debug -resources . atom bitvec
 ```
+
+The binary name carries a per-config suffix: `DPTLibTest-debug` in Debug dirs
+(`build-asan/`), plain `DPTLibTest` in Release dirs (`build-sdl/`,
+`build-nosdl/`). The CMake target is `DPTLibTest` either way.
 
 SDL / interactive tests use the `build-sdl` binary instead.
 
