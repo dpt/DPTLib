@@ -474,12 +474,12 @@ static result_t run_wuss(const char *resources,
 
   g_tasks.quit = false;
 
-  tasks_spawn(tasks);
-
   rc = config_create(wuss, NULL);
   logf_info("wuss: config_create -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
+
+  tasks_spawn(tasks);
 
   wuss_redraw(wuss);
   wuss_frontend_present(frontend, &g_bm, NULL);
