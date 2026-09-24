@@ -28,8 +28,8 @@ typedef struct text_span
 }
 text_span_t;
 
-#define TEXT_MAX_SAMPLES 16 /* files in resources/text beyond this are
-                             * ignored */
+#define TEXT_MAX_SAMPLES 16 /* only the first this many files in
+                             * resources/text, by name, are kept */
 
 /* one row of the "Sample" submenu, found in resources/text */
 typedef struct text_sample
