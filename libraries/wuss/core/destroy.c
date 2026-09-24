@@ -34,7 +34,18 @@ void wuss_destroy(wuss_t *doomed)
    * task's QUIT handler may wuss_menu_close a chain it still holds, which
    * closes menu windows off wuss__menu_task's window list -- so that task
    * must outlive every client QUIT, regardless of registration order (it is
-   * created lazily on the first wuss_menu_open, so it can sit anywhere). */
+   * created lazily on the first wuss_menu_open, so it can sit anywhere).
+   *
+   * Mark every client task as being reaped before any QUIT goes out, so a
+   * handler that closes the last autoclose window of any task -- or calls
+   * wuss_task_destroy on any task, itself included -- doesn't fire QUIT and
+   * free a node from under the sweep. Marking only the current task would
+   * leave the saved `next` node open to that. Same guard wuss_task_destroy
+   * sets for its own internal QUIT. */
+  for (e = doomed->tasks.next; e != NULL; e = e->next)
+    if (wuss__task_from_link(e) != menu_task)
+      wuss__task_from_link(e)->flags |= wuss_TASK__REAPING;
+
   e = doomed->tasks.next;
   while (e != NULL)
   {
@@ -45,13 +56,6 @@ void wuss_destroy(wuss_t *doomed)
     if (wuss__task_from_link(e) != menu_task)
     {
       wuss_task_t *task = wuss__task_from_link(e);
-
-      /* Mark the teardown before QUIT so a handler that closes its last
-       * autoclose window -- or calls wuss_window_close / wuss_task_destroy
-       * on itself -- doesn't also fire QUIT and free this node from under
-       * the sweep, which would then wuss__free it a second time. Same guard
-       * wuss_task_destroy sets for its own internal QUIT. */
-      task->flags |= wuss_TASK__REAPING;
 
 #ifdef WUSS_MENUS
       /* If this task owns the live menu chain, abandon it before QUIT, same
