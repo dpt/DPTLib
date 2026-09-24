@@ -146,6 +146,64 @@ result_t bmfont_measure(bmfont_t               *bmfont,
                         bmfont_width_t         *actual_width);
 
 /**
+ * Find where a caret should go for a pointer position within a string, e.g.
+ * a mouse click in a text field. The caret snaps to the nearest character
+ * boundary: a click in the left half of a glyph places it before that glyph,
+ * in the right half after it. An exact midpoint goes to the lower index.
+ *
+ * \param[in]  bmfont   Bitmap font the string is drawn with.
+ * \param[in]  text     String to search. May be NULL if \p len is zero.
+ * \param[in]  len      Length of the string. May be zero.
+ * \param[in]  spacing  Extra letter/word spacing, or NULL for none.
+ * \param[in]  x        Pointer x relative to the string's start position, in
+ *                      pixels. Negative values give index 0; values past the
+ *                      end give \p len.
+ * \param[out] index    Caret index in bytes, 0..len, or NULL if not wanted.
+ * \param[out] caret_x  Caret x relative to the string's start position, as
+ *                      bmfont_caret_x() would return for \p index, or NULL
+ *                      if not wanted.
+ */
+void bmfont_find_caret(bmfont_t               *bmfont,
+                       const char             *text,
+                       int                     len,
+                       const bmfont_spacing_t *spacing,
+                       int                     x,
+                       int                    *index,
+                       bmfont_width_t         *caret_x);
+
+/**
+ * Compute the x position of a caret placed before byte \p index of a string.
+ * The caret sits in the letter spacing gap after the preceding glyph, so it
+ * does not overlap ink; at index 0 it sits at the start position.
+ *
+ * \param[in]  bmfont   Bitmap font the string is drawn with.
+ * \param[in]  text     String. May be NULL if \p index is zero.
+ * \param[in]  index    Caret index in bytes.
+ * \param[in]  spacing  Extra letter/word spacing, or NULL for none.
+ * \return Caret x relative to the string's start position, in pixels.
+ */
+bmfont_width_t bmfont_caret_x(bmfont_t               *bmfont,
+                              const char             *text,
+                              int                     index,
+                              const bmfont_spacing_t *spacing);
+
+/**
+ * Draw an I-beam text caret: a 1px stem spanning the glyph cell's ascent,
+ * from the top of the cell down to the baseline row, extended by 2px at each
+ * end, with a dot either side of the stem on its top and bottom rows.
+ *
+ * \param[in]  bmfont  Bitmap font whose cell height to use.
+ * \param[in]  scr     Screen to draw on.
+ * \param[in]  colour  Caret colour.
+ * \param[in]  pos     Baseline position of the stem in pixels: the string's
+ *                     start position plus bmfont_caret_x() in x.
+ */
+void bmfont_draw_caret(bmfont_t      *bmfont,
+                       screen_t      *scr,
+                       colour_t       colour,
+                       const point_t *pos);
+
+/**
  * Draw the given string using the specified font, position and colours.
  *
  * \param[in]   bmfont  Bitmap font to draw.

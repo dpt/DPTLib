@@ -31,6 +31,7 @@ extern "C"
 #include "base/result.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "geom/inset.h"
 #include "geom/point.h"
 
 #include "wuss/wuss.h"
@@ -47,8 +48,7 @@ extern "C"
 
 /**
  * What an icon looks like and how it behaves. The enum is left open so
- * sprite and editable-text icons can be added later without breaking
- * existing specs.
+ * further types can be added later without breaking existing specs.
  */
 typedef enum wuss_icon_type
 {
@@ -110,22 +110,33 @@ typedef enum wuss_icon_type
    *  the value straight to the pointer position; the task is told via
    *  wuss_EVENT_ICON, continuously while dragging. */
   wuss_ICON_TYPE_SLIDER,
-
-  /* The following types are reserved: the enum values and validation exist but
-   * no rendering, hit-testing or event routing is wired up yet. A spec using
-   * one is accepted and currently draws as a plain wuss_ICON_TYPE_LABEL. */
-
-  /** A read-only value field: a bevelled well showing text the task updates but
-   *  the user cannot edit. Not yet implemented. */
-  wuss_ICON_TYPE_DISPLAY,
-  /** An editable single-line text field. Not yet implemented. */
+  /** An editable single-line text field: the bounding box filled with bg
+   *  inside a 1px fg outline, the text left-aligned in fg. Its buffer is
+   *  owned by the icon and holds up to spec.u.writable.size - 1 bytes,
+   *  seeded from text; read it back with wuss_icon_get_text. A Select or
+   *  Adjust click on a focusable window's writable places the caret (see
+   *  wuss_icon_set_caret) at the nearest character. While it holds the
+   *  caret, wuss_key edits the buffer -- printable Latin-1, Backspace,
+   *  Delete, Left, Right, Home and End, Shift+Left / Shift+Right by words,
+   *  Ctrl+Left / Ctrl+Right to the start / end and Ctrl+U to clear -- and
+   *  Tab / Shift-Tab move the caret to the next / previous writable on the
+   *  window; other keys reach the task as wuss_EVENT_KEY. Every edit raises
+   *  wuss_EVENT_ICON with button 0. Text wider than the box scrolls to keep
+   *  the caret in view. */
   wuss_ICON_TYPE_WRITABLE,
+
+  /** A read-only value field: a bevelled well showing text the task updates
+   *  but the user cannot edit. Build with wuss_icon_spec_display. */
+  wuss_ICON_TYPE_DISPLAY,
+
+  /* The following types are reserved: the enum values and validation exist
+   * but no rendering, hit-testing or event routing is wired up yet. A spec
+   * using one is accepted and currently draws as a plain
+   * wuss_ICON_TYPE_LABEL. */
+
   /** An editable numeric field, optionally with up/down adjusters. Not yet
    *  implemented. */
   wuss_ICON_TYPE_NUMBER,
-  /** A field cycling through a fixed set of string values. Not yet
-   *  implemented. */
-  wuss_ICON_TYPE_STRING_SET,
   /** A free-drag handle: reports pointer motion to the task while dragged. Not
    *  yet implemented. */
   wuss_ICON_TYPE_DRAGGABLE
@@ -156,7 +167,10 @@ typedef enum wuss_icon_border
    *  bevel.divider against bevel.light rather than the full light/dark
    *  contrast -- so it reads as a soft inset panel rather than a hard button
    *  edge. */
-  wuss_ICON_BORDER_DIVIDER
+  wuss_ICON_BORDER_DIVIDER,
+  /** A 1px outline in the icon's fg colour, as drawn around a
+   *  wuss_ICON_TYPE_WRITABLE. */
+  wuss_ICON_BORDER_PLAIN
 }
 wuss_icon_border_t;
 
@@ -169,6 +183,10 @@ typedef enum wuss_icon_flags
   /** Drawn greyed; clicks fall through to the task as wuss_EVENT_MOUSE rather
    *  than raising wuss_EVENT_ICON. */
   wuss_ICON_FLAGS_DISABLED      = 1 << 1,
+  /** wuss_ICON_TYPE_LABEL: left-align the text in the bounding box. This is
+   *  the default (value 0); named for call sites that want to state the
+   *  justification explicitly. */
+  wuss_ICON_FLAGS_JUSTIFY_LEFT  = 0,
   /** wuss_ICON_TYPE_LABEL: right-align the text in the bounding box instead of
    *  the default left. */
   wuss_ICON_FLAGS_JUSTIFY_RIGHT = 1 << 2,
@@ -277,6 +295,10 @@ typedef union wuss_icon_spec_data
      *  index from \ref wuss_icons_lookup with \ref wuss_ICON_SET. Ignored
      *  when \c image is set. */
     int             set;
+    /** Icon-set entry drawn instead while the icon is pressed (see \c set
+     *  for the encoding). Zero (the default) draws the normal image
+     *  throughout. */
+    int             pressed_set;
   }
   bitmap;
 
@@ -318,6 +340,15 @@ typedef union wuss_icon_spec_data
     int                       default_value;
   }
   slider;
+
+  /** wuss_ICON_TYPE_WRITABLE */
+  struct
+  {
+    /** Buffer size in bytes, including the terminator: the field holds at
+     *  most size - 1 characters. Must be at least 1. */
+    int size;
+  }
+  writable;
 }
 wuss_icon_spec_data_t;
 
@@ -354,16 +385,42 @@ wuss_icon_spec_t;
 
 /** Standard main-axis size (px) for a wuss_ICON_TYPE_SLIDER. */
 #define wuss_STD_SLIDER_HEIGHT           18
+
 /** Standard main-axis size (px) for a non-default wuss_ICON_TYPE_ACTION
  *  button, e.g. Cancel. */
 #define wuss_STD_SECONDARY_BUTTON_HEIGHT 26
+
 /** Standard main-axis size (px) for a wuss_ICON_FLAGS_DEFAULT
  *  wuss_ICON_TYPE_ACTION button, e.g. OK/Apply. */
 #define wuss_STD_PRIMARY_BUTTON_HEIGHT   34
+
 /** Standard gap (px) between two sibling icons/components in a layout. */
 #define wuss_STD_GAP                     4
+
 /** Standard gap (px) between an icon/component and the window edge. */
 #define wuss_STD_INSET                   4
+
+/** wuss_STD_INSET on every edge, e.g. a stack_item_t.pad value for a
+ *  window's root item. */
+#define wuss_STD_INSETS \
+  INSET(wuss_STD_INSET, wuss_STD_INSET, wuss_STD_INSET, wuss_STD_INSET)
+
+/** Standard gap (px) between a wuss_ICON_TYPE_FRAME's contents and the
+ *  frame's own border/caption, on every edge except for the top. */
+#define wuss_STD_FRAME_INSET             4
+
+/** Standard gap (px) between a wuss_ICON_TYPE_FRAME's contents and the
+ *  frame's own border/caption, on the top edge. */
+#define wuss_STD_FRAME_TOP_INSET         8
+
+/** wuss_STD_FRAME_INSET plus wuss_STD_INSET on every edge except the top,
+ *  which gets a further 6px, e.g. a stack_item_t.pad value for a frame's
+ *  contents below a caption. */
+#define wuss_STD_FRAME_INSETS \
+  INSET(wuss_STD_FRAME_INSET + wuss_STD_FRAME_TOP_INSET, \
+        wuss_STD_FRAME_INSET + wuss_STD_INSET, \
+        wuss_STD_FRAME_INSET + wuss_STD_INSET, \
+        wuss_STD_FRAME_INSET + wuss_STD_INSET)
 
 /* ----------------------------------------------------------------------- */
 
@@ -443,7 +500,8 @@ void wuss_icon_delete(wuss_window_t *window, wuss_icon_t *icon);
 
 /**
  * Replace an icon's label text. The new text is copied. Invalidates the
- * icon's bounding box.
+ * icon's bounding box. A wuss_ICON_TYPE_WRITABLE truncates the text to its
+ * buffer and, if it holds the caret, moves the caret to the end.
  *
  * \param[in] window Window the icon belongs to.
  * \param[in] icon   Icon to change.
@@ -540,6 +598,24 @@ void wuss_icon_set_value(wuss_window_t *window,
                          wuss_icon_t   *icon,
                          int            value);
 
+/**
+ * Place the text caret in a wuss_ICON_TYPE_WRITABLE icon, giving its window
+ * the input focus, or remove the caret. There is one caret per window
+ * manager; it is removed whenever its window loses the focus. No task event
+ * is delivered for the caret move itself.
+ *
+ * \param[in] window Window the icon belongs to.
+ * \param[in] icon   Writable icon to take the caret, or NULL to remove the
+ *                   caret if it is on \p window.
+ * \param[in] index  Caret position in bytes; negative or past the end of the
+ *                   text means the end.
+ * \return \ref result_OK, or \ref result_BAD_ARG if \p icon is not a
+ *         visible, enabled writable or \p window cannot take the focus.
+ */
+result_t wuss_icon_set_caret(wuss_window_t *window,
+                             wuss_icon_t   *icon,
+                             int            index);
+
 /* ----------------------------------------------------------------------- */
 
 /**
@@ -562,6 +638,19 @@ void wuss_icon_set_value(wuss_window_t *window,
  *         the compressor (the set is left empty on failure).
  */
 result_t wuss_icons_load(wuss_t *wuss, const char *dir);
+
+/**
+ * Convenience wrapper for \ref wuss_icons_load: loads the wuss-wide icon set
+ * from "<resources>/resources/wuss/icons", the fixed location every demo
+ * task uses. \p resources is joined via \c pathf and copied before the load,
+ * so the caller need not worry about \c pathf's single shared return buffer.
+ *
+ * \param[in] wuss      Window manager.
+ * \param[in] resources Resource root, as returned by \ref
+ *                      wuss_get_resources.
+ * \return As \ref wuss_icons_load.
+ */
+result_t wuss_icons_load_resource(wuss_t *wuss, const char *resources);
 
 /**
  * Number of entries in the loaded icon set (see \ref wuss_icons_load). Zero

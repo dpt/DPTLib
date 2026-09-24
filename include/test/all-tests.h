@@ -25,8 +25,10 @@ extern testfn_t pickle_test,
 /* framebuf */
 extern testfn_t bitmap_rle_test,
                 bmfont_test,
+                bmfontcache_test,
                 composite_test,
                 curve_test,
+                pattern_test,
                 pixelmap_test,
                 screen_test;
 
@@ -37,7 +39,8 @@ extern testfn_t box_test,
                 stack_test;
 
 /* io */
-extern testfn_t stream_test;
+extern testfn_t path_test,
+                stream_test;
 
 /* text */
 extern testfn_t txtfmt_test;

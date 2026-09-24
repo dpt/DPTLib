@@ -57,7 +57,7 @@ void wuss_window_move(wuss_window_t *window, point_t p)
    * window's own rendering; whatever isn't clean is hidden behind some
    * other window and has no valid pixels of this window's content to
    * slide. Computed against the current z-order, before the move. */
-  nclean = wuss__clip_to_visible(window, &before, clean);
+  nclean = wuss__clip_to_visible(window, &before, clean, 0);
 
   /* A piece can also be "clean" by occlusion yet still not show valid
    * pixels on screen: an earlier move (or any other invalidation) this same
@@ -85,7 +85,7 @@ void wuss_window_move(wuss_window_t *window, point_t p)
    * window, just offset in screen space -- shift it instead of dropping the
    * cache and rebuilding all pieces on the next paint of even a thin
    * sliver */
-  if (window->furniture_layout.valid)
+  if (window->furniture_layout.flags & wuss_FURNITURE_LAYOUT__VALID)
     wuss__furniture_layout_translate(window, dx, dy);
 
   for (i = 0; i < nclean; i++)
@@ -122,11 +122,10 @@ void wuss_window_move(wuss_window_t *window, point_t p)
       box_t sliver[WUSS_MAX_INVALIDATE_PIECES];
       int   nsliver, s;
 
-      /* ponytail: nclean is a handful, so this can't approach the
-       * WUSS_MAX_INVALIDATE_PIECES cap; if that ever changes, a dropped
-       * piece here means a missed repaint (visible corruption), not just
-       * wasted work -- revisit then. */
-      nsliver = wuss__subtract_boxes(&clean[i], full_dest, nclean, sliver);
+      /* result only feeds wuss_invalidate, so on overflow overpaint_safe
+       * lets wuss__subtract_boxes fall back to clean[i] whole rather than
+       * dropping pieces -- over-invalidating, not under. */
+      nsliver = wuss__subtract_boxes(&clean[i], full_dest, nclean, sliver, 1);
       for (s = 0; s < nsliver; s++)
         wuss_invalidate(window->wuss, &sliver[s]);
     }
@@ -134,7 +133,7 @@ void wuss_window_move(wuss_window_t *window, point_t p)
     /* Whatever of "before" wasn't clean has no valid source pixels: its
      * translated destination needs a genuine repaint, clipped against
      * whatever's above this window there now. */
-    nhidden = wuss__subtract_boxes(&before, clean, nclean, hidden);
+    nhidden = wuss__subtract_boxes(&before, clean, nclean, hidden, 1);
     for (i = 0; i < nhidden; i++)
     {
       box_t hidden_dest;

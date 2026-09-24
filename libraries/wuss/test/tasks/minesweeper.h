@@ -8,12 +8,15 @@
 #include <stdbool.h>
 #include <time.h>
 
+#include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
+#include "wuss/component/proginfo.h"
+#include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
 
-#define MINESWEEPER_CELL 16 /* pixels per cell */
+#define MINESWEEPER_CELL 22 /* pixels per cell; matches mine.png/flag.png */
 
 /* board sizes offered on the "Grid Size" menu; arrays are sized for the
  * largest so a resize just changes ms->rows/cols/mines and re-clears */
@@ -42,13 +45,30 @@ minesweeper_cell_state_t;
 /* classic minesweeper: Select reveals a cell (flood-filling neighbouring
  * zeros), Adjust toggles a flag. Mines are placed on the first reveal so the
  * opening click is never a mine. A MENU-button click pops a menu with "New
- * Game" and a "Grid Size" submenu that resets the board at a new size. */
+ * Game" and a "Grid Size" submenu that resets the board at a new size. With
+ * the input focus, the arrow keys move a cursor cell, Return reveals it and
+ * Space toggles its flag. */
 typedef struct minesweeper_task
 {
   wuss_t                  *wuss;
   wuss_window_t           *window;
   wuss_task_t             *task; /* delegate; opens the New Game menu */
+  wuss_menu_handle_t       menu_handle; /* live only between open and a pick */
+  wuss_menu_item_t         size_items[minesweeper_NSIZES];
+  wuss_menu_t              size_menu;
+  wuss_menu_item_t         menu_items[3]; /* per-instance: a shared static
+                                            * would leak one instance's
+                                            * .window pointer into another's
+                                            * menu */
+  wuss_menu_t              menu;
   bmfont_t                *font; /* borrowed; draws the neighbour counts */
+  bmfont_t                *hud_font; /* owned; draws the mines/timer HUD */
+  int                      hud_font_h; /* hud_font's glyph cell height */
+  int                      hud_field_w; /* pixel width of a "999" field in
+                                         * hud_font, plus a small margin */
+  bitmap_t                 mine_bm; /* owned; drawn on a revealed mine
+                                     * cell */
+  bitmap_t                 flag_bm; /* owned; drawn on a flagged cell */
   minesweeper_size_t       size;
   int                      rows, cols, mines;
   bool                     mine[MINESWEEPER_MAX_ROWS][MINESWEEPER_MAX_COLS];
@@ -59,6 +79,21 @@ typedef struct minesweeper_task
   int                      flags;   /* flagged cell count, for the counter */
   time_t                   start_time; /* set on first reveal */
   int                      elapsed; /* seconds, frozen on dead/won */
+  int                      cur_r, cur_c; /* keyboard cursor cell */
+  struct
+  {
+    colour_t number[9];     /* [1..8] neighbour-count colours; [0] unused */
+    colour_t cell_revealed;
+    colour_t cell_hidden;
+    colour_t cell_border;
+    colour_t hud_fg;
+    colour_t hud_bg;
+    colour_t fill;          /* HUD strip and board frame */
+    colour_t dead_bg;       /* banner background on death */
+    colour_t won_bg;        /* banner background on win */
+    colour_t banner_fg;
+    colour_t cursor;        /* keyboard cursor outline */
+  }                          colours;
 }
 minesweeper_task_t;
 

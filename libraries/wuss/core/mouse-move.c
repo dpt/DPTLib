@@ -39,8 +39,15 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
       break;
 
     case wuss_FURNITURE_DRAG_MOVE:
-    default:
       wuss_window_move(win, POINT(x - wuss->furniture.drag.x, y - wuss->furniture.drag.y));
+      break;
+
+    case wuss_FURNITURE_DRAG_NONE:
+    default:
+      /* A pressed scroll arrow or resize icon arms "dragging" purely so
+       * MOUSE_UP's generic release path can clear the press highlight; it is
+       * not a real drag and must not move the window on every mouse move
+       * until the button is released. */
       break;
     }
 

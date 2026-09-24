@@ -23,6 +23,7 @@
 #include "wuss/wuss.h"
 
 #include "frontend.h"
+#include "tasks.h" /* g_tasks.swap_mouse_buttons */
 
 /* This backend takes over the whole screen: it selects a 16-colour linear
  * mode, points wuss's framebuffer straight at screen memory (so a redraw
@@ -208,8 +209,16 @@ static wuss_button_t mouse_buttons_to_wuss(int buttons)
   wuss_button_t b = wuss_BUTTON_NONE;
 
   if (buttons & 4) b |= wuss_BUTTON_SELECT;
-  if (buttons & 2) b |= wuss_BUTTON_MENU;
-  if (buttons & 1) b |= wuss_BUTTON_ADJUST;
+  if (g_tasks.swap_mouse_buttons)
+  {
+    if (buttons & 2) b |= wuss_BUTTON_ADJUST;
+    if (buttons & 1) b |= wuss_BUTTON_MENU;
+  }
+  else
+  {
+    if (buttons & 2) b |= wuss_BUTTON_MENU;
+    if (buttons & 1) b |= wuss_BUTTON_ADJUST;
+  }
   return b;
 }
 
@@ -232,6 +241,23 @@ g_keys[] =
   { -116, wuss_INPUT_PIXEL_STRESS }, /* F3 */
   { -117, wuss_INPUT_QUIT         }  /* F4 */
 };
+
+result_t wuss_frontend_resize(wuss_frontend_t *fe,
+                              int              width,
+                              int              height,
+                              void           **pixels,
+                              int             *rowbytes)
+{
+  NOT_USED(fe);
+  NOT_USED(width);
+  NOT_USED(height);
+  NOT_USED(pixels);
+  NOT_USED(rowbytes);
+
+  /* RISC OS runs in a fixed screen mode chosen at wuss_frontend_open time;
+   * there is no runtime path to change it here. */
+  return result_NOT_SUPPORTED;
+}
 
 static bool key_down(int scan)
 {
@@ -349,6 +375,13 @@ void wuss_frontend_set_palette(wuss_frontend_t *fe,
 {
   NOT_USED(fe);
   set_hw_palette(palette, npalette);
+}
+
+void wuss_frontend_zoom(wuss_frontend_t *fe, int delta)
+{
+  NOT_USED(fe);
+  NOT_USED(delta);
+  /* fixed screen mode: nothing to zoom */
 }
 
 void wuss_frontend_close(wuss_frontend_t *fe)

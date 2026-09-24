@@ -31,24 +31,20 @@ static int pixelmap__build_paletted_to_deep(pixelmap_t     *pm,
   return 0;
 }
 
-/* Replicate an n-bit value up to 8 bits (e.g. 4-bit 0xA -> 0xAA), so a
- * quantised channel spans the full 0..255 range before the nearest-colour
- * match. */
-static unsigned int pixelmap__expand(unsigned int v, unsigned int nbits)
+/* Midpoint of the 8-bit range a quantised n-bit bucket "v" covers. Used as
+ * the bucket's representative colour for the nearest-palette search: a
+ * bit-replicated value (e.g. 4-bit bucket 0xC -> 0xCC=204) would skew every
+ * bucket towards its top edge instead of its ~199 centre, biasing every
+ * match towards brighter palette entries. */
+static unsigned int pixelmap__bucket_centre(unsigned int v, unsigned int nbits)
 {
-  unsigned int out;
-  unsigned int filled;
+  unsigned int shift;
+  unsigned int span;
 
-  out    = 0;
-  filled = 0;
+  shift = 8 - nbits;
+  span  = 1u << shift;
 
-  while (filled < 8)
-  {
-    out     = (out << nbits) | v;
-    filled += nbits;
-  }
-
-  return (out >> (filled - 8)) & 0xFF;
+  return (v << shift) + span / 2;
 }
 
 int pixelmap__build_table(pixelmap_t     *pm,
@@ -84,9 +80,9 @@ int pixelmap__build_table(pixelmap_t     *pm,
       {
         idx = (r << (gbits + bbits)) | (g << bbits) | b;
 
-        c = colour_rgb((int) pixelmap__expand(r, rbits),
-                       (int) pixelmap__expand(g, gbits),
-                       (int) pixelmap__expand(b, bbits));
+        c = colour_rgb((int) pixelmap__bucket_centre(r, rbits),
+                       (int) pixelmap__bucket_centre(g, gbits),
+                       (int) pixelmap__bucket_centre(b, bbits));
 
         pal = colour_to_pixel(palette, nentries, c, pm->destfmt)
             & ((1u << (1u << pm->dest_log2bpp)) - 1);

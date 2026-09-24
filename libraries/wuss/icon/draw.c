@@ -1,5 +1,6 @@
 /* wuss/icon/draw.c -- draw a work-area icon */
 
+#include <assert.h>
 #include <limits.h>
 #include <string.h>
 
@@ -8,6 +9,8 @@
 #include "geom/point.h"
 #include "geom/size.h"
 #include "framebuf/bmfont.h"
+#include "framebuf/colour.h"
+#include "framebuf/pattern.h"
 #include "framebuf/screen.h"
 
 #include "../core/impl.h"
@@ -32,6 +35,7 @@ typedef struct icon_draw_ctx
   int                  font_height;
   int                  font_ascent;
   int                  have_font;
+  point_t              origin; /* content box's document origin, screen space */
 }
 icon_draw_ctx_t;
 
@@ -72,10 +76,10 @@ static void icon_draw_action_border(screen_t    *scr,
   ring = *b;
   screen_draw_bevel_edge(scr, &ring, dark, light);
 
-  ring = box_grown(b, -2);
+  ring = box_grown(b, -WUSS_BEVEL_WIDTH);
   screen_draw_bevel_edge(scr, &ring, accent, accent);
 
-  ring = box_grown(b, -4);
+  ring = box_grown(b, -2 * WUSS_BEVEL_WIDTH);
   screen_draw_bevel_edge(scr, &ring, pressed ? dark : light,
                                      pressed ? light : dark);
 }
@@ -94,7 +98,7 @@ static void icon_draw_divider_border(screen_t    *scr,
   ring = *b;
   screen_draw_bevel_edge(scr, &ring, divider, light);
 
-  ring = box_grown(b, -2);
+  ring = box_grown(b, -WUSS_BEVEL_WIDTH);
   screen_draw_bevel_edge(scr, &ring, light, divider);
 }
 
@@ -150,9 +154,7 @@ static int wuss__draw_symbol_glyph(const wuss_t *wuss,
 
 /* ----------------------------------------------------------------------- */
 
-static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
-                                    const box_t           *content,
-                                    point_t                scroll)
+static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c)
 {
   const wuss_icon_spec_t *icon = &c->icon->spec;
   colour_t                pat_fg;
@@ -168,12 +170,32 @@ static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
 
     pat = pattern_from_preset(icon->u.pattern.tile,
                               pat_fg, c->wuss->palette[icon->bg]);
-    pat.origin = POINT(content->x0 - scroll.x, content->y0 - scroll.y);
+    pat.origin = c->origin;
     screen_fill_pattern(c->scr, &c->b, &pat);
   }
 }
 
 /* ----------------------------------------------------------------------- */
+
+/* Horizontal inset for left/right-justified label text: the border's width
+ * plus clear space, or a bare pad when unbordered. */
+static int icon_label_text_inset(wuss_icon_border_t border)
+{
+  static const unsigned char insets[] =
+  {
+    [wuss_ICON_BORDER_NONE]    = WUSS_LABEL_TEXT_PAD,
+    [wuss_ICON_BORDER_RIDGE]   = WUSS_BEVEL_WIDTH          + WUSS_LABEL_TEXT_GAP,
+    [wuss_ICON_BORDER_GROOVE]  = WUSS_BEVEL_WIDTH          + WUSS_LABEL_TEXT_GAP,
+    [wuss_ICON_BORDER_ACTION]  = WUSS_ACTION_BORDER_WIDTH  + WUSS_LABEL_TEXT_GAP,
+    [wuss_ICON_BORDER_DIVIDER] = WUSS_DIVIDER_BORDER_WIDTH + WUSS_LABEL_TEXT_GAP,
+    [wuss_ICON_BORDER_PLAIN]   = WUSS_PLAIN_BORDER_WIDTH   + WUSS_LABEL_TEXT_GAP
+  };
+
+  if ((unsigned) border >= NELEMS(insets))
+    return WUSS_LABEL_TEXT_PAD;
+
+  return insets[border];
+}
 
 static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 {
@@ -182,6 +204,8 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   colour_t                bg;
   point_t                 pos;
   bmfont_width_t          width;
+  int                     len;
+  int                     inset;
 
   if (icon->bg != wuss_NO_BACKGROUND)
   {
@@ -210,6 +234,10 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
     {
       icon_draw_divider_border(c->scr, b, light, divider);
     }
+    else if (icon->u.label.border == wuss_ICON_BORDER_PLAIN)
+    {
+      screen_draw_rect(c->scr, b->x0, b->y0, box_size(b), c->fg);
+    }
     else
     {
       /* RIDGE reads raised (light top/left); GROOVE reads sunken. One 2px
@@ -228,70 +256,57 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 
   /* Measure the whole string, not the box interior: a clipped measurement
    * left the widest label of a right-justified set overhanging the rest. */
-  wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
-                     INT_MAX, NULL, &width);
+  len = (int) strlen(icon->text);
+  wuss__text_measure(c->font, icon->text, len, INT_MAX, NULL, &width);
 
+  inset = icon_label_text_inset(icon->u.label.border);
   if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_CENTRE)
     pos.x = b->x0 + ((b->x1 - b->x0) - width) / 2;
   else if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_RIGHT)
-    pos.x = b->x1 - 1 - width;
+    pos.x = b->x1 - inset - width;
   else
-    pos.x = b->x0 + 1;
+    pos.x = b->x0 + inset;
 
   pos.y = icon_text_baseline_y(c, b);
 
-  wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                  c->fg, bg, &pos, NULL);
+  wuss__text_draw(c->font, c->scr, icon->text, len, c->fg, bg, &pos, NULL);
 }
 
 /* ----------------------------------------------------------------------- */
 
 static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
 {
-  const wuss_icon_spec_t *icon = &c->icon->spec;
+  const wuss_icon_spec_t *spec = &c->icon->spec;
   const box_t            *b    = &c->b;
-  colour_t                bg, light, divider;
-  int                     cap_w, cap_x, gap_x0, gap_x1;
+  colour_t                light, divider;
+  bmfont_width_t          cap_w;
+  int                     len;
+  box_t                   frame;
+  colour_t                bg;
+  point_t                 pos;
 
-  bg      = icon_blend_ground(c, c->fg);
   light   = c->wuss->palette[c->wuss->bevel_light];
   divider = c->wuss->palette[c->wuss->bevel_divider];
 
   cap_w = 0;
   if (c->have_font)
   {
-    int            split_point;
-    bmfont_width_t width;
-
-    wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
+    len = (int) strlen(spec->text);
+    wuss__text_measure(c->font, spec->text, len,
                        (b->x1 - b->x0) - WUSS_FRAME_CAPTION_INSET * 2,
-                       &split_point, &width);
-    cap_w = width;
+                       NULL, &cap_w);
   }
 
-  /* the whole surround is a wuss_ICON_BORDER_DIVIDER ring... */
-  icon_draw_divider_border(c->scr, b, light, divider);
+  frame    = c->b;
+  frame.y0 += WUSS_FRAME_CAPTION_TOP;
+  icon_draw_divider_border(c->scr, &frame, light, divider);
 
-  /* ...with the top edge broken around the caption: overpaint the caption
-   * slot (the ring is 2px, plus a PAD margin either side) back to the frame
-   * ground. INSET (8) always exceeds PAD (2), so gap_x0 sits a few pixels
-   * right of b->x0 and the left stub always survives; only the right stub
-   * can vanish, when a wide caption pushes gap_x1 past the frame edge. */
-  cap_x  = b->x0 + WUSS_FRAME_CAPTION_INSET;
-  gap_x0 = cap_x - WUSS_FRAME_CAPTION_PAD;
-  gap_x1 = cap_x + cap_w + WUSS_FRAME_CAPTION_PAD;
-  if (gap_x1 > gap_x0)
-    screen_fill_rect(c->scr, gap_x0, b->y0,
-                     SIZE2D(MIN(gap_x1, b->x1) - gap_x0, 2), bg);
-
-  if (c->have_font && cap_w > 0)
+  if (cap_w > 0)
   {
-    point_t pos;
-
-    pos.x = cap_x;
+    bg = icon_blend_ground(c, c->fg);
+    pos.x = b->x0 + WUSS_FRAME_CAPTION_INSET;
     pos.y = b->y0 + c->font_ascent;
-    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                    c->fg, bg, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, spec->text, len, c->fg, bg, &pos, NULL);
   }
 }
 
@@ -344,13 +359,14 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
   if (c->have_font)
   {
     point_t        pos;
-    int            interior_w, split_point;
+    int            interior_w, split_point, len;
     bmfont_width_t width;
 
     interior_w = MAX((b->x1 - b->x0) - 2, 1);
+    len        = (int) strlen(icon->text);
 
-    wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
-                       interior_w, &split_point, &width);
+    wuss__text_measure(c->font, icon->text, len, interior_w, &split_point,
+                       &width);
 
     pos.x = b->x0 + ((b->x1 - b->x0) - width) / 2;
     pos.y = icon_text_baseline_y(c, b);
@@ -360,25 +376,22 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
       pos.y += 1;
     }
 
-    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                    label, base, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, icon->text, len, label, base, &pos,
+                    NULL);
   }
 }
 
 /* ----------------------------------------------------------------------- */
 
 /* The icon-set bitmap for a radio/option's current state, or NULL when the set
- * is absent or lacks that entry. Names are radon/radoff for RADIO and
- * opton/optoff for OPTION. */
+ * is absent or lacks that entry (see wuss__icon_radio_option_name). */
 static const bitmap_t *wuss__icon_radio_option_bitmap(const icon_draw_ctx_t *c)
 {
   const char *name;
   int         idx;
 
-  if (c->icon->spec.type == wuss_ICON_TYPE_RADIO)
-    name = wuss__icon_selected(c->icon) ? "radon" : "radoff";
-  else
-    name = wuss__icon_selected(c->icon) ? "opton" : "optoff";
+  name = wuss__icon_radio_option_name(c->icon->spec.type,
+                                      wuss__icon_selected(c->icon));
 
   idx = wuss_icons_lookup(c->wuss, name);
   if (idx < 0)
@@ -460,20 +473,20 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
   if (c->have_font)
   {
     point_t        pos;
-    int            interior_w, split_point;
+    int            interior_w, split_point, len;
     bmfont_width_t width;
 
     tx = g.x1 + 4;
     interior_w = MAX((b->x1 - tx) - 1, 1);
+    len        = (int) strlen(icon->text);
 
-    wuss__text_measure(c->font, icon->text, (int) strlen(icon->text),
-                       interior_w, &split_point, &width);
+    wuss__text_measure(c->font, icon->text, len, interior_w, &split_point,
+                       &width);
     NOT_USED(width);
 
     pos.x = tx;
     pos.y = icon_text_baseline_y(c, b);
-    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                    glyph, bg, &pos, NULL);
+    wuss__text_draw(c->font, c->scr, icon->text, len, glyph, bg, &pos, NULL);
   }
 }
 
@@ -481,10 +494,16 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
 
 static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
 {
-  const box_t *b = &c->b;
-  screen_t     clipped;
+  const box_t    *b = &c->b;
+  const bitmap_t *bm;
+  screen_t        clipped;
 
-  if (c->icon->spec.u.bitmap.image == NULL)
+  bm = NULL;
+  if (wuss__icon_pressed(c->icon) && c->icon->spec.u.bitmap.pressed_set > 0)
+    bm = wuss_icons_bitmap(c->wuss, c->icon->spec.u.bitmap.pressed_set - 1);
+  if (bm == NULL)
+    bm = c->icon->spec.u.bitmap.image;
+  if (bm == NULL)
     return;
 
   /* screen_copy_bitmap clips to scr->clip and does not scale, so narrow the
@@ -494,7 +513,7 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
   if (box_intersection(&c->scr->clip, b, &clipped.clip))
     return;
 
-  screen_copy_bitmap(&clipped, b->x0, b->y0, c->icon->spec.u.bitmap.image);
+  screen_copy_bitmap(&clipped, b->x0, b->y0, bm);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -537,16 +556,38 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), ground);
 
   /* left-edge colour chip (wins over the tick) or tick when selected */
-  if ((icon->flags & wuss_ICON_FLAGS_SWATCH) &&
-      icon->u.menu_entry.swatch != wuss_NO_BACKGROUND)
+  if (icon->flags & wuss_ICON_FLAGS_SWATCH)
   {
     int cx, cy, h;
 
     h  = MAX(c->font_height, 8);
     cx = b->x0 + pad;
     cy = b->y0 + (b->y1 - b->y0 - h) / 2;
-    screen_fill_rect(c->scr, cx, cy, SIZE2D(h, h),
-                     c->wuss->palette[icon->u.menu_entry.swatch]);
+    if (icon->u.menu_entry.swatch == wuss_NO_BACKGROUND)
+    {
+      /* "None" row: hatched black/white chip, no real palette colour */
+      pattern_t hatch;
+      box_t     chip;
+
+      chip.x0 = cx;
+      chip.y0 = cy;
+      chip.x1 = cx + h;
+      chip.y1 = cy + h;
+      hatch = pattern_from_preset(screen_PATTERN_DIAGONAL,
+                                  colour_rgb(0, 0, 0),
+                                  colour_rgb(255, 255, 255));
+      /* phase against the chip's own corner, not the screen origin the
+       * preset defaults to -- otherwise a window-move fast path that
+       * blits already-settled pixels to their new position (leaving
+       * their old screen-relative phase baked in) meets a freshly
+       * repainted sliver phased against the new position, and the two
+       * halves' hatching no longer lines up at the seam */
+      hatch.origin = POINT(chip.x0, chip.y0);
+      screen_fill_pattern(c->scr, &chip, &hatch);
+    }
+    else
+      screen_fill_rect(c->scr, cx, cy, SIZE2D(h, h),
+                       c->wuss->palette[icon->u.menu_entry.swatch]);
     screen_draw_rect(c->scr, cx, cy, SIZE2D(h, h), ink); /* 1px border */
   }
   else if (wuss__icon_selected(c->icon))
@@ -636,19 +677,13 @@ static void wuss__icon_draw_slider(const icon_draw_ctx_t *c)
   light    = c->wuss->palette[c->wuss->bevel_light];
   dark     = c->wuss->palette[c->wuss->bevel_dark];
 
-  /* draw the surround */
-  
   surround_box = box_grown(&c->b, -2); /* inset by bevel width to avoid overdraw */
   screen_fill_rect(c->scr, surround_box.x0, surround_box.y0,
                    box_size(&surround_box), surround);
 
-  /* draw the bevel */
-  
   screen_draw_bevel_edge(c->scr, &c->b, dark, light);
 
   wuss__slider_groove_box(&surround_box, &groove);
-  
-  /* draw the track */
 
   lo = MIN(icon->u.slider.min, icon->u.slider.max);
   hi = MAX(icon->u.slider.min, icon->u.slider.max);
@@ -672,6 +707,79 @@ static void wuss__icon_draw_slider(const icon_draw_ctx_t *c)
 
 /* ----------------------------------------------------------------------- */
 
+/* wuss_ICON_TYPE_WRITABLE: bg fill in a 1px fg outline, the text left-aligned
+ * and scrolled by text_scroll, clipped inside the outline, plus the caret when
+ * this icon holds it. */
+static void wuss__icon_draw_writable(const icon_draw_ctx_t *c)
+{
+  const wuss_icon_t *icon = c->icon;
+  const box_t       *b    = &c->b;
+  colour_t           bg;
+  colour_t           ink;
+  box_t              inner;
+  screen_t           clipped;
+  int                ascent;
+  point_t            pos;
+  point_t            caret;
+
+  bg = icon_blend_ground(c, c->fg);
+  if (icon->spec.bg != wuss_NO_BACKGROUND)
+    screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), bg);
+
+  ink = (icon->spec.flags & wuss_ICON_FLAGS_DISABLED)
+      ? c->wuss->palette[c->wuss->bevel_dark]
+      : c->fg;
+  screen_draw_rect(c->scr, b->x0, b->y0, box_size(b), ink);
+
+  if (c->font == NULL)
+    return;
+
+  inner   = box_grown(b, -1);
+  clipped = *c->scr;
+  if (box_intersection(&c->scr->clip, &inner, &clipped.clip))
+    return;
+
+  bmfont_get_info(c->font, NULL, NULL, &ascent, NULL);
+  pos.x = b->x0 + WUSS_WRITABLE_INSET - icon->text_scroll;
+  pos.y = b->y0 + (b->y1 - b->y0 - ascent) / 2 + ascent;
+  wuss__text_draw(c->font, &clipped, icon->spec.text,
+                  (int) strlen(icon->spec.text), ink, bg, &pos, NULL);
+
+  if (c->wuss->caret_icon == icon)
+  {
+    caret.x = pos.x + (int) bmfont_caret_x(c->font, icon->spec.text,
+                                           c->wuss->caret_index, NULL);
+    caret.y = pos.y;
+    bmfont_draw_caret(c->font, &clipped,
+                      c->wuss->palette[wuss__resolve_colour(c->wuss,
+                                                            wuss_COLOUR_RED)],
+                      &caret);
+  }
+}
+
+/* ----------------------------------------------------------------------- */
+
+/* Reserved types have no renderer yet and fall back to a plain label. */
+const wuss__icon_type_info_t wuss__icon_types[wuss__ICON_TYPE_COUNT] =
+{
+  [wuss_ICON_TYPE_LABEL]      = { wuss__icon_draw_label,        0 },
+  [wuss_ICON_TYPE_ACTION]     = { wuss__icon_draw_button,       0 },
+  [wuss_ICON_TYPE_PATTERN]    = { wuss__icon_draw_pattern,      0 },
+  [wuss_ICON_TYPE_FRAME]      = { wuss__icon_draw_frame,        0 },
+  [wuss_ICON_TYPE_RADIO]      = { wuss__icon_draw_radio_option, 0 },
+  [wuss_ICON_TYPE_OPTION]     = { wuss__icon_draw_radio_option, 0 },
+  [wuss_ICON_TYPE_BITMAP]     = { wuss__icon_draw_bitmap,       0 },
+  [wuss_ICON_TYPE_MENU_ENTRY] = { wuss__icon_draw_menu_entry,   0 },
+  [wuss_ICON_TYPE_RULE]       = { wuss__icon_draw_rule,         0 },
+  [wuss_ICON_TYPE_SLIDER]     = { wuss__icon_draw_slider,       0 },
+  [wuss_ICON_TYPE_WRITABLE]   = { wuss__icon_draw_writable,     0 },
+  [wuss_ICON_TYPE_DISPLAY]    = { wuss__icon_draw_label,        0 },
+  [wuss_ICON_TYPE_NUMBER]     = { wuss__icon_draw_label,        1 },
+  [wuss_ICON_TYPE_DRAGGABLE]  = { wuss__icon_draw_label,        1 }
+};
+
+/* ----------------------------------------------------------------------- */
+
 void wuss__icon_draw(wuss_t              *wuss,
                      const wuss_window_t *window,
                      const wuss_icon_t   *icon,
@@ -680,7 +788,6 @@ void wuss__icon_draw(wuss_t              *wuss,
 {
   const wuss_icon_spec_t *spec = &icon->spec;
   icon_draw_ctx_t         c;
-  int                     fontidx;
 
   if (spec->flags & wuss_ICON_FLAGS_HIDDEN)
     return;
@@ -695,12 +802,9 @@ void wuss__icon_draw(wuss_t              *wuss,
   c.scr    = wuss->scr;
   c.icon   = icon;
   c.fg     = wuss->palette[spec->fg];
+  c.origin = POINT(content->x0 - scroll.x, content->y0 - scroll.y);
 
-  /* pick the icon's requested weight; fall back to the system font */
-  fontidx = wuss_ICON_FONT_OF(spec->flags);
-  c.font  = wuss->fonts.fonts[fontidx];
-  if (c.font == NULL)
-    c.font = wuss->fonts.fonts[0];
+  c.font = wuss__icon_font(wuss, icon);
 
   c.have_font = (c.font != NULL && spec->text[0] != '\0');
   if (c.have_font)
@@ -711,52 +815,8 @@ void wuss__icon_draw(wuss_t              *wuss,
     c.font_ascent = 0;
   }
 
-  switch (spec->type)
-  {
-  case wuss_ICON_TYPE_PATTERN:
-    wuss__icon_draw_pattern(&c, content, scroll);
-    break;
+  assert((unsigned) spec->type < wuss__ICON_TYPE_COUNT);
+  assert(wuss__icon_types[spec->type].draw != NULL);
 
-  case wuss_ICON_TYPE_LABEL:
-    wuss__icon_draw_label(&c);
-    break;
-
-  case wuss_ICON_TYPE_FRAME:
-    wuss__icon_draw_frame(&c);
-    break;
-
-  case wuss_ICON_TYPE_ACTION:
-    wuss__icon_draw_button(&c);
-    break;
-
-  case wuss_ICON_TYPE_RADIO:
-  case wuss_ICON_TYPE_OPTION:
-    wuss__icon_draw_radio_option(&c);
-    break;
-
-  case wuss_ICON_TYPE_BITMAP:
-    wuss__icon_draw_bitmap(&c);
-    break;
-
-  case wuss_ICON_TYPE_MENU_ENTRY:
-    wuss__icon_draw_menu_entry(&c);
-    break;
-
-  case wuss_ICON_TYPE_RULE:
-    wuss__icon_draw_rule(&c);
-    break;
-
-  case wuss_ICON_TYPE_SLIDER:
-    wuss__icon_draw_slider(&c);
-    break;
-
-  /* reserved types with no renderer yet: fall back to a plain label */
-  case wuss_ICON_TYPE_DISPLAY:
-  case wuss_ICON_TYPE_WRITABLE:
-  case wuss_ICON_TYPE_NUMBER:
-  case wuss_ICON_TYPE_STRING_SET:
-  case wuss_ICON_TYPE_DRAGGABLE:
-    wuss__icon_draw_label(&c);
-    break;
-  }
+  wuss__icon_types[spec->type].draw(&c);
 }

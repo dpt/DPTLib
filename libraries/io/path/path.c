@@ -8,61 +8,47 @@
 #include "base/utils.h"
 #include "io/path.h"
 
-const char *path_join_leafname(const char *leaf, const char *ext)
+const char *pathf(const char *fmt, ...)
 {
   static char buf[DPTLIB_MAXPATH];
 
-  assert(leaf);
-  assert(ext);
+  va_list     args;
+
+  assert(fmt);
+
+  va_start(args, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, args);
+  va_end(args);
 
 #ifdef __riscos
 
-  /* No dotted extension in a RISC OS leafname -- file type is separate
-   * filesystem metadata, set with OS_File 18 (Set_Type), never part of the
-   * pathname string -- so there is nothing to append. */
-  NOT_USED(ext);
-
-  snprintf(buf, sizeof(buf), "%s", leaf);
-
-#else
-
-  snprintf(buf, sizeof(buf), "%s.%s", leaf, ext);
-
-#endif
-
-  return buf;
-}
-
-const char *path_join_filename(const char *root, int nbranches, ...)
-{
-  static char buf[DPTLIB_MAXPATH];
-
-  const char *sep =
-#ifdef __riscos
-    ".";
-#else
-    "/";
-#endif
-  va_list args;
-  size_t  used;
-  int     rc;
-
-  assert(root);
-  assert(nbranches < 1000);
-
-  va_start(args, nbranches);
-
-  rc = snprintf(buf, sizeof(buf), "%s", root);
-  used = (rc < 0) ? sizeof(buf) : MIN((size_t) rc, sizeof(buf) - 1);
-
-  while (nbranches-- && used < sizeof(buf) - 1)
+  /* Strip a dotted extension from the final path component only -- RISC OS
+   * has no extension in the string at all, so translating mid-path '/'
+   * separators to '.' below would otherwise leave it looking like one more
+   * directory level.
+   *
+   * No '/' at all means there is no Unix-style leaf to strip: the string may
+   * already be a native path, where '.' is the directory separator, so it is
+   * left alone. */
   {
-    rc = snprintf(buf + used, sizeof(buf) - used, "%s%s",
-                  sep, va_arg(args, const char *));
-    used += (rc < 0) ? 0 : MIN((size_t) rc, sizeof(buf) - used - 1);
+    char *leaf;
+    char *dot;
+    char *p;
+
+    leaf = strrchr(buf, '/');
+    if (leaf != NULL)
+    {
+      dot = strrchr(leaf + 1, '.');
+      if (dot != NULL)
+        *dot = '\0';
+    }
+
+    for (p = buf; *p != '\0'; p++)
+      if (*p == '/')
+        *p = '.';
   }
 
-  va_end(args);
+#endif
 
   return buf;
 }

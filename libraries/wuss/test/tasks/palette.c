@@ -22,13 +22,15 @@
 #include "palette.h"
 
 #define PALETTE_HEX_EXT     ".hex"
-#define PALETTE_NCOLOURS    16 /* one colour_t[] row per *.hex file; the
-                                * system palette wuss_create was given is
-                                * fixed at this length */
+#define PALETTE_NCOLOURS    wuss_SYSTEM_PALETTE_LENGTH /* one colour_t[] row
+                                * per *.hex file; the system palette
+                                * wuss_create was given is fixed at this
+                                * length */
 
-/* index of the "Invert" row in the picker menu, after one row per *.hex
- * file and the dashed rule above it */
-#define PALETTE_MENU_INVERT_INDEX(pc) ((pc)->nnames)
+/* indices of the top-level menu's fixed rows */
+#define PALETTE_MENU_INFO_INDEX    0
+#define PALETTE_MENU_LOAD_INDEX    1
+#define PALETTE_MENU_INVERT_INDEX  2
 
 /* ----------------------------------------------------------------------- */
 /* Parse a *.hex file: one "rrggbb" line per colour, no leading '#'. Fails
@@ -40,19 +42,15 @@ result_t palette_load_hex(const char *resources,
                           const char *name,
                           colour_t   *out)
 {
-  const char *leaf;
   const char *path;
-  char        pathbuf[DPTLIB_MAXPATH];
   FILE       *fp;
   char        line[16];
   int         i;
   unsigned    r, g, b;
 
-  leaf = path_join_leafname(name, "hex");
-  path = path_join_filename(resources, 3, "resources", "palettes", leaf);
-  strcpy(pathbuf, path); /* path_join_filename's buffer is reused by fopen */
+  path = pathf("%s/resources/palettes/%s.hex", resources, name);
 
-  fp = fopen(pathbuf, "r");
+  fp = fopen(path, "r");
   if (fp == NULL)
     return result_FILE_NOT_FOUND;
 
@@ -80,7 +78,6 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   wuss_task_desc_t delegate_desc;
   const char      *resources;
   const char      *dir;
-  char             dirbuf[DPTLIB_MAXPATH];
   const colour_t  *current;
   int              ncurrent;
   int              i;
@@ -95,9 +92,8 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   task->selected  = 0;
 
   resources = wuss_get_resources(wuss);
-  dir       = path_join_filename(resources, 2, "resources", "palettes");
-  strcpy(dirbuf, dir); /* path_join_filename's buffer is reused by the scan */
-  namelist_scan(dirbuf, PALETTE_HEX_EXT, task->names[0],
+  dir       = pathf("%s/resources/palettes", resources);
+  namelist_scan(dir, PALETTE_HEX_EXT, task->names[0],
                 sizeof(task->names[0]), PALETTE_MAX_FILES, 1 /* sorted */,
                 &task->nnames);
 
@@ -121,17 +117,21 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   /* built once; ticks are refreshed from task->selected/invert on each open */
   for (i = 0; i < task->nnames; i++)
   {
-    task->menu_items[i].text    = task->names[i];
-    task->menu_items[i].submenu = NULL;
-    task->menu_items[i].window  = NULL;
+    WUSS_MENU_ITEM(task->load_items, i, task->names[i],
+                  wuss_MENU_ITEM_NONE);
   }
-  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].text    = "Invert";
-  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].submenu = NULL;
-  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].window  = NULL;
-  task->menu_items[PALETTE_MENU_INVERT_INDEX(task)].flags   = wuss_MENU_ITEM_DASHED;
-  task->menu.title  = "Palette";
-  task->menu.items  = task->menu_items;
-  task->menu.nitems = task->nnames + 1;
+  WUSS_MENU_TITLE(task->load_menu, "Load", task->load_items, task->nnames);
+
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, PALETTE_MENU_INFO_INDEX, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in
+                                * palette_menu_open */
+  WUSS_MENU_ITEM_MENU(task->menu_items, PALETTE_MENU_LOAD_INDEX, "Load",
+                      wuss_MENU_ITEM_NONE, &task->load_menu);
+  WUSS_MENU_ITEM(task->menu_items, PALETTE_MENU_INVERT_INDEX,
+                "Invert", wuss_MENU_ITEM_NONE);
+  WUSS_MENU_TITLE(task->menu, "Palette", task->menu_items, 3);
 
   /* backdrop for any rounding gap around the grid */
   delegate_desc.handle    = palette_handle;
@@ -184,6 +184,7 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
 
 void palette_destroy(palette_task_t *task)
 {
+  wuss_menu_close(task->menu_handle);
   free(task);
 }
 
@@ -299,11 +300,23 @@ static result_t palette_redraw_screen(palette_task_t     *pc,
  * touches the TICKED bit. */
 static result_t palette_menu_open(palette_task_t *pc)
 {
+  static const wuss_proginfo_desc_t desc =
+  {
+    "Palette",
+    "Desktop and screen palette grid",
+    "(c) DPTLib contributors",
+    "1.0 (" __DATE__ ")"
+  };
+
   unsigned int ticks;
 
-  ticks = 1u << pc->selected;
-  if (pc->invert)
-    ticks |= 1u << PALETTE_MENU_INVERT_INDEX(pc);
+  wuss_proginfo_set_desc(&desc);
+  pc->menu_items[PALETTE_MENU_INFO_INDEX].window =
+    wuss_proginfo_window(pc->delegate);
+
+  wuss_menu_tick_exclusive(&pc->load_menu, pc->selected);
+
+  ticks = pc->invert ? 1u << PALETTE_MENU_INVERT_INDEX : 0;
 
   return wuss_menu_open_ticked(pc->delegate, &pc->menu, ticks,
                                wuss_get_pointer(pc->wuss), &pc->menu_handle);
@@ -338,28 +351,27 @@ static result_t palette_menu_select(palette_task_t     *pc,
   colour_t loaded[PALETTE_NCOLOURS];
   int      i;
 
-  if (event->data.menu_select.menu != &pc->menu)
-    return result_OK;
-
   index = event->data.menu_select.index;
 
-  if (index == PALETTE_MENU_INVERT_INDEX(pc))
+  if (event->data.menu_select.menu == &pc->menu &&
+      index == PALETTE_MENU_INVERT_INDEX)
   {
     pc->invert = !pc->invert;
     if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
       wuss_menu_tick_item_live(pc->menu_handle, &pc->menu, index, pc->invert);
   }
-  else if (index >= 0 && index < pc->nnames)
+  else if (event->data.menu_select.menu == &pc->load_menu &&
+          index >= 0 && index < pc->nnames)
   {
     old          = pc->selected;
     pc->selected = index;
     pc->invert   = false;
     if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
     {
-      wuss_menu_tick_item_live(pc->menu_handle, &pc->menu, old, 0);
-      wuss_menu_tick_item_live(pc->menu_handle, &pc->menu, index, 1);
+      wuss_menu_tick_item_live(pc->menu_handle, &pc->load_menu, old, 0);
+      wuss_menu_tick_item_live(pc->menu_handle, &pc->load_menu, index, 1);
       wuss_menu_tick_item_live(pc->menu_handle, &pc->menu,
-                               PALETTE_MENU_INVERT_INDEX(pc), 0);
+                               PALETTE_MENU_INVERT_INDEX, 0);
     }
   }
   else
@@ -403,6 +415,9 @@ result_t palette_handle(wuss_window_t      *window,
     return palette_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
+    if (window != pc->window && window != pc->window2)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
     return palette_click(task_data, event);
 
   case wuss_EVENT_MENU_SELECT:
@@ -411,6 +426,22 @@ result_t palette_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_CLOSED:
     pc->menu_handle = NULL; /* wuss closed the chain under us */
     return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == pc->menu_items[PALETTE_MENU_INFO_INDEX].window)
+      rc = wuss_proginfo_handle_pre_show();
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_CLOSE:
     if (window == pc->window2)

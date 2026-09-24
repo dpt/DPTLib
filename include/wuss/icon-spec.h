@@ -21,6 +21,8 @@ extern "C"
 {
 #endif
 
+#include <stddef.h>
+
 #include "base/result.h"
 #include "geom/box.h"
 
@@ -30,6 +32,10 @@ extern "C"
 #ifdef WUSS_ICONS
 
 /* ----------------------------------------------------------------------- */
+
+/** Minimum buf_size to pass to \ref wuss_icon_spec_slider_row: ample for
+ *  any int plus a short unit suffix in fmt. */
+#define WUSS_SLIDER_ROW_BUF 32
 
 /**
  * A slider paired with a label that echoes its current value, the recurring
@@ -69,11 +75,12 @@ wuss_slider_row_t;
  * on the two created icons afterwards to get a usable \ref
  * wuss_slider_row_t.
  *
+ * Drawn with wuss_COLOUR_BLACK groove/fill and text.
+ *
  * \param[out] slider_spec   Spec to fill as the slider; overwritten.
  * \param[out] value_spec    Spec to fill as the value label; overwritten.
  * \param[in]  slider_bbox   Slider's bounding box.
  * \param[in]  value_bbox    Value label's bounding box.
- * \param[in]  fg            Groove/fill and text colour.
  * \param[in]  orientation   Groove direction.
  * \param[in]  min           Value at the groove's start.
  * \param[in]  max           Value at the groove's end.
@@ -84,18 +91,25 @@ wuss_slider_row_t;
  *                           outlive the row.
  * \param[in]  step          Snapping step passed through to \ref
  *                           wuss_slider_row_bind; 0 for none.
+ * \param[out] buf           Caller-owned storage for the formatted value
+ *                           label text; must outlive the following \ref
+ *                           wuss_icon_create_array call, since \c
+ *                           value_spec->text borrows it until then. At least
+ *                           \ref WUSS_SLIDER_ROW_BUF bytes.
+ * \param[in]  buf_size      Size of \p buf in bytes.
  */
 void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
                                wuss_icon_spec_t         *value_spec,
                                box_t                     slider_bbox,
                                box_t                     value_bbox,
-                               wuss_colour_t             fg,
                                wuss_slider_orientation_t orientation,
                                int                       min,
                                int                       max,
                                int                       default_value,
                                const char               *fmt,
-                               int                       step);
+                               int                       step,
+                               char                     *buf,
+                               size_t                    buf_size);
 
 /**
  * Bind a \ref wuss_slider_row_t to the icons \ref wuss_icon_create_array
@@ -159,28 +173,70 @@ int wuss_slider_row_event(wuss_window_t           *window,
 /**
  * Fill \p spec as a wuss_ICON_TYPE_LABEL.
  *
+ * Drawn with wuss_COLOUR_BLACK text.
+ *
  * \param[out] spec        Spec to fill; any prior contents are overwritten.
  * \param[in]  bbox         Bounding box.
  * \param[in]  text         Label text, borrowed until
  *                          wuss_icon_create(_array) copies it.
- * \param[in]  fg           Text colour.
- * \param[in]  justify_right Non-zero to right-justify
- *                           (wuss_ICON_FLAGS_JUSTIFY_RIGHT) instead of the
- *                           default left justification.
+ * \param[in]  flags        wuss_icon_flags_t bits, e.g.
+ *                          wuss_ICON_FLAGS_JUSTIFY_RIGHT or
+ *                          wuss_ICON_FLAGS_JUSTIFY_CENTRE; 0 for the default
+ *                          left justification.
  */
 void wuss_icon_spec_label(wuss_icon_spec_t *spec,
                           box_t             bbox,
                           const char       *text,
-                          wuss_colour_t     fg,
-                          int               justify_right);
+                          int               flags);
+
+/**
+ * Fill \p spec as a wuss_ICON_TYPE_LABEL with a wuss_ICON_BORDER_GROOVE
+ * border -- the RISC OS "display field" look for a read-only value, e.g. a
+ * label:value info dialogue row (see wuss/component/info.c).
+ *
+ * Drawn with wuss_COLOUR_BLACK text.
+ *
+ * \param[out] spec  Spec to fill; any prior contents are overwritten.
+ * \param[in]  bbox  Bounding box.
+ * \param[in]  text  Value text, borrowed until wuss_icon_create(_array)
+ *                   copies it.
+ * \param[in]  flags wuss_icon_flags_t bits, e.g.
+ *                   wuss_ICON_FLAGS_JUSTIFY_RIGHT or
+ *                   wuss_ICON_FLAGS_JUSTIFY_CENTRE; 0 for the default left
+ *                   justification.
+ */
+void wuss_icon_spec_display(wuss_icon_spec_t *spec,
+                            box_t             bbox,
+                            const char       *text,
+                            int               flags);
+
+/**
+ * Fill \p spec as a wuss_ICON_TYPE_WRITABLE.
+ *
+ * Drawn with wuss_COLOUR_BLACK text and outline on wuss_COLOUR_WHITE.
+ *
+ * \param[out] spec  Spec to fill; any prior contents are overwritten.
+ * \param[in]  bbox  Bounding box.
+ * \param[in]  text  Initial text, borrowed until wuss_icon_create(_array)
+ *                   copies it; truncated to fit. NULL means "".
+ * \param[in]  size  Buffer size in bytes, including the terminator.
+ * \param[in]  flags wuss_icon_flags_t bits, e.g. wuss_ICON_FONT(n); 0 for
+ *                   none.
+ */
+void wuss_icon_spec_writable(wuss_icon_spec_t *spec,
+                             box_t             bbox,
+                             const char       *text,
+                             int               size,
+                             int               flags);
 
 /**
  * Fill \p spec as a wuss_ICON_TYPE_SLIDER.
  *
+ * Drawn with wuss_COLOUR_BLACK groove/fill.
+ *
  * \param[out] spec          Spec to fill; any prior contents are
  *                           overwritten.
  * \param[in]  bbox          Bounding box.
- * \param[in]  fg            Groove/fill colour.
  * \param[in]  orientation   Groove direction.
  * \param[in]  min           Value at the groove's start.
  * \param[in]  max           Value at the groove's end.
@@ -188,7 +244,6 @@ void wuss_icon_spec_label(wuss_icon_spec_t *spec,
  */
 void wuss_icon_spec_slider(wuss_icon_spec_t         *spec,
                            box_t                     bbox,
-                           wuss_colour_t             fg,
                            wuss_slider_orientation_t orientation,
                            int                       min,
                            int                       max,
@@ -197,12 +252,12 @@ void wuss_icon_spec_slider(wuss_icon_spec_t         *spec,
 /**
  * Fill \p spec as a wuss_ICON_TYPE_ACTION button.
  *
+ * Drawn with wuss_COLOUR_BLACK text on a wuss_COLOUR_WINDOW fill.
+ *
  * \param[out] spec    Spec to fill; any prior contents are overwritten.
  * \param[in]  bbox    Bounding box.
  * \param[in]  text    Button text, borrowed until wuss_icon_create(_array)
  *                     copies it.
- * \param[in]  fg      Text colour.
- * \param[in]  bg      Fill colour.
  * \param[in]  is_default Non-zero to draw as the dialogue's default action
  *                        (wuss_ICON_FLAGS_DEFAULT) instead of an ordinary
  *                        button.
@@ -210,9 +265,55 @@ void wuss_icon_spec_slider(wuss_icon_spec_t         *spec,
 void wuss_icon_spec_action(wuss_icon_spec_t *spec,
                            box_t             bbox,
                            const char       *text,
-                           wuss_colour_t     fg,
-                           wuss_colour_t     bg,
                            int               is_default);
+
+/**
+ * Fill \p spec as a wuss_ICON_TYPE_FRAME.
+ *
+ * Drawn with wuss_COLOUR_BLACK text/rule on no background.
+ *
+ * \param[out] spec Spec to fill; any prior contents are overwritten.
+ * \param[in]  bbox Bounding box.
+ * \param[in]  text Caption text, borrowed until wuss_icon_create(_array)
+ *                  copies it.
+ */
+void wuss_icon_spec_frame(wuss_icon_spec_t *spec,
+                          box_t             bbox,
+                          const char       *text);
+
+/**
+ * Fill \p spec as a wuss_ICON_TYPE_OPTION.
+ *
+ * Drawn with wuss_COLOUR_BLACK text on no background. The initial selected
+ * state is set separately with wuss_icon_set_selected once the icon is
+ * created.
+ *
+ * \param[out] spec Spec to fill; any prior contents are overwritten.
+ * \param[in]  bbox Bounding box.
+ * \param[in]  text Label text, borrowed until wuss_icon_create(_array)
+ *                  copies it.
+ */
+void wuss_icon_spec_option(wuss_icon_spec_t *spec,
+                           box_t             bbox,
+                           const char       *text);
+
+/**
+ * Fill \p spec as a wuss_ICON_TYPE_RADIO.
+ *
+ * Drawn with wuss_COLOUR_BLACK text on no background. The initial selected
+ * state is set separately with wuss_icon_set_selected once the icon is
+ * created.
+ *
+ * \param[out] spec  Spec to fill; any prior contents are overwritten.
+ * \param[in]  bbox  Bounding box.
+ * \param[in]  text  Label text, borrowed until wuss_icon_create(_array)
+ *                   copies it.
+ * \param[in]  group Exclusive-selection group; 0 for none.
+ */
+void wuss_icon_spec_radio(wuss_icon_spec_t *spec,
+                          box_t             bbox,
+                          const char       *text,
+                          int               group);
 
 #endif /* WUSS_ICONS */
 

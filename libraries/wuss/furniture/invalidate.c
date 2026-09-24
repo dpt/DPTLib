@@ -6,11 +6,11 @@
  * than window->visible -- lets a caller that's just resized the window
  * (toggle-size) also mark the *old* furniture strips dirty, since a blit
  * that reused the old pixels leaves stale titlebar/scrollbar/outline
- * pixels sitting wherever those strips used to be. */
-/* The dirty rects marked here -- the titlebar strip, the right carve column
- * (full height), the bottom carve row (full width) and the four outline edges
- * -- already union to every pixel of "visible", so they also cover the grown
- * furniture hit boxes (furniture/hit-test.c): nothing extra to invalidate. */
+ * pixels sitting wherever those strips used to be. The dirty rects marked
+ * here -- the titlebar strip, the right carve column (full height), the
+ * bottom carve row (full width) and the four outline edges -- already union
+ * to every pixel of "visible", so they also cover the grown furniture hit
+ * boxes (furniture/hit-test.c): nothing extra to invalidate. */
 void wuss__furniture_invalidate_for(wuss_window_t *window,
                                     const box_t   *visible)
 {
@@ -19,7 +19,7 @@ void wuss__furniture_invalidate_for(wuss_window_t *window,
 
   /* Every geometry change routes through here, so it is also the one place
    * the cached furniture layout is dropped. */
-  window->furniture_layout.valid = 0;
+  window->furniture_layout.flags &= ~wuss_FURNITURE_LAYOUT__VALID;
 
   outline_px = wuss__outline_px(window);
   /* Ask for the same carve the layout uses rather than reading the

@@ -121,7 +121,8 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
      * on screen with nothing left to repaint them. wuss__filter_settled caps
      * at WUSS_MAX_INVALIDATE_PIECES the same way, so treat a full result as
      * a possible overflow too. */
-    nclean            = wuss__clip_to_visible(window, &before_content, clean);
+    nclean            = wuss__clip_to_visible(window, &before_content, clean,
+                                              0);
     nsrc              = wuss__filter_settled(clean, nclean, stale, nstale);
     overflow          = (nsrc == WUSS_MAX_INVALIDATE_PIECES);
 
@@ -154,7 +155,7 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
        * clipped to this window's visible area: parts that were behind an
        * occluder still show the occluder's own correct pixels, so leaving
        * them out keeps the resize from redrawing the occluding window. */
-      ndirty = wuss__subtract_boxes(&content, copied, ncopied, dirty);
+      ndirty = wuss__subtract_boxes(&content, copied, ncopied, dirty, 1);
       for (i = 0; i < ndirty; i++)
         wuss__invalidate_clipped(window, &dirty[i]);
     }

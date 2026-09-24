@@ -6,6 +6,7 @@
 #include "geom/box.h"
 #include "geom/point.h"
 
+#include "framebuf/bmfont.h"
 #include "framebuf/screen.h"
 
 #include "wuss/wuss.h"
@@ -36,7 +37,31 @@ struct wuss_icon
   int               value;   /* wuss_ICON_TYPE_SLIDER: current value, in
                               * [spec.u.slider.min,max]; spec.u.slider.default_value
                               * is creation input only, never updated */
+  int               text_scroll; /* wuss_ICON_TYPE_WRITABLE: pixels the text
+                                  * is scrolled left to keep the caret in
+                                  * view */
 };
+
+/* A writable's text sits this far inside its bbox: the 1px outline plus a
+ * 3px gap. */
+#define WUSS_WRITABLE_INSET 4
+
+/* Per-edge widths (px) of the label borders. A bevel is one
+ * screen_draw_bevel_edge ring; DIVIDER is two, ACTION three (outset, accent
+ * moat, inset). */
+#define WUSS_BEVEL_WIDTH          2
+#define WUSS_PLAIN_BORDER_WIDTH   1
+#define WUSS_DIVIDER_BORDER_WIDTH (2 * WUSS_BEVEL_WIDTH)
+#define WUSS_ACTION_BORDER_WIDTH  (3 * WUSS_BEVEL_WIDTH)
+
+/* Clear space (px) between a bordered label's border and its justified
+ * text; an unbordered label's text gets WUSS_LABEL_TEXT_PAD instead. */
+#define WUSS_LABEL_TEXT_GAP 2
+#define WUSS_LABEL_TEXT_PAD 1
+
+/* The font an icon's text is drawn with: its requested slot, falling back to
+ * the system font. NULL when wuss has no fonts. */
+bmfont_t *wuss__icon_font(const wuss_t *wuss, const wuss_icon_t *icon);
 
 static inline int wuss__icon_pressed(const wuss_icon_t *icon)
 {
@@ -46,6 +71,20 @@ static inline int wuss__icon_pressed(const wuss_icon_t *icon)
 static inline int wuss__icon_selected(const wuss_icon_t *icon)
 {
   return (icon->state & wuss_ICON_STATE_SELECTED) != 0;
+}
+
+/* The icon-set sprite name for a RADIO (radon/radoff) or OPTION
+ * (opton/optoff) glyph in the given selected state. */
+static inline const char *wuss__icon_radio_option_name(wuss_icon_type_t type,
+                                                       int              selected)
+{
+  static const char *const names[2][2] =
+  {
+    { "optoff", "opton" }, /* OPTION */
+    { "radoff", "radon" }, /* RADIO  */
+  };
+
+  return names[type == wuss_ICON_TYPE_RADIO][selected != 0];
 }
 
 static inline int wuss__icon_hovered(const wuss_icon_t *icon)
@@ -153,6 +192,21 @@ result_t wuss__icon_from_spec(const wuss_t           *wuss,
                               const wuss_icon_spec_t *spec,
                               wuss_icon_t            *out);
 
+/* Number of wuss_icon_type_t values; sizes the per-type table. */
+#define wuss__ICON_TYPE_COUNT (wuss_ICON_TYPE_DRAGGABLE + 1)
+
+struct icon_draw_ctx; /* private to icon/draw.c */
+
+/* Per-icon-type behaviour, indexed by wuss_icon_type_t. */
+typedef struct wuss__icon_type_info
+{
+  void (*draw)(const struct icon_draw_ctx *c);
+  int   reserved; /* accepted but not implemented yet */
+}
+wuss__icon_type_info_t;
+
+extern const wuss__icon_type_info_t wuss__icon_types[wuss__ICON_TYPE_COUNT];
+
 /* Draw one icon. Called from redraw_window with wuss->scr->clip already set to
  * the surviving content piece and the background already filled. "content" is
  * the window's full (unclipped) content box, screen space; "scroll" is
@@ -167,6 +221,33 @@ void wuss__icon_draw(wuss_t              *wuss,
  * in virtual document space. Returns the topmost (last-created wins) match, or
  * NULL. Label, hidden and disabled icons are skipped. */
 wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point);
+
+/* wuss_ICON_TYPE_WRITABLE editing (icon/writable.c). */
+
+/* Move the caret to byte "index" (clamped to the text) of writable "icon" on
+ * "window", scrolling the text to keep it in view and invalidating whichever
+ * icons changed. Assumes "window" already holds the focus. */
+void wuss__writable_place_caret(wuss_window_t *window,
+                                wuss_icon_t   *icon,
+                                int            index);
+
+/* The caret index nearest document-space x "doc_x" in writable "icon". */
+int wuss__writable_index_for_x(const wuss_t      *wuss,
+                               const wuss_icon_t *icon,
+                               int                doc_x);
+
+/* Copy "text" into a writable's "size"-byte buffer "buf", truncating. */
+void wuss__writable_copy(char *buf, int size, const char *text);
+
+/* Remove the caret, invalidating its icon. No-op when there is none. */
+void wuss__caret_clear(wuss_t *wuss);
+
+/* Offer a key to the caret icon. Sets *claimed and returns the result of any
+ * wuss_EVENT_ICON delivered; a key it does not use leaves *claimed 0. */
+result_t wuss__writable_key(wuss_t              *wuss,
+                            int                  code,
+                            wuss_key_modifiers_t modifiers,
+                            int                 *claimed);
 
 /* Free a window's whole icon store (text + nodes + array). Teardown only: does
  * not invalidate or swap-remove. */

@@ -4,16 +4,33 @@ Ordered by dependency. Each layer builds on the ones above it.
 Items marked (blocks: X) are prerequisites for X.
 
 
-Add a panic redraw indicator?
-
-Furniture clicks / scrolls still invalidate the entire furniture set - fix.
-  (window move fixed: layout cache is now translated in place, not rebuilt)
 
 Fast scrolling can invalidate areas and fail to copy the expected known good screen content.
  -- Tried and tried to get Claude to fix but no good.
 
-Too much slider boilerplate -- need to make label+slider+value a standard component.
-It also has the client do the rounding/snapping which isn't ideal.
+Scrolled (which app?) then expanded the window - got a full redraw of the window.
+
+Policy? Windows hidden by default (unless a flag is set)
+Wuss lets hidden windows exist in its window stack which complicates the code a bit. RISC OS allows hidden (closed) windows by putting them "behind the backwindow".
+
+Keyboard input
+- bmfont caret: done (bmfont_find_caret, bmfont_caret_x, bmfont_draw_caret)
+
+Large fonts for titles, italic font, ...
+
+SDL bug? Random mouse focus issue that stops us receiving initial clicks.
+
+Menus which could have ticks AND colour swatches
+
+formatting: Balanced braces rule
+
+nick Melkhior's mansion font
+
+Pop-to-front of 'running' apps
+
+Text alignment with window border failed to convince me. I think it's still off by 1px and the Wuss measurement was bodged.
+
+
 
 
 LAYER 0 - BUGS (fix before building on top)
@@ -30,14 +47,13 @@ LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
 - UTF-8 everywhere
     blocks: text abstraction, window/menu templates
 - Icon type taxonomy
-- Window layout / constraint system / stacking primitives?
 - I still think there's over-draw when toggling window sizes.
 
 
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
 
-- How to get bold etc. into the system? How to select symbols?
-- More symbols
+- How to get bold etc. into the system (consistently)? How to select symbols?
+- More symbols? For what elements?
 
 
 LAYER 3 - SPRITES (needs masks)
@@ -46,7 +62,6 @@ LAYER 3 - SPRITES (needs masks)
 - Masked sprites/bitmaps. Covered by RLE work?
 - Sprite scaling
 - Import Kare style icons
-- Sprites noticably brighter / colour matching needs work
 - App sprites
 
 
@@ -56,14 +71,14 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
     blocks: Furniture icons toggling state, min window size
 - Minimum window size based on furniture requested
   (later: squash-able furniture)
-- Furniture icons toggling state when clicked
 - Scroll: auto repeat on scroll buttons
 - Snap to edges (outline-click bug fixed; unblocked)
 - Dragging against window edge shuffles window in opposite direction
   (outline-click bug fixed; unblocked)
 - 2D Adjust window scroll drag
-- Input focus, text entry, furniture tinting
+- Text entry (writable icons, caret); input focus and furniture tinting done
 - Furniture colour selection needs improvements (e.g. losing menu readability when palette changed)
+- Adjust click on a menu should pop to front once the action is complete
 
 
 LAYER 5 - DRAG & TEMPLATES (needs sprites, config-after-the-fact)
@@ -80,23 +95,17 @@ LAYER 6 - MULTI-TASK (needs stable windows, templates)
     blocks: Desktop cohort
 - Backdrop: register events, or a task that covers it like Pinboard
 - Icon bar - a separate task or module?
-- Test submenu dialogues
-- Pull in dialogue abstraction from app engine?
-- Dynamic submenus: a pre-open event (like RISC OS's MenuWarning) fired
-  before a submenu-style item opens, so a task can retitle/retarget a
-  shared submenu instance first. Currently only item->window leaves get
-  a pre-open hook (wuss_EVENT_PRE_SHOW); item->submenu leaves have none.
-  (see saturn.c's fg/bg colourmenu split, kept as two instances for this reason)
 
 
 LAYER 7 - APPS & POLISH (needs most of the above)
 
 - Post-Its app with explanatory text for newbies
+  (Markdown rendering done in the Text task sample; reuse from there)
 - Have a Paint app as a target
 - Desktop cohort: Filer, Task Manager, Palette Util
 - Colour Picker component
-- Proper desktop font
-- Support palette images
+- Proper desktop font (just iterate on existing one?)
+- Support paletted images
 - Greebling symmetry
 - 8x8 icon libraries - share the greeble code with other parts of wuss
 - Tiled fills (tile_1)
@@ -109,7 +118,7 @@ NO STRONG DEPS (do any time)
 - Generalise APIs (make more Wimp-like)
 - Fix coordinates to be exactly like Wimp/RO?
 - Set overall UI scale (like EIG values)
-- Window stacks (a-la nested wimp)
+- Window stacks (topwindow/mid-stack/backwindow a-la nested wimp)
 - Nested wimp type nesting
 - Automatic pane handling?
-- Stress test: moving windows in a circle a-la nested Wimp
+- Stress test: moving windows in a circle a-la nested Wimp [worth it?]

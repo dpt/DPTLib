@@ -13,27 +13,31 @@
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 #include "wuss/menu.h"
+#include "wuss/component/proginfo.h"
 
 #include "frontend.h"
 #include "tasks.h"
 
 #include "tasks/ball.h"
-#include "tasks/blank.h"
 #include "tasks/chars.h"
 #include "tasks/checker.h"
 #include "tasks/clock.h"
+#include "tasks/config.h"
 #include "tasks/curve.h"
+#include "tasks/display.h"
+#include "tasks/doughnut.h"
 #include "tasks/gradient.h"
 #include "tasks/greeble.h"
 #include "tasks/icons.h"
 #include "tasks/image.h"
+#include "tasks/keys.h"
 #include "tasks/lissajous.h"
 #include "tasks/minesweeper.h"
 #include "tasks/palette.h"
+#include "tasks/patterns.h"
 #include "tasks/porter-duff.h"
 #include "tasks/saturn.h"
 #include "tasks/sofa.h"
-#include "tasks/swatches.h"
 #include "tasks/text.h"
 
 /* ----------------------------------------------------------------------- */
@@ -73,7 +77,7 @@ static result_t spawn_task(const char *name, task_create_fn_t create)
 
   rc = create(g_tasks.wuss, NULL);
   if (rc != result_OK)
-    logf_error("wuss: %s_create failed, rc=0x%X (%s)", name, rc,
+    logf_error("wuss: %s create failed, rc=0x%X (%s)", name, rc,
                result_string(rc));
   return rc;
 }
@@ -88,11 +92,14 @@ typedef result_t (*task_spawn_fn_t)(void);
  * menu row index i -- keep each pair's tables in that order. Each category
  * menu is dispatched in task_handle_event by matching
  * event->data.menu_select.menu against the category's g_*_menu address. */
-static const struct
+typedef struct
 {
   const char      *name;
   task_create_fn_t create;
 }
+task_entry_t;
+
+static const task_entry_t
 g_games_tasks[] =
 {
   { "Ball",        (task_create_fn_t) ball_create        },
@@ -100,28 +107,33 @@ g_games_tasks[] =
 },
 g_tests_tasks[] =
 {
-  { "Checker",     (task_create_fn_t) checker_create     },
-  { "Curve",       (task_create_fn_t) curve_create       },
-  { "Greeble",     (task_create_fn_t) greeble_create     },
   { "Icons",       (task_create_fn_t) icons_create       },
+  { "Keys",        (task_create_fn_t) keys_create        },
+  { "Patterns",    (task_create_fn_t) patterns_create    },
   { "Porter-Duff", (task_create_fn_t) porter_duff_create },
-  { "Sofa",        (task_create_fn_t) sofa_create        },
   { "Text",        (task_create_fn_t) text_create        }
 },
 g_utilities_tasks[] =
 {
   { "Chars",       (task_create_fn_t) chars_create       },
-  { "Clock",       (task_create_fn_t) clock_create       },
-  { "Palette",     (task_create_fn_t) palette_create     },
-  { "Swatches",    (task_create_fn_t) swatches_create    }
+  { "Clock",       (task_create_fn_t) clock_create       }
 },
 g_visuals_tasks[] =
 {
-  { "Blank",       (task_create_fn_t) blank_create       },
+  { "Checker",     (task_create_fn_t) checker_create     },
+  { "Curve",       (task_create_fn_t) curve_create       },
+  { "Doughnut",    (task_create_fn_t) doughnut_create    },
   { "Gradient",    (task_create_fn_t) gradient_create    },
+  { "Greeble",     (task_create_fn_t) greeble_create     },
   { "Image",       (task_create_fn_t) image_create       },
   { "Lissajous",   (task_create_fn_t) lissajous_create   },
-  { "Saturn",      (task_create_fn_t) saturn_create      }
+  { "Saturn",      (task_create_fn_t) saturn_create      },
+  { "Sofa",        (task_create_fn_t) sofa_create        }
+},
+g_system_tasks[] =
+{
+  { "Display",     (task_create_fn_t) display_create     },
+  { "Palette",     (task_create_fn_t) palette_create     }
 };
 
 static const wuss_menu_item_t g_games_items[] =
@@ -132,30 +144,36 @@ static const wuss_menu_item_t g_games_items[] =
 
 static const wuss_menu_item_t g_tests_items[] =
 {
-  { "Checker",     wuss_MENU_ITEM_NONE, NULL },
-  { "Curve",       wuss_MENU_ITEM_NONE, NULL },
-  { "Greeble",     wuss_MENU_ITEM_NONE, NULL },
   { "Icons",       wuss_MENU_ITEM_NONE, NULL },
+  { "Keys",        wuss_MENU_ITEM_NONE, NULL },
+  { "Patterns",    wuss_MENU_ITEM_NONE, NULL },
   { "Porter-Duff", wuss_MENU_ITEM_NONE, NULL },
-  { "Sofa",        wuss_MENU_ITEM_NONE, NULL },
   { "Text",        wuss_MENU_ITEM_NONE, NULL }
 };
 
 static const wuss_menu_item_t g_utilities_items[] =
 {
   { "Chars",       wuss_MENU_ITEM_NONE, NULL },
-  { "Clock",       wuss_MENU_ITEM_NONE, NULL },
-  { "Palette",     wuss_MENU_ITEM_NONE, NULL },
-  { "Swatches",    wuss_MENU_ITEM_NONE, NULL }
+  { "Clock",       wuss_MENU_ITEM_NONE, NULL }
 };
 
 static const wuss_menu_item_t g_visuals_items[] =
 {
-  { "Blank",       wuss_MENU_ITEM_NONE, NULL },
+  { "Checker",     wuss_MENU_ITEM_NONE, NULL },
+  { "Curve",       wuss_MENU_ITEM_NONE, NULL },
+  { "Doughnut",    wuss_MENU_ITEM_NONE, NULL },
   { "Gradient",    wuss_MENU_ITEM_NONE, NULL },
+  { "Greeble",     wuss_MENU_ITEM_NONE, NULL },
   { "Image",       wuss_MENU_ITEM_NONE, NULL },
   { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
-  { "Saturn",      wuss_MENU_ITEM_NONE, NULL }
+  { "Saturn",      wuss_MENU_ITEM_NONE, NULL },
+  { "Sofa",        wuss_MENU_ITEM_NONE, NULL }
+};
+
+static const wuss_menu_item_t g_system_items[] =
+{
+  { "Display",     wuss_MENU_ITEM_NONE, NULL },
+  { "Palette",     wuss_MENU_ITEM_NONE, NULL }
 };
 
 static const wuss_menu_t g_games_menu =
@@ -163,9 +181,9 @@ static const wuss_menu_t g_games_menu =
   "Games", g_games_items, NELEMS(g_games_items)
 };
 
-static const wuss_menu_t g_tests_menu =
+static const wuss_menu_t g_visuals_menu =
 {
-  "Tests", g_tests_items, NELEMS(g_tests_items)
+  "Visuals", g_visuals_items, NELEMS(g_visuals_items)
 };
 
 static const wuss_menu_t g_utilities_menu =
@@ -173,9 +191,14 @@ static const wuss_menu_t g_utilities_menu =
   "Utilities", g_utilities_items, NELEMS(g_utilities_items)
 };
 
-static const wuss_menu_t g_visuals_menu =
+static const wuss_menu_t g_tests_menu =
 {
-  "Visuals", g_visuals_items, NELEMS(g_visuals_items)
+  "Tests", g_tests_items, NELEMS(g_tests_items)
+};
+
+static const wuss_menu_t g_system_menu =
+{
+  "System", g_system_items, NELEMS(g_system_items)
 };
 
 static result_t spawn_quit(void)
@@ -190,22 +213,31 @@ enum
 {
   TASK_ITEM_INFO,
   TASK_ITEM_GAMES,
-  TASK_ITEM_TESTS,
-  TASK_ITEM_UTILITIES,
   TASK_ITEM_VISUALS,
+  TASK_ITEM_UTILITIES,
+  TASK_ITEM_TESTS,
+  TASK_ITEM_SYSTEM,
+  TASK_ITEM_CONFIGURE,
   TASK_ITEM_QUIT
 };
 
-/* g_task_items' "Info" row's .window is filled in by tasks_open_launcher
- * (built from g.proginfo, which does not exist until run_wuss creates it) --
- * the table itself cannot name it at compile time. */
+static result_t spawn_configure(void)
+{
+  return spawn_task("Configure", (task_create_fn_t) config_create);
+}
+
+/* g_task_items' "Info" row's .window is filled in by tasks_open_launcher,
+ * retargeting the shared proginfo singleton at g_tasks.menu_task each time
+ * -- the table itself cannot name it at compile time. */
 static wuss_menu_item_t g_task_items[] =
 {
-  { "Info",      wuss_MENU_ITEM_NONE, NULL,               NULL },
+  { "Info",      wuss_MENU_ITEM_PRE_OPEN, NULL,           NULL },
   { "Games",     wuss_MENU_ITEM_NONE, &g_games_menu,      NULL },
-  { "Tests",     wuss_MENU_ITEM_NONE, &g_tests_menu,      NULL },
-  { "Utilities", wuss_MENU_ITEM_NONE, &g_utilities_menu,  NULL },
   { "Visuals",   wuss_MENU_ITEM_NONE, &g_visuals_menu,    NULL },
+  { "Utilities", wuss_MENU_ITEM_NONE, &g_utilities_menu,  NULL },
+  { "Tests",     wuss_MENU_ITEM_NONE, &g_tests_menu,      NULL },
+  { "System",    wuss_MENU_ITEM_NONE, &g_system_menu,     NULL },
+  { "Configure", wuss_MENU_ITEM_NONE, NULL,               NULL },
   { "Quit Wuss", wuss_MENU_ITEM_NONE, NULL,               NULL }
 };
 
@@ -213,9 +245,11 @@ static const task_spawn_fn_t g_task_spawn[] =
 {
   NULL,        /* "Info" -> wuss_menu_item_t.window leaf, no spawn */
   NULL,        /* "Games" -> submenu g_games_menu */
-  NULL,        /* "Tests" -> submenu g_tests_menu */
-  NULL,        /* "Utilities" -> submenu g_utilities_menu */
   NULL,        /* "Visuals" -> submenu g_visuals_menu */
+  NULL,        /* "Utilities" -> submenu g_utilities_menu */
+  NULL,        /* "Tests" -> submenu g_tests_menu */
+  NULL,        /* "System" -> submenu g_system_menu */
+  spawn_configure,
   spawn_quit
 };
 
@@ -264,9 +298,21 @@ result_t task_handle_event(wuss_window_t      *window,
 
   if (event->kind == wuss_EVENT_PRE_SHOW)
   {
-    if (window == wuss_proginfo_window(g_tasks.proginfo))
-      return wuss_proginfo_handle_pre_show(g_tasks.proginfo);
-    return result_OK;
+    result_t rc;
+
+    if (window == g_task_items[TASK_ITEM_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+
+    if (event->data.pre_show.handle == NULL)
+      return result_OK; /* plain window reveal, not a flagged menu leaf:
+                          * already proceeding by default */
+
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
   }
 
   if (event->kind != wuss_EVENT_MENU_SELECT)
@@ -286,6 +332,13 @@ result_t task_handle_event(wuss_window_t      *window,
   {
     if (index >= 0 && index < (int) NELEMS(g_tests_tasks))
       (void) spawn_task(g_tests_tasks[index].name, g_tests_tasks[index].create);
+    return result_OK;
+  }
+
+  if (menu == &g_system_menu)
+  {
+    if (index >= 0 && index < (int) NELEMS(g_system_tasks))
+      (void) spawn_task(g_system_tasks[index].name, g_system_tasks[index].create);
     return result_OK;
   }
 
@@ -317,7 +370,95 @@ result_t task_handle_event(wuss_window_t      *window,
 
 result_t tasks_open_launcher(point_t pos)
 {
-  g_task_items[TASK_ITEM_INFO].window = wuss_proginfo_window(g_tasks.proginfo);
+  static const wuss_proginfo_desc_t desc =
+  {
+    "Wuss demo",
+    "Window manager test environment",
+    "(c) DPTLib contributors",
+    "1.0 (" __DATE__ ")"
+  };
+
+  wuss_proginfo_set_desc(&desc);
+  g_task_items[TASK_ITEM_INFO].window = wuss_proginfo_window(g_tasks.menu_task);
 
   return wuss_menu_open(g_tasks.menu_task, &g_task_menu, pos, NULL);
+}
+
+/* tasks_spawn walks every category's table by name, regardless of which
+ * category a task lives in. */
+static const struct
+{
+  const task_entry_t *tasks;
+  int                  count;
+}
+g_task_categories[] =
+{
+  { g_games_tasks,     NELEMS(g_games_tasks)     },
+  { g_tests_tasks,     NELEMS(g_tests_tasks)     },
+  { g_system_tasks,    NELEMS(g_system_tasks)    },
+  { g_utilities_tasks, NELEMS(g_utilities_tasks) },
+  { g_visuals_tasks,   NELEMS(g_visuals_tasks)   }
+};
+
+/* Spawns every task in every category, in table order. */
+static void tasks_spawn_all(void)
+{
+  int c, i;
+
+  for (c = 0; c < (int) NELEMS(g_task_categories); c++)
+    for (i = 0; i < g_task_categories[c].count; i++)
+      (void) spawn_task(g_task_categories[c].tasks[i].name,
+                        g_task_categories[c].tasks[i].create);
+}
+
+/* Finds and spawns the single task named name (case-sensitive, matching the
+ * launcher menu's spelling) across every category. Returns false, having
+ * logged an error, if no category has a task by that name. */
+static bool tasks_spawn_one(const char *name)
+{
+  int c, i;
+
+  for (c = 0; c < (int) NELEMS(g_task_categories); c++)
+    for (i = 0; i < g_task_categories[c].count; i++)
+      if (strcmp(g_task_categories[c].tasks[i].name, name) == 0)
+      {
+        (void) spawn_task(name, g_task_categories[c].tasks[i].create);
+        return true;
+      }
+
+  logf_error("wuss: -tasks: no such task \"%s\"", name);
+  return false;
+}
+
+void tasks_spawn(const char *names)
+{
+  const char *p;
+
+  if (strcmp(names, "all") == 0)
+  {
+    tasks_spawn_all();
+    return;
+  }
+
+  p = names;
+  while (*p != '\0')
+  {
+    const char *comma;
+    size_t      len;
+    char        name[32];
+
+    comma = strchr(p, ',');
+    len   = comma ? (size_t) (comma - p) : strlen(p);
+    if (len >= sizeof(name))
+      len = sizeof(name) - 1;
+    memcpy(name, p, len);
+    name[len] = '\0';
+
+    if (name[0] != '\0')
+      (void) tasks_spawn_one(name);
+
+    p += len;
+    if (*p == ',')
+      p++;
+  }
 }

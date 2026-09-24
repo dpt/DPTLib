@@ -170,7 +170,7 @@ static result_t test_padding(void)
   static const stack_item_t items[N] =
   {
     [ROOT] = { .kind = stack_KIND_HBOX, .parent = -1,
-               .pad_l = 5, .pad_t = 6, .pad_r = 7, .pad_b = 8 },
+               .pad = { 6, 7, 8, 5 } },
     [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1,
                .align = stack_ALIGN_FILL },
   };
@@ -468,7 +468,7 @@ static result_t test_measure_min(void)
   static const stack_item_t items[N] =
   {
     [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
-               .pad_l = 2, .pad_t = 2, .pad_r = 2, .pad_b = 2 },
+               .pad = { 2, 2, 2, 2 } },
     [ROW]  = { .kind = stack_KIND_HBOX, .parent = ROOT, .gap = 3 },
     [LBL]  = { .kind = stack_KIND_LEAF, .parent = ROW, .min = 20 },
     [FLD]  = { .kind = stack_KIND_LEAF, .parent = ROW, .flex = 1, .min = 15 },
@@ -493,6 +493,164 @@ static result_t test_measure_min(void)
   if (out[LBL].x1 - out[LBL].x0 != 20)
     return result_TEST_FAILED;
   if (out[FLD].x1 - out[FLD].x0 != 15)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   ROOT (VBOX)
+ *    |
+ *    +-- HUG (VBOX, axis_size=STACK_HUG, pad_t=2, pad_b=3)
+ *         +-- A  axis_size=10
+ *         +-- B  axis_size=15
+ *        (gap=4)
+ *
+ * HUG's main axis sizes to its children: 10+4+15=29, plus its own
+ * pad_t/pad_b (2+3=5), giving it a height of 34 even though nothing in the
+ * tree says so directly. */
+static result_t test_hug(void)
+{
+  enum { ROOT, HUG, A, B, N };
+  static const box_t        root = { 0, 0, 50, 100 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
+    [HUG]  = { .kind = stack_KIND_VBOX, .parent = ROOT, .axis_size = STACK_HUG,
+               .gap = 4, .pad = { 2, 0, 3, 0 }, .align = stack_ALIGN_FILL },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = HUG, .axis_size = 10 },
+    [B]    = { .kind = stack_KIND_LEAF, .parent = HUG, .axis_size = 15 },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[HUG].y1 - out[HUG].y0 != 34)
+    return result_TEST_FAILED;
+  if (out[A].y0 != out[HUG].y0 + 2 || out[A].y1 - out[A].y0 != 10)
+    return result_TEST_FAILED;
+  if (out[B].y0 != out[A].y1 + 4   || out[B].y1 - out[B].y0 != 15)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   ROOT (VBOX)
+ *    |
+ *    +-- HUG (VBOX, axis_size=STACK_HUG)
+ *         +-- A  flex=1  (no axis_size/min -- falls back to 0)
+ *
+ * A flexible child inside a hugging container has no slack to grow into
+ * (hug never hands out spare space), so it contributes its 'min' -- 0 here
+ * -- to the sum, same as stack_smallest's own min-content measurement. */
+static result_t test_hug_flex_child_falls_back_to_min(void)
+{
+  enum { ROOT, HUG, A, N };
+  static const box_t        root = { 0, 0, 50, 100 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
+    [HUG]  = { .kind = stack_KIND_VBOX, .parent = ROOT, .axis_size = STACK_HUG },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = HUG, .flex = 1, .min = 7 },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[HUG].y1 - out[HUG].y0 != 7)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/* STACK_HUG on the root is rejected -- the root's size comes from the
+ * caller (or stack_smallest), not from the tree. */
+static result_t test_hug_on_root_rejected(void)
+{
+  enum { ROOT, N };
+  static const box_t        root = { 0, 0, 50, 50 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1, .axis_size = STACK_HUG },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_STACK_BAD_TREE)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/* STACK_HUG on a leaf is rejected -- there are no children to hug around. */
+static result_t test_hug_on_leaf_rejected(void)
+{
+  enum { ROOT, A, N };
+  static const box_t        root = { 0, 0, 50, 50 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .axis_size = STACK_HUG },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_STACK_BAD_TREE)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/* STACK_HUG on a spacer is rejected, same reasoning as a leaf. */
+static result_t test_hug_on_spacer_rejected(void)
+{
+  enum { ROOT, A, N };
+  static const box_t        root = { 0, 0, 50, 50 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
+    [A]    = { .kind = stack_KIND_SPACER, .parent = ROOT, .axis_size = STACK_HUG },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_STACK_BAD_TREE)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/* STACK_HUG combined with a non-zero flex on the same item is rejected --
+ * hug is an absolute size, not something flex can grow further. */
+static result_t test_hug_with_flex_rejected(void)
+{
+  enum { ROOT, HUG, N };
+  static const box_t        root = { 0, 0, 50, 50 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
+    [HUG]  = { .kind = stack_KIND_VBOX, .parent = ROOT,
+               .axis_size = STACK_HUG, .flex = 1 },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_STACK_BAD_TREE)
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;
@@ -559,6 +717,30 @@ result_t stack_test(const char *resources)
     return err;
 
   err = test_measure_min();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_hug();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_hug_flex_child_falls_back_to_min();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_hug_on_root_rejected();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_hug_on_leaf_rejected();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_hug_on_spacer_rejected();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_hug_with_flex_rejected();
   if (err != result_TEST_PASSED)
     return err;
 

@@ -21,6 +21,9 @@ result_t wuss_window_try_close(wuss_window_t *window)
   if (rc != result_OK)
     return rc;
 
+  if (window->wuss->focus == window)
+    (void) wuss_set_focus(window->wuss, NULL);
+
   /* CLOSE while the window is still alive, then the unvetoable teardown. */
   event.kind = wuss_EVENT_CLOSE;
   (void) wuss__deliver(window->task, window, &event);

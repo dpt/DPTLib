@@ -33,7 +33,8 @@ option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
 option(WUSS_FURNITURE "Build the Wuss window-furniture subsystem" ON)
 option(WUSS_ICONS "Build the Wuss in-content icon subsystem" ON)
 option(WUSS_MENUS "Build the Wuss pop-up menu helper (implies WUSS_ICONS)" ON)
-option(WUSS_COMPONENTS "Build the Wuss shared task components (implies WUSS_MENUS)" ON)
+option(WUSS_GADGETS "Build the Wuss compound in-window gadgets (implies WUSS_MENUS)" ON)
+option(WUSS_COMPONENTS "Build the Wuss shared task components (implies WUSS_GADGETS)" ON)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
 if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
@@ -80,6 +81,7 @@ set(PUBLIC_HEADERS
     include/framebuf/bitmap-set.h
     include/framebuf/bitmap.h
     include/framebuf/bmfont.h
+    include/framebuf/bmfontcache.h
     include/framebuf/colour.h
     include/framebuf/composite.h
     include/framebuf/curve.h
@@ -99,6 +101,7 @@ set(PUBLIC_HEADERS
     include/framebuf/span-xbgr8888.h
     include/framebuf/span.h
     include/geom/box.h
+    include/geom/inset.h
     include/geom/layout.h
     include/geom/line.h
     include/geom/packer.h
@@ -137,6 +140,9 @@ endif()
 if(WUSS_MENUS)
     list(APPEND PUBLIC_HEADERS include/wuss/menu.h)
     list(APPEND PUBLIC_HEADERS include/wuss/menu-desc.h)
+endif()
+if(WUSS_GADGETS OR WUSS_COMPONENTS)
+    list(APPEND PUBLIC_HEADERS include/wuss/gadget/stringset.h)
 endif()
 if(WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/component/fontmenu.h)
@@ -262,6 +268,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/rle.h
     libraries/framebuf/bitmap/save.c
     libraries/framebuf/bmfont/bmfont.c
+    libraries/framebuf/bmfont/cache.c
     libraries/framebuf/bmfont/enumerate.c
     libraries/framebuf/colour/colour.c
     libraries/framebuf/composite/composite.c
@@ -380,20 +387,25 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/backdrop.c
     libraries/wuss/core/create.c
     libraries/wuss/core/destroy.c
+    libraries/wuss/core/get-focus.c
     libraries/wuss/core/get-palette.c
     libraries/wuss/core/get-pointer.c
     libraries/wuss/core/get-resources.c
+    libraries/wuss/core/get-screen-size.c
     libraries/wuss/core/idle.c
     libraries/wuss/core/impl.h
     libraries/wuss/core/invalidate.c
+    libraries/wuss/core/key.c
     libraries/wuss/core/mouse-click.c
     libraries/wuss/core/mouse-move.c
     libraries/wuss/core/nearest-colour.c
     libraries/wuss/core/rebuild-palettecache.c
     libraries/wuss/core/redraw.c
+    libraries/wuss/core/resize.c
     libraries/wuss/core/scroll.c
     libraries/wuss/core/scroll-step.c
     libraries/wuss/core/set-backdrop.c
+    libraries/wuss/core/set-focus.c
     libraries/wuss/core/set-palette.c
     libraries/wuss/font/font.h
     libraries/wuss/font/registry.c
@@ -425,6 +437,7 @@ set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/content-box.c
     libraries/wuss/furniture/drag-resize.c
     libraries/wuss/furniture/draw.c
+    libraries/wuss/furniture/elements.c
     libraries/wuss/furniture/hit-test.c
     libraries/wuss/furniture/invalidate.c
     libraries/wuss/furniture/layout.c
@@ -461,12 +474,16 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/set-text.c
     libraries/wuss/icon/set-value.c
     libraries/wuss/icon/slider-box.c
+    libraries/wuss/icon/writable.c
     libraries/wuss/icon.h)
 
 set(WUSS_MENU_SOURCES
     libraries/wuss/menu/menu.c
     libraries/wuss/helpers/create-from-desc.c
     libraries/wuss/menu.h)
+
+set(WUSS_GADGET_SOURCES
+    libraries/wuss/gadget/stringset.c)
 
 set(WUSS_COMPONENT_SOURCES
     libraries/wuss/component/fontmenu.c
@@ -480,7 +497,10 @@ if(WUSS_FURNITURE)
     list(APPEND WUSS_SOURCES ${WUSS_FURNITURE_SOURCES})
 endif()
 if(WUSS_COMPONENTS)
-    set(WUSS_MENUS ON) # the shared components build on the menu helper
+    set(WUSS_GADGETS ON) # the shared components build on the gadgets
+endif()
+if(WUSS_GADGETS)
+    set(WUSS_MENUS ON) # the gadgets build on the menu helper
 endif()
 if(WUSS_MENUS)
     set(WUSS_ICONS ON) # the menu helper needs the icon subsystem
@@ -490,6 +510,9 @@ if(WUSS_ICONS)
 endif()
 if(WUSS_MENUS)
     list(APPEND WUSS_SOURCES ${WUSS_MENU_SOURCES})
+endif()
+if(WUSS_GADGETS)
+    list(APPEND WUSS_SOURCES ${WUSS_GADGET_SOURCES})
 endif()
 if(WUSS_COMPONENTS)
     list(APPEND WUSS_SOURCES ${WUSS_COMPONENT_SOURCES})
@@ -517,6 +540,7 @@ if(MSVC)
     target_compile_definitions(DPTLib PRIVATE _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_WARNINGS)
 else()
     target_compile_options(DPTLib PRIVATE -Wall -Wextra -pedantic)
+    target_compile_options(DPTLib PRIVATE -ffunction-sections -fdata-sections)
 endif()
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -555,6 +579,9 @@ if(WUSS_ICONS)
 endif()
 if(WUSS_MENUS)
     target_compile_definitions(DPTLib PUBLIC WUSS_MENUS)
+endif()
+if(WUSS_GADGETS)
+    target_compile_definitions(DPTLib PUBLIC WUSS_GADGETS)
 endif()
 if(WUSS_COMPONENTS)
     target_compile_definitions(DPTLib PUBLIC WUSS_COMPONENTS)
@@ -690,14 +717,17 @@ if(BUILD_TESTS)
         libraries/datastruct/ntree/test/ntree-test.c
         libraries/framebuf/bitmap/test/rle-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
+        libraries/framebuf/bmfont/test/bmfontcache-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
+        libraries/framebuf/pattern/test/pattern-test.c
         libraries/framebuf/pixelmap/test/pixelmap-test.c
         libraries/framebuf/screen/test/screen-test.c
         libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
         libraries/geom/stack/test/stack-test.c
+        libraries/io/path/test/path-test.c
         libraries/io/stream/test/stream-test.c
         libraries/text/txtfmt/test/txtfmt-test.c
         libraries/utils/array/test/array-test.c
@@ -759,22 +789,25 @@ if(BUILD_APPS)
         apps/wuss/main.c
         apps/wuss/tasks.c
         libraries/wuss/test/tasks/ball.c
-        libraries/wuss/test/tasks/blank.c
         libraries/wuss/test/tasks/chars.c
         libraries/wuss/test/tasks/checker.c
         libraries/wuss/test/tasks/clock.c
+        libraries/wuss/test/tasks/config.c
         libraries/wuss/test/tasks/curve.c
+        libraries/wuss/test/tasks/display.c
+        libraries/wuss/test/tasks/doughnut.c
         libraries/wuss/test/tasks/gradient.c
         libraries/wuss/test/tasks/greeble.c
         libraries/wuss/test/tasks/icons.c
         libraries/wuss/test/tasks/image.c
+        libraries/wuss/test/tasks/keys.c
         libraries/wuss/test/tasks/lissajous.c
         libraries/wuss/test/tasks/minesweeper.c
         libraries/wuss/test/tasks/palette.c
+        libraries/wuss/test/tasks/patterns.c
         libraries/wuss/test/tasks/porter-duff.c
         libraries/wuss/test/tasks/saturn.c
         libraries/wuss/test/tasks/sofa.c
-        libraries/wuss/test/tasks/swatches.c
         libraries/wuss/test/tasks/text.c)
 
     if(TARGET_RISCOS)
@@ -798,6 +831,15 @@ if(BUILD_APPS)
     target_include_directories(wuss PRIVATE apps/wuss libraries/wuss/test)
     target_compile_definitions(wuss PRIVATE WUSS_APP)
     target_link_libraries(wuss DPTLib)
+
+    if(NOT MSVC)
+        target_compile_options(wuss PRIVATE -ffunction-sections -fdata-sections)
+        if(APPLE)
+            target_link_options(wuss PRIVATE -Wl,-dead_strip)
+        elseif(NOT EMSCRIPTEN)
+            target_link_options(wuss PRIVATE -Wl,--gc-sections)
+        endif()
+    endif()
 
     if(TARGET_RISCOS)
         # native VDU/OS_Mouse frontend, no SDL

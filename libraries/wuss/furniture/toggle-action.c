@@ -101,38 +101,52 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
    * now interior content. Blit the old content box to where it now sits
    * (shifted by the top-left delta; dx==dy==0 for a pure grow-in-place),
    * then repaint the newly-exposed content, the vacated region and all the
-   * furniture. Topmost only (nothing above it, so no occluder pixels to
-   * preserve or step on) and only when the screen format can blit. Skipped
+   * furniture. Topmost-among-visible-windows only (nothing above it that can
+   * occlude, so no occluder pixels to preserve or step on) and only when the
+   * screen format can blit. A hidden window (e.g. a borrowed dialogue leaf)
+   * sitting above in z_order occludes nothing -- see zorder_get_cut in
+   * invalidate.c -- so it must not block the fast path here either; skip
+   * past any such window when looking for what is really on top. Skipped
    * when the toggle re-clamped scroll: the whole new content box is already
    * invalidated above at the corrected offset. */
   dx      = window->visible.x0 - before.x0;
   dy      = window->visible.y0 - before.y0;
   blitted = 0;
 
-  if (!scroll_reclamped &&
-      !(window->flags & wuss_WINDOW_NO_RESIZE_BLIT) &&
-      window->wuss->z_order.next == &window->link)
+  if (!scroll_reclamped && !(window->flags & wuss_WINDOW_NO_RESIZE_BLIT))
   {
-    box_t new_content, shifted;
+    list_t *above;
 
-    wuss__content_box(window, &new_content);
+    for (above = window->wuss->z_order.next;
+        above != &window->link &&
+          (wuss__window_from_link(above)->flags & wuss_WINDOW_HIDDEN);
+        above = above->next)
+      ;
 
-    /* the part of the old content box that, slid by (dx,dy), lands within
-     * the new content box: its pixels are the valid source for that overlap */
-    box_translated(&new_content, -dx, -dy, &shifted);
-    if (box_intersection(&before_content, &shifted, &blit_src) == 0 &&
-        !box_is_empty(&blit_src))
+    if (above == &window->link)
     {
-      box_translated(&blit_src, dx, dy, &blit_dst);
-      if (screen_copy_rect(window->wuss->scr, &blit_src,
-                           POINT(blit_dst.x0, blit_dst.y0),
-                           &copied) == result_OK)
+      box_t new_content, shifted;
+
+      wuss__content_box(window, &new_content);
+
+      /* the part of the old content box that, slid by (dx,dy), lands within
+       * the new content box: its pixels are the valid source for that
+       * overlap */
+      box_translated(&new_content, -dx, -dy, &shifted);
+      if (box_intersection(&before_content, &shifted, &blit_src) == 0 &&
+          !box_is_empty(&blit_src))
       {
-        /* "copied" is already correct on screen -- the blit reused it --
-         * but a frontend re-uploading only wuss_get_touched_extent still
-         * needs to know it moved. */
-        wuss__touch(window->wuss, &copied);
-        blitted = 1;
+        box_translated(&blit_src, dx, dy, &blit_dst);
+        if (screen_copy_rect(window->wuss->scr, &blit_src,
+                             POINT(blit_dst.x0, blit_dst.y0),
+                             &copied) == result_OK)
+        {
+          /* "copied" is already correct on screen -- the blit reused it --
+           * but a frontend re-uploading only wuss_get_touched_extent still
+           * needs to know it moved. */
+          wuss__touch(window->wuss, &copied);
+          blitted = 1;
+        }
       }
     }
   }

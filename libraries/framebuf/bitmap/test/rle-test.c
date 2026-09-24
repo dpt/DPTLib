@@ -144,21 +144,21 @@ static void ref_blit(uint32_t       *dst,
 
 static int test_blit(const char *resources)
 {
-  result_t  rc;
-  bitmap_t  bm;
-  bitmap_t  cbm;
-  uint32_t *rawpix;
+  result_t    rc;
+  bitmap_t    bm;
+  bitmap_t    cbm;
+  uint32_t   *rawpix;
   const char *filename;
-  int       w, h;
-  int       rowwords;
-  uint32_t *scr_ref;
-  uint32_t *scr_rle;
-  screen_t  s;
-  box_t     clip;
-  size_t    npix;
-  int       ok = 1;
+  int         w, h;
+  int         rowwords;
+  uint32_t   *scr_ref;
+  uint32_t   *scr_rle;
+  screen_t    s;
+  box_t       clip;
+  size_t      npix;
+  int         ok = 1;
 
-  filename = path_join_filename(resources, 3, "resources", "composite", "A.png");
+  filename = pathf("%s/resources/composite/A.png", resources);
   rc = bitmap_load_png(&bm, filename);
   if (rc)
   {
@@ -254,11 +254,11 @@ static int test_blit(const char *resources)
 
   /* --- 4bpp screen: RLE path must match the raw p4 blit --- */
   {
-    colour_t  pal[16];
-    uint8_t  *p4_ref;
-    uint8_t  *p4_rle;
-    int       p4_rowbytes;
-    int       i;
+    colour_t pal[16];
+    uint8_t *p4_ref;
+    uint8_t *p4_rle;
+    int      p4_rowbytes;
+    int      i;
 
     /* A spread of greys is enough for colour_to_pixel's nearest match to
      * exercise more than one entry. */
@@ -381,18 +381,18 @@ static int test_p8_png(void)
 #else
 #define P8W 24
 #define P8H 8
-  bitmap_t     bm;
-  bitmap_t     rt;
-  bitmap_t    *deep = NULL;
-  colour_t     pal[256];
-  colour_t     rtpal[256];
+  bitmap_t      bm;
+  bitmap_t      rt;
+  bitmap_t     *deep = NULL;
+  colour_t      pal[256];
+  colour_t      rtpal[256];
   unsigned char pix[P8W * P8H];
   const char   *fn;
   result_t      rc;
   int           i;
   int           ok = 1;
 
-  fn = path_join_leafname("rle-test-p8", "png");
+  fn = pathf("rle-test-p8.png");
 
   /* palette: greyscale ramp, plus a few non-opaque entries to exercise tRNS */
   for (i = 0; i < 256; i++)
@@ -457,7 +457,7 @@ static int test_p8_png(void)
   {
     unsigned int        idx = pix[0];
     pixelfmt_bgrx8888_t  got = ((const pixelfmt_bgrx8888_t *) deep->base)[0];
-    pixelfmt_rgba8888_t  want = pal[idx].primary;
+    pixelfmt_rgba8888_t want = pal[idx].primary;
 
     if (PIXELFMT_xxRx8888(got) != PIXELFMT_Rxxx8888(want)
      || PIXELFMT_xGxx8888(got) != PIXELFMT_xGxx8888(want)

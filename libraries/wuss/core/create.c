@@ -149,9 +149,10 @@ result_t wuss_create(screen_t               *scr,
     pal = config->furniture;
     pal.title.bg        = wuss__resolve_colour(w, pal.title.bg);
     pal.title.fg        = wuss__resolve_colour(w, pal.title.fg);
-    pal.outline         = (pal.outline == wuss_NO_BACKGROUND)
+    pal.title.focus_bg  = (pal.title.focus_bg == wuss_NO_BACKGROUND)
                         ? pal.title.bg
-                        : wuss__resolve_colour(w, pal.outline);
+                        : wuss__resolve_colour(w, pal.title.focus_bg);
+    pal.outline         = wuss__resolve_colour(w, pal.outline); /* NO_BACKGROUND: follows the titlebar fill, see furniture/draw.c */
     pal.back            = wuss__resolve_colour(w, pal.back);
     pal.close           = wuss__resolve_colour(w, pal.close);
     pal.toggle          = wuss__resolve_colour(w, pal.toggle);
@@ -159,6 +160,7 @@ result_t wuss_create(screen_t               *scr,
     pal.scroll.arrows   = wuss__resolve_colour(w, pal.scroll.arrows);
     pal.scroll.wells    = wuss__resolve_colour(w, pal.scroll.wells);
     pal.scroll.sausages = wuss__resolve_colour(w, pal.scroll.sausages);
+    pal.pressed         = wuss__resolve_colour(w, pal.pressed);
     blight     = wuss__resolve_colour(w, config->bevel.light);
     bdark      = wuss__resolve_colour(w, config->bevel.dark);
     bdivider   = (config->bevel.divider == wuss_NO_BACKGROUND)
@@ -180,6 +182,7 @@ result_t wuss_create(screen_t               *scr,
 
     pal.title.bg        = bg;
     pal.title.fg        = fg;
+    pal.title.focus_bg  = wuss_nearest_colour(w, 0xFF, 0xEE, 0xAA); /* cream */
     pal.outline         = bg;
     pal.back            = fg;
     pal.close           = fg;
@@ -188,6 +191,7 @@ result_t wuss_create(screen_t               *scr,
     pal.scroll.arrows   = bg;
     pal.scroll.wells    = bg;
     pal.scroll.sausages = fg;
+    pal.pressed         = fg;
 
     blight     = 0;
     bdark      = 0;
@@ -200,7 +204,9 @@ result_t wuss_create(screen_t               *scr,
 
   if (pal.title.bg        >= w->npalette ||
       pal.title.fg        >= w->npalette ||
-      pal.outline         >= w->npalette ||
+      pal.title.focus_bg  >= w->npalette ||
+      (pal.outline        >= w->npalette &&
+       pal.outline        != wuss_NO_BACKGROUND) ||
       pal.back            >= w->npalette ||
       pal.close           >= w->npalette ||
       pal.toggle          >= w->npalette ||
@@ -208,6 +214,7 @@ result_t wuss_create(screen_t               *scr,
       pal.scroll.arrows   >= w->npalette ||
       pal.scroll.wells    >= w->npalette ||
       pal.scroll.sausages >= w->npalette ||
+      pal.pressed         >= w->npalette ||
       validate_bevel_backdrop(w, blight, bdark, bdivider,
                               btnbg, btnfg, btnpressed, accent) != result_OK)
   {
@@ -334,17 +341,22 @@ result_t wuss_create(screen_t               *scr,
   w->scr                = scr;
   w->resources          = resources;
   w->pointer_window     = NULL;
+  w->focus              = NULL;
 #ifdef WUSS_FURNITURE
-  w->furniture.dragging = NULL;
-  w->furniture.drag.x   = 0;
-  w->furniture.drag.y   = 0;
-  w->furniture_ops      = &wuss__furniture_default_ops;
+  w->furniture.dragging       = NULL;
+  w->furniture.drag.x         = 0;
+  w->furniture.drag.y         = 0;
+  w->furniture.pressed_region = wuss_FURNITURE_NONE;
+  w->furniture_ops            = &wuss__furniture_default_ops;
 #endif
 #ifdef WUSS_ICONS
   w->pressed_icon       = NULL;
   w->pressed_window     = NULL;
   w->hover_icon         = NULL;
   w->hover_window       = NULL;
+  w->caret_icon         = NULL;
+  w->caret_window       = NULL;
+  w->caret_index        = 0;
   w->icon.names         = NULL;
   w->icon.atoms         = NULL;
   w->icon.bitmaps       = NULL;
@@ -367,6 +379,24 @@ result_t wuss_create(screen_t               *scr,
 
   list_init(&w->z_order);
   list_init(&w->tasks);
+
+#ifdef WUSS_ICONS
+  /* load the wuss-wide icon set now that w->resources is set; a missing
+   * resources root or icons directory just leaves the set empty, not an
+   * error -- callers needing the icon set check wuss_icons_count/_lookup */
+  if (resources != NULL)
+    (void) wuss_icons_load_resource(w, resources);
+#endif
+
+  if (bmfontcache_create(&w->font_cache) != result_OK)
+  {
+#ifdef WUSS_ICONS
+    wuss__icons_registry_free(w);
+#endif
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
+    return result_OOM;
+  }
 
   *wuss = w;
 

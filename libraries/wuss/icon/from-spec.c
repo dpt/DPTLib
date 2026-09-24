@@ -28,33 +28,18 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   swatch = has_swatch ? wuss__resolve_colour(w, spec->u.menu_entry.swatch)
                       : wuss_NO_BACKGROUND;
 
-  switch (spec->type)
-  {
-  case wuss_ICON_TYPE_LABEL:
-  case wuss_ICON_TYPE_ACTION:
-  case wuss_ICON_TYPE_PATTERN:
-  case wuss_ICON_TYPE_FRAME:
-  case wuss_ICON_TYPE_RADIO:
-  case wuss_ICON_TYPE_OPTION:
-  case wuss_ICON_TYPE_BITMAP:
-  case wuss_ICON_TYPE_MENU_ENTRY:
-  case wuss_ICON_TYPE_RULE:
-  case wuss_ICON_TYPE_DISPLAY:
-  case wuss_ICON_TYPE_WRITABLE:
-  case wuss_ICON_TYPE_NUMBER:
-  case wuss_ICON_TYPE_STRING_SET:
-  case wuss_ICON_TYPE_DRAGGABLE:
-    break;
-
-  case wuss_ICON_TYPE_SLIDER:
-    if (spec->u.slider.orientation != wuss_SLIDER_HORIZONTAL &&
-        spec->u.slider.orientation != wuss_SLIDER_VERTICAL)
-      return result_WUSS_BAD_ICON;
-    break;
-
-  default:
+  if ((unsigned) spec->type >= wuss__ICON_TYPE_COUNT)
     return result_WUSS_BAD_ICON;
-  }
+
+  /* reserved: accepted (drawn as a label) but not implemented -- flag any
+   * caller building one in debug builds */
+  if (wuss__icon_types[spec->type].reserved)
+    assert(!"reserved wuss icon type constructed");
+
+  if (spec->type == wuss_ICON_TYPE_SLIDER &&
+      spec->u.slider.orientation != wuss_SLIDER_HORIZONTAL &&
+      spec->u.slider.orientation != wuss_SLIDER_VERTICAL)
+    return result_WUSS_BAD_ICON;
 
   /* an ACTION may leave bg unset -- it then draws on the config button face
    * (wuss->button_bg); a PATTERN needs a concrete clear-bit colour */
@@ -76,12 +61,20 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   if (spec->type == wuss_ICON_TYPE_BITMAP && bitmap == NULL)
     return result_WUSS_BAD_ICON;
 
+  /* the pressed image is looked up at draw time; just check it exists */
+  if (spec->type == wuss_ICON_TYPE_BITMAP && spec->u.bitmap.pressed_set > 0 &&
+      wuss_icons_bitmap(w, spec->u.bitmap.pressed_set - 1) == NULL)
+    return result_WUSS_BAD_INDEX;
+
   if (spec->type == wuss_ICON_TYPE_PATTERN &&
       spec->u.pattern.tile >= screen_PATTERN__LIMIT)
     return result_WUSS_BAD_ICON;
 
   if (spec->type == wuss_ICON_TYPE_LABEL &&
-      spec->u.label.border > wuss_ICON_BORDER_DIVIDER)
+      spec->u.label.border > wuss_ICON_BORDER_PLAIN)
+    return result_WUSS_BAD_ICON;
+
+  if (spec->type == wuss_ICON_TYPE_WRITABLE && spec->u.writable.size < 1)
     return result_WUSS_BAD_ICON;
 
   if (fg >= w->npalette)
@@ -90,7 +83,7 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   if (bg != wuss_NO_BACKGROUND && bg >= w->npalette)
     return result_WUSS_BAD_COLOUR;
 
-  if (has_swatch && swatch >= w->npalette)
+  if (has_swatch && swatch != wuss_NO_BACKGROUND && swatch >= w->npalette)
     return result_WUSS_BAD_COLOUR;
 
   out->spec      = *spec;
@@ -107,20 +100,16 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
    * always sits inside the box that hit-test, layout and invalidate use. */
   if (spec->type == wuss_ICON_TYPE_RADIO || spec->type == wuss_ICON_TYPE_OPTION)
   {
-    const char     *names[2];
     const bitmap_t *state_bm;
     int             idx;
     int             gw, gh;
     int             i;
 
-    names[0] = (spec->type == wuss_ICON_TYPE_RADIO) ? "radon"  : "opton";
-    names[1] = (spec->type == wuss_ICON_TYPE_RADIO) ? "radoff" : "optoff";
-
     gw = 0;
     gh = 0;
     for (i = 0; i < 2; i++)
     {
-      idx = wuss_icons_lookup(w, names[i]);
+      idx = wuss_icons_lookup(w, wuss__icon_radio_option_name(spec->type, i));
       if (idx < 0)
         continue;
       state_bm = wuss_icons_bitmap(w, idx);
@@ -151,7 +140,8 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
     break;
   }
 
-  out->state = wuss_ICON_STATE_NONE;
+  out->state       = wuss_ICON_STATE_NONE;
+  out->text_scroll = 0;
 
   if (spec->type == wuss_ICON_TYPE_SLIDER)
   {

@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "base/utils.h"
 #include "framebuf/colour.h"
 
 #include "framebuf/pattern.h"
@@ -136,6 +137,87 @@ pattern_t pattern_from_mask(const uint8_t mask[8], colour_t colour)
   pat.flags = pattern_FLAG_STENCIL;
 
   return pat;
+}
+
+/* Errors below are held at 64x scale (64 * channel difference) so the Bayer
+ * level's quantisation is measured exactly without division. */
+pattern_t pattern_from_colour(const colour_t *palette,
+                              int             nentries,
+                              colour_t        target)
+{
+  unsigned int tr, tg, tb;
+  long         best_err;
+  int          best_a;
+  int          best_b;
+  int          best_level;
+  int          i;
+  unsigned int ar, ag, ab;
+  long         ur, ug, ub;
+  int          j;
+  unsigned int br, bg, bb;
+  long         dr, dg, db;
+  long         len2;
+  long         dot;
+  int          level;
+  long         er, eg, eb;
+  long         err;
+
+  assert(palette);
+  assert(nentries >= 1);
+
+  colour_get_rgb(&target, &tr, &tg, &tb);
+
+  best_err   = -1;
+  best_a     = 0;
+  best_b     = 0;
+  best_level = 0;
+
+  for (i = 0; i < nentries; i++)
+  {
+    colour_get_rgb(&palette[i], &ar, &ag, &ab);
+    ur = (long) tr - (long) ar;
+    ug = (long) tg - (long) ag;
+    ub = (long) tb - (long) ab;
+
+    for (j = i; j < nentries; j++)
+    {
+      colour_get_rgb(&palette[j], &br, &bg, &bb);
+
+      dr = (long) br - (long) ar;
+      dg = (long) bg - (long) ag;
+      db = (long) bb - (long) ab;
+
+      /* project target onto segment A->B, quantised to a Bayer level */
+      len2  = dr * dr + dg * dg + db * db;
+      dot   = ur * dr + ug * dg + ub * db;
+      level = 0;
+      if (len2 > 0 && dot > 0)
+        level = (int) MIN((dot * 64 + len2 / 2) / len2, 64);
+
+      er  = 64 * ur - dr * level;
+      eg  = 64 * ug - dg * level;
+      eb  = 64 * ub - db * level;
+      err = er * er + eg * eg + eb * eb;
+
+      /* ponytail: flat |B-A|^2/64 spread penalty on true mixes (a black/white
+       * pair costs ~32 per channel); tune the divisor, or weight by level, if
+       * stipples look too coarse or too rare */
+      if (level > 0 && level < 64)
+        err += len2 * 64; /* (64 * 64) / 64 */
+
+      if (best_err < 0 || err < best_err)
+      {
+        best_err   = err;
+        best_a     = i;
+        best_b     = j;
+        best_level = level;
+      }
+    }
+  }
+
+  return pattern_from_preset(screen_PATTERN_BAYER0 + best_level,
+                             palette[best_b],
+                             palette[best_a]);
 }
 
 /* ----------------------------------------------------------------------- */

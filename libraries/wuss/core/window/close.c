@@ -21,7 +21,11 @@ void wuss_window_close(wuss_window_t *doomed)
   task = doomed->task;
 #ifdef WUSS_FURNITURE
   if (wuss->furniture.dragging == doomed)
-    wuss->furniture.dragging = NULL;
+  {
+    wuss->furniture.dragging       = NULL;
+    wuss->furniture.drag_kind      = wuss_FURNITURE_DRAG_NONE;
+    wuss->furniture.pressed_region = wuss_FURNITURE_NONE;
+  }
 #endif
 #ifdef WUSS_ICONS
   if (wuss->pressed_window == doomed)
@@ -34,14 +38,25 @@ void wuss_window_close(wuss_window_t *doomed)
     wuss->hover_icon   = NULL;
     wuss->hover_window = NULL;
   }
+  if (wuss->caret_window == doomed)
+  {
+    wuss->caret_icon   = NULL;
+    wuss->caret_window = NULL;
+  }
 #endif
   /* No wuss_EVENT_POINTER_EXIT: the task hears about this window going away
    * through PRE_CLOSE/CLOSE, and the struct is freed below. */
   wuss__pointer_forget_window(wuss, doomed);
+  wuss__focus_forget_window(wuss, doomed);
 
   wuss__release_packed(doomed);
 
-  wuss__invalidate_clipped(doomed, &doomed->visible);
+  /* A hidden window was never actually drawn at "visible" -- whatever is
+   * genuinely on screen there (backdrop, or another window's content) is
+   * already correct and showing through, so invalidating it would force a
+   * pointless repaint of somebody else's pixels. */
+  if (!(doomed->flags & wuss_WINDOW_HIDDEN))
+    wuss__invalidate_clipped(doomed, &doomed->visible);
 
   list_remove(&wuss->z_order, &doomed->link);
   list_remove(&task->windows, &doomed->task_link);

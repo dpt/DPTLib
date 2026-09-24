@@ -8,9 +8,9 @@
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
 #include "geom/point.h"
+#include "geom/size.h"
 #include "wuss/task.h"
 #include "wuss/wuss.h"
-#include "wuss/component/proginfo.h"
 
 #include "frontend.h"
 
@@ -22,15 +22,35 @@
 extern struct wuss_app_tasks
 {
   wuss_t          *wuss;
-  wuss_task_t     *menu_task; /* owns the task launcher menus */
-  wuss_proginfo_t *proginfo; /* shared "Info" dialogue on menu_task; see
-                              * tasks_open_launcher's "Info" row */
+  wuss_task_t     *menu_task; /* owns the task launcher menus; also the home
+                               * task for the shared proginfo singleton, see
+                               * tasks_open_launcher's "Info" row */
   bool             quit; /* set by the "Quit Wuss" task-menu entry */
   wuss_frontend_t *frontend; /* pushed to on wuss_EVENT_PALETTE; see
                               * task_handle_event */
   bitmap_t        *bm;       /* framebuffer bitmap, likewise */
+  bool             swap_mouse_buttons; /* set by the Configure task's option
+                                        * icon; read by each frontend's raw
+                                        * button translator
+                                        * (sdl_button_to_wuss,
+                                        * mouse_buttons_to_wuss) */
+  bool             reverse_scroll; /* set by the Configure task's option
+                                    * icon; read where each frontend fills
+                                    * wuss_input_event_t.wheel */
 }
 g_tasks;
+
+/* Change the desktop resolution to width x height: reallocates the
+ * framebuffer bitmap and the frontend's backing surface, updates
+ * g_tasks.bm/frontend and wuss's own screen_t, then walks every window
+ * (via wuss_resize) so none is left off-screen or larger than the new
+ * screen. The whole screen is invalidated; the caller's next frame repaints
+ * it. Used by the Display task's resolution picker.
+ *
+ * Returns result_NOT_SUPPORTED on a frontend with a fixed screen mode
+ * (RISC OS), leaving everything unchanged; another non-OK result on
+ * allocation failure, also leaving everything unchanged. */
+result_t app_resize(size2d_t size);
 
 /* the menu-task event handler: dispatches every wuss_EVENT_MENU_SELECT and
  * relays wuss_EVENT_PALETTE to the frontend. Passed as wuss_task_desc.handle
@@ -42,6 +62,14 @@ result_t task_handle_event(wuss_window_t      *window,
 /* open the top-level task launcher (Launch / Quit Wuss) at pos; called on a
  * MENU click over bare backdrop */
 result_t tasks_open_launcher(point_t pos);
+
+/* Spawn the tasks named in names, a comma-separated list of launcher-menu
+ * task names (e.g. "Saturn,Clock"), or "all" to spawn every task in every
+ * category (games, tests, system, utilities, visuals), in table order; an
+ * empty string spawns nothing. Logs and continues past any individual
+ * create failure or unknown name rather than aborting the rest. Called
+ * once at startup, after g_tasks.wuss is set. */
+void tasks_spawn(const char *names);
 
 /* Fill out[0..nout-1]: ui[0..nui-1] copied in, then as much of the web-safe
  * 216 (6x6x6 cube, steps of 0x33) as fits, then black for whatever is left.

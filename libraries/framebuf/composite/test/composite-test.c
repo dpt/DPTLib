@@ -163,11 +163,9 @@ static result_t load_test_png(bitmap_t   *bm,
                               const char *leafname)
 {
   result_t    rc;
-  const char *leafname_ext;
   const char *filename;
 
-  leafname_ext = path_join_leafname(leafname, "png");
-  filename     = path_join_filename(resources, 3, "resources", "composite", leafname_ext);
+  filename = pathf("%s/resources/composite/%s.png", resources, leafname);
 
   rc = bitmap_load_png(bm, filename);
   if (rc)
@@ -246,7 +244,7 @@ result_t composite_test(const char *resources)
     }
   }
 
-  rc = bitmap_save_png(&bigbitmap, path_join_leafname("composite-1", "png"));
+  rc = bitmap_save_png(&bigbitmap, pathf("composite-1.png"));
   if (rc)
     goto Failure;
 

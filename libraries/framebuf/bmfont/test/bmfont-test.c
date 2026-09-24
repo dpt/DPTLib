@@ -183,7 +183,7 @@ bmtestline_t;
 
 /* ----------------------------------------------------------------------- */
 
-#define MAXFONTS 8
+#define MAXFONTS 9
 
 static bmtestfont_t bmfonts[MAXFONTS] =
 {
@@ -194,22 +194,28 @@ static bmtestfont_t bmfonts[MAXFONTS] =
   { "DPT-CookeTall",    NULL },
   { "MS Sans Serif",    NULL },
   { "DPT-Digits-Regular", NULL },
-  { "DPT-Digits-Bold",  NULL }
+  { "DPT-Digits-Bold",  NULL },
+  { "DPT-Digits-Bold-Lg", NULL } /* 24px-wide glyphs: exercises the _4w_
+                                  * (17-32px) draw variants */
 };
 
 /* Fixture PNGs not in bmfonts[] above (which is the Latin-text set the
  * clipping/layout tests draw lorem_ipsum with) but which the enumerate test
  * must still see, since it just walks the fixture directory: Symbols.png is
- * not Latin text; 04b_03, 04b_25 and Nokia are tiny pixel faces added for
- * the wuss tasks. */
-#define MAXFONTS_ENUM 12
+ * not Latin text; 04b_03, 04b_25, GrongyUI, Nokia and SF-Embers are tiny
+ * pixel faces added for the wuss tasks; DPT-Digits-Regular-Lg is the
+ * regular-weight counterpart of the bold -Lg font already covered above. */
+#define MAXFONTS_ENUM 16
 
 static const char *bmfonts_enum_extra[MAXFONTS_ENUM - MAXFONTS] =
 {
   "Symbols",
   "04b_03",
   "04b_25",
-  "Nokia"
+  "GrongyUI",
+  "Nokia",
+  "SF-Embers",
+  "DPT-Digits-Regular-Lg"
 };
 
 /* ----------------------------------------------------------------------- */
@@ -363,7 +369,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
                font,
                transparent ? "-transparent" : "-filled",
                1 << pixelfmt_log2bpp(state->scr.format));
-      bitmap_save_png(&state->bm, path_join_leafname(leafname, "png"));
+      bitmap_save_png(&state->bm, pathf("%s.png", leafname));
     }
   }
 
@@ -475,7 +481,7 @@ stop:
                font,
                transparent ? "-transparent" : "-filled",
                1 << pixelfmt_log2bpp(state->scr.format));
-      bitmap_save_png(&state->bm, path_join_leafname(leafname, "png"));
+      bitmap_save_png(&state->bm, pathf("%s.png", leafname));
     }
   }
 
@@ -592,13 +598,13 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
     }
 
     {
-      point_t    origin  = {mx,my};
-      const int  height  = bmfonts[currfont].height;
-      const int  rows    = state->scr_height / height;
-      box_t      dirty;
-      int        i;
-      char       buf[256];
-      int        j;
+      point_t   origin  = {mx,my};
+      const int height  = bmfonts[currfont].height;
+      const int rows    = state->scr_height / height;
+      box_t     dirty;
+      int       i;
+      char      buf[256];
+      int       j;
 
       for (i = 0; i < rows; i++)
       {
@@ -782,12 +788,15 @@ static result_t bmfont_enum_cb(const char *name,
 
 static result_t bmfont_enumerate_test(const char *resources)
 {
-  result_t            rc;
-  const char         *dir;
-  bmfont_enum_check_t  chk;
+  result_t rc;
+  char     dir[512]; /* own copy: bmfont_enumerate's per-entry
+                                  * pathf calls would otherwise clobber a
+                                  * pointer straight into pathf's shared
+                                  * buffer */
+  bmfont_enum_check_t chk;
   int                 i;
 
-  dir = path_join_filename(resources, 2, "resources", "bmfonts");
+  snprintf(dir, sizeof(dir), "%s", pathf("%s/resources/bmfonts", resources));
 
   /* full walk: every fixture font is reported exactly once */
   memset(&chk, 0, sizeof(chk));
@@ -797,9 +806,11 @@ static result_t bmfont_enumerate_test(const char *resources)
     fprintf(stderr, "bmfont_enumerate: unexpected rc %x\n", rc);
     return result_TEST_FAILED;
   }
-  if (chk.total != MAXFONTS_ENUM)
+  /* resources/bmfonts/ may carry extra work-in-progress fixtures beyond the
+   * known set above, so just require the known ones are all present. */
+  if (chk.total < MAXFONTS_ENUM)
   {
-    fprintf(stderr, "bmfont_enumerate: saw %d entries, expected %d\n",
+    fprintf(stderr, "bmfont_enumerate: saw %d entries, expected at least %d\n",
             chk.total, MAXFONTS_ENUM);
     return result_TEST_FAILED;
   }
@@ -912,11 +923,10 @@ result_t bmfont_test_one_format(const char *resources,
 
   for (font = 0; font < NELEMS(bmfonts); font++)
   {
-    const char *leafname;
     const char *filename;
 
-    leafname = path_join_leafname(bmfonts[font].filename, "png");
-    filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
+    filename = pathf("%s/resources/bmfonts/%s.png",
+                     resources, bmfonts[font].filename);
     rc = bmfont_create(filename, &bmfonts[font].bmfont);
     if (rc)
     {
@@ -979,7 +989,6 @@ static result_t bmfont_monospace_test(const char *resources)
   static const char sample[] = "WiWiWi.1jm";
 
   result_t       rc;
-  const char    *leafname;
   const char    *filename;
   bmfont_t      *bmfont = NULL;
   bmfont_width_t onechar;
@@ -987,8 +996,7 @@ static result_t bmfont_monospace_test(const char *resources)
   bmfont_width_t prev;
   int            i;
 
-  leafname = path_join_leafname("MS Sans Serif", "png");
-  filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
+  filename = pathf("%s/resources/bmfonts/MS Sans Serif.png", resources);
 
   rc = bmfont_create(filename, &bmfont);
   if (rc)
@@ -1051,14 +1059,13 @@ Failure:
  * under ASan/UBSan rather than just a wrong measurement. */
 static result_t bmfont_spacing_test(const char *resources)
 {
-  static const char letters[] = "WiWiWiWiWi";
-  static const char worded[]  = "a a";
+  static const char      letters[] = "WiWiWiWiWi";
+  static const char      worded[]  = "a a";
 
   const bmfont_spacing_t letter_only = { 3, 0 };
   const bmfont_spacing_t word_only   = { 0, 5 };
 
   result_t       rc;
-  const char    *leafname;
   const char    *filename;
   bmfont_t      *bmfont = NULL;
   bmfont_width_t plain_word_width;
@@ -1067,8 +1074,7 @@ static result_t bmfont_spacing_test(const char *resources)
   point_t        end_pos;
   int            i;
 
-  leafname = path_join_leafname("MS Sans Serif", "png");
-  filename = path_join_filename(resources, 3, "resources", "bmfonts", leafname);
+  filename = pathf("%s/resources/bmfonts/MS Sans Serif.png", resources);
 
   rc = bmfont_create(filename, &bmfont);
   if (rc)
@@ -1191,6 +1197,294 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+/* Measures "Purpose" then draws it and checks the rendered ink's bounding
+ * box against the measurement: ink must fall entirely within the cell that
+ * bmfont_measure/bmfont_get_info predict, i.e. [pos.x, pos.x+width) x
+ * [pos.y-ascent, pos.y-ascent+height). A 1px offset between glyph border art
+ * and text drawn to fill it shows up here as ink starting or ending one
+ * pixel outside that box. */
+static result_t bmfont_measure_render_match_test(const char *resources)
+{
+  static const char sample[] = "Purpose";
+  static const int  margin   = 8;
+
+  result_t       rc;
+  const char    *filename;
+  bmfont_t      *bmfont = NULL;
+  bmfont_width_t width;
+  int            height, ascent;
+  bitmap_t       bm;
+  screen_t       scr;
+  colour_t       white = colour_rgb(0xFF, 0xFF, 0xFF);
+  colour_t       black = colour_rgb(0x00, 0x00, 0x00);
+  point_t        pos;
+  int            bm_width, bm_height, rowbytes;
+  void          *pixels = NULL;
+  int            ink_x0, ink_y0, ink_x1, ink_y1;
+  int            x, y;
+
+  filename = pathf("%s/resources/bmfonts/DPT-Digits-Regular.png", resources);
+
+  rc = bmfont_create(filename, &bmfont);
+  if (rc)
+  {
+    fprintf(stderr, "Error: Failed to load font %s\n", filename);
+    return result_TEST_FAILED;
+  }
+
+  rc = bmfont_measure(bmfont, sample, (int) strlen(sample), NULL, INT_MAX,
+                      NULL, &width);
+  if (rc)
+    goto Failure;
+
+  bmfont_get_info(bmfont, NULL, &height, &ascent, NULL);
+
+  bm_width  = width + margin * 2;
+  bm_height = height + margin * 2;
+  rowbytes  = (bm_width << pixelfmt_log2bpp(pixelfmt_bgrx8888)) / 8;
+
+  pixels = malloc(rowbytes * bm_height);
+  if (pixels == NULL)
+  {
+    rc = result_OOM;
+    goto Failure;
+  }
+
+  bitmap_init(&bm, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888, rowbytes,
+               NULL, pixels);
+  bitmap_clear(&bm, white);
+  screen_for_bitmap(&scr, &bm);
+
+  pos.x = margin;
+  pos.y = margin + ascent;
+
+  rc = bmfont_draw(bmfont, &scr, sample, (int) strlen(sample), black, white,
+                   NULL, &pos, NULL);
+  if (rc)
+    goto Failure;
+
+  /* Find the bounding box of non-white ("ink") pixels. */
+
+  ink_x0 = bm_width;
+  ink_y0 = bm_height;
+  ink_x1 = 0;
+  ink_y1 = 0;
+
+  for (y = 0; y < bm_height; y++)
+  {
+    const pixelfmt_bgrx8888_t *row =
+      (const pixelfmt_bgrx8888_t *) ((const char *) pixels + y * rowbytes);
+
+    for (x = 0; x < bm_width; x++)
+    {
+      if ((row[x] & 0x00FFFFFFu) != 0x00FFFFFFu) /* not white */
+      {
+        if (x < ink_x0) ink_x0 = x;
+        if (y < ink_y0) ink_y0 = y;
+        if (x + 1 > ink_x1) ink_x1 = x + 1;
+        if (y + 1 > ink_y1) ink_y1 = y + 1;
+      }
+    }
+  }
+
+  if (ink_x1 <= ink_x0 || ink_y1 <= ink_y0)
+  {
+    fprintf(stderr, "error: no ink rendered for \"%s\"\n", sample);
+    goto Failure;
+  }
+
+  {
+    const int cell_x0 = pos.x;
+    const int cell_x1 = pos.x + width;
+    const int cell_y0 = pos.y - ascent;
+    const int cell_y1 = cell_y0 + height;
+
+    if (ink_x0 < cell_x0 || ink_x1 > cell_x1 ||
+        ink_y0 < cell_y0 || ink_y1 > cell_y1)
+    {
+      fprintf(stderr,
+              "error: rendered ink [%d,%d)x[%d,%d) outside measured cell "
+              "[%d,%d)x[%d,%d)\n",
+              ink_x0, ink_x1, ink_y0, ink_y1,
+              cell_x0, cell_x1, cell_y0, cell_y1);
+      goto Failure;
+    }
+  }
+
+  free(pixels);
+  bmfont_destroy(bmfont);
+  return result_TEST_PASSED;
+
+
+Failure:
+  free(pixels);
+  bmfont_destroy(bmfont);
+  return result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
+/* Checks caret hit-testing against bmfont_caret_x and bmfont_measure, then
+ * draws an I-beam and checks its pixels. */
+static result_t bmfont_caret_test(const char *resources)
+{
+  static const char sample[] = "Wim";
+  static const int  margin   = 4;
+
+  result_t       rc;
+  const char    *filename;
+  bmfont_t      *bmfont = NULL;
+  int            len;
+  bmfont_width_t adv0;
+  int            index;
+  bmfont_width_t caret_x;
+  int            i;
+  bmfont_width_t width;
+  int            ascent, height;
+  bitmap_t       bm;
+  screen_t       scr;
+  colour_t       white = colour_rgb(0xFF, 0xFF, 0xFF);
+  colour_t       black = colour_rgb(0x00, 0x00, 0x00);
+  point_t        pos;
+  int            bm_width, bm_height, rowbytes;
+  void          *pixels = NULL;
+  int            inked;
+  int            x, y;
+
+  filename = pathf("%s/resources/bmfonts/DPT-Digits-Regular.png", resources);
+
+  rc = bmfont_create(filename, &bmfont);
+  if (rc)
+  {
+    fprintf(stderr, "Error: Failed to load font %s\n", filename);
+    return result_TEST_FAILED;
+  }
+
+  len  = (int) strlen(sample);
+  adv0 = bmfont_caret_x(bmfont, sample, 1, NULL) + 1; /* advance of 'W' */
+
+  /* left half of the first glyph, midpoint included, gives index 0 */
+  bmfont_find_caret(bmfont, sample, len, NULL, adv0 / 2, &index, &caret_x);
+  if (index != 0 || caret_x != 0)
+  {
+    fprintf(stderr, "error: caret left half: index %d x %d\n", index,
+            caret_x);
+    goto Failure;
+  }
+
+  /* right half gives index 1 */
+  bmfont_find_caret(bmfont, sample, len, NULL, adv0 / 2 + 1, &index,
+                    &caret_x);
+  if (index != 1 || caret_x != adv0 - 1)
+  {
+    fprintf(stderr, "error: caret right half: index %d x %d\n", index,
+            caret_x);
+    goto Failure;
+  }
+
+  /* clamping and the empty string */
+  bmfont_find_caret(bmfont, sample, len, NULL, -5, &index, &caret_x);
+  if (index != 0 || caret_x != 0)
+    goto Failure;
+
+  bmfont_find_caret(bmfont, sample, len, NULL, 10000, &index, &caret_x);
+  if (index != len || caret_x != bmfont_caret_x(bmfont, sample, len, NULL))
+    goto Failure;
+
+  bmfont_find_caret(bmfont, NULL, 0, NULL, 7, &index, &caret_x);
+  if (index != 0 || caret_x != 0)
+    goto Failure;
+
+  /* round trip: a click at each glyph's left edge lands on its index; the
+   * caret x matches the measured (trailing-trimmed) prefix width */
+  for (i = 0; i <= len; i++)
+  {
+    caret_x = bmfont_caret_x(bmfont, sample, i, NULL);
+
+    bmfont_find_caret(bmfont, sample, len, NULL, caret_x + 1, &index, NULL);
+    if (index != i)
+    {
+      fprintf(stderr, "error: caret round trip %d gave %d\n", i, index);
+      goto Failure;
+    }
+
+    if (i > 0)
+    {
+      rc = bmfont_measure(bmfont, sample, i, NULL, INT_MAX, NULL, &width);
+      if (rc || width != caret_x)
+      {
+        fprintf(stderr, "error: caret x %d vs measure %d at %d\n", caret_x,
+                width, i);
+        goto Failure;
+      }
+    }
+  }
+
+  /* draw an I-beam and check it's a stem between two pairs of end dots */
+
+  bmfont_get_info(bmfont, NULL, NULL, &ascent, NULL);
+
+  height = ascent + 1 + 2 * 2; /* top of cell to baseline, plus 2px overhang
+                                * at each end */
+
+  bm_width  = margin * 2 + 1;
+  bm_height = margin * 2 + height;
+  rowbytes  = (bm_width << pixelfmt_log2bpp(pixelfmt_bgrx8888)) / 8;
+
+  pixels = malloc(rowbytes * bm_height);
+  if (pixels == NULL)
+    goto Failure;
+
+  bitmap_init(&bm, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888, rowbytes,
+              NULL, pixels);
+  bitmap_clear(&bm, white);
+  screen_for_bitmap(&scr, &bm);
+
+  pos.x = margin;
+  pos.y = margin + 2 + ascent;
+
+  bmfont_draw_caret(bmfont, &scr, black, &pos);
+
+  inked = 0;
+  for (y = 0; y < bm_height; y++)
+  {
+    const pixelfmt_bgrx8888_t *row =
+      (const pixelfmt_bgrx8888_t *) ((const char *) pixels + y * rowbytes);
+
+    for (x = 0; x < bm_width; x++)
+    {
+      int want;
+
+      want = (x == margin && y > margin && y < margin + height - 1) ||
+             ((y == margin || y == margin + height - 1) &&
+              (x == margin - 1 || x == margin + 1));
+
+      if (((row[x] & 0x00FFFFFFu) != 0x00FFFFFFu) != want)
+      {
+        fprintf(stderr, "error: caret pixel (%d,%d) wrong\n", x, y);
+        goto Failure;
+      }
+
+      inked += want;
+    }
+  }
+
+  if (inked != height + 2)
+    goto Failure;
+
+  free(pixels);
+  bmfont_destroy(bmfont);
+  return result_TEST_PASSED;
+
+
+Failure:
+  free(pixels);
+  bmfont_destroy(bmfont);
+  return result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t bmfont_test(const char *resources)
 {
   static const struct
@@ -1219,6 +1513,14 @@ result_t bmfont_test(const char *resources)
     return rc;
 
   rc = bmfont_spacing_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_measure_render_match_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_caret_test(resources);
   if (rc != result_TEST_PASSED)
     return rc;
 

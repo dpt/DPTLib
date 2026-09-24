@@ -22,161 +22,189 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* ponytail: flat list, one item per palette entry, index order. No grouping
- * of near colours, no "recent" section. wuss_colourmenu_selected is then a
- * single pointer compare plus the item index. */
-struct wuss_colourmenu
+/* ponytail: flat list, one item per palette entry plus a trailing "None"
+ * row (always built, shown/hidden via g.npalette/g.menu->nitems), index
+ * order. One process-wide singleton -- no per-task instances, no
+ * create/destroy -- rebuilt lazily when the caller's wuss_t or its palette
+ * size changes. */
+static struct
 {
-  wuss_alloc_t alloc; /* copied hooks; the wuss_t itself is not retained */
-  wuss_menu_t *menu;  /* owned; every block via alloc, see menu_free */
-};
+  wuss_alloc_t      alloc;
+  const wuss_t     *wuss;      /* whose palette menu was built from */
+  int               npalette;  /* palette rows in menu, None excluded */
+  wuss_menu_t      *menu;
+  wuss_menu_item_t *items;
+  char             *title;
+  int               with_none; /* survives rebuild; caller's last
+                                * wuss_colourmenu_set_none call */
+}
+g = { .with_none = 1 };
 
-/* Free a menu built here -- text, items, title, node -- through the same
- * hooks it was built with, so wuss_menu_destroy (plain free) must not be
- * used. Tolerates NULL text for partial unwinding. */
-static void menu_free(const wuss_alloc_t *a, wuss_menu_t *m)
+/* Free the singleton's owned blocks -- items, their text, title, itself --
+ * leaving g.menu/g.wuss cleared so the next call rebuilds from scratch. */
+static void colourmenu_free(void)
 {
   int i;
 
-  if (m == NULL)
-    return;
+  if (g.menu == NULL)
+    return; /* never built, or already freed -- g.alloc may be unset */
 
-  for (i = 0; i < m->nitems; i++)
-    a->free((void *) m->items[i].text); /* discard const */
-  a->free((void *) m->items);           /* discard const */
-  a->free((void *) m->title);           /* discard const */
-  a->free(m);
+  if (g.items != NULL)
+  {
+    for (i = 0; i < g.npalette + 1; i++)
+      g.alloc.free((void *) g.items[i].text); /* discard const */
+    g.alloc.free(g.items);
+    g.items = NULL;
+  }
+  g.alloc.free(g.title);
+  g.title = NULL;
+  g.alloc.free(g.menu);
+  g.menu     = NULL;
+  g.wuss     = NULL;
+  g.npalette = 0;
 }
 
-result_t wuss_colourmenu_create(wuss_colourmenu_t **out,
-                                const wuss_t       *wuss,
-                                const char         *title)
+/* (Re)build the singleton against wuss's current palette. */
+static result_t colourmenu_build(const wuss_t *wuss)
 {
-  const wuss_alloc_t *a;
-  wuss_colourmenu_t  *cm;
-  wuss_menu_t        *m;
-  wuss_menu_item_t   *items;
-  int                 n;
-  int                 i;
+  result_t rc;
+  int      npalette;
+  int      i;
 
-  items = NULL;
+  colourmenu_free();
 
-  if (out == NULL || wuss == NULL)
+  g.alloc = wuss->alloc;
+
+  npalette = wuss->npalette;
+  if (npalette > wuss_COLOUR_SYMBOLIC)
+    npalette = wuss_COLOUR_SYMBOLIC; /* wuss_colour_t indices above this are
+                                      * the symbolic/chrome-role namespace,
+                                      * not real palette slots -- don't hand
+                                      * them out as swatches */
+
+  g.menu = g.alloc.malloc(sizeof(*g.menu));
+  if (g.menu == NULL)
+    return result_OOM;
+
+  g.menu->title  = NULL;
+  g.menu->items  = NULL;
+  g.menu->nitems = 0;
+
+  g.items = g.alloc.malloc((size_t) (npalette + 1) * sizeof(*g.items));
+  if (g.items == NULL)
+  {
+    rc = result_OOM;
+    goto failure;
+  }
+  memset(g.items, 0, (size_t) (npalette + 1) * sizeof(*g.items));
+  g.menu->items = g.items;
+
+  g.title = wuss__alloc_strdup(&g.alloc, "Colour");
+  if (g.title == NULL)
+  {
+    rc = result_OOM;
+    goto failure;
+  }
+  g.menu->title = g.title;
+
+  for (i = 0; i < npalette; i++)
+  {
+    unsigned int r, gr, b;
+    char         label[8];
+
+    colour_get_rgb(&wuss->palette[i], &r, &gr, &b);
+    snprintf(label, sizeof(label), "#%02X%02X%02X", r, gr, b);
+
+    g.items[i].text = wuss__alloc_strdup(&g.alloc, label);
+    if (g.items[i].text == NULL)
+    {
+      rc = result_OOM;
+      goto failure;
+    }
+
+    g.items[i].flags  = wuss_MENU_ITEM_SWATCH;
+    g.items[i].swatch = (wuss_colour_t) i;
+  }
+
+  g.items[npalette].text   = wuss__alloc_strdup(&g.alloc, "None");
+  g.items[npalette].flags  = wuss_MENU_ITEM_SWATCH | wuss_MENU_ITEM_DASHED;
+  g.items[npalette].swatch = wuss_NO_BACKGROUND;
+  if (g.items[npalette].text == NULL)
+  {
+    rc = result_OOM;
+    goto failure;
+  }
+
+  g.npalette     = npalette;
+  g.menu->nitems = g.with_none ? npalette + 1 : npalette;
+  g.wuss         = wuss;
+
+  return result_OK;
+
+failure:
+  colourmenu_free();
+  return rc;
+}
+
+const wuss_menu_t *wuss_colourmenu_menu(const wuss_t *wuss)
+{
+  if (wuss == NULL)
+    return NULL;
+
+  if (wuss != g.wuss)
+    if (colourmenu_build(wuss) != result_OK)
+      return NULL;
+
+  return g.menu;
+}
+
+void wuss_colourmenu_set_none(int with_none)
+{
+  g.with_none = with_none;
+
+  if (g.menu == NULL)
+    return;
+
+  g.menu->nitems = with_none ? g.npalette + 1 : g.npalette;
+}
+
+result_t wuss_colourmenu_set_title(const char *title)
+{
+  char *copy;
+
+  if (g.menu == NULL)
     return result_NULL_ARG;
 
-  a = &wuss->alloc;
-  n = wuss->npalette;
-  if (n > wuss_COLOUR_SYMBOLIC)
-    n = wuss_COLOUR_SYMBOLIC; /* wuss_colour_t indices above this are the
-                               * symbolic/chrome-role namespace, not real
-                               * palette slots -- don't hand them out as
-                               * swatches */
-
-  cm = a->malloc(sizeof(*cm));
-  if (cm == NULL)
+  copy = wuss__alloc_strdup(&g.alloc, title ? title : "Colour");
+  if (copy == NULL)
     return result_OOM;
-  cm->alloc = *a;
-  cm->menu  = NULL;
-  a = &cm->alloc; /* use the copy from here on -- outlives the wuss_t */
 
-  m = a->malloc(sizeof(*m));
-  if (m == NULL)
-  {
-    a->free(cm);
-    return result_OOM;
-  }
-  m->title  = NULL;
-  m->items  = NULL;
-  m->nitems = 0;
+  g.alloc.free(g.title);
+  g.title       = copy;
+  g.menu->title = g.title;
 
-  if (n > 0)
-  {
-    items = a->malloc((size_t) n * sizeof(*items));
-    if (items == NULL)
-    {
-      menu_free(a, m);
-      a->free(cm);
-      return result_OOM;
-    }
-    memset(items, 0, (size_t) n * sizeof(*items));
-    m->items  = items;
-    m->nitems = n; /* items zeroed: menu_free's NULL-text loop is safe now */
-  }
-
-  m->title = wuss__alloc_strdup(a, title ? title : "Colour");
-  if (m->title == NULL)
-  {
-    menu_free(a, m);
-    a->free(cm);
-    return result_OOM;
-  }
-
-  for (i = 0; i < n; i++)
-  {
-    pixelfmt_rgba8888_t px;
-    char                label[8];
-
-    px = wuss->palette[i].primary;
-    snprintf(label, sizeof(label), "#%02X%02X%02X",
-             PIXELFMT_Rxxx8888(px),
-             PIXELFMT_xGxx8888(px),
-             PIXELFMT_xxBx8888(px));
-
-    items[i].text = wuss__alloc_strdup(a, label);
-    if (items[i].text == NULL)
-    {
-      menu_free(a, m);
-      a->free(cm);
-      return result_OOM;
-    }
-
-    items[i].flags  = wuss_MENU_ITEM_SWATCH;
-    items[i].swatch = (wuss_colour_t) i;
-  }
-
-  cm->menu = m;
-  *out = cm;
   return result_OK;
 }
 
-void wuss_colourmenu_destroy(wuss_colourmenu_t *doomed)
-{
-  wuss_alloc_t alloc;
-
-  if (doomed == NULL)
-    return;
-
-  alloc = doomed->alloc;
-  menu_free(&alloc, doomed->menu);
-  alloc.free(doomed);
-}
-
-const wuss_menu_t *wuss_colourmenu_menu(const wuss_colourmenu_t *cm)
-{
-  return cm ? cm->menu : NULL;
-}
-
-wuss_colour_t wuss_colourmenu_selected(const wuss_colourmenu_t *cm,
-                                       const wuss_event_t      *ev,
-                                       int                     *ok)
+wuss_colour_t wuss_colourmenu_selected(const wuss_event_t *ev, int *ok)
 {
   int index;
 
   if (ok != NULL)
     *ok = 0;
 
-  if (cm == NULL || ev == NULL)
+  if (ev == NULL || g.menu == NULL)
     return 0;
   if (ev->kind != wuss_EVENT_MENU_SELECT)
     return 0;
-  if (ev->data.menu_select.menu != cm->menu)
+  if (ev->data.menu_select.menu != g.menu)
     return 0;
 
   index = ev->data.menu_select.index;
-  if (index < 0 || index >= cm->menu->nitems)
+  if (index < 0 || index >= g.menu->nitems)
     return 0;
 
   if (ok != NULL)
     *ok = 1;
-  return cm->menu->items[index].swatch;
+  return g.menu->items[index].swatch;
 }

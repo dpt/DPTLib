@@ -21,6 +21,7 @@
 #include <SDL3/SDL.h>
 
 #include "frontend.h"
+#include "tasks.h" /* g_tasks.swap_mouse_buttons */
 
 /* Screen pixel format for the demo, chosen at run time via --depth: 32 =
  * pixelfmt_bgrx8888 (feeds SDL directly, no per-frame conversion); 8 =
@@ -42,25 +43,87 @@
 
 struct wuss_frontend
 {
-  SDL_Window   *window;
-  SDL_Renderer *renderer;
-  SDL_Texture  *texture;
-  int           scr_width;
-  int           scr_height;
-  int           scale; /* device pixels per screen pixel; see WUSS_SDL_*_SCALE */
-  int           depth; /* framebuffer bits per pixel: 32 (bgrx8888), 8 (p8), 4 (p4), 2 (p2) or 1 (p1) */
-  void         *pixels; /* the private framebuffer handed to the caller */
+  SDL_Window          *window;
+  SDL_Renderer        *renderer;
+  SDL_Texture         *texture;
+  int                  scr_width;
+  int                  scr_height;
+  int                  scale; /* device pixels per screen pixel; see WUSS_SDL_*_SCALE */
+  int                  depth; /* framebuffer bits per pixel: 32 (bgrx8888), 8 (p8), 4 (p4), 2 (p2) or 1 (p1) */
+  void                *pixels; /* the private framebuffer handed to the caller */
+  bitmap_t             conv; /* scratch bgrx8888 buffer for present()'s paletted
+                               * depths, sized scr_width x scr_height and reused
+                               * every frame instead of allocating one per present */
+  char                 text[64]; /* pending TEXT_INPUT, UTF-8 */
+  const char          *text_pos; /* next code point in text to hand out */
+  wuss_key_modifiers_t text_mods;
 };
 
 /* ----------------------------------------------------------------------- */
 
 static wuss_button_t sdl_button_to_wuss(Uint8 button)
 {
+  if (g_tasks.swap_mouse_buttons)
+  {
+    switch (button)
+    {
+    case SDL_BUTTON_MIDDLE: return wuss_BUTTON_ADJUST;
+    case SDL_BUTTON_RIGHT:  return wuss_BUTTON_MENU;
+    default:                return wuss_BUTTON_SELECT;
+    }
+  }
+
   switch (button)
   {
   case SDL_BUTTON_MIDDLE: return wuss_BUTTON_MENU;
   case SDL_BUTTON_RIGHT:  return wuss_BUTTON_ADJUST;
   default:                return wuss_BUTTON_SELECT;
+  }
+}
+
+static wuss_key_modifiers_t sdl_mods_to_wuss(SDL_Keymod mod)
+{
+  wuss_key_modifiers_t mods;
+
+  mods = wuss_KEY_MOD_NONE;
+  if (mod & SDL_KMOD_SHIFT)
+    mods |= wuss_KEY_MOD_SHIFT;
+  if (mod & SDL_KMOD_CTRL)
+    mods |= wuss_KEY_MOD_CTRL;
+#ifdef __APPLE__
+  if (mod & SDL_KMOD_GUI) /* Cmd plays the role of Ctrl */
+    mods |= wuss_KEY_MOD_CTRL;
+#endif
+  if (mod & SDL_KMOD_ALT)
+    mods |= wuss_KEY_MOD_ALT;
+
+  return mods;
+}
+
+/* Map a non-printing SDL key to its wuss code, or 0 if it is not one. */
+static int sdl_special_key(SDL_Keycode key)
+{
+  if (key >= SDLK_F1 && key <= SDLK_F12)
+    return wuss_KEY_F1 + (int) (key - SDLK_F1);
+
+  switch (key)
+  {
+  case SDLK_RETURN:    return 13;
+  case SDLK_KP_ENTER:  return 13;
+  case SDLK_BACKSPACE: return 8;
+  case SDLK_TAB:       return 9;
+  case SDLK_ESCAPE:    return 27;
+  case SDLK_UP:        return wuss_KEY_UP;
+  case SDLK_DOWN:      return wuss_KEY_DOWN;
+  case SDLK_LEFT:      return wuss_KEY_LEFT;
+  case SDLK_RIGHT:     return wuss_KEY_RIGHT;
+  case SDLK_HOME:      return wuss_KEY_HOME;
+  case SDLK_END:       return wuss_KEY_END;
+  case SDLK_PAGEUP:    return wuss_KEY_PAGE_UP;
+  case SDLK_PAGEDOWN:  return wuss_KEY_PAGE_DOWN;
+  case SDLK_INSERT:    return wuss_KEY_INSERT;
+  case SDLK_DELETE:    return wuss_KEY_DELETE;
+  default:             return 0;
   }
 }
 
@@ -130,6 +193,18 @@ result_t wuss_frontend_open(int               width,
     return result_OOM;
   }
 
+  fe->conv.base = NULL;
+  if (depth != 32)
+  {
+    fe->conv.base = malloc((size_t) width * sizeof(pixelfmt_bgrx8888_t) * height);
+    if (fe->conv.base == NULL)
+    {
+      free(fe->pixels);
+      free(fe);
+      return result_OOM;
+    }
+  }
+
   if (!SDL_Init(SDL_INIT_VIDEO))
   {
     fprintf(stderr, "Error: SDL_Init: %s\n", SDL_GetError());
@@ -143,6 +218,8 @@ result_t wuss_frontend_open(int               width,
     fprintf(stderr, "Error: SDL_CreateWindow: %s\n", SDL_GetError());
     goto failure;
   }
+
+  SDL_StartTextInput(fe->window);
 
   fe->renderer = SDL_CreateRenderer(fe->window, NULL);
   if (fe->renderer == NULL)
@@ -169,6 +246,10 @@ result_t wuss_frontend_open(int               width,
        : (depth == 2)  ? pixelfmt_p2
                        : pixelfmt_p1;
 
+  if (fe->conv.base != NULL)
+    bitmap_init(&fe->conv, SIZE2D(width, height), pixelfmt_bgrx8888,
+               width * sizeof(pixelfmt_bgrx8888_t), NULL, fe->conv.base);
+
   *pixels   = fe->pixels;
   *rowbytes = stride;
   *frontend = fe;
@@ -181,9 +262,70 @@ failure:
   if (fe->renderer) SDL_DestroyRenderer(fe->renderer);
   if (fe->window)   SDL_DestroyWindow(fe->window);
   SDL_Quit();
+  free(fe->conv.base);
   free(fe->pixels);
   free(fe);
   return result_TEST_FAILED;
+}
+
+result_t wuss_frontend_resize(wuss_frontend_t *fe,
+                              int              width,
+                              int              height,
+                              void           **pixels,
+                              int             *rowbytes)
+{
+  int          stride;
+  void        *new_pixels;
+  void        *new_conv;
+  SDL_Texture *new_texture;
+
+  stride = (width * fe->depth + 7) >> 3;
+
+  new_pixels = malloc((size_t) stride * height);
+  if (new_pixels == NULL)
+    return result_OOM;
+
+  new_conv = NULL;
+  if (fe->depth != 32)
+  {
+    new_conv = malloc((size_t) width * sizeof(pixelfmt_bgrx8888_t) * height);
+    if (new_conv == NULL)
+    {
+      free(new_pixels);
+      return result_OOM;
+    }
+  }
+
+  new_texture = SDL_CreateTexture(fe->renderer, SDL_PIXELFORMAT_ARGB8888,
+                                  SDL_TEXTUREACCESS_STREAMING, width, height);
+  if (new_texture == NULL)
+  {
+    free(new_conv);
+    free(new_pixels);
+    return result_TEST_FAILED;
+  }
+  SDL_SetTextureBlendMode(new_texture, SDL_BLENDMODE_NONE);
+  SDL_SetTextureScaleMode(new_texture, SDL_SCALEMODE_NEAREST);
+
+  SDL_DestroyTexture(fe->texture);
+  free(fe->pixels);
+  free(fe->conv.base);
+
+  fe->texture    = new_texture;
+  fe->pixels     = new_pixels;
+  fe->scr_width  = width;
+  fe->scr_height = height;
+
+  fe->conv.base = new_conv;
+  if (new_conv != NULL)
+    bitmap_init(&fe->conv, SIZE2D(width, height), pixelfmt_bgrx8888,
+               width * sizeof(pixelfmt_bgrx8888_t), NULL, new_conv);
+
+  SDL_SetWindowSize(fe->window, width * fe->scale, height * fe->scale);
+
+  *pixels   = fe->pixels;
+  *rowbytes = stride;
+  return result_OK;
 }
 
 bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
@@ -192,6 +334,15 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
 
   for (;;)
   {
+    /* hand out a TEXT_INPUT string one code point per call */
+    if (fe->text_pos != NULL && *fe->text_pos != '\0')
+    {
+      event->kind = wuss_INPUT_KEY;
+      event->key  = (int) SDL_StepUTF8(&fe->text_pos, NULL);
+      event->mods = fe->text_mods;
+      return true;
+    }
+
     if (!SDL_PollEvent(&ev))
       return false;
 
@@ -201,44 +352,41 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
       event->kind = wuss_INPUT_QUIT;
       return true;
 
-    case SDL_EVENT_KEY_UP:
-      switch (ev.key.key)
+    case SDL_EVENT_KEY_DOWN:
       {
-      case SDLK_F1:
-        event->kind = (ev.key.mod & SDL_KMOD_SHIFT)
-          ? wuss_INPUT_GARBAGE
-          : wuss_INPUT_REDRAW_ALL;
-        break;
-      case SDLK_F2:
-        {
-          int scale;
+        wuss_key_modifiers_t mods;
+        int                  key;
 
-          /* F2 steps the SDL window zoom up, Shift-F2 down, clamped to
-           * [WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE]: a backend-local zoom the
-           * demo loop never sees. */
-          scale = fe->scale + ((ev.key.mod & SDL_KMOD_SHIFT) ? -1 : 1);
-          if (scale < WUSS_SDL_MIN_SCALE)
-            scale = WUSS_SDL_MIN_SCALE;
-          else if (scale > WUSS_SDL_MAX_SCALE)
-            scale = WUSS_SDL_MAX_SCALE;
-          if (scale != fe->scale)
-          {
-            fe->scale = scale;
-            SDL_SetWindowSize(fe->window, fe->scr_width * scale,
-                              fe->scr_height * scale);
-          }
+        mods = sdl_mods_to_wuss(ev.key.mod);
+        key  = sdl_special_key(ev.key.key);
+        /* Plain printables arrive via TEXT_INPUT; only take them here when
+         * Ctrl or Alt turns them into a command. */
+        if (key == 0 &&
+            (mods & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT)) &&
+            !(ev.key.key & SDLK_SCANCODE_MASK))
+          key = (int) ev.key.key;
+        if (key == 0)
           continue;
-        }
-      case SDLK_F3:
-        event->kind = wuss_INPUT_PIXEL_STRESS;
-        break;
-      case SDLK_F4:
-        event->kind = wuss_INPUT_QUIT;
-        break;
-      default:
-        continue;
+
+        event->kind = wuss_INPUT_KEY;
+        event->key  = key;
+        event->mods = mods;
       }
       return true;
+
+    case SDL_EVENT_TEXT_INPUT:
+      /* KEY_DOWN already sent Ctrl/Alt combinations (and on macOS Alt would
+       * compose a different character here): drop the duplicate. */
+      if (sdl_mods_to_wuss(SDL_GetModState()) &
+          (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+        continue;
+
+      /* ponytail: text past sizeof(fe->text) is dropped; IME bursts that
+       * long are not expected in the demo */
+      SDL_strlcpy(fe->text, ev.text.text, sizeof(fe->text));
+      fe->text_pos  = fe->text;
+      fe->text_mods = sdl_mods_to_wuss(SDL_GetModState());
+      continue;
 
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
       {
@@ -283,7 +431,7 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
                        ev.wheel.mouse_x, ev.wheel.mouse_y, &x, &y);
         event->kind  = wuss_INPUT_WHEEL;
         event->pos   = POINT(x, y);
-        event->wheel = (int) ev.wheel.y;
+        event->wheel = g_tasks.reverse_scroll ? -(int) ev.wheel.y : (int) ev.wheel.y;
       }
       return true;
 
@@ -303,10 +451,10 @@ void wuss_frontend_present(wuss_frontend_t *fe,
   }
   else
   {
-    result_t    rc;
-    bitmap_t    rows, *disp;
-    int         y0, y1;
-    SDL_Rect    rect;
+    result_t rc;
+    bitmap_t rows, out;
+    int      y0, y1;
+    SDL_Rect rect;
 
     /* Sub-byte formats (p1/p2/p4) pack several pixels per byte, so only a
      * whole-row crop is safe without redoing their bit-unpacking maths for an
@@ -325,20 +473,23 @@ void wuss_frontend_present(wuss_frontend_t *fe,
     if (rc != result_OK)
       goto present;
 
-    /* wuss draws into a paletted bitmap; SDL wants bgrx. bitmap_convert reads
-     * the palette straight off `bm`, which the caller updates when the palette
-     * task's picker menu changes it, so a live palette change just shows up in
-     * the next converted frame. */
-    if (bitmap_convert(&rows, pixelfmt_bgrx8888, &disp) == result_OK)
+    /* wuss draws into a paletted bitmap; SDL wants bgrx. bitmap_convert_into
+     * reads the palette straight off `bm`, which the caller updates when the
+     * palette task's picker menu changes it, so a live palette change just
+     * shows up in the next converted frame. `fe->conv`'s buffer is sized for
+     * the full screen, so any dirty-row subset fits; only its size/rowbytes
+     * need to match this call's row count. */
+    bitmap_init(&out, rows.size, pixelfmt_bgrx8888,
+               bm->size.w * sizeof(pixelfmt_bgrx8888_t), NULL, fe->conv.base);
+
+    if (bitmap_convert_into(&rows, pixelfmt_bgrx8888, &out) == result_OK)
     {
       rect.x = 0;
       rect.y = y0;
       rect.w = bm->size.w;
       rect.h = y1 - y0;
 
-      SDL_UpdateTexture(fe->texture, &rect, disp->base, disp->rowbytes);
-      free(disp->base);
-      free(disp);
+      SDL_UpdateTexture(fe->texture, &rect, out.base, out.rowbytes);
     }
   }
 
@@ -347,6 +498,18 @@ present:
   SDL_RenderPresent(fe->renderer);
 
   SDL_Delay(1000 / 60);
+}
+
+void wuss_frontend_zoom(wuss_frontend_t *fe, int delta)
+{
+  int scale;
+
+  scale = CLAMP(fe->scale + delta, WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE);
+  if (scale == fe->scale)
+    return;
+
+  fe->scale = scale;
+  SDL_SetWindowSize(fe->window, fe->scr_width * scale, fe->scr_height * scale);
 }
 
 void wuss_frontend_set_palette(wuss_frontend_t *fe,
@@ -371,6 +534,7 @@ void wuss_frontend_close(wuss_frontend_t *fe)
   SDL_DestroyWindow(fe->window);
   SDL_Quit();
 
+  free(fe->conv.base);
   free(fe->pixels);
   free(fe);
 }

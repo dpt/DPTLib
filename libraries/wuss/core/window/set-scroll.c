@@ -35,7 +35,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
 
   /* the scrollbar sausage position depends on scroll, so its well needs
    * redrawing too -- content invalidation alone never touches it */
-  wuss__chrome_repaint(window);
+  wuss__chrome_repaint_scroll(window, dx, dy);
 
   /* The valid blit source is the content box minus whatever windows above it
    * were covering (those areas hold occluder pixels, not this window's),
@@ -43,7 +43,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
    * each destination against the occluders too. Each subtract can split a
    * piece into up to four bands, so this can overflow the piece budget on a
    * badly fragmented window -- treat that as "no safe fast path". */
-  nclean   = wuss__clip_to_visible(window, &content, clean);
+  nclean   = wuss__clip_to_visible(window, &content, clean, 0);
   nsrc     = 0;
   overflow = 0;
   for (i = 0; i < nclean; i++)
@@ -51,7 +51,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
     box_t kept[WUSS_MAX_INVALIDATE_PIECES];
     int   nkept, k;
 
-    nkept = wuss__subtract_boxes(&clean[i], stale, nstale, kept);
+    nkept = wuss__subtract_boxes(&clean[i], stale, nstale, kept, 0);
     for (k = 0; k < nkept; k++)
     {
       if (nsrc == WUSS_MAX_INVALIDATE_PIECES)
@@ -73,7 +73,7 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
      * clipped to this window's visible area: parts that were behind an
      * occluder still show the occluder's own correct pixels, so leaving
      * them out keeps the scroll from redrawing the occluding window. */
-    ndirty = wuss__subtract_boxes(&content, copied, ncopied, dirty);
+    ndirty = wuss__subtract_boxes(&content, copied, ncopied, dirty, 1);
     for (i = 0; i < ndirty; i++)
       wuss__invalidate_clipped(window, &dirty[i]);
     return;

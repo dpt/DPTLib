@@ -17,6 +17,12 @@
 
 #define BALL_BASE_RADIUS 8 /* +/-50% at spawn -> 4..12 */
 
+/* MENU click pops this single-item menu; the item table and wuss_menu_t
+ * live per-instance in ball_task_t, not as a file-scope static, so that
+ * each window's Info row can hold its own .window pointer to the shared
+ * proginfo singleton, retargeted just before wuss_menu_open */
+enum { BALL_MENU_INFO };
+
 /* a fresh radius in [BALL_BASE_RADIUS/2, BALL_BASE_RADIUS*3/2] */
 static int ball_random_radius(void)
 {
@@ -62,6 +68,7 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
   if (task == NULL)
     return result_OOM;
 
+  task->wuss   = wuss;
   task->bg     = colour_rgb(0xFF, 0x00, 0x00);
   task->nballs = 1;
 
@@ -83,6 +90,7 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
     return rc;
   }
   wuss_task_set_autoclose(delegate, 1);
+  task->delegate = delegate;
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(200, 160),
@@ -98,6 +106,14 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
     return rc;
   }
 
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, BALL_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in ball_mouse */
+
+  WUSS_MENU_TITLE(task->menu, "Bouncing Ball", task->menu_items,
+                 NELEMS(task->menu_items));
+
   if (out)
     *out = task;
 
@@ -106,6 +122,7 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
 
 void ball_destroy(ball_task_t *task)
 {
+  wuss_menu_close(task->menu_handle);
   free(task);
 }
 
@@ -155,10 +172,28 @@ static result_t ball_mouse(wuss_window_t      *window,
 
   bc = task_data;
 
-  NOT_USED(window);
+  if (window != bc->window)
+    return result_OK; /* the proginfo dialogue has no click behaviour of
+                       * its own */
 
   if (action != wuss_MOUSE_DOWN)
     return result_OK;
+
+  if (button & wuss_BUTTON_MENU)
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Bouncing Ball",
+      "Balls bouncing off content edges",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+    wuss_proginfo_set_desc(&desc);
+    bc->menu_items[BALL_MENU_INFO].window = wuss_proginfo_window(bc->delegate);
+
+    return wuss_menu_open(bc->delegate, &bc->menu,
+                          wuss_get_pointer(bc->wuss), &bc->menu_handle);
+  }
 
   if (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST))
   {
@@ -204,6 +239,13 @@ static result_t ball_idle(void *task_data)
   int          i;
 
   bc = task_data;
+
+  /* the proginfo dialogue is a second window on this same (autoclose)
+   * delegate, so closing the ball window alone never empties task->windows
+   * and the task lingers until the dialogue closes too -- guard against the
+   * dangling window in the meantime */
+  if (bc->window == NULL)
+    return result_OK;
 
   wuss_window_get_content_bounds(bc->window, &content);
   wuss_window_get_scroll(bc->window, &scroll);
@@ -258,6 +300,31 @@ result_t ball_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     return ball_idle(task_data);
+
+  case wuss_EVENT_MENU_CLOSED:
+    bc->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_CLOSE:
+    if (window == bc->window)
+      bc->window = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == bc->menu_items[BALL_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_QUIT:
     ball_destroy(bc);

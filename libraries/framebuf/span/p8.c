@@ -5,6 +5,7 @@
 
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
+#include "framebuf/pixelmap.h"
 
 #include "framebuf/span.h"
 
@@ -30,6 +31,7 @@ static void span_p8_blendconst(void       *vdst,
                                int         alpha,
                                const void *context)
 {
+  const pixelmap_t    *pm;
   unsigned char       *pdst;
   const unsigned char *psrc1;
   const colour_t      *psrc2;
@@ -39,6 +41,10 @@ static void span_p8_blendconst(void       *vdst,
   psrc1   = vsrc1;
   psrc2   = vsrc2;
   palette = context;
+
+  /* quantised nearest-colour table, built once per distinct palette and
+   * cached: replaces a 256-entry weighted linear scan per pixel. */
+  pm = pixelmap_get(pixelfmt_rgba8888, pixelfmt_p8, palette, SPAN_P8_NENTRIES);
 
   while (length--)
   {
@@ -65,8 +71,21 @@ static void span_p8_blendconst(void       *vdst,
     blend_b = (new_b * alpha + old_b * (255 - alpha)) / 255;
 
     blended = colour_rgb(blend_r, blend_g, blend_b);
-    *pdst   = (unsigned char) colour_to_pixel(palette, SPAN_P8_NENTRIES,
+
+    if (pm != NULL)
+    {
+      unsigned int idx;
+
+      idx = ((unsigned int) blend_r >> (8 - pm->rbits) << (pm->gbits + pm->bbits)) |
+            ((unsigned int) blend_g >> (8 - pm->gbits) << pm->bbits) |
+            ((unsigned int) blend_b >> (8 - pm->bbits));
+      *pdst = pm->entries[idx];
+    }
+    else
+    {
+      *pdst = (unsigned char) colour_to_pixel(palette, SPAN_P8_NENTRIES,
                                               blended, pixelfmt_p8);
+    }
 
     pdst++;
     psrc1++;

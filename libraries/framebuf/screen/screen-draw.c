@@ -264,10 +264,13 @@ void screen_fill_rect(screen_t *scr,
                       size2d_t  size,
                       colour_t  colour)
 {
-  box_t clip_box;
-  box_t rect_box;
-  box_t draw_box;
-  int   yy;
+  box_t          clip_box;
+  box_t          rect_box;
+  box_t          draw_box;
+  int            width;
+  pixelfmt_any_t fmt;
+  unsigned char *rowp;
+  int            yy;
 
   if (screen_get_clip(scr, &clip_box))
     return; /* invalid clipped screen */
@@ -279,10 +282,22 @@ void screen_fill_rect(screen_t *scr,
   if (box_intersection(&clip_box, &rect_box, &draw_box))
     return;
 
-  /* Each row is already clipped, so hand the pre-clipped span straight to
-   * screen_fill_hline. */
+  width = draw_box.x1 - draw_box.x0;
+
+  fmt = colour_to_pixel(scr->palette,
+                        pixelfmt_paletted_nentries(scr->format),
+                        colour, scr->format);
+
+  assert(scr->span && scr->span->fill);
+  if (scr->span == NULL || scr->span->fill == NULL)
+    return;
+
+  rowp = (unsigned char *) scr->base + draw_box.y0 * scr->rowbytes;
   for (yy = draw_box.y0; yy < draw_box.y1; yy++)
-    screen_fill_hline(scr, draw_box.x0, yy, draw_box.x1 - draw_box.x0, colour);
+  {
+    scr->span->fill(rowp, draw_box.x0, fmt, width);
+    rowp += scr->rowbytes;
+  }
 }
 
 void screen_fill_rects(screen_t    *scr,

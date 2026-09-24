@@ -2,6 +2,43 @@
 
 #include "impl.h"
 
+#ifdef WUSS_FURNITURE
+/* Move the held-down highlight to "region" (NONE to clear it), repainting
+ * the drawn box of whichever region it leaves and whichever it lands on. */
+static void set_pressed_region(wuss_window_t          *win,
+                               wuss_furniture_region_t region)
+{
+  wuss_t *wuss;
+  box_t   pressed;
+
+  wuss = win->wuss;
+
+  if (wuss->furniture.pressed_region != wuss_FURNITURE_NONE)
+  {
+    wuss__furniture_pressed_box(win, wuss->furniture.pressed_region, &pressed);
+    wuss__invalidate_clipped(win, &pressed);
+  }
+
+  wuss->furniture.pressed_region = region;
+
+  if (region != wuss_FURNITURE_NONE)
+  {
+    wuss__furniture_pressed_box(win, region, &pressed);
+    wuss__invalidate_clipped(win, &pressed);
+  }
+}
+
+/* Hold down a furniture icon that starts no drag: arm "dragging" purely so
+ * the MOUSE_UP release path clears the highlight. */
+static void press_furniture(wuss_window_t          *win,
+                            wuss_furniture_region_t region)
+{
+  win->wuss->furniture.dragging  = win;
+  win->wuss->furniture.drag_kind = wuss_FURNITURE_DRAG_NONE;
+  set_pressed_region(win, region);
+}
+#endif
+
 result_t wuss_mouse_click(wuss_t             *wuss,
                           point_t             p,
                           wuss_button_t       button,
@@ -57,6 +94,9 @@ result_t wuss_mouse_click(wuss_t             *wuss,
     win = wuss->furniture.dragging;
     if (hit != NULL)
       *hit = win;
+
+    set_pressed_region(win, wuss_FURNITURE_NONE);
+
     wuss->furniture.dragging  = NULL;
     wuss->furniture.drag_kind = wuss_FURNITURE_DRAG_NONE;
 
@@ -110,6 +150,12 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         action == wuss_MOUSE_DOWN       &&
         (button & wuss_BUTTON_SELECT))
     {
+      /* Lit even though the window may not survive the call below: a veto
+       * leaves it armed for the ordinary MOUSE_UP release below, and a
+       * successful close tears the window down and wuss_window_close
+       * clears this pressed state. */
+      press_furniture(win, region);
+
       /* User close-icon path: routes through try_close, so the task gets
        * PRE_CLOSE (may veto) then CLOSE and, if not vetoed, wuss tears the
        * window down. A veto's non-OK return propagates to the caller. */
@@ -122,6 +168,9 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         wuss_window_restack(win, wuss_ZORDER_BACK);
       else if (button & wuss_BUTTON_ADJUST)
         wuss_window_restack(win, wuss_ZORDER_FRONT);
+
+      if (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST))
+        press_furniture(win, region);
       return result_OK;
     }
 
@@ -144,27 +193,26 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         step = (button & wuss_BUTTON_SELECT) ?  WUSS_SCROLL_STEP
                                              : -WUSS_SCROLL_STEP;
 
-        switch (region)
+        if (region == wuss_FURNITURE_TOGGLE_SIZE)
         {
-        case wuss_FURNITURE_TOGGLE_SIZE:
           if (button & wuss_BUTTON_SELECT)
             wuss->furniture_ops->toggle_size(win);
-          break;
-        case wuss_FURNITURE_VSCROLL_UP:
-          wuss__scroll_step(win, POINT(0, -step));
-          break;
-        case wuss_FURNITURE_VSCROLL_DOWN:
-          wuss__scroll_step(win, POINT(0, step));
-          break;
-        case wuss_FURNITURE_HSCROLL_LEFT:
-          wuss__scroll_step(win, POINT(-step, 0));
-          break;
-        case wuss_FURNITURE_HSCROLL_RIGHT:
-          wuss__scroll_step(win, POINT(step, 0));
-          break;
-        default:
-          break;
         }
+        else
+        {
+          const wuss__furniture_element_t *element;
+
+          element = wuss__furniture_element(region);
+          wuss__scroll_step(win, POINT(element->step.x * step,
+                                       element->step.y * step));
+        }
+
+        /* light the icon/arrow up while held; MOUSE_UP's generic
+         * dragging==NULL check above clears it and repaints it plain.
+         * Toggle-size takes no action on Adjust (above), so it stays
+         * unlit for that button too. */
+        if (region != wuss_FURNITURE_TOGGLE_SIZE || (button & wuss_BUTTON_SELECT))
+          press_furniture(win, region);
       }
       return result_OK;
     }
@@ -262,7 +310,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           wuss_window_get_scroll(win, &scroll);
 
           wuss->furniture.dragging          = win;
-          wuss->furniture.drag_kind         = wuss__furniture_drag_kind(region);
+          wuss->furniture.drag_kind         = wuss__furniture_element(region)->drag_kind;
           wuss->furniture.drag.x            = x;
           wuss->furniture.drag.y            = y;
           wuss->furniture.drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_WELL) ? scroll.y : scroll.x;
@@ -274,9 +322,12 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           if (region == wuss_FURNITURE_RESIZE)
           {
             box_t content;
+
             wuss__content_box(win, &content);
             wuss->furniture.drag_offset.x = x - content.x1;
             wuss->furniture.drag_offset.y = y - content.y1;
+
+            set_pressed_region(win, region);
           }
         }
       }
@@ -284,6 +335,13 @@ result_t wuss_mouse_click(wuss_t             *wuss,
     }
   }
 #endif /* WUSS_FURNITURE */
+
+  /* A Select/Adjust press on a focusable window's content takes the input
+   * focus, before the press itself is delivered. Menu never moves it. */
+  if (action == wuss_MOUSE_DOWN                          &&
+      (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)) &&
+      (win->flags & wuss_WINDOW_FOCUSABLE))
+    (void) wuss_set_focus(wuss, win);
 
   if (win->task->handle != NULL)
   {
@@ -298,7 +356,12 @@ result_t wuss_mouse_click(wuss_t             *wuss,
     {
       wuss_icon_t *icon;
 
-      icon = wuss__icon_hit_test(win, doc_point);
+      /* MENU is never an icon gesture -- press/select/adjust are. Skipping
+       * the hit test lets a MENU click over an icon fall through to the
+       * plain wuss_EVENT_MOUSE below, so the task's own MENU handling (e.g.
+       * popping a work-area menu) sees it instead of the click being eaten
+       * here. */
+      icon = (button & wuss_BUTTON_MENU) ? NULL : wuss__icon_hit_test(win, doc_point);
       if (icon != NULL)
       {
         if (action == wuss_MOUSE_DOWN &&
@@ -316,6 +379,13 @@ result_t wuss_mouse_click(wuss_t             *wuss,
             wuss__icon_set_value(win, icon,
                                  wuss__slider_value_for_point(win, icon,
                                                               POINT(x, y)));
+
+          /* a writable takes the caret at the click, if the press above
+           * gave its window the focus */
+          if (icon->spec.type == wuss_ICON_TYPE_WRITABLE && wuss->focus == win)
+            wuss__writable_place_caret(win, icon,
+                                       wuss__writable_index_for_x(wuss, icon,
+                                                                  doc_point.x));
         }
         else if (action == wuss_MOUSE_UP && wuss__icon_pressed(icon))
         {

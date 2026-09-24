@@ -15,6 +15,11 @@
 
 #include "../core/impl.h"
 
+/* Titlebar text is drawn with a one-pixel drop shadow in the button-shadow
+ * bevel colour, matching the existing bevel/relief look of furniture icons
+ * rather than adding a separate configurable title-shadow colour. */
+static const point_t WUSS_TITLE_SHADOW_OFFSET = { 1, 1 };
+
 /* Paint one furniture rectangle "b" in "colour", clipped to the part of it
  * that falls inside "full" (the redraw region). A no-op when "b" is wholly
  * outside "full". Pins scr->clip to the clipped rect -- the caller's next
@@ -33,8 +38,20 @@ static void fill_furniture_rect(wuss_t      *wuss,
   screen_fill_rect(wuss->scr, b->x0, b->y0, box_size(b), colour);
 }
 
+/* The titlebar fill: the focus tint while "window" holds the input focus. */
+static colour_t title_bg(const wuss_t *wuss, const wuss_window_t *window)
+{
+  const wuss_furniture_palette_t *fc;
+
+  fc = &wuss->furniture_colours;
+
+  return wuss->palette[(wuss->focus == window) ? fc->title.focus_bg
+                                               : fc->title.bg];
+}
+
 /* Resolve a cached piece's paint class to a concrete palette colour. */
 static colour_t paint_colour(const wuss_t                 *wuss,
+                             const wuss_window_t          *window,
                              wuss__furniture_paint_class_t paint)
 {
   const wuss_furniture_palette_t *fc;
@@ -43,18 +60,20 @@ static colour_t paint_colour(const wuss_t                 *wuss,
 
   switch (paint)
   {
-  case wuss__FURNITURE_PAINT_TITLE_BG:       return wuss->palette[fc->title.bg];
+  case wuss__FURNITURE_PAINT_TITLE_BG:       return title_bg(wuss, window);
   case wuss__FURNITURE_PAINT_CLOSE:          return wuss->palette[fc->close];
   case wuss__FURNITURE_PAINT_BACK:           return wuss->palette[fc->back];
   case wuss__FURNITURE_PAINT_TOGGLE:         return wuss->palette[fc->toggle];
   case wuss__FURNITURE_PAINT_RESIZE:         return wuss->palette[fc->resize];
   case wuss__FURNITURE_PAINT_SCROLL_ARROWS:  return wuss->palette[fc->scroll.arrows];
   case wuss__FURNITURE_PAINT_SCROLL_WELLS:   return wuss->palette[fc->scroll.wells];
-  case wuss__FURNITURE_PAINT_OUTLINE:        return wuss->palette[fc->outline];
+  case wuss__FURNITURE_PAINT_OUTLINE:
+    return (fc->outline == wuss_NO_BACKGROUND) ? title_bg(wuss, window)
+                                               : wuss->palette[fc->outline];
   }
 
   assert(!"unhandled furniture paint class");
-  return wuss->palette[fc->title.bg];
+  return title_bg(wuss, window);
 }
 
 /* The title string, drawn into its titlebar slot. Split out of the main
@@ -126,10 +145,38 @@ static void draw_title(wuss_t        *wuss,
   pos.x = (split_point < titlelen) ? text_x0 : text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
   pos.y = titlebar->y0 + 2 + ascent;
   wuss->scr->clip = text_clip;
-  wuss__text_draw(titlefont, wuss->scr, window->title, titlelen,
-                  wuss->palette[wuss->furniture_colours.title.fg],
-                  wuss->palette[wuss->furniture_colours.title.bg],
-                  &pos, NULL);
+
+  /* filled titlebar first, so the relief pass's transparent background
+   * shows the fill rather than punching through to whatever was under the
+   * slot before this redraw. Stops above the bottom divider rule (already
+   * painted as its own cached piece, see furniture/layout.c) so the fill
+   * doesn't cover it back over. */
+  screen_fill_rect(wuss->scr, text_x0, titlebar->y0,
+                   SIZE2D(text_x1 - text_x0,
+                          titlebar->y1 - titlebar->y0 - WUSS_DIVIDER_PX),
+                   title_bg(wuss, window));
+
+  bmfont_draw_relief(titlefont, wuss->scr, window->title, titlelen,
+                     wuss->palette[wuss->furniture_colours.title.fg],
+                     wuss->palette[wuss->bevel_dark],
+                     NULL, &pos, &WUSS_TITLE_SHADOW_OFFSET, NULL);
+}
+
+void wuss__furniture_pressed_box(const wuss_window_t    *window,
+                                 wuss_furniture_region_t region,
+                                 box_t                  *out)
+{
+  const wuss__furniture_element_t *element;
+
+  element = wuss__furniture_element(region);
+  if (element == NULL || element->box == NULL)
+  {
+    assert(!"wuss__furniture_pressed_box: region is not pressable");
+    out->x0 = out->y0 = out->x1 = out->y1 = 0;
+    return;
+  }
+
+  element->box(window, out);
 }
 
 void wuss__furniture_draw(wuss_t        *wuss,
@@ -143,7 +190,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
   if (box_intersection(&window->visible, full, &visible_clipped))
     return; /* offscreen */
 
-  if (!window->furniture_layout.valid)
+  if (!(window->furniture_layout.flags & wuss_FURNITURE_LAYOUT__VALID))
     wuss__furniture_layout_build(window);
 
   /* phase 2: clip-and-fill every cached rect */
@@ -153,7 +200,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
 
     piece = &window->furniture_layout.pieces[i];
     fill_furniture_rect(wuss, &piece->rect, full,
-                        paint_colour(wuss, piece->paint));
+                        paint_colour(wuss, window, piece->paint));
   }
 
   /* the two scrollbar sausages: geometry depends on window->scroll, so they
@@ -172,8 +219,21 @@ void wuss__furniture_draw(wuss_t        *wuss,
                         wuss->palette[wuss->furniture_colours.scroll.sausages]);
   }
 
+  /* RESIZE or a scroll arrow held down on this window: painted live, over the
+   * cached fill just laid down, same as the sausages above and for the same
+   * reason -- press state isn't part of the geometry the cache tracks. */
+  if (window->wuss->furniture.dragging == window &&
+      window->wuss->furniture.pressed_region != wuss_FURNITURE_NONE)
+  {
+    box_t pressed;
+
+    wuss__furniture_pressed_box(window, window->wuss->furniture.pressed_region, &pressed);
+    fill_furniture_rect(wuss, &pressed, full,
+                        wuss->palette[wuss->furniture_colours.pressed]);
+  }
+
   /* the title string, drawn live over its (already-filled) titlebar slot */
-  if (window->furniture_layout.has_titlebar)
+  if (window->furniture_layout.flags & wuss_FURNITURE_LAYOUT__HAS_TITLEBAR)
   {
     box_t titlebar_clip;
 

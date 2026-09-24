@@ -25,6 +25,9 @@ static int wuss__kind_ok_for(wuss_event_kind_t kind, int have_window)
   case wuss_EVENT_CLOSE:
   case wuss_EVENT_POINTER_ENTER:
   case wuss_EVENT_POINTER_EXIT:
+  case wuss_EVENT_GAIN_FOCUS:
+  case wuss_EVENT_LOSE_FOCUS:
+  case wuss_EVENT_KEY:
     return have_window;
 
   case wuss_EVENT_IDLE:
@@ -32,6 +35,7 @@ static int wuss__kind_ok_for(wuss_event_kind_t kind, int have_window)
   case wuss_EVENT_PALETTE:
   case wuss_EVENT_MENU_SELECT:
   case wuss_EVENT_MENU_CLOSED:
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
     return !have_window;
 
   case wuss_EVENT_ICON:
