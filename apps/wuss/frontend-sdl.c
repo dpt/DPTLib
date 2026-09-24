@@ -219,7 +219,11 @@ result_t wuss_frontend_open(int               width,
     goto failure;
   }
 
+#ifndef __EMSCRIPTEN__
+  /* Emscripten's keypress-based TEXT_INPUT is unreliable; its KEY_DOWN
+   * already carries the composed character (see wuss_frontend_poll) */
   SDL_StartTextInput(fe->window);
+#endif
 
   fe->renderer = SDL_CreateRenderer(fe->window, NULL);
   if (fe->renderer == NULL)
@@ -365,6 +369,19 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
             (mods & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT)) &&
             !(ev.key.key & SDLK_SCANCODE_MASK))
           key = (int) ev.key.key;
+#ifdef __EMSCRIPTEN__
+        /* no TEXT_INPUT here: SDL keymaps the browser's KeyboardEvent.key
+         * under the current modifiers, but ev.key.key is the unshifted key,
+         * so look up the shifted/composed one */
+        if (key == 0)
+        {
+          SDL_Keycode k;
+
+          k = SDL_GetKeyFromScancode(ev.key.scancode, ev.key.mod, false);
+          if (k >= ' ' && k != 127 && !(k & SDLK_SCANCODE_MASK))
+            key = (int) k;
+        }
+#endif
         if (key == 0)
           continue;
 
