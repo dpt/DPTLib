@@ -38,6 +38,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
   box_t                     content;
   point_t                   carve;
   int                       outline_px;
+  int                       i;
 
   layout          = &window->furniture_layout;
   layout->npieces = 0;
@@ -47,7 +48,7 @@ void wuss__furniture_layout_build(wuss_window_t *window)
   wuss__content_box(window, &content);
   wuss__furniture_carve_for(window->flags, wuss__button_size(window), &carve);
 
-  /* titlebar fill + its icons ------------------------------------------- */
+  /* titlebar fill + its dividing rule ---------------------------------- */
   wuss__titlebar_box(window, &titlebar);
   if (!(window->flags & wuss_WINDOW_NO_TITLEBAR))
   {
@@ -67,30 +68,6 @@ void wuss__furniture_layout_build(wuss_window_t *window)
       rule.y0 = titlebar.y1 - WUSS_DIVIDER_PX;
       rule.y1 = titlebar.y1;
       push_piece(layout, &rule, wuss__FURNITURE_PAINT_OUTLINE);
-    }
-
-    if (window->flags & wuss_WINDOW_CLOSE)
-    {
-      box_t close;
-
-      wuss__close_box(window, &close);
-      push_piece(layout, &close, wuss__FURNITURE_PAINT_CLOSE);
-    }
-
-    if (window->flags & wuss_WINDOW_BACK)
-    {
-      box_t back;
-
-      wuss__back_box(window, &back);
-      push_piece(layout, &back, wuss__FURNITURE_PAINT_BACK);
-    }
-
-    if (window->flags & wuss_WINDOW_TOGGLE_SIZE)
-    {
-      box_t toggle;
-
-      wuss__toggle_box(window, &toggle);
-      push_piece(layout, &toggle, wuss__FURNITURE_PAINT_TOGGLE);
     }
   }
 
@@ -124,7 +101,24 @@ void wuss__furniture_layout_build(wuss_window_t *window)
     }
   }
 
-  /* resize icon + its dividing seams ---------------------------------- */
+  /* every present element with a drawn box: the titlebar icons, the resize
+   * icon and the scroll arrows and wells (the sausages are drawn live). The
+   * titlebar fill and resize bands above must come first as these paint
+   * over them. -------------------------------------------------------- */
+  for (i = 0; i < wuss__furniture_nelements; i++)
+  {
+    const wuss__furniture_element_t *element;
+    box_t                            box;
+
+    element = &wuss__furniture_elements[i];
+    if (element->box == NULL || !wuss__furniture_element_present(window, element))
+      continue;
+
+    element->box(window, &box);
+    push_piece(layout, &box, element->paint);
+  }
+
+  /* resize icon's dividing seams -------------------------------------- */
   if (window->flags & wuss_WINDOW_RESIZE)
   {
     box_t resize, rule;
@@ -134,8 +128,6 @@ void wuss__furniture_layout_build(wuss_window_t *window)
 
     top_seam  = (window->flags & wuss_WINDOW_VSCROLL) ? WUSS_DIVIDER_PX : 0;
     left_seam = (window->flags & wuss_WINDOW_HSCROLL) ? WUSS_DIVIDER_PX : 0;
-
-    push_piece(layout, &resize, wuss__FURNITURE_PAINT_RESIZE);
 
     if (top_seam > 0)
     {
@@ -156,19 +148,13 @@ void wuss__furniture_layout_build(wuss_window_t *window)
     }
   }
 
-  /* vertical scrollbar: arrows + well (sausage is drawn live) --------- */
+  /* vertical scrollbar dividing rules --------------------------------- */
   if (window->flags & wuss_WINDOW_VSCROLL)
   {
-    box_t up, down, well, rule;
+    box_t up, down, rule;
 
     wuss__vscroll_up_box(window, &up);
-    push_piece(layout, &up, wuss__FURNITURE_PAINT_SCROLL_ARROWS);
-
     wuss__vscroll_down_box(window, &down);
-    push_piece(layout, &down, wuss__FURNITURE_PAINT_SCROLL_ARROWS);
-
-    wuss__vscroll_well_box(window, &well);
-    push_piece(layout, &well, wuss__FURNITURE_PAINT_SCROLL_WELLS);
 
     /* dividing rules in the gap row scroll_well leaves between each arrow
      * and the well, full strip breadth. The arrow keeps its full size x size
@@ -184,19 +170,13 @@ void wuss__furniture_layout_build(wuss_window_t *window)
     push_piece(layout, &rule, wuss__FURNITURE_PAINT_OUTLINE);
   }
 
-  /* horizontal scrollbar: arrows + well ----------------------------- */
+  /* horizontal scrollbar dividing rules ------------------------------- */
   if (window->flags & wuss_WINDOW_HSCROLL)
   {
-    box_t left, right, well, rule;
+    box_t left, right, rule;
 
     wuss__hscroll_left_box(window, &left);
-    push_piece(layout, &left, wuss__FURNITURE_PAINT_SCROLL_ARROWS);
-
     wuss__hscroll_right_box(window, &right);
-    push_piece(layout, &right, wuss__FURNITURE_PAINT_SCROLL_ARROWS);
-
-    wuss__hscroll_well_box(window, &well);
-    push_piece(layout, &well, wuss__FURNITURE_PAINT_SCROLL_WELLS);
 
     /* dividing rules in the gap column scroll_well leaves between each arrow
      * and the well, full strip breadth. The arrow keeps its full size x size

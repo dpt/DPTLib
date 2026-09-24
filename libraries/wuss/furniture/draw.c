@@ -166,21 +166,17 @@ void wuss__furniture_pressed_box(const wuss_window_t    *window,
                                  wuss_furniture_region_t region,
                                  box_t                  *out)
 {
-  switch (region)
+  const wuss__furniture_element_t *element;
+
+  element = wuss__furniture_element(region);
+  if (element == NULL || element->box == NULL)
   {
-  case wuss_FURNITURE_RESIZE:        wuss__resize_box(window, out);       break;
-  case wuss_FURNITURE_VSCROLL_UP:    wuss__vscroll_up_box(window, out);   break;
-  case wuss_FURNITURE_VSCROLL_DOWN:  wuss__vscroll_down_box(window, out); break;
-  case wuss_FURNITURE_HSCROLL_LEFT:  wuss__hscroll_left_box(window, out); break;
-  case wuss_FURNITURE_HSCROLL_RIGHT: wuss__hscroll_right_box(window, out); break;
-  case wuss_FURNITURE_CLOSE:         wuss__close_box(window, out);        break;
-  case wuss_FURNITURE_BACK:          wuss__back_box(window, out);         break;
-  case wuss_FURNITURE_TOGGLE_SIZE:   wuss__toggle_box(window, out);       break;
-  default:
     assert(!"wuss__furniture_pressed_box: region is not pressable");
     out->x0 = out->y0 = out->x1 = out->y1 = 0;
-    break;
+    return;
   }
+
+  element->box(window, out);
 }
 
 void wuss__furniture_draw(wuss_t        *wuss,
