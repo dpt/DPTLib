@@ -2,6 +2,7 @@
 
 #ifdef WUSS_APP
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <math.h>
@@ -16,6 +17,7 @@
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "geom/point.h"
+#include "io/dirscan.h"
 #include "io/path.h"
 #include "text/bmtext.h"
 #include "wuss/menu.h"
@@ -33,47 +35,10 @@
  * pattern. */
 enum { TEXT_COLOURS_MENU_FOREGROUND = 0, TEXT_COLOURS_MENU_BACKGROUND };
 
-/* one entry per row of the "Sample" submenu; name is the menu label, text
- * what text_redraw lays out. Pangrams first, lorem ipsum last (and default,
- * matching this task's original fixed paragraph). */
-typedef struct text_sample
-{
-  const char *name;
-  const char *text;
-  bool        markdown; /* if set, task->text is Markdown source and must be
-                         * run through text__markdown_parse before layout,
-                         * rather than laid out as plain text */
-}
-text_sample_t;
-
-static const text_sample_t text_samples[] =
-{
-  { "Markdown Demo",
-    "# Markdown Demo\n"
-    "\n"
-    "This paragraph has **bold**, *italic*, and `code` runs mixed into plain text, to show inline styling survives word-wrap.\n"
-    "\n"
-    "## Lists\n"
-    "\n"
-    "- First item\n"
-    "- Second item with **bold** in it\n"
-    "- Third item\n"
-    "\n"
-    "### Smaller Heading\n"
-    "\n"
-    "A closing paragraph after a bullet list and a sub-heading, to check spacing between block types looks right.",
-    true },
-  { "Lorem Ipsum",
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed eros lacus, imperdiet eget finibus ac, tempus vel risus. Donec scelerisque, elit quis pretium imperdiet, orci magna varius tellus, sit amet sodales ante orci nec nibh. Pellentesque placerat eu diam vitae pharetra. Nunc aliquet ante mi, vulputate commodo dui placerat eu. Morbi velit ex, scelerisque vel mi elementum, tristique viverra enim. Integer a interdum eros, id fringilla nunc. Nunc non felis nisi. Aliquam nec ullamcorper tellus. Maecenas sed aliquam diam. Duis pretium aliquet metus. Suspendisse rhoncus turpis vel dui euismod fringilla. Vivamus efficitur leo vel metus condimentum, tempor bibendum augue vehicula. Nunc eleifend sagittis tortor eget pretium. Fusce interdum tortor eget sapien blandit consectetur. Aliquam vestibulum euismod eros a luctus. Etiam nec nisl et diam imperdiet lobortis. Sed in eros sed tellus commodo bibendum. Sed ipsum velit, sodales a pulvinar non, pharetra ut est. Curabitur eu odio id magna posuere eleifend non id erat. Pellentesque commodo blandit mauris, ac consequat nisi dapibus eget. Mauris sollicitudin molestie urna, sit amet ornare turpis tincidunt bibendum. Vivamus interdum bibendum luctus. Suspendisse in arcu velit. Aenean eget bibendum dolor. Quisque tristique porta purus ornare tincidunt. Etiam hendrerit nunc tellus, et tempus ligula laoreet eu. Quisque pellentesque malesuada tempor. Mauris eu lectus ut neque fringilla hendrerit. Sed scelerisque laoreet felis a eleifend. Fusce sit amet mauris tellus. Sed orci ipsum, consectetur vitae blandit ut, egestas vehicula dolor. Integer ullamcorper, metus a vulputate mattis, elit orci accumsan ligula, eget elementum nibh tortor sit amet mauris. In aliquet nibh at scelerisque suscipit. Sed elit purus, sagittis eu accumsan ultricies, lobortis a odio. Duis libero sem, tempus in fringilla nec, bibendum eu metus. Nulla eget justo metus. In luctus ante massa, pellentesque commodo lorem pretium sed. Cras ultricies est lacus, ut dictum lorem gravida sed. Ut augue mauris, dignissim a pulvinar eget, pharetra ac turpis. Sed ultricies nulla mauris, id dictum ex scelerisque sit amet. Morbi et placerat enim. Phasellus arcu nisl, tempor vitae lacinia et, finibus quis justo. Fusce ipsum mi, porttitor nec faucibus at, fermentum ut massa. Cras faucibus molestie mauris. Sed et metus eget lectus luctus cursus a sit amet eros. Sed enim ligula, gravida eget magna eu, suscipit fermentum lorem. Maecenas vestibulum mollis lacus nec accumsan. Nullam molestie justo eu turpis facilisis tempus quis quis velit. Phasellus gravida mollis condimentum. Nam fringilla mollis dolor, quis posuere quam iaculis ac. Suspendisse ac maximus mi. Pellentesque aliquam ante ante, sed facilisis sapien dictum ac. Nullam pulvinar ante vitae dictum rhoncus. Praesent in pretium justo. Quisque pellentesque at sapien at pulvinar. Aenean a lorem at sapien molestie ullamcorper in dignissim ante. Nunc sagittis mi at dolor accumsan laoreet. Ut id congue elit, ut semper metus. Praesent tellus orci, feugiat suscipit diam sit amet, malesuada efficitur metus. Phasellus condimentum justo ipsum, et lobortis mi ultrices a. Interdum et malesuada fames ac ante ipsum primis in faucibus. Nunc vestibulum volutpat laoreet. Vestibulum convallis lectus at accumsan imperdiet. Aliquam suscipit, justo condimentum sodales iaculis, tellus enim fermentum lacus, quis volutpat sapien tortor quis enim. Vestibulum vehicula turpis eu lorem gravida, nec volutpat massa dapibus. Mauris egestas accumsan mattis. Nullam ex risus, imperdiet ut vestibulum a, malesuada at odio. Praesent congue, nulla a eleifend dignissim, ligula arcu tincidunt tortor, vel vestibulum quam ipsum vitae metus. Nullam lacinia interdum enim id bibendum. Praesent quis elit id turpis cursus auctor. Etiam turpis massa, finibus sed odio quis, dapibus tristique magna. Morbi quis commodo tortor. Pellentesque hendrerit non libero non pretium. Aenean nunc est, aliquet eget tincidunt id, auctor ultrices orci velit." },
-  { "Quick Brown Fox",
-    "The quick brown fox jumps over the lazy dog." },
-  { "Pangram (Cwm Fjord)",
-    "Cwm fjord bank glyphs vext quiz." },
-  { "Pangram (Waltz)",
-    "Waltz, bad nymph, for quick jigs vex." }
-};
-
-#define TEXT_DEFAULT_SAMPLE (1) /* "Lorem Ipsum" */
+/* the "Sample" submenu is built from the files in resources/text: ".md"
+ * files are parsed as Markdown, ".txt" files laid out as plain text. Rows
+ * are sorted by leafname, and the first is the default. */
+#define TEXT_SAMPLES_DIR "%s/resources/text"
 
 /* one entry per row of the "Spacing" submenu */
 typedef struct text_spacing_preset
@@ -102,7 +67,7 @@ static const text_spacing_preset_t text_spacing_presets[] =
 #define TEXT_MD_ITALIC_COLOUR colour_rgb(0x20, 0x90, 0x40)
 #define TEXT_MD_CODE_COLOUR   colour_rgb(0x90, 0x40, 0xc0)
 
-#define TEXT_MD_MAX_SPANS 128 /* demo text is short and fixed; overflow is
+#define TEXT_MD_MAX_SPANS 128 /* sample text is short; overflow is
                                * dropped */
 
 /* is c the start of an ATX header line ("#" through "######" then a
@@ -313,6 +278,9 @@ oom:
 /* index into task->top_items[] of the "Font" leaf */
 #define TEXT_MENU_FONT 1
 
+/* index into task->top_items[] of the "Auto-size" leaf */
+#define TEXT_MENU_AUTOSIZE 5
+
 /* ----------------------------------------------------------------------- */
 
 /* the shared fontmenu singleton, retargeted at task->wuss's bmfonts dir --
@@ -371,46 +339,142 @@ static result_t text_set_font(text_task_t *task, int idx, const char *name)
   return result_OK;
 }
 
-/* (re)point task->text at text_samples[idx], parsing it as Markdown into
- * task->markdown_text/markdown_spans first if that sample is marked
- * markdown, freeing any previous markdown buffers either way; idx must
- * already be range-checked */
-static result_t text__apply_sample(text_task_t *task, int idx)
+/* dirscan_walk callback: append leaf to task->samples if it is a ".md" or
+ * ".txt" file and there is room */
+static result_t text__scan_sample(const char *leaf, void *opaque)
 {
-  result_t rc;
+  text_task_t   *task;
+  text_sample_t *sample;
+  char          *c;
 
-  free(task->markdown_text);
-  free(task->markdown_spans);
-  task->markdown_text   = NULL;
-  task->markdown_spans  = NULL;
-  task->markdown_nspans = 0;
+  task = opaque;
+  if (task->nsamples >= TEXT_MAX_SAMPLES ||
+      strlen(leaf) >= sizeof(sample->leaf))
+    return result_OK;
 
-  if (text_samples[idx].markdown)
-  {
-    rc = text__markdown_parse(text_samples[idx].text,
-                              (int) strlen(text_samples[idx].text),
-                              &task->markdown_text,
-                              &task->markdown_spans,
-                              &task->markdown_nspans);
-    if (rc != result_OK)
-      return rc;
-    task->text = task->markdown_text;
-  }
+  sample = &task->samples[task->nsamples];
+  /* ponytail: on RISC OS leaves carry no extension, so every file matches
+   * ".md" and is parsed as Markdown -- check the filetype if that matters */
+  if (path_leaf_strip_ext(leaf, ".md", sample->name, sizeof(sample->name)))
+    sample->markdown = true;
+  else if (path_leaf_strip_ext(leaf, ".txt",
+                               sample->name, sizeof(sample->name)))
+    sample->markdown = false;
   else
-  {
-    task->text = text_samples[idx].text;
-  }
+    return result_OK;
 
-  task->sample = idx;
+  strcpy(sample->leaf, leaf);
+  for (c = sample->name; *c != '\0'; c++)
+    if (*c == '_')
+      *c = ' ';
+
+  task->nsamples++;
   return result_OK;
 }
 
-/* switch the shown text to text_samples[idx] */
+static int text__sample_compare(const void *a, const void *b)
+{
+  return strcmp(((const text_sample_t *) a)->leaf,
+                ((const text_sample_t *) b)->leaf);
+}
+
+/* read the whole of path into a freshly malloc'd NUL-terminated buffer,
+ * less any trailing newlines; caller frees *out_text */
+static result_t text__load_file(const char *path,
+                                char      **out_text,
+                                int        *out_len)
+{
+  result_t rc;
+  FILE    *f;
+  long     len;
+  char    *text;
+
+  *out_text = NULL;
+  *out_len  = 0;
+
+  f = fopen(path, "rb");
+  if (f == NULL)
+    return result_FILE_NOT_FOUND;
+
+  rc = result_FILE_NOT_FOUND;
+  if (fseek(f, 0, SEEK_END) != 0)
+    goto exit;
+
+  len = ftell(f);
+  if (len < 0 || fseek(f, 0, SEEK_SET) != 0)
+    goto exit;
+
+  rc   = result_OOM;
+  text = malloc((size_t) len + 1);
+  if (text == NULL)
+    goto exit;
+
+  if (fread(text, 1, (size_t) len, f) != (size_t) len)
+  {
+    free(text);
+    rc = result_FILE_NOT_FOUND;
+    goto exit;
+  }
+
+  while (len > 0 && text[len - 1] == '\n')
+    len--;
+  text[len] = '\0';
+
+  *out_text = text;
+  *out_len  = (int) len;
+  rc        = result_OK;
+
+exit:
+  fclose(f);
+  return rc;
+}
+
+/* load task->samples[idx] into task->text, parsing it as Markdown into
+ * task->text/markdown_spans if that sample is marked markdown, and freeing
+ * the previous sample's buffers; on failure the previous sample stays
+ * shown. idx must already be range-checked */
+static result_t text__apply_sample(text_task_t *task, int idx)
+{
+  result_t     rc;
+  char        *raw;
+  int          rawlen;
+  char        *text;
+  text_span_t *spans;
+  int          nspans;
+
+  rc = text__load_file(pathf(TEXT_SAMPLES_DIR "/%s",
+                             wuss_get_resources(task->wuss),
+                             task->samples[idx].leaf),
+                       &raw, &rawlen);
+  if (rc != result_OK)
+    return rc;
+
+  text   = raw;
+  spans  = NULL;
+  nspans = 0;
+  if (task->samples[idx].markdown)
+  {
+    rc = text__markdown_parse(raw, rawlen, &text, &spans, &nspans);
+    free(raw);
+    if (rc != result_OK)
+      return rc;
+  }
+
+  free(task->text);
+  free(task->markdown_spans);
+  task->text            = text;
+  task->markdown_spans  = spans;
+  task->markdown_nspans = nspans;
+  task->sample          = idx;
+  return result_OK;
+}
+
+/* switch the shown text to task->samples[idx] */
 static result_t text_set_sample(text_task_t *task, int idx)
 {
   result_t rc;
 
-  if (idx < 0 || idx >= NELEMS(text_samples) || idx == task->sample)
+  if (idx < 0 || idx >= task->nsamples || idx == task->sample)
     return result_OK;
 
   rc = text__apply_sample(task, idx);
@@ -529,6 +593,7 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
   const wuss_menu_t *menu;
+  int                i;
   size2d_t           sz;
 
   task = calloc(1, sizeof(*task));
@@ -545,7 +610,8 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   task->bg_index    = 7; /* wuss__default_palette: 7 is white */
   task->colourmenu_target = NULL;
   task->frame_count = 0;
-  task->resizing    = true;
+  task->resizing    = false;
+  task->sample      = -1;
 
   /* the shared picker: every ".png" font under resources/bmfonts, sorted,
    * less any SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows
@@ -572,7 +638,16 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
     return result_OOM;
   }
 
-  rc = text__apply_sample(task, TEXT_DEFAULT_SAMPLE);
+  rc = dirscan_walk(pathf(TEXT_SAMPLES_DIR, wuss_get_resources(wuss)),
+                    text__scan_sample, task);
+  if (rc == result_OK && task->nsamples == 0)
+    rc = result_FILE_NOT_FOUND;
+  if (rc == result_OK)
+  {
+    qsort(task->samples, (size_t) task->nsamples, sizeof(*task->samples),
+          text__sample_compare);
+    rc = text__apply_sample(task, 0);
+  }
   if (rc != result_OK)
   {
     free(task->fonts);
@@ -580,29 +655,16 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
     return rc;
   }
 
-  task->sample_items[0].text    = "Markdown Demo";
-  task->sample_items[0].flags   = wuss_MENU_ITEM_NONE;
-  task->sample_items[0].submenu = NULL;
-  task->sample_items[0].window  = NULL;
-  task->sample_items[1].text    = "Lorem Ipsum";
-  task->sample_items[1].flags   = wuss_MENU_ITEM_NONE;
-  task->sample_items[1].submenu = NULL;
-  task->sample_items[1].window  = NULL;
-  task->sample_items[2].text    = "Quick Brown Fox";
-  task->sample_items[2].flags   = wuss_MENU_ITEM_NONE;
-  task->sample_items[2].submenu = NULL;
-  task->sample_items[2].window  = NULL;
-  task->sample_items[3].text    = "Pangram (Cwm Fjord)";
-  task->sample_items[3].flags   = wuss_MENU_ITEM_NONE;
-  task->sample_items[3].submenu = NULL;
-  task->sample_items[3].window  = NULL;
-  task->sample_items[4].text    = "Pangram (Waltz)";
-  task->sample_items[4].flags   = wuss_MENU_ITEM_NONE;
-  task->sample_items[4].submenu = NULL;
-  task->sample_items[4].window  = NULL;
+  for (i = 0; i < task->nsamples; i++)
+  {
+    task->sample_items[i].text    = task->samples[i].name;
+    task->sample_items[i].flags   = wuss_MENU_ITEM_NONE;
+    task->sample_items[i].submenu = NULL;
+    task->sample_items[i].window  = NULL;
+  }
 
   WUSS_MENU_TITLE(task->sample_menu, "Sample", task->sample_items,
-                 NELEMS(task->sample_items));
+                 task->nsamples);
 
   task->spacing_items[0].text    = "Normal";
   task->spacing_items[0].flags   = wuss_MENU_ITEM_TICKED;
@@ -662,6 +724,10 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   task->top_items[4].flags   = wuss_MENU_ITEM_NONE;
   task->top_items[4].submenu = &task->colours_menu;
   task->top_items[4].window  = NULL;
+  task->top_items[5].text    = "Auto-size";
+  task->top_items[5].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[5].submenu = NULL;
+  task->top_items[5].window  = NULL;
 
   WUSS_MENU_TITLE(task->top_menu, "Text", task->top_items,
                  NELEMS(task->top_items));
@@ -673,6 +739,8 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   if (rc != result_OK)
   {
     free(task->fonts);
+    free(task->text);
+    free(task->markdown_spans);
     free(task); /* nothing registered yet; the spawner will not free it */
     return rc;
   }
@@ -713,14 +781,14 @@ void text_destroy(text_task_t *task)
     if (task->fonts[i] != NULL)
       bmfontcache_release(wuss_get_font_cache(task->wuss), task->fonts[i]);
   free(task->fonts);
-  free(task->markdown_text);
+  free(task->text);
   free(task->markdown_spans);
   free(task);
 }
 
 #define TEXT_INSET 4
 #define LEADING    2
-#define MAX_LINES  64 /* paragraph is short and fixed; overflow is dropped */
+#define MAX_LINES  64 /* sample text is short; overflow is dropped */
 
 /* like bmtext_draw, but each line is split against tcx->markdown_spans (byte
  * offsets into tcx->text) so a span's run is drawn in its own colour
@@ -903,14 +971,15 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
   return result_OK;
 }
 
-static result_t text_mouse(void *task_data)
+/* toggle the window's automatic width swing, keeping the "Auto-size" tick
+ * in step */
+static result_t text_toggle_resizing(text_task_t *tcx)
 {
-  text_task_t *tcx;
-
-  tcx = task_data;
-
   tcx->resizing = !tcx->resizing;
 
+  wuss_menu_tick_item(&tcx->top_menu, TEXT_MENU_AUTOSIZE, tcx->resizing);
+  wuss_menu_tick_item_live(tcx->menu_handle, &tcx->top_menu,
+                           TEXT_MENU_AUTOSIZE, tcx->resizing);
   return result_OK;
 }
 
@@ -972,7 +1041,7 @@ result_t text_handle(wuss_window_t      *window,
     if (event->data.mouse.action != wuss_MOUSE_DOWN ||
         !(event->data.mouse.button & wuss_BUTTON_SELECT))
       return result_OK;
-    return text_mouse(task_data);
+    return text_toggle_resizing(tcx);
 
   case wuss_EVENT_MENU_SELECT:
     {
@@ -987,6 +1056,9 @@ result_t text_handle(wuss_window_t      *window,
         return text_set_sample(tcx, event->data.menu_select.index);
       if (event->data.menu_select.menu == &tcx->spacing_menu)
         return text_set_spacing(tcx, event->data.menu_select.index);
+      if (event->data.menu_select.menu == &tcx->top_menu &&
+          event->data.menu_select.index == TEXT_MENU_AUTOSIZE)
+        return text_toggle_resizing(tcx);
       if (tcx->colourmenu_target == NULL)
         return result_OK;
       picked = wuss_colourmenu_selected(event, &mine);
