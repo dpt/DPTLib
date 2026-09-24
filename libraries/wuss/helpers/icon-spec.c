@@ -48,7 +48,13 @@ void wuss_icon_spec_display(wuss_icon_spec_t *spec,
                             const char       *text,
                             int               flags)
 {
-  wuss_icon_spec_label(spec, bbox, text, flags);
+  memset(spec, 0, sizeof(*spec));
+  spec->bbox  = bbox;
+  spec->type  = wuss_ICON_TYPE_DISPLAY;
+  spec->text  = text;
+  spec->fg    = wuss_COLOUR_BLACK;
+  spec->bg    = wuss_COLOUR_WINDOW;
+  spec->flags = flags;
   spec->u.label.border = wuss_ICON_BORDER_GROOVE;
 }
 

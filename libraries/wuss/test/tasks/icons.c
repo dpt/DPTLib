@@ -46,14 +46,15 @@ enum
   ICONS_N_ICONSET = 5, /* frame + opton + optoff + radon + radoff from the loaded set */
   ICONS_N_PATTERN = 2, /* frame + one PATTERN swatch */
   ICONS_N_BORDERS = 6, /* frame + GROOVE + RIDGE + ACTION + DIVIDER + PLAIN labels */
+  ICONS_N_DISPLAY = 3, /* frame + static + counter-tracking display */
   ICONS_N_SLIDERS = 4, /* frame + horizontal + vertical slider + state label */
   ICONS_N_MENU    = 8, /* frame + plain, ticked, swatch, submenu, disabled, rule, separator entry */
   ICONS_N_WRITE   = 4, /* frame + two writables + echo label */
   ICONS_N_SSET    = 2, /* frame + echo label; the gadget adds its own icons */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
                     ICONS_N_BITMAPS + ICONS_N_ICONSET + ICONS_N_PATTERN +
-                    ICONS_N_BORDERS + ICONS_N_SLIDERS + ICONS_N_MENU +
-                    ICONS_N_WRITE + ICONS_N_SSET
+                    ICONS_N_BORDERS + ICONS_N_DISPLAY + ICONS_N_SLIDERS +
+                    ICONS_N_MENU + ICONS_N_WRITE + ICONS_N_SSET
 };
 
 /* Running state threaded through the icons_add_* helpers: where to write the
@@ -430,6 +431,40 @@ static void icons_add_borders(icons_layout_t *lay)
   lay->y = top + 192;
 }
 
+/* A grouping frame captioned "Display fields", holding two read-only
+ * DISPLAY fields: a static left-justified one and a right-justified one the
+ * task rewrites with the "Press me" hit count. Returns the latter's index via
+ * *tally. */
+static void icons_add_display(icons_layout_t *lay, int *tally)
+{
+  wuss_icon_spec_t *s;
+  int               top;
+
+  top     = lay->y;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 72);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "Display fields";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  wuss_icon_spec_display(&lay->specs[lay->n],
+                         (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20,
+                                              180, 20),
+                         "Read-only value", 0);
+  lay->n++;
+
+  *tally = lay->n;
+  wuss_icon_spec_display(&lay->specs[lay->n],
+                         (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 44,
+                                              180, 20),
+                         "0", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  lay->n++;
+
+  lay->y = top + 88;
+}
+
 /* A grouping frame captioned "Sliders", holding a horizontal slider, a
  * vertical slider beside it and a label echoing whichever last moved.
  * Returns the horizontal/vertical slider and echo-label indices via
@@ -673,7 +708,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   const char      *sprite_path;
   int              i_button, i_counter, i_opt, i_state, i_hotspot, i_ticked;
   int              i_shoriz, i_svert, i_sstate;
-  int              i_echo, i_sset_echo;
+  int              i_tally, i_echo, i_sset_echo;
   box_t            sset_box;
   result_t         rc;
 
@@ -699,6 +734,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   task->slider_horiz = NULL;
   task->slider_vert  = NULL;
   task->slider_state = NULL;
+  task->tally        = NULL;
   task->echo         = NULL;
   task->sset         = NULL;
   task->sset_echo    = NULL;
@@ -762,6 +798,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   icons_add_iconset(&lay, wuss);
   icons_add_pattern(&lay);
   icons_add_borders(&lay);
+  icons_add_display(&lay, &i_tally);
   icons_add_sliders(&lay, &i_shoriz, &i_svert, &i_sstate);
   icons_add_menu(&lay, &i_ticked);
   icons_add_writables(&lay, &i_echo);
@@ -780,6 +817,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   task->slider_horiz = made[i_shoriz];
   task->slider_vert  = made[i_svert];
   task->slider_state = made[i_sstate];
+  task->tally        = made[i_tally];
   task->echo         = made[i_echo];
   task->sset_echo    = made[i_sset_echo];
   wuss_icon_set_selected(task->window, made[i_ticked], 1); /* "Show grid" starts ticked */
@@ -966,6 +1004,10 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
 
   tcx->count++;
   snprintf(buf, sizeof(buf), "%d", tcx->count);
+
+  rc = wuss_icon_set_text(tcx->window, tcx->tally, buf);
+  if (rc != result_OK)
+    return rc;
 
   return wuss_icon_set_text(tcx->window, tcx->counter, buf);
 }
