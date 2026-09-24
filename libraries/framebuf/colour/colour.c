@@ -7,12 +7,15 @@
 #include "framebuf/pixelfmt.h"
 #include "framebuf/colour.h"
 
-colour_t colour_rgb(int r, int g, int b)
+colour_t colour_rgb(unsigned int r, unsigned int g, unsigned int b)
 {
   return colour_rgba(r, g, b, PIXELFMT_OPAQUE);
 }
 
-colour_t colour_rgba(int r, int g, int b, int a)
+colour_t colour_rgba(unsigned int r,
+                     unsigned int g,
+                     unsigned int b,
+                     unsigned int a)
 {
   colour_t c;
 
@@ -111,8 +114,6 @@ pixelfmt_any_t colour_to_pixel(const colour_t *palette,
   }
 }
 
-// TODO: Using unsigned int for alpha here is inconsistent with treatment of alpha
-// above.
 unsigned int colour_get_alpha(const colour_t *c)
 {
   return PIXELFMT_xxxA8888(c->primary);

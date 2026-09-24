@@ -20,7 +20,7 @@ struct colour
  * \param[in] b Blue component.
  * \return Colour.
  */
-colour_t colour_rgb(int r, int g, int b);
+colour_t colour_rgb(unsigned int r, unsigned int g, unsigned int b);
 
 /**
  * Create a colour from RGBA components.
@@ -31,7 +31,10 @@ colour_t colour_rgb(int r, int g, int b);
  * \param[in] a Alpha component.
  * \return Colour.
  */
-colour_t colour_rgba(int r, int g, int b, int a);
+colour_t colour_rgba(unsigned int r,
+                     unsigned int g,
+                     unsigned int b,
+                     unsigned int a);
 
 /**
  * Return colour `c` as a pixel of format `fmt`.
