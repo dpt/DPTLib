@@ -824,8 +824,8 @@ point_t wuss_get_pointer(const wuss_t *wuss);
 
 /**
  * Find the system palette entry (see wuss_create) closest to an RGB value,
- * by squared Euclidean distance in RGB space. Alpha is ignored. Ties keep
- * the lower index.
+ * using the same luma-weighted distance as colour_to_pixel. Alpha is
+ * ignored. Ties keep the lower index.
  *
  * \param[in] wuss Window manager.
  * \param[in] r    Red component, 0..255.
