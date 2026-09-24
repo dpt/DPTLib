@@ -496,6 +496,9 @@ static result_t text_set_sample(text_task_t *task, int idx)
   if (rc != result_OK)
     return rc;
 
+  wuss_menu_tick_exclusive(&task->sample_menu, idx);
+  wuss_menu_tick_exclusive_live(task->menu_handle, &task->sample_menu, idx);
+
   wuss_window_invalidate_visible(task->window);
   return result_OK;
 }
@@ -674,7 +677,8 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   for (i = 0; i < task->nsamples; i++)
   {
     task->sample_items[i].text    = task->samples[i].name;
-    task->sample_items[i].flags   = wuss_MENU_ITEM_NONE;
+    task->sample_items[i].flags   = (i == task->sample) ? wuss_MENU_ITEM_TICKED
+                                                        : wuss_MENU_ITEM_NONE;
     task->sample_items[i].submenu = NULL;
     task->sample_items[i].window  = NULL;
   }
