@@ -2,6 +2,43 @@
 
 #include "impl.h"
 
+#ifdef WUSS_FURNITURE
+/* Move the held-down highlight to "region" (NONE to clear it), repainting
+ * the drawn box of whichever region it leaves and whichever it lands on. */
+static void set_pressed_region(wuss_window_t          *win,
+                               wuss_furniture_region_t region)
+{
+  wuss_t *wuss;
+  box_t   pressed;
+
+  wuss = win->wuss;
+
+  if (wuss->furniture.pressed_region != wuss_FURNITURE_NONE)
+  {
+    wuss__furniture_pressed_box(win, wuss->furniture.pressed_region, &pressed);
+    wuss__invalidate_clipped(win, &pressed);
+  }
+
+  wuss->furniture.pressed_region = region;
+
+  if (region != wuss_FURNITURE_NONE)
+  {
+    wuss__furniture_pressed_box(win, region, &pressed);
+    wuss__invalidate_clipped(win, &pressed);
+  }
+}
+
+/* Hold down a furniture icon that starts no drag: arm "dragging" purely so
+ * the MOUSE_UP release path clears the highlight. */
+static void press_furniture(wuss_window_t          *win,
+                            wuss_furniture_region_t region)
+{
+  win->wuss->furniture.dragging  = win;
+  win->wuss->furniture.drag_kind = wuss_FURNITURE_DRAG_NONE;
+  set_pressed_region(win, region);
+}
+#endif
+
 result_t wuss_mouse_click(wuss_t             *wuss,
                           point_t             p,
                           wuss_button_t       button,
@@ -58,14 +95,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
     if (hit != NULL)
       *hit = win;
 
-    if (wuss->furniture.pressed_region != wuss_FURNITURE_NONE)
-    {
-      box_t pressed;
-
-      wuss__furniture_pressed_box(win, wuss->furniture.pressed_region, &pressed);
-      wuss__invalidate_clipped(win, &pressed);
-      wuss->furniture.pressed_region = wuss_FURNITURE_NONE;
-    }
+    set_pressed_region(win, wuss_FURNITURE_NONE);
 
     wuss->furniture.dragging  = NULL;
     wuss->furniture.drag_kind = wuss_FURNITURE_DRAG_NONE;
@@ -120,18 +150,11 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         action == wuss_MOUSE_DOWN       &&
         (button & wuss_BUTTON_SELECT))
     {
-      box_t pressed;
-
       /* Lit even though the window may not survive the call below: a veto
        * leaves it armed for the ordinary MOUSE_UP release below, and a
        * successful close tears the window (and this pressed state along
        * with it, see wuss_window_close) down anyway. */
-      wuss->furniture.dragging       = win;
-      wuss->furniture.drag_kind      = wuss_FURNITURE_DRAG_NONE;
-      wuss->furniture.pressed_region = region;
-
-      wuss__furniture_pressed_box(win, region, &pressed);
-      wuss__invalidate_clipped(win, &pressed);
+      press_furniture(win, region);
 
       /* User close-icon path: routes through try_close, so the task gets
        * PRE_CLOSE (may veto) then CLOSE and, if not vetoed, wuss tears the
@@ -147,16 +170,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         wuss_window_restack(win, wuss_ZORDER_FRONT);
 
       if (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST))
-      {
-        box_t pressed;
-
-        wuss->furniture.dragging       = win;
-        wuss->furniture.drag_kind      = wuss_FURNITURE_DRAG_NONE;
-        wuss->furniture.pressed_region = region;
-
-        wuss__furniture_pressed_box(win, region, &pressed);
-        wuss__invalidate_clipped(win, &pressed);
-      }
+        press_furniture(win, region);
       return result_OK;
     }
 
@@ -198,16 +212,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
          * Toggle-size takes no action on Adjust (above), so it stays
          * unlit for that button too. */
         if (region != wuss_FURNITURE_TOGGLE_SIZE || (button & wuss_BUTTON_SELECT))
-        {
-          box_t pressed;
-
-          wuss->furniture.dragging       = win;
-          wuss->furniture.drag_kind      = wuss_FURNITURE_DRAG_NONE;
-          wuss->furniture.pressed_region = region;
-
-          wuss__furniture_pressed_box(win, region, &pressed);
-          wuss__invalidate_clipped(win, &pressed);
-        }
+          press_furniture(win, region);
       }
       return result_OK;
     }
@@ -316,15 +321,13 @@ result_t wuss_mouse_click(wuss_t             *wuss,
            * meet the pointer on the very first move. */
           if (region == wuss_FURNITURE_RESIZE)
           {
-            box_t content, pressed;
+            box_t content;
 
             wuss__content_box(win, &content);
             wuss->furniture.drag_offset.x = x - content.x1;
             wuss->furniture.drag_offset.y = y - content.y1;
 
-            wuss->furniture.pressed_region = region;
-            wuss__furniture_pressed_box(win, region, &pressed);
-            wuss__invalidate_clipped(win, &pressed);
+            set_pressed_region(win, region);
           }
         }
       }
