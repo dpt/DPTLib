@@ -25,17 +25,23 @@ const char *pathf(const char *fmt, ...)
   /* Strip a dotted extension from the final path component only -- RISC OS
    * has no extension in the string at all, so translating mid-path '/'
    * separators to '.' below would otherwise leave it looking like one more
-   * directory level. */
+   * directory level.
+   *
+   * No '/' at all means there is no Unix-style leaf to strip: the string may
+   * already be a native path, where '.' is the directory separator, so it is
+   * left alone. */
   {
     char *leaf;
     char *dot;
     char *p;
 
     leaf = strrchr(buf, '/');
-    leaf = (leaf != NULL) ? leaf + 1 : buf;
-    dot  = strrchr(leaf, '.');
-    if (dot != NULL)
-      *dot = '\0';
+    if (leaf != NULL)
+    {
+      dot = strrchr(leaf + 1, '.');
+      if (dot != NULL)
+        *dot = '\0';
+    }
 
     for (p = buf; *p != '\0'; p++)
       if (*p == '/')
