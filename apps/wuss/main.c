@@ -351,8 +351,9 @@ static result_t run_wuss(const char *resources,
   void       *pixels;
   int         rowbytes;
   pixelfmt_t  fmt;
-  bitmap_t    logo; /* desktop backdrop image; left unset (rc != result_OK)
+  bitmap_t    logo; /* desktop backdrop image; left unset (have_logo false)
                      * if resources/wuss/wuss.png fails to load */
+  bool     have_logo;
   colour_t palette[wuss_SYSTEM_PALETTE_LENGTH]; /* the fixed-size UI palette */
   colour_t scr_palette[256]; /* palette[] padded out to whatever
                                         * count the chosen depth's bitmap
@@ -361,6 +362,12 @@ static result_t run_wuss(const char *resources,
   wuss_frontend_t *frontend;
   bool             use_wimp16;
   int              palette_index;
+
+  /* everything the Failure path frees, so an early goto frees nothing */
+  nfonts    = 0;
+  frontend  = NULL;
+  have_logo = false;
+  wuss      = NULL;
 
   {
     /* palette_name (from -palette, default "PICO-8") names a *.hex file under
@@ -426,7 +433,8 @@ static result_t run_wuss(const char *resources,
   filename = pathf("%s/resources/wuss/wuss.png", resources);
   logf_info("wuss: loading backdrop image \"%s\"", filename);
   rc = bitmap_load_png(&logo, filename);
-  if (rc != result_OK)
+  have_logo = (rc == result_OK);
+  if (!have_logo)
     logf_error("wuss: bitmap_load_png(\"%s\") failed, rc=0x%X (%s) -- "
               "backdrop drawn without it", filename, rc, result_string(rc));
 
@@ -437,7 +445,7 @@ static result_t run_wuss(const char *resources,
                                 * never a text font choice */
 
     fill_chrome_config(&config, use_wimp16);
-    if (rc == result_OK)
+    if (have_logo)
       config.backdrop.image = &logo;
 
     for (i = 0; i < nfonts; i++)
@@ -504,26 +512,34 @@ static result_t run_wuss(const char *resources,
     wuss_frame(&g_frame_ctx);
 #endif
 
-  /* ponytail: wuss_destroy() below force-closes every still-open window and
-   * frees every registered task node, but not the per-instance task_data
-   * block a spawn_* calloc'd, so any task window left open at quit leaks that
-   * block. Harmless at process exit. */
+  rc = result_OK;
+
+  /* Shared by the normal exit and every early failure: each resource is
+   * either NULL/unset (see above) or live. */
+Failure:
+
+  if (rc != result_OK)
+    printf("run_wuss: failed (rc=0x%X: %s)\n", rc, result_string(rc));
+
+  /* ponytail: wuss_destroy() force-closes every still-open window and frees
+   * every registered task node, but not the per-instance task_data block a
+   * spawn_* calloc'd, so any task window left open at quit leaks that block.
+   * Harmless at process exit. */
   wuss_destroy(wuss); /* also sweeps g.menu_task and closes any open chain,
                        * including the shared proginfo singleton's window */
+
+  if (have_logo) /* after wuss_destroy: the backdrop points at it */
+  {
+    free(logo.base);
+    free(logo.palette);
+  }
 
   for (i = 0; i < nfonts; i++)
     bmfont_destroy(fonts[i]);
 
   wuss_frontend_close(frontend);
 
-  return result_TEST_PASSED;
-
-
-Failure:
-
-  printf("run_wuss: failed (rc=0x%X: %s)\n", rc, result_string(rc));
-
-  return result_TEST_FAILED;
+  return (rc == result_OK) ? result_TEST_PASSED : result_TEST_FAILED;
 }
 
 /* ----------------------------------------------------------------------- */
