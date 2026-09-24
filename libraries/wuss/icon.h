@@ -46,6 +46,19 @@ struct wuss_icon
  * 3px gap. */
 #define WUSS_WRITABLE_INSET 4
 
+/* Per-edge widths (px) of the label borders. A bevel is one
+ * screen_draw_bevel_edge ring; DIVIDER is two, ACTION three (outset, accent
+ * moat, inset). */
+#define WUSS_BEVEL_WIDTH          2
+#define WUSS_PLAIN_BORDER_WIDTH   1
+#define WUSS_DIVIDER_BORDER_WIDTH (2 * WUSS_BEVEL_WIDTH)
+#define WUSS_ACTION_BORDER_WIDTH  (3 * WUSS_BEVEL_WIDTH)
+
+/* Clear space (px) between a bordered label's border and its justified
+ * text; an unbordered label's text gets WUSS_LABEL_TEXT_PAD instead. */
+#define WUSS_LABEL_TEXT_GAP 2
+#define WUSS_LABEL_TEXT_PAD 1
+
 /* The font an icon's text is drawn with: its requested slot, falling back to
  * the system font. NULL when wuss has no fonts. */
 bmfont_t *wuss__icon_font(const wuss_t *wuss, const wuss_icon_t *icon);
