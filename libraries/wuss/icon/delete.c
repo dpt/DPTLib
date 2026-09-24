@@ -1,6 +1,7 @@
 /* wuss/icon/delete.c -- destroy a work-area icon */
 
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -38,7 +39,11 @@ void wuss_icon_delete(wuss_window_t *window, wuss_icon_t *icon)
   {
     if (window->icons[i] == icon)
     {
-      window->icons[i] = window->icons[--window->nicons];
+      /* Shift the rest down rather than swapping the last one in: array
+       * order is draw and hit-test order, so it must be kept. */
+      window->nicons--;
+      memmove(&window->icons[i], &window->icons[i + 1],
+              (size_t) (window->nicons - i) * sizeof(window->icons[0]));
       break;
     }
   }
