@@ -115,7 +115,7 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
     return result_OOM;
 
   task->wuss = wuss;
-  task->bg   = colour_rgb(0x00, 0x00, 0x00);
+  task->bg   = colour_rgb(0x20, 0x20, 0x20);
   task->a    = 1.0;
   task->b    = 1.0;
   task->zoom = 1.0;
