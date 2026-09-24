@@ -152,8 +152,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
     {
       /* Lit even though the window may not survive the call below: a veto
        * leaves it armed for the ordinary MOUSE_UP release below, and a
-       * successful close tears the window (and this pressed state along
-       * with it, see wuss_window_close) down anyway. */
+       * successful close tears the window down and wuss_window_close
+       * clears this pressed state. */
       press_furniture(win, region);
 
       /* User close-icon path: routes through try_close, so the task gets

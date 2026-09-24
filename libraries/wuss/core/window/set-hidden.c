@@ -50,8 +50,9 @@ result_t wuss__window_set_hidden_ex(wuss_window_t *window, int hidden)
 #ifdef WUSS_FURNITURE
     if (wuss->furniture.dragging == window)
     {
-      wuss->furniture.dragging  = NULL;
-      wuss->furniture.drag_kind = wuss_FURNITURE_DRAG_NONE;
+      wuss->furniture.dragging       = NULL;
+      wuss->furniture.drag_kind      = wuss_FURNITURE_DRAG_NONE;
+      wuss->furniture.pressed_region = wuss_FURNITURE_NONE;
     }
 #endif
 #ifdef WUSS_ICONS
