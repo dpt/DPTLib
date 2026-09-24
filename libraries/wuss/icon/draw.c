@@ -74,10 +74,10 @@ static void icon_draw_action_border(screen_t    *scr,
   ring = *b;
   screen_draw_bevel_edge(scr, &ring, dark, light);
 
-  ring = box_grown(b, -2);
+  ring = box_grown(b, -WUSS_BEVEL_WIDTH);
   screen_draw_bevel_edge(scr, &ring, accent, accent);
 
-  ring = box_grown(b, -4);
+  ring = box_grown(b, -2 * WUSS_BEVEL_WIDTH);
   screen_draw_bevel_edge(scr, &ring, pressed ? dark : light,
                                      pressed ? light : dark);
 }
@@ -96,7 +96,7 @@ static void icon_draw_divider_border(screen_t    *scr,
   ring = *b;
   screen_draw_bevel_edge(scr, &ring, divider, light);
 
-  ring = box_grown(b, -2);
+  ring = box_grown(b, -WUSS_BEVEL_WIDTH);
   screen_draw_bevel_edge(scr, &ring, light, divider);
 }
 
@@ -178,18 +178,23 @@ static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
 /* ----------------------------------------------------------------------- */
 
 /* Horizontal inset for left/right-justified label text: the border's width
- * plus 2px clear space, or a bare 1px pad when unbordered. */
+ * plus clear space, or a bare pad when unbordered. */
 static int icon_label_text_inset(wuss_icon_border_t border)
 {
-  switch (border)
+  static const unsigned char insets[] =
   {
-  case wuss_ICON_BORDER_ACTION:  return 6 + 2;
-  case wuss_ICON_BORDER_DIVIDER: return 4 + 2;
-  case wuss_ICON_BORDER_RIDGE:
-  case wuss_ICON_BORDER_GROOVE:  return 2 + 2;
-  case wuss_ICON_BORDER_PLAIN:   return 1 + 2;
-  default:                       return 1;
-  }
+    [wuss_ICON_BORDER_NONE]    = WUSS_LABEL_TEXT_PAD,
+    [wuss_ICON_BORDER_RIDGE]   = WUSS_BEVEL_WIDTH          + WUSS_LABEL_TEXT_GAP,
+    [wuss_ICON_BORDER_GROOVE]  = WUSS_BEVEL_WIDTH          + WUSS_LABEL_TEXT_GAP,
+    [wuss_ICON_BORDER_ACTION]  = WUSS_ACTION_BORDER_WIDTH  + WUSS_LABEL_TEXT_GAP,
+    [wuss_ICON_BORDER_DIVIDER] = WUSS_DIVIDER_BORDER_WIDTH + WUSS_LABEL_TEXT_GAP,
+    [wuss_ICON_BORDER_PLAIN]   = WUSS_PLAIN_BORDER_WIDTH   + WUSS_LABEL_TEXT_GAP
+  };
+
+  if ((unsigned) border >= NELEMS(insets))
+    return WUSS_LABEL_TEXT_PAD;
+
+  return insets[border];
 }
 
 static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
