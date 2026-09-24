@@ -178,6 +178,21 @@ result_t wuss__icon_from_spec(const wuss_t           *wuss,
                               const wuss_icon_spec_t *spec,
                               wuss_icon_t            *out);
 
+/* Number of wuss_icon_type_t values; sizes the per-type table. */
+#define wuss__ICON_TYPE_COUNT (wuss_ICON_TYPE_DRAGGABLE + 1)
+
+struct icon_draw_ctx; /* private to icon/draw.c */
+
+/* Per-icon-type behaviour, indexed by wuss_icon_type_t. */
+typedef struct wuss__icon_type_info
+{
+  void (*draw)(const struct icon_draw_ctx *c);
+  int   reserved; /* accepted but not implemented yet */
+}
+wuss__icon_type_info_t;
+
+extern const wuss__icon_type_info_t wuss__icon_types[wuss__ICON_TYPE_COUNT];
+
 /* Draw one icon. Called from redraw_window with wuss->scr->clip already set to
  * the surviving content piece and the background already filled. "content" is
  * the window's full (unclipped) content box, screen space; "scroll" is

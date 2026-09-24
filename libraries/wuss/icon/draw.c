@@ -1,5 +1,6 @@
 /* wuss/icon/draw.c -- draw a work-area icon */
 
+#include <assert.h>
 #include <limits.h>
 #include <string.h>
 
@@ -34,6 +35,7 @@ typedef struct icon_draw_ctx
   int                  font_height;
   int                  font_ascent;
   int                  have_font;
+  point_t              origin; /* content box's document origin, screen space */
 }
 icon_draw_ctx_t;
 
@@ -152,9 +154,7 @@ static int wuss__draw_symbol_glyph(const wuss_t *wuss,
 
 /* ----------------------------------------------------------------------- */
 
-static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
-                                    const box_t           *content,
-                                    point_t                scroll)
+static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c)
 {
   const wuss_icon_spec_t *icon = &c->icon->spec;
   colour_t                pat_fg;
@@ -170,7 +170,7 @@ static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
 
     pat = pattern_from_preset(icon->u.pattern.tile,
                               pat_fg, c->wuss->palette[icon->bg]);
-    pat.origin = POINT(content->x0 - scroll.x, content->y0 - scroll.y);
+    pat.origin = c->origin;
     screen_fill_pattern(c->scr, &c->b, &pat);
   }
 }
@@ -388,14 +388,20 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
  * opton/optoff for OPTION. */
 static const bitmap_t *wuss__icon_radio_option_bitmap(const icon_draw_ctx_t *c)
 {
+  static const char *const names[2][2] =
+  {
+    { "optoff", "opton" }, /* OPTION */
+    { "radoff", "radon" }, /* RADIO  */
+  };
+  
+  int         is_radio;
   int         sel;
   const char *name;
   int         idx;
 
-  sel  = wuss__icon_selected(c->icon);
-  name = (c->icon->spec.type == wuss_ICON_TYPE_RADIO)
-       ? (sel ? "radon" : "radoff")
-       : (sel ? "opton" : "optoff");
+  is_radio = (c->icon->spec.type == wuss_ICON_TYPE_RADIO);
+  sel      = wuss__icon_selected(c->icon);
+  name     = names[is_radio][sel];
 
   idx = wuss_icons_lookup(c->wuss, name);
   if (idx < 0)
@@ -763,6 +769,27 @@ static void wuss__icon_draw_writable(const icon_draw_ctx_t *c)
 
 /* ----------------------------------------------------------------------- */
 
+/* Reserved types have no renderer yet and fall back to a plain label. */
+const wuss__icon_type_info_t wuss__icon_types[wuss__ICON_TYPE_COUNT] =
+{
+  [wuss_ICON_TYPE_LABEL]      = { wuss__icon_draw_label,        0 },
+  [wuss_ICON_TYPE_ACTION]     = { wuss__icon_draw_button,       0 },
+  [wuss_ICON_TYPE_PATTERN]    = { wuss__icon_draw_pattern,      0 },
+  [wuss_ICON_TYPE_FRAME]      = { wuss__icon_draw_frame,        0 },
+  [wuss_ICON_TYPE_RADIO]      = { wuss__icon_draw_radio_option, 0 },
+  [wuss_ICON_TYPE_OPTION]     = { wuss__icon_draw_radio_option, 0 },
+  [wuss_ICON_TYPE_BITMAP]     = { wuss__icon_draw_bitmap,       0 },
+  [wuss_ICON_TYPE_MENU_ENTRY] = { wuss__icon_draw_menu_entry,   0 },
+  [wuss_ICON_TYPE_RULE]       = { wuss__icon_draw_rule,         0 },
+  [wuss_ICON_TYPE_SLIDER]     = { wuss__icon_draw_slider,       0 },
+  [wuss_ICON_TYPE_WRITABLE]   = { wuss__icon_draw_writable,     0 },
+  [wuss_ICON_TYPE_DISPLAY]    = { wuss__icon_draw_label,        0 },
+  [wuss_ICON_TYPE_NUMBER]     = { wuss__icon_draw_label,        1 },
+  [wuss_ICON_TYPE_DRAGGABLE]  = { wuss__icon_draw_label,        1 }
+};
+
+/* ----------------------------------------------------------------------- */
+
 void wuss__icon_draw(wuss_t              *wuss,
                      const wuss_window_t *window,
                      const wuss_icon_t   *icon,
@@ -786,6 +813,7 @@ void wuss__icon_draw(wuss_t              *wuss,
   c.scr    = wuss->scr;
   c.icon   = icon;
   c.fg     = wuss->palette[spec->fg];
+  c.origin = POINT(content->x0 - scroll.x, content->y0 - scroll.y);
 
   /* pick the icon's requested weight; fall back to the system font */
   fontidx = wuss_ICON_FONT_OF(spec->flags);
@@ -802,54 +830,8 @@ void wuss__icon_draw(wuss_t              *wuss,
     c.font_ascent = 0;
   }
 
-  switch (spec->type)
-  {
-  case wuss_ICON_TYPE_PATTERN:
-    wuss__icon_draw_pattern(&c, content, scroll);
-    break;
+  assert((unsigned) spec->type < wuss__ICON_TYPE_COUNT);
+  assert(wuss__icon_types[spec->type].draw != NULL);
 
-  case wuss_ICON_TYPE_LABEL:
-    wuss__icon_draw_label(&c);
-    break;
-
-  case wuss_ICON_TYPE_FRAME:
-    wuss__icon_draw_frame(&c);
-    break;
-
-  case wuss_ICON_TYPE_ACTION:
-    wuss__icon_draw_button(&c);
-    break;
-
-  case wuss_ICON_TYPE_RADIO:
-  case wuss_ICON_TYPE_OPTION:
-    wuss__icon_draw_radio_option(&c);
-    break;
-
-  case wuss_ICON_TYPE_BITMAP:
-    wuss__icon_draw_bitmap(&c);
-    break;
-
-  case wuss_ICON_TYPE_MENU_ENTRY:
-    wuss__icon_draw_menu_entry(&c);
-    break;
-
-  case wuss_ICON_TYPE_RULE:
-    wuss__icon_draw_rule(&c);
-    break;
-
-  case wuss_ICON_TYPE_SLIDER:
-    wuss__icon_draw_slider(&c);
-    break;
-
-  case wuss_ICON_TYPE_WRITABLE:
-    wuss__icon_draw_writable(&c);
-    break;
-
-  /* reserved types with no renderer yet: fall back to a plain label */
-  case wuss_ICON_TYPE_DISPLAY:
-  case wuss_ICON_TYPE_NUMBER:
-  case wuss_ICON_TYPE_DRAGGABLE:
-    wuss__icon_draw_label(&c);
-    break;
-  }
+  wuss__icon_types[spec->type].draw(&c);
 }
