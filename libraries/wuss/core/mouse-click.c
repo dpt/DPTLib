@@ -179,26 +179,18 @@ result_t wuss_mouse_click(wuss_t             *wuss,
         step = (button & wuss_BUTTON_SELECT) ?  WUSS_SCROLL_STEP
                                              : -WUSS_SCROLL_STEP;
 
-        switch (region)
+        if (region == wuss_FURNITURE_TOGGLE_SIZE)
         {
-        case wuss_FURNITURE_TOGGLE_SIZE:
           if (button & wuss_BUTTON_SELECT)
             wuss->furniture_ops->toggle_size(win);
-          break;
-        case wuss_FURNITURE_VSCROLL_UP:
-          wuss__scroll_step(win, POINT(0, -step));
-          break;
-        case wuss_FURNITURE_VSCROLL_DOWN:
-          wuss__scroll_step(win, POINT(0, step));
-          break;
-        case wuss_FURNITURE_HSCROLL_LEFT:
-          wuss__scroll_step(win, POINT(-step, 0));
-          break;
-        case wuss_FURNITURE_HSCROLL_RIGHT:
-          wuss__scroll_step(win, POINT(step, 0));
-          break;
-        default:
-          break;
+        }
+        else
+        {
+          const wuss__furniture_element_t *element;
+
+          element = wuss__furniture_element(region);
+          wuss__scroll_step(win, POINT(element->step.x * step,
+                                       element->step.y * step));
         }
 
         /* light the icon/arrow up while held; MOUSE_UP's generic
@@ -313,7 +305,7 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           wuss_window_get_scroll(win, &scroll);
 
           wuss->furniture.dragging          = win;
-          wuss->furniture.drag_kind         = wuss__furniture_drag_kind(region);
+          wuss->furniture.drag_kind         = wuss__furniture_element(region)->drag_kind;
           wuss->furniture.drag.x            = x;
           wuss->furniture.drag.y            = y;
           wuss->furniture.drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_WELL) ? scroll.y : scroll.x;
