@@ -798,7 +798,6 @@ void wuss__icon_draw(wuss_t              *wuss,
 {
   const wuss_icon_spec_t *spec = &icon->spec;
   icon_draw_ctx_t         c;
-  int                     fontidx;
 
   if (spec->flags & wuss_ICON_FLAGS_HIDDEN)
     return;
@@ -815,11 +814,7 @@ void wuss__icon_draw(wuss_t              *wuss,
   c.fg     = wuss->palette[spec->fg];
   c.origin = POINT(content->x0 - scroll.x, content->y0 - scroll.y);
 
-  /* pick the icon's requested weight; fall back to the system font */
-  fontidx = wuss_ICON_FONT_OF(spec->flags);
-  c.font  = wuss->fonts.fonts[fontidx];
-  if (c.font == NULL)
-    c.font = wuss->fonts.fonts[0];
+  c.font = wuss__icon_font(wuss, icon);
 
   c.have_font = (c.font != NULL && spec->text[0] != '\0');
   if (c.have_font)
