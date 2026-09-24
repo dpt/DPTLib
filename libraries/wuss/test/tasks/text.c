@@ -339,20 +339,34 @@ static result_t text_set_font(text_task_t *task, int idx, const char *name)
   return result_OK;
 }
 
-/* dirscan_walk callback: append leaf to task->samples if it is a ".md" or
- * ".txt" file and there is room */
+/* dirscan_walk callback: add leaf to task->samples if it is a ".md" or
+ * ".txt" file. Once full, a leaf evicts the greatest one kept if it sorts
+ * before it, so the first TEXT_MAX_SAMPLES by name are kept whatever order
+ * the directory is walked in. */
 static result_t text__scan_sample(const char *leaf, void *opaque)
 {
   text_task_t   *task;
   text_sample_t *sample;
+  int            i;
   char          *c;
 
   task = opaque;
-  if (task->nsamples >= TEXT_MAX_SAMPLES ||
-      strlen(leaf) >= sizeof(sample->leaf))
+  if (strlen(leaf) >= sizeof(sample->leaf))
     return result_OK;
 
-  sample = &task->samples[task->nsamples];
+  if (task->nsamples < TEXT_MAX_SAMPLES)
+  {
+    sample = &task->samples[task->nsamples];
+  }
+  else
+  {
+    sample = &task->samples[0];
+    for (i = 1; i < task->nsamples; i++)
+      if (strcmp(task->samples[i].leaf, sample->leaf) > 0)
+        sample = &task->samples[i];
+    if (strcmp(leaf, sample->leaf) >= 0)
+      return result_OK;
+  }
   /* ponytail: on RISC OS leaves carry no extension, so every file matches
    * ".md" and is parsed as Markdown -- check the filetype if that matters */
   if (path_leaf_strip_ext(leaf, ".md", sample->name, sizeof(sample->name)))
@@ -368,7 +382,8 @@ static result_t text__scan_sample(const char *leaf, void *opaque)
     if (*c == '_')
       *c = ' ';
 
-  task->nsamples++;
+  if (sample == &task->samples[task->nsamples])
+    task->nsamples++;
   return result_OK;
 }
 
