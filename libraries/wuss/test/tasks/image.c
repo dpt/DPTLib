@@ -275,7 +275,7 @@ static result_t image_open_menu(image_task_t *ic)
   /* '!Dithering' pulls ic->dithering directly, so the row's tick already
    * matches live state -- no separate wuss_menu_open_ticked pass needed. */
   rc = wuss_menu_create_from_desc(&m,
-         "Image, Info, !Dithering, Background, |Quit",
+         "Image, Info, !Dithering, Background",
          ic->dithering);
   if (rc != result_OK)
     return rc;
