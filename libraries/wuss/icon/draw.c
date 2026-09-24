@@ -384,24 +384,14 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
 /* ----------------------------------------------------------------------- */
 
 /* The icon-set bitmap for a radio/option's current state, or NULL when the set
- * is absent or lacks that entry. Names are radon/radoff for RADIO and
- * opton/optoff for OPTION. */
+ * is absent or lacks that entry (see wuss__icon_radio_option_name). */
 static const bitmap_t *wuss__icon_radio_option_bitmap(const icon_draw_ctx_t *c)
 {
-  static const char *const names[2][2] =
-  {
-    { "optoff", "opton" }, /* OPTION */
-    { "radoff", "radon" }, /* RADIO  */
-  };
-  
-  int         is_radio;
-  int         sel;
   const char *name;
   int         idx;
 
-  is_radio = (c->icon->spec.type == wuss_ICON_TYPE_RADIO);
-  sel      = wuss__icon_selected(c->icon);
-  name     = names[is_radio][sel];
+  name = wuss__icon_radio_option_name(c->icon->spec.type,
+                                      wuss__icon_selected(c->icon));
 
   idx = wuss_icons_lookup(c->wuss, name);
   if (idx < 0)

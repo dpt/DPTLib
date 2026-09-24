@@ -100,20 +100,16 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
    * always sits inside the box that hit-test, layout and invalidate use. */
   if (spec->type == wuss_ICON_TYPE_RADIO || spec->type == wuss_ICON_TYPE_OPTION)
   {
-    const char     *names[2];
     const bitmap_t *state_bm;
     int             idx;
     int             gw, gh;
     int             i;
 
-    names[0] = (spec->type == wuss_ICON_TYPE_RADIO) ? "radon"  : "opton";
-    names[1] = (spec->type == wuss_ICON_TYPE_RADIO) ? "radoff" : "optoff";
-
     gw = 0;
     gh = 0;
     for (i = 0; i < 2; i++)
     {
-      idx = wuss_icons_lookup(w, names[i]);
+      idx = wuss_icons_lookup(w, wuss__icon_radio_option_name(spec->type, i));
       if (idx < 0)
         continue;
       state_bm = wuss_icons_bitmap(w, idx);

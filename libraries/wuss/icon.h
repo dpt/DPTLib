@@ -73,6 +73,20 @@ static inline int wuss__icon_selected(const wuss_icon_t *icon)
   return (icon->state & wuss_ICON_STATE_SELECTED) != 0;
 }
 
+/* The icon-set sprite name for a RADIO (radon/radoff) or OPTION
+ * (opton/optoff) glyph in the given selected state. */
+static inline const char *wuss__icon_radio_option_name(wuss_icon_type_t type,
+                                                       int              selected)
+{
+  static const char *const names[2][2] =
+  {
+    { "optoff", "opton" }, /* OPTION */
+    { "radoff", "radon" }, /* RADIO  */
+  };
+
+  return names[type == wuss_ICON_TYPE_RADIO][selected != 0];
+}
+
 static inline int wuss__icon_hovered(const wuss_icon_t *icon)
 {
   return (icon->state & wuss_ICON_STATE_HOVERED) != 0;
