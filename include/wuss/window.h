@@ -166,11 +166,17 @@ void wuss_window_move(wuss_window_t *window, point_t p);
  * visibility invalidates the window's footprint so the next redraw picks up
  * the change.
  *
- * Showing a hidden window fires wuss_EVENT_PRE_SHOW to the task first: a
- * non-OK return vetoes the reveal, the window stays hidden and that result
- * is returned. On a successful reveal wuss_EVENT_SHOW follows. Hiding a
- * visible window, and any call that is a no-op (already in the requested
- * state), fires nothing and returns \ref result_OK.
+ * Showing a hidden window always fires wuss_EVENT_PRE_SHOW to the task
+ * first, whether the window is plain or a menu leaf (flagged or not). For a
+ * plain window, or a menu leaf not flagged wuss_MENU_ITEM_PRE_OPEN, this
+ * defaults to proceeding; the handler only needs to call
+ * wuss_window_reveal_now to react before it shows. For a menu leaf flagged
+ * wuss_MENU_ITEM_PRE_OPEN, the handler must call wuss_menu_open_window_now
+ * synchronously to opt in -- not calling it leaves the window hidden. A
+ * non-OK return from the handler is a genuine failure, not a veto. On a
+ * successful reveal wuss_EVENT_SHOW follows. Hiding a visible window, and
+ * any call that is a no-op (already in the requested state), fires nothing
+ * and returns \ref result_OK.
  *
  * \param[in] window Window to show or hide.
  * \param[in] hidden Non-zero to hide, zero to show.
@@ -178,6 +184,17 @@ void wuss_window_move(wuss_window_t *window, point_t p);
  *         task returned from wuss_EVENT_PRE_SHOW.
  */
 result_t wuss_window_set_hidden(wuss_window_t *window, int hidden);
+
+/**
+ * Proceed with a pending wuss_EVENT_PRE_SHOW for a plain (non-menu) window:
+ * opts in to revealing \p window. Must be called synchronously from within
+ * the handler that received the event. For a menu leaf, call
+ * wuss_menu_open_window_now instead.
+ *
+ * \param[in] window Window named by the pending wuss_EVENT_PRE_SHOW.
+ * \return \ref result_OK on success, else an appropriate result code.
+ */
+result_t wuss_window_reveal_now(wuss_window_t *window);
 
 /**
  * Resize a window's content area, preserving its top-left position.

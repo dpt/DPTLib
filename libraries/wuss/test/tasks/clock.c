@@ -22,6 +22,12 @@
 
 #include "clock.h"
 
+/* MENU click pops this single-item menu; the item table and wuss_menu_t
+ * live per-instance in clock_task_t, not as a file-scope static, so that
+ * each window's Info row can hold its own .window pointer to the shared
+ * proginfo singleton, retargeted just before wuss_menu_open */
+enum { CLOCK_MENU_INFO };
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -112,6 +118,7 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
   if (task == NULL)
     return result_OOM;
 
+  task->wuss        = wuss;
   task->font        = wuss_get_font_n(wuss, 0);
   task->bg          = colour_rgb(0x1D, 0x2B, 0x53);
   task->bezel       = colour_rgb(0xFF, 0xF1, 0xE8);
@@ -130,6 +137,7 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
     return rc;
   }
   wuss_task_set_autoclose(delegate, 1);
+  task->delegate = delegate;
 
   rc = clock_create_window(wuss, task, delegate);
   if (rc != result_OK)
@@ -137,6 +145,14 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
     return rc;
   }
+
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, CLOCK_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in clock_mouse */
+
+  WUSS_MENU_TITLE(task->menu, "Clock", task->menu_items,
+                 NELEMS(task->menu_items));
 
   if (out)
     *out = task;
@@ -146,6 +162,7 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
 
 void clock_destroy(clock_task_t *task)
 {
+  wuss_menu_close(task->menu_handle);
   free(task);
 }
 
@@ -228,6 +245,22 @@ static result_t clock_redraw(const wuss_event_t *event, void *task_data)
 
 static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
 {
+  if (button & wuss_BUTTON_MENU)
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Clock",
+      "Analogue clock, hour/minute/second hands",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+    wuss_proginfo_set_desc(&desc);
+    cc->menu_items[CLOCK_MENU_INFO].window = wuss_proginfo_window(cc->delegate);
+
+    return wuss_menu_open(cc->delegate, &cc->menu,
+                          wuss_get_pointer(cc->wuss), &cc->menu_handle);
+  }
+
   if (button & wuss_BUTTON_SELECT)
   {
     cc->show_second = !cc->show_second;
@@ -245,21 +278,53 @@ result_t clock_handle(wuss_window_t      *window,
 
   cc = task_data;
 
-  NOT_USED(window);
-
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
     return clock_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
+    if (window != cc->window)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     return clock_mouse(cc, event->data.mouse.button);
 
   case wuss_EVENT_IDLE:
+    /* the proginfo dialogue is a second window on this same (autoclose)
+     * delegate, so closing the clock window alone never empties
+     * task->windows and the task lingers until the dialogue closes too --
+     * guard against the dangling window in the meantime */
+    if (cc->window == NULL)
+      return result_OK;
     wuss_window_invalidate_visible(cc->window);
     return result_OK;
+
+  case wuss_EVENT_MENU_CLOSED:
+    cc->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_CLOSE:
+    if (window == cc->window)
+      cc->window = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == cc->menu_items[CLOCK_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_QUIT:
     clock_destroy(cc);

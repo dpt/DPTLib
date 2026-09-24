@@ -33,7 +33,7 @@ static void fill_backdrop_excluding_content(wuss_t *wuss, const box_t *area)
     cuts[ncuts++] = clipped;
   }
 
-  npieces = wuss__subtract_boxes(area, cuts, ncuts, pieces);
+  npieces = wuss__subtract_boxes(area, cuts, ncuts, pieces, 1);
 
   for (i = 0; i < npieces; i++)
     wuss__fill_backdrop(wuss->scr, wuss->palette, &wuss->backdrop,
@@ -61,7 +61,7 @@ static void redraw_window(wuss_t        *wuss,
    * higher window, same reasoning as the content clip below -- otherwise
    * a window redrawing under an overlap would paint its furniture back
    * over whatever is covering it */
-  npieces = wuss__clip_to_visible(win, &visible_clipped, pieces);
+  npieces = wuss__clip_to_visible(win, &visible_clipped, pieces, 1);
   for (i = 0; i < npieces; i++)
   {
     wuss->scr->clip = pieces[i];
@@ -76,7 +76,7 @@ static void redraw_window(wuss_t        *wuss,
    * higher window -- otherwise every dirty rect raised by a window on top
    * (e.g. a moving ball) would also repaint whatever it's covering below,
    * however expensive that redraw is, for pixels nobody will ever see */
-  npieces = wuss__clip_to_visible(win, &clipped, pieces);
+  npieces = wuss__clip_to_visible(win, &clipped, pieces, 1);
 
   for (i = 0; i < npieces; i++)
   {

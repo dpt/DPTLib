@@ -89,10 +89,10 @@ result_t wuss_info_create(wuss_info_t          **out,
 /**
  * Replace an info dialogue's rows in place: recomputes column widths and row
  * pitch for \p rows, resizes the window to fit, and rebuilds its label:value
- * icons. For a dialogue shared by several callers (e.g. one wuss_proginfo_t
- * reused by every task), call this from a wuss_dialogue_fillout_fn_t just
- * before each reveal so the window is always sized for whichever caller is
- * about to show it.
+ * icons. For a dialogue shared by several callers (e.g. the wuss_proginfo
+ * singleton reused by every task), call this from a
+ * wuss_dialogue_fillout_fn_t just before each reveal so the window is always
+ * sized for whichever caller is about to show it.
  *
  * \param[in] info  Handle.
  * \param[in] rows  Row array; each label and value is borrowed and copied.

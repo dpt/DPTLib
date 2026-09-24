@@ -124,7 +124,7 @@ static void wuss__menu_close_from(struct wuss__menu *node)
     wuss_t *w;
 
     w = node->wuss;
-    if (node->borrowed)
+    if (node->flags & wuss_MENU__BORROWED)
       wuss_window_set_hidden(node->window, 1); /* caller's window: hide, keep */
     else
       wuss_window_close(node->window);
@@ -185,33 +185,54 @@ static point_t wuss__submenu_anchor(struct wuss__menu *self,
   return at;
 }
 
-/* Open item `index`'s borrowed window as level `self->child`: position it
- * where a submenu would appear, un-hide it, bring it to the front. A
- * PRE_SHOW veto from the window's own task leaves the row unopened. */
-static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
+/* Allocate and link a borrowed-window child level onto self->child, then
+ * bring its window to front. Shared by wuss_menu_open_window_now (the
+ * flagged row's explicit opt-in) and wuss__menu_open_window's direct-open
+ * path for an unflagged row. */
+static result_t wuss__menu_link_borrowed(struct wuss__menu *self,
+                                         wuss_window_t     *win)
 {
   struct wuss__menu *node;
-  wuss_window_t     *win;
-  point_t            at;
-  point_t            prev;
-
-  win  = self->menu->items[index].window;
-  prev = POINT(win->visible.x0, win->visible.y0);
 
   node = wuss__malloc(self->wuss, sizeof(*node));
   if (node == NULL)
     return result_OOM;
 
-  node->wuss       = self->wuss;
-  node->owner      = self->owner;
-  node->window     = win;
-  node->menu       = NULL;
-  node->icons      = NULL;
-  node->parent     = self;
-  node->child      = NULL;
-  node->open_index = -1;
-  node->borrowed   = 1;
+  node->flags         = wuss_MENU__BORROWED;
+  node->wuss          = self->wuss;
+  node->owner         = self->owner;
+  node->window        = win;
+  node->menu          = NULL;
+  node->icons         = NULL;
+  node->parent        = self;
+  node->child         = NULL;
+  node->open_index    = -1;
+  node->pending_index = -1;
   memset(&node->flash, 0, sizeof(node->flash));
+
+  self->child = node;
+
+  wuss_window_restack(win, wuss_ZORDER_FRONT);
+
+  return result_OK;
+}
+
+/* Open item `index`'s borrowed window as level `self->child`: position it
+ * where a submenu would appear, then reveal it. Unflagged
+ * (wuss_MENU_ITEM_PRE_OPEN unset), this reveals and links directly with no
+ * event fired. Flagged, wuss_window_set_hidden fires wuss_EVENT_PRE_SHOW to
+ * the window's own task with `self` and `index` in the payload, and the
+ * handler must call wuss_menu_open_window_now to proceed and link the
+ * child level -- not calling it leaves the row inert. */
+static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
+{
+  result_t                rc;
+  const wuss_menu_item_t *item;
+  wuss_window_t           *win;
+  point_t                  at;
+
+  item = &self->menu->items[index];
+  win  = item->window;
 
   at = wuss__submenu_anchor(self, self->icons[index]);
   wuss_window_move(win, at);
@@ -219,16 +240,72 @@ static result_t wuss__menu_open_window(struct wuss__menu *self, int index)
    * the screen edge that puts the window (partly) off-screen. wuss_window_move
    * does not clamp -- drags rely on it not clamping -- so pull it back here. */
   wuss__nudge_visible_onscreen(win);
-  if (wuss_window_set_hidden(win, 0) != result_OK)
+
+  if (!(item->flags & wuss_MENU_ITEM_PRE_OPEN))
   {
-    wuss_window_move(win, prev); /* vetoed: undo the anchor move */
-    wuss__free(self->wuss, node); /* row stays unopened */
+    rc = wuss_window_set_hidden(win, 0);
+    if (rc != result_OK)
+      return rc;
+
+    if (self->child == NULL && !(win->flags & wuss_WINDOW_HIDDEN))
+      return wuss__menu_link_borrowed(self, win);
+
     return result_OK;
   }
-  wuss_window_restack(win, wuss_ZORDER_FRONT);
 
-  self->child = node;
-  return result_OK;
+  self->pending_index = index;
+  rc                  = wuss__window_set_hidden_ex(win, 0, self, index);
+  self->pending_index = -1;
+
+  return rc;
+}
+
+/* Called back from wuss_EVENT_PRE_SHOW, synchronously, to opt in to
+ * revealing `index`'s borrowed window: tells wuss__window_set_hidden_ex to
+ * proceed with the actual flag-flip/SHOW once this handler returns, and
+ * links the child level. Positioning has already been done by
+ * wuss__menu_open_window before PRE_SHOW was fired. */
+result_t wuss_menu_open_window_now(wuss_menu_handle_t handle, int index)
+{
+  struct wuss__menu *self;
+  wuss_window_t     *win;
+
+  self = handle;
+
+  assert(self != NULL);
+  assert(self->pending_index == index);
+
+  win = self->menu->items[index].window;
+
+  self->wuss->pre_show_proceed = 1;
+
+  return wuss__menu_link_borrowed(self, win);
+}
+
+/* Called back from wuss_EVENT_PRE_SUBMENU_OPEN, synchronously, to opt in to
+ * opening `index`'s submenu: spawns `menu` (the item's own submenu, or
+ * another one retitled/retargeted for this row) as the child level, anchored
+ * off the row's arrow exactly as a plain submenu would be. */
+result_t wuss_menu_open_submenu_now(wuss_menu_handle_t handle,
+                                    int                index,
+                                    const wuss_menu_t *menu)
+{
+  result_t           rc;
+  struct wuss__menu *self;
+  point_t            at;
+
+  self = handle;
+
+  assert(self != NULL);
+  assert(self->pending_index == index);
+
+  at = wuss__submenu_anchor(self, self->icons[index]);
+
+  rc = wuss__menu_spawn(self->wuss, self->owner, menu, at, self, &self->child);
+  if (rc == result_OK)
+    self->open_index = index;
+
+  return rc;
 }
 
 /* True if the wuss pointer sits over `window`'s chrome above its content area
@@ -278,7 +355,7 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
     wuss = task_data;
 
     for (node = wuss->menu_chain; node != NULL; node = node->child)
-      if (!node->borrowed && node->flash.frames > 0)
+      if (!(node->flags & wuss_MENU__BORROWED) && node->flash.frames > 0)
       {
         wuss__menu_flash_step(node);
         break; /* node may be freed; the chain is gone if the flash ended */
@@ -334,9 +411,8 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
   if (event->data.icon.action == wuss_MOUSE_MOVE)
   {
-    point_t at;
-    int     has_child_row;
-    int     on_arrow;
+    int has_child_row;
+    int on_arrow;
 
     /* A disabled row still has to run the close-on-move-away logic below --
      * hovering off an open submenu onto a disabled sibling must collapse it
@@ -378,7 +454,7 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
     /* A borrowed window opens where a submenu would; a submenu spawns as a
      * fresh menu level. Either lines its row 0 up with this row -- the
-     * child's own titlebar sits above `at`. */
+     * child's own titlebar sits above the row's arrow. */
     if (item->window != NULL)
     {
       if (wuss__menu_open_window(self, index) == result_OK && self->child != NULL)
@@ -386,10 +462,35 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
       return result_OK;
     }
 
-    at = wuss__submenu_anchor(self, icon);
-    if (wuss__menu_spawn(self->wuss, self->owner, item->submenu, at, self,
-                         &self->child) == result_OK)
-      self->open_index = index;
+    if (!(item->flags & wuss_MENU_ITEM_PRE_OPEN))
+    {
+      /* unflagged: no event, just open the row's own static submenu */
+      point_t at;
+
+      at = wuss__submenu_anchor(self, self->icons[index]);
+      if (wuss__menu_spawn(self->wuss, self->owner, item->submenu, at,
+                           self, &self->child) == result_OK)
+        self->open_index = index;
+
+      return result_OK;
+    }
+
+    {
+      result_t     rc;
+      wuss_event_t pre_open;
+
+      self->pending_index                = index;
+      pre_open.kind                      = wuss_EVENT_PRE_SUBMENU_OPEN;
+      pre_open.data.pre_submenu_open.handle = self;
+      pre_open.data.pre_submenu_open.index  = index;
+      rc = wuss__deliver(self->owner, NULL, &pre_open);
+      self->pending_index = -1;
+      if (rc != result_OK)
+        return rc;
+
+      /* flagged but the handler did not call wuss_menu_open_submenu_now:
+       * row stays inert */
+    }
 
     return result_OK;
   }
@@ -404,6 +505,10 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
       return result_OK;
 
     button = event->data.icon.button;
+
+    if (!(button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+      return result_OK; /* MENU release picks nothing -- core never arms the
+                         * row's press for it, so this UP is unpaired */
 
     if (item->submenu != NULL || item->window != NULL)
       return result_OK; /* a submenu/window row opens on hover, not a pick */
@@ -438,12 +543,15 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
       row = self->icons[index];
 
-      self->flash.frames    = WUSS_MENU_FLASH_FRAMES;
-      self->flash.index     = index;
-      self->flash.owner     = owner;
-      self->flash.menu      = menu;
-      self->flash.button    = button;
-      self->flash.keep_open = (button & wuss_BUTTON_ADJUST) != 0;
+      self->flash.frames = WUSS_MENU_FLASH_FRAMES;
+      self->flash.index  = index;
+      self->flash.owner  = owner;
+      self->flash.menu   = menu;
+      self->flash.button = button;
+      if (button & wuss_BUTTON_ADJUST)
+        self->flags |= wuss_MENU__FLASH_KEEP_OPEN;
+      else
+        self->flags &= ~wuss_MENU__FLASH_KEEP_OPEN;
 
       /* first blink now: the row is already highlit under the pointer, so
        * drop the highlight this frame for an immediate visible change */
@@ -510,7 +618,7 @@ static void wuss__menu_flash_finish(struct wuss__menu *self)
   const wuss_menu_t *menu      = self->flash.menu;
   int                index     = self->flash.index;
   wuss_button_t      button    = self->flash.button;
-  int                keep_open = self->flash.keep_open;
+  int                keep_open = (self->flags & wuss_MENU__FLASH_KEEP_OPEN) != 0;
   int                on;
 
   self->flash.frames = 0;
@@ -521,12 +629,21 @@ static void wuss__menu_flash_finish(struct wuss__menu *self)
 
   if (!keep_open)
   {
+    wuss_event_t closed;
+
     root = self;
     while (root->parent != NULL)
       root = root->parent;
 
     root->wuss->menu_chain = NULL;
     wuss__menu_close_from(root); /* frees `self` */
+
+    /* The chain is gone and the owner's wuss_menu_handle_t with it: tell it
+     * so, same as wuss__menu_abandon, before MENU_SELECT below -- otherwise
+     * the handle sits stale until a later wuss_menu_close (e.g. from the
+     * owner's own QUIT handler) walks freed nodes. */
+    closed.kind = wuss_EVENT_MENU_CLOSED;
+    (void) wuss__deliver(owner, NULL, &closed);
   }
 
   sel.kind                    = wuss_EVENT_MENU_SELECT;
@@ -733,6 +850,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   }
   memset(node->icons, 0, (size_t) menu->nitems * sizeof(*node->icons));
 
+  node->flags      = 0;
   node->wuss       = wuss;
   node->owner      = owner;
   node->window     = NULL;
@@ -740,7 +858,6 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   node->parent     = parent;
   node->child      = NULL;
   node->open_index = -1;
-  node->borrowed   = 0;
   memset(&node->flash, 0, sizeof(node->flash));
 
   /* One MENU_ENTRY icon per item, in item order, preceded by an inert
@@ -949,6 +1066,15 @@ int wuss_menu_is_open(wuss_menu_handle_t handle)
   return root->wuss->menu_chain == root;
 }
 
+const wuss_menu_t *wuss_menu_handle_menu(wuss_menu_handle_t handle)
+{
+  struct wuss__menu *self;
+
+  self = handle;
+
+  return self ? self->menu : NULL;
+}
+
 /* Find the open chain level showing `menu`, or NULL if `handle` is stale or
  * `menu` is not a level of its chain. Shared by wuss_menu_tick_exclusive_live
  * and wuss_menu_tick_item_live. */
@@ -1088,7 +1214,8 @@ int wuss__menu_row_pinned(const wuss_t *wuss, const wuss_icon_t *icon)
 
   for (node = wuss->menu_chain; node != NULL; node = node->child)
   {
-    if (node->borrowed || node->child == NULL || node->open_index < 0)
+    if ((node->flags & wuss_MENU__BORROWED) || node->child == NULL ||
+        node->open_index < 0)
       continue;
     if (node->icons[node->open_index] == icon)
       return 1;

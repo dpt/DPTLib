@@ -10,6 +10,7 @@ extern "C"
 
 #include "base/result.h"
 #include "geom/box.h"
+#include "geom/inset.h"
 #include "geom/size.h"
 
 /* ----------------------------------------------------------------------- */
@@ -20,6 +21,14 @@ extern "C"
  * (they use fixed-size internal scratch arrays, not a VLA, for MSVC
  * portability). Ample for any hand-written table. */
 #define STACK_MAX_ITEMS 64
+
+/** Special `axis_size` value for a `stack_KIND_HBOX`/`stack_KIND_VBOX` item:
+ * `stack_solve` sizes the container's main axis to the sum of its children's
+ * main-axis extents (plus gaps and padding) instead of a fixed size or flex.
+ * Not valid on the root item, on a `stack_KIND_LEAF`/`stack_KIND_SPACER`, or
+ * combined with a non-zero `flex` -- `stack_solve` rejects all three with
+ * `result_STACK_BAD_TREE`. */
+#define STACK_HUG (-1)
 
 /* ----------------------------------------------------------------------- */
 
@@ -68,13 +77,7 @@ typedef struct stack_item
 
   int           gap;        /**< Containers only: px between adjacent
                                   children. */
-  int           pad_l;      /**< Containers only: inner inset, left
-                                  edge. */
-  int           pad_t;      /**< Containers only: inner inset, top edge. */
-  int           pad_r;      /**< Containers only: inner inset, right
-                                  edge. */
-  int           pad_b;      /**< Containers only: inner inset, bottom
-                                  edge. */
+  inset_t       pad;        /**< Containers only: inner inset. */
 }
 stack_item_t;
 
@@ -93,19 +96,19 @@ stack_item_t;
   { .kind = stack_KIND_VBOX, .parent = (p_), \
     .axis_size = (axis_), .gap = (gap_) }
 
-#define STACK_VBOX_EX(p_, axis_, gap_, padl_, padt_, padr_, padb_) \
+#define STACK_VBOX_EX(p_, axis_, gap_, padt_, padr_, padb_, padl_) \
   { .kind = stack_KIND_VBOX, .parent = (p_), \
     .axis_size = (axis_), .gap = (gap_), \
-    .pad_l = (padl_), .pad_t = (padt_), .pad_r = (padr_), .pad_b = (padb_) }
+    .pad = INSET((padt_), (padr_), (padb_), (padl_)) }
 
 #define STACK_HBOX(p_, axis_, gap_, align_) \
   { .kind = stack_KIND_HBOX, .parent = (p_), \
     .axis_size = (axis_), .gap = (gap_), .align = (align_) }
 
-#define STACK_HBOX_EX(p_, axis_, gap_, align_, padl_, padt_, padr_, padb_) \
+#define STACK_HBOX_EX(p_, axis_, gap_, align_, padt_, padr_, padb_, padl_) \
   { .kind = stack_KIND_HBOX, .parent = (p_), \
     .axis_size = (axis_), .gap = (gap_), .align = (align_), \
-    .pad_l = (padl_), .pad_t = (padt_), .pad_r = (padr_), .pad_b = (padb_) }
+    .pad = INSET((padt_), (padr_), (padb_), (padl_)) }
 
 #define STACK_LEAF(p_, axis_, cross_, align_) \
   { .kind = stack_KIND_LEAF, .parent = (p_), \

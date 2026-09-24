@@ -8,6 +8,8 @@
 #include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
 #include "framebuf/composite.h"
+#include "wuss/component/proginfo.h"
+#include "wuss/menu.h"
 #include "wuss/window.h"
 
 /* window's task: the two composite demo images blended under a cycling
@@ -16,6 +18,13 @@
  * across its full range */
 typedef struct porter_duff_task
 {
+  wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
+  wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
+  wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
+                                       * leak one instance's .window pointer
+                                       * into another's menu */
+  wuss_menu_t         menu;
   wuss_window_t   *window;
   bmfont_t        *font;
   bitmap_t         a;               /* owned: pristine source, BGRA */

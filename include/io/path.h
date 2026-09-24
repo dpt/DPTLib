@@ -8,21 +8,19 @@
 #define DPTLIB_MAXPATH 256 /* not ideal */
 
 /**
- * Join 'leaf' with extension 'ext' according to the host convention.
+ * Build a path from a printf-like format string, substituting `%s` from the
+ * varargs exactly as printf would, then rewriting the result for the host
+ * path convention: every literal '/' becomes the host directory separator,
+ * and on RISC OS the final ".ext" suffix (the dotted extension after the
+ * last '/'), if present, is dropped -- file type there is separate
+ * filesystem metadata, never part of the pathname string.
+ *
+ * Only `%s` conversions are supported.
  *
  * Note: Returns a pointer to an internal static buffer of length
  * `DPTLIB_MAXPATH`.
  */
-const char *path_join_leafname(const char *leaf, const char *ext);
-
-/**
- * Join 'root' with `nbranches` directory names according to the host
- * convention.
- *
- * Note: Returns a pointer to an internal static buffer of length
- * `DPTLIB_MAXPATH`.
- */
-const char *path_join_filename(const char *root, int nbranches, ...);
+const char *pathf(const char *fmt, ...);
 
 /**
  * Tests whether a directory leafname (as returned by dirscan_walk) has the

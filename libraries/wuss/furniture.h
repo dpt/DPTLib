@@ -8,7 +8,7 @@
 
 #include "wuss/wuss.h"
 
-#define WUSS_MIN_SAUSAGE    6  /* scrollbar sausage never shrinks below this, however small the content fraction */
+#define WUSS_MIN_SAUSAGE    1  /* scrollbar sausage never shrinks below this, however small the content fraction */
 #define WUSS_SCROLL_END_GAP 2  /* sausage along-axis margin from its well's ends, purely cosmetic */
 #define WUSS_SCROLL_STEP    20 /* pixels stepped per scrollbar arrow click */
 
@@ -45,18 +45,26 @@ wuss__furniture_piece_t;
  * two interior rules(2) + four outline edges(4) = 21. Round up. */
 #define WUSS__FURNITURE_MAX_PIECES 24
 
+/* Internal wuss__furniture_layout::flags bits. */
+enum
+{
+  /* the cache is up to date. Rebuilt lazily by wuss__furniture_draw when
+   * clear; wuss__furniture_invalidate* clear it on any geometry change. */
+  wuss_FURNITURE_LAYOUT__VALID       = 1u << 0,
+
+  /* `titlebar` holds a real rect for the live title-text pass */
+  wuss_FURNITURE_LAYOUT__HAS_TITLEBAR = 1u << 1
+};
+
 /* Per-window cache of the furniture layout: every filled rect except the two
  * scrollbar sausages (which move with window->scroll and are recomputed each
- * paint) and the title text (font-dependent, drawn live). Rebuilt lazily by
- * wuss__furniture_draw when "valid" is 0; wuss__furniture_invalidate* clear
- * it on any geometry change. */
+ * paint) and the title text (font-dependent, drawn live). */
 typedef struct wuss__furniture_layout
 {
-  int                     valid;
+  unsigned int            flags;
   int                     npieces;
   wuss__furniture_piece_t pieces[WUSS__FURNITURE_MAX_PIECES];
   box_t                   titlebar;   /* for the live title-text pass; empty if no titlebar */
-  int                     has_titlebar;
 }
 wuss__furniture_layout_t;
 
@@ -113,28 +121,54 @@ struct wuss__furniture
                                             * of the window's edge snapping to
                                             * it on the first move */
   int                         drag_scroll_start; /* *_SAUSAGE: scroll.x/scroll.y at drag start */
+  wuss_furniture_region_t     pressed_region; /* RESIZE or a scroll arrow while
+                                               * held down, drawn in
+                                               * button_pressed; NONE
+                                               * otherwise. Only "dragging"'s
+                                               * window is ever pressed. */
 };
 
-static inline wuss_furniture_drag_kind_t wuss__furniture_drag_kind(wuss_furniture_region_t region)
+/* Furniture element table ------------------------------------------------- */
+
+typedef void (wuss__furniture_box_fn_t)(const wuss_window_t *window,
+                                        box_t               *out);
+
+/* One hit-testable piece of window furniture. The table drives hit testing,
+ * the cached layout's per-element pieces, the pressed-box lookup and the
+ * scroll-arrow step direction. */
+typedef struct wuss__furniture_element
 {
-  switch (region)
-  {
-  case wuss_FURNITURE_TITLE:
-  case wuss_FURNITURE_CLOSE:
-    return wuss_FURNITURE_DRAG_MOVE;
-  case wuss_FURNITURE_RESIZE:
-    return wuss_FURNITURE_DRAG_RESIZE;
-  case wuss_FURNITURE_VSCROLL_WELL:
-    return wuss_FURNITURE_DRAG_VSCROLL_SAUSAGE;
-  case wuss_FURNITURE_HSCROLL_WELL:
-    return wuss_FURNITURE_DRAG_HSCROLL_SAUSAGE;
-  default:
-    return wuss_FURNITURE_DRAG_NONE;
-  }
+  wuss_furniture_region_t        region;
+  wuss_window_flags_t            flag;      /* window flag that enables it; 0: always */
+  int                            titlebar;  /* lives in the titlebar, so also needs one */
+  wuss__furniture_box_fn_t      *box;       /* drawn box; NULL: not a cached or pressable piece */
+  wuss__furniture_box_fn_t      *hit_box;   /* drawn box grown to tile the window edge */
+  wuss__furniture_paint_class_t  paint;     /* colour of the cached piece */
+  wuss_furniture_drag_kind_t     drag_kind; /* drag a press here starts */
+  point_t                        step;      /* scroll arrows: unit scroll direction */
 }
+wuss__furniture_element_t;
+
+/* In hit-test priority order -- see furniture/elements.c. */
+extern const wuss__furniture_element_t wuss__furniture_elements[];
+extern const int                       wuss__furniture_nelements;
+
+/* Does "window" carry "element"? */
+int wuss__furniture_element_present(const wuss_window_t             *window,
+                                    const wuss__furniture_element_t *element);
+
+/* The element for "region", or NULL for NONE / CONTENT. */
+const wuss__furniture_element_t *wuss__furniture_element(wuss_furniture_region_t region);
 
 wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
                                                  point_t              p);
+
+/* The drawn (un-grown) box for a pressable region -- any element with a
+ * drawn box -- used to invalidate/highlight it while held. Any other region
+ * is a caller error. */
+void wuss__furniture_pressed_box(const wuss_window_t    *window,
+                                 wuss_furniture_region_t region,
+                                 box_t                  *out);
 void wuss__furniture_draw(wuss_t        *wuss,
                           wuss_window_t *window,
                           const box_t   *full);

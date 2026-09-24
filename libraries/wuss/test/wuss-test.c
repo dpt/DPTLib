@@ -30,6 +30,9 @@
 #include "wuss/component/fontmenu.h"
 #include "wuss/component/colourmenu.h"
 #endif
+#ifdef WUSS_GADGETS
+#include "wuss/gadget/stringset.h"
+#endif
 
 /* white-box: the menu-flash test drives picks through the icon layer and
  * reads back struct wuss__menu / struct wuss_icon state directly; the
@@ -39,6 +42,7 @@
 #include "../core/impl.h"
 #endif
 #if defined(WUSS_ICONS)
+#include "wuss/icon-spec.h"
 #include "../icon.h"
 #endif
 
@@ -70,18 +74,40 @@ typedef struct test_task
   int                 idle_count;
   int                 veto_pre_close;
   int                 veto_pre_show;
+  int                 open_window_via_handle;
+  const wuss_menu_t  *submenu_to_open;
+  int                 pre_submenu_open_count;
   int                 menu_select_count;
   int                 last_menu_index;
+  int                 gain_focus_count;
+  int                 lose_focus_count;
+  int                 key_count;
+  int                 last_key;
+  int                 last_key_mods;
+  int                 unclaim_keys;
+  int                 icon_count;
 }
 test_task_t;
+
+#ifdef WUSS_GADGETS
+/* stringset changed callback: counts calls into the int at opaque */
+static result_t stringset_test_changed(wuss_stringset_t *stringset,
+                                       int               index,
+                                       void             *opaque)
+{
+  NOT_USED(stringset);
+  NOT_USED(index);
+
+  (*(int *) opaque)++;
+  return result_OK;
+}
+#endif
 
 static result_t test_handle(wuss_window_t      *window,
                             const wuss_event_t *event,
                             void               *task_data)
 {
   test_task_t *tc;
-
-  NOT_USED(window);
 
   tc = task_data;
 
@@ -121,8 +147,29 @@ static result_t test_handle(wuss_window_t      *window,
   case wuss_EVENT_PRE_SHOW:
     tc->pre_show_count++;
     if (tc->veto_pre_show)
-      return result_BAD_ARG; /* any non-OK return vetoes the reveal */
-    break;
+      break; /* not calling wuss_window_reveal_now still shows: default proceed */
+    if (tc->open_window_via_handle)
+    {
+      /* the correct guard: a plain window's PRE_SHOW carries handle == NULL
+       * (already proceeding by default), and calling
+       * wuss_menu_open_window_now with a NULL/non-menu handle is a caller
+       * error -- regression coverage for a real crash where saturn.c and
+       * apps/wuss/tasks.c called it unconditionally */
+      if (event->data.pre_show.handle == NULL)
+        return result_OK;
+      return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                       event->data.pre_show.index);
+    }
+    return wuss_window_reveal_now(window);
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    tc->pre_submenu_open_count++;
+    if (tc->submenu_to_open == NULL)
+      break; /* this only fires for a flagged row; not calling
+              * wuss_menu_open_submenu_now leaves it inert */
+    return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
+                                      event->data.pre_submenu_open.index,
+                                      tc->submenu_to_open);
 
   case wuss_EVENT_MENU_SELECT:
     tc->menu_select_count++;
@@ -143,6 +190,26 @@ static result_t test_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     tc->idle_count++;
+    break;
+
+  case wuss_EVENT_GAIN_FOCUS:
+    tc->gain_focus_count++;
+    break;
+
+  case wuss_EVENT_LOSE_FOCUS:
+    tc->lose_focus_count++;
+    break;
+
+  case wuss_EVENT_ICON:
+    tc->icon_count++;
+    break;
+
+  case wuss_EVENT_KEY:
+    tc->key_count++;
+    tc->last_key      = event->data.key.code;
+    tc->last_key_mods = event->data.key.modifiers;
+    if (tc->unclaim_keys)
+      return result_WUSS_KEY_UNCLAIMED;
     break;
 
   default:
@@ -549,6 +616,7 @@ result_t wuss_test(const char *resources)
   bad_config.furniture.scroll.arrows   = 0;
   bad_config.furniture.scroll.wells    = 0;
   bad_config.furniture.scroll.sausages = 0;
+  bad_config.furniture.pressed         = 0;
   bad_config.bevel.light               = 0;
   bad_config.bevel.dark                = 0;
   bad_config.bevel.divider             = 0;
@@ -1802,6 +1870,505 @@ result_t wuss_test(const char *resources)
       goto Failure;
 
     wuss_window_close(win_t);
+  }
+
+  printf("test: toggle-size still blits when a hidden window sits above it in z-order\n");
+
+  {
+    static test_task_t tc_h;
+    wuss_task_t       *delegate_h;
+    box_t              box_h_win, hidden_box, before, toggle, titlebar;
+    wuss_window_t     *win_h, *win_hidden;
+    int                outline_px, titlebar_height, inset, icon, cx, cy;
+    int                i, interior_x, interior_y, interior_dirty;
+
+    tc_h.redraw_count = 0;
+    tc_h.mouse_count  = 0;
+    delegate_h = mk_task(wuss, test_handle, &tc_h);
+    if (delegate_h == NULL) goto Failure;
+
+    box_h_win.x0 = 10; box_h_win.y0 = 10;
+    box_h_win.x1 = 50; box_h_win.y1 = 50; /* same in-place grow shape as the
+                                            * plain toggle-blit test above */
+    rc = wuss_window_create(delegate_h, &box_h_win, "H", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(150, 150), SIZE2D(0, 0), &win_h);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* a hidden window created afterwards still lands at the z-order head
+     * (list_add_to_head in window/create.c, unconditional on
+     * wuss_WINDOW_HIDDEN) -- it must not be mistaken for an occluder sitting
+     * above win_h, or wuss__furniture_toggle_size's topmost check wrongly
+     * declines the blit and falls back to a full old+new footprint repaint */
+    hidden_box.x0 = 60; hidden_box.y0 = 60;
+    hidden_box.x1 = 100; hidden_box.y1 = 100;
+    rc = wuss_window_create(delegate_h, &hidden_box, "Hidden",
+                            wuss_WINDOW_HIDDEN, wuss_NO_BACKDROP,
+                            SIZE2D(40, 40), SIZE2D(0, 0), &win_hidden);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creates' own invalidates */
+    if (rc != result_OK)
+      goto Failure;
+
+    outline_px      = 1;
+    titlebar_height = 20;
+    inset           = 3;
+    icon            = titlebar_height - 2 * inset;
+
+    wuss_window_get_visible_bounds(win_h, &before);
+    titlebar.x0 = before.x0 + outline_px;
+    titlebar.x1 = before.x1 - outline_px;
+    titlebar.y0 = before.y0 + outline_px;
+    toggle.x1 = titlebar.x1 - inset;
+    toggle.x0 = toggle.x1 - icon;
+    toggle.y0 = titlebar.y0 + inset;
+    toggle.y1 = toggle.y0 + icon;
+    cx = (toggle.x0 + toggle.x1) / 2;
+    cy = (toggle.y0 + toggle.y1) / 2;
+
+    /* pre-grow content interior, well clear of outline/titlebar/scrollbar
+     * furniture on every side -- same reasoning as the plain toggle-blit
+     * test above: a pixel the blit must have reused rather than repainted */
+    interior_x = (before.x0 + outline_px + before.x1 - outline_px - icon) / 2;
+    interior_y = (before.y0 + outline_px + titlebar_height + before.y1 - outline_px - icon) / 2;
+
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* H's toggle-size icon: grow */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_h)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    if (wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+
+    interior_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      box_t region;
+
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, interior_x, interior_y))
+        interior_dirty = 1;
+    }
+    if (interior_dirty)
+      goto Failure; /* a hidden occluder above in z-order must not defeat the
+                      * blit fast path -- if it did, this interior content
+                      * pixel (which the blit alone would have reused
+                      * untouched) would be swept into the no-blit
+                      * fallback's full old+new footprint repaint instead */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_hidden);
+    wuss_window_close(win_h);
+  }
+
+  printf("test: closing a hidden window never dirties the visible window sitting under its old footprint\n");
+
+  {
+    static test_task_t tc_c;
+    wuss_task_t       *delegate_c;
+    box_t              box_visible, box_hidden, region;
+    wuss_window_t     *win_visible, *win_hidden_c;
+    int                i, overlap_x, overlap_y, overlap_dirty;
+
+    tc_c.redraw_count = 0;
+    tc_c.mouse_count  = 0;
+    delegate_c = mk_task(wuss, test_handle, &tc_c);
+    if (delegate_c == NULL) goto Failure;
+
+    /* a visible window occupying the screen's top-left, matching where a
+     * hidden singleton dialogue (e.g. wuss_proginfo_window) is always
+     * created (content box (0,0)-(w,h): see wuss_info_create) */
+    box_visible.x0 = 0; box_visible.y0 = 0;
+    box_visible.x1 = 80; box_visible.y1 = 80;
+    rc = wuss_window_create(delegate_c, &box_visible, "V", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_visible);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* hidden window whose footprint overlaps win_visible's -- never drawn,
+     * so closing it must not touch pixels that belong to win_visible */
+    box_hidden.x0 = 0; box_hidden.y0 = 0;
+    box_hidden.x1 = 40; box_hidden.y1 = 40;
+    rc = wuss_window_create(delegate_c, &box_hidden, "Hidden",
+                            wuss_WINDOW_HIDDEN, wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_hidden_c);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creates' own invalidates */
+    if (rc != result_OK)
+      goto Failure;
+
+    overlap_x = (box_hidden.x0 + box_hidden.x1) / 2;
+    overlap_y = (box_hidden.y0 + box_hidden.y1) / 2;
+
+    wuss_window_close(win_hidden_c);
+
+    overlap_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, overlap_x, overlap_y))
+        overlap_dirty = 1;
+    }
+    if (overlap_dirty)
+      goto Failure; /* closing a hidden window must not force a repaint of
+                      * whatever visible window/backdrop actually occupies
+                      * its old, never-drawn footprint */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_visible);
+  }
+
+  printf("test: input focus: flag gate, click-to-focus, key routing, loss on hide/close\n");
+
+  {
+    static test_task_t tc_f, tc_n;
+    wuss_task_t       *delegate_f, *delegate_n;
+    box_t              box_f, box_g, box_n, content_f, content_n;
+    wuss_window_t     *win_f, *win_g, *win_n;
+    int                claimed;
+
+    delegate_f = mk_task(wuss, test_handle, &tc_f);
+    delegate_n = mk_task(wuss, test_handle, &tc_n);
+    if (delegate_f == NULL || delegate_n == NULL) goto Failure;
+
+    box_f.x0 = 10;  box_f.y0 = 30;  box_f.x1 = 60;  box_f.y1 = 80;
+    box_g.x0 = 70;  box_g.y0 = 30;  box_g.x1 = 120; box_g.y1 = 80;
+    box_n.x0 = 130; box_n.y0 = 30;  box_n.x1 = 180; box_n.y1 = 80;
+    rc = wuss_window_create(delegate_f, &box_f, "F",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_f);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_window_create(delegate_f, &box_g, "G",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_g);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_window_create(delegate_n, &box_n, "N", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_n);
+    if (rc != result_OK) goto Failure;
+
+    wuss_window_get_content_bounds(win_f, &content_f);
+    wuss_window_get_content_bounds(win_n, &content_n);
+
+    rc = wuss_redraw_dirty(wuss); /* flush the creates' own invalidates */
+    if (rc != result_OK) goto Failure;
+
+    /* nothing focused: keys go unclaimed */
+    if (wuss_get_focus(wuss) != NULL) goto Failure;
+    rc = wuss_key(wuss, 'a', wuss_KEY_MOD_NONE, &claimed);
+    if (rc != result_OK || claimed) goto Failure;
+
+    /* the flag gates wuss_set_focus */
+    if (wuss_set_focus(wuss, win_n) != result_BAD_ARG) goto Failure;
+
+    /* a Menu press never takes focus; a Select press on content does, and
+     * GAIN_FOCUS arrives */
+    wuss_mouse_click(wuss, POINT(content_f.x0 + 5, content_f.y0 + 5),
+                     wuss_BUTTON_MENU, wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(wuss, POINT(content_f.x0 + 5, content_f.y0 + 5),
+                     wuss_BUTTON_MENU, wuss_MOUSE_UP, NULL);
+    if (wuss_get_focus(wuss) != NULL) goto Failure;
+    wuss_mouse_click(wuss, POINT(content_f.x0 + 5, content_f.y0 + 5),
+                     wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(wuss, POINT(content_f.x0 + 5, content_f.y0 + 5),
+                     wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    if (wuss_get_focus(wuss) != win_f || tc_f.gain_focus_count != 1)
+      goto Failure;
+
+    /* the focused titlebar is repainted in the tint */
+    if (wuss_get_dirty_count(wuss) == 0) goto Failure;
+
+    /* keys reach the focused window, with modifiers */
+    rc = wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_SHIFT, &claimed);
+    if (rc != result_OK || !claimed || tc_f.key_count != 1 ||
+        tc_f.last_key != wuss_KEY_LEFT ||
+        tc_f.last_key_mods != wuss_KEY_MOD_SHIFT)
+      goto Failure;
+
+    /* a declined key is reported unclaimed */
+    tc_f.unclaim_keys = 1;
+    rc = wuss_key(wuss, 'x', wuss_KEY_MOD_CTRL, &claimed);
+    if (rc != result_OK || claimed || tc_f.key_count != 2) goto Failure;
+    tc_f.unclaim_keys = 0;
+
+    /* clicking a non-focusable window leaves the focus alone */
+    wuss_mouse_click(wuss, POINT(content_n.x0 + 5, content_n.y0 + 5),
+                     wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(wuss, POINT(content_n.x0 + 5, content_n.y0 + 5),
+                     wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    if (wuss_get_focus(wuss) != win_f || tc_n.key_count != 0) goto Failure;
+
+    /* refocusing the holder fires nothing */
+    if (wuss_set_focus(wuss, win_f) != result_OK ||
+        tc_f.gain_focus_count != 1 || tc_f.lose_focus_count != 0)
+      goto Failure;
+
+    /* moving focus: LOSE then GAIN */
+    if (wuss_set_focus(wuss, win_g) != result_OK ||
+        tc_f.lose_focus_count != 1 || tc_f.gain_focus_count != 2)
+      goto Failure;
+
+    /* hiding the focused window drops focus with LOSE; a hidden window
+     * can't be focused */
+    rc = wuss_window_set_hidden(win_g, 1);
+    if (rc != result_OK || wuss_get_focus(wuss) != NULL ||
+        tc_f.lose_focus_count != 2)
+      goto Failure;
+    if (wuss_set_focus(wuss, win_g) != result_BAD_ARG) goto Failure;
+
+    /* try_close fires LOSE; forced close clears silently */
+    if (wuss_set_focus(wuss, win_f) != result_OK) goto Failure;
+    rc = wuss_window_try_close(win_f);
+    if (rc != result_OK || wuss_get_focus(wuss) != NULL ||
+        tc_f.lose_focus_count != 3)
+      goto Failure;
+
+    rc = wuss_window_set_hidden(win_g, 0);
+    if (rc != result_OK) goto Failure;
+    if (wuss_set_focus(wuss, win_g) != result_OK) goto Failure;
+    wuss_window_close(win_g);
+    if (wuss_get_focus(wuss) != NULL || tc_f.lose_focus_count != 3)
+      goto Failure;
+
+    wuss_window_close(win_n);
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK) goto Failure;
+  }
+
+#if defined(WUSS_FURNITURE) && defined(WUSS_ICONS)
+  printf("test: writable icons: click for caret, edit keys, full buffer, Tab, caret loss\n");
+
+  {
+    static test_task_t tc_w;
+    wuss_task_t       *delegate_w;
+    box_t              box_w, content_w;
+    wuss_window_t     *win_w;
+    wuss_icon_spec_t   specs[3];
+    wuss_icon_t       *icons[3];
+    int                claimed;
+
+    delegate_w = mk_task(wuss, test_handle, &tc_w);
+    if (delegate_w == NULL) goto Failure;
+
+    box_w.x0 = 10; box_w.y0 = 30; box_w.x1 = 110; box_w.y1 = 130;
+    rc = wuss_window_create(delegate_w, &box_w, "W",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_w);
+    if (rc != result_OK) goto Failure;
+
+    /* a zero-size buffer is rejected */
+    wuss_icon_spec_writable(&specs[0], (box_t) { 0, 0, 80, 16 }, NULL, 0, 0);
+    if (wuss_icon_create(win_w, &specs[0], NULL) != result_WUSS_BAD_ICON)
+      goto Failure;
+
+    wuss_icon_spec_writable(&specs[0], (box_t) { 0, 0, 80, 16 }, "toolong", 4, 0);
+    wuss_icon_spec_writable(&specs[1], (box_t) { 0, 20, 80, 36 }, NULL, 16, 0);
+    wuss_icon_spec_writable(&specs[2], (box_t) { 0, 40, 80, 56 }, "x", 8,
+                            wuss_ICON_FLAGS_HIDDEN);
+    rc = wuss_icon_create_array(win_w, specs, 3, icons);
+    if (rc != result_OK) goto Failure;
+
+    /* the seed text is truncated to fit */
+    if (strcmp(wuss_icon_get_text(icons[0]), "too") != 0) goto Failure;
+
+    /* a click takes the focus and the caret (no font: caret at the end) */
+    wuss_window_get_content_bounds(win_w, &content_w);
+    wuss_mouse_click(wuss, POINT(content_w.x0 + 5, content_w.y0 + 25),
+                     wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(wuss, POINT(content_w.x0 + 5, content_w.y0 + 25),
+                     wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    if (wuss_get_focus(wuss) != win_w || wuss->caret_icon != icons[1] ||
+        wuss->caret_index != 0)
+      goto Failure;
+
+    /* typing inserts at the caret and raises an icon event per edit */
+    tc_w.icon_count = 0;
+    wuss_key(wuss, 'a', wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, 'c', wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, 'b', wuss_KEY_MOD_NONE, &claimed);
+    if (!claimed || strcmp(wuss_icon_get_text(icons[1]), "abc") != 0 ||
+        wuss->caret_index != 2 || tc_w.icon_count != 3 ||
+        tc_w.key_count != 0)
+      goto Failure;
+
+    /* Home, Delete, End, Backspace */
+    wuss_key(wuss, wuss_KEY_HOME, wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, wuss_KEY_DELETE, wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, wuss_KEY_END, wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, 8, wuss_KEY_MOD_NONE, &claimed);
+    if (strcmp(wuss_icon_get_text(icons[1]), "b") != 0 ||
+        wuss->caret_index != 1 || tc_w.icon_count != 5)
+      goto Failure;
+
+    /* keys the field doesn't use reach the task */
+    wuss_key(wuss, 13, wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, 'z', wuss_KEY_MOD_CTRL, &claimed);
+    wuss_key(wuss, 0x263A, wuss_KEY_MOD_NONE, &claimed);
+    if (tc_w.key_count != 3 || strcmp(wuss_icon_get_text(icons[1]), "b") != 0)
+      goto Failure;
+
+    /* Ctrl+Left/Right jump to the ends; Shift+Left/Right move by words */
+    wuss_icon_set_text(win_w, icons[1], "ab cd  ef");
+    wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_CTRL, &claimed);
+    if (!claimed || wuss->caret_index != 0) goto Failure;
+    wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_SHIFT, &claimed);
+    if (wuss->caret_index != 2) goto Failure;
+    wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_SHIFT, &claimed);
+    if (wuss->caret_index != 5) goto Failure;
+    wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_SHIFT, &claimed);
+    if (wuss->caret_index != 9) goto Failure;
+    wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_SHIFT, &claimed);
+    if (wuss->caret_index != 7) goto Failure;
+    wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_SHIFT, &claimed);
+    if (wuss->caret_index != 3) goto Failure;
+    wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_CTRL, &claimed);
+    if (wuss->caret_index != 9) goto Failure;
+
+    /* Ctrl+U clears the field and raises an icon event */
+    tc_w.icon_count = 0;
+    wuss_key(wuss, 'u', wuss_KEY_MOD_CTRL, &claimed);
+    if (!claimed || wuss_icon_get_text(icons[1])[0] != '\0' ||
+        wuss->caret_index != 0 || tc_w.icon_count != 1 ||
+        tc_w.key_count != 3)
+      goto Failure;
+
+    /* Tab wraps over the hidden field; Shift-Tab goes back */
+    wuss_key(wuss, 9, wuss_KEY_MOD_NONE, &claimed);
+    if (!claimed || wuss->caret_icon != icons[0] || wuss->caret_index != 3)
+      goto Failure;
+    wuss_key(wuss, 9, wuss_KEY_MOD_SHIFT, &claimed);
+    if (wuss->caret_icon != icons[1]) goto Failure;
+
+    /* a full buffer swallows further characters */
+    wuss_icon_set_caret(win_w, icons[0], -1);
+    tc_w.icon_count = 0;
+    wuss_key(wuss, 'q', wuss_KEY_MOD_NONE, &claimed);
+    if (!claimed || strcmp(wuss_icon_get_text(icons[0]), "too") != 0 ||
+        tc_w.icon_count != 0)
+      goto Failure;
+
+    /* set_text truncates and moves the caret to the end */
+    rc = wuss_icon_set_text(win_w, icons[0], "hi");
+    if (rc != result_OK || strcmp(wuss_icon_get_text(icons[0]), "hi") != 0 ||
+        wuss->caret_index != 2)
+      goto Failure;
+
+    /* a hidden field can't take the caret; hiding the caret field drops it */
+    if (wuss_icon_set_caret(win_w, icons[2], 0) != result_BAD_ARG)
+      goto Failure;
+    wuss_icon_set_hidden(win_w, icons[0], 1);
+    if (wuss->caret_icon != NULL) goto Failure;
+
+    /* losing the focus drops the caret; deleting the caret icon clears it */
+    wuss_icon_set_caret(win_w, icons[1], 0);
+    if (wuss_set_focus(wuss, NULL) != result_OK || wuss->caret_icon != NULL)
+      goto Failure;
+    wuss_icon_set_caret(win_w, icons[1], 0);
+    wuss_icon_delete(win_w, icons[1]);
+    if (wuss->caret_icon != NULL) goto Failure;
+
+    wuss_icon_set_caret(win_w, icons[2], 0); /* hidden: refused */
+    wuss_window_close(win_w);
+    if (wuss->caret_window != NULL) goto Failure;
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK) goto Failure;
+  }
+#endif
+
+  printf("test: creating icons on a hidden window never dirties the visible window sitting under its footprint\n");
+
+  {
+    static test_task_t tc_i;
+    wuss_task_t       *delegate_i;
+    box_t              box_visible2, box_hidden2, region;
+    wuss_window_t     *win_visible2, *win_hidden_i;
+    wuss_icon_t       *icon;
+    wuss_icon_spec_t   spec;
+    int                i, overlap_x, overlap_y, overlap_dirty;
+
+    tc_i.redraw_count = 0;
+    tc_i.mouse_count  = 0;
+    delegate_i = mk_task(wuss, test_handle, &tc_i);
+    if (delegate_i == NULL) goto Failure;
+
+    /* same overlap shape as the close test above: a visible window at the
+     * screen's top-left, and a hidden dialogue-style window over the same
+     * area (e.g. wuss_proginfo_window, always built at content (0,0)) */
+    box_visible2.x0 = 0; box_visible2.y0 = 0;
+    box_visible2.x1 = 80; box_visible2.y1 = 80;
+    rc = wuss_window_create(delegate_i, &box_visible2, "V2", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_visible2);
+    if (rc != result_OK)
+      goto Failure;
+
+    box_hidden2.x0 = 0; box_hidden2.y0 = 0;
+    box_hidden2.x1 = 40; box_hidden2.y1 = 40;
+    rc = wuss_window_create(delegate_i, &box_hidden2, "Hidden2",
+                            wuss_WINDOW_HIDDEN, wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_hidden_i);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush both creates' own invalidates */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* an icon near the hidden window's own top-left, in window-local
+     * (pre-scroll) coordinates -- wuss_info_create builds proginfo's rows
+     * this way, each icon punching its own bbox-shaped invalidate */
+    memset(&spec, 0, sizeof(spec));
+    spec.bbox = (box_t) BOX_POS_SIZE(2, 2, 16, 16);
+    spec.type = wuss_ICON_TYPE_LABEL;
+    spec.text = "x";
+    rc = wuss_icon_create(win_hidden_i, &spec, &icon);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* content sits inset from the hidden window's own content-space origin
+     * by its outline + titlebar (default furniture: 1px outline, 20px
+     * titlebar -- same constants the other tests in this file use) */
+    overlap_x = box_hidden2.x0 + 1 + 2 + 8; /* centre of the icon's bbox, in screen space */
+    overlap_y = box_hidden2.y0 + 1 + 20 + 2 + 8;
+
+    overlap_dirty = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, overlap_x, overlap_y))
+        overlap_dirty = 1;
+    }
+    if (overlap_dirty)
+      goto Failure; /* an icon created on a hidden window must not force a
+                      * repaint of whatever visible window/backdrop actually
+                      * occupies that screen area */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_hidden_i);
+    wuss_window_close(win_visible2);
   }
 
   printf("test: toggle-size that forces a scroll re-clamp invalidates the content it's about to redraw at the new offset, not just the blit's edge sliver\n");
@@ -3731,7 +4298,7 @@ result_t wuss_test(const char *resources)
 
     /* build and cache the furniture layout at the creation width */
     wuss__furniture_layout_build(win_fl);
-    if (!win_fl->furniture_layout.valid)
+    if (!(win_fl->furniture_layout.flags & wuss_FURNITURE_LAYOUT__VALID))
       goto Failure;
     old_titlebar_x1 = win_fl->furniture_layout.titlebar.x1;
 
@@ -3741,7 +4308,7 @@ result_t wuss_test(const char *resources)
 
     /* the resize must have invalidated the cache: nothing else here rebuilds
      * it, so a stale valid==1 means furniture would paint at the old width */
-    if (win_fl->furniture_layout.valid)
+    if (win_fl->furniture_layout.flags & wuss_FURNITURE_LAYOUT__VALID)
       goto Failure;
 
     /* rebuilding now must track the new, wider window */
@@ -4509,7 +5076,7 @@ result_t wuss_test(const char *resources)
     rc = result_OK;
   }
 
-  printf("test: wuss_window_set_hidden fires PRE_SHOW; a veto keeps the window hidden\n");
+  printf("test: wuss_window_set_hidden fires PRE_SHOW; not opting in still shows the window\n");
   {
     static test_task_t tc_ps;
     wuss_task_t       *delegate_ps;
@@ -4540,27 +5107,30 @@ result_t wuss_test(const char *resources)
     (void) wuss_mouse_click(wuss, POINT(10, 10), wuss_BUTTON_SELECT,
                             wuss_MOUSE_UP, &hit);
 
-    /* vetoed reveal: PRE_SHOW fires, returns the veto rc, no SHOW, window
-     * stays hidden */
+    /* handler does not call wuss_window_reveal_now: PRE_SHOW still fires,
+     * but the window shows anyway (default proceed) */
     tc_ps.veto_pre_show = 1;
     rc = wuss_window_set_hidden(win_ps, 0);
-    if (rc != result_BAD_ARG)
+    if (rc != result_OK)
       goto Failure;
-    if (tc_ps.pre_show_count != 1 || tc_ps.show_count != 0)
+    if (tc_ps.pre_show_count != 1 || tc_ps.show_count != 1)
       goto Failure;
     rc = wuss_mouse_click(wuss, POINT(10, 10), wuss_BUTTON_SELECT,
                           wuss_MOUSE_DOWN, &hit);
-    if (rc != result_OK || hit == win_ps)
-      goto Failure; /* still hidden */
+    if (rc != result_OK || hit != win_ps)
+      goto Failure;
     (void) wuss_mouse_click(wuss, POINT(10, 10), wuss_BUTTON_SELECT,
                             wuss_MOUSE_UP, &hit);
+    rc = wuss_window_set_hidden(win_ps, 1);
+    if (rc != result_OK)
+      goto Failure;
 
-    /* allow it: PRE_SHOW then SHOW, and now it catches the pointer */
+    /* handler calls wuss_window_reveal_now explicitly: same result */
     tc_ps.veto_pre_show = 0;
     rc = wuss_window_set_hidden(win_ps, 0);
     if (rc != result_OK)
       goto Failure;
-    if (tc_ps.pre_show_count != 2 || tc_ps.show_count != 1)
+    if (tc_ps.pre_show_count != 2 || tc_ps.show_count != 2)
       goto Failure;
     rc = wuss_mouse_click(wuss, POINT(10, 10), wuss_BUTTON_SELECT,
                           wuss_MOUSE_DOWN, &hit);
@@ -4571,6 +5141,47 @@ result_t wuss_test(const char *resources)
 
     wuss_task_destroy(delegate_ps);
     mk_task_count = 0; /* delegate_ps is gone; drop the stale registry entry */
+    rc = result_OK;
+  }
+
+  printf("test: a plain window's PRE_SHOW carries a NULL handle -- calling "
+         "wuss_menu_open_window_now only when handle is non-NULL does not "
+         "crash (regression: saturn.c/tasks.c called it unconditionally)\n");
+  {
+    static test_task_t tc_psh;
+    wuss_task_t       *delegate_psh;
+    box_t              box_psh;
+    wuss_window_t     *win_psh;
+
+    memset(&tc_psh, 0, sizeof(tc_psh));
+    tc_psh.open_window_via_handle = 1;
+    delegate_psh = mk_task(wuss, test_handle, &tc_psh);
+    if (delegate_psh == NULL)
+      goto Failure;
+
+    box_psh.x0 = 0;  box_psh.y0 = 0;
+    box_psh.x1 = 60; box_psh.y1 = 60;
+    rc = wuss_window_create(delegate_psh, &box_psh, "PSH", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            box_size(&box_psh), SIZE2D(0, 0), &win_psh);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_window_set_hidden(win_psh, 1);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* handle == NULL for a plain window; the handler's NULL guard must
+     * take the early return and the window still shows (already
+     * defaulted to proceed before the handler ran) */
+    rc = wuss_window_set_hidden(win_psh, 0);
+    if (rc != result_OK || tc_psh.pre_show_count != 1)
+      goto Failure;
+    if (win_psh->flags & wuss_WINDOW_HIDDEN)
+      goto Failure;
+
+    wuss_task_destroy(delegate_psh);
+    mk_task_count = 0;
     rc = result_OK;
   }
 
@@ -4814,19 +5425,14 @@ MenuOK: ;
   printf("test: wuss_fontmenu lists the bmfonts dir and resolves a pick\n");
   {
     const char        *dir;
-    wuss_fontmenu_t   *fm;
     const wuss_menu_t *fmm;
     wuss_event_t       ev;
     const char        *name;
     int                i;
 
-    dir = path_join_filename(resources, 2, "resources", "bmfonts");
+    dir = pathf("%s/resources/bmfonts", resources);
 
-    rc = wuss_fontmenu_create(&fm, dir, "Font", NULL, NULL);
-    if (rc != result_OK)
-      goto FontMenuFail;
-
-    fmm = wuss_fontmenu_menu(fm);
+    fmm = wuss_fontmenu_menu(dir, "Font", NULL);
     if (fmm == NULL)                                     goto FontMenuFail;
     if (fmm->title == NULL || strcmp(fmm->title, "Font") != 0)
       goto FontMenuFail;
@@ -4846,32 +5452,32 @@ MenuOK: ;
     ev.data.menu_select.menu   = fmm;
     ev.data.menu_select.index  = 1;
     ev.data.menu_select.button = wuss_BUTTON_SELECT;
-    name = wuss_fontmenu_selected(fm, &ev);
+    name = wuss_fontmenu_selected(&ev);
     if (name == NULL || strcmp(name, fmm->items[1].text) != 0)
       goto FontMenuFail;
 
     /* wrong event kind, foreign menu and out-of-range index all decline */
     ev.kind = wuss_EVENT_IDLE;
-    if (wuss_fontmenu_selected(fm, &ev) != NULL)         goto FontMenuFail;
+    if (wuss_fontmenu_selected(&ev) != NULL)             goto FontMenuFail;
     ev.kind                   = wuss_EVENT_MENU_SELECT;
     ev.data.menu_select.menu  = NULL;
-    if (wuss_fontmenu_selected(fm, &ev) != NULL)         goto FontMenuFail;
+    if (wuss_fontmenu_selected(&ev) != NULL)             goto FontMenuFail;
     ev.data.menu_select.menu  = fmm;
     ev.data.menu_select.index = fmm->nitems;
-    if (wuss_fontmenu_selected(fm, &ev) != NULL)         goto FontMenuFail;
+    if (wuss_fontmenu_selected(&ev) != NULL)             goto FontMenuFail;
 
-    wuss_fontmenu_destroy(fm);
+    if (wuss_fontmenu_menu(NULL, "Font", NULL) != NULL)  goto FontMenuFail;
 
     /* a SYSTEM-class wuss font is dropped from the menu; NONE-class and
-     * unnamed slots are not */
+     * unnamed slots are not -- also exercises the singleton rebuilding when
+     * handed a different wuss_t for the same dir */
     {
       const char      *sysfontfile;
       bmfont_t        *sysfont;
       wuss_font_desc_t sysdescs[2];
       wuss_t          *syswuss;
 
-      sysfontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                       path_join_leafname("Symbols", "png"));
+      sysfontfile = pathf("%s/resources/bmfonts/Symbols.png", resources);
       rc = bmfont_create(sysfontfile, &sysfont);
       if (rc != result_OK)                               goto FontMenuFail;
 
@@ -4889,17 +5495,14 @@ MenuOK: ;
         goto FontMenuFail;
       }
 
-      /* dir points into path_join_filename's shared scratch buffer, which
-       * sysfontfile's path_join_filename call above just overwrote --
-       * re-derive it rather than reuse the now-stale pointer */
-      dir = path_join_filename(resources, 2, "resources", "bmfonts");
+      /* dir points into pathf's shared scratch buffer, which sysfontfile's
+       * pathf call above just overwrote -- re-derive it rather than reuse
+       * the now-stale pointer */
+      dir = pathf("%s/resources/bmfonts", resources);
 
-      rc = wuss_fontmenu_create(&fm, dir, "Font", syswuss, NULL);
+      fmm = wuss_fontmenu_menu(dir, "Font", syswuss);
       wuss_destroy(syswuss);
       bmfont_destroy(sysfont);
-      if (rc != result_OK)                               goto FontMenuFail;
-
-      fmm = wuss_fontmenu_menu(fm);
       if (fmm == NULL)                                    goto FontMenuFail;
       for (i = 0; i < fmm->nitems; i++)
         if (strcmp(fmm->items[i].text, "Symbols") == 0)   goto FontMenuFail;
@@ -4907,13 +5510,12 @@ MenuOK: ;
         if (strcmp(fmm->items[i].text, "Tiny") == 0)
           break;
       if (i == fmm->nitems)                               goto FontMenuFail;
-
-      wuss_fontmenu_destroy(fm);
     }
 
-    /* missing directory is surfaced, not swallowed */
-    rc = wuss_fontmenu_create(&fm, "no/such/dir/here", NULL, NULL, NULL);
-    if (rc != result_FILE_NOT_FOUND)                     goto FontMenuFail;
+    /* missing directory is surfaced by leaving the singleton unbuilt, not
+     * swallowed */
+    if (wuss_fontmenu_menu("no/such/dir/here", NULL, NULL) != NULL)
+      goto FontMenuFail;
 
     rc = result_OK;
     goto FontMenuOK;
@@ -4926,19 +5528,17 @@ FontMenuOK: ;
 
   printf("test: wuss_colourmenu covers the palette and resolves a pick\n");
   {
-    wuss_colourmenu_t *cm;
     const wuss_menu_t *cmm;
     wuss_event_t       ev;
     wuss_colour_t      picked;
     int                ok;
     int                i;
 
-    rc = wuss_colourmenu_create(&cm, wuss, "Colour");
-    if (rc != result_OK)
-      goto ColourMenuFail;
-
-    cmm = wuss_colourmenu_menu(cm);
+    wuss_colourmenu_set_none(0);
+    cmm = wuss_colourmenu_menu(wuss);
     if (cmm == NULL)                                     goto ColourMenuFail;
+    rc = wuss_colourmenu_set_title("Colour");
+    if (rc != result_OK)                                 goto ColourMenuFail;
     if (cmm->title == NULL || strcmp(cmm->title, "Colour") != 0)
       goto ColourMenuFail;
     if (cmm->nitems < 2)                                 goto ColourMenuFail;
@@ -4958,26 +5558,104 @@ FontMenuOK: ;
     ev.data.menu_select.index  = 1;
     ev.data.menu_select.button = wuss_BUTTON_SELECT;
     ok = -1;
-    picked = wuss_colourmenu_selected(cm, &ev, &ok);
+    picked = wuss_colourmenu_selected(&ev, &ok);
     if (!ok || picked != (wuss_colour_t) 1)             goto ColourMenuFail;
 
     /* wrong event kind, foreign menu and out-of-range index all decline */
     ev.kind = wuss_EVENT_IDLE;
-    if (wuss_colourmenu_selected(cm, &ev, &ok) != 0 || ok)
+    if (wuss_colourmenu_selected(&ev, &ok) != 0 || ok)
       goto ColourMenuFail;
     ev.kind                   = wuss_EVENT_MENU_SELECT;
     ev.data.menu_select.menu  = NULL;
-    if (wuss_colourmenu_selected(cm, &ev, &ok) != 0 || ok)
+    if (wuss_colourmenu_selected(&ev, &ok) != 0 || ok)
       goto ColourMenuFail;
     ev.data.menu_select.menu  = cmm;
     ev.data.menu_select.index = cmm->nitems;
-    if (wuss_colourmenu_selected(cm, &ev, &ok) != 0 || ok)
+    if (wuss_colourmenu_selected(&ev, &ok) != 0 || ok)
       goto ColourMenuFail;
 
-    wuss_colourmenu_destroy(cm);
+    if (wuss_colourmenu_menu(NULL) != NULL)              goto ColourMenuFail;
 
-    if (wuss_colourmenu_create(&cm, NULL, "Colour") != result_NULL_ARG)
+    /* with_none (the default) appends a dashed-off "None" row resolving to
+     * wuss_NO_BACKGROUND */
+    wuss_colourmenu_set_none(1);
+    cmm = wuss_colourmenu_menu(wuss);
+    if (cmm == NULL)                                     goto ColourMenuFail;
+    if (cmm->items[0].swatch != (wuss_colour_t) 0)       goto ColourMenuFail;
+    if ((cmm->items[cmm->nitems - 1].flags &
+         (wuss_MENU_ITEM_SWATCH | wuss_MENU_ITEM_DASHED)) !=
+        (wuss_MENU_ITEM_SWATCH | wuss_MENU_ITEM_DASHED))
       goto ColourMenuFail;
+    if (cmm->items[cmm->nitems - 1].swatch != wuss_NO_BACKGROUND)
+      goto ColourMenuFail;
+
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = cmm;
+    ev.data.menu_select.index  = cmm->nitems - 1;
+    ev.data.menu_select.button = wuss_BUTTON_SELECT;
+    ok = -1;
+    picked = wuss_colourmenu_selected(&ev, &ok);
+    if (!ok || picked != wuss_NO_BACKGROUND)             goto ColourMenuFail;
+
+    /* actually open and redraw it, so the "None" row's hatched chip gets
+     * rasterised for real, not just checked as data -- needs its own
+     * font-equipped wuss, unlike the shared fontless "wuss" above; also
+     * exercises the singleton rebuilding when handed a different wuss_t */
+    {
+      const char        *cmfontfile;
+      bmfont_t          *cmfont;
+      screen_t           cmscr;
+      bitmap_t           cmbm;
+      void              *cmpixels;
+      wuss_t            *cmwuss;
+      wuss_font_desc_t   cmfdesc;
+      wuss_task_desc_t   cmdesc;
+      static test_task_t cmtc;
+      wuss_task_t       *cmowner;
+      const wuss_menu_t *cmrealm;
+      int                cmrowbytes;
+
+      cmfontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+      rc = bmfont_create(cmfontfile, &cmfont);
+      if (rc != result_OK) goto ColourMenuFail;
+
+      cmrowbytes = 200 * 4;
+      cmpixels = malloc((size_t) cmrowbytes * 200);
+      if (cmpixels == NULL) { rc = result_OOM; goto ColourMenuFail; }
+      rc = bitmap_init(&cmbm, SIZE2D(200, 200), pixelfmt_bgrx8888,
+                       cmrowbytes, NULL, cmpixels);
+      if (rc != result_OK) { free(cmpixels); goto ColourMenuFail; }
+      screen_for_bitmap(&cmscr, &cmbm);
+
+      cmfdesc.font       = cmfont;
+      cmfdesc.font_class = wuss_FONT_CLASS_NONE;
+      cmfdesc.name       = NULL;
+      rc = wuss_create(&cmscr, &cmfdesc, 1, NULL, 0, NULL, NULL, NULL,
+                       &cmwuss);
+      if (rc != result_OK) { free(cmpixels); goto ColourMenuFail; }
+
+      memset(&cmtc, 0, sizeof(cmtc));
+      cmdesc.handle    = test_handle;
+      cmdesc.task_data = &cmtc;
+      cmdesc.name      = "wuss-test";
+      rc = wuss_task_create(cmwuss, &cmdesc, &cmowner);
+      if (rc != result_OK) { free(cmpixels); goto ColourMenuFail; }
+
+      wuss_colourmenu_set_none(1);
+      cmrealm = wuss_colourmenu_menu(cmwuss);
+      if (cmrealm == NULL) { free(cmpixels); goto ColourMenuFail; }
+
+      rc = wuss_menu_open(cmowner, cmrealm, POINT(40, 40), NULL);
+      if (rc != result_OK) goto ColourMenuFail;
+
+      rc = wuss_redraw_dirty(cmwuss);
+      if (rc != result_OK) goto ColourMenuFail;
+
+      wuss_menu_close(cmwuss->menu_chain);
+      wuss_destroy(cmwuss);
+      free(cmpixels);
+      bmfont_destroy(cmfont);
+    }
 
     rc = result_OK;
     goto ColourMenuOK;
@@ -4988,6 +5666,164 @@ ColourMenuFail:
 ColourMenuOK: ;
   }
 #endif /* WUSS_COMPONENTS */
+
+#ifdef WUSS_GADGETS
+  printf("test: wuss_stringset opens its menu and tracks picks\n");
+  {
+    static const char *const ss_strings[] = { "Red", "Green", "Blue" };
+
+    const char       *ssfontfile;
+    bmfont_t         *ssfont;
+    screen_t          ssscr;
+    bitmap_t          ssbm;
+    void             *sspixels;
+    wuss_t           *sswuss;
+    wuss_font_desc_t  ssfdesc;
+    test_task_t       sstc;
+    wuss_task_t      *ssowner;
+    wuss_window_t    *sswin;
+    wuss_stringset_t *ss;
+    wuss_icon_t      *arrow;
+    wuss_event_t      ev;
+    box_t             sscontent;
+    result_t          ssrc;
+    int               calls;
+    int               i;
+
+    /* a menu needs a font, and the arrow the icon set, so neither the
+     * shared fontless wuss nor a resource-less one will do */
+    ssfontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    rc = bmfont_create(ssfontfile, &ssfont);
+    if (rc != result_OK) goto StringSetFail;
+
+    sspixels = malloc((size_t) rowbytes * 200);
+    if (sspixels == NULL) { rc = result_OOM; goto StringSetFail; }
+    rc = bitmap_init(&ssbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, sspixels);
+    if (rc != result_OK) goto StringSetFail;
+    screen_for_bitmap(&ssscr, &ssbm);
+
+    ssfdesc.font       = ssfont;
+    ssfdesc.font_class = wuss_FONT_CLASS_NONE;
+    ssfdesc.name       = NULL;
+    rc = wuss_create(&ssscr, &ssfdesc, 1, NULL, 0, NULL, NULL, resources,
+                     &sswuss);
+    if (rc != result_OK) goto StringSetFail;
+
+    memset(&sstc, 0, sizeof(sstc));
+    ssowner = mk_task(sswuss, test_handle, &sstc);
+    if (ssowner == NULL) { rc = result_OOM; goto StringSetFail; }
+
+    sscontent = (box_t) BOX_POS_SIZE(10, 10, 150, 100);
+    rc = wuss_window_create(ssowner, &sscontent, "SS", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP, SIZE2D(150, 100), SIZE2D(0, 0),
+                            &sswin);
+    if (rc != result_OK) goto StringSetFail;
+
+    /* a zero count is refused */
+    if (wuss_stringset_create(&ss, sswin, (box_t) BOX_POS_SIZE(4, 4, 120, 22),
+                              "Colour", ss_strings, 0, NULL, NULL) !=
+        result_BAD_ARG)
+      goto StringSetFail;
+
+    calls = 0;
+    rc = wuss_stringset_create(&ss, sswin, (box_t) BOX_POS_SIZE(4, 4, 120, 22),
+                               "Colour", ss_strings, NELEMS(ss_strings),
+                               stringset_test_changed, &calls);
+    if (rc != result_OK) goto StringSetFail;
+    if (wuss_stringset_get_index(ss) != 0) goto StringSetFail;
+
+    /* the arrow sits at the right edge, drawn from the icon set */
+    arrow = wuss__icon_hit_test(sswin, POINT(4 + 120 - 2, 4 + 11));
+    if (arrow == NULL || wuss_icon_get_type(arrow) != wuss_ICON_TYPE_BITMAP)
+      goto StringSetFail;
+
+    /* a foreign event is declined */
+    ev.kind = wuss_EVENT_IDLE;
+    if (wuss_stringset_handle_event(ss, &ev, &ssrc)) goto StringSetFail;
+
+    /* a Select click on the arrow opens the gadget's menu */
+    ev.kind              = wuss_EVENT_ICON;
+    ev.data.icon.icon    = arrow;
+    ev.data.icon.action  = wuss_MOUSE_UP;
+    ev.data.icon.button  = wuss_BUTTON_SELECT;
+    ev.data.icon.value   = 0;
+    if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
+      goto StringSetFail;
+    if (sswuss->menu_chain == NULL) goto StringSetFail;
+
+    /* a pick of another entry updates the index and fires the callback */
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu_chain);
+    ev.data.menu_select.index  = 2;
+    ev.data.menu_select.button = wuss_BUTTON_ADJUST;
+    if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
+      goto StringSetFail;
+    if (wuss_stringset_get_index(ss) != 2 || calls != 1) goto StringSetFail;
+
+    /* re-picking the current entry does not */
+    if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || calls != 1)
+      goto StringSetFail;
+
+    /* the programmatic path is range-checked and silent */
+    if (wuss_stringset_set_index(ss, 3) != result_BAD_ARG) goto StringSetFail;
+    if (wuss_stringset_set_index(ss, 1) != result_OK)      goto StringSetFail;
+    if (wuss_stringset_get_index(ss) != 1 || calls != 1)   goto StringSetFail;
+
+    /* destroying it closes the menu */
+    wuss_stringset_destroy(ss);
+    if (sswuss->menu_chain != NULL) goto StringSetFail;
+
+    /* once the chain is freed behind the gadget -- after a Select pick, or
+     * a wuss-initiated close reported by MENU_CLOSED -- destroying it must
+     * not touch the dead handle (ASan catches it) */
+    for (i = 0; i < 2; i++)
+    {
+      rc = wuss_stringset_create(&ss, sswin,
+                                 (box_t) BOX_POS_SIZE(4, 40, 120, 22), "Colour",
+                                 ss_strings, NELEMS(ss_strings), NULL, NULL);
+      if (rc != result_OK) goto StringSetFail;
+
+      ev.kind             = wuss_EVENT_ICON;
+      ev.data.icon.icon   = wuss__icon_hit_test(sswin, POINT(122, 51));
+      ev.data.icon.action = wuss_MOUSE_UP;
+      ev.data.icon.button = wuss_BUTTON_SELECT;
+      ev.data.icon.value  = 0;
+      if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
+        goto StringSetFail;
+      if (sswuss->menu_chain == NULL) goto StringSetFail;
+
+      if (i == 0)
+      {
+        ev.kind                    = wuss_EVENT_MENU_SELECT;
+        ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu_chain);
+        ev.data.menu_select.index  = 1;
+        ev.data.menu_select.button = wuss_BUTTON_SELECT;
+        if (!wuss_stringset_handle_event(ss, &ev, &ssrc)) goto StringSetFail;
+        wuss_menu_close(sswuss->menu_chain); /* as wuss does after Select */
+      }
+      else
+      {
+        wuss_menu_close(sswuss->menu_chain); /* as a click outside does */
+        ev.kind = wuss_EVENT_MENU_CLOSED;
+        if (wuss_stringset_handle_event(ss, &ev, &ssrc)) goto StringSetFail;
+      }
+
+      wuss_stringset_destroy(ss);
+    }
+
+    reap_test_tasks();
+    wuss_destroy(sswuss);
+    free(sspixels);
+    bmfont_destroy(ssfont);
+    goto StringSetOK;
+
+StringSetFail:
+    printf("wuss_test: stringset check failed\n");
+    return result_TEST_FAILED;
+StringSetOK: ;
+  }
+#endif /* WUSS_GADGETS */
 
 #ifdef WUSS_ICONS
   printf("test: menu pick flashes then delivers MENU_SELECT; fast ADJUST "
@@ -5018,8 +5854,7 @@ ColourMenuOK: ;
 
     /* a menu needs a font for its row metrics; the core wuss above was made
      * without one */
-    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                  path_join_leafname("Tiny", "png"));
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -5149,8 +5984,7 @@ FlashFail:
     struct wuss__menu *root;
     struct wuss__menu *sub;
 
-    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                  path_join_leafname("Tiny", "png"));
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -5172,6 +6006,7 @@ FlashFail:
     if (rc != result_OK) goto SubHiFailFree;
 
     memset(&stc, 0, sizeof(stc));
+    stc.submenu_to_open = &sm_sub;
     sowner = mk_task(swuss, test_handle, &stc);
     if (sowner == NULL) { rc = result_OOM; goto SubHiDestroy; }
 
@@ -5244,6 +6079,256 @@ SubHiFail:
       return result_TEST_FAILED;
   }
 
+  printf("test: wuss_MENU_ITEM_PRE_OPEN gates wuss_EVENT_PRE_SUBMENU_OPEN -- "
+         "unflagged opens the static submenu with no event, flagged requires "
+         "opting in\n");
+  {
+    static const wuss_menu_item_t po_sub_a_items[] =
+    {
+      { "A-one", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_t po_sub_a =
+    {
+      "A", po_sub_a_items, NELEMS(po_sub_a_items)
+    };
+    static const wuss_menu_item_t po_sub_b_items[] =
+    {
+      { "B-one", wuss_MENU_ITEM_NONE, NULL }
+    };
+    static const wuss_menu_t po_sub_b =
+    {
+      "B", po_sub_b_items, NELEMS(po_sub_b_items)
+    };
+    static const wuss_menu_item_t po_items[] =
+    {
+      { "Plain", wuss_MENU_ITEM_NONE, &po_sub_a },       /* unflagged: opens
+                                                            * po_sub_a directly,
+                                                            * no event */
+      { "Flagged", wuss_MENU_ITEM_PRE_OPEN, &po_sub_a }  /* flagged: fires
+                                                            * wuss_EVENT_PRE_SUBMENU_OPEN,
+                                                            * handler must opt
+                                                            * in */
+    };
+    static const wuss_menu_t po_menu =
+    {
+      "Root", po_items, NELEMS(po_items)
+    };
+
+    const char      *fontfile;
+    bmfont_t        *font = NULL;
+    wuss_font_desc_t fdesc;
+    screen_t         pscr;
+    bitmap_t         pbm;
+    void            *ppixels;
+    wuss_t          *pwuss;
+    test_task_t      ptc;
+    wuss_task_t     *powner;
+    struct wuss__menu *proot;
+
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    rc = bmfont_create(fontfile, &font);
+    if (rc != result_OK)
+    {
+      printf("wuss_test: PRE_SUBMENU_OPEN test could not load %s\n", fontfile);
+      goto Failure;
+    }
+
+    ppixels = malloc((size_t) rowbytes * 200);
+    if (ppixels == NULL) { rc = result_OOM; goto PreOpenFail; }
+    rc = bitmap_init(&pbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, ppixels);
+    if (rc != result_OK) goto PreOpenFailFree;
+    screen_for_bitmap(&pscr, &pbm);
+
+    fdesc.font       = font;
+    fdesc.font_class = wuss_FONT_CLASS_NONE;
+    fdesc.name       = NULL;
+    rc = wuss_create(&pscr, &fdesc, 1, NULL, 0, NULL, NULL, NULL, &pwuss);
+    if (rc != result_OK) goto PreOpenFailFree;
+
+    memset(&ptc, 0, sizeof(ptc));
+    powner = mk_task(pwuss, test_handle, &ptc);
+    if (powner == NULL) { rc = result_OOM; goto PreOpenDestroy; }
+
+    rc = wuss_menu_open(powner, &po_menu, POINT(40, 40), NULL);
+    if (rc != result_OK) goto PreOpenDestroy;
+
+    proot = pwuss->menu_chain;
+    if (proot == NULL || proot->menu != &po_menu) goto PreOpenCheckFail;
+
+    /* row 0 unflagged: opens po_sub_a directly, no PRE_SUBMENU_OPEN fired */
+    menu_move_over_row(pwuss, proot, 0, 1);
+    if (ptc.pre_submenu_open_count != 0)     goto PreOpenCheckFail;
+    if (proot->child == NULL)                goto PreOpenCheckFail;
+    if (proot->child->menu != &po_sub_a)     goto PreOpenCheckFail;
+
+    menu_move_over_row(pwuss, proot, 0, 0); /* off the arrow: closes the child */
+    if (proot->child != NULL)                goto PreOpenCheckFail;
+
+    /* row 1 flagged, not opting in: PRE_SUBMENU_OPEN fires but nobody calls
+     * wuss_menu_open_submenu_now, so the row stays inert */
+    menu_move_over_row(pwuss, proot, 1, 1);
+    if (ptc.pre_submenu_open_count != 1)     goto PreOpenCheckFail;
+    if (proot->child != NULL)                goto PreOpenCheckFail;
+
+    /* move off and back on, this time opting in with po_sub_b -- a
+     * different menu from the row's own static .submenu (po_sub_a) --
+     * proves the callback's menu argument, not the static leaf, decides
+     * what opens */
+    menu_move_over_row(pwuss, proot, 1, 0);
+    ptc.submenu_to_open = &po_sub_b;
+    menu_move_over_row(pwuss, proot, 1, 1);
+    if (ptc.pre_submenu_open_count != 2)     goto PreOpenCheckFail;
+    if (proot->child == NULL)                goto PreOpenCheckFail;
+    if (proot->child->menu != &po_sub_b)     goto PreOpenCheckFail;
+
+    wuss_menu_close(proot);
+    rc = result_OK;
+    goto PreOpenDestroy;
+
+PreOpenCheckFail:
+    printf("wuss_test: PRE_SUBMENU_OPEN check failed "
+           "(count=%d child=%p)\n",
+           ptc.pre_submenu_open_count, (void *) proot->child);
+    rc = result_TEST_FAILED;
+
+PreOpenDestroy:
+    reap_test_tasks();
+    wuss_destroy(pwuss);
+PreOpenFailFree:
+    free(ppixels);
+PreOpenFail:
+    bmfont_destroy(font);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+  }
+
+  printf("test: wuss_MENU_ITEM_PRE_OPEN gates wuss_EVENT_PRE_SHOW for a "
+         "borrowed-window leaf -- unflagged opens it with no event, flagged "
+         "requires opting in\n");
+  {
+    static wuss_menu_item_t pw_items[2];
+    static const wuss_menu_t pw_menu =
+    {
+      "Root", pw_items, NELEMS(pw_items)
+    };
+
+    const char      *fontfile;
+    bmfont_t        *font = NULL;
+    wuss_font_desc_t fdesc;
+    screen_t         pscr;
+    bitmap_t         pbm;
+    void            *ppixels;
+    wuss_t          *pwuss;
+    test_task_t      ptc;
+    wuss_task_t     *powner;
+    box_t            winbox;
+    wuss_window_t   *win_plain, *win_flagged;
+    struct wuss__menu  *proot;
+
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    rc = bmfont_create(fontfile, &font);
+    if (rc != result_OK)
+    {
+      printf("wuss_test: PRE_SHOW window-leaf test could not load %s\n",
+             fontfile);
+      goto Failure;
+    }
+
+    ppixels = malloc((size_t) rowbytes * 200);
+    if (ppixels == NULL) { rc = result_OOM; goto PwFail; }
+    rc = bitmap_init(&pbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, ppixels);
+    if (rc != result_OK) goto PwFailFree;
+    screen_for_bitmap(&pscr, &pbm);
+
+    fdesc.font       = font;
+    fdesc.font_class = wuss_FONT_CLASS_NONE;
+    fdesc.name       = NULL;
+    rc = wuss_create(&pscr, &fdesc, 1, NULL, 0, NULL, NULL, NULL, &pwuss);
+    if (rc != result_OK) goto PwFailFree;
+
+    memset(&ptc, 0, sizeof(ptc));
+    powner = mk_task(pwuss, test_handle, &ptc);
+    if (powner == NULL) { rc = result_OOM; goto PwDestroy; }
+
+    winbox.x0 = 0;  winbox.y0 = 0;
+    winbox.x1 = 40; winbox.y1 = 20;
+    rc = wuss_window_create(powner, &winbox, "Plain",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_HIDDEN,
+                            wuss_NO_BACKDROP, box_size(&winbox),
+                            SIZE2D(0, 0), &win_plain);
+    if (rc != result_OK) goto PwDestroy;
+    rc = wuss_window_create(powner, &winbox, "Flagged",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_HIDDEN,
+                            wuss_NO_BACKDROP, box_size(&winbox),
+                            SIZE2D(0, 0), &win_flagged);
+    if (rc != result_OK) goto PwDestroy;
+
+    pw_items[0].text   = "Plain";
+    pw_items[0].flags  = wuss_MENU_ITEM_NONE;
+    pw_items[0].submenu = NULL;
+    pw_items[0].window  = win_plain;
+    pw_items[1].text   = "Flagged";
+    pw_items[1].flags  = wuss_MENU_ITEM_PRE_OPEN;
+    pw_items[1].submenu = NULL;
+    pw_items[1].window  = win_flagged;
+
+    rc = wuss_menu_open(powner, &pw_menu, POINT(40, 40), NULL);
+    if (rc != result_OK) goto PwDestroy;
+
+    proot = pwuss->menu_chain;
+    if (proot == NULL || proot->menu != &pw_menu) goto PwCheckFail;
+
+    /* row 0 unflagged: still goes through the plain wuss_window_set_hidden
+     * path, so PRE_SHOW fires with handle == NULL (default-proceed, no
+     * opt-in required) -- unlike PRE_SUBMENU_OPEN, this is the one
+     * pre-existing production call site the flag does not gate */
+    menu_move_over_row(pwuss, proot, 0, 1);
+    if (ptc.pre_show_count != 1)                    goto PwCheckFail;
+    if (win_plain->flags & wuss_WINDOW_HIDDEN)      goto PwCheckFail;
+
+    menu_move_over_row(pwuss, proot, 0, 0); /* off the arrow: closes it */
+    if (!(win_plain->flags & wuss_WINDOW_HIDDEN))   goto PwCheckFail;
+
+    /* row 1 flagged, handler does not opt in: PRE_SHOW fires (handle
+     * non-NULL) but the row stays inert */
+    ptc.veto_pre_show = 1;
+    menu_move_over_row(pwuss, proot, 1, 1);
+    if (ptc.pre_show_count != 2)                    goto PwCheckFail;
+    if (!(win_flagged->flags & wuss_WINDOW_HIDDEN)) goto PwCheckFail;
+
+    /* opting in via wuss_menu_open_window_now shows it */
+    menu_move_over_row(pwuss, proot, 1, 0);
+    ptc.veto_pre_show          = 0;
+    ptc.open_window_via_handle = 1;
+    menu_move_over_row(pwuss, proot, 1, 1);
+    if (ptc.pre_show_count != 3)                    goto PwCheckFail;
+    if (win_flagged->flags & wuss_WINDOW_HIDDEN)    goto PwCheckFail;
+
+    wuss_menu_close(proot);
+    rc = result_OK;
+    goto PwDestroy;
+
+PwCheckFail:
+    printf("wuss_test: PRE_SHOW window-leaf check failed "
+           "(count=%d plain_hidden=%d flagged_hidden=%d)\n",
+           ptc.pre_show_count,
+           (win_plain->flags & wuss_WINDOW_HIDDEN) != 0,
+           (win_flagged->flags & wuss_WINDOW_HIDDEN) != 0);
+    rc = result_TEST_FAILED;
+
+PwDestroy:
+    reap_test_tasks();
+    wuss_destroy(pwuss);
+PwFailFree:
+    free(ppixels);
+PwFail:
+    bmfont_destroy(font);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+  }
+
   printf("test: a MENU press over another window closes the open menu and "
          "reaches that window's task so it opens its own menu\n");
   {
@@ -5270,8 +6355,7 @@ SubHiFail:
     wuss_window_t   *wa, *wb;
     box_t            ba, bb;
 
-    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                  path_join_leafname("Tiny", "png"));
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -5407,8 +6491,7 @@ MoveFail:
     wuss_window_t   *wq;
     box_t            bq;
 
-    fontfile = path_join_filename(resources, 3, "resources", "bmfonts",
-                                  path_join_leafname("Tiny", "png"));
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -6042,23 +7125,17 @@ QuitFail:
   printf("test: wuss_icons_load scans resources/wuss/icons and compresses\n");
 
   {
-    char            icons_dir[256];
     const bitmap_t *icon_bm;
-    int             idx, opton;
+    int             idx, opton, count;
 
-    /* copy: path_join_filename hands back one shared static buffer, and
-     * wuss_icons_load's own per-file joins would clobber it mid-call */
-    strncpy(icons_dir,
-            path_join_filename(resources, 3, "resources", "wuss", "icons"),
-            sizeof(icons_dir) - 1);
-    icons_dir[sizeof(icons_dir) - 1] = '\0';
-
-    rc = wuss_icons_load(wuss, icons_dir);
+    rc = wuss_icons_load_resource(wuss, resources);
     if (rc != result_OK)
       goto Failure;
 
-    /* the four fixtures: optoff/opton/radoff/radon */
-    if (wuss_icons_count(wuss) != 4)
+    /* resources/wuss/icons/ may carry more than these four fixtures
+     * (optoff/opton/radoff/radon), so just require they're all present. */
+    count = wuss_icons_count(wuss);
+    if (count < 4)
       goto Failure;
 
     opton = wuss_icons_lookup(wuss, "opton");
@@ -6070,7 +7147,7 @@ QuitFail:
     icon_bm = wuss_icons_bitmap(wuss, opton);
     if (icon_bm == NULL || !bitmap_is_compressed(icon_bm))
       goto Failure;
-    if (wuss_icons_bitmap(wuss, 4) != NULL)
+    if (wuss_icons_bitmap(wuss, count) != NULL)
       goto Failure;
 
     /* an icon spec picks it up by index via wuss_ICON_SET */
@@ -6101,6 +7178,18 @@ QuitFail:
       if (rc != result_OK)
         goto Failure;
 
+      /* a pressed image resolves the same way */
+      spec.u.bitmap.pressed_set =
+        wuss_ICON_SET(wuss_icons_lookup(wuss, "radon"));
+      rc = wuss_icon_create(win_ic, &spec, &icon);
+      if (rc != result_OK)
+        goto Failure;
+
+      spec.u.bitmap.pressed_set = wuss_ICON_SET(99);
+      if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)
+        goto Failure;
+      spec.u.bitmap.pressed_set = 0;
+
       /* a bogus index is rejected */
       spec.u.bitmap.set = wuss_ICON_SET(99);
       if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)
@@ -6111,8 +7200,8 @@ QuitFail:
     }
 
     /* a reload replaces the set cleanly (no leak, ASan would catch it) */
-    rc = wuss_icons_load(wuss, icons_dir);
-    if (rc != result_OK || wuss_icons_count(wuss) != 4)
+    rc = wuss_icons_load_resource(wuss, resources);
+    if (rc != result_OK || wuss_icons_count(wuss) != count)
       goto Failure;
 
     idx = wuss_icons_lookup(wuss, "optoff");

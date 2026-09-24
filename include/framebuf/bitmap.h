@@ -149,6 +149,30 @@ result_t bitmap_convert(const bitmap_t *bm,
                         pixelfmt_t      newfmt,
                         bitmap_t      **newbm);
 
+/**
+ * As \ref bitmap_convert, but converting into a caller-owned destination
+ * bitmap instead of allocating a new one. For a caller that converts the
+ * same size and format every frame (e.g. presenting a paletted framebuffer),
+ * this avoids an allocate/free pair per conversion: initialise `newbm` once
+ * with \ref bitmap_init over a persistent buffer sized for the largest
+ * `bm->size` expected, and pass it in on every call.
+ *
+ * `newbm` must already be initialised with `newbm->size` matching `bm->size`
+ * and a `newbm->base` buffer big enough for `newbm->rowbytes *
+ * newbm->size.h` bytes of `newfmt` pixels; its format and rowbytes may
+ * differ from a prior call, e.g. a smaller `bm->size` reusing a buffer sized
+ * for a larger one.
+ *
+ * \param[in]     bm     Bitmap to convert.
+ * \param[in]     newfmt New pixel format.
+ * \param[in,out] newbm  Pre-initialised destination bitmap, pixels
+ *                       overwritten in place.
+ * \return \ref result_OK on success, or appropriate result code otherwise.
+ */
+result_t bitmap_convert_into(const bitmap_t *bm,
+                             pixelfmt_t      newfmt,
+                             bitmap_t       *newbm);
+
 /** Non-zero if `bm` holds an RLE-compressed (read-only) pixel store. */
 #define bitmap_is_compressed(bm) pixelfmt_is_rle((bm)->format)
 

@@ -5,6 +5,8 @@
 
 #ifdef WUSS_APP
 
+#include "wuss/component/proginfo.h"
+#include "wuss/menu.h"
 #include "wuss/window.h"
 
 /* fills its whole content area with a two-axis colour gradient; opens
@@ -13,9 +15,15 @@
  * the ordered-dither matrix forward/backward through 2x2, 4x4 and 8x8. */
 typedef struct gradient_task
 {
-  wuss_t        *wuss;   /* borrowed; for wuss_get_font in the redraw */
-  wuss_window_t *window;
-  int            dither_index;
+  wuss_t             *wuss;   /* borrowed; for wuss_get_font in the redraw */
+  wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_window_t      *window;
+  wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
+  wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
+                                       * leak one instance's .window pointer
+                                       * into another's menu */
+  wuss_menu_t         menu;
+  int                  dither_index;
 }
 gradient_task_t;
 

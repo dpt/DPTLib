@@ -22,6 +22,70 @@ stack__child_t;
 
 /* ----------------------------------------------------------------------- */
 
+/* Resolves every STACK_HUG container's axis_size to the sum of its
+ * children's main-axis extents (plus gaps and padding), recursing
+ * depth-first so each child is resolved before its parent sums over it --
+ * the same shape as stack__measure. Non-hug items pass their axis_size
+ * through unchanged. `resolved[index]` and every item under it are set on
+ * return. */
+static void stack__resolve_hug(const stack_item_t *items,
+                               int                 n,
+                               int                 index,
+                               int                *resolved)
+{
+  int horiz;
+  int main_sum;
+  int nchildren;
+  int i;
+
+  if (items[index].axis_size != STACK_HUG)
+  {
+    resolved[index] = items[index].axis_size;
+  }
+
+  if (items[index].kind != stack_KIND_HBOX && items[index].kind != stack_KIND_VBOX)
+    return;
+
+  horiz     = (items[index].kind == stack_KIND_HBOX);
+  main_sum  = 0;
+  nchildren = 0;
+
+  for (i = 0; i < n; i++)
+  {
+    int child_main;
+
+    if (items[i].parent != index)
+      continue;
+
+    if (items[i].kind == stack_KIND_HBOX || items[i].kind == stack_KIND_VBOX)
+    {
+      stack__resolve_hug(items, n, i, resolved);
+      child_main = resolved[i];
+    }
+    else
+    {
+      resolved[i] = items[i].axis_size; /* STACK_HUG is rejected on
+                                         * non-containers, so this is never
+                                         * -1 here */
+      child_main  = items[i].kind == stack_KIND_SPACER ? 0 :
+                                     (items[i].axis_size ? items[i].axis_size : items[i].min);
+    }
+
+    main_sum += child_main + (nchildren > 0 ? items[index].gap : 0);
+    nchildren++;
+  }
+
+  if (items[index].axis_size == STACK_HUG)
+  {
+    if (horiz)
+      resolved[index] = main_sum + items[index].pad.l + items[index].pad.r;
+    else
+      resolved[index] = main_sum + items[index].pad.t + items[index].pad.b;
+  }
+}
+
+/* ----------------------------------------------------------------------- */
+
 /* Distributes `avail` px of main-axis space across the children of
  * `parent`, honouring `size`/`min`/`flex`/`max`, and returns the number of
  * children found. `children[i].extent` holds each child's resolved
@@ -30,6 +94,7 @@ static int stack__distribute(const stack_item_t *items,
                              int                 n,
                              int                 parent,
                              int                 avail,
+                             const int          *resolved,
                              stack__child_t     *children)
 {
   int nchildren;
@@ -47,7 +112,7 @@ static int stack__distribute(const stack_item_t *items,
       continue;
 
     children[nchildren].index   = i;
-    children[nchildren].extent  = items[i].axis_size ? items[i].axis_size : items[i].min;
+    children[nchildren].extent  = resolved[i] ? resolved[i] : items[i].min;
     children[nchildren].clamped = (items[i].flex == 0);
 
     used += children[nchildren].extent;
@@ -124,6 +189,7 @@ static int stack__distribute(const stack_item_t *items,
 static void stack__place_container(const stack_item_t *items,
                                    int                 n,
                                    int                 index,
+                                   const int          *resolved,
                                    box_t              *out)
 {
   int            horiz;
@@ -143,17 +209,17 @@ static void stack__place_container(const stack_item_t *items,
 
   if (horiz)
   {
-    inner_main0 = box->x0 + items[index].pad_l;
-    inner_main1 = box->x1 - items[index].pad_r;
-    cross0      = box->y0 + items[index].pad_t;
-    cross1      = box->y1 - items[index].pad_b;
+    inner_main0 = box->x0 + items[index].pad.l;
+    inner_main1 = box->x1 - items[index].pad.r;
+    cross0      = box->y0 + items[index].pad.t;
+    cross1      = box->y1 - items[index].pad.b;
   }
   else
   {
-    inner_main0 = box->y0 + items[index].pad_t;
-    inner_main1 = box->y1 - items[index].pad_b;
-    cross0      = box->x0 + items[index].pad_l;
-    cross1      = box->x1 - items[index].pad_r;
+    inner_main0 = box->y0 + items[index].pad.t;
+    inner_main1 = box->y1 - items[index].pad.b;
+    cross0      = box->x0 + items[index].pad.l;
+    cross1      = box->x1 - items[index].pad.r;
   }
 
   nchildren = 0;
@@ -163,7 +229,7 @@ static void stack__place_container(const stack_item_t *items,
 
   avail = inner_main1 - inner_main0 - items[index].gap * MAX(0, nchildren - 1);
 
-  nchildren = stack__distribute(items, n, index, avail, children);
+  nchildren = stack__distribute(items, n, index, avail, resolved, children);
 
   pos = inner_main0;
 
@@ -219,7 +285,7 @@ static void stack__place_container(const stack_item_t *items,
     pos += children[c].extent;
 
     if (items[ci].kind == stack_KIND_HBOX || items[ci].kind == stack_KIND_VBOX)
-      stack__place_container(items, n, ci, out);
+      stack__place_container(items, n, ci, resolved, out);
   }
 }
 
@@ -230,15 +296,19 @@ result_t stack_solve(const stack_item_t *items,
                      const box_t        *root,
                      box_t              *out)
 {
+  int resolved[STACK_MAX_ITEMS];
+
   if (n > STACK_MAX_ITEMS)
     return result_STACK_BAD_TREE;
   if (!stack__valid_tree(items, n))
     return result_STACK_BAD_TREE;
 
+  stack__resolve_hug(items, n, 0, resolved);
+
   out[0] = *root;
 
   if (items[0].kind == stack_KIND_HBOX || items[0].kind == stack_KIND_VBOX)
-    stack__place_container(items, n, 0, out);
+    stack__place_container(items, n, 0, resolved, out);
 
   return result_OK;
 }

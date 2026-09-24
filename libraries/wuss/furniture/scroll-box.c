@@ -147,7 +147,10 @@ static void scroll_middle_slice(const box_t *strip,
 }
 
 /* The well as a standalone call: strip, then middle slice, without the
- * caller threading "size" through. */
+ * caller threading "size" through. The middle slice is carved back by the
+ * arrow size plus a one-pixel divider gap at each end, so the arrow keeps
+ * its full size x size footprint and the dividing rule occupies its own row
+ * rather than overpainting the arrow's last row. */
 static void scroll_well(const wuss_window_t *window,
                         int                  horizontal,
                         box_t               *out)
@@ -155,7 +158,7 @@ static void scroll_well(const wuss_window_t *window,
   box_t strip;
 
   scroll_strip(window, horizontal, &strip);
-  scroll_middle_slice(&strip, horizontal, wuss__button_size(window), out);
+  scroll_middle_slice(&strip, horizontal, wuss__button_size(window) + WUSS_DIVIDER_PX, out);
 }
 
 /* The sausage: a proportional handle in the well, offset by the scroll

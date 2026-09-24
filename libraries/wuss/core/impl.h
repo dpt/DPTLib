@@ -15,6 +15,7 @@
 #include "geom/size.h"
 #include "framebuf/screen.h"
 #include "framebuf/bmfont.h"
+#include "framebuf/bmfontcache.h"
 #include "utils/barith.h"
 
 #include "wuss/wuss.h"
@@ -48,8 +49,9 @@
 #define WUSS_BUTTON_INSET 3  /* shared by close/back/toggle/resize furniture buttons and scrollbar breadth */
 
 #ifdef WUSS_ICONS
-#define WUSS_FRAME_CAPTION_INSET 8 /* x offset of a wuss_ICON_TYPE_FRAME caption from the frame's left edge */
-#define WUSS_FRAME_CAPTION_PAD   2 /* gap left in the frame's top edge either side of the caption */
+#define WUSS_FRAME_CAPTION_TOP   4  /* y shift to make frame neatly meet caption */
+#define WUSS_FRAME_CAPTION_INSET 8  /* x offset of a wuss_ICON_TYPE_FRAME caption from the frame's left edge */
+#define WUSS_FRAME_CAPTION_PAD   22 /* gap left in the frame's top edge either side of the caption */
 
 #define WUSS_SLIDER_GAP 4 /* fixed inset on all four sides of a wuss_ICON_TYPE_SLIDER bbox, between the surround and the inner (clickable) rect */
 
@@ -110,6 +112,11 @@ struct wuss
                                           * convention only, unused internally */
   struct wuss_fontset         fonts;     /* font slots from wuss_create; slot 0
                                           * is the system font. See font/font.h */
+  bmfontcache_t               *font_cache; /* owned; shared loader for fonts
+                                          * tasks pick beyond the fixed
+                                          * fonts[] slots above, e.g. via a
+                                          * font-picker menu. See
+                                          * wuss_get_font_cache. */
   wuss_alloc_t                alloc;     /* malloc/realloc/free hooks, copied in
                                           * by wuss_create; used for every heap
                                           * block this wuss_t owns */
@@ -168,6 +175,8 @@ struct wuss
                                           * inside (content or furniture),
                                           * NULL if none; drives
                                           * wuss_EVENT_POINTER_ENTER/EXIT */
+  wuss_window_t              *focus;     /* window holding the input focus,
+                                          * NULL if none; see wuss_set_focus */
 #ifdef WUSS_ICONS
   wuss_icon_t                *pressed_icon; /* button icon held down, NULL when
                                             * idle; released on any MOUSE_UP
@@ -181,6 +190,13 @@ struct wuss
                                             * menu-entry icons */
   wuss_window_t              *hover_window; /* the window hover_icon is on;
                                             * NULL iff hover_icon is NULL */
+  wuss_icon_t                *caret_icon;   /* writable holding the text
+                                            * caret, NULL when none */
+  wuss_window_t              *caret_window; /* the window caret_icon is on;
+                                            * NULL iff caret_icon is NULL, and
+                                            * always the focus window */
+  int                         caret_index;  /* caret byte offset into
+                                            * caret_icon's text */
   /* Icon set loaded by wuss_icons_load. index i is the i-th ".png" the
    * directory scan yielded (order unspecified -- address by name).
    * names interns the leafnames-sans-".png"; atoms[i] is entry i's atom
@@ -211,6 +227,15 @@ struct wuss
                                             * MOUSE_UP so the release does not
                                             * immediately pick row 0 */
 #endif
+  int                         pre_show_proceed; /* set by
+                                                 * wuss_window_reveal_now /
+                                                 * wuss_menu_open_window_now
+                                                 * while a wuss_EVENT_PRE_SHOW
+                                                 * is being delivered, to opt
+                                                 * in to the reveal; read
+                                                 * and cleared by
+                                                 * wuss__window_set_hidden_ex
+                                                 * once delivery returns */
 };
 
 struct wuss_window
@@ -275,12 +300,38 @@ static inline void wuss__chrome_repaint_for(wuss_window_t *window,
   window->wuss->furniture_ops->invalidate_for(window, visible);
 }
 
+void wuss__invalidate_clipped(wuss_window_t *window, const box_t *box);
+
+/* Just the scrollbar well(s) whose axis actually moved -- the sausage
+ * position depends on scroll, so its well needs redrawing when its own axis
+ * scrolls, but nothing else in the furniture does, and the other axis's
+ * well (if any) is untouched. Narrower than wuss__chrome_repaint, which
+ * invalidates the whole titlebar/outline/carve strips. */
+static inline void wuss__chrome_repaint_scroll(wuss_window_t *window,
+                                               int            dx,
+                                               int            dy)
+{
+  box_t well;
+
+  if (dy != 0 && (window->flags & wuss_WINDOW_VSCROLL))
+  {
+    wuss__vscroll_well_box(window, &well);
+    wuss__invalidate_clipped(window, &well);
+  }
+
+  if (dx != 0 && (window->flags & wuss_WINDOW_HSCROLL))
+  {
+    wuss__hscroll_well_box(window, &well);
+    wuss__invalidate_clipped(window, &well);
+  }
+}
+
 /* Drop just the cached furniture layout, without queuing any dirty region --
  * for a window move, where the caller already handles the repaint but the
  * cache (absolute coords) must be rebuilt for the new position. */
 static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
 {
-  window->furniture_layout.valid = 0;
+  window->furniture_layout.flags &= ~wuss_FURNITURE_LAYOUT__VALID;
 }
 #else
 static inline void wuss__chrome_draw(wuss_t        *wuss,
@@ -302,6 +353,15 @@ static inline void wuss__chrome_repaint_for(wuss_window_t *window,
 {
   (void) window;
   (void) visible;
+}
+
+static inline void wuss__chrome_repaint_scroll(wuss_window_t *window,
+                                               int            dx,
+                                               int            dy)
+{
+  (void) window;
+  (void) dx;
+  (void) dy;
 }
 
 static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
@@ -442,18 +502,34 @@ void            wuss__touch(wuss_t *wuss, const box_t *box);
 
 /* Clip "box" (screen space) down to the parts not already covered by
  * windows above "window" in the z-order, writing the surviving pieces to
- * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count. */
+ * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count.
+ *
+ * "overpaint_safe" picks the overflow fallback direction, same as
+ * wuss__subtract_boxes: pass 1 when the result only feeds a paint or
+ * invalidate (over-including is just wasted repaint work), 0 when it
+ * feeds a blit source (over-including would copy occluded pixels). */
 int             wuss__clip_to_visible(wuss_window_t *window,
                                       const box_t   *box,
-                                      box_t         *out);
+                                      box_t         *out,
+                                      int            overpaint_safe);
 
 /* Subtract each of "cuts" (an array of "ncuts" boxes) from "whole", writing
  * the surviving pieces to "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and
- * returning their count. */
+ * returning their count.
+ *
+ * A carve that needs more than WUSS_MAX_INVALIDATE_PIECES pieces falls back
+ * to either "whole" unfragmented (overpaint_safe true: the result only ever
+ * gets painted/invalidated, and nothing downstream depends on it excluding
+ * the cuts, so claiming the cuts contributed nothing just repaints a bit
+ * more) or to zero pieces (overpaint_safe false: the result is a blit
+ * source or other "known-good pixels" set that must exclude every cut, so
+ * claiming survivors where fragmentation was actually too complex to prove
+ * would copy or keep pixels the cuts should have excluded). */
 int             wuss__subtract_boxes(const box_t *whole,
                                      const box_t *cuts,
                                      int          ncuts,
-                                     box_t       *out);
+                                     box_t       *out,
+                                     int          overpaint_safe);
 
 /* Filter "clean" (nclean pieces already clipped clear of occluders) down to
  * the parts not also covered by "stale" (nstale pending-dirty boxes not yet
@@ -522,6 +598,21 @@ result_t wuss__deliver(wuss_task_t        *task,
                        wuss_window_t      *win_or_null,
                        const wuss_event_t *ev);
 
+/* wuss_window_set_hidden's real body. `handle`/`index` (menu builds only)
+ * are threaded through into wuss_EVENT_PRE_SHOW's payload so a flagged menu
+ * leaf's recipient can call wuss_menu_open_window_now(handle, index) to opt
+ * in to the reveal. NULL/-1 (a plain window, or an unflagged menu leaf --
+ * both reach this same path, PRE_SHOW always fires) makes the reveal
+ * proceed by default. Defined in window/set-hidden.c. */
+#ifdef WUSS_MENUS
+result_t wuss__window_set_hidden_ex(wuss_window_t     *window,
+                                    int                hidden,
+                                    struct wuss__menu *handle,
+                                    int                index);
+#else
+result_t wuss__window_set_hidden_ex(wuss_window_t *window, int hidden);
+#endif
+
 #ifdef WUSS_MENUS
 /* Tear down the whole open menu chain because wuss decided to (not the
  * client): unlinks wuss->menu_chain, delivers wuss_EVENT_MENU_CLOSED to its
@@ -578,6 +669,16 @@ static inline void wuss__pointer_forget_window(wuss_t        *wuss,
 {
   if (wuss->pointer_window == window)
     wuss->pointer_window = NULL;
+}
+
+/* Drop "window" from the input focus without delivering LOSE_FOCUS -- for
+ * the forced teardown path, which fires no events. No-op unless it held the
+ * focus. */
+static inline void wuss__focus_forget_window(wuss_t        *wuss,
+                                             wuss_window_t *window)
+{
+  if (wuss->focus == window)
+    wuss->focus = NULL;
 }
 
 static inline int wuss__size_ok(int width, int height)

@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "base/debug.h"
 #include "base/result.h"
 #include "io/dirscan.h"
 
@@ -11,38 +12,62 @@
 #ifdef TARGET_RISCOS
 
 /* SharedCLibrary (-mlibscl) has no <dirent.h> support, so on RISC OS we
- * enumerate via OSLib's OS_GBPB 9 wrapper instead of opendir/readdir. */
+ * enumerate via OSLib's OS_GBPB 10 wrapper instead of opendir/readdir --
+ * catalogue info is needed (not just the leafname, OS_GBPB 9) to filter out
+ * directories. */
 
 #include "oslib/osgbpb.h"
 #include "oslib/os.h"
 
 result_t dirscan_walk(const char *dir, dirscan_fn *fn, void *opaque)
 {
-  result_t  rc;
-  os_error *err;
-  int       context;
-  int       read;
-  char      buffer[256];
+  result_t          rc;
+  os_error         *err;
+  osgbpb_info_list *list;
+  int               context;
+  int               read;
+  char              buffer[256];
 
   if (dir == NULL || fn == NULL)
     return result_NULL_ARG;
 
   rc      = result_OK;
   context = 0;
+  list    = (osgbpb_info_list *) buffer;
 
   for (;;)
   {
-    err = xosgbpb_dir_entries(dir, (osgbpb_string_list *) buffer, 1, context,
-                              sizeof(buffer), "*", &read, &context);
+    err = xosgbpb_dir_entries_info(dir, list, 1, context, sizeof(buffer),
+                                   "*", &read, &context);
     if (err != NULL)
     {
-      rc = result_FILE_NOT_FOUND;
+      logf_error("dirscan_walk: xosgbpb_dir_entries_info(\"%s\") -> "
+                "0x%x \"%s\"", dir, err->errnum, err->errmess);
+
+      /* Nothing read yet: the directory itself couldn't be opened -- a
+       * real failure. Partway through: something about one entry upset
+       * FileSwitch (e.g. a foreign filesystem exposing a leafname RISC OS
+       * pathnames can't represent, such as a HostFS-shared ".DS_Store").
+       * The SWI gives no documented way to skip just that entry and
+       * resume, so stop the walk here but report what was found rather
+       * than failing the whole scan. */
+      rc = (context == 0) ? result_FILE_NOT_FOUND : result_OK;
       break;
     }
 
-    if (read > 0)
+    /* Directories (and anything else that isn't a plain file, e.g. image
+     * filing system objects) don't belong in a flat leafname walk -- a
+     * caller like bmfont_enumerate would otherwise try to open one as a
+     * font and fail with "file not found". Likewise a leafname starting
+     * '/' -- RISC OS's escaped form of a foreign filesystem's leading '.'
+     * (e.g. a HostFS-shared ".DS_Store") -- is never something a real
+     * RISC OS filesystem would hand us, and re-reading it via a pathname
+     * later is exactly what upsets FileSwitch enough to abort the scan
+     * (see the error case above). */
+    if (read > 0 && list->info[0].obj_type == fileswitch_IS_FILE &&
+        list->info[0].name[0] != '/')
     {
-      rc = fn(buffer, opaque);
+      rc = fn(list->info[0].name, opaque);
       if (rc == result_STOP_WALK)
       {
         rc = result_OK;

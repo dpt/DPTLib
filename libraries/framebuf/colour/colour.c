@@ -117,3 +117,13 @@ unsigned int colour_get_alpha(const colour_t *c)
 {
   return PIXELFMT_xxxA8888(c->primary);
 }
+
+void colour_get_rgb(const colour_t *c,
+                    unsigned int   *r,
+                    unsigned int   *g,
+                    unsigned int   *b)
+{
+  *r = PIXELFMT_Rxxx8888(c->primary);
+  *g = PIXELFMT_xGxx8888(c->primary);
+  *b = PIXELFMT_xxBx8888(c->primary);
+}

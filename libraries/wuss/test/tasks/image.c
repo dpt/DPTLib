@@ -28,11 +28,15 @@
 
 /* screen_copy_bitmap and screen_copy_ninepatch only understand a deep 32bpp
  * source in R,G,B,A/X byte order (see bitmap_load_png()); bitmap_load_png
- * keeps a palette-type PNG as pixelfmt_p8, so convert one back to rgbx8888
- * here rather than teach every blitter a paletted source. rgbx8888, not
- * bgrx8888: the latter is BGR (SDL display byte order) and would swap red
- * and blue once the blitters re-read it as rgba8888. */
-static result_t load_png_deep(bitmap_t *bm, const char *filename)
+ * keeps a palette-type PNG as pixelfmt_p8, so convert one back to a deep
+ * format here rather than teach every blitter a paletted source. Callers
+ * wanting an untouched load (e.g. to inspect the palette) pass
+ * pixelfmt_unknown to skip conversion. rgbx8888, not bgrx8888: the latter is
+ * BGR (SDL display byte order) and would swap red and blue once the
+ * blitters re-read it as rgba8888. */
+static result_t load_png_deep(bitmap_t   *bm,
+                              const char *filename,
+                              pixelfmt_t  fmt)
 {
   result_t  rc;
   bitmap_t *deep;
@@ -41,10 +45,10 @@ static result_t load_png_deep(bitmap_t *bm, const char *filename)
   if (rc != result_OK)
     return rc;
 
-  if (bm->format != pixelfmt_p8)
+  if (fmt == pixelfmt_unknown || bm->format != pixelfmt_p8)
     return result_OK;
 
-  rc = bitmap_convert(bm, pixelfmt_rgbx8888, &deep);
+  rc = bitmap_convert(bm, fmt, &deep);
   if (rc != result_OK)
   {
     free(bm->base);
@@ -80,13 +84,11 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
   task->index       = 0;
   task->nnames      = 0;
   task->menu        = NULL;
-  task->proginfo    = NULL;
-  task->colourmenu  = NULL;
   task->menu_handle = NULL;
   task->dithering   = 1;
 
   resources  = wuss_get_resources(wuss);
-  images_dir = path_join_filename(resources, 2, "resources", "images");
+  images_dir = pathf("%s/resources/images", resources);
   rc = namelist_scan(images_dir, IMAGE_EXT, task->names[0],
                      sizeof(task->names[0]), IMAGE_MAX_NAMES, 0 /* unsorted */,
                      &task->nnames);
@@ -101,18 +103,16 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
     return result_BAD_ARG; /* no PNGs found under resources/images */
   }
 
-  path = path_join_filename(resources, 3, "resources", "images",
-                            path_join_leafname(task->names[0], "png"));
-  rc = load_png_deep(&task->bitmap, path);
+  path = pathf("%s/resources/images/%s.png", resources, task->names[0]);
+  rc = load_png_deep(&task->bitmap, path, pixelfmt_rgbx8888);
   if (rc != result_OK)
   {
     free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
 
-  background_path = path_join_filename(resources, 2, "resources", "wuss",
-                                       path_join_leafname("ninepatch", "png"));
-  rc = load_png_deep(&task->ninepatch, background_path);
+  background_path = pathf("%s/resources/wuss/ninepatch.png", resources);
+  rc = load_png_deep(&task->ninepatch, background_path, pixelfmt_rgbx8888);
   if (rc != result_OK)
   {
     free(task->bitmap.base);
@@ -133,10 +133,8 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
     return rc;
   }
   task->delegate = delegate;
-  /* No autoclose: the task also owns the hidden proginfo window below, so its
-   * window list never empties while the main window is up. QUIT is delivered
-   * at wuss_destroy instead. Closing the main window early leaks this block
-   * until then -- fine for a demo. */
+  /* No autoclose: QUIT is delivered at wuss_destroy instead. Closing the
+   * main window early leaks this block until then -- fine for a demo. */
 
   sz.w = task->bitmap.size.w + IMAGE_MARGINSZ * 2;
   sz.h = task->bitmap.size.h + IMAGE_MARGINSZ * 2;
@@ -155,28 +153,6 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
     return rc;
   }
 
-  /* The "Info" menu row's standard dialogue. Hung off the descriptor menu as
-   * a wuss_menu_item_t.window in image_open_menu. A create failure is
-   * non-fatal -- the task just runs without an Info dialogue. */
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Image",
-      "View the PNGs under resources/images",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-
-    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
-      task->proginfo = NULL;
-  }
-
-  /* The "Background" menu row's submenu. Hung off the descriptor menu as a
-   * wuss_menu_item_t.submenu in image_open_menu. A create failure is
-   * non-fatal -- the task just runs without a Background submenu. */
-  if (wuss_colourmenu_create(&task->colourmenu, wuss, "Background") != result_OK)
-    task->colourmenu = NULL;
-
   if (out)
     *out = task;
 
@@ -185,13 +161,11 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
 
 void image_destroy(image_task_t *task)
 {
-  /* close any open chain first: it may hold the proginfo window as a
-   * borrowed wuss_menu_item_t.window, and destroying that below would leave
-   * the chain pointing at freed memory */
+  /* close any open chain first: it may hold the proginfo singleton's window
+   * as a borrowed wuss_menu_item_t.window, and destroying the menu below
+   * would leave the chain pointing at freed memory */
   wuss_menu_close(task->menu_handle);
   wuss_menu_destroy(task->menu);
-  wuss_proginfo_destroy(task->proginfo); /* closes its dialogue window */
-  wuss_colourmenu_destroy(task->colourmenu);
   free(task->bitmap.base);
   free(task->ninepatch.base);
   free(task); /* task_data was calloc'd per instance by the spawner */
@@ -249,9 +223,7 @@ static result_t image_click(wuss_window_t *window,
 {
   result_t    rc;
   const char *resources;
-  const char *leafname;
   const char *filename;
-  char        buf[DPTLIB_MAXPATH];
   bitmap_t    next;
   size2d_t    sz;
 
@@ -261,15 +233,13 @@ static result_t image_click(wuss_window_t *window,
   ic->index = (ic->index + step + ic->nnames) % ic->nnames;
 
   resources = wuss_get_resources(ic->wuss);
-  leafname  = path_join_leafname(ic->names[ic->index], "png");
-  filename  = path_join_filename(resources, 3, "resources", "images",
-                                 leafname);
-  strcpy(buf, filename);
+  filename  = pathf("%s/resources/images/%s.png", resources,
+                    ic->names[ic->index]);
 
-  rc = load_png_deep(&next, buf);
+  rc = load_png_deep(&next, filename, pixelfmt_rgbx8888);
   if (rc != result_OK)
   {
-    logf_warning("image: skipping \"%s\" (rc=0x%X)", buf, rc);
+    logf_warning("image: skipping \"%s\" (rc=0x%X)", filename, rc);
     return result_OK; /* keep showing the current image */
   }
 
@@ -285,66 +255,59 @@ static result_t image_click(wuss_window_t *window,
   return wuss_window_set_doc(window, sz);
 }
 
-/* Same menu shape built from a descriptor string, to exercise
- * wuss_menu_create_from_desc. The tree must outlive the open chain, so it is
- * kept on the task and rebuilt (previous one freed) on each open. Freed for
- * good in the QUIT handler. */
-static const wuss_menu_item_t image_menu_export_items[] =
-{
-  { "As PNG",  wuss_MENU_ITEM_NONE,     NULL },
-  { "As JPEG", wuss_MENU_ITEM_NONE,     NULL },
-  { "As GIF",  wuss_MENU_ITEM_DISABLED, NULL }
-};
-
-static const wuss_menu_t image_menu_export =
-{
-  "Export", image_menu_export_items, NELEMS(image_menu_export_items)
-};
-
+/* Menu shape built from a descriptor string. The tree must outlive the open
+ * chain, so it is kept on the task and rebuilt (previous one freed) on each
+ * open. Freed for good in the QUIT handler. */
 static result_t image_open_menu(image_task_t *ic)
 {
+  static const wuss_proginfo_desc_t desc =
+  {
+    "Image",
+    "View the PNGs under resources/images",
+    "(c) DPTLib contributors",
+    "1.0 (" __DATE__ ")"
+  };
+
   result_t     rc;
   wuss_menu_t *m;
   int          i;
 
   /* '!Dithering' pulls ic->dithering directly, so the row's tick already
-   * matches live state -- no separate wuss_menu_open_ticked pass needed.
-   * '!Wireframe' has no backing field; it is a demo row always ticked. */
+   * matches live state -- no separate wuss_menu_open_ticked pass needed. */
   rc = wuss_menu_create_from_desc(&m,
-         "Image, Info, New..., Open, !Dithering, !Wireframe, >Export, "
-         "Background, |Quit",
-         ic->dithering, 1, &image_menu_export);
+         "Image, Info, !Dithering, Background",
+         ic->dithering);
   if (rc != result_OK)
     return rc;
 
   /* The descriptor syntax has no "open this window on hover" mark, so point
-   * the "Info" row at the proginfo dialogue by hand: wuss treats a
+   * the "Info" row at the shared proginfo singleton by hand: wuss treats a
    * wuss_menu_item_t.window exactly like a submenu, showing it where one would
    * open. */
-  if (ic->proginfo != NULL)
-    for (i = 0; i < m->nitems; i++)
-      if (m->items[i].text != NULL && strcmp(m->items[i].text, "Info") == 0)
-      {
-        ((wuss_menu_item_t *) m->items)[i].window =
-          wuss_proginfo_window(ic->proginfo);
-        break;
-      }
+  wuss_proginfo_set_desc(&desc);
+  for (i = 0; i < m->nitems; i++)
+    if (m->items[i].text != NULL && strcmp(m->items[i].text, "Info") == 0)
+    {
+      ((wuss_menu_item_t *) m->items)[i].window =
+        wuss_proginfo_window(ic->delegate);
+      break;
+    }
 
-  /* Same trick for "Background": point it at the colourmenu's own menu tree
-   * as a submenu, so it gets the usual arrow-and-hover behaviour. Marked
-   * BORROWED_SUBMENU so wuss_menu_destroy leaves it alone -- it is owned by
-   * ic->colourmenu, built once at task creation and reused on every open,
-   * not by this per-open tree. */
-  if (ic->colourmenu != NULL)
-    for (i = 0; i < m->nitems; i++)
-      if (m->items[i].text != NULL && strcmp(m->items[i].text, "Background") == 0)
-      {
-        wuss_menu_item_t *it = (wuss_menu_item_t *) &m->items[i];
+  /* Same trick for "Background": point it at the shared colourmenu
+   * singleton as a submenu, so it gets the usual arrow-and-hover behaviour.
+   * Marked BORROWED_SUBMENU so wuss_menu_destroy leaves it alone -- it is
+   * owned by the singleton, not by this per-open tree. */
+  wuss_colourmenu_set_none(1);
+  wuss_colourmenu_set_title("Background");
+  for (i = 0; i < m->nitems; i++)
+    if (m->items[i].text != NULL && strcmp(m->items[i].text, "Background") == 0)
+    {
+      wuss_menu_item_t *it = (wuss_menu_item_t *) &m->items[i];
 
-        it->submenu = wuss_colourmenu_menu(ic->colourmenu);
-        it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
-        break;
-      }
+      it->submenu = wuss_colourmenu_menu(ic->wuss);
+      it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
+      break;
+    }
 
   wuss_menu_destroy(ic->menu);
   ic->menu = m;
@@ -388,7 +351,7 @@ result_t image_handle(wuss_window_t      *window,
       wuss_colour_t picked;
       int           mine;
 
-      picked = wuss_colourmenu_selected(ic->colourmenu, event, &mine);
+      picked = wuss_colourmenu_selected(event, &mine);
       if (mine)
       {
         ic->background = picked;
@@ -403,14 +366,14 @@ result_t image_handle(wuss_window_t      *window,
     index = event->data.menu_select.index;
     printf("image menu: picked \"%s\"\n",
            menu->items[index].text ? menu->items[index].text : "(sep)");
-    if (index == 3) {
+    if (index == 1) {
       ic->dithering = !ic->dithering;
       wuss_window_invalidate_visible(ic->window);
     }
     if (!wuss_menu_should_keep_open(event))
       ic->menu_handle = NULL; /* SELECT pick already freed the chain */
-    else if (index == 3)
-      wuss_menu_tick_item_live(ic->menu_handle, ic->menu, 3, ic->dithering);
+    else if (index == 1)
+      wuss_menu_tick_item_live(ic->menu_handle, ic->menu, 1, ic->dithering);
     return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
@@ -418,8 +381,10 @@ result_t image_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_PRE_SHOW:
-    if (window == wuss_proginfo_window(ic->proginfo))
-      return wuss_proginfo_handle_pre_show(ic->proginfo);
+    if (ic->menu != NULL)
+      for (index = 0; index < ic->menu->nitems; index++)
+        if (ic->menu->items[index].window == window)
+          return wuss_proginfo_handle_pre_show();
     return result_OK;
 
   case wuss_EVENT_QUIT:

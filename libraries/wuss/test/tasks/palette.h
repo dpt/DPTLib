@@ -8,6 +8,7 @@
 #include <stdbool.h>
 
 #include "framebuf/colour.h"
+#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -28,8 +29,9 @@
  * A second window ("Screen") draws the same kind of grid but for the
  * physical screen bitmap's own palette (event->data.redraw.scr->palette),
  * which is whatever size the screen's pixel format needs (2/4/16/256
- * entries for 1/2/4/8bpp) rather than the fixed 16-entry system palette
- * above; a NULL screen palette (32bpp, no palette) just shows a label. */
+ * entries for 1/2/4/8bpp) rather than the fixed wuss_SYSTEM_PALETTE_LENGTH
+ * system palette above; a NULL screen palette (32bpp, no palette) just
+ * shows a label. */
 typedef struct palette_task
 {
   wuss_t              *wuss;
@@ -50,7 +52,10 @@ typedef struct palette_task
   /* the picker menu: per-instance (not static const) because its ticks
    * track selected/invert and it must outlive the open chain, so a stack
    * copy built fresh on each open would not do */
-  wuss_menu_item_t     menu_items[PALETTE_MAX_FILES + 1];
+  wuss_menu_item_t     load_items[PALETTE_MAX_FILES]; /* one row per
+                                                        * *.hex file */
+  wuss_menu_t          load_menu; /* "Load" submenu, opened off menu_items */
+  wuss_menu_item_t     menu_items[3]; /* Info, Load, Invert */
   wuss_menu_t          menu;
   wuss_menu_handle_t   menu_handle; /* for wuss_menu_tick_item_live on an
                                      * ADJUST pick, which keeps the chain
@@ -61,9 +66,9 @@ palette_task_t;
 wuss_window_fn_t palette_handle;
 
 /* load a named *.hex file (leafname, no extension, e.g. "PICO-8") from
- * resources/palettes into a 16-entry colour_t array. Used both by
- * palette_create's picker and by callers choosing the startup system
- * palette before any window exists. */
+ * resources/palettes into a wuss_SYSTEM_PALETTE_LENGTH-entry colour_t
+ * array. Used both by palette_create's picker and by callers choosing the
+ * startup system palette before any window exists. */
 result_t palette_load_hex(const char *resources,
                           const char *name,
                           colour_t   *out);

@@ -55,7 +55,7 @@ enum
 };
 
 /* the size dialogue: built once, hidden; a menu leaf (see
- * g_saturn_menu_items[SATURN_MENU_SIZE].window) */
+ * saturn_task_t.menu_items[SATURN_MENU_SIZE].window) */
 typedef struct saturn_conf
 {
   wuss_dialogue_t   *dialogue;
@@ -74,10 +74,19 @@ typedef struct saturn_task
   colour_t           bg, fg;
   unsigned long      seed;     /* RNG state; a Select click bumps it */
   saturn_config_t    config;
-  wuss_colourmenu_t *fg_colourmenu, *bg_colourmenu;
+  colour_t          *colourmenu_target; /* &task->fg or &task->bg: which
+                                         * field the open colourmenu picks
+                                         * into, set by
+                                         * saturn_pre_submenu_open */
   wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
   saturn_conf_t      conf;
-  wuss_proginfo_t   *proginfo;
+  wuss_menu_item_t   colours_items[2]; /* per-instance: a shared static
+                                        * would leak one instance's
+                                        * colourmenu/.window pointers into
+                                        * another's menu */
+  wuss_menu_t        colours_menu;
+  wuss_menu_item_t   menu_items[3];
+  wuss_menu_t        menu;
 }
 saturn_task_t;
 

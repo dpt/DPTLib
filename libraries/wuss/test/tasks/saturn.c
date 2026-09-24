@@ -76,12 +76,14 @@ static int saturn_rnd(int n)
 #define SATURN_SAMPLE(half, range) (saturn_rnd(range) - (half))
 
 /* MENU click over the content pops this. "Colours" leads to a submenu with
- * one row per task->fg/task->bg, each of which pops a wuss_colourmenu (see
- * saturn_create -- the two leaf items' submenu pointers are patched in there,
- * once the colourmenus exist). "Configuration" and "Info" hover-open
- * task->size_dialogue / task->proginfo's window, both borrowed windows built
- * once in saturn_create and patched into g_saturn_menu_items[...].window
- * there, the same way. */
+ * one row per task->fg/task->bg; both rows share task->colourmenu, retargeted
+ * per hover by saturn_pre_submenu_open (wuss_EVENT_PRE_SUBMENU_OPEN) so one
+ * instance serves either row. "Configuration" hover-opens
+ * task->conf.dialogue's window, a borrowed window built once in
+ * saturn_create and stored into task->menu_items[SATURN_MENU_SIZE].window
+ * there. "Info" hover-opens the shared proginfo singleton's window,
+ * retargeted into task->menu_items[SATURN_MENU_INFO].window just before
+ * wuss_menu_open, in saturn_mouse. */
 enum { SATURN_MENU_INFO = 0, SATURN_MENU_COLOURS, SATURN_MENU_SIZE };
 enum { SATURN_COLOURS_MENU_FOREGROUND = 0, SATURN_COLOURS_MENU_BACKGROUND };
 
@@ -138,28 +140,15 @@ static int *saturn_sizedlg_field(saturn_task_t *task, int row)
   return (int *) ((char *) &task->config + g_saturn_sizedlg_rows[row].config_offset);
 }
 
-static wuss_menu_item_t g_saturn_colours_items[] =
-{
-  { "Foreground", wuss_MENU_ITEM_BORROWED_SUBMENU, NULL, NULL, 0 },
-  { "Background", wuss_MENU_ITEM_BORROWED_SUBMENU, NULL, NULL, 0 }
-};
-
-static wuss_menu_t g_saturn_colours_menu =
-{
-  "Colours", g_saturn_colours_items, NELEMS(g_saturn_colours_items)
-};
-
-static wuss_menu_item_t g_saturn_menu_items[] =
-{
-  { "Info", wuss_MENU_ITEM_BORROWED_SUBMENU, NULL, NULL, 0 },
-  { "Colours", wuss_MENU_ITEM_NONE, &g_saturn_colours_menu, NULL, 0 },
-  { "Configuration", wuss_MENU_ITEM_BORROWED_SUBMENU, NULL, NULL, 0 }
-};
-
-static wuss_menu_t g_saturn_menu =
-{
-  "Saturn", g_saturn_menu_items, NELEMS(g_saturn_menu_items)
-};
+/* Both rows' .submenu is patched in saturn_create to the one shared
+ * task->colourmenu, just to give each row an arrow and a hover target --
+ * wuss_EVENT_PRE_SUBMENU_OPEN fires on hover regardless of which menu
+ * .submenu names, and saturn_pre_submenu_open retargets the shared
+ * colourmenu before handing it back as the menu to actually open. The item
+ * tables and wuss_menu_t values live per-instance in saturn_task_t, not as
+ * file-scope statics, so that each window's Info/Configuration rows point at
+ * their own .window pointers rather than every instance sharing (and
+ * overwriting) one global .window pointer. */
 
 static result_t saturn_conf_dialogue_create(saturn_task_t *task);
 static result_t saturn_conf_fillout(void *opaque);
@@ -186,15 +175,13 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   task->fg               = colour_rgb(0xFF, 0xFF, 0xFF);
   task->seed             = 1;
   task->config           = default_config;
-  task->fg_colourmenu    = NULL;
-  task->bg_colourmenu    = NULL;
+  task->colourmenu_target = NULL;
   task->menu_handle      = NULL;
   task->conf.dialogue    = NULL;
   memset(task->conf.rows, 0, sizeof(task->conf.rows));
   task->conf.deflt       = NULL;
   task->conf.cancel      = NULL;
   task->conf.apply       = NULL;
-  task->proginfo         = NULL;
 
   /* saturn_redraw paints its own background */
   delegate_desc.handle    = saturn_handle;
@@ -209,22 +196,38 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   task->delegate = delegate; /* the task the menu opens against */
   wuss_task_set_autoclose(delegate, 1);
 
-  /* one instance per target, not shared: a submenu leaf (wuss_MENU_ITEM_BORROWED_SUBMENU)
-   * opens on hover with no pre-open hook to retitle/retarget a shared
-   * colourmenu first -- only item->window leaves get that (wuss_EVENT_PRE_SHOW),
-   * and colourmenu owns its own wuss_menu_t, not a window. */
-  rc = wuss_colourmenu_create(&task->fg_colourmenu, wuss, "Foreground");
-  if (rc != result_OK)
-    goto fail_delegate;
+  /* shared colourmenu singleton: wuss_EVENT_PRE_SUBMENU_OPEN retitles/
+   * retargets it per hover (see saturn_pre_submenu_open), so Foreground and
+   * Background don't need their own instance. Both rows' .submenu just need
+   * to be non-NULL to draw an arrow and become hoverable; which menu they
+   * name doesn't matter since the handler always supplies the menu to
+   * open. */
+  wuss_colourmenu_set_none(0);
+  WUSS_MENU_ITEM_MENU(task->colours_items, SATURN_COLOURS_MENU_FOREGROUND,
+                      "Foreground", wuss_MENU_ITEM_PRE_OPEN,
+                      wuss_colourmenu_menu(wuss));
 
-  rc = wuss_colourmenu_create(&task->bg_colourmenu, wuss, "Background");
-  if (rc != result_OK)
-    goto fail_fg_colourmenu;
+  WUSS_MENU_ITEM_MENU(task->colours_items, SATURN_COLOURS_MENU_BACKGROUND,
+                      "Background", wuss_MENU_ITEM_PRE_OPEN,
+                      wuss_colourmenu_menu(wuss));
 
-  g_saturn_colours_items[SATURN_COLOURS_MENU_FOREGROUND].submenu =
-    wuss_colourmenu_menu(task->fg_colourmenu);
-  g_saturn_colours_items[SATURN_COLOURS_MENU_BACKGROUND].submenu =
-    wuss_colourmenu_menu(task->bg_colourmenu);
+  WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
+                 NELEMS(task->colours_items));
+
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, SATURN_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in
+                                * saturn_mouse */
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, SATURN_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_NONE, &task->colours_menu);
+
+  WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_SIZE, "Configuration",
+                wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
+
+  WUSS_MENU_TITLE(task->menu, "Saturn", task->menu_items,
+                 NELEMS(task->menu_items));
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(task->config.size, task->config.size),
@@ -235,41 +238,20 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
-    goto fail_bg_colourmenu;
+    goto fail_delegate;
 
   rc = saturn_conf_dialogue_create(task);
   if (rc != result_OK)
-    goto fail_bg_colourmenu; /* wuss_task_destroy closes task->window too */
+    goto fail_delegate; /* wuss_task_destroy closes task->window too */
 
-  g_saturn_menu_items[SATURN_MENU_SIZE].window =
+  task->menu_items[SATURN_MENU_SIZE].window =
     wuss_dialogue_window(task->conf.dialogue);
-
-  /* The "Info" menu row's standard dialogue. A create failure is non-fatal
-   * -- the task just runs without an Info dialogue (see image.c). */
-  {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Saturn",
-      "Elite loading-screen planet, recreated",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
-
-    if (wuss_proginfo_create(&task->proginfo, delegate, &desc) != result_OK)
-      task->proginfo = NULL;
-  }
-  g_saturn_menu_items[SATURN_MENU_INFO].window =
-    wuss_proginfo_window(task->proginfo);
 
   if (out)
     *out = task;
 
   return result_OK;
 
-fail_bg_colourmenu:
-  wuss_colourmenu_destroy(task->bg_colourmenu);
-fail_fg_colourmenu:
-  wuss_colourmenu_destroy(task->fg_colourmenu);
 fail_delegate:
   wuss_task_destroy(delegate); /* unregisters; its QUIT frees the task block */
   return rc;
@@ -277,22 +259,16 @@ fail_delegate:
 
 void saturn_destroy(saturn_task_t *task)
 {
-  /* task->conf.dialogue's window is borrowed into g_saturn_menu_items as a
+  /* task->conf.dialogue's window is borrowed into task->menu_items as a
    * submenu leaf; if the chain is still open at QUIT (wuss_destroy sweeps
    * tasks before closing any leftover chain -- see its comment) that leaf's
    * node->window would dangle once wuss_dialogue_destroy below frees it.
    * Close our own chain first, same as wuss_destroy expects every task to
    * do for whatever it still holds. */
-  if (task->menu_handle != NULL)
-  {
-    wuss_menu_close(task->menu_handle);
-    task->menu_handle = NULL;
-  }
+  wuss_menu_close(task->menu_handle);
+  task->menu_handle = NULL;
 
-  wuss_colourmenu_destroy(task->fg_colourmenu);
-  wuss_colourmenu_destroy(task->bg_colourmenu);
   wuss_dialogue_destroy(task->conf.dialogue);
-  wuss_proginfo_destroy(task->proginfo);
   free(task); /* task_data was calloc'd per instance by the spawner */
 }
 
@@ -408,9 +384,23 @@ static result_t saturn_mouse(saturn_task_t      *task,
     return result_OK;
 
   if (button & wuss_BUTTON_MENU)
-    return wuss_menu_open(task->delegate, &g_saturn_menu,
+  {
+    static const wuss_proginfo_desc_t desc =
+    {
+      "Saturn",
+      "Elite loading-screen planet, recreated",
+      "(c) DPTLib contributors",
+      "1.0 (" __DATE__ ")"
+    };
+
+    wuss_proginfo_set_desc(&desc);
+    task->menu_items[SATURN_MENU_INFO].window =
+      wuss_proginfo_window(task->delegate);
+
+    return wuss_menu_open(task->delegate, &task->menu,
                           wuss_get_pointer(task->wuss),
                           &task->menu_handle);
+  }
 
   if (button & wuss_BUTTON_SELECT)
   {
@@ -472,7 +462,8 @@ enum
 
 static const stack_item_t g_saturn_conf_stack[SIZE_STACK__LIMIT] =
 {
-  [ST_ROOT]  = STACK_VBOX_EX(-1, 0, wuss_STD_GAP, wuss_STD_INSET, wuss_STD_INSET, wuss_STD_INSET, wuss_STD_INSET),
+  [ST_ROOT]  = { .kind = stack_KIND_VBOX, .parent = -1,
+                .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
 
   [ST_ROW1]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
   [ST_LABL1] = STACK_LEAF(ST_ROW1, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
@@ -504,7 +495,7 @@ static const stack_item_t g_saturn_conf_stack[SIZE_STACK__LIMIT] =
  * SATURN_SIZE_STEP, a label echoing the slider's current value, and
  * Cancel/Apply buttons, positioned by stack_solve. Created hidden -- wuss
  * shows and hides it itself, as a menu leaf's borrowed window (see
- * g_saturn_menu_items[SATURN_MENU_SIZE] and wuss_menu_item_t::window), so
+ * task->menu_items[SATURN_MENU_SIZE] and wuss_menu_item_t::window), so
  * it must outlive the open menu chain and is never closed here, only
  * hidden. */
 static result_t saturn_conf_dialogue_create(saturn_task_t *task)
@@ -521,21 +512,22 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
   wuss_icon_t     *made[SATURN_SIZE_NICONS];
   box_t            boxes[SIZE_STACK__LIMIT];
   box_t            root;
+  char             value_bufs[SATURN_SIZEDLG_NROWS][WUSS_SLIDER_ROW_BUF];
   int              value, row;
-  size2d_t         sz;
+  size2d_t         min_sz;
 
   /* smallest window the layout can be solved into without any flex item
    * (the sliders) growing past its minimum */
-  rc = stack_smallest(g_saturn_conf_stack, NELEMS(g_saturn_conf_stack), &sz);
+  rc = stack_smallest(g_saturn_conf_stack, NELEMS(g_saturn_conf_stack), &min_sz);
   if (rc != result_OK)
     return rc;
 
-  rc = wuss_dialogue_create(&task->conf.dialogue, task->delegate, sz,
+  rc = wuss_dialogue_create(&task->conf.dialogue, task->delegate, min_sz,
                             "Configuration", saturn_conf_fillout, task);
   if (rc != result_OK)
     return rc;
 
-  root = (box_t) BOX_POS_SIZE(0, 0, sz.w, sz.h);
+  root = (box_t) BOX_POS_SIZE(0, 0, min_sz.w, min_sz.h);
   rc = stack_solve(g_saturn_conf_stack, NELEMS(g_saturn_conf_stack), &root, boxes);
   if (rc != result_OK)
     goto exit;
@@ -547,16 +539,17 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
     value = *saturn_sizedlg_field(task, row);
 
     wuss_icon_spec_label(&specs[label_icon[row]], boxes[label_box[row]],
-                         desc->label, wuss_COLOUR_BLACK, 1);
+                         desc->label, wuss_ICON_FLAGS_JUSTIFY_RIGHT);
     wuss_icon_spec_slider_row(&specs[slider_icon[row]], &specs[value_icon[row]],
                               boxes[slider_box[row]], boxes[value_box[row]],
-                              wuss_COLOUR_BLACK, wuss_SLIDER_HORIZONTAL,
-                              desc->min, desc->max, value, NULL, desc->step);
+                              wuss_SLIDER_HORIZONTAL,
+                              desc->min, desc->max, value, NULL, desc->step,
+                              value_bufs[row], sizeof(value_bufs[row]));
   }
 
-  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_DEFAULT], boxes[ST_DFLT], "Default", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 0);
-  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_CANCEL], boxes[ST_CNCL], "Cancel", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 0);
-  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY], "Apply", wuss_COLOUR_BLACK, wuss_COLOUR_WINDOW, 1);
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_DEFAULT], boxes[ST_DFLT], "Default", 0);
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_CANCEL], boxes[ST_CNCL], "Cancel", 0);
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY], "Apply", 1);
 
   rc = wuss_icon_create_array(wuss_dialogue_window(task->conf.dialogue),
                               specs, SATURN_SIZE_NICONS, made);
@@ -735,43 +728,65 @@ static result_t saturn_conf_dialogue_icon(saturn_task_t      *task,
   return result_OK;
 }
 
-/* Applies event to *colour if it's a pick from colourmenu, returns whether
- * it was. Shared by saturn_menu_select's fg/bg attempts below. */
-static int saturn_menu_select_apply(const wuss_colourmenu_t *colourmenu,
-                                    colour_t                *colour,
-                                    const colour_t          *palette,
-                                    int                      npalette,
-                                    const wuss_event_t      *event)
+/* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN, not just the
+ * Foreground/Background rows -- "Colours" itself is one (task->colours_menu
+ * never changes, so it just opens unchanged). Only the Foreground/Background
+ * level needs to retitle/retarget the shared task->colourmenu before opening
+ * it. */
+static result_t saturn_pre_submenu_open(saturn_task_t      *task,
+                                        const wuss_event_t *event)
 {
-  wuss_colour_t picked;
-  int           mine;
+  wuss_menu_handle_t handle;
+  int                index;
 
-  picked = wuss_colourmenu_selected(colourmenu, event, &mine);
-  if (!mine)
-    return 0;
+  handle = event->data.pre_submenu_open.handle;
+  index  = event->data.pre_submenu_open.index;
 
-  if (picked < npalette)
-    *colour = palette[picked];
-  return 1;
+  if (wuss_menu_handle_menu(handle) != &task->colours_menu)
+    return wuss_menu_open_submenu_now(handle, index,
+                                      task->menu_items[index].submenu);
+
+  if (index == SATURN_COLOURS_MENU_FOREGROUND)
+  {
+    task->colourmenu_target = &task->fg;
+    wuss_colourmenu_set_title("Foreground");
+  }
+  else
+  {
+    task->colourmenu_target = &task->bg;
+    wuss_colourmenu_set_title("Background");
+  }
+
+  return wuss_menu_open_submenu_now(handle, index,
+                                    wuss_colourmenu_menu(task->wuss));
 }
 
-/* A pick from either colour submenu, resolved against whichever colourmenu
- * it came from. "Configuration" is a wuss_menu_item_t::window leaf, not a leaf pick,
- * so it never reaches here -- see saturn_conf_dialogue_icon and
- * saturn_sizedlg_pre_show. */
+/* A pick from the shared colour submenu, applied to whichever field it was
+ * last retargeted at (task->colourmenu_target, set by
+ * saturn_pre_submenu_open). "Configuration" is a wuss_menu_item_t::window
+ * leaf, not a leaf pick, so it never reaches here -- see
+ * saturn_conf_dialogue_icon and saturn_sizedlg_pre_show. */
 static result_t saturn_menu_select(saturn_task_t      *task,
                                    const wuss_event_t *event)
 {
   const colour_t *palette;
   int             npalette;
+  wuss_colour_t   picked;
+  int             mine;
+
+  if (task->colourmenu_target == NULL)
+    return result_OK;
+
+  picked = wuss_colourmenu_selected(event, &mine);
+  if (!mine)
+    return result_OK;
 
   palette = wuss_get_palette(task->wuss, &npalette);
-
-  if (saturn_menu_select_apply(task->fg_colourmenu, &task->fg, palette,
-                               npalette, event) ||
-      saturn_menu_select_apply(task->bg_colourmenu, &task->bg, palette,
-                               npalette, event))
+  if (picked < npalette)
+  {
+    *task->colourmenu_target = palette[picked];
     wuss_window_invalidate_visible(task->window);
+  }
 
   return result_OK;
 }
@@ -799,11 +814,28 @@ result_t saturn_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
     if (window == wuss_dialogue_window(task->conf.dialogue))
-      return wuss_dialogue_handle_pre_show(task->conf.dialogue);
-    if (window == wuss_proginfo_window(task->proginfo))
-      return wuss_proginfo_handle_pre_show(task->proginfo);
-    return result_OK;
+      rc = wuss_dialogue_handle_pre_show(task->conf.dialogue);
+    else if (window == task->menu_items[SATURN_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+
+    if (event->data.pre_show.handle == NULL)
+      return result_OK; /* plain window reveal, not a flagged menu leaf:
+                          * already proceeding by default */
+
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    return saturn_pre_submenu_open(task, event);
 
   case wuss_EVENT_MENU_SELECT:
     return saturn_menu_select(task, event);

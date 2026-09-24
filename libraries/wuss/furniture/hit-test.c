@@ -48,80 +48,24 @@ static wuss_furniture_region_t nearest_edge_region(const wuss_window_t *window,
  * pixel of window->visible -- the drawn boxes are the un-suffixed wuss__*_box
  * helpers, these _hit_box variants swallow the outline band, the four corners
  * and the interior divider seam. Grown boxes OVERLAP where they meet, so the
- * test order below is load-bearing:
- *   - icons before TITLE: the titlebar corners belong to BACK / CLOSE / TOGGLE;
- *   - RESIZE before the scroll strips: the bottom-right corner is the resize
- *     icon when there is one;
- *   - VSCROLL before HSCROLL: with no resize icon the bottom-right corner
- *     resolves to VSCROLL_DOWN. */
+ * first match in wuss__furniture_elements' priority order wins. */
 wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
                                                  point_t              p)
 {
   box_t box;
+  int   i;
 
-  if (!(window->flags & wuss_WINDOW_NO_TITLEBAR))
+  for (i = 0; i < wuss__furniture_nelements; i++)
   {
-    if (window->flags & wuss_WINDOW_BACK)
-    {
-      wuss__back_hit_box(window, &box);
-      if (box_contains_point(&box, p.x, p.y))
-        return wuss_FURNITURE_BACK;
-    }
+    const wuss__furniture_element_t *element;
 
-    if (window->flags & wuss_WINDOW_CLOSE)
-    {
-      wuss__close_hit_box(window, &box);
-      if (box_contains_point(&box, p.x, p.y))
-        return wuss_FURNITURE_CLOSE;
-    }
+    element = &wuss__furniture_elements[i];
+    if (!wuss__furniture_element_present(window, element))
+      continue;
 
-    if (window->flags & wuss_WINDOW_TOGGLE_SIZE)
-    {
-      wuss__toggle_hit_box(window, &box);
-      if (box_contains_point(&box, p.x, p.y))
-        return wuss_FURNITURE_TOGGLE_SIZE;
-    }
-
-    wuss__title_hit_box(window, &box);
+    element->hit_box(window, &box);
     if (box_contains_point(&box, p.x, p.y))
-      return wuss_FURNITURE_TITLE;
-  }
-
-  if (window->flags & wuss_WINDOW_RESIZE)
-  {
-    wuss__resize_hit_box(window, &box);
-    if (box_contains_point(&box, p.x, p.y))
-      return wuss_FURNITURE_RESIZE;
-  }
-
-  if (window->flags & wuss_WINDOW_VSCROLL)
-  {
-    wuss__vscroll_up_hit_box(window, &box);
-    if (box_contains_point(&box, p.x, p.y))
-      return wuss_FURNITURE_VSCROLL_UP;
-
-    wuss__vscroll_down_hit_box(window, &box);
-    if (box_contains_point(&box, p.x, p.y))
-      return wuss_FURNITURE_VSCROLL_DOWN;
-
-    wuss__vscroll_well_hit_box(window, &box);
-    if (box_contains_point(&box, p.x, p.y))
-      return wuss_FURNITURE_VSCROLL_WELL;
-  }
-
-  if (window->flags & wuss_WINDOW_HSCROLL)
-  {
-    wuss__hscroll_left_hit_box(window, &box);
-    if (box_contains_point(&box, p.x, p.y))
-      return wuss_FURNITURE_HSCROLL_LEFT;
-
-    wuss__hscroll_right_hit_box(window, &box);
-    if (box_contains_point(&box, p.x, p.y))
-      return wuss_FURNITURE_HSCROLL_RIGHT;
-
-    wuss__hscroll_well_hit_box(window, &box);
-    if (box_contains_point(&box, p.x, p.y))
-      return wuss_FURNITURE_HSCROLL_WELL;
+      return element->region;
   }
 
   /* The grown boxes cover every chrome pixel except the outline band on an edge

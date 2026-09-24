@@ -16,8 +16,8 @@
 #include "io/dirscan.h"
 #include "io/path.h"
 
-/* path_join_filename returns a single static buffer, so the per-entry join in
- * the callback would clobber a caller's dir pointer if we held it directly --
+/* pathf returns a single static buffer, so the per-entry join in the
+ * callback would clobber a caller's dir pointer if we held it directly --
  * keep our own copy. Bounded by that buffer's own DPTLIB_MAXPATH. */
 #define ICONS_DIR_MAX 256
 
@@ -102,7 +102,7 @@ static result_t icons_load_entry(const char *leaf, void *opaque)
   if (!path_leaf_strip_ext(leaf, ".png", name, sizeof(name)))
     return result_OK; /* not a ".png", or name too long -- skip */
 
-  path = path_join_filename(st->dir, 1, leaf);
+  path = pathf("%s/%s", st->dir, leaf);
 
   rc = bitmap_load_png(&bm, path);
   if (rc != result_OK)
@@ -244,6 +244,23 @@ result_t wuss_icons_load(wuss_t *wuss, const char *dir)
   wuss->icon.bitmaps  = st.bitmaps;
   wuss->icon.nbitmaps = st.n;
   return result_OK;
+}
+
+result_t wuss_icons_load_resource(wuss_t *wuss, const char *resources)
+{
+  char dir[ICONS_DIR_MAX];
+
+  assert(wuss != NULL);
+
+  if (resources == NULL)
+    return result_NULL_ARG;
+
+  /* copy: pathf hands back one shared static buffer, and wuss_icons_load's
+   * own per-file joins would clobber it mid-call */
+  strncpy(dir, pathf("%s/resources/wuss/icons", resources), sizeof(dir) - 1);
+  dir[sizeof(dir) - 1] = '\0';
+
+  return wuss_icons_load(wuss, dir);
 }
 
 int wuss_icons_count(const wuss_t *wuss)

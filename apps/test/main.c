@@ -51,18 +51,21 @@ static const test_t tests[] =
   { "pickle",     pickle_test     },
   { "tagdb",      tagdb_test      },
 
-  { "bmfont",     bmfont_test     },
-  { "composite",  composite_test  },
-  { "rle",        bitmap_rle_test },
-  { "curve",      curve_test      },
-  { "pixelmap",   pixelmap_test   },
-  { "screen",     screen_test     },
+  { "bmfont",      bmfont_test      },
+  { "bmfontcache", bmfontcache_test },
+  { "composite",   composite_test   },
+  { "rle",         bitmap_rle_test  },
+  { "curve",       curve_test       },
+  { "pattern",     pattern_test     },
+  { "pixelmap",    pixelmap_test    },
+  { "screen",      screen_test      },
 
   { "box",        box_test        },
   { "layout",     layout_test     },
   { "packer",     packer_test     },
   { "stack",      stack_test      },
 
+  { "path",       path_test       },
   { "stream",     stream_test     },
 
   { "array",      array_test      },

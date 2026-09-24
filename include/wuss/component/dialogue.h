@@ -128,8 +128,8 @@ result_t wuss_dialogue_create(wuss_dialogue_t           **out,
  * the component that owns it) is responsible for closing it.
  *
  * Use this to give an existing window fillout/action-table dispatch without
- * duplicating its layout logic; see wuss_proginfo_t for the motivating case
- * of one dialogue shared and refilled by several callers.
+ * duplicating its layout logic; see wuss/component/proginfo.h for the
+ * motivating case of one dialogue shared and refilled by several callers.
  *
  * \param[out] out     Filled with the new handle on success, untouched on
  *                     failure.
@@ -161,8 +161,8 @@ void wuss_dialogue_destroy(wuss_dialogue_t *doomed);
 /**
  * Change the opaque pointer passed to the fillout and action callbacks,
  * replacing the one given at creation. For a dialogue shared by several
- * callers (e.g. one wuss_proginfo_t reused across tasks), call this to
- * retarget it at the caller about to show it, before revealing it.
+ * callers (e.g. the wuss_proginfo singleton reused across tasks), call this
+ * to retarget it at the caller about to show it, before revealing it.
  *
  * \param[in] dialogue Handle.
  * \param[in] opaque   New opaque pointer.

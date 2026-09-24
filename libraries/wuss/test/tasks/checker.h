@@ -6,6 +6,8 @@
 #ifdef WUSS_APP
 
 #include "framebuf/colour.h"
+#include "wuss/component/proginfo.h"
+#include "wuss/menu.h"
 #include "wuss/window.h"
 
 /* cycled by a content click, in this order */
@@ -23,10 +25,17 @@ checker_pattern_t;
  * each window cycles its own pattern independently on a content click */
 typedef struct checker_task
 {
-  wuss_window_t    *window, *window2;
-  colour_t          black, white;
-  checker_pattern_t pattern, pattern2;
-  int               band, band2; /* pixels per band, scroll-adjustable */
+  wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
+  wuss_task_t         *delegate; /* the task that owns the menu */
+  wuss_window_t       *window, *window2;
+  wuss_menu_handle_t   menu_handle; /* live only between open and a pick */
+  wuss_menu_item_t     menu_items[1]; /* per-instance: a shared static would
+                                        * leak one instance's .window pointer
+                                        * into another's menu */
+  wuss_menu_t          menu;
+  colour_t             black, white;
+  checker_pattern_t    pattern, pattern2;
+  int                  band, band2; /* pixels per band, scroll-adjustable */
 }
 checker_task_t;
 

@@ -18,6 +18,12 @@
 
 #include "porter-duff.h"
 
+/* MENU click pops this single-item menu; the item table and wuss_menu_t
+ * live per-instance in porter_duff_task_t, not as a file-scope static, so
+ * that each window's Info row can hold its own .window pointer to the shared
+ * proginfo singleton, retargeted just before wuss_menu_open */
+enum { PORTER_DUFF_MENU_INFO };
+
 #define PD_SIZE            (256) /* the demo images are 256x256 */
 #define PD_LABEL_HEIGHT     (20) /* strip below the pane, for the rule name */
 #define PD_CHECKER_BAND      (8) /* checkerboard square size, in pixels */
@@ -134,12 +140,9 @@ static result_t load_demo_png(bitmap_t   *bm,
                               const char *leafname)
 {
   result_t    rc;
-  const char *leafname_ext;
   const char *filename;
 
-  leafname_ext = path_join_leafname(leafname, "png");
-  filename     = path_join_filename(resources, 3,
-                                    "resources", "composite", leafname_ext);
+  filename = pathf("%s/resources/composite/%s.png", resources, leafname);
 
   rc = bitmap_load_png(bm, filename);
   if (rc != result_OK)
@@ -170,6 +173,7 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
   if (task == NULL)
     return result_OOM;
 
+  task->wuss            = wuss;
   palette               = wuss_get_palette(wuss, NULL);
   task->font            = wuss_get_font_n(wuss, 0);
   task->rule            = composite_RULE_CLEAR;
@@ -206,6 +210,7 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
   if (rc != result_OK)
     goto free_dst; /* nothing registered yet; nobody else owns task */
   wuss_task_set_autoclose(delegate, 1);
+  task->delegate = delegate;
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
@@ -220,6 +225,15 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
     wuss_task_destroy(delegate); /* QUIT frees the four bitmaps and task */
     return rc;
   }
+
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, PORTER_DUFF_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in
+                                * porter_duff_handle */
+
+  WUSS_MENU_TITLE(task->menu, "Porter-Duff", task->menu_items,
+                 NELEMS(task->menu_items));
 
   if (out)
     *out = task;
@@ -241,6 +255,7 @@ free_a:
 
 void porter_duff_destroy(porter_duff_task_t *task)
 {
+  wuss_menu_close(task->menu_handle);
   free(task->dst.base);
   free(task->src.base);
   free(task->b.base);
@@ -366,6 +381,13 @@ static result_t porter_duff_idle(void *task_data)
 
   pd = task_data;
 
+  /* the shared proginfo singleton is a second window on this same
+   * (autoclose) delegate while its dialogue is open, so closing the main
+   * window alone doesn't necessarily empty task->windows immediately --
+   * guard against the dangling window in the meantime */
+  if (pd->window == NULL)
+    return result_OK;
+
   if (++pd->frame >= pd->frames_per_rule)
   {
     pd->frame = 0;
@@ -424,8 +446,29 @@ result_t porter_duff_handle(wuss_window_t      *window,
     return porter_duff_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
-    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
-        !(event->data.mouse.button & wuss_BUTTON_SELECT))
+    if (window != pd->window)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
+    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+      return result_OK;
+    if (event->data.mouse.button & wuss_BUTTON_MENU)
+    {
+      static const wuss_proginfo_desc_t desc =
+      {
+        "Porter-Duff",
+        "Animated Porter-Duff compositing demo",
+        "(c) DPTLib contributors",
+        "1.0 (" __DATE__ ")"
+      };
+
+      wuss_proginfo_set_desc(&desc);
+      pd->menu_items[PORTER_DUFF_MENU_INFO].window =
+        wuss_proginfo_window(pd->delegate);
+
+      return wuss_menu_open(pd->delegate, &pd->menu,
+                            wuss_get_pointer(pd->wuss), &pd->menu_handle);
+    }
+    if (!(event->data.mouse.button & wuss_BUTTON_SELECT))
       return result_OK;
     return porter_duff_mouse(window, task_data);
 
@@ -434,6 +477,31 @@ result_t porter_duff_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     return porter_duff_idle(task_data);
+
+  case wuss_EVENT_MENU_CLOSED:
+    pd->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_CLOSE:
+    if (window == pd->window)
+      pd->window = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == pd->menu_items[PORTER_DUFF_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_QUIT:
     porter_duff_destroy(pd);

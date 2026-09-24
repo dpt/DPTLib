@@ -1,8 +1,6 @@
 /* wuss/test/tasks/icons.c -- work-area icons task */
 
 #ifdef WUSS_APP
-#include "framebuf/palettes.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +9,7 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "base/utils.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/palettes.h"
 #include "framebuf/pattern.h"
@@ -19,11 +18,18 @@
 #include "geom/point.h"
 #include "geom/size.h"
 #include "io/path.h"
+#include "wuss/icon-spec.h"
 
 #include "icons.h"
 
+/* MENU click pops this single-item menu; the item table and wuss_menu_t
+ * live per-instance in icons_task_t, not as a file-scope static, so that
+ * each window's Info row can hold its own .window pointer to the shared
+ * proginfo singleton, retargeted just before wuss_menu_open */
+enum { ICONS_MENU_INFO };
+
 #define ICONS_DOC_W    260
-#define ICONS_DOC_H    1310 /* taller than the window, so scrolling is exercised */
+#define ICONS_DOC_H    1420 /* taller than the window, so scrolling is exercised */
 #define ICONS_MARGIN   28  /* left edge of everything except frame captions */
 #define ICONS_ROW      20  /* vertical pitch between stacked simple icons */
 
@@ -33,18 +39,22 @@
  * (an array bound, not a silent overrun) rather than corrupting the heap. */
 enum
 {
-  ICONS_N_INTRO   = 4, /* heading, counter button, counter label, scrolled-away button */
+  ICONS_N_INTRO   = 3, /* heading, counter button, counter label */
   ICONS_N_BUTTONS = 5, /* frame + 2x2 grid: default/normal x plain/disabled */
   ICONS_N_RADIOS  = 8, /* frame + 3 radios + option + state label + 2 justified labels */
   ICONS_N_BITMAPS = 3, /* frame + decorative + interactive bitmap */
   ICONS_N_ICONSET = 5, /* frame + opton + optoff + radon + radoff from the loaded set */
   ICONS_N_PATTERN = 2, /* frame + one PATTERN swatch */
-  ICONS_N_BORDERS = 6, /* frame + GROOVE + RIDGE + ACTION + DIVIDER labels */
+  ICONS_N_BORDERS = 6, /* frame + GROOVE + RIDGE + ACTION + DIVIDER + PLAIN labels */
+  ICONS_N_DISPLAY = 3, /* frame + static + counter-tracking display */
   ICONS_N_SLIDERS = 4, /* frame + horizontal + vertical slider + state label */
   ICONS_N_MENU    = 8, /* frame + plain, ticked, swatch, submenu, disabled, rule, separator entry */
+  ICONS_N_WRITE   = 4, /* frame + two writables + echo label */
+  ICONS_N_SSET    = 2, /* frame + echo label; the gadget adds its own icons */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
                     ICONS_N_BITMAPS + ICONS_N_ICONSET + ICONS_N_PATTERN +
-                    ICONS_N_BORDERS + ICONS_N_SLIDERS + ICONS_N_MENU
+                    ICONS_N_BORDERS + ICONS_N_DISPLAY + ICONS_N_SLIDERS +
+                    ICONS_N_MENU + ICONS_N_WRITE + ICONS_N_SSET
 };
 
 /* Running state threaded through the icons_add_* helpers: where to write the
@@ -64,8 +74,7 @@ icons_layout_t;
 
 /* [0] a heading, [1] the button that bumps the counter (shown as a default
  * action button, so it carries the accent styling), [2] the counter label
- * beside it, [3] a button far down the document, to prove icons scroll and
- * stay clickable. Returns the indices of [1] and [2] via button/counter. */
+ * beside it. Returns the indices of [1] and [2] via button/counter. */
 static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
 {
   wuss_icon_spec_t *s;
@@ -93,22 +102,14 @@ static void icons_add_intro(icons_layout_t *lay, int *button, int *counter)
   lay->n++;
 
   *counter = lay->n;
-  s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 92, lay->y, 120, 22);
-  s->type = wuss_ICON_TYPE_LABEL;
-  s->text = "0";
-  s->fg   = lay->black;
-  s->bg   = wuss_NO_BACKGROUND;
+  s        = &lay->specs[lay->n];
+  s->bbox  = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 92, lay->y, 120, 22);
+  s->type  = wuss_ICON_TYPE_LABEL;
+  s->text  = "0";
+  s->fg    = lay->black;
+  s->bg    = wuss_NO_BACKGROUND;
   lay->n++;
   lay->y += 46;
-
-  s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, 980, 90, 52);
-  s->type = wuss_ICON_TYPE_ACTION;
-  s->text = "Scrolled";
-  s->fg   = lay->black;
-  s->bg   = lay->window;
-  lay->n++;
 }
 
 /* A grouping frame captioned "Buttons", holding a 2x2 grid: column 0 is the
@@ -313,7 +314,8 @@ static void icons_add_iconset(icons_layout_t *lay, const wuss_t *wuss)
   for (i = 0; i < 4; i++)
   {
     const bitmap_t *bm;
-    int             w, h;
+    int             w;
+    int             h;
 
     bm = wuss_icons_bitmap(wuss, idx[i]);
     w  = bm ? bm->size.w : 16;
@@ -360,7 +362,8 @@ static void icons_add_pattern(icons_layout_t *lay)
  * sunken RISC OS display field), a RIDGE-bordered one (raised), an
  * ACTION-bordered one -- a 6px surround: raised outset, accent moat, raised
  * inset, like a default-action button -- then a DIVIDER-bordered one: a 4px
- * surround, outer sunken ring around inner raised, in lighter shades. */
+ * surround, outer sunken ring around inner raised, in lighter shades -- and
+ * a PLAIN-bordered one: a 1px fg outline, as a writable draws. */
 static void icons_add_borders(icons_layout_t *lay)
 {
   wuss_icon_spec_t *s;
@@ -368,7 +371,7 @@ static void icons_add_borders(icons_layout_t *lay)
 
   top     = lay->y;
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 150);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 176);
   s->type = wuss_ICON_TYPE_FRAME;
   s->text = "Borders";
   s->fg   = lay->black;
@@ -415,7 +418,51 @@ static void icons_add_borders(icons_layout_t *lay)
   s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
   lay->n++;
 
-  lay->y = top + 166;
+  s         = &lay->specs[lay->n];
+  s->bbox   = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 144, 180, 22);
+  s->type   = wuss_ICON_TYPE_LABEL;
+  s->text   = "Plain";
+  s->fg     = lay->black;
+  s->bg     = lay->window;
+  s->u.label.border = wuss_ICON_BORDER_PLAIN;
+  s->flags  = wuss_ICON_FLAGS_JUSTIFY_CENTRE;
+  lay->n++;
+
+  lay->y = top + 192;
+}
+
+/* A grouping frame captioned "Display fields", holding two read-only
+ * DISPLAY fields: a static left-justified one and a right-justified one the
+ * task rewrites with the "Press me" hit count. Returns the latter's index via
+ * *tally. */
+static void icons_add_display(icons_layout_t *lay, int *tally)
+{
+  wuss_icon_spec_t *s;
+  int               top;
+
+  top     = lay->y;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 72);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "Display fields";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  wuss_icon_spec_display(&lay->specs[lay->n],
+                         (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20,
+                                              180, 20),
+                         "Read-only value", 0);
+  lay->n++;
+
+  *tally = lay->n;
+  wuss_icon_spec_display(&lay->specs[lay->n],
+                         (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 44,
+                                              180, 20),
+                         "0", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  lay->n++;
+
+  lay->y = top + 88;
 }
 
 /* A grouping frame captioned "Sliders", holding a horizontal slider, a
@@ -560,6 +607,93 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
   lay->y = top + ICONS_ROW * 7 + 46;
 }
 
+/* A grouping frame captioned "Writables" holding two editable fields -- the
+ * second small enough to fill up -- and a label echoing whichever was last
+ * edited. Click a field for the caret; Tab / Shift-Tab hop between them.
+ * Returns the echo label's index via *echo. */
+static void icons_add_writables(icons_layout_t *lay, int *echo)
+{
+  wuss_icon_spec_t *s;
+  int               top;
+
+  top     = lay->y;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 90);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "Writables";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  wuss_icon_spec_writable(&lay->specs[lay->n],
+                          (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20, 180, 18),
+                          "Edit me", 64, 0);
+  lay->n++;
+
+  wuss_icon_spec_writable(&lay->specs[lay->n],
+                          (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 42, 60, 18),
+                          NULL, 6, 0);
+  lay->n++;
+
+  *echo   = lay->n;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 64, 180, 14);
+  s->type = wuss_ICON_TYPE_LABEL;
+  s->text = "";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  lay->y = top + 106;
+}
+
+/* A frame around a string set gadget and a label echoing its picks. The
+ * gadget itself is created after the icon array, in *gadget. Returns the
+ * echo label's index via *echo. */
+static void icons_add_stringset(icons_layout_t *lay,
+                                int            *echo,
+                                box_t          *gadget)
+{
+  wuss_icon_spec_t *s;
+  int               top;
+
+  top     = lay->y;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 68);
+  s->type = wuss_ICON_TYPE_FRAME;
+  s->text = "String set";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  *gadget = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20, 180, 18);
+
+  *echo   = lay->n;
+  s       = &lay->specs[lay->n];
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 42, 180, 14);
+  s->type = wuss_ICON_TYPE_LABEL;
+  s->text = "";
+  s->fg   = lay->black;
+  s->bg   = wuss_NO_BACKGROUND;
+  lay->n++;
+
+  lay->y = top + 84;
+}
+
+static result_t icons_sset_changed(wuss_stringset_t *stringset,
+                                   int               index,
+                                   void             *opaque)
+{
+  icons_task_t *tcx;
+  char          buf[32];
+
+  NOT_USED(stringset);
+
+  tcx = opaque;
+  snprintf(buf, sizeof(buf), "picked entry %d", index);
+  return wuss_icon_set_text(tcx->window, tcx->sset_echo, buf);
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t icons_create(wuss_t *wuss, icons_task_t **out)
@@ -574,12 +708,15 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   const char      *sprite_path;
   int              i_button, i_counter, i_opt, i_state, i_hotspot, i_ticked;
   int              i_shoriz, i_svert, i_sstate;
+  int              i_tally, i_echo, i_sset_echo;
+  box_t            sset_box;
   result_t         rc;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
     return result_OOM;
 
+  task->wuss       = wuss;
   task->font       = wuss_get_font_n(wuss, 0);
   task->label      = colour_rgb(0x00, 0x00, 0x00);
   /* only the ruler-text glyph blend; approximates the wuss_COLOUR_WINDOW /
@@ -597,24 +734,17 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   task->slider_horiz = NULL;
   task->slider_vert  = NULL;
   task->slider_state = NULL;
+  task->tally        = NULL;
+  task->echo         = NULL;
+  task->sset         = NULL;
+  task->sset_echo    = NULL;
 
   resources   = wuss_get_resources(wuss);
-  sprite_path = path_join_filename(resources, 3, "resources", "wuss",
-                                   path_join_leafname("ninepatch", "png"));
+  sprite_path = pathf("%s/resources/wuss/ninepatch.png", resources);
   if (bitmap_load_png(&task->sprite, sprite_path) == result_OK)
     task->has_sprite = 1;
 
-  /* load the wuss-wide icon set; path_join_filename hands back one shared
-   * static buffer and wuss_icons_load re-joins per file, so copy it first */
-  {
-    char icons_dir[256];
-
-    strncpy(icons_dir,
-            path_join_filename(resources, 3, "resources", "wuss", "icons"),
-            sizeof(icons_dir) - 1);
-    icons_dir[sizeof(icons_dir) - 1] = '\0';
-    (void) wuss_icons_load(wuss, icons_dir); /* absent set just skips the group */
-  }
+  /* the wuss-wide icon set is loaded once by wuss_create itself */
 
   delegate_desc.handle    = icons_handle;
   delegate_desc.task_data = task;
@@ -627,6 +757,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
     free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
+  task->delegate = delegate;
 
   memset(&lay, 0, sizeof(lay));
   lay.black  = wuss_COLOUR_BLACK;
@@ -638,7 +769,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(ICONS_DOC_W, 200),
                                  "Icons",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_BACKDROP_PATTERN(wuss_COLOUR_GREY,
                                                        screen_PATTERN_CROSSHATCH,
                                                        wuss_COLOUR_WINDOW),
@@ -654,9 +785,9 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   memset(specs, 0, sizeof(specs));
   lay.specs = specs;
   lay.n     = 0;
-  lay.y     = 28; /* icons sit past the ruler gutter -- see ICONS_GUTTER-ish
-                    * axis labels drawn by icons_redraw, which keep the top/
-                    * left strip to themselves */
+  lay.y     = 28; /* icons sit past the ruler gutter -- the axis labels
+                    * drawn by icons_redraw keep the top/left strip to
+                    * themselves */
 
   i_hotspot = -1;
 
@@ -667,8 +798,11 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   icons_add_iconset(&lay, wuss);
   icons_add_pattern(&lay);
   icons_add_borders(&lay);
+  icons_add_display(&lay, &i_tally);
   icons_add_sliders(&lay, &i_shoriz, &i_svert, &i_sstate);
   icons_add_menu(&lay, &i_ticked);
+  icons_add_writables(&lay, &i_echo);
+  icons_add_stringset(&lay, &i_sset_echo, &sset_box);
 
   rc = wuss_icon_create_array(task->window, specs, lay.n, made);
   if (rc != result_OK)
@@ -683,7 +817,27 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   task->slider_horiz = made[i_shoriz];
   task->slider_vert  = made[i_svert];
   task->slider_state = made[i_sstate];
+  task->tally        = made[i_tally];
+  task->echo         = made[i_echo];
+  task->sset_echo    = made[i_sset_echo];
   wuss_icon_set_selected(task->window, made[i_ticked], 1); /* "Show grid" starts ticked */
+
+  {
+    static const char *const sizes[] = { "Small", "Medium", "Large", "Huge" };
+
+    rc = wuss_stringset_create(&task->sset, task->window, sset_box, "Size",
+                               sizes, NELEMS(sizes), icons_sset_changed, task);
+    if (rc != result_OK)
+      goto failure;
+  }
+
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, ICONS_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in icons_handle */
+
+  WUSS_MENU_TITLE(task->menu, "Icons", task->menu_items,
+                 NELEMS(task->menu_items));
 
   /* fully built: from here a last-window close reaps the task and its
    * wuss_EVENT_QUIT frees task_data */
@@ -701,6 +855,8 @@ failure:
 
 void icons_destroy(icons_task_t *task)
 {
+  wuss_menu_close(task->menu_handle);
+  wuss_stringset_destroy(task->sset);
   if (task->has_sprite)
     free(task->sprite.base);
   free(task);
@@ -798,12 +954,16 @@ static result_t icons_redraw(const wuss_event_t *event, void *task_data)
 
 static result_t icons_icon(const wuss_event_t *event, void *task_data)
 {
+  result_t      rc;
   icons_task_t *tcx;
   wuss_icon_t  *icon;
   char          buf[48];
 
   tcx  = task_data;
   icon = event->data.icon.icon;
+
+  if (tcx->sset != NULL && wuss_stringset_handle_event(tcx->sset, event, &rc))
+    return rc;
 
   if (icon == tcx->slider_horiz || icon == tcx->slider_vert)
   {
@@ -812,6 +972,16 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
     name = (icon == tcx->slider_horiz) ? "horizontal" : "vertical";
     snprintf(buf, sizeof(buf), "%s: %d", name, event->data.icon.value);
     return wuss_icon_set_text(tcx->window, tcx->slider_state, buf);
+  }
+
+  /* a writable reports every edit */
+  if (wuss_icon_get_type(icon) == wuss_ICON_TYPE_WRITABLE)
+  {
+    if (event->data.icon.button != wuss_BUTTON_NONE)
+      return result_OK; /* just a click placing the caret */
+
+    snprintf(buf, sizeof(buf), "\"%s\"", wuss_icon_get_text(icon));
+    return wuss_icon_set_text(tcx->window, tcx->echo, buf);
   }
 
   /* a radio/option latches on MOUSE_UP -- report the state then */
@@ -828,11 +998,16 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
 
   if (event->data.icon.action != wuss_MOUSE_DOWN)
     return result_OK;
+
   if (icon != tcx->button && icon != tcx->hotspot)
     return result_OK;
 
   tcx->count++;
   snprintf(buf, sizeof(buf), "%d", tcx->count);
+
+  rc = wuss_icon_set_text(tcx->window, tcx->tally, buf);
+  if (rc != result_OK)
+    return rc;
 
   return wuss_icon_set_text(tcx->window, tcx->counter, buf);
 }
@@ -852,6 +1027,68 @@ result_t icons_handle(wuss_window_t      *window,
 
   case wuss_EVENT_ICON:
     return icons_icon(event, task_data);
+
+  case wuss_EVENT_MOUSE:
+    if (window != tcx->window)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
+
+    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+      return result_OK;
+
+    if (event->data.mouse.button & wuss_BUTTON_MENU)
+    {
+      static const wuss_proginfo_desc_t desc =
+      {
+        "Icons",
+        "Work-area icons, every type",
+        "(c) DPTLib contributors",
+        "1.0 (" __DATE__ ")"
+      };
+      wuss_proginfo_set_desc(&desc);
+      tcx->menu_items[ICONS_MENU_INFO].window =
+        wuss_proginfo_window(tcx->delegate);
+
+      return wuss_menu_open(tcx->delegate, &tcx->menu,
+                            wuss_get_pointer(tcx->wuss), &tcx->menu_handle);
+    }
+    return result_OK;
+
+  case wuss_EVENT_MENU_SELECT:
+  {
+    result_t rc;
+
+    if (tcx->sset != NULL && wuss_stringset_handle_event(tcx->sset, event, &rc))
+      return rc;
+
+    return result_OK;
+  }
+
+  case wuss_EVENT_MENU_CLOSED:
+  {
+    result_t rc;
+
+    if (tcx->sset != NULL) /* never consumed; lets it drop its own handle */
+      (void) wuss_stringset_handle_event(tcx->sset, event, &rc);
+    tcx->menu_handle = NULL;
+    return result_OK;
+  }
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == tcx->menu_items[ICONS_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_QUIT:
     icons_destroy(tcx);
