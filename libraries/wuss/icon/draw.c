@@ -177,6 +177,21 @@ static void wuss__icon_draw_pattern(const icon_draw_ctx_t *c,
 
 /* ----------------------------------------------------------------------- */
 
+/* Horizontal inset for left/right-justified label text: the border's width
+ * plus 2px clear space, or a bare 1px pad when unbordered. */
+static int icon_label_text_inset(wuss_icon_border_t border)
+{
+  switch (border)
+  {
+  case wuss_ICON_BORDER_ACTION:  return 6 + 2;
+  case wuss_ICON_BORDER_DIVIDER: return 4 + 2;
+  case wuss_ICON_BORDER_RIDGE:
+  case wuss_ICON_BORDER_GROOVE:  return 2 + 2;
+  case wuss_ICON_BORDER_PLAIN:   return 1 + 2;
+  default:                       return 1;
+  }
+}
+
 static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 {
   const wuss_icon_spec_t *icon = &c->icon->spec;
@@ -185,6 +200,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   point_t                 pos;
   bmfont_width_t          width;
   int                     len;
+  int                     inset;
 
   if (icon->bg != wuss_NO_BACKGROUND)
   {
@@ -238,12 +254,13 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   len = (int) strlen(icon->text);
   wuss__text_measure(c->font, icon->text, len, INT_MAX, NULL, &width);
 
+  inset = icon_label_text_inset(icon->u.label.border);
   if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_CENTRE)
     pos.x = b->x0 + ((b->x1 - b->x0) - width) / 2;
   else if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_RIGHT)
-    pos.x = b->x1 - 1 - width;
+    pos.x = b->x1 - inset - width;
   else
-    pos.x = b->x0 + 1;
+    pos.x = b->x0 + inset;
 
   pos.y = icon_text_baseline_y(c, b);
 
