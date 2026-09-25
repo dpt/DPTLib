@@ -394,6 +394,14 @@ wuss_icon_spec_t;
  *  wuss_ICON_TYPE_ACTION button, e.g. OK/Apply. */
 #define wuss_STD_PRIMARY_BUTTON_HEIGHT   34
 
+/** Per-edge border (px) of a non-default wuss_ICON_TYPE_ACTION button: one
+ *  bevel ring. */
+#define wuss_STD_SECONDARY_BUTTON_BORDER 2
+
+/** Per-edge border (px) of a wuss_ICON_FLAGS_DEFAULT wuss_ICON_TYPE_ACTION
+ *  button: three bevel rings (outset, accent moat, inset). */
+#define wuss_STD_PRIMARY_BUTTON_BORDER   (3 * wuss_STD_SECONDARY_BUTTON_BORDER)
+
 /** Standard gap (px) between two sibling icons/components in a layout. */
 #define wuss_STD_GAP                     4
 
