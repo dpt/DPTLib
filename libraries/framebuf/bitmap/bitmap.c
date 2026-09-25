@@ -142,6 +142,7 @@ static result_t bmconv_p4_to_bgrx8888_into(const bitmap_t *src,
   pixelfmt_bgrx8888_t       *outpixels;
   const unsigned char       *inrow;
   int                        x, y;
+  unsigned char              b;
 
   assert(src);
   assert(src->palette);
@@ -157,10 +158,16 @@ static result_t bmconv_p4_to_bgrx8888_into(const bitmap_t *src,
   inrow = src->base;
   for (y = 0; y < src->size.h; y++)
   {
-    /* per-pixel, so widths that aren't a multiple of 8 keep their last
-     * w % 8 pixels, and row padding in src->rowbytes is respected */
-    for (x = 0; x < src->size.w; x++)
-      *outpixels++ = map[(inrow[x >> 1] >> ((x & 1) << 2)) & 0xF];
+    /* a byte (two pixels, low nibble first) at a time, then any odd last
+     * pixel; row padding in src->rowbytes is respected */
+    for (x = 0; x + 1 < src->size.w; x += 2)
+    {
+      b = inrow[x >> 1];
+      *outpixels++ = map[b & 0xF];
+      *outpixels++ = map[b >> 4];
+    }
+    if (x < src->size.w)
+      *outpixels++ = map[inrow[x >> 1] & 0xF];
     inrow += src->rowbytes;
   }
 
