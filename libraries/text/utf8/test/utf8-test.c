@@ -44,6 +44,7 @@ result_t utf8_test(const char *resources)
   int           len;
   unsigned long codepoint;
   int           consumed;
+  char          buf[4];
 
   NOT_USED(resources);
 
@@ -58,6 +59,40 @@ result_t utf8_test(const char *resources)
               i, codepoint, consumed, tests[i].codepoint, tests[i].consumed);
       return result_TEST_FAILED;
     }
+
+    /* whatever decoded, stepping back from its end returns to its start */
+    if (utf8_prev(tests[i].s, consumed) != 0)
+    {
+      fprintf(stderr, "error: utf8 case %d stepped back wrongly\n", i);
+      return result_TEST_FAILED;
+    }
+
+    /* valid codepoints encode back to the bytes they came from */
+    if (codepoint != utf8_REPLACEMENT || consumed == 3)
+    {
+      if (utf8_encode(codepoint, buf) != consumed ||
+          memcmp(buf, tests[i].s, (size_t) consumed) != 0)
+      {
+        fprintf(stderr, "error: utf8 case %d didn't re-encode\n", i);
+        return result_TEST_FAILED;
+      }
+    }
+  }
+
+  /* stepping back over a malformed byte takes one byte, even when it follows
+   * a whole sequence */
+  if (utf8_prev("\xC2\xA9\x80", 3) != 2 ||
+      utf8_prev("\xC2\xA9\x80", 2) != 0 ||
+      utf8_prev("\xE2\x86", 2) != 1)
+  {
+    fprintf(stderr, "error: utf8_prev over malformed bytes\n");
+    return result_TEST_FAILED;
+  }
+
+  if (utf8_encode(0xD800, buf) != 0 || utf8_encode(0x110000, buf) != 0)
+  {
+    fprintf(stderr, "error: utf8_encode accepted an invalid codepoint\n");
+    return result_TEST_FAILED;
   }
 
   return result_TEST_PASSED;
