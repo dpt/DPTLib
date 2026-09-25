@@ -809,6 +809,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/lissajous.c
         libraries/wuss/test/tasks/minesweeper.c
         libraries/wuss/test/tasks/palette.c
+        libraries/wuss/test/tasks/particles.c
         libraries/wuss/test/tasks/patterns.c
         libraries/wuss/test/tasks/porter-duff.c
         libraries/wuss/test/tasks/saturn.c
@@ -836,6 +837,15 @@ if(BUILD_APPS)
     target_include_directories(wuss PRIVATE apps/wuss libraries/wuss/test)
     target_compile_definitions(wuss PRIVATE WUSS_APP)
     target_link_libraries(wuss DPTLib)
+
+    # The Particles task uses the Explosion engine. For local work on both
+    # repos, configure with -DFETCHCONTENT_SOURCE_DIR_EXPLOSION=../Explosion
+    include(FetchContent)
+    FetchContent_Declare(explosion
+                         GIT_REPOSITORY https://github.com/dpt/Explosion.git
+                         GIT_TAG fffb5bf59e90ce0d4f61041b43a9b0d9f55d9964) # develop
+    FetchContent_MakeAvailable(explosion)
+    target_link_libraries(wuss explosion)
 
     if(NOT MSVC)
         target_compile_options(wuss PRIVATE -ffunction-sections -fdata-sections)
