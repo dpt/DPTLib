@@ -177,17 +177,20 @@ void doughnut_destroy(doughnut_task_t *task)
 static result_t doughnut_redraw(const wuss_event_t *event,
                                 doughnut_task_t    *task)
 {
+  result_t       rc;
   screen_t      *scr;
   const box_t   *content, *bounds;
   int            sx, sy, width, height;
+  box_t          drawn;
   size_t         ncells;
+  double        *zbuf;
+  unsigned char *shade; /* palette index per z-buffer cell: 0 = background */
+  colour_t       palette[256]; /* 0 = background, 1..255 = grey level */
+  int            x, y;
   double         k1;
   double         theta, phi;
-  int            x, y;
   double         z, lum;
-  double        *zbuf;
-  unsigned char *shade; /* one grey level per z-buffer cell, painted at the end */
-  pixelfmt_any_t greypix[256]; /* grey level -> screen pixel */
+  bitmap_t       bm;
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
@@ -198,7 +201,14 @@ static result_t doughnut_redraw(const wuss_event_t *event,
   width  = box_size(bounds).w;
   height = box_size(bounds).h;
 
-  screen_fill_rect(scr, content->x0, content->y0, box_size(content), task->bg);
+  /* the shade bitmap paints its own background, so only fill whatever part of
+   * the content it doesn't reach */
+  drawn.x0 = bounds->x0 - sx;
+  drawn.y0 = bounds->y0 - sy;
+  drawn.x1 = drawn.x0 + width;
+  drawn.y1 = drawn.y0 + height;
+  if (!box_contains_box(content, &drawn))
+    screen_fill_rect(scr, content->x0, content->y0, box_size(content), task->bg);
 
   ncells = (size_t) (width * height);
   if (ncells > task->ncells)
@@ -219,12 +229,13 @@ static result_t doughnut_redraw(const wuss_event_t *event,
     }
   }
   zbuf  = task->zbuf;
-  shade = task->shade; /* only read where zbuf is set, so needn't be cleared */
+  shade = task->shade;
   memset(zbuf, 0, ncells * sizeof(*zbuf));
+  memset(shade, 0, ncells * sizeof(*shade));
 
-  /* resolve each grey once: per-pixel colour_to_pixel is a palette search */
-  for (x = 0; x < 256; x++)
-    greypix[x] = screen_colour_to_pixel(scr, colour_rgb(x, x, x));
+  palette[0] = task->bg;
+  for (x = 1; x < 256; x++)
+    palette[x] = colour_rgb(x, x, x);
 
   k1 = width * DOUGHNUT_K2 * 3.0 / (8.0 * (DOUGHNUT_R1 + DOUGHNUT_R2)) * task->zoom;
 
@@ -246,29 +257,21 @@ static result_t doughnut_redraw(const wuss_event_t *event,
       cell = y * width + x;
       if (z > zbuf[cell])
       {
-        int grey;
-
         zbuf[cell] = z;
-        grey = (int) ((lum < 0.0 ? 0.0 : lum) * 255.0);
-        if (grey > 255)
-          grey = 255;
-        shade[cell] = (unsigned char) grey;
+        /* darkest grey is 1, not 0: index 0 is the background */
+        shade[cell] = (unsigned char) CLAMP((int) (lum * 255.0), 1, 255);
       }
     }
   }
 
-  for (y = 0; y < height; y++)
-    for (x = 0; x < width; x++)
-    {
-      int cell;
+  /* one clipped blit of the whole shade buffer, rather than a clip test per
+   * pixel */
+  rc = bitmap_init(&bm, SIZE2D(width, height), pixelfmt_p8, width, palette,
+                   shade);
+  if (rc != result_OK)
+    return rc;
 
-      cell = y * width + x;
-      if (zbuf[cell] > 0.0)
-        screen_set_pixel_value(scr, bounds->x0 - sx + x,
-                               bounds->y0 - sy + y, greypix[shade[cell]]);
-    }
-
-  return result_OK;
+  return screen_copy_bitmap(scr, drawn.x0, drawn.y0, &bm);
 }
 
 /* radians of a/b rotation per pixel of Adjust drag, chosen to roughly match
