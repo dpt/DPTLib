@@ -9,6 +9,7 @@
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
+#include "framebuf/span-p4.h"
 #include "geom/box.h"
 #include "geom/point.h"
 #include "utils/fxp.h"
@@ -1430,6 +1431,34 @@ static result_t test_copy_rect_packed(void)
   return result_TEST_PASSED;
 }
 
+/* span_p4.fill on packed nibbles: every start parity and length over a short
+ * row must set exactly [first, first + length) and leave the rest alone. */
+static result_t test_fill_span_p4(void)
+{
+  unsigned char buf[16]; /* 32 pixels */
+  int           first, length, x, want;
+
+  for (first = 0; first < 8; first++)
+    for (length = 0; length <= 20; length++)
+    {
+      memset(buf, 0x33, sizeof(buf)); /* background index 3 */
+      span_p4.fill(buf, first, 0xC, length);
+
+      for (x = 0; x < 32; x++)
+      {
+        want = (x >= first && x < first + length) ? 0xC : 0x3;
+        if (house_pixel_at(buf, x, 4) != want)
+        {
+          printf("screen: span_p4 fill first=%d length=%d wrong at x=%d\n",
+                 first, length, x);
+          return result_TEST_FAILED;
+        }
+      }
+    }
+
+  return result_TEST_PASSED;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t screen_test(const char *resources)
@@ -1453,7 +1482,8 @@ result_t screen_test(const char *resources)
     test_copy_bitmap_p8,
     test_copy_bitmap_paletted_source,
     test_copy_bitmap_dithered,
-    test_copy_rect_packed
+    test_copy_rect_packed,
+    test_fill_span_p4
   };
 
   result_t rc;
