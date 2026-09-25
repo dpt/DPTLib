@@ -2223,8 +2223,43 @@ result_t wuss_test(const char *resources)
     /* keys the field doesn't use reach the task */
     wuss_key(wuss, 13, wuss_KEY_MOD_NONE, &claimed);
     wuss_key(wuss, 'z', wuss_KEY_MOD_CTRL, &claimed);
-    wuss_key(wuss, 0x263A, wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, wuss_KEY_F1, wuss_KEY_MOD_NONE, &claimed);
     if (tc_w.key_count != 3 || strcmp(wuss_icon_get_text(icons[1]), "b") != 0)
+      goto Failure;
+
+    /* non-ASCII keys insert as UTF-8; the caret, Backspace and Delete step
+     * over whole codepoints */
+    tc_w.icon_count = 0;
+    wuss_key(wuss, 0xA9, wuss_KEY_MOD_NONE, &claimed);    /* copyright */
+    wuss_key(wuss, 0x263A, wuss_KEY_MOD_NONE, &claimed);  /* smiley */
+    wuss_key(wuss, 0x1F600, wuss_KEY_MOD_NONE, &claimed); /* emoji */
+    if (!claimed ||
+        strcmp(wuss_icon_get_text(icons[1]),
+               "b\xC2\xA9\xE2\x98\xBA\xF0\x9F\x98\x80") != 0 ||
+        wuss->caret_index != 10 || tc_w.icon_count != 3)
+      goto Failure;
+    wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_NONE, &claimed);
+    if (wuss->caret_index != 6) goto Failure;
+    wuss_key(wuss, 8, wuss_KEY_MOD_NONE, &claimed);
+    if (wuss->caret_index != 3 ||
+        strcmp(wuss_icon_get_text(icons[1]), "b\xC2\xA9\xF0\x9F\x98\x80") != 0)
+      goto Failure;
+    wuss_key(wuss, wuss_KEY_DELETE, wuss_KEY_MOD_NONE, &claimed);
+    wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_NONE, &claimed);
+    if (wuss->caret_index != 1 ||
+        strcmp(wuss_icon_get_text(icons[1]), "b\xC2\xA9") != 0)
+      goto Failure;
+    wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_NONE, &claimed);
+    if (wuss->caret_index != 3) goto Failure;
+
+    /* a caret placed inside a codepoint snaps to its start */
+    wuss_icon_set_caret(win_w, icons[1], 2);
+    if (wuss->caret_index != 1) goto Failure;
+
+    /* C1 controls aren't inserted: they reach the task */
+    wuss_key(wuss, 0x85, wuss_KEY_MOD_NONE, &claimed);
+    if (tc_w.key_count != 4 ||
+        strcmp(wuss_icon_get_text(icons[1]), "b\xC2\xA9") != 0)
       goto Failure;
 
     /* Ctrl+Left/Right jump to the ends; Shift+Left/Right move by words */
@@ -2249,7 +2284,7 @@ result_t wuss_test(const char *resources)
     wuss_key(wuss, 'u', wuss_KEY_MOD_CTRL, &claimed);
     if (!claimed || wuss_icon_get_text(icons[1])[0] != '\0' ||
         wuss->caret_index != 0 || tc_w.icon_count != 1 ||
-        tc_w.key_count != 3)
+        tc_w.key_count != 4)
       goto Failure;
 
     /* Tab wraps over the hidden field; Shift-Tab goes back */
@@ -2271,6 +2306,11 @@ result_t wuss_test(const char *resources)
     rc = wuss_icon_set_text(win_w, icons[0], "hi");
     if (rc != result_OK || strcmp(wuss_icon_get_text(icons[0]), "hi") != 0 ||
         wuss->caret_index != 2)
+      goto Failure;
+
+    /* ...without splitting a codepoint */
+    rc = wuss_icon_set_text(win_w, icons[0], "ab\xC2\xA9");
+    if (rc != result_OK || strcmp(wuss_icon_get_text(icons[0]), "ab") != 0)
       goto Failure;
 
     /* a hidden field can't take the caret; hiding the caret field drops it */
