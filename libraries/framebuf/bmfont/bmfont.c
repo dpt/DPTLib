@@ -11,6 +11,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +48,23 @@
 
 /* -------------------------------------------------------------------------- */
 
+/* Highest codepoint a cmap may reference */
+#define CMAP_MAX_CODEPOINT (0x10FFFF)
+
+/* Longest .map line accepted, including the newline */
+#define CMAP_MAX_LINE      (256)
+
+/* -------------------------------------------------------------------------- */
+
+/** A cmap group: a run of consecutive codepoints mapped to consecutive
+ *  glyphs, as in TrueType cmap format 12. */
+typedef struct bmfont_cmap_group
+{
+  unsigned long first, last; /* inclusive codepoint range */
+  int           glyph;       /* glyph ID of 'first' */
+}
+bmfont_cmap_group_t;
+
 struct bmfont
 {
   png_uint_32     gridwidth, gridheight; /* pixels */
@@ -62,6 +80,10 @@ struct bmfont
   int             adw_used;
   int             adw_allocated;
   bmfont_width_t  maxadw; /* widest advance width, for monospaced mode */
+
+  bmfont_cmap_group_t *cmap; /* sorted by codepoint, non-overlapping */
+  int                  cmap_used;
+  int                  cmap_allocated;
 
   bmfont_flags_t  flags;
 };
@@ -536,6 +558,235 @@ oom:
 
 /* -------------------------------------------------------------------------- */
 
+static const char *skip_space(const char *p)
+{
+  while (*p == ' ' || *p == '\t')
+    p++;
+
+  return p;
+}
+
+/** Parse a "U+<hex>" codepoint at \p *pp, advancing \p *pp past it.
+ *  Returns 0 if there isn't one. */
+static int parse_codepoint(const char **pp, unsigned long *codepoint)
+{
+  const char *p;
+  char       *end;
+
+  p = *pp;
+  if (p[0] != 'U' || p[1] != '+' || !isxdigit((unsigned char) p[2]))
+    return 0;
+
+  *codepoint = strtoul(p + 2, &end, 16);
+  *pp = end;
+  return 1;
+}
+
+/** Parse one .map line into \p group. Returns 1 for a group, 0 for a blank
+ *  or comment-only line and -1 for anything else. */
+static int parse_cmap_line(char *line, bmfont_cmap_group_t *group)
+{
+  char       *hash;
+  const char *p;
+  char       *end;
+  long        glyph;
+
+  hash = strchr(line, '#');
+  if (hash)
+    *hash = '\0';
+
+  p = skip_space(line);
+  if (*p == '\0' || *p == '\r' || *p == '\n')
+    return 0;
+
+  if (!parse_codepoint(&p, &group->first))
+    return -1;
+
+  group->last = group->first;
+  if (p[0] == '.' && p[1] == '.')
+  {
+    p += 2;
+    if (!parse_codepoint(&p, &group->last))
+      return -1;
+  }
+
+  if (*p != ' ' && *p != '\t')
+    return -1;
+
+  p = skip_space(p);
+  if (!isdigit((unsigned char) *p))
+    return -1;
+
+  glyph = strtol(p, &end, 10);
+  if (glyph > INT_MAX)
+    return -1;
+
+  group->glyph = (int) glyph;
+
+  p = skip_space(end);
+  if (*p != '\0' && *p != '\r' && *p != '\n')
+    return -1;
+
+  return 1;
+}
+
+static result_t add_cmap_group(bmfont_t                  *bmfont,
+                               const bmfont_cmap_group_t *group)
+{
+  if (array_grow((void **) &bmfont->cmap,
+                            sizeof(*bmfont->cmap),
+                            bmfont->cmap_used,
+                            &bmfont->cmap_allocated,
+                            1,
+                            8))
+    return result_OOM;
+
+  bmfont->cmap[bmfont->cmap_used++] = *group;
+  return result_OK;
+}
+
+/** Read the cmap from the open .map sidecar \p fp. */
+static result_t read_cmap(bmfont_t *bmfont, FILE *fp)
+{
+  result_t            rc;
+  int                 lineno;
+  char                line[CMAP_MAX_LINE];
+  int                 kind;
+  bmfont_cmap_group_t group;
+  unsigned long       prev_last;
+
+  lineno = 0;
+  while (fgets(line, sizeof(line), fp))
+  {
+    lineno++;
+
+    if (strchr(line, '\n') == NULL && !feof(fp))
+    {
+      logf_error("bmfont: map line %d is too long", lineno);
+      return result_BMFONT_BAD_MAP;
+    }
+
+    kind = parse_cmap_line(line, &group);
+    if (kind == 0)
+      continue;
+
+    if (kind < 0)
+    {
+      logf_error("bmfont: map line %d is malformed", lineno);
+      return result_BMFONT_BAD_MAP;
+    }
+
+    prev_last = bmfont->cmap_used ?
+                bmfont->cmap[bmfont->cmap_used - 1].last : 0;
+
+    if (group.last < group.first ||
+        group.last > CMAP_MAX_CODEPOINT ||
+        (bmfont->cmap_used && group.first <= prev_last) ||
+        group.glyph >= bmfont->totalchars ||
+        group.last - group.first >=
+          (unsigned long) (bmfont->totalchars - group.glyph))
+    {
+      logf_error("bmfont: map line %d is out of order or out of range",
+                 lineno);
+      return result_BMFONT_BAD_MAP;
+    }
+
+    rc = add_cmap_group(bmfont, &group);
+    if (rc)
+      return rc;
+  }
+
+  return result_OK;
+}
+
+/**
+ * Load the cmap for the font at \p png from its .map sidecar (the path with
+ * its trailing "png" swapped for "map"). Without a sidecar, map U+0020
+ * onwards to glyph 0 onwards, ending at the last cell with an advance width.
+ */
+static result_t load_cmap(bmfont_t *bmfont, const char *png)
+{
+  result_t            rc;
+  FILE               *fp;
+  size_t              len;
+  char               *mappath;
+  int                 i;
+  bmfont_cmap_group_t group;
+
+  fp = NULL;
+
+  len = strlen(png);
+  if (len >= 3 && strcmp(png + len - 3, "png") == 0)
+  {
+    mappath = malloc(len + 1);
+    if (mappath == NULL)
+      return result_OOM;
+
+    memcpy(mappath, png, len - 3);
+    strcpy(mappath + len - 3, "map");
+    fp = fopen(mappath, "r");
+    free(mappath);
+  }
+
+  if (fp)
+  {
+    rc = read_cmap(bmfont, fp);
+    fclose(fp);
+    return rc;
+  }
+
+  /* implicit mapping */
+  for (i = bmfont->adw_used - 1; i >= 0; i--)
+    if (bmfont->adw[i] > 0)
+      break;
+
+  if (i < 0)
+    return result_OK; /* no glyphs at all */
+
+  group.first = ' ';
+  group.last  = ' ' + (unsigned long) i;
+  group.glyph = 0;
+  return add_cmap_group(bmfont, &group);
+}
+
+/** bsearch() comparator: is the codepoint \p key within \p elem's range? */
+static int cmap_group_compare(const void *key, const void *elem)
+{
+  unsigned long              codepoint;
+  const bmfont_cmap_group_t *group;
+
+  codepoint = *(const unsigned long *) key;
+  group     = elem;
+
+  if (codepoint < group->first)
+    return -1;
+  if (codepoint > group->last)
+    return 1;
+  return 0;
+}
+
+int bmfont_lookup(bmfont_t *bmfont, unsigned long codepoint)
+{
+  const bmfont_cmap_group_t *group;
+
+  assert(bmfont);
+
+  if (bmfont->cmap_used == 0)
+    return -1; /* bsearch() may not be passed a NULL base */
+
+  group = bsearch(&codepoint,
+                  bmfont->cmap,
+                  (size_t) bmfont->cmap_used,
+                  sizeof(*bmfont->cmap),
+                  cmap_group_compare);
+  if (group == NULL)
+    return -1;
+
+  return group->glyph + (int) (codepoint - group->first);
+}
+
+/* -------------------------------------------------------------------------- */
+
 /**
  * Loads a PNG as a font.
  *
@@ -691,6 +942,10 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
     rc = extract_glyphs(bmfont, pixels, pngwidth, pngheight, pngrowbytes);
     if (rc)
       goto cleanup;
+
+    rc = load_cmap(bmfont, png);
+    if (rc)
+      goto cleanup;
   }
 
   *pbmfont = bmfont;
@@ -701,7 +956,7 @@ cleanup:
   free(row_pointers);
   free(pixels);
   if (rc)
-    free(bmfont);
+    bmfont_destroy(bmfont);
   if (png_ptr)
     png_destroy_read_struct(&png_ptr, NULL, NULL);
   fclose(fp);
@@ -714,6 +969,12 @@ oom:
 
 void bmfont_destroy(bmfont_t *bmfont)
 {
+  if (bmfont == NULL)
+    return;
+
+  free(bmfont->cmap);
+  free(bmfont->adw);
+  free(bmfont->glyphs);
   free(bmfont);
 }
 

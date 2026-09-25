@@ -33,7 +33,7 @@ Pixel value 3 draws the cell's left sidebearing line (cosmetic only) plus two fu
 
 ## Unicode Mapping
 
-> **Status: planned.** This section specifies the format only; bmfont does not yet read `.map` files or decode UTF-8.
+> **Status: partial.** `bmfont_create` loads and validates the cmap and `bmfont_lookup` maps a codepoint to a glyph ID, but drawing and measuring still treat text as bytes from U+0020, with no UTF-8 decoding. Metrics are still read from grid column 0.
 
 The PNG format above is unchanged. Unicode coverage is added by a TrueType-style character map (cmap) that maps codepoints to cells:
 

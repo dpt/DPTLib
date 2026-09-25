@@ -7,6 +7,13 @@
 #include "geom/point.h"
 #include "framebuf/screen.h"
 
+/* ----------------------------------------------------------------------- */
+
+/** A font's .map sidecar was malformed, out of order or out of range. */
+#define result_BMFONT_BAD_MAP (result_BASE_BMFONT + 0)
+
+/* ----------------------------------------------------------------------- */
+
 /** A bitmap font handle. */
 typedef struct bmfont bmfont_t;
 
@@ -124,6 +131,16 @@ void bmfont_get_info(bmfont_t *bmfont,
  * \return Number of glyphs in the font.
  */
 int bmfont_get_count(bmfont_t *bmfont);
+
+/**
+ * Look up the glyph for a Unicode codepoint via the font's cmap, loaded from
+ * its .map sidecar or, without one, the implicit mapping from U+0020.
+ *
+ * \param[in]  bmfont     Bitmap font to query.
+ * \param[in]  codepoint  Unicode codepoint.
+ * \return Glyph ID (cell index in reading order), or -1 if unmapped.
+ */
+int bmfont_lookup(bmfont_t *bmfont, unsigned long codepoint);
 
 /**
  * Measure the width of a string drawn with the specified font.

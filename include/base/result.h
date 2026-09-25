@@ -24,6 +24,7 @@ typedef int result_t;
 #define result_BASE_BITFIFO                     0x0A00
 #define result_BASE_WUSS                        0x0B00
 #define result_BASE_STACK                       0x0C00
+#define result_BASE_BMFONT                      0x0D00
 
 /* Non-DPTLib bases */
 #define result_BASE_MMPLAYER                    0x4000
@@ -65,6 +66,7 @@ typedef int result_t;
 /* Packer result codes are in geom/packer.h */
 /* Layout result codes are in geom/layout.h */
 /* Wuss result codes are in wuss/wuss.h */
+/* Bmfont result codes are in framebuf/bmfont.h */
 
 /* ----------------------------------------------------------------------- */
 
