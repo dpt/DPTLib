@@ -15,6 +15,11 @@
 
 #define PARTICLES_BURST (MAX_PARTICLES / 2) /* particles per click */
 
+/* pointer trail, as Explosion's playground */
+#define PARTICLES_TRAIL_RATE    5.0f  /* particles per second */
+#define PARTICLES_TRAIL_MAX     10    /* cap per idle tick */
+#define PARTICLES_TRAIL_DAMPING 0.25f /* fraction of pointer velocity kept */
+
 /* MENU click pops this single-item menu; the item table and wuss_menu_t
  * live per-instance in particles_task_t, not as a file-scope static, so
  * that each window's Info row can hold its own .window pointer to the
@@ -285,6 +290,54 @@ static result_t particles_redraw(const wuss_event_t *event, void *task_data)
   return result_OK;
 }
 
+/* note the pointer's position and velocity for particles_trail */
+static void particles_track(particles_task_t *pt, int x, int y)
+{
+  float dt;
+
+  dt = (pt->now_ms - pt->last_move_ms) / 1000.0f;
+  if (pt->pointer_in && dt > 0.0f)
+  {
+    pt->mvx = (x - pt->mx) / dt;
+    pt->mvy = (y - pt->my) / dt;
+  }
+  else if (!pt->pointer_in)
+  {
+    /* first move since entering: no velocity yet, and no backlog of trail
+     * particles owed for the time spent outside */
+    pt->mvx          = 0.0f;
+    pt->mvy          = 0.0f;
+    pt->last_emit_ms = pt->now_ms;
+    pt->pointer_in   = 1;
+  }
+
+  pt->mx           = x;
+  pt->my           = y;
+  pt->last_move_ms = pt->now_ms;
+}
+
+/* emit the pointer trail, carrying some of the pointer's velocity */
+static void particles_trail(particles_task_t *pt)
+{
+  float emit_dt;
+  int   n;
+
+  if (!pt->pointer_in)
+    return;
+
+  emit_dt = (pt->now_ms - pt->last_emit_ms) / 1000.0f;
+  n       = CLAMP((int) (emit_dt * PARTICLES_TRAIL_RATE), 0,
+                  PARTICLES_TRAIL_MAX);
+  if (n == 0)
+    return;
+
+  while (n-- > 0)
+    create_particle(&pt->ps, PARTICLES_PASTEL, pt->mx, pt->my,
+                    pt->mvx * PARTICLES_TRAIL_DAMPING,
+                    pt->mvy * PARTICLES_TRAIL_DAMPING);
+  pt->last_emit_ms = pt->now_ms;
+}
+
 static result_t particles_mouse(wuss_window_t      *window,
                                 wuss_mouse_action_t action,
                                 int                 x,
@@ -299,6 +352,13 @@ static result_t particles_mouse(wuss_window_t      *window,
   if (window != pt->window)
     return result_OK; /* the proginfo dialogue has no click behaviour of
                        * its own */
+
+  /* x,y arrive in virtual content space, as the particles are held */
+  if (action == wuss_MOUSE_MOVE)
+  {
+    particles_track(pt, x, y);
+    return result_OK;
+  }
 
   if (action != wuss_MOUSE_DOWN)
     return result_OK;
@@ -320,7 +380,6 @@ static result_t particles_mouse(wuss_window_t      *window,
                           wuss_get_pointer(pt->wuss), &pt->menu_handle);
   }
 
-  /* x,y arrive in virtual content space, as the particles are held */
   if (button & wuss_BUTTON_SELECT)
     create_explosion(&pt->ps, -1, x, y, 0.0f, 0.0f, PARTICLES_BURST);
   else if (button & wuss_BUTTON_ADJUST)
@@ -353,6 +412,7 @@ static result_t particles_idle(void *task_data)
    * frame rate; feed a real clock's delta here if that ever matters */
   pt->now_ms += 1000 / PHYSICS_FPS;
   update_particles(&pt->ps, 1.0f / PHYSICS_FPS);
+  particles_trail(pt);
 
   if (!is_active(&pt->ps) && pt->ps.width > 0 && pt->ps.height > 0)
     create_explosion(&pt->ps, -1,
@@ -386,6 +446,11 @@ result_t particles_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     return particles_idle(task_data);
+
+  case wuss_EVENT_POINTER_EXIT:
+    if (window == pt->window)
+      pt->pointer_in = 0;
+    return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
     pt->menu_handle = NULL;
