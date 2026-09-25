@@ -104,6 +104,22 @@ void screen_fill_rect(screen_t *scr,
                       colour_t  colour);
 
 /**
+ * Draws a solid rectangle using a pixel value already in the screen's
+ * format.
+ *
+ * \param[in] scr   Screen to draw upon.
+ * \param[in] x     X coordinate of leftmost point of rectangle.
+ * \param[in] y     Y coordinate of topmost point of rectangle.
+ * \param[in] size  Width and height of rectangle.
+ * \param[in] pxl   Pixel value, e.g. from screen_colour_to_pixel.
+ */
+void screen_fill_rect_value(screen_t      *scr,
+                            int            x,
+                            int            y,
+                            size2d_t       size,
+                            pixelfmt_any_t pxl);
+
+/**
  * Fills several solid rectangles in one call, all in the same colour.
  *
  * Equivalent to calling `screen_fill_rect` once per box. A non-positive

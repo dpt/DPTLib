@@ -194,11 +194,11 @@ static void particles_render(int   x,
 
   pt = opaque;
 
-  screen_fill_rect(pt->scr,
-                   pt->ox + x - size / 2,
-                   pt->oy + y - size / 2,
-                   SIZE2D(size, size),
-                   pt->palette[palette_index]);
+  screen_fill_rect_value(pt->scr,
+                         pt->ox + x - size / 2,
+                         pt->oy + y - size / 2,
+                         SIZE2D(size, size),
+                         pt->pixels[palette_index]);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -296,6 +296,7 @@ static result_t particles_redraw(const wuss_event_t *event, void *task_data)
 {
   particles_task_t *pt;
   const box_t      *content, *bounds;
+  int               i;
 
   pt = task_data;
 
@@ -305,6 +306,11 @@ static result_t particles_redraw(const wuss_event_t *event, void *task_data)
   pt->scr = event->data.redraw.scr;
   pt->ox  = bounds->x0 - event->data.redraw.scroll.x;
   pt->oy  = bounds->y0 - event->data.redraw.scroll.y;
+
+  /* resolve the palette once per redraw rather than once per particle; the
+   * screen's own palette can change between redraws */
+  for (i = 0; i < (int) NELEMS(pt->pixels); i++)
+    pt->pixels[i] = screen_colour_to_pixel(pt->scr, pt->palette[i]);
 
   screen_fill_rect(pt->scr, content->x0, content->y0, box_size(content),
                    colour_rgb(0x00, 0x00, 0x00));

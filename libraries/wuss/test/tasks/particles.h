@@ -51,6 +51,7 @@ typedef struct particles_task
   /* valid only during redraw, for the engine's render callback */
   screen_t           *scr;
   int                 ox, oy;
+  pixelfmt_any_t      pixels[PARTICLES_NSTYLES * PALETTE_SIZE]; /* palette[] in scr's format */
 }
 particles_task_t;
 
