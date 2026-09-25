@@ -57,6 +57,7 @@ struct wuss_frontend
   char                 text[64]; /* pending TEXT_INPUT, UTF-8 */
   const char          *text_pos; /* next code point in text to hand out */
   wuss_key_modifiers_t text_mods;
+  Uint64               next_frame; /* SDL_GetTicksNS() deadline for the next present */
 };
 
 /* ----------------------------------------------------------------------- */
@@ -462,6 +463,8 @@ void wuss_frontend_present(wuss_frontend_t *fe,
                            const bitmap_t  *bm,
                            const box_t     *dirty)
 {
+  Uint64 now;
+
   if (fe->depth == 32)
   {
     SDL_UpdateTexture(fe->texture, NULL, bm->base, bm->rowbytes);
@@ -514,7 +517,15 @@ present:
   SDL_RenderTexture(fe->renderer, fe->texture, NULL, NULL);
   SDL_RenderPresent(fe->renderer);
 
-  SDL_Delay(1000 / 60);
+  /* Pace to 60 Hz by sleeping only for what's left of this frame's slot, so
+   * the frame's own work counts towards it. When running late, restart the
+   * schedule from now rather than trying to catch up. */
+  now = SDL_GetTicksNS();
+  if (fe->next_frame > now)
+    SDL_DelayNS(fe->next_frame - now);
+  else
+    fe->next_frame = now;
+  fe->next_frame += SDL_NS_PER_SECOND / 60;
 }
 
 void wuss_frontend_zoom(wuss_frontend_t *fe, int delta)
