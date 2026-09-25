@@ -1685,6 +1685,49 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+/* Ascent and descent come from the first ink-free cell, not always cell 0:
+ * Henry-SpaceSwapped is DPT-Henry with 'g' moved into cell 0 (its descender
+ * breaks the baseline row) and space moved to g's cell, so it must yield the
+ * same metrics as the original. */
+static result_t bmfont_metrics_test(const char *resources)
+{
+  static const char *fonts[] =
+  {
+    "bmfonts/DPT-Henry.png",
+    "bmfonts-test/Henry-SpaceSwapped.png"
+  };
+
+  const char *filename;
+  bmfont_t   *bmfont;
+  int         ascent[NELEMS(fonts)];
+  int         descent[NELEMS(fonts)];
+  int         i;
+
+  for (i = 0; i < NELEMS(fonts); i++)
+  {
+    filename = pathf("%s/resources/%s", resources, fonts[i]);
+    if (bmfont_create(filename, &bmfont))
+    {
+      fprintf(stderr, "Error: Failed to load font %s\n", filename);
+      return result_TEST_FAILED;
+    }
+
+    bmfont_get_info(bmfont, NULL, NULL, &ascent[i], &descent[i]);
+    bmfont_destroy(bmfont);
+  }
+
+  if (descent[0] == 0 || ascent[1] != ascent[0] || descent[1] != descent[0])
+  {
+    fprintf(stderr, "error: metrics %d/%d, expected %d/%d (nonzero descent)\n",
+            ascent[1], descent[1], ascent[0], descent[0]);
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t bmfont_test(const char *resources)
 {
   static const struct
@@ -1725,6 +1768,10 @@ result_t bmfont_test(const char *resources)
     return rc;
 
   rc = bmfont_cmap_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_metrics_test(resources);
   if (rc != result_TEST_PASSED)
     return rc;
 

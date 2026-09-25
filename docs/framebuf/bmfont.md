@@ -27,13 +27,13 @@ The PNG should be 32 characters wide: bmfont works out the character dimensions 
 - 2 -- advance-width marker (row 0 of each glyph cell: one pixel per column, present wherever that column's glyph should draw, sets the advance width)
 - 3 -- grid/baseline (see below)
 
-Pixel value 3 draws the cell's left sidebearing line (cosmetic only) plus two full-width rows that `bmfont_create` reads back to work out `ascent` and `descent`: one at the font's baseline, one at the cell bottom. It scans the space glyph's cell (grid column 0, which carries no ink to interfere) for the first two full-width rows of value-3 pixels within the cell body; the first is the baseline (its offset from the top of the cell is the ascent) and the second is the cell bottom (its offset from the baseline is the descent). A font predating this convention (no such rows found) falls back to treating the whole cell as ascent, with zero descent.
+Pixel value 3 draws the cell's left sidebearing line (cosmetic only) plus two full-width rows that `bmfont_create` reads back to work out `ascent` and `descent`: one at the font's baseline, one at the cell bottom. It scans the first cell with no ink (normally the space glyph in grid column 0; see [Metrics](#metrics)) for the first two full-width rows of value-3 pixels within the cell body; the first is the baseline (its offset from the top of the cell is the ascent) and the second is the cell bottom (its offset from the baseline is the descent). A font predating this convention (no such rows found) falls back to treating the whole cell as ascent, with zero descent.
 
 `tools/ttf2bmfont.py` generates conforming PNGs from a TTF automatically. `--no-grid` omits all the value-3 pixels, baseline row included -- don't pass it, or `bmfont_create` will fall back to the no-descender default for that font.
 
 ## Unicode Mapping
 
-> **Status: partial.** `bmfont_create` loads and validates the cmap and `bmfont_lookup` maps a codepoint to a glyph ID, but drawing and measuring still treat text as bytes from U+0020, with no UTF-8 decoding. Metrics are still read from grid column 0.
+> **Status: partial.** `bmfont_create` loads and validates the cmap and `bmfont_lookup` maps a codepoint to a glyph ID, but drawing and measuring still treat text as bytes from U+0020, with no UTF-8 decoding.
 
 The PNG format above is unchanged. Unicode coverage is added by a TrueType-style character map (cmap) that maps codepoints to cells:
 
