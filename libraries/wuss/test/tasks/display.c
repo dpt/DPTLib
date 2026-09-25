@@ -3,7 +3,6 @@
 #ifdef WUSS_APP
 
 #include <stdlib.h>
-#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -12,6 +11,7 @@
 #include "base/utils.h"
 #include "geom/box.h"
 #include "geom/size.h"
+#include "geom/stack.h"
 #include "wuss/icon-spec.h"
 #include "wuss/icon.h"
 
@@ -21,14 +21,58 @@
 
 enum { DISPLAY_MENU_INFO };
 
-#define DISPLAY_MARGIN  8
-#define DISPLAY_LABEL_W 66 /* px; enough for "Resolution" at 6px/char */
-#define DISPLAY_SET_W   120
-#define DISPLAY_ROW_H   18
-#define DISPLAY_DOC_W   (DISPLAY_MARGIN * 2 + DISPLAY_LABEL_W + \
-                         wuss_STD_GAP + DISPLAY_SET_W)
-#define DISPLAY_DOC_H   (DISPLAY_MARGIN * 2 + DISPLAY_ROW_H * 2 + \
-                         wuss_STD_GAP)
+#define DISPLAY_LABEL_W      66 /* px; enough for "Resolution" at 6px/char */
+#define DISPLAY_SET_W        120
+#define DISPLAY_ROW_H        18
+#define DISPLAY_CHAR_W       6 /* ponytail: assumes the 6px system font */
+#define DISPLAY_ACTION_W(W)  (((W) + 2) * DISPLAY_CHAR_W + \
+                              2 * wuss_STD_SECONDARY_BUTTON_BORDER)
+#define DISPLAY_DEFAULT_W(W) (((W) + 2) * DISPLAY_CHAR_W + \
+                              2 * wuss_STD_PRIMARY_BUTTON_BORDER)
+
+enum
+{
+  DISPLAY_ST_ROOT,
+  DISPLAY_ST_COLOURS_ROW,
+  DISPLAY_ST_COLOURS_LABEL,
+  DISPLAY_ST_COLOURS,
+  DISPLAY_ST_RESOLUTION_ROW,
+  DISPLAY_ST_RESOLUTION_LABEL,
+  DISPLAY_ST_RESOLUTION,
+  DISPLAY_ST_BUTTONS,
+  DISPLAY_ST_BUTTONS_SPACER,
+  DISPLAY_ST_CANCEL,
+  DISPLAY_ST_CHANGE,
+  DISPLAY_ST__LIMIT
+};
+
+static const stack_item_t g_display_stack[DISPLAY_ST__LIMIT] =
+{
+  [DISPLAY_ST_ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
+                        .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
+
+  [DISPLAY_ST_COLOURS_ROW]      = STACK_HBOX(DISPLAY_ST_ROOT, DISPLAY_ROW_H, wuss_STD_GAP, stack_ALIGN_START),
+  [DISPLAY_ST_COLOURS_LABEL]    = STACK_LEAF(DISPLAY_ST_COLOURS_ROW, DISPLAY_LABEL_W, DISPLAY_ROW_H, stack_ALIGN_CENTRE),
+  [DISPLAY_ST_COLOURS]          = STACK_LEAF(DISPLAY_ST_COLOURS_ROW, DISPLAY_SET_W, DISPLAY_ROW_H, stack_ALIGN_CENTRE),
+
+  [DISPLAY_ST_RESOLUTION_ROW]   = STACK_HBOX(DISPLAY_ST_ROOT, DISPLAY_ROW_H, wuss_STD_GAP, stack_ALIGN_START),
+  [DISPLAY_ST_RESOLUTION_LABEL] = STACK_LEAF(DISPLAY_ST_RESOLUTION_ROW, DISPLAY_LABEL_W, DISPLAY_ROW_H, stack_ALIGN_CENTRE),
+  [DISPLAY_ST_RESOLUTION]       = STACK_LEAF(DISPLAY_ST_RESOLUTION_ROW, DISPLAY_SET_W, DISPLAY_ROW_H, stack_ALIGN_CENTRE),
+
+  [DISPLAY_ST_BUTTONS]          = STACK_HBOX(DISPLAY_ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
+  [DISPLAY_ST_BUTTONS_SPACER]   = STACK_SPACER(DISPLAY_ST_BUTTONS, 1), /* push the buttons right */
+  [DISPLAY_ST_CANCEL]           = STACK_LEAF(DISPLAY_ST_BUTTONS, DISPLAY_ACTION_W(6), wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [DISPLAY_ST_CHANGE]           = STACK_LEAF(DISPLAY_ST_BUTTONS, DISPLAY_DEFAULT_W(6), wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+};
+
+enum
+{
+  DISPLAY_ICON_COLOURS_LABEL,
+  DISPLAY_ICON_RESOLUTION_LABEL,
+  DISPLAY_ICON_CANCEL,
+  DISPLAY_ICON_CHANGE,
+  DISPLAY_NICONS
+};
 
 /* fixed set of depths the Colours picker offers, in bits per pixel;
  * app_set_mode rejects (via wuss_frontend_resize) anything a backend can't
@@ -115,34 +159,16 @@ static void display_sync(display_task_t *dc)
                                   display_resolution_index(dc->wuss));
 }
 
-static result_t display_colours_changed(wuss_stringset_t *stringset,
-                                        int               index,
-                                        void             *opaque)
+/* apply the picked mode; on refusal show the one still in force */
+static result_t display_change(display_task_t *dc)
 {
-  result_t        rc;
-  display_task_t *dc;
+  result_t rc;
+  int      res;
+  int      depth;
 
-  NOT_USED(stringset);
-
-  dc = opaque;
-  rc = app_set_mode(wuss_get_screen_size(dc->wuss), g_display_depths[index]);
-  if (rc != result_OK)
-    display_sync(dc);
-
-  return rc;
-}
-
-static result_t display_resolution_changed(wuss_stringset_t *stringset,
-                                           int               index,
-                                           void             *opaque)
-{
-  result_t        rc;
-  display_task_t *dc;
-
-  NOT_USED(stringset);
-
-  dc = opaque;
-  rc = app_set_mode(g_display_resolutions[index], app_get_depth());
+  res   = wuss_stringset_get_index(dc->resolution);
+  depth = wuss_stringset_get_index(dc->colours);
+  rc    = app_set_mode(g_display_resolutions[res], g_display_depths[depth]);
   if (rc != result_OK)
     display_sync(dc);
 
@@ -155,57 +181,62 @@ static result_t display_create_window(display_task_t *task,
                                       wuss_task_t    *delegate)
 {
   result_t         rc;
-  wuss_icon_spec_t specs[2];
-  box_t            set_box;
+  size2d_t         size;
+  box_t            root;
+  box_t            boxes[DISPLAY_ST__LIMIT];
+  wuss_icon_spec_t specs[DISPLAY_NICONS];
+  wuss_icon_t     *made[DISPLAY_NICONS];
+
+  rc = stack_smallest(g_display_stack, NELEMS(g_display_stack), &size);
+  if (rc != result_OK)
+    return rc;
+
+  root = (box_t) BOX_POS_SIZE(0, 0, size.w, size.h);
+  rc = stack_solve(g_display_stack, NELEMS(g_display_stack), &root, boxes);
+  if (rc != result_OK)
+    return rc;
 
   rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(DISPLAY_DOC_W, DISPLAY_DOC_H),
+                                 size,
                                  "Display",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_CLOSE | wuss_WINDOW_BACK,
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                                 SIZE2D(DISPLAY_DOC_W, DISPLAY_DOC_H),
+                                 size,
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
     return rc;
 
-  memset(specs, 0, sizeof(specs));
+  wuss_icon_spec_label(&specs[DISPLAY_ICON_COLOURS_LABEL],
+                       boxes[DISPLAY_ST_COLOURS_LABEL],
+                       "Colours", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  wuss_icon_spec_label(&specs[DISPLAY_ICON_RESOLUTION_LABEL],
+                       boxes[DISPLAY_ST_RESOLUTION_LABEL],
+                       "Resolution", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  wuss_icon_spec_action(&specs[DISPLAY_ICON_CANCEL],
+                        boxes[DISPLAY_ST_CANCEL], "Cancel", 0);
+  wuss_icon_spec_action(&specs[DISPLAY_ICON_CHANGE],
+                        boxes[DISPLAY_ST_CHANGE], "Change", 1);
 
-  specs[0].bbox  = (box_t) BOX_POS_SIZE(DISPLAY_MARGIN, DISPLAY_MARGIN,
-                                        DISPLAY_LABEL_W, DISPLAY_ROW_H);
-  specs[0].type  = wuss_ICON_TYPE_LABEL;
-  specs[0].text  = "Colours";
-  specs[0].fg    = wuss_COLOUR_BLACK;
-  specs[0].bg    = wuss_NO_BACKGROUND;
-  specs[0].flags = wuss_ICON_FLAGS_JUSTIFY_RIGHT;
-
-  specs[1]       = specs[0];
-  specs[1].bbox  = (box_t) BOX_POS_SIZE(DISPLAY_MARGIN,
-                                        DISPLAY_MARGIN + DISPLAY_ROW_H +
-                                        wuss_STD_GAP,
-                                        DISPLAY_LABEL_W, DISPLAY_ROW_H);
-  specs[1].text  = "Resolution";
-
-  rc = wuss_icon_create_array(task->window, specs, NELEMS(specs), NULL);
+  rc = wuss_icon_create_array(task->window, specs, NELEMS(specs), made);
   if (rc != result_OK)
     return rc;
 
-  set_box = (box_t) BOX_POS_SIZE(DISPLAY_MARGIN + DISPLAY_LABEL_W + wuss_STD_GAP,
-                                 DISPLAY_MARGIN,
-                                 DISPLAY_SET_W, DISPLAY_ROW_H);
-  rc = wuss_stringset_create(&task->colours, task->window, set_box, "Colours",
+  task->cancel = made[DISPLAY_ICON_CANCEL];
+  task->change = made[DISPLAY_ICON_CHANGE];
+
+  /* picks only update the fields; Change applies them */
+  rc = wuss_stringset_create(&task->colours, task->window,
+                             boxes[DISPLAY_ST_COLOURS], "Colours",
                              g_display_depth_labels,
-                             NELEMS(g_display_depth_labels),
-                             display_colours_changed, task);
+                             NELEMS(g_display_depth_labels), NULL, NULL);
   if (rc != result_OK)
     return rc;
 
-  set_box.y0 += DISPLAY_ROW_H + wuss_STD_GAP;
-  set_box.y1 += DISPLAY_ROW_H + wuss_STD_GAP;
-  rc = wuss_stringset_create(&task->resolution, task->window, set_box,
-                             "Resolution", g_display_resolution_labels,
-                             NELEMS(g_display_resolution_labels),
-                             display_resolution_changed, task);
+  rc = wuss_stringset_create(&task->resolution, task->window,
+                             boxes[DISPLAY_ST_RESOLUTION], "Resolution",
+                             g_display_resolution_labels,
+                             NELEMS(g_display_resolution_labels), NULL, NULL);
   if (rc != result_OK)
     return rc;
 
@@ -316,6 +347,13 @@ result_t display_handle(wuss_window_t      *window,
     if (display_offer(dc, event, &rc))
       return rc;
 
+    if (event->data.icon.action != wuss_MOUSE_UP)
+      return result_OK;
+
+    if (event->data.icon.icon == dc->change)
+      return display_change(dc);
+    if (event->data.icon.icon == dc->cancel)
+      display_sync(dc); /* revert the fields to the mode in force */
     return result_OK;
 
   case wuss_EVENT_MOUSE:
