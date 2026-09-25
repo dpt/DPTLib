@@ -682,13 +682,16 @@ size2d_t wuss_get_screen_size(const wuss_t *wuss);
  * wuss_window_move) and, only if it no longer fits, shrunk down to the
  * largest content size that does (see wuss_window_resize); a window is never
  * grown by a resize. The whole new screen is invalidated so the next
- * wuss_redraw / wuss_redraw_dirty repaints it in full.
+ * wuss_redraw / wuss_redraw_dirty repaints it in full. The screen's pixel
+ * format may change too: the loaded icon set is re-ordered in place to suit
+ * it.
  *
  * \param[in] wuss Window manager.
  * \param[in] scr  Screen to draw windows onto from now on. Not owned; must
  *                 outlive the wuss_t. May be the same pointer given to
  *                 wuss_create, already updated in place.
- * \return \ref result_OK.
+ * \return \ref result_OK, or \ref result_OOM if re-ordering the icon set
+ *         fails.
  */
 result_t wuss_resize(wuss_t *wuss, screen_t *scr);
 

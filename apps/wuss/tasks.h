@@ -40,17 +40,23 @@ extern struct wuss_app_tasks
 }
 g_tasks;
 
-/* Change the desktop resolution to width x height: reallocates the
- * framebuffer bitmap and the frontend's backing surface, updates
- * g_tasks.bm/frontend and wuss's own screen_t, then walks every window
- * (via wuss_resize) so none is left off-screen or larger than the new
- * screen. The whole screen is invalidated; the caller's next frame repaints
- * it. Used by the Display task's resolution picker.
+/* Change the desktop resolution to width x height and the framebuffer to
+ * depth bits per pixel (1, 2, 4, 8 or 32): reallocates the framebuffer
+ * bitmap and the frontend's backing surface, updates g_tasks.bm/frontend and
+ * wuss's own screen_t, then walks every window (via wuss_resize) so none is
+ * left off-screen or larger than the new screen. A depth change also rebuilds
+ * the screen palette. The whole screen is
+ * invalidated; the caller's next frame repaints it. Used by the Display
+ * task's pickers.
  *
  * Returns result_NOT_SUPPORTED on a frontend with a fixed screen mode
- * (RISC OS), leaving everything unchanged; another non-OK result on
- * allocation failure, also leaving everything unchanged. */
-result_t app_resize(size2d_t size);
+ * (RISC OS) and result_BAD_ARG for a depth the frontend can't do, leaving
+ * everything unchanged; another non-OK result on allocation failure, also
+ * leaving everything unchanged. */
+result_t app_set_mode(size2d_t size, int depth);
+
+/* the framebuffer's current bits per pixel */
+int app_get_depth(void);
 
 /* the menu-task event handler: dispatches every wuss_EVENT_MENU_SELECT and
  * relays wuss_EVENT_PALETTE to the frontend. Passed as wuss_task_desc.handle

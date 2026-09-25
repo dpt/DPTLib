@@ -245,14 +245,18 @@ g_keys[] =
 result_t wuss_frontend_resize(wuss_frontend_t *fe,
                               int              width,
                               int              height,
+                              int              depth,
                               void           **pixels,
-                              int             *rowbytes)
+                              int             *rowbytes,
+                              pixelfmt_t      *fmt)
 {
   NOT_USED(fe);
   NOT_USED(width);
   NOT_USED(height);
+  NOT_USED(depth);
   NOT_USED(pixels);
   NOT_USED(rowbytes);
+  NOT_USED(fmt);
 
   /* RISC OS runs in a fixed screen mode chosen at wuss_frontend_open time;
    * there is no runtime path to change it here. */

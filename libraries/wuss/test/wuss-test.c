@@ -7247,6 +7247,43 @@ QuitFail:
     idx = wuss_icons_lookup(wuss, "optoff");
     if (idx < 0)
       goto Failure;
+
+    /* a depth change via wuss_resize re-orders the set in place: rgb order
+     * for a paletted screen, back to the screen's own bgr order for 32bpp,
+     * with the bitmap_t addresses icons hold unchanged */
+    {
+      unsigned char p4pixels[100 * 200];
+      bitmap_t      p4bm;
+      screen_t      p4scr;
+      pixelfmt_t    fmt32;
+
+      icon_bm = wuss_icons_bitmap(wuss, opton);
+      fmt32   = pixelfmt_base(icon_bm->format);
+      if (fmt32 != pixelfmt_bgra8888 && fmt32 != pixelfmt_bgrx8888)
+        goto Failure;
+
+      rc = bitmap_init(&p4bm, SIZE2D(200, 200), pixelfmt_p4, 100, NULL,
+                       p4pixels);
+      if (rc != result_OK)
+        goto Failure;
+      screen_for_bitmap(&p4scr, &p4bm);
+
+      rc = wuss_resize(wuss, &p4scr);
+      if (rc != result_OK)
+        goto Failure;
+      if (wuss_icons_bitmap(wuss, opton) != icon_bm ||
+          !bitmap_is_compressed(icon_bm) ||
+          (pixelfmt_base(icon_bm->format) != pixelfmt_rgba8888 &&
+           pixelfmt_base(icon_bm->format) != pixelfmt_rgbx8888))
+        goto Failure;
+
+      rc = wuss_resize(wuss, &scr);
+      if (rc != result_OK)
+        goto Failure;
+      if (wuss_icons_bitmap(wuss, opton) != icon_bm ||
+          pixelfmt_base(icon_bm->format) != fmt32)
+        goto Failure;
+    }
   }
 
   wuss_destroy(wuss);
