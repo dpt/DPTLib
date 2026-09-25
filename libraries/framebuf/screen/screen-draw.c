@@ -108,9 +108,35 @@ static void screen_set_pixel_32(screen_t      *scr,
   *scrp = pxl;
 }
 
+/* Writes "pxl" at (x, y), already known to be inside the clip. */
+static void screen_plot_pixel(screen_t      *scr,
+                              int            x,
+                              int            y,
+                              pixelfmt_any_t pxl)
+{
+  switch (pixelfmt_log2bpp(scr->format))
+  {
+  case 0: screen_set_pixel_p1(scr, x, y, pxl); break;
+  case 1: screen_set_pixel_p2(scr, x, y, pxl); break;
+  case 2: screen_set_pixel_p4(scr, x, y, pxl); break;
+  case 3: screen_set_pixel_p8(scr, x, y, pxl); break;
+  case 4: screen_set_pixel_16(scr, x, y, pxl); break;
+  case 5: screen_set_pixel_32(scr, x, y, pxl); break;
+
+  default:
+    assert(!"Unimplemented pixel format");
+    break;
+  }
+}
+
 void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour)
 {
-  screen_set_pixel_value(scr, x, y, screen_colour_to_pixel(scr, colour));
+  box_t clip;
+
+  if (screen_get_clip(scr, &clip) || !box_contains_point(&clip, x, y))
+    return;
+
+  screen_plot_pixel(scr, x, y, screen_colour_to_pixel(scr, colour));
 }
 
 pixelfmt_any_t screen_colour_to_pixel(const screen_t *scr, colour_t colour)
@@ -127,19 +153,7 @@ void screen_set_pixel_value(screen_t *scr, int x, int y, pixelfmt_any_t pxl)
   if (screen_get_clip(scr, &clip) || !box_contains_point(&clip, x, y))
     return;
 
-  switch (pixelfmt_log2bpp(scr->format))
-  {
-  case 0: screen_set_pixel_p1(scr, x, y, pxl); break;
-  case 1: screen_set_pixel_p2(scr, x, y, pxl); break;
-  case 2: screen_set_pixel_p4(scr, x, y, pxl); break;
-  case 3: screen_set_pixel_p8(scr, x, y, pxl); break;
-  case 4: screen_set_pixel_16(scr, x, y, pxl); break;
-  case 5: screen_set_pixel_32(scr, x, y, pxl); break;
-
-  default:
-    assert(!"Unimplemented pixel format");
-    break;
-  }
+  screen_plot_pixel(scr, x, y, pxl);
 }
 
 /* Each helper alpha-blends "colour" at "alpha" into the single pixel (x, y),
