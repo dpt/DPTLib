@@ -4,6 +4,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -168,6 +169,8 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
 void doughnut_destroy(doughnut_task_t *task)
 {
   wuss_menu_close(task->menu_handle);
+  free(task->zbuf);
+  free(task->shade);
   free(task);
 }
 
@@ -177,6 +180,7 @@ static result_t doughnut_redraw(const wuss_event_t *event,
   screen_t      *scr;
   const box_t   *content, *bounds;
   int            sx, sy, width, height;
+  size_t         ncells;
   double         k1;
   double         theta, phi;
   int            x, y;
@@ -196,14 +200,27 @@ static result_t doughnut_redraw(const wuss_event_t *event,
 
   screen_fill_rect(scr, content->x0, content->y0, box_size(content), task->bg);
 
-  zbuf  = calloc((size_t) (width * height), sizeof(*zbuf));
-  shade = calloc((size_t) (width * height), sizeof(*shade));
-  if (zbuf == NULL || shade == NULL)
+  ncells = (size_t) (width * height);
+  if (ncells > task->ncells)
   {
-    free(zbuf);
-    free(shade);
-    return result_OOM;
+    free(task->zbuf);
+    free(task->shade);
+    task->zbuf   = malloc(ncells * sizeof(*task->zbuf));
+    task->shade  = malloc(ncells * sizeof(*task->shade));
+    task->ncells = ncells;
+    if (task->zbuf == NULL || task->shade == NULL)
+    {
+      free(task->zbuf);
+      free(task->shade);
+      task->zbuf   = NULL;
+      task->shade  = NULL;
+      task->ncells = 0;
+      return result_OOM;
+    }
   }
+  zbuf  = task->zbuf;
+  shade = task->shade; /* only read where zbuf is set, so needn't be cleared */
+  memset(zbuf, 0, ncells * sizeof(*zbuf));
 
   /* resolve each grey once: per-pixel colour_to_pixel is a palette search */
   for (x = 0; x < 256; x++)
@@ -250,9 +267,6 @@ static result_t doughnut_redraw(const wuss_event_t *event,
         screen_set_pixel_value(scr, bounds->x0 - sx + x,
                                bounds->y0 - sy + y, greypix[shade[cell]]);
     }
-
-  free(zbuf);
-  free(shade);
 
   return result_OK;
 }
