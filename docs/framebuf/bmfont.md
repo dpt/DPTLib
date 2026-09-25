@@ -33,14 +33,12 @@ Pixel value 3 draws the cell's left sidebearing line (cosmetic only) plus two fu
 
 ## Unicode Mapping
 
-> **Status: partial.** `bmfont_create` loads and validates the cmap and `bmfont_lookup` maps a codepoint to a glyph ID, but drawing and measuring still treat text as bytes from U+0020, with no UTF-8 decoding.
-
 The PNG format above is unchanged. Unicode coverage is added by a TrueType-style character map (cmap) that maps codepoints to cells:
 
 - **Glyph IDs.** Every cell in the PNG is a glyph, numbered in reading order: glyph ID = row × 32 + column. Blank trailing cells count, so a PNG with R rows has 32 × R glyphs and an ID never depends on content.
 - **Unicode → glyph.** The cmap maps each codepoint to at most one glyph. Many codepoints may share a glyph (e.g. Latin A and Greek Alpha, or NBSP and space). Cells no codepoint reaches are ignored, so the PNG needn't be in any particular order.
 - **Presence.** The cmap alone decides which codepoints exist. A mapped cell with no advance-width (value 2) pixels is a legitimate zero-advance glyph, such as a combining mark (placing it over its base glyph is a runtime concern).
-- **Missing glyphs.** The glyph mapped from U+FFFD REPLACEMENT CHARACTER, if present, serves as .notdef. Otherwise the renderer draws a hollow box the size of the cell.
+- **Missing glyphs.** The glyph mapped from U+FFFD REPLACEMENT CHARACTER, if present, serves as .notdef. Otherwise the renderer draws a 1px hollow box as tall as the ascent, sitting on the baseline, and advances by the cell width. Unmapped codepoints below U+0020 are control characters: they draw nothing and advance nothing.
 
 ### The `.map` sidecar
 
@@ -98,9 +96,11 @@ result_t bmfont_measure(bmfont_t       *bmfont,
                         bmfont_width_t *actual_width);
 ```
 
-It requires a font handle, a pointer to some text, the number of characters to consider and a target width. It returns a split point, and an actual width (both are optional - pass `NULL` if not required).
+It requires a font handle, a pointer to some text, the number of bytes to consider and a target width. It returns a split point in bytes, and an actual width (both are optional - pass `NULL` if not required).
 
 Units are in pixels.
+
+Text is UTF-8 throughout. Lengths and indices count bytes, and any split point or caret index bmfont returns falls on a character boundary. Each malformed byte counts as U+FFFD.
 
 ## Drawing
 
@@ -117,7 +117,7 @@ result_t bmfont_draw(bmfont_t      *bmfont,
                      point_t       *end_pos);
 ```
 
-It requires a font handle, the screen to draw to, a pointer to some text, the number of characters to consider, foreground and background colours, and a start position. It returns an end position (optional - pass `NULL` if not required).
+It requires a font handle, the screen to draw to, a pointer to some text, the number of bytes to consider, foreground and background colours, and a start position. It returns an end position (optional - pass `NULL` if not required).
 
 The screen origin is at the top left. `pos` and `end_pos` are baseline positions, not the top-left of the glyph cells -- use `bmfont_get_info()`'s `ascent` out-param to convert from a top-left layout position (`baseline_y = top_y + ascent`).
 
@@ -133,5 +133,5 @@ Returns the font's cell width, cell height, ascent and descent (any may be `NULL
 
 ## Limitations
 
-- There's no character mapping yet - characters are treated as bytes, not UTF-8. See [Unicode Mapping](#unicode-mapping) for the planned format.
+- There's no font fallback chain yet, so a missing glyph draws .notdef rather than coming from another font.
 - There's no tracking or kerning.

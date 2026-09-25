@@ -141,8 +141,7 @@ static int wuss__draw_symbol_glyph(const wuss_t *wuss,
   if (font == NULL)
     return 0;
 
-  if ((unsigned char) glyph < ' ' ||
-      (unsigned char) glyph - ' ' >= bmfont_get_count(font))
+  if (bmfont_lookup(font, (unsigned char) glyph) < 0)
     return 0;
 
   bmfont_get_info(font, &font_width, &font_height, &font_ascent, NULL);
