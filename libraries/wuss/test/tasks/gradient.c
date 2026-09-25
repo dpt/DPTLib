@@ -76,22 +76,65 @@ gradient_dithers[] =
   },
 };
 
-/* offset "v" by the dither cell for (x, y), mapped to a fixed -8..+8 swing
- * (matching the original 4x4 code) whatever the matrix size, so a larger
- * matrix just gives a finer pattern rather than a louder one. A negative
- * index skips the offset but still clamps. */
-static int dither(int index, int v, int x, int y)
+/* offset "v" by the dither cell for (x, y), spread across one "step" of the
+ * target channel (-step/2 .. +step/2) whatever the matrix size, so a larger
+ * matrix just gives a finer pattern rather than a louder one. A step of 1
+ * (an 8-bit channel) adds nothing and only clamps. */
+static int dither(int index, int step, int v, int x, int y)
 {
   int dim, n, m;
-
-  if (index < 0)
-    return CLAMP(v, 0, 255);
 
   dim = gradient_dithers[index].dim;
   n   = dim * dim;
   m   = gradient_dithers[index].cell[(y % dim) * dim + (x % dim)];
 
-  return CLAMP(v + (m * 16 / (n - 1)) - 8, 0, 255);
+  return CLAMP(v + m * step / n - step / 2, 0, 255);
+}
+
+/* the gap between adjacent representable 8-bit values of each R, G, B
+ * channel in "fmt" */
+static void channel_steps(pixelfmt_t fmt, int step[3])
+{
+  switch (fmt)
+  {
+  case pixelfmt_bgrx4444:
+  case pixelfmt_rgbx4444:
+  case pixelfmt_xbgr4444:
+  case pixelfmt_xrgb4444:
+    step[0] = step[1] = step[2] = 16;
+    break;
+
+  case pixelfmt_bgrx5551:
+  case pixelfmt_rgbx5551:
+  case pixelfmt_xbgr1555:
+  case pixelfmt_xrgb1555:
+    step[0] = step[1] = step[2] = 8;
+    break;
+
+  case pixelfmt_bgr565:
+  case pixelfmt_rgb565:
+    step[0] = step[2] = 8;
+    step[1] = 4;
+    break;
+
+  case pixelfmt_y8:
+  case pixelfmt_bgrx8888:
+  case pixelfmt_rgbx8888:
+  case pixelfmt_xbgr8888:
+  case pixelfmt_xrgb8888:
+  case pixelfmt_bgra8888:
+  case pixelfmt_rgba8888:
+  case pixelfmt_abgr8888:
+  case pixelfmt_argb8888:
+    step[0] = step[1] = step[2] = 1;
+    break;
+
+  default:
+    /* ponytail: paletted gaps depend on the palette; keep the original
+     * fixed 16 (+/-8) swing rather than analysing it */
+    step[0] = step[1] = step[2] = 16;
+    break;
+  }
 }
 
 /* apply the task's saturation (lerp away from luma) then brightness (scale)
@@ -182,20 +225,15 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
   gradient_task_t *gc;
   screen_t        *scr;
   const box_t     *content, *bounds;
-  int              di, sx, sy, x, y, lx, ly;
+  int              di, step[3], sx, sy, x, y, lx, ly;
   int              rgb[3];
 
   gc  = task_data;
   scr = event->data.redraw.scr;
 
-  /* ponytail: a 24/32bpp screen already holds every 8-bit channel step, so
-   * dither only below 32bpp; the fixed swing suits 12-16bpp and paletted.
-   * TODO: scale the swing to each format's channel step instead (e.g. 565
-   * green steps by 4, so +/-8 is too loud there) */
-  if (pixelfmt_log2bpp(pixelfmt_base(scr->format)) >= 5)
-    di = -1;
-  else
-    di = gc->dither_index;
+  di  = gc->dither_index;
+
+  channel_steps(pixelfmt_base(scr->format), step);
 
   content = event->data.redraw.content;
   bounds  = event->data.redraw.bounds;
@@ -215,9 +253,9 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
       adjust(gc, rgb);
 
       screen_set_pixel(scr, x, y,
-                       colour_rgb(dither(di, rgb[0], lx, ly),
-                                  dither(di, rgb[1], lx, ly),
-                                  dither(di, rgb[2], lx, ly)));
+                       colour_rgb(dither(di, step[0], rgb[0], lx, ly),
+                                  dither(di, step[1], rgb[1], lx, ly),
+                                  dither(di, step[2], rgb[2], lx, ly)));
     }
   }
 
@@ -232,7 +270,7 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
     colour_t    bg   = colour_rgba(0, 0, 0, 0); /* transparent */
 
     snprintf(label, sizeof(label), "%dx%d%s b%d%% s%d%%",
-             dim, dim, di < 0 ? " (off)" : "",
+             dim, dim, step[1] == 1 ? " (off)" : "",
              gc->brightness * 100 / GRADIENT_UNITY,
              gc->saturation * 100 / GRADIENT_UNITY);
 
