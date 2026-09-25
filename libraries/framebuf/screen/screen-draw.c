@@ -266,17 +266,19 @@ static void screen_blend_pixel(screen_t *scr,
 
 /* ----------------------------------------------------------------------- */
 
-void screen_fill_rect(screen_t *scr,
-                      int       x,
-                      int       y,
-                      size2d_t  size,
-                      colour_t  colour)
+/* Fills with "pxl", or, if "colour" is non-NULL, with "colour" resolved to a
+ * pixel only once the rect is known to be at least partly visible. */
+static void screen_fill_rect_common(screen_t       *scr,
+                                    int             x,
+                                    int             y,
+                                    size2d_t        size,
+                                    const colour_t *colour,
+                                    pixelfmt_any_t  pxl)
 {
   box_t          clip_box;
   box_t          rect_box;
   box_t          draw_box;
   int            width;
-  pixelfmt_any_t fmt;
   unsigned char *rowp;
   int            yy;
 
@@ -292,9 +294,8 @@ void screen_fill_rect(screen_t *scr,
 
   width = draw_box.x1 - draw_box.x0;
 
-  fmt = colour_to_pixel(scr->palette,
-                        pixelfmt_paletted_nentries(scr->format),
-                        colour, scr->format);
+  if (colour != NULL)
+    pxl = screen_colour_to_pixel(scr, *colour);
 
   assert(scr->span && scr->span->fill);
   if (scr->span == NULL || scr->span->fill == NULL)
@@ -303,9 +304,27 @@ void screen_fill_rect(screen_t *scr,
   rowp = (unsigned char *) scr->base + draw_box.y0 * scr->rowbytes;
   for (yy = draw_box.y0; yy < draw_box.y1; yy++)
   {
-    scr->span->fill(rowp, draw_box.x0, fmt, width);
+    scr->span->fill(rowp, draw_box.x0, pxl, width);
     rowp += scr->rowbytes;
   }
+}
+
+void screen_fill_rect(screen_t *scr,
+                      int       x,
+                      int       y,
+                      size2d_t  size,
+                      colour_t  colour)
+{
+  screen_fill_rect_common(scr, x, y, size, &colour, 0);
+}
+
+void screen_fill_rect_value(screen_t      *scr,
+                            int            x,
+                            int            y,
+                            size2d_t       size,
+                            pixelfmt_any_t pxl)
+{
+  screen_fill_rect_common(scr, x, y, size, NULL, pxl);
 }
 
 void screen_fill_rects(screen_t    *scr,
