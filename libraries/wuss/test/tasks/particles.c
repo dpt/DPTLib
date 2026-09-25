@@ -24,7 +24,22 @@
  * live per-instance in particles_task_t, not as a file-scope static, so
  * that each window's Info row can hold its own .window pointer to the
  * shared proginfo singleton, retargeted just before wuss_menu_open */
-enum { PARTICLES_MENU_INFO };
+enum { PARTICLES_MENU_INFO, PARTICLES_MENU_EMITTER };
+
+/* "Emitter" submenu rows; picking one adds an emitter at that intensity.
+ * wuss never picks a row that has a submenu, so the intensity rows are
+ * what add the emitter rather than the "Emitter" row itself. */
+static const struct
+{
+  const char *name;
+  float       rate; /* particles per second */
+}
+particles_intensities[] =
+{
+  { "Low",     5.0f },
+  { "Medium", 20.0f },
+  { "High",   80.0f }
+};
 
 /* styles, in the order particles_init_styles sets them up */
 enum
@@ -194,6 +209,7 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   particles_task_t *task;
   wuss_task_t      *delegate;
   wuss_task_desc_t  delegate_desc;
+  int               i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -250,6 +266,16 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in
                                 * particles_mouse */
+
+  for (i = 0; i < NELEMS(task->emitter_items); i++)
+    WUSS_MENU_ITEM(task->emitter_items, i, particles_intensities[i].name,
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->emitter_menu, "Intensity", task->emitter_items,
+                 NELEMS(task->emitter_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_EMITTER, "Emitter",
+                      wuss_MENU_ITEM_NONE, &task->emitter_menu);
 
   WUSS_MENU_TITLE(task->menu, "Particles", task->menu_items,
                  NELEMS(task->menu_items));
@@ -376,6 +402,9 @@ static result_t particles_mouse(wuss_window_t      *window,
     pt->menu_items[PARTICLES_MENU_INFO].window =
       wuss_proginfo_window(pt->delegate);
 
+    pt->menu_x = x;
+    pt->menu_y = y;
+
     return wuss_menu_open(pt->delegate, &pt->menu,
                           wuss_get_pointer(pt->wuss), &pt->menu_handle);
   }
@@ -385,6 +414,30 @@ static result_t particles_mouse(wuss_window_t      *window,
   else if (button & wuss_BUTTON_ADJUST)
     create_explosion(&pt->ps, PARTICLES_FLECK, x, y, 0.0f, 0.0f,
                      PARTICLES_BURST);
+
+  return result_OK;
+}
+
+/* an "Emitter" submenu pick: a steady smoke emitter, as Explosion's
+ * playground sets up, at the menu's opening point */
+static result_t particles_menu_select(particles_task_t   *pt,
+                                      const wuss_event_t *event)
+{
+  int index;
+
+  if (event->data.menu_select.menu != &pt->emitter_menu)
+    return result_OK;
+
+  index = event->data.menu_select.index;
+  if (index < 0 || index >= NELEMS(particles_intensities))
+    return result_OK;
+
+  create_emitter(&pt->ps, pt->menu_x, pt->menu_y,
+                 particles_intensities[index].rate,
+                 0.5f, /* jitter */
+                 0.0f, /* clump: none */
+                 PARTICLES_SMOKEY,
+                 0); /* lifetime: forever */
 
   return result_OK;
 }
@@ -451,6 +504,9 @@ result_t particles_handle(wuss_window_t      *window,
     if (window == pt->window)
       pt->pointer_in = 0;
     return result_OK;
+
+  case wuss_EVENT_MENU_SELECT:
+    return particles_menu_select(pt, event);
 
   case wuss_EVENT_MENU_CLOSED:
     pt->menu_handle = NULL;
