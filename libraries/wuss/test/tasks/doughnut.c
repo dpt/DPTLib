@@ -110,16 +110,20 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
   doughnut_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
     return result_OOM;
 
   task->wuss = wuss;
-  task->bg   = colour_rgb(0x20, 0x20, 0x20);
   task->a    = 1.0;
   task->b    = 1.0;
   task->zoom = 1.0;
+
+  task->palette[0] = colour_rgb(0x20, 0x20, 0x20);
+  for (i = 1; i < 256; i++)
+    task->palette[i] = colour_rgb(i, i, i);
 
   /* doughnut_redraw paints its own background every frame */
   delegate_desc.handle    = doughnut_handle;
@@ -185,7 +189,6 @@ static result_t doughnut_redraw(const wuss_event_t *event,
   size_t         ncells;
   double        *zbuf;
   unsigned char *shade; /* palette index per z-buffer cell: 0 = background */
-  colour_t       palette[256]; /* 0 = background, 1..255 = grey level */
   int            x, y;
   double         k1;
   double         theta, phi;
@@ -208,7 +211,8 @@ static result_t doughnut_redraw(const wuss_event_t *event,
   drawn.x1 = drawn.x0 + width;
   drawn.y1 = drawn.y0 + height;
   if (!box_contains_box(content, &drawn))
-    screen_fill_rect(scr, content->x0, content->y0, box_size(content), task->bg);
+    screen_fill_rect(scr, content->x0, content->y0, box_size(content),
+                     task->palette[0]);
 
   ncells = (size_t) (width * height);
   if (ncells > task->ncells)
@@ -232,10 +236,6 @@ static result_t doughnut_redraw(const wuss_event_t *event,
   shade = task->shade;
   memset(zbuf, 0, ncells * sizeof(*zbuf));
   memset(shade, 0, ncells * sizeof(*shade));
-
-  palette[0] = task->bg;
-  for (x = 1; x < 256; x++)
-    palette[x] = colour_rgb(x, x, x);
 
   k1 = width * DOUGHNUT_K2 * 3.0 / (8.0 * (DOUGHNUT_R1 + DOUGHNUT_R2)) * task->zoom;
 
@@ -266,8 +266,8 @@ static result_t doughnut_redraw(const wuss_event_t *event,
 
   /* one clipped blit of the whole shade buffer, rather than a clip test per
    * pixel */
-  rc = bitmap_init(&bm, SIZE2D(width, height), pixelfmt_p8, width, palette,
-                   shade);
+  rc = bitmap_init(&bm, SIZE2D(width, height), pixelfmt_p8, width,
+                   task->palette, shade);
   if (rc != result_OK)
     return rc;
 
@@ -419,7 +419,7 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
   palette = wuss_get_palette(task->wuss, &npalette);
   if (picked < npalette)
   {
-    task->bg = palette[picked];
+    task->palette[0] = palette[picked];
     if (task->window != NULL)
       wuss_window_invalidate_visible(task->window);
   }
