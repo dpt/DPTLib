@@ -223,51 +223,92 @@ static int detect_gridheight(const unsigned char *pixels,
   return 0;
 }
 
-/** True if row \p y of the cell is full-width PIXEL_GRID_IDX. */
+/** The 2bpp pixel at (\p x, \p y). Pixels are packed four to a byte, most
+ *  significant pair first. */
+static int pixel_at(const unsigned char *pixels,
+                    size_t               rowbytes,
+                    png_uint_32          x,
+                    png_uint_32          y)
+{
+  return (pixels[rowbytes * y + (x >> 2)] >> (6 - 2 * (x & 3))) & 3;
+}
+
+/** True if row \p y of the cell starting at column \p x0 is full-width
+ *  PIXEL_GRID_IDX. */
 static int row_is_grid(const unsigned char *pixels,
                        size_t               rowbytes,
+                       png_uint_32          x0,
                        png_uint_32          gridwidth,
                        png_uint_32          y)
 {
-  const unsigned char *row = pixels + rowbytes * y;
-  png_uint_32          x;
+  png_uint_32 x;
 
-  for (x = 0; x < gridwidth; x++)
-  {
-    int px = (row[x >> 2] >> (6 - 2 * (x & 3))) & 3;
-    if (px != PIXEL_GRID_IDX)
+  for (x = x0; x < x0 + gridwidth; x++)
+    if (pixel_at(pixels, rowbytes, x, y) != PIXEL_GRID_IDX)
       return 0;
-  }
 
   return 1;
+}
+
+/** True if the cell with top-left (\p x0, \p y0) holds any glyph ink. */
+static int cell_has_ink(const unsigned char *pixels,
+                        size_t               rowbytes,
+                        png_uint_32          x0,
+                        png_uint_32          y0,
+                        png_uint_32          gridwidth,
+                        png_uint_32          gridheight)
+{
+  png_uint_32 x;
+  png_uint_32 y;
+
+  for (y = y0; y < y0 + gridheight; y++)
+    for (x = x0; x < x0 + gridwidth; x++)
+      if (pixel_at(pixels, rowbytes, x, y) == PIXEL_FG_IDX)
+        return 1;
+
+  return 0;
 }
 
 /**
  * Find the baseline and descent within a glyph cell.
  *
- * The space glyph (grid cell 0, gid 0) carries no ink, so its grid rows --
- * drawn by ttf2bmfont.py as full-width rows of PIXEL_GRID_IDX pixels across
- * the cell, one at the baseline and one at the cell bottom -- are
- * unambiguous. The first such row within the cell body is the baseline
- * (*ascent is its offset from the top of the cell); the next one found at or
- * below it is the cell bottom (*descent is its offset from the baseline).
- * Returns 0 if no baseline row is found, e.g. a font predating this
- * convention -- the caller falls back to treating the whole cell body as
- * ascent, with no descender.
+ * The first cell without ink -- normally the space glyph, but whatever the
+ * cmap maps there -- carries grid rows drawn by ttf2bmfont.py as full-width
+ * rows of PIXEL_GRID_IDX pixels across the cell, one at the baseline and one
+ * at the cell bottom, which are then unambiguous. The first such row within
+ * the cell body is the baseline (*ascent is its offset from the top of the
+ * cell); the next one found at or below it is the cell bottom (*descent is
+ * its offset from the baseline). Returns 0 if every cell has ink or no
+ * baseline row is found, e.g. a font predating this convention -- the caller
+ * falls back to treating the whole cell body as ascent, with no descender.
  */
 static int detect_baseline_metrics(const unsigned char *pixels,
                                    size_t               rowbytes,
+                                   png_uint_32          imgwidth,
+                                   png_uint_32          imgheight,
                                    png_uint_32          gridwidth,
                                    png_uint_32          gridheight,
                                    int                 *ascent,
                                    int                 *descent)
 {
+  png_uint_32 x0;
+  png_uint_32 y0;
   png_uint_32 y;
-  int         baseline_y = -1;
+  int         baseline_y;
 
+  for (y0 = 0; y0 < imgheight; y0 += gridheight)
+    for (x0 = 0; x0 + gridwidth <= imgwidth; x0 += gridwidth)
+      if (!cell_has_ink(pixels, rowbytes, x0, y0, gridwidth, gridheight))
+        goto found;
+
+  return 0;
+
+
+found:
+  baseline_y = -1;
   for (y = 1; y < gridheight; y++) /* row 0 is the advance-width strip */
   {
-    if (!row_is_grid(pixels, rowbytes, gridwidth, y))
+    if (!row_is_grid(pixels, rowbytes, x0, gridwidth, y0 + y))
       continue;
 
     if (baseline_y < 0)
@@ -920,6 +961,7 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
                              gridwidth <= 16 ? 2 :
                                                4; /* stored glyph row: 1, 2 or 4 */
     if (!detect_baseline_metrics(pixels, pngrowbytes,
+                                 pngwidth, pngheight,
                                  (png_uint_32) gridwidth,
                                  (png_uint_32) gridheight,
                                  &bmfont->ascent, &bmfont->descent))
