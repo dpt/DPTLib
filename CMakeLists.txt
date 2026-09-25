@@ -836,6 +836,9 @@ if(BUILD_APPS)
 
     target_include_directories(wuss PRIVATE apps/wuss libraries/wuss/test)
     target_compile_definitions(wuss PRIVATE WUSS_APP)
+    # OS window title, naming the build type (e.g. "Wuss (Debug)")
+    target_compile_definitions(wuss PRIVATE
+        "WUSS_WINDOW_TITLE=\"$<IF:$<BOOL:$<CONFIG>>,Wuss ($<CONFIG>),Wuss>\"")
     target_link_libraries(wuss DPTLib)
 
     # The Particles task uses the Explosion engine. For local work on both

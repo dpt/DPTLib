@@ -212,8 +212,8 @@ result_t wuss_frontend_open(int               width,
     goto failure;
   }
 
-  fe->window = SDL_CreateWindow("Wuss", width * fe->scale, height * fe->scale,
-                                0);
+  fe->window = SDL_CreateWindow(WUSS_WINDOW_TITLE,
+                                width * fe->scale, height * fe->scale, 0);
   if (fe->window == NULL)
   {
     fprintf(stderr, "Error: SDL_CreateWindow: %s\n", SDL_GetError());
