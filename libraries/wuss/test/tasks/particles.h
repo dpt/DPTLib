@@ -17,8 +17,9 @@
 #define PARTICLES_NSTYLES 4
 
 /* window task: the Explosion particle engine. Select bursts a random mix of
- * styles at the click; Adjust bursts flecks. A fresh burst fires by itself
- * whenever the window falls quiet. */
+ * styles at the click; Adjust bursts flecks. The pointer trails particles
+ * while over the content. A fresh burst fires by itself whenever the window
+ * falls quiet. */
 typedef struct particles_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
@@ -34,6 +35,13 @@ typedef struct particles_task
   particle_style_t    styles[PARTICLES_NSTYLES];
   colour_t            palette[PARTICLES_NSTYLES * PALETTE_SIZE];
   particle_system_t   ps;
+
+  /* pointer trail: last seen position and velocity (pixels/second) */
+  int                 pointer_in; /* moved over content since last exit */
+  int                 mx, my;
+  float               mvx, mvy;
+  unsigned int        last_move_ms;
+  unsigned int        last_emit_ms;
 
   /* valid only during redraw, for the engine's render callback */
   screen_t           *scr;
