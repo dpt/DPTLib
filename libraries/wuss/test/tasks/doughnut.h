@@ -28,8 +28,9 @@ typedef struct doughnut_task
                                       * would leak one instance's .window
                                       * pointer into another's menu */
   wuss_menu_t        menu;
-  colour_t           bg;      /* background fill, picked from the shared
-                                * colourmenu */
+  colour_t           palette[256]; /* shade bitmap's palette: 0 = background
+                                    * (picked from the shared colourmenu),
+                                    * 1..255 = grey ramp */
   double             a, b;    /* rotation angles about the x and z axes */
   double             zoom;    /* scales k1; wheel steps this, clamped */
   int                paused;  /* Select toggles; idle skips advancing a/b,
