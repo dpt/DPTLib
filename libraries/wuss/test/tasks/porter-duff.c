@@ -312,16 +312,40 @@ static void porter_duff_draw_checkerboard(const porter_duff_task_t *pd,
                                           int                       sx,
                                           int                       sy)
 {
-  int x, y, lx, ly, band;
+  pixelfmt_any_t darkpix, lightpix;
+  int            ox, oy;
+  int            col0, row0, col1, row1;
+  int            col, row;
 
-  for (y = content->y0; y < content->y1; y++)
-    for (x = content->x0; x < content->x1; x++)
+  /* resolve both colours once, not once per pixel */
+  darkpix  = screen_colour_to_pixel(scr, pd->dark);
+  lightpix = screen_colour_to_pixel(scr, pd->light);
+
+  /* screen position of document (0, 0); content lies within bounds, so the
+   * square indices below are never negative */
+  ox = bounds->x0 - sx;
+  oy = bounds->y0 - sy;
+
+  col0 = (content->x0 - ox) / PD_CHECKER_BAND;
+  row0 = (content->y0 - oy) / PD_CHECKER_BAND;
+  col1 = (content->x1 - ox + PD_CHECKER_BAND - 1) / PD_CHECKER_BAND;
+  row1 = (content->y1 - oy + PD_CHECKER_BAND - 1) / PD_CHECKER_BAND;
+
+  /* one rect fill per square, trimmed to the content box */
+  for (row = row0; row < row1; row++)
+    for (col = col0; col < col1; col++)
     {
-      lx   = x - bounds->x0 + sx;
-      ly   = y - bounds->y0 + sy;
-      band = lx / PD_CHECKER_BAND + ly / PD_CHECKER_BAND;
+      box_t square, visible;
 
-      screen_set_pixel(scr, x, y, (band & 1) ? pd->dark : pd->light);
+      square.x0 = ox + col * PD_CHECKER_BAND;
+      square.y0 = oy + row * PD_CHECKER_BAND;
+      square.x1 = square.x0 + PD_CHECKER_BAND;
+      square.y1 = square.y0 + PD_CHECKER_BAND;
+      if (box_intersection(&square, content, &visible))
+        continue;
+
+      screen_fill_rect_value(scr, visible.x0, visible.y0, box_size(&visible),
+                             ((row + col) & 1) ? darkpix : lightpix);
     }
 }
 
