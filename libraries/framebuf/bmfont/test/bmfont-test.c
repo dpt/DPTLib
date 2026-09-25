@@ -1485,6 +1485,206 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+#define CMAP_TEST_PNG "bmfont-cmap-test.png"
+#define CMAP_TEST_MAP "bmfont-cmap-test.map"
+
+static int copy_file(const char *from, const char *to)
+{
+  FILE  *in;
+  FILE  *out;
+  char   buf[4096];
+  size_t n;
+  int    ok;
+
+  in = fopen(from, "rb");
+  if (in == NULL)
+    return 0;
+
+  out = fopen(to, "wb");
+  if (out == NULL)
+  {
+    fclose(in);
+    return 0;
+  }
+
+  ok = 1;
+  while ((n = fread(buf, 1, sizeof(buf), in)) > 0)
+    if (fwrite(buf, 1, n, out) != n)
+      ok = 0;
+
+  fclose(in);
+  if (fclose(out) != 0)
+    ok = 0;
+  return ok;
+}
+
+/* Load the test PNG with a sidecar holding 'map' and return the result. */
+static result_t load_with_map(const char *map, bmfont_t **bmfont)
+{
+  FILE *fp;
+
+  fp = fopen(CMAP_TEST_MAP, "wb");
+  if (fp == NULL)
+    return result_FOPEN_FAILED;
+
+  fputs(map, fp);
+  fclose(fp);
+
+  return bmfont_create(CMAP_TEST_PNG, bmfont);
+}
+
+/* Checks the cmap: a real sidecar (GrongyUI), the implicit mapping (Tiny, no
+ * sidecar) and a set of well- and ill-formed sidecars loaded against a
+ * scratch copy of Tiny (96 glyphs). */
+static result_t bmfont_cmap_test(const char *resources)
+{
+  static const struct
+  {
+    unsigned long codepoint;
+    int           glyph;
+  }
+  grongy[] =
+  {
+    { 0x20,     0  }, /* space */
+    { 0x22,     2  }, /* " */
+    { 0x23,     -1 }, /* # is blank in the PNG */
+    { 0x28,     8  }, /* ( */
+    { 0x2A,     -1 }, /* * is blank in the PNG */
+    { 0x41,     33 }, /* A */
+    { 0x7E,     94 }, /* ~ */
+    { 0x7F,     -1 }, /* DEL */
+    { 0xA0,     0  }, /* NBSP shares space */
+    { 0xA9,     95 }, /* copyright sign */
+    { 0x10FFFF, -1 }
+  },
+  implicit[] =
+  {
+    { 0x1F, -1 },
+    { 0x20, 0  },
+    { 0x7F, 95 },
+    { 0x80, -1 }
+  };
+  static const struct
+  {
+    const char *map;
+    result_t    expected;
+  }
+  maps[] =
+  {
+    { "# comment\r\n\r\nU+0041..U+0043 10 # ABC\r\nU+10FFFF 95\r\n",
+                                            result_OK             },
+    { "",                                   result_OK             },
+    { "0041 0\n",                           result_BMFONT_BAD_MAP }, /* no U+ */
+    { "U+0041\n",                           result_BMFONT_BAD_MAP }, /* no glyph */
+    { "U+0041 0 junk\n",                    result_BMFONT_BAD_MAP },
+    { "U+0041 x\n",                         result_BMFONT_BAD_MAP },
+    { "U+0041..U+0040 0\n",                 result_BMFONT_BAD_MAP }, /* reversed */
+    { "U+0042 0\nU+0041 1\n",               result_BMFONT_BAD_MAP }, /* order */
+    { "U+0041..U+0043 0\nU+0043 5\n",       result_BMFONT_BAD_MAP }, /* overlap */
+    { "U+0041 96\n",                        result_BMFONT_BAD_MAP }, /* glyph */
+    { "U+0041..U+0042 95\n",                result_BMFONT_BAD_MAP }, /* run */
+    { "U+110000 0\n",                       result_BMFONT_BAD_MAP },
+    { "notdef U+FFFD\n",                    result_BMFONT_BAD_MAP }
+  };
+
+  result_t    rc;
+  const char *filename;
+  bmfont_t   *bmfont = NULL;
+  int         i;
+  int         glyph;
+
+  filename = pathf("%s/resources/bmfonts/GrongyUI.png", resources);
+  rc = bmfont_create(filename, &bmfont);
+  if (rc)
+  {
+    fprintf(stderr, "Error: Failed to load font %s\n", filename);
+    goto Failure;
+  }
+
+  for (i = 0; i < NELEMS(grongy); i++)
+  {
+    glyph = bmfont_lookup(bmfont, grongy[i].codepoint);
+    if (glyph != grongy[i].glyph)
+    {
+      fprintf(stderr, "error: GrongyUI U+%04lX -> %d, expected %d\n",
+              grongy[i].codepoint, glyph, grongy[i].glyph);
+      goto Failure;
+    }
+  }
+
+  bmfont_destroy(bmfont);
+  bmfont = NULL;
+
+  filename = pathf("%s/resources/bmfonts/Tiny.png", resources);
+  rc = bmfont_create(filename, &bmfont);
+  if (rc)
+  {
+    fprintf(stderr, "Error: Failed to load font %s\n", filename);
+    goto Failure;
+  }
+
+  for (i = 0; i < NELEMS(implicit); i++)
+  {
+    glyph = bmfont_lookup(bmfont, implicit[i].codepoint);
+    if (glyph != implicit[i].glyph)
+    {
+      fprintf(stderr, "error: Tiny U+%04lX -> %d, expected %d\n",
+              implicit[i].codepoint, glyph, implicit[i].glyph);
+      goto Failure;
+    }
+  }
+
+  bmfont_destroy(bmfont);
+  bmfont = NULL;
+
+  if (!copy_file(filename, CMAP_TEST_PNG))
+  {
+    fprintf(stderr, "error: can't copy %s\n", filename);
+    goto Failure;
+  }
+
+  for (i = 0; i < NELEMS(maps); i++)
+  {
+    rc = load_with_map(maps[i].map, &bmfont);
+    if (rc != maps[i].expected)
+    {
+      fprintf(stderr, "error: map %d loaded with %x, expected %x\n",
+              i, rc, maps[i].expected);
+      goto Failure;
+    }
+
+    bmfont_destroy(bmfont);
+    bmfont = NULL;
+  }
+
+  /* spot-check the first, well-formed, map's groups */
+  rc = load_with_map(maps[0].map, &bmfont);
+  if (rc ||
+      bmfont_lookup(bmfont, 0x20)     != -1 ||
+      bmfont_lookup(bmfont, 0x41)     != 10 ||
+      bmfont_lookup(bmfont, 0x43)     != 12 ||
+      bmfont_lookup(bmfont, 0x44)     != -1 ||
+      bmfont_lookup(bmfont, 0x10FFFF) != 95)
+  {
+    fprintf(stderr, "error: well-formed map gave wrong lookups\n");
+    goto Failure;
+  }
+
+  bmfont_destroy(bmfont);
+  remove(CMAP_TEST_PNG);
+  remove(CMAP_TEST_MAP);
+  return result_TEST_PASSED;
+
+
+Failure:
+  bmfont_destroy(bmfont);
+  remove(CMAP_TEST_PNG);
+  remove(CMAP_TEST_MAP);
+  return result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t bmfont_test(const char *resources)
 {
   static const struct
@@ -1521,6 +1721,10 @@ result_t bmfont_test(const char *resources)
     return rc;
 
   rc = bmfont_caret_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_cmap_test(resources);
   if (rc != result_TEST_PASSED)
     return rc;
 
