@@ -458,8 +458,9 @@ enum
 #define ST_LABEL_W          (5*6) /* enough for "Iters" */
 #define ST_LABEL2_W         (4*6) /* enough for "9999" */
 #define ST_SLIDER_MIN_W     (64)
-#define ST_ACTION_WIDTH(W)  ((W)*6+2*4)
-#define ST_DEFAULT_WIDTH(W) ((W)*6+2*6)
+#define ST_CHAR_W           6 /* ponytail: assumes the 6px system font */
+#define ST_ACTION_WIDTH(W)  ((W)*ST_CHAR_W+2*wuss_STD_SECONDARY_BUTTON_BORDER)
+#define ST_DEFAULT_WIDTH(W) ((W)*ST_CHAR_W+2*wuss_STD_PRIMARY_BUTTON_BORDER)
 #define ST_DEFAULT_W        ST_ACTION_WIDTH(9)
 #define ST_CANCEL_W         ST_ACTION_WIDTH(9)
 #define ST_APPLY_W          ST_DEFAULT_WIDTH(9)
