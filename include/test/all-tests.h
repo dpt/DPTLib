@@ -43,7 +43,8 @@ extern testfn_t path_test,
                 stream_test;
 
 /* text */
-extern testfn_t txtfmt_test;
+extern testfn_t txtfmt_test,
+                utf8_test;
 
 /* utils */
 extern testfn_t array_test,

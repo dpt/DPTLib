@@ -46,6 +46,7 @@ static const test_t tests[] =
   { "list",       list_test       },
   { "ntree",      ntree_test      },
   { "txtfmt",     txtfmt_test     },
+  { "utf8",       utf8_test       },
   { "vector",     vector_test     },
 
   { "pickle",     pickle_test     },

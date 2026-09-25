@@ -120,6 +120,7 @@ set(PUBLIC_HEADERS
     include/test/txtscr.h
     include/text/bmtext.h
     include/text/txtfmt.h
+    include/text/utf8.h
     include/utils/array.h
     include/utils/barith.h
     include/utils/bsearch.h
@@ -351,7 +352,8 @@ set(TEXT_SOURCES
     libraries/text/txtfmt/get-wrapped-width.c
     libraries/text/txtfmt/impl.h
     libraries/text/txtfmt/print.c
-    libraries/text/txtfmt/wrap.c)
+    libraries/text/txtfmt/wrap.c
+    libraries/text/utf8/decode.c)
 
 set(UTILS_SOURCES
     libraries/utils/array/delelem.c
@@ -730,6 +732,7 @@ if(BUILD_TESTS)
         libraries/io/path/test/path-test.c
         libraries/io/stream/test/stream-test.c
         libraries/text/txtfmt/test/txtfmt-test.c
+        libraries/text/utf8/test/utf8-test.c
         libraries/utils/array/test/array-test.c
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/utils/pack/test/pack-test.c
