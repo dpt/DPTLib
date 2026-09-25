@@ -103,6 +103,7 @@ static result_t lissajous_redraw(const wuss_event_t *event, void *task_data)
   int               sx, sy;
   int               width, height, cx, cy, rx, ry;
   int               i;
+  pixelfmt_any_t    fgpix;
 
   lc = task_data;
 
@@ -121,6 +122,9 @@ static result_t lissajous_redraw(const wuss_event_t *event, void *task_data)
   rx     = width  / 2 - 10;
   ry     = height / 2 - 10;
 
+  /* resolve the colour once, not once per plotted point */
+  fgpix = screen_colour_to_pixel(scr, lc->fg);
+
   for (i = 0; i < LISSAJOUS_POINTS; i++)
   {
     double t;
@@ -130,7 +134,7 @@ static result_t lissajous_redraw(const wuss_event_t *event, void *task_data)
     px = cx + (int) (rx * sin(lc->a * t + lc->phase));
     py = cy + (int) (ry * sin(lc->b * t));
 
-    screen_set_pixel(scr, px, py, lc->fg);
+    screen_set_pixel_value(scr, px, py, fgpix);
   }
 
   return result_OK;

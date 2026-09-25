@@ -275,29 +275,30 @@ void saturn_destroy(saturn_task_t *task)
 /* plot one point in window content space, clipped to the window. x,y are
  * already in the window's top-down pixel space (callers apply the RISC OS
  * (255 - ...) flip). */
-static void saturn_plot(screen_t *scr,
-                        int       ox,
-                        int       oy,
-                        int       size,
-                        int       x,
-                        int       y,
-                        colour_t  c)
+static void saturn_plot(screen_t      *scr,
+                        int            ox,
+                        int            oy,
+                        int            size,
+                        int            x,
+                        int            y,
+                        pixelfmt_any_t pxl)
 {
   if (x < 0 || x >= size || y < 0 || y >= size)
     return;
 
-  screen_set_pixel(scr, ox + x, oy + y, c);
+  screen_set_pixel_value(scr, ox + x, oy + y, pxl);
 }
 
 static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
 {
-  screen_t    *scr;
-  const box_t *content, *bounds;
-  int          size, half, range, flip, energy_shift;
-  int          stars_p, ring_p, e_lo, e_hi;
-  int          ox, oy;
-  int          i;
-  int          x, y, p;
+  screen_t      *scr;
+  const box_t   *content, *bounds;
+  int            size, half, range, flip, energy_shift;
+  int            stars_p, ring_p, e_lo, e_hi;
+  int            ox, oy;
+  int            i;
+  int            x, y, p;
+  pixelfmt_any_t fgpix;
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
@@ -327,6 +328,9 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
   ox = bounds->x0 - event->data.redraw.scroll.x;
   oy = bounds->y0 - event->data.redraw.scroll.y;
 
+  /* resolve the colour once, not once per plotted point */
+  fgpix = screen_colour_to_pixel(scr, task->fg);
+
   saturn_rnd_seed(task->seed);
 
   /* loop 1 - the stars: keep points outside the inner disc */
@@ -336,7 +340,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
     y = SATURN_SAMPLE(half, range);
     p = (x * x + y * y) / energy_shift;
     if (p > stars_p)
-      saturn_plot(scr, ox, oy, size, x + half, flip - (y + half), task->fg);
+      saturn_plot(scr, ox, oy, size, x + half, flip - (y + half), fgpix);
   }
 
   /* loop 2 - the ring: sheared sample with a banded energy gate */
@@ -352,7 +356,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
     p  = (x * x + y * y) / energy_shift;
     e  = ((r6 + r7) * (r6 + r7) + r5 * r5 + r6 * r6) / energy_shift;
     if (e >= e_lo && e < e_hi && (r5 < 0 || p > ring_p))
-      saturn_plot(scr, ox, oy, size, x + half, y + half, task->fg);
+      saturn_plot(scr, ox, oy, size, x + half, y + half, fgpix);
   }
 
   /* loop 3 - planet body: filled half-disc offset right */
@@ -368,7 +372,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
     {
       x = (int) (sqrt((double) (body_r2 - p)) / 2.0) + half;
       y = flip - (r2 / 2 + half);
-      saturn_plot(scr, ox, oy, size, x, y, task->fg);
+      saturn_plot(scr, ox, oy, size, x, y, fgpix);
     }
   }
 
