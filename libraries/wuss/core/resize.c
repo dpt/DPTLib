@@ -63,6 +63,16 @@ result_t wuss_resize(wuss_t *wuss, screen_t *scr)
 
   wuss->scr = scr;
 
+#ifdef WUSS_ICONS
+  {
+    result_t rc;
+
+    rc = wuss__icons_match_screen(wuss);
+    if (rc != result_OK)
+      return rc;
+  }
+#endif
+
   for (e = wuss->z_order.next; e != NULL; e = e->next)
     resize_one_window(wuss__window_from_link(e));
 

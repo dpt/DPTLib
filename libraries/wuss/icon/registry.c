@@ -86,7 +86,17 @@ static int icons_rb_swapped(pixelfmt_t a, pixelfmt_t b)
          (a == pixelfmt_rgba8888 && b == pixelfmt_bgra8888) ||
          (a == pixelfmt_bgra8888 && b == pixelfmt_rgba8888) ||
          (a == pixelfmt_rgbx8888 && b == pixelfmt_bgra8888) ||
-         (a == pixelfmt_rgba8888 && b == pixelfmt_bgrx8888);
+         (a == pixelfmt_rgba8888 && b == pixelfmt_bgrx8888) ||
+         (a == pixelfmt_bgrx8888 && b == pixelfmt_rgba8888) ||
+         (a == pixelfmt_bgra8888 && b == pixelfmt_rgbx8888);
+}
+
+/* The channel order a 32bpp icon must hold to blit onto screen format scr:
+ * the screen's own on a 32bpp screen, else rgba -- the paletted RLE blits
+ * decode into an rgba8888 scratch row. */
+static pixelfmt_t icons_order_for(pixelfmt_t scr)
+{
+  return (pixelfmt_log2bpp(scr) == 5) ? scr : pixelfmt_rgba8888;
 }
 
 static result_t icons_load_entry(const char *leaf, void *opaque)
@@ -115,7 +125,7 @@ static result_t icons_load_entry(const char *leaf, void *opaque)
    * icons_swap_rb. Only the R/B-swapped 32bpp case is handled; a matching
    * format needs nothing, anything else is left for the blit to reject. */
   if (pixelfmt_log2bpp(bm.format) == 5 &&
-      icons_rb_swapped(bm.format, st->wuss->scr->format))
+      icons_rb_swapped(bm.format, icons_order_for(st->wuss->scr->format)))
     icons_swap_rb(&bm);
 
   rc = bitmap_compress(&bm);
@@ -186,6 +196,40 @@ void wuss__icons_registry_free(wuss_t *wuss)
     atom_destroy(wuss->icon.names);
     wuss->icon.names = NULL;
   }
+}
+
+result_t wuss__icons_match_screen(wuss_t *wuss)
+{
+  result_t   rc;
+  pixelfmt_t order;
+  bitmap_t  *bm;
+  int        i;
+
+  assert(wuss != NULL);
+
+  order = icons_order_for(wuss->scr->format);
+
+  for (i = 0; i < wuss->icon.nbitmaps; i++)
+  {
+    bm = &wuss->icon.bitmaps[i];
+    if (pixelfmt_log2bpp(pixelfmt_base(bm->format)) != 5 ||
+        !icons_rb_swapped(pixelfmt_base(bm->format), order))
+      continue;
+
+    /* in place: icons hold pointers to these bitmap_t structs, so only
+     * their pixel stores may move */
+    rc = bitmap_decompress(bm);
+    if (rc != result_OK)
+      return rc;
+
+    icons_swap_rb(bm);
+
+    rc = bitmap_compress(bm);
+    if (rc != result_OK)
+      return rc;
+  }
+
+  return result_OK;
 }
 
 result_t wuss_icons_load(wuss_t *wuss, const char *dir)

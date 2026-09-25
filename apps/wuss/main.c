@@ -42,7 +42,7 @@
 
 /* run_wuss's framebuffer bitmap and the screen_t wrapping it for wuss:
  * file-scope, like g_tasks, since run_wuss runs at most once per process
- * and app_resize (called from the Display task, well after run_wuss's own
+ * and app_set_mode (called from the Display task, well after run_wuss's own
  * locals have gone out of scope) needs to reallocate and re-derive them. */
 static bitmap_t g_bm;
 static screen_t g_scr;
@@ -153,7 +153,7 @@ struct wuss_frame_ctx
   int              npalette;
 };
 
-/* file scope so app_resize (called from the Display task, long after
+/* file scope so app_set_mode (called from the Display task, long after
  * run_wuss's own locals are gone) can update pixels/rowbytes/scr_width/
  * scr_height on the very instance the main loop below is reading */
 static struct wuss_frame_ctx g_frame_ctx;
@@ -547,22 +547,27 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
-result_t app_resize(size2d_t size)
+result_t app_set_mode(size2d_t size, int depth)
 {
   result_t        rc;
   void           *pixels;
   int             rowbytes;
+  pixelfmt_t      fmt;
   const colour_t *palette;
   int             npalette;
   colour_t        scr_palette[256];
   int             scr_nentries;
 
-  rc = wuss_frontend_resize(g_tasks.frontend, size.w, size.h,
-                            &pixels, &rowbytes);
+  rc = wuss_frontend_resize(g_tasks.frontend, size.w, size.h, depth,
+                            &pixels, &rowbytes, &fmt);
   if (rc != result_OK)
     return rc;
 
-  rc = bitmap_init(&g_bm, size, g_bm.format, rowbytes, g_bm.palette, pixels);
+  /* drop the old palette buffer: it's sized for the old format, and
+   * bitmap_init would otherwise copy out of it (overrunning if the new
+   * format has more entries) and leak it. Rebuilt below. */
+  bitmap_set_palette(&g_bm, NULL);
+  rc = bitmap_init(&g_bm, size, fmt, rowbytes, NULL, pixels);
   if (rc != result_OK)
     return rc;
 
@@ -586,6 +591,11 @@ result_t app_resize(size2d_t size)
   g_frame_ctx.scr_height = size.h;
 
   return result_OK;
+}
+
+int app_get_depth(void)
+{
+  return 1 << pixelfmt_log2bpp(g_bm.format);
 }
 
 /* ----------------------------------------------------------------------- */

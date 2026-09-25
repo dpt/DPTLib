@@ -148,6 +148,20 @@ static void sdl_pos_to_scr(SDL_Window *window,
 
 /* ----------------------------------------------------------------------- */
 
+static bool sdl_depth_valid(int depth)
+{
+  return depth == 1 || depth == 2 || depth == 4 || depth == 8 || depth == 32;
+}
+
+static pixelfmt_t sdl_depth_to_fmt(int depth)
+{
+  return (depth == 32) ? pixelfmt_bgrx8888
+       : (depth == 8)  ? pixelfmt_p8
+       : (depth == 4)  ? pixelfmt_p4
+       : (depth == 2)  ? pixelfmt_p2
+                       : pixelfmt_p1;
+}
+
 result_t wuss_frontend_open(int               width,
                             int               height,
                             const colour_t   *palette,
@@ -165,7 +179,7 @@ result_t wuss_frontend_open(int               width,
   NOT_USED(palette);
   NOT_USED(npalette);
 
-  if (depth != 1 && depth != 2 && depth != 4 && depth != 8 && depth != 32)
+  if (!sdl_depth_valid(depth))
   {
     fprintf(stderr,
             "Error: unsupported depth %d (want 1, 2, 4, 8 or 32)\n", depth);
@@ -245,11 +259,7 @@ result_t wuss_frontend_open(int               width,
   /* keep pixels crisp when F2 scales the window up */
   SDL_SetTextureScaleMode(fe->texture, SDL_SCALEMODE_NEAREST);
 
-  *fmt = (depth == 32) ? pixelfmt_bgrx8888
-       : (depth == 8)  ? pixelfmt_p8
-       : (depth == 4)  ? pixelfmt_p4
-       : (depth == 2)  ? pixelfmt_p2
-                       : pixelfmt_p1;
+  *fmt = sdl_depth_to_fmt(depth);
 
   if (fe->conv.base != NULL)
     bitmap_init(&fe->conv, SIZE2D(width, height), pixelfmt_bgrx8888,
@@ -276,22 +286,27 @@ failure:
 result_t wuss_frontend_resize(wuss_frontend_t *fe,
                               int              width,
                               int              height,
+                              int              depth,
                               void           **pixels,
-                              int             *rowbytes)
+                              int             *rowbytes,
+                              pixelfmt_t      *fmt)
 {
   int          stride;
   void        *new_pixels;
   void        *new_conv;
   SDL_Texture *new_texture;
 
-  stride = (width * fe->depth + 7) >> 3;
+  if (!sdl_depth_valid(depth))
+    return result_BAD_ARG;
+
+  stride = (width * depth + 7) >> 3;
 
   new_pixels = malloc((size_t) stride * height);
   if (new_pixels == NULL)
     return result_OOM;
 
   new_conv = NULL;
-  if (fe->depth != 32)
+  if (depth != 32)
   {
     new_conv = malloc((size_t) width * sizeof(pixelfmt_bgrx8888_t) * height);
     if (new_conv == NULL)
@@ -320,6 +335,7 @@ result_t wuss_frontend_resize(wuss_frontend_t *fe,
   fe->pixels     = new_pixels;
   fe->scr_width  = width;
   fe->scr_height = height;
+  fe->depth      = depth;
 
   fe->conv.base = new_conv;
   if (new_conv != NULL)
@@ -330,6 +346,7 @@ result_t wuss_frontend_resize(wuss_frontend_t *fe,
 
   *pixels   = fe->pixels;
   *rowbytes = stride;
+  *fmt      = sdl_depth_to_fmt(depth);
   return result_OK;
 }
 

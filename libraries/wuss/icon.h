@@ -258,4 +258,10 @@ void wuss__icons_free(wuss_window_t *window);
  * Called by wuss_icons_load before a reload and by wuss_destroy. */
 void wuss__icons_registry_free(wuss_t *wuss);
 
+/* Byte-swap the loaded icon set, in place, into the channel order the
+ * current screen format blits (see icons_order_for). Called by wuss_resize
+ * so a screen depth change keeps icon colours right; bitmap_t addresses are
+ * unchanged, so icons holding them stay valid. */
+result_t wuss__icons_match_screen(wuss_t *wuss);
+
 #endif /* WUSS_ICON_IMPL_H */
