@@ -277,7 +277,7 @@ static result_t doughnut_mouse(doughnut_task_t    *task,
       {
         "Doughnut",
         "Spinning torus, ray-marched and shaded per pixel",
-        "(c) DPTLib contributors",
+        "© DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };
       wuss_proginfo_set_desc(&desc);

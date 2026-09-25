@@ -457,7 +457,7 @@ result_t porter_duff_handle(wuss_window_t      *window,
       {
         "Porter-Duff",
         "Animated Porter-Duff compositing demo",
-        "(c) DPTLib contributors",
+        "© DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };
 

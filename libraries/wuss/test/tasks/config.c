@@ -639,7 +639,7 @@ result_t config_handle(wuss_window_t      *window,
       {
         "Configure",
         "System settings",
-        "(c) DPTLib contributors",
+        "© DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };
       wuss_proginfo_set_desc(&desc);

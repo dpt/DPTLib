@@ -304,7 +304,7 @@ static result_t palette_menu_open(palette_task_t *pc)
   {
     "Palette",
     "Desktop and screen palette grid",
-    "(c) DPTLib contributors",
+    "© DPTLib contributors",
     "1.0 (" __DATE__ ")"
   };
 

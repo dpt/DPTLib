@@ -374,7 +374,7 @@ result_t tasks_open_launcher(point_t pos)
   {
     "Wuss demo",
     "Window manager test environment",
-    "(c) DPTLib contributors",
+    "© DPTLib contributors",
     "1.0 (" __DATE__ ")"
   };
 

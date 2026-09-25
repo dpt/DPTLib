@@ -209,7 +209,7 @@ result_t checker_handle(wuss_window_t      *window,
       {
         "Checker",
         "Two independent cycling checkerboard patterns",
-        "(c) DPTLib contributors",
+        "© DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };
       wuss_proginfo_set_desc(&desc);

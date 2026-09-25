@@ -556,7 +556,7 @@ static result_t sofa_mouse(wuss_window_t *window,
     {
       "Sofa",
       "Rotating wireframe sofa, other shapes",
-      "(c) DPTLib contributors",
+      "© DPTLib contributors",
       "1.0 (" __DATE__ ")"
     };
 

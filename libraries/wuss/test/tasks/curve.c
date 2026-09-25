@@ -315,7 +315,7 @@ static result_t curve_mouse(curve_task_t       *task,
       {
         "Curve",
         "Draggable Bezier curve",
-        "(c) DPTLib contributors",
+        "© DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };
       wuss_proginfo_set_desc(&desc);

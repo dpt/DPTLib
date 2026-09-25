@@ -223,7 +223,7 @@ static result_t gradient_mouse(const wuss_event_t *event, void *task_data)
     {
       "Gradient",
       "Two-axis colour gradient with ordered dithering",
-      "(c) DPTLib contributors",
+      "© DPTLib contributors",
       "1.0 (" __DATE__ ")"
     };
     wuss_proginfo_set_desc(&desc);

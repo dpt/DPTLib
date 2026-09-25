@@ -348,7 +348,7 @@ result_t greeble_handle(wuss_window_t      *window,
       {
         "Greeble",
         "Prefab-scatter greebling pattern",
-        "(c) DPTLib contributors",
+        "© DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };
       unsigned int ticks;

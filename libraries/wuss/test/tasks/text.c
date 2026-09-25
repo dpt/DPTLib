@@ -545,7 +545,7 @@ static result_t text_open_menu(text_task_t *task)
   {
     "Text",
     "Sample-text layout with font/colour/spacing pickers",
-    "(c) DPTLib contributors",
+    "© DPTLib contributors",
     "1.0 (" __DATE__ ")"
   };
 

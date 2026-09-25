@@ -715,7 +715,7 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
     {
       "Minesweeper",
       "Classic minesweeper",
-      "(c) DPTLib contributors",
+      "© DPTLib contributors",
       "1.0 (" __DATE__ ")"
     };
 
