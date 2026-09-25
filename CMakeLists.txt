@@ -353,7 +353,9 @@ set(TEXT_SOURCES
     libraries/text/txtfmt/impl.h
     libraries/text/txtfmt/print.c
     libraries/text/txtfmt/wrap.c
-    libraries/text/utf8/decode.c)
+    libraries/text/utf8/decode.c
+    libraries/text/utf8/encode.c
+    libraries/text/utf8/prev.c)
 
 set(UTILS_SOURCES
     libraries/utils/array/delelem.c
