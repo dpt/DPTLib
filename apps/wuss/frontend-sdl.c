@@ -472,24 +472,30 @@ void wuss_frontend_present(wuss_frontend_t *fe,
   else
   {
     result_t rc;
+    int      ppb;
+    int      x0, y0, x1, y1;
     bitmap_t rows, out;
-    int      y0, y1;
     SDL_Rect rect;
 
-    /* Sub-byte formats (p1/p2/p4) pack several pixels per byte, so only a
-     * whole-row crop is safe without redoing their bit-unpacking maths for an
-     * arbitrary x0; a dirty rect just narrows which rows get converted. */
-    y0 = (dirty != NULL) ? CLAMP(dirty->y0, 0, bm->size.h) : 0;
-    y1 = (dirty != NULL) ? CLAMP(dirty->y1, 0, bm->size.h) : bm->size.h;
-    if (y1 <= y0)
+    /* Sub-byte formats (p1/p2/p4) pack several pixels per byte and the
+     * converters assume a row starts on a byte, so widen the dirty columns
+     * out to whole bytes. */
+    ppb = 8 / fe->depth;
+    x0  = (dirty != NULL) ? CLAMP(dirty->x0, 0, bm->size.w) : 0;
+    y0  = (dirty != NULL) ? CLAMP(dirty->y0, 0, bm->size.h) : 0;
+    x1  = (dirty != NULL) ? CLAMP(dirty->x1, 0, bm->size.w) : bm->size.w;
+    y1  = (dirty != NULL) ? CLAMP(dirty->y1, 0, bm->size.h) : bm->size.h;
+    x0 -= x0 % ppb;
+    x1  = MIN(x1 + (ppb - 1) - (x1 + ppb - 1) % ppb, bm->size.w);
+    if (x1 <= x0 || y1 <= y0)
       goto present;
 
     rc = bitmap_init(&rows,
-                     SIZE2D(bm->size.w, y1 - y0),
+                     SIZE2D(x1 - x0, y1 - y0),
                      bm->format,
                      bm->rowbytes,
                      bm->palette,
-                     (unsigned char *) bm->base + y0 * bm->rowbytes);
+                     (unsigned char *) bm->base + y0 * bm->rowbytes + x0 / ppb);
     if (rc != result_OK)
       goto present;
 
@@ -497,16 +503,16 @@ void wuss_frontend_present(wuss_frontend_t *fe,
      * reads the palette straight off `bm`, which the caller updates when the
      * palette task's picker menu changes it, so a live palette change just
      * shows up in the next converted frame. `fe->conv`'s buffer is sized for
-     * the full screen, so any dirty-row subset fits; only its size/rowbytes
-     * need to match this call's row count. */
+     * the full screen, so any dirty subset fits packed tightly; only its
+     * size/rowbytes need to match this call's crop. */
     bitmap_init(&out, rows.size, pixelfmt_bgrx8888,
-               bm->size.w * sizeof(pixelfmt_bgrx8888_t), NULL, fe->conv.base);
+               rows.size.w * sizeof(pixelfmt_bgrx8888_t), NULL, fe->conv.base);
 
     if (bitmap_convert_into(&rows, pixelfmt_bgrx8888, &out) == result_OK)
     {
-      rect.x = 0;
+      rect.x = x0;
       rect.y = y0;
-      rect.w = bm->size.w;
+      rect.w = x1 - x0;
       rect.h = y1 - y0;
 
       SDL_UpdateTexture(fe->texture, &rect, out.base, out.rowbytes);
