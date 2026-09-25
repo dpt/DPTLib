@@ -110,15 +110,23 @@ static void screen_set_pixel_32(screen_t      *scr,
 
 void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour)
 {
-  box_t          clip;
-  pixelfmt_any_t pxl;
+  screen_set_pixel_value(scr, x, y, screen_colour_to_pixel(scr, colour));
+}
+
+pixelfmt_any_t screen_colour_to_pixel(const screen_t *scr, colour_t colour)
+{
+  return colour_to_pixel(scr->palette,
+                         pixelfmt_paletted_nentries(scr->format),
+                         colour, scr->format);
+}
+
+void screen_set_pixel_value(screen_t *scr, int x, int y, pixelfmt_any_t pxl)
+{
+  box_t clip;
 
   if (screen_get_clip(scr, &clip) || !box_contains_point(&clip, x, y))
     return;
 
-  pxl = colour_to_pixel(scr->palette,
-                        pixelfmt_paletted_nentries(scr->format),
-                        colour, scr->format);
   switch (pixelfmt_log2bpp(scr->format))
   {
   case 0: screen_set_pixel_p1(scr, x, y, pxl); break;

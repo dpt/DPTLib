@@ -174,15 +174,16 @@ void doughnut_destroy(doughnut_task_t *task)
 static result_t doughnut_redraw(const wuss_event_t *event,
                                 doughnut_task_t    *task)
 {
-  screen_t    *scr;
-  const box_t *content, *bounds;
-  int          sx, sy, width, height;
-  double       k1;
-  double       theta, phi;
-  int          x, y;
-  double       z, lum;
-  double      *zbuf;
-  colour_t    *shade; /* one colour per z-buffer cell, painted at the end */
+  screen_t      *scr;
+  const box_t   *content, *bounds;
+  int            sx, sy, width, height;
+  double         k1;
+  double         theta, phi;
+  int            x, y;
+  double         z, lum;
+  double        *zbuf;
+  unsigned char *shade; /* one grey level per z-buffer cell, painted at the end */
+  pixelfmt_any_t greypix[256]; /* grey level -> screen pixel */
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
@@ -203,6 +204,10 @@ static result_t doughnut_redraw(const wuss_event_t *event,
     free(shade);
     return result_OOM;
   }
+
+  /* resolve each grey once: per-pixel colour_to_pixel is a palette search */
+  for (x = 0; x < 256; x++)
+    greypix[x] = screen_colour_to_pixel(scr, colour_rgb(x, x, x));
 
   k1 = width * DOUGHNUT_K2 * 3.0 / (8.0 * (DOUGHNUT_R1 + DOUGHNUT_R2)) * task->zoom;
 
@@ -230,7 +235,7 @@ static result_t doughnut_redraw(const wuss_event_t *event,
         grey = (int) ((lum < 0.0 ? 0.0 : lum) * 255.0);
         if (grey > 255)
           grey = 255;
-        shade[cell] = colour_rgb(grey, grey, grey);
+        shade[cell] = (unsigned char) grey;
       }
     }
   }
@@ -242,8 +247,8 @@ static result_t doughnut_redraw(const wuss_event_t *event,
 
       cell = y * width + x;
       if (zbuf[cell] > 0.0)
-        screen_set_pixel(scr, bounds->x0 - sx + x, bounds->y0 - sy + y,
-                         shade[cell]);
+        screen_set_pixel_value(scr, bounds->x0 - sx + x,
+                               bounds->y0 - sy + y, greypix[shade[cell]]);
     }
 
   free(zbuf);

@@ -67,6 +67,28 @@ int screen_get_clip(const screen_t *scr, box_t *clip);
 void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour);
 
 /**
+ * Resolves a colour to a pixel value in the screen's format. For paletted
+ * screens this searches the palette, so callers plotting many pixels of few
+ * colours should resolve each colour once and use screen_set_pixel_value.
+ *
+ * \param[in] scr     Screen whose format and palette to use.
+ * \param[in] colour  Colour to resolve.
+ *
+ * \return Pixel value.
+ */
+pixelfmt_any_t screen_colour_to_pixel(const screen_t *scr, colour_t colour);
+
+/**
+ * Draws a single pixel using a pixel value already in the screen's format.
+ *
+ * \param[in] scr  Screen to draw upon.
+ * \param[in] x    X coordinate of pixel to draw.
+ * \param[in] y    Y coordinate of pixel to draw.
+ * \param[in] pxl  Pixel value, e.g. from screen_colour_to_pixel.
+ */
+void screen_set_pixel_value(screen_t *scr, int x, int y, pixelfmt_any_t pxl);
+
+/**
  * Draws a solid rectangle.
  *
  * \param[in] scr     Screen to draw upon.
