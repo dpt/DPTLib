@@ -13,9 +13,10 @@
 /* window D's task: a small window, after RISC OS's Display Manager, with two
  * string sets -- colour depth and resolution -- showing the current mode.
  * Change calls app_set_mode with the picks, which live-changes the frontend's
- * surface and wuss's own screen, nudging every open window back on-screen and shrinking
- * any that no longer fit. Cancel reverts the picks to the mode in force. A
- * MENU click opens an Info menu. */
+ * surface and wuss's own screen, nudging every open window back on-screen and
+ * shrinking any that no longer fit, then closes the window (Adjust leaves it
+ * open). Cancel closes it, discarding the picks; Adjust-Cancel instead reverts
+ * them to the mode in force. A MENU click opens an Info menu. */
 typedef struct display_task
 {
   wuss_t             *wuss;

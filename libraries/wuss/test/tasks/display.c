@@ -351,9 +351,22 @@ result_t display_handle(wuss_window_t      *window,
       return result_OK;
 
     if (event->data.icon.icon == dc->change)
-      return display_change(dc);
+    {
+      rc = display_change(dc);
+      if (rc != result_OK || (event->data.icon.button & wuss_BUTTON_ADJUST))
+        return rc;
+
+      /* Select closes, as on RISC OS; with autoclose this frees dc, so it
+       * must not be touched afterwards */
+      return wuss_window_try_close(dc->window);
+    }
     if (event->data.icon.icon == dc->cancel)
+    {
+      if (!(event->data.icon.button & wuss_BUTTON_ADJUST))
+        return wuss_window_try_close(dc->window); /* frees dc likewise */
+
       display_sync(dc); /* revert the fields to the mode in force */
+    }
     return result_OK;
 
   case wuss_EVENT_MOUSE:
