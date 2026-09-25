@@ -1728,6 +1728,138 @@ static result_t bmfont_metrics_test(const char *resources)
 
 /* ----------------------------------------------------------------------- */
 
+/* Checks UTF-8 measuring and caret placement, then draws a missing glyph and
+ * checks it's the hollow box. GrongyUI maps neither '#' nor U+FFFD. */
+static result_t bmfont_utf8_test(const char *resources)
+{
+  static const char sample[] = "A\xC2\xA9" "B"; /* 'A', copyright, 'B' */
+  static const int  margin   = 2;
+
+  const char *filename;
+  bmfont_t   *bmfont = NULL;
+  int         cellwidth;
+  int         ascent;
+  int         len;
+  int         target;
+  int         split;
+  int         index;
+  bitmap_t    bm;
+  screen_t    scr;
+  colour_t    white = colour_rgb(0xFF, 0xFF, 0xFF);
+  colour_t    black = colour_rgb(0x00, 0x00, 0x00);
+  point_t     pos;
+  point_t     end_pos;
+  int         bm_width, bm_height, rowbytes;
+  void       *pixels = NULL;
+  int         x, y;
+
+  filename = pathf("%s/resources/bmfonts/GrongyUI.png", resources);
+  if (bmfont_create(filename, &bmfont))
+  {
+    fprintf(stderr, "Error: Failed to load font %s\n", filename);
+    return result_TEST_FAILED;
+  }
+
+  bmfont_get_info(bmfont, &cellwidth, NULL, &ascent, NULL);
+  len = (int) strlen(sample);
+
+  /* missing glyphs and malformed bytes advance by the cell width; unmapped
+   * controls advance nothing; NBSP shares space's advance */
+  if (bmfont_caret_x(bmfont, "#", 1, NULL) + 1 != cellwidth ||
+      bmfont_caret_x(bmfont, "\x80", 1, NULL) + 1 != cellwidth ||
+      bmfont_caret_x(bmfont, "\x01" "A", 2, NULL) !=
+        bmfont_caret_x(bmfont, "A", 1, NULL) ||
+      bmfont_caret_x(bmfont, "\xC2\xA0", 2, NULL) !=
+        bmfont_caret_x(bmfont, " ", 1, NULL))
+  {
+    fprintf(stderr, "error: utf8 advances wrong\n");
+    goto Failure;
+  }
+
+  /* an index inside a rune measures to its start */
+  if (bmfont_caret_x(bmfont, sample, 2, NULL) !=
+      bmfont_caret_x(bmfont, sample, 1, NULL))
+  {
+    fprintf(stderr, "error: utf8 caret_x inside a rune\n");
+    goto Failure;
+  }
+
+  /* split points and caret indices never land inside the copyright sign */
+  for (target = 0; target < 40; target++)
+  {
+    bmfont_measure(bmfont, sample, len, NULL, target, &split, NULL);
+    bmfont_find_caret(bmfont, sample, len, NULL, target, &index, NULL);
+    if (split == 2 || index == 2)
+    {
+      fprintf(stderr, "error: utf8 split %d / index %d at %d\n", split,
+              index, target);
+      goto Failure;
+    }
+  }
+
+  /* draw '#' and check it's a 1px box over columns 1 onwards, from the top
+   * of the cell down to just above the baseline */
+
+  bm_width  = margin * 2 + cellwidth;
+  bm_height = margin * 2 + ascent;
+  rowbytes  = (bm_width << pixelfmt_log2bpp(pixelfmt_bgrx8888)) / 8;
+
+  pixels = malloc(rowbytes * bm_height);
+  if (pixels == NULL)
+    goto Failure;
+
+  bitmap_init(&bm, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888, rowbytes,
+              NULL, pixels);
+  bitmap_clear(&bm, white);
+  screen_for_bitmap(&scr, &bm);
+
+  pos.x = margin;
+  pos.y = margin + ascent;
+
+  bmfont_draw(bmfont, &scr, "#", 1, black, white, NULL, &pos, &end_pos);
+  if (end_pos.x != pos.x + cellwidth)
+  {
+    fprintf(stderr, "error: box advanced to %d\n", end_pos.x);
+    goto Failure;
+  }
+
+  for (y = 0; y < bm_height; y++)
+  {
+    const pixelfmt_bgrx8888_t *row =
+      (const pixelfmt_bgrx8888_t *) ((const char *) pixels + y * rowbytes);
+
+    for (x = 0; x < bm_width; x++)
+    {
+      int inside;
+      int want;
+
+      inside = x >= margin + 1 && x <= margin + cellwidth - 1 &&
+               y >= margin     && y <= margin + ascent - 1;
+      want   = inside &&
+               (x == margin + 1 || x == margin + cellwidth - 1 ||
+                y == margin     || y == margin + ascent - 1);
+
+      if (((row[x] & 0x00FFFFFFu) != 0x00FFFFFFu) != want)
+      {
+        fprintf(stderr, "error: box pixel (%d,%d) wrong\n", x, y);
+        goto Failure;
+      }
+    }
+  }
+
+  free(pixels);
+  bmfont_destroy(bmfont);
+  return result_TEST_PASSED;
+
+
+Failure:
+  free(pixels);
+  bmfont_destroy(bmfont);
+  return result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t bmfont_test(const char *resources)
 {
   static const struct
@@ -1772,6 +1904,10 @@ result_t bmfont_test(const char *resources)
     return rc;
 
   rc = bmfont_metrics_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_utf8_test(resources);
   if (rc != result_TEST_PASSED)
     return rc;
 
