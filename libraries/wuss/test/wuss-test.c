@@ -713,6 +713,71 @@ result_t wuss_test(const char *resources)
     mk_task_count = 0;  /* drop the now-stale registry entry */
   }
 
+  printf("test: wuss_resize moves windows back on-screen, shrinking only "
+         "those bigger than the new screen\n");
+
+  {
+    static const wuss_window_flags_t bare = wuss_WINDOW_NO_TITLEBAR |
+                                            wuss_WINDOW_NO_OUTLINE;
+
+    bitmap_t       small_bm;
+    screen_t       small_scr;
+    wuss_t        *rsw;
+    wuss_task_t   *rsdel;
+    box_t          box_fit, box_over;
+    wuss_window_t *win_fit, *win_over;
+
+    /* a 100x100 view onto the same pixels (rowbytes stays 200 wide) */
+    rc = bitmap_init(&small_bm, SIZE2D(100, 100), pixelfmt_bgrx8888,
+                     rowbytes, NULL, pixels);
+    if (rc != result_OK)
+      goto Failure;
+    screen_for_bitmap(&small_scr, &small_bm);
+
+    rc = wuss_create(&scr, NULL, 0, NULL, 0, NULL, NULL, NULL, &rsw);
+    if (rc != result_OK)
+      goto Failure;
+
+    rsdel = mk_task(rsw, NULL, NULL);
+    if (rsdel == NULL) { wuss_destroy(rsw); goto Failure; }
+
+    /* furniture-less, so visible == content: nothing to drag or resize by
+     * if the mode change were to shrink it */
+    box_fit.x0 = 140; box_fit.y0 = 140; box_fit.x1 = 180; box_fit.y1 = 180;
+    rc = wuss_window_create(rsdel, &box_fit, "fit", bare, wuss_NO_BACKDROP,
+                            SIZE2D(40, 40), SIZE2D(0, 0), &win_fit);
+    if (rc != result_OK) { wuss_destroy(rsw); goto Failure; }
+
+    box_over.x0 = 20; box_over.y0 = 20; box_over.x1 = 170; box_over.y1 = 170;
+    rc = wuss_window_create(rsdel, &box_over, "over", bare, wuss_NO_BACKDROP,
+                            SIZE2D(150, 150), SIZE2D(0, 0), &win_over);
+    if (rc != result_OK) { wuss_destroy(rsw); goto Failure; }
+
+    rc = wuss_resize(rsw, &small_scr);
+    if (rc != result_OK) { wuss_destroy(rsw); goto Failure; }
+
+    /* fits the new screen: keeps its 40x40 size, pushed up-left to fit */
+    wuss_window_get_content_bounds(win_fit, &content);
+    if (content.x0 != 60 || content.y0 != 60 ||
+        content.x1 != 100 || content.y1 != 100)
+    {
+      wuss_destroy(rsw);
+      goto Failure;
+    }
+
+    /* bigger than the new screen: shrunk to it and pinned at the origin */
+    wuss_window_get_content_bounds(win_over, &content);
+    if (content.x0 != 0 || content.y0 != 0 ||
+        content.x1 != 100 || content.y1 != 100)
+    {
+      wuss_destroy(rsw);
+      goto Failure;
+    }
+
+    wuss_destroy(rsw); /* sweeps rsdel too */
+    mk_task_count = 0; /* drop the now-stale registry entry */
+  }
+
   printf("test: window_create too small\n");
 
   box_a.x0 = 0;
