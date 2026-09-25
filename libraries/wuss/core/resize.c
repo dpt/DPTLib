@@ -7,11 +7,12 @@
 
 #include "impl.h"
 
-/* Shrink then reposition one window to fit the new screen, mirroring
- * wuss_window_create's own two-step clamp: the far corner is capped from
- * the window's current top-left first (never growing a window that already
- * fits), then the position is nudged back on-screen by the same rule as
- * wuss__nudge_visible_onscreen -- computed here, rather than calling it
+/* Fit one window to the new screen: shrink it only if it is bigger than
+ * the whole screen (never growing a window that already fits), then nudge
+ * it back on-screen at its current size. Resizing against the current
+ * top-left instead would shrink a window hanging off the far edge, which a
+ * window without furniture has no way to undo. The nudge uses the same rule
+ * as wuss__nudge_visible_onscreen -- computed here, rather than calling it
  * directly, since that helper mutates window->visible in place and would
  * desync it from the public wuss_window_move/wuss_window_resize calls
  * needed for their invalidation and packer bookkeeping. */
@@ -28,7 +29,7 @@ static void resize_one_window(wuss_window_t *window)
   size.w   = content.x1 - content.x0;
   size.h   = content.y1 - content.y0;
 
-  wuss__max_content_on_screen(window, &max);
+  wuss__max_content_anywhere_on_screen(window, &max);
   if (size.w > max.w || size.h > max.h)
   {
     size.w = MIN(size.w, max.w);
