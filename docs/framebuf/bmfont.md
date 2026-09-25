@@ -31,6 +31,49 @@ Pixel value 3 draws the cell's left sidebearing line (cosmetic only) plus two fu
 
 `tools/ttf2bmfont.py` generates conforming PNGs from a TTF automatically. `--no-grid` omits all the value-3 pixels, baseline row included -- don't pass it, or `bmfont_create` will fall back to the no-descender default for that font.
 
+## Unicode Mapping
+
+> **Status: planned.** This section specifies the format only; bmfont does not yet read `.map` files or decode UTF-8.
+
+The PNG format above is unchanged. Unicode coverage is added by a TrueType-style character map (cmap) that maps codepoints to cells:
+
+- **Glyph IDs.** Every cell in the PNG is a glyph, numbered in reading order: glyph ID = row × 32 + column. Blank trailing cells count, so a PNG with R rows has 32 × R glyphs and an ID never depends on content.
+- **Unicode → glyph.** The cmap maps each codepoint to at most one glyph. Many codepoints may share a glyph (e.g. Latin A and Greek Alpha, or NBSP and space). Cells no codepoint reaches are ignored, so the PNG needn't be in any particular order.
+- **Presence.** The cmap alone decides which codepoints exist. A mapped cell with no advance-width (value 2) pixels is a legitimate zero-advance glyph, such as a combining mark (placing it over its base glyph is a runtime concern).
+- **Missing glyphs.** The glyph mapped from U+FFFD REPLACEMENT CHARACTER, if present, serves as .notdef. Otherwise the renderer draws a hollow box the size of the cell.
+
+### The `.map` sidecar
+
+The cmap lives in a plain-text sidecar next to the PNG, found by replacing the trailing `png` of the font's path with `map` (`Foo.png` → `Foo.map`, or `Foo/png` → `Foo/map` on RISC OS). Keeping it out of the PNG means the image can be round-tripped through a paint tool or Aseprite without losing it.
+
+Each line is a sequential group, as in TrueType cmap format 12: a codepoint range and the glyph ID of its first codepoint, with subsequent codepoints taking consecutive glyphs. A single codepoint is a group of one.
+
+```
+# GrongyUI
+U+0020..U+007E  0     # ASCII
+U+00A0          0     # NBSP shares space
+U+00A1..U+00FF  95
+U+2190..U+2193  192   # arrows
+```
+
+- Codepoints are written `U+` followed by hex digits; the `U+` prefix is required so that bare-word lines remain free for future keywords. Glyph IDs are decimal.
+- `#` starts a comment; blank lines are ignored.
+- Groups must be in strictly ascending codepoint order and must not overlap.
+- Every glyph a group reaches must be less than the glyph count (32 × rows).
+- Codepoints must not exceed U+10FFFF.
+
+Any violation makes `bmfont_create` fail with `result_BMFONT_BAD_MAP` rather than load a partially mapped font.
+
+With no sidecar the font uses an implicit single group, `U+0020..` → glyph 0, ending at the last cell that has a non-empty advance-width strip. Trailing blank cells stay unmapped, so codepoints beyond the drawn glyphs still reach .notdef or a fallback font. All existing fonts therefore load as before.
+
+### Metrics
+
+The ascent and descent rows (see above) are read from the first cell that contains no ink (value 1), rather than always from grid column 0. For a Latin font that is still the space glyph; for a font whose first row is, say, arrows it is the first empty cell.
+
+### Out of scope for the format
+
+Coverage spanning several PNGs is a runtime concern: fonts are chained so that a glyph missing from one is taken from the next (e.g. GrongyUI falling back to Symbols). Wide (double-cell) glyphs belong in a separate font with a larger cell. Colour glyphs would need a different format.
+
 ## Setup
 
 #### Make a bitmap and a screen:
@@ -90,5 +133,5 @@ Returns the font's cell width, cell height, ascent and descent (any may be `NULL
 
 ## Limitations
 
-- There's no character mapping yet - characters are treated as bytes, not UTF-8.
+- There's no character mapping yet - characters are treated as bytes, not UTF-8. See [Unicode Mapping](#unicode-mapping) for the planned format.
 - There's no tracking or kerning.
