@@ -36,6 +36,9 @@ typedef struct doughnut_task
                                * arrow keys step them */
   int                dragging;   /* non-zero while an Adjust drag is live */
   int                drag_x, drag_y; /* last drag point, content space */
+  double            *zbuf;    /* redraw's z-buffer, kept between redraws */
+  unsigned char     *shade;   /* redraw's grey level per z-buffer cell */
+  size_t             ncells;  /* capacity of zbuf/shade; grown as needed */
 }
 doughnut_task_t;
 
