@@ -182,7 +182,7 @@ static result_t display_mouse(display_task_t *dc, wuss_button_t button)
     {
       "Display",
       "Change the desktop resolution",
-      "(c) DPTLib contributors",
+      "© DPTLib contributors",
       "1.0 (" __DATE__ ")"
     };
     wuss_proginfo_set_desc(&desc);

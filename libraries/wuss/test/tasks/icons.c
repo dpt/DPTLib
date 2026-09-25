@@ -1042,7 +1042,7 @@ result_t icons_handle(wuss_window_t      *window,
       {
         "Icons",
         "Work-area icons, every type",
-        "(c) DPTLib contributors",
+        "© DPTLib contributors",
         "1.0 (" __DATE__ ")"
       };
       wuss_proginfo_set_desc(&desc);

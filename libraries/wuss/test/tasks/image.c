@@ -264,7 +264,7 @@ static result_t image_open_menu(image_task_t *ic)
   {
     "Image",
     "View the PNGs under resources/images",
-    "(c) DPTLib contributors",
+    "© DPTLib contributors",
     "1.0 (" __DATE__ ")"
   };
 

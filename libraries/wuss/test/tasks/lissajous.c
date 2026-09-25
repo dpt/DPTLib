@@ -158,7 +158,7 @@ static result_t lissajous_mouse(wuss_window_t      *window,
     {
       "Lissajous",
       "Lissajous figure, drifting frequencies",
-      "(c) DPTLib contributors",
+      "© DPTLib contributors",
       "1.0 (" __DATE__ ")"
     };
     wuss_proginfo_set_desc(&desc);

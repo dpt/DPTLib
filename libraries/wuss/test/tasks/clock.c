@@ -251,7 +251,7 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
     {
       "Clock",
       "Analogue clock, hour/minute/second hands",
-      "(c) DPTLib contributors",
+      "© DPTLib contributors",
       "1.0 (" __DATE__ ")"
     };
     wuss_proginfo_set_desc(&desc);

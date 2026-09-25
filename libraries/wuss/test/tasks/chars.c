@@ -145,7 +145,7 @@ static result_t chars_open_menu(chars_task_t *task)
   {
     "Chars",
     "Bitmap font glyph grid",
-    "(c) DPTLib contributors",
+    "© DPTLib contributors",
     "1.0 (" __DATE__ ")"
   };
 

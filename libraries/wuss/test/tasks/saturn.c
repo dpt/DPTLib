@@ -389,7 +389,7 @@ static result_t saturn_mouse(saturn_task_t      *task,
     {
       "Saturn",
       "Elite loading-screen planet, recreated",
-      "(c) DPTLib contributors",
+      "© DPTLib contributors",
       "1.0 (" __DATE__ ")"
     };
 
