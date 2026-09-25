@@ -1431,6 +1431,56 @@ static result_t test_copy_rect_packed(void)
   return result_TEST_PASSED;
 }
 
+/* screen_set_pixel and screen_set_pixel_value, plotted at every point from
+ * just off each screen edge, must touch exactly the pixels inside both the
+ * screen and the clip; an empty clip means unclipped. */
+static result_t test_set_pixel_clip(void)
+{
+  static const box_t clips[] =
+  {
+    { 0, 0, 0, 0 },      /* empty: unclipped */
+    { 10, 20, 30, 40 },  /* inside the screen */
+    { 50, -5, 80, 10 },  /* hanging off the top-right corner */
+    { 70, 70, 90, 90 }   /* wholly off screen */
+  };
+
+  static testscreen_t ts;
+
+  size_t ci;
+  int    fn;
+  int    x, y;
+  int    inside;
+
+  for (ci = 0; ci < NELEMS(clips); ci++)
+    for (fn = 0; fn < 2; fn++)
+    {
+      testscreen_init(&ts);
+      ts.scr.clip = clips[ci];
+
+      for (y = -2; y < HEIGHT + 2; y++)
+        for (x = -2; x < WIDTH + 2; x++)
+          if (fn == 0)
+            screen_set_pixel(&ts.scr, x, y, colour_rgb(255, 255, 255));
+          else
+            screen_set_pixel_value(&ts.scr, x, y, 0xFFFFFFFF);
+
+      for (y = 0; y < HEIGHT; y++)
+        for (x = 0; x < WIDTH; x++)
+        {
+          inside = box_is_empty(&clips[ci]) ||
+                   box_contains_point(&clips[ci], x, y);
+          if ((ts.pixels[y * WIDTH + x] != BACKGROUND) != inside)
+          {
+            printf("screen: %s clip %d wrong at (%d,%d)\n",
+                   fn == 0 ? "set_pixel" : "set_pixel_value", (int) ci, x, y);
+            return result_TEST_FAILED;
+          }
+        }
+    }
+
+  return result_TEST_PASSED;
+}
+
 /* span_p4.fill on packed nibbles: every start parity and length over a short
  * row must set exactly [first, first + length) and leave the rest alone. */
 static result_t test_fill_span_p4(void)
@@ -1483,7 +1533,8 @@ result_t screen_test(const char *resources)
     test_copy_bitmap_paletted_source,
     test_copy_bitmap_dithered,
     test_copy_rect_packed,
-    test_fill_span_p4
+    test_fill_span_p4,
+    test_set_pixel_clip
   };
 
   result_t rc;

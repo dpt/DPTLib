@@ -129,11 +129,27 @@ static void screen_plot_pixel(screen_t      *scr,
   }
 }
 
+/* Whether (x, y) is inside both the screen and its clip; an empty clip means
+ * unclipped. Same answer as screen_get_clip + box_contains_point, but open
+ * coded: this runs once per plotted pixel and the box_* helpers are out of
+ * line. */
+static int screen_pixel_visible(const screen_t *scr, int x, int y)
+{
+  const box_t *c;
+
+  if (x < 0 || y < 0 || x >= scr->size.w || y >= scr->size.h)
+    return 0;
+
+  c = &scr->clip;
+  if (c->x0 >= c->x1 || c->y0 >= c->y1)
+    return 1;
+
+  return x >= c->x0 && y >= c->y0 && x < c->x1 && y < c->y1;
+}
+
 void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour)
 {
-  box_t clip;
-
-  if (screen_get_clip(scr, &clip) || !box_contains_point(&clip, x, y))
+  if (!screen_pixel_visible(scr, x, y))
     return;
 
   screen_plot_pixel(scr, x, y, screen_colour_to_pixel(scr, colour));
@@ -148,9 +164,7 @@ pixelfmt_any_t screen_colour_to_pixel(const screen_t *scr, colour_t colour)
 
 void screen_set_pixel_value(screen_t *scr, int x, int y, pixelfmt_any_t pxl)
 {
-  box_t clip;
-
-  if (screen_get_clip(scr, &clip) || !box_contains_point(&clip, x, y))
+  if (!screen_pixel_visible(scr, x, y))
     return;
 
   screen_plot_pixel(scr, x, y, pxl);
