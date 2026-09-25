@@ -482,10 +482,13 @@ static result_t run_wuss(const char *resources,
 
   g_tasks.quit = false;
 
+#ifdef __EMSCRIPTEN__
+  /* browser users can't pass options, so show Configure up front */
   rc = config_create(wuss, NULL);
   logf_info("wuss: config_create -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
+#endif
 
   tasks_spawn(tasks);
 
