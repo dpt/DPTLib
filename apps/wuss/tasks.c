@@ -34,6 +34,7 @@
 #include "tasks/lissajous.h"
 #include "tasks/minesweeper.h"
 #include "tasks/palette.h"
+#include "tasks/particles.h"
 #include "tasks/patterns.h"
 #include "tasks/porter-duff.h"
 #include "tasks/saturn.h"
@@ -127,6 +128,7 @@ g_visuals_tasks[] =
   { "Greeble",     (task_create_fn_t) greeble_create     },
   { "Image",       (task_create_fn_t) image_create       },
   { "Lissajous",   (task_create_fn_t) lissajous_create   },
+  { "Particles",   (task_create_fn_t) particles_create   },
   { "Saturn",      (task_create_fn_t) saturn_create      },
   { "Sofa",        (task_create_fn_t) sofa_create        }
 },
@@ -166,6 +168,7 @@ static const wuss_menu_item_t g_visuals_items[] =
   { "Greeble",     wuss_MENU_ITEM_NONE, NULL },
   { "Image",       wuss_MENU_ITEM_NONE, NULL },
   { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
+  { "Particles",   wuss_MENU_ITEM_NONE, NULL },
   { "Saturn",      wuss_MENU_ITEM_NONE, NULL },
   { "Sofa",        wuss_MENU_ITEM_NONE, NULL }
 };
