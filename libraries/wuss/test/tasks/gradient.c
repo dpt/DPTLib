@@ -14,6 +14,7 @@
 #include "base/utils.h"
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
+#include "framebuf/pixelfmt.h"
 #include "geom/box.h"
 
 #include "gradient.h"
@@ -22,12 +23,17 @@
  * live per-instance in gradient_task_t, not as a file-scope static, so that
  * each window's Info row can hold its own .window pointer to the shared
  * proginfo singleton, retargeted just before wuss_menu_open */
-enum { GRADIENT_MENU_INFO };
+enum { GRADIENT_MENU_INFO, GRADIENT_MENU_RESET };
 
 #define GRADIENT_DOC_WIDTH  400
 #define GRADIENT_DOC_HEIGHT 400
 #define GRADIENT_OPEN_WIDTH  100
 #define GRADIENT_OPEN_HEIGHT 100
+
+#define GRADIENT_DEFAULT_DITHER   1 /* 4x4, matching the original */
+#define GRADIENT_UNITY          256 /* brightness/saturation of 1.0 */
+#define GRADIENT_ADJUST_MAX     512
+#define GRADIENT_DRAG_SCALE       2 /* adjust units per pixel dragged */
 
 /* ordered (Bayer) dither matrices, each holding values 0 .. dim*dim-1.
  * SELECT/ADJUST clicks cycle task->dither_index forward/backward through
@@ -72,16 +78,36 @@ gradient_dithers[] =
 
 /* offset "v" by the dither cell for (x, y), mapped to a fixed -8..+8 swing
  * (matching the original 4x4 code) whatever the matrix size, so a larger
- * matrix just gives a finer pattern rather than a louder one */
+ * matrix just gives a finer pattern rather than a louder one. A negative
+ * index skips the offset but still clamps. */
 static int dither(int index, int v, int x, int y)
 {
   int dim, n, m;
+
+  if (index < 0)
+    return CLAMP(v, 0, 255);
 
   dim = gradient_dithers[index].dim;
   n   = dim * dim;
   m   = gradient_dithers[index].cell[(y % dim) * dim + (x % dim)];
 
   return CLAMP(v + (m * 16 / (n - 1)) - 8, 0, 255);
+}
+
+/* apply the task's saturation (lerp away from luma) then brightness (scale)
+ * to an 8-bit RGB triple, in place; results may exceed 0..255 until
+ * dither() clamps them */
+static void adjust(const gradient_task_t *gc, int rgb[3])
+{
+  int luma, i;
+
+  luma = (rgb[0] * 77 + rgb[1] * 150 + rgb[2] * 29) >> 8;
+
+  for (i = 0; i < 3; i++)
+  {
+    rgb[i] = luma + (rgb[i] - luma) * gc->saturation / GRADIENT_UNITY;
+    rgb[i] = rgb[i] * gc->brightness / GRADIENT_UNITY;
+  }
 }
 
 result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
@@ -96,7 +122,9 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
     return result_OOM;
 
   task->wuss         = wuss;
-  task->dither_index = 1; /* 4x4, matching the original */
+  task->dither_index = GRADIENT_DEFAULT_DITHER;
+  task->brightness   = GRADIENT_UNITY;
+  task->saturation   = GRADIENT_UNITY;
 
   /* gradient_redraw paints every pixel itself */
   delegate_desc.handle    = gradient_handle;
@@ -131,6 +159,9 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
                                 * just before wuss_menu_open, in
                                 * gradient_mouse */
 
+  WUSS_MENU_ITEM(task->menu_items, GRADIENT_MENU_RESET, "Reset",
+                 wuss_MENU_ITEM_NONE);
+
   WUSS_MENU_TITLE(task->menu, "Gradient", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -152,11 +183,20 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
   screen_t        *scr;
   const box_t     *content, *bounds;
   int              di, sx, sy, x, y, lx, ly;
+  int              rgb[3];
 
-  gc = task_data;
-  di = gc->dither_index;
+  gc  = task_data;
+  scr = event->data.redraw.scr;
 
-  scr     = event->data.redraw.scr;
+  /* ponytail: a 24/32bpp screen already holds every 8-bit channel step, so
+   * dither only below 32bpp; the fixed swing suits 12-16bpp and paletted.
+   * TODO: scale the swing to each format's channel step instead (e.g. 565
+   * green steps by 4, so +/-8 is too loud there) */
+  if (pixelfmt_log2bpp(pixelfmt_base(scr->format)) >= 5)
+    di = -1;
+  else
+    di = gc->dither_index;
+
   content = event->data.redraw.content;
   bounds  = event->data.redraw.bounds;
   sx      = event->data.redraw.scroll.x;
@@ -169,10 +209,15 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
       lx = x - bounds->x0 + sx;
       ly = y - bounds->y0 + sy;
 
+      rgb[0] = lx * 255 / GRADIENT_DOC_WIDTH;
+      rgb[1] = ly * 255 / GRADIENT_DOC_HEIGHT;
+      rgb[2] = 255 - (lx + ly) * 255 / (GRADIENT_DOC_WIDTH + GRADIENT_DOC_HEIGHT);
+      adjust(gc, rgb);
+
       screen_set_pixel(scr, x, y,
-                        colour_rgb(dither(di, lx * 255 / GRADIENT_DOC_WIDTH, lx, ly),
-                                   dither(di, ly * 255 / GRADIENT_DOC_HEIGHT, lx, ly),
-                                   dither(di, 255 - (lx + ly) * 255 / (GRADIENT_DOC_WIDTH + GRADIENT_DOC_HEIGHT), lx, ly)));
+                       colour_rgb(dither(di, rgb[0], lx, ly),
+                                  dither(di, rgb[1], lx, ly),
+                                  dither(di, rgb[2], lx, ly)));
     }
   }
 
@@ -181,12 +226,15 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
    * not the per-redraw dirty piece, so it is drawn whole on a partial redraw */
   {
     bmfont_t   *font = wuss_get_font(gc->wuss);
-    int       dim  = gradient_dithers[di].dim;
-    char      label[8];
+    int       dim  = gradient_dithers[gc->dither_index].dim;
+    char      label[32];
     colour_t    ink  = colour_rgb(0xFF, 0xFF, 0xFF);
     colour_t    bg   = colour_rgba(0, 0, 0, 0); /* transparent */
 
-    sprintf(label, "%dx%d", dim, dim);
+    snprintf(label, sizeof(label), "%dx%d%s b%d%% s%d%%",
+             dim, dim, di < 0 ? " (off)" : "",
+             gc->brightness * 100 / GRADIENT_UNITY,
+             gc->saturation * 100 / GRADIENT_UNITY);
 
     if (font != NULL)
     {
@@ -206,16 +254,49 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
 static result_t gradient_mouse(const wuss_event_t *event, void *task_data)
 {
   gradient_task_t *gc;
+  point_t          p;
   wuss_button_t    button;
   int              n;
 
   gc = task_data;
+  p  = event->data.mouse.point;
+  n  = (int) NELEMS(gradient_dithers);
 
-  if (event->data.mouse.action != wuss_MOUSE_DOWN)
+  /* an ADJUST drag moves brightness/saturation; an ADJUST click with no
+   * movement still steps the dither matrix backward, on release */
+  if (event->data.mouse.action == wuss_MOUSE_MOVE)
+  {
+    if (!gc->dragging)
+      return result_OK;
+
+    gc->saturation = CLAMP(gc->saturation + (p.x - gc->drag_x) * GRADIENT_DRAG_SCALE,
+                           0, GRADIENT_ADJUST_MAX);
+    gc->brightness = CLAMP(gc->brightness - (p.y - gc->drag_y) * GRADIENT_DRAG_SCALE,
+                           0, GRADIENT_ADJUST_MAX);
+    gc->drag_x  = p.x;
+    gc->drag_y  = p.y;
+    gc->dragged = 1;
+    wuss_window_invalidate_visible(gc->window);
+
     return result_OK;
+  }
+
+  if (event->data.mouse.action == wuss_MOUSE_UP)
+  {
+    if (!gc->dragging)
+      return result_OK;
+
+    gc->dragging = 0;
+    if (gc->dragged)
+      return result_OK;
+
+    gc->dither_index = (gc->dither_index + n - 1) % n;
+    wuss_window_invalidate_visible(gc->window);
+
+    return result_OK;
+  }
 
   button = event->data.mouse.button;
-  n      = (int) NELEMS(gradient_dithers);
 
   if (button & wuss_BUTTON_MENU)
   {
@@ -234,14 +315,45 @@ static result_t gradient_mouse(const wuss_event_t *event, void *task_data)
                           wuss_get_pointer(gc->wuss), &gc->menu_handle);
   }
 
-  if (button & wuss_BUTTON_SELECT)
-    gc->dither_index = (gc->dither_index + 1) % n;
-  else if (button & wuss_BUTTON_ADJUST)
-    gc->dither_index = (gc->dither_index + n - 1) % n;
-  else
+  if (button & wuss_BUTTON_ADJUST)
+  {
+    gc->dragging = 1;
+    gc->dragged  = 0;
+    gc->drag_x   = p.x;
+    gc->drag_y   = p.y;
+
+    return result_OK;
+  }
+
+  if (!(button & wuss_BUTTON_SELECT))
     return result_OK;
 
+  gc->dither_index = (gc->dither_index + 1) % n;
+
   wuss_window_invalidate_visible(gc->window); /* whole fill changes */
+
+  return result_OK;
+}
+
+/* Menu pick: Reset restores the default dither matrix, brightness and
+ * saturation. A SELECT pick has already closed and freed the chain, so drop
+ * the handle then. */
+static result_t gradient_menu_select(gradient_task_t    *gc,
+                                     const wuss_event_t *event)
+{
+  if (event->data.menu_select.menu != &gc->menu)
+    return result_OK;
+
+  if (!wuss_menu_should_keep_open(event))
+    gc->menu_handle = NULL;
+
+  if (event->data.menu_select.index != GRADIENT_MENU_RESET)
+    return result_OK;
+
+  gc->dither_index = GRADIENT_DEFAULT_DITHER;
+  gc->brightness   = GRADIENT_UNITY;
+  gc->saturation   = GRADIENT_UNITY;
+  wuss_window_invalidate_visible(gc->window);
 
   return result_OK;
 }
@@ -264,6 +376,9 @@ result_t gradient_handle(wuss_window_t      *window,
       return result_OK; /* the proginfo dialogue has no click behaviour of
                          * its own */
     return gradient_mouse(event, task_data);
+
+  case wuss_EVENT_MENU_SELECT:
+    return gradient_menu_select(gc, event);
 
   case wuss_EVENT_MENU_CLOSED:
     gc->menu_handle = NULL;
