@@ -194,6 +194,31 @@ static result_t chars_set_page(chars_task_t       *task,
   return result_OK;
 }
 
+/* step the grid to the next (dir 1) or previous (dir -1) page in which the
+ * current font has any glyph, wrapping at either end; stays put if no other
+ * page has glyphs */
+static void chars_step_page(chars_task_t *task, int dir)
+{
+  static const unsigned long npages = CHARS_LAST_PAGE / CHARS_PAGE_SIZE + 1;
+
+  unsigned long index;
+  unsigned long i;
+
+  index = task->page / CHARS_PAGE_SIZE;
+  for (i = 1; i < npages; i++)
+  {
+    unsigned long page;
+
+    page = ((index + (dir > 0 ? i : npages - i)) % npages) * CHARS_PAGE_SIZE;
+    if (chars_page_has_glyphs(task->font, page))
+    {
+      task->page = page;
+      chars_resize(task);
+      return;
+    }
+  }
+}
+
 /* rebuild the "Page" submenu: one row per page, up to CHARS_MAX_PAGES, in
  * which the current font has any glyph, with the shown page ticked.
  * ponytail: probes every codepoint up to CHARS_LAST_PAGE (a bsearch each,
@@ -504,9 +529,15 @@ result_t chars_handle(wuss_window_t      *window,
     if (window != cc->window)
       return result_OK; /* the proginfo dialogue has no click behaviour of
                          * its own */
-    if (event->data.mouse.action == wuss_MOUSE_DOWN &&
-        (event->data.mouse.button & wuss_BUTTON_MENU))
+    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+      return result_OK;
+
+    if (event->data.mouse.button & wuss_BUTTON_MENU)
       return chars_open_menu(cc);
+    if (event->data.mouse.button & wuss_BUTTON_SELECT)
+      chars_step_page(cc, 1);
+    else if (event->data.mouse.button & wuss_BUTTON_ADJUST)
+      chars_step_page(cc, -1);
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
