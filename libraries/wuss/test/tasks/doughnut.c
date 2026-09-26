@@ -38,7 +38,8 @@ enum
   DOUGHNUT_MENU_INFO = 0,
   DOUGHNUT_MENU_BACKGROUND,
   DOUGHNUT_MENU_TUBE,
-  DOUGHNUT_MENU_PAUSE
+  DOUGHNUT_MENU_PAUSE,
+  DOUGHNUT_MENU_RESET
 };
 
 /* "Tube" submenu rows: tube radius R1, kept below DOUGHNUT_R2 so the hole
@@ -195,6 +196,9 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
                       wuss_MENU_ITEM_NONE, &task->tube_menu);
 
   WUSS_MENU_ITEM(task->menu_items, DOUGHNUT_MENU_PAUSE, "Pause",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM(task->menu_items, DOUGHNUT_MENU_RESET, "Reset view",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Doughnut", task->menu_items,
@@ -472,6 +476,18 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
     if (wuss_menu_should_keep_open(event))
       wuss_menu_tick_item_live(task->menu_handle, &task->menu,
                                DOUGHNUT_MENU_PAUSE, task->paused);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == DOUGHNUT_MENU_RESET)
+  {
+    /* same as doughnut_create */
+    task->a    = 1.0;
+    task->b    = 1.0;
+    task->zoom = 1.0;
+    if (task->window != NULL)
+      wuss_window_invalidate_visible(task->window);
     return result_OK;
   }
 
