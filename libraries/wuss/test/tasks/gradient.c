@@ -12,15 +12,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "base/debug.h"
 #include "base/utils.h"
-#include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
 #include "geom/box.h"
 
 #include "gradient.h"
+#include "snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
  * per-instance in gradient_task_t, not as a file-scope static, so that each
@@ -461,58 +460,6 @@ static result_t gradient_mouse(const wuss_event_t *event, void *task_data)
 /* "Save PNG": replay gradient_redraw into an offscreen bitmap the size of
  * the window's content, at its current scroll, and write that out.
  * ponytail: fixed filename in the current dir; wuss has no save dialogue. */
-static result_t gradient_save_png(gradient_task_t *gc)
-{
-  result_t     rc;
-  box_t        bounds;
-  size2d_t     size;
-  void        *pixels;
-  bitmap_t     bm;
-  screen_t     scr;
-  wuss_event_t event;
-
-  wuss_window_get_content_bounds(gc->window, &bounds);
-  size = box_size(&bounds);
-
-  pixels = malloc((size_t) size.w * (size_t) size.h * 4);
-  if (pixels == NULL)
-    return result_OOM;
-
-  rc = bitmap_init(&bm, size, pixelfmt_bgrx8888, size.w * 4, NULL, pixels);
-  if (rc != result_OK)
-    goto cleanup;
-
-  screen_for_bitmap(&scr, &bm);
-
-  /* the redraw sees the whole bitmap as both the dirty and full content box */
-  bounds.x0 = 0;
-  bounds.y0 = 0;
-  bounds.x1 = size.w;
-  bounds.y1 = size.h;
-
-  memset(&event, 0, sizeof(event));
-  event.kind                = wuss_EVENT_REDRAW;
-  event.data.redraw.scr     = &scr;
-  event.data.redraw.content = &bounds;
-  event.data.redraw.bounds  = &bounds;
-  wuss_window_get_scroll(gc->window, &event.data.redraw.scroll);
-
-  rc = gradient_redraw(&event, gc);
-  if (rc != result_OK)
-    goto cleanup;
-
-  rc = bitmap_save_png(&bm, GRADIENT_SAVE_NAME);
-  if (rc != result_OK)
-    logf_warning("gradient: saving \"%s\" failed (rc=0x%X)",
-                 GRADIENT_SAVE_NAME, rc);
-  else
-    logf_info("gradient: saved \"%s\"", GRADIENT_SAVE_NAME);
-
-cleanup:
-  free(pixels);
-  return rc;
-}
-
 /* Menu pick: a Shape row switches the fill; Reset restores the default
  * shape, dither matrix, brightness and saturation; Save PNG writes the
  * window's content out. A SELECT pick has already
@@ -539,7 +486,8 @@ static result_t gradient_menu_select(gradient_task_t    *gc,
     gc->menu_handle = NULL;
 
   if (event->data.menu_select.index == GRADIENT_MENU_SAVE)
-    return gradient_save_png(gc);
+    return snapshot_save_png(gc->window, gradient_handle, gc,
+                             GRADIENT_SAVE_NAME);
 
   if (event->data.menu_select.index != GRADIENT_MENU_RESET)
     return result_OK;
