@@ -31,7 +31,8 @@ enum
   PARTICLES_MENU_BACKGROUND,
   PARTICLES_MENU_PAUSE,
   PARTICLES_MENU_GRAVITY,
-  PARTICLES_MENU_WALLS
+  PARTICLES_MENU_WALLS,
+  PARTICLES_MENU_CLEAR
 };
 
 /* "Gravity" submenu rows: each scales every style's own gravity */
@@ -321,6 +322,9 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
                       wuss_MENU_ITEM_NONE, &task->gravity_menu);
 
   WUSS_MENU_ITEM(task->menu_items, PARTICLES_MENU_WALLS, "Walls",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM(task->menu_items, PARTICLES_MENU_CLEAR, "Clear",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Particles", task->menu_items,
@@ -660,6 +664,15 @@ result_t particles_handle(wuss_window_t      *window,
     return particles_pre_submenu_open(pt, event);
 
   case wuss_EVENT_MENU_SELECT:
+    if (event->data.menu_select.menu == &pt->menu &&
+        event->data.menu_select.index == PARTICLES_MENU_CLEAR)
+    {
+      /* drops every particle and emitter; repaint in case we're paused */
+      reset_particle_system(&pt->ps);
+      if (pt->window != NULL)
+        wuss_window_invalidate_visible(pt->window);
+      return result_OK;
+    }
     if (event->data.menu_select.menu == &pt->menu)
       return particles_toggle(pt, event);
     return particles_menu_select(pt, event);

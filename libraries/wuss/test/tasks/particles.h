@@ -22,7 +22,8 @@
  * while over the content. Menu > Add emitter adds a smoke emitter, at a
  * chosen intensity, where the menu was opened; Menu > Background picks the
  * fill; Menu > Gravity scales every style's pull; Menu > Walls bounces
- * particles off the edges. A fresh burst fires by itself whenever the window
+ * particles off the edges; Menu > Clear removes every particle and emitter.
+ * A fresh burst fires by itself whenever the window
  * falls quiet. */
 typedef struct particles_task
 {
@@ -30,7 +31,7 @@ typedef struct particles_task
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[6]; /* per-instance: shared static "Info" row
+  wuss_menu_item_t    menu_items[7]; /* per-instance: shared static "Info" row
                                        * would leak one instance's .window
                                        * pointer into another's menu */
   wuss_menu_t         menu;
