@@ -18,6 +18,7 @@
 
 #include "greeble.h"
 #include "greeble-tiles.h"
+#include "snapshot.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -32,8 +33,11 @@ enum
 {
   GREEBLE_MENU_INFO = 0,
   GREEBLE_MENU_RANDPAL,
-  GREEBLE_MENU_PALETTE
+  GREEBLE_MENU_PALETTE,
+  GREEBLE_MENU_SAVE
 };
+
+#define GREEBLE_SAVE_NAME "greeble.png" /* written to the current dir */
 
 /* the task block sizes its Palette submenu by GREEBLE_MAX_PALETTES, since
  * greeble-tiles.h (and so GREEBLE_NPALETTE) is private to this file */
@@ -345,6 +349,12 @@ static result_t greeble_menu_select(greeble_task_t     *task,
                                GREEBLE_MENU_RANDPAL,
                                task->random_prefab_palettes);
   }
+  else if (event->data.menu_select.menu == &task->menu &&
+           event->data.menu_select.index == GREEBLE_MENU_SAVE)
+  {
+    rc = snapshot_save_png(task->window, greeble_handle, task,
+                           GREEBLE_SAVE_NAME);
+  }
   else
   {
     return result_OK;
@@ -515,6 +525,9 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, GREEBLE_MENU_PALETTE, "Palette",
                       wuss_MENU_ITEM_NONE, &task->palette_menu);
+
+  WUSS_MENU_ITEM(task->menu_items, GREEBLE_MENU_SAVE, "Save PNG",
+                 wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Greeble", task->menu_items,
                  NELEMS(task->menu_items));
