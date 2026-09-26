@@ -22,7 +22,22 @@
  * per-instance in checker_task_t, not as a file-scope static, so that each
  * window's Info row can hold its own .window pointer to the shared proginfo
  * singleton, retargeted just before wuss_menu_open */
-enum { CHECKER_MENU_INFO = 0, CHECKER_MENU_INK, CHECKER_MENU_PAPER };
+enum
+{
+  CHECKER_MENU_INFO = 0,
+  CHECKER_MENU_INK,
+  CHECKER_MENU_PAPER,
+  CHECKER_MENU_PATTERN
+};
+
+/* Pattern submenu rows, in checker_pattern_t order */
+static const char *checker_pattern_names[checker_PATTERN__COUNT] =
+{
+  "Checkerboard",
+  "Horizontal",
+  "Vertical",
+  "Diagonal"
+};
 
 result_t checker_create(wuss_t *wuss, checker_task_t **out)
 {
@@ -30,6 +45,7 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
   checker_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -99,6 +115,16 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
   WUSS_MENU_ITEM_MENU(task->menu_items, CHECKER_MENU_PAPER, "Paper",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
+  for (i = 0; i < checker_PATTERN__COUNT; i++)
+    WUSS_MENU_ITEM(task->pattern_items, i, checker_pattern_names[i],
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->pattern_menu, "Pattern", task->pattern_items,
+                 NELEMS(task->pattern_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, CHECKER_MENU_PATTERN, "Pattern",
+                      wuss_MENU_ITEM_NONE, &task->pattern_menu);
 
   WUSS_MENU_TITLE(task->menu, "Checker", task->menu_items,
                  NELEMS(task->menu_items));
@@ -218,8 +244,9 @@ static result_t checker_pre_submenu_open(checker_task_t     *cc,
                                     index, menu);
 }
 
-/* A colourmenu pick lands in whichever colour last opened it; both windows
- * share the two colours, so both repaint. */
+/* A Pattern pick lands in whichever window opened the menu. A colourmenu
+ * pick lands in whichever colour last opened it; both windows share the two
+ * colours, so both repaint. */
 static result_t checker_menu_select(checker_task_t     *cc,
                                     const wuss_event_t *event)
 {
@@ -227,6 +254,22 @@ static result_t checker_menu_select(checker_task_t     *cc,
   int             npalette;
   wuss_colour_t   picked;
   int             mine;
+
+  if (event->data.menu_select.menu == &cc->pattern_menu)
+  {
+    if (cc->menu_window == NULL)
+      return result_OK;
+
+    if (cc->menu_window == cc->window2)
+      cc->pattern2 = event->data.menu_select.index;
+    else
+      cc->pattern = event->data.menu_select.index;
+    if (wuss_menu_should_keep_open(event))
+      wuss_menu_tick_exclusive_live(cc->menu_handle, &cc->pattern_menu,
+                                    event->data.menu_select.index);
+    wuss_window_invalidate_visible(cc->menu_window);
+    return result_OK;
+  }
 
   picked = wuss_colourmenu_selected(event, &mine);
   if (!mine || cc->colourmenu_target == NULL)
@@ -277,6 +320,11 @@ result_t checker_handle(wuss_window_t      *window,
       cc->menu_items[CHECKER_MENU_INFO].window =
         wuss_proginfo_window(cc->delegate);
 
+      cc->menu_window = window;
+      wuss_menu_tick_exclusive(&cc->pattern_menu,
+                               (window == cc->window2) ? cc->pattern2
+                                                       : cc->pattern);
+
       return wuss_menu_open(cc->delegate, &cc->menu,
                             wuss_get_pointer(cc->wuss), &cc->menu_handle);
     }
@@ -314,6 +362,8 @@ result_t checker_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_CLOSE:
+    if (window == cc->menu_window)
+      cc->menu_window = NULL;
     if (window == cc->window2)
       cc->window2 = NULL;
     else
