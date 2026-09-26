@@ -1533,9 +1533,9 @@ static result_t load_with_map(const char *map, bmfont_t **bmfont)
   return bmfont_create(CMAP_TEST_PNG, bmfont);
 }
 
-/* Checks the cmap: a real sidecar (GrongyUI), the implicit mapping (Tiny, no
- * sidecar) and a set of well- and ill-formed sidecars loaded against a
- * scratch copy of Tiny (96 glyphs). */
+/* Checks the cmap: a real sidecar (GrongyUI), the implicit mapping (scratch
+ * copy of Tiny, no sidecar) and a set of well- and ill-formed sidecars loaded
+ * against that copy (96 glyphs). */
 static result_t bmfont_cmap_test(const char *resources)
 {
   static const struct
@@ -1615,11 +1615,20 @@ static result_t bmfont_cmap_test(const char *resources)
   bmfont_destroy(bmfont);
   bmfont = NULL;
 
+  /* every shipped font has a sidecar, so test the implicit mapping on a
+   * scratch copy of Tiny with none */
   filename = pathf("%s/resources/bmfonts/Tiny.png", resources);
-  rc = bmfont_create(filename, &bmfont);
+  if (!copy_file(filename, CMAP_TEST_PNG))
+  {
+    fprintf(stderr, "error: can't copy %s\n", filename);
+    goto Failure;
+  }
+
+  remove(CMAP_TEST_MAP);
+  rc = bmfont_create(CMAP_TEST_PNG, &bmfont);
   if (rc)
   {
-    fprintf(stderr, "Error: Failed to load font %s\n", filename);
+    fprintf(stderr, "Error: Failed to load font %s\n", CMAP_TEST_PNG);
     goto Failure;
   }
 
@@ -1636,12 +1645,6 @@ static result_t bmfont_cmap_test(const char *resources)
 
   bmfont_destroy(bmfont);
   bmfont = NULL;
-
-  if (!copy_file(filename, CMAP_TEST_PNG))
-  {
-    fprintf(stderr, "error: can't copy %s\n", filename);
-    goto Failure;
-  }
 
   for (i = 0; i < NELEMS(maps); i++)
   {

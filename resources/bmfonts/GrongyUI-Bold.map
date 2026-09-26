@@ -1,0 +1,8 @@
+# GrongyUI-Bold -- cmap for GrongyUI-Bold.png (see docs/framebuf/bmfont.md)
+# Cells for # $ % & ' * @ are blank so are left unmapped.
+U+0020..U+0022  0     # space ! "
+U+0028..U+0029  8     # ( )
+U+002B..U+003F  11    # + , - . / 0-9 : ; < = > ?
+U+0041..U+007E  33    # A-Z [ \ ] ^ _ ` a-z { | } ~
+U+00A0          0     # NBSP shares space
+U+00A9          95    # copyright sign, drawn in the DEL cell
