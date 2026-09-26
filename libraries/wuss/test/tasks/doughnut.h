@@ -17,17 +17,20 @@
  * angles advanced a little. Select toggles pause (and takes the input focus);
  * the wheel zooms in/out; an Adjust drag spins the torus directly, overriding
  * the idle auto-rotation for as long as it's held. While paused the arrow
- * keys step the rotation. */
+ * keys step the rotation. Menu > Tube picks the tube's thickness. */
 typedef struct doughnut_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
   wuss_task_t       *delegate; /* the task that owns the menu */
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[2]; /* per-instance: shared static "Info" row
+  wuss_menu_item_t   menu_items[3]; /* per-instance: shared static "Info" row
                                       * would leak one instance's .window
                                       * pointer into another's menu */
   wuss_menu_t        menu;
+  wuss_menu_item_t   tube_items[4]; /* "Tube" submenu: one row per radius */
+  wuss_menu_t        tube_menu;
+  int                tube;    /* index into doughnut_tubes */
   colour_t           palette[256]; /* shade bitmap's palette: 0 = background
                                     * (picked from the shared colourmenu),
                                     * 1..255 = grey ramp */

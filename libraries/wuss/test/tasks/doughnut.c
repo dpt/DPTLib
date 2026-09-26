@@ -27,19 +27,41 @@
  * character cell; here it drives colour_grey brightness on a screen pixel
  * instead. */
 
-#define DOUGHNUT_R1   1.0  /* tube radius */
 #define DOUGHNUT_R2   2.0  /* ring radius */
 #define DOUGHNUT_K2   5.0  /* viewer distance */
 #define DOUGHNUT_P1 314.15 /* points around the tube */
 #define DOUGHNUT_P2  90.0  /* points around the ring */
 #define DOUGHNUT_KEY_STEP 0.1 /* radians per arrow press while paused */
 
-enum { DOUGHNUT_MENU_INFO = 0, DOUGHNUT_MENU_BACKGROUND };
+enum
+{
+  DOUGHNUT_MENU_INFO = 0,
+  DOUGHNUT_MENU_BACKGROUND,
+  DOUGHNUT_MENU_TUBE
+};
+
+/* "Tube" submenu rows: tube radius R1, kept below DOUGHNUT_R2 so the hole
+ * stays open */
+static const struct
+{
+  const char *name;
+  double      r1;
+}
+doughnut_tubes[] =
+{
+  { "Thin",    0.5 },
+  { "Classic", 1.0 },
+  { "Plump",   1.5 },
+  { "Fat",     1.9 }
+};
+
+#define DOUGHNUT_TUBE_CLASSIC 1
 
 /* one theta/phi surface sample, projected and shaded into out_x/out_y/
  * out_z/out_lum; returns 0 if the projected point falls outside [0,width)x
  * [0,height) so the caller can skip it */
-static int doughnut_project(double  costheta,
+static int doughnut_project(double  r1,
+                            double  costheta,
                             double  sintheta,
                             double  phi,
                             double  a,
@@ -67,8 +89,8 @@ static int doughnut_project(double  costheta,
   cosb     = cos(b);
   sinb     = sin(b);
 
-  circlex = DOUGHNUT_R2 + DOUGHNUT_R1 * costheta;
-  circley = DOUGHNUT_R1 * sintheta;
+  circlex = DOUGHNUT_R2 + r1 * costheta;
+  circley = r1 * sintheta;
 
   x = circlex * (cosb * cosphi + sina * sinb * sinphi) - circley * cosa * sinb;
   y = circlex * (sinb * cosphi - sina * cosb * sinphi) + circley * cosa * cosb;
@@ -120,6 +142,7 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
   task->a    = 1.0;
   task->b    = 1.0;
   task->zoom = 1.0;
+  task->tube = DOUGHNUT_TUBE_CLASSIC;
 
   task->palette[0] = colour_rgb(0x20, 0x20, 0x20);
   for (i = 1; i < 256; i++)
@@ -160,6 +183,16 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_BACKGROUND, "Background",
                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
+  for (i = 0; i < NELEMS(task->tube_items); i++)
+    WUSS_MENU_ITEM(task->tube_items, i, doughnut_tubes[i].name,
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->tube_menu, "Tube", task->tube_items,
+                 NELEMS(task->tube_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_TUBE, "Tube",
+                      wuss_MENU_ITEM_NONE, &task->tube_menu);
+
   WUSS_MENU_TITLE(task->menu, "Doughnut", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -189,6 +222,7 @@ static result_t doughnut_redraw(const wuss_event_t *event,
   double        *zbuf;
   unsigned char *shade; /* palette index per z-buffer cell: 0 = background */
   int            x, y;
+  double         r1;
   double         k1;
   double         theta, phi;
   double         z, lum;
@@ -236,7 +270,8 @@ static result_t doughnut_redraw(const wuss_event_t *event,
   memset(zbuf, 0, ncells * sizeof(*zbuf));
   memset(shade, 0, ncells * sizeof(*shade));
 
-  k1 = width * DOUGHNUT_K2 * 3.0 / (8.0 * (DOUGHNUT_R1 + DOUGHNUT_R2)) * task->zoom;
+  r1 = doughnut_tubes[task->tube].r1;
+  k1 = width * DOUGHNUT_K2 * 3.0 / (8.0 * (r1 + DOUGHNUT_R2)) * task->zoom;
 
   for (theta = 0.0; theta < 2.0 * M_PI; theta += 2.0 * M_PI / DOUGHNUT_P2)
   {
@@ -249,8 +284,8 @@ static result_t doughnut_redraw(const wuss_event_t *event,
     {
       int cell;
 
-      if (!doughnut_project(costheta, sintheta, phi, task->a, task->b, width,
-                         height, k1, &x, &y, &z, &lum))
+      if (!doughnut_project(r1, costheta, sintheta, phi, task->a, task->b,
+                            width, height, k1, &x, &y, &z, &lum))
         continue;
 
       cell = y * width + x;
@@ -303,6 +338,8 @@ static result_t doughnut_mouse(doughnut_task_t    *task,
       };
       wuss_proginfo_set_desc(&desc);
       task->menu_items[DOUGHNUT_MENU_INFO].window = wuss_proginfo_window(task->delegate);
+
+      wuss_menu_tick_exclusive(&task->tube_menu, task->tube);
 
       return wuss_menu_open(task->delegate, &task->menu,
                             wuss_get_pointer(task->wuss), &task->menu_handle);
@@ -416,6 +453,17 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
   int             npalette;
   wuss_colour_t   picked;
   int             mine;
+
+  if (event->data.menu_select.menu == &task->tube_menu)
+  {
+    task->tube = event->data.menu_select.index;
+    if (wuss_menu_should_keep_open(event))
+      wuss_menu_tick_exclusive_live(task->menu_handle, &task->tube_menu,
+                                    task->tube);
+    if (task->window != NULL)
+      wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
 
   picked = wuss_colourmenu_selected(event, &mine);
   if (!mine)
