@@ -1800,8 +1800,8 @@ static result_t bmfont_utf8_test(const char *resources)
     }
   }
 
-  /* draw '#' and check it's a 1px box over columns 1 onwards, from the top
-   * of the cell down to just above the baseline */
+  /* draw '#' and check it's a 1px box over all but the last column, from the
+   * top of the cell down to just above the baseline */
 
   bm_width  = margin * 2 + cellwidth;
   bm_height = margin * 2 + ascent;
@@ -1836,11 +1836,11 @@ static result_t bmfont_utf8_test(const char *resources)
       int inside;
       int want;
 
-      inside = x >= margin + 1 && x <= margin + cellwidth - 1 &&
-               y >= margin     && y <= margin + ascent - 1;
+      inside = x >= margin && x <= margin + cellwidth - 2 &&
+               y >= margin && y <= margin + ascent - 1;
       want   = inside &&
-               (x == margin + 1 || x == margin + cellwidth - 1 ||
-                y == margin     || y == margin + ascent - 1);
+               (x == margin || x == margin + cellwidth - 2 ||
+                y == margin || y == margin + ascent - 1);
 
       if (((row[x] & 0x00FFFFFFu) != 0x00FFFFFFu) != want)
       {
