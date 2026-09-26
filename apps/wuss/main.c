@@ -362,6 +362,7 @@ static result_t run_wuss(const char *resources,
   wuss_frontend_t *frontend;
   bool             use_wimp16;
   int              palette_index;
+  int              scr_nentries;
 
   /* everything the Failure path frees, so an early goto frees nothing */
   nfonts    = 0;
@@ -416,8 +417,12 @@ static result_t run_wuss(const char *resources,
    * needs (up to 256 for p8); pad scr_palette with palette's 16 UI colours,
    * then the web-safe 216 (so a p8 screen has real range beyond the UI
    * colours for nearest-match), then black for what's left. Also done on
-   * a live palette change; see task_handle_event. */
-  tasks_build_screen_palette(scr_palette, NELEMS(scr_palette),
+   * a live palette change; see task_handle_event. 1/2bpp get a grey ramp
+   * instead. Unpaletted formats ignore it, so fill the lot. */
+  scr_nentries = pixelfmt_paletted_nentries(fmt);
+  if (scr_nentries <= 0)
+    scr_nentries = NELEMS(scr_palette);
+  tasks_build_screen_palette(scr_palette, scr_nentries,
                              palette, NELEMS(palette));
 
   rc = bitmap_init(&g_bm, SIZE2D(scr_width, scr_height), fmt, rowbytes,
