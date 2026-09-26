@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include <stdbool.h>
+#include <time.h>
 
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
@@ -32,6 +33,7 @@ typedef struct clock_task
   colour_t            bg, bezel, hand, second_hand;
   bool                show_second;
   bool                digital; /* Menu > Digital: text readout, no face */
+  time_t              shown; /* time last painted, to the second or minute */
 }
 clock_task_t;
 
