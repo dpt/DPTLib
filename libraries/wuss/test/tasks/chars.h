@@ -24,10 +24,12 @@ typedef struct chars_task
                                     * menu */
   wuss_menu_handle_t  menu_handle; /* the open chain, to re-tick it live on
                                     * an ADJUST pick that keeps it open */
-  bmfont_t           *font;        /* currently shown; == fonts[current] */
+  bmfont_t           *font;        /* currently shown; == fonts[current]
+                                    * once loaded */
   bmfont_t          **fonts;       /* one slot per menu item, lazily loaded */
   int                 nfonts;      /* length of fonts[]; == menu item count */
-  int                 current;     /* index into fonts[], or -1 for sysfont */
+  int                 current;     /* index into fonts[], or -1 if the
+                                    * system font is not listed */
   colour_t            fg, mg, bg;
   wuss_menu_item_t    menu_items[2]; /* per-instance: a shared static would
                                       * leak one instance's .window pointer
