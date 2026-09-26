@@ -1,0 +1,6 @@
+# MS Sans Serif -- cmap for MS Sans Serif.png (see docs/framebuf/bmfont.md)
+# Cells follow Windows-1252 from 0x20; only the drawn cells are mapped.
+U+0020..U+007E  0     # printable ASCII
+U+00A0          0     # NBSP shares space
+U+00A1..U+00FF  129   # Latin-1 Supplement
+U+20AC          96    # euro sign (cp1252 0x80)

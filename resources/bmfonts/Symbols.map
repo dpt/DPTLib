@@ -1,0 +1,9 @@
+# Symbols -- cmap for Symbols.png (see docs/framebuf/bmfont.md)
+# Symbols are reached by ASCII codes (e.g. wuss draws '*' for its menu tick
+# and '>' for its submenu arrow). Blank cells are left unmapped.
+U+0020..U+0027  0
+U+002A          10    # * tick
+U+002C..U+002E  12
+U+0031..U+0034  17
+U+0036          22
+U+003C..U+003E  28    # > submenu arrow in the last cell
