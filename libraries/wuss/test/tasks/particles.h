@@ -28,10 +28,11 @@ typedef struct particles_task
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[3]; /* per-instance: shared static "Info" row
+  wuss_menu_item_t    menu_items[4]; /* per-instance: shared static "Info" row
                                        * would leak one instance's .window
                                        * pointer into another's menu */
   wuss_menu_t         menu;
+  int                 paused; /* Menu > Pause; idle does nothing while set */
   wuss_menu_item_t    emitter_items[3]; /* one row per intensity */
   wuss_menu_t         emitter_menu;
   int                 menu_x, menu_y; /* where the menu was opened: an
