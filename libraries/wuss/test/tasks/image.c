@@ -298,7 +298,6 @@ static result_t image_open_menu(image_task_t *ic)
    * Marked BORROWED_SUBMENU so wuss_menu_destroy leaves it alone -- it is
    * owned by the singleton, not by this per-open tree. */
   wuss_colourmenu_set_none(1);
-  wuss_colourmenu_set_title("Background");
   for (i = 0; i < m->nitems; i++)
     if (m->items[i].text != NULL && strcmp(m->items[i].text, "Background") == 0)
     {
@@ -306,6 +305,7 @@ static result_t image_open_menu(image_task_t *ic)
 
       it->submenu = wuss_colourmenu_menu(ic->wuss);
       it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
+      wuss_colourmenu_set_title("Background"); /* needs it built first */
       break;
     }
 

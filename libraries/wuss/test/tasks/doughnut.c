@@ -157,7 +157,6 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in doughnut_mouse */
 
-  wuss_colourmenu_set_none(0);
   WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_BACKGROUND, "Background",
                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
@@ -393,15 +392,21 @@ static result_t doughnut_key(doughnut_task_t *task, int code)
   return result_OK;
 }
 
-/* The "Background" row's only submenu leaf: always hand back the shared
- * colourmenu singleton, unretargeted -- there is nothing else to pick into.
- */
+/* The "Background" row's submenu: the shared colourmenu singleton,
+ * reconfigured here rather than at create time since other tasks retitle it
+ * and toggle its None row too. */
 static result_t doughnut_pre_submenu_open(doughnut_task_t    *task,
                                           const wuss_event_t *event)
 {
+  const wuss_menu_t *menu;
+
+  menu = wuss_colourmenu_menu(task->wuss);
+  wuss_colourmenu_set_none(0);
+  wuss_colourmenu_set_title("Background");
+
   return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
                                     event->data.pre_submenu_open.index,
-                                    wuss_colourmenu_menu(task->wuss));
+                                    menu);
 }
 
 static result_t doughnut_menu_select(doughnut_task_t    *task,

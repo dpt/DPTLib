@@ -202,7 +202,6 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
    * to be non-NULL to draw an arrow and become hoverable; which menu they
    * name doesn't matter since the handler always supplies the menu to
    * open. */
-  wuss_colourmenu_set_none(0);
   WUSS_MENU_ITEM_MENU(task->colours_items, SATURN_COLOURS_MENU_FOREGROUND,
                       "Foreground", wuss_MENU_ITEM_PRE_OPEN,
                       wuss_colourmenu_menu(wuss));
@@ -743,6 +742,7 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
 {
   wuss_menu_handle_t handle;
   int                index;
+  const wuss_menu_t *menu;
 
   handle = event->data.pre_submenu_open.handle;
   index  = event->data.pre_submenu_open.index;
@@ -750,6 +750,11 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
   if (wuss_menu_handle_menu(handle) != &task->colours_menu)
     return wuss_menu_open_submenu_now(handle, index,
                                       task->menu_items[index].submenu);
+
+  /* build first: set_title needs the singleton to exist. set_none too, since
+   * other tasks toggle it */
+  menu = wuss_colourmenu_menu(task->wuss);
+  wuss_colourmenu_set_none(0);
 
   if (index == SATURN_COLOURS_MENU_FOREGROUND)
   {
@@ -762,8 +767,7 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
     wuss_colourmenu_set_title("Background");
   }
 
-  return wuss_menu_open_submenu_now(handle, index,
-                                    wuss_colourmenu_menu(task->wuss));
+  return wuss_menu_open_submenu_now(handle, index, menu);
 }
 
 /* A pick from the shared colour submenu, applied to whichever field it was
