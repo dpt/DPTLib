@@ -17,11 +17,11 @@
 
 #include "sofa.h"
 
-/* MENU click pops this single-item menu; the item table and wuss_menu_t
- * live per-instance in sofa_task_t, not as a file-scope static, so that
- * each window's Info row can hold its own .window pointer to the shared
- * proginfo singleton, retargeted just before wuss_menu_open */
-enum { SOFA_MENU_INFO };
+/* MENU click pops this menu; the item table and wuss_menu_t live per-instance
+ * in sofa_task_t, not as a file-scope static, so that each window's Info row
+ * can hold its own .window pointer to the shared proginfo singleton, retargeted
+ * just before wuss_menu_open */
+enum { SOFA_MENU_INFO = 0, SOFA_MENU_BACKGROUND };
 
 #define SOFA_VERTEX_DOT 2 /* side, px, of the white marker square drawn at each vertex */
 
@@ -413,6 +413,9 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in sofa_mouse */
 
+  WUSS_MENU_ITEM_MENU(task->menu_items, SOFA_MENU_BACKGROUND, "Background",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
   WUSS_MENU_TITLE(task->menu, "Sofa", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -629,6 +632,45 @@ static result_t sofa_idle(void *task_data)
   return result_OK;
 }
 
+/* The "Background" row's submenu: the shared colourmenu singleton,
+ * reconfigured here rather than at create time since other tasks retitle it
+ * and toggle its None row too. */
+static result_t sofa_pre_submenu_open(sofa_task_t        *sc,
+                                      const wuss_event_t *event)
+{
+  const wuss_menu_t *menu;
+
+  menu = wuss_colourmenu_menu(sc->wuss);
+  wuss_colourmenu_set_none(0);
+  wuss_colourmenu_set_title("Background");
+
+  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
+                                    event->data.pre_submenu_open.index,
+                                    menu);
+}
+
+static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
+{
+  const colour_t *palette;
+  int             npalette;
+  wuss_colour_t   picked;
+  int             mine;
+
+  picked = wuss_colourmenu_selected(event, &mine);
+  if (!mine)
+    return result_OK;
+
+  palette = wuss_get_palette(sc->wuss, &npalette);
+  if (picked < npalette)
+  {
+    sc->bg = palette[picked];
+    if (sc->window != NULL)
+      wuss_window_invalidate_visible(sc->window);
+  }
+
+  return result_OK;
+}
+
 result_t sofa_handle(wuss_window_t      *window,
                      const wuss_event_t *event,
                      void               *task_data)
@@ -655,6 +697,12 @@ result_t sofa_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     return sofa_idle(task_data);
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    return sofa_pre_submenu_open(sc, event);
+
+  case wuss_EVENT_MENU_SELECT:
+    return sofa_menu_select(sc, event);
 
   case wuss_EVENT_MENU_CLOSED:
     sc->menu_handle = NULL;

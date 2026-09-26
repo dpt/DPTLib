@@ -17,11 +17,11 @@
 
 #define BALL_BASE_RADIUS 8 /* +/-50% at spawn -> 4..12 */
 
-/* MENU click pops this single-item menu; the item table and wuss_menu_t
- * live per-instance in ball_task_t, not as a file-scope static, so that
- * each window's Info row can hold its own .window pointer to the shared
- * proginfo singleton, retargeted just before wuss_menu_open */
-enum { BALL_MENU_INFO };
+/* MENU click pops this menu; the item table and wuss_menu_t live per-instance
+ * in ball_task_t, not as a file-scope static, so that each window's Info row
+ * can hold its own .window pointer to the shared proginfo singleton, retargeted
+ * just before wuss_menu_open */
+enum { BALL_MENU_INFO = 0, BALL_MENU_BACKGROUND };
 
 /* a fresh radius in [BALL_BASE_RADIUS/2, BALL_BASE_RADIUS*3/2] */
 static int ball_random_radius(void)
@@ -110,6 +110,9 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in ball_mouse */
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, BALL_MENU_BACKGROUND, "Background",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
   WUSS_MENU_TITLE(task->menu, "Bouncing Ball", task->menu_items,
                  NELEMS(task->menu_items));
@@ -295,6 +298,45 @@ static result_t ball_idle(void *task_data)
   return result_OK;
 }
 
+/* The "Background" row's submenu: the shared colourmenu singleton,
+ * reconfigured here rather than at create time since other tasks retitle it
+ * and toggle its None row too. */
+static result_t ball_pre_submenu_open(ball_task_t        *bc,
+                                      const wuss_event_t *event)
+{
+  const wuss_menu_t *menu;
+
+  menu = wuss_colourmenu_menu(bc->wuss);
+  wuss_colourmenu_set_none(0);
+  wuss_colourmenu_set_title("Background");
+
+  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
+                                    event->data.pre_submenu_open.index,
+                                    menu);
+}
+
+static result_t ball_menu_select(ball_task_t *bc, const wuss_event_t *event)
+{
+  const colour_t *palette;
+  int             npalette;
+  wuss_colour_t   picked;
+  int             mine;
+
+  picked = wuss_colourmenu_selected(event, &mine);
+  if (!mine)
+    return result_OK;
+
+  palette = wuss_get_palette(bc->wuss, &npalette);
+  if (picked < npalette)
+  {
+    bc->bg = palette[picked];
+    if (bc->window != NULL)
+      wuss_window_invalidate_visible(bc->window);
+  }
+
+  return result_OK;
+}
+
 result_t ball_handle(wuss_window_t      *window,
                      const wuss_event_t *event,
                      void               *task_data)
@@ -314,6 +356,12 @@ result_t ball_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     return ball_idle(task_data);
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    return ball_pre_submenu_open(bc, event);
+
+  case wuss_EVENT_MENU_SELECT:
+    return ball_menu_select(bc, event);
 
   case wuss_EVENT_MENU_CLOSED:
     bc->menu_handle = NULL;

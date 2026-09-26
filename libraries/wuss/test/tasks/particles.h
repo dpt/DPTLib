@@ -8,6 +8,7 @@
 #include "framebuf/colour.h"
 #include "framebuf/screen.h"
 #include "utils/rng.h"
+#include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -19,15 +20,15 @@
 /* window task: the Explosion particle engine. Select bursts a random mix of
  * styles at the click; Adjust bursts flecks. The pointer trails particles
  * while over the content. Menu > Emitter adds a smoke emitter, at a chosen
- * intensity, where the menu was opened. A fresh burst fires by itself
- * whenever the window falls quiet. */
+ * intensity, where the menu was opened; Menu > Background picks the fill. A
+ * fresh burst fires by itself whenever the window falls quiet. */
 typedef struct particles_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[2]; /* per-instance: shared static "Info" row
+  wuss_menu_item_t    menu_items[3]; /* per-instance: shared static "Info" row
                                        * would leak one instance's .window
                                        * pointer into another's menu */
   wuss_menu_t         menu;
@@ -38,6 +39,7 @@ typedef struct particles_task
   rng_t               rng;
   unsigned int        now_ms;   /* simulated clock, advanced per idle tick */
   particle_style_t    styles[PARTICLES_NSTYLES];
+  colour_t            bg;
   colour_t            palette[PARTICLES_NSTYLES * PALETTE_SIZE];
   particle_system_t   ps;
 

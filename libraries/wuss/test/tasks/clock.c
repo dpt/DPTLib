@@ -22,11 +22,11 @@
 
 #include "clock.h"
 
-/* MENU click pops this single-item menu; the item table and wuss_menu_t
- * live per-instance in clock_task_t, not as a file-scope static, so that
- * each window's Info row can hold its own .window pointer to the shared
- * proginfo singleton, retargeted just before wuss_menu_open */
-enum { CLOCK_MENU_INFO };
+/* MENU click pops this menu; the item table and wuss_menu_t live per-instance
+ * in clock_task_t, not as a file-scope static, so that each window's Info row
+ * can hold its own .window pointer to the shared proginfo singleton, retargeted
+ * just before wuss_menu_open */
+enum { CLOCK_MENU_INFO = 0, CLOCK_MENU_BACKGROUND };
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -151,6 +151,9 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in clock_mouse */
 
+  WUSS_MENU_ITEM_MENU(task->menu_items, CLOCK_MENU_BACKGROUND, "Background",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
   WUSS_MENU_TITLE(task->menu, "Clock", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -270,6 +273,46 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
   return result_OK;
 }
 
+/* The "Background" row's submenu: the shared colourmenu singleton,
+ * reconfigured here rather than at create time since other tasks retitle it
+ * and toggle its None row too. */
+static result_t clock_pre_submenu_open(clock_task_t       *cc,
+                                       const wuss_event_t *event)
+{
+  const wuss_menu_t *menu;
+
+  menu = wuss_colourmenu_menu(cc->wuss);
+  wuss_colourmenu_set_none(0);
+  wuss_colourmenu_set_title("Background");
+
+  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
+                                    event->data.pre_submenu_open.index,
+                                    menu);
+}
+
+static result_t clock_menu_select(clock_task_t       *cc,
+                                  const wuss_event_t *event)
+{
+  const colour_t *palette;
+  int             npalette;
+  wuss_colour_t   picked;
+  int             mine;
+
+  picked = wuss_colourmenu_selected(event, &mine);
+  if (!mine)
+    return result_OK;
+
+  palette = wuss_get_palette(cc->wuss, &npalette);
+  if (picked < npalette)
+  {
+    cc->bg = palette[picked];
+    if (cc->window != NULL)
+      wuss_window_invalidate_visible(cc->window);
+  }
+
+  return result_OK;
+}
+
 result_t clock_handle(wuss_window_t      *window,
                       const wuss_event_t *event,
                       void               *task_data)
@@ -300,6 +343,12 @@ result_t clock_handle(wuss_window_t      *window,
       return result_OK;
     wuss_window_invalidate_visible(cc->window);
     return result_OK;
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    return clock_pre_submenu_open(cc, event);
+
+  case wuss_EVENT_MENU_SELECT:
+    return clock_menu_select(cc, event);
 
   case wuss_EVENT_MENU_CLOSED:
     cc->menu_handle = NULL;

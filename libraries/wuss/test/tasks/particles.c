@@ -20,11 +20,16 @@
 #define PARTICLES_TRAIL_MAX     10    /* cap per idle tick */
 #define PARTICLES_TRAIL_DAMPING 0.25f /* fraction of pointer velocity kept */
 
-/* MENU click pops this single-item menu; the item table and wuss_menu_t
- * live per-instance in particles_task_t, not as a file-scope static, so
- * that each window's Info row can hold its own .window pointer to the
- * shared proginfo singleton, retargeted just before wuss_menu_open */
-enum { PARTICLES_MENU_INFO, PARTICLES_MENU_EMITTER };
+/* MENU click pops this menu; the item table and wuss_menu_t live
+ * per-instance in particles_task_t, not as a file-scope static, so that each
+ * window's Info row can hold its own .window pointer to the shared proginfo
+ * singleton, retargeted just before wuss_menu_open */
+enum
+{
+  PARTICLES_MENU_INFO,
+  PARTICLES_MENU_EMITTER,
+  PARTICLES_MENU_BACKGROUND
+};
 
 /* "Emitter" submenu rows; picking one adds an emitter at that intensity.
  * wuss never picks a row that has a submenu, so the intensity rows are
@@ -216,6 +221,7 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
     return result_OOM;
 
   task->wuss = wuss;
+  task->bg   = colour_rgb(0x00, 0x00, 0x00);
   rng_seed(&task->rng, (uint32_t) rand());
 
   particles_ramp(particles_firey,  &task->palette[PALETTE_SIZE * PARTICLES_FIREY]);
@@ -277,6 +283,9 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_EMITTER, "Emitter",
                       wuss_MENU_ITEM_NONE, &task->emitter_menu);
 
+  WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_BACKGROUND, "Background",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
   WUSS_MENU_TITLE(task->menu, "Particles", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -313,7 +322,7 @@ static result_t particles_redraw(const wuss_event_t *event, void *task_data)
     pt->pixels[i] = screen_colour_to_pixel(pt->scr, pt->palette[i]);
 
   screen_fill_rect(pt->scr, content->x0, content->y0, box_size(content),
-                   colour_rgb(0x00, 0x00, 0x00));
+                   pt->bg);
 
   render_particles(&pt->ps);
 
@@ -424,12 +433,43 @@ static result_t particles_mouse(wuss_window_t      *window,
   return result_OK;
 }
 
-/* an "Emitter" submenu pick: a steady smoke emitter, as Explosion's
- * playground sets up, at the menu's opening point */
+/* The "Background" row's submenu: the shared colourmenu singleton,
+ * reconfigured here rather than at create time since other tasks retitle it
+ * and toggle its None row too. */
+static result_t particles_pre_submenu_open(particles_task_t   *pt,
+                                           const wuss_event_t *event)
+{
+  const wuss_menu_t *menu;
+
+  menu = wuss_colourmenu_menu(pt->wuss);
+  wuss_colourmenu_set_none(0);
+  wuss_colourmenu_set_title("Background");
+
+  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
+                                    event->data.pre_submenu_open.index,
+                                    menu);
+}
+
+/* a Background pick sets the fill; an "Emitter" submenu pick adds a steady
+ * smoke emitter, as Explosion's playground sets up, at the menu's opening
+ * point */
 static result_t particles_menu_select(particles_task_t   *pt,
                                       const wuss_event_t *event)
 {
-  int index;
+  wuss_colour_t   picked;
+  int             mine;
+  const colour_t *palette;
+  int             npalette;
+  int             index;
+
+  picked = wuss_colourmenu_selected(event, &mine);
+  if (mine)
+  {
+    palette = wuss_get_palette(pt->wuss, &npalette);
+    if (picked < npalette)
+      pt->bg = palette[picked]; /* the next idle tick repaints */
+    return result_OK;
+  }
 
   if (event->data.menu_select.menu != &pt->emitter_menu)
     return result_OK;
@@ -510,6 +550,9 @@ result_t particles_handle(wuss_window_t      *window,
     if (window == pt->window)
       pt->pointer_in = 0;
     return result_OK;
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    return particles_pre_submenu_open(pt, event);
 
   case wuss_EVENT_MENU_SELECT:
     return particles_menu_select(pt, event);

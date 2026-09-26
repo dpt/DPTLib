@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/colour.h"
+#include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -32,7 +33,7 @@ typedef struct ball_task
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[1]; /* per-instance: shared static "Info" row
+  wuss_menu_item_t    menu_items[2]; /* per-instance: shared static "Info" row
                                        * would leak one instance's .window
                                        * pointer into another's menu */
   wuss_menu_t         menu;
