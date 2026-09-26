@@ -27,14 +27,33 @@
 enum
 {
   PARTICLES_MENU_INFO,
-  PARTICLES_MENU_EMITTER,
+  PARTICLES_MENU_ADD_EMITTER,
   PARTICLES_MENU_BACKGROUND,
-  PARTICLES_MENU_PAUSE
+  PARTICLES_MENU_PAUSE,
+  PARTICLES_MENU_GRAVITY,
+  PARTICLES_MENU_WALLS
 };
 
-/* "Emitter" submenu rows; picking one adds an emitter at that intensity.
+/* "Gravity" submenu rows: each scales every style's own gravity */
+static const struct
+{
+  const char *name;
+  float       scale;
+}
+particles_gravities[] =
+{
+  { "Off",       0.0f },
+  { "Low",       0.5f },
+  { "Normal",    1.0f },
+  { "High",      2.0f },
+  { "Reversed", -1.0f }
+};
+
+#define PARTICLES_GRAVITY_NORMAL 2
+
+/* "Add emitter" submenu rows; picking one adds an emitter at that intensity.
  * wuss never picks a row that has a submenu, so the intensity rows are
- * what add the emitter rather than the "Emitter" row itself. */
+ * what add the emitter rather than the "Add emitter" row itself. */
 static const struct
 {
   const char *name;
@@ -281,13 +300,27 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   WUSS_MENU_TITLE(task->emitter_menu, "Intensity", task->emitter_items,
                  NELEMS(task->emitter_items));
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_EMITTER, "Emitter",
-                      wuss_MENU_ITEM_NONE, &task->emitter_menu);
+  WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_ADD_EMITTER,
+                      "Add emitter", wuss_MENU_ITEM_NONE, &task->emitter_menu);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
   WUSS_MENU_ITEM(task->menu_items, PARTICLES_MENU_PAUSE, "Pause",
+                 wuss_MENU_ITEM_NONE);
+
+  task->gravity = PARTICLES_GRAVITY_NORMAL;
+  for (i = 0; i < NELEMS(task->gravity_items); i++)
+    WUSS_MENU_ITEM(task->gravity_items, i, particles_gravities[i].name,
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->gravity_menu, "Gravity", task->gravity_items,
+                 NELEMS(task->gravity_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_GRAVITY, "Gravity",
+                      wuss_MENU_ITEM_NONE, &task->gravity_menu);
+
+  WUSS_MENU_ITEM(task->menu_items, PARTICLES_MENU_WALLS, "Walls",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Particles", task->menu_items,
@@ -425,6 +458,9 @@ static result_t particles_mouse(wuss_window_t      *window,
     pt->menu_y = y;
 
     wuss_menu_tick_item(&pt->menu, PARTICLES_MENU_PAUSE, pt->paused);
+    wuss_menu_tick_exclusive(&pt->gravity_menu, pt->gravity);
+    wuss_menu_tick_item(&pt->menu, PARTICLES_MENU_WALLS,
+                        !!(pt->ps.flags & PARTICLE_FLAG_WALLS));
 
     return wuss_menu_open(pt->delegate, &pt->menu,
                           wuss_get_pointer(pt->wuss), &pt->menu_handle);
@@ -456,9 +492,29 @@ static result_t particles_pre_submenu_open(particles_task_t   *pt,
                                     menu);
 }
 
-/* a Background pick sets the fill; an "Emitter" submenu pick adds a steady
- * smoke emitter, as Explosion's playground sets up, at the menu's opening
- * point */
+/* a Background pick sets the fill; a "Gravity" pick sets the strength; an
+ * "Add emitter" submenu pick adds a steady smoke emitter, as Explosion's
+ * playground sets up, at the menu's opening point */
+/* A "Gravity" pick: rebuild the styles from scratch, then scale each one's
+ * own gravity, so strengths never compound. Particles already in flight pick
+ * up the change on the next physics step, as the engine reads gravity from
+ * the style each step. */
+static void particles_set_gravity(particles_task_t   *pt,
+                                  const wuss_event_t *event)
+{
+  int i;
+
+  pt->gravity = event->data.menu_select.index;
+
+  particles_init_styles(pt->styles);
+  for (i = 0; i < PARTICLES_NSTYLES; i++)
+    pt->styles[i].gravity *= particles_gravities[pt->gravity].scale;
+
+  if (wuss_menu_should_keep_open(event))
+    wuss_menu_tick_exclusive_live(pt->menu_handle, &pt->gravity_menu,
+                                  pt->gravity);
+}
+
 static result_t particles_menu_select(particles_task_t   *pt,
                                       const wuss_event_t *event)
 {
@@ -474,6 +530,12 @@ static result_t particles_menu_select(particles_task_t   *pt,
     palette = wuss_get_palette(pt->wuss, &npalette);
     if (picked < npalette)
       pt->bg = palette[picked]; /* the next idle tick repaints */
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &pt->gravity_menu)
+  {
+    particles_set_gravity(pt, event);
     return result_OK;
   }
 
@@ -533,17 +595,36 @@ static result_t particles_idle(void *task_data)
   return result_OK;
 }
 
-/* The "Pause" row: stop or restart the idle animation. An ADJUST pick keeps
- * the menu open, so retick the live row; a SELECT pick has already closed
- * it. */
-static result_t particles_toggle_pause(particles_task_t   *pt,
-                                       const wuss_event_t *event)
+/* The "Pause" and "Walls" rows: Pause stops or restarts the idle animation;
+ * Walls flips the engine's own flag, which takes effect on the next physics
+ * step. An ADJUST pick keeps the menu open, so retick the
+ * live row; a SELECT pick has already closed it. */
+static result_t particles_toggle(particles_task_t   *pt,
+                                 const wuss_event_t *event)
 {
-  pt->paused = !pt->paused;
+  int index;
+  int ticked;
+
+  index = event->data.menu_select.index;
+
+  switch (index)
+  {
+  case PARTICLES_MENU_PAUSE:
+    pt->paused = !pt->paused;
+    ticked = pt->paused;
+    break;
+
+  case PARTICLES_MENU_WALLS:
+    pt->ps.flags ^= PARTICLE_FLAG_WALLS;
+    ticked = !!(pt->ps.flags & PARTICLE_FLAG_WALLS);
+    break;
+
+  default:
+    return result_OK;
+  }
 
   if (wuss_menu_should_keep_open(event))
-    wuss_menu_tick_item_live(pt->menu_handle, &pt->menu, PARTICLES_MENU_PAUSE,
-                             pt->paused);
+    wuss_menu_tick_item_live(pt->menu_handle, &pt->menu, index, ticked);
 
   return result_OK;
 }
@@ -579,9 +660,8 @@ result_t particles_handle(wuss_window_t      *window,
     return particles_pre_submenu_open(pt, event);
 
   case wuss_EVENT_MENU_SELECT:
-    if (event->data.menu_select.menu == &pt->menu &&
-        event->data.menu_select.index == PARTICLES_MENU_PAUSE)
-      return particles_toggle_pause(pt, event);
+    if (event->data.menu_select.menu == &pt->menu)
+      return particles_toggle(pt, event);
     return particles_menu_select(pt, event);
 
   case wuss_EVENT_MENU_CLOSED:
