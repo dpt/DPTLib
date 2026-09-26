@@ -9,16 +9,20 @@
 #include "framebuf/colour.h"
 #include "wuss/window.h"
 
-/* a focusable window that shows the last key it was sent, its modifiers and
- * whether it holds the input focus. A Select click gives it the focus. */
+#define KEYS_HISTORY 6 /* most recent keys shown, newest first */
+
+/* a focusable window that shows whether it holds the input focus and the
+ * last few keys it was sent, each with its modifiers. A Select click gives
+ * it the focus. */
 typedef struct keys_task
 {
   wuss_t              *wuss; /* for wuss_get_focus */
   wuss_window_t       *window;
   bmfont_t            *font; /* borrowed */
   colour_t             bg, fg;
-  int                  key;  /* last key code, or -1 before the first */
-  wuss_key_modifiers_t mods;
+  int                  keys[KEYS_HISTORY]; /* newest first */
+  wuss_key_modifiers_t mods[KEYS_HISTORY]; /* keys[i]'s modifiers */
+  int                  nkeys; /* used entries of keys[] */
 }
 keys_task_t;
 
