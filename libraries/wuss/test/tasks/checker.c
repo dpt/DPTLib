@@ -18,11 +18,11 @@
 #define CHECKER_BAND_MIN     1
 #define CHECKER_BAND_MAX     32
 
-/* MENU click pops this single-item menu; the item table and wuss_menu_t
- * live per-instance in checker_task_t, not as a file-scope static, so that
- * each window's Info row can hold its own .window pointer to the shared
- * proginfo singleton, retargeted just before wuss_menu_open */
-enum { CHECKER_MENU_INFO };
+/* MENU click pops this menu; the item table and wuss_menu_t live
+ * per-instance in checker_task_t, not as a file-scope static, so that each
+ * window's Info row can hold its own .window pointer to the shared proginfo
+ * singleton, retargeted just before wuss_menu_open */
+enum { CHECKER_MENU_INFO = 0, CHECKER_MENU_INK, CHECKER_MENU_PAPER };
 
 result_t checker_create(wuss_t *wuss, checker_task_t **out)
 {
@@ -92,6 +92,13 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in
                                 * checker_handle */
+
+  /* both rows open the shared colourmenu; checker_pre_submenu_open retitles
+   * it and picks which colour a pick lands in */
+  WUSS_MENU_ITEM_MENU(task->menu_items, CHECKER_MENU_INK, "Ink",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+  WUSS_MENU_ITEM_MENU(task->menu_items, CHECKER_MENU_PAPER, "Paper",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
   WUSS_MENU_TITLE(task->menu, "Checker", task->menu_items,
                  NELEMS(task->menu_items));
@@ -184,6 +191,60 @@ static result_t checker_scroll(wuss_window_t *window,
   return result_OK;
 }
 
+/* The Ink and Paper rows' submenu: the shared colourmenu singleton,
+ * retitled and retargeted at the matching colour each time it opens. */
+static result_t checker_pre_submenu_open(checker_task_t     *cc,
+                                         const wuss_event_t *event)
+{
+  const wuss_menu_t *menu;
+  int                index;
+
+  index = event->data.pre_submenu_open.index;
+
+  menu = wuss_colourmenu_menu(cc->wuss);
+  wuss_colourmenu_set_none(0);
+  if (index == CHECKER_MENU_INK)
+  {
+    cc->colourmenu_target = &cc->black;
+    wuss_colourmenu_set_title("Ink");
+  }
+  else
+  {
+    cc->colourmenu_target = &cc->white;
+    wuss_colourmenu_set_title("Paper");
+  }
+
+  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
+                                    index, menu);
+}
+
+/* A colourmenu pick lands in whichever colour last opened it; both windows
+ * share the two colours, so both repaint. */
+static result_t checker_menu_select(checker_task_t     *cc,
+                                    const wuss_event_t *event)
+{
+  const colour_t *palette;
+  int             npalette;
+  wuss_colour_t   picked;
+  int             mine;
+
+  picked = wuss_colourmenu_selected(event, &mine);
+  if (!mine || cc->colourmenu_target == NULL)
+    return result_OK;
+
+  palette = wuss_get_palette(cc->wuss, &npalette);
+  if (picked >= npalette)
+    return result_OK;
+
+  *cc->colourmenu_target = palette[picked];
+  if (cc->window != NULL)
+    wuss_window_invalidate_visible(cc->window);
+  if (cc->window2 != NULL)
+    wuss_window_invalidate_visible(cc->window2);
+
+  return result_OK;
+}
+
 result_t checker_handle(wuss_window_t      *window,
                         const wuss_event_t *event,
                         void               *task_data)
@@ -225,6 +286,12 @@ result_t checker_handle(wuss_window_t      *window,
 
   case wuss_EVENT_SCROLL:
     return checker_scroll(window, event->data.scroll.delta, task_data);
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    return checker_pre_submenu_open(cc, event);
+
+  case wuss_EVENT_MENU_SELECT:
+    return checker_menu_select(cc, event);
 
   case wuss_EVENT_MENU_CLOSED:
     cc->menu_handle = NULL;

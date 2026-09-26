@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/colour.h"
+#include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -21,19 +22,22 @@ typedef enum checker_pattern
 }
 checker_pattern_t;
 
-/* fills the whole content area with a black and white two-tone pattern;
- * each window cycles its own pattern independently on a content click */
+/* fills the whole content area with a two-tone pattern, black and white
+ * until Menu > Ink/Paper recolours both windows; each window cycles its own
+ * pattern independently on a content click */
 typedef struct checker_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
   wuss_task_t         *delegate; /* the task that owns the menu */
   wuss_window_t       *window, *window2;
   wuss_menu_handle_t   menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t     menu_items[1]; /* per-instance: a shared static would
+  wuss_menu_item_t     menu_items[3]; /* per-instance: a shared static would
                                         * leak one instance's .window pointer
                                         * into another's menu */
   wuss_menu_t          menu;
   colour_t             black, white;
+  colour_t            *colourmenu_target; /* black or white: whichever row
+                                            * last opened the colourmenu */
   checker_pattern_t    pattern, pattern2;
   int                  band, band2; /* pixels per band, scroll-adjustable */
 }
