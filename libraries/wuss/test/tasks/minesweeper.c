@@ -101,7 +101,8 @@ enum
   MINESWEEPER_MENU_INFO,
   MINESWEEPER_MENU_NEW_GAME,
   MINESWEEPER_MENU_SIZE,
-  MINESWEEPER_MENU_DIFFICULTY
+  MINESWEEPER_MENU_DIFFICULTY,
+  MINESWEEPER_MENU_GIVE_UP
 };
 
 /* cache all constant palette entries; call once at create and again whenever
@@ -393,6 +394,9 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, MINESWEEPER_MENU_DIFFICULTY,
                       "Difficulty", wuss_MENU_ITEM_NONE,
                       &task->difficulty_menu);
+
+  WUSS_MENU_ITEM(task->menu_items, MINESWEEPER_MENU_GIVE_UP,
+                "Give Up", wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Minesweeper", task->menu_items,
                  NELEMS(task->menu_items));
@@ -752,11 +756,21 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
       "1.0 (" __DATE__ ")"
     };
 
+    wuss_menu_item_t *give_up;
+
     wuss_proginfo_set_desc(&desc);
     ms->menu_items[MINESWEEPER_MENU_INFO].window = wuss_proginfo_window(ms->task);
 
     wuss_menu_tick_exclusive(&ms->size_menu, ms->size);
     wuss_menu_tick_exclusive(&ms->difficulty_menu, ms->difficulty);
+
+    /* Give Up only makes sense while a game is in progress */
+    give_up = &ms->menu_items[MINESWEEPER_MENU_GIVE_UP];
+    if (ms->placed && !ms->dead && !ms->won)
+      give_up->flags &= ~wuss_MENU_ITEM_DISABLED;
+    else
+      give_up->flags |= wuss_MENU_ITEM_DISABLED;
+
     return wuss_menu_open(ms->task, &ms->menu,
                           wuss_get_pointer(ms->wuss), &ms->menu_handle);
   }
@@ -836,6 +850,18 @@ result_t minesweeper_handle(wuss_window_t      *window,
       minesweeper_set_size(ms, ms->size); /* re-derive the mine count */
       wuss_menu_tick_exclusive_live(ms->menu_handle, &ms->difficulty_menu,
                                     ms->difficulty);
+    }
+    else if (event->data.menu_select.index == MINESWEEPER_MENU_GIVE_UP)
+    {
+      /* lose on the spot: freeze the clock, then show every mine */
+      if (!ms->placed || ms->dead || ms->won)
+        return result_OK;
+
+      minesweeper_tick_clock(ms);
+      ms->dead = true;
+      minesweeper_reveal_all_mines(ms);
+      wuss_window_invalidate_visible(ms->window);
+      return result_OK;
     }
     else if (event->data.menu_select.index == MINESWEEPER_MENU_NEW_GAME)
       minesweeper_reset(ms);
