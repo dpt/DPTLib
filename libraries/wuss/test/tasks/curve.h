@@ -21,14 +21,15 @@
  * straight line segments. The mouse wheel adjusts nsegments; an Adjust click
  * cycles the curve type (line, quadratic, cubic, quartic, quintic) by
  * stepping npoints, the count of points[] actually in play; Menu > Type
- * picks it directly. */
+ * picks it directly; Menu > Hull shows or hides the control points' convex
+ * hull. */
 typedef struct curve_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_font in the redraw */
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[3]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[4]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
@@ -39,6 +40,7 @@ typedef struct curve_task
   int                  npoints;     /* CURVE_MINCONTROLPTS..CURVE_MAXCONTROLPTS */
   int                  nsegments;
   int                  dragging;    /* index into points, or -1 if not dragging */
+  int                  hull;        /* draw the control points' convex hull */
 }
 curve_task_t;
 
