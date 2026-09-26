@@ -1,14 +1,14 @@
 # Symbols -- cmap for Symbols.png (see docs/framebuf/bmfont.md)
-# Symbols are reached by ASCII codes (e.g. wuss draws '*' for its menu tick
-# and '>' for its submenu arrow); Unicode codepoints follow. Blank cells
-# are left unmapped. Cells 17-20 (window pictograms) and 29 have no obvious
+# Symbols are reached by ASCII codes, with Unicode codepoints following (wuss
+# draws U+2713 for its menu tick and U+25B6 for its submenu arrow). Blank
+# cells are left unmapped. Cells 17-20 (window pictograms) and 29 have no obvious
 # codepoint so stay ASCII-only.
 U+0020..U+0027  0
-U+002A          10    # * tick
+U+002A          10
 U+002C..U+002E  12
 U+0031..U+0034  17
 U+0036          22
-U+003C..U+003E  28    # > submenu arrow in the last cell
+U+003C..U+003E  28
 U+2336          22    # APL I-beam (text cursor)
 U+25A0          1     # black square
 U+25B6          30    # black right-pointing triangle
