@@ -208,11 +208,20 @@ static result_t fontmenu_build(const char   *dir,
 {
   result_t     rc;
   wuss_alloc_t alloc;
+  char        *dir_copy;
   namelist_t   nl;
 
   fontmenu_free();
 
   alloc = wuss ? wuss->alloc : wuss_alloc;
+
+  /* copy dir before enumerating: callers pass a pathf() scratch pointer,
+   * which bmfont_enumerate's own per-entry pathf calls clobber -- copied
+   * afterwards, g.dir would hold the last font's path, never match again
+   * and so rebuild the menu (discarding its ticks) on every call */
+  dir_copy = wuss__alloc_strdup(&alloc, dir);
+  if (dir_copy == NULL)
+    return result_OOM;
 
   memset(&nl, 0, sizeof(nl));
   nl.alloc = &alloc;
@@ -222,6 +231,7 @@ static result_t fontmenu_build(const char   *dir,
   if (rc != result_OK)
   {
     namelist_free(&nl);
+    alloc.free(dir_copy);
     return nl.oom ? result_OOM : rc;
   }
 
@@ -233,14 +243,12 @@ static result_t fontmenu_build(const char   *dir,
   rc = build_menu(nl.names, nl.n, title);
   namelist_free(&nl); /* build_menu copied what it needed */
   if (rc != result_OK)
-    return rc;
-
-  g.dir = wuss__alloc_strdup(&g.alloc, dir);
-  if (g.dir == NULL)
   {
-    fontmenu_free();
-    return result_OOM;
+    alloc.free(dir_copy);
+    return rc;
   }
+
+  g.dir  = dir_copy;
   g.wuss = wuss;
 
   return result_OK;
