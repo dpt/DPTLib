@@ -12,27 +12,31 @@
 #include "wuss/window.h"
 
 #define LISSAJOUS_POINTS 512 /* samples plotted along the curve */
+#define LISSAJOUS_NFREQS 12  /* frequency pairs offered */
 
 /* window task: a Lissajous figure x=sin(a*t+phase), y=sin(b*t) plotted as a
  * ring of dots. The phase drifts each idle tick so the figure slowly morphs.
  * Select cycles the frequency pair (a,b); Adjust reverses the drift. The
- * menu's Background row picks bg from the shared colourmenu. */
+ * menu's Background row picks bg from the shared colourmenu; its Ratio row
+ * picks the frequency pair directly. */
 typedef struct lissajous_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[3]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[4]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
   int                 paused; /* Menu > Pause; idle does nothing while set */
+  wuss_menu_item_t    ratio_items[LISSAJOUS_NFREQS]; /* one row per pair */
+  wuss_menu_t         ratio_menu;
   wuss_window_t *window;
   colour_t       bg, fg;
   int            a, b;    /* frequency ratio */
   double         phase;
   double         drift;
-  int            freq_index;
+  int            freq_index; /* index into lissajous_freqs */
 }
 lissajous_task_t;
 
