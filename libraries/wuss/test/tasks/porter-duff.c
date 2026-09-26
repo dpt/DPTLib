@@ -26,7 +26,8 @@ enum
 {
   PORTER_DUFF_MENU_INFO,
   PORTER_DUFF_MENU_PAUSE,
-  PORTER_DUFF_MENU_RULE
+  PORTER_DUFF_MENU_RULE,
+  PORTER_DUFF_MENU_SWAP
 };
 
 #define PD_SIZE            (256) /* the demo images are 256x256 */
@@ -249,6 +250,9 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, PORTER_DUFF_MENU_RULE, "Rule",
                       wuss_MENU_ITEM_NONE, &task->rule_menu);
+
+  WUSS_MENU_ITEM(task->menu_items, PORTER_DUFF_MENU_SWAP, "Swap images",
+                 wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Porter-Duff", task->menu_items,
                  NELEMS(task->menu_items));
@@ -477,17 +481,39 @@ static result_t porter_duff_scroll(wuss_window_t *window,
   return result_OK;
 }
 
-/* The "Pause" row: stop or restart the idle animation. An ADJUST pick keeps
- * the menu open, so retick the live row; a SELECT pick has already closed
- * it. */
-static result_t porter_duff_toggle_pause(porter_duff_task_t *pd,
-                                         const wuss_event_t *event)
+/* The "Pause" row stops or restarts the idle animation; the "Swap" row
+ * exchanges the source and destination images (with their scratch bitmaps,
+ * which are sized to match). An ADJUST pick keeps the menu open, so retick
+ * the live row; a SELECT pick has already closed it. */
+static result_t porter_duff_toggle(porter_duff_task_t *pd,
+                                   const wuss_event_t *event)
 {
-  pd->paused = !pd->paused;
+  int      index;
+  int     *flag;
+  bitmap_t t;
+
+  index = event->data.menu_select.index;
+
+  if (index == PORTER_DUFF_MENU_SWAP)
+  {
+    t       = pd->a;
+    pd->a   = pd->b;
+    pd->b   = t;
+    t       = pd->src;
+    pd->src = pd->dst;
+    pd->dst = t;
+    flag    = &pd->swapped;
+    if (pd->window != NULL)
+      wuss_window_invalidate_visible(pd->window);
+  }
+  else
+  {
+    flag = &pd->paused;
+  }
+  *flag = !*flag;
 
   if (wuss_menu_should_keep_open(event))
-    wuss_menu_tick_item_live(pd->menu_handle, &pd->menu, PORTER_DUFF_MENU_PAUSE,
-                             pd->paused);
+    wuss_menu_tick_item_live(pd->menu_handle, &pd->menu, index, *flag);
 
   return result_OK;
 }
@@ -543,6 +569,7 @@ result_t porter_duff_handle(wuss_window_t      *window,
         wuss_proginfo_window(pd->delegate);
 
       wuss_menu_tick_item(&pd->menu, PORTER_DUFF_MENU_PAUSE, pd->paused);
+      wuss_menu_tick_item(&pd->menu, PORTER_DUFF_MENU_SWAP, pd->swapped);
       wuss_menu_tick_exclusive(&pd->rule_menu, pd->rule);
 
       return wuss_menu_open(pd->delegate, &pd->menu,
@@ -560,8 +587,9 @@ result_t porter_duff_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &pd->menu &&
-        event->data.menu_select.index == PORTER_DUFF_MENU_PAUSE)
-      return porter_duff_toggle_pause(pd, event);
+        (event->data.menu_select.index == PORTER_DUFF_MENU_PAUSE ||
+         event->data.menu_select.index == PORTER_DUFF_MENU_SWAP))
+      return porter_duff_toggle(pd, event);
     if (event->data.menu_select.menu == &pd->rule_menu)
       return porter_duff_pick_rule(pd, event);
     return result_OK;
