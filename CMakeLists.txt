@@ -433,6 +433,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/window/set-doc.c
     libraries/wuss/core/window/set-hidden.c
     libraries/wuss/core/window/set-scroll.c
+    libraries/wuss/core/window/set-title.c
     libraries/wuss/core/window/try-close.c)
 
 set(WUSS_FURNITURE_SOURCES

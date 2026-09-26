@@ -317,6 +317,16 @@ void wuss_window_get_scroll(const wuss_window_t *window, point_t *p);
 result_t wuss_window_set_background(wuss_window_t  *window,
                                     wuss_backdrop_t bg);
 
+/**
+ * Change a window's title, repainting its furniture if it differs. The title
+ * is copied and truncated as for wuss_window_create. No-op when built
+ * without furniture.
+ *
+ * \param[in] window Window to change.
+ * \param[in] title  New title. NULL is treated as "".
+ */
+void wuss_window_set_title(wuss_window_t *window, const char *title);
+
 #ifdef __cplusplus
 }
 #endif
