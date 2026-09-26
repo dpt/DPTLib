@@ -37,7 +37,8 @@ enum
 {
   DOUGHNUT_MENU_INFO = 0,
   DOUGHNUT_MENU_BACKGROUND,
-  DOUGHNUT_MENU_TUBE
+  DOUGHNUT_MENU_TUBE,
+  DOUGHNUT_MENU_PAUSE
 };
 
 /* "Tube" submenu rows: tube radius R1, kept below DOUGHNUT_R2 so the hole
@@ -193,6 +194,9 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_TUBE, "Tube",
                       wuss_MENU_ITEM_NONE, &task->tube_menu);
 
+  WUSS_MENU_ITEM(task->menu_items, DOUGHNUT_MENU_PAUSE, "Pause",
+                 wuss_MENU_ITEM_NONE);
+
   WUSS_MENU_TITLE(task->menu, "Doughnut", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -340,6 +344,7 @@ static result_t doughnut_mouse(doughnut_task_t    *task,
       task->menu_items[DOUGHNUT_MENU_INFO].window = wuss_proginfo_window(task->delegate);
 
       wuss_menu_tick_exclusive(&task->tube_menu, task->tube);
+      wuss_menu_tick_item(&task->menu, DOUGHNUT_MENU_PAUSE, task->paused);
 
       return wuss_menu_open(task->delegate, &task->menu,
                             wuss_get_pointer(task->wuss), &task->menu_handle);
@@ -453,6 +458,16 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
   int             npalette;
   wuss_colour_t   picked;
   int             mine;
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == DOUGHNUT_MENU_PAUSE)
+  {
+    task->paused = !task->paused;
+    if (wuss_menu_should_keep_open(event))
+      wuss_menu_tick_item_live(task->menu_handle, &task->menu,
+                               DOUGHNUT_MENU_PAUSE, task->paused);
+    return result_OK;
+  }
 
   if (event->data.menu_select.menu == &task->tube_menu)
   {

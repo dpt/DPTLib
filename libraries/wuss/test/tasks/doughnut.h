@@ -14,17 +14,18 @@
 /* window task: Andy Sloane's "donut.c" torus render (the classic terminal
  * spinning-doughnut demo), ray-marched per pixel and shaded by
  * surface-normal brightness, redrawn every idle tick with the two rotation
- * angles advanced a little. Select toggles pause (and takes the input focus);
- * the wheel zooms in/out; an Adjust drag spins the torus directly, overriding
- * the idle auto-rotation for as long as it's held. While paused the arrow
- * keys step the rotation. Menu > Tube picks the tube's thickness. */
+ * angles advanced a little. Select or Menu > Pause toggles pause (and Select
+ * takes the input focus); the wheel zooms in/out; an Adjust drag spins the
+ * torus directly, overriding the idle auto-rotation for as long as it's
+ * held. While paused the arrow keys step the rotation. Menu > Tube picks the
+ * tube's thickness. */
 typedef struct doughnut_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
   wuss_task_t       *delegate; /* the task that owns the menu */
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[3]; /* per-instance: shared static "Info" row
+  wuss_menu_item_t   menu_items[4]; /* per-instance: shared static "Info" row
                                       * would leak one instance's .window
                                       * pointer into another's menu */
   wuss_menu_t        menu;
@@ -36,8 +37,9 @@ typedef struct doughnut_task
                                     * 1..255 = grey ramp */
   double             a, b;    /* rotation angles about the x and z axes */
   double             zoom;    /* scales k1; wheel steps this, clamped */
-  int                paused;  /* Select toggles; idle skips advancing a/b,
-                               * arrow keys step them */
+  int                paused;  /* Select or Menu > Pause toggles; idle
+                               * skips advancing a/b, arrow keys step
+                               * them */
   int                dragging;   /* non-zero while an Adjust drag is live */
   int                drag_x, drag_y; /* last drag point, content space */
   double            *zbuf;    /* redraw's z-buffer, kept between redraws */
