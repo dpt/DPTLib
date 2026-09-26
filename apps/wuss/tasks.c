@@ -52,6 +52,18 @@ void tasks_build_screen_palette(colour_t       *out,
 {
   int r, g, b, n;
 
+  /* 1bpp and 2bpp screens can't hold the UI colours, so they get a fixed
+   * grey ramp instead and the UI colours match onto it */
+  if (nout == 2 || nout == 4)
+  {
+    for (n = 0; n < nout; n++)
+    {
+      g      = n * 0xFF / (nout - 1);
+      out[n] = colour_rgb(g, g, g);
+    }
+    return;
+  }
+
   memset(out, 0, nout * sizeof(*out));
 
   n = MIN(nui, nout);
