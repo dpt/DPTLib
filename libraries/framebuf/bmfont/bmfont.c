@@ -602,8 +602,9 @@ oom:
 }
 
 /** Build the fallback glyph after the last cell: a 1px hollow box as tall as
- *  the ascent, sitting on the baseline, over columns 1 onwards so it keeps the
- *  cells' left sidebearing. It advances by the cell width. */
+ *  the ascent, sitting on the baseline, over columns 0 to charwidth - 2 so its
+ *  last column is left blank as letter spacing. It advances by the cell
+ *  width. */
 static result_t make_box_glyph(bmfont_t *bmfont)
 {
   unsigned char *glyph;
@@ -631,8 +632,8 @@ static result_t make_box_glyph(bmfont_t *bmfont)
   memset(glyph, 0, bmfont->glyphrowbytes * bmfont->charheight);
 
   /* bit (charwidth - 1 - column) holds each column */
-  full  = (1u << (bmfont->charwidth - 1)) - 1;
-  sides = (1u << (bmfont->charwidth - 2)) | 1u;
+  full  = ((1u << (bmfont->charwidth - 1)) - 1) << 1;
+  sides = (1u << (bmfont->charwidth - 1)) | 2u;
 
   for (y = 0; y < bmfont->ascent; y++)
   {
