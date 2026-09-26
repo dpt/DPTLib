@@ -22,8 +22,8 @@
  * one-liner stipples it out of three rejection-sampled point clouds - a
  * ring of dots, a sheared streak across it and a filled disc for the
  * planet body. Select re-seeds the RNG for a fresh sketch; Menu > Animate
- * re-seeds every null event so it churns. The plot is deterministic in the
- * seed. */
+ * re-seeds every null event so it churns; Menu > Save PNG writes the
+ * window to saturn.png. The plot is deterministic in the seed. */
 /* iteration counts for the three rejection-sampling loops, plus the window's
  * size, in document pixels (the window is always square); saturn_create
  * fills in SATURN_CONFIG_DEFAULT values when the caller passes NULL */
@@ -85,7 +85,7 @@ typedef struct saturn_task
                                         * colourmenu/.window pointers into
                                         * another's menu */
   wuss_menu_t        colours_menu;
-  wuss_menu_item_t   menu_items[4];
+  wuss_menu_item_t   menu_items[5];
   wuss_menu_t        menu;
   int                animate; /* Menu > Animate: re-seed on every idle */
 }
