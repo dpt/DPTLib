@@ -23,6 +23,7 @@
 #include "wuss/menu.h"
 
 #include "saturn.h"
+#include "snapshot.h"
 
 /* A recreation of the ringed planet from the loading screen of Elite (Ian
  * Bell and David Braben, Acornsoft, 1984), the stippled Saturn-like world
@@ -89,8 +90,11 @@ enum
   SATURN_MENU_INFO = 0,
   SATURN_MENU_COLOURS,
   SATURN_MENU_SIZE,
-  SATURN_MENU_ANIMATE
+  SATURN_MENU_ANIMATE,
+  SATURN_MENU_SAVE
 };
+
+#define SATURN_SAVE_NAME "saturn.png" /* written to the current dir */
 enum { SATURN_COLOURS_MENU_FOREGROUND = 0, SATURN_COLOURS_MENU_BACKGROUND };
 
 /* the size dialogue's icons, in creation order (see saturn_conf_dialogue_create):
@@ -232,6 +236,9 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
                 wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
 
   WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_ANIMATE, "Animate",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_SAVE, "Save PNG",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Saturn", task->menu_items,
@@ -820,6 +827,11 @@ static result_t saturn_menu_select(saturn_task_t      *task,
                                SATURN_MENU_ANIMATE, task->animate);
     return result_OK;
   }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == SATURN_MENU_SAVE)
+    return snapshot_save_png(task->window, saturn_handle, task,
+                             SATURN_SAVE_NAME);
 
   if (task->colourmenu_target == NULL)
     return result_OK;
