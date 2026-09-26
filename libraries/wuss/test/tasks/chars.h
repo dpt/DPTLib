@@ -12,10 +12,14 @@
 #include "wuss/task.h"
 #include "wuss/window.h"
 
-/* displays every glyph (0-255) of a bitmap font as a 32x8 grid, so the whole
- * font can be eyeballed at a glance. A MENU click on the window opens a
- * picker -- the shared wuss_fontmenu singleton over resources/bmfonts --
- * that swaps the font in place. */
+#define CHARS_MAX_PAGES 16 /* "Page" submenu rows; pages past this are not
+                            * offered */
+
+/* displays one 256-codepoint Unicode page of a bitmap font as a 16x16 grid,
+ * so the font can be eyeballed at a glance. A MENU click on the window opens
+ * a menu whose "Font" row is the shared wuss_fontmenu singleton over
+ * resources/bmfonts, swapping the font in place, and whose "Page" row lists
+ * the pages the current font has glyphs in. */
 typedef struct chars_task
 {
   wuss_window_t      *window;
@@ -31,7 +35,13 @@ typedef struct chars_task
   int                 current;     /* index into fonts[], or -1 if the
                                     * system font is not listed */
   colour_t            fg, mg, bg;
-  wuss_menu_item_t    menu_items[2]; /* per-instance: a shared static would
+  unsigned long       page;        /* first codepoint of the page shown */
+  wuss_menu_item_t    page_items[CHARS_MAX_PAGES]; /* rebuilt each time
+                                    * "Page" opens, for the current font */
+  char                page_labels[CHARS_MAX_PAGES][8]; /* "U+1F400" */
+  unsigned long       page_bases[CHARS_MAX_PAGES]; /* page_items[i]'s page */
+  wuss_menu_t         page_menu;
+  wuss_menu_item_t    menu_items[3]; /* per-instance: a shared static would
                                       * leak one instance's .window pointer
                                       * into another's menu */
   wuss_menu_t         menu;
