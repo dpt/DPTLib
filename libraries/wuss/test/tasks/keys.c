@@ -16,6 +16,15 @@
 
 #include "keys.h"
 
+/* MENU click pops this menu; the item table lives per-instance in
+ * keys_task_t so each window's Info row can hold its own .window pointer to
+ * the shared proginfo singleton, retargeted just before wuss_menu_open */
+enum
+{
+  KEYS_MENU_INFO = 0,
+  KEYS_MENU_CLEAR
+};
+
 result_t keys_create(wuss_t *wuss, keys_task_t **out)
 {
   result_t         rc;
@@ -44,6 +53,7 @@ result_t keys_create(wuss_t *wuss, keys_task_t **out)
     return rc;
   }
   wuss_task_set_autoclose(delegate, 1);
+  task->delegate = delegate;
 
   /* a Focus line, then one line per history entry */
   bmfont_get_info(task->font, NULL, &fh, NULL, NULL);
@@ -63,6 +73,17 @@ result_t keys_create(wuss_t *wuss, keys_task_t **out)
     return rc;
   }
 
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, KEYS_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo singleton
+                                * just before wuss_menu_open, in keys_mouse */
+
+  WUSS_MENU_ITEM(task->menu_items, KEYS_MENU_CLEAR, "Clear",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->menu, "Keys", task->menu_items,
+                 NELEMS(task->menu_items));
+
   if (out)
     *out = task;
 
@@ -71,6 +92,7 @@ result_t keys_create(wuss_t *wuss, keys_task_t **out)
 
 void keys_destroy(keys_task_t *task)
 {
+  wuss_menu_close(task->menu_handle);
   free(task);
 }
 
@@ -154,6 +176,33 @@ static result_t keys_redraw(wuss_window_t      *window,
   return result_OK;
 }
 
+static result_t keys_mouse(keys_task_t *kt, const wuss_event_t *event)
+{
+  static const wuss_proginfo_desc_t desc =
+  {
+    "Keys",
+    "Key input and focus demo",
+    "© DPTLib contributors",
+    "1.0 (" __DATE__ ")"
+  };
+
+  if (event->data.mouse.action != wuss_MOUSE_DOWN ||
+      !(event->data.mouse.button & wuss_BUTTON_MENU))
+    return result_OK;
+
+  wuss_proginfo_set_desc(&desc);
+  kt->menu_items[KEYS_MENU_INFO].window = wuss_proginfo_window(kt->delegate);
+
+  /* Clear has nothing to do with an empty history */
+  if (kt->nkeys > 0)
+    kt->menu_items[KEYS_MENU_CLEAR].flags &= ~wuss_MENU_ITEM_DISABLED;
+  else
+    kt->menu_items[KEYS_MENU_CLEAR].flags |= wuss_MENU_ITEM_DISABLED;
+
+  return wuss_menu_open(kt->delegate, &kt->menu, wuss_get_pointer(kt->wuss),
+                        &kt->menu_handle);
+}
+
 result_t keys_handle(wuss_window_t      *window,
                      const wuss_event_t *event,
                      void               *task_data)
@@ -183,6 +232,47 @@ result_t keys_handle(wuss_window_t      *window,
     kt->mods[0] = event->data.key.modifiers;
     wuss_window_invalidate_visible(window);
     return result_OK;
+
+  case wuss_EVENT_MOUSE:
+    if (window != kt->window)
+      return result_OK; /* the proginfo dialogue has no click behaviour of
+                         * its own */
+    return keys_mouse(kt, event);
+
+  case wuss_EVENT_MENU_SELECT:
+    if (event->data.menu_select.menu == &kt->menu &&
+        event->data.menu_select.index == KEYS_MENU_CLEAR &&
+        kt->window != NULL)
+    {
+      kt->nkeys = 0;
+      wuss_window_invalidate_visible(kt->window);
+    }
+    return result_OK;
+
+  case wuss_EVENT_MENU_CLOSED:
+    kt->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_CLOSE:
+    if (window == kt->window)
+      kt->window = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == kt->menu_items[KEYS_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
+    else
+      rc = result_OK;
+    if (rc != result_OK)
+      return rc;
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_GAIN_FOCUS:
   case wuss_EVENT_LOSE_FOCUS:
