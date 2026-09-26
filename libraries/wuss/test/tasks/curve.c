@@ -26,7 +26,19 @@
  * in curve_task_t, not as a file-scope static, so that each window's Info row
  * can hold its own .window pointer to the shared proginfo singleton, retargeted
  * just before wuss_menu_open */
-enum { CURVE_MENU_INFO = 0, CURVE_MENU_BACKGROUND };
+enum
+{
+  CURVE_MENU_INFO = 0,
+  CURVE_MENU_BACKGROUND,
+  CURVE_MENU_TYPE
+};
+
+/* Curve-type name for each valid task->npoints, indexed by
+ * npoints - CURVE_MINCONTROLPTS; also the Menu > Type rows. */
+static const char *const curve_kind_names[CURVE_NKINDS] =
+{
+  "Line", "Quadratic", "Cubic", "Quartic", "Quintic"
+};
 
 #define CURVE_BLOBSZ           8  /* side length of a control-point marker, matches curve-test.c */
 #define CURVE_SEGMENTS_DEFAULT 32
@@ -91,6 +103,7 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
   curve_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -146,6 +159,16 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, CURVE_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
+  for (i = 0; i < CURVE_NKINDS; i++)
+    WUSS_MENU_ITEM(task->type_items, i, curve_kind_names[i],
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->type_menu, "Type", task->type_items,
+                 NELEMS(task->type_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, CURVE_MENU_TYPE, "Type",
+                      wuss_MENU_ITEM_NONE, &task->type_menu);
+
   WUSS_MENU_TITLE(task->menu, "Curve", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -188,16 +211,9 @@ static colour_t blob_colour(const curve_task_t *task, int i)
   return control[(i - 1) % NELEMS(control)];
 }
 
-/* Curve-type name for each valid task->npoints, indexed by
- * npoints - CURVE_MINCONTROLPTS. */
 static const char *curve_kind_name(int npoints)
 {
-  static const char *const names[] =
-  {
-    "Line", "Quadratic", "Cubic", "Quartic", "Quintic"
-  };
-
-  return names[npoints - CURVE_MINCONTROLPTS];
+  return curve_kind_names[npoints - CURVE_MINCONTROLPTS];
 }
 
 /* The point at time t on the curve through the first task->npoints points,
@@ -325,6 +341,9 @@ static result_t curve_mouse(curve_task_t       *task,
       task->menu_items[CURVE_MENU_INFO].window =
         wuss_proginfo_window(task->delegate);
 
+      wuss_menu_tick_exclusive(&task->type_menu,
+                               task->npoints - CURVE_MINCONTROLPTS);
+
       return wuss_menu_open(task->delegate, &task->menu,
                             wuss_get_pointer(task->wuss), &task->menu_handle);
     }
@@ -401,6 +420,17 @@ static result_t curve_menu_select(curve_task_t       *task,
   int             npalette;
   wuss_colour_t   picked;
   int             mine;
+
+  if (event->data.menu_select.menu == &task->type_menu)
+  {
+    task->npoints = CURVE_MINCONTROLPTS + event->data.menu_select.index;
+    if (wuss_menu_should_keep_open(event))
+      wuss_menu_tick_exclusive_live(task->menu_handle, &task->type_menu,
+                                    event->data.menu_select.index);
+    if (task->window != NULL)
+      wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
 
   picked = wuss_colourmenu_selected(event, &mine);
   if (!mine)
