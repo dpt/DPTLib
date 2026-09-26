@@ -57,8 +57,9 @@ minesweeper_cell_state_t;
  * zeros), Adjust toggles a flag. Mines are placed on the first reveal so the
  * opening click is never a mine. A MENU-button click pops a menu with "New
  * Game", a "Grid Size" submenu that resets the board at a new size and a
- * "Difficulty" submenu that resets it with more or fewer mines. With
- * the input focus, the arrow keys move a cursor cell, Return reveals it and
+ * "Difficulty" submenu that resets it with more or fewer mines;
+ * "Give Up" ends a game in progress and shows every mine. With the input
+ * focus, the arrow keys move a cursor cell, Return reveals it and
  * Space toggles its flag. */
 typedef struct minesweeper_task
 {
@@ -70,7 +71,7 @@ typedef struct minesweeper_task
   wuss_menu_t              size_menu;
   wuss_menu_item_t         difficulty_items[minesweeper_NDIFFICULTIES];
   wuss_menu_t              difficulty_menu;
-  wuss_menu_item_t         menu_items[4]; /* per-instance: a shared static
+  wuss_menu_item_t         menu_items[5]; /* per-instance: a shared static
                                             * would leak one instance's
                                             * .window pointer into another's
                                             * menu */
