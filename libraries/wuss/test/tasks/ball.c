@@ -77,7 +77,7 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
   task->balls[0].dx     = 3;
   task->balls[0].dy     = 2;
   task->balls[0].radius = ball_random_radius();
-  task->balls[0].colour = ball_random_colour();
+  task->balls[0].colour = colour_rgb(0xFF, 0xFF, 0xFF); /* white */
 
   /* ball_redraw paints its own background every frame */
   delegate_desc.handle    = ball_handle;
@@ -181,14 +181,23 @@ static result_t ball_mouse(wuss_window_t      *window,
 
   if (button & wuss_BUTTON_MENU)
   {
-    static const wuss_proginfo_desc_t desc =
+    /* static: proginfo only copies the fields when it is next shown */
+    static const wuss_proginfo_desc_t desc[2] =
     {
-      "Bouncing Ball",
-      "Balls bouncing off content edges",
-      "© DPTLib contributors",
-      "1.0 (" __DATE__ ")"
+      {
+        "Bouncing Ball",
+        "Balls bouncing off content edges",
+        "© DPTLib contributors",
+        "1.0 (" __DATE__ ")"
+      },
+      {
+        "Bouncing Balls",
+        "Balls bouncing off content edges",
+        "© DPTLib contributors",
+        "1.0 (" __DATE__ ")"
+      }
     };
-    wuss_proginfo_set_desc(&desc);
+    wuss_proginfo_set_desc(&desc[bc->nballs > 1]);
     bc->menu_items[BALL_MENU_INFO].window = wuss_proginfo_window(bc->delegate);
 
     return wuss_menu_open(bc->delegate, &bc->menu,
@@ -197,8 +206,9 @@ static result_t ball_mouse(wuss_window_t      *window,
 
   if (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST))
   {
-    ball_t *b;
-    
+    ball_t     *b;
+    const char *title;
+
     if (button & wuss_BUTTON_SELECT)
     {
       if (bc->nballs >= BALL_MAX)
@@ -226,8 +236,9 @@ static result_t ball_mouse(wuss_window_t      *window,
     local = ball_local_box(b->x, b->y, b->x, b->y, b->radius);
     wuss_window_invalidate(bc->window, &local);
 
-    wuss_window_set_title(bc->window, (bc->nballs > 1) ? "Bouncing Balls"
-                                                       : "Bouncing Ball");
+    title = (bc->nballs > 1) ? "Bouncing Balls" : "Bouncing Ball";
+    wuss_window_set_title(bc->window, title);
+    bc->menu.title = title; /* read on the next wuss_menu_open */
   }
 
   return result_OK;
