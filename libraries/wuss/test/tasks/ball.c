@@ -21,7 +21,13 @@
  * in ball_task_t, not as a file-scope static, so that each window's Info row
  * can hold its own .window pointer to the shared proginfo singleton, retargeted
  * just before wuss_menu_open */
-enum { BALL_MENU_INFO = 0, BALL_MENU_BACKGROUND, BALL_MENU_PAUSE };
+enum
+{
+  BALL_MENU_INFO = 0,
+  BALL_MENU_BACKGROUND,
+  BALL_MENU_PAUSE,
+  BALL_MENU_CLEAR
+};
 
 /* a fresh radius in [BALL_BASE_RADIUS/2, BALL_BASE_RADIUS*3/2] */
 static int ball_random_radius(void)
@@ -117,6 +123,9 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
   WUSS_MENU_ITEM(task->menu_items, BALL_MENU_PAUSE, "Pause",
                  wuss_MENU_ITEM_NONE);
 
+  WUSS_MENU_ITEM(task->menu_items, BALL_MENU_CLEAR, "Clear",
+                 wuss_MENU_ITEM_NONE);
+
   WUSS_MENU_TITLE(task->menu, "Bouncing Ball", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -166,6 +175,16 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
   return result_OK;
 }
 
+/* match the window and menu titles to the ball count */
+static void ball_set_title(ball_task_t *bc)
+{
+  const char *title;
+
+  title = (bc->nballs > 1) ? "Bouncing Balls" : "Bouncing Ball";
+  wuss_window_set_title(bc->window, title);
+  bc->menu.title = title; /* read on the next wuss_menu_open */
+}
+
 static result_t ball_mouse(wuss_window_t      *window,
                            wuss_mouse_action_t action,
                            int                 x,
@@ -208,14 +227,19 @@ static result_t ball_mouse(wuss_window_t      *window,
 
     wuss_menu_tick_item(&bc->menu, BALL_MENU_PAUSE, bc->paused);
 
+    /* Clear has nothing to do while only the first ball remains */
+    if (bc->nballs > 1)
+      bc->menu_items[BALL_MENU_CLEAR].flags &= ~wuss_MENU_ITEM_DISABLED;
+    else
+      bc->menu_items[BALL_MENU_CLEAR].flags |= wuss_MENU_ITEM_DISABLED;
+
     return wuss_menu_open(bc->delegate, &bc->menu,
                           wuss_get_pointer(bc->wuss), &bc->menu_handle);
   }
 
   if (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST))
   {
-    ball_t     *b;
-    const char *title;
+    ball_t *b;
 
     if (button & wuss_BUTTON_SELECT)
     {
@@ -244,9 +268,7 @@ static result_t ball_mouse(wuss_window_t      *window,
     local = ball_local_box(b->x, b->y, b->x, b->y, b->radius);
     wuss_window_invalidate(bc->window, &local);
 
-    title = (bc->nballs > 1) ? "Bouncing Balls" : "Bouncing Ball";
-    wuss_window_set_title(bc->window, title);
-    bc->menu.title = title; /* read on the next wuss_menu_open */
+    ball_set_title(bc);
   }
 
   return result_OK;
@@ -359,6 +381,19 @@ static result_t ball_toggle_pause(ball_task_t *bc, const wuss_event_t *event)
   return result_OK;
 }
 
+/* The "Clear" row: remove every ball but the first. */
+static result_t ball_clear(ball_task_t *bc)
+{
+  if (bc->window == NULL || bc->nballs <= 1)
+    return result_OK;
+
+  bc->nballs = 1;
+  ball_set_title(bc);
+  wuss_window_invalidate_visible(bc->window);
+
+  return result_OK;
+}
+
 result_t ball_handle(wuss_window_t      *window,
                      const wuss_event_t *event,
                      void               *task_data)
@@ -386,6 +421,9 @@ result_t ball_handle(wuss_window_t      *window,
     if (event->data.menu_select.menu == &bc->menu &&
         event->data.menu_select.index == BALL_MENU_PAUSE)
       return ball_toggle_pause(bc, event);
+    if (event->data.menu_select.menu == &bc->menu &&
+        event->data.menu_select.index == BALL_MENU_CLEAR)
+      return ball_clear(bc);
     return ball_menu_select(bc, event);
 
   case wuss_EVENT_MENU_CLOSED:
