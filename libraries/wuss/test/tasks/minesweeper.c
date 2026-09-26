@@ -77,14 +77,32 @@ static const char *const g_minesweeper_size_names[minesweeper_NSIZES] =
   "24x24", "24x12", "16x16", "16x12", "12x12"
 };
 
+/* "Difficulty" submenu rows, indexed by minesweeper_difficulty_t: each
+ * scales g_minesweeper_sizes' mine count by percent. Normal is the classic
+ * count; Hard tops out near 22% density, well short of the board filling up
+ * around the safe 3x3 opening. */
+static const struct { const char *name; int percent; }
+g_minesweeper_difficulties[minesweeper_NDIFFICULTIES] =
+{
+  { "Easy",    70 },
+  { "Normal", 100 },
+  { "Hard",   130 }
+};
+
 /* MENU click over the board pops this menu; the item tables and wuss_menu_t
  * values live per-instance in minesweeper_task_t, not as file-scope
  * statics, so that each window's Info row points at its own .window pointer
  * (retargeted at the shared proginfo singleton just before wuss_menu_open,
  * in minesweeper_mouse) rather than every instance sharing (and overwriting)
  * one global .window pointer -- and so two instances don't fight over one
- * shared tick mark on the Grid Size submenu */
-enum { MINESWEEPER_MENU_INFO, MINESWEEPER_MENU_NEW_GAME, MINESWEEPER_MENU_SIZE };
+ * shared tick mark on the Grid Size or Difficulty submenus */
+enum
+{
+  MINESWEEPER_MENU_INFO,
+  MINESWEEPER_MENU_NEW_GAME,
+  MINESWEEPER_MENU_SIZE,
+  MINESWEEPER_MENU_DIFFICULTY
+};
 
 /* cache all constant palette entries; call once at create and again whenever
  * wuss_EVENT_PALETTE fires, in case colour_to_pixel results have changed */
@@ -226,16 +244,18 @@ static void minesweeper_reset(minesweeper_task_t *ms)
   memset(ms->state, 0, sizeof(ms->state)); /* minesweeper_HIDDEN == 0 */
 }
 
-/* applies a grid size (rows/cols/mines) and clears the board; does not touch
- * the window, so it is also used at creation before task->window exists --
- * the wuss_EVENT_MENU_SELECT handler resizes the window itself afterwards */
+/* applies a grid size (rows/cols) and its mine count, scaled by the current
+ * difficulty, and clears the board; does not touch the window, so it is also
+ * used at creation before task->window exists -- the wuss_EVENT_MENU_SELECT
+ * handler resizes the window itself afterwards */
 static void minesweeper_set_size(minesweeper_task_t *ms,
                                  minesweeper_size_t  size)
 {
   ms->size  = size;
   ms->rows  = g_minesweeper_sizes[size].rows;
   ms->cols  = g_minesweeper_sizes[size].cols;
-  ms->mines = g_minesweeper_sizes[size].mines;
+  ms->mines = g_minesweeper_sizes[size].mines *
+              g_minesweeper_difficulties[ms->difficulty].percent / 100;
   ms->cur_r = MIN(ms->cur_r, ms->rows - 1);
   ms->cur_c = MIN(ms->cur_c, ms->cols - 1);
   minesweeper_reset(ms);
@@ -267,6 +287,7 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
 
   task->wuss = wuss;
   task->font = wuss_get_font_n(wuss, 1);
+  task->difficulty = minesweeper_DIFFICULTY_NORMAL;
   minesweeper_set_size(task, minesweeper_SIZE_12X12);
   minesweeper_prepare_colours(task);
 
@@ -347,6 +368,14 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
     }
     WUSS_MENU_TITLE(task->size_menu, "Grid Size", task->size_items,
                    NELEMS(task->size_items));
+
+    for (i = 0; i < minesweeper_NDIFFICULTIES; i++)
+    {
+      WUSS_MENU_ITEM(task->difficulty_items, i,
+                     g_minesweeper_difficulties[i].name, wuss_MENU_ITEM_NONE);
+    }
+    WUSS_MENU_TITLE(task->difficulty_menu, "Difficulty",
+                   task->difficulty_items, NELEMS(task->difficulty_items));
   }
 
   WUSS_MENU_ITEM_WINDOW(task->menu_items, MINESWEEPER_MENU_INFO, "Info",
@@ -360,6 +389,10 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, MINESWEEPER_MENU_SIZE, "Grid Size",
                       wuss_MENU_ITEM_NONE, &task->size_menu);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, MINESWEEPER_MENU_DIFFICULTY,
+                      "Difficulty", wuss_MENU_ITEM_NONE,
+                      &task->difficulty_menu);
 
   WUSS_MENU_TITLE(task->menu, "Minesweeper", task->menu_items,
                  NELEMS(task->menu_items));
@@ -723,6 +756,7 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
     ms->menu_items[MINESWEEPER_MENU_INFO].window = wuss_proginfo_window(ms->task);
 
     wuss_menu_tick_exclusive(&ms->size_menu, ms->size);
+    wuss_menu_tick_exclusive(&ms->difficulty_menu, ms->difficulty);
     return wuss_menu_open(ms->task, &ms->menu,
                           wuss_get_pointer(ms->wuss), &ms->menu_handle);
   }
@@ -794,6 +828,14 @@ result_t minesweeper_handle(wuss_window_t      *window,
                            event->data.menu_select.index);
       wuss_menu_tick_exclusive_live(ms->menu_handle, &ms->size_menu,
                                     ms->size);
+    }
+    else if (event->data.menu_select.menu == &ms->difficulty_menu)
+    {
+      ms->difficulty = (minesweeper_difficulty_t)
+                       event->data.menu_select.index;
+      minesweeper_set_size(ms, ms->size); /* re-derive the mine count */
+      wuss_menu_tick_exclusive_live(ms->menu_handle, &ms->difficulty_menu,
+                                    ms->difficulty);
     }
     else if (event->data.menu_select.index == MINESWEEPER_MENU_NEW_GAME)
       minesweeper_reset(ms);
