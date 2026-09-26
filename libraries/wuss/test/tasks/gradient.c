@@ -2,6 +2,7 @@
 
 #ifdef WUSS_APP
 
+#include <math.h>
 #include <stdlib.h>
 
 #ifdef FORTIFY
@@ -19,11 +20,21 @@
 
 #include "gradient.h"
 
-/* MENU click pops this single-item menu; the item table and wuss_menu_t
- * live per-instance in gradient_task_t, not as a file-scope static, so that
- * each window's Info row can hold its own .window pointer to the shared
- * proginfo singleton, retargeted just before wuss_menu_open */
-enum { GRADIENT_MENU_INFO, GRADIENT_MENU_RESET };
+/* MENU click pops this menu; the item table and wuss_menu_t live
+ * per-instance in gradient_task_t, not as a file-scope static, so that each
+ * window's Info row can hold its own .window pointer to the shared proginfo
+ * singleton, retargeted just before wuss_menu_open */
+enum { GRADIENT_MENU_INFO, GRADIENT_MENU_RESET, GRADIENT_MENU_SHAPE };
+
+/* "Shape" submenu rows, indexed by gradient_shape_t */
+static const char *const gradient_shape_names[gradient_NSHAPES] =
+{
+  "Linear", "Radial", "Conical"
+};
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #define GRADIENT_DOC_WIDTH  400
 #define GRADIENT_DOC_HEIGHT 400
@@ -137,6 +148,57 @@ static void channel_steps(pixelfmt_t fmt, int step[3])
   }
 }
 
+/* fully saturated hue for t in 0..1535 (six 256-step segments round the
+ * colour wheel: red, yellow, green, cyan, blue, magenta, back to red) */
+static void hue(int t, int rgb[3])
+{
+  int f;
+
+  f = t & 255;
+  switch ((t >> 8) % 6)
+  {
+  case 0:  rgb[0] = 255;     rgb[1] = f;       rgb[2] = 0;       break;
+  case 1:  rgb[0] = 255 - f; rgb[1] = 255;     rgb[2] = 0;       break;
+  case 2:  rgb[0] = 0;       rgb[1] = 255;     rgb[2] = f;       break;
+  case 3:  rgb[0] = 0;       rgb[1] = 255 - f; rgb[2] = 255;     break;
+  case 4:  rgb[0] = f;       rgb[1] = 0;       rgb[2] = 255;     break;
+  default: rgb[0] = 255;     rgb[1] = 0;       rgb[2] = 255 - f; break;
+  }
+}
+
+/* the unadjusted colour of document point (lx, ly) under "shape" */
+static void shade(gradient_shape_t shape, int lx, int ly, int rgb[3])
+{
+  static const double max_r = GRADIENT_DOC_WIDTH / 2 * 1.4142136;
+
+  int    dx, dy;
+  double t;
+
+  dx = lx - GRADIENT_DOC_WIDTH  / 2;
+  dy = ly - GRADIENT_DOC_HEIGHT / 2;
+
+  switch (shape)
+  {
+  default:
+  case gradient_SHAPE_LINEAR:
+    rgb[0] = lx * 255 / GRADIENT_DOC_WIDTH;
+    rgb[1] = ly * 255 / GRADIENT_DOC_HEIGHT;
+    rgb[2] = 255 - (lx + ly) * 255 / (GRADIENT_DOC_WIDTH + GRADIENT_DOC_HEIGHT);
+    return;
+
+  case gradient_SHAPE_RADIAL:
+    /* 0 at the centre, 1 at a corner */
+    t = sqrt((double) (dx * dx + dy * dy)) / max_r;
+    break;
+
+  case gradient_SHAPE_CONICAL:
+    t = (atan2(dy, dx) + M_PI) / (2.0 * M_PI); /* 0..1 round the centre */
+    break;
+  }
+
+  hue(CLAMP((int) (t * 1535.0), 0, 1535), rgb);
+}
+
 /* apply the task's saturation (lerp away from luma) then brightness (scale)
  * to an 8-bit RGB triple, in place; results may exceed 0..255 until
  * dither() clamps them */
@@ -159,6 +221,7 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
   gradient_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -205,6 +268,16 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
   WUSS_MENU_ITEM(task->menu_items, GRADIENT_MENU_RESET, "Reset",
                  wuss_MENU_ITEM_NONE);
 
+  for (i = 0; i < gradient_NSHAPES; i++)
+    WUSS_MENU_ITEM(task->shape_items, i, gradient_shape_names[i],
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->shape_menu, "Shape", task->shape_items,
+                 NELEMS(task->shape_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, GRADIENT_MENU_SHAPE, "Shape",
+                      wuss_MENU_ITEM_NONE, &task->shape_menu);
+
   WUSS_MENU_TITLE(task->menu, "Gradient", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -247,9 +320,7 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
       lx = x - bounds->x0 + sx;
       ly = y - bounds->y0 + sy;
 
-      rgb[0] = lx * 255 / GRADIENT_DOC_WIDTH;
-      rgb[1] = ly * 255 / GRADIENT_DOC_HEIGHT;
-      rgb[2] = 255 - (lx + ly) * 255 / (GRADIENT_DOC_WIDTH + GRADIENT_DOC_HEIGHT);
+      shade(gc->shape, lx, ly, rgb);
       adjust(gc, rgb);
 
       screen_set_pixel(scr, x, y,
@@ -341,13 +412,14 @@ static result_t gradient_mouse(const wuss_event_t *event, void *task_data)
     static const wuss_proginfo_desc_t desc =
     {
       "Gradient",
-      "Two-axis colour gradient with ordered dithering",
+      "Colour gradients with ordered dithering",
       "© DPTLib contributors",
       "1.0 (" __DATE__ ")"
     };
     wuss_proginfo_set_desc(&desc);
     gc->menu_items[GRADIENT_MENU_INFO].window =
       wuss_proginfo_window(gc->delegate);
+    wuss_menu_tick_exclusive(&gc->shape_menu, gc->shape);
 
     return wuss_menu_open(gc->delegate, &gc->menu,
                           wuss_get_pointer(gc->wuss), &gc->menu_handle);
@@ -373,12 +445,24 @@ static result_t gradient_mouse(const wuss_event_t *event, void *task_data)
   return result_OK;
 }
 
-/* Menu pick: Reset restores the default dither matrix, brightness and
- * saturation. A SELECT pick has already closed and freed the chain, so drop
- * the handle then. */
+/* Menu pick: a Shape row switches the fill; Reset restores the default
+ * shape, dither matrix, brightness and saturation. A SELECT pick has already
+ * closed and freed the chain, so drop the handle then. */
 static result_t gradient_menu_select(gradient_task_t    *gc,
                                      const wuss_event_t *event)
 {
+  if (event->data.menu_select.menu == &gc->shape_menu)
+  {
+    gc->shape = (gradient_shape_t) event->data.menu_select.index;
+    wuss_menu_tick_exclusive_live(gc->menu_handle, &gc->shape_menu,
+                                  gc->shape);
+    if (!wuss_menu_should_keep_open(event))
+      gc->menu_handle = NULL;
+    wuss_window_invalidate_visible(gc->window);
+
+    return result_OK;
+  }
+
   if (event->data.menu_select.menu != &gc->menu)
     return result_OK;
 
@@ -388,6 +472,7 @@ static result_t gradient_menu_select(gradient_task_t    *gc,
   if (event->data.menu_select.index != GRADIENT_MENU_RESET)
     return result_OK;
 
+  gc->shape        = gradient_SHAPE_LINEAR;
   gc->dither_index = GRADIENT_DEFAULT_DITHER;
   gc->brightness   = GRADIENT_UNITY;
   gc->saturation   = GRADIENT_UNITY;
