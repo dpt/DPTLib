@@ -30,7 +30,7 @@
  *
  * Select reseeds the pattern; Adjust steps the base palette, which Menu >
  * Palette also picks directly; Menu > Random palettes toggles per-prefab
- * random palettes. */
+ * random palettes; Menu > Save PNG writes the window to greeble.png. */
 typedef struct greeble_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer when opening the menu */
@@ -48,7 +48,7 @@ typedef struct greeble_task
   /* cellpal[row][col], the greeble_palettes[] row to draw each cell with;
    * kept in step with grid[][] */
   unsigned char      cellpal[GREEBLE_MAX_ROWS][GREEBLE_MAX_COLS];
-  wuss_menu_item_t   menu_items[3]; /* per-instance: a shared static would
+  wuss_menu_item_t   menu_items[4]; /* per-instance: a shared static would
                                      * leak one instance's .window pointer
                                      * into another's menu */
   wuss_menu_t        menu;
