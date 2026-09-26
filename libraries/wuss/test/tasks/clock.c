@@ -384,14 +384,28 @@ result_t clock_handle(wuss_window_t      *window,
     return clock_mouse(cc, event->data.mouse.button);
 
   case wuss_EVENT_IDLE:
+  {
+    time_t now;
+
     /* the proginfo dialogue is a second window on this same (autoclose)
      * delegate, so closing the clock window alone never empties
      * task->windows and the task lingers until the dialogue closes too --
      * guard against the dangling window in the meantime */
     if (cc->window == NULL)
       return result_OK;
+
+    /* repaint only when the time shown changes: each second with seconds
+     * on, each minute without */
+    now = time(NULL);
+    if (!cc->show_second)
+      now -= now % 60;
+    if (now == cc->shown)
+      return result_OK;
+
+    cc->shown = now;
     wuss_window_invalidate_visible(cc->window);
     return result_OK;
+  }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return clock_pre_submenu_open(cc, event);
