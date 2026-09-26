@@ -24,7 +24,12 @@
  * per-instance in patterns_task_t, not as a file-scope static, so that
  * each window's Info row can hold its own .window pointer to the shared
  * proginfo singleton, retargeted just before wuss_menu_open */
-enum { PATTERNS_MENU_INFO, PATTERNS_MENU_SPEED };
+enum
+{
+  PATTERNS_MENU_INFO,
+  PATTERNS_MENU_SPEED,
+  PATTERNS_MENU_PAUSE
+};
 
 /* one entry per row of the "Speed" submenu: seconds per a-to-b blend */
 static const struct
@@ -168,6 +173,9 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, PATTERNS_MENU_SPEED, "Speed",
                       wuss_MENU_ITEM_NONE, &task->speed_menu);
 
+  WUSS_MENU_ITEM(task->menu_items, PATTERNS_MENU_PAUSE, "Pause",
+                 wuss_MENU_ITEM_NONE);
+
   WUSS_MENU_TITLE(task->menu, "Patterns", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -194,6 +202,9 @@ static result_t patterns_idle(void *task_data)
    * and the task lingers until the dialogue closes too -- guard against the
    * dangling window in the meantime */
   if (bc->window == NULL)
+    return result_OK;
+
+  if (bc->paused)
     return result_OK;
 
   if (++bc->frame_count >= bc->blend_frames)
@@ -267,6 +278,7 @@ result_t patterns_handle(wuss_window_t      *window,
       bc->menu_items[PATTERNS_MENU_INFO].window =
         wuss_proginfo_window(bc->delegate);
     }
+    wuss_menu_tick_item(&bc->menu, PATTERNS_MENU_PAUSE, bc->paused);
     return wuss_menu_open(bc->delegate, &bc->menu,
                           wuss_get_pointer(bc->wuss), &bc->menu_handle);
 
@@ -277,6 +289,14 @@ result_t patterns_handle(wuss_window_t      *window,
       rc = result_OK;
       if (event->data.menu_select.menu == &bc->speed_menu)
         rc = patterns_set_speed(bc, event->data.menu_select.index);
+      else if (event->data.menu_select.menu == &bc->menu &&
+               event->data.menu_select.index == PATTERNS_MENU_PAUSE)
+      {
+        bc->paused = !bc->paused;
+        if (wuss_menu_should_keep_open(event))
+          wuss_menu_tick_item_live(bc->menu_handle, &bc->menu,
+                                   PATTERNS_MENU_PAUSE, bc->paused);
+      }
       if (!wuss_menu_should_keep_open(event))
         bc->menu_handle = NULL;
       return rc;
