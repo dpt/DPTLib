@@ -85,8 +85,10 @@ void wuss_window_move(wuss_window_t *window, point_t p)
    * window, just offset in screen space -- shift it instead of dropping the
    * cache and rebuilding all pieces on the next paint of even a thin
    * sliver */
+#ifdef WUSS_FURNITURE
   if (window->furniture_layout.flags & wuss_FURNITURE_LAYOUT__VALID)
     wuss__furniture_layout_translate(window, dx, dy);
+#endif
 
   for (i = 0; i < nclean; i++)
     box_translated(&clean[i], dx, dy, &full_dest[i]);

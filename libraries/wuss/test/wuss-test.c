@@ -38,10 +38,8 @@
  * reads back struct wuss__menu / struct wuss_icon state directly; the
  * furniture hit-test sweep calls wuss__furniture_hit_test and the box
  * helpers from impl.h / furniture.h directly */
-#if defined(WUSS_FURNITURE) && defined(WUSS_ICONS)
-#include "../core/impl.h"
-#endif
 #if defined(WUSS_ICONS)
+#include "../core/impl.h"
 #include "wuss/icon-spec.h"
 #include "../icon.h"
 #endif
