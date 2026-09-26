@@ -28,7 +28,8 @@ enum
 {
   PARTICLES_MENU_INFO,
   PARTICLES_MENU_EMITTER,
-  PARTICLES_MENU_BACKGROUND
+  PARTICLES_MENU_BACKGROUND,
+  PARTICLES_MENU_PAUSE
 };
 
 /* "Emitter" submenu rows; picking one adds an emitter at that intensity.
@@ -286,6 +287,9 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
+  WUSS_MENU_ITEM(task->menu_items, PARTICLES_MENU_PAUSE, "Pause",
+                 wuss_MENU_ITEM_NONE);
+
   WUSS_MENU_TITLE(task->menu, "Particles", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -420,6 +424,8 @@ static result_t particles_mouse(wuss_window_t      *window,
     pt->menu_x = x;
     pt->menu_y = y;
 
+    wuss_menu_tick_item(&pt->menu, PARTICLES_MENU_PAUSE, pt->paused);
+
     return wuss_menu_open(pt->delegate, &pt->menu,
                           wuss_get_pointer(pt->wuss), &pt->menu_handle);
   }
@@ -502,6 +508,9 @@ static result_t particles_idle(void *task_data)
   if (pt->window == NULL)
     return result_OK;
 
+  if (pt->paused)
+    return result_OK;
+
   /* particles die on leaving the bounds, so track the window's size */
   wuss_window_get_content_bounds(pt->window, &content);
   pt->ps.width  = content.x1 - content.x0;
@@ -520,6 +529,21 @@ static result_t particles_idle(void *task_data)
                      0.0f, 0.0f, PARTICLES_BURST);
 
   wuss_window_invalidate_visible(pt->window);
+
+  return result_OK;
+}
+
+/* The "Pause" row: stop or restart the idle animation. An ADJUST pick keeps
+ * the menu open, so retick the live row; a SELECT pick has already closed
+ * it. */
+static result_t particles_toggle_pause(particles_task_t   *pt,
+                                       const wuss_event_t *event)
+{
+  pt->paused = !pt->paused;
+
+  if (wuss_menu_should_keep_open(event))
+    wuss_menu_tick_item_live(pt->menu_handle, &pt->menu, PARTICLES_MENU_PAUSE,
+                             pt->paused);
 
   return result_OK;
 }
@@ -555,6 +579,9 @@ result_t particles_handle(wuss_window_t      *window,
     return particles_pre_submenu_open(pt, event);
 
   case wuss_EVENT_MENU_SELECT:
+    if (event->data.menu_select.menu == &pt->menu &&
+        event->data.menu_select.index == PARTICLES_MENU_PAUSE)
+      return particles_toggle_pause(pt, event);
     return particles_menu_select(pt, event);
 
   case wuss_EVENT_MENU_CLOSED:

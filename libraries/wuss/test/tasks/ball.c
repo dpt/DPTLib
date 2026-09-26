@@ -21,7 +21,7 @@
  * in ball_task_t, not as a file-scope static, so that each window's Info row
  * can hold its own .window pointer to the shared proginfo singleton, retargeted
  * just before wuss_menu_open */
-enum { BALL_MENU_INFO = 0, BALL_MENU_BACKGROUND };
+enum { BALL_MENU_INFO = 0, BALL_MENU_BACKGROUND, BALL_MENU_PAUSE };
 
 /* a fresh radius in [BALL_BASE_RADIUS/2, BALL_BASE_RADIUS*3/2] */
 static int ball_random_radius(void)
@@ -114,6 +114,9 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, BALL_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
+  WUSS_MENU_ITEM(task->menu_items, BALL_MENU_PAUSE, "Pause",
+                 wuss_MENU_ITEM_NONE);
+
   WUSS_MENU_TITLE(task->menu, "Bouncing Ball", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -203,6 +206,8 @@ static result_t ball_mouse(wuss_window_t      *window,
     wuss_proginfo_set_desc(&desc[bc->nballs > 1]);
     bc->menu_items[BALL_MENU_INFO].window = wuss_proginfo_window(bc->delegate);
 
+    wuss_menu_tick_item(&bc->menu, BALL_MENU_PAUSE, bc->paused);
+
     return wuss_menu_open(bc->delegate, &bc->menu,
                           wuss_get_pointer(bc->wuss), &bc->menu_handle);
   }
@@ -262,6 +267,9 @@ static result_t ball_idle(void *task_data)
    * and the task lingers until the dialogue closes too -- guard against the
    * dangling window in the meantime */
   if (bc->window == NULL)
+    return result_OK;
+
+  if (bc->paused)
     return result_OK;
 
   wuss_window_get_content_bounds(bc->window, &content);
@@ -337,6 +345,20 @@ static result_t ball_menu_select(ball_task_t *bc, const wuss_event_t *event)
   return result_OK;
 }
 
+/* The "Pause" row: stop or restart the idle animation. An ADJUST pick keeps
+ * the menu open, so retick the live row; a SELECT pick has already closed
+ * it. */
+static result_t ball_toggle_pause(ball_task_t *bc, const wuss_event_t *event)
+{
+  bc->paused = !bc->paused;
+
+  if (wuss_menu_should_keep_open(event))
+    wuss_menu_tick_item_live(bc->menu_handle, &bc->menu, BALL_MENU_PAUSE,
+                             bc->paused);
+
+  return result_OK;
+}
+
 result_t ball_handle(wuss_window_t      *window,
                      const wuss_event_t *event,
                      void               *task_data)
@@ -361,6 +383,9 @@ result_t ball_handle(wuss_window_t      *window,
     return ball_pre_submenu_open(bc, event);
 
   case wuss_EVENT_MENU_SELECT:
+    if (event->data.menu_select.menu == &bc->menu &&
+        event->data.menu_select.index == BALL_MENU_PAUSE)
+      return ball_toggle_pause(bc, event);
     return ball_menu_select(bc, event);
 
   case wuss_EVENT_MENU_CLOSED:
