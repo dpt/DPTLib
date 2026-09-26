@@ -21,7 +21,7 @@
 /* window D's task: draws every entry of the desktop palette as a square
  * in a grid, so the palette is visible at a glance. A MENU click over the
  * grid opens a picker for every *.hex file under resources/palettes, plus
- * an Invert toggle. A pick installs the loaded/inverted array via
+ * Invert and Greyscale toggles. A pick installs the loaded/inverted array via
  * wuss_set_palette; there is no callback here, since every other interested
  * party (framebuffer bitmap, physical palette) reacts to the resulting
  * wuss_EVENT_PALETTE and reads the array back with wuss_get_palette.
@@ -41,6 +41,7 @@ typedef struct palette_task
                                   * own palette (1/2/4/8bpp) or a "none"
                                   * label (32bpp has no palette) */
   bool                 invert;
+  bool                 grey; /* Menu > Greyscale */
 
   /* *.hex files found under resources/palettes at create time, leafname
    * with the extension stripped (e.g. "PICO-8"), sorted. selected indexes
@@ -55,7 +56,7 @@ typedef struct palette_task
   wuss_menu_item_t     load_items[PALETTE_MAX_FILES]; /* one row per
                                                         * *.hex file */
   wuss_menu_t          load_menu; /* "Load" submenu, opened off menu_items */
-  wuss_menu_item_t     menu_items[3]; /* Info, Load, Invert */
+  wuss_menu_item_t     menu_items[4]; /* Info, Load, Invert, Greyscale */
   wuss_menu_t          menu;
   wuss_menu_handle_t   menu_handle; /* for wuss_menu_tick_item_live on an
                                      * ADJUST pick, which keeps the chain
