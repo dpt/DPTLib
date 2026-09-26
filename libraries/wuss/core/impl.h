@@ -58,14 +58,14 @@
 /* Font slot (see wuss_create's fonts[]) consulted for menu decoration glyphs:
  * the selection tick and the submenu arrow. When the slot is empty those are
  * drawn as vector strokes instead. A font in this slot is expected to carry a
- * checkmark bitmap in its WUSS_GLYPH_TICK cell and an arrowhead in its
- * WUSS_GLYPH_SUBMENU cell; the ASCII defaults let an ordinary bmfont stand in. */
+ * checkmark glyph at codepoint WUSS_GLYPH_TICK and an arrowhead at
+ * WUSS_GLYPH_SUBMENU; a font lacking either gets the vector strokes. */
 #define WUSS_SYMBOL_FONT 2
 #ifndef WUSS_GLYPH_TICK
-#define WUSS_GLYPH_TICK    '*'
+#define WUSS_GLYPH_TICK    0x2713ul /* CHECK MARK */
 #endif
 #ifndef WUSS_GLYPH_SUBMENU
-#define WUSS_GLYPH_SUBMENU '>'
+#define WUSS_GLYPH_SUBMENU 0x25B6ul /* BLACK RIGHT-POINTING TRIANGLE */
 #endif
 #endif
 #define WUSS_MIN_CONTENT  20 /* resize-drag floor: content can never be squeezed smaller than this */

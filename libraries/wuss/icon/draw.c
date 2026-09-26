@@ -12,6 +12,7 @@
 #include "framebuf/colour.h"
 #include "framebuf/pattern.h"
 #include "framebuf/screen.h"
+#include "text/utf8.h"
 
 #include "../core/impl.h"
 
@@ -129,11 +130,13 @@ static colour_t icon_blend_ground(const icon_draw_ctx_t *c,
 static int wuss__draw_symbol_glyph(const wuss_t *wuss,
                                    screen_t     *scr,
                                    point_t       centre,
-                                   char          glyph,
+                                   unsigned long codepoint,
                                    colour_t      ink,
                                    colour_t      ground)
 {
   bmfont_t *font;
+  char      utf8[4];
+  int       len;
   point_t   pos;
   int       font_width, font_height, font_ascent;
 
@@ -141,13 +144,14 @@ static int wuss__draw_symbol_glyph(const wuss_t *wuss,
   if (font == NULL)
     return 0;
 
-  if (bmfont_lookup(font, (unsigned char) glyph) < 0)
+  if (bmfont_lookup(font, codepoint) < 0)
     return 0;
 
+  len = utf8_encode(codepoint, utf8);
   bmfont_get_info(font, &font_width, &font_height, &font_ascent, NULL);
   pos.x = centre.x - font_width / 2;
   pos.y = centre.y - font_height / 2 + font_ascent;
-  bmfont_draw(font, scr, &glyph, 1, ink, ground, NULL, &pos, NULL);
+  bmfont_draw(font, scr, utf8, len, ink, ground, NULL, &pos, NULL);
   return 1;
 }
 
