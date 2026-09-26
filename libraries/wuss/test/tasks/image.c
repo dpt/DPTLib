@@ -2,7 +2,6 @@
 
 #ifdef WUSS_APP
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -74,6 +73,7 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
   const char      *path;
   const char      *background_path;
   size2d_t         sz;
+  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -102,6 +102,10 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
     free(task); /* nothing registered yet; nobody else owns it */
     return result_BAD_ARG; /* no PNGs found under resources/images */
   }
+
+  for (i = 0; i < task->nnames; i++)
+    WUSS_MENU_ITEM(task->load_items, i, task->names[i], wuss_MENU_ITEM_NONE);
+  WUSS_MENU_TITLE(task->load_menu, "Load", task->load_items, task->nnames);
 
   path = pathf("%s/resources/images/%s.png", resources, task->names[0]);
   rc = load_png_deep(&task->bitmap, path, pixelfmt_rgbx8888);
@@ -217,9 +221,9 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   return result_OK;
 }
 
-static result_t image_click(wuss_window_t *window,
-                            image_task_t  *ic,
-                            int            step)
+/* Load and show names[index], resizing the window to fit. Shared by the
+ * Select/Adjust clicks and the Load submenu. */
+static result_t image_show(image_task_t *ic, int index)
 {
   result_t    rc;
   const char *resources;
@@ -227,14 +231,12 @@ static result_t image_click(wuss_window_t *window,
   bitmap_t    next;
   size2d_t    sz;
 
-  if (ic->nnames == 0)
-    return result_OK; /* nothing to cycle to */
-
-  ic->index = (ic->index + step + ic->nnames) % ic->nnames;
+  if (ic->window == NULL || index < 0 || index >= ic->nnames)
+    return result_OK;
 
   resources = wuss_get_resources(ic->wuss);
   filename  = pathf("%s/resources/images/%s.png", resources,
-                    ic->names[ic->index]);
+                    ic->names[index]);
 
   rc = load_png_deep(&next, filename, pixelfmt_rgbx8888);
   if (rc != result_OK)
@@ -245,14 +247,15 @@ static result_t image_click(wuss_window_t *window,
 
   free(ic->bitmap.base);
   ic->bitmap = next;
+  ic->index  = index; /* only once loaded, so the Load tick stays true */
 
   sz.w = ic->bitmap.size.w + IMAGE_MARGINSZ * 2;
   sz.h = ic->bitmap.size.h + IMAGE_MARGINSZ * 2;
 
-  rc = wuss_window_resize(window, sz);
+  rc = wuss_window_resize(ic->window, sz);
   if (rc != result_OK)
     return rc;
-  return wuss_window_set_doc(window, sz);
+  return wuss_window_set_doc(ic->window, sz);
 }
 
 /* Menu shape built from a descriptor string. The tree must outlive the open
@@ -275,7 +278,7 @@ static result_t image_open_menu(image_task_t *ic)
   /* '!Dithering' pulls ic->dithering directly, so the row's tick already
    * matches live state -- no separate wuss_menu_open_ticked pass needed. */
   rc = wuss_menu_create_from_desc(&m,
-         "Image, Info, !Dithering, Background",
+         "Image, Info, !Dithering, Background, Load",
          ic->dithering);
   if (rc != result_OK)
     return rc;
@@ -309,6 +312,19 @@ static result_t image_open_menu(image_task_t *ic)
       break;
     }
 
+  /* And "Load": the per-instance list of scanned leafnames, built at
+   * create time and ticked here. Borrowed for the same reason. */
+  wuss_menu_tick_exclusive(&ic->load_menu, ic->index);
+  for (i = 0; i < m->nitems; i++)
+    if (m->items[i].text != NULL && strcmp(m->items[i].text, "Load") == 0)
+    {
+      wuss_menu_item_t *it = (wuss_menu_item_t *) &m->items[i];
+
+      it->submenu = &ic->load_menu;
+      it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
+      break;
+    }
+
   wuss_menu_destroy(ic->menu);
   ic->menu = m;
 
@@ -339,9 +355,9 @@ result_t image_handle(wuss_window_t      *window,
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_SELECT)
-      return image_click(window, ic, 1);
+      return image_show(ic, (ic->index + 1) % ic->nnames);
     if (event->data.mouse.button & wuss_BUTTON_ADJUST)
-      return image_click(window, ic, -1);
+      return image_show(ic, (ic->index + ic->nnames - 1) % ic->nnames);
     if (event->data.mouse.button & wuss_BUTTON_MENU)
       return image_open_menu(ic);
     return result_OK;
@@ -364,8 +380,18 @@ result_t image_handle(wuss_window_t      *window,
 
     menu  = event->data.menu_select.menu;
     index = event->data.menu_select.index;
-    printf("image menu: picked \"%s\"\n",
-           menu->items[index].text ? menu->items[index].text : "(sep)");
+    if (menu == &ic->load_menu)
+    {
+      result_t rc;
+
+      rc = image_show(ic, index);
+      if (!wuss_menu_should_keep_open(event))
+        ic->menu_handle = NULL; /* SELECT pick already freed the chain */
+      else
+        wuss_menu_tick_exclusive_live(ic->menu_handle, &ic->load_menu,
+                                      ic->index);
+      return rc;
+    }
     if (index == 1) {
       ic->dithering = !ic->dithering;
       wuss_window_invalidate_visible(ic->window);
@@ -378,6 +404,11 @@ result_t image_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_CLOSED:
     ic->menu_handle = NULL; /* wuss closed the chain under us */
+    return result_OK;
+
+  case wuss_EVENT_CLOSE:
+    if (window == ic->window)
+      ic->window = NULL;
     return result_OK;
 
   case wuss_EVENT_PRE_SHOW:

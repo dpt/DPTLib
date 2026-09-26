@@ -29,6 +29,8 @@ typedef struct image_task
                               * leafnames (extension stripped) found under
                               * resources/images at spawn time */
   int            nnames;
+  wuss_menu_item_t load_items[IMAGE_MAX_NAMES]; /* one row per names[] */
+  wuss_menu_t    load_menu; /* "Load" submenu, borrowed by menu */
   wuss_menu_t   *menu;      /* owned: MENU-button demo tree, built from a
                               * descriptor string; rebuilt on each open,
                               * freed at QUIT. its "Info" row's .window is
@@ -46,9 +48,10 @@ wuss_window_fn_t image_handle;
 /* scan wuss_get_resources(wuss)/resources/images for PNGs, load the first
  * one found (and the 9-patch PNG at
  * wuss_get_resources(wuss)/resources/wuss/ninepatch.png, drawn tiled behind
- * it), and create its window against the given wuss instance. a click cycles
- * to a different leafname from the scan. if out is non-NULL, the task block
- * is also returned through it */
+ * it), and create its window against the given wuss instance. Select and
+ * Adjust clicks step through the leafnames from the scan; Menu > Load picks
+ * one directly. if out is non-NULL, the task block is also returned through
+ * it */
 result_t image_create(wuss_t *wuss, image_task_t **out);
 
 /* free a task block allocated by image_create; normally called by the
