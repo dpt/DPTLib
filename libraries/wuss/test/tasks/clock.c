@@ -26,7 +26,13 @@
  * in clock_task_t, not as a file-scope static, so that each window's Info row
  * can hold its own .window pointer to the shared proginfo singleton, retargeted
  * just before wuss_menu_open */
-enum { CLOCK_MENU_INFO = 0, CLOCK_MENU_BACKGROUND, CLOCK_MENU_DIGITAL };
+enum
+{
+  CLOCK_MENU_INFO = 0,
+  CLOCK_MENU_BACKGROUND,
+  CLOCK_MENU_DIGITAL,
+  CLOCK_MENU_SECONDS
+};
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -157,6 +163,9 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
   WUSS_MENU_ITEM(task->menu_items, CLOCK_MENU_DIGITAL, "Digital",
                  wuss_MENU_ITEM_NONE);
 
+  WUSS_MENU_ITEM(task->menu_items, CLOCK_MENU_SECONDS, "Seconds",
+                 wuss_MENU_ITEM_NONE);
+
   WUSS_MENU_TITLE(task->menu, "Clock", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -277,6 +286,7 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
     wuss_proginfo_set_desc(&desc);
     cc->menu_items[CLOCK_MENU_INFO].window = wuss_proginfo_window(cc->delegate);
     wuss_menu_tick_item(&cc->menu, CLOCK_MENU_DIGITAL, cc->digital);
+    wuss_menu_tick_item(&cc->menu, CLOCK_MENU_SECONDS, cc->show_second);
 
     return wuss_menu_open(cc->delegate, &cc->menu,
                           wuss_get_pointer(cc->wuss), &cc->menu_handle);
@@ -331,16 +341,20 @@ static result_t clock_menu_select(clock_task_t       *cc,
   return result_OK;
 }
 
-/* The "Digital" row: swap between the analogue face and a text readout. An
+/* The "Digital" row swaps between the analogue face and a text readout;
+ * the "Seconds" row shows or hides the seconds, as a Select click does. An
  * ADJUST pick keeps the menu open, so retick the live row. */
-static result_t clock_toggle_digital(clock_task_t       *cc,
-                                     const wuss_event_t *event)
+static result_t clock_toggle(clock_task_t *cc, const wuss_event_t *event)
 {
-  cc->digital = !cc->digital;
+  int   index;
+  bool *flag;
+
+  index = event->data.menu_select.index;
+  flag  = (index == CLOCK_MENU_DIGITAL) ? &cc->digital : &cc->show_second;
+  *flag = !*flag;
 
   if (wuss_menu_should_keep_open(event))
-    wuss_menu_tick_item_live(cc->menu_handle, &cc->menu, CLOCK_MENU_DIGITAL,
-                             cc->digital);
+    wuss_menu_tick_item_live(cc->menu_handle, &cc->menu, index, *flag);
 
   if (cc->window != NULL)
     wuss_window_invalidate_visible(cc->window);
@@ -384,8 +398,9 @@ result_t clock_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &cc->menu &&
-        event->data.menu_select.index == CLOCK_MENU_DIGITAL)
-      return clock_toggle_digital(cc, event);
+        (event->data.menu_select.index == CLOCK_MENU_DIGITAL ||
+         event->data.menu_select.index == CLOCK_MENU_SECONDS))
+      return clock_toggle(cc, event);
     return clock_menu_select(cc, event);
 
   case wuss_EVENT_MENU_CLOSED:
