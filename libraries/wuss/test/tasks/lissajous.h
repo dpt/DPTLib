@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/colour.h"
+#include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -14,13 +15,14 @@
 
 /* window task: a Lissajous figure x=sin(a*t+phase), y=sin(b*t) plotted as a
  * ring of dots. The phase drifts each idle tick so the figure slowly morphs.
- * Select cycles the frequency pair (a,b); Adjust reverses the drift. */
+ * Select cycles the frequency pair (a,b); Adjust reverses the drift. The
+ * menu's Background row picks bg from the shared colourmenu. */
 typedef struct lissajous_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[2]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
