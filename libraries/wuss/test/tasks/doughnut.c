@@ -412,11 +412,17 @@ static result_t doughnut_idle(doughnut_task_t *task)
   return result_OK;
 }
 
-/* While paused, the arrow keys step the rotation: Up/Down about x (a),
- * Left/Right about z (b). Anything else, or any key while spinning, is passed
- * back unclaimed. */
+/* Space toggles pause. While paused, the arrow keys step the rotation:
+ * Up/Down about x (a), Left/Right about z (b). Anything else, or an arrow
+ * while spinning, is passed back unclaimed. */
 static result_t doughnut_key(doughnut_task_t *task, int code)
 {
+  if (code == ' ')
+  {
+    task->paused = !task->paused;
+    return result_OK;
+  }
+
   if (!task->paused)
     return result_WUSS_KEY_UNCLAIMED;
 

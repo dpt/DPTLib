@@ -17,8 +17,8 @@
  * angles advanced a little. Select or Menu > Pause toggles pause (and Select
  * takes the input focus); the wheel zooms in/out; an Adjust drag spins the
  * torus directly, overriding the idle auto-rotation for as long as it's
- * held. While paused the arrow keys step the rotation. Menu > Tube picks the
- * tube's thickness. */
+ * held. Space also toggles pause; while paused the arrow keys step the
+ * rotation. Menu > Tube picks the tube's thickness. */
 typedef struct doughnut_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
