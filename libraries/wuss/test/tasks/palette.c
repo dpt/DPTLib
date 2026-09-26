@@ -31,6 +31,7 @@
 #define PALETTE_MENU_INFO_INDEX    0
 #define PALETTE_MENU_LOAD_INDEX    1
 #define PALETTE_MENU_INVERT_INDEX  2
+#define PALETTE_MENU_GREY_INDEX    3
 
 /* ----------------------------------------------------------------------- */
 /* Parse a *.hex file: one "rrggbb" line per colour, no leading '#'. Fails
@@ -131,7 +132,10 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
                       wuss_MENU_ITEM_NONE, &task->load_menu);
   WUSS_MENU_ITEM(task->menu_items, PALETTE_MENU_INVERT_INDEX,
                 "Invert", wuss_MENU_ITEM_NONE);
-  WUSS_MENU_TITLE(task->menu, "Palette", task->menu_items, 3);
+  WUSS_MENU_ITEM(task->menu_items, PALETTE_MENU_GREY_INDEX,
+                "Greyscale", wuss_MENU_ITEM_NONE);
+  WUSS_MENU_TITLE(task->menu, "Palette", task->menu_items,
+                 NELEMS(task->menu_items));
 
   /* backdrop for any rounding gap around the grid */
   delegate_desc.handle    = palette_handle;
@@ -316,7 +320,11 @@ static result_t palette_menu_open(palette_task_t *pc)
 
   wuss_menu_tick_exclusive(&pc->load_menu, pc->selected);
 
-  ticks = pc->invert ? 1u << PALETTE_MENU_INVERT_INDEX : 0;
+  ticks = 0;
+  if (pc->invert)
+    ticks |= 1u << PALETTE_MENU_INVERT_INDEX;
+  if (pc->grey)
+    ticks |= 1u << PALETTE_MENU_GREY_INDEX;
 
   return wuss_menu_open_ticked(pc->delegate, &pc->menu, ticks,
                                wuss_get_pointer(pc->wuss), &pc->menu_handle);
@@ -334,10 +342,10 @@ static result_t palette_click(palette_task_t *pc, const wuss_event_t *event)
 }
 
 /* A pick loads that *.hex file (or re-applies the current one, for a bare
- * Invert toggle) and, on success, installs it as the live system palette via
- * wuss_set_palette -- every task, including whichever one owns the
- * framebuffer bitmap and any physical palette, sees the change via the
- * resulting wuss_EVENT_PALETTE and reads the new array back with
+ * Invert or Greyscale toggle) and, on success, installs it as the live
+ * system palette via wuss_set_palette -- every task, including whichever one
+ * owns the framebuffer bitmap and any physical palette, sees the change via
+ * the resulting wuss_EVENT_PALETTE and reads the new array back with
  * wuss_get_palette. A load failure is silently ignored: the picker just
  * stays on the previous selection. Ticks are also updated in place via
  * wuss_menu_tick_item_live, so an ADJUST pick (which keeps the chain open)
@@ -345,11 +353,12 @@ static result_t palette_click(palette_task_t *pc, const wuss_event_t *event)
 static result_t palette_menu_select(palette_task_t     *pc,
                                     const wuss_event_t *event)
 {
-  result_t rc;
-  int      index;
-  int      old;
-  colour_t loaded[PALETTE_NCOLOURS];
-  int      i;
+  result_t     rc;
+  int          index;
+  int          old;
+  colour_t     loaded[PALETTE_NCOLOURS];
+  int          i;
+  unsigned int r, g, b, y;
 
   index = event->data.menu_select.index;
 
@@ -360,18 +369,28 @@ static result_t palette_menu_select(palette_task_t     *pc,
     if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
       wuss_menu_tick_item_live(pc->menu_handle, &pc->menu, index, pc->invert);
   }
+  else if (event->data.menu_select.menu == &pc->menu &&
+           index == PALETTE_MENU_GREY_INDEX)
+  {
+    pc->grey = !pc->grey;
+    if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
+      wuss_menu_tick_item_live(pc->menu_handle, &pc->menu, index, pc->grey);
+  }
   else if (event->data.menu_select.menu == &pc->load_menu &&
           index >= 0 && index < pc->nnames)
   {
     old          = pc->selected;
     pc->selected = index;
     pc->invert   = false;
+    pc->grey     = false;
     if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
     {
       wuss_menu_tick_item_live(pc->menu_handle, &pc->load_menu, old, 0);
       wuss_menu_tick_item_live(pc->menu_handle, &pc->load_menu, index, 1);
       wuss_menu_tick_item_live(pc->menu_handle, &pc->menu,
                                PALETTE_MENU_INVERT_INDEX, 0);
+      wuss_menu_tick_item_live(pc->menu_handle, &pc->menu,
+                               PALETTE_MENU_GREY_INDEX, 0);
     }
   }
   else
@@ -393,6 +412,15 @@ static result_t palette_menu_select(palette_task_t     *pc,
   if (pc->invert)
     for (i = 0; i < PALETTE_NCOLOURS; i++)
       loaded[i].primary ^= 0x00FFFFFFu;
+
+  /* Rec. 601 luma, applied after any inversion */
+  if (pc->grey)
+    for (i = 0; i < PALETTE_NCOLOURS; i++)
+    {
+      colour_get_rgb(&loaded[i], &r, &g, &b);
+      y         = (r * 299 + g * 587 + b * 114) / 1000;
+      loaded[i] = colour_rgba(y, y, y, colour_get_alpha(&loaded[i]));
+    }
 
   wuss_set_palette(pc->wuss, loaded, PALETTE_NCOLOURS);
 
