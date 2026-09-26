@@ -22,7 +22,12 @@
  * per-instance in porter_duff_task_t, not as a file-scope static, so that
  * each window's Info row can hold its own .window pointer to the shared
  * proginfo singleton, retargeted just before wuss_menu_open */
-enum { PORTER_DUFF_MENU_INFO, PORTER_DUFF_MENU_PAUSE };
+enum
+{
+  PORTER_DUFF_MENU_INFO,
+  PORTER_DUFF_MENU_PAUSE,
+  PORTER_DUFF_MENU_RULE
+};
 
 #define PD_SIZE            (256) /* the demo images are 256x256 */
 #define PD_LABEL_HEIGHT     (20) /* strip below the pane, for the rule name */
@@ -168,6 +173,7 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
   wuss_task_desc_t    delegate_desc;
   const char         *resources;
   const colour_t     *palette;
+  int                 i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -234,6 +240,15 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
 
   WUSS_MENU_ITEM(task->menu_items, PORTER_DUFF_MENU_PAUSE, "Pause",
                  wuss_MENU_ITEM_NONE);
+
+  for (i = 0; i < composite_RULE__LIMIT; i++)
+    WUSS_MENU_ITEM(task->rule_items, i, rule_names[i], wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->rule_menu, "Rule", task->rule_items,
+                 NELEMS(task->rule_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, PORTER_DUFF_MENU_RULE, "Rule",
+                      wuss_MENU_ITEM_NONE, &task->rule_menu);
 
   WUSS_MENU_TITLE(task->menu, "Porter-Duff", task->menu_items,
                  NELEMS(task->menu_items));
@@ -477,6 +492,23 @@ static result_t porter_duff_toggle_pause(porter_duff_task_t *pd,
   return result_OK;
 }
 
+/* A "Rule" submenu pick: jump straight to that rule. Paused, restart it at
+ * the ramp's midpoint rather than its start, where the source is fully
+ * transparent and the rule would look like DST. */
+static result_t porter_duff_pick_rule(porter_duff_task_t *pd,
+                                      const wuss_event_t *event)
+{
+  pd->rule  = (composite_rule_t) event->data.menu_select.index;
+  pd->frame = pd->paused ? pd->frames_per_rule / 2 : 0;
+
+  wuss_menu_tick_exclusive_live(pd->menu_handle, &pd->rule_menu, pd->rule);
+
+  if (pd->window != NULL)
+    wuss_window_invalidate_visible(pd->window);
+
+  return result_OK;
+}
+
 result_t porter_duff_handle(wuss_window_t      *window,
                             const wuss_event_t *event,
                             void               *task_data)
@@ -511,6 +543,7 @@ result_t porter_duff_handle(wuss_window_t      *window,
         wuss_proginfo_window(pd->delegate);
 
       wuss_menu_tick_item(&pd->menu, PORTER_DUFF_MENU_PAUSE, pd->paused);
+      wuss_menu_tick_exclusive(&pd->rule_menu, pd->rule);
 
       return wuss_menu_open(pd->delegate, &pd->menu,
                             wuss_get_pointer(pd->wuss), &pd->menu_handle);
@@ -529,6 +562,8 @@ result_t porter_duff_handle(wuss_window_t      *window,
     if (event->data.menu_select.menu == &pd->menu &&
         event->data.menu_select.index == PORTER_DUFF_MENU_PAUSE)
       return porter_duff_toggle_pause(pd, event);
+    if (event->data.menu_select.menu == &pd->rule_menu)
+      return porter_duff_pick_rule(pd, event);
     return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
