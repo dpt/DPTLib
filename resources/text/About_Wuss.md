@@ -1,8 +1,8 @@
 # Welcome to Wuss
 
-**Wuss** is a small window manager that lives in *DPTLib*. It draws into a plain framebuffer, so it runs anywhere from a desktop to RISC OS or a web browser. It's essentially a fanboy recreation of the RISC OS desktop.
+**Wuss** is a small window manager that currently lives inside my code library *DPTLib*. It's essentially a fanboy recreation of the RISC OS Window Manager (the _Wimp_ - hence "Wuss"). Like its inspiration it draws into a plain framebuffer, so it runs anywhere from a desktop to a web browser and even on RISC OS itself.
 
-Like RISC OS, it expects a three-button mouse. From left to right the buttons are `SELECT`, `MENU` and `ADJUST`.
+Like RISC OS, it expects a three-button mouse. From left to right the buttons are called `SELECT`, `MENU` and `ADJUST`.
 
 ## Windows
 
@@ -12,12 +12,10 @@ Like RISC OS, it expects a three-button mouse. From left to right the buttons ar
 
 ## Menus
 
-Click `MENU` over a window to open its menu. Rows with an arrow lead to submenus; ticked rows show the current choice.
-
-## Tasks
-
-Every window belongs to a *task*: a single `handle` callback that draws its content and reacts to events. Wuss does the rest.
+- Click `MENU` over a window to open its menu. Rows with an arrow lead to submenus; ticked rows show the current choice.
 
 ### Try it!
 
-Open this window's menu and pick another **Sample**, **Font** or **Colours**, or change the **Spacing**.
+- Open this window's menu and pick another text **Sample**, a new **Font** or different **Colours**.
+- Click `MENU` on the desktop background to open up a menu of interesting tasks to play with.
+
