@@ -225,6 +225,9 @@ static result_t ball_mouse(wuss_window_t      *window,
     
     local = ball_local_box(b->x, b->y, b->x, b->y, b->radius);
     wuss_window_invalidate(bc->window, &local);
+
+    wuss_window_set_title(bc->window, (bc->nballs > 1) ? "Bouncing Balls"
+                                                       : "Bouncing Ball");
   }
 
   return result_OK;
