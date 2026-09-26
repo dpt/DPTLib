@@ -84,7 +84,13 @@ static int saturn_rnd(int n)
  * there. "Info" hover-opens the shared proginfo singleton's window,
  * retargeted into task->menu_items[SATURN_MENU_INFO].window just before
  * wuss_menu_open, in saturn_mouse. */
-enum { SATURN_MENU_INFO = 0, SATURN_MENU_COLOURS, SATURN_MENU_SIZE };
+enum
+{
+  SATURN_MENU_INFO = 0,
+  SATURN_MENU_COLOURS,
+  SATURN_MENU_SIZE,
+  SATURN_MENU_ANIMATE
+};
 enum { SATURN_COLOURS_MENU_FOREGROUND = 0, SATURN_COLOURS_MENU_BACKGROUND };
 
 /* the size dialogue's icons, in creation order (see saturn_conf_dialogue_create):
@@ -224,6 +230,9 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
 
   WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_SIZE, "Configuration",
                 wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
+
+  WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_ANIMATE, "Animate",
+                 wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Saturn", task->menu_items,
                  NELEMS(task->menu_items));
@@ -399,6 +408,8 @@ static result_t saturn_mouse(saturn_task_t      *task,
     wuss_proginfo_set_desc(&desc);
     task->menu_items[SATURN_MENU_INFO].window =
       wuss_proginfo_window(task->delegate);
+
+    wuss_menu_tick_item(&task->menu, SATURN_MENU_ANIMATE, task->animate);
 
     return wuss_menu_open(task->delegate, &task->menu,
                           wuss_get_pointer(task->wuss),
@@ -630,6 +641,9 @@ static result_t saturn_conf_apply(saturn_task_t *task)
     *saturn_sizedlg_field(task, row) =
       wuss_icon_get_value(task->conf.rows[row].slider);
 
+  if (task->window == NULL)
+    return result_OK; /* planet window closed while the dialogue lingers */
+
   size_value = task->config.size;
   rc = wuss_window_resize(task->window, SIZE2D(size_value, size_value));
   if (rc != result_OK)
@@ -775,6 +789,20 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
  * saturn_pre_submenu_open). "Configuration" is a wuss_menu_item_t::window
  * leaf, not a leaf pick, so it never reaches here -- see
  * saturn_conf_dialogue_icon and saturn_sizedlg_pre_show. */
+/* Menu > Animate: a fresh sketch every null event. The proginfo and
+ * Configuration windows share this (autoclose) delegate, so the task can
+ * outlive the planet window; skip the dangling window in the meantime. */
+static result_t saturn_idle(saturn_task_t *task)
+{
+  if (!task->animate || task->window == NULL)
+    return result_OK;
+
+  task->seed += 0x9E3779B9UL;
+  wuss_window_invalidate_visible(task->window);
+
+  return result_OK;
+}
+
 static result_t saturn_menu_select(saturn_task_t      *task,
                                    const wuss_event_t *event)
 {
@@ -782,6 +810,16 @@ static result_t saturn_menu_select(saturn_task_t      *task,
   int             npalette;
   wuss_colour_t   picked;
   int             mine;
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == SATURN_MENU_ANIMATE)
+  {
+    task->animate = !task->animate;
+    if (wuss_menu_should_keep_open(event))
+      wuss_menu_tick_item_live(task->menu_handle, &task->menu,
+                               SATURN_MENU_ANIMATE, task->animate);
+    return result_OK;
+  }
 
   if (task->colourmenu_target == NULL)
     return result_OK;
@@ -848,6 +886,14 @@ result_t saturn_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     return saturn_menu_select(task, event);
+
+  case wuss_EVENT_IDLE:
+    return saturn_idle(task);
+
+  case wuss_EVENT_CLOSE:
+    if (window == task->window)
+      task->window = NULL;
+    return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL; /* wuss closed the chain under us */
