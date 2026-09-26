@@ -31,7 +31,8 @@ enum
   CURVE_MENU_INFO = 0,
   CURVE_MENU_BACKGROUND,
   CURVE_MENU_TYPE,
-  CURVE_MENU_HULL
+  CURVE_MENU_HULL,
+  CURVE_MENU_RESET
 };
 
 /* Curve-type name for each valid task->npoints, indexed by
@@ -98,6 +99,17 @@ static int curve_convex_hull(const point_t *src, int n, point_t *hull)
   return k; /* hull[0] == hull[k - 1], a closed loop */
 }
 
+/* put every control point back at its starting position */
+static void curve_reset_points(curve_task_t *task)
+{
+  task->points[0] = POINT(10,  10);
+  task->points[1] = POINT(10, 140);
+  task->points[2] = POINT(210, 10);
+  task->points[3] = POINT(210, 140);
+  task->points[4] = POINT(110,  10);
+  task->points[5] = POINT(110, 140);
+}
+
 result_t curve_create(wuss_t *wuss, curve_task_t **out)
 {
   result_t         rc;
@@ -118,13 +130,7 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
   task->npoints   = 4; /* cubic, matching the original task */
   task->dragging  = -1;
   task->hull      = 1;
-
-  task->points[0] = POINT(10,  10);
-  task->points[1] = POINT(10, 140);
-  task->points[2] = POINT(210, 10);
-  task->points[3] = POINT(210, 140);
-  task->points[4] = POINT(110,  10);
-  task->points[5] = POINT(110, 140);
+  curve_reset_points(task);
 
   /* curve_redraw paints its own background */
   delegate_desc.handle    = curve_handle;
@@ -172,6 +178,9 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
                       wuss_MENU_ITEM_NONE, &task->type_menu);
 
   WUSS_MENU_ITEM(task->menu_items, CURVE_MENU_HULL, "Hull",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM(task->menu_items, CURVE_MENU_RESET, "Reset points",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Curve", task->menu_items,
@@ -435,6 +444,15 @@ static result_t curve_menu_select(curve_task_t       *task,
     if (wuss_menu_should_keep_open(event))
       wuss_menu_tick_item_live(task->menu_handle, &task->menu,
                                CURVE_MENU_HULL, task->hull);
+    if (task->window != NULL)
+      wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == CURVE_MENU_RESET)
+  {
+    curve_reset_points(task);
     if (task->window != NULL)
       wuss_window_invalidate_visible(task->window);
     return result_OK;
