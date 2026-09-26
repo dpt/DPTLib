@@ -814,6 +814,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/patterns.c
         libraries/wuss/test/tasks/porter-duff.c
         libraries/wuss/test/tasks/saturn.c
+        libraries/wuss/test/tasks/snapshot.c
         libraries/wuss/test/tasks/sofa.c
         libraries/wuss/test/tasks/text.c)
 
