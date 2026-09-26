@@ -17,6 +17,7 @@
 #include "utils/rng.h"
 
 #include "patterns.h"
+#include "snapshot.h"
 
 #define PATTERNS_FPS 60 /* idle ticks per second */
 
@@ -28,8 +29,11 @@ enum
 {
   PATTERNS_MENU_INFO,
   PATTERNS_MENU_SPEED,
-  PATTERNS_MENU_PAUSE
+  PATTERNS_MENU_PAUSE,
+  PATTERNS_MENU_SAVE
 };
+
+#define PATTERNS_SAVE_NAME "patterns.png" /* written to the current dir */
 
 /* one entry per row of the "Speed" submenu: seconds per a-to-b blend */
 static const struct
@@ -176,6 +180,9 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
   WUSS_MENU_ITEM(task->menu_items, PATTERNS_MENU_PAUSE, "Pause",
                  wuss_MENU_ITEM_NONE);
 
+  WUSS_MENU_ITEM(task->menu_items, PATTERNS_MENU_SAVE, "Save PNG",
+                 wuss_MENU_ITEM_NONE);
+
   WUSS_MENU_TITLE(task->menu, "Patterns", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -296,6 +303,12 @@ result_t patterns_handle(wuss_window_t      *window,
         if (wuss_menu_should_keep_open(event))
           wuss_menu_tick_item_live(bc->menu_handle, &bc->menu,
                                    PATTERNS_MENU_PAUSE, bc->paused);
+      }
+      else if (event->data.menu_select.menu == &bc->menu &&
+               event->data.menu_select.index == PATTERNS_MENU_SAVE)
+      {
+        rc = snapshot_save_png(bc->window, patterns_handle, bc,
+                               PATTERNS_SAVE_NAME);
       }
       if (!wuss_menu_should_keep_open(event))
         bc->menu_handle = NULL;
