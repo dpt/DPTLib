@@ -30,7 +30,8 @@ enum
 {
   CURVE_MENU_INFO = 0,
   CURVE_MENU_BACKGROUND,
-  CURVE_MENU_TYPE
+  CURVE_MENU_TYPE,
+  CURVE_MENU_HULL
 };
 
 /* Curve-type name for each valid task->npoints, indexed by
@@ -116,6 +117,7 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
   task->nsegments = CURVE_SEGMENTS_DEFAULT;
   task->npoints   = 4; /* cubic, matching the original task */
   task->dragging  = -1;
+  task->hull      = 1;
 
   task->points[0] = POINT(10,  10);
   task->points[1] = POINT(10, 140);
@@ -168,6 +170,9 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CURVE_MENU_TYPE, "Type",
                       wuss_MENU_ITEM_NONE, &task->type_menu);
+
+  WUSS_MENU_ITEM(task->menu_items, CURVE_MENU_HULL, "Hull",
+                 wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Curve", task->menu_items,
                  NELEMS(task->menu_items));
@@ -254,6 +259,7 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
 
   /* control polygon's convex hull, drawn first so the curve and the blobs
    * sit on top of it */
+  if (task->hull)
   {
     point_t hull[2 * CURVE_MAXCONTROLPTS + 1];
     int     nhull, k;
@@ -343,6 +349,7 @@ static result_t curve_mouse(curve_task_t       *task,
 
       wuss_menu_tick_exclusive(&task->type_menu,
                                task->npoints - CURVE_MINCONTROLPTS);
+      wuss_menu_tick_item(&task->menu, CURVE_MENU_HULL, task->hull);
 
       return wuss_menu_open(task->delegate, &task->menu,
                             wuss_get_pointer(task->wuss), &task->menu_handle);
@@ -420,6 +427,18 @@ static result_t curve_menu_select(curve_task_t       *task,
   int             npalette;
   wuss_colour_t   picked;
   int             mine;
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == CURVE_MENU_HULL)
+  {
+    task->hull = !task->hull;
+    if (wuss_menu_should_keep_open(event))
+      wuss_menu_tick_item_live(task->menu_handle, &task->menu,
+                               CURVE_MENU_HULL, task->hull);
+    if (task->window != NULL)
+      wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
 
   if (event->data.menu_select.menu == &task->type_menu)
   {
