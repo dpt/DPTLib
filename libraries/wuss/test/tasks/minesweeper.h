@@ -59,8 +59,8 @@ minesweeper_cell_state_t;
  * Game", a "Grid Size" submenu that resets the board at a new size and a
  * "Difficulty" submenu that resets it with more or fewer mines;
  * "Give Up" ends a game in progress and shows every mine. With the input
- * focus, the arrow keys move a cursor cell, Return reveals it and
- * Space toggles its flag. */
+ * focus, the arrow keys move a cursor cell, Return reveals it,
+ * Space toggles its flag and N starts a new game. */
 typedef struct minesweeper_task
 {
   wuss_t                  *wuss;
