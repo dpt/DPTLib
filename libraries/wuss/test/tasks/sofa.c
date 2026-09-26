@@ -21,7 +21,13 @@
  * in sofa_task_t, not as a file-scope static, so that each window's Info row
  * can hold its own .window pointer to the shared proginfo singleton, retargeted
  * just before wuss_menu_open */
-enum { SOFA_MENU_INFO = 0, SOFA_MENU_BACKGROUND, SOFA_MENU_MODEL };
+enum
+{
+  SOFA_MENU_INFO = 0,
+  SOFA_MENU_BACKGROUND,
+  SOFA_MENU_MODEL,
+  SOFA_MENU_PAUSE
+};
 
 /* "Model" submenu rows, in sofa_shape_t order */
 static const char *sofa_shape_names[sofa_SHAPE__LIMIT] =
@@ -440,6 +446,9 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, SOFA_MENU_MODEL, "Model",
                       wuss_MENU_ITEM_NONE, &task->model_menu);
 
+  WUSS_MENU_ITEM(task->menu_items, SOFA_MENU_PAUSE, "Pause",
+                 wuss_MENU_ITEM_NONE);
+
   WUSS_MENU_TITLE(task->menu, "Sofa", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -591,6 +600,7 @@ static result_t sofa_mouse(wuss_window_t *window,
     sc->menu_items[SOFA_MENU_INFO].window = wuss_proginfo_window(sc->delegate);
 
     wuss_menu_tick_exclusive(&sc->model_menu, sc->shape);
+    wuss_menu_tick_item(&sc->menu, SOFA_MENU_PAUSE, !sc->spinning);
 
     return wuss_menu_open(sc->delegate, &sc->menu,
                           wuss_get_pointer(sc->wuss), &sc->menu_handle);
@@ -681,6 +691,16 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
   int             npalette;
   wuss_colour_t   picked;
   int             mine;
+
+  if (event->data.menu_select.menu == &sc->menu &&
+      event->data.menu_select.index == SOFA_MENU_PAUSE)
+  {
+    sc->spinning = !sc->spinning;
+    if (wuss_menu_should_keep_open(event))
+      wuss_menu_tick_item_live(sc->menu_handle, &sc->menu, SOFA_MENU_PAUSE,
+                               !sc->spinning);
+    return result_OK;
+  }
 
   if (event->data.menu_select.menu == &sc->model_menu)
   {
