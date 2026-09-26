@@ -30,16 +30,18 @@ sofa_shape_t;
 
 /* a wireframe sofa (seat, backrest, two arms), spaceship or Platonic solid,
  * spinning about its vertical axis; a Select click pauses/resumes the spin,
- * an Adjust click cycles the model */
+ * an Adjust click or Menu > Model changes the model */
 typedef struct sofa_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[2]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[3]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
+  wuss_menu_item_t    model_items[sofa_SHAPE__LIMIT]; /* one row per shape */
+  wuss_menu_t         model_menu;
   wuss_window_t *window;
   colour_t       bg, line, dot;
   double         angle;

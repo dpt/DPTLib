@@ -21,7 +21,20 @@
  * in sofa_task_t, not as a file-scope static, so that each window's Info row
  * can hold its own .window pointer to the shared proginfo singleton, retargeted
  * just before wuss_menu_open */
-enum { SOFA_MENU_INFO = 0, SOFA_MENU_BACKGROUND };
+enum { SOFA_MENU_INFO = 0, SOFA_MENU_BACKGROUND, SOFA_MENU_MODEL };
+
+/* "Model" submenu rows, in sofa_shape_t order */
+static const char *sofa_shape_names[sofa_SHAPE__LIMIT] =
+{
+  "Sofa",
+  "Ship",
+  "Cobra",
+  "Tetrahedron",
+  "Cube",
+  "Octahedron",
+  "Icosahedron",
+  "Dodecahedron"
+};
 
 #define SOFA_VERTEX_DOT 2 /* side, px, of the white marker square drawn at each vertex */
 
@@ -366,6 +379,7 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
   sofa_task_t     *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -415,6 +429,16 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, SOFA_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
+  for (i = 0; i < sofa_SHAPE__LIMIT; i++)
+    WUSS_MENU_ITEM(task->model_items, i, sofa_shape_names[i],
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->model_menu, "Model", task->model_items,
+                 NELEMS(task->model_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, SOFA_MENU_MODEL, "Model",
+                      wuss_MENU_ITEM_NONE, &task->model_menu);
 
   WUSS_MENU_TITLE(task->menu, "Sofa", task->menu_items,
                  NELEMS(task->menu_items));
@@ -566,6 +590,8 @@ static result_t sofa_mouse(wuss_window_t *window,
     wuss_proginfo_set_desc(&desc);
     sc->menu_items[SOFA_MENU_INFO].window = wuss_proginfo_window(sc->delegate);
 
+    wuss_menu_tick_exclusive(&sc->model_menu, sc->shape);
+
     return wuss_menu_open(sc->delegate, &sc->menu,
                           wuss_get_pointer(sc->wuss), &sc->menu_handle);
   }
@@ -655,6 +681,20 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
   int             npalette;
   wuss_colour_t   picked;
   int             mine;
+
+  if (event->data.menu_select.menu == &sc->model_menu)
+  {
+    /* restart the model's rotation count so it gets its full turns before
+     * the idle auto-advance moves on */
+    sc->shape = (sofa_shape_t) event->data.menu_select.index;
+    sc->turns = 0;
+    if (wuss_menu_should_keep_open(event))
+      wuss_menu_tick_exclusive_live(sc->menu_handle, &sc->model_menu,
+                                    sc->shape);
+    if (sc->window != NULL)
+      wuss_window_invalidate_visible(sc->window);
+    return result_OK;
+  }
 
   picked = wuss_colourmenu_selected(event, &mine);
   if (!mine)
