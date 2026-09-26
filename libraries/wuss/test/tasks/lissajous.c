@@ -23,13 +23,22 @@ enum
 {
   LISSAJOUS_MENU_INFO = 0,
   LISSAJOUS_MENU_BACKGROUND,
-  LISSAJOUS_MENU_PAUSE
+  LISSAJOUS_MENU_PAUSE,
+  LISSAJOUS_MENU_RATIO
 };
 
-/* frequency pairs cycled by a Select click */
-static const int lissajous_freqs[][2] =
+/* frequency pairs cycled by a Select click and listed in Menu > Ratio */
+static const struct
 {
-  { 3, 2 }, { 5, 4 }, { 3, 4 }, { 5, 6 }, { 1, 2 }, { 7, 4 }
+  int         a, b;
+  const char *name;
+}
+lissajous_freqs[LISSAJOUS_NFREQS] =
+{
+  { 3, 2, "3:2" }, { 5, 4, "5:4" }, { 3, 4, "3:4" },
+  { 5, 6, "5:6" }, { 1, 2, "1:2" }, { 7, 4, "7:4" },
+  { 1, 1, "1:1" }, { 1, 3, "1:3" }, { 2, 3, "2:3" },
+  { 3, 5, "3:5" }, { 4, 5, "4:5" }, { 7, 6, "7:6" }
 };
 
 result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
@@ -38,6 +47,7 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
   lissajous_task_t *task;
   wuss_task_t      *delegate;
   wuss_task_desc_t  delegate_desc;
+  int               i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -47,8 +57,8 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
   task->bg         = colour_rgb(0x00, 0x00, 0x00);
   task->fg         = colour_rgb(0x00, 0xFF, 0x00);
   task->freq_index = 0;
-  task->a          = lissajous_freqs[0][0];
-  task->b          = lissajous_freqs[0][1];
+  task->a          = lissajous_freqs[0].a;
+  task->b          = lissajous_freqs[0].b;
   task->phase      = 0.0;
   task->drift      = 0.01;
 
@@ -90,6 +100,16 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
 
   WUSS_MENU_ITEM(task->menu_items, LISSAJOUS_MENU_PAUSE, "Pause",
                  wuss_MENU_ITEM_NONE);
+
+  for (i = 0; i < LISSAJOUS_NFREQS; i++)
+    WUSS_MENU_ITEM(task->ratio_items, i, lissajous_freqs[i].name,
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->ratio_menu, "Ratio", task->ratio_items,
+                 NELEMS(task->ratio_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, LISSAJOUS_MENU_RATIO, "Ratio",
+                      wuss_MENU_ITEM_NONE, &task->ratio_menu);
 
   WUSS_MENU_TITLE(task->menu, "Lissajous", task->menu_items,
                  NELEMS(task->menu_items));
@@ -151,6 +171,16 @@ static result_t lissajous_redraw(const wuss_event_t *event, void *task_data)
   return result_OK;
 }
 
+/* switch to the given entry of lissajous_freqs */
+static void lissajous_set_freq(lissajous_task_t *lc, int index)
+{
+  lc->freq_index = index;
+  lc->a          = lissajous_freqs[index].a;
+  lc->b          = lissajous_freqs[index].b;
+  if (lc->window != NULL)
+    wuss_window_invalidate_visible(lc->window); /* whole figure changes */
+}
+
 static result_t lissajous_mouse(wuss_window_t      *window,
                                 wuss_mouse_action_t action,
                                 wuss_button_t       button,
@@ -181,18 +211,14 @@ static result_t lissajous_mouse(wuss_window_t      *window,
       wuss_proginfo_window(lc->delegate);
 
     wuss_menu_tick_item(&lc->menu, LISSAJOUS_MENU_PAUSE, lc->paused);
+    wuss_menu_tick_exclusive(&lc->ratio_menu, lc->freq_index);
 
     return wuss_menu_open(lc->delegate, &lc->menu,
                           wuss_get_pointer(lc->wuss), &lc->menu_handle);
   }
 
   if (button & wuss_BUTTON_SELECT)
-  {
-    lc->freq_index = (lc->freq_index + 1) % (int) NELEMS(lissajous_freqs);
-    lc->a          = lissajous_freqs[lc->freq_index][0];
-    lc->b          = lissajous_freqs[lc->freq_index][1];
-    wuss_window_invalidate_visible(lc->window); /* whole figure changes */
-  }
+    lissajous_set_freq(lc, (lc->freq_index + 1) % LISSAJOUS_NFREQS);
   else if (button & wuss_BUTTON_ADJUST)
   {
     lc->drift = -lc->drift;
@@ -252,6 +278,15 @@ static result_t lissajous_menu_select(lissajous_task_t   *lc,
   int             npalette;
   wuss_colour_t   picked;
   int             mine;
+
+  if (event->data.menu_select.menu == &lc->ratio_menu)
+  {
+    lissajous_set_freq(lc, event->data.menu_select.index);
+    if (wuss_menu_should_keep_open(event))
+      wuss_menu_tick_exclusive_live(lc->menu_handle, &lc->ratio_menu,
+                                    lc->freq_index);
+    return result_OK;
+  }
 
   picked = wuss_colourmenu_selected(event, &mine);
   if (!mine)
