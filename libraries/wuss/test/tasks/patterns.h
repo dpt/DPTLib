@@ -17,7 +17,8 @@
  * blends from colour a to colour b over a menu-selectable period, then
  * picks a fresh random b (the old b becoming a) and repeats; each frame's
  * pattern comes from pattern_from_colour against the system palette.
- * Menu > Pause freezes the blend */
+ * Menu > Pause freezes the blend; Menu > Save PNG writes the window to
+ * patterns.png */
 
 #define PATTERNS_NSPEEDS 5 /* rows of the "Speed" submenu */
 
@@ -27,7 +28,7 @@ typedef struct patterns_task
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[3]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[4]; /* per-instance: a shared static would
                                        * leak one instance's Info row .window
                                        * into another's menu */
   wuss_menu_t         menu;
