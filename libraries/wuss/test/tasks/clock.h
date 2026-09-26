@@ -18,14 +18,15 @@
 /* a round-faced analogue clock: a tick-marked bezel with 1..12 numerals and
  * hour, minute and second hands read from the system clock and advanced on
  * every idle tick. A Select click, or Menu > Seconds, shows or hides the
- * seconds. Menu > Digital swaps the face for an HH:MM:SS readout. */
+ * seconds. Menu > Digital swaps the face for an HH:MM:SS readout;
+ * Menu > 12-hour shows that readout as 12-hour time with AM/PM. */
 typedef struct clock_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[4]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[5]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
@@ -33,6 +34,7 @@ typedef struct clock_task
   colour_t            bg, bezel, hand, second_hand;
   bool                show_second;
   bool                digital; /* Menu > Digital: text readout, no face */
+  bool                twelve_hour; /* Menu > 12-hour: AM/PM readout */
   time_t              shown; /* time last painted, to the second or minute */
 }
 clock_task_t;

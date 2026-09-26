@@ -31,7 +31,8 @@ enum
   CLOCK_MENU_INFO = 0,
   CLOCK_MENU_BACKGROUND,
   CLOCK_MENU_DIGITAL,
-  CLOCK_MENU_SECONDS
+  CLOCK_MENU_SECONDS,
+  CLOCK_MENU_12_HOUR
 };
 
 #ifndef M_PI
@@ -166,6 +167,9 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
   WUSS_MENU_ITEM(task->menu_items, CLOCK_MENU_SECONDS, "Seconds",
                  wuss_MENU_ITEM_NONE);
 
+  WUSS_MENU_ITEM(task->menu_items, CLOCK_MENU_12_HOUR, "12-hour",
+                 wuss_MENU_ITEM_NONE);
+
   WUSS_MENU_TITLE(task->menu, "Clock", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -213,13 +217,23 @@ static result_t clock_redraw(const wuss_event_t *event, void *task_data)
 
   if (cc->digital)
   {
-    char buf[9]; /* "HH:MM:SS" */
+    char        buf[12]; /* "HH:MM:SS PM" */
+    int         hour;
+    const char *suffix;
+
+    hour   = lt->tm_hour;
+    suffix = "";
+    if (cc->twelve_hour)
+    {
+      suffix = (hour < 12) ? " AM" : " PM";
+      hour   = (hour + 11) % 12 + 1; /* 0..23 -> 12, 1..11, 12, 1..11 */
+    }
 
     if (cc->show_second)
-      snprintf(buf, sizeof(buf), "%02d:%02d:%02d",
-               lt->tm_hour, lt->tm_min, lt->tm_sec);
+      snprintf(buf, sizeof(buf), "%02d:%02d:%02d%s",
+               hour, lt->tm_min, lt->tm_sec, suffix);
     else
-      snprintf(buf, sizeof(buf), "%02d:%02d", lt->tm_hour, lt->tm_min);
+      snprintf(buf, sizeof(buf), "%02d:%02d%s", hour, lt->tm_min, suffix);
     clock_draw_centred(cc->font, scr, buf, cx, cy, cc->hand);
     return result_OK;
   }
@@ -287,6 +301,7 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
     cc->menu_items[CLOCK_MENU_INFO].window = wuss_proginfo_window(cc->delegate);
     wuss_menu_tick_item(&cc->menu, CLOCK_MENU_DIGITAL, cc->digital);
     wuss_menu_tick_item(&cc->menu, CLOCK_MENU_SECONDS, cc->show_second);
+    wuss_menu_tick_item(&cc->menu, CLOCK_MENU_12_HOUR, cc->twelve_hour);
 
     return wuss_menu_open(cc->delegate, &cc->menu,
                           wuss_get_pointer(cc->wuss), &cc->menu_handle);
@@ -342,7 +357,8 @@ static result_t clock_menu_select(clock_task_t       *cc,
 }
 
 /* The "Digital" row swaps between the analogue face and a text readout;
- * the "Seconds" row shows or hides the seconds, as a Select click does. An
+ * the "Seconds" row shows or hides the seconds, as a Select click does; the
+ * "12-hour" row switches the readout between 24-hour and 12-hour AM/PM. An
  * ADJUST pick keeps the menu open, so retick the live row. */
 static result_t clock_toggle(clock_task_t *cc, const wuss_event_t *event)
 {
@@ -350,7 +366,12 @@ static result_t clock_toggle(clock_task_t *cc, const wuss_event_t *event)
   bool *flag;
 
   index = event->data.menu_select.index;
-  flag  = (index == CLOCK_MENU_DIGITAL) ? &cc->digital : &cc->show_second;
+  if (index == CLOCK_MENU_DIGITAL)
+    flag = &cc->digital;
+  else if (index == CLOCK_MENU_SECONDS)
+    flag = &cc->show_second;
+  else
+    flag = &cc->twelve_hour;
   *flag = !*flag;
 
   if (wuss_menu_should_keep_open(event))
@@ -413,7 +434,8 @@ result_t clock_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &cc->menu &&
         (event->data.menu_select.index == CLOCK_MENU_DIGITAL ||
-         event->data.menu_select.index == CLOCK_MENU_SECONDS))
+         event->data.menu_select.index == CLOCK_MENU_SECONDS ||
+         event->data.menu_select.index == CLOCK_MENU_12_HOUR))
       return clock_toggle(cc, event);
     return clock_menu_select(cc, event);
 
