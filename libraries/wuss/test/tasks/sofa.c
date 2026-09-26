@@ -26,7 +26,8 @@ enum
   SOFA_MENU_INFO = 0,
   SOFA_MENU_BACKGROUND,
   SOFA_MENU_MODEL,
-  SOFA_MENU_PAUSE
+  SOFA_MENU_PAUSE,
+  SOFA_MENU_CYCLE
 };
 
 /* "Model" submenu rows, in sofa_shape_t order */
@@ -400,6 +401,7 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
   task->spinning = true;
   task->shape    = sofa_SHAPE_SOFA;
   task->turns    = 0;
+  task->cycling  = true;
 
   /* sofa_redraw paints its own background every frame */
   delegate_desc.handle    = sofa_handle;
@@ -447,6 +449,8 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
                       wuss_MENU_ITEM_NONE, &task->model_menu);
 
   WUSS_MENU_ITEM(task->menu_items, SOFA_MENU_PAUSE, "Pause",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->menu_items, SOFA_MENU_CYCLE, "Auto-cycle",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Sofa", task->menu_items,
@@ -601,6 +605,7 @@ static result_t sofa_mouse(wuss_window_t *window,
 
     wuss_menu_tick_exclusive(&sc->model_menu, sc->shape);
     wuss_menu_tick_item(&sc->menu, SOFA_MENU_PAUSE, !sc->spinning);
+    wuss_menu_tick_item(&sc->menu, SOFA_MENU_CYCLE, sc->cycling);
 
     return wuss_menu_open(sc->delegate, &sc->menu,
                           wuss_get_pointer(sc->wuss), &sc->menu_handle);
@@ -656,7 +661,7 @@ static result_t sofa_idle(void *task_data)
   if (task->angle > 2.0 * M_PI)
   {
     task->angle -= 2.0 * M_PI;
-    if (++task->turns >= SOFA_ROTATIONS_PER_MODEL)
+    if (task->cycling && ++task->turns >= SOFA_ROTATIONS_PER_MODEL)
     {
       task->turns = 0;
       task->shape = (task->shape + 1) % sofa_SHAPE__LIMIT;
@@ -699,6 +704,17 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
     if (wuss_menu_should_keep_open(event))
       wuss_menu_tick_item_live(sc->menu_handle, &sc->menu, SOFA_MENU_PAUSE,
                                !sc->spinning);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &sc->menu &&
+      event->data.menu_select.index == SOFA_MENU_CYCLE)
+  {
+    sc->cycling = !sc->cycling;
+    sc->turns   = 0; /* a re-enabled cycle gives the model its full turns */
+    if (wuss_menu_should_keep_open(event))
+      wuss_menu_tick_item_live(sc->menu_handle, &sc->menu, SOFA_MENU_CYCLE,
+                               sc->cycling);
     return result_OK;
   }
 
