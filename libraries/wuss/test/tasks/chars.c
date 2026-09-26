@@ -158,8 +158,8 @@ static result_t chars_open_menu(chars_task_t *task)
 }
 
 /* "Font"'s hover: ticks the current font's row before handing the fontmenu
- * back as the submenu to open (task->current is -1 for the wuss system
- * font, which ticks nothing). "Info" has no retargeting to do. */
+ * back as the submenu to open (task->current is -1 if the wuss system font
+ * is not listed, which ticks nothing). "Info" has no retargeting to do. */
 static result_t chars_pre_submenu_open(chars_task_t       *task,
                                        const wuss_event_t *event)
 {
@@ -171,12 +171,15 @@ static result_t chars_pre_submenu_open(chars_task_t       *task,
 
   if (index == CHARS_MENU_FONT)
   {
-    wuss_fontmenu_set_ticked(task->current);
+    const wuss_menu_t *fontmenu;
+
     /* the fontmenu singleton may have been rebuilt (at a new address) by
      * another task since task->menu_items[index].submenu was cached in
      * chars_create -- re-fetch instead of handing the spawner a stale
-     * pointer */
-    return wuss_menu_open_submenu_now(handle, index, chars_fontmenu(task));
+     * pointer, and before ticking, as a rebuild would drop the tick */
+    fontmenu = chars_fontmenu(task);
+    wuss_fontmenu_set_ticked(task->current);
+    return wuss_menu_open_submenu_now(handle, index, fontmenu);
   }
 
   return wuss_menu_open_submenu_now(handle, index,
@@ -193,6 +196,8 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   wuss_task_desc_t   delegate_desc;
   bmfont_t          *font;
   const wuss_menu_t *menu;
+  const char        *sysname;
+  int                i;
   size2d_t           grid;
 
   font = wuss_get_font(wuss);
@@ -205,7 +210,7 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
 
   task->wuss        = wuss;
   task->font        = font;
-  task->current     = -1; /* the wuss system font is none of the picker's */
+  task->current     = -1; /* until the system font's row is found below */
   task->menu_handle = NULL;
   task->fg          = colour_rgb(0x00, 0x00, 0x00);
   task->mg          = colour_rgb(0xBB, 0xBB, 0xBB);
@@ -228,6 +233,14 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
     free(task);
     return result_OOM;
   }
+
+  /* tick the system font's row, if the picker lists it. fonts[current]
+   * stays NULL: the system font is wuss's, not ours to release. */
+  sysname = wuss_get_font_name_n(wuss, 0);
+  if (sysname != NULL)
+    for (i = 0; i < task->nfonts; i++)
+      if (strcmp(menu->items[i].text, sysname) == 0)
+        task->current = i;
 
   /* chars_redraw paints every cell itself */
   delegate_desc.handle    = chars_handle;
@@ -420,14 +433,15 @@ result_t chars_handle(wuss_window_t      *window,
 
       if (wuss_menu_should_keep_open(event))
         /* ADJUST keeps the chain open without rebuilding it, so the
-         * fresh-open tick set in chars_open_menu is now stale on screen;
-         * retick the still-open chain in place to match cc->current. Use
-         * the handle's own live menu, not a fresh chars_fontmenu(cc) --
-         * that can rebuild the fontmenu singleton at a new address while
-         * this handle's chain node still points at the old one, which
-         * would leave the open submenu's node->menu dangling. */
+         * fresh-open tick set in chars_pre_submenu_open is now stale on
+         * screen; retick the still-open font level in place to match
+         * cc->current. Use the event's own menu, not a fresh
+         * chars_fontmenu(cc) -- that can rebuild the fontmenu singleton at
+         * a new address while this handle's chain node still points at the
+         * old one, which would leave the open submenu's node->menu
+         * dangling. */
         wuss_menu_tick_exclusive_live(cc->menu_handle,
-                                      wuss_menu_handle_menu(cc->menu_handle),
+                                      event->data.menu_select.menu,
                                       cc->current);
       else
         /* SELECT has already closed and freed the chain by the time this
