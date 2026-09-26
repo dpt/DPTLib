@@ -15,6 +15,10 @@
 #define GREEBLE_MAX_COLS 48
 #define GREEBLE_MAX_ROWS 48
 
+/* Most base palettes the Palette submenu can list; greeble.c checks
+ * GREEBLE_NPALETTE against it at compile time. */
+#define GREEBLE_MAX_PALETTES 16
+
 /* Fills the content area with a Xenon-2-style circuit-greeble texture built
  * as a tile-placement problem. greeble-tiles.h bakes 205 hand-drawn 8x8
  * PICO-8 stamps plus, from a second sheet where the artist laid them out in
@@ -24,7 +28,8 @@
  * shortlist. Each stamp is blitted 1:1; its four slots index the current
  * greeble_palettes[] row.
  *
- * Select reseeds the pattern; Adjust and the Menu row both toggle per-prefab
+ * Select reseeds the pattern; Adjust steps the base palette, which Menu >
+ * Palette also picks directly; Menu > Random palettes toggles per-prefab
  * random palettes. */
 typedef struct greeble_task
 {
@@ -43,10 +48,13 @@ typedef struct greeble_task
   /* cellpal[row][col], the greeble_palettes[] row to draw each cell with;
    * kept in step with grid[][] */
   unsigned char      cellpal[GREEBLE_MAX_ROWS][GREEBLE_MAX_COLS];
-  wuss_menu_item_t   menu_items[2]; /* per-instance: a shared static would
+  wuss_menu_item_t   menu_items[3]; /* per-instance: a shared static would
                                      * leak one instance's .window pointer
                                      * into another's menu */
   wuss_menu_t        menu;
+  char               palette_names[GREEBLE_MAX_PALETTES][4]; /* "1".."16" */
+  wuss_menu_item_t   palette_items[GREEBLE_MAX_PALETTES];
+  wuss_menu_t        palette_menu;
 }
 greeble_task_t;
 
