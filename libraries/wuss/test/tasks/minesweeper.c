@@ -707,8 +707,8 @@ static void minesweeper_invalidate_cursor(minesweeper_task_t *ms)
 }
 
 /* arrows move the cursor (clamped at the edges), Return acts as Select and
- * Space as Adjust on the cursor cell; everything else is passed back
- * unclaimed */
+ * Space as Adjust on the cursor cell, N starts a new game; everything else is
+ * passed back unclaimed */
 static result_t minesweeper_key(minesweeper_task_t *ms, int code)
 {
   int r, c;
@@ -724,6 +724,11 @@ static result_t minesweeper_key(minesweeper_task_t *ms, int code)
   case wuss_KEY_RIGHT: c++; break;
   case 13:             return minesweeper_act(ms, r, c, wuss_BUTTON_SELECT);
   case ' ':            return minesweeper_act(ms, r, c, wuss_BUTTON_ADJUST);
+  case 'n':
+  case 'N':
+    minesweeper_reset(ms);
+    wuss_window_invalidate_visible(ms->window);
+    return result_OK;
   default:             return result_WUSS_KEY_UNCLAIMED;
   }
 
