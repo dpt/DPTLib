@@ -14,6 +14,7 @@
 #include "geom/box.h"
 
 #include "lissajous.h"
+#include "snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
  * per-instance in lissajous_task_t, not as a file-scope static, so that each
@@ -24,8 +25,11 @@ enum
   LISSAJOUS_MENU_INFO = 0,
   LISSAJOUS_MENU_BACKGROUND,
   LISSAJOUS_MENU_PAUSE,
-  LISSAJOUS_MENU_RATIO
+  LISSAJOUS_MENU_RATIO,
+  LISSAJOUS_MENU_SAVE
 };
+
+#define LISSAJOUS_SAVE_NAME "lissajous.png" /* written to the current dir */
 
 /* frequency pairs cycled by a Select click and listed in Menu > Ratio */
 static const struct
@@ -110,6 +114,9 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, LISSAJOUS_MENU_RATIO, "Ratio",
                       wuss_MENU_ITEM_NONE, &task->ratio_menu);
+
+  WUSS_MENU_ITEM(task->menu_items, LISSAJOUS_MENU_SAVE, "Save PNG",
+                 wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Lissajous", task->menu_items,
                  NELEMS(task->menu_items));
@@ -345,6 +352,10 @@ result_t lissajous_handle(wuss_window_t      *window,
     if (event->data.menu_select.menu == &lc->menu &&
         event->data.menu_select.index == LISSAJOUS_MENU_PAUSE)
       return lissajous_toggle_pause(lc, event);
+    if (event->data.menu_select.menu == &lc->menu &&
+        event->data.menu_select.index == LISSAJOUS_MENU_SAVE)
+      return snapshot_save_png(lc->window, lissajous_handle, lc,
+                               LISSAJOUS_SAVE_NAME);
     return lissajous_menu_select(lc, event);
 
   case wuss_EVENT_MENU_CLOSED:
