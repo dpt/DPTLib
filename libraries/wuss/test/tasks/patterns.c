@@ -336,7 +336,9 @@ result_t patterns_handle(wuss_window_t      *window,
 
       rc = result_OK;
       if (event->data.menu_select.menu == &bc->speed_menu)
+      {
         rc = patterns_set_speed(bc, event->data.menu_select.index);
+      }
       else if (event->data.menu_select.menu == &bc->menu &&
                event->data.menu_select.index == PATTERNS_MENU_PAUSE)
       {

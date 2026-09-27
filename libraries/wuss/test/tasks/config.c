@@ -548,9 +548,13 @@ static result_t config_icon(const wuss_event_t *event, void *task_data)
     return result_OK;
 
   if (icon == cc->swap_icon)
+  {
     g_tasks.swap_mouse_buttons = !!wuss_icon_get_selected(icon);
+  }
   else if (icon == cc->reverse_scroll_icon)
+  {
     g_tasks.reverse_scroll = !!wuss_icon_get_selected(icon);
+  }
   else if (icon == cc->set_backdrop_icon)
   {
     wuss_backdrop_t backdrop;
@@ -578,9 +582,13 @@ static result_t config_click(config_task_t *task, const wuss_event_t *event)
     return result_OK;
 
   if (pt.y >= task->fg_y && pt.y < task->fg_y + CONFIG_CELL)
+  {
     task->fg = (wuss_colour_t) col;
+  }
   else if (pt.y >= task->bg_y && pt.y < task->bg_y + CONFIG_CELL)
+  {
     task->bg = (wuss_colour_t) col;
+  }
   else if (pt.y >= task->grid_y && pt.y < task->grid_y + CONFIG_GRID_H)
   {
     int i;
@@ -599,7 +607,9 @@ static result_t config_click(config_task_t *task, const wuss_event_t *event)
     }
   }
   else
+  {
     return result_OK;
+  }
 
   wuss_window_invalidate_extent(task->window);
   return result_OK;

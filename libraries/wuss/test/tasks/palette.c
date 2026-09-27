@@ -389,7 +389,9 @@ static result_t palette_menu_select(palette_task_t     *pc,
     }
   }
   else
+  {
     return result_OK;
+  }
 
   if (pc->nnames == 0)
     return result_OK;

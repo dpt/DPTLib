@@ -912,9 +912,13 @@ result_t minesweeper_handle(wuss_window_t      *window,
       return result_OK;
     }
     else if (event->data.menu_select.index == MINESWEEPER_MENU_NEW_GAME)
+    {
       minesweeper_reset(ms);
+    }
     else
+    {
       return result_OK; /* Info row: nothing to do here */
+    }
 
     {
       size2d_t sz = SIZE2D(MS_WIDTH(ms), MS_HEIGHT(ms));

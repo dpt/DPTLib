@@ -219,7 +219,9 @@ static result_t lissajous_mouse(wuss_window_t      *window,
   }
 
   if (button & wuss_BUTTON_SELECT)
+  {
     lissajous_set_freq(lc, (lc->freq_index + 1) % LISSAJOUS_NFREQS);
+  }
   else if (button & wuss_BUTTON_ADJUST)
   {
     lc->drift = -lc->drift;
