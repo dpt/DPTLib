@@ -80,6 +80,14 @@ static inline int wuss__menu_entry_gutter_right(int font_height)
   return WUSS_MENU_ENTRY_PAD + MAX(font_height, 8);
 }
 
+/* Extra text-column width a wuss_ICON_FLAGS_SWATCH row spends on its colour
+ * chip (plus the gap before the label), ahead of the label. The chip sits in
+ * the text column rather than the tick gutter so a row can be both. */
+static inline int wuss__menu_entry_swatch_width(int font_height)
+{
+  return MAX(font_height, 8) + WUSS_MENU_ENTRY_PAD;
+}
+
 static inline int wuss__icon_pressed(const wuss_icon_t *icon)
 {
   return (icon->state & wuss_ICON_STATE_PRESSED) != 0;

@@ -759,11 +759,16 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
 
     text = menu->items[i].text ? menu->items[i].text : "";
     len  = (int) strlen(text);
-    if (len == 0)
-      continue; /* empty label (bare rule row); nothing to measure */
-    if (wuss__text_measure(wuss->fonts.fonts[0], text, len,
-                           INT_MAX, &split, &w) == result_OK && (int) w > widest)
-      widest = (int) w;
+    w    = 0;
+    if (len > 0 && wuss__text_measure(wuss->fonts.fonts[0], text, len,
+                                      INT_MAX, &split, &w) != result_OK)
+      w = 0;
+
+    /* a swatch row's chip leads its label in the text column */
+    if (menu->items[i].flags & wuss_MENU_ITEM_SWATCH)
+      w += (bmfont_width_t) wuss__menu_entry_swatch_width(fh);
+
+    widest = MAX(widest, (int) w);
   }
 
   /* shortcuts are drawn in the bold weight (plus symbol glyphs), so measure

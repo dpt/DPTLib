@@ -50,8 +50,8 @@ typedef enum wuss_menu_item_flags
   /** Greyed, never highlights, not selectable */
   wuss_MENU_ITEM_DISABLED = 1 << 2,
 
-  /** Draw a colour chip of \c swatch at the item's left edge, in place of
-   *  a tick */
+  /** Draw a colour chip of \c swatch ahead of the item's label. Combines
+   *  with wuss_MENU_ITEM_TICKED: the tick keeps its own left gutter */
   wuss_MENU_ITEM_SWATCH   = 1 << 3,
 
   /** \c submenu is borrowed (e.g. patched in after the menu was built) and
@@ -96,8 +96,8 @@ typedef struct wuss_menu_item
    *  menu is open. */
   wuss_window_t          *window;
 
-  /** With wuss_MENU_ITEM_SWATCH: the colour chip to draw at the row's
-   *  left edge, as an index into the system palette. Ignored without that
+  /** With wuss_MENU_ITEM_SWATCH: the colour chip to draw ahead of the
+   *  row's label, as an index into the system palette. Ignored without that
    *  flag, so a zero-initialised item is unaffected. */
   wuss_colour_t           swatch;
 

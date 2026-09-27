@@ -211,9 +211,10 @@ typedef enum wuss_icon_flags
    *  laid out and drawn as a separate wuss_ICON_TYPE_RULE icon. Ignored by
    *  other types. */
   wuss_ICON_FLAGS_SEPARATOR    = 1 << 7,
-  /** wuss_ICON_TYPE_MENU_ENTRY: draw a small colour chip (spec.u.menu_entry.swatch) in the
-   *  row's left gutter, where the tick would sit. Mutually exclusive with a
-   *  selected tick -- the chip wins. Ignored by other types. */
+  /** wuss_ICON_TYPE_MENU_ENTRY: draw a small colour chip
+   *  (spec.u.menu_entry.swatch) ahead of the label, at the start of the text
+   *  column. The tick gutter stays free, so a selected row shows both.
+   *  Ignored by other types. */
   wuss_ICON_FLAGS_SWATCH      = 1 << 8,
   /** Two-bit field (bits 9-10) selecting which of wuss_create's fonts draws
    *  this icon's text: 0 is the system font, 1-3 the further slots. Build it
@@ -316,8 +317,8 @@ typedef union wuss_icon_spec_data
   /** wuss_ICON_TYPE_MENU_ENTRY */
   struct
   {
-    /** With wuss_ICON_FLAGS_SWATCH: the colour chip to draw in the left
-     *  gutter, as an index into the system palette. Ignored unless that flag
+    /** With wuss_ICON_FLAGS_SWATCH: the colour chip to draw ahead of the
+     *  label, as an index into the system palette. Ignored unless that flag
      *  is set. */
     wuss_colour_t swatch;
 
