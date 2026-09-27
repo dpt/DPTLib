@@ -24,6 +24,9 @@ struct wuss_fontset
   wuss_font_class_t font_classes[wuss_MAX_FONTS];
   /* parallel to fonts[]; borrowed; NULL if unset or given no name */
   const char       *font_names[wuss_MAX_FONTS];
+  /* parallel to fonts[]; advance of a space, measured once at init; 0 for an
+   * unset slot */
+  bmfont_width_t    space_widths[wuss_MAX_FONTS];
   /* slots filled from the wuss_create argument */
   int               nfonts;
 };
@@ -38,6 +41,11 @@ void wuss__fontset_init(struct wuss_fontset    *set,
  * range. Used by wuss_create to size the titlebar to the tallest of the
  * regular and bold faces. */
 int wuss__fontset_height(const struct wuss_fontset *set, int slot);
+
+/* Cached advance of a space in "font", which must be one of "set"'s slots;
+ * 0 if it isn't. Saves re-measuring it on every text layout. */
+bmfont_width_t wuss__fontset_space_width(const struct wuss_fontset *set,
+                                         const bmfont_t            *font);
 
 /* The bold weight (font slot 1) when one was supplied, else the system font
  * (slot 0). Used for window titles and menu shortcuts. */

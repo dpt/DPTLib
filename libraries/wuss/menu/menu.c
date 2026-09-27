@@ -784,9 +784,9 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
    * for two of those; a shortcut column sits a further two spaces clear of
    * the widest label */
   {
-    bmfont_width_t space_w = 0;
+    bmfont_width_t space_w;
 
-    wuss__text_measure(wuss->fonts.fonts[0], " ", 1, INT_MAX, NULL, &space_w);
+    space_w = wuss__fontset_space_width(&wuss->fonts, wuss->fonts.fonts[0]);
     widest += 2 * (int) space_w;
     if (widest_shortcut > 0)
       widest += 2 * (int) space_w + widest_shortcut;
