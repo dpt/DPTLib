@@ -15,10 +15,10 @@
 /* window's task: the two composite demo images blended under a cycling
  * Porter-Duff rule, over an alpha checkerboard. The source image's alpha is
  * ramped up and back down across each rule's turn, so every operator is seen
- * across its full range. Select steps to the next rule; Menu > Rule jumps
- * straight to any one; Menu > Swap images exchanges source and
- * destination; Menu > Save PNG writes the window's contents to
- * porter-duff.png. */
+ * across its full range. Select steps to the next rule and Adjust to the
+ * previous one; Menu > Rule jumps straight to any one; Menu > Swap images
+ * exchanges source and destination; Menu > Save PNG writes the window's
+ * contents to porter-duff.png. */
 typedef struct porter_duff_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
