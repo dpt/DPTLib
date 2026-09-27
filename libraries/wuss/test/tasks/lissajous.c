@@ -358,12 +358,9 @@ result_t lissajous_handle(wuss_window_t      *window,
     if (window != lc->window)
       return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
 
-    rc = wuss_menu_dispatch_shortcut(lc->delegate, &lc->menu, event);
-    if (rc != result_WUSS_KEY_UNCLAIMED)
+    if (!task_key_is_plain(lc->delegate, &lc->menu, event, &rc))
       return rc;
 
-    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
-      return result_WUSS_KEY_UNCLAIMED;
     return lissajous_key(lc, event->data.key.code);
   }
 

@@ -464,12 +464,9 @@ result_t greeble_handle(wuss_window_t      *window,
     if (window != task->window)
       return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
 
-    rc = wuss_menu_dispatch_shortcut(task->delegate, &task->menu, event);
-    if (rc != result_WUSS_KEY_UNCLAIMED)
+    if (!task_key_is_plain(task->delegate, &task->menu, event, &rc))
       return rc;
 
-    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
-      return result_WUSS_KEY_UNCLAIMED;
     return greeble_key(task, window, event->data.key.code);
   }
 
