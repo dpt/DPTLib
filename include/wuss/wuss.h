@@ -970,7 +970,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit);
  * Deliver a scroll event. Hit-tests the topmost window at p as per
  * wuss_mouse_click, and delivers to the window's task in window-local
  * content coordinates; dropped if the hit window has no scroll callback, or
- * the pointer is over its titlebar. Over a wuss_ICON_TYPE_SLIDER's groove
+ * the pointer is over its titlebar. Anywhere over a wuss_ICON_TYPE_SLIDER
  * the window does not scroll: the slider's value moves by delta *
  * spec.u.slider.step towards max instead, raised as wuss_EVENT_ICON.
  *
