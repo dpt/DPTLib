@@ -608,12 +608,16 @@ static int wuss__pointer_over_row_arrow(wuss_window_t     *window,
 /* End the pick flash on `self` now: leave the flashed row un-highlit unless the
  * pointer is still over it (on an ADJUST re-pick no MOUSE_MOVE follows to bring
  * the highlight back), then deliver the MENU_SELECT the flash stands in for --
- * tearing the chain down first unless the pick was an ADJUST (keep_open). On a
- * non-keep_open return `self` has been freed. Callers guard against calling
- * this with no flash armed. */
+ * tearing the chain down first unless the pick was an ADJUST (keep_open). An
+ * ADJUST pick's action may open windows over the chain, so once it has run the
+ * surviving chain is popped back to the front. On a non-keep_open return
+ * `self` has been freed. Callers guard against calling this with no flash
+ * armed. */
 static void wuss__menu_flash_finish(struct wuss__menu *self)
 {
+  wuss_t            *wuss      = self->wuss;
   struct wuss__menu *root;
+  struct wuss__menu *node;
   wuss_event_t       sel;
   wuss_icon_t       *row       = self->icons[self->flash.index];
   wuss_task_t       *owner     = self->flash.owner;
@@ -629,15 +633,15 @@ static void wuss__menu_flash_finish(struct wuss__menu *self)
   wuss__icon_set_state(row, wuss_ICON_STATE_HOVERED, on);
   wuss__icon_invalidate(self->window, row);
 
+  root = self;
+  while (root->parent != NULL)
+    root = root->parent;
+
   if (!keep_open)
   {
     wuss_event_t closed;
 
-    root = self;
-    while (root->parent != NULL)
-      root = root->parent;
-
-    root->wuss->menu_chain = NULL;
+    wuss->menu_chain = NULL;
     wuss__menu_close_from(root); /* frees `self` */
 
     /* The chain is gone and the owner's wuss_menu_handle_t with it: tell it
@@ -653,6 +657,12 @@ static void wuss__menu_flash_finish(struct wuss__menu *self)
   sel.data.menu_select.index  = index;
   sel.data.menu_select.button = button;
   (void) wuss__deliver(owner, NULL, &sel);
+
+  /* the handler may have closed the chain (wuss_menu_close) -- only raise it
+   * if it is still the live one, root first so the leaf ends up topmost */
+  if (keep_open && wuss->menu_chain == root)
+    for (node = root; node != NULL; node = node->child)
+      wuss_window_restack(node->window, wuss_ZORDER_FRONT);
 }
 
 /* Advance a running pick flash by one IDLE frame; hand off to

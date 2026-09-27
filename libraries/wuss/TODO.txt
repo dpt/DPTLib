@@ -74,7 +74,6 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
 - 2D Adjust window scroll drag
 - Furniture colour selection needs improvements (e.g. losing menu
   readability when palette changed)
-- Adjust click on a menu should pop to front once the action is complete
 - Preferences for window opening positions (needs packer fix)
 
 

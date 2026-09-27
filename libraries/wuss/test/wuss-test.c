@@ -5987,6 +5987,7 @@ StringSetOK: ;
     wuss_task_t     *fowner;
     struct wuss__menu *chain;
     int                i;
+    wuss_window_t     *fcover;
 
     /* a menu needs a font for its row metrics; the core wuss above was made
      * without one */
@@ -6063,6 +6064,24 @@ StringSetOK: ;
     for (i = 0; i < flash_menu.nitems; i++)
       if (wuss__icon_hovered(fwuss->menu_chain->icons[i]) != (i == 2))
         goto FlashCheckFail;
+
+    /* --- an ADJUST pick pops the chain back to the front once its action
+     * has run: a window opened meanwhile (clear of the menu, so the pick
+     * still lands on the row) must end up behind it --- */
+    rc = wuss_window_create(fowner, &(box_t) BOX_POS_SIZE(150, 150, 40, 40),
+                            "cover", wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                            SIZE2D(40, 40), SIZE2D(40, 40), &fcover);
+    if (rc != result_OK) goto FlashDestroy;
+    if (wuss__window_from_link(fwuss->z_order.next) != fcover)
+      goto FlashCheckFail; /* new window starts in front of the menu */
+
+    flash_pick_row(fwuss, chain, 1, wuss_BUTTON_ADJUST);
+    for (i = 0; i < 64; i++)
+      wuss_idle(fwuss);
+
+    if (ftc.menu_select_count != 3) goto FlashCheckFail;
+    if (wuss__window_from_link(fwuss->z_order.next) != chain->window)
+      goto FlashCheckFail;
 
     rc = result_OK;
     goto FlashDestroy;
