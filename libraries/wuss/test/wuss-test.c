@@ -7408,6 +7408,14 @@ QuitFail:
       goto Failure;
     if (wuss_icon_get_value(icon_sl) != 95)
       goto Failure;
+
+    /* the decorative surround outside the groove takes the wheel too */
+    rc = wuss_scroll(wuss, POINT(screen_box_sl.x0, screen_box_sl.y0), 1,
+                     NULL);
+    if (rc != result_OK)
+      goto Failure;
+    if (wuss_icon_get_value(icon_sl) != 90)
+      goto Failure;
     wuss_window_get_scroll(win_sl, &pt_sl);
     if (pt_sl.x != scroll_sl.x || pt_sl.y != scroll_sl.y)
       goto Failure;

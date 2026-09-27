@@ -51,6 +51,29 @@ static result_t wuss__scroll_slider(wuss_window_t *win,
   event.data.icon.value  = icon->value;
   return wuss__deliver(win->task, win, &event);
 }
+
+/* The topmost visible, enabled slider of "win" whose full bbox -- groove and
+ * decorative surround alike, unlike wuss__icon_hit_test -- contains
+ * "doc_point", or NULL. */
+static wuss_icon_t *wuss__scroll_slider_at(wuss_window_t *win,
+                                           point_t        doc_point)
+{
+  int          i;
+  wuss_icon_t *it;
+
+  for (i = win->nicons - 1; i >= 0; i--)
+  {
+    it = win->icons[i];
+    if (it->spec.type != wuss_ICON_TYPE_SLIDER ||
+        (it->spec.flags & (wuss_ICON_FLAGS_HIDDEN | wuss_ICON_FLAGS_DISABLED)))
+      continue;
+
+    if (box_contains_point(&it->spec.bbox, doc_point.x, doc_point.y))
+      return it;
+  }
+
+  return NULL;
+}
 #endif
 
 result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
@@ -95,10 +118,10 @@ result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
     {
       wuss_icon_t *icon;
 
-      /* a wheel over a slider's groove bumps its value instead of scrolling
+      /* a wheel anywhere over a slider bumps its value instead of scrolling
        * the window, raised as a MOVE just like a drag step */
-      icon = wuss__icon_hit_test(win, event.data.scroll.point);
-      if (icon != NULL && icon->spec.type == wuss_ICON_TYPE_SLIDER)
+      icon = wuss__scroll_slider_at(win, event.data.scroll.point);
+      if (icon != NULL)
         return wuss__scroll_slider(win, icon, delta);
     }
 #endif
