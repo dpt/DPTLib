@@ -162,9 +162,9 @@ static void wuss_frame(void *arg)
 {
   struct wuss_frame_ctx *c = arg;
   wuss_input_t ev;
-  bool         pixel_stress_pending = false;
-  bool         garbage_pending      = false;
-  bool         redraw_all_pending   = false;
+  bool         garbage;
+  bool         stress;
+  bool         redraw_all;
 
   while (wuss_frontend_poll(c->frontend, &ev))
   {
@@ -172,19 +172,6 @@ static void wuss_frame(void *arg)
     {
     case wuss_INPUT_QUIT:
       g_tasks.quit = true;
-      break;
-
-    case wuss_INPUT_REDRAW_ALL:
-      wuss_redraw(c->wuss);
-      redraw_all_pending = true;
-      break;
-
-    case wuss_INPUT_GARBAGE:
-      garbage_pending = true;
-      break;
-
-    case wuss_INPUT_PIXEL_STRESS:
-      pixel_stress_pending = true;
       break;
 
     case wuss_INPUT_MOUSE_DOWN:
@@ -214,40 +201,11 @@ static void wuss_frame(void *arg)
     case wuss_INPUT_KEY:
       {
         int claimed;
-        int shift;
 
+        /* the focused window first, then the launcher menu's shortcuts */
         wuss_key(c->wuss, ev.key, ev.mods, &claimed);
-        if (claimed)
-          break;
-
-        /* then the launcher menu's shortcuts */
-        if (tasks_launcher_key(ev.key, ev.mods) != result_WUSS_KEY_UNCLAIMED)
-          break;
-
-        /* driver hotkeys, only when the focused window passed on the key */
-        shift = (ev.mods & wuss_KEY_MOD_SHIFT) != 0;
-        switch (ev.key)
-        {
-        case wuss_KEY_F1:
-          if (shift)
-          {
-            garbage_pending = true;
-          }
-          else
-          {
-            wuss_redraw(c->wuss);
-            redraw_all_pending = true;
-          }
-          break;
-        case wuss_KEY_F1 + 1:
-          wuss_frontend_zoom(c->frontend, shift ? -1 : 1);
-          break;
-        case wuss_KEY_F1 + 2:
-          pixel_stress_pending = true;
-          break;
-        default:
-          break;
-        }
+        if (!claimed)
+          (void) tasks_launcher_key(ev.key, ev.mods);
       }
       break;
 
@@ -258,7 +216,15 @@ static void wuss_frame(void *arg)
 
   wuss_idle(c->wuss);
 
-  if (garbage_pending)
+  /* the launcher's Debug picks only set flags; act on them once per frame */
+  garbage    = g_tasks.debug_garbage;
+  stress     = g_tasks.debug_pixel_stress;
+  redraw_all = g_tasks.debug_redraw_all;
+  g_tasks.debug_garbage      = false;
+  g_tasks.debug_pixel_stress = false;
+  g_tasks.debug_redraw_all   = false;
+
+  if (garbage)
   {
     /* corrupt the whole framebuffer and present it, then leave it alone --
      * wuss only repaints what it knows is dirty, so the junk stays put
@@ -274,7 +240,7 @@ static void wuss_frame(void *arg)
 
     wuss_frontend_present(c->frontend, c->bm, NULL);
   }
-  else if (pixel_stress_pending)
+  else if (stress)
   {
     pixel_stress(c->wuss, c->scr_width, c->scr_height);
     wuss_frontend_present(c->frontend, c->bm, NULL);
@@ -304,13 +270,13 @@ static void wuss_frame(void *arg)
     wuss_redraw_dirty(c->wuss);
     wuss_clear_touched(c->wuss);
 
-    /* a REDRAW_ALL earlier this frame already repainted the whole pixel
+    /* a Debug > Redraw earlier this frame repainted the whole pixel
      * buffer; any dirty/touched region collected afterwards (e.g. a mouse
      * move) is narrower than that and must not shrink the present rect
      * below full-screen, or the frontend only re-uploads the narrow rect
      * and leaves the rest of the previous frame's pixels on screen. */
     wuss_frontend_present(c->frontend, c->bm,
-                          (have_any && !redraw_all_pending) ? &dirty : NULL);
+                          (have_any && !redraw_all) ? &dirty : NULL);
   }
 
 #ifdef __EMSCRIPTEN__

@@ -37,6 +37,11 @@ extern struct wuss_app_tasks
   bool             reverse_scroll; /* set by the Configure task's option
                                     * icon; read where each frontend fills
                                     * wuss_input_event_t.wheel */
+  bool             debug_redraw_all;   /* set by the launcher's Debug picks */
+  bool             debug_garbage;      /* (having already called */
+  bool             debug_pixel_stress; /* wuss_redraw for Redraw); read and
+                                        * cleared once per frame by
+                                        * wuss_frame */
 }
 g_tasks;
 

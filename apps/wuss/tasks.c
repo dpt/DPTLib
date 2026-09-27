@@ -191,6 +191,26 @@ static const wuss_menu_item_t g_system_items[] =
   { "Palette",     wuss_MENU_ITEM_NONE, NULL }
 };
 
+/* Driver debugging aids, picked by index in task_handle_event -- keep in
+ * step with the switch there */
+enum
+{
+  DEBUG_ITEM_REDRAW,
+  DEBUG_ITEM_GARBAGE,
+  DEBUG_ITEM_ZOOM_IN,
+  DEBUG_ITEM_ZOOM_OUT,
+  DEBUG_ITEM_PIXEL_STRESS
+};
+
+static const wuss_menu_item_t g_debug_items[] =
+{
+  { "Redraw",       wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F1"                 },
+  { "Garbage",      wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F1" },
+  { "Zoom in",      wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F2"                 },
+  { "Zoom out",     wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F2" },
+  { "Pixel stress", wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F3"                 }
+};
+
 static const wuss_menu_t g_games_menu =
 {
   "Games", g_games_items, NELEMS(g_games_items)
@@ -216,6 +236,11 @@ static const wuss_menu_t g_system_menu =
   "System", g_system_items, NELEMS(g_system_items)
 };
 
+static const wuss_menu_t g_debug_menu =
+{
+  "Debug", g_debug_items, NELEMS(g_debug_items)
+};
+
 static result_t spawn_quit(void)
 {
   g_tasks.quit = true;
@@ -233,6 +258,7 @@ enum
   TASK_ITEM_TESTS,
   TASK_ITEM_SYSTEM,
   TASK_ITEM_CONFIGURE,
+  TASK_ITEM_DEBUG,
   TASK_ITEM_QUIT
 };
 
@@ -253,6 +279,7 @@ static wuss_menu_item_t g_task_items[] =
   { "Tests",     wuss_MENU_ITEM_NONE, &g_tests_menu,      NULL },
   { "System",    wuss_MENU_ITEM_NONE, &g_system_menu,     NULL },
   { "Configure", wuss_MENU_ITEM_NONE, NULL,               NULL },
+  { "Debug",     wuss_MENU_ITEM_NONE, &g_debug_menu,      NULL },
   { "Quit Wuss", wuss_MENU_ITEM_NONE, NULL,               NULL, 0, "F4" }
 };
 
@@ -265,6 +292,7 @@ static const task_spawn_fn_t g_task_spawn[] =
   NULL,        /* "Tests" -> submenu g_tests_menu */
   NULL,        /* "System" -> submenu g_system_menu */
   spawn_configure,
+  NULL,        /* "Debug" -> submenu g_debug_menu */
   spawn_quit
 };
 
@@ -370,6 +398,32 @@ result_t task_handle_event(wuss_window_t      *window,
     if (index >= 0 && index < (int) NELEMS(g_visuals_tasks))
       (void) spawn_task(g_visuals_tasks[index].name,
                         g_visuals_tasks[index].create);
+    return result_OK;
+  }
+
+  if (menu == &g_debug_menu)
+  {
+    switch (index)
+    {
+    case DEBUG_ITEM_REDRAW:
+      wuss_redraw(g_tasks.wuss);
+      g_tasks.debug_redraw_all = true;
+      break;
+    case DEBUG_ITEM_GARBAGE:
+      g_tasks.debug_garbage = true;
+      break;
+    case DEBUG_ITEM_ZOOM_IN:
+      wuss_frontend_zoom(g_tasks.frontend, 1);
+      break;
+    case DEBUG_ITEM_ZOOM_OUT:
+      wuss_frontend_zoom(g_tasks.frontend, -1);
+      break;
+    case DEBUG_ITEM_PIXEL_STRESS:
+      g_tasks.debug_pixel_stress = true;
+      break;
+    default:
+      break;
+    }
     return result_OK;
   }
 
