@@ -60,14 +60,7 @@ result_t keys_create(wuss_t *wuss, keys_task_t **out)
   bmfont_get_info(task->font, NULL, &fh, NULL, NULL);
   size = SIZE2D(160, 8 + (1 + KEYS_HISTORY) * fh);
 
-  rc = wuss_window_create_placed(delegate,
-                                 size,
-                                 "Keys",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 size,
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate, size, "Keys", &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* its QUIT frees the task block */

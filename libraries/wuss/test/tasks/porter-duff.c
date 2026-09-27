@@ -224,14 +224,10 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
-                                 "Porter-Duff",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate,
+                          SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
+                          "Porter-Duff",
+                          &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* QUIT frees the four bitmaps and task */

@@ -546,14 +546,7 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
   task->delegate = delegate; /* the task the menu opens against */
   wuss_task_set_autoclose(delegate, 1);
 
-  rc = wuss_window_create_placed(delegate,
-                                 grid_px,
-                                 "Greeble",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 grid_px,
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate, grid_px, "Greeble", &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */

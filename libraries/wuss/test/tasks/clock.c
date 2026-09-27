@@ -109,14 +109,7 @@ static result_t clock_create_window(wuss_t       *wuss,
                                     clock_task_t *task,
                                     wuss_task_t  *delegate)
 {
-  return wuss_window_create_placed(delegate,
-                                   SIZE2D(160, 160),
-                                   "Clock",
-                                   wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                   wuss_NO_BACKDROP,
-                                   SIZE2D(160, 160),
-                                   SIZE2D(0, 0),
-                                   &task->window);
+  return task_window_create(delegate, SIZE2D(160, 160), "Clock", &task->window);
 }
 
 result_t clock_create(wuss_t *wuss, clock_task_t **out)
