@@ -227,19 +227,22 @@ static wuss_button_t mouse_buttons_to_wuss(int buttons)
 #define KEY_SCAN_F1    (-114)
 #define KEY_SCAN_SHIFT (-1)
 
-/* Keys the demo reacts to: negative INKEY scan code -> input kind. F4 and
- * Escape both quit. F1 is handled separately in wuss_frontend_poll, not in
- * this table, so it can vary its kind with Shift. */
+/* Keys the demo reacts to: negative INKEY scan code -> input kind, plus the
+ * key code for a wuss_INPUT_KEY. Escape quits; F4 goes through wuss as a key
+ * press, so reaches the launcher menu's Quit Wuss shortcut. F1 is handled
+ * separately in wuss_frontend_poll, not in this table, so it can vary its
+ * kind with Shift. */
 static const struct
 {
   int               scan;
   wuss_input_kind_t kind;
+  int               key;
 }
 g_keys[] =
 {
-  { -113, wuss_INPUT_QUIT         }, /* Escape */
-  { -116, wuss_INPUT_PIXEL_STRESS }, /* F3 */
-  { -117, wuss_INPUT_QUIT         }  /* F4 */
+  { -113, wuss_INPUT_QUIT,         0               }, /* Escape */
+  { -116, wuss_INPUT_PIXEL_STRESS, 0               }, /* F3 */
+  { -117, wuss_INPUT_KEY,          wuss_KEY_F1 + 3 }  /* F4 */
 };
 
 result_t wuss_frontend_resize(wuss_frontend_t *fe,
@@ -308,6 +311,8 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
     {
       key_was = key_now;
       event->kind = g_keys[i].kind;
+      event->key  = g_keys[i].key;
+      event->mods = wuss_KEY_MOD_NONE;
       return true;
     }
   }
