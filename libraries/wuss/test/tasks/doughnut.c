@@ -200,7 +200,7 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
                       wuss_MENU_ITEM_NONE, &task->tube_menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_PAUSE, "Pause",
-                          wuss_MENU_ITEM_NONE, "Space");
+                          wuss_MENU_ITEM_NONE, "SPACE");
 
   WUSS_MENU_ITEM(task->menu_items, DOUGHNUT_MENU_RESET, "Reset view",
                  wuss_MENU_ITEM_NONE);

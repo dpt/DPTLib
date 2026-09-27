@@ -123,7 +123,7 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_PAUSE, "Pause",
-                          wuss_MENU_ITEM_NONE, "Space");
+                          wuss_MENU_ITEM_NONE, "SPACE");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_CLEAR, "Clear",
                           wuss_MENU_ITEM_NONE, "C");
