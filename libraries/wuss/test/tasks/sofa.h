@@ -31,7 +31,8 @@ sofa_shape_t;
 /* a wireframe sofa (seat, backrest, two arms), spaceship or Platonic solid,
  * spinning about its vertical axis; a Select click or Menu > Pause
  * pauses/resumes the spin, an Adjust click or Menu > Model changes the
- * model */
+ * model and Menu > Auto-cycle turns the automatic change of model after a
+ * few turns on or off */
 typedef struct sofa_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
