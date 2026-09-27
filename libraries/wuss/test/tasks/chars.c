@@ -22,6 +22,7 @@
 #include "wuss/menu.h"
 
 #include "chars.h"
+#include "snapshot.h"
 
 #define CHARS_COLS 16
 #define CHARS_ROWS 16
@@ -34,7 +35,15 @@
  * per-instance in chars_task_t, not as a file-scope static, so that each
  * window's Info row can hold its own .window pointer to the shared proginfo
  * singleton, retargeted just before wuss_menu_open */
-enum { CHARS_MENU_INFO = 0, CHARS_MENU_FONT, CHARS_MENU_PAGE };
+enum
+{
+  CHARS_MENU_INFO = 0,
+  CHARS_MENU_FONT,
+  CHARS_MENU_PAGE,
+  CHARS_MENU_SAVE
+};
+
+#define CHARS_SAVE_NAME "chars.png" /* written to the current dir */
 
 /* ----------------------------------------------------------------------- */
 
@@ -402,6 +411,9 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, CHARS_MENU_PAGE, "Page",
                       wuss_MENU_ITEM_PRE_OPEN, &task->page_menu);
 
+  WUSS_MENU_ITEM(task->menu_items, CHARS_MENU_SAVE, "Save PNG",
+                 wuss_MENU_ITEM_NONE);
+
   WUSS_MENU_TITLE(task->menu, "Chars", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -547,6 +559,11 @@ result_t chars_handle(wuss_window_t      *window,
 
       if (event->data.menu_select.menu == &cc->page_menu)
         return chars_set_page(cc, event);
+
+      if (event->data.menu_select.menu == &cc->menu &&
+          event->data.menu_select.index == CHARS_MENU_SAVE)
+        return snapshot_save_png(cc->window, chars_handle, cc,
+                                 CHARS_SAVE_NAME);
 
       name = wuss_fontmenu_selected(event);
       if (name == NULL)

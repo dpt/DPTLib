@@ -20,7 +20,8 @@
  * a menu whose "Font" row is the shared wuss_fontmenu singleton over
  * resources/bmfonts, swapping the font in place, and whose "Page" row lists
  * the pages the current font has glyphs in. Select and Adjust clicks step
- * to the next and previous of those pages. */
+ * to the next and previous of those pages. Menu > Save PNG writes the grid
+ * to chars.png. */
 typedef struct chars_task
 {
   wuss_window_t      *window;
@@ -42,7 +43,7 @@ typedef struct chars_task
   char                page_labels[CHARS_MAX_PAGES][8]; /* "U+1F400" */
   unsigned long       page_bases[CHARS_MAX_PAGES]; /* page_items[i]'s page */
   wuss_menu_t         page_menu;
-  wuss_menu_item_t    menu_items[3]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[4]; /* per-instance: a shared static would
                                       * leak one instance's .window pointer
                                       * into another's menu */
   wuss_menu_t         menu;
