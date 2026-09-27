@@ -152,7 +152,7 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(220, 160),
                                  "Curve",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(220, 160),
                                  SIZE2D(0, 0),
@@ -419,6 +419,51 @@ static result_t curve_scroll(curve_task_t  *task,
   return result_OK;
 }
 
+/* Left/Right step the curve type back/forward; Up/Down add/remove a
+ * segment, as the wheel does; H toggles the hull and R resets the points,
+ * as their menu rows do. Anything else, or a key aimed at the proginfo
+ * dialogue, is passed back unclaimed. */
+static result_t curve_key(curve_task_t  *task,
+                          wuss_window_t *window,
+                          int            code)
+{
+  if (window != task->window)
+    return result_WUSS_KEY_UNCLAIMED;
+
+  switch (code)
+  {
+  case wuss_KEY_UP:   return curve_scroll(task, +1, window);
+  case wuss_KEY_DOWN: return curve_scroll(task, -1, window);
+
+  case wuss_KEY_LEFT:
+    task->npoints = (task->npoints - CURVE_MINCONTROLPTS + CURVE_NKINDS - 1) %
+                    CURVE_NKINDS + CURVE_MINCONTROLPTS;
+    break;
+
+  case wuss_KEY_RIGHT:
+    task->npoints = (task->npoints - CURVE_MINCONTROLPTS + 1) %
+                    CURVE_NKINDS + CURVE_MINCONTROLPTS;
+    break;
+
+  case 'H':
+  case 'h':
+    task->hull = !task->hull;
+    break;
+
+  case 'R':
+  case 'r':
+    curve_reset_points(task);
+    break;
+
+  default:
+    return result_WUSS_KEY_UNCLAIMED;
+  }
+
+  wuss_window_invalidate_visible(window);
+
+  return result_OK;
+}
+
 /* The "Background" row's submenu: the shared colourmenu singleton,
  * reconfigured here rather than at create time since other tasks retitle it
  * and toggle its None row too. */
@@ -519,6 +564,9 @@ result_t curve_handle(wuss_window_t      *window,
 
   case wuss_EVENT_SCROLL:
     return curve_scroll(task, event->data.scroll.delta, window);
+
+  case wuss_EVENT_KEY:
+    return curve_key(task, window, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return curve_pre_submenu_open(task, event);

@@ -23,7 +23,9 @@
  * stepping npoints, the count of points[] actually in play; Menu > Type
  * picks it directly; Menu > Hull shows or hides the control points' convex
  * hull; Menu > Reset points puts the control points back where they
- * started; Menu > Save PNG writes the window to curve.png. */
+ * started; Menu > Save PNG writes the window to curve.png. Once a click has
+ * given the window the input focus, Left/Right step the curve type,
+ * Up/Down step nsegments, H toggles the hull and R resets the points. */
 typedef struct curve_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_font in the redraw */
