@@ -56,7 +56,9 @@ minesweeper_cell_state_t;
 /* classic minesweeper: Select reveals a cell (flood-filling neighbouring
  * zeros), Adjust toggles a flag. Select on a revealed number whose flags
  * match it reveals the rest of its neighbours ("chording"). Mines are
- * placed on the first reveal so the opening click is never a mine. A
+ * placed on the first reveal so the opening click is never a mine. A win
+ * that beats the session's fastest time at that size and difficulty says
+ * so on its banner. A
  * MENU-button click pops a menu with "New Game", a "Grid Size" submenu
  * that resets the board at a new size and a "Difficulty" submenu that
  * resets it with more or fewer mines; "Give Up" ends a game in progress
@@ -94,6 +96,10 @@ typedef struct minesweeper_task
   bool                     placed;  /* mines placed yet? */
   bool                     dead;    /* a mine was revealed */
   bool                     won;
+  bool                     new_best; /* this win beat best[][] */
+  int                      best[minesweeper_NSIZES][minesweeper_NDIFFICULTIES];
+                                     /* fastest win in seconds + 1, per
+                                      * size and difficulty; 0 = none yet */
   int                      flags;   /* flagged cell count, for the counter */
   time_t                   start_time; /* set on first reveal */
   int                      elapsed; /* seconds, frozen on dead/won */

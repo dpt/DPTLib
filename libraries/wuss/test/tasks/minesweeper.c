@@ -238,6 +238,18 @@ static void minesweeper_chord(minesweeper_task_t    *ms,
         minesweeper_reveal(ms, r + dr, c + dc, touched);
 }
 
+/* on a win, keeps the fastest time for the current size and difficulty;
+ * new_best says whether this game set it. Session only: not saved. */
+static void minesweeper_record_time(minesweeper_task_t *ms)
+{
+  int *best;
+
+  best         = &ms->best[ms->size][ms->difficulty];
+  ms->new_best = (*best == 0 || ms->elapsed + 1 < *best);
+  if (ms->new_best)
+    *best = ms->elapsed + 1;
+}
+
 /* on death, reveal every mine so the player sees where they all were */
 static void minesweeper_reveal_all_mines(minesweeper_task_t *ms)
 {
@@ -263,11 +275,12 @@ static bool minesweeper_check_won(minesweeper_task_t *ms)
 
 static void minesweeper_reset(minesweeper_task_t *ms)
 {
-  ms->placed  = false;
-  ms->dead    = false;
-  ms->won     = false;
-  ms->flags   = 0;
-  ms->elapsed = 0;
+  ms->placed   = false;
+  ms->dead     = false;
+  ms->won      = false;
+  ms->new_best = false;
+  ms->flags    = 0;
+  ms->elapsed  = 0;
   memset(ms->mine,  0, sizeof(ms->mine));
   memset(ms->state, 0, sizeof(ms->state)); /* minesweeper_HIDDEN == 0 */
 }
@@ -626,8 +639,9 @@ static result_t minesweeper_redraw(const wuss_event_t *event,
                      SIZE2D(MINESWEEPER_CELL - 2, MINESWEEPER_CELL - 2),
                      ms->colours.cursor);
 
-  banner = ms->dead ? "BOOM! Click to retry"   :
-           ms->won  ? "You win! Click to retry" : NULL;
+  banner = ms->dead     ? "BOOM! Click to retry"    :
+           ms->new_best ? "New best! Click to retry" :
+           ms->won      ? "You win! Click to retry"  : NULL;
   if (banner != NULL)
     minesweeper_draw_banner(ms, scr, bounds, banner,
                             ms->dead ? ms->colours.dead_bg : ms->colours.won_bg,
@@ -685,9 +699,13 @@ static result_t minesweeper_act(minesweeper_task_t *ms,
     }
     else
     {
+      minesweeper_tick_clock(ms); /* before won freezes it */
       ms->won = minesweeper_check_won(ms);
       if (ms->won)
+      {
+        minesweeper_record_time(ms);
         wuss_window_invalidate_visible(ms->window); /* banner covers the lot */
+      }
       else
       {
         local = MS_CELLS_BOX(ms, touched.r0, touched.c0, touched.r1,
