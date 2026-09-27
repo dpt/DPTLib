@@ -648,27 +648,33 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
                     text_ink, text_ground, &pos, NULL);
 
-    /* shortcut: bold, right-aligned against the same one-space inset at
-     * text_x1, sharing the label's baseline. Muted to the bevel_dark grey
-     * (a palette entry, so it survives low-depth desktops where a blended
-     * colour would snap to ink or ground) except under the highlight, where
-     * it keeps the inverted ink to stay legible */
+    /* shortcut: bold, knocked out of a solid rounded keycap right-aligned
+     * against the same one-space inset at text_x1, sharing the label's
+     * baseline. The keycap is muted to the bevel_dark grey (a palette entry,
+     * so it survives low-depth desktops where a blended colour would snap
+     * to ink or ground) except under the highlight, where it takes the
+     * inverted ink to stay legible; the label is the row's ground */
     if (icon->u.menu_entry.shortcut != NULL &&
         icon->u.menu_entry.shortcut[0] != '\0')
     {
       const char    *shortcut;
       bmfont_width_t shortcut_w;
-      colour_t       shortcut_ink;
+      colour_t       keycap;
+      int            box_x0;
 
       shortcut   = icon->u.menu_entry.shortcut;
       shortcut_w = wuss__shortcut_measure(c->wuss, shortcut);
 
-      shortcut_ink = highlit ? text_ink
-                             : c->wuss->palette[c->wuss->bevel_dark];
+      keycap = highlit ? text_ink : c->wuss->palette[c->wuss->bevel_dark];
 
-      pos.x = text_x1 - (int) space_w - (int) shortcut_w;
-      wuss__shortcut_draw(c->wuss, c->scr, shortcut, shortcut_ink,
-                          text_ground, &pos);
+      box_x0 = text_x1 - (int) space_w - (int) shortcut_w;
+      screen_fill_rounded_rect(c->scr, box_x0, b->y0 + 1,
+                               SIZE2D((int) shortcut_w, b->y1 - b->y0 - 2),
+                               2, keycap);
+
+      pos.x = box_x0 + WUSS_SHORTCUT_BOX_PAD;
+      wuss__shortcut_draw(c->wuss, c->scr, shortcut, text_ground,
+                          keycap, &pos);
     }
   }
 }

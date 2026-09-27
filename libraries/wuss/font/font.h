@@ -43,10 +43,15 @@ int wuss__fontset_height(const struct wuss_fontset *set, int slot);
  * (slot 0). Used for window titles and menu shortcuts. */
 bmfont_t *wuss__bold_font(const wuss_t *wuss);
 
+/* Horizontal pixels between a menu shortcut's keycap box edge and its label. */
+#define WUSS_SHORTCUT_BOX_PAD 4
+
 /* A menu shortcut label is drawn in the bold weight, except each
  * WUSS_MENU_SHIFT which comes from the symbol font (the text faces lack it)
- * when there is one. wuss__shortcut_measure returns the label's width;
- * wuss__shortcut_draw draws it with its baseline starting at "pos". */
+ * when there is one, inside a rounded keycap box the caller draws.
+ * wuss__shortcut_measure returns the width of that box, label plus
+ * WUSS_SHORTCUT_BOX_PAD either side; wuss__shortcut_draw draws just the
+ * label with its baseline starting at "pos". */
 bmfont_width_t wuss__shortcut_measure(const wuss_t *wuss, const char *label);
 void wuss__shortcut_draw(const wuss_t  *wuss,
                          screen_t      *scr,
