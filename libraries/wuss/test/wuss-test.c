@@ -6503,8 +6503,9 @@ PwFail:
     wuss_menu_close(sroot);
     if (rc != result_OK) goto ScDestroy;
 
-    /* dispatch: labels match ignoring case, '^' needs Ctrl, Alt never
-     * matches, a disabled row is skipped */
+    /* dispatch: labels match ignoring case, '^' needs Ctrl, a shift prefix
+     * needs Shift (which SPACE and Fn otherwise forbid), Alt never matches,
+     * a disabled row is skipped */
     {
       static const struct
       {
@@ -6526,6 +6527,15 @@ PwFail:
         { "F3",    wuss_KEY_F1 + 2, wuss_KEY_MOD_NONE,  wuss_MENU_ITEM_NONE,     1 },
         { "F3",    'F',             wuss_KEY_MOD_NONE,  wuss_MENU_ITEM_NONE,     0 },
         { "S",     's',             wuss_KEY_MOD_NONE,  wuss_MENU_ITEM_DISABLED, 0 },
+        { "F3",    wuss_KEY_F1 + 2, wuss_KEY_MOD_SHIFT, wuss_MENU_ITEM_NONE,     0 },
+        { "SPACE", ' ',             wuss_KEY_MOD_SHIFT, wuss_MENU_ITEM_NONE,     0 },
+        { WUSS_MENU_SHIFT "F1",
+                   wuss_KEY_F1,     wuss_KEY_MOD_SHIFT, wuss_MENU_ITEM_NONE,     1 },
+        { WUSS_MENU_SHIFT "F1",
+                   wuss_KEY_F1,     wuss_KEY_MOD_NONE,  wuss_MENU_ITEM_NONE,     0 },
+        { "^" WUSS_MENU_SHIFT "F1",
+                   wuss_KEY_F1,     wuss_KEY_MOD_CTRL | wuss_KEY_MOD_SHIFT,
+                                                        wuss_MENU_ITEM_NONE,     1 },
       };
 
       result_t     drc;

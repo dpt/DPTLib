@@ -764,21 +764,19 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
       widest = (int) w;
   }
 
-  /* shortcuts are drawn in the bold weight, so measure them in it */
+  /* shortcuts are drawn in the bold weight (plus symbol glyphs), so measure
+   * them the same way */
   widest_shortcut = 0;
   for (i = 0; i < menu->nitems; i++)
   {
-    const char    *shortcut;
-    int            split;
-    bmfont_width_t w;
+    const char *shortcut;
+    int         w;
 
     shortcut = menu->items[i].shortcut;
     if (shortcut == NULL || shortcut[0] == '\0')
       continue;
-    if (wuss__text_measure(wuss__bold_font(wuss), shortcut,
-                           (int) strlen(shortcut), INT_MAX, &split,
-                           &w) == result_OK && (int) w > widest_shortcut)
-      widest_shortcut = (int) w;
+    w               = (int) wuss__shortcut_measure(wuss, shortcut);
+    widest_shortcut = MAX(widest_shortcut, w);
   }
 
   /* the row draws its text as if a space padded it either side (see

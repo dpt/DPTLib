@@ -656,24 +656,19 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     if (icon->u.menu_entry.shortcut != NULL &&
         icon->u.menu_entry.shortcut[0] != '\0')
     {
-      bmfont_t      *bold;
       const char    *shortcut;
-      int            len;
       bmfont_width_t shortcut_w;
       colour_t       shortcut_ink;
 
-      bold       = wuss__bold_font(c->wuss);
       shortcut   = icon->u.menu_entry.shortcut;
-      len        = (int) strlen(shortcut);
-      shortcut_w = 0;
-      wuss__text_measure(bold, shortcut, len, INT_MAX, NULL, &shortcut_w);
+      shortcut_w = wuss__shortcut_measure(c->wuss, shortcut);
 
       shortcut_ink = highlit ? text_ink
                              : c->wuss->palette[c->wuss->bevel_dark];
 
       pos.x = text_x1 - (int) space_w - (int) shortcut_w;
-      wuss__text_draw(bold, c->scr, shortcut, len, shortcut_ink, text_ground,
-                      &pos, NULL);
+      wuss__shortcut_draw(c->wuss, c->scr, shortcut, shortcut_ink,
+                          text_ground, &pos);
     }
   }
 }
