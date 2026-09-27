@@ -147,11 +147,10 @@ static void greeble_generate(greeble_task_t *task)
     order[j] = (unsigned char) i;
   }
 
-  tries_each = GREEBLE_NPREFAB > 0
-             ? GREEBLE_PREFAB_ATTEMPTS / GREEBLE_NPREFAB
-             : 0;
-  if (tries_each < 1)
-    tries_each = 1;
+  tries_each = MAX(GREEBLE_NPREFAB > 0
+                   ? GREEBLE_PREFAB_ATTEMPTS / GREEBLE_NPREFAB
+                   : 0,
+                   1);
 
   /* grid[][] is contiguous; the cols..MAX_COLS tail of each live row is never
    * read, so one clear over the live rows is enough. GREEBLE_EMPTY is a byte

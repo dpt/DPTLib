@@ -309,8 +309,7 @@ static void minesweeper_tick_clock(minesweeper_task_t *ms)
   if (!ms->placed || ms->dead || ms->won)
     return;
   ms->elapsed = (int) difftime(time(NULL), ms->start_time);
-  if (ms->elapsed > 999)
-    ms->elapsed = 999; /* keep the HUD's 3-digit field from overflowing */
+  ms->elapsed = MIN(ms->elapsed, 999); /* keep the HUD's 3 digits in range */
 }
 
 /* ----------------------------------------------------------------------- */
