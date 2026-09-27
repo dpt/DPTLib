@@ -97,6 +97,8 @@ enum
 #define SATURN_SAVE_NAME "saturn.png" /* written to the current dir */
 enum { SATURN_COLOURS_MENU_FOREGROUND = 0, SATURN_COLOURS_MENU_BACKGROUND };
 
+#define SATURN_SEED_STEP 0x9E3779B9UL /* golden-ratio step between sketches */
+
 /* the size dialogue's icons, in creation order (see saturn_conf_dialogue_create):
  * one label/slider/value triple per SATURN_SIZEDLG_ROW_*, then the buttons */
 enum {
@@ -423,9 +425,16 @@ static result_t saturn_mouse(saturn_task_t      *task,
                           &task->menu_handle);
   }
 
+  /* the seed step is invertible, so Adjust walks back through the
+   * sketches Select has shown */
   if (button & wuss_BUTTON_SELECT)
   {
-    task->seed += 0x9E3779B9UL; /* fresh sketch */
+    task->seed += SATURN_SEED_STEP; /* fresh sketch */
+    wuss_window_invalidate_visible(window);
+  }
+  else if (button & wuss_BUTTON_ADJUST)
+  {
+    task->seed -= SATURN_SEED_STEP; /* previous sketch */
     wuss_window_invalidate_visible(window);
   }
 
@@ -804,7 +813,7 @@ static result_t saturn_idle(saturn_task_t *task)
   if (!task->animate || task->window == NULL)
     return result_OK;
 
-  task->seed += 0x9E3779B9UL;
+  task->seed += SATURN_SEED_STEP;
   wuss_window_invalidate_visible(task->window);
 
   return result_OK;
