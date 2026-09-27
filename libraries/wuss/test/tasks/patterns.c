@@ -324,12 +324,9 @@ result_t patterns_handle(wuss_window_t      *window,
     if (window != bc->window)
       return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
 
-    rc = wuss_menu_dispatch_shortcut(bc->delegate, &bc->menu, event);
-    if (rc != result_WUSS_KEY_UNCLAIMED)
+    if (!task_key_is_plain(bc->delegate, &bc->menu, event, &rc))
       return rc;
 
-    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
-      return result_WUSS_KEY_UNCLAIMED;
     return patterns_key(bc, window, event->data.key.code);
   }
 

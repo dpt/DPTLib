@@ -365,12 +365,9 @@ result_t checker_handle(wuss_window_t      *window,
       return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
 
     cc->menu_window = window; /* a shortcut acts on the focused window */
-    rc = wuss_menu_dispatch_shortcut(cc->delegate, &cc->menu, event);
-    if (rc != result_WUSS_KEY_UNCLAIMED)
+    if (!task_key_is_plain(cc->delegate, &cc->menu, event, &rc))
       return rc;
 
-    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
-      return result_WUSS_KEY_UNCLAIMED;
     return checker_key(cc, window, event->data.key.code);
   }
 

@@ -549,12 +549,9 @@ result_t gradient_handle(wuss_window_t      *window,
     if (window != gc->window)
       return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
 
-    rc = wuss_menu_dispatch_shortcut(gc->delegate, &gc->menu, event);
-    if (rc != result_WUSS_KEY_UNCLAIMED)
+    if (!task_key_is_plain(gc->delegate, &gc->menu, event, &rc))
       return rc;
 
-    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
-      return result_WUSS_KEY_UNCLAIMED;
     return gradient_key(gc, window, event->data.key.code);
   }
 
