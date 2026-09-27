@@ -645,8 +645,8 @@ result_t config_handle(wuss_window_t      *window,
       cc->menu_items[CONFIG_MENU_INFO].window =
         wuss_proginfo_window(cc->delegate);
     }
-    return wuss_menu_open(cc->delegate, &cc->menu,
-                          wuss_get_pointer(cc->wuss), &cc->menu_handle);
+    return wuss_menu_open_at_pointer(cc->delegate, &cc->menu,
+                                     &cc->menu_handle);
 
   case wuss_EVENT_MENU_CLOSED:
     cc->menu_handle = NULL;

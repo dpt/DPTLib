@@ -612,8 +612,8 @@ static result_t sofa_mouse(wuss_window_t *window,
     wuss_menu_tick_item(&sc->menu, SOFA_MENU_PAUSE, !sc->spinning);
     wuss_menu_tick_item(&sc->menu, SOFA_MENU_CYCLE, sc->cycling);
 
-    return wuss_menu_open(sc->delegate, &sc->menu,
-                          wuss_get_pointer(sc->wuss), &sc->menu_handle);
+    return wuss_menu_open_at_pointer(sc->delegate, &sc->menu,
+                                     &sc->menu_handle);
   }
 
   if (button & wuss_BUTTON_ADJUST)

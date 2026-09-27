@@ -432,8 +432,8 @@ static result_t gradient_mouse(const wuss_event_t *event, void *task_data)
       wuss_proginfo_window(gc->delegate);
     wuss_menu_tick_exclusive(&gc->shape_menu, gc->shape);
 
-    return wuss_menu_open(gc->delegate, &gc->menu,
-                          wuss_get_pointer(gc->wuss), &gc->menu_handle);
+    return wuss_menu_open_at_pointer(gc->delegate, &gc->menu,
+                                     &gc->menu_handle);
   }
 
   if (button & wuss_BUTTON_ADJUST)

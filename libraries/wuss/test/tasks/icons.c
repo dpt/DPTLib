@@ -1048,8 +1048,8 @@ result_t icons_handle(wuss_window_t      *window,
       tcx->menu_items[ICONS_MENU_INFO].window =
         wuss_proginfo_window(tcx->delegate);
 
-      return wuss_menu_open(tcx->delegate, &tcx->menu,
-                            wuss_get_pointer(tcx->wuss), &tcx->menu_handle);
+      return wuss_menu_open_at_pointer(tcx->delegate, &tcx->menu,
+                                       &tcx->menu_handle);
     }
     return result_OK;
 

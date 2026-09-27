@@ -321,8 +321,8 @@ result_t patterns_handle(wuss_window_t      *window,
         wuss_proginfo_window(bc->delegate);
     }
     wuss_menu_tick_item(&bc->menu, PATTERNS_MENU_PAUSE, bc->paused);
-    return wuss_menu_open(bc->delegate, &bc->menu,
-                          wuss_get_pointer(bc->wuss), &bc->menu_handle);
+    return wuss_menu_open_at_pointer(bc->delegate, &bc->menu,
+                                     &bc->menu_handle);
 
   case wuss_EVENT_KEY:
   {

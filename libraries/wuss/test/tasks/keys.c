@@ -198,8 +198,7 @@ static result_t keys_mouse(keys_task_t *kt, const wuss_event_t *event)
   else
     kt->menu_items[KEYS_MENU_CLEAR].flags |= wuss_MENU_ITEM_DISABLED;
 
-  return wuss_menu_open(kt->delegate, &kt->menu, wuss_get_pointer(kt->wuss),
-                        &kt->menu_handle);
+  return wuss_menu_open_at_pointer(kt->delegate, &kt->menu, &kt->menu_handle);
 }
 
 result_t keys_handle(wuss_window_t      *window,

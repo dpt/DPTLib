@@ -356,8 +356,8 @@ static result_t doughnut_mouse(doughnut_task_t    *task,
       wuss_menu_tick_exclusive(&task->tube_menu, task->tube);
       wuss_menu_tick_item(&task->menu, DOUGHNUT_MENU_PAUSE, task->paused);
 
-      return wuss_menu_open(task->delegate, &task->menu,
-                            wuss_get_pointer(task->wuss), &task->menu_handle);
+      return wuss_menu_open_at_pointer(task->delegate, &task->menu,
+                                       &task->menu_handle);
     }
 
     if (button & wuss_BUTTON_SELECT)

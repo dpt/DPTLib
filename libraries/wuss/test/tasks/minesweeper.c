@@ -818,8 +818,7 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
     else
       give_up->flags |= wuss_MENU_ITEM_DISABLED;
 
-    return wuss_menu_open(ms->task, &ms->menu,
-                          wuss_get_pointer(ms->wuss), &ms->menu_handle);
+    return wuss_menu_open_at_pointer(ms->task, &ms->menu, &ms->menu_handle);
   }
 
   c = (point.x - MS_BORDER) / MINESWEEPER_CELL;

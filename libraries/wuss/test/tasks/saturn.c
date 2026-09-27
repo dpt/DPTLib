@@ -411,9 +411,8 @@ static result_t saturn_mouse(saturn_task_t      *task,
 
     wuss_menu_tick_item(&task->menu, SATURN_MENU_ANIMATE, task->animate);
 
-    return wuss_menu_open(task->delegate, &task->menu,
-                          wuss_get_pointer(task->wuss),
-                          &task->menu_handle);
+    return wuss_menu_open_at_pointer(task->delegate, &task->menu,
+                                     &task->menu_handle);
   }
 
   /* the seed step is invertible, so Adjust walks back through the

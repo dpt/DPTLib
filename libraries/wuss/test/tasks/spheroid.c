@@ -1080,8 +1080,8 @@ static result_t spheroid_mouse(spheroid_task_t    *task,
     wuss_menu_tick_set(&task->light_menu, spheroid_light_ticks(task));
     wuss_menu_tick_exclusive(&task->dither_menu, (int) task->dithering);
 
-    return wuss_menu_open(task->delegate, &task->menu,
-                          wuss_get_pointer(task->wuss), &task->menu_handle);
+    return wuss_menu_open_at_pointer(task->delegate, &task->menu,
+                                     &task->menu_handle);
   }
 
   if (action == wuss_MOUSE_DOWN &&

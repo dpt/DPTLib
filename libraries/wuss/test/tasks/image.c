@@ -335,10 +335,7 @@ static result_t image_open_menu(image_task_t *ic)
   wuss_menu_destroy(ic->menu);
   ic->menu = m;
 
-  return wuss_menu_open(ic->delegate,
-                        ic->menu,
-                        wuss_get_pointer(ic->wuss),
-                       &ic->menu_handle);
+  return wuss_menu_open_at_pointer(ic->delegate, ic->menu, &ic->menu_handle);
 }
 
 result_t image_handle(wuss_window_t      *window,

@@ -227,6 +227,12 @@ result_t wuss_menu_open(wuss_task_t        *task,
                         point_t             at,
                         wuss_menu_handle_t *out);
 
+/** As wuss_menu_open, placed at the pointer -- the usual answer to a MENU
+ *  click. */
+result_t wuss_menu_open_at_pointer(wuss_task_t        *task,
+                                   const wuss_menu_t  *menu,
+                                   wuss_menu_handle_t *out);
+
 /** Close a menu chain and every window in it. Safe to pass a stale or NULL
  *  handle. */
 void wuss_menu_close(wuss_menu_handle_t handle);

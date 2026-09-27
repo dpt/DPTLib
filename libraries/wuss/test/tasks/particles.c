@@ -465,8 +465,8 @@ static result_t particles_mouse(wuss_window_t      *window,
     wuss_menu_tick_item(&pt->menu, PARTICLES_MENU_WALLS,
                         !!(pt->ps.flags & PARTICLE_FLAG_WALLS));
 
-    return wuss_menu_open(pt->delegate, &pt->menu,
-                          wuss_get_pointer(pt->wuss), &pt->menu_handle);
+    return wuss_menu_open_at_pointer(pt->delegate, &pt->menu,
+                                     &pt->menu_handle);
   }
 
   if (button & wuss_BUTTON_SELECT)

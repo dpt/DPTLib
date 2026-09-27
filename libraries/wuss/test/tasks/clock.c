@@ -309,8 +309,8 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
     wuss_menu_tick_item(&cc->menu, CLOCK_MENU_SECONDS, cc->show_second);
     wuss_menu_tick_item(&cc->menu, CLOCK_MENU_12_HOUR, cc->twelve_hour);
 
-    return wuss_menu_open(cc->delegate, &cc->menu,
-                          wuss_get_pointer(cc->wuss), &cc->menu_handle);
+    return wuss_menu_open_at_pointer(cc->delegate, &cc->menu,
+                                     &cc->menu_handle);
   }
 
   if (button & wuss_BUTTON_SELECT)

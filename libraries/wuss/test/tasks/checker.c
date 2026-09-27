@@ -356,8 +356,8 @@ result_t checker_handle(wuss_window_t      *window,
                                (window == cc->window2) ? cc->pattern2
                                                        : cc->pattern);
 
-      return wuss_menu_open(cc->delegate, &cc->menu,
-                            wuss_get_pointer(cc->wuss), &cc->menu_handle);
+      return wuss_menu_open_at_pointer(cc->delegate, &cc->menu,
+                                       &cc->menu_handle);
     }
     if (event->data.mouse.button & wuss_BUTTON_SELECT)
       return checker_mouse(window, +1, task_data);
