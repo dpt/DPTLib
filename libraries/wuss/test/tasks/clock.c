@@ -111,7 +111,7 @@ static result_t clock_create_window(wuss_t       *wuss,
   return wuss_window_create_placed(delegate,
                                    SIZE2D(160, 160),
                                    "Clock",
-                                   wuss_WINDOW_DEFAULT,
+                                   wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                    wuss_NO_BACKDROP,
                                    SIZE2D(160, 160),
                                    SIZE2D(0, 0),
@@ -368,6 +368,32 @@ static result_t clock_menu_select(clock_task_t       *cc,
   return result_OK;
 }
 
+/* D, S and H toggle Digital, Seconds and 12-hour, as their menu rows do.
+ * Anything else, or a key aimed at the proginfo dialogue, is passed back
+ * unclaimed. */
+static result_t clock_key(clock_task_t  *cc,
+                          wuss_window_t *window,
+                          int            code)
+{
+  bool *flag;
+
+  if (window != cc->window)
+    return result_WUSS_KEY_UNCLAIMED;
+
+  switch (code)
+  {
+  case 'D': case 'd': flag = &cc->digital;     break;
+  case 'S': case 's': flag = &cc->show_second; break;
+  case 'H': case 'h': flag = &cc->twelve_hour; break;
+  default:            return result_WUSS_KEY_UNCLAIMED;
+  }
+  *flag = !*flag;
+
+  wuss_window_invalidate_visible(window);
+
+  return result_OK;
+}
+
 /* The "Digital" row swaps between the analogue face and a text readout;
  * the "Seconds" row shows or hides the seconds, as a Select click does; the
  * "12-hour" row switches the readout between 24-hour and 12-hour AM/PM. An
@@ -415,6 +441,9 @@ result_t clock_handle(wuss_window_t      *window,
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     return clock_mouse(cc, event->data.mouse.button);
+
+  case wuss_EVENT_KEY:
+    return clock_key(cc, window, event->data.key.code);
 
   case wuss_EVENT_IDLE:
   {
