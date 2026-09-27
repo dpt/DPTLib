@@ -371,8 +371,7 @@ static result_t ball_menu_select(ball_task_t *bc, const wuss_event_t *event)
   if (picked < npalette)
   {
     bc->bg = palette[picked];
-    if (bc->window != NULL)
-      wuss_window_invalidate_visible(bc->window);
+    wuss_window_invalidate_visible(bc->window);
   }
 
   return result_OK;

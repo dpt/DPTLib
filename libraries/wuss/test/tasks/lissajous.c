@@ -188,8 +188,7 @@ static void lissajous_set_freq(lissajous_task_t *lc, int index)
   lc->freq_index = index;
   lc->a          = lissajous_freqs[index].a;
   lc->b          = lissajous_freqs[index].b;
-  if (lc->window != NULL)
-    wuss_window_invalidate_visible(lc->window); /* whole figure changes */
+  wuss_window_invalidate_visible(lc->window); /* whole figure changes */
 }
 
 static result_t lissajous_mouse(wuss_window_t      *window,
@@ -339,8 +338,7 @@ static result_t lissajous_menu_select(lissajous_task_t   *lc,
   if (picked < npalette)
   {
     *lc->colourmenu_target = palette[picked];
-    if (lc->window != NULL)
-      wuss_window_invalidate_visible(lc->window);
+    wuss_window_invalidate_visible(lc->window);
   }
 
   return result_OK;

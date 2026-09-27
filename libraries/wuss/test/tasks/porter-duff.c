@@ -529,8 +529,7 @@ static result_t porter_duff_toggle(porter_duff_task_t *pd,
     pd->src = pd->dst;
     pd->dst = t;
     flag    = &pd->swapped;
-    if (pd->window != NULL)
-      wuss_window_invalidate_visible(pd->window);
+    wuss_window_invalidate_visible(pd->window);
   }
   else
   {
@@ -554,8 +553,7 @@ static result_t porter_duff_pick_rule(porter_duff_task_t *pd,
 
   wuss_menu_tick_exclusive_live(pd->menu_handle, &pd->rule_menu, pd->rule);
 
-  if (pd->window != NULL)
-    wuss_window_invalidate_visible(pd->window);
+  wuss_window_invalidate_visible(pd->window);
 
   return result_OK;
 }

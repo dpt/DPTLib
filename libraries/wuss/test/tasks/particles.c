@@ -636,8 +636,7 @@ static result_t particles_toggle(particles_task_t   *pt,
 static void particles_clear(particles_task_t *pt)
 {
   reset_particle_system(&pt->ps);
-  if (pt->window != NULL)
-    wuss_window_invalidate_visible(pt->window);
+  wuss_window_invalidate_visible(pt->window);
 }
 
 result_t particles_handle(wuss_window_t      *window,

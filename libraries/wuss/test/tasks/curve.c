@@ -481,8 +481,7 @@ static result_t curve_menu_select(curve_task_t       *task,
     task->hull = !task->hull;
     wuss_menu_tick_item_live(task->menu_handle, &task->menu,
                              CURVE_MENU_HULL, task->hull);
-    if (task->window != NULL)
-      wuss_window_invalidate_visible(task->window);
+    wuss_window_invalidate_visible(task->window);
     return result_OK;
   }
 
@@ -490,8 +489,7 @@ static result_t curve_menu_select(curve_task_t       *task,
       event->data.menu_select.index == CURVE_MENU_RESET)
   {
     curve_reset_points(task);
-    if (task->window != NULL)
-      wuss_window_invalidate_visible(task->window);
+    wuss_window_invalidate_visible(task->window);
     return result_OK;
   }
 
@@ -505,8 +503,7 @@ static result_t curve_menu_select(curve_task_t       *task,
     task->npoints = CURVE_MINCONTROLPTS + event->data.menu_select.index;
     wuss_menu_tick_exclusive_live(task->menu_handle, &task->type_menu,
                                   event->data.menu_select.index);
-    if (task->window != NULL)
-      wuss_window_invalidate_visible(task->window);
+    wuss_window_invalidate_visible(task->window);
     return result_OK;
   }
 
@@ -518,8 +515,7 @@ static result_t curve_menu_select(curve_task_t       *task,
   if (picked < npalette)
   {
     task->bg = palette[picked];
-    if (task->window != NULL)
-      wuss_window_invalidate_visible(task->window);
+    wuss_window_invalidate_visible(task->window);
   }
 
   return result_OK;

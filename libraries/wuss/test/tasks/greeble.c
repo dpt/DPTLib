@@ -313,8 +313,7 @@ static result_t greeble_set_palette(greeble_task_t *task, int index)
 {
   task->palette = (unsigned char) index;
   greeble_generate(task);
-  if (task->window != NULL)
-    wuss_window_invalidate_extent(task->window);
+  wuss_window_invalidate_extent(task->window);
 
   return result_OK;
 }

@@ -754,8 +754,7 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
     sc->shape = (sofa_shape_t) event->data.menu_select.index;
     sc->turns = 0;
     wuss_menu_tick_exclusive_live(sc->menu_handle, &sc->model_menu, sc->shape);
-    if (sc->window != NULL)
-      wuss_window_invalidate_visible(sc->window);
+    wuss_window_invalidate_visible(sc->window);
     return result_OK;
   }
 
@@ -767,8 +766,7 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
   if (picked < npalette)
   {
     sc->bg = palette[picked];
-    if (sc->window != NULL)
-      wuss_window_invalidate_visible(sc->window);
+    wuss_window_invalidate_visible(sc->window);
   }
 
   return result_OK;
