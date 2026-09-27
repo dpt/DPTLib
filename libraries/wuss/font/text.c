@@ -111,7 +111,8 @@ bmfont_width_t wuss__shortcut_measure(const wuss_t *wuss, const char *label)
 {
   static const colour_t none = { 0 };
 
-  return shortcut_runs(wuss, NULL, label, none, none, NULL);
+  return shortcut_runs(wuss, NULL, label, none, none, NULL) +
+         2 * WUSS_SHORTCUT_BOX_PAD;
 }
 
 void wuss__shortcut_draw(const wuss_t  *wuss,
