@@ -31,14 +31,14 @@ sofa_shape_t;
 /* a wireframe sofa (seat, backrest, two arms), spaceship or Platonic solid,
  * spinning about its vertical axis; a Select click or Menu > Pause
  * pauses/resumes the spin, an Adjust click or Menu > Model changes the
- * model and Menu > Auto-cycle turns the automatic change of model after a
- * few turns on or off */
+ * model, Menu > Auto-cycle turns the automatic change of model after a few
+ * turns on or off and Menu > Save PNG writes sofa.png */
 typedef struct sofa_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[5]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[6]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
