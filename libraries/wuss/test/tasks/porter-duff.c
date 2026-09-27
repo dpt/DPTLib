@@ -17,6 +17,7 @@
 #include "io/path.h"
 
 #include "porter-duff.h"
+#include "common.h"
 #include "snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
@@ -579,12 +580,8 @@ result_t porter_duff_handle(wuss_window_t      *window,
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Porter-Duff",
-        "Animated Porter-Duff compositing demo",
-        "© DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Porter-Duff",
+                           "Animated Porter-Duff compositing demo");
 
       wuss_proginfo_set_desc(&desc);
       pd->menu_items[PORTER_DUFF_MENU_INFO].window =

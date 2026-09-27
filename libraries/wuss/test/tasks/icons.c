@@ -21,6 +21,7 @@
 #include "wuss/icon-spec.h"
 
 #include "icons.h"
+#include "common.h"
 
 /* MENU click pops this single-item menu; the item table and wuss_menu_t
  * live per-instance in icons_task_t, not as a file-scope static, so that
@@ -1038,12 +1039,7 @@ result_t icons_handle(wuss_window_t      *window,
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Icons",
-        "Work-area icons, every type",
-        "© DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Icons", "Work-area icons, every type");
       wuss_proginfo_set_desc(&desc);
       tcx->menu_items[ICONS_MENU_INFO].window =
         wuss_proginfo_window(tcx->delegate);

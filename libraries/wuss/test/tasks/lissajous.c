@@ -14,6 +14,7 @@
 #include "geom/box.h"
 
 #include "lissajous.h"
+#include "common.h"
 #include "snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
@@ -209,12 +210,7 @@ static result_t lissajous_mouse(wuss_window_t      *window,
   if (button & wuss_BUTTON_MENU)
   {
     static const wuss_proginfo_desc_t desc =
-    {
-      "Lissajous",
-      "Lissajous figure, drifting frequencies",
-      "© DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
+      TASK_PROGINFO_DESC("Lissajous", "Lissajous figure, drifting frequencies");
     wuss_proginfo_set_desc(&desc);
     lc->menu_items[LISSAJOUS_MENU_INFO].window =
       wuss_proginfo_window(lc->delegate);

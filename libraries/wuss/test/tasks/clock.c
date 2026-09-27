@@ -21,6 +21,7 @@
 #include "utils/fxp.h"
 
 #include "clock.h"
+#include "common.h"
 #include "snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
@@ -297,12 +298,7 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
   if (button & wuss_BUTTON_MENU)
   {
     static const wuss_proginfo_desc_t desc =
-    {
-      "Clock",
-      "Analogue or digital clock",
-      "© DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
+      TASK_PROGINFO_DESC("Clock", "Analogue or digital clock");
     wuss_proginfo_set_desc(&desc);
     cc->menu_items[CLOCK_MENU_INFO].window = wuss_proginfo_window(cc->delegate);
     wuss_menu_tick_item(&cc->menu, CLOCK_MENU_DIGITAL, cc->digital);

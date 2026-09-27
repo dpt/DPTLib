@@ -22,6 +22,7 @@
 #include "wuss/menu.h"
 
 #include "minesweeper.h"
+#include "common.h"
 
 #define MS_BORDER MINESWEEPER_CELL /* one grid unit all round */
 
@@ -796,12 +797,7 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
   if (button & wuss_BUTTON_MENU)
   {
     static const wuss_proginfo_desc_t desc =
-    {
-      "Minesweeper",
-      "Classic minesweeper",
-      "© DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
+      TASK_PROGINFO_DESC("Minesweeper", "Classic minesweeper");
 
     wuss_menu_item_t *give_up;
 

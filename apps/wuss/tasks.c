@@ -22,6 +22,7 @@
 #include "tasks/chars.h"
 #include "tasks/checker.h"
 #include "tasks/clock.h"
+#include "tasks/common.h"
 #include "tasks/config.h"
 #include "tasks/curve.h"
 #include "tasks/display.h"
@@ -475,12 +476,7 @@ result_t task_handle_event(wuss_window_t      *window,
 result_t tasks_open_launcher(point_t pos)
 {
   static const wuss_proginfo_desc_t desc =
-  {
-    "Wuss demo",
-    "Window manager test environment",
-    "© DPTLib contributors",
-    "1.0 (" __DATE__ ")"
-  };
+    TASK_PROGINFO_DESC("Wuss demo", "Window manager test environment");
 
   wuss_proginfo_set_desc(&desc);
   g_task_items[TASK_ITEM_INFO].window = wuss_proginfo_window(g_tasks.menu_task);

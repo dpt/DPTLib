@@ -23,6 +23,7 @@
 #include "wuss/menu.h"
 
 #include "text.h"
+#include "common.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -559,12 +560,8 @@ static result_t text_set_align(text_task_t *task, int idx)
 static result_t text_open_menu(text_task_t *task)
 {
   static const wuss_proginfo_desc_t desc =
-  {
-    "Text",
-    "Sample-text layout with font/colour/spacing pickers",
-    "© DPTLib contributors",
-    "1.0 (" __DATE__ ")"
-  };
+    TASK_PROGINFO_DESC("Text",
+                       "Sample-text layout with font/colour/spacing pickers");
 
   wuss_proginfo_set_desc(&desc);
   task->top_items[TEXT_MENU_INFO].window = wuss_proginfo_window(task->delegate);

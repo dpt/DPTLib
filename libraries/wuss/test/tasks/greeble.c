@@ -17,6 +17,7 @@
 #include "wuss/menu.h"
 
 #include "greeble.h"
+#include "common.h"
 #include "greeble-tiles.h"
 #include "snapshot.h"
 
@@ -435,12 +436,7 @@ result_t greeble_handle(wuss_window_t      *window,
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Greeble",
-        "Prefab-scatter greebling pattern",
-        "© DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Greeble", "Prefab-scatter greebling pattern");
       unsigned int ticks;
 
       wuss_proginfo_set_desc(&desc);
