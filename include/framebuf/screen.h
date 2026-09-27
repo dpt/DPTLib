@@ -419,6 +419,50 @@ void screen_fill_circle(screen_t *scr,
                         colour_t  colour);
 
 /**
+ * Draws a one-pixel unfilled rectangle outline with quarter-circle corners
+ * of radius `r` (integer midpoint algorithm, no anti-aliasing). `size` is
+ * inclusive of both edges, as `screen_draw_rect`. `r` is clamped so opposing
+ * corners never overlap: a radius of half the shorter side or more gives a
+ * pill (or a circle, for a square of odd size). A radius <= 0 draws a plain
+ * `screen_draw_rect`; a degenerate size (<= 1 in either axis) falls back to
+ * a filled `screen_fill_rect`. Clipped to the screen's clip region.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x       X coordinate of leftmost point of rectangle.
+ * \param[in] y       Y coordinate of topmost point of rectangle.
+ * \param[in] size    Width and height of rectangle.
+ * \param[in] r       Corner radius in pixels.
+ * \param[in] colour  Colour of the outline.
+ */
+void screen_draw_rounded_rect(screen_t *scr,
+                              int       x,
+                              int       y,
+                              size2d_t  size,
+                              int       r,
+                              colour_t  colour);
+
+/**
+ * Draws a solid rectangle with quarter-circle corners of radius `r`,
+ * covering exactly the pixels `screen_draw_rounded_rect` outlines and those
+ * inside them. `r` is clamped as there; a radius <= 0 draws a plain
+ * `screen_fill_rect`. An empty size draws nothing. Clipped to the screen's
+ * clip region.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x       X coordinate of leftmost point of rectangle.
+ * \param[in] y       Y coordinate of topmost point of rectangle.
+ * \param[in] size    Width and height of rectangle.
+ * \param[in] r       Corner radius in pixels.
+ * \param[in] colour  Colour of the rectangle.
+ */
+void screen_fill_rounded_rect(screen_t *scr,
+                              int       x,
+                              int       y,
+                              size2d_t  size,
+                              int       r,
+                              colour_t  colour);
+
+/**
  * Draws a stippled line: `on` pixels drawn, then `off` skipped, repeating
  * along the line. Bresenham stepping, so the dash period is measured in
  * steps not Euclidean distance. `on` <= 0 draws nothing; `off` <= 0 gives a
