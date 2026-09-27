@@ -27,7 +27,8 @@ enum
   CHECKER_MENU_INFO = 0,
   CHECKER_MENU_INK,
   CHECKER_MENU_PAPER,
-  CHECKER_MENU_PATTERN
+  CHECKER_MENU_PATTERN,
+  CHECKER_MENU_SWAP
 };
 
 /* Pattern submenu rows, in checker_pattern_t order */
@@ -125,6 +126,9 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CHECKER_MENU_PATTERN, "Pattern",
                       wuss_MENU_ITEM_NONE, &task->pattern_menu);
+
+  WUSS_MENU_ITEM(task->menu_items, CHECKER_MENU_SWAP, "Swap colours",
+                 wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Checker", task->menu_items,
                  NELEMS(task->menu_items));
@@ -254,6 +258,7 @@ static result_t checker_menu_select(checker_task_t     *cc,
   int             npalette;
   wuss_colour_t   picked;
   int             mine;
+  colour_t        tmp;
 
   if (event->data.menu_select.menu == &cc->pattern_menu)
   {
@@ -271,15 +276,26 @@ static result_t checker_menu_select(checker_task_t     *cc,
     return result_OK;
   }
 
-  picked = wuss_colourmenu_selected(event, &mine);
-  if (!mine || cc->colourmenu_target == NULL)
-    return result_OK;
+  if (event->data.menu_select.menu == &cc->menu &&
+      event->data.menu_select.index == CHECKER_MENU_SWAP)
+  {
+    tmp       = cc->black;
+    cc->black = cc->white;
+    cc->white = tmp;
+  }
+  else
+  {
+    picked = wuss_colourmenu_selected(event, &mine);
+    if (!mine || cc->colourmenu_target == NULL)
+      return result_OK;
 
-  palette = wuss_get_palette(cc->wuss, &npalette);
-  if (picked >= npalette)
-    return result_OK;
+    palette = wuss_get_palette(cc->wuss, &npalette);
+    if (picked >= npalette)
+      return result_OK;
 
-  *cc->colourmenu_target = palette[picked];
+    *cc->colourmenu_target = palette[picked];
+  }
+
   if (cc->window != NULL)
     wuss_window_invalidate_visible(cc->window);
   if (cc->window2 != NULL)
