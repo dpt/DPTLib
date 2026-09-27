@@ -312,6 +312,11 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
     cc->show_second = !cc->show_second;
     wuss_window_invalidate_visible(cc->window);
   }
+  else if (button & wuss_BUTTON_ADJUST)
+  {
+    cc->digital = !cc->digital;
+    wuss_window_invalidate_visible(cc->window);
+  }
 
   return result_OK;
 }
