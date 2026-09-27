@@ -429,7 +429,9 @@ result_t tagdb_add(tagdb_t *db, const unsigned char *name, tagdb_tag_t *ptag)
     return result_OK;
   }
   else if (err)
+  {
     return err;
+  }
 
   /* use up all the entries until we run out of space. when we run out then
    * go hunting for empty entries before extending the block. */

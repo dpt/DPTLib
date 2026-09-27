@@ -595,8 +595,10 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
       screen_fill_pattern(c->scr, &chip, &hatch);
     }
     else
+    {
       screen_fill_rect(c->scr, cx, cy, SIZE2D(h, h),
                        c->wuss->palette[icon->u.menu_entry.swatch]);
+    }
     screen_draw_rect(c->scr, cx, cy, SIZE2D(h, h), ink); /* 1px border */
   }
 
@@ -846,7 +848,9 @@ void wuss__icon_draw(wuss_t              *wuss,
 
   c.have_font = (c.font != NULL && spec->text[0] != '\0');
   if (c.have_font)
+  {
     bmfont_get_info(c.font, NULL, &c.font_height, &c.font_ascent, NULL);
+  }
   else
   {
     c.font_height = 0;

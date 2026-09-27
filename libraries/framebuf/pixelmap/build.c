@@ -89,7 +89,9 @@ int pixelmap__build_table(pixelmap_t     *pm,
 
         /* pack LSB-first: p8 is a plain byte store */
         if (pm->dest_log2bpp == 3)
+        {
           entries[idx] = (unsigned char) pal;
+        }
         else
         {
           unsigned int bit;

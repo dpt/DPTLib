@@ -120,7 +120,6 @@ NO STRONG DEPS (do any time)
 - Nested wimp type nesting
 - Automatic pane handling?
 - Stress test: moving windows in a circle a-la nested Wimp [worth it?]
-- formatting: Balanced braces rule
 
 
 NOTES
