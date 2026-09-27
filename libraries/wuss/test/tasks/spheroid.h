@@ -38,14 +38,15 @@ spheroid_light_t;
  * sharpness, and its level), and scales with it. Each lit light shows as a ring
  * marker (dotted when behind the sphere, filled when current). A Select click
  * on a marker makes that light current; anywhere else it moves the current
- * light there (turning it on), and dragging keeps moving it. Inside the disc
- * the light faces the surface under the pointer; the band just outside wraps it
- * round to the back. Menu > Light (or keys 1-4) picks the current light and
- * Light > On (or O) switches it. Light > Colour, Sphere colour and Background
- * pick from the palette. Mutate (M) nudges the sliders, the lit lights'
- * directions and the colours' hues; Randomise (^R) picks every setting afresh,
- * keeping at least one light on; Reset (R) restores the defaults; Save PNG (^S)
- * writes the sphere alone, transparent outside its edge. */
+ * light there (turning it on), and dragging keeps moving it. The arrow keys
+ * move it too, a pixel at a time (eight with Shift). Inside the disc the light
+ * faces the surface under the pointer; the band just outside wraps it round to
+ * the back. Menu > Light (or keys 1-4) picks the current light and Light > On
+ * (or O) switches it. Light > Colour, Sphere colour and Background pick from
+ * the palette. Mutate (M) nudges the sliders, the lit lights' directions and
+ * the colours' hues; Randomise (^R) picks every setting afresh, keeping at
+ * least one light on; Reset (R) restores the defaults; Save PNG (^S) writes the
+ * sphere alone, transparent outside its edge. */
 typedef struct spheroid_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
