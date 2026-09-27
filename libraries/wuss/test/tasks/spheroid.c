@@ -52,10 +52,14 @@
 enum
 {
   SPHEROID_MENU_INFO = 0,
-  SPHEROID_MENU_LIGHT
+  SPHEROID_MENU_LIGHT,
+  SPHEROID_MENU_SPHERE,
+  SPHEROID_MENU_BACKGROUND
 };
 
-#define SPHEROID_LIGHT_ON SPHEROID_NLIGHTS /* row after the per-light rows */
+/* Light submenu rows after the per-light ones */
+#define SPHEROID_LIGHT_ON     SPHEROID_NLIGHTS
+#define SPHEROID_LIGHT_COLOUR (SPHEROID_NLIGHTS + 1)
 
 /* control strip rows, top to bottom */
 enum
@@ -511,11 +515,20 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->light_items, SPHEROID_LIGHT_ON, "On",
                           wuss_MENU_ITEM_DASHED, "O");
 
+  WUSS_MENU_ITEM_MENU(task->light_items, SPHEROID_LIGHT_COLOUR, "Colour",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
   WUSS_MENU_TITLE(task->light_menu, "Light", task->light_items,
                   NELEMS(task->light_items));
 
   WUSS_MENU_ITEM_MENU(task->menu_items, SPHEROID_MENU_LIGHT, "Light",
                       wuss_MENU_ITEM_NONE, &task->light_menu);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, SPHEROID_MENU_SPHERE, "Sphere colour",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, SPHEROID_MENU_BACKGROUND, "Background",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
   WUSS_MENU_TITLE(task->menu, "Spheroid", task->menu_items,
                   NELEMS(task->menu_items));
@@ -722,15 +735,72 @@ static result_t spheroid_mouse(spheroid_task_t    *task,
   return result_OK;
 }
 
+/* The colour rows' submenu: the shared colourmenu singleton, retitled and
+ * aimed at the right field here rather than at create time since other tasks
+ * retitle it and toggle its None row too. */
+static result_t spheroid_pre_submenu_open(spheroid_task_t    *task,
+                                          const wuss_event_t *event)
+{
+  const wuss_menu_t *parent, *menu;
+  int                index;
+  const char        *title;
+
+  parent = wuss_menu_handle_menu(event->data.pre_submenu_open.handle);
+  index  = event->data.pre_submenu_open.index;
+
+  if (parent == &task->light_menu && index == SPHEROID_LIGHT_COLOUR)
+  {
+    task->colour_target = &task->lights[task->current].colour;
+    title               = "Light colour";
+  }
+  else if (parent == &task->menu && index == SPHEROID_MENU_SPHERE)
+  {
+    task->colour_target = &task->sphere;
+    title               = "Sphere colour";
+  }
+  else
+  {
+    task->colour_target = &task->background;
+    title               = "Background";
+  }
+
+  /* build first: set_title needs the singleton to exist */
+  menu = wuss_colourmenu_menu(task->wuss);
+  wuss_colourmenu_set_none(0);
+  wuss_colourmenu_set_title(title);
+
+  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
+                                    index, menu);
+}
+
 static result_t spheroid_menu_select(spheroid_task_t    *task,
                                      const wuss_event_t *event)
 {
-  int index;
+  const colour_t *palette;
+  int             npalette;
+  wuss_colour_t   picked;
+  int             mine;
+  int             index;
+
+  picked = wuss_colourmenu_selected(event, &mine);
+  if (mine)
+  {
+    palette = wuss_get_palette(task->wuss, &npalette);
+    if (task->colour_target != NULL && picked < npalette)
+    {
+      *task->colour_target = palette[picked];
+      spheroid_invalidate_preview(task);
+    }
+    return result_OK;
+  }
 
   if (event->data.menu_select.menu != &task->light_menu)
     return result_OK;
 
   index = event->data.menu_select.index;
+  if (index == SPHEROID_LIGHT_COLOUR)
+    return result_OK; /* a pick on the submenu row itself */
+
   if (index == SPHEROID_LIGHT_ON)
     task->lights[task->current].on = !task->lights[task->current].on;
   else
@@ -789,6 +859,9 @@ result_t spheroid_handle(wuss_window_t      *window,
     if (window != task->window)
       return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
     return wuss_menu_dispatch_shortcut(task->delegate, &task->menu, event);
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    return spheroid_pre_submenu_open(task, event);
 
   case wuss_EVENT_MENU_SELECT:
     return spheroid_menu_select(task, event);
