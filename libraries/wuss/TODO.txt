@@ -69,7 +69,6 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
 - Snap to edges (outline-click bug fixed; unblocked)
 - Dragging against window edge shuffles window in opposite direction
   (outline-click bug fixed; unblocked)
-- 2D Adjust window scroll drag
 - Furniture colour selection needs improvements (e.g. losing menu
   readability when palette changed)
 - Preferences for window opening positions (needs packer fix)

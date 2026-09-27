@@ -31,11 +31,14 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
       break;
 
     case wuss_FURNITURE_DRAG_VSCROLL_SAUSAGE:
-      wuss->furniture_ops->drag_sausage(win, y - wuss->furniture.drag.y, wuss->furniture.drag_scroll_start, 0);
-      break;
-
     case wuss_FURNITURE_DRAG_HSCROLL_SAUSAGE:
-      wuss->furniture_ops->drag_sausage(win, x - wuss->furniture.drag.x, wuss->furniture.drag_scroll_start, 1);
+      /* an Adjust drag moves the other axis too, where there's a bar for it */
+      if (wuss->furniture.drag_kind == wuss_FURNITURE_DRAG_VSCROLL_SAUSAGE ||
+          (wuss->furniture.drag_both && (win->flags & wuss_WINDOW_VSCROLL)))
+        wuss->furniture_ops->drag_sausage(win, y - wuss->furniture.drag.y, wuss->furniture.drag_scroll_start.y, 0);
+      if (wuss->furniture.drag_kind == wuss_FURNITURE_DRAG_HSCROLL_SAUSAGE ||
+          (wuss->furniture.drag_both && (win->flags & wuss_WINDOW_HSCROLL)))
+        wuss->furniture_ops->drag_sausage(win, x - wuss->furniture.drag.x, wuss->furniture.drag_scroll_start.x, 1);
       break;
 
     case wuss_FURNITURE_DRAG_MOVE:
