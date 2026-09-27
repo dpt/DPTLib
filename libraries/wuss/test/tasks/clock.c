@@ -167,12 +167,15 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
 
   WUSS_MENU_ITEM(task->menu_items, CLOCK_MENU_DIGITAL, "Digital",
                  wuss_MENU_ITEM_NONE);
+  task->menu_items[CLOCK_MENU_DIGITAL].shortcut = "D";
 
   WUSS_MENU_ITEM(task->menu_items, CLOCK_MENU_SECONDS, "Seconds",
                  wuss_MENU_ITEM_NONE);
+  task->menu_items[CLOCK_MENU_SECONDS].shortcut = "S";
 
   WUSS_MENU_ITEM(task->menu_items, CLOCK_MENU_12_HOUR, "12-hour",
                  wuss_MENU_ITEM_NONE);
+  task->menu_items[CLOCK_MENU_12_HOUR].shortcut = "H";
 
   WUSS_MENU_ITEM(task->menu_items, CLOCK_MENU_SAVE, "Save PNG",
                  wuss_MENU_ITEM_NONE);

@@ -276,6 +276,7 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
 
   WUSS_MENU_ITEM(task->menu_items, GRADIENT_MENU_RESET, "Reset",
                  wuss_MENU_ITEM_NONE);
+  task->menu_items[GRADIENT_MENU_RESET].shortcut = "R";
 
   for (i = 0; i < gradient_NSHAPES; i++)
     WUSS_MENU_ITEM(task->shape_items, i, gradient_shape_names[i],

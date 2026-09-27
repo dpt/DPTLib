@@ -183,9 +183,11 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
 
   WUSS_MENU_ITEM(task->menu_items, CURVE_MENU_HULL, "Hull",
                  wuss_MENU_ITEM_NONE);
+  task->menu_items[CURVE_MENU_HULL].shortcut = "H";
 
   WUSS_MENU_ITEM(task->menu_items, CURVE_MENU_RESET, "Reset points",
                  wuss_MENU_ITEM_NONE);
+  task->menu_items[CURVE_MENU_RESET].shortcut = "R";
 
   WUSS_MENU_ITEM(task->menu_items, CURVE_MENU_SAVE, "Save PNG",
                  wuss_MENU_ITEM_NONE);
