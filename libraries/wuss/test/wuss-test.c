@@ -6501,6 +6501,59 @@ PwFail:
       rc = result_TEST_FAILED;
     }
     wuss_menu_close(sroot);
+    if (rc != result_OK) goto ScDestroy;
+
+    /* dispatch: labels match ignoring case, '^' needs Ctrl, Alt never
+     * matches, a disabled row is skipped */
+    {
+      static const struct
+      {
+        const char            *label;
+        int                    code;
+        wuss_key_modifiers_t   modifiers;
+        wuss_menu_item_flags_t flags;
+        int                    want;
+      }
+      cases[] =
+      {
+        { "S",     's',             wuss_KEY_MOD_NONE,  wuss_MENU_ITEM_NONE,     1 },
+        { "S",     'S',             wuss_KEY_MOD_SHIFT, wuss_MENU_ITEM_NONE,     1 },
+        { "S",     's',             wuss_KEY_MOD_CTRL,  wuss_MENU_ITEM_NONE,     0 },
+        { "^S",    's',             wuss_KEY_MOD_CTRL,  wuss_MENU_ITEM_NONE,     1 },
+        { "^S",    's',             wuss_KEY_MOD_NONE,  wuss_MENU_ITEM_NONE,     0 },
+        { "S",     's',             wuss_KEY_MOD_ALT,   wuss_MENU_ITEM_NONE,     0 },
+        { "SPACE", ' ',             wuss_KEY_MOD_NONE,  wuss_MENU_ITEM_NONE,     1 },
+        { "F3",    wuss_KEY_F1 + 2, wuss_KEY_MOD_NONE,  wuss_MENU_ITEM_NONE,     1 },
+        { "F3",    'F',             wuss_KEY_MOD_NONE,  wuss_MENU_ITEM_NONE,     0 },
+        { "S",     's',             wuss_KEY_MOD_NONE,  wuss_MENU_ITEM_DISABLED, 0 },
+      };
+
+      result_t     drc;
+      wuss_event_t key;
+      int          i;
+
+      key.kind = wuss_EVENT_KEY;
+      for (i = 0; i < (int) NELEMS(cases); i++)
+      {
+        sc_items[0].shortcut   = cases[i].label;
+        sc_items[0].flags      = cases[i].flags;
+        key.data.key.code      = cases[i].code;
+        key.data.key.modifiers = cases[i].modifiers;
+        stc.menu_select_count  = 0;
+        stc.last_menu_index    = -1;
+
+        drc = wuss_menu_dispatch_shortcut(sowner, &sc_menu, &key);
+        if ((drc == result_OK) != cases[i].want ||
+            stc.menu_select_count != cases[i].want ||
+            (cases[i].want && stc.last_menu_index != 0))
+        {
+          printf("wuss_test: dispatch case %d (\"%s\") rc %x selects %d, "
+                 "want %d\n", i, cases[i].label, (unsigned) drc,
+                 stc.menu_select_count, cases[i].want);
+          rc = result_TEST_FAILED;
+        }
+      }
+    }
 
 ScDestroy:
     reap_test_tasks();

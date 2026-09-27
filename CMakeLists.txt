@@ -484,6 +484,7 @@ set(WUSS_ICON_SOURCES
 
 set(WUSS_MENU_SOURCES
     libraries/wuss/menu/menu.c
+    libraries/wuss/menu/shortcut.c
     libraries/wuss/helpers/create-from-desc.c
     libraries/wuss/menu.h)
 
