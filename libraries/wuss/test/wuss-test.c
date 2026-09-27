@@ -5483,6 +5483,8 @@ result_t wuss_test(const char *resources)
     if (!(sub->items[1].flags & wuss_MENU_ITEM_DISABLED)) goto MenuFail;
     if (strcmp(sub->items[2].text, "Quit") != 0)          goto MenuFail;
     if (!(sub->items[2].flags & wuss_MENU_ITEM_DASHED))   goto MenuFail;
+    if (sub->items[2].shortcut != NULL)                   goto MenuFail;
+    if (sub->items[2].window != NULL)                     goto MenuFail;
 
     /* items[2] "Help" got a deep copy of the borrowed menu */
     if (strcmp(m->items[2].text, "Help") != 0)            goto MenuFail;
