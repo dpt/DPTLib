@@ -1117,8 +1117,8 @@ static result_t spheroid_mouse(spheroid_task_t    *task,
   return result_OK;
 }
 
-/* an arrow key: move the current light's marker, turning the light on, as a
- * drag would */
+/* O switches the current light, as its On option does; an arrow key moves
+ * its marker, turning the light on, as a drag would */
 static result_t spheroid_key(spheroid_task_t    *task,
                              const wuss_event_t *event)
 {
@@ -1130,6 +1130,15 @@ static result_t spheroid_key(spheroid_task_t    *task,
 
   if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
     return result_WUSS_KEY_UNCLAIMED;
+
+  if (event->data.key.code == 'O' || event->data.key.code == 'o')
+  {
+    task->lights[task->current].on = !task->lights[task->current].on;
+    wuss_icon_set_selected(task->window, task->on_icon,
+                           task->lights[task->current].on);
+    spheroid_invalidate_preview(task);
+    return result_OK;
+  }
 
   wuss_window_get_content_bounds(task->window, &content);
   spheroid_layout(box_size(&content), &cx, &cy, &r);
