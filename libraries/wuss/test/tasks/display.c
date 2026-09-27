@@ -96,6 +96,7 @@ static const char *const g_display_depth_labels[NELEMS(g_display_depths)] =
 /* fixed set of resolutions the Resolution picker offers; rejected likewise */
 static const size2d_t g_display_resolutions[] =
 {
+  { 480,  360  },
   { 640,  480  },
   { 800,  600  },
   { 1024, 768  },
@@ -109,6 +110,7 @@ static const size2d_t g_display_resolutions[] =
 /* borrowed likewise, paired 1:1 with g_display_resolutions */
 static const char *const g_display_resolution_labels[NELEMS(g_display_resolutions)] =
 {
+  "480 x 360",
   "640 x 480",
   "800 x 600",
   "1024 x 768",
