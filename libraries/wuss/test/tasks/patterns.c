@@ -217,22 +217,14 @@ static result_t patterns_skip(patterns_task_t *bc)
   return result_OK;
 }
 
-/* Space pauses/resumes, as Menu > Pause does; Right skips to the next blend,
- * as Select does. Anything else, or a key aimed at the proginfo dialogue, is
- * passed back unclaimed. */
+/* Right skips to the next blend, as Select does. Anything else is passed
+ * back unclaimed. */
 static result_t patterns_key(patterns_task_t *bc,
                              wuss_window_t   *window,
                              int              code)
 {
-  if (window != bc->window)
-    return result_WUSS_KEY_UNCLAIMED;
-
   switch (code)
   {
-  case ' ':
-    bc->paused = !bc->paused;
-    return result_OK;
-
   case wuss_KEY_RIGHT:
     return patterns_skip(bc);
 
@@ -334,12 +326,20 @@ result_t patterns_handle(wuss_window_t      *window,
                           wuss_get_pointer(bc->wuss), &bc->menu_handle);
 
   case wuss_EVENT_KEY:
-    if (window == bc->window && snapshot_is_save_key(event))
-      return snapshot_save_png(bc->window, patterns_handle, bc,
-                               PATTERNS_SAVE_NAME);
+  {
+    result_t rc;
+
+    if (window != bc->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    rc = wuss_menu_dispatch_shortcut(bc->delegate, &bc->menu, event);
+    if (rc != result_WUSS_KEY_UNCLAIMED)
+      return rc;
+
     if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
       return result_WUSS_KEY_UNCLAIMED;
     return patterns_key(bc, window, event->data.key.code);
+  }
 
   case wuss_EVENT_MENU_SELECT:
     {

@@ -505,16 +505,12 @@ static result_t gradient_menu_select(gradient_task_t    *gc,
   return result_OK;
 }
 
-/* S steps the shape and D the dither matrix forward; R resets, as Menu >
- * Reset does. The arrow keys are left unclaimed for scrolling, as is
- * anything else or a key aimed at the proginfo dialogue. */
+/* S steps the shape and D the dither matrix forward. The arrow keys are
+ * left unclaimed for scrolling, as is anything else. */
 static result_t gradient_key(gradient_task_t *gc,
                              wuss_window_t   *window,
                              int              code)
 {
-  if (window != gc->window)
-    return result_WUSS_KEY_UNCLAIMED;
-
   switch (code)
   {
   case 'S':
@@ -527,11 +523,6 @@ static result_t gradient_key(gradient_task_t *gc,
     gc->dither_index = (gc->dither_index + 1) %
                        (int) NELEMS(gradient_dithers);
     break;
-
-  case 'R':
-  case 'r':
-    gradient_reset(gc);
-    return result_OK;
 
   default:
     return result_WUSS_KEY_UNCLAIMED;
@@ -562,12 +553,20 @@ result_t gradient_handle(wuss_window_t      *window,
     return gradient_mouse(event, task_data);
 
   case wuss_EVENT_KEY:
-    if (window == gc->window && snapshot_is_save_key(event))
-      return snapshot_save_png(gc->window, gradient_handle, gc,
-                               GRADIENT_SAVE_NAME);
+  {
+    result_t rc;
+
+    if (window != gc->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    rc = wuss_menu_dispatch_shortcut(gc->delegate, &gc->menu, event);
+    if (rc != result_WUSS_KEY_UNCLAIMED)
+      return rc;
+
     if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
       return result_WUSS_KEY_UNCLAIMED;
     return gradient_key(gc, window, event->data.key.code);
+  }
 
   case wuss_EVENT_MENU_SELECT:
     return gradient_menu_select(gc, event);

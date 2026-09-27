@@ -617,9 +617,9 @@ result_t chars_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_KEY:
-    if (window == cc->window && snapshot_is_save_key(event))
-      return snapshot_save_png(cc->window, chars_handle, cc, CHARS_SAVE_NAME);
-    return result_WUSS_KEY_UNCLAIMED;
+    if (window != cc->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+    return wuss_menu_dispatch_shortcut(cc->delegate, &cc->menu, event);
 
   case wuss_EVENT_REDRAW:
     return chars_redraw(event, task_data);

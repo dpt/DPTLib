@@ -420,16 +420,11 @@ static result_t curve_scroll(curve_task_t  *task,
 }
 
 /* Left/Right step the curve type back/forward; Up/Down add/remove a
- * segment, as the wheel does; H toggles the hull and R resets the points,
- * as their menu rows do. Anything else, or a key aimed at the proginfo
- * dialogue, is passed back unclaimed. */
+ * segment, as the wheel does. Anything else is passed back unclaimed. */
 static result_t curve_key(curve_task_t  *task,
                           wuss_window_t *window,
                           int            code)
 {
-  if (window != task->window)
-    return result_WUSS_KEY_UNCLAIMED;
-
   switch (code)
   {
   case wuss_KEY_UP:   return curve_scroll(task, +1, window);
@@ -443,16 +438,6 @@ static result_t curve_key(curve_task_t  *task,
   case wuss_KEY_RIGHT:
     task->npoints = (task->npoints - CURVE_MINCONTROLPTS + 1) %
                     CURVE_NKINDS + CURVE_MINCONTROLPTS;
-    break;
-
-  case 'H':
-  case 'h':
-    task->hull = !task->hull;
-    break;
-
-  case 'R':
-  case 'r':
-    curve_reset_points(task);
     break;
 
   default:
@@ -566,12 +551,20 @@ result_t curve_handle(wuss_window_t      *window,
     return curve_scroll(task, event->data.scroll.delta, window);
 
   case wuss_EVENT_KEY:
-    if (window == task->window && snapshot_is_save_key(event))
-      return snapshot_save_png(task->window, curve_handle, task,
-                               CURVE_SAVE_NAME);
+  {
+    result_t rc;
+
+    if (window != task->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    rc = wuss_menu_dispatch_shortcut(task->delegate, &task->menu, event);
+    if (rc != result_WUSS_KEY_UNCLAIMED)
+      return rc;
+
     if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
       return result_WUSS_KEY_UNCLAIMED;
     return curve_key(task, window, event->data.key.code);
+  }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return curve_pre_submenu_open(task, event);

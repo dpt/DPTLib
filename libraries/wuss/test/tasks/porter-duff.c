@@ -493,22 +493,14 @@ static result_t porter_duff_scroll(wuss_window_t *window,
   return result_OK;
 }
 
-/* Space pauses/resumes, as Menu > Pause does; Left/Right step to the
- * previous/next rule, as Adjust and Select clicks do. Anything else, or a key
- * aimed at the proginfo dialogue, is passed back unclaimed. */
+/* Left/Right step to the previous/next rule, as Adjust and Select clicks
+ * do. Anything else is passed back unclaimed. */
 static result_t porter_duff_key(porter_duff_task_t *pd,
                                 wuss_window_t      *window,
                                 int                 code)
 {
-  if (window != pd->window)
-    return result_WUSS_KEY_UNCLAIMED;
-
   switch (code)
   {
-  case ' ':
-    pd->paused = !pd->paused;
-    return result_OK;
-
   case wuss_KEY_LEFT:  return porter_duff_mouse(window, -1, pd);
   case wuss_KEY_RIGHT: return porter_duff_mouse(window, +1, pd);
   default:             return result_WUSS_KEY_UNCLAIMED;
@@ -619,12 +611,20 @@ result_t porter_duff_handle(wuss_window_t      *window,
     return porter_duff_scroll(window, event->data.scroll.delta, task_data);
 
   case wuss_EVENT_KEY:
-    if (window == pd->window && snapshot_is_save_key(event))
-      return snapshot_save_png(pd->window, porter_duff_handle, pd,
-                               PORTER_DUFF_SAVE_NAME);
+  {
+    result_t rc;
+
+    if (window != pd->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    rc = wuss_menu_dispatch_shortcut(pd->delegate, &pd->menu, event);
+    if (rc != result_WUSS_KEY_UNCLAIMED)
+      return rc;
+
     if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
       return result_WUSS_KEY_UNCLAIMED;
     return porter_duff_key(pd, window, event->data.key.code);
+  }
 
   case wuss_EVENT_IDLE:
     return porter_duff_idle(task_data);

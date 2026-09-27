@@ -320,15 +320,11 @@ static result_t greeble_adjust(greeble_task_t *task)
 }
 
 /* Space reseeds, as Select does; Left/Right step the base palette back and
- * forward; R toggles random palettes. Anything else, or a key aimed at the
- * proginfo dialogue, is passed back unclaimed. */
+ * forward. Anything else is passed back unclaimed. */
 static result_t greeble_key(greeble_task_t *task,
                             wuss_window_t  *window,
                             int             code)
 {
-  if (window != task->window)
-    return result_WUSS_KEY_UNCLAIMED;
-
   switch (code)
   {
   case ' ':
@@ -340,10 +336,6 @@ static result_t greeble_key(greeble_task_t *task,
 
   case wuss_KEY_RIGHT:
     return greeble_adjust(task);
-
-  case 'R':
-  case 'r':
-    return greeble_toggle_randpal(task, window);
 
   default:
     return result_WUSS_KEY_UNCLAIMED;
@@ -445,12 +437,20 @@ result_t greeble_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_KEY:
-    if (window == task->window && snapshot_is_save_key(event))
-      return snapshot_save_png(task->window, greeble_handle, task,
-                               GREEBLE_SAVE_NAME);
+  {
+    result_t rc;
+
+    if (window != task->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    rc = wuss_menu_dispatch_shortcut(task->delegate, &task->menu, event);
+    if (rc != result_WUSS_KEY_UNCLAIMED)
+      return rc;
+
     if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
       return result_WUSS_KEY_UNCLAIMED;
     return greeble_key(task, window, event->data.key.code);
+  }
 
   case wuss_EVENT_MENU_SELECT:
     return greeble_menu_select(task, event);
