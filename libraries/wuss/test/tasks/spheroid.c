@@ -1124,6 +1124,7 @@ static result_t spheroid_pre_submenu_open(spheroid_task_t    *task,
   menu = wuss_colourmenu_menu(task->wuss);
   wuss_colourmenu_set_none(0);
   wuss_colourmenu_set_title(title);
+  wuss_colourmenu_set_ticked_rgb(*task->colour_target);
 
   return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
                                     index, menu);

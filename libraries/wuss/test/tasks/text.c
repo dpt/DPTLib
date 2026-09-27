@@ -614,6 +614,7 @@ static result_t text_pre_submenu_open(text_task_t        *task,
     wuss_colourmenu_set_none(1);
     wuss_colourmenu_set_title("Background");
   }
+  wuss_colourmenu_set_ticked(*task->colourmenu_target);
 
   return wuss_menu_open_submenu_now(handle, index,
                                     wuss_colourmenu_menu(task->wuss));

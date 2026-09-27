@@ -490,6 +490,7 @@ static result_t particles_pre_submenu_open(particles_task_t   *pt,
   menu = wuss_colourmenu_menu(pt->wuss);
   wuss_colourmenu_set_none(0);
   wuss_colourmenu_set_title("Background");
+  wuss_colourmenu_set_ticked_rgb(pt->bg);
 
   return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
                                     event->data.pre_submenu_open.index,

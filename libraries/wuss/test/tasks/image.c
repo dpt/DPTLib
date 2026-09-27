@@ -309,6 +309,7 @@ static result_t image_open_menu(image_task_t *ic)
       it->submenu = wuss_colourmenu_menu(ic->wuss);
       it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
       wuss_colourmenu_set_title("Background"); /* needs it built first */
+      wuss_colourmenu_set_ticked(ic->background);
       break;
     }
 

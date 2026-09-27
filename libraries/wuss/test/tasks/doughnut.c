@@ -456,6 +456,7 @@ static result_t doughnut_pre_submenu_open(doughnut_task_t    *task,
   menu = wuss_colourmenu_menu(task->wuss);
   wuss_colourmenu_set_none(0);
   wuss_colourmenu_set_title("Background");
+  wuss_colourmenu_set_ticked_rgb(task->palette[0]);
 
   return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
                                     event->data.pre_submenu_open.index,

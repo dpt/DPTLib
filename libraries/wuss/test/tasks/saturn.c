@@ -816,6 +816,7 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
     task->colourmenu_target = &task->bg;
     wuss_colourmenu_set_title("Background");
   }
+  wuss_colourmenu_set_ticked_rgb(*task->colourmenu_target);
 
   return wuss_menu_open_submenu_now(handle, index, menu);
 }

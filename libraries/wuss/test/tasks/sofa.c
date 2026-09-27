@@ -710,6 +710,7 @@ static result_t sofa_pre_submenu_open(sofa_task_t        *sc,
   menu = wuss_colourmenu_menu(sc->wuss);
   wuss_colourmenu_set_none(0);
   wuss_colourmenu_set_title("Background");
+  wuss_colourmenu_set_ticked_rgb(sc->bg);
 
   return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
                                     event->data.pre_submenu_open.index,
