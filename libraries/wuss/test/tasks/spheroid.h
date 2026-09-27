@@ -18,30 +18,33 @@
 
 /* one of the fixed lights: a unit direction from the sphere's centre (x
  * right, y up, z towards the viewer; negative z is behind the sphere), a
- * colour and an intensity in percent (100 = the colour as-is) */
+ * colour, an intensity in percent (100 = the colour as-is) and the size and
+ * sharpness of the highlight it makes */
 typedef struct spheroid_light
 {
   int      on;
   double   x, y, z;
   colour_t colour;
   int      intensity;
+  int      size;      /* 0..100: highlight size */
+  int      sharpness; /* 0..100: highlight edge hardness */
 }
 spheroid_light_t;
 
-/* window task: a single sphere, shaded per pixel by up to four coloured
- * lights, in the spirit of Kai's Power Tools' Spheroid Designer. The sphere
- * fills the window right of a fixed control strip of sliders, framed in two
- * groups: Sphere (ambient, glow, highlight size and sharpness) and the
- * current light's (its level), and scales with it. Each lit light shows as a ring marker
- * (dotted when behind the sphere, filled when current). A Select click on a
- * marker makes that light current; anywhere else it moves the current light
- * there (turning it on), and dragging keeps moving it. Inside the disc the
- * light faces the surface under the pointer; the band just outside wraps it
+/* window task: a single sphere, shaded per pixel by up to four coloured lights,
+ * in the spirit of Kai's Power Tools' Spheroid Designer. The sphere fills the
+ * window right of a fixed control strip of sliders, framed in two groups:
+ * Sphere (ambient and glow) and the current light's (its highlight size and
+ * sharpness, and its level), and scales with it. Each lit light shows as a ring
+ * marker (dotted when behind the sphere, filled when current). A Select click
+ * on a marker makes that light current; anywhere else it moves the current
+ * light there (turning it on), and dragging keeps moving it. Inside the disc
+ * the light faces the surface under the pointer; the band just outside wraps it
  * round to the back. Menu > Light (or keys 1-4) picks the current light and
- * Light > On (or O) switches it. Light > Colour, Sphere colour and
- * Background pick from the palette. Mutate (M) nudges the sliders, the lit
- * lights' directions and the colours' hues; Reset (R) restores the defaults;
- * Save PNG (^S) writes the sphere alone, transparent outside its edge. */
+ * Light > On (or O) switches it. Light > Colour, Sphere colour and Background
+ * pick from the palette. Mutate (M) nudges the sliders, the lit lights'
+ * directions and the colours' hues; Reset (R) restores the defaults; Save PNG
+ * (^S) writes the sphere alone, transparent outside its edge. */
 typedef struct spheroid_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
@@ -64,8 +67,6 @@ typedef struct spheroid_task
   colour_t           background; /* colour outside the sphere */
   int                ambient;    /* 0..100 */
   int                glow;       /* 0..100: rim light in the surface colour */
-  int                size;       /* 0..100: highlight size */
-  int                sharpness;  /* 0..100: highlight edge hardness */
   wuss_slider_row_t  rows[SPHEROID_NROWS];
   wuss_icon_t       *light_frame; /* captioned with the current light */
   rng_t              rng;        /* for Mutate */
