@@ -41,7 +41,10 @@ result_t wuss__text_draw(bmfont_t      *font,
 
 /* Walk "label" as runs: each WUSS_MENU_SHIFT (from the symbol font, when
  * there is one) and the text between them (from the bold weight). Measures
- * the whole label, and draws it too when "scr" is non-NULL. */
+ * the whole label, and draws it too when "scr" is non-NULL. Adjacent runs in
+ * different fonts are held "run_gap" pixels apart: a font's spacing
+ * only guarantees separation from its own glyphs, so a symbol whose ink
+ * fills its advance would otherwise touch the next letter. */
 static bmfont_width_t shortcut_runs(const wuss_t  *wuss,
                                     screen_t      *scr,
                                     const char    *label,
@@ -50,15 +53,18 @@ static bmfont_width_t shortcut_runs(const wuss_t  *wuss,
                                     const point_t *pos)
 {
   static const int glyph_len = sizeof(WUSS_MENU_SHIFT) - 1;
+  static const int run_gap   = 1;
 
   bmfont_t      *bold;
   bmfont_t      *symbol;
+  bmfont_t      *prev;
   bmfont_width_t total;
   point_t        at;
   const char    *run;
 
   bold   = wuss__bold_font(wuss);
   symbol = wuss->fonts.fonts[WUSS_SYMBOL_FONT];
+  prev   = NULL;
   total  = 0;
   at.x   = (pos != NULL) ? pos->x : 0;
   at.y   = (pos != NULL) ? pos->y : 0;
@@ -81,6 +87,13 @@ static bmfont_width_t shortcut_runs(const wuss_t  *wuss,
       font = bold;
       len  = (glyph != NULL) ? (int) (glyph - run) : (int) strlen(run);
     }
+
+    if (prev != NULL && prev != font)
+    {
+      at.x  += run_gap;
+      total += run_gap;
+    }
+    prev = font;
 
     w = 0;
     wuss__text_measure(font, run, len, INT_MAX, NULL, &w);
