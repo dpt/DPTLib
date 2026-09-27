@@ -65,6 +65,7 @@ enum
   SPHEROID_MENU_SPHERE,
   SPHEROID_MENU_BACKGROUND,
   SPHEROID_MENU_MUTATE,
+  SPHEROID_MENU_RANDOMISE,
   SPHEROID_MENU_RESET,
   SPHEROID_MENU_SAVE
 };
@@ -622,6 +623,9 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SPHEROID_MENU_MUTATE, "Mutate",
                           wuss_MENU_ITEM_DASHED, "M");
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SPHEROID_MENU_RANDOMISE,
+                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
+
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SPHEROID_MENU_RESET, "Reset",
                           wuss_MENU_ITEM_NONE, "R");
 
@@ -804,6 +808,61 @@ static void spheroid_mutate(spheroid_task_t *task)
   }
 
   spheroid_turn_hue(&task->sphere, &task->rng);
+}
+
+/* a colour with each channel picked at random */
+static colour_t spheroid_random_colour(rng_t *rng)
+{
+  unsigned int r, g, b;
+
+  r = (unsigned int) rng_range(rng, 256);
+  g = (unsigned int) rng_range(rng, 256);
+  b = (unsigned int) rng_range(rng, 256);
+
+  return colour_rgb(r, g, b);
+}
+
+/* pick every setting afresh: sliders across their full ranges, which lights
+ * are on (at least one), their directions and every colour */
+static void spheroid_randomise(spheroid_task_t *task)
+{
+  int               row, i, lit;
+  spheroid_light_t *light;
+  double            x, y, z;
+
+  for (row = 0; row < SPHEROID_ROW_SIZE; row++)
+    *spheroid_field(task, row, 0) = rng_range(&task->rng,
+                                              spheroid_rows[row].max + 1);
+
+  lit = 0;
+  for (i = 0; i < SPHEROID_NLIGHTS; i++)
+  {
+    light = &task->lights[i];
+
+    for (row = SPHEROID_ROW_SIZE; row < SPHEROID_NROWS; row++)
+      *spheroid_field(task, row, i) = rng_range(&task->rng,
+                                                spheroid_rows[row].max + 1);
+
+    /* a point in the unit ball, away from the centre, gives a direction
+     * spread evenly over the sphere */
+    do
+    {
+      x = spheroid_jitter(&task->rng);
+      y = spheroid_jitter(&task->rng);
+      z = spheroid_jitter(&task->rng);
+    }
+    while (x * x + y * y + z * z > 1.0 || x * x + y * y + z * z < 0.01);
+
+    spheroid_set_light(light, rng_range(&task->rng, 2), x, y, z,
+                       spheroid_random_colour(&task->rng), light->intensity);
+    lit |= light->on;
+  }
+
+  if (!lit)
+    task->lights[rng_range(&task->rng, SPHEROID_NLIGHTS)].on = 1;
+
+  task->sphere     = spheroid_random_colour(&task->rng);
+  task->background = spheroid_random_colour(&task->rng);
 }
 
 /* write the sphere alone, sized to its current diameter, as an RGBA PNG:
@@ -1041,6 +1100,10 @@ static result_t spheroid_menu_select(spheroid_task_t    *task,
     {
     case SPHEROID_MENU_MUTATE:
       spheroid_mutate(task);
+      break;
+
+    case SPHEROID_MENU_RANDOMISE:
+      spheroid_randomise(task);
       break;
 
     case SPHEROID_MENU_RESET:
