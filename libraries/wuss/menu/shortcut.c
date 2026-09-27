@@ -22,14 +22,19 @@ static int fold(int c)
   return (c >= 'a' && c <= 'z') ? c - 'a' + 'A' : c;
 }
 
-/* The key code "name" (a label with any '^' prefix removed) stands for:
- * a single character, "SPACE" or "F1".."F12". -1 for anything else. */
-static int shortcut_code(const char *name)
+/* The key code "name" (a label with any '^' and shift prefix removed) stands
+ * for: a single character, "SPACE" or "F1".."F12". -1 for anything else.
+ * "*named" is set for SPACE and Fn, whose Shift state matters. */
+static int shortcut_code(const char *name, int *named)
 {
   int n;
 
+  *named = 0;
+
   if (name[0] != '\0' && name[1] == '\0')
     return fold((unsigned char) name[0]);
+
+  *named = 1;
 
   if (strcmp(name, "SPACE") == 0)
     return ' ';
@@ -45,22 +50,41 @@ static int shortcut_code(const char *name)
 }
 
 /* Whether "label" names the key in "key". A '^' prefix requires Ctrl, no
- * prefix forbids it; Alt never matches; Shift is ignored. */
+ * prefix forbids it; Alt never matches. A following WUSS_MENU_SHIFT requires
+ * Shift; without it Shift is forbidden for SPACE and Fn but ignored for a
+ * single character (whose case already carries it). */
 static int shortcut_matches(const char *label, const wuss_event_t *key)
 {
-  int want_ctrl;
-  int code;
+  static const size_t glyph_len = sizeof(WUSS_MENU_SHIFT) - 1;
 
-  if (key->data.key.modifiers & wuss_KEY_MOD_ALT)
+  wuss_key_modifiers_t mods;
+  int                  want_ctrl;
+  int                  want_shift;
+  int                  named;
+  int                  code;
+
+  mods = key->data.key.modifiers;
+  if (mods & wuss_KEY_MOD_ALT)
     return 0;
 
   want_ctrl = (label[0] == '^');
-  if (want_ctrl != ((key->data.key.modifiers & wuss_KEY_MOD_CTRL) != 0))
+  if (want_ctrl != ((mods & wuss_KEY_MOD_CTRL) != 0))
     return 0;
 
-  code = shortcut_code(label + want_ctrl);
+  label += want_ctrl;
 
-  return code >= 0 && code == fold(key->data.key.code);
+  want_shift = (strncmp(label, WUSS_MENU_SHIFT, glyph_len) == 0);
+  if (want_shift)
+    label += glyph_len;
+
+  code = shortcut_code(label, &named);
+  if (code < 0 || code != fold(key->data.key.code))
+    return 0;
+
+  if (want_shift || named)
+    return want_shift == ((mods & wuss_KEY_MOD_SHIFT) != 0);
+
+  return 1;
 }
 
 /* Depth-first search of "menu" and its static submenus for the first enabled

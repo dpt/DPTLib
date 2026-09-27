@@ -101,10 +101,11 @@ typedef struct wuss_menu_item
    *  flag, so a zero-initialised item is unaffected. */
   wuss_colour_t           swatch;
 
-  /** Non-NULL: a keyboard shortcut label, e.g. "S", "F3", "SPACE" or "^S",
-   *  drawn in the bold weight and a muted grey, right-aligned in the row;
-   *  the menu widens to fit. By convention written in UPPERCASE, with a '^'
-   *  prefix for Ctrl. wuss_menu_dispatch_shortcut turns a matching
+  /** Non-NULL: a keyboard shortcut label, e.g. "S", "F3", "SPACE", "^S" or
+   *  WUSS_MENU_SHIFT "F1", drawn in the bold weight and a muted grey,
+   *  right-aligned in the row; the menu widens to fit. By convention written
+   *  in UPPERCASE, with a '^' prefix for Ctrl then a WUSS_MENU_SHIFT prefix
+   *  for Shift. wuss_menu_dispatch_shortcut turns a matching
    *  wuss_EVENT_KEY into this row's wuss_EVENT_MENU_SELECT. NULL (as in a
    *  zero-initialised item) draws none. */
   const char             *shortcut;
@@ -126,6 +127,10 @@ wuss_menu_item_t;
     (items)[idx].shortcut = NULL; \
   } \
   while (0)
+
+/** UTF-8 for U+21E7 UPWARDS WHITE ARROW, the Shift prefix in a shortcut
+ *  label (see wuss_menu_item_t.shortcut). Drawn from the symbol font. */
+#define WUSS_MENU_SHIFT "\xE2\x87\xA7"
 
 /** As WUSS_MENU_ITEM, but the row shows shortcut_ as its keyboard shortcut
  *  label (see wuss_menu_item_t.shortcut). */
@@ -426,8 +431,10 @@ void wuss_menu_tick_item_live(wuss_menu_handle_t handle,
  * hand-written switch, decides what each key does.
  *
  * A label is a single character (matched ignoring case), "SPACE" or
- * "F1".."F12", optionally prefixed with '^' to require Ctrl. Without '^'
- * Ctrl must be up. Alt never matches; Shift is ignored.
+ * "F1".."F12", optionally prefixed with '^' to require Ctrl then
+ * WUSS_MENU_SHIFT to require Shift. Without '^' Ctrl must be up. Without
+ * WUSS_MENU_SHIFT Shift must be up for "SPACE" and "F1".."F12" but is
+ * ignored for a single character. Alt never matches.
  *
  * \param[in] task Task to receive the wuss_EVENT_MENU_SELECT.
  * \param[in] menu Menu whose rows' shortcuts are searched.
