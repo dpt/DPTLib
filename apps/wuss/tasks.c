@@ -253,7 +253,7 @@ static wuss_menu_item_t g_task_items[] =
   { "Tests",     wuss_MENU_ITEM_NONE, &g_tests_menu,      NULL },
   { "System",    wuss_MENU_ITEM_NONE, &g_system_menu,     NULL },
   { "Configure", wuss_MENU_ITEM_NONE, NULL,               NULL },
-  { "Quit Wuss", wuss_MENU_ITEM_NONE, NULL,               NULL }
+  { "Quit Wuss", wuss_MENU_ITEM_NONE, NULL,               NULL, 0, "F4" }
 };
 
 static const task_spawn_fn_t g_task_spawn[] =
