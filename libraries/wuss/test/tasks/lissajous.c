@@ -119,8 +119,8 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, LISSAJOUS_MENU_RATIO, "Ratio",
                       wuss_MENU_ITEM_NONE, &task->ratio_menu);
 
-  WUSS_MENU_ITEM(task->menu_items, LISSAJOUS_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, LISSAJOUS_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
 
   WUSS_MENU_TITLE(task->menu, "Lissajous", task->menu_items,
                  NELEMS(task->menu_items));
@@ -386,6 +386,9 @@ result_t lissajous_handle(wuss_window_t      *window,
     return lissajous_idle(task_data);
 
   case wuss_EVENT_KEY:
+    if (window == lc->window && snapshot_is_save_key(event))
+      return snapshot_save_png(lc->window, lissajous_handle, lc,
+                               LISSAJOUS_SAVE_NAME);
     return lissajous_key(lc, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:

@@ -174,8 +174,8 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CLOCK_MENU_12_HOUR, "12-hour",
                           wuss_MENU_ITEM_NONE, "H");
 
-  WUSS_MENU_ITEM(task->menu_items, CLOCK_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CLOCK_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
 
   WUSS_MENU_TITLE(task->menu, "Clock", task->menu_items,
                  NELEMS(task->menu_items));
@@ -443,6 +443,8 @@ result_t clock_handle(wuss_window_t      *window,
     return clock_mouse(cc, event->data.mouse.button);
 
   case wuss_EVENT_KEY:
+    if (window == cc->window && snapshot_is_save_key(event))
+      return snapshot_save_png(cc->window, clock_handle, cc, CLOCK_SAVE_NAME);
     return clock_key(cc, window, event->data.key.code);
 
   case wuss_EVENT_IDLE:

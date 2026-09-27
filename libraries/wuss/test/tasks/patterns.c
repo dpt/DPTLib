@@ -180,8 +180,8 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "SPACE");
 
-  WUSS_MENU_ITEM(task->menu_items, PATTERNS_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
 
   WUSS_MENU_TITLE(task->menu, "Patterns", task->menu_items,
                  NELEMS(task->menu_items));
@@ -334,6 +334,9 @@ result_t patterns_handle(wuss_window_t      *window,
                           wuss_get_pointer(bc->wuss), &bc->menu_handle);
 
   case wuss_EVENT_KEY:
+    if (window == bc->window && snapshot_is_save_key(event))
+      return snapshot_save_png(bc->window, patterns_handle, bc,
+                               PATTERNS_SAVE_NAME);
     return patterns_key(bc, window, event->data.key.code);
 
   case wuss_EVENT_MENU_SELECT:

@@ -456,8 +456,8 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
                           wuss_MENU_ITEM_NONE, "SPACE");
   WUSS_MENU_ITEM(task->menu_items, SOFA_MENU_CYCLE, "Auto-cycle",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->menu_items, SOFA_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SOFA_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
 
   WUSS_MENU_TITLE(task->menu, "Sofa", task->menu_items,
                  NELEMS(task->menu_items));
@@ -809,6 +809,8 @@ result_t sofa_handle(wuss_window_t      *window,
     return sofa_idle(task_data);
 
   case wuss_EVENT_KEY:
+    if (window == sc->window && snapshot_is_save_key(event))
+      return snapshot_save_png(sc->window, sofa_handle, sc, SOFA_SAVE_NAME);
     return sofa_key(sc, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:

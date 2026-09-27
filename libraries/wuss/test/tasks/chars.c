@@ -411,8 +411,8 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, CHARS_MENU_PAGE, "Page",
                       wuss_MENU_ITEM_PRE_OPEN, &task->page_menu);
 
-  WUSS_MENU_ITEM(task->menu_items, CHARS_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CHARS_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
 
   WUSS_MENU_TITLE(task->menu, "Chars", task->menu_items,
                  NELEMS(task->menu_items));
@@ -615,6 +615,11 @@ result_t chars_handle(wuss_window_t      *window,
     return wuss_menu_open_window_now(event->data.pre_show.handle,
                                      event->data.pre_show.index);
   }
+
+  case wuss_EVENT_KEY:
+    if (window == cc->window && snapshot_is_save_key(event))
+      return snapshot_save_png(cc->window, chars_handle, cc, CHARS_SAVE_NAME);
+    return result_WUSS_KEY_UNCLAIMED;
 
   case wuss_EVENT_REDRAW:
     return chars_redraw(event, task_data);

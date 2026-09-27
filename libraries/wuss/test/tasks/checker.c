@@ -134,8 +134,8 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
   WUSS_MENU_ITEM(task->menu_items, CHECKER_MENU_SWAP, "Swap colours",
                  wuss_MENU_ITEM_NONE);
 
-  WUSS_MENU_ITEM(task->menu_items, CHECKER_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CHECKER_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
 
   WUSS_MENU_TITLE(task->menu, "Checker", task->menu_items,
                  NELEMS(task->menu_items));
@@ -392,6 +392,9 @@ result_t checker_handle(wuss_window_t      *window,
     return checker_scroll(window, event->data.scroll.delta, task_data);
 
   case wuss_EVENT_KEY:
+    if ((window == cc->window || window == cc->window2) &&
+        snapshot_is_save_key(event))
+      return snapshot_save_png(window, checker_handle, cc, CHECKER_SAVE_NAME);
     return checker_key(cc, window, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:

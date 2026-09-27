@@ -205,8 +205,8 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
   WUSS_MENU_ITEM(task->menu_items, DOUGHNUT_MENU_RESET, "Reset view",
                  wuss_MENU_ITEM_NONE);
 
-  WUSS_MENU_ITEM(task->menu_items, DOUGHNUT_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
 
   WUSS_MENU_TITLE(task->menu, "Doughnut", task->menu_items,
                  NELEMS(task->menu_items));
@@ -554,6 +554,9 @@ result_t doughnut_handle(wuss_window_t      *window,
     return doughnut_idle(task);
 
   case wuss_EVENT_KEY:
+    if (window == task->window && snapshot_is_save_key(event))
+      return snapshot_save_png(task->window, doughnut_handle, task,
+                               DOUGHNUT_SAVE_NAME);
     return doughnut_key(task, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:

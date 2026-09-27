@@ -187,8 +187,8 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CURVE_MENU_RESET, "Reset points",
                           wuss_MENU_ITEM_NONE, "R");
 
-  WUSS_MENU_ITEM(task->menu_items, CURVE_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CURVE_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
 
   WUSS_MENU_TITLE(task->menu, "Curve", task->menu_items,
                  NELEMS(task->menu_items));
@@ -566,6 +566,9 @@ result_t curve_handle(wuss_window_t      *window,
     return curve_scroll(task, event->data.scroll.delta, window);
 
   case wuss_EVENT_KEY:
+    if (window == task->window && snapshot_is_save_key(event))
+      return snapshot_save_png(task->window, curve_handle, task,
+                               CURVE_SAVE_NAME);
     return curve_key(task, window, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:

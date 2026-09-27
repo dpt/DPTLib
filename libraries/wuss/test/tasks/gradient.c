@@ -287,8 +287,8 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, GRADIENT_MENU_SHAPE, "Shape",
                       wuss_MENU_ITEM_NONE, &task->shape_menu);
 
-  WUSS_MENU_ITEM(task->menu_items, GRADIENT_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GRADIENT_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
 
   WUSS_MENU_TITLE(task->menu, "Gradient", task->menu_items,
                  NELEMS(task->menu_items));
@@ -562,6 +562,9 @@ result_t gradient_handle(wuss_window_t      *window,
     return gradient_mouse(event, task_data);
 
   case wuss_EVENT_KEY:
+    if (window == gc->window && snapshot_is_save_key(event))
+      return snapshot_save_png(gc->window, gradient_handle, gc,
+                               GRADIENT_SAVE_NAME);
     return gradient_key(gc, window, event->data.key.code);
 
   case wuss_EVENT_MENU_SELECT:

@@ -240,8 +240,8 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_ANIMATE, "Animate",
                           wuss_MENU_ITEM_NONE, "A");
 
-  WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
 
   WUSS_MENU_TITLE(task->menu, "Saturn", task->menu_items,
                  NELEMS(task->menu_items));
@@ -906,6 +906,9 @@ result_t saturn_handle(wuss_window_t      *window,
                         event->data.mouse.button, window);
 
   case wuss_EVENT_KEY:
+    if (window == task->window && snapshot_is_save_key(event))
+      return snapshot_save_png(task->window, saturn_handle, task,
+                               SATURN_SAVE_NAME);
     return saturn_key(task, window, event->data.key.code);
 
   case wuss_EVENT_ICON:
