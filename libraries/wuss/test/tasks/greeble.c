@@ -319,6 +319,37 @@ static result_t greeble_adjust(greeble_task_t *task)
   return greeble_set_palette(task, (task->palette + 1) % GREEBLE_NPALETTE);
 }
 
+/* Space reseeds, as Select does; Left/Right step the base palette back and
+ * forward; R toggles random palettes. Anything else, or a key aimed at the
+ * proginfo dialogue, is passed back unclaimed. */
+static result_t greeble_key(greeble_task_t *task,
+                            wuss_window_t  *window,
+                            int             code)
+{
+  if (window != task->window)
+    return result_WUSS_KEY_UNCLAIMED;
+
+  switch (code)
+  {
+  case ' ':
+    return greeble_select(task, window);
+
+  case wuss_KEY_LEFT:
+    return greeble_set_palette(task, (task->palette + GREEBLE_NPALETTE - 1) %
+                                     GREEBLE_NPALETTE);
+
+  case wuss_KEY_RIGHT:
+    return greeble_adjust(task);
+
+  case 'R':
+  case 'r':
+    return greeble_toggle_randpal(task, window);
+
+  default:
+    return result_WUSS_KEY_UNCLAIMED;
+  }
+}
+
 /* Menu pick: the Random palettes row toggles per-prefab random palettes; a
  * Palette submenu row picks the base palette. An ADJUST pick keeps the chain
  * open without rebuilding it, so the tick set at open is now
@@ -413,6 +444,9 @@ result_t greeble_handle(wuss_window_t      *window,
       return greeble_adjust(task);
     return result_OK;
 
+  case wuss_EVENT_KEY:
+    return greeble_key(task, window, event->data.key.code);
+
   case wuss_EVENT_MENU_SELECT:
     return greeble_menu_select(task, event);
 
@@ -488,7 +522,7 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  grid_px,
                                  "Greeble",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  grid_px,
                                  SIZE2D(0, 0),
