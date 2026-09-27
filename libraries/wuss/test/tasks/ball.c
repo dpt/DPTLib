@@ -452,6 +452,8 @@ result_t ball_handle(wuss_window_t      *window,
     return ball_idle(task_data);
 
   case wuss_EVENT_KEY:
+    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+      return result_WUSS_KEY_UNCLAIMED;
     return ball_key(bc, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:

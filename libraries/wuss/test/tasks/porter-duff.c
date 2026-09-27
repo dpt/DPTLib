@@ -622,6 +622,8 @@ result_t porter_duff_handle(wuss_window_t      *window,
     if (window == pd->window && snapshot_is_save_key(event))
       return snapshot_save_png(pd->window, porter_duff_handle, pd,
                                PORTER_DUFF_SAVE_NAME);
+    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+      return result_WUSS_KEY_UNCLAIMED;
     return porter_duff_key(pd, window, event->data.key.code);
 
   case wuss_EVENT_IDLE:

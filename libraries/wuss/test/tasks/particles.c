@@ -688,6 +688,8 @@ result_t particles_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_KEY:
+    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+      return result_WUSS_KEY_UNCLAIMED;
     return particles_key(pt, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:

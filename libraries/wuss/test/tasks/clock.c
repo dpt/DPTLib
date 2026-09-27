@@ -445,6 +445,8 @@ result_t clock_handle(wuss_window_t      *window,
   case wuss_EVENT_KEY:
     if (window == cc->window && snapshot_is_save_key(event))
       return snapshot_save_png(cc->window, clock_handle, cc, CLOCK_SAVE_NAME);
+    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+      return result_WUSS_KEY_UNCLAIMED;
     return clock_key(cc, window, event->data.key.code);
 
   case wuss_EVENT_IDLE:
