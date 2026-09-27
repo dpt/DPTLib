@@ -122,7 +122,9 @@ struct wuss__furniture
                                             * stays under the pointer instead
                                             * of the window's edge snapping to
                                             * it on the first move */
-  int                         drag_scroll_start; /* *_SAUSAGE: scroll.x/scroll.y at drag start */
+  point_t                     drag_scroll_start; /* *_SAUSAGE: scroll at drag start */
+  int                         drag_both; /* *_SAUSAGE: an Adjust drag, which
+                                          * like RISC OS scrolls both axes */
   wuss_furniture_region_t     pressed_region; /* RESIZE or a scroll arrow while
                                                * held down, drawn in
                                                * button_pressed; NONE

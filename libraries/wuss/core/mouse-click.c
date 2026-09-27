@@ -322,7 +322,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           wuss->furniture.drag_kind         = wuss__furniture_element(region)->drag_kind;
           wuss->furniture.drag.x            = x;
           wuss->furniture.drag.y            = y;
-          wuss->furniture.drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_WELL) ? scroll.y : scroll.x;
+          wuss->furniture.drag_scroll_start = scroll;
+          wuss->furniture.drag_both         = (button & wuss_BUTTON_ADJUST) != 0;
 
           /* Resize needs the pointer's offset from the content box's current
            * bottom-right corner, so the point grabbed on the resize icon stays

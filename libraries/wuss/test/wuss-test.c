@@ -7192,6 +7192,50 @@ QuitFail:
     wuss_window_close(win_sr);
   }
 
+  printf("test: Select-dragging a sausage scrolls its own axis; "
+         "Adjust-dragging scrolls both\n");
+
+  {
+    static test_task_t tc_sd;
+    wuss_task_t       *delegate_sd;
+    box_t              box_sd, sausage;
+    wuss_window_t     *win_sd;
+    point_t            at, scroll;
+    int                sy;
+
+    delegate_sd = mk_task(wuss, test_handle, &tc_sd);
+    if (delegate_sd == NULL) goto Failure;
+
+    box_sd.x0 = 5; box_sd.y0 = 5;
+    box_sd.x1 = 125; box_sd.y1 = 85;
+    rc = wuss_window_create(delegate_sd, &box_sd, "SD", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(400, 400), SIZE2D(0, 0), &win_sd);
+    if (rc != result_OK) goto Failure;
+
+    wuss__vscroll_sausage_box(win_sd, &sausage);
+    at = POINT((sausage.x0 + sausage.x1) / 2, (sausage.y0 + sausage.y1) / 2);
+
+    wuss_mouse_click(wuss, at, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_move(wuss, POINT(at.x + 10, at.y + 10), NULL);
+    wuss_mouse_click(wuss, POINT(at.x + 10, at.y + 10), wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    wuss_window_get_scroll(win_sd, &scroll);
+    if (scroll.y <= 0 || scroll.x != 0) goto Failure;
+
+    sy = scroll.y;
+
+    wuss__vscroll_sausage_box(win_sd, &sausage);
+    at = POINT((sausage.x0 + sausage.x1) / 2, (sausage.y0 + sausage.y1) / 2);
+
+    wuss_mouse_click(wuss, at, wuss_BUTTON_ADJUST, wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_move(wuss, POINT(at.x + 10, at.y + 10), NULL);
+    wuss_mouse_click(wuss, POINT(at.x + 10, at.y + 10), wuss_BUTTON_ADJUST, wuss_MOUSE_UP, NULL);
+    wuss_window_get_scroll(win_sd, &scroll);
+    if (scroll.y <= sy || scroll.x <= 0) goto Failure;
+
+    wuss_window_close(win_sd);
+  }
+
   printf("test: wuss_window_invalidate clamps a client box to the content "
         "area, never dirtying the furniture around it\n");
 
