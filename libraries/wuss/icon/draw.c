@@ -649,7 +649,10 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
                     text_ink, text_ground, &pos, NULL);
 
     /* shortcut: bold, right-aligned against the same one-space inset at
-     * text_x1, sharing the label's baseline */
+     * text_x1, sharing the label's baseline. Muted to the bevel_dark grey
+     * (a palette entry, so it survives low-depth desktops where a blended
+     * colour would snap to ink or ground) except under the highlight, where
+     * it keeps the inverted ink to stay legible */
     if (icon->u.menu_entry.shortcut != NULL &&
         icon->u.menu_entry.shortcut[0] != '\0')
     {
@@ -657,6 +660,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
       const char    *shortcut;
       int            len;
       bmfont_width_t shortcut_w;
+      colour_t       shortcut_ink;
 
       bold       = wuss__bold_font(c->wuss);
       shortcut   = icon->u.menu_entry.shortcut;
@@ -664,8 +668,11 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
       shortcut_w = 0;
       wuss__text_measure(bold, shortcut, len, INT_MAX, NULL, &shortcut_w);
 
+      shortcut_ink = highlit ? text_ink
+                             : c->wuss->palette[c->wuss->bevel_dark];
+
       pos.x = text_x1 - (int) space_w - (int) shortcut_w;
-      wuss__text_draw(bold, c->scr, shortcut, len, text_ink, text_ground,
+      wuss__text_draw(bold, c->scr, shortcut, len, shortcut_ink, text_ground,
                       &pos, NULL);
     }
   }
