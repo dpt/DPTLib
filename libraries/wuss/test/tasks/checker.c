@@ -188,7 +188,10 @@ static result_t checker_redraw(wuss_window_t      *window,
   return result_OK;
 }
 
-static result_t checker_mouse(wuss_window_t *window, void *task_data)
+/* step the clicked window's pattern by dir (+1 or -1), wrapping round */
+static result_t checker_mouse(wuss_window_t *window,
+                              int            dir,
+                              void          *task_data)
 {
   checker_task_t    *cc;
   checker_pattern_t *pattern;
@@ -196,7 +199,8 @@ static result_t checker_mouse(wuss_window_t *window, void *task_data)
   cc = task_data;
 
   pattern  = (window == cc->window2) ? &cc->pattern2 : &cc->pattern;
-  *pattern = (*pattern + 1) % checker_PATTERN__COUNT;
+  *pattern = (*pattern + checker_PATTERN__COUNT + dir) %
+             checker_PATTERN__COUNT;
 
   wuss_window_invalidate_visible(window);
 
@@ -344,9 +348,11 @@ result_t checker_handle(wuss_window_t      *window,
       return wuss_menu_open(cc->delegate, &cc->menu,
                             wuss_get_pointer(cc->wuss), &cc->menu_handle);
     }
-    if (!(event->data.mouse.button & wuss_BUTTON_SELECT))
-      return result_OK;
-    return checker_mouse(window, task_data);
+    if (event->data.mouse.button & wuss_BUTTON_SELECT)
+      return checker_mouse(window, +1, task_data);
+    if (event->data.mouse.button & wuss_BUTTON_ADJUST)
+      return checker_mouse(window, -1, task_data);
+    return result_OK;
 
   case wuss_EVENT_SCROLL:
     return checker_scroll(window, event->data.scroll.delta, task_data);
