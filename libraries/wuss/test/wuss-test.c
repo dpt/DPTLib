@@ -5702,6 +5702,37 @@ FontMenuOK: ;
     picked = wuss_colourmenu_selected(&ev, &ok);
     if (!ok || picked != wuss_NO_BACKGROUND)             goto ColourMenuFail;
 
+    /* set_ticked marks exactly one row (swatch and tick together); the RGB
+     * form finds it by exact palette match; an unmatched value clears all */
+    {
+      const colour_t *pal;
+      int             npal;
+      int             t;
+
+#define CM_TICKED(i) ((cmm->items[i].flags & wuss_MENU_ITEM_TICKED) != 0)
+
+      pal = wuss_get_palette(wuss, &npal);
+      if (pal == NULL || npal < 2)                       goto ColourMenuFail;
+
+      wuss_colourmenu_set_ticked((wuss_colour_t) 1);
+      for (t = 0; t < cmm->nitems; t++)
+        if (CM_TICKED(t) != (t == 1))                    goto ColourMenuFail;
+
+      wuss_colourmenu_set_ticked_rgb(pal[0]);
+      for (t = 0; t < cmm->nitems; t++)
+        if (CM_TICKED(t) != (t == 0))                    goto ColourMenuFail;
+
+      wuss_colourmenu_set_ticked(wuss_NO_BACKGROUND);
+      for (t = 0; t < cmm->nitems; t++)
+        if (CM_TICKED(t) != (t == cmm->nitems - 1))      goto ColourMenuFail;
+
+      wuss_colourmenu_set_ticked_rgb(colour_rgba(1, 2, 3, 4));
+      for (t = 0; t < cmm->nitems; t++)
+        if (CM_TICKED(t))                                goto ColourMenuFail;
+
+#undef CM_TICKED
+    }
+
     /* actually open and redraw it, so the "None" row's hatched chip gets
      * rasterised for real, not just checked as data -- needs its own
      * font-equipped wuss, unlike the shared fontless "wuss" above; also

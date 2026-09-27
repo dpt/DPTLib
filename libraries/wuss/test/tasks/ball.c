@@ -349,6 +349,7 @@ static result_t ball_pre_submenu_open(ball_task_t        *bc,
   menu = wuss_colourmenu_menu(bc->wuss);
   wuss_colourmenu_set_none(0);
   wuss_colourmenu_set_title("Background");
+  wuss_colourmenu_set_ticked_rgb(bc->bg);
 
   return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
                                     event->data.pre_submenu_open.index,

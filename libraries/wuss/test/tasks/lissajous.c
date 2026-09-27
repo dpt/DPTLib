@@ -309,6 +309,7 @@ static result_t lissajous_pre_submenu_open(lissajous_task_t   *lc,
     lc->colourmenu_target = &lc->bg;
     wuss_colourmenu_set_title("Background");
   }
+  wuss_colourmenu_set_ticked_rgb(*lc->colourmenu_target);
 
   return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
                                     index, menu);

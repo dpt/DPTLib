@@ -186,6 +186,40 @@ result_t wuss_colourmenu_set_title(const char *title)
   return result_OK;
 }
 
+void wuss_colourmenu_set_ticked(wuss_colour_t colour)
+{
+  int i;
+
+  if (g.menu == NULL)
+    return;
+
+  /* walk the None row too, even while hidden, so its tick clears */
+  for (i = 0; i < g.npalette + 1; i++)
+    if (g.items[i].swatch == colour)
+      g.items[i].flags |= wuss_MENU_ITEM_TICKED;
+    else
+      g.items[i].flags &= ~(wuss_menu_item_flags_t) wuss_MENU_ITEM_TICKED;
+}
+
+void wuss_colourmenu_set_ticked_rgb(colour_t colour)
+{
+  wuss_colour_t index;
+  int           i;
+
+  if (g.menu == NULL)
+    return;
+
+  index = wuss_COLOUR_SYMBOLIC; /* never a row's swatch: ticks nothing */
+  for (i = 0; i < g.npalette; i++)
+    if (g.wuss->palette[i].primary == colour.primary)
+    {
+      index = (wuss_colour_t) i;
+      break;
+    }
+
+  wuss_colourmenu_set_ticked(index);
+}
+
 wuss_colour_t wuss_colourmenu_selected(const wuss_event_t *ev, int *ok)
 {
   int index;
@@ -203,6 +237,12 @@ wuss_colour_t wuss_colourmenu_selected(const wuss_event_t *ev, int *ok)
   index = ev->data.menu_select.index;
   if (index < 0 || index >= g.menu->nitems)
     return 0;
+
+  /* the pick is now the current colour: move the tick to it, both for the
+   * next open and on the rows of a chain an ADJUST pick left open (a no-op
+   * once a SELECT pick has torn the chain down) */
+  wuss_colourmenu_set_ticked(g.menu->items[index].swatch);
+  wuss_menu_tick_exclusive_live(g.wuss->menu_chain, g.menu, index);
 
   if (ok != NULL)
     *ok = 1;

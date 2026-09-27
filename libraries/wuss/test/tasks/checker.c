@@ -271,6 +271,7 @@ static result_t checker_pre_submenu_open(checker_task_t     *cc,
     cc->colourmenu_target = &cc->white;
     wuss_colourmenu_set_title("Paper");
   }
+  wuss_colourmenu_set_ticked_rgb(*cc->colourmenu_target);
 
   return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
                                     index, menu);
