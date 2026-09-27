@@ -13,6 +13,7 @@
 #define WUSS_SCROLL_STEP    20 /* pixels stepped per scrollbar arrow click */
 #define WUSS_SCROLL_REPEAT_DELAY    20 /* IDLE frames a held scroll arrow waits before auto-repeating */
 #define WUSS_SCROLL_REPEAT_INTERVAL 4  /* IDLE frames between auto-repeat steps after that */
+#define WUSS_SNAP_PX        4  /* a dragged window closer than this to a screen edge snaps to it */
 
 /* Cached furniture layout ------------------------------------------------- */
 

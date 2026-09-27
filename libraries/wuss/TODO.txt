@@ -66,7 +66,6 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
 - Set wuss window config after the fact (goes with palette work)
     blocks: Furniture icons toggling state, min window size
 - Squash-able furniture (shrink below the furniture minimum size)
-- Snap to edges (outline-click bug fixed; unblocked)
 - Dragging against window edge shuffles window in opposite direction
   (outline-click bug fixed; unblocked)
 - Furniture colour selection needs improvements (e.g. losing menu

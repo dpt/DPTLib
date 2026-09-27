@@ -1,6 +1,41 @@
 /* wuss/mouse-move.c -- wuss - minimal window manager */
 
+#include <stdlib.h>
+
 #include "impl.h"
+
+#ifdef WUSS_FURNITURE
+/* Snap a move-drag's content top-left "p" so that the window's visible box
+ * sits flush against any screen edge it comes within WUSS_SNAP_PX of. */
+static point_t snap_to_screen(const wuss_window_t *win, point_t p)
+{
+  box_t    content;
+  point_t  off;
+  size2d_t size, scr;
+  point_t  v;
+
+  wuss__content_box(win, &content);
+  off.x  = content.x0 - win->visible.x0;
+  off.y  = content.y0 - win->visible.y0;
+  size.w = win->visible.x1 - win->visible.x0;
+  size.h = win->visible.y1 - win->visible.y0;
+  scr    = win->wuss->scr->size;
+
+  v.x = p.x - off.x;
+  v.y = p.y - off.y;
+
+  if (abs(v.x) < WUSS_SNAP_PX)
+    v.x = 0;
+  else if (abs(v.x + size.w - scr.w) < WUSS_SNAP_PX)
+    v.x = scr.w - size.w;
+  if (abs(v.y) < WUSS_SNAP_PX)
+    v.y = 0;
+  else if (abs(v.y + size.h - scr.h) < WUSS_SNAP_PX)
+    v.y = scr.h - size.h;
+
+  return POINT(v.x + off.x, v.y + off.y);
+}
+#endif
 
 result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
 {
@@ -42,7 +77,7 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
       break;
 
     case wuss_FURNITURE_DRAG_MOVE:
-      wuss_window_move(win, POINT(x - wuss->furniture.drag.x, y - wuss->furniture.drag.y));
+      wuss_window_move(win, snap_to_screen(win, POINT(x - wuss->furniture.drag.x, y - wuss->furniture.drag.y)));
       break;
 
     case wuss_FURNITURE_DRAG_NONE:
