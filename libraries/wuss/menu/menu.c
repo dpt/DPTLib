@@ -800,20 +800,25 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   /* widen for the titlebar caption too, so a title longer than every item
    * label (e.g. a one-item menu) isn't clipped; titles draw in the bold
    * weight (font slot 1), falling back to the system font, same as
-   * wuss__titlebar_draw */
+   * wuss__titlebar_draw; buffered by a space either side so the caption
+   * doesn't butt up against the window edges */
   if (menu->title != NULL && menu->title[0] != '\0')
   {
     bmfont_t      *titlefont;
     int            titlelen;
     int            split;
     bmfont_width_t title_w;
+    int            need;
 
     titlefont = wuss__bold_font(wuss);
     titlelen  = (int) strlen(menu->title);
     if (wuss__text_measure(titlefont, menu->title, titlelen, INT_MAX, &split,
-                           &title_w) == result_OK &&
-        (int) title_w + 2 * WUSS_MENU_TITLE_PAD > width)
-      width = (int) title_w + 2 * WUSS_MENU_TITLE_PAD;
+                           &title_w) == result_OK)
+    {
+      need  = (int) title_w + 2 * WUSS_MENU_TITLE_PAD;
+      need += 2 * (int) wuss__fontset_space_width(&wuss->fonts, titlefont);
+      width = MAX(width, need);
+    }
   }
 
   /* every item is a full row now; a dashed item also gets a sep_h rule above.
