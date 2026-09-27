@@ -10,7 +10,10 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "base/debug.h"
 #include "base/utils.h"
+#include "framebuf/bitmap.h"
+#include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "geom/stack.h"
@@ -49,12 +52,21 @@
 #define SPHEROID_MARKER 4    /* marker ring radius, px */
 #define SPHEROID_GRAB   6    /* px from a marker a click selects it */
 
+#define SPHEROID_SAVE_NAME "spheroid.png" /* written to the current dir */
+
+#define SPHEROID_MUTATE_SLIDER 15   /* max slider nudge, % of its range */
+#define SPHEROID_MUTATE_LIGHT  0.35 /* max direction nudge, ~sin(20 deg) */
+#define SPHEROID_MUTATE_HUE    0.2  /* max hue turn, radians */
+
 enum
 {
   SPHEROID_MENU_INFO = 0,
   SPHEROID_MENU_LIGHT,
   SPHEROID_MENU_SPHERE,
-  SPHEROID_MENU_BACKGROUND
+  SPHEROID_MENU_BACKGROUND,
+  SPHEROID_MENU_MUTATE,
+  SPHEROID_MENU_RESET,
+  SPHEROID_MENU_SAVE
 };
 
 /* Light submenu rows after the per-light ones */
@@ -388,6 +400,34 @@ static void spheroid_shade(const spheroid_frame_t *f,
     rgb[k] = CLAMP(rgb[k], 0.0, 1.0);
 }
 
+/* the disc coverage and surface normal of the pixel whose centre is (dx, dy)
+ * from the sphere's centre; the normal is only set when the coverage is
+ * non-zero */
+static double spheroid_normal(double dx, double dy, double r, double n[3])
+{
+  double cov, n2, len;
+
+  cov = CLAMP(r - sqrt(dx * dx + dy * dy) + 0.5, 0.0, 1.0);
+  if (cov == 0.0)
+    return cov;
+
+  /* screen y runs down, the model's runs up; an edge pixel whose centre lies
+   * just outside the disc is pulled back onto the rim */
+  n[0] =  dx / r;
+  n[1] = -dy / r;
+  n2   = n[0] * n[0] + n[1] * n[1];
+  if (n2 > 1.0)
+  {
+    len   = sqrt(n2);
+    n[0] /= len;
+    n[1] /= len;
+    n2    = 1.0;
+  }
+  n[2] = sqrt(1.0 - n2);
+
+  return cov;
+}
+
 /* ----------------------------------------------------------------------- */
 
 /* build the control strip's icons down the window's left edge */
@@ -452,6 +492,7 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
 
   task->wuss = wuss;
   spheroid_defaults(task);
+  rng_seed(&task->rng, (uint32_t) rand());
 
   delegate_desc.handle    = spheroid_handle;
   delegate_desc.task_data = task;
@@ -530,6 +571,15 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, SPHEROID_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SPHEROID_MENU_MUTATE, "Mutate",
+                          wuss_MENU_ITEM_DASHED, "M");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SPHEROID_MENU_RESET, "Reset",
+                          wuss_MENU_ITEM_NONE, "R");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SPHEROID_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_DASHED, "^S");
+
   WUSS_MENU_TITLE(task->menu, "Spheroid", task->menu_items,
                   NELEMS(task->menu_items));
 
@@ -552,7 +602,7 @@ static result_t spheroid_redraw(const wuss_event_t *event,
   const box_t     *content, *bounds;
   spheroid_frame_t f;
   double           cx, cy, r;
-  double           dx, dy, dist, cov, n2, len;
+  double           cov;
   double           n[3], rgb[3];
   int              x, y, k, i;
 
@@ -570,29 +620,12 @@ static result_t spheroid_redraw(const wuss_event_t *event,
   {
     for (x = MAX(content->x0, bounds->x0 + SPHEROID_STRIP); x < content->x1; x++)
     {
-      dx   = x + 0.5 - cx;
-      dy   = y + 0.5 - cy;
-      dist = sqrt(dx * dx + dy * dy);
-      cov  = CLAMP(r - dist + 0.5, 0.0, 1.0);
+      cov = spheroid_normal(x + 0.5 - cx, y + 0.5 - cy, r, n);
       if (cov == 0.0)
       {
         screen_set_pixel(scr, x, y, task->background);
         continue;
       }
-
-      /* screen y runs down, the model's runs up; an edge pixel whose
-       * centre lies just outside the disc is pulled back onto the rim */
-      n[0] =  dx / r;
-      n[1] = -dy / r;
-      n2   = n[0] * n[0] + n[1] * n[1];
-      if (n2 > 1.0)
-      {
-        len   = sqrt(n2);
-        n[0] /= len;
-        n[1] /= len;
-        n2    = 1.0;
-      }
-      n[2] = sqrt(1.0 - n2);
 
       spheroid_shade(&f, n, rgb);
 
@@ -628,6 +661,152 @@ static void spheroid_sync_intensity(spheroid_task_t *task)
   (void) wuss_slider_row_set(task->window,
                              &task->rows[SPHEROID_ROW_INTENSITY],
                              task->lights[task->current].intensity);
+}
+
+/* put every strip slider back in step with its field */
+static void spheroid_sync_rows(spheroid_task_t *task)
+{
+  int row;
+
+  if (task->window == NULL)
+    return;
+
+  /* ponytail: an OOM here only leaves a value label stale */
+  for (row = 0; row < SPHEROID_NROWS; row++)
+    (void) wuss_slider_row_set(task->window, &task->rows[row],
+                               *spheroid_row_field(task, row));
+}
+
+/* a random value in [-1, 1] */
+static double spheroid_jitter(rng_t *rng)
+{
+  return rng_range(rng, 2001) / 1000.0 - 1.0;
+}
+
+/* turn the colour's hue by up to SPHEROID_MUTATE_HUE radians: a rotation
+ * about the grey axis, which keeps its lightness roughly as it was */
+static void spheroid_turn_hue(colour_t *c, rng_t *rng)
+{
+  double       a, cs, sn, k, rgb[3], out[3];
+  unsigned int v[3];
+  int          i;
+
+  a  = spheroid_jitter(rng) * SPHEROID_MUTATE_HUE;
+  cs = cos(a);
+  sn = sin(a);
+  k  = (1.0 - cs) / 3.0;
+
+  spheroid_rgb(*c, 1.0, rgb);
+
+  /* Rodrigues' rotation about (1,1,1)/sqrt(3), multiplied out */
+  for (i = 0; i < 3; i++)
+    out[i] = rgb[i] * (cs + k) +
+             rgb[(i + 1) % 3] * (k - sn / sqrt(3.0)) +
+             rgb[(i + 2) % 3] * (k + sn / sqrt(3.0));
+
+  for (i = 0; i < 3; i++)
+    v[i] = (unsigned int) (CLAMP(out[i], 0.0, 1.0) * 255.0 + 0.5);
+
+  *c = colour_rgb(v[0], v[1], v[2]);
+}
+
+/* nudge every slider, the lit lights' directions and the colours' hues;
+ * which lights are on is left alone */
+static void spheroid_mutate(spheroid_task_t *task)
+{
+  int               row, d, *field, i;
+  spheroid_light_t *light;
+  double            x, y, z;
+
+  for (row = 0; row < SPHEROID_NROWS; row++)
+  {
+    d      = spheroid_rows[row].max * SPHEROID_MUTATE_SLIDER / 100;
+    field  = spheroid_row_field(task, row);
+    *field = CLAMP(*field + rng_range(&task->rng, 2 * d + 1) - d,
+                   0, spheroid_rows[row].max);
+  }
+
+  for (i = 0; i < SPHEROID_NLIGHTS; i++)
+  {
+    light = &task->lights[i];
+    if (!light->on)
+      continue;
+
+    /* ponytail: an offset then renormalise, not a true bounded rotation;
+     * turns are up to ~20 degrees, a little more along the diagonals */
+    x = light->x + spheroid_jitter(&task->rng) * SPHEROID_MUTATE_LIGHT;
+    y = light->y + spheroid_jitter(&task->rng) * SPHEROID_MUTATE_LIGHT;
+    z = light->z + spheroid_jitter(&task->rng) * SPHEROID_MUTATE_LIGHT;
+    spheroid_set_light(light, 1, x, y, z, light->colour, light->intensity);
+    spheroid_turn_hue(&light->colour, &task->rng);
+  }
+
+  spheroid_turn_hue(&task->sphere, &task->rng);
+}
+
+/* write the sphere alone, sized to its current diameter, as an RGBA PNG:
+ * alpha is the disc coverage, so the edge stays anti-aliased and everything
+ * outside it is transparent */
+static result_t spheroid_save(spheroid_task_t *task)
+{
+  result_t         rc;
+  box_t            content;
+  spheroid_frame_t f;
+  double           cx, cy, r;
+  int              d;
+  unsigned int    *pixels;
+  int              x, y;
+  double           cov;
+  double           n[3], rgb[3];
+  bitmap_t         bm;
+
+  if (task->window == NULL)
+    return result_OK;
+
+  wuss_window_get_content_bounds(task->window, &content);
+  spheroid_layout(box_size(&content), &cx, &cy, &r);
+  if (r < 1.0)
+    return result_OK; /* window too small to show a sphere */
+
+  spheroid_prepare(task, &f);
+
+  d = (int) ceil(2.0 * r);
+  pixels = calloc((size_t) d * d, sizeof(*pixels));
+  if (pixels == NULL)
+    return result_OOM;
+
+  for (y = 0; y < d; y++)
+  {
+    for (x = 0; x < d; x++)
+    {
+      cov = spheroid_normal(x + 0.5 - d / 2.0, y + 0.5 - d / 2.0, r, n);
+      if (cov == 0.0)
+        continue; /* calloc left it transparent */
+
+      spheroid_shade(&f, n, rgb);
+
+      /* bgra8888 is 0xAARRGGBB; PNG alpha is straight, not premultiplied */
+      pixels[y * d + x] =
+        ((unsigned int) (cov    * 255.0 + 0.5) << 24) |
+        ((unsigned int) (rgb[0] * 255.0 + 0.5) << 16) |
+        ((unsigned int) (rgb[1] * 255.0 + 0.5) << 8)  |
+        ((unsigned int) (rgb[2] * 255.0 + 0.5));
+    }
+  }
+
+  rc = bitmap_init(&bm, SIZE2D(d, d), pixelfmt_bgra8888,
+                   d * (int) sizeof(*pixels), NULL, pixels);
+  if (rc == result_OK)
+    rc = bitmap_save_png(&bm, SPHEROID_SAVE_NAME);
+  if (rc != result_OK)
+    logf_warning("spheroid: saving \"%s\" failed (rc=0x%X)",
+                 SPHEROID_SAVE_NAME, rc);
+  else
+    logf_info("spheroid: saved \"%s\"", SPHEROID_SAVE_NAME);
+
+  free(pixels);
+
+  return rc;
 }
 
 /* the Light submenu's ticks: the current light's row, and On if it's lit */
@@ -791,6 +970,30 @@ static result_t spheroid_menu_select(spheroid_task_t    *task,
       *task->colour_target = palette[picked];
       spheroid_invalidate_preview(task);
     }
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &task->menu)
+  {
+    switch (event->data.menu_select.index)
+    {
+    case SPHEROID_MENU_MUTATE:
+      spheroid_mutate(task);
+      break;
+
+    case SPHEROID_MENU_RESET:
+      spheroid_defaults(task);
+      break;
+
+    case SPHEROID_MENU_SAVE:
+      return spheroid_save(task);
+
+    default:
+      return result_OK; /* a pick on a submenu row itself */
+    }
+
+    spheroid_sync_rows(task);
+    spheroid_invalidate_preview(task);
     return result_OK;
   }
 

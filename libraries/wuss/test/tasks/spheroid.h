@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/colour.h"
+#include "utils/rng.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/icon-spec.h"
@@ -38,14 +39,16 @@ spheroid_light_t;
  * light faces the surface under the pointer; the band just outside wraps it
  * round to the back. Menu > Light (or keys 1-4) picks the current light and
  * Light > On (or O) switches it. Light > Colour, Sphere colour and
- * Background pick from the palette. */
+ * Background pick from the palette. Mutate (M) nudges the sliders, the lit
+ * lights' directions and the colours' hues; Reset (R) restores the defaults;
+ * Save PNG (^S) writes the sphere alone, transparent outside its edge. */
 typedef struct spheroid_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
   wuss_task_t       *delegate; /* the task that owns the menu */
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[4]; /* per-instance: shared static "Info"
+  wuss_menu_item_t   menu_items[7]; /* per-instance: shared static "Info"
                                      * row would leak one instance's .window
                                      * pointer into another's menu */
   wuss_menu_t        menu;
@@ -64,6 +67,7 @@ typedef struct spheroid_task
   int                size;       /* 0..100: highlight size */
   int                sharpness;  /* 0..100: highlight edge hardness */
   wuss_slider_row_t  rows[SPHEROID_NROWS];
+  rng_t              rng;        /* for Mutate */
 }
 spheroid_task_t;
 
