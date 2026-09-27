@@ -46,7 +46,7 @@
  * reach. Markers use the inverse, so a back light's marker sits in the band
  * where the pointer that placed it was. */
 
-#define SPHEROID_STRIP  160  /* control strip width, px, at the left */
+#define SPHEROID_STRIP  176  /* control strip width, px, at the left */
 #define SPHEROID_MARGIN 8    /* px between the wrap band and the window edge */
 #define SPHEROID_WRAP   0.25 /* wrap band width, in sphere radii */
 #define SPHEROID_MARKER 4    /* marker ring radius, px */
@@ -95,36 +95,62 @@ spheroid_rows[SPHEROID_NROWS] =
   { "Glow",    100, NULL   },
   { "Size",    100, NULL   },
   { "Sharp",   100, NULL   },
-  { "Light",   200, "%d%%" }
+  { "Level",   200, "%d%%" }
 };
 
-/* stack items for the control strip: a VBOX of label / slider / value rows */
+/* the Light frame's caption and the Light submenu's rows */
+static const char *const spheroid_light_names[SPHEROID_NLIGHTS] =
+{
+  "Light 1", "Light 2", "Light 3", "Light 4"
+};
+
+/* stack items for the control strip: a VBOX of two frames, the global
+ * settings above the current light's, each a VBOX of label / slider / value
+ * rows */
 enum
 {
   SS_ROOT,
-  SS_ROW, /* first row; each row is SS_ROW + 4 * n, then its three leaves */
+  SS_SPHERE, /* frame round the global rows */
+  SS_LIGHT,  /* frame round the per-light rows */
+  SS_ROW,    /* first row; each row is SS_ROW + 4 * n, then its three leaves */
   SS__LIMIT = SS_ROW + 4 * SPHEROID_NROWS
+};
+
+/* icons in the strip: the two frames, then label / slider / value per row */
+enum
+{
+  SI_SPHERE,
+  SI_LIGHT,
+  SI_ROW,
+  SI__LIMIT = SI_ROW + 3 * SPHEROID_NROWS
 };
 
 #define SS_LABEL_W      (7 * 6) /* enough for "Ambient" */
 #define SS_VALUE_W      (4 * 6) /* enough for "200%" */
 #define SS_SLIDER_MIN_W (64)
 
-#define SS_ROW_ITEMS(n) \
-  [SS_ROW + 4 * (n)]     = STACK_HBOX(SS_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START), \
+#define SS_FRAME(parent_) \
+  { .kind = stack_KIND_VBOX, .parent = (parent_), .axis_size = STACK_HUG, \
+    .gap = wuss_STD_GAP, .align = stack_ALIGN_FILL, \
+    .pad = wuss_STD_FRAME_INSETS }
+
+#define SS_ROW_ITEMS(n, frame) \
+  [SS_ROW + 4 * (n)]     = STACK_HBOX(frame, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START), \
   [SS_ROW + 4 * (n) + 1] = STACK_LEAF(SS_ROW + 4 * (n), SS_LABEL_W, 16, stack_ALIGN_CENTRE), \
   [SS_ROW + 4 * (n) + 2] = STACK_LEAF_EX(SS_ROW + 4 * (n), 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, SS_SLIDER_MIN_W, 0), \
   [SS_ROW + 4 * (n) + 3] = STACK_LEAF(SS_ROW + 4 * (n), SS_VALUE_W, 16, stack_ALIGN_CENTRE)
 
 static const stack_item_t spheroid_strip[SS__LIMIT] =
 {
-  [SS_ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
-                .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
-  SS_ROW_ITEMS(0),
-  SS_ROW_ITEMS(1),
-  SS_ROW_ITEMS(2),
-  SS_ROW_ITEMS(3),
-  SS_ROW_ITEMS(4)
+  [SS_ROOT]   = { .kind = stack_KIND_VBOX, .parent = -1,
+                  .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
+  [SS_SPHERE] = SS_FRAME(SS_ROOT),
+  [SS_LIGHT]  = SS_FRAME(SS_ROOT),
+  SS_ROW_ITEMS(SPHEROID_ROW_AMBIENT,   SS_SPHERE),
+  SS_ROW_ITEMS(SPHEROID_ROW_GLOW,      SS_SPHERE),
+  SS_ROW_ITEMS(SPHEROID_ROW_SIZE,      SS_SPHERE),
+  SS_ROW_ITEMS(SPHEROID_ROW_SHARPNESS, SS_SPHERE),
+  SS_ROW_ITEMS(SPHEROID_ROW_INTENSITY, SS_LIGHT)
 };
 
 /* per-redraw constants, worked out once rather than per pixel */
@@ -437,10 +463,10 @@ static result_t spheroid_strip_create(spheroid_task_t *task)
   size2d_t         min_sz;
   box_t            root;
   box_t            boxes[SS__LIMIT];
-  wuss_icon_spec_t specs[SPHEROID_NROWS * 3];
+  wuss_icon_spec_t specs[SI__LIMIT];
   char             bufs[SPHEROID_NROWS][WUSS_SLIDER_ROW_BUF];
-  wuss_icon_t     *made[SPHEROID_NROWS * 3];
-  int              row, item;
+  wuss_icon_t     *made[SI__LIMIT];
+  int              row, item, icon;
 
   rc = stack_smallest(spheroid_strip, NELEMS(spheroid_strip), &min_sz);
   if (rc != result_OK)
@@ -451,13 +477,18 @@ static result_t spheroid_strip_create(spheroid_task_t *task)
   if (rc != result_OK)
     return rc;
 
+  wuss_icon_spec_frame(&specs[SI_SPHERE], boxes[SS_SPHERE], "Sphere");
+  wuss_icon_spec_frame(&specs[SI_LIGHT], boxes[SS_LIGHT],
+                       spheroid_light_names[task->current]);
+
   for (row = 0; row < SPHEROID_NROWS; row++)
   {
     item = SS_ROW + 4 * row;
-    wuss_icon_spec_label(&specs[row * 3], boxes[item + 1],
+    icon = SI_ROW + 3 * row;
+    wuss_icon_spec_label(&specs[icon], boxes[item + 1],
                          spheroid_rows[row].label,
                          wuss_ICON_FLAGS_JUSTIFY_RIGHT);
-    wuss_icon_spec_slider_row(&specs[row * 3 + 1], &specs[row * 3 + 2],
+    wuss_icon_spec_slider_row(&specs[icon + 1], &specs[icon + 2],
                               boxes[item + 2], boxes[item + 3],
                               wuss_SLIDER_HORIZONTAL,
                               0, spheroid_rows[row].max,
@@ -470,10 +501,15 @@ static result_t spheroid_strip_create(spheroid_task_t *task)
   if (rc != result_OK)
     return rc;
 
+  task->light_frame = made[SI_LIGHT];
+
   for (row = 0; row < SPHEROID_NROWS; row++)
-    wuss_slider_row_bind(&task->rows[row], made[row * 3 + 1],
-                         made[row * 3 + 2], spheroid_rows[row].fmt,
+  {
+    icon = SI_ROW + 3 * row;
+    wuss_slider_row_bind(&task->rows[row], made[icon + 1], made[icon + 2],
+                         spheroid_rows[row].fmt,
                          0, spheroid_rows[row].max, 0);
+  }
 
   return result_OK;
 }
@@ -518,7 +554,7 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
                                  wuss_WINDOW_FOCUSABLE,
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  SIZE2D(1024, 1024),
-                                 SIZE2D(SPHEROID_STRIP + 64, 128),
+                                 SIZE2D(SPHEROID_STRIP + 64, 160), /* strip */
                                  &task->window);
   if (rc != result_OK)
   {
@@ -540,16 +576,12 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
 
   for (i = 0; i < SPHEROID_NLIGHTS; i++)
   {
-    static const char *const names[SPHEROID_NLIGHTS] =
-    {
-      "Light 1", "Light 2", "Light 3", "Light 4"
-    };
     static const char *const keys[SPHEROID_NLIGHTS] =
     {
       "1", "2", "3", "4"
     };
 
-    WUSS_MENU_ITEM_SHORTCUT(task->light_items, i, names[i],
+    WUSS_MENU_ITEM_SHORTCUT(task->light_items, i, spheroid_light_names[i],
                             wuss_MENU_ITEM_NONE, keys[i]);
   }
 
@@ -651,13 +683,16 @@ static result_t spheroid_redraw(const wuss_event_t *event,
   return result_OK;
 }
 
-/* point the Light slider at the current light's intensity */
-static void spheroid_sync_intensity(spheroid_task_t *task)
+/* point the Light frame at the current light: its caption and its Level
+ * slider */
+static void spheroid_sync_light(spheroid_task_t *task)
 {
   if (task->window == NULL)
     return;
 
-  /* ponytail: an OOM here only leaves the value label stale */
+  /* ponytail: an OOM here only leaves the caption or value label stale */
+  (void) wuss_icon_set_text(task->window, task->light_frame,
+                            spheroid_light_names[task->current]);
   (void) wuss_slider_row_set(task->window,
                              &task->rows[SPHEROID_ROW_INTENSITY],
                              task->lights[task->current].intensity);
@@ -901,7 +936,7 @@ static result_t spheroid_mouse(spheroid_task_t    *task,
     if (hit >= 0)
     {
       task->current = hit; /* grab it where it is; a move then drags it */
-      spheroid_sync_intensity(task);
+      spheroid_sync_light(task);
       spheroid_invalidate_preview(task);
       return result_OK;
     }
@@ -1009,7 +1044,7 @@ static result_t spheroid_menu_select(spheroid_task_t    *task,
   else
     task->current = index;
 
-  spheroid_sync_intensity(task);
+  spheroid_sync_light(task);
 
   if (wuss_menu_should_keep_open(event))
     wuss_menu_tick_set_live(task->menu_handle, &task->light_menu,
