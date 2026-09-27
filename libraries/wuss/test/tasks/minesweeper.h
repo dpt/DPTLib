@@ -54,13 +54,15 @@ typedef enum minesweeper_cell_state
 minesweeper_cell_state_t;
 
 /* classic minesweeper: Select reveals a cell (flood-filling neighbouring
- * zeros), Adjust toggles a flag. Mines are placed on the first reveal so the
- * opening click is never a mine. A MENU-button click pops a menu with "New
- * Game", a "Grid Size" submenu that resets the board at a new size and a
- * "Difficulty" submenu that resets it with more or fewer mines;
- * "Give Up" ends a game in progress and shows every mine. With the input
- * focus, the arrow keys move a cursor cell, Return reveals it,
- * Space toggles its flag and N starts a new game. */
+ * zeros), Adjust toggles a flag. Select on a revealed number whose flags
+ * match it reveals the rest of its neighbours ("chording"). Mines are
+ * placed on the first reveal so the opening click is never a mine. A
+ * MENU-button click pops a menu with "New Game", a "Grid Size" submenu
+ * that resets the board at a new size and a "Difficulty" submenu that
+ * resets it with more or fewer mines; "Give Up" ends a game in progress
+ * and shows every mine. With the input focus, the arrow keys move a cursor
+ * cell, Return reveals it, Space toggles its flag and N starts a new
+ * game. */
 typedef struct minesweeper_task
 {
   wuss_t                  *wuss;
