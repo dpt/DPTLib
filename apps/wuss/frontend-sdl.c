@@ -484,6 +484,10 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
       }
       return true;
 
+    case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+      event->kind = wuss_INPUT_MOUSE_LEAVE;
+      return true;
+
     case SDL_EVENT_MOUSE_WHEEL:
       {
         int x, y;
@@ -627,6 +631,18 @@ bool wuss_frontend_set_crt(wuss_frontend_t *fe, bool on)
 
   (void) sdl_renderer_open(fe);
   return false;
+}
+
+bool wuss_frontend_hide_pointer(wuss_frontend_t *fe, bool hide)
+{
+  NOT_USED(fe);
+
+  if (hide)
+    SDL_HideCursor();
+  else
+    SDL_ShowCursor();
+
+  return hide;
 }
 
 void wuss_frontend_set_palette(wuss_frontend_t *fe,

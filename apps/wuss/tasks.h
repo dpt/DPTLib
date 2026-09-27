@@ -39,6 +39,8 @@ extern struct wuss_app_tasks
                                     * wuss_input_event_t.wheel */
   bool             crt; /* CRT effect on: requested by --crt, then kept
                          * current by tasks_set_crt */
+  bool             pointer; /* software pointer on: requested by --pointer,
+                             * then kept current by tasks_set_pointer */
   bool             debug_redraw_all;   /* set by the launcher's Debug picks */
   bool             debug_garbage;      /* (having already called */
   bool             debug_pixel_stress; /* wuss_redraw for Redraw); read and
@@ -65,6 +67,11 @@ result_t app_set_mode(size2d_t size, int depth);
 /* the framebuffer's current bits per pixel */
 int app_get_depth(void);
 
+/* Turn the software pointer on or off, hiding or showing the OS pointer to
+ * match. Returns whether it is now on: false if resources/wuss/pointer.png
+ * failed to load or the frontend keeps its own pointer (RISC OS). */
+bool app_set_pointer(bool on);
+
 /* the menu-task event handler: dispatches every wuss_EVENT_MENU_SELECT and
  * relays wuss_EVENT_PALETTE to the frontend. Passed as wuss_task_desc.handle
  * when run_wuss creates g.menu_task. */
@@ -84,6 +91,10 @@ result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers);
 /* Switch the frontend's CRT post-effect on or off, recording the outcome in
  * g_tasks.crt and the Debug menu's tick. Needs g_tasks.frontend set. */
 void tasks_set_crt(bool on);
+
+/* Switch the software pointer on or off (app_set_pointer), recording the
+ * outcome in g_tasks.pointer and the Debug menu's tick. */
+void tasks_set_pointer(bool on);
 
 /* Spawn the tasks named in names, a comma-separated list of launcher-menu
  * task names (e.g. "Saturn,Clock"), or "all" to spawn every task in every

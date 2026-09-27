@@ -200,18 +200,21 @@ enum
   DEBUG_ITEM_ZOOM_IN,
   DEBUG_ITEM_ZOOM_OUT,
   DEBUG_ITEM_PIXEL_STRESS,
-  DEBUG_ITEM_CRT
+  DEBUG_ITEM_CRT,
+  DEBUG_ITEM_POINTER
 };
 
-/* not const: the CRT row's tick tracks g_tasks.crt */
+/* not const: the CRT and Software pointer rows' ticks track g_tasks.crt and
+ * g_tasks.pointer */
 static wuss_menu_item_t g_debug_items[] =
 {
-  { "Redraw",       wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F1"                 },
-  { "Garbage",      wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F1" },
-  { "Zoom in",      wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F2"                 },
-  { "Zoom out",     wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F2" },
-  { "Pixel stress", wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F3"                 },
-  { "CRT",          wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F5"                 }
+  { "Redraw",           wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F1"                 },
+  { "Garbage",          wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F1" },
+  { "Zoom in",          wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F2"                 },
+  { "Zoom out",         wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F2" },
+  { "Pixel stress",     wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F3"                 },
+  { "CRT",              wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F5"                 },
+  { "Software pointer", wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F6"                 }
 };
 
 static const wuss_menu_t g_games_menu =
@@ -311,6 +314,15 @@ void tasks_set_crt(bool on)
     g_debug_items[DEBUG_ITEM_CRT].flags |= wuss_MENU_ITEM_TICKED;
   else
     g_debug_items[DEBUG_ITEM_CRT].flags &= ~wuss_MENU_ITEM_TICKED;
+}
+
+void tasks_set_pointer(bool on)
+{
+  g_tasks.pointer = app_set_pointer(on);
+  if (g_tasks.pointer)
+    g_debug_items[DEBUG_ITEM_POINTER].flags |= wuss_MENU_ITEM_TICKED;
+  else
+    g_debug_items[DEBUG_ITEM_POINTER].flags &= ~wuss_MENU_ITEM_TICKED;
 }
 
 /* g_task_menu picks are dispatched by index; g_games_menu/g_tests_menu/
@@ -437,6 +449,9 @@ result_t task_handle_event(wuss_window_t      *window,
       tasks_set_crt(!g_tasks.crt);
       /* the new surface starts empty: present the whole frame */
       g_tasks.debug_redraw_all = true;
+      break;
+    case DEBUG_ITEM_POINTER:
+      tasks_set_pointer(!g_tasks.pointer);
       break;
     default:
       break;

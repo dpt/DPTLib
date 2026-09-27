@@ -388,6 +388,14 @@ bool wuss_frontend_set_crt(wuss_frontend_t *fe, bool on)
   return false;
 }
 
+bool wuss_frontend_hide_pointer(wuss_frontend_t *fe, bool hide)
+{
+  NOT_USED(fe);
+  NOT_USED(hide);
+  /* the hardware pointer already sits at screen-pixel resolution: keep it */
+  return false;
+}
+
 void wuss_frontend_close(wuss_frontend_t *fe)
 {
   if (fe == NULL)
