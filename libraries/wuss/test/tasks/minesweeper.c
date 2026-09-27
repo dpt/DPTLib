@@ -425,8 +425,8 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
                                 * just before wuss_menu_open, in
                                 * minesweeper_mouse */
 
-  WUSS_MENU_ITEM(task->menu_items, MINESWEEPER_MENU_NEW_GAME,
-                "New Game", wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, MINESWEEPER_MENU_NEW_GAME,
+                          "New Game", wuss_MENU_ITEM_NONE, "N");
 
   WUSS_MENU_ITEM_MENU(task->menu_items, MINESWEEPER_MENU_SIZE, "Grid Size",
                       wuss_MENU_ITEM_NONE, &task->size_menu);

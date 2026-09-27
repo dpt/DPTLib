@@ -307,8 +307,8 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
-  WUSS_MENU_ITEM(task->menu_items, PARTICLES_MENU_PAUSE, "Pause",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PARTICLES_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "Space");
 
   task->gravity = PARTICLES_GRAVITY_NORMAL;
   for (i = 0; i < NELEMS(task->gravity_items); i++)
@@ -324,8 +324,8 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   WUSS_MENU_ITEM(task->menu_items, PARTICLES_MENU_WALLS, "Walls",
                  wuss_MENU_ITEM_NONE);
 
-  WUSS_MENU_ITEM(task->menu_items, PARTICLES_MENU_CLEAR, "Clear",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PARTICLES_MENU_CLEAR, "Clear",
+                          wuss_MENU_ITEM_NONE, "C");
 
   WUSS_MENU_TITLE(task->menu, "Particles", task->menu_items,
                  NELEMS(task->menu_items));

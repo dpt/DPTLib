@@ -122,14 +122,14 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, BALL_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
-  WUSS_MENU_ITEM(task->menu_items, BALL_MENU_PAUSE, "Pause",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "Space");
 
-  WUSS_MENU_ITEM(task->menu_items, BALL_MENU_CLEAR, "Clear",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_CLEAR, "Clear",
+                          wuss_MENU_ITEM_NONE, "C");
 
-  WUSS_MENU_ITEM(task->menu_items, BALL_MENU_GRAVITY, "Gravity",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_GRAVITY, "Gravity",
+                          wuss_MENU_ITEM_NONE, "G");
 
   WUSS_MENU_TITLE(task->menu, "Bouncing Ball", task->menu_items,
                  NELEMS(task->menu_items));

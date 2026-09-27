@@ -452,8 +452,8 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, SOFA_MENU_MODEL, "Model",
                       wuss_MENU_ITEM_NONE, &task->model_menu);
 
-  WUSS_MENU_ITEM(task->menu_items, SOFA_MENU_PAUSE, "Pause",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SOFA_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "Space");
   WUSS_MENU_ITEM(task->menu_items, SOFA_MENU_CYCLE, "Auto-cycle",
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_ITEM(task->menu_items, SOFA_MENU_SAVE, "Save PNG",

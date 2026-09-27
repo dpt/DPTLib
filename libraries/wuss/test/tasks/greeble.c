@@ -542,8 +542,8 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
                                 * just before wuss_menu_open_ticked, in
                                 * greeble_handle */
 
-  WUSS_MENU_ITEM(task->menu_items, GREEBLE_MENU_RANDPAL,
-                "Random palettes", wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLE_MENU_RANDPAL,
+                          "Random palettes", wuss_MENU_ITEM_NONE, "R");
 
   /* ponytail: the palettes are unnamed, so the rows are numbered */
   for (i = 0; i < GREEBLE_NPALETTE; i++)
