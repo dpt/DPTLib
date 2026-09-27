@@ -370,15 +370,9 @@ set(UTILS_SOURCES
     libraries/utils/bsearch/bsearch-short.c
     libraries/utils/bsearch/bsearch-uint.c
     libraries/utils/bsearch/bsearch-ushort.c
+    libraries/utils/bytesex/bytesex.c
     libraries/utils/bytesex/rev-l-block.c
-    libraries/utils/bytesex/rev-l-m.c
-    libraries/utils/bytesex/rev-l.c
     libraries/utils/bytesex/rev-s-block.c
-    libraries/utils/bytesex/rev-s-m.c
-    libraries/utils/bytesex/rev-s-pair-m.c
-    libraries/utils/bytesex/rev-s-pair.c
-    libraries/utils/bytesex/rev-s.c
-    libraries/utils/bytesex/util.h
     libraries/utils/fxp/smull-fxp16.c
     libraries/utils/fxp/umull-fxp16.c
     libraries/utils/maths/degs-to-rads.c
@@ -739,6 +733,7 @@ if(BUILD_TESTS)
         libraries/text/utf8/test/utf8-test.c
         libraries/utils/array/test/array-test.c
         libraries/utils/bsearch/test/bsearch-test.c
+        libraries/utils/bytesex/test/bytesex-test.c
         libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c
         libraries/wuss/test/wuss-test.c)
