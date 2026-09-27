@@ -7399,6 +7399,19 @@ QuitFail:
     if (wuss__slider_value_for_point(win_sl, icon_sl, pt_sl) != 0)
       goto Failure;
 
+    /* a wheel notch over the groove bumps the value by step towards max
+     * (here downwards, as min > max) and leaves the window unscrolled */
+    icon_sl->spec.u.slider.step = 5;
+    pt_sl.x = (groove_sl.x0 + groove_sl.x1) / 2;
+    rc = wuss_scroll(wuss, pt_sl, 1, NULL);
+    if (rc != result_OK)
+      goto Failure;
+    if (wuss_icon_get_value(icon_sl) != 95)
+      goto Failure;
+    wuss_window_get_scroll(win_sl, &pt_sl);
+    if (pt_sl.x != scroll_sl.x || pt_sl.y != scroll_sl.y)
+      goto Failure;
+
     wuss_window_close(win_sl);
   }
 

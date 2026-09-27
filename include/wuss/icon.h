@@ -344,6 +344,10 @@ typedef union wuss_icon_spec_data
     int                       max;
     /** Initial value, clamped to [min,max] (or [max,min] if min > max). */
     int                       default_value;
+    /** Amount one wheel notch over the groove moves the value, towards max
+     *  for a positive wuss_scroll delta. 0 (the zero-initialised default)
+     *  means 1. */
+    int                       step;
   }
   slider;
 
