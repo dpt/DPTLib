@@ -104,8 +104,8 @@ typedef struct wuss_menu_item
   /** Non-NULL: a keyboard shortcut label, e.g. "S", "F3", "SPACE" or "^S",
    *  drawn in the bold weight and a muted grey, right-aligned in the row;
    *  the menu widens to fit. By convention written in UPPERCASE, with a '^'
-   *  prefix for Ctrl. Free text and display only -- the task still handles
-   *  the key itself in its wuss_EVENT_KEY handler. NULL (as in a
+   *  prefix for Ctrl. wuss_menu_dispatch_shortcut turns a matching
+   *  wuss_EVENT_KEY into this row's wuss_EVENT_MENU_SELECT. NULL (as in a
    *  zero-initialised item) draws none. */
   const char             *shortcut;
 }
@@ -416,6 +416,28 @@ void wuss_menu_tick_item_live(wuss_menu_handle_t handle,
                               const wuss_menu_t *menu,
                               int                index,
                               int                ticked);
+
+/**
+ * Treat a key press as a pick from \p menu: find the first enabled row in \p
+ * menu, or in a submenu reached without wuss_MENU_ITEM_PRE_OPEN, whose \c
+ * shortcut label names the key, and deliver \p task the
+ * wuss_EVENT_MENU_SELECT a SELECT click on that row would. The menu need not
+ * be open. Call it from a wuss_EVENT_KEY handler so the menu table, not a
+ * hand-written switch, decides what each key does.
+ *
+ * A label is a single character (matched ignoring case), "SPACE" or
+ * "F1".."F12", optionally prefixed with '^' to require Ctrl. Without '^'
+ * Ctrl must be up. Alt never matches; Shift is ignored.
+ *
+ * \param[in] task Task to receive the wuss_EVENT_MENU_SELECT.
+ * \param[in] menu Menu whose rows' shortcuts are searched.
+ * \param[in] key  The wuss_EVENT_KEY event.
+ * \return The MENU_SELECT handler's result, or result_WUSS_KEY_UNCLAIMED if
+ *         no row matches.
+ */
+result_t wuss_menu_dispatch_shortcut(wuss_task_t        *task,
+                                     const wuss_menu_t  *menu,
+                                     const wuss_event_t *key);
 
 /* ----------------------------------------------------------------------- */
 
