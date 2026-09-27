@@ -295,8 +295,10 @@ static result_t image_open_menu(image_task_t *ic)
   /* Same trick for "Background": point it at the shared colourmenu
    * singleton as a submenu, so it gets the usual arrow-and-hover behaviour.
    * Marked BORROWED_SUBMENU so wuss_menu_destroy leaves it alone -- it is
-   * owned by the singleton, not by this per-open tree. */
-  wuss_colourmenu_set_none(1);
+   * owned by the singleton, not by this per-open tree. No "None" row: its
+   * wuss_NO_BACKGROUND isn't a palette index, and there's nothing behind
+   * the band to show through anyway. */
+  wuss_colourmenu_set_none(0);
   for (i = 0; i < m->nitems; i++)
     if (m->items[i].text != NULL && strcmp(m->items[i].text, "Background") == 0)
     {
