@@ -42,10 +42,10 @@ spheroid_light_t;
  * light there (turning it on), and dragging keeps moving it. The arrow keys
  * move it too, a pixel at a time (eight with Shift). Inside the disc the light
  * faces the surface under the pointer; the band just outside wraps it round to
- * the back. Menu > Light (or keys 1-4) picks the current light and Light > On
- * (or O) switches it. Light > Colour, Sphere colour and Background pick from
- * the palette; Dithering picks how the preview is blitted to a paletted
- * screen. Mutate (M) nudges the sliders, the lit lights' directions and
+ * the back. Menu > Light (or keys 1-4) picks the current light; the Light
+ * frame's On option switches it and its Colour button picks its colour from
+ * the palette, as Sphere colour and Background do from the menu; Dithering
+ * picks how the preview is blitted to a paletted screen. Mutate (M) nudges the sliders, the lit lights' directions and
  * the colours' hues; Randomise (^R) picks every setting afresh, keeping at
  * least one light on; Reset (R) restores the defaults; Save PNG (^S) writes the
  * sphere alone, transparent outside its edge. */
@@ -59,8 +59,8 @@ typedef struct spheroid_task
                                      * row would leak one instance's .window
                                      * pointer into another's menu */
   wuss_menu_t        menu;
-  /* "Light" submenu: one row per light, then On and Colour */
-  wuss_menu_item_t   light_items[SPHEROID_NLIGHTS + 2];
+  /* "Light" submenu: one row per light */
+  wuss_menu_item_t   light_items[SPHEROID_NLIGHTS];
   wuss_menu_t        light_menu;
   /* "Dithering" submenu: one row per screen_dither_t */
   wuss_menu_item_t   dither_items[3];
@@ -77,6 +77,8 @@ typedef struct spheroid_task
   int                glow;       /* 0..100: rim light in the surface colour */
   wuss_slider_row_t  rows[SPHEROID_NROWS];
   wuss_icon_t       *light_frame; /* captioned with the current light */
+  wuss_icon_t       *on_icon;     /* the current light's On option */
+  wuss_icon_t       *colour_icon; /* picks the current light's colour */
   rng_t              rng;        /* for Mutate and Randomise */
 }
 spheroid_task_t;
