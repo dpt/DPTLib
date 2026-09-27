@@ -319,8 +319,7 @@ static result_t display_mouse(display_task_t *dc, wuss_button_t button)
     dc->menu_items[DISPLAY_MENU_INFO].window = wuss_proginfo_window(dc->delegate);
   }
 
-  return wuss_menu_open(dc->delegate, &dc->menu, wuss_get_pointer(dc->wuss),
-                        &dc->menu_handle);
+  return wuss_menu_open_at_pointer(dc->delegate, &dc->menu, &dc->menu_handle);
 }
 
 /* offer an event to both string sets; 1 if one consumed it, its outcome in

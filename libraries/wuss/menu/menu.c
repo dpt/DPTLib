@@ -1067,6 +1067,13 @@ result_t wuss_menu_open_ticked(wuss_task_t        *task,
   return wuss_menu_open(task, menu, at, out);
 }
 
+result_t wuss_menu_open_at_pointer(wuss_task_t        *task,
+                                   const wuss_menu_t  *menu,
+                                   wuss_menu_handle_t *out)
+{
+  return wuss_menu_open(task, menu, wuss_get_pointer(task->wuss), out);
+}
+
 void wuss_menu_close(wuss_menu_handle_t handle)
 {
   struct wuss__menu *root;

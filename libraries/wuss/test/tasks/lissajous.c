@@ -222,8 +222,8 @@ static result_t lissajous_mouse(wuss_window_t      *window,
     wuss_menu_tick_item(&lc->menu, LISSAJOUS_MENU_PAUSE, lc->paused);
     wuss_menu_tick_exclusive(&lc->ratio_menu, lc->freq_index);
 
-    return wuss_menu_open(lc->delegate, &lc->menu,
-                          wuss_get_pointer(lc->wuss), &lc->menu_handle);
+    return wuss_menu_open_at_pointer(lc->delegate, &lc->menu,
+                                     &lc->menu_handle);
   }
 
   if (button & wuss_BUTTON_SELECT)

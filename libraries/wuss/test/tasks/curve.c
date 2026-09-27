@@ -366,8 +366,8 @@ static result_t curve_mouse(curve_task_t       *task,
                                task->npoints - CURVE_MINCONTROLPTS);
       wuss_menu_tick_item(&task->menu, CURVE_MENU_HULL, task->hull);
 
-      return wuss_menu_open(task->delegate, &task->menu,
-                            wuss_get_pointer(task->wuss), &task->menu_handle);
+      return wuss_menu_open_at_pointer(task->delegate, &task->menu,
+                                       &task->menu_handle);
     }
     if (button & wuss_BUTTON_ADJUST)
     {

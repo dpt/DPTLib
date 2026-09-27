@@ -274,8 +274,8 @@ static result_t chars_open_menu(chars_task_t *task)
   task->menu_items[CHARS_MENU_INFO].window =
     wuss_proginfo_window(task->delegate);
 
-  return wuss_menu_open(task->delegate, &task->menu,
-                        wuss_get_pointer(task->wuss), &task->menu_handle);
+  return wuss_menu_open_at_pointer(task->delegate, &task->menu,
+                                   &task->menu_handle);
 }
 
 /* "Font"'s hover: ticks the current font's row before handing the fontmenu

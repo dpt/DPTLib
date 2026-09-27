@@ -569,9 +569,8 @@ static result_t text_open_menu(text_task_t *task)
   wuss_proginfo_set_desc(&desc);
   task->top_items[TEXT_MENU_INFO].window = wuss_proginfo_window(task->delegate);
 
-  return wuss_menu_open(task->delegate,
-                        &task->top_menu,
-                        wuss_get_pointer(task->wuss), &task->menu_handle);
+  return wuss_menu_open_at_pointer(task->delegate, &task->top_menu,
+                                   &task->menu_handle);
 }
 
 /* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN, not just the

@@ -594,8 +594,8 @@ result_t porter_duff_handle(wuss_window_t      *window,
       wuss_menu_tick_item(&pd->menu, PORTER_DUFF_MENU_SWAP, pd->swapped);
       wuss_menu_tick_exclusive(&pd->rule_menu, pd->rule);
 
-      return wuss_menu_open(pd->delegate, &pd->menu,
-                            wuss_get_pointer(pd->wuss), &pd->menu_handle);
+      return wuss_menu_open_at_pointer(pd->delegate, &pd->menu,
+                                       &pd->menu_handle);
     }
     if (event->data.mouse.button & wuss_BUTTON_SELECT)
       return porter_duff_mouse(window, +1, task_data);
