@@ -24,8 +24,9 @@ checker_pattern_t;
 
 /* fills the whole content area with a two-tone pattern, black and white
  * until Menu > Ink/Paper recolours both windows (Menu > Swap colours
- * exchanges the two); each window cycles its own pattern independently on
- * a content click or from Menu > Pattern */
+ * exchanges the two); each window cycles its own pattern independently,
+ * forward on a Select click and back on Adjust, or picks it from
+ * Menu > Pattern */
 typedef struct checker_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
