@@ -671,7 +671,6 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
 
 void spheroid_destroy(spheroid_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

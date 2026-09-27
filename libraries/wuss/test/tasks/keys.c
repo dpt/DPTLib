@@ -92,7 +92,6 @@ result_t keys_create(wuss_t *wuss, keys_task_t **out)
 
 void keys_destroy(keys_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

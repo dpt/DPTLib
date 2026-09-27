@@ -827,8 +827,6 @@ void text_destroy(text_task_t *task)
 {
   int i;
 
-  wuss_menu_close(task->menu_handle);
-
   for (i = 0; i < task->nfonts; i++)
     if (task->fonts[i] != NULL)
       bmfontcache_release(wuss_get_font_cache(task->wuss), task->fonts[i]);

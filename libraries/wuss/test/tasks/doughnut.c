@@ -219,7 +219,6 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
 
 void doughnut_destroy(doughnut_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task->zbuf);
   free(task->shade);
   free(task);

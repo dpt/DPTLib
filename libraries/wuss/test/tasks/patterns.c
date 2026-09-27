@@ -194,7 +194,6 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
 
 void patterns_destroy(patterns_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

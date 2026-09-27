@@ -74,6 +74,13 @@ void wuss_window_close(wuss_window_t *doomed)
       !(task->flags & wuss_TASK__REAPING)  &&
       task->windows.next == NULL)
   {
+#ifdef WUSS_MENUS
+    /* As wuss_task_destroy: a chain this task still owns would outlive it,
+     * so tear it down (delivering MENU_CLOSED) before QUIT. */
+    if (wuss->menu_chain != NULL && wuss->menu_chain->owner == task)
+      wuss__menu_abandon(wuss);
+#endif
+
     event.kind = wuss_EVENT_QUIT;
     (void) wuss__deliver(task, NULL, &event);
 

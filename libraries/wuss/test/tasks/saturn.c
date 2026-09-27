@@ -276,15 +276,6 @@ fail_delegate:
 
 void saturn_destroy(saturn_task_t *task)
 {
-  /* task->conf.dialogue's window is borrowed into task->menu_items as a
-   * submenu leaf; if the chain is still open at QUIT (wuss_destroy sweeps
-   * tasks before closing any leftover chain -- see its comment) that leaf's
-   * node->window would dangle once wuss_dialogue_destroy below frees it.
-   * Close our own chain first, same as wuss_destroy expects every task to
-   * do for whatever it still holds. */
-  wuss_menu_close(task->menu_handle);
-  task->menu_handle = NULL;
-
   wuss_dialogue_destroy(task->conf.dialogue);
   free(task); /* task_data was calloc'd per instance by the spawner */
 }
