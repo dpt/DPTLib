@@ -102,10 +102,11 @@ typedef struct wuss_menu_item
   wuss_colour_t           swatch;
 
   /** Non-NULL: a keyboard shortcut label, e.g. "S", "F3" or "SPACE", drawn
-   *  in the bold weight right-aligned in the row; the menu widens to fit.
-   *  By convention written in UPPERCASE. Free text and display only -- the
-   *  task still handles the key itself in its wuss_EVENT_KEY handler. NULL
-   *  (as in a zero-initialised item) draws none. */
+   *  in the bold weight and a muted grey, right-aligned in the row; the
+   *  menu widens to fit. By convention written in UPPERCASE. Free text and
+   *  display only -- the task still handles the key itself in its
+   *  wuss_EVENT_KEY handler. NULL (as in a zero-initialised item) draws
+   *  none. */
   const char             *shortcut;
 }
 wuss_menu_item_t;
