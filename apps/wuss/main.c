@@ -439,6 +439,11 @@ static result_t run_wuss(const char *resources,
   g_tasks.frontend       = frontend;
   g_tasks.bm             = &g_bm;
 
+  /* --crt: the frontend opens plain; switch over now so the Debug menu's
+   * tick agrees */
+  if (g_tasks.crt)
+    tasks_set_crt(true);
+
   {
     wuss_task_desc_t desc;
 
@@ -591,7 +596,7 @@ wuss_options_t;
 static const char wuss_usage[] =
   "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
   "[-d|--depth 1|2|4|8|32] [-s|--scale N] [--res WIDTHxHEIGHT] "
-  "[-t|--tasks all|NAME[,NAME...]]\n";
+  "[-t|--tasks all|NAME[,NAME...]] [--crt]\n";
 
 /* Parses "WIDTHxHEIGHT" (e.g. "1024x768") into w and h. Returns false,
  * leaving them untouched, on anything else -- a missing 'x', a non-positive
@@ -616,9 +621,9 @@ static bool parse_res(const char *s, int *w, int *h)
 
 #ifndef __riscos
 
-/* --res has no short form, so it is given a longopt-only code past the ASCII
- * range getopt_long uses for short options. */
-enum { OPT_RES = 256 };
+/* --res and --crt have no short form, so they are given longopt-only codes
+ * past the ASCII range getopt_long uses for short options. */
+enum { OPT_RES = 256, OPT_CRT };
 
 /* Desktop: getopt_long. Accepts the short forms and the "--" long forms; the
  * historical single-dash long spellings (-resources) are no longer accepted.
@@ -633,6 +638,7 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
     { "scale",     required_argument, NULL, 's'     },
     { "res",       required_argument, NULL, OPT_RES },
     { "tasks",     required_argument, NULL, 't'     },
+    { "crt",       no_argument,       NULL, OPT_CRT },
     { NULL,        0,                 NULL, 0       }
   };
 
@@ -651,6 +657,9 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
     case 'd': opts->depth        = atoi(optarg); break;
     case 's': opts->scale        = atoi(optarg); break;
     case 't': opts->tasks        = optarg;       break;
+    case OPT_CRT:
+      g_tasks.crt = true;
+      break;
     case OPT_RES:
       if (!parse_res(optarg, &opts->res_width, &opts->res_height))
       {

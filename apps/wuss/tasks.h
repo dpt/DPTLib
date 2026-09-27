@@ -37,6 +37,8 @@ extern struct wuss_app_tasks
   bool             reverse_scroll; /* set by the Configure task's option
                                     * icon; read where each frontend fills
                                     * wuss_input_event_t.wheel */
+  bool             crt; /* CRT effect on: requested by --crt, then kept
+                         * current by tasks_set_crt */
   bool             debug_redraw_all;   /* set by the launcher's Debug picks */
   bool             debug_garbage;      /* (having already called */
   bool             debug_pixel_stress; /* wuss_redraw for Redraw); read and
@@ -78,6 +80,10 @@ result_t tasks_open_launcher(point_t pos);
  * shortcuts (e.g. F4 for Quit Wuss); result_WUSS_KEY_UNCLAIMED if none
  * matches */
 result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers);
+
+/* Switch the frontend's CRT post-effect on or off, recording the outcome in
+ * g_tasks.crt and the Debug menu's tick. Needs g_tasks.frontend set. */
+void tasks_set_crt(bool on);
 
 /* Spawn the tasks named in names, a comma-separated list of launcher-menu
  * task names (e.g. "Saturn,Clock"), or "all" to spawn every task in every

@@ -122,6 +122,11 @@ void wuss_frontend_set_palette(wuss_frontend_t *frontend,
  * range. No-op on a backend without a resizable window (RISC OS). */
 void wuss_frontend_zoom(wuss_frontend_t *frontend, int delta);
 
+/* Switch the CRT post-effect on or off (Debug > CRT). Returns whether it is
+ * now on: false on a backend or platform without it (RISC OS, non-Metal
+ * SDL), leaving the plain surface in place. */
+bool wuss_frontend_set_crt(wuss_frontend_t *frontend, bool on);
+
 /* Tear down the surface and free everything wuss_frontend_open allocated. */
 void wuss_frontend_close(wuss_frontend_t *frontend);
 

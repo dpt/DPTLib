@@ -822,7 +822,10 @@ if(BUILD_APPS)
     if(TARGET_RISCOS)
         list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-riscos.c)
     else()
-        list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-sdl.c)
+        list(APPEND WUSS_APP_SOURCES
+            apps/wuss/crt.c
+            apps/wuss/crt.h
+            apps/wuss/frontend-sdl.c)
     endif()
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${WUSS_APP_SOURCES})
