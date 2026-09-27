@@ -25,7 +25,9 @@ gradient_shape_t;
  * the ordered-dither matrix forward/backward through 2x2, 4x4 and 8x8. An
  * ADJUST drag sets brightness (vertical, up is brighter) and saturation
  * (horizontal, right is more saturated). Menu > Shape swaps the two-axis
- * ramp for a radial or conical hue sweep. */
+ * ramp for a radial or conical hue sweep; Menu > Reset restores the shape,
+ * dither, brightness and saturation; Menu > Save PNG writes the window to
+ * gradient.png. */
 typedef struct gradient_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_font in the redraw */
