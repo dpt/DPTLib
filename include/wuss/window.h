@@ -255,7 +255,7 @@ void wuss_window_get_content_bounds(const wuss_window_t *window,
  * call this themselves (e.g. the union of an animated element's old and new
  * positions).
  *
- * \param[in] window    Window whose content changed.
+ * \param[in] window    Window whose content changed, or NULL to do nothing.
  * \param[in] local_box Region, in window-local content coordinates (as
  *                      passed to the task's mouse callback), or NULL to mark
  *                      the whole content area dirty.
@@ -278,7 +278,8 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
  * The extent is clipped to what is actually visible before anything is
  * queued.
  *
- * \param[in] window Window whose whole document changed.
+ * \param[in] window Window whose whole document changed, or NULL to do
+ *                   nothing.
  */
 void wuss_window_invalidate_extent(wuss_window_t *window);
 

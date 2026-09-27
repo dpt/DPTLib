@@ -487,8 +487,7 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
     task->a    = 1.0;
     task->b    = 1.0;
     task->zoom = 1.0;
-    if (task->window != NULL)
-      wuss_window_invalidate_visible(task->window);
+    wuss_window_invalidate_visible(task->window);
     return result_OK;
   }
 
@@ -502,8 +501,7 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
     task->tube = event->data.menu_select.index;
     wuss_menu_tick_exclusive_live(task->menu_handle, &task->tube_menu,
                                   task->tube);
-    if (task->window != NULL)
-      wuss_window_invalidate_visible(task->window);
+    wuss_window_invalidate_visible(task->window);
     return result_OK;
   }
 
@@ -515,8 +513,7 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
   if (picked < npalette)
   {
     task->palette[0] = palette[picked];
-    if (task->window != NULL)
-      wuss_window_invalidate_visible(task->window);
+    wuss_window_invalidate_visible(task->window);
   }
 
   return result_OK;

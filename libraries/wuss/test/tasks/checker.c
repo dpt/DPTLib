@@ -330,10 +330,8 @@ static result_t checker_menu_select(checker_task_t     *cc,
     *cc->colourmenu_target = palette[picked];
   }
 
-  if (cc->window != NULL)
-    wuss_window_invalidate_visible(cc->window);
-  if (cc->window2 != NULL)
-    wuss_window_invalidate_visible(cc->window2);
+  wuss_window_invalidate_visible(cc->window);
+  wuss_window_invalidate_visible(cc->window2);
 
   return result_OK;
 }
