@@ -527,6 +527,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   const box_t            *b    = &c->b;
   colour_t                ink, ground, text_ink, text_ground, tmp;
   int                     disabled, highlit, pad, text_x0, text_x1;
+  bmfont_width_t          space_w;
 
   disabled = (icon->flags & wuss_ICON_FLAGS_DISABLED) != 0;
   highlit  = wuss__icon_hovered(c->icon) && !disabled;
@@ -558,13 +559,18 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   else if (icon->bg != wuss_NO_BACKGROUND)
     screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), ground);
 
-  /* left-edge colour chip (wins over the tick) or tick when selected */
+  /* the label is drawn as if a space padded it either side (see below) */
+  space_w = c->have_font ? wuss__fontset_space_width(&c->wuss->fonts, c->font)
+                         : 0;
+
+  /* colour chip: leads the text column, one space in, so the tick gutter
+   * stays free and a row can be both ticked and swatched */
   if (icon->flags & wuss_ICON_FLAGS_SWATCH)
   {
     int cx, cy, h;
 
     h  = MAX(c->font_height, 8);
-    cx = b->x0 + pad;
+    cx = text_x0 + (int) space_w;
     cy = b->y0 + (b->y1 - b->y0 - h) / 2;
     if (icon->u.menu_entry.swatch == wuss_NO_BACKGROUND)
     {
@@ -593,7 +599,9 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
                        c->wuss->palette[icon->u.menu_entry.swatch]);
     screen_draw_rect(c->scr, cx, cy, SIZE2D(h, h), ink); /* 1px border */
   }
-  else if (wuss__icon_selected(c->icon))
+
+  /* tick in the left gutter when selected */
+  if (wuss__icon_selected(c->icon))
   {
     int     cx, cy, h;
     point_t centre;
@@ -633,16 +641,15 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
 
   if (c->have_font && icon->text != NULL && icon->text[0] != '\0')
   {
-    point_t        pos;
-    bmfont_width_t space_w;
+    point_t pos;
 
     /* draw as if a space padded the text either side, without actually
      * touching the string -- only the left inset matters for pos.x, but
      * the same width is left spare at text_x1 too since the fill already
-     * spans the full column */
-    space_w = wuss__fontset_space_width(&c->wuss->fonts, c->font);
-
+     * spans the full column. A swatch row's label follows its chip. */
     pos.x = text_x0 + (int) space_w;
+    if (icon->flags & wuss_ICON_FLAGS_SWATCH)
+      pos.x += wuss__menu_entry_swatch_width(c->font_height);
     pos.y = icon_text_baseline_y(c, b);
     wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
                     text_ink, text_ground, &pos, NULL);
