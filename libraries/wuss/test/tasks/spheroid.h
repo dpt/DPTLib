@@ -30,9 +30,9 @@ spheroid_light_t;
 
 /* window task: a single sphere, shaded per pixel by up to four coloured
  * lights, in the spirit of Kai's Power Tools' Spheroid Designer. The sphere
- * fills the window right of a fixed control strip of sliders (ambient, glow,
- * highlight size and sharpness, and the current light's intensity) and
- * scales with it. Each lit light shows as a ring marker
+ * fills the window right of a fixed control strip of sliders, framed in two
+ * groups: Sphere (ambient, glow, highlight size and sharpness) and the
+ * current light's (its level), and scales with it. Each lit light shows as a ring marker
  * (dotted when behind the sphere, filled when current). A Select click on a
  * marker makes that light current; anywhere else it moves the current light
  * there (turning it on), and dragging keeps moving it. Inside the disc the
@@ -67,6 +67,7 @@ typedef struct spheroid_task
   int                size;       /* 0..100: highlight size */
   int                sharpness;  /* 0..100: highlight edge hardness */
   wuss_slider_row_t  rows[SPHEROID_NROWS];
+  wuss_icon_t       *light_frame; /* captioned with the current light */
   rng_t              rng;        /* for Mutate */
 }
 spheroid_task_t;
