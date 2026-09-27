@@ -3,6 +3,7 @@
 #ifndef WUSS_ICON_IMPL_H
 #define WUSS_ICON_IMPL_H
 
+#include "base/utils.h"
 #include "geom/box.h"
 #include "geom/point.h"
 
@@ -62,6 +63,22 @@ struct wuss_icon
 /* The font an icon's text is drawn with: its requested slot, falling back to
  * the system font. NULL when wuss has no fonts. */
 bmfont_t *wuss__icon_font(const wuss_t *wuss, const wuss_icon_t *icon);
+
+/* Widths of a MENU_ENTRY row's tick (left) and submenu-arrow (right) gutters
+ * either side of its text column, for a font "font_height" pixels tall.
+ * wuss__icon_draw_menu_entry draws within them; the menu module sizes and
+ * hit-tests rows with them, so the two agree. */
+#define WUSS_MENU_ENTRY_PAD 4
+
+static inline int wuss__menu_entry_gutter_left(int font_height)
+{
+  return WUSS_MENU_ENTRY_PAD + font_height;
+}
+
+static inline int wuss__menu_entry_gutter_right(int font_height)
+{
+  return WUSS_MENU_ENTRY_PAD + MAX(font_height, 8);
+}
 
 static inline int wuss__icon_pressed(const wuss_icon_t *icon)
 {

@@ -530,7 +530,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
 
   disabled = (icon->flags & wuss_ICON_FLAGS_DISABLED) != 0;
   highlit  = wuss__icon_hovered(c->icon) && !disabled;
-  pad      = 4;
+  pad      = WUSS_MENU_ENTRY_PAD;
 
   /* resolve the row's own ink over its own/inherited ground */
   ground = icon_blend_ground(c, c->fg);
@@ -547,10 +547,10 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     text_ground = tmp;
   }
 
-  text_x0 = b->x0 + pad + c->font_height;      /* past the tick gutter */
-  text_x1 = b->x1 - pad - MAX(c->font_height, 8); /* short of the arrow
-                                                    * gutter, whether or not
-                                                    * this row has an arrow */
+  /* past the tick gutter; short of the arrow gutter, whether or not this
+   * row has an arrow */
+  text_x0 = b->x0 + wuss__menu_entry_gutter_left(c->font_height);
+  text_x1 = b->x1 - wuss__menu_entry_gutter_right(c->font_height);
 
   if (highlit)
     screen_fill_rect(c->scr, text_x0, b->y0,
