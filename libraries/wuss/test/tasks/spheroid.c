@@ -31,14 +31,27 @@
  * the smoothstep around 0.5. Glow adds (1 - N.V)^3 of the sphere colour at
  * the rim and ambient a flat share of it. The sum is clamped, then blended
  * over the background by the pixel's disc coverage so the edge is
- * anti-aliased. */
+ * anti-aliased.
+ *
+ * A light is placed by pointing at the sphere: inside the disc it takes the
+ * surface normal under the pointer. A band SPHEROID_WRAP radii wide just
+ * outside the disc wraps round to the back hemisphere, z falling from 0 at
+ * the rim to -1 at the band's outer edge, so rim and back lighting stay in
+ * reach. Markers use the inverse, so a back light's marker sits in the band
+ * where the pointer that placed it was. */
 
-#define SPHEROID_MARGIN 8 /* px between the sphere and the window edge */
+#define SPHEROID_MARGIN 8    /* px between the wrap band and the window edge */
+#define SPHEROID_WRAP   0.25 /* wrap band width, in sphere radii */
+#define SPHEROID_MARKER 4    /* marker ring radius, px */
+#define SPHEROID_GRAB   6    /* px from a marker a click selects it */
 
 enum
 {
-  SPHEROID_MENU_INFO = 0
+  SPHEROID_MENU_INFO = 0,
+  SPHEROID_MENU_LIGHT
 };
+
+#define SPHEROID_LIGHT_ON SPHEROID_NLIGHTS /* row after the per-light rows */
 
 /* per-redraw constants, worked out once rather than per pixel */
 typedef struct spheroid_frame
@@ -151,6 +164,106 @@ static void spheroid_prepare(const spheroid_task_t *task,
   f->hi = 0.5 + w / 2.0;
 }
 
+/* the sphere's centre and radius for a content area of the given size, in
+ * content-local coordinates */
+static void spheroid_layout(size2d_t size, double *cx, double *cy, double *r)
+{
+  *cx = size.w / 2.0;
+  *cy = size.h / 2.0;
+  *r  = (MIN(size.w, size.h) / 2.0 - SPHEROID_MARGIN) / (1.0 + SPHEROID_WRAP);
+}
+
+/* point the light at content-local (px, py) */
+static void spheroid_aim(spheroid_light_t *light,
+                         double            cx,
+                         double            cy,
+                         double            r,
+                         int               px,
+                         int               py)
+{
+  double dx, dy, d, z, s;
+
+  dx = (px - cx) / r;
+  dy = (cy - py) / r;
+  d  = sqrt(dx * dx + dy * dy);
+
+  if (d <= 1.0)
+  {
+    light->x = dx;
+    light->y = dy;
+    light->z = sqrt(1.0 - d * d);
+    return;
+  }
+
+  z = -MIN((d - 1.0) / SPHEROID_WRAP, 1.0);
+  s = sqrt(1.0 - z * z);
+  light->x = dx / d * s;
+  light->y = dy / d * s;
+  light->z = z;
+}
+
+/* the inverse of spheroid_aim: where the light's marker sits */
+static void spheroid_marker_pos(const spheroid_light_t *light,
+                                double                  cx,
+                                double                  cy,
+                                double                  r,
+                                int                    *mx,
+                                int                    *my)
+{
+  double s, d;
+
+  if (light->z >= 0.0)
+  {
+    *mx = (int) floor(cx + light->x * r);
+    *my = (int) floor(cy - light->y * r);
+    return;
+  }
+
+  s = sqrt(light->x * light->x + light->y * light->y);
+  d = (1.0 - light->z * SPHEROID_WRAP) * r;
+  if (s < 1e-6)
+  {
+    /* dead behind: every direction round the band is equally right */
+    *mx = (int) floor(cx);
+    *my = (int) floor(cy - d);
+    return;
+  }
+
+  *mx = (int) floor(cx + light->x / s * d);
+  *my = (int) floor(cy - light->y / s * d);
+}
+
+/* a lit light's marker: a ring in its colour with a black outline for
+ * contrast, dotted when behind the sphere, centre filled when current */
+static void spheroid_draw_marker(screen_t               *scr,
+                                 const spheroid_light_t *light,
+                                 int                     x,
+                                 int                     y,
+                                 int                     current)
+{
+  colour_t black;
+  int      i;
+
+  black = colour_rgb(0x00, 0x00, 0x00);
+
+  if (light->z >= 0.0)
+  {
+    screen_draw_circle(scr, x, y, SPHEROID_MARKER + 1, black);
+    screen_draw_circle(scr, x, y, SPHEROID_MARKER, light->colour);
+  }
+  else
+  {
+    for (i = 0; i < 12; i++)
+      screen_set_pixel(scr,
+                       x + (int) floor(SPHEROID_MARKER * cos(i * M_PI / 6.0) + 0.5),
+                       y + (int) floor(SPHEROID_MARKER * sin(i * M_PI / 6.0) + 0.5),
+                       light->colour);
+  }
+
+  if (current)
+    screen_fill_circle(scr, x, y, SPHEROID_MARKER - 2, light->colour);
+}
+
 /* shade the surface point with normal n into rgb (0..1, clamped) */
 static void spheroid_shade(const spheroid_frame_t *f,
                            const double            n[3],
@@ -190,6 +303,7 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
   spheroid_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -234,6 +348,30 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in spheroid_mouse */
 
+  for (i = 0; i < SPHEROID_NLIGHTS; i++)
+  {
+    static const char *const names[SPHEROID_NLIGHTS] =
+    {
+      "Light 1", "Light 2", "Light 3", "Light 4"
+    };
+    static const char *const keys[SPHEROID_NLIGHTS] =
+    {
+      "1", "2", "3", "4"
+    };
+
+    WUSS_MENU_ITEM_SHORTCUT(task->light_items, i, names[i],
+                            wuss_MENU_ITEM_NONE, keys[i]);
+  }
+
+  WUSS_MENU_ITEM_SHORTCUT(task->light_items, SPHEROID_LIGHT_ON, "On",
+                          wuss_MENU_ITEM_DASHED, "O");
+
+  WUSS_MENU_TITLE(task->light_menu, "Light", task->light_items,
+                  NELEMS(task->light_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, SPHEROID_MENU_LIGHT, "Light",
+                      wuss_MENU_ITEM_NONE, &task->light_menu);
+
   WUSS_MENU_TITLE(task->menu, "Spheroid", task->menu_items,
                   NELEMS(task->menu_items));
 
@@ -258,7 +396,7 @@ static result_t spheroid_redraw(const wuss_event_t *event,
   double           cx, cy, r;
   double           dx, dy, dist, cov, n2, len;
   double           n[3], rgb[3];
-  int              x, y, k;
+  int              x, y, k, i;
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
@@ -266,9 +404,9 @@ static result_t spheroid_redraw(const wuss_event_t *event,
 
   spheroid_prepare(task, &f);
 
-  cx = (bounds->x0 + bounds->x1) / 2.0;
-  cy = (bounds->y0 + bounds->y1) / 2.0;
-  r  = MIN(box_size(bounds).w, box_size(bounds).h) / 2.0 - SPHEROID_MARGIN;
+  spheroid_layout(box_size(bounds), &cx, &cy, &r);
+  cx += bounds->x0;
+  cy += bounds->y0;
 
   for (y = content->y0; y < content->y1; y++)
   {
@@ -310,11 +448,57 @@ static result_t spheroid_redraw(const wuss_event_t *event,
     }
   }
 
+  for (i = 0; i < SPHEROID_NLIGHTS; i++)
+  {
+    if (!task->lights[i].on)
+      continue;
+
+    spheroid_marker_pos(&task->lights[i], cx, cy, r, &x, &y);
+    spheroid_draw_marker(scr, &task->lights[i], x, y, i == task->current);
+  }
+
   return result_OK;
+}
+
+/* the Light submenu's ticks: the current light's row, and On if it's lit */
+static unsigned int spheroid_light_ticks(const spheroid_task_t *task)
+{
+  unsigned int ticks;
+
+  ticks = 1u << task->current;
+  if (task->lights[task->current].on)
+    ticks |= 1u << SPHEROID_LIGHT_ON;
+
+  return ticks;
+}
+
+/* the lit light whose marker is within SPHEROID_GRAB px of (px, py), or -1 */
+static int spheroid_hit_marker(const spheroid_task_t *task,
+                               double                 cx,
+                               double                 cy,
+                               double                 r,
+                               int                    px,
+                               int                    py)
+{
+  int i, mx, my;
+
+  for (i = 0; i < SPHEROID_NLIGHTS; i++)
+  {
+    if (!task->lights[i].on)
+      continue;
+
+    spheroid_marker_pos(&task->lights[i], cx, cy, r, &mx, &my);
+    if ((px - mx) * (px - mx) + (py - my) * (py - my) <=
+        SPHEROID_GRAB * SPHEROID_GRAB)
+      return i;
+  }
+
+  return -1;
 }
 
 static result_t spheroid_mouse(spheroid_task_t    *task,
                                wuss_mouse_action_t action,
+                               point_t             p,
                                wuss_button_t       button,
                                wuss_window_t      *window)
 {
@@ -326,18 +510,81 @@ static result_t spheroid_mouse(spheroid_task_t    *task,
     "1.0 (" __DATE__ ")"
   };
 
+  box_t  content;
+  double cx, cy, r;
+  int    hit;
+
   if (window != task->window)
     return result_OK; /* the proginfo dialogue has no click behaviour of
                        * its own */
 
-  if (action != wuss_MOUSE_DOWN || !(button & wuss_BUTTON_MENU))
+  if (action == wuss_MOUSE_UP)
+  {
+    task->dragging = 0;
+    return result_OK;
+  }
+
+  if (action == wuss_MOUSE_DOWN && (button & wuss_BUTTON_MENU))
+  {
+    wuss_proginfo_set_desc(&desc);
+    task->menu_items[SPHEROID_MENU_INFO].window = wuss_proginfo_window(task->delegate);
+    wuss_menu_tick_set(&task->light_menu, spheroid_light_ticks(task));
+
+    return wuss_menu_open(task->delegate, &task->menu,
+                          wuss_get_pointer(task->wuss), &task->menu_handle);
+  }
+
+  if (action == wuss_MOUSE_DOWN && !(button & wuss_BUTTON_SELECT))
     return result_OK;
 
-  wuss_proginfo_set_desc(&desc);
-  task->menu_items[SPHEROID_MENU_INFO].window = wuss_proginfo_window(task->delegate);
+  if (action == wuss_MOUSE_MOVE && !task->dragging)
+    return result_OK;
 
-  return wuss_menu_open(task->delegate, &task->menu,
-                        wuss_get_pointer(task->wuss), &task->menu_handle);
+  wuss_window_get_content_bounds(window, &content);
+  spheroid_layout(box_size(&content), &cx, &cy, &r);
+
+  if (action == wuss_MOUSE_DOWN)
+  {
+    task->dragging = 1;
+
+    hit = spheroid_hit_marker(task, cx, cy, r, p.x, p.y);
+    if (hit >= 0)
+    {
+      task->current = hit; /* grab it where it is; a move then drags it */
+      wuss_window_invalidate_visible(window);
+      return result_OK;
+    }
+  }
+
+  task->lights[task->current].on = 1;
+  spheroid_aim(&task->lights[task->current], cx, cy, r, p.x, p.y);
+  wuss_window_invalidate_visible(window);
+
+  return result_OK;
+}
+
+static result_t spheroid_menu_select(spheroid_task_t    *task,
+                                     const wuss_event_t *event)
+{
+  int index;
+
+  if (event->data.menu_select.menu != &task->light_menu)
+    return result_OK;
+
+  index = event->data.menu_select.index;
+  if (index == SPHEROID_LIGHT_ON)
+    task->lights[task->current].on = !task->lights[task->current].on;
+  else
+    task->current = index;
+
+  if (wuss_menu_should_keep_open(event))
+    wuss_menu_tick_set_live(task->menu_handle, &task->light_menu,
+                            spheroid_light_ticks(task));
+
+  if (task->window != NULL)
+    wuss_window_invalidate_visible(task->window);
+
+  return result_OK;
 }
 
 result_t spheroid_handle(wuss_window_t      *window,
@@ -355,12 +602,16 @@ result_t spheroid_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MOUSE:
     return spheroid_mouse(task, event->data.mouse.action,
-                          event->data.mouse.button, window);
+                          event->data.mouse.point, event->data.mouse.button,
+                          window);
 
   case wuss_EVENT_KEY:
     if (window != task->window)
       return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
     return wuss_menu_dispatch_shortcut(task->delegate, &task->menu, event);
+
+  case wuss_EVENT_MENU_SELECT:
+    return spheroid_menu_select(task, event);
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
