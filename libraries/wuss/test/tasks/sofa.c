@@ -470,7 +470,6 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
 
 void sofa_destroy(sofa_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

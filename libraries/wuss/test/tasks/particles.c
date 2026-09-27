@@ -338,7 +338,6 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
 
 void particles_destroy(particles_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

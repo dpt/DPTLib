@@ -201,7 +201,6 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
 
 void curve_destroy(curve_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

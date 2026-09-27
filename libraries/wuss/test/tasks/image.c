@@ -175,10 +175,6 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
 
 void image_destroy(image_task_t *task)
 {
-  /* close any open chain first: it may hold the proginfo singleton's window
-   * as a borrowed wuss_menu_item_t.window, and destroying the menu below
-   * would leave the chain pointing at freed memory */
-  wuss_menu_close(task->menu_handle);
   wuss_menu_destroy(task->menu);
   free(task->bitmap.base);
   free(task->ninepatch.base);

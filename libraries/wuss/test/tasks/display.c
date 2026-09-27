@@ -299,7 +299,6 @@ void display_destroy(display_task_t *task)
 {
   wuss_stringset_destroy(task->colours);
   wuss_stringset_destroy(task->resolution);
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

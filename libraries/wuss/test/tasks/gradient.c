@@ -301,7 +301,6 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
 
 void gradient_destroy(gradient_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

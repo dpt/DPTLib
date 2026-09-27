@@ -133,7 +133,6 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
 
 void lissajous_destroy(lissajous_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

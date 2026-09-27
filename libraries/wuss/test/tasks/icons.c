@@ -855,7 +855,6 @@ failure:
 
 void icons_destroy(icons_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   wuss_stringset_destroy(task->sset);
   if (task->has_sprite)
     free(task->sprite.base);

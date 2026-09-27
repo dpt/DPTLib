@@ -427,7 +427,6 @@ fail_delegate:
 
 void config_destroy(config_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

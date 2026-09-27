@@ -148,7 +148,6 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
 
 void checker_destroy(checker_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

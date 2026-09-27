@@ -449,7 +449,6 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
 
 void minesweeper_destroy(minesweeper_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task->flag_bm.base);
   free(task->mine_bm.base);
   bmfontcache_release(wuss_get_font_cache(task->wuss), task->hud_font);

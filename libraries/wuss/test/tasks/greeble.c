@@ -615,9 +615,6 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
 
 void greeble_destroy(greeble_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
-  task->menu_handle = NULL;
-
   free(task);
 }
 

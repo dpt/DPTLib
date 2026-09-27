@@ -6830,6 +6830,33 @@ MoveFail:
     if (qmt.menu_handle != NULL)             goto QuitCheckFail;
     if (qwuss->menu_chain != NULL)           goto QuitCheckFail;
 
+    /* Phase 1b: an autoclose task losing its last window with its chain
+     * still open. Its self-reap must abandon the chain before QUIT, as
+     * wuss_task_destroy does; otherwise the chain outlives its freed owner
+     * and the QUIT handler's wuss_menu_close is left to clean up. */
+    memset(&qmt, 0, sizeof(qmt));
+    qmt.menu = &q_menu;
+    task_q = mk_task(qwuss, menu_open_handle, &qmt);
+    if (task_q == NULL) { rc = result_OOM; goto QuitDestroy; }
+    qmt.self = task_q;
+    wuss_task_set_autoclose(task_q, 1);
+    rc = wuss_window_create(task_q, &bq, "Q1b",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE,
+                            wuss_NO_BACKDROP,
+                            box_size(&bq), SIZE2D(0, 0), &wq);
+    if (rc != result_OK) goto QuitDestroy;
+    wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
+                     wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
+                     wuss_MOUSE_UP, NULL);
+    if (qwuss->menu_chain == NULL)           goto QuitCheckFail;
+
+    forget_test_tasks(); /* the autoclose reap below frees task_q */
+    wuss_window_close(wq);
+    if (qmt.menu_closed_count != 1)          goto QuitCheckFail;
+    if (qmt.menu_handle != NULL)             goto QuitCheckFail;
+    if (qwuss->menu_chain != NULL)           goto QuitCheckFail;
+
     /* Phase 2: same again but torn down by wuss_destroy's own task sweep,
      * with task_q left registered. The internal menu task used to be freed by
      * that sweep before task_q's QUIT, so the QUIT handler's wuss_menu_close

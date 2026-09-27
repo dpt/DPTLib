@@ -142,7 +142,6 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
 
 void ball_destroy(ball_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 

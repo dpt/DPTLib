@@ -284,7 +284,6 @@ free_a:
 
 void porter_duff_destroy(porter_duff_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task->dst.base);
   free(task->src.base);
   free(task->b.base);
