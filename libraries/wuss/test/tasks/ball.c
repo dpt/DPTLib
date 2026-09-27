@@ -101,14 +101,10 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(200, 160),
-                                 "Bouncing Ball",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(200, 160),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate,
+                          SIZE2D(200, 160),
+                          "Bouncing Ball",
+                          &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */

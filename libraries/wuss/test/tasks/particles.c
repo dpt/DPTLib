@@ -11,6 +11,7 @@
 #include "base/utils.h"
 #include "geom/box.h"
 
+#include "common.h"
 #include "particles.h"
 
 #define PARTICLES_BURST (MAX_PARTICLES / 2) /* particles per click */
@@ -274,14 +275,10 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(WIDTH, HEIGHT),
-                                 "Particles",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(WIDTH, HEIGHT),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate,
+                          SIZE2D(WIDTH, HEIGHT),
+                          "Particles",
+                          &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */

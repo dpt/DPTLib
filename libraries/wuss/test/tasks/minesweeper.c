@@ -386,14 +386,11 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
   task->task = delegate;
   wuss_task_set_autoclose(delegate, 1);
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(MS_WIDTH(task), MS_HEIGHT(task)),
-                                 "Minesweeper",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(MS_WIDTH(task), MS_HEIGHT(task)),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate,
+                          SIZE2D(MS_WIDTH(task),
+                          MS_HEIGHT(task)),
+                          "Minesweeper",
+                          &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */

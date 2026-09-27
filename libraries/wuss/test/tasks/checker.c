@@ -77,28 +77,20 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
   }
   task->delegate = delegate;
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(160, 160),
-                                 "Checker 1",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(160, 160),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate,
+                          SIZE2D(160, 160),
+                          "Checker 1",
+                          &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
     return rc;
   }
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(160, 160),
-                                 "Checker 2",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(160, 160),
-                                 SIZE2D(0, 0),
-                                 &task->window2);
+  rc = task_window_create(delegate,
+                          SIZE2D(160, 160),
+                          "Checker 2",
+                          &task->window2);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* closes "Checker 1", QUIT frees the block */

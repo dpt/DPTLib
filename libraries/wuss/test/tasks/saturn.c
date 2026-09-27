@@ -247,14 +247,10 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   WUSS_MENU_TITLE(task->menu, "Saturn", task->menu_items,
                  NELEMS(task->menu_items));
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(task->config.size, task->config.size),
-                                 "Saturn",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(task->config.size, task->config.size),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate,
+                          SIZE2D(task->config.size, task->config.size),
+                          "Saturn",
+                          &task->window);
   if (rc != result_OK)
     goto fail_delegate;
 
