@@ -244,7 +244,7 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
                                 * porter_duff_handle */
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PORTER_DUFF_MENU_PAUSE, "Pause",
-                          wuss_MENU_ITEM_NONE, "Space");
+                          wuss_MENU_ITEM_NONE, "SPACE");
 
   for (i = 0; i < composite_RULE__LIMIT; i++)
     WUSS_MENU_ITEM(task->rule_items, i, rule_names[i], wuss_MENU_ITEM_NONE);

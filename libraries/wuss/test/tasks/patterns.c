@@ -178,7 +178,7 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
                       wuss_MENU_ITEM_NONE, &task->speed_menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_PAUSE, "Pause",
-                          wuss_MENU_ITEM_NONE, "Space");
+                          wuss_MENU_ITEM_NONE, "SPACE");
 
   WUSS_MENU_ITEM(task->menu_items, PATTERNS_MENU_SAVE, "Save PNG",
                  wuss_MENU_ITEM_NONE);
