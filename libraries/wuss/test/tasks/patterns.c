@@ -198,6 +198,15 @@ void patterns_destroy(patterns_task_t *task)
   free(task);
 }
 
+/* start the next blend: the old end colour becomes the start and a fresh
+ * random colour the end */
+static void patterns_next_blend(patterns_task_t *bc)
+{
+  bc->frame_count = 0;
+  bc->a           = bc->b;
+  bc->b           = patterns_random_colour(&bc->rng);
+}
+
 static result_t patterns_idle(void *task_data)
 {
   patterns_task_t *bc;
@@ -215,11 +224,7 @@ static result_t patterns_idle(void *task_data)
     return result_OK;
 
   if (++bc->frame_count >= bc->blend_frames)
-  {
-    bc->frame_count = 0;
-    bc->a           = bc->b;
-    bc->b           = patterns_random_colour(&bc->rng);
-  }
+    patterns_next_blend(bc);
 
   patterns_update_pattern(bc);
   wuss_window_invalidate_visible(bc->window);
@@ -270,8 +275,18 @@ result_t patterns_handle(wuss_window_t      *window,
     if (window != bc->window)
       return result_OK; /* the proginfo dialogue has no click behaviour of
                          * its own */
-    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
-        !(event->data.mouse.button & wuss_BUTTON_MENU))
+    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+      return result_OK;
+
+    if (event->data.mouse.button & wuss_BUTTON_SELECT)
+    {
+      patterns_next_blend(bc);
+      patterns_update_pattern(bc);
+      wuss_window_invalidate_visible(bc->window);
+      return result_OK;
+    }
+
+    if (!(event->data.mouse.button & wuss_BUTTON_MENU))
       return result_OK;
     {
       static const wuss_proginfo_desc_t desc =

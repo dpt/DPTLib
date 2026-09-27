@@ -17,6 +17,7 @@
  * blends from colour a to colour b over a menu-selectable period, then
  * picks a fresh random b (the old b becoming a) and repeats; each frame's
  * pattern comes from pattern_from_colour against the system palette.
+ * A Select click skips straight to the next blend, even while paused;
  * Menu > Pause freezes the blend; Menu > Save PNG writes the window to
  * patterns.png */
 
