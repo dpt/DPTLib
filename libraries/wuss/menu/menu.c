@@ -24,11 +24,10 @@
 
 #include "../core/impl.h"
 
-/* Row padding above/below the glyph, and the gutters left for the tick (left)
- * and the submenu arrow (right). All in pixels. */
+/* Row padding above/below the glyph, in pixels. The tick and submenu-arrow
+ * gutters come from wuss__menu_entry_gutter_left/right, shared with the row
+ * drawing. */
 #define WUSS_MENU_ROW_PAD         4
-#define WUSS_MENU_GUTTER_LEFT    14
-#define WUSS_MENU_GUTTER_RIGHT   14
 #define WUSS_MENU_TITLE_PAD       2 /* margin either side of the titlebar caption slot, matching wuss__titlebar_draw */
 #define WUSS_MENU_SUBMENU_OVERLAP 2 /* px a submenu overlaps its parent's right edge */
 
@@ -582,15 +581,16 @@ static int wuss__pointer_over_icon(wuss_window_t     *window,
 
 /* True if the wuss pointer sits over the submenu-arrow gutter of row `icon`
  * in `window`: the pointer is within the row vertically and inside the
- * rightmost WUSS_MENU_GUTTER_RIGHT pixels of it. A submenu opens only from here,
- * so re-entering the parent anywhere else closes the child. */
+ * rightmost wuss__menu_entry_gutter_right pixels of it. A submenu opens only
+ * from here, so re-entering the parent anywhere else closes the child. */
 static int wuss__pointer_over_row_arrow(wuss_window_t     *window,
                                         const wuss_icon_t *icon)
 {
   point_t p;
   box_t   content;
-  box_t   bbox;
   point_t doc;
+  box_t   bbox;
+  int     gutter;
 
   p = wuss_get_pointer(window->wuss);
   wuss__content_box(window, &content);
@@ -598,9 +598,11 @@ static int wuss__pointer_over_row_arrow(wuss_window_t     *window,
   doc.y = p.y - content.y0 + window->scroll.y;
 
   wuss_icon_get_bbox(icon, &bbox);
+  gutter = wuss__menu_entry_gutter_right(
+             wuss__fontset_height(&window->wuss->fonts, 0));
 
   return doc.y >= bbox.y0 && doc.y < bbox.y1
-      && doc.x >= bbox.x1 - WUSS_MENU_GUTTER_RIGHT && doc.x < bbox.x1;
+      && doc.x >= bbox.x1 - gutter && doc.x < bbox.x1;
 }
 
 /* End the pick flash on `self` now: leave the flashed row un-highlit unless the
@@ -792,7 +794,8 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
       widest += 2 * (int) space_w + widest_shortcut;
   }
 
-  width  = WUSS_MENU_GUTTER_LEFT + widest + WUSS_MENU_GUTTER_RIGHT;
+  width  = wuss__menu_entry_gutter_left(fh) + widest +
+           wuss__menu_entry_gutter_right(fh);
 
   /* widen for the titlebar caption too, so a title longer than every item
    * label (e.g. a one-item menu) isn't clipped; titles draw in the bold
@@ -1014,7 +1017,8 @@ result_t wuss_menu_open(wuss_task_t        *task,
   /* RISC OS convention: the pointer opens the menu sitting a little inside its
    * first item, not on the top-left corner. Shift the content top-left up and
    * left so `at` (the pointer) lands over row 0. */
-  at.x -= WUSS_MENU_GUTTER_LEFT;
+  at.x -= wuss__menu_entry_gutter_left(
+            wuss__fontset_height(&wuss->fonts, 0));
   at.y -= WUSS_MENU_ROW_PAD;
 
   rc = wuss__menu_spawn(wuss, task, menu, at, NULL, &root);
