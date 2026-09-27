@@ -33,9 +33,6 @@ typedef enum wuss_input_kind
   wuss_INPUT_MOUSE_DOWN,    /* .pos, .button */
   wuss_INPUT_MOUSE_UP,      /* .pos, .button */
   wuss_INPUT_WHEEL,         /* .pos, .wheel */
-  wuss_INPUT_REDRAW_ALL,    /* force a full redraw (F1) */
-  wuss_INPUT_GARBAGE,       /* corrupt the whole screen for one frame (Shift-F1) */
-  wuss_INPUT_PIXEL_STRESS,  /* one-pixel-at-a-time redraw (F3) */
   wuss_INPUT_KEY            /* .key, .mods: a press or autorepeat */
 }
 wuss_input_kind_t;
