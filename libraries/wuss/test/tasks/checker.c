@@ -13,6 +13,7 @@
 #include "geom/box.h"
 
 #include "checker.h"
+#include "snapshot.h"
 
 #define CHECKER_BAND_DEFAULT 8  /* pixels per band, so each pattern reads clearly */
 #define CHECKER_BAND_MIN     1
@@ -28,8 +29,11 @@ enum
   CHECKER_MENU_INK,
   CHECKER_MENU_PAPER,
   CHECKER_MENU_PATTERN,
-  CHECKER_MENU_SWAP
+  CHECKER_MENU_SWAP,
+  CHECKER_MENU_SAVE
 };
+
+#define CHECKER_SAVE_NAME "checker.png" /* written to the current dir */
 
 /* Pattern submenu rows, in checker_pattern_t order */
 static const char *checker_pattern_names[checker_PATTERN__COUNT] =
@@ -128,6 +132,9 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
                       wuss_MENU_ITEM_NONE, &task->pattern_menu);
 
   WUSS_MENU_ITEM(task->menu_items, CHECKER_MENU_SWAP, "Swap colours",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM(task->menu_items, CHECKER_MENU_SAVE, "Save PNG",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Checker", task->menu_items,
@@ -279,6 +286,12 @@ static result_t checker_menu_select(checker_task_t     *cc,
     wuss_window_invalidate_visible(cc->menu_window);
     return result_OK;
   }
+
+  /* saves whichever window the menu was opened from */
+  if (event->data.menu_select.menu == &cc->menu &&
+      event->data.menu_select.index == CHECKER_MENU_SAVE)
+    return snapshot_save_png(cc->menu_window, checker_handle, cc,
+                             CHECKER_SAVE_NAME);
 
   if (event->data.menu_select.menu == &cc->menu &&
       event->data.menu_select.index == CHECKER_MENU_SWAP)
