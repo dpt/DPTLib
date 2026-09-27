@@ -21,7 +21,8 @@
  * seconds. An Adjust click, or Menu > Digital, swaps the face for an
  * HH:MM:SS readout (and back); Menu > 12-hour shows that readout as
  * 12-hour time with AM/PM; Menu > Save PNG writes the window to
- * clock.png. */
+ * clock.png. Once a click has given the window the input focus, D, S and H
+ * toggle Digital, Seconds and 12-hour. */
 typedef struct clock_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
