@@ -83,7 +83,7 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(220, 220),
                                  "Lissajous",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(220, 220),
                                  SIZE2D(0, 0),
@@ -238,6 +238,30 @@ static result_t lissajous_mouse(wuss_window_t      *window,
   return result_OK;
 }
 
+/* Space pauses/resumes the drift; Left/Right step to the previous/next
+ * frequency pair. Anything else is passed back unclaimed. */
+static result_t lissajous_key(lissajous_task_t *lc, int code)
+{
+  switch (code)
+  {
+  case ' ':
+    lc->paused = !lc->paused;
+    return result_OK;
+
+  case wuss_KEY_LEFT:
+    lissajous_set_freq(lc, (lc->freq_index + LISSAJOUS_NFREQS - 1) %
+                           LISSAJOUS_NFREQS);
+    return result_OK;
+
+  case wuss_KEY_RIGHT:
+    lissajous_set_freq(lc, (lc->freq_index + 1) % LISSAJOUS_NFREQS);
+    return result_OK;
+
+  default:
+    return result_WUSS_KEY_UNCLAIMED;
+  }
+}
+
 static result_t lissajous_idle(void *task_data)
 {
   lissajous_task_t *lc;
@@ -360,6 +384,9 @@ result_t lissajous_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     return lissajous_idle(task_data);
+
+  case wuss_EVENT_KEY:
+    return lissajous_key(lc, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return lissajous_pre_submenu_open(lc, event);
