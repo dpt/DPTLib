@@ -698,31 +698,8 @@ static result_t sofa_idle(void *task_data)
   return result_OK;
 }
 
-/* The "Background" row's submenu: the shared colourmenu singleton,
- * reconfigured here rather than at create time since other tasks retitle it
- * and toggle its None row too. */
-static result_t sofa_pre_submenu_open(sofa_task_t        *sc,
-                                      const wuss_event_t *event)
-{
-  const wuss_menu_t *menu;
-
-  menu = wuss_colourmenu_menu(sc->wuss);
-  wuss_colourmenu_set_none(0);
-  wuss_colourmenu_set_title("Background");
-  wuss_colourmenu_set_ticked_rgb(sc->bg);
-
-  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
-                                    event->data.pre_submenu_open.index,
-                                    menu);
-}
-
 static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
 {
-  const colour_t *palette;
-  int             npalette;
-  wuss_colour_t   picked;
-  int             mine;
-
   if (event->data.menu_select.menu == &sc->menu &&
       event->data.menu_select.index == SOFA_MENU_PAUSE)
   {
@@ -757,16 +734,8 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
     return result_OK;
   }
 
-  picked = wuss_colourmenu_selected(event, &mine);
-  if (!mine)
-    return result_OK;
-
-  palette = wuss_get_palette(sc->wuss, &npalette);
-  if (picked < npalette)
-  {
-    sc->bg = palette[picked];
+  if (wuss_colourmenu_selected_rgb(event, &sc->bg))
     wuss_window_invalidate_visible(sc->window);
-  }
 
   return result_OK;
 }
@@ -815,7 +784,8 @@ result_t sofa_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    return sofa_pre_submenu_open(sc, event);
+    /* the "Background" row: the shared colourmenu, set up per open */
+    return wuss_colourmenu_open_rgb(sc->wuss, event, "Background", sc->bg);
 
   case wuss_EVENT_MENU_SELECT:
     return sofa_menu_select(sc, event);

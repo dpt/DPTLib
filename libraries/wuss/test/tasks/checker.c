@@ -253,27 +253,21 @@ static result_t checker_key(checker_task_t *cc,
 static result_t checker_pre_submenu_open(checker_task_t     *cc,
                                          const wuss_event_t *event)
 {
-  const wuss_menu_t *menu;
-  int                index;
+  const char *title;
 
-  index = event->data.pre_submenu_open.index;
-
-  menu = wuss_colourmenu_menu(cc->wuss);
-  wuss_colourmenu_set_none(0);
-  if (index == CHECKER_MENU_INK)
+  if (event->data.pre_submenu_open.index == CHECKER_MENU_INK)
   {
     cc->colourmenu_target = &cc->black;
-    wuss_colourmenu_set_title("Ink");
+    title                 = "Ink";
   }
   else
   {
     cc->colourmenu_target = &cc->white;
-    wuss_colourmenu_set_title("Paper");
+    title                 = "Paper";
   }
-  wuss_colourmenu_set_ticked_rgb(*cc->colourmenu_target);
 
-  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
-                                    index, menu);
+  return wuss_colourmenu_open_rgb(cc->wuss, event, title,
+                                  *cc->colourmenu_target);
 }
 
 /* A Pattern pick lands in whichever window opened the menu. A colourmenu
@@ -282,10 +276,6 @@ static result_t checker_pre_submenu_open(checker_task_t     *cc,
 static result_t checker_menu_select(checker_task_t     *cc,
                                     const wuss_event_t *event)
 {
-  const colour_t *palette;
-  int             npalette;
-  wuss_colour_t   picked;
-  int             mine;
   colour_t        tmp;
 
   if (event->data.menu_select.menu == &cc->pattern_menu)
@@ -318,15 +308,9 @@ static result_t checker_menu_select(checker_task_t     *cc,
   }
   else
   {
-    picked = wuss_colourmenu_selected(event, &mine);
-    if (!mine || cc->colourmenu_target == NULL)
+    if (cc->colourmenu_target == NULL ||
+        !wuss_colourmenu_selected_rgb(event, cc->colourmenu_target))
       return result_OK;
-
-    palette = wuss_get_palette(cc->wuss, &npalette);
-    if (picked >= npalette)
-      return result_OK;
-
-    *cc->colourmenu_target = palette[picked];
   }
 
   wuss_window_invalidate_visible(cc->window);

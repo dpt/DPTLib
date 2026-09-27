@@ -248,3 +248,43 @@ wuss_colour_t wuss_colourmenu_selected(const wuss_event_t *ev, int *ok)
     *ok = 1;
   return g.menu->items[index].swatch;
 }
+
+result_t wuss_colourmenu_open_rgb(const wuss_t       *wuss,
+                                  const wuss_event_t *ev,
+                                  const char         *title,
+                                  colour_t            ticked)
+{
+  const wuss_menu_t *menu;
+
+  /* build first: set_title needs the singleton to exist */
+  menu = wuss_colourmenu_menu(wuss);
+  if (menu == NULL)
+    return result_OOM;
+
+  wuss_colourmenu_set_none(0);
+  (void) wuss_colourmenu_set_title(title);
+  wuss_colourmenu_set_ticked_rgb(ticked);
+
+  return wuss_menu_open_submenu_now(ev->data.pre_submenu_open.handle,
+                                    ev->data.pre_submenu_open.index,
+                                    menu);
+}
+
+int wuss_colourmenu_selected_rgb(const wuss_event_t *ev, colour_t *colour)
+{
+  const colour_t *palette;
+  int             npalette;
+  wuss_colour_t   picked;
+  int             ok;
+
+  picked = wuss_colourmenu_selected(ev, &ok);
+  if (!ok)
+    return 0;
+
+  palette = wuss_get_palette(g.wuss, &npalette);
+  if (picked >= (wuss_colour_t) npalette)
+    return 0;
+
+  *colour = palette[picked];
+  return 1;
+}

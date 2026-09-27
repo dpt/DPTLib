@@ -444,32 +444,9 @@ static result_t doughnut_key(doughnut_task_t *task, int code)
   return result_OK;
 }
 
-/* The "Background" row's submenu: the shared colourmenu singleton,
- * reconfigured here rather than at create time since other tasks retitle it
- * and toggle its None row too. */
-static result_t doughnut_pre_submenu_open(doughnut_task_t    *task,
-                                          const wuss_event_t *event)
-{
-  const wuss_menu_t *menu;
-
-  menu = wuss_colourmenu_menu(task->wuss);
-  wuss_colourmenu_set_none(0);
-  wuss_colourmenu_set_title("Background");
-  wuss_colourmenu_set_ticked_rgb(task->palette[0]);
-
-  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
-                                    event->data.pre_submenu_open.index,
-                                    menu);
-}
-
 static result_t doughnut_menu_select(doughnut_task_t    *task,
                                      const wuss_event_t *event)
 {
-  const colour_t *palette;
-  int             npalette;
-  wuss_colour_t   picked;
-  int             mine;
-
   if (event->data.menu_select.menu == &task->menu &&
       event->data.menu_select.index == DOUGHNUT_MENU_PAUSE)
   {
@@ -504,16 +481,8 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
     return result_OK;
   }
 
-  picked = wuss_colourmenu_selected(event, &mine);
-  if (!mine)
-    return result_OK;
-
-  palette = wuss_get_palette(task->wuss, &npalette);
-  if (picked < npalette)
-  {
-    task->palette[0] = palette[picked];
+  if (wuss_colourmenu_selected_rgb(event, &task->palette[0]))
     wuss_window_invalidate_visible(task->window);
-  }
 
   return result_OK;
 }
@@ -559,7 +528,9 @@ result_t doughnut_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    return doughnut_pre_submenu_open(task, event);
+    /* the "Background" row: the shared colourmenu, set up per open */
+    return wuss_colourmenu_open_rgb(task->wuss, event, "Background",
+                                    task->palette[0]);
 
   case wuss_EVENT_MENU_SELECT:
     return doughnut_menu_select(task, event);

@@ -337,41 +337,10 @@ static result_t ball_idle(void *task_data)
   return result_OK;
 }
 
-/* The "Background" row's submenu: the shared colourmenu singleton,
- * reconfigured here rather than at create time since other tasks retitle it
- * and toggle its None row too. */
-static result_t ball_pre_submenu_open(ball_task_t        *bc,
-                                      const wuss_event_t *event)
-{
-  const wuss_menu_t *menu;
-
-  menu = wuss_colourmenu_menu(bc->wuss);
-  wuss_colourmenu_set_none(0);
-  wuss_colourmenu_set_title("Background");
-  wuss_colourmenu_set_ticked_rgb(bc->bg);
-
-  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
-                                    event->data.pre_submenu_open.index,
-                                    menu);
-}
-
 static result_t ball_menu_select(ball_task_t *bc, const wuss_event_t *event)
 {
-  const colour_t *palette;
-  int             npalette;
-  wuss_colour_t   picked;
-  int             mine;
-
-  picked = wuss_colourmenu_selected(event, &mine);
-  if (!mine)
-    return result_OK;
-
-  palette = wuss_get_palette(bc->wuss, &npalette);
-  if (picked < npalette)
-  {
-    bc->bg = palette[picked];
+  if (wuss_colourmenu_selected_rgb(event, &bc->bg))
     wuss_window_invalidate_visible(bc->window);
-  }
 
   return result_OK;
 }
@@ -430,7 +399,8 @@ result_t ball_handle(wuss_window_t      *window,
     return wuss_menu_dispatch_shortcut(bc->delegate, &bc->menu, event);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    return ball_pre_submenu_open(bc, event);
+    /* the "Background" row: the shared colourmenu, set up per open */
+    return wuss_colourmenu_open_rgb(bc->wuss, event, "Background", bc->bg);
 
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &bc->menu &&
