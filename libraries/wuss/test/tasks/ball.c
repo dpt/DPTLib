@@ -16,6 +16,7 @@
 #include "ball.h"
 
 #define BALL_BASE_RADIUS 8 /* +/-50% at spawn -> 4..12 */
+#define BALL_MAX_DY     16 /* cap on vertical speed under gravity */
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
  * in ball_task_t, not as a file-scope static, so that each window's Info row
@@ -26,7 +27,8 @@ enum
   BALL_MENU_INFO = 0,
   BALL_MENU_BACKGROUND,
   BALL_MENU_PAUSE,
-  BALL_MENU_CLEAR
+  BALL_MENU_CLEAR,
+  BALL_MENU_GRAVITY
 };
 
 /* a fresh radius in [BALL_BASE_RADIUS/2, BALL_BASE_RADIUS*3/2] */
@@ -124,6 +126,9 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_ITEM(task->menu_items, BALL_MENU_CLEAR, "Clear",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM(task->menu_items, BALL_MENU_GRAVITY, "Gravity",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Bouncing Ball", task->menu_items,
@@ -226,6 +231,7 @@ static result_t ball_mouse(wuss_window_t      *window,
     bc->menu_items[BALL_MENU_INFO].window = wuss_proginfo_window(bc->delegate);
 
     wuss_menu_tick_item(&bc->menu, BALL_MENU_PAUSE, bc->paused);
+    wuss_menu_tick_item(&bc->menu, BALL_MENU_GRAVITY, bc->gravity);
 
     /* Clear has nothing to do while only the first ball remains */
     if (bc->nballs > 1)
@@ -310,6 +316,9 @@ static result_t ball_idle(void *task_data)
     old_x = b->x;
     old_y = b->y;
 
+    if (bc->gravity)
+      b->dy = MIN(b->dy + 1, BALL_MAX_DY);
+
     b->x += b->dx;
     b->y += b->dy;
 
@@ -367,16 +376,20 @@ static result_t ball_menu_select(ball_task_t *bc, const wuss_event_t *event)
   return result_OK;
 }
 
-/* The "Pause" row: stop or restart the idle animation. An ADJUST pick keeps
- * the menu open, so retick the live row; a SELECT pick has already closed
- * it. */
-static result_t ball_toggle_pause(ball_task_t *bc, const wuss_event_t *event)
+/* The "Pause" row stops or restarts the idle animation; the "Gravity" row
+ * pulls the balls downward each tick. An ADJUST pick keeps the menu open,
+ * so retick the live row; a SELECT pick has already closed it. */
+static result_t ball_toggle(ball_task_t *bc, const wuss_event_t *event)
 {
-  bc->paused = !bc->paused;
+  int  index;
+  int *flag;
+
+  index = event->data.menu_select.index;
+  flag  = (index == BALL_MENU_PAUSE) ? &bc->paused : &bc->gravity;
+  *flag = !*flag;
 
   if (wuss_menu_should_keep_open(event))
-    wuss_menu_tick_item_live(bc->menu_handle, &bc->menu, BALL_MENU_PAUSE,
-                             bc->paused);
+    wuss_menu_tick_item_live(bc->menu_handle, &bc->menu, index, *flag);
 
   return result_OK;
 }
@@ -419,8 +432,9 @@ result_t ball_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &bc->menu &&
-        event->data.menu_select.index == BALL_MENU_PAUSE)
-      return ball_toggle_pause(bc, event);
+        (event->data.menu_select.index == BALL_MENU_PAUSE ||
+         event->data.menu_select.index == BALL_MENU_GRAVITY))
+      return ball_toggle(bc, event);
     if (event->data.menu_select.menu == &bc->menu &&
         event->data.menu_select.index == BALL_MENU_CLEAR)
       return ball_clear(bc);
