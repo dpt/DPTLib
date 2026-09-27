@@ -7,10 +7,12 @@
 
 #include "framebuf/colour.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/icon-spec.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
 #define SPHEROID_NLIGHTS 4
+#define SPHEROID_NROWS   5 /* control strip slider rows */
 
 /* one of the fixed lights: a unit direction from the sphere's centre (x
  * right, y up, z towards the viewer; negative z is behind the sphere), a
@@ -26,7 +28,9 @@ spheroid_light_t;
 
 /* window task: a single sphere, shaded per pixel by up to four coloured
  * lights, in the spirit of Kai's Power Tools' Spheroid Designer. The sphere
- * fills the window and scales with it. Each lit light shows as a ring marker
+ * fills the window right of a fixed control strip of sliders (ambient, glow,
+ * highlight size and sharpness, and the current light's intensity) and
+ * scales with it. Each lit light shows as a ring marker
  * (dotted when behind the sphere, filled when current). A Select click on a
  * marker makes that light current; anywhere else it moves the current light
  * there (turning it on), and dragging keeps moving it. Inside the disc the
@@ -55,6 +59,7 @@ typedef struct spheroid_task
   int                glow;       /* 0..100: rim light in the surface colour */
   int                size;       /* 0..100: highlight size */
   int                sharpness;  /* 0..100: highlight edge hardness */
+  wuss_slider_row_t  rows[SPHEROID_NROWS];
 }
 spheroid_task_t;
 

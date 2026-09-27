@@ -3,6 +3,7 @@
 #ifdef WUSS_APP
 
 #include <math.h>
+#include <stddef.h>
 #include <stdlib.h>
 
 #ifdef FORTIFY
@@ -12,6 +13,8 @@
 #include "base/utils.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "geom/stack.h"
+#include "wuss/icon.h"
 #include "wuss/task.h"
 
 #include "spheroid.h"
@@ -40,6 +43,7 @@
  * reach. Markers use the inverse, so a back light's marker sits in the band
  * where the pointer that placed it was. */
 
+#define SPHEROID_STRIP  160  /* control strip width, px, at the left */
 #define SPHEROID_MARGIN 8    /* px between the wrap band and the window edge */
 #define SPHEROID_WRAP   0.25 /* wrap band width, in sphere radii */
 #define SPHEROID_MARKER 4    /* marker ring radius, px */
@@ -52,6 +56,60 @@ enum
 };
 
 #define SPHEROID_LIGHT_ON SPHEROID_NLIGHTS /* row after the per-light rows */
+
+/* control strip rows, top to bottom */
+enum
+{
+  SPHEROID_ROW_AMBIENT,
+  SPHEROID_ROW_GLOW,
+  SPHEROID_ROW_SIZE,
+  SPHEROID_ROW_SHARPNESS,
+  SPHEROID_ROW_INTENSITY /* the current light's */
+};
+
+static const struct
+{
+  const char *label;
+  int         max;
+  const char *fmt;
+}
+spheroid_rows[SPHEROID_NROWS] =
+{
+  { "Ambient", 100, NULL   },
+  { "Glow",    100, NULL   },
+  { "Size",    100, NULL   },
+  { "Sharp",   100, NULL   },
+  { "Light",   200, "%d%%" }
+};
+
+/* stack items for the control strip: a VBOX of label / slider / value rows */
+enum
+{
+  SS_ROOT,
+  SS_ROW, /* first row; each row is SS_ROW + 4 * n, then its three leaves */
+  SS__LIMIT = SS_ROW + 4 * SPHEROID_NROWS
+};
+
+#define SS_LABEL_W      (7 * 6) /* enough for "Ambient" */
+#define SS_VALUE_W      (4 * 6) /* enough for "200%" */
+#define SS_SLIDER_MIN_W (64)
+
+#define SS_ROW_ITEMS(n) \
+  [SS_ROW + 4 * (n)]     = STACK_HBOX(SS_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START), \
+  [SS_ROW + 4 * (n) + 1] = STACK_LEAF(SS_ROW + 4 * (n), SS_LABEL_W, 16, stack_ALIGN_CENTRE), \
+  [SS_ROW + 4 * (n) + 2] = STACK_LEAF_EX(SS_ROW + 4 * (n), 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, SS_SLIDER_MIN_W, 0), \
+  [SS_ROW + 4 * (n) + 3] = STACK_LEAF(SS_ROW + 4 * (n), SS_VALUE_W, 16, stack_ALIGN_CENTRE)
+
+static const stack_item_t spheroid_strip[SS__LIMIT] =
+{
+  [SS_ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
+                .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
+  SS_ROW_ITEMS(0),
+  SS_ROW_ITEMS(1),
+  SS_ROW_ITEMS(2),
+  SS_ROW_ITEMS(3),
+  SS_ROW_ITEMS(4)
+};
 
 /* per-redraw constants, worked out once rather than per pixel */
 typedef struct spheroid_frame
@@ -165,12 +223,43 @@ static void spheroid_prepare(const spheroid_task_t *task,
 }
 
 /* the sphere's centre and radius for a content area of the given size, in
- * content-local coordinates */
+ * content-local coordinates: centred in the pane right of the strip */
 static void spheroid_layout(size2d_t size, double *cx, double *cy, double *r)
 {
-  *cx = size.w / 2.0;
+  int w;
+
+  w   = MAX(size.w - SPHEROID_STRIP, 0);
+  *cx = SPHEROID_STRIP + w / 2.0;
   *cy = size.h / 2.0;
-  *r  = (MIN(size.w, size.h) / 2.0 - SPHEROID_MARGIN) / (1.0 + SPHEROID_WRAP);
+  *r  = (MIN(w, size.h) / 2.0 - SPHEROID_MARGIN) / (1.0 + SPHEROID_WRAP);
+}
+
+/* the task field a strip row edits */
+static int *spheroid_row_field(spheroid_task_t *task, int row)
+{
+  switch (row)
+  {
+  case SPHEROID_ROW_AMBIENT:   return &task->ambient;
+  case SPHEROID_ROW_GLOW:      return &task->glow;
+  case SPHEROID_ROW_SIZE:      return &task->size;
+  case SPHEROID_ROW_SHARPNESS: return &task->sharpness;
+  default:                     return &task->lights[task->current].intensity;
+  }
+}
+
+/* repaint the preview pane only, leaving the strip's icons alone */
+static void spheroid_invalidate_preview(spheroid_task_t *task)
+{
+  box_t content, pane;
+
+  if (task->window == NULL)
+    return;
+
+  wuss_window_get_content_bounds(task->window, &content);
+  pane = (box_t) BOX_POS_SIZE(SPHEROID_STRIP, 0,
+                              MAX(box_size(&content).w - SPHEROID_STRIP, 0),
+                              box_size(&content).h);
+  wuss_window_invalidate(task->window, &pane);
 }
 
 /* point the light at content-local (px, py) */
@@ -297,6 +386,54 @@ static void spheroid_shade(const spheroid_frame_t *f,
 
 /* ----------------------------------------------------------------------- */
 
+/* build the control strip's icons down the window's left edge */
+static result_t spheroid_strip_create(spheroid_task_t *task)
+{
+  result_t         rc;
+  size2d_t         min_sz;
+  box_t            root;
+  box_t            boxes[SS__LIMIT];
+  wuss_icon_spec_t specs[SPHEROID_NROWS * 3];
+  char             bufs[SPHEROID_NROWS][WUSS_SLIDER_ROW_BUF];
+  wuss_icon_t     *made[SPHEROID_NROWS * 3];
+  int              row, item;
+
+  rc = stack_smallest(spheroid_strip, NELEMS(spheroid_strip), &min_sz);
+  if (rc != result_OK)
+    return rc;
+
+  root = (box_t) BOX_POS_SIZE(0, 0, SPHEROID_STRIP, min_sz.h);
+  rc = stack_solve(spheroid_strip, NELEMS(spheroid_strip), &root, boxes);
+  if (rc != result_OK)
+    return rc;
+
+  for (row = 0; row < SPHEROID_NROWS; row++)
+  {
+    item = SS_ROW + 4 * row;
+    wuss_icon_spec_label(&specs[row * 3], boxes[item + 1],
+                         spheroid_rows[row].label,
+                         wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+    wuss_icon_spec_slider_row(&specs[row * 3 + 1], &specs[row * 3 + 2],
+                              boxes[item + 2], boxes[item + 3],
+                              wuss_SLIDER_HORIZONTAL,
+                              0, spheroid_rows[row].max,
+                              *spheroid_row_field(task, row),
+                              spheroid_rows[row].fmt, 0,
+                              bufs[row], sizeof(bufs[row]));
+  }
+
+  rc = wuss_icon_create_array(task->window, specs, NELEMS(specs), made);
+  if (rc != result_OK)
+    return rc;
+
+  for (row = 0; row < SPHEROID_NROWS; row++)
+    wuss_slider_row_bind(&task->rows[row], made[row * 3 + 1],
+                         made[row * 3 + 2], spheroid_rows[row].fmt,
+                         0, spheroid_rows[row].max, 0);
+
+  return result_OK;
+}
+
 result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
 {
   result_t         rc;
@@ -325,21 +462,29 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
   task->delegate = delegate;
 
   /* no scrollbars: the sphere is laid out across the visible content, so a
-   * resize must redraw all of it and doc is only the growth ceiling */
+   * resize must redraw all of it and doc is only the growth ceiling. wuss
+   * fills the strip's background; the redraw paints the preview pane */
   rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(240, 240),
+                                 SIZE2D(SPHEROID_STRIP + 240, 240),
                                  "Spheroid Designer",
                                  wuss_WINDOW_CLOSE | wuss_WINDOW_BACK |
                                  wuss_WINDOW_TOGGLE_SIZE | wuss_WINDOW_RESIZE |
                                  wuss_WINDOW_NO_RESIZE_BLIT |
                                  wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
+                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  SIZE2D(1024, 1024),
-                                 SIZE2D(0, 0),
+                                 SIZE2D(SPHEROID_STRIP + 64, 128),
                                  &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
+
+  rc = spheroid_strip_create(task);
+  if (rc != result_OK)
+  {
+    wuss_window_close(task->window); /* its QUIT frees the task block */
     return rc;
   }
 
@@ -410,7 +555,7 @@ static result_t spheroid_redraw(const wuss_event_t *event,
 
   for (y = content->y0; y < content->y1; y++)
   {
-    for (x = content->x0; x < content->x1; x++)
+    for (x = MAX(content->x0, bounds->x0 + SPHEROID_STRIP); x < content->x1; x++)
     {
       dx   = x + 0.5 - cx;
       dy   = y + 0.5 - cy;
@@ -458,6 +603,18 @@ static result_t spheroid_redraw(const wuss_event_t *event,
   }
 
   return result_OK;
+}
+
+/* point the Light slider at the current light's intensity */
+static void spheroid_sync_intensity(spheroid_task_t *task)
+{
+  if (task->window == NULL)
+    return;
+
+  /* ponytail: an OOM here only leaves the value label stale */
+  (void) wuss_slider_row_set(task->window,
+                             &task->rows[SPHEROID_ROW_INTENSITY],
+                             task->lights[task->current].intensity);
 }
 
 /* the Light submenu's ticks: the current light's row, and On if it's lit */
@@ -534,8 +691,9 @@ static result_t spheroid_mouse(spheroid_task_t    *task,
                           wuss_get_pointer(task->wuss), &task->menu_handle);
   }
 
-  if (action == wuss_MOUSE_DOWN && !(button & wuss_BUTTON_SELECT))
-    return result_OK;
+  if (action == wuss_MOUSE_DOWN &&
+      (!(button & wuss_BUTTON_SELECT) || p.x < SPHEROID_STRIP))
+    return result_OK; /* strip clicks land on its sliders, or nowhere */
 
   if (action == wuss_MOUSE_MOVE && !task->dragging)
     return result_OK;
@@ -551,14 +709,15 @@ static result_t spheroid_mouse(spheroid_task_t    *task,
     if (hit >= 0)
     {
       task->current = hit; /* grab it where it is; a move then drags it */
-      wuss_window_invalidate_visible(window);
+      spheroid_sync_intensity(task);
+      spheroid_invalidate_preview(task);
       return result_OK;
     }
   }
 
   task->lights[task->current].on = 1;
   spheroid_aim(&task->lights[task->current], cx, cy, r, p.x, p.y);
-  wuss_window_invalidate_visible(window);
+  spheroid_invalidate_preview(task);
 
   return result_OK;
 }
@@ -577,12 +736,33 @@ static result_t spheroid_menu_select(spheroid_task_t    *task,
   else
     task->current = index;
 
+  spheroid_sync_intensity(task);
+
   if (wuss_menu_should_keep_open(event))
     wuss_menu_tick_set_live(task->menu_handle, &task->light_menu,
                             spheroid_light_ticks(task));
 
-  if (task->window != NULL)
-    wuss_window_invalidate_visible(task->window);
+  spheroid_invalidate_preview(task);
+
+  return result_OK;
+}
+
+/* a strip slider drag: store the value and reshade */
+static result_t spheroid_icon(spheroid_task_t    *task,
+                              wuss_window_t      *window,
+                              const wuss_event_t *event)
+{
+  int row, value;
+
+  for (row = 0; row < SPHEROID_NROWS; row++)
+  {
+    if (!wuss_slider_row_event(window, &task->rows[row], event, &value))
+      continue;
+
+    *spheroid_row_field(task, row) = value;
+    spheroid_invalidate_preview(task);
+    break;
+  }
 
   return result_OK;
 }
@@ -612,6 +792,11 @@ result_t spheroid_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     return spheroid_menu_select(task, event);
+
+  case wuss_EVENT_ICON:
+    if (window != task->window)
+      return result_OK;
+    return spheroid_icon(task, window, event);
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
