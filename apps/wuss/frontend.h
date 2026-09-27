@@ -32,6 +32,7 @@ typedef enum wuss_input_kind
   wuss_INPUT_MOUSE_MOVE,    /* .pos */
   wuss_INPUT_MOUSE_DOWN,    /* .pos, .button */
   wuss_INPUT_MOUSE_UP,      /* .pos, .button */
+  wuss_INPUT_MOUSE_LEAVE,   /* pointer left the window; next move returns */
   wuss_INPUT_WHEEL,         /* .pos, .wheel */
   wuss_INPUT_KEY            /* .key, .mods: a press or autorepeat */
 }
@@ -126,6 +127,11 @@ void wuss_frontend_zoom(wuss_frontend_t *frontend, int delta);
  * now on: false on a backend or platform without it (RISC OS, non-Metal
  * SDL), leaving the plain surface in place. */
 bool wuss_frontend_set_crt(wuss_frontend_t *frontend, bool on);
+
+/* Hide or show the OS mouse pointer over the window, for when main.c draws
+ * its own (Debug > Software pointer). Returns whether it is now hidden:
+ * false on a backend that keeps its hardware pointer (RISC OS). */
+bool wuss_frontend_hide_pointer(wuss_frontend_t *frontend, bool hide);
 
 /* Tear down the surface and free everything wuss_frontend_open allocated. */
 void wuss_frontend_close(wuss_frontend_t *frontend);

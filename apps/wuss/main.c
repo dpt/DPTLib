@@ -138,6 +138,106 @@ static void pixel_stress(wuss_t *wuss, int scr_width, int scr_height)
   }
 }
 
+/* ----------------------------------------------------------------------- */
+
+/* The optional software pointer (--pointer, Debug > Software pointer): an
+ * arrow drawn into the framebuffer itself, so it scales with the window zoom
+ * and goes through the CRT shader like everything else. wuss never learns of
+ * it: each frame puts back the pixels under it before wuss can draw (a window
+ * drag's screen_copy_rect would otherwise smear it along), then saves them
+ * afresh and redraws it once wuss is done. */
+static struct
+{
+  bitmap_t       image;     /* the arrow; hotspot at its top-left */
+  bool           loaded;
+  unsigned char *under;     /* framebuffer bytes beneath the drawn arrow */
+  box_t          drawn;     /* where it was drawn, if is_drawn */
+  bool           is_drawn;
+  point_t        pos;       /* last reported mouse position */
+  bool           in_window; /* false until a mouse event, or after a leave */
+}
+g_pointer;
+
+/* Copy the framebuffer bytes spanning box to (save) or from g_pointer.under.
+ * Whole bytes, so a sub-byte format needs no masking: the stray pixels
+ * either side go back exactly as they were saved. */
+static void pointer_copy_under(const box_t *box, bool save)
+{
+  int            log2bpp;
+  int            bx0, nbytes;
+  unsigned char *under;
+  int            y;
+  unsigned char *row;
+
+  log2bpp = pixelfmt_log2bpp(g_bm.format);
+  bx0     = (box->x0 << log2bpp) >> 3;
+  nbytes  = (((box->x1 << log2bpp) + 7) >> 3) - bx0;
+  under   = g_pointer.under;
+  for (y = box->y0; y < box->y1; y++)
+  {
+    row = (unsigned char *) g_bm.base + y * g_bm.rowbytes + bx0;
+    if (save)
+      memcpy(under, row, nbytes);
+    else
+      memcpy(row, under, nbytes);
+    under += nbytes;
+  }
+}
+
+/* Put back the pixels under the pointer, if drawn. Returns whether it was,
+ * setting *box to where, for the caller to present. */
+static bool pointer_undraw(box_t *box)
+{
+  if (!g_pointer.is_drawn)
+    return false;
+
+  pointer_copy_under(&g_pointer.drawn, false);
+  g_pointer.is_drawn = false;
+  *box = g_pointer.drawn;
+  return true;
+}
+
+/* Save what's under the pointer's position and draw it there, if it's on
+ * and over the window. Returns whether it drew, setting *box to where. */
+static bool pointer_draw(box_t *box)
+{
+  box_t    arrow;
+  box_t    screen;
+  screen_t scr;
+
+  if (!g_tasks.pointer || !g_pointer.in_window)
+    return false;
+
+  arrow.x0  = g_pointer.pos.x;
+  arrow.y0  = g_pointer.pos.y;
+  arrow.x1  = g_pointer.pos.x + g_pointer.image.size.w;
+  arrow.y1  = g_pointer.pos.y + g_pointer.image.size.h;
+  screen.x0 = 0;
+  screen.y0 = 0;
+  screen.x1 = g_bm.size.w;
+  screen.y1 = g_bm.size.h;
+  if (box_intersection(&arrow, &screen, box))
+    return false;
+
+  pointer_copy_under(box, true);
+
+  /* a private screen_t: wuss's own may be left clipped to its last redraw */
+  screen_for_bitmap(&scr, &g_bm);
+  (void) screen_copy_bitmap(&scr, g_pointer.pos.x, g_pointer.pos.y,
+                            &g_pointer.image);
+
+  g_pointer.drawn    = *box;
+  g_pointer.is_drawn = true;
+  return true;
+}
+
+bool app_set_pointer(bool on)
+{
+  return wuss_frontend_hide_pointer(g_tasks.frontend, on && g_pointer.loaded);
+}
+
+/* ----------------------------------------------------------------------- */
+
 /* one iteration of the event/redraw loop; a struct because Emscripten drives
  * it as a callback (emscripten_set_main_loop_arg) rather than a plain while */
 struct wuss_frame_ctx
@@ -165,9 +265,32 @@ static void wuss_frame(void *arg)
   bool         garbage;
   bool         stress;
   bool         redraw_all;
+  box_t        old_pointer;
+  bool         had_pointer;
+  box_t        new_pointer;
+  bool         has_pointer;
+
+  /* before anything below can draw: see g_pointer */
+  had_pointer = pointer_undraw(&old_pointer);
 
   while (wuss_frontend_poll(c->frontend, &ev))
   {
+    switch (ev.kind)
+    {
+    case wuss_INPUT_MOUSE_DOWN:
+    case wuss_INPUT_MOUSE_UP:
+    case wuss_INPUT_MOUSE_MOVE:
+    case wuss_INPUT_WHEEL:
+      g_pointer.pos       = ev.pos;
+      g_pointer.in_window = true;
+      break;
+    case wuss_INPUT_MOUSE_LEAVE:
+      g_pointer.in_window = false;
+      break;
+    default:
+      break;
+    }
+
     switch (ev.kind)
     {
     case wuss_INPUT_QUIT:
@@ -238,11 +361,13 @@ static void wuss_frame(void *arg)
     for (i = 0; i < n; i++)
       p[i] = (unsigned char) rand();
 
+    (void) pointer_draw(&new_pointer);
     wuss_frontend_present(c->frontend, c->bm, NULL);
   }
   else if (stress)
   {
     pixel_stress(c->wuss, c->scr_width, c->scr_height);
+    (void) pointer_draw(&new_pointer);
     wuss_frontend_present(c->frontend, c->bm, NULL);
   }
   else
@@ -269,6 +394,14 @@ static void wuss_frame(void *arg)
 
     wuss_redraw_dirty(c->wuss);
     wuss_clear_touched(c->wuss);
+
+    /* where the pointer was and now is need presenting too */
+    has_pointer = pointer_draw(&new_pointer);
+    if (had_pointer)
+      box_union(&dirty, &old_pointer, &dirty);
+    if (has_pointer)
+      box_union(&dirty, &new_pointer, &dirty);
+    have_any = have_any || had_pointer || has_pointer;
 
     /* a Debug > Redraw earlier this frame repainted the whole pixel
      * buffer; any dirty/touched region collected afterwards (e.g. a mouse
@@ -410,6 +543,27 @@ static result_t run_wuss(const char *resources,
     logf_error("wuss: bitmap_load_png(\"%s\") failed, rc=0x%X (%s) -- "
               "backdrop drawn without it", filename, rc, result_string(rc));
 
+  /* under holds the bytes beneath the arrow at any depth: at most 4 per
+   * pixel, which also covers a sub-byte format's extra partial byte */
+  filename = pathf("%s/resources/wuss/pointer.png", resources);
+  rc = bitmap_load_png(&g_pointer.image, filename);
+  if (rc == result_OK)
+  {
+    g_pointer.under = malloc((size_t) g_pointer.image.size.w * 4 *
+                             g_pointer.image.size.h);
+    g_pointer.loaded = (g_pointer.under != NULL);
+    if (!g_pointer.loaded)
+    {
+      free(g_pointer.image.base);
+      free(g_pointer.image.palette);
+    }
+  }
+  else
+  {
+    logf_error("wuss: bitmap_load_png(\"%s\") failed, rc=0x%X (%s) -- "
+              "software pointer unavailable", filename, rc, result_string(rc));
+  }
+
   {
     wuss_config_t    config;
     wuss_font_desc_t descs[WUSS_MAIN_NFONTS]; /* slot classes/names for the
@@ -443,6 +597,10 @@ static result_t run_wuss(const char *resources,
    * tick agrees */
   if (g_tasks.crt)
     tasks_set_crt(true);
+
+  /* --pointer likewise */
+  if (g_tasks.pointer)
+    tasks_set_pointer(true);
 
   {
     wuss_task_desc_t desc;
@@ -512,6 +670,13 @@ Failure:
   {
     free(logo.base);
     free(logo.palette);
+  }
+
+  if (g_pointer.loaded)
+  {
+    free(g_pointer.under);
+    free(g_pointer.image.base);
+    free(g_pointer.image.palette);
   }
 
   for (i = 0; i < nfonts; i++)
@@ -596,7 +761,7 @@ wuss_options_t;
 static const char wuss_usage[] =
   "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
   "[-d|--depth 1|2|4|8|32] [-s|--scale N] [--res WIDTHxHEIGHT] "
-  "[-t|--tasks all|NAME[,NAME...]] [--crt]\n";
+  "[-t|--tasks all|NAME[,NAME...]] [--crt] [--pointer]\n";
 
 /* Parses "WIDTHxHEIGHT" (e.g. "1024x768") into w and h. Returns false,
  * leaving them untouched, on anything else -- a missing 'x', a non-positive
@@ -621,9 +786,10 @@ static bool parse_res(const char *s, int *w, int *h)
 
 #ifndef __riscos
 
-/* --res and --crt have no short form, so they are given longopt-only codes
- * past the ASCII range getopt_long uses for short options. */
-enum { OPT_RES = 256, OPT_CRT };
+/* --res, --crt and --pointer have no short form, so they are given
+ * longopt-only codes past the ASCII range getopt_long uses for short
+ * options. */
+enum { OPT_RES = 256, OPT_CRT, OPT_POINTER };
 
 /* Desktop: getopt_long. Accepts the short forms and the "--" long forms; the
  * historical single-dash long spellings (-resources) are no longer accepted.
@@ -632,14 +798,15 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
 {
   static const struct option longopts[] =
   {
-    { "resources", required_argument, NULL, 'r'     },
-    { "palette",   required_argument, NULL, 'p'     },
-    { "depth",     required_argument, NULL, 'd'     },
-    { "scale",     required_argument, NULL, 's'     },
-    { "res",       required_argument, NULL, OPT_RES },
-    { "tasks",     required_argument, NULL, 't'     },
-    { "crt",       no_argument,       NULL, OPT_CRT },
-    { NULL,        0,                 NULL, 0       }
+    { "resources", required_argument, NULL, 'r'         },
+    { "palette",   required_argument, NULL, 'p'         },
+    { "depth",     required_argument, NULL, 'd'         },
+    { "scale",     required_argument, NULL, 's'         },
+    { "res",       required_argument, NULL, OPT_RES     },
+    { "tasks",     required_argument, NULL, 't'         },
+    { "crt",       no_argument,       NULL, OPT_CRT     },
+    { "pointer",   no_argument,       NULL, OPT_POINTER },
+    { NULL,        0,                 NULL, 0           }
   };
 
   int c;
@@ -659,6 +826,9 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
     case 't': opts->tasks        = optarg;       break;
     case OPT_CRT:
       g_tasks.crt = true;
+      break;
+    case OPT_POINTER:
+      g_tasks.pointer = true;
       break;
     case OPT_RES:
       if (!parse_res(optarg, &opts->res_width, &opts->res_height))
