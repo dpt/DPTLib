@@ -24,6 +24,7 @@ enum
 {
   LISSAJOUS_MENU_INFO = 0,
   LISSAJOUS_MENU_BACKGROUND,
+  LISSAJOUS_MENU_FOREGROUND,
   LISSAJOUS_MENU_PAUSE,
   LISSAJOUS_MENU_RATIO,
   LISSAJOUS_MENU_SAVE
@@ -100,6 +101,9 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
                                 * lissajous_mouse */
 
   WUSS_MENU_ITEM_MENU(task->menu_items, LISSAJOUS_MENU_BACKGROUND, "Background",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, LISSAJOUS_MENU_FOREGROUND, "Foreground",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
   WUSS_MENU_ITEM(task->menu_items, LISSAJOUS_MENU_PAUSE, "Pause",
@@ -261,21 +265,33 @@ static result_t lissajous_idle(void *task_data)
   return result_OK;
 }
 
-/* The "Background" row's submenu: the shared colourmenu singleton,
- * reconfigured here rather than at create time since other tasks retitle it
- * and toggle its None row too. */
+/* The "Background" and "Foreground" rows' submenu: the shared colourmenu
+ * singleton, reconfigured here rather than at create time since other tasks
+ * retitle it and toggle its None row too; also notes which colour a pick
+ * lands in. */
 static result_t lissajous_pre_submenu_open(lissajous_task_t   *lc,
                                            const wuss_event_t *event)
 {
   const wuss_menu_t *menu;
+  int                index;
+
+  index = event->data.pre_submenu_open.index;
 
   menu = wuss_colourmenu_menu(lc->wuss);
   wuss_colourmenu_set_none(0);
-  wuss_colourmenu_set_title("Background");
+  if (index == LISSAJOUS_MENU_FOREGROUND)
+  {
+    lc->colourmenu_target = &lc->fg;
+    wuss_colourmenu_set_title("Foreground");
+  }
+  else
+  {
+    lc->colourmenu_target = &lc->bg;
+    wuss_colourmenu_set_title("Background");
+  }
 
   return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
-                                    event->data.pre_submenu_open.index,
-                                    menu);
+                                    index, menu);
 }
 
 static result_t lissajous_menu_select(lissajous_task_t   *lc,
@@ -296,13 +312,13 @@ static result_t lissajous_menu_select(lissajous_task_t   *lc,
   }
 
   picked = wuss_colourmenu_selected(event, &mine);
-  if (!mine)
+  if (!mine || lc->colourmenu_target == NULL)
     return result_OK;
 
   palette = wuss_get_palette(lc->wuss, &npalette);
   if (picked < npalette)
   {
-    lc->bg = palette[picked];
+    *lc->colourmenu_target = palette[picked];
     if (lc->window != NULL)
       wuss_window_invalidate_visible(lc->window);
   }
