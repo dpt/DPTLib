@@ -456,7 +456,8 @@ static result_t porter_duff_idle(void *task_data)
   return result_OK;
 }
 
-/* step the rule by dir (+1 or -1), wrapping round */
+/* step the rule by dir (+1 or -1), wrapping round; paused, restart at the
+ * ramp's midpoint, as porter_duff_pick_rule does */
 static result_t porter_duff_mouse(wuss_window_t *window,
                                   int            dir,
                                   void          *task_data)
@@ -467,7 +468,7 @@ static result_t porter_duff_mouse(wuss_window_t *window,
 
   pd->rule  = (pd->rule + composite_RULE__LIMIT + dir) %
               composite_RULE__LIMIT;
-  pd->frame = 0;
+  pd->frame = pd->paused ? pd->frames_per_rule / 2 : 0;
 
   wuss_window_invalidate_visible(window);
 
