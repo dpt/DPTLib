@@ -15,6 +15,7 @@
 #include "geom/box.h"
 #include "utils/fxp.h"
 
+#include "snapshot.h"
 #include "sofa.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
@@ -27,8 +28,11 @@ enum
   SOFA_MENU_BACKGROUND,
   SOFA_MENU_MODEL,
   SOFA_MENU_PAUSE,
-  SOFA_MENU_CYCLE
+  SOFA_MENU_CYCLE,
+  SOFA_MENU_SAVE
 };
+
+#define SOFA_SAVE_NAME "sofa.png" /* written to the current dir */
 
 /* "Model" submenu rows, in sofa_shape_t order */
 static const char *sofa_shape_names[sofa_SHAPE__LIMIT] =
@@ -452,6 +456,8 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_ITEM(task->menu_items, SOFA_MENU_CYCLE, "Auto-cycle",
                  wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->menu_items, SOFA_MENU_SAVE, "Save PNG",
+                 wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Sofa", task->menu_items,
                  NELEMS(task->menu_items));
@@ -717,6 +723,10 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
                                sc->cycling);
     return result_OK;
   }
+
+  if (event->data.menu_select.menu == &sc->menu &&
+      event->data.menu_select.index == SOFA_MENU_SAVE)
+    return snapshot_save_png(sc->window, sofa_handle, sc, SOFA_SAVE_NAME);
 
   if (event->data.menu_select.menu == &sc->model_menu)
   {
