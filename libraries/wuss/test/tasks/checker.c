@@ -79,7 +79,7 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(160, 160),
                                  "Checker 1",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(160, 160),
                                  SIZE2D(0, 0),
@@ -93,7 +93,7 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(160, 160),
                                  "Checker 2",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(160, 160),
                                  SIZE2D(0, 0),
@@ -230,6 +230,27 @@ static result_t checker_scroll(wuss_window_t *window,
   wuss_window_invalidate_visible(window);
 
   return result_OK;
+}
+
+/* Left/Right step the focused window's pattern back/forward, as Adjust and
+ * Select clicks do; Up/Down widen/narrow its bands, as the wheel does.
+ * Anything else, or a key aimed at the proginfo dialogue, is passed back
+ * unclaimed. */
+static result_t checker_key(checker_task_t *cc,
+                            wuss_window_t  *window,
+                            int             code)
+{
+  if (window != cc->window && window != cc->window2)
+    return result_WUSS_KEY_UNCLAIMED;
+
+  switch (code)
+  {
+  case wuss_KEY_LEFT:  return checker_mouse(window, -1, cc);
+  case wuss_KEY_RIGHT: return checker_mouse(window, +1, cc);
+  case wuss_KEY_UP:    return checker_scroll(window, +1, cc);
+  case wuss_KEY_DOWN:  return checker_scroll(window, -1, cc);
+  default:             return result_WUSS_KEY_UNCLAIMED;
+  }
 }
 
 /* The Ink and Paper rows' submenu: the shared colourmenu singleton,
@@ -369,6 +390,9 @@ result_t checker_handle(wuss_window_t      *window,
 
   case wuss_EVENT_SCROLL:
     return checker_scroll(window, event->data.scroll.delta, task_data);
+
+  case wuss_EVENT_KEY:
+    return checker_key(cc, window, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return checker_pre_submenu_open(cc, event);

@@ -26,7 +26,9 @@ checker_pattern_t;
  * until Menu > Ink/Paper recolours both windows (Menu > Swap colours
  * exchanges the two); each window cycles its own pattern independently,
  * forward on a Select click and back on Adjust, or picks it from
- * Menu > Pattern; Menu > Save PNG writes that window to checker.png */
+ * Menu > Pattern; Menu > Save PNG writes that window to checker.png. Once
+ * a click has given a window the input focus, Left/Right step its pattern
+ * and Up/Down widen/narrow its bands */
 typedef struct checker_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
