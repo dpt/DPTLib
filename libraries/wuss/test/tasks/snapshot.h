@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "base/result.h"
+#include "wuss/task.h"
 #include "wuss/window.h"
 
 /* redraw window's whole content box offscreen, by sending handle a
@@ -16,6 +17,9 @@ result_t snapshot_save_png(wuss_window_t    *window,
                            wuss_window_fn_t *handle,
                            void             *task_data,
                            const char       *filename);
+
+/* non-zero if event is a wuss_EVENT_KEY for ^S, the Save PNG shortcut */
+int snapshot_is_save_key(const wuss_event_t *event);
 
 #endif /* WUSS_APP */
 

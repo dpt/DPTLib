@@ -75,4 +75,13 @@ cleanup:
   return rc;
 }
 
+/* ----------------------------------------------------------------------- */
+
+int snapshot_is_save_key(const wuss_event_t *event)
+{
+  return event->kind == wuss_EVENT_KEY &&
+         (event->data.key.modifiers & wuss_KEY_MOD_CTRL) &&
+         (event->data.key.code == 's' || event->data.key.code == 'S');
+}
+
 #endif /* WUSS_APP */

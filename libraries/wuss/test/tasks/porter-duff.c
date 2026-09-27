@@ -258,8 +258,8 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
   WUSS_MENU_ITEM(task->menu_items, PORTER_DUFF_MENU_SWAP, "Swap images",
                  wuss_MENU_ITEM_NONE);
 
-  WUSS_MENU_ITEM(task->menu_items, PORTER_DUFF_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PORTER_DUFF_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
 
   WUSS_MENU_TITLE(task->menu, "Porter-Duff", task->menu_items,
                  NELEMS(task->menu_items));
@@ -619,6 +619,9 @@ result_t porter_duff_handle(wuss_window_t      *window,
     return porter_duff_scroll(window, event->data.scroll.delta, task_data);
 
   case wuss_EVENT_KEY:
+    if (window == pd->window && snapshot_is_save_key(event))
+      return snapshot_save_png(pd->window, porter_duff_handle, pd,
+                               PORTER_DUFF_SAVE_NAME);
     return porter_duff_key(pd, window, event->data.key.code);
 
   case wuss_EVENT_IDLE:

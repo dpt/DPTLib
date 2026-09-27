@@ -445,6 +445,9 @@ result_t greeble_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_KEY:
+    if (window == task->window && snapshot_is_save_key(event))
+      return snapshot_save_png(task->window, greeble_handle, task,
+                               GREEBLE_SAVE_NAME);
     return greeble_key(task, window, event->data.key.code);
 
   case wuss_EVENT_MENU_SELECT:
@@ -560,8 +563,8 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, GREEBLE_MENU_PALETTE, "Palette",
                       wuss_MENU_ITEM_NONE, &task->palette_menu);
 
-  WUSS_MENU_ITEM(task->menu_items, GREEBLE_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLE_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
 
   WUSS_MENU_TITLE(task->menu, "Greeble", task->menu_items,
                  NELEMS(task->menu_items));
