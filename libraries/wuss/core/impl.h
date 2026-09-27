@@ -698,19 +698,6 @@ static inline void wuss__release_packed(wuss_window_t *window)
   box_reset(&window->packed);
 }
 
-/* The floor a resize-drag or toggle-size will shrink a window's content to:
- * the client's min_doc where it set one, but never below WUSS_MIN_CONTENT (a
- * window must stay big enough to grab) nor above the window's own doc extent
- * (a window can't be forced larger than the document it shows). */
-static inline void wuss__min_content(const wuss_window_t *window,
-                                     size2d_t            *min)
-{
-  min->w = CLAMP(window->min_doc.w, WUSS_MIN_CONTENT, MAX(window->doc.w,
-                                                          WUSS_MIN_CONTENT));
-  min->h = CLAMP(window->min_doc.h, WUSS_MIN_CONTENT, MAX(window->doc.h,
-                                                          WUSS_MIN_CONTENT));
-}
-
 #ifdef WUSS_FURNITURE
 static inline int wuss__titlebar_height_for(const wuss_t       *wuss,
                                             wuss_window_flags_t flags)
@@ -847,6 +834,48 @@ static inline void wuss__furniture_carve_for(wuss_window_flags_t flags,
   carve->y = 0;
 }
 #endif /* WUSS_FURNITURE */
+
+/* The floor a resize-drag or toggle-size will shrink a window's content to:
+ * the client's min_doc where it set one, but never below what the window's
+ * furniture needs -- its titlebar icons side by side, both arrows of each
+ * scrollbar -- nor WUSS_MIN_CONTENT (a window must stay big enough to grab).
+ * Nor above the window's own doc extent (a window can't be forced larger than
+ * the document it shows) unless the furniture needs more than that. */
+static inline void wuss__min_content(const wuss_window_t *window,
+                                     size2d_t            *min)
+{
+  wuss_window_flags_t flags;
+  int                 size;
+  point_t             carve;
+  size2d_t            need;
+  int                 icons;
+
+  flags = window->flags;
+  size  = wuss__button_size(window);
+  wuss__furniture_carve_for(flags, size, &carve);
+
+  need.w = WUSS_MIN_CONTENT;
+  need.h = WUSS_MIN_CONTENT;
+
+  /* the titlebar spans the content plus carve.x and lays its icons out
+   * WUSS_BUTTON_INSET apart, with an inset at each end */
+  if (wuss__titlebar_height(window) > 0)
+  {
+    icons  = ((flags & wuss_WINDOW_BACK)        != 0) +
+             ((flags & wuss_WINDOW_CLOSE)       != 0) +
+             ((flags & wuss_WINDOW_TOGGLE_SIZE) != 0);
+    need.w = MAX(need.w, WUSS_BUTTON_INSET + icons * (size + WUSS_BUTTON_INSET) - carve.x);
+  }
+
+  /* a scrollbar holds an arrow at each end, each behind a divider */
+  if (flags & wuss_WINDOW_VSCROLL)
+    need.h = MAX(need.h, 2 * (size + WUSS_DIVIDER_PX));
+  if (flags & wuss_WINDOW_HSCROLL)
+    need.w = MAX(need.w, 2 * (size + WUSS_DIVIDER_PX));
+
+  min->w = CLAMP(window->min_doc.w, need.w, MAX(window->doc.w, need.w));
+  min->h = CLAMP(window->min_doc.h, need.h, MAX(window->doc.h, need.h));
+}
 
 /* Largest content width/height whose visible box (content + outline +
  * titlebar + scrollbar/resize carve) still fits the screen from the
