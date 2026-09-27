@@ -54,6 +54,8 @@
 #define SPHEROID_NUDGE  1    /* px an arrow key moves the current light */
 #define SPHEROID_SHOVE  8    /* px a Shift-arrow moves it */
 
+#define SPHEROID_DITHER_TILE 64 /* px; the blue-noise map's size */
+
 #define SPHEROID_SAVE_NAME "spheroid.png" /* written to the current dir */
 
 #define SPHEROID_MUTATE_SLIDER 15   /* max slider nudge, % of its range */
@@ -183,6 +185,15 @@ static void spheroid_rgb(colour_t c, double scale, double out[3])
   out[0] = r / 255.0 * scale;
   out[1] = g / 255.0 * scale;
   out[2] = b / 255.0 * scale;
+}
+
+/* alpha and rgb, 0..1, as a bgra8888 pixel: 0xAARRGGBB, straight alpha */
+static unsigned int spheroid_pack(double a, const double rgb[3])
+{
+  return ((unsigned int) (a      * 255.0 + 0.5) << 24) |
+         ((unsigned int) (rgb[0] * 255.0 + 0.5) << 16) |
+         ((unsigned int) (rgb[1] * 255.0 + 0.5) << 8)  |
+         ((unsigned int) (rgb[2] * 255.0 + 0.5));
 }
 
 static void spheroid_set_light(spheroid_light_t *light,
@@ -649,16 +660,88 @@ void spheroid_destroy(spheroid_task_t *task)
   free(task);
 }
 
+/* shade the dirty part of the preview pane into a bgra8888 buffer and blit it
+ * dithered. The buffer's top-left is pulled back to a whole number of
+ * dither tiles from the pane's corner, so the dither stays locked to the
+ * pane across partial redraws; the clip is narrowed to the dirty box so the
+ * unshaded margin that adds is never drawn */
+static result_t spheroid_paint(screen_t               *scr,
+                               const box_t            *content,
+                               const box_t            *bounds,
+                               const spheroid_frame_t *f,
+                               double                  cx,
+                               double                  cy,
+                               double                  r)
+{
+  result_t      rc;
+  int           x0, ox, oy, w, h;
+  unsigned int *pixels;
+  int           x, y, k;
+  double        cov;
+  double        n[3], rgb[3];
+  bitmap_t      bm;
+  box_t         saved;
+
+  x0 = MAX(content->x0, bounds->x0 + SPHEROID_STRIP);
+  if (x0 >= content->x1 || content->y0 >= content->y1)
+    return result_OK;
+
+  ox = x0 - (x0 - bounds->x0 - SPHEROID_STRIP) % SPHEROID_DITHER_TILE;
+  oy = content->y0 - (content->y0 - bounds->y0) % SPHEROID_DITHER_TILE;
+  w  = content->x1 - ox;
+  h  = content->y1 - oy;
+
+  pixels = calloc((size_t) w * h, sizeof(*pixels));
+  if (pixels == NULL)
+    return result_OOM;
+
+  for (y = content->y0; y < content->y1; y++)
+  {
+    for (x = x0; x < content->x1; x++)
+    {
+      cov = spheroid_normal(x + 0.5 - cx, y + 0.5 - cy, r, n);
+      if (cov == 0.0)
+      {
+        pixels[(y - oy) * w + (x - ox)] = spheroid_pack(1.0, f->background);
+        continue;
+      }
+
+      spheroid_shade(f, n, rgb);
+
+      for (k = 0; k < 3; k++)
+        rgb[k] = rgb[k] * cov + f->background[k] * (1.0 - cov);
+
+      pixels[(y - oy) * w + (x - ox)] = spheroid_pack(1.0, rgb);
+    }
+  }
+
+  rc = bitmap_init(&bm, SIZE2D(w, h), pixelfmt_bgra8888,
+                   w * (int) sizeof(*pixels), NULL, pixels);
+  if (rc == result_OK)
+  {
+    saved = scr->clip;
+    if (box_intersection(&saved, content, &scr->clip))
+      rc = result_OK; /* nothing visible to draw */
+    else
+      rc = screen_copy_bitmap_dithered(scr, ox, oy, &bm,
+                                       screen_DITHER_BLUE_NOISE);
+    scr->clip = saved;
+  }
+
+  free(pixels);
+
+  return rc;
+}
+
 static result_t spheroid_redraw(const wuss_event_t *event,
                                 spheroid_task_t    *task)
 {
+  result_t         rc;
   screen_t        *scr;
   const box_t     *content, *bounds;
   spheroid_frame_t f;
   double           cx, cy, r;
-  double           cov;
-  double           n[3], rgb[3];
-  int              x, y, k, i;
+  int              i;
   double           mx, my;
 
   scr     = event->data.redraw.scr;
@@ -671,28 +754,9 @@ static result_t spheroid_redraw(const wuss_event_t *event,
   cx += bounds->x0;
   cy += bounds->y0;
 
-  for (y = content->y0; y < content->y1; y++)
-  {
-    for (x = MAX(content->x0, bounds->x0 + SPHEROID_STRIP); x < content->x1; x++)
-    {
-      cov = spheroid_normal(x + 0.5 - cx, y + 0.5 - cy, r, n);
-      if (cov == 0.0)
-      {
-        screen_set_pixel(scr, x, y, task->background);
-        continue;
-      }
-
-      spheroid_shade(&f, n, rgb);
-
-      for (k = 0; k < 3; k++)
-        rgb[k] = rgb[k] * cov + f.background[k] * (1.0 - cov);
-
-      screen_set_pixel(scr, x, y,
-                       colour_rgb((unsigned int) (rgb[0] * 255.0 + 0.5),
-                                  (unsigned int) (rgb[1] * 255.0 + 0.5),
-                                  (unsigned int) (rgb[2] * 255.0 + 0.5)));
-    }
-  }
+  rc = spheroid_paint(scr, content, bounds, &f, cx, cy, r);
+  if (rc != result_OK)
+    return rc;
 
   for (i = 0; i < SPHEROID_NLIGHTS; i++)
   {
@@ -911,12 +975,7 @@ static result_t spheroid_save(spheroid_task_t *task)
 
       spheroid_shade(&f, n, rgb);
 
-      /* bgra8888 is 0xAARRGGBB; PNG alpha is straight, not premultiplied */
-      pixels[y * d + x] =
-        ((unsigned int) (cov    * 255.0 + 0.5) << 24) |
-        ((unsigned int) (rgb[0] * 255.0 + 0.5) << 16) |
-        ((unsigned int) (rgb[1] * 255.0 + 0.5) << 8)  |
-        ((unsigned int) (rgb[2] * 255.0 + 0.5));
+      pixels[y * d + x] = spheroid_pack(cov, rgb);
     }
   }
 
