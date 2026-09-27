@@ -1171,7 +1171,7 @@ static result_t spheroid_key(spheroid_task_t    *task,
 static result_t spheroid_pre_submenu_open(spheroid_task_t    *task,
                                           const wuss_event_t *event)
 {
-  const wuss_menu_t *parent, *menu;
+  const wuss_menu_t *parent;
   int                index;
   const char        *title;
 
@@ -1194,34 +1194,19 @@ static result_t spheroid_pre_submenu_open(spheroid_task_t    *task,
     title               = "Background";
   }
 
-  /* build first: set_title needs the singleton to exist */
-  menu = wuss_colourmenu_menu(task->wuss);
-  wuss_colourmenu_set_none(0);
-  wuss_colourmenu_set_title(title);
-  wuss_colourmenu_set_ticked_rgb(*task->colour_target);
-
-  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
-                                    index, menu);
+  return wuss_colourmenu_open_rgb(task->wuss, event, title,
+                                  *task->colour_target);
 }
 
 static result_t spheroid_menu_select(spheroid_task_t    *task,
                                      const wuss_event_t *event)
 {
-  const colour_t *palette;
-  int             npalette;
-  wuss_colour_t   picked;
-  int             mine;
   int             index;
 
-  picked = wuss_colourmenu_selected(event, &mine);
-  if (mine)
+  if (task->colour_target != NULL &&
+      wuss_colourmenu_selected_rgb(event, task->colour_target))
   {
-    palette = wuss_get_palette(task->wuss, &npalette);
-    if (task->colour_target != NULL && picked < npalette)
-    {
-      *task->colour_target = palette[picked];
-      spheroid_invalidate_preview(task);
-    }
+    spheroid_invalidate_preview(task);
     return result_OK;
   }
 

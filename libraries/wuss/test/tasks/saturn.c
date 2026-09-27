@@ -783,7 +783,7 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
 {
   wuss_menu_handle_t handle;
   int                index;
-  const wuss_menu_t *menu;
+  const char        *title;
 
   handle = event->data.pre_submenu_open.handle;
   index  = event->data.pre_submenu_open.index;
@@ -792,24 +792,19 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
     return wuss_menu_open_submenu_now(handle, index,
                                       task->menu_items[index].submenu);
 
-  /* build first: set_title needs the singleton to exist. set_none too, since
-   * other tasks toggle it */
-  menu = wuss_colourmenu_menu(task->wuss);
-  wuss_colourmenu_set_none(0);
-
   if (index == SATURN_COLOURS_MENU_FOREGROUND)
   {
     task->colourmenu_target = &task->fg;
-    wuss_colourmenu_set_title("Foreground");
+    title                   = "Foreground";
   }
   else
   {
     task->colourmenu_target = &task->bg;
-    wuss_colourmenu_set_title("Background");
+    title                   = "Background";
   }
-  wuss_colourmenu_set_ticked_rgb(*task->colourmenu_target);
 
-  return wuss_menu_open_submenu_now(handle, index, menu);
+  return wuss_colourmenu_open_rgb(task->wuss, event, title,
+                                  *task->colourmenu_target);
 }
 
 /* A pick from the shared colour submenu, applied to whichever field it was
@@ -834,11 +829,6 @@ static result_t saturn_idle(saturn_task_t *task)
 static result_t saturn_menu_select(saturn_task_t      *task,
                                    const wuss_event_t *event)
 {
-  const colour_t *palette;
-  int             npalette;
-  wuss_colour_t   picked;
-  int             mine;
-
   if (event->data.menu_select.menu == &task->menu &&
       event->data.menu_select.index == SATURN_MENU_ANIMATE)
   {
@@ -856,16 +846,8 @@ static result_t saturn_menu_select(saturn_task_t      *task,
   if (task->colourmenu_target == NULL)
     return result_OK;
 
-  picked = wuss_colourmenu_selected(event, &mine);
-  if (!mine)
-    return result_OK;
-
-  palette = wuss_get_palette(task->wuss, &npalette);
-  if (picked < npalette)
-  {
-    *task->colourmenu_target = palette[picked];
+  if (wuss_colourmenu_selected_rgb(event, task->colourmenu_target))
     wuss_window_invalidate_visible(task->window);
-  }
 
   return result_OK;
 }

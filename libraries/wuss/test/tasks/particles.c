@@ -478,24 +478,6 @@ static result_t particles_mouse(wuss_window_t      *window,
   return result_OK;
 }
 
-/* The "Background" row's submenu: the shared colourmenu singleton,
- * reconfigured here rather than at create time since other tasks retitle it
- * and toggle its None row too. */
-static result_t particles_pre_submenu_open(particles_task_t   *pt,
-                                           const wuss_event_t *event)
-{
-  const wuss_menu_t *menu;
-
-  menu = wuss_colourmenu_menu(pt->wuss);
-  wuss_colourmenu_set_none(0);
-  wuss_colourmenu_set_title("Background");
-  wuss_colourmenu_set_ticked_rgb(pt->bg);
-
-  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
-                                    event->data.pre_submenu_open.index,
-                                    menu);
-}
-
 /* a Background pick sets the fill; a "Gravity" pick sets the strength; an
  * "Add emitter" submenu pick adds a steady smoke emitter, as Explosion's
  * playground sets up, at the menu's opening point */
@@ -521,20 +503,10 @@ static void particles_set_gravity(particles_task_t   *pt,
 static result_t particles_menu_select(particles_task_t   *pt,
                                       const wuss_event_t *event)
 {
-  wuss_colour_t   picked;
-  int             mine;
-  const colour_t *palette;
-  int             npalette;
-  int             index;
+  int index;
 
-  picked = wuss_colourmenu_selected(event, &mine);
-  if (mine)
-  {
-    palette = wuss_get_palette(pt->wuss, &npalette);
-    if (picked < npalette)
-      pt->bg = palette[picked]; /* the next idle tick repaints */
-    return result_OK;
-  }
+  if (wuss_colourmenu_selected_rgb(event, &pt->bg))
+    return result_OK; /* the next idle tick repaints */
 
   if (event->data.menu_select.menu == &pt->gravity_menu)
   {
@@ -671,7 +643,8 @@ result_t particles_handle(wuss_window_t      *window,
     return wuss_menu_dispatch_shortcut(pt->delegate, &pt->menu, event);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    return particles_pre_submenu_open(pt, event);
+    /* the "Background" row: the shared colourmenu, set up per open */
+    return wuss_colourmenu_open_rgb(pt->wuss, event, "Background", pt->bg);
 
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &pt->menu &&

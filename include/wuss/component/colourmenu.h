@@ -123,6 +123,36 @@ void wuss_colourmenu_set_ticked_rgb(colour_t colour);
  */
 wuss_colour_t wuss_colourmenu_selected(const wuss_event_t *ev, int *ok);
 
+/**
+ * Answer a wuss_EVENT_PRE_SUBMENU_OPEN by opening the singleton as that
+ * row's submenu, set up for an RGB colour pick: None row hidden, retitled to
+ * \p title and the row matching \p ticked ticked.
+ *
+ * \param[in] wuss             Owner, as for wuss_colourmenu_menu.
+ * \param[in] ev               The PRE_SUBMENU_OPEN event being answered.
+ * \param[in] title            Caption, as for wuss_colourmenu_set_title.
+ * \param[in] ticked           Current colour, as for
+ *                             wuss_colourmenu_set_ticked_rgb.
+ * \return As wuss_menu_open_submenu_now, or \ref result_OOM if the menu
+ *         could not be built.
+ */
+result_t wuss_colourmenu_open_rgb(const wuss_t       *wuss,
+                                  const wuss_event_t *ev,
+                                  const char         *title,
+                                  colour_t            ticked);
+
+/**
+ * As wuss_colourmenu_selected, resolving the pick to an RGB colour from the
+ * system palette.
+ *
+ * \param[in]  ev     The event passed to the task's handle callback.
+ * \param[out] colour Set to the picked colour on a match; untouched
+ *                    otherwise.
+ * \return Non-zero if \p ev picked a real palette colour; zero if it is not
+ *         the colourmenu's or picked the "None" row.
+ */
+int wuss_colourmenu_selected_rgb(const wuss_event_t *ev, colour_t *colour);
+
 #ifdef __cplusplus
 }
 #endif

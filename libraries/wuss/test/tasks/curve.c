@@ -448,32 +448,9 @@ static result_t curve_key(curve_task_t  *task,
   return result_OK;
 }
 
-/* The "Background" row's submenu: the shared colourmenu singleton,
- * reconfigured here rather than at create time since other tasks retitle it
- * and toggle its None row too. */
-static result_t curve_pre_submenu_open(curve_task_t       *task,
-                                       const wuss_event_t *event)
-{
-  const wuss_menu_t *menu;
-
-  menu = wuss_colourmenu_menu(task->wuss);
-  wuss_colourmenu_set_none(0);
-  wuss_colourmenu_set_title("Background");
-  wuss_colourmenu_set_ticked_rgb(task->bg);
-
-  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
-                                    event->data.pre_submenu_open.index,
-                                    menu);
-}
-
 static result_t curve_menu_select(curve_task_t       *task,
                                   const wuss_event_t *event)
 {
-  const colour_t *palette;
-  int             npalette;
-  wuss_colour_t   picked;
-  int             mine;
-
   if (event->data.menu_select.menu == &task->menu &&
       event->data.menu_select.index == CURVE_MENU_HULL)
   {
@@ -506,16 +483,8 @@ static result_t curve_menu_select(curve_task_t       *task,
     return result_OK;
   }
 
-  picked = wuss_colourmenu_selected(event, &mine);
-  if (!mine)
-    return result_OK;
-
-  palette = wuss_get_palette(task->wuss, &npalette);
-  if (picked < npalette)
-  {
-    task->bg = palette[picked];
+  if (wuss_colourmenu_selected_rgb(event, &task->bg))
     wuss_window_invalidate_visible(task->window);
-  }
 
   return result_OK;
 }
@@ -561,7 +530,8 @@ result_t curve_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    return curve_pre_submenu_open(task, event);
+    /* the "Background" row: the shared colourmenu, set up per open */
+    return wuss_colourmenu_open_rgb(task->wuss, event, "Background", task->bg);
 
   case wuss_EVENT_MENU_SELECT:
     return curve_menu_select(task, event);

@@ -290,37 +290,26 @@ static result_t lissajous_idle(void *task_data)
 static result_t lissajous_pre_submenu_open(lissajous_task_t   *lc,
                                            const wuss_event_t *event)
 {
-  const wuss_menu_t *menu;
-  int                index;
+  const char *title;
 
-  index = event->data.pre_submenu_open.index;
-
-  menu = wuss_colourmenu_menu(lc->wuss);
-  wuss_colourmenu_set_none(0);
-  if (index == LISSAJOUS_MENU_FOREGROUND)
+  if (event->data.pre_submenu_open.index == LISSAJOUS_MENU_FOREGROUND)
   {
     lc->colourmenu_target = &lc->fg;
-    wuss_colourmenu_set_title("Foreground");
+    title                 = "Foreground";
   }
   else
   {
     lc->colourmenu_target = &lc->bg;
-    wuss_colourmenu_set_title("Background");
+    title                 = "Background";
   }
-  wuss_colourmenu_set_ticked_rgb(*lc->colourmenu_target);
 
-  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
-                                    index, menu);
+  return wuss_colourmenu_open_rgb(lc->wuss, event, title,
+                                  *lc->colourmenu_target);
 }
 
 static result_t lissajous_menu_select(lissajous_task_t   *lc,
                                       const wuss_event_t *event)
 {
-  const colour_t *palette;
-  int             npalette;
-  wuss_colour_t   picked;
-  int             mine;
-
   if (event->data.menu_select.menu == &lc->ratio_menu)
   {
     lissajous_set_freq(lc, event->data.menu_select.index);
@@ -329,16 +318,9 @@ static result_t lissajous_menu_select(lissajous_task_t   *lc,
     return result_OK;
   }
 
-  picked = wuss_colourmenu_selected(event, &mine);
-  if (!mine || lc->colourmenu_target == NULL)
-    return result_OK;
-
-  palette = wuss_get_palette(lc->wuss, &npalette);
-  if (picked < npalette)
-  {
-    *lc->colourmenu_target = palette[picked];
+  if (lc->colourmenu_target != NULL &&
+      wuss_colourmenu_selected_rgb(event, lc->colourmenu_target))
     wuss_window_invalidate_visible(lc->window);
-  }
 
   return result_OK;
 }
