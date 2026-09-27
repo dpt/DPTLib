@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/colour.h"
+#include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/icon-spec.h"
 #include "wuss/menu.h"
@@ -36,22 +37,25 @@ spheroid_light_t;
  * there (turning it on), and dragging keeps moving it. Inside the disc the
  * light faces the surface under the pointer; the band just outside wraps it
  * round to the back. Menu > Light (or keys 1-4) picks the current light and
- * Light > On (or O) switches it. */
+ * Light > On (or O) switches it. Light > Colour, Sphere colour and
+ * Background pick from the palette. */
 typedef struct spheroid_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
   wuss_task_t       *delegate; /* the task that owns the menu */
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[2]; /* per-instance: shared static "Info"
+  wuss_menu_item_t   menu_items[4]; /* per-instance: shared static "Info"
                                      * row would leak one instance's .window
                                      * pointer into another's menu */
   wuss_menu_t        menu;
-  /* "Light" submenu: one row per light, then On */
-  wuss_menu_item_t   light_items[SPHEROID_NLIGHTS + 1];
+  /* "Light" submenu: one row per light, then On and Colour */
+  wuss_menu_item_t   light_items[SPHEROID_NLIGHTS + 2];
   wuss_menu_t        light_menu;
   int                current;    /* index of the light a drag moves */
   int                dragging;   /* non-zero while a Select drag is live */
+  colour_t          *colour_target; /* what the shared colourmenu sets;
+                                     * aimed as each colour row opens */
   spheroid_light_t   lights[SPHEROID_NLIGHTS];
   colour_t           sphere;     /* surface colour */
   colour_t           background; /* colour outside the sphere */
