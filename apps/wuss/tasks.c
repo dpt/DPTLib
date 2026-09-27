@@ -199,16 +199,19 @@ enum
   DEBUG_ITEM_GARBAGE,
   DEBUG_ITEM_ZOOM_IN,
   DEBUG_ITEM_ZOOM_OUT,
-  DEBUG_ITEM_PIXEL_STRESS
+  DEBUG_ITEM_PIXEL_STRESS,
+  DEBUG_ITEM_CRT
 };
 
-static const wuss_menu_item_t g_debug_items[] =
+/* not const: the CRT row's tick tracks g_tasks.crt */
+static wuss_menu_item_t g_debug_items[] =
 {
   { "Redraw",       wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F1"                 },
   { "Garbage",      wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F1" },
   { "Zoom in",      wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F2"                 },
   { "Zoom out",     wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F2" },
-  { "Pixel stress", wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F3"                 }
+  { "Pixel stress", wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F3"                 },
+  { "CRT",          wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F5"                 }
 };
 
 static const wuss_menu_t g_games_menu =
@@ -300,6 +303,15 @@ static const wuss_menu_t g_task_menu =
 {
   "Wuss", g_task_items, NELEMS(g_task_items)
 };
+
+void tasks_set_crt(bool on)
+{
+  g_tasks.crt = wuss_frontend_set_crt(g_tasks.frontend, on);
+  if (g_tasks.crt)
+    g_debug_items[DEBUG_ITEM_CRT].flags |= wuss_MENU_ITEM_TICKED;
+  else
+    g_debug_items[DEBUG_ITEM_CRT].flags &= ~wuss_MENU_ITEM_TICKED;
+}
 
 /* g_task_menu picks are dispatched by index; g_games_menu/g_tests_menu/
  * g_utilities_menu/g_visuals_menu picks by pointer identity below. Every
@@ -420,6 +432,11 @@ result_t task_handle_event(wuss_window_t      *window,
       break;
     case DEBUG_ITEM_PIXEL_STRESS:
       g_tasks.debug_pixel_stress = true;
+      break;
+    case DEBUG_ITEM_CRT:
+      tasks_set_crt(!g_tasks.crt);
+      /* the new surface starts empty: present the whole frame */
+      g_tasks.debug_redraw_all = true;
       break;
     default:
       break;

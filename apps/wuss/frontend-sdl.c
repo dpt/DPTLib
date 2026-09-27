@@ -20,6 +20,7 @@
 
 #include <SDL3/SDL.h>
 
+#include "crt.h"
 #include "frontend.h"
 #include "tasks.h" /* g_tasks.swap_mouse_buttons */
 
@@ -46,6 +47,8 @@ struct wuss_frontend
   SDL_Window          *window;
   SDL_Renderer        *renderer;
   SDL_Texture         *texture;
+  wuss_crt_t          *crt; /* non-NULL: presenting via the CRT shader
+                             * instead of renderer/texture (Debug > CRT) */
   int                  scr_width;
   int                  scr_height;
   int                  scale; /* device pixels per screen pixel; see WUSS_SDL_*_SCALE */
@@ -148,6 +151,41 @@ static void sdl_pos_to_scr(SDL_Window *window,
 
 /* ----------------------------------------------------------------------- */
 
+/* Create the plain renderer and its streaming screen texture. */
+static bool sdl_renderer_open(wuss_frontend_t *fe)
+{
+  fe->renderer = SDL_CreateRenderer(fe->window, NULL);
+  if (fe->renderer == NULL)
+  {
+    fprintf(stderr, "Error: SDL_CreateRenderer: %s\n", SDL_GetError());
+    return false;
+  }
+
+  fe->texture = SDL_CreateTexture(fe->renderer, SDL_PIXELFORMAT_ARGB8888,
+                                  SDL_TEXTUREACCESS_STREAMING,
+                                  fe->scr_width, fe->scr_height);
+  if (fe->texture == NULL)
+  {
+    fprintf(stderr, "Error: SDL_CreateTexture: %s\n", SDL_GetError());
+    return false;
+  }
+
+  SDL_SetTextureBlendMode(fe->texture, SDL_BLENDMODE_NONE);
+  /* keep pixels crisp when F2 scales the window up */
+  SDL_SetTextureScaleMode(fe->texture, SDL_SCALEMODE_NEAREST);
+  return true;
+}
+
+static void sdl_renderer_close(wuss_frontend_t *fe)
+{
+  if (fe->texture)  SDL_DestroyTexture(fe->texture);
+  if (fe->renderer) SDL_DestroyRenderer(fe->renderer);
+  fe->texture  = NULL;
+  fe->renderer = NULL;
+}
+
+/* ----------------------------------------------------------------------- */
+
 static bool sdl_depth_valid(int depth)
 {
   return depth == 1 || depth == 2 || depth == 4 || depth == 8 || depth == 32;
@@ -240,24 +278,8 @@ result_t wuss_frontend_open(int               width,
   SDL_StartTextInput(fe->window);
 #endif
 
-  fe->renderer = SDL_CreateRenderer(fe->window, NULL);
-  if (fe->renderer == NULL)
-  {
-    fprintf(stderr, "Error: SDL_CreateRenderer: %s\n", SDL_GetError());
+  if (!sdl_renderer_open(fe))
     goto failure;
-  }
-
-  fe->texture = SDL_CreateTexture(fe->renderer, SDL_PIXELFORMAT_ARGB8888,
-                                  SDL_TEXTUREACCESS_STREAMING, width, height);
-  if (fe->texture == NULL)
-  {
-    fprintf(stderr, "Error: SDL_CreateTexture: %s\n", SDL_GetError());
-    goto failure;
-  }
-
-  SDL_SetTextureBlendMode(fe->texture, SDL_BLENDMODE_NONE);
-  /* keep pixels crisp when F2 scales the window up */
-  SDL_SetTextureScaleMode(fe->texture, SDL_SCALEMODE_NEAREST);
 
   *fmt = sdl_depth_to_fmt(depth);
 
@@ -273,8 +295,7 @@ result_t wuss_frontend_open(int               width,
 
 failure:
 
-  if (fe->texture)  SDL_DestroyTexture(fe->texture);
-  if (fe->renderer) SDL_DestroyRenderer(fe->renderer);
+  sdl_renderer_close(fe);
   if (fe->window)   SDL_DestroyWindow(fe->window);
   SDL_Quit();
   free(fe->conv.base);
@@ -316,18 +337,23 @@ result_t wuss_frontend_resize(wuss_frontend_t *fe,
     }
   }
 
-  new_texture = SDL_CreateTexture(fe->renderer, SDL_PIXELFORMAT_ARGB8888,
-                                  SDL_TEXTUREACCESS_STREAMING, width, height);
-  if (new_texture == NULL)
+  /* the CRT path resizes its own texture on the next present */
+  new_texture = NULL;
+  if (fe->crt == NULL)
   {
-    free(new_conv);
-    free(new_pixels);
-    return result_TEST_FAILED;
-  }
-  SDL_SetTextureBlendMode(new_texture, SDL_BLENDMODE_NONE);
-  SDL_SetTextureScaleMode(new_texture, SDL_SCALEMODE_NEAREST);
+    new_texture = SDL_CreateTexture(fe->renderer, SDL_PIXELFORMAT_ARGB8888,
+                                    SDL_TEXTUREACCESS_STREAMING, width, height);
+    if (new_texture == NULL)
+    {
+      free(new_conv);
+      free(new_pixels);
+      return result_TEST_FAILED;
+    }
+    SDL_SetTextureBlendMode(new_texture, SDL_BLENDMODE_NONE);
+    SDL_SetTextureScaleMode(new_texture, SDL_SCALEMODE_NEAREST);
 
-  SDL_DestroyTexture(fe->texture);
+    SDL_DestroyTexture(fe->texture);
+  }
   free(fe->pixels);
   free(fe->conv.base);
 
@@ -484,7 +510,8 @@ void wuss_frontend_present(wuss_frontend_t *fe,
 
   if (fe->depth == 32)
   {
-    SDL_UpdateTexture(fe->texture, NULL, bm->base, bm->rowbytes);
+    if (fe->crt == NULL)
+      SDL_UpdateTexture(fe->texture, NULL, bm->base, bm->rowbytes);
   }
   else
   {
@@ -493,6 +520,10 @@ void wuss_frontend_present(wuss_frontend_t *fe,
     int      x0, y0, x1, y1;
     bitmap_t rows, out;
     SDL_Rect rect;
+
+    /* the CRT path uploads a whole frame from `fe->conv`, so convert it all */
+    if (fe->crt != NULL)
+      dirty = NULL;
 
     /* Sub-byte formats (p1/p2/p4) pack several pixels per byte and the
      * converters assume a row starts on a byte, so widen the dirty columns
@@ -525,7 +556,8 @@ void wuss_frontend_present(wuss_frontend_t *fe,
     bitmap_init(&out, rows.size, pixelfmt_bgrx8888,
                rows.size.w * sizeof(pixelfmt_bgrx8888_t), NULL, fe->conv.base);
 
-    if (bitmap_convert_into(&rows, pixelfmt_bgrx8888, &out) == result_OK)
+    if (bitmap_convert_into(&rows, pixelfmt_bgrx8888, &out) == result_OK &&
+        fe->crt == NULL)
     {
       rect.x = x0;
       rect.y = y0;
@@ -537,8 +569,17 @@ void wuss_frontend_present(wuss_frontend_t *fe,
   }
 
 present:
-  SDL_RenderTexture(fe->renderer, fe->texture, NULL, NULL);
-  SDL_RenderPresent(fe->renderer);
+  if (fe->crt != NULL)
+  {
+    wuss_crt_render(fe->crt, fe->window,
+                    (fe->depth == 32) ? bm->base : fe->conv.base,
+                    fe->scr_width, fe->scr_height);
+  }
+  else
+  {
+    SDL_RenderTexture(fe->renderer, fe->texture, NULL, NULL);
+    SDL_RenderPresent(fe->renderer);
+  }
 
   /* Pace to 60 Hz by sleeping only for what's left of this frame's slot, so
    * the frame's own work counts towards it. When running late, restart the
@@ -563,6 +604,31 @@ void wuss_frontend_zoom(wuss_frontend_t *fe, int delta)
   SDL_SetWindowSize(fe->window, fe->scr_width * scale, fe->scr_height * scale);
 }
 
+bool wuss_frontend_set_crt(wuss_frontend_t *fe, bool on)
+{
+  if (on == (fe->crt != NULL))
+    return on;
+
+  /* the renderer and the GPU device can't share the window's swapchain, so
+   * one goes before the other comes */
+  if (on)
+  {
+    sdl_renderer_close(fe);
+    if (wuss_crt_create(fe->window, &fe->crt) == result_OK)
+      return true;
+
+    fprintf(stderr, "Warning: CRT effect unavailable, drawing plainly\n");
+  }
+  else
+  {
+    wuss_crt_destroy(fe->crt, fe->window);
+    fe->crt = NULL;
+  }
+
+  (void) sdl_renderer_open(fe);
+  return false;
+}
+
 void wuss_frontend_set_palette(wuss_frontend_t *fe,
                                const colour_t  *palette,
                                int              npalette)
@@ -580,8 +646,8 @@ void wuss_frontend_close(wuss_frontend_t *fe)
   if (fe == NULL)
     return;
 
-  SDL_DestroyTexture(fe->texture);
-  SDL_DestroyRenderer(fe->renderer);
+  wuss_crt_destroy(fe->crt, fe->window);
+  sdl_renderer_close(fe);
   SDL_DestroyWindow(fe->window);
   SDL_Quit();
 

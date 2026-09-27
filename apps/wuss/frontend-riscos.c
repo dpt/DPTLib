@@ -380,6 +380,14 @@ void wuss_frontend_zoom(wuss_frontend_t *fe, int delta)
   /* fixed screen mode: nothing to zoom */
 }
 
+bool wuss_frontend_set_crt(wuss_frontend_t *fe, bool on)
+{
+  NOT_USED(fe);
+  NOT_USED(on);
+  /* no GPU: nothing to post-process with */
+  return false;
+}
+
 void wuss_frontend_close(wuss_frontend_t *fe)
 {
   if (fe == NULL)
