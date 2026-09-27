@@ -71,6 +71,7 @@ static const test_t tests[] =
 
   { "array",      array_test      },
   { "bsearch",    bsearch_test    },
+  { "bytesex",    bytesex_test    },
   { "pack",       pack_test       },
 
   { "wuss",       wuss_test       },
