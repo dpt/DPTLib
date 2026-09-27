@@ -1,0 +1,63 @@
+/* wuss/test/tasks/spheroid.h -- KPT Spheroid Designer-style lit sphere */
+
+#ifndef TASKS_SPHEROID_H
+#define TASKS_SPHEROID_H
+
+#ifdef WUSS_APP
+
+#include "framebuf/colour.h"
+#include "wuss/component/proginfo.h"
+#include "wuss/menu.h"
+#include "wuss/window.h"
+
+#define SPHEROID_NLIGHTS 4
+
+/* one of the fixed lights: a unit direction from the sphere's centre (x
+ * right, y up, z towards the viewer; negative z is behind the sphere), a
+ * colour and an intensity in percent (100 = the colour as-is) */
+typedef struct spheroid_light
+{
+  int      on;
+  double   x, y, z;
+  colour_t colour;
+  int      intensity;
+}
+spheroid_light_t;
+
+/* window task: a single sphere, shaded per pixel by up to four coloured
+ * lights, in the spirit of Kai's Power Tools' Spheroid Designer. The sphere
+ * fills the window and scales with it. */
+typedef struct spheroid_task
+{
+  wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
+  wuss_task_t       *delegate; /* the task that owns the menu */
+  wuss_window_t     *window;
+  wuss_menu_handle_t menu_handle; /* live only between open and a pick */
+  wuss_menu_item_t   menu_items[1]; /* per-instance: shared static "Info"
+                                     * row would leak one instance's .window
+                                     * pointer into another's menu */
+  wuss_menu_t        menu;
+  spheroid_light_t   lights[SPHEROID_NLIGHTS];
+  colour_t           sphere;     /* surface colour */
+  colour_t           background; /* colour outside the sphere */
+  int                ambient;    /* 0..100 */
+  int                glow;       /* 0..100: rim light in the surface colour */
+  int                size;       /* 0..100: highlight size */
+  int                sharpness;  /* 0..100: highlight edge hardness */
+}
+spheroid_task_t;
+
+wuss_window_fn_t spheroid_handle;
+
+/* create the spheroid window against the given wuss instance; the task block
+ * is allocated here, owned by the window, and freed when it closes. if out
+ * is non-NULL, the task block is also returned through it */
+result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out);
+
+/* free a task block allocated by spheroid_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void spheroid_destroy(spheroid_task_t *task);
+
+#endif /* WUSS_APP */
+
+#endif /* TASKS_SPHEROID_H */

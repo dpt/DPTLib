@@ -39,6 +39,7 @@
 #include "tasks/porter-duff.h"
 #include "tasks/saturn.h"
 #include "tasks/sofa.h"
+#include "tasks/spheroid.h"
 #include "tasks/text.h"
 
 /* ----------------------------------------------------------------------- */
@@ -142,7 +143,8 @@ g_visuals_tasks[] =
   { "Lissajous",   (task_create_fn_t) lissajous_create   },
   { "Particles",   (task_create_fn_t) particles_create   },
   { "Saturn",      (task_create_fn_t) saturn_create      },
-  { "Sofa",        (task_create_fn_t) sofa_create        }
+  { "Sofa",        (task_create_fn_t) sofa_create        },
+  { "Spheroid",    (task_create_fn_t) spheroid_create    }
 },
 g_system_tasks[] =
 {
@@ -182,7 +184,8 @@ static const wuss_menu_item_t g_visuals_items[] =
   { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
   { "Particles",   wuss_MENU_ITEM_NONE, NULL },
   { "Saturn",      wuss_MENU_ITEM_NONE, NULL },
-  { "Sofa",        wuss_MENU_ITEM_NONE, NULL }
+  { "Sofa",        wuss_MENU_ITEM_NONE, NULL },
+  { "Spheroid",    wuss_MENU_ITEM_NONE, NULL }
 };
 
 static const wuss_menu_item_t g_system_items[] =
