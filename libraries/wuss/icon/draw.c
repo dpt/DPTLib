@@ -640,8 +640,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
      * touching the string -- only the left inset matters for pos.x, but
      * the same width is left spare at text_x1 too since the fill already
      * spans the full column */
-    space_w = 0;
-    wuss__text_measure(c->font, " ", 1, INT_MAX, NULL, &space_w);
+    space_w = wuss__fontset_space_width(&c->wuss->fonts, c->font);
 
     pos.x = text_x0 + (int) space_w;
     pos.y = icon_text_baseline_y(c, b);
