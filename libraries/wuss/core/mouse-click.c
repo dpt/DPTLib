@@ -29,12 +29,14 @@ static void set_pressed_region(wuss_window_t          *win,
 }
 
 /* Hold down a furniture icon that starts no drag: arm "dragging" purely so
- * the MOUSE_UP release path clears the highlight. */
+ * the MOUSE_UP release path clears the highlight. Not a scroll arrow unless
+ * the caller says so afterwards, so no auto-repeat. */
 static void press_furniture(wuss_window_t          *win,
                             wuss_furniture_region_t region)
 {
-  win->wuss->furniture.dragging  = win;
-  win->wuss->furniture.drag_kind = wuss_FURNITURE_DRAG_NONE;
+  win->wuss->furniture.dragging    = win;
+  win->wuss->furniture.drag_kind   = wuss_FURNITURE_DRAG_NONE;
+  win->wuss->furniture.repeat_step = 0;
   set_pressed_region(win, region);
 }
 #endif
@@ -213,6 +215,13 @@ result_t wuss_mouse_click(wuss_t             *wuss,
          * unlit for that button too. */
         if (region != wuss_FURNITURE_TOGGLE_SIZE || (button & wuss_BUTTON_SELECT))
           press_furniture(win, region);
+
+        /* a held arrow auto-repeats from wuss_idle (see wuss__scroll_repeat) */
+        if (region != wuss_FURNITURE_TOGGLE_SIZE)
+        {
+          wuss->furniture.repeat_step   = step;
+          wuss->furniture.repeat_frames = WUSS_SCROLL_REPEAT_DELAY;
+        }
       }
       return result_OK;
     }

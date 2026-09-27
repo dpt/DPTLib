@@ -7067,6 +7067,82 @@ QuitFail:
     wuss_window_close(win_hs);
   }
 
+  printf("test: a held scroll arrow auto-repeats after a delay, pauses off "
+         "the arrow and stops on release\n");
+
+  {
+    static test_task_t tc_sr;
+    wuss_task_t       *delegate_sr;
+    box_t              box_sr, vdown;
+    wuss_window_t     *win_sr;
+    point_t            at, scroll;
+    int                i;
+
+    delegate_sr = mk_task(wuss, test_handle, &tc_sr);
+    if (delegate_sr == NULL) goto Failure;
+
+    box_sr.x0 = 5; box_sr.y0 = 5;
+    box_sr.x1 = 125; box_sr.y1 = 85;
+    rc = wuss_window_create(delegate_sr, &box_sr, "SR", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(400, 400), SIZE2D(0, 0), &win_sr);
+    if (rc != result_OK) goto Failure;
+
+    wuss__vscroll_down_box(win_sr, &vdown);
+    at = POINT((vdown.x0 + vdown.x1) / 2, (vdown.y0 + vdown.y1) / 2);
+
+    /* the press itself steps once */
+    wuss_mouse_click(wuss, at, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
+    wuss_window_get_scroll(win_sr, &scroll);
+    if (scroll.y != WUSS_SCROLL_STEP) goto Failure;
+
+    /* nothing more until the delay runs out, then one step */
+    for (i = 0; i < WUSS_SCROLL_REPEAT_DELAY - 1; i++)
+      wuss_idle(wuss);
+    wuss_window_get_scroll(win_sr, &scroll);
+    if (scroll.y != WUSS_SCROLL_STEP) goto Failure;
+    wuss_idle(wuss);
+    wuss_window_get_scroll(win_sr, &scroll);
+    if (scroll.y != 2 * WUSS_SCROLL_STEP) goto Failure;
+
+    /* then one step per interval */
+    for (i = 0; i < WUSS_SCROLL_REPEAT_INTERVAL; i++)
+      wuss_idle(wuss);
+    wuss_window_get_scroll(win_sr, &scroll);
+    if (scroll.y != 3 * WUSS_SCROLL_STEP) goto Failure;
+
+    /* off the arrow (still held): paused */
+    wuss_mouse_move(wuss, POINT(20, 20), NULL);
+    for (i = 0; i < 4 * WUSS_SCROLL_REPEAT_INTERVAL; i++)
+      wuss_idle(wuss);
+    wuss_window_get_scroll(win_sr, &scroll);
+    if (scroll.y != 3 * WUSS_SCROLL_STEP) goto Failure;
+
+    /* back on: resumes */
+    wuss_mouse_move(wuss, at, NULL);
+    for (i = 0; i < WUSS_SCROLL_REPEAT_INTERVAL; i++)
+      wuss_idle(wuss);
+    wuss_window_get_scroll(win_sr, &scroll);
+    if (scroll.y != 4 * WUSS_SCROLL_STEP) goto Failure;
+
+    /* released: stops */
+    wuss_mouse_click(wuss, at, wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    for (i = 0; i < 2 * WUSS_SCROLL_REPEAT_DELAY; i++)
+      wuss_idle(wuss);
+    wuss_window_get_scroll(win_sr, &scroll);
+    if (scroll.y != 4 * WUSS_SCROLL_STEP) goto Failure;
+
+    /* ADJUST repeats the other way */
+    wuss_mouse_click(wuss, at, wuss_BUTTON_ADJUST, wuss_MOUSE_DOWN, NULL);
+    for (i = 0; i < WUSS_SCROLL_REPEAT_DELAY; i++)
+      wuss_idle(wuss);
+    wuss_mouse_click(wuss, at, wuss_BUTTON_ADJUST, wuss_MOUSE_UP, NULL);
+    wuss_window_get_scroll(win_sr, &scroll);
+    if (scroll.y != 2 * WUSS_SCROLL_STEP) goto Failure;
+
+    wuss_window_close(win_sr);
+  }
+
   printf("test: wuss_window_invalidate clamps a client box to the content "
         "area, never dirtying the furniture around it\n");
 
