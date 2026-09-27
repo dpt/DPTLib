@@ -106,8 +106,8 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, LISSAJOUS_MENU_FOREGROUND, "Foreground",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
-  WUSS_MENU_ITEM(task->menu_items, LISSAJOUS_MENU_PAUSE, "Pause",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, LISSAJOUS_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "Space");
 
   for (i = 0; i < LISSAJOUS_NFREQS; i++)
     WUSS_MENU_ITEM(task->ratio_items, i, lissajous_freqs[i].name,

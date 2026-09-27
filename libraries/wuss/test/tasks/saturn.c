@@ -237,8 +237,8 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_SIZE, "Configuration",
                 wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
 
-  WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_ANIMATE, "Animate",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_ANIMATE, "Animate",
+                          wuss_MENU_ITEM_NONE, "A");
 
   WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_SAVE, "Save PNG",
                  wuss_MENU_ITEM_NONE);
