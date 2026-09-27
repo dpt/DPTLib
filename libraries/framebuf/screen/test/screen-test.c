@@ -741,6 +741,77 @@ static result_t test_fill_circle(void)
 
 /* ----------------------------------------------------------------------- */
 
+static result_t test_rounded_rect(void)
+{
+  static testscreen_t outline;
+  static testscreen_t filled;
+  static testscreen_t enc;
+
+  int fg, bg;
+  int x, y;
+
+  fg = (int) np_encode(&enc, 0, 255, 0);
+  bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
+
+  /* 21x21 at (10,10), r=5: corner centres at 15 and 25. The very corner
+   * and the diagonal (11,11) lie outside the arc; edge midpoints and the
+   * arc's axis points lie on it. */
+  testscreen_init(&outline);
+  screen_draw_rounded_rect(&outline.scr, 10, 10, SIZE2D(21, 21), 5,
+                           colour_rgb(0, 255, 0));
+  testscreen_init(&filled);
+  screen_fill_rounded_rect(&filled.scr, 10, 10, SIZE2D(21, 21), 5,
+                           colour_rgb(0, 255, 0));
+
+  if (np_at(&outline, 20, 10) != fg || np_at(&outline, 10, 20) != fg ||
+      np_at(&outline, 30, 20) != fg || np_at(&outline, 20, 30) != fg ||
+      np_at(&outline, 10, 15) != fg || np_at(&outline, 12, 11) != fg)
+  {
+    printf("screen: draw_rounded_rect missing an edge or arc point\n");
+    return result_TEST_FAILED;
+  }
+  if (np_at(&outline, 10, 10) != bg || np_at(&outline, 11, 11) != bg ||
+      np_at(&outline, 20, 20) != bg)
+  {
+    printf("screen: draw_rounded_rect lit a corner or its interior\n");
+    return result_TEST_FAILED;
+  }
+
+  /* the fill covers every outline pixel plus the interior, and nothing
+   * outside the outline's corners or edges */
+  for (y = 0; y < HEIGHT; y++)
+    for (x = 0; x < WIDTH; x++)
+      if (np_at(&outline, x, y) == fg && np_at(&filled, x, y) != fg)
+      {
+        printf("screen: fill_rounded_rect missed outline pixel (%d,%d)\n",
+               x, y);
+        return result_TEST_FAILED;
+      }
+  if (np_at(&filled, 20, 20) != fg || np_at(&filled, 10, 10) != bg ||
+      np_at(&filled, 11, 11) != bg || np_at(&filled, 31, 20) != bg ||
+      np_at(&filled, 20, 9) != bg)
+  {
+    printf("screen: fill_rounded_rect wrong interior or spilled\n");
+    return result_TEST_FAILED;
+  }
+
+  /* an oversized radius clamps to a circle on an odd square: (10,10) is
+   * outside, the edge midpoints are on it */
+  testscreen_init(&filled);
+  screen_fill_rounded_rect(&filled.scr, 10, 10, SIZE2D(21, 21), 100,
+                           colour_rgb(0, 255, 0));
+  if (np_at(&filled, 10, 10) != bg || np_at(&filled, 14, 10) != bg ||
+      np_at(&filled, 20, 10) != fg || np_at(&filled, 10, 20) != fg)
+  {
+    printf("screen: fill_rounded_rect did not clamp its radius\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 /* Blit an rgba8888 source onto a 1bpp screen: each pixel must quantise to
  * the nearer of the two palette entries and pack MSB-first, bit 7 leftmost. */
 static result_t test_copy_bitmap_p1(void)
@@ -1527,6 +1598,7 @@ result_t screen_test(const char *resources)
     test_draw_rect,
     test_draw_circle,
     test_fill_circle,
+    test_rounded_rect,
     test_copy_bitmap_p1,
     test_copy_bitmap_p2,
     test_copy_bitmap_p8,
