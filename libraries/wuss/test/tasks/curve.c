@@ -21,6 +21,7 @@
 #include "wuss/wuss.h"
 
 #include "curve.h"
+#include "snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
  * in curve_task_t, not as a file-scope static, so that each window's Info row
@@ -32,8 +33,11 @@ enum
   CURVE_MENU_BACKGROUND,
   CURVE_MENU_TYPE,
   CURVE_MENU_HULL,
-  CURVE_MENU_RESET
+  CURVE_MENU_RESET,
+  CURVE_MENU_SAVE
 };
+
+#define CURVE_SAVE_NAME "curve.png" /* written to the current dir */
 
 /* Curve-type name for each valid task->npoints, indexed by
  * npoints - CURVE_MINCONTROLPTS; also the Menu > Type rows. */
@@ -181,6 +185,9 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_ITEM(task->menu_items, CURVE_MENU_RESET, "Reset points",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM(task->menu_items, CURVE_MENU_SAVE, "Save PNG",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Curve", task->menu_items,
@@ -457,6 +464,11 @@ static result_t curve_menu_select(curve_task_t       *task,
       wuss_window_invalidate_visible(task->window);
     return result_OK;
   }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == CURVE_MENU_SAVE)
+    return snapshot_save_png(task->window, curve_handle, task,
+                             CURVE_SAVE_NAME);
 
   if (event->data.menu_select.menu == &task->type_menu)
   {
