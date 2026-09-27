@@ -205,7 +205,8 @@ typedef struct wuss_event
      * is a set of wuss_button_t flags, so test it with '&' rather than
      * comparing for equality. value is the icon's current value for a
      * wuss_ICON_TYPE_SLIDER (updated before this event is delivered, so it
-     * always reflects the click/drag that raised it); meaningless for every
+     * always reflects the click/drag that raised it; a wheel turn over a
+     * slider raises MOVE with button 0); meaningless for every
      * other icon type. A wuss_ICON_TYPE_WRITABLE also raises this, with
      * button 0 and action wuss_MOUSE_UP, after every edit to its text. In
      * the task view (window == NULL) this is reserved for a future
