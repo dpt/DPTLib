@@ -7236,6 +7236,53 @@ QuitFail:
     wuss_window_close(win_sd);
   }
 
+  printf("test: a dragged window snaps flush to a screen edge it comes "
+         "within WUSS_SNAP_PX of\n");
+
+  {
+    static test_task_t tc_sn;
+    wuss_task_t       *delegate_sn;
+    box_t              box_sn, start, visible;
+    wuss_window_t     *win_sn;
+    point_t            grab;
+    size2d_t           scr;
+
+    delegate_sn = mk_task(wuss, test_handle, &tc_sn);
+    if (delegate_sn == NULL) goto Failure;
+
+    box_sn.x0 = 40; box_sn.y0 = 40;
+    box_sn.x1 = 100; box_sn.y1 = 100;
+    rc = wuss_window_create(delegate_sn, &box_sn, "SN", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(400, 400), SIZE2D(0, 0), &win_sn);
+    if (rc != result_OK) goto Failure;
+
+    scr = wuss->scr->size;
+    wuss_window_get_visible_bounds(win_sn, &start);
+    grab = POINT((start.x0 + start.x1) / 2, start.y0 + 3); /* titlebar */
+
+    rc = wuss_mouse_click(wuss, grab, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+    if (rc != result_OK || hit != win_sn) goto Failure;
+
+    /* within range of the top-left corner: snaps to both edges */
+    wuss_mouse_move(wuss, POINT(grab.x - start.x0 + WUSS_SNAP_PX - 1, grab.y - start.y0 + WUSS_SNAP_PX - 1), NULL);
+    wuss_window_get_visible_bounds(win_sn, &visible);
+    if (visible.x0 != 0 || visible.y0 != 0) goto Failure;
+
+    /* just out of range: follows the pointer */
+    wuss_mouse_move(wuss, POINT(grab.x - start.x0 + WUSS_SNAP_PX, grab.y - start.y0 + WUSS_SNAP_PX), NULL);
+    wuss_window_get_visible_bounds(win_sn, &visible);
+    if (visible.x0 != WUSS_SNAP_PX || visible.y0 != WUSS_SNAP_PX) goto Failure;
+
+    /* within range of the bottom-right corner: snaps to both edges */
+    wuss_mouse_move(wuss, POINT(grab.x + scr.w - start.x1 - 2, grab.y + scr.h - start.y1 - 2), NULL);
+    wuss_window_get_visible_bounds(win_sn, &visible);
+    if (visible.x1 != scr.w || visible.y1 != scr.h) goto Failure;
+
+    wuss_mouse_click(wuss, grab, wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    wuss_window_close(win_sn);
+  }
+
   printf("test: wuss_window_invalidate clamps a client box to the content "
         "area, never dirtying the furniture around it\n");
 
