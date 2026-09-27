@@ -78,7 +78,7 @@ enum
 {
   SPHEROID_ROW_AMBIENT,
   SPHEROID_ROW_GLOW,
-  SPHEROID_ROW_SIZE,
+  SPHEROID_ROW_SIZE,      /* this and the rest are the current light's */
   SPHEROID_ROW_SHARPNESS,
   SPHEROID_ROW_INTENSITY /* the current light's */
 };
@@ -148,8 +148,8 @@ static const stack_item_t spheroid_strip[SS__LIMIT] =
   [SS_LIGHT]  = SS_FRAME(SS_ROOT),
   SS_ROW_ITEMS(SPHEROID_ROW_AMBIENT,   SS_SPHERE),
   SS_ROW_ITEMS(SPHEROID_ROW_GLOW,      SS_SPHERE),
-  SS_ROW_ITEMS(SPHEROID_ROW_SIZE,      SS_SPHERE),
-  SS_ROW_ITEMS(SPHEROID_ROW_SHARPNESS, SS_SPHERE),
+  SS_ROW_ITEMS(SPHEROID_ROW_SIZE,      SS_LIGHT),
+  SS_ROW_ITEMS(SPHEROID_ROW_SHARPNESS, SS_LIGHT),
   SS_ROW_ITEMS(SPHEROID_ROW_INTENSITY, SS_LIGHT)
 };
 
@@ -162,10 +162,11 @@ typedef struct spheroid_frame
   double l[SPHEROID_NLIGHTS][3]; /* light direction */
   double h[SPHEROID_NLIGHTS][3]; /* Blinn half-vector, |L + V| */
   double c[SPHEROID_NLIGHTS][3]; /* colour * intensity, 0..2 */
+  double exponent[SPHEROID_NLIGHTS];
+  double lo[SPHEROID_NLIGHTS], hi[SPHEROID_NLIGHTS]; /* specular smoothstep
+                                                      * edges */
   double ambient;
   double glow;
-  double exponent;
-  double lo, hi;        /* specular smoothstep edges */
 }
 spheroid_frame_t;
 
@@ -203,6 +204,8 @@ static void spheroid_set_light(spheroid_light_t *light,
 
 static void spheroid_defaults(spheroid_task_t *task)
 {
+  int i;
+
   spheroid_set_light(&task->lights[0], 1, -0.5,  0.6,  0.6,
                      colour_rgb(0xFF, 0xFF, 0xFF), 100);
   spheroid_set_light(&task->lights[1], 1,  0.7, -0.6, -0.3,
@@ -212,12 +215,16 @@ static void spheroid_defaults(spheroid_task_t *task)
   spheroid_set_light(&task->lights[3], 0, -0.6, -0.6,  0.5,
                      colour_rgb(0x40, 0xFF, 0x80), 100);
 
+  for (i = 0; i < SPHEROID_NLIGHTS; i++)
+  {
+    task->lights[i].size      = 40;
+    task->lights[i].sharpness = 30;
+  }
+
   task->sphere     = colour_rgb(0x80, 0x80, 0x80);
   task->background = colour_rgb(0x00, 0x00, 0x00);
   task->ambient    = 10;
   task->glow       = 15;
-  task->size       = 40;
-  task->sharpness  = 30;
 }
 
 static void spheroid_prepare(const spheroid_task_t *task,
@@ -251,17 +258,19 @@ static void spheroid_prepare(const spheroid_task_t *task,
     f->h[n][2] = (light->z + 1.0) / len;
 
     spheroid_rgb(light->colour, light->intensity / 100.0, f->c[n]);
+
+    /* 200..2 */
+    f->exponent[n] = 2.0 * pow(100.0, (100 - light->size) / 100.0);
+
+    w        = 1.0 - light->sharpness * 0.0098; /* 1..0.02 */
+    f->lo[n] = 0.5 - w / 2.0;
+    f->hi[n] = 0.5 + w / 2.0;
     n++;
   }
   f->nlights = n;
 
-  f->ambient  = task->ambient / 100.0;
-  f->glow     = task->glow / 50.0;
-  f->exponent = 2.0 * pow(100.0, (100 - task->size) / 100.0); /* 200..2 */
-
-  w     = 1.0 - task->sharpness * 0.0098; /* 1..0.02 */
-  f->lo = 0.5 - w / 2.0;
-  f->hi = 0.5 + w / 2.0;
+  f->ambient = task->ambient / 100.0;
+  f->glow    = task->glow / 50.0;
 }
 
 /* the sphere's centre and radius for a content area of the given size, in
@@ -276,17 +285,24 @@ static void spheroid_layout(size2d_t size, double *cx, double *cy, double *r)
   *r  = (MIN(w, size.h) / 2.0 - SPHEROID_MARGIN) / (1.0 + SPHEROID_WRAP);
 }
 
-/* the task field a strip row edits */
-static int *spheroid_row_field(spheroid_task_t *task, int row)
+/* the task field a strip row edits, taking a per-light row's from the given
+ * light */
+static int *spheroid_field(spheroid_task_t *task, int row, int light)
 {
   switch (row)
   {
   case SPHEROID_ROW_AMBIENT:   return &task->ambient;
   case SPHEROID_ROW_GLOW:      return &task->glow;
-  case SPHEROID_ROW_SIZE:      return &task->size;
-  case SPHEROID_ROW_SHARPNESS: return &task->sharpness;
-  default:                     return &task->lights[task->current].intensity;
+  case SPHEROID_ROW_SIZE:      return &task->lights[light].size;
+  case SPHEROID_ROW_SHARPNESS: return &task->lights[light].sharpness;
+  default:                     return &task->lights[light].intensity;
   }
+}
+
+/* the task field a strip row edits now */
+static int *spheroid_row_field(spheroid_task_t *task, int row)
+{
+  return spheroid_field(task, row, task->current);
 }
 
 /* repaint the preview pane only, leaving the strip's icons alone */
@@ -414,8 +430,8 @@ static void spheroid_shade(const spheroid_frame_t *f,
       continue;
 
     ndh  = n[0] * f->h[i][0] + n[1] * f->h[i][1] + n[2] * f->h[i][2];
-    spec = ndh > 0.0 ? pow(ndh, f->exponent) : 0.0;
-    t    = CLAMP((spec - f->lo) / (f->hi - f->lo), 0.0, 1.0);
+    spec = ndh > 0.0 ? pow(ndh, f->exponent[i]) : 0.0;
+    t    = CLAMP((spec - f->lo[i]) / (f->hi[i] - f->lo[i]), 0.0, 1.0);
     spec = t * t * (3.0 - 2.0 * t);
 
     for (k = 0; k < 3; k++)
@@ -683,19 +699,20 @@ static result_t spheroid_redraw(const wuss_event_t *event,
   return result_OK;
 }
 
-/* point the Light frame at the current light: its caption and its Level
- * slider */
+/* point the Light frame at the current light: its caption and its sliders */
 static void spheroid_sync_light(spheroid_task_t *task)
 {
+  int row;
+
   if (task->window == NULL)
     return;
 
-  /* ponytail: an OOM here only leaves the caption or value label stale */
+  /* ponytail: an OOM here only leaves the caption or a value label stale */
   (void) wuss_icon_set_text(task->window, task->light_frame,
                             spheroid_light_names[task->current]);
-  (void) wuss_slider_row_set(task->window,
-                             &task->rows[SPHEROID_ROW_INTENSITY],
-                             task->lights[task->current].intensity);
+  for (row = SPHEROID_ROW_SIZE; row < SPHEROID_NROWS; row++)
+    (void) wuss_slider_row_set(task->window, &task->rows[row],
+                               *spheroid_row_field(task, row));
 }
 
 /* put every strip slider back in step with its field */
@@ -745,27 +762,37 @@ static void spheroid_turn_hue(colour_t *c, rng_t *rng)
   *c = colour_rgb(v[0], v[1], v[2]);
 }
 
-/* nudge every slider, the lit lights' directions and the colours' hues;
- * which lights are on is left alone */
+/* nudge a strip row's field by up to SPHEROID_MUTATE_SLIDER percent of its
+ * range, taking a per-light row's from the given light */
+static void spheroid_nudge(spheroid_task_t *task, int row, int light)
+{
+  int d, *field;
+
+  d      = spheroid_rows[row].max * SPHEROID_MUTATE_SLIDER / 100;
+  field  = spheroid_field(task, row, light);
+  *field = CLAMP(*field + rng_range(&task->rng, 2 * d + 1) - d,
+                 0, spheroid_rows[row].max);
+}
+
+/* nudge the global sliders, each lit light's sliders and direction, and the
+ * colours' hues; which lights are on is left alone */
 static void spheroid_mutate(spheroid_task_t *task)
 {
-  int               row, d, *field, i;
+  int               row, i;
   spheroid_light_t *light;
   double            x, y, z;
 
-  for (row = 0; row < SPHEROID_NROWS; row++)
-  {
-    d      = spheroid_rows[row].max * SPHEROID_MUTATE_SLIDER / 100;
-    field  = spheroid_row_field(task, row);
-    *field = CLAMP(*field + rng_range(&task->rng, 2 * d + 1) - d,
-                   0, spheroid_rows[row].max);
-  }
+  for (row = 0; row < SPHEROID_ROW_SIZE; row++)
+    spheroid_nudge(task, row, 0);
 
   for (i = 0; i < SPHEROID_NLIGHTS; i++)
   {
     light = &task->lights[i];
     if (!light->on)
       continue;
+
+    for (row = SPHEROID_ROW_SIZE; row < SPHEROID_NROWS; row++)
+      spheroid_nudge(task, row, i);
 
     /* ponytail: an offset then renormalise, not a true bounded rotation;
      * turns are up to ~20 degrees, a little more along the diagonals */
