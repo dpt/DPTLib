@@ -85,7 +85,17 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
   task->nnames      = 0;
   task->menu        = NULL;
   task->menu_handle = NULL;
-  task->dithering   = 1;
+  task->dithering   = screen_DITHER_BLUE_NOISE;
+
+  /* indexed by screen_dither_t */
+  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_NONE, "None",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_BAYER, "Bayer",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_BLUE_NOISE, "Blue noise",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_TITLE(task->dither_menu, "Dithering", task->dither_items,
+                  NELEMS(task->dither_items));
 
   resources  = wuss_get_resources(wuss);
   images_dir = pathf("%s/resources/images", resources);
@@ -213,10 +223,7 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   palette = wuss_get_palette(ic->wuss, NULL);
   screen_fill_rects(scr, band, 4, palette[ic->background]);
 
-  if (ic->dithering)
-    screen_copy_bitmap_dithered(scr, bx, by, &ic->bitmap);
-  else
-    screen_copy_bitmap(scr, bx, by, &ic->bitmap);
+  screen_copy_bitmap_dithered(scr, bx, by, &ic->bitmap, ic->dithering);
 
   return result_OK;
 }
@@ -275,11 +282,8 @@ static result_t image_open_menu(image_task_t *ic)
   wuss_menu_t *m;
   int          i;
 
-  /* '!Dithering' pulls ic->dithering directly, so the row's tick already
-   * matches live state -- no separate wuss_menu_open_ticked pass needed. */
   rc = wuss_menu_create_from_desc(&m,
-         "Image, Info, !Dithering, Background, Load",
-         ic->dithering);
+         "Image, Info, Dithering, Background, Load");
   if (rc != result_OK)
     return rc;
 
@@ -313,18 +317,24 @@ static result_t image_open_menu(image_task_t *ic)
       break;
     }
 
-  /* And "Load": the per-instance list of scanned leafnames, built at
-   * create time and ticked here. Borrowed for the same reason. */
+  /* And "Dithering" and "Load": per-instance submenus built at create time
+   * and ticked here. Borrowed for the same reason. */
+  wuss_menu_tick_exclusive(&ic->dither_menu, (int) ic->dithering);
   wuss_menu_tick_exclusive(&ic->load_menu, ic->index);
   for (i = 0; i < m->nitems; i++)
-    if (m->items[i].text != NULL && strcmp(m->items[i].text, "Load") == 0)
-    {
-      wuss_menu_item_t *it = (wuss_menu_item_t *) &m->items[i];
+  {
+    wuss_menu_item_t *it = (wuss_menu_item_t *) &m->items[i];
 
+    if (it->text == NULL)
+      continue;
+    if (strcmp(it->text, "Dithering") == 0)
+      it->submenu = &ic->dither_menu;
+    else if (strcmp(it->text, "Load") == 0)
       it->submenu = &ic->load_menu;
-      it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
-      break;
-    }
+    else
+      continue;
+    it->flags |= wuss_MENU_ITEM_BORROWED_SUBMENU;
+  }
 
   wuss_menu_destroy(ic->menu);
   ic->menu = m;
@@ -393,14 +403,16 @@ result_t image_handle(wuss_window_t      *window,
                                       ic->index);
       return rc;
     }
-    if (index == 1) {
-      ic->dithering = !ic->dithering;
+    if (menu == &ic->dither_menu)
+    {
+      ic->dithering = (screen_dither_t) index;
       wuss_window_invalidate_visible(ic->window);
+      if (wuss_menu_should_keep_open(event))
+        wuss_menu_tick_exclusive_live(ic->menu_handle, &ic->dither_menu,
+                                      index);
     }
     if (!wuss_menu_should_keep_open(event))
       ic->menu_handle = NULL; /* SELECT pick already freed the chain */
-    else if (index == 1)
-      wuss_menu_tick_item_live(ic->menu_handle, ic->menu, 1, ic->dithering);
     return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:

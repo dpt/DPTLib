@@ -1299,9 +1299,9 @@ static int p2_pixel_at(const unsigned char *rowbuf, int px)
 /* screen_copy_bitmap_dithered on a p2 screen: a flat mid-grey source, which
  * screen_copy_bitmap would quantise to one uniform index across the row, must
  * come out as a stipple of at least two indices; the flat black and white
- * ends must still be uniform (the Bayer nudge can't push them off their
- * clamp). */
-static result_t test_copy_bitmap_dithered(void)
+ * ends must still be uniform (the dither nudge can't push them off their
+ * clamp). Run once per dithering method. */
+static result_t test_copy_bitmap_dithered_with(screen_dither_t method)
 {
 #define PD_ROWBYTES (WIDTH / 4)
   static unsigned char       pdpixels[PD_ROWBYTES * HEIGHT];
@@ -1332,7 +1332,7 @@ static result_t test_copy_bitmap_dithered(void)
   screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, PD_ROWBYTES, pal,
               pdpixels);
 
-  if (screen_copy_bitmap_dithered(&scr, 0, 0, &src) != result_OK)
+  if (screen_copy_bitmap_dithered(&scr, 0, 0, &src, method) != result_OK)
   {
     printf("screen: copy_bitmap_dithered to p2 screen failed\n");
     return result_TEST_FAILED;
@@ -1357,7 +1357,7 @@ static result_t test_copy_bitmap_dithered(void)
   }
 
   /* dithered: at least one of the first 16 pixels differs from pixel 0 (the
-   * 8x8 Bayer cell varies across the row). */
+   * threshold map varies across the row). */
   first  = p2_pixel_at(pdpixels, 0);
   varied = 0;
   for (px = 1; px < 16; px++)
@@ -1374,7 +1374,7 @@ static result_t test_copy_bitmap_dithered(void)
     for (x = 0; x < 16; x++)
       srcbuf[y * 16 + x] = colour_rgb(0x00, 0x00, 0x00).primary;
   memset(pdpixels, 0xAA, sizeof(pdpixels));
-  screen_copy_bitmap_dithered(&scr, 0, 0, &src);
+  screen_copy_bitmap_dithered(&scr, 0, 0, &src, method);
   if (pdpixels[0] != 0x00 || pdpixels[1] != 0x00 ||
       pdpixels[2] != 0x00 || pdpixels[3] != 0x00)
   {
@@ -1386,7 +1386,7 @@ static result_t test_copy_bitmap_dithered(void)
     for (x = 0; x < 16; x++)
       srcbuf[y * 16 + x] = colour_rgb(0xFF, 0xFF, 0xFF).primary;
   memset(pdpixels, 0x00, sizeof(pdpixels));
-  screen_copy_bitmap_dithered(&scr, 0, 0, &src);
+  screen_copy_bitmap_dithered(&scr, 0, 0, &src, method);
   if (pdpixels[0] != 0xFF || pdpixels[1] != 0xFF ||
       pdpixels[2] != 0xFF || pdpixels[3] != 0xFF)
   {
@@ -1395,6 +1395,17 @@ static result_t test_copy_bitmap_dithered(void)
   }
 
   return result_TEST_PASSED;
+}
+
+static result_t test_copy_bitmap_dithered(void)
+{
+  result_t rc;
+
+  rc = test_copy_bitmap_dithered_with(screen_DITHER_BAYER);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  return test_copy_bitmap_dithered_with(screen_DITHER_BLUE_NOISE);
 }
 
 /* ----------------------------------------------------------------------- */

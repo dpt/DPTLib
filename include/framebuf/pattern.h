@@ -139,4 +139,16 @@ pattern_t pattern_from_colour(const colour_t *palette,
  */
 int pattern_bayer_threshold(int x, int y);
 
+/**
+ * As `pattern_bayer_threshold`, but from a 64x64 blue-noise map: each
+ * threshold 0 to 63 appears equally often, spread with no low-frequency
+ * structure, so a dither driven by it reads as fine grain rather than a
+ * cross-hatch. `x` and `y` may be negative.
+ *
+ * \param[in] x Screen X coordinate.
+ * \param[in] y Screen Y coordinate.
+ * \return The threshold, 0 to 63.
+ */
+int pattern_blue_noise_threshold(int x, int y);
+
 #endif /* FRAMEBUF_PATTERN_H */

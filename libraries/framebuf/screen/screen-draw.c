@@ -381,8 +381,17 @@ void screen_fill_square(screen_t *scr,
 
 /* ----------------------------------------------------------------------- */
 
-/* Per-blit ordered-dither bias table: one signed offset for each of the 64
- * cells of the 8x8 Bayer matrix, indexed by pattern_bayer_threshold(sx, sy).
+/* Per-blit ordered-dither state: the threshold map the method selects (8x8
+ * Bayer or 64x64 blue noise, both yielding 0..63 per pixel) and one signed
+ * bias for each of those 64 thresholds. */
+typedef struct
+{
+  int (*threshold)(int x, int y);
+  int   tab[64];
+}
+dither_t;
+
+/* The bias table, indexed by the method's threshold for (sx, sy).
  *
  * The mean gap between adjacent levels of a linear ramp of "nlevels" entries
  * is 255 / (nlevels - 1); the Bayer cell (-32..31 about zero) nudges a channel
@@ -405,17 +414,26 @@ void screen_fill_square(screen_t *scr,
  * case (shallow paletted screen showing a gradient) the dithered blit is for.
  * A wildly non-uniform palette dithers weakly, not wrongly; swap in a
  * per-entry nearest-two search keyed on the real palette if that matters. */
-static int dither_bias_build(int tab[64], int nlevels, int dither)
+static int dither_bias_build(dither_t       *d,
+                             int             nlevels,
+                             screen_dither_t method)
 {
   int gap;
   int i;
 
-  if (!dither || nlevels < 2)
+  switch (method)
+  {
+  case screen_DITHER_BAYER:      d->threshold = pattern_bayer_threshold;      break;
+  case screen_DITHER_BLUE_NOISE: d->threshold = pattern_blue_noise_threshold; break;
+  default:                       return 0;
+  }
+
+  if (nlevels < 2)
     return 0;
 
   gap = 255 / (nlevels - 1);
   for (i = 0; i < 64; i++)
-    tab[i] = ((i - 32) * gap) / 64;
+    d->tab[i] = ((i - 32) * gap) / 64;
 
   return 1;
 }
@@ -432,14 +450,14 @@ static int dither_levels_for(const pixelmap_t *pm)
  * "v" (0..255), result clamped to 0..255. Coordinates are relative to the
  * source bitmap's top-left, not the screen, so the dither pattern stays fixed
  * to the sprite as its window moves rather than crawling across it. */
-static unsigned int dither_channel(unsigned int v,
-                                   const int    tab[64],
-                                   int          sx,
-                                   int          sy)
+static unsigned int dither_channel(unsigned int    v,
+                                   const dither_t *d,
+                                   int             sx,
+                                   int             sy)
 {
   int adj;
 
-  adj = tab[pattern_bayer_threshold(sx, sy)];
+  adj = d->tab[d->threshold(sx, sy)];
 
   return (unsigned int) CLAMP((int) v + adj, 0, 255);
 }
@@ -510,12 +528,12 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
                                       const bitmap_t *src,
                                       const box_t    *draw_box,
                                       int             has_alpha,
-                                      int             dither)
+                                      screen_dither_t dither)
 {
   unsigned char    *dstbase;
   const pixelmap_t *pm;
   const pixelmap_t *srcpm;
-  int               bias[64];
+  dither_t          bias;
   int               do_dither;
   int               clipped_width, clipped_height;
   int               yy;
@@ -534,7 +552,7 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  do_dither = dither_bias_build(bias, dither_levels_for(pm), dither);
+  do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -568,9 +586,9 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
       b   = (c.primary >> pm->bshift) & 0xFF;
       if (do_dither)
       {
-        r = dither_channel(r, bias, dstx - x, draw_box->y0 + yy - y);
-        g = dither_channel(g, bias, dstx - x, draw_box->y0 + yy - y);
-        b = dither_channel(b, bias, dstx - x, draw_box->y0 + yy - y);
+        r = dither_channel(r, &bias, dstx - x, draw_box->y0 + yy - y);
+        g = dither_channel(g, &bias, dstx - x, draw_box->y0 + yy - y);
+        b = dither_channel(b, &bias, dstx - x, draw_box->y0 + yy - y);
       }
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
@@ -596,12 +614,12 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
                                       const bitmap_t *src,
                                       const box_t    *draw_box,
                                       int             has_alpha,
-                                      int             dither)
+                                      screen_dither_t dither)
 {
   unsigned char    *dstbase;
   const pixelmap_t *pm;
   const pixelmap_t *srcpm;
-  int               bias[64];
+  dither_t          bias;
   int               do_dither;
   int               clipped_width, clipped_height;
   int               yy;
@@ -619,7 +637,7 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  do_dither = dither_bias_build(bias, dither_levels_for(pm), dither);
+  do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -648,9 +666,9 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
       b = (c.primary >> pm->bshift) & 0xFF;
       if (do_dither)
       {
-        r = dither_channel(r, bias, dstx - x, draw_box->y0 + yy - y);
-        g = dither_channel(g, bias, dstx - x, draw_box->y0 + yy - y);
-        b = dither_channel(b, bias, dstx - x, draw_box->y0 + yy - y);
+        r = dither_channel(r, &bias, dstx - x, draw_box->y0 + yy - y);
+        g = dither_channel(g, &bias, dstx - x, draw_box->y0 + yy - y);
+        b = dither_channel(b, &bias, dstx - x, draw_box->y0 + yy - y);
       }
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
@@ -677,12 +695,12 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
                                       const bitmap_t *src,
                                       const box_t    *draw_box,
                                       int             has_alpha,
-                                      int             dither)
+                                      screen_dither_t dither)
 {
   unsigned char    *dstbase;
   const pixelmap_t *pm;
   const pixelmap_t *srcpm;
-  int               bias[64];
+  dither_t          bias;
   int               do_dither;
   int               clipped_width, clipped_height;
   int               yy;
@@ -700,7 +718,7 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  do_dither = dither_bias_build(bias, dither_levels_for(pm), dither);
+  do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -733,9 +751,9 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
       b   = (c.primary >> pm->bshift) & 0xFF;
       if (do_dither)
       {
-        r = dither_channel(r, bias, dstx - x, draw_box->y0 + yy - y);
-        g = dither_channel(g, bias, dstx - x, draw_box->y0 + yy - y);
-        b = dither_channel(b, bias, dstx - x, draw_box->y0 + yy - y);
+        r = dither_channel(r, &bias, dstx - x, draw_box->y0 + yy - y);
+        g = dither_channel(g, &bias, dstx - x, draw_box->y0 + yy - y);
+        b = dither_channel(b, &bias, dstx - x, draw_box->y0 + yy - y);
       }
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
@@ -762,12 +780,12 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
                                       const bitmap_t *src,
                                       const box_t    *draw_box,
                                       int             has_alpha,
-                                      int             dither)
+                                      screen_dither_t dither)
 {
   unsigned char    *dstbase;
   const pixelmap_t *pm;
   const pixelmap_t *srcpm;
-  int               bias[64];
+  dither_t          bias;
   int               do_dither;
   int               clipped_width, clipped_height;
   int               yy;
@@ -785,7 +803,7 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  do_dither = dither_bias_build(bias, dither_levels_for(pm), dither);
+  do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -818,9 +836,9 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
       b   = (c.primary >> pm->bshift) & 0xFF;
       if (do_dither)
       {
-        r = dither_channel(r, bias, dstx - x, draw_box->y0 + yy - y);
-        g = dither_channel(g, bias, dstx - x, draw_box->y0 + yy - y);
-        b = dither_channel(b, bias, dstx - x, draw_box->y0 + yy - y);
+        r = dither_channel(r, &bias, dstx - x, draw_box->y0 + yy - y);
+        g = dither_channel(g, &bias, dstx - x, draw_box->y0 + yy - y);
+        b = dither_channel(b, &bias, dstx - x, draw_box->y0 + yy - y);
       }
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
@@ -915,7 +933,7 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
                                      int             x,
                                      int             y,
                                      const bitmap_t *src,
-                                     int             dither)
+                                     screen_dither_t dither)
 {
   box_t    clip_box;
   box_t    src_box;
@@ -965,15 +983,16 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
 
 result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 {
-  return screen_copy_bitmap_i(scr, x, y, src, 0);
+  return screen_copy_bitmap_i(scr, x, y, src, screen_DITHER_NONE);
 }
 
 result_t screen_copy_bitmap_dithered(screen_t       *scr,
                                      int             x,
                                      int             y,
-                                     const bitmap_t *src)
+                                     const bitmap_t *src,
+                                     screen_dither_t method)
 {
-  return screen_copy_bitmap_i(scr, x, y, src, 1);
+  return screen_copy_bitmap_i(scr, x, y, src, method);
 }
 
 /* ----------------------------------------------------------------------- */
