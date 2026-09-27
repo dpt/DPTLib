@@ -30,7 +30,9 @@
  *
  * Select reseeds the pattern; Adjust steps the base palette, which Menu >
  * Palette also picks directly; Menu > Random palettes toggles per-prefab
- * random palettes; Menu > Save PNG writes the window to greeble.png. */
+ * random palettes; Menu > Save PNG writes the window to greeble.png. Once a
+ * click has given the window the input focus, Space reseeds, Left/Right
+ * step the base palette and R toggles random palettes. */
 typedef struct greeble_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer when opening the menu */
