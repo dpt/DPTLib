@@ -100,21 +100,29 @@ typedef struct wuss_menu_item
    *  left edge, as an index into the system palette. Ignored without that
    *  flag, so a zero-initialised item is unaffected. */
   wuss_colour_t           swatch;
+
+  /** Non-NULL: a keyboard shortcut label, e.g. "S" or "F3", drawn in the
+   *  bold weight right-aligned in the row; the menu widens to fit. Free
+   *  text and display only -- the task still handles the key itself in its
+   *  wuss_EVENT_KEY handler. NULL (as in a zero-initialised item) draws
+   *  none. */
+  const char             *shortcut;
 }
 wuss_menu_item_t;
 
-/** Fill in items[idx] as a plain row with no submenu/window leaf (swatch
- *  left at 0), for building a wuss_menu_t whose items[] lives per-instance
- *  in a caller's own struct rather than as a file-scope static -- see e.g.
- *  wuss/test/tasks/chars.c. Terser than assigning each field on its own
- *  line. */
+/** Fill in items[idx] as a plain row with no submenu/window leaf or
+ *  shortcut (swatch left at 0), for building a wuss_menu_t whose items[]
+ *  lives per-instance in a caller's own struct rather than as a file-scope
+ *  static -- see e.g. wuss/test/tasks/chars.c. Terser than assigning each
+ *  field on its own line. */
 #define WUSS_MENU_ITEM(items, idx, text_, flags_) \
   do \
   { \
-    (items)[idx].text    = (text_); \
-    (items)[idx].flags   = (flags_); \
-    (items)[idx].submenu = NULL; \
-    (items)[idx].window  = NULL; \
+    (items)[idx].text     = (text_); \
+    (items)[idx].flags    = (flags_); \
+    (items)[idx].submenu  = NULL; \
+    (items)[idx].window   = NULL; \
+    (items)[idx].shortcut = NULL; \
   } \
   while (0)
 
@@ -123,10 +131,11 @@ wuss_menu_item_t;
 #define WUSS_MENU_ITEM_MENU(items, idx, text_, flags_, submenu_) \
   do \
   { \
-    (items)[idx].text    = (text_); \
-    (items)[idx].flags   = (flags_); \
-    (items)[idx].submenu = (submenu_); \
-    (items)[idx].window  = NULL; \
+    (items)[idx].text     = (text_); \
+    (items)[idx].flags    = (flags_); \
+    (items)[idx].submenu  = (submenu_); \
+    (items)[idx].window   = NULL; \
+    (items)[idx].shortcut = NULL; \
   } \
   while (0)
 
@@ -135,10 +144,11 @@ wuss_menu_item_t;
 #define WUSS_MENU_ITEM_WINDOW(items, idx, text_, flags_, window_) \
   do \
   { \
-    (items)[idx].text    = (text_); \
-    (items)[idx].flags   = (flags_); \
-    (items)[idx].submenu = NULL; \
-    (items)[idx].window  = (window_); \
+    (items)[idx].text     = (text_); \
+    (items)[idx].flags    = (flags_); \
+    (items)[idx].submenu  = NULL; \
+    (items)[idx].window   = (window_); \
+    (items)[idx].shortcut = NULL; \
   } \
   while (0)
 

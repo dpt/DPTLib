@@ -95,9 +95,7 @@ static void draw_title(wuss_t        *wuss,
 
   /* window titles are drawn in the bold weight (font slot 1) when one was
    * supplied, falling back to the system font */
-  titlefont = (wuss->fonts.nfonts > 1 && wuss->fonts.fonts[1] != NULL)
-            ? wuss->fonts.fonts[1]
-            : wuss->fonts.fonts[0];
+  titlefont = wuss__bold_font(wuss);
   if (titlefont == NULL)
     return;
 

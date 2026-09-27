@@ -647,6 +647,27 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     pos.y = icon_text_baseline_y(c, b);
     wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
                     text_ink, text_ground, &pos, NULL);
+
+    /* shortcut: bold, right-aligned against the same one-space inset at
+     * text_x1, sharing the label's baseline */
+    if (icon->u.menu_entry.shortcut != NULL &&
+        icon->u.menu_entry.shortcut[0] != '\0')
+    {
+      bmfont_t      *bold;
+      const char    *shortcut;
+      int            len;
+      bmfont_width_t shortcut_w;
+
+      bold       = wuss__bold_font(c->wuss);
+      shortcut   = icon->u.menu_entry.shortcut;
+      len        = (int) strlen(shortcut);
+      shortcut_w = 0;
+      wuss__text_measure(bold, shortcut, len, INT_MAX, NULL, &shortcut_w);
+
+      pos.x = text_x1 - (int) space_w - (int) shortcut_w;
+      wuss__text_draw(bold, c->scr, shortcut, len, text_ink, text_ground,
+                      &pos, NULL);
+    }
   }
 }
 
