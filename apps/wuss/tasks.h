@@ -69,6 +69,11 @@ result_t task_handle_event(wuss_window_t      *window,
  * MENU click over bare backdrop */
 result_t tasks_open_launcher(point_t pos);
 
+/* offer a key the focused window passed on to the task launcher's menu
+ * shortcuts (e.g. F4 for Quit Wuss); result_WUSS_KEY_UNCLAIMED if none
+ * matches */
+result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers);
+
 /* Spawn the tasks named in names, a comma-separated list of launcher-menu
  * task names (e.g. "Saturn,Clock"), or "all" to spawn every task in every
  * category (games, tests, system, utilities, visuals), in table order; an

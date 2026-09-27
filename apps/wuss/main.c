@@ -220,6 +220,10 @@ static void wuss_frame(void *arg)
         if (claimed)
           break;
 
+        /* then the launcher menu's shortcuts */
+        if (tasks_launcher_key(ev.key, ev.mods) != result_WUSS_KEY_UNCLAIMED)
+          break;
+
         /* driver hotkeys, only when the focused window passed on the key */
         shift = (ev.mods & wuss_KEY_MOD_SHIFT) != 0;
         switch (ev.key)
@@ -240,9 +244,6 @@ static void wuss_frame(void *arg)
           break;
         case wuss_KEY_F1 + 2:
           pixel_stress_pending = true;
-          break;
-        case wuss_KEY_F1 + 3:
-          g_tasks.quit = true;
           break;
         default:
           break;

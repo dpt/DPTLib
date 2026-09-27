@@ -399,6 +399,17 @@ result_t tasks_open_launcher(point_t pos)
   return wuss_menu_open(g_tasks.menu_task, &g_task_menu, pos, NULL);
 }
 
+result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers)
+{
+  wuss_event_t key;
+
+  key.kind               = wuss_EVENT_KEY;
+  key.data.key.code      = code;
+  key.data.key.modifiers = modifiers;
+
+  return wuss_menu_dispatch_shortcut(g_tasks.menu_task, &g_task_menu, &key);
+}
+
 /* tasks_spawn walks every category's table by name, regardless of which
  * category a task lives in. */
 static const struct
