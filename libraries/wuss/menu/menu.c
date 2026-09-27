@@ -705,6 +705,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   int                sep_h;
   int                y;
   int                widest;
+  int                widest_shortcut;
   int                width, height;
   int                doc_h;
   int                max_h;
@@ -763,14 +764,34 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
       widest = (int) w;
   }
 
+  /* shortcuts are drawn in the bold weight, so measure them in it */
+  widest_shortcut = 0;
+  for (i = 0; i < menu->nitems; i++)
+  {
+    const char    *shortcut;
+    int            split;
+    bmfont_width_t w;
+
+    shortcut = menu->items[i].shortcut;
+    if (shortcut == NULL || shortcut[0] == '\0')
+      continue;
+    if (wuss__text_measure(wuss__bold_font(wuss), shortcut,
+                           (int) strlen(shortcut), INT_MAX, &split,
+                           &w) == result_OK && (int) w > widest_shortcut)
+      widest_shortcut = (int) w;
+  }
+
   /* the row draws its text as if a space padded it either side (see
    * wuss__icon_draw_menu_entry), so the text column must be wide enough
-   * for two of those */
+   * for two of those; a shortcut column sits a further two spaces clear of
+   * the widest label */
   {
     bmfont_width_t space_w = 0;
 
     wuss__text_measure(wuss->fonts.fonts[0], " ", 1, INT_MAX, NULL, &space_w);
     widest += 2 * (int) space_w;
+    if (widest_shortcut > 0)
+      widest += 2 * (int) space_w + widest_shortcut;
   }
 
   width  = WUSS_MENU_GUTTER_LEFT + widest + WUSS_MENU_GUTTER_RIGHT;
@@ -786,9 +807,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     int            split;
     bmfont_width_t title_w;
 
-    titlefont = (wuss->fonts.nfonts > 1 && wuss->fonts.fonts[1] != NULL)
-              ? wuss->fonts.fonts[1]
-              : wuss->fonts.fonts[0];
+    titlefont = wuss__bold_font(wuss);
     titlelen  = (int) strlen(menu->title);
     if (wuss__text_measure(titlefont, menu->title, titlelen, INT_MAX, &split,
                            &title_w) == result_OK &&
@@ -885,7 +904,8 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
       specs[s].text    = "";
       specs[s].fg      = wuss_COLOUR_BLACK;
       specs[s].bg      = wuss_NO_BACKGROUND;
-      specs[s].u.menu_entry.swatch = wuss_NO_BACKGROUND;
+      specs[s].u.menu_entry.swatch   = wuss_NO_BACKGROUND;
+      specs[s].u.menu_entry.shortcut = NULL;
       specs[s].flags   = wuss_ICON_FLAGS_NONE;
       s++;
       y += sep_h;
@@ -908,6 +928,7 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     specs[s].bg      = wuss_NO_BACKGROUND;
     specs[s].u.menu_entry.swatch =
       (item->flags & wuss_MENU_ITEM_SWATCH) ? item->swatch : wuss_NO_BACKGROUND;
+    specs[s].u.menu_entry.shortcut = item->shortcut;
     specs[s].flags   = flags;
     s++;
 

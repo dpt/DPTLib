@@ -55,6 +55,15 @@ bmfont_t *wuss_get_font(const wuss_t *wuss)
   return wuss->fonts.fonts[0];
 }
 
+bmfont_t *wuss__bold_font(const wuss_t *wuss)
+{
+  assert(wuss != NULL);
+
+  return (wuss->fonts.nfonts > 1 && wuss->fonts.fonts[1] != NULL)
+       ? wuss->fonts.fonts[1]
+       : wuss->fonts.fonts[0];
+}
+
 bmfont_t *wuss_get_font_n(const wuss_t *wuss, int index)
 {
   assert(wuss != NULL);

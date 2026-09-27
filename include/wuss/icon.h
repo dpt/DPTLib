@@ -320,6 +320,11 @@ typedef union wuss_icon_spec_data
      *  gutter, as an index into the system palette. Ignored unless that flag
      *  is set. */
     wuss_colour_t swatch;
+
+    /** Non-NULL: a keyboard shortcut label drawn in the bold weight,
+     *  right-aligned in the text column. Borrowed; must outlive the icon.
+     *  NULL draws none. */
+    const char   *shortcut;
   }
   menu_entry;
 

@@ -39,6 +39,10 @@ void wuss__fontset_init(struct wuss_fontset    *set,
  * regular and bold faces. */
 int wuss__fontset_height(const struct wuss_fontset *set, int slot);
 
+/* The bold weight (font slot 1) when one was supplied, else the system font
+ * (slot 0). Used for window titles and menu shortcuts. */
+bmfont_t *wuss__bold_font(const wuss_t *wuss);
+
 /* Centralised text rendering. wuss__text_draw is a plain pass-through to
  * bmfont_draw (pos/end_pos are baseline positions, per bmfont_draw's
  * contract), kept alongside wuss__text_measure for a single point of

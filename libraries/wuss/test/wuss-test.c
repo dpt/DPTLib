@@ -6432,6 +6432,87 @@ PwFail:
       return result_TEST_FAILED;
   }
 
+  printf("test: a menu item's shortcut widens the menu by at least the "
+         "shortcut's width\n");
+  {
+    static wuss_menu_item_t sc_items[1];
+    static const wuss_menu_t sc_menu =
+    {
+      "Root", sc_items, NELEMS(sc_items)
+    };
+
+    const char      *fontfile;
+    bmfont_t        *font = NULL;
+    wuss_font_desc_t fdesc;
+    screen_t         sscr;
+    bitmap_t         sbm;
+    void            *spixels;
+    wuss_t          *swuss;
+    test_task_t      stc;
+    wuss_task_t     *sowner;
+    int              plain_w;
+    bmfont_width_t   shortcut_w;
+    struct wuss__menu *sroot;
+
+    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    rc = bmfont_create(fontfile, &font);
+    if (rc != result_OK)
+    {
+      printf("wuss_test: shortcut test could not load %s\n", fontfile);
+      goto Failure;
+    }
+
+    spixels = malloc((size_t) rowbytes * 200);
+    if (spixels == NULL) { rc = result_OOM; goto ScFail; }
+    rc = bitmap_init(&sbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, spixels);
+    if (rc != result_OK) goto ScFailFree;
+    screen_for_bitmap(&sscr, &sbm);
+
+    fdesc.font       = font;
+    fdesc.font_class = wuss_FONT_CLASS_NONE;
+    fdesc.name       = NULL;
+    rc = wuss_create(&sscr, &fdesc, 1, NULL, 0, NULL, NULL, NULL, &swuss);
+    if (rc != result_OK) goto ScFailFree;
+
+    memset(&stc, 0, sizeof(stc));
+    sowner = mk_task(swuss, test_handle, &stc);
+    if (sowner == NULL) { rc = result_OOM; goto ScDestroy; }
+
+    WUSS_MENU_ITEM(sc_items, 0, "Item", wuss_MENU_ITEM_NONE);
+
+    rc = wuss_menu_open(sowner, &sc_menu, POINT(10, 20), NULL);
+    if (rc != result_OK) goto ScDestroy;
+    plain_w = swuss->menu_chain->window->doc.w;
+    wuss_menu_close(swuss->menu_chain);
+
+    /* one font only, so the "bold" shortcut measures in the system font */
+    sc_items[0].shortcut = "WWW";
+    shortcut_w = 0;
+    wuss__text_measure(font, "WWW", 3, INT_MAX, NULL, &shortcut_w);
+
+    rc = wuss_menu_open(sowner, &sc_menu, POINT(10, 20), NULL);
+    if (rc != result_OK) goto ScDestroy;
+    sroot = swuss->menu_chain;
+    if (sroot->window->doc.w < plain_w + (int) shortcut_w)
+    {
+      printf("wuss_test: shortcut menu width %d, want >= %d + %d\n",
+             sroot->window->doc.w, plain_w, (int) shortcut_w);
+      rc = result_TEST_FAILED;
+    }
+    wuss_menu_close(sroot);
+
+ScDestroy:
+    reap_test_tasks();
+    wuss_destroy(swuss);
+ScFailFree:
+    free(spixels);
+ScFail:
+    bmfont_destroy(font);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+  }
+
   printf("test: a MENU press over another window closes the open menu and "
          "reaches that window's task so it opens its own menu\n");
   {
