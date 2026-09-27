@@ -396,11 +396,6 @@ static result_t palette_menu_select(palette_task_t     *pc,
   else
     return result_OK;
 
-  /* SELECT (as opposed to ADJUST) has already closed and freed the chain by
-   * the time this event arrives; the handle is stale, don't touch it */
-  if (!wuss_menu_should_keep_open(event))
-    pc->menu_handle = NULL;
-
   if (pc->nnames == 0)
     return result_OK;
 

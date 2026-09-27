@@ -475,9 +475,8 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
       event->data.menu_select.index == DOUGHNUT_MENU_PAUSE)
   {
     task->paused = !task->paused;
-    if (wuss_menu_should_keep_open(event))
-      wuss_menu_tick_item_live(task->menu_handle, &task->menu,
-                               DOUGHNUT_MENU_PAUSE, task->paused);
+    wuss_menu_tick_item_live(task->menu_handle, &task->menu,
+                             DOUGHNUT_MENU_PAUSE, task->paused);
     return result_OK;
   }
 
@@ -501,9 +500,8 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
   if (event->data.menu_select.menu == &task->tube_menu)
   {
     task->tube = event->data.menu_select.index;
-    if (wuss_menu_should_keep_open(event))
-      wuss_menu_tick_exclusive_live(task->menu_handle, &task->tube_menu,
-                                    task->tube);
+    wuss_menu_tick_exclusive_live(task->menu_handle, &task->tube_menu,
+                                  task->tube);
     if (task->window != NULL)
       wuss_window_invalidate_visible(task->window);
     return result_OK;

@@ -538,8 +538,7 @@ static result_t porter_duff_toggle(porter_duff_task_t *pd,
   }
   *flag = !*flag;
 
-  if (wuss_menu_should_keep_open(event))
-    wuss_menu_tick_item_live(pd->menu_handle, &pd->menu, index, *flag);
+  wuss_menu_tick_item_live(pd->menu_handle, &pd->menu, index, *flag);
 
   return result_OK;
 }

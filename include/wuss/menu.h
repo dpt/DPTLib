@@ -249,11 +249,10 @@ const wuss_menu_t *wuss_menu_handle_menu(wuss_menu_handle_t handle);
 /**
  * True when \p ev is a wuss_EVENT_MENU_SELECT whose pick keeps the chain
  * open -- an ADJUST-button release (see wuss_menu_open). A SELECT-button
- * pick has already closed and freed the chain by the time the event arrives,
- * so a task that stored the wuss_menu_open handle must drop it in that case:
- *
- * \code if (!wuss_menu_should_keep_open(ev)) task->menu_handle = NULL;
- * \endcode
+ * pick has already closed and freed the chain by the time the event arrives
+ * and delivered wuss_EVENT_MENU_CLOSED first, so a task that drops its
+ * stored handle on MENU_CLOSED needs no check here: the \c _live tick calls
+ * are no-ops on the NULL handle it is left with.
  *
  * \param[in] ev The event passed to the task's handle callback.
  * \return Non-zero if \p ev is a MENU_SELECT that leaves the chain open.

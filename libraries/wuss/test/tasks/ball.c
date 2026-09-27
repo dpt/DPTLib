@@ -390,8 +390,7 @@ static result_t ball_toggle(ball_task_t *bc, const wuss_event_t *event)
   flag  = (index == BALL_MENU_PAUSE) ? &bc->paused : &bc->gravity;
   *flag = !*flag;
 
-  if (wuss_menu_should_keep_open(event))
-    wuss_menu_tick_item_live(bc->menu_handle, &bc->menu, index, *flag);
+  wuss_menu_tick_item_live(bc->menu_handle, &bc->menu, index, *flag);
 
   return result_OK;
 }

@@ -515,9 +515,8 @@ static void particles_set_gravity(particles_task_t   *pt,
   for (i = 0; i < PARTICLES_NSTYLES; i++)
     pt->styles[i].gravity *= particles_gravities[pt->gravity].scale;
 
-  if (wuss_menu_should_keep_open(event))
-    wuss_menu_tick_exclusive_live(pt->menu_handle, &pt->gravity_menu,
-                                  pt->gravity);
+  wuss_menu_tick_exclusive_live(pt->menu_handle, &pt->gravity_menu,
+                                pt->gravity);
 }
 
 static result_t particles_menu_select(particles_task_t   *pt,
@@ -628,8 +627,7 @@ static result_t particles_toggle(particles_task_t   *pt,
     return result_OK;
   }
 
-  if (wuss_menu_should_keep_open(event))
-    wuss_menu_tick_item_live(pt->menu_handle, &pt->menu, index, ticked);
+  wuss_menu_tick_item_live(pt->menu_handle, &pt->menu, index, ticked);
 
   return result_OK;
 }

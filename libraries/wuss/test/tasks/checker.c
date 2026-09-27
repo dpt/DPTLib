@@ -298,9 +298,8 @@ static result_t checker_menu_select(checker_task_t     *cc,
       cc->pattern2 = event->data.menu_select.index;
     else
       cc->pattern = event->data.menu_select.index;
-    if (wuss_menu_should_keep_open(event))
-      wuss_menu_tick_exclusive_live(cc->menu_handle, &cc->pattern_menu,
-                                    event->data.menu_select.index);
+    wuss_menu_tick_exclusive_live(cc->menu_handle, &cc->pattern_menu,
+                                  event->data.menu_select.index);
     wuss_window_invalidate_visible(cc->menu_window);
     return result_OK;
   }

@@ -480,8 +480,6 @@ static result_t gradient_menu_select(gradient_task_t    *gc,
     gc->shape = (gradient_shape_t) event->data.menu_select.index;
     wuss_menu_tick_exclusive_live(gc->menu_handle, &gc->shape_menu,
                                   gc->shape);
-    if (!wuss_menu_should_keep_open(event))
-      gc->menu_handle = NULL;
     wuss_window_invalidate_visible(gc->window);
 
     return result_OK;
@@ -489,9 +487,6 @@ static result_t gradient_menu_select(gradient_task_t    *gc,
 
   if (event->data.menu_select.menu != &gc->menu)
     return result_OK;
-
-  if (!wuss_menu_should_keep_open(event))
-    gc->menu_handle = NULL;
 
   if (event->data.menu_select.index == GRADIENT_MENU_SAVE)
     return snapshot_save_png(gc->window, gradient_handle, gc,
