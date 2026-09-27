@@ -24,39 +24,25 @@ result_t array_test(const char *resources)
     int  i[9];
     char c[9 * sizeof(int)];
   }
-  sqz1 = { { 1, 2, 3, 4, 5, 6, 7, 8, 9 } };
-
-  union
-  {
-    int  i[9];
-    char c[9 * sizeof(int)];
-  }
-  sqz2 = { { 1, 2, 3, 4, 5, 6, 7, 8, 9 } };
+  sqz = { { 1, 2, 3, 4, 5, 6, 7, 8, 9 } };
 
   union
   {
     char c[9 * sizeof(int)];
     int  i[9];
   }
-  str1 = { { 1, 2, 3, 4, 5, 6, 7, 8, 9 } };
+  str = { { 1, 2, 3, 4, 5, 6, 7, 8, 9 } };
 
-  union
-  {
-    char c[9 * sizeof(int)];
-    int  i[9];
-  }
-  str2 = { { 1, 2, 3, 4, 5, 6, 7, 8, 9 } };
+  int  t;
+  int  i;
 
-  int t;
-  int i;
+  int *arr;
+  int  allocated;
+  int  used;
+  int  rc;
 
-  int  *arr;
-  int   allocated;
-  int   used;
-  int   rc;
-
-  int  *arr2;
-  int   allocated2;
+  int *arr2;
+  int  allocated2;
 
   NOT_USED(resources);
 
@@ -99,26 +85,11 @@ result_t array_test(const char *resources)
 
   printf("test: squeeze elements\n");
 
-  array_squeeze1((unsigned char *) &sqz1.i, 9, sizeof(int), sizeof(char));
+  array_squeeze((unsigned char *) &sqz.i, 9, sizeof(int), sizeof(char));
 
   t = 0;
   for (i = 0; i < 9; i++)
-    t += sqz1.c[i];
-
-  if (t != 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9)
-  {
-    printf("unexpected checksum %d\n", t);
-    goto Failure;
-  }
-
-
-  printf("test: squeeze elements variant 2\n");
-
-  array_squeeze2((unsigned char *) &sqz2.i, 9, sizeof(int), sizeof(char));
-
-  t = 0;
-  for (i = 0; i < 9; i++)
-    t += sqz2.c[i];
+    t += sqz.c[i];
 
   if (t != 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9)
   {
@@ -129,26 +100,11 @@ result_t array_test(const char *resources)
 
   printf("test: stretch elements\n");
 
-  array_stretch1((unsigned char *) &str1.c, 9, sizeof(char), sizeof(int), 0);
+  array_stretch((unsigned char *) &str.c, 9, sizeof(char), sizeof(int), 0);
 
   t = 0;
   for (i = 0; i < 9; i++)
-    t += str1.i[i];
-
-  if (t != 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9)
-  {
-    printf("unexpected checksum %d\n", t);
-    goto Failure;
-  }
-
-
-  printf("test: stretch elements variant 2\n");
-
-  array_stretch2((unsigned char *) &str2.c, 9, sizeof(char), sizeof(int), 0);
-
-  t = 0;
-  for (i = 0; i < 9; i++)
-    t += str2.i[i];
+    t += str.i[i];
 
   if (t != 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9)
   {
