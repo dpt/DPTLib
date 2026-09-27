@@ -43,15 +43,16 @@ spheroid_light_t;
  * round to the back. Menu > Light (or keys 1-4) picks the current light and
  * Light > On (or O) switches it. Light > Colour, Sphere colour and Background
  * pick from the palette. Mutate (M) nudges the sliders, the lit lights'
- * directions and the colours' hues; Reset (R) restores the defaults; Save PNG
- * (^S) writes the sphere alone, transparent outside its edge. */
+ * directions and the colours' hues; Randomise (^R) picks every setting afresh,
+ * keeping at least one light on; Reset (R) restores the defaults; Save PNG (^S)
+ * writes the sphere alone, transparent outside its edge. */
 typedef struct spheroid_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
   wuss_task_t       *delegate; /* the task that owns the menu */
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[7]; /* per-instance: shared static "Info"
+  wuss_menu_item_t   menu_items[8]; /* per-instance: shared static "Info"
                                      * row would leak one instance's .window
                                      * pointer into another's menu */
   wuss_menu_t        menu;
@@ -69,7 +70,7 @@ typedef struct spheroid_task
   int                glow;       /* 0..100: rim light in the surface colour */
   wuss_slider_row_t  rows[SPHEROID_NROWS];
   wuss_icon_t       *light_frame; /* captioned with the current light */
-  rng_t              rng;        /* for Mutate */
+  rng_t              rng;        /* for Mutate and Randomise */
 }
 spheroid_task_t;
 
