@@ -17,6 +17,7 @@
 #include "wuss/task.h"
 
 #include "doughnut.h"
+#include "common.h"
 #include "snapshot.h"
 
 /* Andy Sloane's "donut.c" (www.a1k0n.net/2011/07/20/donut-math.html):
@@ -344,12 +345,8 @@ static result_t doughnut_mouse(doughnut_task_t    *task,
     if (button & wuss_BUTTON_MENU)
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Doughnut",
-        "Spinning torus, ray-marched and shaded per pixel",
-        "© DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Doughnut",
+                           "Spinning torus, ray-marched and shaded per pixel");
       wuss_proginfo_set_desc(&desc);
       task->menu_items[DOUGHNUT_MENU_INFO].window = wuss_proginfo_window(task->delegate);
 

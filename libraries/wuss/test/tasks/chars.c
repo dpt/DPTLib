@@ -22,6 +22,7 @@
 #include "wuss/menu.h"
 
 #include "chars.h"
+#include "common.h"
 #include "snapshot.h"
 
 #define CHARS_COLS 16
@@ -263,12 +264,7 @@ static void chars_build_page_menu(chars_task_t *task)
 static result_t chars_open_menu(chars_task_t *task)
 {
   static const wuss_proginfo_desc_t desc =
-  {
-    "Chars",
-    "Bitmap font glyph grid",
-    "© DPTLib contributors",
-    "1.0 (" __DATE__ ")"
-  };
+    TASK_PROGINFO_DESC("Chars", "Bitmap font glyph grid");
 
   wuss_proginfo_set_desc(&desc);
   task->menu_items[CHARS_MENU_INFO].window =

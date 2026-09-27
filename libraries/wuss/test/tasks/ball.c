@@ -14,6 +14,7 @@
 #include "geom/box.h"
 
 #include "ball.h"
+#include "common.h"
 
 #define BALL_BASE_RADIUS 8 /* +/-50% at spawn -> 4..12 */
 #define BALL_MAX_DY     16 /* cap on vertical speed under gravity */
@@ -220,18 +221,8 @@ static result_t ball_mouse(wuss_window_t      *window,
     /* static: proginfo only copies the fields when it is next shown */
     static const wuss_proginfo_desc_t desc[2] =
     {
-      {
-        "Bouncing Ball",
-        "Balls bouncing off content edges",
-        "© DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      },
-      {
-        "Bouncing Balls",
-        "Balls bouncing off content edges",
-        "© DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      }
+      TASK_PROGINFO_DESC("Bouncing Ball", "Balls bouncing off content edges"),
+      TASK_PROGINFO_DESC("Bouncing Balls", "Balls bouncing off content edges")
     };
     wuss_proginfo_set_desc(&desc[bc->nballs > 1]);
     bc->menu_items[BALL_MENU_INFO].window = wuss_proginfo_window(bc->delegate);

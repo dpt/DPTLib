@@ -19,6 +19,7 @@
 #include "wuss/menu-desc.h"
 
 #include "image.h"
+#include "common.h"
 
 #define NINEPATCHSZ    9
 #define IMAGE_BORDERSZ 8 /* solid inset band drawn inside the ninepatch */
@@ -267,12 +268,7 @@ static result_t image_show(image_task_t *ic, int index)
 static result_t image_open_menu(image_task_t *ic)
 {
   static const wuss_proginfo_desc_t desc =
-  {
-    "Image",
-    "View the PNGs under resources/images",
-    "© DPTLib contributors",
-    "1.0 (" __DATE__ ")"
-  };
+    TASK_PROGINFO_DESC("Image", "View the PNGs under resources/images");
 
   result_t     rc;
   wuss_menu_t *m;

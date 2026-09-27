@@ -15,6 +15,7 @@
 #include "wuss/task.h"
 
 #include "keys.h"
+#include "common.h"
 
 /* MENU click pops this menu; the item table lives per-instance in
  * keys_task_t so each window's Info row can hold its own .window pointer to
@@ -178,12 +179,7 @@ static result_t keys_redraw(wuss_window_t      *window,
 static result_t keys_mouse(keys_task_t *kt, const wuss_event_t *event)
 {
   static const wuss_proginfo_desc_t desc =
-  {
-    "Keys",
-    "Key input and focus demo",
-    "© DPTLib contributors",
-    "1.0 (" __DATE__ ")"
-  };
+    TASK_PROGINFO_DESC("Keys", "Key input and focus demo");
 
   if (event->data.mouse.action != wuss_MOUSE_DOWN ||
       !(event->data.mouse.button & wuss_BUTTON_MENU))

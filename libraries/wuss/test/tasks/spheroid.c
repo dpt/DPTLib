@@ -21,6 +21,7 @@
 #include "wuss/task.h"
 
 #include "spheroid.h"
+#include "common.h"
 
 /* After Kai's Power Tools 3's Spheroid Designer (MetaTools, 1995): one big
  * sphere lit by up to four coloured lights, with knobs for the highlight's
@@ -1052,12 +1053,8 @@ static result_t spheroid_mouse(spheroid_task_t    *task,
                                wuss_window_t      *window)
 {
   static const wuss_proginfo_desc_t desc =
-  {
-    "Spheroid Designer",
-    "Lit sphere after Kai's Power Tools",
-    "© DPTLib contributors",
-    "1.0 (" __DATE__ ")"
-  };
+    TASK_PROGINFO_DESC("Spheroid Designer",
+                       "Lit sphere after Kai's Power Tools");
 
   box_t  content;
   double cx, cy, r;

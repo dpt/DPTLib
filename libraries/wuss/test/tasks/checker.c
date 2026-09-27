@@ -13,6 +13,7 @@
 #include "geom/box.h"
 
 #include "checker.h"
+#include "common.h"
 #include "snapshot.h"
 
 #define CHECKER_BAND_DEFAULT 8  /* pixels per band, so each pattern reads clearly */
@@ -341,12 +342,8 @@ result_t checker_handle(wuss_window_t      *window,
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Checker",
-        "Two independent cycling checkerboard patterns",
-        "© DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Checker",
+                           "Two independent cycling checkerboard patterns");
       wuss_proginfo_set_desc(&desc);
       cc->menu_items[CHECKER_MENU_INFO].window =
         wuss_proginfo_window(cc->delegate);

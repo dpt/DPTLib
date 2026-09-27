@@ -18,6 +18,7 @@
 #include "tasks.h" /* app_set_mode, app_get_depth */
 
 #include "display.h"
+#include "common.h"
 
 enum { DISPLAY_MENU_INFO };
 
@@ -309,12 +310,8 @@ static result_t display_mouse(display_task_t *dc, wuss_button_t button)
 
   {
     static const wuss_proginfo_desc_t desc =
-    {
-      "Display",
-      "Change the desktop colours and resolution",
-      "© DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
+      TASK_PROGINFO_DESC("Display",
+                         "Change the desktop colours and resolution");
     wuss_proginfo_set_desc(&desc);
     dc->menu_items[DISPLAY_MENU_INFO].window = wuss_proginfo_window(dc->delegate);
   }

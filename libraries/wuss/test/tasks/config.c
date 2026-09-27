@@ -21,6 +21,7 @@
 #include "tasks.h" /* g_tasks.swap_mouse_buttons */
 
 #include "config.h"
+#include "common.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -635,12 +636,7 @@ result_t config_handle(wuss_window_t      *window,
 
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Configure",
-        "System settings",
-        "© DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Configure", "System settings");
       wuss_proginfo_set_desc(&desc);
       cc->menu_items[CONFIG_MENU_INFO].window =
         wuss_proginfo_window(cc->delegate);

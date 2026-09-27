@@ -17,6 +17,7 @@
 #include "utils/rng.h"
 
 #include "patterns.h"
+#include "common.h"
 #include "snapshot.h"
 
 #define PATTERNS_FPS 60 /* idle ticks per second */
@@ -310,12 +311,8 @@ result_t patterns_handle(wuss_window_t      *window,
       return result_OK;
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Patterns",
-        "Ordered-dither blend between random colours",
-        "© DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Patterns",
+                           "Ordered-dither blend between random colours");
       wuss_proginfo_set_desc(&desc);
       bc->menu_items[PATTERNS_MENU_INFO].window =
         wuss_proginfo_window(bc->delegate);

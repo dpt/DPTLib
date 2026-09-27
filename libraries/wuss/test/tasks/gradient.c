@@ -19,6 +19,7 @@
 #include "geom/box.h"
 
 #include "gradient.h"
+#include "common.h"
 #include "snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
@@ -421,12 +422,7 @@ static result_t gradient_mouse(const wuss_event_t *event, void *task_data)
   if (button & wuss_BUTTON_MENU)
   {
     static const wuss_proginfo_desc_t desc =
-    {
-      "Gradient",
-      "Colour gradients with ordered dithering",
-      "© DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
+      TASK_PROGINFO_DESC("Gradient", "Colour gradients with ordered dithering");
     wuss_proginfo_set_desc(&desc);
     gc->menu_items[GRADIENT_MENU_INFO].window =
       wuss_proginfo_window(gc->delegate);

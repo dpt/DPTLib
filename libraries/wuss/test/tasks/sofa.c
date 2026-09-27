@@ -17,6 +17,7 @@
 
 #include "snapshot.h"
 #include "sofa.h"
+#include "common.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
  * in sofa_task_t, not as a file-scope static, so that each window's Info row
@@ -598,12 +599,7 @@ static result_t sofa_mouse(wuss_window_t *window,
   if (button & wuss_BUTTON_MENU)
   {
     static const wuss_proginfo_desc_t desc =
-    {
-      "Sofa",
-      "Rotating wireframe sofa, other shapes",
-      "© DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
+      TASK_PROGINFO_DESC("Sofa", "Rotating wireframe sofa, other shapes");
 
     wuss_proginfo_set_desc(&desc);
     sc->menu_items[SOFA_MENU_INFO].window = wuss_proginfo_window(sc->delegate);

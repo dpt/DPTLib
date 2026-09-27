@@ -21,6 +21,7 @@
 #include "wuss/wuss.h"
 
 #include "curve.h"
+#include "common.h"
 #include "snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
@@ -352,12 +353,7 @@ static result_t curve_mouse(curve_task_t       *task,
     if (button & wuss_BUTTON_MENU)
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Curve",
-        "Draggable Bezier curve",
-        "© DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Curve", "Draggable Bezier curve");
       wuss_proginfo_set_desc(&desc);
       task->menu_items[CURVE_MENU_INFO].window =
         wuss_proginfo_window(task->delegate);

@@ -20,6 +20,7 @@
 #include "wuss/menu.h"
 
 #include "palette.h"
+#include "common.h"
 
 #define PALETTE_HEX_EXT     ".hex"
 #define PALETTE_NCOLOURS    wuss_SYSTEM_PALETTE_LENGTH /* one colour_t[] row
@@ -304,12 +305,7 @@ static result_t palette_redraw_screen(palette_task_t     *pc,
 static result_t palette_menu_open(palette_task_t *pc)
 {
   static const wuss_proginfo_desc_t desc =
-  {
-    "Palette",
-    "Desktop and screen palette grid",
-    "© DPTLib contributors",
-    "1.0 (" __DATE__ ")"
-  };
+    TASK_PROGINFO_DESC("Palette", "Desktop and screen palette grid");
 
   unsigned int ticks;
 

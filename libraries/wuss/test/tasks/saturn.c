@@ -23,6 +23,7 @@
 #include "wuss/menu.h"
 
 #include "saturn.h"
+#include "common.h"
 #include "snapshot.h"
 
 /* A recreation of the ringed planet from the loading screen of Elite (Ian
@@ -398,12 +399,7 @@ static result_t saturn_mouse(saturn_task_t      *task,
   if (button & wuss_BUTTON_MENU)
   {
     static const wuss_proginfo_desc_t desc =
-    {
-      "Saturn",
-      "Elite loading-screen planet, recreated",
-      "© DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
+      TASK_PROGINFO_DESC("Saturn", "Elite loading-screen planet, recreated");
 
     wuss_proginfo_set_desc(&desc);
     task->menu_items[SATURN_MENU_INFO].window =
