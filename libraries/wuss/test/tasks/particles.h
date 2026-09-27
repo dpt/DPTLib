@@ -23,8 +23,9 @@
  * chosen intensity, where the menu was opened; Menu > Background picks the
  * fill; Menu > Gravity scales every style's pull; Menu > Walls bounces
  * particles off the edges; Menu > Clear removes every particle and emitter.
- * A fresh burst fires by itself whenever the window
- * falls quiet. */
+ * Space toggles pause and C clears, once a click has given the window the
+ * input focus. A fresh burst fires by itself whenever the window falls
+ * quiet. */
 typedef struct particles_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */

@@ -277,7 +277,7 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(WIDTH, HEIGHT),
                                  "Particles",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(WIDTH, HEIGHT),
                                  SIZE2D(0, 0),
@@ -633,6 +633,33 @@ static result_t particles_toggle(particles_task_t   *pt,
   return result_OK;
 }
 
+/* drops every particle and emitter; repaint in case we're paused */
+static void particles_clear(particles_task_t *pt)
+{
+  reset_particle_system(&pt->ps);
+  if (pt->window != NULL)
+    wuss_window_invalidate_visible(pt->window);
+}
+
+/* Space toggles pause; C clears. Anything else is passed back unclaimed. */
+static result_t particles_key(particles_task_t *pt, int code)
+{
+  switch (code)
+  {
+  case ' ':
+    pt->paused = !pt->paused;
+    return result_OK;
+
+  case 'C':
+  case 'c':
+    particles_clear(pt);
+    return result_OK;
+
+  default:
+    return result_WUSS_KEY_UNCLAIMED;
+  }
+}
+
 result_t particles_handle(wuss_window_t      *window,
                           const wuss_event_t *event,
                           void               *task_data)
@@ -660,6 +687,9 @@ result_t particles_handle(wuss_window_t      *window,
       pt->pointer_in = 0;
     return result_OK;
 
+  case wuss_EVENT_KEY:
+    return particles_key(pt, event->data.key.code);
+
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return particles_pre_submenu_open(pt, event);
 
@@ -667,10 +697,7 @@ result_t particles_handle(wuss_window_t      *window,
     if (event->data.menu_select.menu == &pt->menu &&
         event->data.menu_select.index == PARTICLES_MENU_CLEAR)
     {
-      /* drops every particle and emitter; repaint in case we're paused */
-      reset_particle_system(&pt->ps);
-      if (pt->window != NULL)
-        wuss_window_invalidate_visible(pt->window);
+      particles_clear(pt);
       return result_OK;
     }
     if (event->data.menu_select.menu == &pt->menu)
