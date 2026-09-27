@@ -34,6 +34,7 @@ enum
   GREEBLE_MENU_INFO = 0,
   GREEBLE_MENU_RANDPAL,
   GREEBLE_MENU_PALETTE,
+  GREEBLE_MENU_SIZE,
   GREEBLE_MENU_SAVE
 };
 
@@ -43,6 +44,21 @@ enum
  * greeble-tiles.h (and so GREEBLE_NPALETTE) is private to this file */
 typedef char greeble_palette_cap_check[GREEBLE_NPALETTE <= GREEBLE_MAX_PALETTES
                                        ? 1 : -1];
+
+/* Size submenu presets, in tiles; each fits the GREEBLE_MAX_* caps. The
+ * last is the full grid and the one a new window opens at. */
+static const struct
+{
+  const char *name;
+  int         cols, rows;
+}
+greeble_sizes[GREEBLE_NSIZES] =
+{
+  { "16 x 16", 16, 16 },
+  { "32 x 24", 32, 24 },
+  { "40 x 30", 40, 30 },
+  { "48 x 48", 48, 48 }
+};
 
 /* ----------------------------------------------------------------------- */
 
@@ -174,16 +190,6 @@ static void greeble_generate(greeble_task_t *task)
           greeble_filler[rng_range(&s, GREEBLE_NFILLER)];
 }
 
-/* recompute the grid extent for the window's content box, then regenerate */
-static void greeble_relayout(greeble_task_t *task, const box_t *content)
-{
-  task->cols = (content->x1 - content->x0) / GREEBLE_TILE_PX;
-  task->rows = (content->y1 - content->y0) / GREEBLE_TILE_PX;
-  task->cols = CLAMP(task->cols, 1, GREEBLE_MAX_COLS);
-  task->rows = CLAMP(task->rows, 1, GREEBLE_MAX_ROWS);
-  greeble_generate(task);
-}
-
 /* ----------------------------------------------------------------------- */
 
 /* Blit one 8x8 stamp 1:1 at (ox,oy). palette is the four colours for this
@@ -313,6 +319,27 @@ static result_t greeble_set_palette(greeble_task_t *task, int index)
   return result_OK;
 }
 
+/* Switch the grid to a size preset: regenerate from the same seed, then fit
+ * the document extent and the window to it. */
+static result_t greeble_set_size(greeble_task_t *task, int index)
+{
+  result_t rc;
+  size2d_t px;
+
+  task->size = index;
+  task->cols = greeble_sizes[index].cols;
+  task->rows = greeble_sizes[index].rows;
+  greeble_generate(task);
+
+  px = SIZE2D(task->cols * GREEBLE_TILE_PX, task->rows * GREEBLE_TILE_PX);
+
+  rc = wuss_window_set_doc(task->window, px);
+  if (rc != result_OK)
+    return rc;
+
+  return wuss_window_resize(task->window, px);
+}
+
 /* Adjust: step to the next base palette. */
 static result_t greeble_adjust(greeble_task_t *task)
 {
@@ -362,6 +389,13 @@ static result_t greeble_menu_select(greeble_task_t     *task,
     if (keep_open)
       wuss_menu_tick_exclusive_live(task->menu_handle, &task->palette_menu,
                                     task->palette);
+  }
+  else if (event->data.menu_select.menu == &task->size_menu)
+  {
+    rc = greeble_set_size(task, event->data.menu_select.index);
+    if (keep_open)
+      wuss_menu_tick_exclusive_live(task->menu_handle, &task->size_menu,
+                                    task->size);
   }
   else if (event->data.menu_select.menu == &task->menu &&
            event->data.menu_select.index == GREEBLE_MENU_RANDPAL)
@@ -424,6 +458,7 @@ result_t greeble_handle(wuss_window_t      *window,
         wuss_proginfo_window(task->delegate);
 
       wuss_menu_tick_exclusive(&task->palette_menu, task->palette);
+      wuss_menu_tick_exclusive(&task->size_menu, task->size);
 
       ticks = task->random_prefab_palettes ? 1u << GREEBLE_MENU_RANDPAL : 0;
       return wuss_menu_open_ticked(task->delegate, &task->menu, ticks,
@@ -493,17 +528,18 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   size2d_t         grid_px;
-  box_t            content;
   int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
     return result_OOM;
 
-  /* the full generator grid in pixels: content sized so cols/rows land
-   * exactly on the GREEBLE_MAX_* caps in 8-pixel tiles */
-  grid_px = SIZE2D(GREEBLE_MAX_COLS * GREEBLE_TILE_PX,
-                   GREEBLE_MAX_ROWS * GREEBLE_TILE_PX);
+  /* open at the last (full grid) size preset */
+  task->size = GREEBLE_NSIZES - 1;
+  task->cols = greeble_sizes[task->size].cols;
+  task->rows = greeble_sizes[task->size].rows;
+  grid_px    = SIZE2D(task->cols * GREEBLE_TILE_PX,
+                      task->rows * GREEBLE_TILE_PX);
 
   task->wuss        = wuss;
   task->menu_handle = NULL;
@@ -538,8 +574,9 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
     return rc;
   }
 
-  wuss_window_get_content_bounds(task->window, &content);
-  greeble_relayout(task, &content);
+  /* fill the whole document, not just the visible content box: placement
+   * can shrink the window below grid_px and the rest scrolls into view */
+  greeble_generate(task);
 
   WUSS_MENU_ITEM_WINDOW(task->menu_items, GREEBLE_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
@@ -564,6 +601,15 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, GREEBLE_MENU_PALETTE, "Palette",
                       wuss_MENU_ITEM_NONE, &task->palette_menu);
+
+  for (i = 0; i < GREEBLE_NSIZES; i++)
+    WUSS_MENU_ITEM(task->size_items, i, greeble_sizes[i].name,
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->size_menu, "Size", task->size_items, GREEBLE_NSIZES);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, GREEBLE_MENU_SIZE, "Size",
+                      wuss_MENU_ITEM_NONE, &task->size_menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLE_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
