@@ -47,8 +47,6 @@ LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
     blocks: icon sizing to desktop font
 - How to get bold etc. into the system (consistently)? How to select symbols?
 - Large fonts for titles, italic font, ...
-- More symbols? For what elements?
-  -- Symbols.aseprite lacks the new shift glyph (edited in the PNG only).
 - Icon size inconsistencies. Need to size to desktop font.
 
 
@@ -63,8 +61,6 @@ LAYER 3 - SPRITES (needs masks)
 
 LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
 
-- Set wuss window config after the fact (goes with palette work)
-    blocks: Furniture icons toggling state, min window size
 - Squash-able furniture (shrink below the furniture minimum size)
 - Dragging against window edge shuffles window in opposite direction
   (outline-click bug fixed; unblocked)
