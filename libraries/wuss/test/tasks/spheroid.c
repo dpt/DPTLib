@@ -267,8 +267,7 @@ static void spheroid_prepare(const spheroid_task_t *task,
     /* L + V with V = (0,0,1); only degenerate for a light dead behind */
     len = sqrt(light->x * light->x + light->y * light->y +
                (light->z + 1.0) * (light->z + 1.0));
-    if (len < 1e-6)
-      len = 1e-6;
+    len = MAX(len, 1e-6);
     f->h[n][0] = light->x / len;
     f->h[n][1] = light->y / len;
     f->h[n][2] = (light->z + 1.0) / len;
