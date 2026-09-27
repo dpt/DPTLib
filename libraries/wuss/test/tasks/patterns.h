@@ -19,7 +19,8 @@
  * pattern comes from pattern_from_colour against the system palette.
  * A Select click skips straight to the next blend, even while paused;
  * Menu > Pause freezes the blend; Menu > Save PNG writes the window to
- * patterns.png */
+ * patterns.png. Once a click has given the window the input focus, Space
+ * pauses/resumes and Right skips to the next blend */
 
 #define PATTERNS_NSPEEDS 5 /* rows of the "Speed" submenu */
 
