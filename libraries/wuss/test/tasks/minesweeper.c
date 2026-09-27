@@ -211,6 +211,33 @@ static void minesweeper_reveal(minesweeper_task_t    *ms,
           minesweeper_reveal(ms, r + dr, c + dc, touched);
 }
 
+/* "chording": on a revealed number whose flagged neighbours match it,
+ * reveals every other hidden neighbour; a misplaced flag means a mine goes
+ * off, as in the classic game */
+static void minesweeper_chord(minesweeper_task_t    *ms,
+                              int                    r,
+                              int                    c,
+                              minesweeper_cellbox_t *touched)
+{
+  int flags;
+  int dr, dc;
+
+  flags = 0;
+  for (dr = -1; dr <= 1; dr++)
+    for (dc = -1; dc <= 1; dc++)
+      if (minesweeper_in_bounds(ms, r + dr, c + dc) &&
+          ms->state[r + dr][c + dc] == minesweeper_FLAGGED)
+        flags++;
+
+  if (flags == 0 || flags != minesweeper_count_neighbours(ms, r, c))
+    return;
+
+  for (dr = -1; dr <= 1; dr++)
+    for (dc = -1; dc <= 1; dc++)
+      if (dr || dc)
+        minesweeper_reveal(ms, r + dr, c + dc, touched);
+}
+
 /* on death, reveal every mine so the player sees where they all were */
 static void minesweeper_reveal_all_mines(minesweeper_task_t *ms)
 {
@@ -646,7 +673,10 @@ static result_t minesweeper_act(minesweeper_task_t *ms,
 
     touched.r0 = touched.r1 = r;
     touched.c0 = touched.c1 = c;
-    minesweeper_reveal(ms, r, c, &touched);
+    if (ms->state[r][c] == minesweeper_REVEALED)
+      minesweeper_chord(ms, r, c, &touched);
+    else
+      minesweeper_reveal(ms, r, c, &touched);
 
     if (ms->dead)
     {
