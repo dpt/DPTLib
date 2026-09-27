@@ -43,10 +43,10 @@ spheroid_light_t;
  * move it too, a pixel at a time (eight with Shift). Inside the disc the light
  * faces the surface under the pointer; the band just outside wraps it round to
  * the back. Menu > Light (or keys 1-4) picks the current light; the Light
- * frame's On option switches it and its Colour button picks its colour from
- * the palette, as Sphere colour and Background do from the menu; Dithering
- * picks how the preview is blitted to a paletted screen. Mutate (M) nudges the sliders, the lit lights' directions and
- * the colours' hues; Randomise (^R) picks every setting afresh, keeping at
+ * frame's On option (or O) switches it and its Colour button picks its colour
+ * from the palette, as Sphere colour and Background do from the menu;
+ * Dithering picks how the preview is blitted to a paletted screen. Mutate (M)
+ * nudges the sliders, the lit lights' directions and the colours' hues; Randomise (^R) picks every setting afresh, keeping at
  * least one light on; Reset (R) restores the defaults; Save PNG (^S) writes the
  * sphere alone, transparent outside its edge. */
 typedef struct spheroid_task
