@@ -149,7 +149,7 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(200, 160),
                                  "Patterns",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(200, 160),
                                  SIZE2D(0, 0),
@@ -205,6 +205,40 @@ static void patterns_next_blend(patterns_task_t *bc)
   bc->frame_count = 0;
   bc->a           = bc->b;
   bc->b           = patterns_random_colour(&bc->rng);
+}
+
+/* skip straight to the next blend and repaint, even while paused */
+static result_t patterns_skip(patterns_task_t *bc)
+{
+  patterns_next_blend(bc);
+  patterns_update_pattern(bc);
+  wuss_window_invalidate_visible(bc->window);
+
+  return result_OK;
+}
+
+/* Space pauses/resumes, as Menu > Pause does; Right skips to the next blend,
+ * as Select does. Anything else, or a key aimed at the proginfo dialogue, is
+ * passed back unclaimed. */
+static result_t patterns_key(patterns_task_t *bc,
+                             wuss_window_t   *window,
+                             int              code)
+{
+  if (window != bc->window)
+    return result_WUSS_KEY_UNCLAIMED;
+
+  switch (code)
+  {
+  case ' ':
+    bc->paused = !bc->paused;
+    return result_OK;
+
+  case wuss_KEY_RIGHT:
+    return patterns_skip(bc);
+
+  default:
+    return result_WUSS_KEY_UNCLAIMED;
+  }
 }
 
 static result_t patterns_idle(void *task_data)
@@ -279,12 +313,7 @@ result_t patterns_handle(wuss_window_t      *window,
       return result_OK;
 
     if (event->data.mouse.button & wuss_BUTTON_SELECT)
-    {
-      patterns_next_blend(bc);
-      patterns_update_pattern(bc);
-      wuss_window_invalidate_visible(bc->window);
-      return result_OK;
-    }
+      return patterns_skip(bc);
 
     if (!(event->data.mouse.button & wuss_BUTTON_MENU))
       return result_OK;
@@ -303,6 +332,9 @@ result_t patterns_handle(wuss_window_t      *window,
     wuss_menu_tick_item(&bc->menu, PATTERNS_MENU_PAUSE, bc->paused);
     return wuss_menu_open(bc->delegate, &bc->menu,
                           wuss_get_pointer(bc->wuss), &bc->menu_handle);
+
+  case wuss_EVENT_KEY:
+    return patterns_key(bc, window, event->data.key.code);
 
   case wuss_EVENT_MENU_SELECT:
     {
