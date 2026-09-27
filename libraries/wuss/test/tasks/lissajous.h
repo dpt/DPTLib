@@ -19,7 +19,9 @@
  * Select cycles the frequency pair (a,b); Adjust reverses the drift. The
  * menu's Background and Foreground rows pick bg and fg from the shared
  * colourmenu; its Ratio row picks the frequency pair directly; Save PNG
- * writes the window to lissajous.png. */
+ * writes the window to lissajous.png. Once a click has given the window the
+ * input focus, Space pauses/resumes and Left/Right step the frequency pair
+ * back/forward. */
 typedef struct lissajous_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
