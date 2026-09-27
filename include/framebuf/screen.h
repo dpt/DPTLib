@@ -209,30 +209,45 @@ result_t screen_copy_bitmap(screen_t       *scr,
                             int             y,
                             const bitmap_t *src);
 
+/** Dithering methods for `screen_copy_bitmap_dithered`. Both are ordered
+ *  (threshold-map) dithers: each pixel's offset depends only on its
+ *  position, so redrawing any sub-rectangle reproduces the same pixels. */
+typedef enum
+{
+  screen_DITHER_NONE,      /**< Nearest palette entry; same as
+                            *   `screen_copy_bitmap`. */
+  screen_DITHER_BAYER,     /**< 8x8 Bayer matrix: cheap, regular
+                            *   cross-hatch texture. */
+  screen_DITHER_BLUE_NOISE /**< 64x64 blue-noise map: same cost, fine
+                            *   grain with no visible repeat pattern. */
+}
+screen_dither_t;
+
 /**
  * As `screen_copy_bitmap`, but on a paletted screen the source colour is
- * ordered-dithered (8x8 Bayer) per pixel before the nearest-palette-entry
- * lookup, so a smooth gradient stipples between the available entries
- * instead of banding at each quantisation step. The dither is phased to
- * screen coordinates, so it stays put when the same content is redrawn at
- * the same place.
+ * dithered per pixel by \p method before the nearest-palette-entry lookup,
+ * so a smooth gradient stipples between the available entries instead of
+ * banding at each quantisation step. The dither is phased to the source
+ * bitmap's top-left, so it stays fixed to the image as it moves.
  *
  * On a 32bpp screen, and for an RLE-compressed source, this is identical to
  * `screen_copy_bitmap` (a deep screen has no banding to break up; an RLE
  * source is already quantised UI art). Alpha handling, clipping and the lack
  * of scaling are all as `screen_copy_bitmap`.
  *
- * \param[in] scr  Screen to draw upon.
- * \param[in] x    X coordinate of leftmost point to draw bitmap at.
- * \param[in] y    Y coordinate of topmost point to draw bitmap at.
- * \param[in] src  Bitmap to copy.
+ * \param[in] scr    Screen to draw upon.
+ * \param[in] x      X coordinate of leftmost point to draw bitmap at.
+ * \param[in] y      Y coordinate of topmost point to draw bitmap at.
+ * \param[in] src    Bitmap to copy.
+ * \param[in] method Dithering method.
  * \return \ref result_OK on success, \ref result_NOT_SUPPORTED if the
  *         screen's pixel format has no blit path.
  */
 result_t screen_copy_bitmap_dithered(screen_t       *scr,
                                      int             x,
                                      int             y,
-                                     const bitmap_t *src);
+                                     const bitmap_t *src,
+                                     screen_dither_t method);
 
 /** Flags for `screen_copy_ninepatch`. */
 enum

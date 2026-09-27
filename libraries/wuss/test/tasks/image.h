@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/bitmap.h"
+#include "framebuf/screen.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
@@ -38,7 +39,9 @@ typedef struct image_task
                               * just before wuss_menu_open, in
                               * image_open_menu */
   wuss_menu_handle_t menu_handle; /* the open chain, if any */
-  int            dithering; /* enable Bayer ordered dithering */
+  wuss_menu_item_t dither_items[3]; /* one row per screen_dither_t */
+  wuss_menu_t    dither_menu; /* "Dithering" submenu, borrowed by menu */
+  screen_dither_t dithering; /* method for paletted screens */
   wuss_colour_t  background;
 }
 image_task_t;
