@@ -423,7 +423,7 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(180, 160),
                                  "Sofa",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(180, 160),
                                  SIZE2D(0, 0),
@@ -631,6 +631,30 @@ static result_t sofa_mouse(wuss_window_t *window,
   return result_OK;
 }
 
+/* Space pauses/resumes the spin; Left/Right step to the previous/next
+ * model. Anything else is passed back unclaimed. */
+static result_t sofa_key(sofa_task_t *sc, int code)
+{
+  int dir;
+
+  switch (code)
+  {
+  case ' ':
+    sc->spinning = !sc->spinning;
+    return result_OK;
+
+  case wuss_KEY_LEFT:  dir = sofa_SHAPE__LIMIT - 1; break;
+  case wuss_KEY_RIGHT: dir = 1;                     break;
+  default:             return result_WUSS_KEY_UNCLAIMED;
+  }
+
+  sc->shape = (sc->shape + dir) % sofa_SHAPE__LIMIT;
+  sc->turns = 0;
+  wuss_window_invalidate_visible(sc->window);
+
+  return result_OK;
+}
+
 static result_t sofa_scroll(wuss_window_t *window,
                             int            delta,
                             void          *task_data)
@@ -783,6 +807,9 @@ result_t sofa_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     return sofa_idle(task_data);
+
+  case wuss_EVENT_KEY:
+    return sofa_key(sc, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return sofa_pre_submenu_open(sc, event);

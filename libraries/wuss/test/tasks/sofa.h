@@ -32,7 +32,9 @@ sofa_shape_t;
  * spinning about its vertical axis; a Select click or Menu > Pause
  * pauses/resumes the spin, an Adjust click or Menu > Model changes the
  * model, Menu > Auto-cycle turns the automatic change of model after a few
- * turns on or off and Menu > Save PNG writes sofa.png */
+ * turns on or off and Menu > Save PNG writes sofa.png. Once a click has
+ * given the window the input focus, Space pauses/resumes and Left/Right
+ * step the model back/forward */
 typedef struct sofa_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
