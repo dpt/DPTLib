@@ -467,13 +467,11 @@ static void gradient_reset(gradient_task_t *gc)
   wuss_window_invalidate_visible(gc->window);
 }
 
-/* "Save PNG": replay gradient_redraw into an offscreen bitmap the size of
- * the window's content, at its current scroll, and write that out.
- * ponytail: fixed filename in the current dir; wuss has no save dialogue. */
 /* Menu pick: a Shape row switches the fill; Reset restores the default
  * shape, dither matrix, brightness and saturation; Save PNG writes the
- * window's content out. A SELECT pick has already
- * closed and freed the chain, so drop the handle then. */
+ * window's content, at its current scroll, out. A SELECT pick has already
+ * closed and freed the chain, so drop the handle then.
+ * ponytail: fixed filename in the current dir; wuss has no save dialogue. */
 static result_t gradient_menu_select(gradient_task_t    *gc,
                                      const wuss_event_t *event)
 {
