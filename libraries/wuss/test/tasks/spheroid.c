@@ -68,6 +68,7 @@ enum
   SPHEROID_MENU_LIGHT,
   SPHEROID_MENU_SPHERE,
   SPHEROID_MENU_BACKGROUND,
+  SPHEROID_MENU_DITHERING,
   SPHEROID_MENU_MUTATE,
   SPHEROID_MENU_RANDOMISE,
   SPHEROID_MENU_RESET,
@@ -556,7 +557,8 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
   if (task == NULL)
     return result_OOM;
 
-  task->wuss = wuss;
+  task->wuss      = wuss;
+  task->dithering = screen_DITHER_BLUE_NOISE;
   spheroid_defaults(task);
   rng_seed(&task->rng, (uint32_t) rand());
 
@@ -633,6 +635,19 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, SPHEROID_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
+  /* indexed by screen_dither_t */
+  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_NONE, "None",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_BAYER, "Bayer",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_BLUE_NOISE, "Blue noise",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_TITLE(task->dither_menu, "Dithering", task->dither_items,
+                  NELEMS(task->dither_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, SPHEROID_MENU_DITHERING, "Dithering",
+                      wuss_MENU_ITEM_NONE, &task->dither_menu);
+
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SPHEROID_MENU_MUTATE, "Mutate",
                           wuss_MENU_ITEM_DASHED, "M");
 
@@ -666,6 +681,7 @@ void spheroid_destroy(spheroid_task_t *task)
  * pane across partial redraws; the clip is narrowed to the dirty box so the
  * unshaded margin that adds is never drawn */
 static result_t spheroid_paint(screen_t               *scr,
+                               screen_dither_t         method,
                                const box_t            *content,
                                const box_t            *bounds,
                                const spheroid_frame_t *f,
@@ -723,8 +739,7 @@ static result_t spheroid_paint(screen_t               *scr,
     if (box_intersection(&saved, content, &scr->clip))
       rc = result_OK; /* nothing visible to draw */
     else
-      rc = screen_copy_bitmap_dithered(scr, ox, oy, &bm,
-                                       screen_DITHER_BLUE_NOISE);
+      rc = screen_copy_bitmap_dithered(scr, ox, oy, &bm, method);
     scr->clip = saved;
   }
 
@@ -754,7 +769,7 @@ static result_t spheroid_redraw(const wuss_event_t *event,
   cx += bounds->x0;
   cy += bounds->y0;
 
-  rc = spheroid_paint(scr, content, bounds, &f, cx, cy, r);
+  rc = spheroid_paint(scr, task->dithering, content, bounds, &f, cx, cy, r);
   if (rc != result_OK)
     return rc;
 
@@ -1064,6 +1079,7 @@ static result_t spheroid_mouse(spheroid_task_t    *task,
     wuss_proginfo_set_desc(&desc);
     task->menu_items[SPHEROID_MENU_INFO].window = wuss_proginfo_window(task->delegate);
     wuss_menu_tick_set(&task->light_menu, spheroid_light_ticks(task));
+    wuss_menu_tick_exclusive(&task->dither_menu, (int) task->dithering);
 
     return wuss_menu_open(task->delegate, &task->menu,
                           wuss_get_pointer(task->wuss), &task->menu_handle);
@@ -1238,10 +1254,21 @@ static result_t spheroid_menu_select(spheroid_task_t    *task,
     return result_OK;
   }
 
+  index = event->data.menu_select.index;
+
+  if (event->data.menu_select.menu == &task->dither_menu)
+  {
+    task->dithering = (screen_dither_t) index;
+    if (wuss_menu_should_keep_open(event))
+      wuss_menu_tick_exclusive_live(task->menu_handle, &task->dither_menu,
+                                    index);
+    spheroid_invalidate_preview(task);
+    return result_OK;
+  }
+
   if (event->data.menu_select.menu != &task->light_menu)
     return result_OK;
 
-  index = event->data.menu_select.index;
   if (index == SPHEROID_LIGHT_COLOUR)
     return result_OK; /* a pick on the submenu row itself */
 
