@@ -103,7 +103,7 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(200, 160),
                                  "Bouncing Ball",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(200, 160),
                                  SIZE2D(0, 0),
@@ -407,6 +407,30 @@ static result_t ball_clear(ball_task_t *bc)
   return result_OK;
 }
 
+/* Space pauses/resumes, G toggles gravity and C clears, as their menu rows
+ * do. Anything else is passed back unclaimed. */
+static result_t ball_key(ball_task_t *bc, int code)
+{
+  switch (code)
+  {
+  case ' ':
+    bc->paused = !bc->paused;
+    return result_OK;
+
+  case 'G':
+  case 'g':
+    bc->gravity = !bc->gravity;
+    return result_OK;
+
+  case 'C':
+  case 'c':
+    return ball_clear(bc);
+
+  default:
+    return result_WUSS_KEY_UNCLAIMED;
+  }
+}
+
 result_t ball_handle(wuss_window_t      *window,
                      const wuss_event_t *event,
                      void               *task_data)
@@ -426,6 +450,9 @@ result_t ball_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     return ball_idle(task_data);
+
+  case wuss_EVENT_KEY:
+    return ball_key(bc, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return ball_pre_submenu_open(bc, event);

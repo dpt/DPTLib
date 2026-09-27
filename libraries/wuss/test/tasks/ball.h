@@ -27,7 +27,8 @@ ball_t;
  * redraw loop has something moving to repaint every frame. A Select click
  * adds a ball at the click position; an Adjust click removes the most
  * recently added one; Menu > Clear removes all but the first; Menu > Gravity
- * pulls them downward. */
+ * pulls them downward. Once a click has given the window the input focus,
+ * Space pauses/resumes, G toggles gravity and C clears. */
 typedef struct ball_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
