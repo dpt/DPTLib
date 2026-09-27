@@ -641,25 +641,6 @@ static void particles_clear(particles_task_t *pt)
     wuss_window_invalidate_visible(pt->window);
 }
 
-/* Space toggles pause; C clears. Anything else is passed back unclaimed. */
-static result_t particles_key(particles_task_t *pt, int code)
-{
-  switch (code)
-  {
-  case ' ':
-    pt->paused = !pt->paused;
-    return result_OK;
-
-  case 'C':
-  case 'c':
-    particles_clear(pt);
-    return result_OK;
-
-  default:
-    return result_WUSS_KEY_UNCLAIMED;
-  }
-}
-
 result_t particles_handle(wuss_window_t      *window,
                           const wuss_event_t *event,
                           void               *task_data)
@@ -688,9 +669,9 @@ result_t particles_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_KEY:
-    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
-      return result_WUSS_KEY_UNCLAIMED;
-    return particles_key(pt, event->data.key.code);
+    if (window != pt->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+    return wuss_menu_dispatch_shortcut(pt->delegate, &pt->menu, event);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return particles_pre_submenu_open(pt, event);

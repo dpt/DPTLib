@@ -442,24 +442,15 @@ static result_t saturn_mouse(saturn_task_t      *task,
 }
 
 /* Left/Right step back/forward through the sketches, as Adjust/Select
- * clicks do; A toggles Menu > Animate. Anything else, or a key aimed at
- * another of the task's windows, is passed back unclaimed. */
+ * clicks do. Anything else is passed back unclaimed. */
 static result_t saturn_key(saturn_task_t *task,
                            wuss_window_t *window,
                            int            code)
 {
-  if (window != task->window)
-    return result_WUSS_KEY_UNCLAIMED;
-
   switch (code)
   {
   case wuss_KEY_LEFT:  task->seed -= SATURN_SEED_STEP; break;
   case wuss_KEY_RIGHT: task->seed += SATURN_SEED_STEP; break;
-
-  case 'A':
-  case 'a':
-    task->animate = !task->animate;
-    return result_OK;
 
   default:
     return result_WUSS_KEY_UNCLAIMED;
@@ -906,12 +897,20 @@ result_t saturn_handle(wuss_window_t      *window,
                         event->data.mouse.button, window);
 
   case wuss_EVENT_KEY:
-    if (window == task->window && snapshot_is_save_key(event))
-      return snapshot_save_png(task->window, saturn_handle, task,
-                               SATURN_SAVE_NAME);
+  {
+    result_t rc;
+
+    if (window != task->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    rc = wuss_menu_dispatch_shortcut(task->delegate, &task->menu, event);
+    if (rc != result_WUSS_KEY_UNCLAIMED)
+      return rc;
+
     if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
       return result_WUSS_KEY_UNCLAIMED;
     return saturn_key(task, window, event->data.key.code);
+  }
 
   case wuss_EVENT_ICON:
     if (window == wuss_dialogue_window(task->conf.dialogue))

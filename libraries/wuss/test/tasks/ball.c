@@ -126,7 +126,7 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
                           wuss_MENU_ITEM_NONE, "SPACE");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_CLEAR, "Clear",
-                          wuss_MENU_ITEM_NONE, "C");
+                          wuss_MENU_ITEM_DISABLED, "C"); /* one ball */
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_GRAVITY, "Gravity",
                           wuss_MENU_ITEM_NONE, "G");
@@ -180,7 +180,8 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
   return result_OK;
 }
 
-/* match the window and menu titles to the ball count */
+/* match the window and menu titles, and whether Clear has anything to do,
+ * to the ball count */
 static void ball_set_title(ball_task_t *bc)
 {
   const char *title;
@@ -188,6 +189,12 @@ static void ball_set_title(ball_task_t *bc)
   title = (bc->nballs > 1) ? "Bouncing Balls" : "Bouncing Ball";
   wuss_window_set_title(bc->window, title);
   bc->menu.title = title; /* read on the next wuss_menu_open */
+
+  /* Clear has nothing to do while only the first ball remains */
+  if (bc->nballs > 1)
+    bc->menu_items[BALL_MENU_CLEAR].flags &= ~wuss_MENU_ITEM_DISABLED;
+  else
+    bc->menu_items[BALL_MENU_CLEAR].flags |= wuss_MENU_ITEM_DISABLED;
 }
 
 static result_t ball_mouse(wuss_window_t      *window,
@@ -232,12 +239,6 @@ static result_t ball_mouse(wuss_window_t      *window,
 
     wuss_menu_tick_item(&bc->menu, BALL_MENU_PAUSE, bc->paused);
     wuss_menu_tick_item(&bc->menu, BALL_MENU_GRAVITY, bc->gravity);
-
-    /* Clear has nothing to do while only the first ball remains */
-    if (bc->nballs > 1)
-      bc->menu_items[BALL_MENU_CLEAR].flags &= ~wuss_MENU_ITEM_DISABLED;
-    else
-      bc->menu_items[BALL_MENU_CLEAR].flags |= wuss_MENU_ITEM_DISABLED;
 
     return wuss_menu_open(bc->delegate, &bc->menu,
                           wuss_get_pointer(bc->wuss), &bc->menu_handle);
@@ -407,30 +408,6 @@ static result_t ball_clear(ball_task_t *bc)
   return result_OK;
 }
 
-/* Space pauses/resumes, G toggles gravity and C clears, as their menu rows
- * do. Anything else is passed back unclaimed. */
-static result_t ball_key(ball_task_t *bc, int code)
-{
-  switch (code)
-  {
-  case ' ':
-    bc->paused = !bc->paused;
-    return result_OK;
-
-  case 'G':
-  case 'g':
-    bc->gravity = !bc->gravity;
-    return result_OK;
-
-  case 'C':
-  case 'c':
-    return ball_clear(bc);
-
-  default:
-    return result_WUSS_KEY_UNCLAIMED;
-  }
-}
-
 result_t ball_handle(wuss_window_t      *window,
                      const wuss_event_t *event,
                      void               *task_data)
@@ -452,9 +429,7 @@ result_t ball_handle(wuss_window_t      *window,
     return ball_idle(task_data);
 
   case wuss_EVENT_KEY:
-    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
-      return result_WUSS_KEY_UNCLAIMED;
-    return ball_key(bc, event->data.key.code);
+    return wuss_menu_dispatch_shortcut(bc->delegate, &bc->menu, event);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return ball_pre_submenu_open(bc, event);

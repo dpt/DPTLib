@@ -238,16 +238,12 @@ static result_t lissajous_mouse(wuss_window_t      *window,
   return result_OK;
 }
 
-/* Space pauses/resumes the drift; Left/Right step to the previous/next
- * frequency pair. Anything else is passed back unclaimed. */
+/* Left/Right step to the previous/next frequency pair. Anything else is
+ * passed back unclaimed. */
 static result_t lissajous_key(lissajous_task_t *lc, int code)
 {
   switch (code)
   {
-  case ' ':
-    lc->paused = !lc->paused;
-    return result_OK;
-
   case wuss_KEY_LEFT:
     lissajous_set_freq(lc, (lc->freq_index + LISSAJOUS_NFREQS - 1) %
                            LISSAJOUS_NFREQS);
@@ -386,12 +382,20 @@ result_t lissajous_handle(wuss_window_t      *window,
     return lissajous_idle(task_data);
 
   case wuss_EVENT_KEY:
-    if (window == lc->window && snapshot_is_save_key(event))
-      return snapshot_save_png(lc->window, lissajous_handle, lc,
-                               LISSAJOUS_SAVE_NAME);
+  {
+    result_t rc;
+
+    if (window != lc->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    rc = wuss_menu_dispatch_shortcut(lc->delegate, &lc->menu, event);
+    if (rc != result_WUSS_KEY_UNCLAIMED)
+      return rc;
+
     if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
       return result_WUSS_KEY_UNCLAIMED;
     return lissajous_key(lc, event->data.key.code);
+  }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return lissajous_pre_submenu_open(lc, event);

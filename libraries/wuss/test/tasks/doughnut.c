@@ -423,17 +423,11 @@ static result_t doughnut_idle(doughnut_task_t *task)
   return result_OK;
 }
 
-/* Space toggles pause. While paused, the arrow keys step the rotation:
- * Up/Down about x (a), Left/Right about z (b). Anything else, or an arrow
- * while spinning, is passed back unclaimed. */
+/* While paused, the arrow keys step the rotation: Up/Down about x (a),
+ * Left/Right about z (b). Anything else, or an arrow while spinning, is
+ * passed back unclaimed. */
 static result_t doughnut_key(doughnut_task_t *task, int code)
 {
-  if (code == ' ')
-  {
-    task->paused = !task->paused;
-    return result_OK;
-  }
-
   if (!task->paused)
     return result_WUSS_KEY_UNCLAIMED;
 
@@ -554,12 +548,20 @@ result_t doughnut_handle(wuss_window_t      *window,
     return doughnut_idle(task);
 
   case wuss_EVENT_KEY:
-    if (window == task->window && snapshot_is_save_key(event))
-      return snapshot_save_png(task->window, doughnut_handle, task,
-                               DOUGHNUT_SAVE_NAME);
+  {
+    result_t rc;
+
+    if (window != task->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    rc = wuss_menu_dispatch_shortcut(task->delegate, &task->menu, event);
+    if (rc != result_WUSS_KEY_UNCLAIMED)
+      return rc;
+
     if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
       return result_WUSS_KEY_UNCLAIMED;
     return doughnut_key(task, event->data.key.code);
+  }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return doughnut_pre_submenu_open(task, event);

@@ -18,9 +18,6 @@ result_t snapshot_save_png(wuss_window_t    *window,
                            void             *task_data,
                            const char       *filename);
 
-/* non-zero if event is a wuss_EVENT_KEY for ^S, the Save PNG shortcut */
-int snapshot_is_save_key(const wuss_event_t *event);
-
 #endif /* WUSS_APP */
 
 #endif /* TASKS_SNAPSHOT_H */
