@@ -23,8 +23,10 @@
  * ring of dots, a sheared streak across it and a filled disc for the
  * planet body. Select re-seeds the RNG for a fresh sketch and Adjust
  * steps back to the previous one; Menu > Animate re-seeds every null
- * event so it churns; Menu > Save PNG writes the window to saturn.png. The
- * plot is deterministic in the seed. */
+ * event so it churns; Menu > Save PNG writes the window to saturn.png. Once
+ * a click has given the window the input focus, Left/Right step back and
+ * forward through the sketches and A toggles Animate. The plot is
+ * deterministic in the seed. */
 /* iteration counts for the three rejection-sampling loops, plus the window's
  * size, in document pixels (the window is always square); saturn_create
  * fills in SATURN_CONFIG_DEFAULT values when the caller passes NULL */

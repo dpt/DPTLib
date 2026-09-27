@@ -249,7 +249,7 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(task->config.size, task->config.size),
                                  "Saturn",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(task->config.size, task->config.size),
                                  SIZE2D(0, 0),
@@ -437,6 +437,35 @@ static result_t saturn_mouse(saturn_task_t      *task,
     task->seed -= SATURN_SEED_STEP; /* previous sketch */
     wuss_window_invalidate_visible(window);
   }
+
+  return result_OK;
+}
+
+/* Left/Right step back/forward through the sketches, as Adjust/Select
+ * clicks do; A toggles Menu > Animate. Anything else, or a key aimed at
+ * another of the task's windows, is passed back unclaimed. */
+static result_t saturn_key(saturn_task_t *task,
+                           wuss_window_t *window,
+                           int            code)
+{
+  if (window != task->window)
+    return result_WUSS_KEY_UNCLAIMED;
+
+  switch (code)
+  {
+  case wuss_KEY_LEFT:  task->seed -= SATURN_SEED_STEP; break;
+  case wuss_KEY_RIGHT: task->seed += SATURN_SEED_STEP; break;
+
+  case 'A':
+  case 'a':
+    task->animate = !task->animate;
+    return result_OK;
+
+  default:
+    return result_WUSS_KEY_UNCLAIMED;
+  }
+
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }
@@ -875,6 +904,9 @@ result_t saturn_handle(wuss_window_t      *window,
   case wuss_EVENT_MOUSE:
     return saturn_mouse(task, event->data.mouse.action,
                         event->data.mouse.button, window);
+
+  case wuss_EVENT_KEY:
+    return saturn_key(task, window, event->data.key.code);
 
   case wuss_EVENT_ICON:
     if (window == wuss_dialogue_window(task->conf.dialogue))
