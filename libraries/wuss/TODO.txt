@@ -107,6 +107,7 @@ LAYER 7 - APPS & POLISH (needs most of the above)
 - Proper desktop font (just iterate on existing one?)
 - Support paletted images
 - Greebling symmetry
+- Spheroid: bump textures, arrays of spheres, saved presets
 - 8x8 icon libraries - share the greeble code with other parts of wuss
 - Tiled fills (tile_1)
 - Rounded corner windows
