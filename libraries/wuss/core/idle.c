@@ -10,6 +10,10 @@ result_t wuss_idle(wuss_t *wuss)
 
   event.kind = wuss_EVENT_IDLE;
 
+#ifdef WUSS_FURNITURE
+  wuss__scroll_repeat(wuss);
+#endif
+
   rc = result_OK;
   for (e = wuss->tasks.next; e != NULL; )
   {

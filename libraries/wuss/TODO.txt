@@ -67,7 +67,6 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
     blocks: Furniture icons toggling state, min window size
 - Minimum window size based on furniture requested
   (later: squash-able furniture)
-- Scroll: auto repeat on scroll buttons
 - Snap to edges (outline-click bug fixed; unblocked)
 - Dragging against window edge shuffles window in opposite direction
   (outline-click bug fixed; unblocked)
