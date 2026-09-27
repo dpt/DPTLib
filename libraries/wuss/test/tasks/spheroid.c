@@ -51,6 +51,8 @@
 #define SPHEROID_WRAP   0.25 /* wrap band width, in sphere radii */
 #define SPHEROID_MARKER 4    /* marker ring radius, px */
 #define SPHEROID_GRAB   6    /* px from a marker a click selects it */
+#define SPHEROID_NUDGE  1    /* px an arrow key moves the current light */
+#define SPHEROID_SHOVE  8    /* px a Shift-arrow moves it */
 
 #define SPHEROID_SAVE_NAME "spheroid.png" /* written to the current dir */
 
@@ -326,8 +328,8 @@ static void spheroid_aim(spheroid_light_t *light,
                          double            cx,
                          double            cy,
                          double            r,
-                         int               px,
-                         int               py)
+                         double            px,
+                         double            py)
 {
   double dx, dy, d, z, s;
 
@@ -355,15 +357,15 @@ static void spheroid_marker_pos(const spheroid_light_t *light,
                                 double                  cx,
                                 double                  cy,
                                 double                  r,
-                                int                    *mx,
-                                int                    *my)
+                                double                 *mx,
+                                double                 *my)
 {
   double s, d;
 
   if (light->z >= 0.0)
   {
-    *mx = (int) floor(cx + light->x * r);
-    *my = (int) floor(cy - light->y * r);
+    *mx = cx + light->x * r;
+    *my = cy - light->y * r;
     return;
   }
 
@@ -372,13 +374,13 @@ static void spheroid_marker_pos(const spheroid_light_t *light,
   if (s < 1e-6)
   {
     /* dead behind: every direction round the band is equally right */
-    *mx = (int) floor(cx);
-    *my = (int) floor(cy - d);
+    *mx = cx;
+    *my = cy - d;
     return;
   }
 
-  *mx = (int) floor(cx + light->x / s * d);
-  *my = (int) floor(cy - light->y / s * d);
+  *mx = cx + light->x / s * d;
+  *my = cy - light->y / s * d;
 }
 
 /* a lit light's marker: a ring in its colour with a black outline for
@@ -657,6 +659,7 @@ static result_t spheroid_redraw(const wuss_event_t *event,
   double           cov;
   double           n[3], rgb[3];
   int              x, y, k, i;
+  double           mx, my;
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
@@ -696,8 +699,10 @@ static result_t spheroid_redraw(const wuss_event_t *event,
     if (!task->lights[i].on)
       continue;
 
-    spheroid_marker_pos(&task->lights[i], cx, cy, r, &x, &y);
-    spheroid_draw_marker(scr, &task->lights[i], x, y, i == task->current);
+    spheroid_marker_pos(&task->lights[i], cx, cy, r, &mx, &my);
+    spheroid_draw_marker(scr, &task->lights[i],
+                         (int) floor(mx), (int) floor(my),
+                         i == task->current);
   }
 
   return result_OK;
@@ -950,7 +955,8 @@ static int spheroid_hit_marker(const spheroid_task_t *task,
                                int                    px,
                                int                    py)
 {
-  int i, mx, my;
+  int    i;
+  double mx, my;
 
   for (i = 0; i < SPHEROID_NLIGHTS; i++)
   {
@@ -1030,6 +1036,56 @@ static result_t spheroid_mouse(spheroid_task_t    *task,
 
   task->lights[task->current].on = 1;
   spheroid_aim(&task->lights[task->current], cx, cy, r, p.x, p.y);
+  spheroid_invalidate_preview(task);
+
+  return result_OK;
+}
+
+/* an arrow key: move the current light's marker, turning the light on, as a
+ * drag would */
+static result_t spheroid_key(spheroid_task_t    *task,
+                             const wuss_event_t *event)
+{
+  box_t  content;
+  double cx, cy, r;
+  double step;
+  double mx, my;
+  double dx, dy, d, limit;
+
+  if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+    return result_WUSS_KEY_UNCLAIMED;
+
+  wuss_window_get_content_bounds(task->window, &content);
+  spheroid_layout(box_size(&content), &cx, &cy, &r);
+
+  step = (event->data.key.modifiers & wuss_KEY_MOD_SHIFT) ? SPHEROID_SHOVE
+                                                          : SPHEROID_NUDGE;
+
+  spheroid_marker_pos(&task->lights[task->current], cx, cy, r, &mx, &my);
+
+  switch (event->data.key.code)
+  {
+  case wuss_KEY_LEFT:  mx -= step; break;
+  case wuss_KEY_RIGHT: mx += step; break;
+  case wuss_KEY_UP:    my -= step; break;
+  case wuss_KEY_DOWN:  my += step; break;
+  default:             return result_WUSS_KEY_UNCLAIMED;
+  }
+
+  /* stop just short of the wrap band's outer edge: there the light is dead
+   * behind and its marker would jump to the top of the band */
+  dx    = mx - cx;
+  dy    = my - cy;
+  d     = sqrt(dx * dx + dy * dy);
+  limit = (1.0 + SPHEROID_WRAP) * r - 0.5;
+  if (d > limit)
+  {
+    mx = cx + dx / d * limit;
+    my = cy + dy / d * limit;
+  }
+
+  task->lights[task->current].on = 1;
+  spheroid_aim(&task->lights[task->current], cx, cy, r, mx, my);
   spheroid_invalidate_preview(task);
 
   return result_OK;
@@ -1184,9 +1240,18 @@ result_t spheroid_handle(wuss_window_t      *window,
                           window);
 
   case wuss_EVENT_KEY:
+  {
+    result_t rc;
+
     if (window != task->window)
       return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
-    return wuss_menu_dispatch_shortcut(task->delegate, &task->menu, event);
+
+    rc = wuss_menu_dispatch_shortcut(task->delegate, &task->menu, event);
+    if (rc != result_WUSS_KEY_UNCLAIMED)
+      return rc;
+
+    return spheroid_key(task, event);
+  }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return spheroid_pre_submenu_open(task, event);
