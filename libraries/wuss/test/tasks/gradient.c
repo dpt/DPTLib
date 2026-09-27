@@ -257,7 +257,7 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT),
                                  "Gradient",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(GRADIENT_DOC_WIDTH, GRADIENT_DOC_HEIGHT),
                                  SIZE2D(0, 0),
@@ -457,6 +457,16 @@ static result_t gradient_mouse(const wuss_event_t *event, void *task_data)
   return result_OK;
 }
 
+/* restore the default shape, dither matrix, brightness and saturation */
+static void gradient_reset(gradient_task_t *gc)
+{
+  gc->shape        = gradient_SHAPE_LINEAR;
+  gc->dither_index = GRADIENT_DEFAULT_DITHER;
+  gc->brightness   = GRADIENT_UNITY;
+  gc->saturation   = GRADIENT_UNITY;
+  wuss_window_invalidate_visible(gc->window);
+}
+
 /* "Save PNG": replay gradient_redraw into an offscreen bitmap the size of
  * the window's content, at its current scroll, and write that out.
  * ponytail: fixed filename in the current dir; wuss has no save dialogue. */
@@ -492,11 +502,44 @@ static result_t gradient_menu_select(gradient_task_t    *gc,
   if (event->data.menu_select.index != GRADIENT_MENU_RESET)
     return result_OK;
 
-  gc->shape        = gradient_SHAPE_LINEAR;
-  gc->dither_index = GRADIENT_DEFAULT_DITHER;
-  gc->brightness   = GRADIENT_UNITY;
-  gc->saturation   = GRADIENT_UNITY;
-  wuss_window_invalidate_visible(gc->window);
+  gradient_reset(gc);
+
+  return result_OK;
+}
+
+/* S steps the shape and D the dither matrix forward; R resets, as Menu >
+ * Reset does. The arrow keys are left unclaimed for scrolling, as is
+ * anything else or a key aimed at the proginfo dialogue. */
+static result_t gradient_key(gradient_task_t *gc,
+                             wuss_window_t   *window,
+                             int              code)
+{
+  if (window != gc->window)
+    return result_WUSS_KEY_UNCLAIMED;
+
+  switch (code)
+  {
+  case 'S':
+  case 's':
+    gc->shape = (gradient_shape_t) ((gc->shape + 1) % gradient_NSHAPES);
+    break;
+
+  case 'D':
+  case 'd':
+    gc->dither_index = (gc->dither_index + 1) %
+                       (int) NELEMS(gradient_dithers);
+    break;
+
+  case 'R':
+  case 'r':
+    gradient_reset(gc);
+    return result_OK;
+
+  default:
+    return result_WUSS_KEY_UNCLAIMED;
+  }
+
+  wuss_window_invalidate_visible(window);
 
   return result_OK;
 }
@@ -519,6 +562,9 @@ result_t gradient_handle(wuss_window_t      *window,
       return result_OK; /* the proginfo dialogue has no click behaviour of
                          * its own */
     return gradient_mouse(event, task_data);
+
+  case wuss_EVENT_KEY:
+    return gradient_key(gc, window, event->data.key.code);
 
   case wuss_EVENT_MENU_SELECT:
     return gradient_menu_select(gc, event);

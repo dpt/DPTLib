@@ -27,7 +27,8 @@ gradient_shape_t;
  * (horizontal, right is more saturated). Menu > Shape swaps the two-axis
  * ramp for a radial or conical hue sweep; Menu > Reset restores the shape,
  * dither, brightness and saturation; Menu > Save PNG writes the window to
- * gradient.png. */
+ * gradient.png. Once a click has given the window the input focus, S steps
+ * the shape, D steps the dither matrix and R resets. */
 typedef struct gradient_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_font in the redraw */
