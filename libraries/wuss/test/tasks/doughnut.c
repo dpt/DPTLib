@@ -17,6 +17,7 @@
 #include "wuss/task.h"
 
 #include "doughnut.h"
+#include "snapshot.h"
 
 /* Andy Sloane's "donut.c" (www.a1k0n.net/2011/07/20/donut-math.html):
  * a torus (tube radius R1, ring radius R2) is swept over its two surface
@@ -39,8 +40,11 @@ enum
   DOUGHNUT_MENU_BACKGROUND,
   DOUGHNUT_MENU_TUBE,
   DOUGHNUT_MENU_PAUSE,
-  DOUGHNUT_MENU_RESET
+  DOUGHNUT_MENU_RESET,
+  DOUGHNUT_MENU_SAVE
 };
+
+#define DOUGHNUT_SAVE_NAME "doughnut.png" /* written to the current dir */
 
 /* "Tube" submenu rows: tube radius R1, kept below DOUGHNUT_R2 so the hole
  * stays open */
@@ -199,6 +203,9 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_ITEM(task->menu_items, DOUGHNUT_MENU_RESET, "Reset view",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM(task->menu_items, DOUGHNUT_MENU_SAVE, "Save PNG",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Doughnut", task->menu_items,
@@ -490,6 +497,11 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
       wuss_window_invalidate_visible(task->window);
     return result_OK;
   }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == DOUGHNUT_MENU_SAVE)
+    return snapshot_save_png(task->window, doughnut_handle, task,
+                             DOUGHNUT_SAVE_NAME);
 
   if (event->data.menu_select.menu == &task->tube_menu)
   {

@@ -19,14 +19,15 @@
  * torus directly, overriding the idle auto-rotation for as long as it's
  * held. Space also toggles pause; while paused the arrow keys step the
  * rotation. Menu > Tube picks the tube's thickness; Menu > Reset view
- * restores the starting angles and zoom. */
+ * restores the starting angles and zoom; Menu > Save PNG writes
+ * doughnut.png. */
 typedef struct doughnut_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
   wuss_task_t       *delegate; /* the task that owns the menu */
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[5]; /* per-instance: shared static "Info" row
+  wuss_menu_item_t   menu_items[6]; /* per-instance: shared static "Info" row
                                       * would leak one instance's .window
                                       * pointer into another's menu */
   wuss_menu_t        menu;
