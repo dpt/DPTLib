@@ -859,6 +859,8 @@ result_t minesweeper_handle(wuss_window_t      *window,
                              event->data.mouse.button);
 
   case wuss_EVENT_KEY:
+    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+      return result_WUSS_KEY_UNCLAIMED;
     return minesweeper_key(ms, event->data.key.code);
 
   case wuss_EVENT_GAIN_FOCUS:

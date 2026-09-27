@@ -395,6 +395,8 @@ result_t checker_handle(wuss_window_t      *window,
     if ((window == cc->window || window == cc->window2) &&
         snapshot_is_save_key(event))
       return snapshot_save_png(window, checker_handle, cc, CHECKER_SAVE_NAME);
+    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+      return result_WUSS_KEY_UNCLAIMED;
     return checker_key(cc, window, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:

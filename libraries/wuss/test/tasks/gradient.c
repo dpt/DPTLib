@@ -565,6 +565,8 @@ result_t gradient_handle(wuss_window_t      *window,
     if (window == gc->window && snapshot_is_save_key(event))
       return snapshot_save_png(gc->window, gradient_handle, gc,
                                GRADIENT_SAVE_NAME);
+    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+      return result_WUSS_KEY_UNCLAIMED;
     return gradient_key(gc, window, event->data.key.code);
 
   case wuss_EVENT_MENU_SELECT:

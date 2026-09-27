@@ -557,6 +557,8 @@ result_t doughnut_handle(wuss_window_t      *window,
     if (window == task->window && snapshot_is_save_key(event))
       return snapshot_save_png(task->window, doughnut_handle, task,
                                DOUGHNUT_SAVE_NAME);
+    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+      return result_WUSS_KEY_UNCLAIMED;
     return doughnut_key(task, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:

@@ -909,6 +909,8 @@ result_t saturn_handle(wuss_window_t      *window,
     if (window == task->window && snapshot_is_save_key(event))
       return snapshot_save_png(task->window, saturn_handle, task,
                                SATURN_SAVE_NAME);
+    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+      return result_WUSS_KEY_UNCLAIMED;
     return saturn_key(task, window, event->data.key.code);
 
   case wuss_EVENT_ICON:

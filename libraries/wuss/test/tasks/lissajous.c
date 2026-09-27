@@ -389,6 +389,8 @@ result_t lissajous_handle(wuss_window_t      *window,
     if (window == lc->window && snapshot_is_save_key(event))
       return snapshot_save_png(lc->window, lissajous_handle, lc,
                                LISSAJOUS_SAVE_NAME);
+    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
+      return result_WUSS_KEY_UNCLAIMED;
     return lissajous_key(lc, event->data.key.code);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
