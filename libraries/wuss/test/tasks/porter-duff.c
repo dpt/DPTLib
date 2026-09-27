@@ -456,13 +456,17 @@ static result_t porter_duff_idle(void *task_data)
   return result_OK;
 }
 
-static result_t porter_duff_mouse(wuss_window_t *window, void *task_data)
+/* step the rule by dir (+1 or -1), wrapping round */
+static result_t porter_duff_mouse(wuss_window_t *window,
+                                  int            dir,
+                                  void          *task_data)
 {
   porter_duff_task_t *pd;
 
   pd = task_data;
 
-  pd->rule  = (pd->rule + 1) % composite_RULE__LIMIT;
+  pd->rule  = (pd->rule + composite_RULE__LIMIT + dir) %
+              composite_RULE__LIMIT;
   pd->frame = 0;
 
   wuss_window_invalidate_visible(window);
@@ -582,9 +586,11 @@ result_t porter_duff_handle(wuss_window_t      *window,
       return wuss_menu_open(pd->delegate, &pd->menu,
                             wuss_get_pointer(pd->wuss), &pd->menu_handle);
     }
-    if (!(event->data.mouse.button & wuss_BUTTON_SELECT))
-      return result_OK;
-    return porter_duff_mouse(window, task_data);
+    if (event->data.mouse.button & wuss_BUTTON_SELECT)
+      return porter_duff_mouse(window, +1, task_data);
+    if (event->data.mouse.button & wuss_BUTTON_ADJUST)
+      return porter_duff_mouse(window, -1, task_data);
+    return result_OK;
 
   case wuss_EVENT_SCROLL:
     return porter_duff_scroll(window, event->data.scroll.delta, task_data);
