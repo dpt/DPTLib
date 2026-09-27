@@ -226,7 +226,7 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
                                  "Porter-Duff",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
                                  SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
                                  SIZE2D(0, 0),
@@ -492,6 +492,28 @@ static result_t porter_duff_scroll(wuss_window_t *window,
   return result_OK;
 }
 
+/* Space pauses/resumes, as Menu > Pause does; Left/Right step to the
+ * previous/next rule, as Adjust and Select clicks do. Anything else, or a key
+ * aimed at the proginfo dialogue, is passed back unclaimed. */
+static result_t porter_duff_key(porter_duff_task_t *pd,
+                                wuss_window_t      *window,
+                                int                 code)
+{
+  if (window != pd->window)
+    return result_WUSS_KEY_UNCLAIMED;
+
+  switch (code)
+  {
+  case ' ':
+    pd->paused = !pd->paused;
+    return result_OK;
+
+  case wuss_KEY_LEFT:  return porter_duff_mouse(window, -1, pd);
+  case wuss_KEY_RIGHT: return porter_duff_mouse(window, +1, pd);
+  default:             return result_WUSS_KEY_UNCLAIMED;
+  }
+}
+
 /* The "Pause" row stops or restarts the idle animation; the "Swap" row
  * exchanges the source and destination images (with their scratch bitmaps,
  * which are sized to match). An ADJUST pick keeps the menu open, so retick
@@ -594,6 +616,9 @@ result_t porter_duff_handle(wuss_window_t      *window,
 
   case wuss_EVENT_SCROLL:
     return porter_duff_scroll(window, event->data.scroll.delta, task_data);
+
+  case wuss_EVENT_KEY:
+    return porter_duff_key(pd, window, event->data.key.code);
 
   case wuss_EVENT_IDLE:
     return porter_duff_idle(task_data);
