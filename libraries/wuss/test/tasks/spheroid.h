@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/colour.h"
+#include "framebuf/screen.h"
 #include "utils/rng.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
@@ -43,7 +44,8 @@ spheroid_light_t;
  * faces the surface under the pointer; the band just outside wraps it round to
  * the back. Menu > Light (or keys 1-4) picks the current light and Light > On
  * (or O) switches it. Light > Colour, Sphere colour and Background pick from
- * the palette. Mutate (M) nudges the sliders, the lit lights' directions and
+ * the palette; Dithering picks how the preview is blitted to a paletted
+ * screen. Mutate (M) nudges the sliders, the lit lights' directions and
  * the colours' hues; Randomise (^R) picks every setting afresh, keeping at
  * least one light on; Reset (R) restores the defaults; Save PNG (^S) writes the
  * sphere alone, transparent outside its edge. */
@@ -53,13 +55,17 @@ typedef struct spheroid_task
   wuss_task_t       *delegate; /* the task that owns the menu */
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[8]; /* per-instance: shared static "Info"
+  wuss_menu_item_t   menu_items[9]; /* per-instance: shared static "Info"
                                      * row would leak one instance's .window
                                      * pointer into another's menu */
   wuss_menu_t        menu;
   /* "Light" submenu: one row per light, then On and Colour */
   wuss_menu_item_t   light_items[SPHEROID_NLIGHTS + 2];
   wuss_menu_t        light_menu;
+  /* "Dithering" submenu: one row per screen_dither_t */
+  wuss_menu_item_t   dither_items[3];
+  wuss_menu_t        dither_menu;
+  screen_dither_t    dithering;  /* how the preview is blitted */
   int                current;    /* index of the light a drag moves */
   int                dragging;   /* non-zero while a Select drag is live */
   colour_t          *colour_target; /* what the shared colourmenu sets;
