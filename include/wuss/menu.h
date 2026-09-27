@@ -126,6 +126,19 @@ wuss_menu_item_t;
   } \
   while (0)
 
+/** As WUSS_MENU_ITEM, but the row shows shortcut_ as its keyboard shortcut
+ *  label (see wuss_menu_item_t.shortcut). */
+#define WUSS_MENU_ITEM_SHORTCUT(items, idx, text_, flags_, shortcut_) \
+  do \
+  { \
+    (items)[idx].text     = (text_); \
+    (items)[idx].flags    = (flags_); \
+    (items)[idx].submenu  = NULL; \
+    (items)[idx].window   = NULL; \
+    (items)[idx].shortcut = (shortcut_); \
+  } \
+  while (0)
+
 /** As WUSS_MENU_ITEM, but the row hovers open submenu_ (see
  *  wuss_menu_item_t.submenu). */
 #define WUSS_MENU_ITEM_MENU(items, idx, text_, flags_, submenu_) \
