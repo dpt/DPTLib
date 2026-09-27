@@ -21,6 +21,7 @@
 #include "utils/fxp.h"
 
 #include "clock.h"
+#include "snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
  * in clock_task_t, not as a file-scope static, so that each window's Info row
@@ -32,8 +33,11 @@ enum
   CLOCK_MENU_BACKGROUND,
   CLOCK_MENU_DIGITAL,
   CLOCK_MENU_SECONDS,
-  CLOCK_MENU_12_HOUR
+  CLOCK_MENU_12_HOUR,
+  CLOCK_MENU_SAVE
 };
+
+#define CLOCK_SAVE_NAME "clock.png" /* written to the current dir */
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -168,6 +172,9 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_ITEM(task->menu_items, CLOCK_MENU_12_HOUR, "12-hour",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM(task->menu_items, CLOCK_MENU_SAVE, "Save PNG",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Clock", task->menu_items,
@@ -442,6 +449,9 @@ result_t clock_handle(wuss_window_t      *window,
          event->data.menu_select.index == CLOCK_MENU_SECONDS ||
          event->data.menu_select.index == CLOCK_MENU_12_HOUR))
       return clock_toggle(cc, event);
+    if (event->data.menu_select.menu == &cc->menu &&
+        event->data.menu_select.index == CLOCK_MENU_SAVE)
+      return snapshot_save_png(cc->window, clock_handle, cc, CLOCK_SAVE_NAME);
     return clock_menu_select(cc, event);
 
   case wuss_EVENT_MENU_CLOSED:

@@ -20,14 +20,15 @@
  * every idle tick. A Select click, or Menu > Seconds, shows or hides the
  * seconds. An Adjust click, or Menu > Digital, swaps the face for an
  * HH:MM:SS readout (and back); Menu > 12-hour shows that readout as
- * 12-hour time with AM/PM. */
+ * 12-hour time with AM/PM; Menu > Save PNG writes the window to
+ * clock.png. */
 typedef struct clock_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[5]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[6]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
