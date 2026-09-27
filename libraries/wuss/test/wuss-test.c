@@ -1672,6 +1672,55 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_m);
   }
 
+  printf("test: drag-resize stops where the window's furniture still fits\n");
+
+  {
+    static test_task_t tc_f;
+    wuss_task_t       *delegate_f;
+    box_t              box_f, content, visible;
+    box_t              close, toggle, vup, vdown, hleft, hright;
+    wuss_window_t     *win_f;
+
+    delegate_f = mk_task(wuss, test_handle, &tc_f);
+    if (delegate_f == NULL) goto Failure;
+
+    /* a doc smaller than the furniture: only the furniture floor holds it */
+    box_f.x0 = 10; box_f.y0 = 10;
+    box_f.x1 = 110; box_f.y1 = 110;
+    rc = wuss_window_create(delegate_f, &box_f, "F", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(1, 1), SIZE2D(0, 0), &win_f);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_visible_bounds(win_f, &visible);
+    wuss_window_get_content_bounds(win_f, &content);
+
+    rc = wuss_mouse_click(wuss, POINT(visible.x1 - 3, visible.y1 - 3), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* F's resize icon */
+    if (rc != result_OK || hit != win_f)
+      goto Failure;
+    rc = wuss_mouse_move(wuss, POINT(content.x0, content.y0), &hit); /* try to squash it flat */
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, POINT(content.x0, content.y0), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss__close_box(win_f, &close);
+    wuss__toggle_box(win_f, &toggle);
+    wuss__vscroll_up_box(win_f, &vup);
+    wuss__vscroll_down_box(win_f, &vdown);
+    wuss__hscroll_left_box(win_f, &hleft);
+    wuss__hscroll_right_box(win_f, &hright);
+
+    if (toggle.x0 < close.x1 + WUSS_BUTTON_INSET)
+      goto Failure; /* titlebar icons overlap */
+    if (vdown.y0 < vup.y1 || hright.x0 < hleft.x1)
+      goto Failure; /* scroll arrows overlap */
+
+    wuss_window_close(win_f);
+  }
+
   printf("test: drag-resize never grows a window's total size past the screen's, on either axis\n");
 
   {
