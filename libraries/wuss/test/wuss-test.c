@@ -711,6 +711,67 @@ result_t wuss_test(const char *resources)
     mk_task_count = 0;  /* drop the now-stale registry entry */
   }
 
+  printf("test: wuss_set_config swaps the config mid-session, refusing a "
+         "bad colour without change\n");
+
+  {
+    static const colour_t cfgpal[5] =
+    {
+      { 0xFF0000FF }, { 0xFF00FF00 }, { 0xFFFF0000 },
+      { 0xFFFFFFFF }, { 0xFF000000 }
+    };
+
+    static test_task_t tc_cfg;
+    wuss_config_t      cfg;
+    wuss_t            *cfgw;
+    wuss_task_t       *cfgdel;
+
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.furniture.title.bg = wuss_COLOUR_BLUE;  /* -> index 2 */
+    cfg.furniture.title.fg = wuss_COLOUR_WHITE; /* -> index 3 */
+    cfg.body.window        = wuss_COLOUR_RED;   /* -> index 0 */
+
+    rc = wuss_create(&scr, NULL, 0, cfgpal, 5, &cfg, NULL, NULL, &cfgw);
+    if (rc != result_OK)
+      goto Failure;
+
+    memset(&tc_cfg, 0, sizeof(tc_cfg));
+    cfgdel = mk_task(cfgw, test_handle, &tc_cfg);
+    if (cfgdel == NULL) { wuss_destroy(cfgw); goto Failure; }
+
+    cfg.furniture.title.bg = wuss_COLOUR_RED;   /* -> index 0 */
+    cfg.body.window        = wuss_COLOUR_WHITE; /* -> index 3 */
+    rc = wuss_set_config(cfgw, &cfg);
+    if (rc != result_OK ||
+        wuss__resolve_colour(cfgw, wuss_COLOUR_TITLE_BG) != 0 ||
+        wuss__resolve_colour(cfgw, wuss_COLOUR_WINDOW) != 3 ||
+        tc_cfg.palette_count != 1)
+    {
+      wuss_destroy(cfgw);
+      goto Failure;
+    }
+
+    /* index 7 is past the 5-entry palette: refused, nothing changes and
+     * nothing is broadcast */
+    cfg.furniture.title.bg = wuss_COLOUR_GREEN;
+    cfg.furniture.title.fg = 7;
+    cfg.body.window        = wuss_COLOUR_BLUE; /* stored before the check */
+    rc = wuss_set_config(cfgw, &cfg);
+    if (rc != result_WUSS_BAD_COLOUR ||
+        wuss__resolve_colour(cfgw, wuss_COLOUR_TITLE_BG) != 0 ||
+        wuss__resolve_colour(cfgw, wuss_COLOUR_TITLE_FG) != 3 ||
+        cfgw->window_bg != 3 ||
+        tc_cfg.palette_count != 1)
+    {
+      wuss_destroy(cfgw);
+      goto Failure;
+    }
+
+    wuss_destroy(cfgw); /* sweeps cfgdel too */
+    mk_task_count = 0;
+    rc = result_OK;
+  }
+
   printf("test: wuss_resize moves windows back on-screen, shrinking only "
          "those bigger than the new screen\n");
 

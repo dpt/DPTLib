@@ -378,6 +378,12 @@ wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
  * indices (resolve config through wuss__resolve_colour before storing). */
 void wuss__rebuild_palettecache(wuss_t *wuss);
 
+/* Resolve, validate and store config's colours (and the titlebar height)
+ * into w, then rebuild the palette cache. NULL config means the defaults.
+ * Needs w's palette and fonts set. Returns result_WUSS_BAD_COLOUR with w
+ * part-updated on a bad colour -- the caller discards or restores w. */
+result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config);
+
 /* Concrete 0..npalette-1 palette index for any wuss_colour_t: a symbolic
  * value (>= wuss_COLOUR_SYMBOLIC, bar wuss_NO_BACKGROUND) via the cache,
  * everything else -- raw indices, wuss_NO_BACKGROUND -- unchanged. */

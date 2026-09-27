@@ -664,6 +664,30 @@ const colour_t *wuss_get_palette(const wuss_t *wuss, int *npalette);
 result_t wuss_set_backdrop(wuss_t *wuss, const wuss_backdrop_t *backdrop);
 
 /**
+ * Replace the window manager's config partway through a session.
+ *
+ * Resolves and validates \p config exactly as wuss_create does, stores its
+ * furniture, bevel, button, accent, slider, body and backdrop colours,
+ * rebuilds the symbolic colour cache, broadcasts a \ref wuss_EVENT_PALETTE
+ * event once to every registered task (as wuss_set_palette does) so they can
+ * recache any resolved colours, then invalidates the whole screen. The
+ * caller is still responsible for the next wuss_redraw / wuss_redraw_dirty.
+ *
+ * config->titlebar_height is ignored: the titlebar height is fixed at
+ * wuss_create. Existing windows keep the background they resolved when they
+ * were created.
+ *
+ * \param[in] wuss   Window manager.
+ * \param[in] config New config, copied in.
+ * \return \ref result_OK on success, \ref result_OOM if out of memory, \ref
+ *         result_WUSS_BAD_COLOUR if a colour in \p config is out of range
+ *         (the config is left unchanged), else the first non-OK result
+ *         returned by a task's handle callback (iteration still continues
+ *         past it).
+ */
+result_t wuss_set_config(wuss_t *wuss, const wuss_config_t *config);
+
+/**
  * Fetch the current screen size (the size of the screen_t passed to
  * wuss_create, or since applied by wuss_resize).
  *
