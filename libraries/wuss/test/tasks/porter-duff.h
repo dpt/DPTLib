@@ -18,7 +18,8 @@
  * across its full range. Select steps to the next rule and Adjust to the
  * previous one; Menu > Rule jumps straight to any one; Menu > Swap images
  * exchanges source and destination; Menu > Save PNG writes the window's
- * contents to porter-duff.png. */
+ * contents to porter-duff.png. Once a click has given the window the input
+ * focus, Space pauses/resumes and Left/Right step the rule. */
 typedef struct porter_duff_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
