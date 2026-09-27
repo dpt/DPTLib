@@ -26,17 +26,28 @@ spheroid_light_t;
 
 /* window task: a single sphere, shaded per pixel by up to four coloured
  * lights, in the spirit of Kai's Power Tools' Spheroid Designer. The sphere
- * fills the window and scales with it. */
+ * fills the window and scales with it. Each lit light shows as a ring marker
+ * (dotted when behind the sphere, filled when current). A Select click on a
+ * marker makes that light current; anywhere else it moves the current light
+ * there (turning it on), and dragging keeps moving it. Inside the disc the
+ * light faces the surface under the pointer; the band just outside wraps it
+ * round to the back. Menu > Light (or keys 1-4) picks the current light and
+ * Light > On (or O) switches it. */
 typedef struct spheroid_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
   wuss_task_t       *delegate; /* the task that owns the menu */
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[1]; /* per-instance: shared static "Info"
+  wuss_menu_item_t   menu_items[2]; /* per-instance: shared static "Info"
                                      * row would leak one instance's .window
                                      * pointer into another's menu */
   wuss_menu_t        menu;
+  /* "Light" submenu: one row per light, then On */
+  wuss_menu_item_t   light_items[SPHEROID_NLIGHTS + 1];
+  wuss_menu_t        light_menu;
+  int                current;    /* index of the light a drag moves */
+  int                dragging;   /* non-zero while a Select drag is live */
   spheroid_light_t   lights[SPHEROID_NLIGHTS];
   colour_t           sphere;     /* surface colour */
   colour_t           background; /* colour outside the sphere */
