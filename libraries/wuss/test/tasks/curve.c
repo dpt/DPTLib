@@ -479,9 +479,8 @@ static result_t curve_menu_select(curve_task_t       *task,
       event->data.menu_select.index == CURVE_MENU_HULL)
   {
     task->hull = !task->hull;
-    if (wuss_menu_should_keep_open(event))
-      wuss_menu_tick_item_live(task->menu_handle, &task->menu,
-                               CURVE_MENU_HULL, task->hull);
+    wuss_menu_tick_item_live(task->menu_handle, &task->menu,
+                             CURVE_MENU_HULL, task->hull);
     if (task->window != NULL)
       wuss_window_invalidate_visible(task->window);
     return result_OK;
@@ -504,9 +503,8 @@ static result_t curve_menu_select(curve_task_t       *task,
   if (event->data.menu_select.menu == &task->type_menu)
   {
     task->npoints = CURVE_MINCONTROLPTS + event->data.menu_select.index;
-    if (wuss_menu_should_keep_open(event))
-      wuss_menu_tick_exclusive_live(task->menu_handle, &task->type_menu,
-                                    event->data.menu_select.index);
+    wuss_menu_tick_exclusive_live(task->menu_handle, &task->type_menu,
+                                  event->data.menu_select.index);
     if (task->window != NULL)
       wuss_window_invalidate_visible(task->window);
     return result_OK;

@@ -852,9 +852,8 @@ static result_t saturn_menu_select(saturn_task_t      *task,
       event->data.menu_select.index == SATURN_MENU_ANIMATE)
   {
     task->animate = !task->animate;
-    if (wuss_menu_should_keep_open(event))
-      wuss_menu_tick_item_live(task->menu_handle, &task->menu,
-                               SATURN_MENU_ANIMATE, task->animate);
+    wuss_menu_tick_item_live(task->menu_handle, &task->menu,
+                             SATURN_MENU_ANIMATE, task->animate);
     return result_OK;
   }
 

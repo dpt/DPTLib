@@ -326,9 +326,8 @@ static result_t lissajous_menu_select(lissajous_task_t   *lc,
   if (event->data.menu_select.menu == &lc->ratio_menu)
   {
     lissajous_set_freq(lc, event->data.menu_select.index);
-    if (wuss_menu_should_keep_open(event))
-      wuss_menu_tick_exclusive_live(lc->menu_handle, &lc->ratio_menu,
-                                    lc->freq_index);
+    wuss_menu_tick_exclusive_live(lc->menu_handle, &lc->ratio_menu,
+                                  lc->freq_index);
     return result_OK;
   }
 
@@ -355,9 +354,8 @@ static result_t lissajous_toggle_pause(lissajous_task_t   *lc,
 {
   lc->paused = !lc->paused;
 
-  if (wuss_menu_should_keep_open(event))
-    wuss_menu_tick_item_live(lc->menu_handle, &lc->menu, LISSAJOUS_MENU_PAUSE,
-                             lc->paused);
+  wuss_menu_tick_item_live(lc->menu_handle, &lc->menu, LISSAJOUS_MENU_PAUSE,
+                           lc->paused);
 
   return result_OK;
 }

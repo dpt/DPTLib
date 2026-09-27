@@ -197,8 +197,7 @@ static result_t chars_set_page(chars_task_t       *task,
   task->page = task->page_bases[idx];
   chars_resize(task);
 
-  if (wuss_menu_should_keep_open(event))
-    wuss_menu_tick_exclusive_live(task->menu_handle, &task->page_menu, idx);
+  wuss_menu_tick_exclusive_live(task->menu_handle, &task->page_menu, idx);
 
   return result_OK;
 }
@@ -571,22 +570,17 @@ result_t chars_handle(wuss_window_t      *window,
 
       rc = chars_set_font(cc, event->data.menu_select.index, name);
 
-      if (wuss_menu_should_keep_open(event))
-        /* ADJUST keeps the chain open without rebuilding it, so the
-         * fresh-open tick set in chars_pre_submenu_open is now stale on
-         * screen; retick the still-open font level in place to match
-         * cc->current. Use the event's own menu, not a fresh
-         * chars_fontmenu(cc) -- that can rebuild the fontmenu singleton at
-         * a new address while this handle's chain node still points at the
-         * old one, which would leave the open submenu's node->menu
-         * dangling. */
-        wuss_menu_tick_exclusive_live(cc->menu_handle,
-                                      event->data.menu_select.menu,
-                                      cc->current);
-      else
-        /* SELECT has already closed and freed the chain by the time this
-         * event arrives; the handle is stale, don't touch it */
-        cc->menu_handle = NULL;
+      /* ADJUST keeps the chain open without rebuilding it, so the fresh-open
+       * tick set in chars_pre_submenu_open is now stale on screen; retick
+       * the still-open font level in place to match cc->current (a no-op
+       * once a SELECT pick has closed the chain). Use the event's own menu,
+       * not a fresh chars_fontmenu(cc) -- that can rebuild the fontmenu
+       * singleton at a new address while this handle's chain node still
+       * points at the old one, which would leave the open submenu's
+       * node->menu dangling. */
+      wuss_menu_tick_exclusive_live(cc->menu_handle,
+                                    event->data.menu_select.menu,
+                                    cc->current);
 
       return rc;
     }

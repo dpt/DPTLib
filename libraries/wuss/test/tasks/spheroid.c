@@ -1259,9 +1259,8 @@ static result_t spheroid_menu_select(spheroid_task_t    *task,
   if (event->data.menu_select.menu == &task->dither_menu)
   {
     task->dithering = (screen_dither_t) index;
-    if (wuss_menu_should_keep_open(event))
-      wuss_menu_tick_exclusive_live(task->menu_handle, &task->dither_menu,
-                                    index);
+    wuss_menu_tick_exclusive_live(task->menu_handle, &task->dither_menu,
+                                  index);
     spheroid_invalidate_preview(task);
     return result_OK;
   }
@@ -1279,9 +1278,8 @@ static result_t spheroid_menu_select(spheroid_task_t    *task,
 
   spheroid_sync_light(task);
 
-  if (wuss_menu_should_keep_open(event))
-    wuss_menu_tick_set_live(task->menu_handle, &task->light_menu,
-                            spheroid_light_ticks(task));
+  wuss_menu_tick_set_live(task->menu_handle, &task->light_menu,
+                          spheroid_light_ticks(task));
 
   spheroid_invalidate_preview(task);
 

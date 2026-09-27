@@ -387,8 +387,7 @@ static result_t clock_toggle(clock_task_t *cc, const wuss_event_t *event)
     flag = &cc->twelve_hour;
   *flag = !*flag;
 
-  if (wuss_menu_should_keep_open(event))
-    wuss_menu_tick_item_live(cc->menu_handle, &cc->menu, index, *flag);
+  wuss_menu_tick_item_live(cc->menu_handle, &cc->menu, index, *flag);
 
   if (cc->window != NULL)
     wuss_window_invalidate_visible(cc->window);

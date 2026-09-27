@@ -352,9 +352,8 @@ result_t patterns_handle(wuss_window_t      *window,
                event->data.menu_select.index == PATTERNS_MENU_PAUSE)
       {
         bc->paused = !bc->paused;
-        if (wuss_menu_should_keep_open(event))
-          wuss_menu_tick_item_live(bc->menu_handle, &bc->menu,
-                                   PATTERNS_MENU_PAUSE, bc->paused);
+        wuss_menu_tick_item_live(bc->menu_handle, &bc->menu,
+                                 PATTERNS_MENU_PAUSE, bc->paused);
       }
       else if (event->data.menu_select.menu == &bc->menu &&
                event->data.menu_select.index == PATTERNS_MENU_SAVE)
@@ -362,8 +361,6 @@ result_t patterns_handle(wuss_window_t      *window,
         rc = snapshot_save_png(bc->window, patterns_handle, bc,
                                PATTERNS_SAVE_NAME);
       }
-      if (!wuss_menu_should_keep_open(event))
-        bc->menu_handle = NULL;
       return rc;
     }
 

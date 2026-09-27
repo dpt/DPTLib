@@ -379,32 +379,26 @@ static result_t greeble_menu_select(greeble_task_t     *task,
                                     const wuss_event_t *event)
 {
   result_t rc;
-  int      keep_open;
-
-  keep_open = wuss_menu_should_keep_open(event);
 
   if (event->data.menu_select.menu == &task->palette_menu)
   {
     rc = greeble_set_palette(task, event->data.menu_select.index);
-    if (keep_open)
-      wuss_menu_tick_exclusive_live(task->menu_handle, &task->palette_menu,
-                                    task->palette);
+    wuss_menu_tick_exclusive_live(task->menu_handle, &task->palette_menu,
+                                  task->palette);
   }
   else if (event->data.menu_select.menu == &task->size_menu)
   {
     rc = greeble_set_size(task, event->data.menu_select.index);
-    if (keep_open)
-      wuss_menu_tick_exclusive_live(task->menu_handle, &task->size_menu,
-                                    task->size);
+    wuss_menu_tick_exclusive_live(task->menu_handle, &task->size_menu,
+                                  task->size);
   }
   else if (event->data.menu_select.menu == &task->menu &&
            event->data.menu_select.index == GREEBLE_MENU_RANDPAL)
   {
     rc = greeble_toggle_randpal(task, task->window);
-    if (keep_open)
-      wuss_menu_tick_item_live(task->menu_handle, &task->menu,
-                               GREEBLE_MENU_RANDPAL,
-                               task->random_prefab_palettes);
+    wuss_menu_tick_item_live(task->menu_handle, &task->menu,
+                             GREEBLE_MENU_RANDPAL,
+                             task->random_prefab_palettes);
   }
   else if (event->data.menu_select.menu == &task->menu &&
            event->data.menu_select.index == GREEBLE_MENU_SAVE)
@@ -416,9 +410,6 @@ static result_t greeble_menu_select(greeble_task_t     *task,
   {
     return result_OK;
   }
-
-  if (!keep_open)
-    task->menu_handle = NULL;
 
   return rc;
 }

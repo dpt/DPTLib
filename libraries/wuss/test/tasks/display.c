@@ -383,8 +383,6 @@ result_t display_handle(wuss_window_t      *window,
     if (display_offer(dc, event, &rc))
       return rc;
 
-    if (!wuss_menu_should_keep_open(event))
-      dc->menu_handle = NULL;
     return result_OK; /* Info is a submenu only; nothing to act on */
 
   case wuss_EVENT_MENU_CLOSED:

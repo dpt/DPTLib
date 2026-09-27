@@ -383,8 +383,6 @@ result_t image_handle(wuss_window_t      *window,
       {
         ic->background = picked;
         wuss_window_invalidate_visible(ic->window);
-        if (!wuss_menu_should_keep_open(event))
-          ic->menu_handle = NULL; /* SELECT pick already freed the chain */
         return result_OK;
       }
     }
@@ -396,23 +394,16 @@ result_t image_handle(wuss_window_t      *window,
       result_t rc;
 
       rc = image_show(ic, index);
-      if (!wuss_menu_should_keep_open(event))
-        ic->menu_handle = NULL; /* SELECT pick already freed the chain */
-      else
-        wuss_menu_tick_exclusive_live(ic->menu_handle, &ic->load_menu,
-                                      ic->index);
+      wuss_menu_tick_exclusive_live(ic->menu_handle, &ic->load_menu,
+                                    ic->index);
       return rc;
     }
     if (menu == &ic->dither_menu)
     {
       ic->dithering = (screen_dither_t) index;
       wuss_window_invalidate_visible(ic->window);
-      if (wuss_menu_should_keep_open(event))
-        wuss_menu_tick_exclusive_live(ic->menu_handle, &ic->dither_menu,
-                                      index);
+      wuss_menu_tick_exclusive_live(ic->menu_handle, &ic->dither_menu, index);
     }
-    if (!wuss_menu_should_keep_open(event))
-      ic->menu_handle = NULL; /* SELECT pick already freed the chain */
     return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
