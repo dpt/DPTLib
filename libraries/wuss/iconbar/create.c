@@ -60,15 +60,18 @@ static result_t iconbar_window_ensure(wuss_t *wuss)
   if (task == NULL)
     return result_OOM;
 
-  content.x0 = 0;
-  content.y0 = wuss->scr->size.h - WUSS_ICONBAR_HEIGHT;
-  content.x1 = wuss->scr->size.w;
-  content.y1 = wuss->scr->size.h;
+  /* inset by WUSS_ICONBAR_OUTLINE so the outline furniture wuss_window_create
+   * grows the box by lands exactly on the strip's edges, keeping the bar's
+   * visible box flush to the screen's bottom/sides as before. */
+  content.x0 = WUSS_ICONBAR_OUTLINE;
+  content.y0 = wuss->scr->size.h - WUSS_ICONBAR_HEIGHT + WUSS_ICONBAR_OUTLINE;
+  content.x1 = wuss->scr->size.w - WUSS_ICONBAR_OUTLINE;
+  content.y1 = wuss->scr->size.h - WUSS_ICONBAR_OUTLINE;
 
   rc = wuss_window_create(task, &content, NULL,
-                          wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                          wuss_WINDOW_NO_TITLEBAR |
                           wuss_WINDOW_NO_REDRAW   | wuss_WINDOW_PINNED,
-                          wuss_BACKDROP_COLOUR(wuss_COLOUR_GREY),
+                          wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                           SIZE2D(content.x1 - content.x0,
                                  content.y1 - content.y0),
                           SIZE2D(content.x1 - content.x0,

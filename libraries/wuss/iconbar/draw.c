@@ -28,17 +28,29 @@ void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out)
 
   wuss__iconbar_box(wuss, &bar);
 
-  out->x0 = bar.x0 + index * WUSS_ICONBAR_SLOT;
+  out->x0 = bar.x0 + WUSS_ICONBAR_GAP + index * WUSS_ICONBAR_SLOT;
   out->y0 = bar.y0;
   out->x1 = out->x0 + WUSS_ICONBAR_SLOT;
   out->y1 = bar.y1;
+}
+
+void wuss__iconbar_icon_box(const wuss_t *wuss, int index, box_t *out)
+{
+  box_t slot;
+
+  wuss__iconbar_slot_box(wuss, index, &slot);
+
+  out->x0 = slot.x0;
+  out->y0 = slot.y0 + WUSS_ICONBAR_OUTLINE + WUSS_ICONBAR_TOP_SPARE;
+  out->x1 = out->x0 + WUSS_ICONBAR_ICON;
+  out->y1 = out->y0 + WUSS_ICONBAR_ICON;
 }
 
 /* ----------------------------------------------------------------------- */
 
 static void iconbar_draw_icon(wuss_t                    *wuss,
                               const wuss_iconbar_icon_t *icon,
-                              const box_t               *slot)
+                              const box_t               *icon_box)
 {
   colour_t face, light, dark, ink;
   int      pressed;
@@ -50,9 +62,10 @@ static void iconbar_draw_icon(wuss_t                    *wuss,
   dark  = wuss->palette[wuss__resolve_colour(wuss, wuss_COLOUR_BLACK)];
   ink   = dark;
 
-  screen_fill_rect(wuss->scr, slot->x0, slot->y0, box_size(slot), face);
-  screen_draw_bevel_edge(wuss->scr, slot, pressed ? dark : light,
-                                         pressed ? light : dark);
+  screen_fill_rect(wuss->scr, icon_box->x0, icon_box->y0,
+                              box_size(icon_box), face);
+  screen_draw_bevel_edge(wuss->scr, icon_box, pressed ? dark : light,
+                                             pressed ? light : dark);
 
   if (icon->spec.image != NULL)
   {
@@ -60,7 +73,7 @@ static void iconbar_draw_icon(wuss_t                    *wuss,
     screen_t clipped;
     int      x, y;
 
-    inner = box_grown(slot, -WUSS_ICONBAR_BEVEL);
+    inner = box_grown(icon_box, -WUSS_ICONBAR_BEVEL);
     clipped = *wuss->scr;
     if (box_intersection(&wuss->scr->clip, &inner, &clipped.clip))
       return;
@@ -82,8 +95,8 @@ static void iconbar_draw_icon(wuss_t                    *wuss,
     wuss__text_measure(font, icon->spec.text, len, INT_MAX, NULL, &width);
     bmfont_get_info(font, NULL, NULL, &ascent, NULL);
 
-    pos.x = slot->x0 + ((slot->x1 - slot->x0) - (int) width) / 2;
-    pos.y = slot->y1 - WUSS_ICONBAR_BEVEL - WUSS_ICONBAR_TEXT_PAD;
+    pos.x = icon_box->x0 + ((icon_box->x1 - icon_box->x0) - (int) width) / 2;
+    pos.y = icon_box->y1 + WUSS_ICONBAR_TEXT_PAD + ascent;
     wuss__text_draw(font, wuss->scr, icon->spec.text, len, ink, face, &pos,
                     NULL);
   }
@@ -95,16 +108,17 @@ void wuss__iconbar_draw_icons(wuss_t *wuss, const box_t *piece)
 
   for (i = 0; i < wuss->niconbar_icons; i++)
   {
-    box_t slot;
+    box_t slot, icon_box, clipped;
 
     wuss__iconbar_slot_box(wuss, i, &slot);
     if (slot.x0 >= wuss->scr->size.w)
       break;
 
-    if (box_intersection(piece, &slot, &slot))
+    if (box_intersection(piece, &slot, &clipped))
       continue;
 
-    iconbar_draw_icon(wuss, wuss->iconbar_icons[i], &slot);
+    wuss__iconbar_icon_box(wuss, i, &icon_box);
+    iconbar_draw_icon(wuss, wuss->iconbar_icons[i], &icon_box);
   }
 }
 

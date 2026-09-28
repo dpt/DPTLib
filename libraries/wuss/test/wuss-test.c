@@ -8173,14 +8173,15 @@ QuitFail:
         goto Failure;
     }
 
-    /* a click on the icon itself (below win_over's strip) reaches it */
+    /* a click on the icon itself (below win_over's strip) reaches it --
+     * past the bar's WUSS_ICONBAR_GAP leading gap */
     tc_bar.icon_count = 0;
-    rc = wuss_mouse_click(wuss, POINT(10, 199), wuss_BUTTON_SELECT,
-                          wuss_MOUSE_DOWN, NULL);
+    rc = wuss_mouse_click(wuss, POINT(WUSS_ICONBAR_GAP + 10, 199),
+                          wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
     if (rc != result_OK)
       goto Failure;
-    rc = wuss_mouse_click(wuss, POINT(10, 199), wuss_BUTTON_SELECT,
-                          wuss_MOUSE_UP, NULL);
+    rc = wuss_mouse_click(wuss, POINT(WUSS_ICONBAR_GAP + 10, 199),
+                          wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
     if (rc != result_OK || tc_bar.icon_count == 0)
       goto Failure;
 
