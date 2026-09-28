@@ -1197,6 +1197,43 @@ static result_t test_copy_bitmap_p8(void)
 #undef P8_ROWBYTES
 }
 
+/* screen_copy_bitmap with a bgra8888 / bgrx8888 source onto an rgbx8888
+ * screen: the source's R and B must be swapped back, so red lands as red */
+static result_t test_copy_bitmap_bgr_source(void)
+{
+  static const pixelfmt_t fmts[] = { pixelfmt_bgra8888, pixelfmt_bgrx8888 };
+  static pixelfmt_any32_t scrbuf[WIDTH * HEIGHT];
+
+  pixelfmt_any32_t srcpx;
+  colour_t         red;
+  screen_t         scr;
+  bitmap_t         src;
+  size_t           i;
+
+  srcpx = PIXELFMT_MAKE_BGRA8888(0xFF, 0x00, 0x00, 0xFF);
+  red   = colour_rgb(0xFF, 0x00, 0x00);
+
+  for (i = 0; i < NELEMS(fmts); i++)
+  {
+    bitmap_init(&src, SIZE2D(1, 1), fmts[i], (int) sizeof(srcpx), NULL,
+                &srcpx);
+
+    memset(scrbuf, 0, sizeof(scrbuf));
+    screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_rgbx8888,
+                WIDTH * (int) sizeof(scrbuf[0]), NULL, scrbuf);
+
+    if (screen_copy_bitmap(&scr, 0, 0, &src) != result_OK ||
+        scrbuf[0] != red.primary)
+    {
+      printf("screen: bgr-source blit (fmt %d) got 0x%08X want 0x%08X\n",
+             (int) fmts[i], scrbuf[0], red.primary);
+      return result_TEST_FAILED;
+    }
+  }
+
+  return result_TEST_PASSED;
+}
+
 /* screen_copy_bitmap with a *paletted* source (p4) onto a 32bpp screen: the
  * unpack path in screen_copy_bitmap_i must decode the packed source indices
  * through its own palette before the 32bpp blit runs, landing exact colours
@@ -1614,6 +1651,7 @@ result_t screen_test(const char *resources)
     test_copy_bitmap_p2,
     test_copy_bitmap_p8,
     test_copy_bitmap_paletted_source,
+    test_copy_bitmap_bgr_source,
     test_copy_bitmap_dithered,
     test_copy_rect_packed,
     test_fill_span_p4,

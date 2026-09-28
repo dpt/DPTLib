@@ -291,10 +291,9 @@ static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   return rc;
 }
 
-/* As bmconv_p8_to_bgrx8888 but into rgbx8888 -- for a caller (e.g.
- * screen_copy_bitmap) that assumes the R,G,B,A/X byte order documented on
- * bitmap_load_png(), rather than the SDL-display byte order the *_to_bgrx8888
- * family targets. */
+/* As bmconv_p8_to_bgrx8888 but into rgbx8888 -- for a caller wanting the
+ * R,G,B,A/X byte order documented on bitmap_load_png(), rather than the
+ * SDL-display byte order the *_to_bgrx8888 family targets. */
 static result_t bmconv_p8_to_rgbx8888_into(const bitmap_t *src,
                                            bitmap_t       *dst)
 {
