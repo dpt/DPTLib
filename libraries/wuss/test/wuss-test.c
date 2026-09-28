@@ -2788,6 +2788,99 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_g);
   }
 
+  printf("test: toggle-size grow-in-place (no scroll re-clamp) never queues two dirty rects covering the same furniture pixels\n");
+
+  {
+    /* A grow-in-place toggle (top-left unchanged) takes the blit fast path
+     * in toggle-action.c: wuss__invalidate_minus(&before_content, &copied)
+     * queues the vacated content sliver, then wuss__furniture_invalidate
+     * queues the reflowed furniture strips at (unchanged) window->visible.
+     * Before the fix, the first call was passed &before (the whole old
+     * visible box, furniture included) instead of &before_content, so the
+     * old titlebar/outline/scrollbar strips got queued twice -- once from
+     * that call, once from wuss__furniture_invalidate -- as two rects that
+     * mark_region's containment/shared-edge merge doesn't fold together,
+     * so wuss_redraw_dirty painted the overlap twice. */
+    static test_task_t tc_h;
+    wuss_task_t       *delegate_h;
+    box_t              box_h, before_h, titlebar_h, toggle_h;
+    wuss_window_t     *win_h;
+    int                outline_px, titlebar_height, inset, icon, cx, cy;
+    int                i, j, overlap;
+
+    tc_h.redraw_count = 0;
+    tc_h.mouse_count  = 0;
+    delegate_h = mk_task(wuss, test_handle, &tc_h);
+    if (delegate_h == NULL) goto Failure;
+
+    /* doc capped at 150x150 (as in the "toggle-size blits" test above) so
+     * growing has room to stay put without the screen-edge nudge moving the
+     * top-left -- the blitted branch runs, no scroll re-clamp */
+    box_h.x0 = 10; box_h.y0 = 10;
+    box_h.x1 = 50; box_h.y1 = 50;
+    rc = wuss_window_create(delegate_h, &box_h, "H", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(150, 150), SIZE2D(0, 0), &win_h);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush the create's own invalidate */
+    if (rc != result_OK)
+      goto Failure;
+
+    outline_px      = 1;
+    titlebar_height = 20;
+    inset           = 3;
+    icon            = titlebar_height - 2 * inset;
+
+    /* box_h is the content box passed to create, not the actual (possibly
+     * nudged-on-screen) visible box -- read it back for real coordinates */
+    wuss_window_get_visible_bounds(win_h, &before_h);
+    titlebar_h.x0 = before_h.x0 + outline_px;
+    titlebar_h.x1 = before_h.x1 - outline_px;
+    titlebar_h.y0 = before_h.y0 + outline_px;
+    toggle_h.x1 = titlebar_h.x1 - inset;
+    toggle_h.x0 = toggle_h.x1 - icon;
+    toggle_h.y0 = titlebar_h.y0 + inset;
+    toggle_h.y1 = toggle_h.y0 + icon;
+    cx = (toggle_h.x0 + toggle_h.x1) / 2;
+    cy = (toggle_h.y0 + toggle_h.y1) / 2;
+
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* H's toggle-size icon: grow in place */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_h)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    overlap = 0;
+    for (i = 0; i < wuss_get_dirty_count(wuss) && !overlap; i++)
+    {
+      box_t region_i;
+
+      wuss_get_dirty(wuss, i, &region_i);
+      for (j = i + 1; j < wuss_get_dirty_count(wuss) && !overlap; j++)
+      {
+        box_t region_j, ignored;
+
+        wuss_get_dirty(wuss, j, &region_j);
+        if (box_intersection(&region_i, &region_j, &ignored) == 0)
+          overlap = 1;
+      }
+    }
+    if (overlap)
+      goto Failure; /* two dirty rects cover the same screen pixels --
+                      * wuss_redraw_dirty will paint that overlap twice */
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_h);
+  }
+
   printf("test: wuss_window_resize on a topmost window at max scroll blits the still-valid content rather than redrawing it all\n");
 
   {
