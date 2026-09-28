@@ -264,6 +264,12 @@ result_t wuss_frontend_open(int               width,
     goto failure;
   }
 
+  /* Without this, SDL swallows the very click that gives the window OS
+   * input focus -- on macOS especially, launching or re-activating the app
+   * drops the first click on it, which looked like a random "missed initial
+   * click" bug. */
+  SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+
   fe->window = SDL_CreateWindow(WUSS_WINDOW_TITLE,
                                 width * fe->scale, height * fe->scale, 0);
   if (fe->window == NULL)
