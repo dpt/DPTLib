@@ -28,12 +28,20 @@
 enum
 {
   PARTICLES_MENU_INFO,
-  PARTICLES_MENU_ADD_EMITTER,
+  PARTICLES_MENU_ADD,
   PARTICLES_MENU_BACKGROUND,
   PARTICLES_MENU_PAUSE,
   PARTICLES_MENU_GRAVITY,
   PARTICLES_MENU_WALLS,
   PARTICLES_MENU_CLEAR
+};
+
+/* "Add" submenu rows */
+enum
+{
+  PARTICLES_ADD_EMITTER,
+  PARTICLES_ADD_REPELLER,
+  PARTICLES_ADD_ATTRACTOR
 };
 
 /* "Gravity" submenu rows: each scales every style's own gravity */
@@ -67,6 +75,24 @@ particles_intensities[] =
   { "Medium", 20.0f },
   { "High",   80.0f }
 };
+
+/* "Add repeller"/"Add attractor" submenu rows; picking one adds a repeller
+ * (attractor: create_repeller with strength negated -- same force, opposite
+ * sign) at that strength. max_distance is fixed -- only strength is offered
+ * as a choice, as intensity is for an emitter. */
+static const struct
+{
+  const char *name;
+  float       strength;
+}
+particles_repeller_strengths[] =
+{
+  { "Low",     500.0f },
+  { "Medium", 2000.0f },
+  { "High",   8000.0f }
+};
+
+#define PARTICLES_REPELLER_MAX_DISTANCE 100.0f
 
 /* styles, in the order particles_init_styles sets them up */
 enum
@@ -298,8 +324,32 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   WUSS_MENU_TITLE(task->emitter_menu, "Intensity", task->emitter_items,
                  NELEMS(task->emitter_items));
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_ADD_EMITTER,
-                      "Add emitter", wuss_MENU_ITEM_NONE, &task->emitter_menu);
+  for (i = 0; i < NELEMS(task->repeller_items); i++)
+    WUSS_MENU_ITEM(task->repeller_items, i,
+                   particles_repeller_strengths[i].name, wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->repeller_menu, "Strength", task->repeller_items,
+                 NELEMS(task->repeller_items));
+
+  for (i = 0; i < NELEMS(task->attractor_items); i++)
+    WUSS_MENU_ITEM(task->attractor_items, i,
+                   particles_repeller_strengths[i].name, wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->attractor_menu, "Strength", task->attractor_items,
+                 NELEMS(task->attractor_items));
+
+  WUSS_MENU_ITEM_MENU(task->add_items, PARTICLES_ADD_EMITTER, "Emitter",
+                      wuss_MENU_ITEM_NONE, &task->emitter_menu);
+  WUSS_MENU_ITEM_MENU(task->add_items, PARTICLES_ADD_REPELLER, "Repeller",
+                      wuss_MENU_ITEM_NONE, &task->repeller_menu);
+  WUSS_MENU_ITEM_MENU(task->add_items, PARTICLES_ADD_ATTRACTOR, "Attractor",
+                      wuss_MENU_ITEM_NONE, &task->attractor_menu);
+
+  WUSS_MENU_TITLE(task->add_menu, "Add", task->add_items,
+                 NELEMS(task->add_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_ADD, "Add",
+                      wuss_MENU_ITEM_NONE, &task->add_menu);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
@@ -318,8 +368,8 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, PARTICLES_MENU_GRAVITY, "Gravity",
                       wuss_MENU_ITEM_NONE, &task->gravity_menu);
 
-  WUSS_MENU_ITEM(task->menu_items, PARTICLES_MENU_WALLS, "Walls",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PARTICLES_MENU_WALLS, "Walls",
+                          wuss_MENU_ITEM_NONE, "W");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PARTICLES_MENU_CLEAR, "Clear",
                           wuss_MENU_ITEM_NONE, "C");
@@ -476,8 +526,10 @@ static result_t particles_mouse(wuss_window_t      *window,
 }
 
 /* a Background pick sets the fill; a "Gravity" pick sets the strength; an
- * "Add emitter" submenu pick adds a steady smoke emitter, as Explosion's
- * playground sets up, at the menu's opening point */
+ * "Add > Emitter" pick adds a steady smoke emitter, as Explosion's
+ * playground sets up, at the menu's opening point; "Add > Repeller" and
+ * "Add > Attractor" add a repeller there instead, the latter just the
+ * former with strength negated */
 /* A "Gravity" pick: rebuild the styles from scratch, then scale each one's
  * own gravity, so strengths never compound. Particles already in flight pick
  * up the change on the next physics step, as the engine reads gravity from
@@ -508,6 +560,32 @@ static result_t particles_menu_select(particles_task_t   *pt,
   if (event->data.menu_select.menu == &pt->gravity_menu)
   {
     particles_set_gravity(pt, event);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &pt->repeller_menu)
+  {
+    index = event->data.menu_select.index;
+    if (index < 0 || index >= NELEMS(particles_repeller_strengths))
+      return result_OK;
+
+    create_repeller(&pt->ps, pt->menu_x, pt->menu_y,
+                    particles_repeller_strengths[index].strength,
+                    PARTICLES_REPELLER_MAX_DISTANCE);
+
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &pt->attractor_menu)
+  {
+    index = event->data.menu_select.index;
+    if (index < 0 || index >= NELEMS(particles_repeller_strengths))
+      return result_OK;
+
+    create_repeller(&pt->ps, pt->menu_x, pt->menu_y,
+                    -particles_repeller_strengths[index].strength,
+                    PARTICLES_REPELLER_MAX_DISTANCE);
+
     return result_OK;
   }
 
