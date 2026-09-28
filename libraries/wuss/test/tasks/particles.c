@@ -10,6 +10,8 @@
 
 #include "base/utils.h"
 #include "geom/box.h"
+#include "geom/size.h"
+#include "geom/stack.h"
 
 #include "common.h"
 #include "particles.h"
@@ -40,8 +42,8 @@ enum
 enum
 {
   PARTICLES_ADD_EMITTER,
-  PARTICLES_ADD_REPELLER,
-  PARTICLES_ADD_ATTRACTOR
+  PARTICLES_ADD_ATTRACTOR,
+  PARTICLES_ADD_REPELLER
 };
 
 /* "Gravity" submenu rows: each scales every style's own gravity */
@@ -76,23 +78,36 @@ particles_intensities[] =
   { "High",   80.0f }
 };
 
-/* "Add repeller"/"Add attractor" submenu rows; picking one adds a repeller
- * (attractor: create_repeller with strength negated -- same force, opposite
- * sign) at that strength. max_distance is fixed -- only strength is offered
- * as a choice, as intensity is for an emitter. */
-static const struct
+/* Add > Attractor/Repeller's shared Strength dialogue: a 1..100 slider,
+ * scaled to a force strength (attractor: create_repeller with strength
+ * negated -- same force, opposite sign). max_distance is fixed -- only
+ * strength is offered, as intensity is for an emitter. */
+#define PARTICLES_STRENGTH_MIN         1
+#define PARTICLES_STRENGTH_MAX         100
+#define PARTICLES_STRENGTH_SCALE       1000.0f /* slider value -> strength */
+#define PARTICLES_STRENGTH_DEFAULT     20
+#define PARTICLES_REPELLER_MAX_DISTANCE 100.0f
+
+/* the Strength dialogue's icons, in creation order (see
+ * particles_strength_dialogue_create) */
+enum
 {
-  const char *name;
-  float       strength;
-}
-particles_repeller_strengths[] =
-{
-  { "Low",     500.0f },
-  { "Medium", 2000.0f },
-  { "High",   8000.0f }
+  PARTICLES_STRENGTH_ICON_LABEL = 0,
+  PARTICLES_STRENGTH_ICON_SLIDER,
+  PARTICLES_STRENGTH_ICON_VALUE,
+
+  PARTICLES_STRENGTH_ICON_CANCEL,
+  PARTICLES_STRENGTH_ICON_APPLY,
+
+  PARTICLES_STRENGTH_NICONS
 };
 
-#define PARTICLES_REPELLER_MAX_DISTANCE 100.0f
+static result_t particles_strength_dialogue_create(particles_task_t *task);
+static result_t particles_strength_fillout(void *opaque);
+static result_t particles_strength_cancel(void         *opaque,
+                                          wuss_button_t button);
+static result_t particles_strength_apply_action(void         *opaque,
+                                                wuss_button_t button);
 
 /* styles, in the order particles_init_styles sets them up */
 enum
@@ -324,26 +339,12 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   WUSS_MENU_TITLE(task->emitter_menu, "Intensity", task->emitter_items,
                  NELEMS(task->emitter_items));
 
-  for (i = 0; i < NELEMS(task->repeller_items); i++)
-    WUSS_MENU_ITEM(task->repeller_items, i,
-                   particles_repeller_strengths[i].name, wuss_MENU_ITEM_NONE);
-
-  WUSS_MENU_TITLE(task->repeller_menu, "Strength", task->repeller_items,
-                 NELEMS(task->repeller_items));
-
-  for (i = 0; i < NELEMS(task->attractor_items); i++)
-    WUSS_MENU_ITEM(task->attractor_items, i,
-                   particles_repeller_strengths[i].name, wuss_MENU_ITEM_NONE);
-
-  WUSS_MENU_TITLE(task->attractor_menu, "Strength", task->attractor_items,
-                 NELEMS(task->attractor_items));
-
   WUSS_MENU_ITEM_MENU(task->add_items, PARTICLES_ADD_EMITTER, "Emitter",
                       wuss_MENU_ITEM_NONE, &task->emitter_menu);
-  WUSS_MENU_ITEM_MENU(task->add_items, PARTICLES_ADD_REPELLER, "Repeller",
-                      wuss_MENU_ITEM_NONE, &task->repeller_menu);
-  WUSS_MENU_ITEM_MENU(task->add_items, PARTICLES_ADD_ATTRACTOR, "Attractor",
-                      wuss_MENU_ITEM_NONE, &task->attractor_menu);
+  WUSS_MENU_ITEM(task->add_items, PARTICLES_ADD_ATTRACTOR, "Attractor",
+                wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
+  WUSS_MENU_ITEM(task->add_items, PARTICLES_ADD_REPELLER, "Repeller",
+                wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
 
   WUSS_MENU_TITLE(task->add_menu, "Add", task->add_items,
                  NELEMS(task->add_items));
@@ -377,6 +378,19 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   WUSS_MENU_TITLE(task->menu, "Particles", task->menu_items,
                  NELEMS(task->menu_items));
 
+  rc = particles_strength_dialogue_create(task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate); /* unregisters; its QUIT frees the task
+                                  * block, its window too */
+    return rc;
+  }
+
+  task->add_items[PARTICLES_ADD_ATTRACTOR].window =
+    wuss_dialogue_window(task->strength_dialogue);
+  task->add_items[PARTICLES_ADD_REPELLER].window =
+    wuss_dialogue_window(task->strength_dialogue);
+
   if (out)
     *out = task;
 
@@ -385,7 +399,220 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
 
 void particles_destroy(particles_task_t *task)
 {
+  wuss_dialogue_destroy(task->strength_dialogue);
   free(task);
+}
+
+/* stack items for the Strength dialogue's layout: a label/slider/value-echo
+ * row above a Cancel/Apply button row, as saturn's g_saturn_conf_stack */
+enum
+{
+  PST_ROOT,
+
+  PST_ROW,
+  PST_LABL,
+  PST_SLDR,
+  PST_VAL,
+
+  PST_BTNS,
+  PST_CNCL,
+  PST_APLY,
+
+  PARTICLES_STRENGTH_STACK__LIMIT
+};
+
+#define PST_LABEL_W      (8*6) /* enough for "Strength" */
+#define PST_VALUE_W       (3*6) /* enough for "100" */
+#define PST_SLIDER_MIN_W (64)
+#define PST_CHAR_W        6 /* ponytail: assumes the 6px system font */
+#define PST_ACTION_WIDTH(W)  ((W)*PST_CHAR_W+2*wuss_STD_SECONDARY_BUTTON_BORDER)
+#define PST_DEFAULT_WIDTH(W) ((W)*PST_CHAR_W+2*wuss_STD_PRIMARY_BUTTON_BORDER)
+#define PST_CANCEL_W     PST_ACTION_WIDTH(9)
+#define PST_APPLY_W      PST_DEFAULT_WIDTH(9)
+
+static const stack_item_t g_particles_strength_stack[PARTICLES_STRENGTH_STACK__LIMIT] =
+{
+  [PST_ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
+               .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
+
+  [PST_ROW]  = STACK_HBOX(PST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
+  [PST_LABL] = STACK_LEAF(PST_ROW, PST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [PST_SLDR] = STACK_LEAF_EX(PST_ROW, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, PST_SLIDER_MIN_W, 0),
+  [PST_VAL]  = STACK_LEAF(PST_ROW, PST_VALUE_W, 16, stack_ALIGN_CENTRE),
+
+  [PST_BTNS] = STACK_HBOX(PST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
+  [PST_CNCL] = STACK_LEAF(PST_BTNS, PST_CANCEL_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [PST_APLY] = STACK_LEAF(PST_BTNS, PST_APPLY_W, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+};
+
+/* Build the Strength dialogue once: a label, a slider 1..100, a label
+ * echoing its current value, and Cancel/Apply buttons, positioned by
+ * stack_solve. Created hidden -- wuss shows and hides it itself, as a
+ * borrowed window shared by both the Attractor and Repeller menu leaves
+ * (see task->add_items[PARTICLES_ADD_ATTRACTOR/REPELLER].window), so it
+ * must outlive the open menu chain and is never closed here, only
+ * hidden. */
+static result_t particles_strength_dialogue_create(particles_task_t *task)
+{
+  result_t         rc;
+  wuss_icon_spec_t specs[PARTICLES_STRENGTH_NICONS];
+  wuss_icon_t     *made[PARTICLES_STRENGTH_NICONS];
+  box_t            boxes[PARTICLES_STRENGTH_STACK__LIMIT];
+  box_t            root;
+  char             value_buf[WUSS_SLIDER_ROW_BUF];
+  size2d_t         min_sz;
+
+  rc = stack_smallest(g_particles_strength_stack,
+                      NELEMS(g_particles_strength_stack), &min_sz);
+  if (rc != result_OK)
+    return rc;
+
+  rc = wuss_dialogue_create(&task->strength_dialogue, task->delegate, min_sz,
+                            "Strength", particles_strength_fillout, task);
+  if (rc != result_OK)
+    return rc;
+
+  root = (box_t) BOX_POS_SIZE(0, 0, min_sz.w, min_sz.h);
+  rc = stack_solve(g_particles_strength_stack,
+                   NELEMS(g_particles_strength_stack), &root, boxes);
+  if (rc != result_OK)
+    goto exit;
+
+  wuss_icon_spec_label(&specs[PARTICLES_STRENGTH_ICON_LABEL], boxes[PST_LABL],
+                       "Strength", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  wuss_icon_spec_slider_row(&specs[PARTICLES_STRENGTH_ICON_SLIDER],
+                            &specs[PARTICLES_STRENGTH_ICON_VALUE],
+                            boxes[PST_SLDR], boxes[PST_VAL],
+                            wuss_SLIDER_HORIZONTAL,
+                            PARTICLES_STRENGTH_MIN, PARTICLES_STRENGTH_MAX,
+                            PARTICLES_STRENGTH_DEFAULT, NULL, 0,
+                            value_buf, sizeof(value_buf));
+
+  wuss_icon_spec_action(&specs[PARTICLES_STRENGTH_ICON_CANCEL], boxes[PST_CNCL], "Cancel", 0);
+  wuss_icon_spec_action(&specs[PARTICLES_STRENGTH_ICON_APPLY], boxes[PST_APLY], "Apply", 1);
+
+  rc = wuss_icon_create_array(wuss_dialogue_window(task->strength_dialogue),
+                              specs, PARTICLES_STRENGTH_NICONS, made);
+  if (rc != result_OK)
+    goto exit;
+
+  wuss_slider_row_bind(&task->strength_row,
+                       made[PARTICLES_STRENGTH_ICON_SLIDER],
+                       made[PARTICLES_STRENGTH_ICON_VALUE], NULL,
+                       PARTICLES_STRENGTH_MIN, PARTICLES_STRENGTH_MAX, 0);
+  task->strength_cancel = made[PARTICLES_STRENGTH_ICON_CANCEL];
+  task->strength_apply  = made[PARTICLES_STRENGTH_ICON_APPLY];
+
+  {
+    wuss_dialogue_action_t actions[2];
+
+    actions[0].icon = task->strength_cancel;
+    actions[0].fn   = particles_strength_cancel;
+    actions[1].icon = task->strength_apply;
+    actions[1].fn   = particles_strength_apply_action;
+
+    rc = wuss_dialogue_set_actions(task->strength_dialogue, actions,
+                                   NELEMS(actions));
+    if (rc != result_OK)
+      goto exit;
+  }
+
+  return result_OK;
+
+
+exit:
+  wuss_dialogue_destroy(task->strength_dialogue); /* not yet a menu leaf: safe to close */
+  task->strength_dialogue = NULL;
+  return rc;
+}
+
+/* Dialogue fillout callback: reset the slider and its echo label to
+ * PARTICLES_STRENGTH_DEFAULT. Called by wuss_dialogue_handle_pre_show on
+ * every reveal, and directly by particles_strength_cancel to reset the
+ * dialogue on an Adjust-Cancel click. */
+static result_t particles_strength_fillout(void *opaque)
+{
+  particles_task_t *task;
+
+  task = opaque;
+
+  return wuss_slider_row_set(wuss_dialogue_window(task->strength_dialogue),
+                             &task->strength_row, PARTICLES_STRENGTH_DEFAULT);
+}
+
+/* Adds the attractor/repeller at the slider's current value, scaled to a
+ * force strength and negated for an attractor, shared by a Select and an
+ * Adjust click on Apply. */
+static void particles_strength_apply(particles_task_t *task)
+{
+  float strength;
+
+  strength = wuss_icon_get_value(task->strength_row.slider) *
+            PARTICLES_STRENGTH_SCALE / PARTICLES_STRENGTH_MAX;
+  if (task->strength_which == PARTICLES_ADD_ATTRACTOR)
+    strength = -strength;
+
+  create_repeller(&task->ps, task->menu_x, task->menu_y, strength,
+                  PARTICLES_REPELLER_MAX_DISTANCE);
+}
+
+/* Dialogue action callback for Cancel, split by button per the RISC OS
+ * "Adjust doesn't dismiss" convention: Select dismisses the menu chain;
+ * Adjust resets the dialogue to the default strength instead. */
+static result_t particles_strength_cancel(void *opaque, wuss_button_t button)
+{
+  particles_task_t *task;
+
+  task = opaque;
+
+  if (button & wuss_BUTTON_SELECT)
+  {
+    wuss_menu_close(task->menu_handle);
+    task->menu_handle = NULL;
+    return result_OK;
+  }
+  if (button & wuss_BUTTON_ADJUST)
+    return particles_strength_fillout(task);
+  return result_OK;
+}
+
+/* Dialogue action callback for Apply: Select applies and dismisses; Adjust
+ * applies but leaves the dialogue open. */
+static result_t particles_strength_apply_action(void         *opaque,
+                                                wuss_button_t button)
+{
+  particles_task_t *task;
+
+  task = opaque;
+
+  if (button & wuss_BUTTON_SELECT)
+  {
+    wuss_menu_close(task->menu_handle);
+    task->menu_handle = NULL;
+    particles_strength_apply(task);
+    return result_OK;
+  }
+  if (button & wuss_BUTTON_ADJUST)
+    particles_strength_apply(task);
+  return result_OK;
+}
+
+/* wuss_EVENT_ICON on the Strength dialogue: slider drag updates the echo
+ * label live on DOWN/MOVE, handled here directly; a Cancel/Apply click (UP
+ * only) is dispatched through the dialogue's action table. */
+static result_t particles_strength_dialogue_icon(particles_task_t   *task,
+                                                 const wuss_event_t *event)
+{
+  result_t rc;
+
+  if (wuss_slider_row_event(wuss_dialogue_window(task->strength_dialogue),
+                            &task->strength_row, event, NULL))
+    return result_OK;
+
+  if (wuss_dialogue_handle_icon(task->strength_dialogue, event, &rc))
+    return rc;
+
+  return result_OK;
 }
 
 static result_t particles_redraw(const wuss_event_t *event, void *task_data)
@@ -528,8 +755,9 @@ static result_t particles_mouse(wuss_window_t      *window,
 /* a Background pick sets the fill; a "Gravity" pick sets the strength; an
  * "Add > Emitter" pick adds a steady smoke emitter, as Explosion's
  * playground sets up, at the menu's opening point; "Add > Repeller" and
- * "Add > Attractor" add a repeller there instead, the latter just the
- * former with strength negated */
+ * "Add > Attractor" instead hover-open the shared Strength dialogue (see
+ * particles_strength_apply_action), which adds a repeller there at the
+ * applied strength, negated for an attractor */
 /* A "Gravity" pick: rebuild the styles from scratch, then scale each one's
  * own gravity, so strengths never compound. Particles already in flight pick
  * up the change on the next physics step, as the engine reads gravity from
@@ -560,32 +788,6 @@ static result_t particles_menu_select(particles_task_t   *pt,
   if (event->data.menu_select.menu == &pt->gravity_menu)
   {
     particles_set_gravity(pt, event);
-    return result_OK;
-  }
-
-  if (event->data.menu_select.menu == &pt->repeller_menu)
-  {
-    index = event->data.menu_select.index;
-    if (index < 0 || index >= NELEMS(particles_repeller_strengths))
-      return result_OK;
-
-    create_repeller(&pt->ps, pt->menu_x, pt->menu_y,
-                    particles_repeller_strengths[index].strength,
-                    PARTICLES_REPELLER_MAX_DISTANCE);
-
-    return result_OK;
-  }
-
-  if (event->data.menu_select.menu == &pt->attractor_menu)
-  {
-    index = event->data.menu_select.index;
-    if (index < 0 || index >= NELEMS(particles_repeller_strengths))
-      return result_OK;
-
-    create_repeller(&pt->ps, pt->menu_x, pt->menu_y,
-                    -particles_repeller_strengths[index].strength,
-                    PARTICLES_REPELLER_MAX_DISTANCE);
-
     return result_OK;
   }
 
@@ -721,6 +923,11 @@ result_t particles_handle(wuss_window_t      *window,
     /* the "Background" row: the shared colourmenu, set up per open */
     return wuss_colourmenu_open_rgb(pt->wuss, event, "Background", pt->bg);
 
+  case wuss_EVENT_ICON:
+    if (window == wuss_dialogue_window(pt->strength_dialogue))
+      return particles_strength_dialogue_icon(pt, event);
+    return result_OK;
+
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &pt->menu &&
         event->data.menu_select.index == PARTICLES_MENU_CLEAR)
@@ -745,10 +952,19 @@ result_t particles_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == pt->menu_items[PARTICLES_MENU_INFO].window)
+    if (window == wuss_dialogue_window(pt->strength_dialogue))
+    {
+      pt->strength_which = event->data.pre_show.index;
+      rc = wuss_dialogue_handle_pre_show(pt->strength_dialogue);
+    }
+    else if (window == pt->menu_items[PARTICLES_MENU_INFO].window)
+    {
       rc = wuss_proginfo_handle_pre_show();
+    }
     else
+    {
       rc = result_OK;
+    }
     if (rc != result_OK)
       return rc;
     if (event->data.pre_show.handle == NULL)

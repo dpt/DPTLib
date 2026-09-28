@@ -9,7 +9,9 @@
 #include "framebuf/screen.h"
 #include "utils/rng.h"
 #include "wuss/component/colourmenu.h"
+#include "wuss/component/dialogue.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/icon-spec.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -20,9 +22,10 @@
 /* window task: the Explosion particle engine. Select bursts a random mix of
  * styles at the click; Adjust bursts flecks. The pointer trails particles
  * while over the content. Menu > Add > Emitter adds a smoke emitter, at a
- * chosen intensity, where the menu was opened; Menu > Add > Repeller and
- * Menu > Add > Attractor add a repeller/attractor, at a chosen strength,
- * there too; Menu > Background picks the fill; Menu > Gravity scales every
+ * chosen intensity, where the menu was opened; Menu > Add > Attractor and
+ * Menu > Add > Repeller open a shared Strength dialogue (a 1..100 slider,
+ * Cancel/Apply) and add an attractor/repeller there too, at the applied
+ * strength; Menu > Background picks the fill; Menu > Gravity scales every
  * style's pull; Menu > Walls bounces
  * particles off the edges; Menu > Clear removes every particle and emitter.
  * Space toggles pause, W toggles walls and C clears, once a click has given
@@ -39,14 +42,19 @@ typedef struct particles_task
                                        * pointer into another's menu */
   wuss_menu_t         menu;
   int                 paused; /* Menu > Pause; idle does nothing while set */
-  wuss_menu_item_t    add_items[3]; /* Add > Emitter / Repeller / Attractor */
+  wuss_menu_item_t    add_items[3]; /* Add > Emitter / Attractor / Repeller */
   wuss_menu_t         add_menu;
   wuss_menu_item_t    emitter_items[3]; /* one row per intensity */
   wuss_menu_t         emitter_menu;
-  wuss_menu_item_t    repeller_items[3]; /* one row per strength */
-  wuss_menu_t         repeller_menu;
-  wuss_menu_item_t    attractor_items[3]; /* one row per strength */
-  wuss_menu_t         attractor_menu;
+  wuss_dialogue_t    *strength_dialogue; /* Add > Attractor/Repeller's shared
+                                          * Strength dialogue; borrowed
+                                          * window leaf, never closed here */
+  wuss_slider_row_t   strength_row;
+  wuss_icon_t        *strength_cancel;
+  wuss_icon_t        *strength_apply;
+  int                 strength_which; /* PARTICLES_ADD_ATTRACTOR or
+                                       * PARTICLES_ADD_REPELLER: set from the
+                                       * leaf's PRE_SHOW index, read by Apply */
   wuss_menu_item_t    gravity_items[5]; /* one row per strength */
   wuss_menu_t         gravity_menu;
   int                 gravity; /* index into particles_gravities */
