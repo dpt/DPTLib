@@ -230,14 +230,14 @@ static result_t display_create_window(display_task_t *task,
 
   /* picks only update the fields; Change applies them */
   rc = wuss_stringset_create(&task->colours, task->window,
-                             boxes[DISPLAY_ST_COLOURS], "Colours",
+                             boxes[DISPLAY_ST_COLOURS], "Colours", -1,
                              g_display_depth_labels,
                              NELEMS(g_display_depth_labels), NULL, NULL);
   if (rc != result_OK)
     return rc;
 
   rc = wuss_stringset_create(&task->resolution, task->window,
-                             boxes[DISPLAY_ST_RESOLUTION], "Resolution",
+                             boxes[DISPLAY_ST_RESOLUTION], "Resolution", -1,
                              g_display_resolution_labels,
                              NELEMS(g_display_resolution_labels), NULL, NULL);
   if (rc != result_OK)

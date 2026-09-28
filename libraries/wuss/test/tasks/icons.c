@@ -847,13 +847,13 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
     static const char *const sizes[] = { "Small", "Medium", "Large", "Huge" };
 
     rc = wuss_stringset_create(&task->sset, task->window, sset_box, "Size",
-                               sizes, NELEMS(sizes), icons_sset_changed, task);
+                               0, sizes, NELEMS(sizes), icons_sset_changed, task);
     if (rc != result_OK)
       goto failure;
   }
 
   rc = wuss_colourset_create(&task->cset, task->window, cset_box, "Fill",
-                             lay.red, icons_cset_changed, task);
+                             0, lay.red, icons_cset_changed, task);
   if (rc != result_OK)
     goto failure;
 

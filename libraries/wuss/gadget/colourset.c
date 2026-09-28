@@ -102,6 +102,7 @@ result_t wuss_colourset_create(wuss_colourset_t           **out,
                                wuss_window_t               *window,
                                box_t                        bbox,
                                const char                  *title,
+                               int                          title_width,
                                wuss_colour_t                colour,
                                wuss_colourset_changed_fn_t *changed,
                                void                        *opaque)
@@ -137,12 +138,16 @@ result_t wuss_colourset_create(wuss_colourset_t           **out,
   font = wuss->fonts.fonts[0];
   if (title != NULL && title[0] != '\0' && font != NULL)
   {
-    wuss__text_measure(font, title, (int) strlen(title), INT_MAX, NULL, &w);
-    w += 2 * WUSS_LABEL_TEXT_PAD;
+    w = (bmfont_width_t) title_width;
+    if (title_width <= 0)
+    {
+      wuss__text_measure(font, title, (int) strlen(title), INT_MAX, NULL, &w);
+      w += 2 * WUSS_LABEL_TEXT_PAD;
+    }
     wuss_icon_spec_label(&specs[2],
                          (box_t) BOX_POS_SIZE(bbox.x0, bbox.y0, (int) w,
                                               bbox.y1 - bbox.y0),
-                         title, 0);
+                         title, wuss_ICON_FLAGS_JUSTIFY_RIGHT);
     field.x0 += (int) w + wuss_STD_GAP;
     nspecs    = 3;
   }
