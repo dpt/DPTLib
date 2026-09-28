@@ -157,9 +157,16 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
 
     wuss__content_box(window, &new_content);
 
-    /* the old footprint minus the content pixels the blit left valid at
-     * their new home: the vacated region plus every furniture strip. */
-    wuss__invalidate_minus(window->wuss, &before, &copied);
+    /* the old content box minus the content pixels the blit left valid at
+     * their new home: just the vacated region. Furniture is handled below by
+     * wuss__furniture_invalidate instead of folding it in here too -- "before"
+     * (the old visible box, furniture strips included) would double-queue
+     * the furniture region whenever old and new furniture positions overlap
+     * (e.g. a grow-in-place toggle, where the top-left doesn't move), since
+     * mark_region only merges boxes that fully contain each other or share a
+     * complete edge, not arbitrary overlaps -- leaving two separate dirty
+     * rects that wuss_redraw_dirty then paints over each other. */
+    wuss__invalidate_minus(window->wuss, &before_content, &copied);
     /* the new content box minus what the blit filled: newly-exposed content. */
     wuss__invalidate_minus(window->wuss, &new_content, &copied);
     /* furniture always reflows -- repaint it at the new position outright. */
