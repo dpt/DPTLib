@@ -10,7 +10,107 @@ _Unreleased_ until one is cut.
 
 ### Added
 
-- `wuss_ICON_TYPE_DISPLAY` leaves the reserved set: `wuss_icon_spec_display()`
+- `text/utf8.h` — a UTF-8 decoder/encoder (`utf8_decode`, `utf8_encode`,
+  `utf8_prev`). `bmfont` gains `.map` Unicode-cmap sidecars (one per bundled
+  font) and `bmfont_lookup()`, and `bmfont_draw()`/`bmfont_measure()` decode
+  UTF-8 and route through the cmap instead of a raw `char` index; `wuss`
+  writable icons edit as UTF-8. `bmfont_create()` also now reads cell
+  metrics from the first ink-free grid cell rather than the space glyph.
+  Menu tick/submenu-arrow glyphs move to `U+2713`/`U+25B6` via the Symbols
+  font's new cmap. New face: GrongyUI-Bold.
+- `wuss` Spheroid task: a shaded sphere with draggable point lights (marker
+  handles, a Light menu, per-light colour via `wuss_colourset`, highlight
+  size/sharpness sliders, Randomise, arrow-key light nudging, a Dithering
+  submenu drawing via `screen_copy_bitmap_dithered()`), laid out in Sphere/
+  Light frames with the control strip lined up in columns.
+- `wuss_colourset` gadget — a row of colour swatches (one active pick, an
+  optional title) built on `wuss_colourmenu`; `wuss_colourset_button_width()`
+  and `wuss_STD_OPTION_SIZE` size it, and `wuss_stringset`/`wuss_colourset`
+  both take an optional title width.
+- `wuss_menu_open_at_pointer()` and `wuss_colourmenu`'s RGB open/pick
+  helpers factor out boilerplate the per-task menu code kept repeating.
+- Nearly every `wuss` demo task gains menu rows and keyboard shortcuts it
+  previously lacked: Save PNG, Pause, Clear/Reset, arrow-key and Space
+  controls, colour/pattern/mode submenus (Background colour, Ink/Paper,
+  Rule, Shape, Model, Alignment, Digital clock mode, chars Unicode Page
+  paging, Lissajous Ratio, doughnut Tube, curve Type/Hull, greeble Size
+  presets/Palette, minesweeper Difficulty/Give Up/chording/best-times,
+  particles Gravity/Walls/emitters, porter-duff Swap images) — see
+  individual task headers for the full list. `WUSS_MENU_ITEM_SHORTCUT`
+  renders a shortcut label (Shift-prefixed, `^`-prefixed for Ctrl, drawn in
+  muted grey rounded keycaps) on a menu row, and task key handlers now
+  dispatch through those same shortcut labels instead of a parallel
+  hand-rolled switch; Ctrl/Alt-modified keys are ignored by task handlers.
+  F1-F3 driver hotkeys move into a Debug launcher submenu; F4 quits via the
+  launcher menu's shortcut on every frontend including RISC OS.
+- `wuss` Particles task: emitters (added via menu), pointer-trailing
+  particles, Gravity/Walls toggles, Space/C keys.
+- `wuss` CRT post-effect for the SDL frontend, and an optional software
+  mouse pointer.
+- `screen_draw_rounded_rect()` — rounded-rectangle outline and fill, used
+  to draw menu shortcut keycaps.
+- `screen_copy_bitmap_dithered()` gains a selectable dithering method
+  (`screen_dither_t`), Spheroid's own consumer of it.
+- The Display task also picks colour depth (not just resolution), gains
+  Cancel/Change buttons (closing the task as RISC OS does) and offers
+  480x360; mode changes move windows back on-screen instead of shrinking
+  them. 1bpp/2bpp modes use a grey-ramp screen palette.
+- `wuss_set_config()` — swap a wuss instance's `wuss_config_t` mid-session.
+- `wuss_window_set_title()`.
+- `tools/fmt/balance_braces.py` — braces every arm of an if/else chain when
+  one arm is already braced (also run as part of the pre-commit format
+  pass alongside `wrap_protos.py`/`realign_decls.py`).
+- Aseprite extension to resize bmfont cells (`tools/aseprite/`).
+
+### Changed
+
+- **Breaking:** `screen_copy_bitmap_dithered()`'s dithering method argument
+  becomes a first-class selectable `screen_dither_t` rather than an
+  implicit fixed method.
+- **Breaking:** `array`'s duplicate squeeze/stretch variants are dropped
+  (kept only the non-duplicated pair).
+- Colour components (`wuss_colour_t` RGB fields etc.) move from `int` to
+  `unsigned int`.
+- Scroll sausage Adjust-drag now scrolls both axes at once; scroll arrows
+  auto-repeat while held; a window's minimum size floors at what its
+  furniture needs; dragged windows snap to screen edges; a menu chain
+  raises to front after an Adjust pick.
+- `bytesex`'s scalar byte-swap functions are inlined.
+- Task menu boilerplate (plain window creation, proginfo desc, key-shortcut
+  prologue, clamp-to-range) is factored into shared helpers across tasks;
+  task clamps use `MIN`/`MAX` instead of hand-rolled comparisons.
+- SDL frame pacing now targets a deadline instead of a fixed delay.
+- Several redraw-path colour/palette resolutions move from per-pixel to
+  once-per-redraw or once-per-frame (doughnut greys and z-buffer, particle
+  palette, saturn/lissajous plot colours, porter-duff checkerboard fill,
+  doughnut p8 blit and shade palette); `screen_set_pixel`/`_p*` resolve
+  colour and open-code their clip test after clipping instead of before;
+  p4 unpack-to-bgrx8888 and span fill get byte-at-a-time/`memset` fast
+  paths; the clock task repaints only when the shown time changes.
+- AGENTS.md (agent guidance) split out from CLAUDE.md and refreshed.
+
+### Fixed
+
+- `screen_copy_bitmap()` honours BGR(X|A)8888 source formats instead of
+  assuming RGB byte order.
+- `wuss` windows are now placed around their actual (furniture-included)
+  positions rather than their content box.
+- `stack`: a container's fixed size is counted along its parent's axis
+  (previously miscounted on the cross axis).
+- A menu title is padded by a space either side; a menu row can be both
+  ticked and swatched at once; the colourmenu ticks the current colour;
+  descriptor-built menu items now initialise their shortcut field; a gap
+  is fixed between font runs in menu shortcut labels; shared gutters are
+  used consistently between shortcut-label drawing and menu sizing.
+  Porter-Duff's paused rule now starts stepping from the ramp midpoint.
+  A task's menu chain is abandoned when autoclose reaps the task.
+  `WUSS_FURNITURE=OFF` builds again. The chars font menu ticks the current
+  font, and the fontmenu directory is copied before enumeration (matching
+  the earlier `bmfont_enumerate` fix). The missing-glyph box is drawn one
+  column further left. The image task's Background menu drops a stray
+  None entry.
+
+ `wuss_icon_spec_display()`
   now builds one rather than a grooved LABEL. It draws via the label
   renderer. The icons demo gains a Display fields group.
 - Gadget tier (`WUSS_GADGETS`) between menus and components for compound
