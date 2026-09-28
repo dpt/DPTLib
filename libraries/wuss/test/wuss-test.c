@@ -2699,6 +2699,95 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_r);
   }
 
+  printf("test: toggle-size's forced full repaint after a scroll re-clamp paints every content pixel at the new offset, none stale from the old\n");
+
+  {
+    /* Companion to the test above: that one only checks the interior point
+     * got marked dirty. This checks the actual pixels after the redraw are
+     * correct at the post-reclamp scroll offset (0), not left over from the
+     * pre-toggle offset (15) or corrupted by toggle-action.c's window-move
+     * blit running over a region the scroll invalidate also claimed.
+     * paint_handle paints one-pixel rows keyed by doc_y in the blue channel. */
+    colour_t           cg;
+    static test_task_t tc_g;
+    wuss_task_t       *delegate_g;
+    box_t              box_g, before_g, content_g, titlebar_g, toggle_g;
+    wuss_window_t     *win_g;
+    int                outline_px, titlebar_height, inset, icon, cx, cy;
+    int                gx, gy, bad;
+
+    cg = colour_rgb(0x33, 0x44, 0x55);
+    tc_g.redraw_count = 0; tc_g.mouse_count = 0;
+    delegate_g = mk_task(wuss, paint_handle, &cg);
+    if (delegate_g == NULL) goto Failure;
+
+    box_g.x0 = 110; box_g.y0 = 10;
+    box_g.x1 = 150; box_g.y1 = 50; /* 40x40 content; doc bigger, starts scrollable */
+    rc = wuss_window_create(delegate_g, &box_g, "G", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(70, 70), SIZE2D(0, 0), &win_g);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush the create's own invalidate */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_set_scroll(win_g, POINT(0, 15)); /* within range: max_y = 70 - 40 = 30 */
+    rc = wuss_redraw_dirty(wuss); /* flush the scroll's own invalidate */
+    if (rc != result_OK)
+      goto Failure;
+
+    outline_px      = 1;
+    titlebar_height = 20;
+    inset           = 3;
+    icon            = titlebar_height - 2 * inset;
+
+    wuss_window_get_visible_bounds(win_g, &before_g);
+    titlebar_g.x0 = before_g.x0 + outline_px;
+    titlebar_g.x1 = before_g.x1 - outline_px;
+    titlebar_g.y0 = before_g.y0 + outline_px;
+    toggle_g.x1 = titlebar_g.x1 - inset;
+    toggle_g.x0 = toggle_g.x1 - icon;
+    toggle_g.y0 = titlebar_g.y0 + inset;
+    toggle_g.y1 = toggle_g.y0 + icon;
+    cx = (toggle_g.x0 + toggle_g.x1) / 2;
+    cy = (toggle_g.y0 + toggle_g.y1) / 2;
+
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* G's toggle-size icon: grow past doc_height, forcing a scroll re-clamp */
+    if (rc != result_OK)
+      goto Failure;
+    if (hit != win_g)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, POINT(cx, cy), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* every row of the (now grown, scroll.y == 0) content box must show the
+     * doc_y its own new offset puts there */
+    wuss_window_get_content_bounds(win_g, &content_g);
+    bad = 0;
+    gx  = (content_g.x0 + content_g.x1) / 2;
+    for (gy = content_g.y0; gy < content_g.y1; gy++)
+    {
+      uint32_t px, blue;
+
+      px   = ((const uint32_t *) pixels)[gy * 200 + gx];
+      blue = px & 0xff;
+      if (blue != (uint32_t) ((gy - content_g.y0) & 0xff))
+        bad = 1;
+    }
+    if (bad)
+      goto Failure; /* a stale pre-toggle-offset or corrupted pixel survived
+                      * the forced full repaint */
+
+    wuss_window_close(win_g);
+  }
+
   printf("test: wuss_window_resize on a topmost window at max scroll blits the still-valid content rather than redrawing it all\n");
 
   {
