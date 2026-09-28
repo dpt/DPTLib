@@ -8,7 +8,6 @@ LAYER 0 - BUGS (fix before building on top)
 
 - SDL bug? Random mouse focus issue that stops us receiving initial clicks.
 - I still think there's over-draw when toggling window sizes.
-- Icon colours still wrong / shifted?
 
 
 LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
