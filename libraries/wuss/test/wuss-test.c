@@ -2043,6 +2043,29 @@ result_t wuss_test(const char *resources)
     if (wuss_get_dirty_count(wuss) == 0)
       goto Failure;
 
+    /* a point in the grown box's old bottom-right corner, well outside the
+     * shrunk box: on the shrink half of this same toggle, this is where the
+     * old titlebar/outline/scrollbar strips used to sit and don't any more
+     * at all -- nothing repaints that pixel unless the vacated old
+     * footprint outside the new one is invalidated too, not just the old
+     * and new *content* boxes (the bug this reproduces: the strip was left
+     * showing stale furniture after a shrink). */
+    wuss_window_get_visible_bounds(win_t, &after);
+    if (after.x1 >= before.x1 || after.y1 >= before.y1)
+      goto Failure; /* sanity: this toggle must actually be a shrink */
+
+    old_vscroll_found = 0; /* reused as "vacated old corner found" below */
+    for (i = 0; i < wuss_get_dirty_count(wuss); i++)
+    {
+      box_t region;
+
+      wuss_get_dirty(wuss, i, &region);
+      if (box_contains_point(&region, before.x1 - 1, before.y1 - 1))
+        old_vscroll_found = 1;
+    }
+    if (!old_vscroll_found)
+      goto Failure; /* the vacated old furniture corner was left stale */
+
     dirty_area = 0;
     for (i = 0; i < wuss_get_dirty_count(wuss); i++)
     {
