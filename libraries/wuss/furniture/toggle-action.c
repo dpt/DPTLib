@@ -157,17 +157,22 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
 
     wuss__content_box(window, &new_content);
 
-    /* the old content box minus the content pixels the blit left valid at
-     * their new home: just the vacated region. Furniture is handled below by
-     * wuss__furniture_invalidate instead of folding it in here too -- "before"
-     * (the old visible box, furniture strips included) would double-queue
-     * the furniture region whenever old and new furniture positions overlap
-     * (e.g. a grow-in-place toggle, where the top-left doesn't move), since
-     * mark_region only merges boxes that fully contain each other or share a
-     * complete edge, not arbitrary overlaps -- leaving two separate dirty
-     * rects that wuss_redraw_dirty then paints over each other. */
-    wuss__invalidate_minus(window->wuss, &before_content, &copied);
-    /* the new content box minus what the blit filled: newly-exposed content. */
+    /* the old visible footprint minus the new one: on a shrink, the strip
+     * the window used to cover (old furniture and old content alike) but no
+     * longer does at all -- nothing else touches this, so without it the
+     * vacated old furniture/content strip was never repainted and just sat
+     * there stale. A no-op on grow, where "before" is already inside the
+     * new visible box. Raw, not the content box: the vacated furniture
+     * strips outside the new visible box are just as stale as the content
+     * was, and this box sits entirely outside window->visible, so it can't
+     * overlap wuss__furniture_invalidate below (which only marks inside the
+     * *new* visible box). */
+    wuss__invalidate_minus(window->wuss, &before, &window->visible);
+    /* the new content box minus what the blit filled: newly-exposed content.
+     * Disjoint from the furniture invalidate below by construction (see
+     * furniture/invalidate.c: its pieces are carved to exclude the content
+     * box), and disjoint from the strip above since this box sits entirely
+     * inside window->visible. */
     wuss__invalidate_minus(window->wuss, &new_content, &copied);
     /* furniture always reflows -- repaint it at the new position outright. */
     wuss__furniture_invalidate(window);
