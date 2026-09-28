@@ -26,14 +26,10 @@
 #define IMAGE_MARGINSZ (NINEPATCHSZ + IMAGE_BORDERSZ)
 #define IMAGE_EXT      ".png"
 
-/* screen_copy_bitmap and screen_copy_ninepatch only understand a deep 32bpp
- * source in R,G,B,A/X byte order (see bitmap_load_png()); bitmap_load_png
- * keeps a palette-type PNG as pixelfmt_p8, so convert one back to a deep
- * format here rather than teach every blitter a paletted source. Callers
- * wanting an untouched load (e.g. to inspect the palette) pass
- * pixelfmt_unknown to skip conversion. rgbx8888, not bgrx8888: the latter is
- * BGR (SDL display byte order) and would swap red and blue once the
- * blitters re-read it as rgba8888. */
+/* bitmap_load_png keeps a palette-type PNG as pixelfmt_p8, so convert one
+ * back to a deep format here for screen_copy_bitmap and
+ * screen_copy_ninepatch. Callers wanting an untouched load (e.g. to inspect
+ * the palette) pass pixelfmt_unknown to skip conversion. */
 static result_t load_png_deep(bitmap_t   *bm,
                               const char *filename,
                               pixelfmt_t  fmt)

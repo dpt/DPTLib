@@ -465,11 +465,12 @@ static unsigned int dither_channel(unsigned int    v,
 /* Read source pixel (srcx, srcy) -- relative to the source bitmap's own
  * top-left, not the screen -- as an rgba8888 colour_t. "srcpm" is the
  * paletted->rgba8888 pixelmap for src->format (from pixelmap_get), or NULL
- * when src is already a deep rgba8888/bgra8888 bitmap; either way this is the
- * one place that knows how to decode a packed p1/p2/p4/p8 index versus a
- * plain 32bpp read, so every screen_copy_bitmap_p1/p2/p4/p8/32 helper below
- * shares it instead of striding a 32bpp read through a narrower source or
- * unpacking to a scratch buffer first. */
+ * when src is already a deep 32bpp bitmap (a bgr(x|a)8888 one has R and B
+ * swapped back here); either way this is the one place that knows how to
+ * decode a packed p1/p2/p4/p8 index versus a plain 32bpp read, so every
+ * screen_copy_bitmap_p1/p2/p4/p8/32 helper below shares it instead of
+ * striding a 32bpp read through a narrower source or unpacking to a scratch
+ * buffer first. */
 static colour_t src_fetch_rgba(const bitmap_t   *src,
                                const pixelmap_t *srcpm,
                                int               srcx,
@@ -482,7 +483,19 @@ static colour_t src_fetch_rgba(const bitmap_t   *src,
 
   if (srcpm == NULL)
   {
-    c.primary = ((const pixelfmt_rgba8888_t *) row)[srcx];
+    pixelfmt_any32_t px;
+
+    px = ((const pixelfmt_any32_t *) row)[srcx];
+
+    /* ponytail: only the R/B-swapped orders are decoded; the alpha-first
+     * abgr/argb8888 still read as rgba8888 */
+    if (src->format == pixelfmt_bgrx8888 || src->format == pixelfmt_bgra8888)
+      px = PIXELFMT_MAKE_RGBA8888(PIXELFMT_xxRx8888(px),
+                                  PIXELFMT_xGxx8888(px),
+                                  PIXELFMT_Bxxx8888(px),
+                                  PIXELFMT_xxxA8888(px));
+
+    c.primary = px;
   }
   else
   {
@@ -954,13 +967,11 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
   if (pixelfmt_is_rle(src->format))
     return screen_copy_bitmap_rle(scr, x, y, src, &draw_box);
 
-  /* Source pixels loaded from PNG are always laid out R,G,B,A/X byte order
-   * (see bitmap_load_png()), the same layout colour_t::primary uses, so a
-   * deep source pixel is read directly into a colour_t with no conversion. A
-   * paletted source's tRNS-derived alpha survives into its palette's
-   * rgba8888 entries (see bitmap_load_png's plte[i] = colour_rgba(..., a)),
-   * so it always carries real per-pixel alpha and must be alpha-tested same
-   * as an rgba8888/bgra8888 source would be. */
+  /* A deep source is read into a colour_t by src_fetch_rgba, R and B swapped
+   * back for a bgr(x|a)8888 one. A paletted source's tRNS-derived alpha
+   * survives into its palette's rgba8888 entries (see bitmap_load_png's
+   * plte[i] = colour_rgba(..., a)), so it always carries real per-pixel alpha
+   * and must be alpha-tested same as an rgba8888/bgra8888 source would be. */
   has_alpha = pixelfmt_log2bpp(src->format) != 5 ||
              pixelfmt_has_alpha(src->format);
 
