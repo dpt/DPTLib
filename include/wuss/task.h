@@ -263,6 +263,15 @@ typedef struct wuss_event
     }
     menu_select;
 
+    /** wuss_EVENT_MENU_CLOSED: picked is non-zero when the chain closed for
+     * a SELECT pick, so a wuss_EVENT_MENU_SELECT follows at once; zero when
+     * wuss abandoned it (a click outside, another wuss_menu_open). */
+    struct
+    {
+      int picked;
+    }
+    menu_closed;
+
     /** wuss_EVENT_KEY: code is a Unicode codepoint or a wuss_KEY_*
      * constant; modifiers is a set of wuss_key_modifiers_t flags, so test it
      * with '&'. */
@@ -275,8 +284,8 @@ typedef struct wuss_event
 
     /* wuss_EVENT_OPEN, wuss_EVENT_SHOW, wuss_EVENT_PRE_CLOSE,
      * wuss_EVENT_CLOSE, wuss_EVENT_IDLE, wuss_EVENT_QUIT,
-     * wuss_EVENT_PALETTE, wuss_EVENT_MENU_CLOSED, wuss_EVENT_GAIN_FOCUS and
-     * wuss_EVENT_LOSE_FOCUS carry no data. */
+     * wuss_EVENT_PALETTE, wuss_EVENT_GAIN_FOCUS and wuss_EVENT_LOSE_FOCUS
+     * carry no data. */
   }
   data;
 }

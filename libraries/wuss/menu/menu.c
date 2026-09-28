@@ -156,7 +156,8 @@ void wuss__menu_abandon(wuss_t *wuss)
   {
     wuss_event_t ev;
 
-    ev.kind = wuss_EVENT_MENU_CLOSED;
+    ev.kind                    = wuss_EVENT_MENU_CLOSED;
+    ev.data.menu_closed.picked = 0;
     (void) wuss__deliver(owner, NULL, &ev);
   }
 
@@ -648,7 +649,8 @@ static void wuss__menu_flash_finish(struct wuss__menu *self)
      * so, same as wuss__menu_abandon, before MENU_SELECT below -- otherwise
      * the handle sits stale until a later wuss_menu_close (e.g. from the
      * owner's own QUIT handler) walks freed nodes. */
-    closed.kind = wuss_EVENT_MENU_CLOSED;
+    closed.kind                    = wuss_EVENT_MENU_CLOSED;
+    closed.data.menu_closed.picked = 1;
     (void) wuss__deliver(owner, NULL, &closed);
   }
 
