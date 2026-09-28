@@ -110,6 +110,8 @@ static result_t find_slot(wuss_t *wuss, int fw, int fh, point_t *pos)
     w = wuss__window_from_link(e);
     if (w->flags & wuss_WINDOW_HIDDEN)
       continue;
+    if (w->task == wuss->menu_task)
+      continue;
 
     /* gutter on the right/bottom only: packer_place_by already reserves one
      * on the new window's right/bottom, so padding all round would double it
