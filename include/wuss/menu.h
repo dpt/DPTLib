@@ -211,9 +211,11 @@ typedef struct wuss__menu *wuss_menu_handle_t;
  *
  * If wuss instead closes the chain itself -- a click outside every menu
  * window, or a later wuss_menu_open -- \p task's handle gets a
- * wuss_EVENT_MENU_CLOSED (window == NULL, no data). A task that kept \p out
- * must drop it there; the chain is freed by the time the event arrives. No
- * such event follows a wuss_menu_close the task made.
+ * wuss_EVENT_MENU_CLOSED (window == NULL, data.menu_closed.picked zero). A
+ * SELECT pick also delivers one, with picked non-zero, just before its
+ * wuss_EVENT_MENU_SELECT. A task that kept \p out must drop it there; the
+ * chain is freed by the time the event arrives. No such event follows a
+ * wuss_menu_close the task made.
  *
  * \param[in]  task Task opening the menu; receives wuss_EVENT_MENU_SELECT.
  *                  The menu windows are wuss-owned, not task's.
