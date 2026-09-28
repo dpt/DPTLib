@@ -67,13 +67,19 @@ enum
 {
   SPHEROID_MENU_INFO = 0,
   SPHEROID_MENU_LIGHT,
-  SPHEROID_MENU_SPHERE,
-  SPHEROID_MENU_BACKGROUND,
   SPHEROID_MENU_DITHERING,
   SPHEROID_MENU_MUTATE,
   SPHEROID_MENU_RANDOMISE,
   SPHEROID_MENU_RESET,
   SPHEROID_MENU_SAVE
+};
+
+/* the strip's colour sets */
+enum
+{
+  SPHEROID_COLOUR_SPHERE,
+  SPHEROID_COLOUR_BACKGROUND,
+  SPHEROID_COLOUR_LIGHT /* the current light's */
 };
 
 /* control strip rows, top to bottom */
@@ -107,25 +113,32 @@ static const char *const spheroid_light_names[SPHEROID_NLIGHTS] =
   "Light 1", "Light 2", "Light 3", "Light 4"
 };
 
-/* stack items for the control strip: a VBOX of two frames, the global
- * settings above the current light's, each a VBOX of label / slider / value
- * rows; the Light frame ends with an On option and a colour set */
+/* stack items for the control strip: a VBOX of three frames, the
+ * background's colour set above the sphere's settings above the current
+ * light's, the latter two a VBOX of label / slider / value rows; the Sphere
+ * frame starts with its colour set, the Light frame with an On option and the
+ * light's colour set, each on its own line. A box lays out its children in
+ * index order, so these lines come before the rows */
 enum
 {
   SS_ROOT,
-  SS_SPHERE,  /* frame round the global rows */
-  SS_LIGHT,   /* frame round the per-light rows */
-  SS_ROW,     /* first row; each row is SS_ROW + 4 * n, then its three leaves */
-  SS_BUTTONS = SS_ROW + 4 * SPHEROID_NROWS, /* HBOX of the next two */
+  SS_BACKDROP, /* frame round the background's colour set */
+  SS_SPHERE,   /* frame round the global rows */
+  SS_LIGHT,    /* frame round the per-light rows */
+  SS_ON_LINE,  /* the On option, then a spacer taking the rest */
   SS_ON,
-  SS_COLOUR,  /* the colour set gadget's bbox */
-  SS__LIMIT
+  SS_ON_SPACER,
+  SS_COLOUR,   /* the colour sets, in SPHEROID_COLOUR_* order */
+  SS_ROW = SS_COLOUR + SPHEROID_NCOLOURS, /* first row; each row is SS_ROW +
+                                           * 4 * n, then its three leaves */
+  SS__LIMIT = SS_ROW + 4 * SPHEROID_NROWS
 };
 
-/* icons in the strip: the two frames, label / slider / value per row, then
- * the On option */
+/* icons in the strip: the three frames, label / slider / value per row,
+ * then the On option */
 enum
 {
+  SI_BACKDROP,
   SI_SPHERE,
   SI_LIGHT,
   SI_ROW,
@@ -136,12 +149,17 @@ enum
 #define SS_LABEL_W      (7 * 6) /* enough for "Ambient" */
 #define SS_VALUE_W      (4 * 6) /* enough for "200%" */
 #define SS_SLIDER_MIN_W (64)
-#define SS_ON_W         (40)
+#define SS_ON_W         (SS_LABEL_W + wuss_STD_GAP + 16) /* ponytail: guessed
+                                                         * glyph width */
 
 #define SS_FRAME(parent_) \
   { .kind = stack_KIND_VBOX, .parent = (parent_), .axis_size = STACK_HUG, \
     .gap = wuss_STD_GAP, .align = stack_ALIGN_FILL, \
     .pad = wuss_STD_FRAME_INSETS }
+
+/* a full-width line: a colour set */
+#define SS_LINE(frame) \
+  STACK_LEAF(frame, wuss_STD_SECONDARY_BUTTON_HEIGHT, 0, stack_ALIGN_FILL)
 
 #define SS_ROW_ITEMS(n, frame) \
   [SS_ROW + 4 * (n)]     = STACK_HBOX(frame, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START), \
@@ -151,18 +169,22 @@ enum
 
 static const stack_item_t spheroid_strip[SS__LIMIT] =
 {
-  [SS_ROOT]   = { .kind = stack_KIND_VBOX, .parent = -1,
-                  .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
-  [SS_SPHERE] = SS_FRAME(SS_ROOT),
-  [SS_LIGHT]  = SS_FRAME(SS_ROOT),
+  [SS_ROOT]     = { .kind = stack_KIND_VBOX, .parent = -1,
+                    .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
+  [SS_BACKDROP] = SS_FRAME(SS_ROOT),
+  [SS_SPHERE]   = SS_FRAME(SS_ROOT),
+  [SS_LIGHT]    = SS_FRAME(SS_ROOT),
   SS_ROW_ITEMS(SPHEROID_ROW_AMBIENT,   SS_SPHERE),
   SS_ROW_ITEMS(SPHEROID_ROW_GLOW,      SS_SPHERE),
   SS_ROW_ITEMS(SPHEROID_ROW_SIZE,      SS_LIGHT),
   SS_ROW_ITEMS(SPHEROID_ROW_SHARPNESS, SS_LIGHT),
   SS_ROW_ITEMS(SPHEROID_ROW_INTENSITY, SS_LIGHT),
-  [SS_BUTTONS] = STACK_HBOX(SS_LIGHT, wuss_STD_SECONDARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_FILL),
-  [SS_ON]      = STACK_LEAF(SS_BUTTONS, SS_ON_W, 0, stack_ALIGN_FILL),
-  [SS_COLOUR]  = STACK_LEAF_EX(SS_BUTTONS, 0, 0, stack_ALIGN_FILL, 1, 0, 0)
+  [SS_ON_LINE]  = STACK_HBOX(SS_LIGHT, wuss_STD_SECONDARY_BUTTON_HEIGHT, 0, stack_ALIGN_FILL),
+  [SS_ON]       = STACK_LEAF(SS_ON_LINE, SS_ON_W, 0, stack_ALIGN_FILL),
+  [SS_ON_SPACER] = STACK_SPACER(SS_ON_LINE, 1),
+  [SS_COLOUR + SPHEROID_COLOUR_SPHERE]     = SS_LINE(SS_SPHERE),
+  [SS_COLOUR + SPHEROID_COLOUR_BACKGROUND] = SS_LINE(SS_BACKDROP),
+  [SS_COLOUR + SPHEROID_COLOUR_LIGHT]      = SS_LINE(SS_LIGHT)
 };
 
 /* per-redraw constants, worked out once rather than per pixel */
@@ -492,56 +514,71 @@ static double spheroid_normal(double dx, double dy, double r, double n[3])
 
 /* ----------------------------------------------------------------------- */
 
-/* the palette entry nearest the current light's colour. ponytail: a Mutated
- * or Randomised colour shows as its nearest entry, so the colour set's tick
- * is approximate until a pick */
-static wuss_colour_t spheroid_light_nearest(const spheroid_task_t *task)
+/* the field colour set "which" shows and sets */
+static colour_t *spheroid_colour_field(spheroid_task_t *task, int which)
 {
-  unsigned int r, g, b;
-
-  colour_get_rgb(&task->lights[task->current].colour, &r, &g, &b);
-  return wuss_nearest_colour(task->wuss, (int) r, (int) g, (int) b);
+  switch (which)
+  {
+  case SPHEROID_COLOUR_SPHERE:     return &task->sphere;
+  case SPHEROID_COLOUR_BACKGROUND: return &task->background;
+  default:                         return &task->lights[task->current].colour;
+  }
 }
 
-/* the colour set's pick: the current light takes that palette entry */
-static result_t spheroid_light_colour_changed(wuss_colourset_t *colourset,
-                                              wuss_colour_t     colour,
-                                              void             *opaque)
+/* show each colour set's field as its nearest palette entry. ponytail: a
+ * Mutated or Randomised colour shows as that approximation until a pick */
+static void spheroid_sync_colours(spheroid_task_t *task)
+{
+  int          which;
+  unsigned int r, g, b;
+
+  for (which = 0; which < SPHEROID_NCOLOURS; which++)
+  {
+    colour_get_rgb(spheroid_colour_field(task, which), &r, &g, &b);
+    (void) wuss_colourset_set_colour(task->colour_sets[which],
+                                     wuss_nearest_colour(task->wuss,
+                                                         (int) r, (int) g,
+                                                         (int) b));
+  }
+}
+
+/* a colour set's pick: its field takes that palette entry */
+static result_t spheroid_colour_changed(wuss_colourset_t *colourset,
+                                        wuss_colour_t     colour,
+                                        void             *opaque)
 {
   spheroid_task_t *task;
   const colour_t  *palette;
   int              npalette;
-
-  NOT_USED(colourset);
+  int              which;
 
   task    = opaque;
   palette = wuss_get_palette(task->wuss, &npalette);
-  task->lights[task->current].colour = palette[colour];
+  for (which = 0; which < SPHEROID_NCOLOURS; which++)
+    if (task->colour_sets[which] == colourset)
+      *spheroid_colour_field(task, which) = palette[colour];
   spheroid_invalidate_preview(task);
   return result_OK;
 }
 
-/* build the control strip's icons down the window's left edge */
-static result_t spheroid_strip_create(spheroid_task_t *task)
+/* build the control strip's icons down the window's left edge, "height"
+ * tall */
+static result_t spheroid_strip_create(spheroid_task_t *task, int height)
 {
   result_t         rc;
-  size2d_t         min_sz;
   box_t            root;
   box_t            boxes[SS__LIMIT];
   wuss_icon_spec_t specs[SI__LIMIT];
   char             bufs[SPHEROID_NROWS][WUSS_SLIDER_ROW_BUF];
   wuss_icon_t     *made[SI__LIMIT];
-  int              row, item, icon;
+  int              row, item, icon, which;
 
-  rc = stack_smallest(spheroid_strip, NELEMS(spheroid_strip), &min_sz);
-  if (rc != result_OK)
-    return rc;
-
-  root = (box_t) BOX_POS_SIZE(0, 0, SPHEROID_STRIP, min_sz.h);
+  root = (box_t) BOX_POS_SIZE(0, 0, SPHEROID_STRIP, height);
   rc = stack_solve(spheroid_strip, NELEMS(spheroid_strip), &root, boxes);
   if (rc != result_OK)
     return rc;
 
+  wuss_icon_spec_frame(&specs[SI_BACKDROP], boxes[SS_BACKDROP], "Background");
   wuss_icon_spec_frame(&specs[SI_SPHERE], boxes[SS_SPHERE], "Sphere");
   wuss_icon_spec_frame(&specs[SI_LIGHT], boxes[SS_LIGHT],
                        spheroid_light_names[task->current]);
@@ -563,6 +600,7 @@ static result_t spheroid_strip_create(spheroid_task_t *task)
   }
 
   wuss_icon_spec_option(&specs[SI_ON], boxes[SS_ON], "On");
+  specs[SI_ON].flags |= wuss_ICON_FLAGS_JUSTIFY_RIGHT; /* tick at the right */
 
   rc = wuss_icon_create_array(task->window, specs, NELEMS(specs), made);
   if (rc != result_OK)
@@ -573,12 +611,16 @@ static result_t spheroid_strip_create(spheroid_task_t *task)
   wuss_icon_set_selected(task->window, task->on_icon,
                          task->lights[task->current].on);
 
-  rc = wuss_colourset_create(&task->light_colour, task->window,
-                             boxes[SS_COLOUR], "Colour",
-                             spheroid_light_nearest(task),
-                             spheroid_light_colour_changed, task);
-  if (rc != result_OK)
-    return rc;
+  for (which = 0; which < SPHEROID_NCOLOURS; which++)
+  {
+    rc = wuss_colourset_create(&task->colour_sets[which], task->window,
+                               boxes[SS_COLOUR + which], "Colour",
+                               SS_LABEL_W, /* line up with the sliders */
+                               0, spheroid_colour_changed, task);
+    if (rc != result_OK)
+      return rc;
+  }
+  spheroid_sync_colours(task);
 
   for (row = 0; row < SPHEROID_NROWS; row++)
   {
@@ -597,7 +639,13 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
   spheroid_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  size2d_t         strip_sz;
   int              i;
+
+  /* the strip sets the window's minimum height */
+  rc = stack_smallest(spheroid_strip, NELEMS(spheroid_strip), &strip_sz);
+  if (rc != result_OK)
+    return rc;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -624,7 +672,8 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
    * resize must redraw all of it and doc is only the growth ceiling. wuss
    * fills the strip's background; the redraw paints the preview pane */
   rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(SPHEROID_STRIP + 240, 240),
+                                 SIZE2D(SPHEROID_STRIP + 240,
+                                        MAX(240, strip_sz.h)),
                                  "Spheroid Designer",
                                  wuss_WINDOW_CLOSE | wuss_WINDOW_BACK |
                                  wuss_WINDOW_TOGGLE_SIZE | wuss_WINDOW_RESIZE |
@@ -632,7 +681,7 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
                                  wuss_WINDOW_FOCUSABLE,
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  SIZE2D(1024, 1024),
-                                 SIZE2D(SPHEROID_STRIP + 64, 160), /* strip */
+                                 SIZE2D(SPHEROID_STRIP + 64, strip_sz.h),
                                  &task->window);
   if (rc != result_OK)
   {
@@ -640,7 +689,7 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
     return rc;
   }
 
-  rc = spheroid_strip_create(task);
+  rc = spheroid_strip_create(task, strip_sz.h);
   if (rc != result_OK)
   {
     wuss_window_close(task->window); /* its QUIT frees the task block */
@@ -668,12 +717,6 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, SPHEROID_MENU_LIGHT, "Light",
                       wuss_MENU_ITEM_NONE, &task->light_menu);
-
-  WUSS_MENU_ITEM_MENU(task->menu_items, SPHEROID_MENU_SPHERE, "Sphere colour",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
-
-  WUSS_MENU_ITEM_MENU(task->menu_items, SPHEROID_MENU_BACKGROUND, "Background",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
   /* indexed by screen_dither_t */
   WUSS_MENU_ITEM(task->dither_items, screen_DITHER_NONE, "None",
@@ -711,7 +754,10 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
 
 void spheroid_destroy(spheroid_task_t *task)
 {
-  wuss_colourset_destroy(task->light_colour);
+  int which;
+
+  for (which = 0; which < SPHEROID_NCOLOURS; which++)
+    wuss_colourset_destroy(task->colour_sets[which]);
   free(task);
 }
 
@@ -828,7 +874,7 @@ static result_t spheroid_redraw(const wuss_event_t *event,
 }
 
 /* point the Light frame at the current light: its caption, its sliders, its
- * On option and its colour set */
+ * On option and its colour set (resyncing the other two with it) */
 static void spheroid_sync_light(spheroid_task_t *task)
 {
   int row;
@@ -844,8 +890,7 @@ static void spheroid_sync_light(spheroid_task_t *task)
                                *spheroid_row_field(task, row));
   wuss_icon_set_selected(task->window, task->on_icon,
                          task->lights[task->current].on);
-  (void) wuss_colourset_set_colour(task->light_colour,
-                                   spheroid_light_nearest(task));
+  spheroid_sync_colours(task);
 }
 
 /* turn the current light on, as moving it does, ticking its On option */
@@ -1212,33 +1257,20 @@ static result_t spheroid_key(spheroid_task_t    *task,
   return result_OK;
 }
 
-/* The colour rows' submenu: the shared colourmenu singleton, retitled and
- * aimed at the right field here rather than at create time since other tasks
- * retitle it and toggle its None row too. The light's colour is picked from
- * the strip's colour set instead. */
-static result_t spheroid_pre_submenu_open(spheroid_task_t    *task,
-                                          const wuss_event_t *event)
+/* offer "event" to each colour set; non-zero if one consumed it, its result
+ * in "out_result" */
+static int spheroid_colour_event(spheroid_task_t    *task,
+                                 const wuss_event_t *event,
+                                 result_t           *out_result)
 {
-  const wuss_menu_t *parent;
-  int                index;
-  const char        *title;
+  int which;
 
-  parent = wuss_menu_handle_menu(event->data.pre_submenu_open.handle);
-  index  = event->data.pre_submenu_open.index;
+  for (which = 0; which < SPHEROID_NCOLOURS; which++)
+    if (wuss_colourset_handle_event(task->colour_sets[which], event,
+                                    out_result))
+      return 1;
 
-  if (parent == &task->menu && index == SPHEROID_MENU_SPHERE)
-  {
-    task->colour_target = &task->sphere;
-    title               = "Sphere colour";
-  }
-  else
-  {
-    task->colour_target = &task->background;
-    title               = "Background";
-  }
-
-  return wuss_colourmenu_open_rgb(task->wuss, event, title,
-                                  *task->colour_target);
+  return 0;
 }
 
 static result_t spheroid_menu_select(spheroid_task_t    *task,
@@ -1247,15 +1279,8 @@ static result_t spheroid_menu_select(spheroid_task_t    *task,
   result_t rc;
   int      index;
 
-  if (wuss_colourset_handle_event(task->light_colour, event, &rc))
+  if (spheroid_colour_event(task, event, &rc))
     return rc;
-
-  if (task->colour_target != NULL &&
-      wuss_colourmenu_selected_rgb(event, task->colour_target))
-  {
-    spheroid_invalidate_preview(task);
-    return result_OK;
-  }
 
   if (event->data.menu_select.menu == &task->menu)
   {
@@ -1318,7 +1343,7 @@ static result_t spheroid_icon(spheroid_task_t    *task,
   result_t rc;
   int      row, value;
 
-  if (wuss_colourset_handle_event(task->light_colour, event, &rc))
+  if (spheroid_colour_event(task, event, &rc))
     return rc;
 
   if (event->data.icon.icon == task->on_icon)
@@ -1376,9 +1401,6 @@ result_t spheroid_handle(wuss_window_t      *window,
     return spheroid_key(task, event);
   }
 
-  case wuss_EVENT_PRE_SUBMENU_OPEN:
-    return spheroid_pre_submenu_open(task, event);
-
   case wuss_EVENT_MENU_SELECT:
     return spheroid_menu_select(task, event);
 
@@ -1391,7 +1413,7 @@ result_t spheroid_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    (void) wuss_colourset_handle_event(task->light_colour, event, &rc);
+    (void) spheroid_colour_event(task, event, &rc);
     task->menu_handle = NULL;
     return result_OK;
   }
