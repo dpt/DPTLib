@@ -3180,6 +3180,74 @@ result_t wuss_test(const char *resources)
     wuss_window_close(win_m);
   }
 
+  printf("test: two wheel scrolls delivered before wuss_redraw_dirty runs never blit the first scroll's undrawn strip into the second scroll's content\n");
+
+  {
+    /* Regression: fast wheel spinning can call wuss_window_set_scroll twice
+     * (or more) before wuss_redraw_dirty ever runs. The first call's blit
+     * shifts old content and marks the newly-exposed strip dirty but does
+     * NOT paint it -- that strip holds pre-scroll pixels until the redraw
+     * runs. If the second call's blit source includes that still-dirty
+     * strip, it smears those stale pixels across the content box instead of
+     * being excluded per the "stale" collection in wuss_window_set_scroll.
+     * paint_handle paints one-pixel rows keyed by doc_y in the blue channel,
+     * so a stale/smeared row is detectable exactly after a single final
+     * redraw. */
+    colour_t           cw;
+    static test_task_t tc_w;
+    wuss_task_t       *delegate_w;
+    box_t              box_w, content_w;
+    wuss_window_t     *win_w;
+    int                wx, wy, bad;
+
+    cw = colour_rgb(0x55, 0x66, 0x77);
+    tc_w.redraw_count = 0; tc_w.mouse_count = 0;
+    delegate_w = mk_task(wuss, paint_handle, &cw);
+    if (delegate_w == NULL) goto Failure;
+
+    box_w.x0 = 10; box_w.y0 = 10;
+    box_w.x1 = 90; box_w.y1 = 90; /* 80x80 content; doc taller, scrollable */
+    rc = wuss_window_create(delegate_w, &box_w, "W", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(80, 200), SIZE2D(0, 0), &win_w);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss); /* flush the create's own invalidate */
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_get_content_bounds(win_w, &content_w);
+
+    /* two wheel notches back-to-back, no redraw in between -- exactly what
+     * fast spinning delivers */
+    wuss_window_set_scroll(win_w, POINT(0, 10));
+    wuss_window_set_scroll(win_w, POINT(0, 20));
+
+    rc = wuss_redraw_dirty(wuss); /* the only flush, as fast scrolling leaves it */
+    if (rc != result_OK)
+      goto Failure;
+
+    /* every row of the content box must show the doc_y the final scroll
+     * offset (20) puts there -- no row may still carry pixels from the
+     * intermediate offset (10) or from before either scroll */
+    bad = 0;
+    wx  = (content_w.x0 + content_w.x1) / 2;
+    for (wy = content_w.y0; wy < content_w.y1; wy++)
+    {
+      uint32_t px, blue;
+
+      px   = ((const uint32_t *) pixels)[wy * 200 + wx];
+      blue = px & 0xff;
+      if (blue != (uint32_t) ((wy - content_w.y0 + 20) & 0xff))
+        bad = 1;
+    }
+    if (bad)
+      goto Failure; /* a stacked scroll's blit reused a stale strip */
+
+    wuss_window_close(win_w);
+  }
+
   printf("test: scrolling a window shrunk below its document size never marks a neighbour's screen area dirty\n");
 
   {
