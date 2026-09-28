@@ -61,6 +61,10 @@ typedef struct wuss_task wuss_task_t;
  * library is built with the WUSS_ICONS option on. */
 typedef struct wuss_icon wuss_icon_t;
 
+/** An icon bar icon. Full API is in iconbar.h, and is compiled only when the
+ * library is built with the WUSS_ICONBAR option on. */
+typedef struct wuss_iconbar_icon wuss_iconbar_icon_t;
+
 /**
  * Allocator hooks used by a wuss_t for every heap block it owns (the
  * instance itself, windows, icons, menu nodes) and by the wuss shared

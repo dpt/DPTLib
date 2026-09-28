@@ -27,6 +27,9 @@
 #ifdef WUSS_FURNITURE
 #include "../furniture.h"
 #endif
+#ifdef WUSS_ICONBAR
+#include "../iconbar.h"
+#endif
 #ifdef WUSS_ICONS
 #include "../icon.h"
 #endif
@@ -224,6 +227,18 @@ struct wuss
                                             * MOUSE_DOWN; swallow its matching
                                             * MOUSE_UP so the release does not
                                             * immediately pick row 0 */
+#endif
+#ifdef WUSS_ICONBAR
+  wuss_iconbar_icon_t       **iconbar_icons; /* owned; array of owned icon
+                                              * pointers, left-to-right slot
+                                              * order */
+  int                         niconbar_icons;
+  int                         cap_iconbar_icons;
+  wuss_iconbar_icon_t        *pressed_iconbar_icon; /* held down, NULL when
+                                                      * idle; released on any
+                                                      * MOUSE_UP regardless of
+                                                      * where the pointer now
+                                                      * is */
 #endif
   int                         pre_show_proceed; /* set by
                                                  * wuss_window_reveal_now /

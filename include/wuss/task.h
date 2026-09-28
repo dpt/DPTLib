@@ -42,9 +42,9 @@ typedef enum wuss_event_kind
   wuss_EVENT_REDRAW,
   /** Button down/up/move over window content. */
   wuss_EVENT_MOUSE,
-  /** A work-area button icon was clicked or hovered (window view); or, in
-   *  the task view, a future shared/dock element -- reserved, nothing
-   *  emits it yet. */
+  /** A work-area button icon was clicked or hovered (window view, see
+   *  data.icon); or an icon bar icon was clicked or dragged (task view,
+   *  window == NULL, see data.iconbar_icon). */
   wuss_EVENT_ICON,
   /** Mouse wheel used over a window's content. */
   wuss_EVENT_SCROLL,
@@ -209,8 +209,8 @@ typedef struct wuss_event
      * slider raises MOVE with button 0); meaningless for every
      * other icon type. A wuss_ICON_TYPE_WRITABLE also raises this, with
      * button 0 and action wuss_MOUSE_UP, after every edit to its text. In
-     * the task view (window == NULL) this is reserved for a future
-     * shared/dock element and is never currently emitted. */
+     * the task view (window == NULL) this is instead a click or drag on
+     * one of the caller's icon bar icons; read iconbar_icon, not icon. */
     struct
     {
       wuss_icon_t        *icon;
@@ -219,6 +219,18 @@ typedef struct wuss_event
       int                 value;
     }
     icon;
+
+    /** wuss_EVENT_ICON in the task view (window == NULL): a click or drag
+     * on one of this task's icon bar icons. action is DOWN/UP/MOVE; button
+     * is a set of wuss_button_t flags, so test it with '&' rather than
+     * comparing for equality. */
+    struct
+    {
+      wuss_iconbar_icon_t *icon;
+      wuss_mouse_action_t  action;
+      wuss_button_t        button;
+    }
+    iconbar_icon;
 
     /** wuss_EVENT_SCROLL: point is window-local content coordinates, as
      * per mouse. delta's sign and units are as passed to wuss_scroll. */
