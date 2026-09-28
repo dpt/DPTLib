@@ -26,15 +26,11 @@ void wuss_window_move(wuss_window_t *window, point_t p)
    * change of position -- a window pinned against the screen edge, or a
    * backend that reports redundant motion, can call this with the same
    * target it's already at. width/height never change here, so an
-   * unchanged origin means an unchanged box; skip the packer release,
-   * layout translate and blit/invalidate machinery entirely. */
+   * unchanged origin means an unchanged box; skip the layout translate and
+   * blit/invalidate machinery entirely. */
   if (p.x - outline_px == before.x0 &&
       p.y - outline_px - titlebar_height == before.y0)
     return;
-
-  /* a manual move desyncs the window from its layout-packer slot; hand the
-   * slot back and stop tracking this window's position */
-  wuss__release_packed(window);
 
   /* a hidden window has nothing on screen to slide and must paint nothing;
    * just translate its footprint so it is in place when shown again */

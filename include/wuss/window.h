@@ -88,15 +88,11 @@ result_t wuss_window_create(wuss_task_t        *task,
  *
  * As wuss_window_create, but instead of a content box you pass just the
  * content size; Wuss places the window (furniture included) in the first
- * free screen region, packed towards the top-left, tracking occupied area
- * across calls so successive auto-placed windows tile rather than stack.
- * When no region is large enough the window is cascaded from the previous
- * placement, stepping by a titlebar height and wrapping at the screen edge.
- *
- * The chosen slot is returned to the pool when the window is closed, or when
- * it is first moved or resized via wuss_window_move / wuss_window_resize
- * (after which Wuss no longer tracks its position). A window dragged by its
- * titlebar counts as moved.
+ * free screen region, packed towards the top-left, avoiding every shown
+ * window at its current position so successive auto-placed windows tile
+ * rather than stack. When no region is large enough the window is cascaded
+ * from the previous placement, stepping by a titlebar height and wrapping at
+ * the screen edge.
  *
  * \param[in]  task    Owning task, as wuss_window_create.
  * \param[in]  size    Requested content-area size. Width and height must

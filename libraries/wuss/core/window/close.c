@@ -49,8 +49,6 @@ void wuss_window_close(wuss_window_t *doomed)
   wuss__pointer_forget_window(wuss, doomed);
   wuss__focus_forget_window(wuss, doomed);
 
-  wuss__release_packed(doomed);
-
   /* A hidden window was never actually drawn at "visible" -- whatever is
    * genuinely on screen there (backdrop, or another window's content) is
    * already correct and showing through, so invalidating it would force a

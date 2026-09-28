@@ -86,8 +86,6 @@ result_t wuss_window_create(wuss_task_t        *task,
   win->cap_icons  = 0;
 #endif
 
-  box_reset(&win->packed); /* wuss_window_create_placed fills this in after */
-
   win->task = task;
 
   bg.colour     = wuss__resolve_colour(wuss, bg.colour);

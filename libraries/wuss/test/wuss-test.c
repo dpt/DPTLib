@@ -5203,6 +5203,10 @@ result_t wuss_test(const char *resources)
     box_t              vis[4], probe;
     int                k, m;
 
+    /* placement avoids every shown window, so clear out windows left open
+     * by earlier tests */
+    reap_test_tasks();
+
     memset(tc_p, 0, sizeof(tc_p));
     delegate_p = mk_task(wuss, test_handle, &tc_p[0]);
     if (delegate_p == NULL) goto Failure;
@@ -5247,9 +5251,26 @@ result_t wuss_test(const char *resources)
         vis[1].x1 != probe.x1 || vis[1].y1 != probe.y1)
       goto Failure; /* freed slot not reused */
 
-    /* a manual move releases the slot: closing afterwards must not
-     * double-release (would corrupt the packer's free list) */
-    wuss_window_move(win_p[0], POINT(200, 200));
+    /* placement honours where windows actually are: free the second slot
+     * again, drag the first window into it, and the next placed window must
+     * avoid the moved window rather than land in the stale free slot */
+    wuss_window_close(win_p[1]);
+    wuss_window_move(win_p[0], POINT(probe.x0 + 5, probe.y0 + 20));
+    wuss_window_get_visible_bounds(win_p[0], &vis[0]);
+
+    rc = wuss_window_create_placed(delegate_p,
+                                   SIZE2D(40, 30),
+                                   "P",
+                                   wuss_WINDOW_DEFAULT,
+                                   wuss_NO_BACKDROP,
+                                   SIZE2D(40, 30),
+                                   SIZE2D(0, 0),
+                                   &win_p[1]);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_p[1], &vis[1]);
+    if (box_intersects(&vis[0], &vis[1]))
+      goto Failure; /* placed over a moved window */
 
     for (k = 0; k < 4; k++)
       wuss_window_close(win_p[k]);
@@ -6290,8 +6311,8 @@ ColourSetOK: ;
     test_task_t      ftc;
     wuss_task_t     *fowner;
     struct wuss__menu *chain;
-    int                i;
-    wuss_window_t     *fcover;
+    int            i;
+    wuss_window_t *fcover;
 
     /* a menu needs a font for its row metrics; the core wuss above was made
      * without one */

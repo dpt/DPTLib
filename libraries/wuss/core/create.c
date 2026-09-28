@@ -117,7 +117,6 @@ result_t wuss_create(screen_t               *scr,
   w->ndirty   = 0;
   w->ntouched = 0;
 
-  w->layout    = NULL;
   w->cascade.x = 0;
   w->cascade.y = 0;
   w->pointer.x = 0;

@@ -7,8 +7,6 @@ Items marked (blocks: X) are prerequisites for X.
 LAYER 0 - BUGS (fix before building on top)
 
 - SDL bug? Random mouse focus issue that stops us receiving initial clicks.
-- Auto window placement packer still not working as expected
-    blocks: reliable multi-window tasks, window opening position prefs
 - Fast scrolling can invalidate areas and fail to copy the expected known
   good screen content.
   -- Tried and tried to get Claude to fix but no good.
@@ -66,7 +64,8 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
   (outline-click bug fixed; unblocked)
 - Furniture colour selection needs improvements (e.g. losing menu
   readability when palette changed)
-- Preferences for window opening positions (needs packer fix)
+- Preferences for window opening positions
+- Grid layouts / alignment / something so we can get neat layouts
 
 
 LAYER 5 - DRAG & TEMPLATES (needs sprites, config-after-the-fact)
