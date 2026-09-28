@@ -8,8 +8,6 @@ LAYER 0 - BUGS (fix before building on top)
 
 - SDL bug? Random mouse focus issue that stops us receiving initial clicks.
 - I still think there's over-draw when toggling window sizes.
-- Text alignment with window border failed to convince me. I think it's still
-  off by 1px and the Wuss measurement was bodged.
 - Icon colours still wrong / shifted?
 
 
