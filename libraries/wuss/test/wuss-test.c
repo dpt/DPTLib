@@ -6161,6 +6161,10 @@ StringSetOK: ;
       goto ColourSetFail;
     if (field->spec.bbox.x0 != 4 + 40 + wuss_STD_GAP) /* the title width */
       goto ColourSetFail;
+    /* the field ends where button_width says */
+    if (field->spec.bbox.x1 != 4 + 120 - wuss_STD_GAP -
+                               wuss_colourset_button_width(cswuss, 22))
+      goto ColourSetFail;
 
     /* a colour menu pick while the gadget has not opened it is declined */
     ev.kind                    = wuss_EVENT_MENU_SELECT;

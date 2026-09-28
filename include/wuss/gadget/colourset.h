@@ -96,6 +96,17 @@ result_t wuss_colourset_create(wuss_colourset_t           **out,
                                void                        *opaque);
 
 /**
+ * The width a colour set's button takes at the right of its bounding box, so
+ * a caller can line the field's right edge up with other icons.
+ *
+ * \param[in] wuss   The wuss instance, for its icon set.
+ * \param[in] height Height of the gadget's bounding box; the button is
+ *                   square at this height when the icon set lacks "grightc".
+ * \return The button's width in pixels.
+ */
+int wuss_colourset_button_width(const wuss_t *wuss, int height);
+
+/**
  * Free a colour set, closing its menu if open. Its icons are left on the
  * window, so this is safe to call before or after the window closes. Safe to
  * pass NULL.

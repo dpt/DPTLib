@@ -397,6 +397,10 @@ wuss_icon_spec_t;
 /** Standard main-axis size (px) for a wuss_ICON_TYPE_SLIDER. */
 #define wuss_STD_SLIDER_HEIGHT           18
 
+/** Standard size (px) of a wuss_ICON_TYPE_RADIO or wuss_ICON_TYPE_OPTION
+ *  glyph, as the stock icon set draws it; square. */
+#define wuss_STD_OPTION_SIZE             22
+
 /** Standard main-axis size (px) for a non-default wuss_ICON_TYPE_ACTION
  *  button, e.g. Cancel. */
 #define wuss_STD_SECONDARY_BUTTON_HEIGHT 26

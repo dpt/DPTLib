@@ -177,6 +177,14 @@ result_t wuss_colourset_create(wuss_colourset_t           **out,
   return result_OK;
 }
 
+int wuss_colourset_button_width(const wuss_t *wuss, int height)
+{
+  wuss_icon_spec_t spec;
+
+  return colourset_button_spec(wuss, (box_t) BOX_POS_SIZE(0, 0, height, height),
+                               &spec);
+}
+
 void wuss_colourset_destroy(wuss_colourset_t *doomed)
 {
   if (doomed == NULL)
