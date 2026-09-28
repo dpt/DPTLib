@@ -151,6 +151,7 @@ if(WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/component/info.h)
     list(APPEND PUBLIC_HEADERS include/wuss/component/proginfo.h)
     list(APPEND PUBLIC_HEADERS include/wuss/component/dialogue.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/gadget/colourset.h)
 endif()
 
 # The public headers must be set as properties of the library, not as
@@ -491,7 +492,8 @@ set(WUSS_COMPONENT_SOURCES
     libraries/wuss/component/colourmenu.c
     libraries/wuss/component/info.c
     libraries/wuss/component/proginfo.c
-    libraries/wuss/component/dialogue.c)
+    libraries/wuss/component/dialogue.c
+    libraries/wuss/gadget/colourset.c) # a gadget, but built on colourmenu
 
 set(WUSS_SOURCES ${WUSS_CORE_SOURCES})
 if(WUSS_FURNITURE)

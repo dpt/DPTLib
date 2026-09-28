@@ -30,7 +30,7 @@
 enum { ICONS_MENU_INFO };
 
 #define ICONS_DOC_W    260
-#define ICONS_DOC_H    1420 /* taller than the window, so scrolling is exercised */
+#define ICONS_DOC_H    1504 /* taller than the window, so scrolling is exercised */
 #define ICONS_MARGIN   28  /* left edge of everything except frame captions */
 #define ICONS_ROW      20  /* vertical pitch between stacked simple icons */
 
@@ -52,10 +52,11 @@ enum
   ICONS_N_MENU    = 8, /* frame + plain, ticked, swatch, submenu, disabled, rule, separator entry */
   ICONS_N_WRITE   = 4, /* frame + two writables + echo label */
   ICONS_N_SSET    = 2, /* frame + echo label; the gadget adds its own icons */
+  ICONS_N_CSET    = 2, /* frame + echo label; the gadget adds its own icons */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
                     ICONS_N_BITMAPS + ICONS_N_ICONSET + ICONS_N_PATTERN +
                     ICONS_N_BORDERS + ICONS_N_DISPLAY + ICONS_N_SLIDERS +
-                    ICONS_N_MENU + ICONS_N_WRITE + ICONS_N_SSET
+                    ICONS_N_MENU + ICONS_N_WRITE + ICONS_N_SSET + ICONS_N_CSET
 };
 
 /* Running state threaded through the icons_add_* helpers: where to write the
@@ -648,12 +649,13 @@ static void icons_add_writables(icons_layout_t *lay, int *echo)
   lay->y = top + 106;
 }
 
-/* A frame around a string set gadget and a label echoing its picks. The
- * gadget itself is created after the icon array, in *gadget. Returns the
+/* A frame captioned "caption" around a gadget and a label echoing its picks.
+ * The gadget itself is created after the icon array, in *gadget. Returns the
  * echo label's index via *echo. */
-static void icons_add_stringset(icons_layout_t *lay,
-                                int            *echo,
-                                box_t          *gadget)
+static void icons_add_gadget(icons_layout_t *lay,
+                             const char     *caption,
+                             int            *echo,
+                             box_t          *gadget)
 {
   wuss_icon_spec_t *s;
   int               top;
@@ -662,7 +664,7 @@ static void icons_add_stringset(icons_layout_t *lay,
   s       = &lay->specs[lay->n];
   s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 68);
   s->type = wuss_ICON_TYPE_FRAME;
-  s->text = "String set";
+  s->text = caption;
   s->fg   = lay->black;
   s->bg   = wuss_NO_BACKGROUND;
   lay->n++;
@@ -695,6 +697,20 @@ static result_t icons_sset_changed(wuss_stringset_t *stringset,
   return wuss_icon_set_text(tcx->window, tcx->sset_echo, buf);
 }
 
+static result_t icons_cset_changed(wuss_colourset_t *colourset,
+                                   wuss_colour_t     colour,
+                                   void             *opaque)
+{
+  icons_task_t *tcx;
+  char          buf[32];
+
+  NOT_USED(colourset);
+
+  tcx = opaque;
+  snprintf(buf, sizeof(buf), "picked colour %d", colour);
+  return wuss_icon_set_text(tcx->window, tcx->cset_echo, buf);
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t icons_create(wuss_t *wuss, icons_task_t **out)
@@ -709,8 +725,8 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   const char      *sprite_path;
   int              i_button, i_counter, i_opt, i_state, i_hotspot, i_ticked;
   int              i_shoriz, i_svert, i_sstate;
-  int              i_tally, i_echo, i_sset_echo;
-  box_t            sset_box;
+  int              i_tally, i_echo, i_sset_echo, i_cset_echo;
+  box_t            sset_box, cset_box;
   result_t         rc;
 
   task = calloc(1, sizeof(*task));
@@ -739,6 +755,8 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   task->echo         = NULL;
   task->sset         = NULL;
   task->sset_echo    = NULL;
+  task->cset         = NULL;
+  task->cset_echo    = NULL;
 
   resources   = wuss_get_resources(wuss);
   sprite_path = pathf("%s/resources/wuss/ninepatch.png", resources);
@@ -803,7 +821,8 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   icons_add_sliders(&lay, &i_shoriz, &i_svert, &i_sstate);
   icons_add_menu(&lay, &i_ticked);
   icons_add_writables(&lay, &i_echo);
-  icons_add_stringset(&lay, &i_sset_echo, &sset_box);
+  icons_add_gadget(&lay, "String set", &i_sset_echo, &sset_box);
+  icons_add_gadget(&lay, "Colour set", &i_cset_echo, &cset_box);
 
   rc = wuss_icon_create_array(task->window, specs, lay.n, made);
   if (rc != result_OK)
@@ -821,6 +840,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   task->tally        = made[i_tally];
   task->echo         = made[i_echo];
   task->sset_echo    = made[i_sset_echo];
+  task->cset_echo    = made[i_cset_echo];
   wuss_icon_set_selected(task->window, made[i_ticked], 1); /* "Show grid" starts ticked */
 
   {
@@ -831,6 +851,11 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
     if (rc != result_OK)
       goto failure;
   }
+
+  rc = wuss_colourset_create(&task->cset, task->window, cset_box, "Fill",
+                             lay.red, icons_cset_changed, task);
+  if (rc != result_OK)
+    goto failure;
 
   WUSS_MENU_ITEM_WINDOW(task->menu_items, ICONS_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
@@ -857,6 +882,7 @@ failure:
 void icons_destroy(icons_task_t *task)
 {
   wuss_stringset_destroy(task->sset);
+  wuss_colourset_destroy(task->cset);
   if (task->has_sprite)
     free(task->sprite.base);
   free(task);
@@ -965,6 +991,9 @@ static result_t icons_icon(const wuss_event_t *event, void *task_data)
   if (tcx->sset != NULL && wuss_stringset_handle_event(tcx->sset, event, &rc))
     return rc;
 
+  if (tcx->cset != NULL && wuss_colourset_handle_event(tcx->cset, event, &rc))
+    return rc;
+
   if (icon == tcx->slider_horiz || icon == tcx->slider_vert)
   {
     const char *name;
@@ -1056,6 +1085,9 @@ result_t icons_handle(wuss_window_t      *window,
     if (tcx->sset != NULL && wuss_stringset_handle_event(tcx->sset, event, &rc))
       return rc;
 
+    if (tcx->cset != NULL && wuss_colourset_handle_event(tcx->cset, event, &rc))
+      return rc;
+
     return result_OK;
   }
 
@@ -1065,6 +1097,8 @@ result_t icons_handle(wuss_window_t      *window,
 
     if (tcx->sset != NULL) /* never consumed; lets it drop its own handle */
       (void) wuss_stringset_handle_event(tcx->sset, event, &rc);
+    if (tcx->cset != NULL)
+      (void) wuss_colourset_handle_event(tcx->cset, event, &rc);
     tcx->menu_handle = NULL;
     return result_OK;
   }

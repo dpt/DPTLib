@@ -29,6 +29,7 @@
 #ifdef WUSS_COMPONENTS
 #include "wuss/component/fontmenu.h"
 #include "wuss/component/colourmenu.h"
+#include "wuss/gadget/colourset.h"
 #endif
 #ifdef WUSS_GADGETS
 #include "wuss/gadget/stringset.h"
@@ -95,6 +96,20 @@ static result_t stringset_test_changed(wuss_stringset_t *stringset,
 {
   NOT_USED(stringset);
   NOT_USED(index);
+
+  (*(int *) opaque)++;
+  return result_OK;
+}
+#endif
+
+#ifdef WUSS_COMPONENTS
+/* colourset changed callback: counts calls into the int at opaque */
+static result_t colourset_test_changed(wuss_colourset_t *colourset,
+                                       wuss_colour_t     colour,
+                                       void             *opaque)
+{
+  NOT_USED(colourset);
+  NOT_USED(colour);
 
   (*(int *) opaque)++;
   return result_OK;
@@ -6070,6 +6085,176 @@ StringSetFail:
 StringSetOK: ;
   }
 #endif /* WUSS_GADGETS */
+
+#ifdef WUSS_COMPONENTS
+  printf("test: wuss_colourset fills its field and tracks colour picks\n");
+  {
+    const char       *csfontfile;
+    bmfont_t         *csfont;
+    screen_t          csscr;
+    bitmap_t          csbm;
+    void             *cspixels;
+    wuss_t           *cswuss;
+    wuss_font_desc_t  csfdesc;
+    test_task_t       cstc;
+    wuss_task_t      *csowner;
+    wuss_window_t    *cswin;
+    wuss_colourset_t *cs;
+    wuss_icon_t      *button, *field;
+    wuss_event_t      ev;
+    box_t             cscontent;
+    result_t          csrc;
+    int               calls;
+
+    /* the menu needs a font, and the button the icon set; the default
+     * palette is just white (0) and black (1) */
+    csfontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    rc = bmfont_create(csfontfile, &csfont);
+    if (rc != result_OK) goto ColourSetFail;
+
+    cspixels = malloc((size_t) rowbytes * 200);
+    if (cspixels == NULL) { rc = result_OOM; goto ColourSetFail; }
+    rc = bitmap_init(&csbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, cspixels);
+    if (rc != result_OK) goto ColourSetFail;
+    screen_for_bitmap(&csscr, &csbm);
+
+    csfdesc.font       = csfont;
+    csfdesc.font_class = wuss_FONT_CLASS_NONE;
+    csfdesc.name       = NULL;
+    rc = wuss_create(&csscr, &csfdesc, 1, NULL, 0, NULL, NULL, resources,
+                     &cswuss);
+    if (rc != result_OK) goto ColourSetFail;
+
+    memset(&cstc, 0, sizeof(cstc));
+    csowner = mk_task(cswuss, test_handle, &cstc);
+    if (csowner == NULL) { rc = result_OOM; goto ColourSetFail; }
+
+    cscontent = (box_t) BOX_POS_SIZE(10, 10, 150, 100);
+    rc = wuss_window_create(csowner, &cscontent, "CS", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP, SIZE2D(150, 100), SIZE2D(0, 0),
+                            &cswin);
+    if (rc != result_OK) goto ColourSetFail;
+
+    /* an out-of-range colour is refused */
+    if (wuss_colourset_create(&cs, cswin, (box_t) BOX_POS_SIZE(4, 4, 120, 22),
+                              "Fill", wuss_NO_BACKGROUND, NULL, NULL) !=
+        result_WUSS_BAD_COLOUR)
+      goto ColourSetFail;
+
+    calls = 0;
+    rc = wuss_colourset_create(&cs, cswin, (box_t) BOX_POS_SIZE(4, 4, 120, 22),
+                               "Fill", 0, colourset_test_changed, &calls);
+    if (rc != result_OK) goto ColourSetFail;
+    if (wuss_colourset_get_colour(cs) != 0) goto ColourSetFail;
+
+    /* the button sits at the right edge, drawn from the icon set; the field
+     * just left of it is filled with the colour */
+    button = wuss__icon_hit_test(cswin, POINT(4 + 120 - 2, 4 + 11));
+    if (button == NULL || wuss_icon_get_type(button) != wuss_ICON_TYPE_BITMAP)
+      goto ColourSetFail;
+    field = cswin->icons[0];
+    if (field->spec.type != wuss_ICON_TYPE_DISPLAY || field->spec.bg != 0)
+      goto ColourSetFail;
+
+    /* a colour menu pick while the gadget has not opened it is declined */
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = wuss_colourmenu_menu(cswuss);
+    ev.data.menu_select.index  = 1;
+    ev.data.menu_select.button = wuss_BUTTON_SELECT;
+    if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;
+
+    /* a Select click on the button opens the colour menu */
+    ev.kind              = wuss_EVENT_ICON;
+    ev.data.icon.icon    = button;
+    ev.data.icon.action  = wuss_MOUSE_UP;
+    ev.data.icon.button  = wuss_BUTTON_SELECT;
+    ev.data.icon.value   = 0;
+    if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
+      goto ColourSetFail;
+    if (cswuss->menu_chain == NULL) goto ColourSetFail;
+
+    /* an Adjust pick of another colour refills the field and fires the
+     * callback, keeping the menu open */
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = wuss_menu_handle_menu(cswuss->menu_chain);
+    ev.data.menu_select.index  = 1;
+    ev.data.menu_select.button = wuss_BUTTON_ADJUST;
+    if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
+      goto ColourSetFail;
+    if (wuss_colourset_get_colour(cs) != 1 || field->spec.bg != 1 ||
+        calls != 1)
+      goto ColourSetFail;
+
+    /* re-picking the current colour does not fire it */
+    if (!wuss_colourset_handle_event(cs, &ev, &csrc) || calls != 1)
+      goto ColourSetFail;
+
+    /* the programmatic path is range-checked and silent */
+    if (wuss_colourset_set_colour(cs, wuss_NO_BACKGROUND) !=
+        result_WUSS_BAD_COLOUR)
+      goto ColourSetFail;
+    if (wuss_colourset_set_colour(cs, 0) != result_OK) goto ColourSetFail;
+    if (wuss_colourset_get_colour(cs) != 0 || calls != 1) goto ColourSetFail;
+
+    /* a Select pick: wuss closes the chain and delivers MENU_CLOSED (picked)
+     * before MENU_SELECT, which is still the gadget's */
+    wuss_menu_close(cswuss->menu_chain);
+    ev.kind                    = wuss_EVENT_MENU_CLOSED;
+    ev.data.menu_closed.picked = 1;
+    if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = wuss_colourmenu_menu(cswuss);
+    ev.data.menu_select.index  = 1;
+    ev.data.menu_select.button = wuss_BUTTON_SELECT;
+    if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
+      goto ColourSetFail;
+    if (wuss_colourset_get_colour(cs) != 1 || calls != 2) goto ColourSetFail;
+
+    /* ... but once that pick is spent, a later one is not */
+    if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;
+
+    /* an abandoned chain leaves no pick in flight either */
+    ev.kind              = wuss_EVENT_ICON;
+    ev.data.icon.icon    = button;
+    ev.data.icon.action  = wuss_MOUSE_UP;
+    ev.data.icon.button  = wuss_BUTTON_SELECT;
+    ev.data.icon.value   = 0;
+    if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
+      goto ColourSetFail;
+    wuss_menu_close(cswuss->menu_chain); /* as a click outside does */
+    ev.kind                    = wuss_EVENT_MENU_CLOSED;
+    ev.data.menu_closed.picked = 0;
+    if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = wuss_colourmenu_menu(cswuss);
+    ev.data.menu_select.index  = 0;
+    ev.data.menu_select.button = wuss_BUTTON_SELECT;
+    if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;
+
+    /* destroying it closes the menu */
+    ev.kind              = wuss_EVENT_ICON;
+    ev.data.icon.icon    = button;
+    ev.data.icon.action  = wuss_MOUSE_UP;
+    ev.data.icon.button  = wuss_BUTTON_SELECT;
+    ev.data.icon.value   = 0;
+    if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
+      goto ColourSetFail;
+    wuss_colourset_destroy(cs);
+    if (cswuss->menu_chain != NULL) goto ColourSetFail;
+
+    reap_test_tasks();
+    wuss_destroy(cswuss);
+    free(cspixels);
+    bmfont_destroy(csfont);
+    goto ColourSetOK;
+
+ColourSetFail:
+    printf("wuss_test: colourset check failed\n");
+    return result_TEST_FAILED;
+ColourSetOK: ;
+  }
+#endif /* WUSS_COMPONENTS */
 
 #ifdef WUSS_ICONS
   printf("test: menu pick flashes then delivers MENU_SELECT; fast ADJUST "
