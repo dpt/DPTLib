@@ -68,12 +68,14 @@ typedef result_t (wuss_colourset_changed_fn_t)(wuss_colourset_t *colourset,
  * \param[in]  window  Window to put the gadget's icons on.
  * \param[in]  bbox    Bounding box, virtual document space, for the title,
  *                     field and button together. The title takes the left
- *                     edge, as wide as its text; the button takes the right
+ *                     edge, \p title_width wide; the button takes the right
  *                     edge, vertically centred; the field fills the rest,
  *                     less wuss_STD_GAP either side.
  * \param[in]  title   Title text, also the colour menu's title; NULL or ""
  *                     for no title icon (the menu is then titled "Colour").
  *                     Borrowed; must outlive the gadget.
+ * \param[in]  title_width Width of the title, so a column of gadgets can
+ *                         line their fields up; 0 to fit its text.
  * \param[in]  colour  Initial colour: a palette index or a symbolic
  *                     wuss_COLOUR_* value, resolved now.
  * \param[in]  changed Called when the user picks a different colour, or NULL
@@ -88,6 +90,7 @@ result_t wuss_colourset_create(wuss_colourset_t           **out,
                                wuss_window_t               *window,
                                box_t                        bbox,
                                const char                  *title,
+                               int                          title_width,
                                wuss_colour_t                colour,
                                wuss_colourset_changed_fn_t *changed,
                                void                        *opaque);

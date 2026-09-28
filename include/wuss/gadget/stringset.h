@@ -7,7 +7,8 @@
  * strings, with a pop-up arrow button at its right edge that opens a menu of
  * them -- the RISC OS Toolbox StringSet in miniature.
  *
- * The gadget is two icons on the caller's window: the field (see \ref
+ * The gadget is up to three icons on the caller's window: an optional title
+ * (see \ref wuss_icon_spec_label), the field (see \ref
  * wuss_icon_spec_display) and the arrow, drawn from the "gright" /
  * "gright-p" icon-set entries, or as an ACTION button labelled ">" when the
  * icon set lacks them. The icons belong to the window and are freed with it.
@@ -64,12 +65,17 @@ typedef result_t (wuss_stringset_changed_fn_t)(wuss_stringset_t *stringset,
  * \param[out] out     Filled with the new handle on success, untouched on
  *                     failure.
  * \param[in]  window  Window to put the gadget's icons on.
- * \param[in]  bbox    Bounding box, virtual document space, for the field
- *                     and arrow together. The arrow takes the right edge,
- *                     vertically centred; the field fills the rest, less
- *                     wuss_STD_GAP.
- * \param[in]  title   Menu title; NULL means "". Borrowed; must outlive the
- *                     gadget.
+ * \param[in]  bbox    Bounding box, virtual document space, for the title,
+ *                     field and arrow together. The title takes the left
+ *                     edge, \p title_width wide; the arrow takes the right
+ *                     edge, vertically centred; the field fills the rest,
+ *                     less wuss_STD_GAP either side.
+ * \param[in]  title   Title text, also the menu's title; NULL means "", for
+ *                     no title icon. Borrowed; must outlive the gadget.
+ * \param[in]  title_width Width of the title, so a column of gadgets can
+ *                         line their fields up; 0 to fit its text; negative
+ *                         for no title icon, \p title then only titling the
+ *                         menu.
  * \param[in]  strings Array of \p count entries. Borrowed; the array and its
  *                     strings must outlive the gadget.
  * \param[in]  count   Number of entries; at least 1.
@@ -84,6 +90,7 @@ result_t wuss_stringset_create(wuss_stringset_t           **out,
                                wuss_window_t               *window,
                                box_t                        bbox,
                                const char                  *title,
+                               int                          title_width,
                                const char *const           *strings,
                                int                          count,
                                wuss_stringset_changed_fn_t *changed,

@@ -5983,15 +5983,18 @@ ColourMenuOK: ;
 
     /* a zero count is refused */
     if (wuss_stringset_create(&ss, sswin, (box_t) BOX_POS_SIZE(4, 4, 120, 22),
-                              "Colour", ss_strings, 0, NULL, NULL) !=
+                              "Colour", -1, ss_strings, 0, NULL, NULL) !=
         result_BAD_ARG)
       goto StringSetFail;
 
     calls = 0;
     rc = wuss_stringset_create(&ss, sswin, (box_t) BOX_POS_SIZE(4, 4, 120, 22),
-                               "Colour", ss_strings, NELEMS(ss_strings),
+                               "Colour", 40, ss_strings, NELEMS(ss_strings),
                                stringset_test_changed, &calls);
     if (rc != result_OK) goto StringSetFail;
+    /* the field starts after the title */
+    if (sswin->icons[0]->spec.bbox.x0 != 4 + 40 + wuss_STD_GAP)
+      goto StringSetFail;
     if (wuss_stringset_get_index(ss) != 0) goto StringSetFail;
 
     /* the arrow sits at the right edge, drawn from the icon set */
@@ -6042,7 +6045,7 @@ ColourMenuOK: ;
     {
       rc = wuss_stringset_create(&ss, sswin,
                                  (box_t) BOX_POS_SIZE(4, 40, 120, 22), "Colour",
-                                 ss_strings, NELEMS(ss_strings), NULL, NULL);
+                                 -1, ss_strings, NELEMS(ss_strings), NULL, NULL);
       if (rc != result_OK) goto StringSetFail;
 
       ev.kind             = wuss_EVENT_ICON;
@@ -6138,13 +6141,13 @@ StringSetOK: ;
 
     /* an out-of-range colour is refused */
     if (wuss_colourset_create(&cs, cswin, (box_t) BOX_POS_SIZE(4, 4, 120, 22),
-                              "Fill", wuss_NO_BACKGROUND, NULL, NULL) !=
+                              "Fill", 0, wuss_NO_BACKGROUND, NULL, NULL) !=
         result_WUSS_BAD_COLOUR)
       goto ColourSetFail;
 
     calls = 0;
     rc = wuss_colourset_create(&cs, cswin, (box_t) BOX_POS_SIZE(4, 4, 120, 22),
-                               "Fill", 0, colourset_test_changed, &calls);
+                               "Fill", 40, 0, colourset_test_changed, &calls);
     if (rc != result_OK) goto ColourSetFail;
     if (wuss_colourset_get_colour(cs) != 0) goto ColourSetFail;
 
@@ -6155,6 +6158,8 @@ StringSetOK: ;
       goto ColourSetFail;
     field = cswin->icons[0];
     if (field->spec.type != wuss_ICON_TYPE_DISPLAY || field->spec.bg != 0)
+      goto ColourSetFail;
+    if (field->spec.bbox.x0 != 4 + 40 + wuss_STD_GAP) /* the title width */
       goto ColourSetFail;
 
     /* a colour menu pick while the gadget has not opened it is declined */
