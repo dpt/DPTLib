@@ -46,9 +46,9 @@ static inline int wuss__iconbar_icon_pressed(const wuss_iconbar_icon_t *icon)
   return (icon->state & wuss_ICONBAR_ICON_STATE_PRESSED) != 0;
 }
 
-/* The bar's on-screen box: full screen width, WUSS_ICONBAR_HEIGHT tall,
- * pinned to the bottom edge. Recomputed from the current screen size on
- * every call, so a screen resize needs no separate bar-geometry update. */
+/* The bar's on-screen box: wuss->iconbar_window's own visible box, or an
+ * empty box if the bar has no window yet (before the first icon is
+ * created). */
 void wuss__iconbar_box(const wuss_t *wuss, box_t *out);
 
 /* Icon i's on-screen slot box within the bar (screen space), left to right
@@ -56,22 +56,25 @@ void wuss__iconbar_box(const wuss_t *wuss, box_t *out);
  * screen's right edge is the caller's to skip drawing/hit-testing. */
 void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out);
 
-/* Paint the whole bar -- its background strip and every icon in its slot --
- * onto wuss->scr, clipped to whatever of the bar's box "clip" (screen
- * space) covers. Called last in a redraw pass so the bar always draws on
- * top of every window. */
-void wuss__iconbar_draw(wuss_t *wuss, const box_t *clip);
+/* Paint every icon (bevel/image/label) into "piece", a piece of
+ * wuss->iconbar_window's content already backdrop-filled and clipped by
+ * redraw_window. Called from redraw_window for wuss->iconbar_window, same as
+ * any other window's icon-drawing step. */
+void wuss__iconbar_draw_icons(wuss_t *wuss, const box_t *piece);
 
 /* Hit-test the bar against a screen-space point. Returns the icon under it,
  * or NULL if the point is outside the bar or over empty slot space. */
 wuss_iconbar_icon_t *wuss__iconbar_hit_test(wuss_t *wuss, point_t p);
 
-/* Click/drag dispatch for wuss_mouse_click; see iconbar/hit-test.c. Returns
- * 1 when the bar claimed the event, 0 to fall through to window dispatch. */
-int wuss__iconbar_mouse_click(wuss_t             *wuss,
-                              point_t             p,
-                              wuss_button_t       button,
-                              wuss_mouse_action_t action);
+/* Click/drag dispatch for wuss_mouse_click, called once the point has
+ * already resolved to wuss->iconbar_window: see iconbar/hit-test.c. Returns
+ * 1 when an icon claimed the event, 0 for empty slot space (caller still
+ * treats the click as handled -- the bar's window owns anything within its
+ * own box). */
+int wuss__iconbar_icon_click(wuss_t             *wuss,
+                             point_t             p,
+                             wuss_button_t       button,
+                             wuss_mouse_action_t action);
 
 /* Remove every icon owned by "task" from the bar, invalidating their slots.
  * Called by wuss_task_destroy/wuss_destroy before the task is freed. No-op

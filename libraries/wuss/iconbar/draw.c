@@ -13,10 +13,13 @@
 
 void wuss__iconbar_box(const wuss_t *wuss, box_t *out)
 {
-  out->x0 = 0;
-  out->y0 = wuss->scr->size.h - WUSS_ICONBAR_HEIGHT;
-  out->x1 = wuss->scr->size.w;
-  out->y1 = wuss->scr->size.h;
+  if (wuss->iconbar_window == NULL)
+  {
+    box_reset(out);
+    return;
+  }
+
+  *out = wuss->iconbar_window->visible;
 }
 
 void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out)
@@ -86,24 +89,9 @@ static void iconbar_draw_icon(wuss_t                    *wuss,
   }
 }
 
-void wuss__iconbar_draw(wuss_t *wuss, const box_t *clip)
+void wuss__iconbar_draw_icons(wuss_t *wuss, const box_t *piece)
 {
-  box_t bar, saved_clip;
-  int   i;
-
-  wuss__iconbar_box(wuss, &bar);
-  if (box_intersection(clip, &bar, &bar))
-    return;
-
-  saved_clip     = wuss->scr->clip;
-  if (box_intersection(&saved_clip, &bar, &wuss->scr->clip))
-  {
-    wuss->scr->clip = saved_clip;
-    return;
-  }
-
-  screen_fill_rect(wuss->scr, bar.x0, bar.y0, box_size(&bar),
-                   wuss->palette[wuss__resolve_colour(wuss, wuss_COLOUR_GREY)]);
+  int i;
 
   for (i = 0; i < wuss->niconbar_icons; i++)
   {
@@ -113,10 +101,11 @@ void wuss__iconbar_draw(wuss_t *wuss, const box_t *clip)
     if (slot.x0 >= wuss->scr->size.w)
       break;
 
+    if (box_intersection(piece, &slot, &slot))
+      continue;
+
     iconbar_draw_icon(wuss, wuss->iconbar_icons[i], &slot);
   }
-
-  wuss->scr->clip = saved_clip;
 }
 
 #endif /* WUSS_ICONBAR */

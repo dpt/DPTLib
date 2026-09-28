@@ -56,15 +56,6 @@ result_t wuss_mouse_click(wuss_t             *wuss,
 
   wuss->pointer = p;
 
-#ifdef WUSS_ICONBAR
-  if (wuss__iconbar_mouse_click(wuss, p, button, action))
-  {
-    if (hit != NULL)
-      *hit = NULL;
-    return result_OK;
-  }
-#endif
-
 #ifdef WUSS_ICONS
   /* Release a held button icon on a MOUSE_UP that will NOT reach it through the
    * normal window hit-test: the up may land on a window that opened over the
@@ -361,6 +352,14 @@ result_t wuss_mouse_click(wuss_t             *wuss,
       (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)) &&
       (win->flags & wuss_WINDOW_FOCUSABLE))
     (void) wuss_set_focus(wuss, win);
+
+#ifdef WUSS_ICONBAR
+  if (win == wuss->iconbar_window)
+  {
+    (void) wuss__iconbar_icon_click(wuss, p, button, action);
+    return result_OK;
+  }
+#endif
 
   if (win->task->handle != NULL)
   {

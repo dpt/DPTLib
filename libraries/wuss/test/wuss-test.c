@@ -8099,6 +8099,110 @@ QuitFail:
     }
   }
 
+#ifdef WUSS_ICONBAR
+  printf("test: icon bar is a real, occludable, pinned window\n");
+
+  {
+    wuss_iconbar_icon_spec_t spec;
+    wuss_iconbar_icon_t     *icon;
+    wuss_task_t             *owner;
+    test_task_t              tc_bar;
+    box_t                    box_over, bar_before;
+    wuss_window_t           *win_over;
+    result_t                 mrc;
+
+    memset(&tc_bar, 0, sizeof(tc_bar));
+    owner = mk_task(wuss, test_handle, &tc_bar);
+    if (owner == NULL) goto Failure;
+
+    memset(&spec, 0, sizeof(spec));
+    spec.text = "T";
+
+    rc = wuss_iconbar_icon_create(wuss, owner, &spec, &icon);
+    if (rc != result_OK || icon == NULL)
+      goto Failure;
+
+    /* first icon creates the bar's window lazily, pinned to the bottom of
+     * the 200x200 test screen and full width */
+    if (wuss->iconbar_window == NULL)
+      goto Failure;
+    if (wuss->iconbar_window->visible.x0 != 0 ||
+        wuss->iconbar_window->visible.x1 != 200 ||
+        wuss->iconbar_window->visible.y1 != 200 ||
+        wuss->iconbar_window->visible.y0 != 200 - WUSS_ICONBAR_HEIGHT)
+      goto Failure;
+
+    /* a real z-order member can be moved/resized like any other window --
+     * except this one is pinned, so both must refuse */
+    wuss_window_move(wuss->iconbar_window, POINT(5, 5));
+    if (wuss->iconbar_window->visible.x0 != 0 ||
+        wuss->iconbar_window->visible.y0 != 200 - WUSS_ICONBAR_HEIGHT)
+      goto Failure; /* move silently ignored on a pinned window */
+
+    mrc = wuss_window_resize(wuss->iconbar_window, SIZE2D(50, 50));
+    if (mrc != result_WUSS_PINNED)
+      goto Failure;
+
+    /* a window created after the bar, overlapping its strip, must occlude
+     * it in z-order -- covered by the general occlusion machinery now that
+     * the bar is a normal window, not a special-cased always-on-top draw */
+    box_over.x0 = 0;   box_over.y0 = 100;
+    box_over.x1 = 200; box_over.y1 = 200 - WUSS_ICONBAR_HEIGHT + 10;
+    rc = wuss_window_create(mk_task(wuss, paint_handle, NULL), &box_over,
+                            "OVER", wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                            SIZE2D(200, 50), SIZE2D(20, 20), &win_over);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* a click on the strip of the bar covered by win_over must reach
+     * win_over, not the icon underneath it */
+    {
+      wuss_window_t *hit;
+
+      rc = wuss_mouse_click(wuss, POINT(10, 200 - WUSS_ICONBAR_HEIGHT + 5),
+                            wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+      if (rc != result_OK || hit != win_over)
+        goto Failure;
+      rc = wuss_mouse_click(wuss, POINT(10, 200 - WUSS_ICONBAR_HEIGHT + 5),
+                            wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+      if (rc != result_OK)
+        goto Failure;
+    }
+
+    /* a click on the icon itself (below win_over's strip) reaches it */
+    tc_bar.icon_count = 0;
+    rc = wuss_mouse_click(wuss, POINT(10, 199), wuss_BUTTON_SELECT,
+                          wuss_MOUSE_DOWN, NULL);
+    if (rc != result_OK)
+      goto Failure;
+    rc = wuss_mouse_click(wuss, POINT(10, 199), wuss_BUTTON_SELECT,
+                          wuss_MOUSE_UP, NULL);
+    if (rc != result_OK || tc_bar.icon_count == 0)
+      goto Failure;
+
+    wuss_window_close(win_over);
+
+    /* a screen resize keeps the bar pinned to the new bottom edge rather
+     * than nudging/shrinking it like an ordinary window */
+    bar_before = wuss->iconbar_window->visible;
+    rc = wuss_resize(wuss, &scr);
+    if (rc != result_OK)
+      goto Failure;
+    if (wuss->iconbar_window->visible.x0 != bar_before.x0 ||
+        wuss->iconbar_window->visible.y0 != bar_before.y0 ||
+        wuss->iconbar_window->visible.x1 != bar_before.x1 ||
+        wuss->iconbar_window->visible.y1 != bar_before.y1)
+      goto Failure; /* same screen size in -> same pinned box out */
+
+    wuss_iconbar_icon_destroy(wuss, icon);
+    reap_test_tasks();
+  }
+#endif
+
   wuss_destroy(wuss);
 
   free(pixels);

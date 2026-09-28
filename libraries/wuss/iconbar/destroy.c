@@ -33,7 +33,7 @@ void wuss_iconbar_icon_destroy(wuss_t *wuss, wuss_iconbar_icon_t *icon)
   }
 
   wuss__iconbar_box(wuss, &bar);
-  wuss_invalidate(wuss, &bar);
+  wuss__invalidate_clipped(wuss->iconbar_window, &bar);
 
   wuss__free(wuss, (char *) icon->spec.text);
   wuss__free(wuss, icon);

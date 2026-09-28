@@ -43,6 +43,9 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   if (!wuss__size_ok(size.w, size.h))
     return result_WUSS_TOO_SMALL;
 
+  if (window->flags & wuss_WINDOW_PINNED)
+    return result_WUSS_PINNED;
+
   /* The requested content size is honoured verbatim: a window may end up
    * overhanging the screen edge (same as one dragged there, or one whose
    * far corner is off-screen when toggle-size floors it at WUSS_MIN_CONTENT).

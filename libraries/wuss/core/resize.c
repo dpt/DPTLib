@@ -6,6 +6,9 @@
 #include "geom/box.h"
 
 #include "impl.h"
+#ifdef WUSS_ICONBAR
+#include "../iconbar.h"
+#endif
 
 /* Fit one window to the new screen: shrink it only if it is bigger than
  * the whole screen (never growing a window that already fits), then nudge
@@ -54,6 +57,30 @@ static void resize_one_window(wuss_window_t *window)
   wuss_window_move(window, origin);
 }
 
+/* A pinned window (the icon bar) is never nudged/shrunk like an ordinary
+ * window -- its box is fully determined by the new screen size, so just
+ * recompute it directly and invalidate the change. */
+static void resize_pinned_window(wuss_window_t *window)
+{
+  box_t before;
+
+  before = window->visible;
+
+  window->visible.x0 = 0;
+  window->visible.y0 = window->wuss->scr->size.h - WUSS_ICONBAR_HEIGHT;
+  window->visible.x1 = window->wuss->scr->size.w;
+  window->visible.y1 = window->wuss->scr->size.h;
+
+  if (before.x0 != window->visible.x0 || before.y0 != window->visible.y0 ||
+      before.x1 != window->visible.x1 || before.y1 != window->visible.y1)
+  {
+    box_t dirty;
+
+    box_union(&before, &window->visible, &dirty);
+    wuss__invalidate_clipped(window, &dirty);
+  }
+}
+
 result_t wuss_resize(wuss_t *wuss, screen_t *scr)
 {
   list_t *e;
@@ -75,7 +102,15 @@ result_t wuss_resize(wuss_t *wuss, screen_t *scr)
 #endif
 
   for (e = wuss->z_order.next; e != NULL; e = e->next)
-    resize_one_window(wuss__window_from_link(e));
+  {
+    wuss_window_t *win;
+
+    win = wuss__window_from_link(e);
+    if (win->flags & wuss_WINDOW_PINNED)
+      resize_pinned_window(win);
+    else
+      resize_one_window(win);
+  }
 
   screen.x0 = 0;
   screen.y0 = 0;
