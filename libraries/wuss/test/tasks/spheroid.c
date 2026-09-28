@@ -109,7 +109,7 @@ static const char *const spheroid_light_names[SPHEROID_NLIGHTS] =
 
 /* stack items for the control strip: a VBOX of two frames, the global
  * settings above the current light's, each a VBOX of label / slider / value
- * rows; the Light frame ends with an On option and a Colour button */
+ * rows; the Light frame ends with an On option and a colour set */
 enum
 {
   SS_ROOT,
@@ -118,26 +118,25 @@ enum
   SS_ROW,     /* first row; each row is SS_ROW + 4 * n, then its three leaves */
   SS_BUTTONS = SS_ROW + 4 * SPHEROID_NROWS, /* HBOX of the next two */
   SS_ON,
-  SS_COLOUR,
+  SS_COLOUR,  /* the colour set gadget's bbox */
   SS__LIMIT
 };
 
 /* icons in the strip: the two frames, label / slider / value per row, then
- * the On option and the Colour button */
+ * the On option */
 enum
 {
   SI_SPHERE,
   SI_LIGHT,
   SI_ROW,
   SI_ON = SI_ROW + 3 * SPHEROID_NROWS,
-  SI_COLOUR,
   SI__LIMIT
 };
 
 #define SS_LABEL_W      (7 * 6) /* enough for "Ambient" */
 #define SS_VALUE_W      (4 * 6) /* enough for "200%" */
 #define SS_SLIDER_MIN_W (64)
-#define SS_COLOUR_W     (64)
+#define SS_ON_W         (40)
 
 #define SS_FRAME(parent_) \
   { .kind = stack_KIND_VBOX, .parent = (parent_), .axis_size = STACK_HUG, \
@@ -162,8 +161,8 @@ static const stack_item_t spheroid_strip[SS__LIMIT] =
   SS_ROW_ITEMS(SPHEROID_ROW_SHARPNESS, SS_LIGHT),
   SS_ROW_ITEMS(SPHEROID_ROW_INTENSITY, SS_LIGHT),
   [SS_BUTTONS] = STACK_HBOX(SS_LIGHT, wuss_STD_SECONDARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_FILL),
-  [SS_ON]      = STACK_LEAF_EX(SS_BUTTONS, 0, 0, stack_ALIGN_FILL, 1, 0, 0),
-  [SS_COLOUR]  = STACK_LEAF(SS_BUTTONS, SS_COLOUR_W, 0, stack_ALIGN_FILL)
+  [SS_ON]      = STACK_LEAF(SS_BUTTONS, SS_ON_W, 0, stack_ALIGN_FILL),
+  [SS_COLOUR]  = STACK_LEAF_EX(SS_BUTTONS, 0, 0, stack_ALIGN_FILL, 1, 0, 0)
 };
 
 /* per-redraw constants, worked out once rather than per pixel */
@@ -493,6 +492,35 @@ static double spheroid_normal(double dx, double dy, double r, double n[3])
 
 /* ----------------------------------------------------------------------- */
 
+/* the palette entry nearest the current light's colour. ponytail: a Mutated
+ * or Randomised colour shows as its nearest entry, so the colour set's tick
+ * is approximate until a pick */
+static wuss_colour_t spheroid_light_nearest(const spheroid_task_t *task)
+{
+  unsigned int r, g, b;
+
+  colour_get_rgb(&task->lights[task->current].colour, &r, &g, &b);
+  return wuss_nearest_colour(task->wuss, (int) r, (int) g, (int) b);
+}
+
+/* the colour set's pick: the current light takes that palette entry */
+static result_t spheroid_light_colour_changed(wuss_colourset_t *colourset,
+                                              wuss_colour_t     colour,
+                                              void             *opaque)
+{
+  spheroid_task_t *task;
+  const colour_t  *palette;
+  int              npalette;
+
+  NOT_USED(colourset);
+
+  task    = opaque;
+  palette = wuss_get_palette(task->wuss, &npalette);
+  task->lights[task->current].colour = palette[colour];
+  spheroid_invalidate_preview(task);
+  return result_OK;
+}
+
 /* build the control strip's icons down the window's left edge */
 static result_t spheroid_strip_create(spheroid_task_t *task)
 {
@@ -535,7 +563,6 @@ static result_t spheroid_strip_create(spheroid_task_t *task)
   }
 
   wuss_icon_spec_option(&specs[SI_ON], boxes[SS_ON], "On");
-  wuss_icon_spec_action(&specs[SI_COLOUR], boxes[SS_COLOUR], "Colour", 0);
 
   rc = wuss_icon_create_array(task->window, specs, NELEMS(specs), made);
   if (rc != result_OK)
@@ -543,9 +570,15 @@ static result_t spheroid_strip_create(spheroid_task_t *task)
 
   task->light_frame = made[SI_LIGHT];
   task->on_icon     = made[SI_ON];
-  task->colour_icon = made[SI_COLOUR];
   wuss_icon_set_selected(task->window, task->on_icon,
                          task->lights[task->current].on);
+
+  rc = wuss_colourset_create(&task->light_colour, task->window,
+                             boxes[SS_COLOUR], "Colour",
+                             spheroid_light_nearest(task),
+                             spheroid_light_colour_changed, task);
+  if (rc != result_OK)
+    return rc;
 
   for (row = 0; row < SPHEROID_NROWS; row++)
   {
@@ -678,6 +711,7 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
 
 void spheroid_destroy(spheroid_task_t *task)
 {
+  wuss_colourset_destroy(task->light_colour);
   free(task);
 }
 
@@ -793,8 +827,8 @@ static result_t spheroid_redraw(const wuss_event_t *event,
   return result_OK;
 }
 
-/* point the Light frame at the current light: its caption, its sliders and
- * its On option */
+/* point the Light frame at the current light: its caption, its sliders, its
+ * On option and its colour set */
 static void spheroid_sync_light(spheroid_task_t *task)
 {
   int row;
@@ -810,6 +844,8 @@ static void spheroid_sync_light(spheroid_task_t *task)
                                *spheroid_row_field(task, row));
   wuss_icon_set_selected(task->window, task->on_icon,
                          task->lights[task->current].on);
+  (void) wuss_colourset_set_colour(task->light_colour,
+                                   spheroid_light_nearest(task));
 }
 
 /* turn the current light on, as moving it does, ticking its On option */
@@ -1179,7 +1215,7 @@ static result_t spheroid_key(spheroid_task_t    *task,
 /* The colour rows' submenu: the shared colourmenu singleton, retitled and
  * aimed at the right field here rather than at create time since other tasks
  * retitle it and toggle its None row too. The light's colour is picked from
- * the strip's Colour button instead; see spheroid_icon. */
+ * the strip's colour set instead. */
 static result_t spheroid_pre_submenu_open(spheroid_task_t    *task,
                                           const wuss_event_t *event)
 {
@@ -1208,7 +1244,11 @@ static result_t spheroid_pre_submenu_open(spheroid_task_t    *task,
 static result_t spheroid_menu_select(spheroid_task_t    *task,
                                      const wuss_event_t *event)
 {
-  int             index;
+  result_t rc;
+  int      index;
+
+  if (wuss_colourset_handle_event(task->light_colour, event, &rc))
+    return rc;
 
   if (task->colour_target != NULL &&
       wuss_colourmenu_selected_rgb(event, task->colour_target))
@@ -1269,41 +1309,22 @@ static result_t spheroid_menu_select(spheroid_task_t    *task,
   return result_OK;
 }
 
-/* the Colour button: pop the shared colourmenu up at the pointer, aimed at
- * the current light */
-static result_t spheroid_pick_light_colour(spheroid_task_t *task)
-{
-  const wuss_menu_t *menu;
-
-  menu = wuss_colourmenu_menu(task->wuss);
-  if (menu == NULL)
-    return result_OOM;
-
-  task->colour_target = &task->lights[task->current].colour;
-  wuss_colourmenu_set_none(0);
-  (void) wuss_colourmenu_set_title("Light colour"); /* ponytail: OOM keeps
-                                                     * the old title */
-  wuss_colourmenu_set_ticked_rgb(*task->colour_target);
-
-  return wuss_menu_open_at_pointer(task->delegate, menu, &task->menu_handle);
-}
-
-/* a strip click: toggle the current light, pick its colour, or a slider drag
- * stores the value; each reshades */
+/* a strip click: the colour set's button, toggle the current light, or a
+ * slider drag stores the value; each reshades */
 static result_t spheroid_icon(spheroid_task_t    *task,
                               wuss_window_t      *window,
                               const wuss_event_t *event)
 {
-  int row, value;
+  result_t rc;
+  int      row, value;
 
-  if (event->data.icon.icon == task->on_icon ||
-      event->data.icon.icon == task->colour_icon)
+  if (wuss_colourset_handle_event(task->light_colour, event, &rc))
+    return rc;
+
+  if (event->data.icon.icon == task->on_icon)
   {
     if (event->data.icon.action != wuss_MOUSE_UP)
       return result_OK;
-
-    if (event->data.icon.icon == task->colour_icon)
-      return spheroid_pick_light_colour(task);
 
     task->lights[task->current].on = !!wuss_icon_get_selected(task->on_icon);
     spheroid_invalidate_preview(task);
@@ -1367,8 +1388,13 @@ result_t spheroid_handle(wuss_window_t      *window,
     return spheroid_icon(task, window, event);
 
   case wuss_EVENT_MENU_CLOSED:
+  {
+    result_t rc;
+
+    (void) wuss_colourset_handle_event(task->light_colour, event, &rc);
     task->menu_handle = NULL;
     return result_OK;
+  }
 
   case wuss_EVENT_CLOSE:
     if (window == task->window)

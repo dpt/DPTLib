@@ -10,6 +10,7 @@
 #include "utils/rng.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/gadget/colourset.h"
 #include "wuss/icon-spec.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -43,12 +44,13 @@ spheroid_light_t;
  * move it too, a pixel at a time (eight with Shift). Inside the disc the light
  * faces the surface under the pointer; the band just outside wraps it round to
  * the back. Menu > Light (or keys 1-4) picks the current light; the Light
- * frame's On option (or O) switches it and its Colour button picks its colour
+ * frame's On option (or O) switches it and its colour set picks its colour
  * from the palette, as Sphere colour and Background do from the menu;
  * Dithering picks how the preview is blitted to a paletted screen. Mutate (M)
- * nudges the sliders, the lit lights' directions and the colours' hues; Randomise (^R) picks every setting afresh, keeping at
- * least one light on; Reset (R) restores the defaults; Save PNG (^S) writes the
- * sphere alone, transparent outside its edge. */
+ * nudges the sliders, the lit lights' directions and the colours' hues;
+ * Randomise (^R) picks every setting afresh, keeping at least one light on;
+ * Reset (R) restores the defaults; Save PNG (^S) writes the sphere alone,
+ * transparent outside its edge. */
 typedef struct spheroid_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
@@ -78,7 +80,7 @@ typedef struct spheroid_task
   wuss_slider_row_t  rows[SPHEROID_NROWS];
   wuss_icon_t       *light_frame; /* captioned with the current light */
   wuss_icon_t       *on_icon;     /* the current light's On option */
-  wuss_icon_t       *colour_icon; /* picks the current light's colour */
+  wuss_colourset_t  *light_colour; /* the current light's colour */
   rng_t              rng;        /* for Mutate and Randomise */
 }
 spheroid_task_t;
