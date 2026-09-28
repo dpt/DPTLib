@@ -188,7 +188,8 @@ typedef enum wuss_icon_flags
    *  justification explicitly. */
   wuss_ICON_FLAGS_JUSTIFY_LEFT  = 0,
   /** wuss_ICON_TYPE_LABEL: right-align the text in the bounding box instead of
-   *  the default left. */
+   *  the default left. wuss_ICON_TYPE_RADIO and wuss_ICON_TYPE_OPTION: put
+   *  the glyph at the right edge and right-align the label to its left. */
   wuss_ICON_FLAGS_JUSTIFY_RIGHT = 1 << 2,
   /** wuss_ICON_TYPE_LABEL: centre the text in the bounding box. Takes
    *  precedence over wuss_ICON_FLAGS_JUSTIFY_RIGHT. */
