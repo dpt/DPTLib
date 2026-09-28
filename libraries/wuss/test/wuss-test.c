@@ -44,6 +44,9 @@
 #include "wuss/icon-spec.h"
 #include "../icon.h"
 #endif
+#if defined(WUSS_ICONBAR)
+#include "../iconbar.h"
+#endif
 
 #include "test/all-tests.h"
 
@@ -3518,6 +3521,12 @@ result_t wuss_test(const char *resources)
       wuss_window_get_scroll(win_e, &scroll);
       content_e.x1 = MIN(content_e.x1, 200);
       content_e.y1 = MIN(content_e.y1, 200);
+#ifdef WUSS_ICONBAR
+      /* clamp above the icon bar's fixed bottom strip too: it always draws
+       * on top of every window, same reasoning as the occluder skip in the
+       * next test below */
+      content_e.y1 = MIN(content_e.y1, 200 - WUSS_ICONBAR_HEIGHT);
+#endif
       bad = 0;
       for (sy = content_e.y0; sy < content_e.y1 && !bad; sy++)
       {
@@ -3634,6 +3643,11 @@ result_t wuss_test(const char *resources)
       wuss_window_get_scroll(win_f, &scroll);
       content_f.x1 = MIN(content_f.x1, 200);
       content_f.y1 = MIN(content_f.y1, 200);
+#ifdef WUSS_ICONBAR
+      /* clamp above the icon bar's fixed bottom strip too: it always draws
+       * on top of every window, same reasoning as the occluder skip below */
+      content_f.y1 = MIN(content_f.y1, 200 - WUSS_ICONBAR_HEIGHT);
+#endif
       bad = 0;
       for (sy = content_f.y0; sy < content_f.y1 && !bad; sy++)
       {

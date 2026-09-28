@@ -52,6 +52,10 @@ void wuss_task_destroy(wuss_task_t *doomed)
   while ((e = doomed->windows.next) != NULL)
     wuss_window_close(wuss__window_from_task_link(e));
 
+#ifdef WUSS_ICONBAR
+  wuss__iconbar_task_destroyed(wuss, doomed);
+#endif
+
   list_remove(&wuss->tasks, &doomed->link);
   wuss__free(wuss, doomed);
 }

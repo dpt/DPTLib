@@ -117,6 +117,10 @@ void wuss_destroy(wuss_t *doomed)
   wuss__icons_registry_free(doomed);
 #endif
 
+#ifdef WUSS_ICONBAR
+  wuss__iconbar_free(doomed);
+#endif
+
   bmfontcache_destroy(doomed->font_cache); /* after the task sweep above, so
                                             * every acquired font has already
                                             * been released */

@@ -31,6 +31,7 @@ option(USE_FORTIFY "Use Fortify" OFF)
 option(USE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
 option(WUSS_FURNITURE "Build the Wuss window-furniture subsystem" ON)
+option(WUSS_ICONBAR "Build the Wuss RISC OS-style icon bar" ON)
 option(WUSS_ICONS "Build the Wuss in-content icon subsystem" ON)
 option(WUSS_MENUS "Build the Wuss pop-up menu helper (implies WUSS_ICONS)" ON)
 option(WUSS_GADGETS "Build the Wuss compound in-window gadgets (implies WUSS_MENUS)" ON)
@@ -134,6 +135,9 @@ set(PUBLIC_HEADERS
     include/wuss/window.h
     include/wuss/wuss.h)
 
+if(WUSS_ICONBAR)
+    list(APPEND PUBLIC_HEADERS include/wuss/iconbar.h)
+endif()
 if(WUSS_ICONS)
     list(APPEND PUBLIC_HEADERS include/wuss/icon.h)
     list(APPEND PUBLIC_HEADERS include/wuss/icon-spec.h)
@@ -451,6 +455,14 @@ set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/toggle-box.c
     libraries/wuss/furniture.h)
 
+set(WUSS_ICONBAR_SOURCES
+    libraries/wuss/iconbar/create.c
+    libraries/wuss/iconbar/destroy.c
+    libraries/wuss/iconbar/draw.c
+    libraries/wuss/iconbar/hit-test.c
+    libraries/wuss/iconbar/task-destroyed.c
+    libraries/wuss/iconbar.h)
+
 set(WUSS_ICON_SOURCES
     libraries/wuss/icon/create.c
     libraries/wuss/icon/create-array.c
@@ -498,6 +510,9 @@ set(WUSS_COMPONENT_SOURCES
 set(WUSS_SOURCES ${WUSS_CORE_SOURCES})
 if(WUSS_FURNITURE)
     list(APPEND WUSS_SOURCES ${WUSS_FURNITURE_SOURCES})
+endif()
+if(WUSS_ICONBAR)
+    list(APPEND WUSS_SOURCES ${WUSS_ICONBAR_SOURCES})
 endif()
 if(WUSS_COMPONENTS)
     set(WUSS_GADGETS ON) # the shared components build on the gadgets
@@ -576,6 +591,9 @@ endif()
 
 if(WUSS_FURNITURE)
     target_compile_definitions(DPTLib PUBLIC WUSS_FURNITURE)
+endif()
+if(WUSS_ICONBAR)
+    target_compile_definitions(DPTLib PUBLIC WUSS_ICONBAR)
 endif()
 if(WUSS_ICONS)
     target_compile_definitions(DPTLib PUBLIC WUSS_ICONS)
@@ -803,6 +821,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/doughnut.c
         libraries/wuss/test/tasks/gradient.c
         libraries/wuss/test/tasks/greeble.c
+        libraries/wuss/test/tasks/iconbar-demo.c
         libraries/wuss/test/tasks/icons.c
         libraries/wuss/test/tasks/image.c
         libraries/wuss/test/tasks/keys.c

@@ -29,6 +29,7 @@
 #include "tasks/doughnut.h"
 #include "tasks/gradient.h"
 #include "tasks/greeble.h"
+#include "tasks/iconbar-demo.h"
 #include "tasks/icons.h"
 #include "tasks/image.h"
 #include "tasks/keys.h"
@@ -122,6 +123,9 @@ g_games_tasks[] =
 },
 g_tests_tasks[] =
 {
+#ifdef WUSS_ICONBAR
+  { "Icon bar",    (task_create_fn_t) iconbar_demo_create },
+#endif
   { "Icons",       (task_create_fn_t) icons_create       },
   { "Keys",        (task_create_fn_t) keys_create        },
   { "Patterns",    (task_create_fn_t) patterns_create    },
@@ -161,6 +165,9 @@ static const wuss_menu_item_t g_games_items[] =
 
 static const wuss_menu_item_t g_tests_items[] =
 {
+#ifdef WUSS_ICONBAR
+  { "Icon bar",    wuss_MENU_ITEM_NONE, NULL },
+#endif
   { "Icons",       wuss_MENU_ITEM_NONE, NULL },
   { "Keys",        wuss_MENU_ITEM_NONE, NULL },
   { "Patterns",    wuss_MENU_ITEM_NONE, NULL },
