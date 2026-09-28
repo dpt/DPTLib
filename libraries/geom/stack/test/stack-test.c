@@ -500,6 +500,36 @@ static result_t test_measure_min(void)
 
 /*   ROOT (VBOX)
  *    |
+ *    +-- ROW (HBOX, axis_size=22)
+ *         +-- LBL  axis_size=20, cross_size=16, centred
+ *
+ * ROW's fixed axis_size is its height (along ROOT's axis), taller than its
+ * child, so ROOT's minimum is 20 wide and 22 high, not the child's 16. */
+static result_t test_measure_min_fixed_container(void)
+{
+  enum { ROOT, ROW, LBL, N };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
+    [ROW]  = STACK_HBOX(ROOT, 22, 0, stack_ALIGN_FILL),
+    [LBL]  = STACK_LEAF(ROW, 20, 16, stack_ALIGN_CENTRE),
+  };
+
+  result_t err;
+  size2d_t sz;
+
+  err = stack_smallest(items, N, &sz);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (sz.w != 20 || sz.h != 22)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   ROOT (VBOX)
+ *    |
  *    +-- HUG (VBOX, axis_size=STACK_HUG, pad_t=2, pad_b=3)
  *         +-- A  axis_size=10
  *         +-- B  axis_size=15
@@ -717,6 +747,10 @@ result_t stack_test(const char *resources)
     return err;
 
   err = test_measure_min();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_measure_min_fixed_container();
   if (err != result_TEST_PASSED)
     return err;
 
