@@ -16,6 +16,9 @@
 #include "common.h"
 #include "particles.h"
 
+#define PARTICLES_WIDTH     480
+#define PARTICLES_HEIGHT    384
+
 #define PARTICLES_BURST (MAX_PARTICLES / 2) /* particles per click */
 
 /* pointer trail, as Explosion's playground */
@@ -302,6 +305,8 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
                        particles_time,
                        particles_render,
                        task);
+  task->ps.width  = PARTICLES_WIDTH;
+  task->ps.height = PARTICLES_HEIGHT;
 
   /* particles_redraw paints its own background every frame */
   delegate_desc.handle    = particles_handle;
@@ -317,7 +322,7 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   task->delegate = delegate;
 
   rc = task_window_create(delegate,
-                          SIZE2D(WIDTH, HEIGHT),
+                          SIZE2D(PARTICLES_WIDTH, PARTICLES_HEIGHT),
                           "Particles",
                           &task->window);
   if (rc != result_OK)
