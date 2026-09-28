@@ -16,7 +16,10 @@ wuss_iconbar_icon_t *wuss__iconbar_hit_test(wuss_t *wuss, point_t p)
   if (!box_contains_point(&bar, p.x, p.y))
     return NULL;
 
-  index = (p.x - bar.x0) / WUSS_ICONBAR_SLOT;
+  if (p.x - bar.x0 < WUSS_ICONBAR_GAP)
+    return NULL; /* over the bar's leading gap */
+
+  index = (p.x - bar.x0 - WUSS_ICONBAR_GAP) / WUSS_ICONBAR_SLOT;
   if (index < 0 || index >= wuss->niconbar_icons)
     return NULL;
 
