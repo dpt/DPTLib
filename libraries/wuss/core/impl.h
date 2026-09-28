@@ -163,11 +163,9 @@ struct wuss
   int                         ndirty;
   box_t                       touched[WUSS_MAX_DIRTY]; /* accumulated by wuss__touch; reset by wuss_clear_touched */
   int                         ntouched;
-  packer_t                   *layout;    /* owned; occupied screen area for
-                                          * wuss_window_create_placed, lazily
-                                          * created on first auto-placement */
-  point_t                     cascade;   /* next cascade offset, used once the
-                                          * layout packer has no room left */
+  point_t                     cascade;   /* next cascade offset, used once
+                                          * wuss_window_create_placed finds
+                                          * no free room */
   point_t                     pointer;   /* last pointer position, screen
                                           * space, from any mouse click/move */
   wuss_window_t              *pointer_window; /* window whose on-screen
@@ -258,10 +256,6 @@ struct wuss_window
 #ifdef WUSS_FURNITURE
   wuss_window_state_t state;        /* see wuss_window_state_t */
 #endif
-  box_t               packed;       /* region wuss_window_create_placed took
-                                     * out of wuss->layout (footprint + gutter),
-                                     * to give back on close/move; empty if not
-                                     * auto-placed or already released */
 #ifdef WUSS_FURNITURE
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];
@@ -690,18 +684,6 @@ static inline void wuss__focus_forget_window(wuss_t        *wuss,
 static inline int wuss__size_ok(int width, int height)
 {
   return width > 0 && height > 0;
-}
-
-/* Give an auto-placed window's slot back to the layout packer and stop
- * tracking it, so a later close/move/resize doesn't release it twice. A
- * no-op for windows that were never auto-placed (empty "packed"). */
-static inline void wuss__release_packed(wuss_window_t *window)
-{
-  if (box_is_empty(&window->packed))
-    return;
-
-  (void) packer_release(window->wuss->layout, &window->packed);
-  box_reset(&window->packed);
 }
 
 #ifdef WUSS_FURNITURE
