@@ -816,7 +816,6 @@ static result_t particles_menu_select(particles_task_t   *pt,
 static result_t particles_idle(void *task_data)
 {
   particles_task_t *pt;
-  box_t             content;
 
   pt = task_data;
 
@@ -830,10 +829,10 @@ static result_t particles_idle(void *task_data)
   if (pt->paused)
     return result_OK;
 
-  /* particles die on leaving the bounds, so track the window's size */
-  wuss_window_get_content_bounds(pt->window, &content);
-  pt->ps.width  = content.x1 - content.x0;
-  pt->ps.height = content.y1 - content.y0;
+  /* ps.width/height stay the fixed PARTICLES_WIDTH/HEIGHT doc size set in
+   * particles_create -- the window's own content box is only the current
+   * (possibly scrolled/resized) viewport onto that doc, not the simulation
+   * bounds particles die against. */
 
   /* ponytail: one fixed physics step per idle tick, so speed follows the
    * frame rate; feed a real clock's delta here if that ever matters */
