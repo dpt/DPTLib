@@ -16,6 +16,9 @@ void wuss_window_move(wuss_window_t *window, point_t p)
   int   dx, dy, nclean, ncopied, i;
   box_t before, dirty;
 
+  if (window->flags & wuss_WINDOW_PINNED)
+    return;
+
   width           = window->visible.x1 - window->visible.x0;
   height          = window->visible.y1 - window->visible.y0;
   outline_px      = wuss__outline_px(window);

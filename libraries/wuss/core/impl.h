@@ -229,6 +229,16 @@ struct wuss
                                             * immediately pick row 0 */
 #endif
 #ifdef WUSS_ICONBAR
+  wuss_window_t              *iconbar_window; /* pinned, chromeless window
+                                               * hosting the bar; created
+                                               * lazily on the first
+                                               * wuss_iconbar_icon_create,
+                                               * NULL until then */
+  wuss_task_t                *iconbar_task;   /* internal task owning
+                                               * iconbar_window; created
+                                               * lazily alongside it, freed
+                                               * by wuss_destroy's task
+                                               * sweep like menu_task */
   wuss_iconbar_icon_t       **iconbar_icons; /* owned; array of owned icon
                                               * pointers, left-to-right slot
                                               * order */

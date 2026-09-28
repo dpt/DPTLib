@@ -114,6 +114,8 @@ result_t wuss_create(screen_t               *scr,
   w->menu_eat_up        = 0;
 #endif
 #ifdef WUSS_ICONBAR
+  w->iconbar_window         = NULL;
+  w->iconbar_task           = NULL;
   w->iconbar_icons          = NULL;
   w->niconbar_icons         = 0;
   w->cap_iconbar_icons      = 0;

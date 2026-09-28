@@ -44,6 +44,12 @@ extern "C"
  * wuss_key.
  */
 #define result_WUSS_KEY_UNCLAIMED (result_BASE_WUSS + 4)
+/**
+ * wuss_window_move or wuss_window_resize was called on a wuss_WINDOW_PINNED
+ * window, which wuss itself repositions/resizes and which refuses every
+ * caller-driven change to its box.
+ */
+#define result_WUSS_PINNED       (result_BASE_WUSS + 5)
 
 /* ----------------------------------------------------------------------- */
 
@@ -339,7 +345,15 @@ typedef enum wuss_window_flags
    * receives wuss_EVENT_KEY and has its titlebar drawn in the focus tint.
    * Not part of wuss_WINDOW_DEFAULT.
    */
-  wuss_WINDOW_FOCUSABLE      = 1 << 11
+  wuss_WINDOW_FOCUSABLE      = 1 << 11,
+
+  /**
+   * wuss-managed and pinned: wuss_window_move and wuss_window_resize refuse
+   * to change its box, and a screen resize recomputes it directly instead of
+   * nudging/shrinking it like an ordinary window. Set internally on the icon
+   * bar's window; not intended for task-created windows.
+   */
+  wuss_WINDOW_PINNED         = 1 << 12
 }
 wuss_window_flags_t;
 
