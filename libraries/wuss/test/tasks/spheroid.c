@@ -125,7 +125,8 @@ enum
   SS_BACKDROP, /* frame round the background's colour set */
   SS_SPHERE,   /* frame round the global rows */
   SS_LIGHT,    /* frame round the per-light rows */
-  SS_ON_LINE,  /* the On option, then a spacer taking the rest */
+  SS_ON_LINE,  /* the On label and option, then a spacer taking the rest */
+  SS_ON_LABEL,
   SS_ON,
   SS_ON_SPACER,
   SS_COLOUR,   /* the colour sets, in SPHEROID_COLOUR_* order */
@@ -142,15 +143,14 @@ enum
   SI_SPHERE,
   SI_LIGHT,
   SI_ROW,
-  SI_ON = SI_ROW + 3 * SPHEROID_NROWS,
+  SI_ON_LABEL = SI_ROW + 3 * SPHEROID_NROWS,
+  SI_ON,
   SI__LIMIT
 };
 
 #define SS_LABEL_W      (7 * 6) /* enough for "Ambient" */
 #define SS_VALUE_W      (4 * 6) /* enough for "200%" */
 #define SS_SLIDER_MIN_W (64)
-#define SS_ON_W         (SS_LABEL_W + wuss_STD_GAP + 16) /* ponytail: guessed
-                                                         * glyph width */
 
 #define SS_FRAME(parent_) \
   { .kind = stack_KIND_VBOX, .parent = (parent_), .axis_size = STACK_HUG, \
@@ -179,8 +179,9 @@ static const stack_item_t spheroid_strip[SS__LIMIT] =
   SS_ROW_ITEMS(SPHEROID_ROW_SIZE,      SS_LIGHT),
   SS_ROW_ITEMS(SPHEROID_ROW_SHARPNESS, SS_LIGHT),
   SS_ROW_ITEMS(SPHEROID_ROW_INTENSITY, SS_LIGHT),
-  [SS_ON_LINE]  = STACK_HBOX(SS_LIGHT, wuss_STD_SECONDARY_BUTTON_HEIGHT, 0, stack_ALIGN_FILL),
-  [SS_ON]       = STACK_LEAF(SS_ON_LINE, SS_ON_W, 0, stack_ALIGN_FILL),
+  [SS_ON_LINE]   = STACK_HBOX(SS_LIGHT, wuss_STD_OPTION_SIZE, wuss_STD_GAP, stack_ALIGN_FILL),
+  [SS_ON_LABEL]  = STACK_LEAF(SS_ON_LINE, SS_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [SS_ON]        = STACK_LEAF(SS_ON_LINE, wuss_STD_OPTION_SIZE, 0, stack_ALIGN_FILL),
   [SS_ON_SPACER] = STACK_SPACER(SS_ON_LINE, 1),
   [SS_COLOUR + SPHEROID_COLOUR_SPHERE]     = SS_LINE(SS_SPHERE),
   [SS_COLOUR + SPHEROID_COLOUR_BACKGROUND] = SS_LINE(SS_BACKDROP),
@@ -568,6 +569,7 @@ static result_t spheroid_strip_create(spheroid_task_t *task, int height)
   result_t         rc;
   box_t            root;
   box_t            boxes[SS__LIMIT];
+  box_t            line;
   wuss_icon_spec_t specs[SI__LIMIT];
   char             bufs[SPHEROID_NROWS][WUSS_SLIDER_ROW_BUF];
   wuss_icon_t     *made[SI__LIMIT];
@@ -599,8 +601,10 @@ static result_t spheroid_strip_create(spheroid_task_t *task, int height)
                               bufs[row], sizeof(bufs[row]));
   }
 
-  wuss_icon_spec_option(&specs[SI_ON], boxes[SS_ON], "On");
-  specs[SI_ON].flags |= wuss_ICON_FLAGS_JUSTIFY_RIGHT; /* tick at the right */
+  /* On is a label and a bare glyph so each sits in its column */
+  wuss_icon_spec_label(&specs[SI_ON_LABEL], boxes[SS_ON_LABEL], "On",
+                       wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  wuss_icon_spec_option(&specs[SI_ON], boxes[SS_ON], "");
 
   rc = wuss_icon_create_array(task->window, specs, NELEMS(specs), made);
   if (rc != result_OK)
@@ -613,8 +617,12 @@ static result_t spheroid_strip_create(spheroid_task_t *task, int height)
 
   for (which = 0; which < SPHEROID_NCOLOURS; which++)
   {
+    /* end the field where the sliders end, the button in the value column */
+    line     = boxes[SS_COLOUR + which];
+    line.x1  = boxes[SS_ROW + 2].x1 + wuss_STD_GAP;
+    line.x1 += wuss_colourset_button_width(task->wuss, line.y1 - line.y0);
     rc = wuss_colourset_create(&task->colour_sets[which], task->window,
-                               boxes[SS_COLOUR + which], "Colour",
+                               line, "Colour",
                                SS_LABEL_W, /* line up with the sliders */
                                0, spheroid_colour_changed, task);
     if (rc != result_OK)
