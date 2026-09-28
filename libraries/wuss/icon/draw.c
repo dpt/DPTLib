@@ -409,7 +409,8 @@ static const bitmap_t *wuss__icon_radio_option_bitmap(const icon_draw_ctx_t *c)
  * the state, and the glyph box and label offset follow the bitmap's own size;
  * otherwise a font-height square is used -- RADIO draws a square ring with a
  * solid centre when selected and OPTION draws a box with a tick when
- * selected. */
+ * selected. wuss_ICON_FLAGS_JUSTIFY_RIGHT swaps the sides: the glyph at the
+ * right edge, the label right-aligned to its left. */
 static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
 {
   const wuss_icon_spec_t *icon = &c->icon->spec;
@@ -425,9 +426,9 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
   gh = bm ? bm->size.h : CLAMP(c->font_height, 8, b->y1 - b->y0);
   gy = b->y0 + (b->y1 - b->y0 - gh) / 2;
 
-  g.x0 = b->x0;
+  g.x0 = (icon->flags & wuss_ICON_FLAGS_JUSTIFY_RIGHT) ? b->x1 - gw : b->x0;
   g.y0 = gy;
-  g.x1 = b->x0 + gw;
+  g.x1 = g.x0 + gw;
   g.y1 = gy + gh;
 
   glyph = (icon->flags & wuss_ICON_FLAGS_DISABLED)
@@ -442,7 +443,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     /* no explicit bg to repaint the whole box, but the state we are about to
      * draw (a smaller radon/radoff swap, or a cleared tick/centre) can leave
      * fewer pixels than last time -- clear just the glyph box so no stale
-     * glyph shows through. The label to its right never changes on select. */
+     * glyph shows through. The label beside it never changes on select. */
     screen_fill_rect(c->scr, g.x0, g.y0, box_size(&g), bg);
 
   if (bm != NULL)
@@ -479,15 +480,24 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     int            interior_w, split_point, len;
     bmfont_width_t width;
 
-    tx = g.x1 + 4;
-    interior_w = MAX((b->x1 - tx) - 1, 1);
+    if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_RIGHT)
+    {
+      tx         = b->x0;
+      interior_w = MAX((g.x0 - 4 - tx) - 1, 1);
+    }
+    else
+    {
+      tx         = g.x1 + 4;
+      interior_w = MAX((b->x1 - tx) - 1, 1);
+    }
     len        = (int) strlen(icon->text);
 
     wuss__text_measure(c->font, icon->text, len, interior_w, &split_point,
                        &width);
-    NOT_USED(width);
 
     pos.x = tx;
+    if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_RIGHT)
+      pos.x = MAX(g.x0 - 4 - (int) width, tx); /* flush against the glyph */
     pos.y = icon_text_baseline_y(c, b);
     wuss__text_draw(c->font, c->scr, icon->text, len, glyph, bg, &pos, NULL);
   }
