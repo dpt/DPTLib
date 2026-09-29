@@ -22,7 +22,6 @@ LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
   code a bit. RISC OS allows hidden (closed) windows by putting them "behind
   the backwindow".
     blocks: window stacks
-- Icon type taxonomy
 
 
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)

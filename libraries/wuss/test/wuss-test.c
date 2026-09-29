@@ -8530,6 +8530,43 @@ QuitFail:
     wuss_window_close(win_title);
   }
 
+  printf("test: wuss_icon_create rejects type-scoped flags on the wrong icon type\n");
+
+  {
+    static test_task_t tc_flag;
+    wuss_task_t       *delegate_flag;
+    wuss_window_t     *win_flag;
+    box_t              box_flag;
+    wuss_icon_spec_t   spec_flag;
+    wuss_icon_t       *icon_flag;
+
+    tc_flag.redraw_count = 0;
+    tc_flag.mouse_count  = 0;
+    delegate_flag = mk_task(wuss, test_handle, &tc_flag);
+    if (delegate_flag == NULL) goto Failure;
+
+    box_flag.x0 = 10; box_flag.y0 = 10;
+    box_flag.x1 = 50; box_flag.y1 = 50;
+    rc = wuss_window_create(delegate_flag, &box_flag, "F",
+                            wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_flag);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* DEFAULT is ACTION-only; setting it on a LABEL must be rejected */
+    wuss_icon_spec_label(&spec_flag, (box_t) { 0, 0, 40, 16 }, "x",
+                         wuss_ICON_FLAGS_DEFAULT);
+    if (wuss_icon_create(win_flag, &spec_flag, &icon_flag) != result_BAD_ARG)
+      goto Failure;
+
+    /* the same spec without the stray flag is accepted */
+    wuss_icon_spec_label(&spec_flag, (box_t) { 0, 0, 40, 16 }, "x", 0);
+    if (wuss_icon_create(win_flag, &spec_flag, &icon_flag) != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_flag);
+  }
+
   wuss_destroy(wuss);
 
   free(pixels);
