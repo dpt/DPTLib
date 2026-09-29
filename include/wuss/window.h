@@ -93,9 +93,8 @@ result_t wuss_window_create(wuss_task_t        *task,
  * content size; Wuss places the window (furniture included) in the first
  * free screen region, packed towards the top-left, avoiding every shown
  * window at its current position so successive auto-placed windows tile
- * rather than stack. When no region is large enough the window is cascaded
- * from the previous placement, stepping by a titlebar height and wrapping at
- * the screen edge.
+ * rather than stack. When no region is large enough the window is centred on
+ * the screen (or pinned at the top-left if larger than the screen).
  *
  * \param[in]  task    Owning task, as wuss_window_create.
  * \param[in]  size    Requested content-area size. Width and height must

@@ -35,43 +35,16 @@ static void footprint_pad(const wuss_t       *wuss,
   *bottom = outline_px + carve.y;
 }
 
-/* Pick the next cascade position for a window of the given footprint size,
- * once the layout packer has no room. Steps down/right by a titlebar each
- * call, wrapping back to the top-left when the step would push the footprint
- * off the screen. A footprint that is itself larger than the screen can never
- * fit; it is pinned at the top-left and the cascade counter is not advanced,
- * so it does not wedge every later window at the origin too. */
-static void next_cascade(wuss_t *wuss, int fw, int fh, point_t *pos)
+/* Centre a footprint of fw x fh on the screen, used once the layout packer
+ * has no room. A footprint larger than the screen is pinned at the top-left
+ * so its titlebar stays reachable. */
+static void centre_on_screen(const wuss_t *wuss,
+                             int           fw,
+                             int           fh,
+                             point_t      *pos)
 {
-  int scr_w, scr_h, step;
-
-  scr_w = wuss->scr->size.w;
-  scr_h = wuss->scr->size.h;
-#ifdef WUSS_FURNITURE
-  step  = wuss->titlebar_height;
-#else
-  step  = 0;
-#endif
-  if (step <= 0)
-    step = WUSS_DEFAULT_TITLEBAR_HEIGHT;
-
-  if (fw > scr_w || fh > scr_h)
-  {
-    pos->x = 0;
-    pos->y = 0;
-    return;
-  }
-
-  if (wuss->cascade.x + fw > scr_w || wuss->cascade.y + fh > scr_h)
-  {
-    wuss->cascade.x = 0;
-    wuss->cascade.y = 0;
-  }
-
-  *pos = wuss->cascade;
-
-  wuss->cascade.x += step;
-  wuss->cascade.y += step;
+  pos->x = MAX(0, (wuss->scr->size.w - fw) / 2);
+  pos->y = MAX(0, (wuss->scr->size.h - fh) / 2);
 }
 
 /* Find a free spot for a footprint of fw x fh. The packer is rebuilt from
@@ -135,7 +108,7 @@ static result_t find_slot(wuss_t *wuss, int fw, int fh, point_t *pos)
   }
   else if (rc == result_PACKER_DIDNT_FIT)
   {
-    next_cascade(wuss, fw, fh, pos);
+    centre_on_screen(wuss, fw, fh, pos);
     rc = result_OK;
   }
 
