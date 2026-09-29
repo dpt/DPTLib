@@ -11,9 +11,6 @@ LAYER 0 - BUGS (fix before building on top)
 
 LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
 
-- Masks: how to get (alpha) masks into the system? Another channel,
-  fixed value, or a second bitmap? Decide the model first.
-    blocks: Draw bitmap through mask, Masked sprites/bitmaps, furniture tinting
 - Named colours?
     blocks: furniture colour selection, desktop palette editor
 - 32K/64K colour modes
