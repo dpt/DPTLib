@@ -171,9 +171,6 @@ struct wuss
   int                         ndirty;
   box_t                       touched[WUSS_MAX_DIRTY]; /* accumulated by wuss__touch; reset by wuss_clear_touched */
   int                         ntouched;
-  point_t                     cascade;   /* next cascade offset, used once
-                                          * wuss_window_create_placed finds
-                                          * no free room */
   point_t                     pointer;   /* last pointer position, screen
                                           * space, from any mouse click/move */
   wuss_window_t              *pointer_window; /* window whose on-screen
