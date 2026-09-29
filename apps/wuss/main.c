@@ -444,17 +444,21 @@ static result_t run_wuss(const char *resources,
   static const char *const names[WUSS_MAIN_NFONTS] =
     { "DPT-Digits Regular", "DPT-Digits Bold", "Symbols Regular" };
 
-  result_t    rc;
-  const char *filename;
-  char        font_path[512];
-  bmfont_t   *fonts[WUSS_MAIN_NFONTS];
-  int         nfonts;
-  int         i;
-  void       *pixels;
-  int         rowbytes;
-  pixelfmt_t  fmt;
-  bitmap_t    logo; /* desktop backdrop image; left unset (have_logo false)
-                     * if resources/wuss/wuss.png fails to load */
+  result_t            rc;
+  bmfontfamily_t     *family;
+  const bmfontface_t *regular;
+  const bmfontface_t *bold;
+  const char         *filename;
+  char                font_path[512];
+  bmfont_t           *fonts[WUSS_MAIN_NFONTS];
+  int                 nfonts;
+  int                 i;
+  void               *pixels;
+  int                 rowbytes;
+  pixelfmt_t          fmt;
+  bitmap_t            logo; /* desktop backdrop image; left unset (have_logo
+                             * false) if resources/wuss/wuss.png fails to
+                             * load */
   bool     have_logo;
   colour_t palette[wuss_SYSTEM_PALETTE_LENGTH]; /* the fixed-size UI palette */
   colour_t scr_palette[256]; /* palette[] padded out to whatever
@@ -468,6 +472,7 @@ static result_t run_wuss(const char *resources,
 
   /* everything the Failure path frees, so an early goto frees nothing */
   nfonts    = 0;
+  family    = NULL;
   frontend  = NULL;
   have_logo = false;
   wuss      = NULL;
@@ -493,14 +498,36 @@ static result_t run_wuss(const char *resources,
   logf_info("wuss: resources root = \"%s\"", resources);
 
   {
+    /* [0] regular and [1] bold come from the DPT-Digits family; bold is the
+     * next heavier face than regular (regular itself if there is none) */
+    rc = bmfontfamily_scan(pathf("%s/resources/bmfonts/DPT-Digits", resources),
+                           &family);
+    if (rc != result_OK)
+      goto Failure;
+    regular = bmfontfamily_find(family, bmfontfamily_WEIGHT_REGULAR,
+                                bmfontfamily_SLANT_UPRIGHT);
+    if (regular == NULL)
+    {
+      rc = result_NOT_FOUND;
+      goto Failure;
+    }
+    bold = bmfontfamily_heavier(family, regular);
+
     nfonts = 0;
     for (i = 0; i < WUSS_MAIN_NFONTS; i++)
     {
-      rc = bmfontfamily_label_path(pathf("%s/resources/bmfonts", resources),
-                                   names[i], font_path, sizeof(font_path));
-      if (rc != result_OK)
-        goto Failure;
-      filename = font_path;
+      if (i < 2)
+      {
+        filename = (i == 0) ? regular->path : bold->path;
+      }
+      else
+      {
+        rc = bmfontfamily_label_path(pathf("%s/resources/bmfonts", resources),
+                                     names[i], font_path, sizeof(font_path));
+        if (rc != result_OK)
+          goto Failure;
+        filename = font_path;
+      }
       logf_info("wuss: loading font \"%s\"", filename);
       rc = bmfont_create(filename, &fonts[i]);
       if (rc != result_OK)
@@ -687,6 +714,7 @@ Failure:
 
   for (i = 0; i < nfonts; i++)
     bmfont_destroy(fonts[i]);
+  bmfontfamily_destroy(family);
 
   wuss_frontend_close(frontend);
 

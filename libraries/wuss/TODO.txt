@@ -17,9 +17,10 @@ LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
 
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
 
-- Hierarchical fonts: directory layout and bmfontfamily selection primitives
-  are done. Still to do: wire the wuss font slots to them (e.g. bold from
-  bmfontfamily_heavier instead of the fixed wuss__bold_font slot).
+- Hierarchical fonts: directory layout, bmfontfamily selection primitives
+  and the wuss app's regular/bold slots (bold via bmfontfamily_heavier) are
+  done. Still to do: let the wuss library itself take a family rather than
+  fixed slots, and italic/large selection.
     blocks: bold/italic/large fonts, symbol selection
 - 6px desktop font sizing getting built in. Need to be able to specify
   character sizes to the stacker?
