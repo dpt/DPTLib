@@ -1,4 +1,4 @@
-# ZX-GliderRider -- cmap for ZX-GliderRider.png (see docs/framebuf/bmfont.md)
+# ZX-GliderRider/Regular -- cmap for Regular.png (see docs/framebuf/bmfont.md)
 # Only space, ! - . 0-9 : A-Z and a-z are drawn; the other cells are blank so
 # are left unmapped.
 U+0020..U+0021  0     # space !

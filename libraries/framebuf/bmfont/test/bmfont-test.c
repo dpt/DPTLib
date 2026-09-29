@@ -22,6 +22,7 @@
 #include "framebuf/pixelfmt.h"
 
 #include "framebuf/bmfont.h"
+#include "framebuf/bmfontfamily.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -187,35 +188,36 @@ bmtestline_t;
 
 static bmtestfont_t bmfonts[MAXFONTS] =
 {
-  { "DPT-Daydream",     NULL },
-  { "ZX-GliderRider",   NULL },
-  { "Tiny",             NULL },
-  { "DPT-Henry",        NULL },
-  { "DPT-CookeTall",    NULL },
-  { "MS Sans Serif",    NULL },
-  { "DPT-Digits-Regular", NULL },
-  { "DPT-Digits-Bold",  NULL },
-  { "DPT-Digits-Bold-Lg", NULL } /* 24px-wide glyphs: exercises the _4w_
-                                  * (17-32px) draw variants */
+  { "DPT-Daydream Regular",   NULL },
+  { "ZX-GliderRider Regular", NULL },
+  { "Tiny Regular",           NULL },
+  { "DPT-Henry Regular",      NULL },
+  { "DPT-CookeTall Regular",  NULL },
+  { "MS Sans Serif Regular",  NULL },
+  { "DPT-Digits Regular",     NULL },
+  { "DPT-Digits Bold",        NULL },
+  { "DPT-DigitsLg Bold",      NULL } /* 24px-wide glyphs: exercises the _4w_
+                                      * (17-32px) draw variants */
 };
 
 /* Fixture PNGs not in bmfonts[] above (which is the Latin-text set the
  * clipping/layout tests draw lorem_ipsum with) but which the enumerate test
- * must still see, since it just walks the fixture directory: Symbols.png is
- * not Latin text; 04b_03, 04b_25, GrongyUI, Nokia and SF-Embers are tiny
- * pixel faces added for the wuss tasks; DPT-Digits-Regular-Lg is the
- * regular-weight counterpart of the bold -Lg font already covered above. */
+ * must still see, since it just walks the fixture directory: Symbols is not
+ * Latin text; 04b_03, 04b_25, GrongyUI, Nokia and SF-Embers are tiny pixel
+ * faces added for the wuss tasks; DPT-DigitsLg Regular is the regular-weight
+ * counterpart of the bold Lg font already covered above. Labels are
+ * "Family Style", as bmfont_enumerate reports them. */
 #define MAXFONTS_ENUM 16
 
 static const char *bmfonts_enum_extra[MAXFONTS_ENUM - MAXFONTS] =
 {
-  "Symbols",
-  "04b_03",
-  "04b_25",
-  "GrongyUI",
-  "Nokia",
-  "SF-Embers",
-  "DPT-Digits-Regular-Lg"
+  "Symbols Regular",
+  "04b_03 Regular",
+  "04b_25 Regular",
+  "GrongyUI Regular",
+  "Nokia Regular",
+  "SF-Embers Regular",
+  "DPT-DigitsLg Regular"
 };
 
 /* ----------------------------------------------------------------------- */
@@ -923,10 +925,18 @@ result_t bmfont_test_one_format(const char *resources,
 
   for (font = 0; font < NELEMS(bmfonts); font++)
   {
-    const char *filename;
+    const char *dir;
+    char        filename[512];
 
-    filename = pathf("%s/resources/bmfonts/%s.png",
-                     resources, bmfonts[font].filename);
+    dir = pathf("%s/resources/bmfonts", resources);
+    rc  = bmfontfamily_label_path(dir, bmfonts[font].filename, filename,
+                                  sizeof(filename));
+    if (rc)
+    {
+      fprintf(stderr, "Error: Bad font label %s\n", bmfonts[font].filename);
+      goto Failure;
+    }
+
     rc = bmfont_create(filename, &bmfonts[font].bmfont);
     if (rc)
     {
@@ -996,7 +1006,7 @@ static result_t bmfont_monospace_test(const char *resources)
   bmfont_width_t prev;
   int            i;
 
-  filename = pathf("%s/resources/bmfonts/MS Sans Serif.png", resources);
+  filename = pathf("%s/resources/bmfonts/MS Sans Serif/Regular.png", resources);
 
   rc = bmfont_create(filename, &bmfont);
   if (rc)
@@ -1074,7 +1084,7 @@ static result_t bmfont_spacing_test(const char *resources)
   point_t        end_pos;
   int            i;
 
-  filename = pathf("%s/resources/bmfonts/MS Sans Serif.png", resources);
+  filename = pathf("%s/resources/bmfonts/MS Sans Serif/Regular.png", resources);
 
   rc = bmfont_create(filename, &bmfont);
   if (rc)
@@ -1223,7 +1233,7 @@ static result_t bmfont_measure_render_match_test(const char *resources)
   int            ink_x0, ink_y0, ink_x1, ink_y1;
   int            x, y;
 
-  filename = pathf("%s/resources/bmfonts/DPT-Digits-Regular.png", resources);
+  filename = pathf("%s/resources/bmfonts/DPT-Digits/Regular.png", resources);
 
   rc = bmfont_create(filename, &bmfont);
   if (rc)
@@ -1351,7 +1361,7 @@ static result_t bmfont_caret_test(const char *resources)
   int            inked;
   int            x, y;
 
-  filename = pathf("%s/resources/bmfonts/DPT-Digits-Regular.png", resources);
+  filename = pathf("%s/resources/bmfonts/DPT-Digits/Regular.png", resources);
 
   rc = bmfont_create(filename, &bmfont);
   if (rc)
@@ -1593,7 +1603,7 @@ static result_t bmfont_cmap_test(const char *resources)
   int         i;
   int         glyph;
 
-  filename = pathf("%s/resources/bmfonts/GrongyUI.png", resources);
+  filename = pathf("%s/resources/bmfonts/GrongyUI/Regular.png", resources);
   rc = bmfont_create(filename, &bmfont);
   if (rc)
   {
@@ -1617,7 +1627,7 @@ static result_t bmfont_cmap_test(const char *resources)
 
   /* every shipped font has a sidecar, so test the implicit mapping on a
    * scratch copy of Tiny with none */
-  filename = pathf("%s/resources/bmfonts/Tiny.png", resources);
+  filename = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
   if (!copy_file(filename, CMAP_TEST_PNG))
   {
     fprintf(stderr, "error: can't copy %s\n", filename);
@@ -1696,7 +1706,7 @@ static result_t bmfont_metrics_test(const char *resources)
 {
   static const char *fonts[] =
   {
-    "bmfonts/DPT-Henry.png",
+    "bmfonts/DPT-Henry/Regular.png",
     "bmfonts-test/Henry-SpaceSwapped.png"
   };
 
@@ -1756,7 +1766,7 @@ static result_t bmfont_utf8_test(const char *resources)
   void       *pixels = NULL;
   int         x, y;
 
-  filename = pathf("%s/resources/bmfonts/GrongyUI.png", resources);
+  filename = pathf("%s/resources/bmfonts/GrongyUI/Regular.png", resources);
   if (bmfont_create(filename, &bmfont))
   {
     fprintf(stderr, "Error: Failed to load font %s\n", filename);

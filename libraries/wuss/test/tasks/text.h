@@ -134,7 +134,7 @@ wuss_window_fn_t text_handle;
 
 /* create the sample-text window against the given wuss instance; the font
  * picker loads bmfonts from wuss_get_resources(wuss)/resources/bmfonts/
- * <name>.png. if out is non-NULL, the task block is also returned through
+ * <family>/<style>.png. if out is non-NULL, the task block is also returned through
  * it */
 result_t text_create(wuss_t *wuss, text_task_t **out);
 

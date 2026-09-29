@@ -1,4 +1,4 @@
-# GrongyUI-Bold -- cmap for GrongyUI-Bold.png (see docs/framebuf/bmfont.md)
+# GrongyUI/Bold -- cmap for Bold.png (see docs/framebuf/bmfont.md)
 # Cells for # $ % & ' * @ are blank so are left unmapped.
 U+0020..U+0022  0     # space ! "
 U+0028..U+0029  8     # ( )

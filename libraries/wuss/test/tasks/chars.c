@@ -13,6 +13,7 @@
 #endif
 
 #include "base/utils.h"
+#include "framebuf/bmfontfamily.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "geom/point.h"
@@ -125,21 +126,26 @@ static size2d_t chars_window_size(chars_task_t *task, bmfont_t *font)
 }
 
 /* load fonts[idx] if not already in hand; returns it or NULL on failure.
- * name is the menu label for that row -- the font's leafname sans ".png". */
+ * name is the menu label for that row -- "Family Style". */
 static bmfont_t *chars_load_font(chars_task_t *task,
                                  int           idx,
                                  const char   *name)
 {
   result_t    rc;
   const char *resources;
-  const char *filename;
+  const char *dir;
+  char        filename[512];
   bmfont_t   *font;
 
   if (task->fonts[idx] != NULL)
     return task->fonts[idx];
 
   resources = wuss_get_resources(task->wuss);
-  filename  = pathf("%s/resources/bmfonts/%s.png", resources, name);
+  dir       = pathf("%s/resources/bmfonts", resources);
+
+  rc = bmfontfamily_label_path(dir, name, filename, sizeof(filename));
+  if (rc != result_OK)
+    return NULL;
 
   rc = bmfontcache_acquire(wuss_get_font_cache(task->wuss), filename, &font);
   if (rc != result_OK)

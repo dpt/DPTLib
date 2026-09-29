@@ -2,15 +2,15 @@
 
 "bmfont" is a sub-library of DPTLib for drawing proportionally spaced bitmap fonts. It reads font definitions from PNG files like this:
 
-![DPT-Henry Font](../resources/bmfonts/DPT-Henry.png)
+![DPT-Henry Font](../resources/bmfonts/DPT-Henry/Regular.png)
 
 or this:
 
-![DPT-Digits Font](../resources/bmfonts/DPT-Digits-Regular.png)
+![DPT-Digits Font](../resources/bmfonts/DPT-Digits/Regular.png)
 
 or even this:
 
-![Tiny Font](../resources/bmfonts/tiny.png)
+![Tiny Font](../resources/bmfonts/Tiny/Regular.png)
 
 ...which have the glyphs laid out in a grid, with extra lines inserted, that define the advance widths.
 
@@ -130,6 +130,31 @@ void bmfont_get_info(bmfont_t *bmfont,
 ```
 
 Returns the font's cell width, cell height, ascent and descent (any may be `NULL` if not required).
+
+## Font families
+
+Fonts live one level down, grouped by family: `resources/bmfonts/<Family>/<Style>.png`, with the `.map` sidecar beside it. Every font has a directory, even a family of one (`Tiny/Regular.png`). A sized cut of a design is its own family (`DPT-Digits` and `DPT-DigitsLg`), because size is not a style axis.
+
+A style name is an optional weight (`Thin`, `Light`, `Regular`, `Medium`, `Bold` or `Black`) followed by an optional `Italic`, so `Bold.png`, `Italic.png` and `BoldItalic.png` are all valid. A name with no recognised weight counts as `Regular`.
+
+`framebuf/bmfontfamily.h` reads a family's directory listing (no PNG is loaded) and answers style questions:
+
+```c
+bmfontfamily_t     *family;
+const bmfontface_t *face;
+bmfont_t           *font;
+
+bmfontfamily_scan("resources/bmfonts/GrongyUI", &family);
+face = bmfontfamily_find(family, bmfontfamily_WEIGHT_REGULAR,
+                         bmfontfamily_SLANT_UPRIGHT);
+face = bmfontfamily_heavier(family, face);   /* the Bold face */
+bmfontcache_acquire(cache, face->path, &font);
+bmfontfamily_destroy(family);
+```
+
+`bmfontfamily_heavier()` and `bmfontfamily_lighter()` step to the nearest face of the same slant and return the face they were given when there is nowhere further to go. `bmfontfamily_with_slant()` switches slant, keeping the weight or the nearest one.
+
+`bmfont_enumerate()` walks every family under a directory and reports each face as a `Family Style` label (e.g. `GrongyUI Bold`), which `bmfontfamily_label_path()` turns back into a path.
 
 ## Limitations
 

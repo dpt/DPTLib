@@ -35,9 +35,9 @@ extern "C"
 
 /**
  * The singleton menu to hand to wuss_menu_open, built (or rebuilt, if \p dir
- * or \p wuss differ from the call that built it) from the ".png" fonts in \p
- * dir (see bmfont_enumerate): one leaf item per font, alphabetically sorted,
- * its label the font's leafname sans ".png".
+ * or \p wuss differ from the call that built it) from the fonts under \p dir
+ * (see bmfont_enumerate): one leaf item per face, alphabetically sorted, its
+ * label "Family Style", e.g. "GrongyUI Bold".
  *
  * Because the menu is shared, two callers wanting different directories (or
  * different \p wuss skip-lists) open at once cannot each have it wired into
@@ -51,9 +51,9 @@ extern "C"
  *                  to include every font found. Any wuss_create font slot
  *                  (see \ref wuss_font_desc_t) whose class is \ref
  *                  wuss_FONT_CLASS_SYSTEM and whose name matches a scanned
- *                  leafname is skipped -- e.g. the symbol font wuss itself
- *                  draws menu ticks and submenu arrows from, which is not
- *                  meant to be picked as a text font.
+ *                  label or its family name is skipped -- e.g. the symbol
+ *                  font wuss itself draws menu ticks and submenu arrows
+ *                  from, which is not meant to be picked as a text font.
  * \return The menu, borrowed and valid until the next call that rebuilds it,
  *         or NULL if \p dir is NULL or the build failed (OOM or \p dir could
  *         not be opened).

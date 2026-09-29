@@ -6030,7 +6030,8 @@ MenuOK: ;
       wuss_font_desc_t sysdescs[2];
       wuss_t          *syswuss;
 
-      sysfontfile = pathf("%s/resources/bmfonts/Symbols.png", resources);
+      sysfontfile = pathf("%s/resources/bmfonts/Symbols/Regular.png",
+                          resources);
       rc = bmfont_create(sysfontfile, &sysfont);
       if (rc != result_OK)                               goto FontMenuFail;
 
@@ -6058,9 +6059,10 @@ MenuOK: ;
       bmfont_destroy(sysfont);
       if (fmm == NULL)                                    goto FontMenuFail;
       for (i = 0; i < fmm->nitems; i++)
-        if (strcmp(fmm->items[i].text, "Symbols") == 0)   goto FontMenuFail;
+        if (strcmp(fmm->items[i].text, "Symbols Regular") == 0)
+          goto FontMenuFail;
       for (i = 0; i < fmm->nitems; i++)
-        if (strcmp(fmm->items[i].text, "Tiny") == 0)
+        if (strcmp(fmm->items[i].text, "Tiny Regular") == 0)
           break;
       if (i == fmm->nitems)                               goto FontMenuFail;
     }
@@ -6199,7 +6201,7 @@ FontMenuOK: ;
       const wuss_menu_t *cmrealm;
       int                cmrowbytes;
 
-      cmfontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+      cmfontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
       rc = bmfont_create(cmfontfile, &cmfont);
       if (rc != result_OK) goto ColourMenuFail;
 
@@ -6276,7 +6278,7 @@ ColourMenuOK: ;
 
     /* a menu needs a font, and the arrow the icon set, so neither the
      * shared fontless wuss nor a resource-less one will do */
-    ssfontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    ssfontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
     rc = bmfont_create(ssfontfile, &ssfont);
     if (rc != result_OK) goto StringSetFail;
 
@@ -6434,7 +6436,7 @@ StringSetOK: ;
 
     /* the menu needs a font, and the button the icon set; the default
      * palette is just white (0) and black (1) */
-    csfontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    csfontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
     rc = bmfont_create(csfontfile, &csfont);
     if (rc != result_OK) goto ColourSetFail;
 
@@ -6618,7 +6620,7 @@ ColourSetOK: ;
 
     /* a menu needs a font for its row metrics; the core wuss above was made
      * without one */
-    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    fontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -6766,7 +6768,7 @@ FlashFail:
     struct wuss__menu *root;
     struct wuss__menu *sub;
 
-    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    fontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -6907,7 +6909,7 @@ SubHiFail:
     wuss_task_t     *powner;
     struct wuss__menu *proot;
 
-    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    fontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -7008,7 +7010,7 @@ PreOpenFail:
     wuss_window_t   *win_plain, *win_flagged;
     struct wuss__menu  *proot;
 
-    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    fontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -7133,7 +7135,7 @@ PwFail:
     bmfont_width_t   shortcut_w;
     struct wuss__menu *sroot;
 
-    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    fontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -7281,7 +7283,7 @@ ScFail:
     wuss_window_t   *wa, *wb;
     box_t            ba, bb;
 
-    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    fontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {
@@ -7417,7 +7419,7 @@ MoveFail:
     wuss_window_t   *wq;
     box_t            bq;
 
-    fontfile = pathf("%s/resources/bmfonts/Tiny.png", resources);
+    fontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
     rc = bmfont_create(fontfile, &font);
     if (rc != result_OK)
     {

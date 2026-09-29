@@ -14,6 +14,7 @@
 
 #include "base/debug.h"
 #include "base/utils.h"
+#include "framebuf/bmfontfamily.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "geom/point.h"
@@ -301,20 +302,25 @@ static const wuss_menu_t *text_fontmenu(text_task_t *task)
 }
 
 /* load fonts[idx] if not already in hand; returns it or NULL on failure.
- * name is the menu label for that row -- the font's leafname sans ".png". */
+ * name is the menu label for that row -- "Family Style". */
 static bmfont_t *text_load_font(text_task_t *task,
                                 const char  *resources,
                                 int          idx,
                                 const char  *name)
 {
   result_t    rc;
-  const char *filename;
+  const char *dir;
+  char        filename[512];
   bmfont_t   *font;
 
   if (task->fonts[idx] != NULL)
     return task->fonts[idx];
 
-  filename = pathf("%s/resources/bmfonts/%s.png", resources, name);
+  dir = pathf("%s/resources/bmfonts", resources);
+
+  rc = bmfontfamily_label_path(dir, name, filename, sizeof(filename));
+  if (rc != result_OK)
+    return NULL;
 
   rc = bmfontcache_acquire(wuss_get_font_cache(task->wuss), filename, &font);
   if (rc != result_OK)
@@ -588,11 +594,17 @@ static result_t text_pre_submenu_open(text_task_t        *task,
   if (wuss_menu_handle_menu(handle) != &task->colours_menu)
   {
     if (index == TEXT_MENU_FONT)
+    {
+      const wuss_menu_t *fontmenu;
+
       /* the fontmenu singleton may have been rebuilt (at a new address) by
        * another task since top_items[TEXT_MENU_FONT].submenu was cached in
        * text_create -- re-fetch instead of handing the spawner a stale
-       * pointer */
-      return wuss_menu_open_submenu_now(handle, index, text_fontmenu(task));
+       * pointer, and before ticking, as a rebuild would drop the tick */
+      fontmenu = text_fontmenu(task);
+      wuss_fontmenu_set_ticked(task->current);
+      return wuss_menu_open_submenu_now(handle, index, fontmenu);
+    }
 
     return wuss_menu_open_submenu_now(handle, index,
                                       task->top_items[index].submenu);
@@ -625,6 +637,7 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
   const wuss_menu_t *menu;
+  const char        *sysname;
   int                i;
   size2d_t           sz;
 
@@ -634,7 +647,7 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
 
   task->wuss        = wuss;
   task->font        = wuss_get_font(wuss);
-  task->current     = -1; /* the wuss system font is none of the picker's */
+  task->current     = -1; /* until the system font's row is found below */
   task->spacing_idx = TEXT_DEFAULT_SPACING;
   task->spacing.letter_spacing = text_spacing_presets[TEXT_DEFAULT_SPACING].letter_spacing;
   task->spacing.word_spacing   = text_spacing_presets[TEXT_DEFAULT_SPACING].word_spacing;
@@ -663,6 +676,14 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
     free(task);
     return result_OOM;
   }
+
+  /* tick the system font's row, if the picker lists it. fonts[current]
+   * stays NULL: the system font is wuss's, not ours to release. */
+  sysname = wuss_get_font_name_n(wuss, 0);
+  if (sysname != NULL)
+    for (i = 0; i < task->nfonts; i++)
+      if (strcmp(menu->items[i].text, sysname) == 0)
+        task->current = i;
 
   if (wuss_colourmenu_menu(wuss) == NULL)
   {
@@ -1131,13 +1152,25 @@ result_t text_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     {
+      result_t      rc;
       const char   *name;
       wuss_colour_t picked;
       int           mine;
 
       name = wuss_fontmenu_selected(event);
       if (name != NULL)
-        return text_set_font(tcx, event->data.menu_select.index, name);
+      {
+        rc = text_set_font(tcx, event->data.menu_select.index, name);
+
+        /* ADJUST keeps the chain open, so retick the still-open font level
+         * in place (a no-op once a SELECT pick has closed it). Use the
+         * event's own menu, not a fresh text_fontmenu(): that can rebuild
+         * the singleton under the open chain. */
+        wuss_menu_tick_exclusive_live(tcx->menu_handle,
+                                      event->data.menu_select.menu,
+                                      tcx->current);
+        return rc;
+      }
       if (event->data.menu_select.menu == &tcx->sample_menu)
         return text_set_sample(tcx, event->data.menu_select.index);
       if (event->data.menu_select.menu == &tcx->spacing_menu)

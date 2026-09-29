@@ -1,3 +1,3 @@
-# DPT-CookeTall -- cmap for DPT-CookeTall.png (see docs/framebuf/bmfont.md)
+# 04b_25/Regular -- cmap for Regular.png (see docs/framebuf/bmfont.md)
 U+0020..U+007E  0     # printable ASCII
 U+00A0          0     # NBSP shares space
