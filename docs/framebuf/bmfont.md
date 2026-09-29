@@ -14,7 +14,7 @@ or even this:
 
 ...which have the glyphs laid out in a grid, with extra lines inserted, that define the advance widths.
 
-- It can draw to 4bpp and 32bpp format screens at the time of writing.
+- It can draw to 1, 2, 4bpp, 16bpp (`rgb565`, `rgbx5551`) and 32bpp format screens at the time of writing.
 - It supports both opaque and transparent backgrounds.
 - Its rendering should be reasonably quick.
 
