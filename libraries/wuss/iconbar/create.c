@@ -70,7 +70,8 @@ static result_t iconbar_window_ensure(wuss_t *wuss)
 
   rc = wuss_window_create(task, &content, NULL,
                           wuss_WINDOW_NO_TITLEBAR |
-                          wuss_WINDOW_NO_REDRAW   | wuss_WINDOW_PINNED,
+                          wuss_WINDOW_NO_REDRAW   | wuss_WINDOW_PINNED |
+                          wuss_WINDOW_STACK_BACK,
                           wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                           SIZE2D(content.x1 - content.x0,
                                  content.y1 - content.y0),
@@ -79,10 +80,6 @@ static result_t iconbar_window_ensure(wuss_t *wuss)
                           &win);
   if (rc != result_OK)
     return rc;
-
-  /* starts below every user window rather than stealing topmost on the
-   * first icon -- wuss_window_create always inserts at z_order head. */
-  wuss_window_restack(win, wuss_ZORDER_BACK);
 
   wuss->iconbar_window = win;
 

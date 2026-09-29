@@ -14,11 +14,6 @@ LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
 - Named colours?
     blocks: furniture colour selection, desktop palette editor
 - 32K/64K colour modes
-- Policy? Windows hidden by default (unless a flag is set)
-  Wuss lets hidden windows exist in its window stack which complicates the
-  code a bit. RISC OS allows hidden (closed) windows by putting them "behind
-  the backwindow".
-    blocks: window stacks
 
 
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
@@ -96,8 +91,10 @@ NO STRONG DEPS (do any time)
 - Generalise APIs (make more Wimp-like)
 - Fix coordinates to be exactly like Wimp/RO?
 - Set overall UI scale (like EIG values)
-- Window stacks (topwindow/mid-stack/backwindow a-la nested wimp)
 - Nested wimp type nesting
+- Hidden windows keep their slot in their stack (wuss_WINDOW_HIDDEN). Revisit
+  if nesting needs them out of the stacks, RISC OS style ("behind the
+  backwindow").
 - Automatic pane handling?
 - Stress test: moving windows in a circle a-la nested Wimp [worth it?]
 

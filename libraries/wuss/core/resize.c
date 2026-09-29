@@ -83,8 +83,8 @@ static void resize_pinned_window(wuss_window_t *window)
 
 result_t wuss_resize(wuss_t *wuss, screen_t *scr)
 {
-  list_t *e;
-  box_t   screen;
+  wuss_window_t *win;
+  box_t          screen;
 
   assert(wuss != NULL);
   assert(scr  != NULL);
@@ -101,11 +101,8 @@ result_t wuss_resize(wuss_t *wuss, screen_t *scr)
   }
 #endif
 
-  for (e = wuss->z_order.next; e != NULL; e = e->next)
+  for (win = wuss__z_first(wuss); win != NULL; win = wuss__z_below(win))
   {
-    wuss_window_t *win;
-
-    win = wuss__window_from_link(e);
     if (win->flags & wuss_WINDOW_PINNED)
       resize_pinned_window(win);
     else

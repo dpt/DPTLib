@@ -68,11 +68,14 @@ extern "C"
  *                     to doc, and to the built-in floor, so it can never
  *                     make a window unusably small or larger than its
  *                     document.
- * \param[out] window  Newly created window. Becomes the topmost window.
+ * \param[out] window  Newly created window. Becomes the frontmost window of
+ *                     its stack: middle unless flags includes
+ *                     wuss_WINDOW_STACK_TOP or wuss_WINDOW_STACK_BACK.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
  *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if
- *         any of bg's colours are out of range for the palette, or another
- *         appropriate result code.
+ *         any of bg's colours are out of range for the palette, \ref
+ *         result_BAD_ARG if flags names both wuss_WINDOW_STACK_TOP and
+ *         wuss_WINDOW_STACK_BACK, or another appropriate result code.
  */
 result_t wuss_window_create(wuss_task_t        *task,
                             const box_t        *content,
@@ -216,12 +219,24 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size);
 result_t wuss_window_set_doc(wuss_window_t *window, size2d_t doc);
 
 /**
- * Move a window to one end of the z-order.
+ * Move a window to one end of its own stack (see wuss_stack_t). It never
+ * crosses into another stack: a middle window brought to front stays behind
+ * every top window.
  *
  * \param[in] window Window to restack.
  * \param[in] reason wuss_ZORDER_FRONT or wuss_ZORDER_BACK.
  */
 void wuss_window_restack(wuss_window_t *window, wuss_zorder_t reason);
+
+/**
+ * Move a window to the front of another stack (see wuss_stack_t). A no-op if
+ * it is already in \p stack. A visible window repaints whatever its new
+ * position uncovers or covers; a hidden one is only relinked.
+ *
+ * \param[in] window Window to move.
+ * \param[in] stack  Destination stack.
+ */
+void wuss_window_set_stack(wuss_window_t *window, wuss_stack_t stack);
 
 /**
  * Fetch a window's current visible (on-screen) bounds: its full footprint,
