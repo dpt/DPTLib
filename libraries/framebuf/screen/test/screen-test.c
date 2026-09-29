@@ -1689,6 +1689,51 @@ static result_t test_16bpp_screen(pixelfmt_t fmt)
     return result_TEST_FAILED;
   }
 
+  /* fill_pattern: GREY50 puts fg where (x ^ y) is even, bg elsewhere; the
+   * stencil variant leaves the bg pixels alone. Same via the bitmap API. */
+  {
+    pattern_t        pat;
+    box_t            area = { 1, 1, 5, 5 };
+    pixelfmt_any16_t fg, bg;
+    bitmap_t         bm;
+    int              pass;
+
+    fg  = (pixelfmt_any16_t) colour_to_pixel(NULL, 0, colour_rgb(255, 0, 0), fmt);
+    bg  = (pixelfmt_any16_t) colour_to_pixel(NULL, 0, colour_rgb(0, 0, 255), fmt);
+    pat = pattern_from_preset(screen_PATTERN_GREY50, colour_rgb(255, 0, 0),
+                              colour_rgb(0, 0, 255));
+
+    bitmap_init(&bm, SIZE2D(W, H), fmt, W * (int) sizeof(screenbuf[0]),
+                NULL, screenbuf);
+
+    for (pass = 0; pass < 4; pass++)
+    {
+      int stencil = pass & 1;
+      int x, y, want;
+
+      pat.flags = stencil ? pattern_FLAG_STENCIL : 0;
+      memset(screenbuf, 0, sizeof(screenbuf));
+      if (pass < 2)
+        screen_fill_pattern(&scr, &area, &pat);
+      else if (bitmap_fill_pattern(&bm, &area, &pat) != result_OK)
+        return result_TEST_FAILED;
+
+      for (y = 0; y < H; y++)
+        for (x = 0; x < W; x++)
+        {
+          want = 0;
+          if (box_contains_point(&area, x, y))
+            want = (((x ^ y) & 1) == 0) ? fg : (stencil ? 0 : bg);
+          if (screenbuf[y * W + x] != want)
+          {
+            printf("screen: 16bpp fill_pattern fmt=%d pass=%d wrong at "
+                   "(%d,%d)\n", (int) fmt, pass, x, y);
+            return result_TEST_FAILED;
+          }
+        }
+    }
+  }
+
   return result_TEST_PASSED;
 }
 
