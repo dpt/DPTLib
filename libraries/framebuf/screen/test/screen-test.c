@@ -132,9 +132,9 @@ static result_t test_clip_invariance(void)
   static testscreen_t reference;
   static testscreen_t pieced;
 
-  colour_t colour;
-  size_t   l, p, k;
-  int      b;
+  colour_t            colour;
+  size_t              l, p, k;
+  int                 b;
 
   colour = colour_rgb(255, 255, 255);
 
@@ -174,9 +174,9 @@ static result_t test_clipping_still_happens(void)
 
   static testscreen_t ts;
 
-  colour_t colour;
-  size_t   k;
-  int      x, y;
+  colour_t            colour;
+  size_t              k;
+  int                 x, y;
 
   colour = colour_rgb(255, 255, 255);
 
@@ -224,8 +224,8 @@ static result_t test_wu_fix8_extreme_coords(void)
 
   static testscreen_t ts;
 
-  colour_t colour;
-  size_t   i;
+  colour_t            colour;
+  size_t              i;
 
   colour = colour_rgb(255, 255, 255);
 
@@ -289,14 +289,14 @@ static int np_at(testscreen_t *ts, int x, int y)
 
 static result_t test_ninepatch(void)
 {
-  static testscreen_t ts;
-  static testscreen_t enc;
+  static testscreen_t        ts;
+  static testscreen_t        enc;
   static pixelfmt_rgba8888_t srcbuf[NP_SRC * NP_SRC];
 
-  bitmap_t src;
-  box_t    dst = { 5, 5, 45, 45 };
-  int      exp[3][3];
-  int      cx, cy;
+  bitmap_t                   src;
+  box_t                      dst = { 5, 5, 45, 45 };
+  int                        exp[3][3];
+  int                        cx, cy;
 
   np_make_src(&src, srcbuf);
 
@@ -394,8 +394,8 @@ static result_t test_fill_pattern(void)
   static testscreen_t ts;
   static testscreen_t enc;
 
-  box_t    box = { 8, 8, 24, 24 };
-  int      fg, bg;
+  box_t box = { 8, 8, 24, 24 };
+  int   fg, bg;
 
   fg = (int) np_encode(&enc, 255, 0, 0);
   bg = (int) np_encode(&enc, 0, 0, 255);
@@ -469,9 +469,9 @@ static result_t test_dashed_line(void)
   static testscreen_t ts;
   static testscreen_t enc;
 
-  int fg;
-  int x;
-  int on_count, off_count;
+  int                 fg;
+  int                 x;
+  int                 on_count, off_count;
 
   fg = (int) np_encode(&enc, 255, 0, 0);
 
@@ -586,8 +586,8 @@ static result_t test_draw_rect(void)
   static testscreen_t ts;
   static testscreen_t enc;
 
-  int fg, bg;
-  int x, y;
+  int                 fg, bg;
+  int                 x, y;
 
   fg = (int) np_encode(&enc, 0, 255, 0);
   bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
@@ -651,7 +651,7 @@ static result_t test_draw_circle(void)
   static testscreen_t ts;
   static testscreen_t enc;
 
-  int fg, bg;
+  int                 fg, bg;
 
   fg = (int) np_encode(&enc, 0, 255, 0);
   bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
@@ -702,7 +702,7 @@ static result_t test_fill_circle(void)
   static testscreen_t ts;
   static testscreen_t enc;
 
-  int fg, bg;
+  int                 fg, bg;
 
   fg = (int) np_encode(&enc, 0, 255, 0);
   bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
@@ -747,8 +747,8 @@ static result_t test_rounded_rect(void)
   static testscreen_t filled;
   static testscreen_t enc;
 
-  int fg, bg;
-  int x, y;
+  int                 fg, bg;
+  int                 x, y;
 
   fg = (int) np_encode(&enc, 0, 255, 0);
   bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
@@ -820,10 +820,10 @@ static result_t test_copy_bitmap_p1(void)
   static unsigned char       p1pixels[P1_ROWBYTES * HEIGHT];
   static pixelfmt_rgba8888_t srcbuf[16 * 4];
 
-  screen_t scr;
-  bitmap_t src;
-  colour_t pal[2];
-  int      x, y;
+  screen_t                   scr;
+  bitmap_t                   src;
+  colour_t                   pal[2];
+  int                        x, y;
 
   pal[0] = colour_rgb(0x00, 0x00, 0x00);
   pal[1] = colour_rgb(0xFF, 0xFF, 0xFF);
@@ -926,10 +926,10 @@ static result_t test_copy_bitmap_p2(void)
   static unsigned char       p2pixels[P2_ROWBYTES * HEIGHT];
   static pixelfmt_rgba8888_t srcbuf[16 * 4];
 
-  screen_t scr;
-  bitmap_t src;
-  colour_t pal[4];
-  int      x, y;
+  screen_t                   scr;
+  bitmap_t                   src;
+  colour_t                   pal[4];
+  int                        x, y;
 
   pal[0] = colour_rgb(0x00, 0x00, 0x00);
   pal[1] = colour_rgb(0x55, 0x55, 0x55);
@@ -1039,10 +1039,10 @@ static result_t test_copy_bitmap_p8(void)
   static unsigned char       p8pixels[P8_ROWBYTES * HEIGHT];
   static pixelfmt_rgba8888_t srcbuf[16 * 4];
 
-  screen_t scr;
-  bitmap_t src;
-  colour_t pal[256];
-  int      x, y;
+  screen_t                   scr;
+  bitmap_t                   src;
+  colour_t                   pal[256];
+  int                        x, y;
 
   /* a grey ramp: entry i is (i, i, i), so nearest-match is predictable */
   for (x = 0; x < 256; x++)
@@ -1204,11 +1204,11 @@ static result_t test_copy_bitmap_bgr_source(void)
   static const pixelfmt_t fmts[] = { pixelfmt_bgra8888, pixelfmt_bgrx8888 };
   static pixelfmt_any32_t scrbuf[WIDTH * HEIGHT];
 
-  pixelfmt_any32_t srcpx;
-  colour_t         red;
-  screen_t         scr;
-  bitmap_t         src;
-  size_t           i;
+  pixelfmt_any32_t        srcpx;
+  colour_t                red;
+  screen_t                scr;
+  bitmap_t                src;
+  size_t                  i;
 
   srcpx = PIXELFMT_MAKE_BGRA8888(0xFF, 0x00, 0x00, 0xFF);
   red   = colour_rgb(0xFF, 0x00, 0x00);
@@ -1242,14 +1242,14 @@ static result_t test_copy_bitmap_bgr_source(void)
 static result_t test_copy_bitmap_paletted_source(void)
 {
 #define P4_SRC_ROWBYTES (8 / 2)
-  static unsigned char p4srcbuf[P4_SRC_ROWBYTES * 2];
+  static unsigned char    p4srcbuf[P4_SRC_ROWBYTES * 2];
   static pixelfmt_any32_t scrbuf[WIDTH * HEIGHT];
 
-  screen_t scr;
-  bitmap_t src;
-  colour_t srcpal[16];
-  colour_t got;
-  int      x;
+  screen_t                scr;
+  bitmap_t                src;
+  colour_t                srcpal[16];
+  colour_t                got;
+  int                     x;
 
   /* row 0: indices 0..7 packed two to the byte -- even x in the low nibble,
    * odd x in the high nibble (matches screen_set_pixel_p4's own bit order) */
@@ -1344,13 +1344,13 @@ static result_t test_copy_bitmap_dithered_with(screen_dither_t method)
   static unsigned char       pdpixels[PD_ROWBYTES * HEIGHT];
   static pixelfmt_rgba8888_t srcbuf[16 * 8];
 
-  screen_t      scr;
-  bitmap_t      src;
-  colour_t      pal[4];
-  int           first;
-  int           varied;
-  int           px;
-  int           x, y;
+  screen_t                   scr;
+  bitmap_t                   src;
+  colour_t                   pal[4];
+  int                        first;
+  int                        varied;
+  int                        px;
+  int                        x, y;
 
   pal[0] = colour_rgb(0x00, 0x00, 0x00);
   pal[1] = colour_rgb(0x55, 0x55, 0x55);
@@ -1481,9 +1481,9 @@ static result_t test_copy_rect_packed(void)
 
   static unsigned char buf[WIDTH / 2 * HEIGHT]; /* widest sub-byte case */
 
-  colour_t pal[16];
-  size_t   ci;
-  int      i;
+  colour_t             pal[16];
+  size_t               ci;
+  int                  i;
 
   for (i = 0; i < 16; i++)
     pal[i] = colour_rgb((unsigned char) (i * 17),
@@ -1565,10 +1565,10 @@ static result_t test_set_pixel_clip(void)
 
   static testscreen_t ts;
 
-  size_t ci;
-  int    fn;
-  int    x, y;
-  int    inside;
+  size_t              ci;
+  int                 fn;
+  int                 x, y;
+  int                 inside;
 
   for (ci = 0; ci < NELEMS(clips); ci++)
     for (fn = 0; fn < 2; fn++)
@@ -1628,6 +1628,80 @@ static result_t test_fill_span_p4(void)
   return result_TEST_PASSED;
 }
 
+/* set_pixel round-trips full-precision R/G/B through the 5/6/5 or 5/5/5
+ * quantisation, and copy_bitmap alpha-blends an rgba8888 source correctly,
+ * for both 16bpp destination formats. */
+static result_t test_16bpp_screen(pixelfmt_t fmt)
+{
+  static const int W = 8, H = 8;
+
+  pixelfmt_any16_t    screenbuf[8 * 8];
+  screen_t            scr;
+  pixelfmt_rgba8888_t srcbuf[2 * 2];
+  bitmap_t            src;
+  result_t            rc;
+  pixelfmt_any16_t    got;
+  colour_t            c;
+
+  screen_init(&scr, SIZE2D(W, H), fmt, W * (int) sizeof(screenbuf[0]),
+             NULL, screenbuf);
+
+  /* pure red round-trips to the format's own full-intensity red field,
+   * regardless of whether that field is 5 or 6 bits wide */
+  screen_set_pixel(&scr, 0, 0, colour_rgb(255, 0, 0));
+  got = screenbuf[0];
+  if (fmt == pixelfmt_rgb565  && got != (PIXELFMT_Rxx565_MASK >> 0)   ||
+      fmt == pixelfmt_rgbx5551 && got != (PIXELFMT_Rxxx5551_MASK >> 0))
+  {
+    printf("screen: 16bpp set_pixel red wrong for fmt=%d: got 0x%04x\n",
+           (int) fmt, got);
+    return result_TEST_FAILED;
+  }
+
+  /* opaque source pixel fully overwrites the destination */
+  memset(screenbuf, 0, sizeof(screenbuf));
+  bitmap_init(&src, SIZE2D(2, 2), pixelfmt_rgba8888,
+             2 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
+  srcbuf[0] = PIXELFMT_MAKE_RGBA8888(0, 0, 255, 255); /* blue, opaque */
+  srcbuf[1] = PIXELFMT_MAKE_RGBA8888(0, 0, 255, 0);   /* blue, transparent */
+  srcbuf[2] = srcbuf[0];
+  srcbuf[3] = srcbuf[0];
+
+  rc = screen_copy_bitmap(&scr, 0, 0, &src);
+  if (rc != result_OK)
+  {
+    printf("screen: 16bpp copy_bitmap fmt=%d returned %d\n", (int) fmt, rc);
+    return result_TEST_FAILED;
+  }
+
+  c.primary = colour_rgb(0, 0, 255).primary;
+  if (screenbuf[0] != (pixelfmt_any16_t) colour_to_pixel(NULL, 0, c, fmt))
+  {
+    printf("screen: 16bpp copy_bitmap fmt=%d opaque pixel wrong\n", (int) fmt);
+    return result_TEST_FAILED;
+  }
+
+  /* fully transparent source pixel leaves the destination untouched */
+  if (screenbuf[1] != 0)
+  {
+    printf("screen: 16bpp copy_bitmap fmt=%d transparent pixel wrong\n",
+           (int) fmt);
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+static result_t test_rgb565(void)
+{
+  return test_16bpp_screen(pixelfmt_rgb565);
+}
+
+static result_t test_rgbx5551(void)
+{
+  return test_16bpp_screen(pixelfmt_rgbx5551);
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t screen_test(const char *resources)
@@ -1655,7 +1729,9 @@ result_t screen_test(const char *resources)
     test_copy_bitmap_dithered,
     test_copy_rect_packed,
     test_fill_span_p4,
-    test_set_pixel_clip
+    test_set_pixel_clip,
+    test_rgb565,
+    test_rgbx5551
   };
 
   result_t rc;

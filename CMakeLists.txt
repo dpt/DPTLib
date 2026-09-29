@@ -97,7 +97,9 @@ set(PUBLIC_HEADERS
     include/framebuf/span-p4.h
     include/framebuf/span-p8.h
     include/framebuf/span-registry.h
+    include/framebuf/span-rgb565.h
     include/framebuf/span-rgba8888.h
+    include/framebuf/span-rgbx5551.h
     include/framebuf/span-rgbx8888.h
     include/framebuf/span-xbgr8888.h
     include/framebuf/span.h
@@ -297,6 +299,8 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/screen/screen-fill-pattern.c
     libraries/framebuf/span-registry/get.c
     libraries/framebuf/span-registry/regdata.h
+    libraries/framebuf/span/all16bpp.c
+    libraries/framebuf/span/all16bpp.h
     libraries/framebuf/span/all8888.c
     libraries/framebuf/span/all8888.h
     libraries/framebuf/span/bgrx8888.c
@@ -304,6 +308,8 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/span/p2.c
     libraries/framebuf/span/p4.c
     libraries/framebuf/span/p8.c
+    libraries/framebuf/span/rgb565.c
+    libraries/framebuf/span/rgbx5551.c
     libraries/framebuf/span/rgbx8888.c
     libraries/framebuf/span/xbgr8888.c)
 
