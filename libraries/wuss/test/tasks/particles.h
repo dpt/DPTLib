@@ -27,8 +27,10 @@
  * Cancel/Apply) and add an attractor/repeller there too, at the applied
  * strength; Menu > Background picks the fill; Menu > Gravity scales every
  * style's pull; Menu > Walls bounces
- * particles off the edges; Menu > Clear removes every particle and emitter.
- * Space toggles pause, W toggles walls and C clears, once a click has given
+ * particles off the edges; Menu > Markers shows rings round emitters (green),
+ * repellers (red) and attractors (orange); Menu > Clear removes every
+ * particle and emitter.
+ * Space toggles pause, W toggles walls, M markers and C clears, once a click has given
  * the window the input focus. A fresh burst fires by itself whenever the
  * window falls quiet. */
 typedef struct particles_task
@@ -37,11 +39,12 @@ typedef struct particles_task
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[7]; /* per-instance: shared static "Info" row
+  wuss_menu_item_t    menu_items[8]; /* per-instance: shared static "Info" row
                                        * would leak one instance's .window
                                        * pointer into another's menu */
   wuss_menu_t         menu;
   int                 paused; /* Menu > Pause; idle does nothing while set */
+  int                 markers; /* Menu > Markers; rings on emitters etc. */
   wuss_menu_item_t    add_items[3]; /* Add > Emitter / Attractor / Repeller */
   wuss_menu_t         add_menu;
   wuss_menu_item_t    emitter_items[3]; /* one row per intensity */
@@ -50,6 +53,7 @@ typedef struct particles_task
                                           * Strength dialogue; borrowed
                                           * window leaf, never closed here */
   wuss_slider_row_t   strength_row;
+  wuss_slider_row_t   range_row; /* the force's sphere of influence, pixels */
   wuss_icon_t        *strength_cancel;
   wuss_icon_t        *strength_apply;
   int                 strength_which; /* PARTICLES_ADD_ATTRACTOR or

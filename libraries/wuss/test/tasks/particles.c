@@ -38,6 +38,7 @@ enum
   PARTICLES_MENU_PAUSE,
   PARTICLES_MENU_GRAVITY,
   PARTICLES_MENU_WALLS,
+  PARTICLES_MENU_MARKERS,
   PARTICLES_MENU_CLEAR
 };
 
@@ -83,13 +84,17 @@ particles_intensities[] =
 
 /* Add > Attractor/Repeller's shared Strength dialogue: a 1..100 slider,
  * scaled to a force strength (attractor: create_repeller with strength
- * negated -- same force, opposite sign). max_distance is fixed -- only
- * strength is offered, as intensity is for an emitter. */
+ * negated -- same force, opposite sign) and a second slider for the range
+ * (max_distance, in pixels) of its sphere of influence. */
 #define PARTICLES_STRENGTH_MIN         1
 #define PARTICLES_STRENGTH_MAX         100
 #define PARTICLES_STRENGTH_SCALE       1000.0f /* slider value -> strength */
 #define PARTICLES_STRENGTH_DEFAULT     20
-#define PARTICLES_REPELLER_MAX_DISTANCE 100.0f
+#define PARTICLES_RANGE_MIN            10
+#define PARTICLES_RANGE_MAX            200
+#define PARTICLES_RANGE_DEFAULT        100 /* pixels of influence */
+
+#define PARTICLES_EMITTER_RING         6 /* radius of an emitter's marker */
 
 /* the Strength dialogue's icons, in creation order (see
  * particles_strength_dialogue_create) */
@@ -98,6 +103,10 @@ enum
   PARTICLES_STRENGTH_ICON_LABEL = 0,
   PARTICLES_STRENGTH_ICON_SLIDER,
   PARTICLES_STRENGTH_ICON_VALUE,
+
+  PARTICLES_STRENGTH_ICON_RANGE_LABEL,
+  PARTICLES_STRENGTH_ICON_RANGE_SLIDER,
+  PARTICLES_STRENGTH_ICON_RANGE_VALUE,
 
   PARTICLES_STRENGTH_ICON_CANCEL,
   PARTICLES_STRENGTH_ICON_APPLY,
@@ -377,6 +386,10 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PARTICLES_MENU_WALLS, "Walls",
                           wuss_MENU_ITEM_NONE, "W");
 
+  task->markers = 1;
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PARTICLES_MENU_MARKERS, "Markers",
+                          wuss_MENU_ITEM_NONE, "M");
+
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PARTICLES_MENU_CLEAR, "Clear",
                           wuss_MENU_ITEM_NONE, "C");
 
@@ -419,6 +432,11 @@ enum
   PST_SLDR,
   PST_VAL,
 
+  PST_ROW2,
+  PST_LABL2,
+  PST_SLDR2,
+  PST_VAL2,
+
   PST_BTNS,
   PST_CNCL,
   PST_APLY,
@@ -427,7 +445,7 @@ enum
 };
 
 #define PST_LABEL_W      (8*6) /* enough for "Strength" */
-#define PST_VALUE_W       (3*6) /* enough for "100" */
+#define PST_VALUE_W       (3*6) /* enough for "200" */
 #define PST_SLIDER_MIN_W (64)
 #define PST_CHAR_W        6 /* ponytail: assumes the 6px system font */
 #define PST_ACTION_WIDTH(W)  ((W)*PST_CHAR_W+2*wuss_STD_SECONDARY_BUTTON_BORDER)
@@ -444,6 +462,11 @@ static const stack_item_t g_particles_strength_stack[PARTICLES_STRENGTH_STACK__L
   [PST_LABL] = STACK_LEAF(PST_ROW, PST_LABEL_W, 16, stack_ALIGN_CENTRE),
   [PST_SLDR] = STACK_LEAF_EX(PST_ROW, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, PST_SLIDER_MIN_W, 0),
   [PST_VAL]  = STACK_LEAF(PST_ROW, PST_VALUE_W, 16, stack_ALIGN_CENTRE),
+
+  [PST_ROW2]  = STACK_HBOX(PST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
+  [PST_LABL2] = STACK_LEAF(PST_ROW2, PST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [PST_SLDR2] = STACK_LEAF_EX(PST_ROW2, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, PST_SLIDER_MIN_W, 0),
+  [PST_VAL2]  = STACK_LEAF(PST_ROW2, PST_VALUE_W, 16, stack_ALIGN_CENTRE),
 
   [PST_BTNS] = STACK_HBOX(PST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
   [PST_CNCL] = STACK_LEAF(PST_BTNS, PST_CANCEL_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
@@ -465,6 +488,7 @@ static result_t particles_strength_dialogue_create(particles_task_t *task)
   box_t            boxes[PARTICLES_STRENGTH_STACK__LIMIT];
   box_t            root;
   char             value_buf[WUSS_SLIDER_ROW_BUF];
+  char             range_buf[WUSS_SLIDER_ROW_BUF];
   size2d_t         min_sz;
 
   rc = stack_smallest(g_particles_strength_stack,
@@ -493,6 +517,17 @@ static result_t particles_strength_dialogue_create(particles_task_t *task)
                             PARTICLES_STRENGTH_DEFAULT, NULL, 0,
                             value_buf, sizeof(value_buf));
 
+  wuss_icon_spec_label(&specs[PARTICLES_STRENGTH_ICON_RANGE_LABEL],
+                       boxes[PST_LABL2], "Range",
+                       wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  wuss_icon_spec_slider_row(&specs[PARTICLES_STRENGTH_ICON_RANGE_SLIDER],
+                            &specs[PARTICLES_STRENGTH_ICON_RANGE_VALUE],
+                            boxes[PST_SLDR2], boxes[PST_VAL2],
+                            wuss_SLIDER_HORIZONTAL,
+                            PARTICLES_RANGE_MIN, PARTICLES_RANGE_MAX,
+                            PARTICLES_RANGE_DEFAULT, NULL, 0,
+                            range_buf, sizeof(range_buf));
+
   wuss_icon_spec_action(&specs[PARTICLES_STRENGTH_ICON_CANCEL], boxes[PST_CNCL], "Cancel", 0);
   wuss_icon_spec_action(&specs[PARTICLES_STRENGTH_ICON_APPLY], boxes[PST_APLY], "Apply", 1);
 
@@ -505,6 +540,10 @@ static result_t particles_strength_dialogue_create(particles_task_t *task)
                        made[PARTICLES_STRENGTH_ICON_SLIDER],
                        made[PARTICLES_STRENGTH_ICON_VALUE], NULL,
                        PARTICLES_STRENGTH_MIN, PARTICLES_STRENGTH_MAX, 0);
+  wuss_slider_row_bind(&task->range_row,
+                       made[PARTICLES_STRENGTH_ICON_RANGE_SLIDER],
+                       made[PARTICLES_STRENGTH_ICON_RANGE_VALUE], NULL,
+                       PARTICLES_RANGE_MIN, PARTICLES_RANGE_MAX, 0);
   task->strength_cancel = made[PARTICLES_STRENGTH_ICON_CANCEL];
   task->strength_apply  = made[PARTICLES_STRENGTH_ICON_APPLY];
 
@@ -537,12 +576,18 @@ exit:
  * dialogue on an Adjust-Cancel click. */
 static result_t particles_strength_fillout(void *opaque)
 {
+  result_t          rc;
   particles_task_t *task;
 
   task = opaque;
 
+  rc = wuss_slider_row_set(wuss_dialogue_window(task->strength_dialogue),
+                           &task->strength_row, PARTICLES_STRENGTH_DEFAULT);
+  if (rc != result_OK)
+    return rc;
+
   return wuss_slider_row_set(wuss_dialogue_window(task->strength_dialogue),
-                             &task->strength_row, PARTICLES_STRENGTH_DEFAULT);
+                             &task->range_row, PARTICLES_RANGE_DEFAULT);
 }
 
 /* Adds the attractor/repeller at the slider's current value, scaled to a
@@ -558,7 +603,7 @@ static void particles_strength_apply(particles_task_t *task)
     strength = -strength;
 
   create_repeller(&task->ps, task->menu_x, task->menu_y, strength,
-                  PARTICLES_REPELLER_MAX_DISTANCE);
+                  (float) wuss_icon_get_value(task->range_row.slider));
 }
 
 /* Dialogue action callback for Cancel, split by button per the RISC OS
@@ -614,6 +659,10 @@ static result_t particles_strength_dialogue_icon(particles_task_t   *task,
                             &task->strength_row, event, NULL))
     return result_OK;
 
+  if (wuss_slider_row_event(wuss_dialogue_window(task->strength_dialogue),
+                            &task->range_row, event, NULL))
+    return result_OK;
+
   if (wuss_dialogue_handle_icon(task->strength_dialogue, event, &rc))
     return rc;
 
@@ -644,6 +693,28 @@ static result_t particles_redraw(const wuss_event_t *event, void *task_data)
                    pt->bg);
 
   render_particles(&pt->ps);
+
+  /* green ring round each emitter, red round each repeller and orange round
+   * each attractor (a repeller of negative strength), the latter two at
+   * their range of influence */
+  for (i = 0; pt->markers && i < MAX_EMITTERS; i++)
+  {
+    if (pt->ps.emitters[i].active)
+      screen_draw_circle(pt->scr,
+                         pt->ox + (int) pt->ps.emitters[i].x,
+                         pt->oy + (int) pt->ps.emitters[i].y,
+                         PARTICLES_EMITTER_RING,
+                         colour_rgb(0x00, 0xFF, 0x00));
+
+    if (pt->ps.repellers[i].active)
+      screen_draw_circle(pt->scr,
+                         pt->ox + (int) pt->ps.repellers[i].x,
+                         pt->oy + (int) pt->ps.repellers[i].y,
+                         (int) pt->ps.repellers[i].max_distance,
+                         pt->ps.repellers[i].strength < 0.0f ?
+                           colour_rgb(0xFF, 0x99, 0x00) :
+                           colour_rgb(0xFF, 0x00, 0x00));
+  }
 
   pt->scr = NULL;
 
@@ -743,6 +814,7 @@ static result_t particles_mouse(wuss_window_t      *window,
     wuss_menu_tick_exclusive(&pt->gravity_menu, pt->gravity);
     wuss_menu_tick_item(&pt->menu, PARTICLES_MENU_WALLS,
                         !!(pt->ps.flags & PARTICLE_FLAG_WALLS));
+    wuss_menu_tick_item(&pt->menu, PARTICLES_MENU_MARKERS, pt->markers);
 
     return wuss_menu_open_at_pointer(pt->delegate, &pt->menu,
                                      &pt->menu_handle);
@@ -873,6 +945,12 @@ static result_t particles_toggle(particles_task_t   *pt,
   case PARTICLES_MENU_WALLS:
     pt->ps.flags ^= PARTICLE_FLAG_WALLS;
     ticked = !!(pt->ps.flags & PARTICLE_FLAG_WALLS);
+    break;
+
+  case PARTICLES_MENU_MARKERS:
+    pt->markers = !pt->markers;
+    ticked = pt->markers;
+    wuss_window_invalidate_visible(pt->window); /* repaint if paused */
     break;
 
   default:
