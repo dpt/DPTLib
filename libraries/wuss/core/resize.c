@@ -76,6 +76,12 @@ static void resize_pinned_window(wuss_window_t *window)
   {
     box_t dirty;
 
+    /* the cached outline layout holds absolute coords of the old box */
+    wuss__chrome_invalidate_layout(window);
+    window->doc.w = window->visible.x1 - window->visible.x0 -
+                    2 * wuss__outline_px(window);
+    window->min_doc.w = window->doc.w;
+
     box_union(&before, &window->visible, &dirty);
     wuss__invalidate_clipped(window, &dirty);
   }
