@@ -124,9 +124,7 @@ static result_t screen_copy_bitmap_rle_p4(screen_t       *scr,
       scrp  = rowp + (dstx >> 1);
       shift = (dstx & 1) * 4;
 
-      r   = (c.primary >> pm->rshift) & 0xFF;
-      g   = (c.primary >> pm->gshift) & 0xFF;
-      b   = (c.primary >> pm->bshift) & 0xFF;
+      pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
           | ( b >> (8 - pm->bbits));
@@ -214,9 +212,7 @@ static result_t screen_copy_bitmap_rle_p8(screen_t       *scr,
 
       dstx = draw_box->x0 + xx;
 
-      r   = (c.primary >> pm->rshift) & 0xFF;
-      g   = (c.primary >> pm->gshift) & 0xFF;
-      b   = (c.primary >> pm->bshift) & 0xFF;
+      pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
           | ( b >> (8 - pm->bbits));
