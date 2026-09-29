@@ -298,6 +298,40 @@ static int test_blit(const char *resources)
     free(p4_rle);
   }
 
+  /* --- rgb565 screen: RLE path must match the raw 16bpp blit --- */
+  {
+    uint16_t *rgb565_ref;
+    uint16_t *rgb565_rle;
+
+    rgb565_ref = malloc(npix * 2);
+    rgb565_rle = malloc(npix * 2);
+    memset(rgb565_ref, 0, npix * 2);
+    memset(rgb565_rle, 0, npix * 2);
+
+    rc = bitmap_decompress(&cbm);
+    if (rc) { fprintf(stderr, "rgb565 decompress rc=&%x\n", rc); ok = 0; }
+
+    screen_init(&s, bm.size, pixelfmt_rgb565, w * 2, NULL, rgb565_ref);
+    rc = screen_copy_bitmap(&s, 0, 0, &cbm);
+    if (rc) { fprintf(stderr, "rgb565 raw blit rc=&%x\n", rc); ok = 0; }
+
+    rc = bitmap_compress(&cbm);
+    if (rc) { fprintf(stderr, "rgb565 compress rc=&%x\n", rc); ok = 0; }
+
+    screen_init(&s, bm.size, pixelfmt_rgb565, w * 2, NULL, rgb565_rle);
+    rc = screen_copy_bitmap(&s, 0, 0, &cbm);
+    if (rc) { fprintf(stderr, "rgb565 rle blit rc=&%x\n", rc); ok = 0; }
+
+    if (ok && memcmp(rgb565_ref, rgb565_rle, npix * 2) != 0)
+    {
+      fprintf(stderr, "blit: rgb565 RLE vs raw mismatch\n");
+      ok = 0;
+    }
+
+    free(rgb565_ref);
+    free(rgb565_rle);
+  }
+
 done2:
   free(scr_ref);
   free(scr_rle);
