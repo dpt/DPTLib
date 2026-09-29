@@ -193,9 +193,9 @@ typedef unsigned int   pixelfmt_any32_t; /* any 32bpp pixel */
 #define PIXELFMT_xGxx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xGxx8888_SHIFT, 0xFFu)
 #define PIXELFMT_xxRx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxRx8888_SHIFT, 0xFFu)
 #define PIXELFMT_MAKE_BGRX8888(R,G,B) \
-  (((pixelfmt_any_t) (R) << PIXELFMT_Bxxx8888_SHIFT) | \
+  (((pixelfmt_any_t) (B) << PIXELFMT_Bxxx8888_SHIFT) | \
    ((pixelfmt_any_t) (G) << PIXELFMT_xGxx8888_SHIFT) | \
-   ((pixelfmt_any_t) (B) << PIXELFMT_xxRx8888_SHIFT) | \
+   ((pixelfmt_any_t) (R) << PIXELFMT_xxRx8888_SHIFT) | \
    ((pixelfmt_any_t) (0xFF) << PIXELFMT_xxxA8888_SHIFT))
 
 /* Constants for RGBA8888 */
