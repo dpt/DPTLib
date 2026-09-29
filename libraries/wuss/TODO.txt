@@ -13,12 +13,13 @@ LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
 
 - Named colours?
     blocks: furniture colour selection, desktop palette editor
-- 32K/64K colour modes
 
 
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
 
-- Hierarchical fonts (the font-arch decision)
+- Hierarchical fonts: directory layout and bmfontfamily selection primitives
+  are done. Still to do: wire the wuss font slots to them (e.g. bold from
+  bmfontfamily_heavier instead of the fixed wuss__bold_font slot).
     blocks: bold/italic/large fonts, symbol selection
 - 6px desktop font sizing getting built in. Need to be able to specify
   character sizes to the stacker?

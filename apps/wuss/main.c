@@ -23,6 +23,7 @@
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
+#include "framebuf/bmfontfamily.h"
 #include "framebuf/colour.h"
 #include "framebuf/palettes.h"
 #include "framebuf/pixelfmt.h"
@@ -441,10 +442,11 @@ static result_t run_wuss(const char *resources,
                          const char *tasks)
 {
   static const char *const names[WUSS_MAIN_NFONTS] =
-    { "DPT-Digits-Regular", "DPT-Digits-Bold", "Symbols" };
+    { "DPT-Digits Regular", "DPT-Digits Bold", "Symbols Regular" };
 
   result_t    rc;
   const char *filename;
+  char        font_path[512];
   bmfont_t   *fonts[WUSS_MAIN_NFONTS];
   int         nfonts;
   int         i;
@@ -494,7 +496,11 @@ static result_t run_wuss(const char *resources,
     nfonts = 0;
     for (i = 0; i < WUSS_MAIN_NFONTS; i++)
     {
-      filename = pathf("%s/resources/bmfonts/%s.png", resources, names[i]);
+      rc = bmfontfamily_label_path(pathf("%s/resources/bmfonts", resources),
+                                   names[i], font_path, sizeof(font_path));
+      if (rc != result_OK)
+        goto Failure;
+      filename = font_path;
       logf_info("wuss: loading font \"%s\"", filename);
       rc = bmfont_create(filename, &fonts[i]);
       if (rc != result_OK)

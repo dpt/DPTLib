@@ -60,9 +60,9 @@ result_t bmfont_create(const char *png, bmfont_t **bmfont);
 /**
  * Callback for bmfont_enumerate(), invoked once per font found.
  *
- * \param[in] name  The font's leafname with the ".png" extension stripped,
- *                  e.g. "Trinity.Medium" for "Trinity.Medium.png". Borrowed;
- *                  copy it if it must outlive the call.
+ * \param[in] name  The family name and style, e.g. "Trinity Medium" for
+ *                  "Trinity/Medium.png". Borrowed; copy it if it must
+ *                  outlive the call.
  * \param[in] path  The full path that would be passed to bmfont_create() to
  *                  load this font. Borrowed.
  * \param[in] opaque  The pointer passed to bmfont_enumerate().
@@ -75,10 +75,11 @@ typedef result_t (bmfont_enumerate_fn)(const char *name,
                                        void       *opaque);
 
 /**
- * Enumerate the bitmap fonts in a directory: every ".png" file in \p dir is
- * reported to \p fn (non-recursive, order unspecified).
+ * Enumerate the bitmap fonts under a directory: every ".png" file in each
+ * family subdirectory of \p dir is reported to \p fn (one level down, order
+ * unspecified). See bmfontfamily.h for the layout.
  *
- * \param[in] dir     Directory to scan.
+ * \param[in] dir     Directory holding the family directories.
  * \param[in] fn      Called once per font; see bmfont_enumerate_fn.
  * \param[in] opaque  Passed through to \p fn.
  * \return \ref result_OK on success (including a stop-walk), \ref

@@ -54,7 +54,7 @@ wuss_window_fn_t chars_handle;
 
 /* create the glyph-grid window against the given wuss instance; does
  * nothing and returns result_OK if wuss has no system font. the font picker
- * loads bmfonts from wuss_get_resources(wuss)/resources/bmfonts/<name>.png.
+ * loads bmfonts from wuss_get_resources(wuss)/resources/bmfonts/<family>/<style>.png.
  * if out is non-NULL, the task block is also returned through it -- but only
  * on the path where one is actually allocated; *out is left untouched on the
  * font-less early return, same as on any other non-result_OK path */

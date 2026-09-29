@@ -61,9 +61,20 @@ _Unreleased_ until one is cut.
   one arm is already braced (also run as part of the pre-commit format
   pass alongside `wrap_protos.py`/`realign_decls.py`).
 - Aseprite extension to resize bmfont cells (`tools/aseprite/`).
+- `framebuf/bmfontfamily.h` — font families with style selection.
+  `bmfontfamily_scan()` reads a family directory without loading any PNG;
+  `bmfontfamily_find()`, `_heavier()`, `_lighter()` and `_with_slant()`
+  answer weight and slant queries; `bmfontfamily_label_path()` maps a
+  `Family Style` label back to a path. `dirscan_walk_dirs()` lists
+  subdirectories.
 
 ### Changed
 
+- **Breaking:** bitmap fonts move to a hierarchical layout,
+  `resources/bmfonts/<Family>/<Style>.png` (e.g. `GrongyUI/Bold.png`,
+  `Tiny/Regular.png`; the `-Lg` digits become the `DPT-DigitsLg` family).
+  `bmfont_enumerate()` now walks family directories and reports
+  `Family Style` labels, so `wuss_fontmenu` items read e.g. `GrongyUI Bold`.
 - **Breaking:** `screen_copy_bitmap_dithered()`'s dithering method argument
   becomes a first-class selectable `screen_dither_t` rather than an
   implicit fixed method.

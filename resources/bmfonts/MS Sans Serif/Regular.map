@@ -1,4 +1,4 @@
-# MS Sans Serif -- cmap for MS Sans Serif.png (see docs/framebuf/bmfont.md)
+# MS Sans Serif/Regular -- cmap for Regular.png (see docs/framebuf/bmfont.md)
 # Cells follow Windows-1252 from 0x20; only the drawn cells are mapped.
 U+0020..U+007E  0     # printable ASCII
 U+00A0          0     # NBSP shares space

@@ -1,4 +1,4 @@
-# Symbols -- cmap for Symbols.png (see docs/framebuf/bmfont.md)
+# Symbols/Regular -- cmap for Regular.png (see docs/framebuf/bmfont.md)
 # Symbols are reached by ASCII codes, with Unicode codepoints following (wuss
 # draws U+2713 for its menu tick, U+25B6 for its submenu arrow and U+21E7
 # for Shift in menu shortcuts). Blank cells are left unmapped. Cells 17-20

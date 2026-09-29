@@ -333,7 +333,7 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
   minesweeper_prepare_colours(task);
 
   resources = wuss_get_resources(wuss);
-  filename  = pathf("%s/resources/bmfonts/DPT-Digits-Bold-Lg.png", resources);
+  filename  = pathf("%s/resources/bmfonts/DPT-DigitsLg/Bold.png", resources);
   rc = bmfontcache_acquire(wuss_get_font_cache(wuss), filename,
                            &task->hud_font);
   if (rc != result_OK)
