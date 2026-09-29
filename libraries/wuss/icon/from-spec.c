@@ -41,6 +41,19 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
       spec->u.slider.orientation != wuss_SLIDER_VERTICAL)
     return result_WUSS_BAD_ICON;
 
+  if ((spec->flags & wuss_ICON_FLAGS_DEFAULT) &&
+      spec->type != wuss_ICON_TYPE_ACTION)
+    return result_BAD_ARG;
+
+  if ((spec->flags & wuss_ICON_FLAGS_INTERACTIVE) &&
+      spec->type != wuss_ICON_TYPE_BITMAP)
+    return result_BAD_ARG;
+
+  if ((spec->flags & (wuss_ICON_FLAGS_SUBMENU | wuss_ICON_FLAGS_SEPARATOR |
+                       wuss_ICON_FLAGS_SWATCH)) &&
+      spec->type != wuss_ICON_TYPE_MENU_ENTRY)
+    return result_BAD_ARG;
+
   /* an ACTION may leave bg unset -- it then draws on the config button face
    * (wuss->button_bg); a PATTERN needs a concrete clear-bit colour */
   if (spec->type == wuss_ICON_TYPE_PATTERN && bg == wuss_NO_BACKGROUND)
