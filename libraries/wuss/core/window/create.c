@@ -2,7 +2,6 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -100,14 +99,9 @@ result_t wuss_window_create(wuss_task_t        *task,
 
 #ifdef WUSS_FURNITURE
   if (title != NULL)
-  {
-    strncpy(win->title, title, WUSS_TITLE_MAX);
-    win->title[WUSS_TITLE_MAX] = '\0';
-  }
+    wuss__writable_copy(win->title, WUSS_TITLE_MAX + 1, title);
   else
-  {
     win->title[0] = '\0';
-  }
 #else
   (void) title;
 #endif
