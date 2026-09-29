@@ -101,6 +101,19 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
     memset(bm->base, px, bm->rowbytes * bm->size.h);
     break;
 
+  case 4: /* 16bpp - pixels are shorts */
+  {
+    unsigned short *pixels16;
+
+    for (y = 0; y < bm->size.h; y++)
+    {
+      pixels16 = (unsigned short *) ((char *) bm->base + y * bm->rowbytes);
+      for (x = 0; x < bm->size.w; x++)
+        *pixels16++ = (unsigned short) px;
+    }
+  }
+    break;
+
   case 5: /* 32bpp - pixels are ints */
   {
     /* if all bytes of 'px' are the same, use memset() */
