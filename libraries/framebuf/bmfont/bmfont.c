@@ -2972,6 +2972,62 @@ static void bmfont_drawchar_p8_4w_t(void          *vscreen,
   }
 }
 
+/* -------------------------------------------------------------------------- */
+
+/* Draw a character to a 16bpp screen (rgb565 or rgbx5551: the pixel value is
+ * already native, so the format doesn't matter here). One macro makes the
+ * opaque and transparent variants for each glyph row width; a loop instead of
+ * the jump tables above, as the 16bpp path isn't speed-critical. */
+#define BMFONT_DRAWCHAR_16(NAME, GLYTYPE, OPAQUE)                            \
+static void NAME(void          *vscreen,                                     \
+                 const void    *vglyph,                                      \
+                 int            top_skip,                                    \
+                 int            right_skip,                                  \
+                 int            shift,                                       \
+                 int            rowbytes,                                    \
+                 int            charwidth,                                   \
+                 int            charheight,                                  \
+                 pixelfmt_any_t fg,                                          \
+                 pixelfmt_any_t bg)                                          \
+{                                                                            \
+  unsigned short *scr = vscreen;                                             \
+  const GLYTYPE  *gly = vglyph;                                              \
+  int             stride;                                                    \
+  unsigned int    row;                                                       \
+  int             bit;                                                       \
+                                                                             \
+  NOT_USED(shift);                                                           \
+                                                                             \
+  gly += top_skip;                                                           \
+  stride = rowbytes / (int) sizeof(*scr) - charwidth;                        \
+                                                                             \
+  while (charheight--)                                                       \
+  {                                                                          \
+    row = *gly++;                                                            \
+    row >>= right_skip;                                                      \
+                                                                             \
+    for (bit = charwidth - 1; bit >= 0; bit--)                               \
+    {                                                                        \
+      if (row & (1u << bit))                                                 \
+        *scr = (unsigned short) fg;                                          \
+      else if (OPAQUE)                                                       \
+        *scr = (unsigned short) bg;                                          \
+      scr++;                                                                 \
+    }                                                                        \
+                                                                             \
+    scr += stride;                                                           \
+  }                                                                          \
+}
+
+BMFONT_DRAWCHAR_16(bmfont_drawchar_16_1w_o, unsigned char,  1)
+BMFONT_DRAWCHAR_16(bmfont_drawchar_16_1w_t, unsigned char,  0)
+BMFONT_DRAWCHAR_16(bmfont_drawchar_16_2w_o, unsigned short, 1)
+BMFONT_DRAWCHAR_16(bmfont_drawchar_16_2w_t, unsigned short, 0)
+BMFONT_DRAWCHAR_16(bmfont_drawchar_16_4w_o, unsigned int,   1)
+BMFONT_DRAWCHAR_16(bmfont_drawchar_16_4w_t, unsigned int,   0)
+
+#undef BMFONT_DRAWCHAR_16
+
 result_t bmfont_draw(bmfont_t               *bmfont,
                      screen_t               *scr,
                      const char             *text,
@@ -2982,7 +3038,7 @@ result_t bmfont_draw(bmfont_t               *bmfont,
                      const point_t          *pos,
                      point_t                *end_pos)
 {
-  static bmfont_drawchar_t *const drawfns[5][3][2] =
+  static bmfont_drawchar_t *const drawfns[6][3][2] =
   {
     { /* pixelfmt_p1 */
       { bmfont_drawchar_p1_1w_o,      bmfont_drawchar_p1_1w_t      },
@@ -3008,6 +3064,11 @@ result_t bmfont_draw(bmfont_t               *bmfont,
       { bmfont_drawchar_any8888_1w_o, bmfont_drawchar_any8888_1w_t },
       { bmfont_drawchar_any8888_2w_o, bmfont_drawchar_any8888_2w_t },
       { bmfont_drawchar_any8888_4w_o, bmfont_drawchar_any8888_4w_t },
+    },
+    { /* pixelfmt_rgb565 / pixelfmt_rgbx5551 */
+      { bmfont_drawchar_16_1w_o,      bmfont_drawchar_16_1w_t      },
+      { bmfont_drawchar_16_2w_o,      bmfont_drawchar_16_2w_t      },
+      { bmfont_drawchar_16_4w_o,      bmfont_drawchar_16_4w_t      },
     },
   };
 
@@ -3038,6 +3099,8 @@ result_t bmfont_draw(bmfont_t               *bmfont,
     case pixelfmt_p8:       fmt_idx = 3; break;
     case pixelfmt_bgra8888:
     case pixelfmt_bgrx8888: fmt_idx = 4; break;
+    case pixelfmt_rgb565:
+    case pixelfmt_rgbx5551: fmt_idx = 5; break;
     default: assert(0); return result_NOT_SUPPORTED;
     }
 
