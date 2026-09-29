@@ -324,6 +324,17 @@ result_t wuss_window_set_background(wuss_window_t  *window,
  */
 void wuss_window_set_title(wuss_window_t *window, const char *title);
 
+/**
+ * A window's current title, as last set by wuss_window_create or
+ * wuss_window_set_title, truncated the same way. "" (never NULL) when built
+ * without furniture, or when no title was set.
+ *
+ * \param[in] window Window to query.
+ * \return The title, owned by \p window; valid until the next
+ *         wuss_window_set_title call or the window is closed.
+ */
+const char *wuss_window_get_title(const wuss_window_t *window);
+
 #ifdef __cplusplus
 }
 #endif

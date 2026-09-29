@@ -8477,6 +8477,59 @@ QuitFail:
   }
 #endif
 
+  printf("test: set_title truncates at WUSS_TITLE_MAX without splitting a "
+         "multi-byte UTF-8 codepoint\n");
+
+  {
+    /* 61 ASCII bytes (0..60) then a 3-byte UTF-8 codepoint (U+20AC, EURO
+     * SIGN: 0xE2 0x82 0xAC) at bytes 61..63 -- WUSS_TITLE_MAX (63) lands on
+     * the euro sign's middle continuation byte, so a raw byte truncation to
+     * 63 chars (as strncpy alone would do) keeps 0xE2 0x82 and drops 0xAC,
+     * leaving a malformed trailing sequence. The fix must back off over
+     * both continuation bytes instead, dropping the whole codepoint. */
+    static test_task_t tc_title;
+    wuss_task_t       *delegate_title;
+    wuss_window_t     *win_title;
+    box_t              box_title;
+    char               long_title[70];
+    const char        *got;
+    size_t             len;
+
+    tc_title.redraw_count = 0;
+    tc_title.mouse_count  = 0;
+    delegate_title = mk_task(wuss, test_handle, &tc_title);
+    if (delegate_title == NULL) goto Failure;
+
+    box_title.x0 = 10; box_title.y0 = 10;
+    box_title.x1 = 50; box_title.y1 = 50;
+    rc = wuss_window_create(delegate_title, &box_title, "T",
+                            wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_title);
+    if (rc != result_OK)
+      goto Failure;
+
+    memset(long_title, 'a', 61);
+    long_title[61] = (char) 0xE2;
+    long_title[62] = (char) 0x82;
+    long_title[63] = (char) 0xAC;
+    long_title[64] = '\0';
+
+    wuss_window_set_title(win_title, long_title);
+    got = wuss_window_get_title(win_title);
+    len = strlen(got);
+
+    if (len > 61)
+      goto Failure; /* the euro sign's lead byte (0xE2) must have been
+                      * dropped along with its continuations, not kept
+                      * dangling on its own */
+    if (len != 61)
+      goto Failure; /* the 61 leading ASCII bytes must all survive */
+    if (((unsigned char) got[60]) != 'a')
+      goto Failure;
+
+    wuss_window_close(win_title);
+  }
+
   wuss_destroy(wuss);
 
   free(pixels);

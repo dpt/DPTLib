@@ -13,8 +13,7 @@ void wuss_window_set_title(wuss_window_t *window, const char *title)
   if (strncmp(window->title, title, WUSS_TITLE_MAX) == 0)
     return;
 
-  strncpy(window->title, title, WUSS_TITLE_MAX);
-  window->title[WUSS_TITLE_MAX] = '\0';
+  wuss__writable_copy(window->title, WUSS_TITLE_MAX + 1, title);
 
   wuss__chrome_repaint(window);
 #else
