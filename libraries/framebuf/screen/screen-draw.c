@@ -247,6 +247,23 @@ static void screen_blend_pixel_p8(screen_t *scr,
   *scrp = out;
 }
 
+static void screen_blend_pixel_16(screen_t *scr,
+                                  int       x,
+                                  int       y,
+                                  colour_t  colour,
+                                  int       alpha)
+{
+  pixelfmt_any16_t *scrp;
+  pixelfmt_any_t    colpx;
+
+  colpx = colour_to_pixel(NULL, 0, colour, scr->format);
+
+  scrp = scr->base;
+  scrp += y * scr->rowbytes / sizeof(*scrp) + x;
+
+  scr->span->blendconst(scrp, scrp, &colpx, 1, alpha, NULL);
+}
+
 static void screen_blend_pixel_32(screen_t *scr,
                                   int       x,
                                   int       y,
@@ -284,6 +301,7 @@ static void screen_blend_pixel(screen_t *scr,
   case 1: screen_blend_pixel_p2(scr, x, y, colour, alpha); break;
   case 2: screen_blend_pixel_p4(scr, x, y, colour, alpha); break;
   case 3: screen_blend_pixel_p8(scr, x, y, colour, alpha); break;
+  case 4: screen_blend_pixel_16(scr, x, y, colour, alpha); break;
   case 5: screen_blend_pixel_32(scr, x, y, colour, alpha); break;
 
   default:
@@ -935,6 +953,73 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
   return result_OK;
 }
 
+/* Like screen_copy_bitmap_32, but for a 16bpp (555x/x555/565) screen. Same
+ * restriction: result_NOT_SUPPORTED if "src" is paletted with no
+ * paletted->deep conversion table, or itself a 16bpp source (src_fetch_rgba
+ * only decodes paletted and 32bpp sources). */
+static result_t screen_copy_bitmap_16(screen_t       *scr,
+                                      int             x,
+                                      int             y,
+                                      const bitmap_t *src,
+                                      const box_t    *draw_box,
+                                      int             has_alpha)
+{
+  pixelfmt_any16_t  colbuf[BITMAP_BLIT_CHUNK];
+  unsigned char     alphabuf[BITMAP_BLIT_CHUNK];
+  const pixelmap_t *srcpm;
+  pixelfmt_any16_t *dstrow;
+  int               clipped_width, clipped_height;
+  int               yy;
+
+  clipped_width  = draw_box->x1 - draw_box->x0;
+  clipped_height = draw_box->y1 - draw_box->y0;
+
+  srcpm = src_pixelmap_for(src);
+  if (srcpm == NULL && pixelfmt_log2bpp(src->format) != 5)
+    return result_NOT_SUPPORTED;
+
+  dstrow = scr->base;
+  dstrow += draw_box->y0 * scr->rowbytes / (int) sizeof(*dstrow) + draw_box->x0;
+
+  for (yy = 0; yy < clipped_height; yy++)
+  {
+    pixelfmt_any16_t *dstpx;
+    int               srcy;
+    int               remaining, done;
+
+    srcy      = draw_box->y0 - y + yy;
+    dstpx     = dstrow;
+    remaining = clipped_width;
+    done      = 0;
+
+    while (remaining > 0)
+    {
+      int chunk, i;
+
+      chunk = MIN(remaining, BITMAP_BLIT_CHUNK);
+
+      for (i = 0; i < chunk; i++)
+      {
+        colour_t c;
+
+        c           = src_fetch_rgba(src, srcpm, draw_box->x0 + done + i - x, srcy);
+        colbuf[i]   = (pixelfmt_any16_t) colour_to_pixel(scr->palette, 0, c, scr->format);
+        alphabuf[i] = has_alpha ? colour_get_alpha(&c) : PIXELFMT_OPAQUE;
+      }
+
+      scr->span->blendarray(dstpx, dstpx, colbuf, chunk, alphabuf);
+
+      dstpx     += chunk;
+      done      += chunk;
+      remaining -= chunk;
+    }
+
+    dstrow += scr->rowbytes / (int) sizeof(*dstrow);
+  }
+
+  return result_OK;
+}
+
 /* Shared body for screen_copy_bitmap and screen_copy_bitmap_dithered. With
  * "dither" set the paletted-screen (p1/p2/p4/p8) paths ordered-dither the
  * source RGB before the nearest-match lookup; the 32bpp path and the RLE path
@@ -981,6 +1066,7 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
   case 1: rc = screen_copy_bitmap_p2(scr, x, y, src, &draw_box, has_alpha, dither); break;
   case 2: rc = screen_copy_bitmap_p4(scr, x, y, src, &draw_box, has_alpha, dither); break;
   case 3: rc = screen_copy_bitmap_p8(scr, x, y, src, &draw_box, has_alpha, dither); break;
+  case 4: rc = screen_copy_bitmap_16(scr, x, y, src, &draw_box, has_alpha);         break;
   case 5: rc = screen_copy_bitmap_32(scr, x, y, src, &draw_box, has_alpha);         break;
 
   default:
