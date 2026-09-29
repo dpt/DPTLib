@@ -577,6 +577,54 @@ result_t bitmap_convert(const bitmap_t *src,
   }
 }
 
+/* Deep 16bpp (rgb565 or rgbx5551) to bgrx8888. Channels widen by bit
+ * replication so full-scale 31 or 63 maps to 255. */
+static result_t bmconv_16_to_bgrx8888_into(const bitmap_t *src,
+                                           bitmap_t       *dst)
+{
+  pixelfmt_bgrx8888_t  *outpixels;
+  const unsigned char  *inrow;
+  const unsigned short *in;
+  unsigned int          px;
+  unsigned int          r, g, b;
+  int                   is565;
+  int                   x, y;
+
+  assert(src);
+
+  is565     = (src->format == pixelfmt_rgb565);
+  outpixels = dst->base;
+  inrow     = src->base;
+  for (y = 0; y < src->size.h; y++)
+  {
+    in = (const unsigned short *) inrow;
+    for (x = 0; x < src->size.w; x++)
+    {
+      px = in[x];
+      if (is565)
+      {
+        r = PIXELFMT_Rxx565(px);
+        g = PIXELFMT_xGx565(px);
+        b = PIXELFMT_xxB565(px);
+        g = (g << 2) | (g >> 4);
+      }
+      else
+      {
+        r = PIXELFMT_Rxxx5551(px);
+        g = PIXELFMT_xGxx5551(px);
+        b = PIXELFMT_xxBx5551(px);
+        g = (g << 3) | (g >> 2);
+      }
+      r = (r << 3) | (r >> 2);
+      b = (b << 3) | (b >> 2);
+      *outpixels++ = PIXELFMT_MAKE_BGRX8888(r, g, b);
+    }
+    inrow += src->rowbytes;
+  }
+
+  return result_OK;
+}
+
 result_t bitmap_convert_into(const bitmap_t *src,
                              pixelfmt_t      newfmt,
                              bitmap_t       *dst)
@@ -586,6 +634,12 @@ result_t bitmap_convert_into(const bitmap_t *src,
 
   switch (src->format)
   {
+  case pixelfmt_rgb565:
+  case pixelfmt_rgbx5551:
+    if (newfmt != pixelfmt_bgrx8888)
+      return result_NOT_SUPPORTED;
+    return bmconv_16_to_bgrx8888_into(src, dst);
+
   case pixelfmt_p1:
     switch (newfmt)
     {

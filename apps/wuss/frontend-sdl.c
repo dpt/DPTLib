@@ -26,9 +26,10 @@
 
 /* Screen pixel format for the demo, chosen at run time via --depth: 32 =
  * pixelfmt_bgrx8888 (feeds SDL directly, no per-frame conversion); 8 =
- * pixelfmt_p8; 4 (the default) = pixelfmt_p4 paletted (exercises
+ * pixelfmt_p8; 16 = pixelfmt_rgb565 (64K colours); 15 = pixelfmt_rgbx5551
+ * (32K colours); 4 (the default) = pixelfmt_p4 paletted (exercises
  * screen_copy_rect's nibble-packed blit path instead); 2 = pixelfmt_p2; 1 =
- * pixelfmt_p1 monochrome. Paletted depths are converted to bgrx8888 per
+ * pixelfmt_p1 monochrome. Paletted and 15/16 depths are converted to bgrx8888 per
  * frame via bitmap_convert. Stashed in struct wuss_frontend so present() can
  * branch on it. */
 
@@ -52,7 +53,7 @@ struct wuss_frontend
   int                  scr_width;
   int                  scr_height;
   int                  scale; /* device pixels per screen pixel; see WUSS_SDL_*_SCALE */
-  int                  depth; /* framebuffer bits per pixel: 32 (bgrx8888), 8 (p8), 4 (p4), 2 (p2) or 1 (p1) */
+  int                  depth; /* framebuffer bits per pixel: 32 (bgrx8888), 16 (rgb565), 15 (rgbx5551), 8 (p8), 4 (p4), 2 (p2) or 1 (p1) */
   void                *pixels; /* the private framebuffer handed to the caller */
   bitmap_t             conv; /* scratch bgrx8888 buffer for present()'s paletted
                                * depths, sized scr_width x scr_height and reused
@@ -188,13 +189,22 @@ static void sdl_renderer_close(wuss_frontend_t *fe)
 
 static bool sdl_depth_valid(int depth)
 {
-  return depth == 1 || depth == 2 || depth == 4 || depth == 8 || depth == 32;
+  return depth == 1 || depth == 2 || depth == 4 || depth == 8 ||
+         depth == 15 || depth == 16 || depth == 32;
+}
+
+/* storage bits per pixel: 15 (32K colours, rgbx5551) still takes 16 */
+static int sdl_depth_bpp(int depth)
+{
+  return (depth == 15) ? 16 : depth;
 }
 
 static pixelfmt_t sdl_depth_to_fmt(int depth)
 {
   return (depth == 32) ? pixelfmt_bgrx8888
        : (depth == 8)  ? pixelfmt_p8
+       : (depth == 16) ? pixelfmt_rgb565
+       : (depth == 15) ? pixelfmt_rgbx5551
        : (depth == 4)  ? pixelfmt_p4
        : (depth == 2)  ? pixelfmt_p2
                        : pixelfmt_p1;
@@ -220,7 +230,7 @@ result_t wuss_frontend_open(int               width,
   if (!sdl_depth_valid(depth))
   {
     fprintf(stderr,
-            "Error: unsupported depth %d (want 1, 2, 4, 8 or 32)\n", depth);
+            "Error: unsupported depth %d (want 1, 2, 4, 8, 15, 16 or 32)\n", depth);
     return result_BAD_ARG;
   }
 
@@ -228,7 +238,7 @@ result_t wuss_frontend_open(int               width,
     scale = WUSS_SDL_DEFAULT_SCALE;
   scale = CLAMP(scale, WUSS_SDL_MIN_SCALE, WUSS_SDL_MAX_SCALE);
 
-  stride = (width * depth + 7) >> 3;
+  stride = (width * sdl_depth_bpp(depth) + 7) >> 3;
 
   fe = calloc(1, sizeof(*fe));
   if (fe == NULL)
@@ -326,7 +336,7 @@ result_t wuss_frontend_resize(wuss_frontend_t *fe,
   if (!sdl_depth_valid(depth))
     return result_BAD_ARG;
 
-  stride = (width * depth + 7) >> 3;
+  stride = (width * sdl_depth_bpp(depth) + 7) >> 3;
 
   new_pixels = malloc((size_t) stride * height);
   if (new_pixels == NULL)
@@ -538,7 +548,7 @@ void wuss_frontend_present(wuss_frontend_t *fe,
     /* Sub-byte formats (p1/p2/p4) pack several pixels per byte and the
      * converters assume a row starts on a byte, so widen the dirty columns
      * out to whole bytes. */
-    ppb = 8 / fe->depth;
+    ppb = (fe->depth < 8) ? 8 / fe->depth : 1;
     x0  = (dirty != NULL) ? CLAMP(dirty->x0, 0, bm->size.w) : 0;
     y0  = (dirty != NULL) ? CLAMP(dirty->y0, 0, bm->size.h) : 0;
     x1  = (dirty != NULL) ? CLAMP(dirty->x1, 0, bm->size.w) : bm->size.w;
@@ -553,7 +563,8 @@ void wuss_frontend_present(wuss_frontend_t *fe,
                      bm->format,
                      bm->rowbytes,
                      bm->palette,
-                     (unsigned char *) bm->base + y0 * bm->rowbytes + x0 / ppb);
+                     (unsigned char *) bm->base + y0 * bm->rowbytes +
+                       (x0 * sdl_depth_bpp(fe->depth) >> 3));
     if (rc != result_OK)
       goto present;
 

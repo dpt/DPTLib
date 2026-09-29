@@ -50,7 +50,7 @@ extern struct wuss_app_tasks
 g_tasks;
 
 /* Change the desktop resolution to width x height and the framebuffer to
- * depth bits per pixel (1, 2, 4, 8 or 32): reallocates the framebuffer
+ * depth bits per pixel (1, 2, 4, 8, 15, 16 or 32): reallocates the framebuffer
  * bitmap and the frontend's backing surface, updates g_tasks.bm/frontend and
  * wuss's own screen_t, then walks every window (via wuss_resize) so none is
  * left off-screen or larger than the new screen. A depth change also rebuilds

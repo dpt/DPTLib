@@ -737,7 +737,12 @@ result_t app_set_mode(size2d_t size, int depth)
 
 int app_get_depth(void)
 {
-  return 1 << pixelfmt_log2bpp(g_bm.format);
+  switch (g_bm.format)
+  {
+  case pixelfmt_rgbx5551: return 15;
+  case pixelfmt_rgb565:   return 16;
+  default:                return 1 << pixelfmt_log2bpp(g_bm.format);
+  }
 }
 
 /* ----------------------------------------------------------------------- */
@@ -748,7 +753,7 @@ typedef struct wuss_options
 {
   const char *resources;    /* -r/--resources: fixture root */
   const char *palette_name; /* -p/--palette: startup *.hex leafname */
-  int         depth;        /* -d/--depth: framebuffer bpp (1, 2, 4, 8 or 32) */
+  int         depth;        /* -d/--depth: framebuffer bpp (1, 2, 4, 8, 15, 16 or 32) */
   int         scale;        /* -s/--scale: initial window zoom, 0 = default */
   int         res_width;    /* --res WIDTHxHEIGHT: screen size in pixels */
   int         res_height;
@@ -760,7 +765,7 @@ wuss_options_t;
 
 static const char wuss_usage[] =
   "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
-  "[-d|--depth 1|2|4|8|32] [-s|--scale N] [--res WIDTHxHEIGHT] "
+  "[-d|--depth 1|2|4|8|15|16|32] [-s|--scale N] [--res WIDTHxHEIGHT] "
   "[-t|--tasks all|NAME[,NAME...]] [--crt] [--pointer]\n";
 
 /* Parses "WIDTHxHEIGHT" (e.g. "1024x768") into w and h. Returns false,

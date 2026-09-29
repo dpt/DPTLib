@@ -56,9 +56,9 @@ wuss_input_t;
  *
  * `depth` is the framebuffer's bits per pixel: 32 for a direct-colour
  * surface (no per-frame conversion), 4 for a paletted one (exercises the
- * nibble-packed blit path). Those are the only values the SDL backend
- * accepts today; a backend with a fixed format (RISC OS 16-colour mode)
- * ignores it.
+ * nibble-packed blit path), 15 for rgbx5551 (32K colours) and 16 for rgb565
+ * (64K colours). The SDL backend accepts 1, 2, 4, 8, 15, 16 and 32; a
+ * backend with a fixed format (RISC OS 16-colour mode) ignores it.
  *
  * `scale` is the initial integer window zoom (device pixels per screen
  * pixel) for backends with a resizable window; <= 0 means "backend default".
