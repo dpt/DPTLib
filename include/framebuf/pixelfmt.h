@@ -147,10 +147,10 @@ typedef unsigned int   pixelfmt_any32_t; /* any 32bpp pixel */
 /* Constants for RGB565 */
 #define PIXELFMT_Rxx565_SHIFT  (0)
 #define PIXELFMT_xGx565_SHIFT  (5)
-#define PIXELFMT_xxB565_SHIFT (10)
+#define PIXELFMT_xxB565_SHIFT (11)
 #define PIXELFMT_Rxx565_MASK  (0x1Fu <<  0)
 #define PIXELFMT_xGx565_MASK  (0x3Fu <<  5)
-#define PIXELFMT_xxB565_MASK  (0x1Fu << 10)
+#define PIXELFMT_xxB565_MASK  (0x1Fu << 11)
 #define PIXELFMT_Rxx565(px) PIXELFMT_EXTRACT(px, PIXELFMT_Rxx565_SHIFT, 0x1Fu)
 #define PIXELFMT_xGx565(px) PIXELFMT_EXTRACT(px, PIXELFMT_xGx565_SHIFT, 0x3Fu)
 #define PIXELFMT_xxB565(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxB565_SHIFT, 0x1Fu)

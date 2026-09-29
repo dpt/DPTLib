@@ -480,6 +480,15 @@ static unsigned int dither_channel(unsigned int    v,
   return (unsigned int) CLAMP((int) v + adj, 0, 255);
 }
 
+/* Non-zero if "src" is a direct-colour format src_fetch_rgba can read
+ * without a palette lookup: any 32bpp, or rgb565 / rgbx5551. */
+static int src_is_deep(const bitmap_t *src)
+{
+  return pixelfmt_log2bpp(src->format) == 5 ||
+         src->format == pixelfmt_rgb565 ||
+         src->format == pixelfmt_rgbx5551;
+}
+
 /* Read source pixel (srcx, srcy) -- relative to the source bitmap's own
  * top-left, not the screen -- as an rgba8888 colour_t. "srcpm" is the
  * paletted->rgba8888 pixelmap for src->format (from pixelmap_get), or NULL
@@ -499,7 +508,33 @@ static colour_t src_fetch_rgba(const bitmap_t   *src,
 
   row = (const unsigned char *) src->base + srcy * src->rowbytes;
 
-  if (srcpm == NULL)
+  if (srcpm == NULL && (src->format == pixelfmt_rgb565 ||
+                        src->format == pixelfmt_rgbx5551))
+  {
+    unsigned int px16;
+    unsigned int r, g, b;
+
+    px16 = ((const unsigned short *) row)[srcx];
+    if (src->format == pixelfmt_rgb565)
+    {
+      r = PIXELFMT_Rxx565(px16);
+      g = PIXELFMT_xGx565(px16);
+      b = PIXELFMT_xxB565(px16);
+      g = (g << 2) | (g >> 4);
+    }
+    else
+    {
+      r = PIXELFMT_Rxxx5551(px16);
+      g = PIXELFMT_xGxx5551(px16);
+      b = PIXELFMT_xxBx5551(px16);
+      g = (g << 3) | (g >> 2);
+    }
+    r = (r << 3) | (r >> 2);
+    b = (b << 3) | (b >> 2);
+
+    c = colour_rgb(r, g, b);
+  }
+  else if (srcpm == NULL)
   {
     pixelfmt_any32_t px;
 
@@ -537,7 +572,7 @@ static colour_t src_fetch_rgba(const bitmap_t   *src,
  * src_fetch_rgba(), or NULL (no lookup needed) when src is already deep. */
 static const pixelmap_t *src_pixelmap_for(const bitmap_t *src)
 {
-  if (pixelfmt_log2bpp(src->format) == 5)
+  if (src_is_deep(src))
     return NULL;
 
   return pixelmap_get(src->format, pixelfmt_rgba8888, src->palette,
@@ -575,7 +610,7 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
   dstbase = scr->base;
 
   srcpm = src_pixelmap_for(src);
-  if (srcpm == NULL && pixelfmt_log2bpp(src->format) != 5)
+  if (srcpm == NULL && !src_is_deep(src))
     return result_NOT_SUPPORTED;
 
   /* Cached RGB->index table turns the inner loop into a mask-and-lookup. */
@@ -659,7 +694,7 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
   dstbase = scr->base;
 
   srcpm = src_pixelmap_for(src);
-  if (srcpm == NULL && pixelfmt_log2bpp(src->format) != 5)
+  if (srcpm == NULL && !src_is_deep(src))
     return result_NOT_SUPPORTED;
 
   pm = pixelmap_get(pixelfmt_rgba8888, scr->format, scr->palette, 256);
@@ -738,7 +773,7 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
   dstbase = scr->base;
 
   srcpm = src_pixelmap_for(src);
-  if (srcpm == NULL && pixelfmt_log2bpp(src->format) != 5)
+  if (srcpm == NULL && !src_is_deep(src))
     return result_NOT_SUPPORTED;
 
   pm = pixelmap_get(pixelfmt_rgba8888, scr->format, scr->palette, 2);
@@ -821,7 +856,7 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
   dstbase = scr->base;
 
   srcpm = src_pixelmap_for(src);
-  if (srcpm == NULL && pixelfmt_log2bpp(src->format) != 5)
+  if (srcpm == NULL && !src_is_deep(src))
     return result_NOT_SUPPORTED;
 
   pm = pixelmap_get(pixelfmt_rgba8888, scr->format, scr->palette, 4);
@@ -900,7 +935,7 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
   clipped_height = draw_box->y1 - draw_box->y0;
 
   srcpm = src_pixelmap_for(src);
-  if (srcpm == NULL && pixelfmt_log2bpp(src->format) != 5)
+  if (srcpm == NULL && !src_is_deep(src))
     return result_NOT_SUPPORTED;
 
   dstrow = scr->base;
@@ -947,8 +982,7 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
 
 /* Like screen_copy_bitmap_32, but for a 16bpp (555x/x555/565) screen. Same
  * restriction: result_NOT_SUPPORTED if "src" is paletted with no
- * paletted->deep conversion table, or itself a 16bpp source (src_fetch_rgba
- * only decodes paletted and 32bpp sources). */
+ * paletted->deep conversion table. */
 static result_t screen_copy_bitmap_16(screen_t       *scr,
                                       int             x,
                                       int             y,
@@ -967,7 +1001,7 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
   clipped_height = draw_box->y1 - draw_box->y0;
 
   srcpm = src_pixelmap_for(src);
-  if (srcpm == NULL && pixelfmt_log2bpp(src->format) != 5)
+  if (srcpm == NULL && !src_is_deep(src))
     return result_NOT_SUPPORTED;
 
   dstrow = scr->base;
@@ -1049,7 +1083,7 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
    * survives into its palette's rgba8888 entries (see bitmap_load_png's
    * plte[i] = colour_rgba(..., a)), so it always carries real per-pixel alpha
    * and must be alpha-tested same as an rgba8888/bgra8888 source would be. */
-  has_alpha = pixelfmt_log2bpp(src->format) != 5 ||
+  has_alpha = pixelfmt_log2bpp(src->format) < 4 ||
              pixelfmt_has_alpha(src->format);
 
   switch (pixelfmt_log2bpp(scr->format))

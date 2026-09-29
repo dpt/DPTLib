@@ -1689,6 +1689,35 @@ static result_t test_16bpp_screen(pixelfmt_t fmt)
     return result_TEST_FAILED;
   }
 
+  /* a 16bpp source copies opaque onto a 16bpp and a 32bpp screen */
+  {
+    pixelfmt_any16_t    srcpx[2 * 2];
+    pixelfmt_bgrx8888_t dst32[2 * 2];
+    screen_t            scr32;
+    bitmap_t            src16;
+    pixelfmt_any16_t    blue16;
+
+    blue16 = (pixelfmt_any16_t) colour_to_pixel(NULL, 0, colour_rgb(0, 0, 255), fmt);
+    srcpx[0] = srcpx[1] = srcpx[2] = srcpx[3] = blue16;
+    bitmap_init(&src16, SIZE2D(2, 2), fmt, 2 * (int) sizeof(srcpx[0]),
+                NULL, srcpx);
+
+    memset(screenbuf, 0, sizeof(screenbuf));
+    memset(dst32, 0, sizeof(dst32));
+    screen_init(&scr32, SIZE2D(2, 2), pixelfmt_bgrx8888,
+                2 * (int) sizeof(dst32[0]), NULL, dst32);
+
+    if (screen_copy_bitmap(&scr, 0, 0, &src16) != result_OK ||
+        screen_copy_bitmap(&scr32, 0, 0, &src16) != result_OK ||
+        screenbuf[0] != blue16 ||
+        dst32[0] != 0xFF0000FFu) /* opaque blue */
+    {
+      printf("screen: 16bpp source copy_bitmap fmt=%d wrong: 0x%04x 0x%08x\n",
+             (int) fmt, screenbuf[0], (unsigned int) dst32[0]);
+      return result_TEST_FAILED;
+    }
+  }
+
   /* fill_pattern: GREY50 puts fg where (x ^ y) is even, bg elsewhere; the
    * stencil variant leaves the bg pixels alone. Same via the bitmap API. */
   {
