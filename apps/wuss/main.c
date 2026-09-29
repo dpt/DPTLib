@@ -435,14 +435,14 @@ static void wuss_frame(void *arg)
  * window exits */
 static result_t run_wuss(const char *resources,
                          const char *palette_name,
+                         const char *font_family,
                          int         depth,
                          int         scale,
                          int         scr_width,
                          int         scr_height,
                          const char *tasks)
 {
-  static const char *const names[WUSS_MAIN_NFONTS] =
-    { "DPT-Digits Regular", "DPT-Digits Bold", "Symbols Regular" };
+  static const char symbols_name[] = "Symbols Regular";
 
   result_t            rc;
   bmfontfamily_t     *family;
@@ -450,6 +450,8 @@ static result_t run_wuss(const char *resources,
   const bmfontface_t *bold;
   const char         *filename;
   char                font_path[512];
+  char                names_buf[2][128];
+  const char         *names[WUSS_MAIN_NFONTS];
   bmfont_t           *fonts[WUSS_MAIN_NFONTS];
   int                 nfonts;
   int                 i;
@@ -498,9 +500,11 @@ static result_t run_wuss(const char *resources,
   logf_info("wuss: resources root = \"%s\"", resources);
 
   {
-    /* [0] regular and [1] bold come from the DPT-Digits family; bold is the
-     * next heavier face than regular (regular itself if there is none) */
-    rc = bmfontfamily_scan(pathf("%s/resources/bmfonts/DPT-Digits", resources),
+    /* [0] regular and [1] bold come from the font_family family (-f); bold
+     * is the next heavier face than regular (regular itself if there is
+     * none) */
+    rc = bmfontfamily_scan(pathf("%s/resources/bmfonts/%s", resources,
+                                 font_family),
                            &family);
     if (rc != result_OK)
       goto Failure;
@@ -508,10 +512,20 @@ static result_t run_wuss(const char *resources,
                                 bmfontfamily_SLANT_UPRIGHT);
     if (regular == NULL)
     {
+      logf_error("wuss: font family \"%s\" has no regular upright face",
+                 font_family);
       rc = result_NOT_FOUND;
       goto Failure;
     }
     bold = bmfontfamily_heavier(family, regular);
+
+    snprintf(names_buf[0], sizeof(names_buf[0]), "%s %s", font_family,
+             regular->style);
+    snprintf(names_buf[1], sizeof(names_buf[1]), "%s %s", font_family,
+             bold->style);
+    names[0] = names_buf[0];
+    names[1] = names_buf[1];
+    names[2] = symbols_name;
 
     nfonts = 0;
     for (i = 0; i < WUSS_MAIN_NFONTS; i++)
@@ -787,6 +801,7 @@ typedef struct wuss_options
 {
   const char *resources;    /* -r/--resources: fixture root */
   const char *palette_name; /* -p/--palette: startup *.hex leafname */
+  const char *font_family;  /* -f/--font: system font family directory name */
   int         depth;        /* -d/--depth: framebuffer bpp (1, 2, 4, 8, 15, 16 or 32) */
   int         scale;        /* -s/--scale: initial window zoom, 0 = default */
   int         res_width;    /* --res WIDTHxHEIGHT: screen size in pixels */
@@ -799,6 +814,7 @@ wuss_options_t;
 
 static const char wuss_usage[] =
   "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
+  "[-f|--font FAMILY] "
   "[-d|--depth 1|2|4|8|15|16|32] [-s|--scale N] [--res WIDTHxHEIGHT] "
   "[-t|--tasks all|NAME[,NAME...]] [--crt] [--pointer]\n";
 
@@ -839,6 +855,7 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
   {
     { "resources", required_argument, NULL, 'r'         },
     { "palette",   required_argument, NULL, 'p'         },
+    { "font",      required_argument, NULL, 'f'         },
     { "depth",     required_argument, NULL, 'd'         },
     { "scale",     required_argument, NULL, 's'         },
     { "res",       required_argument, NULL, OPT_RES     },
@@ -852,7 +869,7 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
 
   for (;;)
   {
-    c = getopt_long(argc, argv, "r:p:d:s:t:", longopts, NULL);
+    c = getopt_long(argc, argv, "r:p:f:d:s:t:", longopts, NULL);
     if (c == -1)
       break;
 
@@ -860,6 +877,7 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
     {
     case 'r': opts->resources    = optarg;       break;
     case 'p': opts->palette_name = optarg;       break;
+    case 'f': opts->font_family  = optarg;       break;
     case 'd': opts->depth        = atoi(optarg); break;
     case 's': opts->scale        = atoi(optarg); break;
     case 't': opts->tasks        = optarg;       break;
@@ -898,6 +916,8 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
       opts->resources = argv[++i];
     else if (strcmp(argv[i], "-palette") == 0 && i + 1 < argc)
       opts->palette_name = argv[++i];
+    else if (strcmp(argv[i], "-font") == 0 && i + 1 < argc)
+      opts->font_family = argv[++i];
     else if (strcmp(argv[i], "-depth") == 0 && i + 1 < argc)
       opts->depth = atoi(argv[++i]);
     else if (strcmp(argv[i], "-scale") == 0 && i + 1 < argc)
@@ -927,6 +947,7 @@ int main(int argc, char *argv[])
 
   opts.resources    = default_resources;
   opts.palette_name = "PICO-8";
+  opts.font_family  = "DPT-Digits";
   opts.depth        = 4;
   opts.scale        = 0; /* 0 = let the frontend pick its default */
   opts.res_width    = 640;
@@ -936,8 +957,8 @@ int main(int argc, char *argv[])
   if (!parse_args(argc, argv, &opts))
     return EXIT_FAILURE;
 
-  rc = run_wuss(opts.resources, opts.palette_name, opts.depth, opts.scale,
-               opts.res_width, opts.res_height, opts.tasks);
+  rc = run_wuss(opts.resources, opts.palette_name, opts.font_family,
+               opts.depth, opts.scale, opts.res_width, opts.res_height, opts.tasks);
 
   return rc == result_TEST_PASSED ? EXIT_SUCCESS : EXIT_FAILURE;
 }
