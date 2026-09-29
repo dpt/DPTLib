@@ -80,7 +80,7 @@ enum
  * honour, e.g. RISC OS's fixed screen mode */
 static const int g_display_depths[] =
 {
-  1, 2, 4, 8, 32
+  1, 2, 4, 8, 15, 16, 32
 };
 
 /* wuss_stringset_create borrows its strings, so these are static, paired
@@ -91,6 +91,8 @@ static const char *const g_display_depth_labels[NELEMS(g_display_depths)] =
   "4 colours",
   "16 colours",
   "256 colours",
+  "32K colours",
+  "64K colours",
   "16M colours"
 };
 
