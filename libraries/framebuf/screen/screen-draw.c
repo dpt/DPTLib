@@ -108,25 +108,29 @@ static void screen_set_pixel_32(screen_t      *scr,
   *scrp = pxl;
 }
 
+typedef void (*set_pixel_fn_t)(screen_t *, int, int, pixelfmt_any_t);
+
+static const set_pixel_fn_t set_pixel_fns[] =
+{
+  screen_set_pixel_p1,
+  screen_set_pixel_p2,
+  screen_set_pixel_p4,
+  screen_set_pixel_p8,
+  screen_set_pixel_16,
+  screen_set_pixel_32,
+};
+
 /* Writes "pxl" at (x, y), already known to be inside the clip. */
 static void screen_plot_pixel(screen_t      *scr,
                               int            x,
                               int            y,
                               pixelfmt_any_t pxl)
 {
-  switch (pixelfmt_log2bpp(scr->format))
-  {
-  case 0: screen_set_pixel_p1(scr, x, y, pxl); break;
-  case 1: screen_set_pixel_p2(scr, x, y, pxl); break;
-  case 2: screen_set_pixel_p4(scr, x, y, pxl); break;
-  case 3: screen_set_pixel_p8(scr, x, y, pxl); break;
-  case 4: screen_set_pixel_16(scr, x, y, pxl); break;
-  case 5: screen_set_pixel_32(scr, x, y, pxl); break;
+  int log2bpp;
 
-  default:
-    assert(!"Unimplemented pixel format");
-    break;
-  }
+  log2bpp = pixelfmt_log2bpp(scr->format);
+  assert(log2bpp >= 0 && log2bpp < NELEMS(set_pixel_fns));
+  set_pixel_fns[log2bpp](scr, x, y, pxl);
 }
 
 /* Whether (x, y) is inside both the screen and its clip; an empty clip means
@@ -281,6 +285,18 @@ static void screen_blend_pixel_32(screen_t *scr,
   scr->span->blendconst(scrp, scrp, &colpx, 1, alpha, NULL);
 }
 
+typedef void (*blend_pixel_fn_t)(screen_t *, int, int, colour_t, int);
+
+static const blend_pixel_fn_t blend_pixel_fns[] =
+{
+  screen_blend_pixel_p1,
+  screen_blend_pixel_p2,
+  screen_blend_pixel_p4,
+  screen_blend_pixel_p8,
+  screen_blend_pixel_16,
+  screen_blend_pixel_32,
+};
+
 static void screen_blend_pixel(screen_t *scr,
                                int       x,
                                int       y,
@@ -288,6 +304,7 @@ static void screen_blend_pixel(screen_t *scr,
                                int       alpha)
 {
   box_t clip;
+  int   log2bpp;
 
   assert(alpha >= 0);
   assert(alpha <= 255);
@@ -295,19 +312,9 @@ static void screen_blend_pixel(screen_t *scr,
   if (screen_get_clip(scr, &clip) || !box_contains_point(&clip, x, y))
     return;
 
-  switch (pixelfmt_log2bpp(scr->format))
-  {
-  case 0: screen_blend_pixel_p1(scr, x, y, colour, alpha); break;
-  case 1: screen_blend_pixel_p2(scr, x, y, colour, alpha); break;
-  case 2: screen_blend_pixel_p4(scr, x, y, colour, alpha); break;
-  case 3: screen_blend_pixel_p8(scr, x, y, colour, alpha); break;
-  case 4: screen_blend_pixel_16(scr, x, y, colour, alpha); break;
-  case 5: screen_blend_pixel_32(scr, x, y, colour, alpha); break;
-
-  default:
-    assert(!"Unimplemented pixel format");
-    break;
-  }
+  log2bpp = pixelfmt_log2bpp(scr->format);
+  assert(log2bpp >= 0 && log2bpp < NELEMS(blend_pixel_fns));
+  blend_pixel_fns[log2bpp](scr, x, y, colour, alpha);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -922,7 +929,8 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
                                       int             y,
                                       const bitmap_t *src,
                                       const box_t    *draw_box,
-                                      int             has_alpha)
+                                      int             has_alpha,
+                                      screen_dither_t dither)
 {
   pixelfmt_any32_t  colbuf[BITMAP_BLIT_CHUNK];
   unsigned char     alphabuf[BITMAP_BLIT_CHUNK];
@@ -930,6 +938,8 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
   pixelfmt_any32_t *dstrow;
   int               clipped_width, clipped_height;
   int               yy;
+
+  (void) dither;
 
   clipped_width  = draw_box->x1 - draw_box->x0;
   clipped_height = draw_box->y1 - draw_box->y0;
@@ -1064,6 +1074,24 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
   return result_OK;
 }
 
+typedef result_t (*copy_bitmap_fn_t)(screen_t *,
+                                     int,
+                                     int,
+                                     const bitmap_t *,
+                                     const box_t *,
+                                     int,
+                                     screen_dither_t);
+
+static const copy_bitmap_fn_t copy_bitmap_fns[] =
+{
+  screen_copy_bitmap_p1,
+  screen_copy_bitmap_p2,
+  screen_copy_bitmap_p4,
+  screen_copy_bitmap_p8,
+  screen_copy_bitmap_16,
+  screen_copy_bitmap_32,
+};
+
 /* Shared body for screen_copy_bitmap and screen_copy_bitmap_dithered. With
  * "dither" set the paletted-screen (p1/p2/p4/p8) and 16bpp paths
  * ordered-dither the source RGB before the nearest-match lookup or
@@ -1077,11 +1105,11 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
                                      const bitmap_t *src,
                                      screen_dither_t dither)
 {
-  box_t    clip_box;
-  box_t    src_box;
-  box_t    draw_box;
-  int      has_alpha;
-  result_t rc;
+  box_t clip_box;
+  box_t src_box;
+  box_t draw_box;
+  int   has_alpha;
+  int   log2bpp;
 
   if (screen_get_clip(scr, &clip_box))
     return result_OK; /* invalid clipped screen: nothing to draw */
@@ -1104,22 +1132,10 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
   has_alpha = pixelfmt_log2bpp(src->format) < 4 ||
              pixelfmt_has_alpha(src->format);
 
-  switch (pixelfmt_log2bpp(scr->format))
-  {
-  case 0: rc = screen_copy_bitmap_p1(scr, x, y, src, &draw_box, has_alpha, dither); break;
-  case 1: rc = screen_copy_bitmap_p2(scr, x, y, src, &draw_box, has_alpha, dither); break;
-  case 2: rc = screen_copy_bitmap_p4(scr, x, y, src, &draw_box, has_alpha, dither); break;
-  case 3: rc = screen_copy_bitmap_p8(scr, x, y, src, &draw_box, has_alpha, dither); break;
-  case 4: rc = screen_copy_bitmap_16(scr, x, y, src, &draw_box, has_alpha, dither); break;
-  case 5: rc = screen_copy_bitmap_32(scr, x, y, src, &draw_box, has_alpha);         break;
+  log2bpp = pixelfmt_log2bpp(scr->format);
+  assert(log2bpp >= 0 && log2bpp < NELEMS(copy_bitmap_fns));
 
-  default:
-    assert(!"Unimplemented pixel format");
-    rc = result_NOT_SUPPORTED;
-    break;
-  }
-
-  return rc;
+  return copy_bitmap_fns[log2bpp](scr, x, y, src, &draw_box, has_alpha, dither);
 }
 
 result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
