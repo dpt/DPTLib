@@ -268,11 +268,18 @@ static result_t palette_redraw_screen(palette_task_t     *pc,
 
   if (scr->palette == NULL)
   {
-    static const char label[] = "32bpp (none)";
+    const char *label;
 
     bmfont_t          *font   = wuss_get_font(pc->wuss);
     colour_t           ink    = colour_rgb(0xFF, 0xFF, 0xFF);
     colour_t           bg     = colour_rgba(0, 0, 0, 0); /* transparent */
+
+    if (scr->format == pixelfmt_rgb565)
+      label = "16bpp (none)";
+    else if (scr->format == pixelfmt_rgbx5551)
+      label = "15bpp (none)";
+    else
+      label = "32bpp (none)";
 
     screen_fill_rect(scr, bounds->x0 - sx, bounds->y0 - sy,
                      SIZE2D(bounds->x1 - bounds->x0, bounds->y1 - bounds->y0),
