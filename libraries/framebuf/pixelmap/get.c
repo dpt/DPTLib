@@ -24,10 +24,18 @@ static int pixelmap__is_deep(pixelfmt_t fmt)
   case pixelfmt_rgba8888:
   case pixelfmt_abgr8888:
   case pixelfmt_argb8888:
+  case pixelfmt_rgb565:
+  case pixelfmt_rgbx5551:
     return 1;
   default:
     return 0;
   }
+}
+
+/* deep formats whose destination pixel is 2 bytes wide, not 4 */
+static int pixelmap__is_deep16(pixelfmt_t fmt)
+{
+  return fmt == pixelfmt_rgb565 || fmt == pixelfmt_rgbx5551;
 }
 
 static int pixelmap__paletted_log2bpp(pixelfmt_t fmt)
@@ -59,23 +67,47 @@ static int pixelmap__layout_deep_to_paletted(pixelfmt_t  srcfmt,
     out->rbits = 4; out->gbits = 4; out->bbits = 4;
   }
 
-  /* 8-bit channel extract from the source pixel */
+  /* channel extract from the source pixel: shift, pre-shift mask and source
+   * channel width. 8888 formats are 8-bit-per-channel, byte-aligned; 565/5551
+   * pack narrower fields that need rescaling up to 8 bits after masking. */
   switch (srcfmt)
   {
   case pixelfmt_bgrx8888:
   case pixelfmt_bgra8888:
     out->rshift = 16; out->gshift = 8; out->bshift = 0;
+    out->rmask = out->gmask = out->bmask = 0xFF;
+    out->rsrcbits = out->gsrcbits = out->bsrcbits = 8;
     break;
   case pixelfmt_rgbx8888:
   case pixelfmt_rgba8888:
     out->rshift = 0; out->gshift = 8; out->bshift = 16;
+    out->rmask = out->gmask = out->bmask = 0xFF;
+    out->rsrcbits = out->gsrcbits = out->bsrcbits = 8;
     break;
   case pixelfmt_xbgr8888:
   case pixelfmt_abgr8888:
     out->rshift = 24; out->gshift = 16; out->bshift = 8;
+    out->rmask = out->gmask = out->bmask = 0xFF;
+    out->rsrcbits = out->gsrcbits = out->bsrcbits = 8;
+    break;
+  case pixelfmt_rgb565:
+    out->rshift = PIXELFMT_Rxx565_SHIFT;
+    out->gshift = PIXELFMT_xGx565_SHIFT;
+    out->bshift = PIXELFMT_xxB565_SHIFT;
+    out->rmask = 0x1F; out->gmask = 0x3F; out->bmask = 0x1F;
+    out->rsrcbits = 5; out->gsrcbits = 6; out->bsrcbits = 5;
+    break;
+  case pixelfmt_rgbx5551:
+    out->rshift = PIXELFMT_Rxxx5551_SHIFT;
+    out->gshift = PIXELFMT_xGxx5551_SHIFT;
+    out->bshift = PIXELFMT_xxBx5551_SHIFT;
+    out->rmask = out->gmask = out->bmask = 0x1F;
+    out->rsrcbits = out->gsrcbits = out->bsrcbits = 5;
     break;
   default: /* xrgb8888, argb8888 */
     out->rshift = 8; out->gshift = 16; out->bshift = 24;
+    out->rmask = out->gmask = out->bmask = 0xFF;
+    out->rsrcbits = out->gsrcbits = out->bsrcbits = 8;
     break;
   }
 
@@ -86,11 +118,15 @@ static int pixelmap__layout_deep_to_paletted(pixelfmt_t  srcfmt,
 
 /* paletted -> deep: the index is the raw palette index, one deep pixel per
  * entry. nentries comes from the palette, filled in by the caller. */
-static int pixelmap__layout_paletted_to_deep(int nentries, pixelmap_t *out)
+static int pixelmap__layout_paletted_to_deep(pixelfmt_t  destfmt,
+                                             int         nentries,
+                                             pixelmap_t *out)
 {
-  out->entry_bytes = 4;
+  out->entry_bytes = pixelmap__is_deep16(destfmt) ? 2 : 4;
   out->rbits = out->gbits = out->bbits = 0;
   out->rshift = out->gshift = out->bshift = 0;
+  out->rmask = out->gmask = out->bmask = 0;
+  out->rsrcbits = out->gsrcbits = out->bsrcbits = 0;
   out->nentries = (unsigned int) nentries;
 
   return 0;
@@ -126,10 +162,28 @@ int pixelmap__layout_for(pixelfmt_t  srcfmt,
     if (pixelmap__paletted_log2bpp(srcfmt) < 0)
       return -1;
     /* nentries is set from the palette count by the caller-side layout call */
-    return pixelmap__layout_paletted_to_deep(0, out);
+    return pixelmap__layout_paletted_to_deep(destfmt, 0, out);
   }
 
   return -1; /* deep<->deep and paletted<->paletted are not pixelmap's job */
+}
+
+void pixelmap_extract_rgb(const pixelmap_t *pm,
+                          unsigned int      pixel,
+                          unsigned int     *r,
+                          unsigned int     *g,
+                          unsigned int     *b)
+{
+  unsigned int v;
+
+  v  = (pixel >> pm->rshift) & pm->rmask;
+  *r = (pm->rsrcbits == 8) ? v : (v << (8 - pm->rsrcbits));
+
+  v  = (pixel >> pm->gshift) & pm->gmask;
+  *g = (pm->gsrcbits == 8) ? v : (v << (8 - pm->gsrcbits));
+
+  v  = (pixel >> pm->bshift) & pm->bmask;
+  *b = (pm->bsrcbits == 8) ? v : (v << (8 - pm->bsrcbits));
 }
 
 /* ----------------------------------------------------------------------- */

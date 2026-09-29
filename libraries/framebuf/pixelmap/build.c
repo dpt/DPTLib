@@ -10,23 +10,41 @@
 #include "impl.h"
 
 /* paletted -> deep: one destination pixel per palette entry, index = the raw
- * palette index. */
+ * palette index. entry_bytes is 2 for a 16bpp destination, else 4. */
 static int pixelmap__build_paletted_to_deep(pixelmap_t     *pm,
                                             const colour_t *palette,
                                             int             nentries)
 {
-  uint32_t *entries;
-  int       i;
+  int i;
 
-  entries = calloc(pm->nentries, sizeof(*entries));
-  if (entries == NULL)
-    return -1;
+  if (pm->entry_bytes == 2)
+  {
+    uint16_t *entries;
 
-  for (i = 0; i < nentries; i++)
-    entries[i] = (uint32_t) colour_to_pixel(palette, nentries,
-                                            palette[i], pm->destfmt);
+    entries = calloc(pm->nentries, sizeof(*entries));
+    if (entries == NULL)
+      return -1;
 
-  pm->entries = (const unsigned char *) entries;
+    for (i = 0; i < nentries; i++)
+      entries[i] = (uint16_t) colour_to_pixel(palette, nentries,
+                                              palette[i], pm->destfmt);
+
+    pm->entries = (const unsigned char *) entries;
+  }
+  else
+  {
+    uint32_t *entries;
+
+    entries = calloc(pm->nentries, sizeof(*entries));
+    if (entries == NULL)
+      return -1;
+
+    for (i = 0; i < nentries; i++)
+      entries[i] = (uint32_t) colour_to_pixel(palette, nentries,
+                                              palette[i], pm->destfmt);
+
+    pm->entries = (const unsigned char *) entries;
+  }
 
   return 0;
 }
@@ -36,7 +54,8 @@ static int pixelmap__build_paletted_to_deep(pixelmap_t     *pm,
  * bit-replicated value (e.g. 4-bit bucket 0xC -> 0xCC=204) would skew every
  * bucket towards its top edge instead of its ~199 centre, biasing every
  * match towards brighter palette entries. */
-static unsigned int pixelmap__bucket_centre(unsigned int v, unsigned int nbits)
+static unsigned int pixelmap__bucket_centre(unsigned int v,
+                                            unsigned int nbits)
 {
   unsigned int shift;
   unsigned int span;

@@ -17,9 +17,7 @@ static unsigned int pm_index(const pixelmap_t *pm, pixelfmt_rgba8888_t px)
 {
   unsigned int r, g, b;
 
-  r = (px >> pm->rshift) & 0xFF;
-  g = (px >> pm->gshift) & 0xFF;
-  b = (px >> pm->bshift) & 0xFF;
+  pixelmap_extract_rgb(pm, px, &r, &g, &b);
 
   return ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
        | ((g >> (8 - pm->gbits)) << pm->bbits)
@@ -231,6 +229,81 @@ result_t pixelmap_test(const char *resources)
                i, map[i], want);
         return result_TEST_FAILED;
       }
+    }
+  }
+
+  /* 6. paletted -> deep: p4 -> rgb565, one 2-byte deep pixel per palette
+   *    index */
+  {
+    const pixelmap_t        *pmd;
+    const pixelfmt_rgb565_t *map;
+
+    pmd = pixelmap_get(pixelfmt_p4, pixelfmt_rgb565, pal, palette_PICO8__LENGTH);
+    if (pmd == NULL)
+    {
+      printf("pixelmap: get p4->rgb565 returned NULL\n");
+      return result_TEST_FAILED;
+    }
+    if (pmd->entry_bytes != 2 || pmd->nentries != palette_PICO8__LENGTH)
+    {
+      printf("pixelmap: p4->rgb565 layout wrong (entry_bytes %u, nentries %u)\n",
+             pmd->entry_bytes, pmd->nentries);
+      return result_TEST_FAILED;
+    }
+
+    map = (const pixelfmt_rgb565_t *) pmd->entries;
+    for (i = 0; i < palette_PICO8__LENGTH; i++)
+    {
+      pixelfmt_rgb565_t want;
+
+      want = (pixelfmt_rgb565_t) colour_to_pixel(pal, palette_PICO8__LENGTH,
+                                                 pal[i], pixelfmt_rgb565);
+      if (map[i] != want)
+      {
+        printf("pixelmap: p4->rgb565 entry %d = 0x%04X, want 0x%04X\n",
+               i, map[i], want);
+        return result_TEST_FAILED;
+      }
+    }
+  }
+
+  /* 7. deep -> paletted with an rgb565 source: pure red/green/blue rescale
+   *    from 565's 5/6/5-bit fields to the full 8-bit channel each maps to,
+   *    resolving to a close palette entry (not an under-scaled one) */
+  {
+    const pixelmap_t *pm565;
+    colour_t          rgb[3];
+    pixelfmt_rgb565_t red, green, blue;
+
+    rgb[0] = colour_rgb(0xFF, 0x00, 0x00);
+    rgb[1] = colour_rgb(0x00, 0xFF, 0x00);
+    rgb[2] = colour_rgb(0x00, 0x00, 0xFF);
+
+    pm565 = pixelmap_get(pixelfmt_rgb565, pixelfmt_p4, rgb, 3);
+    if (pm565 == NULL)
+    {
+      printf("pixelmap: get rgb565->p4 returned NULL\n");
+      return result_TEST_FAILED;
+    }
+
+    red   = (pixelfmt_rgb565_t) colour_to_pixel(NULL, 0, rgb[0], pixelfmt_rgb565);
+    green = (pixelfmt_rgb565_t) colour_to_pixel(NULL, 0, rgb[1], pixelfmt_rgb565);
+    blue  = (pixelfmt_rgb565_t) colour_to_pixel(NULL, 0, rgb[2], pixelfmt_rgb565);
+
+    if (pm_lookup(pm565, pm_index(pm565, red)) != 0)
+    {
+      printf("pixelmap: rgb565->p4 red did not resolve to index 0\n");
+      return result_TEST_FAILED;
+    }
+    if (pm_lookup(pm565, pm_index(pm565, green)) != 1)
+    {
+      printf("pixelmap: rgb565->p4 green did not resolve to index 1\n");
+      return result_TEST_FAILED;
+    }
+    if (pm_lookup(pm565, pm_index(pm565, blue)) != 2)
+    {
+      printf("pixelmap: rgb565->p4 blue did not resolve to index 2\n");
+      return result_TEST_FAILED;
     }
   }
 

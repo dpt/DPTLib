@@ -612,9 +612,7 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
       scrp  = rowp + (dstx >> 1);
       shift = (dstx & 1) * 4;
 
-      r   = (c.primary >> pm->rshift) & 0xFF;
-      g   = (c.primary >> pm->gshift) & 0xFF;
-      b   = (c.primary >> pm->bshift) & 0xFF;
+      pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
       if (do_dither)
       {
         r = dither_channel(r, &bias, dstx - x, draw_box->y0 + yy - y);
@@ -692,9 +690,7 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
 
       dstx = draw_box->x0 + xx;
 
-      r = (c.primary >> pm->rshift) & 0xFF;
-      g = (c.primary >> pm->gshift) & 0xFF;
-      b = (c.primary >> pm->bshift) & 0xFF;
+      pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
       if (do_dither)
       {
         r = dither_channel(r, &bias, dstx - x, draw_box->y0 + yy - y);
@@ -777,9 +773,7 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
       scrp  = rowp + (dstx >> 3);
       shift = 7 - (dstx & 7);
 
-      r   = (c.primary >> pm->rshift) & 0xFF;
-      g   = (c.primary >> pm->gshift) & 0xFF;
-      b   = (c.primary >> pm->bshift) & 0xFF;
+      pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
       if (do_dither)
       {
         r = dither_channel(r, &bias, dstx - x, draw_box->y0 + yy - y);
@@ -862,9 +856,7 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
       scrp  = rowp + (dstx >> 2);
       shift = 6 - ((dstx & 3) << 1);
 
-      r   = (c.primary >> pm->rshift) & 0xFF;
-      g   = (c.primary >> pm->gshift) & 0xFF;
-      b   = (c.primary >> pm->bshift) & 0xFF;
+      pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
       if (do_dither)
       {
         r = dither_channel(r, &bias, dstx - x, draw_box->y0 + yy - y);
