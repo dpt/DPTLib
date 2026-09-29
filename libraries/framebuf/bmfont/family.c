@@ -219,12 +219,18 @@ result_t bmfontfamily_label_path(const char *dir,
                                  char       *path,
                                  size_t      cap)
 {
+  char        dircopy[512];
   const char *space;
   char        family[256];
   size_t      len;
 
   if (dir == NULL || label == NULL || path == NULL)
     return result_NULL_ARG;
+
+  /* callers pass pathf() results, which alias the buffer pathf writes below */
+  if ((size_t) snprintf(dircopy, sizeof(dircopy), "%s", dir) >= sizeof(dircopy))
+    return result_BUFFER_OVERFLOW;
+  dir = dircopy;
 
   space = strrchr(label, ' ');
   if (space == NULL)
