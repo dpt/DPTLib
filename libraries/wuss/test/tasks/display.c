@@ -3,6 +3,7 @@
 #ifdef WUSS_APP
 
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -22,7 +23,7 @@
 
 enum { DISPLAY_MENU_INFO };
 
-#define DISPLAY_LABEL_W      66 /* px; enough for "Resolution" at 6px/char */
+#define DISPLAY_G_LABEL      1 /* size group, see stack_item_t::group */
 #define DISPLAY_SET_W        120
 #define DISPLAY_ROW_H        18
 #define DISPLAY_CHAR_W       6 /* ponytail: assumes the 6px system font */
@@ -53,11 +54,11 @@ static const stack_item_t g_display_stack[DISPLAY_ST__LIMIT] =
                         .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
 
   [DISPLAY_ST_COLOURS_ROW]      = STACK_HBOX(DISPLAY_ST_ROOT, DISPLAY_ROW_H, wuss_STD_GAP, stack_ALIGN_START),
-  [DISPLAY_ST_COLOURS_LABEL]    = STACK_LEAF(DISPLAY_ST_COLOURS_ROW, DISPLAY_LABEL_W, DISPLAY_ROW_H, stack_ALIGN_CENTRE),
+  [DISPLAY_ST_COLOURS_LABEL]    = STACK_LEAF_GROUP(DISPLAY_ST_COLOURS_ROW, 0, DISPLAY_ROW_H, stack_ALIGN_CENTRE, DISPLAY_G_LABEL),
   [DISPLAY_ST_COLOURS]          = STACK_LEAF(DISPLAY_ST_COLOURS_ROW, DISPLAY_SET_W, DISPLAY_ROW_H, stack_ALIGN_CENTRE),
 
   [DISPLAY_ST_RESOLUTION_ROW]   = STACK_HBOX(DISPLAY_ST_ROOT, DISPLAY_ROW_H, wuss_STD_GAP, stack_ALIGN_START),
-  [DISPLAY_ST_RESOLUTION_LABEL] = STACK_LEAF(DISPLAY_ST_RESOLUTION_ROW, DISPLAY_LABEL_W, DISPLAY_ROW_H, stack_ALIGN_CENTRE),
+  [DISPLAY_ST_RESOLUTION_LABEL] = STACK_LEAF_GROUP(DISPLAY_ST_RESOLUTION_ROW, 0, DISPLAY_ROW_H, stack_ALIGN_CENTRE, DISPLAY_G_LABEL),
   [DISPLAY_ST_RESOLUTION]       = STACK_LEAF(DISPLAY_ST_RESOLUTION_ROW, DISPLAY_SET_W, DISPLAY_ROW_H, stack_ALIGN_CENTRE),
 
   [DISPLAY_ST_BUTTONS]          = STACK_HBOX(DISPLAY_ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
@@ -188,16 +189,24 @@ static result_t display_create_window(display_task_t *task,
   result_t         rc;
   size2d_t         size;
   box_t            root;
+  stack_item_t     items[DISPLAY_ST__LIMIT];
   box_t            boxes[DISPLAY_ST__LIMIT];
   wuss_icon_spec_t specs[DISPLAY_NICONS];
   wuss_icon_t     *made[DISPLAY_NICONS];
 
-  rc = stack_smallest(g_display_stack, NELEMS(g_display_stack), &size);
+  /* each label's natural width; the size group widens the other to match */
+  memcpy(items, g_display_stack, sizeof(items));
+  items[DISPLAY_ST_COLOURS_LABEL].axis_size =
+    task_text_width(task->wuss, "Colours");
+  items[DISPLAY_ST_RESOLUTION_LABEL].axis_size =
+    task_text_width(task->wuss, "Resolution");
+
+  rc = stack_smallest(items, NELEMS(items), &size);
   if (rc != result_OK)
     return rc;
 
   root = (box_t) BOX_POS_SIZE(0, 0, size.w, size.h);
-  rc = stack_solve(g_display_stack, NELEMS(g_display_stack), &root, boxes);
+  rc = stack_solve(items, NELEMS(items), &root, boxes);
   if (rc != result_OK)
     return rc;
 

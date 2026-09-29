@@ -2,7 +2,9 @@
 
 #ifdef WUSS_APP
 
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -421,8 +423,11 @@ void particles_destroy(particles_task_t *task)
   free(task);
 }
 
-/* stack items for the Strength dialogue's layout: a label/slider/value-echo
- * row above a Cancel/Apply button row, as saturn's g_saturn_conf_stack */
+/* stack items for the Strength dialogue's layout: label/slider/value-echo
+ * rows above a Cancel/Apply button row, as saturn's g_saturn_conf_stack.
+ * Labels and values are size-grouped (widths patched from the font in
+ * particles_strength_dialogue_create); a spacer in the label group puts the
+ * buttons under the sliders. */
 enum
 {
   PST_ROOT,
@@ -438,14 +443,16 @@ enum
   PST_VAL2,
 
   PST_BTNS,
+  PST_BSPC,
+  PST_BBOX,
   PST_CNCL,
   PST_APLY,
 
   PARTICLES_STRENGTH_STACK__LIMIT
 };
 
-#define PST_LABEL_W      (8*6) /* enough for "Strength" */
-#define PST_VALUE_W       (3*6) /* enough for "200" */
+#define PST_G_LABEL      1 /* size groups, see stack_item_t::group */
+#define PST_G_VALUE      2
 #define PST_SLIDER_MIN_W (64)
 #define PST_CHAR_W        6 /* ponytail: assumes the 6px system font */
 #define PST_ACTION_WIDTH(W)  ((W)*PST_CHAR_W+2*wuss_STD_SECONDARY_BUTTON_BORDER)
@@ -459,18 +466,21 @@ static const stack_item_t g_particles_strength_stack[PARTICLES_STRENGTH_STACK__L
                .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
 
   [PST_ROW]  = STACK_HBOX(PST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
-  [PST_LABL] = STACK_LEAF(PST_ROW, PST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [PST_LABL] = STACK_LEAF_GROUP(PST_ROW, 0, 16, stack_ALIGN_CENTRE, PST_G_LABEL),
   [PST_SLDR] = STACK_LEAF_EX(PST_ROW, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, PST_SLIDER_MIN_W, 0),
-  [PST_VAL]  = STACK_LEAF(PST_ROW, PST_VALUE_W, 16, stack_ALIGN_CENTRE),
+  [PST_VAL]  = STACK_LEAF_GROUP(PST_ROW, 0, 16, stack_ALIGN_CENTRE, PST_G_VALUE),
 
   [PST_ROW2]  = STACK_HBOX(PST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
-  [PST_LABL2] = STACK_LEAF(PST_ROW2, PST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [PST_LABL2] = STACK_LEAF_GROUP(PST_ROW2, 0, 16, stack_ALIGN_CENTRE, PST_G_LABEL),
   [PST_SLDR2] = STACK_LEAF_EX(PST_ROW2, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, PST_SLIDER_MIN_W, 0),
-  [PST_VAL2]  = STACK_LEAF(PST_ROW2, PST_VALUE_W, 16, stack_ALIGN_CENTRE),
+  [PST_VAL2]  = STACK_LEAF_GROUP(PST_ROW2, 0, 16, stack_ALIGN_CENTRE, PST_G_VALUE),
 
-  [PST_BTNS] = STACK_HBOX(PST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
-  [PST_CNCL] = STACK_LEAF(PST_BTNS, PST_CANCEL_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
-  [PST_APLY] = STACK_LEAF(PST_BTNS, PST_APPLY_W, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [PST_BTNS] = STACK_HBOX(PST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
+  [PST_BSPC] = STACK_SPACER_GROUP(PST_BTNS, 0, PST_G_LABEL),
+  [PST_BBOX] = { .kind = stack_KIND_HBOX, .parent = PST_BTNS,
+               .gap = wuss_STD_GAP, .flex = 1 },
+  [PST_CNCL] = STACK_LEAF_EX(PST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, PST_CANCEL_W, 0),
+  [PST_APLY] = STACK_LEAF_EX(PST_BBOX, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, PST_APPLY_W, 0),
 };
 
 /* Build the Strength dialogue once: a label, a slider 1..100, a label
@@ -485,14 +495,24 @@ static result_t particles_strength_dialogue_create(particles_task_t *task)
   result_t         rc;
   wuss_icon_spec_t specs[PARTICLES_STRENGTH_NICONS];
   wuss_icon_t     *made[PARTICLES_STRENGTH_NICONS];
+  stack_item_t     items[PARTICLES_STRENGTH_STACK__LIMIT];
   box_t            boxes[PARTICLES_STRENGTH_STACK__LIMIT];
   box_t            root;
   char             value_buf[WUSS_SLIDER_ROW_BUF];
   char             range_buf[WUSS_SLIDER_ROW_BUF];
+  char             widest[WUSS_SLIDER_ROW_BUF];
   size2d_t         min_sz;
 
-  rc = stack_smallest(g_particles_strength_stack,
-                      NELEMS(g_particles_strength_stack), &min_sz);
+  /* each label/value's natural width; the size groups widen the rest to match */
+  memcpy(items, g_particles_strength_stack, sizeof(items));
+  items[PST_LABL].axis_size  = task_text_width(task->wuss, "Strength");
+  items[PST_LABL2].axis_size = task_text_width(task->wuss, "Range");
+  snprintf(widest, sizeof(widest), "%d", PARTICLES_STRENGTH_MAX);
+  items[PST_VAL].axis_size   = task_text_width(task->wuss, widest);
+  snprintf(widest, sizeof(widest), "%d", PARTICLES_RANGE_MAX);
+  items[PST_VAL2].axis_size  = task_text_width(task->wuss, widest);
+
+  rc = stack_smallest(items, NELEMS(items), &min_sz);
   if (rc != result_OK)
     return rc;
 
@@ -502,8 +522,7 @@ static result_t particles_strength_dialogue_create(particles_task_t *task)
     return rc;
 
   root = (box_t) BOX_POS_SIZE(0, 0, min_sz.w, min_sz.h);
-  rc = stack_solve(g_particles_strength_stack,
-                   NELEMS(g_particles_strength_stack), &root, boxes);
+  rc = stack_solve(items, NELEMS(items), &root, boxes);
   if (rc != result_OK)
     goto exit;
 
