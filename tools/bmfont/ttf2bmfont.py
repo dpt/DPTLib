@@ -29,7 +29,7 @@ Requires freetype-py ( pip install freetype-py ). PNG is written by hand so
 Pillow is not needed.
 
 Usage:
-    python3 tools/ttf2bmfont.py FONT.ttf OUT.png --size PX [options]
+    python3 tools/bmfont/ttf2bmfont.py FONT.ttf OUT.png --size PX [options]
 """
 
 import argparse

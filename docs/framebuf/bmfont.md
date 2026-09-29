@@ -29,7 +29,7 @@ The PNG should be 32 characters wide: bmfont works out the character dimensions 
 
 Pixel value 3 draws the cell's left sidebearing line (cosmetic only) plus two full-width rows that `bmfont_create` reads back to work out `ascent` and `descent`: one at the font's baseline, one at the cell bottom. It scans the first cell with no ink (normally the space glyph in grid column 0; see [Metrics](#metrics)) for the first two full-width rows of value-3 pixels within the cell body; the first is the baseline (its offset from the top of the cell is the ascent) and the second is the cell bottom (its offset from the baseline is the descent). A font predating this convention (no such rows found) falls back to treating the whole cell as ascent, with zero descent.
 
-`tools/ttf2bmfont.py` generates conforming PNGs from a TTF automatically. `--no-grid` omits all the value-3 pixels, baseline row included -- don't pass it, or `bmfont_create` will fall back to the no-descender default for that font.
+`tools/bmfont/ttf2bmfont.py` generates conforming PNGs from a TTF automatically. `--no-grid` omits all the value-3 pixels, baseline row included -- don't pass it, or `bmfont_create` will fall back to the no-descender default for that font.
 
 ## Unicode Mapping
 
