@@ -353,12 +353,40 @@ typedef enum wuss_window_flags
    * nudging/shrinking it like an ordinary window. Set internally on the icon
    * bar's window; not intended for task-created windows.
    */
-  wuss_WINDOW_PINNED         = 1 << 12
+  wuss_WINDOW_PINNED         = 1 << 12,
+
+  /**
+   * Create the window in the top stack (see wuss_stack_t) instead of the
+   * middle one, e.g. for a system error dialogue. Creation only: change
+   * stack later with wuss_window_set_stack. Mutually exclusive with
+   * wuss_WINDOW_STACK_BACK.
+   */
+  wuss_WINDOW_STACK_TOP      = 1 << 13,
+
+  /**
+   * Create the window in the back stack (see wuss_stack_t) instead of the
+   * middle one, e.g. for the icon bar. Creation only. Mutually exclusive
+   * with wuss_WINDOW_STACK_TOP.
+   */
+  wuss_WINDOW_STACK_BACK     = 1 << 14
 }
 wuss_window_flags_t;
 
-/** Reason code for wuss_window_restack, selecting which end of the
- * z-order a window moves to. */
+/** The three z-order stacks, front to back. Every window lives in exactly
+ * one; any window in an earlier stack is drawn above every window in a later
+ * one. Regular windows use wuss_STACK_MIDDLE. Bringing a window to front or
+ * sending it to back (wuss_window_restack, a titlebar click) only reorders
+ * it within its own stack. */
+typedef enum wuss_stack
+{
+  wuss_STACK_TOP,    /**< In front: error dialogues, menus. */
+  wuss_STACK_MIDDLE, /**< Regular windows. */
+  wuss_STACK_BACK    /**< Behind regular windows, e.g. the icon bar. */
+}
+wuss_stack_t;
+
+/** Reason code for wuss_window_restack, selecting which end of a window's
+ * own stack it moves to. */
 typedef enum wuss_zorder
 {
   wuss_ZORDER_FRONT, /**< Move the window to the front (topmost). */

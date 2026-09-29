@@ -47,7 +47,9 @@
  * just some avoidable redraw work, never wrong */
 #define WUSS_MAX_INVALIDATE_PIECES 32
 
-#define WUSS_PLACE_GUTTER 6  /* px left between windows auto-placed by wuss_window_create_placed */
+#define WUSS_STACK_COUNT 3 /* wuss_stack_t values; indexes wuss_t::z_order */
+
+#define WUSS_PLACE_GUTTER 6 /* px left between windows auto-placed by wuss_window_create_placed */
 
 #define WUSS_BUTTON_INSET 3  /* shared by close/back/toggle/resize furniture buttons and scrollbar breadth */
 
@@ -153,7 +155,10 @@ struct wuss
 #ifdef WUSS_FURNITURE
   int                         titlebar_height;
 #endif
-  list_t                      z_order;   /* anchor; head = topmost window */
+  list_t                      z_order[WUSS_STACK_COUNT]; /* anchor per
+                                          * wuss_stack_t, frontmost stack
+                                          * first; head = frontmost window
+                                          * of that stack */
   list_t                      tasks;     /* anchor; registered tasks, in
                                           * wuss_task_create order */
 #ifdef WUSS_FURNITURE
@@ -273,6 +278,7 @@ struct wuss_window
                               * NULL */
   wuss_backdrop_t     bg; /* content background; colour==wuss_NO_BACKGROUND: none */
   wuss_window_flags_t flags;
+  wuss_stack_t        stack;  /* which wuss_t::z_order list link is on */
   point_t             scroll; /* offset into virtual content space of the
                                * content box's top-left; see wuss_window_set_scroll */
   size2d_t            doc;    /* virtual document extent, set at creation */
@@ -390,6 +396,12 @@ static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
 #endif
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
+
+/* Walk every window front to back across all three stacks: wuss__z_first is
+ * the frontmost window overall (NULL if none), wuss__z_below the next one
+ * behind "window" (NULL at the very back). */
+wuss_window_t *wuss__z_first(wuss_t *wuss);
+wuss_window_t *wuss__z_below(const wuss_window_t *window);
 
 /* Rebuild wuss->palettecache (white, black and the symbolic[] table) from
  * the current palette and the stored chrome colours. Call after the palette

@@ -11,6 +11,7 @@
 void wuss_destroy(wuss_t *doomed)
 {
   list_t      *e;
+  int          s;
   wuss_task_t *menu_task;
   wuss_task_t *iconbar_task;
 
@@ -124,17 +125,20 @@ void wuss_destroy(wuss_t *doomed)
   }
 #endif
 
-  e = doomed->z_order.next;
-  while (e != NULL)
+  for (s = 0; s < WUSS_STACK_COUNT; s++)
   {
-    list_t *next;
+    e = doomed->z_order[s].next;
+    while (e != NULL)
+    {
+      list_t *next;
 
-    next = e->next;
+      next = e->next;
 #ifdef WUSS_ICONS
-    wuss__icons_free(wuss__window_from_link(e));
+      wuss__icons_free(wuss__window_from_link(e));
 #endif
-    wuss__free(doomed, e);
-    e = next;
+      wuss__free(doomed, e);
+      e = next;
+    }
   }
 
 #ifdef WUSS_ICONS

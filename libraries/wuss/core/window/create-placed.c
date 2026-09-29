@@ -105,12 +105,12 @@ static result_t find_slot(wuss_t *wuss, int fw, int fh, point_t *pos)
   packer_set_margins(layout, &margins);
   packer_set_gutter(layout, WUSS_PLACE_GUTTER);
 
-  for (e = wuss->z_order.next; e != NULL; e = e->next)
+  /* only regular windows constrain placement: the icon bar (back) and
+   * error dialogues/menus (top) sit outside the middle stack */
+  for (e = wuss->z_order[wuss_STACK_MIDDLE].next; e != NULL; e = e->next)
   {
     w = wuss__window_from_link(e);
     if (w->flags & wuss_WINDOW_HIDDEN)
-      continue;
-    if (w->task == wuss->menu_task)
       continue;
 
     /* gutter on the right/bottom only: packer_place_by already reserves one

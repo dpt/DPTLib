@@ -584,6 +584,21 @@ static int furniture_hit_sweep(const wuss_window_t *window,
   return 1;
 }
 
+/* Non-zero if want[0..n-1] appear in that front-to-back order across all
+ * three stacks. Other windows may be interleaved: earlier tests leave some. */
+static int z_order_is(wuss_t *wuss, wuss_window_t *const *want, int n)
+{
+  wuss_window_t *w;
+  int            i;
+
+  i = 0;
+  for (w = wuss__z_first(wuss); w != NULL && i < n; w = wuss__z_below(w))
+    if (w == want[i])
+      i++;
+
+  return i == n;
+}
+
 result_t wuss_test(const char *resources)
 {
   result_t       rc;
@@ -6677,22 +6692,22 @@ ColourSetOK: ;
       if (wuss__icon_hovered(fwuss->menu_chain->icons[i]) != (i == 2))
         goto FlashCheckFail;
 
-    /* --- an ADJUST pick pops the chain back to the front once its action
-     * has run: a window opened meanwhile (clear of the menu, so the pick
-     * still lands on the row) must end up behind it --- */
+    /* --- the chain lives in the top stack, so a window opened meanwhile
+     * (clear of the menu, so the pick still lands on the row) is behind it
+     * from the start and stays there after an ADJUST pick --- */
     rc = wuss_window_create(fowner, &(box_t) BOX_POS_SIZE(150, 150, 40, 40),
                             "cover", wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
                             SIZE2D(40, 40), SIZE2D(40, 40), &fcover);
     if (rc != result_OK) goto FlashDestroy;
-    if (wuss__window_from_link(fwuss->z_order.next) != fcover)
-      goto FlashCheckFail; /* new window starts in front of the menu */
+    if (wuss__z_first(fwuss) != chain->window)
+      goto FlashCheckFail; /* new window starts behind the menu */
 
     flash_pick_row(fwuss, chain, 1, wuss_BUTTON_ADJUST);
     for (i = 0; i < 64; i++)
       wuss_idle(fwuss);
 
     if (ftc.menu_select_count != 3) goto FlashCheckFail;
-    if (wuss__window_from_link(fwuss->z_order.next) != chain->window)
+    if (wuss__z_first(fwuss) != chain->window)
       goto FlashCheckFail;
 
     rc = result_OK;
@@ -8370,6 +8385,83 @@ QuitFail:
           pixelfmt_base(icon_bm->format) != fmt32)
         goto Failure;
     }
+  }
+
+  printf("test: window stacks: top over middle over back, restack stays within a stack, set_stack relinks\n");
+
+  {
+    wuss_task_t   *owner;
+    wuss_window_t *back, *mid_a, *mid_b, *top, *bad;
+    wuss_window_t *order[4];
+    box_t          box;
+
+    owner = mk_task(wuss, paint_handle, NULL);
+    if (owner == NULL) goto Failure;
+
+    /* four windows stacked on the same spot, created back stack first */
+    box = (box_t) BOX_POS_SIZE(20, 40, 60, 60);
+    rc  = wuss_window_create(owner, &box, "B", wuss_WINDOW_DEFAULT |
+                             wuss_WINDOW_STACK_BACK, wuss_NO_BACKDROP,
+                             SIZE2D(60, 60), SIZE2D(20, 20), &back);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_window_create(owner, &box, "A", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP, SIZE2D(60, 60), SIZE2D(20, 20),
+                            &mid_a);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_window_create(owner, &box, "M", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP, SIZE2D(60, 60), SIZE2D(20, 20),
+                            &mid_b);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_window_create(owner, &box, "T", wuss_WINDOW_DEFAULT |
+                            wuss_WINDOW_STACK_TOP, wuss_NO_BACKDROP,
+                            SIZE2D(60, 60), SIZE2D(20, 20), &top);
+    if (rc != result_OK) goto Failure;
+
+    /* a window is frontmost in its stack, and every stack is in front of
+     * the next regardless of creation order */
+    order[0] = top; order[1] = mid_b; order[2] = mid_a; order[3] = back;
+    if (!z_order_is(wuss, order, 4)) goto Failure;
+    if (wuss__window_at(wuss, POINT(50, 80)) != top) goto Failure;
+
+    /* front and back only move a window within its own stack */
+    wuss_window_restack(mid_a, wuss_ZORDER_FRONT);
+    order[1] = mid_a; order[2] = mid_b;
+    if (!z_order_is(wuss, order, 4)) goto Failure;
+
+    wuss_window_restack(back, wuss_ZORDER_FRONT);
+    wuss_window_restack(top, wuss_ZORDER_BACK);
+    if (!z_order_is(wuss, order, 4)) goto Failure; /* each alone in its stack */
+
+    wuss_window_restack(mid_a, wuss_ZORDER_BACK);
+    order[1] = mid_b; order[2] = mid_a;
+    if (!z_order_is(wuss, order, 4)) goto Failure;
+
+    /* set_stack lands at the front of the destination stack */
+    wuss_window_set_stack(mid_a, wuss_STACK_TOP);
+    order[0] = mid_a; order[1] = top; order[2] = mid_b;
+    if (!z_order_is(wuss, order, 4)) goto Failure;
+    if (wuss__window_at(wuss, POINT(50, 80)) != mid_a) goto Failure;
+
+    wuss_window_set_stack(mid_a, wuss_STACK_BACK);
+    order[0] = top; order[1] = mid_b; order[2] = mid_a; order[3] = back;
+    if (!z_order_is(wuss, order, 4)) goto Failure;
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK) goto Failure;
+
+    /* a window cannot be in two stacks at once */
+    rc = wuss_window_create(owner, &box, "X", wuss_WINDOW_STACK_TOP |
+                            wuss_WINDOW_STACK_BACK, wuss_NO_BACKDROP,
+                            SIZE2D(60, 60), SIZE2D(20, 20), &bad);
+    if (rc != result_BAD_ARG) goto Failure;
+
+    wuss_window_close(top);
+    wuss_window_close(mid_a);
+    wuss_window_close(mid_b);
+    wuss_window_close(back);
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK) goto Failure;
   }
 
 #ifdef WUSS_ICONBAR

@@ -115,15 +115,14 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
 
   if (!scroll_reclamped && !(window->flags & wuss_WINDOW_NO_RESIZE_BLIT))
   {
-    list_t *above;
+    wuss_window_t *above;
 
-    for (above = window->wuss->z_order.next;
-        above != &window->link &&
-          (wuss__window_from_link(above)->flags & wuss_WINDOW_HIDDEN);
-        above = above->next)
+    for (above = wuss__z_first(window->wuss);
+        above != window && (above->flags & wuss_WINDOW_HIDDEN);
+        above = wuss__z_below(above))
       ;
 
-    if (above == &window->link)
+    if (above == window)
     {
       box_t new_content, shifted;
 
