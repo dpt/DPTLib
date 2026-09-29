@@ -988,12 +988,15 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
                                       int             y,
                                       const bitmap_t *src,
                                       const box_t    *draw_box,
-                                      int             has_alpha)
+                                      int             has_alpha,
+                                      screen_dither_t dither)
 {
   pixelfmt_any16_t  colbuf[BITMAP_BLIT_CHUNK];
   unsigned char     alphabuf[BITMAP_BLIT_CHUNK];
   const pixelmap_t *srcpm;
   pixelfmt_any16_t *dstrow;
+  dither_t          bias;
+  int               do_dither;
   int               clipped_width, clipped_height;
   int               yy;
 
@@ -1003,6 +1006,10 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
   srcpm = src_pixelmap_for(src);
   if (srcpm == NULL && !src_is_deep(src))
     return result_NOT_SUPPORTED;
+
+  /* 5 bits is the coarsest channel of either format. colour_to_pixel
+   * truncates, so the bias is lifted by half a step to keep it unbiased. */
+  do_dither = dither_bias_build(&bias, 32, dither);
 
   dstrow = scr->base;
   dstrow += draw_box->y0 * scr->rowbytes / (int) sizeof(*dstrow) + draw_box->x0;
@@ -1026,9 +1033,20 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
 
       for (i = 0; i < chunk; i++)
       {
-        colour_t c;
+        colour_t     c;
+        unsigned int r, g, b;
+        int          sx;
 
-        c           = src_fetch_rgba(src, srcpm, draw_box->x0 + done + i - x, srcy);
+        sx = draw_box->x0 + done + i - x;
+        c  = src_fetch_rgba(src, srcpm, sx, srcy);
+        if (do_dither)
+        {
+          colour_get_rgb(&c, &r, &g, &b);
+          r = dither_channel(r + 4, &bias, sx, srcy);
+          g = dither_channel(g + 4, &bias, sx, srcy);
+          b = dither_channel(b + 4, &bias, sx, srcy);
+          c = colour_rgba(r, g, b, colour_get_alpha(&c));
+        }
         colbuf[i]   = (pixelfmt_any16_t) colour_to_pixel(scr->palette, 0, c, scr->format);
         alphabuf[i] = has_alpha ? colour_get_alpha(&c) : PIXELFMT_OPAQUE;
       }
@@ -1047,9 +1065,9 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
 }
 
 /* Shared body for screen_copy_bitmap and screen_copy_bitmap_dithered. With
- * "dither" set the paletted-screen (p1/p2/p4/p8) paths ordered-dither the
- * source RGB before the nearest-match lookup; the 32bpp path and the RLE path
- * ignore it (a 32bpp screen has the channel depth not to band, and an RLE
+ * "dither" set the paletted-screen (p1/p2/p4/p8) and 16bpp paths
+ * ordered-dither the source RGB before the nearest-match lookup or
+ * truncation; the 32bpp path and the RLE path ignore it (a 32bpp screen has the channel depth not to band, and an RLE
  * source is pre-quantised UI art). A paletted source (p1/p2/p4/p8, e.g. a PNG
  * saved with a PLTE chunk) is decoded through its own palette a pixel at a
  * time by src_fetch_rgba rather than unpacked to a scratch buffer up front. */
@@ -1092,7 +1110,7 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
   case 1: rc = screen_copy_bitmap_p2(scr, x, y, src, &draw_box, has_alpha, dither); break;
   case 2: rc = screen_copy_bitmap_p4(scr, x, y, src, &draw_box, has_alpha, dither); break;
   case 3: rc = screen_copy_bitmap_p8(scr, x, y, src, &draw_box, has_alpha, dither); break;
-  case 4: rc = screen_copy_bitmap_16(scr, x, y, src, &draw_box, has_alpha);         break;
+  case 4: rc = screen_copy_bitmap_16(scr, x, y, src, &draw_box, has_alpha, dither); break;
   case 5: rc = screen_copy_bitmap_32(scr, x, y, src, &draw_box, has_alpha);         break;
 
   default:

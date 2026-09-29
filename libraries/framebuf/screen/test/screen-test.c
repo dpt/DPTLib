@@ -1763,6 +1763,55 @@ static result_t test_16bpp_screen(pixelfmt_t fmt)
     }
   }
 
+  /* dithering: a flat grey between two 5-bit steps (132 = 16.5 steps) must
+   * use both neighbouring levels, and average near the true value */
+  {
+    static const screen_dither_t methods[] =
+    {
+      screen_DITHER_BAYER, screen_DITHER_BLUE_NOISE
+    };
+
+    pixelfmt_rgba8888_t flat[16 * 16];
+    pixelfmt_any16_t    big[16 * 16];
+    screen_t            bscr;
+    bitmap_t            fsrc;
+    unsigned int        b;
+    int                 m, i, nlo, nhi;
+
+    for (i = 0; i < 16 * 16; i++)
+      flat[i] = PIXELFMT_MAKE_RGBA8888(132, 132, 132, 255);
+    bitmap_init(&fsrc, SIZE2D(16, 16), pixelfmt_rgba8888,
+                16 * (int) sizeof(flat[0]), NULL, flat);
+    screen_init(&bscr, SIZE2D(16, 16), fmt, 16 * (int) sizeof(big[0]),
+                NULL, big);
+
+    for (m = 0; m < 2; m++)
+    {
+      memset(big, 0, sizeof(big));
+      if (screen_copy_bitmap_dithered(&bscr, 0, 0, &fsrc, methods[m]) !=
+          result_OK)
+        return result_TEST_FAILED;
+
+      nlo = nhi = 0;
+      for (i = 0; i < 16 * 16; i++)
+      {
+        /* blue is 5 bits in both formats */
+        b = (fmt == pixelfmt_rgb565) ? PIXELFMT_xxB565(big[i])
+                                     : PIXELFMT_xxBx5551(big[i]);
+        if (b == 16)
+          nlo++;
+        else if (b == 17)
+          nhi++;
+      }
+      if (nlo + nhi != 16 * 16 || nlo < 64 || nhi < 64)
+      {
+        printf("screen: 16bpp dither fmt=%d method=%d lo=%d hi=%d\n",
+               (int) fmt, m, nlo, nhi);
+        return result_TEST_FAILED;
+      }
+    }
+  }
+
   return result_TEST_PASSED;
 }
 
