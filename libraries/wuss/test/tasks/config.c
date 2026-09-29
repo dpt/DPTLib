@@ -48,7 +48,7 @@
 #define CONFIG_BAYER_ROWS ((CONFIG_NBAYER + CONFIG_GRID_COLS - 1) / CONFIG_GRID_COLS)
 #define CONFIG_GRID_ROWS  (CONFIG_HATCH_ROWS + CONFIG_BAYER_ROWS)
 
-#define CONFIG_LABEL_W    (10 * 6) /* px; enough for "Background" at 6px/char */
+#define CONFIG_G_LABEL    1 /* size group, see stack_item_t::group */
 
 /* MENU click pops this single-item menu; the item table and wuss_menu_t live
  * per-instance in config_task_t, not as a file-scope static, so that each
@@ -87,11 +87,6 @@ enum
   CONFIG_ST_BUTTON,
   CONFIG_ST__LIMIT
 };
-
-#define CONFIG_DOC_W            (wuss_STD_INSET * 2 + \
-                                 (wuss_STD_FRAME_INSET + wuss_STD_INSET) * 2 + \
-                                 CONFIG_LABEL_W + wuss_STD_GAP + \
-                                 CONFIG_GRID_COLS * CONFIG_CELL)
 
 #define CONFIG_GRID_H           (CONFIG_GRID_ROWS * CONFIG_CELL)
 
@@ -154,10 +149,11 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .align     = stack_ALIGN_FILL,
   },
 
-  [CONFIG_ST_FG_LABEL] = STACK_LEAF(CONFIG_ST_FG_HBOX,
-                                    CONFIG_LABEL_W,
-                                    CONFIG_CELL,
-                                    stack_ALIGN_FILL),
+  [CONFIG_ST_FG_LABEL] = STACK_LEAF_GROUP(CONFIG_ST_FG_HBOX,
+                                          0,
+                                          CONFIG_CELL,
+                                          stack_ALIGN_FILL,
+                                          CONFIG_G_LABEL),
 
   [CONFIG_ST_FG_ROW] = STACK_LEAF(CONFIG_ST_FG_HBOX,
                                   CONFIG_GRID_COLS * CONFIG_CELL,
@@ -173,10 +169,11 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .align     = stack_ALIGN_FILL,
   },
 
-  [CONFIG_ST_BG_LABEL] = STACK_LEAF(CONFIG_ST_BG_HBOX,
-                                    CONFIG_LABEL_W,
-                                    CONFIG_CELL,
-                                    stack_ALIGN_FILL),
+  [CONFIG_ST_BG_LABEL] = STACK_LEAF_GROUP(CONFIG_ST_BG_HBOX,
+                                          0,
+                                          CONFIG_CELL,
+                                          stack_ALIGN_FILL,
+                                          CONFIG_G_LABEL),
 
   [CONFIG_ST_BG_ROW] = STACK_LEAF(CONFIG_ST_BG_HBOX,
                                   CONFIG_GRID_COLS * CONFIG_CELL,
@@ -192,10 +189,11 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .align     = stack_ALIGN_FILL,
   },
 
-  [CONFIG_ST_GRID_LABEL] = STACK_LEAF(CONFIG_ST_GRID_HBOX,
-                                      CONFIG_LABEL_W,
-                                      CONFIG_CELL,
-                                      stack_ALIGN_START),
+  [CONFIG_ST_GRID_LABEL] = STACK_LEAF_GROUP(CONFIG_ST_GRID_HBOX,
+                                            0,
+                                            CONFIG_CELL,
+                                            stack_ALIGN_START,
+                                            CONFIG_G_LABEL),
 
   [CONFIG_ST_GRID] = STACK_LEAF(CONFIG_ST_GRID_HBOX,
                                 CONFIG_GRID_COLS * CONFIG_CELL,
@@ -211,10 +209,11 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .align     = stack_ALIGN_FILL,
   },
 
-  [CONFIG_ST_RESULT_SPACER] = STACK_LEAF(CONFIG_ST_RESULT_HBOX,
-                                         CONFIG_LABEL_W,
-                                         CONFIG_RESULT,
-                                         stack_ALIGN_FILL),
+  [CONFIG_ST_RESULT_SPACER] = STACK_LEAF_GROUP(CONFIG_ST_RESULT_HBOX,
+                                               0,
+                                               CONFIG_RESULT,
+                                               stack_ALIGN_FILL,
+                                               CONFIG_G_LABEL),
 
   [CONFIG_ST_RESULT] = STACK_LEAF(CONFIG_ST_RESULT_HBOX,
                                   CONFIG_GRID_COLS * CONFIG_CELL,
@@ -230,10 +229,11 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .align     = stack_ALIGN_FILL,
   },
 
-  [CONFIG_ST_BUTTON_SPACER] = STACK_LEAF(CONFIG_ST_BUTTON_HBOX,
-                                         CONFIG_LABEL_W,
-                                         wuss_STD_SECONDARY_BUTTON_HEIGHT,
-                                         stack_ALIGN_FILL),
+  [CONFIG_ST_BUTTON_SPACER] = STACK_LEAF_GROUP(CONFIG_ST_BUTTON_HBOX,
+                                               0,
+                                               wuss_STD_SECONDARY_BUTTON_HEIGHT,
+                                               stack_ALIGN_FILL,
+                                               CONFIG_G_LABEL),
 
   [CONFIG_ST_BUTTON] = STACK_LEAF(CONFIG_ST_BUTTON_HBOX,
                                   CONFIG_GRID_COLS * CONFIG_CELL,
@@ -303,6 +303,7 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   box_t            backdrop_frame;
   wuss_icon_spec_t specs[CONFIG_NICONS];
   wuss_icon_t     *icons[CONFIG_NICONS];
+  stack_item_t     items[CONFIG_ST__LIMIT];
   size2d_t         doc;
   size2d_t         min_sz;
 
@@ -327,11 +328,20 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
 
   task->delegate = delegate;
 
-  rc = stack_smallest(g_config_stack, NELEMS(g_config_stack), &min_sz);
+  /* each label's natural width; the size group widens the rest to match */
+  memcpy(items, g_config_stack, sizeof(items));
+  items[CONFIG_ST_FG_LABEL].axis_size =
+    task_text_width(wuss, "Foreground");
+  items[CONFIG_ST_BG_LABEL].axis_size =
+    task_text_width(wuss, "Background");
+  items[CONFIG_ST_GRID_LABEL].axis_size =
+    task_text_width(wuss, "Patterns");
+
+  rc = stack_smallest(items, NELEMS(items), &min_sz);
   if (rc != result_OK)
     goto fail_delegate;
 
-  doc = SIZE2D(CONFIG_DOC_W, min_sz.h);
+  doc = min_sz;
 
   rc = wuss_window_create_placed(delegate,
                                  doc,
@@ -348,7 +358,7 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   }
 
   root = (box_t) BOX_POS_SIZE(0, 0, doc.w, doc.h);
-  rc = stack_solve(g_config_stack, NELEMS(g_config_stack), &root, boxes);
+  rc = stack_solve(items, NELEMS(items), &root, boxes);
   if (rc != result_OK)
     goto fail_delegate;
 

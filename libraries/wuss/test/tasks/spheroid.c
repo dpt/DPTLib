@@ -4,7 +4,9 @@
 
 #include <math.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -148,8 +150,8 @@ enum
   SI__LIMIT
 };
 
-#define SS_LABEL_W      (7 * 6) /* enough for "Ambient" */
-#define SS_VALUE_W      (4 * 6) /* enough for "200%" */
+#define SS_G_LABEL      1 /* size groups, see stack_item_t::group */
+#define SS_G_VALUE      2
 #define SS_SLIDER_MIN_W (64)
 
 #define SS_FRAME(parent_) \
@@ -163,9 +165,9 @@ enum
 
 #define SS_ROW_ITEMS(n, frame) \
   [SS_ROW + 4 * (n)]     = STACK_HBOX(frame, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START), \
-  [SS_ROW + 4 * (n) + 1] = STACK_LEAF(SS_ROW + 4 * (n), SS_LABEL_W, 16, stack_ALIGN_CENTRE), \
+  [SS_ROW + 4 * (n) + 1] = STACK_LEAF_GROUP(SS_ROW + 4 * (n), 0, 16, stack_ALIGN_CENTRE, SS_G_LABEL), \
   [SS_ROW + 4 * (n) + 2] = STACK_LEAF_EX(SS_ROW + 4 * (n), 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, SS_SLIDER_MIN_W, 0), \
-  [SS_ROW + 4 * (n) + 3] = STACK_LEAF(SS_ROW + 4 * (n), SS_VALUE_W, 16, stack_ALIGN_CENTRE)
+  [SS_ROW + 4 * (n) + 3] = STACK_LEAF_GROUP(SS_ROW + 4 * (n), 0, 16, stack_ALIGN_CENTRE, SS_G_VALUE)
 
 static const stack_item_t spheroid_strip[SS__LIMIT] =
 {
@@ -180,13 +182,36 @@ static const stack_item_t spheroid_strip[SS__LIMIT] =
   SS_ROW_ITEMS(SPHEROID_ROW_SHARPNESS, SS_LIGHT),
   SS_ROW_ITEMS(SPHEROID_ROW_INTENSITY, SS_LIGHT),
   [SS_ON_LINE]   = STACK_HBOX(SS_LIGHT, wuss_STD_OPTION_SIZE, wuss_STD_GAP, stack_ALIGN_FILL),
-  [SS_ON_LABEL]  = STACK_LEAF(SS_ON_LINE, SS_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [SS_ON_LABEL]  = STACK_LEAF_GROUP(SS_ON_LINE, 0, 16, stack_ALIGN_CENTRE, SS_G_LABEL),
   [SS_ON]        = STACK_LEAF(SS_ON_LINE, wuss_STD_OPTION_SIZE, 0, stack_ALIGN_FILL),
   [SS_ON_SPACER] = STACK_SPACER(SS_ON_LINE, 1),
   [SS_COLOUR + SPHEROID_COLOUR_SPHERE]     = SS_LINE(SS_SPHERE),
   [SS_COLOUR + SPHEROID_COLOUR_BACKGROUND] = SS_LINE(SS_BACKDROP),
   [SS_COLOUR + SPHEROID_COLOUR_LIGHT]      = SS_LINE(SS_LIGHT)
 };
+
+/* Copies spheroid_strip into items, giving each label and value its natural
+ * width in the desktop font; the size groups widen the rest to match. */
+static void spheroid_strip_items(const wuss_t *wuss, stack_item_t *items)
+{
+  char text[WUSS_SLIDER_ROW_BUF];
+  int  row;
+
+  memcpy(items, spheroid_strip, sizeof(spheroid_strip));
+
+  for (row = 0; row < SPHEROID_NROWS; row++)
+  {
+    items[SS_ROW + 4 * row + 1].axis_size =
+      task_text_width(wuss, spheroid_rows[row].label);
+
+    snprintf(text, sizeof(text),
+             spheroid_rows[row].fmt ? spheroid_rows[row].fmt : "%d",
+             spheroid_rows[row].max);
+    items[SS_ROW + 4 * row + 3].axis_size = task_text_width(wuss, text);
+  }
+
+  items[SS_ON_LABEL].axis_size = task_text_width(wuss, "On");
+}
 
 /* per-redraw constants, worked out once rather than per pixel */
 typedef struct spheroid_frame
@@ -568,6 +593,7 @@ static result_t spheroid_strip_create(spheroid_task_t *task, int height)
 {
   result_t         rc;
   box_t            root;
+  stack_item_t     items[SS__LIMIT];
   box_t            boxes[SS__LIMIT];
   box_t            line;
   wuss_icon_spec_t specs[SI__LIMIT];
@@ -575,8 +601,10 @@ static result_t spheroid_strip_create(spheroid_task_t *task, int height)
   wuss_icon_t     *made[SI__LIMIT];
   int              row, item, icon, which;
 
+  spheroid_strip_items(task->wuss, items);
+
   root = (box_t) BOX_POS_SIZE(0, 0, SPHEROID_STRIP, height);
-  rc = stack_solve(spheroid_strip, NELEMS(spheroid_strip), &root, boxes);
+  rc = stack_solve(items, NELEMS(items), &root, boxes);
   if (rc != result_OK)
     return rc;
 
@@ -623,7 +651,8 @@ static result_t spheroid_strip_create(spheroid_task_t *task, int height)
     line.x1 += wuss_colourset_button_width(task->wuss, line.y1 - line.y0);
     rc = wuss_colourset_create(&task->colour_sets[which], task->window,
                                line, "Colour",
-                               SS_LABEL_W, /* line up with the sliders */
+                               boxes[SS_ROW + 1].x1 - boxes[SS_ROW + 1].x0,
+                               /* line up with the sliders */
                                0, spheroid_colour_changed, task);
     if (rc != result_OK)
       return rc;
@@ -647,11 +676,13 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
   spheroid_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  stack_item_t     items[SS__LIMIT];
   size2d_t         strip_sz;
   int              i;
 
   /* the strip sets the window's minimum height */
-  rc = stack_smallest(spheroid_strip, NELEMS(spheroid_strip), &strip_sz);
+  spheroid_strip_items(wuss, items);
+  rc = stack_smallest(items, NELEMS(items), &strip_sz);
   if (rc != result_OK)
     return rc;
 

@@ -444,10 +444,11 @@ static result_t saturn_key(saturn_task_t *task,
 }
 
 /* stack items for the size dialogue's layout: a VBOX of label / slider /
- * value-echo / button-row, with fixed-size spacers standing in for the
- * (non-uniform) gaps between them. BTN_ROW is an HBOX with Cancel and
- * Apply side by side, gapped and top-aligned (Apply is taller than
- * Cancel, both start flush with the row's top edge). */
+ * value-echo rows above a button row. Labels share size group ST_G_LABEL and
+ * values ST_G_VALUE, so each column is as wide as its widest member (their
+ * axis_size is patched from the font in saturn_conf_dialogue_create). The
+ * button row starts with a spacer in the label group, so the buttons sit
+ * under the sliders and values and share that width between them. */
 enum
 {
   ST_ROOT,
@@ -473,6 +474,8 @@ enum
   ST_VAL4,
 
   ST_BTNS,
+  ST_BSPC,
+  ST_BBOX,
   ST_DFLT,
   ST_CNCL,
   ST_APLY,
@@ -483,8 +486,8 @@ enum
 /* Leaf main-axis sizes, named so saturn_conf_dialogue_create's hand-computed
  * minimum window size can share them with the table below instead of
  * repeating the numbers as bare literals. */
-#define ST_LABEL_W          (5*6) /* enough for "Iters" */
-#define ST_LABEL2_W         (4*6) /* enough for "9999" */
+#define ST_G_LABEL          1 /* size groups, see stack_item_t::group */
+#define ST_G_VALUE          2
 #define ST_SLIDER_MIN_W     (64)
 #define ST_CHAR_W           6 /* ponytail: assumes the 6px system font */
 #define ST_ACTION_WIDTH(W)  ((W)*ST_CHAR_W+2*wuss_STD_SECONDARY_BUTTON_BORDER)
@@ -499,29 +502,32 @@ static const stack_item_t g_saturn_conf_stack[SIZE_STACK__LIMIT] =
                 .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
 
   [ST_ROW1]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
-  [ST_LABL1] = STACK_LEAF(ST_ROW1, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_LABL1] = STACK_LEAF_GROUP(ST_ROW1, 0, 16, stack_ALIGN_CENTRE, ST_G_LABEL),
   [ST_SLDR1] = STACK_LEAF_EX(ST_ROW1, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
-  [ST_VAL1]  = STACK_LEAF(ST_ROW1, ST_LABEL2_W, 16, stack_ALIGN_CENTRE),
+  [ST_VAL1]  = STACK_LEAF_GROUP(ST_ROW1, 0, 16, stack_ALIGN_CENTRE, ST_G_VALUE),
 
   [ST_ROW2]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
-  [ST_LABL2] = STACK_LEAF(ST_ROW2, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_LABL2] = STACK_LEAF_GROUP(ST_ROW2, 0, 16, stack_ALIGN_CENTRE, ST_G_LABEL),
   [ST_SLDR2] = STACK_LEAF_EX(ST_ROW2, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
-  [ST_VAL2]  = STACK_LEAF(ST_ROW2, ST_LABEL2_W, 16, stack_ALIGN_CENTRE),
+  [ST_VAL2]  = STACK_LEAF_GROUP(ST_ROW2, 0, 16, stack_ALIGN_CENTRE, ST_G_VALUE),
 
   [ST_ROW3]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
-  [ST_LABL3] = STACK_LEAF(ST_ROW3, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_LABL3] = STACK_LEAF_GROUP(ST_ROW3, 0, 16, stack_ALIGN_CENTRE, ST_G_LABEL),
   [ST_SLDR3] = STACK_LEAF_EX(ST_ROW3, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
-  [ST_VAL3]  = STACK_LEAF(ST_ROW3, ST_LABEL2_W, 16, stack_ALIGN_CENTRE),
+  [ST_VAL3]  = STACK_LEAF_GROUP(ST_ROW3, 0, 16, stack_ALIGN_CENTRE, ST_G_VALUE),
 
   [ST_ROW4]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
-  [ST_LABL4] = STACK_LEAF(ST_ROW4, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_LABL4] = STACK_LEAF_GROUP(ST_ROW4, 0, 16, stack_ALIGN_CENTRE, ST_G_LABEL),
   [ST_SLDR4] = STACK_LEAF_EX(ST_ROW4, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
-  [ST_VAL4]  = STACK_LEAF(ST_ROW4, ST_LABEL2_W, 16, stack_ALIGN_CENTRE),
+  [ST_VAL4]  = STACK_LEAF_GROUP(ST_ROW4, 0, 16, stack_ALIGN_CENTRE, ST_G_VALUE),
 
-  [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
-  [ST_DFLT]  = STACK_LEAF(ST_BTNS, ST_DEFAULT_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
-  [ST_CNCL]  = STACK_LEAF(ST_BTNS, ST_CANCEL_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
-  [ST_APLY]  = STACK_LEAF(ST_BTNS, ST_APPLY_W, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
+  [ST_BSPC]  = STACK_SPACER_GROUP(ST_BTNS, 0, ST_G_LABEL),
+  [ST_BBOX]  = { .kind = stack_KIND_HBOX, .parent = ST_BTNS,
+                .gap = wuss_STD_GAP, .flex = 1 },
+  [ST_DFLT]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, ST_DEFAULT_W, 0),
+  [ST_CNCL]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, ST_CANCEL_W, 0),
+  [ST_APLY]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, ST_APPLY_W, 0),
 };
 
 /* Build the size dialogue once: a label, a slider snapped to
@@ -543,15 +549,28 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
   result_t         rc;
   wuss_icon_spec_t specs[SATURN_SIZE_NICONS];
   wuss_icon_t     *made[SATURN_SIZE_NICONS];
+  stack_item_t     items[SIZE_STACK__LIMIT];
   box_t            boxes[SIZE_STACK__LIMIT];
   box_t            root;
   char             value_bufs[SATURN_SIZEDLG_NROWS][WUSS_SLIDER_ROW_BUF];
   int              value, row;
   size2d_t         min_sz;
 
+  /* each label/value's natural width; the size groups widen the rest to match */
+  memcpy(items, g_saturn_conf_stack, sizeof(items));
+  for (row = 0; row < SATURN_SIZEDLG_NROWS; row++)
+  {
+    const saturn_sizedlg_rowdesc_t *desc = &g_saturn_sizedlg_rows[row];
+    char                            widest[WUSS_SLIDER_ROW_BUF];
+
+    items[label_box[row]].axis_size = task_text_width(task->wuss, desc->label);
+    snprintf(widest, sizeof(widest), "%d", desc->max);
+    items[value_box[row]].axis_size = task_text_width(task->wuss, widest);
+  }
+
   /* smallest window the layout can be solved into without any flex item
    * (the sliders) growing past its minimum */
-  rc = stack_smallest(g_saturn_conf_stack, NELEMS(g_saturn_conf_stack), &min_sz);
+  rc = stack_smallest(items, NELEMS(items), &min_sz);
   if (rc != result_OK)
     return rc;
 
@@ -561,7 +580,7 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
     return rc;
 
   root = (box_t) BOX_POS_SIZE(0, 0, min_sz.w, min_sz.h);
-  rc = stack_solve(g_saturn_conf_stack, NELEMS(g_saturn_conf_stack), &root, boxes);
+  rc = stack_solve(items, NELEMS(items), &root, boxes);
   if (rc != result_OK)
     goto exit;
 

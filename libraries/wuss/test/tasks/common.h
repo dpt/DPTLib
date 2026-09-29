@@ -3,11 +3,16 @@
 #ifndef TASKS_COMMON_H
 #define TASKS_COMMON_H
 
+#include <limits.h>
+#include <string.h>
+
 #include "base/result.h"
+#include "framebuf/bmfont.h"
 #include "geom/size.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
+#include "wuss/wuss.h"
 
 /* braced initialiser for a wuss_proginfo_desc_t, filling in the author and
  * version lines every demo task shares */
@@ -45,6 +50,17 @@ static inline int task_key_is_plain(wuss_task_t        *task,
 
   return (key->data.key.modifiers &
           (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT)) == 0;
+}
+
+/* pixel width of text in the desktop font, for sizing stack leaves */
+static inline int task_text_width(const wuss_t *wuss, const char *text)
+{
+  bmfont_width_t width;
+
+  bmfont_measure(wuss_get_font(wuss), text, (int) strlen(text), NULL,
+                 INT_MAX, NULL, &width);
+
+  return width;
 }
 
 #endif /* TASKS_COMMON_H */
