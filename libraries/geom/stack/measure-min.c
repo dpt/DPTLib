@@ -48,15 +48,12 @@ static void stack__measure(const stack_item_t *items,
       else
         child_main = MAX(child_main, items[i].min);
     }
-    else if (items[i].kind == stack_KIND_SPACER)
+    else /* stack_KIND_LEAF or stack_KIND_SPACER */
     {
-      child_main  = 0;
-      child_cross = 0;
-    }
-    else /* stack_KIND_LEAF */
-    {
-      child_main  = items[i].axis_size ? items[i].axis_size : items[i].min;
-      child_cross = items[i].cross_size;
+      child_main  = stack__axis_size(items, n, i);
+      if (child_main == 0)
+        child_main = items[i].min;
+      child_cross = items[i].kind == stack_KIND_SPACER ? 0 : items[i].cross_size;
     }
 
     main_min += child_main + (nchildren > 0 ? items[index].gap : 0);

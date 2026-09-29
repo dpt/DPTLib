@@ -64,11 +64,10 @@ static void stack__resolve_hug(const stack_item_t *items,
     }
     else
     {
-      resolved[i] = items[i].axis_size; /* STACK_HUG is rejected on
-                                         * non-containers, so this is never
-                                         * -1 here */
-      child_main  = items[i].kind == stack_KIND_SPACER ? 0 :
-                                     (items[i].axis_size ? items[i].axis_size : items[i].min);
+      resolved[i] = stack__axis_size(items, n, i); /* STACK_HUG is rejected
+                                                    * on non-containers, so
+                                                    * this is never -1 here */
+      child_main  = resolved[i] ? resolved[i] : items[i].min;
     }
 
     main_sum += child_main + (nchildren > 0 ? items[index].gap : 0);
