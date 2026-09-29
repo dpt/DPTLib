@@ -215,6 +215,39 @@ static void screen_fill_pattern_32(screen_t        *scr,
   }
 }
 
+static void screen_fill_pattern_16(screen_t        *scr,
+                                   const pattern_t *pattern,
+                                   const box_t     *draw_box,
+                                   int              stencil,
+                                   pattern_runs_t   runs)
+{
+  unsigned char *rowp;
+  int            row, col, x, y;
+
+  rowp = (unsigned char *) scr->base + draw_box->y0 * scr->rowbytes;
+  for (y = draw_box->y0; y < draw_box->y1; y++)
+  {
+    const pixelfmt_any_t *run;
+    uint8_t               bits;
+    unsigned short       *scrp;
+
+    row  = (y - pattern->origin.y) & 7;
+    run  = runs[row];
+    bits = pattern->bits[row];
+    scrp = (unsigned short *) rowp + draw_box->x0;
+    col  = 0;
+    for (x = draw_box->x0; x < draw_box->x1; x++)
+    {
+      if (!stencil ||
+          (bits & (0x80u >> ((x - pattern->origin.x) & 7))))
+        *scrp = (unsigned short) run[col];
+      scrp++;
+      col = (col + 1) & 7;
+    }
+    rowp += scr->rowbytes;
+  }
+}
+
 void screen_fill_pattern(screen_t        *scr,
                          const box_t     *box,
                          const pattern_t *pattern)
@@ -272,6 +305,10 @@ void screen_fill_pattern(screen_t        *scr,
 
   case 3:
     screen_fill_pattern_p8(scr, pattern, &draw_box, stencil, runs);
+    break;
+
+  case 4:
+    screen_fill_pattern_16(scr, pattern, &draw_box, stencil, runs);
     break;
 
   case 5:

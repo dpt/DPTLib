@@ -30,7 +30,7 @@ result_t bitmap_fill_pattern(bitmap_t        *bm,
     return result_NOT_SUPPORTED;
 
   log2bpp = pixelfmt_log2bpp(bm->format);
-  if (log2bpp != 3 && log2bpp != 5)
+  if (log2bpp != 3 && log2bpp != 4 && log2bpp != 5)
     return result_NOT_SUPPORTED;
 
   full.x0 = 0;
@@ -79,6 +79,24 @@ result_t bitmap_fill_pattern(bitmap_t        *bm,
           row[x] = (uint8_t) fg;
         else if (!stencil)
           row[x] = (uint8_t) bg;
+    }
+  }
+  else if (log2bpp == 4) /* 16bpp */
+  {
+    uint8_t        *base;
+    unsigned short *row;
+
+    base = bm->base;
+    for (y = clip.y0; y < clip.y1; y++)
+    {
+      uint8_t bits = pattern->bits[(y - yphase) & 7];
+
+      row = (unsigned short *) (base + (size_t) y * bm->rowbytes);
+      for (x = clip.x0; x < clip.x1; x++)
+        if (bits & (0x80 >> ((x - xphase) & 7)))
+          row[x] = (unsigned short) fg;
+        else if (!stencil)
+          row[x] = (unsigned short) bg;
     }
   }
   else /* 32bpp */
