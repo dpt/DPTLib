@@ -6,22 +6,22 @@
 
 #include "impl.h"
 
-/* RGB each named symbolic colour resolves to, in wuss_COLOUR_BLACK.. order. */
-static const unsigned char wuss__named_rgb[][3] =
-{
-  { 0x00, 0x00, 0x00 }, /* wuss_COLOUR_BLACK   */
-  { 0xFF, 0xFF, 0xFF }, /* wuss_COLOUR_WHITE   */
-  { 0xFF, 0x00, 0x00 }, /* wuss_COLOUR_RED     */
-  { 0x00, 0xFF, 0x00 }, /* wuss_COLOUR_GREEN   */
-  { 0x00, 0x00, 0xFF }, /* wuss_COLOUR_BLUE    */
-  { 0xFF, 0xFF, 0x00 }, /* wuss_COLOUR_YELLOW  */
-  { 0x00, 0xFF, 0xFF }, /* wuss_COLOUR_CYAN    */
-  { 0xFF, 0x00, 0xFF }, /* wuss_COLOUR_MAGENTA */
-  { 0x80, 0x80, 0x80 }  /* wuss_COLOUR_GREY    */
-};
-
 void wuss__rebuild_palettecache(wuss_t *wuss)
 {
+  /* RGB each named symbolic colour resolves to, in wuss_COLOUR_BLACK.. order. */
+  static const unsigned char named_rgb[][3] =
+  {
+    { 0x00, 0x00, 0x00 }, /* wuss_COLOUR_BLACK   */
+    { 0xFF, 0xFF, 0xFF }, /* wuss_COLOUR_WHITE   */
+    { 0xFF, 0x00, 0x00 }, /* wuss_COLOUR_RED     */
+    { 0x00, 0xFF, 0x00 }, /* wuss_COLOUR_GREEN   */
+    { 0x00, 0x00, 0xFF }, /* wuss_COLOUR_BLUE    */
+    { 0xFF, 0xFF, 0x00 }, /* wuss_COLOUR_YELLOW  */
+    { 0x00, 0xFF, 0xFF }, /* wuss_COLOUR_CYAN    */
+    { 0xFF, 0x00, 0xFF }, /* wuss_COLOUR_MAGENTA */
+    { 0x80, 0x80, 0x80 }  /* wuss_COLOUR_GREY    */
+  };
+
   wuss_colour_t *cache;
   size_t         i;
 
@@ -34,12 +34,12 @@ void wuss__rebuild_palettecache(wuss_t *wuss)
   for (i = 0; i < NELEMS(wuss->palettecache); i++)
     cache[i] = wuss_COLOUR_SYMBOLIC;
 
-  for (i = 0; i < NELEMS(wuss__named_rgb); i++)
+  for (i = 0; i < NELEMS(named_rgb); i++)
     cache[(wuss_COLOUR_BLACK - wuss_COLOUR_SYMBOLIC) + i] =
       wuss_nearest_colour(wuss,
-                          wuss__named_rgb[i][0],
-                          wuss__named_rgb[i][1],
-                          wuss__named_rgb[i][2]);
+                          named_rgb[i][0],
+                          named_rgb[i][1],
+                          named_rgb[i][2]);
 
 #ifdef WUSS_FURNITURE
   cache[wuss_COLOUR_TITLE_BG - wuss_COLOUR_SYMBOLIC] =

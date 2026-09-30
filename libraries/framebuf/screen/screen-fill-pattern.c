@@ -270,20 +270,21 @@ typedef void (*fill_pattern_fn_t)(screen_t *,
                                   pixelfmt_any_t,
                                   pattern_runs_t);
 
-static const fill_pattern_fn_t fill_fns[] =
-{
-  screen_fill_pattern_p1,
-  screen_fill_pattern_p2,
-  screen_fill_pattern_p4,
-  screen_fill_pattern_p8,
-  screen_fill_pattern_16,
-  screen_fill_pattern_32,
-};
 
 void screen_fill_pattern(screen_t        *scr,
                          const box_t     *box,
                          const pattern_t *pattern)
 {
+  static const fill_pattern_fn_t fill_fns[] =
+  {
+    screen_fill_pattern_p1,
+    screen_fill_pattern_p2,
+    screen_fill_pattern_p4,
+    screen_fill_pattern_p8,
+    screen_fill_pattern_16,
+    screen_fill_pattern_32,
+  };
+
   box_t          clip_box;
   box_t          draw_box;
   int            stencil;
