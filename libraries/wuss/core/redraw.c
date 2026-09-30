@@ -213,6 +213,10 @@ result_t wuss_redraw_dirty(wuss_t *wuss)
     fill_backdrop_excluding_content(wuss, &wuss->dirty[i]);
 
     redraw_from(wuss, &wuss->dirty[i], &rc);
+
+    /* redraw_window left the clip at the last window piece it painted; widen
+     * it back to the whole dirty rect or the ants are cut to that window */
+    wuss->scr->clip = wuss->dirty[i];
     wuss__drag_draw(wuss);
   }
 
