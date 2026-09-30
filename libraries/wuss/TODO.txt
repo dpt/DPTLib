@@ -4,17 +4,6 @@ Ordered by dependency. Each layer builds on the ones above it.
 Items marked (blocks: X) are prerequisites for X.
 
 
-LAYER 0 - BUGS (fix before building on top)
-
-- SDL bug? Random mouse focus issue that stops us receiving initial clicks.
-
-
-LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
-
-- Named colours?
-    blocks: furniture colour selection, desktop palette editor
-
-
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
 
 - Hierarchical fonts: directory layout, bmfontfamily selection primitives
@@ -22,12 +11,11 @@ LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
   done. Still to do: let the wuss library itself take a family rather than
   fixed slots, and italic/large selection.
     blocks: bold/italic/large fonts, symbol selection
-- 6px desktop font sizing getting built in. Need to be able to specify
-  character sizes to the stacker?
-    blocks: icon sizing to desktop font
+- Identify and fix places where we've assumed a 6px desktop font size. e.g. use
+  of the stacker. Similarly some desktop components are sized around RISC OS
+  sizings and not derived from the currently selected desktop font.
 - How to get bold etc. into the system (consistently)? How to select symbols?
 - Large fonts for titles, italic font, ...
-- Icon size inconsistencies. Need to size to desktop font.
 
 
 LAYER 3 - SPRITES (needs masks)
@@ -46,25 +34,26 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
   (outline-click bug fixed; unblocked)
 - Furniture colour selection needs improvements (e.g. losing menu
   readability when palette changed)
-- Preferences for window opening positions
-- Grid layouts / alignment / something so we can get neat layouts
 
 
 LAYER 5 - DRAG & TEMPLATES (needs sprites, config-after-the-fact)
 
-- Dragbox concepts (mouse clamping, marching ants)
-    blocks: Drag & Drop
+- Dragbox concepts (mouse clamping, marching ants) -- done (core drag
+  session, DRAGGABLE icon)
 - Window and menu templates (text format?)
-- Drag & Drop
+- Drag & Drop -- done (DataSave/DataSaveAck/DataLoad/DataLoadAck, Save As
+  component, Filer drop target; see docs/windowing/drag-save-plan.md).
+  Deferred: load from the Filer, task-to-task transfer, RAM transfer
 
 
 LAYER 6 - MULTI-TASK (needs stable windows, templates)
 
-- Messaging between tasks
-    blocks: Desktop cohort, pop-to-front of running apps
+- Messaging between tasks -- done (point-to-point and broadcast, plain/
+  recorded send, acknowledge/bounce; see docs/windowing/drag-save-plan.md)
 - Pop-to-front of 'running' apps
 - Backdrop: register events, or a task that covers it like Pinboard
-- Icon bar - a separate task or module?
+- Icon bar - a separate task or module? -- has a task (Filer); icon bar
+  itself still core
 
 
 LAYER 7 - APPS & POLISH (needs most of the above)
@@ -74,7 +63,7 @@ LAYER 7 - APPS & POLISH (needs most of the above)
 - Have a Paint app as a target
 - Desktop cohort: Filer, Task Manager, Palette Util
 - Desktop palette editor (needs named colours; see Palette Util)
-- Colour Picker component
+- 24-bit Colour Picker component (named colours?)
 - Proper desktop font (just iterate on existing one?)
 - Support paletted images
 - Greebling symmetry
@@ -82,9 +71,11 @@ LAYER 7 - APPS & POLISH (needs most of the above)
 - 8x8 icon libraries - share the greeble code with other parts of wuss
 - Tiled fills (tile_1)
 - Rounded corner windows
-- Constraints
-- Procedural noise app
+- Constraints, or some sort of layout technique for getting aligned columns when laying out
+- Procedural noise app. Dithering app.
 - More tasks: TGE/CHQ/...
+- Configure: System font changing
+- Filer style window (drags first)
 
 
 NO STRONG DEPS (do any time)
