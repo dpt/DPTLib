@@ -684,13 +684,7 @@ result_t porter_duff_handle(wuss_window_t      *window,
     if (event->data.menu_select.menu == &pd->menu &&
         event->data.menu_select.index == PORTER_DUFF_MENU_SAVE)
     {
-      wuss_window_t *saveas_win;
-
-      saveas_win = wuss_saveas_window(pd->saveas);
-      wuss_window_set_hidden(saveas_win, 0);
-      wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
-
-      return result_OK;
+      return wuss_saveas_open(pd->saveas);
     }
     if (event->data.menu_select.menu == &pd->rule_menu)
       return porter_duff_pick_rule(pd, event);

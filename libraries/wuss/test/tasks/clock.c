@@ -472,13 +472,7 @@ result_t clock_handle(wuss_window_t      *window,
     if (event->data.menu_select.menu == &cc->menu &&
         event->data.menu_select.index == CLOCK_MENU_SAVE)
     {
-      wuss_window_t *saveas_win;
-
-      saveas_win = wuss_saveas_window(cc->saveas);
-      wuss_window_set_hidden(saveas_win, 0);
-      wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
-
-      return result_OK;
+      return wuss_saveas_open(cc->saveas);
     }
     return clock_menu_select(cc, event);
 

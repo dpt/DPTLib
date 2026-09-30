@@ -409,11 +409,7 @@ result_t patterns_handle(wuss_window_t      *window,
       else if (event->data.menu_select.menu == &bc->menu &&
                event->data.menu_select.index == PATTERNS_MENU_SAVE)
       {
-        wuss_window_t *saveas_win;
-
-        saveas_win = wuss_saveas_window(bc->saveas);
-        wuss_window_set_hidden(saveas_win, 0);
-        wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
+        rc = wuss_saveas_open(bc->saveas);
       }
       return rc;
     }

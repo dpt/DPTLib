@@ -433,13 +433,7 @@ static result_t greeble_menu_select(greeble_task_t     *task,
   else if (event->data.menu_select.menu == &task->menu &&
            event->data.menu_select.index == GREEBLE_MENU_SAVE)
   {
-    wuss_window_t *saveas_win;
-
-    saveas_win = wuss_saveas_window(task->saveas);
-    wuss_window_set_hidden(saveas_win, 0);
-    wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
-
-    rc = result_OK;
+    rc = wuss_saveas_open(task->saveas);
   }
   else
   {

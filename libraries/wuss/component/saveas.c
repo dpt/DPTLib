@@ -16,6 +16,7 @@
 
 #include "wuss/icon.h"
 #include "wuss/icon-spec.h"
+#include "wuss/menu.h"
 #include "wuss/message.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
@@ -301,6 +302,21 @@ const char *wuss_saveas_get_path(const wuss_saveas_t *saveas)
 wuss_window_t *wuss_saveas_window(const wuss_saveas_t *saveas)
 {
   return saveas ? wuss_dialogue_window(saveas->dialogue) : NULL;
+}
+
+result_t wuss_saveas_open(wuss_saveas_t *saveas)
+{
+  wuss_window_t *win;
+  point_t        at;
+
+  win = wuss_dialogue_window(saveas->dialogue);
+
+  /* centred on the pointer, as a RISC OS Save As opened from a key press */
+  at    = wuss_get_pointer(saveas->wuss);
+  at.x -= SAVEAS_SIDE / 2;
+  at.y -= SAVEAS_SIDE / 2;
+
+  return wuss_menu_open_window(saveas->task, win, at, NULL);
 }
 
 /* ----------------------------------------------------------------------- */
