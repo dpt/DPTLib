@@ -129,7 +129,7 @@ void wuss_frontend_zoom(wuss_frontend_t *frontend, int delta);
 bool wuss_frontend_set_crt(wuss_frontend_t *frontend, bool on);
 
 /* Hide or show the OS mouse pointer over the window, for when main.c draws
- * its own (Debug > Software pointer). Returns whether it is now hidden:
+ * its own (System > Software Pointer). Returns whether it is now hidden:
  * false on a backend that keeps its hardware pointer (RISC OS). */
 bool wuss_frontend_hide_pointer(wuss_frontend_t *frontend, bool hide);
 
