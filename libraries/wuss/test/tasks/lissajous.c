@@ -12,6 +12,7 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 
 #include "lissajous.h"
 #include "common.h"
@@ -31,7 +32,7 @@ enum
   LISSAJOUS_MENU_SAVE
 };
 
-#define LISSAJOUS_SAVE_NAME "lissajous.png" /* written to the current dir */
+#define LISSAJOUS_SAVE_NAME "lissajous.png" /* Save As's initial leafname */
 
 /* frequency pairs cycled by a Select click and listed in Menu > Ratio */
 static const struct
@@ -47,12 +48,44 @@ lissajous_freqs[LISSAJOUS_NFREQS] =
   { 3, 5, "3:5" }, { 4, 5, "4:5" }, { 7, 6, "7:6" }
 };
 
+/* wuss_saveas_save_fn_t: opaque is the lissajous_task_t */
+static result_t lissajous_saveas_save(const char *path, void *opaque)
+{
+  lissajous_task_t *lc;
+
+  lc = opaque;
+
+  return snapshot_save_png(lc->window, lissajous_handle, lc, path);
+}
+
+/* the Save As dialogue's own task: forwards every event on its window into
+ * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
+ * lissajous_task_t block belongs to task->delegate's lifecycle, freed there,
+ * not here. */
+static result_t lissajous_saveas_handle(wuss_window_t      *window,
+                                        const wuss_event_t *event,
+                                        void               *task_data)
+{
+  lissajous_task_t *lc;
+
+  lc = task_data;
+
+  if (event->kind == wuss_EVENT_QUIT)
+    return result_OK;
+
+  (void) wuss_saveas_handle_event(lc->saveas, window, event);
+
+  return result_OK;
+}
+
 result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
 {
   result_t          rc;
   lissajous_task_t *task;
   wuss_task_t      *delegate;
   wuss_task_desc_t  delegate_desc;
+  wuss_task_desc_t  saveas_desc;
+  filetype_t        png_type;
   int               i;
 
   task = calloc(1, sizeof(*task));
@@ -88,6 +121,28 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
+
+  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
+   * owner, and delegate (above) is one */
+  saveas_desc.handle    = lissajous_saveas_handle;
+  saveas_desc.task_data = task;
+  saveas_desc.name      = "lissajous-saveas";
+  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+                          LISSAJOUS_SAVE_NAME, lissajous_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->saveas_task);
+    wuss_task_destroy(delegate);
     return rc;
   }
 
@@ -130,6 +185,8 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
 
 void lissajous_destroy(lissajous_task_t *task)
 {
+  wuss_saveas_destroy(task->saveas);
+  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 
@@ -375,8 +432,15 @@ result_t lissajous_handle(wuss_window_t      *window,
       return lissajous_toggle_pause(lc, event);
     if (event->data.menu_select.menu == &lc->menu &&
         event->data.menu_select.index == LISSAJOUS_MENU_SAVE)
-      return snapshot_save_png(lc->window, lissajous_handle, lc,
-                               LISSAJOUS_SAVE_NAME);
+    {
+      wuss_window_t *saveas_win;
+
+      saveas_win = wuss_saveas_window(lc->saveas);
+      wuss_window_set_hidden(saveas_win, 0);
+      wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
+
+      return result_OK;
+    }
     return lissajous_menu_select(lc, event);
 
   case wuss_EVENT_MENU_CLOSED:

@@ -11,6 +11,7 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 
 #include "checker.h"
 #include "common.h"
@@ -34,7 +35,7 @@ enum
   CHECKER_MENU_SAVE
 };
 
-#define CHECKER_SAVE_NAME "checker.png" /* written to the current dir */
+#define CHECKER_SAVE_NAME "checker.png" /* Save As's initial leafname */
 
 /* Pattern submenu rows, in checker_pattern_t order */
 static const char *checker_pattern_names[checker_PATTERN__COUNT] =
@@ -45,12 +46,45 @@ static const char *checker_pattern_names[checker_PATTERN__COUNT] =
   "Diagonal"
 };
 
+/* wuss_saveas_save_fn_t: opaque is the checker_task_t; saves whichever
+ * window the menu was last opened from, as the direct save call used to */
+static result_t checker_saveas_save(const char *path, void *opaque)
+{
+  checker_task_t *cc;
+
+  cc = opaque;
+
+  return snapshot_save_png(cc->menu_window, checker_handle, cc, path);
+}
+
+/* the Save As dialogue's own task: forwards every event on its window into
+ * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
+ * checker_task_t block belongs to task->delegate's lifecycle, freed there,
+ * not here. */
+static result_t checker_saveas_handle(wuss_window_t      *window,
+                                      const wuss_event_t *event,
+                                      void               *task_data)
+{
+  checker_task_t *cc;
+
+  cc = task_data;
+
+  if (event->kind == wuss_EVENT_QUIT)
+    return result_OK;
+
+  (void) wuss_saveas_handle_event(cc->saveas, window, event);
+
+  return result_OK;
+}
+
 result_t checker_create(wuss_t *wuss, checker_task_t **out)
 {
   result_t         rc;
   checker_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  wuss_task_desc_t saveas_desc;
+  filetype_t       png_type;
   int              i;
 
   task = calloc(1, sizeof(*task));
@@ -101,6 +135,28 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
 
+  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
+   * owner, and delegate (above) is one */
+  saveas_desc.handle    = checker_saveas_handle;
+  saveas_desc.task_data = task;
+  saveas_desc.name      = "checker-saveas";
+  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+                          CHECKER_SAVE_NAME, checker_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->saveas_task);
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
   WUSS_MENU_ITEM_WINDOW(task->menu_items, CHECKER_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo singleton
@@ -141,6 +197,8 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
 
 void checker_destroy(checker_task_t *task)
 {
+  wuss_saveas_destroy(task->saveas);
+  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 
@@ -286,11 +344,19 @@ static result_t checker_menu_select(checker_task_t     *cc,
     return result_OK;
   }
 
-  /* saves whichever window the menu was opened from */
+  /* shows the Save As dialogue; checker_saveas_save saves whichever window
+   * the menu was opened from */
   if (event->data.menu_select.menu == &cc->menu &&
       event->data.menu_select.index == CHECKER_MENU_SAVE)
-    return snapshot_save_png(cc->menu_window, checker_handle, cc,
-                             CHECKER_SAVE_NAME);
+  {
+    wuss_window_t *saveas_win;
+
+    saveas_win = wuss_saveas_window(cc->saveas);
+    wuss_window_set_hidden(saveas_win, 0);
+    wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
+
+    return result_OK;
+  }
 
   if (event->data.menu_select.menu == &cc->menu &&
       event->data.menu_select.index == CHECKER_MENU_SWAP)

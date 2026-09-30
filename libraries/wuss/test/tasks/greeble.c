@@ -13,6 +13,7 @@
 #include "base/utils.h"
 #include "framebuf/colour.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 #include "utils/rng.h"
 #include "wuss/menu.h"
 
@@ -39,7 +40,7 @@ enum
   GREEBLE_MENU_SAVE
 };
 
-#define GREEBLE_SAVE_NAME "greeble.png" /* written to the current dir */
+#define GREEBLE_SAVE_NAME "greeble.png" /* Save As's initial leafname */
 
 /* the task block sizes its Palette submenu by GREEBLE_MAX_PALETTES, since
  * greeble-tiles.h (and so GREEBLE_NPALETTE) is private to this file */
@@ -368,6 +369,36 @@ static result_t greeble_key(greeble_task_t *task,
   }
 }
 
+/* wuss_saveas_save_fn_t: opaque is the greeble_task_t */
+static result_t greeble_saveas_save(const char *path, void *opaque)
+{
+  greeble_task_t *task;
+
+  task = opaque;
+
+  return snapshot_save_png(task->window, greeble_handle, task, path);
+}
+
+/* the Save As dialogue's own task: forwards every event on its window into
+ * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
+ * greeble_task_t block belongs to task->delegate's lifecycle, freed there,
+ * not here. */
+static result_t greeble_saveas_handle(wuss_window_t      *window,
+                                      const wuss_event_t *event,
+                                      void               *task_data)
+{
+  greeble_task_t *task;
+
+  task = task_data;
+
+  if (event->kind == wuss_EVENT_QUIT)
+    return result_OK;
+
+  (void) wuss_saveas_handle_event(task->saveas, window, event);
+
+  return result_OK;
+}
+
 /* Menu pick: the Random palettes row toggles per-prefab random palettes; a
  * Palette submenu row picks the base palette. An ADJUST pick keeps the chain
  * open without rebuilding it, so the tick set at open is now
@@ -402,8 +433,13 @@ static result_t greeble_menu_select(greeble_task_t     *task,
   else if (event->data.menu_select.menu == &task->menu &&
            event->data.menu_select.index == GREEBLE_MENU_SAVE)
   {
-    rc = snapshot_save_png(task->window, greeble_handle, task,
-                           GREEBLE_SAVE_NAME);
+    wuss_window_t *saveas_win;
+
+    saveas_win = wuss_saveas_window(task->saveas);
+    wuss_window_set_hidden(saveas_win, 0);
+    wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
+
+    rc = result_OK;
   }
   else
   {
@@ -509,6 +545,8 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
   greeble_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  wuss_task_desc_t saveas_desc;
+  filetype_t       png_type;
   size2d_t         grid_px;
   int              i;
 
@@ -552,6 +590,28 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
   /* fill the whole document, not just the visible content box: placement
    * can shrink the window below grid_px and the rest scrolls into view */
   greeble_generate(task);
+
+  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
+   * owner, and delegate (above) is one */
+  saveas_desc.handle    = greeble_saveas_handle;
+  saveas_desc.task_data = task;
+  saveas_desc.name      = "greeble-saveas";
+  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+                          GREEBLE_SAVE_NAME, greeble_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->saveas_task);
+    wuss_task_destroy(delegate);
+    return rc;
+  }
 
   WUSS_MENU_ITEM_WINDOW(task->menu_items, GREEBLE_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
@@ -600,6 +660,8 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
 
 void greeble_destroy(greeble_task_t *task)
 {
+  wuss_saveas_destroy(task->saveas);
+  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 

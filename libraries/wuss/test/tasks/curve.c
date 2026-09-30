@@ -17,6 +17,7 @@
 #include "framebuf/curve.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 #include "utils/fxp.h"
 #include "wuss/wuss.h"
 
@@ -38,7 +39,7 @@ enum
   CURVE_MENU_SAVE
 };
 
-#define CURVE_SAVE_NAME "curve.png" /* written to the current dir */
+#define CURVE_SAVE_NAME "curve.png" /* Save As's initial leafname */
 
 /* Curve-type name for each valid task->npoints, indexed by
  * npoints - CURVE_MINCONTROLPTS; also the Menu > Type rows. */
@@ -115,12 +116,44 @@ static void curve_reset_points(curve_task_t *task)
   task->points[5] = POINT(110, 140);
 }
 
+/* wuss_saveas_save_fn_t: opaque is the curve_task_t */
+static result_t curve_saveas_save(const char *path, void *opaque)
+{
+  curve_task_t *task;
+
+  task = opaque;
+
+  return snapshot_save_png(task->window, curve_handle, task, path);
+}
+
+/* the Save As dialogue's own task: forwards every event on its window into
+ * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
+ * curve_task_t block belongs to task->delegate's lifecycle, freed there,
+ * not here. */
+static result_t curve_saveas_handle(wuss_window_t      *window,
+                                    const wuss_event_t *event,
+                                    void               *task_data)
+{
+  curve_task_t *task;
+
+  task = task_data;
+
+  if (event->kind == wuss_EVENT_QUIT)
+    return result_OK;
+
+  (void) wuss_saveas_handle_event(task->saveas, window, event);
+
+  return result_OK;
+}
+
 result_t curve_create(wuss_t *wuss, curve_task_t **out)
 {
   result_t         rc;
   curve_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  wuss_task_desc_t saveas_desc;
+  filetype_t       png_type;
   int              i;
 
   task = calloc(1, sizeof(*task));
@@ -154,6 +187,28 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
+
+  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
+   * owner, and delegate (above) is one */
+  saveas_desc.handle    = curve_saveas_handle;
+  saveas_desc.task_data = task;
+  saveas_desc.name      = "curve-saveas";
+  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+                          CURVE_SAVE_NAME, curve_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->saveas_task);
+    wuss_task_destroy(delegate);
     return rc;
   }
 
@@ -195,6 +250,8 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
 
 void curve_destroy(curve_task_t *task)
 {
+  wuss_saveas_destroy(task->saveas);
+  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 
@@ -460,8 +517,15 @@ static result_t curve_menu_select(curve_task_t       *task,
 
   if (event->data.menu_select.menu == &task->menu &&
       event->data.menu_select.index == CURVE_MENU_SAVE)
-    return snapshot_save_png(task->window, curve_handle, task,
-                             CURVE_SAVE_NAME);
+  {
+    wuss_window_t *saveas_win;
+
+    saveas_win = wuss_saveas_window(task->saveas);
+    wuss_window_set_hidden(saveas_win, 0);
+    wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
+
+    return result_OK;
+  }
 
   if (event->data.menu_select.menu == &task->type_menu)
   {

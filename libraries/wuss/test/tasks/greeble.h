@@ -7,6 +7,7 @@
 
 #include "utils/rng.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -34,13 +35,19 @@
  * Select reseeds the pattern; Adjust steps the base palette, which Menu >
  * Palette also picks directly; Menu > Random palettes toggles per-prefab
  * random palettes; Menu > Size sets the grid (and window) to a preset size;
- * Menu > Save PNG writes the window to greeble.png. Once a click has given
- * the window the input focus, Space reseeds, Left/Right step the base
- * palette and R toggles random palettes. */
+ * Menu > Save PNG opens a Save As dialogue (drag its icon onto a Filer
+ * window, or Save with a full path already typed) that writes the window's
+ * content out. Once a click has given the window the input focus, Space
+ * reseeds, Left/Right step the base palette and R toggles random
+ * palettes. */
 typedef struct greeble_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer when opening the menu */
   wuss_task_t       *delegate; /* the task that owns the menu */
+  wuss_task_t       *saveas_task; /* owns the Save As dialogue; separate from
+                                   * delegate, which is autoclose and
+                                   * wuss_saveas_create forbids that */
+  wuss_saveas_t     *saveas;
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
   rng_t              seed;   /* current pattern seed; advanced on click */

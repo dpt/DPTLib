@@ -17,6 +17,7 @@
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "geom/point.h"
+#include "io/filetype.h"
 #include "io/path.h"
 #include "text/utf8.h"
 #include "wuss/icon.h"
@@ -45,7 +46,7 @@ enum
   CHARS_MENU_SAVE
 };
 
-#define CHARS_SAVE_NAME "chars.png" /* written to the current dir */
+#define CHARS_SAVE_NAME "chars.png" /* Save As's initial leafname */
 
 /* ----------------------------------------------------------------------- */
 
@@ -312,6 +313,36 @@ static result_t chars_pre_submenu_open(chars_task_t       *task,
                                     task->menu_items[index].submenu);
 }
 
+/* wuss_saveas_save_fn_t: opaque is the chars_task_t */
+static result_t chars_saveas_save(const char *path, void *opaque)
+{
+  chars_task_t *cc;
+
+  cc = opaque;
+
+  return snapshot_save_png(cc->window, chars_handle, cc, path);
+}
+
+/* the Save As dialogue's own task: forwards every event on its window into
+ * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
+ * chars_task_t block belongs to task->delegate's lifecycle, freed there,
+ * not here. */
+static result_t chars_saveas_handle(wuss_window_t      *window,
+                                    const wuss_event_t *event,
+                                    void               *task_data)
+{
+  chars_task_t *cc;
+
+  cc = task_data;
+
+  if (event->kind == wuss_EVENT_QUIT)
+    return result_OK;
+
+  (void) wuss_saveas_handle_event(cc->saveas, window, event);
+
+  return result_OK;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t chars_create(wuss_t *wuss, chars_task_t **out)
@@ -320,6 +351,8 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   chars_task_t      *task;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
+  wuss_task_desc_t   saveas_desc;
+  filetype_t         png_type;
   bmfont_t          *font;
   const wuss_menu_t *menu;
   const char        *sysname;
@@ -398,6 +431,28 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
     return rc;
   }
 
+  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
+   * owner, and delegate (above) is one */
+  saveas_desc.handle    = chars_saveas_handle;
+  saveas_desc.task_data = task;
+  saveas_desc.name      = "chars-saveas";
+  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+                          CHARS_SAVE_NAME, chars_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->saveas_task);
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
   WUSS_MENU_ITEM_WINDOW(task->menu_items, CHARS_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo singleton
@@ -432,6 +487,9 @@ void chars_destroy(chars_task_t *task)
     if (task->fonts[i] != NULL)
       bmfontcache_release(wuss_get_font_cache(task->wuss), task->fonts[i]);
   free(task->fonts);
+
+  wuss_saveas_destroy(task->saveas);
+  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 
@@ -552,16 +610,22 @@ result_t chars_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     {
-      result_t    rc;
-      const char *name;
+      result_t       rc;
+      wuss_window_t *saveas_win;
+      const char    *name;
 
       if (event->data.menu_select.menu == &cc->page_menu)
         return chars_set_page(cc, event);
 
       if (event->data.menu_select.menu == &cc->menu &&
           event->data.menu_select.index == CHARS_MENU_SAVE)
-        return snapshot_save_png(cc->window, chars_handle, cc,
-                                 CHARS_SAVE_NAME);
+      {
+        saveas_win = wuss_saveas_window(cc->saveas);
+        wuss_window_set_hidden(saveas_win, 0);
+        wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
+
+        return result_OK;
+      }
 
       name = wuss_fontmenu_selected(event);
       if (name == NULL)

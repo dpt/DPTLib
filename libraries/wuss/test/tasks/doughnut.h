@@ -8,6 +8,7 @@
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -19,12 +20,17 @@
  * torus directly, overriding the idle auto-rotation for as long as it's
  * held. Space also toggles pause; while paused the arrow keys step the
  * rotation. Menu > Tube picks the tube's thickness; Menu > Reset view
- * restores the starting angles and zoom; Menu > Save PNG writes
- * doughnut.png. */
+ * restores the starting angles and zoom; Menu > Save PNG opens a Save As
+ * dialogue (drag its icon onto a Filer window, or Save with a full path
+ * already typed) that writes the window's content out. */
 typedef struct doughnut_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
   wuss_task_t       *delegate; /* the task that owns the menu */
+  wuss_task_t       *saveas_task; /* owns the Save As dialogue; separate
+                                   * from delegate, which is autoclose and
+                                   * wuss_saveas_create forbids that */
+  wuss_saveas_t     *saveas;
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
   wuss_menu_item_t   menu_items[6]; /* per-instance: shared static "Info" row

@@ -18,6 +18,7 @@
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "geom/point.h"
+#include "io/filetype.h"
 #include "utils/fxp.h"
 
 #include "clock.h"
@@ -38,7 +39,7 @@ enum
   CLOCK_MENU_SAVE
 };
 
-#define CLOCK_SAVE_NAME "clock.png" /* written to the current dir */
+#define CLOCK_SAVE_NAME "clock.png" /* Save As's initial leafname */
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -112,12 +113,44 @@ static result_t clock_create_window(wuss_t       *wuss,
   return task_window_create(delegate, SIZE2D(160, 160), "Clock", &task->window);
 }
 
+/* wuss_saveas_save_fn_t: opaque is the clock_task_t */
+static result_t clock_saveas_save(const char *path, void *opaque)
+{
+  clock_task_t *cc;
+
+  cc = opaque;
+
+  return snapshot_save_png(cc->window, clock_handle, cc, path);
+}
+
+/* the Save As dialogue's own task: forwards every event on its window into
+ * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
+ * clock_task_t block belongs to task->delegate's lifecycle, freed there,
+ * not here. */
+static result_t clock_saveas_handle(wuss_window_t      *window,
+                                    const wuss_event_t *event,
+                                    void               *task_data)
+{
+  clock_task_t *cc;
+
+  cc = task_data;
+
+  if (event->kind == wuss_EVENT_QUIT)
+    return result_OK;
+
+  (void) wuss_saveas_handle_event(cc->saveas, window, event);
+
+  return result_OK;
+}
+
 result_t clock_create(wuss_t *wuss, clock_task_t **out)
 {
   result_t         rc;
   clock_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  wuss_task_desc_t saveas_desc;
+  filetype_t       png_type;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -148,6 +181,28 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
+
+  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
+   * owner, and delegate (above) is one */
+  saveas_desc.handle    = clock_saveas_handle;
+  saveas_desc.task_data = task;
+  saveas_desc.name      = "clock-saveas";
+  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+                          CLOCK_SAVE_NAME, clock_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->saveas_task);
+    wuss_task_destroy(delegate);
     return rc;
   }
 
@@ -182,6 +237,8 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
 
 void clock_destroy(clock_task_t *task)
 {
+  wuss_saveas_destroy(task->saveas);
+  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 
@@ -412,7 +469,15 @@ result_t clock_handle(wuss_window_t      *window,
       return clock_toggle(cc, event);
     if (event->data.menu_select.menu == &cc->menu &&
         event->data.menu_select.index == CLOCK_MENU_SAVE)
-      return snapshot_save_png(cc->window, clock_handle, cc, CLOCK_SAVE_NAME);
+    {
+      wuss_window_t *saveas_win;
+
+      saveas_win = wuss_saveas_window(cc->saveas);
+      wuss_window_set_hidden(saveas_win, 0);
+      wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
+
+      return result_OK;
+    }
     return clock_menu_select(cc, event);
 
   case wuss_EVENT_MENU_CLOSED:

@@ -13,6 +13,7 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 #include "utils/fxp.h"
 
 #include "snapshot.h"
@@ -33,7 +34,7 @@ enum
   SOFA_MENU_SAVE
 };
 
-#define SOFA_SAVE_NAME "sofa.png" /* written to the current dir */
+#define SOFA_SAVE_NAME "sofa.png" /* Save As's initial leafname */
 
 /* "Model" submenu rows, in sofa_shape_t order */
 static const char *sofa_shape_names[sofa_SHAPE__LIMIT] =
@@ -385,12 +386,44 @@ static void draw_vertex_dots(screen_t           *scr,
                        colour);
 }
 
+/* wuss_saveas_save_fn_t: opaque is the sofa_task_t */
+static result_t sofa_saveas_save(const char *path, void *opaque)
+{
+  sofa_task_t *sc;
+
+  sc = opaque;
+
+  return snapshot_save_png(sc->window, sofa_handle, sc, path);
+}
+
+/* the Save As dialogue's own task: forwards every event on its window into
+ * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
+ * sofa_task_t block belongs to task->delegate's lifecycle, freed there, not
+ * here. */
+static result_t sofa_saveas_handle(wuss_window_t      *window,
+                                   const wuss_event_t *event,
+                                   void               *task_data)
+{
+  sofa_task_t *sc;
+
+  sc = task_data;
+
+  if (event->kind == wuss_EVENT_QUIT)
+    return result_OK;
+
+  (void) wuss_saveas_handle_event(sc->saveas, window, event);
+
+  return result_OK;
+}
+
 result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
 {
   result_t         rc;
   sofa_task_t     *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  wuss_task_desc_t saveas_desc;
+  filetype_t       png_type;
   int              i;
 
   task = calloc(1, sizeof(*task));
@@ -425,6 +458,28 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
+
+  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
+   * owner, and delegate (above) is one */
+  saveas_desc.handle    = sofa_saveas_handle;
+  saveas_desc.task_data = task;
+  saveas_desc.name      = "sofa-saveas";
+  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+                          SOFA_SAVE_NAME, sofa_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->saveas_task);
+    wuss_task_destroy(delegate);
     return rc;
   }
 
@@ -464,6 +519,8 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
 
 void sofa_destroy(sofa_task_t *task)
 {
+  wuss_saveas_destroy(task->saveas);
+  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 
@@ -710,7 +767,15 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
 
   if (event->data.menu_select.menu == &sc->menu &&
       event->data.menu_select.index == SOFA_MENU_SAVE)
-    return snapshot_save_png(sc->window, sofa_handle, sc, SOFA_SAVE_NAME);
+  {
+    wuss_window_t *saveas_win;
+
+    saveas_win = wuss_saveas_window(sc->saveas);
+    wuss_window_set_hidden(saveas_win, 0);
+    wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
+
+    return result_OK;
+  }
 
   if (event->data.menu_select.menu == &sc->model_menu)
   {

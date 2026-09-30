@@ -9,6 +9,7 @@
 #include "geom/point.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 #include "wuss/wuss.h"
@@ -23,13 +24,19 @@
  * stepping npoints, the count of points[] actually in play; Menu > Type
  * picks it directly; Menu > Hull shows or hides the control points' convex
  * hull; Menu > Reset points puts the control points back where they
- * started; Menu > Save PNG writes the window to curve.png. Once a click has
- * given the window the input focus, Left/Right step the curve type,
- * Up/Down step nsegments, H toggles the hull and R resets the points. */
+ * started; Menu > Save PNG opens a Save As dialogue (drag its icon onto a
+ * Filer window, or Save with a full path already typed) that writes the
+ * window's content out. Once a click has given the window the input focus,
+ * Left/Right step the curve type, Up/Down step nsegments, H toggles the
+ * hull and R resets the points. */
 typedef struct curve_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_font in the redraw */
   wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_task_t        *saveas_task; /* owns the Save As dialogue; separate
+                                    * from delegate, which is autoclose and
+                                    * wuss_saveas_create forbids that */
+  wuss_saveas_t       *saveas;
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
   wuss_menu_item_t    menu_items[6]; /* per-instance: a shared static would
