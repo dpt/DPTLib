@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "wuss/component/proginfo.h"
+#include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -26,13 +27,19 @@ gradient_shape_t;
  * ADJUST drag sets brightness (vertical, up is brighter) and saturation
  * (horizontal, right is more saturated). Menu > Shape swaps the two-axis
  * ramp for a radial or conical hue sweep; Menu > Reset restores the shape,
- * dither, brightness and saturation; Menu > Save PNG writes the window to
- * gradient.png. Once a click has given the window the input focus, S steps
- * the shape, D steps the dither matrix and R resets. */
+ * dither, brightness and saturation; Menu > Save PNG opens a Save As
+ * dialogue (drag its icon onto a Filer window, or Save with a full path
+ * already typed) that writes the window's content out. Once a click has
+ * given the window the input focus, S steps the shape, D steps the dither
+ * matrix and R resets. */
 typedef struct gradient_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_font in the redraw */
   wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_task_t        *saveas_task; /* owns the Save As dialogue; separate
+                                    * from delegate, which is autoclose and
+                                    * wuss_saveas_create forbids that */
+  wuss_saveas_t       *saveas;
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
   wuss_menu_item_t    menu_items[4]; /* per-instance: a shared static would
