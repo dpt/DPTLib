@@ -36,18 +36,6 @@
 
 #define SAVEAS_STATUS_PROMPT "To save, drag the icon to a directory display"
 
-/* Wire payload for wuss_MESSAGE_DATA_SAVE, scoped to this component -- the
- * only current user of the core transfer protocol. Well under
- * wuss_MESSAGE_DATA_SIZE. wuss_MESSAGE_DATA_SAVE_ACK/_LOAD_ACK carry no
- * payload of their own shape here: the ack's path travels as a plain
- * NUL-terminated string in msg->data. */
-typedef struct
-{
-  filetype_t filetype;
-  char       leafname[DPTLIB_MAXPATH];
-}
-saveas_data_save_t;
-
 /* The struct is opaque outside this file, unlike wuss_dialogue/wuss_info --
  * no other component composes with it, so nothing needs its layout. */
 struct wuss_saveas
@@ -288,8 +276,8 @@ wuss_window_t *wuss_saveas_window(const wuss_saveas_t *saveas)
 static int saveas_handle_drag_end(wuss_saveas_t      *sa,
                                   const wuss_event_t *event)
 {
-  saveas_data_save_t payload;
-  const char        *leafname;
+  wuss_data_save_t payload;
+  const char      *leafname;
 
   if (sa->transfer_active)
     return 1; /* a transfer is already running: ignore this drag */
@@ -298,7 +286,8 @@ static int saveas_handle_drag_end(wuss_saveas_t      *sa,
 
   leafname = wuss_icon_get_text(sa->leaf_icon);
   memset(&payload, 0, sizeof(payload));
-  payload.filetype = sa->filetype;
+  payload.filetype     = sa->filetype;
+  payload.reply_window = wuss_dialogue_window(sa->dialogue);
   strncpy(payload.leafname, leafname, sizeof(payload.leafname) - 1);
 
   if (wuss_send_recorded(sa->wuss, sa->task, event->data.drag_end.drop,

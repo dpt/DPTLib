@@ -27,6 +27,7 @@
 #include "tasks/curve.h"
 #include "tasks/display.h"
 #include "tasks/doughnut.h"
+#include "tasks/filer.h"
 #include "tasks/gradient.h"
 #include "tasks/greeble.h"
 #include "tasks/iconbar-demo.h"
@@ -158,7 +159,10 @@ g_system_tasks[] =
 {
   { "Configure",   (task_create_fn_t) config_create      },
   { "Display",     (task_create_fn_t) display_create     },
-  { "Palette",     (task_create_fn_t) palette_create     }
+  { "Palette",     (task_create_fn_t) palette_create     },
+#ifdef WUSS_ICONBAR
+  { "Filer",       (task_create_fn_t) filer_create        }
+#endif
 };
 
 static const wuss_menu_item_t g_games_items[] =
@@ -258,6 +262,9 @@ enum
   SYSTEM_ITEM_CONFIGURE,
   SYSTEM_ITEM_DISPLAY,
   SYSTEM_ITEM_PALETTE,
+#ifdef WUSS_ICONBAR
+  SYSTEM_ITEM_FILER,
+#endif
   SYSTEM_ITEM_ZOOM_IN,
   SYSTEM_ITEM_ZOOM_OUT,
   SYSTEM_ITEM_CRT,
@@ -277,6 +284,9 @@ static wuss_menu_item_t g_system_items[] =
   { "Configure",        wuss_MENU_ITEM_NONE,     NULL                                },
   { "Display",          wuss_MENU_ITEM_NONE,     NULL                                },
   { "Palette",          wuss_MENU_ITEM_NONE,     NULL                                },
+#ifdef WUSS_ICONBAR
+  { "Filer",            wuss_MENU_ITEM_NONE,     NULL                                },
+#endif
   { "Zoom In",          wuss_MENU_ITEM_DASHED,   NULL, NULL, 0, "F2"                 },
   { "Zoom Out",         wuss_MENU_ITEM_NONE,     NULL, NULL, 0, WUSS_MENU_SHIFT "F2" },
   { "CRT Effect",       wuss_MENU_ITEM_NONE,     NULL, NULL, 0, "F5"                 },

@@ -38,6 +38,9 @@
 
 #include "tasks/config.h"  /* config_create at startup */
 #include "tasks/palette.h" /* palette_load_hex for the startup *.hex */
+#ifdef WUSS_ICONBAR
+#include "tasks/filer.h" /* filer_set_root for -root */
+#endif
 
 /* ----------------------------------------------------------------------- */
 
@@ -811,6 +814,9 @@ typedef struct wuss_options
   const char *tasks;        /* -t/--tasks: comma-separated launcher task
                              * names to auto-open at startup, or "all";
                              * default "" opens none */
+  const char *root;         /* --root: directory Filer's icon bar icon and
+                             * System menu row open; default "." (or "/"
+                             * under Emscripten, see filer_set_root) */
 }
 wuss_options_t;
 
@@ -818,7 +824,7 @@ static const char wuss_usage[] =
   "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
   "[-f|--font FAMILY] "
   "[-d|--depth 1|2|4|8|15|16|32] [-s|--scale N] [--res WIDTHxHEIGHT] "
-  "[-t|--tasks all|NAME[,NAME...]] [--crt] [--pointer]\n";
+  "[-t|--tasks all|NAME[,NAME...]] [--root DIR] [--crt] [--pointer]\n";
 
 /* Parses "WIDTHxHEIGHT" (e.g. "1024x768") into w and h. Returns false,
  * leaving them untouched, on anything else -- a missing 'x', a non-positive
@@ -846,7 +852,7 @@ static bool parse_res(const char *s, int *w, int *h)
 /* --res, --crt and --pointer have no short form, so they are given
  * longopt-only codes past the ASCII range getopt_long uses for short
  * options. */
-enum { OPT_RES = 256, OPT_CRT, OPT_POINTER };
+enum { OPT_RES = 256, OPT_CRT, OPT_POINTER, OPT_ROOT };
 
 /* Desktop: getopt_long. Accepts the short forms and the "--" long forms; the
  * historical single-dash long spellings (-resources) are no longer accepted.
@@ -862,6 +868,7 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
     { "scale",     required_argument, NULL, 's'         },
     { "res",       required_argument, NULL, OPT_RES     },
     { "tasks",     required_argument, NULL, 't'         },
+    { "root",      required_argument, NULL, OPT_ROOT    },
     { "crt",       no_argument,       NULL, OPT_CRT     },
     { "pointer",   no_argument,       NULL, OPT_POINTER },
     { NULL,        0,                 NULL, 0           }
@@ -883,6 +890,7 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
     case 'd': opts->depth        = atoi(optarg); break;
     case 's': opts->scale        = atoi(optarg); break;
     case 't': opts->tasks        = optarg;       break;
+    case OPT_ROOT: opts->root    = optarg;       break;
     case OPT_CRT:
       g_tasks.crt = true;
       break;
@@ -928,6 +936,8 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
       parse_res(argv[++i], &opts->res_width, &opts->res_height);
     else if (strcmp(argv[i], "-tasks") == 0 && i + 1 < argc)
       opts->tasks = argv[++i];
+    else if (strcmp(argv[i], "-root") == 0 && i + 1 < argc)
+      opts->root = argv[++i];
 
   return true;
 }
@@ -955,9 +965,14 @@ int main(int argc, char *argv[])
   opts.res_width    = 640;
   opts.res_height   = 480;
   opts.tasks        = "";
+  opts.root         = NULL; /* NULL: leave filer_set_root's own default */
 
   if (!parse_args(argc, argv, &opts))
     return EXIT_FAILURE;
+
+#ifdef WUSS_ICONBAR
+  filer_set_root(opts.root);
+#endif
 
   rc = run_wuss(opts.resources, opts.palette_name, opts.font_family,
                opts.depth, opts.scale, opts.res_width, opts.res_height, opts.tasks);

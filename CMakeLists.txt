@@ -848,6 +848,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/curve.c
         libraries/wuss/test/tasks/display.c
         libraries/wuss/test/tasks/doughnut.c
+        libraries/wuss/test/tasks/filer.c
         libraries/wuss/test/tasks/gradient.c
         libraries/wuss/test/tasks/greeble.c
         libraries/wuss/test/tasks/iconbar-demo.c
