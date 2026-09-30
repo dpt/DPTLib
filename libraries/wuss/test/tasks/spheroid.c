@@ -19,6 +19,7 @@
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "geom/stack.h"
+#include "io/filetype.h"
 #include "wuss/icon.h"
 #include "wuss/task.h"
 
@@ -59,7 +60,7 @@
 
 #define SPHEROID_DITHER_TILE 64 /* px; the blue-noise map's size */
 
-#define SPHEROID_SAVE_NAME "spheroid.png" /* written to the current dir */
+#define SPHEROID_SAVE_NAME "spheroid.png" /* Save As's initial leafname */
 
 #define SPHEROID_MUTATE_SLIDER 15   /* max slider nudge, % of its range */
 #define SPHEROID_MUTATE_LIGHT  0.35 /* max direction nudge, ~sin(20 deg) */
@@ -670,12 +671,20 @@ static result_t spheroid_strip_create(spheroid_task_t *task, int height)
   return result_OK;
 }
 
+/* defined below, alongside spheroid_save */
+static result_t spheroid_saveas_save(const char *path, void *opaque);
+static result_t spheroid_saveas_handle(wuss_window_t      *window,
+                                       const wuss_event_t *event,
+                                       void               *task_data);
+
 result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
 {
   result_t         rc;
   spheroid_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  wuss_task_desc_t saveas_desc;
+  filetype_t       png_type;
   stack_item_t     items[SS__LIMIT];
   size2d_t         strip_sz;
   int              i;
@@ -735,6 +744,27 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
     return rc;
   }
 
+  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
+   * owner, and delegate (above) is one */
+  saveas_desc.handle    = spheroid_saveas_handle;
+  saveas_desc.task_data = task;
+  saveas_desc.name      = "spheroid-saveas";
+  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
+  if (rc != result_OK)
+  {
+    wuss_window_close(task->window); /* its QUIT frees the task block */
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+                          SPHEROID_SAVE_NAME, spheroid_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_window_close(task->window); /* its QUIT frees both */
+    return rc;
+  }
+
   WUSS_MENU_ITEM_WINDOW(task->menu_items, SPHEROID_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo singleton
@@ -781,6 +811,9 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SPHEROID_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_DASHED, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[SPHEROID_MENU_SAVE].window =
+    wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Spheroid", task->menu_items,
                   NELEMS(task->menu_items));
@@ -797,6 +830,8 @@ void spheroid_destroy(spheroid_task_t *task)
 
   for (which = 0; which < SPHEROID_NCOLOURS; which++)
     wuss_colourset_destroy(task->colour_sets[which]);
+  wuss_saveas_destroy(task->saveas);
+  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 
@@ -1089,7 +1124,7 @@ static void spheroid_randomise(spheroid_task_t *task)
 /* write the sphere alone, sized to its current diameter, as an RGBA PNG:
  * alpha is the disc coverage, so the edge stays anti-aliased and everything
  * outside it is transparent */
-static result_t spheroid_save(spheroid_task_t *task)
+static result_t spheroid_save(spheroid_task_t *task, const char *path)
 {
   result_t         rc;
   box_t            content;
@@ -1134,16 +1169,41 @@ static result_t spheroid_save(spheroid_task_t *task)
   rc = bitmap_init(&bm, SIZE2D(d, d), pixelfmt_bgra8888,
                    d * (int) sizeof(*pixels), NULL, pixels);
   if (rc == result_OK)
-    rc = bitmap_save_png(&bm, SPHEROID_SAVE_NAME);
+    rc = bitmap_save_png(&bm, path);
   if (rc != result_OK)
-    logf_warning("spheroid: saving \"%s\" failed (rc=0x%X)",
-                 SPHEROID_SAVE_NAME, rc);
+    logf_warning("spheroid: saving \"%s\" failed (rc=0x%X)", path, rc);
   else
-    logf_info("spheroid: saved \"%s\"", SPHEROID_SAVE_NAME);
+    logf_info("spheroid: saved \"%s\"", path);
 
   free(pixels);
 
   return rc;
+}
+
+/* wuss_saveas_save_fn_t: opaque is the spheroid_task_t */
+static result_t spheroid_saveas_save(const char *path, void *opaque)
+{
+  return spheroid_save(opaque, path);
+}
+
+/* the Save As dialogue's own task: forwards every event on its window into
+ * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
+ * spheroid_task_t block belongs to task->delegate's lifecycle, freed there,
+ * not here. */
+static result_t spheroid_saveas_handle(wuss_window_t      *window,
+                                       const wuss_event_t *event,
+                                       void               *task_data)
+{
+  spheroid_task_t *task;
+
+  task = task_data;
+
+  if (event->kind == wuss_EVENT_QUIT)
+    return result_OK;
+
+  (void) wuss_saveas_handle_event(task->saveas, window, event);
+
+  return result_OK;
 }
 
 /* the lit light whose marker is within SPHEROID_GRAB px of (px, py), or -1 */
@@ -1338,7 +1398,14 @@ static result_t spheroid_menu_select(spheroid_task_t    *task,
       break;
 
     case SPHEROID_MENU_SAVE:
-      return spheroid_save(task);
+      {
+        wuss_window_t *saveas_win;
+
+        saveas_win = wuss_saveas_window(task->saveas);
+        wuss_window_set_hidden(saveas_win, 0);
+        wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
+        return result_OK;
+      }
 
     default:
       return result_OK; /* a pick on a submenu row itself */
