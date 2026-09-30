@@ -112,6 +112,7 @@ set(PUBLIC_HEADERS
     include/geom/point.h
     include/geom/size.h
     include/geom/stack.h
+    include/io/dirlist.h
     include/io/dirscan.h
     include/io/filetype.h
     include/io/namelist.h
@@ -343,6 +344,7 @@ set(GEOM_SOURCES
     libraries/geom/stack/valid-tree.c)
 
 set(IO_SOURCES
+    libraries/io/dirlist/dirlist.c
     libraries/io/dirscan/dirscan.c
     libraries/io/filetype/filetype.c
     libraries/io/namelist/namelist.c
@@ -763,6 +765,7 @@ if(BUILD_TESTS)
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
         libraries/geom/stack/test/stack-test.c
+        libraries/io/dirlist/test/dirlist-test.c
         libraries/io/filetype/test/filetype-test.c
         libraries/io/path/test/path-test.c
         libraries/io/stream/test/stream-test.c

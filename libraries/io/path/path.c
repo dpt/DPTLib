@@ -102,3 +102,55 @@ int path_leaf_strip_ext(const char *leaf,
 
 #endif
 }
+
+int path_leaf_valid(const char *leaf)
+{
+  if (leaf == NULL || leaf[0] == '\0')
+    return 0;
+
+  if (strcmp(leaf, ".") == 0 || strcmp(leaf, "..") == 0)
+    return 0;
+
+#ifdef __riscos
+  if (strchr(leaf, '.') != NULL)
+    return 0;
+#else
+  if (strchr(leaf, '/') != NULL)
+    return 0;
+#ifdef _WIN32
+  if (strchr(leaf, '\\') != NULL)
+    return 0;
+#endif
+#endif
+
+  return 1;
+}
+
+int path_is_full(const char *path)
+{
+  if (path == NULL || path[0] == '\0')
+    return 0;
+
+#ifdef __riscos
+
+  if (path[0] == '$')
+    return 1;
+  if (strstr(path, "::") != NULL)
+    return 1;
+
+  return 0;
+
+#else
+
+#ifdef _WIN32
+  if (((path[0] >= 'A' && path[0] <= 'Z') ||
+       (path[0] >= 'a' && path[0] <= 'z')) &&
+      path[1] == ':' &&
+      (path[2] == '\\' || path[2] == '/'))
+    return 1;
+#endif
+
+  return path[0] == '/';
+
+#endif
+}

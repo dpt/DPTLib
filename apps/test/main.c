@@ -67,6 +67,7 @@ static const test_t tests[] =
   { "packer",     packer_test     },
   { "stack",      stack_test      },
 
+  { "dirlist",    dirlist_test    },
   { "filetype",   filetype_test   },
   { "path",       path_test       },
   { "stream",     stream_test     },

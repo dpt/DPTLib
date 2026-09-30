@@ -92,6 +92,49 @@ static result_t test_bare_leaf(void)
   return result_TEST_PASSED;
 }
 
+static result_t test_leaf_valid_accepts(void)
+{
+  if (!path_leaf_valid("gradient.png") || !path_leaf_valid("a"))
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+static result_t test_leaf_valid_rejects(void)
+{
+  if (path_leaf_valid(NULL)  ||
+      path_leaf_valid("")    ||
+      path_leaf_valid(".")   ||
+      path_leaf_valid("..")
+#ifdef __riscos
+   || path_leaf_valid("a.b")   /* '.' is the RISC OS separator */
+#else
+   || path_leaf_valid("a/b")
+   || path_leaf_valid("../x")
+#endif
+     )
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+static result_t test_is_full(void)
+{
+#ifdef __riscos
+  if (!path_is_full("$.dir.file") || !path_is_full("ADFS::disc.$.dir"))
+    return result_TEST_FAILED;
+  if (path_is_full("dir.file") || path_is_full(NULL) || path_is_full(""))
+    return result_TEST_FAILED;
+#else
+  if (!path_is_full("/dir/file"))
+    return result_TEST_FAILED;
+  if (path_is_full("dir/file") || path_is_full(NULL) || path_is_full(""))
+    return result_TEST_FAILED;
+#endif
+
+  return result_TEST_PASSED;
+}
+
 result_t path_test(const char *resources)
 {
   static result_t (*const tests[])(void) =
@@ -99,7 +142,10 @@ result_t path_test(const char *resources)
     test_plain,
     test_dot_in_directory,
     test_leaf_without_ext,
-    test_bare_leaf
+    test_bare_leaf,
+    test_leaf_valid_accepts,
+    test_leaf_valid_rejects,
+    test_is_full
   };
 
   result_t rc;
