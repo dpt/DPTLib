@@ -22,6 +22,8 @@
 #include "common.h"
 
 #define FILER_LABEL_CHARS 12
+#define FILER_COLUMNS     4  /* initial window width, in cells */
+#define FILER_MAX_ROWS    4  /* initial window height cap, in cells */
 
 enum { FILER_MENU_INFO };
 
@@ -197,6 +199,21 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
   fw->window  = window;
   fw->listing = listing;
   task->nwindows++;
+
+  {
+    size2d_t cell, fit;
+    int      rows;
+
+    /* filer_find_by_window must find this slot before this call: it fires
+     * wuss_EVENT_OPEN synchronously, and filer_handle's OPEN case looks the
+     * window up to forward the event to wuss_gridview_handle_event, which is
+     * what actually reflows the grid to the new width. */
+    cell = wuss_gridview_get_cell_size(fw->gridview);
+    rows = (dirlist_count(listing) + FILER_COLUMNS - 1) / FILER_COLUMNS;
+    rows = MIN(MAX(rows, 1), FILER_MAX_ROWS);
+    fit  = SIZE2D(FILER_COLUMNS * cell.w, rows * cell.h);
+    (void) wuss_window_resize(window, fit);
+  }
 
   return result_OK;
 }
@@ -389,8 +406,8 @@ result_t filer_handle(wuss_window_t      *window,
     filer_window_t *fw;
 
     fw = filer_find_by_window(task, window);
-    (void) wuss_gridview_handle_event(fw != NULL ? fw->gridview : NULL,
-                                      event);
+    if (fw != NULL)
+      (void) wuss_gridview_handle_event(fw->gridview, event);
     if (event->kind == wuss_EVENT_MOUSE &&
         (event->data.mouse.action == wuss_MOUSE_DOWN) &&
         (event->data.mouse.button & wuss_BUTTON_MENU))

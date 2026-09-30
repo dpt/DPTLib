@@ -295,9 +295,19 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
     return 0; /* other listeners may care about OPEN too */
 
   case wuss_EVENT_REDRAW:
+  {
+    wuss_t *wuss;
+    box_t   content;
+
+    wuss    = gv->window->task->wuss;
+    content = *event->data.redraw.content;
+    screen_fill_rect(event->data.redraw.scr, content.x0, content.y0,
+                     box_size(&content), wuss->palette[wuss->window_bg]);
+
     for (i = 0; i < gv->count; i++)
       gridview_draw_cell(gv, event, i);
     return 1;
+  }
 
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
@@ -378,4 +388,9 @@ result_t wuss_gridview_set_count(wuss_gridview_t *gv, int count)
   gridview_reflow(gv);
   wuss_window_invalidate_visible(gv->window);
   return result_OK;
+}
+
+size2d_t wuss_gridview_get_cell_size(const wuss_gridview_t *gv)
+{
+  return gv->cell;
 }
