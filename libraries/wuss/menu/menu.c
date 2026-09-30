@@ -389,6 +389,11 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
         break; /* node may be freed; the chain is gone if the flash ended */
       }
 
+    /* a core drag (e.g. a Save As file icon) owns the pointer until it ends:
+     * the pointer crossing a titlebar mid-drag must not collapse anything */
+    if (wuss->drag_window != NULL)
+      return result_OK;
+
     for (node = wuss->menu_chain; node != NULL; node = node->child)
       if (node->child != NULL
           && node->flash.frames == 0

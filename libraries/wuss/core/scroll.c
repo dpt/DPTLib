@@ -88,7 +88,8 @@ result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
   if (hit != NULL)
     *hit = win;
 
-  if (win == NULL)
+  /* core owns all input while a drag is active, as for clicks and keys */
+  if (win == NULL || wuss->drag_window != NULL)
     return result_OK;
 
 #ifdef WUSS_FURNITURE
