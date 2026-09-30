@@ -29,6 +29,8 @@ extern "C"
 #include <stddef.h>
 
 #include "base/result.h"
+#include "io/filetype.h"
+#include "io/path.h"
 
 #include "wuss/wuss.h"
 
@@ -57,6 +59,24 @@ enum
   wuss_MESSAGE_DATA_LOAD,     /**< Saver -> target: file has been written. */
   wuss_MESSAGE_DATA_LOAD_ACK  /**< Target -> saver: transfer complete. */
 };
+
+/**
+ * Wire payload for \ref wuss_MESSAGE_DATA_SAVE (wuss_message_t::data, cast
+ * from the raw bytes). \ref wuss_MESSAGE_DATA_SAVE_ACK/_LOAD_ACK carry no
+ * payload of their own shape: the ack's path travels as a plain
+ * NUL-terminated string in wuss_message_t::data.
+ *
+ * reply_window is the saver's own window (see wuss_saveas_window),
+ * single-process-valid, so a generic recipient (e.g. Filer) can address the
+ * DataSaveAck back to the saver without any task-to-window lookup in core.
+ */
+typedef struct
+{
+  filetype_t     filetype;
+  char           leafname[DPTLIB_MAXPATH];
+  wuss_window_t *reply_window;
+}
+wuss_data_save_t;
 
 /**
  * A message in flight: fixed size, copied by value into the queue -- no

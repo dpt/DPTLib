@@ -233,10 +233,6 @@ typedef struct saveas_recv
 {
   wuss_t        *wuss;
   wuss_task_t   *self;
-  wuss_window_t *owner_win; /* where to address DataSaveAck -- a
-                            * wuss_task_t has no window to derive this
-                            * from, so the test sets it directly, standing
-                            * in for whatever the real Filer would do */
   const char    *dir;
   int            suppress_ack;
 }
@@ -259,10 +255,12 @@ static result_t saveas_recv_handle(wuss_window_t      *window,
 
   if (event->data.message->action == wuss_MESSAGE_DATA_SAVE)
   {
-    char path[DPTLIB_MAXPATH];
+    char                    path[DPTLIB_MAXPATH];
+    const wuss_data_save_t *payload;
 
+    payload = (const wuss_data_save_t *) event->data.message->data;
     snprintf(path, sizeof(path), "%s/saved.txt", tc->dir);
-    (void) wuss_send(tc->wuss, tc->self, tc->owner_win,
+    (void) wuss_send(tc->wuss, tc->self, payload->reply_window,
                      wuss_MESSAGE_DATA_SAVE_ACK, path, strlen(path) + 1,
                      event->data.message->my_ref);
   }
@@ -7098,7 +7096,6 @@ ColourSetOK: ;
     if (rc != result_OK) goto SaveAsFail;
     saowner_tc.sa    = sa;
     sawin            = wuss_saveas_window(sa);
-    sarecv_tc.owner_win = sawin;
 
     sa_leaf   = sawin->icons[1];
     sa_cancel = sawin->icons[2];
