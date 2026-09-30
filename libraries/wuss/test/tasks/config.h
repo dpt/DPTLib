@@ -6,6 +6,10 @@
 
 #ifdef WUSS_APP
 
+/* Longest text a writable timing field ever needs to hold: "65535" (5 chars)
+ * plus the terminator. */
+#define CONFIG_FIELD_BUF  6
+
 #include "framebuf/pattern.h"
 #include "geom/box.h"
 #include "wuss/component/proginfo.h"
@@ -19,9 +23,11 @@
  * icons (right/middle mouse button swap -- g_tasks.swap_mouse_buttons, read
  * by each frontend's raw-button translator -- and reversed scroll direction
  * -- g_tasks.reverse_scroll, read where each frontend fills
- * wuss_input_event_t.wheel), plus a "Backdrop" frame: a foreground and a
- * background colour swatch row, a fill-pattern grid, a result swatch mixing
- * the three, and a "Set backdrop" action applying the result via
+ * wuss_input_event_t.wheel), a "Timing" frame with three writable fields
+ * (double-click interval/distance, drag threshold) applied via an "Apply"
+ * action calling wuss_set_config, plus a "Backdrop" frame: a foreground and
+ * a background colour swatch row, a fill-pattern grid, a result swatch
+ * mixing the three, and a "Set backdrop" action applying the result via
  * wuss_set_backdrop. Opened once from run_wuss, not from the task launcher
  * menu. */
 typedef struct config_task
@@ -32,6 +38,14 @@ typedef struct config_task
   wuss_window_t      *window;
   wuss_icon_t         *swap_icon;
   wuss_icon_t         *reverse_scroll_icon;
+  wuss_icon_t         *double_click_ms_icon;
+  wuss_icon_t         *double_click_px_icon;
+  wuss_icon_t         *drag_threshold_px_icon;
+  wuss_icon_t         *apply_timing_icon;
+  char                 double_click_ms_text[CONFIG_FIELD_BUF];
+                                             /* "65535\0" */
+  char                 double_click_px_text[CONFIG_FIELD_BUF];
+  char                 drag_threshold_px_text[CONFIG_FIELD_BUF];
   int                  swatch_x;    /* left edge of every swatch column and
                                      * the grid, document space; set once by
                                      * config_create, read by redraw and

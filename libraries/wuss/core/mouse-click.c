@@ -56,6 +56,45 @@ static result_t mouse_click(wuss_t             *wuss,
 
   wuss->pointer = p;
 
+  if (action == wuss_MOUSE_DOWN)
+  {
+    wuss_window_t *hit_now;
+    int            dx, dy;
+
+    /* Hit-test now, ahead of the real one below, purely to compare against
+     * the window the previous DOWN landed on -- the result is discarded
+     * otherwise, the real hit test still runs its own course further down. */
+    hit_now = wuss__window_at(wuss, p);
+
+    dx = x - wuss->last_down_point.x;
+    dy = y - wuss->last_down_point.y;
+    if (dx < 0)
+      dx = -dx;
+    if (dy < 0)
+      dy = -dy;
+
+    if (wuss->last_down_window == hit_now &&
+        wuss->last_down_button == button &&
+        (wuss->now_ms - wuss->last_down_ms) <=
+          (unsigned int) wuss->double_click_ms &&
+        dx <= wuss->double_click_px &&
+        dy <= wuss->double_click_px)
+    {
+      button |= wuss_BUTTON_DOUBLE;
+
+      /* Consumed: a third press starts a fresh pair, it does not chain into
+       * another double. */
+      wuss->last_down_window = NULL;
+    }
+    else
+    {
+      wuss->last_down_window = hit_now;
+      wuss->last_down_button = button;
+      wuss->last_down_point  = p;
+      wuss->last_down_ms     = wuss->now_ms;
+    }
+  }
+
 #ifdef WUSS_ICONS
   /* Release a held button icon on a MOUSE_UP that will NOT reach it through the
    * normal window hit-test: the up may land on a window that opened over the
