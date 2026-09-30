@@ -113,6 +113,7 @@ set(PUBLIC_HEADERS
     include/geom/size.h
     include/geom/stack.h
     include/io/dirscan.h
+    include/io/filetype.h
     include/io/namelist.h
     include/io/path.h
     include/io/stream-mem.h
@@ -343,6 +344,7 @@ set(GEOM_SOURCES
 
 set(IO_SOURCES
     libraries/io/dirscan/dirscan.c
+    libraries/io/filetype/filetype.c
     libraries/io/namelist/namelist.c
     libraries/io/path/path.c
     libraries/io/stream/stream-mem.c
@@ -761,6 +763,7 @@ if(BUILD_TESTS)
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
         libraries/geom/stack/test/stack-test.c
+        libraries/io/filetype/test/filetype-test.c
         libraries/io/path/test/path-test.c
         libraries/io/stream/test/stream-test.c
         libraries/text/txtfmt/test/txtfmt-test.c

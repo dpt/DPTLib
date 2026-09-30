@@ -40,7 +40,8 @@ extern testfn_t box_test,
                 stack_test;
 
 /* io */
-extern testfn_t path_test,
+extern testfn_t filetype_test,
+                path_test,
                 stream_test;
 
 /* text */
