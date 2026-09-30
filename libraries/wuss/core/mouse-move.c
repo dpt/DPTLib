@@ -150,6 +150,41 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
     doc_point.y = y - content.y0 + win->scroll.y;
 
 #ifdef WUSS_ICONS
+    /* a DRAGGABLE starts a core drag once the pointer clears
+     * drag_threshold_px from the DOWN that pressed it; a plain click (no
+     * movement past the threshold) leaves it as an ordinary icon press,
+     * released and delivered as wuss_EVENT_ICON on MOUSE_UP as usual */
+    if (wuss->pressed_icon != NULL && wuss->pressed_window == win &&
+        wuss->pressed_icon->spec.type == wuss_ICON_TYPE_DRAGGABLE)
+    {
+      wuss_icon_t *icon = wuss->pressed_icon;
+      int          dx   = x - wuss->pressed_point.x;
+      int          dy   = y - wuss->pressed_point.y;
+
+      if (dx * dx + dy * dy >= wuss->drag_threshold_px * wuss->drag_threshold_px)
+      {
+        box_t    box = icon->spec.bbox;
+        size2d_t size;
+        point_t  hotspot;
+
+        size.w  = box.x1 - box.x0;
+        size.h  = box.y1 - box.y0;
+        hotspot = POINT(wuss->pressed_point.x - (content.x0 - win->scroll.x + box.x0),
+                        wuss->pressed_point.y - (content.y0 - win->scroll.y + box.y0));
+
+        wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 0);
+        wuss__icon_invalidate(win, icon);
+        wuss->pressed_icon   = NULL;
+        wuss->pressed_window = NULL;
+
+        (void) wuss_drag_start(wuss, win, size, hotspot);
+      }
+
+      if (hit != NULL)
+        *hit = win;
+      return result_OK;
+    }
+
     /* a slider drag keeps tracking the pointer even once it strays outside
      * the icon's own bbox, matching a furniture sausage drag */
     if (wuss->pressed_icon != NULL && wuss->pressed_window == win &&

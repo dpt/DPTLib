@@ -218,7 +218,7 @@ result_t wuss__icon_from_spec(const wuss_t           *wuss,
                               wuss_icon_t            *out);
 
 /* Number of wuss_icon_type_t values; sizes the per-type table. */
-#define wuss__ICON_TYPE_COUNT (wuss_ICON_TYPE_DRAGGABLE + 1)
+#define wuss__ICON_TYPE_COUNT (wuss_ICON_TYPE_NUMBER + 1)
 
 struct icon_draw_ctx; /* private to icon/draw.c */
 
