@@ -1,6 +1,7 @@
 /* wuss/component/saveas.c -- RISC OS-style drag-and-drop Save As dialogue */
 
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 #ifdef FORTIFY
@@ -23,15 +24,22 @@
 #include "wuss/component/saveas.h"
 
 #include "../core/impl.h"
+#include "../icon.h"
 
 /* ----------------------------------------------------------------------- */
 
 #define SAVEAS_ICON_W       34
 #define SAVEAS_ICON_H       34
-#define SAVEAS_LEAF_W       160
 #define SAVEAS_BUTTON_W     64
 #define SAVEAS_ROW_H        24
-#define SAVEAS_SAVE_GROW    4  /* extra height for wuss_ICON_BORDER_ACTION */
+#define SAVEAS_SAVE_GROW    8  /* extra height for wuss_ICON_BORDER_ACTION */
+
+/* The dialogue is square, sized by the two buttons side by side; the
+ * writable spans the same width and the rows are spread evenly down it. */
+#define SAVEAS_SIDE         (wuss_STD_INSET * 3 + SAVEAS_BUTTON_W * 2)
+#define SAVEAS_LEAF_W       (SAVEAS_SIDE - wuss_STD_INSET * 2)
+#define SAVEAS_GAP          ((SAVEAS_SIDE - SAVEAS_ICON_H - SAVEAS_ROW_H * 2 - \
+                              SAVEAS_SAVE_GROW) / 4)
 #define SAVEAS_LEAF_SIZE    DPTLIB_MAXPATH
 
 /* The struct is opaque outside this file, unlike wuss_dialogue/wuss_info --
@@ -128,42 +136,56 @@ static void saveas_set_actions(wuss_saveas_t *sa)
 
 /* ----------------------------------------------------------------------- */
 
+/* Icon-set entry for the file icon: "file_<type>" (RISC OS sprite naming,
+ * three lowercase hex digits), else the generic "file_xxx". Returns a
+ * wuss_ICON_SET-encoded value, or 0 if neither is loaded. */
+static int saveas_file_icon(const wuss_t *wuss, filetype_t filetype)
+{
+  char name[16];
+  int  idx;
+
+  snprintf(name, sizeof(name), "file_%03x", filetype.riscos & 0xFFFu);
+  idx = wuss_icons_lookup(wuss, name);
+  if (idx < 0)
+    idx = wuss_icons_lookup(wuss, "file_xxx");
+
+  return idx >= 0 ? wuss_ICON_SET(idx) : 0;
+}
+
 static result_t saveas_build_icons(wuss_saveas_t *sa, const char *leafname)
 {
   result_t         rc;
   wuss_window_t   *window;
-  int              content_w;
-  int              buttons_y;
+  int              save_y;
   wuss_icon_spec_t specs[4];
   wuss_icon_t     *icons[4];
 
-  window    = wuss_dialogue_window(sa->dialogue);
-  content_w = wuss_STD_INSET * 2 + SAVEAS_LEAF_W;
-  buttons_y = wuss_STD_INSET * 3 + SAVEAS_ICON_H + SAVEAS_ROW_H;
+  window = wuss_dialogue_window(sa->dialogue);
+  save_y = SAVEAS_GAP * 3 + SAVEAS_ICON_H + SAVEAS_ROW_H;
   memset(specs, 0, sizeof(specs));
 
-  specs[0].bbox = (box_t) BOX_POS_SIZE((content_w - SAVEAS_ICON_W) / 2,
-                                       wuss_STD_INSET,
+  specs[0].bbox = (box_t) BOX_POS_SIZE((SAVEAS_SIDE - SAVEAS_ICON_W) / 2,
+                                       SAVEAS_GAP,
                                        SAVEAS_ICON_W, SAVEAS_ICON_H);
-  specs[0].type = wuss_ICON_TYPE_DRAGGABLE;
+  specs[0].type         = wuss_ICON_TYPE_DRAGGABLE;
+  specs[0].u.bitmap.set = saveas_file_icon(sa->wuss, sa->filetype);
 
   wuss_icon_spec_writable(&specs[1],
                           (box_t) BOX_POS_SIZE(wuss_STD_INSET,
-                                               wuss_STD_INSET * 2 + SAVEAS_ICON_H,
+                                               SAVEAS_GAP * 2 + SAVEAS_ICON_H,
                                                SAVEAS_LEAF_W, SAVEAS_ROW_H),
                           leafname, SAVEAS_LEAF_SIZE, 0);
 
   wuss_icon_spec_action(&specs[2],
-                        (box_t) BOX_POS_SIZE(content_w - wuss_STD_INSET -
-                                             SAVEAS_BUTTON_W * 2 - wuss_STD_INSET,
-                                             buttons_y,
+                        (box_t) BOX_POS_SIZE(wuss_STD_INSET,
+                                             save_y + SAVEAS_SAVE_GROW / 2,
                                              SAVEAS_BUTTON_W, SAVEAS_ROW_H),
                         "Cancel", 0);
 
   wuss_icon_spec_action(&specs[3],
-                        (box_t) BOX_POS_SIZE(content_w - wuss_STD_INSET -
+                        (box_t) BOX_POS_SIZE(wuss_STD_INSET * 2 +
                                              SAVEAS_BUTTON_W,
-                                             buttons_y - SAVEAS_SAVE_GROW / 2,
+                                             save_y,
                                              SAVEAS_BUTTON_W,
                                              SAVEAS_ROW_H + SAVEAS_SAVE_GROW),
                         "Save", 1);
@@ -207,8 +229,7 @@ result_t wuss_saveas_create(wuss_saveas_t        **out,
   sa->transfer_active = 0;
   sa->save_target     = NULL;
 
-  size = SIZE2D(wuss_STD_INSET * 2 + SAVEAS_LEAF_W,
-               wuss_STD_INSET * 4 + SAVEAS_ICON_H + SAVEAS_ROW_H * 2);
+  size = SIZE2D(SAVEAS_SIDE, SAVEAS_SIDE);
 
   rc = wuss_dialogue_create(&sa->dialogue, task, size, "Save As", NULL, sa);
   if (rc != result_OK)
@@ -257,7 +278,19 @@ void wuss_saveas_set_leafname(wuss_saveas_t *saveas, const char *leafname)
 void wuss_saveas_set_filetype(wuss_saveas_t    *saveas,
                               const filetype_t *filetype)
 {
+  wuss_icon_t *icon;
+  int          set;
+
   saveas->filetype = filetype != NULL ? *filetype : filetype_DATA;
+
+  icon = saveas->drag_icon;
+  set  = saveas_file_icon(saveas->wuss, saveas->filetype);
+  if (set == icon->spec.u.bitmap.set)
+    return;
+
+  icon->spec.u.bitmap.set   = set;
+  icon->spec.u.bitmap.image = wuss_icons_bitmap(saveas->wuss, set - 1);
+  wuss__icon_invalidate(wuss_dialogue_window(saveas->dialogue), icon);
 }
 
 const char *wuss_saveas_get_path(const wuss_saveas_t *saveas)

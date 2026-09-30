@@ -73,6 +73,9 @@ typedef result_t (wuss_saveas_save_fn_t)(const char *path, void *opaque);
  * \param[in]  task     Task the dialogue window is created on. Must not be
  *                      an autoclose task and must outlive the handle.
  * \param[in]  filetype File type offered in the DataSave protocol; copied.
+ *                      Also picks the file icon: the icon-set entry
+ *                      "file_<type>" (three lowercase hex digits), else
+ *                      "file_xxx", else none.
  * \param[in]  leafname Initial leafname; copied. NULL means "" (a caller
  *                      normally passes a name already carrying the
  *                      platform's extension, e.g. from filetype_from_ext).
@@ -108,7 +111,8 @@ void wuss_saveas_destroy(wuss_saveas_t *doomed);
 void wuss_saveas_set_leafname(wuss_saveas_t *saveas, const char *leafname);
 
 /**
- * Replace the file type offered in the DataSave protocol.
+ * Replace the file type offered in the DataSave protocol, and redraw the
+ * file icon to match (see wuss_saveas_create).
  *
  * \param[in] saveas   Handle.
  * \param[in] filetype New file type; copied.
