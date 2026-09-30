@@ -17,6 +17,7 @@
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 
 #include "gradient.h"
 #include "common.h"
@@ -34,7 +35,7 @@ enum
   GRADIENT_MENU_SAVE
 };
 
-#define GRADIENT_SAVE_NAME "gradient.png" /* written to the current dir */
+#define GRADIENT_SAVE_NAME "gradient.png" /* Save As's initial leafname */
 
 /* "Shape" submenu rows, indexed by gradient_shape_t */
 static const char *const gradient_shape_names[gradient_NSHAPES] =
@@ -225,12 +226,44 @@ static void adjust(const gradient_task_t *gc, int rgb[3])
   }
 }
 
+/* wuss_saveas_save_fn_t: opaque is the gradient_task_t */
+static result_t gradient_saveas_save(const char *path, void *opaque)
+{
+  gradient_task_t *gc;
+
+  gc = opaque;
+
+  return snapshot_save_png(gc->window, gradient_handle, gc, path);
+}
+
+/* the Save As dialogue's own task: forwards every event on its window into
+ * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
+ * gradient_task_t block belongs to task->delegate's lifecycle, freed there,
+ * not here. */
+static result_t gradient_saveas_handle(wuss_window_t      *window,
+                                       const wuss_event_t *event,
+                                       void               *task_data)
+{
+  gradient_task_t *gc;
+
+  gc = task_data;
+
+  if (event->kind == wuss_EVENT_QUIT)
+    return result_OK;
+
+  (void) wuss_saveas_handle_event(gc->saveas, window, event);
+
+  return result_OK;
+}
+
 result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
 {
   result_t         rc;
   gradient_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  wuss_task_desc_t saveas_desc;
+  filetype_t       png_type;
   int              i;
 
   task = calloc(1, sizeof(*task));
@@ -269,6 +302,28 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
     return rc;
   }
 
+  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
+   * owner, and delegate (above) is one */
+  saveas_desc.handle    = gradient_saveas_handle;
+  saveas_desc.task_data = task;
+  saveas_desc.name      = "gradient-saveas";
+  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+                          GRADIENT_SAVE_NAME, gradient_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->saveas_task);
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
   WUSS_MENU_ITEM_WINDOW(task->menu_items, GRADIENT_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo singleton
@@ -302,6 +357,8 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
 
 void gradient_destroy(gradient_task_t *task)
 {
+  wuss_saveas_destroy(task->saveas);
+  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 
@@ -463,10 +520,9 @@ static void gradient_reset(gradient_task_t *gc)
 }
 
 /* Menu pick: a Shape row switches the fill; Reset restores the default
- * shape, dither matrix, brightness and saturation; Save PNG writes the
- * window's content, at its current scroll, out. A SELECT pick has already
- * closed and freed the chain, so drop the handle then.
- * ponytail: fixed filename in the current dir; wuss has no save dialogue. */
+ * shape, dither matrix, brightness and saturation; Save PNG shows the Save
+ * As dialogue. A SELECT pick has already closed and freed the chain, so
+ * drop the handle then. */
 static result_t gradient_menu_select(gradient_task_t    *gc,
                                      const wuss_event_t *event)
 {
@@ -484,8 +540,15 @@ static result_t gradient_menu_select(gradient_task_t    *gc,
     return result_OK;
 
   if (event->data.menu_select.index == GRADIENT_MENU_SAVE)
-    return snapshot_save_png(gc->window, gradient_handle, gc,
-                             GRADIENT_SAVE_NAME);
+  {
+    wuss_window_t *saveas_win;
+
+    saveas_win = wuss_saveas_window(gc->saveas);
+    wuss_window_set_hidden(saveas_win, 0);
+    wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
+
+    return result_OK;
+  }
 
   if (event->data.menu_select.index != GRADIENT_MENU_RESET)
     return result_OK;
