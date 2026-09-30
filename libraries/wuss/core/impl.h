@@ -240,6 +240,10 @@ struct wuss
                                               * measures drag_threshold_px
                                               * from here before starting a
                                               * core drag */
+  wuss_button_t               pressed_button; /* button held from that DOWN;
+                                              * carried into drag_button if
+                                              * the press turns into a core
+                                              * drag */
   wuss_icon_t                *hover_icon;   /* icon the pointer is currently
                                             * over, NULL when none; drives
                                             * hover-highlight repaint of
@@ -320,6 +324,11 @@ struct wuss
                                             * running" flag, see drag.c */
   size2d_t                    drag_size;   /* ants box size, set at
                                             * wuss_drag_start */
+  wuss_button_t               drag_button; /* button that started the drag,
+                                            * copied from pressed_button;
+                                            * reported in wuss_EVENT_DRAG_END
+                                            * so a client can tell a SELECT
+                                            * drag from an ADJUST one */
   point_t                     drag_hotspot; /* offset within the box that
                                              * tracks the pointer */
   box_t                       drag_box;    /* current ants box, screen

@@ -178,6 +178,7 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
         wuss->pressed_window = NULL;
 
         (void) wuss_drag_start(wuss, win, size, hotspot);
+        wuss->drag_button = wuss->pressed_button;
       }
 
       if (hit != NULL)

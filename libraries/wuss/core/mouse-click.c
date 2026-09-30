@@ -443,6 +443,7 @@ static result_t mouse_click(wuss_t             *wuss,
           wuss->pressed_icon   = icon;
           wuss->pressed_window = win;
           wuss->pressed_point  = POINT(x, y);
+          wuss->pressed_button = button;
           wuss__icon_invalidate(win, icon);
 
           /* a slider jumps straight to the click point rather than waiting
