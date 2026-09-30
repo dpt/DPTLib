@@ -18,6 +18,7 @@
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 #include "io/path.h"
 #include "wuss/wuss.h"
 #include "wuss/task.h"
@@ -28,8 +29,10 @@
 #include "wuss/menu-desc.h"
 #endif
 #ifdef WUSS_COMPONENTS
+#include "wuss/component/dialogue.h"
 #include "wuss/component/fontmenu.h"
 #include "wuss/component/colourmenu.h"
+#include "wuss/component/saveas.h"
 #include "wuss/gadget/colourset.h"
 #endif
 #ifdef WUSS_GADGETS
@@ -151,6 +154,126 @@ static result_t colourset_test_changed(wuss_colourset_t *colourset,
   return result_OK;
 }
 #endif
+
+/* wuss_saveas end-to-end test: a scratch directory plus a minimal fake
+ * receiver task standing in for the real Filer (BUILD_APPS only), driving
+ * the core DataSave protocol via wuss_saveas_handle_event. POSIX only, as
+ * for the dirlist scratch-dir tests. */
+#if defined(WUSS_COMPONENTS) && !defined(_WIN32) && !defined(__riscos)
+
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+static int make_scratch_dir(char *path, size_t cap)
+{
+  if (snprintf(path, cap, "/tmp/dptlib-saveas-XXXXXX") >= (int) cap)
+    return 0;
+
+  return mkdtemp(path) != NULL;
+}
+
+static void saveas_test_remove_scratch_dir(const char *dir)
+{
+  char path[DPTLIB_MAXPATH];
+
+  snprintf(path, sizeof(path), "%s/saved.txt", dir);
+  remove(path);
+  rmdir(dir);
+}
+
+static int saveas_test_file_exists(const char *path)
+{
+  struct stat st;
+
+  return stat(path, &st) == 0;
+}
+
+/* save_fn passed to wuss_saveas_create: opaque is an int* counter, bumped
+ * on every call (as colourset_test_changed does for its own callback) --
+ * also writes the file so the test can confirm it landed. */
+static result_t saveas_test_save(const char *path, void *opaque)
+{
+  FILE *fp;
+
+  (*(int *) opaque)++;
+
+  fp = fopen(path, "wb");
+  if (fp == NULL)
+    return result_BAD_ARG;
+  fputs("saveas test\n", fp);
+  fclose(fp);
+
+  return result_OK;
+}
+
+typedef struct saveas_owner
+{
+  wuss_saveas_t *sa;
+}
+saveas_owner_t;
+
+/* forwards every event on the saveas dialogue's window into
+ * wuss_saveas_handle_event -- test_handle does not know about this
+ * component. */
+static result_t saveas_owner_handle(wuss_window_t      *window,
+                                    const wuss_event_t *event,
+                                    void               *task_data)
+{
+  saveas_owner_t *tc;
+
+  tc = task_data;
+  if (tc->sa != NULL)
+    (void) wuss_saveas_handle_event(tc->sa, window, event);
+
+  return result_OK;
+}
+
+typedef struct saveas_recv
+{
+  wuss_t        *wuss;
+  wuss_task_t   *self;
+  wuss_window_t *owner_win; /* where to address DataSaveAck -- a
+                            * wuss_task_t has no window to derive this
+                            * from, so the test sets it directly, standing
+                            * in for whatever the real Filer would do */
+  const char    *dir;
+  int            suppress_ack;
+}
+saveas_recv_t;
+
+/* fake Filer stand-in: on a DataSave, replies with a scratch-dir path; on
+ * the DataLoad that follows, just acks -- the file's presence is checked by
+ * the test itself, not by this task. */
+static result_t saveas_recv_handle(wuss_window_t      *window,
+                                   const wuss_event_t *event,
+                                   void               *task_data)
+{
+  saveas_recv_t *tc;
+
+  NOT_USED(window);
+
+  tc = task_data;
+  if (event->kind != wuss_EVENT_MESSAGE || tc->suppress_ack)
+    return result_OK;
+
+  if (event->data.message->action == wuss_MESSAGE_DATA_SAVE)
+  {
+    char path[DPTLIB_MAXPATH];
+
+    snprintf(path, sizeof(path), "%s/saved.txt", tc->dir);
+    (void) wuss_send(tc->wuss, tc->self, tc->owner_win,
+                     wuss_MESSAGE_DATA_SAVE_ACK, path, strlen(path) + 1,
+                     event->data.message->my_ref);
+  }
+  else if (event->data.message->action == wuss_MESSAGE_DATA_LOAD)
+  {
+    (void) wuss_acknowledge(tc->wuss, tc->self, event->data.message);
+  }
+
+  return result_OK;
+}
+#endif /* WUSS_COMPONENTS && !_WIN32 && !__riscos */
 
 static result_t test_handle(wuss_window_t      *window,
                             const wuss_event_t *event,
@@ -6905,6 +7028,200 @@ ColourSetFail:
 ColourSetOK: ;
   }
 #endif /* WUSS_COMPONENTS */
+
+#if defined(WUSS_COMPONENTS) && !defined(_WIN32) && !defined(__riscos)
+  printf("test: wuss_saveas drives the core DataSave protocol end to end\n");
+  {
+    static char      sa_scratch[64];
+
+    const char      *safontfile;
+    bmfont_t        *safont;
+    screen_t         sascr;
+    bitmap_t         sabm;
+    void            *sapixels;
+    wuss_t          *sawuss;
+    wuss_font_desc_t safdesc;
+    saveas_owner_t   saowner_tc;
+    saveas_recv_t    sarecv_tc;
+    wuss_task_t     *saowner, *sarecv;
+    wuss_window_t   *sawin, *sarecvwin;
+    wuss_saveas_t   *sa;
+    filetype_t       sa_ft;
+    box_t            sarecvbox;
+    wuss_event_t     ev;
+    wuss_icon_t     *sa_leaf, *sa_cancel, *sa_save;
+    char             sa_path[DPTLIB_MAXPATH];
+    int              sa_save_calls;
+
+    if (!make_scratch_dir(sa_scratch, sizeof(sa_scratch))) goto SaveAsFail;
+
+    safontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
+    rc = bmfont_create(safontfile, &safont);
+    if (rc != result_OK) goto SaveAsFail;
+
+    sapixels = malloc((size_t) rowbytes * 200);
+    if (sapixels == NULL) { rc = result_OOM; goto SaveAsFail; }
+    rc = bitmap_init(&sabm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, sapixels);
+    if (rc != result_OK) goto SaveAsFail;
+    screen_for_bitmap(&sascr, &sabm);
+
+    safdesc.font       = safont;
+    safdesc.font_class = wuss_FONT_CLASS_NONE;
+    safdesc.name       = NULL;
+    rc = wuss_create(&sascr, &safdesc, 1, NULL, 0, NULL, NULL, resources,
+                     &sawuss);
+    if (rc != result_OK) goto SaveAsFail;
+
+    memset(&saowner_tc, 0, sizeof(saowner_tc));
+    saowner = mk_task(sawuss, saveas_owner_handle, &saowner_tc);
+    if (saowner == NULL) { rc = result_OOM; goto SaveAsFail; }
+
+    memset(&sarecv_tc, 0, sizeof(sarecv_tc));
+    sarecv_tc.wuss = sawuss;
+    sarecv_tc.dir  = sa_scratch;
+    sarecv = mk_task(sawuss, saveas_recv_handle, &sarecv_tc);
+    if (sarecv == NULL) { rc = result_OOM; goto SaveAsFail; }
+    sarecv_tc.self = sarecv;
+
+    sarecvbox = (box_t) BOX_POS_SIZE(10, 10, 100, 100);
+    rc = wuss_window_create(sarecv, &sarecvbox, "Dir", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP, SIZE2D(0, 0), SIZE2D(0, 0),
+                            &sarecvwin);
+    if (rc != result_OK) goto SaveAsFail;
+
+    sa_ft.riscos = 0xfff;
+    sa_ft.ext    = "txt";
+    sa_save_calls = 0;
+    rc = wuss_saveas_create(&sa, saowner, &sa_ft, "Untitled",
+                            saveas_test_save, &sa_save_calls);
+    if (rc != result_OK) goto SaveAsFail;
+    saowner_tc.sa    = sa;
+    sawin            = wuss_saveas_window(sa);
+    sarecv_tc.owner_win = sawin;
+
+    sa_leaf   = sawin->icons[1];
+    sa_cancel = sawin->icons[2];
+    sa_save   = sawin->icons[3];
+
+    /* Save with no full path yet does nothing (prompts, does not call
+     * save_fn) */
+    ev.kind             = wuss_EVENT_ICON;
+    ev.data.icon.icon   = sa_save;
+    ev.data.icon.action = wuss_MOUSE_UP;
+    ev.data.icon.button = wuss_BUTTON_SELECT;
+    ev.data.icon.value  = 0;
+    if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+    if (sa_save_calls != 0) goto SaveAsFail;
+
+    /* dragging the file icon onto the receiver's window starts the DataSave
+     * protocol; the receiver picks a scratch path and acks it, saveas
+     * writes the file and sends DataLoad, the receiver acks that too and
+     * saveas hides itself */
+    ev.kind                    = wuss_EVENT_DRAG_END;
+    ev.data.drag_end.drop      = sarecvwin;
+    ev.data.drag_end.point     = POINT(50, 50);
+    ev.data.drag_end.cancelled = 0;
+    if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+
+    rc = wuss_idle(sawuss);
+    if (rc != result_OK) goto SaveAsFail;
+
+    if (sa_save_calls != 1) goto SaveAsFail;
+    if ((sawin->flags & wuss_WINDOW_HIDDEN) == 0) goto SaveAsFail;
+    if (!path_is_full(wuss_saveas_get_path(sa))) goto SaveAsFail;
+    strncpy(sa_path, wuss_saveas_get_path(sa), sizeof(sa_path) - 1);
+    sa_path[sizeof(sa_path) - 1] = '\0';
+    if (!saveas_test_file_exists(sa_path)) goto SaveAsFail;
+
+    /* reveal the dialogue again and try the direct-save shortcut, now the
+     * writable already holds a full path -- no drag needed */
+    (void) wuss_window_set_hidden(sawin, 0);
+    sa_save_calls = 0;
+    ev.kind             = wuss_EVENT_ICON;
+    ev.data.icon.icon   = sa_save;
+    ev.data.icon.action = wuss_MOUSE_UP;
+    ev.data.icon.button = wuss_BUTTON_SELECT;
+    ev.data.icon.value  = 0;
+    if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+    if (sa_save_calls != 1) goto SaveAsFail;
+
+    /* Cancel hides the dialogue */
+    (void) wuss_window_set_hidden(sawin, 0);
+    ev.kind             = wuss_EVENT_ICON;
+    ev.data.icon.icon   = sa_cancel;
+    ev.data.icon.action = wuss_MOUSE_UP;
+    ev.data.icon.button = wuss_BUTTON_SELECT;
+    ev.data.icon.value  = 0;
+    if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+    if ((sawin->flags & wuss_WINDOW_HIDDEN) == 0) goto SaveAsFail;
+
+    /* a drag while a transfer is already running is ignored: start one (the
+     * receiver held back from replying), then drag again before it does */
+    (void) wuss_icon_set_text(sawin, sa_leaf, "second");
+    sarecv_tc.suppress_ack     = 1;
+    ev.kind                    = wuss_EVENT_DRAG_END;
+    ev.data.drag_end.drop      = sarecvwin;
+    ev.data.drag_end.point     = POINT(50, 50);
+    ev.data.drag_end.cancelled = 0;
+    if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+    if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail; /* 2nd, ignored */
+    rc = wuss_idle(sawuss);
+    if (rc != result_OK) goto SaveAsFail;
+    sarecv_tc.suppress_ack = 0;
+
+    /* an unacknowledged DataSave (dropped on a window whose task never
+     * replies) bounces to the saver and is absorbed silently, no crash */
+    {
+      wuss_task_t   *silent;
+      wuss_window_t *silentwin;
+      box_t          silentbox;
+
+      silent = mk_task(sawuss, NULL, NULL);
+      if (silent == NULL) { rc = result_OOM; goto SaveAsFail; }
+
+      silentbox = (box_t) BOX_POS_SIZE(10, 120, 100, 60);
+      rc = wuss_window_create(silent, &silentbox, "Silent",
+                              wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                              SIZE2D(0, 0), SIZE2D(0, 0), &silentwin);
+      if (rc != result_OK) goto SaveAsFail;
+
+      (void) wuss_icon_set_text(sawin, sa_leaf, "third");
+      ev.kind                    = wuss_EVENT_DRAG_END;
+      ev.data.drag_end.drop      = silentwin;
+      ev.data.drag_end.point     = POINT(50, 50);
+      ev.data.drag_end.cancelled = 0;
+      if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+
+      rc = wuss_idle(sawuss);
+      if (rc != result_OK) goto SaveAsFail;
+
+      /* the transfer was abandoned silently: a fresh drag is accepted, not
+       * ignored as "already running" */
+      (void) wuss_icon_set_text(sawin, sa_leaf, "fourth");
+      ev.data.drag_end.drop = sarecvwin;
+      if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+      rc = wuss_idle(sawuss);
+      if (rc != result_OK) goto SaveAsFail;
+      if (sa_save_calls != 2) goto SaveAsFail;
+    }
+
+    wuss_saveas_destroy(sa);
+    saowner_tc.sa = NULL; /* reap below fires QUIT into saveas_owner_handle;
+                          * the dialogue is already gone */
+    reap_test_tasks();
+    wuss_destroy(sawuss);
+    free(sapixels);
+    bmfont_destroy(safont);
+    saveas_test_remove_scratch_dir(sa_scratch);
+    goto SaveAsOK;
+
+SaveAsFail:
+    printf("wuss_test: saveas check failed\n");
+    return result_TEST_FAILED;
+SaveAsOK: ;
+  }
+#endif /* WUSS_COMPONENTS && !_WIN32 && !__riscos */
 
 #ifdef WUSS_ICONS
   printf("test: menu pick flashes then delivers MENU_SELECT; fast ADJUST "
