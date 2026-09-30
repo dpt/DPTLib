@@ -21,6 +21,7 @@
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 #include "wuss/task.h"
+#include "wuss/message.h"
 
 #include "../font/font.h"
 
@@ -48,6 +49,10 @@
 #define WUSS_MAX_INVALIDATE_PIECES 32
 
 #define WUSS_STACK_COUNT 3 /* wuss_stack_t values; indexes wuss_t::z_order */
+
+#define WUSS_MESSAGE_DRAIN_CAP 256 /* deliveries in one drain before the
+                                    * remainder is deferred to the next entry
+                                    * point; see wuss__message_drain */
 
 #define WUSS_PLACE_GUTTER 6 /* px left between windows auto-placed by wuss_window_create_placed */
 
@@ -161,6 +166,28 @@ struct wuss
                                           * of that stack */
   list_t                      tasks;     /* anchor; registered tasks, in
                                           * wuss_task_create order */
+  wuss_message_t             *queue;     /* owned; array grown by
+                                          * wuss__array_grow, FIFO -- consumed
+                                          * from the front, see
+                                          * wuss__message_drain */
+  int                         nqueued;
+  int                         cap_queue;
+  unsigned int                next_ref;  /* next my_ref to hand out; skips 0
+                                          * on wrap, see wuss__message_next_ref */
+  int                         dispatch_depth; /* >0 while inside a public
+                                          * entry point's call tree; sends
+                                          * queue rather than deliver inline,
+                                          * queue drains only back at depth 0 */
+  const wuss_message_t       *acking;    /* the recorded message currently
+                                          * being handled by its recipient's
+                                          * wuss_EVENT_MESSAGE handler, NULL
+                                          * otherwise; wuss_send/wuss_send_recorded/
+                                          * wuss_acknowledge with your_ref ==
+                                          * acking->my_ref mark it acknowledged */
+  int                         acked;     /* set while acking != NULL if it has
+                                          * been acknowledged; read after the
+                                          * handler returns to decide whether
+                                          * to bounce it */
 #ifdef WUSS_FURNITURE
   struct wuss__furniture         furniture;    /* drag state */
   const wuss__furniture_ops_t   *furniture_ops; /* core->furniture dispatch;
@@ -631,6 +658,26 @@ int             wuss__blit_pieces(wuss_window_t *window,
 result_t wuss__deliver(wuss_task_t        *task,
                        wuss_window_t      *win_or_null,
                        const wuss_event_t *ev);
+
+/* Bump dispatch_depth on entry to a public entry point (wuss_mouse_click,
+ * wuss_mouse_move, wuss_key, wuss_idle); wuss__message_leave drops it back
+ * and, at depth 0, drains the queue (see wuss__message_drain). Call these
+ * paired around each entry point's whole body. */
+void wuss__message_enter(wuss_t *wuss);
+void wuss__message_leave(wuss_t *wuss);
+
+/* Deliver every message currently queued, FIFO, including ones sent while
+ * draining; stops (deferring the remainder to the next entry point) after
+ * WUSS_MESSAGE_DRAIN_CAP deliveries in one call, logging a warning (and, in
+ * an NDEBUG-less build, asserting) if that cap is hit. Only ever called at
+ * dispatch_depth 0 -- see wuss__message_leave. */
+void wuss__message_drain(wuss_t *wuss);
+
+/* Purge "task" from the message queue: recorded messages addressed to it
+ * bounce to their senders as wuss_EVENT_MESSAGE_BOUNCED (delivered inline,
+ * synchronously, before this returns); anything sent by "task" is dropped
+ * unsent. Called by wuss_task_destroy before it unlinks/frees the task. */
+void wuss__message_purge_task(wuss_t *wuss, wuss_task_t *task);
 
 /* wuss_window_set_hidden's real body. `handle`/`index` (menu builds only)
  * are threaded through into wuss_EVENT_PRE_SHOW's payload so a flagged menu

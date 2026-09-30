@@ -71,6 +71,9 @@ typedef struct wuss_icon wuss_icon_t;
  * library is built with the WUSS_ICONBAR option on. */
 typedef struct wuss_iconbar_icon wuss_iconbar_icon_t;
 
+/** A message in flight. Full API is in message.h. */
+typedef struct wuss_message wuss_message_t;
+
 /**
  * Allocator hooks used by a wuss_t for every heap block it owns (the
  * instance itself, windows, icons, menu nodes) and by the wuss shared

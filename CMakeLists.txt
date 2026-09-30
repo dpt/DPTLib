@@ -136,6 +136,7 @@ set(PUBLIC_HEADERS
     include/utils/pack.h
     include/utils/primes.h
     include/utils/rng.h
+    include/wuss/message.h
     include/wuss/task.h
     include/wuss/window.h
     include/wuss/wuss.h)
@@ -412,6 +413,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/impl.h
     libraries/wuss/core/invalidate.c
     libraries/wuss/core/key.c
+    libraries/wuss/core/message.c
     libraries/wuss/core/mouse-click.c
     libraries/wuss/core/mouse-move.c
     libraries/wuss/core/nearest-colour.c

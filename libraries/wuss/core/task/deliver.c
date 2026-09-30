@@ -40,6 +40,12 @@ static int wuss__kind_ok_for(wuss_event_kind_t kind, int have_window)
 
   case wuss_EVENT_ICON:
     return 1; /* window view: real icon; task view: reserved shared element */
+
+  case wuss_EVENT_MESSAGE:
+    return 1; /* window view: addressed message; task view: broadcast */
+
+  case wuss_EVENT_MESSAGE_BOUNCED:
+    return !have_window; /* delivered to the sending task */
   }
 
   return 0;

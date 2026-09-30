@@ -4,18 +4,16 @@
 
 #include "impl.h"
 
-result_t wuss_key(wuss_t              *wuss,
-                  int                  code,
-                  wuss_key_modifiers_t modifiers,
-                  int                 *claimed)
+static result_t key(wuss_t              *wuss,
+                    int                  code,
+                    wuss_key_modifiers_t modifiers,
+                    int                 *claimed)
 {
   result_t     rc;
 #ifdef WUSS_ICONS
   int          used;
 #endif
   wuss_event_t event;
-
-  assert(wuss != NULL);
 
   if (claimed != NULL)
     *claimed = 0;
@@ -43,6 +41,22 @@ result_t wuss_key(wuss_t              *wuss,
 
   if (claimed != NULL)
     *claimed = 1;
+
+  return rc;
+}
+
+result_t wuss_key(wuss_t              *wuss,
+                  int                  code,
+                  wuss_key_modifiers_t modifiers,
+                  int                 *claimed)
+{
+  result_t rc;
+
+  assert(wuss != NULL);
+
+  wuss__message_enter(wuss);
+  rc = key(wuss, code, modifiers, claimed);
+  wuss__message_leave(wuss);
 
   return rc;
 }

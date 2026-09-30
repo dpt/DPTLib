@@ -152,6 +152,7 @@ void wuss_destroy(wuss_t *doomed)
   bmfontcache_destroy(doomed->font_cache); /* after the task sweep above, so
                                             * every acquired font has already
                                             * been released */
+  wuss__free(doomed, doomed->queue);
   wuss__free(doomed, doomed->palette);
   wuss__free(doomed, doomed); /* reads doomed->alloc.free before freeing */
 }
