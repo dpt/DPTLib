@@ -1,7 +1,6 @@
 /* io/filetype/filetype.c -- file type identification and RISC OS filetype mapping */
 
 #include <string.h>
-#include <strings.h>
 
 #ifdef __riscos
 #include "kernel.h"
