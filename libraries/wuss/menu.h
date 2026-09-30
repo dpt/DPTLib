@@ -94,6 +94,11 @@ struct wuss__menu
  * and return 1 (the click is spent on dismissal). Returns 0 otherwise. */
 int wuss__menu_click_outside(wuss_t *wuss, const wuss_window_t *hit);
 
+/* True if `window` is one of the open menu chain's windows, including a
+ * borrowed-window leaf -- lets a component shown as a leaf dismiss the whole
+ * chain (wuss__menu_abandon) rather than just hide itself. */
+int wuss__menu_contains(wuss_t *wuss, const wuss_window_t *window);
+
 /* True if `icon` is a parent row on an open menu chain whose submenu is open --
  * i.e. some chain level's `open_index` row. Such a row keeps its hover
  * highlight while the pointer is in a deeper level; wuss__icon_set_hover asks

@@ -173,6 +173,9 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, LISSAJOUS_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[LISSAJOUS_MENU_SAVE].window =
+    wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Lissajous", task->menu_items,
                  NELEMS(task->menu_items));
