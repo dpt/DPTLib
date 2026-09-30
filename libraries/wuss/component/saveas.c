@@ -26,15 +26,13 @@
 
 /* ----------------------------------------------------------------------- */
 
-#define SAVEAS_ICON_W     34
-#define SAVEAS_ICON_H     34
-#define SAVEAS_LEAF_W     160
-#define SAVEAS_BUTTON_W   64
-#define SAVEAS_ROW_H      24
-#define SAVEAS_STATUS_H   20
-#define SAVEAS_LEAF_SIZE  DPTLIB_MAXPATH
-
-#define SAVEAS_STATUS_PROMPT "To save, drag the icon to a directory display"
+#define SAVEAS_ICON_W       34
+#define SAVEAS_ICON_H       34
+#define SAVEAS_LEAF_W       160
+#define SAVEAS_BUTTON_W     64
+#define SAVEAS_ROW_H        24
+#define SAVEAS_SAVE_GROW    4  /* extra height for wuss_ICON_BORDER_ACTION */
+#define SAVEAS_LEAF_SIZE    DPTLIB_MAXPATH
 
 /* The struct is opaque outside this file, unlike wuss_dialogue/wuss_info --
  * no other component composes with it, so nothing needs its layout. */
@@ -48,7 +46,6 @@ struct wuss_saveas
   wuss_icon_t             *leaf_icon;
   wuss_icon_t             *cancel_icon;
   wuss_icon_t             *save_icon;
-  wuss_icon_t             *status_icon;
   filetype_t               filetype;
   wuss_saveas_save_fn_t   *save_fn;
   void                    *opaque;
@@ -66,31 +63,15 @@ struct wuss_saveas
 
 /* ----------------------------------------------------------------------- */
 
-static void saveas_set_status(wuss_saveas_t *sa, const char *text)
-{
-  (void) wuss_icon_set_text(wuss_dialogue_window(sa->dialogue),
-                            sa->status_icon, text);
-}
-
-/* ----------------------------------------------------------------------- */
-
 static result_t saveas_do_save(wuss_saveas_t *sa)
 {
   const char *path;
-  result_t    rc;
 
   path = wuss_icon_get_text(sa->leaf_icon);
   if (!path_is_full(path))
-  {
-    saveas_set_status(sa, SAVEAS_STATUS_PROMPT);
     return result_OK;
-  }
 
-  rc = sa->save_fn(path, sa->opaque);
-  if (rc == result_OK)
-    saveas_set_status(sa, "Saved");
-
-  return rc;
+  return sa->save_fn(path, sa->opaque);
 }
 
 static result_t saveas_action_cancel(void *opaque, wuss_button_t button)
@@ -129,45 +110,43 @@ static result_t saveas_build_icons(wuss_saveas_t *sa, const char *leafname)
 {
   result_t         rc;
   wuss_window_t   *window;
-  wuss_icon_spec_t specs[5];
-  wuss_icon_t     *icons[5];
+  int              content_w;
+  int              buttons_y;
+  wuss_icon_spec_t specs[4];
+  wuss_icon_t     *icons[4];
 
-  window = wuss_dialogue_window(sa->dialogue);
+  window    = wuss_dialogue_window(sa->dialogue);
+  content_w = wuss_STD_INSET * 2 + SAVEAS_LEAF_W;
+  buttons_y = wuss_STD_INSET * 3 + SAVEAS_ICON_H + SAVEAS_ROW_H;
   memset(specs, 0, sizeof(specs));
 
-  specs[0].bbox = (box_t) BOX_POS_SIZE(wuss_STD_INSET, wuss_STD_INSET,
+  specs[0].bbox = (box_t) BOX_POS_SIZE((content_w - SAVEAS_ICON_W) / 2,
+                                       wuss_STD_INSET,
                                        SAVEAS_ICON_W, SAVEAS_ICON_H);
   specs[0].type = wuss_ICON_TYPE_DRAGGABLE;
 
   wuss_icon_spec_writable(&specs[1],
-                          (box_t) BOX_POS_SIZE(wuss_STD_INSET * 2 + SAVEAS_ICON_W,
-                                               wuss_STD_INSET,
+                          (box_t) BOX_POS_SIZE(wuss_STD_INSET,
+                                               wuss_STD_INSET * 2 + SAVEAS_ICON_H,
                                                SAVEAS_LEAF_W, SAVEAS_ROW_H),
                           leafname, SAVEAS_LEAF_SIZE, 0);
 
   wuss_icon_spec_action(&specs[2],
-                        (box_t) BOX_POS_SIZE(wuss_STD_INSET * 2 + SAVEAS_ICON_W,
-                                             wuss_STD_INSET * 2 + SAVEAS_ROW_H,
+                        (box_t) BOX_POS_SIZE(content_w - wuss_STD_INSET -
+                                             SAVEAS_BUTTON_W * 2 - wuss_STD_INSET,
+                                             buttons_y,
                                              SAVEAS_BUTTON_W, SAVEAS_ROW_H),
                         "Cancel", 0);
 
   wuss_icon_spec_action(&specs[3],
-                        (box_t) BOX_POS_SIZE(wuss_STD_INSET * 3 + SAVEAS_ICON_W +
+                        (box_t) BOX_POS_SIZE(content_w - wuss_STD_INSET -
                                              SAVEAS_BUTTON_W,
-                                             wuss_STD_INSET * 2 + SAVEAS_ROW_H,
-                                             SAVEAS_BUTTON_W, SAVEAS_ROW_H),
+                                             buttons_y - SAVEAS_SAVE_GROW / 2,
+                                             SAVEAS_BUTTON_W,
+                                             SAVEAS_ROW_H + SAVEAS_SAVE_GROW),
                         "Save", 1);
 
-  wuss_icon_spec_label(&specs[4],
-                       (box_t) BOX_POS_SIZE(wuss_STD_INSET,
-                                            wuss_STD_INSET * 3 + SAVEAS_ICON_H +
-                                            SAVEAS_ROW_H,
-                                            wuss_STD_INSET * 2 + SAVEAS_ICON_W +
-                                            SAVEAS_LEAF_W - wuss_STD_INSET * 2,
-                                            SAVEAS_STATUS_H),
-                       SAVEAS_STATUS_PROMPT, 0);
-
-  rc = wuss_icon_create_array(window, specs, 5, icons);
+  rc = wuss_icon_create_array(window, specs, 4, icons);
   if (rc != result_OK)
     return rc;
 
@@ -175,7 +154,6 @@ static result_t saveas_build_icons(wuss_saveas_t *sa, const char *leafname)
   sa->leaf_icon   = icons[1];
   sa->cancel_icon = icons[2];
   sa->save_icon   = icons[3];
-  sa->status_icon = icons[4];
 
   return result_OK;
 }
@@ -207,9 +185,8 @@ result_t wuss_saveas_create(wuss_saveas_t        **out,
   sa->transfer_active = 0;
   sa->save_target     = NULL;
 
-  size = SIZE2D(wuss_STD_INSET * 3 + SAVEAS_ICON_W + SAVEAS_LEAF_W,
-               wuss_STD_INSET * 4 + SAVEAS_ICON_H + SAVEAS_ROW_H +
-               SAVEAS_STATUS_H);
+  size = SIZE2D(wuss_STD_INSET * 2 + SAVEAS_LEAF_W,
+               wuss_STD_INSET * 4 + SAVEAS_ICON_H + SAVEAS_ROW_H * 2);
 
   rc = wuss_dialogue_create(&sa->dialogue, task, size, "Save As", NULL, sa);
   if (rc != result_OK)
@@ -296,7 +273,6 @@ static int saveas_handle_drag_end(wuss_saveas_t      *sa,
   {
     sa->transfer_active = 1;
     sa->save_target     = event->data.drag_end.drop;
-    saveas_set_status(sa, "Saving...");
   }
 
   return 1;
@@ -343,7 +319,6 @@ static int saveas_handle_message(wuss_saveas_t      *sa,
      msg->your_ref == sa->load_ref)
   {
     sa->transfer_active = 0;
-    saveas_set_status(sa, "Saved");
     wuss_dialogue_hide(sa->dialogue);
     return 1;
   }

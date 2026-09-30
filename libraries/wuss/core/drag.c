@@ -93,7 +93,7 @@ void wuss__drag_end(wuss_t        *wuss,
 void wuss__drag_draw(wuss_t *wuss)
 {
   colour_t black;
-  box_t    box;
+  box_t    box, saved_clip, clipped;
   int      period, phase;
 
   if (wuss->drag_window == NULL)
@@ -104,9 +104,17 @@ void wuss__drag_draw(wuss_t *wuss)
   period = WUSS_DRAG_ANTS_ON + WUSS_DRAG_ANTS_OFF;
   phase  = wuss->drag_frame % period;
 
-  /* scr->clip is whatever the caller (wuss_redraw / wuss_redraw_dirty) set
-   * for the dirty piece being painted; the drawing primitives clip to it
-   * themselves, so this must not touch it. */
+  /* Each dash pattern is anchored outside "box" (box.x0 - phase, etc.) so it
+   * marches continuously; screen_draw_dashed_line only clips to the screen
+   * and the caller's existing clip, neither of which stops it painting past
+   * the box's own edge into pixels invalidate_edges() never marks dirty.
+   * Pin the clip to box, intersected with whatever the caller (wuss_redraw /
+   * wuss_redraw_dirty) already set, and restore it afterwards. */
+  saved_clip = wuss->scr->clip;
+  if (box_intersection(&box, &saved_clip, &clipped))
+    return; /* box is wholly outside the redraw region */
+  wuss->scr->clip = clipped;
+
   screen_draw_dashed_line(wuss->scr, box.x0 - phase, box.y0, box.x1 - 1, box.y0,
                           WUSS_DRAG_ANTS_ON, WUSS_DRAG_ANTS_OFF, black);
   screen_draw_dashed_line(wuss->scr, box.x1 - 1 + phase, box.y1 - 1, box.x0, box.y1 - 1,
@@ -115,4 +123,6 @@ void wuss__drag_draw(wuss_t *wuss)
                           WUSS_DRAG_ANTS_ON, WUSS_DRAG_ANTS_OFF, black);
   screen_draw_dashed_line(wuss->scr, box.x1 - 1, box.y0 - phase, box.x1 - 1, box.y1 - 1,
                           WUSS_DRAG_ANTS_ON, WUSS_DRAG_ANTS_OFF, black);
+
+  wuss->scr->clip = saved_clip;
 }
