@@ -1126,6 +1126,89 @@ result_t wuss_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
+  printf("test: two same-button, same-window DOWNs within the double-click "
+        "window carry wuss_BUTTON_DOUBLE on the second; a third does not "
+        "chain into another double\n");
+
+  wuss_set_time(wuss, 1000);
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+  if (rc != result_OK)
+    goto Failure;
+  if (tc_b.last_button & wuss_BUTTON_DOUBLE)
+    goto Failure; /* first press of the pair: not a double */
+
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  if (rc != result_OK)
+    goto Failure;
+
+  wuss_set_time(wuss, 1100); /* 100ms later, well within the 400ms default */
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+  if (rc != result_OK)
+    goto Failure;
+  if (!(tc_b.last_button & wuss_BUTTON_DOUBLE))
+    goto Failure; /* same window, same button, within time and distance */
+
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  if (rc != result_OK)
+    goto Failure;
+
+  wuss_set_time(wuss, 1150);
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+  if (rc != result_OK)
+    goto Failure;
+  if (tc_b.last_button & wuss_BUTTON_DOUBLE)
+    goto Failure; /* a third press starts a fresh pair, does not chain */
+
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  if (rc != result_OK)
+    goto Failure;
+
+  printf("test: a same-window DOWN outside double_click_ms does not carry "
+        "wuss_BUTTON_DOUBLE\n");
+
+  wuss_set_time(wuss, 2000);
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+  if (rc != result_OK)
+    goto Failure;
+
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  if (rc != result_OK)
+    goto Failure;
+
+  wuss_set_time(wuss, 2500); /* 500ms later, past the 400ms default */
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit);
+  if (rc != result_OK)
+    goto Failure;
+  if (tc_b.last_button & wuss_BUTTON_DOUBLE)
+    goto Failure;
+
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  if (rc != result_OK)
+    goto Failure;
+
+  printf("test: a DOWN on a different window resets the double-click "
+        "pair even within the time window\n");
+
+  wuss_set_time(wuss, 3000);
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* B */
+  if (rc != result_OK)
+    goto Failure;
+
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  if (rc != result_OK)
+    goto Failure;
+
+  wuss_set_time(wuss, 3100);
+  rc = wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A, different window */
+  if (rc != result_OK)
+    goto Failure;
+  if (tc_a.last_button & wuss_BUTTON_DOUBLE)
+    goto Failure;
+
+  rc = wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  if (rc != result_OK)
+    goto Failure;
+
   tc_a.mouse_count = 0;
   rc = wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, &hit); /* A still topmost: B's content click above didn't bring it to front */
   if (rc != result_OK)

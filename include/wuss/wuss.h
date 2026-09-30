@@ -107,7 +107,15 @@ typedef enum wuss_button
   wuss_BUTTON_NONE   = 0,
   wuss_BUTTON_ADJUST = 1 << 0,
   wuss_BUTTON_MENU   = 1 << 1,
-  wuss_BUTTON_SELECT = 1 << 2
+  wuss_BUTTON_SELECT = 1 << 2,
+
+  /**
+   * Set on a DOWN action alongside the button's own flag when this press is
+   * a double-click: same button, same window, within the configured
+   * double_click_ms and double_click_px of the previous DOWN. Handlers that
+   * ignore it see an ordinary click. Never set on an UP action.
+   */
+  wuss_BUTTON_DOUBLE = 1 << 3
 }
 wuss_button_t;
 
@@ -556,6 +564,26 @@ typedef struct wuss_config
 
   /** Desktop background, painted behind windows on every redraw. */
   wuss_backdrop_t backdrop;
+
+  /**
+   * Maximum interval in milliseconds between two same-button, same-window
+   * presses for the second to carry wuss_BUTTON_DOUBLE, or 0 for the default
+   * (400). Measured against the clock set by wuss_set_time; see
+   * wuss_mouse_click.
+   */
+  int            double_click_ms;
+
+  /**
+   * Maximum distance in pixels between two same-button, same-window presses
+   * for the second to carry wuss_BUTTON_DOUBLE, or 0 for the default (4).
+   */
+  int            double_click_px;
+
+  /**
+   * Minimum distance in pixels a press must move before it starts a drag
+   * rather than a plain click, or 0 for the default (4).
+   */
+  int            drag_threshold_px;
 }
 wuss_config_t;
 
@@ -735,6 +763,31 @@ result_t wuss_set_backdrop(wuss_t *wuss, const wuss_backdrop_t *backdrop);
  *         past it).
  */
 result_t wuss_set_config(wuss_t *wuss, const wuss_config_t *config);
+
+/**
+ * Fetch the window manager's current config as resolved -- concrete palette
+ * indices and backdrop, not any symbolic placeholder that was passed to
+ * wuss_create / wuss_set_config. Round-trips through wuss_set_config: fetch,
+ * change a field, set. furniture, bevel, button, accent and slider are
+ * filled even when the library was built without WUSS_FURNITURE /
+ * WUSS_ICONS, so a round-trip config is always valid to pass back regardless
+ * of build options.
+ *
+ * \param[in]  wuss   Window manager.
+ * \param[out] config Filled with the current resolved config.
+ */
+void wuss_get_config(const wuss_t *wuss, wuss_config_t *config);
+
+/**
+ * Tell wuss the current time, for double-click detection. The frontend calls
+ * this once per frame before wuss_mouse_click (SDL: SDL_GetTicks; RISC OS: a
+ * monotonic millisecond clock). The epoch is arbitrary and fixed by the
+ * caller -- only differences between calls matter.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] ms   Current time in milliseconds.
+ */
+void wuss_set_time(wuss_t *wuss, unsigned int ms);
 
 /**
  * Fetch the current screen size (the size of the screen_t passed to

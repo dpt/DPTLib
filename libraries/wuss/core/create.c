@@ -134,6 +134,13 @@ result_t wuss_create(screen_t               *scr,
   w->ndirty   = 0;
   w->ntouched = 0;
 
+  w->now_ms           = 0;
+  w->last_down_ms     = 0;
+  w->last_down_point.x = 0;
+  w->last_down_point.y = 0;
+  w->last_down_button = wuss_BUTTON_NONE;
+  w->last_down_window = NULL;
+
   w->pointer.x = 0;
   w->pointer.y = 0;
 

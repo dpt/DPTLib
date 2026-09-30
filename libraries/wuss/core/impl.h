@@ -41,6 +41,10 @@
 #define WUSS_TITLE_MAX               63
 #define WUSS_DEFAULT_TITLEBAR_HEIGHT 20
 
+#define WUSS_DEFAULT_DOUBLE_CLICK_MS  400
+#define WUSS_DEFAULT_DOUBLE_CLICK_PX  4
+#define WUSS_DEFAULT_DRAG_THRESHOLD_PX 4
+
 #define WUSS_MAX_DIRTY 16 /* dirty regions tracked before further invalidations get merged into the last entry */
 
 /* ponytail: fixed cap; if hit, remaining pieces are carried through
@@ -157,6 +161,9 @@ struct wuss
   wuss_colour_t               window_bg; /* work-area body fill; wuss_COLOUR_WINDOW */
   wuss_colour_t               menu_bg;   /* menu body fill; wuss_COLOUR_MENU */
   wuss_backdrop_t             backdrop; /* colour==wuss_NO_BACKGROUND: none */
+  int                         double_click_ms;   /* resolved, > 0; see wuss__apply_config */
+  int                         double_click_px;   /* resolved, > 0 */
+  int                         drag_threshold_px; /* resolved, > 0 */
 #ifdef WUSS_FURNITURE
   int                         titlebar_height;
 #endif
@@ -200,6 +207,17 @@ struct wuss
   int                         ntouched;
   point_t                     pointer;   /* last pointer position, screen
                                           * space, from any mouse click/move */
+  unsigned int                now_ms;    /* set by wuss_set_time; arbitrary
+                                          * epoch, only differences matter */
+  unsigned int                last_down_ms;    /* now_ms at the last plain
+                                          * (non-double) DOWN, for double-click
+                                          * detection; see mouse-click.c */
+  point_t                     last_down_point;
+  wuss_button_t                last_down_button;
+  wuss_window_t              *last_down_window; /* cleared to NULL by
+                                          * wuss_window_close like
+                                          * pointer_window/focus, so a reused
+                                          * allocation can never false-match */
   wuss_window_t              *pointer_window; /* window whose on-screen
                                           * footprint the pointer was last
                                           * inside (content or furniture),

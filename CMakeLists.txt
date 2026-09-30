@@ -422,10 +422,12 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/resize.c
     libraries/wuss/core/scroll.c
     libraries/wuss/core/scroll-step.c
+    libraries/wuss/core/get-config.c
     libraries/wuss/core/set-backdrop.c
     libraries/wuss/core/set-config.c
     libraries/wuss/core/set-focus.c
     libraries/wuss/core/set-palette.c
+    libraries/wuss/core/set-time.c
     libraries/wuss/font/font.h
     libraries/wuss/font/registry.c
     libraries/wuss/font/text.c
