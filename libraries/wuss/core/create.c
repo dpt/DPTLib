@@ -145,6 +145,7 @@ result_t wuss_create(screen_t               *scr,
   w->pointer.y = 0;
 
   w->drag_window = NULL;
+  w->drag_drawn  = (box_t) BOX_INIT;
   w->drag_frame  = 0;
 
   for (s = 0; s < WUSS_STACK_COUNT; s++)
