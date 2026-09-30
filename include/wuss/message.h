@@ -87,16 +87,16 @@ struct wuss_message
   /** Bytes actually used by \ref data, header excluded. */
   size_t         size;
 
-  /** Action code: a wuss_MESSAGE_* core code, or a task-defined code from
-   *  \ref wuss_MESSAGE_APP_BASE upwards. */
-  int            action;
-
   /** Sending task. Never NULL: every send is attributed. */
   wuss_task_t   *sender;
 
   /** Target window, or NULL for a broadcast. Delivery is to this window's
    *  owning task; the window itself is passed through to the recipient. */
   wuss_window_t *window;
+
+  /** Action code: a wuss_MESSAGE_* core code, or a task-defined code from
+   *  \ref wuss_MESSAGE_APP_BASE upwards. */
+  int            action;
 
   /** Non-zero reference assigned by the sender (see wuss_send /
    *  wuss_send_recorded), from a global counter that skips 0 on wrap. */
@@ -113,7 +113,12 @@ struct wuss_message
   int            recorded;
 
   /** Payload, up to \ref wuss_MESSAGE_DATA_SIZE bytes; only the first \c
-   *  size bytes are meaningful. */
+   *  size bytes are meaningful. \c data is placed after the header's four
+   *  4-byte fields (action/my_ref/your_ref/recorded) so it lands on an
+   *  8-byte boundary on a 64-bit ABI -- a payload type containing a pointer
+   *  (e.g. \ref wuss_data_save_t) can then be cast from it safely. Keep the
+   *  header's pointer fields grouped before the int-sized ones if this
+   *  struct is ever reordered again. */
   unsigned char  data[wuss_MESSAGE_SIZE - sizeof(size_t) - sizeof(int) -
                        sizeof(wuss_task_t *) - sizeof(wuss_window_t *) -
                        2 * sizeof(unsigned int) - sizeof(int)];
