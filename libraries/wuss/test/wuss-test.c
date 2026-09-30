@@ -8163,6 +8163,61 @@ MoveFail:
     if (qwuss->menu_chain != NULL)           goto QuitCheckFail;
     reap_test_tasks();
 
+    /* Phase 1d: a core drag started from a window leaf (a Save As file icon)
+     * owns the pointer until it ends. Crossing the parent menu's titlebar
+     * mid-drag must not collapse the leaf; once the drag ends the usual
+     * titlebar collapse applies again. Regression: the IDLE titlebar check
+     * polled the pointer regardless and closed the leaf under the drag. */
+    {
+      wuss_menu_item_t   d_items[1];
+      wuss_menu_t        d_menu;
+      wuss_window_t     *leaf;
+      wuss_menu_handle_t root;
+      box_t              content;
+      box_t              row;
+      point_t            arrow;
+      point_t            title;
+
+      memset(&qmt, 0, sizeof(qmt));
+      task_q = mk_task(qwuss, menu_open_handle, &qmt);
+      if (task_q == NULL) { rc = result_OOM; goto QuitDestroy; }
+      qmt.self = task_q;
+      rc = wuss_window_create(task_q, &bq, "Q1d",
+                              wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                              wuss_WINDOW_HIDDEN,
+                              wuss_NO_BACKDROP,
+                              box_size(&bq), SIZE2D(0, 0), &leaf);
+      if (rc != result_OK) goto QuitDestroy;
+
+      WUSS_MENU_ITEM_WINDOW(d_items, 0, "Leaf", wuss_MENU_ITEM_NONE, leaf);
+      WUSS_MENU_TITLE(d_menu, "D", d_items, NELEMS(d_items));
+      rc = wuss_menu_open(task_q, &d_menu, POINT(20, 40), &qmt.menu_handle);
+      if (rc != result_OK) goto QuitDestroy;
+      root = qwuss->menu_chain;
+
+      /* hover the row's arrow (its rightmost pixel) to open the leaf */
+      wuss__content_box(root->window, &content);
+      wuss_icon_get_bbox(root->icons[0], &row);
+      arrow = POINT(content.x0 + row.x1 - 1, content.y0 + (row.y0 + row.y1) / 2);
+      title = POINT(content.x0 + 2, content.y0 - 2);
+      wuss_mouse_move(qwuss, arrow, NULL);
+      if (root->child == NULL || root->child->window != leaf)
+        goto QuitCheckFail;
+
+      rc = wuss_drag_start(qwuss, leaf, SIZE2D(8, 8), POINT(4, 4));
+      if (rc != result_OK) goto QuitDestroy;
+      wuss_mouse_move(qwuss, title, NULL);
+      wuss_idle(qwuss);
+      if (root->child == NULL)                 goto QuitCheckFail;
+
+      wuss_mouse_click(qwuss, title, wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+      wuss_idle(qwuss); /* drag over: the titlebar collapse applies again */
+      if (root->child != NULL)                 goto QuitCheckFail;
+
+      wuss_menu_close(qmt.menu_handle);
+      reap_test_tasks();
+    }
+
     /* Phase 2: same again but torn down by wuss_destroy's own task sweep,
      * with task_q left registered. The internal menu task used to be freed by
      * that sweep before task_q's QUIT, so the QUIT handler's wuss_menu_close
