@@ -19,14 +19,6 @@ const wuss_alloc_t wuss_alloc =
   malloc, realloc, free
 };
 
-/* Built-in fallback palette when the caller passes NULL: black and white.
- * wuss makes no other assumptions about palette contents or length. */
-static const colour_t wuss__default_palette[] =
-{
-  { 0xFF000000 }, /* 0: black */
-  { 0xFFFFFFFF }  /* 1: white */
-};
-
 result_t wuss_create(screen_t               *scr,
                      const wuss_font_desc_t *fonts,
                      int                     nfonts,
@@ -37,6 +29,14 @@ result_t wuss_create(screen_t               *scr,
                      const char             *resources,
                      wuss_t                **wuss)
 {
+  /* Built-in fallback palette when the caller passes NULL: black and white.
+   * wuss makes no other assumptions about palette contents or length. */
+  static const colour_t default_palette[] =
+  {
+    { 0xFF000000 }, /* 0: black */
+    { 0xFFFFFFFF }  /* 1: white */
+  };
+
   result_t     rc;
   wuss_alloc_t al;
   wuss_t      *w;
@@ -59,8 +59,8 @@ result_t wuss_create(screen_t               *scr,
 
   if (palette == NULL)
   {
-    palette  = wuss__default_palette;
-    npalette = NELEMS(wuss__default_palette);
+    palette  = default_palette;
+    npalette = NELEMS(default_palette);
   }
   else if (npalette <= 0)
   {

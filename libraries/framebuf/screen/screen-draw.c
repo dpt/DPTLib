@@ -110,22 +110,22 @@ static void screen_set_pixel_32(screen_t      *scr,
 
 typedef void (*set_pixel_fn_t)(screen_t *, int, int, pixelfmt_any_t);
 
-static const set_pixel_fn_t set_pixel_fns[] =
-{
-  screen_set_pixel_p1,
-  screen_set_pixel_p2,
-  screen_set_pixel_p4,
-  screen_set_pixel_p8,
-  screen_set_pixel_16,
-  screen_set_pixel_32,
-};
-
 /* Writes "pxl" at (x, y), already known to be inside the clip. */
 static void screen_plot_pixel(screen_t      *scr,
                               int            x,
                               int            y,
                               pixelfmt_any_t pxl)
 {
+  static const set_pixel_fn_t set_pixel_fns[] =
+  {
+    screen_set_pixel_p1,
+    screen_set_pixel_p2,
+    screen_set_pixel_p4,
+    screen_set_pixel_p8,
+    screen_set_pixel_16,
+    screen_set_pixel_32,
+  };
+
   int log2bpp;
 
   log2bpp = pixelfmt_log2bpp(scr->format);
@@ -287,22 +287,22 @@ static void screen_blend_pixel_32(screen_t *scr,
 
 typedef void (*blend_pixel_fn_t)(screen_t *, int, int, colour_t, int);
 
-static const blend_pixel_fn_t blend_pixel_fns[] =
-{
-  screen_blend_pixel_p1,
-  screen_blend_pixel_p2,
-  screen_blend_pixel_p4,
-  screen_blend_pixel_p8,
-  screen_blend_pixel_16,
-  screen_blend_pixel_32,
-};
-
 static void screen_blend_pixel(screen_t *scr,
                                int       x,
                                int       y,
                                colour_t  colour,
                                int       alpha)
 {
+  static const blend_pixel_fn_t blend_pixel_fns[] =
+  {
+    screen_blend_pixel_p1,
+    screen_blend_pixel_p2,
+    screen_blend_pixel_p4,
+    screen_blend_pixel_p8,
+    screen_blend_pixel_16,
+    screen_blend_pixel_32,
+  };
+
   box_t clip;
   int   log2bpp;
 
@@ -1082,16 +1082,6 @@ typedef result_t (*copy_bitmap_fn_t)(screen_t *,
                                      int,
                                      screen_dither_t);
 
-static const copy_bitmap_fn_t copy_bitmap_fns[] =
-{
-  screen_copy_bitmap_p1,
-  screen_copy_bitmap_p2,
-  screen_copy_bitmap_p4,
-  screen_copy_bitmap_p8,
-  screen_copy_bitmap_16,
-  screen_copy_bitmap_32,
-};
-
 /* Shared body for screen_copy_bitmap and screen_copy_bitmap_dithered. With
  * "dither" set the paletted-screen (p1/p2/p4/p8) and 16bpp paths
  * ordered-dither the source RGB before the nearest-match lookup or
@@ -1105,6 +1095,16 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
                                      const bitmap_t *src,
                                      screen_dither_t dither)
 {
+  static const copy_bitmap_fn_t copy_bitmap_fns[] =
+  {
+    screen_copy_bitmap_p1,
+    screen_copy_bitmap_p2,
+    screen_copy_bitmap_p4,
+    screen_copy_bitmap_p8,
+    screen_copy_bitmap_16,
+    screen_copy_bitmap_32,
+  };
+
   box_t clip_box;
   box_t src_box;
   box_t draw_box;
