@@ -163,6 +163,15 @@ void wuss_gridview_clear_selection(wuss_gridview_t *gridview);
  */
 result_t wuss_gridview_set_count(wuss_gridview_t *gridview, int count);
 
+/**
+ * Fetch the cell size fixed at \ref wuss_gridview_create, e.g. for a caller
+ * sizing its window to fit a known item count before the first OPEN.
+ *
+ * \param[in] gridview Handle.
+ * \return The glyph+label cell size, including padding.
+ */
+size2d_t wuss_gridview_get_cell_size(const wuss_gridview_t *gridview);
+
 #ifdef __cplusplus
 }
 #endif
