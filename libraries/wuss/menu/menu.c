@@ -131,7 +131,13 @@ static void wuss__menu_close_from(struct wuss__menu *node)
     }
     else
     {
-      wuss_window_close(node->window);
+      wuss_window_t *win;
+
+      /* unhook first: wuss_window_close abandons the chain for a window it
+       * still contains, and a submenu is closed with the chain linked */
+      win          = node->window;
+      node->window = NULL;
+      wuss_window_close(win);
     }
     wuss__free(w, node->icons); /* NULL for a borrowed level */
     wuss__free(w, node);
