@@ -9,6 +9,7 @@
 #include "framebuf/screen.h"
 #include "utils/rng.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/component/saveas.h"
 #include "wuss/gadget/colourset.h"
 #include "wuss/icon-spec.h"
 #include "wuss/menu.h"
@@ -49,8 +50,8 @@ spheroid_light_t;
  * palette. Dithering picks how the preview is blitted to a paletted screen.
  * Mutate (M) nudges the sliders, the lit lights' directions and the colours'
  * hues; Randomise (^R) picks every setting afresh, keeping at least one light
- * on; Reset (R) restores the defaults; Save PNG (^S) writes the sphere alone,
- * transparent outside its edge. */
+ * on; Reset (R) restores the defaults; Save PNG (^S) opens a Save As dialogue
+ * that writes the sphere alone, transparent outside its edge. */
 typedef struct spheroid_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
@@ -81,6 +82,10 @@ typedef struct spheroid_task
   wuss_colourset_t  *colour_sets[SPHEROID_NCOLOURS]; /* sphere, background,
                                                      * current light */
   rng_t              rng;        /* for Mutate and Randomise */
+  wuss_task_t        *saveas_task; /* owns the Save As dialogue; separate
+                                    * from delegate, which is autoclose and
+                                    * wuss_saveas_create forbids that */
+  wuss_saveas_t       *saveas;
 }
 spheroid_task_t;
 
