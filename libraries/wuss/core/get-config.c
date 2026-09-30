@@ -12,10 +12,9 @@ void wuss_get_config(const wuss_t *wuss, wuss_config_t *config)
 
   memset(config, 0, sizeof(*config));
 
-  config->titlebar_height = wuss->titlebar_height;
-
 #ifdef WUSS_FURNITURE
-  config->furniture = wuss->furniture_colours;
+  config->titlebar_height = wuss->titlebar_height;
+  config->furniture       = wuss->furniture_colours;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
   config->bevel.light      = wuss->bevel_light;
