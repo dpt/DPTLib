@@ -18,6 +18,17 @@ static result_t key(wuss_t              *wuss,
   if (claimed != NULL)
     *claimed = 0;
 
+  if (wuss->drag_window != NULL)
+  {
+    if (code == wuss_KEY_ESCAPE)
+    {
+      wuss__drag_end(wuss, wuss->pointer, NULL, 1);
+      if (claimed != NULL)
+        *claimed = 1;
+    }
+    return result_OK;
+  }
+
 #ifdef WUSS_ICONS
   /* the caret's writable gets first refusal */
   rc = wuss__writable_key(wuss, code, modifiers, &used);

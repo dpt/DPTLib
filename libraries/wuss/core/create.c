@@ -144,6 +144,9 @@ result_t wuss_create(screen_t               *scr,
   w->pointer.x = 0;
   w->pointer.y = 0;
 
+  w->drag_window = NULL;
+  w->drag_frame  = 0;
+
   for (s = 0; s < WUSS_STACK_COUNT; s++)
     list_init(&w->z_order[s]);
   list_init(&w->tasks);

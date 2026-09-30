@@ -18,6 +18,12 @@ result_t wuss_idle(wuss_t *wuss)
   wuss__scroll_repeat(wuss);
 #endif
 
+  if (wuss->drag_window != NULL)
+  {
+    wuss->drag_frame++;
+    wuss_invalidate(wuss, &wuss->drag_box); /* re-paint the ants for the new phase */
+  }
+
   rc = result_OK;
   for (e = wuss->tasks.next; e != NULL; )
   {

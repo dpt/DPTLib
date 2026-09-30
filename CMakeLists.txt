@@ -404,6 +404,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/backdrop.c
     libraries/wuss/core/create.c
     libraries/wuss/core/destroy.c
+    libraries/wuss/core/drag.c
     libraries/wuss/core/get-focus.c
     libraries/wuss/core/get-palette.c
     libraries/wuss/core/get-pointer.c
@@ -412,6 +413,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/idle.c
     libraries/wuss/core/impl.h
     libraries/wuss/core/invalidate.c
+    libraries/wuss/core/is-dragging.c
     libraries/wuss/core/key.c
     libraries/wuss/core/message.c
     libraries/wuss/core/mouse-click.c

@@ -662,6 +662,13 @@ bool wuss_frontend_hide_pointer(wuss_frontend_t *fe, bool hide)
   return hide;
 }
 
+void wuss_frontend_capture_mouse(wuss_frontend_t *fe, bool capture)
+{
+  NOT_USED(fe);
+
+  SDL_CaptureMouse(capture);
+}
+
 void wuss_frontend_set_palette(wuss_frontend_t *fe,
                                const colour_t  *palette,
                                int              npalette)

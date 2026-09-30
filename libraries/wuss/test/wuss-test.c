@@ -89,6 +89,10 @@ typedef struct test_task
   int                 last_key_mods;
   int                 unclaim_keys;
   int                 icon_count;
+  int                 drag_end_count;
+  wuss_window_t      *last_drag_end_drop;
+  int                 last_drag_end_x, last_drag_end_y;
+  int                 last_drag_end_cancelled;
 }
 test_task_t;
 
@@ -227,6 +231,14 @@ static result_t test_handle(wuss_window_t      *window,
     tc->last_key_mods = event->data.key.modifiers;
     if (tc->unclaim_keys)
       return result_WUSS_KEY_UNCLAIMED;
+    break;
+
+  case wuss_EVENT_DRAG_END:
+    tc->drag_end_count++;
+    tc->last_drag_end_drop      = event->data.drag_end.drop;
+    tc->last_drag_end_x         = event->data.drag_end.point.x;
+    tc->last_drag_end_y         = event->data.drag_end.point.y;
+    tc->last_drag_end_cancelled = event->data.drag_end.cancelled;
     break;
 
   default:
@@ -9231,6 +9243,139 @@ QuitFail:
 
     reap_test_tasks();
   }
+
+  printf("test: create windows A and B for the core drag tests\n");
+
+  memset(&tc_a, 0, sizeof(tc_a));
+  delegate_a = mk_task(wuss, test_handle, &tc_a);
+  if (delegate_a == NULL) goto Failure;
+
+  box_a.x0 = 0;
+  box_a.y0 = 0;
+  box_a.x1 = 100;
+  box_a.y1 = 100;
+  rc = wuss_window_create(delegate_a, &box_a, "A", wuss_WINDOW_DEFAULT,
+                          wuss_NO_BACKDROP, box_size(&box_a), SIZE2D(0, 0),
+                          &win_a);
+  if (rc != result_OK)
+    goto Failure;
+
+  memset(&tc_b, 0, sizeof(tc_b));
+  delegate_b = mk_task(wuss, test_handle, &tc_b);
+  if (delegate_b == NULL) goto Failure;
+
+  box_b.x0 = 100;
+  box_b.y0 = 100;
+  box_b.x1 = 200;
+  box_b.y1 = 200;
+  rc = wuss_window_create(delegate_b, &box_b, "B", wuss_WINDOW_DEFAULT,
+                          wuss_NO_BACKDROP, box_size(&box_b), SIZE2D(0, 0),
+                          &win_b);
+  if (rc != result_OK)
+    goto Failure;
+
+  printf("test: wuss_drag_start rejects a NULL window or a non-positive "
+        "size\n");
+
+  rc = wuss_drag_start(wuss, NULL, SIZE2D(8, 8), POINT(4, 4));
+  if (rc != result_BAD_ARG)
+    goto Failure;
+
+  rc = wuss_drag_start(wuss, win_a, SIZE2D(0, 8), POINT(0, 0));
+  if (rc != result_BAD_ARG)
+    goto Failure;
+
+  printf("test: a core drag takes over input -- MOUSE_UP ends it with "
+        "wuss_EVENT_DRAG_END (drop = window under the pointer, not "
+        "cancelled), and it is not delivered as a plain MOUSE_UP\n");
+
+  tc_a.drag_end_count = 0;
+  tc_a.mouse_count    = 0;
+  tc_b.mouse_count    = 0;
+
+  rc = wuss_drag_start(wuss, win_a, SIZE2D(8, 8), POINT(4, 4));
+  if (rc != result_OK)
+    goto Failure;
+  if (!wuss_is_dragging(wuss))
+    goto Failure;
+
+  rc = wuss_mouse_move(wuss, POINT(120, 120), &hit); /* over B */
+  if (rc != result_OK)
+    goto Failure;
+  if (hit != win_b)
+    goto Failure; /* hit-test still reported, even though nothing was delivered */
+  if (tc_b.mouse_count != 0)
+    goto Failure; /* moves during a drag are not delivered as wuss_EVENT_MOUSE */
+
+  rc = wuss_mouse_click(wuss, POINT(120, 120), wuss_BUTTON_SELECT, wuss_MOUSE_UP, &hit);
+  if (rc != result_OK)
+    goto Failure;
+  if (wuss_is_dragging(wuss))
+    goto Failure;
+  if (tc_b.mouse_count != 0)
+    goto Failure; /* the ending MOUSE_UP is consumed by the drag, not B */
+  if (tc_a.drag_end_count != 1)
+    goto Failure;
+  if (tc_a.last_drag_end_drop != win_b)
+    goto Failure;
+  if (tc_a.last_drag_end_cancelled)
+    goto Failure;
+  if (tc_a.last_drag_end_x != 120 || tc_a.last_drag_end_y != 120)
+    goto Failure;
+
+  printf("test: Escape cancels an active core drag -- wuss_EVENT_DRAG_END "
+        "with drop = NULL and cancelled = 1\n");
+
+  tc_a.drag_end_count = 0;
+
+  rc = wuss_drag_start(wuss, win_a, SIZE2D(8, 8), POINT(4, 4));
+  if (rc != result_OK)
+    goto Failure;
+
+  rc = wuss_mouse_move(wuss, POINT(120, 120), NULL); /* over B, cancelled anyway */
+  if (rc != result_OK)
+    goto Failure;
+
+  {
+    int claimed;
+
+    rc = wuss_key(wuss, wuss_KEY_ESCAPE, wuss_KEY_MOD_NONE, &claimed);
+    if (rc != result_OK)
+      goto Failure;
+    if (!claimed)
+      goto Failure;
+  }
+
+  if (wuss_is_dragging(wuss))
+    goto Failure;
+  if (tc_a.drag_end_count != 1)
+    goto Failure;
+  if (tc_a.last_drag_end_drop != NULL)
+    goto Failure;
+  if (!tc_a.last_drag_end_cancelled)
+    goto Failure;
+
+  printf("test: wuss_idle advances the marching-ants frame counter while a "
+        "drag is active, and stops once it ends\n");
+
+  rc = wuss_drag_start(wuss, win_a, SIZE2D(8, 8), POINT(4, 4));
+  if (rc != result_OK)
+    goto Failure;
+
+  rc = wuss_idle(wuss);
+  if (rc != result_OK)
+    goto Failure;
+  rc = wuss_idle(wuss);
+  if (rc != result_OK)
+    goto Failure;
+
+  rc = wuss_mouse_click(wuss, POINT(50, 50), wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+  if (rc != result_OK)
+    goto Failure;
+
+  rc = wuss_idle(wuss); /* no drag active: must not misbehave */
+  if (rc != result_OK)
+    goto Failure;
 
   wuss_destroy(wuss);
 

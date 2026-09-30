@@ -396,6 +396,14 @@ bool wuss_frontend_hide_pointer(wuss_frontend_t *fe, bool hide)
   return false;
 }
 
+void wuss_frontend_capture_mouse(wuss_frontend_t *fe, bool capture)
+{
+  NOT_USED(fe);
+  NOT_USED(capture);
+  /* RISC OS has no window-relative capture concept; the pointer is already
+   * screen-global */
+}
+
 void wuss_frontend_close(wuss_frontend_t *fe)
 {
   if (fe == NULL)
