@@ -67,6 +67,16 @@ struct wuss_saveas
 
 /* ----------------------------------------------------------------------- */
 
+/* Dismiss the dialogue: shown as a menu leaf, close the whole chain (as a
+ * RISC OS save box does on completion); standalone, just hide it. */
+static void saveas_dismiss(wuss_saveas_t *sa)
+{
+  if (wuss__menu_contains(sa->wuss, wuss_dialogue_window(sa->dialogue)))
+    wuss__menu_abandon(sa->wuss);
+  else
+    (void) wuss_dialogue_hide(sa->dialogue);
+}
+
 static result_t saveas_do_save(wuss_saveas_t *sa)
 {
   const char *path;
@@ -85,7 +95,7 @@ static result_t saveas_action_cancel(void *opaque, wuss_button_t button)
   (void) button;
   sa = opaque;
   sa->transfer_active = 0;
-  wuss_dialogue_hide(sa->dialogue);
+  saveas_dismiss(sa);
 
   return result_OK;
 }
@@ -99,7 +109,7 @@ static result_t saveas_action_save(void *opaque, wuss_button_t button)
   sa = opaque;
   rc = saveas_do_save(sa);
   if (rc == result_OK)
-    wuss_dialogue_hide(sa->dialogue);
+    saveas_dismiss(sa);
 
   return rc;
 }
@@ -334,7 +344,7 @@ static int saveas_handle_message(wuss_saveas_t      *sa,
   {
     sa->transfer_active = 0;
     if (!sa->keep_open)
-      wuss_dialogue_hide(sa->dialogue);
+      saveas_dismiss(sa);
 
     return 1;
   }

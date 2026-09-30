@@ -507,6 +507,8 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SOFA_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[SOFA_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Sofa", task->menu_items,
                  NELEMS(task->menu_items));

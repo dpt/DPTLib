@@ -648,6 +648,8 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLE_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[GREEBLE_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Greeble", task->menu_items,
                  NELEMS(task->menu_items));

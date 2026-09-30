@@ -1277,17 +1277,14 @@ int wuss__menu_row_pinned(const wuss_t *wuss, const wuss_icon_t *icon)
 
 int wuss__menu_click_outside(wuss_t *wuss, const wuss_window_t *hit)
 {
-  struct wuss__menu *node;
-
-  if (wuss->menu_chain == NULL)
+  if (wuss->menu_chain == NULL || wuss__menu_contains(wuss, hit))
     return 0;
-
-  for (node = wuss->menu_chain; node != NULL; node = node->child)
-  {
-    if (node->window == hit)
-      return 0;
-  }
 
   wuss__menu_abandon(wuss);
   return 1;
+}
+
+int wuss__menu_contains(wuss_t *wuss, const wuss_window_t *window)
+{
+  return wuss__menu_node_for(wuss, window) != NULL;
 }
