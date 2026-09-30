@@ -56,6 +56,21 @@ static result_t mouse_click(wuss_t             *wuss,
 
   wuss->pointer = p;
 
+  /* Core owns all input while a drag is active: MOUSE_UP ends it (dropping
+   * on whatever's under the pointer), any other click is swallowed rather
+   * than reaching a window underneath the ants. */
+  if (wuss->drag_window != NULL)
+  {
+    win = wuss__window_at(wuss, p);
+    if (hit != NULL)
+      *hit = win;
+
+    if (action == wuss_MOUSE_UP)
+      wuss__drag_end(wuss, p, win, 0);
+
+    return result_OK;
+  }
+
   if (action == wuss_MOUSE_DOWN)
   {
     wuss_window_t *hit_now;

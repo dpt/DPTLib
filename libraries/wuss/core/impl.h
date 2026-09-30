@@ -45,6 +45,9 @@
 #define WUSS_DEFAULT_DOUBLE_CLICK_PX  4
 #define WUSS_DEFAULT_DRAG_THRESHOLD_PX 4
 
+#define WUSS_DRAG_ANTS_ON  4 /* marching-ants dash pattern for a core drag box */
+#define WUSS_DRAG_ANTS_OFF 4
+
 #define WUSS_MAX_DIRTY 16 /* dirty regions tracked before further invalidations get merged into the last entry */
 
 /* ponytail: fixed cap; if hit, remaining pieces are carried through
@@ -306,6 +309,21 @@ struct wuss
                                                  * and cleared by
                                                  * wuss__window_set_hidden_ex
                                                  * once delivery returns */
+  wuss_window_t              *drag_window; /* wuss_EVENT_DRAG_END recipient;
+                                            * NULL when no core drag is
+                                            * active -- the sole "is a drag
+                                            * running" flag, see drag.c */
+  size2d_t                    drag_size;   /* ants box size, set at
+                                            * wuss_drag_start */
+  point_t                     drag_hotspot; /* offset within the box that
+                                             * tracks the pointer */
+  box_t                       drag_box;    /* current ants box, screen
+                                            * space; recomputed on every
+                                            * move, invalidated (edges only)
+                                            * before and after */
+  int                         drag_frame;  /* counts wuss_idle calls while
+                                            * dragging, for the ants'
+                                            * marching phase */
 };
 
 struct wuss_window
@@ -438,6 +456,16 @@ static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
 #endif
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
+
+/* Core drag session (drag.c): wuss_drag_start's implementation plus the
+ * per-move/end/draw hooks called from mouse-move.c, mouse-click.c, key.c and
+ * redraw.c. See wuss_t::drag_window for the "is a drag active" state. */
+void wuss__drag_move(wuss_t *wuss, point_t p);
+void wuss__drag_end(wuss_t        *wuss,
+                    point_t        p,
+                    wuss_window_t *drop,
+                    int            cancelled);
+void wuss__drag_draw(wuss_t *wuss);
 
 /* Walk every window front to back across all three stacks: wuss__z_first is
  * the frontmost window overall (NULL if none), wuss__z_below the next one

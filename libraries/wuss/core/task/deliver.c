@@ -28,6 +28,7 @@ static int wuss__kind_ok_for(wuss_event_kind_t kind, int have_window)
   case wuss_EVENT_GAIN_FOCUS:
   case wuss_EVENT_LOSE_FOCUS:
   case wuss_EVENT_KEY:
+  case wuss_EVENT_DRAG_END:
     return have_window;
 
   case wuss_EVENT_IDLE:

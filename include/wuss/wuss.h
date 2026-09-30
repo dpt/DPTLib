@@ -134,6 +134,11 @@ wuss_mouse_action_t;
  * (13, 8, 9, 27), as on RISC OS. Keys with no codepoint use the constants
  * below, which sit above the Unicode range.
  */
+#define wuss_KEY_RETURN    13
+#define wuss_KEY_BACKSPACE 8
+#define wuss_KEY_TAB       9
+#define wuss_KEY_ESCAPE    27
+
 enum
 {
   wuss_KEY_UP = 0x110000,
@@ -1166,6 +1171,44 @@ result_t wuss_key(wuss_t              *wuss,
                   int                  code,
                   wuss_key_modifiers_t modifiers,
                   int                 *claimed);
+
+/**
+ * Start a core drag session: from the next wuss_mouse_move onward, wuss
+ * takes over input and draws a marching-ants box of the given size, its
+ * hotspot held under the pointer, painted last in wuss_redraw_dirty.
+ * Furniture drags and menu hover tracking pause; POINTER_ENTER/EXIT for the
+ * windows the ants cross are deferred and settled at drag end; a MOUSE_UP
+ * ends the drag instead of being delivered as one, and Escape (wuss_key,
+ * wuss_KEY_ESCAPE) cancels it. The SDL frontend should capture the mouse for
+ * the duration so motion past the window edge still arrives.
+ *
+ * Ends with a wuss_EVENT_DRAG_END delivered to "window" -- on a MOUSE_UP,
+ * data.drag_end.drop is the window under the pointer (NULL over bare
+ * backdrop) and cancelled is 0; on Escape, drop is NULL and cancelled is 1.
+ *
+ * \param[in] wuss    Window manager.
+ * \param[in] window  Window the drag is considered to originate from; also
+ *                    the wuss_EVENT_DRAG_END recipient. Must belong to a
+ *                    task with a handle.
+ * \param[in] size    Size of the ants box, screen pixels.
+ * \param[in] hotspot Offset within the box that tracks the pointer (e.g. the
+ *                    point originally clicked, relative to the box's
+ *                    top-left).
+ * \return \ref result_OK on success, \ref result_BAD_ARG if window is NULL,
+ *         has no task handle, or size is not positive.
+ */
+result_t wuss_drag_start(wuss_t        *wuss,
+                         wuss_window_t *window,
+                         size2d_t       size,
+                         point_t        hotspot);
+
+/**
+ * Whether a core drag session (see wuss_drag_start) is currently active.
+ *
+ * \param[in] wuss Window manager.
+ * \return Non-zero while a drag is running.
+ */
+int wuss_is_dragging(const wuss_t *wuss);
 
 #ifdef __cplusplus
 }

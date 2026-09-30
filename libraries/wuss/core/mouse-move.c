@@ -52,6 +52,19 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
 
   wuss->pointer = p;
 
+  if (wuss->drag_window != NULL)
+  {
+    win = wuss__window_at(wuss, p);
+    if (hit != NULL)
+      *hit = win;
+
+    /* POINTER_ENTER/EXIT for windows the ants cross are deferred and settled
+     * by wuss__drag_end, not tracked live -- a drag is not real pointer
+     * traffic for the windows it passes over. */
+    wuss__drag_move(wuss, p);
+    return result_OK;
+  }
+
 #ifdef WUSS_FURNITURE
   if (wuss->furniture.dragging != NULL)
   {

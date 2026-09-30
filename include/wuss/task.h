@@ -130,7 +130,10 @@ typedef enum wuss_event_kind
   /** A recorded message this task sent went unacknowledged; delivered to
    *  the sending task (window == NULL), carrying the original message's
    *  fields via data.message. */
-  wuss_EVENT_MESSAGE_BOUNCED
+  wuss_EVENT_MESSAGE_BOUNCED,
+  /** A core drag session (see wuss_drag_start) has ended; delivered to the
+   *  window the drag was started against. See data.drag_end. */
+  wuss_EVENT_DRAG_END
 }
 wuss_event_kind_t;
 
@@ -143,7 +146,8 @@ wuss_event_kind_t;
  * wuss_EVENT_SCROLL, wuss_EVENT_OPEN, wuss_EVENT_PRE_SHOW, wuss_EVENT_SHOW,
  * wuss_EVENT_PRE_CLOSE, wuss_EVENT_CLOSE, wuss_EVENT_POINTER_ENTER,
  * wuss_EVENT_POINTER_EXIT, wuss_EVENT_GAIN_FOCUS, wuss_EVENT_LOSE_FOCUS,
- * wuss_EVENT_KEY, wuss_EVENT_MESSAGE (a message addressed to this window).
+ * wuss_EVENT_KEY, wuss_EVENT_MESSAGE (a message addressed to this window),
+ * wuss_EVENT_DRAG_END.
  */
 typedef wuss_event_kind_t wuss_window_event_kind_t;
 
@@ -309,6 +313,18 @@ typedef struct wuss_event
      * see wuss/message.h. For a BOUNCED event this is the original message
      * as sent, unmodified. */
     const wuss_message_t *message;
+
+    /** wuss_EVENT_DRAG_END: drop is the window under the pointer when the
+     * drag ended (NULL over bare backdrop, and always NULL when cancelled),
+     * point is the release/cancel position in screen space, cancelled is
+     * non-zero if Escape ended the drag rather than a MOUSE_UP. */
+    struct
+    {
+      wuss_window_t *drop;
+      point_t        point;
+      int            cancelled;
+    }
+    drag_end;
 
     /* wuss_EVENT_OPEN, wuss_EVENT_SHOW, wuss_EVENT_PRE_CLOSE,
      * wuss_EVENT_CLOSE, wuss_EVENT_IDLE, wuss_EVENT_QUIT,
