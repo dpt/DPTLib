@@ -34,6 +34,7 @@
 #endif
 #ifdef WUSS_GADGETS
 #include "wuss/gadget/stringset.h"
+#include "wuss/gadget/gridview.h"
 #endif
 
 /* white-box: the menu-flash test drives picks through the icon layer and
@@ -107,6 +108,33 @@ static result_t stringset_test_changed(wuss_stringset_t *stringset,
 
   (*(int *) opaque)++;
   return result_OK;
+}
+
+/* gridview item source: no glyphs, labels from this fixed table -- must
+ * match the gridview test's gv_labels array */
+static const char *const gridview_test_labels[] =
+{
+  "Alpha", "Beta", "A very long item name that must be truncated"
+};
+
+static void gridview_test_item(int                   index,
+                               void                 *opaque,
+                               wuss_gridview_item_t *out)
+{
+  NOT_USED(opaque);
+
+  out->glyph = NULL;
+  out->label = gridview_test_labels[index];
+}
+
+/* gridview activate callback: records the activated index at opaque */
+static void gridview_test_activate(wuss_gridview_t *gridview,
+                                   int              index,
+                                   void            *opaque)
+{
+  NOT_USED(gridview);
+
+  *(int *) opaque = index;
 }
 #endif
 
@@ -6569,6 +6597,136 @@ StringSetFail:
     printf("wuss_test: stringset check failed\n");
     return result_TEST_FAILED;
 StringSetOK: ;
+  }
+
+  printf("test: wuss_gridview reflows, hit-tests and tracks selection\n");
+  {
+    const char      *gvfontfile;
+    bmfont_t        *gvfont;
+    screen_t         gvscr;
+    bitmap_t         gvbm;
+    void            *gvpixels;
+    wuss_t          *gvwuss;
+    wuss_font_desc_t gvfdesc;
+    test_task_t      gvtc;
+    wuss_task_t     *gvowner;
+    wuss_window_t   *gvwin;
+    wuss_gridview_t *gv;
+    wuss_event_t     ev;
+    box_t            gvcontent;
+    int              cell_h;
+    int              activated;
+
+    gvfontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
+    rc = bmfont_create(gvfontfile, &gvfont);
+    if (rc != result_OK) goto GridViewFail;
+
+    gvpixels = malloc((size_t) rowbytes * 200);
+    if (gvpixels == NULL) { rc = result_OOM; goto GridViewFail; }
+    rc = bitmap_init(&gvbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, gvpixels);
+    if (rc != result_OK) goto GridViewFail;
+    screen_for_bitmap(&gvscr, &gvbm);
+
+    gvfdesc.font       = gvfont;
+    gvfdesc.font_class = wuss_FONT_CLASS_NONE;
+    gvfdesc.name       = NULL;
+    rc = wuss_create(&gvscr, &gvfdesc, 1, NULL, 0, NULL, NULL, resources,
+                     &gvwuss);
+    if (rc != result_OK) goto GridViewFail;
+
+    memset(&gvtc, 0, sizeof(gvtc));
+    gvowner = mk_task(gvwuss, test_handle, &gvtc);
+    if (gvowner == NULL) { rc = result_OOM; goto GridViewFail; }
+
+    /* narrower than two cells, so the grid reflows to a single column and
+     * item 1 lands directly below item 0 -- a known hit-test point without
+     * reaching into the gadget's opaque cell-size state */
+    gvcontent = (box_t) BOX_POS_SIZE(10, 10, 40, 100);
+    rc = wuss_window_create(gvowner, &gvcontent, "GV", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP, SIZE2D(40, 100), SIZE2D(0, 0),
+                            &gvwin);
+    if (rc != result_OK) goto GridViewFail;
+
+    /* a negative count is refused */
+    if (wuss_gridview_create(&gv, gvwin, -1, gridview_test_item, 8, NULL,
+                             NULL) != result_BAD_ARG)
+      goto GridViewFail;
+
+    activated = -1;
+    rc = wuss_gridview_create(&gv, gvwin, NELEMS(gridview_test_labels),
+                              gridview_test_item, 8, gridview_test_activate,
+                              &activated);
+    if (rc != result_OK) goto GridViewFail;
+
+    /* an OPEN reflows to one column and sets the doc extent to fit every
+     * row (white-box: struct wuss_window is visible via impl.h above) */
+    ev.kind = wuss_EVENT_OPEN;
+    (void) wuss_gridview_handle_event(gv, &ev);
+    if (gvwin->doc.w <= 0 || gvwin->doc.h <= 0) goto GridViewFail;
+    if (gvwin->doc.h % (int) NELEMS(gridview_test_labels) != 0) goto GridViewFail;
+    cell_h = gvwin->doc.h / (int) NELEMS(gridview_test_labels);
+
+    /* a foreign event is declined */
+    ev.kind = wuss_EVENT_IDLE;
+    if (wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+
+    /* a redraw is consumed and draws without crashing (ASan-checked) */
+    ev.kind                = wuss_EVENT_REDRAW;
+    ev.data.redraw.scr     = &gvscr;
+    ev.data.redraw.content = &gvcontent;
+    ev.data.redraw.bounds  = &gvcontent;
+    ev.data.redraw.scroll  = POINT(0, 0);
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+
+    /* a Select DOWN on item 0 (top-left of the grid) selects only it */
+    ev.kind              = wuss_EVENT_MOUSE;
+    ev.data.mouse.action = wuss_MOUSE_DOWN;
+    ev.data.mouse.point  = POINT(2, 2);
+    ev.data.mouse.button = wuss_BUTTON_SELECT;
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (!wuss_gridview_is_selected(gv, 0)) goto GridViewFail;
+    if (wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    /* Adjust on item 1 toggles it on without clearing item 0 */
+    ev.data.mouse.point  = POINT(2, 2 + cell_h);
+    ev.data.mouse.button = wuss_BUTTON_ADJUST;
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (!wuss_gridview_is_selected(gv, 0)) goto GridViewFail;
+    if (!wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    /* Adjust again toggles item 1 back off */
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    /* Select on item 1, then a double-click on it activates it */
+    ev.data.mouse.button = wuss_BUTTON_SELECT;
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (wuss_gridview_is_selected(gv, 0)) goto GridViewFail;
+    if (!wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    ev.data.mouse.button = wuss_BUTTON_SELECT | wuss_BUTTON_DOUBLE;
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (activated != 1) goto GridViewFail;
+
+    /* a DOWN on empty space (past the last row) clears the selection */
+    ev.data.mouse.point  = POINT(2, 2 + cell_h * (int) NELEMS(gridview_test_labels));
+    ev.data.mouse.button = wuss_BUTTON_SELECT;
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    wuss_gridview_destroy(gv);
+
+    reap_test_tasks();
+    wuss_destroy(gvwuss);
+    free(gvpixels);
+    bmfont_destroy(gvfont);
+    goto GridViewOK;
+
+GridViewFail:
+    printf("wuss_test: gridview check failed\n");
+    return result_TEST_FAILED;
+GridViewOK: ;
   }
 #endif /* WUSS_GADGETS */
 
