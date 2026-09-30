@@ -824,8 +824,8 @@ const wuss__icon_type_info_t wuss__icon_types[wuss__ICON_TYPE_COUNT] =
   [wuss_ICON_TYPE_SLIDER]     = { wuss__icon_draw_slider,       0 },
   [wuss_ICON_TYPE_WRITABLE]   = { wuss__icon_draw_writable,     0 },
   [wuss_ICON_TYPE_DISPLAY]    = { wuss__icon_draw_label,        0 },
-  [wuss_ICON_TYPE_NUMBER]     = { wuss__icon_draw_label,        1 },
-  [wuss_ICON_TYPE_DRAGGABLE]  = { wuss__icon_draw_label,        1 }
+  [wuss_ICON_TYPE_DRAGGABLE]  = { wuss__icon_draw_bitmap,       0 },
+  [wuss_ICON_TYPE_NUMBER]     = { wuss__icon_draw_label,        1 }
 };
 
 /* ----------------------------------------------------------------------- */

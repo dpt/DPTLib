@@ -235,6 +235,11 @@ struct wuss
                                             * its owner */
   wuss_window_t              *pressed_window; /* the window pressed_icon is on;
                                               * NULL iff pressed_icon is NULL */
+  point_t                     pressed_point;  /* screen point of the DOWN that
+                                              * set pressed_icon; a DRAGGABLE
+                                              * measures drag_threshold_px
+                                              * from here before starting a
+                                              * core drag */
   wuss_icon_t                *hover_icon;   /* icon the pointer is currently
                                             * over, NULL when none; drives
                                             * hover-highlight repaint of

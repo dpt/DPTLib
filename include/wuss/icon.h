@@ -128,6 +128,12 @@ typedef enum wuss_icon_type
   /** A read-only value field: a bevelled well showing text the task updates
    *  but the user cannot edit. Build with wuss_icon_spec_display. */
   wuss_ICON_TYPE_DISPLAY,
+  /** Drawn as wuss_ICON_TYPE_BITMAP (spec.u.bitmap). Once the pointer clears
+   *  wuss_config_t::drag_threshold_px from a Select/Adjust press, starts a
+   *  core drag (see wuss_drag_start) sized to the icon's bounding box,
+   *  hotspot at the press point; a click with no such movement behaves like
+   *  an ordinary press and raises wuss_EVENT_ICON on release as usual. */
+  wuss_ICON_TYPE_DRAGGABLE,
 
   /* The following types are reserved: the enum values and validation exist
    * but no rendering, hit-testing or event routing is wired up yet. A spec
@@ -136,10 +142,7 @@ typedef enum wuss_icon_type
 
   /** An editable numeric field, optionally with up/down adjusters. Not yet
    *  implemented. */
-  wuss_ICON_TYPE_NUMBER,
-  /** A free-drag handle: reports pointer motion to the task while dragged. Not
-   *  yet implemented. */
-  wuss_ICON_TYPE_DRAGGABLE
+  wuss_ICON_TYPE_NUMBER
 }
 wuss_icon_type_t;
 

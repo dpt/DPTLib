@@ -442,6 +442,7 @@ static result_t mouse_click(wuss_t             *wuss,
           wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 1);
           wuss->pressed_icon   = icon;
           wuss->pressed_window = win;
+          wuss->pressed_point  = POINT(x, y);
           wuss__icon_invalidate(win, icon);
 
           /* a slider jumps straight to the click point rather than waiting

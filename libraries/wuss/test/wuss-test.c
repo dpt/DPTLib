@@ -9377,6 +9377,63 @@ QuitFail:
   if (rc != result_OK)
     goto Failure;
 
+  printf("test: a DRAGGABLE icon starts a core drag once the pointer clears "
+        "drag_threshold_px from the press, sized to its bbox\n");
+
+  {
+    wuss_icon_spec_t spec;
+    wuss_icon_t     *draggable;
+    wuss_config_t    dconfig;
+    int              drag_end_before;
+
+    memset(&spec, 0, sizeof(spec));
+    spec.bbox = (box_t) BOX_POS_SIZE(10, 10, 20, 20);
+    spec.type = wuss_ICON_TYPE_DRAGGABLE;
+    rc = wuss_icon_create(win_a, &spec, &draggable);
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_get_config(wuss, &dconfig);
+    drag_end_before = tc_a.drag_end_count;
+
+    /* content top-left is screen (1, 21): 1px outline, 20px titlebar above
+     * the default furniture -- bbox (10,10)-(30,30) local puts its top-left
+     * at screen (11, 31) */
+    rc = wuss_mouse_click(wuss, POINT(11, 31), wuss_BUTTON_SELECT,
+                          wuss_MOUSE_DOWN, NULL);
+    if (rc != result_OK)
+      goto Failure;
+    if (wuss_is_dragging(wuss))
+      goto Failure; /* no movement yet: still an ordinary press */
+
+    /* short of the threshold: stays an ordinary press */
+    rc = wuss_mouse_move(wuss, POINT(11 + dconfig.drag_threshold_px - 1, 31),
+                         NULL);
+    if (rc != result_OK)
+      goto Failure;
+    if (wuss_is_dragging(wuss))
+      goto Failure;
+
+    /* clears the threshold: becomes a core drag, released as an icon press */
+    rc = wuss_mouse_move(wuss, POINT(11 + dconfig.drag_threshold_px + 1, 31),
+                         NULL);
+    if (rc != result_OK)
+      goto Failure;
+    if (!wuss_is_dragging(wuss))
+      goto Failure;
+
+    rc = wuss_mouse_click(wuss, POINT(11 + dconfig.drag_threshold_px + 1, 31),
+                          wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    if (rc != result_OK)
+      goto Failure;
+    if (wuss_is_dragging(wuss))
+      goto Failure;
+    if (tc_a.drag_end_count != drag_end_before + 1)
+      goto Failure;
+
+    wuss_icon_delete(win_a, draggable);
+  }
+
   wuss_destroy(wuss);
 
   free(pixels);
