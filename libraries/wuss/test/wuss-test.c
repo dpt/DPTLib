@@ -8135,6 +8135,34 @@ MoveFail:
     if (qmt.menu_handle != NULL)             goto QuitCheckFail;
     if (qwuss->menu_chain != NULL)           goto QuitCheckFail;
 
+    /* Phase 1c: a window opened as a menu of its own (wuss_menu_open_window,
+     * as a Save As dialogue from ^S) and then closed by its client. The close
+     * must abandon the chain rather than leave its node pointing at the
+     * freed window. Regression: spheroid's QUIT closed its Save As window
+     * mid-chain, and wuss_destroy's later abandon hid the freed window and
+     * delivered MENU_CLOSED to freed task data (ASan: heap-use-after-free). */
+    memset(&qmt, 0, sizeof(qmt));
+    qmt.menu = &q_menu;
+    task_q = mk_task(qwuss, menu_open_handle, &qmt);
+    if (task_q == NULL) { rc = result_OOM; goto QuitDestroy; }
+    qmt.self = task_q;
+    rc = wuss_window_create(task_q, &bq, "Q1c",
+                            wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_OUTLINE |
+                            wuss_WINDOW_HIDDEN,
+                            wuss_NO_BACKDROP,
+                            box_size(&bq), SIZE2D(0, 0), &wq);
+    if (rc != result_OK) goto QuitDestroy;
+    rc = wuss_menu_open_window(task_q, wq, POINT(20, 20), &qmt.menu_handle);
+    if (rc != result_OK) goto QuitDestroy;
+    if (qwuss->menu_chain == NULL)           goto QuitCheckFail;
+    if (wq->flags & wuss_WINDOW_HIDDEN)      goto QuitCheckFail;
+
+    wuss_window_close(wq);
+    if (qmt.menu_closed_count != 1)          goto QuitCheckFail;
+    if (qmt.menu_handle != NULL)             goto QuitCheckFail;
+    if (qwuss->menu_chain != NULL)           goto QuitCheckFail;
+    reap_test_tasks();
+
     /* Phase 2: same again but torn down by wuss_destroy's own task sweep,
      * with task_q left registered. The internal menu task used to be freed by
      * that sweep before task_q's QUIT, so the QUIT handler's wuss_menu_close

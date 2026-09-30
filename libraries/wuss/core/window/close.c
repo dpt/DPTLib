@@ -19,6 +19,18 @@ void wuss_window_close(wuss_window_t *doomed)
 
   wuss = doomed->wuss;
   task = doomed->task;
+
+#ifdef WUSS_MENUS
+  /* A window closed while in the open menu chain -- typically a borrowed
+   * level such as a Save As dialogue its client is freeing -- would leave a
+   * chain node pointing at freed memory. Tear the chain down first, while
+   * the window is still alive to be hidden and restacked. The chain's own
+   * menu windows are unhooked from their nodes before being closed (see
+   * wuss__menu_close_from), so this never recurses. */
+  if (wuss__menu_contains(wuss, doomed))
+    wuss__menu_abandon(wuss);
+#endif
+
 #ifdef WUSS_FURNITURE
   if (wuss->furniture.dragging == doomed)
   {
