@@ -83,6 +83,7 @@ void wuss__drag_end(wuss_t        *wuss,
   event.data.drag_end.drop    = cancelled ? NULL : drop;
   event.data.drag_end.point   = p;
   event.data.drag_end.cancelled = cancelled;
+  event.data.drag_end.button  = wuss->drag_button;
   (void) wuss__deliver(window->task, window, &event);
 }
 

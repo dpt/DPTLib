@@ -56,6 +56,10 @@ struct wuss_saveas
    * go back to the same window, since a wuss_task_t has no single "the"
    * window to derive it from. */
   int                      transfer_active;
+  int                      keep_open; /* set from the drag's button: an
+                                       * ADJUST drag-save leaves the dialogue
+                                       * open for a repeat save, a SELECT one
+                                       * closes it once the transfer completes */
   wuss_window_t           *save_target;
   unsigned int             save_ref;
   unsigned int             load_ref;
@@ -88,8 +92,16 @@ static result_t saveas_action_cancel(void *opaque, wuss_button_t button)
 
 static result_t saveas_action_save(void *opaque, wuss_button_t button)
 {
+  result_t       rc;
+  wuss_saveas_t *sa;
+
   (void) button;
-  return saveas_do_save(opaque);
+  sa = opaque;
+  rc = saveas_do_save(sa);
+  if (rc == result_OK)
+    wuss_dialogue_hide(sa->dialogue);
+
+  return rc;
 }
 
 static void saveas_set_actions(wuss_saveas_t *sa)
@@ -273,6 +285,8 @@ static int saveas_handle_drag_end(wuss_saveas_t      *sa,
   {
     sa->transfer_active = 1;
     sa->save_target     = event->data.drag_end.drop;
+    sa->keep_open       = (event->data.drag_end.button &
+                           wuss_BUTTON_ADJUST) != 0;
   }
 
   return 1;
@@ -319,7 +333,9 @@ static int saveas_handle_message(wuss_saveas_t      *sa,
      msg->your_ref == sa->load_ref)
   {
     sa->transfer_active = 0;
-    wuss_dialogue_hide(sa->dialogue);
+    if (!sa->keep_open)
+      wuss_dialogue_hide(sa->dialogue);
+
     return 1;
   }
 
