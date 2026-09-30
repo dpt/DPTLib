@@ -17,6 +17,7 @@
 #include "geom/box.h"
 #include "geom/size.h"
 #include "geom/stack.h"
+#include "io/filetype.h"
 #include "utils/rng.h"
 #include "wuss/component/dialogue.h"
 #include "wuss/component/proginfo.h"
@@ -95,7 +96,7 @@ enum
   SATURN_MENU_SAVE
 };
 
-#define SATURN_SAVE_NAME "saturn.png" /* written to the current dir */
+#define SATURN_SAVE_NAME "saturn.png" /* Save As's initial leafname */
 enum { SATURN_COLOURS_MENU_FOREGROUND = 0, SATURN_COLOURS_MENU_BACKGROUND };
 
 #define SATURN_SEED_STEP 0x9E3779B9UL /* golden-ratio step between sketches */
@@ -170,6 +171,36 @@ static result_t saturn_conf_apply_action(void *opaque, wuss_button_t button);
 static result_t saturn_conf_default_action(void         *opaque,
                                            wuss_button_t button);
 
+/* wuss_saveas_save_fn_t: opaque is the saturn_task_t */
+static result_t saturn_saveas_save(const char *path, void *opaque)
+{
+  saturn_task_t *task;
+
+  task = opaque;
+
+  return snapshot_save_png(task->window, saturn_handle, task, path);
+}
+
+/* the Save As dialogue's own task: forwards every event on its window into
+ * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
+ * saturn_task_t block belongs to task->delegate's lifecycle, freed there,
+ * not here. */
+static result_t saturn_saveas_handle(wuss_window_t      *window,
+                                     const wuss_event_t *event,
+                                     void               *task_data)
+{
+  saturn_task_t *task;
+
+  task = task_data;
+
+  if (event->kind == wuss_EVENT_QUIT)
+    return result_OK;
+
+  (void) wuss_saveas_handle_event(task->saveas, window, event);
+
+  return result_OK;
+}
+
 result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
 {
   static const saturn_config_t default_config = SATURN_CONFIG_DEFAULT;
@@ -178,6 +209,8 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   saturn_task_t   *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  wuss_task_desc_t saveas_desc;
+  filetype_t       png_type;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -208,6 +241,25 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   }
   task->delegate = delegate; /* the task the menu opens against */
   wuss_task_set_autoclose(delegate, 1);
+
+  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
+   * owner, and delegate (above) is one */
+  saveas_desc.handle    = saturn_saveas_handle;
+  saveas_desc.task_data = task;
+  saveas_desc.name      = "saturn-saveas";
+  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
+  if (rc != result_OK)
+    goto fail_delegate;
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+                          SATURN_SAVE_NAME, saturn_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->saveas_task);
+    task->saveas_task = NULL;
+    goto fail_delegate;
+  }
 
   /* shared colourmenu singleton: wuss_EVENT_PRE_SUBMENU_OPEN retitles/
    * retargets it per hover (see saturn_pre_submenu_open), so Foreground and
@@ -267,6 +319,8 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   return result_OK;
 
 fail_delegate:
+  wuss_saveas_destroy(task->saveas);
+  wuss_task_destroy(task->saveas_task);
   wuss_task_destroy(delegate); /* unregisters; its QUIT frees the task block */
   return rc;
 }
@@ -274,6 +328,8 @@ fail_delegate:
 void saturn_destroy(saturn_task_t *task)
 {
   wuss_dialogue_destroy(task->conf.dialogue);
+  wuss_saveas_destroy(task->saveas);
+  wuss_task_destroy(task->saveas_task);
   free(task); /* task_data was calloc'd per instance by the spawner */
 }
 
@@ -850,8 +906,15 @@ static result_t saturn_menu_select(saturn_task_t      *task,
 
   if (event->data.menu_select.menu == &task->menu &&
       event->data.menu_select.index == SATURN_MENU_SAVE)
-    return snapshot_save_png(task->window, saturn_handle, task,
-                             SATURN_SAVE_NAME);
+  {
+    wuss_window_t *saveas_win;
+
+    saveas_win = wuss_saveas_window(task->saveas);
+    wuss_window_set_hidden(saveas_win, 0);
+    wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
+
+    return result_OK;
+  }
 
   if (task->colourmenu_target == NULL)
     return result_OK;

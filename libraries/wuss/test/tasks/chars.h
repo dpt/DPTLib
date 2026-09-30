@@ -9,6 +9,7 @@
 #include "framebuf/colour.h"
 #include "wuss/component/fontmenu.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/component/saveas.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
 
@@ -20,12 +21,17 @@
  * a menu whose "Font" row is the shared wuss_fontmenu singleton over
  * resources/bmfonts, swapping the font in place, and whose "Page" row lists
  * the pages the current font has glyphs in. Select and Adjust clicks step
- * to the next and previous of those pages. Menu > Save PNG writes the grid
- * to chars.png. */
+ * to the next and previous of those pages. Menu > Save PNG opens a Save As
+ * dialogue (drag its icon onto a Filer window, or Save with a full path
+ * already typed) that writes the grid out. */
 typedef struct chars_task
 {
   wuss_window_t      *window;
   wuss_task_t        *delegate;    /* the wuss task backing this window */
+  wuss_task_t        *saveas_task; /* owns the Save As dialogue; separate
+                                    * from delegate, which is autoclose and
+                                    * wuss_saveas_create forbids that */
+  wuss_saveas_t       *saveas;
   wuss_t             *wuss;        /* for wuss_get_pointer when opening the
                                     * menu */
   wuss_menu_handle_t  menu_handle; /* the open chain, to re-tick it live on

@@ -14,6 +14,7 @@
 #include "framebuf/pattern.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 #include "utils/rng.h"
 
 #include "patterns.h"
@@ -34,7 +35,7 @@ enum
   PATTERNS_MENU_SAVE
 };
 
-#define PATTERNS_SAVE_NAME "patterns.png" /* written to the current dir */
+#define PATTERNS_SAVE_NAME "patterns.png" /* Save As's initial leafname */
 
 /* one entry per row of the "Speed" submenu: seconds per a-to-b blend */
 static const struct
@@ -113,12 +114,44 @@ static result_t patterns_set_speed(patterns_task_t *bc, int idx)
   return result_OK;
 }
 
+/* wuss_saveas_save_fn_t: opaque is the patterns_task_t */
+static result_t patterns_saveas_save(const char *path, void *opaque)
+{
+  patterns_task_t *bc;
+
+  bc = opaque;
+
+  return snapshot_save_png(bc->window, patterns_handle, bc, path);
+}
+
+/* the Save As dialogue's own task: forwards every event on its window into
+ * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
+ * patterns_task_t block belongs to task->delegate's lifecycle, freed there,
+ * not here. */
+static result_t patterns_saveas_handle(wuss_window_t      *window,
+                                       const wuss_event_t *event,
+                                       void               *task_data)
+{
+  patterns_task_t *bc;
+
+  bc = task_data;
+
+  if (event->kind == wuss_EVENT_QUIT)
+    return result_OK;
+
+  (void) wuss_saveas_handle_event(bc->saveas, window, event);
+
+  return result_OK;
+}
+
 result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
 {
   result_t         rc;
   patterns_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  wuss_task_desc_t saveas_desc;
+  filetype_t       png_type;
   int              i;
 
   task = calloc(1, sizeof(*task));
@@ -157,6 +190,28 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
     return rc;
   }
 
+  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
+   * owner, and delegate (above) is one */
+  saveas_desc.handle    = patterns_saveas_handle;
+  saveas_desc.task_data = task;
+  saveas_desc.name      = "patterns-saveas";
+  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+                          PATTERNS_SAVE_NAME, patterns_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->saveas_task);
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
   WUSS_MENU_ITEM_WINDOW(task->menu_items, PATTERNS_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo singleton
@@ -191,6 +246,8 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
 
 void patterns_destroy(patterns_task_t *task)
 {
+  wuss_saveas_destroy(task->saveas);
+  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 
@@ -349,8 +406,11 @@ result_t patterns_handle(wuss_window_t      *window,
       else if (event->data.menu_select.menu == &bc->menu &&
                event->data.menu_select.index == PATTERNS_MENU_SAVE)
       {
-        rc = snapshot_save_png(bc->window, patterns_handle, bc,
-                               PATTERNS_SAVE_NAME);
+        wuss_window_t *saveas_win;
+
+        saveas_win = wuss_saveas_window(bc->saveas);
+        wuss_window_set_hidden(saveas_win, 0);
+        wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
       }
       return rc;
     }

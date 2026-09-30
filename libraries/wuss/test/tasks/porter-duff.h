@@ -9,6 +9,7 @@
 #include "framebuf/bmfont.h"
 #include "framebuf/composite.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -17,13 +18,19 @@
  * ramped up and back down across each rule's turn, so every operator is seen
  * across its full range. Select steps to the next rule and Adjust to the
  * previous one; Menu > Rule jumps straight to any one; Menu > Swap images
- * exchanges source and destination; Menu > Save PNG writes the window's
- * contents to porter-duff.png. Once a click has given the window the input
- * focus, Space pauses/resumes and Left/Right step the rule. */
+ * exchanges source and destination; Menu > Save PNG opens a Save As dialogue
+ * (drag its icon onto a Filer window, or Save with a full path already
+ * typed) that writes the window's contents out. Once a click has given the
+ * window the input focus, Space pauses/resumes and Left/Right step the
+ * rule. */
 typedef struct porter_duff_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
   wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_task_t        *saveas_task; /* owns the Save As dialogue; separate
+                                    * from delegate, which is autoclose and
+                                    * wuss_saveas_create forbids that */
+  wuss_saveas_t       *saveas;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
   wuss_menu_item_t    menu_items[5]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer

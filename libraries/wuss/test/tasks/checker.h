@@ -8,6 +8,7 @@
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -26,13 +27,18 @@ checker_pattern_t;
  * until Menu > Ink/Paper recolours both windows (Menu > Swap colours
  * exchanges the two); each window cycles its own pattern independently,
  * forward on a Select click and back on Adjust, or picks it from
- * Menu > Pattern; Menu > Save PNG writes that window to checker.png. Once
- * a click has given a window the input focus, Left/Right step its pattern
- * and Up/Down widen/narrow its bands */
+ * Menu > Pattern; Menu > Save PNG opens a Save As dialogue (drag its icon
+ * onto a Filer window, or Save with a full path already typed) that writes
+ * that window out. Once a click has given a window the input focus,
+ * Left/Right step its pattern and Up/Down widen/narrow its bands */
 typedef struct checker_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
   wuss_task_t         *delegate; /* the task that owns the menu */
+  wuss_task_t         *saveas_task; /* owns the Save As dialogue; separate
+                                     * from delegate, which is autoclose and
+                                     * wuss_saveas_create forbids that */
+  wuss_saveas_t       *saveas;
   wuss_window_t       *window, *window2;
   wuss_menu_handle_t   menu_handle; /* live only between open and a pick */
   wuss_menu_item_t     menu_items[6]; /* per-instance: a shared static would
