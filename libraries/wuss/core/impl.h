@@ -333,8 +333,12 @@ struct wuss
                                              * tracks the pointer */
   box_t                       drag_box;    /* current ants box, screen
                                             * space; recomputed on every
-                                            * move, invalidated (edges only)
-                                            * before and after */
+                                            * move */
+  box_t                       drag_drawn;  /* box the ants are painted at:
+                                            * caught up with drag_box once a
+                                            * frame by wuss__drag_tick, which
+                                            * invalidates both boxes' edges
+                                            * (only) as it does */
   int                         drag_frame;  /* counts wuss_idle calls while
                                             * dragging, for the ants'
                                             * marching phase */
@@ -472,9 +476,11 @@ static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
 
 /* Core drag session (drag.c): wuss_drag_start's implementation plus the
- * per-move/end/draw hooks called from mouse-move.c, mouse-click.c, key.c and
- * redraw.c. See wuss_t::drag_window for the "is a drag active" state. */
+ * per-move/end/tick/draw hooks called from mouse-move.c, mouse-click.c,
+ * key.c, idle.c and redraw.c. See wuss_t::drag_window for the "is a drag
+ * active" state. */
 void wuss__drag_move(wuss_t *wuss, point_t p);
+void wuss__drag_tick(wuss_t *wuss);
 void wuss__drag_end(wuss_t        *wuss,
                     point_t        p,
                     wuss_window_t *drop,

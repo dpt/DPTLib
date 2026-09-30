@@ -5,10 +5,13 @@
 #include "impl.h"
 
 /* Invalidate just the four 1px edges of "box", not its filled interior --
- * cheap enough to call twice a move (old position, new position) without
+ * cheap enough to call twice a frame (old position, new position) without
  * repainting whatever the ants box covers each time. */
 static void invalidate_edges(wuss_t *wuss, const box_t *box)
 {
+  if (box_is_empty(box))
+    return;
+
   wuss_invalidate(wuss, &(box_t) BOX_POS_SIZE(box->x0, box->y0,
                                               box->x1 - box->x0, 1));
   wuss_invalidate(wuss, &(box_t) BOX_POS_SIZE(box->x0, box->y1 - 1,
@@ -42,22 +45,32 @@ result_t wuss_drag_start(wuss_t        *wuss,
   wuss->drag_hotspot = hotspot;
   wuss->drag_frame   = 0;
   box_for_pointer(wuss, wuss->pointer, &wuss->drag_box);
-  invalidate_edges(wuss, &wuss->drag_box);
+  wuss->drag_drawn = wuss->drag_box;
+  invalidate_edges(wuss, &wuss->drag_drawn);
 
   return result_OK;
 }
 
 /* Called from mouse-move.c on every move while a drag is active: recompute
- * the ants box at the new pointer position, invalidating the edges it
- * leaves and the edges it now occupies. */
+ * the ants box at the new pointer position. Nothing is invalidated here --
+ * several moves can land in one frame, and invalidating every intermediate
+ * box would overflow the dirty list into one big merged region; the next
+ * wuss__drag_tick catches the painted box up instead. */
 void wuss__drag_move(wuss_t *wuss, point_t p)
 {
-  box_t was;
-
-  was = wuss->drag_box;
   box_for_pointer(wuss, p, &wuss->drag_box);
-  invalidate_edges(wuss, &was);
-  invalidate_edges(wuss, &wuss->drag_box);
+}
+
+/* Called from idle.c once a frame while a drag is active: step the ants one
+ * phase on and move them to the latest box, repainting only the edges they
+ * leave and the edges they now sit on (the same four when the box has not
+ * moved -- wuss_invalidate drops the repeats). */
+void wuss__drag_tick(wuss_t *wuss)
+{
+  wuss->drag_frame++;
+  invalidate_edges(wuss, &wuss->drag_drawn);
+  wuss->drag_drawn = wuss->drag_box;
+  invalidate_edges(wuss, &wuss->drag_drawn);
 }
 
 /* Called from mouse-click.c (a MOUSE_UP) and key.c (Escape) to end an active
@@ -74,7 +87,7 @@ void wuss__drag_end(wuss_t        *wuss,
 
   window = wuss->drag_window;
 
-  invalidate_edges(wuss, &wuss->drag_box);
+  invalidate_edges(wuss, &wuss->drag_drawn);
   wuss->drag_window = NULL;
 
   wuss__pointer_set_window(wuss, cancelled ? NULL : drop);
@@ -101,7 +114,7 @@ void wuss__drag_draw(wuss_t *wuss)
     return;
 
   black  = wuss->palette[wuss__resolve_colour(wuss, wuss_COLOUR_BLACK)];
-  box    = wuss->drag_box;
+  box    = wuss->drag_drawn;
   period = WUSS_DRAG_ANTS_ON + WUSS_DRAG_ANTS_OFF;
   phase  = wuss->drag_frame % period;
 
