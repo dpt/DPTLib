@@ -612,9 +612,8 @@ result_t chars_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     {
-      result_t       rc;
-      wuss_window_t *saveas_win;
-      const char    *name;
+      result_t    rc;
+      const char *name;
 
       if (event->data.menu_select.menu == &cc->page_menu)
         return chars_set_page(cc, event);
@@ -622,11 +621,7 @@ result_t chars_handle(wuss_window_t      *window,
       if (event->data.menu_select.menu == &cc->menu &&
           event->data.menu_select.index == CHARS_MENU_SAVE)
       {
-        saveas_win = wuss_saveas_window(cc->saveas);
-        wuss_window_set_hidden(saveas_win, 0);
-        wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
-
-        return result_OK;
+        return wuss_saveas_open(cc->saveas);
       }
 
       name = wuss_fontmenu_selected(event);

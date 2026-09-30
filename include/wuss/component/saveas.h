@@ -13,8 +13,8 @@
  * Attach the dialogue to a menu as a submenu: set a row's
  * wuss_menu_item_t::window to wuss_saveas_window, and the dialogue opens on
  * hover like any other submenu. A save or Cancel then closes the whole menu
- * chain, not just the dialogue. It can still be shown standalone (e.g. from
- * a keyboard shortcut), where it hides itself instead.
+ * chain, not just the dialogue. To show it standalone (e.g. from a keyboard
+ * shortcut) call wuss_saveas_open, which opens it as a menu of its own.
  *
  * The task forwards every event for the dialogue's window (see
  * wuss_saveas_window) through wuss_saveas_handle_event, including
@@ -153,6 +153,17 @@ const char *wuss_saveas_get_path(const wuss_saveas_t *saveas);
 int wuss_saveas_handle_event(wuss_saveas_t      *saveas,
                              wuss_window_t      *window,
                              const wuss_event_t *event);
+
+/**
+ * Show the dialogue on its own, as a menu opened from a key press would be:
+ * centred on the pointer, on the top window layer, and dismissed by a click
+ * anywhere outside it. Opening it closes any menu already open. See
+ * wuss_menu_open_window.
+ *
+ * \param[in] saveas Handle.
+ * \return \ref result_OK, or a wuss_menu_open_window code.
+ */
+result_t wuss_saveas_open(wuss_saveas_t *saveas);
 
 /**
  * The dialogue's window, for showing/hiding it directly or using it as a

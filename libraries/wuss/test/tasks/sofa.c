@@ -770,13 +770,7 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
   if (event->data.menu_select.menu == &sc->menu &&
       event->data.menu_select.index == SOFA_MENU_SAVE)
   {
-    wuss_window_t *saveas_win;
-
-    saveas_win = wuss_saveas_window(sc->saveas);
-    wuss_window_set_hidden(saveas_win, 0);
-    wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
-
-    return result_OK;
+    return wuss_saveas_open(sc->saveas);
   }
 
   if (event->data.menu_select.menu == &sc->model_menu)

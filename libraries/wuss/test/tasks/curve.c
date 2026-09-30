@@ -520,13 +520,7 @@ static result_t curve_menu_select(curve_task_t       *task,
   if (event->data.menu_select.menu == &task->menu &&
       event->data.menu_select.index == CURVE_MENU_SAVE)
   {
-    wuss_window_t *saveas_win;
-
-    saveas_win = wuss_saveas_window(task->saveas);
-    wuss_window_set_hidden(saveas_win, 0);
-    wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
-
-    return result_OK;
+    return wuss_saveas_open(task->saveas);
   }
 
   if (event->data.menu_select.menu == &task->type_menu)

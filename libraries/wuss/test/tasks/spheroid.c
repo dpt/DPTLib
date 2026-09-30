@@ -1398,14 +1398,7 @@ static result_t spheroid_menu_select(spheroid_task_t    *task,
       break;
 
     case SPHEROID_MENU_SAVE:
-      {
-        wuss_window_t *saveas_win;
-
-        saveas_win = wuss_saveas_window(task->saveas);
-        wuss_window_set_hidden(saveas_win, 0);
-        wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
-        return result_OK;
-      }
+      return wuss_saveas_open(task->saveas);
 
     default:
       return result_OK; /* a pick on a submenu row itself */

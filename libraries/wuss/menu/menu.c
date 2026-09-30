@@ -191,38 +191,52 @@ static point_t wuss__submenu_anchor(struct wuss__menu *self,
   return at;
 }
 
-/* Allocate and link a borrowed-window child level onto self->child, then
+/* Allocate a borrowed-window level owned by `owner`, link it onto
+ * parent->child (or leave it unlinked as a root if `parent` is NULL), then
  * bring its window to front. Shared by wuss_menu_open_window_now (the
- * flagged row's explicit opt-in) and wuss__menu_open_window's direct-open
- * path for an unflagged row. */
-static result_t wuss__menu_link_borrowed(struct wuss__menu *self,
-                                         wuss_window_t     *win)
+ * flagged row's explicit opt-in), wuss__menu_open_window's direct-open path
+ * for an unflagged row, and wuss_menu_open_window (a root). */
+static result_t wuss__menu_new_borrowed(wuss_t             *wuss,
+                                        wuss_task_t        *owner,
+                                        struct wuss__menu  *parent,
+                                        wuss_window_t      *win,
+                                        struct wuss__menu **out)
 {
   struct wuss__menu *node;
 
-  node = wuss__malloc(self->wuss, sizeof(*node));
+  node = wuss__malloc(wuss, sizeof(*node));
   if (node == NULL)
     return result_OOM;
 
   node->flags         = wuss_MENU__BORROWED;
-  node->wuss          = self->wuss;
-  node->owner         = self->owner;
+  node->wuss          = wuss;
+  node->owner         = owner;
   node->window        = win;
   node->saved_stack   = win->stack;
   node->menu          = NULL;
   node->icons         = NULL;
-  node->parent        = self;
+  node->parent        = parent;
   node->child         = NULL;
   node->open_index    = -1;
   node->pending_index = -1;
   memset(&node->flash, 0, sizeof(node->flash));
 
-  self->child = node;
+  if (parent != NULL)
+    parent->child = node;
 
   wuss_window_set_stack(win, wuss_STACK_TOP);
   wuss_window_restack(win, wuss_ZORDER_FRONT); /* for a window already in TOP */
 
+  if (out != NULL)
+    *out = node;
   return result_OK;
+}
+
+/* Link a borrowed-window child level onto self->child. */
+static result_t wuss__menu_link_borrowed(struct wuss__menu *self,
+                                         wuss_window_t     *win)
+{
+  return wuss__menu_new_borrowed(self->wuss, self->owner, self, win, NULL);
 }
 
 /* Open item `index`'s borrowed window as level `self->child`: position it
@@ -1053,6 +1067,44 @@ result_t wuss_menu_open(wuss_task_t        *task,
    * eaten. wuss_mouse_click clears this on the next MOUSE_UP whether or not it
    * hit the menu. */
   wuss->menu_eat_up = 1;
+
+  if (out != NULL)
+    *out = root;
+  return result_OK;
+}
+
+result_t wuss_menu_open_window(wuss_task_t        *task,
+                               wuss_window_t      *window,
+                               point_t             at,
+                               wuss_menu_handle_t *out)
+{
+  result_t           rc;
+  struct wuss__menu *root;
+  wuss_t            *wuss;
+
+  assert(task != NULL);
+  assert(window != NULL);
+
+  wuss = task->wuss;
+
+  if (wuss->menu_chain != NULL)
+    wuss__menu_abandon(wuss);
+
+  wuss_window_move(window, at);
+  wuss__nudge_visible_onscreen(window);
+
+  rc = wuss_window_set_hidden(window, 0);
+  if (rc != result_OK)
+    return rc;
+
+  rc = wuss__menu_new_borrowed(wuss, task, NULL, window, &root);
+  if (rc != result_OK)
+  {
+    wuss_window_set_hidden(window, 1);
+    return rc;
+  }
+
+  wuss->menu_chain = root;
 
   if (out != NULL)
     *out = root;

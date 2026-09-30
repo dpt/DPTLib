@@ -436,13 +436,7 @@ result_t lissajous_handle(wuss_window_t      *window,
     if (event->data.menu_select.menu == &lc->menu &&
         event->data.menu_select.index == LISSAJOUS_MENU_SAVE)
     {
-      wuss_window_t *saveas_win;
-
-      saveas_win = wuss_saveas_window(lc->saveas);
-      wuss_window_set_hidden(saveas_win, 0);
-      wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
-
-      return result_OK;
+      return wuss_saveas_open(lc->saveas);
     }
     return lissajous_menu_select(lc, event);
 

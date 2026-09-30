@@ -235,6 +235,29 @@ result_t wuss_menu_open_at_pointer(wuss_task_t        *task,
                                    const wuss_menu_t  *menu,
                                    wuss_menu_handle_t *out);
 
+/**
+ * Open the caller's own \p window as a menu chain of its own, as if it were
+ * a wuss_menu_item_t::window leaf with no menu above it: moved to \p at
+ * (nudged to stay on screen), shown on the top window layer and dismissed by
+ * a click outside it (or another wuss_menu_open), exactly as a menu is. Any
+ * menu chain already open is closed first.
+ *
+ * On dismissal the window is hidden and put back in its original stack, not
+ * closed, and \p task gets wuss_EVENT_MENU_CLOSED as for wuss_menu_open.
+ * Unlike wuss_menu_open no MOUSE_UP is eaten, so this suits opening from a
+ * key press as well as from a click.
+ *
+ * \param[in]  task   Task that receives wuss_EVENT_MENU_CLOSED.
+ * \param[in]  window Window to show; borrowed, must outlive the open chain.
+ * \param[in]  at     Where to put the window's top-left, screen space.
+ * \param[out] out    Filled with the chain handle, or NULL if not wanted.
+ * \return \ref result_OK, \ref result_OOM, or a wuss_window_set_hidden code.
+ */
+result_t wuss_menu_open_window(wuss_task_t        *task,
+                               wuss_window_t      *window,
+                               point_t             at,
+                               wuss_menu_handle_t *out);
+
 /** Close a menu chain and every window in it. Safe to pass a stale or NULL
  *  handle. */
 void wuss_menu_close(wuss_menu_handle_t handle);

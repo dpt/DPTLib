@@ -544,13 +544,7 @@ static result_t gradient_menu_select(gradient_task_t    *gc,
 
   if (event->data.menu_select.index == GRADIENT_MENU_SAVE)
   {
-    wuss_window_t *saveas_win;
-
-    saveas_win = wuss_saveas_window(gc->saveas);
-    wuss_window_set_hidden(saveas_win, 0);
-    wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
-
-    return result_OK;
+    return wuss_saveas_open(gc->saveas);
   }
 
   if (event->data.menu_select.index != GRADIENT_MENU_RESET)

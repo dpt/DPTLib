@@ -351,13 +351,7 @@ static result_t checker_menu_select(checker_task_t     *cc,
   if (event->data.menu_select.menu == &cc->menu &&
       event->data.menu_select.index == CHECKER_MENU_SAVE)
   {
-    wuss_window_t *saveas_win;
-
-    saveas_win = wuss_saveas_window(cc->saveas);
-    wuss_window_set_hidden(saveas_win, 0);
-    wuss_window_restack(saveas_win, wuss_ZORDER_FRONT);
-
-    return result_OK;
+    return wuss_saveas_open(cc->saveas);
   }
 
   if (event->data.menu_select.menu == &cc->menu &&
