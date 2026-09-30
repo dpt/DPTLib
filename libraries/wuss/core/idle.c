@@ -10,6 +10,10 @@ result_t wuss_idle(wuss_t *wuss)
 
   event.kind = wuss_EVENT_IDLE;
 
+  wuss__message_enter(wuss);
+  wuss__message_leave(wuss); /* drain before IDLE, per the file overview */
+  wuss__message_enter(wuss);
+
 #ifdef WUSS_FURNITURE
   wuss__scroll_repeat(wuss);
 #endif
@@ -30,6 +34,8 @@ result_t wuss_idle(wuss_t *wuss)
 
     e = next;
   }
+
+  wuss__message_leave(wuss); /* drain after IDLE too */
 
   return rc;
 }

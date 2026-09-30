@@ -123,6 +123,14 @@ result_t wuss_create(screen_t               *scr,
   w->pressed_iconbar_icon   = NULL;
 #endif
 
+  w->queue          = NULL;
+  w->nqueued        = 0;
+  w->cap_queue      = 0;
+  w->next_ref       = 1;
+  w->dispatch_depth = 0;
+  w->acking         = NULL;
+  w->acked          = 0;
+
   w->ndirty   = 0;
   w->ntouched = 0;
 

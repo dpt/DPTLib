@@ -41,11 +41,11 @@ static void press_furniture(wuss_window_t          *win,
 }
 #endif
 
-result_t wuss_mouse_click(wuss_t             *wuss,
-                          point_t             p,
-                          wuss_button_t       button,
-                          wuss_mouse_action_t action,
-                          wuss_window_t     **hit)
+static result_t mouse_click(wuss_t             *wuss,
+                            point_t             p,
+                            wuss_button_t       button,
+                            wuss_mouse_action_t action,
+                            wuss_window_t     **hit)
 {
   wuss_window_t *win;
   wuss_event_t   event;
@@ -440,4 +440,19 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   }
 
   return result_OK;
+}
+
+result_t wuss_mouse_click(wuss_t             *wuss,
+                          point_t             p,
+                          wuss_button_t       button,
+                          wuss_mouse_action_t action,
+                          wuss_window_t     **hit)
+{
+  result_t rc;
+
+  wuss__message_enter(wuss);
+  rc = mouse_click(wuss, p, button, action, hit);
+  wuss__message_leave(wuss);
+
+  return rc;
 }

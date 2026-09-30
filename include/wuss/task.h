@@ -120,7 +120,17 @@ typedef enum wuss_event_kind
   wuss_EVENT_LOSE_FOCUS,
   /** A key was pressed while this window had the input focus. Return \ref
    *  result_WUSS_KEY_UNCLAIMED to decline it. */
-  wuss_EVENT_KEY
+  wuss_EVENT_KEY,
+  /** A message addressed to this window (window view) or broadcast (task
+   *  view, window == NULL) has arrived; see data.message and wuss/message.h.
+   *  To acknowledge a recorded message from this handler, call
+   *  wuss_acknowledge (or send with your_ref set to the message's my_ref)
+   *  before returning. */
+  wuss_EVENT_MESSAGE,
+  /** A recorded message this task sent went unacknowledged; delivered to
+   *  the sending task (window == NULL), carrying the original message's
+   *  fields via data.message. */
+  wuss_EVENT_MESSAGE_BOUNCED
 }
 wuss_event_kind_t;
 
@@ -133,7 +143,7 @@ wuss_event_kind_t;
  * wuss_EVENT_SCROLL, wuss_EVENT_OPEN, wuss_EVENT_PRE_SHOW, wuss_EVENT_SHOW,
  * wuss_EVENT_PRE_CLOSE, wuss_EVENT_CLOSE, wuss_EVENT_POINTER_ENTER,
  * wuss_EVENT_POINTER_EXIT, wuss_EVENT_GAIN_FOCUS, wuss_EVENT_LOSE_FOCUS,
- * wuss_EVENT_KEY.
+ * wuss_EVENT_KEY, wuss_EVENT_MESSAGE (a message addressed to this window).
  */
 typedef wuss_event_kind_t wuss_window_event_kind_t;
 
@@ -144,7 +154,8 @@ typedef wuss_event_kind_t wuss_window_event_kind_t;
  * Members: wuss_EVENT_IDLE, wuss_EVENT_QUIT, wuss_EVENT_PALETTE,
  * wuss_EVENT_MENU_SELECT, wuss_EVENT_MENU_CLOSED,
  * wuss_EVENT_PRE_SUBMENU_OPEN, wuss_EVENT_ICON (reserved for a future
- * shared/dock element; nothing emits it yet).
+ * shared/dock element; nothing emits it yet), wuss_EVENT_MESSAGE (a
+ * broadcast message), wuss_EVENT_MESSAGE_BOUNCED.
  */
 typedef wuss_event_kind_t wuss_task_event_kind_t;
 
@@ -293,6 +304,11 @@ typedef struct wuss_event
       wuss_key_modifiers_t modifiers;
     }
     key;
+
+    /** wuss_EVENT_MESSAGE / wuss_EVENT_MESSAGE_BOUNCED: the message itself;
+     * see wuss/message.h. For a BOUNCED event this is the original message
+     * as sent, unmodified. */
+    const wuss_message_t *message;
 
     /* wuss_EVENT_OPEN, wuss_EVENT_SHOW, wuss_EVENT_PRE_CLOSE,
      * wuss_EVENT_CLOSE, wuss_EVENT_IDLE, wuss_EVENT_QUIT,

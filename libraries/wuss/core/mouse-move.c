@@ -37,7 +37,7 @@ static point_t snap_to_screen(const wuss_window_t *win, point_t p)
 }
 #endif
 
-result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
+static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
 {
   wuss_window_t *win;
   int            x, y;
@@ -211,4 +211,15 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   }
 
   return result_OK;
+}
+
+result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
+{
+  result_t rc;
+
+  wuss__message_enter(wuss);
+  rc = mouse_move(wuss, p, hit);
+  wuss__message_leave(wuss);
+
+  return rc;
 }
