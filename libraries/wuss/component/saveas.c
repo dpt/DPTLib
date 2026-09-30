@@ -101,10 +101,12 @@ static result_t saveas_action_cancel(void *opaque, wuss_button_t button)
 {
   wuss_saveas_t *sa;
 
-  (void) button;
   sa = opaque;
   sa->transfer_active = 0;
-  saveas_dismiss(sa);
+
+  /* ADJUST cancels any transfer but leaves the dialogue open, as on RISC OS */
+  if (!(button & wuss_BUTTON_ADJUST))
+    saveas_dismiss(sa);
 
   return result_OK;
 }

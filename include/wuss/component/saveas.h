@@ -12,8 +12,9 @@
  *
  * Attach the dialogue to a menu as a submenu: set a row's
  * wuss_menu_item_t::window to wuss_saveas_window, and the dialogue opens on
- * hover like any other submenu. A save or Cancel then closes the whole menu
- * chain, not just the dialogue. To show it standalone (e.g. from a keyboard
+ * hover like any other submenu. A save or a SELECT click on Cancel then
+ * closes the whole menu chain, not just the dialogue; an ADJUST click on
+ * Cancel leaves it open. To show it standalone (e.g. from a keyboard
  * shortcut) call wuss_saveas_open, which opens it as a menu of its own.
  *
  * The task forwards every event for the dialogue's window (see
