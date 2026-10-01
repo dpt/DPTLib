@@ -63,7 +63,8 @@ struct filer_task
   wuss_iconbar_icon_t   *iconbar_icon;
 
   filer_window_t         windows[FILER_MAX_WINDOWS];
-  int                    nwindows;
+  int                    nwindows; /* slots used so far; a closed window's
+                                    * slot stays, window NULL, for reuse */
 
   bitmap_t               glyph_file;
   bitmap_t               glyph_directory;
