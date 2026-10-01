@@ -71,22 +71,21 @@ static int info_widen(bmfont_t *font, const char *s, int cur)
   return MAX(cur, (int) w);
 }
 
-/* Computes the label:value grid's column widths, row pitch and overall size
- * for \p rows against \p font (may be NULL). Shared by wuss_info_create (to
- * size the window it creates) and wuss_info_set_rows (to resize the window
- * it reuses). */
-static void info_measure(bmfont_t              *font,
-                         const wuss_info_row_t *rows,
-                         int                    nrows,
-                         int                   *out_labelw,
-                         int                   *out_valuew,
-                         int                   *out_rowh,
-                         int                   *out_fieldh,
-                         int                   *out_w,
-                         int                   *out_h)
+/* Lays out the label:value grid for \p rows against \p font (may be NULL):
+ * fills \p specs (>= nrows * 2 entries) with one right-justified label and
+ * one centred value per row, and sets \p size to the content size needed.
+ * Shared by wuss_info_create (to size the window it creates) and
+ * wuss_info_set_rows (to resize the window it reuses). wuss_icon_spec_label
+ * zeroes each spec first, so the icon-spec fields this component does not set
+ * (pattern, bitmap, group, swatch) are their safe defaults. */
+static void info_layout(bmfont_t              *font,
+                        const wuss_info_row_t *rows,
+                        int                    nrows,
+                        wuss_icon_spec_t      *specs,
+                        size2d_t              *size)
 {
-  int fonth;
   int labelw, valuew;
+  int fonth;
   int rowh, fieldh;
   int i;
 
@@ -114,51 +113,27 @@ static void info_measure(bmfont_t              *font,
   labelw = MAX(labelw, 1) + 1;
   valuew = MAX(valuew, 1) + INFO_FIELD_PAD * 2; /* groove border + inset */
 
-  *out_labelw = labelw;
-  *out_valuew = valuew;
-  *out_rowh   = rowh;
-  *out_fieldh = fieldh;
-  *out_w      = INFO_INSET * 2 + labelw + INFO_GAP + valuew;
-  /* rowh is the pitch (field + leading); the last row has no trailing leading */
-  *out_h      = INFO_INSET * 2 + rowh * nrows - INFO_ROW_LEADING;
-}
-
-/* Fills \p specs (>= nrows * 2 entries) with one right-justified label and
- * one centred value per row, laid out per info_measure's labelw/valuew/rowh/
- * fieldh. wuss_icon_spec_label zeroes each spec first, so the icon-spec
- * fields this component does not set (pattern, bitmap, group, swatch) are
- * their safe defaults. */
-static void info_fill_specs(wuss_icon_spec_t      *specs,
-                            const wuss_info_row_t *rows,
-                            int                    nrows,
-                            int                    labelw,
-                            int                    valuew,
-                            int                    rowh,
-                            int                    fieldh)
-{
-  int i;
-
   for (i = 0; i < nrows; i++)
   {
-    wuss_icon_spec_t *label;
-    wuss_icon_spec_t *value;
-    int               y;
+    int y;
 
-    label = &specs[i * 2];
-    value = &specs[i * 2 + 1];
-    y     = INFO_INSET + rowh * i;
+    y = INFO_INSET + rowh * i;
 
-    wuss_icon_spec_label(label,
+    wuss_icon_spec_label(&specs[i * 2],
                          (box_t) BOX_POS_SIZE(INFO_INSET, y, labelw, fieldh),
                          rows[i].label,
                          wuss_ICON_FLAGS_JUSTIFY_RIGHT);
 
-    wuss_icon_spec_display(value,
+    wuss_icon_spec_display(&specs[i * 2 + 1],
                            (box_t) BOX_POS_SIZE(INFO_INSET + labelw + INFO_GAP,
                                                 y, valuew, fieldh),
                            rows[i].value,
                            wuss_ICON_FLAGS_JUSTIFY_CENTRE);
   }
+
+  size->w = INFO_INSET * 2 + labelw + INFO_GAP + valuew;
+  /* rowh is the pitch (field + leading); the last row has no trailing leading */
+  size->h = INFO_INSET * 2 + rowh * nrows - INFO_ROW_LEADING;
 }
 
 result_t wuss_info_create(wuss_info_t          **out,
@@ -170,12 +145,10 @@ result_t wuss_info_create(wuss_info_t          **out,
   result_t         rc;
   wuss_t          *wuss;
   bmfont_t        *font;
-  wuss_info_t     *info;
-  int              labelw, valuew;
-  int              rowh, fieldh;
-  int              w, h;
-  box_t            content;
   wuss_icon_spec_t specs[INFO_MAX_ROWS * 2];
+  size2d_t         size;
+  wuss_info_t     *info;
+  box_t            content;
 
   if (out == NULL || task == NULL || title == NULL || rows == NULL)
     return result_NULL_ARG;
@@ -184,7 +157,7 @@ result_t wuss_info_create(wuss_info_t          **out,
 
   wuss = task->wuss;
   font = wuss_get_font(wuss);
-  info_measure(font, rows, nrows, &labelw, &valuew, &rowh, &fieldh, &w, &h);
+  info_layout(font, rows, nrows, specs, &size);
 
   info = wuss->alloc.malloc(sizeof(*info));
   if (info == NULL)
@@ -193,14 +166,14 @@ result_t wuss_info_create(wuss_info_t          **out,
   info->window = NULL;
   info->nicons = 0;
 
-  content = (box_t) BOX_POS_SIZE(0, 0, w, h);
+  content = (box_t) BOX_POS_SIZE(0, 0, size.w, size.h);
   rc = wuss_window_create(task,
                           &content,
                           title,
                           wuss_WINDOW_NO_REDRAW | wuss_WINDOW_HIDDEN,
                           wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                          SIZE2D(w, h),
-                          SIZE2D(w, h),
+                          size,
+                          size,
                           &info->window);
   if (rc != result_OK)
   {
@@ -210,7 +183,6 @@ result_t wuss_info_create(wuss_info_t          **out,
 
   /* wuss_icon_create deep-copies each spec and its text, so this stack array
    * can go out of scope once wuss_icon_create_array returns. */
-  info_fill_specs(specs, rows, nrows, labelw, valuew, rowh, fieldh);
   rc = wuss_icon_create_array(info->window, specs, nrows * 2, info->icons);
   if (rc != result_OK)
   {
@@ -230,10 +202,8 @@ result_t wuss_info_set_rows(wuss_info_t           *info,
 {
   result_t         rc;
   bmfont_t        *font;
-  int              labelw, valuew;
-  int              rowh, fieldh;
-  int              w, h;
   wuss_icon_spec_t specs[INFO_MAX_ROWS * 2];
+  size2d_t         size;
   wuss_icon_t     *made[INFO_MAX_ROWS * 2];
   int              i;
 
@@ -243,16 +213,15 @@ result_t wuss_info_set_rows(wuss_info_t           *info,
     return result_BAD_ARG;
 
   font = wuss_get_font(info->window->wuss);
-  info_measure(font, rows, nrows, &labelw, &valuew, &rowh, &fieldh, &w, &h);
+  info_layout(font, rows, nrows, specs, &size);
 
-  rc = wuss_window_resize(info->window, SIZE2D(w, h));
+  rc = wuss_window_resize(info->window, size);
   if (rc != result_OK)
     return rc;
-  rc = wuss_window_set_doc(info->window, SIZE2D(w, h));
+  rc = wuss_window_set_doc(info->window, size);
   if (rc != result_OK)
     return rc;
 
-  info_fill_specs(specs, rows, nrows, labelw, valuew, rowh, fieldh);
   rc = wuss_icon_create_array(info->window, specs, nrows * 2, made);
   if (rc != result_OK)
     return rc;
