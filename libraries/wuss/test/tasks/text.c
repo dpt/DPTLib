@@ -14,6 +14,7 @@
 
 #include "base/debug.h"
 #include "base/utils.h"
+#include "framebuf/bmfontfamily.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "geom/point.h"
@@ -23,6 +24,7 @@
 #include "wuss/menu.h"
 
 #include "text.h"
+#include "common.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -279,7 +281,10 @@ oom:
 #define TEXT_MENU_FONT 1
 
 /* index into task->top_items[] of the "Auto-size" leaf */
-#define TEXT_MENU_AUTOSIZE 5
+#define TEXT_MENU_AUTOSIZE 6
+
+/* "Alignment" submenu rows */
+enum { TEXT_ALIGN_LEFT = 0, TEXT_ALIGN_CENTRE, TEXT_ALIGN_RIGHT };
 
 /* ----------------------------------------------------------------------- */
 
@@ -297,20 +302,25 @@ static const wuss_menu_t *text_fontmenu(text_task_t *task)
 }
 
 /* load fonts[idx] if not already in hand; returns it or NULL on failure.
- * name is the menu label for that row -- the font's leafname sans ".png". */
+ * name is the menu label for that row -- "Family Style". */
 static bmfont_t *text_load_font(text_task_t *task,
                                 const char  *resources,
                                 int          idx,
                                 const char  *name)
 {
   result_t    rc;
-  const char *filename;
+  const char *dir;
+  char        filename[512];
   bmfont_t   *font;
 
   if (task->fonts[idx] != NULL)
     return task->fonts[idx];
 
-  filename = pathf("%s/resources/bmfonts/%s.png", resources, name);
+  dir = pathf("%s/resources/bmfonts", resources);
+
+  rc = bmfontfamily_label_path(dir, name, filename, sizeof(filename));
+  if (rc != result_OK)
+    return NULL;
 
   rc = bmfontcache_acquire(wuss_get_font_cache(task->wuss), filename, &font);
   if (rc != result_OK)
@@ -539,22 +549,31 @@ static result_t text_set_spacing(text_task_t *task, int idx)
   return result_OK;
 }
 
+/* align each line to the left, centre or right of the wrap width */
+static result_t text_set_align(text_task_t *task, int idx)
+{
+  if (idx < 0 || idx >= NELEMS(task->align_items) || idx == task->align)
+    return result_OK;
+
+  task->align = idx;
+
+  wuss_menu_tick_exclusive(&task->align_menu, idx);
+  wuss_menu_tick_exclusive_live(task->menu_handle, &task->align_menu, idx);
+  wuss_window_invalidate_visible(task->window);
+  return result_OK;
+}
+
 static result_t text_open_menu(text_task_t *task)
 {
   static const wuss_proginfo_desc_t desc =
-  {
-    "Text",
-    "Sample-text layout with font/colour/spacing pickers",
-    "(c) DPTLib contributors",
-    "1.0 (" __DATE__ ")"
-  };
+    TASK_PROGINFO_DESC("Text",
+                       "Sample-text layout with font/colour/spacing pickers");
 
   wuss_proginfo_set_desc(&desc);
   task->top_items[TEXT_MENU_INFO].window = wuss_proginfo_window(task->delegate);
 
-  return wuss_menu_open(task->delegate,
-                        &task->top_menu,
-                        wuss_get_pointer(task->wuss), &task->menu_handle);
+  return wuss_menu_open_at_pointer(task->delegate, &task->top_menu,
+                                   &task->menu_handle);
 }
 
 /* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN, not just the
@@ -575,11 +594,17 @@ static result_t text_pre_submenu_open(text_task_t        *task,
   if (wuss_menu_handle_menu(handle) != &task->colours_menu)
   {
     if (index == TEXT_MENU_FONT)
+    {
+      const wuss_menu_t *fontmenu;
+
       /* the fontmenu singleton may have been rebuilt (at a new address) by
        * another task since top_items[TEXT_MENU_FONT].submenu was cached in
        * text_create -- re-fetch instead of handing the spawner a stale
-       * pointer */
-      return wuss_menu_open_submenu_now(handle, index, text_fontmenu(task));
+       * pointer, and before ticking, as a rebuild would drop the tick */
+      fontmenu = text_fontmenu(task);
+      wuss_fontmenu_set_ticked(task->current);
+      return wuss_menu_open_submenu_now(handle, index, fontmenu);
+    }
 
     return wuss_menu_open_submenu_now(handle, index,
                                       task->top_items[index].submenu);
@@ -597,6 +622,7 @@ static result_t text_pre_submenu_open(text_task_t        *task,
     wuss_colourmenu_set_none(1);
     wuss_colourmenu_set_title("Background");
   }
+  wuss_colourmenu_set_ticked(*task->colourmenu_target);
 
   return wuss_menu_open_submenu_now(handle, index,
                                     wuss_colourmenu_menu(task->wuss));
@@ -611,6 +637,7 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
   const wuss_menu_t *menu;
+  const char        *sysname;
   int                i;
   size2d_t           sz;
 
@@ -620,7 +647,7 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
 
   task->wuss        = wuss;
   task->font        = wuss_get_font(wuss);
-  task->current     = -1; /* the wuss system font is none of the picker's */
+  task->current     = -1; /* until the system font's row is found below */
   task->spacing_idx = TEXT_DEFAULT_SPACING;
   task->spacing.letter_spacing = text_spacing_presets[TEXT_DEFAULT_SPACING].letter_spacing;
   task->spacing.word_spacing   = text_spacing_presets[TEXT_DEFAULT_SPACING].word_spacing;
@@ -649,6 +676,14 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
     free(task);
     return result_OOM;
   }
+
+  /* tick the system font's row, if the picker lists it. fonts[current]
+   * stays NULL: the system font is wuss's, not ours to release. */
+  sysname = wuss_get_font_name_n(wuss, 0);
+  if (sysname != NULL)
+    for (i = 0; i < task->nfonts; i++)
+      if (strcmp(menu->items[i].text, sysname) == 0)
+        task->current = i;
 
   if (wuss_colourmenu_menu(wuss) == NULL)
   {
@@ -706,6 +741,16 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   WUSS_MENU_TITLE(task->spacing_menu, "Spacing", task->spacing_items,
                  NELEMS(task->spacing_items));
 
+  WUSS_MENU_ITEM(task->align_items, TEXT_ALIGN_LEFT, "Left",
+                 wuss_MENU_ITEM_TICKED);
+  WUSS_MENU_ITEM(task->align_items, TEXT_ALIGN_CENTRE, "Centre",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->align_items, TEXT_ALIGN_RIGHT, "Right",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->align_menu, "Alignment", task->align_items,
+                 NELEMS(task->align_items));
+
   /* Both rows' .submenu just need to be non-NULL to draw an arrow and
    * become hoverable; which menu they name doesn't matter since
    * text_pre_submenu_open always supplies the menu to open (see saturn.c's
@@ -722,7 +767,7 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
 
   /* top-level menu: "Font" borrows the fontmenu's own live wuss_menu_t (so
    * ticks and wuss_fontmenu_selected keep working), "Sample"/"Spacing"/
-   * "Colours" are the per-instance menus built above */
+   * "Alignment"/"Colours" are the per-instance menus built above */
   task->top_items[0].text    = "Info";
   task->top_items[0].flags   =
     wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN;
@@ -740,14 +785,18 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   task->top_items[3].flags   = wuss_MENU_ITEM_NONE;
   task->top_items[3].submenu = &task->spacing_menu;
   task->top_items[3].window  = NULL;
-  task->top_items[4].text    = "Colours";
+  task->top_items[4].text    = "Alignment";
   task->top_items[4].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[4].submenu = &task->colours_menu;
+  task->top_items[4].submenu = &task->align_menu;
   task->top_items[4].window  = NULL;
-  task->top_items[5].text    = "Auto-size";
+  task->top_items[5].text    = "Colours";
   task->top_items[5].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[5].submenu = NULL;
+  task->top_items[5].submenu = &task->colours_menu;
   task->top_items[5].window  = NULL;
+  task->top_items[6].text    = "Auto-size";
+  task->top_items[6].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[6].submenu = NULL;
+  task->top_items[6].window  = NULL;
 
   WUSS_MENU_TITLE(task->top_menu, "Text", task->top_items,
                  NELEMS(task->top_items));
@@ -795,8 +844,6 @@ void text_destroy(text_task_t *task)
 {
   int i;
 
-  wuss_menu_close(task->menu_handle);
-
   for (i = 0; i < task->nfonts; i++)
     if (task->fonts[i] != NULL)
       bmfontcache_release(wuss_get_font_cache(task->wuss), task->fonts[i]);
@@ -812,11 +859,13 @@ void text_destroy(text_task_t *task)
 
 /* like bmtext_draw, but each line is split against tcx->markdown_spans (byte
  * offsets into tcx->text) so a span's run is drawn in its own colour
- * instead of fg; used only when tcx->markdown_nspans > 0 */
+ * instead of fg; used only when tcx->markdown_nspans > 0. Line i starts
+ * dx[i] pixels right of origin. */
 static void text__draw_styled(text_task_t         *tcx,
                               screen_t            *scr,
                               const bmtext_line_t *lines,
                               int                  nlines,
+                              const int           *dx,
                               colour_t             fg,
                               colour_t             bg,
                               point_t              origin)
@@ -840,6 +889,7 @@ static void text__draw_styled(text_task_t         *tcx,
     line_len = lines[i].len;
     line_off = (int) (line_str - tcx->text);
     cursor   = 0;
+    pos.x    = origin.x + dx[i];
 
     while (cursor < line_len)
     {
@@ -893,7 +943,6 @@ static void text__draw_styled(text_task_t         *tcx,
       cursor += run_len;
     }
 
-    pos.x  = origin.x;
     pos.y += font_height + LEADING;
   }
 }
@@ -957,9 +1006,13 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
   int             sx, sy;
   const colour_t *palette;
   colour_t        fg, bg;
+  int             wrap_width;
   bmtext_line_t   lines[MAX_LINES];
   int             nlines;
+  int             dx[MAX_LINES];
+  int             i;
   point_t         origin;
+  int             font_height;
 
   tcx = task_data;
 
@@ -972,21 +1025,55 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
   fg      = palette[tcx->fg_index];
   bg      = tcx->bg_transparent ? colour_rgba(0, 0, 0, 0) : palette[tcx->bg_index];
 
-  nlines = text__layout_lines(tcx->font,
-                              tcx->text,
-                              (bounds->x1 - TEXT_INSET) - (bounds->x0 + TEXT_INSET),
-                              &tcx->spacing,
-                              lines,
-                              MAX_LINES);
+  wrap_width = (bounds->x1 - TEXT_INSET) - (bounds->x0 + TEXT_INSET);
+  nlines     = text__layout_lines(tcx->font,
+                                  tcx->text,
+                                  wrap_width,
+                                  &tcx->spacing,
+                                  lines,
+                                  MAX_LINES);
+
+  /* per-line indent for the alignment; a line wider than the wrap width (a
+   * single unbreakable word) measures as the wrap width, so it stays at the
+   * left edge */
+  for (i = 0; i < nlines; i++)
+  {
+    int            split;
+    bmfont_width_t width;
+
+    dx[i] = 0;
+    if (tcx->align == TEXT_ALIGN_LEFT)
+      continue;
+
+    if (bmfont_measure(tcx->font, lines[i].str, lines[i].len, &tcx->spacing,
+                       wrap_width, &split, &width) != result_OK)
+      continue;
+
+    dx[i] = wrap_width - width;
+    if (tcx->align == TEXT_ALIGN_CENTRE)
+      dx[i] /= 2;
+  }
 
   origin.x = bounds->x0 - sx + TEXT_INSET;
   origin.y = bounds->y0 - sy + TEXT_INSET;
 
   if (tcx->markdown_nspans > 0)
-    text__draw_styled(tcx, scr, lines, nlines, fg, bg, origin);
-  else
-    bmtext_draw(tcx->font, scr, lines, nlines, fg, bg, LEADING, origin,
+  {
+    text__draw_styled(tcx, scr, lines, nlines, dx, fg, bg, origin);
+    return result_OK;
+  }
+
+  /* one bmtext_draw per line so each can take its own indent */
+  bmfont_get_info(tcx->font, NULL, &font_height, NULL, NULL);
+  for (i = 0; i < nlines; i++)
+  {
+    point_t line_origin;
+
+    line_origin.x = origin.x + dx[i];
+    line_origin.y = origin.y + i * (font_height + LEADING);
+    bmtext_draw(tcx->font, scr, &lines[i], 1, fg, bg, LEADING, line_origin,
                &tcx->spacing);
+  }
 
   return result_OK;
 }
@@ -1065,17 +1152,31 @@ result_t text_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     {
+      result_t      rc;
       const char   *name;
       wuss_colour_t picked;
       int           mine;
 
       name = wuss_fontmenu_selected(event);
       if (name != NULL)
-        return text_set_font(tcx, event->data.menu_select.index, name);
+      {
+        rc = text_set_font(tcx, event->data.menu_select.index, name);
+
+        /* ADJUST keeps the chain open, so retick the still-open font level
+         * in place (a no-op once a SELECT pick has closed it). Use the
+         * event's own menu, not a fresh text_fontmenu(): that can rebuild
+         * the singleton under the open chain. */
+        wuss_menu_tick_exclusive_live(tcx->menu_handle,
+                                      event->data.menu_select.menu,
+                                      tcx->current);
+        return rc;
+      }
       if (event->data.menu_select.menu == &tcx->sample_menu)
         return text_set_sample(tcx, event->data.menu_select.index);
       if (event->data.menu_select.menu == &tcx->spacing_menu)
         return text_set_spacing(tcx, event->data.menu_select.index);
+      if (event->data.menu_select.menu == &tcx->align_menu)
+        return text_set_align(tcx, event->data.menu_select.index);
       if (event->data.menu_select.menu == &tcx->top_menu &&
           event->data.menu_select.index == TEXT_MENU_AUTOSIZE)
         return text_toggle_resizing(tcx);

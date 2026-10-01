@@ -318,7 +318,7 @@ Terms as this document and the API use them. Several are RISC OS conventions, wh
 - **Visible bounds** — a window's whole on-screen footprint, content plus furniture; `wuss_window_get_visible_bounds`.
 - **Well** — the track a scrollbar's sausage slides along, between the two arrow buttons.
 - **Window-local coordinates** — coordinates relative to the content area's top-left. `wuss_window_invalidate` takes its box in virtual content space, i.e. with the scroll offset already added.
-- **Z-order** — the back-to-front stacking order of windows. Changed with `wuss_window_restack`, or by a Select click on a titlebar; content clicks never change it.
+- **Z-order** — the front-to-back stacking order of windows, kept as three stacks: `wuss_STACK_TOP` (error dialogues, menus), `wuss_STACK_MIDDLE` (regular windows, the default) and `wuss_STACK_BACK` (the icon bar). Every window in an earlier stack is in front of every window in a later one. A window joins a stack at creation (`wuss_WINDOW_STACK_TOP` / `wuss_WINDOW_STACK_BACK`) or moves with `wuss_window_set_stack`. `wuss_window_restack`, or a Select click on a titlebar, only reorders a window within its own stack; content clicks never change it.
 
 ## Limitations
 

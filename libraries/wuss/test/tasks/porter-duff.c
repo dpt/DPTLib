@@ -14,15 +14,27 @@
 #include "framebuf/pixelfmt.h"
 #include "geom/box.h"
 #include "geom/point.h"
+#include "io/filetype.h"
 #include "io/path.h"
 
 #include "porter-duff.h"
+#include "common.h"
+#include "snapshot.h"
 
-/* MENU click pops this single-item menu; the item table and wuss_menu_t
- * live per-instance in porter_duff_task_t, not as a file-scope static, so
- * that each window's Info row can hold its own .window pointer to the shared
+/* MENU click pops this menu; the item table and wuss_menu_t live
+ * per-instance in porter_duff_task_t, not as a file-scope static, so that
+ * each window's Info row can hold its own .window pointer to the shared
  * proginfo singleton, retargeted just before wuss_menu_open */
-enum { PORTER_DUFF_MENU_INFO };
+enum
+{
+  PORTER_DUFF_MENU_INFO,
+  PORTER_DUFF_MENU_PAUSE,
+  PORTER_DUFF_MENU_RULE,
+  PORTER_DUFF_MENU_SWAP,
+  PORTER_DUFF_MENU_SAVE
+};
+
+#define PORTER_DUFF_SAVE_NAME "porter-duff.png" /* Save As's initial leafname */
 
 #define PD_SIZE            (256) /* the demo images are 256x256 */
 #define PD_LABEL_HEIGHT     (20) /* strip below the pane, for the rule name */
@@ -158,6 +170,16 @@ static result_t load_demo_png(bitmap_t   *bm,
   return result_OK;
 }
 
+/* wuss_saveas_save_fn_t: opaque is the porter_duff_task_t */
+static result_t porter_duff_saveas_save(const char *path, void *opaque)
+{
+  porter_duff_task_t *pd;
+
+  pd = opaque;
+
+  return snapshot_save_png(pd->window, porter_duff_handle, pd, path);
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
@@ -166,8 +188,10 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
   porter_duff_task_t *task;
   wuss_task_t        *delegate;
   wuss_task_desc_t    delegate_desc;
+  filetype_t          png_type;
   const char         *resources;
   const colour_t     *palette;
+  int                 i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -212,17 +236,23 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
-                                 "Porter-Duff",
-                                 wuss_WINDOW_DEFAULT,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate,
+                          SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
+                          "Porter-Duff",
+                          &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* QUIT frees the four bitmaps and task */
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
+                          PORTER_DUFF_SAVE_NAME, porter_duff_saveas_save,
+                          task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
     return rc;
   }
 
@@ -231,6 +261,27 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in
                                 * porter_duff_handle */
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PORTER_DUFF_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "SPACE");
+
+  for (i = 0; i < composite_RULE__LIMIT; i++)
+    WUSS_MENU_ITEM(task->rule_items, i, rule_names[i], wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->rule_menu, "Rule", task->rule_items,
+                 NELEMS(task->rule_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, PORTER_DUFF_MENU_RULE, "Rule",
+                      wuss_MENU_ITEM_NONE, &task->rule_menu);
+
+  WUSS_MENU_ITEM(task->menu_items, PORTER_DUFF_MENU_SWAP, "Swap images",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PORTER_DUFF_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[PORTER_DUFF_MENU_SAVE].window =
+    wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Porter-Duff", task->menu_items,
                  NELEMS(task->menu_items));
@@ -255,7 +306,7 @@ free_a:
 
 void porter_duff_destroy(porter_duff_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
+  wuss_saveas_destroy(task->saveas);
   free(task->dst.base);
   free(task->src.base);
   free(task->b.base);
@@ -312,16 +363,40 @@ static void porter_duff_draw_checkerboard(const porter_duff_task_t *pd,
                                           int                       sx,
                                           int                       sy)
 {
-  int x, y, lx, ly, band;
+  pixelfmt_any_t darkpix, lightpix;
+  int            ox, oy;
+  int            col0, row0, col1, row1;
+  int            col, row;
 
-  for (y = content->y0; y < content->y1; y++)
-    for (x = content->x0; x < content->x1; x++)
+  /* resolve both colours once, not once per pixel */
+  darkpix  = screen_colour_to_pixel(scr, pd->dark);
+  lightpix = screen_colour_to_pixel(scr, pd->light);
+
+  /* screen position of document (0, 0); content lies within bounds, so the
+   * square indices below are never negative */
+  ox = bounds->x0 - sx;
+  oy = bounds->y0 - sy;
+
+  col0 = (content->x0 - ox) / PD_CHECKER_BAND;
+  row0 = (content->y0 - oy) / PD_CHECKER_BAND;
+  col1 = (content->x1 - ox + PD_CHECKER_BAND - 1) / PD_CHECKER_BAND;
+  row1 = (content->y1 - oy + PD_CHECKER_BAND - 1) / PD_CHECKER_BAND;
+
+  /* one rect fill per square, trimmed to the content box */
+  for (row = row0; row < row1; row++)
+    for (col = col0; col < col1; col++)
     {
-      lx   = x - bounds->x0 + sx;
-      ly   = y - bounds->y0 + sy;
-      band = lx / PD_CHECKER_BAND + ly / PD_CHECKER_BAND;
+      box_t square, visible;
 
-      screen_set_pixel(scr, x, y, (band & 1) ? pd->dark : pd->light);
+      square.x0 = ox + col * PD_CHECKER_BAND;
+      square.y0 = oy + row * PD_CHECKER_BAND;
+      square.x1 = square.x0 + PD_CHECKER_BAND;
+      square.y1 = square.y0 + PD_CHECKER_BAND;
+      if (box_intersection(&square, content, &visible))
+        continue;
+
+      screen_fill_rect_value(scr, visible.x0, visible.y0, box_size(&visible),
+                             ((row + col) & 1) ? darkpix : lightpix);
     }
 }
 
@@ -388,6 +463,9 @@ static result_t porter_duff_idle(void *task_data)
   if (pd->window == NULL)
     return result_OK;
 
+  if (pd->paused)
+    return result_OK;
+
   if (++pd->frame >= pd->frames_per_rule)
   {
     pd->frame = 0;
@@ -400,14 +478,19 @@ static result_t porter_duff_idle(void *task_data)
   return result_OK;
 }
 
-static result_t porter_duff_mouse(wuss_window_t *window, void *task_data)
+/* step the rule by dir (+1 or -1), wrapping round; paused, restart at the
+ * ramp's midpoint, as porter_duff_pick_rule does */
+static result_t porter_duff_mouse(wuss_window_t *window,
+                                  int            dir,
+                                  void          *task_data)
 {
   porter_duff_task_t *pd;
 
   pd = task_data;
 
-  pd->rule  = (pd->rule + 1) % composite_RULE__LIMIT;
-  pd->frame = 0;
+  pd->rule  = (pd->rule + composite_RULE__LIMIT + dir) %
+              composite_RULE__LIMIT;
+  pd->frame = pd->paused ? pd->frames_per_rule / 2 : 0;
 
   wuss_window_invalidate_visible(window);
 
@@ -428,6 +511,71 @@ static result_t porter_duff_scroll(wuss_window_t *window,
   pd->frame            = MIN(pd->frame, pd->frames_per_rule);
 
   wuss_window_invalidate_visible(window);
+
+  return result_OK;
+}
+
+/* Left/Right step to the previous/next rule, as Adjust and Select clicks
+ * do. Anything else is passed back unclaimed. */
+static result_t porter_duff_key(porter_duff_task_t *pd,
+                                wuss_window_t      *window,
+                                int                 code)
+{
+  switch (code)
+  {
+  case wuss_KEY_LEFT:  return porter_duff_mouse(window, -1, pd);
+  case wuss_KEY_RIGHT: return porter_duff_mouse(window, +1, pd);
+  default:             return result_WUSS_KEY_UNCLAIMED;
+  }
+}
+
+/* The "Pause" row stops or restarts the idle animation; the "Swap" row
+ * exchanges the source and destination images (with their scratch bitmaps,
+ * which are sized to match). An ADJUST pick keeps the menu open, so retick
+ * the live row; a SELECT pick has already closed it. */
+static result_t porter_duff_toggle(porter_duff_task_t *pd,
+                                   const wuss_event_t *event)
+{
+  int      index;
+  int     *flag;
+  bitmap_t t;
+
+  index = event->data.menu_select.index;
+
+  if (index == PORTER_DUFF_MENU_SWAP)
+  {
+    t       = pd->a;
+    pd->a   = pd->b;
+    pd->b   = t;
+    t       = pd->src;
+    pd->src = pd->dst;
+    pd->dst = t;
+    flag    = &pd->swapped;
+    wuss_window_invalidate_visible(pd->window);
+  }
+  else
+  {
+    flag = &pd->paused;
+  }
+  *flag = !*flag;
+
+  wuss_menu_tick_item_live(pd->menu_handle, &pd->menu, index, *flag);
+
+  return result_OK;
+}
+
+/* A "Rule" submenu pick: jump straight to that rule. Paused, restart it at
+ * the ramp's midpoint rather than its start, where the source is fully
+ * transparent and the rule would look like DST. */
+static result_t porter_duff_pick_rule(porter_duff_task_t *pd,
+                                      const wuss_event_t *event)
+{
+  pd->rule  = (composite_rule_t) event->data.menu_select.index;
+  pd->frame = pd->paused ? pd->frames_per_rule / 2 : 0;
+
+  wuss_menu_tick_exclusive_live(pd->menu_handle, &pd->rule_menu, pd->rule);
+
+  wuss_window_invalidate_visible(pd->window);
 
   return result_OK;
 }
@@ -454,29 +602,58 @@ result_t porter_duff_handle(wuss_window_t      *window,
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Porter-Duff",
-        "Animated Porter-Duff compositing demo",
-        "(c) DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Porter-Duff",
+                           "Animated Porter-Duff compositing demo");
 
       wuss_proginfo_set_desc(&desc);
       pd->menu_items[PORTER_DUFF_MENU_INFO].window =
         wuss_proginfo_window(pd->delegate);
 
-      return wuss_menu_open(pd->delegate, &pd->menu,
-                            wuss_get_pointer(pd->wuss), &pd->menu_handle);
+      wuss_menu_tick_item(&pd->menu, PORTER_DUFF_MENU_PAUSE, pd->paused);
+      wuss_menu_tick_item(&pd->menu, PORTER_DUFF_MENU_SWAP, pd->swapped);
+      wuss_menu_tick_exclusive(&pd->rule_menu, pd->rule);
+
+      return wuss_menu_open_at_pointer(pd->delegate, &pd->menu,
+                                       &pd->menu_handle);
     }
-    if (!(event->data.mouse.button & wuss_BUTTON_SELECT))
-      return result_OK;
-    return porter_duff_mouse(window, task_data);
+    if (event->data.mouse.button & wuss_BUTTON_SELECT)
+      return porter_duff_mouse(window, +1, task_data);
+    if (event->data.mouse.button & wuss_BUTTON_ADJUST)
+      return porter_duff_mouse(window, -1, task_data);
+    return result_OK;
 
   case wuss_EVENT_SCROLL:
     return porter_duff_scroll(window, event->data.scroll.delta, task_data);
 
+  case wuss_EVENT_KEY:
+  {
+    result_t rc;
+
+    if (window != pd->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    if (!task_key_is_plain(pd->delegate, &pd->menu, event, &rc))
+      return rc;
+
+    return porter_duff_key(pd, window, event->data.key.code);
+  }
+
   case wuss_EVENT_IDLE:
     return porter_duff_idle(task_data);
+
+  case wuss_EVENT_MENU_SELECT:
+    if (event->data.menu_select.menu == &pd->menu &&
+        (event->data.menu_select.index == PORTER_DUFF_MENU_PAUSE ||
+         event->data.menu_select.index == PORTER_DUFF_MENU_SWAP))
+      return porter_duff_toggle(pd, event);
+    if (event->data.menu_select.menu == &pd->menu &&
+        event->data.menu_select.index == PORTER_DUFF_MENU_SAVE)
+    {
+      return wuss_saveas_open(pd->saveas);
+    }
+    if (event->data.menu_select.menu == &pd->rule_menu)
+      return porter_duff_pick_rule(pd, event);
+    return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
     pd->menu_handle = NULL;

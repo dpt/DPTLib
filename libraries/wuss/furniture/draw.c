@@ -95,9 +95,7 @@ static void draw_title(wuss_t        *wuss,
 
   /* window titles are drawn in the bold weight (font slot 1) when one was
    * supplied, falling back to the system font */
-  titlefont = (wuss->fonts.nfonts > 1 && wuss->fonts.fonts[1] != NULL)
-            ? wuss->fonts.fonts[1]
-            : wuss->fonts.fonts[0];
+  titlefont = wuss__bold_font(wuss);
   if (titlefont == NULL)
     return;
 
@@ -142,8 +140,12 @@ static void draw_title(wuss_t        *wuss,
 
   bmfont_get_info(titlefont, NULL, NULL, &ascent, NULL);
 
+  /* baseline centred by ascender alone (not the descender too), matching
+   * icon_text_baseline_y in icon/draw.c -- a fixed "+2" here measured the
+   * gap for one specific font's ascent, and drifted off by a pixel for
+   * others. */
   pos.x = (split_point < titlelen) ? text_x0 : text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
-  pos.y = titlebar->y0 + 2 + ascent;
+  pos.y = titlebar->y0 + (titlebar->y1 - titlebar->y0 - ascent) / 2 + ascent;
   wuss->scr->clip = text_clip;
 
   /* filled titlebar first, so the relief pass's transparent background

@@ -21,7 +21,10 @@
 //#define DBUG(args) logf_debug args
 #define DBUG(args)
 
-/* The literal-run-literal merging can only happen within the current buffer
+/* The Initial/Literal/Run/LiteralRun state machine is inspired by
+ * PackBitsEncode in libtiff's tif_packbits.c (Sam Leffler, Silicon Graphics).
+ *
+ * The literal-run-literal merging can only happen within the current buffer
  * (the state is reset to Initial when resumed), so if a smaller buffer is
  * used then less merging can happen. Once the buffer is exceeded then we
  * yield and those bytes are never seen again. */

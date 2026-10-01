@@ -1,8 +1,43 @@
 /* wuss/mouse-move.c -- wuss - minimal window manager */
 
+#include <stdlib.h>
+
 #include "impl.h"
 
-result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
+#ifdef WUSS_FURNITURE
+/* Snap a move-drag's content top-left "p" so that the window's visible box
+ * sits flush against any screen edge it comes within WUSS_SNAP_PX of. */
+static point_t snap_to_screen(const wuss_window_t *win, point_t p)
+{
+  box_t    content;
+  point_t  off;
+  size2d_t size, scr;
+  point_t  v;
+
+  wuss__content_box(win, &content);
+  off.x  = content.x0 - win->visible.x0;
+  off.y  = content.y0 - win->visible.y0;
+  size.w = win->visible.x1 - win->visible.x0;
+  size.h = win->visible.y1 - win->visible.y0;
+  scr    = win->wuss->scr->size;
+
+  v.x = p.x - off.x;
+  v.y = p.y - off.y;
+
+  if (abs(v.x) < WUSS_SNAP_PX)
+    v.x = 0;
+  else if (abs(v.x + size.w - scr.w) < WUSS_SNAP_PX)
+    v.x = scr.w - size.w;
+  if (abs(v.y) < WUSS_SNAP_PX)
+    v.y = 0;
+  else if (abs(v.y + size.h - scr.h) < WUSS_SNAP_PX)
+    v.y = scr.h - size.h;
+
+  return POINT(v.x + off.x, v.y + off.y);
+}
+#endif
+
+static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
 {
   wuss_window_t *win;
   int            x, y;
@@ -16,6 +51,19 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   p.y = y;
 
   wuss->pointer = p;
+
+  if (wuss->drag_window != NULL)
+  {
+    win = wuss__window_at(wuss, p);
+    if (hit != NULL)
+      *hit = win;
+
+    /* POINTER_ENTER/EXIT for windows the ants cross are deferred and settled
+     * by wuss__drag_end, not tracked live -- a drag is not real pointer
+     * traffic for the windows it passes over. */
+    wuss__drag_move(wuss, p);
+    return result_OK;
+  }
 
 #ifdef WUSS_FURNITURE
   if (wuss->furniture.dragging != NULL)
@@ -31,15 +79,18 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
       break;
 
     case wuss_FURNITURE_DRAG_VSCROLL_SAUSAGE:
-      wuss->furniture_ops->drag_sausage(win, y - wuss->furniture.drag.y, wuss->furniture.drag_scroll_start, 0);
-      break;
-
     case wuss_FURNITURE_DRAG_HSCROLL_SAUSAGE:
-      wuss->furniture_ops->drag_sausage(win, x - wuss->furniture.drag.x, wuss->furniture.drag_scroll_start, 1);
+      /* an Adjust drag moves the other axis too, where there's a bar for it */
+      if (wuss->furniture.drag_kind == wuss_FURNITURE_DRAG_VSCROLL_SAUSAGE ||
+          (wuss->furniture.drag_both && (win->flags & wuss_WINDOW_VSCROLL)))
+        wuss->furniture_ops->drag_sausage(win, y - wuss->furniture.drag.y, wuss->furniture.drag_scroll_start.y, 0);
+      if (wuss->furniture.drag_kind == wuss_FURNITURE_DRAG_HSCROLL_SAUSAGE ||
+          (wuss->furniture.drag_both && (win->flags & wuss_WINDOW_HSCROLL)))
+        wuss->furniture_ops->drag_sausage(win, x - wuss->furniture.drag.x, wuss->furniture.drag_scroll_start.x, 1);
       break;
 
     case wuss_FURNITURE_DRAG_MOVE:
-      wuss_window_move(win, POINT(x - wuss->furniture.drag.x, y - wuss->furniture.drag.y));
+      wuss_window_move(win, snap_to_screen(win, POINT(x - wuss->furniture.drag.x, y - wuss->furniture.drag.y)));
       break;
 
     case wuss_FURNITURE_DRAG_NONE:
@@ -99,12 +150,54 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
     doc_point.y = y - content.y0 + win->scroll.y;
 
 #ifdef WUSS_ICONS
+    /* a DRAGGABLE starts a core drag once the pointer clears
+     * drag_threshold_px from the DOWN that pressed it; a plain click (no
+     * movement past the threshold) leaves it as an ordinary icon press,
+     * released and delivered as wuss_EVENT_ICON on MOUSE_UP as usual */
+    if (wuss->pressed_icon != NULL && wuss->pressed_window == win &&
+        wuss->pressed_icon->spec.type == wuss_ICON_TYPE_DRAGGABLE)
+    {
+      wuss_icon_t *icon;
+      int          dx, dy;
+
+      icon = wuss->pressed_icon;
+      dx   = x - wuss->pressed_point.x;
+      dy   = y - wuss->pressed_point.y;
+
+      if (dx * dx + dy * dy >= wuss->drag_threshold_px * wuss->drag_threshold_px)
+      {
+        box_t    box;
+        size2d_t size;
+        point_t  hotspot;
+
+        box     = icon->spec.bbox;
+        size.w  = box.x1 - box.x0;
+        size.h  = box.y1 - box.y0;
+        hotspot = POINT(wuss->pressed_point.x - (content.x0 - win->scroll.x + box.x0),
+                        wuss->pressed_point.y - (content.y0 - win->scroll.y + box.y0));
+
+        wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 0);
+        wuss__icon_invalidate(win, icon);
+        wuss->pressed_icon   = NULL;
+        wuss->pressed_window = NULL;
+
+        (void) wuss_drag_start(wuss, win, size, hotspot);
+        wuss->drag_button = wuss->pressed_button;
+      }
+
+      if (hit != NULL)
+        *hit = win;
+      return result_OK;
+    }
+
     /* a slider drag keeps tracking the pointer even once it strays outside
      * the icon's own bbox, matching a furniture sausage drag */
     if (wuss->pressed_icon != NULL && wuss->pressed_window == win &&
         wuss->pressed_icon->spec.type == wuss_ICON_TYPE_SLIDER)
     {
-      wuss_icon_t *icon = wuss->pressed_icon;
+      wuss_icon_t *icon;
+
+      icon = wuss->pressed_icon;
 
       wuss__icon_set_value(win, icon,
                            wuss__slider_value_for_point(win, icon,
@@ -173,4 +266,15 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
   }
 
   return result_OK;
+}
+
+result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
+{
+  result_t rc;
+
+  wuss__message_enter(wuss);
+  rc = mouse_move(wuss, p, hit);
+  wuss__message_leave(wuss);
+
+  return rc;
 }

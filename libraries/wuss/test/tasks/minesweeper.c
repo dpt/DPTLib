@@ -22,6 +22,7 @@
 #include "wuss/menu.h"
 
 #include "minesweeper.h"
+#include "common.h"
 
 #define MS_BORDER MINESWEEPER_CELL /* one grid unit all round */
 
@@ -77,14 +78,33 @@ static const char *const g_minesweeper_size_names[minesweeper_NSIZES] =
   "24x24", "24x12", "16x16", "16x12", "12x12"
 };
 
+/* "Difficulty" submenu rows, indexed by minesweeper_difficulty_t: each
+ * scales g_minesweeper_sizes' mine count by percent. Normal is the classic
+ * count; Hard tops out near 22% density, well short of the board filling up
+ * around the safe 3x3 opening. */
+static const struct { const char *name; int percent; }
+g_minesweeper_difficulties[minesweeper_NDIFFICULTIES] =
+{
+  { "Easy",    70 },
+  { "Normal", 100 },
+  { "Hard",   130 }
+};
+
 /* MENU click over the board pops this menu; the item tables and wuss_menu_t
  * values live per-instance in minesweeper_task_t, not as file-scope
  * statics, so that each window's Info row points at its own .window pointer
  * (retargeted at the shared proginfo singleton just before wuss_menu_open,
  * in minesweeper_mouse) rather than every instance sharing (and overwriting)
  * one global .window pointer -- and so two instances don't fight over one
- * shared tick mark on the Grid Size submenu */
-enum { MINESWEEPER_MENU_INFO, MINESWEEPER_MENU_NEW_GAME, MINESWEEPER_MENU_SIZE };
+ * shared tick mark on the Grid Size or Difficulty submenus */
+enum
+{
+  MINESWEEPER_MENU_INFO,
+  MINESWEEPER_MENU_NEW_GAME,
+  MINESWEEPER_MENU_SIZE,
+  MINESWEEPER_MENU_DIFFICULTY,
+  MINESWEEPER_MENU_GIVE_UP
+};
 
 /* cache all constant palette entries; call once at create and again whenever
  * wuss_EVENT_PALETTE fires, in case colour_to_pixel results have changed */
@@ -192,6 +212,45 @@ static void minesweeper_reveal(minesweeper_task_t    *ms,
           minesweeper_reveal(ms, r + dr, c + dc, touched);
 }
 
+/* "chording": on a revealed number whose flagged neighbours match it,
+ * reveals every other hidden neighbour; a misplaced flag means a mine goes
+ * off, as in the classic game */
+static void minesweeper_chord(minesweeper_task_t    *ms,
+                              int                    r,
+                              int                    c,
+                              minesweeper_cellbox_t *touched)
+{
+  int flags;
+  int dr, dc;
+
+  flags = 0;
+  for (dr = -1; dr <= 1; dr++)
+    for (dc = -1; dc <= 1; dc++)
+      if (minesweeper_in_bounds(ms, r + dr, c + dc) &&
+          ms->state[r + dr][c + dc] == minesweeper_FLAGGED)
+        flags++;
+
+  if (flags == 0 || flags != minesweeper_count_neighbours(ms, r, c))
+    return;
+
+  for (dr = -1; dr <= 1; dr++)
+    for (dc = -1; dc <= 1; dc++)
+      if (dr || dc)
+        minesweeper_reveal(ms, r + dr, c + dc, touched);
+}
+
+/* on a win, keeps the fastest time for the current size and difficulty;
+ * new_best says whether this game set it. Session only: not saved. */
+static void minesweeper_record_time(minesweeper_task_t *ms)
+{
+  int *best;
+
+  best         = &ms->best[ms->size][ms->difficulty];
+  ms->new_best = (*best == 0 || ms->elapsed + 1 < *best);
+  if (ms->new_best)
+    *best = ms->elapsed + 1;
+}
+
 /* on death, reveal every mine so the player sees where they all were */
 static void minesweeper_reveal_all_mines(minesweeper_task_t *ms)
 {
@@ -217,25 +276,28 @@ static bool minesweeper_check_won(minesweeper_task_t *ms)
 
 static void minesweeper_reset(minesweeper_task_t *ms)
 {
-  ms->placed  = false;
-  ms->dead    = false;
-  ms->won     = false;
-  ms->flags   = 0;
-  ms->elapsed = 0;
+  ms->placed   = false;
+  ms->dead     = false;
+  ms->won      = false;
+  ms->new_best = false;
+  ms->flags    = 0;
+  ms->elapsed  = 0;
   memset(ms->mine,  0, sizeof(ms->mine));
   memset(ms->state, 0, sizeof(ms->state)); /* minesweeper_HIDDEN == 0 */
 }
 
-/* applies a grid size (rows/cols/mines) and clears the board; does not touch
- * the window, so it is also used at creation before task->window exists --
- * the wuss_EVENT_MENU_SELECT handler resizes the window itself afterwards */
+/* applies a grid size (rows/cols) and its mine count, scaled by the current
+ * difficulty, and clears the board; does not touch the window, so it is also
+ * used at creation before task->window exists -- the wuss_EVENT_MENU_SELECT
+ * handler resizes the window itself afterwards */
 static void minesweeper_set_size(minesweeper_task_t *ms,
                                  minesweeper_size_t  size)
 {
   ms->size  = size;
   ms->rows  = g_minesweeper_sizes[size].rows;
   ms->cols  = g_minesweeper_sizes[size].cols;
-  ms->mines = g_minesweeper_sizes[size].mines;
+  ms->mines = g_minesweeper_sizes[size].mines *
+              g_minesweeper_difficulties[ms->difficulty].percent / 100;
   ms->cur_r = MIN(ms->cur_r, ms->rows - 1);
   ms->cur_c = MIN(ms->cur_c, ms->cols - 1);
   minesweeper_reset(ms);
@@ -247,8 +309,7 @@ static void minesweeper_tick_clock(minesweeper_task_t *ms)
   if (!ms->placed || ms->dead || ms->won)
     return;
   ms->elapsed = (int) difftime(time(NULL), ms->start_time);
-  if (ms->elapsed > 999)
-    ms->elapsed = 999; /* keep the HUD's 3-digit field from overflowing */
+  ms->elapsed = MIN(ms->elapsed, 999); /* keep the HUD's 3 digits in range */
 }
 
 /* ----------------------------------------------------------------------- */
@@ -267,11 +328,12 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
 
   task->wuss = wuss;
   task->font = wuss_get_font_n(wuss, 1);
+  task->difficulty = minesweeper_DIFFICULTY_NORMAL;
   minesweeper_set_size(task, minesweeper_SIZE_12X12);
   minesweeper_prepare_colours(task);
 
   resources = wuss_get_resources(wuss);
-  filename  = pathf("%s/resources/bmfonts/DPT-Digits-Bold-Lg.png", resources);
+  filename  = pathf("%s/resources/bmfonts/DPT-DigitsLg/Bold.png", resources);
   rc = bmfontcache_acquire(wuss_get_font_cache(wuss), filename,
                            &task->hud_font);
   if (rc != result_OK)
@@ -323,14 +385,11 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
   task->task = delegate;
   wuss_task_set_autoclose(delegate, 1);
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(MS_WIDTH(task), MS_HEIGHT(task)),
-                                 "Minesweeper",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(MS_WIDTH(task), MS_HEIGHT(task)),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate,
+                          SIZE2D(MS_WIDTH(task),
+                          MS_HEIGHT(task)),
+                          "Minesweeper",
+                          &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
@@ -347,6 +406,14 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
     }
     WUSS_MENU_TITLE(task->size_menu, "Grid Size", task->size_items,
                    NELEMS(task->size_items));
+
+    for (i = 0; i < minesweeper_NDIFFICULTIES; i++)
+    {
+      WUSS_MENU_ITEM(task->difficulty_items, i,
+                     g_minesweeper_difficulties[i].name, wuss_MENU_ITEM_NONE);
+    }
+    WUSS_MENU_TITLE(task->difficulty_menu, "Difficulty",
+                   task->difficulty_items, NELEMS(task->difficulty_items));
   }
 
   WUSS_MENU_ITEM_WINDOW(task->menu_items, MINESWEEPER_MENU_INFO, "Info",
@@ -355,11 +422,18 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
                                 * just before wuss_menu_open, in
                                 * minesweeper_mouse */
 
-  WUSS_MENU_ITEM(task->menu_items, MINESWEEPER_MENU_NEW_GAME,
-                "New Game", wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, MINESWEEPER_MENU_NEW_GAME,
+                          "New Game", wuss_MENU_ITEM_NONE, "N");
 
   WUSS_MENU_ITEM_MENU(task->menu_items, MINESWEEPER_MENU_SIZE, "Grid Size",
                       wuss_MENU_ITEM_NONE, &task->size_menu);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, MINESWEEPER_MENU_DIFFICULTY,
+                      "Difficulty", wuss_MENU_ITEM_NONE,
+                      &task->difficulty_menu);
+
+  WUSS_MENU_ITEM(task->menu_items, MINESWEEPER_MENU_GIVE_UP,
+                "Give Up", wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Minesweeper", task->menu_items,
                  NELEMS(task->menu_items));
@@ -372,7 +446,6 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
 
 void minesweeper_destroy(minesweeper_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task->flag_bm.base);
   free(task->mine_bm.base);
   bmfontcache_release(wuss_get_font_cache(task->wuss), task->hud_font);
@@ -562,8 +635,9 @@ static result_t minesweeper_redraw(const wuss_event_t *event,
                      SIZE2D(MINESWEEPER_CELL - 2, MINESWEEPER_CELL - 2),
                      ms->colours.cursor);
 
-  banner = ms->dead ? "BOOM! Click to retry"   :
-           ms->won  ? "You win! Click to retry" : NULL;
+  banner = ms->dead     ? "BOOM! Click to retry"    :
+           ms->new_best ? "New best! Click to retry" :
+           ms->won      ? "You win! Click to retry"  : NULL;
   if (banner != NULL)
     minesweeper_draw_banner(ms, scr, bounds, banner,
                             ms->dead ? ms->colours.dead_bg : ms->colours.won_bg,
@@ -609,7 +683,10 @@ static result_t minesweeper_act(minesweeper_task_t *ms,
 
     touched.r0 = touched.r1 = r;
     touched.c0 = touched.c1 = c;
-    minesweeper_reveal(ms, r, c, &touched);
+    if (ms->state[r][c] == minesweeper_REVEALED)
+      minesweeper_chord(ms, r, c, &touched);
+    else
+      minesweeper_reveal(ms, r, c, &touched);
 
     if (ms->dead)
     {
@@ -618,9 +695,13 @@ static result_t minesweeper_act(minesweeper_task_t *ms,
     }
     else
     {
+      minesweeper_tick_clock(ms); /* before won freezes it */
       ms->won = minesweeper_check_won(ms);
       if (ms->won)
+      {
+        minesweeper_record_time(ms);
         wuss_window_invalidate_visible(ms->window); /* banner covers the lot */
+      }
       else
       {
         local = MS_CELLS_BOX(ms, touched.r0, touched.c0, touched.r1,
@@ -712,19 +793,24 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
   if (button & wuss_BUTTON_MENU)
   {
     static const wuss_proginfo_desc_t desc =
-    {
-      "Minesweeper",
-      "Classic minesweeper",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
+      TASK_PROGINFO_DESC("Minesweeper", "Classic minesweeper");
+
+    wuss_menu_item_t *give_up;
 
     wuss_proginfo_set_desc(&desc);
     ms->menu_items[MINESWEEPER_MENU_INFO].window = wuss_proginfo_window(ms->task);
 
     wuss_menu_tick_exclusive(&ms->size_menu, ms->size);
-    return wuss_menu_open(ms->task, &ms->menu,
-                          wuss_get_pointer(ms->wuss), &ms->menu_handle);
+    wuss_menu_tick_exclusive(&ms->difficulty_menu, ms->difficulty);
+
+    /* Give Up only makes sense while a game is in progress */
+    give_up = &ms->menu_items[MINESWEEPER_MENU_GIVE_UP];
+    if (ms->placed && !ms->dead && !ms->won)
+      give_up->flags &= ~wuss_MENU_ITEM_DISABLED;
+    else
+      give_up->flags |= wuss_MENU_ITEM_DISABLED;
+
+    return wuss_menu_open_at_pointer(ms->task, &ms->menu, &ms->menu_handle);
   }
 
   c = (point.x - MS_BORDER) / MINESWEEPER_CELL;
@@ -758,7 +844,17 @@ result_t minesweeper_handle(wuss_window_t      *window,
                              event->data.mouse.button);
 
   case wuss_EVENT_KEY:
+  {
+    result_t rc;
+
+    if (window != ms->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    if (!task_key_is_plain(ms->task, &ms->menu, event, &rc))
+      return rc;
+
     return minesweeper_key(ms, event->data.key.code);
+  }
 
   case wuss_EVENT_GAIN_FOCUS:
   case wuss_EVENT_LOSE_FOCUS:
@@ -795,10 +891,34 @@ result_t minesweeper_handle(wuss_window_t      *window,
       wuss_menu_tick_exclusive_live(ms->menu_handle, &ms->size_menu,
                                     ms->size);
     }
+    else if (event->data.menu_select.menu == &ms->difficulty_menu)
+    {
+      ms->difficulty = (minesweeper_difficulty_t)
+                       event->data.menu_select.index;
+      minesweeper_set_size(ms, ms->size); /* re-derive the mine count */
+      wuss_menu_tick_exclusive_live(ms->menu_handle, &ms->difficulty_menu,
+                                    ms->difficulty);
+    }
+    else if (event->data.menu_select.index == MINESWEEPER_MENU_GIVE_UP)
+    {
+      /* lose on the spot: freeze the clock, then show every mine */
+      if (!ms->placed || ms->dead || ms->won)
+        return result_OK;
+
+      minesweeper_tick_clock(ms);
+      ms->dead = true;
+      minesweeper_reveal_all_mines(ms);
+      wuss_window_invalidate_visible(ms->window);
+      return result_OK;
+    }
     else if (event->data.menu_select.index == MINESWEEPER_MENU_NEW_GAME)
+    {
       minesweeper_reset(ms);
+    }
     else
+    {
       return result_OK; /* Info row: nothing to do here */
+    }
 
     {
       size2d_t sz = SIZE2D(MS_WIDTH(ms), MS_HEIGHT(ms));

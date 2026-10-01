@@ -156,7 +156,7 @@ static int carve_by_cuts(const box_t *box,
  * counts "i", skipping hidden windows. */
 typedef struct
 {
-  list_t *e;
+  wuss_window_t *win;
 }
 zorder_ctx_t;
 
@@ -168,8 +168,8 @@ static int zorder_get_cut(void *vctx, int i, box_t *cut)
   (void) i;
 
   ctx      = vctx;
-  occluder = wuss__window_from_link(ctx->e);
-  ctx->e   = ctx->e->next;
+  occluder = ctx->win;
+  ctx->win = wuss__z_below(occluder);
 
   if (occluder->flags & wuss_WINDOW_HIDDEN)
     return 0; /* a hidden window occludes nothing */
@@ -201,15 +201,16 @@ int wuss__clip_to_visible(wuss_window_t *window,
                           box_t         *out,
                           int            overpaint_safe)
 {
-  zorder_ctx_t ctx;
-  list_t      *e;
-  int          n;
+  zorder_ctx_t   ctx;
+  wuss_window_t *above;
+  int            n;
 
   n = 0;
-  for (e = window->wuss->z_order.next; e != &window->link; e = e->next)
+  for (above = wuss__z_first(window->wuss); above != window;
+       above = wuss__z_below(above))
     n++;
 
-  ctx.e = window->wuss->z_order.next;
+  ctx.win = wuss__z_first(window->wuss);
 
   return carve_by_cuts(box, n, zorder_get_cut, &ctx, out, overpaint_safe);
 }
@@ -496,6 +497,9 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
 {
   box_t screen_box, content, whole, clipped;
 
+  if (window == NULL)
+    return;
+
   /* a hidden window draws nothing -- invalidating any part of it would just
    * force a pointless repaint of whatever visible window/backdrop actually
    * occupies that screen area (e.g. every icon a hidden dialogue creates,
@@ -532,6 +536,9 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box)
 void wuss_window_invalidate_extent(wuss_window_t *window)
 {
   box_t extent;
+
+  if (window == NULL)
+    return;
 
   extent.x0 = 0;
   extent.y0 = 0;

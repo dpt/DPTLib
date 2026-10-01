@@ -101,6 +101,19 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
     memset(bm->base, px, bm->rowbytes * bm->size.h);
     break;
 
+  case 4: /* 16bpp - pixels are shorts */
+  {
+    unsigned short *pixels16;
+
+    for (y = 0; y < bm->size.h; y++)
+    {
+      pixels16 = (unsigned short *) ((char *) bm->base + y * bm->rowbytes);
+      for (x = 0; x < bm->size.w; x++)
+        *pixels16++ = (unsigned short) px;
+    }
+  }
+    break;
+
   case 5: /* 32bpp - pixels are ints */
   {
     /* if all bytes of 'px' are the same, use memset() */
@@ -142,6 +155,7 @@ static result_t bmconv_p4_to_bgrx8888_into(const bitmap_t *src,
   pixelfmt_bgrx8888_t       *outpixels;
   const unsigned char       *inrow;
   int                        x, y;
+  unsigned char              b;
 
   assert(src);
   assert(src->palette);
@@ -157,10 +171,16 @@ static result_t bmconv_p4_to_bgrx8888_into(const bitmap_t *src,
   inrow = src->base;
   for (y = 0; y < src->size.h; y++)
   {
-    /* per-pixel, so widths that aren't a multiple of 8 keep their last
-     * w % 8 pixels, and row padding in src->rowbytes is respected */
-    for (x = 0; x < src->size.w; x++)
-      *outpixels++ = map[(inrow[x >> 1] >> ((x & 1) << 2)) & 0xF];
+    /* a byte (two pixels, low nibble first) at a time, then any odd last
+     * pixel; row padding in src->rowbytes is respected */
+    for (x = 0; x + 1 < src->size.w; x += 2)
+    {
+      b = inrow[x >> 1];
+      *outpixels++ = map[b & 0xF];
+      *outpixels++ = map[b >> 4];
+    }
+    if (x < src->size.w)
+      *outpixels++ = map[inrow[x >> 1] & 0xF];
     inrow += src->rowbytes;
   }
 
@@ -284,10 +304,9 @@ static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   return rc;
 }
 
-/* As bmconv_p8_to_bgrx8888 but into rgbx8888 -- for a caller (e.g.
- * screen_copy_bitmap) that assumes the R,G,B,A/X byte order documented on
- * bitmap_load_png(), rather than the SDL-display byte order the *_to_bgrx8888
- * family targets. */
+/* As bmconv_p8_to_bgrx8888 but into rgbx8888 -- for a caller wanting the
+ * R,G,B,A/X byte order documented on bitmap_load_png(), rather than the
+ * SDL-display byte order the *_to_bgrx8888 family targets. */
 static result_t bmconv_p8_to_rgbx8888_into(const bitmap_t *src,
                                            bitmap_t       *dst)
 {
@@ -571,6 +590,54 @@ result_t bitmap_convert(const bitmap_t *src,
   }
 }
 
+/* Deep 16bpp (rgb565 or rgbx5551) to bgrx8888. Channels widen by bit
+ * replication so full-scale 31 or 63 maps to 255. */
+static result_t bmconv_16_to_bgrx8888_into(const bitmap_t *src,
+                                           bitmap_t       *dst)
+{
+  pixelfmt_bgrx8888_t  *outpixels;
+  const unsigned char  *inrow;
+  const unsigned short *in;
+  unsigned int          px;
+  unsigned int          r, g, b;
+  int                   is565;
+  int                   x, y;
+
+  assert(src);
+
+  is565     = (src->format == pixelfmt_rgb565);
+  outpixels = dst->base;
+  inrow     = src->base;
+  for (y = 0; y < src->size.h; y++)
+  {
+    in = (const unsigned short *) inrow;
+    for (x = 0; x < src->size.w; x++)
+    {
+      px = in[x];
+      if (is565)
+      {
+        r = PIXELFMT_Rxx565(px);
+        g = PIXELFMT_xGx565(px);
+        b = PIXELFMT_xxB565(px);
+        g = (g << 2) | (g >> 4);
+      }
+      else
+      {
+        r = PIXELFMT_Rxxx5551(px);
+        g = PIXELFMT_xGxx5551(px);
+        b = PIXELFMT_xxBx5551(px);
+        g = (g << 3) | (g >> 2);
+      }
+      r = (r << 3) | (r >> 2);
+      b = (b << 3) | (b >> 2);
+      *outpixels++ = PIXELFMT_MAKE_BGRX8888(r, g, b);
+    }
+    inrow += src->rowbytes;
+  }
+
+  return result_OK;
+}
+
 result_t bitmap_convert_into(const bitmap_t *src,
                              pixelfmt_t      newfmt,
                              bitmap_t       *dst)
@@ -580,6 +647,12 @@ result_t bitmap_convert_into(const bitmap_t *src,
 
   switch (src->format)
   {
+  case pixelfmt_rgb565:
+  case pixelfmt_rgbx5551:
+    if (newfmt != pixelfmt_bgrx8888)
+      return result_NOT_SUPPORTED;
+    return bmconv_16_to_bgrx8888_into(src, dst);
+
   case pixelfmt_p1:
     switch (newfmt)
     {

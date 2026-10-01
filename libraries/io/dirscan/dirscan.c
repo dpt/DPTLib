@@ -19,7 +19,10 @@
 #include "oslib/osgbpb.h"
 #include "oslib/os.h"
 
-result_t dirscan_walk(const char *dir, dirscan_fn *fn, void *opaque)
+static result_t dirscan_walk_kind(const char *dir,
+                                  int         want,
+                                  dirscan_fn *fn,
+                                  void       *opaque)
 {
   result_t          rc;
   os_error         *err;
@@ -64,7 +67,7 @@ result_t dirscan_walk(const char *dir, dirscan_fn *fn, void *opaque)
      * RISC OS filesystem would hand us, and re-reading it via a pathname
      * later is exactly what upsets FileSwitch enough to abort the scan
      * (see the error case above). */
-    if (read > 0 && list->info[0].obj_type == fileswitch_IS_FILE &&
+    if (read > 0 && list->info[0].obj_type == want &&
         list->info[0].name[0] != '/')
     {
       rc = fn(list->info[0].name, opaque);
@@ -82,6 +85,16 @@ result_t dirscan_walk(const char *dir, dirscan_fn *fn, void *opaque)
   }
 
   return rc;
+}
+
+result_t dirscan_walk(const char *dir, dirscan_fn *fn, void *opaque)
+{
+  return dirscan_walk_kind(dir, fileswitch_IS_FILE, fn, opaque);
+}
+
+result_t dirscan_walk_dirs(const char *dir, dirscan_fn *fn, void *opaque)
+{
+  return dirscan_walk_kind(dir, fileswitch_IS_DIR, fn, opaque);
 }
 
 #elif defined(_MSC_VER) /* !TARGET_RISCOS */
@@ -130,9 +143,51 @@ result_t dirscan_walk(const char *dir, dirscan_fn *fn, void *opaque)
   return rc;
 }
 
+result_t dirscan_walk_dirs(const char *dir, dirscan_fn *fn, void *opaque)
+{
+  result_t         rc;
+  WIN32_FIND_DATAA fd;
+  HANDLE           h;
+  char             pattern[DPTLIB_MAXPATH];
+
+  if (dir == NULL || fn == NULL)
+    return result_NULL_ARG;
+
+  snprintf(pattern, sizeof(pattern), "%s\\*", dir);
+
+  h = FindFirstFileA(pattern, &fd);
+  if (h == INVALID_HANDLE_VALUE)
+    return result_FILE_NOT_FOUND;
+
+  rc = result_OK;
+
+  do
+  {
+    if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 ||
+        fd.cFileName[0] == '.')
+      continue;
+
+    rc = fn(fd.cFileName, opaque);
+    if (rc == result_STOP_WALK)
+    {
+      rc = result_OK;
+      break;
+    }
+    if (rc != result_OK)
+      break;
+  }
+  while (FindNextFileA(h, &fd));
+
+  FindClose(h);
+
+  return rc;
+}
+
 #else /* !TARGET_RISCOS, !_MSC_VER */
 
 #include <dirent.h>
+#include <stdio.h>
+#include <sys/stat.h>
 
 result_t dirscan_walk(const char *dir, dirscan_fn *fn, void *opaque)
 {
@@ -151,6 +206,47 @@ result_t dirscan_walk(const char *dir, dirscan_fn *fn, void *opaque)
 
   while ((de = readdir(dp)) != NULL)
   {
+    rc = fn(de->d_name, opaque);
+    if (rc == result_STOP_WALK)
+    {
+      rc = result_OK;
+      break;
+    }
+    if (rc != result_OK)
+      break;
+  }
+
+  closedir(dp);
+
+  return rc;
+}
+
+result_t dirscan_walk_dirs(const char *dir, dirscan_fn *fn, void *opaque)
+{
+  result_t rc;
+  DIR     *dp;
+  struct dirent *de;
+  struct stat    st;
+  char           path[512];
+
+  if (dir == NULL || fn == NULL)
+    return result_NULL_ARG;
+
+  dp = opendir(dir);
+  if (dp == NULL)
+    return result_FILE_NOT_FOUND;
+
+  rc = result_OK;
+
+  while ((de = readdir(dp)) != NULL)
+  {
+    if (de->d_name[0] == '.')
+      continue;
+
+    snprintf(path, sizeof(path), "%s/%s", dir, de->d_name);
+    if (stat(path, &st) != 0 || !S_ISDIR(st.st_mode))
+      continue;
+
     rc = fn(de->d_name, opaque);
     if (rc == result_STOP_WALK)
     {

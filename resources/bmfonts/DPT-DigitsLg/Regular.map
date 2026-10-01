@@ -1,0 +1,4 @@
+# DPT-DigitsLg/Regular -- cmap for Regular.png (see docs/framebuf/bmfont.md)
+U+0020..U+007E  0     # printable ASCII
+U+00A0          0     # NBSP shares space
+U+00A9          95    # copyright sign, drawn in the DEL cell

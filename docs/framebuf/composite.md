@@ -18,6 +18,8 @@ The bitmaps must have alpha channels. Currently supported formats are:
 - `pixelfmt_rgba8888`
 - `pixelfmt_bgra8888`
 
+Formats without an alpha channel (`pixelfmt_rgb565`, `pixelfmt_rgbx5551`, `pixelfmt_rgbx8888` etc.) are not supported: `composite()` returns `result_NOT_IMPLEMENTED`.
+
 Both source and destination bitmaps should be properly initialised before compositing.
 
 ## Compositing

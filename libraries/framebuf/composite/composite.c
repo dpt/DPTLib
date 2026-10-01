@@ -976,6 +976,8 @@ result_t composite(composite_rule_t rule,
 
   case pixelfmt_abgr8888:
   case pixelfmt_argb8888:
+  case pixelfmt_rgb565:   /* no alpha channel */
+  case pixelfmt_rgbx5551: /* no alpha channel */
   default:
     return result_NOT_IMPLEMENTED;
   }

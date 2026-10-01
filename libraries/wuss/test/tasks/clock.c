@@ -18,15 +18,28 @@
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "geom/point.h"
+#include "io/filetype.h"
 #include "utils/fxp.h"
 
 #include "clock.h"
+#include "common.h"
+#include "snapshot.h"
 
-/* MENU click pops this single-item menu; the item table and wuss_menu_t
- * live per-instance in clock_task_t, not as a file-scope static, so that
- * each window's Info row can hold its own .window pointer to the shared
- * proginfo singleton, retargeted just before wuss_menu_open */
-enum { CLOCK_MENU_INFO };
+/* MENU click pops this menu; the item table and wuss_menu_t live per-instance
+ * in clock_task_t, not as a file-scope static, so that each window's Info row
+ * can hold its own .window pointer to the shared proginfo singleton, retargeted
+ * just before wuss_menu_open */
+enum
+{
+  CLOCK_MENU_INFO = 0,
+  CLOCK_MENU_BACKGROUND,
+  CLOCK_MENU_DIGITAL,
+  CLOCK_MENU_SECONDS,
+  CLOCK_MENU_12_HOUR,
+  CLOCK_MENU_SAVE
+};
+
+#define CLOCK_SAVE_NAME "clock.png" /* Save As's initial leafname */
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -97,14 +110,17 @@ static result_t clock_create_window(wuss_t       *wuss,
                                     clock_task_t *task,
                                     wuss_task_t  *delegate)
 {
-  return wuss_window_create_placed(delegate,
-                                   SIZE2D(160, 160),
-                                   "Clock",
-                                   wuss_WINDOW_DEFAULT,
-                                   wuss_NO_BACKDROP,
-                                   SIZE2D(160, 160),
-                                   SIZE2D(0, 0),
-                                   &task->window);
+  return task_window_create(delegate, SIZE2D(160, 160), "Clock", &task->window);
+}
+
+/* wuss_saveas_save_fn_t: opaque is the clock_task_t */
+static result_t clock_saveas_save(const char *path, void *opaque)
+{
+  clock_task_t *cc;
+
+  cc = opaque;
+
+  return snapshot_save_png(cc->window, clock_handle, cc, path);
 }
 
 result_t clock_create(wuss_t *wuss, clock_task_t **out)
@@ -113,6 +129,7 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
   clock_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  filetype_t       png_type;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -146,10 +163,36 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
     return rc;
   }
 
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
+                          CLOCK_SAVE_NAME, clock_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
   WUSS_MENU_ITEM_WINDOW(task->menu_items, CLOCK_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in clock_mouse */
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, CLOCK_MENU_BACKGROUND, "Background",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CLOCK_MENU_DIGITAL, "Digital",
+                          wuss_MENU_ITEM_NONE, "D");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CLOCK_MENU_SECONDS, "Seconds",
+                          wuss_MENU_ITEM_NONE, "S");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CLOCK_MENU_12_HOUR, "12-hour",
+                          wuss_MENU_ITEM_NONE, "H");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CLOCK_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[CLOCK_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Clock", task->menu_items,
                  NELEMS(task->menu_items));
@@ -162,7 +205,7 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
 
 void clock_destroy(clock_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
+  wuss_saveas_destroy(task->saveas);
   free(task);
 }
 
@@ -190,8 +233,35 @@ static result_t clock_redraw(const wuss_event_t *event, void *task_data)
                    content->y0, box_size(content),
                    cc->bg);
 
+  now = time(NULL);
+  lt  = localtime(&now);
+
   cx = bounds->x0 - sx + (bounds->x1 - bounds->x0) / 2.0;
   cy = bounds->y0 - sy + (bounds->y1 - bounds->y0) / 2.0;
+
+  if (cc->digital)
+  {
+    char        buf[12]; /* "HH:MM:SS PM" */
+    int         hour;
+    const char *suffix;
+
+    hour   = lt->tm_hour;
+    suffix = "";
+    if (cc->twelve_hour)
+    {
+      suffix = (hour < 12) ? " AM" : " PM";
+      hour   = (hour + 11) % 12 + 1; /* 0..23 -> 12, 1..11, 12, 1..11 */
+    }
+
+    if (cc->show_second)
+      snprintf(buf, sizeof(buf), "%02d:%02d:%02d%s",
+               hour, lt->tm_min, lt->tm_sec, suffix);
+    else
+      snprintf(buf, sizeof(buf), "%02d:%02d%s", hour, lt->tm_min, suffix);
+    clock_draw_centred(cc->font, scr, buf, cx, cy, cc->hand);
+    return result_OK;
+  }
+
   r  = MIN(bounds->x1 - bounds->x0, bounds->y1 - bounds->y0)
      / 2.0 * CLOCK_FACE_FRACTION;
 
@@ -227,9 +297,6 @@ static result_t clock_redraw(const wuss_event_t *event, void *task_data)
                        cc->bezel);
   }
 
-  now = time(NULL);
-  lt  = localtime(&now);
-
   second_angle = lt->tm_sec * 2.0 * M_PI / 60.0;
   minute_angle = (lt->tm_min + lt->tm_sec / 60.0) * 2.0 * M_PI / 60.0;
   hour_angle   = ((lt->tm_hour % 12) + lt->tm_min / 60.0) * 2.0 * M_PI / 12.0;
@@ -248,17 +315,15 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
   if (button & wuss_BUTTON_MENU)
   {
     static const wuss_proginfo_desc_t desc =
-    {
-      "Clock",
-      "Analogue clock, hour/minute/second hands",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
+      TASK_PROGINFO_DESC("Clock", "Analogue or digital clock");
     wuss_proginfo_set_desc(&desc);
     cc->menu_items[CLOCK_MENU_INFO].window = wuss_proginfo_window(cc->delegate);
+    wuss_menu_tick_item(&cc->menu, CLOCK_MENU_DIGITAL, cc->digital);
+    wuss_menu_tick_item(&cc->menu, CLOCK_MENU_SECONDS, cc->show_second);
+    wuss_menu_tick_item(&cc->menu, CLOCK_MENU_12_HOUR, cc->twelve_hour);
 
-    return wuss_menu_open(cc->delegate, &cc->menu,
-                          wuss_get_pointer(cc->wuss), &cc->menu_handle);
+    return wuss_menu_open_at_pointer(cc->delegate, &cc->menu,
+                                     &cc->menu_handle);
   }
 
   if (button & wuss_BUTTON_SELECT)
@@ -266,6 +331,45 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
     cc->show_second = !cc->show_second;
     wuss_window_invalidate_visible(cc->window);
   }
+  else if (button & wuss_BUTTON_ADJUST)
+  {
+    cc->digital = !cc->digital;
+    wuss_window_invalidate_visible(cc->window);
+  }
+
+  return result_OK;
+}
+
+static result_t clock_menu_select(clock_task_t       *cc,
+                                  const wuss_event_t *event)
+{
+  if (wuss_colourmenu_selected_rgb(event, &cc->bg))
+    wuss_window_invalidate_visible(cc->window);
+
+  return result_OK;
+}
+
+/* The "Digital" row swaps between the analogue face and a text readout;
+ * the "Seconds" row shows or hides the seconds, as a Select click does; the
+ * "12-hour" row switches the readout between 24-hour and 12-hour AM/PM. An
+ * ADJUST pick keeps the menu open, so retick the live row. */
+static result_t clock_toggle(clock_task_t *cc, const wuss_event_t *event)
+{
+  int   index;
+  bool *flag;
+
+  index = event->data.menu_select.index;
+  if (index == CLOCK_MENU_DIGITAL)
+    flag = &cc->digital;
+  else if (index == CLOCK_MENU_SECONDS)
+    flag = &cc->show_second;
+  else
+    flag = &cc->twelve_hour;
+  *flag = !*flag;
+
+  wuss_menu_tick_item_live(cc->menu_handle, &cc->menu, index, *flag);
+
+  wuss_window_invalidate_visible(cc->window);
 
   return result_OK;
 }
@@ -291,15 +395,51 @@ result_t clock_handle(wuss_window_t      *window,
       return result_OK;
     return clock_mouse(cc, event->data.mouse.button);
 
+  case wuss_EVENT_KEY:
+    if (window != cc->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+    return wuss_menu_dispatch_shortcut(cc->delegate, &cc->menu, event);
+
   case wuss_EVENT_IDLE:
+  {
+    time_t now;
+
     /* the proginfo dialogue is a second window on this same (autoclose)
      * delegate, so closing the clock window alone never empties
      * task->windows and the task lingers until the dialogue closes too --
      * guard against the dangling window in the meantime */
     if (cc->window == NULL)
       return result_OK;
+
+    /* repaint only when the time shown changes: each second with seconds
+     * on, each minute without */
+    now = time(NULL);
+    if (!cc->show_second)
+      now -= now % 60;
+    if (now == cc->shown)
+      return result_OK;
+
+    cc->shown = now;
     wuss_window_invalidate_visible(cc->window);
     return result_OK;
+  }
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    /* the "Background" row: the shared colourmenu, set up per open */
+    return wuss_colourmenu_open_rgb(cc->wuss, event, "Background", cc->bg);
+
+  case wuss_EVENT_MENU_SELECT:
+    if (event->data.menu_select.menu == &cc->menu &&
+        (event->data.menu_select.index == CLOCK_MENU_DIGITAL ||
+         event->data.menu_select.index == CLOCK_MENU_SECONDS ||
+         event->data.menu_select.index == CLOCK_MENU_12_HOUR))
+      return clock_toggle(cc, event);
+    if (event->data.menu_select.menu == &cc->menu &&
+        event->data.menu_select.index == CLOCK_MENU_SAVE)
+    {
+      return wuss_saveas_open(cc->saveas);
+    }
+    return clock_menu_select(cc, event);
 
   case wuss_EVENT_MENU_CLOSED:
     cc->menu_handle = NULL;

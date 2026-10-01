@@ -500,6 +500,36 @@ static result_t test_measure_min(void)
 
 /*   ROOT (VBOX)
  *    |
+ *    +-- ROW (HBOX, axis_size=22)
+ *         +-- LBL  axis_size=20, cross_size=16, centred
+ *
+ * ROW's fixed axis_size is its height (along ROOT's axis), taller than its
+ * child, so ROOT's minimum is 20 wide and 22 high, not the child's 16. */
+static result_t test_measure_min_fixed_container(void)
+{
+  enum { ROOT, ROW, LBL, N };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
+    [ROW]  = STACK_HBOX(ROOT, 22, 0, stack_ALIGN_FILL),
+    [LBL]  = STACK_LEAF(ROW, 20, 16, stack_ALIGN_CENTRE),
+  };
+
+  result_t err;
+  size2d_t sz;
+
+  err = stack_smallest(items, N, &sz);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (sz.w != 20 || sz.h != 22)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/*   ROOT (VBOX)
+ *    |
  *    +-- HUG (VBOX, axis_size=STACK_HUG, pad_t=2, pad_b=3)
  *         +-- A  axis_size=10
  *         +-- B  axis_size=15
@@ -656,6 +686,86 @@ static result_t test_hug_with_flex_rejected(void)
   return result_TEST_PASSED;
 }
 
+/* Size groups line up labels, values and a spacer across rows:
+ *
+ *   Lbl(g1 20)  [Slider flex]  Val(g2 10)
+ *   LongLbl(g1 50) [Slider flex] Val(g2 30)
+ *   Spacer(g1) [ Cancel | Apply  flex 1:1 ]
+ *
+ * Labels (and spacer) all become 50 wide, values 30; sliders are equal and
+ * the button box spans slider+gap+value. */
+static result_t test_group(void)
+{
+  enum { ROOT, R1, L1, S1, V1, R2, L2, S2, V2, R3, SP, BB, CN, AP, N };
+  static const box_t        root = { 0, 0, 200, 60 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
+
+    [R1] = STACK_HBOX(ROOT, 20, 0, stack_ALIGN_START),
+    [L1] = STACK_LEAF_GROUP(R1, 20, 0, stack_ALIGN_START, 1),
+    [S1] = STACK_LEAF_EX(R1, 0, 0, stack_ALIGN_START, 1, 0, 0),
+    [V1] = STACK_LEAF_GROUP(R1, 10, 0, stack_ALIGN_START, 2),
+
+    [R2] = STACK_HBOX(ROOT, 20, 0, stack_ALIGN_START),
+    [L2] = STACK_LEAF_GROUP(R2, 50, 0, stack_ALIGN_START, 1),
+    [S2] = STACK_LEAF_EX(R2, 0, 0, stack_ALIGN_START, 1, 0, 0),
+    [V2] = STACK_LEAF_GROUP(R2, 30, 0, stack_ALIGN_START, 2),
+
+    [R3] = STACK_HBOX(ROOT, 20, 0, stack_ALIGN_START),
+    [SP] = STACK_SPACER_GROUP(R3, 0, 1),
+    [BB] = { .kind = stack_KIND_HBOX, .parent = R3, .flex = 1 },
+    [CN] = STACK_LEAF_EX(BB, 0, 0, stack_ALIGN_START, 1, 0, 0),
+    [AP] = STACK_LEAF_EX(BB, 0, 0, stack_ALIGN_START, 1, 0, 0),
+  };
+
+  result_t err;
+  box_t    out[N];
+  size2d_t min;
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_OK)
+    return result_TEST_FAILED;
+
+  if (out[L1].x1 != 50 || out[L2].x1 != 50 || out[SP].x1 != 50)
+    return result_TEST_FAILED;
+  if (out[V1].x0 != 170 || out[V2].x0 != 170)
+    return result_TEST_FAILED;
+  if (out[S1].x0 != out[S2].x0 || out[S1].x1 != out[S2].x1)
+    return result_TEST_FAILED;
+  if (out[BB].x0 != 50 || out[BB].x1 != 200)
+    return result_TEST_FAILED;
+  if (out[CN].x1 - out[CN].x0 != 75 || out[AP].x1 - out[AP].x0 != 75)
+    return result_TEST_FAILED;
+
+  err = stack_smallest(items, N, &min);
+  if (err != result_OK || min.w != 80)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/* A group on a flexing item is rejected. */
+static result_t test_group_with_flex_rejected(void)
+{
+  enum { ROOT, A, N };
+  static const box_t        root = { 0, 0, 50, 50 };
+  static const stack_item_t items[N] =
+  {
+    [ROOT] = { .kind = stack_KIND_VBOX, .parent = -1 },
+    [A]    = { .kind = stack_KIND_LEAF, .parent = ROOT, .flex = 1, .group = 1 },
+  };
+
+  result_t err;
+  box_t    out[N];
+
+  err = stack_solve(items, N, &root, out);
+  if (err != result_STACK_BAD_TREE)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t stack_test(const char *resources)
@@ -720,6 +830,10 @@ result_t stack_test(const char *resources)
   if (err != result_TEST_PASSED)
     return err;
 
+  err = test_measure_min_fixed_container();
+  if (err != result_TEST_PASSED)
+    return err;
+
   err = test_hug();
   if (err != result_TEST_PASSED)
     return err;
@@ -741,6 +855,14 @@ result_t stack_test(const char *resources)
     return err;
 
   err = test_hug_with_flex_rejected();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_group();
+  if (err != result_TEST_PASSED)
+    return err;
+
+  err = test_group_with_flex_rejected();
   if (err != result_TEST_PASSED)
     return err;
 

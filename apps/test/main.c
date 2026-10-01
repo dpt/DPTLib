@@ -46,6 +46,7 @@ static const test_t tests[] =
   { "list",       list_test       },
   { "ntree",      ntree_test      },
   { "txtfmt",     txtfmt_test     },
+  { "utf8",       utf8_test       },
   { "vector",     vector_test     },
 
   { "pickle",     pickle_test     },
@@ -53,6 +54,7 @@ static const test_t tests[] =
 
   { "bmfont",      bmfont_test      },
   { "bmfontcache", bmfontcache_test },
+  { "bmfontfamily", bmfontfamily_test },
   { "composite",   composite_test   },
   { "rle",         bitmap_rle_test  },
   { "curve",       curve_test       },
@@ -65,17 +67,26 @@ static const test_t tests[] =
   { "packer",     packer_test     },
   { "stack",      stack_test      },
 
+  { "dirlist",    dirlist_test    },
+  { "filetype",   filetype_test   },
   { "path",       path_test       },
   { "stream",     stream_test     },
 
   { "array",      array_test      },
   { "bsearch",    bsearch_test    },
+  { "bytesex",    bytesex_test    },
   { "pack",       pack_test       },
 
   { "wuss",       wuss_test       },
 };
 
 static const int ntests = NELEMS(tests);
+
+/* ponytail: fixed frame count; take a number on the command line if a
+ * test ever needs longer to cover its draw paths */
+#define AUTOQUIT_FRAMES 60
+
+int test_autoquit = 0;
 
 /* ----------------------------------------------------------------------- */
 
@@ -147,6 +158,8 @@ int main(int argc, char *argv[])
   for (i = 1; i < argc; i++)
     if (strcmp(argv[i], "-resources") == 0)
       resources = argv[++i];
+    else if (strcmp(argv[i], "-autoquit") == 0)
+      test_autoquit = AUTOQUIT_FRAMES;
     else
       testargvidx[nargs++] = i;
 

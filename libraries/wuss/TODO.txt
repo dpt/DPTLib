@@ -4,56 +4,18 @@ Ordered by dependency. Each layer builds on the ones above it.
 Items marked (blocks: X) are prerequisites for X.
 
 
-
-Fast scrolling can invalidate areas and fail to copy the expected known good screen content.
- -- Tried and tried to get Claude to fix but no good.
-
-Scrolled (which app?) then expanded the window - got a full redraw of the window.
-
-Policy? Windows hidden by default (unless a flag is set)
-Wuss lets hidden windows exist in its window stack which complicates the code a bit. RISC OS allows hidden (closed) windows by putting them "behind the backwindow".
-
-Keyboard input
-- bmfont caret: done (bmfont_find_caret, bmfont_caret_x, bmfont_draw_caret)
-
-Large fonts for titles, italic font, ...
-
-SDL bug? Random mouse focus issue that stops us receiving initial clicks.
-
-Menus which could have ticks AND colour swatches
-
-formatting: Balanced braces rule
-
-nick Melkhior's mansion font
-
-Pop-to-front of 'running' apps
-
-Text alignment with window border failed to convince me. I think it's still off by 1px and the Wuss measurement was bodged.
-
-
-
-
-LAYER 0 - BUGS (fix before building on top)
-
-- Auto window placement packer still not working as expected
-    blocks: reliable multi-window tasks
-
-
-LAYER 1 - CORE PLUMBING (no wuss deps; unblocks everything else)
-
-- Masks: how to get (alpha) masks into the system? Another channel,
-  fixed value, or a second bitmap? Decide the model first.
-    blocks: Draw bitmap through mask, Masked sprites/bitmaps, furniture tinting
-- UTF-8 everywhere
-    blocks: text abstraction, window/menu templates
-- Icon type taxonomy
-- I still think there's over-draw when toggling window sizes.
-
-
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
 
+- Hierarchical fonts: directory layout, bmfontfamily selection primitives
+  and the wuss app's regular/bold slots (bold via bmfontfamily_heavier) are
+  done. Still to do: let the wuss library itself take a family rather than
+  fixed slots, and italic/large selection.
+    blocks: bold/italic/large fonts, symbol selection
+- Identify and fix places where we've assumed a 6px desktop font size. e.g. use
+  of the stacker. Similarly some desktop components are sized around RISC OS
+  sizings and not derived from the currently selected desktop font.
 - How to get bold etc. into the system (consistently)? How to select symbols?
-- More symbols? For what elements?
+- Large fonts for titles, italic font, ...
 
 
 LAYER 3 - SPRITES (needs masks)
@@ -67,34 +29,31 @@ LAYER 3 - SPRITES (needs masks)
 
 LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
 
-- Set wuss window config after the fact (goes with palette work)
-    blocks: Furniture icons toggling state, min window size
-- Minimum window size based on furniture requested
-  (later: squash-able furniture)
-- Scroll: auto repeat on scroll buttons
-- Snap to edges (outline-click bug fixed; unblocked)
+- Squash-able furniture (shrink below the furniture minimum size)
 - Dragging against window edge shuffles window in opposite direction
   (outline-click bug fixed; unblocked)
-- 2D Adjust window scroll drag
-- Text entry (writable icons, caret); input focus and furniture tinting done
-- Furniture colour selection needs improvements (e.g. losing menu readability when palette changed)
-- Adjust click on a menu should pop to front once the action is complete
+- Furniture colour selection needs improvements (e.g. losing menu
+  readability when palette changed)
 
 
 LAYER 5 - DRAG & TEMPLATES (needs sprites, config-after-the-fact)
 
-- Dragbox concepts (mouse clamping, marching ants)
-    blocks: Drag & Drop
+- Dragbox concepts (mouse clamping, marching ants) -- done (core drag
+  session, DRAGGABLE icon)
 - Window and menu templates (text format?)
-- Drag & Drop
+- Drag & Drop -- done (DataSave/DataSaveAck/DataLoad/DataLoadAck, Save As
+  component, Filer drop target; see docs/windowing/drag-save-plan.md).
+  Deferred: load from the Filer, task-to-task transfer, RAM transfer
 
 
 LAYER 6 - MULTI-TASK (needs stable windows, templates)
 
-- Messaging between tasks
-    blocks: Desktop cohort
+- Messaging between tasks -- done (point-to-point and broadcast, plain/
+  recorded send, acknowledge/bounce; see docs/windowing/drag-save-plan.md)
+- Pop-to-front of 'running' apps
 - Backdrop: register events, or a task that covers it like Pinboard
-- Icon bar - a separate task or module?
+- Icon bar - a separate task or module? -- has a task (Filer); icon bar
+  itself still core
 
 
 LAYER 7 - APPS & POLISH (needs most of the above)
@@ -103,13 +62,20 @@ LAYER 7 - APPS & POLISH (needs most of the above)
   (Markdown rendering done in the Text task sample; reuse from there)
 - Have a Paint app as a target
 - Desktop cohort: Filer, Task Manager, Palette Util
-- Colour Picker component
+- Desktop palette editor (needs named colours; see Palette Util)
+- 24-bit Colour Picker component (named colours?)
 - Proper desktop font (just iterate on existing one?)
 - Support paletted images
 - Greebling symmetry
+- Spheroid: bump textures, arrays of spheres, saved presets
 - 8x8 icon libraries - share the greeble code with other parts of wuss
 - Tiled fills (tile_1)
 - Rounded corner windows
+- Constraints, or some sort of layout technique for getting aligned columns when laying out
+- Procedural noise app. Dithering app.
+- More tasks: TGE/CHQ/...
+- Configure: System font changing
+- Filer style window (drags first)
 
 
 NO STRONG DEPS (do any time)
@@ -118,7 +84,14 @@ NO STRONG DEPS (do any time)
 - Generalise APIs (make more Wimp-like)
 - Fix coordinates to be exactly like Wimp/RO?
 - Set overall UI scale (like EIG values)
-- Window stacks (topwindow/mid-stack/backwindow a-la nested wimp)
 - Nested wimp type nesting
+- Hidden windows keep their slot in their stack (wuss_WINDOW_HIDDEN). Revisit
+  if nesting needs them out of the stacks, RISC OS style ("behind the
+  backwindow").
 - Automatic pane handling?
 - Stress test: moving windows in a circle a-la nested Wimp [worth it?]
+
+
+NOTES
+
+- Inspiration: Kai's Power Tools

@@ -17,12 +17,15 @@
 #include "geom/box.h"
 #include "geom/size.h"
 #include "geom/stack.h"
+#include "io/filetype.h"
 #include "utils/rng.h"
 #include "wuss/component/dialogue.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 
 #include "saturn.h"
+#include "common.h"
+#include "snapshot.h"
 
 /* A recreation of the ringed planet from the loading screen of Elite (Ian
  * Bell and David Braben, Acornsoft, 1984), the stippled Saturn-like world
@@ -84,8 +87,19 @@ static int saturn_rnd(int n)
  * there. "Info" hover-opens the shared proginfo singleton's window,
  * retargeted into task->menu_items[SATURN_MENU_INFO].window just before
  * wuss_menu_open, in saturn_mouse. */
-enum { SATURN_MENU_INFO = 0, SATURN_MENU_COLOURS, SATURN_MENU_SIZE };
+enum
+{
+  SATURN_MENU_INFO = 0,
+  SATURN_MENU_COLOURS,
+  SATURN_MENU_SIZE,
+  SATURN_MENU_ANIMATE,
+  SATURN_MENU_SAVE
+};
+
+#define SATURN_SAVE_NAME "saturn.png" /* Save As's initial leafname */
 enum { SATURN_COLOURS_MENU_FOREGROUND = 0, SATURN_COLOURS_MENU_BACKGROUND };
+
+#define SATURN_SEED_STEP 0x9E3779B9UL /* golden-ratio step between sketches */
 
 /* the size dialogue's icons, in creation order (see saturn_conf_dialogue_create):
  * one label/slider/value triple per SATURN_SIZEDLG_ROW_*, then the buttons */
@@ -157,6 +171,16 @@ static result_t saturn_conf_apply_action(void *opaque, wuss_button_t button);
 static result_t saturn_conf_default_action(void         *opaque,
                                            wuss_button_t button);
 
+/* wuss_saveas_save_fn_t: opaque is the saturn_task_t */
+static result_t saturn_saveas_save(const char *path, void *opaque)
+{
+  saturn_task_t *task;
+
+  task = opaque;
+
+  return snapshot_save_png(task->window, saturn_handle, task, path);
+}
+
 result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
 {
   static const saturn_config_t default_config = SATURN_CONFIG_DEFAULT;
@@ -165,6 +189,7 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   saturn_task_t   *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  filetype_t       png_type;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -196,13 +221,18 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   task->delegate = delegate; /* the task the menu opens against */
   wuss_task_set_autoclose(delegate, 1);
 
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
+                          SATURN_SAVE_NAME, saturn_saveas_save, task);
+  if (rc != result_OK)
+    goto fail_delegate;
+
   /* shared colourmenu singleton: wuss_EVENT_PRE_SUBMENU_OPEN retitles/
    * retargets it per hover (see saturn_pre_submenu_open), so Foreground and
    * Background don't need their own instance. Both rows' .submenu just need
    * to be non-NULL to draw an arrow and become hoverable; which menu they
    * name doesn't matter since the handler always supplies the menu to
    * open. */
-  wuss_colourmenu_set_none(0);
   WUSS_MENU_ITEM_MENU(task->colours_items, SATURN_COLOURS_MENU_FOREGROUND,
                       "Foreground", wuss_MENU_ITEM_PRE_OPEN,
                       wuss_colourmenu_menu(wuss));
@@ -226,17 +256,21 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_SIZE, "Configuration",
                 wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_ANIMATE, "Animate",
+                          wuss_MENU_ITEM_NONE, "A");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[SATURN_MENU_SAVE].window = wuss_saveas_window(task->saveas);
+
   WUSS_MENU_TITLE(task->menu, "Saturn", task->menu_items,
                  NELEMS(task->menu_items));
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(task->config.size, task->config.size),
-                                 "Saturn",
-                                 wuss_WINDOW_DEFAULT,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(task->config.size, task->config.size),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate,
+                          SIZE2D(task->config.size, task->config.size),
+                          "Saturn",
+                          &task->window);
   if (rc != result_OK)
     goto fail_delegate;
 
@@ -253,51 +287,45 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   return result_OK;
 
 fail_delegate:
+  wuss_saveas_destroy(task->saveas);
   wuss_task_destroy(delegate); /* unregisters; its QUIT frees the task block */
   return rc;
 }
 
 void saturn_destroy(saturn_task_t *task)
 {
-  /* task->conf.dialogue's window is borrowed into task->menu_items as a
-   * submenu leaf; if the chain is still open at QUIT (wuss_destroy sweeps
-   * tasks before closing any leftover chain -- see its comment) that leaf's
-   * node->window would dangle once wuss_dialogue_destroy below frees it.
-   * Close our own chain first, same as wuss_destroy expects every task to
-   * do for whatever it still holds. */
-  wuss_menu_close(task->menu_handle);
-  task->menu_handle = NULL;
-
   wuss_dialogue_destroy(task->conf.dialogue);
+  wuss_saveas_destroy(task->saveas);
   free(task); /* task_data was calloc'd per instance by the spawner */
 }
 
 /* plot one point in window content space, clipped to the window. x,y are
  * already in the window's top-down pixel space (callers apply the RISC OS
  * (255 - ...) flip). */
-static void saturn_plot(screen_t *scr,
-                        int       ox,
-                        int       oy,
-                        int       size,
-                        int       x,
-                        int       y,
-                        colour_t  c)
+static void saturn_plot(screen_t      *scr,
+                        int            ox,
+                        int            oy,
+                        int            size,
+                        int            x,
+                        int            y,
+                        pixelfmt_any_t pxl)
 {
   if (x < 0 || x >= size || y < 0 || y >= size)
     return;
 
-  screen_set_pixel(scr, ox + x, oy + y, c);
+  screen_set_pixel_value(scr, ox + x, oy + y, pxl);
 }
 
 static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
 {
-  screen_t    *scr;
-  const box_t *content, *bounds;
-  int          size, half, range, flip, energy_shift;
-  int          stars_p, ring_p, e_lo, e_hi;
-  int          ox, oy;
-  int          i;
-  int          x, y, p;
+  screen_t      *scr;
+  const box_t   *content, *bounds;
+  int            size, half, range, flip, energy_shift;
+  int            stars_p, ring_p, e_lo, e_hi;
+  int            ox, oy;
+  int            i;
+  int            x, y, p;
+  pixelfmt_any_t fgpix;
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
@@ -327,6 +355,9 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
   ox = bounds->x0 - event->data.redraw.scroll.x;
   oy = bounds->y0 - event->data.redraw.scroll.y;
 
+  /* resolve the colour once, not once per plotted point */
+  fgpix = screen_colour_to_pixel(scr, task->fg);
+
   saturn_rnd_seed(task->seed);
 
   /* loop 1 - the stars: keep points outside the inner disc */
@@ -336,7 +367,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
     y = SATURN_SAMPLE(half, range);
     p = (x * x + y * y) / energy_shift;
     if (p > stars_p)
-      saturn_plot(scr, ox, oy, size, x + half, flip - (y + half), task->fg);
+      saturn_plot(scr, ox, oy, size, x + half, flip - (y + half), fgpix);
   }
 
   /* loop 2 - the ring: sheared sample with a banded energy gate */
@@ -352,7 +383,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
     p  = (x * x + y * y) / energy_shift;
     e  = ((r6 + r7) * (r6 + r7) + r5 * r5 + r6 * r6) / energy_shift;
     if (e >= e_lo && e < e_hi && (r5 < 0 || p > ring_p))
-      saturn_plot(scr, ox, oy, size, x + half, y + half, task->fg);
+      saturn_plot(scr, ox, oy, size, x + half, y + half, fgpix);
   }
 
   /* loop 3 - planet body: filled half-disc offset right */
@@ -368,7 +399,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
     {
       x = (int) (sqrt((double) (body_r2 - p)) / 2.0) + half;
       y = flip - (r2 / 2 + half);
-      saturn_plot(scr, ox, oy, size, x, y, task->fg);
+      saturn_plot(scr, ox, oy, size, x, y, fgpix);
     }
   }
 
@@ -386,36 +417,60 @@ static result_t saturn_mouse(saturn_task_t      *task,
   if (button & wuss_BUTTON_MENU)
   {
     static const wuss_proginfo_desc_t desc =
-    {
-      "Saturn",
-      "Elite loading-screen planet, recreated",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
+      TASK_PROGINFO_DESC("Saturn", "Elite loading-screen planet, recreated");
 
     wuss_proginfo_set_desc(&desc);
     task->menu_items[SATURN_MENU_INFO].window =
       wuss_proginfo_window(task->delegate);
 
-    return wuss_menu_open(task->delegate, &task->menu,
-                          wuss_get_pointer(task->wuss),
-                          &task->menu_handle);
+    wuss_menu_tick_item(&task->menu, SATURN_MENU_ANIMATE, task->animate);
+
+    return wuss_menu_open_at_pointer(task->delegate, &task->menu,
+                                     &task->menu_handle);
   }
 
+  /* the seed step is invertible, so Adjust walks back through the
+   * sketches Select has shown */
   if (button & wuss_BUTTON_SELECT)
   {
-    task->seed += 0x9E3779B9UL; /* fresh sketch */
+    task->seed += SATURN_SEED_STEP; /* fresh sketch */
+    wuss_window_invalidate_visible(window);
+  }
+  else if (button & wuss_BUTTON_ADJUST)
+  {
+    task->seed -= SATURN_SEED_STEP; /* previous sketch */
     wuss_window_invalidate_visible(window);
   }
 
   return result_OK;
 }
 
+/* Left/Right step back/forward through the sketches, as Adjust/Select
+ * clicks do. Anything else is passed back unclaimed. */
+static result_t saturn_key(saturn_task_t *task,
+                           wuss_window_t *window,
+                           int            code)
+{
+  switch (code)
+  {
+  case wuss_KEY_LEFT:  task->seed -= SATURN_SEED_STEP; break;
+  case wuss_KEY_RIGHT: task->seed += SATURN_SEED_STEP; break;
+
+  default:
+    return result_WUSS_KEY_UNCLAIMED;
+  }
+
+  wuss_window_invalidate_visible(window);
+
+  return result_OK;
+}
+
 /* stack items for the size dialogue's layout: a VBOX of label / slider /
- * value-echo / button-row, with fixed-size spacers standing in for the
- * (non-uniform) gaps between them. BTN_ROW is an HBOX with Cancel and
- * Apply side by side, gapped and top-aligned (Apply is taller than
- * Cancel, both start flush with the row's top edge). */
+ * value-echo rows above a button row. Labels share size group ST_G_LABEL and
+ * values ST_G_VALUE, so each column is as wide as its widest member (their
+ * axis_size is patched from the font in saturn_conf_dialogue_create). The
+ * button row starts with a spacer in the label group, so the buttons sit
+ * under the sliders and values and share that width between them. */
 enum
 {
   ST_ROOT,
@@ -441,6 +496,8 @@ enum
   ST_VAL4,
 
   ST_BTNS,
+  ST_BSPC,
+  ST_BBOX,
   ST_DFLT,
   ST_CNCL,
   ST_APLY,
@@ -451,11 +508,12 @@ enum
 /* Leaf main-axis sizes, named so saturn_conf_dialogue_create's hand-computed
  * minimum window size can share them with the table below instead of
  * repeating the numbers as bare literals. */
-#define ST_LABEL_W          (5*6) /* enough for "Iters" */
-#define ST_LABEL2_W         (4*6) /* enough for "9999" */
+#define ST_G_LABEL          1 /* size groups, see stack_item_t::group */
+#define ST_G_VALUE          2
 #define ST_SLIDER_MIN_W     (64)
-#define ST_ACTION_WIDTH(W)  ((W)*6+2*4)
-#define ST_DEFAULT_WIDTH(W) ((W)*6+2*6)
+#define ST_CHAR_W           6 /* ponytail: assumes the 6px system font */
+#define ST_ACTION_WIDTH(W)  ((W)*ST_CHAR_W+2*wuss_STD_SECONDARY_BUTTON_BORDER)
+#define ST_DEFAULT_WIDTH(W) ((W)*ST_CHAR_W+2*wuss_STD_PRIMARY_BUTTON_BORDER)
 #define ST_DEFAULT_W        ST_ACTION_WIDTH(9)
 #define ST_CANCEL_W         ST_ACTION_WIDTH(9)
 #define ST_APPLY_W          ST_DEFAULT_WIDTH(9)
@@ -466,29 +524,32 @@ static const stack_item_t g_saturn_conf_stack[SIZE_STACK__LIMIT] =
                 .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
 
   [ST_ROW1]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
-  [ST_LABL1] = STACK_LEAF(ST_ROW1, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_LABL1] = STACK_LEAF_GROUP(ST_ROW1, 0, 16, stack_ALIGN_CENTRE, ST_G_LABEL),
   [ST_SLDR1] = STACK_LEAF_EX(ST_ROW1, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
-  [ST_VAL1]  = STACK_LEAF(ST_ROW1, ST_LABEL2_W, 16, stack_ALIGN_CENTRE),
+  [ST_VAL1]  = STACK_LEAF_GROUP(ST_ROW1, 0, 16, stack_ALIGN_CENTRE, ST_G_VALUE),
 
   [ST_ROW2]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
-  [ST_LABL2] = STACK_LEAF(ST_ROW2, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_LABL2] = STACK_LEAF_GROUP(ST_ROW2, 0, 16, stack_ALIGN_CENTRE, ST_G_LABEL),
   [ST_SLDR2] = STACK_LEAF_EX(ST_ROW2, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
-  [ST_VAL2]  = STACK_LEAF(ST_ROW2, ST_LABEL2_W, 16, stack_ALIGN_CENTRE),
+  [ST_VAL2]  = STACK_LEAF_GROUP(ST_ROW2, 0, 16, stack_ALIGN_CENTRE, ST_G_VALUE),
 
   [ST_ROW3]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
-  [ST_LABL3] = STACK_LEAF(ST_ROW3, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_LABL3] = STACK_LEAF_GROUP(ST_ROW3, 0, 16, stack_ALIGN_CENTRE, ST_G_LABEL),
   [ST_SLDR3] = STACK_LEAF_EX(ST_ROW3, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
-  [ST_VAL3]  = STACK_LEAF(ST_ROW3, ST_LABEL2_W, 16, stack_ALIGN_CENTRE),
+  [ST_VAL3]  = STACK_LEAF_GROUP(ST_ROW3, 0, 16, stack_ALIGN_CENTRE, ST_G_VALUE),
 
   [ST_ROW4]  = STACK_HBOX(ST_ROOT, wuss_STD_SLIDER_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
-  [ST_LABL4] = STACK_LEAF(ST_ROW4, ST_LABEL_W, 16, stack_ALIGN_CENTRE),
+  [ST_LABL4] = STACK_LEAF_GROUP(ST_ROW4, 0, 16, stack_ALIGN_CENTRE, ST_G_LABEL),
   [ST_SLDR4] = STACK_LEAF_EX(ST_ROW4, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
-  [ST_VAL4]  = STACK_LEAF(ST_ROW4, ST_LABEL2_W, 16, stack_ALIGN_CENTRE),
+  [ST_VAL4]  = STACK_LEAF_GROUP(ST_ROW4, 0, 16, stack_ALIGN_CENTRE, ST_G_VALUE),
 
-  [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
-  [ST_DFLT]  = STACK_LEAF(ST_BTNS, ST_DEFAULT_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
-  [ST_CNCL]  = STACK_LEAF(ST_BTNS, ST_CANCEL_W, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
-  [ST_APLY]  = STACK_LEAF(ST_BTNS, ST_APPLY_W, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
+  [ST_BSPC]  = STACK_SPACER_GROUP(ST_BTNS, 0, ST_G_LABEL),
+  [ST_BBOX]  = { .kind = stack_KIND_HBOX, .parent = ST_BTNS,
+                .gap = wuss_STD_GAP, .flex = 1 },
+  [ST_DFLT]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, ST_DEFAULT_W, 0),
+  [ST_CNCL]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, ST_CANCEL_W, 0),
+  [ST_APLY]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, ST_APPLY_W, 0),
 };
 
 /* Build the size dialogue once: a label, a slider snapped to
@@ -510,15 +571,28 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
   result_t         rc;
   wuss_icon_spec_t specs[SATURN_SIZE_NICONS];
   wuss_icon_t     *made[SATURN_SIZE_NICONS];
+  stack_item_t     items[SIZE_STACK__LIMIT];
   box_t            boxes[SIZE_STACK__LIMIT];
   box_t            root;
   char             value_bufs[SATURN_SIZEDLG_NROWS][WUSS_SLIDER_ROW_BUF];
   int              value, row;
   size2d_t         min_sz;
 
+  /* each label/value's natural width; the size groups widen the rest to match */
+  memcpy(items, g_saturn_conf_stack, sizeof(items));
+  for (row = 0; row < SATURN_SIZEDLG_NROWS; row++)
+  {
+    const saturn_sizedlg_rowdesc_t *desc = &g_saturn_sizedlg_rows[row];
+    char                            widest[WUSS_SLIDER_ROW_BUF];
+
+    items[label_box[row]].axis_size = task_text_width(task->wuss, desc->label);
+    snprintf(widest, sizeof(widest), "%d", desc->max);
+    items[value_box[row]].axis_size = task_text_width(task->wuss, widest);
+  }
+
   /* smallest window the layout can be solved into without any flex item
    * (the sliders) growing past its minimum */
-  rc = stack_smallest(g_saturn_conf_stack, NELEMS(g_saturn_conf_stack), &min_sz);
+  rc = stack_smallest(items, NELEMS(items), &min_sz);
   if (rc != result_OK)
     return rc;
 
@@ -528,7 +602,7 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
     return rc;
 
   root = (box_t) BOX_POS_SIZE(0, 0, min_sz.w, min_sz.h);
-  rc = stack_solve(g_saturn_conf_stack, NELEMS(g_saturn_conf_stack), &root, boxes);
+  rc = stack_solve(items, NELEMS(items), &root, boxes);
   if (rc != result_OK)
     goto exit;
 
@@ -625,6 +699,9 @@ static result_t saturn_conf_apply(saturn_task_t *task)
   for (row = 0; row < SATURN_SIZEDLG_NROWS; row++)
     *saturn_sizedlg_field(task, row) =
       wuss_icon_get_value(task->conf.rows[row].slider);
+
+  if (task->window == NULL)
+    return result_OK; /* planet window closed while the dialogue lingers */
 
   size_value = task->config.size;
   rc = wuss_window_resize(task->window, SIZE2D(size_value, size_value));
@@ -738,6 +815,7 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
 {
   wuss_menu_handle_t handle;
   int                index;
+  const char        *title;
 
   handle = event->data.pre_submenu_open.handle;
   index  = event->data.pre_submenu_open.index;
@@ -749,16 +827,16 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
   if (index == SATURN_COLOURS_MENU_FOREGROUND)
   {
     task->colourmenu_target = &task->fg;
-    wuss_colourmenu_set_title("Foreground");
+    title                   = "Foreground";
   }
   else
   {
     task->colourmenu_target = &task->bg;
-    wuss_colourmenu_set_title("Background");
+    title                   = "Background";
   }
 
-  return wuss_menu_open_submenu_now(handle, index,
-                                    wuss_colourmenu_menu(task->wuss));
+  return wuss_colourmenu_open_rgb(task->wuss, event, title,
+                                  *task->colourmenu_target);
 }
 
 /* A pick from the shared colour submenu, applied to whichever field it was
@@ -766,27 +844,43 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
  * saturn_pre_submenu_open). "Configuration" is a wuss_menu_item_t::window
  * leaf, not a leaf pick, so it never reaches here -- see
  * saturn_conf_dialogue_icon and saturn_sizedlg_pre_show. */
+/* Menu > Animate: a fresh sketch every null event. The proginfo and
+ * Configuration windows share this (autoclose) delegate, so the task can
+ * outlive the planet window; skip the dangling window in the meantime. */
+static result_t saturn_idle(saturn_task_t *task)
+{
+  if (!task->animate || task->window == NULL)
+    return result_OK;
+
+  task->seed += SATURN_SEED_STEP;
+  wuss_window_invalidate_visible(task->window);
+
+  return result_OK;
+}
+
 static result_t saturn_menu_select(saturn_task_t      *task,
                                    const wuss_event_t *event)
 {
-  const colour_t *palette;
-  int             npalette;
-  wuss_colour_t   picked;
-  int             mine;
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == SATURN_MENU_ANIMATE)
+  {
+    task->animate = !task->animate;
+    wuss_menu_tick_item_live(task->menu_handle, &task->menu,
+                             SATURN_MENU_ANIMATE, task->animate);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == SATURN_MENU_SAVE)
+  {
+    return wuss_saveas_open(task->saveas);
+  }
 
   if (task->colourmenu_target == NULL)
     return result_OK;
 
-  picked = wuss_colourmenu_selected(event, &mine);
-  if (!mine)
-    return result_OK;
-
-  palette = wuss_get_palette(task->wuss, &npalette);
-  if (picked < npalette)
-  {
-    *task->colourmenu_target = palette[picked];
+  if (wuss_colourmenu_selected_rgb(event, task->colourmenu_target))
     wuss_window_invalidate_visible(task->window);
-  }
 
   return result_OK;
 }
@@ -807,6 +901,19 @@ result_t saturn_handle(wuss_window_t      *window,
   case wuss_EVENT_MOUSE:
     return saturn_mouse(task, event->data.mouse.action,
                         event->data.mouse.button, window);
+
+  case wuss_EVENT_KEY:
+  {
+    result_t rc;
+
+    if (window != task->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    if (!task_key_is_plain(task->delegate, &task->menu, event, &rc))
+      return rc;
+
+    return saturn_key(task, window, event->data.key.code);
+  }
 
   case wuss_EVENT_ICON:
     if (window == wuss_dialogue_window(task->conf.dialogue))
@@ -839,6 +946,14 @@ result_t saturn_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_SELECT:
     return saturn_menu_select(task, event);
+
+  case wuss_EVENT_IDLE:
+    return saturn_idle(task);
+
+  case wuss_EVENT_CLOSE:
+    if (window == task->window)
+      task->window = NULL;
+    return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL; /* wuss closed the chain under us */

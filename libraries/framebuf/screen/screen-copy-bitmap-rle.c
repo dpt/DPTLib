@@ -124,9 +124,7 @@ static result_t screen_copy_bitmap_rle_p4(screen_t       *scr,
       scrp  = rowp + (dstx >> 1);
       shift = (dstx & 1) * 4;
 
-      r   = (c.primary >> pm->rshift) & 0xFF;
-      g   = (c.primary >> pm->gshift) & 0xFF;
-      b   = (c.primary >> pm->bshift) & 0xFF;
+      pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
           | ( b >> (8 - pm->bbits));
@@ -214,9 +212,7 @@ static result_t screen_copy_bitmap_rle_p8(screen_t       *scr,
 
       dstx = draw_box->x0 + xx;
 
-      r   = (c.primary >> pm->rshift) & 0xFF;
-      g   = (c.primary >> pm->gshift) & 0xFF;
-      b   = (c.primary >> pm->bshift) & 0xFF;
+      pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
       idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
           | ((g >> (8 - pm->gbits)) << pm->bbits)
           | ( b >> (8 - pm->bbits));
@@ -226,6 +222,95 @@ static result_t screen_copy_bitmap_rle_p8(screen_t       *scr,
   }
 
   free(scratch);
+
+  return result_OK;
+}
+
+/* As screen_copy_bitmap_rle_p4 but for a 16bpp deep screen (rgb565 /
+ * rgbx5551). Unlike a paletted destination, a deep screen can genuinely
+ * alpha-blend a translucent pixel against the background, so this defers to
+ * scr->span->blendarray (as screen_copy_bitmap_16's raw path does) rather
+ * than treating alpha as a binary skip/opaque test. */
+static result_t screen_copy_bitmap_rle_16(screen_t       *scr,
+                                          int             x,
+                                          int             y,
+                                          const bitmap_t *src,
+                                          const box_t    *draw_box)
+{
+  pixelfmt_t           base;
+  int                  log2bpp;
+  const uint8_t       *blob;
+  const uint8_t       *p;
+  const uint8_t       *end;
+  uint8_t             *dstbase;
+  pixelfmt_rgba8888_t *scratch;
+  pixelfmt_any16_t    *colbuf;
+  unsigned char       *alphabuf;
+  int                  firstrow;
+  int                  skip, plot;
+  int                  rows;
+  int                  i;
+
+  base    = pixelfmt_base(src->format);
+  log2bpp = pixelfmt_log2bpp(base);
+
+  if (log2bpp != 5)
+    return result_NOT_SUPPORTED; /* v1: 32bpp source only */
+
+  blob = src->base;
+  p    = blob + bitmap__RLE_HEADER_SIZE;
+  end  = p + bitmap__rle_get32(blob + 4);
+
+  firstrow = draw_box->y0 - y;
+  for (i = 0; i < firstrow; i++)
+    p = bitmap__rle_skip_row(p, end, log2bpp);
+
+  skip = draw_box->x0 - x;
+  plot = draw_box->x1 - draw_box->x0;
+  rows = draw_box->y1 - draw_box->y0;
+
+  scratch  = malloc((size_t) plot * sizeof(*scratch));
+  colbuf   = malloc((size_t) plot * sizeof(*colbuf));
+  alphabuf = malloc((size_t) plot * sizeof(*alphabuf));
+  if (scratch == NULL || colbuf == NULL || alphabuf == NULL)
+  {
+    free(scratch);
+    free(colbuf);
+    free(alphabuf);
+    return result_OOM;
+  }
+
+  dstbase = scr->base;
+  for (i = 0; i < rows; i++)
+  {
+    pixelfmt_any16_t *rowp;
+    int               xx;
+
+    for (xx = 0; xx < plot; xx++)
+      scratch[xx] = 0; /* zero_skip below only fills covered skip runs */
+
+    p = bitmap__rle_decode_row(p, end, log2bpp, scratch, skip, plot, 1);
+
+    rowp = (pixelfmt_any16_t *)
+             (dstbase + (size_t) (draw_box->y0 + i) * scr->rowbytes)
+         + draw_box->x0;
+
+    for (xx = 0; xx < plot; xx++)
+    {
+      colour_t c;
+
+      c.primary   = scratch[xx];
+      colbuf[xx]  = (pixelfmt_any16_t)
+                      colour_to_pixel(scr->palette, 0, c, scr->format);
+      alphabuf[xx] = colour_get_alpha(&c);
+    }
+
+    scr->span->blendarray(rowp, rowp, colbuf, plot, alphabuf);
+  }
+
+  free(scratch);
+  free(colbuf);
+  free(alphabuf);
 
   return result_OK;
 }
@@ -256,6 +341,8 @@ result_t screen_copy_bitmap_rle(screen_t       *scr,
     return screen_copy_bitmap_rle_p4(scr, x, y, src, draw_box);
   if (pixelfmt_log2bpp(scr->format) == 3)
     return screen_copy_bitmap_rle_p8(scr, x, y, src, draw_box);
+  if (pixelfmt_log2bpp(scr->format) == 4)
+    return screen_copy_bitmap_rle_16(scr, x, y, src, draw_box);
 
   base = pixelfmt_base(src->format);
 

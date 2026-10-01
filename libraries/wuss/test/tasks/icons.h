@@ -9,6 +9,7 @@
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/gadget/colourset.h"
 #include "wuss/gadget/stringset.h"
 #include "wuss/icon.h"
 #include "wuss/menu.h"
@@ -47,6 +48,8 @@ typedef struct icons_task
   wuss_icon_t   *echo;         /* label echoing whichever writable last changed */
   wuss_stringset_t *sset;      /* gadget; its icons belong to the window */
   wuss_icon_t   *sset_echo;    /* label echoing the string set's pick */
+  wuss_colourset_t *cset;      /* gadget; its icons belong to the window */
+  wuss_icon_t   *cset_echo;    /* label echoing the colour set's pick */
 }
 icons_task_t;
 

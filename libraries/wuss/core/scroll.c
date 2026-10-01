@@ -1,5 +1,7 @@
 /* wuss/scroll.c -- wuss - minimal window manager */
 
+#include <stdlib.h>
+
 #include "impl.h"
 
 /* Scrolling moves content under a stationary pointer, so the icon the pointer
@@ -26,6 +28,54 @@ static void wuss__scroll_rehover(wuss_t        *wuss,
 #endif
 }
 
+#ifdef WUSS_ICONS
+/* Bump slider "icon" of "win" by "delta" wheel notches of spec.u.slider.step
+ * (0 meaning 1), a positive delta moving towards max, and tell the task. */
+static result_t wuss__scroll_slider(wuss_window_t *win,
+                                    wuss_icon_t   *icon,
+                                    int            delta)
+{
+  int          step;
+  wuss_event_t event;
+
+  step = icon->spec.u.slider.step ? abs(icon->spec.u.slider.step) : 1;
+  if (icon->spec.u.slider.min > icon->spec.u.slider.max)
+    step = -step;
+
+  wuss__icon_set_value(win, icon, icon->value + delta * step);
+
+  event.kind             = wuss_EVENT_ICON;
+  event.data.icon.icon   = icon;
+  event.data.icon.action = wuss_MOUSE_MOVE;
+  event.data.icon.button = wuss_BUTTON_NONE;
+  event.data.icon.value  = icon->value;
+  return wuss__deliver(win->task, win, &event);
+}
+
+/* The topmost visible, enabled slider of "win" whose full bbox -- groove and
+ * decorative surround alike, unlike wuss__icon_hit_test -- contains
+ * "doc_point", or NULL. */
+static wuss_icon_t *wuss__scroll_slider_at(wuss_window_t *win,
+                                           point_t        doc_point)
+{
+  int          i;
+  wuss_icon_t *it;
+
+  for (i = win->nicons - 1; i >= 0; i--)
+  {
+    it = win->icons[i];
+    if (it->spec.type != wuss_ICON_TYPE_SLIDER ||
+        (it->spec.flags & (wuss_ICON_FLAGS_HIDDEN | wuss_ICON_FLAGS_DISABLED)))
+      continue;
+
+    if (box_contains_point(&it->spec.bbox, doc_point.x, doc_point.y))
+      return it;
+  }
+
+  return NULL;
+}
+#endif
+
 result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
 {
   wuss_window_t *win;
@@ -38,7 +88,8 @@ result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
   if (hit != NULL)
     *hit = win;
 
-  if (win == NULL)
+  /* core owns all input while a drag is active, as for clicks and keys */
+  if (win == NULL || wuss->drag_window != NULL)
     return result_OK;
 
 #ifdef WUSS_FURNITURE
@@ -63,6 +114,18 @@ result_t wuss_scroll(wuss_t *wuss, point_t p, int delta, wuss_window_t **hit)
     event.data.scroll.point.x = x - content.x0 + win->scroll.x;
     event.data.scroll.point.y = y - content.y0 + win->scroll.y;
     event.data.scroll.delta   = delta;
+
+#ifdef WUSS_ICONS
+    {
+      wuss_icon_t *icon;
+
+      /* a wheel anywhere over a slider bumps its value instead of scrolling
+       * the window, raised as a MOVE just like a drag step */
+      icon = wuss__scroll_slider_at(win, event.data.scroll.point);
+      if (icon != NULL)
+        return wuss__scroll_slider(win, icon, delta);
+    }
+#endif
 
     wuss__scroll_step(win, POINT(0, delta));
     wuss__scroll_rehover(wuss, win, POINT(x, y));

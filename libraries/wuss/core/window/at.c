@@ -4,13 +4,10 @@
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p)
 {
-  list_t *e;
+  wuss_window_t *win;
 
-  for (e = wuss->z_order.next; e != NULL; e = e->next)
+  for (win = wuss__z_first(wuss); win != NULL; win = wuss__z_below(win))
   {
-    wuss_window_t *win;
-
-    win = wuss__window_from_link(e);
     if (win->flags & wuss_WINDOW_HIDDEN)
       continue;
     if (box_contains_point(&win->visible, p.x, p.y))

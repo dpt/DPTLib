@@ -2,7 +2,6 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -30,6 +29,9 @@ result_t wuss_window_create(wuss_task_t        *task,
 
   wuss = task->wuss;
 
+  if ((flags & wuss_WINDOW_STACK_TOP) && (flags & wuss_WINDOW_STACK_BACK))
+    return result_BAD_ARG;
+
   width  = content->x1 - content->x0;
   height = content->y1 - content->y0;
   if (!wuss__size_ok(width, height))
@@ -49,7 +51,16 @@ result_t wuss_window_create(wuss_task_t        *task,
   win->visible.x1 = content->x1 + outline_px + carve.x;
   win->visible.y1 = content->y1 + outline_px + carve.y;
 
-  win->flags      = flags;
+  if (flags & wuss_WINDOW_STACK_TOP)
+    win->stack = wuss_STACK_TOP;
+  else if (flags & wuss_WINDOW_STACK_BACK)
+    win->stack = wuss_STACK_BACK;
+  else
+    win->stack = wuss_STACK_MIDDLE;
+
+  /* the stack bits are creation-only; win->stack is the truth from here */
+  win->flags      = flags & (wuss_window_flags_t) ~(wuss_WINDOW_STACK_TOP |
+                                                    wuss_WINDOW_STACK_BACK);
 
   /* nudge back on-screen so the titlebar/close icon stay reachable; a
    * window bigger than the screen keeps its top-left (titlebar) edge
@@ -86,8 +97,6 @@ result_t wuss_window_create(wuss_task_t        *task,
   win->cap_icons  = 0;
 #endif
 
-  box_reset(&win->packed); /* wuss_window_create_placed fills this in after */
-
   win->task = task;
 
   bg.colour     = wuss__resolve_colour(wuss, bg.colour);
@@ -102,19 +111,14 @@ result_t wuss_window_create(wuss_task_t        *task,
 
 #ifdef WUSS_FURNITURE
   if (title != NULL)
-  {
-    strncpy(win->title, title, WUSS_TITLE_MAX);
-    win->title[WUSS_TITLE_MAX] = '\0';
-  }
+    wuss__writable_copy(win->title, WUSS_TITLE_MAX + 1, title);
   else
-  {
     win->title[0] = '\0';
-  }
 #else
   (void) title;
 #endif
 
-  list_add_to_head(&wuss->z_order, &win->link);
+  list_add_to_head(&wuss->z_order[win->stack], &win->link);
   list_add_to_tail(&task->windows, &win->task_link);
 
   if (!(flags & wuss_WINDOW_HIDDEN))

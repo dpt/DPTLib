@@ -92,18 +92,26 @@ destination untouched.
 - **32bpp screen** — the source must decode to the screen's exact channel
   order; the blit is then a byte copy, no per-pixel conversion
   (`pixelfmt_base(src->format) == scr->format`, alpha folded out).
-- **p4 screen** — each decoded pixel is mapped to the nearest palette index. A
-  cached [pixelmap](pixelmap.md) table (`pixelmap_get(pixelfmt_rgba8888,
-  scr->format, scr->palette, 16)`) turns the inner loop into a mask-and-lookup;
-  if that pair is unsupported the blit declines `result_NOT_SUPPORTED`.
+- **p4 / p8 screen** — each decoded pixel is mapped to the nearest palette
+  index. A cached [pixelmap](pixelmap.md) table (`pixelmap_get(
+  pixelfmt_rgba8888, scr->format, scr->palette, nentries)`) turns the inner
+  loop into a mask-and-lookup; if that pair is unsupported the blit declines
+  `result_NOT_SUPPORTED`. Transparent (alpha-0) pixels are skipped, opaque
+  ones copied -- a palette index cannot represent partial alpha.
+- **16bpp screen** (`pixelfmt_rgb565` / `pixelfmt_rgbx5551`) — each decoded
+  pixel converts via `colour_to_pixel` and is blended into the screen with
+  `scr->span->blendarray`, the same as `screen_copy_bitmap`'s 32bpp-target
+  path, so translucent source pixels blend rather than being treated as
+  binary skip/opaque.
 - **Other depths** decline `result_NOT_SUPPORTED`.
 
 ## v1 limitations
 
-- **Alpha-tested, not alpha-blended.** Transparent runs are skipped, opaque
-  runs copied. This matches `screen_copy_bitmap`'s p4 path but not its 32bpp
-  path (which blends per pixel). A blended RLE path would decode alpha runs
-  into `span->blendarray`.
+- **Alpha-tested, not alpha-blended, on paletted screens.** For p4/p8
+  transparent runs are skipped, opaque runs copied. This matches
+  `screen_copy_bitmap`'s own paletted paths (a palette index cannot represent
+  partial alpha). 32bpp and 16bpp screens both alpha-blend per pixel via
+  `span->blendarray`, matching `screen_copy_bitmap`'s deep-format paths.
 - No scanline dedup, no row-offset table — pure sequential decode.
 - No `composite()` or nine-patch support for compressed bitmaps.
 - No colour-key transparency — wholly-zero pixels only.

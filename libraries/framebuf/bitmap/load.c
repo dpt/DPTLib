@@ -175,7 +175,8 @@ cleanup:
   free(pixels);
   if (png_ptr)
     png_destroy_read_struct(&png_ptr, NULL, NULL);
-  fclose(fp);
+  if (fp)
+    fclose(fp);
   return rc;
 }
 

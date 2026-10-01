@@ -50,8 +50,8 @@ typedef enum wuss_menu_item_flags
   /** Greyed, never highlights, not selectable */
   wuss_MENU_ITEM_DISABLED = 1 << 2,
 
-  /** Draw a colour chip of \c swatch at the item's left edge, in place of
-   *  a tick */
+  /** Draw a colour chip of \c swatch ahead of the item's label. Combines
+   *  with wuss_MENU_ITEM_TICKED: the tick keeps its own left gutter */
   wuss_MENU_ITEM_SWATCH   = 1 << 3,
 
   /** \c submenu is borrowed (e.g. patched in after the menu was built) and
@@ -96,25 +96,52 @@ typedef struct wuss_menu_item
    *  menu is open. */
   wuss_window_t          *window;
 
-  /** With wuss_MENU_ITEM_SWATCH: the colour chip to draw at the row's
-   *  left edge, as an index into the system palette. Ignored without that
+  /** With wuss_MENU_ITEM_SWATCH: the colour chip to draw ahead of the
+   *  row's label, as an index into the system palette. Ignored without that
    *  flag, so a zero-initialised item is unaffected. */
   wuss_colour_t           swatch;
+
+  /** Non-NULL: a keyboard shortcut label, e.g. "S", "F3", "SPACE", "^S" or
+   *  WUSS_MENU_SHIFT "F1", drawn in the bold weight and a muted grey,
+   *  right-aligned in the row; the menu widens to fit. By convention written
+   *  in UPPERCASE, with a '^' prefix for Ctrl then a WUSS_MENU_SHIFT prefix
+   *  for Shift. wuss_menu_dispatch_shortcut turns a matching
+   *  wuss_EVENT_KEY into this row's wuss_EVENT_MENU_SELECT. NULL (as in a
+   *  zero-initialised item) draws none. */
+  const char             *shortcut;
 }
 wuss_menu_item_t;
 
-/** Fill in items[idx] as a plain row with no submenu/window leaf (swatch
- *  left at 0), for building a wuss_menu_t whose items[] lives per-instance
- *  in a caller's own struct rather than as a file-scope static -- see e.g.
- *  wuss/test/tasks/chars.c. Terser than assigning each field on its own
- *  line. */
+/** Fill in items[idx] as a plain row with no submenu/window leaf or
+ *  shortcut (swatch left at 0), for building a wuss_menu_t whose items[]
+ *  lives per-instance in a caller's own struct rather than as a file-scope
+ *  static -- see e.g. wuss/test/tasks/chars.c. Terser than assigning each
+ *  field on its own line. */
 #define WUSS_MENU_ITEM(items, idx, text_, flags_) \
   do \
   { \
-    (items)[idx].text    = (text_); \
-    (items)[idx].flags   = (flags_); \
-    (items)[idx].submenu = NULL; \
-    (items)[idx].window  = NULL; \
+    (items)[idx].text     = (text_); \
+    (items)[idx].flags    = (flags_); \
+    (items)[idx].submenu  = NULL; \
+    (items)[idx].window   = NULL; \
+    (items)[idx].shortcut = NULL; \
+  } \
+  while (0)
+
+/** UTF-8 for U+21E7 UPWARDS WHITE ARROW, the Shift prefix in a shortcut
+ *  label (see wuss_menu_item_t.shortcut). Drawn from the symbol font. */
+#define WUSS_MENU_SHIFT "\xE2\x87\xA7"
+
+/** As WUSS_MENU_ITEM, but the row shows shortcut_ as its keyboard shortcut
+ *  label (see wuss_menu_item_t.shortcut). */
+#define WUSS_MENU_ITEM_SHORTCUT(items, idx, text_, flags_, shortcut_) \
+  do \
+  { \
+    (items)[idx].text     = (text_); \
+    (items)[idx].flags    = (flags_); \
+    (items)[idx].submenu  = NULL; \
+    (items)[idx].window   = NULL; \
+    (items)[idx].shortcut = (shortcut_); \
   } \
   while (0)
 
@@ -123,10 +150,11 @@ wuss_menu_item_t;
 #define WUSS_MENU_ITEM_MENU(items, idx, text_, flags_, submenu_) \
   do \
   { \
-    (items)[idx].text    = (text_); \
-    (items)[idx].flags   = (flags_); \
-    (items)[idx].submenu = (submenu_); \
-    (items)[idx].window  = NULL; \
+    (items)[idx].text     = (text_); \
+    (items)[idx].flags    = (flags_); \
+    (items)[idx].submenu  = (submenu_); \
+    (items)[idx].window   = NULL; \
+    (items)[idx].shortcut = NULL; \
   } \
   while (0)
 
@@ -135,10 +163,11 @@ wuss_menu_item_t;
 #define WUSS_MENU_ITEM_WINDOW(items, idx, text_, flags_, window_) \
   do \
   { \
-    (items)[idx].text    = (text_); \
-    (items)[idx].flags   = (flags_); \
-    (items)[idx].submenu = NULL; \
-    (items)[idx].window  = (window_); \
+    (items)[idx].text     = (text_); \
+    (items)[idx].flags    = (flags_); \
+    (items)[idx].submenu  = NULL; \
+    (items)[idx].window   = (window_); \
+    (items)[idx].shortcut = NULL; \
   } \
   while (0)
 
@@ -182,9 +211,11 @@ typedef struct wuss__menu *wuss_menu_handle_t;
  *
  * If wuss instead closes the chain itself -- a click outside every menu
  * window, or a later wuss_menu_open -- \p task's handle gets a
- * wuss_EVENT_MENU_CLOSED (window == NULL, no data). A task that kept \p out
- * must drop it there; the chain is freed by the time the event arrives. No
- * such event follows a wuss_menu_close the task made.
+ * wuss_EVENT_MENU_CLOSED (window == NULL, data.menu_closed.picked zero). A
+ * SELECT pick also delivers one, with picked non-zero, just before its
+ * wuss_EVENT_MENU_SELECT. A task that kept \p out must drop it there; the
+ * chain is freed by the time the event arrives. No such event follows a
+ * wuss_menu_close the task made.
  *
  * \param[in]  task Task opening the menu; receives wuss_EVENT_MENU_SELECT.
  *                  The menu windows are wuss-owned, not task's.
@@ -197,6 +228,35 @@ result_t wuss_menu_open(wuss_task_t        *task,
                         const wuss_menu_t  *menu,
                         point_t             at,
                         wuss_menu_handle_t *out);
+
+/** As wuss_menu_open, placed at the pointer -- the usual answer to a MENU
+ *  click. */
+result_t wuss_menu_open_at_pointer(wuss_task_t        *task,
+                                   const wuss_menu_t  *menu,
+                                   wuss_menu_handle_t *out);
+
+/**
+ * Open the caller's own \p window as a menu chain of its own, as if it were
+ * a wuss_menu_item_t::window leaf with no menu above it: moved to \p at
+ * (nudged to stay on screen), shown on the top window layer and dismissed by
+ * a click outside it (or another wuss_menu_open), exactly as a menu is. Any
+ * menu chain already open is closed first.
+ *
+ * On dismissal the window is hidden and put back in its original stack, not
+ * closed, and \p task gets wuss_EVENT_MENU_CLOSED as for wuss_menu_open.
+ * Unlike wuss_menu_open no MOUSE_UP is eaten, so this suits opening from a
+ * key press as well as from a click.
+ *
+ * \param[in]  task   Task that receives wuss_EVENT_MENU_CLOSED.
+ * \param[in]  window Window to show; borrowed, must outlive the open chain.
+ * \param[in]  at     Where to put the window's top-left, screen space.
+ * \param[out] out    Filled with the chain handle, or NULL if not wanted.
+ * \return \ref result_OK, \ref result_OOM, or a wuss_window_set_hidden code.
+ */
+result_t wuss_menu_open_window(wuss_task_t        *task,
+                               wuss_window_t      *window,
+                               point_t             at,
+                               wuss_menu_handle_t *out);
 
 /** Close a menu chain and every window in it. Safe to pass a stale or NULL
  *  handle. */
@@ -220,11 +280,10 @@ const wuss_menu_t *wuss_menu_handle_menu(wuss_menu_handle_t handle);
 /**
  * True when \p ev is a wuss_EVENT_MENU_SELECT whose pick keeps the chain
  * open -- an ADJUST-button release (see wuss_menu_open). A SELECT-button
- * pick has already closed and freed the chain by the time the event arrives,
- * so a task that stored the wuss_menu_open handle must drop it in that case:
- *
- * \code if (!wuss_menu_should_keep_open(ev)) task->menu_handle = NULL;
- * \endcode
+ * pick has already closed and freed the chain by the time the event arrives
+ * and delivered wuss_EVENT_MENU_CLOSED first, so a task that drops its
+ * stored handle on MENU_CLOSED needs no check here: the \c _live tick calls
+ * are no-ops on the NULL handle it is left with.
  *
  * \param[in] ev The event passed to the task's handle callback.
  * \return Non-zero if \p ev is a MENU_SELECT that leaves the chain open.
@@ -392,6 +451,65 @@ void wuss_menu_tick_item_live(wuss_menu_handle_t handle,
                               const wuss_menu_t *menu,
                               int                index,
                               int                ticked);
+
+/**
+ * Shade or unshade a single item on a currently open menu level in place, so
+ * an ADJUST pick that changes whether another row applies shows at once.
+ * Only the open row changes: set or clear wuss_MENU_ITEM_DISABLED in the
+ * item's flags as well, for the next wuss_menu_open. A no-op if \p handle is
+ * stale/closed or \p menu is not an open level of its chain.
+ *
+ * \param[in] handle   Chain handle from wuss_menu_open.
+ * \param[in] menu     The (sub)menu level to update; matched by pointer
+ *                     against the description passed to wuss_menu_open or
+ *                     reached via a wuss_menu_item_t.submenu.
+ * \param[in] index    Row to update. A no-op if out of range.
+ * \param[in] disabled Non-zero to shade the row, zero to unshade it.
+ */
+void wuss_menu_disable_item_live(wuss_menu_handle_t handle,
+                                 const wuss_menu_t *menu,
+                                 int                index,
+                                 int                disabled);
+
+/**
+ * Retitle a currently open menu level in place. Only the open level changes:
+ * set \c menu->title as well, for the next wuss_menu_open. The menu keeps
+ * the width it opened at, so a longer title may be clipped. A no-op if \p
+ * handle is stale/closed or \p menu is not an open level of its chain.
+ *
+ * \param[in] handle Chain handle from wuss_menu_open.
+ * \param[in] menu   The (sub)menu level to update; matched by pointer
+ *                   against the description passed to wuss_menu_open or
+ *                   reached via a wuss_menu_item_t.submenu.
+ * \param[in] title  New title; copied. NULL is treated as "".
+ */
+void wuss_menu_set_title_live(wuss_menu_handle_t handle,
+                              const wuss_menu_t *menu,
+                              const char        *title);
+
+/**
+ * Treat a key press as a pick from \p menu: find the first enabled row in \p
+ * menu, or in a submenu reached without wuss_MENU_ITEM_PRE_OPEN, whose \c
+ * shortcut label names the key, and deliver \p task the
+ * wuss_EVENT_MENU_SELECT a SELECT click on that row would. The menu need not
+ * be open. Call it from a wuss_EVENT_KEY handler so the menu table, not a
+ * hand-written switch, decides what each key does.
+ *
+ * A label is a single character (matched ignoring case), "SPACE" or
+ * "F1".."F12", optionally prefixed with '^' to require Ctrl then
+ * WUSS_MENU_SHIFT to require Shift. Without '^' Ctrl must be up. Without
+ * WUSS_MENU_SHIFT Shift must be up for "SPACE" and "F1".."F12" but is
+ * ignored for a single character. Alt never matches.
+ *
+ * \param[in] task Task to receive the wuss_EVENT_MENU_SELECT.
+ * \param[in] menu Menu whose rows' shortcuts are searched.
+ * \param[in] key  The wuss_EVENT_KEY event.
+ * \return The MENU_SELECT handler's result, or result_WUSS_KEY_UNCLAIMED if
+ *         no row matches.
+ */
+result_t wuss_menu_dispatch_shortcut(wuss_task_t        *task,
+                                     const wuss_menu_t  *menu,
+                                     const wuss_event_t *key);
 
 /* ----------------------------------------------------------------------- */
 

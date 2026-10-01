@@ -11,6 +11,9 @@
 #define WUSS_MIN_SAUSAGE    1  /* scrollbar sausage never shrinks below this, however small the content fraction */
 #define WUSS_SCROLL_END_GAP 2  /* sausage along-axis margin from its well's ends, purely cosmetic */
 #define WUSS_SCROLL_STEP    20 /* pixels stepped per scrollbar arrow click */
+#define WUSS_SCROLL_REPEAT_DELAY    20 /* IDLE frames a held scroll arrow waits before auto-repeating */
+#define WUSS_SCROLL_REPEAT_INTERVAL 4  /* IDLE frames between auto-repeat steps after that */
+#define WUSS_SNAP_PX        4  /* a dragged window closer than this to a screen edge snaps to it */
 
 /* Cached furniture layout ------------------------------------------------- */
 
@@ -120,12 +123,20 @@ struct wuss__furniture
                                             * stays under the pointer instead
                                             * of the window's edge snapping to
                                             * it on the first move */
-  int                         drag_scroll_start; /* *_SAUSAGE: scroll.x/scroll.y at drag start */
+  point_t                     drag_scroll_start; /* *_SAUSAGE: scroll at drag start */
+  int                         drag_both; /* *_SAUSAGE: an Adjust drag, which
+                                          * like RISC OS scrolls both axes */
   wuss_furniture_region_t     pressed_region; /* RESIZE or a scroll arrow while
                                                * held down, drawn in
                                                * button_pressed; NONE
                                                * otherwise. Only "dragging"'s
                                                * window is ever pressed. */
+  int                         repeat_step; /* scroll arrow held: signed
+                                            * WUSS_SCROLL_STEP to repeat
+                                            * (negative for ADJUST); 0 for
+                                            * any other press */
+  int                         repeat_frames; /* IDLE frames until the next
+                                              * auto-repeat step */
 };
 
 /* Furniture element table ------------------------------------------------- */
@@ -162,6 +173,12 @@ const wuss__furniture_element_t *wuss__furniture_element(wuss_furniture_region_t
 
 wuss_furniture_region_t wuss__furniture_hit_test(const wuss_window_t *window,
                                                  point_t              p);
+
+/* Advance a held scroll arrow's auto-repeat by one IDLE frame: after
+ * WUSS_SCROLL_REPEAT_DELAY frames, step the window every
+ * WUSS_SCROLL_REPEAT_INTERVAL frames while the pointer stays on the arrow. A
+ * no-op when no scroll arrow is held. */
+void wuss__scroll_repeat(wuss_t *wuss);
 
 /* The drawn (un-grown) box for a pressable region -- any element with a
  * drawn box -- used to invalidate/highlight it while held. Any other region

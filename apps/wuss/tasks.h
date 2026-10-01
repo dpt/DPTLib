@@ -37,20 +37,40 @@ extern struct wuss_app_tasks
   bool             reverse_scroll; /* set by the Configure task's option
                                     * icon; read where each frontend fills
                                     * wuss_input_event_t.wheel */
+  bool             crt; /* CRT effect on: requested by --crt, then kept
+                         * current by tasks_set_crt */
+  bool             pointer; /* software pointer on: requested by --pointer,
+                             * then kept current by tasks_set_pointer */
+  bool             debug_redraw_all;   /* set by the launcher's Debug picks */
+  bool             debug_garbage;      /* (having already called */
+  bool             debug_pixel_stress; /* wuss_redraw for Redraw); read and
+                                        * cleared once per frame by
+                                        * wuss_frame */
 }
 g_tasks;
 
-/* Change the desktop resolution to width x height: reallocates the
- * framebuffer bitmap and the frontend's backing surface, updates
- * g_tasks.bm/frontend and wuss's own screen_t, then walks every window
- * (via wuss_resize) so none is left off-screen or larger than the new
- * screen. The whole screen is invalidated; the caller's next frame repaints
- * it. Used by the Display task's resolution picker.
+/* Change the desktop resolution to width x height and the framebuffer to
+ * depth bits per pixel (1, 2, 4, 8, 15, 16 or 32): reallocates the framebuffer
+ * bitmap and the frontend's backing surface, updates g_tasks.bm/frontend and
+ * wuss's own screen_t, then walks every window (via wuss_resize) so none is
+ * left off-screen or larger than the new screen. A depth change also rebuilds
+ * the screen palette. The whole screen is
+ * invalidated; the caller's next frame repaints it. Used by the Display
+ * task's pickers.
  *
  * Returns result_NOT_SUPPORTED on a frontend with a fixed screen mode
- * (RISC OS), leaving everything unchanged; another non-OK result on
- * allocation failure, also leaving everything unchanged. */
-result_t app_resize(size2d_t size);
+ * (RISC OS) and result_BAD_ARG for a depth the frontend can't do, leaving
+ * everything unchanged; another non-OK result on allocation failure, also
+ * leaving everything unchanged. */
+result_t app_set_mode(size2d_t size, int depth);
+
+/* the framebuffer's current bits per pixel */
+int app_get_depth(void);
+
+/* Turn the software pointer on or off, hiding or showing the OS pointer to
+ * match. Returns whether it is now on: false if resources/wuss/pointer.png
+ * failed to load or the frontend keeps its own pointer (RISC OS). */
+bool app_set_pointer(bool on);
 
 /* the menu-task event handler: dispatches every wuss_EVENT_MENU_SELECT and
  * relays wuss_EVENT_PALETTE to the frontend. Passed as wuss_task_desc.handle
@@ -62,6 +82,19 @@ result_t task_handle_event(wuss_window_t      *window,
 /* open the top-level task launcher (Launch / Quit Wuss) at pos; called on a
  * MENU click over bare backdrop */
 result_t tasks_open_launcher(point_t pos);
+
+/* offer a key the focused window passed on to the task launcher's menu
+ * shortcuts (e.g. F4 for Quit Wuss); result_WUSS_KEY_UNCLAIMED if none
+ * matches */
+result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers);
+
+/* Switch the frontend's CRT post-effect on or off, recording the outcome in
+ * g_tasks.crt and the Debug menu's tick. Needs g_tasks.frontend set. */
+void tasks_set_crt(bool on);
+
+/* Switch the software pointer on or off (app_set_pointer), recording the
+ * outcome in g_tasks.pointer and the Debug menu's tick. */
+void tasks_set_pointer(bool on);
 
 /* Spawn the tasks named in names, a comma-separated list of launcher-menu
  * task names (e.g. "Saturn,Clock"), or "all" to spawn every task in every
@@ -75,7 +108,8 @@ void tasks_spawn(const char *names);
  * 216 (6x6x6 cube, steps of 0x33) as fits, then black for whatever is left.
  * Used to build a paletted screen's full-size palette (nout = whatever
  * bitmap_set_palette will read for the screen's format) from wuss's
- * fixed-size UI palette, both at startup and on a live wuss_EVENT_PALETTE. */
+ * fixed-size UI palette, both at startup and on a live wuss_EVENT_PALETTE.
+ * nout 2 (1bpp) or 4 (2bpp) instead gets a black-to-white grey ramp. */
 void tasks_build_screen_palette(colour_t       *out,
                                 int             nout,
                                 const colour_t *ui,

@@ -55,6 +55,13 @@
 #define INLINE __inline__
 #endif
 
+/** Case-insensitive string compare: strcasecmp() isn't in <string.h> on
+ *  MSVC, which spells it _stricmp() in <string.h> instead of POSIX's
+ *  <strings.h>. */
+#ifdef _MSC_VER
+#define strcasecmp _stricmp
+#endif
+
 /** Hints to compiler of probable execution path. */
 #ifdef __GNUC__
 #define likely(expr)   __builtin_expect(!!(expr), 1)

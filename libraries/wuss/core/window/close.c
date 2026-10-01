@@ -19,6 +19,23 @@ void wuss_window_close(wuss_window_t *doomed)
 
   wuss = doomed->wuss;
   task = doomed->task;
+
+#ifdef WUSS_MENUS
+  /* A window closed while in the open menu chain -- typically a borrowed
+   * level such as a Save As dialogue its client is freeing -- would leave a
+   * chain node pointing at freed memory. Tear the chain down first, while
+   * the window is still alive to be hidden and restacked. The chain's own
+   * menu windows are unhooked from their nodes before being closed (see
+   * wuss__menu_close_from), so this never recurses. */
+  if (wuss__menu_contains(wuss, doomed))
+    wuss__menu_abandon(wuss);
+#endif
+
+  /* Bounce anything still queued for this window now, while it is alive:
+   * left queued, it would be read after the free below, or delivered to
+   * whatever window a later wuss_window_create allocates at this address. */
+  wuss__message_purge_window(wuss, doomed);
+
 #ifdef WUSS_FURNITURE
   if (wuss->furniture.dragging == doomed)
   {
@@ -48,8 +65,16 @@ void wuss_window_close(wuss_window_t *doomed)
    * through PRE_CLOSE/CLOSE, and the struct is freed below. */
   wuss__pointer_forget_window(wuss, doomed);
   wuss__focus_forget_window(wuss, doomed);
+  wuss__drag_forget_window(wuss, doomed);
 
-  wuss__release_packed(doomed);
+  /* Stop double-click detection matching a freed window: a later
+   * wuss_window_create could reuse this address, giving a false match.
+   * Reset the button too: NULL alone would match a backdrop press. */
+  if (wuss->last_down_window == doomed)
+  {
+    wuss->last_down_window = NULL;
+    wuss->last_down_button = wuss_BUTTON_NONE;
+  }
 
   /* A hidden window was never actually drawn at "visible" -- whatever is
    * genuinely on screen there (backdrop, or another window's content) is
@@ -58,7 +83,7 @@ void wuss_window_close(wuss_window_t *doomed)
   if (!(doomed->flags & wuss_WINDOW_HIDDEN))
     wuss__invalidate_clipped(doomed, &doomed->visible);
 
-  list_remove(&wuss->z_order, &doomed->link);
+  list_remove(&wuss->z_order[doomed->stack], &doomed->link);
   list_remove(&task->windows, &doomed->task_link);
 
 #ifdef WUSS_ICONS
@@ -74,6 +99,13 @@ void wuss_window_close(wuss_window_t *doomed)
       !(task->flags & wuss_TASK__REAPING)  &&
       task->windows.next == NULL)
   {
+#ifdef WUSS_MENUS
+    /* As wuss_task_destroy: a chain this task still owns would outlive it,
+     * so tear it down (delivering MENU_CLOSED) before QUIT. */
+    if (wuss->menu_chain != NULL && wuss->menu_chain->owner == task)
+      wuss__menu_abandon(wuss);
+#endif
+
     event.kind = wuss_EVENT_QUIT;
     (void) wuss__deliver(task, NULL, &event);
 

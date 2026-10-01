@@ -10,6 +10,8 @@
 #include "framebuf/span-p2.h"
 #include "framebuf/span-p4.h"
 #include "framebuf/span-p8.h"
+#include "framebuf/span-rgb565.h"
+#include "framebuf/span-rgbx5551.h"
 #include "framebuf/span-rgbx8888.h"
 #include "framebuf/span-xbgr8888.h"
 
@@ -22,6 +24,8 @@ static const span_t *spans[] =
   &span_p2,
   &span_p4,
   &span_p8,
+  &span_rgb565,
+  &span_rgbx5551,
   &span_rgbx8888,
   &span_xbgr8888,
 };

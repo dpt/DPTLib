@@ -6,29 +6,42 @@
 #ifdef WUSS_APP
 
 #include <stdbool.h>
+#include <time.h>
 
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
+#include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
 /* a round-faced analogue clock: a tick-marked bezel with 1..12 numerals and
  * hour, minute and second hands read from the system clock and advanced on
- * every idle tick. A Select click shows or hides the second hand. */
+ * every idle tick. A Select click, or Menu > Seconds, shows or hides the
+ * seconds. An Adjust click, or Menu > Digital, swaps the face for an
+ * HH:MM:SS readout (and back); Menu > 12-hour shows that readout as
+ * 12-hour time with AM/PM; Menu > Save PNG opens a Save As dialogue (drag
+ * its icon onto a Filer window, or Save with a full path already typed)
+ * that writes the window's content out. Once a click has given the window
+ * the input focus, D, S and H toggle Digital, Seconds and 12-hour. */
 typedef struct clock_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
   wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_saveas_t       *saveas;
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[6]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
   bmfont_t           *font; /* borrowed; the numerals are drawn with it */
   colour_t            bg, bezel, hand, second_hand;
   bool                show_second;
+  bool                digital; /* Menu > Digital: text readout, no face */
+  bool                twelve_hour; /* Menu > 12-hour: AM/PM readout */
+  time_t              shown; /* time last painted, to the second or minute */
 }
 clock_task_t;
 

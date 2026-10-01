@@ -23,6 +23,7 @@
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
+#include "framebuf/bmfontfamily.h"
 #include "framebuf/colour.h"
 #include "framebuf/palettes.h"
 #include "framebuf/pixelfmt.h"
@@ -33,16 +34,20 @@
 #include "wuss/wuss.h"
 
 #include "frontend.h"
+#include "script.h"
 #include "tasks.h"
 
 #include "tasks/config.h"  /* config_create at startup */
 #include "tasks/palette.h" /* palette_load_hex for the startup *.hex */
+#ifdef WUSS_ICONBAR
+#include "tasks/filer.h" /* filer_set_root for -root */
+#endif
 
 /* ----------------------------------------------------------------------- */
 
 /* run_wuss's framebuffer bitmap and the screen_t wrapping it for wuss:
  * file-scope, like g_tasks, since run_wuss runs at most once per process
- * and app_resize (called from the Display task, well after run_wuss's own
+ * and app_set_mode (called from the Display task, well after run_wuss's own
  * locals have gone out of scope) needs to reallocate and re-derive them. */
 static bitmap_t g_bm;
 static screen_t g_scr;
@@ -138,6 +143,106 @@ static void pixel_stress(wuss_t *wuss, int scr_width, int scr_height)
   }
 }
 
+/* ----------------------------------------------------------------------- */
+
+/* The optional software pointer (--pointer, System > Software Pointer): an
+ * arrow drawn into the framebuffer itself, so it scales with the window zoom
+ * and goes through the CRT shader like everything else. wuss never learns of
+ * it: each frame puts back the pixels under it before wuss can draw (a window
+ * drag's screen_copy_rect would otherwise smear it along), then saves them
+ * afresh and redraws it once wuss is done. */
+static struct
+{
+  bitmap_t       image;     /* the arrow; hotspot at its top-left */
+  bool           loaded;
+  unsigned char *under;     /* framebuffer bytes beneath the drawn arrow */
+  box_t          drawn;     /* where it was drawn, if is_drawn */
+  bool           is_drawn;
+  point_t        pos;       /* last reported mouse position */
+  bool           in_window; /* false until a mouse event, or after a leave */
+}
+g_pointer;
+
+/* Copy the framebuffer bytes spanning box to (save) or from g_pointer.under.
+ * Whole bytes, so a sub-byte format needs no masking: the stray pixels
+ * either side go back exactly as they were saved. */
+static void pointer_copy_under(const box_t *box, bool save)
+{
+  int            log2bpp;
+  int            bx0, nbytes;
+  unsigned char *under;
+  int            y;
+  unsigned char *row;
+
+  log2bpp = pixelfmt_log2bpp(g_bm.format);
+  bx0     = (box->x0 << log2bpp) >> 3;
+  nbytes  = (((box->x1 << log2bpp) + 7) >> 3) - bx0;
+  under   = g_pointer.under;
+  for (y = box->y0; y < box->y1; y++)
+  {
+    row = (unsigned char *) g_bm.base + y * g_bm.rowbytes + bx0;
+    if (save)
+      memcpy(under, row, nbytes);
+    else
+      memcpy(row, under, nbytes);
+    under += nbytes;
+  }
+}
+
+/* Put back the pixels under the pointer, if drawn. Returns whether it was,
+ * setting *box to where, for the caller to present. */
+static bool pointer_undraw(box_t *box)
+{
+  if (!g_pointer.is_drawn)
+    return false;
+
+  pointer_copy_under(&g_pointer.drawn, false);
+  g_pointer.is_drawn = false;
+  *box = g_pointer.drawn;
+  return true;
+}
+
+/* Save what's under the pointer's position and draw it there, if it's on
+ * and over the window. Returns whether it drew, setting *box to where. */
+static bool pointer_draw(box_t *box)
+{
+  box_t    arrow;
+  box_t    screen;
+  screen_t scr;
+
+  if (!g_tasks.pointer || !g_pointer.in_window)
+    return false;
+
+  arrow.x0  = g_pointer.pos.x;
+  arrow.y0  = g_pointer.pos.y;
+  arrow.x1  = g_pointer.pos.x + g_pointer.image.size.w;
+  arrow.y1  = g_pointer.pos.y + g_pointer.image.size.h;
+  screen.x0 = 0;
+  screen.y0 = 0;
+  screen.x1 = g_bm.size.w;
+  screen.y1 = g_bm.size.h;
+  if (box_intersection(&arrow, &screen, box))
+    return false;
+
+  pointer_copy_under(box, true);
+
+  /* a private screen_t: wuss's own may be left clipped to its last redraw */
+  screen_for_bitmap(&scr, &g_bm);
+  (void) screen_copy_bitmap(&scr, g_pointer.pos.x, g_pointer.pos.y,
+                            &g_pointer.image);
+
+  g_pointer.drawn    = *box;
+  g_pointer.is_drawn = true;
+  return true;
+}
+
+bool app_set_pointer(bool on)
+{
+  return wuss_frontend_hide_pointer(g_tasks.frontend, on && g_pointer.loaded);
+}
+
+/* ----------------------------------------------------------------------- */
+
 /* one iteration of the event/redraw loop; a struct because Emscripten drives
  * it as a callback (emscripten_set_main_loop_arg) rather than a plain while */
 struct wuss_frame_ctx
@@ -153,38 +258,76 @@ struct wuss_frame_ctx
   int              npalette;
 };
 
-/* file scope so app_resize (called from the Display task, long after
+/* file scope so app_set_mode (called from the Display task, long after
  * run_wuss's own locals are gone) can update pixels/rowbytes/scr_width/
  * scr_height on the very instance the main loop below is reading */
 static struct wuss_frame_ctx g_frame_ctx;
 
+/* --script given: script_poll feeds input ahead of the frontend's own */
+static bool         g_scripted;
+
+/* wuss_set_time's clock while g_scripted, in place of the frontend's */
+static unsigned int g_script_ms;
+
+/* Next input for this frame: the script's until it ends its part of the
+ * frame, then the frontend's. */
+static bool frame_poll(struct wuss_frame_ctx *c,
+                       bool                  *scripting,
+                       wuss_input_t          *ev)
+{
+  if (*scripting && script_poll(c->wuss, c->bm, ev))
+    return true;
+
+  *scripting = false;
+  return wuss_frontend_poll(c->frontend, ev);
+}
+
 static void wuss_frame(void *arg)
 {
   struct wuss_frame_ctx *c = arg;
+  bool         scripting;
   wuss_input_t ev;
-  bool         pixel_stress_pending = false;
-  bool         garbage_pending      = false;
-  bool         redraw_all_pending   = false;
+  bool         garbage;
+  bool         stress;
+  bool         redraw_all;
+  box_t        old_pointer;
+  bool         had_pointer;
+  box_t        new_pointer;
+  bool         has_pointer;
 
-  while (wuss_frontend_poll(c->frontend, &ev))
+  /* before anything below can draw: see g_pointer */
+  had_pointer = pointer_undraw(&old_pointer);
+
+  /* a script runs on a synthetic 50Hz clock so its double-clicks (and their
+   * absence across a "wait") don't depend on how fast frames go headless */
+  if (g_scripted)
+    g_script_ms += 20;
+  wuss_set_time(c->wuss, g_scripted ? g_script_ms
+                                    : wuss_frontend_ms(c->frontend));
+
+  scripting = g_scripted;
+  while (frame_poll(c, &scripting, &ev))
   {
+    switch (ev.kind)
+    {
+    case wuss_INPUT_MOUSE_DOWN:
+    case wuss_INPUT_MOUSE_UP:
+    case wuss_INPUT_MOUSE_MOVE:
+    case wuss_INPUT_WHEEL:
+      g_pointer.pos       = ev.pos;
+      g_pointer.in_window = true;
+      break;
+    case wuss_INPUT_MOUSE_LEAVE:
+      g_pointer.in_window = false;
+      break;
+    default:
+      break;
+    }
+
     switch (ev.kind)
     {
     case wuss_INPUT_QUIT:
       g_tasks.quit = true;
-      break;
-
-    case wuss_INPUT_REDRAW_ALL:
-      wuss_redraw(c->wuss);
-      redraw_all_pending = true;
-      break;
-
-    case wuss_INPUT_GARBAGE:
-      garbage_pending = true;
-      break;
-
-    case wuss_INPUT_PIXEL_STRESS:
-      pixel_stress_pending = true;
       break;
 
     case wuss_INPUT_MOUSE_DOWN:
@@ -214,39 +357,11 @@ static void wuss_frame(void *arg)
     case wuss_INPUT_KEY:
       {
         int claimed;
-        int shift;
 
+        /* the focused window first, then the launcher menu's shortcuts */
         wuss_key(c->wuss, ev.key, ev.mods, &claimed);
-        if (claimed)
-          break;
-
-        /* driver hotkeys, only when the focused window passed on the key */
-        shift = (ev.mods & wuss_KEY_MOD_SHIFT) != 0;
-        switch (ev.key)
-        {
-        case wuss_KEY_F1:
-          if (shift)
-          {
-            garbage_pending = true;
-          }
-          else
-          {
-            wuss_redraw(c->wuss);
-            redraw_all_pending = true;
-          }
-          break;
-        case wuss_KEY_F1 + 1:
-          wuss_frontend_zoom(c->frontend, shift ? -1 : 1);
-          break;
-        case wuss_KEY_F1 + 2:
-          pixel_stress_pending = true;
-          break;
-        case wuss_KEY_F1 + 3:
-          g_tasks.quit = true;
-          break;
-        default:
-          break;
-        }
+        if (!claimed)
+          (void) tasks_launcher_key(ev.key, ev.mods);
       }
       break;
 
@@ -257,7 +372,17 @@ static void wuss_frame(void *arg)
 
   wuss_idle(c->wuss);
 
-  if (garbage_pending)
+  wuss_frontend_capture_mouse(c->frontend, wuss_is_dragging(c->wuss));
+
+  /* the launcher's Debug picks only set flags; act on them once per frame */
+  garbage    = g_tasks.debug_garbage;
+  stress     = g_tasks.debug_pixel_stress;
+  redraw_all = g_tasks.debug_redraw_all;
+  g_tasks.debug_garbage      = false;
+  g_tasks.debug_pixel_stress = false;
+  g_tasks.debug_redraw_all   = false;
+
+  if (garbage)
   {
     /* corrupt the whole framebuffer and present it, then leave it alone --
      * wuss only repaints what it knows is dirty, so the junk stays put
@@ -271,11 +396,13 @@ static void wuss_frame(void *arg)
     for (i = 0; i < n; i++)
       p[i] = (unsigned char) rand();
 
+    (void) pointer_draw(&new_pointer);
     wuss_frontend_present(c->frontend, c->bm, NULL);
   }
-  else if (pixel_stress_pending)
+  else if (stress)
   {
     pixel_stress(c->wuss, c->scr_width, c->scr_height);
+    (void) pointer_draw(&new_pointer);
     wuss_frontend_present(c->frontend, c->bm, NULL);
   }
   else
@@ -303,13 +430,21 @@ static void wuss_frame(void *arg)
     wuss_redraw_dirty(c->wuss);
     wuss_clear_touched(c->wuss);
 
-    /* a REDRAW_ALL earlier this frame already repainted the whole pixel
+    /* where the pointer was and now is need presenting too */
+    has_pointer = pointer_draw(&new_pointer);
+    if (had_pointer)
+      box_union(&dirty, &old_pointer, &dirty);
+    if (has_pointer)
+      box_union(&dirty, &new_pointer, &dirty);
+    have_any = have_any || had_pointer || has_pointer;
+
+    /* a Debug > Redraw earlier this frame repainted the whole pixel
      * buffer; any dirty/touched region collected afterwards (e.g. a mouse
      * move) is narrower than that and must not shrink the present rect
      * below full-screen, or the frontend only re-uploads the narrow rect
      * and leaves the rest of the previous frame's pixels on screen. */
     wuss_frontend_present(c->frontend, c->bm,
-                          (have_any && !redraw_all_pending) ? &dirty : NULL);
+                          (have_any && !redraw_all) ? &dirty : NULL);
   }
 
 #ifdef __EMSCRIPTEN__
@@ -334,25 +469,32 @@ static void wuss_frame(void *arg)
  * window exits */
 static result_t run_wuss(const char *resources,
                          const char *palette_name,
+                         const char *font_family,
                          int         depth,
                          int         scale,
                          int         scr_width,
                          int         scr_height,
                          const char *tasks)
 {
-  static const char *const names[WUSS_MAIN_NFONTS] =
-    { "DPT-Digits-Regular", "DPT-Digits-Bold", "Symbols" };
+  static const char symbols_name[] = "Symbols Regular";
 
-  result_t    rc;
-  const char *filename;
-  bmfont_t   *fonts[WUSS_MAIN_NFONTS];
-  int         nfonts;
-  int         i;
-  void       *pixels;
-  int         rowbytes;
-  pixelfmt_t  fmt;
-  bitmap_t    logo; /* desktop backdrop image; left unset (have_logo false)
-                     * if resources/wuss/wuss.png fails to load */
+  result_t            rc;
+  bmfontfamily_t     *family;
+  const bmfontface_t *regular;
+  const bmfontface_t *bold;
+  const char         *filename;
+  char                font_path[512];
+  char                names_buf[2][128];
+  const char         *names[WUSS_MAIN_NFONTS];
+  bmfont_t           *fonts[WUSS_MAIN_NFONTS];
+  int                 nfonts;
+  int                 i;
+  void               *pixels;
+  int                 rowbytes;
+  pixelfmt_t          fmt;
+  bitmap_t            logo; /* desktop backdrop image; left unset (have_logo
+                             * false) if resources/wuss/wuss.png fails to
+                             * load */
   bool     have_logo;
   colour_t palette[wuss_SYSTEM_PALETTE_LENGTH]; /* the fixed-size UI palette */
   colour_t scr_palette[256]; /* palette[] padded out to whatever
@@ -362,9 +504,11 @@ static result_t run_wuss(const char *resources,
   wuss_frontend_t *frontend;
   bool             use_wimp16;
   int              palette_index;
+  int              scr_nentries;
 
   /* everything the Failure path frees, so an early goto frees nothing */
   nfonts    = 0;
+  family    = NULL;
   frontend  = NULL;
   have_logo = false;
   wuss      = NULL;
@@ -390,10 +534,48 @@ static result_t run_wuss(const char *resources,
   logf_info("wuss: resources root = \"%s\"", resources);
 
   {
+    /* [0] regular and [1] bold come from the font_family family (-f); bold
+     * is the next heavier face than regular (regular itself if there is
+     * none) */
+    rc = bmfontfamily_scan(pathf("%s/resources/bmfonts/%s", resources,
+                                 font_family),
+                           &family);
+    if (rc != result_OK)
+      goto Failure;
+    regular = bmfontfamily_find(family, bmfontfamily_WEIGHT_REGULAR,
+                                bmfontfamily_SLANT_UPRIGHT);
+    if (regular == NULL)
+    {
+      logf_error("wuss: font family \"%s\" has no regular upright face",
+                 font_family);
+      rc = result_NOT_FOUND;
+      goto Failure;
+    }
+    bold = bmfontfamily_heavier(family, regular);
+
+    snprintf(names_buf[0], sizeof(names_buf[0]), "%s %s", font_family,
+             regular->style);
+    snprintf(names_buf[1], sizeof(names_buf[1]), "%s %s", font_family,
+             bold->style);
+    names[0] = names_buf[0];
+    names[1] = names_buf[1];
+    names[2] = symbols_name;
+
     nfonts = 0;
     for (i = 0; i < WUSS_MAIN_NFONTS; i++)
     {
-      filename = pathf("%s/resources/bmfonts/%s.png", resources, names[i]);
+      if (i < 2)
+      {
+        filename = (i == 0) ? regular->path : bold->path;
+      }
+      else
+      {
+        rc = bmfontfamily_label_path(pathf("%s/resources/bmfonts", resources),
+                                     names[i], font_path, sizeof(font_path));
+        if (rc != result_OK)
+          goto Failure;
+        filename = font_path;
+      }
       logf_info("wuss: loading font \"%s\"", filename);
       rc = bmfont_create(filename, &fonts[i]);
       if (rc != result_OK)
@@ -416,8 +598,12 @@ static result_t run_wuss(const char *resources,
    * needs (up to 256 for p8); pad scr_palette with palette's 16 UI colours,
    * then the web-safe 216 (so a p8 screen has real range beyond the UI
    * colours for nearest-match), then black for what's left. Also done on
-   * a live palette change; see task_handle_event. */
-  tasks_build_screen_palette(scr_palette, NELEMS(scr_palette),
+   * a live palette change; see task_handle_event. 1/2bpp get a grey ramp
+   * instead. Unpaletted formats ignore it, so fill the lot. */
+  scr_nentries = pixelfmt_paletted_nentries(fmt);
+  if (scr_nentries <= 0)
+    scr_nentries = NELEMS(scr_palette);
+  tasks_build_screen_palette(scr_palette, scr_nentries,
                              palette, NELEMS(palette));
 
   rc = bitmap_init(&g_bm, SIZE2D(scr_width, scr_height), fmt, rowbytes,
@@ -437,6 +623,27 @@ static result_t run_wuss(const char *resources,
   if (!have_logo)
     logf_error("wuss: bitmap_load_png(\"%s\") failed, rc=0x%X (%s) -- "
               "backdrop drawn without it", filename, rc, result_string(rc));
+
+  /* under holds the bytes beneath the arrow at any depth: at most 4 per
+   * pixel, which also covers a sub-byte format's extra partial byte */
+  filename = pathf("%s/resources/wuss/pointer.png", resources);
+  rc = bitmap_load_png(&g_pointer.image, filename);
+  if (rc == result_OK)
+  {
+    g_pointer.under = malloc((size_t) g_pointer.image.size.w * 4 *
+                             g_pointer.image.size.h);
+    g_pointer.loaded = (g_pointer.under != NULL);
+    if (!g_pointer.loaded)
+    {
+      free(g_pointer.image.base);
+      free(g_pointer.image.palette);
+    }
+  }
+  else
+  {
+    logf_error("wuss: bitmap_load_png(\"%s\") failed, rc=0x%X (%s) -- "
+              "software pointer unavailable", filename, rc, result_string(rc));
+  }
 
   {
     wuss_config_t    config;
@@ -467,6 +674,15 @@ static result_t run_wuss(const char *resources,
   g_tasks.frontend       = frontend;
   g_tasks.bm             = &g_bm;
 
+  /* --crt: the frontend opens plain; switch over now so the Debug menu's
+   * tick agrees */
+  if (g_tasks.crt)
+    tasks_set_crt(true);
+
+  /* --pointer likewise */
+  if (g_tasks.pointer)
+    tasks_set_pointer(true);
+
   {
     wuss_task_desc_t desc;
 
@@ -482,10 +698,13 @@ static result_t run_wuss(const char *resources,
 
   g_tasks.quit = false;
 
+#ifdef __EMSCRIPTEN__
+  /* browser users can't pass options, so show Configure up front */
   rc = config_create(wuss, NULL);
   logf_info("wuss: config_create -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
+#endif
 
   tasks_spawn(tasks);
 
@@ -534,8 +753,16 @@ Failure:
     free(logo.palette);
   }
 
+  if (g_pointer.loaded)
+  {
+    free(g_pointer.under);
+    free(g_pointer.image.base);
+    free(g_pointer.image.palette);
+  }
+
   for (i = 0; i < nfonts; i++)
     bmfont_destroy(fonts[i]);
+  bmfontfamily_destroy(family);
 
   wuss_frontend_close(frontend);
 
@@ -544,22 +771,27 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
-result_t app_resize(size2d_t size)
+result_t app_set_mode(size2d_t size, int depth)
 {
   result_t        rc;
   void           *pixels;
   int             rowbytes;
+  pixelfmt_t      fmt;
   const colour_t *palette;
   int             npalette;
   colour_t        scr_palette[256];
   int             scr_nentries;
 
-  rc = wuss_frontend_resize(g_tasks.frontend, size.w, size.h,
-                            &pixels, &rowbytes);
+  rc = wuss_frontend_resize(g_tasks.frontend, size.w, size.h, depth,
+                            &pixels, &rowbytes, &fmt);
   if (rc != result_OK)
     return rc;
 
-  rc = bitmap_init(&g_bm, size, g_bm.format, rowbytes, g_bm.palette, pixels);
+  /* drop the old palette buffer: it's sized for the old format, and
+   * bitmap_init would otherwise copy out of it (overrunning if the new
+   * format has more entries) and leak it. Rebuilt below. */
+  bitmap_set_palette(&g_bm, NULL);
+  rc = bitmap_init(&g_bm, size, fmt, rowbytes, NULL, pixels);
   if (rc != result_OK)
     return rc;
 
@@ -585,6 +817,16 @@ result_t app_resize(size2d_t size)
   return result_OK;
 }
 
+int app_get_depth(void)
+{
+  switch (g_bm.format)
+  {
+  case pixelfmt_rgbx5551: return 15;
+  case pixelfmt_rgb565:   return 16;
+  default:                return 1 << pixelfmt_log2bpp(g_bm.format);
+  }
+}
+
 /* ----------------------------------------------------------------------- */
 
 /* Parsed command-line options. Members are use-ordered to match run_wuss's
@@ -593,20 +835,28 @@ typedef struct wuss_options
 {
   const char *resources;    /* -r/--resources: fixture root */
   const char *palette_name; /* -p/--palette: startup *.hex leafname */
-  int         depth;        /* -d/--depth: framebuffer bpp (1, 2, 4, 8 or 32) */
+  const char *font_family;  /* -f/--font: system font family directory name */
+  int         depth;        /* -d/--depth: framebuffer bpp (1, 2, 4, 8, 15, 16 or 32) */
   int         scale;        /* -s/--scale: initial window zoom, 0 = default */
   int         res_width;    /* --res WIDTHxHEIGHT: screen size in pixels */
   int         res_height;
   const char *tasks;        /* -t/--tasks: comma-separated launcher task
                              * names to auto-open at startup, or "all";
-                             * default "" opens none */
+                             * default "" opens none ("Configure,Text"
+                             * under Emscripten) */
+  const char *root;         /* --root: directory Filer's icon bar icon and
+                             * System menu row open; default "." (or "/"
+                             * under Emscripten, see filer_set_root) */
+  const char *script;       /* --script: input script to run; see script.h */
 }
 wuss_options_t;
 
 static const char wuss_usage[] =
   "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
-  "[-d|--depth 1|2|4|8|32] [-s|--scale N] [--res WIDTHxHEIGHT] "
-  "[-t|--tasks all|NAME[,NAME...]]\n";
+  "[-f|--font FAMILY] "
+  "[-d|--depth 1|2|4|8|15|16|32] [-s|--scale N] [--res WIDTHxHEIGHT] "
+  "[-t|--tasks all|NAME[,NAME...]] [--root DIR] [--crt] [--pointer] "
+  "[--script FILE]\n";
 
 /* Parses "WIDTHxHEIGHT" (e.g. "1024x768") into w and h. Returns false,
  * leaving them untouched, on anything else -- a missing 'x', a non-positive
@@ -631,9 +881,10 @@ static bool parse_res(const char *s, int *w, int *h)
 
 #ifndef __riscos
 
-/* --res has no short form, so it is given a longopt-only code past the ASCII
- * range getopt_long uses for short options. */
-enum { OPT_RES = 256 };
+/* --res, --crt and --pointer have no short form, so they are given
+ * longopt-only codes past the ASCII range getopt_long uses for short
+ * options. */
+enum { OPT_RES = 256, OPT_CRT, OPT_POINTER, OPT_ROOT, OPT_SCRIPT };
 
 /* Desktop: getopt_long. Accepts the short forms and the "--" long forms; the
  * historical single-dash long spellings (-resources) are no longer accepted.
@@ -642,20 +893,25 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
 {
   static const struct option longopts[] =
   {
-    { "resources", required_argument, NULL, 'r'     },
-    { "palette",   required_argument, NULL, 'p'     },
-    { "depth",     required_argument, NULL, 'd'     },
-    { "scale",     required_argument, NULL, 's'     },
-    { "res",       required_argument, NULL, OPT_RES },
-    { "tasks",     required_argument, NULL, 't'     },
-    { NULL,        0,                 NULL, 0       }
+    { "resources", required_argument, NULL, 'r'         },
+    { "palette",   required_argument, NULL, 'p'         },
+    { "font",      required_argument, NULL, 'f'         },
+    { "depth",     required_argument, NULL, 'd'         },
+    { "scale",     required_argument, NULL, 's'         },
+    { "res",       required_argument, NULL, OPT_RES     },
+    { "tasks",     required_argument, NULL, 't'         },
+    { "root",      required_argument, NULL, OPT_ROOT    },
+    { "crt",       no_argument,       NULL, OPT_CRT     },
+    { "pointer",   no_argument,       NULL, OPT_POINTER },
+    { "script",    required_argument, NULL, OPT_SCRIPT  },
+    { NULL,        0,                 NULL, 0           }
   };
 
   int c;
 
   for (;;)
   {
-    c = getopt_long(argc, argv, "r:p:d:s:t:", longopts, NULL);
+    c = getopt_long(argc, argv, "r:p:f:d:s:t:", longopts, NULL);
     if (c == -1)
       break;
 
@@ -663,9 +919,18 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
     {
     case 'r': opts->resources    = optarg;       break;
     case 'p': opts->palette_name = optarg;       break;
+    case 'f': opts->font_family  = optarg;       break;
     case 'd': opts->depth        = atoi(optarg); break;
     case 's': opts->scale        = atoi(optarg); break;
     case 't': opts->tasks        = optarg;       break;
+    case OPT_ROOT: opts->root    = optarg;       break;
+    case OPT_SCRIPT: opts->script = optarg;      break;
+    case OPT_CRT:
+      g_tasks.crt = true;
+      break;
+    case OPT_POINTER:
+      g_tasks.pointer = true;
+      break;
     case OPT_RES:
       if (!parse_res(optarg, &opts->res_width, &opts->res_height))
       {
@@ -695,6 +960,8 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
       opts->resources = argv[++i];
     else if (strcmp(argv[i], "-palette") == 0 && i + 1 < argc)
       opts->palette_name = argv[++i];
+    else if (strcmp(argv[i], "-font") == 0 && i + 1 < argc)
+      opts->font_family = argv[++i];
     else if (strcmp(argv[i], "-depth") == 0 && i + 1 < argc)
       opts->depth = atoi(argv[++i]);
     else if (strcmp(argv[i], "-scale") == 0 && i + 1 < argc)
@@ -703,6 +970,10 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
       parse_res(argv[++i], &opts->res_width, &opts->res_height);
     else if (strcmp(argv[i], "-tasks") == 0 && i + 1 < argc)
       opts->tasks = argv[++i];
+    else if (strcmp(argv[i], "-root") == 0 && i + 1 < argc)
+      opts->root = argv[++i];
+    else if (strcmp(argv[i], "-script") == 0 && i + 1 < argc)
+      opts->script = argv[++i];
 
   return true;
 }
@@ -724,17 +995,38 @@ int main(int argc, char *argv[])
 
   opts.resources    = default_resources;
   opts.palette_name = "PICO-8";
+  opts.font_family  = "DPT-Digits";
   opts.depth        = 4;
   opts.scale        = 0; /* 0 = let the frontend pick its default */
   opts.res_width    = 640;
   opts.res_height   = 480;
+#ifdef __EMSCRIPTEN__
+  opts.tasks        = "Configure,Text"; /* browser has no command line */
+#else
   opts.tasks        = "";
+#endif
+  opts.root       = NULL; /* NULL: leave filer_set_root's own default */
+  opts.script       = NULL;
 
   if (!parse_args(argc, argv, &opts))
     return EXIT_FAILURE;
 
-  rc = run_wuss(opts.resources, opts.palette_name, opts.depth, opts.scale,
-               opts.res_width, opts.res_height, opts.tasks);
+#ifdef WUSS_ICONBAR
+  filer_set_root(opts.root);
+#endif
+
+  if (opts.script != NULL)
+  {
+    if (script_open(opts.script) != result_OK)
+      return EXIT_FAILURE;
+    g_scripted = true;
+  }
+
+  rc = run_wuss(opts.resources, opts.palette_name, opts.font_family,
+               opts.depth, opts.scale, opts.res_width, opts.res_height, opts.tasks);
+
+  if (g_scripted && script_close() != result_OK)
+    rc = result_TEST_FAILED;
 
   return rc == result_TEST_PASSED ? EXIT_SUCCESS : EXIT_FAILURE;
 }

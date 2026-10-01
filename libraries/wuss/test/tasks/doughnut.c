@@ -4,6 +4,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -13,9 +14,12 @@
 #include "framebuf/palettes.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 #include "wuss/task.h"
 
 #include "doughnut.h"
+#include "common.h"
+#include "snapshot.h"
 
 /* Andy Sloane's "donut.c" (www.a1k0n.net/2011/07/20/donut-math.html):
  * a torus (tube radius R1, ring radius R2) is swept over its two surface
@@ -26,19 +30,46 @@
  * character cell; here it drives colour_grey brightness on a screen pixel
  * instead. */
 
-#define DOUGHNUT_R1   1.0  /* tube radius */
 #define DOUGHNUT_R2   2.0  /* ring radius */
 #define DOUGHNUT_K2   5.0  /* viewer distance */
 #define DOUGHNUT_P1 314.15 /* points around the tube */
 #define DOUGHNUT_P2  90.0  /* points around the ring */
 #define DOUGHNUT_KEY_STEP 0.1 /* radians per arrow press while paused */
 
-enum { DOUGHNUT_MENU_INFO = 0, DOUGHNUT_MENU_BACKGROUND };
+enum
+{
+  DOUGHNUT_MENU_INFO = 0,
+  DOUGHNUT_MENU_BACKGROUND,
+  DOUGHNUT_MENU_TUBE,
+  DOUGHNUT_MENU_PAUSE,
+  DOUGHNUT_MENU_RESET,
+  DOUGHNUT_MENU_SAVE
+};
+
+#define DOUGHNUT_SAVE_NAME "doughnut.png" /* Save As's initial leafname */
+
+/* "Tube" submenu rows: tube radius R1, kept below DOUGHNUT_R2 so the hole
+ * stays open */
+static const struct
+{
+  const char *name;
+  double      r1;
+}
+doughnut_tubes[] =
+{
+  { "Thin",    0.5 },
+  { "Classic", 1.0 },
+  { "Plump",   1.5 },
+  { "Fat",     1.9 }
+};
+
+#define DOUGHNUT_TUBE_CLASSIC 1
 
 /* one theta/phi surface sample, projected and shaded into out_x/out_y/
  * out_z/out_lum; returns 0 if the projected point falls outside [0,width)x
  * [0,height) so the caller can skip it */
-static int doughnut_project(double  costheta,
+static int doughnut_project(double  r1,
+                            double  costheta,
                             double  sintheta,
                             double  phi,
                             double  a,
@@ -66,8 +97,8 @@ static int doughnut_project(double  costheta,
   cosb     = cos(b);
   sinb     = sin(b);
 
-  circlex = DOUGHNUT_R2 + DOUGHNUT_R1 * costheta;
-  circley = DOUGHNUT_R1 * sintheta;
+  circlex = DOUGHNUT_R2 + r1 * costheta;
+  circley = r1 * sintheta;
 
   x = circlex * (cosb * cosphi + sina * sinb * sinphi) - circley * cosa * sinb;
   y = circlex * (sinb * cosphi - sina * cosb * sinphi) + circley * cosa * cosb;
@@ -103,22 +134,38 @@ static int doughnut_project(double  costheta,
   return 1;
 }
 
+/* wuss_saveas_save_fn_t: opaque is the doughnut_task_t */
+static result_t doughnut_saveas_save(const char *path, void *opaque)
+{
+  doughnut_task_t *task;
+
+  task = opaque;
+
+  return snapshot_save_png(task->window, doughnut_handle, task, path);
+}
+
 result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
 {
   result_t         rc;
   doughnut_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  filetype_t       png_type;
+  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
     return result_OOM;
 
   task->wuss = wuss;
-  task->bg   = colour_rgb(0x20, 0x20, 0x20);
   task->a    = 1.0;
   task->b    = 1.0;
   task->zoom = 1.0;
+  task->tube = DOUGHNUT_TUBE_CLASSIC;
+
+  task->palette[0] = colour_rgb(0x20, 0x20, 0x20);
+  for (i = 1; i < 256; i++)
+    task->palette[i] = colour_rgb(i, i, i);
 
   /* doughnut_redraw paints its own background every frame */
   delegate_desc.handle    = doughnut_handle;
@@ -133,17 +180,22 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(200, 200),
-                                 "Doughnut",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(200, 200),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate,
+                          SIZE2D(200, 200),
+                          "Doughnut",
+                          &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
+                          DOUGHNUT_SAVE_NAME, doughnut_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
     return rc;
   }
 
@@ -152,9 +204,30 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in doughnut_mouse */
 
-  wuss_colourmenu_set_none(0);
   WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_BACKGROUND, "Background",
                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
+  for (i = 0; i < NELEMS(task->tube_items); i++)
+    WUSS_MENU_ITEM(task->tube_items, i, doughnut_tubes[i].name,
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->tube_menu, "Tube", task->tube_items,
+                 NELEMS(task->tube_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_TUBE, "Tube",
+                      wuss_MENU_ITEM_NONE, &task->tube_menu);
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "SPACE");
+
+  WUSS_MENU_ITEM(task->menu_items, DOUGHNUT_MENU_RESET, "Reset view",
+                 wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[DOUGHNUT_MENU_SAVE].window =
+    wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Doughnut", task->menu_items,
                  NELEMS(task->menu_items));
@@ -167,22 +240,29 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
 
 void doughnut_destroy(doughnut_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
+  wuss_saveas_destroy(task->saveas);
+  free(task->zbuf);
+  free(task->shade);
   free(task);
 }
 
 static result_t doughnut_redraw(const wuss_event_t *event,
                                 doughnut_task_t    *task)
 {
-  screen_t    *scr;
-  const box_t *content, *bounds;
-  int          sx, sy, width, height;
-  double       k1;
-  double       theta, phi;
-  int          x, y;
-  double       z, lum;
-  double      *zbuf;
-  colour_t    *shade; /* one colour per z-buffer cell, painted at the end */
+  result_t       rc;
+  screen_t      *scr;
+  const box_t   *content, *bounds;
+  int            sx, sy, width, height;
+  box_t          drawn;
+  size_t         ncells;
+  double        *zbuf;
+  unsigned char *shade; /* palette index per z-buffer cell: 0 = background */
+  int            x, y;
+  double         r1;
+  double         k1;
+  double         theta, phi;
+  double         z, lum;
+  bitmap_t       bm;
 
   scr     = event->data.redraw.scr;
   content = event->data.redraw.content;
@@ -193,18 +273,41 @@ static result_t doughnut_redraw(const wuss_event_t *event,
   width  = box_size(bounds).w;
   height = box_size(bounds).h;
 
-  screen_fill_rect(scr, content->x0, content->y0, box_size(content), task->bg);
+  /* the shade bitmap paints its own background, so only fill whatever part of
+   * the content it doesn't reach */
+  drawn.x0 = bounds->x0 - sx;
+  drawn.y0 = bounds->y0 - sy;
+  drawn.x1 = drawn.x0 + width;
+  drawn.y1 = drawn.y0 + height;
+  if (!box_contains_box(content, &drawn))
+    screen_fill_rect(scr, content->x0, content->y0, box_size(content),
+                     task->palette[0]);
 
-  zbuf  = calloc((size_t) (width * height), sizeof(*zbuf));
-  shade = calloc((size_t) (width * height), sizeof(*shade));
-  if (zbuf == NULL || shade == NULL)
+  ncells = (size_t) (width * height);
+  if (ncells > task->ncells)
   {
-    free(zbuf);
-    free(shade);
-    return result_OOM;
+    free(task->zbuf);
+    free(task->shade);
+    task->zbuf   = malloc(ncells * sizeof(*task->zbuf));
+    task->shade  = malloc(ncells * sizeof(*task->shade));
+    task->ncells = ncells;
+    if (task->zbuf == NULL || task->shade == NULL)
+    {
+      free(task->zbuf);
+      free(task->shade);
+      task->zbuf   = NULL;
+      task->shade  = NULL;
+      task->ncells = 0;
+      return result_OOM;
+    }
   }
+  zbuf  = task->zbuf;
+  shade = task->shade;
+  memset(zbuf, 0, ncells * sizeof(*zbuf));
+  memset(shade, 0, ncells * sizeof(*shade));
 
-  k1 = width * DOUGHNUT_K2 * 3.0 / (8.0 * (DOUGHNUT_R1 + DOUGHNUT_R2)) * task->zoom;
+  r1 = doughnut_tubes[task->tube].r1;
+  k1 = width * DOUGHNUT_K2 * 3.0 / (8.0 * (r1 + DOUGHNUT_R2)) * task->zoom;
 
   for (theta = 0.0; theta < 2.0 * M_PI; theta += 2.0 * M_PI / DOUGHNUT_P2)
   {
@@ -217,39 +320,28 @@ static result_t doughnut_redraw(const wuss_event_t *event,
     {
       int cell;
 
-      if (!doughnut_project(costheta, sintheta, phi, task->a, task->b, width,
-                         height, k1, &x, &y, &z, &lum))
+      if (!doughnut_project(r1, costheta, sintheta, phi, task->a, task->b,
+                            width, height, k1, &x, &y, &z, &lum))
         continue;
 
       cell = y * width + x;
       if (z > zbuf[cell])
       {
-        int grey;
-
         zbuf[cell] = z;
-        grey = (int) ((lum < 0.0 ? 0.0 : lum) * 255.0);
-        if (grey > 255)
-          grey = 255;
-        shade[cell] = colour_rgb(grey, grey, grey);
+        /* darkest grey is 1, not 0: index 0 is the background */
+        shade[cell] = (unsigned char) CLAMP((int) (lum * 255.0), 1, 255);
       }
     }
   }
 
-  for (y = 0; y < height; y++)
-    for (x = 0; x < width; x++)
-    {
-      int cell;
+  /* one clipped blit of the whole shade buffer, rather than a clip test per
+   * pixel */
+  rc = bitmap_init(&bm, SIZE2D(width, height), pixelfmt_p8, width,
+                   task->palette, shade);
+  if (rc != result_OK)
+    return rc;
 
-      cell = y * width + x;
-      if (zbuf[cell] > 0.0)
-        screen_set_pixel(scr, bounds->x0 - sx + x, bounds->y0 - sy + y,
-                         shade[cell]);
-    }
-
-  free(zbuf);
-  free(shade);
-
-  return result_OK;
+  return screen_copy_bitmap(scr, drawn.x0, drawn.y0, &bm);
 }
 
 /* radians of a/b rotation per pixel of Adjust drag, chosen to roughly match
@@ -274,17 +366,16 @@ static result_t doughnut_mouse(doughnut_task_t    *task,
     if (button & wuss_BUTTON_MENU)
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Doughnut",
-        "Spinning torus, ray-marched and shaded per pixel",
-        "(c) DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Doughnut",
+                           "Spinning torus, ray-marched and shaded per pixel");
       wuss_proginfo_set_desc(&desc);
       task->menu_items[DOUGHNUT_MENU_INFO].window = wuss_proginfo_window(task->delegate);
 
-      return wuss_menu_open(task->delegate, &task->menu,
-                            wuss_get_pointer(task->wuss), &task->menu_handle);
+      wuss_menu_tick_exclusive(&task->tube_menu, task->tube);
+      wuss_menu_tick_item(&task->menu, DOUGHNUT_MENU_PAUSE, task->paused);
+
+      return wuss_menu_open_at_pointer(task->delegate, &task->menu,
+                                       &task->menu_handle);
     }
 
     if (button & wuss_BUTTON_SELECT)
@@ -350,8 +441,8 @@ static result_t doughnut_idle(doughnut_task_t *task)
 }
 
 /* While paused, the arrow keys step the rotation: Up/Down about x (a),
- * Left/Right about z (b). Anything else, or any key while spinning, is passed
- * back unclaimed. */
+ * Left/Right about z (b). Anything else, or an arrow while spinning, is
+ * passed back unclaimed. */
 static result_t doughnut_key(doughnut_task_t *task, int code)
 {
   if (!task->paused)
@@ -371,36 +462,46 @@ static result_t doughnut_key(doughnut_task_t *task, int code)
   return result_OK;
 }
 
-/* The "Background" row's only submenu leaf: always hand back the shared
- * colourmenu singleton, unretargeted -- there is nothing else to pick into.
- */
-static result_t doughnut_pre_submenu_open(doughnut_task_t    *task,
-                                          const wuss_event_t *event)
-{
-  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
-                                    event->data.pre_submenu_open.index,
-                                    wuss_colourmenu_menu(task->wuss));
-}
-
 static result_t doughnut_menu_select(doughnut_task_t    *task,
                                      const wuss_event_t *event)
 {
-  const colour_t *palette;
-  int             npalette;
-  wuss_colour_t   picked;
-  int             mine;
-
-  picked = wuss_colourmenu_selected(event, &mine);
-  if (!mine)
-    return result_OK;
-
-  palette = wuss_get_palette(task->wuss, &npalette);
-  if (picked < npalette)
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == DOUGHNUT_MENU_PAUSE)
   {
-    task->bg = palette[picked];
-    if (task->window != NULL)
-      wuss_window_invalidate_visible(task->window);
+    task->paused = !task->paused;
+    wuss_menu_tick_item_live(task->menu_handle, &task->menu,
+                             DOUGHNUT_MENU_PAUSE, task->paused);
+    return result_OK;
   }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == DOUGHNUT_MENU_RESET)
+  {
+    /* same as doughnut_create */
+    task->a    = 1.0;
+    task->b    = 1.0;
+    task->zoom = 1.0;
+    wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == DOUGHNUT_MENU_SAVE)
+  {
+    return wuss_saveas_open(task->saveas);
+  }
+
+  if (event->data.menu_select.menu == &task->tube_menu)
+  {
+    task->tube = event->data.menu_select.index;
+    wuss_menu_tick_exclusive_live(task->menu_handle, &task->tube_menu,
+                                  task->tube);
+    wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
+
+  if (wuss_colourmenu_selected_rgb(event, &task->palette[0]))
+    wuss_window_invalidate_visible(task->window);
 
   return result_OK;
 }
@@ -430,10 +531,22 @@ result_t doughnut_handle(wuss_window_t      *window,
     return doughnut_idle(task);
 
   case wuss_EVENT_KEY:
+  {
+    result_t rc;
+
+    if (window != task->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    if (!task_key_is_plain(task->delegate, &task->menu, event, &rc))
+      return rc;
+
     return doughnut_key(task, event->data.key.code);
+  }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    return doughnut_pre_submenu_open(task, event);
+    /* the "Background" row: the shared colourmenu, set up per open */
+    return wuss_colourmenu_open_rgb(task->wuss, event, "Background",
+                                    task->palette[0]);
 
   case wuss_EVENT_MENU_SELECT:
     return doughnut_menu_select(task, event);

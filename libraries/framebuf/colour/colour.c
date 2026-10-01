@@ -7,12 +7,15 @@
 #include "framebuf/pixelfmt.h"
 #include "framebuf/colour.h"
 
-colour_t colour_rgb(int r, int g, int b)
+colour_t colour_rgb(unsigned int r, unsigned int g, unsigned int b)
 {
   return colour_rgba(r, g, b, PIXELFMT_OPAQUE);
 }
 
-colour_t colour_rgba(int r, int g, int b, int a)
+colour_t colour_rgba(unsigned int r,
+                     unsigned int g,
+                     unsigned int b,
+                     unsigned int a)
 {
   colour_t c;
 
@@ -105,14 +108,24 @@ pixelfmt_any_t colour_to_pixel(const colour_t *palette,
     a = (fmt == pixelfmt_bgra8888) ? PIXELFMT_xxxA8888(required.primary) : PIXELFMT_OPAQUE;
     return PIXELFMT_MAKE_BGRA8888(r, g, b, a);
 
+  case pixelfmt_rgb565:
+    r = PIXELFMT_Rxxx8888(required.primary) >> 3;
+    g = PIXELFMT_xGxx8888(required.primary) >> 2;
+    b = PIXELFMT_xxBx8888(required.primary) >> 3;
+    return PIXELFMT_MAKE_RGB565(r, g, b);
+
+  case pixelfmt_rgbx5551:
+    r = PIXELFMT_Rxxx8888(required.primary) >> 3;
+    g = PIXELFMT_xGxx8888(required.primary) >> 3;
+    b = PIXELFMT_xxBx8888(required.primary) >> 3;
+    return PIXELFMT_MAKE_RGBX5551(r, g, b);
+
   default:
     assert(!"Unimplemented pixel format");
     return 0xFFFFFFFF;
   }
 }
 
-// TODO: Using unsigned int for alpha here is inconsistent with treatment of alpha
-// above.
 unsigned int colour_get_alpha(const colour_t *c)
 {
   return PIXELFMT_xxxA8888(c->primary);

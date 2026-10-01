@@ -147,13 +147,32 @@ typedef unsigned int   pixelfmt_any32_t; /* any 32bpp pixel */
 /* Constants for RGB565 */
 #define PIXELFMT_Rxx565_SHIFT  (0)
 #define PIXELFMT_xGx565_SHIFT  (5)
-#define PIXELFMT_xxB565_SHIFT (10)
+#define PIXELFMT_xxB565_SHIFT (11)
 #define PIXELFMT_Rxx565_MASK  (0x1Fu <<  0)
 #define PIXELFMT_xGx565_MASK  (0x3Fu <<  5)
-#define PIXELFMT_xxB565_MASK  (0x1Fu << 10)
+#define PIXELFMT_xxB565_MASK  (0x1Fu << 11)
 #define PIXELFMT_Rxx565(px) PIXELFMT_EXTRACT(px, PIXELFMT_Rxx565_SHIFT, 0x1Fu)
 #define PIXELFMT_xGx565(px) PIXELFMT_EXTRACT(px, PIXELFMT_xGx565_SHIFT, 0x3Fu)
 #define PIXELFMT_xxB565(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxB565_SHIFT, 0x1Fu)
+#define PIXELFMT_MAKE_RGB565(R,G,B) \
+  (((pixelfmt_any_t) (R) << PIXELFMT_Rxx565_SHIFT) | \
+   ((pixelfmt_any_t) (G) << PIXELFMT_xGx565_SHIFT) | \
+   ((pixelfmt_any_t) (B) << PIXELFMT_xxB565_SHIFT))
+
+/* Constants for RGBX5551 */
+#define PIXELFMT_Rxxx5551_SHIFT  (0)
+#define PIXELFMT_xGxx5551_SHIFT  (5)
+#define PIXELFMT_xxBx5551_SHIFT (10)
+#define PIXELFMT_Rxxx5551_MASK  (0x1Fu <<  0)
+#define PIXELFMT_xGxx5551_MASK  (0x1Fu <<  5)
+#define PIXELFMT_xxBx5551_MASK  (0x1Fu << 10)
+#define PIXELFMT_Rxxx5551(px) PIXELFMT_EXTRACT(px, PIXELFMT_Rxxx5551_SHIFT, 0x1Fu)
+#define PIXELFMT_xGxx5551(px) PIXELFMT_EXTRACT(px, PIXELFMT_xGxx5551_SHIFT, 0x1Fu)
+#define PIXELFMT_xxBx5551(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxBx5551_SHIFT, 0x1Fu)
+#define PIXELFMT_MAKE_RGBX5551(R,G,B) \
+  (((pixelfmt_any_t) (R) << PIXELFMT_Rxxx5551_SHIFT) | \
+   ((pixelfmt_any_t) (G) << PIXELFMT_xGxx5551_SHIFT) | \
+   ((pixelfmt_any_t) (B) << PIXELFMT_xxBx5551_SHIFT))
 
 /* Constants for any 8888 */
 #define PIXELFMT_Rxxx8888_SHIFT  (0)
@@ -174,9 +193,9 @@ typedef unsigned int   pixelfmt_any32_t; /* any 32bpp pixel */
 #define PIXELFMT_xGxx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xGxx8888_SHIFT, 0xFFu)
 #define PIXELFMT_xxRx8888(px) PIXELFMT_EXTRACT(px, PIXELFMT_xxRx8888_SHIFT, 0xFFu)
 #define PIXELFMT_MAKE_BGRX8888(R,G,B) \
-  (((pixelfmt_any_t) (R) << PIXELFMT_Bxxx8888_SHIFT) | \
+  (((pixelfmt_any_t) (B) << PIXELFMT_Bxxx8888_SHIFT) | \
    ((pixelfmt_any_t) (G) << PIXELFMT_xGxx8888_SHIFT) | \
-   ((pixelfmt_any_t) (B) << PIXELFMT_xxRx8888_SHIFT) | \
+   ((pixelfmt_any_t) (R) << PIXELFMT_xxRx8888_SHIFT) | \
    ((pixelfmt_any_t) (0xFF) << PIXELFMT_xxxA8888_SHIFT))
 
 /* Constants for RGBA8888 */

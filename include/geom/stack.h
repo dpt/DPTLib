@@ -75,6 +75,13 @@ typedef struct stack_item
                                   span the container's full cross extent.
                                   Unused for stack_ALIGN_START/FILL. */
 
+  int           group;      /**< Size group; 0 means none. All items sharing
+                                  a non-zero group get the largest
+                                  `axis_size` among them, wherever they sit
+                                  in the tree. Only a fixed-size
+                                  stack_KIND_LEAF/stack_KIND_SPACER (no
+                                  flex) may be grouped. */
+
   int           gap;        /**< Containers only: px between adjacent
                                   children. */
   inset_t       pad;        /**< Containers only: inner inset. */
@@ -121,6 +128,18 @@ stack_item_t;
 
 #define STACK_SPACER(p_, flex_) \
   { .kind = stack_KIND_SPACER, .parent = (p_), .flex = (flex_) }
+
+/* Size-grouped variants (see stack_item_t::group): the item's `axis_size` is
+ * its own natural extent; the solver widens it to the group's largest. */
+
+#define STACK_LEAF_GROUP(p_, axis_, cross_, align_, group_) \
+  { .kind = stack_KIND_LEAF, .parent = (p_), \
+    .axis_size = (axis_), .cross_size = (cross_), .align = (align_), \
+    .group = (group_) }
+
+#define STACK_SPACER_GROUP(p_, axis_, group_) \
+  { .kind = stack_KIND_SPACER, .parent = (p_), \
+    .axis_size = (axis_), .group = (group_) }
 
 /**
  * Solve a box-stack tree into boxes.

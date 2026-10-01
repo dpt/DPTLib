@@ -42,9 +42,9 @@ typedef enum wuss_event_kind
   wuss_EVENT_REDRAW,
   /** Button down/up/move over window content. */
   wuss_EVENT_MOUSE,
-  /** A work-area button icon was clicked or hovered (window view); or, in
-   *  the task view, a future shared/dock element -- reserved, nothing
-   *  emits it yet. */
+  /** A work-area button icon was clicked or hovered (window view, see
+   *  data.icon); or an icon bar icon was clicked or dragged (task view,
+   *  window == NULL, see data.iconbar_icon). */
   wuss_EVENT_ICON,
   /** Mouse wheel used over a window's content. */
   wuss_EVENT_SCROLL,
@@ -120,7 +120,20 @@ typedef enum wuss_event_kind
   wuss_EVENT_LOSE_FOCUS,
   /** A key was pressed while this window had the input focus. Return \ref
    *  result_WUSS_KEY_UNCLAIMED to decline it. */
-  wuss_EVENT_KEY
+  wuss_EVENT_KEY,
+  /** A message addressed to this window (window view) or broadcast (task
+   *  view, window == NULL) has arrived; see data.message and wuss/message.h.
+   *  To acknowledge a recorded message from this handler, call
+   *  wuss_acknowledge (or send with your_ref set to the message's my_ref)
+   *  before returning. */
+  wuss_EVENT_MESSAGE,
+  /** A recorded message this task sent went unacknowledged; delivered to
+   *  the sending task (window == NULL), carrying the original message's
+   *  fields via data.message. */
+  wuss_EVENT_MESSAGE_BOUNCED,
+  /** A core drag session (see wuss_drag_start) has ended; delivered to the
+   *  window the drag was started against. See data.drag_end. */
+  wuss_EVENT_DRAG_END
 }
 wuss_event_kind_t;
 
@@ -133,7 +146,8 @@ wuss_event_kind_t;
  * wuss_EVENT_SCROLL, wuss_EVENT_OPEN, wuss_EVENT_PRE_SHOW, wuss_EVENT_SHOW,
  * wuss_EVENT_PRE_CLOSE, wuss_EVENT_CLOSE, wuss_EVENT_POINTER_ENTER,
  * wuss_EVENT_POINTER_EXIT, wuss_EVENT_GAIN_FOCUS, wuss_EVENT_LOSE_FOCUS,
- * wuss_EVENT_KEY.
+ * wuss_EVENT_KEY, wuss_EVENT_MESSAGE (a message addressed to this window),
+ * wuss_EVENT_DRAG_END.
  */
 typedef wuss_event_kind_t wuss_window_event_kind_t;
 
@@ -144,7 +158,8 @@ typedef wuss_event_kind_t wuss_window_event_kind_t;
  * Members: wuss_EVENT_IDLE, wuss_EVENT_QUIT, wuss_EVENT_PALETTE,
  * wuss_EVENT_MENU_SELECT, wuss_EVENT_MENU_CLOSED,
  * wuss_EVENT_PRE_SUBMENU_OPEN, wuss_EVENT_ICON (reserved for a future
- * shared/dock element; nothing emits it yet).
+ * shared/dock element; nothing emits it yet), wuss_EVENT_MESSAGE (a
+ * broadcast message), wuss_EVENT_MESSAGE_BOUNCED.
  */
 typedef wuss_event_kind_t wuss_task_event_kind_t;
 
@@ -205,11 +220,12 @@ typedef struct wuss_event
      * is a set of wuss_button_t flags, so test it with '&' rather than
      * comparing for equality. value is the icon's current value for a
      * wuss_ICON_TYPE_SLIDER (updated before this event is delivered, so it
-     * always reflects the click/drag that raised it); meaningless for every
+     * always reflects the click/drag that raised it; a wheel turn over a
+     * slider raises MOVE with button 0); meaningless for every
      * other icon type. A wuss_ICON_TYPE_WRITABLE also raises this, with
      * button 0 and action wuss_MOUSE_UP, after every edit to its text. In
-     * the task view (window == NULL) this is reserved for a future
-     * shared/dock element and is never currently emitted. */
+     * the task view (window == NULL) this is instead a click or drag on
+     * one of the caller's icon bar icons; read iconbar_icon, not icon. */
     struct
     {
       wuss_icon_t        *icon;
@@ -218,6 +234,18 @@ typedef struct wuss_event
       int                 value;
     }
     icon;
+
+    /** wuss_EVENT_ICON in the task view (window == NULL): a click or drag
+     * on one of this task's icon bar icons. action is DOWN/UP/MOVE; button
+     * is a set of wuss_button_t flags, so test it with '&' rather than
+     * comparing for equality. */
+    struct
+    {
+      wuss_iconbar_icon_t *icon;
+      wuss_mouse_action_t  action;
+      wuss_button_t        button;
+    }
+    iconbar_icon;
 
     /** wuss_EVENT_SCROLL: point is window-local content coordinates, as
      * per mouse. delta's sign and units are as passed to wuss_scroll. */
@@ -262,6 +290,15 @@ typedef struct wuss_event
     }
     menu_select;
 
+    /** wuss_EVENT_MENU_CLOSED: picked is non-zero when the chain closed for
+     * a SELECT pick, so a wuss_EVENT_MENU_SELECT follows at once; zero when
+     * wuss abandoned it (a click outside, another wuss_menu_open). */
+    struct
+    {
+      int picked;
+    }
+    menu_closed;
+
     /** wuss_EVENT_KEY: code is a Unicode codepoint or a wuss_KEY_*
      * constant; modifiers is a set of wuss_key_modifiers_t flags, so test it
      * with '&'. */
@@ -272,10 +309,29 @@ typedef struct wuss_event
     }
     key;
 
+    /** wuss_EVENT_MESSAGE / wuss_EVENT_MESSAGE_BOUNCED: the message itself;
+     * see wuss/message.h. For a BOUNCED event this is the original message
+     * as sent, unmodified. */
+    const wuss_message_t *message;
+
+    /** wuss_EVENT_DRAG_END: drop is the window under the pointer when the
+     * drag ended (NULL over bare backdrop, and always NULL when cancelled),
+     * point is the release/cancel position in screen space, cancelled is
+     * non-zero if Escape ended the drag rather than a MOUSE_UP, button is
+     * the button that started the drag (SELECT or ADJUST). */
+    struct
+    {
+      wuss_window_t *drop;
+      point_t        point;
+      int            cancelled;
+      wuss_button_t  button;
+    }
+    drag_end;
+
     /* wuss_EVENT_OPEN, wuss_EVENT_SHOW, wuss_EVENT_PRE_CLOSE,
      * wuss_EVENT_CLOSE, wuss_EVENT_IDLE, wuss_EVENT_QUIT,
-     * wuss_EVENT_PALETTE, wuss_EVENT_MENU_CLOSED, wuss_EVENT_GAIN_FOCUS and
-     * wuss_EVENT_LOSE_FOCUS carry no data. */
+     * wuss_EVENT_PALETTE, wuss_EVENT_GAIN_FOCUS and wuss_EVENT_LOSE_FOCUS
+     * carry no data. */
   }
   data;
 }

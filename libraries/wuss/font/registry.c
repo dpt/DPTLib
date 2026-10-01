@@ -1,6 +1,7 @@
 /* wuss/font/registry.c -- wuss font slot registry and lookups */
 
 #include <assert.h>
+#include <limits.h>
 
 #include "framebuf/bmfont.h"
 
@@ -23,12 +24,17 @@ void wuss__fontset_init(struct wuss_fontset    *set,
     set->fonts[i]        = fonts[i].font;
     set->font_classes[i] = fonts[i].font_class;
     set->font_names[i]   = fonts[i].name;
+    set->space_widths[i] = 0;
+    if (fonts[i].font != NULL)
+      wuss__text_measure(fonts[i].font, " ", 1, INT_MAX, NULL,
+                         &set->space_widths[i]);
   }
   for (; i < wuss_MAX_FONTS; i++)
   {
     set->fonts[i]        = NULL;
     set->font_classes[i] = wuss_FONT_CLASS_NONE;
     set->font_names[i]   = NULL;
+    set->space_widths[i] = 0;
   }
   set->nfonts = nfonts;
 }
@@ -46,6 +52,20 @@ int wuss__fontset_height(const struct wuss_fontset *set, int slot)
   return height;
 }
 
+bmfont_width_t wuss__fontset_space_width(const struct wuss_fontset *set,
+                                         const bmfont_t            *font)
+{
+  int i;
+
+  assert(set != NULL);
+
+  for (i = 0; i < wuss_MAX_FONTS; i++)
+    if (set->fonts[i] == font)
+      return set->space_widths[i];
+
+  return 0;
+}
+
 /* ----------------------------------------------------------------------- */
 
 bmfont_t *wuss_get_font(const wuss_t *wuss)
@@ -53,6 +73,15 @@ bmfont_t *wuss_get_font(const wuss_t *wuss)
   assert(wuss != NULL);
 
   return wuss->fonts.fonts[0];
+}
+
+bmfont_t *wuss__bold_font(const wuss_t *wuss)
+{
+  assert(wuss != NULL);
+
+  return (wuss->fonts.nfonts > 1 && wuss->fonts.fonts[1] != NULL)
+       ? wuss->fonts.fonts[1]
+       : wuss->fonts.fonts[0];
 }
 
 bmfont_t *wuss_get_font_n(const wuss_t *wuss, int index)

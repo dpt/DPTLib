@@ -128,6 +128,12 @@ typedef enum wuss_icon_type
   /** A read-only value field: a bevelled well showing text the task updates
    *  but the user cannot edit. Build with wuss_icon_spec_display. */
   wuss_ICON_TYPE_DISPLAY,
+  /** Drawn as wuss_ICON_TYPE_BITMAP (spec.u.bitmap). Once the pointer clears
+   *  wuss_config_t::drag_threshold_px from a Select/Adjust press, starts a
+   *  core drag (see wuss_drag_start) sized to the icon's bounding box,
+   *  hotspot at the press point; a click with no such movement behaves like
+   *  an ordinary press and raises wuss_EVENT_ICON on release as usual. */
+  wuss_ICON_TYPE_DRAGGABLE,
 
   /* The following types are reserved: the enum values and validation exist
    * but no rendering, hit-testing or event routing is wired up yet. A spec
@@ -136,10 +142,7 @@ typedef enum wuss_icon_type
 
   /** An editable numeric field, optionally with up/down adjusters. Not yet
    *  implemented. */
-  wuss_ICON_TYPE_NUMBER,
-  /** A free-drag handle: reports pointer motion to the task while dragged. Not
-   *  yet implemented. */
-  wuss_ICON_TYPE_DRAGGABLE
+  wuss_ICON_TYPE_NUMBER
 }
 wuss_icon_type_t;
 
@@ -188,7 +191,8 @@ typedef enum wuss_icon_flags
    *  justification explicitly. */
   wuss_ICON_FLAGS_JUSTIFY_LEFT  = 0,
   /** wuss_ICON_TYPE_LABEL: right-align the text in the bounding box instead of
-   *  the default left. */
+   *  the default left. wuss_ICON_TYPE_RADIO and wuss_ICON_TYPE_OPTION: put
+   *  the glyph at the right edge and right-align the label to its left. */
   wuss_ICON_FLAGS_JUSTIFY_RIGHT = 1 << 2,
   /** wuss_ICON_TYPE_LABEL: centre the text in the bounding box. Takes
    *  precedence over wuss_ICON_FLAGS_JUSTIFY_RIGHT. */
@@ -211,9 +215,10 @@ typedef enum wuss_icon_flags
    *  laid out and drawn as a separate wuss_ICON_TYPE_RULE icon. Ignored by
    *  other types. */
   wuss_ICON_FLAGS_SEPARATOR    = 1 << 7,
-  /** wuss_ICON_TYPE_MENU_ENTRY: draw a small colour chip (spec.u.menu_entry.swatch) in the
-   *  row's left gutter, where the tick would sit. Mutually exclusive with a
-   *  selected tick -- the chip wins. Ignored by other types. */
+  /** wuss_ICON_TYPE_MENU_ENTRY: draw a small colour chip
+   *  (spec.u.menu_entry.swatch) ahead of the label, at the start of the text
+   *  column. The tick gutter stays free, so a selected row shows both.
+   *  Ignored by other types. */
   wuss_ICON_FLAGS_SWATCH      = 1 << 8,
   /** Two-bit field (bits 9-10) selecting which of wuss_create's fonts draws
    *  this icon's text: 0 is the system font, 1-3 the further slots. Build it
@@ -316,10 +321,15 @@ typedef union wuss_icon_spec_data
   /** wuss_ICON_TYPE_MENU_ENTRY */
   struct
   {
-    /** With wuss_ICON_FLAGS_SWATCH: the colour chip to draw in the left
-     *  gutter, as an index into the system palette. Ignored unless that flag
+    /** With wuss_ICON_FLAGS_SWATCH: the colour chip to draw ahead of the
+     *  label, as an index into the system palette. Ignored unless that flag
      *  is set. */
     wuss_colour_t swatch;
+
+    /** Non-NULL: a keyboard shortcut label drawn in the bold weight,
+     *  right-aligned in the text column. Borrowed; must outlive the icon.
+     *  NULL draws none. */
+    const char   *shortcut;
   }
   menu_entry;
 
@@ -338,6 +348,10 @@ typedef union wuss_icon_spec_data
     int                       max;
     /** Initial value, clamped to [min,max] (or [max,min] if min > max). */
     int                       default_value;
+    /** Amount one wheel notch over the groove moves the value, towards max
+     *  for a positive wuss_scroll delta. 0 (the zero-initialised default)
+     *  means 1. */
+    int                       step;
   }
   slider;
 
@@ -386,6 +400,10 @@ wuss_icon_spec_t;
 /** Standard main-axis size (px) for a wuss_ICON_TYPE_SLIDER. */
 #define wuss_STD_SLIDER_HEIGHT           18
 
+/** Standard size (px) of a wuss_ICON_TYPE_RADIO or wuss_ICON_TYPE_OPTION
+ *  glyph, as the stock icon set draws it; square. */
+#define wuss_STD_OPTION_SIZE             22
+
 /** Standard main-axis size (px) for a non-default wuss_ICON_TYPE_ACTION
  *  button, e.g. Cancel. */
 #define wuss_STD_SECONDARY_BUTTON_HEIGHT 26
@@ -393,6 +411,14 @@ wuss_icon_spec_t;
 /** Standard main-axis size (px) for a wuss_ICON_FLAGS_DEFAULT
  *  wuss_ICON_TYPE_ACTION button, e.g. OK/Apply. */
 #define wuss_STD_PRIMARY_BUTTON_HEIGHT   34
+
+/** Per-edge border (px) of a non-default wuss_ICON_TYPE_ACTION button: one
+ *  bevel ring. */
+#define wuss_STD_SECONDARY_BUTTON_BORDER 2
+
+/** Per-edge border (px) of a wuss_ICON_FLAGS_DEFAULT wuss_ICON_TYPE_ACTION
+ *  button: three bevel rings (outset, accent moat, inset). */
+#define wuss_STD_PRIMARY_BUTTON_BORDER   (3 * wuss_STD_SECONDARY_BUTTON_BORDER)
 
 /** Standard gap (px) between two sibling icons/components in a layout. */
 #define wuss_STD_GAP                     4
@@ -524,6 +550,18 @@ result_t wuss_icon_set_text(wuss_window_t *window,
 void wuss_icon_set_hidden(wuss_window_t *window,
                           wuss_icon_t   *icon,
                           int            hidden);
+
+/**
+ * Shade or unshade an icon, toggling wuss_ICON_FLAGS_DISABLED. A shaded icon
+ * ignores clicks. Invalidates the icon's bounding box.
+ *
+ * \param[in] window   Window the icon belongs to.
+ * \param[in] icon     Icon to change.
+ * \param[in] disabled Non-zero to shade the icon, zero to unshade it.
+ */
+void wuss_icon_set_disabled(wuss_window_t *window,
+                            wuss_icon_t   *icon,
+                            int            disabled);
 
 /**
  * Fetch an icon's bounding box, in virtual document space.

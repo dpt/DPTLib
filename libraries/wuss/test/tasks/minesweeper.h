@@ -34,6 +34,17 @@ typedef enum minesweeper_size
 }
 minesweeper_size_t;
 
+/* mine densities offered on the "Difficulty" menu; each scales the chosen
+ * grid size's classic mine count */
+typedef enum minesweeper_difficulty
+{
+  minesweeper_DIFFICULTY_EASY,
+  minesweeper_DIFFICULTY_NORMAL,
+  minesweeper_DIFFICULTY_HARD,
+  minesweeper_NDIFFICULTIES
+}
+minesweeper_difficulty_t;
+
 typedef enum minesweeper_cell_state
 {
   minesweeper_HIDDEN,
@@ -43,11 +54,17 @@ typedef enum minesweeper_cell_state
 minesweeper_cell_state_t;
 
 /* classic minesweeper: Select reveals a cell (flood-filling neighbouring
- * zeros), Adjust toggles a flag. Mines are placed on the first reveal so the
- * opening click is never a mine. A MENU-button click pops a menu with "New
- * Game" and a "Grid Size" submenu that resets the board at a new size. With
- * the input focus, the arrow keys move a cursor cell, Return reveals it and
- * Space toggles its flag. */
+ * zeros), Adjust toggles a flag. Select on a revealed number whose flags
+ * match it reveals the rest of its neighbours ("chording"). Mines are
+ * placed on the first reveal so the opening click is never a mine. A win
+ * that beats the session's fastest time at that size and difficulty says
+ * so on its banner. A
+ * MENU-button click pops a menu with "New Game", a "Grid Size" submenu
+ * that resets the board at a new size and a "Difficulty" submenu that
+ * resets it with more or fewer mines; "Give Up" ends a game in progress
+ * and shows every mine. With the input focus, the arrow keys move a cursor
+ * cell, Return reveals it, Space toggles its flag and N starts a new
+ * game. */
 typedef struct minesweeper_task
 {
   wuss_t                  *wuss;
@@ -56,7 +73,9 @@ typedef struct minesweeper_task
   wuss_menu_handle_t       menu_handle; /* live only between open and a pick */
   wuss_menu_item_t         size_items[minesweeper_NSIZES];
   wuss_menu_t              size_menu;
-  wuss_menu_item_t         menu_items[3]; /* per-instance: a shared static
+  wuss_menu_item_t         difficulty_items[minesweeper_NDIFFICULTIES];
+  wuss_menu_t              difficulty_menu;
+  wuss_menu_item_t         menu_items[5]; /* per-instance: a shared static
                                             * would leak one instance's
                                             * .window pointer into another's
                                             * menu */
@@ -70,12 +89,17 @@ typedef struct minesweeper_task
                                      * cell */
   bitmap_t                 flag_bm; /* owned; drawn on a flagged cell */
   minesweeper_size_t       size;
+  minesweeper_difficulty_t difficulty;
   int                      rows, cols, mines;
   bool                     mine[MINESWEEPER_MAX_ROWS][MINESWEEPER_MAX_COLS];
   minesweeper_cell_state_t state[MINESWEEPER_MAX_ROWS][MINESWEEPER_MAX_COLS];
   bool                     placed;  /* mines placed yet? */
   bool                     dead;    /* a mine was revealed */
   bool                     won;
+  bool                     new_best; /* this win beat best[][] */
+  int                      best[minesweeper_NSIZES][minesweeper_NDIFFICULTIES];
+                                     /* fastest win in seconds + 1, per
+                                      * size and difficulty; 0 = none yet */
   int                      flags;   /* flagged cell count, for the counter */
   time_t                   start_time; /* set on first reveal */
   int                      elapsed; /* seconds, frozen on dead/won */

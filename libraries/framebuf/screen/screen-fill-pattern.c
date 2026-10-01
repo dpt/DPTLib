@@ -21,10 +21,13 @@ static void screen_fill_pattern_p1(screen_t        *scr,
                                    const pattern_t *pattern,
                                    const box_t     *draw_box,
                                    int              stencil,
+                                   pixelfmt_any_t   fg_fmt,
                                    pattern_runs_t   runs)
 {
   unsigned char *rowp;
   int            row, col, x, y;
+
+  (void) fg_fmt;
 
   rowp = (unsigned char *) scr->base + draw_box->y0 * scr->rowbytes;
   for (y = draw_box->y0; y < draw_box->y1; y++)
@@ -60,10 +63,13 @@ static void screen_fill_pattern_p2(screen_t        *scr,
                                    const pattern_t *pattern,
                                    const box_t     *draw_box,
                                    int              stencil,
+                                   pixelfmt_any_t   fg_fmt,
                                    pattern_runs_t   runs)
 {
   unsigned char *rowp;
   int            row, col, x, y;
+
+  (void) fg_fmt;
 
   rowp = (unsigned char *) scr->base + draw_box->y0 * scr->rowbytes;
   for (y = draw_box->y0; y < draw_box->y1; y++)
@@ -99,10 +105,13 @@ static void screen_fill_pattern_p4(screen_t        *scr,
                                    const pattern_t *pattern,
                                    const box_t     *draw_box,
                                    int              stencil,
+                                   pixelfmt_any_t   fg_fmt,
                                    pattern_runs_t   runs)
 {
   unsigned char *rowp;
   int            row, col, x, y;
+
+  (void) fg_fmt;
 
   rowp = (unsigned char *) scr->base + draw_box->y0 * scr->rowbytes;
   for (y = draw_box->y0; y < draw_box->y1; y++)
@@ -138,10 +147,13 @@ static void screen_fill_pattern_p8(screen_t        *scr,
                                    const pattern_t *pattern,
                                    const box_t     *draw_box,
                                    int              stencil,
+                                   pixelfmt_any_t   fg_fmt,
                                    pattern_runs_t   runs)
 {
   unsigned char *rowp;
   int            row, col, x, y;
+
+  (void) fg_fmt;
 
   rowp = (unsigned char *) scr->base + draw_box->y0 * scr->rowbytes;
   for (y = draw_box->y0; y < draw_box->y1; y++)
@@ -215,10 +227,64 @@ static void screen_fill_pattern_32(screen_t        *scr,
   }
 }
 
+static void screen_fill_pattern_16(screen_t        *scr,
+                                   const pattern_t *pattern,
+                                   const box_t     *draw_box,
+                                   int              stencil,
+                                   pixelfmt_any_t   fg_fmt,
+                                   pattern_runs_t   runs)
+{
+  unsigned char *rowp;
+  int            row, col, x, y;
+
+  (void) fg_fmt;
+
+  rowp = (unsigned char *) scr->base + draw_box->y0 * scr->rowbytes;
+  for (y = draw_box->y0; y < draw_box->y1; y++)
+  {
+    const pixelfmt_any_t *run;
+    uint8_t               bits;
+    unsigned short       *scrp;
+
+    row  = (y - pattern->origin.y) & 7;
+    run  = runs[row];
+    bits = pattern->bits[row];
+    scrp = (unsigned short *) rowp + draw_box->x0;
+    col  = 0;
+    for (x = draw_box->x0; x < draw_box->x1; x++)
+    {
+      if (!stencil ||
+          (bits & (0x80u >> ((x - pattern->origin.x) & 7))))
+        *scrp = (unsigned short) run[col];
+      scrp++;
+      col = (col + 1) & 7;
+    }
+    rowp += scr->rowbytes;
+  }
+}
+
+typedef void (*fill_pattern_fn_t)(screen_t *,
+                                  const pattern_t *,
+                                  const box_t *,
+                                  int,
+                                  pixelfmt_any_t,
+                                  pattern_runs_t);
+
+
 void screen_fill_pattern(screen_t        *scr,
                          const box_t     *box,
                          const pattern_t *pattern)
 {
+  static const fill_pattern_fn_t fill_fns[] =
+  {
+    screen_fill_pattern_p1,
+    screen_fill_pattern_p2,
+    screen_fill_pattern_p4,
+    screen_fill_pattern_p8,
+    screen_fill_pattern_16,
+    screen_fill_pattern_32,
+  };
+
   box_t          clip_box;
   box_t          draw_box;
   int            stencil;
@@ -226,6 +292,7 @@ void screen_fill_pattern(screen_t        *scr,
   pattern_runs_t runs; /* one expanded colour run per tile row */
   int            xphase;
   int            row, col;
+  int            log2bpp;
 
   assert(scr);
   assert(pattern);
@@ -256,30 +323,7 @@ void screen_fill_pattern(screen_t        *scr,
         (bits & (0x80u >> ((xphase + col) & 7))) ? fg_fmt : bg_fmt;
   }
 
-  switch (pixelfmt_log2bpp(scr->format))
-  {
-  case 0:
-    screen_fill_pattern_p1(scr, pattern, &draw_box, stencil, runs);
-    break;
-
-  case 1:
-    screen_fill_pattern_p2(scr, pattern, &draw_box, stencil, runs);
-    break;
-
-  case 2:
-    screen_fill_pattern_p4(scr, pattern, &draw_box, stencil, runs);
-    break;
-
-  case 3:
-    screen_fill_pattern_p8(scr, pattern, &draw_box, stencil, runs);
-    break;
-
-  case 5:
-    screen_fill_pattern_32(scr, pattern, &draw_box, stencil, fg_fmt, runs);
-    break;
-
-  default:
-    assert(!"Unimplemented pixel format");
-    break;
-  }
+  log2bpp = pixelfmt_log2bpp(scr->format);
+  assert(log2bpp >= 0 && log2bpp < NELEMS(fill_fns));
+  fill_fns[log2bpp](scr, pattern, &draw_box, stencil, fg_fmt, runs);
 }

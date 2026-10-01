@@ -32,10 +32,8 @@ typedef enum wuss_input_kind
   wuss_INPUT_MOUSE_MOVE,    /* .pos */
   wuss_INPUT_MOUSE_DOWN,    /* .pos, .button */
   wuss_INPUT_MOUSE_UP,      /* .pos, .button */
+  wuss_INPUT_MOUSE_LEAVE,   /* pointer left the window; next move returns */
   wuss_INPUT_WHEEL,         /* .pos, .wheel */
-  wuss_INPUT_REDRAW_ALL,    /* force a full redraw (F1) */
-  wuss_INPUT_GARBAGE,       /* corrupt the whole screen for one frame (Shift-F1) */
-  wuss_INPUT_PIXEL_STRESS,  /* one-pixel-at-a-time redraw (F3) */
   wuss_INPUT_KEY            /* .key, .mods: a press or autorepeat */
 }
 wuss_input_kind_t;
@@ -58,9 +56,9 @@ wuss_input_t;
  *
  * `depth` is the framebuffer's bits per pixel: 32 for a direct-colour
  * surface (no per-frame conversion), 4 for a paletted one (exercises the
- * nibble-packed blit path). Those are the only values the SDL backend
- * accepts today; a backend with a fixed format (RISC OS 16-colour mode)
- * ignores it.
+ * nibble-packed blit path), 15 for rgbx5551 (32K colours) and 16 for rgb565
+ * (64K colours). The SDL backend accepts 1, 2, 4, 8, 15, 16 and 32; a
+ * backend with a fixed format (RISC OS 16-colour mode) ignores it.
  *
  * `scale` is the initial integer window zoom (device pixels per screen
  * pixel) for backends with a resizable window; <= 0 means "backend default".
@@ -99,17 +97,20 @@ void wuss_frontend_present(wuss_frontend_t *frontend,
                            const bitmap_t  *bm,
                            const box_t     *dirty);
 
-/* Resize the drawing surface to width x height, keeping the current scale
- * and depth. On success, *pixels / *rowbytes describe the new backing storage
- * exactly as wuss_frontend_open's did -- any previous *pixels value is
- * invalid whether or not it happened to be reused. Returns
- * result_NOT_SUPPORTED on a backend with a fixed screen mode (RISC OS),
- * leaving the surface untouched. */
+/* Change the drawing surface to width x height at `depth` bits per pixel
+ * (as wuss_frontend_open's), keeping the current scale. On success,
+ * *pixels / *rowbytes / *fmt describe the new backing storage exactly as
+ * wuss_frontend_open's did -- any previous *pixels value is invalid whether
+ * or not it happened to be reused. Returns result_BAD_ARG for an unsupported
+ * depth and result_NOT_SUPPORTED on a backend with a fixed screen mode
+ * (RISC OS), leaving the surface untouched either way. */
 result_t wuss_frontend_resize(wuss_frontend_t *frontend,
                               int              width,
                               int              height,
+                              int              depth,
                               void           **pixels,
-                              int             *rowbytes);
+                              int             *rowbytes,
+                              pixelfmt_t      *fmt);
 
 /* Push a new system palette to the physical palette, if the backend owns one.
  * Called after the palette task's picker menu changes the system palette.
@@ -121,6 +122,26 @@ void wuss_frontend_set_palette(wuss_frontend_t *frontend,
 /* Step the window zoom by `delta` (F2 / Shift-F2), clamped to the backend's
  * range. No-op on a backend without a resizable window (RISC OS). */
 void wuss_frontend_zoom(wuss_frontend_t *frontend, int delta);
+
+/* Switch the CRT post-effect on or off (Debug > CRT). Returns whether it is
+ * now on: false on a backend or platform without it (RISC OS, non-Metal
+ * SDL), leaving the plain surface in place. */
+bool wuss_frontend_set_crt(wuss_frontend_t *frontend, bool on);
+
+/* Hide or show the OS mouse pointer over the window, for when main.c draws
+ * its own (System > Software Pointer). Returns whether it is now hidden:
+ * false on a backend that keeps its hardware pointer (RISC OS). */
+bool wuss_frontend_hide_pointer(wuss_frontend_t *frontend, bool hide);
+
+/* Capture (or release) the mouse for the duration of a core wuss drag, so
+ * the pointer keeps delivering moves/the terminating up even if it leaves
+ * the window. No-op on a backend with nothing to capture (RISC OS,
+ * emscripten). Safe to call every frame with the current drag state. */
+void wuss_frontend_capture_mouse(wuss_frontend_t *frontend, bool capture);
+
+/* Milliseconds from an arbitrary epoch, wrapping; fed to wuss_set_time for
+ * double-click timing. */
+unsigned int wuss_frontend_ms(wuss_frontend_t *frontend);
 
 /* Tear down the surface and free everything wuss_frontend_open allocated. */
 void wuss_frontend_close(wuss_frontend_t *frontend);

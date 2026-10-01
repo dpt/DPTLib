@@ -29,21 +29,23 @@ static void set_pressed_region(wuss_window_t          *win,
 }
 
 /* Hold down a furniture icon that starts no drag: arm "dragging" purely so
- * the MOUSE_UP release path clears the highlight. */
+ * the MOUSE_UP release path clears the highlight. Not a scroll arrow unless
+ * the caller says so afterwards, so no auto-repeat. */
 static void press_furniture(wuss_window_t          *win,
                             wuss_furniture_region_t region)
 {
-  win->wuss->furniture.dragging  = win;
-  win->wuss->furniture.drag_kind = wuss_FURNITURE_DRAG_NONE;
+  win->wuss->furniture.dragging    = win;
+  win->wuss->furniture.drag_kind   = wuss_FURNITURE_DRAG_NONE;
+  win->wuss->furniture.repeat_step = 0;
   set_pressed_region(win, region);
 }
 #endif
 
-result_t wuss_mouse_click(wuss_t             *wuss,
-                          point_t             p,
-                          wuss_button_t       button,
-                          wuss_mouse_action_t action,
-                          wuss_window_t     **hit)
+static result_t mouse_click(wuss_t             *wuss,
+                            point_t             p,
+                            wuss_button_t       button,
+                            wuss_mouse_action_t action,
+                            wuss_window_t     **hit)
 {
   wuss_window_t *win;
   wuss_event_t   event;
@@ -53,6 +55,64 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   y = p.y;
 
   wuss->pointer = p;
+
+  /* Core owns all input while a drag is active: releasing the button that
+   * started it (any button, if unknown) ends it, dropping on whatever's under
+   * the pointer; any other click is swallowed rather than reaching a window
+   * underneath the ants. */
+  if (wuss->drag_window != NULL)
+  {
+    win = wuss__window_at(wuss, p);
+    if (hit != NULL)
+      *hit = win;
+
+    if (action == wuss_MOUSE_UP &&
+        (wuss->drag_button == wuss_BUTTON_NONE ||
+         (button & wuss->drag_button) != 0))
+      wuss__drag_end(wuss, p, win, 0);
+
+    return result_OK;
+  }
+
+  if (action == wuss_MOUSE_DOWN)
+  {
+    wuss_window_t *hit_now;
+    int            dx, dy;
+
+    /* Hit-test now, ahead of the real one below, purely to compare against
+     * the window the previous DOWN landed on -- the result is discarded
+     * otherwise, the real hit test still runs its own course further down. */
+    hit_now = wuss__window_at(wuss, p);
+
+    dx = x - wuss->last_down_point.x;
+    dy = y - wuss->last_down_point.y;
+    if (dx < 0)
+      dx = -dx;
+    if (dy < 0)
+      dy = -dy;
+
+    if (wuss->last_down_window == hit_now &&
+        wuss->last_down_button == button &&
+        (wuss->now_ms - wuss->last_down_ms) <=
+          (unsigned int) wuss->double_click_ms &&
+        dx <= wuss->double_click_px &&
+        dy <= wuss->double_click_px)
+    {
+      button |= wuss_BUTTON_DOUBLE;
+
+      /* Consumed: a third press starts a fresh pair, it does not chain into
+       * another double. Reset the button, not the window: NULL is also the
+       * backdrop's hit, so a backdrop press would still match. */
+      wuss->last_down_button = wuss_BUTTON_NONE;
+    }
+    else
+    {
+      wuss->last_down_window = hit_now;
+      wuss->last_down_button = button;
+      wuss->last_down_point  = p;
+      wuss->last_down_ms     = wuss->now_ms;
+    }
+  }
 
 #ifdef WUSS_ICONS
   /* Release a held button icon on a MOUSE_UP that will NOT reach it through the
@@ -213,6 +273,13 @@ result_t wuss_mouse_click(wuss_t             *wuss,
          * unlit for that button too. */
         if (region != wuss_FURNITURE_TOGGLE_SIZE || (button & wuss_BUTTON_SELECT))
           press_furniture(win, region);
+
+        /* a held arrow auto-repeats from wuss_idle (see wuss__scroll_repeat) */
+        if (region != wuss_FURNITURE_TOGGLE_SIZE)
+        {
+          wuss->furniture.repeat_step   = step;
+          wuss->furniture.repeat_frames = WUSS_SCROLL_REPEAT_DELAY;
+        }
       }
       return result_OK;
     }
@@ -313,7 +380,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           wuss->furniture.drag_kind         = wuss__furniture_element(region)->drag_kind;
           wuss->furniture.drag.x            = x;
           wuss->furniture.drag.y            = y;
-          wuss->furniture.drag_scroll_start = (region == wuss_FURNITURE_VSCROLL_WELL) ? scroll.y : scroll.x;
+          wuss->furniture.drag_scroll_start = scroll;
+          wuss->furniture.drag_both         = (button & wuss_BUTTON_ADJUST) != 0;
 
           /* Resize needs the pointer's offset from the content box's current
            * bottom-right corner, so the point grabbed on the resize icon stays
@@ -343,6 +411,14 @@ result_t wuss_mouse_click(wuss_t             *wuss,
       (win->flags & wuss_WINDOW_FOCUSABLE))
     (void) wuss_set_focus(wuss, win);
 
+#ifdef WUSS_ICONBAR
+  if (win == wuss->iconbar_window)
+  {
+    (void) wuss__iconbar_icon_click(wuss, p, button, action);
+    return result_OK;
+  }
+#endif
+
   if (win->task->handle != NULL)
   {
     box_t   content;
@@ -370,6 +446,8 @@ result_t wuss_mouse_click(wuss_t             *wuss,
           wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 1);
           wuss->pressed_icon   = icon;
           wuss->pressed_window = win;
+          wuss->pressed_point  = POINT(x, y);
+          wuss->pressed_button = button;
           wuss__icon_invalidate(win, icon);
 
           /* a slider jumps straight to the click point rather than waiting
@@ -422,4 +500,19 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   }
 
   return result_OK;
+}
+
+result_t wuss_mouse_click(wuss_t             *wuss,
+                          point_t             p,
+                          wuss_button_t       button,
+                          wuss_mouse_action_t action,
+                          wuss_window_t     **hit)
+{
+  result_t rc;
+
+  wuss__message_enter(wuss);
+  rc = mouse_click(wuss, p, button, action, hit);
+  wuss__message_leave(wuss);
+
+  return rc;
 }

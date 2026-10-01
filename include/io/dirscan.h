@@ -30,4 +30,18 @@ typedef result_t (dirscan_fn)(const char *leaf, void *opaque);
  */
 result_t dirscan_walk(const char *dir, dirscan_fn *fn, void *opaque);
 
+/**
+ * Walk the subdirectories of a directory (non-recursive, order unspecified),
+ * reporting each leafname to \p fn. Files, "." and ".." and names starting
+ * with '.' are not reported.
+ *
+ * \param[in] dir     Directory to scan.
+ * \param[in] fn      Called once per subdirectory; see dirscan_fn.
+ * \param[in] opaque  Passed through to \p fn.
+ * \return \ref result_OK on success (including a stop-walk), \ref
+ *         result_FILE_NOT_FOUND if \p dir cannot be opened, \ref
+ *         result_NULL_ARG, or a code propagated from \p fn.
+ */
+result_t dirscan_walk_dirs(const char *dir, dirscan_fn *fn, void *opaque);
+
 #endif /* DPTLIB_DIRSCAN_H */

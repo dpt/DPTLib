@@ -7,18 +7,30 @@
 
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
+#include "wuss/component/proginfo.h"
+#include "wuss/menu.h"
 #include "wuss/window.h"
 
-/* a focusable window that shows the last key it was sent, its modifiers and
- * whether it holds the input focus. A Select click gives it the focus. */
+#define KEYS_HISTORY 6 /* most recent keys shown, newest first */
+
+/* a focusable window that shows whether it holds the input focus and the
+ * last few keys it was sent, each with its modifiers. A Select click gives
+ * it the focus; Menu > Clear empties the history. */
 typedef struct keys_task
 {
-  wuss_t              *wuss; /* for wuss_get_focus */
+  wuss_t              *wuss; /* for wuss_get_focus and wuss_get_pointer */
+  wuss_task_t         *delegate; /* the task that owns the menu */
   wuss_window_t       *window;
+  wuss_menu_handle_t   menu_handle; /* live only between open and a pick */
+  wuss_menu_item_t     menu_items[2]; /* per-instance: a shared static would
+                                        * leak one instance's .window
+                                        * pointer into another's menu */
+  wuss_menu_t          menu;
   bmfont_t            *font; /* borrowed */
   colour_t             bg, fg;
-  int                  key;  /* last key code, or -1 before the first */
-  wuss_key_modifiers_t mods;
+  int                  keys[KEYS_HISTORY]; /* newest first */
+  wuss_key_modifiers_t mods[KEYS_HISTORY]; /* keys[i]'s modifiers */
+  int                  nkeys; /* used entries of keys[] */
 }
 keys_task_t;
 

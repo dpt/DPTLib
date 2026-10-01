@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/bitmap.h"
+#include "framebuf/screen.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
@@ -29,6 +30,8 @@ typedef struct image_task
                               * leafnames (extension stripped) found under
                               * resources/images at spawn time */
   int            nnames;
+  wuss_menu_item_t load_items[IMAGE_MAX_NAMES]; /* one row per names[] */
+  wuss_menu_t    load_menu; /* "Load" submenu, borrowed by menu */
   wuss_menu_t   *menu;      /* owned: MENU-button demo tree, built from a
                               * descriptor string; rebuilt on each open,
                               * freed at QUIT. its "Info" row's .window is
@@ -36,7 +39,9 @@ typedef struct image_task
                               * just before wuss_menu_open, in
                               * image_open_menu */
   wuss_menu_handle_t menu_handle; /* the open chain, if any */
-  int            dithering; /* enable Bayer ordered dithering */
+  wuss_menu_item_t dither_items[3]; /* one row per screen_dither_t */
+  wuss_menu_t    dither_menu; /* "Dithering" submenu, borrowed by menu */
+  screen_dither_t dithering; /* method for paletted screens */
   wuss_colour_t  background;
 }
 image_task_t;
@@ -46,9 +51,10 @@ wuss_window_fn_t image_handle;
 /* scan wuss_get_resources(wuss)/resources/images for PNGs, load the first
  * one found (and the 9-patch PNG at
  * wuss_get_resources(wuss)/resources/wuss/ninepatch.png, drawn tiled behind
- * it), and create its window against the given wuss instance. a click cycles
- * to a different leafname from the scan. if out is non-NULL, the task block
- * is also returned through it */
+ * it), and create its window against the given wuss instance. Select and
+ * Adjust clicks step through the leafnames from the scan; Menu > Load picks
+ * one directly. if out is non-NULL, the task block is also returned through
+ * it */
 result_t image_create(wuss_t *wuss, image_task_t **out);
 
 /* free a task block allocated by image_create; normally called by the

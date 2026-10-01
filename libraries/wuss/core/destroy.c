@@ -11,7 +11,9 @@
 void wuss_destroy(wuss_t *doomed)
 {
   list_t      *e;
+  int          s;
   wuss_task_t *menu_task;
+  wuss_task_t *iconbar_task;
 
   if (doomed == NULL)
     return;
@@ -20,6 +22,11 @@ void wuss_destroy(wuss_t *doomed)
   menu_task = doomed->menu_task;
 #else
   menu_task = NULL;
+#endif
+#ifdef WUSS_ICONBAR
+  iconbar_task = doomed->iconbar_task;
+#else
+  iconbar_task = NULL;
 #endif
 
   /* QUIT then free any tasks the caller left registered, so a task's
@@ -43,7 +50,8 @@ void wuss_destroy(wuss_t *doomed)
    * leave the saved `next` node open to that. Same guard wuss_task_destroy
    * sets for its own internal QUIT. */
   for (e = doomed->tasks.next; e != NULL; e = e->next)
-    if (wuss__task_from_link(e) != menu_task)
+    if (wuss__task_from_link(e) != menu_task &&
+        wuss__task_from_link(e) != iconbar_task)
       wuss__task_from_link(e)->flags |= wuss_TASK__REAPING;
 
   e = doomed->tasks.next;
@@ -53,7 +61,8 @@ void wuss_destroy(wuss_t *doomed)
     wuss_event_t event;
 
     next = e->next;
-    if (wuss__task_from_link(e) != menu_task)
+    if (wuss__task_from_link(e) != menu_task &&
+        wuss__task_from_link(e) != iconbar_task)
     {
       wuss_task_t *task = wuss__task_from_link(e);
 
@@ -100,27 +109,50 @@ void wuss_destroy(wuss_t *doomed)
   }
 #endif
 
-  e = doomed->z_order.next;
-  while (e != NULL)
+#ifdef WUSS_ICONBAR
+  /* The bar's window is freed by the z_order sweep below like any window;
+   * only its owning task needs freeing here, same slot in the sequence as
+   * menu_task -- no window/menu-chain machinery of its own to abandon
+   * first. */
+  if (iconbar_task != NULL)
   {
-    list_t *next;
+    wuss_event_t event;
 
-    next = e->next;
-#ifdef WUSS_ICONS
-    wuss__icons_free(wuss__window_from_link(e));
+    event.kind = wuss_EVENT_QUIT;
+    (void) wuss__deliver(iconbar_task, NULL, &event);
+    wuss__free(doomed, &iconbar_task->link);
+    doomed->iconbar_task = NULL;
+  }
 #endif
-    wuss__free(doomed, e);
-    e = next;
+
+  for (s = 0; s < WUSS_STACK_COUNT; s++)
+  {
+    e = doomed->z_order[s].next;
+    while (e != NULL)
+    {
+      list_t *next;
+
+      next = e->next;
+#ifdef WUSS_ICONS
+      wuss__icons_free(wuss__window_from_link(e));
+#endif
+      wuss__free(doomed, e);
+      e = next;
+    }
   }
 
 #ifdef WUSS_ICONS
   wuss__icons_registry_free(doomed);
 #endif
 
-  packer_destroy(doomed->layout);
+#ifdef WUSS_ICONBAR
+  wuss__iconbar_free(doomed);
+#endif
+
   bmfontcache_destroy(doomed->font_cache); /* after the task sweep above, so
                                             * every acquired font has already
                                             * been released */
+  wuss__free(doomed, doomed->queue);
   wuss__free(doomed, doomed->palette);
   wuss__free(doomed, doomed); /* reads doomed->alloc.free before freeing */
 }

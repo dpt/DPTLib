@@ -42,13 +42,15 @@ text_sample_t;
 
 /* window B's task: flows a chosen sample string over its wuss-filled
  * background, one line per bmfont_draw call. A MENU click on the window opens
- * a top-level menu with three submenus -- "Font" (the shared wuss_fontmenu
+ * a top-level menu with five submenus -- "Font" (the shared wuss_fontmenu
  * singleton over resources/bmfonts, swapping the paragraph font in place),
- * "Sample" (swaps the shown string: one row per file in resources/text) and "Spacing" (swaps the letter/word spacing) and "Colours" (a
- * submenu of "Foreground"/"Background", each retargeting the shared
- * wuss_colourmenu singleton on hover) -- whose "Background" row also offers
- * a "None" chip that unsets the paragraph's background colour so glyphs
- * blend straight onto whatever is already behind the window's content. */
+ * "Sample" (swaps the shown string: one row per file in resources/text),
+ * "Spacing" (swaps the letter/word spacing), "Alignment" (Left, Centre or
+ * Right per line) and "Colours" (a submenu of "Foreground"/"Background",
+ * each retargeting the shared wuss_colourmenu singleton on hover) -- whose
+ * "Background" row also offers a "None" chip that unsets the paragraph's
+ * background colour so glyphs blend straight onto whatever is already
+ * behind the window's content. */
 typedef struct text_task
 {
   wuss_window_t      *window;
@@ -75,13 +77,18 @@ typedef struct text_task
                                    * instance for the same reason -- each
                                    * carries its own tick state */
   wuss_menu_t         spacing_menu;
+  wuss_menu_item_t    align_items[3]; /* "Alignment" submenu rows: Left,
+                                   * Centre, Right */
+  wuss_menu_t         align_menu;
+  int                 align;      /* index into align_items[] in effect */
   wuss_menu_item_t    colours_items[2]; /* "Foreground"/"Background" rows;
                                    * both share the colourmenu singleton,
                                    * retargeted per hover in
                                    * text_pre_submenu_open */
   wuss_menu_t         colours_menu;
-  wuss_menu_item_t    top_items[6]; /* "Info", "Font", "Sample", "Spacing",
-                                   * "Colours", "Auto-size", built once the fontmenu
+  wuss_menu_item_t    top_items[7]; /* "Info", "Font", "Sample", "Spacing",
+                                   * "Alignment", "Colours", "Auto-size",
+                                   * built once the fontmenu
                                    * exists so items[1].submenu can borrow
                                    * its live wuss_menu_t */
   wuss_menu_t         top_menu;   /* root menu passed to wuss_menu_open */
@@ -127,7 +134,7 @@ wuss_window_fn_t text_handle;
 
 /* create the sample-text window against the given wuss instance; the font
  * picker loads bmfonts from wuss_get_resources(wuss)/resources/bmfonts/
- * <name>.png. if out is non-NULL, the task block is also returned through
+ * <family>/<style>.png. if out is non-NULL, the task block is also returned through
  * it */
 result_t text_create(wuss_t *wuss, text_task_t **out);
 

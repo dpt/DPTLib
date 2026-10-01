@@ -21,11 +21,15 @@
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 #include "wuss/task.h"
+#include "wuss/message.h"
 
 #include "../font/font.h"
 
 #ifdef WUSS_FURNITURE
 #include "../furniture.h"
+#endif
+#ifdef WUSS_ICONBAR
+#include "../iconbar.h"
 #endif
 #ifdef WUSS_ICONS
 #include "../icon.h"
@@ -37,6 +41,13 @@
 #define WUSS_TITLE_MAX               63
 #define WUSS_DEFAULT_TITLEBAR_HEIGHT 20
 
+#define WUSS_DEFAULT_DOUBLE_CLICK_MS  400
+#define WUSS_DEFAULT_DOUBLE_CLICK_PX  4
+#define WUSS_DEFAULT_DRAG_THRESHOLD_PX 4
+
+#define WUSS_DRAG_ANTS_ON  4 /* marching-ants dash pattern for a core drag box */
+#define WUSS_DRAG_ANTS_OFF 4
+
 #define WUSS_MAX_DIRTY 16 /* dirty regions tracked before further invalidations get merged into the last entry */
 
 /* ponytail: fixed cap; if hit, remaining pieces are carried through
@@ -44,7 +55,13 @@
  * just some avoidable redraw work, never wrong */
 #define WUSS_MAX_INVALIDATE_PIECES 32
 
-#define WUSS_PLACE_GUTTER 6  /* px left between windows auto-placed by wuss_window_create_placed */
+#define WUSS_STACK_COUNT 3 /* wuss_stack_t values; indexes wuss_t::z_order */
+
+#define WUSS_MESSAGE_DRAIN_CAP 256 /* deliveries in one drain before the
+                                    * remainder is deferred to the next entry
+                                    * point; see wuss__message_drain */
+
+#define WUSS_PLACE_GUTTER 6 /* px left between windows auto-placed by wuss_window_create_placed */
 
 #define WUSS_BUTTON_INSET 3  /* shared by close/back/toggle/resize furniture buttons and scrollbar breadth */
 
@@ -58,14 +75,14 @@
 /* Font slot (see wuss_create's fonts[]) consulted for menu decoration glyphs:
  * the selection tick and the submenu arrow. When the slot is empty those are
  * drawn as vector strokes instead. A font in this slot is expected to carry a
- * checkmark bitmap in its WUSS_GLYPH_TICK cell and an arrowhead in its
- * WUSS_GLYPH_SUBMENU cell; the ASCII defaults let an ordinary bmfont stand in. */
+ * checkmark glyph at codepoint WUSS_GLYPH_TICK and an arrowhead at
+ * WUSS_GLYPH_SUBMENU; a font lacking either gets the vector strokes. */
 #define WUSS_SYMBOL_FONT 2
 #ifndef WUSS_GLYPH_TICK
-#define WUSS_GLYPH_TICK    '*'
+#define WUSS_GLYPH_TICK    0x2713ul /* CHECK MARK */
 #endif
 #ifndef WUSS_GLYPH_SUBMENU
-#define WUSS_GLYPH_SUBMENU '>'
+#define WUSS_GLYPH_SUBMENU 0x25B6ul /* BLACK RIGHT-POINTING TRIANGLE */
 #endif
 #endif
 #define WUSS_MIN_CONTENT  20 /* resize-drag floor: content can never be squeezed smaller than this */
@@ -147,12 +164,40 @@ struct wuss
   wuss_colour_t               window_bg; /* work-area body fill; wuss_COLOUR_WINDOW */
   wuss_colour_t               menu_bg;   /* menu body fill; wuss_COLOUR_MENU */
   wuss_backdrop_t             backdrop; /* colour==wuss_NO_BACKGROUND: none */
+  int                         double_click_ms;   /* resolved, > 0; see wuss__apply_config */
+  int                         double_click_px;   /* resolved, > 0 */
+  int                         drag_threshold_px; /* resolved, > 0 */
 #ifdef WUSS_FURNITURE
   int                         titlebar_height;
 #endif
-  list_t                      z_order;   /* anchor; head = topmost window */
+  list_t                      z_order[WUSS_STACK_COUNT]; /* anchor per
+                                          * wuss_stack_t, frontmost stack
+                                          * first; head = frontmost window
+                                          * of that stack */
   list_t                      tasks;     /* anchor; registered tasks, in
                                           * wuss_task_create order */
+  wuss_message_t             *queue;     /* owned; array grown by
+                                          * wuss__array_grow, FIFO -- consumed
+                                          * from the front, see
+                                          * wuss__message_drain */
+  int                         nqueued;
+  int                         cap_queue;
+  unsigned int                next_ref;  /* next my_ref to hand out; skips 0
+                                          * on wrap, see wuss__message_next_ref */
+  int                         dispatch_depth; /* >0 while inside a public
+                                          * entry point's call tree; sends
+                                          * queue rather than deliver inline,
+                                          * queue drains only back at depth 0 */
+  const wuss_message_t       *acking;    /* the recorded message currently
+                                          * being handled by its recipient's
+                                          * wuss_EVENT_MESSAGE handler, NULL
+                                          * otherwise; wuss_send/wuss_send_recorded/
+                                          * wuss_acknowledge with your_ref ==
+                                          * acking->my_ref mark it acknowledged */
+  int                         acked;     /* set while acking != NULL if it has
+                                          * been acknowledged; read after the
+                                          * handler returns to decide whether
+                                          * to bounce it */
 #ifdef WUSS_FURNITURE
   struct wuss__furniture         furniture;    /* drag state */
   const wuss__furniture_ops_t   *furniture_ops; /* core->furniture dispatch;
@@ -163,13 +208,19 @@ struct wuss
   int                         ndirty;
   box_t                       touched[WUSS_MAX_DIRTY]; /* accumulated by wuss__touch; reset by wuss_clear_touched */
   int                         ntouched;
-  packer_t                   *layout;    /* owned; occupied screen area for
-                                          * wuss_window_create_placed, lazily
-                                          * created on first auto-placement */
-  point_t                     cascade;   /* next cascade offset, used once the
-                                          * layout packer has no room left */
   point_t                     pointer;   /* last pointer position, screen
                                           * space, from any mouse click/move */
+  unsigned int                now_ms;    /* set by wuss_set_time; arbitrary
+                                          * epoch, only differences matter */
+  unsigned int                last_down_ms;    /* now_ms at the last plain
+                                          * (non-double) DOWN, for double-click
+                                          * detection; see mouse-click.c */
+  point_t                     last_down_point;
+  wuss_button_t                last_down_button;
+  wuss_window_t              *last_down_window; /* cleared to NULL by
+                                          * wuss_window_close like
+                                          * pointer_window/focus, so a reused
+                                          * allocation can never false-match */
   wuss_window_t              *pointer_window; /* window whose on-screen
                                           * footprint the pointer was last
                                           * inside (content or furniture),
@@ -184,6 +235,15 @@ struct wuss
                                             * its owner */
   wuss_window_t              *pressed_window; /* the window pressed_icon is on;
                                               * NULL iff pressed_icon is NULL */
+  point_t                     pressed_point;  /* screen point of the DOWN that
+                                              * set pressed_icon; a DRAGGABLE
+                                              * measures drag_threshold_px
+                                              * from here before starting a
+                                              * core drag */
+  wuss_button_t               pressed_button; /* button held from that DOWN;
+                                              * carried into drag_button if
+                                              * the press turns into a core
+                                              * drag */
   wuss_icon_t                *hover_icon;   /* icon the pointer is currently
                                             * over, NULL when none; drives
                                             * hover-highlight repaint of
@@ -227,6 +287,28 @@ struct wuss
                                             * MOUSE_UP so the release does not
                                             * immediately pick row 0 */
 #endif
+#ifdef WUSS_ICONBAR
+  wuss_window_t              *iconbar_window; /* pinned, chromeless window
+                                               * hosting the bar; created
+                                               * lazily on the first
+                                               * wuss_iconbar_icon_create,
+                                               * NULL until then */
+  wuss_task_t                *iconbar_task;   /* internal task owning
+                                               * iconbar_window; created
+                                               * lazily alongside it, freed
+                                               * by wuss_destroy's task
+                                               * sweep like menu_task */
+  wuss_iconbar_icon_t       **iconbar_icons; /* owned; array of owned icon
+                                              * pointers, left-to-right slot
+                                              * order */
+  int                         niconbar_icons;
+  int                         cap_iconbar_icons;
+  wuss_iconbar_icon_t        *pressed_iconbar_icon; /* held down, NULL when
+                                                      * idle; released on any
+                                                      * MOUSE_UP regardless of
+                                                      * where the pointer now
+                                                      * is */
+#endif
   int                         pre_show_proceed; /* set by
                                                  * wuss_window_reveal_now /
                                                  * wuss_menu_open_window_now
@@ -236,6 +318,30 @@ struct wuss
                                                  * and cleared by
                                                  * wuss__window_set_hidden_ex
                                                  * once delivery returns */
+  wuss_window_t              *drag_window; /* wuss_EVENT_DRAG_END recipient;
+                                            * NULL when no core drag is
+                                            * active -- the sole "is a drag
+                                            * running" flag, see drag.c */
+  size2d_t                    drag_size;   /* ants box size, set at
+                                            * wuss_drag_start */
+  wuss_button_t               drag_button; /* button that started the drag,
+                                            * copied from pressed_button;
+                                            * reported in wuss_EVENT_DRAG_END
+                                            * so a client can tell a SELECT
+                                            * drag from an ADJUST one */
+  point_t                     drag_hotspot; /* offset within the box that
+                                             * tracks the pointer */
+  box_t                       drag_box;    /* current ants box, screen
+                                            * space; recomputed on every
+                                            * move */
+  box_t                       drag_drawn;  /* box the ants are painted at:
+                                            * caught up with drag_box once a
+                                            * frame by wuss__drag_tick, which
+                                            * invalidates both boxes' edges
+                                            * (only) as it does */
+  int                         drag_frame;  /* counts wuss_idle calls while
+                                            * dragging, for the ants'
+                                            * marching phase */
 };
 
 struct wuss_window
@@ -250,6 +356,7 @@ struct wuss_window
                               * NULL */
   wuss_backdrop_t     bg; /* content background; colour==wuss_NO_BACKGROUND: none */
   wuss_window_flags_t flags;
+  wuss_stack_t        stack;  /* which wuss_t::z_order list link is on */
   point_t             scroll; /* offset into virtual content space of the
                                * content box's top-left; see wuss_window_set_scroll */
   size2d_t            doc;    /* virtual document extent, set at creation */
@@ -258,10 +365,6 @@ struct wuss_window
 #ifdef WUSS_FURNITURE
   wuss_window_state_t state;        /* see wuss_window_state_t */
 #endif
-  box_t               packed;       /* region wuss_window_create_placed took
-                                     * out of wuss->layout (footprint + gutter),
-                                     * to give back on close/move; empty if not
-                                     * auto-placed or already released */
 #ifdef WUSS_FURNITURE
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];
@@ -372,11 +475,36 @@ static inline void wuss__chrome_invalidate_layout(wuss_window_t *window)
 
 wuss_window_t *wuss__window_at(wuss_t *wuss, point_t p);
 
+/* Core drag session (drag.c): wuss_drag_start's implementation plus the
+ * per-move/end/tick/draw hooks called from mouse-move.c, mouse-click.c,
+ * key.c, idle.c and redraw.c. See wuss_t::drag_window for the "is a drag
+ * active" state. */
+void wuss__drag_move(wuss_t *wuss, point_t p);
+void wuss__drag_tick(wuss_t *wuss);
+void wuss__drag_end(wuss_t        *wuss,
+                    point_t        p,
+                    wuss_window_t *drop,
+                    int            cancelled);
+void wuss__drag_forget_window(wuss_t *wuss, wuss_window_t *window);
+void wuss__drag_draw(wuss_t *wuss);
+
+/* Walk every window front to back across all three stacks: wuss__z_first is
+ * the frontmost window overall (NULL if none), wuss__z_below the next one
+ * behind "window" (NULL at the very back). */
+wuss_window_t *wuss__z_first(wuss_t *wuss);
+wuss_window_t *wuss__z_below(const wuss_window_t *window);
+
 /* Rebuild wuss->palettecache (white, black and the symbolic[] table) from
  * the current palette and the stored chrome colours. Call after the palette
  * or any chrome colour changes; the chrome fields must already be concrete
  * indices (resolve config through wuss__resolve_colour before storing). */
 void wuss__rebuild_palettecache(wuss_t *wuss);
+
+/* Resolve, validate and store config's colours (and the titlebar height)
+ * into w, then rebuild the palette cache. NULL config means the defaults.
+ * Needs w's palette and fonts set. Returns result_WUSS_BAD_COLOUR with w
+ * part-updated on a bad colour -- the caller discards or restores w. */
+result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config);
 
 /* Concrete 0..npalette-1 palette index for any wuss_colour_t: a symbolic
  * value (>= wuss_COLOUR_SYMBOLIC, bar wuss_NO_BACKGROUND) via the cache,
@@ -598,6 +726,31 @@ result_t wuss__deliver(wuss_task_t        *task,
                        wuss_window_t      *win_or_null,
                        const wuss_event_t *ev);
 
+/* Bump dispatch_depth on entry to a public entry point (wuss_mouse_click,
+ * wuss_mouse_move, wuss_key, wuss_idle); wuss__message_leave drops it back
+ * and, at depth 0, drains the queue (see wuss__message_drain). Call these
+ * paired around each entry point's whole body. */
+void wuss__message_enter(wuss_t *wuss);
+void wuss__message_leave(wuss_t *wuss);
+
+/* Deliver every message currently queued, FIFO, including ones sent while
+ * draining; stops (deferring the remainder to the next entry point) after
+ * WUSS_MESSAGE_DRAIN_CAP deliveries in one call, logging a warning (and, in
+ * an NDEBUG-less build, asserting) if that cap is hit. Only ever called at
+ * dispatch_depth 0 -- see wuss__message_leave. */
+void wuss__message_drain(wuss_t *wuss);
+
+/* Purge "task" from the message queue: anything sent by "task" is dropped
+ * unsent. Called by wuss_task_destroy before it unlinks/frees the task. */
+void wuss__message_purge_task(wuss_t *wuss, wuss_task_t *task);
+
+/* Purge "window" from the message queue: messages addressed to it are
+ * removed and recorded ones bounce to their senders as
+ * wuss_EVENT_MESSAGE_BOUNCED (delivered inline, before this returns). Called
+ * by wuss_window_close while the window is still alive, so no queued message
+ * ever outlives its target. */
+void wuss__message_purge_window(wuss_t *wuss, wuss_window_t *window);
+
 /* wuss_window_set_hidden's real body. `handle`/`index` (menu builds only)
  * are threaded through into wuss_EVENT_PRE_SHOW's payload so a flagged menu
  * leaf's recipient can call wuss_menu_open_window_now(handle, index) to opt
@@ -619,6 +772,13 @@ result_t wuss__window_set_hidden_ex(wuss_window_t *window, int hidden);
  * owner so a stored handle is dropped, then frees the nodes. No-op if no
  * chain is open. Defined in menu/menu.c. */
 void wuss__menu_abandon(wuss_t *wuss);
+
+/* True if `window` is one of the open menu chain's windows, including a
+ * borrowed-window level -- lets a component shown as a leaf dismiss the
+ * whole chain (wuss__menu_abandon) rather than just hide itself, and
+ * wuss_window_close tear the chain down before freeing a window in it.
+ * Defined in menu/menu.c. */
+int wuss__menu_contains(wuss_t *wuss, const wuss_window_t *window);
 #endif
 
 /* Notify a window's task that it has been moved or resized, via
@@ -684,31 +844,6 @@ static inline void wuss__focus_forget_window(wuss_t        *wuss,
 static inline int wuss__size_ok(int width, int height)
 {
   return width > 0 && height > 0;
-}
-
-/* Give an auto-placed window's slot back to the layout packer and stop
- * tracking it, so a later close/move/resize doesn't release it twice. A
- * no-op for windows that were never auto-placed (empty "packed"). */
-static inline void wuss__release_packed(wuss_window_t *window)
-{
-  if (box_is_empty(&window->packed))
-    return;
-
-  (void) packer_release(window->wuss->layout, &window->packed);
-  box_reset(&window->packed);
-}
-
-/* The floor a resize-drag or toggle-size will shrink a window's content to:
- * the client's min_doc where it set one, but never below WUSS_MIN_CONTENT (a
- * window must stay big enough to grab) nor above the window's own doc extent
- * (a window can't be forced larger than the document it shows). */
-static inline void wuss__min_content(const wuss_window_t *window,
-                                     size2d_t            *min)
-{
-  min->w = CLAMP(window->min_doc.w, WUSS_MIN_CONTENT, MAX(window->doc.w,
-                                                          WUSS_MIN_CONTENT));
-  min->h = CLAMP(window->min_doc.h, WUSS_MIN_CONTENT, MAX(window->doc.h,
-                                                          WUSS_MIN_CONTENT));
 }
 
 #ifdef WUSS_FURNITURE
@@ -847,6 +982,48 @@ static inline void wuss__furniture_carve_for(wuss_window_flags_t flags,
   carve->y = 0;
 }
 #endif /* WUSS_FURNITURE */
+
+/* The floor a resize-drag or toggle-size will shrink a window's content to:
+ * the client's min_doc where it set one, but never below what the window's
+ * furniture needs -- its titlebar icons side by side, both arrows of each
+ * scrollbar -- nor WUSS_MIN_CONTENT (a window must stay big enough to grab).
+ * Nor above the window's own doc extent (a window can't be forced larger than
+ * the document it shows) unless the furniture needs more than that. */
+static inline void wuss__min_content(const wuss_window_t *window,
+                                     size2d_t            *min)
+{
+  wuss_window_flags_t flags;
+  int                 size;
+  point_t             carve;
+  size2d_t            need;
+  int                 icons;
+
+  flags = window->flags;
+  size  = wuss__button_size(window);
+  wuss__furniture_carve_for(flags, size, &carve);
+
+  need.w = WUSS_MIN_CONTENT;
+  need.h = WUSS_MIN_CONTENT;
+
+  /* the titlebar spans the content plus carve.x and lays its icons out
+   * WUSS_BUTTON_INSET apart, with an inset at each end */
+  if (wuss__titlebar_height(window) > 0)
+  {
+    icons  = ((flags & wuss_WINDOW_BACK)        != 0) +
+             ((flags & wuss_WINDOW_CLOSE)       != 0) +
+             ((flags & wuss_WINDOW_TOGGLE_SIZE) != 0);
+    need.w = MAX(need.w, WUSS_BUTTON_INSET + icons * (size + WUSS_BUTTON_INSET) - carve.x);
+  }
+
+  /* a scrollbar holds an arrow at each end, each behind a divider */
+  if (flags & wuss_WINDOW_VSCROLL)
+    need.h = MAX(need.h, 2 * (size + WUSS_DIVIDER_PX));
+  if (flags & wuss_WINDOW_HSCROLL)
+    need.w = MAX(need.w, 2 * (size + WUSS_DIVIDER_PX));
+
+  min->w = CLAMP(window->min_doc.w, need.w, MAX(window->doc.w, need.w));
+  min->h = CLAMP(window->min_doc.h, need.h, MAX(window->doc.h, need.h));
+}
 
 /* Largest content width/height whose visible box (content + outline +
  * titlebar + scrollbar/resize carve) still fits the screen from the
