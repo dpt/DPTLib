@@ -488,19 +488,19 @@ static result_t flood_full_bounds_handle(wuss_window_t      *window,
 
 typedef struct msg_task
 {
-  wuss_t                *wuss;   /* set by the test before use; msg_handle
-                                  * has no other way to reach it */
-  wuss_task_t          *self;
-  int                    message_count;
-  int                    bounced_count;
-  const wuss_message_t *last_message;
-  char                   last_payload[64];
-  int                    ack_on_receipt; /* call wuss_acknowledge from the handler */
-  int                    reply_on_receipt; /* wuss_send back with your_ref set,
-                                           * from the handler -- also counts as
-                                           * an ack */
-  wuss_window_t         *reply_target; /* window to address the reply to, or
-                                       * NULL for the message's own sender */
+  wuss_t         *wuss;   /* set by the test before use; msg_handle
+                           * has no other way to reach it */
+  wuss_task_t    *self;
+  int             message_count;
+  int             bounced_count;
+  wuss_message_t  last_message; /* a copy: the delivered message lives on
+                                 * wuss's stack */
+  int             ack_on_receipt; /* call wuss_acknowledge from the handler */
+  int             reply_on_receipt; /* wuss_send back with your_ref set,
+                                     * from the handler -- also counts as
+                                     * an ack */
+  wuss_window_t  *reply_target; /* window to address the reply to, or
+                                 * NULL for the message's own sender */
 }
 msg_task_t;
 
@@ -518,9 +518,7 @@ static result_t msg_handle(wuss_window_t      *window,
   {
   case wuss_EVENT_MESSAGE:
     mt->message_count++;
-    mt->last_message = event->data.message;
-    memcpy(mt->last_payload, event->data.message->data,
-          MIN(event->data.message->size, sizeof(mt->last_payload)));
+    mt->last_message = *event->data.message;
 
     if (mt->reply_on_receipt)
       (void) wuss_send(mt->wuss, mt->self,
@@ -533,7 +531,7 @@ static result_t msg_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MESSAGE_BOUNCED:
     mt->bounced_count++;
-    mt->last_message = event->data.message;
+    mt->last_message = *event->data.message;
     break;
 
   default:
@@ -9406,13 +9404,13 @@ QuitFail:
 
     if (tc_recv.message_count != 1)
       goto Failure;
-    if (tc_recv.last_message->action != MSG_TEST_ACTION)
+    if (tc_recv.last_message.action != MSG_TEST_ACTION)
       goto Failure;
-    if (tc_recv.last_message->window != win_recv)
+    if (tc_recv.last_message.window != win_recv)
       goto Failure;
-    if (tc_recv.last_message->sender != delegate_send)
+    if (tc_recv.last_message.sender != delegate_send)
       goto Failure;
-    if (memcmp(tc_recv.last_payload, payload, sizeof(payload)) != 0)
+    if (memcmp(tc_recv.last_message.data, payload, sizeof(payload)) != 0)
       goto Failure;
 
     wuss_window_close(win_recv);
@@ -9518,7 +9516,7 @@ QuitFail:
       goto Failure;
     if (tc_send.bounced_count != 1)
       goto Failure;
-    if (tc_send.last_message->my_ref != my_ref)
+    if (tc_send.last_message.my_ref != my_ref)
       goto Failure;
 
     wuss_window_close(win_recv);
@@ -9584,9 +9582,9 @@ QuitFail:
       goto Failure;
     if (tc_send.message_count != 1) /* the reply, addressed to win_send */
       goto Failure;
-    if (tc_send.last_message->action != MSG_TEST_REPLY_ACTION)
+    if (tc_send.last_message.action != MSG_TEST_REPLY_ACTION)
       goto Failure;
-    if (tc_send.last_message->your_ref != my_ref)
+    if (tc_send.last_message.your_ref != my_ref)
       goto Failure;
 
     wuss_window_close(win_recv);
