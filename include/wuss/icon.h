@@ -552,6 +552,18 @@ void wuss_icon_set_hidden(wuss_window_t *window,
                           int            hidden);
 
 /**
+ * Shade or unshade an icon, toggling wuss_ICON_FLAGS_DISABLED. A shaded icon
+ * ignores clicks. Invalidates the icon's bounding box.
+ *
+ * \param[in] window   Window the icon belongs to.
+ * \param[in] icon     Icon to change.
+ * \param[in] disabled Non-zero to shade the icon, zero to unshade it.
+ */
+void wuss_icon_set_disabled(wuss_window_t *window,
+                            wuss_icon_t   *icon,
+                            int            disabled);
+
+/**
  * Fetch an icon's bounding box, in virtual document space.
  *
  * \param[in]  icon Icon to query.

@@ -505,6 +505,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/plot.c
     libraries/wuss/icon/registry.c
     libraries/wuss/icon/screen-box.c
+    libraries/wuss/icon/set-disabled.c
     libraries/wuss/icon/set-hidden.c
     libraries/wuss/icon/set-hover.c
     libraries/wuss/icon/set-selected.c
