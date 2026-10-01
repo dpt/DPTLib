@@ -62,7 +62,8 @@ static filer_window_t *filer_find_window(filer_task_t *task,
   int i;
 
   for (i = 0; i < task->nwindows; i++)
-    if (strcmp(task->windows[i].path, path) == 0)
+    if (task->windows[i].window != NULL &&
+        strcmp(task->windows[i].path, path) == 0)
       return &task->windows[i];
 
   return NULL;
@@ -155,6 +156,7 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
 {
   result_t        rc;
   filer_window_t *fw;
+  int             slot;
   dirlist_t      *listing;
   wuss_window_t  *window;
 
@@ -165,7 +167,13 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
     return result_OK;
   }
 
-  if (task->nwindows >= FILER_MAX_WINDOWS)
+  /* Reuse a slot freed by a CLOSE, else append. Slots never move: each one's
+   * address is its gridview's opaque. */
+  for (slot = 0; slot < task->nwindows; slot++)
+    if (task->windows[slot].window == NULL)
+      break;
+
+  if (slot >= FILER_MAX_WINDOWS)
   {
     logf_error("filer: too many windows open, cannot open \"%s\"", path);
     return result_OOM;
@@ -182,8 +190,9 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
     return rc;
   }
 
-  fw = &task->windows[task->nwindows];
-  fw->owner = task;
+  fw = &task->windows[slot];
+  fw->owner   = task;
+  fw->listing = listing; /* wuss_gridview_create measures through filer_item */
   snprintf(fw->path, sizeof(fw->path), "%s", path);
 
   rc = wuss_gridview_create(&fw->gridview, window, dirlist_count(listing),
@@ -193,12 +202,13 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
   {
     wuss_window_close(window);
     dirlist_destroy(listing);
+    fw->listing = NULL;
     return rc;
   }
 
-  fw->window  = window;
-  fw->listing = listing;
-  task->nwindows++;
+  fw->window = window;
+  if (slot == task->nwindows)
+    task->nwindows++;
 
   {
     size2d_t cell, fit;
@@ -453,7 +463,6 @@ result_t filer_handle(wuss_window_t      *window,
   case wuss_EVENT_CLOSE:
   {
     filer_window_t *fw;
-    int             i;
 
     fw = filer_find_by_window(task, window);
     if (fw == NULL)
@@ -462,8 +471,11 @@ result_t filer_handle(wuss_window_t      *window,
     wuss_gridview_destroy(fw->gridview);
     dirlist_destroy(fw->listing);
 
-    i = (int) (fw - task->windows);
-    task->windows[i] = task->windows[--task->nwindows];
+    /* Free the slot in place: moving another into it would leave that one's
+     * gridview opaque pointing at its old address. */
+    fw->window   = NULL;
+    fw->gridview = NULL;
+    fw->listing  = NULL;
     return result_OK;
   }
 
