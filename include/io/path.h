@@ -54,6 +54,15 @@ int path_leaf_strip_ext(const char *leaf,
 int path_leaf_valid(const char *leaf);
 
 /**
+ * Returns the leafname of 'path': whatever follows its last host path
+ * separator ('/', plus '\\' on Windows; '.' or ':' on RISC OS), or 'path'
+ * itself if it has none.
+ *
+ * \return Pointer into 'path'.
+ */
+const char *path_leaf(const char *path);
+
+/**
  * Tests whether 'path' is already a full (rooted) path under the host
  * convention, rather than a bare leafname or a relative path.
  *

@@ -126,6 +126,29 @@ int path_leaf_valid(const char *leaf)
   return 1;
 }
 
+const char *path_leaf(const char *path)
+{
+  const char *leaf;
+  const char *p;
+
+  assert(path);
+
+  leaf = path;
+  for (p = path; *p != '\0'; p++)
+  {
+#ifdef __riscos
+    if (*p == '.' || *p == ':')
+#elif defined(_WIN32)
+    if (*p == '/' || *p == '\\')
+#else
+    if (*p == '/')
+#endif
+      leaf = p + 1;
+  }
+
+  return leaf;
+}
+
 int path_is_full(const char *path)
 {
   if (path == NULL || path[0] == '\0')

@@ -118,6 +118,22 @@ static result_t test_leaf_valid_rejects(void)
   return result_TEST_PASSED;
 }
 
+static result_t test_leaf(void)
+{
+#ifdef __riscos
+  if (strcmp(path_leaf("ADFS::disc.$.dir.file"), "file") != 0 ||
+      strcmp(path_leaf("file"), "file") != 0)
+    return result_TEST_FAILED;
+#else
+  if (strcmp(path_leaf("./dir/gradient.png"), "gradient.png") != 0 ||
+      strcmp(path_leaf("gradient.png"), "gradient.png") != 0 ||
+      strcmp(path_leaf("dir/"), "") != 0)
+    return result_TEST_FAILED;
+#endif
+
+  return result_TEST_PASSED;
+}
+
 static result_t test_is_full(void)
 {
 #ifdef __riscos
@@ -145,6 +161,7 @@ result_t path_test(const char *resources)
     test_bare_leaf,
     test_leaf_valid_accepts,
     test_leaf_valid_rejects,
+    test_leaf,
     test_is_full
   };
 
