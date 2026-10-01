@@ -145,6 +145,11 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   {
     const unsigned char *srcrow = bm->base;
 
+    /* sub-byte pixels are packed leftmost-in-low-bits, PNG wants them in
+     * the high bits */
+    if (bitdepth < 8)
+      png_set_packswap(png_ptr);
+
     for (y = 0; y < bm->size.h; y++)
     {
       png_write_row(png_ptr, srcrow);
