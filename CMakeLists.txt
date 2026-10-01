@@ -839,6 +839,8 @@ if(BUILD_APPS)
 
     set(WUSS_APP_SOURCES
         apps/wuss/main.c
+        apps/wuss/script.c
+        apps/wuss/script.h
         apps/wuss/tasks.c
         libraries/wuss/test/tasks/ball.c
         libraries/wuss/test/tasks/chars.c
