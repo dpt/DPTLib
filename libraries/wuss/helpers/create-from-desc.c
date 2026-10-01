@@ -191,11 +191,12 @@ static result_t menu_deep_copy(const wuss_menu_t *src, wuss_menu_t **out)
 
   for (i = 0; i < src->nitems; i++)
   {
-    items[i].text  = strdup(src->items[i].text ? src->items[i].text : "");
-    items[i].flags = src->items[i].flags;
-    items[i].submenu = NULL;
-    items[i].window  = src->items[i].window; /* borrowed, as in the source */
-    items[i].swatch  = src->items[i].swatch;
+    items[i].text     = strdup(src->items[i].text ? src->items[i].text : "");
+    items[i].flags    = src->items[i].flags;
+    items[i].submenu  = NULL;
+    items[i].window   = src->items[i].window;   /* borrowed, as in the source */
+    items[i].swatch   = src->items[i].swatch;
+    items[i].shortcut = src->items[i].shortcut; /* borrowed likewise */
 
     if (items[i].text == NULL)
     {
@@ -241,8 +242,7 @@ static result_t build_emit(Building    *b,
                            unsigned int flags,
                            wuss_menu_t *submenu)
 {
-  wuss_menu_item_t *it;
-  char             *copy;
+  char *copy;
 
   if (array_grow((void **) &b->items, sizeof(*b->items),
                  b->n, &b->cap, 1, 4))
@@ -252,12 +252,10 @@ static result_t build_emit(Building    *b,
   if (copy == NULL)
     return result_OOM;
 
-  it = &b->items[b->n++];
-  it->text    = copy;
-  it->flags   = flags;
-  it->submenu = submenu;
-  it->window  = NULL; /* array_grow leaves these uninitialised otherwise */
-  it->swatch  = wuss_NO_BACKGROUND;
+  /* array_grow leaves the new item uninitialised: set every field */
+  WUSS_MENU_ITEM_MENU(b->items, b->n, copy, flags, submenu);
+  b->items[b->n].swatch = wuss_NO_BACKGROUND;
+  b->n++;
   return result_OK;
 }
 

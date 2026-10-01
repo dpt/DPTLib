@@ -12,6 +12,7 @@
 #include "framebuf/colour.h"
 #include "framebuf/pattern.h"
 #include "framebuf/screen.h"
+#include "text/utf8.h"
 
 #include "../core/impl.h"
 
@@ -129,11 +130,13 @@ static colour_t icon_blend_ground(const icon_draw_ctx_t *c,
 static int wuss__draw_symbol_glyph(const wuss_t *wuss,
                                    screen_t     *scr,
                                    point_t       centre,
-                                   char          glyph,
+                                   unsigned long codepoint,
                                    colour_t      ink,
                                    colour_t      ground)
 {
   bmfont_t *font;
+  char      utf8[4];
+  int       len;
   point_t   pos;
   int       font_width, font_height, font_ascent;
 
@@ -141,14 +144,14 @@ static int wuss__draw_symbol_glyph(const wuss_t *wuss,
   if (font == NULL)
     return 0;
 
-  if ((unsigned char) glyph < ' ' ||
-      (unsigned char) glyph - ' ' >= bmfont_get_count(font))
+  if (bmfont_lookup(font, codepoint) < 0)
     return 0;
 
+  len = utf8_encode(codepoint, utf8);
   bmfont_get_info(font, &font_width, &font_height, &font_ascent, NULL);
   pos.x = centre.x - font_width / 2;
   pos.y = centre.y - font_height / 2 + font_ascent;
-  bmfont_draw(font, scr, &glyph, 1, ink, ground, NULL, &pos, NULL);
+  bmfont_draw(font, scr, utf8, len, ink, ground, NULL, &pos, NULL);
   return 1;
 }
 
@@ -289,6 +292,7 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
   divider = c->wuss->palette[c->wuss->bevel_divider];
 
   cap_w = 0;
+  len   = 0;
   if (c->have_font)
   {
     len = (int) strlen(spec->text);
@@ -406,7 +410,8 @@ static const bitmap_t *wuss__icon_radio_option_bitmap(const icon_draw_ctx_t *c)
  * the state, and the glyph box and label offset follow the bitmap's own size;
  * otherwise a font-height square is used -- RADIO draws a square ring with a
  * solid centre when selected and OPTION draws a box with a tick when
- * selected. */
+ * selected. wuss_ICON_FLAGS_JUSTIFY_RIGHT swaps the sides: the glyph at the
+ * right edge, the label right-aligned to its left. */
 static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
 {
   const wuss_icon_spec_t *icon = &c->icon->spec;
@@ -422,9 +427,9 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
   gh = bm ? bm->size.h : CLAMP(c->font_height, 8, b->y1 - b->y0);
   gy = b->y0 + (b->y1 - b->y0 - gh) / 2;
 
-  g.x0 = b->x0;
+  g.x0 = (icon->flags & wuss_ICON_FLAGS_JUSTIFY_RIGHT) ? b->x1 - gw : b->x0;
   g.y0 = gy;
-  g.x1 = b->x0 + gw;
+  g.x1 = g.x0 + gw;
   g.y1 = gy + gh;
 
   glyph = (icon->flags & wuss_ICON_FLAGS_DISABLED)
@@ -439,7 +444,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     /* no explicit bg to repaint the whole box, but the state we are about to
      * draw (a smaller radon/radoff swap, or a cleared tick/centre) can leave
      * fewer pixels than last time -- clear just the glyph box so no stale
-     * glyph shows through. The label to its right never changes on select. */
+     * glyph shows through. The label beside it never changes on select. */
     screen_fill_rect(c->scr, g.x0, g.y0, box_size(&g), bg);
 
   if (bm != NULL)
@@ -476,15 +481,24 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
     int            interior_w, split_point, len;
     bmfont_width_t width;
 
-    tx = g.x1 + 4;
-    interior_w = MAX((b->x1 - tx) - 1, 1);
+    if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_RIGHT)
+    {
+      tx         = b->x0;
+      interior_w = MAX((g.x0 - 4 - tx) - 1, 1);
+    }
+    else
+    {
+      tx         = g.x1 + 4;
+      interior_w = MAX((b->x1 - tx) - 1, 1);
+    }
     len        = (int) strlen(icon->text);
 
     wuss__text_measure(c->font, icon->text, len, interior_w, &split_point,
                        &width);
-    NOT_USED(width);
 
     pos.x = tx;
+    if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_RIGHT)
+      pos.x = MAX(g.x0 - 4 - (int) width, tx); /* flush against the glyph */
     pos.y = icon_text_baseline_y(c, b);
     wuss__text_draw(c->font, c->scr, icon->text, len, glyph, bg, &pos, NULL);
   }
@@ -524,10 +538,11 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   const box_t            *b    = &c->b;
   colour_t                ink, ground, text_ink, text_ground, tmp;
   int                     disabled, highlit, pad, text_x0, text_x1;
+  bmfont_width_t          space_w;
 
   disabled = (icon->flags & wuss_ICON_FLAGS_DISABLED) != 0;
   highlit  = wuss__icon_hovered(c->icon) && !disabled;
-  pad      = 4;
+  pad      = WUSS_MENU_ENTRY_PAD;
 
   /* resolve the row's own ink over its own/inherited ground */
   ground = icon_blend_ground(c, c->fg);
@@ -544,10 +559,10 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     text_ground = tmp;
   }
 
-  text_x0 = b->x0 + pad + c->font_height;      /* past the tick gutter */
-  text_x1 = b->x1 - pad - MAX(c->font_height, 8); /* short of the arrow
-                                                    * gutter, whether or not
-                                                    * this row has an arrow */
+  /* past the tick gutter; short of the arrow gutter, whether or not this
+   * row has an arrow */
+  text_x0 = b->x0 + wuss__menu_entry_gutter_left(c->font_height);
+  text_x1 = b->x1 - wuss__menu_entry_gutter_right(c->font_height);
 
   if (highlit)
     screen_fill_rect(c->scr, text_x0, b->y0,
@@ -555,13 +570,18 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   else if (icon->bg != wuss_NO_BACKGROUND)
     screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), ground);
 
-  /* left-edge colour chip (wins over the tick) or tick when selected */
+  /* the label is drawn as if a space padded it either side (see below) */
+  space_w = c->have_font ? wuss__fontset_space_width(&c->wuss->fonts, c->font)
+                         : 0;
+
+  /* colour chip: leads the text column, one space in, so the tick gutter
+   * stays free and a row can be both ticked and swatched */
   if (icon->flags & wuss_ICON_FLAGS_SWATCH)
   {
     int cx, cy, h;
 
     h  = MAX(c->font_height, 8);
-    cx = b->x0 + pad;
+    cx = text_x0 + (int) space_w;
     cy = b->y0 + (b->y1 - b->y0 - h) / 2;
     if (icon->u.menu_entry.swatch == wuss_NO_BACKGROUND)
     {
@@ -586,11 +606,15 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
       screen_fill_pattern(c->scr, &chip, &hatch);
     }
     else
+    {
       screen_fill_rect(c->scr, cx, cy, SIZE2D(h, h),
                        c->wuss->palette[icon->u.menu_entry.swatch]);
+    }
     screen_draw_rect(c->scr, cx, cy, SIZE2D(h, h), ink); /* 1px border */
   }
-  else if (wuss__icon_selected(c->icon))
+
+  /* tick in the left gutter when selected */
+  if (wuss__icon_selected(c->icon))
   {
     int     cx, cy, h;
     point_t centre;
@@ -630,20 +654,59 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
 
   if (c->have_font && icon->text != NULL && icon->text[0] != '\0')
   {
-    point_t        pos;
-    bmfont_width_t space_w;
+    point_t pos;
 
     /* draw as if a space padded the text either side, without actually
      * touching the string -- only the left inset matters for pos.x, but
      * the same width is left spare at text_x1 too since the fill already
-     * spans the full column */
-    space_w = 0;
-    wuss__text_measure(c->font, " ", 1, INT_MAX, NULL, &space_w);
-
+     * spans the full column. A swatch row's label follows its chip. */
     pos.x = text_x0 + (int) space_w;
+    if (icon->flags & wuss_ICON_FLAGS_SWATCH)
+      pos.x += wuss__menu_entry_swatch_width(c->font_height);
     pos.y = icon_text_baseline_y(c, b);
     wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
                     text_ink, text_ground, &pos, NULL);
+
+    /* shortcut: bold, knocked out of a solid rounded keycap right-aligned
+     * against the same one-space inset at text_x1, sharing the label's
+     * baseline. The keycap is muted to the bevel_dark grey (a palette entry,
+     * so it survives low-depth desktops where a blended colour would snap
+     * to ink or ground) except under the highlight, where it takes the
+     * inverted ink to stay legible; the label is the row's ground. A
+     * disabled row's keycap is only outlined, its label in the same grey as
+     * the row's text, so it reads as muted at any depth */
+    if (icon->u.menu_entry.shortcut != NULL &&
+        icon->u.menu_entry.shortcut[0] != '\0')
+    {
+      const char    *shortcut;
+      bmfont_width_t shortcut_w;
+      colour_t       keycap;
+      int            box_x0;
+      size2d_t       cap_size;
+
+      shortcut   = icon->u.menu_entry.shortcut;
+      shortcut_w = wuss__shortcut_measure(c->wuss, shortcut);
+
+      keycap = highlit ? text_ink : c->wuss->palette[c->wuss->bevel_dark];
+
+      box_x0   = text_x1 - (int) space_w - (int) shortcut_w;
+      cap_size = SIZE2D((int) shortcut_w, b->y1 - b->y0 - 2);
+      pos.x    = box_x0 + WUSS_SHORTCUT_BOX_PAD;
+      if (disabled)
+      {
+        screen_draw_rounded_rect(c->scr, box_x0, b->y0 + 1, cap_size, 2,
+                                 keycap);
+        wuss__shortcut_draw(c->wuss, c->scr, shortcut, keycap, text_ground,
+                            &pos);
+      }
+      else
+      {
+        screen_fill_rounded_rect(c->scr, box_x0, b->y0 + 1, cap_size, 2,
+                                 keycap);
+        wuss__shortcut_draw(c->wuss, c->scr, shortcut, text_ground, keycap,
+                            &pos);
+      }
+    }
   }
 }
 
@@ -774,8 +837,8 @@ const wuss__icon_type_info_t wuss__icon_types[wuss__ICON_TYPE_COUNT] =
   [wuss_ICON_TYPE_SLIDER]     = { wuss__icon_draw_slider,       0 },
   [wuss_ICON_TYPE_WRITABLE]   = { wuss__icon_draw_writable,     0 },
   [wuss_ICON_TYPE_DISPLAY]    = { wuss__icon_draw_label,        0 },
-  [wuss_ICON_TYPE_NUMBER]     = { wuss__icon_draw_label,        1 },
-  [wuss_ICON_TYPE_DRAGGABLE]  = { wuss__icon_draw_label,        1 }
+  [wuss_ICON_TYPE_DRAGGABLE]  = { wuss__icon_draw_bitmap,       0 },
+  [wuss_ICON_TYPE_NUMBER]     = { wuss__icon_draw_label,        1 }
 };
 
 /* ----------------------------------------------------------------------- */
@@ -808,7 +871,9 @@ void wuss__icon_draw(wuss_t              *wuss,
 
   c.have_font = (c.font != NULL && spec->text[0] != '\0');
   if (c.have_font)
+  {
     bmfont_get_info(c.font, NULL, &c.font_height, &c.font_ascent, NULL);
+  }
   else
   {
     c.font_height = 0;

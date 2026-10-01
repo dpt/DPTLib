@@ -14,9 +14,12 @@
 #include "framebuf/pattern.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 #include "utils/rng.h"
 
 #include "patterns.h"
+#include "common.h"
+#include "snapshot.h"
 
 #define PATTERNS_FPS 60 /* idle ticks per second */
 
@@ -24,7 +27,15 @@
  * per-instance in patterns_task_t, not as a file-scope static, so that
  * each window's Info row can hold its own .window pointer to the shared
  * proginfo singleton, retargeted just before wuss_menu_open */
-enum { PATTERNS_MENU_INFO, PATTERNS_MENU_SPEED };
+enum
+{
+  PATTERNS_MENU_INFO,
+  PATTERNS_MENU_SPEED,
+  PATTERNS_MENU_PAUSE,
+  PATTERNS_MENU_SAVE
+};
+
+#define PATTERNS_SAVE_NAME "patterns.png" /* Save As's initial leafname */
 
 /* one entry per row of the "Speed" submenu: seconds per a-to-b blend */
 static const struct
@@ -103,12 +114,23 @@ static result_t patterns_set_speed(patterns_task_t *bc, int idx)
   return result_OK;
 }
 
+/* wuss_saveas_save_fn_t: opaque is the patterns_task_t */
+static result_t patterns_saveas_save(const char *path, void *opaque)
+{
+  patterns_task_t *bc;
+
+  bc = opaque;
+
+  return snapshot_save_png(bc->window, patterns_handle, bc, path);
+}
+
 result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
 {
   result_t         rc;
   patterns_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  filetype_t       png_type;
   int              i;
 
   task = calloc(1, sizeof(*task));
@@ -137,17 +159,22 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(200, 160),
-                                 "Patterns",
-                                 wuss_WINDOW_DEFAULT,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(200, 160),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate,
+                          SIZE2D(200, 160),
+                          "Patterns",
+                          &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
+                          PATTERNS_SAVE_NAME, patterns_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
     return rc;
   }
 
@@ -168,6 +195,15 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, PATTERNS_MENU_SPEED, "Speed",
                       wuss_MENU_ITEM_NONE, &task->speed_menu);
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "SPACE");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[PATTERNS_MENU_SAVE].window =
+    wuss_saveas_window(task->saveas);
+
   WUSS_MENU_TITLE(task->menu, "Patterns", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -179,8 +215,43 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
 
 void patterns_destroy(patterns_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
+  wuss_saveas_destroy(task->saveas);
   free(task);
+}
+
+/* start the next blend: the old end colour becomes the start and a fresh
+ * random colour the end */
+static void patterns_next_blend(patterns_task_t *bc)
+{
+  bc->frame_count = 0;
+  bc->a           = bc->b;
+  bc->b           = patterns_random_colour(&bc->rng);
+}
+
+/* skip straight to the next blend and repaint, even while paused */
+static result_t patterns_skip(patterns_task_t *bc)
+{
+  patterns_next_blend(bc);
+  patterns_update_pattern(bc);
+  wuss_window_invalidate_visible(bc->window);
+
+  return result_OK;
+}
+
+/* Right skips to the next blend, as Select does. Anything else is passed
+ * back unclaimed. */
+static result_t patterns_key(patterns_task_t *bc,
+                             wuss_window_t   *window,
+                             int              code)
+{
+  switch (code)
+  {
+  case wuss_KEY_RIGHT:
+    return patterns_skip(bc);
+
+  default:
+    return result_WUSS_KEY_UNCLAIMED;
+  }
 }
 
 static result_t patterns_idle(void *task_data)
@@ -196,12 +267,11 @@ static result_t patterns_idle(void *task_data)
   if (bc->window == NULL)
     return result_OK;
 
+  if (bc->paused)
+    return result_OK;
+
   if (++bc->frame_count >= bc->blend_frames)
-  {
-    bc->frame_count = 0;
-    bc->a           = bc->b;
-    bc->b           = patterns_random_colour(&bc->rng);
-  }
+    patterns_next_blend(bc);
 
   patterns_update_pattern(bc);
   wuss_window_invalidate_visible(bc->window);
@@ -252,23 +322,38 @@ result_t patterns_handle(wuss_window_t      *window,
     if (window != bc->window)
       return result_OK; /* the proginfo dialogue has no click behaviour of
                          * its own */
-    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
-        !(event->data.mouse.button & wuss_BUTTON_MENU))
+    if (event->data.mouse.action != wuss_MOUSE_DOWN)
+      return result_OK;
+
+    if (event->data.mouse.button & wuss_BUTTON_SELECT)
+      return patterns_skip(bc);
+
+    if (!(event->data.mouse.button & wuss_BUTTON_MENU))
       return result_OK;
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Patterns",
-        "Ordered-dither blend between random colours",
-        "(c) DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Patterns",
+                           "Ordered-dither blend between random colours");
       wuss_proginfo_set_desc(&desc);
       bc->menu_items[PATTERNS_MENU_INFO].window =
         wuss_proginfo_window(bc->delegate);
     }
-    return wuss_menu_open(bc->delegate, &bc->menu,
-                          wuss_get_pointer(bc->wuss), &bc->menu_handle);
+    wuss_menu_tick_item(&bc->menu, PATTERNS_MENU_PAUSE, bc->paused);
+    return wuss_menu_open_at_pointer(bc->delegate, &bc->menu,
+                                     &bc->menu_handle);
+
+  case wuss_EVENT_KEY:
+  {
+    result_t rc;
+
+    if (window != bc->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    if (!task_key_is_plain(bc->delegate, &bc->menu, event, &rc))
+      return rc;
+
+    return patterns_key(bc, window, event->data.key.code);
+  }
 
   case wuss_EVENT_MENU_SELECT:
     {
@@ -276,9 +361,21 @@ result_t patterns_handle(wuss_window_t      *window,
 
       rc = result_OK;
       if (event->data.menu_select.menu == &bc->speed_menu)
+      {
         rc = patterns_set_speed(bc, event->data.menu_select.index);
-      if (!wuss_menu_should_keep_open(event))
-        bc->menu_handle = NULL;
+      }
+      else if (event->data.menu_select.menu == &bc->menu &&
+               event->data.menu_select.index == PATTERNS_MENU_PAUSE)
+      {
+        bc->paused = !bc->paused;
+        wuss_menu_tick_item_live(bc->menu_handle, &bc->menu,
+                                 PATTERNS_MENU_PAUSE, bc->paused);
+      }
+      else if (event->data.menu_select.menu == &bc->menu &&
+               event->data.menu_select.index == PATTERNS_MENU_SAVE)
+      {
+        rc = wuss_saveas_open(bc->saveas);
+      }
       return rc;
     }
 

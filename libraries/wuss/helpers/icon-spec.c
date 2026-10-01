@@ -161,6 +161,7 @@ void wuss_icon_spec_slider_row(wuss_icon_spec_t         *slider_spec,
     default_value = wuss__slider_row_snap(default_value, min, max, step);
   wuss_icon_spec_slider(slider_spec, slider_bbox, orientation, min, max,
                         default_value);
+  slider_spec->u.slider.step = step;
   snprintf(buf, buf_size, fmt ? fmt : "%d", default_value);
   wuss_icon_spec_label(value_spec, value_bbox, buf, 0);
 }

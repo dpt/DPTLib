@@ -45,33 +45,18 @@ void array_delete_elements(void  *array,
 /* Take the contents of an array which used to have elements 'oldwidth' bytes
  * wide and adjust them so they are 'newwidth' bytes wide. Set new bytes to
  * 'wipe_value'. */
-void array_stretch1(unsigned char *base,
-                    int            nelems,
-                    size_t         oldwidth,
-                    size_t         newwidth,
-                    int            wipe_value);
-
-void array_stretch2(unsigned char *base,
-                    int            nelems,
-                    size_t         oldwidth,
-                    size_t         newwidth,
-                    int            wipe_value);
+void array_stretch(unsigned char *base,
+                   int            nelems,
+                   size_t         oldwidth,
+                   size_t         newwidth,
+                   int            wipe_value);
 
 /* Take the contents of an array which used to have elements 'oldwidth' bytes
  * wide and adjust them so they are 'newwidth' bytes wide. */
-void array_squeeze1(unsigned char *base,
-                    int            nelems,
-                    size_t         oldwidth,
-                    size_t         newwidth);
-
-void array_squeeze2(unsigned char *base,
-                    int            nelems,
-                    size_t         oldwidth,
-                    size_t         newwidth);
-
-/* Temporary defines until the above functions are renamed. */
-#define array_stretch array_stretch2
-#define array_squeeze array_squeeze2
+void array_squeeze(unsigned char *base,
+                   int            nelems,
+                   size_t         oldwidth,
+                   size_t         newwidth);
 
 /* ----------------------------------------------------------------------- */
 

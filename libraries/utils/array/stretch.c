@@ -32,32 +32,12 @@ static void array_memset_stride(unsigned char *base,
  * |D|      |  |      |D |
  */
 
-/* walk backwards, skip last element */
-void array_stretch1(unsigned char *base,
-                    int            nelems,
-                    size_t         oldwidth,
-                    size_t         newwidth,
-                    int            wipe_value)
-{
-  int i;
-
-  assert(oldwidth < newwidth);
-
-  for (i = nelems - 1; i > 0; i--)
-    memmove(base + i * newwidth, base + i * oldwidth, oldwidth);
-
-  array_memset_stride(base + oldwidth,
-                      nelems,
-                      newwidth - oldwidth,
-                      newwidth,
-                      wipe_value);
-}
-
-void array_stretch2(unsigned char *base,
-                    int            nelems,
-                    size_t         oldwidth,
-                    size_t         newwidth,
-                    int            wipe_value)
+/* walk backwards, skip first element */
+void array_stretch(unsigned char *base,
+                   int            nelems,
+                   size_t         oldwidth,
+                   size_t         newwidth,
+                   int            wipe_value)
 {
   unsigned char *p, *q;
 

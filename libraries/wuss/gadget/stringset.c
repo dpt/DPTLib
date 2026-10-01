@@ -1,5 +1,6 @@
 /* wuss/gadget/stringset.c -- a field with a pop-up menu of fixed strings */
 
+#include <limits.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -9,6 +10,7 @@
 
 #include "base/result.h"
 #include "framebuf/bitmap.h"
+#include "framebuf/bmfont.h"
 #include "geom/box.h"
 #include "geom/point.h"
 
@@ -20,6 +22,7 @@
 #include "wuss/gadget/stringset.h"
 
 #include "../core/impl.h"
+#include "../font/font.h"
 #include "../icon.h"
 
 /* ----------------------------------------------------------------------- */
@@ -87,6 +90,7 @@ result_t wuss_stringset_create(wuss_stringset_t           **out,
                                wuss_window_t               *window,
                                box_t                        bbox,
                                const char                  *title,
+                               int                          title_width,
                                const char *const           *strings,
                                int                          count,
                                wuss_stringset_changed_fn_t *changed,
@@ -95,9 +99,12 @@ result_t wuss_stringset_create(wuss_stringset_t           **out,
   result_t          rc;
   wuss_t           *wuss;
   wuss_stringset_t *ss;
-  wuss_icon_spec_t  specs[2];
-  wuss_icon_t      *icons[2];
+  wuss_icon_spec_t  specs[3];
+  wuss_icon_t      *icons[3];
   box_t             field;
+  bmfont_t         *font;
+  bmfont_width_t    w;
+  int               nspecs;
   int               i;
 
   if (out == NULL || window == NULL || strings == NULL)
@@ -119,9 +126,28 @@ result_t wuss_stringset_create(wuss_stringset_t           **out,
 
   field     = bbox;
   field.x1 -= stringset_arrow_spec(wuss, bbox, &specs[1]) + wuss_STD_GAP;
+  nspecs    = 2;
+
+  font = wuss->fonts.fonts[0];
+  if (title_width >= 0 && title != NULL && title[0] != '\0' && font != NULL)
+  {
+    w = (bmfont_width_t) title_width;
+    if (title_width == 0)
+    {
+      wuss__text_measure(font, title, (int) strlen(title), INT_MAX, NULL, &w);
+      w += 2 * WUSS_LABEL_TEXT_PAD;
+    }
+    wuss_icon_spec_label(&specs[2],
+                         (box_t) BOX_POS_SIZE(bbox.x0, bbox.y0, (int) w,
+                                              bbox.y1 - bbox.y0),
+                         title, wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+    field.x0 += (int) w + wuss_STD_GAP;
+    nspecs    = 3;
+  }
+
   wuss_icon_spec_display(&specs[0], field, strings[0], 0);
 
-  rc = wuss_icon_create_array(window, specs, 2, icons);
+  rc = wuss_icon_create_array(window, specs, nspecs, icons);
   if (rc != result_OK)
   {
     wuss->alloc.free(ss);

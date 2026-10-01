@@ -11,6 +11,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +23,7 @@
 #include "base/utils.h"
 #include "framebuf/colour.h"
 #include "framebuf/bmfont.h"
+#include "text/utf8.h"
 #include "utils/array.h"
 #include "utils/bytesex.h"
 
@@ -47,21 +49,44 @@
 
 /* -------------------------------------------------------------------------- */
 
+/* Highest codepoint a cmap may reference */
+#define CMAP_MAX_CODEPOINT (0x10FFFF)
+
+/* Longest .map line accepted, including the newline */
+#define CMAP_MAX_LINE      (256)
+
+/* -------------------------------------------------------------------------- */
+
+/** A cmap group: a run of consecutive codepoints mapped to consecutive
+ *  glyphs, as in TrueType cmap format 12. */
+typedef struct bmfont_cmap_group
+{
+  unsigned long first, last; /* inclusive codepoint range */
+  int           glyph;       /* glyph ID of 'first' */
+}
+bmfont_cmap_group_t;
+
 struct bmfont
 {
   png_uint_32     gridwidth, gridheight; /* pixels */
   png_uint_32     charwidth, charheight; /* em size in pixels */
   int             ascent;  /* baseline offset from the top of a glyph cell */
   int             descent; /* offset from the baseline to the cell bottom */
-  int             totalchars;
+  int             totalchars; /* cells; a box glyph follows the last */
+  int             notdef;     /* glyph for unmapped codepoints: U+FFFD's, or
+                               * the box */
 
   void           *glyphs;
   int             glyphrowbytes;
 
-  bmfont_width_t *adw; /* an array of length totalchars */
+  bmfont_width_t *adw; /* an array of length totalchars + 1 */
   int             adw_used;
   int             adw_allocated;
   bmfont_width_t  maxadw; /* widest advance width, for monospaced mode */
+
+  bmfont_cmap_group_t *cmap; /* sorted by codepoint, non-overlapping */
+  int                  cmap_used;
+  int                  cmap_allocated;
 
   bmfont_flags_t  flags;
 };
@@ -73,7 +98,7 @@ struct bmfont
  *  LETTER_SPACING pixel not stored in the font. */
 static bmfont_width_t bmfont_advance_for(const bmfont_t         *bmfont,
                                          int                     gid,
-                                         int                     c,
+                                         unsigned long           codepoint,
                                          const bmfont_spacing_t *spacing)
 {
   bmfont_width_t adw;
@@ -85,7 +110,7 @@ static bmfont_width_t bmfont_advance_for(const bmfont_t         *bmfont,
   if (spacing)
   {
     adw += spacing->letter_spacing;
-    if (c == ' ')
+    if (codepoint == 0x20)
       adw += spacing->word_spacing;
   }
 
@@ -201,51 +226,92 @@ static int detect_gridheight(const unsigned char *pixels,
   return 0;
 }
 
-/** True if row \p y of the cell is full-width PIXEL_GRID_IDX. */
+/** The 2bpp pixel at (\p x, \p y). Pixels are packed four to a byte, most
+ *  significant pair first. */
+static int pixel_at(const unsigned char *pixels,
+                    size_t               rowbytes,
+                    png_uint_32          x,
+                    png_uint_32          y)
+{
+  return (pixels[rowbytes * y + (x >> 2)] >> (6 - 2 * (x & 3))) & 3;
+}
+
+/** True if row \p y of the cell starting at column \p x0 is full-width
+ *  PIXEL_GRID_IDX. */
 static int row_is_grid(const unsigned char *pixels,
                        size_t               rowbytes,
+                       png_uint_32          x0,
                        png_uint_32          gridwidth,
                        png_uint_32          y)
 {
-  const unsigned char *row = pixels + rowbytes * y;
-  png_uint_32          x;
+  png_uint_32 x;
 
-  for (x = 0; x < gridwidth; x++)
-  {
-    int px = (row[x >> 2] >> (6 - 2 * (x & 3))) & 3;
-    if (px != PIXEL_GRID_IDX)
+  for (x = x0; x < x0 + gridwidth; x++)
+    if (pixel_at(pixels, rowbytes, x, y) != PIXEL_GRID_IDX)
       return 0;
-  }
 
   return 1;
+}
+
+/** True if the cell with top-left (\p x0, \p y0) holds any glyph ink. */
+static int cell_has_ink(const unsigned char *pixels,
+                        size_t               rowbytes,
+                        png_uint_32          x0,
+                        png_uint_32          y0,
+                        png_uint_32          gridwidth,
+                        png_uint_32          gridheight)
+{
+  png_uint_32 x;
+  png_uint_32 y;
+
+  for (y = y0; y < y0 + gridheight; y++)
+    for (x = x0; x < x0 + gridwidth; x++)
+      if (pixel_at(pixels, rowbytes, x, y) == PIXEL_FG_IDX)
+        return 1;
+
+  return 0;
 }
 
 /**
  * Find the baseline and descent within a glyph cell.
  *
- * The space glyph (grid cell 0, gid 0) carries no ink, so its grid rows --
- * drawn by ttf2bmfont.py as full-width rows of PIXEL_GRID_IDX pixels across
- * the cell, one at the baseline and one at the cell bottom -- are
- * unambiguous. The first such row within the cell body is the baseline
- * (*ascent is its offset from the top of the cell); the next one found at or
- * below it is the cell bottom (*descent is its offset from the baseline).
- * Returns 0 if no baseline row is found, e.g. a font predating this
- * convention -- the caller falls back to treating the whole cell body as
- * ascent, with no descender.
+ * The first cell without ink -- normally the space glyph, but whatever the
+ * cmap maps there -- carries grid rows drawn by ttf2bmfont.py as full-width
+ * rows of PIXEL_GRID_IDX pixels across the cell, one at the baseline and one
+ * at the cell bottom, which are then unambiguous. The first such row within
+ * the cell body is the baseline (*ascent is its offset from the top of the
+ * cell); the next one found at or below it is the cell bottom (*descent is
+ * its offset from the baseline). Returns 0 if every cell has ink or no
+ * baseline row is found, e.g. a font predating this convention -- the caller
+ * falls back to treating the whole cell body as ascent, with no descender.
  */
 static int detect_baseline_metrics(const unsigned char *pixels,
                                    size_t               rowbytes,
+                                   png_uint_32          imgwidth,
+                                   png_uint_32          imgheight,
                                    png_uint_32          gridwidth,
                                    png_uint_32          gridheight,
                                    int                 *ascent,
                                    int                 *descent)
 {
+  png_uint_32 x0;
+  png_uint_32 y0;
   png_uint_32 y;
-  int         baseline_y = -1;
+  int         baseline_y;
 
+  for (y0 = 0; y0 < imgheight; y0 += gridheight)
+    for (x0 = 0; x0 + gridwidth <= imgwidth; x0 += gridwidth)
+      if (!cell_has_ink(pixels, rowbytes, x0, y0, gridwidth, gridheight))
+        goto found;
+
+  return 0;
+
+
+found:
+  baseline_y = -1;
   for (y = 1; y < gridheight; y++) /* row 0 is the advance-width strip */
   {
-    if (!row_is_grid(pixels, rowbytes, gridwidth, y))
+    if (!row_is_grid(pixels, rowbytes, x0, gridwidth, y0 + y))
       continue;
 
     if (baseline_y < 0)
@@ -411,7 +477,8 @@ static result_t extract_glyphs(bmfont_t   *bmfont,
 
   build_repack_tab(repacktab, PIXEL_FG_IDX);
 
-  glyphbytes = bmfont->glyphrowbytes * bmfont->charheight * bmfont->totalchars;
+  glyphbytes = bmfont->glyphrowbytes * bmfont->charheight *
+               (bmfont->totalchars + 1); /* +1 for the box */
   glyphs = malloc(glyphbytes);
   if (glyphs == NULL)
     goto oom;
@@ -532,6 +599,284 @@ static result_t extract_glyphs(bmfont_t   *bmfont,
 oom:
   rc = result_OOM;
   return rc;
+}
+
+/** Build the fallback glyph after the last cell: a 1px hollow box as tall as
+ *  the ascent, sitting on the baseline, over columns 0 to charwidth - 2 so its
+ *  last column is left blank as letter spacing. It advances by the cell
+ *  width. */
+static result_t make_box_glyph(bmfont_t *bmfont)
+{
+  unsigned char *glyph;
+  unsigned int   full;
+  unsigned int   sides;
+  int            y;
+  unsigned int   row;
+
+  assert(bmfont->charwidth >= 3);
+  assert(bmfont->adw_used == bmfont->totalchars);
+
+  if (array_grow((void **) &bmfont->adw,
+                            sizeof(*bmfont->adw),
+                            bmfont->adw_used,
+                   (int *) &bmfont->adw_allocated,
+                            1,
+                            8))
+    return result_OOM;
+
+  /* stored 1px short, like the cells' widths */
+  bmfont->adw[bmfont->adw_used++] = (bmfont_width_t) (bmfont->charwidth - 1);
+
+  glyph = (unsigned char *) bmfont->glyphs +
+          bmfont->totalchars * bmfont->glyphrowbytes * bmfont->charheight;
+  memset(glyph, 0, bmfont->glyphrowbytes * bmfont->charheight);
+
+  /* bit (charwidth - 1 - column) holds each column */
+  full  = ((1u << (bmfont->charwidth - 1)) - 1) << 1;
+  sides = (1u << (bmfont->charwidth - 1)) | 2u;
+
+  for (y = 0; y < bmfont->ascent; y++)
+  {
+    row = (y == 0 || y == bmfont->ascent - 1) ? full : sides;
+
+    if (bmfont->glyphrowbytes == 1)
+      ((unsigned char *) glyph)[y] = (unsigned char) row;
+    else if (bmfont->glyphrowbytes == 2)
+      ((unsigned short *) glyph)[y] = (unsigned short) row;
+    else
+      ((unsigned int *) glyph)[y] = row;
+  }
+
+  return result_OK;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static const char *skip_space(const char *p)
+{
+  while (*p == ' ' || *p == '\t')
+    p++;
+
+  return p;
+}
+
+/** Parse a "U+<hex>" codepoint at \p *pp, advancing \p *pp past it.
+ *  Returns 0 if there isn't one. */
+static int parse_codepoint(const char **pp, unsigned long *codepoint)
+{
+  const char *p;
+  char       *end;
+
+  p = *pp;
+  if (p[0] != 'U' || p[1] != '+' || !isxdigit((unsigned char) p[2]))
+    return 0;
+
+  *codepoint = strtoul(p + 2, &end, 16);
+  *pp = end;
+  return 1;
+}
+
+/** Parse one .map line into \p group. Returns 1 for a group, 0 for a blank
+ *  or comment-only line and -1 for anything else. */
+static int parse_cmap_line(char *line, bmfont_cmap_group_t *group)
+{
+  char       *hash;
+  const char *p;
+  char       *end;
+  long        glyph;
+
+  hash = strchr(line, '#');
+  if (hash)
+    *hash = '\0';
+
+  p = skip_space(line);
+  if (*p == '\0' || *p == '\r' || *p == '\n')
+    return 0;
+
+  if (!parse_codepoint(&p, &group->first))
+    return -1;
+
+  group->last = group->first;
+  if (p[0] == '.' && p[1] == '.')
+  {
+    p += 2;
+    if (!parse_codepoint(&p, &group->last))
+      return -1;
+  }
+
+  if (*p != ' ' && *p != '\t')
+    return -1;
+
+  p = skip_space(p);
+  if (!isdigit((unsigned char) *p))
+    return -1;
+
+  glyph = strtol(p, &end, 10);
+  if (glyph > INT_MAX)
+    return -1;
+
+  group->glyph = (int) glyph;
+
+  p = skip_space(end);
+  if (*p != '\0' && *p != '\r' && *p != '\n')
+    return -1;
+
+  return 1;
+}
+
+static result_t add_cmap_group(bmfont_t                  *bmfont,
+                               const bmfont_cmap_group_t *group)
+{
+  if (array_grow((void **) &bmfont->cmap,
+                            sizeof(*bmfont->cmap),
+                            bmfont->cmap_used,
+                            &bmfont->cmap_allocated,
+                            1,
+                            8))
+    return result_OOM;
+
+  bmfont->cmap[bmfont->cmap_used++] = *group;
+  return result_OK;
+}
+
+/** Read the cmap from the open .map sidecar \p fp. */
+static result_t read_cmap(bmfont_t *bmfont, FILE *fp)
+{
+  result_t            rc;
+  int                 lineno;
+  char                line[CMAP_MAX_LINE];
+  int                 kind;
+  bmfont_cmap_group_t group;
+  unsigned long       prev_last;
+
+  lineno = 0;
+  while (fgets(line, sizeof(line), fp))
+  {
+    lineno++;
+
+    if (strchr(line, '\n') == NULL && !feof(fp))
+    {
+      logf_error("bmfont: map line %d is too long", lineno);
+      return result_BMFONT_BAD_MAP;
+    }
+
+    kind = parse_cmap_line(line, &group);
+    if (kind == 0)
+      continue;
+
+    if (kind < 0)
+    {
+      logf_error("bmfont: map line %d is malformed", lineno);
+      return result_BMFONT_BAD_MAP;
+    }
+
+    prev_last = bmfont->cmap_used ?
+                bmfont->cmap[bmfont->cmap_used - 1].last : 0;
+
+    if (group.last < group.first ||
+        group.last > CMAP_MAX_CODEPOINT ||
+        (bmfont->cmap_used && group.first <= prev_last) ||
+        group.glyph >= bmfont->totalchars ||
+        group.last - group.first >=
+          (unsigned long) (bmfont->totalchars - group.glyph))
+    {
+      logf_error("bmfont: map line %d is out of order or out of range",
+                 lineno);
+      return result_BMFONT_BAD_MAP;
+    }
+
+    rc = add_cmap_group(bmfont, &group);
+    if (rc)
+      return rc;
+  }
+
+  return result_OK;
+}
+
+/**
+ * Load the cmap for the font at \p png from its .map sidecar (the path with
+ * its trailing "png" swapped for "map"). Without a sidecar, map U+0020
+ * onwards to glyph 0 onwards, ending at the last cell with an advance width.
+ */
+static result_t load_cmap(bmfont_t *bmfont, const char *png)
+{
+  result_t            rc;
+  FILE               *fp;
+  size_t              len;
+  char               *mappath;
+  int                 i;
+  bmfont_cmap_group_t group;
+
+  fp = NULL;
+
+  len = strlen(png);
+  if (len >= 3 && strcmp(png + len - 3, "png") == 0)
+  {
+    mappath = malloc(len + 1);
+    if (mappath == NULL)
+      return result_OOM;
+
+    memcpy(mappath, png, len - 3);
+    strcpy(mappath + len - 3, "map");
+    fp = fopen(mappath, "r");
+    free(mappath);
+  }
+
+  if (fp)
+  {
+    rc = read_cmap(bmfont, fp);
+    fclose(fp);
+    return rc;
+  }
+
+  /* implicit mapping */
+  for (i = bmfont->totalchars - 1; i >= 0; i--)
+    if (bmfont->adw[i] > 0)
+      break;
+
+  if (i < 0)
+    return result_OK; /* no glyphs at all */
+
+  group.first = ' ';
+  group.last  = ' ' + (unsigned long) i;
+  group.glyph = 0;
+  return add_cmap_group(bmfont, &group);
+}
+
+/** bsearch() comparator: is the codepoint \p key within \p elem's range? */
+static int cmap_group_compare(const void *key, const void *elem)
+{
+  unsigned long              codepoint;
+  const bmfont_cmap_group_t *group;
+
+  codepoint = *(const unsigned long *) key;
+  group     = elem;
+
+  if (codepoint < group->first)
+    return -1;
+  if (codepoint > group->last)
+    return 1;
+  return 0;
+}
+
+int bmfont_lookup(bmfont_t *bmfont, unsigned long codepoint)
+{
+  const bmfont_cmap_group_t *group;
+
+  assert(bmfont);
+
+  if (bmfont->cmap_used == 0)
+    return -1; /* bsearch() may not be passed a NULL base */
+
+  group = bsearch(&codepoint,
+                  bmfont->cmap,
+                  (size_t) bmfont->cmap_used,
+                  sizeof(*bmfont->cmap),
+                  cmap_group_compare);
+  if (group == NULL)
+    return -1;
+
+  return group->glyph + (int) (codepoint - group->first);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -669,6 +1014,7 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
                              gridwidth <= 16 ? 2 :
                                                4; /* stored glyph row: 1, 2 or 4 */
     if (!detect_baseline_metrics(pixels, pngrowbytes,
+                                 pngwidth, pngheight,
                                  (png_uint_32) gridwidth,
                                  (png_uint_32) gridheight,
                                  &bmfont->ascent, &bmfont->descent))
@@ -691,6 +1037,18 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
     rc = extract_glyphs(bmfont, pixels, pngwidth, pngheight, pngrowbytes);
     if (rc)
       goto cleanup;
+
+    rc = make_box_glyph(bmfont);
+    if (rc)
+      goto cleanup;
+
+    rc = load_cmap(bmfont, png);
+    if (rc)
+      goto cleanup;
+
+    bmfont->notdef = bmfont_lookup(bmfont, utf8_REPLACEMENT);
+    if (bmfont->notdef < 0)
+      bmfont->notdef = bmfont->totalchars; /* the box */
   }
 
   *pbmfont = bmfont;
@@ -701,7 +1059,7 @@ cleanup:
   free(row_pointers);
   free(pixels);
   if (rc)
-    free(bmfont);
+    bmfont_destroy(bmfont);
   if (png_ptr)
     png_destroy_read_struct(&png_ptr, NULL, NULL);
   fclose(fp);
@@ -714,6 +1072,12 @@ oom:
 
 void bmfont_destroy(bmfont_t *bmfont)
 {
+  if (bmfont == NULL)
+    return;
+
+  free(bmfont->cmap);
+  free(bmfont->adw);
+  free(bmfont->glyphs);
   free(bmfont);
 }
 
@@ -747,6 +1111,58 @@ int bmfont_get_count(bmfont_t *bmfont)
   return bmfont->totalchars;
 }
 
+/* -------------------------------------------------------------------------- */
+
+/* Decode the rune at text and resolve its glyph and advance. An unmapped
+ * codepoint takes the notdef glyph, except below U+0020 where it's skipped:
+ * gid -1, zero advance. Returns the bytes consumed. */
+static int bmfont_next_rune(bmfont_t               *bmfont,
+                            const char             *text,
+                            int                     len,
+                            const bmfont_spacing_t *spacing,
+                            unsigned long          *codepoint,
+                            int                    *gid,
+                            bmfont_width_t         *advance)
+{
+  int n;
+
+  n    = utf8_decode(text, len, codepoint);
+  *gid = bmfont_lookup(bmfont, *codepoint);
+  if (*gid < 0 && *codepoint >= 0x20)
+    *gid = bmfont->notdef;
+
+  *advance = (*gid < 0) ? 0 :
+             bmfont_advance_for(bmfont, *gid, *codepoint, spacing);
+
+  return n;
+}
+
+/* The summed advance of len bytes of text. */
+static int bmfont_text_width(bmfont_t               *bmfont,
+                             const char             *text,
+                             int                     len,
+                             const bmfont_spacing_t *spacing)
+{
+  int            width;
+  unsigned long  codepoint;
+  int            gid;
+  bmfont_width_t advance;
+
+  width = 0;
+  while (len > 0)
+  {
+    int n;
+
+    n = bmfont_next_rune(bmfont, text, len, spacing,
+                         &codepoint, &gid, &advance);
+    text  += n;
+    len   -= n;
+    width += advance;
+  }
+
+  return width;
+}
+
 result_t bmfont_measure(bmfont_t               *bmfont,
                         const char             *text,
                         int                     textlen,
@@ -756,9 +1172,10 @@ result_t bmfont_measure(bmfont_t               *bmfont,
                         bmfont_width_t         *actual_width)
 {
   bmfont_width_t current_width;
-  int            len;
   int            any_drawn;
-  int            last_c;
+  unsigned long  last_codepoint;
+  int            i;
+  int            n;
 
   assert(bmfont);
   assert(text);
@@ -766,34 +1183,32 @@ result_t bmfont_measure(bmfont_t               *bmfont,
   assert(target_width >= 0);
   /* split_point, actual_width may be NULL */
 
-  current_width = 0;
+  current_width  = 0;
   any_drawn      = 0;
-  last_c         = 0;
-  for (len = textlen; len; len--)
+  last_codepoint = 0;
+  for (i = 0; i < textlen; i += n)
   {
-    int c;
-    int gid;
-    int advance;
-    int next_width;
+    unsigned long  codepoint;
+    int            gid;
+    bmfont_width_t advance;
+    int            next_width;
 
-    if ((c = (unsigned char) *text++) < ' ')
+    n = bmfont_next_rune(bmfont, text + i, textlen - i, spacing,
+                         &codepoint, &gid, &advance);
+    if (gid < 0)
       continue;
-
-    gid = c - ' ';
-    advance = (gid < bmfont->totalchars) ?
-              bmfont_advance_for(bmfont, gid, c, spacing) : 0;
 
     next_width = current_width + advance;
     if (next_width > target_width)
       break;
 
-    current_width = next_width;
+    current_width  = next_width;
     any_drawn      = 1;
-    last_c         = c;
+    last_codepoint = codepoint;
   }
 
   if (split_point)
-    *split_point  = textlen - len;
+    *split_point  = i;
   if (actual_width)
   {
     bmfont_width_t trailing_trim = 0;
@@ -804,7 +1219,7 @@ result_t bmfont_measure(bmfont_t               *bmfont,
       if (spacing)
       {
         trailing_trim += spacing->letter_spacing;
-        if (last_c == ' ')
+        if (last_codepoint == 0x20)
           trailing_trim += spacing->word_spacing;
       }
     }
@@ -817,25 +1232,29 @@ result_t bmfont_measure(bmfont_t               *bmfont,
 
 /* -------------------------------------------------------------------------- */
 
-/* The advance of text[i] for caret purposes: zero for control characters
- * and anything outside the glyph table, as in bmfont_draw. */
-static bmfont_width_t bmfont_caret_advance(const bmfont_t         *bmfont,
-                                           const char             *text,
-                                           int                     i,
-                                           const bmfont_spacing_t *spacing)
+/* Whether the len bytes at text are the start of a multibyte sequence which
+ * continues past len: a lead byte followed only by continuation bytes. */
+static int rune_is_cut(const char *text, int len)
 {
-  int c;
-  int gid;
+  const unsigned char *p;
+  int                  need;
+  int                  i;
 
-  c = (unsigned char) text[i];
-  if (c < ' ')
+  p = (const unsigned char *) text;
+
+  if      ((p[0] & 0xE0) == 0xC0) need = 2;
+  else if ((p[0] & 0xF0) == 0xE0) need = 3;
+  else if ((p[0] & 0xF8) == 0xF0) need = 4;
+  else return 0;
+
+  if (len >= need)
     return 0;
 
-  gid = c - ' ';
-  if (gid >= bmfont->totalchars)
-    return 0;
+  for (i = 1; i < len; i++)
+    if ((p[i] & 0xC0) != 0x80)
+      return 0;
 
-  return bmfont_advance_for(bmfont, gid, c, spacing);
+  return 1;
 }
 
 /* The caret sits in the last pixel of the preceding glyph's advance -- its
@@ -855,6 +1274,7 @@ void bmfont_find_caret(bmfont_t               *bmfont,
 {
   bmfont_width_t left;
   int            i;
+  int            n;
 
   assert(bmfont);
   assert(text || len == 0);
@@ -862,11 +1282,14 @@ void bmfont_find_caret(bmfont_t               *bmfont,
   /* index, caret_x may be NULL */
 
   left = 0;
-  for (i = 0; i < len; i++)
+  for (i = 0; i < len; i += n)
   {
+    unsigned long  codepoint;
+    int            gid;
     bmfont_width_t advance;
 
-    advance = bmfont_caret_advance(bmfont, text, i, spacing);
+    n = bmfont_next_rune(bmfont, text + i, len - i, spacing,
+                         &codepoint, &gid, &advance);
 
     /* stop before this glyph if x is in its left half; an exact midpoint
      * goes to the lower index */
@@ -889,14 +1312,28 @@ bmfont_width_t bmfont_caret_x(bmfont_t               *bmfont,
 {
   bmfont_width_t left;
   int            i;
+  int            n;
 
   assert(bmfont);
   assert(text || index == 0);
   assert(index >= 0);
 
   left = 0;
-  for (i = 0; i < index; i++)
-    left += bmfont_caret_advance(bmfont, text, i, spacing);
+  for (i = 0; i < index; i += n)
+  {
+    unsigned long  codepoint;
+    int            gid;
+    bmfont_width_t advance;
+
+    /* an index inside a rune measures to its start. Text past index may not
+     * be readable, so a stray lead byte just before index looks the same. */
+    if (rune_is_cut(text + i, index - i))
+      break;
+
+    n = bmfont_next_rune(bmfont, text + i, index - i, spacing,
+                         &codepoint, &gid, &advance);
+    left += advance;
+  }
 
   return bmfont_caret_x_for(left);
 }
@@ -2535,6 +2972,62 @@ static void bmfont_drawchar_p8_4w_t(void          *vscreen,
   }
 }
 
+/* -------------------------------------------------------------------------- */
+
+/* Draw a character to a 16bpp screen (rgb565 or rgbx5551: the pixel value is
+ * already native, so the format doesn't matter here). One macro makes the
+ * opaque and transparent variants for each glyph row width; a loop instead of
+ * the jump tables above, as the 16bpp path isn't speed-critical. */
+#define BMFONT_DRAWCHAR_16(NAME, GLYTYPE, OPAQUE)                            \
+static void NAME(void          *vscreen,                                     \
+                 const void    *vglyph,                                      \
+                 int            top_skip,                                    \
+                 int            right_skip,                                  \
+                 int            shift,                                       \
+                 int            rowbytes,                                    \
+                 int            charwidth,                                   \
+                 int            charheight,                                  \
+                 pixelfmt_any_t fg,                                          \
+                 pixelfmt_any_t bg)                                          \
+{                                                                            \
+  unsigned short *scr = vscreen;                                             \
+  const GLYTYPE  *gly = vglyph;                                              \
+  int             stride;                                                    \
+  unsigned int    row;                                                       \
+  int             bit;                                                       \
+                                                                             \
+  NOT_USED(shift);                                                           \
+                                                                             \
+  gly += top_skip;                                                           \
+  stride = rowbytes / (int) sizeof(*scr) - charwidth;                        \
+                                                                             \
+  while (charheight--)                                                       \
+  {                                                                          \
+    row = *gly++;                                                            \
+    row >>= right_skip;                                                      \
+                                                                             \
+    for (bit = charwidth - 1; bit >= 0; bit--)                               \
+    {                                                                        \
+      if (row & (1u << bit))                                                 \
+        *scr = (unsigned short) fg;                                          \
+      else if (OPAQUE)                                                       \
+        *scr = (unsigned short) bg;                                          \
+      scr++;                                                                 \
+    }                                                                        \
+                                                                             \
+    scr += stride;                                                           \
+  }                                                                          \
+}
+
+BMFONT_DRAWCHAR_16(bmfont_drawchar_16_1w_o, unsigned char,  1)
+BMFONT_DRAWCHAR_16(bmfont_drawchar_16_1w_t, unsigned char,  0)
+BMFONT_DRAWCHAR_16(bmfont_drawchar_16_2w_o, unsigned short, 1)
+BMFONT_DRAWCHAR_16(bmfont_drawchar_16_2w_t, unsigned short, 0)
+BMFONT_DRAWCHAR_16(bmfont_drawchar_16_4w_o, unsigned int,   1)
+BMFONT_DRAWCHAR_16(bmfont_drawchar_16_4w_t, unsigned int,   0)
+
+#undef BMFONT_DRAWCHAR_16
+
 result_t bmfont_draw(bmfont_t               *bmfont,
                      screen_t               *scr,
                      const char             *text,
@@ -2545,7 +3038,7 @@ result_t bmfont_draw(bmfont_t               *bmfont,
                      const point_t          *pos,
                      point_t                *end_pos)
 {
-  static bmfont_drawchar_t *const drawfns[5][3][2] =
+  static bmfont_drawchar_t *const drawfns[6][3][2] =
   {
     { /* pixelfmt_p1 */
       { bmfont_drawchar_p1_1w_o,      bmfont_drawchar_p1_1w_t      },
@@ -2571,6 +3064,11 @@ result_t bmfont_draw(bmfont_t               *bmfont,
       { bmfont_drawchar_any8888_1w_o, bmfont_drawchar_any8888_1w_t },
       { bmfont_drawchar_any8888_2w_o, bmfont_drawchar_any8888_2w_t },
       { bmfont_drawchar_any8888_4w_o, bmfont_drawchar_any8888_4w_t },
+    },
+    { /* pixelfmt_rgb565 / pixelfmt_rgbx5551 */
+      { bmfont_drawchar_16_1w_o,      bmfont_drawchar_16_1w_t      },
+      { bmfont_drawchar_16_2w_o,      bmfont_drawchar_16_2w_t      },
+      { bmfont_drawchar_16_4w_o,      bmfont_drawchar_16_4w_t      },
     },
   };
 
@@ -2601,6 +3099,8 @@ result_t bmfont_draw(bmfont_t               *bmfont,
     case pixelfmt_p8:       fmt_idx = 3; break;
     case pixelfmt_bgra8888:
     case pixelfmt_bgrx8888: fmt_idx = 4; break;
+    case pixelfmt_rgb565:
+    case pixelfmt_rgbx5551: fmt_idx = 5; break;
     default: assert(0); return result_NOT_SUPPORTED;
     }
 
@@ -2633,26 +3133,8 @@ result_t bmfont_draw(bmfont_t               *bmfont,
      * or the run after this one starts from a stale x and every
      * following run on the line shifts left by this run's width */
     if (end_pos)
-    {
-      int x;
-
-      x = pos->x;
-      while (len--)
-      {
-        int c;
-        int gid;
-
-        c = *text++;
-        if ((unsigned char) c < ' ')
-          continue;
-        gid = (unsigned char) c - ' ';
-        if (gid >= bmfont->totalchars)
-          continue;
-
-        x += bmfont_advance_for(bmfont, gid, c, spacing);
-      }
-      *end_pos = POINT(x, pos->y);
-    }
+      *end_pos = POINT(pos->x + bmfont_text_width(bmfont, text, len, spacing),
+                       pos->y);
 
     return result_OK; /* not visible */
   }
@@ -2695,24 +3177,23 @@ result_t bmfont_draw(bmfont_t               *bmfont,
     return result_OK;
   }
 
-  while (len--)
+  while (len > 0)
   {
-    int         c;
-    int         gid;
-    int         advance;
-    const void *glyph;
+    int            n;
+    unsigned long  codepoint;
+    int            gid;
+    bmfont_width_t advance;
+    const void    *glyph;
 
-    c       = *text++;
+    n     = bmfont_next_rune(bmfont, text, len, spacing,
+                             &codepoint, &gid, &advance);
+    text += n;
+    len  -= n;
 
-    /* control characters and anything outside the glyph table draw nothing
-     * and advance nothing -- matching bmfont_measure. */
-    if ((unsigned char) c < ' ')
+    /* unmapped control characters draw nothing and advance nothing --
+     * matching bmfont_measure */
+    if (gid < 0)
       continue;
-    gid = (unsigned char) c - ' ';
-    if (gid >= bmfont->totalchars)
-      continue;
-
-    advance = bmfont_advance_for(bmfont, gid, c, spacing);
 
     x += advance;
 
@@ -2809,31 +3290,8 @@ result_t bmfont_draw(bmfont_t               *bmfont,
   }
 
   if (end_pos)
-  {
-    /* calculate final x */
-    if (len > 0)
-    {
-      while (len--)
-      {
-        int c;
-        int gid;
-        int advance;
-
-        c = *text++;
-        if ((unsigned char) c < ' ')
-          continue;
-        gid = (unsigned char) c - ' ';
-        if (gid >= bmfont->totalchars)
-          continue;
-
-        advance = bmfont_advance_for(bmfont, gid, c, spacing);
-
-        x += advance;
-      }
-    }
-
-    *end_pos = POINT(x, pos->y);
-  }
+    *end_pos = POINT(x + bmfont_text_width(bmfont, text, len, spacing),
+                     pos->y); /* add any text left undrawn */
 
   return result_OK;
 }

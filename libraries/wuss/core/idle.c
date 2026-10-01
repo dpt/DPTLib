@@ -10,6 +10,17 @@ result_t wuss_idle(wuss_t *wuss)
 
   event.kind = wuss_EVENT_IDLE;
 
+  wuss__message_enter(wuss);
+  wuss__message_leave(wuss); /* drain before IDLE, per the file overview */
+  wuss__message_enter(wuss);
+
+#ifdef WUSS_FURNITURE
+  wuss__scroll_repeat(wuss);
+#endif
+
+  if (wuss->drag_window != NULL)
+    wuss__drag_tick(wuss);
+
   rc = result_OK;
   for (e = wuss->tasks.next; e != NULL; )
   {
@@ -26,6 +37,8 @@ result_t wuss_idle(wuss_t *wuss)
 
     e = next;
   }
+
+  wuss__message_leave(wuss); /* drain after IDLE too */
 
   return rc;
 }

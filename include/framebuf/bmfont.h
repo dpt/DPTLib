@@ -7,6 +7,13 @@
 #include "geom/point.h"
 #include "framebuf/screen.h"
 
+/* ----------------------------------------------------------------------- */
+
+/** A font's .map sidecar was malformed, out of order or out of range. */
+#define result_BMFONT_BAD_MAP (result_BASE_BMFONT + 0)
+
+/* ----------------------------------------------------------------------- */
+
 /** A bitmap font handle. */
 typedef struct bmfont bmfont_t;
 
@@ -36,7 +43,7 @@ typedef struct bmfont_spacing
                         *   May be negative to tighten; a large negative
                         *   value can make glyphs overlap or run
                         *   backwards. */
-  int word_spacing;    /**< Added to space (' ') glyphs, on top of
+  int word_spacing;    /**< Added to U+0020 SPACE glyphs, on top of
                          *   letter_spacing, in pixels. */
 }
 bmfont_spacing_t;
@@ -53,9 +60,9 @@ result_t bmfont_create(const char *png, bmfont_t **bmfont);
 /**
  * Callback for bmfont_enumerate(), invoked once per font found.
  *
- * \param[in] name  The font's leafname with the ".png" extension stripped,
- *                  e.g. "Trinity.Medium" for "Trinity.Medium.png". Borrowed;
- *                  copy it if it must outlive the call.
+ * \param[in] name  The family name and style, e.g. "Trinity Medium" for
+ *                  "Trinity/Medium.png". Borrowed; copy it if it must
+ *                  outlive the call.
  * \param[in] path  The full path that would be passed to bmfont_create() to
  *                  load this font. Borrowed.
  * \param[in] opaque  The pointer passed to bmfont_enumerate().
@@ -68,10 +75,11 @@ typedef result_t (bmfont_enumerate_fn)(const char *name,
                                        void       *opaque);
 
 /**
- * Enumerate the bitmap fonts in a directory: every ".png" file in \p dir is
- * reported to \p fn (non-recursive, order unspecified).
+ * Enumerate the bitmap fonts under a directory: every ".png" file in each
+ * family subdirectory of \p dir is reported to \p fn (one level down, order
+ * unspecified). See bmfontfamily.h for the layout.
  *
- * \param[in] dir     Directory to scan.
+ * \param[in] dir     Directory holding the family directories.
  * \param[in] fn      Called once per font; see bmfont_enumerate_fn.
  * \param[in] opaque  Passed through to \p fn.
  * \return \ref result_OK on success (including a stop-walk), \ref
@@ -116,9 +124,9 @@ void bmfont_get_info(bmfont_t *bmfont,
                      int      *descent);
 
 /**
- * Read the number of glyphs in the specified bitmap font. Glyphs are laid
- * out contiguously starting at ' ' (space, 0x20), so a char c has a glyph
- * iff c >= ' ' and c < ' ' + bmfont_get_count(bmfont).
+ * Read the number of glyphs in the specified bitmap font: its cell count, 32
+ * times the rows in its PNG. Use bmfont_lookup to find which codepoints have
+ * glyphs.
  *
  * \param[in]  bmfont   Bitmap font to query.
  * \return Number of glyphs in the font.
@@ -126,14 +134,31 @@ void bmfont_get_info(bmfont_t *bmfont,
 int bmfont_get_count(bmfont_t *bmfont);
 
 /**
+ * Look up the glyph for a Unicode codepoint via the font's cmap, loaded from
+ * its .map sidecar or, without one, the implicit mapping from U+0020.
+ *
+ * \param[in]  bmfont     Bitmap font to query.
+ * \param[in]  codepoint  Unicode codepoint.
+ * \return Glyph ID (cell index in reading order), or -1 if unmapped.
+ */
+int bmfont_lookup(bmfont_t *bmfont, unsigned long codepoint);
+
+/**
  * Measure the width of a string drawn with the specified font.
  *
+ * Text passed to bmfont is UTF-8 throughout. Lengths and indices count
+ * bytes, and any index bmfont returns falls on a character boundary. Each
+ * malformed byte counts as U+FFFD. A codepoint the font lacks draws its
+ * U+FFFD glyph, or else a hollow box, except below U+0020 where it draws and
+ * advances nothing.
+ *
  * \param[in]  bmfont       Bitmap font to measure.
- * \param[in]  text         String to measure.
- * \param[in]  len          Length of the string.
+ * \param[in]  text         UTF-8 string to measure.
+ * \param[in]  len          Length of the string in bytes.
  * \param[in]  spacing      Extra letter/word spacing, or NULL for none.
  * \param[in]  target_width Target width in pixels.
- * \param[out] split_point  Split point in pixels.
+ * \param[out] split_point  Bytes of \p text which fit within \p
+ *                          target_width.
  * \param[out] actual_width Actual width of the split string in pixels.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
@@ -152,8 +177,9 @@ result_t bmfont_measure(bmfont_t               *bmfont,
  * in the right half after it. An exact midpoint goes to the lower index.
  *
  * \param[in]  bmfont   Bitmap font the string is drawn with.
- * \param[in]  text     String to search. May be NULL if \p len is zero.
- * \param[in]  len      Length of the string. May be zero.
+ * \param[in]  text     UTF-8 string to search. May be NULL if \p len is
+ *                      zero.
+ * \param[in]  len      Length of the string in bytes. May be zero.
  * \param[in]  spacing  Extra letter/word spacing, or NULL for none.
  * \param[in]  x        Pointer x relative to the string's start position, in
  *                      pixels. Negative values give index 0; values past the
@@ -177,8 +203,9 @@ void bmfont_find_caret(bmfont_t               *bmfont,
  * does not overlap ink; at index 0 it sits at the start position.
  *
  * \param[in]  bmfont   Bitmap font the string is drawn with.
- * \param[in]  text     String. May be NULL if \p index is zero.
- * \param[in]  index    Caret index in bytes.
+ * \param[in]  text     UTF-8 string. May be NULL if \p index is zero.
+ * \param[in]  index    Caret index in bytes. An index inside a character
+ *                      places the caret before that character.
  * \param[in]  spacing  Extra letter/word spacing, or NULL for none.
  * \return Caret x relative to the string's start position, in pixels.
  */
@@ -208,8 +235,8 @@ void bmfont_draw_caret(bmfont_t      *bmfont,
  *
  * \param[in]   bmfont  Bitmap font to draw.
  * \param[in]   scr     Screen to draw on.
- * \param[in]   text    String to draw.
- * \param[in]   len     Length of the string.
+ * \param[in]   text    UTF-8 string to draw.
+ * \param[in]   len     Length of the string in bytes.
  * \param[in]   fg      Foreground colour.
  * \param[in]   bg      Background colour.
  * \param[in]   spacing Extra letter/word spacing, or NULL for none.
@@ -238,8 +265,8 @@ result_t bmfont_draw(bmfont_t               *bmfont,
  *
  * \param[in]   bmfont  Bitmap font to draw.
  * \param[in]   scr     Screen to draw on.
- * \param[in]   text    String to draw.
- * \param[in]   len     Length of the string.
+ * \param[in]   text    UTF-8 string to draw.
+ * \param[in]   len     Length of the string in bytes.
  * \param[in]   fg      Foreground colour, used for the main pass.
  * \param[in]   shadow  Shadow colour, used for the offset pass.
  * \param[in]   spacing Extra letter/word spacing, or NULL for none.

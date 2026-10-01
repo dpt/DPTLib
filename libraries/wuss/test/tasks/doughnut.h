@@ -8,34 +8,48 @@
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
 /* window task: Andy Sloane's "donut.c" torus render (the classic terminal
  * spinning-doughnut demo), ray-marched per pixel and shaded by
  * surface-normal brightness, redrawn every idle tick with the two rotation
- * angles advanced a little. Select toggles pause (and takes the input focus);
- * the wheel zooms in/out; an Adjust drag spins the torus directly, overriding
- * the idle auto-rotation for as long as it's held. While paused the arrow
- * keys step the rotation. */
+ * angles advanced a little. Select or Menu > Pause toggles pause (and Select
+ * takes the input focus); the wheel zooms in/out; an Adjust drag spins the
+ * torus directly, overriding the idle auto-rotation for as long as it's
+ * held. Space also toggles pause; while paused the arrow keys step the
+ * rotation. Menu > Tube picks the tube's thickness; Menu > Reset view
+ * restores the starting angles and zoom; Menu > Save PNG opens a Save As
+ * dialogue (drag its icon onto a Filer window, or Save with a full path
+ * already typed) that writes the window's content out. */
 typedef struct doughnut_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
   wuss_task_t       *delegate; /* the task that owns the menu */
+  wuss_saveas_t     *saveas;
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[2]; /* per-instance: shared static "Info" row
+  wuss_menu_item_t   menu_items[6]; /* per-instance: shared static "Info" row
                                       * would leak one instance's .window
                                       * pointer into another's menu */
   wuss_menu_t        menu;
-  colour_t           bg;      /* background fill, picked from the shared
-                                * colourmenu */
+  wuss_menu_item_t   tube_items[4]; /* "Tube" submenu: one row per radius */
+  wuss_menu_t        tube_menu;
+  int                tube;    /* index into doughnut_tubes */
+  colour_t           palette[256]; /* shade bitmap's palette: 0 = background
+                                    * (picked from the shared colourmenu),
+                                    * 1..255 = grey ramp */
   double             a, b;    /* rotation angles about the x and z axes */
   double             zoom;    /* scales k1; wheel steps this, clamped */
-  int                paused;  /* Select toggles; idle skips advancing a/b,
-                               * arrow keys step them */
+  int                paused;  /* Select or Menu > Pause toggles; idle
+                               * skips advancing a/b, arrow keys step
+                               * them */
   int                dragging;   /* non-zero while an Adjust drag is live */
   int                drag_x, drag_y; /* last drag point, content space */
+  double            *zbuf;    /* redraw's z-buffer, kept between redraws */
+  unsigned char     *shade;   /* redraw's grey level per z-buffer cell */
+  size_t             ncells;  /* capacity of zbuf/shade; grown as needed */
 }
 doughnut_task_t;
 

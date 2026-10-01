@@ -38,6 +38,10 @@ struct wuss__menu
    * wuss_MENU__BORROWED) the caller's own window instead */
   wuss_window_t         *window;
 
+  /* stack a borrowed-window level's window was in before the chain moved it
+   * to wuss_STACK_TOP; restored when the level closes. Unused otherwise. */
+  wuss_stack_t           saved_stack;
+
   /* borrowed source description; NULL for a borrowed-window level */
   const wuss_menu_t     *menu;
 

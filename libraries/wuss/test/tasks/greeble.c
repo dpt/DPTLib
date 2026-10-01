@@ -2,6 +2,7 @@
 
 #ifdef WUSS_APP
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -12,11 +13,14 @@
 #include "base/utils.h"
 #include "framebuf/colour.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 #include "utils/rng.h"
 #include "wuss/menu.h"
 
 #include "greeble.h"
+#include "common.h"
 #include "greeble-tiles.h"
+#include "snapshot.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -27,7 +31,36 @@
  * not as a file-scope static, so that each window's Info row and tick state
  * are its own rather than every instance sharing (and overwriting) one
  * global. */
-enum { GREEBLE_MENU_INFO = 0, GREEBLE_MENU_RANDPAL };
+enum
+{
+  GREEBLE_MENU_INFO = 0,
+  GREEBLE_MENU_RANDPAL,
+  GREEBLE_MENU_PALETTE,
+  GREEBLE_MENU_SIZE,
+  GREEBLE_MENU_SAVE
+};
+
+#define GREEBLE_SAVE_NAME "greeble.png" /* Save As's initial leafname */
+
+/* the task block sizes its Palette submenu by GREEBLE_MAX_PALETTES, since
+ * greeble-tiles.h (and so GREEBLE_NPALETTE) is private to this file */
+typedef char greeble_palette_cap_check[GREEBLE_NPALETTE <= GREEBLE_MAX_PALETTES
+                                       ? 1 : -1];
+
+/* Size submenu presets, in tiles; each fits the GREEBLE_MAX_* caps. The
+ * last is the full grid and the one a new window opens at. */
+static const struct
+{
+  const char *name;
+  int         cols, rows;
+}
+greeble_sizes[GREEBLE_NSIZES] =
+{
+  { "16 x 16", 16, 16 },
+  { "32 x 24", 32, 24 },
+  { "40 x 30", 40, 30 },
+  { "48 x 48", 48, 48 }
+};
 
 /* ----------------------------------------------------------------------- */
 
@@ -115,11 +148,10 @@ static void greeble_generate(greeble_task_t *task)
     order[j] = (unsigned char) i;
   }
 
-  tries_each = GREEBLE_NPREFAB > 0
-             ? GREEBLE_PREFAB_ATTEMPTS / GREEBLE_NPREFAB
-             : 0;
-  if (tries_each < 1)
-    tries_each = 1;
+  tries_each = MAX(GREEBLE_NPREFAB > 0
+                   ? GREEBLE_PREFAB_ATTEMPTS / GREEBLE_NPREFAB
+                   : 0,
+                   1);
 
   /* grid[][] is contiguous; the cols..MAX_COLS tail of each live row is never
    * read, so one clear over the live rows is enough. GREEBLE_EMPTY is a byte
@@ -157,16 +189,6 @@ static void greeble_generate(greeble_task_t *task)
       if (task->grid[r][c] == GREEBLE_EMPTY)
         task->grid[r][c] =
           greeble_filler[rng_range(&s, GREEBLE_NFILLER)];
-}
-
-/* recompute the grid extent for the window's content box, then regenerate */
-static void greeble_relayout(greeble_task_t *task, const box_t *content)
-{
-  task->cols = (content->x1 - content->x0) / GREEBLE_TILE_PX;
-  task->rows = (content->y1 - content->y0) / GREEBLE_TILE_PX;
-  task->cols = CLAMP(task->cols, 1, GREEBLE_MAX_COLS);
-  task->rows = CLAMP(task->rows, 1, GREEBLE_MAX_ROWS);
-  greeble_generate(task);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -284,20 +306,82 @@ static result_t greeble_toggle_randpal(greeble_task_t *task,
   return result_OK;
 }
 
-/* Adjust: step to the next base palette on the current pattern. Regenerate so
- * filler cells (and prefab cells, when random palettes are off) pick up the new
- * row; the seed is unchanged so the layout is identical. */
-static result_t greeble_adjust(greeble_task_t *task, wuss_window_t *window)
+/* Switch the base palette on the current pattern. Regenerate so filler
+ * cells (and prefab cells, when random palettes are off) pick up the new row;
+ * the seed is unchanged so the layout is identical. Shared by the Adjust
+ * click and the Palette submenu. */
+static result_t greeble_set_palette(greeble_task_t *task, int index)
 {
-  task->palette = (unsigned char) ((task->palette + 1) % GREEBLE_NPALETTE);
+  task->palette = (unsigned char) index;
   greeble_generate(task);
-  wuss_window_invalidate_extent(window);
+  wuss_window_invalidate_extent(task->window);
 
   return result_OK;
 }
 
-/* Menu pick: the sole row toggles per-prefab random palettes. An ADJUST pick
- * keeps the chain open without rebuilding it, so the tick set at open is now
+/* Switch the grid to a size preset: regenerate from the same seed, then fit
+ * the document extent and the window to it. */
+static result_t greeble_set_size(greeble_task_t *task, int index)
+{
+  result_t rc;
+  size2d_t px;
+
+  task->size = index;
+  task->cols = greeble_sizes[index].cols;
+  task->rows = greeble_sizes[index].rows;
+  greeble_generate(task);
+
+  px = SIZE2D(task->cols * GREEBLE_TILE_PX, task->rows * GREEBLE_TILE_PX);
+
+  rc = wuss_window_set_doc(task->window, px);
+  if (rc != result_OK)
+    return rc;
+
+  return wuss_window_resize(task->window, px);
+}
+
+/* Adjust: step to the next base palette. */
+static result_t greeble_adjust(greeble_task_t *task)
+{
+  return greeble_set_palette(task, (task->palette + 1) % GREEBLE_NPALETTE);
+}
+
+/* Space reseeds, as Select does; Left/Right step the base palette back and
+ * forward. Anything else is passed back unclaimed. */
+static result_t greeble_key(greeble_task_t *task,
+                            wuss_window_t  *window,
+                            int             code)
+{
+  switch (code)
+  {
+  case ' ':
+    return greeble_select(task, window);
+
+  case wuss_KEY_LEFT:
+    return greeble_set_palette(task, (task->palette + GREEBLE_NPALETTE - 1) %
+                                     GREEBLE_NPALETTE);
+
+  case wuss_KEY_RIGHT:
+    return greeble_adjust(task);
+
+  default:
+    return result_WUSS_KEY_UNCLAIMED;
+  }
+}
+
+/* wuss_saveas_save_fn_t: opaque is the greeble_task_t */
+static result_t greeble_saveas_save(const char *path, void *opaque)
+{
+  greeble_task_t *task;
+
+  task = opaque;
+
+  return snapshot_save_png(task->window, greeble_handle, task, path);
+}
+
+/* Menu pick: the Random palettes row toggles per-prefab random palettes; a
+ * Palette submenu row picks the base palette. An ADJUST pick keeps the chain
+ * open without rebuilding it, so the tick set at open is now
  * stale on screen -- retick the still-open level in place. A SELECT pick has
  * already closed and freed the chain by the time this arrives, so the handle
  * is stale; drop it. */
@@ -306,19 +390,35 @@ static result_t greeble_menu_select(greeble_task_t     *task,
 {
   result_t rc;
 
-  if (event->data.menu_select.menu != &task->menu)
-    return result_OK;
-  if (event->data.menu_select.index != GREEBLE_MENU_RANDPAL)
-    return result_OK;
-
-  rc = greeble_toggle_randpal(task, task->window);
-
-  if (wuss_menu_should_keep_open(event))
+  if (event->data.menu_select.menu == &task->palette_menu)
+  {
+    rc = greeble_set_palette(task, event->data.menu_select.index);
+    wuss_menu_tick_exclusive_live(task->menu_handle, &task->palette_menu,
+                                  task->palette);
+  }
+  else if (event->data.menu_select.menu == &task->size_menu)
+  {
+    rc = greeble_set_size(task, event->data.menu_select.index);
+    wuss_menu_tick_exclusive_live(task->menu_handle, &task->size_menu,
+                                  task->size);
+  }
+  else if (event->data.menu_select.menu == &task->menu &&
+           event->data.menu_select.index == GREEBLE_MENU_RANDPAL)
+  {
+    rc = greeble_toggle_randpal(task, task->window);
     wuss_menu_tick_item_live(task->menu_handle, &task->menu,
                              GREEBLE_MENU_RANDPAL,
                              task->random_prefab_palettes);
+  }
+  else if (event->data.menu_select.menu == &task->menu &&
+           event->data.menu_select.index == GREEBLE_MENU_SAVE)
+  {
+    rc = wuss_saveas_open(task->saveas);
+  }
   else
-    task->menu_handle = NULL;
+  {
+    return result_OK;
+  }
 
   return rc;
 }
@@ -345,17 +445,15 @@ result_t greeble_handle(wuss_window_t      *window,
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Greeble",
-        "Prefab-scatter greebling pattern",
-        "(c) DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Greeble", "Prefab-scatter greebling pattern");
       unsigned int ticks;
 
       wuss_proginfo_set_desc(&desc);
       task->menu_items[GREEBLE_MENU_INFO].window =
         wuss_proginfo_window(task->delegate);
+
+      wuss_menu_tick_exclusive(&task->palette_menu, task->palette);
+      wuss_menu_tick_exclusive(&task->size_menu, task->size);
 
       ticks = task->random_prefab_palettes ? 1u << GREEBLE_MENU_RANDPAL : 0;
       return wuss_menu_open_ticked(task->delegate, &task->menu, ticks,
@@ -365,8 +463,21 @@ result_t greeble_handle(wuss_window_t      *window,
     if (event->data.mouse.button & wuss_BUTTON_SELECT)
       return greeble_select(task, window);
     if (event->data.mouse.button & wuss_BUTTON_ADJUST)
-      return greeble_adjust(task, window);
+      return greeble_adjust(task);
     return result_OK;
+
+  case wuss_EVENT_KEY:
+  {
+    result_t rc;
+
+    if (window != task->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    if (!task_key_is_plain(task->delegate, &task->menu, event, &rc))
+      return rc;
+
+    return greeble_key(task, window, event->data.key.code);
+  }
 
   case wuss_EVENT_MENU_SELECT:
     return greeble_menu_select(task, event);
@@ -408,17 +519,20 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
   greeble_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  filetype_t       png_type;
   size2d_t         grid_px;
-  box_t            content;
+  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
     return result_OOM;
 
-  /* the full generator grid in pixels: content sized so cols/rows land
-   * exactly on the GREEBLE_MAX_* caps in 8-pixel tiles */
-  grid_px = SIZE2D(GREEBLE_MAX_COLS * GREEBLE_TILE_PX,
-                   GREEBLE_MAX_ROWS * GREEBLE_TILE_PX);
+  /* open at the last (full grid) size preset */
+  task->size = GREEBLE_NSIZES - 1;
+  task->cols = greeble_sizes[task->size].cols;
+  task->rows = greeble_sizes[task->size].rows;
+  grid_px    = SIZE2D(task->cols * GREEBLE_TILE_PX,
+                      task->rows * GREEBLE_TILE_PX);
 
   task->wuss        = wuss;
   task->menu_handle = NULL;
@@ -439,22 +553,25 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
   task->delegate = delegate; /* the task the menu opens against */
   wuss_task_set_autoclose(delegate, 1);
 
-  rc = wuss_window_create_placed(delegate,
-                                 grid_px,
-                                 "Greeble",
-                                 wuss_WINDOW_DEFAULT,
-                                 wuss_NO_BACKDROP,
-                                 grid_px,
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate, grid_px, "Greeble", &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
     return rc;
   }
 
-  wuss_window_get_content_bounds(task->window, &content);
-  greeble_relayout(task, &content);
+  /* fill the whole document, not just the visible content box: placement
+   * can shrink the window below grid_px and the rest scrolls into view */
+  greeble_generate(task);
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
+                          GREEBLE_SAVE_NAME, greeble_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
 
   WUSS_MENU_ITEM_WINDOW(task->menu_items, GREEBLE_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
@@ -462,8 +579,37 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
                                 * just before wuss_menu_open_ticked, in
                                 * greeble_handle */
 
-  WUSS_MENU_ITEM(task->menu_items, GREEBLE_MENU_RANDPAL,
-                "Random palettes", wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLE_MENU_RANDPAL,
+                          "Random palettes", wuss_MENU_ITEM_NONE, "R");
+
+  /* ponytail: the palettes are unnamed, so the rows are numbered */
+  for (i = 0; i < GREEBLE_NPALETTE; i++)
+  {
+    snprintf(task->palette_names[i], sizeof(task->palette_names[i]), "%d",
+             i + 1);
+    WUSS_MENU_ITEM(task->palette_items, i, task->palette_names[i],
+                   wuss_MENU_ITEM_NONE);
+  }
+
+  WUSS_MENU_TITLE(task->palette_menu, "Palette", task->palette_items,
+                 GREEBLE_NPALETTE);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, GREEBLE_MENU_PALETTE, "Palette",
+                      wuss_MENU_ITEM_NONE, &task->palette_menu);
+
+  for (i = 0; i < GREEBLE_NSIZES; i++)
+    WUSS_MENU_ITEM(task->size_items, i, greeble_sizes[i].name,
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->size_menu, "Size", task->size_items, GREEBLE_NSIZES);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, GREEBLE_MENU_SIZE, "Size",
+                      wuss_MENU_ITEM_NONE, &task->size_menu);
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLE_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[GREEBLE_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Greeble", task->menu_items,
                  NELEMS(task->menu_items));
@@ -476,9 +622,7 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
 
 void greeble_destroy(greeble_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
-  task->menu_handle = NULL;
-
+  wuss_saveas_destroy(task->saveas);
   free(task);
 }
 

@@ -3,6 +3,7 @@
 
 #ifdef WUSS_APP
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -21,10 +22,17 @@
 #include "tasks.h" /* g_tasks.swap_mouse_buttons */
 
 #include "config.h"
+#include "common.h"
 
 /* ----------------------------------------------------------------------- */
 
 #define CONFIG_ROW        22  /* px; System frame's option-icon row pitch */
+
+/* Shown in the Timing frame's writable fields until the user edits and
+ * applies; match wuss_config_t's documented "0 means default" values. */
+#define CONFIG_DOUBLE_CLICK_MS_DEFAULT     400
+#define CONFIG_DOUBLE_CLICK_PX_DEFAULT     4
+#define CONFIG_DRAG_THRESHOLD_PX_DEFAULT   4
 
 /* Backdrop swatches: colour/pattern cells are 22px square, butted together
  * (no pitch) as in swatches.c; the result swatch is double that. */
@@ -47,7 +55,8 @@
 #define CONFIG_BAYER_ROWS ((CONFIG_NBAYER + CONFIG_GRID_COLS - 1) / CONFIG_GRID_COLS)
 #define CONFIG_GRID_ROWS  (CONFIG_HATCH_ROWS + CONFIG_BAYER_ROWS)
 
-#define CONFIG_LABEL_W    (10 * 6) /* px; enough for "Background" at 6px/char */
+#define CONFIG_G_LABEL    1 /* size groups, see stack_item_t::group */
+#define CONFIG_G_UNIT     2
 
 /* MENU click pops this single-item menu; the item table and wuss_menu_t live
  * per-instance in config_task_t, not as a file-scope static, so that each
@@ -58,16 +67,36 @@ enum
   CONFIG_MENU_INFO
 };
 
-/* Root layout: a "System" frame (the two option icons) above a "Backdrop"
- * frame (colour/pattern swatches). Both frames are stack containers, their
- * children descended from the stack tree and solved by stack_solve, rather
- * than being hand-placed inside a single leaf box. */
+/* Timing frame's writable fields are narrower than a swatch row. */
+#define CONFIG_FIELD_W    48
+
+/* Root layout: a "System" frame (the two option icons), a "Timing" frame
+ * (three writable fields, each followed by its unit, plus an Apply button)
+ * and a "Backdrop" frame (colour/pattern swatches). All three frames are
+ * stack containers, their children descended from the stack tree and solved
+ * by stack_solve, rather than being hand-placed inside a single leaf box. */
 enum
 {
   CONFIG_ST_ROOT,
   CONFIG_ST_SYSTEM,
   CONFIG_ST_SWAP,
   CONFIG_ST_REVERSE_SCROLL,
+  CONFIG_ST_TIMING,
+  CONFIG_ST_DBL_MS_HBOX,
+  CONFIG_ST_DBL_MS_LABEL,
+  CONFIG_ST_DBL_MS_FIELD,
+  CONFIG_ST_DBL_MS_UNIT,
+  CONFIG_ST_DBL_PX_HBOX,
+  CONFIG_ST_DBL_PX_LABEL,
+  CONFIG_ST_DBL_PX_FIELD,
+  CONFIG_ST_DBL_PX_UNIT,
+  CONFIG_ST_DRAG_PX_HBOX,
+  CONFIG_ST_DRAG_PX_LABEL,
+  CONFIG_ST_DRAG_PX_FIELD,
+  CONFIG_ST_DRAG_PX_UNIT,
+  CONFIG_ST_TIMING_BUTTON_HBOX,
+  CONFIG_ST_TIMING_BUTTON_SPACER,
+  CONFIG_ST_TIMING_BUTTON,
   CONFIG_ST_BACKDROP,
   CONFIG_ST_FG_HBOX,
   CONFIG_ST_FG_LABEL,
@@ -86,11 +115,6 @@ enum
   CONFIG_ST_BUTTON,
   CONFIG_ST__LIMIT
 };
-
-#define CONFIG_DOC_W            (wuss_STD_INSET * 2 + \
-                                 (wuss_STD_FRAME_INSET + wuss_STD_INSET) * 2 + \
-                                 CONFIG_LABEL_W + wuss_STD_GAP + \
-                                 CONFIG_GRID_COLS * CONFIG_CELL)
 
 #define CONFIG_GRID_H           (CONFIG_GRID_ROWS * CONFIG_CELL)
 
@@ -134,6 +158,114 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
                                           0,
                                           stack_ALIGN_FILL),
 
+  [CONFIG_ST_TIMING] =
+  {
+    .kind      = stack_KIND_VBOX,
+    .parent    = CONFIG_ST_ROOT,
+    .axis_size = STACK_HUG,
+    .gap       = 4,
+    .align     = stack_ALIGN_FILL,
+    .pad       = wuss_STD_FRAME_INSETS,
+  },
+
+  [CONFIG_ST_DBL_MS_HBOX] =
+  {
+    .kind      = stack_KIND_HBOX,
+    .parent    = CONFIG_ST_TIMING,
+    .axis_size = CONFIG_ROW,
+    .gap       = 4,
+    .align     = stack_ALIGN_FILL,
+  },
+
+  [CONFIG_ST_DBL_MS_LABEL] = STACK_LEAF_GROUP(CONFIG_ST_DBL_MS_HBOX,
+                                              0,
+                                              CONFIG_ROW,
+                                              stack_ALIGN_FILL,
+                                              CONFIG_G_LABEL),
+
+  [CONFIG_ST_DBL_MS_FIELD] = STACK_LEAF(CONFIG_ST_DBL_MS_HBOX,
+                                        CONFIG_FIELD_W,
+                                        CONFIG_ROW,
+                                        stack_ALIGN_FILL),
+
+  [CONFIG_ST_DBL_MS_UNIT] = STACK_LEAF_GROUP(CONFIG_ST_DBL_MS_HBOX,
+                                             0,
+                                             CONFIG_ROW,
+                                             stack_ALIGN_FILL,
+                                             CONFIG_G_UNIT),
+
+  [CONFIG_ST_DBL_PX_HBOX] =
+  {
+    .kind      = stack_KIND_HBOX,
+    .parent    = CONFIG_ST_TIMING,
+    .axis_size = CONFIG_ROW,
+    .gap       = 4,
+    .align     = stack_ALIGN_FILL,
+  },
+
+  [CONFIG_ST_DBL_PX_LABEL] = STACK_LEAF_GROUP(CONFIG_ST_DBL_PX_HBOX,
+                                              0,
+                                              CONFIG_ROW,
+                                              stack_ALIGN_FILL,
+                                              CONFIG_G_LABEL),
+
+  [CONFIG_ST_DBL_PX_FIELD] = STACK_LEAF(CONFIG_ST_DBL_PX_HBOX,
+                                        CONFIG_FIELD_W,
+                                        CONFIG_ROW,
+                                        stack_ALIGN_FILL),
+
+  [CONFIG_ST_DBL_PX_UNIT] = STACK_LEAF_GROUP(CONFIG_ST_DBL_PX_HBOX,
+                                             0,
+                                             CONFIG_ROW,
+                                             stack_ALIGN_FILL,
+                                             CONFIG_G_UNIT),
+
+  [CONFIG_ST_DRAG_PX_HBOX] =
+  {
+    .kind      = stack_KIND_HBOX,
+    .parent    = CONFIG_ST_TIMING,
+    .axis_size = CONFIG_ROW,
+    .gap       = 4,
+    .align     = stack_ALIGN_FILL,
+  },
+
+  [CONFIG_ST_DRAG_PX_LABEL] = STACK_LEAF_GROUP(CONFIG_ST_DRAG_PX_HBOX,
+                                               0,
+                                               CONFIG_ROW,
+                                               stack_ALIGN_FILL,
+                                               CONFIG_G_LABEL),
+
+  [CONFIG_ST_DRAG_PX_FIELD] = STACK_LEAF(CONFIG_ST_DRAG_PX_HBOX,
+                                         CONFIG_FIELD_W,
+                                         CONFIG_ROW,
+                                         stack_ALIGN_FILL),
+
+  [CONFIG_ST_DRAG_PX_UNIT] = STACK_LEAF_GROUP(CONFIG_ST_DRAG_PX_HBOX,
+                                              0,
+                                              CONFIG_ROW,
+                                              stack_ALIGN_FILL,
+                                              CONFIG_G_UNIT),
+
+  [CONFIG_ST_TIMING_BUTTON_HBOX] =
+  {
+    .kind      = stack_KIND_HBOX,
+    .parent    = CONFIG_ST_TIMING,
+    .axis_size = wuss_STD_SECONDARY_BUTTON_HEIGHT,
+    .gap       = 4,
+    .align     = stack_ALIGN_FILL,
+  },
+
+  [CONFIG_ST_TIMING_BUTTON_SPACER] = STACK_LEAF_GROUP(CONFIG_ST_TIMING_BUTTON_HBOX,
+                                                       0,
+                                                       wuss_STD_SECONDARY_BUTTON_HEIGHT,
+                                                       stack_ALIGN_FILL,
+                                                       CONFIG_G_LABEL),
+
+  [CONFIG_ST_TIMING_BUTTON] = STACK_LEAF(CONFIG_ST_TIMING_BUTTON_HBOX,
+                                         CONFIG_FIELD_W,
+                                         wuss_STD_SECONDARY_BUTTON_HEIGHT,
+                                         stack_ALIGN_FILL),
+
   [CONFIG_ST_BACKDROP] =
   {
     .kind      = stack_KIND_VBOX,
@@ -153,10 +285,11 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .align     = stack_ALIGN_FILL,
   },
 
-  [CONFIG_ST_FG_LABEL] = STACK_LEAF(CONFIG_ST_FG_HBOX,
-                                    CONFIG_LABEL_W,
-                                    CONFIG_CELL,
-                                    stack_ALIGN_FILL),
+  [CONFIG_ST_FG_LABEL] = STACK_LEAF_GROUP(CONFIG_ST_FG_HBOX,
+                                          0,
+                                          CONFIG_CELL,
+                                          stack_ALIGN_FILL,
+                                          CONFIG_G_LABEL),
 
   [CONFIG_ST_FG_ROW] = STACK_LEAF(CONFIG_ST_FG_HBOX,
                                   CONFIG_GRID_COLS * CONFIG_CELL,
@@ -172,10 +305,11 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .align     = stack_ALIGN_FILL,
   },
 
-  [CONFIG_ST_BG_LABEL] = STACK_LEAF(CONFIG_ST_BG_HBOX,
-                                    CONFIG_LABEL_W,
-                                    CONFIG_CELL,
-                                    stack_ALIGN_FILL),
+  [CONFIG_ST_BG_LABEL] = STACK_LEAF_GROUP(CONFIG_ST_BG_HBOX,
+                                          0,
+                                          CONFIG_CELL,
+                                          stack_ALIGN_FILL,
+                                          CONFIG_G_LABEL),
 
   [CONFIG_ST_BG_ROW] = STACK_LEAF(CONFIG_ST_BG_HBOX,
                                   CONFIG_GRID_COLS * CONFIG_CELL,
@@ -191,10 +325,11 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .align     = stack_ALIGN_FILL,
   },
 
-  [CONFIG_ST_GRID_LABEL] = STACK_LEAF(CONFIG_ST_GRID_HBOX,
-                                      CONFIG_LABEL_W,
-                                      CONFIG_CELL,
-                                      stack_ALIGN_START),
+  [CONFIG_ST_GRID_LABEL] = STACK_LEAF_GROUP(CONFIG_ST_GRID_HBOX,
+                                            0,
+                                            CONFIG_CELL,
+                                            stack_ALIGN_START,
+                                            CONFIG_G_LABEL),
 
   [CONFIG_ST_GRID] = STACK_LEAF(CONFIG_ST_GRID_HBOX,
                                 CONFIG_GRID_COLS * CONFIG_CELL,
@@ -210,10 +345,11 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .align     = stack_ALIGN_FILL,
   },
 
-  [CONFIG_ST_RESULT_SPACER] = STACK_LEAF(CONFIG_ST_RESULT_HBOX,
-                                         CONFIG_LABEL_W,
-                                         CONFIG_RESULT,
-                                         stack_ALIGN_FILL),
+  [CONFIG_ST_RESULT_SPACER] = STACK_LEAF_GROUP(CONFIG_ST_RESULT_HBOX,
+                                               0,
+                                               CONFIG_RESULT,
+                                               stack_ALIGN_FILL,
+                                               CONFIG_G_LABEL),
 
   [CONFIG_ST_RESULT] = STACK_LEAF(CONFIG_ST_RESULT_HBOX,
                                   CONFIG_GRID_COLS * CONFIG_CELL,
@@ -229,10 +365,11 @@ static const stack_item_t g_config_stack[CONFIG_ST__LIMIT] =
     .align     = stack_ALIGN_FILL,
   },
 
-  [CONFIG_ST_BUTTON_SPACER] = STACK_LEAF(CONFIG_ST_BUTTON_HBOX,
-                                         CONFIG_LABEL_W,
-                                         wuss_STD_SECONDARY_BUTTON_HEIGHT,
-                                         stack_ALIGN_FILL),
+  [CONFIG_ST_BUTTON_SPACER] = STACK_LEAF_GROUP(CONFIG_ST_BUTTON_HBOX,
+                                               0,
+                                               wuss_STD_SECONDARY_BUTTON_HEIGHT,
+                                               stack_ALIGN_FILL,
+                                               CONFIG_G_LABEL),
 
   [CONFIG_ST_BUTTON] = STACK_LEAF(CONFIG_ST_BUTTON_HBOX,
                                   CONFIG_GRID_COLS * CONFIG_CELL,
@@ -254,6 +391,17 @@ enum
   CONFIG_ICON_SYSTEM_FRAME,
   CONFIG_ICON_SWAP,
   CONFIG_ICON_REVERSE_SCROLL,
+  CONFIG_ICON_TIMING_FRAME,
+  CONFIG_ICON_DBL_MS_LABEL,
+  CONFIG_ICON_DBL_MS_FIELD,
+  CONFIG_ICON_DBL_MS_UNIT,
+  CONFIG_ICON_DBL_PX_LABEL,
+  CONFIG_ICON_DBL_PX_FIELD,
+  CONFIG_ICON_DBL_PX_UNIT,
+  CONFIG_ICON_DRAG_PX_LABEL,
+  CONFIG_ICON_DRAG_PX_FIELD,
+  CONFIG_ICON_DRAG_PX_UNIT,
+  CONFIG_ICON_APPLY_TIMING,
   CONFIG_ICON_BACKDROP_FRAME,
   CONFIG_ICON_FG_LABEL,
   CONFIG_ICON_BG_LABEL,
@@ -302,6 +450,7 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   box_t            backdrop_frame;
   wuss_icon_spec_t specs[CONFIG_NICONS];
   wuss_icon_t     *icons[CONFIG_NICONS];
+  stack_item_t     items[CONFIG_ST__LIMIT];
   size2d_t         doc;
   size2d_t         min_sz;
 
@@ -326,16 +475,34 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
 
   task->delegate = delegate;
 
-  rc = stack_smallest(g_config_stack, NELEMS(g_config_stack), &min_sz);
+  /* each label's natural width; the size group widens the rest to match */
+  memcpy(items, g_config_stack, sizeof(items));
+  items[CONFIG_ST_FG_LABEL].axis_size =
+    task_text_width(wuss, "Foreground");
+  items[CONFIG_ST_BG_LABEL].axis_size =
+    task_text_width(wuss, "Background");
+  items[CONFIG_ST_GRID_LABEL].axis_size =
+    task_text_width(wuss, "Patterns");
+  items[CONFIG_ST_DBL_MS_LABEL].axis_size =
+    task_text_width(wuss, "Double-click");
+  items[CONFIG_ST_DBL_PX_LABEL].axis_size =
+    task_text_width(wuss, "Double-click");
+  items[CONFIG_ST_DRAG_PX_LABEL].axis_size =
+    task_text_width(wuss, "Drag threshold");
+  items[CONFIG_ST_DBL_MS_UNIT].axis_size  = task_text_width(wuss, "ms");
+  items[CONFIG_ST_DBL_PX_UNIT].axis_size  = task_text_width(wuss, "px");
+  items[CONFIG_ST_DRAG_PX_UNIT].axis_size = task_text_width(wuss, "px");
+
+  rc = stack_smallest(items, NELEMS(items), &min_sz);
   if (rc != result_OK)
     goto fail_delegate;
 
-  doc = SIZE2D(CONFIG_DOC_W, min_sz.h);
+  doc = min_sz;
 
   rc = wuss_window_create_placed(delegate,
                                  doc,
                                  "Configure",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  doc,
                                  SIZE2D(0, 0),
@@ -347,7 +514,7 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   }
 
   root = (box_t) BOX_POS_SIZE(0, 0, doc.w, doc.h);
-  rc = stack_solve(g_config_stack, NELEMS(g_config_stack), &root, boxes);
+  rc = stack_solve(items, NELEMS(items), &root, boxes);
   if (rc != result_OK)
     goto fail_delegate;
 
@@ -369,6 +536,56 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   wuss_icon_spec_option(&specs[CONFIG_ICON_REVERSE_SCROLL],
                         boxes[CONFIG_ST_REVERSE_SCROLL],
                         "Reverse mouse scroll direction");
+
+  wuss_icon_spec_frame(&specs[CONFIG_ICON_TIMING_FRAME],
+                       boxes[CONFIG_ST_TIMING], "Timing");
+
+  wuss_icon_spec_label(&specs[CONFIG_ICON_DBL_MS_LABEL],
+                       boxes[CONFIG_ST_DBL_MS_LABEL],
+                       "Double-click", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+
+  snprintf(task->double_click_ms_text, sizeof(task->double_click_ms_text),
+          "%d", CONFIG_DOUBLE_CLICK_MS_DEFAULT);
+  wuss_icon_spec_writable(&specs[CONFIG_ICON_DBL_MS_FIELD],
+                          boxes[CONFIG_ST_DBL_MS_FIELD],
+                          task->double_click_ms_text,
+                          sizeof(task->double_click_ms_text), 0);
+
+  wuss_icon_spec_label(&specs[CONFIG_ICON_DBL_MS_UNIT],
+                       boxes[CONFIG_ST_DBL_MS_UNIT], "ms", 0);
+
+  wuss_icon_spec_label(&specs[CONFIG_ICON_DBL_PX_LABEL],
+                       boxes[CONFIG_ST_DBL_PX_LABEL],
+                       "Double-click", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+
+  snprintf(task->double_click_px_text, sizeof(task->double_click_px_text),
+          "%d", CONFIG_DOUBLE_CLICK_PX_DEFAULT);
+  wuss_icon_spec_writable(&specs[CONFIG_ICON_DBL_PX_FIELD],
+                          boxes[CONFIG_ST_DBL_PX_FIELD],
+                          task->double_click_px_text,
+                          sizeof(task->double_click_px_text), 0);
+
+  wuss_icon_spec_label(&specs[CONFIG_ICON_DBL_PX_UNIT],
+                       boxes[CONFIG_ST_DBL_PX_UNIT], "px", 0);
+
+  wuss_icon_spec_label(&specs[CONFIG_ICON_DRAG_PX_LABEL],
+                       boxes[CONFIG_ST_DRAG_PX_LABEL],
+                       "Drag threshold", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+
+  snprintf(task->drag_threshold_px_text,
+          sizeof(task->drag_threshold_px_text),
+          "%d", CONFIG_DRAG_THRESHOLD_PX_DEFAULT);
+  wuss_icon_spec_writable(&specs[CONFIG_ICON_DRAG_PX_FIELD],
+                          boxes[CONFIG_ST_DRAG_PX_FIELD],
+                          task->drag_threshold_px_text,
+                          sizeof(task->drag_threshold_px_text), 0);
+
+  wuss_icon_spec_label(&specs[CONFIG_ICON_DRAG_PX_UNIT],
+                       boxes[CONFIG_ST_DRAG_PX_UNIT], "px", 0);
+
+  wuss_icon_spec_action(&specs[CONFIG_ICON_APPLY_TIMING],
+                        boxes[CONFIG_ST_TIMING_BUTTON],
+                        "Apply", 0);
 
   wuss_icon_spec_frame(&specs[CONFIG_ICON_BACKDROP_FRAME], backdrop_frame,
                        "Backdrop");
@@ -393,9 +610,13 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   if (rc != result_OK)
     goto fail_delegate;
 
-  task->set_backdrop_icon     = icons[CONFIG_ICON_SET_BACKDROP];
-  task->swap_icon             = icons[CONFIG_ICON_SWAP];
-  task->reverse_scroll_icon   = icons[CONFIG_ICON_REVERSE_SCROLL];
+  task->set_backdrop_icon       = icons[CONFIG_ICON_SET_BACKDROP];
+  task->swap_icon               = icons[CONFIG_ICON_SWAP];
+  task->reverse_scroll_icon     = icons[CONFIG_ICON_REVERSE_SCROLL];
+  task->double_click_ms_icon    = icons[CONFIG_ICON_DBL_MS_FIELD];
+  task->double_click_px_icon    = icons[CONFIG_ICON_DBL_PX_FIELD];
+  task->drag_threshold_px_icon  = icons[CONFIG_ICON_DRAG_PX_FIELD];
+  task->apply_timing_icon       = icons[CONFIG_ICON_APPLY_TIMING];
 
   wuss_icon_set_selected(task->window, task->swap_icon,
                         g_tasks.swap_mouse_buttons);
@@ -427,7 +648,6 @@ fail_delegate:
 
 void config_destroy(config_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
   free(task);
 }
 
@@ -548,15 +768,36 @@ static result_t config_icon(const wuss_event_t *event, void *task_data)
     return result_OK;
 
   if (icon == cc->swap_icon)
+  {
     g_tasks.swap_mouse_buttons = !!wuss_icon_get_selected(icon);
+  }
   else if (icon == cc->reverse_scroll_icon)
+  {
     g_tasks.reverse_scroll = !!wuss_icon_get_selected(icon);
+  }
   else if (icon == cc->set_backdrop_icon)
   {
     wuss_backdrop_t backdrop;
 
     backdrop = wuss_BACKDROP_PATTERN(cc->fg, cc->pattern, cc->bg);
     return wuss_set_backdrop(cc->wuss, &backdrop);
+  }
+  else if (icon == cc->apply_timing_icon)
+  {
+    wuss_config_t config;
+
+    /* Round-trip the rest of the config unchanged: wuss_set_config replaces
+     * every field, there is no partial update. */
+    wuss_get_config(cc->wuss, &config);
+    config.double_click_ms   = atoi(wuss_icon_get_text(cc->double_click_ms_icon));
+    config.double_click_px   = atoi(wuss_icon_get_text(cc->double_click_px_icon));
+    config.drag_threshold_px = atoi(wuss_icon_get_text(cc->drag_threshold_px_icon));
+
+    if (config.double_click_ms < 0 || config.double_click_px < 0 ||
+        config.drag_threshold_px < 0)
+      return result_BAD_ARG;
+
+    return wuss_set_config(cc->wuss, &config);
   }
 
   return result_OK;
@@ -578,9 +819,13 @@ static result_t config_click(config_task_t *task, const wuss_event_t *event)
     return result_OK;
 
   if (pt.y >= task->fg_y && pt.y < task->fg_y + CONFIG_CELL)
+  {
     task->fg = (wuss_colour_t) col;
+  }
   else if (pt.y >= task->bg_y && pt.y < task->bg_y + CONFIG_CELL)
+  {
     task->bg = (wuss_colour_t) col;
+  }
   else if (pt.y >= task->grid_y && pt.y < task->grid_y + CONFIG_GRID_H)
   {
     int i;
@@ -599,7 +844,9 @@ static result_t config_click(config_task_t *task, const wuss_event_t *event)
     }
   }
   else
+  {
     return result_OK;
+  }
 
   wuss_window_invalidate_extent(task->window);
   return result_OK;
@@ -636,18 +883,13 @@ result_t config_handle(wuss_window_t      *window,
 
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Configure",
-        "System settings",
-        "(c) DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Configure", "System settings");
       wuss_proginfo_set_desc(&desc);
       cc->menu_items[CONFIG_MENU_INFO].window =
         wuss_proginfo_window(cc->delegate);
     }
-    return wuss_menu_open(cc->delegate, &cc->menu,
-                          wuss_get_pointer(cc->wuss), &cc->menu_handle);
+    return wuss_menu_open_at_pointer(cc->delegate, &cc->menu,
+                                     &cc->menu_handle);
 
   case wuss_EVENT_MENU_CLOSED:
     cc->menu_handle = NULL;

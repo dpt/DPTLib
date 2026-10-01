@@ -22,6 +22,9 @@
 #include "framebuf/pixelfmt.h"
 
 #include "framebuf/bmfont.h"
+#include "framebuf/bmfontfamily.h"
+
+#include "test/all-tests.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -187,35 +190,36 @@ bmtestline_t;
 
 static bmtestfont_t bmfonts[MAXFONTS] =
 {
-  { "DPT-Daydream",     NULL },
-  { "ZX-GliderRider",   NULL },
-  { "Tiny",             NULL },
-  { "DPT-Henry",        NULL },
-  { "DPT-CookeTall",    NULL },
-  { "MS Sans Serif",    NULL },
-  { "DPT-Digits-Regular", NULL },
-  { "DPT-Digits-Bold",  NULL },
-  { "DPT-Digits-Bold-Lg", NULL } /* 24px-wide glyphs: exercises the _4w_
-                                  * (17-32px) draw variants */
+  { "DPT-Daydream Regular",   NULL },
+  { "ZX-GliderRider Regular", NULL },
+  { "Tiny Regular",           NULL },
+  { "DPT-Henry Regular",      NULL },
+  { "DPT-CookeTall Regular",  NULL },
+  { "MS Sans Serif Regular",  NULL },
+  { "DPT-Digits Regular",     NULL },
+  { "DPT-Digits Bold",        NULL },
+  { "DPT-DigitsLg Bold",      NULL } /* 24px-wide glyphs: exercises the _4w_
+                                      * (17-32px) draw variants */
 };
 
 /* Fixture PNGs not in bmfonts[] above (which is the Latin-text set the
  * clipping/layout tests draw lorem_ipsum with) but which the enumerate test
- * must still see, since it just walks the fixture directory: Symbols.png is
- * not Latin text; 04b_03, 04b_25, GrongyUI, Nokia and SF-Embers are tiny
- * pixel faces added for the wuss tasks; DPT-Digits-Regular-Lg is the
- * regular-weight counterpart of the bold -Lg font already covered above. */
+ * must still see, since it just walks the fixture directory: Symbols is not
+ * Latin text; 04b_03, 04b_25, GrongyUI, Nokia and SF-Embers are tiny pixel
+ * faces added for the wuss tasks; DPT-DigitsLg Regular is the regular-weight
+ * counterpart of the bold Lg font already covered above. Labels are
+ * "Family Style", as bmfont_enumerate reports them. */
 #define MAXFONTS_ENUM 16
 
 static const char *bmfonts_enum_extra[MAXFONTS_ENUM - MAXFONTS] =
 {
-  "Symbols",
-  "04b_03",
-  "04b_25",
-  "GrongyUI",
-  "Nokia",
-  "SF-Embers",
-  "DPT-Digits-Regular-Lg"
+  "Symbols Regular",
+  "04b_03 Regular",
+  "04b_25 Regular",
+  "GrongyUI Regular",
+  "Nokia Regular",
+  "SF-Embers Regular",
+  "DPT-DigitsLg Regular"
 };
 
 /* ----------------------------------------------------------------------- */
@@ -490,6 +494,9 @@ stop:
 
 static result_t bmfont_interactive_test(bmfontteststate_t *state)
 {
+#ifdef USE_SDL
+  result_t rc;
+#endif
   bool  quit          = false;
   int   frame;
   int   mx            = 0;
@@ -505,12 +512,37 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
   int   shadow        = 0;
   box_t prevdirty;
   box_t overalldirty;
+  box_t scrclip;
+#ifdef USE_SDL
+  void    *convpixels;
+  bitmap_t conv;
+#endif
 
   /* test screen clipping */
-  box_t scrclip;
   (void) screen_get_clip(&state->scr, &scrclip);
   box_grow(&scrclip, -37);
   state->scr.clip = scrclip;
+
+#ifdef USE_SDL
+  /* the texture is bgrx8888: other screen formats convert into this buffer,
+   * allocated once rather than per frame */
+  convpixels = NULL;
+  if (state->scr.format != pixelfmt_bgrx8888)
+  {
+    convpixels = malloc((size_t) state->scr_width * state->scr_height * 4);
+    if (convpixels == NULL)
+    {
+      rc = result_OOM;
+      goto failure;
+    }
+
+    rc = bitmap_init(&conv, SIZE2D(state->scr_width, state->scr_height),
+                     pixelfmt_bgrx8888, state->scr_width * 4, NULL,
+                     convpixels);
+    if (rc != result_OK)
+      goto failure;
+  }
+#endif
 
   for (frame = 0; !quit; frame++)
   {
@@ -583,6 +615,8 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
         }
       }
     }
+    if (test_autoquit > 0 && frame >= test_autoquit)
+      quit = 1;
 #else
     if (frame > 1000)
       quit = 1;
@@ -695,12 +729,20 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
       char     *scr;
 
       if (state->scr.format != pixelfmt_bgrx8888)
+      {
         /* convert the screen to bgrx8888 */
-        bitmap_convert((const bitmap_t *) &state->scr,
-                                           pixelfmt_bgrx8888,
-                                          &scr_bgrx8888);
+        rc = bitmap_convert_into((const bitmap_t *) &state->scr,
+                                 pixelfmt_bgrx8888,
+                                 &conv);
+        if (rc != result_OK)
+          goto failure;
+
+        scr_bgrx8888 = &conv;
+      }
       else
+      {
         scr_bgrx8888 = (bitmap_t *) &state->scr;
+      }
 
       if (firstdraw)
       {
@@ -744,9 +786,18 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
 
 #ifdef USE_SDL
   stop_sdl(&state->sdl_state);
+  free(convpixels);
 #endif
 
   return result_TEST_PASSED;
+
+#ifdef USE_SDL
+failure:
+  stop_sdl(&state->sdl_state);
+  free(convpixels);
+  printf("bmfont_interactive_test: screen conversion failed: %x\n", rc);
+  return result_TEST_FAILED;
+#endif
 }
 
 /* ----------------------------------------------------------------------- */
@@ -923,10 +974,18 @@ result_t bmfont_test_one_format(const char *resources,
 
   for (font = 0; font < NELEMS(bmfonts); font++)
   {
-    const char *filename;
+    const char *dir;
+    char        filename[512];
 
-    filename = pathf("%s/resources/bmfonts/%s.png",
-                     resources, bmfonts[font].filename);
+    dir = pathf("%s/resources/bmfonts", resources);
+    rc  = bmfontfamily_label_path(dir, bmfonts[font].filename, filename,
+                                  sizeof(filename));
+    if (rc)
+    {
+      fprintf(stderr, "Error: Bad font label %s\n", bmfonts[font].filename);
+      goto Failure;
+    }
+
     rc = bmfont_create(filename, &bmfonts[font].bmfont);
     if (rc)
     {
@@ -996,7 +1055,7 @@ static result_t bmfont_monospace_test(const char *resources)
   bmfont_width_t prev;
   int            i;
 
-  filename = pathf("%s/resources/bmfonts/MS Sans Serif.png", resources);
+  filename = pathf("%s/resources/bmfonts/MS Sans Serif/Regular.png", resources);
 
   rc = bmfont_create(filename, &bmfont);
   if (rc)
@@ -1074,7 +1133,7 @@ static result_t bmfont_spacing_test(const char *resources)
   point_t        end_pos;
   int            i;
 
-  filename = pathf("%s/resources/bmfonts/MS Sans Serif.png", resources);
+  filename = pathf("%s/resources/bmfonts/MS Sans Serif/Regular.png", resources);
 
   rc = bmfont_create(filename, &bmfont);
   if (rc)
@@ -1223,7 +1282,7 @@ static result_t bmfont_measure_render_match_test(const char *resources)
   int            ink_x0, ink_y0, ink_x1, ink_y1;
   int            x, y;
 
-  filename = pathf("%s/resources/bmfonts/DPT-Digits-Regular.png", resources);
+  filename = pathf("%s/resources/bmfonts/DPT-Digits/Regular.png", resources);
 
   rc = bmfont_create(filename, &bmfont);
   if (rc)
@@ -1351,7 +1410,7 @@ static result_t bmfont_caret_test(const char *resources)
   int            inked;
   int            x, y;
 
-  filename = pathf("%s/resources/bmfonts/DPT-Digits-Regular.png", resources);
+  filename = pathf("%s/resources/bmfonts/DPT-Digits/Regular.png", resources);
 
   rc = bmfont_create(filename, &bmfont);
   if (rc)
@@ -1485,6 +1544,384 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+#define CMAP_TEST_PNG "bmfont-cmap-test.png"
+#define CMAP_TEST_MAP "bmfont-cmap-test.map"
+
+static int copy_file(const char *from, const char *to)
+{
+  FILE  *in;
+  FILE  *out;
+  char   buf[4096];
+  size_t n;
+  int    ok;
+
+  in = fopen(from, "rb");
+  if (in == NULL)
+    return 0;
+
+  out = fopen(to, "wb");
+  if (out == NULL)
+  {
+    fclose(in);
+    return 0;
+  }
+
+  ok = 1;
+  while ((n = fread(buf, 1, sizeof(buf), in)) > 0)
+    if (fwrite(buf, 1, n, out) != n)
+      ok = 0;
+
+  fclose(in);
+  if (fclose(out) != 0)
+    ok = 0;
+  return ok;
+}
+
+/* Load the test PNG with a sidecar holding 'map' and return the result. */
+static result_t load_with_map(const char *map, bmfont_t **bmfont)
+{
+  FILE *fp;
+
+  fp = fopen(CMAP_TEST_MAP, "wb");
+  if (fp == NULL)
+    return result_FOPEN_FAILED;
+
+  fputs(map, fp);
+  fclose(fp);
+
+  return bmfont_create(CMAP_TEST_PNG, bmfont);
+}
+
+/* Checks the cmap: a real sidecar (GrongyUI), the implicit mapping (scratch
+ * copy of Tiny, no sidecar) and a set of well- and ill-formed sidecars loaded
+ * against that copy (96 glyphs). */
+static result_t bmfont_cmap_test(const char *resources)
+{
+  static const struct
+  {
+    unsigned long codepoint;
+    int           glyph;
+  }
+  grongy[] =
+  {
+    { 0x20,     0  }, /* space */
+    { 0x22,     2  }, /* " */
+    { 0x23,     -1 }, /* # is blank in the PNG */
+    { 0x28,     8  }, /* ( */
+    { 0x2A,     -1 }, /* * is blank in the PNG */
+    { 0x41,     33 }, /* A */
+    { 0x7E,     94 }, /* ~ */
+    { 0x7F,     -1 }, /* DEL */
+    { 0xA0,     0  }, /* NBSP shares space */
+    { 0xA9,     95 }, /* copyright sign */
+    { 0x10FFFF, -1 }
+  },
+  implicit[] =
+  {
+    { 0x1F, -1 },
+    { 0x20, 0  },
+    { 0x7F, 95 },
+    { 0x80, -1 }
+  };
+  static const struct
+  {
+    const char *map;
+    result_t    expected;
+  }
+  maps[] =
+  {
+    { "# comment\r\n\r\nU+0041..U+0043 10 # ABC\r\nU+10FFFF 95\r\n",
+                                            result_OK             },
+    { "",                                   result_OK             },
+    { "0041 0\n",                           result_BMFONT_BAD_MAP }, /* no U+ */
+    { "U+0041\n",                           result_BMFONT_BAD_MAP }, /* no glyph */
+    { "U+0041 0 junk\n",                    result_BMFONT_BAD_MAP },
+    { "U+0041 x\n",                         result_BMFONT_BAD_MAP },
+    { "U+0041..U+0040 0\n",                 result_BMFONT_BAD_MAP }, /* reversed */
+    { "U+0042 0\nU+0041 1\n",               result_BMFONT_BAD_MAP }, /* order */
+    { "U+0041..U+0043 0\nU+0043 5\n",       result_BMFONT_BAD_MAP }, /* overlap */
+    { "U+0041 96\n",                        result_BMFONT_BAD_MAP }, /* glyph */
+    { "U+0041..U+0042 95\n",                result_BMFONT_BAD_MAP }, /* run */
+    { "U+110000 0\n",                       result_BMFONT_BAD_MAP },
+    { "notdef U+FFFD\n",                    result_BMFONT_BAD_MAP }
+  };
+
+  result_t    rc;
+  const char *filename;
+  bmfont_t   *bmfont = NULL;
+  int         i;
+  int         glyph;
+
+  filename = pathf("%s/resources/bmfonts/GrongyUI/Regular.png", resources);
+  rc = bmfont_create(filename, &bmfont);
+  if (rc)
+  {
+    fprintf(stderr, "Error: Failed to load font %s\n", filename);
+    goto Failure;
+  }
+
+  for (i = 0; i < NELEMS(grongy); i++)
+  {
+    glyph = bmfont_lookup(bmfont, grongy[i].codepoint);
+    if (glyph != grongy[i].glyph)
+    {
+      fprintf(stderr, "error: GrongyUI U+%04lX -> %d, expected %d\n",
+              grongy[i].codepoint, glyph, grongy[i].glyph);
+      goto Failure;
+    }
+  }
+
+  bmfont_destroy(bmfont);
+  bmfont = NULL;
+
+  /* every shipped font has a sidecar, so test the implicit mapping on a
+   * scratch copy of Tiny with none */
+  filename = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
+  if (!copy_file(filename, CMAP_TEST_PNG))
+  {
+    fprintf(stderr, "error: can't copy %s\n", filename);
+    goto Failure;
+  }
+
+  remove(CMAP_TEST_MAP);
+  rc = bmfont_create(CMAP_TEST_PNG, &bmfont);
+  if (rc)
+  {
+    fprintf(stderr, "Error: Failed to load font %s\n", CMAP_TEST_PNG);
+    goto Failure;
+  }
+
+  for (i = 0; i < NELEMS(implicit); i++)
+  {
+    glyph = bmfont_lookup(bmfont, implicit[i].codepoint);
+    if (glyph != implicit[i].glyph)
+    {
+      fprintf(stderr, "error: Tiny U+%04lX -> %d, expected %d\n",
+              implicit[i].codepoint, glyph, implicit[i].glyph);
+      goto Failure;
+    }
+  }
+
+  bmfont_destroy(bmfont);
+  bmfont = NULL;
+
+  for (i = 0; i < NELEMS(maps); i++)
+  {
+    rc = load_with_map(maps[i].map, &bmfont);
+    if (rc != maps[i].expected)
+    {
+      fprintf(stderr, "error: map %d loaded with %x, expected %x\n",
+              i, rc, maps[i].expected);
+      goto Failure;
+    }
+
+    bmfont_destroy(bmfont);
+    bmfont = NULL;
+  }
+
+  /* spot-check the first, well-formed, map's groups */
+  rc = load_with_map(maps[0].map, &bmfont);
+  if (rc ||
+      bmfont_lookup(bmfont, 0x20)     != -1 ||
+      bmfont_lookup(bmfont, 0x41)     != 10 ||
+      bmfont_lookup(bmfont, 0x43)     != 12 ||
+      bmfont_lookup(bmfont, 0x44)     != -1 ||
+      bmfont_lookup(bmfont, 0x10FFFF) != 95)
+  {
+    fprintf(stderr, "error: well-formed map gave wrong lookups\n");
+    goto Failure;
+  }
+
+  bmfont_destroy(bmfont);
+  remove(CMAP_TEST_PNG);
+  remove(CMAP_TEST_MAP);
+  return result_TEST_PASSED;
+
+
+Failure:
+  bmfont_destroy(bmfont);
+  remove(CMAP_TEST_PNG);
+  remove(CMAP_TEST_MAP);
+  return result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
+/* Ascent and descent come from the first ink-free cell, not always cell 0:
+ * Henry-SpaceSwapped is DPT-Henry with 'g' moved into cell 0 (its descender
+ * breaks the baseline row) and space moved to g's cell, so it must yield the
+ * same metrics as the original. */
+static result_t bmfont_metrics_test(const char *resources)
+{
+  static const char *fonts[] =
+  {
+    "bmfonts/DPT-Henry/Regular.png",
+    "bmfonts-test/Henry-SpaceSwapped.png"
+  };
+
+  const char *filename;
+  bmfont_t   *bmfont;
+  int         ascent[NELEMS(fonts)];
+  int         descent[NELEMS(fonts)];
+  int         i;
+
+  for (i = 0; i < NELEMS(fonts); i++)
+  {
+    filename = pathf("%s/resources/%s", resources, fonts[i]);
+    if (bmfont_create(filename, &bmfont))
+    {
+      fprintf(stderr, "Error: Failed to load font %s\n", filename);
+      return result_TEST_FAILED;
+    }
+
+    bmfont_get_info(bmfont, NULL, NULL, &ascent[i], &descent[i]);
+    bmfont_destroy(bmfont);
+  }
+
+  if (descent[0] == 0 || ascent[1] != ascent[0] || descent[1] != descent[0])
+  {
+    fprintf(stderr, "error: metrics %d/%d, expected %d/%d (nonzero descent)\n",
+            ascent[1], descent[1], ascent[0], descent[0]);
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
+/* Checks UTF-8 measuring and caret placement, then draws a missing glyph and
+ * checks it's the hollow box. GrongyUI maps neither '#' nor U+FFFD. */
+static result_t bmfont_utf8_test(const char *resources)
+{
+  static const char sample[] = "A\xC2\xA9" "B"; /* 'A', copyright, 'B' */
+  static const int  margin   = 2;
+
+  const char *filename;
+  bmfont_t   *bmfont = NULL;
+  int         cellwidth;
+  int         ascent;
+  int         len;
+  int         target;
+  int         split;
+  int         index;
+  bitmap_t    bm;
+  screen_t    scr;
+  colour_t    white = colour_rgb(0xFF, 0xFF, 0xFF);
+  colour_t    black = colour_rgb(0x00, 0x00, 0x00);
+  point_t     pos;
+  point_t     end_pos;
+  int         bm_width, bm_height, rowbytes;
+  void       *pixels = NULL;
+  int         x, y;
+
+  filename = pathf("%s/resources/bmfonts/GrongyUI/Regular.png", resources);
+  if (bmfont_create(filename, &bmfont))
+  {
+    fprintf(stderr, "Error: Failed to load font %s\n", filename);
+    return result_TEST_FAILED;
+  }
+
+  bmfont_get_info(bmfont, &cellwidth, NULL, &ascent, NULL);
+  len = (int) strlen(sample);
+
+  /* missing glyphs and malformed bytes advance by the cell width; unmapped
+   * controls advance nothing; NBSP shares space's advance */
+  if (bmfont_caret_x(bmfont, "#", 1, NULL) + 1 != cellwidth ||
+      bmfont_caret_x(bmfont, "\x80", 1, NULL) + 1 != cellwidth ||
+      bmfont_caret_x(bmfont, "\x01" "A", 2, NULL) !=
+        bmfont_caret_x(bmfont, "A", 1, NULL) ||
+      bmfont_caret_x(bmfont, "\xC2\xA0", 2, NULL) !=
+        bmfont_caret_x(bmfont, " ", 1, NULL))
+  {
+    fprintf(stderr, "error: utf8 advances wrong\n");
+    goto Failure;
+  }
+
+  /* an index inside a rune measures to its start */
+  if (bmfont_caret_x(bmfont, sample, 2, NULL) !=
+      bmfont_caret_x(bmfont, sample, 1, NULL))
+  {
+    fprintf(stderr, "error: utf8 caret_x inside a rune\n");
+    goto Failure;
+  }
+
+  /* split points and caret indices never land inside the copyright sign */
+  for (target = 0; target < 40; target++)
+  {
+    bmfont_measure(bmfont, sample, len, NULL, target, &split, NULL);
+    bmfont_find_caret(bmfont, sample, len, NULL, target, &index, NULL);
+    if (split == 2 || index == 2)
+    {
+      fprintf(stderr, "error: utf8 split %d / index %d at %d\n", split,
+              index, target);
+      goto Failure;
+    }
+  }
+
+  /* draw '#' and check it's a 1px box over all but the last column, from the
+   * top of the cell down to just above the baseline */
+
+  bm_width  = margin * 2 + cellwidth;
+  bm_height = margin * 2 + ascent;
+  rowbytes  = (bm_width << pixelfmt_log2bpp(pixelfmt_bgrx8888)) / 8;
+
+  pixels = malloc(rowbytes * bm_height);
+  if (pixels == NULL)
+    goto Failure;
+
+  bitmap_init(&bm, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888, rowbytes,
+              NULL, pixels);
+  bitmap_clear(&bm, white);
+  screen_for_bitmap(&scr, &bm);
+
+  pos.x = margin;
+  pos.y = margin + ascent;
+
+  bmfont_draw(bmfont, &scr, "#", 1, black, white, NULL, &pos, &end_pos);
+  if (end_pos.x != pos.x + cellwidth)
+  {
+    fprintf(stderr, "error: box advanced to %d\n", end_pos.x);
+    goto Failure;
+  }
+
+  for (y = 0; y < bm_height; y++)
+  {
+    const pixelfmt_bgrx8888_t *row =
+      (const pixelfmt_bgrx8888_t *) ((const char *) pixels + y * rowbytes);
+
+    for (x = 0; x < bm_width; x++)
+    {
+      int inside;
+      int want;
+
+      inside = x >= margin && x <= margin + cellwidth - 2 &&
+               y >= margin && y <= margin + ascent - 1;
+      want   = inside &&
+               (x == margin || x == margin + cellwidth - 2 ||
+                y == margin || y == margin + ascent - 1);
+
+      if (((row[x] & 0x00FFFFFFu) != 0x00FFFFFFu) != want)
+      {
+        fprintf(stderr, "error: box pixel (%d,%d) wrong\n", x, y);
+        goto Failure;
+      }
+    }
+  }
+
+  free(pixels);
+  bmfont_destroy(bmfont);
+  return result_TEST_PASSED;
+
+
+Failure:
+  free(pixels);
+  bmfont_destroy(bmfont);
+  return result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t bmfont_test(const char *resources)
 {
   static const struct
@@ -1498,6 +1935,8 @@ result_t bmfont_test(const char *resources)
     { 800, 600, pixelfmt_p1       },
     { 800, 600, pixelfmt_p2       },
     { 800, 600, pixelfmt_p4       },
+    { 800, 600, pixelfmt_rgbx5551 },
+    { 800, 600, pixelfmt_rgb565   },
     { 800, 600, pixelfmt_bgrx8888 }
   };
 
@@ -1521,6 +1960,18 @@ result_t bmfont_test(const char *resources)
     return rc;
 
   rc = bmfont_caret_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_cmap_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_metrics_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_utf8_test(resources);
   if (rc != result_TEST_PASSED)
     return rc;
 

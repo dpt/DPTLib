@@ -1,8 +1,7 @@
-/* wuss/test/tasks/display.c -- desktop resolution picker task */
+/* wuss/test/tasks/display.c -- desktop display mode picker task */
 
 #ifdef WUSS_APP
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -11,23 +10,97 @@
 #endif
 
 #include "base/utils.h"
-#include "framebuf/bmfont.h"
-#include "framebuf/screen.h"
 #include "geom/box.h"
-#include "geom/point.h"
 #include "geom/size.h"
+#include "geom/stack.h"
+#include "wuss/icon-spec.h"
+#include "wuss/icon.h"
 
-#include "tasks.h" /* app_resize */
+#include "tasks.h" /* app_set_mode, app_get_depth */
 
 #include "display.h"
+#include "common.h"
 
 enum { DISPLAY_MENU_INFO };
 
-/* fixed set of resolutions the picker offers; app_resize rejects (via
- * wuss_frontend_resize) anything a backend can't honour, e.g. RISC OS's
- * fixed screen mode */
-static const size2d_t g_display_resolutions[DISPLAY_MAX_RESOLUTIONS] =
+#define DISPLAY_G_LABEL      1 /* size group, see stack_item_t::group */
+#define DISPLAY_SET_W        120
+#define DISPLAY_ROW_H        18
+#define DISPLAY_CHAR_W       6 /* ponytail: assumes the 6px system font */
+#define DISPLAY_ACTION_W(W)  (((W) + 2) * DISPLAY_CHAR_W + \
+                              2 * wuss_STD_SECONDARY_BUTTON_BORDER)
+#define DISPLAY_DEFAULT_W(W) (((W) + 2) * DISPLAY_CHAR_W + \
+                              2 * wuss_STD_PRIMARY_BUTTON_BORDER)
+
+enum
 {
+  DISPLAY_ST_ROOT,
+  DISPLAY_ST_COLOURS_ROW,
+  DISPLAY_ST_COLOURS_LABEL,
+  DISPLAY_ST_COLOURS,
+  DISPLAY_ST_RESOLUTION_ROW,
+  DISPLAY_ST_RESOLUTION_LABEL,
+  DISPLAY_ST_RESOLUTION,
+  DISPLAY_ST_BUTTONS,
+  DISPLAY_ST_BUTTONS_SPACER,
+  DISPLAY_ST_CANCEL,
+  DISPLAY_ST_CHANGE,
+  DISPLAY_ST__LIMIT
+};
+
+static const stack_item_t g_display_stack[DISPLAY_ST__LIMIT] =
+{
+  [DISPLAY_ST_ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
+                        .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
+
+  [DISPLAY_ST_COLOURS_ROW]      = STACK_HBOX(DISPLAY_ST_ROOT, DISPLAY_ROW_H, wuss_STD_GAP, stack_ALIGN_START),
+  [DISPLAY_ST_COLOURS_LABEL]    = STACK_LEAF_GROUP(DISPLAY_ST_COLOURS_ROW, 0, DISPLAY_ROW_H, stack_ALIGN_CENTRE, DISPLAY_G_LABEL),
+  [DISPLAY_ST_COLOURS]          = STACK_LEAF(DISPLAY_ST_COLOURS_ROW, DISPLAY_SET_W, DISPLAY_ROW_H, stack_ALIGN_CENTRE),
+
+  [DISPLAY_ST_RESOLUTION_ROW]   = STACK_HBOX(DISPLAY_ST_ROOT, DISPLAY_ROW_H, wuss_STD_GAP, stack_ALIGN_START),
+  [DISPLAY_ST_RESOLUTION_LABEL] = STACK_LEAF_GROUP(DISPLAY_ST_RESOLUTION_ROW, 0, DISPLAY_ROW_H, stack_ALIGN_CENTRE, DISPLAY_G_LABEL),
+  [DISPLAY_ST_RESOLUTION]       = STACK_LEAF(DISPLAY_ST_RESOLUTION_ROW, DISPLAY_SET_W, DISPLAY_ROW_H, stack_ALIGN_CENTRE),
+
+  [DISPLAY_ST_BUTTONS]          = STACK_HBOX(DISPLAY_ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
+  [DISPLAY_ST_BUTTONS_SPACER]   = STACK_SPACER(DISPLAY_ST_BUTTONS, 1), /* push the buttons right */
+  [DISPLAY_ST_CANCEL]           = STACK_LEAF(DISPLAY_ST_BUTTONS, DISPLAY_ACTION_W(6), wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [DISPLAY_ST_CHANGE]           = STACK_LEAF(DISPLAY_ST_BUTTONS, DISPLAY_DEFAULT_W(6), wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+};
+
+enum
+{
+  DISPLAY_ICON_COLOURS_LABEL,
+  DISPLAY_ICON_RESOLUTION_LABEL,
+  DISPLAY_ICON_CANCEL,
+  DISPLAY_ICON_CHANGE,
+  DISPLAY_NICONS
+};
+
+/* fixed set of depths the Colours picker offers, in bits per pixel;
+ * app_set_mode rejects (via wuss_frontend_resize) anything a backend can't
+ * honour, e.g. RISC OS's fixed screen mode */
+static const int g_display_depths[] =
+{
+  1, 2, 4, 8, 15, 16, 32
+};
+
+/* wuss_stringset_create borrows its strings, so these are static, paired
+ * 1:1 with g_display_depths */
+static const char *const g_display_depth_labels[NELEMS(g_display_depths)] =
+{
+  "2 colours",
+  "4 colours",
+  "16 colours",
+  "256 colours",
+  "32K colours",
+  "64K colours",
+  "16M colours"
+};
+
+/* fixed set of resolutions the Resolution picker offers; rejected likewise */
+static const size2d_t g_display_resolutions[] =
+{
+  { 480,  360  },
   { 640,  480  },
   { 800,  600  },
   { 1024, 768  },
@@ -38,33 +111,152 @@ static const size2d_t g_display_resolutions[DISPLAY_MAX_RESOLUTIONS] =
   { 1920, 1080 }
 };
 
-/* WUSS_MENU_ITEM stores text_ as a bare pointer, not a copy, so each label
- * needs storage that outlives the loop that builds the menu -- static
- * strings paired 1:1 with g_display_resolutions, rather than a stack buffer
- * reused (and overwritten) on every iteration */
-static const char *const g_display_labels[DISPLAY_MAX_RESOLUTIONS] =
+/* borrowed likewise, paired 1:1 with g_display_resolutions */
+static const char *const g_display_resolution_labels[NELEMS(g_display_resolutions)] =
 {
-  "640x480",
-  "800x600",
-  "1024x768",
-  "1152x864",
-  "1280x720",
-  "1280x800",
-  "1366x768",
-  "1920x1080"
+  "480 x 360",
+  "640 x 480",
+  "800 x 600",
+  "1024 x 768",
+  "1152 x 864",
+  "1280 x 720",
+  "1280 x 800",
+  "1366 x 768",
+  "1920 x 1080"
 };
+
+/* ----------------------------------------------------------------------- */
+
+/* the entry matching the current depth. ponytail: an unlisted mode shows
+ * entry 0 */
+static int display_depth_index(void)
+{
+  int depth;
+  int i;
+
+  depth = app_get_depth();
+  for (i = 0; i < (int) NELEMS(g_display_depths); i++)
+    if (g_display_depths[i] == depth)
+      return i;
+
+  return 0;
+}
+
+/* the entry matching the current screen size; unlisted likewise */
+static int display_resolution_index(const wuss_t *wuss)
+{
+  size2d_t size;
+  int      i;
+
+  size = wuss_get_screen_size(wuss);
+  for (i = 0; i < (int) NELEMS(g_display_resolutions); i++)
+    if (g_display_resolutions[i].w == size.w &&
+        g_display_resolutions[i].h == size.h)
+      return i;
+
+  return 0;
+}
+
+/* show the mode actually in force, e.g. after app_set_mode refused a pick */
+static void display_sync(display_task_t *dc)
+{
+  (void) wuss_stringset_set_index(dc->colours, display_depth_index());
+  (void) wuss_stringset_set_index(dc->resolution,
+                                  display_resolution_index(dc->wuss));
+}
+
+/* apply the picked mode; on refusal show the one still in force */
+static result_t display_change(display_task_t *dc)
+{
+  result_t rc;
+  int      res;
+  int      depth;
+
+  res   = wuss_stringset_get_index(dc->resolution);
+  depth = wuss_stringset_get_index(dc->colours);
+  rc    = app_set_mode(g_display_resolutions[res], g_display_depths[depth]);
+  if (rc != result_OK)
+    display_sync(dc);
+
+  return rc;
+}
+
+/* ----------------------------------------------------------------------- */
 
 static result_t display_create_window(display_task_t *task,
                                       wuss_task_t    *delegate)
 {
-  return wuss_window_create_placed(delegate,
-                                   SIZE2D(160, 40),
-                                   "Display",
-                                   wuss_WINDOW_DEFAULT,
-                                   wuss_NO_BACKDROP,
-                                   SIZE2D(160, 40),
-                                   SIZE2D(0, 0),
-                                   &task->window);
+  result_t         rc;
+  size2d_t         size;
+  box_t            root;
+  stack_item_t     items[DISPLAY_ST__LIMIT];
+  box_t            boxes[DISPLAY_ST__LIMIT];
+  wuss_icon_spec_t specs[DISPLAY_NICONS];
+  wuss_icon_t     *made[DISPLAY_NICONS];
+
+  /* each label's natural width; the size group widens the other to match */
+  memcpy(items, g_display_stack, sizeof(items));
+  items[DISPLAY_ST_COLOURS_LABEL].axis_size =
+    task_text_width(task->wuss, "Colours");
+  items[DISPLAY_ST_RESOLUTION_LABEL].axis_size =
+    task_text_width(task->wuss, "Resolution");
+
+  rc = stack_smallest(items, NELEMS(items), &size);
+  if (rc != result_OK)
+    return rc;
+
+  root = (box_t) BOX_POS_SIZE(0, 0, size.w, size.h);
+  rc = stack_solve(items, NELEMS(items), &root, boxes);
+  if (rc != result_OK)
+    return rc;
+
+  rc = wuss_window_create_placed(delegate,
+                                 size,
+                                 "Display",
+                                 wuss_WINDOW_CLOSE | wuss_WINDOW_BACK,
+                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                                 size,
+                                 SIZE2D(0, 0),
+                                 &task->window);
+  if (rc != result_OK)
+    return rc;
+
+  wuss_icon_spec_label(&specs[DISPLAY_ICON_COLOURS_LABEL],
+                       boxes[DISPLAY_ST_COLOURS_LABEL],
+                       "Colours", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  wuss_icon_spec_label(&specs[DISPLAY_ICON_RESOLUTION_LABEL],
+                       boxes[DISPLAY_ST_RESOLUTION_LABEL],
+                       "Resolution", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  wuss_icon_spec_action(&specs[DISPLAY_ICON_CANCEL],
+                        boxes[DISPLAY_ST_CANCEL], "Cancel", 0);
+  wuss_icon_spec_action(&specs[DISPLAY_ICON_CHANGE],
+                        boxes[DISPLAY_ST_CHANGE], "Change", 1);
+
+  rc = wuss_icon_create_array(task->window, specs, NELEMS(specs), made);
+  if (rc != result_OK)
+    return rc;
+
+  task->cancel = made[DISPLAY_ICON_CANCEL];
+  task->change = made[DISPLAY_ICON_CHANGE];
+
+  /* picks only update the fields; Change applies them */
+  rc = wuss_stringset_create(&task->colours, task->window,
+                             boxes[DISPLAY_ST_COLOURS], "Colours", -1,
+                             g_display_depth_labels,
+                             NELEMS(g_display_depth_labels), NULL, NULL);
+  if (rc != result_OK)
+    return rc;
+
+  rc = wuss_stringset_create(&task->resolution, task->window,
+                             boxes[DISPLAY_ST_RESOLUTION], "Resolution", -1,
+                             g_display_resolution_labels,
+                             NELEMS(g_display_resolution_labels), NULL, NULL);
+  if (rc != result_OK)
+    return rc;
+
+  display_sync(task);
+
+  return result_OK;
 }
 
 result_t display_create(wuss_t *wuss, display_task_t **out)
@@ -73,7 +265,6 @@ result_t display_create(wuss_t *wuss, display_task_t **out)
   display_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -96,7 +287,8 @@ result_t display_create(wuss_t *wuss, display_task_t **out)
   rc = display_create_window(task, delegate);
   if (rc != result_OK)
   {
-    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block
+                                  * and any string sets made so far */
     return rc;
   }
 
@@ -105,9 +297,6 @@ result_t display_create(wuss_t *wuss, display_task_t **out)
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in
                                 * display_mouse */
-  for (i = 0; i < DISPLAY_MAX_RESOLUTIONS; i++)
-    WUSS_MENU_ITEM(task->menu_items, 1 + i, g_display_labels[i],
-                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Display", task->menu_items,
                  NELEMS(task->menu_items));
@@ -120,56 +309,9 @@ result_t display_create(wuss_t *wuss, display_task_t **out)
 
 void display_destroy(display_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
+  wuss_stringset_destroy(task->colours);
+  wuss_stringset_destroy(task->resolution);
   free(task);
-}
-
-static void display_draw_centred(bmfont_t   *font,
-                                 screen_t   *scr,
-                                 const char *text,
-                                 int         x,
-                                 int         y,
-                                 colour_t    fg)
-{
-  bmfont_width_t width;
-  point_t        pos;
-  int            len, fh, ascent;
-
-  len = (int) strlen(text);
-  bmfont_measure(font, text, len, NULL, INT_MAX, NULL, &width);
-  bmfont_get_info(font, NULL, &fh, &ascent, NULL);
-
-  pos.x = x - width / 2;
-  pos.y = y - fh / 2 + ascent;
-  bmfont_draw(font, scr, text, len, fg, colour_rgba(0, 0, 0, 0), NULL, &pos,
-             NULL);
-}
-
-static result_t display_redraw(display_task_t     *dc,
-                               const wuss_event_t *event)
-{
-  screen_t    *scr;
-  const box_t *content, *bounds;
-  size2d_t     size;
-  char         label[32];
-  colour_t     bg, fg;
-
-  scr     = event->data.redraw.scr;
-  content = event->data.redraw.content;
-  bounds  = event->data.redraw.bounds;
-  bg      = colour_rgb(0x1D, 0x2B, 0x53);
-  fg      = colour_rgb(0xFF, 0xF1, 0xE8);
-
-  screen_fill_rect(scr, content->x0, content->y0, box_size(content), bg);
-
-  size = wuss_get_screen_size(dc->wuss);
-  snprintf(label, sizeof(label), "%dx%d", size.w, size.h);
-  display_draw_centred(wuss_get_font_n(dc->wuss, 0), scr, label,
-                       (bounds->x0 + bounds->x1) / 2 - event->data.redraw.scroll.x,
-                       (bounds->y0 + bounds->y1) / 2 - event->data.redraw.scroll.y,
-                       fg);
-
-  return result_OK;
 }
 
 static result_t display_mouse(display_task_t *dc, wuss_button_t button)
@@ -179,50 +321,61 @@ static result_t display_mouse(display_task_t *dc, wuss_button_t button)
 
   {
     static const wuss_proginfo_desc_t desc =
-    {
-      "Display",
-      "Change the desktop resolution",
-      "(c) DPTLib contributors",
-      "1.0 (" __DATE__ ")"
-    };
+      TASK_PROGINFO_DESC("Display",
+                         "Change the desktop colours and resolution");
     wuss_proginfo_set_desc(&desc);
     dc->menu_items[DISPLAY_MENU_INFO].window = wuss_proginfo_window(dc->delegate);
   }
 
-  return wuss_menu_open(dc->delegate, &dc->menu, wuss_get_pointer(dc->wuss),
-                        &dc->menu_handle);
+  return wuss_menu_open_at_pointer(dc->delegate, &dc->menu, &dc->menu_handle);
 }
 
-static result_t display_menu_select(display_task_t     *dc,
-                                    const wuss_event_t *event)
+/* offer an event to both string sets; 1 if one consumed it, its outcome in
+ * *rc */
+static int display_offer(display_task_t     *dc,
+                         const wuss_event_t *event,
+                         result_t           *rc)
 {
-  int index;
-
-  index = event->data.menu_select.index;
-
-  if (!wuss_menu_should_keep_open(event))
-    dc->menu_handle = NULL;
-
-  if (event->data.menu_select.menu != &dc->menu)
-    return result_OK;
-  if (index < 1 || index > DISPLAY_MAX_RESOLUTIONS)
-    return result_OK;
-
-  return app_resize(g_display_resolutions[index - 1]);
+  return wuss_stringset_handle_event(dc->colours, event, rc) ||
+         wuss_stringset_handle_event(dc->resolution, event, rc);
 }
 
 result_t display_handle(wuss_window_t      *window,
                         const wuss_event_t *event,
                         void               *task_data)
 {
+  result_t        rc;
   display_task_t *dc;
 
   dc = task_data;
 
   switch (event->kind)
   {
-  case wuss_EVENT_REDRAW:
-    return display_redraw(dc, event);
+  case wuss_EVENT_ICON:
+    if (display_offer(dc, event, &rc))
+      return rc;
+
+    if (event->data.icon.action != wuss_MOUSE_UP)
+      return result_OK;
+
+    if (event->data.icon.icon == dc->change)
+    {
+      rc = display_change(dc);
+      if (rc != result_OK || (event->data.icon.button & wuss_BUTTON_ADJUST))
+        return rc;
+
+      /* Select closes, as on RISC OS; with autoclose this frees dc, so it
+       * must not be touched afterwards */
+      return wuss_window_try_close(dc->window);
+    }
+    if (event->data.icon.icon == dc->cancel)
+    {
+      if (!(event->data.icon.button & wuss_BUTTON_ADJUST))
+        return wuss_window_try_close(dc->window); /* frees dc likewise */
+
+      display_sync(dc); /* revert the fields to the mode in force */
+    }
+    return result_OK;
 
   case wuss_EVENT_MOUSE:
     if (window != dc->window)
@@ -233,16 +386,19 @@ result_t display_handle(wuss_window_t      *window,
     return display_mouse(dc, event->data.mouse.button);
 
   case wuss_EVENT_MENU_SELECT:
-    return display_menu_select(dc, event);
+    if (display_offer(dc, event, &rc))
+      return rc;
+
+    return result_OK; /* Info is a submenu only; nothing to act on */
 
   case wuss_EVENT_MENU_CLOSED:
+    /* both sets must see it, and neither consumes it */
+    (void) wuss_stringset_handle_event(dc->colours, event, &rc);
+    (void) wuss_stringset_handle_event(dc->resolution, event, &rc);
     dc->menu_handle = NULL;
     return result_OK;
 
   case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
     if (window == dc->menu_items[DISPLAY_MENU_INFO].window)
       rc = wuss_proginfo_handle_pre_show();
     else
@@ -253,7 +409,6 @@ result_t display_handle(wuss_window_t      *window,
       return result_OK;
     return wuss_menu_open_window_now(event->data.pre_show.handle,
                                      event->data.pre_show.index);
-  }
 
   case wuss_EVENT_CLOSE:
     if (window == dc->window)

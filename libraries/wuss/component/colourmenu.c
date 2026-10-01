@@ -186,6 +186,40 @@ result_t wuss_colourmenu_set_title(const char *title)
   return result_OK;
 }
 
+void wuss_colourmenu_set_ticked(wuss_colour_t colour)
+{
+  int i;
+
+  if (g.menu == NULL)
+    return;
+
+  /* walk the None row too, even while hidden, so its tick clears */
+  for (i = 0; i < g.npalette + 1; i++)
+    if (g.items[i].swatch == colour)
+      g.items[i].flags |= wuss_MENU_ITEM_TICKED;
+    else
+      g.items[i].flags &= ~(wuss_menu_item_flags_t) wuss_MENU_ITEM_TICKED;
+}
+
+void wuss_colourmenu_set_ticked_rgb(colour_t colour)
+{
+  wuss_colour_t index;
+  int           i;
+
+  if (g.menu == NULL)
+    return;
+
+  index = wuss_COLOUR_SYMBOLIC; /* never a row's swatch: ticks nothing */
+  for (i = 0; i < g.npalette; i++)
+    if (g.wuss->palette[i].primary == colour.primary)
+    {
+      index = (wuss_colour_t) i;
+      break;
+    }
+
+  wuss_colourmenu_set_ticked(index);
+}
+
 wuss_colour_t wuss_colourmenu_selected(const wuss_event_t *ev, int *ok)
 {
   int index;
@@ -204,7 +238,53 @@ wuss_colour_t wuss_colourmenu_selected(const wuss_event_t *ev, int *ok)
   if (index < 0 || index >= g.menu->nitems)
     return 0;
 
+  /* the pick is now the current colour: move the tick to it, both for the
+   * next open and on the rows of a chain an ADJUST pick left open (a no-op
+   * once a SELECT pick has torn the chain down) */
+  wuss_colourmenu_set_ticked(g.menu->items[index].swatch);
+  wuss_menu_tick_exclusive_live(g.wuss->menu_chain, g.menu, index);
+
   if (ok != NULL)
     *ok = 1;
   return g.menu->items[index].swatch;
+}
+
+result_t wuss_colourmenu_open_rgb(const wuss_t       *wuss,
+                                  const wuss_event_t *ev,
+                                  const char         *title,
+                                  colour_t            ticked)
+{
+  const wuss_menu_t *menu;
+
+  /* build first: set_title needs the singleton to exist */
+  menu = wuss_colourmenu_menu(wuss);
+  if (menu == NULL)
+    return result_OOM;
+
+  wuss_colourmenu_set_none(0);
+  (void) wuss_colourmenu_set_title(title);
+  wuss_colourmenu_set_ticked_rgb(ticked);
+
+  return wuss_menu_open_submenu_now(ev->data.pre_submenu_open.handle,
+                                    ev->data.pre_submenu_open.index,
+                                    menu);
+}
+
+int wuss_colourmenu_selected_rgb(const wuss_event_t *ev, colour_t *colour)
+{
+  const colour_t *palette;
+  int             npalette;
+  wuss_colour_t   picked;
+  int             ok;
+
+  picked = wuss_colourmenu_selected(ev, &ok);
+  if (!ok)
+    return 0;
+
+  palette = wuss_get_palette(g.wuss, &npalette);
+  if (picked >= (wuss_colour_t) npalette)
+    return 0;
+
+  *colour = palette[picked];
+  return 1;
 }

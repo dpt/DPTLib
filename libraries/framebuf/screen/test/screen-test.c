@@ -9,6 +9,7 @@
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
+#include "framebuf/span-p4.h"
 #include "geom/box.h"
 #include "geom/point.h"
 #include "utils/fxp.h"
@@ -131,9 +132,9 @@ static result_t test_clip_invariance(void)
   static testscreen_t reference;
   static testscreen_t pieced;
 
-  colour_t colour;
-  size_t   l, p, k;
-  int      b;
+  colour_t            colour;
+  size_t              l, p, k;
+  int                 b;
 
   colour = colour_rgb(255, 255, 255);
 
@@ -173,9 +174,9 @@ static result_t test_clipping_still_happens(void)
 
   static testscreen_t ts;
 
-  colour_t colour;
-  size_t   k;
-  int      x, y;
+  colour_t            colour;
+  size_t              k;
+  int                 x, y;
 
   colour = colour_rgb(255, 255, 255);
 
@@ -223,8 +224,8 @@ static result_t test_wu_fix8_extreme_coords(void)
 
   static testscreen_t ts;
 
-  colour_t colour;
-  size_t   i;
+  colour_t            colour;
+  size_t              i;
 
   colour = colour_rgb(255, 255, 255);
 
@@ -288,14 +289,14 @@ static int np_at(testscreen_t *ts, int x, int y)
 
 static result_t test_ninepatch(void)
 {
-  static testscreen_t ts;
-  static testscreen_t enc;
+  static testscreen_t        ts;
+  static testscreen_t        enc;
   static pixelfmt_rgba8888_t srcbuf[NP_SRC * NP_SRC];
 
-  bitmap_t src;
-  box_t    dst = { 5, 5, 45, 45 };
-  int      exp[3][3];
-  int      cx, cy;
+  bitmap_t                   src;
+  box_t                      dst = { 5, 5, 45, 45 };
+  int                        exp[3][3];
+  int                        cx, cy;
 
   np_make_src(&src, srcbuf);
 
@@ -393,8 +394,8 @@ static result_t test_fill_pattern(void)
   static testscreen_t ts;
   static testscreen_t enc;
 
-  box_t    box = { 8, 8, 24, 24 };
-  int      fg, bg;
+  box_t box = { 8, 8, 24, 24 };
+  int   fg, bg;
 
   fg = (int) np_encode(&enc, 255, 0, 0);
   bg = (int) np_encode(&enc, 0, 0, 255);
@@ -468,9 +469,9 @@ static result_t test_dashed_line(void)
   static testscreen_t ts;
   static testscreen_t enc;
 
-  int fg;
-  int x;
-  int on_count, off_count;
+  int                 fg;
+  int                 x;
+  int                 on_count, off_count;
 
   fg = (int) np_encode(&enc, 255, 0, 0);
 
@@ -585,8 +586,8 @@ static result_t test_draw_rect(void)
   static testscreen_t ts;
   static testscreen_t enc;
 
-  int fg, bg;
-  int x, y;
+  int                 fg, bg;
+  int                 x, y;
 
   fg = (int) np_encode(&enc, 0, 255, 0);
   bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
@@ -650,7 +651,7 @@ static result_t test_draw_circle(void)
   static testscreen_t ts;
   static testscreen_t enc;
 
-  int fg, bg;
+  int                 fg, bg;
 
   fg = (int) np_encode(&enc, 0, 255, 0);
   bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
@@ -701,7 +702,7 @@ static result_t test_fill_circle(void)
   static testscreen_t ts;
   static testscreen_t enc;
 
-  int fg, bg;
+  int                 fg, bg;
 
   fg = (int) np_encode(&enc, 0, 255, 0);
   bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
@@ -740,6 +741,77 @@ static result_t test_fill_circle(void)
 
 /* ----------------------------------------------------------------------- */
 
+static result_t test_rounded_rect(void)
+{
+  static testscreen_t outline;
+  static testscreen_t filled;
+  static testscreen_t enc;
+
+  int                 fg, bg;
+  int                 x, y;
+
+  fg = (int) np_encode(&enc, 0, 255, 0);
+  bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
+
+  /* 21x21 at (10,10), r=5: corner centres at 15 and 25. The very corner
+   * and the diagonal (11,11) lie outside the arc; edge midpoints and the
+   * arc's axis points lie on it. */
+  testscreen_init(&outline);
+  screen_draw_rounded_rect(&outline.scr, 10, 10, SIZE2D(21, 21), 5,
+                           colour_rgb(0, 255, 0));
+  testscreen_init(&filled);
+  screen_fill_rounded_rect(&filled.scr, 10, 10, SIZE2D(21, 21), 5,
+                           colour_rgb(0, 255, 0));
+
+  if (np_at(&outline, 20, 10) != fg || np_at(&outline, 10, 20) != fg ||
+      np_at(&outline, 30, 20) != fg || np_at(&outline, 20, 30) != fg ||
+      np_at(&outline, 10, 15) != fg || np_at(&outline, 12, 11) != fg)
+  {
+    printf("screen: draw_rounded_rect missing an edge or arc point\n");
+    return result_TEST_FAILED;
+  }
+  if (np_at(&outline, 10, 10) != bg || np_at(&outline, 11, 11) != bg ||
+      np_at(&outline, 20, 20) != bg)
+  {
+    printf("screen: draw_rounded_rect lit a corner or its interior\n");
+    return result_TEST_FAILED;
+  }
+
+  /* the fill covers every outline pixel plus the interior, and nothing
+   * outside the outline's corners or edges */
+  for (y = 0; y < HEIGHT; y++)
+    for (x = 0; x < WIDTH; x++)
+      if (np_at(&outline, x, y) == fg && np_at(&filled, x, y) != fg)
+      {
+        printf("screen: fill_rounded_rect missed outline pixel (%d,%d)\n",
+               x, y);
+        return result_TEST_FAILED;
+      }
+  if (np_at(&filled, 20, 20) != fg || np_at(&filled, 10, 10) != bg ||
+      np_at(&filled, 11, 11) != bg || np_at(&filled, 31, 20) != bg ||
+      np_at(&filled, 20, 9) != bg)
+  {
+    printf("screen: fill_rounded_rect wrong interior or spilled\n");
+    return result_TEST_FAILED;
+  }
+
+  /* an oversized radius clamps to a circle on an odd square: (10,10) is
+   * outside, the edge midpoints are on it */
+  testscreen_init(&filled);
+  screen_fill_rounded_rect(&filled.scr, 10, 10, SIZE2D(21, 21), 100,
+                           colour_rgb(0, 255, 0));
+  if (np_at(&filled, 10, 10) != bg || np_at(&filled, 14, 10) != bg ||
+      np_at(&filled, 20, 10) != fg || np_at(&filled, 10, 20) != fg)
+  {
+    printf("screen: fill_rounded_rect did not clamp its radius\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 /* Blit an rgba8888 source onto a 1bpp screen: each pixel must quantise to
  * the nearer of the two palette entries and pack MSB-first, bit 7 leftmost. */
 static result_t test_copy_bitmap_p1(void)
@@ -748,10 +820,10 @@ static result_t test_copy_bitmap_p1(void)
   static unsigned char       p1pixels[P1_ROWBYTES * HEIGHT];
   static pixelfmt_rgba8888_t srcbuf[16 * 4];
 
-  screen_t scr;
-  bitmap_t src;
-  colour_t pal[2];
-  int      x, y;
+  screen_t                   scr;
+  bitmap_t                   src;
+  colour_t                   pal[2];
+  int                        x, y;
 
   pal[0] = colour_rgb(0x00, 0x00, 0x00);
   pal[1] = colour_rgb(0xFF, 0xFF, 0xFF);
@@ -854,10 +926,10 @@ static result_t test_copy_bitmap_p2(void)
   static unsigned char       p2pixels[P2_ROWBYTES * HEIGHT];
   static pixelfmt_rgba8888_t srcbuf[16 * 4];
 
-  screen_t scr;
-  bitmap_t src;
-  colour_t pal[4];
-  int      x, y;
+  screen_t                   scr;
+  bitmap_t                   src;
+  colour_t                   pal[4];
+  int                        x, y;
 
   pal[0] = colour_rgb(0x00, 0x00, 0x00);
   pal[1] = colour_rgb(0x55, 0x55, 0x55);
@@ -967,10 +1039,10 @@ static result_t test_copy_bitmap_p8(void)
   static unsigned char       p8pixels[P8_ROWBYTES * HEIGHT];
   static pixelfmt_rgba8888_t srcbuf[16 * 4];
 
-  screen_t scr;
-  bitmap_t src;
-  colour_t pal[256];
-  int      x, y;
+  screen_t                   scr;
+  bitmap_t                   src;
+  colour_t                   pal[256];
+  int                        x, y;
 
   /* a grey ramp: entry i is (i, i, i), so nearest-match is predictable */
   for (x = 0; x < 256; x++)
@@ -1125,6 +1197,43 @@ static result_t test_copy_bitmap_p8(void)
 #undef P8_ROWBYTES
 }
 
+/* screen_copy_bitmap with a bgra8888 / bgrx8888 source onto an rgbx8888
+ * screen: the source's R and B must be swapped back, so red lands as red */
+static result_t test_copy_bitmap_bgr_source(void)
+{
+  static const pixelfmt_t fmts[] = { pixelfmt_bgra8888, pixelfmt_bgrx8888 };
+  static pixelfmt_any32_t scrbuf[WIDTH * HEIGHT];
+
+  pixelfmt_any32_t        srcpx;
+  colour_t                red;
+  screen_t                scr;
+  bitmap_t                src;
+  size_t                  i;
+
+  srcpx = PIXELFMT_MAKE_BGRA8888(0xFF, 0x00, 0x00, 0xFF);
+  red   = colour_rgb(0xFF, 0x00, 0x00);
+
+  for (i = 0; i < NELEMS(fmts); i++)
+  {
+    bitmap_init(&src, SIZE2D(1, 1), fmts[i], (int) sizeof(srcpx), NULL,
+                &srcpx);
+
+    memset(scrbuf, 0, sizeof(scrbuf));
+    screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_rgbx8888,
+                WIDTH * (int) sizeof(scrbuf[0]), NULL, scrbuf);
+
+    if (screen_copy_bitmap(&scr, 0, 0, &src) != result_OK ||
+        scrbuf[0] != red.primary)
+    {
+      printf("screen: bgr-source blit (fmt %d) got 0x%08X want 0x%08X\n",
+             (int) fmts[i], scrbuf[0], red.primary);
+      return result_TEST_FAILED;
+    }
+  }
+
+  return result_TEST_PASSED;
+}
+
 /* screen_copy_bitmap with a *paletted* source (p4) onto a 32bpp screen: the
  * unpack path in screen_copy_bitmap_i must decode the packed source indices
  * through its own palette before the 32bpp blit runs, landing exact colours
@@ -1133,14 +1242,14 @@ static result_t test_copy_bitmap_p8(void)
 static result_t test_copy_bitmap_paletted_source(void)
 {
 #define P4_SRC_ROWBYTES (8 / 2)
-  static unsigned char p4srcbuf[P4_SRC_ROWBYTES * 2];
+  static unsigned char    p4srcbuf[P4_SRC_ROWBYTES * 2];
   static pixelfmt_any32_t scrbuf[WIDTH * HEIGHT];
 
-  screen_t scr;
-  bitmap_t src;
-  colour_t srcpal[16];
-  colour_t got;
-  int      x;
+  screen_t                scr;
+  bitmap_t                src;
+  colour_t                srcpal[16];
+  colour_t                got;
+  int                     x;
 
   /* row 0: indices 0..7 packed two to the byte -- even x in the low nibble,
    * odd x in the high nibble (matches screen_set_pixel_p4's own bit order) */
@@ -1227,21 +1336,21 @@ static int p2_pixel_at(const unsigned char *rowbuf, int px)
 /* screen_copy_bitmap_dithered on a p2 screen: a flat mid-grey source, which
  * screen_copy_bitmap would quantise to one uniform index across the row, must
  * come out as a stipple of at least two indices; the flat black and white
- * ends must still be uniform (the Bayer nudge can't push them off their
- * clamp). */
-static result_t test_copy_bitmap_dithered(void)
+ * ends must still be uniform (the dither nudge can't push them off their
+ * clamp). Run once per dithering method. */
+static result_t test_copy_bitmap_dithered_with(screen_dither_t method)
 {
 #define PD_ROWBYTES (WIDTH / 4)
   static unsigned char       pdpixels[PD_ROWBYTES * HEIGHT];
   static pixelfmt_rgba8888_t srcbuf[16 * 8];
 
-  screen_t      scr;
-  bitmap_t      src;
-  colour_t      pal[4];
-  int           first;
-  int           varied;
-  int           px;
-  int           x, y;
+  screen_t                   scr;
+  bitmap_t                   src;
+  colour_t                   pal[4];
+  int                        first;
+  int                        varied;
+  int                        px;
+  int                        x, y;
 
   pal[0] = colour_rgb(0x00, 0x00, 0x00);
   pal[1] = colour_rgb(0x55, 0x55, 0x55);
@@ -1260,7 +1369,7 @@ static result_t test_copy_bitmap_dithered(void)
   screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, PD_ROWBYTES, pal,
               pdpixels);
 
-  if (screen_copy_bitmap_dithered(&scr, 0, 0, &src) != result_OK)
+  if (screen_copy_bitmap_dithered(&scr, 0, 0, &src, method) != result_OK)
   {
     printf("screen: copy_bitmap_dithered to p2 screen failed\n");
     return result_TEST_FAILED;
@@ -1285,7 +1394,7 @@ static result_t test_copy_bitmap_dithered(void)
   }
 
   /* dithered: at least one of the first 16 pixels differs from pixel 0 (the
-   * 8x8 Bayer cell varies across the row). */
+   * threshold map varies across the row). */
   first  = p2_pixel_at(pdpixels, 0);
   varied = 0;
   for (px = 1; px < 16; px++)
@@ -1302,7 +1411,7 @@ static result_t test_copy_bitmap_dithered(void)
     for (x = 0; x < 16; x++)
       srcbuf[y * 16 + x] = colour_rgb(0x00, 0x00, 0x00).primary;
   memset(pdpixels, 0xAA, sizeof(pdpixels));
-  screen_copy_bitmap_dithered(&scr, 0, 0, &src);
+  screen_copy_bitmap_dithered(&scr, 0, 0, &src, method);
   if (pdpixels[0] != 0x00 || pdpixels[1] != 0x00 ||
       pdpixels[2] != 0x00 || pdpixels[3] != 0x00)
   {
@@ -1314,7 +1423,7 @@ static result_t test_copy_bitmap_dithered(void)
     for (x = 0; x < 16; x++)
       srcbuf[y * 16 + x] = colour_rgb(0xFF, 0xFF, 0xFF).primary;
   memset(pdpixels, 0x00, sizeof(pdpixels));
-  screen_copy_bitmap_dithered(&scr, 0, 0, &src);
+  screen_copy_bitmap_dithered(&scr, 0, 0, &src, method);
   if (pdpixels[0] != 0xFF || pdpixels[1] != 0xFF ||
       pdpixels[2] != 0xFF || pdpixels[3] != 0xFF)
   {
@@ -1323,6 +1432,17 @@ static result_t test_copy_bitmap_dithered(void)
   }
 
   return result_TEST_PASSED;
+}
+
+static result_t test_copy_bitmap_dithered(void)
+{
+  result_t rc;
+
+  rc = test_copy_bitmap_dithered_with(screen_DITHER_BAYER);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  return test_copy_bitmap_dithered_with(screen_DITHER_BLUE_NOISE);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -1361,9 +1481,9 @@ static result_t test_copy_rect_packed(void)
 
   static unsigned char buf[WIDTH / 2 * HEIGHT]; /* widest sub-byte case */
 
-  colour_t pal[16];
-  size_t   ci;
-  int      i;
+  colour_t             pal[16];
+  size_t               ci;
+  int                  i;
 
   for (i = 0; i < 16; i++)
     pal[i] = colour_rgb((unsigned char) (i * 17),
@@ -1430,6 +1550,281 @@ static result_t test_copy_rect_packed(void)
   return result_TEST_PASSED;
 }
 
+/* screen_set_pixel and screen_set_pixel_value, plotted at every point from
+ * just off each screen edge, must touch exactly the pixels inside both the
+ * screen and the clip; an empty clip means unclipped. */
+static result_t test_set_pixel_clip(void)
+{
+  static const box_t clips[] =
+  {
+    { 0, 0, 0, 0 },      /* empty: unclipped */
+    { 10, 20, 30, 40 },  /* inside the screen */
+    { 50, -5, 80, 10 },  /* hanging off the top-right corner */
+    { 70, 70, 90, 90 }   /* wholly off screen */
+  };
+
+  static testscreen_t ts;
+
+  size_t              ci;
+  int                 fn;
+  int                 x, y;
+  int                 inside;
+
+  for (ci = 0; ci < NELEMS(clips); ci++)
+    for (fn = 0; fn < 2; fn++)
+    {
+      testscreen_init(&ts);
+      ts.scr.clip = clips[ci];
+
+      for (y = -2; y < HEIGHT + 2; y++)
+        for (x = -2; x < WIDTH + 2; x++)
+          if (fn == 0)
+            screen_set_pixel(&ts.scr, x, y, colour_rgb(255, 255, 255));
+          else
+            screen_set_pixel_value(&ts.scr, x, y, 0xFFFFFFFF);
+
+      for (y = 0; y < HEIGHT; y++)
+        for (x = 0; x < WIDTH; x++)
+        {
+          inside = box_is_empty(&clips[ci]) ||
+                   box_contains_point(&clips[ci], x, y);
+          if ((ts.pixels[y * WIDTH + x] != BACKGROUND) != inside)
+          {
+            printf("screen: %s clip %d wrong at (%d,%d)\n",
+                   fn == 0 ? "set_pixel" : "set_pixel_value", (int) ci, x, y);
+            return result_TEST_FAILED;
+          }
+        }
+    }
+
+  return result_TEST_PASSED;
+}
+
+/* span_p4.fill on packed nibbles: every start parity and length over a short
+ * row must set exactly [first, first + length) and leave the rest alone. */
+static result_t test_fill_span_p4(void)
+{
+  unsigned char buf[16]; /* 32 pixels */
+  int           first, length, x, want;
+
+  for (first = 0; first < 8; first++)
+    for (length = 0; length <= 20; length++)
+    {
+      memset(buf, 0x33, sizeof(buf)); /* background index 3 */
+      span_p4.fill(buf, first, 0xC, length);
+
+      for (x = 0; x < 32; x++)
+      {
+        want = (x >= first && x < first + length) ? 0xC : 0x3;
+        if (house_pixel_at(buf, x, 4) != want)
+        {
+          printf("screen: span_p4 fill first=%d length=%d wrong at x=%d\n",
+                 first, length, x);
+          return result_TEST_FAILED;
+        }
+      }
+    }
+
+  return result_TEST_PASSED;
+}
+
+/* set_pixel round-trips full-precision R/G/B through the 5/6/5 or 5/5/5
+ * quantisation, and copy_bitmap alpha-blends an rgba8888 source correctly,
+ * for both 16bpp destination formats. */
+static result_t test_16bpp_screen(pixelfmt_t fmt)
+{
+  static const int W = 8, H = 8;
+
+  pixelfmt_any16_t    screenbuf[8 * 8];
+  screen_t            scr;
+  pixelfmt_rgba8888_t srcbuf[2 * 2];
+  bitmap_t            src;
+  result_t            rc;
+  pixelfmt_any16_t    got;
+  colour_t            c;
+
+  screen_init(&scr, SIZE2D(W, H), fmt, W * (int) sizeof(screenbuf[0]),
+             NULL, screenbuf);
+
+  /* pure red round-trips to the format's own full-intensity red field,
+   * regardless of whether that field is 5 or 6 bits wide */
+  screen_set_pixel(&scr, 0, 0, colour_rgb(255, 0, 0));
+  got = screenbuf[0];
+  if (fmt == pixelfmt_rgb565  && got != (PIXELFMT_Rxx565_MASK >> 0)   ||
+      fmt == pixelfmt_rgbx5551 && got != (PIXELFMT_Rxxx5551_MASK >> 0))
+  {
+    printf("screen: 16bpp set_pixel red wrong for fmt=%d: got 0x%04x\n",
+           (int) fmt, got);
+    return result_TEST_FAILED;
+  }
+
+  /* opaque source pixel fully overwrites the destination */
+  memset(screenbuf, 0, sizeof(screenbuf));
+  bitmap_init(&src, SIZE2D(2, 2), pixelfmt_rgba8888,
+             2 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
+  srcbuf[0] = PIXELFMT_MAKE_RGBA8888(0, 0, 255, 255); /* blue, opaque */
+  srcbuf[1] = PIXELFMT_MAKE_RGBA8888(0, 0, 255, 0);   /* blue, transparent */
+  srcbuf[2] = srcbuf[0];
+  srcbuf[3] = srcbuf[0];
+
+  rc = screen_copy_bitmap(&scr, 0, 0, &src);
+  if (rc != result_OK)
+  {
+    printf("screen: 16bpp copy_bitmap fmt=%d returned %d\n", (int) fmt, rc);
+    return result_TEST_FAILED;
+  }
+
+  c.primary = colour_rgb(0, 0, 255).primary;
+  if (screenbuf[0] != (pixelfmt_any16_t) colour_to_pixel(NULL, 0, c, fmt))
+  {
+    printf("screen: 16bpp copy_bitmap fmt=%d opaque pixel wrong\n", (int) fmt);
+    return result_TEST_FAILED;
+  }
+
+  /* fully transparent source pixel leaves the destination untouched */
+  if (screenbuf[1] != 0)
+  {
+    printf("screen: 16bpp copy_bitmap fmt=%d transparent pixel wrong\n",
+           (int) fmt);
+    return result_TEST_FAILED;
+  }
+
+  /* a 16bpp source copies opaque onto a 16bpp and a 32bpp screen */
+  {
+    pixelfmt_any16_t    srcpx[2 * 2];
+    pixelfmt_bgrx8888_t dst32[2 * 2];
+    screen_t            scr32;
+    bitmap_t            src16;
+    pixelfmt_any16_t    blue16;
+
+    blue16 = (pixelfmt_any16_t) colour_to_pixel(NULL, 0, colour_rgb(0, 0, 255), fmt);
+    srcpx[0] = srcpx[1] = srcpx[2] = srcpx[3] = blue16;
+    bitmap_init(&src16, SIZE2D(2, 2), fmt, 2 * (int) sizeof(srcpx[0]),
+                NULL, srcpx);
+
+    memset(screenbuf, 0, sizeof(screenbuf));
+    memset(dst32, 0, sizeof(dst32));
+    screen_init(&scr32, SIZE2D(2, 2), pixelfmt_bgrx8888,
+                2 * (int) sizeof(dst32[0]), NULL, dst32);
+
+    if (screen_copy_bitmap(&scr, 0, 0, &src16) != result_OK ||
+        screen_copy_bitmap(&scr32, 0, 0, &src16) != result_OK ||
+        screenbuf[0] != blue16 ||
+        dst32[0] != 0xFF0000FFu) /* opaque blue */
+    {
+      printf("screen: 16bpp source copy_bitmap fmt=%d wrong: 0x%04x 0x%08x\n",
+             (int) fmt, screenbuf[0], (unsigned int) dst32[0]);
+      return result_TEST_FAILED;
+    }
+  }
+
+  /* fill_pattern: GREY50 puts fg where (x ^ y) is even, bg elsewhere; the
+   * stencil variant leaves the bg pixels alone. Same via the bitmap API. */
+  {
+    pattern_t        pat;
+    box_t            area = { 1, 1, 5, 5 };
+    pixelfmt_any16_t fg, bg;
+    bitmap_t         bm;
+    int              pass;
+
+    fg  = (pixelfmt_any16_t) colour_to_pixel(NULL, 0, colour_rgb(255, 0, 0), fmt);
+    bg  = (pixelfmt_any16_t) colour_to_pixel(NULL, 0, colour_rgb(0, 0, 255), fmt);
+    pat = pattern_from_preset(screen_PATTERN_GREY50, colour_rgb(255, 0, 0),
+                              colour_rgb(0, 0, 255));
+
+    bitmap_init(&bm, SIZE2D(W, H), fmt, W * (int) sizeof(screenbuf[0]),
+                NULL, screenbuf);
+
+    for (pass = 0; pass < 4; pass++)
+    {
+      int stencil = pass & 1;
+      int x, y, want;
+
+      pat.flags = stencil ? pattern_FLAG_STENCIL : 0;
+      memset(screenbuf, 0, sizeof(screenbuf));
+      if (pass < 2)
+        screen_fill_pattern(&scr, &area, &pat);
+      else if (bitmap_fill_pattern(&bm, &area, &pat) != result_OK)
+        return result_TEST_FAILED;
+
+      for (y = 0; y < H; y++)
+        for (x = 0; x < W; x++)
+        {
+          want = 0;
+          if (box_contains_point(&area, x, y))
+            want = (((x ^ y) & 1) == 0) ? fg : (stencil ? 0 : bg);
+          if (screenbuf[y * W + x] != want)
+          {
+            printf("screen: 16bpp fill_pattern fmt=%d pass=%d wrong at "
+                   "(%d,%d)\n", (int) fmt, pass, x, y);
+            return result_TEST_FAILED;
+          }
+        }
+    }
+  }
+
+  /* dithering: a flat grey between two 5-bit steps (132 = 16.5 steps) must
+   * use both neighbouring levels, and average near the true value */
+  {
+    static const screen_dither_t methods[] =
+    {
+      screen_DITHER_BAYER, screen_DITHER_BLUE_NOISE
+    };
+
+    pixelfmt_rgba8888_t flat[16 * 16];
+    pixelfmt_any16_t    big[16 * 16];
+    screen_t            bscr;
+    bitmap_t            fsrc;
+    unsigned int        b;
+    int                 m, i, nlo, nhi;
+
+    for (i = 0; i < 16 * 16; i++)
+      flat[i] = PIXELFMT_MAKE_RGBA8888(132, 132, 132, 255);
+    bitmap_init(&fsrc, SIZE2D(16, 16), pixelfmt_rgba8888,
+                16 * (int) sizeof(flat[0]), NULL, flat);
+    screen_init(&bscr, SIZE2D(16, 16), fmt, 16 * (int) sizeof(big[0]),
+                NULL, big);
+
+    for (m = 0; m < 2; m++)
+    {
+      memset(big, 0, sizeof(big));
+      if (screen_copy_bitmap_dithered(&bscr, 0, 0, &fsrc, methods[m]) !=
+          result_OK)
+        return result_TEST_FAILED;
+
+      nlo = nhi = 0;
+      for (i = 0; i < 16 * 16; i++)
+      {
+        /* blue is 5 bits in both formats */
+        b = (fmt == pixelfmt_rgb565) ? PIXELFMT_xxB565(big[i])
+                                     : PIXELFMT_xxBx5551(big[i]);
+        if (b == 16)
+          nlo++;
+        else if (b == 17)
+          nhi++;
+      }
+      if (nlo + nhi != 16 * 16 || nlo < 64 || nhi < 64)
+      {
+        printf("screen: 16bpp dither fmt=%d method=%d lo=%d hi=%d\n",
+               (int) fmt, m, nlo, nhi);
+        return result_TEST_FAILED;
+      }
+    }
+  }
+
+  return result_TEST_PASSED;
+}
+
+static result_t test_rgb565(void)
+{
+  return test_16bpp_screen(pixelfmt_rgb565);
+}
+
+static result_t test_rgbx5551(void)
+{
+  return test_16bpp_screen(pixelfmt_rgbx5551);
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t screen_test(const char *resources)
@@ -1448,12 +1843,18 @@ result_t screen_test(const char *resources)
     test_draw_rect,
     test_draw_circle,
     test_fill_circle,
+    test_rounded_rect,
     test_copy_bitmap_p1,
     test_copy_bitmap_p2,
     test_copy_bitmap_p8,
     test_copy_bitmap_paletted_source,
+    test_copy_bitmap_bgr_source,
     test_copy_bitmap_dithered,
-    test_copy_rect_packed
+    test_copy_rect_packed,
+    test_fill_span_p4,
+    test_set_pixel_clip,
+    test_rgb565,
+    test_rgbx5551
   };
 
   result_t rc;

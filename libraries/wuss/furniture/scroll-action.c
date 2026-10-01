@@ -44,3 +44,30 @@ void wuss__furniture_drag_sausage(wuss_window_t *window,
   else
     wuss_window_set_scroll(window, POINT(window->scroll.x, new_scroll));
 }
+
+void wuss__scroll_repeat(wuss_t *wuss)
+{
+  struct wuss__furniture          *f;
+  wuss_window_t                   *win;
+  const wuss__furniture_element_t *element;
+
+  f   = &wuss->furniture;
+  win = f->dragging;
+  if (win == NULL || f->drag_kind != wuss_FURNITURE_DRAG_NONE || f->repeat_step == 0)
+    return;
+
+  element = wuss__furniture_element(f->pressed_region);
+  if (element == NULL || (element->step.x == 0 && element->step.y == 0))
+    return; /* held, but not a scroll arrow */
+
+  /* like RISC OS, sliding off the arrow pauses the repeat until it returns */
+  if (wuss__furniture_hit_test(win, wuss->pointer) != f->pressed_region)
+    return;
+
+  if (--f->repeat_frames > 0)
+    return;
+
+  f->repeat_frames = WUSS_SCROLL_REPEAT_INTERVAL;
+  wuss__scroll_step(win, POINT(element->step.x * f->repeat_step,
+                               element->step.y * f->repeat_step));
+}

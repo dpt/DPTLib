@@ -102,3 +102,78 @@ int path_leaf_strip_ext(const char *leaf,
 
 #endif
 }
+
+int path_leaf_valid(const char *leaf)
+{
+  if (leaf == NULL || leaf[0] == '\0')
+    return 0;
+
+  if (strcmp(leaf, ".") == 0 || strcmp(leaf, "..") == 0)
+    return 0;
+
+#ifdef __riscos
+  if (strchr(leaf, '.') != NULL)
+    return 0;
+#else
+  if (strchr(leaf, '/') != NULL)
+    return 0;
+#ifdef _WIN32
+  if (strchr(leaf, '\\') != NULL)
+    return 0;
+#endif
+#endif
+
+  return 1;
+}
+
+const char *path_leaf(const char *path)
+{
+  const char *leaf;
+  const char *p;
+
+  assert(path);
+
+  leaf = path;
+  for (p = path; *p != '\0'; p++)
+  {
+#ifdef __riscos
+    if (*p == '.' || *p == ':')
+#elif defined(_WIN32)
+    if (*p == '/' || *p == '\\')
+#else
+    if (*p == '/')
+#endif
+      leaf = p + 1;
+  }
+
+  return leaf;
+}
+
+int path_is_full(const char *path)
+{
+  if (path == NULL || path[0] == '\0')
+    return 0;
+
+#ifdef __riscos
+
+  if (path[0] == '$')
+    return 1;
+  if (strstr(path, "::") != NULL)
+    return 1;
+
+  return 0;
+
+#else
+
+#ifdef _WIN32
+  if (((path[0] >= 'A' && path[0] <= 'Z') ||
+       (path[0] >= 'a' && path[0] <= 'z')) &&
+      path[1] == ':' &&
+      (path[2] == '\\' || path[2] == '/'))
+    return 1;
+#endif
+
+  return path[0] == '/';
+
+#endif
+}

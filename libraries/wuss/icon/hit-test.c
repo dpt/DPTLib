@@ -27,7 +27,8 @@ wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point)
              it->spec.type != wuss_ICON_TYPE_OPTION &&
              it->spec.type != wuss_ICON_TYPE_MENU_ENTRY &&
              it->spec.type != wuss_ICON_TYPE_SLIDER &&
-             it->spec.type != wuss_ICON_TYPE_WRITABLE)
+             it->spec.type != wuss_ICON_TYPE_WRITABLE &&
+             it->spec.type != wuss_ICON_TYPE_DRAGGABLE)
     {
       continue;
     }

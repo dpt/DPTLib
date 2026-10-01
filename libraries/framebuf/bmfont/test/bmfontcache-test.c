@@ -22,7 +22,7 @@ static result_t test_acquire_dedups(const char *resources)
     return result_TEST_FAILED;
   }
 
-  path = pathf("%s/resources/bmfonts/Tiny.png", resources);
+  path = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
 
   rc = bmfontcache_acquire(cache, path, &a);
   if (rc != result_OK)
@@ -71,7 +71,7 @@ static result_t test_release_reloads(const char *resources)
     return result_TEST_FAILED;
   }
 
-  path = pathf("%s/resources/bmfonts/Tiny.png", resources);
+  path = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
 
   rc = bmfontcache_acquire(cache, path, &a);
   if (rc != result_OK)
@@ -115,8 +115,8 @@ static result_t test_independent_paths(const char *resources)
   /* pathf() returns a pointer to a static buffer, so the first path must be
    * copied out before the second call to pathf() overwrites it. */
   snprintf(path_a, sizeof(path_a), "%s",
-          pathf("%s/resources/bmfonts/Tiny.png", resources));
-  path_b = pathf("%s/resources/bmfonts/Symbols.png", resources);
+          pathf("%s/resources/bmfonts/Tiny/Regular.png", resources));
+  path_b = pathf("%s/resources/bmfonts/Symbols/Regular.png", resources);
 
   rc = bmfontcache_acquire(cache, path_a, &a);
   if (rc != result_OK)
@@ -166,7 +166,7 @@ static result_t test_destroy_with_outstanding_acquire(const char *resources)
     return result_TEST_FAILED;
   }
 
-  path = pathf("%s/resources/bmfonts/Tiny.png", resources);
+  path = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
 
   rc = bmfontcache_acquire(cache, path, &a);
   if (rc != result_OK)

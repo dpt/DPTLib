@@ -10,20 +10,18 @@
  * every pixel, a flash of backdrop over what was there. */
 static void fill_backdrop_excluding_content(wuss_t *wuss, const box_t *area)
 {
-  box_t   cuts[WUSS_MAX_INVALIDATE_PIECES];
-  box_t   pieces[WUSS_MAX_INVALIDATE_PIECES];
-  int     ncuts, npieces, i;
-  list_t *e;
+  box_t          cuts[WUSS_MAX_INVALIDATE_PIECES];
+  box_t          pieces[WUSS_MAX_INVALIDATE_PIECES];
+  int            ncuts, npieces, i;
+  wuss_window_t *win;
 
   ncuts = 0;
-  for (e = wuss->z_order.next;
-       e != NULL && ncuts < WUSS_MAX_INVALIDATE_PIECES;
-       e = e->next)
+  for (win = wuss__z_first(wuss);
+       win != NULL && ncuts < WUSS_MAX_INVALIDATE_PIECES;
+       win = wuss__z_below(win))
   {
-    wuss_window_t *win;
-    box_t          clipped;
+    box_t clipped;
 
-    win = wuss__window_from_link(e);
     if (win->flags & wuss_WINDOW_HIDDEN)
       continue;
 
@@ -36,8 +34,16 @@ static void fill_backdrop_excluding_content(wuss_t *wuss, const box_t *area)
   npieces = wuss__subtract_boxes(area, cuts, ncuts, pieces, 1);
 
   for (i = 0; i < npieces; i++)
+  {
+    /* wuss__fill_backdrop's image is blitted at a fixed screen position and
+     * relies on scr->clip alone to stay within "pieces[i]" -- the solid
+     * fill/pattern below it is self-bounded by the area it's given, but the
+     * image has no such bound, so leaving clip at the wider "area" lets it
+     * paint over window boxes this piece was meant to exclude. */
+    wuss->scr->clip = pieces[i];
     wuss__fill_backdrop(wuss->scr, wuss->palette, &wuss->backdrop,
                         &pieces[i], 0, 0);
+  }
 }
 
 static void redraw_window(wuss_t        *wuss,
@@ -115,6 +121,11 @@ static void redraw_window(wuss_t        *wuss,
         wuss__icon_draw(wuss, win, win->icons[k], &content, win->scroll);
     }
 #endif
+
+#ifdef WUSS_ICONBAR
+    if (win == wuss->iconbar_window)
+      wuss__iconbar_draw_icons(wuss, &pieces[i]);
+#endif
   }
 }
 
@@ -122,10 +133,10 @@ static void redraw_window(wuss_t        *wuss,
  * recursing per window, so stack use stays flat regardless of window count;
  * ponytail: O(n^2) walk, fine while window counts stay small, switch to an
  * array/vector pass if that stops being true */
-static void redraw_from(wuss_t      *wuss,
-                        list_t      *head,
-                        const box_t *full,
-                        result_t    *rc)
+static void redraw_stack(wuss_t      *wuss,
+                         list_t      *head,
+                         const box_t *full,
+                         result_t    *rc)
 {
   const list_t *stop;
 
@@ -146,6 +157,17 @@ static void redraw_from(wuss_t      *wuss,
   }
 }
 
+/* back stack first, so every front stack paints over it */
+static void redraw_from(wuss_t      *wuss,
+                        const box_t *full,
+                        result_t    *rc)
+{
+  int s;
+
+  for (s = WUSS_STACK_COUNT - 1; s >= 0; s--)
+    redraw_stack(wuss, wuss->z_order[s].next, full, rc);
+}
+
 result_t wuss_redraw(wuss_t *wuss)
 {
   result_t rc;
@@ -160,7 +182,10 @@ result_t wuss_redraw(wuss_t *wuss)
   fill_backdrop_excluding_content(wuss, &full);
 
   rc = result_OK;
-  redraw_from(wuss, wuss->z_order.next, &full, &rc);
+  redraw_from(wuss, &full, &rc);
+
+  wuss->scr->clip = full;
+  wuss__drag_draw(wuss); /* painted last, over every window */
 
   /* redraw_window narrows wuss->scr->clip to whatever it last painted;
    * reset it so anything drawing after this redraw (not least
@@ -187,7 +212,12 @@ result_t wuss_redraw_dirty(wuss_t *wuss)
     wuss->scr->clip = wuss->dirty[i];
     fill_backdrop_excluding_content(wuss, &wuss->dirty[i]);
 
-    redraw_from(wuss, wuss->z_order.next, &wuss->dirty[i], &rc);
+    redraw_from(wuss, &wuss->dirty[i], &rc);
+
+    /* redraw_window left the clip at the last window piece it painted; widen
+     * it back to the whole dirty rect or the ants are cut to that window */
+    wuss->scr->clip = wuss->dirty[i];
+    wuss__drag_draw(wuss);
   }
 
   box_reset(&wuss->scr->clip); /* see wuss_redraw's comment on the same call */

@@ -1,6 +1,7 @@
 /* framebuf/span/p4.c -- P4 (4bpp paletted) format plot methods */
 
 #include <stddef.h>
+#include <string.h>
 
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
@@ -98,22 +99,32 @@ static void span_p4_fill(void          *vdst,
                          pixelfmt_any_t pixel,
                          int            length)
 {
-  unsigned char *base;
+  unsigned char *p;
   unsigned char  nib;
-  int            x;
+  int            nbytes;
 
-  base = vdst;
-  nib  = (unsigned char) (pixel & 0xF);
+  if (length <= 0)
+    return;
 
-  for (x = first; x < first + length; x++)
+  p   = (unsigned char *) vdst + (first >> 1);
+  nib = (unsigned char) (pixel & 0xF);
+
+  /* even pixels live in the low nibble: an odd start fills a lone high one */
+  if (first & 1)
   {
-    unsigned char *p;
-    int            shift;
-
-    p     = base + (x >> 1);
-    shift = (x & 1) * 4;
-    *p    = (unsigned char) ((*p & ~(0xF << shift)) | (nib << shift));
+    *p = (unsigned char) ((*p & 0x0F) | (nib << 4));
+    p++;
+    length--;
   }
+
+  /* whole bytes in the middle */
+  nbytes = length >> 1;
+  memset(p, nib * 0x11, nbytes);
+  p += nbytes;
+
+  /* odd remainder fills a lone low nibble */
+  if (length & 1)
+    *p = (unsigned char) ((*p & 0xF0) | nib);
 }
 
 const span_t span_p4 =

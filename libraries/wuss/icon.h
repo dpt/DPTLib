@@ -3,6 +3,7 @@
 #ifndef WUSS_ICON_IMPL_H
 #define WUSS_ICON_IMPL_H
 
+#include "base/utils.h"
 #include "geom/box.h"
 #include "geom/point.h"
 
@@ -49,10 +50,10 @@ struct wuss_icon
 /* Per-edge widths (px) of the label borders. A bevel is one
  * screen_draw_bevel_edge ring; DIVIDER is two, ACTION three (outset, accent
  * moat, inset). */
-#define WUSS_BEVEL_WIDTH          2
+#define WUSS_BEVEL_WIDTH          wuss_STD_SECONDARY_BUTTON_BORDER
 #define WUSS_PLAIN_BORDER_WIDTH   1
 #define WUSS_DIVIDER_BORDER_WIDTH (2 * WUSS_BEVEL_WIDTH)
-#define WUSS_ACTION_BORDER_WIDTH  (3 * WUSS_BEVEL_WIDTH)
+#define WUSS_ACTION_BORDER_WIDTH  wuss_STD_PRIMARY_BUTTON_BORDER
 
 /* Clear space (px) between a bordered label's border and its justified
  * text; an unbordered label's text gets WUSS_LABEL_TEXT_PAD instead. */
@@ -62,6 +63,30 @@ struct wuss_icon
 /* The font an icon's text is drawn with: its requested slot, falling back to
  * the system font. NULL when wuss has no fonts. */
 bmfont_t *wuss__icon_font(const wuss_t *wuss, const wuss_icon_t *icon);
+
+/* Widths of a MENU_ENTRY row's tick (left) and submenu-arrow (right) gutters
+ * either side of its text column, for a font "font_height" pixels tall.
+ * wuss__icon_draw_menu_entry draws within them; the menu module sizes and
+ * hit-tests rows with them, so the two agree. */
+#define WUSS_MENU_ENTRY_PAD 4
+
+static inline int wuss__menu_entry_gutter_left(int font_height)
+{
+  return WUSS_MENU_ENTRY_PAD + font_height;
+}
+
+static inline int wuss__menu_entry_gutter_right(int font_height)
+{
+  return WUSS_MENU_ENTRY_PAD + MAX(font_height, 8);
+}
+
+/* Extra text-column width a wuss_ICON_FLAGS_SWATCH row spends on its colour
+ * chip (plus the gap before the label), ahead of the label. The chip sits in
+ * the text column rather than the tick gutter so a row can be both. */
+static inline int wuss__menu_entry_swatch_width(int font_height)
+{
+  return MAX(font_height, 8) + WUSS_MENU_ENTRY_PAD;
+}
 
 static inline int wuss__icon_pressed(const wuss_icon_t *icon)
 {
@@ -181,6 +206,15 @@ int wuss__slider_value_for_point(wuss_window_t     *window,
  * must be an icon of "window". */
 void wuss__icon_invalidate(wuss_window_t *window, const wuss_icon_t *icon);
 
+/* Set or clear "flag" in "icon"'s spec.flags and invalidate it. Setting it
+ * drops the caret if the icon holds it, as a hidden or shaded icon can no
+ * longer take input. Shared by wuss_icon_set_hidden and
+ * wuss_icon_set_disabled. */
+void wuss__icon_set_flag(wuss_window_t    *window,
+                         wuss_icon_t      *icon,
+                         wuss_icon_flags_t flag,
+                         int               on);
+
 /* Validate a spec against the palette and fill "out" with a detached icon:
  * "out->spec" is a copy of "spec" with fg/bg/swatch resolved to palette
  * indices and, for a BITMAP, u.bitmap.image resolved from u.bitmap.set.
@@ -193,7 +227,7 @@ result_t wuss__icon_from_spec(const wuss_t           *wuss,
                               wuss_icon_t            *out);
 
 /* Number of wuss_icon_type_t values; sizes the per-type table. */
-#define wuss__ICON_TYPE_COUNT (wuss_ICON_TYPE_DRAGGABLE + 1)
+#define wuss__ICON_TYPE_COUNT (wuss_ICON_TYPE_NUMBER + 1)
 
 struct icon_draw_ctx; /* private to icon/draw.c */
 
@@ -257,5 +291,11 @@ void wuss__icons_free(wuss_window_t *window);
  * compressed bitmaps), leaving the fields NULL / 0. Safe on an unloaded set.
  * Called by wuss_icons_load before a reload and by wuss_destroy. */
 void wuss__icons_registry_free(wuss_t *wuss);
+
+/* Byte-swap the loaded icon set, in place, into the channel order the
+ * current screen format blits (see icons_order_for). Called by wuss_resize
+ * so a screen depth change keeps icon colours right; bitmap_t addresses are
+ * unchanged, so icons holding them stay valid. */
+result_t wuss__icons_match_screen(wuss_t *wuss);
 
 #endif /* WUSS_ICON_IMPL_H */

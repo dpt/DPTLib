@@ -31,6 +31,7 @@ option(USE_FORTIFY "Use Fortify" OFF)
 option(USE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
 option(WUSS_FURNITURE "Build the Wuss window-furniture subsystem" ON)
+option(WUSS_ICONBAR "Build the Wuss RISC OS-style icon bar" ON)
 option(WUSS_ICONS "Build the Wuss in-content icon subsystem" ON)
 option(WUSS_MENUS "Build the Wuss pop-up menu helper (implies WUSS_ICONS)" ON)
 option(WUSS_GADGETS "Build the Wuss compound in-window gadgets (implies WUSS_MENUS)" ON)
@@ -82,6 +83,7 @@ set(PUBLIC_HEADERS
     include/framebuf/bitmap.h
     include/framebuf/bmfont.h
     include/framebuf/bmfontcache.h
+    include/framebuf/bmfontfamily.h
     include/framebuf/colour.h
     include/framebuf/composite.h
     include/framebuf/curve.h
@@ -96,7 +98,9 @@ set(PUBLIC_HEADERS
     include/framebuf/span-p4.h
     include/framebuf/span-p8.h
     include/framebuf/span-registry.h
+    include/framebuf/span-rgb565.h
     include/framebuf/span-rgba8888.h
+    include/framebuf/span-rgbx5551.h
     include/framebuf/span-rgbx8888.h
     include/framebuf/span-xbgr8888.h
     include/framebuf/span.h
@@ -108,7 +112,9 @@ set(PUBLIC_HEADERS
     include/geom/point.h
     include/geom/size.h
     include/geom/stack.h
+    include/io/dirlist.h
     include/io/dirscan.h
+    include/io/filetype.h
     include/io/namelist.h
     include/io/path.h
     include/io/stream-mem.h
@@ -120,6 +126,7 @@ set(PUBLIC_HEADERS
     include/test/txtscr.h
     include/text/bmtext.h
     include/text/txtfmt.h
+    include/text/utf8.h
     include/utils/array.h
     include/utils/barith.h
     include/utils/bsearch.h
@@ -129,10 +136,14 @@ set(PUBLIC_HEADERS
     include/utils/pack.h
     include/utils/primes.h
     include/utils/rng.h
+    include/wuss/message.h
     include/wuss/task.h
     include/wuss/window.h
     include/wuss/wuss.h)
 
+if(WUSS_ICONBAR)
+    list(APPEND PUBLIC_HEADERS include/wuss/iconbar.h)
+endif()
 if(WUSS_ICONS)
     list(APPEND PUBLIC_HEADERS include/wuss/icon.h)
     list(APPEND PUBLIC_HEADERS include/wuss/icon-spec.h)
@@ -143,6 +154,7 @@ if(WUSS_MENUS)
 endif()
 if(WUSS_GADGETS OR WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/gadget/stringset.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/gadget/gridview.h)
 endif()
 if(WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/component/fontmenu.h)
@@ -150,6 +162,8 @@ if(WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/component/info.h)
     list(APPEND PUBLIC_HEADERS include/wuss/component/proginfo.h)
     list(APPEND PUBLIC_HEADERS include/wuss/component/dialogue.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/component/saveas.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/gadget/colourset.h)
 endif()
 
 # The public headers must be set as properties of the library, not as
@@ -270,6 +284,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bmfont/bmfont.c
     libraries/framebuf/bmfont/cache.c
     libraries/framebuf/bmfont/enumerate.c
+    libraries/framebuf/bmfont/family.c
     libraries/framebuf/colour/colour.c
     libraries/framebuf/composite/composite.c
     libraries/framebuf/curve/curve.c
@@ -291,6 +306,8 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/screen/screen-fill-pattern.c
     libraries/framebuf/span-registry/get.c
     libraries/framebuf/span-registry/regdata.h
+    libraries/framebuf/span/all16bpp.c
+    libraries/framebuf/span/all16bpp.h
     libraries/framebuf/span/all8888.c
     libraries/framebuf/span/all8888.h
     libraries/framebuf/span/bgrx8888.c
@@ -298,6 +315,8 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/span/p2.c
     libraries/framebuf/span/p4.c
     libraries/framebuf/span/p8.c
+    libraries/framebuf/span/rgb565.c
+    libraries/framebuf/span/rgbx5551.c
     libraries/framebuf/span/rgbx8888.c
     libraries/framebuf/span/xbgr8888.c)
 
@@ -322,12 +341,15 @@ set(GEOM_SOURCES
     libraries/geom/packer/impl.h
     libraries/geom/packer/packer.c
     libraries/geom/stack/impl.h
+    libraries/geom/stack/axis-size.c
     libraries/geom/stack/measure-min.c
     libraries/geom/stack/solve.c
     libraries/geom/stack/valid-tree.c)
 
 set(IO_SOURCES
+    libraries/io/dirlist/dirlist.c
     libraries/io/dirscan/dirscan.c
+    libraries/io/filetype/filetype.c
     libraries/io/namelist/namelist.c
     libraries/io/path/path.c
     libraries/io/stream/stream-mem.c
@@ -351,7 +373,10 @@ set(TEXT_SOURCES
     libraries/text/txtfmt/get-wrapped-width.c
     libraries/text/txtfmt/impl.h
     libraries/text/txtfmt/print.c
-    libraries/text/txtfmt/wrap.c)
+    libraries/text/txtfmt/wrap.c
+    libraries/text/utf8/decode.c
+    libraries/text/utf8/encode.c
+    libraries/text/utf8/prev.c)
 
 set(UTILS_SOURCES
     libraries/utils/array/delelem.c
@@ -366,15 +391,9 @@ set(UTILS_SOURCES
     libraries/utils/bsearch/bsearch-short.c
     libraries/utils/bsearch/bsearch-uint.c
     libraries/utils/bsearch/bsearch-ushort.c
+    libraries/utils/bytesex/bytesex.c
     libraries/utils/bytesex/rev-l-block.c
-    libraries/utils/bytesex/rev-l-m.c
-    libraries/utils/bytesex/rev-l.c
     libraries/utils/bytesex/rev-s-block.c
-    libraries/utils/bytesex/rev-s-m.c
-    libraries/utils/bytesex/rev-s-pair-m.c
-    libraries/utils/bytesex/rev-s-pair.c
-    libraries/utils/bytesex/rev-s.c
-    libraries/utils/bytesex/util.h
     libraries/utils/fxp/smull-fxp16.c
     libraries/utils/fxp/umull-fxp16.c
     libraries/utils/maths/degs-to-rads.c
@@ -387,6 +406,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/backdrop.c
     libraries/wuss/core/create.c
     libraries/wuss/core/destroy.c
+    libraries/wuss/core/drag.c
     libraries/wuss/core/get-focus.c
     libraries/wuss/core/get-palette.c
     libraries/wuss/core/get-pointer.c
@@ -395,7 +415,9 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/idle.c
     libraries/wuss/core/impl.h
     libraries/wuss/core/invalidate.c
+    libraries/wuss/core/is-dragging.c
     libraries/wuss/core/key.c
+    libraries/wuss/core/message.c
     libraries/wuss/core/mouse-click.c
     libraries/wuss/core/mouse-move.c
     libraries/wuss/core/nearest-colour.c
@@ -404,9 +426,12 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/resize.c
     libraries/wuss/core/scroll.c
     libraries/wuss/core/scroll-step.c
+    libraries/wuss/core/get-config.c
     libraries/wuss/core/set-backdrop.c
+    libraries/wuss/core/set-config.c
     libraries/wuss/core/set-focus.c
     libraries/wuss/core/set-palette.c
+    libraries/wuss/core/set-time.c
     libraries/wuss/font/font.h
     libraries/wuss/font/registry.c
     libraries/wuss/font/text.c
@@ -420,15 +445,19 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/window/close.c
     libraries/wuss/core/window/get-content-bounds.c
     libraries/wuss/core/window/get-scroll.c
+    libraries/wuss/core/window/get-title.c
     libraries/wuss/core/window/get-visible-bounds.c
     libraries/wuss/core/window/invalidate.c
     libraries/wuss/core/window/move.c
     libraries/wuss/core/window/resize.c
     libraries/wuss/core/window/restack.c
+    libraries/wuss/core/window/set-stack.c
+    libraries/wuss/core/window/z-order.c
     libraries/wuss/core/window/set-background.c
     libraries/wuss/core/window/set-doc.c
     libraries/wuss/core/window/set-hidden.c
     libraries/wuss/core/window/set-scroll.c
+    libraries/wuss/core/window/set-title.c
     libraries/wuss/core/window/try-close.c)
 
 set(WUSS_FURNITURE_SOURCES
@@ -450,6 +479,14 @@ set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/toggle-box.c
     libraries/wuss/furniture.h)
 
+set(WUSS_ICONBAR_SOURCES
+    libraries/wuss/iconbar/create.c
+    libraries/wuss/iconbar/destroy.c
+    libraries/wuss/iconbar/draw.c
+    libraries/wuss/iconbar/hit-test.c
+    libraries/wuss/iconbar/task-destroyed.c
+    libraries/wuss/iconbar.h)
+
 set(WUSS_ICON_SOURCES
     libraries/wuss/icon/create.c
     libraries/wuss/icon/create-array.c
@@ -468,6 +505,8 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/plot.c
     libraries/wuss/icon/registry.c
     libraries/wuss/icon/screen-box.c
+    libraries/wuss/icon/set-disabled.c
+    libraries/wuss/icon/set-flag.c
     libraries/wuss/icon/set-hidden.c
     libraries/wuss/icon/set-hover.c
     libraries/wuss/icon/set-selected.c
@@ -479,22 +518,29 @@ set(WUSS_ICON_SOURCES
 
 set(WUSS_MENU_SOURCES
     libraries/wuss/menu/menu.c
+    libraries/wuss/menu/shortcut.c
     libraries/wuss/helpers/create-from-desc.c
     libraries/wuss/menu.h)
 
 set(WUSS_GADGET_SOURCES
-    libraries/wuss/gadget/stringset.c)
+    libraries/wuss/gadget/stringset.c
+    libraries/wuss/gadget/gridview.c)
 
 set(WUSS_COMPONENT_SOURCES
     libraries/wuss/component/fontmenu.c
     libraries/wuss/component/colourmenu.c
     libraries/wuss/component/info.c
     libraries/wuss/component/proginfo.c
-    libraries/wuss/component/dialogue.c)
+    libraries/wuss/component/dialogue.c
+    libraries/wuss/component/saveas.c
+    libraries/wuss/gadget/colourset.c) # a gadget, but built on colourmenu
 
 set(WUSS_SOURCES ${WUSS_CORE_SOURCES})
 if(WUSS_FURNITURE)
     list(APPEND WUSS_SOURCES ${WUSS_FURNITURE_SOURCES})
+endif()
+if(WUSS_ICONBAR)
+    list(APPEND WUSS_SOURCES ${WUSS_ICONBAR_SOURCES})
 endif()
 if(WUSS_COMPONENTS)
     set(WUSS_GADGETS ON) # the shared components build on the gadgets
@@ -573,6 +619,9 @@ endif()
 
 if(WUSS_FURNITURE)
     target_compile_definitions(DPTLib PUBLIC WUSS_FURNITURE)
+endif()
+if(WUSS_ICONBAR)
+    target_compile_definitions(DPTLib PUBLIC WUSS_ICONBAR)
 endif()
 if(WUSS_ICONS)
     target_compile_definitions(DPTLib PUBLIC WUSS_ICONS)
@@ -718,6 +767,7 @@ if(BUILD_TESTS)
         libraries/framebuf/bitmap/test/rle-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/bmfont/test/bmfontcache-test.c
+        libraries/framebuf/bmfont/test/bmfontfamily-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
         libraries/framebuf/pattern/test/pattern-test.c
@@ -727,11 +777,15 @@ if(BUILD_TESTS)
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
         libraries/geom/stack/test/stack-test.c
+        libraries/io/dirlist/test/dirlist-test.c
+        libraries/io/filetype/test/filetype-test.c
         libraries/io/path/test/path-test.c
         libraries/io/stream/test/stream-test.c
         libraries/text/txtfmt/test/txtfmt-test.c
+        libraries/text/utf8/test/utf8-test.c
         libraries/utils/array/test/array-test.c
         libraries/utils/bsearch/test/bsearch-test.c
+        libraries/utils/bytesex/test/bytesex-test.c
         libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c
         libraries/wuss/test/wuss-test.c)
@@ -787,6 +841,8 @@ if(BUILD_APPS)
 
     set(WUSS_APP_SOURCES
         apps/wuss/main.c
+        apps/wuss/script.c
+        apps/wuss/script.h
         apps/wuss/tasks.c
         libraries/wuss/test/tasks/ball.c
         libraries/wuss/test/tasks/chars.c
@@ -796,24 +852,32 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/curve.c
         libraries/wuss/test/tasks/display.c
         libraries/wuss/test/tasks/doughnut.c
+        libraries/wuss/test/tasks/filer.c
         libraries/wuss/test/tasks/gradient.c
         libraries/wuss/test/tasks/greeble.c
+        libraries/wuss/test/tasks/iconbar-demo.c
         libraries/wuss/test/tasks/icons.c
         libraries/wuss/test/tasks/image.c
         libraries/wuss/test/tasks/keys.c
         libraries/wuss/test/tasks/lissajous.c
         libraries/wuss/test/tasks/minesweeper.c
         libraries/wuss/test/tasks/palette.c
+        libraries/wuss/test/tasks/particles.c
         libraries/wuss/test/tasks/patterns.c
         libraries/wuss/test/tasks/porter-duff.c
         libraries/wuss/test/tasks/saturn.c
+        libraries/wuss/test/tasks/snapshot.c
         libraries/wuss/test/tasks/sofa.c
+        libraries/wuss/test/tasks/spheroid.c
         libraries/wuss/test/tasks/text.c)
 
     if(TARGET_RISCOS)
         list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-riscos.c)
     else()
-        list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-sdl.c)
+        list(APPEND WUSS_APP_SOURCES
+            apps/wuss/crt.c
+            apps/wuss/crt.h
+            apps/wuss/frontend-sdl.c)
     endif()
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${WUSS_APP_SOURCES})
@@ -830,7 +894,19 @@ if(BUILD_APPS)
 
     target_include_directories(wuss PRIVATE apps/wuss libraries/wuss/test)
     target_compile_definitions(wuss PRIVATE WUSS_APP)
+    # OS window title, naming the build type (e.g. "Wuss (Debug)")
+    target_compile_definitions(wuss PRIVATE
+        "WUSS_WINDOW_TITLE=\"$<IF:$<BOOL:$<CONFIG>>,Wuss ($<CONFIG>),Wuss>\"")
     target_link_libraries(wuss DPTLib)
+
+    # The Particles task uses the Explosion engine. For local work on both
+    # repos, configure with -DFETCHCONTENT_SOURCE_DIR_EXPLOSION=../Explosion
+    include(FetchContent)
+    FetchContent_Declare(explosion
+                         GIT_REPOSITORY https://github.com/dpt/Explosion.git
+                         GIT_TAG 97449f0b9b746dafab920c92863608088e44829f) # develop
+    FetchContent_MakeAvailable(explosion)
+    target_link_libraries(wuss explosion)
 
     if(NOT MSVC)
         target_compile_options(wuss PRIVATE -ffunction-sections -fdata-sections)

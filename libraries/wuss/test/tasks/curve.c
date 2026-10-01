@@ -17,16 +17,36 @@
 #include "framebuf/curve.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 #include "utils/fxp.h"
 #include "wuss/wuss.h"
 
 #include "curve.h"
+#include "common.h"
+#include "snapshot.h"
 
-/* MENU click pops this single-item menu; the item table and wuss_menu_t
- * live per-instance in curve_task_t, not as a file-scope static, so that
- * each window's Info row can hold its own .window pointer to the shared
- * proginfo singleton, retargeted just before wuss_menu_open */
-enum { CURVE_MENU_INFO };
+/* MENU click pops this menu; the item table and wuss_menu_t live per-instance
+ * in curve_task_t, not as a file-scope static, so that each window's Info row
+ * can hold its own .window pointer to the shared proginfo singleton, retargeted
+ * just before wuss_menu_open */
+enum
+{
+  CURVE_MENU_INFO = 0,
+  CURVE_MENU_BACKGROUND,
+  CURVE_MENU_TYPE,
+  CURVE_MENU_HULL,
+  CURVE_MENU_RESET,
+  CURVE_MENU_SAVE
+};
+
+#define CURVE_SAVE_NAME "curve.png" /* Save As's initial leafname */
+
+/* Curve-type name for each valid task->npoints, indexed by
+ * npoints - CURVE_MINCONTROLPTS; also the Menu > Type rows. */
+static const char *const curve_kind_names[CURVE_NKINDS] =
+{
+  "Line", "Quadratic", "Cubic", "Quartic", "Quintic"
+};
 
 #define CURVE_BLOBSZ           8  /* side length of a control-point marker, matches curve-test.c */
 #define CURVE_SEGMENTS_DEFAULT 32
@@ -85,12 +105,35 @@ static int curve_convex_hull(const point_t *src, int n, point_t *hull)
   return k; /* hull[0] == hull[k - 1], a closed loop */
 }
 
+/* put every control point back at its starting position */
+static void curve_reset_points(curve_task_t *task)
+{
+  task->points[0] = POINT(10,  10);
+  task->points[1] = POINT(10, 140);
+  task->points[2] = POINT(210, 10);
+  task->points[3] = POINT(210, 140);
+  task->points[4] = POINT(110,  10);
+  task->points[5] = POINT(110, 140);
+}
+
+/* wuss_saveas_save_fn_t: opaque is the curve_task_t */
+static result_t curve_saveas_save(const char *path, void *opaque)
+{
+  curve_task_t *task;
+
+  task = opaque;
+
+  return snapshot_save_png(task->window, curve_handle, task, path);
+}
+
 result_t curve_create(wuss_t *wuss, curve_task_t **out)
 {
   result_t         rc;
   curve_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  filetype_t       png_type;
+  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -103,13 +146,8 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
   task->nsegments = CURVE_SEGMENTS_DEFAULT;
   task->npoints   = 4; /* cubic, matching the original task */
   task->dragging  = -1;
-
-  task->points[0] = POINT(10,  10);
-  task->points[1] = POINT(10, 140);
-  task->points[2] = POINT(210, 10);
-  task->points[3] = POINT(210, 140);
-  task->points[4] = POINT(110,  10);
-  task->points[5] = POINT(110, 140);
+  task->hull      = 1;
+  curve_reset_points(task);
 
   /* curve_redraw paints its own background */
   delegate_desc.handle    = curve_handle;
@@ -124,17 +162,19 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(220, 160),
-                                 "Curve",
-                                 wuss_WINDOW_DEFAULT,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(220, 160),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = task_window_create(delegate, SIZE2D(220, 160), "Curve", &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
+                          CURVE_SAVE_NAME, curve_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
     return rc;
   }
 
@@ -142,6 +182,30 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo singleton
                                 * just before wuss_menu_open, in curve_mouse */
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, CURVE_MENU_BACKGROUND, "Background",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
+  for (i = 0; i < CURVE_NKINDS; i++)
+    WUSS_MENU_ITEM(task->type_items, i, curve_kind_names[i],
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->type_menu, "Type", task->type_items,
+                 NELEMS(task->type_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, CURVE_MENU_TYPE, "Type",
+                      wuss_MENU_ITEM_NONE, &task->type_menu);
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CURVE_MENU_HULL, "Hull",
+                          wuss_MENU_ITEM_NONE, "H");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CURVE_MENU_RESET, "Reset points",
+                          wuss_MENU_ITEM_NONE, "R");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CURVE_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[CURVE_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Curve", task->menu_items,
                  NELEMS(task->menu_items));
@@ -154,7 +218,7 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
 
 void curve_destroy(curve_task_t *task)
 {
-  wuss_menu_close(task->menu_handle);
+  wuss_saveas_destroy(task->saveas);
   free(task);
 }
 
@@ -185,16 +249,9 @@ static colour_t blob_colour(const curve_task_t *task, int i)
   return control[(i - 1) % NELEMS(control)];
 }
 
-/* Curve-type name for each valid task->npoints, indexed by
- * npoints - CURVE_MINCONTROLPTS. */
 static const char *curve_kind_name(int npoints)
 {
-  static const char *const names[] =
-  {
-    "Line", "Quadratic", "Cubic", "Quartic", "Quintic"
-  };
-
-  return names[npoints - CURVE_MINCONTROLPTS];
+  return curve_kind_names[npoints - CURVE_MINCONTROLPTS];
 }
 
 /* The point at time t on the curve through the first task->npoints points,
@@ -235,6 +292,7 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
 
   /* control polygon's convex hull, drawn first so the curve and the blobs
    * sit on top of it */
+  if (task->hull)
   {
     point_t hull[2 * CURVE_MAXCONTROLPTS + 1];
     int     nhull, k;
@@ -312,18 +370,17 @@ static result_t curve_mouse(curve_task_t       *task,
     if (button & wuss_BUTTON_MENU)
     {
       static const wuss_proginfo_desc_t desc =
-      {
-        "Curve",
-        "Draggable Bezier curve",
-        "(c) DPTLib contributors",
-        "1.0 (" __DATE__ ")"
-      };
+        TASK_PROGINFO_DESC("Curve", "Draggable Bezier curve");
       wuss_proginfo_set_desc(&desc);
       task->menu_items[CURVE_MENU_INFO].window =
         wuss_proginfo_window(task->delegate);
 
-      return wuss_menu_open(task->delegate, &task->menu,
-                            wuss_get_pointer(task->wuss), &task->menu_handle);
+      wuss_menu_tick_exclusive(&task->type_menu,
+                               task->npoints - CURVE_MINCONTROLPTS);
+      wuss_menu_tick_item(&task->menu, CURVE_MENU_HULL, task->hull);
+
+      return wuss_menu_open_at_pointer(task->delegate, &task->menu,
+                                       &task->menu_handle);
     }
     if (button & wuss_BUTTON_ADJUST)
     {
@@ -374,6 +431,78 @@ static result_t curve_scroll(curve_task_t  *task,
   return result_OK;
 }
 
+/* Left/Right step the curve type back/forward; Up/Down add/remove a
+ * segment, as the wheel does. Anything else is passed back unclaimed. */
+static result_t curve_key(curve_task_t  *task,
+                          wuss_window_t *window,
+                          int            code)
+{
+  switch (code)
+  {
+  case wuss_KEY_UP:   return curve_scroll(task, +1, window);
+  case wuss_KEY_DOWN: return curve_scroll(task, -1, window);
+
+  case wuss_KEY_LEFT:
+    task->npoints = (task->npoints - CURVE_MINCONTROLPTS + CURVE_NKINDS - 1) %
+                    CURVE_NKINDS + CURVE_MINCONTROLPTS;
+    break;
+
+  case wuss_KEY_RIGHT:
+    task->npoints = (task->npoints - CURVE_MINCONTROLPTS + 1) %
+                    CURVE_NKINDS + CURVE_MINCONTROLPTS;
+    break;
+
+  default:
+    return result_WUSS_KEY_UNCLAIMED;
+  }
+
+  wuss_window_invalidate_visible(window);
+
+  return result_OK;
+}
+
+static result_t curve_menu_select(curve_task_t       *task,
+                                  const wuss_event_t *event)
+{
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == CURVE_MENU_HULL)
+  {
+    task->hull = !task->hull;
+    wuss_menu_tick_item_live(task->menu_handle, &task->menu,
+                             CURVE_MENU_HULL, task->hull);
+    wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == CURVE_MENU_RESET)
+  {
+    curve_reset_points(task);
+    wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == CURVE_MENU_SAVE)
+  {
+    return wuss_saveas_open(task->saveas);
+  }
+
+  if (event->data.menu_select.menu == &task->type_menu)
+  {
+    task->npoints = CURVE_MINCONTROLPTS + event->data.menu_select.index;
+    wuss_menu_tick_exclusive_live(task->menu_handle, &task->type_menu,
+                                  event->data.menu_select.index);
+    wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
+
+  if (wuss_colourmenu_selected_rgb(event, &task->bg))
+    wuss_window_invalidate_visible(task->window);
+
+  return result_OK;
+}
+
 result_t curve_handle(wuss_window_t      *window,
                       const wuss_event_t *event,
                       void               *task_data)
@@ -397,6 +526,26 @@ result_t curve_handle(wuss_window_t      *window,
 
   case wuss_EVENT_SCROLL:
     return curve_scroll(task, event->data.scroll.delta, window);
+
+  case wuss_EVENT_KEY:
+  {
+    result_t rc;
+
+    if (window != task->window)
+      return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
+
+    if (!task_key_is_plain(task->delegate, &task->menu, event, &rc))
+      return rc;
+
+    return curve_key(task, window, event->data.key.code);
+  }
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    /* the "Background" row: the shared colourmenu, set up per open */
+    return wuss_colourmenu_open_rgb(task->wuss, event, "Background", task->bg);
+
+  case wuss_EVENT_MENU_SELECT:
+    return curve_menu_select(task, event);
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;

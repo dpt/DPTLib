@@ -4,10 +4,10 @@
 
 #include "impl.h"
 
-result_t wuss_key(wuss_t              *wuss,
-                  int                  code,
-                  wuss_key_modifiers_t modifiers,
-                  int                 *claimed)
+static result_t key(wuss_t              *wuss,
+                    int                  code,
+                    wuss_key_modifiers_t modifiers,
+                    int                 *claimed)
 {
   result_t     rc;
 #ifdef WUSS_ICONS
@@ -15,10 +15,31 @@ result_t wuss_key(wuss_t              *wuss,
 #endif
   wuss_event_t event;
 
-  assert(wuss != NULL);
-
   if (claimed != NULL)
     *claimed = 0;
+
+  if (wuss->drag_window != NULL)
+  {
+    if (code == wuss_KEY_ESCAPE)
+    {
+      wuss__drag_end(wuss, wuss->pointer, NULL, 1);
+      if (claimed != NULL)
+        *claimed = 1;
+    }
+    return result_OK;
+  }
+
+#ifdef WUSS_MENUS
+  /* Escape dismisses an open menu chain, as a click outside it does: menus
+   * never take the input focus, so no menu window would ever see the key */
+  if (code == wuss_KEY_ESCAPE && wuss->menu_chain != NULL)
+  {
+    wuss__menu_abandon(wuss);
+    if (claimed != NULL)
+      *claimed = 1;
+    return result_OK;
+  }
+#endif
 
 #ifdef WUSS_ICONS
   /* the caret's writable gets first refusal */
@@ -43,6 +64,22 @@ result_t wuss_key(wuss_t              *wuss,
 
   if (claimed != NULL)
     *claimed = 1;
+
+  return rc;
+}
+
+result_t wuss_key(wuss_t              *wuss,
+                  int                  code,
+                  wuss_key_modifiers_t modifiers,
+                  int                 *claimed)
+{
+  result_t rc;
+
+  assert(wuss != NULL);
+
+  wuss__message_enter(wuss);
+  rc = key(wuss, code, modifiers, claimed);
+  wuss__message_leave(wuss);
 
   return rc;
 }

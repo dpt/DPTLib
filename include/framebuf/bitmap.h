@@ -94,8 +94,8 @@ void bitmap_clear(bitmap_t *bm, colour_t colour);
  * untouched. The tile is phased against `pattern->origin`, so abutting fills
  * with the same origin line up.
  *
- * Supported for 8bpp and 32bpp formats only; other formats return \ref
- * result_NOT_SUPPORTED.
+ * Supported for 8bpp, 16bpp and 32bpp formats only; other formats return
+ * \ref result_NOT_SUPPORTED.
  *
  * \param[in] bm      Bitmap to fill.
  * \param[in] area    Rectangle to fill, clipped to the bitmap bounds. NULL

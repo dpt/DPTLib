@@ -11,6 +11,7 @@
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/dialogue.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/component/saveas.h"
 #include "wuss/icon-spec.h"
 #include "wuss/icon.h"
 #include "wuss/menu.h"
@@ -21,9 +22,13 @@
  * Elite (Ian Bell and David Braben, Acornsoft, 1984). A cryptic BBC BASIC
  * one-liner stipples it out of three rejection-sampled point clouds - a
  * ring of dots, a sheared streak across it and a filled disc for the
- * planet body. Select re-seeds the RNG for a fresh sketch; the idle
- * handler re-seeds every null event so it churns. The plot is
- * deterministic in the seed. */
+ * planet body. Select re-seeds the RNG for a fresh sketch and Adjust
+ * steps back to the previous one; Menu > Animate re-seeds every null
+ * event so it churns; Menu > Save PNG opens a Save As dialogue (drag its
+ * icon onto a Filer window, or Save with a full path already typed) that
+ * writes the window's content out. Once a click has given the window the
+ * input focus, Left/Right step back and forward through the sketches and A
+ * toggles Animate. The plot is deterministic in the seed. */
 /* iteration counts for the three rejection-sampling loops, plus the window's
  * size, in document pixels (the window is always square); saturn_create
  * fills in SATURN_CONFIG_DEFAULT values when the caller passes NULL */
@@ -71,8 +76,9 @@ typedef struct saturn_task
   wuss_t            *wuss;     /* for wuss_get_pointer/wuss_get_palette */
   wuss_window_t     *window;
   wuss_task_t       *delegate; /* the task that owns the menu */
+  wuss_saveas_t     *saveas;
   colour_t           bg, fg;
-  unsigned long      seed;     /* RNG state; a Select click bumps it */
+  unsigned long      seed;     /* RNG state; Select/Adjust step it */
   saturn_config_t    config;
   colour_t          *colourmenu_target; /* &task->fg or &task->bg: which
                                          * field the open colourmenu picks
@@ -85,8 +91,9 @@ typedef struct saturn_task
                                         * colourmenu/.window pointers into
                                         * another's menu */
   wuss_menu_t        colours_menu;
-  wuss_menu_item_t   menu_items[3];
+  wuss_menu_item_t   menu_items[5];
   wuss_menu_t        menu;
+  int                animate; /* Menu > Animate: re-seed on every idle */
 }
 saturn_task_t;
 

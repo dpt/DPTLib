@@ -9,22 +9,34 @@
 #include "framebuf/bmfont.h"
 #include "framebuf/composite.h"
 #include "wuss/component/proginfo.h"
+#include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
 /* window's task: the two composite demo images blended under a cycling
  * Porter-Duff rule, over an alpha checkerboard. The source image's alpha is
  * ramped up and back down across each rule's turn, so every operator is seen
- * across its full range */
+ * across its full range. Select steps to the next rule and Adjust to the
+ * previous one; Menu > Rule jumps straight to any one; Menu > Swap images
+ * exchanges source and destination; Menu > Save PNG opens a Save As dialogue
+ * (drag its icon onto a Filer window, or Save with a full path already
+ * typed) that writes the window's contents out. Once a click has given the
+ * window the input focus, Space pauses/resumes and Left/Right step the
+ * rule. */
 typedef struct porter_duff_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
   wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_saveas_t       *saveas;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[5]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
+  wuss_menu_item_t    rule_items[composite_RULE__LIMIT];
+  wuss_menu_t         rule_menu;
+  int                 paused; /* Menu > Pause; idle does nothing while set */
+  int                 swapped; /* Menu > Swap images; a and b exchanged */
   wuss_window_t   *window;
   bmfont_t        *font;
   bitmap_t         a;               /* owned: pristine source, BGRA */

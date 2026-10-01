@@ -40,4 +40,39 @@ int path_leaf_strip_ext(const char *leaf,
                         char       *name,
                         size_t      cap);
 
+/**
+ * Tests whether 'leaf' is safe to use as a single directory entry name
+ * supplied by another task (e.g. a drag-and-drop save's leafname): non-NULL,
+ * non-empty, containing no host path separator ('/', plus '\\' on Windows,
+ * '.' on RISC OS), and not "." or "..".
+ *
+ * Rejecting a leafname with a separator stops it reaching outside the
+ * intended directory (e.g. "../x" or "a/b").
+ *
+ * \return Nonzero if 'leaf' is a valid single entry name, zero otherwise.
+ */
+int path_leaf_valid(const char *leaf);
+
+/**
+ * Returns the leafname of 'path': whatever follows its last host path
+ * separator ('/', plus '\\' on Windows; '.' or ':' on RISC OS), or 'path'
+ * itself if it has none.
+ *
+ * \return Pointer into 'path'.
+ */
+const char *path_leaf(const char *path);
+
+/**
+ * Tests whether 'path' is already a full (rooted) path under the host
+ * convention, rather than a bare leafname or a relative path.
+ *
+ * Desktop: starts with '/' (also a drive letter, e.g. "C:\\", on Windows).
+ * RISC OS: contains a filing system specifier ("<fs>::disc.$.") or starts
+ * with '$' (the current directory's root, "$.").
+ *
+ * \return Nonzero if 'path' is a full path, zero if NULL, empty, or
+ *         relative.
+ */
+int path_is_full(const char *path);
+
 #endif /* DPTLIB_PATH */

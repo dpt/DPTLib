@@ -41,24 +41,25 @@ static void stack__measure(const stack_item_t *items,
       stack__measure(items, n, i, mins);
       child_main  = horiz ? mins[i].w : mins[i].h;
       child_cross = horiz ? mins[i].h : mins[i].w;
+      /* a fixed axis_size is along this (the parent's) main axis, and
+       * stack_solve gives the child exactly that */
+      if (items[i].axis_size > 0)
+        child_main = items[i].axis_size;
+      else
+        child_main = MAX(child_main, items[i].min);
     }
-    else if (items[i].kind == stack_KIND_SPACER)
+    else /* stack_KIND_LEAF or stack_KIND_SPACER */
     {
-      child_main  = 0;
-      child_cross = 0;
-    }
-    else /* stack_KIND_LEAF */
-    {
-      child_main  = items[i].axis_size ? items[i].axis_size : items[i].min;
-      child_cross = items[i].cross_size;
+      child_main  = stack__axis_size(items, n, i);
+      if (child_main == 0)
+        child_main = items[i].min;
+      child_cross = items[i].kind == stack_KIND_SPACER ? 0 : items[i].cross_size;
     }
 
     main_min += child_main + (nchildren > 0 ? items[index].gap : 0);
     cross_min = MAX(cross_min, child_cross);
     nchildren++;
   }
-
-  main_min = MAX(main_min, items[index].axis_size ? items[index].axis_size : items[index].min);
 
   if (horiz)
   {

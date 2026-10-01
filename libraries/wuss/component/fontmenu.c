@@ -78,7 +78,8 @@ typedef struct namelist
 namelist_t;
 
 /* True if any wuss_create font slot names \p name and is classed SYSTEM --
- * chrome-only, not meant to be offered as a text font. */
+ * chrome-only, not meant to be offered as a text font. A slot named for a
+ * whole family ("Symbols") covers every face of it ("Symbols Regular"). */
 static int is_system_font_name(const wuss_t *wuss, const char *name)
 {
   int i;
@@ -89,9 +90,15 @@ static int is_system_font_name(const wuss_t *wuss, const char *name)
   for (i = 0; i < wuss_MAX_FONTS; i++)
   {
     const char *slot_name = wuss_get_font_name_n(wuss, i);
+    size_t      len;
 
-    if (slot_name != NULL && strcmp(slot_name, name) == 0 &&
-        wuss_get_font_class_n(wuss, i) == wuss_FONT_CLASS_SYSTEM)
+    if (slot_name == NULL ||
+        wuss_get_font_class_n(wuss, i) != wuss_FONT_CLASS_SYSTEM)
+      continue;
+
+    len = strlen(slot_name);
+    if (strncmp(slot_name, name, len) == 0 &&
+        (name[len] == '\0' || name[len] == ' '))
       return 1;
   }
 
@@ -208,11 +215,20 @@ static result_t fontmenu_build(const char   *dir,
 {
   result_t     rc;
   wuss_alloc_t alloc;
+  char        *dir_copy;
   namelist_t   nl;
 
   fontmenu_free();
 
   alloc = wuss ? wuss->alloc : wuss_alloc;
+
+  /* copy dir before enumerating: callers pass a pathf() scratch pointer,
+   * which bmfont_enumerate's own per-entry pathf calls clobber -- copied
+   * afterwards, g.dir would hold the last font's path, never match again
+   * and so rebuild the menu (discarding its ticks) on every call */
+  dir_copy = wuss__alloc_strdup(&alloc, dir);
+  if (dir_copy == NULL)
+    return result_OOM;
 
   memset(&nl, 0, sizeof(nl));
   nl.alloc = &alloc;
@@ -222,6 +238,7 @@ static result_t fontmenu_build(const char   *dir,
   if (rc != result_OK)
   {
     namelist_free(&nl);
+    alloc.free(dir_copy);
     return nl.oom ? result_OOM : rc;
   }
 
@@ -233,14 +250,12 @@ static result_t fontmenu_build(const char   *dir,
   rc = build_menu(nl.names, nl.n, title);
   namelist_free(&nl); /* build_menu copied what it needed */
   if (rc != result_OK)
-    return rc;
-
-  g.dir = wuss__alloc_strdup(&g.alloc, dir);
-  if (g.dir == NULL)
   {
-    fontmenu_free();
-    return result_OOM;
+    alloc.free(dir_copy);
+    return rc;
   }
+
+  g.dir  = dir_copy;
   g.wuss = wuss;
 
   return result_OK;

@@ -35,43 +35,87 @@ static void footprint_pad(const wuss_t       *wuss,
   *bottom = outline_px + carve.y;
 }
 
-/* Pick the next cascade position for a window of the given footprint size,
- * once the layout packer has no room. Steps down/right by a titlebar each
- * call, wrapping back to the top-left when the step would push the footprint
- * off the screen. A footprint that is itself larger than the screen can never
- * fit; it is pinned at the top-left and the cascade counter is not advanced,
- * so it does not wedge every later window at the origin too. */
-static void next_cascade(wuss_t *wuss, int fw, int fh, point_t *pos)
+/* Centre a footprint of fw x fh on the screen, used once the layout packer
+ * has no room. A footprint larger than the screen is pinned at the top-left
+ * so its titlebar stays reachable. */
+static void centre_on_screen(const wuss_t *wuss,
+                             int           fw,
+                             int           fh,
+                             point_t      *pos)
 {
-  int scr_w, scr_h, step;
+  pos->x = MAX(0, (wuss->scr->size.w - fw) / 2);
+  pos->y = MAX(0, (wuss->scr->size.h - fh) / 2);
+}
 
-  scr_w = wuss->scr->size.w;
-  scr_h = wuss->scr->size.h;
-#ifdef WUSS_FURNITURE
-  step  = wuss->titlebar_height;
-#else
-  step  = 0;
-#endif
-  if (step <= 0)
-    step = WUSS_DEFAULT_TITLEBAR_HEIGHT;
+/* Find a free spot for a footprint of fw x fh. The packer is rebuilt from
+ * scratch around every shown window's current footprint on each call, so
+ * windows created at explicit positions, moved or resized by the user, or a
+ * changed screen size are all accounted for with no slot bookkeeping.
+ * ponytail: O(windows^2) per placement; keep a live packer if that shows. */
+static result_t find_slot(wuss_t *wuss, int fw, int fh, point_t *pos)
+{
+  static const box_t margins = {
+    WUSS_PLACE_GUTTER, WUSS_PLACE_GUTTER, WUSS_PLACE_GUTTER, WUSS_PLACE_GUTTER
+  };
 
-  if (fw > scr_w || fh > scr_h)
+  result_t       rc;
+  box_t          screen;
+  packer_t      *layout;
+  list_t        *e;
+  wuss_window_t *w;
+  box_t          taken;
+  const box_t   *slot;
+
+  screen.x0 = 0;
+  screen.y0 = 0;
+  screen.x1 = wuss->scr->size.w;
+  screen.y1 = wuss->scr->size.h;
+
+  layout = packer_create(&screen);
+  if (layout == NULL)
+    return result_OOM;
+
+  packer_set_margins(layout, &margins);
+  packer_set_gutter(layout, WUSS_PLACE_GUTTER);
+
+  /* only regular windows constrain placement: the icon bar (back) and
+   * error dialogues/menus (top) sit outside the middle stack */
+  for (e = wuss->z_order[wuss_STACK_MIDDLE].next; e != NULL; e = e->next)
   {
-    pos->x = 0;
-    pos->y = 0;
-    return;
+    w = wuss__window_from_link(e);
+    if (w->flags & wuss_WINDOW_HIDDEN)
+      continue;
+
+    /* gutter on the right/bottom only: packer_place_by already reserves one
+     * on the new window's right/bottom, so padding all round would double it
+     * and a freed slot would no longer fit its own window */
+    taken.x0 = w->visible.x0;
+    taken.y0 = w->visible.y0;
+    taken.x1 = w->visible.x1 + WUSS_PLACE_GUTTER;
+    taken.y1 = w->visible.y1 + WUSS_PLACE_GUTTER;
+
+    rc = packer_place_at(layout, &taken);
+    if (rc != result_OK && rc != result_PACKER_EMPTY) /* EMPTY: off-screen */
+      goto exit;
   }
 
-  if (wuss->cascade.x + fw > scr_w || wuss->cascade.y + fh > scr_h)
+  /* packer's Y axis is reversed. bottom left here gives top left packing. */
+  rc = packer_place_by(layout, packer_LOC_BOTTOM_LEFT, fw, fh, &slot);
+  if (rc == result_OK)
   {
-    wuss->cascade.x = 0;
-    wuss->cascade.y = 0;
+    pos->x = slot->x0;
+    pos->y = slot->y0;
+  }
+  else if (rc == result_PACKER_DIDNT_FIT)
+  {
+    centre_on_screen(wuss, fw, fh, pos);
+    rc = result_OK;
   }
 
-  *pos = wuss->cascade;
+exit:
+  packer_destroy(layout);
 
-  wuss->cascade.x += step;
-  wuss->cascade.y += step;
+  return rc;
 }
 
 result_t wuss_window_create_placed(wuss_task_t        *task,
@@ -83,14 +127,11 @@ result_t wuss_window_create_placed(wuss_task_t        *task,
                                    size2d_t            min_doc,
                                    wuss_window_t     **window)
 {
-  result_t     rc;
-  wuss_t      *wuss;
-  int          left, top, right, bottom;
-  int          fw, fh;
-  box_t        screen, content, consumed;
-  point_t      origin;
-  const box_t *slot;
-  int          tracked;
+  result_t rc;
+  wuss_t  *wuss;
+  int      left, top, right, bottom;
+  point_t  origin;
+  box_t    content;
 
   assert(task   != NULL);
   assert(window != NULL);
@@ -100,46 +141,14 @@ result_t wuss_window_create_placed(wuss_task_t        *task,
   if (!wuss__size_ok(size.w, size.h))
     return result_WUSS_TOO_SMALL;
 
-  if (wuss->layout == NULL)
-  {
-    static const box_t margins =  {
-      WUSS_PLACE_GUTTER, WUSS_PLACE_GUTTER, WUSS_PLACE_GUTTER, WUSS_PLACE_GUTTER
-    };
-    
-    screen.x0 = 0;
-    screen.y0 = 0;
-    screen.x1 = wuss->scr->size.w;
-    screen.y1 = wuss->scr->size.h;
-
-    wuss->layout = packer_create(&screen);
-    if (wuss->layout == NULL)
-      return result_OOM;
-
-    packer_set_margins(wuss->layout, &margins);
-    packer_set_gutter(wuss->layout, WUSS_PLACE_GUTTER);
-  }
-
   footprint_pad(wuss, flags, &left, &top, &right, &bottom);
-  fw = left + size.w + right;
-  fh = top  + size.h + bottom;
 
-  /* packer's Y axis is reversed. bottom left here gives top left packing. */
-  rc = packer_place_by(wuss->layout, packer_LOC_BOTTOM_LEFT, fw, fh, &slot);
-  if (rc == result_OK)
-  {
-    origin.x = slot->x0;
-    origin.y = slot->y0;
-    tracked  = 1;
-  }
-  else if (rc == result_PACKER_DIDNT_FIT)
-  {
-    next_cascade(wuss, fw, fh, &origin);
-    tracked = 0;
-  }
-  else
-  {
+  rc = find_slot(wuss,
+                 left + size.w + right,
+                 top  + size.h + bottom,
+                 &origin);
+  if (rc != result_OK)
     return rc;
-  }
 
   /* content box = footprint origin plus the top/left furniture padding */
   content.x0 = origin.x + left;
@@ -147,29 +156,6 @@ result_t wuss_window_create_placed(wuss_task_t        *task,
   content.x1 = content.x0 + size.w;
   content.y1 = content.y0 + size.h;
 
-  /* what packer_place_by actually took out of the free list: the footprint
-   * plus the gutter strip on its inner edges (right and, in packer space,
-   * top -- see packer_LOC_BOTTOM_LEFT). Releasing exactly this on close /
-   * move keeps the gutter from leaking away over a session. */
-  if (tracked)
-  {
-    consumed.x0 = slot->x0;
-    consumed.y0 = slot->y0;
-    consumed.x1 = slot->x1 + WUSS_PLACE_GUTTER;
-    consumed.y1 = slot->y1 + WUSS_PLACE_GUTTER;
-  }
-
-  rc = wuss_window_create(task, &content, title, flags, bg,
-                          doc, min_doc, window);
-  if (rc != result_OK)
-  {
-    if (tracked)
-      (void) packer_release(wuss->layout, &consumed);
-    return rc;
-  }
-
-  if (tracked)
-    (*window)->packed = consumed;
-
-  return result_OK;
+  return wuss_window_create(task, &content, title, flags, bg,
+                            doc, min_doc, window);
 }

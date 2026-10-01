@@ -115,15 +115,14 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
 
   if (!scroll_reclamped && !(window->flags & wuss_WINDOW_NO_RESIZE_BLIT))
   {
-    list_t *above;
+    wuss_window_t *above;
 
-    for (above = window->wuss->z_order.next;
-        above != &window->link &&
-          (wuss__window_from_link(above)->flags & wuss_WINDOW_HIDDEN);
-        above = above->next)
+    for (above = wuss__z_first(window->wuss);
+        above != window && (above->flags & wuss_WINDOW_HIDDEN);
+        above = wuss__z_below(above))
       ;
 
-    if (above == &window->link)
+    if (above == window)
     {
       box_t new_content, shifted;
 
@@ -157,10 +156,22 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
 
     wuss__content_box(window, &new_content);
 
-    /* the old footprint minus the content pixels the blit left valid at
-     * their new home: the vacated region plus every furniture strip. */
-    wuss__invalidate_minus(window->wuss, &before, &copied);
-    /* the new content box minus what the blit filled: newly-exposed content. */
+    /* the old visible footprint minus the new one: on a shrink, the strip
+     * the window used to cover (old furniture and old content alike) but no
+     * longer does at all -- nothing else touches this, so without it the
+     * vacated old furniture/content strip was never repainted and just sat
+     * there stale. A no-op on grow, where "before" is already inside the
+     * new visible box. Raw, not the content box: the vacated furniture
+     * strips outside the new visible box are just as stale as the content
+     * was, and this box sits entirely outside window->visible, so it can't
+     * overlap wuss__furniture_invalidate below (which only marks inside the
+     * *new* visible box). */
+    wuss__invalidate_minus(window->wuss, &before, &window->visible);
+    /* the new content box minus what the blit filled: newly-exposed content.
+     * Disjoint from the furniture invalidate below by construction (see
+     * furniture/invalidate.c: its pieces are carved to exclude the content
+     * box), and disjoint from the strip above since this box sits entirely
+     * inside window->visible. */
     wuss__invalidate_minus(window->wuss, &new_content, &copied);
     /* furniture always reflows -- repaint it at the new position outright. */
     wuss__furniture_invalidate(window);

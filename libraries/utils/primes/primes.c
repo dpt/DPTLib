@@ -4,14 +4,14 @@
 
 #include "utils/primes.h"
 
-/* A selection of primes. */
-static const int primes[] =
-{
-  17, 97, 173, 251, 337, 421, 503, 601, 683, 787, 881, 983,
-};
-
 int prime_nearest(int x)
 {
+  /* A selection of primes. */
+  static const int primes[] =
+  {
+    17, 97, 173, 251, 337, 421, 503, 601, 683, 787, 881, 983,
+  };
+
   int i;
 
   for (i = 0; i < NELEMS(primes); i++)

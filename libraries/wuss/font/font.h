@@ -24,6 +24,9 @@ struct wuss_fontset
   wuss_font_class_t font_classes[wuss_MAX_FONTS];
   /* parallel to fonts[]; borrowed; NULL if unset or given no name */
   const char       *font_names[wuss_MAX_FONTS];
+  /* parallel to fonts[]; advance of a space, measured once at init; 0 for an
+   * unset slot */
+  bmfont_width_t    space_widths[wuss_MAX_FONTS];
   /* slots filled from the wuss_create argument */
   int               nfonts;
 };
@@ -38,6 +41,32 @@ void wuss__fontset_init(struct wuss_fontset    *set,
  * range. Used by wuss_create to size the titlebar to the tallest of the
  * regular and bold faces. */
 int wuss__fontset_height(const struct wuss_fontset *set, int slot);
+
+/* Cached advance of a space in "font", which must be one of "set"'s slots;
+ * 0 if it isn't. Saves re-measuring it on every text layout. */
+bmfont_width_t wuss__fontset_space_width(const struct wuss_fontset *set,
+                                         const bmfont_t            *font);
+
+/* The bold weight (font slot 1) when one was supplied, else the system font
+ * (slot 0). Used for window titles and menu shortcuts. */
+bmfont_t *wuss__bold_font(const wuss_t *wuss);
+
+/* Horizontal pixels between a menu shortcut's keycap box edge and its label. */
+#define WUSS_SHORTCUT_BOX_PAD 4
+
+/* A menu shortcut label is drawn in the bold weight, except each
+ * WUSS_MENU_SHIFT which comes from the symbol font (the text faces lack it)
+ * when there is one, inside a rounded keycap box the caller draws.
+ * wuss__shortcut_measure returns the width of that box, label plus
+ * WUSS_SHORTCUT_BOX_PAD either side; wuss__shortcut_draw draws just the
+ * label with its baseline starting at "pos". */
+bmfont_width_t wuss__shortcut_measure(const wuss_t *wuss, const char *label);
+void wuss__shortcut_draw(const wuss_t  *wuss,
+                         screen_t      *scr,
+                         const char    *label,
+                         colour_t       fg,
+                         colour_t       bg,
+                         const point_t *pos);
 
 /* Centralised text rendering. wuss__text_draw is a plain pass-through to
  * bmfont_draw (pos/end_pos are baseline positions, per bmfont_draw's

@@ -5,6 +5,7 @@
 
 #include "base/utils.h"
 #include "framebuf/bmfont.h"
+#include "text/utf8.h"
 
 #include "../core/impl.h"
 
@@ -24,8 +25,16 @@ bmfont_t *wuss__icon_font(const wuss_t *wuss, const wuss_icon_t *icon)
 void wuss__writable_copy(char *buf, int size, const char *text)
 {
   size_t len;
+  int    trimmed;
 
   len = MIN(strlen(text), (size_t) size - 1);
+
+  /* don't split a codepoint: back off over up to three continuation bytes */
+  for (trimmed = 0;
+       trimmed < 3 && len > 0 && ((unsigned char) text[len] & 0xC0) == 0x80;
+       trimmed++)
+    len--;
+
   memcpy(buf, text, len);
   buf[len] = '\0';
 }
@@ -104,6 +113,24 @@ static int writable_word_right(const char *text, int len, int index)
   return index;
 }
 
+/* The byte index of the codepoint containing "index", or "len" past it. */
+static int writable_rune_start(const char *text, int len, int index)
+{
+  unsigned long codepoint;
+  int           i;
+  int           n;
+
+  /* ponytail: a scan from the start, fine for field-sized strings */
+  for (i = 0; i < len; i += n)
+  {
+    n = utf8_decode(text + i, len - i, &codepoint);
+    if (i + n > index)
+      break;
+  }
+
+  return i;
+}
+
 /* Tell the caret icon's task its text changed. */
 static result_t writable_changed(wuss_t *wuss)
 {
@@ -145,7 +172,10 @@ void wuss__writable_place_caret(wuss_window_t *window,
     wuss__caret_clear(wuss);
 
   len   = (int) strlen(icon->spec.text);
-  index = (index < 0) ? len : MIN(index, len);
+  if (index < 0)
+    index = len;
+  else
+    index = writable_rune_start(icon->spec.text, len, index);
 
   /* keep the caret in view, jumping a third of the field at a time so typing
    * at an edge doesn't scroll on every key */
@@ -197,6 +227,9 @@ result_t wuss__writable_key(wuss_t              *wuss,
   int            len;
   int            index;
   int            step;
+  unsigned long  codepoint;
+  int            n;
+  char           utf8[4];
 
   *claimed = 0;
 
@@ -252,8 +285,8 @@ result_t wuss__writable_key(wuss_t              *wuss,
     *claimed = 1;
     if (modifiers & wuss_KEY_MOD_SHIFT)
       index = writable_word_left(text, index);
-    else
-      index = MAX(index - 1, 0);
+    else if (index > 0)
+      index = utf8_prev(text, index);
     wuss__writable_place_caret(window, icon, index);
     return result_OK;
 
@@ -261,8 +294,8 @@ result_t wuss__writable_key(wuss_t              *wuss,
     *claimed = 1;
     if (modifiers & wuss_KEY_MOD_SHIFT)
       index = writable_word_right(text, len, index);
-    else
-      index = index + 1;
+    else if (index < len)
+      index += utf8_decode(text + index, len - index, &codepoint);
     wuss__writable_place_caret(window, icon, index);
     return result_OK;
 
@@ -281,8 +314,9 @@ result_t wuss__writable_key(wuss_t              *wuss,
     if (index == 0)
       return result_OK;
 
-    memmove(text + index - 1, text + index, (size_t) (len - index + 1));
-    wuss__writable_place_caret(window, icon, index - 1);
+    n = index - utf8_prev(text, index);
+    memmove(text + index - n, text + index, (size_t) (len - index + 1));
+    wuss__writable_place_caret(window, icon, index - n);
     return writable_changed(wuss);
 
   case wuss_KEY_DELETE:
@@ -290,21 +324,28 @@ result_t wuss__writable_key(wuss_t              *wuss,
     if (index == len)
       return result_OK;
 
-    memmove(text + index, text + index + 1, (size_t) (len - index));
+    n = utf8_decode(text + index, len - index, &codepoint);
+    memmove(text + index, text + index + n, (size_t) (len - index - n + 1));
     wuss__writable_place_caret(window, icon, index);
     return writable_changed(wuss);
 
   default:
-    if (!((code >= 0x20 && code <= 0x7E) || (code >= 0xA0 && code <= 0xFF)))
+    /* printable codepoints only: not C0/C1 controls or DEL, and not the key
+     * constants above U+10FFFF, which utf8_encode refuses */
+    if (code < 0x20 || (code >= 0x7F && code <= 0x9F))
+      return result_OK;
+
+    n = utf8_encode((unsigned long) code, utf8);
+    if (n == 0)
       return result_OK;
 
     *claimed = 1;
-    if (len + 1 >= icon->spec.u.writable.size)
+    if (len + n >= icon->spec.u.writable.size)
       return result_OK; /* full */
 
-    memmove(text + index + 1, text + index, (size_t) (len - index + 1));
-    text[index] = (char) code;
-    wuss__writable_place_caret(window, icon, index + 1);
+    memmove(text + index + n, text + index, (size_t) (len - index + 1));
+    memcpy(text + index, utf8, (size_t) n);
+    wuss__writable_place_caret(window, icon, index + n);
     return writable_changed(wuss);
   }
 }

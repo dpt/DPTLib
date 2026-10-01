@@ -68,11 +68,14 @@ extern "C"
  *                     to doc, and to the built-in floor, so it can never
  *                     make a window unusably small or larger than its
  *                     document.
- * \param[out] window  Newly created window. Becomes the topmost window.
+ * \param[out] window  Newly created window. Becomes the frontmost window of
+ *                     its stack: middle unless flags includes
+ *                     wuss_WINDOW_STACK_TOP or wuss_WINDOW_STACK_BACK.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if content's
  *         width or height is not positive, \ref result_WUSS_BAD_COLOUR if
- *         any of bg's colours are out of range for the palette, or another
- *         appropriate result code.
+ *         any of bg's colours are out of range for the palette, \ref
+ *         result_BAD_ARG if flags names both wuss_WINDOW_STACK_TOP and
+ *         wuss_WINDOW_STACK_BACK, or another appropriate result code.
  */
 result_t wuss_window_create(wuss_task_t        *task,
                             const box_t        *content,
@@ -88,15 +91,10 @@ result_t wuss_window_create(wuss_task_t        *task,
  *
  * As wuss_window_create, but instead of a content box you pass just the
  * content size; Wuss places the window (furniture included) in the first
- * free screen region, packed towards the top-left, tracking occupied area
- * across calls so successive auto-placed windows tile rather than stack.
- * When no region is large enough the window is cascaded from the previous
- * placement, stepping by a titlebar height and wrapping at the screen edge.
- *
- * The chosen slot is returned to the pool when the window is closed, or when
- * it is first moved or resized via wuss_window_move / wuss_window_resize
- * (after which Wuss no longer tracks its position). A window dragged by its
- * titlebar counts as moved.
+ * free screen region, packed towards the top-left, avoiding every shown
+ * window at its current position so successive auto-placed windows tile
+ * rather than stack. When no region is large enough the window is centred on
+ * the screen (or pinned at the top-left if larger than the screen).
  *
  * \param[in]  task    Owning task, as wuss_window_create.
  * \param[in]  size    Requested content-area size. Width and height must
@@ -220,12 +218,24 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size);
 result_t wuss_window_set_doc(wuss_window_t *window, size2d_t doc);
 
 /**
- * Move a window to one end of the z-order.
+ * Move a window to one end of its own stack (see wuss_stack_t). It never
+ * crosses into another stack: a middle window brought to front stays behind
+ * every top window.
  *
  * \param[in] window Window to restack.
  * \param[in] reason wuss_ZORDER_FRONT or wuss_ZORDER_BACK.
  */
 void wuss_window_restack(wuss_window_t *window, wuss_zorder_t reason);
+
+/**
+ * Move a window to the front of another stack (see wuss_stack_t). A no-op if
+ * it is already in \p stack. A visible window repaints whatever its new
+ * position uncovers or covers; a hidden one is only relinked.
+ *
+ * \param[in] window Window to move.
+ * \param[in] stack  Destination stack.
+ */
+void wuss_window_set_stack(wuss_window_t *window, wuss_stack_t stack);
 
 /**
  * Fetch a window's current visible (on-screen) bounds: its full footprint,
@@ -255,7 +265,7 @@ void wuss_window_get_content_bounds(const wuss_window_t *window,
  * call this themselves (e.g. the union of an animated element's old and new
  * positions).
  *
- * \param[in] window    Window whose content changed.
+ * \param[in] window    Window whose content changed, or NULL to do nothing.
  * \param[in] local_box Region, in window-local content coordinates (as
  *                      passed to the task's mouse callback), or NULL to mark
  *                      the whole content area dirty.
@@ -278,7 +288,8 @@ void wuss_window_invalidate(wuss_window_t *window, const box_t *local_box);
  * The extent is clipped to what is actually visible before anything is
  * queued.
  *
- * \param[in] window Window whose whole document changed.
+ * \param[in] window Window whose whole document changed, or NULL to do
+ *                   nothing.
  */
 void wuss_window_invalidate_extent(wuss_window_t *window);
 
@@ -316,6 +327,27 @@ void wuss_window_get_scroll(const wuss_window_t *window, point_t *p);
  */
 result_t wuss_window_set_background(wuss_window_t  *window,
                                     wuss_backdrop_t bg);
+
+/**
+ * Change a window's title, repainting its furniture if it differs. The title
+ * is copied and truncated as for wuss_window_create. No-op when built
+ * without furniture.
+ *
+ * \param[in] window Window to change.
+ * \param[in] title  New title. NULL is treated as "".
+ */
+void wuss_window_set_title(wuss_window_t *window, const char *title);
+
+/**
+ * A window's current title, as last set by wuss_window_create or
+ * wuss_window_set_title, truncated the same way. "" (never NULL) when built
+ * without furniture, or when no title was set.
+ *
+ * \param[in] window Window to query.
+ * \return The title, owned by \p window; valid until the next
+ *         wuss_window_set_title call or the window is closed.
+ */
+const char *wuss_window_get_title(const wuss_window_t *window);
 
 #ifdef __cplusplus
 }

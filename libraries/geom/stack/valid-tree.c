@@ -36,5 +36,17 @@ int stack__valid_tree(const stack_item_t *items, int n)
       return 0; /* hug is an absolute size, not something flex can grow */
   }
 
+  for (i = 0; i < n; i++)
+  {
+    if (items[i].group == 0)
+      continue;
+
+    if (items[i].kind != stack_KIND_LEAF && items[i].kind != stack_KIND_SPACER)
+      return 0; /* a container's size may depend on its children's */
+
+    if (items[i].flex != 0)
+      return 0; /* a group shares one fixed size, which flex would break */
+  }
+
   return 1;
 }

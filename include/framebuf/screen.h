@@ -67,6 +67,28 @@ int screen_get_clip(const screen_t *scr, box_t *clip);
 void screen_set_pixel(screen_t *scr, int x, int y, colour_t colour);
 
 /**
+ * Resolves a colour to a pixel value in the screen's format. For paletted
+ * screens this searches the palette, so callers plotting many pixels of few
+ * colours should resolve each colour once and use screen_set_pixel_value.
+ *
+ * \param[in] scr     Screen whose format and palette to use.
+ * \param[in] colour  Colour to resolve.
+ *
+ * \return Pixel value.
+ */
+pixelfmt_any_t screen_colour_to_pixel(const screen_t *scr, colour_t colour);
+
+/**
+ * Draws a single pixel using a pixel value already in the screen's format.
+ *
+ * \param[in] scr  Screen to draw upon.
+ * \param[in] x    X coordinate of pixel to draw.
+ * \param[in] y    Y coordinate of pixel to draw.
+ * \param[in] pxl  Pixel value, e.g. from screen_colour_to_pixel.
+ */
+void screen_set_pixel_value(screen_t *scr, int x, int y, pixelfmt_any_t pxl);
+
+/**
  * Draws a solid rectangle.
  *
  * \param[in] scr     Screen to draw upon.
@@ -80,6 +102,22 @@ void screen_fill_rect(screen_t *scr,
                       int       y,
                       size2d_t  size,
                       colour_t  colour);
+
+/**
+ * Draws a solid rectangle using a pixel value already in the screen's
+ * format.
+ *
+ * \param[in] scr   Screen to draw upon.
+ * \param[in] x     X coordinate of leftmost point of rectangle.
+ * \param[in] y     Y coordinate of topmost point of rectangle.
+ * \param[in] size  Width and height of rectangle.
+ * \param[in] pxl   Pixel value, e.g. from screen_colour_to_pixel.
+ */
+void screen_fill_rect_value(screen_t      *scr,
+                            int            x,
+                            int            y,
+                            size2d_t       size,
+                            pixelfmt_any_t pxl);
 
 /**
  * Fills several solid rectangles in one call, all in the same colour.
@@ -171,30 +209,48 @@ result_t screen_copy_bitmap(screen_t       *scr,
                             int             y,
                             const bitmap_t *src);
 
+/** Dithering methods for `screen_copy_bitmap_dithered`. Both are ordered
+ *  (threshold-map) dithers: each pixel's offset depends only on its
+ *  position, so redrawing any sub-rectangle reproduces the same pixels. */
+typedef enum
+{
+  screen_DITHER_NONE,      /**< Nearest palette entry; same as
+                            *   `screen_copy_bitmap`. */
+  screen_DITHER_BAYER,     /**< 8x8 Bayer matrix: cheap, regular
+                            *   cross-hatch texture. */
+  screen_DITHER_BLUE_NOISE /**< 64x64 blue-noise map: same cost, fine
+                            *   grain with no visible repeat pattern. */
+}
+screen_dither_t;
+
 /**
  * As `screen_copy_bitmap`, but on a paletted screen the source colour is
- * ordered-dithered (8x8 Bayer) per pixel before the nearest-palette-entry
- * lookup, so a smooth gradient stipples between the available entries
- * instead of banding at each quantisation step. The dither is phased to
- * screen coordinates, so it stays put when the same content is redrawn at
- * the same place.
+ * dithered per pixel by \p method before the nearest-palette-entry lookup,
+ * so a smooth gradient stipples between the available entries instead of
+ * banding at each quantisation step. The dither is phased to the source
+ * bitmap's top-left, so it stays fixed to the image as it moves.
+ *
+ * A 16bpp (rgb565 or rgbx5551) screen is dithered the same way, so a
+ * gradient stipples between the 5-bit channel steps instead of banding.
  *
  * On a 32bpp screen, and for an RLE-compressed source, this is identical to
  * `screen_copy_bitmap` (a deep screen has no banding to break up; an RLE
  * source is already quantised UI art). Alpha handling, clipping and the lack
  * of scaling are all as `screen_copy_bitmap`.
  *
- * \param[in] scr  Screen to draw upon.
- * \param[in] x    X coordinate of leftmost point to draw bitmap at.
- * \param[in] y    Y coordinate of topmost point to draw bitmap at.
- * \param[in] src  Bitmap to copy.
+ * \param[in] scr    Screen to draw upon.
+ * \param[in] x      X coordinate of leftmost point to draw bitmap at.
+ * \param[in] y      Y coordinate of topmost point to draw bitmap at.
+ * \param[in] src    Bitmap to copy.
+ * \param[in] method Dithering method.
  * \return \ref result_OK on success, \ref result_NOT_SUPPORTED if the
  *         screen's pixel format has no blit path.
  */
 result_t screen_copy_bitmap_dithered(screen_t       *scr,
                                      int             x,
                                      int             y,
-                                     const bitmap_t *src);
+                                     const bitmap_t *src,
+                                     screen_dither_t method);
 
 /** Flags for `screen_copy_ninepatch`. */
 enum
@@ -379,6 +435,50 @@ void screen_fill_circle(screen_t *scr,
                         int       cy,
                         int       r,
                         colour_t  colour);
+
+/**
+ * Draws a one-pixel unfilled rectangle outline with quarter-circle corners
+ * of radius `r` (integer midpoint algorithm, no anti-aliasing). `size` is
+ * inclusive of both edges, as `screen_draw_rect`. `r` is clamped so opposing
+ * corners never overlap: a radius of half the shorter side or more gives a
+ * pill (or a circle, for a square of odd size). A radius <= 0 draws a plain
+ * `screen_draw_rect`; a degenerate size (<= 1 in either axis) falls back to
+ * a filled `screen_fill_rect`. Clipped to the screen's clip region.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x       X coordinate of leftmost point of rectangle.
+ * \param[in] y       Y coordinate of topmost point of rectangle.
+ * \param[in] size    Width and height of rectangle.
+ * \param[in] r       Corner radius in pixels.
+ * \param[in] colour  Colour of the outline.
+ */
+void screen_draw_rounded_rect(screen_t *scr,
+                              int       x,
+                              int       y,
+                              size2d_t  size,
+                              int       r,
+                              colour_t  colour);
+
+/**
+ * Draws a solid rectangle with quarter-circle corners of radius `r`,
+ * covering exactly the pixels `screen_draw_rounded_rect` outlines and those
+ * inside them. `r` is clamped as there; a radius <= 0 draws a plain
+ * `screen_fill_rect`. An empty size draws nothing. Clipped to the screen's
+ * clip region.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x       X coordinate of leftmost point of rectangle.
+ * \param[in] y       Y coordinate of topmost point of rectangle.
+ * \param[in] size    Width and height of rectangle.
+ * \param[in] r       Corner radius in pixels.
+ * \param[in] colour  Colour of the rectangle.
+ */
+void screen_fill_rounded_rect(screen_t *scr,
+                              int       x,
+                              int       y,
+                              size2d_t  size,
+                              int       r,
+                              colour_t  colour);
 
 /**
  * Draws a stippled line: `on` pixels drawn, then `off` skipped, repeating

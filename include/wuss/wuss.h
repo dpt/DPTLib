@@ -44,6 +44,12 @@ extern "C"
  * wuss_key.
  */
 #define result_WUSS_KEY_UNCLAIMED (result_BASE_WUSS + 4)
+/**
+ * wuss_window_move or wuss_window_resize was called on a wuss_WINDOW_PINNED
+ * window, which wuss itself repositions/resizes and which refuses every
+ * caller-driven change to its box.
+ */
+#define result_WUSS_PINNED       (result_BASE_WUSS + 5)
 
 /* ----------------------------------------------------------------------- */
 
@@ -60,6 +66,13 @@ typedef struct wuss_task wuss_task_t;
 /** A work-area icon. Full API is in icon.h, and is compiled only when the
  * library is built with the WUSS_ICONS option on. */
 typedef struct wuss_icon wuss_icon_t;
+
+/** An icon bar icon. Full API is in iconbar.h, and is compiled only when the
+ * library is built with the WUSS_ICONBAR option on. */
+typedef struct wuss_iconbar_icon wuss_iconbar_icon_t;
+
+/** A message in flight. Full API is in message.h. */
+typedef struct wuss_message wuss_message_t;
 
 /**
  * Allocator hooks used by a wuss_t for every heap block it owns (the
@@ -94,7 +107,15 @@ typedef enum wuss_button
   wuss_BUTTON_NONE   = 0,
   wuss_BUTTON_ADJUST = 1 << 0,
   wuss_BUTTON_MENU   = 1 << 1,
-  wuss_BUTTON_SELECT = 1 << 2
+  wuss_BUTTON_SELECT = 1 << 2,
+
+  /**
+   * Set on a DOWN action alongside the button's own flag when this press is
+   * a double-click: same button, same window, within the configured
+   * double_click_ms and double_click_px of the previous DOWN. Handlers that
+   * ignore it see an ordinary click. Never set on an UP action.
+   */
+  wuss_BUTTON_DOUBLE = 1 << 3
 }
 wuss_button_t;
 
@@ -113,6 +134,11 @@ wuss_mouse_action_t;
  * (13, 8, 9, 27), as on RISC OS. Keys with no codepoint use the constants
  * below, which sit above the Unicode range.
  */
+#define wuss_KEY_RETURN    13
+#define wuss_KEY_BACKSPACE 8
+#define wuss_KEY_TAB       9
+#define wuss_KEY_ESCAPE    27
+
 enum
 {
   wuss_KEY_UP = 0x110000,
@@ -335,12 +361,48 @@ typedef enum wuss_window_flags
    * receives wuss_EVENT_KEY and has its titlebar drawn in the focus tint.
    * Not part of wuss_WINDOW_DEFAULT.
    */
-  wuss_WINDOW_FOCUSABLE      = 1 << 11
+  wuss_WINDOW_FOCUSABLE      = 1 << 11,
+
+  /**
+   * wuss-managed and pinned: wuss_window_move and wuss_window_resize refuse
+   * to change its box, and a screen resize recomputes it directly instead of
+   * nudging/shrinking it like an ordinary window. Set internally on the icon
+   * bar's window; not intended for task-created windows.
+   */
+  wuss_WINDOW_PINNED         = 1 << 12,
+
+  /**
+   * Create the window in the top stack (see wuss_stack_t) instead of the
+   * middle one, e.g. for a system error dialogue. Creation only: change
+   * stack later with wuss_window_set_stack. Mutually exclusive with
+   * wuss_WINDOW_STACK_BACK.
+   */
+  wuss_WINDOW_STACK_TOP      = 1 << 13,
+
+  /**
+   * Create the window in the back stack (see wuss_stack_t) instead of the
+   * middle one, e.g. for the icon bar. Creation only. Mutually exclusive
+   * with wuss_WINDOW_STACK_TOP.
+   */
+  wuss_WINDOW_STACK_BACK     = 1 << 14
 }
 wuss_window_flags_t;
 
-/** Reason code for wuss_window_restack, selecting which end of the
- * z-order a window moves to. */
+/** The three z-order stacks, front to back. Every window lives in exactly
+ * one; any window in an earlier stack is drawn above every window in a later
+ * one. Regular windows use wuss_STACK_MIDDLE. Bringing a window to front or
+ * sending it to back (wuss_window_restack, a titlebar click) only reorders
+ * it within its own stack. */
+typedef enum wuss_stack
+{
+  wuss_STACK_TOP,    /**< In front: error dialogues, menus. */
+  wuss_STACK_MIDDLE, /**< Regular windows. */
+  wuss_STACK_BACK    /**< Behind regular windows, e.g. the icon bar. */
+}
+wuss_stack_t;
+
+/** Reason code for wuss_window_restack, selecting which end of a window's
+ * own stack it moves to. */
 typedef enum wuss_zorder
 {
   wuss_ZORDER_FRONT, /**< Move the window to the front (topmost). */
@@ -507,6 +569,26 @@ typedef struct wuss_config
 
   /** Desktop background, painted behind windows on every redraw. */
   wuss_backdrop_t backdrop;
+
+  /**
+   * Maximum interval in milliseconds between two same-button, same-window
+   * presses for the second to carry wuss_BUTTON_DOUBLE, or 0 for the default
+   * (400). Measured against the clock set by wuss_set_time; see
+   * wuss_mouse_click.
+   */
+  int            double_click_ms;
+
+  /**
+   * Maximum distance in pixels between two same-button, same-window presses
+   * for the second to carry wuss_BUTTON_DOUBLE, or 0 for the default (4).
+   */
+  int            double_click_px;
+
+  /**
+   * Minimum distance in pixels a press must move before it starts a drag
+   * rather than a plain click, or 0 for the default (4).
+   */
+  int            drag_threshold_px;
 }
 wuss_config_t;
 
@@ -664,6 +746,55 @@ const colour_t *wuss_get_palette(const wuss_t *wuss, int *npalette);
 result_t wuss_set_backdrop(wuss_t *wuss, const wuss_backdrop_t *backdrop);
 
 /**
+ * Replace the window manager's config partway through a session.
+ *
+ * Resolves and validates \p config exactly as wuss_create does, stores its
+ * furniture, bevel, button, accent, slider, body and backdrop colours,
+ * rebuilds the symbolic colour cache, broadcasts a \ref wuss_EVENT_PALETTE
+ * event once to every registered task (as wuss_set_palette does) so they can
+ * recache any resolved colours, then invalidates the whole screen. The
+ * caller is still responsible for the next wuss_redraw / wuss_redraw_dirty.
+ *
+ * config->titlebar_height is ignored: the titlebar height is fixed at
+ * wuss_create. Existing windows keep the background they resolved when they
+ * were created.
+ *
+ * \param[in] wuss   Window manager.
+ * \param[in] config New config, copied in.
+ * \return \ref result_OK on success, \ref result_OOM if out of memory, \ref
+ *         result_WUSS_BAD_COLOUR if a colour in \p config is out of range
+ *         (the config is left unchanged), else the first non-OK result
+ *         returned by a task's handle callback (iteration still continues
+ *         past it).
+ */
+result_t wuss_set_config(wuss_t *wuss, const wuss_config_t *config);
+
+/**
+ * Fetch the window manager's current config as resolved -- concrete palette
+ * indices and backdrop, not any symbolic placeholder that was passed to
+ * wuss_create / wuss_set_config. Round-trips through wuss_set_config: fetch,
+ * change a field, set. furniture, bevel, button, accent and slider are
+ * filled even when the library was built without WUSS_FURNITURE /
+ * WUSS_ICONS, so a round-trip config is always valid to pass back regardless
+ * of build options.
+ *
+ * \param[in]  wuss   Window manager.
+ * \param[out] config Filled with the current resolved config.
+ */
+void wuss_get_config(const wuss_t *wuss, wuss_config_t *config);
+
+/**
+ * Tell wuss the current time, for double-click detection. The frontend calls
+ * this once per frame before wuss_mouse_click (SDL: SDL_GetTicks; RISC OS: a
+ * monotonic millisecond clock). The epoch is arbitrary and fixed by the
+ * caller -- only differences between calls matter.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] ms   Current time in milliseconds.
+ */
+void wuss_set_time(wuss_t *wuss, unsigned int ms);
+
+/**
  * Fetch the current screen size (the size of the screen_t passed to
  * wuss_create, or since applied by wuss_resize).
  *
@@ -682,13 +813,16 @@ size2d_t wuss_get_screen_size(const wuss_t *wuss);
  * wuss_window_move) and, only if it no longer fits, shrunk down to the
  * largest content size that does (see wuss_window_resize); a window is never
  * grown by a resize. The whole new screen is invalidated so the next
- * wuss_redraw / wuss_redraw_dirty repaints it in full.
+ * wuss_redraw / wuss_redraw_dirty repaints it in full. The screen's pixel
+ * format may change too: the loaded icon set is re-ordered in place to suit
+ * it.
  *
  * \param[in] wuss Window manager.
  * \param[in] scr  Screen to draw windows onto from now on. Not owned; must
  *                 outlive the wuss_t. May be the same pointer given to
  *                 wuss_create, already updated in place.
- * \return \ref result_OK.
+ * \return \ref result_OK, or \ref result_OOM if re-ordering the icon set
+ *         fails.
  */
 result_t wuss_resize(wuss_t *wuss, screen_t *scr);
 
@@ -967,7 +1101,9 @@ result_t wuss_mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit);
  * Deliver a scroll event. Hit-tests the topmost window at p as per
  * wuss_mouse_click, and delivers to the window's task in window-local
  * content coordinates; dropped if the hit window has no scroll callback, or
- * the pointer is over its titlebar.
+ * the pointer is over its titlebar. Anywhere over a wuss_ICON_TYPE_SLIDER
+ * the window does not scroll: the slider's value moves by delta *
+ * spec.u.slider.step towards max instead, raised as wuss_EVENT_ICON.
  *
  * \param[in]  wuss  Window manager.
  * \param[in]  p     Screen coordinate.
@@ -1035,6 +1171,44 @@ result_t wuss_key(wuss_t              *wuss,
                   int                  code,
                   wuss_key_modifiers_t modifiers,
                   int                 *claimed);
+
+/**
+ * Start a core drag session: from the next wuss_mouse_move onward, wuss
+ * takes over input and draws a marching-ants box of the given size, its
+ * hotspot held under the pointer, painted last in wuss_redraw_dirty.
+ * Furniture drags and menu hover tracking pause; POINTER_ENTER/EXIT for the
+ * windows the ants cross are deferred and settled at drag end; a MOUSE_UP
+ * ends the drag instead of being delivered as one, and Escape (wuss_key,
+ * wuss_KEY_ESCAPE) cancels it. The SDL frontend should capture the mouse for
+ * the duration so motion past the window edge still arrives.
+ *
+ * Ends with a wuss_EVENT_DRAG_END delivered to "window" -- on a MOUSE_UP,
+ * data.drag_end.drop is the window under the pointer (NULL over bare
+ * backdrop) and cancelled is 0; on Escape, drop is NULL and cancelled is 1.
+ *
+ * \param[in] wuss    Window manager.
+ * \param[in] window  Window the drag is considered to originate from; also
+ *                    the wuss_EVENT_DRAG_END recipient. Must belong to a
+ *                    task with a handle.
+ * \param[in] size    Size of the ants box, screen pixels.
+ * \param[in] hotspot Offset within the box that tracks the pointer (e.g. the
+ *                    point originally clicked, relative to the box's
+ *                    top-left).
+ * \return \ref result_OK on success, \ref result_BAD_ARG if window is NULL,
+ *         has no task handle, or size is not positive.
+ */
+result_t wuss_drag_start(wuss_t        *wuss,
+                         wuss_window_t *window,
+                         size2d_t       size,
+                         point_t        hotspot);
+
+/**
+ * Whether a core drag session (see wuss_drag_start) is currently active.
+ *
+ * \param[in] wuss Window manager.
+ * \return Non-zero while a drag is running.
+ */
+int wuss_is_dragging(const wuss_t *wuss);
 
 #ifdef __cplusplus
 }
