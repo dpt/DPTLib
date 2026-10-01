@@ -453,6 +453,25 @@ void wuss_menu_tick_item_live(wuss_menu_handle_t handle,
                               int                ticked);
 
 /**
+ * Shade or unshade a single item on a currently open menu level in place, so
+ * an ADJUST pick that changes whether another row applies shows at once.
+ * Only the open row changes: set or clear wuss_MENU_ITEM_DISABLED in the
+ * item's flags as well, for the next wuss_menu_open. A no-op if \p handle is
+ * stale/closed or \p menu is not an open level of its chain.
+ *
+ * \param[in] handle   Chain handle from wuss_menu_open.
+ * \param[in] menu     The (sub)menu level to update; matched by pointer
+ *                     against the description passed to wuss_menu_open or
+ *                     reached via a wuss_menu_item_t.submenu.
+ * \param[in] index    Row to update. A no-op if out of range.
+ * \param[in] disabled Non-zero to shade the row, zero to unshade it.
+ */
+void wuss_menu_disable_item_live(wuss_menu_handle_t handle,
+                                 const wuss_menu_t *menu,
+                                 int                index,
+                                 int                disabled);
+
+/**
  * Treat a key press as a pick from \p menu: find the first enabled row in \p
  * menu, or in a submenu reached without wuss_MENU_ITEM_PRE_OPEN, whose \c
  * shortcut label names the key, and deliver \p task the

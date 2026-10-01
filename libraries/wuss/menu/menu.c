@@ -1320,6 +1320,23 @@ void wuss_menu_tick_item_live(wuss_menu_handle_t handle,
   wuss_icon_set_selected(node->window, node->icons[index], ticked);
 }
 
+void wuss_menu_disable_item_live(wuss_menu_handle_t handle,
+                                 const wuss_menu_t *menu,
+                                 int                index,
+                                 int                disabled)
+{
+  struct wuss__menu *node;
+
+  node = wuss__menu_open_level(handle, menu);
+  if (node == NULL)
+    return;
+
+  if (index < 0 || index >= menu->nitems)
+    return;
+
+  wuss_icon_set_disabled(node->window, node->icons[index], disabled);
+}
+
 /* ----------------------------------------------------------------------- */
 
 int wuss__menu_row_pinned(const wuss_t *wuss, const wuss_icon_t *icon)
