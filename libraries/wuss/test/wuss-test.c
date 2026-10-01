@@ -8006,6 +8006,25 @@ ScFail:
     wuss_menu_close(mtb.menu_handle); /* NULL now: safe no-op */
     if (mwuss->menu_chain != NULL)            goto MoveCheckFail;
 
+    {
+      int claimed;
+
+      /* Escape dismisses an open chain and tells its owner, like a click
+       * outside. Regression: menus never hold the focus, so the key went
+       * nowhere and the chain stayed open. */
+      wuss_mouse_click(mwuss, POINT(20, 20), wuss_BUTTON_MENU,
+                       wuss_MOUSE_DOWN, NULL);
+      wuss_mouse_click(mwuss, POINT(20, 20), wuss_BUTTON_MENU,
+                       wuss_MOUSE_UP, NULL);
+      if (mwuss->menu_chain == NULL)          goto MoveCheckFail;
+
+      wuss_key(mwuss, wuss_KEY_ESCAPE, wuss_KEY_MOD_NONE, &claimed);
+      if (!claimed)                           goto MoveCheckFail;
+      if (mwuss->menu_chain != NULL)          goto MoveCheckFail;
+      if (mta.menu_closed_count != 2)         goto MoveCheckFail;
+      if (mta.menu_handle != NULL)            goto MoveCheckFail;
+    }
+
     rc = result_OK;
     goto MoveDestroy;
 
