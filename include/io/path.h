@@ -30,7 +30,8 @@ const char *pathf(const char *fmt, ...);
  *
  * On RISC OS a leafname carries no extension in the string at all -- file
  * type is separate filesystem metadata, not a suffix -- so every leaf
- * matches unchanged (a straight copy into 'name').
+ * matches unchanged (a straight copy into 'name'), except one still holding
+ * a foreign "/ext" suffix (e.g. "Bold/map"), which never matches.
  *
  * \return Nonzero on a match, zero if "leaf" lacks 'ext' or does not fit
  *         'cap'.
