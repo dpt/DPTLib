@@ -206,6 +206,15 @@ int wuss__slider_value_for_point(wuss_window_t     *window,
  * must be an icon of "window". */
 void wuss__icon_invalidate(wuss_window_t *window, const wuss_icon_t *icon);
 
+/* Set or clear "flag" in "icon"'s spec.flags and invalidate it. Setting it
+ * drops the caret if the icon holds it, as a hidden or shaded icon can no
+ * longer take input. Shared by wuss_icon_set_hidden and
+ * wuss_icon_set_disabled. */
+void wuss__icon_set_flag(wuss_window_t    *window,
+                         wuss_icon_t      *icon,
+                         wuss_icon_flags_t flag,
+                         int               on);
+
 /* Validate a spec against the palette and fill "out" with a detached icon:
  * "out->spec" is a copy of "spec" with fg/bg/swatch resolved to palette
  * indices and, for a BITMAP, u.bitmap.image resolved from u.bitmap.set.
