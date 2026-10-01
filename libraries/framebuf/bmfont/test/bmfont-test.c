@@ -24,6 +24,8 @@
 #include "framebuf/bmfont.h"
 #include "framebuf/bmfontfamily.h"
 
+#include "test/all-tests.h"
+
 /* ----------------------------------------------------------------------- */
 
 #ifdef USE_SDL
@@ -613,6 +615,8 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
         }
       }
     }
+    if (test_autoquit > 0 && frame >= test_autoquit)
+      quit = 1;
 #else
     if (frame > 1000)
       quit = 1;
