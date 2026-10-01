@@ -1,0 +1,134 @@
+   10REM > fixresources
+   20REM Recursively fix up a resource tree ported from a non-RISC-OS host:
+   30REM   - strip a trailing "/ext" extension from each leafname and set the
+   40REM     matching RISC OS filetype instead
+   50REM   - delete any "/DS_Store" leftover from a Mac
+   60REM Run *IN* the directory to fix (uses CSD as the starting point).
+   70:
+   80DIM stack% 256
+   90count%=0 : deleted%=0
+  100PROCinit_types
+  110PRINT "Scanning CSD ..."
+  120PROCscan("@")
+  130PRINT ;count%;" file(s) retyped, ";deleted%;" DS_Store file(s) removed."
+  140END
+  150:
+  160REM ----- extension -> filetype table -----
+  170DEF PROCinit_types
+  180DIM ext$(2), type%(2)
+  190ext$(0)="png"  : type%(0)=&B60
+  200ext$(1)="hex"  : type%(1)=&FFF
+  210ext$(2)="txt"  : type%(2)=&FFF
+  220ENDPROC
+  230:
+  240REM ----- look up "e$" (no slash, lower case) in the table -----
+  250REM returns filetype, or -1 if not recognised
+  260DEF FNtype_for(e$)
+  270LOCAL i%
+  280FOR i%=0 TO 2
+  290  IF e$=ext$(i%) THEN =type%(i%)
+  300NEXT i%
+  310=-1
+  320:
+  330REM ----- lower-case a string -----
+  340DEF FNlower(a$)
+  350LOCAL i%,c%,r$
+  360r$=""
+  370FOR i%=1 TO LEN(a$)
+  380  c%=ASC(MID$(a$,i%,1))
+  390  IF c%>=65 AND c%<=90 THEN c%=c%+32
+  400  r$=r$+CHR$(c%)
+  410NEXT i%
+  420=r$
+  430:
+  440REM ----- position of the last "/" in "a$", or 0 if none -----
+  450DEF FNlast_slash(a$)
+  460LOCAL i%,p%
+  470p%=0
+  480FOR i%=1 TO LEN(a$)
+  490  IF MID$(a$,i%,1)="/" THEN p%=i%
+  500NEXT i%
+  510=p%
+  512:
+  514REM ----- read the NUL-terminated string at "a%" -----
+  516DEF FNstr0(a%)
+  517LOCAL r$
+  518r$=""
+  519WHILE ?a%<>0 : r$+=CHR$(?a%) : a%+=1 : ENDWHILE
+  520=r$
+  521:
+  530REM ----- recursively walk directory "d$" (RISC OS pathname) -----
+  540REM A delete or rename shifts the directory's entries under OS_GBPB's
+  550REM index, so restart the walk from the top after either.
+  560REM Fixed-up names carry no extension, so a restart never redoes them.
+  570DEF PROCscan(d$)
+  580LOCAL obj%,index%,name$,path$,changed%
+  590index%=0
+  600REPEAT
+  610  SYS "OS_GBPB",9,d$,stack%,1,index%,256,"*" TO ,,,obj%,index%
+  620  IF obj%>0 THEN
+  630    name$=FNstr0(stack%)
+  640    path$=d$+"."+name$
+  650    changed%=FALSE
+  660    IF name$="/DS_Store" THEN
+  670      changed%=FNdelete(path$)
+  680    ELSE
+  690      IF FNis_dir(path$) THEN
+  700        PROCscan(path$)
+  710      ELSE
+  720        changed%=FNfixup(d$,name$)
+  730      ENDIF
+  740    ENDIF
+  750    IF changed% THEN index%=0
+  760  ENDIF
+  770UNTIL index%=-1
+  780ENDPROC
+  790:
+  800REM ----- true if "path$" is a directory (image files excluded) -----
+  810DEF FNis_dir(path$)
+  820LOCAL obj%
+  830SYS "OS_File",17,path$ TO obj%
+  840=(obj%=2)
+  850:
+  860REM ----- delete "path$", reporting failure but continuing -----
+  870REM returns TRUE if deleted
+  880DEF FNdelete(path$)
+  890LOCAL err%
+  900LOCAL ERROR
+  910ON ERROR LOCAL err%=TRUE
+  920IF NOT err% THEN SYS "OS_File",6,path$
+  930IF err% THEN
+  940  PRINT "  ** could not delete ";path$
+  950  =FALSE
+  960ENDIF
+  970deleted%+=1
+  980PRINT "  deleted ";path$
+  990=TRUE
+ 1000:
+ 1010REM ----- strip a leafname's extension and stamp its filetype -----
+ 1020REM returns TRUE if renamed
+ 1030DEF FNfixup(d$,name$)
+ 1040LOCAL slash%,ext$,type%,path$,newpath$,err%
+ 1050slash%=FNlast_slash(name$)
+ 1060IF slash%<2 THEN =FALSE : REM no extension (or only a leading slash)
+ 1070ext$=FNlower(MID$(name$,slash%+1))
+ 1080type%=FNtype_for(ext$)
+ 1090IF type%=-1 THEN =FALSE : REM unrecognised extension -- leave alone
+ 1100path$=d$+"."+name$
+ 1110newpath$=d$+"."+LEFT$(name$,slash%-1)
+ 1120LOCAL ERROR
+ 1130ON ERROR LOCAL err%=TRUE
+ 1140IF NOT err% THEN SYS "OS_FSControl",25,path$,newpath$
+ 1150IF err% THEN
+ 1160  PRINT "  ** could not rename ";path$
+ 1170  =FALSE
+ 1180ENDIF
+ 1190ON ERROR LOCAL err%=TRUE
+ 1200IF NOT err% THEN SYS "OS_File",18,newpath$,type%
+ 1210IF err% THEN
+ 1220  PRINT "  ** could not set filetype on ";newpath$
+ 1230ELSE
+ 1240  count%+=1
+ 1250  PRINT "  ";path$;" -> ";newpath$;" (&";~type%;")"
+ 1260ENDIF
+ 1270=TRUE
