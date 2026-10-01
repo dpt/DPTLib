@@ -832,7 +832,8 @@ typedef struct wuss_options
   int         res_height;
   const char *tasks;        /* -t/--tasks: comma-separated launcher task
                              * names to auto-open at startup, or "all";
-                             * default "" opens none */
+                             * default "" opens none ("Configure,Text"
+                             * under Emscripten) */
   const char *root;         /* --root: directory Filer's icon bar icon and
                              * System menu row open; default "." (or "/"
                              * under Emscripten, see filer_set_root) */
@@ -989,8 +990,12 @@ int main(int argc, char *argv[])
   opts.scale        = 0; /* 0 = let the frontend pick its default */
   opts.res_width    = 640;
   opts.res_height   = 480;
+#ifdef __EMSCRIPTEN__
+  opts.tasks        = "Configure,Text"; /* browser has no command line */
+#else
   opts.tasks        = "";
-  opts.root         = NULL; /* NULL: leave filer_set_root's own default */
+#endif
+  opts.root       = NULL; /* NULL: leave filer_set_root's own default */
   opts.script       = NULL;
 
   if (!parse_args(argc, argv, &opts))
