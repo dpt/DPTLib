@@ -114,9 +114,11 @@ static result_t saveas_do_save(wuss_saveas_t *sa)
 {
   const char *path;
 
+  /* A bare leaf has nowhere to go: the user must drag the icon to a
+   * directory instead. Fail so the dialogue stays open. */
   path = wuss_icon_get_text(sa->leaf_icon);
   if (!path_is_full(path))
-    return result_OK;
+    return result_BAD_ARG;
 
   return sa->save_fn(path, sa->opaque);
 }
@@ -355,7 +357,8 @@ static int saveas_handle_drag_end(wuss_saveas_t      *sa,
   if (event->data.drag_end.cancelled || event->data.drag_end.drop == NULL)
     return 1;
 
-  leafname = wuss_icon_get_text(sa->leaf_icon);
+  /* the writable holds a full path after a save; send only its leaf */
+  leafname = path_leaf(wuss_icon_get_text(sa->leaf_icon));
   memset(&payload, 0, sizeof(payload));
   payload.filetype     = sa->filetype;
   payload.reply_window = wuss_dialogue_window(sa->dialogue);
