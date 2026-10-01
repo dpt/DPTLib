@@ -795,7 +795,8 @@ static result_t read_cmap(bmfont_t *bmfont, FILE *fp)
 
 /**
  * Load the cmap for the font at \p png from its .map sidecar (the path with
- * its trailing "png" swapped for "map"). Without a sidecar, map U+0020
+ * its trailing "png" swapped for "map", or on RISC OS an extensionless path
+ * with "/map" appended). Without a sidecar, map U+0020
  * onwards to glyph 0 onwards, ending at the last cell with an advance width.
  */
 static result_t load_cmap(bmfont_t *bmfont, const char *png)
@@ -803,6 +804,7 @@ static result_t load_cmap(bmfont_t *bmfont, const char *png)
   result_t            rc;
   FILE               *fp;
   size_t              len;
+  const char         *ext;
   char               *mappath;
   int                 i;
   bmfont_cmap_group_t group;
@@ -810,14 +812,29 @@ static result_t load_cmap(bmfont_t *bmfont, const char *png)
   fp = NULL;
 
   len = strlen(png);
+  ext = NULL;
   if (len >= 3 && strcmp(png + len - 3, "png") == 0)
   {
-    mappath = malloc(len + 1);
+    len -= 3;
+    ext  = "map";
+  }
+#ifdef TARGET_RISCOS
+  else
+  {
+    /* pathf() drops the extension on RISC OS (file type is metadata), so
+     * the sidecar is the whole path plus "/map" */
+    ext = "/map";
+  }
+#endif
+
+  if (ext)
+  {
+    mappath = malloc(len + strlen(ext) + 1);
     if (mappath == NULL)
       return result_OOM;
 
-    memcpy(mappath, png, len - 3);
-    strcpy(mappath + len - 3, "map");
+    memcpy(mappath, png, len);
+    strcpy(mappath + len, ext);
     fp = fopen(mappath, "r");
     free(mappath);
   }
