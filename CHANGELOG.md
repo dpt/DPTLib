@@ -68,60 +68,75 @@ _Unreleased_ until one is cut.
   `Family Style` label back to a path. `dirscan_walk_dirs()` lists
   subdirectories.
 
-### Changed
-
-- **Breaking:** bitmap fonts move to a hierarchical layout,
-  `resources/bmfonts/<Family>/<Style>.png` (e.g. `GrongyUI/Bold.png`,
-  `Tiny/Regular.png`; the `-Lg` digits become the `DPT-DigitsLg` family).
-  `bmfont_enumerate()` now walks family directories and reports
-  `Family Style` labels, so `wuss_fontmenu` items read e.g. `GrongyUI Bold`.
-- **Breaking:** `screen_copy_bitmap_dithered()`'s dithering method argument
-  becomes a first-class selectable `screen_dither_t` rather than an
-  implicit fixed method.
-- **Breaking:** `array`'s duplicate squeeze/stretch variants are dropped
-  (kept only the non-duplicated pair).
-- Colour components (`wuss_colour_t` RGB fields etc.) move from `int` to
-  `unsigned int`.
-- Scroll sausage Adjust-drag now scrolls both axes at once; scroll arrows
-  auto-repeat while held; a window's minimum size floors at what its
-  furniture needs; dragged windows snap to screen edges; a menu chain
-  raises to front after an Adjust pick.
-- `bytesex`'s scalar byte-swap functions are inlined.
-- Task menu boilerplate (plain window creation, proginfo desc, key-shortcut
-  prologue, clamp-to-range) is factored into shared helpers across tasks;
-  task clamps use `MIN`/`MAX` instead of hand-rolled comparisons.
-- SDL frame pacing now targets a deadline instead of a fixed delay.
-- Several redraw-path colour/palette resolutions move from per-pixel to
-  once-per-redraw or once-per-frame (doughnut greys and z-buffer, particle
-  palette, saturn/lissajous plot colours, porter-duff checkerboard fill,
-  doughnut p8 blit and shade palette); `screen_set_pixel`/`_p*` resolve
-  colour and open-code their clip test after clipping instead of before;
-  p4 unpack-to-bgrx8888 and span fill get byte-at-a-time/`memset` fast
-  paths; the clock task repaints only when the shown time changes.
-- AGENTS.md (agent guidance) split out from CLAUDE.md and refreshed.
-
-### Fixed
-
-- `screen_copy_bitmap()` honours BGR(X|A)8888 source formats instead of
-  assuming RGB byte order.
-- `wuss` windows are now placed around their actual (furniture-included)
-  positions rather than their content box.
-- `stack`: a container's fixed size is counted along its parent's axis
-  (previously miscounted on the cross axis).
-- A menu title is padded by a space either side; a menu row can be both
-  ticked and swatched at once; the colourmenu ticks the current colour;
-  descriptor-built menu items now initialise their shortcut field; a gap
-  is fixed between font runs in menu shortcut labels; shared gutters are
-  used consistently between shortcut-label drawing and menu sizing.
-  Porter-Duff's paused rule now starts stepping from the ramp midpoint.
-  A task's menu chain is abandoned when autoclose reaps the task.
-  `WUSS_FURNITURE=OFF` builds again. The chars font menu ticks the current
-  font, and the fontmenu directory is copied before enumeration (matching
-  the earlier `bmfont_enumerate` fix). The missing-glyph box is drawn one
-  column further left. The image task's Background menu drops a stray
-  None entry.
-
- `wuss_icon_spec_display()`
+- `io/filetype.h` — RISC OS filetype to host extension mapping, plus
+  `filetype_set()` to record the type as filesystem metadata on RISC OS (a
+  no-op elsewhere). `io/dirlist.h` — `dirlist_scan()` gives a sorted,
+  dotfile-filtered directory listing with each entry's filetype and
+  directory flag. `path_leaf_valid()`/`path_is_full()` validate leafnames
+  and full paths.
+- `wuss` inter-task messaging: fixed-size queued messages (`wuss_send`,
+  recorded sends, acknowledge) with point-to-point and broadcast
+  addressing, a bounce for unacknowledged recorded messages and delivery
+  deferred to dispatch depth 0. Destroying a task purges its queue.
+- `wuss` double-click detection (`wuss_BUTTON_DOUBLE`, driven by a
+  per-frame `wuss_set_time()` clock). Double-click time and distance and
+  the drag threshold live in `wuss_config_t`; the new `wuss_get_config()`
+  reads the config back. The Configure task gains a Timing frame to edit
+  them live.
+- `wuss` core drag session: `wuss_drag_start()` begins a hotspot-anchored
+  marching-ants drag that owns all input until it ends, delivering
+  `wuss_EVENT_DRAG_END` with the drop window and the button that started
+  it; Escape cancels. The SDL frontend captures the mouse for the drag's
+  duration. `wuss_ICON_TYPE_DRAGGABLE` is implemented: a bitmap icon that
+  starts a drag once the pointer clears the drag threshold, and behaves as
+  an ordinary press otherwise.
+- `wuss_gridview` gadget — a reflowing glyph-and-label grid with RISC OS
+  selection rules, double-click activation and ellipsis-truncated labels;
+  `wuss_gridview_get_cell_size()` reports its cell size.
+- `wuss_saveas` component — a RISC OS-style drag-to-save dialogue (file
+  icon showing `file_<type>` from the icon set, leafname writable,
+  Cancel/Save) driving the DataSave protocol against the drop window, or
+  saving directly when the writable holds a full path. ADJUST keeps it
+  open for repeat saves. Laid out with `geom/stack`.
+  `wuss_menu_open_window()` opens a caller's window as a menu chain of its
+  own, so a Save As can be shown as a submenu or standalone. Every demo
+  task's Save PNG row and ^S shortcut now open a Save As rather than
+  writing a fixed filename.
+- `wuss` Filer task — a RISC OS-style directory viewer and drag-save
+  target, opened from the icon bar or the System menu; double-click opens
+  subdirectories.
+- `wuss` RISC OS-style icon bar: a pinned, chromeless window along the
+  bottom of the screen (`wuss_WINDOW_PINNED`) holding
+  `wuss_iconbar_icon_t` icons whose clicks reach their task as
+  `wuss_EVENT_ICON`.
+- `wuss` windows live in one of three z-order stacks — top, middle and back
+  (`wuss_WINDOW_STACK_TOP`/`_BACK` at creation, `wuss_window_set_stack()`
+  later). Restacking acts within a window's own stack. Menus sit in the top
+  stack and the icon bar in the back.
+- `wuss_menu_disable_item_live()`, `wuss_icon_set_disabled()` and
+  `wuss_menu_set_title_live()` shade rows and retitle a menu while it is
+  open, e.g. after an ADJUST pick.
+- `wuss --script` drives the demo from a script file of mouse, key, text
+  and wait commands; `dump` prints every window's boxes, focus and hidden
+  state, and `png` saves the framebuffer. Run with
+  `SDL_VIDEODRIVER=dummy` for headless use.
+- `wuss -f`/`--font` chooses the system font family; the bold slot comes
+  from `bmfontfamily_heavier()`.
+- rgb565 and rgbx5551 (64K and 32K colour) screens: spans, `pixelmap`, RLE
+  bitmap blits, fill patterns, `bmfont` drawing, `screen_copy_bitmap()`
+  from 16bpp sources to any screen and ordered dithering onto 16bpp
+  screens. The SDL frontend's `--depth 15`/`16` and the Display task select
+  them.
+- `stack` size groups: items sharing a group get the largest size among
+  them, so labels and values in different rows line up. Dialogue labels in
+  the saturn, particles, display, spheroid and config tasks are now
+  size-grouped and measured from the font.
+- Particles task: repeller and attractor forces (Add submenu) with a shared
+  Strength dialogue whose Range slider sets the force's reach, and a
+  Markers toggle (M) drawing each force's range.
+- Ball task: Select grabs a ball and throws it on release; Menu > Add ball
+  (A) adds one. Wall bounces lose a quarter of the speed.
+- `wuss_ICON_TYPE_DISPLAY` leaves the reserved set: `wuss_icon_spec_display()`
   now builds one rather than a grooved LABEL. It draws via the label
   renderer. The icons demo gains a Display fields group.
 - Gadget tier (`WUSS_GADGETS`) between menus and components for compound
@@ -591,6 +606,49 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- **Breaking:** bitmap fonts move to a hierarchical layout,
+  `resources/bmfonts/<Family>/<Style>.png` (e.g. `GrongyUI/Bold.png`,
+  `Tiny/Regular.png`; the `-Lg` digits become the `DPT-DigitsLg` family).
+  `bmfont_enumerate()` now walks family directories and reports
+  `Family Style` labels, so `wuss_fontmenu` items read e.g. `GrongyUI Bold`.
+- **Breaking:** `screen_copy_bitmap_dithered()`'s dithering method argument
+  becomes a first-class selectable `screen_dither_t` rather than an
+  implicit fixed method.
+- **Breaking:** `array`'s duplicate squeeze/stretch variants are dropped
+  (kept only the non-duplicated pair).
+- Colour components (`wuss_colour_t` RGB fields etc.) move from `int` to
+  `unsigned int`.
+- Scroll sausage Adjust-drag now scrolls both axes at once; scroll arrows
+  auto-repeat while held; a window's minimum size floors at what its
+  furniture needs; dragged windows snap to screen edges; a menu chain
+  raises to front after an Adjust pick.
+- `bytesex`'s scalar byte-swap functions are inlined.
+- Task menu boilerplate (plain window creation, proginfo desc, key-shortcut
+  prologue, clamp-to-range) is factored into shared helpers across tasks;
+  task clamps use `MIN`/`MAX` instead of hand-rolled comparisons.
+- SDL frame pacing now targets a deadline instead of a fixed delay.
+- Several redraw-path colour/palette resolutions move from per-pixel to
+  once-per-redraw or once-per-frame (doughnut greys and z-buffer, particle
+  palette, saturn/lissajous plot colours, porter-duff checkerboard fill,
+  doughnut p8 blit and shade palette); `screen_set_pixel`/`_p*` resolve
+  colour and open-code their clip test after clipping instead of before;
+  p4 unpack-to-bgrx8888 and span fill get byte-at-a-time/`memset` fast
+  paths; the clock task repaints only when the shown time changes.
+- AGENTS.md (agent guidance) split out from CLAUDE.md and refreshed.
+- Auto-placed windows are centred on screen when the packer finds no room,
+  replacing the cascade fallback.
+- Setting a type-scoped icon flag (`DEFAULT`, `INTERACTIVE`, `SUBMENU`/
+  `SEPARATOR`/`SWATCH`) on the wrong icon type is now rejected instead of
+  ignored.
+- The launcher menu is regrouped into Utilities, Games, Visuals, Toys,
+  Tests and System in Title Case; Info, Configure, Debug, zoom, CRT Effect
+  and Software Pointer move under System. Emscripten builds drop Quit.
+- A disabled menu row's shortcut keycap is drawn as an outline in the row's
+  grey.
+- The Configure window's "ms"/"px" units follow their fields.
+- `screen` dispatches per-depth workers through `log2bpp`-indexed function
+  tables; single-use static tables are scoped to their functions.
+- bmfont scripts move to `tools/bmfont/`.
 - **Breaking:** reserved `wuss_ICON_TYPE_STRING_SET` removed (reimplemented
   as the `wuss_stringset` gadget); `DRAGGABLE`'s numeric value drops by one.
 - `wuss_nearest_colour()` defers to `colour_to_pixel()`, matching the
@@ -868,6 +926,46 @@ _Unreleased_ until one is cut.
 
 ### Fixed
 
+- `screen_copy_bitmap()` honours BGR(X|A)8888 source formats instead of
+  assuming RGB byte order.
+- `wuss` windows are now placed around their actual (furniture-included)
+  positions rather than their content box.
+- `stack`: a container's fixed size is counted along its parent's axis
+  (previously miscounted on the cross axis).
+- A menu title is padded by a space either side; a menu row can be both
+  ticked and swatched at once; the colourmenu ticks the current colour;
+  descriptor-built menu items now initialise their shortcut field; a gap
+  is fixed between font runs in menu shortcut labels; shared gutters are
+  used consistently between shortcut-label drawing and menu sizing.
+  Porter-Duff's paused rule now starts stepping from the ramp midpoint.
+  A task's menu chain is abandoned when autoclose reaps the task.
+  `WUSS_FURNITURE=OFF` builds again. The chars font menu ticks the current
+  font, and the fontmenu directory is copied before enumeration (matching
+  the earlier `bmfont_enumerate` fix). The missing-glyph box is drawn one
+  column further left. The image task's Background menu drops a stray
+  None entry.
+- `bitmap_save()` wrote packed p1/p2/p4 PNG rows with neighbouring pixels
+  swapped.
+- `PIXELFMT_MAKE_BGRX8888` swapped red and blue; `PIXELFMT_xxB565_SHIFT`
+  overlapped green; `bitmap_clear()` did nothing for 16bpp bitmaps.
+- `bmfontfamily_label_path()` clobbered its directory argument when given
+  a `pathf()` result, leaving the Emscripten build with a black screen.
+- Escape now dismisses an open menu. Closing a window still in the open
+  menu chain abandons the chain rather than leaving it pointing at freed
+  memory. Auto-placement ignores open menus.
+- A core drag keeps the pointer even over a parent menu's titlebar. The
+  drag ants are no longer clipped to the last window redrawn, leave no
+  trail and repaint only their edges each frame.
+- Dialogue and Configure windows take the input focus, so their writable
+  fields accept typing. The SDL frontend no longer swallows the click that
+  focuses its window.
+- The backdrop image is clipped to each piece it fills instead of painting
+  over windows.
+- `wuss_get_config()` builds with `WUSS_FURNITURE=OFF`.
+- Titlebar text is centred by the font's ascent rather than a fixed offset.
+  Window title truncation no longer splits a UTF-8 codepoint.
+- Toggle-size no longer queues overlapping dirty rectangles and repaints
+  the furniture strip it vacates when shrinking.
 - `wuss_stringset` kept its menu handle after the chain closed, so
   `wuss_stringset_destroy()` used it after free.
 - Left/right-justified text on bordered LABEL/DISPLAY icons overlapped the
