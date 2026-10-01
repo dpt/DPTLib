@@ -11,6 +11,7 @@
 #include "base/result.h"
 #include "base/utils.h"
 #include "geom/box.h"
+#include "geom/stack.h"
 #include "io/filetype.h"
 #include "io/path.h"
 
@@ -29,32 +30,49 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* The dialogue is as wide as the two buttons side by side, which the writable
- * also spans, and as tall as its rows: file icon, writable, then the buttons,
- * each separated by a gap. */
-
 #define SAVEAS_ICON_W    34
 #define SAVEAS_ICON_H    34
 #define SAVEAS_BUTTON_W  64
 #define SAVEAS_ROW_H     24
 #define SAVEAS_SAVE_GROW  8 /* extra height for wuss_ICON_BORDER_ACTION */
-
 #define SAVEAS_GAP       wuss_STD_INSET
-#define SAVEAS_INSETS    (wuss_STD_INSET * 2)
-#define SAVEAS_LEAF_W    (SAVEAS_BUTTON_W * 2 + SAVEAS_GAP)
-#define SAVEAS_WIDTH     (SAVEAS_INSETS + SAVEAS_LEAF_W)
-#define SAVEAS_SAVE_Y    (SAVEAS_GAP * 3 + SAVEAS_ICON_H + SAVEAS_ROW_H)
-#define SAVEAS_HEIGHT    (SAVEAS_SAVE_Y + SAVEAS_ROW_H + SAVEAS_SAVE_GROW + \
-                          SAVEAS_GAP)
 
 #define SAVEAS_LEAF_SIZE DPTLIB_MAXPATH
+
+/* stack items for the dialogue: a VBOX of the file icon, centred, above the
+ * writable above the row of buttons, Cancel centred against the taller Save.
+ * The dialogue is sized to fit with stack_smallest. */
+enum
+{
+  SA_ROOT,
+  SA_FILE,
+  SA_LEAF,
+  SA_BUTTONS,
+  SA_CANCEL,
+  SA_SAVE,
+  SA__LIMIT
+};
+
+static const stack_item_t saveas_layout[SA__LIMIT] =
+{
+  [SA_ROOT]    = { .kind = stack_KIND_VBOX, .parent = -1,
+                   .gap = SAVEAS_GAP, .pad = wuss_STD_INSETS },
+  [SA_FILE]    = STACK_LEAF(SA_ROOT, SAVEAS_ICON_H, SAVEAS_ICON_W,
+                            stack_ALIGN_CENTRE),
+  [SA_LEAF]    = STACK_LEAF(SA_ROOT, SAVEAS_ROW_H, 0, stack_ALIGN_FILL),
+  [SA_BUTTONS] = STACK_HBOX(SA_ROOT, SAVEAS_ROW_H + SAVEAS_SAVE_GROW,
+                            SAVEAS_GAP, stack_ALIGN_FILL),
+  [SA_CANCEL]  = STACK_LEAF(SA_BUTTONS, SAVEAS_BUTTON_W, SAVEAS_ROW_H,
+                            stack_ALIGN_CENTRE),
+  [SA_SAVE]    = STACK_LEAF(SA_BUTTONS, SAVEAS_BUTTON_W, 0, stack_ALIGN_FILL)
+};
 
 /* The struct is opaque outside this file, unlike wuss_dialogue/wuss_info --
  * no other component composes with it, so nothing needs its layout. */
 struct wuss_saveas
 {
-  wuss_alloc_t            alloc;   /* copied hooks; wuss_t itself not retained */
-  wuss_t                 *wuss;
+  wuss_alloc_t             alloc;   /* copied hooks; wuss_t itself not retained */
+  wuss_t                  *wuss;
   wuss_task_t             *task;
   wuss_dialogue_t         *dialogue;
   wuss_icon_t             *drag_icon;
@@ -161,42 +179,33 @@ static int saveas_file_icon(const wuss_t *wuss, filetype_t filetype)
   return idx >= 0 ? wuss_ICON_SET(idx) : 0;
 }
 
-static result_t saveas_build_icons(wuss_saveas_t *sa, const char *leafname)
+static result_t saveas_build_icons(wuss_saveas_t *sa,
+                                   const char    *leafname,
+                                   size2d_t       size)
 {
   result_t         rc;
+  box_t            root;
+  box_t            boxes[SA__LIMIT];
   wuss_window_t   *window;
   wuss_icon_spec_t specs[4];
   wuss_icon_t     *icons[4];
 
+  root = (box_t) BOX_POS_SIZE(0, 0, size.w, size.h);
+  rc = stack_solve(saveas_layout, SA__LIMIT, &root, boxes);
+  if (rc != result_OK)
+    return rc;
+
   window = wuss_dialogue_window(sa->dialogue);
   memset(specs, 0, sizeof(specs));
 
-  specs[0].bbox = (box_t) BOX_POS_SIZE((SAVEAS_WIDTH - SAVEAS_ICON_W) / 2,
-                                       SAVEAS_GAP,
-                                       SAVEAS_ICON_W, SAVEAS_ICON_H);
+  specs[0].bbox         = boxes[SA_FILE];
   specs[0].type         = wuss_ICON_TYPE_DRAGGABLE;
   specs[0].u.bitmap.set = saveas_file_icon(sa->wuss, sa->filetype);
 
-  wuss_icon_spec_writable(&specs[1],
-                          (box_t) BOX_POS_SIZE(wuss_STD_INSET,
-                                               SAVEAS_GAP * 2 + SAVEAS_ICON_H,
-                                               SAVEAS_LEAF_W, SAVEAS_ROW_H),
-                          leafname, SAVEAS_LEAF_SIZE, 0);
-
-  wuss_icon_spec_action(&specs[2],
-                        (box_t) BOX_POS_SIZE(wuss_STD_INSET,
-                                             SAVEAS_SAVE_Y +
-                                             SAVEAS_SAVE_GROW / 2,
-                                             SAVEAS_BUTTON_W, SAVEAS_ROW_H),
-                        "Cancel", 0);
-
-  wuss_icon_spec_action(&specs[3],
-                        (box_t) BOX_POS_SIZE(wuss_STD_INSET * 2 +
-                                             SAVEAS_BUTTON_W,
-                                             SAVEAS_SAVE_Y,
-                                             SAVEAS_BUTTON_W,
-                                             SAVEAS_ROW_H + SAVEAS_SAVE_GROW),
-                        "Save", 1);
+  wuss_icon_spec_writable(&specs[1], boxes[SA_LEAF], leafname,
+                          SAVEAS_LEAF_SIZE, 0);
+  wuss_icon_spec_action(&specs[2], boxes[SA_CANCEL], "Cancel", 0);
+  wuss_icon_spec_action(&specs[3], boxes[SA_SAVE], "Save", 1);
 
   rc = wuss_icon_create_array(window, specs, 4, icons);
   if (rc != result_OK)
@@ -237,7 +246,12 @@ result_t wuss_saveas_create(wuss_saveas_t        **out,
   sa->transfer_active = 0;
   sa->save_target     = NULL;
 
-  size = SIZE2D(SAVEAS_WIDTH, SAVEAS_HEIGHT);
+  rc = stack_smallest(saveas_layout, SA__LIMIT, &size);
+  if (rc != result_OK)
+  {
+    sa->alloc.free(sa);
+    return rc;
+  }
 
   rc = wuss_dialogue_create(&sa->dialogue, task, size, "Save As", NULL, sa);
   if (rc != result_OK)
@@ -246,7 +260,7 @@ result_t wuss_saveas_create(wuss_saveas_t        **out,
     return rc;
   }
 
-  rc = saveas_build_icons(sa, leafname);
+  rc = saveas_build_icons(sa, leafname, size);
   if (rc != result_OK)
   {
     wuss_dialogue_destroy(sa->dialogue);
@@ -314,14 +328,16 @@ wuss_window_t *wuss_saveas_window(const wuss_saveas_t *saveas)
 result_t wuss_saveas_open(wuss_saveas_t *saveas)
 {
   wuss_window_t *win;
+  box_t          content;
   point_t        at;
 
   win = wuss_dialogue_window(saveas->dialogue);
+  wuss_window_get_content_bounds(win, &content);
 
   /* centred on the pointer, as a RISC OS Save As opened from a key press */
   at    = wuss_get_pointer(saveas->wuss);
-  at.x -= SAVEAS_WIDTH / 2;
-  at.y -= SAVEAS_HEIGHT / 2;
+  at.x -= (content.x1 - content.x0) / 2;
+  at.y -= (content.y1 - content.y0) / 2;
 
   return wuss_menu_open_window(saveas->task, win, at, NULL);
 }
