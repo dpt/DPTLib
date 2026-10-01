@@ -180,26 +180,6 @@ static result_t porter_duff_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(pd->window, porter_duff_handle, pd, path);
 }
 
-/* the Save As dialogue's own task: forwards every event on its window into
- * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
- * porter_duff_task_t block belongs to task->delegate's lifecycle, freed
- * there, not here. */
-static result_t porter_duff_saveas_handle(wuss_window_t      *window,
-                                          const wuss_event_t *event,
-                                          void               *task_data)
-{
-  porter_duff_task_t *pd;
-
-  pd = task_data;
-
-  if (event->kind == wuss_EVENT_QUIT)
-    return result_OK;
-
-  (void) wuss_saveas_handle_event(pd->saveas, window, event);
-
-  return result_OK;
-}
-
 /* ----------------------------------------------------------------------- */
 
 result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
@@ -208,7 +188,6 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
   porter_duff_task_t *task;
   wuss_task_t        *delegate;
   wuss_task_desc_t    delegate_desc;
-  wuss_task_desc_t    saveas_desc;
   filetype_t          png_type;
   const char         *resources;
   const colour_t     *palette;
@@ -267,25 +246,12 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
     return rc;
   }
 
-  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
-   * owner, and delegate (above) is one */
-  saveas_desc.handle    = porter_duff_saveas_handle;
-  saveas_desc.task_data = task;
-  saveas_desc.name      = "porter-duff-saveas";
-  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(delegate);
-    return rc;
-  }
-
   png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
                           PORTER_DUFF_SAVE_NAME, porter_duff_saveas_save,
                           task);
   if (rc != result_OK)
   {
-    wuss_task_destroy(task->saveas_task);
     wuss_task_destroy(delegate);
     return rc;
   }
@@ -341,7 +307,6 @@ free_a:
 void porter_duff_destroy(porter_duff_task_t *task)
 {
   wuss_saveas_destroy(task->saveas);
-  wuss_task_destroy(task->saveas_task);
   free(task->dst.base);
   free(task->src.base);
   free(task->b.base);

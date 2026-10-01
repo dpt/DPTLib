@@ -673,9 +673,6 @@ static result_t spheroid_strip_create(spheroid_task_t *task, int height)
 
 /* defined below, alongside spheroid_save */
 static result_t spheroid_saveas_save(const char *path, void *opaque);
-static result_t spheroid_saveas_handle(wuss_window_t      *window,
-                                       const wuss_event_t *event,
-                                       void               *task_data);
 
 result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
 {
@@ -683,7 +680,6 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
   spheroid_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  wuss_task_desc_t saveas_desc;
   filetype_t       png_type;
   stack_item_t     items[SS__LIMIT];
   size2d_t         strip_sz;
@@ -744,20 +740,8 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
     return rc;
   }
 
-  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
-   * owner, and delegate (above) is one */
-  saveas_desc.handle    = spheroid_saveas_handle;
-  saveas_desc.task_data = task;
-  saveas_desc.name      = "spheroid-saveas";
-  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
-  if (rc != result_OK)
-  {
-    wuss_window_close(task->window); /* its QUIT frees the task block */
-    return rc;
-  }
-
   png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
                           SPHEROID_SAVE_NAME, spheroid_saveas_save, task);
   if (rc != result_OK)
   {
@@ -831,7 +815,6 @@ void spheroid_destroy(spheroid_task_t *task)
   for (which = 0; which < SPHEROID_NCOLOURS; which++)
     wuss_colourset_destroy(task->colour_sets[which]);
   wuss_saveas_destroy(task->saveas);
-  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 
@@ -1184,26 +1167,6 @@ static result_t spheroid_save(spheroid_task_t *task, const char *path)
 static result_t spheroid_saveas_save(const char *path, void *opaque)
 {
   return spheroid_save(opaque, path);
-}
-
-/* the Save As dialogue's own task: forwards every event on its window into
- * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
- * spheroid_task_t block belongs to task->delegate's lifecycle, freed there,
- * not here. */
-static result_t spheroid_saveas_handle(wuss_window_t      *window,
-                                       const wuss_event_t *event,
-                                       void               *task_data)
-{
-  spheroid_task_t *task;
-
-  task = task_data;
-
-  if (event->kind == wuss_EVENT_QUIT)
-    return result_OK;
-
-  (void) wuss_saveas_handle_event(task->saveas, window, event);
-
-  return result_OK;
 }
 
 /* the lit light whose marker is within SPHEROID_GRAB px of (px, py), or -1 */

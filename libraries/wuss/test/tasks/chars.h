@@ -28,9 +28,6 @@ typedef struct chars_task
 {
   wuss_window_t      *window;
   wuss_task_t        *delegate;    /* the wuss task backing this window */
-  wuss_task_t        *saveas_task; /* owns the Save As dialogue; separate
-                                    * from delegate, which is autoclose and
-                                    * wuss_saveas_create forbids that */
   wuss_saveas_t       *saveas;
   wuss_t             *wuss;        /* for wuss_get_pointer when opening the
                                     * menu */

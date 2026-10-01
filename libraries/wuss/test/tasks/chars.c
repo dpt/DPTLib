@@ -323,26 +323,6 @@ static result_t chars_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(cc->window, chars_handle, cc, path);
 }
 
-/* the Save As dialogue's own task: forwards every event on its window into
- * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
- * chars_task_t block belongs to task->delegate's lifecycle, freed there,
- * not here. */
-static result_t chars_saveas_handle(wuss_window_t      *window,
-                                    const wuss_event_t *event,
-                                    void               *task_data)
-{
-  chars_task_t *cc;
-
-  cc = task_data;
-
-  if (event->kind == wuss_EVENT_QUIT)
-    return result_OK;
-
-  (void) wuss_saveas_handle_event(cc->saveas, window, event);
-
-  return result_OK;
-}
-
 /* ----------------------------------------------------------------------- */
 
 result_t chars_create(wuss_t *wuss, chars_task_t **out)
@@ -351,7 +331,6 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   chars_task_t      *task;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
-  wuss_task_desc_t   saveas_desc;
   filetype_t         png_type;
   bmfont_t          *font;
   const wuss_menu_t *menu;
@@ -431,24 +410,11 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
     return rc;
   }
 
-  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
-   * owner, and delegate (above) is one */
-  saveas_desc.handle    = chars_saveas_handle;
-  saveas_desc.task_data = task;
-  saveas_desc.name      = "chars-saveas";
-  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(delegate);
-    return rc;
-  }
-
   png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
                           CHARS_SAVE_NAME, chars_saveas_save, task);
   if (rc != result_OK)
   {
-    wuss_task_destroy(task->saveas_task);
     wuss_task_destroy(delegate);
     return rc;
   }
@@ -491,7 +457,6 @@ void chars_destroy(chars_task_t *task)
   free(task->fonts);
 
   wuss_saveas_destroy(task->saveas);
-  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 

@@ -82,9 +82,6 @@ typedef struct spheroid_task
   wuss_colourset_t  *colour_sets[SPHEROID_NCOLOURS]; /* sphere, background,
                                                      * current light */
   rng_t              rng;        /* for Mutate and Randomise */
-  wuss_task_t        *saveas_task; /* owns the Save As dialogue; separate
-                                    * from delegate, which is autoclose and
-                                    * wuss_saveas_create forbids that */
   wuss_saveas_t       *saveas;
 }
 spheroid_task_t;

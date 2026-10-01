@@ -17,10 +17,12 @@
  * Cancel leaves it open. To show it standalone (e.g. from a keyboard
  * shortcut) call wuss_saveas_open, which opens it as a menu of its own.
  *
- * The task forwards every event for the dialogue's window (see
- * wuss_saveas_window) through wuss_saveas_handle_event, including
- * wuss_EVENT_DRAG_END (the DRAGGABLE icon starts its own core drag) and
- * wuss_EVENT_MESSAGE (the DataSaveAck / DataLoadAck replies).
+ * The dialogue runs on a task of its own (created by wuss_saveas_create and
+ * freed by wuss_saveas_destroy), which forwards every event for the
+ * dialogue's window (see wuss_saveas_window) through
+ * wuss_saveas_handle_event, including wuss_EVENT_DRAG_END (the DRAGGABLE
+ * icon starts its own core drag) and wuss_EVENT_MESSAGE (the DataSaveAck /
+ * DataLoadAck replies). Callers need not forward anything.
  *
  * v1 is save-only: there is no load side, and the icon starts a fresh
  * transfer only when none is already in progress.
@@ -65,14 +67,13 @@ typedef result_t (wuss_saveas_save_fn_t)(const char *path, void *opaque);
 /* ----------------------------------------------------------------------- */
 
 /**
- * Create a Save As dialogue: a hidden window on \p task, laid out with a
- * DRAGGABLE file icon, a leafname writable seeded from \p leafname, Cancel
- * and Save buttons, and a status line.
+ * Create a Save As dialogue: a hidden window on a task of its own, laid out
+ * with a DRAGGABLE file icon, a leafname writable seeded from \p leafname,
+ * Cancel and Save buttons, and a status line.
  *
  * \param[out] out      Filled with the new handle on success, untouched on
  *                      failure.
- * \param[in]  task     Task the dialogue window is created on. Must not be
- *                      an autoclose task and must outlive the handle.
+ * \param[in]  wuss     Window manager.
  * \param[in]  filetype File type offered in the DataSave protocol; copied.
  *                      Also picks the file icon: the icon-set entry
  *                      "file_<type>" (three lowercase hex digits), else
@@ -84,11 +85,11 @@ typedef result_t (wuss_saveas_save_fn_t)(const char *path, void *opaque);
  *                      not be NULL.
  * \param[in]  opaque   Passed back to \p save_fn.
  * \return \ref result_OK on success, \ref result_OOM, \ref result_NULL_ARG
- *         if \p out, \p task or \p save_fn is NULL, or a
- *         wuss_dialogue_create/wuss_icon_create code.
+ *         if \p out, \p wuss or \p save_fn is NULL, or a
+ *         wuss_task_create/wuss_dialogue_create/wuss_icon_create code.
  */
 result_t wuss_saveas_create(wuss_saveas_t        **out,
-                            wuss_task_t           *task,
+                            wuss_t                *wuss,
                             const filetype_t      *filetype,
                             const char            *leafname,
                             wuss_saveas_save_fn_t *save_fn,
@@ -132,10 +133,10 @@ void wuss_saveas_set_filetype(wuss_saveas_t    *saveas,
 const char *wuss_saveas_get_path(const wuss_saveas_t *saveas);
 
 /**
- * Dispatch an event from the task's own handler: a click on Cancel/Save, a
- * DataSaveAck/DataLoadAck/bounce addressed to this dialogue's window, or the
- * wuss_EVENT_DRAG_END from dragging the file icon. Everything else is left
- * unconsumed.
+ * Dispatch an event, as the dialogue's own task does: a click on
+ * Cancel/Save, a DataSaveAck/DataLoadAck/bounce addressed to this dialogue's
+ * window, or the wuss_EVENT_DRAG_END from dragging the file icon. Everything
+ * else is left unconsumed.
  *
  * Save with the writable already holding a full path (see
  * io/path.h:path_is_full) calls \c save_fn directly. Otherwise dragging the
@@ -146,7 +147,7 @@ const char *wuss_saveas_get_path(const wuss_saveas_t *saveas);
  * on completion". A bounce at any stage abandons the transfer silently.
  *
  * \param[in] saveas Handle.
- * \param[in] window The event's window, exactly as delivered to the task's
+ * \param[in] window The event's window, exactly as delivered to a task's
  *                   handler (NULL for a broadcast message).
  * \param[in] event  The event.
  * \return 1 if the event was this dialogue's and was consumed, else 0.
