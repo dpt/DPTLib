@@ -34,6 +34,7 @@
 #include "wuss/wuss.h"
 
 #include "frontend.h"
+#include "script.h"
 #include "tasks.h"
 
 #include "tasks/config.h"  /* config_create at startup */
@@ -262,9 +263,26 @@ struct wuss_frame_ctx
  * scr_height on the very instance the main loop below is reading */
 static struct wuss_frame_ctx g_frame_ctx;
 
+/* --script given: script_poll feeds input ahead of the frontend's own */
+static bool g_scripted;
+
+/* Next input for this frame: the script's until it ends its part of the
+ * frame, then the frontend's. */
+static bool frame_poll(struct wuss_frame_ctx *c,
+                       bool                  *scripting,
+                       wuss_input_t          *ev)
+{
+  if (*scripting && script_poll(c->wuss, c->bm, ev))
+    return true;
+
+  *scripting = false;
+  return wuss_frontend_poll(c->frontend, ev);
+}
+
 static void wuss_frame(void *arg)
 {
   struct wuss_frame_ctx *c = arg;
+  bool         scripting;
   wuss_input_t ev;
   bool         garbage;
   bool         stress;
@@ -277,7 +295,8 @@ static void wuss_frame(void *arg)
   /* before anything below can draw: see g_pointer */
   had_pointer = pointer_undraw(&old_pointer);
 
-  while (wuss_frontend_poll(c->frontend, &ev))
+  scripting = g_scripted;
+  while (frame_poll(c, &scripting, &ev))
   {
     switch (ev.kind)
     {
@@ -817,6 +836,7 @@ typedef struct wuss_options
   const char *root;         /* --root: directory Filer's icon bar icon and
                              * System menu row open; default "." (or "/"
                              * under Emscripten, see filer_set_root) */
+  const char *script;       /* --script: input script to run; see script.h */
 }
 wuss_options_t;
 
@@ -824,7 +844,8 @@ static const char wuss_usage[] =
   "usage: wuss [-r|--resources DIR] [-p|--palette NAME] "
   "[-f|--font FAMILY] "
   "[-d|--depth 1|2|4|8|15|16|32] [-s|--scale N] [--res WIDTHxHEIGHT] "
-  "[-t|--tasks all|NAME[,NAME...]] [--root DIR] [--crt] [--pointer]\n";
+  "[-t|--tasks all|NAME[,NAME...]] [--root DIR] [--crt] [--pointer] "
+  "[--script FILE]\n";
 
 /* Parses "WIDTHxHEIGHT" (e.g. "1024x768") into w and h. Returns false,
  * leaving them untouched, on anything else -- a missing 'x', a non-positive
@@ -852,7 +873,7 @@ static bool parse_res(const char *s, int *w, int *h)
 /* --res, --crt and --pointer have no short form, so they are given
  * longopt-only codes past the ASCII range getopt_long uses for short
  * options. */
-enum { OPT_RES = 256, OPT_CRT, OPT_POINTER, OPT_ROOT };
+enum { OPT_RES = 256, OPT_CRT, OPT_POINTER, OPT_ROOT, OPT_SCRIPT };
 
 /* Desktop: getopt_long. Accepts the short forms and the "--" long forms; the
  * historical single-dash long spellings (-resources) are no longer accepted.
@@ -871,6 +892,7 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
     { "root",      required_argument, NULL, OPT_ROOT    },
     { "crt",       no_argument,       NULL, OPT_CRT     },
     { "pointer",   no_argument,       NULL, OPT_POINTER },
+    { "script",    required_argument, NULL, OPT_SCRIPT  },
     { NULL,        0,                 NULL, 0           }
   };
 
@@ -891,6 +913,7 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
     case 's': opts->scale        = atoi(optarg); break;
     case 't': opts->tasks        = optarg;       break;
     case OPT_ROOT: opts->root    = optarg;       break;
+    case OPT_SCRIPT: opts->script = optarg;      break;
     case OPT_CRT:
       g_tasks.crt = true;
       break;
@@ -938,6 +961,8 @@ static bool parse_args(int argc, char *argv[], wuss_options_t *opts)
       opts->tasks = argv[++i];
     else if (strcmp(argv[i], "-root") == 0 && i + 1 < argc)
       opts->root = argv[++i];
+    else if (strcmp(argv[i], "-script") == 0 && i + 1 < argc)
+      opts->script = argv[++i];
 
   return true;
 }
@@ -966,6 +991,7 @@ int main(int argc, char *argv[])
   opts.res_height   = 480;
   opts.tasks        = "";
   opts.root         = NULL; /* NULL: leave filer_set_root's own default */
+  opts.script       = NULL;
 
   if (!parse_args(argc, argv, &opts))
     return EXIT_FAILURE;
@@ -974,8 +1000,18 @@ int main(int argc, char *argv[])
   filer_set_root(opts.root);
 #endif
 
+  if (opts.script != NULL)
+  {
+    if (script_open(opts.script) != result_OK)
+      return EXIT_FAILURE;
+    g_scripted = true;
+  }
+
   rc = run_wuss(opts.resources, opts.palette_name, opts.font_family,
                opts.depth, opts.scale, opts.res_width, opts.res_height, opts.tasks);
+
+  if (g_scripted && script_close() != result_OK)
+    rc = result_TEST_FAILED;
 
   return rc == result_TEST_PASSED ? EXIT_SUCCESS : EXIT_FAILURE;
 }
