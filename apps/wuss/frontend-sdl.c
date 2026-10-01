@@ -662,6 +662,13 @@ bool wuss_frontend_hide_pointer(wuss_frontend_t *fe, bool hide)
   return hide;
 }
 
+unsigned int wuss_frontend_ms(wuss_frontend_t *fe)
+{
+  NOT_USED(fe);
+
+  return (unsigned int) SDL_GetTicks();
+}
+
 void wuss_frontend_capture_mouse(wuss_frontend_t *fe, bool capture)
 {
   NOT_USED(fe);

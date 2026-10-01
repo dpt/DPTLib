@@ -404,6 +404,18 @@ void wuss_frontend_capture_mouse(wuss_frontend_t *fe, bool capture)
    * screen-global */
 }
 
+unsigned int wuss_frontend_ms(wuss_frontend_t *fe)
+{
+  unsigned int cs;
+
+  NOT_USED(fe);
+
+  cs = 0;
+  (void) _swix(OS_ReadMonotonicTime, _OUT(0), &cs);
+
+  return cs * 10;
+}
+
 void wuss_frontend_close(wuss_frontend_t *fe)
 {
   if (fe == NULL)

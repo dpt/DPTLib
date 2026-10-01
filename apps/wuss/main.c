@@ -264,7 +264,10 @@ struct wuss_frame_ctx
 static struct wuss_frame_ctx g_frame_ctx;
 
 /* --script given: script_poll feeds input ahead of the frontend's own */
-static bool g_scripted;
+static bool         g_scripted;
+
+/* wuss_set_time's clock while g_scripted, in place of the frontend's */
+static unsigned int g_script_ms;
 
 /* Next input for this frame: the script's until it ends its part of the
  * frame, then the frontend's. */
@@ -294,6 +297,13 @@ static void wuss_frame(void *arg)
 
   /* before anything below can draw: see g_pointer */
   had_pointer = pointer_undraw(&old_pointer);
+
+  /* a script runs on a synthetic 50Hz clock so its double-clicks (and their
+   * absence across a "wait") don't depend on how fast frames go headless */
+  if (g_scripted)
+    g_script_ms += 20;
+  wuss_set_time(c->wuss, g_scripted ? g_script_ms
+                                    : wuss_frontend_ms(c->frontend));
 
   scripting = g_scripted;
   while (frame_poll(c, &scripting, &ev))

@@ -139,6 +139,10 @@ bool wuss_frontend_hide_pointer(wuss_frontend_t *frontend, bool hide);
  * emscripten). Safe to call every frame with the current drag state. */
 void wuss_frontend_capture_mouse(wuss_frontend_t *frontend, bool capture);
 
+/* Milliseconds from an arbitrary epoch, wrapping; fed to wuss_set_time for
+ * double-click timing. */
+unsigned int wuss_frontend_ms(wuss_frontend_t *frontend);
+
 /* Tear down the surface and free everything wuss_frontend_open allocated. */
 void wuss_frontend_close(wuss_frontend_t *frontend);
 
