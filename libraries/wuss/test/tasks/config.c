@@ -474,7 +474,7 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
   rc = wuss_window_create_placed(delegate,
                                  doc,
                                  "Configure",
-                                 wuss_WINDOW_DEFAULT,
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  doc,
                                  SIZE2D(0, 0),
