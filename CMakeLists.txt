@@ -904,7 +904,7 @@ if(BUILD_APPS)
     include(FetchContent)
     FetchContent_Declare(explosion
                          GIT_REPOSITORY https://github.com/dpt/Explosion.git
-                         GIT_TAG 97449f0b9b746dafab920c92863608088e44829f) # develop
+                         GIT_TAG e86fdffa80c83c51dfd1ab3ee3922e01ad8ef5de) # develop
     FetchContent_MakeAvailable(explosion)
     target_link_libraries(wuss explosion)
 
