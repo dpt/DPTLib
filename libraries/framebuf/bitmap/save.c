@@ -201,7 +201,8 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   rc = result_OK;
 
 cleanup:
-  fclose(fp);
+  if (fp)
+    fclose(fp);
   if (png_plte != NULL)
     png_free(png_ptr, png_plte);
   png_free_data(png_ptr, info_ptr, PNG_FREE_ALL, -1);
