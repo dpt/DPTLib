@@ -29,6 +29,18 @@ static result_t key(wuss_t              *wuss,
     return result_OK;
   }
 
+#ifdef WUSS_MENUS
+  /* Escape dismisses an open menu chain, as a click outside it does: menus
+   * never take the input focus, so no menu window would ever see the key */
+  if (code == wuss_KEY_ESCAPE && wuss->menu_chain != NULL)
+  {
+    wuss__menu_abandon(wuss);
+    if (claimed != NULL)
+      *claimed = 1;
+    return result_OK;
+  }
+#endif
+
 #ifdef WUSS_ICONS
   /* the caret's writable gets first refusal */
   rc = wuss__writable_key(wuss, code, modifiers, &used);
