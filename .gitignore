@@ -49,3 +49,8 @@ __pycache__
 .vscode
 build-*/
 build.*/
+
+# Test output written to the working directory
+composite-1.png
+testpickle1
+testpickle2
