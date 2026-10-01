@@ -19,6 +19,10 @@
 #define BALL_BASE_RADIUS 8 /* +/-50% at spawn -> 4..12 */
 #define BALL_MAX_DY     16 /* cap on vertical speed under gravity */
 
+/* a wall bounce keeps 3/4 of the speed; integer division leaves speeds under
+ * 4 alone, so the spawn speeds of 3 and 2 bounce forever */
+#define BALL_BOUNCE(v) ((v) = -((v) - (v) / 4))
+
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
  * in ball_task_t, not as a file-scope static, so that each window's Info row
  * can hold its own .window pointer to the shared proginfo singleton, retargeted
@@ -28,6 +32,7 @@ enum
   BALL_MENU_INFO = 0,
   BALL_MENU_BACKGROUND,
   BALL_MENU_PAUSE,
+  BALL_MENU_ADD,
   BALL_MENU_CLEAR,
   BALL_MENU_GRAVITY
 };
@@ -77,9 +82,10 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
   if (task == NULL)
     return result_OOM;
 
-  task->wuss   = wuss;
-  task->bg     = colour_rgb(0xFF, 0x00, 0x00);
-  task->nballs = 1;
+  task->wuss    = wuss;
+  task->bg      = colour_rgb(0xFF, 0x00, 0x00);
+  task->nballs  = 1;
+  task->grabbed = -1;
 
   task->balls[0].x      = 50;
   task->balls[0].y      = 50;
@@ -121,6 +127,9 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "SPACE");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_ADD, "Add ball",
+                          wuss_MENU_ITEM_NONE, "A");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_CLEAR, "Clear",
                           wuss_MENU_ITEM_DISABLED, "C"); /* one ball */
@@ -177,7 +186,8 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 }
 
 /* match the window and menu titles, and whether Clear has anything to do,
- * to the ball count */
+ * to the ball count; an ADJUST pick of Add ball leaves the menu open, so the
+ * Clear row is shaded live as well */
 static void ball_set_title(ball_task_t *bc)
 {
   const char *title;
@@ -186,11 +196,17 @@ static void ball_set_title(ball_task_t *bc)
   wuss_window_set_title(bc->window, title);
   bc->menu.title = title; /* read on the next wuss_menu_open */
 
+  /* the held ball may have just been removed */
+  if (bc->grabbed >= bc->nballs)
+    bc->grabbed = -1;
+
   /* Clear has nothing to do while only the first ball remains */
   if (bc->nballs > 1)
     bc->menu_items[BALL_MENU_CLEAR].flags &= ~wuss_MENU_ITEM_DISABLED;
   else
     bc->menu_items[BALL_MENU_CLEAR].flags |= wuss_MENU_ITEM_DISABLED;
+  wuss_menu_disable_item_live(bc->menu_handle, &bc->menu, BALL_MENU_CLEAR,
+                              bc->nballs <= 1);
 }
 
 static result_t ball_mouse(wuss_window_t      *window,
@@ -209,8 +225,42 @@ static result_t ball_mouse(wuss_window_t      *window,
     return result_OK; /* the proginfo dialogue has no click behaviour of
                        * its own */
 
-  if (action != wuss_MOUSE_DOWN)
+  if (action == wuss_MOUSE_MOVE)
+  {
+    ball_t *b;
+    int     old_x, old_y;
+
+    if (bc->grabbed < 0)
+      return result_OK;
+
+    b = &bc->balls[bc->grabbed];
+    if (x == b->x && y == b->y)
+      return result_OK; /* keep the last real step as the throw velocity */
+
+    old_x = b->x;
+    old_y = b->y;
+
+    /* x,y already arrive in virtual content space, as ball positions are
+     * held. The pointer's step becomes the velocity the ball is thrown with
+     * on release. */
+    b->dx = CLAMP(x - old_x, -BALL_MAX_DY, BALL_MAX_DY);
+    b->dy = CLAMP(y - old_y, -BALL_MAX_DY, BALL_MAX_DY);
+    b->x  = x;
+    b->y  = y;
+
+    local = ball_local_box(MIN(old_x, b->x), MIN(old_y, b->y),
+                           MAX(old_x, b->x), MAX(old_y, b->y),
+                           b->radius);
+    wuss_window_invalidate(bc->window, &local);
+
     return result_OK;
+  }
+
+  if (action == wuss_MOUSE_UP)
+  {
+    bc->grabbed = -1; /* idle takes over, from the last pointer step */
+    return result_OK;
+  }
 
   if (button & wuss_BUTTON_MENU)
   {
@@ -230,34 +280,35 @@ static result_t ball_mouse(wuss_window_t      *window,
                                      &bc->menu_handle);
   }
 
-  if (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST))
+  if (button & wuss_BUTTON_SELECT)
+  {
+    int i;
+
+    /* topmost first: later balls are drawn over earlier ones */
+    for (i = bc->nballs - 1; i >= 0; i--)
+    {
+      const ball_t *b;
+      int           ox, oy;
+
+      b  = &bc->balls[i];
+      ox = x - b->x;
+      oy = y - b->y;
+      if (ox * ox + oy * oy <= b->radius * b->radius)
+      {
+        bc->grabbed = i;
+        break;
+      }
+    }
+  }
+  else if (button & wuss_BUTTON_ADJUST)
   {
     ball_t *b;
 
-    if (button & wuss_BUTTON_SELECT)
-    {
-      if (bc->nballs >= BALL_MAX)
-        return result_OK;
-      
-      /* x,y already arrive in virtual content space, as ball positions are
-       * held; only the invalidation boxes below need the scroll offset taking
-       * back off to reach window-local coordinates. */
-      b         = &bc->balls[bc->nballs++];
-      b->x      = x;
-      b->y      = y;
-      b->dx     = (bc->nballs & 1) ? 3 : -3;
-      b->dy     = (bc->nballs & 2) ? 2 : -2;
-      b->radius = ball_random_radius();
-      b->colour = ball_random_colour();
-    }
-    else if (button & wuss_BUTTON_ADJUST)
-    {
-      if (bc->nballs <= 1)
-        return result_OK; /* keep at least one ball on screen */
-      
-      b = &bc->balls[--bc->nballs];
-    }
-    
+    if (bc->nballs <= 1)
+      return result_OK; /* keep at least one ball on screen */
+
+    b = &bc->balls[--bc->nballs];
+
     local = ball_local_box(b->x, b->y, b->x, b->y, b->radius);
     wuss_window_invalidate(bc->window, &local);
 
@@ -298,6 +349,9 @@ static result_t ball_idle(void *task_data)
     box_t   local;
     int     old_x, old_y;
 
+    if (i == bc->grabbed)
+      continue; /* the pointer moves it */
+
     b = &bc->balls[i];
 
     old_x = b->x;
@@ -309,10 +363,10 @@ static result_t ball_idle(void *task_data)
     b->x += b->dx;
     b->y += b->dy;
 
-    if (b->x - b->radius < scroll.x)               { b->x = scroll.x + b->radius;              b->dx = -b->dx; }
-    else if (b->x + b->radius >= scroll.x + width) { b->x = scroll.x + width - 1 - b->radius;  b->dx = -b->dx; }
-    if (b->y - b->radius < scroll.y)               { b->y = scroll.y + b->radius;              b->dy = -b->dy; }
-    else if (b->y + b->radius >= scroll.y + height){ b->y = scroll.y + height - 1 - b->radius; b->dy = -b->dy; }
+    if (b->x - b->radius < scroll.x)               { b->x = scroll.x + b->radius;              BALL_BOUNCE(b->dx); }
+    else if (b->x + b->radius >= scroll.x + width) { b->x = scroll.x + width - 1 - b->radius;  BALL_BOUNCE(b->dx); }
+    if (b->y - b->radius < scroll.y)               { b->y = scroll.y + b->radius;              BALL_BOUNCE(b->dy); }
+    else if (b->y + b->radius >= scroll.y + height){ b->y = scroll.y + height - 1 - b->radius; BALL_BOUNCE(b->dy); }
 
     local = ball_local_box(MIN(old_x, b->x), MIN(old_y, b->y),
                            MAX(old_x, b->x), MAX(old_y, b->y),
@@ -345,6 +399,36 @@ static result_t ball_toggle(ball_task_t *bc, const wuss_event_t *event)
   *flag = !*flag;
 
   wuss_menu_tick_item_live(bc->menu_handle, &bc->menu, index, *flag);
+
+  return result_OK;
+}
+
+/* The "Add ball" row: add a ball at the centre of the visible content. */
+static result_t ball_add(ball_task_t *bc)
+{
+  box_t   content;
+  point_t scroll;
+  ball_t *b;
+  box_t   local;
+
+  if (bc->window == NULL || bc->nballs >= BALL_MAX)
+    return result_OK;
+
+  wuss_window_get_content_bounds(bc->window, &content);
+  wuss_window_get_scroll(bc->window, &scroll);
+
+  b         = &bc->balls[bc->nballs++];
+  b->x      = scroll.x + (content.x1 - content.x0) / 2;
+  b->y      = scroll.y + (content.y1 - content.y0) / 2;
+  b->dx     = (bc->nballs & 1) ? 3 : -3;
+  b->dy     = (bc->nballs & 2) ? 2 : -2;
+  b->radius = ball_random_radius();
+  b->colour = ball_random_colour();
+
+  local = ball_local_box(b->x, b->y, b->x, b->y, b->radius);
+  wuss_window_invalidate(bc->window, &local);
+
+  ball_set_title(bc);
 
   return result_OK;
 }
@@ -394,6 +478,9 @@ result_t ball_handle(wuss_window_t      *window,
         (event->data.menu_select.index == BALL_MENU_PAUSE ||
          event->data.menu_select.index == BALL_MENU_GRAVITY))
       return ball_toggle(bc, event);
+    if (event->data.menu_select.menu == &bc->menu &&
+        event->data.menu_select.index == BALL_MENU_ADD)
+      return ball_add(bc);
     if (event->data.menu_select.menu == &bc->menu &&
         event->data.menu_select.index == BALL_MENU_CLEAR)
       return ball_clear(bc);
