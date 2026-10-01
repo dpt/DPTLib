@@ -292,6 +292,7 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
   divider = c->wuss->palette[c->wuss->bevel_divider];
 
   cap_w = 0;
+  len   = 0;
   if (c->have_font)
   {
     len = (int) strlen(spec->text);
