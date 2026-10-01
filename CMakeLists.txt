@@ -912,7 +912,9 @@ if(BUILD_APPS)
         target_compile_options(wuss PRIVATE -ffunction-sections -fdata-sections)
         if(APPLE)
             target_link_options(wuss PRIVATE -Wl,-dead_strip)
-        elseif(NOT EMSCRIPTEN)
+        elseif(NOT EMSCRIPTEN AND NOT TARGET_RISCOS)
+            # Not on RISC OS: it strips startup code the SCL stubs need,
+            # giving "Branch through zero" before main
             target_link_options(wuss PRIVATE -Wl,--gc-sections)
         endif()
     endif()
