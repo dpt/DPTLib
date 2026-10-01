@@ -69,7 +69,9 @@ The binary name carries a per-config suffix: `DPTLibTest-debug` in Debug dirs
 (`build-asan/`), plain `DPTLibTest` in Release dirs (`build-sdl/`,
 `build-nosdl/`). The CMake target is `DPTLibTest` either way.
 
-SDL / interactive tests use the `build-sdl` binary instead.
+SDL / interactive tests use the `build-sdl` binary instead. Pass `-autoquit`
+to have each interactive window quit by itself after 60 frames instead of
+waiting for Q.
 
 Success prints `++ Tests completed in Ns: N of N tests passed.`
 

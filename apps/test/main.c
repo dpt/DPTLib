@@ -82,6 +82,12 @@ static const test_t tests[] =
 
 static const int ntests = NELEMS(tests);
 
+/* ponytail: fixed frame count; take a number on the command line if a
+ * test ever needs longer to cover its draw paths */
+#define AUTOQUIT_FRAMES 60
+
+int test_autoquit = 0;
+
 /* ----------------------------------------------------------------------- */
 
 static int runtest(const char *resources, const test_t *t)
@@ -152,6 +158,8 @@ int main(int argc, char *argv[])
   for (i = 1; i < argc; i++)
     if (strcmp(argv[i], "-resources") == 0)
       resources = argv[++i];
+    else if (strcmp(argv[i], "-autoquit") == 0)
+      test_autoquit = AUTOQUIT_FRAMES;
     else
       testargvidx[nargs++] = i;
 

@@ -7,6 +7,10 @@
 
 typedef result_t (testfn_t)(const char *resources);
 
+/* Frames an interactive (SDL) test runs before quitting by itself; 0 waits
+ * for the user to quit. Set by DPTLibTest's -autoquit option. */
+extern int test_autoquit;
+
 /* datastruct */
 extern testfn_t atom_test,
                 bitarr_test,

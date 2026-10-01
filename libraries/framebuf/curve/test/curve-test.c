@@ -26,6 +26,8 @@
 
 #include "framebuf/curve.h"
 
+#include "test/all-tests.h"
+
 /* ----------------------------------------------------------------------- */
 
 #ifdef USE_SDL
@@ -484,13 +486,13 @@ static void rotate_lines(curveteststate_t *state, int degrees, int palidx)
   const float  separation = diameter;
   const int    ntypes     = 3 + 1;
 
-  float        startx, starty;
-  int          x,y;
-  float        r;
-  float        ox, oy;
-  float        xa, ya, xb, yb;
-  float        sep;
-  box_t        b;
+  float startx, starty;
+  int   x,y;
+  float r;
+  float ox, oy;
+  float xa, ya, xb, yb;
+  float sep;
+  box_t b;
 
   startx = starty = radius;
 
@@ -687,6 +689,8 @@ static result_t curve_interactive_test(curveteststate_t *state)
         }
       }
     }
+    if (test_autoquit > 0 && frame >= test_autoquit)
+      quit = 1;
 #else
     if (frame > 100) /* headless: enough frames to cover every draw path */
       quit = 1;
@@ -771,10 +775,10 @@ result_t curve_test_one_format(const char *resources,
                                int         scr_height,
                                pixelfmt_t  scr_fmt)
 {
-  result_t          rc = result_OK;
-  curveteststate_t  state;
-  unsigned int     *pixels;
-  int               bm_inited = 0;
+  result_t         rc = result_OK;
+  curveteststate_t state;
+  unsigned int    *pixels;
+  int              bm_inited = 0;
 
   NOT_USED(resources);
 
