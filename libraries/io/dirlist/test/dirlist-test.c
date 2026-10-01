@@ -80,10 +80,12 @@ static result_t test_scan_sorted_and_filtered(void)
   if (!make_scratch_dir(dir, sizeof(dir)))
     return result_TEST_FAILED;
 
+  /* set before any goto: cleanup rmdirs it */
+  snprintf(subdir, sizeof(subdir), "%s/zzz", dir);
+
   if (!touch(dir, files[0]) || !touch(dir, files[1]) || !touch(dir, files[2]))
     goto cleanup;
 
-  snprintf(subdir, sizeof(subdir), "%s/zzz", dir);
   if (mkdir(subdir, 0700) != 0)
     goto cleanup;
 
