@@ -157,16 +157,20 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
     if (wuss->pressed_icon != NULL && wuss->pressed_window == win &&
         wuss->pressed_icon->spec.type == wuss_ICON_TYPE_DRAGGABLE)
     {
-      wuss_icon_t *icon = wuss->pressed_icon;
-      int          dx   = x - wuss->pressed_point.x;
-      int          dy   = y - wuss->pressed_point.y;
+      wuss_icon_t *icon;
+      int          dx, dy;
+
+      icon = wuss->pressed_icon;
+      dx   = x - wuss->pressed_point.x;
+      dy   = y - wuss->pressed_point.y;
 
       if (dx * dx + dy * dy >= wuss->drag_threshold_px * wuss->drag_threshold_px)
       {
-        box_t    box = icon->spec.bbox;
+        box_t    box;
         size2d_t size;
         point_t  hotspot;
 
+        box     = icon->spec.bbox;
         size.w  = box.x1 - box.x0;
         size.h  = box.y1 - box.y0;
         hotspot = POINT(wuss->pressed_point.x - (content.x0 - win->scroll.x + box.x0),
@@ -191,7 +195,9 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
     if (wuss->pressed_icon != NULL && wuss->pressed_window == win &&
         wuss->pressed_icon->spec.type == wuss_ICON_TYPE_SLIDER)
     {
-      wuss_icon_t *icon = wuss->pressed_icon;
+      wuss_icon_t *icon;
+
+      icon = wuss->pressed_icon;
 
       wuss__icon_set_value(win, icon,
                            wuss__slider_value_for_point(win, icon,

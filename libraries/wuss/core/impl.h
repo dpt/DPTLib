@@ -485,6 +485,7 @@ void wuss__drag_end(wuss_t        *wuss,
                     point_t        p,
                     wuss_window_t *drop,
                     int            cancelled);
+void wuss__drag_forget_window(wuss_t *wuss, wuss_window_t *window);
 void wuss__drag_draw(wuss_t *wuss);
 
 /* Walk every window front to back across all three stacks: wuss__z_first is
@@ -739,11 +740,16 @@ void wuss__message_leave(wuss_t *wuss);
  * dispatch_depth 0 -- see wuss__message_leave. */
 void wuss__message_drain(wuss_t *wuss);
 
-/* Purge "task" from the message queue: recorded messages addressed to it
- * bounce to their senders as wuss_EVENT_MESSAGE_BOUNCED (delivered inline,
- * synchronously, before this returns); anything sent by "task" is dropped
+/* Purge "task" from the message queue: anything sent by "task" is dropped
  * unsent. Called by wuss_task_destroy before it unlinks/frees the task. */
 void wuss__message_purge_task(wuss_t *wuss, wuss_task_t *task);
+
+/* Purge "window" from the message queue: messages addressed to it are
+ * removed and recorded ones bounce to their senders as
+ * wuss_EVENT_MESSAGE_BOUNCED (delivered inline, before this returns). Called
+ * by wuss_window_close while the window is still alive, so no queued message
+ * ever outlives its target. */
+void wuss__message_purge_window(wuss_t *wuss, wuss_window_t *window);
 
 /* wuss_window_set_hidden's real body. `handle`/`index` (menu builds only)
  * are threaded through into wuss_EVENT_PRE_SHOW's payload so a flagged menu

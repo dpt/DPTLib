@@ -9744,6 +9744,11 @@ QuitFail:
 
     wuss_window_close(win_recv); /* still queued -- close it before it drains */
 
+    /* bounced by the close itself: nothing may stay queued against the
+     * freed window, for a later purge or reused address to trip over */
+    if (tc_send.bounced_count != 1)
+      goto Failure;
+
     rc = wuss_idle(wuss);
     if (rc != result_OK)
       goto Failure;
@@ -9950,6 +9955,35 @@ QuitFail:
   rc = wuss_idle(wuss); /* no drag active: must not misbehave */
   if (rc != result_OK)
     goto Failure;
+
+  printf("test: closing a drag's source window abandons the drag, so a "
+        "later MOUSE_UP does not deliver DRAG_END to the freed window\n");
+
+  {
+    wuss_window_t *win_c;
+
+    rc = wuss_window_create(delegate_a, &box_b, "C", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP, box_size(&box_b), SIZE2D(0, 0),
+                            &win_c);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_drag_start(wuss, win_c, SIZE2D(8, 8), POINT(4, 4));
+    if (rc != result_OK)
+      goto Failure;
+
+    wuss_window_close(win_c);
+    if (wuss_is_dragging(wuss))
+      goto Failure;
+
+    tc_a.drag_end_count = 0;
+
+    rc = wuss_mouse_click(wuss, POINT(50, 50), wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    if (rc != result_OK)
+      goto Failure;
+    if (tc_a.drag_end_count != 0)
+      goto Failure;
+  }
 
   printf("test: a DRAGGABLE icon starts a core drag once the pointer clears "
         "drag_threshold_px from the press, sized to its bbox\n");

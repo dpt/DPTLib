@@ -196,11 +196,12 @@ static void deliver(wuss_t *wuss, const wuss_message_t *msg)
     int     acked;
 
     acked = 0;
-    for (e = wuss->tasks.next; e != NULL; e = e->next)
+    for (e = wuss->tasks.next; e != NULL; )
     {
       wuss_task_t *task;
 
       task = wuss__task_from_link(e);
+      e    = e->next; /* as wuss_idle: the handler may free its own node */
       if (task == msg->sender)
         continue;
 
@@ -266,26 +267,33 @@ void wuss__message_purge_task(wuss_t *wuss, wuss_task_t *task)
 {
   int i;
 
+  /* Drop unsent: nothing to bounce, the sender is gone. Messages addressed
+   * to the task's windows are bounced as wuss_window_close reaps each one. */
   for (i = 0; i < wuss->nqueued; )
   {
-    wuss_message_t *msg;
-
-    msg = &wuss->queue[i];
-
-    if (msg->sender == task)
+    if (wuss->queue[i].sender == task)
     {
-      /* Drop unsent: nothing to bounce, the sender is gone. */
       memmove(&wuss->queue[i], &wuss->queue[i + 1],
              (size_t) (wuss->nqueued - i - 1) * sizeof(*wuss->queue));
       wuss->nqueued--;
       continue;
     }
 
-    if (msg->window != NULL && msg->window->task == task)
+    i++;
+  }
+}
+
+void wuss__message_purge_window(wuss_t *wuss, wuss_window_t *window)
+{
+  int i;
+
+  for (i = 0; i < wuss->nqueued; )
+  {
+    if (wuss->queue[i].window == window)
     {
       wuss_message_t doomed;
 
-      doomed = *msg;
+      doomed = wuss->queue[i];
       memmove(&wuss->queue[i], &wuss->queue[i + 1],
              (size_t) (wuss->nqueued - i - 1) * sizeof(*wuss->queue));
       wuss->nqueued--;
