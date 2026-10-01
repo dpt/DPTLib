@@ -221,27 +221,44 @@ static result_t saveas_build_icons(wuss_saveas_t *sa,
   return result_OK;
 }
 
+/* The dialogue's own task: forwards every event on its window into
+ * wuss_saveas_handle_event. Not autoclose, so it survives the window being
+ * closed and reopened as a menu leaf; wuss_saveas_destroy frees it. */
+static result_t saveas_task_handle(wuss_window_t      *window,
+                                   const wuss_event_t *event,
+                                   void               *task_data)
+{
+  if (event->kind == wuss_EVENT_QUIT)
+    return result_OK;
+
+  (void) wuss_saveas_handle_event(task_data, window, event);
+
+  return result_OK;
+}
+
 result_t wuss_saveas_create(wuss_saveas_t        **out,
-                            wuss_task_t           *task,
+                            wuss_t                *wuss,
                             const filetype_t      *filetype,
                             const char            *leafname,
                             wuss_saveas_save_fn_t *save_fn,
                             void                  *opaque)
 {
-  result_t       rc;
-  wuss_saveas_t *sa;
-  size2d_t       size;
+  result_t         rc;
+  wuss_saveas_t   *sa;
+  size2d_t         size;
+  wuss_task_desc_t desc;
 
-  if (out == NULL || task == NULL || save_fn == NULL)
+  if (out == NULL || wuss == NULL || save_fn == NULL)
     return result_NULL_ARG;
 
-  sa = task->wuss->alloc.malloc(sizeof(*sa));
+  sa = wuss->alloc.malloc(sizeof(*sa));
   if (sa == NULL)
     return result_OOM;
 
-  sa->alloc           = task->wuss->alloc;
-  sa->wuss            = task->wuss;
-  sa->task            = task;
+  sa->alloc           = wuss->alloc;
+  sa->wuss            = wuss;
+  sa->task            = NULL;
+  sa->dialogue        = NULL;
   sa->filetype        = filetype != NULL ? *filetype : filetype_DATA;
   sa->save_fn         = save_fn;
   sa->opaque          = opaque;
@@ -250,30 +267,32 @@ result_t wuss_saveas_create(wuss_saveas_t        **out,
 
   rc = stack_smallest(saveas_layout, SA__LIMIT, &size);
   if (rc != result_OK)
-  {
-    sa->alloc.free(sa);
-    return rc;
-  }
+    goto failure;
 
-  rc = wuss_dialogue_create(&sa->dialogue, task, size, "Save As", NULL, sa);
+  desc.handle    = saveas_task_handle;
+  desc.task_data = sa;
+  desc.name      = "saveas";
+  rc = wuss_task_create(wuss, &desc, &sa->task);
   if (rc != result_OK)
-  {
-    sa->alloc.free(sa);
-    return rc;
-  }
+    goto failure;
+
+  rc = wuss_dialogue_create(&sa->dialogue, sa->task, size, "Save As", NULL,
+                            sa);
+  if (rc != result_OK)
+    goto failure;
 
   rc = saveas_build_icons(sa, leafname, size);
   if (rc != result_OK)
-  {
-    wuss_dialogue_destroy(sa->dialogue);
-    sa->alloc.free(sa);
-    return rc;
-  }
+    goto failure;
 
   saveas_set_actions(sa);
 
   *out = sa;
   return result_OK;
+
+failure:
+  wuss_saveas_destroy(sa);
+  return rc;
 }
 
 void wuss_saveas_destroy(wuss_saveas_t *doomed)
@@ -285,6 +304,7 @@ void wuss_saveas_destroy(wuss_saveas_t *doomed)
 
   alloc = doomed->alloc;
   wuss_dialogue_destroy(doomed->dialogue); /* frees the window and its icons */
+  wuss_task_destroy(doomed->task);
   alloc.free(doomed);
 }
 

@@ -379,26 +379,6 @@ static result_t greeble_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(task->window, greeble_handle, task, path);
 }
 
-/* the Save As dialogue's own task: forwards every event on its window into
- * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
- * greeble_task_t block belongs to task->delegate's lifecycle, freed there,
- * not here. */
-static result_t greeble_saveas_handle(wuss_window_t      *window,
-                                      const wuss_event_t *event,
-                                      void               *task_data)
-{
-  greeble_task_t *task;
-
-  task = task_data;
-
-  if (event->kind == wuss_EVENT_QUIT)
-    return result_OK;
-
-  (void) wuss_saveas_handle_event(task->saveas, window, event);
-
-  return result_OK;
-}
-
 /* Menu pick: the Random palettes row toggles per-prefab random palettes; a
  * Palette submenu row picks the base palette. An ADJUST pick keeps the chain
  * open without rebuilding it, so the tick set at open is now
@@ -539,7 +519,6 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
   greeble_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  wuss_task_desc_t saveas_desc;
   filetype_t       png_type;
   size2d_t         grid_px;
   int              i;
@@ -585,24 +564,11 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
    * can shrink the window below grid_px and the rest scrolls into view */
   greeble_generate(task);
 
-  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
-   * owner, and delegate (above) is one */
-  saveas_desc.handle    = greeble_saveas_handle;
-  saveas_desc.task_data = task;
-  saveas_desc.name      = "greeble-saveas";
-  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(delegate);
-    return rc;
-  }
-
   png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
                           GREEBLE_SAVE_NAME, greeble_saveas_save, task);
   if (rc != result_OK)
   {
-    wuss_task_destroy(task->saveas_task);
     wuss_task_destroy(delegate);
     return rc;
   }
@@ -657,7 +623,6 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
 void greeble_destroy(greeble_task_t *task)
 {
   wuss_saveas_destroy(task->saveas);
-  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 

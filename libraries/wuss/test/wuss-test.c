@@ -207,28 +207,6 @@ static result_t saveas_test_save(const char *path, void *opaque)
   return result_OK;
 }
 
-typedef struct saveas_owner
-{
-  wuss_saveas_t *sa;
-}
-saveas_owner_t;
-
-/* forwards every event on the saveas dialogue's window into
- * wuss_saveas_handle_event -- test_handle does not know about this
- * component. */
-static result_t saveas_owner_handle(wuss_window_t      *window,
-                                    const wuss_event_t *event,
-                                    void               *task_data)
-{
-  saveas_owner_t *tc;
-
-  tc = task_data;
-  if (tc->sa != NULL)
-    (void) wuss_saveas_handle_event(tc->sa, window, event);
-
-  return result_OK;
-}
-
 typedef struct saveas_recv
 {
   wuss_t        *wuss;
@@ -7039,9 +7017,8 @@ ColourSetOK: ;
     void            *sapixels;
     wuss_t          *sawuss;
     wuss_font_desc_t safdesc;
-    saveas_owner_t   saowner_tc;
     saveas_recv_t    sarecv_tc;
-    wuss_task_t     *saowner, *sarecv;
+    wuss_task_t     *sarecv;
     wuss_window_t   *sawin, *sarecvwin;
     wuss_saveas_t   *sa;
     filetype_t       sa_ft;
@@ -7071,10 +7048,6 @@ ColourSetOK: ;
                      &sawuss);
     if (rc != result_OK) goto SaveAsFail;
 
-    memset(&saowner_tc, 0, sizeof(saowner_tc));
-    saowner = mk_task(sawuss, saveas_owner_handle, &saowner_tc);
-    if (saowner == NULL) { rc = result_OOM; goto SaveAsFail; }
-
     memset(&sarecv_tc, 0, sizeof(sarecv_tc));
     sarecv_tc.wuss = sawuss;
     sarecv_tc.dir  = sa_scratch;
@@ -7091,11 +7064,10 @@ ColourSetOK: ;
     sa_ft.riscos = 0xfff;
     sa_ft.ext    = "txt";
     sa_save_calls = 0;
-    rc = wuss_saveas_create(&sa, saowner, &sa_ft, "Untitled",
+    rc = wuss_saveas_create(&sa, sawuss, &sa_ft, "Untitled",
                             saveas_test_save, &sa_save_calls);
     if (rc != result_OK) goto SaveAsFail;
-    saowner_tc.sa    = sa;
-    sawin            = wuss_saveas_window(sa);
+    sawin = wuss_saveas_window(sa);
 
     sa_leaf   = sawin->icons[1];
     sa_cancel = sawin->icons[2];
@@ -7204,8 +7176,6 @@ ColourSetOK: ;
     }
 
     wuss_saveas_destroy(sa);
-    saowner_tc.sa = NULL; /* reap below fires QUIT into saveas_owner_handle;
-                          * the dialogue is already gone */
     reap_test_tasks();
     wuss_destroy(sawuss);
     free(sapixels);

@@ -35,9 +35,6 @@ typedef struct checker_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
   wuss_task_t         *delegate; /* the task that owns the menu */
-  wuss_task_t         *saveas_task; /* owns the Save As dialogue; separate
-                                     * from delegate, which is autoclose and
-                                     * wuss_saveas_create forbids that */
   wuss_saveas_t       *saveas;
   wuss_window_t       *window, *window2;
   wuss_menu_handle_t   menu_handle; /* live only between open and a pick */

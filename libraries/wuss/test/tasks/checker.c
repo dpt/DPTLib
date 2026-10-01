@@ -57,33 +57,12 @@ static result_t checker_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(cc->menu_window, checker_handle, cc, path);
 }
 
-/* the Save As dialogue's own task: forwards every event on its window into
- * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
- * checker_task_t block belongs to task->delegate's lifecycle, freed there,
- * not here. */
-static result_t checker_saveas_handle(wuss_window_t      *window,
-                                      const wuss_event_t *event,
-                                      void               *task_data)
-{
-  checker_task_t *cc;
-
-  cc = task_data;
-
-  if (event->kind == wuss_EVENT_QUIT)
-    return result_OK;
-
-  (void) wuss_saveas_handle_event(cc->saveas, window, event);
-
-  return result_OK;
-}
-
 result_t checker_create(wuss_t *wuss, checker_task_t **out)
 {
   result_t         rc;
   checker_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  wuss_task_desc_t saveas_desc;
   filetype_t       png_type;
   int              i;
 
@@ -135,24 +114,11 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
 
-  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
-   * owner, and delegate (above) is one */
-  saveas_desc.handle    = checker_saveas_handle;
-  saveas_desc.task_data = task;
-  saveas_desc.name      = "checker-saveas";
-  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(delegate);
-    return rc;
-  }
-
   png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
                           CHECKER_SAVE_NAME, checker_saveas_save, task);
   if (rc != result_OK)
   {
-    wuss_task_destroy(task->saveas_task);
     wuss_task_destroy(delegate);
     return rc;
   }
@@ -200,7 +166,6 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
 void checker_destroy(checker_task_t *task)
 {
   wuss_saveas_destroy(task->saveas);
-  wuss_task_destroy(task->saveas_task);
   free(task);
 }
 

@@ -27,9 +27,6 @@ typedef struct porter_duff_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
   wuss_task_t        *delegate; /* the task that owns the menu */
-  wuss_task_t        *saveas_task; /* owns the Save As dialogue; separate
-                                    * from delegate, which is autoclose and
-                                    * wuss_saveas_create forbids that */
   wuss_saveas_t       *saveas;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
   wuss_menu_item_t    menu_items[5]; /* per-instance: a shared static would

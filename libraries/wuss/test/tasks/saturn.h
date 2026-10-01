@@ -76,9 +76,6 @@ typedef struct saturn_task
   wuss_t            *wuss;     /* for wuss_get_pointer/wuss_get_palette */
   wuss_window_t     *window;
   wuss_task_t       *delegate; /* the task that owns the menu */
-  wuss_task_t       *saveas_task; /* owns the Save As dialogue; separate
-                                   * from delegate, which is autoclose and
-                                   * wuss_saveas_create forbids that */
   wuss_saveas_t     *saveas;
   colour_t           bg, fg;
   unsigned long      seed;     /* RNG state; Select/Adjust step it */

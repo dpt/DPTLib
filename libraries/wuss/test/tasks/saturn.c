@@ -181,26 +181,6 @@ static result_t saturn_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(task->window, saturn_handle, task, path);
 }
 
-/* the Save As dialogue's own task: forwards every event on its window into
- * wuss_saveas_handle_event. Not autoclose, and does nothing on QUIT -- the
- * saturn_task_t block belongs to task->delegate's lifecycle, freed there,
- * not here. */
-static result_t saturn_saveas_handle(wuss_window_t      *window,
-                                     const wuss_event_t *event,
-                                     void               *task_data)
-{
-  saturn_task_t *task;
-
-  task = task_data;
-
-  if (event->kind == wuss_EVENT_QUIT)
-    return result_OK;
-
-  (void) wuss_saveas_handle_event(task->saveas, window, event);
-
-  return result_OK;
-}
-
 result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
 {
   static const saturn_config_t default_config = SATURN_CONFIG_DEFAULT;
@@ -209,7 +189,6 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   saturn_task_t   *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  wuss_task_desc_t saveas_desc;
   filetype_t       png_type;
 
   task = calloc(1, sizeof(*task));
@@ -242,24 +221,11 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   task->delegate = delegate; /* the task the menu opens against */
   wuss_task_set_autoclose(delegate, 1);
 
-  /* separate, non-autoclose task: wuss_saveas_create forbids an autoclose
-   * owner, and delegate (above) is one */
-  saveas_desc.handle    = saturn_saveas_handle;
-  saveas_desc.task_data = task;
-  saveas_desc.name      = "saturn-saveas";
-  rc = wuss_task_create(wuss, &saveas_desc, &task->saveas_task);
-  if (rc != result_OK)
-    goto fail_delegate;
-
   png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, task->saveas_task, &png_type,
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
                           SATURN_SAVE_NAME, saturn_saveas_save, task);
   if (rc != result_OK)
-  {
-    wuss_task_destroy(task->saveas_task);
-    task->saveas_task = NULL;
     goto fail_delegate;
-  }
 
   /* shared colourmenu singleton: wuss_EVENT_PRE_SUBMENU_OPEN retitles/
    * retargets it per hover (see saturn_pre_submenu_open), so Foreground and
@@ -322,7 +288,6 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
 
 fail_delegate:
   wuss_saveas_destroy(task->saveas);
-  wuss_task_destroy(task->saveas_task);
   wuss_task_destroy(delegate); /* unregisters; its QUIT frees the task block */
   return rc;
 }
@@ -331,7 +296,6 @@ void saturn_destroy(saturn_task_t *task)
 {
   wuss_dialogue_destroy(task->conf.dialogue);
   wuss_saveas_destroy(task->saveas);
-  wuss_task_destroy(task->saveas_task);
   free(task); /* task_data was calloc'd per instance by the spawner */
 }
 
