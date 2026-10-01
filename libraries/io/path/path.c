@@ -68,8 +68,13 @@ int path_leaf_strip_ext(const char *leaf,
     size_t leaflen;
 
     /* No extension in the string to match against -- filetype is separate
-     * metadata -- so every leaf matches, unchanged. */
+     * metadata -- so every leaf matches, unchanged. A leaf still carrying a
+     * "/ext" suffix is some other file kept under its foreign name (e.g. a
+     * font's "/map" sidecar), so reject it. */
     NOT_USED(ext);
+
+    if (strchr(leaf, '/') != NULL)
+      return 0;
 
     leaflen = strlen(leaf);
     if (leaflen + 1 > cap)
