@@ -41,6 +41,7 @@ result_t wuss_drag_start(wuss_t        *wuss,
     return result_BAD_ARG;
 
   wuss->drag_window  = window;
+  wuss->drag_button  = wuss_BUTTON_NONE; /* set by the icon drag caller */
   wuss->drag_size    = size;
   wuss->drag_hotspot = hotspot;
   wuss->drag_frame   = 0;
@@ -98,6 +99,18 @@ void wuss__drag_end(wuss_t        *wuss,
   event.data.drag_end.cancelled = cancelled;
   event.data.drag_end.button  = wuss->drag_button;
   (void) wuss__deliver(window->task, window, &event);
+}
+
+/* Called from wuss_window_close: abandon an active drag whose source window
+ * is closing. No wuss_EVENT_DRAG_END -- the task hears about the window
+ * going through PRE_CLOSE/CLOSE, and may already have been sent QUIT. */
+void wuss__drag_forget_window(wuss_t *wuss, wuss_window_t *window)
+{
+  if (wuss->drag_window != window)
+    return;
+
+  invalidate_edges(wuss, &wuss->drag_drawn);
+  wuss->drag_window = NULL;
 }
 
 /* Called from redraw.c, painted last so the ants sit over every window.

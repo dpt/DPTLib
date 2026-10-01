@@ -46,10 +46,8 @@ void wuss_task_destroy(wuss_task_t *doomed)
   event.kind = wuss_EVENT_QUIT;
   (void) wuss__deliver(doomed, NULL, &event);
 
-  /* Purge the queue while the task's windows are still alive: a queued
-   * message addressed to one of them still has a live msg->window to read
-   * (window->task == task) and to bounce against. Doing this after the
-   * close loop below would leave those windows freed. */
+  /* Drop anything this task sent before the close loop below bounces
+   * messages addressed to its windows, so none bounce back to it. */
   wuss__message_purge_task(wuss, doomed);
 
   /* Force-close every window the task owns, in task-list order. No

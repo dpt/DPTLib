@@ -56,16 +56,19 @@ static result_t mouse_click(wuss_t             *wuss,
 
   wuss->pointer = p;
 
-  /* Core owns all input while a drag is active: MOUSE_UP ends it (dropping
-   * on whatever's under the pointer), any other click is swallowed rather
-   * than reaching a window underneath the ants. */
+  /* Core owns all input while a drag is active: releasing the button that
+   * started it (any button, if unknown) ends it, dropping on whatever's under
+   * the pointer; any other click is swallowed rather than reaching a window
+   * underneath the ants. */
   if (wuss->drag_window != NULL)
   {
     win = wuss__window_at(wuss, p);
     if (hit != NULL)
       *hit = win;
 
-    if (action == wuss_MOUSE_UP)
+    if (action == wuss_MOUSE_UP &&
+        (wuss->drag_button == wuss_BUTTON_NONE ||
+         (button & wuss->drag_button) != 0))
       wuss__drag_end(wuss, p, win, 0);
 
     return result_OK;
@@ -98,8 +101,9 @@ static result_t mouse_click(wuss_t             *wuss,
       button |= wuss_BUTTON_DOUBLE;
 
       /* Consumed: a third press starts a fresh pair, it does not chain into
-       * another double. */
-      wuss->last_down_window = NULL;
+       * another double. Reset the button, not the window: NULL is also the
+       * backdrop's hit, so a backdrop press would still match. */
+      wuss->last_down_button = wuss_BUTTON_NONE;
     }
     else
     {

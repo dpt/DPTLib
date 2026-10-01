@@ -31,6 +31,11 @@ void wuss_window_close(wuss_window_t *doomed)
     wuss__menu_abandon(wuss);
 #endif
 
+  /* Bounce anything still queued for this window now, while it is alive:
+   * left queued, it would be read after the free below, or delivered to
+   * whatever window a later wuss_window_create allocates at this address. */
+  wuss__message_purge_window(wuss, doomed);
+
 #ifdef WUSS_FURNITURE
   if (wuss->furniture.dragging == doomed)
   {
@@ -60,11 +65,16 @@ void wuss_window_close(wuss_window_t *doomed)
    * through PRE_CLOSE/CLOSE, and the struct is freed below. */
   wuss__pointer_forget_window(wuss, doomed);
   wuss__focus_forget_window(wuss, doomed);
+  wuss__drag_forget_window(wuss, doomed);
 
   /* Stop double-click detection matching a freed window: a later
-   * wuss_window_create could reuse this address, giving a false match. */
+   * wuss_window_create could reuse this address, giving a false match.
+   * Reset the button too: NULL alone would match a backdrop press. */
   if (wuss->last_down_window == doomed)
+  {
     wuss->last_down_window = NULL;
+    wuss->last_down_button = wuss_BUTTON_NONE;
+  }
 
   /* A hidden window was never actually drawn at "visible" -- whatever is
    * genuinely on screen there (backdrop, or another window's content) is
