@@ -29,19 +29,25 @@
 
 /* ----------------------------------------------------------------------- */
 
-#define SAVEAS_ICON_W       34
-#define SAVEAS_ICON_H       34
-#define SAVEAS_BUTTON_W     64
-#define SAVEAS_ROW_H        24
-#define SAVEAS_SAVE_GROW    8  /* extra height for wuss_ICON_BORDER_ACTION */
+/* The dialogue is as wide as the two buttons side by side, which the writable
+ * also spans, and as tall as its rows: file icon, writable, then the buttons,
+ * each separated by a gap. */
 
-/* The dialogue is square, sized by the two buttons side by side; the
- * writable spans the same width and the rows are spread evenly down it. */
-#define SAVEAS_SIDE         (wuss_STD_INSET * 3 + SAVEAS_BUTTON_W * 2)
-#define SAVEAS_LEAF_W       (SAVEAS_SIDE - wuss_STD_INSET * 2)
-#define SAVEAS_GAP          ((SAVEAS_SIDE - SAVEAS_ICON_H - SAVEAS_ROW_H * 2 - \
-                              SAVEAS_SAVE_GROW) / 4)
-#define SAVEAS_LEAF_SIZE    DPTLIB_MAXPATH
+#define SAVEAS_ICON_W    34
+#define SAVEAS_ICON_H    34
+#define SAVEAS_BUTTON_W  64
+#define SAVEAS_ROW_H     24
+#define SAVEAS_SAVE_GROW  8 /* extra height for wuss_ICON_BORDER_ACTION */
+
+#define SAVEAS_GAP       wuss_STD_INSET
+#define SAVEAS_INSETS    (wuss_STD_INSET * 2)
+#define SAVEAS_LEAF_W    (SAVEAS_BUTTON_W * 2 + SAVEAS_GAP)
+#define SAVEAS_WIDTH     (SAVEAS_INSETS + SAVEAS_LEAF_W)
+#define SAVEAS_SAVE_Y    (SAVEAS_GAP * 3 + SAVEAS_ICON_H + SAVEAS_ROW_H)
+#define SAVEAS_HEIGHT    (SAVEAS_SAVE_Y + SAVEAS_ROW_H + SAVEAS_SAVE_GROW + \
+                          SAVEAS_GAP)
+
+#define SAVEAS_LEAF_SIZE DPTLIB_MAXPATH
 
 /* The struct is opaque outside this file, unlike wuss_dialogue/wuss_info --
  * no other component composes with it, so nothing needs its layout. */
@@ -159,15 +165,13 @@ static result_t saveas_build_icons(wuss_saveas_t *sa, const char *leafname)
 {
   result_t         rc;
   wuss_window_t   *window;
-  int              save_y;
   wuss_icon_spec_t specs[4];
   wuss_icon_t     *icons[4];
 
   window = wuss_dialogue_window(sa->dialogue);
-  save_y = SAVEAS_GAP * 3 + SAVEAS_ICON_H + SAVEAS_ROW_H;
   memset(specs, 0, sizeof(specs));
 
-  specs[0].bbox = (box_t) BOX_POS_SIZE((SAVEAS_SIDE - SAVEAS_ICON_W) / 2,
+  specs[0].bbox = (box_t) BOX_POS_SIZE((SAVEAS_WIDTH - SAVEAS_ICON_W) / 2,
                                        SAVEAS_GAP,
                                        SAVEAS_ICON_W, SAVEAS_ICON_H);
   specs[0].type         = wuss_ICON_TYPE_DRAGGABLE;
@@ -181,14 +185,15 @@ static result_t saveas_build_icons(wuss_saveas_t *sa, const char *leafname)
 
   wuss_icon_spec_action(&specs[2],
                         (box_t) BOX_POS_SIZE(wuss_STD_INSET,
-                                             save_y + SAVEAS_SAVE_GROW / 2,
+                                             SAVEAS_SAVE_Y +
+                                             SAVEAS_SAVE_GROW / 2,
                                              SAVEAS_BUTTON_W, SAVEAS_ROW_H),
                         "Cancel", 0);
 
   wuss_icon_spec_action(&specs[3],
                         (box_t) BOX_POS_SIZE(wuss_STD_INSET * 2 +
                                              SAVEAS_BUTTON_W,
-                                             save_y,
+                                             SAVEAS_SAVE_Y,
                                              SAVEAS_BUTTON_W,
                                              SAVEAS_ROW_H + SAVEAS_SAVE_GROW),
                         "Save", 1);
@@ -232,7 +237,7 @@ result_t wuss_saveas_create(wuss_saveas_t        **out,
   sa->transfer_active = 0;
   sa->save_target     = NULL;
 
-  size = SIZE2D(SAVEAS_SIDE, SAVEAS_SIDE);
+  size = SIZE2D(SAVEAS_WIDTH, SAVEAS_HEIGHT);
 
   rc = wuss_dialogue_create(&sa->dialogue, task, size, "Save As", NULL, sa);
   if (rc != result_OK)
@@ -315,8 +320,8 @@ result_t wuss_saveas_open(wuss_saveas_t *saveas)
 
   /* centred on the pointer, as a RISC OS Save As opened from a key press */
   at    = wuss_get_pointer(saveas->wuss);
-  at.x -= SAVEAS_SIDE / 2;
-  at.y -= SAVEAS_SIDE / 2;
+  at.x -= SAVEAS_WIDTH / 2;
+  at.y -= SAVEAS_HEIGHT / 2;
 
   return wuss_menu_open_window(saveas->task, win, at, NULL);
 }
