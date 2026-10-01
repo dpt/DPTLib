@@ -43,3 +43,9 @@ build.xcode/
 build-riscos/
 bmfont-*.png
 build-sdl/
+__pycache__
+.idea
+.scratch
+.vscode
+build-*/
+build.*/
