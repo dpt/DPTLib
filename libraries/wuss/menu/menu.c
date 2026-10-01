@@ -1337,6 +1337,19 @@ void wuss_menu_disable_item_live(wuss_menu_handle_t handle,
   wuss_icon_set_disabled(node->window, node->icons[index], disabled);
 }
 
+void wuss_menu_set_title_live(wuss_menu_handle_t handle,
+                              const wuss_menu_t *menu,
+                              const char        *title)
+{
+  struct wuss__menu *node;
+
+  node = wuss__menu_open_level(handle, menu);
+  if (node == NULL)
+    return;
+
+  wuss_window_set_title(node->window, title);
+}
+
 /* ----------------------------------------------------------------------- */
 
 int wuss__menu_row_pinned(const wuss_t *wuss, const wuss_icon_t *icon)

@@ -186,8 +186,8 @@ static result_t ball_redraw(const wuss_event_t *event, void *task_data)
 }
 
 /* match the window and menu titles, and whether Clear has anything to do,
- * to the ball count; an ADJUST pick of Add ball leaves the menu open, so the
- * Clear row is shaded live as well */
+ * to the ball count; an ADJUST pick of Add ball leaves the menu open, so its
+ * title and Clear row are updated live as well */
 static void ball_set_title(ball_task_t *bc)
 {
   const char *title;
@@ -195,6 +195,7 @@ static void ball_set_title(ball_task_t *bc)
   title = (bc->nballs > 1) ? "Bouncing Balls" : "Bouncing Ball";
   wuss_window_set_title(bc->window, title);
   bc->menu.title = title; /* read on the next wuss_menu_open */
+  wuss_menu_set_title_live(bc->menu_handle, &bc->menu, title);
 
   /* the held ball may have just been removed */
   if (bc->grabbed >= bc->nballs)
