@@ -46,6 +46,29 @@ enum
  * below reads back whatever it actually got. */
 #define WUSS_RISCOS_MODE 27
 
+/* Keyboard set-up applied on open and undone on close: OS_Byte reason and
+ * value. The function, cursor and Copy keys all insert NUL then a code, as
+ * under the Wimp, so a read yields the Wimp's &180-&1FF key numbers; Escape
+ * inserts ASCII 27 rather than raising an escape condition. */
+static const struct
+{
+  int reason;
+  int value;
+}
+g_kbd[] =
+{
+  {   4, 2 }, /* cursor keys and Copy act as function keys */
+  { 221, 2 }, /* &C0-&CF: F10-F12, Insert */
+  { 222, 2 }, /* &D0-&DF: Shift */
+  { 223, 2 }, /* &E0-&EF: Ctrl */
+  { 224, 2 }, /* &F0-&FF: Ctrl-Shift */
+  { 225, 2 }, /* &80-&8F: F1-F9, Copy, cursor keys */
+  { 226, 2 }, /* &90-&9F: Shift */
+  { 227, 2 }, /* &A0-&AF: Ctrl */
+  { 228, 2 }, /* &B0-&BF: Ctrl-Shift */
+  { 229, 1 }  /* Escape key inserts 27 */
+};
+
 struct wuss_frontend
 {
   int   entry_mode;   /* mode number to restore on close */
@@ -55,6 +78,7 @@ struct wuss_frontend
   int   rowbytes;
   int   xeig, yeig;   /* OS_Mouse returns OS units; >> eig gives pixels */
   int   last_buttons; /* OS_Mouse button state at the previous poll */
+  int   kbd_saved[NELEMS(g_kbd)]; /* g_kbd's OS_Byte values on entry */
 };
 
 /* ----------------------------------------------------------------------- */
@@ -101,6 +125,7 @@ result_t wuss_frontend_open(int               width,
   int              vals[5];
   _kernel_oserror *err;
   char             msg[160]; /* deferred so it prints after the mode restore */
+  int              i;
 
   /* this backend is locked to the 16-colour Wimp mode with a fixed 1:1
    * window; -depth and -scale only make sense for the SDL backend */
@@ -181,6 +206,11 @@ result_t wuss_frontend_open(int               width,
    * wuss draws no cursor of its own, so this is the pointer the user sees. */
   _swix(OS_Byte, _INR(0,1), 106, 1);
 
+  for (i = 0; i < (int) NELEMS(g_kbd); i++)
+    _swix(OS_Byte, _INR(0,2) | _OUT(1), g_kbd[i].reason, g_kbd[i].value, 0,
+          &fe->kbd_saved[i]);
+  _swix(OS_Byte, _INR(0,1), 21, 0); /* flush the keyboard buffer */
+
   *pixels   = fe->screen_base;
   *rowbytes = fe->rowbytes;
   *fmt      = pixelfmt_p4; /* RISC OS 4bpp: leftmost pixel in the low nibble */
@@ -222,27 +252,10 @@ static wuss_button_t mouse_buttons_to_wuss(int buttons)
   return b;
 }
 
-/* INKEY scan code for Shift, sampled as the modifier of each key press */
+/* INKEY scan codes for the modifiers, sampled as each key is read */
 #define KEY_SCAN_SHIFT (-1)
-
-/* Keys the demo reacts to: negative INKEY scan code -> input kind, plus the
- * key code for a wuss_INPUT_KEY. Escape quits; the function keys go through
- * wuss as key presses, so reach the launcher menu's shortcuts (Debug's F1-F3
- * and Quit Wuss's F4). */
-static const struct
-{
-  int               scan;
-  wuss_input_kind_t kind;
-  int               key;
-}
-g_keys[] =
-{
-  { -113, wuss_INPUT_QUIT,         0               }, /* Escape */
-  { -114, wuss_INPUT_KEY,          wuss_KEY_F1     }, /* F1 */
-  { -115, wuss_INPUT_KEY,          wuss_KEY_F1 + 1 }, /* F2 */
-  { -116, wuss_INPUT_KEY,          wuss_KEY_F1 + 2 }, /* F3 */
-  { -117, wuss_INPUT_KEY,          wuss_KEY_F1 + 3 }  /* F4 */
-};
+#define KEY_SCAN_CTRL  (-2)
+#define KEY_SCAN_ALT   (-3)
 
 result_t wuss_frontend_resize(wuss_frontend_t *fe,
                               int              width,
@@ -274,36 +287,125 @@ static bool key_down(int scan)
   return (r1 & 0xFF) == 0xFF;
 }
 
+/* Read one byte from the keyboard buffer without waiting (INKEY(0)). */
+static bool read_byte(int *c)
+{
+  int status;
+
+  if (_swix(OS_Byte, _INR(0,2) | _OUTR(1,2), 129, 0, 0, c, &status) != NULL)
+    return false;
+
+  return status == 0;
+}
+
+/* Read the next key as a Wimp-style key number: a plain byte, or &100 plus
+ * the code following a NUL (see g_kbd). */
+static bool read_key(int *code)
+{
+  int c;
+
+  if (!read_byte(&c))
+    return false;
+
+  if (c == 0)
+  {
+    if (!read_byte(&c))
+      return false;
+
+    /* NUL NUL is a literal NUL */
+    if (c != 0)
+      c |= 0x100;
+  }
+
+  *code = c;
+  return true;
+}
+
+/* Map a Wimp-style key number to a Unicode code point or wuss_KEY_*, or 0 to
+ * drop it. Modifiers come from `mods`, sampled from the keyboard rather than
+ * the code's Shift/Ctrl block, so a PC keyboard's Page Up/Down (which send
+ * Shift-Up/Down) can be told from a real Shift. */
+static int riscos_key_to_wuss(int code, wuss_key_modifiers_t mods)
+{
+  static const int lo[16] = /* &180-&18F, low nibble */
+  {
+    0, /* Print */
+    wuss_KEY_F1,     wuss_KEY_F1 + 1, wuss_KEY_F1 + 2, wuss_KEY_F1 + 3,
+    wuss_KEY_F1 + 4, wuss_KEY_F1 + 5, wuss_KEY_F1 + 6, wuss_KEY_F1 + 7,
+    wuss_KEY_F1 + 8,
+    wuss_KEY_TAB,
+    wuss_KEY_END, /* Copy */
+    wuss_KEY_LEFT, wuss_KEY_RIGHT, wuss_KEY_DOWN, wuss_KEY_UP
+  };
+  static const int hi[16] = /* &1C0-&1CF, low nibble */
+  {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    wuss_KEY_F1 + 9, wuss_KEY_F1 + 10, wuss_KEY_F1 + 11,
+    wuss_KEY_INSERT,
+    0, 0
+  };
+
+  int key;
+
+  if (code < 0x100)
+  {
+    if (code == 0x1E)
+      return wuss_KEY_HOME;
+    if (code == 0x7F)
+      return wuss_KEY_DELETE;
+
+    /* Ctrl-letter arrives as a control code; hand back the letter, as SDL
+     * does, keeping Backspace, Tab and Return as themselves */
+    if ((mods & wuss_KEY_MOD_CTRL) && code >= 1 && code <= 26 &&
+        code != wuss_KEY_BACKSPACE && code != wuss_KEY_TAB &&
+        code != wuss_KEY_RETURN)
+      return 'a' + code - 1;
+
+    /* Latin-1, which is also the first 256 Unicode code points */
+    return code;
+  }
+
+  key = (code & 0x40) ? hi[code & 0x0F] : lo[code & 0x0F];
+
+  if ((code & 0x10) && !(mods & wuss_KEY_MOD_SHIFT))
+  {
+    if (key == wuss_KEY_UP)
+      return wuss_KEY_PAGE_UP;
+    if (key == wuss_KEY_DOWN)
+      return wuss_KEY_PAGE_DOWN;
+  }
+
+  return key;
+}
+
 bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
 {
-  static unsigned int key_was; /* bit i = g_keys[i] was down last poll */
+  int                  code;
+  wuss_key_modifiers_t mods;
+  int                  key;
+  int                  mx, my, buttons, t;
+  int                  px, py;
 
-  unsigned int key_now = 0;
-  int          mx, my, buttons, t;
-  int          px, py;
-  size_t       i;
-
-  /* keyboard first: fire one event on the press edge so a held key doesn't
-   * repeat every frame */
-  for (i = 0; i < NELEMS(g_keys); i++)
-    if (key_down(g_keys[i].scan))
-      key_now |= 1u << i;
-
-  for (i = 0; i < NELEMS(g_keys); i++)
+  /* keyboard first: the OS buffers presses and autorepeats for us */
+  while (read_key(&code))
   {
-    unsigned int bit = 1u << i;
+    mods = wuss_KEY_MOD_NONE;
+    if (key_down(KEY_SCAN_SHIFT))
+      mods |= wuss_KEY_MOD_SHIFT;
+    if (key_down(KEY_SCAN_CTRL))
+      mods |= wuss_KEY_MOD_CTRL;
+    if (key_down(KEY_SCAN_ALT))
+      mods |= wuss_KEY_MOD_ALT;
 
-    if ((key_now & bit) && !(key_was & bit))
-    {
-      key_was = key_now;
-      event->kind = g_keys[i].kind;
-      event->key  = g_keys[i].key;
-      event->mods = key_down(KEY_SCAN_SHIFT) ? wuss_KEY_MOD_SHIFT
-                                             : wuss_KEY_MOD_NONE;
-      return true;
-    }
+    key = riscos_key_to_wuss(code, mods);
+    if (key == 0)
+      continue;
+
+    event->kind = wuss_INPUT_KEY;
+    event->key  = key;
+    event->mods = mods;
+    return true;
   }
-  key_was = key_now;
 
   /* poll the mouse: OS_Mouse returns x,y in OS units and a button word */
   if (_swix(OS_Mouse, _OUTR(0,3), &mx, &my, &buttons, &t) != NULL)
@@ -418,8 +520,13 @@ unsigned int wuss_frontend_ms(wuss_frontend_t *fe)
 
 void wuss_frontend_close(wuss_frontend_t *fe)
 {
+  int i;
+
   if (fe == NULL)
     return;
+
+  for (i = 0; i < (int) NELEMS(g_kbd); i++)
+    _swix(OS_Byte, _INR(0,2), g_kbd[i].reason, fe->kbd_saved[i], 0);
 
   _swix(OS_Byte, _INR(0,1), 106, 0); /* *Pointer 0: turn the pointer off */
   _swix(OS_WriteN, _INR(0,1),        /* VDU 23,1,1: text cursor back on */
