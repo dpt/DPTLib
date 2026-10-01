@@ -492,6 +492,9 @@ stop:
 
 static result_t bmfont_interactive_test(bmfontteststate_t *state)
 {
+#ifdef USE_SDL
+  result_t rc;
+#endif
   bool  quit          = false;
   int   frame;
   int   mx            = 0;
@@ -507,12 +510,37 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
   int   shadow        = 0;
   box_t prevdirty;
   box_t overalldirty;
+  box_t scrclip;
+#ifdef USE_SDL
+  void    *convpixels;
+  bitmap_t conv;
+#endif
 
   /* test screen clipping */
-  box_t scrclip;
   (void) screen_get_clip(&state->scr, &scrclip);
   box_grow(&scrclip, -37);
   state->scr.clip = scrclip;
+
+#ifdef USE_SDL
+  /* the texture is bgrx8888: other screen formats convert into this buffer,
+   * allocated once rather than per frame */
+  convpixels = NULL;
+  if (state->scr.format != pixelfmt_bgrx8888)
+  {
+    convpixels = malloc((size_t) state->scr_width * state->scr_height * 4);
+    if (convpixels == NULL)
+    {
+      rc = result_OOM;
+      goto failure;
+    }
+
+    rc = bitmap_init(&conv, SIZE2D(state->scr_width, state->scr_height),
+                     pixelfmt_bgrx8888, state->scr_width * 4, NULL,
+                     convpixels);
+    if (rc != result_OK)
+      goto failure;
+  }
+#endif
 
   for (frame = 0; !quit; frame++)
   {
@@ -697,12 +725,20 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
       char     *scr;
 
       if (state->scr.format != pixelfmt_bgrx8888)
+      {
         /* convert the screen to bgrx8888 */
-        bitmap_convert((const bitmap_t *) &state->scr,
-                                           pixelfmt_bgrx8888,
-                                          &scr_bgrx8888);
+        rc = bitmap_convert_into((const bitmap_t *) &state->scr,
+                                 pixelfmt_bgrx8888,
+                                 &conv);
+        if (rc != result_OK)
+          goto failure;
+
+        scr_bgrx8888 = &conv;
+      }
       else
+      {
         scr_bgrx8888 = (bitmap_t *) &state->scr;
+      }
 
       if (firstdraw)
       {
@@ -746,9 +782,18 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
 
 #ifdef USE_SDL
   stop_sdl(&state->sdl_state);
+  free(convpixels);
 #endif
 
   return result_TEST_PASSED;
+
+#ifdef USE_SDL
+failure:
+  stop_sdl(&state->sdl_state);
+  free(convpixels);
+  printf("bmfont_interactive_test: screen conversion failed: %x\n", rc);
+  return result_TEST_FAILED;
+#endif
 }
 
 /* ----------------------------------------------------------------------- */
