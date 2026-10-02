@@ -14,9 +14,9 @@
 
 #define WIDTH 4 /* bytes */
 
-static const unsigned int set_lengths[] = { 25, 50, 75, 100 };
+static const unsigned int set_lengths[] = { 25, 0, 50, 75, 100 };
 
-static const size_t set_widths[] = { 3, 2, 1, 2, 3, 4 };
+static const size_t       set_widths[] = { 3, 2, 1, 2, 3, 4 };
 
 static const int primes[] =
 {
@@ -59,7 +59,8 @@ result_t vector_test(const char *resources)
 
     printf("test: set length to %u\n", set_lengths[i]);
 
-    vector_set_length(v, set_lengths[i]);
+    if (vector_set_length(v, set_lengths[i]) != result_OK)
+      goto Failure;
 
     new_length = vector_length(v);
 
