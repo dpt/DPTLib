@@ -20,6 +20,7 @@
 
 #include "tasks/ball.h"
 #include "tasks/chasehq.h"
+#include "tasks/greatescape.h"
 #include "tasks/chars.h"
 #include "tasks/checker.h"
 #include "tasks/clock.h"
@@ -124,6 +125,9 @@ g_games_tasks[] =
 #ifdef WUSS_CHASEHQ
   { "Chase H.Q.",  (task_create_fn_t) chasehq_create     },
 #endif
+#ifdef WUSS_GREATESCAPE
+  { "The Great Escape", (task_create_fn_t) greatescape_create },
+#endif
   { "Minesweeper", (task_create_fn_t) minesweeper_create }
 },
 g_tests_tasks[] =
@@ -174,6 +178,9 @@ static const wuss_menu_item_t g_games_items[] =
   { "Ball",        wuss_MENU_ITEM_NONE, NULL },
 #ifdef WUSS_CHASEHQ
   { "Chase H.Q.",  wuss_MENU_ITEM_NONE, NULL },
+#endif
+#ifdef WUSS_GREATESCAPE
+  { "The Great Escape", wuss_MENU_ITEM_NONE, NULL },
 #endif
   { "Minesweeper", wuss_MENU_ITEM_NONE, NULL }
 };
