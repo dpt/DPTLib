@@ -330,6 +330,7 @@ set(GEOM_SOURCES
     libraries/geom/box/intersection.c
     libraries/geom/box/intersects.c
     libraries/geom/box/is-empty.c
+    libraries/geom/box/list-add.c
     libraries/geom/box/reset.c
     libraries/geom/box/round.c
     libraries/geom/box/round4.c

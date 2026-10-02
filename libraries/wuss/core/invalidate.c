@@ -6,84 +6,17 @@
 
 #include "impl.h"
 
-/* Merge "b" into "a" in place if they share a complete edge (same width or
- * height, with the other axis touching or overlapping), so the pair can be
- * replaced by a single box covering exactly the same area. */
-static int box_merge(box_t *a, const box_t *b)
+/* Shared by wuss_invalidate (wuss->dirty) and wuss__touch (wuss->touched). */
+static void mark_region(box_t       *arr,
+                        int         *pn,
+                        int          max,
+                        const char  *what,
+                        const box_t *box)
 {
-  if (a->y0 == b->y0 && a->y1 == b->y1 && a->x0 <= b->x1 && b->x0 <= a->x1)
-  {
-    a->x0 = MIN(a->x0, b->x0);
-    a->x1 = MAX(a->x1, b->x1);
-    return 1;
-  }
-
-  if (a->x0 == b->x0 && a->x1 == b->x1 && a->y0 <= b->y1 && b->y0 <= a->y1)
-  {
-    a->y0 = MIN(a->y0, b->y0);
-    a->y1 = MAX(a->y1, b->y1);
-    return 1;
-  }
-
-  return 0;
-}
-
-/* Shared by wuss_invalidate (wuss->dirty) and wuss__touch (wuss->touched):
- * repeatedly fold any existing entry that "cur" now covers, or that shares a
- * complete edge with it, into "cur" itself; growing "cur" can bring further
- * entries into range, so this settles to a fixed point before "cur" is
- * (re)inserted. Bounded by "max", so an O(n^2) settle is cheap. Returns 1 if
- * "box" was already fully covered (nothing to do). */
-static int mark_region(box_t       *arr,
-                       int         *pn,
-                       int          max,
-                       const char  *what,
-                       const box_t *box)
-{
-  box_t cur;
-  int   changed;
-
-  if (box_is_empty(box))
-    return 1;
-
-  cur = *box;
-
-  do
-  {
-    int i;
-
-    changed = 0;
-
-    for (i = 0; i < *pn; i++)
-    {
-      if (box_contains_box(&cur, &arr[i]))
-        return 1; /* already covered */
-
-      if (box_contains_box(&arr[i], &cur) || box_merge(&cur, &arr[i]))
-      {
-        arr[i] = arr[--(*pn)]; /* absorbed into cur */
-        changed = 1;
-        break;
-      }
-    }
-  }
-  while (changed);
-
-  if (*pn < max)
-  {
-    arr[(*pn)++] = cur;
-  }
-  else
-  {
-    /* ponytail: array full, fold into the last entry rather than growing
-     * storage; over-approximates that entry's area but stays correct */
+  if (box_list_add(arr, pn, max, box))
     logf_info("wuss_invalidate: %d %s regions, coalescing "
               "(%d,%d)-(%d,%d) into the last entry",
-              max, what, cur.x0, cur.y0, cur.x1, cur.y1);
-    box_union(&arr[max - 1], &cur, &arr[max - 1]);
-  }
-
-  return 0;
+              max, what, box->x0, box->y0, box->x1, box->y1);
 }
 
 result_t wuss_invalidate(wuss_t *wuss, const box_t *box)
