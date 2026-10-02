@@ -87,6 +87,7 @@ set(PUBLIC_HEADERS
     include/framebuf/colour.h
     include/framebuf/composite.h
     include/framebuf/curve.h
+    include/framebuf/octree.h
     include/framebuf/palettes.h
     include/framebuf/pattern.h
     include/framebuf/pixelfmt.h
@@ -288,6 +289,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/colour/colour.c
     libraries/framebuf/composite/composite.c
     libraries/framebuf/curve/curve.c
+    libraries/framebuf/octree/octree.c
     libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pattern/pattern.c
     libraries/framebuf/pixelfmt/log2bpp.c
@@ -771,6 +773,7 @@ if(BUILD_TESTS)
         libraries/framebuf/bmfont/test/bmfontfamily-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
+        libraries/framebuf/octree/test/octree-test.c
         libraries/framebuf/pattern/test/pattern-test.c
         libraries/framebuf/pixelmap/test/pixelmap-test.c
         libraries/framebuf/screen/test/screen-test.c
