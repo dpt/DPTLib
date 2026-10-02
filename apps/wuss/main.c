@@ -365,6 +365,10 @@ static void wuss_frame(void *arg)
       }
       break;
 
+    case wuss_INPUT_KEY_UP:
+      wuss_key_up(c->wuss, ev.key, ev.mods);
+      break;
+
     default:
       break;
     }

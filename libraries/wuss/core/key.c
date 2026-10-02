@@ -83,3 +83,26 @@ result_t wuss_key(wuss_t              *wuss,
 
   return rc;
 }
+
+result_t wuss_key_up(wuss_t              *wuss,
+                     int                  code,
+                     wuss_key_modifiers_t modifiers)
+{
+  result_t     rc;
+  wuss_event_t event;
+
+  assert(wuss != NULL);
+
+  if (wuss->focus == NULL || wuss->focus->task->handle == NULL)
+    return result_OK;
+
+  event.kind               = wuss_EVENT_KEY_UP;
+  event.data.key.code      = code;
+  event.data.key.modifiers = modifiers;
+
+  wuss__message_enter(wuss);
+  rc = wuss__deliver(wuss->focus->task, wuss->focus, &event);
+  wuss__message_leave(wuss);
+
+  return rc == result_WUSS_KEY_UNCLAIMED ? result_OK : rc;
+}

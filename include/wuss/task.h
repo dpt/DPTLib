@@ -133,7 +133,13 @@ typedef enum wuss_event_kind
   wuss_EVENT_MESSAGE_BOUNCED,
   /** A core drag session (see wuss_drag_start) has ended; delivered to the
    *  window the drag was started against. See data.drag_end. */
-  wuss_EVENT_DRAG_END
+  wuss_EVENT_DRAG_END,
+  /** A key was released while this window had the input focus. Carries the
+   *  same data.key as wuss_EVENT_KEY, but a printable key's code is its
+   *  unshifted character, which may differ from the code its press
+   *  reported. Unclaimable: \ref result_WUSS_KEY_UNCLAIMED is treated as
+   *  \ref result_OK. Not reported by every frontend. */
+  wuss_EVENT_KEY_UP
 }
 wuss_event_kind_t;
 
@@ -146,8 +152,8 @@ wuss_event_kind_t;
  * wuss_EVENT_SCROLL, wuss_EVENT_OPEN, wuss_EVENT_PRE_SHOW, wuss_EVENT_SHOW,
  * wuss_EVENT_PRE_CLOSE, wuss_EVENT_CLOSE, wuss_EVENT_POINTER_ENTER,
  * wuss_EVENT_POINTER_EXIT, wuss_EVENT_GAIN_FOCUS, wuss_EVENT_LOSE_FOCUS,
- * wuss_EVENT_KEY, wuss_EVENT_MESSAGE (a message addressed to this window),
- * wuss_EVENT_DRAG_END.
+ * wuss_EVENT_KEY, wuss_EVENT_KEY_UP, wuss_EVENT_MESSAGE (a message addressed
+ * to this window), wuss_EVENT_DRAG_END.
  */
 typedef wuss_event_kind_t wuss_window_event_kind_t;
 
@@ -299,9 +305,9 @@ typedef struct wuss_event
     }
     menu_closed;
 
-    /** wuss_EVENT_KEY: code is a Unicode codepoint or a wuss_KEY_*
-     * constant; modifiers is a set of wuss_key_modifiers_t flags, so test it
-     * with '&'. */
+    /** wuss_EVENT_KEY / wuss_EVENT_KEY_UP: code is a Unicode codepoint or
+     * a wuss_KEY_* constant; modifiers is a set of wuss_key_modifiers_t
+     * flags, so test it with '&'. */
     struct
     {
       int                  code;

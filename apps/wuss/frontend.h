@@ -34,7 +34,8 @@ typedef enum wuss_input_kind
   wuss_INPUT_MOUSE_UP,      /* .pos, .button */
   wuss_INPUT_MOUSE_LEAVE,   /* pointer left the window; next move returns */
   wuss_INPUT_WHEEL,         /* .pos, .wheel */
-  wuss_INPUT_KEY            /* .key, .mods: a press or autorepeat */
+  wuss_INPUT_KEY,           /* .key, .mods: a press or autorepeat */
+  wuss_INPUT_KEY_UP         /* .key, .mods: a release (unshifted) */
 }
 wuss_input_kind_t;
 

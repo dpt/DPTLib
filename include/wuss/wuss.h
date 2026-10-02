@@ -1155,7 +1155,7 @@ wuss_window_t *wuss_get_focus(const wuss_t *wuss);
 
 /**
  * Deliver a keypress (including autorepeats) to the focused window as
- * wuss_EVENT_KEY. Key releases are not reported.
+ * wuss_EVENT_KEY. Releases are reported separately, by wuss_key_up.
  *
  * \param[in]  wuss      Window manager.
  * \param[in]  code      Unicode codepoint or wuss_KEY_* constant.
@@ -1171,6 +1171,21 @@ result_t wuss_key(wuss_t              *wuss,
                   int                  code,
                   wuss_key_modifiers_t modifiers,
                   int                 *claimed);
+
+/**
+ * Deliver a key release to the focused window as wuss_EVENT_KEY_UP, for
+ * tasks that track held keys (e.g. games). Releases bypass writables, menus
+ * and drags, which act on presses only.
+ *
+ * \param[in] wuss      Window manager.
+ * \param[in] code      Unicode codepoint (unshifted) or wuss_KEY_* constant.
+ * \param[in] modifiers Modifier keys held.
+ * \return \ref result_OK, or another result code returned by the task's
+ *         handle.
+ */
+result_t wuss_key_up(wuss_t              *wuss,
+                     int                  code,
+                     wuss_key_modifiers_t modifiers);
 
 /**
  * Start a core drag session: from the next wuss_mouse_move onward, wuss
