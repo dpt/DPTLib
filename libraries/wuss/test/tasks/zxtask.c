@@ -23,6 +23,9 @@
 #define ZXTASK_SCREEN_WIDTH  (256)
 #define ZXTASK_SCREEN_HEIGHT (192)
 #define ZXTASK_BORDER        (32)
+#define ZXTASK_WINDOW_WIDTH  (ZXTASK_SCREEN_WIDTH + 2 * ZXTASK_BORDER)
+#define ZXTASK_WINDOW_HEIGHT (ZXTASK_SCREEN_HEIGHT + 2 * ZXTASK_BORDER)
+#define ZXTASK_MAX_ZOOM      (2)
 
 /* Pacing: a backlog longer than MAX_LAG is dropped rather than caught up,
  * and a wait shorter than MIN_WAIT is left on the deadline for a later,
@@ -48,7 +51,8 @@ enum
 {
   ZXTASK_MENU_INFO,
   ZXTASK_MENU_SPEED,
-  ZXTASK_MENU_MONO
+  ZXTASK_MENU_MONO,
+  ZXTASK_MENU_ZOOM
 };
 
 /* Rows of the Speed submenu, as the desktop front ends have them. */
@@ -104,6 +108,7 @@ void zxtask_init(zxtask_t *task, const zxtask_ops_t *ops)
   pthread_mutex_init(&task->lock, NULL);
   pthread_cond_init(&task->wake, NULL);
   task->speed = ZXTASK_SPEED_NORMAL;
+  task->zoom  = 1;
 
   WUSS_MENU_ITEM_SHORTCUT(task->speed_items, ZXTASK_SPEED_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "^P");
@@ -127,6 +132,8 @@ void zxtask_init(zxtask_t *task, const zxtask_ops_t *ops)
                       wuss_MENU_ITEM_NONE, &task->speed_menu);
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, ZXTASK_MENU_MONO, "Monochromatic",
                           wuss_MENU_ITEM_NONE, "^M");
+  WUSS_MENU_ITEM(task->menu_items, ZXTASK_MENU_ZOOM, "Double size",
+                 wuss_MENU_ITEM_NONE);
   WUSS_MENU_TITLE(task->menu, ops->title, task->menu_items,
                   NELEMS(task->menu_items));
 
@@ -156,8 +163,7 @@ result_t zxtask_start(zxtask_t *task, wuss_t *wuss)
   task->delegate = delegate;
 
   rc = task_window_create(delegate,
-                          SIZE2D(ZXTASK_SCREEN_WIDTH + 2 * ZXTASK_BORDER,
-                                 ZXTASK_SCREEN_HEIGHT + 2 * ZXTASK_BORDER),
+                          SIZE2D(ZXTASK_WINDOW_WIDTH, ZXTASK_WINDOW_HEIGHT),
                           task->ops->title,
                           &task->window);
   if (rc != result_OK)
@@ -192,7 +198,7 @@ void zxtask_destroy(zxtask_t *task)
   task->ops->destroy(task);
   pthread_cond_destroy(&task->wake);
   pthread_mutex_destroy(&task->lock);
-  free(task->grey);
+  free(task->pixels);
   free(task);
 }
 
@@ -279,25 +285,36 @@ int zxtask_sleep(zxtask_t *task, int duration)
 
 /* ----------------------------------------------------------------------- */
 
-/* Convert the claimed screen into task->grey, simulating a black and white
- * TV. Both ports give 256x192 rgbx8888. */
-static void zxtask_greyscale(zxtask_t *task, const bitmap_t *bm)
+/* Convert the claimed screen into task->pixels, scaled by the zoom and,
+ * if mono, simulating a black and white TV. Both ports give 256x192
+ * rgbx8888. */
+static void zxtask_convert(zxtask_t *task, const bitmap_t *bm)
 {
+  int             width;
   int             x, y;
   const uint32_t *row;
   uint32_t       *out;
   uint32_t        p;
   unsigned int    l;
+  int             i, j;
 
-  out = task->grey;
+  width = ZXTASK_SCREEN_WIDTH * task->zoom;
   for (y = 0; y < ZXTASK_SCREEN_HEIGHT; y++)
   {
     row = (const uint32_t *) ((const char *) bm->base + y * bm->rowbytes);
+    out = task->pixels + y * task->zoom * width;
     for (x = 0; x < ZXTASK_SCREEN_WIDTH; x++)
     {
       p = row[x];
-      l = zxtask_luma(p & 0xFF, (p >> 8) & 0xFF, (p >> 16) & 0xFF);
-      *out++ = l | (l << 8) | (l << 16);
+      if (task->mono)
+      {
+        l = zxtask_luma(p & 0xFF, (p >> 8) & 0xFF, (p >> 16) & 0xFF);
+        p = l | (l << 8) | (l << 16);
+      }
+      for (j = 0; j < task->zoom; j++)
+        for (i = 0; i < task->zoom; i++)
+          out[j * width + i] = p;
+      out += task->zoom;
     }
   }
 }
@@ -325,12 +342,15 @@ static result_t zxtask_redraw(zxtask_t *task, const wuss_event_t *event)
   r = (border & 2) ? level : 0;
   g = (border & 4) ? level : 0;
   b = (border & 1) ? level : 0;
-  if (task->grey)
+  if (task->mono)
     r = g = b = zxtask_luma(r, g, b);
   screen_fill_rect(event->data.redraw.scr, x, y,
-                   SIZE2D(ZXTASK_SCREEN_WIDTH + 2 * ZXTASK_BORDER,
-                          ZXTASK_SCREEN_HEIGHT + 2 * ZXTASK_BORDER),
+                   SIZE2D(ZXTASK_WINDOW_WIDTH * task->zoom,
+                          ZXTASK_WINDOW_HEIGHT * task->zoom),
                    colour_rgb(r, g, b));
+
+  x += ZXTASK_BORDER * task->zoom;
+  y += ZXTASK_BORDER * task->zoom;
 
   rc = task->ops->claim_screen(task, &bm);
   if (rc != result_OK)
@@ -339,31 +359,26 @@ static result_t zxtask_redraw(zxtask_t *task, const wuss_event_t *event)
     return rc;
   }
 
-  if (task->grey == NULL)
+  if (task->pixels == NULL)
   {
-    rc = screen_copy_bitmap(event->data.redraw.scr,
-                            x + ZXTASK_BORDER,
-                            y + ZXTASK_BORDER,
-                            &bm);
+    rc = screen_copy_bitmap(event->data.redraw.scr, x, y, &bm);
     task->ops->release_screen(task);
     return rc;
   }
 
-  zxtask_greyscale(task, &bm);
+  zxtask_convert(task, &bm);
   task->ops->release_screen(task);
   rc = bitmap_init(&bm,
-                   SIZE2D(ZXTASK_SCREEN_WIDTH, ZXTASK_SCREEN_HEIGHT),
+                   SIZE2D(ZXTASK_SCREEN_WIDTH * task->zoom,
+                          ZXTASK_SCREEN_HEIGHT * task->zoom),
                    pixelfmt_rgbx8888,
-                   ZXTASK_SCREEN_WIDTH * 4,
+                   ZXTASK_SCREEN_WIDTH * task->zoom * 4,
                    NULL,
-                   task->grey);
+                   task->pixels);
   if (rc != result_OK)
     return rc;
 
-  return screen_copy_bitmap(event->data.redraw.scr,
-                            x + ZXTASK_BORDER,
-                            y + ZXTASK_BORDER,
-                            &bm);
+  return screen_copy_bitmap(event->data.redraw.scr, x, y, &bm);
 }
 
 static result_t zxtask_mouse(zxtask_t           *task,
@@ -410,7 +425,8 @@ static void zxtask_sync_menu(zxtask_t *task)
   }
 
   wuss_menu_tick_set(&task->speed_menu, ticked);
-  wuss_menu_tick_item(&task->menu, ZXTASK_MENU_MONO, task->grey != NULL);
+  wuss_menu_tick_item(&task->menu, ZXTASK_MENU_MONO, task->mono);
+  wuss_menu_tick_item(&task->menu, ZXTASK_MENU_ZOOM, task->zoom > 1);
   if (task->menu_handle == NULL)
     return;
 
@@ -418,7 +434,9 @@ static void zxtask_sync_menu(zxtask_t *task)
   wuss_menu_set_title_live(task->menu_handle, &task->speed_menu,
                            task->speed_title);
   wuss_menu_tick_item_live(task->menu_handle, &task->menu, ZXTASK_MENU_MONO,
-                           task->grey != NULL);
+                           task->mono);
+  wuss_menu_tick_item_live(task->menu_handle, &task->menu, ZXTASK_MENU_ZOOM,
+                           task->zoom > 1);
 }
 
 /* Speed rows act as the desktop front ends' Speed menu: Pause toggles, any
@@ -454,29 +472,63 @@ static void zxtask_set_speed(zxtask_t *task, int index)
   pthread_mutex_unlock(&task->lock);
 }
 
+/* Toggle mono or zoom. The conversion buffer is made when either is
+ * first wanted, at the largest zoom, and freed once neither is. */
+static result_t zxtask_set_view(zxtask_t *task, int index)
+{
+  size2d_t size;
+
+  if (task->pixels == NULL)
+  {
+    task->pixels = malloc(ZXTASK_SCREEN_WIDTH * ZXTASK_SCREEN_HEIGHT *
+                          ZXTASK_MAX_ZOOM * ZXTASK_MAX_ZOOM *
+                          sizeof(*task->pixels));
+    if (task->pixels == NULL)
+      return result_OOM;
+  }
+
+  if (index == ZXTASK_MENU_MONO)
+    task->mono = !task->mono;
+  else
+    task->zoom = ZXTASK_MAX_ZOOM + 1 - task->zoom;
+
+  if (!task->mono && task->zoom == 1)
+  {
+    free(task->pixels);
+    task->pixels = NULL;
+  }
+
+  if (task->window == NULL)
+    return result_OK;
+
+  if (index == ZXTASK_MENU_ZOOM)
+  {
+    size = SIZE2D(ZXTASK_WINDOW_WIDTH * task->zoom,
+                  ZXTASK_WINDOW_HEIGHT * task->zoom);
+    (void) wuss_window_resize(task->window, size);
+    (void) wuss_window_set_doc(task->window, size);
+  }
+  wuss_window_invalidate_visible(task->window);
+
+  return result_OK;
+}
+
 static result_t zxtask_select(zxtask_t *task, const wuss_event_t *event)
 {
+  result_t rc;
+  int      index;
+
+  index = event->data.menu_select.index;
   if (event->data.menu_select.menu == &task->speed_menu)
   {
-    zxtask_set_speed(task, event->data.menu_select.index);
+    zxtask_set_speed(task, index);
   }
   else if (event->data.menu_select.menu == &task->menu &&
-           event->data.menu_select.index == ZXTASK_MENU_MONO)
+           (index == ZXTASK_MENU_MONO || index == ZXTASK_MENU_ZOOM))
   {
-    if (task->grey)
-    {
-      free(task->grey);
-      task->grey = NULL;
-    }
-    else
-    {
-      task->grey = malloc(ZXTASK_SCREEN_WIDTH * ZXTASK_SCREEN_HEIGHT *
-                          sizeof(*task->grey));
-      if (task->grey == NULL)
-        return result_OOM;
-    }
-    if (task->window)
-      wuss_window_invalidate_visible(task->window);
+    rc = zxtask_set_view(task, index);
+    if (rc != result_OK)
+      return rc;
   }
 
   zxtask_sync_menu(task);
