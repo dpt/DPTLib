@@ -3,6 +3,7 @@
 #if defined(WUSS_APP) && (defined(WUSS_CHASEHQ) || defined(WUSS_GREATESCAPE))
 
 #include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -29,6 +30,11 @@
 #define ZXTASK_MAX_LAG_SECS  (0.08)
 #define ZXTASK_MIN_WAIT_SECS (0.002)
 
+/* Speed, in percent of real time. Maximum runs unpaced. */
+#define ZXTASK_SPEED_STEP    (20)
+#define ZXTASK_SPEED_NORMAL  (100)
+#define ZXTASK_SPEED_MAX     (99999)
+
 /* Kempston joystick bits, as the hardware reads them. */
 #define ZXTASK_KEMPSTON_RIGHT (1u << 0)
 #define ZXTASK_KEMPSTON_LEFT  (1u << 1)
@@ -40,7 +46,19 @@
  * proginfo singleton just before each open. */
 enum
 {
-  ZXTASK_MENU_INFO = 0
+  ZXTASK_MENU_INFO,
+  ZXTASK_MENU_SPEED,
+  ZXTASK_MENU_MONO
+};
+
+/* Rows of the Speed submenu, as the desktop front ends have them. */
+enum
+{
+  ZXTASK_SPEED_MENU_PAUSE,
+  ZXTASK_SPEED_MENU_NORMAL,
+  ZXTASK_SPEED_MENU_MAXIMUM,
+  ZXTASK_SPEED_MENU_FASTER,
+  ZXTASK_SPEED_MENU_SLOWER
 };
 
 static wuss_window_fn_t zxtask_handle;
@@ -54,6 +72,14 @@ static double zxtask_now(void)
   clock_gettime(CLOCK_MONOTONIC, &ts);
 
   return ts.tv_sec + ts.tv_nsec / 1e9;
+}
+
+/* Rec. 601 luma, weights summing to 256 */
+static unsigned int zxtask_luma(unsigned int r,
+                                unsigned int g,
+                                unsigned int b)
+{
+  return (r * 77 + g * 150 + b * 29) >> 8;
 }
 
 static void *zxtask_thread(void *opaque)
@@ -76,10 +102,31 @@ void zxtask_init(zxtask_t *task, const zxtask_ops_t *ops)
   task->ops = ops;
 
   pthread_mutex_init(&task->lock, NULL);
+  pthread_cond_init(&task->wake, NULL);
+  task->speed = ZXTASK_SPEED_NORMAL;
+
+  WUSS_MENU_ITEM_SHORTCUT(task->speed_items, ZXTASK_SPEED_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "^P");
+  WUSS_MENU_ITEM(task->speed_items, ZXTASK_SPEED_MENU_NORMAL, "100%",
+                 wuss_MENU_ITEM_TICKED);
+  WUSS_MENU_ITEM(task->speed_items, ZXTASK_SPEED_MENU_MAXIMUM, "Maximum",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->speed_items, ZXTASK_SPEED_MENU_FASTER, "Faster",
+                 wuss_MENU_ITEM_DASHED);
+  WUSS_MENU_ITEM(task->speed_items, ZXTASK_SPEED_MENU_SLOWER, "Slower",
+                 wuss_MENU_ITEM_NONE);
+  snprintf(task->speed_title, sizeof(task->speed_title), "Speed %d%%",
+           task->speed);
+  WUSS_MENU_TITLE(task->speed_menu, task->speed_title, task->speed_items,
+                  NELEMS(task->speed_items));
 
   WUSS_MENU_ITEM_WINDOW(task->menu_items, ZXTASK_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL);
+  WUSS_MENU_ITEM_MENU(task->menu_items, ZXTASK_MENU_SPEED, "Speed",
+                      wuss_MENU_ITEM_NONE, &task->speed_menu);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, ZXTASK_MENU_MONO, "Monochromatic",
+                          wuss_MENU_ITEM_NONE, "^M");
   WUSS_MENU_TITLE(task->menu, ops->title, task->menu_items,
                   NELEMS(task->menu_items));
 
@@ -135,6 +182,7 @@ void zxtask_destroy(zxtask_t *task)
   {
     pthread_mutex_lock(&task->lock);
     task->quit = 1;
+    pthread_cond_broadcast(&task->wake);
     pthread_mutex_unlock(&task->lock);
     if (task->ops->stop)
       task->ops->stop(task);
@@ -142,7 +190,9 @@ void zxtask_destroy(zxtask_t *task)
   }
 
   task->ops->destroy(task);
+  pthread_cond_destroy(&task->wake);
   pthread_mutex_destroy(&task->lock);
+  free(task->grey);
   free(task);
 }
 
@@ -176,12 +226,32 @@ int zxtask_quitting(zxtask_t *task)
 
 int zxtask_sleep(zxtask_t *task, int duration)
 {
+  int    quit;
+  int    speed;
   double now;
   double delay;
   struct timespec ts;
 
-  if (zxtask_quitting(task))
+  pthread_mutex_lock(&task->lock);
+  if (task->paused && !task->quit)
+  {
+    do
+      pthread_cond_wait(&task->wake, &task->lock);
+    while (task->paused && !task->quit);
+    task->deadline_valid = 0; /* don't race to catch up the pause */
+  }
+  quit  = task->quit;
+  speed = task->speed;
+  pthread_mutex_unlock(&task->lock);
+
+  if (quit)
     return 1;
+
+  if (speed >= ZXTASK_SPEED_MAX)
+  {
+    task->deadline_valid = 0;
+    return 0;
+  }
 
   now = zxtask_now();
 
@@ -191,7 +261,8 @@ int zxtask_sleep(zxtask_t *task, int duration)
     task->deadline       = now;
     task->deadline_valid = 1;
   }
-  task->deadline += duration / task->ops->clock_hz;
+  task->deadline += duration / task->ops->clock_hz *
+                    ZXTASK_SPEED_NORMAL / speed;
   if (task->deadline < now - ZXTASK_MAX_LAG_SECS)
     task->deadline = now - ZXTASK_MAX_LAG_SECS;
 
@@ -208,6 +279,29 @@ int zxtask_sleep(zxtask_t *task, int duration)
 
 /* ----------------------------------------------------------------------- */
 
+/* Convert the claimed screen into task->grey, simulating a black and white
+ * TV. Both ports give 256x192 rgbx8888. */
+static void zxtask_greyscale(zxtask_t *task, const bitmap_t *bm)
+{
+  int             x, y;
+  const uint32_t *row;
+  uint32_t       *out;
+  uint32_t        p;
+  unsigned int    l;
+
+  out = task->grey;
+  for (y = 0; y < ZXTASK_SCREEN_HEIGHT; y++)
+  {
+    row = (const uint32_t *) ((const char *) bm->base + y * bm->rowbytes);
+    for (x = 0; x < ZXTASK_SCREEN_WIDTH; x++)
+    {
+      p = row[x];
+      l = zxtask_luma(p & 0xFF, (p >> 8) & 0xFF, (p >> 16) & 0xFF);
+      *out++ = l | (l << 8) | (l << 16);
+    }
+  }
+}
+
 static result_t zxtask_redraw(zxtask_t *task, const wuss_event_t *event)
 {
   static const unsigned int level = 0xCD; /* the border has no BRIGHT */
@@ -216,6 +310,7 @@ static result_t zxtask_redraw(zxtask_t *task, const wuss_event_t *event)
   const box_t *bounds;
   int          x, y;
   int          border;
+  unsigned int r, g, b;
   bitmap_t     bm;
 
   bounds = event->data.redraw.bounds;
@@ -227,22 +322,48 @@ static result_t zxtask_redraw(zxtask_t *task, const wuss_event_t *event)
   pthread_mutex_unlock(&task->lock);
 
   /* ZX colour bits are G R B */
+  r = (border & 2) ? level : 0;
+  g = (border & 4) ? level : 0;
+  b = (border & 1) ? level : 0;
+  if (task->grey)
+    r = g = b = zxtask_luma(r, g, b);
   screen_fill_rect(event->data.redraw.scr, x, y,
                    SIZE2D(ZXTASK_SCREEN_WIDTH + 2 * ZXTASK_BORDER,
                           ZXTASK_SCREEN_HEIGHT + 2 * ZXTASK_BORDER),
-                   colour_rgb((border & 2) ? level : 0,
-                              (border & 4) ? level : 0,
-                              (border & 1) ? level : 0));
+                   colour_rgb(r, g, b));
 
   rc = task->ops->claim_screen(task, &bm);
-  if (rc == result_OK)
+  if (rc != result_OK)
+  {
+    task->ops->release_screen(task);
+    return rc;
+  }
+
+  if (task->grey == NULL)
+  {
     rc = screen_copy_bitmap(event->data.redraw.scr,
                             x + ZXTASK_BORDER,
                             y + ZXTASK_BORDER,
                             &bm);
-  task->ops->release_screen(task);
+    task->ops->release_screen(task);
+    return rc;
+  }
 
-  return rc;
+  zxtask_greyscale(task, &bm);
+  task->ops->release_screen(task);
+  rc = bitmap_init(&bm,
+                   SIZE2D(ZXTASK_SCREEN_WIDTH, ZXTASK_SCREEN_HEIGHT),
+                   pixelfmt_rgbx8888,
+                   ZXTASK_SCREEN_WIDTH * 4,
+                   NULL,
+                   task->grey);
+  if (rc != result_OK)
+    return rc;
+
+  return screen_copy_bitmap(event->data.redraw.scr,
+                            x + ZXTASK_BORDER,
+                            y + ZXTASK_BORDER,
+                            &bm);
 }
 
 static result_t zxtask_mouse(zxtask_t           *task,
@@ -263,6 +384,120 @@ static result_t zxtask_mouse(zxtask_t           *task,
 
   return wuss_menu_open_at_pointer(task->delegate, &task->menu,
                                    &task->menu_handle);
+}
+
+/* Bring the menu's ticks and the Speed title into line with the task, and
+ * the open menu too if there is one. paused and speed are only written on
+ * this thread, so are read without the lock. */
+static void zxtask_sync_menu(zxtask_t *task)
+{
+  unsigned int ticked;
+
+  ticked = 0;
+  if (task->paused)
+    ticked |= 1u << ZXTASK_SPEED_MENU_PAUSE;
+  if (task->speed == ZXTASK_SPEED_NORMAL)
+    ticked |= 1u << ZXTASK_SPEED_MENU_NORMAL;
+  if (task->speed == ZXTASK_SPEED_MAX)
+  {
+    ticked |= 1u << ZXTASK_SPEED_MENU_MAXIMUM;
+    snprintf(task->speed_title, sizeof(task->speed_title), "Speed max");
+  }
+  else
+  {
+    snprintf(task->speed_title, sizeof(task->speed_title), "Speed %d%%",
+           task->speed);
+  }
+
+  wuss_menu_tick_set(&task->speed_menu, ticked);
+  wuss_menu_tick_item(&task->menu, ZXTASK_MENU_MONO, task->grey != NULL);
+  if (task->menu_handle == NULL)
+    return;
+
+  wuss_menu_tick_set_live(task->menu_handle, &task->speed_menu, ticked);
+  wuss_menu_set_title_live(task->menu_handle, &task->speed_menu,
+                           task->speed_title);
+  wuss_menu_tick_item_live(task->menu_handle, &task->menu, ZXTASK_MENU_MONO,
+                           task->grey != NULL);
+}
+
+/* Speed rows act as the desktop front ends' Speed menu: Pause toggles, any
+ * other row unpauses. */
+static void zxtask_set_speed(zxtask_t *task, int index)
+{
+  pthread_mutex_lock(&task->lock);
+  if (index == ZXTASK_SPEED_MENU_PAUSE)
+  {
+    task->paused = !task->paused;
+  }
+  else
+  {
+    task->paused = 0;
+    switch (index)
+    {
+    case ZXTASK_SPEED_MENU_NORMAL:
+      task->speed = ZXTASK_SPEED_NORMAL;
+      break;
+    case ZXTASK_SPEED_MENU_MAXIMUM:
+      task->speed = ZXTASK_SPEED_MAX;
+      break;
+    case ZXTASK_SPEED_MENU_FASTER:
+      task->speed += ZXTASK_SPEED_STEP;
+      break;
+    case ZXTASK_SPEED_MENU_SLOWER:
+      task->speed -= ZXTASK_SPEED_STEP;
+      break;
+    }
+    task->speed = CLAMP(task->speed, ZXTASK_SPEED_STEP, ZXTASK_SPEED_MAX);
+  }
+  pthread_cond_broadcast(&task->wake);
+  pthread_mutex_unlock(&task->lock);
+}
+
+static result_t zxtask_select(zxtask_t *task, const wuss_event_t *event)
+{
+  if (event->data.menu_select.menu == &task->speed_menu)
+  {
+    zxtask_set_speed(task, event->data.menu_select.index);
+  }
+  else if (event->data.menu_select.menu == &task->menu &&
+           event->data.menu_select.index == ZXTASK_MENU_MONO)
+  {
+    if (task->grey)
+    {
+      free(task->grey);
+      task->grey = NULL;
+    }
+    else
+    {
+      task->grey = malloc(ZXTASK_SCREEN_WIDTH * ZXTASK_SCREEN_HEIGHT *
+                          sizeof(*task->grey));
+      if (task->grey == NULL)
+        return result_OOM;
+    }
+    if (task->window)
+      wuss_window_invalidate_visible(task->window);
+  }
+
+  zxtask_sync_menu(task);
+
+  return result_OK;
+}
+
+/* Shift is CAPS SHIFT, as on the macOS front end. wuss sends no event for
+ * a modifier alone, so it follows the modifiers of each key event. */
+static void zxtask_set_caps(zxtask_t *task, wuss_key_modifiers_t modifiers)
+{
+  int caps;
+
+  caps = (modifiers & wuss_KEY_MOD_SHIFT) != 0;
+  if (caps == task->caps)
+    return;
+
+  task->caps = caps;
+  pthread_mutex_lock(&task->lock);
+  task->ops->key(task, '\\', caps); /* '\' is the ports' CAPS SHIFT */
+  pthread_mutex_unlock(&task->lock);
 }
 
 /* Press (down) or release a key. The arrows and '.' are the Kempston
@@ -327,17 +562,19 @@ static result_t zxtask_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_KEY:
-    /* leave the proginfo dialogue's keys and Ctrl/Alt combinations to the
-     * launcher's shortcuts */
+    /* leave the proginfo dialogue's keys and unmatched Ctrl/Alt
+     * combinations to the launcher's shortcuts */
     if (window != task->window)
       return result_WUSS_KEY_UNCLAIMED;
-    if (event->data.key.modifiers & (wuss_KEY_MOD_CTRL | wuss_KEY_MOD_ALT))
-      return result_WUSS_KEY_UNCLAIMED;
+    if (!task_key_is_plain(task->delegate, &task->menu, event, &rc))
+      return rc;
 
+    zxtask_set_caps(task, event->data.key.modifiers);
     return zxtask_set_key(task, event->data.key.code, 1) ?
            result_OK : result_WUSS_KEY_UNCLAIMED;
 
   case wuss_EVENT_KEY_UP:
+    zxtask_set_caps(task, event->data.key.modifiers);
     (void) zxtask_set_key(task, event->data.key.code, 0);
     return result_OK;
 
@@ -347,7 +584,11 @@ static result_t zxtask_handle(wuss_window_t      *window,
     task->ops->key(task, 0, 0);
     task->kempston = 0;
     pthread_mutex_unlock(&task->lock);
+    task->caps = 0;
     return result_OK;
+
+  case wuss_EVENT_MENU_SELECT:
+    return zxtask_select(task, event);
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
