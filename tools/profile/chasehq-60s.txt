@@ -34,8 +34,16 @@
 #   atos -o wuss.dSYM/Contents/Resources/DWARF/wuss-relwithdebinfo \
 #     -l LOADADDR ADDR...
 #
+# LOADADDR is a symbolicated frame's address in the trace less its address
+# in the dSYM, which `dwarfdump --name=FUNC wuss.dSYM` gives.
+#
 # Under the dummy video driver SDL presents through its software renderer,
 # whose scaled blit dominates; profile with a real display to see past it.
+# For scale, at Double size (chasehq-60s-zoom.txt) the scaled blit took 81%
+# of samples, the frontend's p4 to bgrx8888 conversion about 10% and the
+# task's own redraw 0.3%, three-quarters of that in screen_copy_bitmap_p4.
+# Static functions are often inlined: zxtask_redraw shows as
+# zxtask_handle.
 #
 # The sleeps are tuned to the title sequence: Enter is only read once the
 # intro has played, and fire once the title has redrawn after the options.
