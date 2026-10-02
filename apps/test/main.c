@@ -58,6 +58,7 @@ static const test_t tests[] =
   { "composite",   composite_test   },
   { "rle",         bitmap_rle_test  },
   { "curve",       curve_test       },
+  { "dither",      dither_test      },
   { "octree",      octree_test      },
   { "pattern",     pattern_test     },
   { "pixelmap",    pixelmap_test    },
