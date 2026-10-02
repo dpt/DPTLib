@@ -2,6 +2,7 @@
 
 #ifdef WUSS_APP
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,6 +14,7 @@
 #include "base/utils.h"
 #include "framebuf/dither.h"
 #include "framebuf/octree.h"
+#include "io/filetype.h"
 #include "io/namelist.h"
 #include "io/path.h"
 #include "wuss/menu.h"
@@ -150,6 +152,28 @@ static result_t dithering_apply(dithering_task_t *dt)
   return result_OK;
 }
 
+/* wuss_saveas_save_fn_t: opaque is the dithering_task_t */
+static result_t dithering_saveas_save(const char *path, void *opaque)
+{
+  dithering_task_t *dt;
+
+  dt = opaque;
+  if (dt->dithered == NULL)
+    return result_BAD_ARG; /* the last dither failed; nothing to save */
+
+  return bitmap_save_png(dt->dithered, path);
+}
+
+/* Seed Save As with "<image>-dithered.png". */
+static void dithering_saveas_name(dithering_task_t *dt)
+{
+  char leafname[DITHERING_MAX_NAME_LEN + 16];
+
+  snprintf(leafname, sizeof(leafname), "%s-dithered.png",
+           dt->images[dt->image]);
+  wuss_saveas_set_leafname(dt->saveas, leafname);
+}
+
 /* Load and dither images[index], resizing the window to fit. A load failure
  * keeps the current image. */
 static result_t dithering_show(dithering_task_t *dt, int index)
@@ -168,6 +192,7 @@ static result_t dithering_show(dithering_task_t *dt, int index)
   free(dt->source.base);
   dt->source = next;
   dt->image  = index;
+  dithering_saveas_name(dt);
 
   rc = wuss_window_resize(dt->window, dt->source.size);
   if (rc != result_OK)
@@ -188,6 +213,7 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   dithering_task_t *task;
   wuss_task_desc_t  delegate_desc;
   const char       *resources;
+  filetype_t        png_type;
   int               i;
 
   task = calloc(1, sizeof(*task));
@@ -268,6 +294,8 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
                       wuss_MENU_ITEM_NONE, &task->strength_menu);
   WUSS_MENU_ITEM(task->menu_items, DITHERING_MENU_SERPENTINE, "Serpentine",
                  wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->menu_items, DITHERING_MENU_SAVE, "Save PNG",
+                 wuss_MENU_ITEM_DASHED); /* window set once saveas exists */
   WUSS_MENU_TITLE(task->menu, "Dithering", task->menu_items,
                   DITHERING_MENU__LIMIT);
 
@@ -300,6 +328,19 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   /* closing the window reaps the task; its QUIT frees the block */
   wuss_task_set_autoclose(task->delegate, 1);
 
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type, NULL,
+                          dithering_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->delegate); /* QUIT frees the block */
+    return rc;
+  }
+  dithering_saveas_name(task);
+  /* hover opens the Save As dialogue as a submenu */
+  task->menu_items[DITHERING_MENU_SAVE].window =
+    wuss_saveas_window(task->saveas);
+
   dithering_apply(task);
 
   if (out)
@@ -310,6 +351,7 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
 
 void dithering_destroy(dithering_task_t *task)
 {
+  wuss_saveas_destroy(task->saveas);
   dithering_free_dithered(task);
   free(task->source.base);
   free(task);
@@ -388,6 +430,10 @@ static result_t dithering_menu_select(dithering_task_t   *dt,
     wuss_menu_tick_exclusive_live(dt->menu_handle, menu, dt->image);
     return result_OK;
   }
+
+  /* clicking the row, rather than hovering, shows Save As standalone */
+  if (menu == &dt->menu && index == DITHERING_MENU_SAVE)
+    return wuss_saveas_open(dt->saveas);
 
   if (menu == &dt->method_menu)
     dt->method = (dither_method_t) index;

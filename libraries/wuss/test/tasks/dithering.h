@@ -7,6 +7,7 @@
 
 #include "framebuf/bitmap.h"
 #include "framebuf/dither.h"
+#include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -32,13 +33,15 @@ enum
   DITHERING_MENU_COLOURS,
   DITHERING_MENU_STRENGTH,
   DITHERING_MENU_SERPENTINE,
+  DITHERING_MENU_SAVE,
   DITHERING_MENU__LIMIT
 };
 
 /* window's task: a PNG from resources/images reduced by dither_bitmap,
  * optionally to an octree palette. A Select click toggles between the
  * dithered result and the original; Menu picks the image and the options,
- * and every change re-dithers at once. */
+ * and every change re-dithers at once. Save writes the dithered result as
+ * a PNG. */
 typedef struct dithering_task
 {
   wuss_window_t     *window;
@@ -74,6 +77,7 @@ typedef struct dithering_task
   wuss_menu_item_t   menu_items[DITHERING_MENU__LIMIT];
   wuss_menu_t        menu;
   wuss_menu_handle_t menu_handle; /* the open chain, if any */
+  wuss_saveas_t     *saveas;
 }
 dithering_task_t;
 
