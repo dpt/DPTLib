@@ -23,7 +23,10 @@ T hlist_copy(T list)
   {
     *p = malloc(sizeof(**p));
     if (*p == NULL)
-      return NULL; /* FIXME: This won't unwind the mallocs in the failure case. */
+    {
+      hlist_free(&head); /* *p is NULL, so this ends the partial list */
+      return NULL;
+    }
 
     (*p)->first = list->first;
     p = &(*p)->rest;
