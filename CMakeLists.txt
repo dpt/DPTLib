@@ -957,7 +957,7 @@ if(BUILD_APPS)
     if(NOT TARGET_RISCOS AND NOT EMSCRIPTEN AND NOT MSVC)
         FetchContent_Declare(chasehq
                              GIT_REPOSITORY https://github.com/dpt/ChaseHQ.git
-                             GIT_TAG 5d3decd1dd25bbaa5f4440a0b3a8dfcc7c7946c8 # develop
+                             GIT_TAG 05ce4bdda77843a9ed27141c3f8257164ec61bed # develop
                              SOURCE_SUBDIR none)
         FetchContent_Declare(greatescape
                              GIT_REPOSITORY https://github.com/dpt/The-Great-Escape-in-C.git
