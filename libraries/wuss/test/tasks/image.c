@@ -381,6 +381,9 @@ result_t image_handle(wuss_window_t      *window,
       result_t rc;
 
       rc = image_show(ic, index);
+      /* the data tick too: a submenu reopened within the chain is rebuilt
+       * from the items */
+      wuss_menu_tick_exclusive(&ic->load_menu, ic->index);
       wuss_menu_tick_exclusive_live(ic->menu_handle, &ic->load_menu,
                                     ic->index);
       return rc;
@@ -389,6 +392,7 @@ result_t image_handle(wuss_window_t      *window,
     {
       ic->dithering = (screen_dither_t) index;
       wuss_window_invalidate_visible(ic->window);
+      wuss_menu_tick_exclusive(&ic->dither_menu, index);
       wuss_menu_tick_exclusive_live(ic->menu_handle, &ic->dither_menu, index);
     }
     return result_OK;
