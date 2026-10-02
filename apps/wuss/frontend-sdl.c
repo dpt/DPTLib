@@ -268,6 +268,11 @@ result_t wuss_frontend_open(int               width,
     }
   }
 
+#ifdef SDL_HINT_MAC_PRESS_AND_HOLD /* SDL 3.4+ */
+  /* holding a key repeats it rather than opening macOS's accents menu */
+  SDL_SetHint(SDL_HINT_MAC_PRESS_AND_HOLD, "0");
+#endif
+
   if (!SDL_Init(SDL_INIT_VIDEO))
   {
     fprintf(stderr, "Error: SDL_Init: %s\n", SDL_GetError());
