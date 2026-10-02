@@ -115,11 +115,11 @@ static result_t greatescape_claim_screen(zxtask_t *task, bitmap_t *bm)
 {
   uint32_t *pixels;
 
-  /* the converted screen is 0x00BBGGRR words: R in the low byte */
+  /* 4bpp, as the build selects (see CMakeLists.txt) */
   pixels = zxspectrum_claim_screen(((greatescape_task_t *) task)->zx);
 
   return bitmap_init(bm, SIZE2D(SCREEN_WIDTH, SCREEN_HEIGHT),
-                     pixelfmt_rgbx8888, SCREEN_WIDTH * 4, NULL, pixels);
+                     pixelfmt_p4, SCREEN_WIDTH / 2, NULL, pixels);
 }
 
 static void greatescape_release_screen(zxtask_t *task)

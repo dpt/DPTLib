@@ -1047,6 +1047,11 @@ if(BUILD_APPS)
             list(APPEND TGE_ZX_RENAMES "${sym}=tge_${sym}")
         endforeach()
         target_compile_definitions(greatescape PRIVATE ${TGE_ZX_RENAMES})
+        # its ZX layer converts the screen to 4bpp only on RISC OS, keyed on
+        # __riscos, which affects nothing else in Spectrum.c. ponytail:
+        # replace with a TGE build option if it ever gains one
+        set_source_files_properties(${TGE}/ZXSpectrum/Spectrum.c
+            PROPERTIES COMPILE_DEFINITIONS "__riscos")
         set_source_files_properties(libraries/wuss/test/tasks/greatescape.c
             PROPERTIES
                 INCLUDE_DIRECTORIES "${TGE_DIR}/include"
