@@ -85,6 +85,16 @@ struct zxtask
   double               deadline; /* game thread only: pacing deadline,
                                   * seconds */
   int                  deadline_valid;
+
+  /* profiling counters, logged by zxtask_destroy */
+  double               started;  /* when the game thread started */
+  double               awoke;    /* game thread: when sleep last returned */
+  double               busy;     /* game thread: seconds outside sleep */
+  long                 sleeps;   /* game thread: zxtask_sleep calls */
+  long                 lags;     /* game thread: backlogs dropped */
+  long                 draws;    /* under lock: zxtask_drawn calls */
+  long                 redraws;  /* main thread: redraw events */
+  double               redrawn;  /* main thread: seconds redrawing */
 };
 
 /* set up a calloc'd task block before the port creates its Spectrum, whose
