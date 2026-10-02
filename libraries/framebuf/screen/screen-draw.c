@@ -586,10 +586,22 @@ static const pixelmap_t *src_pixelmap_for(const bitmap_t *src)
                       pixelfmt_paletted_nentries(src->format));
 }
 
+/* Write the p4 pixel "pxl" at "x" in the screen row "drow". */
+static void put_p4(unsigned char *drow, int x, int pxl)
+{
+  unsigned char *scrp;
+  int            shift;
+
+  scrp  = drow + (x >> 1);
+  shift = (x & 1) * 4;
+  *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | (pxl << shift));
+}
+
 /* screen_copy_bitmap_p4's undithered p4-source case: each of the source's 16
  * palette entries is matched to a screen index once, up front, leaving the
- * inner loop a nibble remap. "pm" is the rgba8888->screen pixelmap and
- * "srcpm" the source's p4->rgba8888 one. */
+ * inner loop a nibble remap. A source with no transparent entries is copied
+ * a whole screen byte, two pixels, per lookup. "pm" is the rgba8888->screen
+ * pixelmap and "srcpm" the source's p4->rgba8888 one. */
 static result_t screen_copy_bitmap_p4_from_p4(screen_t         *scr,
                                               int               x,
                                               int               y,
@@ -599,9 +611,14 @@ static result_t screen_copy_bitmap_p4_from_p4(screen_t         *scr,
                                               const pixelmap_t *pm,
                                               const pixelmap_t *srcpm)
 {
-  int remap[16]; /* source index -> screen index, or -1 if transparent */
-  int i;
-  int yy;
+  int           remap[16]; /* source index -> screen index, or -1 if
+                            * transparent */
+  int           opaque;
+  int           i;
+  unsigned char pairs[256]; /* source pixel pair -> screen pixel pair */
+  int           yy;
+
+  opaque = 1;
 
   for (i = 0; i < 16; i++)
   {
@@ -612,6 +629,7 @@ static result_t screen_copy_bitmap_p4_from_p4(screen_t         *scr,
     if (has_alpha && colour_get_alpha(&c) == 0)
     {
       remap[i] = -1;
+      opaque   = 0;
       continue;
     }
 
@@ -622,6 +640,10 @@ static result_t screen_copy_bitmap_p4_from_p4(screen_t         *scr,
     remap[i] = (pm->entries[idx >> 1] >> ((idx & 1) << 2)) & 0xF;
   }
 
+  if (opaque)
+    for (i = 0; i < 256; i++)
+      pairs[i] = (unsigned char) (remap[i & 0xF] | (remap[i >> 4] << 4));
+
   for (yy = draw_box->y0; yy < draw_box->y1; yy++)
   {
     const unsigned char *srow;
@@ -630,22 +652,43 @@ static result_t screen_copy_bitmap_p4_from_p4(screen_t         *scr,
 
     srow = (const unsigned char *) src->base + (yy - y) * src->rowbytes;
     drow = (unsigned char *) scr->base + yy * scr->rowbytes;
+    dstx = draw_box->x0;
 
-    for (dstx = draw_box->x0; dstx < draw_box->x1; dstx++)
+    if (opaque)
     {
-      int            srcx;
-      int            pxl;
-      unsigned char *scrp;
-      int            shift;
+      int srcx;
+      int v;
+
+      if (dstx & 1)
+      {
+        srcx = dstx - x;
+        put_p4(drow, dstx, remap[(srow[srcx >> 1] >> ((srcx & 1) * 4)) & 0xF]);
+        dstx++;
+      }
+
+      /* whole screen bytes; an odd x straddles two source bytes */
+      for (; dstx + 1 < draw_box->x1; dstx += 2)
+      {
+        srcx = dstx - x;
+        if (srcx & 1)
+          v = (srow[srcx >> 1] >> 4) | (srow[(srcx >> 1) + 1] << 4);
+        else
+          v = srow[srcx >> 1];
+        drow[dstx >> 1] = pairs[v & 0xFF];
+      }
+    }
+
+    for (; dstx < draw_box->x1; dstx++)
+    {
+      int srcx;
+      int pxl;
 
       srcx = dstx - x;
       pxl  = remap[(srow[srcx >> 1] >> ((srcx & 1) * 4)) & 0xF];
       if (pxl < 0)
         continue; /* fully transparent: leave background alone */
 
-      scrp  = drow + (dstx >> 1);
-      shift = (dstx & 1) * 4;
-      *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | (pxl << shift));
+      put_p4(drow, dstx, pxl);
     }
   }
 

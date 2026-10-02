@@ -1334,7 +1334,7 @@ static result_t test_copy_bitmap_p4_to_p4(void)
 {
 #define P4P4_W 7
 #define P4P4_H 3
-  static const int xs[] = { 3, 4, -2, WIDTH - 4 };
+  static const int xs[] = { 3, 4, -2, -3, WIDTH - 4, WIDTH - 5 };
 
   static unsigned char       p4buf[(P4P4_W + 1) / 2 * P4P4_H];
   static pixelfmt_rgba8888_t deepbuf[P4P4_W * P4P4_H];
@@ -1346,6 +1346,7 @@ static result_t test_copy_bitmap_p4_to_p4(void)
   bitmap_t                   p4src;
   bitmap_t                   deepsrc;
   int                        i, x, y;
+  int                        pass;
   size_t                     xi;
   screen_t                   wantscr;
   screen_t                   gotscr;
@@ -1359,8 +1360,6 @@ static result_t test_copy_bitmap_p4_to_p4(void)
                            (unsigned char) ((i & 2) ? 255 : 0),
                            (unsigned char) ((i & 4) ? ((i & 8) ? 255 : 128) : 0));
   }
-  srcpal[5] = colour_rgba(0x00, 0xFF, 0x00, 0x00); /* fully transparent */
-
   memset(p4buf, 0, sizeof(p4buf));
   for (y = 0; y < P4P4_H; y++)
     for (x = 0; x < P4P4_W; x++)
@@ -1376,29 +1375,43 @@ static result_t test_copy_bitmap_p4_to_p4(void)
   bitmap_init(&deepsrc, SIZE2D(P4P4_W, P4P4_H), pixelfmt_rgba8888,
               P4P4_W * 4, NULL, deepbuf);
 
-  for (xi = 0; xi < NELEMS(xs); xi++)
+  /* opaque first, then with a fully transparent entry */
+  for (pass = 0; pass < 2; pass++)
   {
-    memset(want, 0x9A, sizeof(want));
-    memset(got, 0x9A, sizeof(got));
-    screen_init(&wantscr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p4, WIDTH / 2,
-                scrpal, want);
-    screen_init(&gotscr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p4, WIDTH / 2,
-                scrpal, got);
-
-    if (screen_copy_bitmap(&wantscr, xs[xi], 1, &deepsrc) != result_OK ||
-        screen_copy_bitmap(&gotscr, xs[xi], 1, &p4src) != result_OK)
+    for (xi = 0; xi < NELEMS(xs); xi++)
     {
-      printf("screen: p4 to p4 copy_bitmap failed at x=%d\n", xs[xi]);
-      bitmap_set_palette(&p4src, NULL);
-      return result_TEST_FAILED;
-    }
+      if (pass == 1 && xi == 0)
+      {
+        srcpal[5] = colour_rgba(0x00, 0xFF, 0x00, 0x00);
+        for (i = 0; i < P4P4_W * P4P4_H; i++)
+          if ((i & 15) == 5)
+            deepbuf[i] = srcpal[5].primary;
+        bitmap_set_palette(&p4src, srcpal);
+      }
 
-    if (memcmp(want, got, sizeof(want)) != 0)
-    {
-      printf("screen: p4 to p4 copy_bitmap differs from rgba8888 at x=%d\n",
-             xs[xi]);
-      bitmap_set_palette(&p4src, NULL);
-      return result_TEST_FAILED;
+      memset(want, 0x9A, sizeof(want));
+      memset(got, 0x9A, sizeof(got));
+      screen_init(&wantscr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p4, WIDTH / 2,
+                  scrpal, want);
+      screen_init(&gotscr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p4, WIDTH / 2,
+                  scrpal, got);
+
+      if (screen_copy_bitmap(&wantscr, xs[xi], 1, &deepsrc) != result_OK ||
+          screen_copy_bitmap(&gotscr, xs[xi], 1, &p4src) != result_OK)
+      {
+        printf("screen: p4 to p4 copy_bitmap failed at x=%d pass %d\n",
+               xs[xi], pass);
+        bitmap_set_palette(&p4src, NULL);
+        return result_TEST_FAILED;
+      }
+
+      if (memcmp(want, got, sizeof(want)) != 0)
+      {
+        printf("screen: p4 to p4 copy_bitmap differs from rgba8888 at x=%d "
+               "pass %d\n", xs[xi], pass);
+        bitmap_set_palette(&p4src, NULL);
+        return result_TEST_FAILED;
+      }
     }
   }
 
