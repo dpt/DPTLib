@@ -89,6 +89,44 @@ static result_t test_translated(void)
   return result_TEST_PASSED;
 }
 
+static result_t test_list_add(void)
+{
+  static const box_t a      = {  0,  0, 10, 10 };
+  static const box_t inside = {  2,  2,  4,  4 };
+  static const box_t right  = { 10,  0, 20, 10 }; /* shares a's right edge */
+  static const box_t ab     = {  0,  0, 20, 10 };
+  static const box_t far1   = { 50, 50, 60, 60 };
+  static const box_t far2   = { 70, 70, 80, 80 };
+  static const box_t last   = { 50, 50, 80, 80 };
+  static const box_t empty  = {  5,  5,  5,  5 };
+
+  box_t list[2];
+  int   n;
+
+  n = 0;
+  if (box_list_add(list, &n, 2, &a) || n != 1)
+    return result_TEST_FAILED;
+
+  /* covered and empty boxes change nothing */
+  if (box_list_add(list, &n, 2, &inside) || n != 1)
+    return result_TEST_FAILED;
+  if (box_list_add(list, &n, 2, &empty) || n != 1)
+    return result_TEST_FAILED;
+
+  /* a shared edge merges into one exact box */
+  if (box_list_add(list, &n, 2, &right) || n != 1 || !boxeq(&list[0], &ab))
+    return result_TEST_FAILED;
+
+  if (box_list_add(list, &n, 2, &far1) || n != 2)
+    return result_TEST_FAILED;
+
+  /* full: unions into the last entry and says so */
+  if (!box_list_add(list, &n, 2, &far2) || n != 2 || !boxeq(&list[1], &last))
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
 result_t box_test(const char *resources)
 {
   typedef result_t (*boxtestfn)(void);
@@ -98,7 +136,8 @@ result_t box_test(const char *resources)
     test_reset_empty,
     test_contains_box,
     test_contains_point,
-    test_translated
+    test_translated,
+    test_list_add
   };
 
   result_t rc;

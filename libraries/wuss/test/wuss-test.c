@@ -2248,7 +2248,7 @@ result_t wuss_test(const char *resources)
      * preserved, unlike a naive summed-region-area comparison, which
      * overcounts once furniture invalidation adds several regions that
      * overlap each other and the grown-edge region without merging (only
-     * exact-edge-aligned boxes merge; see box_merge in invalidate.c) */
+     * exact-edge-aligned boxes merge; see box_merge in geom/box/list-add.c) */
     interior_x = (before.x0 + outline_px + before.x1 - outline_px - icon) / 2;
     interior_y = (before.y0 + outline_px + titlebar_height + before.y1 - outline_px - icon) / 2;
 
@@ -3120,7 +3120,7 @@ result_t wuss_test(const char *resources)
      * visible box, furniture included) instead of &before_content, so the
      * old titlebar/outline/scrollbar strips got queued twice -- once from
      * that call, once from wuss__furniture_invalidate -- as two rects that
-     * mark_region's containment/shared-edge merge doesn't fold together,
+     * box_list_add's containment/shared-edge merge doesn't fold together,
      * so wuss_redraw_dirty painted the overlap twice. */
     static test_task_t tc_h;
     wuss_task_t       *delegate_h;
