@@ -37,9 +37,19 @@ struct greatescape_task
 
 static void greatescape_draw(const zxbox_t *dirty, void *opaque)
 {
-  (void) dirty;
+  box_t box;
 
-  zxtask_drawn(opaque);
+  if (dirty == NULL)
+  {
+    zxtask_drawn(opaque, NULL);
+    return;
+  }
+
+  box.x0 = dirty->x0;
+  box.y0 = dirty->y0;
+  box.x1 = dirty->x1;
+  box.y1 = dirty->y1;
+  zxtask_drawn(opaque, &box);
 }
 
 static void greatescape_stamp(void *opaque)

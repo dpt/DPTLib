@@ -128,6 +128,7 @@ void zxtask_init(zxtask_t *task, const zxtask_ops_t *ops)
   pthread_cond_init(&task->wake, NULL);
   task->speed = ZXTASK_SPEED_NORMAL;
   task->zoom  = 1;
+  box_reset(&task->damage);
 
   WUSS_MENU_ITEM_SHORTCUT(task->speed_items, ZXTASK_SPEED_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "^P");
@@ -247,10 +248,31 @@ void zxtask_destroy(zxtask_t *task)
 
 /* ----------------------------------------------------------------------- */
 
-void zxtask_drawn(zxtask_t *task)
+void zxtask_drawn(zxtask_t *task, const box_t *dirty)
 {
+  box_t box;
+
+  /* flip to top-left origin, clamped to the screen, then offset into the
+   * border */
+  if (dirty == NULL)
+  {
+    box.x0 = 0;
+    box.y0 = 0;
+    box.x1 = ZXTASK_SCREEN_WIDTH;
+    box.y1 = ZXTASK_SCREEN_HEIGHT;
+  }
+  else
+  {
+    box.x0 = CLAMP(dirty->x0, 0, ZXTASK_SCREEN_WIDTH);
+    box.y0 = ZXTASK_SCREEN_HEIGHT - CLAMP(dirty->y1, 0, ZXTASK_SCREEN_HEIGHT);
+    box.x1 = CLAMP(dirty->x1, 0, ZXTASK_SCREEN_WIDTH);
+    box.y1 = ZXTASK_SCREEN_HEIGHT - CLAMP(dirty->y0, 0, ZXTASK_SCREEN_HEIGHT);
+  }
+  box_translated(&box, ZXTASK_BORDER, ZXTASK_BORDER, &box);
+
   pthread_mutex_lock(&task->lock);
-  task->dirty = 1;
+  if (!box_is_empty(&box))
+    box_union(&task->damage, &box, &task->damage);
   task->draws++;
   pthread_mutex_unlock(&task->lock);
 }
@@ -258,8 +280,15 @@ void zxtask_drawn(zxtask_t *task)
 void zxtask_set_border(zxtask_t *task, int colour)
 {
   pthread_mutex_lock(&task->lock);
-  task->border = colour;
-  task->dirty  = 1;
+  /* games may set the border every frame; repaint only on a change */
+  if (task->border != colour)
+  {
+    task->border    = colour;
+    task->damage.x0 = 0;
+    task->damage.y0 = 0;
+    task->damage.x1 = ZXTASK_WINDOW_WIDTH;
+    task->damage.y1 = ZXTASK_WINDOW_HEIGHT;
+  }
   pthread_mutex_unlock(&task->lock);
 }
 
@@ -638,7 +667,7 @@ static result_t zxtask_handle(wuss_window_t      *window,
   result_t  rc;
   zxtask_t *task;
   double    then;
-  int       dirty;
+  box_t     damage;
 
   task = task_data;
 
@@ -656,13 +685,14 @@ static result_t zxtask_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     pthread_mutex_lock(&task->lock);
-    dirty       = task->dirty;
-    task->dirty = 0;
+    damage = task->damage;
+    box_reset(&task->damage);
     pthread_mutex_unlock(&task->lock);
-    /* ponytail: whole-window invalidate; the draw callback's dirty box
-     * could narrow it if redraw cost ever shows */
-    if (dirty && task->window != NULL)
-      wuss_window_invalidate_visible(task->window);
+    if (!box_is_empty(&damage) && task->window != NULL)
+    {
+      box_scalelog2(&damage, task->zoom - 1); /* zoom is 1 or 2 */
+      wuss_window_invalidate(task->window, &damage);
+    }
     return result_OK;
 
   case wuss_EVENT_KEY:
