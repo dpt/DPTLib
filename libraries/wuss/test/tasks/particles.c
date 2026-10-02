@@ -454,11 +454,6 @@ enum
 #define PST_G_LABEL      1 /* size groups, see stack_item_t::group */
 #define PST_G_VALUE      2
 #define PST_SLIDER_MIN_W (64)
-#define PST_CHAR_W        6 /* ponytail: assumes the 6px system font */
-#define PST_ACTION_WIDTH(W)  ((W)*PST_CHAR_W+2*wuss_STD_SECONDARY_BUTTON_BORDER)
-#define PST_DEFAULT_WIDTH(W) ((W)*PST_CHAR_W+2*wuss_STD_PRIMARY_BUTTON_BORDER)
-#define PST_CANCEL_W     PST_ACTION_WIDTH(9)
-#define PST_APPLY_W      PST_DEFAULT_WIDTH(9)
 
 static const stack_item_t g_particles_strength_stack[PARTICLES_STRENGTH_STACK__LIMIT] =
 {
@@ -479,8 +474,8 @@ static const stack_item_t g_particles_strength_stack[PARTICLES_STRENGTH_STACK__L
   [PST_BSPC] = STACK_SPACER_GROUP(PST_BTNS, 0, PST_G_LABEL),
   [PST_BBOX] = { .kind = stack_KIND_HBOX, .parent = PST_BTNS,
                .gap = wuss_STD_GAP, .flex = 1 },
-  [PST_CNCL] = STACK_LEAF_EX(PST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, PST_CANCEL_W, 0),
-  [PST_APLY] = STACK_LEAF_EX(PST_BBOX, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, PST_APPLY_W, 0),
+  [PST_CNCL] = STACK_LEAF_EX(PST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
+  [PST_APLY] = STACK_LEAF_EX(PST_BBOX, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
 };
 
 /* Build the Strength dialogue once: a label, a slider 1..100, a label
@@ -511,6 +506,12 @@ static result_t particles_strength_dialogue_create(particles_task_t *task)
   items[PST_VAL].axis_size   = task_text_width(task->wuss, widest);
   snprintf(widest, sizeof(widest), "%d", PARTICLES_RANGE_MAX);
   items[PST_VAL2].axis_size  = task_text_width(task->wuss, widest);
+
+  /* the buttons share the widest label's width */
+  items[PST_CNCL].min = task_button_width(task->wuss, "Cancel",
+                                          wuss_STD_SECONDARY_BUTTON_BORDER);
+  items[PST_APLY].min = task_button_width(task->wuss, "Cancel",
+                                          wuss_STD_PRIMARY_BUTTON_BORDER);
 
   rc = stack_smallest(items, NELEMS(items), &min_sz);
   if (rc != result_OK)
