@@ -111,10 +111,10 @@ void zxtask_init(zxtask_t *task, const zxtask_ops_t *ops)
                  wuss_MENU_ITEM_TICKED);
   WUSS_MENU_ITEM(task->speed_items, ZXTASK_SPEED_MENU_MAXIMUM, "Maximum",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->speed_items, ZXTASK_SPEED_MENU_FASTER, "Faster",
-                 wuss_MENU_ITEM_DASHED);
-  WUSS_MENU_ITEM(task->speed_items, ZXTASK_SPEED_MENU_SLOWER, "Slower",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->speed_items, ZXTASK_SPEED_MENU_FASTER, "Faster",
+                          wuss_MENU_ITEM_DASHED, "^]");
+  WUSS_MENU_ITEM_SHORTCUT(task->speed_items, ZXTASK_SPEED_MENU_SLOWER, "Slower",
+                          wuss_MENU_ITEM_NONE, "^[");
   snprintf(task->speed_title, sizeof(task->speed_title), "Speed %d%%",
            task->speed);
   WUSS_MENU_TITLE(task->speed_menu, task->speed_title, task->speed_items,
