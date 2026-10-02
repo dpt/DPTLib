@@ -1,7 +1,8 @@
 # chasehq-60s.txt -- wuss script for a timed 60 s run of the Chase H.Q. task
 #
-# Picks Kempston controls, starts a game and holds accelerate, then lets 60 s
-# of driving pass. On quit the task logs its counters:
+# Picks Kempston controls, starts a game, skips the briefing and holds
+# accelerate, then lets 60 s of driving pass. On quit the task logs its
+# counters:
 #
 #   (info) chasehq: N s: game busy N s (N%), N sleeps, N lag drops,
 #          N draw calls/s; N redraws, N ms each
@@ -52,12 +53,17 @@ key 3
 sleep 0.5
 keyup 3
 
-# fire starts a game; up (Kempston up) accelerates through the briefing
+# fire starts a game, then fire again skips the 15 s or so of briefing;
+# up (Kempston up) then holds accelerate
 sleep 8
 key .
 sleep 0.5
 keyup .
-sleep 4
+sleep 2
+key .
+sleep 0.5
+keyup .
+sleep 1
 key up
 
 sleep 60
