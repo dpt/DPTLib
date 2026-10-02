@@ -94,7 +94,8 @@ struct zxtask
   double               busy;     /* game thread: seconds outside sleep */
   long                 sleeps;   /* game thread: zxtask_sleep calls */
   long                 lags;     /* game thread: backlogs dropped */
-  long                 draws;    /* under lock: zxtask_drawn calls */
+  long                 draws;    /* under lock: zxtask_drawn calls, several
+                                  * per game frame */
   long                 redraws;  /* main thread: redraw events */
   double               redrawn;  /* main thread: seconds redrawing */
 };
