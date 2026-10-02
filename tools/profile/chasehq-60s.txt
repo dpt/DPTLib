@@ -4,7 +4,7 @@
 # of driving pass. On quit the task logs its counters:
 #
 #   (info) chasehq: N s: game busy N s (N%), N sleeps, N lag drops,
-#          N draws/s; N redraws, N ms each
+#          N draw calls/s; N redraws, N ms each
 #
 # Use a build without ASan for meaningful numbers, e.g.:
 #

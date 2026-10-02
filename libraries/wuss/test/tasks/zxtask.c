@@ -213,7 +213,7 @@ static void zxtask_report(const zxtask_t *task)
     return;
 
   logf_info("%s: %.1f s: game busy %.2f s (%.1f%%), %ld sleeps, "
-            "%ld lag drops, %.1f draws/s; %ld redraws, %.3f ms each",
+            "%ld lag drops, %.1f draw calls/s; %ld redraws, %.3f ms each",
             task->ops->name, elapsed,
             task->busy, 100.0 * task->busy / elapsed,
             task->sleeps, task->lags, task->draws / elapsed,
