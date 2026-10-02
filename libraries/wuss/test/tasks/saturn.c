@@ -511,12 +511,6 @@ enum
 #define ST_G_LABEL          1 /* size groups, see stack_item_t::group */
 #define ST_G_VALUE          2
 #define ST_SLIDER_MIN_W     (64)
-#define ST_CHAR_W           6 /* ponytail: assumes the 6px system font */
-#define ST_ACTION_WIDTH(W)  ((W)*ST_CHAR_W+2*wuss_STD_SECONDARY_BUTTON_BORDER)
-#define ST_DEFAULT_WIDTH(W) ((W)*ST_CHAR_W+2*wuss_STD_PRIMARY_BUTTON_BORDER)
-#define ST_DEFAULT_W        ST_ACTION_WIDTH(9)
-#define ST_CANCEL_W         ST_ACTION_WIDTH(9)
-#define ST_APPLY_W          ST_DEFAULT_WIDTH(9)
 
 static const stack_item_t g_saturn_conf_stack[SIZE_STACK__LIMIT] =
 {
@@ -547,9 +541,9 @@ static const stack_item_t g_saturn_conf_stack[SIZE_STACK__LIMIT] =
   [ST_BSPC]  = STACK_SPACER_GROUP(ST_BTNS, 0, ST_G_LABEL),
   [ST_BBOX]  = { .kind = stack_KIND_HBOX, .parent = ST_BTNS,
                 .gap = wuss_STD_GAP, .flex = 1 },
-  [ST_DFLT]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, ST_DEFAULT_W, 0),
-  [ST_CNCL]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, ST_CANCEL_W, 0),
-  [ST_APLY]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, ST_APPLY_W, 0),
+  [ST_DFLT]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
+  [ST_CNCL]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
+  [ST_APLY]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
 };
 
 /* Build the size dialogue once: a label, a slider snapped to
@@ -589,6 +583,13 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
     snprintf(widest, sizeof(widest), "%d", desc->max);
     items[value_box[row]].axis_size = task_text_width(task->wuss, widest);
   }
+
+  /* the buttons share the widest label's width */
+  items[ST_DFLT].min = task_button_width(task->wuss, "Default",
+                                         wuss_STD_SECONDARY_BUTTON_BORDER);
+  items[ST_CNCL].min = items[ST_DFLT].min;
+  items[ST_APLY].min = task_button_width(task->wuss, "Default",
+                                         wuss_STD_PRIMARY_BUTTON_BORDER);
 
   /* smallest window the layout can be solved into without any flex item
    * (the sliders) growing past its minimum */

@@ -63,4 +63,14 @@ static inline int task_text_width(const wuss_t *wuss, const char *text)
   return width;
 }
 
+/* smallest width of a button labelled text inside a border of the given
+ * width: the text plus a space either side */
+static inline int task_button_width(const wuss_t *wuss,
+                                    const char   *text,
+                                    int           border)
+{
+  return task_text_width(wuss, text) + 2 * task_text_width(wuss, " ") +
+         2 * border;
+}
+
 #endif /* TASKS_COMMON_H */
