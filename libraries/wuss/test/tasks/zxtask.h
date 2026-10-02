@@ -9,6 +9,7 @@
 
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
+#include "geom/box.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
@@ -74,12 +75,13 @@ struct zxtask
   int                  zoom;     /* pixel scale, 1 or 2 */
   pthread_t            thread;
   int                  thread_started;
-  pthread_mutex_t      lock;     /* guards kempston, border, dirty, quit,
+  pthread_mutex_t      lock;     /* guards kempston, border, damage, quit,
                                   * paused, speed and the port's key state */
   pthread_cond_t       wake;     /* signalled on unpause and quit */
   unsigned int         kempston; /* port 0x1F bits: 000FUDLR */
   int                  border;   /* ZX colour 0..7 */
-  int                  dirty;    /* the game drew since the last idle */
+  box_t                damage;   /* unzoomed window area drawn since the
+                                  * last idle */
   int                  quit;
   int                  paused;
   int                  speed;    /* percent of real time */
@@ -113,8 +115,9 @@ void zxtask_destroy(zxtask_t *task);
 
 /* Game-thread calls, for the port's zxconfig_t callbacks. */
 
-/* the game drew: repaint on the next idle */
-void zxtask_drawn(zxtask_t *task);
+/* the game drew in dirty, a ZX box (bottom-left origin, pixels), or the
+ * whole screen when NULL: repaint it on the next idle */
+void zxtask_drawn(zxtask_t *task, const box_t *dirty);
 
 /* the game set the border to ZX colour 0..7 */
 void zxtask_set_border(zxtask_t *task, int colour);
