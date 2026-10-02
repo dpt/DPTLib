@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #ifdef FORTIFY
@@ -85,6 +86,23 @@ static unsigned int zxtask_luma(unsigned int r,
                                 unsigned int b)
 {
   return (r * 77 + g * 150 + b * 29) >> 8;
+}
+
+/* ZX colour 0..7 (bits G R B) with its set channels at level, grey when
+ * mono */
+static colour_t zxtask_colour(const zxtask_t *task,
+                              int             zx,
+                              unsigned int    level)
+{
+  unsigned int r, g, b;
+
+  r = (zx & 2) ? level : 0;
+  g = (zx & 4) ? level : 0;
+  b = (zx & 1) ? level : 0;
+  if (task->mono)
+    r = g = b = zxtask_luma(r, g, b);
+
+  return colour_rgb(r, g, b);
 }
 
 static void *zxtask_thread(void *opaque)
@@ -318,9 +336,34 @@ int zxtask_sleep(zxtask_t *task, int duration)
 
 /* ----------------------------------------------------------------------- */
 
+/* Double a 256x192 p4 screen into task->pixels. Mono needs no conversion:
+ * it is all in the palette. ponytail: zoom 2 only, generalise if
+ * ZXTASK_MAX_ZOOM grows. */
+static void zxtask_convert_p4(zxtask_t *task, const bitmap_t *bm)
+{
+  int                  rowbytes;
+  int                  x, y;
+  const unsigned char *row;
+  unsigned char       *out;
+  unsigned int         p;
+
+  rowbytes = ZXTASK_SCREEN_WIDTH; /* 512 pixels at 4bpp */
+  for (y = 0; y < ZXTASK_SCREEN_HEIGHT; y++)
+  {
+    row = (const unsigned char *) bm->base + y * bm->rowbytes;
+    out = (unsigned char *) task->pixels + y * 2 * rowbytes;
+    for (x = 0; x < ZXTASK_SCREEN_WIDTH / 2; x++)
+    {
+      p      = row[x];
+      *out++ = (unsigned char) ((p & 0x0F) | (p << 4));
+      *out++ = (unsigned char) ((p & 0xF0) | (p >> 4));
+    }
+    memcpy(out, out - rowbytes, rowbytes);
+  }
+}
+
 /* Convert the claimed screen into task->pixels, scaled by the zoom and,
- * if mono, simulating a black and white TV. Both ports give 256x192
- * rgbx8888. */
+ * if mono, simulating a black and white TV. */
 static void zxtask_convert(zxtask_t *task, const bitmap_t *bm)
 {
   int             width;
@@ -331,11 +374,17 @@ static void zxtask_convert(zxtask_t *task, const bitmap_t *bm)
   unsigned int    l;
   int             i, j;
 
+  if (bm->format == pixelfmt_p4)
+  {
+    zxtask_convert_p4(task, bm);
+    return;
+  }
+
   width = ZXTASK_SCREEN_WIDTH * task->zoom;
   for (y = 0; y < ZXTASK_SCREEN_HEIGHT; y++)
   {
     row = (const uint32_t *) ((const char *) bm->base + y * bm->rowbytes);
-    out = task->pixels + y * task->zoom * width;
+    out = (uint32_t *) task->pixels + y * task->zoom * width;
     for (x = 0; x < ZXTASK_SCREEN_WIDTH; x++)
     {
       p = row[x];
@@ -360,8 +409,10 @@ static result_t zxtask_redraw(zxtask_t *task, const wuss_event_t *event)
   const box_t *bounds;
   int          x, y;
   int          border;
-  unsigned int r, g, b;
   bitmap_t     bm;
+  int          i;
+  pixelfmt_t   format;
+  int          bpp;
 
   bounds = event->data.redraw.bounds;
   x      = bounds->x0 - event->data.redraw.scroll.x;
@@ -371,16 +422,10 @@ static result_t zxtask_redraw(zxtask_t *task, const wuss_event_t *event)
   border = task->border;
   pthread_mutex_unlock(&task->lock);
 
-  /* ZX colour bits are G R B */
-  r = (border & 2) ? level : 0;
-  g = (border & 4) ? level : 0;
-  b = (border & 1) ? level : 0;
-  if (task->mono)
-    r = g = b = zxtask_luma(r, g, b);
   screen_fill_rect(event->data.redraw.scr, x, y,
                    SIZE2D(ZXTASK_WINDOW_WIDTH * task->zoom,
                           ZXTASK_WINDOW_HEIGHT * task->zoom),
-                   colour_rgb(r, g, b));
+                   zxtask_colour(task, border, level));
 
   x += ZXTASK_BORDER * task->zoom;
   y += ZXTASK_BORDER * task->zoom;
@@ -392,7 +437,17 @@ static result_t zxtask_redraw(zxtask_t *task, const wuss_event_t *event)
     return rc;
   }
 
-  if (task->pixels == NULL)
+  /* a p4 screen borrows the task's palette, never freed through bm; bright
+   * black is still black */
+  format = bm.format;
+  if (format == pixelfmt_p4)
+  {
+    for (i = 0; i < 16; i++)
+      task->palette[i] = zxtask_colour(task, i & 7, (i & 8) ? 0xFF : level);
+    bm.palette = task->palette;
+  }
+
+  if (task->zoom == 1 && (!task->mono || format == pixelfmt_p4))
   {
     rc = screen_copy_bitmap(event->data.redraw.scr, x, y, &bm);
     task->ops->release_screen(task);
@@ -401,15 +456,19 @@ static result_t zxtask_redraw(zxtask_t *task, const wuss_event_t *event)
 
   zxtask_convert(task, &bm);
   task->ops->release_screen(task);
-  rc = bitmap_init(&bm,
-                   SIZE2D(ZXTASK_SCREEN_WIDTH * task->zoom,
-                          ZXTASK_SCREEN_HEIGHT * task->zoom),
-                   pixelfmt_rgbx8888,
-                   ZXTASK_SCREEN_WIDTH * task->zoom * 4,
-                   NULL,
-                   task->pixels);
+  bpp = (format == pixelfmt_p4) ? 4 : 32;
+  rc  = bitmap_init(&bm,
+                    SIZE2D(ZXTASK_SCREEN_WIDTH * task->zoom,
+                           ZXTASK_SCREEN_HEIGHT * task->zoom),
+                    format,
+                    ZXTASK_SCREEN_WIDTH * task->zoom * bpp / 8,
+                    NULL,
+                    task->pixels);
   if (rc != result_OK)
     return rc;
+
+  if (format == pixelfmt_p4)
+    bm.palette = task->palette;
 
   return screen_copy_bitmap(event->data.redraw.scr, x, y, &bm);
 }
@@ -515,7 +574,7 @@ static result_t zxtask_set_view(zxtask_t *task, int index)
   {
     task->pixels = malloc(ZXTASK_SCREEN_WIDTH * ZXTASK_SCREEN_HEIGHT *
                           ZXTASK_MAX_ZOOM * ZXTASK_MAX_ZOOM *
-                          sizeof(*task->pixels));
+                          sizeof(uint32_t));
     if (task->pixels == NULL)
       return result_OOM;
   }

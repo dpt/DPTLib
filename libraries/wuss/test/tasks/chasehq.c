@@ -104,7 +104,7 @@ static result_t chasehq_claim_screen(zxtask_t *task, bitmap_t *bm)
   frame = zxspectrum_claim_screen(((chasehq_task_t *) task)->zx);
 
   return bitmap_init(bm, SIZE2D(frame->width, frame->height),
-                     pixelfmt_rgbx8888, frame->stride, NULL, frame->pixels);
+                     pixelfmt_p4, frame->stride, NULL, frame->pixels);
 }
 
 static void chasehq_release_screen(zxtask_t *task)
@@ -163,7 +163,7 @@ result_t chasehq_create(wuss_t *wuss, chasehq_task_t **out)
   config.sleep        = chasehq_sleep;
   config.key          = chasehq_key;
   config.border       = chasehq_border;
-  config.pixel_format = ZX_PIXEL_ABGR8888; /* R in the low byte */
+  config.pixel_format = ZX_PIXEL_INDEXED4;
 
   task->zx = zxspectrum_create(&config);
   if (task->zx == NULL)

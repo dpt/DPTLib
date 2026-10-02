@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "framebuf/bitmap.h"
+#include "framebuf/colour.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
@@ -42,8 +43,9 @@ typedef struct zxtask_ops
   /* free the port's own objects, but not the task block */
   void (*destroy)(zxtask_t *task);
 
-  /* lock the converted screen and describe it in *bm; release_screen
-   * always follows */
+  /* lock the converted screen and describe it in *bm, either p4 (index
+   * BRIGHT * 8 + ZX colour, no palette: the host supplies it) or 256x192
+   * rgbx8888; release_screen always follows */
   result_t (*claim_screen)(zxtask_t *task, bitmap_t *bm);
   void     (*release_screen)(zxtask_t *task);
 
@@ -67,7 +69,8 @@ struct zxtask
   char                 speed_title[16]; /* "Speed 100%" */
   wuss_menu_handle_t   menu_handle; /* live only between open and close */
   wuss_proginfo_desc_t desc;
-  uint32_t            *pixels;   /* converted screen, when mono or zoomed */
+  colour_t             palette[16]; /* a p4 screen's colours, mono aware */
+  void                *pixels;   /* converted screen, when mono or zoomed */
   int                  mono;     /* simulate a black and white TV */
   int                  zoom;     /* pixel scale, 1 or 2 */
   pthread_t            thread;
