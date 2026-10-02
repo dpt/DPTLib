@@ -128,7 +128,6 @@ void zxtask_init(zxtask_t *task, const zxtask_ops_t *ops)
   pthread_cond_init(&task->wake, NULL);
   task->speed = ZXTASK_SPEED_NORMAL;
   task->zoom  = 1;
-  box_reset(&task->damage);
 
   WUSS_MENU_ITEM_SHORTCUT(task->speed_items, ZXTASK_SPEED_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "^P");
@@ -271,8 +270,7 @@ void zxtask_drawn(zxtask_t *task, const box_t *dirty)
   box_translated(&box, ZXTASK_BORDER, ZXTASK_BORDER, &box);
 
   pthread_mutex_lock(&task->lock);
-  if (!box_is_empty(&box))
-    box_union(&task->damage, &box, &task->damage);
+  (void) box_list_add(task->damage, &task->ndamage, ZXTASK_MAX_DAMAGE, &box);
   task->draws++;
   pthread_mutex_unlock(&task->lock);
 }
@@ -283,11 +281,12 @@ void zxtask_set_border(zxtask_t *task, int colour)
   /* games may set the border every frame; repaint only on a change */
   if (task->border != colour)
   {
-    task->border    = colour;
-    task->damage.x0 = 0;
-    task->damage.y0 = 0;
-    task->damage.x1 = ZXTASK_WINDOW_WIDTH;
-    task->damage.y1 = ZXTASK_WINDOW_HEIGHT;
+    task->border       = colour;
+    task->damage[0].x0 = 0;
+    task->damage[0].y0 = 0;
+    task->damage[0].x1 = ZXTASK_WINDOW_WIDTH;
+    task->damage[0].y1 = ZXTASK_WINDOW_HEIGHT;
+    task->ndamage      = 1;
   }
   pthread_mutex_unlock(&task->lock);
 }
@@ -667,7 +666,9 @@ static result_t zxtask_handle(wuss_window_t      *window,
   result_t  rc;
   zxtask_t *task;
   double    then;
-  box_t     damage;
+  box_t     damage[ZXTASK_MAX_DAMAGE];
+  int       ndamage;
+  int       i;
 
   task = task_data;
 
@@ -685,13 +686,17 @@ static result_t zxtask_handle(wuss_window_t      *window,
 
   case wuss_EVENT_IDLE:
     pthread_mutex_lock(&task->lock);
-    damage = task->damage;
-    box_reset(&task->damage);
+    ndamage = task->ndamage;
+    memcpy(damage, task->damage, ndamage * sizeof(*damage));
+    task->ndamage = 0;
     pthread_mutex_unlock(&task->lock);
-    if (!box_is_empty(&damage) && task->window != NULL)
+    if (task->window != NULL)
     {
-      box_scalelog2(&damage, task->zoom - 1); /* zoom is 1 or 2 */
-      wuss_window_invalidate(task->window, &damage);
+      for (i = 0; i < ndamage; i++)
+      {
+        box_scalelog2(&damage[i], task->zoom - 1); /* zoom is 1 or 2 */
+        wuss_window_invalidate(task->window, &damage[i]);
+      }
     }
     return result_OK;
 

@@ -23,6 +23,10 @@
  * a zxtask_ops_t and forwards its zxconfig_t callbacks to the zxtask_*
  * calls below. */
 
+/* areas drawn between idles kept apart before folding together: a frame's
+ * HUD digits and playfield fit */
+#define ZXTASK_MAX_DAMAGE (8)
+
 typedef struct zxtask zxtask_t;
 
 typedef struct zxtask_ops
@@ -80,8 +84,9 @@ struct zxtask
   pthread_cond_t       wake;     /* signalled on unpause and quit */
   unsigned int         kempston; /* port 0x1F bits: 000FUDLR */
   int                  border;   /* ZX colour 0..7 */
-  box_t                damage;   /* unzoomed window area drawn since the
-                                  * last idle */
+  box_t                damage[ZXTASK_MAX_DAMAGE]; /* unzoomed window
+                                  * areas drawn since the last idle */
+  int                  ndamage;
   int                  quit;
   int                  paused;
   int                  speed;    /* percent of real time */
