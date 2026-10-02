@@ -859,6 +859,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/clock.c
         libraries/wuss/test/tasks/config.c
         libraries/wuss/test/tasks/curve.c
+        libraries/wuss/test/tasks/dithering.c
         libraries/wuss/test/tasks/display.c
         libraries/wuss/test/tasks/doughnut.c
         libraries/wuss/test/tasks/filer.c
