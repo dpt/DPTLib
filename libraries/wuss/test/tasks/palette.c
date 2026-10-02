@@ -385,6 +385,9 @@ static result_t palette_menu_select(palette_task_t     *pc,
     pc->selected = index;
     pc->invert   = false;
     pc->grey     = false;
+    /* the data tick too: a submenu reopened within the chain is rebuilt
+     * from the items */
+    wuss_menu_tick_exclusive(&pc->load_menu, index);
     if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
     {
       wuss_menu_tick_item_live(pc->menu_handle, &pc->load_menu, old, 0);
