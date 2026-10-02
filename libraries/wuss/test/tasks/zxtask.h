@@ -6,6 +6,7 @@
 #if defined(WUSS_APP) && (defined(WUSS_CHASEHQ) || defined(WUSS_GREATESCAPE))
 
 #include <pthread.h>
+#include <stdint.h>
 
 #include "framebuf/bitmap.h"
 #include "wuss/component/proginfo.h"
@@ -14,10 +15,12 @@
 #include "wuss/wuss.h"
 
 /* The wuss side of a ZX Spectrum game port: a window with a border in the
- * game's border colour, an Info menu, real-time pacing, the arrows and '.'
- * as a Kempston joystick, and a thread for the game loop. Each port's own
- * ZXSpectrum headers stay in its task file, which supplies a zxtask_ops_t
- * and forwards its zxconfig_t callbacks to the zxtask_* calls below. */
+ * game's border colour, a menu with Info, Speed (pause and rate) and
+ * Monochromatic, real-time pacing, the arrows and '.' as a Kempston
+ * joystick, Shift as CAPS SHIFT and a thread for the game loop. Each port's
+ * own ZXSpectrum headers stay in its task file, which supplies a
+ * zxtask_ops_t and forwards its zxconfig_t callbacks to the zxtask_* calls
+ * below. */
 
 typedef struct zxtask zxtask_t;
 
@@ -57,18 +60,26 @@ struct zxtask
   const zxtask_ops_t  *ops;
   wuss_task_t         *delegate;
   wuss_window_t       *window;
-  wuss_menu_item_t     menu_items[1];
+  wuss_menu_item_t     menu_items[3];
   wuss_menu_t          menu;
+  wuss_menu_item_t     speed_items[5];
+  wuss_menu_t          speed_menu;
+  char                 speed_title[16]; /* "Speed 100%" */
   wuss_menu_handle_t   menu_handle; /* live only between open and close */
   wuss_proginfo_desc_t desc;
+  uint32_t            *grey;     /* monochromatic screen, or NULL when off */
   pthread_t            thread;
   int                  thread_started;
-  pthread_mutex_t      lock;     /* guards kempston, border, dirty, quit
-                                  * and the port's key state */
+  pthread_mutex_t      lock;     /* guards kempston, border, dirty, quit,
+                                  * paused, speed and the port's key state */
+  pthread_cond_t       wake;     /* signalled on unpause and quit */
   unsigned int         kempston; /* port 0x1F bits: 000FUDLR */
   int                  border;   /* ZX colour 0..7 */
   int                  dirty;    /* the game drew since the last idle */
   int                  quit;
+  int                  paused;
+  int                  speed;    /* percent of real time */
+  int                  caps;     /* Shift is down as CAPS SHIFT */
   double               deadline; /* game thread only: pacing deadline,
                                   * seconds */
   int                  deadline_valid;
@@ -93,8 +104,9 @@ void zxtask_drawn(zxtask_t *task);
 /* the game set the border to ZX colour 0..7 */
 void zxtask_set_border(zxtask_t *task, int colour);
 
-/* sleep for duration T-states against a running deadline. returns non-zero
- * once the task is quitting */
+/* sleep for duration T-states, scaled by the speed, against a running
+ * deadline; blocks while paused. returns non-zero once the task is
+ * quitting */
 int zxtask_sleep(zxtask_t *task, int duration);
 
 /* returns non-zero once the task is quitting */
