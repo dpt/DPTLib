@@ -1326,6 +1326,89 @@ static result_t test_copy_bitmap_paletted_source(void)
 #undef P4_SRC_ROWBYTES
 }
 
+/* screen_copy_bitmap of a p4 source onto a p4 screen takes a remap fast
+ * path. It must land exactly what the same image as an rgba8888 source
+ * does through the general path: same nearest matches, same transparency,
+ * same clipping, at even and odd destination x. */
+static result_t test_copy_bitmap_p4_to_p4(void)
+{
+#define P4P4_W 7
+#define P4P4_H 3
+  static const int xs[] = { 3, 4, -2, WIDTH - 4 };
+
+  static unsigned char       p4buf[(P4P4_W + 1) / 2 * P4P4_H];
+  static pixelfmt_rgba8888_t deepbuf[P4P4_W * P4P4_H];
+  static unsigned char       want[WIDTH / 2 * HEIGHT];
+  static unsigned char       got[WIDTH / 2 * HEIGHT];
+
+  colour_t                   srcpal[16];
+  colour_t                   scrpal[16];
+  bitmap_t                   p4src;
+  bitmap_t                   deepsrc;
+  int                        i, x, y;
+  size_t                     xi;
+  screen_t                   wantscr;
+  screen_t                   gotscr;
+
+  for (i = 0; i < 16; i++)
+  {
+    srcpal[i] = colour_rgb((unsigned char) (i * 37),
+                           (unsigned char) (255 - i * 13),
+                           (unsigned char) (i * 91));
+    scrpal[i] = colour_rgb((unsigned char) ((i & 1) ? 255 : 0),
+                           (unsigned char) ((i & 2) ? 255 : 0),
+                           (unsigned char) ((i & 4) ? ((i & 8) ? 255 : 128) : 0));
+  }
+  srcpal[5] = colour_rgba(0x00, 0xFF, 0x00, 0x00); /* fully transparent */
+
+  memset(p4buf, 0, sizeof(p4buf));
+  for (y = 0; y < P4P4_H; y++)
+    for (x = 0; x < P4P4_W; x++)
+    {
+      i = (x + y * P4P4_W) & 15;
+      p4buf[y * ((P4P4_W + 1) / 2) + (x >> 1)] |=
+        (unsigned char) (i << ((x & 1) * 4));
+      deepbuf[y * P4P4_W + x] = srcpal[i].primary;
+    }
+
+  bitmap_init(&p4src, SIZE2D(P4P4_W, P4P4_H), pixelfmt_p4,
+              (P4P4_W + 1) / 2, srcpal, p4buf);
+  bitmap_init(&deepsrc, SIZE2D(P4P4_W, P4P4_H), pixelfmt_rgba8888,
+              P4P4_W * 4, NULL, deepbuf);
+
+  for (xi = 0; xi < NELEMS(xs); xi++)
+  {
+    memset(want, 0x9A, sizeof(want));
+    memset(got, 0x9A, sizeof(got));
+    screen_init(&wantscr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p4, WIDTH / 2,
+                scrpal, want);
+    screen_init(&gotscr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p4, WIDTH / 2,
+                scrpal, got);
+
+    if (screen_copy_bitmap(&wantscr, xs[xi], 1, &deepsrc) != result_OK ||
+        screen_copy_bitmap(&gotscr, xs[xi], 1, &p4src) != result_OK)
+    {
+      printf("screen: p4 to p4 copy_bitmap failed at x=%d\n", xs[xi]);
+      bitmap_set_palette(&p4src, NULL);
+      return result_TEST_FAILED;
+    }
+
+    if (memcmp(want, got, sizeof(want)) != 0)
+    {
+      printf("screen: p4 to p4 copy_bitmap differs from rgba8888 at x=%d\n",
+             xs[xi]);
+      bitmap_set_palette(&p4src, NULL);
+      return result_TEST_FAILED;
+    }
+  }
+
+  bitmap_set_palette(&p4src, NULL);
+
+  return result_TEST_PASSED;
+#undef P4P4_H
+#undef P4P4_W
+}
+
 /* Unpack the p2 pixel at column "px" of a row's byte buffer (bits 7..6 are
  * column 0, MSB-first, four to the byte). */
 static int p2_pixel_at(const unsigned char *rowbuf, int px)
@@ -1848,6 +1931,7 @@ result_t screen_test(const char *resources)
     test_copy_bitmap_p2,
     test_copy_bitmap_p8,
     test_copy_bitmap_paletted_source,
+    test_copy_bitmap_p4_to_p4,
     test_copy_bitmap_bgr_source,
     test_copy_bitmap_dithered,
     test_copy_rect_packed,

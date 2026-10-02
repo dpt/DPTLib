@@ -89,7 +89,9 @@ propagate `result_NOT_SUPPORTED`.
 
 Call sites: `screen_copy_bitmap_p4` (`screen-draw.c`) and
 `screen_copy_bitmap_rle_p4` (`screen-copy-bitmap-rle.c`). Both treat the source
-as RGBA8888 byte order.
+as RGBA8888 byte order. An undithered p4 source onto a p4 screen goes through
+the table only 16 times, once per source palette entry, then copies through
+that remap.
 
 ## Using it — paletted to deep
 
