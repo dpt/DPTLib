@@ -845,6 +845,7 @@ if(BUILD_APPS)
         apps/wuss/script.h
         apps/wuss/tasks.c
         libraries/wuss/test/tasks/ball.c
+        libraries/wuss/test/tasks/chasehq.c
         libraries/wuss/test/tasks/chars.c
         libraries/wuss/test/tasks/checker.c
         libraries/wuss/test/tasks/clock.c
@@ -943,6 +944,45 @@ if(BUILD_APPS)
         find_package(SDL3 REQUIRED)
         target_compile_definitions(wuss PRIVATE USE_SDL)
         target_link_libraries(wuss SDL3::SDL3)
+    endif()
+
+    # The Chase H.Q. task runs the ZX Spectrum Chase H.Q. port
+    # (https://github.com/dpt/ChaseHQ) on a pthread, so desktop only. Built
+    # when WUSS_CHASEHQ_DIR names that repo's C/ directory; defaults to a
+    # sibling checkout.
+    set(WUSS_CHASEHQ_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../ChaseHQ/C" CACHE PATH
+        "ChaseHQ C sources for the Wuss Chase H.Q. task (blank to disable)")
+    if(WUSS_CHASEHQ_DIR AND EXISTS "${WUSS_CHASEHQ_DIR}/include/ChaseHQ/ChaseHQ.h"
+       AND NOT TARGET_RISCOS AND NOT EMSCRIPTEN AND NOT MSVC)
+        set(CHQ "${WUSS_CHASEHQ_DIR}/libraries")
+        add_library(chasehq STATIC
+            ${CHQ}/ChaseHQ/Data/CommonData.c
+            ${CHQ}/ChaseHQ/Data/LoadingScreen.c
+            ${CHQ}/ChaseHQ/Data/SoundSamples.c
+            ${CHQ}/ChaseHQ/Data/Stage1Data.c
+            ${CHQ}/ChaseHQ/Data/Stage2Data.c
+            ${CHQ}/ChaseHQ/Data/Stage3Data.c
+            ${CHQ}/ChaseHQ/Data/Stage4Data.c
+            ${CHQ}/ChaseHQ/Data/Stage5Data.c
+            ${CHQ}/ChaseHQ/Data/Stages.c
+            ${CHQ}/ChaseHQ/Engine/Bank3.c
+            ${CHQ}/ChaseHQ/Engine/Bank7.c
+            ${CHQ}/ChaseHQ/Engine/Create.c
+            ${CHQ}/ChaseHQ/Engine/Main.c
+            ${CHQ}/ZXSpectrum/Kempston.c
+            ${CHQ}/ZXSpectrum/Keyboard.c
+            ${CHQ}/ZXSpectrum/Screen.c
+            ${CHQ}/ZXSpectrum/Spectrum.c
+            ${CHQ}/ZXSpectrum/Z80.c)
+        target_include_directories(chasehq
+            PUBLIC "${WUSS_CHASEHQ_DIR}/include"
+            PRIVATE "${CHQ}")
+        # third-party code: its warnings are policed by its own build
+        target_compile_options(chasehq PRIVATE -w)
+        find_package(Threads REQUIRED)
+        target_link_libraries(chasehq PUBLIC Threads::Threads)
+        target_link_libraries(wuss chasehq)
+        target_compile_definitions(wuss PRIVATE WUSS_CHASEHQ)
     endif()
 
     if(NOT MSVC)
