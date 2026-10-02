@@ -948,15 +948,26 @@ if(BUILD_APPS)
         target_link_libraries(wuss SDL3::SDL3)
     endif()
 
-    # The Chase H.Q. task runs the ZX Spectrum Chase H.Q. port
-    # (https://github.com/dpt/ChaseHQ) on a pthread, so desktop only. Built
-    # when WUSS_CHASEHQ_DIR names that repo's C/ directory; defaults to a
-    # sibling checkout.
-    set(WUSS_CHASEHQ_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../ChaseHQ/C" CACHE PATH
-        "ChaseHQ C sources for the Wuss Chase H.Q. task (blank to disable)")
-    if(WUSS_CHASEHQ_DIR AND EXISTS "${WUSS_CHASEHQ_DIR}/include/ChaseHQ/ChaseHQ.h"
-       AND NOT TARGET_RISCOS AND NOT EMSCRIPTEN AND NOT MSVC)
-        set(CHQ "${WUSS_CHASEHQ_DIR}/libraries")
+    # The Chase H.Q. and Great Escape tasks run ZX Spectrum game ports on a
+    # pthread, so desktop only. FetchContent only fetches the sources (no
+    # CMakeLists.txt in SOURCE_SUBDIR); the libraries are built here. For local
+    # work on the ports, configure with e.g.
+    # -DFETCHCONTENT_SOURCE_DIR_CHASEHQ=../ChaseHQ
+    if(NOT TARGET_RISCOS AND NOT EMSCRIPTEN AND NOT MSVC)
+        FetchContent_Declare(chasehq
+                             GIT_REPOSITORY https://github.com/dpt/ChaseHQ.git
+                             GIT_TAG 5d3decd1dd25bbaa5f4440a0b3a8dfcc7c7946c8 # develop
+                             SOURCE_SUBDIR none)
+        FetchContent_Declare(greatescape
+                             GIT_REPOSITORY https://github.com/dpt/The-Great-Escape-in-C.git
+                             GIT_TAG 8a3f5c572716851999018c4d13b7a29f7f91dd17 # master
+                             SOURCE_SUBDIR none)
+        FetchContent_MakeAvailable(chasehq greatescape)
+        find_package(Threads REQUIRED)
+
+        # https://github.com/dpt/ChaseHQ
+        set(CHQ_DIR "${chasehq_SOURCE_DIR}/C")
+        set(CHQ "${CHQ_DIR}/libraries")
         add_library(chasehq STATIC
             ${CHQ}/ChaseHQ/Data/CommonData.c
             ${CHQ}/ChaseHQ/Data/LoadingScreen.c
@@ -979,28 +990,18 @@ if(BUILD_APPS)
         # The Great Escape ships its own ZXSpectrum/*.h, so the include dir is
         # handed only to the file that needs it, not to all of wuss
         target_include_directories(chasehq
-            PRIVATE "${WUSS_CHASEHQ_DIR}/include" "${CHQ}")
+            PRIVATE "${CHQ_DIR}/include" "${CHQ}")
         set_source_files_properties(libraries/wuss/test/tasks/chasehq.c
-            PROPERTIES INCLUDE_DIRECTORIES "${WUSS_CHASEHQ_DIR}/include")
+            PROPERTIES INCLUDE_DIRECTORIES "${CHQ_DIR}/include")
         # third-party code: its warnings are policed by its own build
         target_compile_options(chasehq PRIVATE -w)
-        find_package(Threads REQUIRED)
         target_link_libraries(chasehq PUBLIC Threads::Threads)
         target_link_libraries(wuss chasehq)
         target_compile_definitions(wuss PRIVATE WUSS_CHASEHQ)
-    endif()
 
-    # The Great Escape task runs the ZX Spectrum The Great Escape recreation
-    # (https://github.com/dpt/The-Great-Escape-in-C) on a pthread, so desktop
-    # only. Built when WUSS_GREATESCAPE_DIR names that repo; defaults to a
-    # sibling checkout.
-    set(WUSS_GREATESCAPE_DIR
-        "${CMAKE_CURRENT_SOURCE_DIR}/../The-Great-Escape-in-C" CACHE PATH
-        "The Great Escape sources for the Wuss task (blank to disable)")
-    if(WUSS_GREATESCAPE_DIR AND
-       EXISTS "${WUSS_GREATESCAPE_DIR}/include/TheGreatEscape/TheGreatEscape.h"
-       AND NOT TARGET_RISCOS AND NOT EMSCRIPTEN AND NOT MSVC)
-        set(TGE "${WUSS_GREATESCAPE_DIR}/libraries")
+        # https://github.com/dpt/The-Great-Escape-in-C
+        set(TGE_DIR "${greatescape_SOURCE_DIR}")
+        set(TGE "${TGE_DIR}/libraries")
         add_library(greatescape STATIC
             ${TGE}/TheGreatEscape/Data/ExteriorTiles.c
             ${TGE}/TheGreatEscape/Data/Font.c
@@ -1032,7 +1033,7 @@ if(BUILD_APPS)
             ${TGE}/ZXSpectrum/Screen.c
             ${TGE}/ZXSpectrum/Spectrum.c)
         target_include_directories(greatescape
-            PRIVATE "${WUSS_GREATESCAPE_DIR}/include"
+            PRIVATE "${TGE_DIR}/include"
                     "${TGE}/TheGreatEscape/include"
                     "${TGE}/ZXSpectrum/include")
         # Chase H.Q. links its own ZX Spectrum layer under the same names, so
@@ -1048,11 +1049,10 @@ if(BUILD_APPS)
         target_compile_definitions(greatescape PRIVATE ${TGE_ZX_RENAMES})
         set_source_files_properties(libraries/wuss/test/tasks/greatescape.c
             PROPERTIES
-                INCLUDE_DIRECTORIES "${WUSS_GREATESCAPE_DIR}/include"
+                INCLUDE_DIRECTORIES "${TGE_DIR}/include"
                 COMPILE_DEFINITIONS "${TGE_ZX_RENAMES}")
         # third-party code: its warnings are policed by its own build
         target_compile_options(greatescape PRIVATE -w)
-        find_package(Threads REQUIRED)
         target_link_libraries(greatescape PUBLIC Threads::Threads)
         target_link_libraries(wuss greatescape)
         target_compile_definitions(wuss PRIVATE WUSS_GREATESCAPE)
