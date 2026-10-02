@@ -451,6 +451,24 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
       }
       return true;
 
+    case SDL_EVENT_KEY_UP:
+      {
+        int key;
+
+        /* no TEXT_INPUT counterpart to a release, so a printable is its
+         * unshifted keycode */
+        key = sdl_special_key(ev.key.key);
+        if (key == 0 && !(ev.key.key & SDLK_SCANCODE_MASK))
+          key = (int) ev.key.key;
+        if (key == 0)
+          continue;
+
+        event->kind = wuss_INPUT_KEY_UP;
+        event->key  = key;
+        event->mods = sdl_mods_to_wuss(ev.key.mod);
+      }
+      return true;
+
     case SDL_EVENT_TEXT_INPUT:
       /* KEY_DOWN already sent Ctrl/Alt combinations (and on macOS Alt would
        * compose a different character here): drop the duplicate. */
