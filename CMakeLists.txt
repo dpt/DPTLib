@@ -846,6 +846,7 @@ if(BUILD_APPS)
         apps/wuss/tasks.c
         libraries/wuss/test/tasks/ball.c
         libraries/wuss/test/tasks/chasehq.c
+        libraries/wuss/test/tasks/greatescape.c
         libraries/wuss/test/tasks/chars.c
         libraries/wuss/test/tasks/checker.c
         libraries/wuss/test/tasks/clock.c
@@ -974,15 +975,86 @@ if(BUILD_APPS)
             ${CHQ}/ZXSpectrum/Screen.c
             ${CHQ}/ZXSpectrum/Spectrum.c
             ${CHQ}/ZXSpectrum/Z80.c)
+        # The Great Escape ships its own ZXSpectrum/*.h, so the include dir is
+        # handed only to the file that needs it, not to all of wuss
         target_include_directories(chasehq
-            PUBLIC "${WUSS_CHASEHQ_DIR}/include"
-            PRIVATE "${CHQ}")
+            PRIVATE "${WUSS_CHASEHQ_DIR}/include" "${CHQ}")
+        set_source_files_properties(libraries/wuss/test/tasks/chasehq.c
+            PROPERTIES INCLUDE_DIRECTORIES "${WUSS_CHASEHQ_DIR}/include")
         # third-party code: its warnings are policed by its own build
         target_compile_options(chasehq PRIVATE -w)
         find_package(Threads REQUIRED)
         target_link_libraries(chasehq PUBLIC Threads::Threads)
         target_link_libraries(wuss chasehq)
         target_compile_definitions(wuss PRIVATE WUSS_CHASEHQ)
+    endif()
+
+    # The Great Escape task runs the ZX Spectrum The Great Escape recreation
+    # (https://github.com/dpt/The-Great-Escape-in-C) on a pthread, so desktop
+    # only. Built when WUSS_GREATESCAPE_DIR names that repo; defaults to a
+    # sibling checkout.
+    set(WUSS_GREATESCAPE_DIR
+        "${CMAKE_CURRENT_SOURCE_DIR}/../The-Great-Escape-in-C" CACHE PATH
+        "The Great Escape sources for the Wuss task (blank to disable)")
+    if(WUSS_GREATESCAPE_DIR AND
+       EXISTS "${WUSS_GREATESCAPE_DIR}/include/TheGreatEscape/TheGreatEscape.h"
+       AND NOT TARGET_RISCOS AND NOT EMSCRIPTEN AND NOT MSVC)
+        set(TGE "${WUSS_GREATESCAPE_DIR}/libraries")
+        add_library(greatescape STATIC
+            ${TGE}/TheGreatEscape/Data/ExteriorTiles.c
+            ${TGE}/TheGreatEscape/Data/Font.c
+            ${TGE}/TheGreatEscape/Data/InteriorObjectDefs.c
+            ${TGE}/TheGreatEscape/Data/InteriorTiles.c
+            ${TGE}/TheGreatEscape/Data/ItemBitmaps.c
+            ${TGE}/TheGreatEscape/Data/Map.c
+            ${TGE}/TheGreatEscape/Data/Masks.c
+            ${TGE}/TheGreatEscape/Data/Music.c
+            ${TGE}/TheGreatEscape/Data/RoomDefs.c
+            ${TGE}/TheGreatEscape/Data/SpriteBitmaps.c
+            ${TGE}/TheGreatEscape/Data/Sprites.c
+            ${TGE}/TheGreatEscape/Data/StaticGraphics.c
+            ${TGE}/TheGreatEscape/Data/StaticTiles.c
+            ${TGE}/TheGreatEscape/Data/SuperTiles.c
+            ${TGE}/TheGreatEscape/Engine/Create.c
+            ${TGE}/TheGreatEscape/Engine/Debug.c
+            ${TGE}/TheGreatEscape/Engine/Events.c
+            ${TGE}/TheGreatEscape/Engine/Input.c
+            ${TGE}/TheGreatEscape/Engine/Main.c
+            ${TGE}/TheGreatEscape/Engine/Menu.c
+            ${TGE}/TheGreatEscape/Engine/Messages.c
+            ${TGE}/TheGreatEscape/Engine/Screen.c
+            ${TGE}/TheGreatEscape/Engine/Text.c
+            ${TGE}/TheGreatEscape/Engine/Utils.c
+            ${TGE}/TheGreatEscape/Engine/Zoombox.c
+            ${TGE}/ZXSpectrum/Kempston.c
+            ${TGE}/ZXSpectrum/Keyboard.c
+            ${TGE}/ZXSpectrum/Screen.c
+            ${TGE}/ZXSpectrum/Spectrum.c)
+        target_include_directories(greatescape
+            PRIVATE "${WUSS_GREATESCAPE_DIR}/include"
+                    "${TGE}/TheGreatEscape/include"
+                    "${TGE}/ZXSpectrum/include")
+        # Chase H.Q. links its own ZX Spectrum layer under the same names, so
+        # this copy, and the task file calling it, is renamed
+        set(TGE_ZX_RENAMES)
+        foreach(sym zxkempston_assign zxkeyset_assign zxkeyset_clear
+                    zxkeyset_clearchar zxkeyset_for_port zxkeyset_setchar
+                    zxscreen_convert zxscreen_convert16
+                    zxspectrum_claim_screen zxspectrum_create
+                    zxspectrum_destroy zxspectrum_release_screen)
+            list(APPEND TGE_ZX_RENAMES "${sym}=tge_${sym}")
+        endforeach()
+        target_compile_definitions(greatescape PRIVATE ${TGE_ZX_RENAMES})
+        set_source_files_properties(libraries/wuss/test/tasks/greatescape.c
+            PROPERTIES
+                INCLUDE_DIRECTORIES "${WUSS_GREATESCAPE_DIR}/include"
+                COMPILE_DEFINITIONS "${TGE_ZX_RENAMES}")
+        # third-party code: its warnings are policed by its own build
+        target_compile_options(greatescape PRIVATE -w)
+        find_package(Threads REQUIRED)
+        target_link_libraries(greatescape PUBLIC Threads::Threads)
+        target_link_libraries(wuss greatescape)
+        target_compile_definitions(wuss PRIVATE WUSS_GREATESCAPE)
     endif()
 
     if(NOT MSVC)
