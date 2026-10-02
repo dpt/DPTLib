@@ -28,7 +28,9 @@
  *                               press only
  *   keyup [MOD+...]KEY          send a key's release
  *   type TEXT                   a key per character (quote to keep spaces)
- *   wait N                      let N frames pass
+ *   wait N                      let N frames pass. A menu pick flashes
+ *                               for 12 frames before its menu closes, so
+ *                               wait at least that long after one
  *   sleep SECS                  let SECS of wall-clock time pass, for timed
  *                               runs such as profiling
  *   dump                        print every window, front to back, to stdout

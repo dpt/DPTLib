@@ -191,6 +191,9 @@ result_t zxtask_start(zxtask_t *task, wuss_t *wuss)
     return rc;
   }
 
+  /* a game wants the keyboard straight away, not after a click */
+  (void) wuss_set_focus(wuss, task->window);
+
   task->started = zxtask_now();
   if (pthread_create(&task->thread, NULL, zxtask_thread, task) != 0)
   {
