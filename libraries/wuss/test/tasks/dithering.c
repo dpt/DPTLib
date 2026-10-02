@@ -333,18 +333,14 @@ static result_t dithering_redraw(dithering_task_t   *dt,
                             bm);
 }
 
-/* Refresh the ticks from the task's state, then open the menu. Colours only
- * applies to the optimal palette, so it is disabled for the others. */
-static result_t dithering_menu_open(dithering_task_t *dt)
+/* Set the submenus' ticks and the Colours row's state from the task. Run on
+ * open and after every pick: a submenu reopened within the same chain (hover
+ * away and back) is built afresh from these items, so the live ticks alone
+ * would go stale. Colours only applies to the optimal palette, so it is
+ * disabled for the others. */
+static void dithering_menu_refresh(dithering_task_t *dt)
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Dithering", "Error-diffusion dithering to a palette");
-
   wuss_menu_item_t *colours;
-
-  wuss_proginfo_set_desc(&desc);
-  dt->menu_items[DITHERING_MENU_INFO].window =
-    wuss_proginfo_window(dt->delegate);
 
   colours = &dt->menu_items[DITHERING_MENU_COLOURS];
   if (dt->palette == DITHERING_PALETTE_OPTIMAL)
@@ -357,6 +353,18 @@ static result_t dithering_menu_open(dithering_task_t *dt)
   wuss_menu_tick_exclusive(&dt->palette_menu, dt->palette);
   wuss_menu_tick_exclusive(&dt->count_menu, dt->count);
   wuss_menu_tick_exclusive(&dt->strength_menu, dt->strength);
+}
+
+static result_t dithering_menu_open(dithering_task_t *dt)
+{
+  static const wuss_proginfo_desc_t desc =
+    TASK_PROGINFO_DESC("Dithering", "Error-diffusion dithering to a palette");
+
+  wuss_proginfo_set_desc(&desc);
+  dt->menu_items[DITHERING_MENU_INFO].window =
+    wuss_proginfo_window(dt->delegate);
+
+  dithering_menu_refresh(dt);
 
   return wuss_menu_open_ticked(dt->delegate, &dt->menu,
                                dt->serpentine ? 1u << DITHERING_MENU_SERPENTINE
@@ -376,6 +384,7 @@ static result_t dithering_menu_select(dithering_task_t   *dt,
   if (menu == &dt->image_menu)
   {
     dithering_show(dt, index);
+    dithering_menu_refresh(dt);
     wuss_menu_tick_exclusive_live(dt->menu_handle, menu, dt->image);
     return result_OK;
   }
@@ -393,6 +402,10 @@ static result_t dithering_menu_select(dithering_task_t   *dt,
   else
     return result_OK;
 
+  dithering_menu_refresh(dt);
+  wuss_menu_disable_item_live(dt->menu_handle, &dt->menu,
+                              DITHERING_MENU_COLOURS,
+                              dt->palette != DITHERING_PALETTE_OPTIMAL);
   if (menu == &dt->menu)
     wuss_menu_tick_item_live(dt->menu_handle, menu, index, dt->serpentine);
   else
