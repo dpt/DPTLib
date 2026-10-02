@@ -14,14 +14,27 @@
 #
 # then, from the repo root, either just the counters:
 #
-#   SDL_VIDEODRIVER=dummy ./build-profile/wuss -t "Chase H.Q." \
-#     --script tools/profile/chasehq-60s.txt
+#   SDL_VIDEODRIVER=dummy ./build-profile/wuss-relwithdebinfo \
+#     -t "Chase H.Q." --script tools/profile/chasehq-60s.txt
 #
 # or a sampled profile as well (macOS):
 #
 #   xcrun xctrace record --template "Time Profiler" --output chasehq.trace \
-#     --env SDL_VIDEODRIVER=dummy --launch -- ./build-profile/wuss \
+#     --env SDL_VIDEODRIVER=dummy \
+#     --launch -- ./build-profile/wuss-relwithdebinfo \
 #     -t "Chase H.Q." --script tools/profile/chasehq-60s.txt
+#
+# The build makes no dSYM, so many of the trace's own frames stay as
+# addresses. Make one, symbolicate, and resolve any static functions still
+# left with atos (-l is the binary's load address, as the trace shows it):
+#
+#   dsymutil build-profile/wuss-relwithdebinfo -o wuss.dSYM
+#   xcrun xctrace symbolicate --input chasehq.trace --dsym wuss.dSYM
+#   atos -o wuss.dSYM/Contents/Resources/DWARF/wuss-relwithdebinfo \
+#     -l LOADADDR ADDR...
+#
+# Under the dummy video driver SDL presents through its software renderer,
+# whose scaled blit dominates; profile with a real display to see past it.
 #
 # The sleeps are tuned to the title sequence: Enter is only read once the
 # intro has played, and fire once the title has redrawn after the options.
