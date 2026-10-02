@@ -24,11 +24,15 @@ screen_t;
 /**
  * Initialize a previously allocated screen structure.
  *
+ * A screen is a view onto memory the caller owns: unlike bitmap_init it
+ * neither copies the palette nor takes ownership of anything, so there is no
+ * matching destroy call. The palette and base must outlive the screen.
+ *
  * \param[in] scr       Screen to initialize.
  * \param[in] size      Width and height of the screen in pixels.
  * \param[in] fmt       Pixel format of the screen.
  * \param[in] rowbytes  Number of bytes per row of the screen.
- * \param[in] palette   Palette of the screen, or NULL.
+ * \param[in] palette   Palette of the screen, or NULL. Borrowed.
  * \param[in] base      Base address of the screen.
  */
 void screen_init(screen_t  *scr,
