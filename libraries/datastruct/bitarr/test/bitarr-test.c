@@ -77,6 +77,16 @@ result_t bitarr_test(const char *resources)
   /* a cast is required :-| */
   printf("%d bits set\n", bitarr_count((bitarr_t *) &arr, sizeof(arr)));
 
+  for (i = 0; i < NBITS; i++)
+    bitarr_set(&arr, i);
+
+  if (bitarr_count((bitarr_t *) &arr, sizeof(arr)) != NBITS)
+    return result_TEST_FAILED;
+
+  /* a length short of a whole element still counts its bytes */
+  if (bitarr_count((bitarr_t *) &arr, 2) != 16)
+    return result_TEST_FAILED;
+
 
   return result_TEST_PASSED;
 }
