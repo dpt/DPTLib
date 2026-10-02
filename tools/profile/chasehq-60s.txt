@@ -1,0 +1,51 @@
+# chasehq-60s.txt -- wuss script for a timed 60 s run of the Chase H.Q. task
+#
+# Picks Kempston controls, starts a game and holds accelerate, then lets 60 s
+# of driving pass. On quit the task logs its counters:
+#
+#   (info) chasehq: N s: game busy N s (N%), N sleeps, N lag drops,
+#          N draws/s; N redraws, N ms each
+#
+# Use a build without ASan for meaningful numbers, e.g.:
+#
+#   cmake -B build-profile -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+#         -DBUILD_APPS=ON -DBUILD_TESTS=OFF
+#   cmake --build build-profile --target wuss
+#
+# then, from the repo root, either just the counters:
+#
+#   SDL_VIDEODRIVER=dummy ./build-profile/wuss -t "Chase H.Q." \
+#     --script tools/profile/chasehq-60s.txt
+#
+# or a sampled profile as well (macOS):
+#
+#   xcrun xctrace record --template "Time Profiler" --output chasehq.trace \
+#     --env SDL_VIDEODRIVER=dummy --launch -- ./build-profile/wuss \
+#     -t "Chase H.Q." --script tools/profile/chasehq-60s.txt
+#
+# The sleeps are tuned to the title sequence: Enter is only read once the
+# intro has played, and fire once the title has redrawn after the options.
+
+wait 50
+click select "Chase H.Q." 10 10
+
+# options: 3 = Kempston. The menu waits for every key to be released
+sleep 8
+key return
+sleep 0.5
+keyup return
+sleep 1
+key 3
+sleep 0.5
+keyup 3
+
+# fire starts a game; up (Kempston up) accelerates through the briefing
+sleep 8
+key .
+sleep 0.5
+keyup .
+sleep 4
+key up
+
+sleep 60
+quit

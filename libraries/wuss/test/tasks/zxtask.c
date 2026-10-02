@@ -11,6 +11,7 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "base/debug.h"
 #include "base/utils.h"
 #include "framebuf/colour.h"
 #include "framebuf/screen.h"
@@ -172,6 +173,7 @@ result_t zxtask_start(zxtask_t *task, wuss_t *wuss)
     return rc;
   }
 
+  task->started = zxtask_now();
   if (pthread_create(&task->thread, NULL, zxtask_thread, task) != 0)
   {
     wuss_task_destroy(delegate);
@@ -180,6 +182,25 @@ result_t zxtask_start(zxtask_t *task, wuss_t *wuss)
   task->thread_started = 1;
 
   return result_OK;
+}
+
+/* Log the profiling counters, for timing a run such as a scripted 60 s
+ * one. */
+static void zxtask_report(const zxtask_t *task)
+{
+  double elapsed;
+
+  elapsed = zxtask_now() - task->started;
+  if (elapsed <= 0.0)
+    return;
+
+  logf_info("%s: %.1f s: game busy %.2f s (%.1f%%), %ld sleeps, "
+            "%ld lag drops, %.1f draws/s; %ld redraws, %.3f ms each",
+            task->ops->name, elapsed,
+            task->busy, 100.0 * task->busy / elapsed,
+            task->sleeps, task->lags, task->draws / elapsed,
+            task->redraws,
+            task->redraws ? 1e3 * task->redrawn / task->redraws : 0.0);
 }
 
 void zxtask_destroy(zxtask_t *task)
@@ -193,6 +214,7 @@ void zxtask_destroy(zxtask_t *task)
     if (task->ops->stop)
       task->ops->stop(task);
     pthread_join(task->thread, NULL);
+    zxtask_report(task);
   }
 
   task->ops->destroy(task);
@@ -208,6 +230,7 @@ void zxtask_drawn(zxtask_t *task)
 {
   pthread_mutex_lock(&task->lock);
   task->dirty = 1;
+  task->draws++;
   pthread_mutex_unlock(&task->lock);
 }
 
@@ -238,6 +261,11 @@ int zxtask_sleep(zxtask_t *task, int duration)
   double delay;
   struct timespec ts;
 
+  now = zxtask_now();
+  if (task->awoke > 0.0)
+    task->busy += now - task->awoke;
+  task->sleeps++;
+
   pthread_mutex_lock(&task->lock);
   if (task->paused && !task->quit)
   {
@@ -256,6 +284,7 @@ int zxtask_sleep(zxtask_t *task, int duration)
   if (speed >= ZXTASK_SPEED_MAX)
   {
     task->deadline_valid = 0;
+    task->awoke          = zxtask_now();
     return 0;
   }
 
@@ -270,7 +299,10 @@ int zxtask_sleep(zxtask_t *task, int duration)
   task->deadline += duration / task->ops->clock_hz *
                     ZXTASK_SPEED_NORMAL / speed;
   if (task->deadline < now - ZXTASK_MAX_LAG_SECS)
+  {
     task->deadline = now - ZXTASK_MAX_LAG_SECS;
+    task->lags++;
+  }
 
   delay = task->deadline - now;
   if (delay >= ZXTASK_MIN_WAIT_SECS)
@@ -279,6 +311,7 @@ int zxtask_sleep(zxtask_t *task, int duration)
     ts.tv_nsec = (long) ((delay - ts.tv_sec) * 1e9);
     nanosleep(&ts, NULL);
   }
+  task->awoke = zxtask_now();
 
   return 0;
 }
@@ -590,6 +623,7 @@ static result_t zxtask_handle(wuss_window_t      *window,
 {
   result_t  rc;
   zxtask_t *task;
+  double    then;
   int       dirty;
 
   task = task_data;
@@ -597,7 +631,11 @@ static result_t zxtask_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return zxtask_redraw(task, event);
+    then = zxtask_now();
+    rc   = zxtask_redraw(task, event);
+    task->redrawn += zxtask_now() - then;
+    task->redraws++;
+    return rc;
 
   case wuss_EVENT_MOUSE:
     return zxtask_mouse(task, window, event);
