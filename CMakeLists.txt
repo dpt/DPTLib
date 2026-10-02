@@ -871,7 +871,8 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/snapshot.c
         libraries/wuss/test/tasks/sofa.c
         libraries/wuss/test/tasks/spheroid.c
-        libraries/wuss/test/tasks/text.c)
+        libraries/wuss/test/tasks/text.c
+        libraries/wuss/test/tasks/zxtask.c)
 
     if(TARGET_RISCOS)
         list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-riscos.c)
