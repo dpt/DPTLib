@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -24,8 +28,6 @@
 #define FILER_LABEL_CHARS 12
 #define FILER_COLUMNS     4  /* initial window width, in cells */
 #define FILER_MAX_ROWS    4  /* initial window height cap, in cells */
-
-enum { FILER_MENU_INFO };
 
 static char g_filer_root[DPTLIB_MAXPATH] = "";
 
@@ -272,6 +274,10 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
                         NULL); /* retargeted at the shared proginfo
                                 * singleton just before open, in
                                 * filer_menu_open */
+#ifdef __EMSCRIPTEN__
+  WUSS_MENU_ITEM(task->menu_items, FILER_MENU_DOWNLOAD, "Download",
+                 wuss_MENU_ITEM_NONE);
+#endif
   WUSS_MENU_TITLE(task->menu, "Filer", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -324,14 +330,85 @@ void filer_destroy(filer_task_t *task)
 
 /* ----------------------------------------------------------------------- */
 
-static result_t filer_menu_open(filer_task_t *task)
+#ifdef __EMSCRIPTEN__
+/* Hands the file at path, in Emscripten's in-memory filesystem, to the
+ * browser as a download named after its leaf. */
+EM_JS(void, filer_web_download, (const char *path),
+{
+  var p = UTF8ToString(path);
+  var a;
+
+  try
+  {
+    a          = document.createElement('a');
+    a.href     = URL.createObjectURL(new Blob([FS.readFile(p)],
+                                              { type: 'application/octet-stream' }));
+    a.download = p.split('/').pop();
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 0);
+  }
+  catch (e)
+  {
+    console.error('filer: cannot download ' + p + ': ' + e);
+  }
+});
+
+/* Downloads every selected file in fw, or with download zero just counts
+ * them. Directories are skipped. Returns the number of files. */
+static int filer_download_selection(const filer_window_t *fw, int download)
+{
+  const dirlist_entry_t *entry;
+  char                   path[DPTLIB_MAXPATH];
+  int                    n;
+  int                    i;
+
+  n = 0;
+  for (i = 0; i < dirlist_count(fw->listing); i++)
+  {
+    if (!wuss_gridview_is_selected(fw->gridview, i))
+      continue;
+
+    entry = dirlist_get(fw->listing, i);
+    if (entry == NULL || entry->is_dir)
+      continue;
+
+    n++;
+    if (!download)
+      continue;
+
+    if (snprintf(path, sizeof(path), "%s/%s", fw->path, entry->leaf) >=
+        (int) sizeof(path))
+      continue;
+
+    filer_web_download(path);
+  }
+
+  return n;
+}
+#endif
+
+static result_t filer_menu_open(filer_task_t *task, wuss_window_t *window)
 {
   static const wuss_proginfo_desc_t desc =
     TASK_PROGINFO_DESC("Filer", "Directory display / drag-save target");
 
+#ifdef __EMSCRIPTEN__
+  filer_window_t *fw;
+#endif
+
   wuss_proginfo_set_desc(&desc);
   task->menu_items[FILER_MENU_INFO].window =
     wuss_proginfo_window(task->delegate);
+
+  task->menu_window = window;
+
+#ifdef __EMSCRIPTEN__
+  fw = filer_find_by_window(task, window);
+  if (fw != NULL && filer_download_selection(fw, 0) > 0)
+    task->menu_items[FILER_MENU_DOWNLOAD].flags &= ~wuss_MENU_ITEM_DISABLED;
+  else
+    task->menu_items[FILER_MENU_DOWNLOAD].flags |= wuss_MENU_ITEM_DISABLED;
+#endif
 
   return wuss_menu_open_at_pointer(task->delegate, &task->menu,
                                    &task->menu_handle);
@@ -424,7 +501,7 @@ result_t filer_handle(wuss_window_t      *window,
     if (event->kind == wuss_EVENT_MOUSE &&
         (event->data.mouse.action == wuss_MOUSE_DOWN) &&
         (event->data.mouse.button & wuss_BUTTON_MENU))
-      return filer_menu_open(task);
+      return filer_menu_open(task, window);
     return result_OK;
   }
 
@@ -436,9 +513,20 @@ result_t filer_handle(wuss_window_t      *window,
     return filer_open_path(task, filer_root());
 
   case wuss_EVENT_MENU_SELECT:
-    if (event->data.menu_select.menu == &task->menu)
-      return filer_open_path(task, filer_root());
-    return result_OK;
+    if (event->data.menu_select.menu != &task->menu)
+      return result_OK;
+#ifdef __EMSCRIPTEN__
+    if (event->data.menu_select.index == FILER_MENU_DOWNLOAD)
+    {
+      filer_window_t *fw;
+
+      fw = filer_find_by_window(task, task->menu_window);
+      if (fw != NULL)
+        (void) filer_download_selection(fw, 1);
+      return result_OK;
+    }
+#endif
+    return filer_open_path(task, filer_root());
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
