@@ -30,8 +30,6 @@ Configure: CRT shader params.
 
 Shift-TAB in writables - what should that do?
 
-Canonicalise paths when Filer uses them.
-
 
 
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
