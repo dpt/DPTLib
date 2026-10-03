@@ -185,7 +185,12 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
   if (rc != result_OK)
     return rc;
 
-  rc = task_window_create(task->delegate, SIZE2D(320, 240), path, &window);
+  /* No horizontal scrollbar: the grid reflows to the width instead. */
+  rc = wuss_window_create_placed(task->delegate, SIZE2D(320, 240), path,
+                                 (wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL) |
+                                 wuss_WINDOW_FOCUSABLE,
+                                 wuss_NO_BACKDROP, SIZE2D(320, 240),
+                                 SIZE2D(0, 0), &window);
   if (rc != result_OK)
   {
     dirlist_destroy(listing);
