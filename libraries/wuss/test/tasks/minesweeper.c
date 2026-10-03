@@ -153,7 +153,8 @@ static int minesweeper_count_neighbours(minesweeper_task_t *ms, int r, int c)
 }
 
 /* mines are placed on the first reveal, excluding (safe_r,safe_c) and its
- * neighbours, so the opening click always lands on a clear patch */
+ * neighbours, so the opening click always lands on a clear patch; the four
+ * board corners never hold a mine */
 static void minesweeper_place_mines(minesweeper_task_t *ms,
                                     int                 safe_r,
                                     int                 safe_c)
@@ -166,6 +167,7 @@ static void minesweeper_place_mines(minesweeper_task_t *ms,
     r = rand() % ms->rows;
     c = rand() % ms->cols;
     if (ms->mine[r][c] ||
+        ((r == 0 || r == ms->rows - 1) && (c == 0 || c == ms->cols - 1)) ||
         (abs(r - safe_r) <= 1 && abs(c - safe_c) <= 1))
       continue;
     ms->mine[r][c] = true;
