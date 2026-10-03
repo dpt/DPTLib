@@ -64,7 +64,7 @@ static result_t test_blur(void)
   {
     int tol;
 
-    tol = 2 + amounts[i] / 3;
+    tol = 0;
 
     fill(a, PIXELFMT_MAKE_RGBA8888(200, 100, 50, 77));
 
