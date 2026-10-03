@@ -154,7 +154,7 @@ static void gridview_reflow(wuss_gridview_t *gv)
   gv->columns = MAX(visible_w / gv->cell.w, 1);
 
   rows  = (gv->count + gv->columns - 1) / gv->columns;
-  doc.w = gv->columns * gv->cell.w;
+  doc.w = MAX(gv->count, 1) * gv->cell.w; /* ceiling: every item in one row */
   doc.h = MAX(rows, 1) * gv->cell.h;
 
   /* doc.w/doc.h are always positive (cell size, times at least 1), so this
