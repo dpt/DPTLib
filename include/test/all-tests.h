@@ -37,7 +37,8 @@ extern testfn_t bitmap_rle_test,
                 octree_test,
                 pattern_test,
                 pixelmap_test,
-                screen_test;
+                screen_test,
+                tonemap_test;
 
 /* geom */
 extern testfn_t box_test,

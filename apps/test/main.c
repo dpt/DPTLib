@@ -63,6 +63,7 @@ static const test_t tests[] =
   { "pattern",     pattern_test     },
   { "pixelmap",    pixelmap_test    },
   { "screen",      screen_test      },
+  { "tonemap",     tonemap_test     },
 
   { "box",        box_test        },
   { "layout",     layout_test     },
