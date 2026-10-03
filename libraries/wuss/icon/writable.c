@@ -55,6 +55,13 @@ static int writable_caret_x(const wuss_t      *wuss,
   return (int) bmfont_caret_x(font, icon->spec.text, index, NULL);
 }
 
+/* Width of the text area inside the outline and gap; at least 1. */
+static int writable_visible(const wuss_icon_t *icon)
+{
+  return MAX((icon->spec.bbox.x1 - icon->spec.bbox.x0) -
+             2 * WUSS_WRITABLE_INSET, 1);
+}
+
 /* Can "icon" take the caret? */
 static int writable_is_live(const wuss_icon_t *icon)
 {
@@ -178,11 +185,11 @@ void wuss__writable_place_caret(wuss_window_t *window,
     index = writable_rune_start(icon->spec.text, len, index);
 
   /* keep the caret in view, jumping a third of the field at a time so typing
-   * at an edge doesn't scroll on every key */
-  visible = MAX((icon->spec.bbox.x1 - icon->spec.bbox.x0) -
-                2 * WUSS_WRITABLE_INSET, 1);
+   * at an edge doesn't scroll on every key; text that fits never scrolls, so
+   * its justification holds */
+  visible = writable_visible(icon);
   x       = writable_caret_x(wuss, icon, index);
-  if (index == 0)
+  if (index == 0 || writable_caret_x(wuss, icon, len) <= visible)
     icon->text_scroll = 0;
   else if (x < icon->text_scroll)
     icon->text_scroll = MAX(x - visible / 3, 0);
@@ -194,6 +201,23 @@ void wuss__writable_place_caret(wuss_window_t *window,
   wuss->caret_index  = index;
 
   wuss__icon_invalidate(window, icon);
+}
+
+int wuss__writable_text_x(const wuss_t *wuss, const wuss_icon_t *icon)
+{
+  int slack;
+
+  slack = writable_visible(icon) -
+          writable_caret_x(wuss, icon, (int) strlen(icon->spec.text));
+  if (slack < 0)
+    return WUSS_WRITABLE_INSET - icon->text_scroll;
+
+  if (icon->spec.flags & wuss_ICON_FLAGS_JUSTIFY_CENTRE)
+    return WUSS_WRITABLE_INSET + slack / 2;
+  else if (icon->spec.flags & wuss_ICON_FLAGS_JUSTIFY_RIGHT)
+    return WUSS_WRITABLE_INSET + slack;
+  else
+    return WUSS_WRITABLE_INSET;
 }
 
 int wuss__writable_index_for_x(const wuss_t      *wuss,
@@ -210,8 +234,8 @@ int wuss__writable_index_for_x(const wuss_t      *wuss,
     return len;
 
   bmfont_find_caret(font, icon->spec.text, len, NULL,
-                    doc_x - (icon->spec.bbox.x0 + WUSS_WRITABLE_INSET) +
-                    icon->text_scroll,
+                    doc_x - (icon->spec.bbox.x0 +
+                             wuss__writable_text_x(wuss, icon)),
                     &index, NULL);
   return index;
 }

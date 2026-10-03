@@ -770,9 +770,9 @@ static void wuss__icon_draw_slider(const icon_draw_ctx_t *c)
 
 /* ----------------------------------------------------------------------- */
 
-/* wuss_ICON_TYPE_WRITABLE: bg fill in a 1px fg outline, the text left-aligned
- * and scrolled by text_scroll, clipped inside the outline, plus the caret when
- * this icon holds it. */
+/* wuss_ICON_TYPE_WRITABLE: bg fill in a 1px fg outline, the text justified
+ * per its flags while it fits, else scrolled by text_scroll, clipped inside
+ * the outline, plus the caret when this icon holds it. */
 static void wuss__icon_draw_writable(const icon_draw_ctx_t *c)
 {
   const wuss_icon_t *icon = c->icon;
@@ -803,7 +803,7 @@ static void wuss__icon_draw_writable(const icon_draw_ctx_t *c)
     return;
 
   bmfont_get_info(c->font, NULL, NULL, &ascent, NULL);
-  pos.x = b->x0 + WUSS_WRITABLE_INSET - icon->text_scroll;
+  pos.x = b->x0 + wuss__writable_text_x(c->wuss, icon);
   pos.y = b->y0 + (b->y1 - b->y0 - ascent) / 2 + ascent;
   wuss__text_draw(c->font, &clipped, icon->spec.text,
                   (int) strlen(icon->spec.text), ink, bg, &pos, NULL);
