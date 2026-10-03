@@ -265,6 +265,10 @@ void wuss__writable_place_caret(wuss_window_t *window,
                                 wuss_icon_t   *icon,
                                 int            index);
 
+/* X of writable "icon"'s text start relative to its bbox: justified per its
+ * flags while the text fits, else left-aligned and scrolled by text_scroll. */
+int wuss__writable_text_x(const wuss_t *wuss, const wuss_icon_t *icon);
+
 /* The caret index nearest document-space x "doc_x" in writable "icon". */
 int wuss__writable_index_for_x(const wuss_t      *wuss,
                                const wuss_icon_t *icon,
