@@ -157,10 +157,18 @@ static void filer_activate(wuss_gridview_t *gridview,
 static result_t filer_open_path(filer_task_t *task, const char *path)
 {
   result_t        rc;
+  char            canon[DPTLIB_MAXPATH];
   filer_window_t *fw;
   int             slot;
   dirlist_t      *listing;
   wuss_window_t  *window;
+
+#ifndef __riscos
+  /* "." or "a/../b" becomes the full path, for the title and so that the
+   * same directory reached two ways finds its existing window */
+  if (realpath(path, canon) != NULL)
+    path = canon;
+#endif
 
   fw = filer_find_window(task, path);
   if (fw != NULL)
