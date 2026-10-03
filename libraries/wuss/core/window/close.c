@@ -13,6 +13,9 @@ void wuss_window_close(wuss_window_t *doomed)
   wuss_task_t *task;
   wuss_event_t event;
   wuss_t      *wuss;
+#ifdef WUSS_MENUS
+  struct wuss__menu *m;
+#endif
 
   if (doomed == NULL)
     return;
@@ -21,6 +24,11 @@ void wuss_window_close(wuss_window_t *doomed)
   task = doomed->task;
 
 #ifdef WUSS_MENUS
+  /* the doomed window may be a borrowed level's focus lender; forget it */
+  for (m = wuss->menu_chain; m != NULL; m = m->child)
+    if (m->saved_focus == doomed)
+      m->saved_focus = NULL;
+
   /* A window closed while in the open menu chain -- typically a borrowed
    * level such as a Save As dialogue its client is freeing -- would leave a
    * chain node pointing at freed memory. Tear the chain down first, while

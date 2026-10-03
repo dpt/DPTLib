@@ -42,6 +42,11 @@ struct wuss__menu
    * to wuss_STACK_TOP; restored when the level closes. Unused otherwise. */
   wuss_stack_t           saved_stack;
 
+  /* window that held the input focus before a borrowed-window level took it
+   * for its first writable; refocused when the level closes, unless it has
+   * since gone or something else took the focus. NULL otherwise. */
+  wuss_window_t         *saved_focus;
+
   /* borrowed source description; NULL for a borrowed-window level */
   const wuss_menu_t     *menu;
 
