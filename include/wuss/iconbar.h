@@ -49,8 +49,9 @@ typedef struct wuss_iconbar_icon_spec
   /** NUL-terminated label; copied. NULL means "". */
   const char     *text;
 
-  /** The image to draw. Borrowed, not copied; must outlive the icon. NULL
-   *  (the default) draws the slot with just its bevel and label text. */
+  /** The image to draw, centred in the slot with no border. Borrowed, not
+   *  copied; must outlive the icon. NULL (the default) draws just the label
+   *  text. */
   const bitmap_t *image;
 }
 wuss_iconbar_icon_spec_t;

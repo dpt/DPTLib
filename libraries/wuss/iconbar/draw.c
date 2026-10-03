@@ -52,34 +52,26 @@ static void iconbar_draw_icon(wuss_t                    *wuss,
                               const wuss_iconbar_icon_t *icon,
                               const box_t               *icon_box)
 {
-  colour_t face, light, dark, ink;
-  int      pressed;
+  colour_t bg, ink;
 
-  pressed = wuss__iconbar_icon_pressed(icon);
-
-  face  = wuss->palette[wuss__resolve_colour(wuss, wuss_COLOUR_GREY)];
-  light = wuss->palette[wuss__resolve_colour(wuss, wuss_COLOUR_WHITE)];
-  dark  = wuss->palette[wuss__resolve_colour(wuss, wuss_COLOUR_BLACK)];
-  ink   = dark;
-
-  screen_fill_rect(wuss->scr, icon_box->x0, icon_box->y0,
-                              box_size(icon_box), face);
-  screen_draw_bevel_edge(wuss->scr, icon_box, pressed ? dark : light,
-                                             pressed ? light : dark);
+  /* RISC OS style: no border and no pressed look -- the image and label sit
+   * straight on the bar's backdrop */
+  bg  = wuss->palette[wuss__resolve_colour(wuss, wuss_COLOUR_WINDOW)];
+  ink = wuss->palette[wuss__resolve_colour(wuss, wuss_COLOUR_BLACK)];
 
   if (icon->spec.image != NULL)
   {
-    box_t    inner;
     screen_t clipped;
     int      x, y;
 
-    inner = box_grown(icon_box, -WUSS_ICONBAR_BEVEL);
     clipped = *wuss->scr;
-    if (box_intersection(&wuss->scr->clip, &inner, &clipped.clip))
+    if (box_intersection(&wuss->scr->clip, icon_box, &clipped.clip))
       return;
 
-    x = inner.x0 + ((inner.x1 - inner.x0) - icon->spec.image->size.w) / 2;
-    y = inner.y0 + ((inner.y1 - inner.y0) - icon->spec.image->size.h) / 2;
+    x = icon_box->x0 +
+        ((icon_box->x1 - icon_box->x0) - icon->spec.image->size.w) / 2;
+    y = icon_box->y0 +
+        ((icon_box->y1 - icon_box->y0) - icon->spec.image->size.h) / 2;
     screen_copy_bitmap(&clipped, x, y, icon->spec.image);
   }
 
@@ -97,7 +89,7 @@ static void iconbar_draw_icon(wuss_t                    *wuss,
 
     pos.x = icon_box->x0 + ((icon_box->x1 - icon_box->x0) - (int) width) / 2;
     pos.y = icon_box->y1 + WUSS_ICONBAR_TEXT_PAD + ascent;
-    wuss__text_draw(font, wuss->scr, icon->spec.text, len, ink, face, &pos,
+    wuss__text_draw(font, wuss->scr, icon->spec.text, len, ink, bg, &pos,
                     NULL);
   }
 }

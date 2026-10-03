@@ -38,16 +38,14 @@ int wuss__iconbar_icon_click(wuss_t             *wuss,
 {
   wuss_iconbar_icon_t *icon;
   wuss_event_t         event;
-  box_t                bar;
 
+  /* the release goes to the icon pressed, wherever it lands; icon bar icons
+   * are click-only, so nothing is drawn for the press itself */
   if (action == wuss_MOUSE_UP && wuss->pressed_iconbar_icon != NULL)
   {
     icon = wuss->pressed_iconbar_icon;
 
     wuss->pressed_iconbar_icon = NULL;
-    icon->state &= ~wuss_ICONBAR_ICON_STATE_PRESSED;
-    wuss__iconbar_box(wuss, &bar);
-    wuss__invalidate_clipped(wuss->iconbar_window, &bar);
 
     event.kind                     = wuss_EVENT_ICON;
     event.data.iconbar_icon.icon   = icon;
@@ -62,12 +60,7 @@ int wuss__iconbar_icon_click(wuss_t             *wuss,
     return 0; /* over empty slot space */
 
   if (action == wuss_MOUSE_DOWN)
-  {
     wuss->pressed_iconbar_icon = icon;
-    icon->state |= wuss_ICONBAR_ICON_STATE_PRESSED;
-    wuss__iconbar_box(wuss, &bar);
-    wuss__invalidate_clipped(wuss->iconbar_window, &bar);
-  }
 
   event.kind                     = wuss_EVENT_ICON;
   event.data.iconbar_icon.icon   = icon;
