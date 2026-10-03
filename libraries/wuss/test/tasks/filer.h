@@ -19,6 +19,17 @@
  * this ever feels cramped. */
 #define FILER_MAX_WINDOWS 16
 
+/* Filer menu rows. Download only exists in the browser build, where saved
+ * files otherwise stay trapped in Emscripten's in-memory filesystem. */
+enum
+{
+  FILER_MENU_INFO,
+#ifdef __EMSCRIPTEN__
+  FILER_MENU_DOWNLOAD,
+#endif
+  FILER_MENU__LIMIT
+};
+
 /* Set the directory a Filer's icon bar icon/System menu row opens, applied
  * the next time a Filer task is created (see filer_create). Not retroactive:
  * a Filer already running keeps the windows it has open. Call before
@@ -74,7 +85,9 @@ struct filer_task
   int                    have_glyph_png;
 
   wuss_menu_handle_t     menu_handle;
-  wuss_menu_item_t       menu_items[1]; /* Info */
+  wuss_window_t         *menu_window; /* Filer window the menu was opened
+                                       * over, or NULL */
+  wuss_menu_item_t       menu_items[FILER_MENU__LIMIT];
   wuss_menu_t            menu;
 };
 
