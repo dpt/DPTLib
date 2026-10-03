@@ -36,16 +36,19 @@
 
 /* ----------------------------------------------------------------------- */
 /* Parse a *.hex file: one "rrggbb" line per colour, no leading '#'. Fails
- * (leaving *out untouched) unless exactly PALETTE_NCOLOURS well-formed lines
- * are read, so a malformed or wrongly-sized file can never desync from the
- * fixed-length system palette wuss was created with. */
+ * (leaving *out untouched) unless the file is 1..max well-formed lines,
+ * setting *n to the count. */
 
-result_t palette_load_hex(const char *resources,
-                          const char *name,
-                          colour_t   *out)
+result_t palette_load_hex_n(const char *resources,
+                            const char *name,
+                            colour_t   *out,
+                            int         max,
+                            int        *n)
 {
   const char *path;
   FILE       *fp;
+  long        size;
+  int         count;
   char        line[16];
   int         i;
   unsigned    r, g, b;
@@ -56,18 +59,52 @@ result_t palette_load_hex(const char *resources,
   if (fp == NULL)
     return result_FILE_NOT_FOUND;
 
-  for (i = 0; i < PALETTE_NCOLOURS; i++)
+  /* each line is "rrggbb\n": 7 bytes */
+  if (fseek(fp, 0, SEEK_END) != 0 ||
+      (size = ftell(fp)) <= 0 || size % 7 != 0 || size / 7 > max ||
+      fseek(fp, 0, SEEK_SET) != 0)
+  {
+    fclose(fp);
+    return result_WUSS_BAD_PALETTE;
+  }
+
+  count = (int) (size / 7);
+  for (i = 0; i < count; i++)
   {
     if (fgets(line, sizeof(line), fp) == NULL ||
         sscanf(line, "%2x%2x%2x", &r, &g, &b) != 3)
     {
       fclose(fp);
-      return result_WUSS_BAD_COLOUR;
+      return result_WUSS_BAD_PALETTE;
     }
     out[i] = colour_rgb((int) r, (int) g, (int) b);
   }
 
   fclose(fp);
+  *n = count;
+  return result_OK;
+}
+
+/* As palette_load_hex_n, but exactly PALETTE_NCOLOURS lines, so a
+ * wrongly-sized file can never desync from the fixed-length system palette
+ * wuss was created with. */
+
+result_t palette_load_hex(const char *resources,
+                          const char *name,
+                          colour_t   *out)
+{
+  result_t rc;
+  colour_t tmp[PALETTE_NCOLOURS];
+  int      n;
+
+  rc = palette_load_hex_n(resources, name, tmp, PALETTE_NCOLOURS, &n);
+  if (rc != result_OK)
+    return rc;
+
+  if (n != PALETTE_NCOLOURS)
+    return result_WUSS_BAD_PALETTE;
+
+  memcpy(out, tmp, sizeof(tmp));
   return result_OK;
 }
 

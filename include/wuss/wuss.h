@@ -50,6 +50,8 @@ extern "C"
  * caller-driven change to its box.
  */
 #define result_WUSS_PINNED       (result_BASE_WUSS + 5)
+/** A palette file was malformed or the wrong length. */
+#define result_WUSS_BAD_PALETTE  (result_BASE_WUSS + 7)
 
 /* ----------------------------------------------------------------------- */
 

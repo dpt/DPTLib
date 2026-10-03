@@ -126,8 +126,8 @@ static result_t dithering_apply(dithering_task_t *dt)
   else
   {
     name = dt->palettes[dt->palette - DITHERING_PALETTE_FIRST_HEX];
-    rc   = palette_load_hex(wuss_get_resources(dt->wuss), name, palette);
-    ncolours = wuss_SYSTEM_PALETTE_LENGTH;
+    rc = palette_load_hex_n(wuss_get_resources(dt->wuss), name, palette,
+                            NELEMS(palette), &ncolours);
   }
 
   if (rc == result_OK)
