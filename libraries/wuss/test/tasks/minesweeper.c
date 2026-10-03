@@ -18,6 +18,7 @@
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "geom/point.h"
+#include "geom/size.h"
 #include "io/path.h"
 #include "wuss/menu.h"
 
@@ -25,6 +26,8 @@
 #include "common.h"
 
 #define MS_BORDER MINESWEEPER_CELL /* one grid unit all round */
+
+#define MS_BOOM_PARTICLES (MAX_PARTICLES / 2) /* particles per detonation */
 
 /* the HUD strip's height and the mines/timer fields' width are sized off the
  * HUD font's own metrics (DPT-Digits-Bold-Lg), not MINESWEEPER_CELL -- that
@@ -128,6 +131,69 @@ static void minesweeper_prepare_colours(minesweeper_task_t *ms)
   ms->colours.won_bg        = colour_rgb(0x00, 0x60, 0x00);
   ms->colours.banner_fg     = colour_rgb(0xFF, 0xFF, 0xFF);
   ms->colours.cursor        = colour_rgb(0xFF, 0x80, 0x00);
+}
+
+/* ----------------------------------------------------------------------- */
+
+/* fire colours, hot to cool, indexed by particle age */
+static const unsigned char g_minesweeper_fire[PALETTE_SIZE][3] =
+{
+  { 255, 255, 255 }, { 255, 232,   8 }, { 255, 206,   0 }, { 255, 154,   0 },
+  { 255,  90,   0 }, { 200,  40,   0 }, { 100,  20,  20 }, {  30,  30,  30 }
+};
+
+/* engine callbacks */
+
+static unsigned int minesweeper_rand(int nbits, void *opaque)
+{
+  minesweeper_task_t *ms;
+  uint32_t            r;
+
+  ms = opaque;
+
+  r = rng_xorshift32(&ms->rng);
+  return (nbits >= 32) ? r : r & ((1u << nbits) - 1);
+}
+
+static unsigned int minesweeper_time(void *opaque)
+{
+  minesweeper_task_t *ms;
+
+  ms = opaque;
+
+  return ms->now_ms;
+}
+
+static void minesweeper_render_particle(int   x,
+                                        int   y,
+                                        int   size,
+                                        int   palette_index,
+                                        void *opaque)
+{
+  minesweeper_task_t *ms;
+
+  ms = opaque;
+
+  screen_fill_rect_value(ms->scr, ms->ox + x - size / 2, ms->oy + y - size / 2,
+                         SIZE2D(size, size), ms->pixels[palette_index]);
+}
+
+/* must run before the first minesweeper_reset, which clears the system */
+static void minesweeper_init_particles(minesweeper_task_t *ms)
+{
+  int i;
+
+  rng_seed(&ms->rng, (uint32_t) rand());
+
+  for (i = 0; i < PALETTE_SIZE; i++)
+    ms->palette[i] = colour_rgb(g_minesweeper_fire[i][0],
+                                g_minesweeper_fire[i][1],
+                                g_minesweeper_fire[i][2]);
+
+  set_default_style(&ms->style, 1000.0f / PHYSICS_FPS);
+  ms->style.palette_index = 0;
+  init_particle_system(&ms->ps, 0, &ms->style, 1, 0.2f, minesweeper_rand,
+                       minesweeper_time, minesweeper_render_particle, ms);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -286,6 +352,7 @@ static void minesweeper_reset(minesweeper_task_t *ms)
   ms->elapsed  = 0;
   memset(ms->mine,  0, sizeof(ms->mine));
   memset(ms->state, 0, sizeof(ms->state)); /* minesweeper_HIDDEN == 0 */
+  reset_particle_system(&ms->ps);
 }
 
 /* applies a grid size (rows/cols) and its mine count, scaled by the current
@@ -331,6 +398,7 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
   task->wuss = wuss;
   task->font = wuss_get_font_n(wuss, 1);
   task->difficulty = minesweeper_DIFFICULTY_NORMAL;
+  minesweeper_init_particles(task);
   minesweeper_set_size(task, minesweeper_SIZE_12X12);
   minesweeper_prepare_colours(task);
 
@@ -637,6 +705,17 @@ static result_t minesweeper_redraw(const wuss_event_t *event,
                      SIZE2D(MINESWEEPER_CELL - 2, MINESWEEPER_CELL - 2),
                      ms->colours.cursor);
 
+  if (is_active(&ms->ps))
+  {
+    ms->scr = scr;
+    ms->ox  = bounds->x0;
+    ms->oy  = bounds->y0;
+    for (r = 0; r < PALETTE_SIZE; r++)
+      ms->pixels[r] = screen_colour_to_pixel(scr, ms->palette[r]);
+    render_particles(&ms->ps);
+    ms->scr = NULL;
+  }
+
   banner = ms->dead     ? "BOOM! Click to retry"    :
            ms->new_best ? "New best! Click to retry" :
            ms->won      ? "You win! Click to retry"  : NULL;
@@ -693,6 +772,13 @@ static result_t minesweeper_act(minesweeper_task_t *ms,
     if (ms->dead)
     {
       minesweeper_reveal_all_mines(ms);
+      ms->ps.width  = MS_WIDTH(ms);
+      ms->ps.height = MS_HEIGHT(ms);
+      create_explosion(&ms->ps, 0,
+                       MS_BORDER + c * MINESWEEPER_CELL + MINESWEEPER_CELL / 2,
+                       MS_HUD_H(ms) + MS_BORDER + r * MINESWEEPER_CELL +
+                       MINESWEEPER_CELL / 2,
+                       0.0f, 0.0f, MS_BOOM_PARTICLES);
       wuss_window_invalidate_visible(ms->window); /* every mine, plus banner */
     }
     else
@@ -870,6 +956,12 @@ result_t minesweeper_handle(wuss_window_t      *window,
      * guard against the dangling window in the meantime */
     if (ms->window == NULL)
       return result_OK;
+    if (is_active(&ms->ps))
+    {
+      ms->now_ms += 1000 / PHYSICS_FPS;
+      update_particles(&ms->ps, 1.0f / PHYSICS_FPS);
+      wuss_window_invalidate_visible(ms->window);
+    }
     if (ms->placed && !ms->dead && !ms->won)
     {
       int was;
