@@ -59,6 +59,7 @@ static const test_t tests[] =
   { "rle",         bitmap_rle_test  },
   { "curve",       curve_test       },
   { "dither",      dither_test      },
+  { "effects",     effects_test     },
   { "octree",      octree_test      },
   { "pattern",     pattern_test     },
   { "pixelmap",    pixelmap_test    },

@@ -88,6 +88,7 @@ set(PUBLIC_HEADERS
     include/framebuf/composite.h
     include/framebuf/curve.h
     include/framebuf/dither.h
+    include/framebuf/effects.h
     include/framebuf/octree.h
     include/framebuf/palettes.h
     include/framebuf/pattern.h
@@ -219,6 +220,7 @@ set(DATASTRUCT_SOURCES
     libraries/datastruct/hash/create.c
     libraries/datastruct/hash/destroy.c
     libraries/datastruct/hash/impl.h
+    libraries/framebuf/effects/impl.h
     libraries/datastruct/hash/insert.c
     libraries/datastruct/hash/lookup-node.c
     libraries/datastruct/hash/lookup.c
@@ -292,6 +294,17 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/composite/composite.c
     libraries/framebuf/curve/curve.c
     libraries/framebuf/dither/dither.c
+    libraries/framebuf/effects/blend.c
+    libraries/framebuf/effects/blur.c
+    libraries/framebuf/effects/clear.c
+    libraries/framebuf/effects/convolve.c
+    libraries/framebuf/effects/equalise.c
+    libraries/framebuf/effects/expand.c
+    libraries/framebuf/effects/grey.c
+    libraries/framebuf/effects/layout.c
+    libraries/framebuf/effects/remap.c
+    libraries/framebuf/effects/sharpen.c
+    libraries/framebuf/effects/tonemap.c
     libraries/framebuf/octree/octree.c
     libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pattern/pattern.c
@@ -779,6 +792,7 @@ if(BUILD_TESTS)
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
         libraries/framebuf/dither/test/dither-test.c
+        libraries/framebuf/effects/test/effects-test.c
         libraries/framebuf/octree/test/octree-test.c
         libraries/framebuf/pattern/test/pattern-test.c
         libraries/framebuf/pixelmap/test/pixelmap-test.c
