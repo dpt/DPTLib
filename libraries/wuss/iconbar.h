@@ -20,8 +20,6 @@
 #define WUSS_ICONBAR_GAP        8
 #define WUSS_ICONBAR_SLOT       (WUSS_ICONBAR_ICON + WUSS_ICONBAR_GAP)
 #define WUSS_ICONBAR_HEIGHT     66
-#define WUSS_ICONBAR_BEVEL      2  /* matches screen_draw_bevel_edge's fixed
-                                    * 2px edge */
 #define WUSS_ICONBAR_TEXT_PAD   2  /* clear space above the label */
 
 /* Vertical placement of the icon square within the bar, measured inside its
@@ -31,30 +29,14 @@
 #define WUSS_ICONBAR_TOP_SPARE  20
 #define WUSS_ICONBAR_BOT_SPARE  10
 
-/* Per-instance transient state, kept as bitflags with wuss__iconbar_icon_*
- * accessors (mirrors wuss_icon_state_t) so more can be added without
- * growing the struct. */
-typedef enum wuss_iconbar_icon_state
-{
-  wuss_ICONBAR_ICON_STATE_NONE    = 0,
-  wuss_ICONBAR_ICON_STATE_PRESSED = 1 << 0 /* held with the pointer inside */
-}
-wuss_iconbar_icon_state_t;
-
 /* A live icon bar icon is its creation spec plus the task it delivers
- * wuss_EVENT_ICON to and its transient runtime state. spec.text is owned
- * (strdup'd by wuss_iconbar_icon_create); never NULL, "" instead. */
+ * wuss_EVENT_ICON to. spec.text is owned (strdup'd by
+ * wuss_iconbar_icon_create); never NULL, "" instead. */
 struct wuss_iconbar_icon
 {
   wuss_iconbar_icon_spec_t  spec;  /* text owned */
   wuss_task_t              *owner; /* wuss_EVENT_ICON delivery target */
-  wuss_iconbar_icon_state_t state;
 };
-
-static inline int wuss__iconbar_icon_pressed(const wuss_iconbar_icon_t *icon)
-{
-  return (icon->state & wuss_ICONBAR_ICON_STATE_PRESSED) != 0;
-}
 
 /* The bar's on-screen box: wuss->iconbar_window's own visible box, or an
  * empty box if the bar has no window yet (before the first icon is
@@ -72,7 +54,7 @@ void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out);
  * outline. */
 void wuss__iconbar_icon_box(const wuss_t *wuss, int index, box_t *out);
 
-/* Paint every icon (bevel/image/label) into "piece", a piece of
+/* Paint every icon (image/label) into "piece", a piece of
  * wuss->iconbar_window's content already backdrop-filled and clipped by
  * redraw_window. Called from redraw_window for wuss->iconbar_window, same as
  * any other window's icon-drawing step. */

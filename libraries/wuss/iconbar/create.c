@@ -116,7 +116,6 @@ result_t wuss_iconbar_icon_create(wuss_t                         *wuss,
   it->spec.text   = wuss__alloc_strdup(&wuss->alloc,
                                        spec->text != NULL ? spec->text : "");
   it->owner       = owner;
-  it->state       = wuss_ICONBAR_ICON_STATE_NONE;
 
   if (it->spec.text == NULL)
   {
