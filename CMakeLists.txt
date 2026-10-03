@@ -91,6 +91,7 @@ set(PUBLIC_HEADERS
     include/framebuf/octree.h
     include/framebuf/palettes.h
     include/framebuf/pattern.h
+    include/framebuf/tonemap.h
     include/framebuf/pixelfmt.h
     include/framebuf/pixelmap.h
     include/framebuf/screen.h
@@ -294,6 +295,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/octree/octree.c
     libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pattern/pattern.c
+    libraries/framebuf/tonemap/tonemap.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/pixelfmt/paletted-nentries.c
     libraries/framebuf/pixelmap/build.c
@@ -780,6 +782,7 @@ if(BUILD_TESTS)
         libraries/framebuf/octree/test/octree-test.c
         libraries/framebuf/pattern/test/pattern-test.c
         libraries/framebuf/pixelmap/test/pixelmap-test.c
+        libraries/framebuf/tonemap/test/tonemap-test.c
         libraries/framebuf/screen/test/screen-test.c
         libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
