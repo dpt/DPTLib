@@ -1484,24 +1484,23 @@ result_t wuss_test(const char *resources)
   if (width != 52 || height != 72)
     goto Failure;
 
-  printf("test: window_resize honours the requested size even past the "
-         "screen edge\n");
+  printf("test: window_resize caps the size at the screen edge\n");
 
   /* screen is 200x200; win_a's visible box sits at (0,25) with a 1px
    * outline all round and a 20px titlebar. asking for a 500x500 content
-   * area is honoured verbatim; the visible box simply overhangs the
-   * screen (width 500+2, height 500+2+20). */
+   * area is capped so the visible box ends at the screen edge (198 wide,
+   * 153 tall of content). */
   rc = wuss_window_resize(win_a, SIZE2D(500, 500));
   if (rc != result_OK)
     goto Failure;
   wuss_window_get_content_bounds(win_a, &content);
-  if (content.x1 - content.x0 != 500 || content.y1 - content.y0 != 500)
+  if (content.x1 - content.x0 != 198 || content.y1 - content.y0 != 153)
     goto Failure;
   wuss_window_get_visible_bounds(win_a, &visible);
-  if (visible.x1 != 502 || visible.y1 != 547)
+  if (visible.x1 != 200 || visible.y1 != 200)
     goto Failure;
 
-  /* a smaller request is likewise honoured verbatim */
+  /* a smaller request is honoured verbatim */
   rc = wuss_window_resize(win_a, SIZE2D(60, 40));
   if (rc != result_OK)
     goto Failure;
@@ -10109,8 +10108,7 @@ result_t wuss_test(const char *resources)
       content.x1 != 100 || content.y1 != 100)
     goto Failure;
 
-  printf("test: window_resize honours the requested size even past the "
-         "screen edge\n");
+  printf("test: window_resize caps the size at the screen edge\n");
 
   /* screen is 200x200; win_a sits at (0,0), chromeless. asking for a
    * 500x500 content area is honoured verbatim. */

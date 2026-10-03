@@ -195,10 +195,13 @@ result_t wuss_window_set_hidden(wuss_window_t *window, int hidden);
 result_t wuss_window_reveal_now(wuss_window_t *window);
 
 /**
- * Resize a window's content area, preserving its top-left position.
+ * Resize a window's content area, preserving its top-left position. As
+ * wuss_window_create does, the size is capped so the window fits the screen
+ * from its top-left, except that it never drops below the minimum grabbable
+ * size.
  *
  * \param[in] window Window to resize.
- * \param[in] size   New content size.
+ * \param[in] size   Requested content size; capped to the screen.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if size's
  *         width or height is not positive.
  */
