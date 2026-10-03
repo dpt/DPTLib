@@ -4,9 +4,11 @@
 #define TASKS_COMMON_H
 
 #include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "base/result.h"
+#include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
 #include "geom/size.h"
 #include "wuss/menu.h"
@@ -18,6 +20,39 @@
  * version lines every demo task shares */
 #define TASK_PROGINFO_DESC(name, purpose) \
   { name, purpose, "© DPTLib contributors", "1.0 (" __DATE__ ")" }
+
+/* bitmap_load_png keeps a palette-type PNG as pixelfmt_p8, so convert one
+ * back to a deep format here for screen_copy_bitmap and
+ * screen_copy_ninepatch. Callers wanting an untouched load (e.g. to inspect
+ * the palette) pass pixelfmt_unknown to skip conversion. */
+static inline result_t load_png_deep(bitmap_t   *bm,
+                                     const char *filename,
+                                     pixelfmt_t  fmt)
+{
+  result_t  rc;
+  bitmap_t *deep;
+
+  rc = bitmap_load_png(bm, filename);
+  if (rc != result_OK)
+    return rc;
+
+  if (fmt == pixelfmt_unknown || bm->format != pixelfmt_p8)
+    return result_OK;
+
+  rc = bitmap_convert(bm, fmt, &deep);
+  if (rc != result_OK)
+  {
+    free(bm->base);
+    return rc;
+  }
+
+  free(bm->base);
+  free(bm->palette);
+  *bm = *deep;
+  free(deep);
+
+  return result_OK;
+}
 
 /* create a focusable window with no backdrop whose document is exactly size,
  * as most demo tasks want */

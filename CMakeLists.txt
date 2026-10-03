@@ -303,6 +303,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/screen/screen-copy-bitmap-rle.c
     libraries/framebuf/screen/screen-copy-bitmap-rle.h
     libraries/framebuf/screen/screen-copy-ninepatch.c
+    libraries/framebuf/screen/screen-copy-tiled.c
     libraries/framebuf/screen/screen-copy-rect.c
     libraries/framebuf/screen/screen-draw.c
     libraries/framebuf/screen/screen-draw-circle.c
@@ -881,6 +882,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/sofa.c
         libraries/wuss/test/tasks/spheroid.c
         libraries/wuss/test/tasks/text.c
+        libraries/wuss/test/tasks/tiling.c
         libraries/wuss/test/tasks/zxtask.c)
 
     if(TARGET_RISCOS)

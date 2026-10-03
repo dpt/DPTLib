@@ -26,39 +26,6 @@
 #define IMAGE_MARGINSZ (NINEPATCHSZ + IMAGE_BORDERSZ)
 #define IMAGE_EXT      ".png"
 
-/* bitmap_load_png keeps a palette-type PNG as pixelfmt_p8, so convert one
- * back to a deep format here for screen_copy_bitmap and
- * screen_copy_ninepatch. Callers wanting an untouched load (e.g. to inspect
- * the palette) pass pixelfmt_unknown to skip conversion. */
-static result_t load_png_deep(bitmap_t   *bm,
-                              const char *filename,
-                              pixelfmt_t  fmt)
-{
-  result_t  rc;
-  bitmap_t *deep;
-
-  rc = bitmap_load_png(bm, filename);
-  if (rc != result_OK)
-    return rc;
-
-  if (fmt == pixelfmt_unknown || bm->format != pixelfmt_p8)
-    return result_OK;
-
-  rc = bitmap_convert(bm, fmt, &deep);
-  if (rc != result_OK)
-  {
-    free(bm->base);
-    return rc;
-  }
-
-  free(bm->base);
-  free(bm->palette);
-  *bm = *deep;
-  free(deep);
-
-  return result_OK;
-}
-
 result_t image_create(wuss_t *wuss, image_task_t **out)
 {
   result_t         rc;
