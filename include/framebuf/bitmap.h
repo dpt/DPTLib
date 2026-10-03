@@ -111,9 +111,12 @@ result_t bitmap_fill_pattern(bitmap_t        *bm,
 /**
  * Load a PNG image into the given bitmap.
  *
- * A palette-type PNG is kept as \ref pixelfmt_p8 with its PLTE (and any
- * tRNS) copied into `bm->palette`; RGB and greyscale PNGs are expanded to a
- * 32bpp `rgbx8888` / `rgba8888` bitmap with no palette.
+ * A palette-type PNG is kept at its own depth in the smallest matching
+ * paletted format (\ref pixelfmt_p1, \ref pixelfmt_p2, \ref pixelfmt_p4 or
+ * \ref pixelfmt_p8) with its PLTE (and any tRNS) copied into `bm->palette`.
+ * A greyscale PNG is treated the same way (16-bit is reduced to 8), with a
+ * ramp of greys as `bm->palette`. RGB PNGs are expanded to a 32bpp
+ * `rgbx8888` / `rgba8888` bitmap with no palette.
  *
  * \param[in] bm       Bitmap to load the image into.
  * \param[in] filename Filename of the image to load.
