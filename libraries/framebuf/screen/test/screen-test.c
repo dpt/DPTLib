@@ -287,6 +287,70 @@ static int np_at(testscreen_t *ts, int x, int y)
   return (int) ts->pixels[y * WIDTH + x];
 }
 
+static result_t test_tiled(void)
+{
+  static testscreen_t        ts;
+  static pixelfmt_bgrx8888_t srcbuf[3 * 2];
+
+  bitmap_t                   src;
+  box_t                      dst = { 5, 6, 30, 25 };
+  box_t                      saved;
+  point_t                    origin;
+  int                        x, y;
+  int                        want;
+
+  for (x = 0; x < 3 * 2; x++)
+    srcbuf[x] = 0x00000100 + x; /* each tile pixel is unique */
+  bitmap_init(&src, SIZE2D(3, 2), pixelfmt_bgrx8888,
+              3 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
+
+  /* Origin well off-screen to the top left, then inside dst, then below and
+   * right of it: every pixel in dst must show the tile pixel its phase
+   * says, and nothing outside dst may change. */
+  for (origin = POINT(-100, -50); ; origin = POINT(origin.x + 107, origin.y + 61))
+  {
+    testscreen_init(&ts);
+    saved = ts.scr.clip;
+    if (screen_copy_bitmap_tiled(&ts.scr, &dst, &src, origin) != result_OK)
+    {
+      printf("screen: tiled copy failed\n");
+      return result_TEST_FAILED;
+    }
+
+    for (y = 0; y < HEIGHT; y++)
+      for (x = 0; x < WIDTH; x++)
+      {
+        if (x >= dst.x0 && x < dst.x1 && y >= dst.y0 && y < dst.y1)
+        {
+          want = 0x00000100 + (((y - origin.y) % 2 + 2) % 2) * 3 +
+                              (((x - origin.x) % 3 + 3) % 3);
+          if ((np_at(&ts, x, y) & 0xFFFFFF) != want)
+          {
+            printf("screen: tiled phase wrong at (%d,%d), origin (%d,%d)\n",
+                   x, y, origin.x, origin.y);
+            return result_TEST_FAILED;
+          }
+        }
+        else if (np_at(&ts, x, y) != (int) (pixelfmt_bgrx8888_t) BACKGROUND)
+        {
+          printf("screen: tiled drew outside dst at (%d,%d)\n", x, y);
+          return result_TEST_FAILED;
+        }
+      }
+
+    if (memcmp(&ts.scr.clip, &saved, sizeof(saved)) != 0)
+    {
+      printf("screen: tiled did not restore the clip\n");
+      return result_TEST_FAILED;
+    }
+
+    if (origin.x > 100)
+      break;
+  }
+
+  return result_TEST_PASSED;
+}
+
 static result_t test_ninepatch(void)
 {
   static testscreen_t        ts;
@@ -1933,6 +1997,7 @@ result_t screen_test(const char *resources)
     test_clipping_still_happens,
     test_wu_fix8_extreme_coords,
     test_ninepatch,
+    test_tiled,
     test_fill_pattern,
     test_dashed_line,
     test_draw_lines,

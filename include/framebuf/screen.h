@@ -291,6 +291,29 @@ result_t screen_copy_ninepatch(screen_t       *scr,
                                unsigned int    flags);
 
 /**
+ * Fills a destination rectangle with repeated copies of a bitmap. The copies
+ * abut with no gap, in a grid in which one tile has its top-left at \p
+ * origin. \p origin need not lie inside \p dst, or even on the screen: the
+ * grid extends infinitely in every direction, so moving \p origin scrolls
+ * the pattern. Tiles are blended exactly as `screen_copy_bitmap` does.
+ *
+ * Drawing is clipped to both \p dst and the screen's clip region, which is
+ * restored on return. No scaling is performed.
+ *
+ * \param[in] scr    Screen to draw upon.
+ * \param[in] dst    Rectangle to fill.
+ * \param[in] src    Bitmap to repeat.
+ * \param[in] origin Screen position of the top-left of one tile.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if \p src has no
+ *         area, or \ref result_NOT_SUPPORTED if the screen's pixel format
+ *         has no blit path.
+ */
+result_t screen_copy_bitmap_tiled(screen_t       *scr,
+                                  const box_t    *dst,
+                                  const bitmap_t *src,
+                                  point_t         origin);
+
+/**
  * Copies a rectangular region of the screen to another position on the same
  * screen (e.g. sliding an already-rendered window's pixels to a new position
  * without asking its owner to redraw). Source and destination may overlap;

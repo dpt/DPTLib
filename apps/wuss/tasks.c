@@ -47,6 +47,7 @@
 #include "tasks/sofa.h"
 #include "tasks/spheroid.h"
 #include "tasks/text.h"
+#include "tasks/tiling.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -155,7 +156,8 @@ g_visuals_tasks[] =
   { "Greeble",     (task_create_fn_t) greeble_create     },
   { "Image",       (task_create_fn_t) image_create       },
   { "Lissajous",   (task_create_fn_t) lissajous_create   },
-  { "Patterns",    (task_create_fn_t) patterns_create    }
+  { "Patterns",    (task_create_fn_t) patterns_create    },
+  { "Tiling",      (task_create_fn_t) tiling_create      }
 },
 g_toys_tasks[] =
 {
@@ -213,7 +215,8 @@ static const wuss_menu_item_t g_visuals_items[] =
   { "Greeble",     wuss_MENU_ITEM_NONE, NULL },
   { "Image",       wuss_MENU_ITEM_NONE, NULL },
   { "Lissajous",   wuss_MENU_ITEM_NONE, NULL },
-  { "Patterns",    wuss_MENU_ITEM_NONE, NULL }
+  { "Patterns",    wuss_MENU_ITEM_NONE, NULL },
+  { "Tiling",      wuss_MENU_ITEM_NONE, NULL }
 };
 
 static const wuss_menu_item_t g_toys_items[] =
