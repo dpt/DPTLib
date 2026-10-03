@@ -74,6 +74,14 @@ result_t palette_load_hex(const char *resources,
                           const char *name,
                           colour_t   *out);
 
+/* as palette_load_hex, but accepts any 1..max entries and returns the
+ * count through n (for dithering to a short palette such as CMYK) */
+result_t palette_load_hex_n(const char *resources,
+                            const char *name,
+                            colour_t   *out,
+                            int         max,
+                            int        *n);
+
 /* create the palette-swatch-grid window against the given wuss instance.
  * wuss_get_resources(wuss)/resources/palettes holds the *.hex files; it is
  * scanned once here to build the picker menu, ticking whichever file's
