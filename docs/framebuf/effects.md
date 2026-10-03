@@ -37,7 +37,7 @@ Apart from `effects_blend` and `effects_tonemap_apply`, the fourth byte of each 
 
 Kernels are separable. A blur runs along each row and then down each column, replicating edge pixels. `amount` is clamped to `effects_blur_MIN_AMOUNT` (2, a 5-point kernel) to `effects_blur_MAX_AMOUNT` (48, a 95-point kernel).
 
-The kernel is held in fixed point, so a flat colour can come out a few levels off. The error grows with `amount`: up to about 3 levels at 9 and about 15 at 48.
+The kernel is held as integer weights in units of 1/256 which sum to exactly 256, so a flat colour passes through unchanged at every `amount`.
 
 ## Tone maps
 
