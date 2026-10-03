@@ -30,7 +30,7 @@
 enum { ICONS_MENU_INFO };
 
 #define ICONS_DOC_W    260
-#define ICONS_DOC_H    1504 /* taller than the window, so scrolling is exercised */
+#define ICONS_DOC_H    1570 /* taller than the window, so scrolling is exercised */
 #define ICONS_MARGIN   28  /* left edge of everything except frame captions */
 #define ICONS_ROW      20  /* vertical pitch between stacked simple icons */
 
@@ -50,7 +50,7 @@ enum
   ICONS_N_DISPLAY = 3, /* frame + static + counter-tracking display */
   ICONS_N_SLIDERS = 4, /* frame + horizontal + vertical slider + state label */
   ICONS_N_MENU    = 8, /* frame + plain, ticked, swatch, submenu, disabled, rule, separator entry */
-  ICONS_N_WRITE   = 4, /* frame + two writables + echo label */
+  ICONS_N_WRITE   = 7, /* frame + five writables (incl. left/centre/right) + echo label */
   ICONS_N_SSET    = 2, /* frame + echo label; the gadget adds its own icons */
   ICONS_N_CSET    = 2, /* frame + echo label; the gadget adds its own icons */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
@@ -610,8 +610,8 @@ static void icons_add_menu(icons_layout_t *lay, int *ticked)
 }
 
 /* A grouping frame captioned "Writables" holding two editable fields -- the
- * second small enough to fill up -- and a label echoing whichever was last
- * edited. Click a field for the caret; Tab / Shift-Tab hop between them.
+ * second small enough to fill up -- then three left, centre and right
+ * justified fields, and a label echoing whichever was last edited. Click a field for the caret; Tab / Shift-Tab hop between them.
  * Returns the echo label's index via *echo. */
 static void icons_add_writables(icons_layout_t *lay, int *echo)
 {
@@ -620,33 +620,39 @@ static void icons_add_writables(icons_layout_t *lay, int *echo)
 
   top     = lay->y;
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 90);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 156);
   s->type = wuss_ICON_TYPE_FRAME;
   s->text = "Writables";
   s->fg   = lay->black;
   s->bg   = wuss_NO_BACKGROUND;
   lay->n++;
 
-  wuss_icon_spec_writable(&lay->specs[lay->n],
+  wuss_icon_spec_writable(&lay->specs[lay->n++],
                           (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20, 180, 18),
                           "Edit me", 64, 0);
-  lay->n++;
-
-  wuss_icon_spec_writable(&lay->specs[lay->n],
+  wuss_icon_spec_writable(&lay->specs[lay->n++],
                           (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 42, 60, 18),
                           NULL, 6, 0);
-  lay->n++;
+  wuss_icon_spec_writable(&lay->specs[lay->n++],
+                          (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 64, 180, 18),
+                          "Left", 100, wuss_ICON_FLAGS_JUSTIFY_LEFT);
+  wuss_icon_spec_writable(&lay->specs[lay->n++],
+                          (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 86, 180, 18),
+                          "Centre", 100, wuss_ICON_FLAGS_JUSTIFY_CENTRE);
+  wuss_icon_spec_writable(&lay->specs[lay->n++],
+                          (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 108, 180, 18),
+                          "Right", 100, wuss_ICON_FLAGS_JUSTIFY_RIGHT);
 
   *echo   = lay->n;
   s       = &lay->specs[lay->n];
-  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 64, 180, 14);
+  s->bbox = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 130, 180, 14);
   s->type = wuss_ICON_TYPE_LABEL;
   s->text = "";
   s->fg   = lay->black;
   s->bg   = wuss_NO_BACKGROUND;
   lay->n++;
 
-  lay->y = top + 106;
+  lay->y = top + 172;
 }
 
 /* A frame captioned "caption" around a gadget and a label echoing its picks.
