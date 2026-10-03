@@ -26,10 +26,10 @@ result_t tonemap_test(const char *resources)
   if (map == NULL)
     return result_TEST_FAILED;
 
-  /* 1. neutral map: lower half linear, R/G/B tables identical, alpha linear */
+  /* 1. neutral map: identity, R/G/B tables identical, alpha linear */
   tonemap_get_tables(map, &red, &green, NULL, &alpha);
 
-  for (i = 0; i < 128; i++)
+  for (i = 0; i < 256; i++)
   {
     if (red->level[i] != i)
     {

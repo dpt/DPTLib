@@ -54,5 +54,3 @@ tonemap_set(map, tonemap_CHANNEL_RGB, &spec);
 effects_tonemap_apply(&src, &dst, map);
 tonemap_destroy(map);
 ```
-
-A neutral tone map is exactly linear for levels 0 to 127 but maps 128 to 255 down by one level, as in the original code.

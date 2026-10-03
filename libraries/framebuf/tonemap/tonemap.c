@@ -141,7 +141,7 @@ static void calc(tonemap_t *map)
       if (i < 128)
         j = j * midd / 50;
       else
-        j = (midd * 255 / 100) + (j - 128) * (100 - midd) / 50;
+        j = ((midd * 255 + 50) / 100) + (j - 128) * (100 - midd) / 50;
 
       if (comp->spec.bias != 50 || comp->spec.gain != 50)
       {
@@ -162,7 +162,7 @@ static void calc(tonemap_t *map)
         else
           g = (t - x) / (t - 1.0);
 
-        j = (int) (g * 255.0);
+        j = (int) (g * 255.0 + 0.5);
       }
 
       j = CLAMP(j, 0, 255);
