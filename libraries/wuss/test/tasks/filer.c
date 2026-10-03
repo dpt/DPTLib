@@ -237,8 +237,11 @@ static void filer_load_glyph(const char *resources,
 {
   const char *path;
 
-  path  = pathf("%s/resources/wuss/%s.png", resources, leaf);
+  path  = pathf("%s/resources/wuss/files/%s.png", resources, leaf);
   *have = bitmap_load_png(bm, path) == result_OK;
+  if (!*have)
+    logf_warning("filer: glyph '%s' unavailable; cells show label only",
+                 path);
 }
 
 result_t filer_create(wuss_t *wuss, filer_task_t **out)
@@ -257,11 +260,11 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
   task->nwindows = 0;
 
   resources = wuss_get_resources(wuss);
-  filer_load_glyph(resources, "filer-file", &task->glyph_file,
+  filer_load_glyph(resources, "file_unk", &task->glyph_file,
                    &task->have_glyph_file);
-  filer_load_glyph(resources, "filer-directory", &task->glyph_directory,
+  filer_load_glyph(resources, "file_dir", &task->glyph_directory,
                    &task->have_glyph_directory);
-  filer_load_glyph(resources, "filer-png", &task->glyph_png,
+  filer_load_glyph(resources, "file_b60", &task->glyph_png,
                    &task->have_glyph_png);
 
   WUSS_MENU_ITEM_WINDOW(task->menu_items, FILER_MENU_INFO, "Info",

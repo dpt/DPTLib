@@ -232,16 +232,17 @@ result_t wuss__icons_match_screen(wuss_t *wuss)
   return result_OK;
 }
 
-result_t wuss_icons_load(wuss_t *wuss, const char *dir)
+/* Builds the set from every "*.png" in each of dirs[0..ndirs), in order,
+ * replacing any previous set. A name repeated across directories keeps both
+ * entries; wuss_icons_lookup finds the first. */
+static result_t icons_load_dirs(wuss_t            *wuss,
+                                const char *const *dirs,
+                                int                ndirs)
 {
   result_t     rc;
   icons_load_t st;
+  int          d;
   int          i;
-
-  assert(wuss != NULL);
-
-  if (dir == NULL)
-    return result_NULL_ARG;
 
   wuss__icons_registry_free(wuss);
 
@@ -249,29 +250,33 @@ result_t wuss_icons_load(wuss_t *wuss, const char *dir)
   if (wuss->icon.names == NULL)
     return result_OOM;
 
-  if (strlen(dir) >= sizeof(st.dir))
-  {
-    atom_destroy(wuss->icon.names);
-    wuss->icon.names = NULL;
-    return result_BAD_ARG;
-  }
-
   st.wuss    = wuss;
-  strcpy(st.dir, dir);
   st.atoms   = NULL;
   st.bitmaps = NULL;
   st.n       = 0;
   st.cap     = 0;
   st.rc      = result_OK;
 
-  rc = dirscan_walk(dir, icons_load_entry, &st);
+  rc = result_OK;
+  for (d = 0; d < ndirs && rc == result_OK; d++)
+  {
+    if (strlen(dirs[d]) >= sizeof(st.dir))
+    {
+      rc = result_BAD_ARG;
+      break;
+    }
 
-  /* A missing directory just yields an empty set. */
-  if (rc == result_FILE_NOT_FOUND)
-    rc = result_OK;
+    strcpy(st.dir, dirs[d]);
 
-  if (rc == result_OK && st.rc != result_OK)
-    rc = st.rc;
+    rc = dirscan_walk(dirs[d], icons_load_entry, &st);
+
+    /* A missing directory just yields no entries. */
+    if (rc == result_FILE_NOT_FOUND)
+      rc = result_OK;
+
+    if (rc == result_OK && st.rc != result_OK)
+      rc = st.rc;
+  }
 
   if (rc != result_OK)
   {
@@ -290,21 +295,39 @@ result_t wuss_icons_load(wuss_t *wuss, const char *dir)
   return result_OK;
 }
 
+result_t wuss_icons_load(wuss_t *wuss, const char *dir)
+{
+  assert(wuss != NULL);
+
+  if (dir == NULL)
+    return result_NULL_ARG;
+
+  return icons_load_dirs(wuss, &dir, 1);
+}
+
 result_t wuss_icons_load_resource(wuss_t *wuss, const char *resources)
 {
-  char dir[ICONS_DIR_MAX];
+  char        icons[ICONS_DIR_MAX];
+  char        files[ICONS_DIR_MAX];
+  const char *dirs[2];
 
   assert(wuss != NULL);
 
   if (resources == NULL)
     return result_NULL_ARG;
 
-  /* copy: pathf hands back one shared static buffer, and wuss_icons_load's
-   * own per-file joins would clobber it mid-call */
-  strncpy(dir, pathf("%s/resources/wuss/icons", resources), sizeof(dir) - 1);
-  dir[sizeof(dir) - 1] = '\0';
+  /* copy: pathf hands back one shared static buffer, and the per-file joins
+   * would clobber it mid-call */
+  strncpy(icons, pathf("%s/resources/wuss/icons", resources),
+          sizeof(icons) - 1);
+  icons[sizeof(icons) - 1] = '\0';
+  strncpy(files, pathf("%s/resources/wuss/files", resources),
+          sizeof(files) - 1);
+  files[sizeof(files) - 1] = '\0';
 
-  return wuss_icons_load(wuss, dir);
+  dirs[0] = icons;
+  dirs[1] = files;
+  return icons_load_dirs(wuss, dirs, 2);
 }
 
 int wuss_icons_count(const wuss_t *wuss)

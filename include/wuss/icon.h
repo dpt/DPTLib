@@ -679,9 +679,12 @@ result_t wuss_icons_load(wuss_t *wuss, const char *dir);
 
 /**
  * Convenience wrapper for \ref wuss_icons_load: loads the wuss-wide icon set
- * from "<resources>/resources/wuss/icons", the fixed location every demo
- * task uses. \p resources is joined via \c pathf and copied before the load,
- * so the caller need not worry about \c pathf's single shared return buffer.
+ * from "<resources>/resources/wuss/icons" followed by
+ * "<resources>/resources/wuss/files" (file type icons, e.g. "file_xxx"), the
+ * fixed locations every demo task uses. A name repeated across the two
+ * directories keeps both entries and \ref wuss_icons_lookup finds the first.
+ * \p resources is joined via \c pathf and copied before the load, so the
+ * caller need not worry about \c pathf's single shared return buffer.
  *
  * \param[in] wuss      Window manager.
  * \param[in] resources Resource root, as returned by \ref
