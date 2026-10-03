@@ -142,10 +142,11 @@ static result_t saveas_action_save(void *opaque, wuss_button_t button)
   result_t       rc;
   wuss_saveas_t *sa;
 
-  (void) button;
   sa = opaque;
   rc = saveas_do_save(sa);
-  if (rc == result_OK)
+
+  /* ADJUST keeps the dialogue (and any menu chain holding it) open */
+  if (rc == result_OK && !(button & wuss_BUTTON_ADJUST))
     saveas_dismiss(sa);
 
   return rc;
