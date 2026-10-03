@@ -59,7 +59,7 @@ static const char *const dithering_strength_names[DITHERING_NSTRENGTHS] =
 /* ----------------------------------------------------------------------- */
 
 /* Load a PNG as rgbx8888/rgba8888. bitmap_load_png keeps a palette-type PNG
- * as p8, so expand that one. */
+ * paletted (p1 to p8), so expand that one. */
 static result_t dithering_load(dithering_task_t *dt, int index, bitmap_t *bm)
 {
   result_t    rc;
@@ -73,7 +73,7 @@ static result_t dithering_load(dithering_task_t *dt, int index, bitmap_t *bm)
   if (rc != result_OK)
     return rc;
 
-  if (bm->format != pixelfmt_p8)
+  if (bm->format < pixelfmt_p1 || bm->format > pixelfmt_p8)
     return result_OK;
 
   rc = bitmap_convert(bm, pixelfmt_rgbx8888, &deep);
