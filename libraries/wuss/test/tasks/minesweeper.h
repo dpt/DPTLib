@@ -11,10 +11,14 @@
 #include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
+#include "framebuf/screen.h"
+#include "utils/rng.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
+
+#include "explosion.h" /* fetched from github.com/dpt/Explosion */
 
 #define MINESWEEPER_CELL 22 /* pixels per cell; matches mine.png/flag.png */
 
@@ -64,7 +68,7 @@ minesweeper_cell_state_t;
  * resets it with more or fewer mines; "Give Up" ends a game in progress
  * and shows every mine. With the input focus, the arrow keys move a cursor
  * cell, Return reveals it, Space toggles its flag and N starts a new
- * game. */
+ * game. Hitting a mine sets off a particle explosion at the clicked cell. */
 typedef struct minesweeper_task
 {
   wuss_t                  *wuss;
@@ -118,6 +122,18 @@ typedef struct minesweeper_task
     colour_t banner_fg;
     colour_t cursor;        /* keyboard cursor outline */
   }                          colours;
+
+  /* death explosion: one Explosion particle system over the board */
+  rng_t                    rng;
+  unsigned int             now_ms; /* simulated clock, advanced per idle tick */
+  particle_style_t         style;
+  colour_t                 palette[PALETTE_SIZE];
+  particle_system_t        ps;
+
+  /* valid only during redraw, for the engine's render callback */
+  screen_t                *scr;
+  int                      ox, oy;
+  pixelfmt_any_t           pixels[PALETTE_SIZE]; /* palette[] in scr's format */
 }
 minesweeper_task_t;
 
