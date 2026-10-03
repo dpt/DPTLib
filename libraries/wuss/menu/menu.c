@@ -128,6 +128,10 @@ static void wuss__menu_close_from(struct wuss__menu *node)
       /* caller's window: hide, keep, and put back in the stack it came from */
       wuss_window_set_hidden(node->window, 1);
       wuss_window_set_stack(node->window, node->saved_stack);
+
+      /* hiding dropped the focus it held; hand it back to its lender */
+      if (node->saved_focus != NULL && w->focus == NULL)
+        (void) wuss_set_focus(w, node->saved_focus);
     }
     else
     {
@@ -209,6 +213,8 @@ static result_t wuss__menu_new_borrowed(wuss_t             *wuss,
                                         struct wuss__menu **out)
 {
   struct wuss__menu *node;
+  int                i;
+  wuss_icon_t       *icon;
 
   node = wuss__malloc(wuss, sizeof(*node));
   if (node == NULL)
@@ -219,6 +225,7 @@ static result_t wuss__menu_new_borrowed(wuss_t             *wuss,
   node->owner         = owner;
   node->window        = win;
   node->saved_stack   = win->stack;
+  node->saved_focus   = NULL;
   node->menu          = NULL;
   node->icons         = NULL;
   node->parent        = parent;
@@ -232,6 +239,23 @@ static result_t wuss__menu_new_borrowed(wuss_t             *wuss,
 
   wuss_window_set_stack(win, wuss_STACK_TOP);
   wuss_window_restack(win, wuss_ZORDER_FRONT); /* for a window already in TOP */
+
+#ifdef WUSS_ICONS
+  /* a dialogue takes the focus, with the caret in its first writable; a
+   * window with no writable is left alone */
+  for (i = 0; i < win->nicons; i++)
+  {
+    icon = win->icons[i];
+    if (icon->spec.type != wuss_ICON_TYPE_WRITABLE ||
+        (icon->spec.flags & (wuss_ICON_FLAGS_HIDDEN | wuss_ICON_FLAGS_DISABLED)))
+      continue;
+
+    node->saved_focus = wuss->focus;
+    if (wuss_set_focus(wuss, win) == result_OK)
+      wuss__writable_place_caret(win, icon, (int) strlen(icon->spec.text));
+    break;
+  }
+#endif
 
   if (out != NULL)
     *out = node;
