@@ -30,6 +30,7 @@
 #include "tasks/dithering.h"
 #include "tasks/display.h"
 #include "tasks/doughnut.h"
+#include "tasks/effects.h"
 #include "tasks/filer.h"
 #include "tasks/gradient.h"
 #include "tasks/greeble.h"
@@ -152,6 +153,7 @@ g_visuals_tasks[] =
   { "Checker",     (task_create_fn_t) checker_create     },
   { "Curve",       (task_create_fn_t) curve_create       },
   { "Dithering",   (task_create_fn_t) dithering_create   },
+  { "Effects",     (task_create_fn_t) effects_create     },
   { "Gradient",    (task_create_fn_t) gradient_create    },
   { "Greeble",     (task_create_fn_t) greeble_create     },
   { "Image",       (task_create_fn_t) image_create       },
@@ -211,6 +213,7 @@ static const wuss_menu_item_t g_visuals_items[] =
   { "Checker",     wuss_MENU_ITEM_NONE, NULL },
   { "Curve",       wuss_MENU_ITEM_NONE, NULL },
   { "Dithering",   wuss_MENU_ITEM_NONE, NULL },
+  { "Effects",     wuss_MENU_ITEM_NONE, NULL },
   { "Gradient",    wuss_MENU_ITEM_NONE, NULL },
   { "Greeble",     wuss_MENU_ITEM_NONE, NULL },
   { "Image",       wuss_MENU_ITEM_NONE, NULL },
