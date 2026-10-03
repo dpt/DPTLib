@@ -75,7 +75,6 @@ LAYER 7 - APPS & POLISH (needs most of the above)
 - Procedural noise app. Dithering app.
 - More tasks: TGE/CHQ/...
 - Configure: System font changing
-- Filer style window (drags first)
 
 
 NO STRONG DEPS (do any time)
