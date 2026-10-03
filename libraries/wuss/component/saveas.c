@@ -205,7 +205,7 @@ static result_t saveas_build_icons(wuss_saveas_t *sa,
   specs[0].u.bitmap.set = saveas_file_icon(sa->wuss, sa->filetype);
 
   wuss_icon_spec_writable(&specs[1], boxes[SA_LEAF], leafname,
-                          SAVEAS_LEAF_SIZE, 0);
+                          SAVEAS_LEAF_SIZE, wuss_ICON_FLAGS_JUSTIFY_CENTRE);
   wuss_icon_spec_action(&specs[2], boxes[SA_CANCEL], "Cancel", 0);
   wuss_icon_spec_action(&specs[3], boxes[SA_SAVE], "Save", 1);
 
