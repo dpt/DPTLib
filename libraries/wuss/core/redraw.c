@@ -123,7 +123,7 @@ static void redraw_window(wuss_t        *wuss,
 #endif
 
 #ifdef WUSS_ICONBAR
-    if (win == wuss->iconbar_window)
+    if (win == wuss->iconbar.window)
       wuss__iconbar_draw_icons(wuss, &pieces[i]);
 #endif
   }
@@ -193,7 +193,7 @@ result_t wuss_redraw(wuss_t *wuss)
    * screen rather than that leftover sliver. */
   box_reset(&wuss->scr->clip);
 
-  wuss->ndirty = 0;
+  wuss->dirty.n = 0;
 
   return rc;
 }
@@ -203,26 +203,26 @@ result_t wuss_redraw_dirty(wuss_t *wuss)
   result_t rc;
   int      i;
 
-  if (wuss->ndirty == 0)
+  if (wuss->dirty.n == 0)
     return result_OK;
 
   rc = result_OK;
-  for (i = 0; i < wuss->ndirty; i++)
+  for (i = 0; i < wuss->dirty.n; i++)
   {
-    wuss->scr->clip = wuss->dirty[i];
-    fill_backdrop_excluding_content(wuss, &wuss->dirty[i]);
+    wuss->scr->clip = wuss->dirty.box[i];
+    fill_backdrop_excluding_content(wuss, &wuss->dirty.box[i]);
 
-    redraw_from(wuss, &wuss->dirty[i], &rc);
+    redraw_from(wuss, &wuss->dirty.box[i], &rc);
 
     /* redraw_window left the clip at the last window piece it painted; widen
      * it back to the whole dirty rect or the ants are cut to that window */
-    wuss->scr->clip = wuss->dirty[i];
+    wuss->scr->clip = wuss->dirty.box[i];
     wuss__drag_draw(wuss);
   }
 
   box_reset(&wuss->scr->clip); /* see wuss_redraw's comment on the same call */
 
-  wuss->ndirty = 0;
+  wuss->dirty.n = 0;
 
   return rc;
 }

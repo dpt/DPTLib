@@ -106,13 +106,13 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
 
     /* A resize drag delivers several calls per frame, same as a fast wheel
      * spin (see wuss_window_set_scroll): an earlier call this frame may have
-     * queued part of "before_content" in wuss->dirty[] without a redraw
+     * queued part of "before_content" in wuss->dirty.box[] without a redraw
      * having painted it yet. Sliding that stale ground would smear garbage
      * into the window instead of this window's own settled pixels. */
     nstale = 0;
-    for (i = 0; i < window->wuss->ndirty; i++)
-      if (box_intersects(&window->wuss->dirty[i], &before_content))
-        stale[nstale++] = window->wuss->dirty[i];
+    for (i = 0; i < window->wuss->dirty.n; i++)
+      if (box_intersects(&window->wuss->dirty.box[i], &before_content))
+        stale[nstale++] = window->wuss->dirty.box[i];
 
     /* Each subtract can split a piece into up to four bands, so this can
      * overflow the piece budget on a badly fragmented window -- treat that

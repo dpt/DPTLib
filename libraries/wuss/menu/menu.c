@@ -62,18 +62,18 @@ static wuss_task_t *wuss__menu_task(wuss_t *wuss)
 {
   wuss_task_desc_t desc;
 
-  if (wuss->menu_task != NULL)
-    return wuss->menu_task;
+  if (wuss->menu.task != NULL)
+    return wuss->menu.task;
 
   desc.handle    = wuss__menu_handle;
   desc.task_data = wuss; /* the ICON path walks the chain by window; the IDLE
                           * path (window == NULL) needs the wuss_t directly */
   desc.name      = "wuss:menu";
 
-  if (wuss_task_create(wuss, &desc, &wuss->menu_task) != result_OK)
+  if (wuss_task_create(wuss, &desc, &wuss->menu.task) != result_OK)
     return NULL;
 
-  return wuss->menu_task;
+  return wuss->menu.task;
 }
 
 /* Find the open chain node whose window is `window` (the menu window whose
@@ -85,7 +85,7 @@ static struct wuss__menu *wuss__menu_node_for(wuss_t              *wuss,
 {
   struct wuss__menu *node;
 
-  for (node = wuss->menu_chain; node != NULL; node = node->child)
+  for (node = wuss->menu.chain; node != NULL; node = node->child)
     if (node->window == window)
       return node;
 
@@ -104,7 +104,7 @@ static void wuss__menu_close_from(struct wuss__menu *node)
 
   /* A pending pick flash still owes its owner a MENU_SELECT; the chain is
    * about to be freed out from under it (the caller unlinks it from
-   * wuss->menu_chain first), so delivering the notification here -- rather
+   * wuss->menu.chain first), so delivering the notification here -- rather
    * than via wuss__menu_flash_finish, whose own teardown would race this
    * one -- is the only chance the pick has of reaching its owner. */
   if (node->flash.frames > 0)
@@ -153,7 +153,7 @@ static void wuss__menu_close_from(struct wuss__menu *node)
  * opened it still holds the handle wuss_menu_open handed back, so tell it the
  * chain is gone (wuss_EVENT_MENU_CLOSED) before the nodes are freed -- a pick
  * has wuss_EVENT_MENU_SELECT for that, but these paths have nothing. Unlinks
- * wuss->menu_chain first so a re-entrant wuss_menu_close from the handler is a
+ * wuss->menu.chain first so a re-entrant wuss_menu_close from the handler is a
  * no-op. Also used by wuss_task_destroy when the chain's owner is the task
  * going away, so declared in core impl.h. */
 void wuss__menu_abandon(wuss_t *wuss)
@@ -161,12 +161,12 @@ void wuss__menu_abandon(wuss_t *wuss)
   struct wuss__menu *root;
   wuss_task_t       *owner;
 
-  root = wuss->menu_chain;
+  root = wuss->menu.chain;
   if (root == NULL)
     return;
 
   owner            = root->owner;
-  wuss->menu_chain = NULL;
+  wuss->menu.chain = NULL;
 
   if (owner != NULL)
   {
@@ -406,7 +406,7 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
     wuss = task_data;
 
-    for (node = wuss->menu_chain; node != NULL; node = node->child)
+    for (node = wuss->menu.chain; node != NULL; node = node->child)
       if (!(node->flags & wuss_MENU__BORROWED) && node->flash.frames > 0)
       {
         wuss__menu_flash_step(node);
@@ -415,10 +415,10 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
     /* a core drag (e.g. a Save As file icon) owns the pointer until it ends:
      * the pointer crossing a titlebar mid-drag must not collapse anything */
-    if (wuss->drag_window != NULL)
+    if (wuss->drag.window != NULL)
       return result_OK;
 
-    for (node = wuss->menu_chain; node != NULL; node = node->child)
+    for (node = wuss->menu.chain; node != NULL; node = node->child)
       if (node->child != NULL
           && node->flash.frames == 0
           && wuss__pointer_over_titlebar(node->window))
@@ -696,7 +696,7 @@ static void wuss__menu_flash_finish(struct wuss__menu *self)
   {
     wuss_event_t closed;
 
-    wuss->menu_chain = NULL;
+    wuss->menu.chain = NULL;
     wuss__menu_close_from(root); /* frees `self` */
 
     /* The chain is gone and the owner's wuss_menu_handle_t with it: tell it
@@ -920,8 +920,8 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     at.y = wuss->scr->size.h - height - outline_px;
   if (at.x - outline_px < 0)
     at.x = outline_px;
-  if (parent == NULL && wuss->menu_bottom_gap > 0)
-    at.y = wuss->scr->size.h - wuss->menu_bottom_gap - height - outline_px;
+  if (parent == NULL && wuss->menu.bottom_gap > 0)
+    at.y = wuss->scr->size.h - wuss->menu.bottom_gap - height - outline_px;
   if (at.y - outline_px - titlebar_height < 0)
     at.y = outline_px + titlebar_height;
 
@@ -1083,7 +1083,7 @@ result_t wuss_menu_open(wuss_task_t        *task,
 
   wuss = task->wuss;
 
-  if (wuss->menu_chain != NULL)
+  if (wuss->menu.chain != NULL)
     wuss__menu_abandon(wuss);
 
   /* RISC OS convention: the pointer opens the menu sitting a little inside its
@@ -1097,13 +1097,13 @@ result_t wuss_menu_open(wuss_task_t        *task,
   if (rc != result_OK)
     return rc;
 
-  wuss->menu_chain = root;
+  wuss->menu.chain = root;
 
   /* A menu is opened from a task's MOUSE_DOWN handler; the matching MOUSE_UP is
    * still to come and would land on the fresh menu's row 0. Mark it to be
    * eaten. wuss_mouse_click clears this on the next MOUSE_UP whether or not it
    * hit the menu. */
-  wuss->menu_eat_up = 1;
+  wuss->menu.eat_up = 1;
 
   if (out != NULL)
     *out = root;
@@ -1125,18 +1125,18 @@ result_t wuss_menu_open_above(wuss_task_t        *task,
 
   wuss = task->wuss;
 
-  if (wuss->menu_chain != NULL)
+  if (wuss->menu.chain != NULL)
     wuss__menu_abandon(wuss);
 
   x -= wuss__menu_entry_gutter_left(wuss__fontset_height(&wuss->fonts, 0));
 
-  wuss->menu_bottom_gap = gap;
+  wuss->menu.bottom_gap = gap;
   rc = wuss__menu_spawn(wuss, task, menu, POINT(x, 0), NULL, &root);
-  wuss->menu_bottom_gap = 0;
+  wuss->menu.bottom_gap = 0;
   if (rc != result_OK)
     return rc;
 
-  wuss->menu_chain = root;
+  wuss->menu.chain = root;
 
   if (out != NULL)
     *out = root;
@@ -1157,7 +1157,7 @@ result_t wuss_menu_open_window(wuss_task_t        *task,
 
   wuss = task->wuss;
 
-  if (wuss->menu_chain != NULL)
+  if (wuss->menu.chain != NULL)
     wuss__menu_abandon(wuss);
 
   wuss_window_move(window, at);
@@ -1174,7 +1174,7 @@ result_t wuss_menu_open_window(wuss_task_t        *task,
     return rc;
   }
 
-  wuss->menu_chain = root;
+  wuss->menu.chain = root;
 
   if (out != NULL)
     *out = root;
@@ -1218,10 +1218,10 @@ void wuss_menu_close(wuss_menu_handle_t handle)
   while (root->parent != NULL)
     root = root->parent;
 
-  if (root->wuss->menu_chain != root)
+  if (root->wuss->menu.chain != root)
     return; /* stale handle */
 
-  root->wuss->menu_chain = NULL;
+  root->wuss->menu.chain = NULL;
   wuss__menu_close_from(root);
 }
 
@@ -1236,7 +1236,7 @@ int wuss_menu_is_open(wuss_menu_handle_t handle)
   while (root->parent != NULL)
     root = root->parent;
 
-  return root->wuss->menu_chain == root;
+  return root->wuss->menu.chain == root;
 }
 
 const wuss_menu_t *wuss_menu_handle_menu(wuss_menu_handle_t handle)
@@ -1264,7 +1264,7 @@ static struct wuss__menu *wuss__menu_open_level(wuss_menu_handle_t handle,
   while (root->parent != NULL)
     root = root->parent;
 
-  if (root->wuss->menu_chain != root)
+  if (root->wuss->menu.chain != root)
     return NULL; /* stale handle */
 
   for (node = root; node != NULL; node = node->child)
@@ -1415,7 +1415,7 @@ int wuss__menu_row_pinned(const wuss_t *wuss, const wuss_icon_t *icon)
 {
   const struct wuss__menu *node;
 
-  for (node = wuss->menu_chain; node != NULL; node = node->child)
+  for (node = wuss->menu.chain; node != NULL; node = node->child)
   {
     if ((node->flags & wuss_MENU__BORROWED) || node->child == NULL ||
         node->open_index < 0)
@@ -1429,7 +1429,7 @@ int wuss__menu_row_pinned(const wuss_t *wuss, const wuss_icon_t *icon)
 
 int wuss__menu_click_outside(wuss_t *wuss, const wuss_window_t *hit)
 {
-  if (wuss->menu_chain == NULL || wuss__menu_contains(wuss, hit))
+  if (wuss->menu.chain == NULL || wuss__menu_contains(wuss, hit))
     return 0;
 
   wuss__menu_abandon(wuss);

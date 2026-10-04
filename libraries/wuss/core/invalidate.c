@@ -6,7 +6,7 @@
 
 #include "impl.h"
 
-/* Shared by wuss_invalidate (wuss->dirty) and wuss__touch (wuss->touched). */
+/* Shared by wuss_invalidate (wuss->dirty.box) and wuss__touch (wuss->touched.box). */
 static void mark_region(box_t       *arr,
                         int         *pn,
                         int          max,
@@ -24,7 +24,7 @@ result_t wuss_invalidate(wuss_t *wuss, const box_t *box)
   assert(wuss != NULL);
   assert(box  != NULL);
 
-  mark_region(wuss->dirty, &wuss->ndirty, WUSS_MAX_DIRTY, "dirty", box);
+  mark_region(wuss->dirty.box, &wuss->dirty.n, WUSS_MAX_DIRTY, "dirty", box);
 
   return result_OK;
 }
@@ -33,30 +33,30 @@ result_t wuss_invalidate(wuss_t *wuss, const box_t *box)
  * repaint -- e.g. wuss__blit_pieces sliding a window's own content to a new
  * position: the backing bitmap is already correct there, but a frontend that
  * only re-uploads what wuss_get_touched_extent reports still needs to know
- * the pixels moved. Never folded into wuss->dirty, so wuss_redraw_dirty
+ * the pixels moved. Never folded into wuss->dirty.box, so wuss_redraw_dirty
  * never repaints it. */
 void wuss__touch(wuss_t *wuss, const box_t *box)
 {
   assert(wuss != NULL);
   assert(box  != NULL);
 
-  mark_region(wuss->touched, &wuss->ntouched, WUSS_MAX_DIRTY, "touched", box);
+  mark_region(wuss->touched.box, &wuss->touched.n, WUSS_MAX_DIRTY, "touched", box);
 }
 
 int wuss_get_dirty_count(const wuss_t *wuss)
 {
   assert(wuss != NULL);
 
-  return wuss->ndirty;
+  return wuss->dirty.n;
 }
 
 void wuss_get_dirty(const wuss_t *wuss, int index, box_t *out)
 {
   assert(wuss  != NULL);
   assert(out   != NULL);
-  assert(index >= 0 && index < wuss->ndirty);
+  assert(index >= 0 && index < wuss->dirty.n);
 
-  *out = wuss->dirty[index];
+  *out = wuss->dirty.box[index];
 }
 
 int wuss_get_touched_extent(const wuss_t *wuss, box_t *out)
@@ -67,12 +67,12 @@ int wuss_get_touched_extent(const wuss_t *wuss, box_t *out)
   assert(wuss != NULL);
   assert(out  != NULL);
 
-  if (wuss->ntouched == 0)
+  if (wuss->touched.n == 0)
     return 0;
 
-  u = wuss->touched[0];
-  for (i = 1; i < wuss->ntouched; i++)
-    box_union(&u, &wuss->touched[i], &u);
+  u = wuss->touched.box[0];
+  for (i = 1; i < wuss->touched.n; i++)
+    box_union(&u, &wuss->touched.box[i], &u);
 
   *out = u;
 
@@ -83,5 +83,5 @@ void wuss_clear_touched(wuss_t *wuss)
 {
   assert(wuss != NULL);
 
-  wuss->ntouched = 0;
+  wuss->touched.n = 0;
 }

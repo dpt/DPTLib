@@ -26,7 +26,7 @@ result_t wuss_set_focus(wuss_t *wuss, wuss_window_t *window)
 
 #ifdef WUSS_ICONS
   /* the caret only ever lives in the focus window */
-  if (wuss->caret_window != window)
+  if (wuss->caret.window != window)
     wuss__caret_clear(wuss);
 #endif
 

@@ -145,7 +145,7 @@ void wuss__icon_set_value(wuss_window_t *window,
                           int            value);
 
 /* Make "icon" (an icon of "window", or NULL) the hovered icon: clears the
- * hovered flag on the previous wuss->hover_icon and sets it on the new one,
+ * hovered flag on the previous wuss->hover.icon and sets it on the new one,
  * invalidating whichever of the two changed. "window" is ignored when "icon"
  * is NULL. A no-op if nothing changed. */
 void wuss__icon_set_hover(wuss_t        *wuss,

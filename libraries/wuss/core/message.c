@@ -19,9 +19,9 @@ static unsigned int next_ref(wuss_t *wuss)
 {
   unsigned int r;
 
-  r = wuss->next_ref++;
-  if (wuss->next_ref == 0)
-    wuss->next_ref = 1;
+  r = wuss->msg.next_ref++;
+  if (wuss->msg.next_ref == 0)
+    wuss->msg.next_ref = 1;
 
   return r;
 }
@@ -29,12 +29,12 @@ static unsigned int next_ref(wuss_t *wuss)
 /* Append "msg" to the tail of the queue. Returns result_OK or result_OOM. */
 static result_t enqueue(wuss_t *wuss, const wuss_message_t *msg)
 {
-  if (wuss__array_grow(&wuss->alloc, (void **) &wuss->queue,
-                       sizeof(*wuss->queue), wuss->nqueued,
-                       &wuss->cap_queue, 1, 8) != 0)
+  if (wuss__array_grow(&wuss->alloc, (void **) &wuss->msg.queue,
+                       sizeof(*wuss->msg.queue), wuss->msg.count,
+                       &wuss->msg.cap, 1, 8) != 0)
     return result_OOM;
 
-  wuss->queue[wuss->nqueued++] = *msg;
+  wuss->msg.queue[wuss->msg.count++] = *msg;
 
   return result_OK;
 }
@@ -57,8 +57,8 @@ static result_t send_common(wuss_t        *wuss,
 
   my_ref = recorded ? next_ref(wuss) : 0;
 
-  if (your_ref != 0 && wuss->acking != NULL && your_ref == wuss->acking->my_ref)
-    wuss->acked = 1;
+  if (your_ref != 0 && wuss->msg.acking != NULL && your_ref == wuss->msg.acking->my_ref)
+    wuss->msg.acked = 1;
 
   msg.size     = size;
   msg.action   = action;
@@ -107,8 +107,8 @@ result_t wuss_acknowledge(wuss_t               *wuss,
 {
   NOT_USED(recipient);
 
-  if (wuss->acking != NULL && msg->my_ref == wuss->acking->my_ref)
-    wuss->acked = 1;
+  if (wuss->msg.acking != NULL && msg->my_ref == wuss->msg.acking->my_ref)
+    wuss->msg.acked = 1;
 
   return result_OK;
 }
@@ -156,20 +156,20 @@ static int deliver_one(wuss_t               *wuss,
   wuss_event_t          event;
   int                   acked;
 
-  saved_acking = wuss->acking;
-  saved_acked  = wuss->acked;
+  saved_acking = wuss->msg.acking;
+  saved_acked  = wuss->msg.acked;
 
-  wuss->acking = msg;
-  wuss->acked  = 0;
+  wuss->msg.acking = msg;
+  wuss->msg.acked  = 0;
 
   event.kind         = wuss_EVENT_MESSAGE;
   event.data.message = msg;
   (void) wuss__deliver(task, window, &event);
 
-  acked = wuss->acked;
+  acked = wuss->msg.acked;
 
-  wuss->acking = saved_acking;
-  wuss->acked  = saved_acked;
+  wuss->msg.acking = saved_acking;
+  wuss->msg.acked  = saved_acked;
 
   return acked;
 }
@@ -222,13 +222,13 @@ static void deliver(wuss_t *wuss, const wuss_message_t *msg)
 
 void wuss__message_enter(wuss_t *wuss)
 {
-  wuss->dispatch_depth++;
+  wuss->msg.dispatch_depth++;
 }
 
 void wuss__message_leave(wuss_t *wuss)
 {
-  wuss->dispatch_depth--;
-  if (wuss->dispatch_depth == 0)
+  wuss->msg.dispatch_depth--;
+  if (wuss->msg.dispatch_depth == 0)
     wuss__message_drain(wuss);
 }
 
@@ -236,10 +236,10 @@ void wuss__message_drain(wuss_t *wuss)
 {
   int ndelivered;
 
-  wuss->dispatch_depth++; /* deliver() must not re-drain if it re-enters */
+  wuss->msg.dispatch_depth++; /* deliver() must not re-drain if it re-enters */
 
   ndelivered = 0;
-  while (wuss->nqueued > 0)
+  while (wuss->msg.count > 0)
   {
     wuss_message_t msg;
 
@@ -251,16 +251,16 @@ void wuss__message_drain(wuss_t *wuss)
       break;
     }
 
-    msg = wuss->queue[0];
-    memmove(&wuss->queue[0], &wuss->queue[1],
-           (size_t) (wuss->nqueued - 1) * sizeof(*wuss->queue));
-    wuss->nqueued--;
+    msg = wuss->msg.queue[0];
+    memmove(&wuss->msg.queue[0], &wuss->msg.queue[1],
+           (size_t) (wuss->msg.count - 1) * sizeof(*wuss->msg.queue));
+    wuss->msg.count--;
 
     deliver(wuss, &msg);
     ndelivered++;
   }
 
-  wuss->dispatch_depth--;
+  wuss->msg.dispatch_depth--;
 }
 
 void wuss__message_purge_task(wuss_t *wuss, wuss_task_t *task)
@@ -269,13 +269,13 @@ void wuss__message_purge_task(wuss_t *wuss, wuss_task_t *task)
 
   /* Drop unsent: nothing to bounce, the sender is gone. Messages addressed
    * to the task's windows are bounced as wuss_window_close reaps each one. */
-  for (i = 0; i < wuss->nqueued; )
+  for (i = 0; i < wuss->msg.count; )
   {
-    if (wuss->queue[i].sender == task)
+    if (wuss->msg.queue[i].sender == task)
     {
-      memmove(&wuss->queue[i], &wuss->queue[i + 1],
-             (size_t) (wuss->nqueued - i - 1) * sizeof(*wuss->queue));
-      wuss->nqueued--;
+      memmove(&wuss->msg.queue[i], &wuss->msg.queue[i + 1],
+             (size_t) (wuss->msg.count - i - 1) * sizeof(*wuss->msg.queue));
+      wuss->msg.count--;
       continue;
     }
 
@@ -287,16 +287,16 @@ void wuss__message_purge_window(wuss_t *wuss, wuss_window_t *window)
 {
   int i;
 
-  for (i = 0; i < wuss->nqueued; )
+  for (i = 0; i < wuss->msg.count; )
   {
-    if (wuss->queue[i].window == window)
+    if (wuss->msg.queue[i].window == window)
     {
       wuss_message_t doomed;
 
-      doomed = wuss->queue[i];
-      memmove(&wuss->queue[i], &wuss->queue[i + 1],
-             (size_t) (wuss->nqueued - i - 1) * sizeof(*wuss->queue));
-      wuss->nqueued--;
+      doomed = wuss->msg.queue[i];
+      memmove(&wuss->msg.queue[i], &wuss->msg.queue[i + 1],
+             (size_t) (wuss->msg.count - i - 1) * sizeof(*wuss->msg.queue));
+      wuss->msg.count--;
 
       bounce(wuss, &doomed);
       continue;

@@ -56,15 +56,15 @@ result_t wuss__window_set_hidden_ex(wuss_window_t *window, int hidden)
     }
 #endif
 #ifdef WUSS_ICONS
-    if (wuss->pressed_window == window)
+    if (wuss->pressed.window == window)
     {
-      wuss->pressed_icon   = NULL;
-      wuss->pressed_window = NULL;
+      wuss->pressed.icon   = NULL;
+      wuss->pressed.window = NULL;
     }
-    if (wuss->hover_window == window)
+    if (wuss->hover.window == window)
     {
-      wuss->hover_icon   = NULL;
-      wuss->hover_window = NULL;
+      wuss->hover.icon   = NULL;
+      wuss->hover.window = NULL;
     }
 #endif
     /* A hidden window is off the mouse; drop it from enter/exit tracking. No

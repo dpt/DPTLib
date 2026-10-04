@@ -35,7 +35,7 @@ struct wuss_iconbar_icon
   wuss_task_t              *owner; /* wuss_EVENT_ICON delivery target */
 };
 
-/* The bar's on-screen box: wuss->iconbar_window's own visible box, or an
+/* The bar's on-screen box: wuss->iconbar.window's own visible box, or an
  * empty box if the bar has no window yet (before the first icon is
  * created). */
 void wuss__iconbar_box(const wuss_t *wuss, box_t *out);
@@ -50,8 +50,8 @@ void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out);
 void wuss__iconbar_icon_box(const wuss_t *wuss, int index, box_t *out);
 
 /* Paint every icon (image/label) into "piece", a piece of
- * wuss->iconbar_window's content already backdrop-filled and clipped by
- * redraw_window. Called from redraw_window for wuss->iconbar_window, same as
+ * wuss->iconbar.window's content already backdrop-filled and clipped by
+ * redraw_window. Called from redraw_window for wuss->iconbar.window, same as
  * any other window's icon-drawing step. */
 void wuss__iconbar_draw_icons(wuss_t *wuss, const box_t *piece);
 
@@ -60,7 +60,7 @@ void wuss__iconbar_draw_icons(wuss_t *wuss, const box_t *piece);
 wuss_iconbar_icon_t *wuss__iconbar_hit_test(wuss_t *wuss, point_t p);
 
 /* Click/drag dispatch for wuss_mouse_click, called once the point has
- * already resolved to wuss->iconbar_window: see iconbar/hit-test.c. Returns
+ * already resolved to wuss->iconbar.window: see iconbar/hit-test.c. Returns
  * 1 when an icon claimed the event, 0 for empty slot space (caller still
  * treats the click as handled -- the bar's window owns anything within its
  * own box). */

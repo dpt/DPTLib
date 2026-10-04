@@ -224,10 +224,10 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   {
     colour_t light, dark, accent, divider;
 
-    light   = c->wuss->palette[c->wuss->bevel_light];
-    dark    = c->wuss->palette[c->wuss->bevel_dark];
+    light   = c->wuss->palette[c->wuss->bevel.light];
+    dark    = c->wuss->palette[c->wuss->bevel.dark];
     accent  = c->wuss->palette[c->wuss->accent]; /* the action-button fill */
-    divider = c->wuss->palette[c->wuss->bevel_divider];
+    divider = c->wuss->palette[c->wuss->bevel.divider];
 
     if (icon->u.label.border == wuss_ICON_BORDER_ACTION)
     {
@@ -288,8 +288,8 @@ static void wuss__icon_draw_frame(const icon_draw_ctx_t *c)
   colour_t                bg;
   point_t                 pos;
 
-  light   = c->wuss->palette[c->wuss->bevel_light];
-  divider = c->wuss->palette[c->wuss->bevel_divider];
+  light   = c->wuss->palette[c->wuss->bevel.light];
+  divider = c->wuss->palette[c->wuss->bevel.divider];
 
   cap_w = 0;
   len   = 0;
@@ -330,19 +330,19 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
    * button face */
   base  = (icon->bg != wuss_NO_BACKGROUND)
         ? c->wuss->palette[icon->bg]
-        : c->wuss->palette[c->wuss->button_bg];
-  light = c->wuss->palette[c->wuss->bevel_light];
-  dark  = c->wuss->palette[c->wuss->bevel_dark];
+        : c->wuss->palette[c->wuss->button.bg];
+  light = c->wuss->palette[c->wuss->bevel.light];
+  dark  = c->wuss->palette[c->wuss->bevel.dark];
   /* a default action button labels in button.fg to read against its accent
    * fill; a plain button uses the icon's own fg */
-  label = is_default ? c->wuss->palette[c->wuss->button_fg] : c->fg;
+  label = is_default ? c->wuss->palette[c->wuss->button.fg] : c->fg;
 
   /* a held button fills with the pressed shade regardless of type */
   if (pressed)
-    base = c->wuss->palette[c->wuss->button_pressed];
+    base = c->wuss->palette[c->wuss->button.pressed];
 
   if (icon->flags & wuss_ICON_FLAGS_DISABLED)
-    label = c->wuss->palette[c->wuss->bevel_dark]; /* greyed: sink toward dark */
+    label = c->wuss->palette[c->wuss->bevel.dark]; /* greyed: sink toward dark */
 
   if (is_default)
   {
@@ -433,7 +433,7 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
   g.y1 = gy + gh;
 
   glyph = (icon->flags & wuss_ICON_FLAGS_DISABLED)
-        ? c->wuss->palette[c->wuss->bevel_dark]
+        ? c->wuss->palette[c->wuss->bevel.dark]
         : c->fg;
 
   bg = icon_blend_ground(c, glyph);
@@ -548,7 +548,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
 
   /* resolve the row's own ink over its own/inherited ground */
   ground = icon_blend_ground(c, c->fg);
-  ink = disabled ? c->wuss->palette[c->wuss->bevel_dark] : c->fg;
+  ink = disabled ? c->wuss->palette[c->wuss->bevel.dark] : c->fg;
 
   /* the highlight only swaps fg/bg over the text column -- the tick and
    * submenu-arrow gutters keep the row's normal ink/ground throughout */
@@ -689,7 +689,7 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
       shortcut   = icon->u.menu_entry.shortcut;
       shortcut_w = wuss__shortcut_measure(c->wuss, shortcut);
 
-      keycap = highlit ? text_ink : c->wuss->palette[c->wuss->bevel_dark];
+      keycap = highlit ? text_ink : c->wuss->palette[c->wuss->bevel.dark];
 
       box_x0   = text_x1 - (int) space_w - (int) shortcut_w;
       cap_size = SIZE2D((int) shortcut_w, b->y1 - b->y0 - 2);
@@ -736,11 +736,11 @@ static void wuss__icon_draw_slider(const icon_draw_ctx_t *c)
   box_t                   surround_box, groove, fill;
   int                     lo, hi, px;
 
-  surround = c->wuss->palette[c->wuss->slider_surround];
-  track    = c->wuss->palette[c->wuss->slider_track];
-  value    = c->wuss->palette[c->wuss->slider_value];
-  light    = c->wuss->palette[c->wuss->bevel_light];
-  dark     = c->wuss->palette[c->wuss->bevel_dark];
+  surround = c->wuss->palette[c->wuss->slider.surround];
+  track    = c->wuss->palette[c->wuss->slider.track];
+  value    = c->wuss->palette[c->wuss->slider.value];
+  light    = c->wuss->palette[c->wuss->bevel.light];
+  dark     = c->wuss->palette[c->wuss->bevel.dark];
 
   surround_box = box_grown(&c->b, -2); /* inset by bevel width to avoid overdraw */
   screen_fill_rect(c->scr, surround_box.x0, surround_box.y0,
@@ -792,7 +792,7 @@ static void wuss__icon_draw_writable(const icon_draw_ctx_t *c)
     screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), bg);
 
   ink = (icon->spec.flags & wuss_ICON_FLAGS_DISABLED)
-      ? c->wuss->palette[c->wuss->bevel_dark]
+      ? c->wuss->palette[c->wuss->bevel.dark]
       : c->fg;
   screen_draw_rect(c->scr, b->x0, b->y0, box_size(b), ink);
 
@@ -810,10 +810,10 @@ static void wuss__icon_draw_writable(const icon_draw_ctx_t *c)
   wuss__text_draw(c->font, &clipped, icon->spec.text,
                   (int) strlen(icon->spec.text), ink, bg, &pos, NULL);
 
-  if (c->wuss->caret_icon == icon)
+  if (c->wuss->caret.icon == icon)
   {
     caret.x = pos.x + (int) bmfont_caret_x(c->font, icon->spec.text,
-                                           c->wuss->caret_index, NULL);
+                                           c->wuss->caret.index, NULL);
     caret.y = pos.y;
     bmfont_draw_caret(c->font, &clipped,
                       c->wuss->palette[wuss__resolve_colour(c->wuss,

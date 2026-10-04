@@ -1011,7 +1011,7 @@ result_t wuss_test(const char *resources)
     if (rc != result_WUSS_BAD_COLOUR ||
         wuss__resolve_colour(cfgw, wuss_COLOUR_TITLE_BG) != 0 ||
         wuss__resolve_colour(cfgw, wuss_COLOUR_TITLE_FG) != 3 ||
-        cfgw->window_bg != 3 ||
+        cfgw->body.window != 3 ||
         tc_cfg.palette_count != 1)
     {
       wuss_destroy(cfgw);
@@ -2725,8 +2725,8 @@ result_t wuss_test(const char *resources)
                      wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
     wuss_mouse_click(wuss, POINT(content_w.x0 + 5, content_w.y0 + 25),
                      wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
-    if (wuss_get_focus(wuss) != win_w || wuss->caret_icon != icons[1] ||
-        wuss->caret_index != 0)
+    if (wuss_get_focus(wuss) != win_w || wuss->caret.icon != icons[1] ||
+        wuss->caret.index != 0)
       goto Failure;
 
     /* typing inserts at the caret and raises an icon event per edit */
@@ -2736,7 +2736,7 @@ result_t wuss_test(const char *resources)
     wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_NONE, &claimed);
     wuss_key(wuss, 'b', wuss_KEY_MOD_NONE, &claimed);
     if (!claimed || strcmp(wuss_icon_get_text(icons[1]), "abc") != 0 ||
-        wuss->caret_index != 2 || tc_w.icon_count != 3 ||
+        wuss->caret.index != 2 || tc_w.icon_count != 3 ||
         tc_w.key_count != 0)
       goto Failure;
 
@@ -2746,7 +2746,7 @@ result_t wuss_test(const char *resources)
     wuss_key(wuss, wuss_KEY_END, wuss_KEY_MOD_NONE, &claimed);
     wuss_key(wuss, 8, wuss_KEY_MOD_NONE, &claimed);
     if (strcmp(wuss_icon_get_text(icons[1]), "b") != 0 ||
-        wuss->caret_index != 1 || tc_w.icon_count != 5)
+        wuss->caret.index != 1 || tc_w.icon_count != 5)
       goto Failure;
 
     /* keys the field doesn't use reach the task */
@@ -2765,25 +2765,25 @@ result_t wuss_test(const char *resources)
     if (!claimed ||
         strcmp(wuss_icon_get_text(icons[1]),
                "b\xC2\xA9\xE2\x98\xBA\xF0\x9F\x98\x80") != 0 ||
-        wuss->caret_index != 10 || tc_w.icon_count != 3)
+        wuss->caret.index != 10 || tc_w.icon_count != 3)
       goto Failure;
     wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_NONE, &claimed);
-    if (wuss->caret_index != 6) goto Failure;
+    if (wuss->caret.index != 6) goto Failure;
     wuss_key(wuss, 8, wuss_KEY_MOD_NONE, &claimed);
-    if (wuss->caret_index != 3 ||
+    if (wuss->caret.index != 3 ||
         strcmp(wuss_icon_get_text(icons[1]), "b\xC2\xA9\xF0\x9F\x98\x80") != 0)
       goto Failure;
     wuss_key(wuss, wuss_KEY_DELETE, wuss_KEY_MOD_NONE, &claimed);
     wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_NONE, &claimed);
-    if (wuss->caret_index != 1 ||
+    if (wuss->caret.index != 1 ||
         strcmp(wuss_icon_get_text(icons[1]), "b\xC2\xA9") != 0)
       goto Failure;
     wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_NONE, &claimed);
-    if (wuss->caret_index != 3) goto Failure;
+    if (wuss->caret.index != 3) goto Failure;
 
     /* a caret placed inside a codepoint snaps to its start */
     wuss_icon_set_caret(win_w, icons[1], 2);
-    if (wuss->caret_index != 1) goto Failure;
+    if (wuss->caret.index != 1) goto Failure;
 
     /* C1 controls aren't inserted: they reach the task */
     wuss_key(wuss, 0x85, wuss_KEY_MOD_NONE, &claimed);
@@ -2794,34 +2794,34 @@ result_t wuss_test(const char *resources)
     /* Ctrl+Left/Right jump to the ends; Shift+Left/Right move by words */
     wuss_icon_set_text(win_w, icons[1], "ab cd  ef");
     wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_CTRL, &claimed);
-    if (!claimed || wuss->caret_index != 0) goto Failure;
+    if (!claimed || wuss->caret.index != 0) goto Failure;
     wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_SHIFT, &claimed);
-    if (wuss->caret_index != 2) goto Failure;
+    if (wuss->caret.index != 2) goto Failure;
     wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_SHIFT, &claimed);
-    if (wuss->caret_index != 5) goto Failure;
+    if (wuss->caret.index != 5) goto Failure;
     wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_SHIFT, &claimed);
-    if (wuss->caret_index != 9) goto Failure;
+    if (wuss->caret.index != 9) goto Failure;
     wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_SHIFT, &claimed);
-    if (wuss->caret_index != 7) goto Failure;
+    if (wuss->caret.index != 7) goto Failure;
     wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_SHIFT, &claimed);
-    if (wuss->caret_index != 3) goto Failure;
+    if (wuss->caret.index != 3) goto Failure;
     wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_CTRL, &claimed);
-    if (wuss->caret_index != 9) goto Failure;
+    if (wuss->caret.index != 9) goto Failure;
 
     /* Ctrl+U clears the field and raises an icon event */
     tc_w.icon_count = 0;
     wuss_key(wuss, 'u', wuss_KEY_MOD_CTRL, &claimed);
     if (!claimed || wuss_icon_get_text(icons[1])[0] != '\0' ||
-        wuss->caret_index != 0 || tc_w.icon_count != 1 ||
+        wuss->caret.index != 0 || tc_w.icon_count != 1 ||
         tc_w.key_count != 4)
       goto Failure;
 
     /* Tab wraps over the hidden field; Shift-Tab goes back */
     wuss_key(wuss, 9, wuss_KEY_MOD_NONE, &claimed);
-    if (!claimed || wuss->caret_icon != icons[0] || wuss->caret_index != 3)
+    if (!claimed || wuss->caret.icon != icons[0] || wuss->caret.index != 3)
       goto Failure;
     wuss_key(wuss, 9, wuss_KEY_MOD_SHIFT, &claimed);
-    if (wuss->caret_icon != icons[1]) goto Failure;
+    if (wuss->caret.icon != icons[1]) goto Failure;
 
     /* a full buffer swallows further characters */
     wuss_icon_set_caret(win_w, icons[0], -1);
@@ -2834,7 +2834,7 @@ result_t wuss_test(const char *resources)
     /* set_text truncates and moves the caret to the end */
     rc = wuss_icon_set_text(win_w, icons[0], "hi");
     if (rc != result_OK || strcmp(wuss_icon_get_text(icons[0]), "hi") != 0 ||
-        wuss->caret_index != 2)
+        wuss->caret.index != 2)
       goto Failure;
 
     /* ...without splitting a codepoint */
@@ -2846,19 +2846,19 @@ result_t wuss_test(const char *resources)
     if (wuss_icon_set_caret(win_w, icons[2], 0) != result_BAD_ARG)
       goto Failure;
     wuss_icon_set_hidden(win_w, icons[0], 1);
-    if (wuss->caret_icon != NULL) goto Failure;
+    if (wuss->caret.icon != NULL) goto Failure;
 
     /* losing the focus drops the caret; deleting the caret icon clears it */
     wuss_icon_set_caret(win_w, icons[1], 0);
-    if (wuss_set_focus(wuss, NULL) != result_OK || wuss->caret_icon != NULL)
+    if (wuss_set_focus(wuss, NULL) != result_OK || wuss->caret.icon != NULL)
       goto Failure;
     wuss_icon_set_caret(win_w, icons[1], 0);
     wuss_icon_delete(win_w, icons[1]);
-    if (wuss->caret_icon != NULL) goto Failure;
+    if (wuss->caret.icon != NULL) goto Failure;
 
     wuss_icon_set_caret(win_w, icons[2], 0); /* hidden: refused */
     wuss_window_close(win_w);
-    if (wuss->caret_window != NULL) goto Failure;
+    if (wuss->caret.window != NULL) goto Failure;
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK) goto Failure;
   }
@@ -3950,7 +3950,7 @@ result_t wuss_test(const char *resources)
      * needs less scroll and the clamp pulls the offset back) reads its blit
      * source straight from wuss__clip_to_visible over the *old* content box,
      * unlike wuss_window_move/wuss_window_set_scroll which both also strip
-     * anything still sitting in wuss->dirty[] (queued by an earlier call this
+     * anything still sitting in wuss->dirty.box[] (queued by an earlier call this
      * same frame, not yet painted). An interactive drag delivers several
      * resize calls before a redraw ever runs: one grow queues its
      * newly-exposed sliver dirty without painting it; that sliver sits
@@ -6537,7 +6537,7 @@ FontMenuOK: ;
       rc = wuss_redraw_dirty(cmwuss);
       if (rc != result_OK) goto ColourMenuFail;
 
-      wuss_menu_close(cmwuss->menu_chain);
+      wuss_menu_close(cmwuss->menu.chain);
       wuss_destroy(cmwuss);
       free(cmpixels);
       bmfont_destroy(cmfont);
@@ -6639,11 +6639,11 @@ ColourMenuOK: ;
     ev.data.icon.value   = 0;
     if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
       goto StringSetFail;
-    if (sswuss->menu_chain == NULL) goto StringSetFail;
+    if (sswuss->menu.chain == NULL) goto StringSetFail;
 
     /* a pick of another entry updates the index and fires the callback */
     ev.kind                    = wuss_EVENT_MENU_SELECT;
-    ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu_chain);
+    ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu.chain);
     ev.data.menu_select.index  = 2;
     ev.data.menu_select.button = wuss_BUTTON_ADJUST;
     if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
@@ -6661,7 +6661,7 @@ ColourMenuOK: ;
 
     /* destroying it closes the menu */
     wuss_stringset_destroy(ss);
-    if (sswuss->menu_chain != NULL) goto StringSetFail;
+    if (sswuss->menu.chain != NULL) goto StringSetFail;
 
     /* once the chain is freed behind the gadget -- after a Select pick, or
      * a wuss-initiated close reported by MENU_CLOSED -- destroying it must
@@ -6680,20 +6680,20 @@ ColourMenuOK: ;
       ev.data.icon.value  = 0;
       if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
         goto StringSetFail;
-      if (sswuss->menu_chain == NULL) goto StringSetFail;
+      if (sswuss->menu.chain == NULL) goto StringSetFail;
 
       if (i == 0)
       {
         ev.kind                    = wuss_EVENT_MENU_SELECT;
-        ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu_chain);
+        ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu.chain);
         ev.data.menu_select.index  = 1;
         ev.data.menu_select.button = wuss_BUTTON_SELECT;
         if (!wuss_stringset_handle_event(ss, &ev, &ssrc)) goto StringSetFail;
-        wuss_menu_close(sswuss->menu_chain); /* as wuss does after Select */
+        wuss_menu_close(sswuss->menu.chain); /* as wuss does after Select */
       }
       else
       {
-        wuss_menu_close(sswuss->menu_chain); /* as a click outside does */
+        wuss_menu_close(sswuss->menu.chain); /* as a click outside does */
         ev.kind = wuss_EVENT_MENU_CLOSED;
         if (wuss_stringset_handle_event(ss, &ev, &ssrc)) goto StringSetFail;
       }
@@ -7049,12 +7049,12 @@ RelayoutOK: ;
     ev.data.icon.value   = 0;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
-    if (cswuss->menu_chain == NULL) goto ColourSetFail;
+    if (cswuss->menu.chain == NULL) goto ColourSetFail;
 
     /* an Adjust pick of another colour refills the field and fires the
      * callback, keeping the menu open */
     ev.kind                    = wuss_EVENT_MENU_SELECT;
-    ev.data.menu_select.menu   = wuss_menu_handle_menu(cswuss->menu_chain);
+    ev.data.menu_select.menu   = wuss_menu_handle_menu(cswuss->menu.chain);
     ev.data.menu_select.index  = 1;
     ev.data.menu_select.button = wuss_BUTTON_ADJUST;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
@@ -7076,7 +7076,7 @@ RelayoutOK: ;
 
     /* a Select pick: wuss closes the chain and delivers MENU_CLOSED (picked)
      * before MENU_SELECT, which is still the gadget's */
-    wuss_menu_close(cswuss->menu_chain);
+    wuss_menu_close(cswuss->menu.chain);
     ev.kind                    = wuss_EVENT_MENU_CLOSED;
     ev.data.menu_closed.picked = 1;
     if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;
@@ -7099,7 +7099,7 @@ RelayoutOK: ;
     ev.data.icon.value   = 0;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
-    wuss_menu_close(cswuss->menu_chain); /* as a click outside does */
+    wuss_menu_close(cswuss->menu.chain); /* as a click outside does */
     ev.kind                    = wuss_EVENT_MENU_CLOSED;
     ev.data.menu_closed.picked = 0;
     if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;
@@ -7118,7 +7118,7 @@ RelayoutOK: ;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
     wuss_colourset_destroy(cs);
-    if (cswuss->menu_chain != NULL) goto ColourSetFail;
+    if (cswuss->menu.chain != NULL) goto ColourSetFail;
 
     reap_test_tasks();
     wuss_destroy(cswuss);
@@ -7377,7 +7377,7 @@ SaveAsOK: ;
     rc = wuss_menu_open(fowner, &flash_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto FlashDestroy;
 
-    chain = fwuss->menu_chain;
+    chain = fwuss->menu.chain;
     if (chain == NULL || chain->menu != &flash_menu) goto FlashCheckFail;
 
     flash_pick_row(fwuss, chain, 1, wuss_BUTTON_SELECT);
@@ -7390,12 +7390,12 @@ SaveAsOK: ;
 
     if (ftc.menu_select_count != 1)  goto FlashCheckFail;
     if (ftc.last_menu_index != 1)    goto FlashCheckFail;
-    if (fwuss->menu_chain != NULL)   goto FlashCheckFail; /* SELECT tore it down */
+    if (fwuss->menu.chain != NULL)   goto FlashCheckFail; /* SELECT tore it down */
 
     /* --- fast ADJUST re-picks: row 0, then row 2 mid-flash --- */
     rc = wuss_menu_open(fowner, &flash_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto FlashDestroy;
-    chain = fwuss->menu_chain;
+    chain = fwuss->menu.chain;
     ftc.menu_select_count = 0;
 
     flash_pick_row(fwuss, chain, 0, wuss_BUTTON_ADJUST);
@@ -7417,9 +7417,9 @@ SaveAsOK: ;
     /* ADJUST keeps the chain open. The flash ends un-highlit, but the pointer
      * is still parked on row 2 (flash_pick_row left it there) so that row --
      * and only that row -- comes back highlit. */
-    if (fwuss->menu_chain == NULL)  goto FlashCheckFail;
+    if (fwuss->menu.chain == NULL)  goto FlashCheckFail;
     for (i = 0; i < flash_menu.nitems; i++)
-      if (wuss__icon_hovered(fwuss->menu_chain->icons[i]) != (i == 2))
+      if (wuss__icon_hovered(fwuss->menu.chain->icons[i]) != (i == 2))
         goto FlashCheckFail;
 
     /* --- the chain lives in the top stack, so a window opened meanwhile
@@ -7447,7 +7447,7 @@ FlashCheckFail:
     printf("wuss_test: menu flash check failed "
            "(select_count=%d last_index=%d chain=%p)\n",
            ftc.menu_select_count, ftc.last_menu_index,
-           (void *) fwuss->menu_chain);
+           (void *) fwuss->menu.chain);
     rc = result_TEST_FAILED;
 
 FlashDestroy:
@@ -7525,7 +7525,7 @@ FlashFail:
     rc = wuss_menu_open(sowner, &sm_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto SubHiDestroy;
 
-    root = swuss->menu_chain;
+    root = swuss->menu.chain;
     if (root == NULL || root->menu != &sm_menu) goto SubHiCheckFail;
 
     /* pointer onto row 1's arrow gutter: its submenu opens */
@@ -7665,7 +7665,7 @@ SubHiFail:
     rc = wuss_menu_open(powner, &po_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto PreOpenDestroy;
 
-    proot = pwuss->menu_chain;
+    proot = pwuss->menu.chain;
     if (proot == NULL || proot->menu != &po_menu) goto PreOpenCheckFail;
 
     /* row 0 unflagged: opens po_sub_a directly, no PRE_SUBMENU_OPEN fired */
@@ -7789,7 +7789,7 @@ PreOpenFail:
     rc = wuss_menu_open(powner, &pw_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto PwDestroy;
 
-    proot = pwuss->menu_chain;
+    proot = pwuss->menu.chain;
     if (proot == NULL || proot->menu != &pw_menu) goto PwCheckFail;
 
     /* row 0 unflagged: still goes through the plain wuss_window_set_hidden
@@ -7892,8 +7892,8 @@ PwFail:
 
     rc = wuss_menu_open(sowner, &sc_menu, POINT(10, 20), NULL);
     if (rc != result_OK) goto ScDestroy;
-    plain_w = swuss->menu_chain->window->doc.w;
-    wuss_menu_close(swuss->menu_chain);
+    plain_w = swuss->menu.chain->window->doc.w;
+    wuss_menu_close(swuss->menu.chain);
 
     /* one font only, so the "bold" shortcut measures in the system font */
     sc_items[0].shortcut = "WWW";
@@ -7902,7 +7902,7 @@ PwFail:
 
     rc = wuss_menu_open(sowner, &sc_menu, POINT(10, 20), NULL);
     if (rc != result_OK) goto ScDestroy;
-    sroot = swuss->menu_chain;
+    sroot = swuss->menu.chain;
     if (sroot->window->doc.w < plain_w + (int) shortcut_w)
     {
       printf("wuss_test: shortcut menu width %d, want >= %d + %d\n",
@@ -8070,8 +8070,8 @@ ScFail:
                      wuss_MOUSE_UP, NULL);
 
     if (mta.menu_press_count != 1)            goto MoveCheckFail;
-    if (mwuss->menu_chain == NULL ||
-        mwuss->menu_chain->menu != &menu_a)   goto MoveCheckFail;
+    if (mwuss->menu.chain == NULL ||
+        mwuss->menu.chain->menu != &menu_a)   goto MoveCheckFail;
 
     /* MENU over B while menu A is still open: the old chain must close AND
      * task B must get the press so menu B opens in its place. Regression:
@@ -8083,8 +8083,8 @@ ScFail:
                      wuss_MOUSE_UP, NULL);
 
     if (mtb.menu_press_count != 1)            goto MoveCheckFail;
-    if (mwuss->menu_chain == NULL ||
-        mwuss->menu_chain->menu != &menu_b)   goto MoveCheckFail;
+    if (mwuss->menu.chain == NULL ||
+        mwuss->menu.chain->menu != &menu_b)   goto MoveCheckFail;
 
     /* replacing menu A's chain told task A its handle was gone */
     if (mta.menu_closed_count != 1)           goto MoveCheckFail;
@@ -8093,7 +8093,7 @@ ScFail:
     /* a plain SELECT press on bare backdrop still just dismisses */
     wuss_mouse_click(mwuss, POINT(4, 196), wuss_BUTTON_SELECT,
                      wuss_MOUSE_DOWN, NULL);
-    if (mwuss->menu_chain != NULL)            goto MoveCheckFail;
+    if (mwuss->menu.chain != NULL)            goto MoveCheckFail;
 
     /* the click-outside dismissal told task B too. Regression: before the
      * MENU_CLOSED fix wuss freed the chain here without telling task B, so
@@ -8102,7 +8102,7 @@ ScFail:
     if (mtb.menu_closed_count != 1)           goto MoveCheckFail;
     if (mtb.menu_handle != NULL)              goto MoveCheckFail;
     wuss_menu_close(mtb.menu_handle); /* NULL now: safe no-op */
-    if (mwuss->menu_chain != NULL)            goto MoveCheckFail;
+    if (mwuss->menu.chain != NULL)            goto MoveCheckFail;
 
     {
       int claimed;
@@ -8114,11 +8114,11 @@ ScFail:
                        wuss_MOUSE_DOWN, NULL);
       wuss_mouse_click(mwuss, POINT(20, 20), wuss_BUTTON_MENU,
                        wuss_MOUSE_UP, NULL);
-      if (mwuss->menu_chain == NULL)          goto MoveCheckFail;
+      if (mwuss->menu.chain == NULL)          goto MoveCheckFail;
 
       wuss_key(mwuss, wuss_KEY_ESCAPE, wuss_KEY_MOD_NONE, &claimed);
       if (!claimed)                           goto MoveCheckFail;
-      if (mwuss->menu_chain != NULL)          goto MoveCheckFail;
+      if (mwuss->menu.chain != NULL)          goto MoveCheckFail;
       if (mta.menu_closed_count != 2)         goto MoveCheckFail;
       if (mta.menu_handle != NULL)            goto MoveCheckFail;
     }
@@ -8130,7 +8130,7 @@ MoveCheckFail:
     printf("wuss_test: menu-move check failed "
            "(a_press=%d b_press=%d chain=%p)\n",
            mta.menu_press_count, mtb.menu_press_count,
-           (void *) mwuss->menu_chain);
+           (void *) mwuss->menu.chain);
     rc = result_TEST_FAILED;
 
 MoveDestroy:
@@ -8213,7 +8213,7 @@ MoveFail:
                      wuss_MOUSE_DOWN, NULL);
     wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
                      wuss_MOUSE_UP, NULL);
-    if (qwuss->menu_chain == NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain == NULL)           goto QuitCheckFail;
     if (qmt.menu_handle == NULL)             goto QuitCheckFail;
 
     /* Phase 1: wuss_task_destroy on the chain's owner. It abandons the chain
@@ -8223,7 +8223,7 @@ MoveFail:
      * chain (ASan: heap-use-after-free in wuss_menu_close). */
     reap_test_tasks();
     if (qmt.menu_handle != NULL)             goto QuitCheckFail;
-    if (qwuss->menu_chain != NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain != NULL)           goto QuitCheckFail;
 
     /* Phase 1b: an autoclose task losing its last window with its chain
      * still open. Its self-reap must abandon the chain before QUIT, as
@@ -8244,13 +8244,13 @@ MoveFail:
                      wuss_MOUSE_DOWN, NULL);
     wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
                      wuss_MOUSE_UP, NULL);
-    if (qwuss->menu_chain == NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain == NULL)           goto QuitCheckFail;
 
     forget_test_tasks(); /* the autoclose reap below frees task_q */
     wuss_window_close(wq);
     if (qmt.menu_closed_count != 1)          goto QuitCheckFail;
     if (qmt.menu_handle != NULL)             goto QuitCheckFail;
-    if (qwuss->menu_chain != NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain != NULL)           goto QuitCheckFail;
 
     /* Phase 1c: a window opened as a menu of its own (wuss_menu_open_window,
      * as a Save As dialogue from ^S) and then closed by its client. The close
@@ -8271,13 +8271,13 @@ MoveFail:
     if (rc != result_OK) goto QuitDestroy;
     rc = wuss_menu_open_window(task_q, wq, POINT(20, 20), &qmt.menu_handle);
     if (rc != result_OK) goto QuitDestroy;
-    if (qwuss->menu_chain == NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain == NULL)           goto QuitCheckFail;
     if (wq->flags & wuss_WINDOW_HIDDEN)      goto QuitCheckFail;
 
     wuss_window_close(wq);
     if (qmt.menu_closed_count != 1)          goto QuitCheckFail;
     if (qmt.menu_handle != NULL)             goto QuitCheckFail;
-    if (qwuss->menu_chain != NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain != NULL)           goto QuitCheckFail;
     reap_test_tasks();
 
     /* Phase 1d: a core drag started from a window leaf (a Save As file icon)
@@ -8310,7 +8310,7 @@ MoveFail:
       WUSS_MENU_TITLE(d_menu, "D", d_items, NELEMS(d_items));
       rc = wuss_menu_open(task_q, &d_menu, POINT(20, 40), &qmt.menu_handle);
       if (rc != result_OK) goto QuitDestroy;
-      root = qwuss->menu_chain;
+      root = qwuss->menu.chain;
 
       /* hover the row's arrow (its rightmost pixel) to open the leaf */
       wuss__content_box(root->window, &content);
@@ -8356,7 +8356,7 @@ MoveFail:
                      wuss_MOUSE_DOWN, NULL);
     wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
                      wuss_MOUSE_UP, NULL);
-    if (qwuss->menu_chain == NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain == NULL)           goto QuitCheckFail;
 
     forget_test_tasks(); /* drop task_q from the registry; wuss_destroy frees it */
     wuss_destroy(qwuss); /* QUIT -> task_q closes the chain; must not fault */
@@ -8367,7 +8367,7 @@ MoveFail:
 
 QuitCheckFail:
     printf("wuss_test: menu-quit check failed (chain=%p handle=%p)\n",
-           (void *) qwuss->menu_chain, (void *) qmt.menu_handle);
+           (void *) qwuss->menu.chain, (void *) qmt.menu_handle);
     rc = result_TEST_FAILED;
     goto QuitDestroy;
 
@@ -9450,22 +9450,22 @@ QuitFail:
 
     /* first icon creates the bar's window lazily, pinned to the bottom of
      * the 200x200 test screen and full width */
-    if (wuss->iconbar_window == NULL)
+    if (wuss->iconbar.window == NULL)
       goto Failure;
-    if (wuss->iconbar_window->visible.x0 != 0 ||
-        wuss->iconbar_window->visible.x1 != 200 ||
-        wuss->iconbar_window->visible.y1 != 200 ||
-        wuss->iconbar_window->visible.y0 != 200 - WUSS_ICONBAR_HEIGHT)
+    if (wuss->iconbar.window->visible.x0 != 0 ||
+        wuss->iconbar.window->visible.x1 != 200 ||
+        wuss->iconbar.window->visible.y1 != 200 ||
+        wuss->iconbar.window->visible.y0 != 200 - WUSS_ICONBAR_HEIGHT)
       goto Failure;
 
     /* a real z-order member can be moved/resized like any other window --
      * except this one is pinned, so both must refuse */
-    wuss_window_move(wuss->iconbar_window, POINT(5, 5));
-    if (wuss->iconbar_window->visible.x0 != 0 ||
-        wuss->iconbar_window->visible.y0 != 200 - WUSS_ICONBAR_HEIGHT)
+    wuss_window_move(wuss->iconbar.window, POINT(5, 5));
+    if (wuss->iconbar.window->visible.x0 != 0 ||
+        wuss->iconbar.window->visible.y0 != 200 - WUSS_ICONBAR_HEIGHT)
       goto Failure; /* move silently ignored on a pinned window */
 
-    mrc = wuss_window_resize(wuss->iconbar_window, SIZE2D(50, 50));
+    mrc = wuss_window_resize(wuss->iconbar.window, SIZE2D(50, 50));
     if (mrc != result_WUSS_PINNED)
       goto Failure;
 
@@ -9515,14 +9515,14 @@ QuitFail:
 
     /* a screen resize keeps the bar pinned to the new bottom edge rather
      * than nudging/shrinking it like an ordinary window */
-    bar_before = wuss->iconbar_window->visible;
+    bar_before = wuss->iconbar.window->visible;
     rc = wuss_resize(wuss, &scr);
     if (rc != result_OK)
       goto Failure;
-    if (wuss->iconbar_window->visible.x0 != bar_before.x0 ||
-        wuss->iconbar_window->visible.y0 != bar_before.y0 ||
-        wuss->iconbar_window->visible.x1 != bar_before.x1 ||
-        wuss->iconbar_window->visible.y1 != bar_before.y1)
+    if (wuss->iconbar.window->visible.x0 != bar_before.x0 ||
+        wuss->iconbar.window->visible.y0 != bar_before.y0 ||
+        wuss->iconbar.window->visible.x1 != bar_before.x1 ||
+        wuss->iconbar.window->visible.y1 != bar_before.y1)
       goto Failure; /* same screen size in -> same pinned box out */
 
     wuss_iconbar_icon_destroy(wuss, icon);
