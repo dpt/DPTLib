@@ -69,6 +69,11 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
   window->visible = new_visible;
   wuss__window_set_toggled(window, !wuss__window_toggled(window));
 
+  /* tell the task the box changed, as wuss_window_resize does, so content
+   * that reflows to its width (e.g. a gridview) can update the doc extent
+   * before scroll is clamped against it */
+  wuss__notify_open(window);
+
   {
     point_t new_scroll;
 
