@@ -47,7 +47,7 @@ void wuss__iconbar_icon_box(const wuss_t *wuss, int index, box_t *out)
                                     : WUSS_ICONBAR_ICON;
 
   out->x0 = slot.x0;
-  out->y0 = slot.y0 + (WUSS_ICONBAR_HEIGHT - h) / 2;
+  out->y0 = slot.y0 + (WUSS_ICONBAR_ICON_AREA - h) / 2;
   out->x1 = out->x0 + WUSS_ICONBAR_ICON;
   out->y1 = out->y0 + h;
 }
