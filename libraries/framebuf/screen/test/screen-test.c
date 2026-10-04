@@ -1,6 +1,7 @@
 /* framebuf/screen/test/screen-test.c -- test screen drawing */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "base/result.h"
@@ -1094,6 +1095,139 @@ static result_t test_copy_bitmap_p2(void)
   return result_TEST_PASSED;
 }
 
+#define RLE_SRC_W 24
+#define RLE_SRC_H 8
+
+/* Blit an RLE-compressed rgba8888 source and its raw twin onto sub-byte
+ * paletted screens (p1 / p2) at a spread of offsets, some clipped by every
+ * edge, over a non-zero background. The two screens must match bit for bit:
+ * that covers the MSB-first packing, neighbour bits staying untouched,
+ * clipping, and transparent pixels and skip runs leaving the background
+ * alone. Returns 0 on success. */
+static int rle_blit_matches_raw(pixelfmt_t fmt, colour_t *pal)
+{
+  static const int           offsets[][2] =
+  {
+    {  0,  0 }, {  1,  1 }, {  3,  2 }, {  5,  1 }, {  7,  5 },
+    { -4, -2 }, { -12, 3 }, { 2, -6 }, { WIDTH - 6, HEIGHT - 3 },
+    { WIDTH - 1, 0 }
+  };
+  static pixelfmt_rgba8888_t rawpix[RLE_SRC_W * RLE_SRC_H];
+  static unsigned char       ref[WIDTH * HEIGHT];
+  static unsigned char       rle[WIDTH * HEIGHT];
+
+  int                        rowbytes;
+  screen_t                   sref, srle;
+  bitmap_t                   raw, comp;
+  void                      *blob;
+  int                        x, y;
+  size_t                     o;
+  int                        changed;
+
+  rowbytes = (WIDTH << pixelfmt_log2bpp(fmt)) >> 3;
+
+  /* A grey ramp, with a transparent diagonal and a transparent column band
+   * so the codec emits skip runs as well as literal ones. */
+  for (y = 0; y < RLE_SRC_H; y++)
+  {
+    for (x = 0; x < RLE_SRC_W; x++)
+    {
+      int grey, alpha;
+
+      grey  = ((x / 3) * 37 + y * 91) & 0xFF;
+      alpha = ((x + y) % 5 == 0 || (x >= 9 && x <= 14)) ? 0 : 0xFF;
+      rawpix[y * RLE_SRC_W + x] = colour_rgba(grey, grey, grey, alpha).primary;
+    }
+  }
+
+  bitmap_init(&raw, SIZE2D(RLE_SRC_W, RLE_SRC_H), pixelfmt_rgba8888,
+              RLE_SRC_W * (int) sizeof(rawpix[0]), NULL, rawpix);
+
+  blob = malloc(sizeof(rawpix));
+  if (blob == NULL)
+    return 1;
+  memcpy(blob, rawpix, sizeof(rawpix));
+  bitmap_init(&comp, SIZE2D(RLE_SRC_W, RLE_SRC_H), pixelfmt_rgba8888,
+              RLE_SRC_W * (int) sizeof(rawpix[0]), NULL, blob);
+  if (bitmap_compress(&comp) != result_OK || !bitmap_is_compressed(&comp))
+  {
+    printf("screen: rle p%d: compress failed\n", 1 << pixelfmt_log2bpp(fmt));
+    free(comp.base);
+    return 1;
+  }
+
+  screen_init(&sref, SIZE2D(WIDTH, HEIGHT), fmt, rowbytes, pal, ref);
+  screen_init(&srle, SIZE2D(WIDTH, HEIGHT), fmt, rowbytes, pal, rle);
+
+  for (o = 0; o < NELEMS(offsets); o++)
+  {
+    memset(ref, 0xA5, sizeof(ref));
+    memset(rle, 0xA5, sizeof(rle));
+
+    if (screen_copy_bitmap(&sref, offsets[o][0], offsets[o][1], &raw)
+        != result_OK ||
+        screen_copy_bitmap(&srle, offsets[o][0], offsets[o][1], &comp)
+        != result_OK)
+    {
+      printf("screen: rle p%d: blit at (%d,%d) failed\n",
+             1 << pixelfmt_log2bpp(fmt), offsets[o][0], offsets[o][1]);
+      free(comp.base);
+      return 1;
+    }
+
+    if (memcmp(ref, rle, sizeof(ref)) != 0)
+    {
+      printf("screen: rle p%d: blit at (%d,%d) differs from raw\n",
+             1 << pixelfmt_log2bpp(fmt), offsets[o][0], offsets[o][1]);
+      free(comp.base);
+      return 1;
+    }
+
+    /* Guard against a vacuous pass: every offset shows part of the source,
+     * so the screen must have changed from its background. */
+    changed = 0;
+    for (x = 0; x < (int) sizeof(rle); x++)
+      changed |= rle[x] != 0xA5;
+    if (!changed)
+    {
+      printf("screen: rle p%d: blit at (%d,%d) drew nothing\n",
+             1 << pixelfmt_log2bpp(fmt), offsets[o][0], offsets[o][1]);
+      free(comp.base);
+      return 1;
+    }
+  }
+
+  free(comp.base);
+
+  return 0;
+}
+
+/* RLE source onto a 1bpp screen. */
+static result_t test_copy_bitmap_rle_p1(void)
+{
+  colour_t pal[2];
+
+  pal[0] = colour_rgb(0x00, 0x00, 0x00);
+  pal[1] = colour_rgb(0xFF, 0xFF, 0xFF);
+
+  return rle_blit_matches_raw(pixelfmt_p1, pal) == 0
+         ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
+/* RLE source onto a 2bpp screen. */
+static result_t test_copy_bitmap_rle_p2(void)
+{
+  colour_t pal[4];
+
+  pal[0] = colour_rgb(0x00, 0x00, 0x00);
+  pal[1] = colour_rgb(0x55, 0x55, 0x55);
+  pal[2] = colour_rgb(0xAA, 0xAA, 0xAA);
+  pal[3] = colour_rgb(0xFF, 0xFF, 0xFF);
+
+  return rle_blit_matches_raw(pixelfmt_p2, pal) == 0
+         ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
 /* Blit an rgba8888 source onto an 8bpp paletted screen: each pixel quantises
  * to the nearest palette entry and is stored as one plain byte. Also covers
  * set_pixel / fill_hline / fill_pattern / blend_pixel on the p8 path. */
@@ -2007,6 +2141,8 @@ result_t screen_test(const char *resources)
     test_rounded_rect,
     test_copy_bitmap_p1,
     test_copy_bitmap_p2,
+    test_copy_bitmap_rle_p1,
+    test_copy_bitmap_rle_p2,
     test_copy_bitmap_p8,
     test_copy_bitmap_paletted_source,
     test_copy_bitmap_p4_to_p4,

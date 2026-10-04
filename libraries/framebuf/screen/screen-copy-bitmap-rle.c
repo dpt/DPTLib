@@ -226,6 +226,107 @@ static result_t screen_copy_bitmap_rle_p8(screen_t       *scr,
   return result_OK;
 }
 
+/* As screen_copy_bitmap_rle_p4 but for a 1bpp or 2bpp paletted screen
+ * (dst_log2bpp 0 or 1). These pack the leftmost pixel in the high bits of a
+ * byte, unlike p4, and the cached deep -> index table is packed the other way
+ * round (LSB first), so the two shifts differ. */
+static result_t screen_copy_bitmap_rle_p1p2(screen_t       *scr,
+                                            int             x,
+                                            int             y,
+                                            const bitmap_t *src,
+                                            const box_t    *draw_box,
+                                            int             dst_log2bpp)
+{
+  pixelfmt_t           base;
+  int                  log2bpp;
+  const uint8_t       *blob;
+  const uint8_t       *p;
+  const uint8_t       *end;
+  uint8_t             *dstbase;
+  pixelfmt_rgba8888_t *scratch;
+  const pixelmap_t    *pm;
+  int                  bits, pixmask, pixsperbyte;
+  int                  firstrow;
+  int                  skip, plot;
+  int                  rows;
+  int                  i;
+
+  base    = pixelfmt_base(src->format);
+  log2bpp = pixelfmt_log2bpp(base);
+
+  if (log2bpp != 5)
+    return result_NOT_SUPPORTED; /* v1: 32bpp source only */
+
+  bits        = 1 << dst_log2bpp;
+  pixmask     = (1 << bits) - 1;
+  pixsperbyte = 8 >> dst_log2bpp;
+
+  blob = src->base;
+  p    = blob + bitmap__RLE_HEADER_SIZE;
+  end  = p + bitmap__rle_get32(blob + 4);
+
+  firstrow = draw_box->y0 - y;
+  for (i = 0; i < firstrow; i++)
+    p = bitmap__rle_skip_row(p, end, log2bpp);
+
+  skip = draw_box->x0 - x;
+  plot = draw_box->x1 - draw_box->x0;
+  rows = draw_box->y1 - draw_box->y0;
+
+  pm = pixelmap_get(pixelfmt_rgba8888, scr->format, scr->palette, 1 << bits);
+  if (pm == NULL)
+    return result_NOT_SUPPORTED;
+
+  scratch = malloc((size_t) plot * sizeof(*scratch));
+  if (scratch == NULL)
+    return result_OOM;
+
+  dstbase = scr->base;
+  for (i = 0; i < rows; i++)
+  {
+    uint8_t *rowp;
+    int      xx;
+
+    for (xx = 0; xx < plot; xx++)
+      scratch[xx] = 0; /* zero_skip below only fills covered skip runs */
+
+    p = bitmap__rle_decode_row(p, end, log2bpp, scratch, skip, plot, 1);
+
+    rowp = dstbase + (size_t) (draw_box->y0 + i) * scr->rowbytes;
+
+    for (xx = 0; xx < plot; xx++)
+    {
+      colour_t       c;
+      unsigned int   r, g, b, idx;
+      int            dstx;
+      uint8_t       *scrp;
+      int            shift;
+      pixelfmt_any_t pxl;
+
+      c.primary = scratch[xx];
+      if (colour_get_alpha(&c) == 0)
+        continue;
+
+      dstx  = draw_box->x0 + xx;
+      scrp  = rowp + (dstx >> (3 - dst_log2bpp));
+      shift = 8 - bits - ((dstx & (pixsperbyte - 1)) << dst_log2bpp);
+
+      pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
+      idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
+          | ((g >> (8 - pm->gbits)) << pm->bbits)
+          | ( b >> (8 - pm->bbits));
+      pxl = (pm->entries[idx >> (3 - dst_log2bpp)]
+             >> ((idx & (pixsperbyte - 1)) << dst_log2bpp)) & pixmask;
+
+      *scrp = (uint8_t) ((*scrp & ~(pixmask << shift)) | (pxl << shift));
+    }
+  }
+
+  free(scratch);
+
+  return result_OK;
+}
+
 /* As screen_copy_bitmap_rle_p4 but for a 16bpp deep screen (rgb565 /
  * rgbx5551). Unlike a paletted destination, a deep screen can genuinely
  * alpha-blend a translucent pixel against the background, so this defers to
@@ -337,6 +438,9 @@ result_t screen_copy_bitmap_rle(screen_t       *scr,
   assert(src);
   assert(pixelfmt_is_rle(src->format));
 
+  if (pixelfmt_log2bpp(scr->format) <= 1)
+    return screen_copy_bitmap_rle_p1p2(scr, x, y, src, draw_box,
+                                       pixelfmt_log2bpp(scr->format));
   if (pixelfmt_log2bpp(scr->format) == 2)
     return screen_copy_bitmap_rle_p4(scr, x, y, src, draw_box);
   if (pixelfmt_log2bpp(scr->format) == 3)
