@@ -162,6 +162,9 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
   int             slot;
   dirlist_t      *listing;
   wuss_window_t  *window;
+  box_t           content;
+  int             cols;
+  size2d_t        size;
 
 #ifndef __riscos
   /* "." or "a/../b" becomes the full path, for the title and so that the
@@ -225,19 +228,22 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
   if (slot == task->nwindows)
     task->nwindows++;
 
-  {
-    size2d_t cell, fit;
-    int      rows;
+  /* filer_find_by_window must find this slot before this call: it fires
+   * wuss_EVENT_OPEN synchronously, and filer_handle's OPEN case looks the
+   * window up to forward the event to wuss_gridview_handle_event, which is
+   * what actually reflows the grid to the new width. */
+  (void) wuss_window_resize(window, wuss_gridview_natural_size(
+                              fw->gridview, FILER_COLUMNS, FILER_MAX_ROWS));
 
-    /* filer_find_by_window must find this slot before this call: it fires
-     * wuss_EVENT_OPEN synchronously, and filer_handle's OPEN case looks the
-     * window up to forward the event to wuss_gridview_handle_event, which is
-     * what actually reflows the grid to the new width. */
-    cell = wuss_gridview_get_cell_size(fw->gridview);
-    rows = (dirlist_count(listing) + FILER_COLUMNS - 1) / FILER_COLUMNS;
-    rows = MIN(MAX(rows, 1), FILER_MAX_ROWS);
-    fit  = SIZE2D(FILER_COLUMNS * cell.w, rows * cell.h);
-    (void) wuss_window_resize(window, fit);
+  /* The resize is capped to the screen from the window's top-left, so it may
+   * have stopped part way across a column: drop to the columns that fit. */
+  wuss_window_get_content_bounds(window, &content);
+  cols = (content.x1 - content.x0) / wuss_gridview_get_cell_size(fw->gridview).w;
+  if (cols < MIN(FILER_COLUMNS, MAX(dirlist_count(listing), 1)))
+  {
+    size = wuss_gridview_natural_size(fw->gridview, MAX(cols, 1),
+                                      FILER_MAX_ROWS);
+    (void) wuss_window_resize(window, size);
   }
 
   return result_OK;
@@ -505,6 +511,8 @@ result_t filer_handle(wuss_window_t      *window,
   case wuss_EVENT_REDRAW:
   case wuss_EVENT_MOUSE:
   case wuss_EVENT_OPEN:
+  case wuss_EVENT_PALETTE:
+  case wuss_EVENT_RELAYOUT:
   {
     filer_window_t *fw;
 

@@ -38,7 +38,7 @@
 #include "../menu.h"
 #endif
 
-#define WUSS_TITLE_MAX               63
+#define WUSS_TITLE_MAX               255
 #define WUSS_DEFAULT_TITLEBAR_HEIGHT 20
 
 #define WUSS_DEFAULT_DOUBLE_CLICK_MS  400
@@ -362,6 +362,10 @@ struct wuss_window
   size2d_t            doc;    /* virtual document extent, set at creation */
   size2d_t            min_doc; /* resize floor, set at creation; see
                                 * wuss__min_content */
+  int                 width_step; /* content width snaps to width_base plus a
+                                   * whole number of these; 0 = no snapping.
+                                   * See wuss_window_set_width_quantum */
+  int                 width_base;
 #ifdef WUSS_FURNITURE
   wuss_window_state_t state;        /* see wuss_window_state_t */
 #endif
@@ -492,6 +496,14 @@ void wuss__drag_draw(wuss_t *wuss);
  * the frontmost window overall (NULL if none), wuss__z_below the next one
  * behind "window" (NULL at the very back). */
 wuss_window_t *wuss__z_first(wuss_t *wuss);
+
+/* Tell every ordinary window's task that the room its layout has changed --
+ * the screen size or the furniture metrics -- by delivering
+ * wuss_EVENT_RELAYOUT to each. Called last by wuss_resize and
+ * wuss_set_config, so the windows have already been moved and shrunk. A
+ * non-OK result from a handler is returned (the first one), but delivery
+ * continues past it. */
+result_t wuss__relayout_all(wuss_t *wuss);
 wuss_window_t *wuss__z_below(const wuss_window_t *window);
 
 /* Rebuild wuss->palettecache (white, black and the symbolic[] table) from
@@ -1023,6 +1035,30 @@ static inline void wuss__min_content(const wuss_window_t *window,
 
   min->w = CLAMP(window->min_doc.w, need.w, MAX(window->doc.w, need.w));
   min->h = CLAMP(window->min_doc.h, need.h, MAX(window->doc.h, need.h));
+}
+
+/* Round a content width down to the window's layout quantum (see
+ * wuss_window_set_width_quantum): width_base plus a whole number, at least
+ * one, of width_step. "floor" is the narrowest width the window may take
+ * (wuss__min_content); if that is wider than the rounded width the result
+ * is the first step at or above it. A window with no quantum is returned
+ * unchanged. */
+static inline int wuss__snap_width(const wuss_window_t *window,
+                                   int                  width,
+                                   int                  floor)
+{
+  int n;
+
+  if (window->width_step <= 0)
+    return width;
+
+  n = (width - window->width_base) / window->width_step;
+  if (window->width_base + n * window->width_step < floor)
+    n = (floor - window->width_base + window->width_step - 1) /
+        window->width_step;
+  n = MAX(n, 1);
+
+  return window->width_base + n * window->width_step;
 }
 
 /* Largest content width/height whose visible box (content + outline +

@@ -453,6 +453,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/set-focus.c
     libraries/wuss/core/set-palette.c
     libraries/wuss/core/set-time.c
+    libraries/wuss/core/relayout.c
     libraries/wuss/font/font.h
     libraries/wuss/font/registry.c
     libraries/wuss/font/text.c
@@ -465,6 +466,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/window/create-placed.c
     libraries/wuss/core/window/close.c
     libraries/wuss/core/window/get-content-bounds.c
+    libraries/wuss/core/window/get-max-content.c
     libraries/wuss/core/window/get-scroll.c
     libraries/wuss/core/window/get-title.c
     libraries/wuss/core/window/get-visible-bounds.c
@@ -479,6 +481,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/window/set-hidden.c
     libraries/wuss/core/window/set-scroll.c
     libraries/wuss/core/window/set-title.c
+    libraries/wuss/core/window/set-width-quantum.c
     libraries/wuss/core/window/try-close.c)
 
 set(WUSS_FURNITURE_SOURCES

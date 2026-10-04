@@ -6763,6 +6763,26 @@ StringSetOK: ;
     if (gvwin->doc.h % (int) NELEMS(gridview_test_labels) != 0) goto GridViewFail;
     cell_h = gvwin->doc.h / (int) NELEMS(gridview_test_labels);
 
+    /* the window's width quantum is the cell width, one column fits, and
+     * natural sizing and cell boxes follow the layout */
+    if (gvwin->width_step != 0) goto GridViewFail;
+    wuss_gridview_set_snap(gv, 1);
+    if (gvwin->width_step != wuss_gridview_get_cell_size(gv).w) goto GridViewFail;
+    if (wuss_gridview_get_columns(gv) != 1) goto GridViewFail;
+    if (wuss_gridview_width_for_columns(gv, 3) != 3 * gvwin->width_step) goto GridViewFail;
+    if (wuss_gridview_natural_size(gv, 3, 1).h != cell_h) goto GridViewFail;
+    if (wuss_gridview_cell_box(gv, 1).y0 != cell_h) goto GridViewFail;
+
+    /* RELAYOUT and PALETTE re-measure without consuming the event */
+    ev.kind = wuss_EVENT_RELAYOUT;
+    if (wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (gvwin->width_step != wuss_gridview_get_cell_size(gv).w) goto GridViewFail;
+
+    /* an inset widens the width for a column count */
+    wuss_gridview_set_layout(gv, 0, 1, 4);
+    if (wuss_gridview_width_for_columns(gv, 2) != 2 * gvwin->width_step + 8) goto GridViewFail;
+    wuss_gridview_set_layout(gv, 0, 0, 0);
+
     /* a foreign event is declined */
     ev.kind = wuss_EVENT_IDLE;
     if (wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
@@ -9274,17 +9294,17 @@ QuitFail:
          "multi-byte UTF-8 codepoint\n");
 
   {
-    /* 61 ASCII bytes (0..60) then a 3-byte UTF-8 codepoint (U+20AC, EURO
-     * SIGN: 0xE2 0x82 0xAC) at bytes 61..63 -- WUSS_TITLE_MAX (63) lands on
-     * the euro sign's middle continuation byte, so a raw byte truncation to
-     * 63 chars (as strncpy alone would do) keeps 0xE2 0x82 and drops 0xAC,
+    /* WUSS_TITLE_MAX - 2 ASCII bytes then a 3-byte UTF-8 codepoint (U+20AC,
+     * EURO SIGN: 0xE2 0x82 0xAC) -- WUSS_TITLE_MAX lands on the euro sign's
+     * middle continuation byte, so a raw byte truncation to
+     * WUSS_TITLE_MAX chars (as strncpy alone would do) keeps 0xE2 0x82 and drops 0xAC,
      * leaving a malformed trailing sequence. The fix must back off over
      * both continuation bytes instead, dropping the whole codepoint. */
     static test_task_t tc_title;
     wuss_task_t       *delegate_title;
     wuss_window_t     *win_title;
     box_t              box_title;
-    char               long_title[70];
+    char               long_title[WUSS_TITLE_MAX + 8];
     const char        *got;
     size_t             len;
 
@@ -9301,23 +9321,23 @@ QuitFail:
     if (rc != result_OK)
       goto Failure;
 
-    memset(long_title, 'a', 61);
-    long_title[61] = (char) 0xE2;
-    long_title[62] = (char) 0x82;
-    long_title[63] = (char) 0xAC;
-    long_title[64] = '\0';
+    memset(long_title, 'a', WUSS_TITLE_MAX - 2);
+    long_title[WUSS_TITLE_MAX - 2] = (char) 0xE2;
+    long_title[WUSS_TITLE_MAX - 1] = (char) 0x82;
+    long_title[WUSS_TITLE_MAX]     = (char) 0xAC;
+    long_title[WUSS_TITLE_MAX + 1] = '\0';
 
     wuss_window_set_title(win_title, long_title);
     got = wuss_window_get_title(win_title);
     len = strlen(got);
 
-    if (len > 61)
+    if (len > WUSS_TITLE_MAX - 2)
       goto Failure; /* the euro sign's lead byte (0xE2) must have been
                       * dropped along with its continuations, not kept
                       * dangling on its own */
-    if (len != 61)
-      goto Failure; /* the 61 leading ASCII bytes must all survive */
-    if (((unsigned char) got[60]) != 'a')
+    if (len != WUSS_TITLE_MAX - 2)
+      goto Failure; /* the leading ASCII bytes must all survive */
+    if (((unsigned char) got[WUSS_TITLE_MAX - 3]) != 'a')
       goto Failure;
 
     wuss_window_close(win_title);

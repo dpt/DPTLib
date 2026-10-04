@@ -43,6 +43,7 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
     wuss__min_content(window, &min);
     target_w = MAX(target_w, min.w);
     target_h = MAX(target_h, min.h);
+    target_w = wuss__snap_width(window, target_w, min.w);
 
     vis_w = target_w + 2 * outline_px + carve.x;
     vis_h = target_h + titlebar_height + 2 * outline_px + carve.y;

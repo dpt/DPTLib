@@ -221,6 +221,39 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size);
 result_t wuss_window_set_doc(wuss_window_t *window, size2d_t doc);
 
 /**
+ * Fetch the largest content size this window could have on the current
+ * screen if it were moved to fit: the whole screen less the window's own
+ * outline, titlebar and scrollbar furniture. Floored at the built-in minimum
+ * content size. Depends on the screen size and the furniture, so ask again
+ * after wuss_EVENT_RELAYOUT rather than caching it.
+ *
+ * \param[in]  window Window to query.
+ * \param[out] max    Filled with the largest content size.
+ */
+void wuss_window_get_max_content(const wuss_window_t *window, size2d_t *max);
+
+/**
+ * Make a window's content width snap to whole layout steps. A resize-drag, a
+ * toggle-size and the shrink wuss_resize applies when the screen gets
+ * smaller will all leave the content width as \p base plus a whole number
+ * (at least one) of \p step, rounding down, unless the window's minimum
+ * width demands more. wuss_window_resize itself is exact, so a task that
+ * sizes its own window picks the width it wants.
+ *
+ * For a reflowing grid, \p step is the cell width and \p base the fixed
+ * margin around the cells. Call it again when the cell width changes.
+ *
+ * \param[in] window Window to configure.
+ * \param[in] step   Width of one step; 0 turns snapping off.
+ * \param[in] base   Width of the fixed part; at least 0.
+ * \return \ref result_OK, or \ref result_BAD_ARG if \p step or \p base is
+ *         negative.
+ */
+result_t wuss_window_set_width_quantum(wuss_window_t *window,
+                                       int            step,
+                                       int            base);
+
+/**
  * Move a window to one end of its own stack (see wuss_stack_t). It never
  * crosses into another stack: a middle window brought to front stays behind
  * every top window.

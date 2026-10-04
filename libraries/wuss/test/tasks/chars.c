@@ -180,6 +180,9 @@ static void chars_rewrap(chars_task_t *task)
 
   cols = chars_cols_for_width(cell_w, content.x1 - content.x0);
 
+  /* drags and toggles then land on whole cells */
+  (void) wuss_window_set_width_quantum(task->window, cell_w, 0);
+
   if (cols == task->cols)
     return;
 
@@ -459,9 +462,8 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
-  /* 16 columns may not fit a small screen; the OPEN fired inside create_placed
-   * cannot rewrap as task->window is not yet set, so cap here and rewrap
-   * against the real (screen-capped) content size after */
+  /* 16 columns may not fit a small screen; OPEN is not sent at create, so cap
+   * here and rewrap against the real (screen-capped) content size after */
   chars_cell_size(task, font, &cell_w, &cell_h);
   task->cols = MIN(task->cols, chars_cols_for_width(cell_w,
                    wuss_get_screen_size(wuss).w));
@@ -652,6 +654,14 @@ result_t chars_handle(wuss_window_t      *window,
   case wuss_EVENT_OPEN:
     if (window == cc->window)
       chars_rewrap(cc);
+    return result_OK;
+
+  case wuss_EVENT_RELAYOUT:
+    if (window == cc->window)
+    {
+      cc->cols = 0; /* force the doc to be re-extented to the new screen */
+      chars_rewrap(cc);
+    }
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:

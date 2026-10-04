@@ -139,7 +139,17 @@ typedef enum wuss_event_kind
    *  unshifted character, which may differ from the code its press
    *  reported. Unclaimable: \ref result_WUSS_KEY_UNCLAIMED is treated as
    *  \ref result_OK. Not reported by every frontend. */
-  wuss_EVENT_KEY_UP
+  wuss_EVENT_KEY_UP,
+  /** The room available to this window's layout has changed: the screen was
+   *  resized (wuss_resize) or the furniture metrics were (wuss_set_config).
+   *  Delivered once to every ordinary (non-pinned) window, after wuss has
+   *  already moved and shrunk windows to fit, so the window's bounds are
+   *  final. A window that is laid out from its size should re-read
+   *  wuss_window_get_max_content, re-measure anything that depends on the
+   *  furniture or fonts and update its document extent. It is not raised
+   *  for a window wuss left alone, nor by a plain move or resize (see
+   *  wuss_EVENT_OPEN). Carries no data. */
+  wuss_EVENT_RELAYOUT
 }
 wuss_event_kind_t;
 
@@ -153,7 +163,7 @@ wuss_event_kind_t;
  * wuss_EVENT_PRE_CLOSE, wuss_EVENT_CLOSE, wuss_EVENT_POINTER_ENTER,
  * wuss_EVENT_POINTER_EXIT, wuss_EVENT_GAIN_FOCUS, wuss_EVENT_LOSE_FOCUS,
  * wuss_EVENT_KEY, wuss_EVENT_KEY_UP, wuss_EVENT_MESSAGE (a message addressed
- * to this window), wuss_EVENT_DRAG_END.
+ * to this window), wuss_EVENT_DRAG_END, wuss_EVENT_RELAYOUT.
  */
 typedef wuss_event_kind_t wuss_window_event_kind_t;
 
