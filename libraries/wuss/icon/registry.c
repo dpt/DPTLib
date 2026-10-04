@@ -128,8 +128,9 @@ static result_t icons_load_entry(const char *leaf, void *opaque)
       icons_rb_swapped(bm.format, icons_order_for(st->wuss->scr->format)))
     icons_swap_rb(&bm);
 
+  /* paletted formats can't be RLE-compressed: keep those uncompressed */
   rc = bitmap_compress(&bm);
-  if (rc != result_OK)
+  if (rc != result_OK && rc != result_NOT_SUPPORTED)
   {
     free(bm.base);
     st->rc = rc;
