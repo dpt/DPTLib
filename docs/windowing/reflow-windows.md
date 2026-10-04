@@ -219,6 +219,7 @@ and Adjust-close. The wuss Filer has none of these yet.
 | Item | Where |
 |------|-------|
 | `wuss_window_get_max_content(window, &max)` | `include/wuss/window.h` |
+| `wuss_window_set_min_size(window, min)` (`wuss_KEEP` leaves an axis) | `include/wuss/window.h` |
 | `wuss_window_set_doc` (changes `doc` after create) | `include/wuss/window.h` |
 | `wuss_EVENT_RELAYOUT` | `include/wuss/task.h` |
 | `wuss_gridview_set_layout`, `_set_draw` | `include/wuss/gadget/gridview.h` |
@@ -229,7 +230,6 @@ and Adjust-close. The wuss Filer has none of these yet.
 
 ## Open points
 
-- A window can be dragged narrower than one cell.
 - No test drives a real `wuss_resize` through the relayout path.
   The gridview test checks the event only.
 - Filer has no rubber-band selection, Menu-click callback or Adjust-close.

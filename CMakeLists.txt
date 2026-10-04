@@ -478,6 +478,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/window/z-order.c
     libraries/wuss/core/window/set-background.c
     libraries/wuss/core/window/set-doc.c
+    libraries/wuss/core/window/set-min-size.c
     libraries/wuss/core/window/set-hidden.c
     libraries/wuss/core/window/set-scroll.c
     libraries/wuss/core/window/set-title.c
