@@ -214,6 +214,11 @@ static void gridview_reflow(wuss_gridview_t *gv)
   doc = SIZE2D(gridview_width_for_columns(gv, max_cols),
                MAX(rows, 1) * gv->cell.h + 2 * gv->inset);
 
+  /* cannot fail: the width is positive */
+  (void) wuss_window_set_min_size(gv->window,
+                                  SIZE2D(gridview_width_for_columns(gv, 1),
+                                         wuss_KEEP));
+
   if (cols == gv->columns && doc.w == gv->doc.w && doc.h == gv->doc.h)
     return;
 

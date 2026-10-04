@@ -6768,6 +6768,13 @@ StringSetOK: ;
      * layout */
     cell_w = wuss_gridview_get_cell_size(gv).w;
     if (wuss_gridview_get_columns(gv) != 1) goto GridViewFail;
+
+    /* the minimum width is one column; wuss_KEEP leaves an axis alone */
+    if (gvwin->min_doc.w != wuss_gridview_width_for_columns(gv, 1)) goto GridViewFail;
+    if (wuss_window_set_min_size(gvwin, SIZE2D(wuss_KEEP, 9)) != result_OK) goto GridViewFail;
+    if (gvwin->min_doc.h != 9 ||
+        gvwin->min_doc.w != wuss_gridview_width_for_columns(gv, 1)) goto GridViewFail;
+    if (wuss_window_set_min_size(gvwin, SIZE2D(-2, 0)) != result_BAD_ARG) goto GridViewFail;
     if (wuss_gridview_width_for_columns(gv, 3) != 3 * cell_w) goto GridViewFail;
     if (wuss_gridview_natural_size(gv, 3, 1).h != cell_h) goto GridViewFail;
     if (wuss_gridview_cell_box(gv, 1).y0 != cell_h) goto GridViewFail;

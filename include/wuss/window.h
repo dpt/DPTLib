@@ -220,6 +220,24 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size);
  */
 result_t wuss_window_set_doc(wuss_window_t *window, size2d_t doc);
 
+/** Pass as a component of wuss_window_set_min_size to leave that axis as it
+ * is. */
+#define wuss_KEEP (-1)
+
+/**
+ * Set the smallest content size a resize-drag or toggle-size will shrink a
+ * window to, as wuss_window_create's min_doc parameter. Either axis may be
+ * left unchanged by passing \ref wuss_KEEP for it. The furniture's own
+ * minimum still applies.
+ *
+ * \param[in] window Window to configure.
+ * \param[in] min    Minimum content size; each component at least 0, or \ref
+ *                   wuss_KEEP.
+ * \return \ref result_OK, or \ref result_BAD_ARG if a component is below
+ *         \ref wuss_KEEP.
+ */
+result_t wuss_window_set_min_size(wuss_window_t *window, size2d_t min);
+
 /**
  * Fetch the largest content size this window could have on the current
  * screen if it were moved to fit: the whole screen less the window's own
