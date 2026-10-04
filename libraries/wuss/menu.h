@@ -21,7 +21,7 @@ enum
 };
 
 /* One open level of a menu chain: its window and per-item icon handles, plus a
- * link to the level it opened from. The head (root) is wuss->menu_chain; each
+ * link to the level it opened from. The head (root) is wuss->menu.chain; each
  * child points at its parent so wuss_menu_close can walk leaf-to-root. */
 struct wuss__menu
 {

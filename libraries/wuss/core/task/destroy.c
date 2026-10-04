@@ -38,7 +38,7 @@ void wuss_task_destroy(wuss_task_t *doomed)
    * wuss_EVENT_MENU_CLOSED to `doomed`, so a wuss_menu_handle_t it still
    * holds is nulled before the QUIT below -- otherwise a QUIT handler that
    * calls wuss_menu_close on that stale handle double-frees the chain. */
-  if (wuss->menu_chain != NULL && wuss->menu_chain->owner == doomed)
+  if (wuss->menu.chain != NULL && wuss->menu.chain->owner == doomed)
     wuss__menu_abandon(wuss);
 #endif
 

@@ -25,7 +25,7 @@ void wuss_window_close(wuss_window_t *doomed)
 
 #ifdef WUSS_MENUS
   /* the doomed window may be a borrowed level's focus lender; forget it */
-  for (m = wuss->menu_chain; m != NULL; m = m->child)
+  for (m = wuss->menu.chain; m != NULL; m = m->child)
     if (m->saved_focus == doomed)
       m->saved_focus = NULL;
 
@@ -53,20 +53,20 @@ void wuss_window_close(wuss_window_t *doomed)
   }
 #endif
 #ifdef WUSS_ICONS
-  if (wuss->pressed_window == doomed)
+  if (wuss->pressed.window == doomed)
   {
-    wuss->pressed_icon   = NULL;
-    wuss->pressed_window = NULL;
+    wuss->pressed.icon   = NULL;
+    wuss->pressed.window = NULL;
   }
-  if (wuss->hover_window == doomed)
+  if (wuss->hover.window == doomed)
   {
-    wuss->hover_icon   = NULL;
-    wuss->hover_window = NULL;
+    wuss->hover.icon   = NULL;
+    wuss->hover.window = NULL;
   }
-  if (wuss->caret_window == doomed)
+  if (wuss->caret.window == doomed)
   {
-    wuss->caret_icon   = NULL;
-    wuss->caret_window = NULL;
+    wuss->caret.icon   = NULL;
+    wuss->caret.window = NULL;
   }
 #endif
   /* No wuss_EVENT_POINTER_EXIT: the task hears about this window going away
@@ -78,10 +78,10 @@ void wuss_window_close(wuss_window_t *doomed)
   /* Stop double-click detection matching a freed window: a later
    * wuss_window_create could reuse this address, giving a false match.
    * Reset the button too: NULL alone would match a backdrop press. */
-  if (wuss->last_down_window == doomed)
+  if (wuss->last_down.window == doomed)
   {
-    wuss->last_down_window = NULL;
-    wuss->last_down_button = wuss_BUTTON_NONE;
+    wuss->last_down.window = NULL;
+    wuss->last_down.button = wuss_BUTTON_NONE;
   }
 
   /* A hidden window was never actually drawn at "visible" -- whatever is
@@ -110,7 +110,7 @@ void wuss_window_close(wuss_window_t *doomed)
 #ifdef WUSS_MENUS
     /* As wuss_task_destroy: a chain this task still owns would outlive it,
      * so tear it down (delivering MENU_CLOSED) before QUIT. */
-    if (wuss->menu_chain != NULL && wuss->menu_chain->owner == task)
+    if (wuss->menu.chain != NULL && wuss->menu.chain->owner == task)
       wuss__menu_abandon(wuss);
 #endif
 

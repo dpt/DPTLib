@@ -325,10 +325,10 @@ static void gridview_draw_cell(wuss_gridview_t    *gv,
 
   gv->item_fn(index, gv->opaque, &item);
 
-  fg = wuss->palette[wuss->button_fg];
+  fg = wuss->palette[wuss->button.fg];
   bg = wuss_gridview_is_selected(gv, index)
      ? wuss->palette[wuss->accent]
-     : wuss->palette[wuss->window_bg];
+     : wuss->palette[wuss->body.window];
   screen_fill_rect(&clipped, screen_box.x0, screen_box.y0,
                    box_size(&screen_box), bg);
   if (wuss_gridview_is_selected(gv, index))
@@ -409,7 +409,7 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
     content = *event->data.redraw.content;
     screen_fill_rect(event->data.redraw.scr, content.x0, content.y0,
                      box_size(&content),
-                     gv->has_bg ? gv->bg : wuss->palette[wuss->window_bg]);
+                     gv->has_bg ? gv->bg : wuss->palette[wuss->body.window]);
 
     /* only the rows the clip reaches */
     first = (event->data.redraw.scr->clip.y0 - event->data.redraw.bounds->y0 +

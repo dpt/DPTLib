@@ -19,8 +19,8 @@ void wuss__icon_set_hover(wuss_t        *wuss,
   wuss_icon_t   *prev;
   wuss_window_t *prevwin;
 
-  prev    = wuss->hover_icon;
-  prevwin = wuss->hover_window;
+  prev    = wuss->hover.icon;
+  prevwin = wuss->hover.window;
   if (prev == icon)
     return;
 
@@ -38,8 +38,8 @@ void wuss__icon_set_hover(wuss_t        *wuss,
       wuss__icon_invalidate(prevwin, prev);
   }
 
-  wuss->hover_icon   = icon;
-  wuss->hover_window = (icon != NULL) ? window : NULL;
+  wuss->hover.icon   = icon;
+  wuss->hover.window = (icon != NULL) ? window : NULL;
 
   if (icon != NULL)
   {

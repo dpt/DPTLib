@@ -8,5 +8,5 @@ int wuss_is_dragging(const wuss_t *wuss)
 {
   assert(wuss != NULL);
 
-  return wuss->drag_window != NULL;
+  return wuss->drag.window != NULL;
 }

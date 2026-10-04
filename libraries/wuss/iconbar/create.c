@@ -31,17 +31,17 @@ static wuss_task_t *iconbar_task(wuss_t *wuss)
 {
   wuss_task_desc_t desc;
 
-  if (wuss->iconbar_task != NULL)
-    return wuss->iconbar_task;
+  if (wuss->iconbar.task != NULL)
+    return wuss->iconbar.task;
 
   desc.handle    = iconbar_window_handle;
   desc.task_data = wuss;
   desc.name      = "wuss:iconbar";
 
-  if (wuss_task_create(wuss, &desc, &wuss->iconbar_task) != result_OK)
+  if (wuss_task_create(wuss, &desc, &wuss->iconbar.task) != result_OK)
     return NULL;
 
-  return wuss->iconbar_task;
+  return wuss->iconbar.task;
 }
 
 /* Lazily create the bar's own pinned, chromeless window on the first icon.
@@ -53,7 +53,7 @@ static result_t iconbar_window_ensure(wuss_t *wuss)
   wuss_window_t *win;
   result_t       rc;
 
-  if (wuss->iconbar_window != NULL)
+  if (wuss->iconbar.window != NULL)
     return result_OK;
 
   task = iconbar_task(wuss);
@@ -81,7 +81,7 @@ static result_t iconbar_window_ensure(wuss_t *wuss)
   if (rc != result_OK)
     return rc;
 
-  wuss->iconbar_window = win;
+  wuss->iconbar.window = win;
 
   return result_OK;
 }
@@ -103,9 +103,9 @@ result_t wuss_iconbar_icon_create(wuss_t                         *wuss,
   if (rc != result_OK)
     return rc;
 
-  if (wuss__array_grow(&wuss->alloc, (void **) &wuss->iconbar_icons,
-                       sizeof(*wuss->iconbar_icons), wuss->niconbar_icons,
-                       &wuss->cap_iconbar_icons, 1, 4) != 0)
+  if (wuss__array_grow(&wuss->alloc, (void **) &wuss->iconbar.icons,
+                       sizeof(*wuss->iconbar.icons), wuss->iconbar.n,
+                       &wuss->iconbar.cap, 1, 4) != 0)
     return result_OOM;
 
   it = wuss__malloc(wuss, sizeof(*it));
@@ -123,10 +123,10 @@ result_t wuss_iconbar_icon_create(wuss_t                         *wuss,
     return result_OOM;
   }
 
-  wuss->iconbar_icons[wuss->niconbar_icons++] = it;
+  wuss->iconbar.icons[wuss->iconbar.n++] = it;
 
-  wuss__iconbar_slot_box(wuss, wuss->niconbar_icons - 1, &slot);
-  wuss__invalidate_clipped(wuss->iconbar_window, &slot);
+  wuss__iconbar_slot_box(wuss, wuss->iconbar.n - 1, &slot);
+  wuss__invalidate_clipped(wuss->iconbar.window, &slot);
 
   if (icon != NULL)
     *icon = it;

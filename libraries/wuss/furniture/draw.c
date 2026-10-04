@@ -174,7 +174,7 @@ static void draw_title(wuss_t        *wuss,
 
   bmfont_draw_relief(titlefont, wuss->scr, window->title, titlelen,
                      wuss->palette[wuss->furniture_colours.title.fg],
-                     wuss->palette[wuss->bevel_dark],
+                     wuss->palette[wuss->bevel.dark],
                      NULL, &pos, &WUSS_TITLE_SHADOW_OFFSET, NULL);
 }
 

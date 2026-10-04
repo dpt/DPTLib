@@ -18,7 +18,7 @@ static result_t key(wuss_t              *wuss,
   if (claimed != NULL)
     *claimed = 0;
 
-  if (wuss->drag_window != NULL)
+  if (wuss->drag.window != NULL)
   {
     if (code == wuss_KEY_ESCAPE)
     {
@@ -32,7 +32,7 @@ static result_t key(wuss_t              *wuss,
 #ifdef WUSS_MENUS
   /* Escape dismisses an open menu chain, as a click outside it does: menus
    * never take the input focus, so no menu window would ever see the key */
-  if (code == wuss_KEY_ESCAPE && wuss->menu_chain != NULL)
+  if (code == wuss_KEY_ESCAPE && wuss->menu.chain != NULL)
   {
     wuss__menu_abandon(wuss);
     if (claimed != NULL)

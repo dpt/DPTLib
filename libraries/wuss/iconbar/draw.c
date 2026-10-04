@@ -13,13 +13,13 @@
 
 void wuss__iconbar_box(const wuss_t *wuss, box_t *out)
 {
-  if (wuss->iconbar_window == NULL)
+  if (wuss->iconbar.window == NULL)
   {
     box_reset(out);
     return;
   }
 
-  *out = wuss->iconbar_window->visible;
+  *out = wuss->iconbar.window->visible;
 }
 
 void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out)
@@ -42,7 +42,7 @@ void wuss__iconbar_icon_box(const wuss_t *wuss, int index, box_t *out)
 
   wuss__iconbar_slot_box(wuss, index, &slot);
 
-  icon  = wuss->iconbar_icons[index];
+  icon  = wuss->iconbar.icons[index];
   h     = (icon->spec.image != NULL) ? icon->spec.image->size.h
                                      : WUSS_ICONBAR_ICON;
   block = h;
@@ -112,7 +112,7 @@ void wuss__iconbar_draw_icons(wuss_t *wuss, const box_t *piece)
 {
   int i;
 
-  for (i = 0; i < wuss->niconbar_icons; i++)
+  for (i = 0; i < wuss->iconbar.n; i++)
   {
     box_t slot, icon_box, clipped;
 
@@ -124,7 +124,7 @@ void wuss__iconbar_draw_icons(wuss_t *wuss, const box_t *piece)
       continue;
 
     wuss__iconbar_icon_box(wuss, i, &icon_box);
-    iconbar_draw_icon(wuss, wuss->iconbar_icons[i], &icon_box);
+    iconbar_draw_icon(wuss, wuss->iconbar.icons[i], &icon_box);
   }
 }
 
