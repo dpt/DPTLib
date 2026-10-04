@@ -9219,6 +9219,135 @@ QuitFail:
     }
   }
 
+  printf("test: wuss_icons_load keeps paletted icons uncompressed, compresses deep ones and fails the set on a bad PNG\n");
+
+  {
+    int idx;
+
+    rc = wuss_icons_load(wuss, pathf("%s/resources/wuss-test/icons",
+                                     resources));
+    if (rc != result_OK)
+      goto Failure;
+    if (wuss_icons_count(wuss) != 4)
+      goto Failure;
+
+    /* paletted PNGs can't be RLE-compressed, and stay as loaded: they must
+     * not abort the load or be dropped */
+    idx = wuss_icons_lookup(wuss, "pal2");
+    if (idx < 0 || wuss_icons_bitmap(wuss, idx)->format != pixelfmt_p2)
+      goto Failure;
+    idx = wuss_icons_lookup(wuss, "grey8");
+    if (idx < 0 || wuss_icons_bitmap(wuss, idx)->format != pixelfmt_p8)
+      goto Failure;
+
+    /* a grey+alpha PNG is expanded to 32bpp and so compresses like RGBA */
+    idx = wuss_icons_lookup(wuss, "greyalpha8");
+    if (idx < 0 || !bitmap_is_compressed(wuss_icons_bitmap(wuss, idx)))
+      goto Failure;
+    idx = wuss_icons_lookup(wuss, "rgba");
+    if (idx < 0 || !bitmap_is_compressed(wuss_icons_bitmap(wuss, idx)))
+      goto Failure;
+
+    /* a file that isn't a PNG fails the whole load */
+    if (wuss_icons_load(wuss, pathf("%s/resources/wuss-test/badicons",
+                                    resources)) == result_OK)
+      goto Failure;
+
+    /* put the standard set back for the tests that follow */
+    rc = wuss_icons_load_resource(wuss, resources);
+    if (rc != result_OK)
+      goto Failure;
+  }
+
+  printf("test: a BITMAP or DRAGGABLE icon that can't be drawn leaves a red box, one that can doesn't\n");
+
+  {
+    static test_task_t         tc_rb;
+    static pixelfmt_rgba8888_t rgba_px[10 * 10];
+    static pixelfmt_bgrx8888_t bgrx_px[10 * 10];
+
+    wuss_task_t               *delegate_rb;
+    wuss_window_t             *win_rb;
+    wuss_icon_t               *icon;
+    wuss_icon_spec_t           spec;
+    box_t                      box_rb;
+    box_t                      content_rb;
+    bitmap_t                   rle_bm, plain_bm;
+    void                      *rle_blob;
+    pixelfmt_any_t             red;
+    int                        cx, cy, i;
+    unsigned int               px[3];
+
+    memset(&tc_rb, 0, sizeof(tc_rb));
+    delegate_rb = mk_task(wuss, test_handle, &tc_rb);
+    if (delegate_rb == NULL) goto Failure;
+
+    box_rb = (box_t) BOX_POS_SIZE(20, 20, 100, 100);
+    rc = wuss_window_create(delegate_rb, &box_rb, "RB", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_rb);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* an rgba8888 RLE bitmap can't be blitted to this bgrx8888 screen */
+    for (i = 0; i < 10 * 10; i++)
+      rgba_px[i] = colour_rgb(0, 0, 255).primary;
+    rle_blob = malloc(sizeof(rgba_px));
+    if (rle_blob == NULL) goto Failure;
+    memcpy(rle_blob, rgba_px, sizeof(rgba_px));
+    rc = bitmap_init(&rle_bm, SIZE2D(10, 10), pixelfmt_rgba8888,
+                     10 * (int) sizeof(rgba_px[0]), NULL, rle_blob);
+    if (rc != result_OK) { free(rle_blob); goto Failure; }
+    rc = bitmap_compress(&rle_bm);
+    if (rc != result_OK) { free(rle_blob); goto Failure; }
+
+    /* a plain opaque blue bitmap in the screen's own format draws fine */
+    rc = bitmap_init(&plain_bm, SIZE2D(10, 10), pixelfmt_bgrx8888,
+                     10 * (int) sizeof(bgrx_px[0]), NULL, bgrx_px);
+    if (rc != result_OK) { free(rle_bm.base); goto Failure; }
+    bitmap_clear(&plain_bm, colour_rgb(0, 0, 255));
+
+    memset(&spec, 0, sizeof(spec));
+    spec.type = wuss_ICON_TYPE_BITMAP;
+
+    spec.bbox = (box_t) BOX_POS_SIZE(2, 2, 10, 10); /* undrawable */
+    spec.u.bitmap.image = &rle_bm;
+    rc = wuss_icon_create(win_rb, &spec, &icon);
+    if (rc != result_OK) { free(rle_bm.base); goto Failure; }
+
+    spec.bbox = (box_t) BOX_POS_SIZE(20, 2, 10, 10); /* drawable */
+    spec.u.bitmap.image = &plain_bm;
+    rc = wuss_icon_create(win_rb, &spec, &icon);
+    if (rc != result_OK) { free(rle_bm.base); goto Failure; }
+
+    spec.bbox = (box_t) BOX_POS_SIZE(38, 2, 10, 10); /* a blank draggable */
+    spec.type = wuss_ICON_TYPE_DRAGGABLE;
+    spec.u.bitmap.image = NULL;
+    rc = wuss_icon_create(win_rb, &spec, &icon);
+    if (rc != result_OK) { free(rle_bm.base); goto Failure; }
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK) { free(rle_bm.base); goto Failure; }
+
+    red = colour_to_pixel(NULL, 0, colour_rgb(255, 0, 0), pixelfmt_bgrx8888);
+    wuss_window_get_content_bounds(win_rb, &content_rb);
+    cy = content_rb.y0 + 2 + 5;
+    cx = content_rb.x0 + 2 + 5;
+    px[0] = ((const uint32_t *) pixels)[cy * 200 + cx];
+    px[1] = ((const uint32_t *) pixels)[cy * 200 + cx + 18];
+    px[2] = ((const uint32_t *) pixels)[cy * 200 + cx + 36];
+
+    if ((px[0] & 0xFFFFFF) != (red & 0xFFFFFF)) /* failed blit: red */
+      { free(rle_bm.base); goto Failure; }
+    if ((px[1] & 0xFFFFFF) == (red & 0xFFFFFF)) /* good blit: not red */
+      { free(rle_bm.base); goto Failure; }
+    if ((px[2] & 0xFFFFFF) != (red & 0xFFFFFF)) /* no bitmap at all: red */
+      { free(rle_bm.base); goto Failure; }
+
+    free(rle_bm.base);
+    wuss_window_close(win_rb);
+  }
+
   printf("test: window stacks: top over middle over back, restack stays within a stack, set_stack relinks\n");
 
   {

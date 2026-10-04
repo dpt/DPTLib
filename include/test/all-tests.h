@@ -27,7 +27,8 @@ extern testfn_t pickle_test,
                 tagdb_test;
 
 /* framebuf */
-extern testfn_t bitmap_rle_test,
+extern testfn_t bitmap_load_test,
+                bitmap_rle_test,
                 bmfont_test,
                 bmfontcache_test,
                 bmfontfamily_test,
