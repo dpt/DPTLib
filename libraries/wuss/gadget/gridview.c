@@ -31,6 +31,8 @@
 
 #define GRIDVIEW_ELLIPSIS "..."
 
+static void gridview_reflow(wuss_gridview_t *gv);
+
 struct wuss_gridview
 {
   wuss_alloc_t                  alloc;   /* copied hooks; wuss_t not retained */
@@ -42,7 +44,15 @@ struct wuss_gridview
   bitvec_t                      *selected;
   int                            label_chars;
   size2d_t                       cell;    /* glyph+label cell size, with padding */
-  int                            columns; /* set by reflow; at least 1 */
+  int                            columns; /* set by reflow; at least 1 once
+                                           * reflowed, 0 before */
+  size2d_t                       doc;     /* extent last given the window */
+  int                            inset;   /* margin round the whole grid */
+  int                            max_columns; /* 0 for no limit */
+  int                            pow2;    /* columns restricted to 1, 2, 4... */
+  int                            selectable;
+  int                            snap;    /* window width snaps to cells */
+  wuss_gridview_draw_fn_t       *draw;    /* NULL: draw glyph and label */
 };
 
 /* ----------------------------------------------------------------------- */
@@ -123,8 +133,17 @@ result_t wuss_gridview_create(wuss_gridview_t            **out,
   gv->activate    = activate;
   gv->opaque      = opaque;
   gv->label_chars = label_chars;
-  gv->columns     = 1;
+  gv->columns     = 0;
+  gv->doc         = SIZE2D(0, 0);
+  gv->inset       = 0;
+  gv->max_columns = 0;
+  gv->pow2        = 0;
+  gv->selectable  = 1;
+  gv->snap        = 0;
+  gv->draw        = NULL;
   gv->cell        = gridview_measure_cell(gv);
+
+  gridview_reflow(gv);
 
   *out = gv;
   return result_OK;
@@ -141,24 +160,68 @@ void wuss_gridview_destroy(wuss_gridview_t *doomed)
 
 /* ----------------------------------------------------------------------- */
 
-/* Recompute column count from the window's current visible content width,
- * and set the document extent to match the resulting row count. */
+/* Columns that fit "width" under the layout policy: at least 1, at most the
+ * item count and max_columns, and a power of two when pow2 is set. */
+static int gridview_columns_for_width(const wuss_gridview_t *gv, int width)
+{
+  int cols, p;
+
+  cols = (width - 2 * gv->inset) / gv->cell.w;
+  cols = MAX(cols, 1);
+  if (gv->max_columns > 0)
+    cols = MIN(cols, gv->max_columns);
+  cols = MIN(cols, MAX(gv->count, 1));
+
+  if (gv->pow2)
+  {
+    p = 1;
+    while (p * 2 <= cols)
+      p *= 2;
+    cols = p;
+  }
+
+  return cols;
+}
+
+static int gridview_width_for_columns(const wuss_gridview_t *gv, int cols)
+{
+  return 2 * gv->inset + cols * gv->cell.w;
+}
+
+/* Recompute the column count from the window's current content width, and
+ * set the document extent to match. The extent is as wide as the widest
+ * layout this screen and item count allow, so the window can always be
+ * dragged wider; it is as tall as the rows the current layout needs. Also
+ * tells the window its width quantum. Does nothing if neither the columns
+ * nor the extent changed. */
 static void gridview_reflow(wuss_gridview_t *gv)
 {
   box_t    content;
-  size2d_t doc;
-  int      visible_w, rows;
+  size2d_t doc, max;
+  int      cols, max_cols, rows;
 
   wuss_window_get_content_bounds(gv->window, &content);
-  visible_w   = content.x1 - content.x0;
-  gv->columns = MAX(visible_w / gv->cell.w, 1);
+  wuss_window_get_max_content(gv->window, &max);
 
-  rows  = (gv->count + gv->columns - 1) / gv->columns;
-  doc.w = MAX(gv->count, 1) * gv->cell.w; /* ceiling: every item in one row */
-  doc.h = MAX(rows, 1) * gv->cell.h;
+  cols     = gridview_columns_for_width(gv, content.x1 - content.x0);
+  max_cols = MAX(gridview_columns_for_width(gv, max.w), cols);
+  rows     = (gv->count + cols - 1) / cols;
 
-  /* doc.w/doc.h are always positive (cell size, times at least 1), so this
-   * cannot return result_WUSS_TOO_SMALL */
+  /* always positive: cell size and at least one column and row */
+  doc = SIZE2D(gridview_width_for_columns(gv, max_cols),
+               MAX(rows, 1) * gv->cell.h + 2 * gv->inset);
+
+  /* cannot fail: the step and base are never negative */
+  (void) wuss_window_set_width_quantum(gv->window,
+                                       gv->snap ? gv->cell.w : 0,
+                                       2 * gv->inset);
+
+  if (cols == gv->columns && doc.w == gv->doc.w && doc.h == gv->doc.h)
+    return;
+
+  gv->columns = cols;
+  gv->doc     = doc;
+
   (void) wuss_window_set_doc(gv->window, doc);
 }
 
@@ -169,7 +232,8 @@ static box_t gridview_cell_box(const wuss_gridview_t *gv, int index)
 
   col = index % gv->columns;
   row = index / gv->columns;
-  return (box_t) BOX_POS_SIZE(col * gv->cell.w, row * gv->cell.h,
+  return (box_t) BOX_POS_SIZE(gv->inset + col * gv->cell.w,
+                              gv->inset + row * gv->cell.h,
                               gv->cell.w, gv->cell.h);
 }
 
@@ -179,6 +243,8 @@ static int gridview_hit_test(const wuss_gridview_t *gv, point_t p)
 {
   int col, row, index;
 
+  p.x -= gv->inset;
+  p.y -= gv->inset;
   if (p.x < 0 || p.y < 0)
     return -1;
 
@@ -189,6 +255,27 @@ static int gridview_hit_test(const wuss_gridview_t *gv, point_t p)
 
   index = row * gv->columns + col;
   return (index >= 0 && index < gv->count) ? index : -1;
+}
+
+/* Mark one cell dirty, leaving the rest of the window alone. */
+static void gridview_invalidate_cell(wuss_gridview_t *gv, int index)
+{
+  box_t box;
+
+  box = gridview_cell_box(gv, index);
+  wuss_window_invalidate(gv->window, &box);
+}
+
+/* Deselect everything, dirtying only the cells that were selected. */
+static void gridview_clear_selected(wuss_gridview_t *gv)
+{
+  int i;
+
+  for (i = 0; i < gv->count; i++)
+    if (bitvec_get(gv->selected, (bitvec_index_t) i))
+      gridview_invalidate_cell(gv, i);
+
+  bitvec_clear_all(gv->selected);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -219,6 +306,17 @@ static void gridview_draw_cell(wuss_gridview_t    *gv,
                           event->data.redraw.scroll, &doc_box, &screen_box);
   if (box_intersection(&scr->clip, &screen_box, &clipped_clip))
     return;
+  if (gv->draw != NULL)
+  {
+    box_t saved;
+
+    saved    = scr->clip;
+    scr->clip = clipped_clip;
+    gv->draw(gv, event, index, &screen_box, gv->opaque);
+    scr->clip = saved;
+    return;
+  }
+
   clipped      = *scr;
   clipped.clip = clipped_clip;
 
@@ -286,13 +384,18 @@ static void gridview_draw_cell(wuss_gridview_t    *gv,
 int wuss_gridview_handle_event(wuss_gridview_t    *gv,
                                const wuss_event_t *event)
 {
-  int index, i;
+  int index, i, first, last;
 
   switch (event->kind)
   {
   case wuss_EVENT_OPEN:
     gridview_reflow(gv);
     return 0; /* other listeners may care about OPEN too */
+
+  case wuss_EVENT_PALETTE:
+  case wuss_EVENT_RELAYOUT:
+    wuss_gridview_remeasure(gv);
+    return 0;
 
   case wuss_EVENT_REDRAW:
   {
@@ -304,7 +407,14 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
     screen_fill_rect(event->data.redraw.scr, content.x0, content.y0,
                      box_size(&content), wuss->palette[wuss->window_bg]);
 
-    for (i = 0; i < gv->count; i++)
+    /* only the rows the clip reaches */
+    first = (event->data.redraw.scr->clip.y0 - event->data.redraw.bounds->y0 +
+             event->data.redraw.scroll.y - gv->inset) / gv->cell.h;
+    last  = (event->data.redraw.scr->clip.y1 - event->data.redraw.bounds->y0 +
+             event->data.redraw.scroll.y - gv->inset) / gv->cell.h;
+    first = MAX(first, 0) * gv->columns;
+    last  = MIN((last + 1) * gv->columns, gv->count);
+    for (i = first; i < last; i++)
       gridview_draw_cell(gv, event, i);
     return 1;
   }
@@ -313,30 +423,38 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return 0;
 
+    /* a MENU click leaves the selection and the display alone */
+    if (!(event->data.mouse.button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+      return 0;
+
     index = gridview_hit_test(gv, event->data.mouse.point);
 
     if (index < 0)
     {
-      if (bitvec_count(gv->selected) == 0)
+      if (!gv->selectable || bitvec_count(gv->selected) == 0)
         return 0;
-      bitvec_clear_all(gv->selected);
-      wuss_window_invalidate_visible(gv->window);
+      gridview_clear_selected(gv);
       return 1;
     }
 
-    if (event->data.mouse.button & wuss_BUTTON_ADJUST)
+    if (!gv->selectable)
+    {
+      /* no selection state to change */
+    }
+    else if (event->data.mouse.button & wuss_BUTTON_ADJUST)
     {
       if (bitvec_get(gv->selected, (bitvec_index_t) index))
         bitvec_clear(gv->selected, (bitvec_index_t) index);
       else
         (void) bitvec_set(gv->selected, (bitvec_index_t) index);
+      gridview_invalidate_cell(gv, index);
     }
     else if (event->data.mouse.button & wuss_BUTTON_SELECT)
     {
-      bitvec_clear_all(gv->selected);
+      gridview_clear_selected(gv);
       (void) bitvec_set(gv->selected, (bitvec_index_t) index);
+      gridview_invalidate_cell(gv, index);
     }
-    wuss_window_invalidate_visible(gv->window);
 
     if ((event->data.mouse.button & wuss_BUTTON_DOUBLE) &&
         gv->activate != NULL)
@@ -361,8 +479,7 @@ void wuss_gridview_clear_selection(wuss_gridview_t *gv)
   if (bitvec_count(gv->selected) == 0)
     return;
 
-  bitvec_clear_all(gv->selected);
-  wuss_window_invalidate_visible(gv->window);
+  gridview_clear_selected(gv);
 }
 
 result_t wuss_gridview_set_count(wuss_gridview_t *gv, int count)
@@ -393,4 +510,68 @@ result_t wuss_gridview_set_count(wuss_gridview_t *gv, int count)
 size2d_t wuss_gridview_get_cell_size(const wuss_gridview_t *gv)
 {
   return gv->cell;
+}
+
+void wuss_gridview_remeasure(wuss_gridview_t *gv)
+{
+  gv->cell = gridview_measure_cell(gv);
+  gridview_reflow(gv);
+  wuss_window_invalidate_visible(gv->window);
+}
+
+void wuss_gridview_set_layout(wuss_gridview_t *gv,
+                              int              max_columns,
+                              int              pow2,
+                              int              inset)
+{
+  gv->max_columns = MAX(max_columns, 0);
+  gv->pow2        = pow2 != 0;
+  gv->inset       = MAX(inset, 0);
+
+  gridview_reflow(gv);
+  wuss_window_invalidate_visible(gv->window);
+}
+
+void wuss_gridview_set_snap(wuss_gridview_t *gv, int snap)
+{
+  gv->snap = snap != 0;
+  gridview_reflow(gv);
+}
+
+void wuss_gridview_set_draw(wuss_gridview_t         *gv,
+                            wuss_gridview_draw_fn_t *draw,
+                            int                      selectable)
+{
+  gv->draw       = draw;
+  gv->selectable = selectable != 0;
+
+  wuss_window_invalidate_visible(gv->window);
+}
+
+int wuss_gridview_get_columns(const wuss_gridview_t *gv)
+{
+  return gv->columns;
+}
+
+box_t wuss_gridview_cell_box(const wuss_gridview_t *gv, int index)
+{
+  return gridview_cell_box(gv, index);
+}
+
+int wuss_gridview_width_for_columns(const wuss_gridview_t *gv, int columns)
+{
+  return gridview_width_for_columns(gv, MAX(columns, 1));
+}
+
+size2d_t wuss_gridview_natural_size(const wuss_gridview_t *gv,
+                                    int                    columns,
+                                    int                    max_rows)
+{
+  int rows;
+
+  columns = MIN(MAX(columns, 1), MAX(gv->count, 1));
+  rows    = (gv->count + columns - 1) / columns;
+  rows    = MIN(MAX(rows, 1), MAX(max_rows, 1));
+  return SIZE2D(gridview_width_for_columns(gv, columns),
+                rows * gv->cell.h + 2 * gv->inset);
 }

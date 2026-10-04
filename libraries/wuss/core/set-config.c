@@ -329,5 +329,13 @@ result_t wuss_set_config(wuss_t *wuss, const wuss_config_t *config)
   screen.y1 = wuss->scr->size.h;
   wuss_invalidate(wuss, &screen);
 
+  {
+    result_t lrc;
+
+    lrc = wuss__relayout_all(wuss);
+    if (lrc != result_OK && rc == result_OK)
+      rc = lrc;
+  }
+
   return rc;
 }

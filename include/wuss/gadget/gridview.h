@@ -6,7 +6,8 @@
  * A wuss gadget: a reflowing grid of glyph-over-label cells on a caller's
  * window, e.g. a file/resource picker. Unlike \ref wuss_stringset_t, this
  * gadget owns no icons -- it draws its cells itself, so the task must
- * forward wuss_EVENT_REDRAW, wuss_EVENT_MOUSE and wuss_EVENT_OPEN to \ref
+ * forward wuss_EVENT_REDRAW, wuss_EVENT_MOUSE, wuss_EVENT_OPEN,
+ * wuss_EVENT_PALETTE and wuss_EVENT_RELAYOUT to \ref
  * wuss_gridview_handle_event.
  *
  * Items come from a count plus an \ref wuss_gridview_item_fn_t callback
@@ -17,7 +18,8 @@
  * an ellipsis.
  *
  * Column count follows the window's visible content width and is recomputed
- * on wuss_EVENT_OPEN; the gadget calls wuss_window_set_doc to match.
+ * on wuss_EVENT_OPEN and at create; the gadget calls wuss_window_set_doc to
+ * match, with a width reaching the widest layout the screen allows.
  * Hit-testing is arithmetic -- gaps between cells miss -- so no per-cell
  * icon exists to click.
  *
@@ -38,6 +40,8 @@ extern "C"
 
 #include "base/result.h"
 #include "framebuf/bitmap.h"
+#include "geom/box.h"
+#include "geom/size.h"
 
 #include "wuss/task.h"
 #include "wuss/window.h"
@@ -82,6 +86,22 @@ typedef void (wuss_gridview_item_fn_t)(int                    index,
 typedef void (wuss_gridview_activate_fn_t)(wuss_gridview_t *gridview,
                                            int              index,
                                            void            *opaque);
+
+/**
+ * Optional cell draw callback: draws item \p index in place of the default
+ * glyph-and-label. The screen's clip is already limited to the cell.
+ *
+ * \param[in] gridview   The gadget.
+ * \param[in] event      The wuss_EVENT_REDRAW being handled.
+ * \param[in] index      Item index.
+ * \param[in] screen_box The cell's box in screen coordinates.
+ * \param[in] opaque     As passed to \ref wuss_gridview_create.
+ */
+typedef void (wuss_gridview_draw_fn_t)(wuss_gridview_t    *gridview,
+                                       const wuss_event_t *event,
+                                       int                 index,
+                                       const box_t        *screen_box,
+                                       void               *opaque);
 
 /* ----------------------------------------------------------------------- */
 
@@ -171,6 +191,83 @@ result_t wuss_gridview_set_count(wuss_gridview_t *gridview, int count);
  * \return The glyph+label cell size, including padding.
  */
 size2d_t wuss_gridview_get_cell_size(const wuss_gridview_t *gridview);
+
+/**
+ * Re-measure the cell after the window's font or palette changed, then
+ * reflow and redraw. Called by \ref wuss_gridview_handle_event on
+ * wuss_EVENT_PALETTE and wuss_EVENT_RELAYOUT.
+ *
+ * \param[in] gridview Handle.
+ */
+void wuss_gridview_remeasure(wuss_gridview_t *gridview);
+
+/**
+ * Set the column policy. The defaults are no limit, any count and no inset.
+ *
+ * \param[in] gridview    Handle.
+ * \param[in] max_columns Most columns to use; 0 for no limit.
+ * \param[in] pow2        Non-zero to restrict columns to 1, 2, 4, 8...
+ * \param[in] inset       Margin in pixels round the whole grid.
+ */
+void wuss_gridview_set_layout(wuss_gridview_t *gridview,
+                              int              max_columns,
+                              int              pow2,
+                              int              inset);
+
+/**
+ * Choose whether resize-drags and toggle-size snap the window's content
+ * width to a whole number of columns. Off by default, so a drag follows the
+ * pointer and the last column may be partly blank.
+ *
+ * \param[in] gridview Handle.
+ * \param[in] snap     Non-zero to snap.
+ */
+void wuss_gridview_set_snap(wuss_gridview_t *gridview, int snap);
+
+/**
+ * Set a custom cell draw callback and whether cells can be selected.
+ *
+ * \param[in] gridview   Handle.
+ * \param[in] draw       Cell draw callback, or NULL for glyph and label.
+ * \param[in] selectable Non-zero if clicks select cells.
+ */
+void wuss_gridview_set_draw(wuss_gridview_t         *gridview,
+                            wuss_gridview_draw_fn_t *draw,
+                            int                      selectable);
+
+/**
+ * \param[in] gridview Handle.
+ * \return Current column count; 0 before the first layout.
+ */
+int wuss_gridview_get_columns(const wuss_gridview_t *gridview);
+
+/**
+ * \param[in] gridview Handle.
+ * \param[in] index    Item index.
+ * \return Item \p index's box in document coordinates.
+ */
+box_t wuss_gridview_cell_box(const wuss_gridview_t *gridview, int index);
+
+/**
+ * \param[in] gridview Handle.
+ * \param[in] columns  Column count; at least 1.
+ * \return Content width that shows exactly \p columns columns.
+ */
+int wuss_gridview_width_for_columns(const wuss_gridview_t *gridview,
+                                    int                    columns);
+
+/**
+ * Content size that suits opening the window: \p columns wide (or one column
+ * per item if fewer), as many rows as the items need up to \p max_rows.
+ *
+ * \param[in] gridview Handle.
+ * \param[in] columns  Column count; at least 1.
+ * \param[in] max_rows Row limit; at least 1.
+ * \return The content size.
+ */
+size2d_t wuss_gridview_natural_size(const wuss_gridview_t *gridview,
+                                    int                    columns,
+                                    int                    max_rows);
 
 #ifdef __cplusplus
 }
