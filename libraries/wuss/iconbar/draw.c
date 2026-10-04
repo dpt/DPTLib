@@ -38,16 +38,24 @@ void wuss__iconbar_icon_box(const wuss_t *wuss, int index, box_t *out)
 {
   box_t                      slot;
   const wuss_iconbar_icon_t *icon;
-  int                        h;
+  int                        h, block, font_h;
 
   wuss__iconbar_slot_box(wuss, index, &slot);
 
-  icon = wuss->iconbar_icons[index];
-  h    = (icon->spec.image != NULL) ? icon->spec.image->size.h
-                                    : WUSS_ICONBAR_ICON;
+  icon  = wuss->iconbar_icons[index];
+  h     = (icon->spec.image != NULL) ? icon->spec.image->size.h
+                                     : WUSS_ICONBAR_ICON;
+  block = h;
 
+  if (icon->spec.text[0] != '\0' && wuss->fonts.fonts[0] != NULL)
+  {
+    bmfont_get_info(wuss->fonts.fonts[0], NULL, &font_h, NULL, NULL);
+    block += WUSS_ICONBAR_TEXT_PAD + font_h;
+  }
+
+  /* spare space splits 5:3 above:below, rounded to nearest */
   out->x0 = slot.x0;
-  out->y0 = slot.y0 + (WUSS_ICONBAR_ICON_AREA - h) / 2;
+  out->y0 = slot.y0 + ((WUSS_ICONBAR_HEIGHT - block) * 5 + 4) / 8;
   out->x1 = out->x0 + WUSS_ICONBAR_ICON;
   out->y1 = out->y0 + h;
 }
