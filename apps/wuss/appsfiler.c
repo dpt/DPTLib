@@ -14,12 +14,15 @@
 #include "framebuf/bitmap.h"
 #include "io/path.h"
 #include "wuss/gadget/gridview.h"
+#include "wuss/component/proginfo.h"
 #include "wuss/iconbar.h"
+#include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
 
 #include "appsfiler.h"
 #include "tasks.h"
+#include "tasks/common.h"
 
 #define APPS_LABEL_CHARS 12
 #define APPS_COLUMNS     4
@@ -52,6 +55,10 @@ struct apps_task
   bitmap_t              glyph_directory;
   int                   have_glyph_file;
   int                   have_glyph_directory;
+
+  wuss_menu_handle_t    menu_handle;
+  wuss_menu_item_t      menu_items[1]; /* "Info" */
+  wuss_menu_t           menu;
 };
 
 static int apps_count(const apps_window_t *aw)
@@ -171,6 +178,18 @@ static void apps_destroy(apps_task_t *task)
   free(task);
 }
 
+static result_t apps_menu_open(apps_task_t *task)
+{
+  static const wuss_proginfo_desc_t desc =
+    TASK_PROGINFO_DESC("AppsFiler", "Launcher for the demo tasks");
+
+  wuss_proginfo_set_desc(&desc);
+  task->menu_items[0].window = wuss_proginfo_window(task->delegate);
+
+  return wuss_menu_open_at_pointer(task->delegate, &task->menu,
+                                   &task->menu_handle);
+}
+
 static result_t apps_handle(wuss_window_t      *window,
                             const wuss_event_t *event,
                             void               *task_data)
@@ -195,7 +214,28 @@ static result_t apps_handle(wuss_window_t      *window,
   case wuss_EVENT_ICON:
     if (window != NULL || event->data.iconbar_icon.action != wuss_MOUSE_UP)
       return result_OK;
+    if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
+      return apps_menu_open(task);
     return apps_open(task, -1);
+
+  case wuss_EVENT_MENU_CLOSED:
+    task->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == task->menu_items[0].window)
+      rc = wuss_proginfo_handle_pre_show();
+    else
+      rc = result_OK;
+    if (rc != result_OK || event->data.pre_show.handle == NULL)
+      return rc;
+
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
 
   case wuss_EVENT_CLOSE:
     aw = apps_find(task, window);
@@ -255,6 +295,13 @@ result_t appsfiler_create(wuss_t *wuss)
                   &task->have_glyph_file);
   apps_load_glyph(resources, "file_dir", &task->glyph_directory,
                   &task->have_glyph_directory);
+
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, 0, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo
+                                * singleton in apps_menu_open */
+  WUSS_MENU_TITLE(task->menu, "Apps", task->menu_items,
+                  NELEMS(task->menu_items));
 
   desc.handle    = apps_handle;
   desc.task_data = task;
