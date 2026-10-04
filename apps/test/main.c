@@ -56,6 +56,7 @@ static const test_t tests[] =
   { "bmfontcache", bmfontcache_test },
   { "bmfontfamily", bmfontfamily_test },
   { "composite",   composite_test   },
+  { "bitload",     bitmap_load_test },
   { "rle",         bitmap_rle_test  },
   { "curve",       curve_test       },
   { "dither",      dither_test      },

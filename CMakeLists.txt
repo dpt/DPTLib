@@ -789,6 +789,7 @@ if(BUILD_TESTS)
         libraries/datastruct/hash/test/hash-test.c
         libraries/datastruct/list/test/list-test.c
         libraries/datastruct/ntree/test/ntree-test.c
+        libraries/framebuf/bitmap/test/load-test.c
         libraries/framebuf/bitmap/test/rle-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/bmfont/test/bmfontcache-test.c

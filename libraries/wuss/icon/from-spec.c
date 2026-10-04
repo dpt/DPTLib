@@ -62,7 +62,8 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   /* A BITMAP (or DRAGGABLE) icon draws spec->u.bitmap.image, or -- when that
    * is NULL -- the loaded icon-set entry spec->u.bitmap.set names
    * (wuss_ICON_SET encodes the 0-based index +1, so 0 means "no entry"). A
-   * DRAGGABLE may have neither: it is still a drag handle, just blank. */
+   * DRAGGABLE may have neither: it is still a drag handle, drawn as the red
+ * box that stands in for any bitmap that can't be drawn. */
   bitmap = spec->u.bitmap.image;
   if ((spec->type == wuss_ICON_TYPE_BITMAP ||
        spec->type == wuss_ICON_TYPE_DRAGGABLE) && bitmap == NULL &&
