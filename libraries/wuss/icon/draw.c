@@ -517,8 +517,6 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
     bm = wuss_icons_bitmap(c->wuss, c->icon->spec.u.bitmap.pressed_set - 1);
   if (bm == NULL)
     bm = c->icon->spec.u.bitmap.image;
-  if (bm == NULL)
-    return;
 
   /* screen_copy_bitmap clips to scr->clip and does not scale, so narrow the
    * clip to the icon box (intersected with whatever redraw already set) and
@@ -527,7 +525,11 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
   if (box_intersection(&c->scr->clip, b, &clipped.clip))
     return;
 
-  screen_copy_bitmap(&clipped, b->x0, b->y0, bm);
+  /* a missing bitmap or a failed blit leaves a red box in its place */
+  if (bm == NULL ||
+      screen_copy_bitmap(&clipped, b->x0, b->y0, bm) != result_OK)
+    screen_fill_rect(&clipped, b->x0, b->y0, box_size(b),
+                     colour_rgb(255, 0, 0));
 }
 
 /* ----------------------------------------------------------------------- */
