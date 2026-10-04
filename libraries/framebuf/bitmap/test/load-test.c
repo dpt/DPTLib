@@ -184,7 +184,8 @@ static int test_grey16(const char *resources)
   return ok;
 }
 
-/* Grey+alpha is expanded to rgba8888: grey in all three channels, alpha kept. */
+/* Grey+alpha is expanded to rgba8888: grey in all three channels, alpha
+ * kept. */
 static int test_grey_alpha(const char *resources)
 {
   static const unsigned int grey[2][4]  = { { 0, 100, 200, 255 },
@@ -258,6 +259,88 @@ static int test_palette(const char *resources)
   }
 
   load_free(&bm);
+
+  return ok;
+}
+
+/* Paletted PNGs at the other depths: 1-bit keeps its bit order, 4-bit is
+ * swapped to p4's low-nibble-first order, and 8-bit is read as is. tRNS
+ * becomes palette alpha, and entries past the PLTE are opaque black. */
+static int test_palette_depths(const char *resources)
+{
+  static const unsigned char p1_0[] = { 0xB2 }, p1_1[] = { 0x4D };
+  static const unsigned char p4_0[] = { 0x50, 0xFA };
+  static const unsigned char p4_1[] = { 0xAF, 0x05 };
+  static const unsigned char p8_0[] = { 0, 1, 2, 3 };
+  static const unsigned char p8_1[] = { 3, 2, 1, 0 };
+
+  bitmap_t     bm;
+  unsigned int r, g, b;
+  int          ok;
+
+  ok = 1;
+
+  if (load_expect(resources, "pal1.png", 8, 2, pixelfmt_p1, &bm))
+  {
+    ok &= row_is(&bm, "pal1", 0, p1_0, 1);
+    ok &= row_is(&bm, "pal1", 1, p1_1, 1);
+    colour_get_rgb(&bm.palette[1], &r, &g, &b);
+    if (r != 0 || g != 0 || b != 255 ||
+        colour_get_alpha(&bm.palette[1]) != 255 ||
+        colour_get_alpha(&bm.palette[0]) != 0x10)
+    {
+      printf("load: pal1: palette wrong\n");
+      ok = 0;
+    }
+    load_free(&bm);
+  }
+  else
+  {
+    ok = 0;
+  }
+
+  if (load_expect(resources, "pal4.png", 4, 2, pixelfmt_p4, &bm))
+  {
+    ok &= row_is(&bm, "pal4", 0, p4_0, 2);
+    ok &= row_is(&bm, "pal4", 1, p4_1, 2);
+    colour_get_rgb(&bm.palette[5], &r, &g, &b);
+    if (r != 80 || g != 175 || b != 40 ||
+        colour_get_alpha(&bm.palette[5]) != 255 ||
+        colour_get_alpha(&bm.palette[15]) != 0)
+    {
+      printf("load: pal4: palette wrong\n");
+      ok = 0;
+    }
+    load_free(&bm);
+  }
+  else
+  {
+    ok = 0;
+  }
+
+  if (load_expect(resources, "pal8.png", 4, 2, pixelfmt_p8, &bm))
+  {
+    ok &= row_is(&bm, "pal8", 0, p8_0, 4);
+    ok &= row_is(&bm, "pal8", 1, p8_1, 4);
+    colour_get_rgb(&bm.palette[3], &r, &g, &b);
+    if (r != 10 || g != 11 || b != 12)
+    {
+      printf("load: pal8: palette[3] wrong\n");
+      ok = 0;
+    }
+    colour_get_rgb(&bm.palette[200], &r, &g, &b);
+    if (r != 0 || g != 0 || b != 0 ||
+        colour_get_alpha(&bm.palette[200]) != 255)
+    {
+      printf("load: pal8: unlisted entry is not opaque black\n");
+      ok = 0;
+    }
+    load_free(&bm);
+  }
+  else
+  {
+    ok = 0;
+  }
 
   return ok;
 }
@@ -342,6 +425,7 @@ result_t bitmap_load_test(const char *resources)
   ok &= test_grey16(resources);
   ok &= test_grey_alpha(resources);
   ok &= test_palette(resources);
+  ok &= test_palette_depths(resources);
   ok &= test_deep(resources);
   ok &= test_errors(resources);
 
