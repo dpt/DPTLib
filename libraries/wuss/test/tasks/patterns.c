@@ -1,4 +1,4 @@
-/* wuss/test/tasks/patterns.c -- dithered colour-blending task */
+/* wuss/test/tasks/patterns.c -- dithered colour gradient task */
 
 #ifdef WUSS_APP
 
@@ -21,7 +21,7 @@
 #include "common.h"
 #include "snapshot.h"
 
-#define PATTERNS_FPS 60 /* idle ticks per second */
+#define PATTERNS_STEP 4 /* pixels per gradient step */
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
  * per-instance in patterns_task_t, not as a file-scope static, so that
@@ -30,29 +30,12 @@
 enum
 {
   PATTERNS_MENU_INFO,
-  PATTERNS_MENU_SPEED,
-  PATTERNS_MENU_PAUSE,
+  PATTERNS_MENU_COLOUR_A,
+  PATTERNS_MENU_COLOUR_B,
   PATTERNS_MENU_SAVE
 };
 
 #define PATTERNS_SAVE_NAME "patterns.png" /* Save As's initial leafname */
-
-/* one entry per row of the "Speed" submenu: seconds per a-to-b blend */
-static const struct
-{
-  const char *name;
-  int         seconds;
-}
-patterns_speeds[PATTERNS_NSPEEDS] =
-{
-  { "1s",   1 },
-  { "2s",   2 },
-  { "5s",   5 },
-  { "10s", 10 },
-  { "15s", 15 }
-};
-
-#define PATTERNS_DEFAULT_SPEED 2 /* index into patterns_speeds: 5s */
 
 static colour_t patterns_random_colour(rng_t *rng)
 {
@@ -71,13 +54,11 @@ static int patterns_lerp(unsigned int c0, unsigned int c1, int f, int n)
   return (int) (c0 * (n - f) + c1 * f) / n;
 }
 
-/* blend a->b by frame_count and pick the nearest dither of the result */
-static void patterns_update_pattern(patterns_task_t *bc)
+/* a dither of the colour f of n steps of the way from a to b */
+static pattern_t patterns_step_pattern(patterns_task_t *bc, int f, int n)
 {
   unsigned int    ar, ag, ab;
   unsigned int    br, bg, bb;
-  int             f;
-  int             n;
   colour_t        mix;
   const colour_t *palette;
   int             npalette;
@@ -85,33 +66,13 @@ static void patterns_update_pattern(patterns_task_t *bc)
   colour_get_rgb(&bc->a, &ar, &ag, &ab);
   colour_get_rgb(&bc->b, &br, &bg, &bb);
 
-  f   = bc->frame_count;
-  n   = bc->blend_frames;
   mix = colour_rgb(patterns_lerp(ar, br, f, n),
                    patterns_lerp(ag, bg, f, n),
                    patterns_lerp(ab, bb, f, n));
 
-  palette     = wuss_get_palette(bc->wuss, &npalette);
-  bc->pattern = pattern_from_colour(palette, npalette, mix);
-}
+  palette = wuss_get_palette(bc->wuss, &npalette);
 
-/* switch the blend period to patterns_speeds[idx], rescaling frame_count so
- * the current blend carries on from the same colour */
-static result_t patterns_set_speed(patterns_task_t *bc, int idx)
-{
-  int n;
-
-  if (idx < 0 || idx >= PATTERNS_NSPEEDS)
-    return result_OK;
-
-  n                = patterns_speeds[idx].seconds * PATTERNS_FPS;
-  bc->frame_count  = bc->frame_count * n / bc->blend_frames;
-  bc->blend_frames = n;
-
-  wuss_menu_tick_exclusive(&bc->speed_menu, idx);
-  wuss_menu_tick_exclusive_live(bc->menu_handle, &bc->speed_menu, idx);
-
-  return result_OK;
+  return pattern_from_colour(palette, npalette, mix);
 }
 
 /* wuss_saveas_save_fn_t: opaque is the patterns_task_t */
@@ -131,20 +92,16 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   filetype_t       png_type;
-  int              i;
+  rng_t            rng;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
     return result_OOM;
 
-  task->wuss        = wuss;
-  rng_seed(&task->rng, (uint32_t) time(NULL));
-  task->a           = patterns_random_colour(&task->rng);
-  task->b           = patterns_random_colour(&task->rng);
-  task->blend_frames = patterns_speeds[PATTERNS_DEFAULT_SPEED].seconds *
-                       PATTERNS_FPS;
-  task->frame_count  = 0;
-  patterns_update_pattern(task);
+  task->wuss = wuss;
+  rng_seed(&rng, (uint32_t) time(NULL));
+  task->a    = patterns_random_colour(&rng);
+  task->b    = patterns_random_colour(&rng);
 
   /* patterns_redraw paints every pixel itself */
   delegate_desc.handle    = patterns_handle;
@@ -184,19 +141,12 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
                                 * just before wuss_menu_open, in
                                 * patterns_handle */
 
-  for (i = 0; i < PATTERNS_NSPEEDS; i++)
-    WUSS_MENU_ITEM(task->speed_items, i, patterns_speeds[i].name,
-                   i == PATTERNS_DEFAULT_SPEED ? wuss_MENU_ITEM_TICKED
-                                               : wuss_MENU_ITEM_NONE);
-
-  WUSS_MENU_TITLE(task->speed_menu, "Speed", task->speed_items,
-                  NELEMS(task->speed_items));
-
-  WUSS_MENU_ITEM_MENU(task->menu_items, PATTERNS_MENU_SPEED, "Speed",
-                      wuss_MENU_ITEM_NONE, &task->speed_menu);
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_PAUSE, "Pause",
-                          wuss_MENU_ITEM_NONE, "SPACE");
+  /* both rows open the shared colourmenu; patterns_pre_submenu_open retitles
+   * it and picks which colour a pick lands in */
+  WUSS_MENU_ITEM_MENU(task->menu_items, PATTERNS_MENU_COLOUR_A, "Colour A",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+  WUSS_MENU_ITEM_MENU(task->menu_items, PATTERNS_MENU_COLOUR_B, "Colour B",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
@@ -219,64 +169,26 @@ void patterns_destroy(patterns_task_t *task)
   free(task);
 }
 
-/* start the next blend: the old end colour becomes the start and a fresh
- * random colour the end */
-static void patterns_next_blend(patterns_task_t *bc)
+/* The Colour A and Colour B rows' submenu: the shared colourmenu singleton,
+ * retitled and retargeted at the matching colour each time it opens. */
+static result_t patterns_pre_submenu_open(patterns_task_t    *bc,
+                                          const wuss_event_t *event)
 {
-  bc->frame_count = 0;
-  bc->a           = bc->b;
-  bc->b           = patterns_random_colour(&bc->rng);
-}
+  const char *title;
 
-/* skip straight to the next blend and repaint, even while paused */
-static result_t patterns_skip(patterns_task_t *bc)
-{
-  patterns_next_blend(bc);
-  patterns_update_pattern(bc);
-  wuss_window_invalidate_visible(bc->window);
-
-  return result_OK;
-}
-
-/* Right skips to the next blend, as Select does. Anything else is passed
- * back unclaimed. */
-static result_t patterns_key(patterns_task_t *bc,
-                             wuss_window_t   *window,
-                             int              code)
-{
-  switch (code)
+  if (event->data.pre_submenu_open.index == PATTERNS_MENU_COLOUR_A)
   {
-  case wuss_KEY_RIGHT:
-    return patterns_skip(bc);
-
-  default:
-    return result_WUSS_KEY_UNCLAIMED;
+    bc->colourmenu_target = &bc->a;
+    title                 = "Colour A";
   }
-}
+  else
+  {
+    bc->colourmenu_target = &bc->b;
+    title                 = "Colour B";
+  }
 
-static result_t patterns_idle(void *task_data)
-{
-  patterns_task_t *bc;
-
-  bc = task_data;
-
-  /* the proginfo dialogue is a second window on this same (autoclose)
-   * delegate, so closing the main window alone never empties task->windows
-   * and the task lingers until the dialogue closes too -- guard against the
-   * dangling window in the meantime */
-  if (bc->window == NULL)
-    return result_OK;
-
-  if (bc->paused)
-    return result_OK;
-
-  if (++bc->frame_count >= bc->blend_frames)
-    patterns_next_blend(bc);
-
-  patterns_update_pattern(bc);
-  wuss_window_invalidate_visible(bc->window);
-
-  return result_OK;
+  return wuss_colourmenu_open_rgb(bc->wuss, event, title,
+                                  *bc->colourmenu_target);
 }
 
 static result_t patterns_redraw(const wuss_event_t *event, void *task_data)
@@ -284,20 +196,42 @@ static result_t patterns_redraw(const wuss_event_t *event, void *task_data)
   patterns_task_t *bc;
   const box_t     *content;
   const box_t     *bounds;
+  int              ox;
+  int              nsteps;
+  int              s;
+  int              s0;
+  int              s1;
   pattern_t        pat;
+  box_t            col;
+  box_t            clip;
 
   bc = task_data;
 
   content = event->data.redraw.content;
   bounds  = event->data.redraw.bounds;
 
-  /* anchor the tile at the work area's (0,0) in screen space, so every
-   * dirty rectangle shares one phase and it scrolls with the content */
-  pat          = bc->pattern;
-  pat.origin.x = bounds->x0 - event->data.redraw.scroll.x;
-  pat.origin.y = bounds->y0 - event->data.redraw.scroll.y;
+  /* the gradient spans the work area, anchored at its (0,0) in screen space
+   * so it scrolls with the content and every dirty rectangle shares one
+   * dither phase */
+  ox     = bounds->x0 - event->data.redraw.scroll.x;
+  nsteps = (bounds->x1 - bounds->x0 + PATTERNS_STEP - 1) / PATTERNS_STEP;
 
-  screen_fill_pattern(event->data.redraw.scr, content, &pat);
+  s0 = MAX(0, (content->x0 - ox) / PATTERNS_STEP);
+  s1 = MIN(nsteps - 1, (content->x1 - 1 - ox) / PATTERNS_STEP);
+
+  for (s = s0; s <= s1; s++)
+  {
+    pat          = patterns_step_pattern(bc, s, MAX(nsteps - 1, 1));
+    pat.origin.x = ox;
+    pat.origin.y = bounds->y0 - event->data.redraw.scroll.y;
+
+    col.x0 = ox + s * PATTERNS_STEP;
+    col.x1 = col.x0 + PATTERNS_STEP;
+    col.y0 = content->y0;
+    col.y1 = content->y1;
+    if (!box_intersection(&col, content, &clip))
+      screen_fill_pattern(event->data.redraw.scr, &clip, &pat);
+  }
 
   return result_OK;
 }
@@ -312,9 +246,6 @@ result_t patterns_handle(wuss_window_t      *window,
 
   switch (event->kind)
   {
-  case wuss_EVENT_IDLE:
-    return patterns_idle(task_data);
-
   case wuss_EVENT_REDRAW:
     return patterns_redraw(event, task_data);
 
@@ -325,20 +256,16 @@ result_t patterns_handle(wuss_window_t      *window,
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
 
-    if (event->data.mouse.button & wuss_BUTTON_SELECT)
-      return patterns_skip(bc);
-
     if (!(event->data.mouse.button & wuss_BUTTON_MENU))
       return result_OK;
     {
       static const wuss_proginfo_desc_t desc =
         TASK_PROGINFO_DESC("Patterns",
-                           "Ordered-dither blend between random colours");
+                           "Ordered-dither gradient between two chosen colours");
       wuss_proginfo_set_desc(&desc);
       bc->menu_items[PATTERNS_MENU_INFO].window =
         wuss_proginfo_window(bc->delegate);
     }
-    wuss_menu_tick_item(&bc->menu, PATTERNS_MENU_PAUSE, bc->paused);
     return wuss_menu_open_at_pointer(bc->delegate, &bc->menu,
                                      &bc->menu_handle);
 
@@ -352,29 +279,26 @@ result_t patterns_handle(wuss_window_t      *window,
     if (!task_key_is_plain(bc->delegate, &bc->menu, event, &rc))
       return rc;
 
-    return patterns_key(bc, window, event->data.key.code);
+    return result_WUSS_KEY_UNCLAIMED;
   }
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    return patterns_pre_submenu_open(bc, event);
 
   case wuss_EVENT_MENU_SELECT:
     {
       result_t rc;
 
       rc = result_OK;
-      if (event->data.menu_select.menu == &bc->speed_menu)
-      {
-        rc = patterns_set_speed(bc, event->data.menu_select.index);
-      }
-      else if (event->data.menu_select.menu == &bc->menu &&
-               event->data.menu_select.index == PATTERNS_MENU_PAUSE)
-      {
-        bc->paused = !bc->paused;
-        wuss_menu_tick_item_live(bc->menu_handle, &bc->menu,
-                                 PATTERNS_MENU_PAUSE, bc->paused);
-      }
-      else if (event->data.menu_select.menu == &bc->menu &&
-               event->data.menu_select.index == PATTERNS_MENU_SAVE)
+      if (event->data.menu_select.menu == &bc->menu &&
+          event->data.menu_select.index == PATTERNS_MENU_SAVE)
       {
         rc = wuss_saveas_open(bc->saveas);
+      }
+      else if (bc->colourmenu_target != NULL &&
+               wuss_colourmenu_selected_rgb(event, bc->colourmenu_target))
+      {
+        wuss_window_invalidate_visible(bc->window);
       }
       return rc;
     }
