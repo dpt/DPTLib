@@ -27,11 +27,10 @@
 #include "common.h"
 #include "snapshot.h"
 
-#define CHARS_COLS 16
-#define CHARS_ROWS 16
+#define CHARS_COLS 16 /* initial columns; see chars_task_t.cols */
 #define CHARS_PAD  1
 
-#define CHARS_PAGE_SIZE  (CHARS_COLS * CHARS_ROWS)
+#define CHARS_PAGE_SIZE  256
 #define CHARS_LAST_PAGE  0x1FF00ul /* scan up to the end of plane 1 */
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
@@ -66,9 +65,10 @@ static const wuss_menu_t *chars_fontmenu(chars_task_t *task)
 /* the rows of the grid for page that hold at least one glyph of font:
  * [*first_row, *first_row + *nrows). page + first_row * CHARS_COLS is the
  * codepoint of the top-left cell of the first such row. A page with no
- * glyphs at all gives one blank row. */
+ * glyphs at all gives one blank row. The grid is cols cells wide. */
 static void chars_row_range(bmfont_t     *font,
                             unsigned long page,
+                            int           cols,
                             int          *first_row,
                             int          *nrows)
 {
@@ -93,8 +93,8 @@ static void chars_row_range(bmfont_t     *font,
     return;
   }
 
-  *first_row = first / CHARS_COLS;
-  *nrows     = last / CHARS_COLS - *first_row + 1;
+  *first_row = first / cols;
+  *nrows     = last / cols - *first_row + 1;
 }
 
 /* whether font has a glyph for any codepoint in page */
@@ -109,21 +109,83 @@ static int chars_page_has_glyphs(bmfont_t *font, unsigned long page)
   return 0;
 }
 
-/* content size for the grid at the given font's cell metrics, less any
- * contiguous leading/trailing rows the font has no glyphs in. Each cell
- * stacks the index (drawn in the wuss system font) above the glyph. */
-static size2d_t chars_window_size(chars_task_t *task, bmfont_t *font)
+/* cell size at the given font's metrics. Each cell stacks the index (drawn
+ * in the wuss system font) above the glyph. */
+static void chars_cell_size(chars_task_t *task,
+                            bmfont_t     *font,
+                            int          *cell_w,
+                            int          *cell_h)
 {
-  int fw, fh, ifw, ifh, cell_w, cell_h;
-  int first_row, nrows;
+  int fw, fh, ifw, ifh;
 
   bmfont_get_info(font, &fw, &fh, NULL, NULL);
   bmfont_get_info(wuss_get_font(task->wuss), &ifw, &ifh, NULL, NULL);
-  cell_w = MAX(fw, ifw * 3) + CHARS_PAD * 2;
-  cell_h = ifh + fh + CHARS_PAD * 3;
-  chars_row_range(font, task->page, &first_row, &nrows);
-  return SIZE2D(cell_w * CHARS_COLS + wuss_STD_INSET * 2,
+  *cell_w = MAX(fw, ifw * 3) + CHARS_PAD * 2;
+  *cell_h = ifh + fh + CHARS_PAD * 3;
+}
+
+/* content size for the grid at task->cols, less any contiguous
+ * leading/trailing rows the font has no glyphs in */
+static size2d_t chars_window_size(chars_task_t *task, bmfont_t *font)
+{
+  int cell_w, cell_h;
+  int first_row, nrows;
+
+  chars_cell_size(task, font, &cell_w, &cell_h);
+  chars_row_range(font, task->page, task->cols, &first_row, &nrows);
+  return SIZE2D(cell_w * task->cols + wuss_STD_INSET * 2,
                cell_h * nrows + wuss_STD_INSET * 2);
+}
+
+/* largest power-of-two column count whose grid fits fit_w pixels, at least 1
+ * and at most one row of a page */
+static int chars_cols_for_width(int cell_w, int fit_w)
+{
+  int cols;
+
+  cols = 1;
+  while ((cols * 2) * cell_w + wuss_STD_INSET * 2 <= fit_w &&
+         cols * 2 <= CHARS_PAGE_SIZE)
+    cols *= 2;
+
+  return cols;
+}
+
+/* document extent: as wide as the widest layout the screen can show (no
+ * content can exceed the screen width), so the window can always be dragged
+ * wider, and as tall as the current wrap needs */
+static size2d_t chars_doc_size(chars_task_t *task, bmfont_t *font)
+{
+  int      cell_w, cell_h;
+  int      max_cols;
+  size2d_t grid;
+
+  chars_cell_size(task, font, &cell_w, &cell_h);
+  max_cols = chars_cols_for_width(cell_w, wuss_get_screen_size(task->wuss).w);
+  grid     = chars_window_size(task, font);
+  return SIZE2D(cell_w * max_cols + wuss_STD_INSET * 2, grid.h);
+}
+
+/* the window moved or resized: wrap the grid to the largest power-of-two
+ * column count that fits the content width, and re-extent the doc to suit.
+ * The window itself is left alone. */
+static void chars_rewrap(chars_task_t *task)
+{
+  box_t content;
+  int   cell_w, cell_h;
+  int   cols;
+
+  wuss_window_get_content_bounds(task->window, &content);
+  chars_cell_size(task, task->font, &cell_w, &cell_h);
+
+  cols = chars_cols_for_width(cell_w, content.x1 - content.x0);
+
+  if (cols == task->cols)
+    return;
+
+  task->cols = cols;
+  wuss_window_set_doc(task->window, chars_doc_size(task, task->font));
+  wuss_window_invalidate_visible(task->window);
 }
 
 /* load fonts[idx] if not already in hand; returns it or NULL on failure.
@@ -166,7 +228,7 @@ static void chars_resize(chars_task_t *task)
 
   grid = chars_window_size(task, task->font);
   wuss_window_resize(task->window, grid);
-  wuss_window_set_doc(task->window, grid);
+  wuss_window_set_doc(task->window, chars_doc_size(task, task->font));
   wuss_window_invalidate_visible(task->window);
 }
 
@@ -337,6 +399,7 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   const char        *sysname;
   int                i;
   size2d_t           grid;
+  int                cell_w, cell_h;
 
   font = wuss_get_font(wuss);
   if (font == NULL)
@@ -348,6 +411,7 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
 
   task->wuss        = wuss;
   task->font        = font;
+  task->cols        = CHARS_COLS;
   task->current     = -1; /* until the system font's row is found below */
   task->menu_handle = NULL;
   task->fg          = colour_rgb(0x00, 0x00, 0x00);
@@ -395,13 +459,19 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
+  /* 16 columns may not fit a small screen; the OPEN fired inside create_placed
+   * cannot rewrap as task->window is not yet set, so cap here and rewrap
+   * against the real (screen-capped) content size after */
+  chars_cell_size(task, font, &cell_w, &cell_h);
+  task->cols = MIN(task->cols, chars_cols_for_width(cell_w,
+                   wuss_get_screen_size(wuss).w));
   grid = chars_window_size(task, font);
   rc = wuss_window_create_placed(delegate,
                                  grid,
                                  "Chars",
                                  wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL,
                                  wuss_NO_BACKDROP,
-                                 grid,
+                                 chars_doc_size(task, font),
                                  SIZE2D(64, 64),
                                  &task->window);
   if (rc != result_OK)
@@ -409,6 +479,8 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
     return rc;
   }
+
+  chars_rewrap(task);
 
   png_type = filetype_from_ext(".png");
   rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
@@ -470,6 +542,7 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
   int           sysfont_width, sysfont_height, sysfont_ascent;
   int           cell_w, cell_h;
   int           first_row, nrows;
+  int           cols;
   int           i, sx, sy;
 
   cc = task_data;
@@ -487,7 +560,8 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
   cell_w = MAX(font_width, sysfont_width * 3) + CHARS_PAD * 2;
   cell_h = sysfont_height + font_height + CHARS_PAD * 3;
 
-  chars_row_range(cc->font, cc->page, &first_row, &nrows);
+  cols = cc->cols;
+  chars_row_range(cc->font, cc->page, cols, &first_row, &nrows);
 
   /* the wuss_STD_INSET margin around the grid falls outside every cell's own
    * fill below, so paint the whole dirty rect first -- covers that margin
@@ -496,7 +570,7 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
                    SIZE2D(bounds->x1 - bounds->x0,
                           bounds->y1 - bounds->y0), cc->bg);
 
-  for (i = 0; i < CHARS_COLS * nrows; i++)
+  for (i = 0; i < cols * nrows; i++)
   {
     int           col, row, x, y;
     unsigned long cp;
@@ -505,9 +579,9 @@ static result_t chars_redraw(const wuss_event_t *event, void *task_data)
     char          utf8[4];
     int           len;
 
-    col  = i % CHARS_COLS;
-    row  = i / CHARS_COLS;
-    cp   = cc->page + (unsigned long) ((first_row + row) * CHARS_COLS + col);
+    col  = i % cols;
+    row  = i / cols;
+    cp   = cc->page + (unsigned long) ((first_row + row) * cols + col);
     x    = bounds->x0 - sx + wuss_STD_INSET + col * cell_w;
     y    = bounds->y0 - sy + wuss_STD_INSET + row * cell_h;
 
@@ -573,6 +647,11 @@ result_t chars_handle(wuss_window_t      *window,
       chars_step_page(cc, 1);
     else if (event->data.mouse.button & wuss_BUTTON_ADJUST)
       chars_step_page(cc, -1);
+    return result_OK;
+
+  case wuss_EVENT_OPEN:
+    if (window == cc->window)
+      chars_rewrap(cc);
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
