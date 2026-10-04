@@ -230,8 +230,6 @@ and Adjust-close. The wuss Filer has none of these yet.
 
 ## Open points
 
-- No test drives a real `wuss_resize` through the relayout path.
-  The gridview test checks the event only.
 - Filer has no rubber-band selection, Menu-click callback or Adjust-close.
 
 ## Test checklist for a reflowable window
