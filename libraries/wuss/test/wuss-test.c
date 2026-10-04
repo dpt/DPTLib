@@ -251,6 +251,24 @@ static result_t saveas_recv_handle(wuss_window_t      *window,
 }
 #endif /* WUSS_COMPONENTS && !_WIN32 && !__riscos */
 
+#ifdef WUSS_GADGETS
+/* task handler that hands every event to gridview_forward_target */
+static wuss_gridview_t *gridview_forward_target;
+
+static result_t gridview_forward(wuss_window_t      *window,
+                                 const wuss_event_t *event,
+                                 void               *task_data)
+{
+  NOT_USED(window);
+  NOT_USED(task_data);
+
+  if (gridview_forward_target != NULL)
+    (void) wuss_gridview_handle_event(gridview_forward_target, event);
+
+  return result_OK;
+}
+#endif /* WUSS_GADGETS */
+
 static result_t test_handle(wuss_window_t      *window,
                             const wuss_event_t *event,
                             void               *task_data)
@@ -6848,6 +6866,94 @@ GridViewFail:
     printf("wuss_test: gridview check failed\n");
     return result_TEST_FAILED;
 GridViewOK: ;
+  }
+
+  printf("test: wuss_resize relays out a gridview window\n");
+  {
+    const char      *rlfontfile;
+    bmfont_t        *rlfont;
+    screen_t         rlscr, rlsmall;
+    bitmap_t         rlbm, rlsmallbm;
+    void            *rlpixels, *rlsmallpixels;
+    wuss_t          *rlwuss;
+    wuss_font_desc_t rlfdesc;
+    wuss_task_t     *rlowner;
+    wuss_window_t   *rlwin;
+    wuss_gridview_t *rlgv;
+    box_t            rlcontent, rlbounds;
+    int              big_doc_w;
+    int              min_w;
+
+    rlfontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
+    rc = bmfont_create(rlfontfile, &rlfont);
+    if (rc != result_OK) goto RelayoutFail;
+
+    rlpixels      = malloc((size_t) rowbytes * 300);
+    rlsmallpixels = malloc((size_t) rowbytes * 100);
+    if (rlpixels == NULL || rlsmallpixels == NULL) { rc = result_OOM; goto RelayoutFail; }
+    rc = bitmap_init(&rlbm, SIZE2D(300, 300), pixelfmt_bgrx8888, rowbytes,
+                     NULL, rlpixels);
+    if (rc != result_OK) goto RelayoutFail;
+    rc = bitmap_init(&rlsmallbm, SIZE2D(100, 100), pixelfmt_bgrx8888,
+                     rowbytes, NULL, rlsmallpixels);
+    if (rc != result_OK) goto RelayoutFail;
+    screen_for_bitmap(&rlscr, &rlbm);
+    screen_for_bitmap(&rlsmall, &rlsmallbm);
+
+    rlfdesc.font       = rlfont;
+    rlfdesc.font_class = wuss_FONT_CLASS_NONE;
+    rlfdesc.name       = NULL;
+    rc = wuss_create(&rlscr, &rlfdesc, 1, NULL, 0, NULL, NULL, resources,
+                     &rlwuss);
+    if (rc != result_OK) goto RelayoutFail;
+
+    rlowner = mk_task(rlwuss, gridview_forward, NULL);
+    if (rlowner == NULL) { rc = result_OOM; goto RelayoutFail; }
+
+    rlbounds = (box_t) BOX_POS_SIZE(10, 10, 280, 200);
+    rc = wuss_window_create(rlowner, &rlbounds, "RL", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP, SIZE2D(280, 200),
+                            SIZE2D(0, 0), &rlwin);
+    if (rc != result_OK) goto RelayoutFail;
+
+    rc = wuss_gridview_create(&rlgv, rlwin, NELEMS(gridview_test_labels),
+                              gridview_test_item, 8, NULL, NULL);
+    if (rc != result_OK) goto RelayoutFail;
+    gridview_forward_target = rlgv; /* events now reach the gridview */
+
+    big_doc_w = rlwin->doc.w;
+    min_w     = wuss_gridview_width_for_columns(rlgv, 1);
+
+    /* a smaller screen shrinks the window to it, the gridview rewraps to
+     * fit and the extent falls with the screen */
+    rc = wuss_resize(rlwuss, &rlsmall);
+    if (rc != result_OK) goto RelayoutFail;
+    wuss_window_get_content_bounds(rlwin, &rlcontent);
+    if (rlcontent.x1 > 100 || rlcontent.y1 > 100) goto RelayoutFail;
+    if (rlwin->doc.w >= big_doc_w) goto RelayoutFail;
+    if (wuss_gridview_get_columns(rlgv) < 1) goto RelayoutFail;
+    if (rlwin->min_doc.w != min_w) goto RelayoutFail;
+
+    /* a bigger screen raises the extent again so the window can be dragged
+     * wider */
+    rc = wuss_resize(rlwuss, &rlscr);
+    if (rc != result_OK) goto RelayoutFail;
+    if (rlwin->doc.w != big_doc_w) goto RelayoutFail;
+
+    wuss_gridview_destroy(rlgv);
+    gridview_forward_target = NULL;
+
+    reap_test_tasks();
+    wuss_destroy(rlwuss);
+    free(rlpixels);
+    free(rlsmallpixels);
+    bmfont_destroy(rlfont);
+    goto RelayoutOK;
+
+RelayoutFail:
+    printf("wuss_test: gridview relayout check failed\n");
+    return result_TEST_FAILED;
+RelayoutOK: ;
   }
 #endif /* WUSS_GADGETS */
 
