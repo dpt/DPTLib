@@ -16,9 +16,9 @@
 #define CHARS_MAX_PAGES 16 /* "Page" submenu rows; pages past this are not
                             * offered */
 
-/* displays one 256-codepoint Unicode page of a bitmap font as a 16x16 grid,
- * so the font can be eyeballed at a glance. A MENU click on the window opens
- * a menu whose "Font" row is the shared wuss_fontmenu singleton over
+/* displays one 256-codepoint Unicode page of a bitmap font as a grid
+ * (16 columns to start; the window width sets a power-of-two count), so the
+ * font can be eyeballed at a glance. A MENU click on the window opens a menu whose "Font" row is the shared wuss_fontmenu singleton over
  * resources/bmfonts, swapping the font in place, and whose "Page" row lists
  * the pages the current font has glyphs in. Select and Adjust clicks step
  * to the next and previous of those pages. Menu > Save PNG opens a Save As
@@ -39,6 +39,8 @@ typedef struct chars_task
   int                 nfonts;      /* length of fonts[]; == menu item count */
   int                 current;     /* index into fonts[], or -1 if the
                                     * system font is not listed */
+  int                 cols;        /* grid width in cells: a power of two
+                                    * that fits the window */
   colour_t            fg, mg, bg;
   unsigned long       page;        /* first codepoint of the page shown */
   wuss_menu_item_t    page_items[CHARS_MAX_PAGES]; /* rebuilt each time
