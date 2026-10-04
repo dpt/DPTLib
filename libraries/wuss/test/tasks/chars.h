@@ -10,6 +10,7 @@
 #include "wuss/component/fontmenu.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/component/saveas.h"
+#include "wuss/gadget/gridview.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
 
@@ -41,6 +42,9 @@ typedef struct chars_task
                                     * system font is not listed */
   int                 cols;        /* grid width in cells: a power of two
                                     * that fits the window */
+  wuss_gridview_t    *gv;          /* lays out and draws the cells */
+  int                 offset;      /* index of gv's first item within the page:
+                                    * the rows above it hold no glyphs */
   colour_t            fg, mg, bg;
   unsigned long       page;        /* first codepoint of the page shown */
   wuss_menu_item_t    page_items[CHARS_MAX_PAGES]; /* rebuilt each time

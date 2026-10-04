@@ -16,8 +16,8 @@ support it. "Open points" lists what is not done.
 
 ## Terms
 
-- **Quantum** — the width of one cell (`cell_w`). A task may make the content
-  area of a reflowable window a whole number of quanta wide, plus a fixed inset.
+- **Cell width** (`cell_w`) — the width of one cell. The window opens a whole
+  number of cells wide, plus a fixed inset.
 - **Natural width** — the width at which every item sits in one row, or the
   task's preferred starting width if that is smaller.
 - **Layout width** — the content width for a given column count `n`:
@@ -83,22 +83,10 @@ Gridview and Chars both do this. `doc.h` is the height of the current layout
 (`rows * cell_h`), so the vertical scrollbar shows the right proportion. With
 no items the grid is one column and one row.
 
-### 4. Window width can snap to the quantum
+### 4. Window width follows the pointer
 
-`wuss_window_set_width_quantum(window, step, base)` makes core snap the
-content width to `base + n * step` (at least one step) in a resize-drag, a
-toggle-size and a `wuss_resize`. A step of 0 turns snapping off.
-
-Snapping is a choice of the task, not of the gadget:
-
-| Task | Snaps | Why |
-|------|-------|-----|
-| Chars | yes | A blank strip is up to one *doubling* wide, which is a lot. |
-| Filer | no | A drag follows the pointer. The last column may be partly blank. |
-
-Gridview leaves snapping off. `wuss_gridview_set_snap(gv, 1)` turns it on and
-sets the quantum to the cell width. Chars sets its own quantum, and sets it
-again when the font changes the cell width.
+A resize-drag is not snapped to whole columns. The last column may be partly
+blank until the window reaches a column boundary.
 
 ### 5. Opening: size to the natural layout, capped to the screen
 
@@ -125,7 +113,7 @@ rewraps once after create.
 ### 6. Screen resolution change
 
 `wuss_resize` moves every window back on-screen, shrinks any that no longer
-fit and snaps widths to the quantum. It never grows a window. It then sends
+fit. It never grows a window. It then sends
 `wuss_EVENT_RELAYOUT` to every window, whether or not core moved it.
 
 On `wuss_EVENT_RELAYOUT` a task recomputes the screen content ceiling and so
@@ -171,11 +159,11 @@ selection nor the display. An optional draw callback
 | Cell content | bitmap + label | index text + glyph + rulers |
 | Cell size changes | on `wuss_gridview_remeasure` | with font |
 | Doc width | smaller of the item and screen limits | same |
-| Snaps to quantum | no | yes |
-| Gadget used | `wuss_gridview` | own code |
+| Gadget used | `wuss_gridview` | `wuss_gridview` |
 
-Chars could now use `wuss_gridview` through the draw callback and the
-power-of-two policy, but does not yet.
+Chars uses `wuss_gridview` through the draw callback, a fixed cell size, a
+background override and the power-of-two policy.
+It keeps its own mouse handling (page step, Menu).
 
 ## Prior art: PrivateEye `filerwin`
 
@@ -196,9 +184,8 @@ It differs from wuss in these ways.
 **Open is a request, not a notification.** `layout()` runs from
 `wimp_OPEN_WINDOW_REQUEST` *before* the handler calls `wimp_open_window`, so
 the extent is already right when the WIMP clamps the window. In wuss,
-`wuss_EVENT_OPEN` fires after the change, and not at all at create. Core now
-snaps the width itself (rule 4), so a pre-open event is not needed for that.
-`filerwin` could snap `open->visible.x1` but does not.
+`wuss_EVENT_OPEN` fires after the change, and not at all at create. Wuss
+does not snap widths, so a pre-open event is not needed.
 
 **Extent width uses both limits.** It is `hpad + maxcolumns * (object_width +
 hpad)` where `maxcolumns` is limited by `nobjects` *and* the screen width
@@ -231,32 +218,26 @@ and Adjust-close. The wuss Filer has none of these yet.
 
 | Item | Where |
 |------|-------|
-| `wuss_window_set_width_quantum(window, step, base)` | `include/wuss/window.h` |
 | `wuss_window_get_max_content(window, &max)` | `include/wuss/window.h` |
 | `wuss_window_set_doc` (changes `doc` after create) | `include/wuss/window.h` |
 | `wuss_EVENT_RELAYOUT` | `include/wuss/task.h` |
-| `wuss_gridview_set_layout`, `_set_snap`, `_set_draw` | `include/wuss/gadget/gridview.h` |
+| `wuss_gridview_set_layout`, `_set_draw` | `include/wuss/gadget/gridview.h` |
 | `wuss_gridview_remeasure`, `_natural_size`, `_width_for_columns`, `_cell_box`, `_get_columns` | same |
 
-Core owns the resize clamps, so snapping lives there: `furniture/drag-resize.c`,
-`furniture/toggle-action.c` and `core/resize.c` call `wuss__snap_width`.
 `core/relayout.c` sends `wuss_EVENT_RELAYOUT` after `wuss_resize` and
 `wuss_set_config`.
 
 ## Open points
 
-- Chars still has its own layout code (`chars_cols_for_width`,
-  `chars_doc_size`, `chars_rewrap`). It could use gridview with a draw
-  callback, `pow2` and `wuss_gridview_set_snap`.
-- A task that does not snap can be dragged narrower than one cell.
-- No test drives a real `wuss_resize` through the snapping and relayout paths.
-  The gridview test checks the quantum and the event only.
+- A window can be dragged narrower than one cell.
+- No test drives a real `wuss_resize` through the relayout path.
+  The gridview test checks the event only.
 - Filer has no rubber-band selection, Menu-click callback or Adjust-close.
 
 ## Test checklist for a reflowable window
 
 - Opens with no blank strip at the right, at a width that is `inset + n * cell_w`.
-- Dragging wider adds columns (at each quantum boundary if the task snaps) and
+- Dragging wider adds columns (at each column boundary) and
   stops at the largest layout width.
 - Dragging narrower removes columns; at the minimum width there is one
   column, not zero.

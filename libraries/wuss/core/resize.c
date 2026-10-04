@@ -53,12 +53,8 @@ static void resize_one_window(wuss_window_t *window)
   wuss__max_content_anywhere_on_screen(window, &max);
   if (size.w > max.w || size.h > max.h)
   {
-    size2d_t min;
-
-    wuss__min_content(window, &min);
     size.w = MIN(size.w, max.w);
     size.h = MIN(size.h, max.h);
-    size.w = wuss__snap_width(window, size.w, min.w);
     wuss_window_resize(window, size);
   }
 }
