@@ -79,7 +79,7 @@ result_t task_handle_event(wuss_window_t      *window,
                            const wuss_event_t *event,
                            void               *task_data);
 
-/* open the top-level task launcher (Launch / Quit Wuss) at pos; called on a
+/* open the backdrop menu (Info / Zoom / CRT / Pointer / Debug / Quit Wuss) at pos; called on a
  * MENU click over bare backdrop */
 result_t tasks_open_launcher(point_t pos);
 
@@ -103,6 +103,16 @@ void tasks_set_pointer(bool on);
  * create failure or unknown name rather than aborting the rest. Called
  * once at startup, after g_tasks.wuss is set. */
 void tasks_spawn(const char *names);
+
+/* The launchable tasks, grouped into categories (the folders AppsFiler
+ * shows). Indices are valid below the matching count; names are static. */
+int tasks_category_count(void);
+const char *tasks_category_name(int category);
+int tasks_entry_count(int category);
+const char *tasks_entry_name(int category, int index);
+
+/* Spawn task index of category, logging any create failure. */
+result_t tasks_entry_spawn(int category, int index);
 
 /* Fill out[0..nout-1]: ui[0..nui-1] copied in, then as much of the web-safe
  * 216 (6x6x6 cube, steps of 0x33) as fits, then black for whatever is left.
