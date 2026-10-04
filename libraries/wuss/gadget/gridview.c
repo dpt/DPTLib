@@ -51,7 +51,9 @@ struct wuss_gridview
   int                            max_columns; /* 0 for no limit */
   int                            pow2;    /* columns restricted to 1, 2, 4... */
   int                            selectable;
-  int                            snap;    /* window width snaps to cells */
+  int                            fixed_cell; /* cell set by the caller */
+  int                            has_bg;  /* bg replaces window_bg */
+  colour_t                       bg;
   wuss_gridview_draw_fn_t       *draw;    /* NULL: draw glyph and label */
 };
 
@@ -139,7 +141,8 @@ result_t wuss_gridview_create(wuss_gridview_t            **out,
   gv->max_columns = 0;
   gv->pow2        = 0;
   gv->selectable  = 1;
-  gv->snap        = 0;
+  gv->fixed_cell  = 0;
+  gv->has_bg      = 0;
   gv->draw        = NULL;
   gv->cell        = gridview_measure_cell(gv);
 
@@ -170,7 +173,8 @@ static int gridview_columns_for_width(const wuss_gridview_t *gv, int width)
   cols = MAX(cols, 1);
   if (gv->max_columns > 0)
     cols = MIN(cols, gv->max_columns);
-  cols = MIN(cols, MAX(gv->count, 1));
+  else
+    cols = MIN(cols, MAX(gv->count, 1));
 
   if (gv->pow2)
   {
@@ -191,9 +195,8 @@ static int gridview_width_for_columns(const wuss_gridview_t *gv, int cols)
 /* Recompute the column count from the window's current content width, and
  * set the document extent to match. The extent is as wide as the widest
  * layout this screen and item count allow, so the window can always be
- * dragged wider; it is as tall as the rows the current layout needs. Also
- * tells the window its width quantum. Does nothing if neither the columns
- * nor the extent changed. */
+ * dragged wider; it is as tall as the rows the current layout needs. Does
+ * nothing if neither the columns nor the extent changed. */
 static void gridview_reflow(wuss_gridview_t *gv)
 {
   box_t    content;
@@ -210,11 +213,6 @@ static void gridview_reflow(wuss_gridview_t *gv)
   /* always positive: cell size and at least one column and row */
   doc = SIZE2D(gridview_width_for_columns(gv, max_cols),
                MAX(rows, 1) * gv->cell.h + 2 * gv->inset);
-
-  /* cannot fail: the step and base are never negative */
-  (void) wuss_window_set_width_quantum(gv->window,
-                                       gv->snap ? gv->cell.w : 0,
-                                       2 * gv->inset);
 
   if (cols == gv->columns && doc.w == gv->doc.w && doc.h == gv->doc.h)
     return;
@@ -405,7 +403,8 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
     wuss    = gv->window->task->wuss;
     content = *event->data.redraw.content;
     screen_fill_rect(event->data.redraw.scr, content.x0, content.y0,
-                     box_size(&content), wuss->palette[wuss->window_bg]);
+                     box_size(&content),
+                     gv->has_bg ? gv->bg : wuss->palette[wuss->window_bg]);
 
     /* only the rows the clip reaches */
     first = (event->data.redraw.scr->clip.y0 - event->data.redraw.bounds->y0 +
@@ -514,8 +513,26 @@ size2d_t wuss_gridview_get_cell_size(const wuss_gridview_t *gv)
 
 void wuss_gridview_remeasure(wuss_gridview_t *gv)
 {
-  gv->cell = gridview_measure_cell(gv);
+  if (!gv->fixed_cell)
+    gv->cell = gridview_measure_cell(gv);
   gridview_reflow(gv);
+  wuss_window_invalidate_visible(gv->window);
+}
+
+void wuss_gridview_set_cell_size(wuss_gridview_t *gv, size2d_t cell)
+{
+  gv->cell       = SIZE2D(MAX(cell.w, 1), MAX(cell.h, 1));
+  gv->fixed_cell = 1;
+
+  gridview_reflow(gv);
+  wuss_window_invalidate_visible(gv->window);
+}
+
+void wuss_gridview_set_background(wuss_gridview_t *gv, colour_t colour)
+{
+  gv->bg     = colour;
+  gv->has_bg = 1;
+
   wuss_window_invalidate_visible(gv->window);
 }
 
@@ -530,12 +547,6 @@ void wuss_gridview_set_layout(wuss_gridview_t *gv,
 
   gridview_reflow(gv);
   wuss_window_invalidate_visible(gv->window);
-}
-
-void wuss_gridview_set_snap(wuss_gridview_t *gv, int snap)
-{
-  gv->snap = snap != 0;
-  gridview_reflow(gv);
 }
 
 void wuss_gridview_set_draw(wuss_gridview_t         *gv,

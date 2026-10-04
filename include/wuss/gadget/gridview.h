@@ -40,6 +40,7 @@ extern "C"
 
 #include "base/result.h"
 #include "framebuf/bitmap.h"
+#include "framebuf/colour.h"
 #include "geom/box.h"
 #include "geom/size.h"
 
@@ -205,7 +206,8 @@ void wuss_gridview_remeasure(wuss_gridview_t *gridview);
  * Set the column policy. The defaults are no limit, any count and no inset.
  *
  * \param[in] gridview    Handle.
- * \param[in] max_columns Most columns to use; 0 for no limit.
+ * \param[in] max_columns Most columns to use, whatever the item count; 0 for
+ *                        as many as there are items.
  * \param[in] pow2        Non-zero to restrict columns to 1, 2, 4, 8...
  * \param[in] inset       Margin in pixels round the whole grid.
  */
@@ -215,14 +217,23 @@ void wuss_gridview_set_layout(wuss_gridview_t *gridview,
                               int              inset);
 
 /**
- * Choose whether resize-drags and toggle-size snap the window's content
- * width to a whole number of columns. Off by default, so a drag follows the
- * pointer and the last column may be partly blank.
+ * Fix the cell size, replacing the measured one. Later calls to \ref
+ * wuss_gridview_remeasure keep it; call this again to change it.
  *
  * \param[in] gridview Handle.
- * \param[in] snap     Non-zero to snap.
+ * \param[in] cell     Cell size in pixels; each side at least 1.
  */
-void wuss_gridview_set_snap(wuss_gridview_t *gridview, int snap);
+void wuss_gridview_set_cell_size(wuss_gridview_t *gridview, size2d_t cell);
+
+/**
+ * Set the colour the content is cleared to before the cells are drawn,
+ * replacing the window background colour.
+ *
+ * \param[in] gridview Handle.
+ * \param[in] colour   Colour to clear to.
+ */
+void wuss_gridview_set_background(wuss_gridview_t *gridview,
+                                  colour_t         colour);
 
 /**
  * Set a custom cell draw callback and whether cells can be selected.

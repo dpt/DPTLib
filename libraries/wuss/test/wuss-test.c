@@ -6711,6 +6711,7 @@ StringSetOK: ;
     wuss_event_t     ev;
     box_t            gvcontent;
     int              cell_h;
+    int              cell_w;
     int              activated;
 
     gvfontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
@@ -6763,24 +6764,21 @@ StringSetOK: ;
     if (gvwin->doc.h % (int) NELEMS(gridview_test_labels) != 0) goto GridViewFail;
     cell_h = gvwin->doc.h / (int) NELEMS(gridview_test_labels);
 
-    /* the window's width quantum is the cell width, one column fits, and
-     * natural sizing and cell boxes follow the layout */
-    if (gvwin->width_step != 0) goto GridViewFail;
-    wuss_gridview_set_snap(gv, 1);
-    if (gvwin->width_step != wuss_gridview_get_cell_size(gv).w) goto GridViewFail;
+    /* one column fits, and natural sizing and cell boxes follow the
+     * layout */
+    cell_w = wuss_gridview_get_cell_size(gv).w;
     if (wuss_gridview_get_columns(gv) != 1) goto GridViewFail;
-    if (wuss_gridview_width_for_columns(gv, 3) != 3 * gvwin->width_step) goto GridViewFail;
+    if (wuss_gridview_width_for_columns(gv, 3) != 3 * cell_w) goto GridViewFail;
     if (wuss_gridview_natural_size(gv, 3, 1).h != cell_h) goto GridViewFail;
     if (wuss_gridview_cell_box(gv, 1).y0 != cell_h) goto GridViewFail;
 
     /* RELAYOUT and PALETTE re-measure without consuming the event */
     ev.kind = wuss_EVENT_RELAYOUT;
     if (wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
-    if (gvwin->width_step != wuss_gridview_get_cell_size(gv).w) goto GridViewFail;
 
     /* an inset widens the width for a column count */
     wuss_gridview_set_layout(gv, 0, 1, 4);
-    if (wuss_gridview_width_for_columns(gv, 2) != 2 * gvwin->width_step + 8) goto GridViewFail;
+    if (wuss_gridview_width_for_columns(gv, 2) != 2 * cell_w + 8) goto GridViewFail;
     wuss_gridview_set_layout(gv, 0, 0, 0);
 
     /* a foreign event is declined */

@@ -151,44 +151,46 @@ static int chars_cols_for_width(int cell_w, int fit_w)
   return cols;
 }
 
-/* document extent: as wide as the widest layout the screen can show (no
- * content can exceed the screen width), so the window can always be dragged
- * wider, and as tall as the current wrap needs */
-static size2d_t chars_doc_size(chars_task_t *task, bmfont_t *font)
+/* chars_task_t.gv's item callback: cells are drawn by chars_draw_cell, so
+ * there is no glyph or label to supply */
+static void chars_item(int index, void *opaque, wuss_gridview_item_t *out)
 {
-  int      cell_w, cell_h;
-  int      max_cols;
-  size2d_t grid;
+  NOT_USED(index);
+  NOT_USED(opaque);
 
-  chars_cell_size(task, font, &cell_w, &cell_h);
-  max_cols = chars_cols_for_width(cell_w, wuss_get_screen_size(task->wuss).w);
-  grid     = chars_window_size(task, font);
-  return SIZE2D(cell_w * max_cols + wuss_STD_INSET * 2, grid.h);
+  out->glyph = NULL;
+  out->label = NULL;
 }
 
-/* the window moved or resized: wrap the grid to the largest power-of-two
- * column count that fits the content width, and re-extent the doc to suit.
- * The window itself is left alone. */
-static void chars_rewrap(chars_task_t *task)
+/* the cell size at the shown font, handed to the gridview */
+static void chars_set_cell(chars_task_t *task)
 {
-  box_t content;
-  int   cell_w, cell_h;
-  int   cols;
+  int cell_w, cell_h;
 
-  wuss_window_get_content_bounds(task->window, &content);
   chars_cell_size(task, task->font, &cell_w, &cell_h);
+  wuss_gridview_set_cell_size(task->gv, SIZE2D(cell_w, cell_h));
+}
 
-  cols = chars_cols_for_width(cell_w, content.x1 - content.x0);
+/* the gridview chose a column count (or the font or page changed): keep the
+ * rows that hold glyphs, and so the item count and the first item's
+ * codepoint, to suit. Columns are not capped by the item count (see
+ * chars_create), so the new count cannot stop the grid growing wider. */
+static void chars_sync(chars_task_t *task)
+{
+  int first_row, nrows;
 
-  /* drags and toggles then land on whole cells */
-  (void) wuss_window_set_width_quantum(task->window, cell_w, 0);
+  task->cols = wuss_gridview_get_columns(task->gv);
+  chars_row_range(task->font, task->page, task->cols, &first_row, &nrows);
+  task->offset = first_row * task->cols;
+  (void) wuss_gridview_set_count(task->gv, nrows * task->cols);
+}
 
-  if (cols == task->cols)
-    return;
-
-  task->cols = cols;
-  wuss_window_set_doc(task->window, chars_doc_size(task, task->font));
-  wuss_window_invalidate_visible(task->window);
+/* offer a window event to the gridview and follow any change of columns */
+static void chars_relayout(chars_task_t *task, const wuss_event_t *event)
+{
+  (void) wuss_gridview_handle_event(task->gv, event);
+  if (wuss_gridview_get_columns(task->gv) != task->cols)
+    chars_sync(task);
 }
 
 /* load fonts[idx] if not already in hand; returns it or NULL on failure.
@@ -222,16 +224,15 @@ static bmfont_t *chars_load_font(chars_task_t *task,
 }
 
 /* the grid's cell metrics scale with the font and its row count with the
- * page, so both the window and its scrollable extent have to follow -- resize
- * alone would leave the doc (and so the scroll range) sized to the old grid,
- * clipping the far cells of a larger one unreachably */
+ * page, so the gridview's cell and count have to follow and the window has to
+ * take the new natural size */
 static void chars_resize(chars_task_t *task)
 {
-  size2d_t grid;
-
-  grid = chars_window_size(task, task->font);
-  wuss_window_resize(task->window, grid);
-  wuss_window_set_doc(task->window, chars_doc_size(task, task->font));
+  chars_set_cell(task);
+  chars_sync(task);
+  wuss_window_resize(task->window,
+                     wuss_gridview_natural_size(task->gv, task->cols,
+                                                CHARS_PAGE_SIZE));
   wuss_window_invalidate_visible(task->window);
 }
 
@@ -388,6 +389,8 @@ static result_t chars_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(cc->window, chars_handle, cc, path);
 }
 
+static wuss_gridview_draw_fn_t chars_draw_cell;
+
 /* ----------------------------------------------------------------------- */
 
 result_t chars_create(wuss_t *wuss, chars_task_t **out)
@@ -473,7 +476,7 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
                                  "Chars",
                                  wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL,
                                  wuss_NO_BACKDROP,
-                                 chars_doc_size(task, font),
+                                 grid,
                                  SIZE2D(64, 64),
                                  &task->window);
   if (rc != result_OK)
@@ -482,7 +485,21 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
     return rc;
   }
 
-  chars_rewrap(task);
+  /* columns are limited by the screen and window, not by the item count,
+   * which follows the columns (chars_sync) */
+  rc = wuss_gridview_create(&task->gv, task->window, CHARS_PAGE_SIZE,
+                            chars_item, 1, NULL, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  wuss_gridview_set_layout(task->gv, CHARS_PAGE_SIZE, 1, wuss_STD_INSET);
+  wuss_gridview_set_draw(task->gv, chars_draw_cell, 0);
+  wuss_gridview_set_background(task->gv, task->bg);
+  chars_set_cell(task);
+  chars_sync(task);
 
   png_type = filetype_from_ext(".png");
   rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
@@ -530,98 +547,71 @@ void chars_destroy(chars_task_t *task)
       bmfontcache_release(wuss_get_font_cache(task->wuss), task->fonts[i]);
   free(task->fonts);
 
+  wuss_gridview_destroy(task->gv);
   wuss_saveas_destroy(task->saveas);
   free(task);
 }
 
-static result_t chars_redraw(const wuss_event_t *event, void *task_data)
+/* wuss_gridview_draw_fn_t: one cell, the index above the glyph, with a rule
+ * for the baseline and a blue rule for the glyph's advance width */
+static void chars_draw_cell(wuss_gridview_t    *gv,
+                            const wuss_event_t *event,
+                            int                 index,
+                            const box_t        *screen_box,
+                            void               *opaque)
 {
-  chars_task_t *cc;
-  screen_t     *scr;
-  bmfont_t     *sysfont;
-  const box_t  *bounds;
-  int           font_width, font_height, font_ascent;
-  int           sysfont_width, sysfont_height, sysfont_ascent;
-  int           cell_w, cell_h;
-  int           first_row, nrows;
-  int           cols;
-  int           i, sx, sy;
+  chars_task_t  *cc;
+  screen_t      *scr;
+  bmfont_t      *sysfont;
+  int            font_ascent, sysfont_height, sysfont_ascent;
+  int            cell_w, cell_h, x, y, len;
+  unsigned long  cp;
+  char           label[4];
+  char           utf8[4];
+  point_t        pos;
+  bmfont_width_t advance;
+  colour_t       blue;
+  int            adv_y;
 
-  cc = task_data;
+  NOT_USED(gv);
 
-  scr    = event->data.redraw.scr;
-  bounds = event->data.redraw.bounds;
-  sx     = event->data.redraw.scroll.x;
-  sy     = event->data.redraw.scroll.y;
+  cc  = opaque;
+  scr = event->data.redraw.scr;
 
   sysfont = wuss_get_font(cc->wuss);
+  bmfont_get_info(cc->font, NULL, NULL, &font_ascent, NULL);
+  bmfont_get_info(sysfont, NULL, &sysfont_height, &sysfont_ascent, NULL);
 
-  bmfont_get_info(cc->font, &font_width, &font_height, &font_ascent, NULL);
-  bmfont_get_info(sysfont, &sysfont_width, &sysfont_height, &sysfont_ascent,
-                  NULL);
-  cell_w = MAX(font_width, sysfont_width * 3) + CHARS_PAD * 2;
-  cell_h = sysfont_height + font_height + CHARS_PAD * 3;
+  x      = screen_box->x0;
+  y      = screen_box->y0;
+  cell_w = screen_box->x1 - screen_box->x0;
+  cell_h = screen_box->y1 - screen_box->y0;
+  cp     = cc->page + (unsigned long) (cc->offset + index);
 
-  cols = cc->cols;
-  chars_row_range(cc->font, cc->page, cols, &first_row, &nrows);
+  screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), cc->bg);
+  screen_draw_line(scr, x, y, x + cell_w - 1, y, cc->mg);
+  screen_draw_line(scr, x, y, x, y + cell_h - 1, cc->mg);
 
-  /* the wuss_STD_INSET margin around the grid falls outside every cell's own
-   * fill below, so paint the whole dirty rect first -- covers that margin
-   * and any dirty strip past the last row/column of cells too. */
-  screen_fill_rect(scr, bounds->x0, bounds->y0,
-                   SIZE2D(bounds->x1 - bounds->x0,
-                          bounds->y1 - bounds->y0), cc->bg);
+  snprintf(label, 4, "%02lX", cp & 0xFF);
+  pos.x = x + CHARS_PAD;
+  pos.y = y + CHARS_PAD + sysfont_ascent;
+  wuss_text_draw(cc->wuss, 0, scr, label, (int) strlen(label), cc->mg, cc->bg,
+                 &pos, NULL);
 
-  for (i = 0; i < cols * nrows; i++)
-  {
-    int           col, row, x, y;
-    unsigned long cp;
-    char          label[4];
-    point_t       pos;
-    char          utf8[4];
-    int           len;
+  if (bmfont_lookup(cc->font, cp) < 0)
+    return; /* no glyph for this codepoint: leave the cell blank */
 
-    col  = i % cols;
-    row  = i / cols;
-    cp   = cc->page + (unsigned long) ((first_row + row) * cols + col);
-    x    = bounds->x0 - sx + wuss_STD_INSET + col * cell_w;
-    y    = bounds->y0 - sy + wuss_STD_INSET + row * cell_h;
+  len   = utf8_encode(cp, utf8);
+  pos.x = x + CHARS_PAD;
+  pos.y = y + CHARS_PAD * 2 + sysfont_height + font_ascent;
+  screen_draw_dashed_line(scr, x + CHARS_PAD, pos.y, x + cell_w - 1 - CHARS_PAD,
+                          pos.y, 1, 1, cc->mg);
+  bmfont_draw(cc->font, scr, utf8, len, cc->fg, cc->bg, NULL, &pos, NULL);
 
-    screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), cc->bg);
-    screen_draw_line(scr, x, y, x + cell_w - 1, y, cc->mg);
-    screen_draw_line(scr, x, y, x, y + cell_h - 1, cc->mg);
-
-    snprintf(label, 4, "%02lX", cp & 0xFF);
-    pos.x = x + CHARS_PAD;
-    pos.y = y + CHARS_PAD + sysfont_ascent;
-    wuss_text_draw(cc->wuss, 0, scr, label, (int) strlen(label), cc->mg,
-                   cc->bg, &pos, NULL);
-
-    if (bmfont_lookup(cc->font, cp) < 0)
-      continue; /* no glyph for this codepoint: leave the cell blank */
-
-    len   = utf8_encode(cp, utf8);
-    pos.x = x + CHARS_PAD;
-    pos.y = y + CHARS_PAD * 2 + sysfont_height + font_ascent;
-    screen_draw_dashed_line(scr, x + CHARS_PAD, pos.y,
-                            x + cell_w - 1 - CHARS_PAD, pos.y, 1, 1, cc->mg);
-    bmfont_draw(cc->font, scr, utf8, len, cc->fg, cc->bg, NULL, &pos, NULL);
-
-    /* advance width: a blue rule under the glyph spanning pos.x..pos.x+advance,
-     * a ruler for how far this glyph pushes the pen */
-    {
-      bmfont_width_t advance;
-      colour_t       blue;
-      int            adv_y;
-
-      bmfont_measure(cc->font, utf8, len, NULL, INT_MAX, NULL, &advance);
-      blue  = colour_rgb(0x66, 0x66, 0xFF);
-      adv_y = y + cell_h - 1 - CHARS_PAD;
-      screen_draw_line(scr, pos.x, adv_y, pos.x + advance - 1, adv_y, blue);
-    }
-  }
-
-  return result_OK;
+  bmfont_measure(cc->font, utf8, len, NULL, INT_MAX, NULL, &advance);
+  blue  = colour_rgb(0x66, 0x66, 0xFF);
+  adv_y = y + cell_h - 1 - CHARS_PAD;
+  screen_draw_line(scr, pos.x, adv_y, pos.x + advance - 1, adv_y, blue);
 }
 
 result_t chars_handle(wuss_window_t      *window,
@@ -652,16 +642,9 @@ result_t chars_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_OPEN:
-    if (window == cc->window)
-      chars_rewrap(cc);
-    return result_OK;
-
   case wuss_EVENT_RELAYOUT:
     if (window == cc->window)
-    {
-      cc->cols = 0; /* force the doc to be re-extented to the new screen */
-      chars_rewrap(cc);
-    }
+      chars_relayout(cc, event);
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
@@ -730,7 +713,9 @@ result_t chars_handle(wuss_window_t      *window,
     return wuss_menu_dispatch_shortcut(cc->delegate, &cc->menu, event);
 
   case wuss_EVENT_REDRAW:
-    return chars_redraw(event, task_data);
+    if (window == cc->window)
+      (void) wuss_gridview_handle_event(cc->gv, event);
+    return result_OK;
 
   default:
     return result_OK;

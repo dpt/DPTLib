@@ -87,8 +87,6 @@ result_t wuss_window_create(wuss_task_t        *task,
   win->scroll.y   = 0;
   win->doc        = doc;
   win->min_doc    = min_doc;
-  win->width_step = 0;
-  win->width_base = 0;
 #ifdef WUSS_FURNITURE
   win->state      = wuss_WINDOW_STATE_NONE;
   win->furniture_layout.flags = 0; /* built lazily on first paint */
