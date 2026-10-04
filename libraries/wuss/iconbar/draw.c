@@ -36,14 +36,20 @@ void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out)
 
 void wuss__iconbar_icon_box(const wuss_t *wuss, int index, box_t *out)
 {
-  box_t slot;
+  box_t                      slot;
+  const wuss_iconbar_icon_t *icon;
+  int                        h;
 
   wuss__iconbar_slot_box(wuss, index, &slot);
 
+  icon = wuss->iconbar_icons[index];
+  h    = (icon->spec.image != NULL) ? icon->spec.image->size.h
+                                    : WUSS_ICONBAR_ICON;
+
   out->x0 = slot.x0;
-  out->y0 = slot.y0 + WUSS_ICONBAR_OUTLINE + WUSS_ICONBAR_TOP_SPARE;
+  out->y0 = slot.y0 + (WUSS_ICONBAR_HEIGHT - h) / 2;
   out->x1 = out->x0 + WUSS_ICONBAR_ICON;
-  out->y1 = out->y0 + WUSS_ICONBAR_ICON;
+  out->y1 = out->y0 + h;
 }
 
 /* ----------------------------------------------------------------------- */
