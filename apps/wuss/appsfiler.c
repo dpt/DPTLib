@@ -186,9 +186,8 @@ static result_t apps_menu_open(apps_task_t *task)
   wuss_proginfo_set_desc(&desc);
   task->menu_items[0].window = wuss_proginfo_window(task->delegate);
 
-  return wuss_menu_open_above(task->delegate, &task->menu,
-                              wuss_get_pointer(task->wuss).x,
-                              wuss_ICONBAR_MENU_GAP, &task->menu_handle);
+  return wuss_iconbar_menu_open(task->delegate, &task->menu,
+                                &task->menu_handle);
 }
 
 static result_t apps_handle(wuss_window_t      *window,
