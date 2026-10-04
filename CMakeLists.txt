@@ -891,7 +891,6 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/fireball.c
         libraries/wuss/test/tasks/gradient.c
         libraries/wuss/test/tasks/greeble.c
-        libraries/wuss/test/tasks/iconbar-demo.c
         libraries/wuss/test/tasks/icons.c
         libraries/wuss/test/tasks/image.c
         libraries/wuss/test/tasks/keys.c

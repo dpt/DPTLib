@@ -34,7 +34,6 @@
 #include "tasks/filer.h"
 #include "tasks/gradient.h"
 #include "tasks/greeble.h"
-#include "tasks/iconbar-demo.h"
 #include "tasks/icons.h"
 #include "tasks/image.h"
 #include "tasks/keys.h"
@@ -130,7 +129,6 @@ g_games_tasks[] =
 g_tests_tasks[] =
 {
 #ifdef WUSS_ICONBAR
-  { "Icon Bar",    (task_create_fn_t) iconbar_demo_create },
 #endif
   { "Icons",       (task_create_fn_t) icons_create       },
   { "Keys",        (task_create_fn_t) keys_create        },
