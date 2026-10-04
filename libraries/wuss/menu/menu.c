@@ -920,6 +920,8 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
     at.y = wuss->scr->size.h - height - outline_px;
   if (at.x - outline_px < 0)
     at.x = outline_px;
+  if (parent == NULL && wuss->menu_bottom_gap > 0)
+    at.y = wuss->scr->size.h - wuss->menu_bottom_gap - height - outline_px;
   if (at.y - outline_px - titlebar_height < 0)
     at.y = outline_px + titlebar_height;
 
@@ -1102,6 +1104,39 @@ result_t wuss_menu_open(wuss_task_t        *task,
    * eaten. wuss_mouse_click clears this on the next MOUSE_UP whether or not it
    * hit the menu. */
   wuss->menu_eat_up = 1;
+
+  if (out != NULL)
+    *out = root;
+  return result_OK;
+}
+
+result_t wuss_menu_open_above(wuss_task_t        *task,
+                              const wuss_menu_t  *menu,
+                              int                 x,
+                              int                 gap,
+                              wuss_menu_handle_t *out)
+{
+  result_t           rc;
+  struct wuss__menu *root;
+  wuss_t            *wuss;
+
+  assert(task != NULL);
+  assert(menu != NULL);
+
+  wuss = task->wuss;
+
+  if (wuss->menu_chain != NULL)
+    wuss__menu_abandon(wuss);
+
+  x -= wuss__menu_entry_gutter_left(wuss__fontset_height(&wuss->fonts, 0));
+
+  wuss->menu_bottom_gap = gap;
+  rc = wuss__menu_spawn(wuss, task, menu, POINT(x, 0), NULL, &root);
+  wuss->menu_bottom_gap = 0;
+  if (rc != result_OK)
+    return rc;
+
+  wuss->menu_chain = root;
 
   if (out != NULL)
     *out = root;

@@ -113,6 +113,7 @@ result_t wuss_create(screen_t               *scr,
   w->menu_chain         = NULL;
   w->menu_task          = NULL;
   w->menu_eat_up        = 0;
+  w->menu_bottom_gap    = 0;
 #endif
 #ifdef WUSS_ICONBAR
   w->iconbar_window         = NULL;

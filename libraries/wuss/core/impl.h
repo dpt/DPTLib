@@ -282,6 +282,11 @@ struct wuss
                                             * lazily on first wuss_menu_open,
                                             * freed by wuss_destroy's task
                                             * sweep */
+  int                         menu_bottom_gap; /* non-zero only during
+                                                * wuss_menu_open_above: the
+                                                * root menu's bottom edge
+                                                * sits this far above the
+                                                * screen bottom */
   int                         menu_eat_up;  /* a menu opened on the last
                                             * MOUSE_DOWN; swallow its matching
                                             * MOUSE_UP so the release does not
