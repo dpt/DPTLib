@@ -28,6 +28,7 @@ extern "C"
 #include "base/result.h"
 #include "framebuf/screen.h"
 
+#include "wuss/menu.h"
 #include "wuss/wuss.h"
 
 /* The icon bar is a compile-time option (CMake WUSS_ICONBAR). With it off
@@ -39,11 +40,6 @@ extern "C"
 
 /* wuss_iconbar_icon_t (opaque) is forward-declared in wuss.h so it can be
  * named regardless of this option. */
-
-/** Gap, in pixels, between the bottom edge of a menu opened from an icon bar
- *  icon and the bottom of the screen: pass it as \c gap to
- *  \ref wuss_menu_open_above. */
-#define wuss_ICONBAR_MENU_GAP 47
 
 /**
  * Description of an icon bar icon at creation. Copied by value into the
@@ -87,6 +83,23 @@ result_t wuss_iconbar_icon_create(wuss_t                         *wuss,
  * \param[in] icon Icon to remove, or NULL.
  */
 void wuss_iconbar_icon_destroy(wuss_t *wuss, wuss_iconbar_icon_t *icon);
+
+#ifdef WUSS_MENUS
+/**
+ * Open \p menu for an icon bar icon, as wuss_menu_open_above placed at the
+ * pointer's x with the bar's standard gap (47px) between the menu's bottom
+ * edge and the bottom of the screen. Call it from the icon's wuss_EVENT_ICON
+ * handler.
+ *
+ * \param[in]  task Task that receives the menu's events.
+ * \param[in]  menu Menu to show; borrowed, must outlive the open chain.
+ * \param[out] out  Filled with the chain handle, or NULL if not wanted.
+ * \return \ref result_OK, \ref result_OOM, or a wuss_window_create code.
+ */
+result_t wuss_iconbar_menu_open(wuss_task_t        *task,
+                                const wuss_menu_t  *menu,
+                                wuss_menu_handle_t *out);
+#endif /* WUSS_MENUS */
 
 #endif /* WUSS_ICONBAR */
 

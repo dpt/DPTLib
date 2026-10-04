@@ -508,6 +508,7 @@ set(WUSS_ICONBAR_SOURCES
     libraries/wuss/iconbar/destroy.c
     libraries/wuss/iconbar/draw.c
     libraries/wuss/iconbar/hit-test.c
+    libraries/wuss/iconbar/menu-open.c
     libraries/wuss/iconbar/task-destroyed.c
     libraries/wuss/iconbar.h)
 
