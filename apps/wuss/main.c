@@ -35,6 +35,7 @@
 
 #include "frontend.h"
 #include "script.h"
+#include "appsfiler.h"
 #include "tasks.h"
 
 #include "tasks/palette.h" /* palette_load_hex for the startup *.hex */
@@ -700,6 +701,13 @@ static result_t run_wuss(const char *resources,
   }
 
   g_tasks.quit = false;
+
+#ifdef WUSS_ICONBAR
+  rc = appsfiler_create(wuss);
+  if (rc != result_OK)
+    logf_error("wuss: appsfiler_create -> rc=0x%X (%s)", rc,
+               result_string(rc));
+#endif
 
   tasks_spawn(tasks);
 

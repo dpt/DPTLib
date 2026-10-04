@@ -868,6 +868,8 @@ if(BUILD_APPS)
     endif()
 
     set(WUSS_APP_SOURCES
+        apps/wuss/appsfiler.c
+        apps/wuss/appsfiler.h
         apps/wuss/main.c
         apps/wuss/script.c
         apps/wuss/script.h
