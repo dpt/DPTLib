@@ -291,7 +291,7 @@ result_t appsfiler_create(wuss_t *wuss)
   }
 
   resources = wuss_get_resources(wuss);
-  apps_load_glyph(resources, "file_unk", &task->glyph_file,
+  apps_load_glyph(resources, "file_app", &task->glyph_file,
                   &task->have_glyph_file);
   apps_load_glyph(resources, "file_dir", &task->glyph_directory,
                   &task->have_glyph_directory);
