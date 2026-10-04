@@ -19,12 +19,11 @@
 #define WUSS_ICONBAR_ICON       34
 #define WUSS_ICONBAR_GAP        8
 #define WUSS_ICONBAR_SLOT       (WUSS_ICONBAR_ICON + WUSS_ICONBAR_GAP)
-#define WUSS_ICONBAR_HEIGHT     66
+#define WUSS_ICONBAR_HEIGHT     67
 #define WUSS_ICONBAR_TEXT_PAD   2  /* clear space above the label */
 
-/* Vertical placement: an icon of image height h sits
- * (WUSS_ICONBAR_ICON_AREA - h) / 2 below the top of the bar. */
-#define WUSS_ICONBAR_ICON_AREA  76
+/* Vertical placement: the icon (plus WUSS_ICONBAR_TEXT_PAD and the font
+ * height if labelled) has the spare bar height split 5:3 above:below. */
 #define WUSS_ICONBAR_OUTLINE    1
 
 /* A live icon bar icon is its creation spec plus the task it delivers
@@ -47,8 +46,7 @@ void wuss__iconbar_box(const wuss_t *wuss, box_t *out);
 void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out);
 
 /* Icon i's own box (screen space): WUSS_ICONBAR_ICON wide, as tall as its
- * image, placed (WUSS_ICONBAR_ICON_AREA - height) / 2 below the top of the
- * bar, excluding the gap that follows it. */
+ * image, placed as above, excluding the gap that follows it. */
 void wuss__iconbar_icon_box(const wuss_t *wuss, int index, box_t *out);
 
 /* Paint every icon (image/label) into "piece", a piece of
