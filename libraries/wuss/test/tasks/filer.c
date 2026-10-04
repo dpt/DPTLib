@@ -77,7 +77,7 @@ static filer_window_t *filer_find_by_window(filer_task_t        *task,
   int i;
 
   for (i = 0; i < task->nwindows; i++)
-    if (task->windows[i].window == window)
+    if (window != NULL && task->windows[i].window == window)
       return &task->windows[i];
 
   return NULL;
