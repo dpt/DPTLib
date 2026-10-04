@@ -169,6 +169,60 @@ a new `wuss_gridview_remeasure` (or destroy and create).
 Chars cannot use `wuss_gridview` as it stands: the gridview draws a bitmap
 and a label with its own cell painter and has no column-count policy hook.
 
+## Prior art: PrivateEye `filerwin`
+
+`PrivateEye/libs/appengine/gadgets/filerwin/filerwin.c` is the RISC OS WIMP
+version of the same window. It agrees with the rules above on the cell, the
+quantum, the column count and the missing horizontal scrollbar:
+
+- The quantum is `object_width + hpad` and the inset is `hpad`, so a layout
+  is `hpad + n * (object_width + hpad)` wide.
+- `columns = CLAMP((width - hpad) / (object_width + hpad), 1, nobjects)`.
+- The window has `VSCROLL` only.
+- The extent is reset, and the window force-redrawn, only when the row or
+  column count changes.
+
+It differs from wuss in these ways.
+
+**Open is a request, not a notification.** `layout()` runs from
+`wimp_OPEN_WINDOW_REQUEST` *before* the handler calls `wimp_open_window`, so
+the extent is already right when the WIMP clamps the window. In wuss,
+`wuss_EVENT_OPEN` fires after the change, and during create it fires before
+the task has its window. A pre-open event that lets the task veto or adjust
+the new size would fix both, and would give core the place to snap the width
+to the quantum (rule 4). `filerwin` could snap `open->visible.x1` at that
+point but does not.
+
+**Extent width uses both limits.** It is `hpad + maxcolumns * (object_width +
+hpad)` where `maxcolumns` is limited by `nobjects` *and* the screen width
+(`read_screen_dimensions`). `gridview` limits by item count only and Chars by
+screen width only. The smaller of the two is right: more columns than items,
+or than the screen can show, can never be used.
+
+**Drawing is a callback.** `filerwin_redrawfn(redraw, x, y, index, selected,
+opaque)` draws each cell, and `map()` calls it only for cells that intersect
+the clip box. `gridview` takes an `item_fn` that returns a glyph and a label
+and paints them itself, which is why Chars cannot use it. An optional
+per-cell draw callback, and a column policy such as `pow2`, would let Chars
+share `gridview`.
+
+**Shared gaps.** `filerwin` has the same holes as the wuss tasks:
+
+- It reads the screen size only inside `layout()`, and writes the extent only
+  when the rows or columns change, so a screen mode change leaves the extent
+  stale until the next resize (rule 6).
+- It opens at a default 1024x512 and lays out afterwards, not at the natural
+  size (rule 5).
+- Font and furniture changes are not handled (rule 7).
+- `filerwin_set_nobjects` does not relayout, where `wuss_gridview_set_count`
+  does.
+- With `nobjects == 0` the `CLAMP(columns, 1, nobjects)` has its minimum above
+  its maximum.
+
+**Features outside the layout.** `filerwin` also has rubber-band selection
+with auto-scroll, Select and Adjust selection semantics, a Menu-click callback
+and Adjust-close. The wuss Filer has none of these yet.
+
 ## Proposed shared helper
 
 Everything in rules 2, 3, 5 and 6 depends only on `cell_w`, an item count and
