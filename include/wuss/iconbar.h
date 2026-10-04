@@ -40,6 +40,11 @@ extern "C"
 /* wuss_iconbar_icon_t (opaque) is forward-declared in wuss.h so it can be
  * named regardless of this option. */
 
+/** Gap, in pixels, between the bottom edge of a menu opened from an icon bar
+ *  icon and the bottom of the screen: pass it as \c gap to
+ *  \ref wuss_menu_open_above. */
+#define wuss_ICONBAR_MENU_GAP 47
+
 /**
  * Description of an icon bar icon at creation. Copied by value into the
  * icon; the caller keeps ownership of \c text, which is copied.

@@ -27,7 +27,6 @@
 #define APPS_LABEL_CHARS 12
 #define APPS_COLUMNS     4
 #define APPS_MAX_ROWS    4
-#define APPS_MENU_GAP    47 /* icon bar menu bottom to screen bottom, pixels */
 
 /* ponytail: window slots are inline, 0 the root plus one per category, so
  * there is no malloc bookkeeping. Raise it if more categories are added. */
@@ -189,7 +188,7 @@ static result_t apps_menu_open(apps_task_t *task)
 
   return wuss_menu_open_above(task->delegate, &task->menu,
                               wuss_get_pointer(task->wuss).x,
-                              APPS_MENU_GAP, &task->menu_handle);
+                              wuss_ICONBAR_MENU_GAP, &task->menu_handle);
 }
 
 static result_t apps_handle(wuss_window_t      *window,
