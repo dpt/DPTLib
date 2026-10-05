@@ -646,6 +646,111 @@ static result_t test_draw_lines(void)
 
 /* ----------------------------------------------------------------------- */
 
+static result_t test_draw_thick_line(void)
+{
+  static testscreen_t ts;
+  static testscreen_t enc;
+
+  int                 fg, bg;
+  int                 x, y;
+  int                 lit;
+
+  fg = (int) np_encode(&enc, 255, 0, 0);
+  bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
+
+  /* Horizontal, width 3: rows 19..21, columns 10..30 inclusive, no more. */
+  testscreen_init(&ts);
+  screen_draw_thick_line(&ts.scr, 10, 20, 30, 20, 3, colour_rgb(255, 0, 0));
+
+  for (y = 0; y < HEIGHT; y++)
+    for (x = 0; x < WIDTH; x++)
+    {
+      int want;
+
+      want = (y >= 19 && y <= 21 && x >= 10 && x <= 30) ? fg : bg;
+      if (np_at(&ts, x, y) != want)
+      {
+        printf("screen: draw_thick_line horizontal wrong at (%d,%d)\n", x, y);
+        return result_TEST_FAILED;
+      }
+    }
+
+  /* Vertical, width 2, drawn backwards: columns 19..20, rows 5..25. */
+  testscreen_init(&ts);
+  screen_draw_thick_line(&ts.scr, 20, 25, 20, 5, 2, colour_rgb(255, 0, 0));
+
+  for (y = 0; y < HEIGHT; y++)
+    for (x = 0; x < WIDTH; x++)
+    {
+      int want;
+
+      want = (x >= 19 && x <= 20 && y >= 5 && y <= 25) ? fg : bg;
+      if (np_at(&ts, x, y) != want)
+      {
+        printf("screen: draw_thick_line vertical wrong at (%d,%d)\n", x, y);
+        return result_TEST_FAILED;
+      }
+    }
+
+  /* Diagonal, width 5: the centreline and its neighbours across the stroke
+   * are lit, pixels well off it are not. */
+  testscreen_init(&ts);
+  screen_draw_thick_line(&ts.scr, 10, 10, 50, 50, 5, colour_rgb(255, 0, 0));
+
+  for (x = 10; x <= 50; x++)
+    if (np_at(&ts, x, x) != fg ||
+        (x < 50 && (np_at(&ts, x + 1, x) != fg || np_at(&ts, x, x + 1) != fg)))
+    {
+      printf("screen: draw_thick_line diagonal gap at %d\n", x);
+      return result_TEST_FAILED;
+    }
+  if (np_at(&ts, 30, 36) != bg || np_at(&ts, 36, 30) != bg ||
+      np_at(&ts, 6, 6) != bg || np_at(&ts, 54, 54) != bg)
+  {
+    printf("screen: draw_thick_line diagonal too fat\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Width 1 is a plain line; width 0 draws nothing. */
+  testscreen_init(&ts);
+  screen_draw_thick_line(&ts.scr, 4, 4, 40, 20, 0, colour_rgb(255, 0, 0));
+  lit = 0;
+  for (y = 0; y < HEIGHT; y++)
+    for (x = 0; x < WIDTH; x++)
+      lit += (np_at(&ts, x, y) != bg);
+  if (lit != 0)
+  {
+    printf("screen: draw_thick_line width 0 drew\n");
+    return result_TEST_FAILED;
+  }
+
+  testscreen_init(&enc);
+  testscreen_init(&ts);
+  screen_draw_line(&enc.scr, 4, 4, 40, 20, colour_rgb(255, 0, 0));
+  screen_draw_thick_line(&ts.scr, 4, 4, 40, 20, 1, colour_rgb(255, 0, 0));
+  if (memcmp(ts.pixels, enc.pixels, sizeof(ts.pixels)) != 0)
+  {
+    printf("screen: draw_thick_line width 1 differs from draw_line\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Wild and wholly off-screen coordinates must not crash or draw. */
+  testscreen_init(&ts);
+  screen_draw_thick_line(&ts.scr, -100000, -100000, 100000, 100000, 7,
+                         colour_rgb(255, 0, 0));
+  screen_draw_thick_line(&ts.scr, -50, -50, -20, -10, 6,
+                         colour_rgb(255, 0, 0));
+  if (np_at(&ts, 32, 32) != fg || np_at(&ts, 0, 63) != bg)
+  {
+    printf("screen: draw_thick_line clipped line wrong\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 static result_t test_draw_rect(void)
 {
   static testscreen_t ts;
@@ -2199,6 +2304,7 @@ result_t screen_test(const char *resources)
     test_fill_pattern,
     test_dashed_line,
     test_draw_lines,
+    test_draw_thick_line,
     test_draw_rect,
     test_draw_circle,
     test_fill_circle,
