@@ -122,6 +122,13 @@ g_games_tasks[] =
 #endif
   { "Minesweeper", minesweeper_app_create }
 },
+g_image_tasks[] =
+{
+  { "Dithering", dithering_app_create },
+  { "Effects", effects_app_create },
+  { "Image", image_app_create },
+  { "Tiling", tiling_app_create }
+},
 g_tests_tasks[] =
 {
   { "Icons", icons_app_create },
@@ -138,14 +145,10 @@ g_visuals_tasks[] =
 {
   { "Checker", checker_app_create },
   { "Curve", curve_app_create },
-  { "Dithering", dithering_app_create },
-  { "Effects", effects_app_create },
   { "Gradient", gradient_app_create },
   { "Greeble", greeble_app_create },
-  { "Image", image_app_create },
   { "Lissajous", lissajous_app_create },
-  { "Patterns", patterns_app_create },
-  { "Tiling", tiling_app_create }
+  { "Patterns", patterns_app_create }
 },
 g_toys_tasks[] =
 {
@@ -390,6 +393,7 @@ static struct
 g_task_categories[] =
 {
   { "Games", g_games_tasks,     NELEMS(g_games_tasks)     },
+  { "Image", g_image_tasks,     NELEMS(g_image_tasks)     },
   { "Tests", g_tests_tasks,     NELEMS(g_tests_tasks)     },
   { "Toys", g_toys_tasks,      NELEMS(g_toys_tasks)      },
   { "System", g_system_tasks,    NELEMS(g_system_tasks)    },
