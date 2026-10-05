@@ -56,6 +56,9 @@ static screen_t g_scr;
  * 16-colour Wimp palette. */
 static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
 {
+  /* fields left at 0 (mouse timings, ...) take wuss's defaults */
+  memset(config, 0, sizeof(*config));
+
   config->titlebar_height = 0;
   config->backdrop.pattern = screen_PATTERN_DOTS;
 
