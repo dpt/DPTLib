@@ -44,6 +44,7 @@ struct wuss_gridview
   bitvec_t                      *selected;
   int                            label_chars;
   size2d_t                       cell;    /* glyph+label cell size, with padding */
+  size2d_t                       content; /* widest glyph/label, tallest glyph */
   int                            pad_x;   /* cell side edge to its contents */
   int                            pad_y;   /* cell top/bottom edge to contents */
   int                            spacing; /* glyph to label */
@@ -62,11 +63,12 @@ struct wuss_gridview
 
 /* ----------------------------------------------------------------------- */
 
-/* Cell size: the widest item (its glyph or its measured label, the label
- * capped at "label_chars" characters of the window's font) plus padding,
- * stacked glyph-over-label. Walks every item once, at create time only --
+/* Walk every item once and record the widest content (its glyph or its
+ * measured label, the label capped at "label_chars" characters of the
+ * window's font) and the tallest glyph in gv->content. Costs a text measure
+ * per item, so it runs only when the items or the font may have changed --
  * the label cap stops one long name inflating the grid. */
-static size2d_t gridview_measure_cell(wuss_gridview_t *gv)
+static void gridview_measure_items(wuss_gridview_t *gv)
 {
   wuss_t              *wuss;
   bmfont_t            *font;
@@ -106,8 +108,19 @@ static size2d_t gridview_measure_cell(wuss_gridview_t *gv)
     }
   }
 
-  return SIZE2D(MAX(glyph_w, label_w) + 2 * gv->pad_x,
-               glyph_h + wuss__fontset_height(&wuss->fonts, 0) +
+  gv->content = SIZE2D(MAX(glyph_w, label_w), glyph_h);
+}
+
+/* Cell size from the cached content size, the padding and the font height:
+ * glyph stacked over label. Cheap, so safe to call whenever padding changes. */
+static size2d_t gridview_cell_size(const wuss_gridview_t *gv)
+{
+  const wuss_t *wuss;
+
+  wuss = gv->window->task->wuss;
+
+  return SIZE2D(gv->content.w + 2 * gv->pad_x,
+               gv->content.h + wuss__fontset_height(&wuss->fonts, 0) +
                2 * gv->pad_y + gv->spacing);
 }
 
@@ -160,7 +173,8 @@ result_t wuss_gridview_create(wuss_gridview_t            **out,
   gv->spacing     = wuss_STD_GAP;
   gv->has_bg      = 0;
   gv->draw        = NULL;
-  gv->cell        = gridview_measure_cell(gv);
+  gridview_measure_items(gv);
+  gv->cell        = gridview_cell_size(gv);
 
   gridview_reflow(gv);
 
@@ -290,9 +304,9 @@ static void gridview_clear_selected(wuss_gridview_t *gv)
 {
   int i;
 
-  for (i = 0; i < gv->count; i++)
-    if (bitvec_get(gv->selected, (bitvec_index_t) i))
-      gridview_invalidate_cell(gv, i);
+  for (i = bitvec_next(gv->selected, -1); i >= 0;
+       i = bitvec_next(gv->selected, i))
+    gridview_invalidate_cell(gv, i);
 
   bitvec_clear_all(gv->selected);
 }
@@ -534,8 +548,9 @@ size2d_t wuss_gridview_get_cell_size(const wuss_gridview_t *gv)
 
 void wuss_gridview_remeasure(wuss_gridview_t *gv)
 {
+  gridview_measure_items(gv);
   if (!gv->fixed_cell)
-    gv->cell = gridview_measure_cell(gv);
+    gv->cell = gridview_cell_size(gv);
   gridview_reflow(gv);
   wuss_window_invalidate_visible(gv->window);
 }
@@ -579,7 +594,11 @@ void wuss_gridview_set_padding(wuss_gridview_t *gv,
   gv->pad_y   = MAX(pad_y, 0);
   gv->spacing = MAX(spacing, 0);
 
-  wuss_gridview_remeasure(gv);
+  /* items and font are unchanged, so the cached content size still holds */
+  if (!gv->fixed_cell)
+    gv->cell = gridview_cell_size(gv);
+  gridview_reflow(gv);
+  wuss_window_invalidate_visible(gv->window);
 }
 
 void wuss_gridview_set_draw(wuss_gridview_t         *gv,
