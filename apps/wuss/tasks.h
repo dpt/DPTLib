@@ -24,7 +24,7 @@ extern struct wuss_app_tasks
   wuss_t          *wuss;
   wuss_task_t     *menu_task; /* owns the task launcher menus; also the home
                                * task for the shared proginfo singleton, see
-                               * tasks_open_launcher's "Info" row */
+                               * tasks_open_menu's "Info" row */
   bool             quit; /* set by the "Quit Wuss" task-menu entry */
   wuss_frontend_t *frontend; /* pushed to on wuss_EVENT_PALETTE; see
                               * task_handle_event */
@@ -79,9 +79,11 @@ result_t task_handle_event(wuss_window_t      *window,
                            const wuss_event_t *event,
                            void               *task_data);
 
-/* open the backdrop menu (Info / Zoom / CRT / Pointer / Debug / Quit Wuss) at pos; called on a
- * MENU click over bare backdrop */
-result_t tasks_open_launcher(point_t pos);
+#ifdef WUSS_ICONBAR
+/* open the Wuss menu (Info / Zoom / CRT / Pointer / Debug / Quit Wuss) above
+ * the icon bar; called on a MENU click on the TaskManager icon */
+result_t tasks_open_menu(void);
+#endif
 
 /* offer a key the focused window passed on to the task launcher's menu
  * shortcuts (e.g. F4 for Quit Wuss); result_WUSS_KEY_UNCLAIMED if none

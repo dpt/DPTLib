@@ -9,6 +9,7 @@
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
+#include "wuss/iconbar.h"
 #include "wuss/task.h"
 #include "wuss/wuss.h"
 #include "wuss/window.h"
@@ -106,8 +107,9 @@ static result_t spawn_task(task_entry_t *entry)
   return rc;
 }
 
-/* The backdrop MENU-button pop-up now holds only system actions; every task
- * is launched from AppsFiler, which walks g_task_categories below. */
+/* The Wuss menu (opened from the TaskManager icon) holds only system actions;
+ * every task is launched from AppsFiler, which walks g_task_categories
+ * below. */
 
 
 static task_entry_t
@@ -189,7 +191,7 @@ static const wuss_menu_t g_debug_menu =
   "Debug", g_debug_items, NELEMS(g_debug_items)
 };
 
-/* Top-level backdrop menu rows, picked by index in task_handle_event. Every
+/* Top-level Wuss menu rows, picked by index in task_handle_event. Every
  * task is launched from AppsFiler now, so only system actions remain. */
 enum
 {
@@ -360,16 +362,18 @@ result_t task_handle_event(wuss_window_t      *window,
   return result_OK;
 }
 
-result_t tasks_open_launcher(point_t pos)
+#ifdef WUSS_ICONBAR
+result_t tasks_open_menu(void)
 {
   static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Wuss demo", "Window manager demo");
+    TASK_PROGINFO_DESC("Wuss", "Graphical User Interface");
 
   wuss_proginfo_set_desc(&desc);
   g_task_items[TASK_ITEM_INFO].window = wuss_proginfo_window(g_tasks.menu_task);
 
-  return wuss_menu_open(g_tasks.menu_task, &g_task_menu, pos, NULL);
+  return wuss_iconbar_menu_open(g_tasks.menu_task, &g_task_menu, NULL);
 }
+#endif
 
 result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers)
 {
@@ -386,19 +390,19 @@ result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers)
  * category a task lives in. */
 static struct
 {
-  const char         *name;
-  task_entry_t       *tasks;
-  int                  count;
+  const char   *name;
+  task_entry_t *tasks;
+  int           count;
 }
 g_task_categories[] =
 {
-  { "Games", g_games_tasks,     NELEMS(g_games_tasks)     },
-  { "Image", g_image_tasks,     NELEMS(g_image_tasks)     },
-  { "Tests", g_tests_tasks,     NELEMS(g_tests_tasks)     },
-  { "Toys", g_toys_tasks,      NELEMS(g_toys_tasks)      },
-  { "System", g_system_tasks,    NELEMS(g_system_tasks)    },
+  { "Games",     g_games_tasks,     NELEMS(g_games_tasks)     },
+  { "Image",     g_image_tasks,     NELEMS(g_image_tasks)     },
+  { "Tests",     g_tests_tasks,     NELEMS(g_tests_tasks)     },
+  { "Toys",      g_toys_tasks,      NELEMS(g_toys_tasks)      },
+  { "System",    g_system_tasks,    NELEMS(g_system_tasks)    },
   { "Utilities", g_utilities_tasks, NELEMS(g_utilities_tasks) },
-  { "Visuals", g_visuals_tasks,   NELEMS(g_visuals_tasks)   }
+  { "Visuals",   g_visuals_tasks,   NELEMS(g_visuals_tasks)   }
 };
 
 int tasks_category_count(void)

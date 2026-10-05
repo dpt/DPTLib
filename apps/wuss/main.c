@@ -36,6 +36,7 @@
 #include "frontend.h"
 #include "script.h"
 #include "appsfiler.h"
+#include "taskmanager.h"
 #include "tasks.h"
 
 #include "tasks/palette.h" /* palette_load_hex for the startup *.hex */
@@ -334,15 +335,7 @@ static void wuss_frame(void *arg)
       break;
 
     case wuss_INPUT_MOUSE_DOWN:
-      {
-        wuss_window_t *hit;
-
-        wuss_mouse_click(c->wuss, ev.pos, ev.button, wuss_MOUSE_DOWN, &hit);
-
-        /* MENU click on bare backdrop opens the task launcher there */
-        if (hit == NULL && (ev.button & wuss_BUTTON_MENU))
-          tasks_open_launcher(ev.pos);
-      }
+      wuss_mouse_click(c->wuss, ev.pos, ev.button, wuss_MOUSE_DOWN, NULL);
       break;
 
     case wuss_INPUT_MOUSE_UP:
@@ -710,6 +703,11 @@ static result_t run_wuss(const char *resources,
   rc = appsfiler_create(wuss);
   if (rc != result_OK)
     logf_error("wuss: appsfiler_create -> rc=0x%X (%s)", rc,
+               result_string(rc));
+
+  rc = taskmanager_create(wuss);
+  if (rc != result_OK)
+    logf_error("wuss: taskmanager_create -> rc=0x%X (%s)", rc,
                result_string(rc));
 #endif
 
