@@ -9153,11 +9153,9 @@ QuitFail:
       goto Failure;
 
     /* entries are sorted by name, whatever order the directory scan gave */
-    if (!(wuss_iconpool_lookup(wuss, "flag") <
+    if (!(wuss_iconpool_lookup(wuss, "apps") <
           wuss_iconpool_lookup(wuss, "gright") &&
           wuss_iconpool_lookup(wuss, "gright") <
-          wuss_iconpool_lookup(wuss, "mine") &&
-          wuss_iconpool_lookup(wuss, "mine") <
           wuss_iconpool_lookup(wuss, "optoff") &&
           wuss_iconpool_lookup(wuss, "optoff") < opton &&
           opton < wuss_iconpool_lookup(wuss, "radoff") &&
@@ -9210,7 +9208,7 @@ QuitFail:
       if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)
         goto Failure;
 
-      /* or by name, resolved to the same indices at creation; the borrowed
+      /* or by name, resolved to the pool bitmaps at creation; the borrowed
        * names are not kept */
       memset(&spec, 0, sizeof(spec));
       spec.bbox                   = (box_t) BOX_POS_SIZE(0, 0, 16, 16);
@@ -9220,10 +9218,9 @@ QuitFail:
       rc = wuss_icon_create(win_ic, &spec, &icon);
       if (rc != result_OK)
         goto Failure;
-      if (icon->spec.u.bitmap.set != wuss_ICONPOOL_SET(opton) ||
-          icon->spec.u.bitmap.pressed_set !=
-            wuss_ICONPOOL_SET(wuss_iconpool_lookup(wuss, "radon")) ||
-          icon->spec.u.bitmap.image != wuss_iconpool_bitmap(wuss, opton) ||
+      if (icon->spec.u.bitmap.image != wuss_iconpool_bitmap(wuss, opton) ||
+          icon->spec.u.bitmap.pressed_image !=
+            wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "radon")) ||
           icon->spec.u.bitmap.name != NULL ||
           icon->spec.u.bitmap.pressed_name != NULL)
         goto Failure;
@@ -9246,7 +9243,7 @@ QuitFail:
       spec.u.bitmap.name         = "opton";
       spec.u.bitmap.pressed_name = "nonesuch";
       rc = wuss_icon_create(win_ic, &spec, &icon);
-      if (rc != result_OK || icon->spec.u.bitmap.pressed_set != 0)
+      if (rc != result_OK || icon->spec.u.bitmap.pressed_image != NULL)
         goto Failure;
       rc = result_OK;
 
@@ -9338,6 +9335,114 @@ QuitFail:
     rc = wuss_iconpool_load_resource(wuss, resources);
     if (rc != result_OK)
       goto Failure;
+  }
+
+  printf("test: a task's private icon pool is searched before the shared one, falls back to it, and is freed with the task\n");
+
+  {
+    static test_task_t tc_pp;
+    wuss_task_t       *delegate_pp;
+    wuss_window_t     *win_pp;
+    wuss_icon_t       *icon;
+    wuss_icon_spec_t   spec;
+    box_t              box_pp;
+    const char        *dir_pp;
+    const bitmap_t    *priv;
+
+    dir_pp = pathf("%s/resources/wuss-test/icons", resources);
+
+    memset(&tc_pp, 0, sizeof(tc_pp));
+    delegate_pp = mk_task(wuss, test_handle, &tc_pp);
+    if (delegate_pp == NULL) goto Failure;
+
+    /* no private pool yet: only the shared pool answers */
+    if (wuss_task_iconpool_find(delegate_pp, "rgba") != NULL ||
+        wuss_task_iconpool_find(delegate_pp, "opton") !=
+          wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "opton")))
+      goto Failure;
+
+    rc = wuss_task_iconpool_load(delegate_pp, dir_pp);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* a private-only name is invisible to the shared pool */
+    priv = wuss_task_iconpool_find(delegate_pp, "rgba");
+    if (priv == NULL || wuss_iconpool_lookup(wuss, "rgba") != -1)
+      goto Failure;
+
+    /* a name the private pool lacks falls back to the shared one */
+    if (wuss_task_iconpool_find(delegate_pp, "opton") !=
+          wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "opton")) ||
+        wuss_task_iconpool_find(delegate_pp, "nonesuch") != NULL)
+      goto Failure;
+
+    /* icons in the task's windows resolve names privately first */
+    box_pp = (box_t) BOX_POS_SIZE(5, 5, 120, 100);
+    rc = wuss_window_create(delegate_pp, &box_pp, "PP", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_pp);
+    if (rc != result_OK)
+      goto Failure;
+
+    memset(&spec, 0, sizeof(spec));
+    spec.bbox          = (box_t) BOX_POS_SIZE(0, 0, 16, 16);
+    spec.type          = wuss_ICON_TYPE_BITMAP;
+    spec.u.bitmap.name = "rgba";
+    rc = wuss_icon_create(win_pp, &spec, &icon);
+    if (rc != result_OK || icon->spec.u.bitmap.image != priv)
+      goto Failure;
+
+    spec.u.bitmap.name = "opton";
+    rc = wuss_icon_create(win_pp, &spec, &icon);
+    if (rc != result_OK ||
+        icon->spec.u.bitmap.image != wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "opton")))
+      goto Failure;
+
+    /* another task's window can't see the private name: placeholder box */
+    {
+      static test_task_t tc_other;
+      wuss_task_t       *delegate_other;
+      wuss_window_t     *win_other;
+
+      memset(&tc_other, 0, sizeof(tc_other));
+      delegate_other = mk_task(wuss, test_handle, &tc_other);
+      if (delegate_other == NULL) goto Failure;
+
+      rc = wuss_window_create(delegate_other, &box_pp, "OT",
+                              wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                              SIZE2D(0, 0), SIZE2D(0, 0), &win_other);
+      if (rc != result_OK)
+        goto Failure;
+
+      spec.u.bitmap.name = "rgba";
+      rc = wuss_icon_create(win_other, &spec, &icon);
+      if (rc != result_OK || icon->spec.u.bitmap.image != NULL)
+        goto Failure;
+    }
+
+    /* a private name shadows the same name in the shared pool */
+    rc = wuss_iconpool_load(wuss, dir_pp);
+    if (rc != result_OK)
+      goto Failure;
+    if (wuss_task_iconpool_find(delegate_pp, "rgba") != priv ||
+        priv == wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "rgba")))
+      goto Failure;
+
+    /* a bad directory fails the load and leaves the pool empty, as for the
+     * shared pool; the task falls back to the shared one */
+    if (wuss_task_iconpool_load(delegate_pp,
+                                pathf("%s/resources/wuss-test/badicons",
+                                      resources)) == result_OK ||
+        wuss_task_iconpool_find(delegate_pp, "rgba") !=
+          wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "rgba")))
+      goto Failure;
+
+    /* the standard shared set goes back for the tests that follow; the
+     * private pool is freed with its task (ASan would catch a leak) */
+    rc = wuss_iconpool_load_resource(wuss, resources);
+    if (rc != result_OK)
+      goto Failure;
+    reap_test_tasks();
   }
 
   printf("test: a BITMAP or DRAGGABLE icon that can't be drawn leaves a red box, one that can doesn't\n");

@@ -10,6 +10,13 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- `wuss` private icon pools: a task may load its own pool
+  (`wuss_task_iconpool_load()`, `wuss_task_iconpool_load_resource()`, from
+  `resources/wuss/tasks/<task name>/iconpool/`) and look names up with
+  `wuss_task_iconpool_find()`. Icons named by `u.bitmap.name` / `pressed_name`
+  search the task's pool first, then the shared one. Name-resolved icons now
+  store bitmap pointers; `wuss_icon_spec_t` gains `u.bitmap.pressed_image`.
+  Minesweeper's `mine` and `flag` icons move to its private pool.
 - `text/utf8.h` — a UTF-8 decoder/encoder (`utf8_decode`, `utf8_encode`,
   `utf8_prev`). `bmfont` gains `.map` Unicode-cmap sidecars (one per bundled
   font) and `bmfont_lookup()`, and `bmfont_draw()`/`bmfont_measure()` decode

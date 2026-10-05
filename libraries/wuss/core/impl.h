@@ -106,6 +106,23 @@ enum
   wuss_TASK__REAPING   = 1u << 1  /* teardown in progress; suppress autoclose */
 };
 
+#ifdef WUSS_ICONS
+/* A set of named, RLE-compressed icons loaded from a directory of PNGs: the
+ * wuss-wide shared pool (wuss::icon) and, optionally, one private pool per
+ * task (wuss_task::iconpool). Index i is the i-th ".png" in name order
+ * (strcmp -- still address by name). names interns the leafnames-sans-".png";
+ * atoms[i] is entry i's atom in it (atom values are not array indices, so the
+ * position is tracked explicitly); bitmaps[i] is the matching RLE-compressed
+ * bitmap. All owned; freed by wuss__iconpool_clear. NULL / 0 until loaded. */
+struct wuss_iconpool
+{
+  struct atom_set *names;
+  int             *atoms;
+  bitmap_t        *bitmaps;
+  int              nbitmaps;
+};
+#endif
+
 /* A registered task. Owns a list of windows (linked through each window's
  * second embedded list_t, task_link) and is the single delivery target for
  * their events plus the app-wide IDLE/PALETTE/MENU_SELECT notifications.
@@ -121,6 +138,11 @@ struct wuss_task
   unsigned int       flags;     /* wuss_TASK__* */
   wuss_task_t       *parent;    /* NULL, or the task whose destruction takes
                                  * this one with it; see wuss_set_task_parent */
+#ifdef WUSS_ICONS
+  struct wuss_iconpool iconpool; /* private pool, empty until loaded; looked up
+                                  * ahead of the shared pool for this task's
+                                  * windows. See wuss_task_iconpool_load. */
+#endif
 };
 
 struct wuss
@@ -338,20 +360,8 @@ struct wuss
     int            index;
   }
   caret;
-  /* Icon pool loaded by wuss_iconpool_load. index i is the i-th ".png" in
-   * name order (strcmp -- still address by name).
-   * names interns the leafnames-sans-".png"; atoms[i] is entry i's atom
-   * in it (atom values are not array indices, so the position is tracked
-   * explicitly); bitmaps[i] is the matching RLE-compressed bitmap. All
-   * owned; freed by wuss__iconpool_free. NULL / 0 until first load. */
-  struct
-  {
-    struct atom_set          *names;
-    int                      *atoms;
-    bitmap_t                 *bitmaps;
-    int                       nbitmaps;
-  }
-  icon;
+  /* Shared icon pool loaded by wuss_iconpool_load. */
+  struct wuss_iconpool       icon;
 #endif
 #ifdef WUSS_MENUS
   struct

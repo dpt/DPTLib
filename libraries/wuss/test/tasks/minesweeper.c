@@ -356,17 +356,6 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
     task->hud_field_w = (int) field_width + MS_HUD_V_PAD;
   }
 
-  task->mine_bm = wuss_iconpool_bitmap(wuss,
-                                       wuss_iconpool_lookup(wuss, "mine"));
-  task->flag_bm = wuss_iconpool_bitmap(wuss,
-                                       wuss_iconpool_lookup(wuss, "flag"));
-  if (task->mine_bm == NULL || task->flag_bm == NULL)
-  {
-    bmfontcache_release(wuss_get_font_cache(wuss), task->hud_font);
-    free(task); /* nothing registered yet; nobody else owns it */
-    return result_NOT_FOUND;
-  }
-
   delegate_desc.handle    = minesweeper_handle;
   delegate_desc.task_data = task;
   delegate_desc.name      = "minesweeper";
@@ -379,6 +368,22 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
   }
   task->task = delegate;
   wuss_task_set_autoclose(delegate, 1);
+
+  /* mine and flag live in the task's private pool, not the shared one */
+  rc = wuss_task_iconpool_load_resource(delegate, resources);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
+    return rc;
+  }
+
+  task->mine_bm = wuss_task_iconpool_find(delegate, "mine");
+  task->flag_bm = wuss_task_iconpool_find(delegate, "flag");
+  if (task->mine_bm == NULL || task->flag_bm == NULL)
+  {
+    wuss_task_destroy(delegate);
+    return result_NOT_FOUND;
+  }
 
   rc = task_window_create(delegate,
                           SIZE2D(MS_WIDTH(task),

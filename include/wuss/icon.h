@@ -304,11 +304,17 @@ typedef union wuss_icon_spec_data
      *  for the encoding). Zero (the default) draws the normal image
      *  throughout. */
     int             pressed_set;
+    /** Image drawn instead while the icon is pressed. Borrowed, not copied;
+     *  must outlive the icon. NULL (the default) falls back to \c
+     *  pressed_set, then \c pressed_name; if none gives an image, the
+     *  normal image is drawn throughout. */
+    const bitmap_t *pressed_image;
     /** When \c image is NULL and \c set is zero, draw the icon pool entry
      *  of this name (see \ref wuss_iconpool_lookup). Borrowed until \ref
      *  wuss_icon_create copies the spec, like \c text. NULL (the default)
-     *  means none. A name the pool lacks logs a warning and the icon draws
-     *  the placeholder box. */
+     *  means none. The icon's task's private pool is searched first (see
+     *  \ref wuss_task_iconpool_load), then the shared one. A name neither
+     *  pool has logs a warning and the icon draws the placeholder box. */
     const char     *name;
     /** Icon pool entry name drawn instead while the icon is pressed, when
      *  \c pressed_set is zero. NULL (the default) means none; an unknown

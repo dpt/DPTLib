@@ -23,7 +23,7 @@ result_t wuss_icon_create(wuss_window_t          *window,
 
   w = window->wuss;
 
-  rc = wuss__icon_from_spec(w, spec, &scratch);
+  rc = wuss__icon_from_spec(w, window->task, spec, &scratch);
   if (rc != result_OK)
     return rc;
 

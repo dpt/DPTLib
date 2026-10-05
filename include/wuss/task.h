@@ -402,7 +402,9 @@ typedef struct wuss_task_desc
   /** Opaque pointer passed back to handle. */
   void             *task_data;
 
-  /** Optional name, for debugging/tracing; borrowed, not copied. */
+  /** Optional name, for debugging/tracing and to locate the task's private
+   *  icon pool (see \ref wuss_task_iconpool_load_resource); borrowed, not
+   *  copied. */
   const char       *name;
 }
 wuss_task_desc_t;
@@ -470,6 +472,54 @@ void wuss_task_set_autoclose(wuss_task_t *task, int on);
  * \param[in] parent Task to parent new tasks to, or NULL for none.
  */
 void wuss_set_task_parent(wuss_t *wuss, wuss_task_t *parent);
+
+#ifdef WUSS_ICONS
+
+/* ----------------------------------------------------------------------- */
+
+/**
+ * Load a private icon pool for \p task from a directory of PNGs, as \ref
+ * wuss_iconpool_load does for the shared pool (same decoding, RLE
+ * compression and name-sorted entries). A task's icons -- those in its own
+ * windows -- and \ref wuss_task_iconpool_find look a name up here first and
+ * fall back to the shared pool, so a task can ship its own artwork and
+ * shadow shared names. Calling this again replaces the previous private
+ * pool; \ref wuss_task_destroy frees it, after the task's windows.
+ *
+ * \param[in] task Task to give the pool to.
+ * \param[in] dir  Directory to scan for "*.png".
+ * \return As \ref wuss_iconpool_load.
+ */
+result_t wuss_task_iconpool_load(wuss_task_t *task, const char *dir);
+
+/**
+ * Convenience wrapper for \ref wuss_task_iconpool_load: loads
+ * "<resources>/resources/wuss/tasks/<name>/iconpool", where <name> is the
+ * task's name (\ref wuss_task_desc::name). A missing directory is not an
+ * error: the pool is just empty.
+ *
+ * \param[in] task      Task to give the pool to; must have a name.
+ * \param[in] resources Resource root, as returned by \ref
+ *                      wuss_get_resources.
+ * \return As \ref wuss_iconpool_load, or \ref result_BAD_ARG if \p task has
+ *         no name.
+ */
+result_t wuss_task_iconpool_load_resource(wuss_task_t *task,
+                                          const char  *resources);
+
+/**
+ * Find an icon by name: \p task's private pool first, then the shared pool.
+ *
+ * \param[in] task Task whose private pool to search first.
+ * \param[in] name Entry name: a loaded file's leafname without ".png".
+ * \return The (RLE-compressed) bitmap, owned by the window manager and valid
+ *         until the pool holding it is reloaded or freed, or NULL if neither
+ *         pool has \p name.
+ */
+const bitmap_t *wuss_task_iconpool_find(const wuss_task_t *task,
+                                        const char        *name);
+
+#endif /* WUSS_ICONS */
 
 #ifdef __cplusplus
 }

@@ -166,7 +166,7 @@ result_t wuss_create(screen_t               *scr,
   if (bmfontcache_create(&w->font_cache) != result_OK)
   {
 #ifdef WUSS_ICONS
-    wuss__iconpool_free(w);
+    wuss__iconpool_clear(w, &w->icon);
 #endif
     wuss__free(w, w->palette);
     wuss__free(w, w);

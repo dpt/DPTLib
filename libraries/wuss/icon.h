@@ -223,6 +223,7 @@ void wuss__icon_set_flag(wuss_window_t    *window,
  * result_WUSS_BAD_ICON / result_WUSS_BAD_COLOUR as wuss_icon_create
  * documents, else result_OK. */
 result_t wuss__icon_from_spec(const wuss_t           *wuss,
+                              const wuss_task_t      *task,
                               const wuss_icon_spec_t *spec,
                               wuss_icon_t            *out);
 
@@ -291,12 +292,22 @@ result_t wuss__writable_key(wuss_t              *wuss,
  * not invalidate or swap-remove. */
 void wuss__icons_free(wuss_window_t *window);
 
-/* Free the wuss-wide icon set loaded by wuss_iconpool_load (the atom_set and the
- * compressed bitmaps), leaving the fields NULL / 0. Safe on an unloaded set.
- * Called by wuss_iconpool_load before a reload and by wuss_destroy. */
-void wuss__iconpool_free(wuss_t *wuss);
+struct wuss_iconpool; /* core/impl.h */
 
-/* Byte-swap the loaded icon set, in place, into the channel order the
+/* Free an icon pool -- the shared one (wuss::icon) or a task's private one
+ * (wuss_task::iconpool): the atom_set and the compressed bitmaps, leaving the
+ * fields NULL / 0. Safe on an unloaded pool. Called before a reload, by
+ * wuss_destroy for the shared pool and by wuss_task_destroy for a task's. */
+void wuss__iconpool_clear(wuss_t *wuss, struct wuss_iconpool *pool);
+
+/* The pool bitmap called "name": "task"'s private pool first, then the shared
+ * pool. "task" may be NULL for the shared pool alone. NULL if neither has it.
+ * Valid until the pool holding it is reloaded or freed. */
+const bitmap_t *wuss__iconpool_find(const wuss_t      *wuss,
+                                    const wuss_task_t *task,
+                                    const char        *name);
+
+/* Byte-swap every loaded icon pool (shared and per-task), in place, into the channel order the
  * current screen format blits (see icons_order_for). Called by wuss_resize
  * so a screen depth change keeps icon colours right; bitmap_t addresses are
  * unchanged, so icons holding them stay valid. */
