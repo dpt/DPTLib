@@ -12,6 +12,7 @@ FontMenu: Add ability to select by font family.
 Icon Sprite Pools: Implement.
 
 Filer icons: Draw some.
+Filer: 'open' directory icon variant.
 
 PostScript style renderer.
 

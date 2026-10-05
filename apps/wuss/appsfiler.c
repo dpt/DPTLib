@@ -53,8 +53,10 @@ struct apps_task
                                                            * [c + 1] category c */
   bitmap_t              glyph_file;
   bitmap_t              glyph_directory;
+  bitmap_t              glyph_apps;
   int                   have_glyph_file;
   int                   have_glyph_directory;
+  int                   have_glyph_apps;
 
   wuss_menu_handle_t    menu_handle;
   wuss_menu_item_t      menu_items[1]; /* "Info" */
@@ -295,7 +297,9 @@ result_t appsfiler_create(wuss_t *wuss)
                   &task->have_glyph_file);
   apps_load_glyph(resources, "file_dir", &task->glyph_directory,
                   &task->have_glyph_directory);
-
+  apps_load_glyph(resources, "apps", &task->glyph_apps,
+                  &task->have_glyph_apps);
+  
   WUSS_MENU_ITEM_WINDOW(task->menu_items, 0, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo
@@ -315,7 +319,7 @@ result_t appsfiler_create(wuss_t *wuss)
 
   spec.text  = "Apps";
   spec.side  = wuss_ICONBAR_LEFT;
-  spec.image = task->have_glyph_directory ? &task->glyph_directory : NULL;
+  spec.image = task->have_glyph_apps ? &task->glyph_apps : NULL;
   rc = wuss_iconbar_icon_create(wuss, task->delegate, &spec,
                                 &task->iconbar_icon);
   if (rc != result_OK)
