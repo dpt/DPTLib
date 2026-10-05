@@ -9152,6 +9152,19 @@ QuitFail:
     if (wuss_iconpool_bitmap(wuss, count) != NULL)
       goto Failure;
 
+    /* entries are sorted by name, whatever order the directory scan gave */
+    if (!(wuss_iconpool_lookup(wuss, "flag") <
+          wuss_iconpool_lookup(wuss, "gright") &&
+          wuss_iconpool_lookup(wuss, "gright") <
+          wuss_iconpool_lookup(wuss, "mine") &&
+          wuss_iconpool_lookup(wuss, "mine") <
+          wuss_iconpool_lookup(wuss, "optoff") &&
+          wuss_iconpool_lookup(wuss, "optoff") < opton &&
+          opton < wuss_iconpool_lookup(wuss, "radoff") &&
+          wuss_iconpool_lookup(wuss, "radoff") <
+          wuss_iconpool_lookup(wuss, "radon")))
+      goto Failure;
+
     /* an icon spec picks it up by index via wuss_ICONPOOL_SET */
     {
       static test_task_t tc_ic;
@@ -9195,6 +9208,45 @@ QuitFail:
       /* a bogus index is rejected */
       spec.u.bitmap.set = wuss_ICONPOOL_SET(99);
       if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)
+        goto Failure;
+
+      /* or by name, resolved to the same indices at creation; the borrowed
+       * names are not kept */
+      memset(&spec, 0, sizeof(spec));
+      spec.bbox                   = (box_t) BOX_POS_SIZE(0, 0, 16, 16);
+      spec.type                   = wuss_ICON_TYPE_BITMAP;
+      spec.u.bitmap.name          = "opton";
+      spec.u.bitmap.pressed_name  = "radon";
+      rc = wuss_icon_create(win_ic, &spec, &icon);
+      if (rc != result_OK)
+        goto Failure;
+      if (icon->spec.u.bitmap.set != wuss_ICONPOOL_SET(opton) ||
+          icon->spec.u.bitmap.pressed_set !=
+            wuss_ICONPOOL_SET(wuss_iconpool_lookup(wuss, "radon")) ||
+          icon->spec.u.bitmap.image != wuss_iconpool_bitmap(wuss, opton) ||
+          icon->spec.u.bitmap.name != NULL ||
+          icon->spec.u.bitmap.pressed_name != NULL)
+        goto Failure;
+
+      /* an explicit index wins over a name */
+      spec.u.bitmap.set = wuss_ICONPOOL_SET(wuss_iconpool_lookup(wuss, "radon"));
+      rc = wuss_icon_create(win_ic, &spec, &icon);
+      if (rc != result_OK ||
+          icon->spec.u.bitmap.image !=
+            wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "radon")))
+        goto Failure;
+      spec.u.bitmap.set = 0;
+
+      /* an unknown name warns but still creates (the icon draws the
+       * placeholder box); likewise an unknown pressed name */
+      spec.u.bitmap.name = "nonesuch";
+      rc = wuss_icon_create(win_ic, &spec, &icon);
+      if (rc != result_OK || icon->spec.u.bitmap.image != NULL)
+        goto Failure;
+      spec.u.bitmap.name         = "opton";
+      spec.u.bitmap.pressed_name = "nonesuch";
+      rc = wuss_icon_create(win_ic, &spec, &icon);
+      if (rc != result_OK || icon->spec.u.bitmap.pressed_set != 0)
         goto Failure;
       rc = result_OK;
 
