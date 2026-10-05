@@ -103,7 +103,7 @@ result_t wuss_resize(wuss_t *wuss, screen_t *scr)
   {
     result_t rc;
 
-    rc = wuss__icons_match_screen(wuss);
+    rc = wuss__iconpool_match_screen(wuss);
     if (rc != result_OK)
       return rc;
   }

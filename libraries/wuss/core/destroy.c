@@ -142,7 +142,7 @@ void wuss_destroy(wuss_t *doomed)
   }
 
 #ifdef WUSS_ICONS
-  wuss__icons_registry_free(doomed);
+  wuss__iconpool_free(doomed);
 #endif
 
 #ifdef WUSS_ICONBAR

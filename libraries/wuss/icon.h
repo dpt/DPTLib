@@ -291,15 +291,15 @@ result_t wuss__writable_key(wuss_t              *wuss,
  * not invalidate or swap-remove. */
 void wuss__icons_free(wuss_window_t *window);
 
-/* Free the wuss-wide icon set loaded by wuss_icons_load (the atom_set and the
+/* Free the wuss-wide icon set loaded by wuss_iconpool_load (the atom_set and the
  * compressed bitmaps), leaving the fields NULL / 0. Safe on an unloaded set.
- * Called by wuss_icons_load before a reload and by wuss_destroy. */
-void wuss__icons_registry_free(wuss_t *wuss);
+ * Called by wuss_iconpool_load before a reload and by wuss_destroy. */
+void wuss__iconpool_free(wuss_t *wuss);
 
 /* Byte-swap the loaded icon set, in place, into the channel order the
  * current screen format blits (see icons_order_for). Called by wuss_resize
  * so a screen depth change keeps icon colours right; bitmap_t addresses are
  * unchanged, so icons holding them stay valid. */
-result_t wuss__icons_match_screen(wuss_t *wuss);
+result_t wuss__iconpool_match_screen(wuss_t *wuss);
 
 #endif /* WUSS_ICON_IMPL_H */

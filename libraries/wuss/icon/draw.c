@@ -397,11 +397,11 @@ static const bitmap_t *wuss__icon_radio_option_bitmap(const icon_draw_ctx_t *c)
   name = wuss__icon_radio_option_name(c->icon->spec.type,
                                       wuss__icon_selected(c->icon));
 
-  idx = wuss_icons_lookup(c->wuss, name);
+  idx = wuss_iconpool_lookup(c->wuss, name);
   if (idx < 0)
     return NULL;
 
-  return wuss_icons_bitmap(c->wuss, idx);
+  return wuss_iconpool_bitmap(c->wuss, idx);
 }
 
 /* wuss_ICON_TYPE_RADIO and wuss_ICON_TYPE_OPTION: a glyph at the left,
@@ -514,7 +514,7 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
 
   bm = NULL;
   if (wuss__icon_pressed(c->icon) && c->icon->spec.u.bitmap.pressed_set > 0)
-    bm = wuss_icons_bitmap(c->wuss, c->icon->spec.u.bitmap.pressed_set - 1);
+    bm = wuss_iconpool_bitmap(c->wuss, c->icon->spec.u.bitmap.pressed_set - 1);
   if (bm == NULL)
     bm = c->icon->spec.u.bitmap.image;
 

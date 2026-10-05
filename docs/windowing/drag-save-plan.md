@@ -192,7 +192,7 @@ Because of the priority rule, the whole handshake completes within the
   rescans on `DataLoad` and when a window opens. The drop point is ignored:
   files always land in the window's own directory.
 - Glyphs are one PNG per glyph (`file_unk.png`, `file_dir.png`,
-  `file_b60.png`) in `resources/wuss/files/`, each loaded as its own
+  `file_b60.png`) in `resources/wuss/iconpool/`, each loaded as its own
   `bitmap_t`, since bitmap icons have no sub-rect support. A missing glyph
   logs a warning and is tolerated: the cell shows its label only.
 

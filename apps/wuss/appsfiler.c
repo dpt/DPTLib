@@ -265,7 +265,7 @@ static void apps_load_glyph(const char *resources,
 {
   const char *path;
 
-  path  = pathf("%s/resources/wuss/files/%s.png", resources, leaf);
+  path  = pathf("%s/resources/wuss/iconpool/%s.png", resources, leaf);
   *have = bitmap_load_png(bm, path) == result_OK;
   if (!*have)
     logf_warning("appsfiler: glyph '%s' unavailable; cells show label only",

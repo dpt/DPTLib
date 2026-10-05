@@ -530,7 +530,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/hit-test.c
     libraries/wuss/icon/invalidate.c
     libraries/wuss/icon/plot.c
-    libraries/wuss/icon/registry.c
+    libraries/wuss/icon/iconpool.c
     libraries/wuss/icon/screen-box.c
     libraries/wuss/icon/set-disabled.c
     libraries/wuss/icon/set-flag.c

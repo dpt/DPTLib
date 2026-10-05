@@ -168,18 +168,18 @@ static void saveas_set_actions(wuss_saveas_t *sa)
 
 /* Icon-set entry for the file icon: "file_<type>" (RISC OS sprite naming,
  * three lowercase hex digits), else the generic "file_xxx". Returns a
- * wuss_ICON_SET-encoded value, or 0 if neither is loaded. */
+ * wuss_ICONPOOL_SET-encoded value, or 0 if neither is loaded. */
 static int saveas_file_icon(const wuss_t *wuss, filetype_t filetype)
 {
   char name[16];
   int  idx;
 
   snprintf(name, sizeof(name), "file_%03x", filetype.riscos & 0xFFFu);
-  idx = wuss_icons_lookup(wuss, name);
+  idx = wuss_iconpool_lookup(wuss, name);
   if (idx < 0)
-    idx = wuss_icons_lookup(wuss, "file_xxx");
+    idx = wuss_iconpool_lookup(wuss, "file_xxx");
 
-  return idx >= 0 ? wuss_ICON_SET(idx) : 0;
+  return idx >= 0 ? wuss_ICONPOOL_SET(idx) : 0;
 }
 
 static result_t saveas_build_icons(wuss_saveas_t *sa,
@@ -334,7 +334,7 @@ void wuss_saveas_set_filetype(wuss_saveas_t    *saveas,
     return;
 
   icon->spec.u.bitmap.set   = set;
-  icon->spec.u.bitmap.image = wuss_icons_bitmap(saveas->wuss, set - 1);
+  icon->spec.u.bitmap.image = wuss_iconpool_bitmap(saveas->wuss, set - 1);
   wuss__icon_invalidate(wuss_dialogue_window(saveas->dialogue), icon);
 }
 

@@ -67,7 +67,7 @@ result_t taskmanager_create(wuss_t *wuss)
   if (task == NULL)
     return result_OOM;
 
-  path = pathf("%s/resources/wuss/files/file_app.png",
+  path = pathf("%s/resources/wuss/iconpool/file_app.png",
                wuss_get_resources(wuss));
   task->have_glyph = bitmap_load_png(&task->glyph, path) == result_OK;
   if (!task->have_glyph)
