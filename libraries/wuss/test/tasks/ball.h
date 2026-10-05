@@ -54,6 +54,9 @@ wuss_window_fn_t ball_handle;
  * if out is non-NULL, the task block is also returned through it */
 result_t ball_create(wuss_t *wuss, ball_task_t **out);
 
+/* install the icon bar app that opens ball windows on demand */
+result_t ball_app_create(wuss_t *wuss);
+
 /* free a task block allocated by ball_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void ball_destroy(ball_task_t *task);

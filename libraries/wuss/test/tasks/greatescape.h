@@ -17,6 +17,9 @@ typedef struct greatescape_task greatescape_task_t;
  * through it */
 result_t greatescape_create(wuss_t *wuss, greatescape_task_t **out);
 
+/* install the icon bar app that opens greatescape windows on demand */
+result_t greatescape_app_create(wuss_t *wuss);
+
 #endif /* WUSS_APP && WUSS_GREATESCAPE */
 
 #endif /* TASKS_GREATESCAPE_H */

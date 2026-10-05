@@ -9487,6 +9487,35 @@ QuitFail:
         wuss->iconbar.window->visible.y0 != 200 - WUSS_ICONBAR_HEIGHT)
       goto Failure;
 
+    /* icons are as wide as their label, WUSS_ICONBAR_GAP apart, and pack
+     * from the edge of their side */
+    {
+      box_t                b0, b1, b2;
+      wuss_iconbar_icon_t *ic;
+
+      spec.text = "Left";
+      rc = wuss_iconbar_icon_create(wuss, owner, &spec, &ic);
+      if (rc != result_OK)
+        goto Failure;
+      spec.text = "Right";
+      spec.side = wuss_ICONBAR_RIGHT;
+      rc = wuss_iconbar_icon_create(wuss, owner, &spec, &ic);
+      if (rc != result_OK)
+        goto Failure;
+      spec.side = wuss_ICONBAR_LEFT;
+
+      wuss__iconbar_slot_box(wuss, 0, &b0);
+      wuss__iconbar_slot_box(wuss, 1, &b1);
+      wuss__iconbar_slot_box(wuss, 2, &b2);
+      if (b0.x0 != WUSS_ICONBAR_GAP || b0.x1 - b0.x0 < 1 ||
+          b1.x0 != b0.x1 + WUSS_ICONBAR_GAP ||
+          b2.x1 != 200 - WUSS_ICONBAR_GAP)
+        goto Failure;
+
+      wuss_iconbar_icon_destroy(wuss, wuss->iconbar.icons[2]);
+      wuss_iconbar_icon_destroy(wuss, wuss->iconbar.icons[1]);
+    }
+
     /* a real z-order member can be moved/resized like any other window --
      * except this one is pinned, so both must refuse */
     wuss_window_move(wuss->iconbar.window, POINT(5, 5));
@@ -9531,11 +9560,11 @@ QuitFail:
     /* a click on the icon itself (below win_over's strip) reaches it --
      * past the bar's WUSS_ICONBAR_GAP leading gap */
     tc_bar.icon_count = 0;
-    rc = wuss_mouse_click(wuss, POINT(WUSS_ICONBAR_GAP + 10, 199),
+    rc = wuss_mouse_click(wuss, POINT(WUSS_ICONBAR_GAP + 1, 199),
                           wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
     if (rc != result_OK)
       goto Failure;
-    rc = wuss_mouse_click(wuss, POINT(WUSS_ICONBAR_GAP + 10, 199),
+    rc = wuss_mouse_click(wuss, POINT(WUSS_ICONBAR_GAP + 1, 199),
                           wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
     if (rc != result_OK || tc_bar.icon_count == 0)
       goto Failure;

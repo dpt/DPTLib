@@ -16,6 +16,7 @@
 #include "ZXSpectrum/Keyboard.h"
 
 #include "greatescape.h"
+#include "taskapp.h"
 #include "zxtask.h"
 
 /* The game's timings are in T-states of a 48K Spectrum's Z80. */
@@ -211,6 +212,18 @@ result_t greatescape_create(wuss_t *wuss, greatescape_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t greatescape_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "The Great Escape",
+    "ZX Spectrum The Great Escape, recreated in C",
+    (taskapp_create_fn_t) greatescape_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 #endif /* WUSS_APP && WUSS_GREATESCAPE */

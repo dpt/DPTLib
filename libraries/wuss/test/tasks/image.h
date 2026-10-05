@@ -53,6 +53,9 @@ wuss_window_fn_t image_handle;
  * it */
 result_t image_create(wuss_t *wuss, image_task_t **out);
 
+/* install the icon bar app that opens image windows on demand */
+result_t image_app_create(wuss_t *wuss);
+
 /* free a task block allocated by image_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void image_destroy(image_task_t *task);

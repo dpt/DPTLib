@@ -60,6 +60,9 @@ wuss_window_fn_t gradient_handle;
  * non-NULL, the task block is also returned through it */
 result_t gradient_create(wuss_t *wuss, gradient_task_t **out);
 
+/* install the icon bar app that opens gradient windows on demand */
+result_t gradient_app_create(wuss_t *wuss);
+
 /* free a task block allocated by gradient_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void gradient_destroy(gradient_task_t *task);

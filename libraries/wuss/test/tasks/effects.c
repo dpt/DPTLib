@@ -21,6 +21,7 @@
 #include "wuss/menu-desc.h"
 
 #include "effects.h"
+#include "taskapp.h"
 #include "common.h"
 
 #define EFFECTS_EXT      ".png"
@@ -292,6 +293,18 @@ result_t effects_create(wuss_t *wuss, effects_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t effects_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Effects",
+    "Apply bitmap effects to the PNGs under resources/images",
+    (taskapp_create_fn_t) effects_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void effects_destroy(effects_task_t *task)

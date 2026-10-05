@@ -88,6 +88,9 @@ result_t palette_load_hex_n(const char *resources,
  * if out is non-NULL, the task block is also returned through it. */
 result_t palette_create(wuss_t *wuss, palette_task_t **out);
 
+/* install the icon bar app that opens palette windows on demand */
+result_t palette_app_create(wuss_t *wuss);
+
 /* free a task block allocated by palette_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void palette_destroy(palette_task_t *task);

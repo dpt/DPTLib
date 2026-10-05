@@ -24,6 +24,7 @@
 #include "wuss/menu.h"
 
 #include "chars.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -523,6 +524,18 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t chars_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Chars",
+    "Bitmap font glyph grid",
+    (taskapp_create_fn_t) chars_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void chars_destroy(chars_task_t *task)

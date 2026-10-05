@@ -68,6 +68,9 @@ wuss_window_fn_t chars_handle;
  * font-less early return, same as on any other non-result_OK path */
 result_t chars_create(wuss_t *wuss, chars_task_t **out);
 
+/* install the icon bar app that opens chars windows on demand */
+result_t chars_app_create(wuss_t *wuss);
+
 /* free a task block allocated by chars_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void chars_destroy(chars_task_t *task);

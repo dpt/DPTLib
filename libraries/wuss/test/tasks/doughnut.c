@@ -18,6 +18,7 @@
 #include "wuss/task.h"
 
 #include "doughnut.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -230,6 +231,18 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t doughnut_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Doughnut",
+    "Spinning torus, ray-marched and shaded per pixel",
+    (taskapp_create_fn_t) doughnut_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void doughnut_destroy(doughnut_task_t *task)

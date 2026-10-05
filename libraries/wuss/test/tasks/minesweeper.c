@@ -22,6 +22,7 @@
 #include "wuss/menu.h"
 
 #include "minesweeper.h"
+#include "taskapp.h"
 #include "common.h"
 
 #define MS_BORDER MINESWEEPER_CELL /* one grid unit all round */
@@ -440,6 +441,18 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t minesweeper_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Minesweeper",
+    "Classic minesweeper",
+    (taskapp_create_fn_t) minesweeper_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void minesweeper_destroy(minesweeper_task_t *task)

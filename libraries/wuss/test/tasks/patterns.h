@@ -45,6 +45,9 @@ wuss_window_fn_t patterns_handle;
  * through it */
 result_t patterns_create(wuss_t *wuss, patterns_task_t **out);
 
+/* install the icon bar app that opens patterns windows on demand */
+result_t patterns_app_create(wuss_t *wuss);
+
 /* free a task block allocated by patterns_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void patterns_destroy(patterns_task_t *task);

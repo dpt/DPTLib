@@ -20,6 +20,7 @@
 #include "io/filetype.h"
 
 #include "gradient.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -313,6 +314,18 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t gradient_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Gradient",
+    "Colour gradients with ordered dithering",
+    (taskapp_create_fn_t) gradient_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void gradient_destroy(gradient_task_t *task)

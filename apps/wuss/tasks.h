@@ -100,12 +100,13 @@ void tasks_set_crt(bool on);
  * outcome in g_tasks.pointer and the Debug menu's tick. */
 void tasks_set_pointer(bool on);
 
-/* Spawn the tasks named in names, a comma-separated list of launcher-menu
- * task names (e.g. "Saturn,Clock"), or "all" to spawn every task in every
+/* Install the apps named in names, a comma-separated list of launcher-menu
+ * task names (e.g. "Saturn,Clock"), or "all" to install every task in every
  * category (games, tests, system, utilities, visuals), in table order; an
- * empty string spawns nothing. Logs and continues past any individual
- * create failure or unknown name rather than aborting the rest. Called
- * once at startup, after g_tasks.wuss is set. */
+ * empty string installs nothing. Installing puts the app's icon on the icon
+ * bar but opens no window: that waits for a SELECT click on the icon. Logs
+ * and continues past any individual failure or unknown name rather than
+ * aborting the rest. Called once at startup, after g_tasks.wuss is set. */
 void tasks_spawn(const char *names);
 
 /* The launchable tasks, grouped into categories (the folders AppsFiler
@@ -115,7 +116,8 @@ const char *tasks_category_name(int category);
 int tasks_entry_count(int category);
 const char *tasks_entry_name(int category, int index);
 
-/* Spawn task index of category, logging any create failure. */
+/* Install task index of category, as tasks_spawn does, logging any
+ * failure. Does nothing if it is already installed. */
 result_t tasks_entry_spawn(int category, int index);
 
 /* Fill out[0..nout-1]: ui[0..nui-1] copied in, then as much of the web-safe

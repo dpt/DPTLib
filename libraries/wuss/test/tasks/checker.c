@@ -14,6 +14,7 @@
 #include "io/filetype.h"
 
 #include "checker.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -45,15 +46,14 @@ static const char *checker_pattern_names[checker_PATTERN__COUNT] =
   "Diagonal"
 };
 
-/* wuss_saveas_save_fn_t: opaque is the checker_task_t; saves whichever
- * window the menu was last opened from, as the direct save call used to */
+/* wuss_saveas_save_fn_t: opaque is the checker_task_t */
 static result_t checker_saveas_save(const char *path, void *opaque)
 {
   checker_task_t *cc;
 
   cc = opaque;
 
-  return snapshot_save_png(cc->menu_window, checker_handle, cc, path);
+  return snapshot_save_png(cc->window, checker_handle, cc, path);
 }
 
 result_t checker_create(wuss_t *wuss, checker_task_t **out)
@@ -73,9 +73,7 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
   task->black    = colour_rgb(0x00, 0x00, 0x00);
   task->white    = colour_rgb(0xFF, 0xFF, 0xFF);
   task->pattern  = checker_PATTERN_CHECKERBOARD;
-  task->pattern2 = checker_PATTERN_VERTICAL;
   task->band     = CHECKER_BAND_DEFAULT;
-  task->band2    = CHECKER_BAND_DEFAULT;
 
   /* checker_redraw paints every pixel itself */
   delegate_desc.handle    = checker_handle;
@@ -91,7 +89,7 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
 
   rc = task_window_create(delegate,
                           SIZE2D(160, 160),
-                          "Checker 1",
+                          "Checker",
                           &task->window);
   if (rc != result_OK)
   {
@@ -99,18 +97,8 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
     return rc;
   }
 
-  rc = task_window_create(delegate,
-                          SIZE2D(160, 160),
-                          "Checker 2",
-                          &task->window2);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(delegate); /* closes "Checker 1", QUIT frees the block */
-    return rc;
-  }
-
-  /* both windows up: from here, closing the last one reaps the task and its
-   * wuss_EVENT_QUIT frees task_data */
+  /* window up: from here, closing it reaps the task and its wuss_EVENT_QUIT
+   * frees task_data */
   wuss_task_set_autoclose(delegate, 1);
 
   png_type = filetype_from_ext(".png");
@@ -156,15 +144,25 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
   return result_OK;
 }
 
+result_t checker_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Checker",
+    "Cycling checkerboard pattern",
+    (taskapp_create_fn_t) checker_create
+  };
+
+  return taskapp_install(wuss, &desc);
+}
+
 void checker_destroy(checker_task_t *task)
 {
   wuss_saveas_destroy(task->saveas);
   free(task);
 }
 
-static result_t checker_redraw(wuss_window_t      *window,
-                               const wuss_event_t *event,
-                               void               *task_data)
+static result_t checker_redraw(const wuss_event_t *event, void *task_data)
 {
   checker_task_t   *cc;
   screen_t         *scr;
@@ -180,8 +178,8 @@ static result_t checker_redraw(wuss_window_t      *window,
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  pattern = (window == cc->window2) ? cc->pattern2 : cc->pattern;
-  band_px = (window == cc->window2) ? cc->band2    : cc->band;
+  pattern = cc->pattern;
+  band_px = cc->band;
 
   for (y = content->y0; y < content->y1; y++)
   {
@@ -205,56 +203,46 @@ static result_t checker_redraw(wuss_window_t      *window,
   return result_OK;
 }
 
-/* step the clicked window's pattern by dir (+1 or -1), wrapping round */
-static result_t checker_mouse(wuss_window_t *window,
-                              int            dir,
-                              void          *task_data)
+/* step the pattern by dir (+1 or -1), wrapping round */
+static result_t checker_mouse(int dir, void *task_data)
 {
-  checker_task_t    *cc;
-  checker_pattern_t *pattern;
+  checker_task_t *cc;
 
   cc = task_data;
 
-  pattern  = (window == cc->window2) ? &cc->pattern2 : &cc->pattern;
-  *pattern = (*pattern + checker_PATTERN__COUNT + dir) %
-             checker_PATTERN__COUNT;
+  cc->pattern = (cc->pattern + checker_PATTERN__COUNT + dir) %
+                checker_PATTERN__COUNT;
 
-  wuss_window_invalidate_visible(window);
+  wuss_window_invalidate_visible(cc->window);
 
   return result_OK;
 }
 
-static result_t checker_scroll(wuss_window_t *window,
-                               int            delta,
-                               void          *task_data)
+static result_t checker_scroll(int delta, void *task_data)
 {
   checker_task_t *cc;
-  int            *band;
 
-  cc   = task_data;
-  band = (window == cc->window2) ? &cc->band2 : &cc->band;
+  cc = task_data;
 
-  *band += delta;
-  *band  = CLAMP(*band, CHECKER_BAND_MIN, CHECKER_BAND_MAX);
+  cc->band += delta;
+  cc->band  = CLAMP(cc->band, CHECKER_BAND_MIN, CHECKER_BAND_MAX);
 
-  wuss_window_invalidate_visible(window);
+  wuss_window_invalidate_visible(cc->window);
 
   return result_OK;
 }
 
-/* Left/Right step the focused window's pattern back/forward, as Adjust and
- * Select clicks do; Up/Down widen/narrow its bands, as the wheel does.
- * Anything else is passed back unclaimed. */
-static result_t checker_key(checker_task_t *cc,
-                            wuss_window_t  *window,
-                            int             code)
+/* Left/Right step the pattern back/forward, as Adjust and Select clicks do;
+ * Up/Down widen/narrow its bands, as the wheel does. Anything else is passed
+ * back unclaimed. */
+static result_t checker_key(checker_task_t *cc, int code)
 {
   switch (code)
   {
-  case wuss_KEY_LEFT:  return checker_mouse(window, -1, cc);
-  case wuss_KEY_RIGHT: return checker_mouse(window, +1, cc);
-  case wuss_KEY_UP:    return checker_scroll(window, +1, cc);
-  case wuss_KEY_DOWN:  return checker_scroll(window, -1, cc);
+  case wuss_KEY_LEFT:  return checker_mouse(-1, cc);
+  case wuss_KEY_RIGHT: return checker_mouse(+1, cc);
+  case wuss_KEY_UP:    return checker_scroll(+1, cc);
+  case wuss_KEY_DOWN:  return checker_scroll(-1, cc);
   default:             return result_WUSS_KEY_UNCLAIMED;
   }
 }
@@ -281,9 +269,7 @@ static result_t checker_pre_submenu_open(checker_task_t     *cc,
                                   *cc->colourmenu_target);
 }
 
-/* A Pattern pick lands in whichever window opened the menu. A colourmenu
- * pick lands in whichever colour last opened it; both windows share the two
- * colours, so both repaint. */
+/* A colourmenu pick lands in whichever colour last opened it. */
 static result_t checker_menu_select(checker_task_t     *cc,
                                     const wuss_event_t *event)
 {
@@ -291,21 +277,14 @@ static result_t checker_menu_select(checker_task_t     *cc,
 
   if (event->data.menu_select.menu == &cc->pattern_menu)
   {
-    if (cc->menu_window == NULL)
-      return result_OK;
-
-    if (cc->menu_window == cc->window2)
-      cc->pattern2 = event->data.menu_select.index;
-    else
-      cc->pattern = event->data.menu_select.index;
+    cc->pattern = event->data.menu_select.index;
     wuss_menu_tick_exclusive_live(cc->menu_handle, &cc->pattern_menu,
                                   event->data.menu_select.index);
-    wuss_window_invalidate_visible(cc->menu_window);
+    wuss_window_invalidate_visible(cc->window);
     return result_OK;
   }
 
-  /* shows the Save As dialogue; checker_saveas_save saves whichever window
-   * the menu was opened from */
+  /* shows the Save As dialogue */
   if (event->data.menu_select.menu == &cc->menu &&
       event->data.menu_select.index == CHECKER_MENU_SAVE)
   {
@@ -327,7 +306,6 @@ static result_t checker_menu_select(checker_task_t     *cc,
   }
 
   wuss_window_invalidate_visible(cc->window);
-  wuss_window_invalidate_visible(cc->window2);
 
   return result_OK;
 }
@@ -343,45 +321,41 @@ result_t checker_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return checker_redraw(window, event, task_data);
+    return checker_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
-    if (window != cc->window && window != cc->window2)
+    if (window != cc->window)
       return result_OK; /* the proginfo dialogue has no click behaviour of
                          * its own */
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
-      cc->menu_window = window;
-      wuss_menu_tick_exclusive(&cc->pattern_menu,
-                               (window == cc->window2) ? cc->pattern2
-                                                       : cc->pattern);
+      wuss_menu_tick_exclusive(&cc->pattern_menu, cc->pattern);
 
       return wuss_menu_open_at_pointer(cc->delegate, &cc->menu,
                                        &cc->menu_handle);
     }
     if (event->data.mouse.button & wuss_BUTTON_SELECT)
-      return checker_mouse(window, +1, task_data);
+      return checker_mouse(+1, task_data);
     if (event->data.mouse.button & wuss_BUTTON_ADJUST)
-      return checker_mouse(window, -1, task_data);
+      return checker_mouse(-1, task_data);
     return result_OK;
 
   case wuss_EVENT_SCROLL:
-    return checker_scroll(window, event->data.scroll.delta, task_data);
+    return checker_scroll(event->data.scroll.delta, task_data);
 
   case wuss_EVENT_KEY:
   {
     result_t rc;
 
-    if (window != cc->window && window != cc->window2)
+    if (window != cc->window)
       return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
 
-    cc->menu_window = window; /* a shortcut acts on the focused window */
     if (!task_key_is_plain(cc->delegate, &cc->menu, event, &rc))
       return rc;
 
-    return checker_key(cc, window, event->data.key.code);
+    return checker_key(cc, event->data.key.code);
   }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
@@ -395,17 +369,12 @@ result_t checker_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_CLOSE:
-    if (window == cc->menu_window)
-      cc->menu_window = NULL;
-    if (window == cc->window2)
-      cc->window2 = NULL;
-    else
+    if (window == cc->window)
       cc->window = NULL;
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    /* one calloc'd block backs both windows; the task autocloses once the
-     * second window goes, so free it here */
+    /* the task autocloses once its window goes, so free the block here */
     checker_destroy(cc);
     return result_OK;
 

@@ -15,6 +15,7 @@
 #include "io/filetype.h"
 
 #include "lissajous.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -143,6 +144,18 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t lissajous_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Lissajous",
+    "Lissajous figure, drifting frequencies",
+    (taskapp_create_fn_t) lissajous_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void lissajous_destroy(lissajous_task_t *task)

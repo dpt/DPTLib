@@ -66,6 +66,9 @@ wuss_window_fn_t sofa_handle;
  * non-NULL, the task block is also returned through it */
 result_t sofa_create(wuss_t *wuss, sofa_task_t **out);
 
+/* install the icon bar app that opens sofa windows on demand */
+result_t sofa_app_create(wuss_t *wuss);
+
 /* free a task block allocated by sofa_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void sofa_destroy(sofa_task_t *task);

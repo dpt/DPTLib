@@ -23,6 +23,7 @@
 #include "palette.h"
 
 #include "dithering.h"
+#include "taskapp.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -342,6 +343,18 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t dithering_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Dithering",
+    "Error-diffusion dithering to a palette",
+    (taskapp_create_fn_t) dithering_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void dithering_destroy(dithering_task_t *task)

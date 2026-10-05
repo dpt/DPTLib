@@ -18,6 +18,7 @@
 #include "utils/rng.h"
 
 #include "patterns.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -152,6 +153,18 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t patterns_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Patterns",
+    "Ordered-dither gradient between two chosen colours",
+    (taskapp_create_fn_t) patterns_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void patterns_destroy(patterns_task_t *task)

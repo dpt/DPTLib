@@ -56,6 +56,9 @@ wuss_window_fn_t icons_handle;
  * block is also returned through it */
 result_t icons_create(wuss_t *wuss, icons_task_t **out);
 
+/* install the icon bar app that opens icons windows on demand */
+result_t icons_app_create(wuss_t *wuss);
+
 /* free a task block allocated by icons_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void icons_destroy(icons_task_t *task);

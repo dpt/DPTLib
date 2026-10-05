@@ -14,6 +14,7 @@
 #include "geom/box.h"
 
 #include "ball.h"
+#include "taskapp.h"
 #include "common.h"
 
 #define BALL_BASE_RADIUS 8 /* +/-50% at spawn -> 4..12 */
@@ -136,6 +137,18 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t ball_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Ball",
+    "Balls bouncing off content edges",
+    (taskapp_create_fn_t) ball_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void ball_destroy(ball_task_t *task)

@@ -56,6 +56,9 @@ wuss_window_fn_t curve_handle;
  * non-NULL, the task block is also returned through it */
 result_t curve_create(wuss_t *wuss, curve_task_t **out);
 
+/* install the icon bar app that opens curve windows on demand */
+result_t curve_app_create(wuss_t *wuss);
+
 /* free a task block allocated by curve_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void curve_destroy(curve_task_t *task);

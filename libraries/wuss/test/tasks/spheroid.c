@@ -24,6 +24,7 @@
 #include "wuss/task.h"
 
 #include "spheroid.h"
+#include "taskapp.h"
 #include "common.h"
 
 /* After Kai's Power Tools 3's Spheroid Designer (MetaTools, 1995): one big
@@ -800,6 +801,18 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t spheroid_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Spheroid",
+    "Lit sphere after Kai's Power Tools",
+    (taskapp_create_fn_t) spheroid_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void spheroid_destroy(spheroid_task_t *task)

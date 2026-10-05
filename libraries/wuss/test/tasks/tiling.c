@@ -16,6 +16,7 @@
 #include "wuss/menu-desc.h"
 
 #include "tiling.h"
+#include "taskapp.h"
 #include "common.h"
 
 #define TILING_EXT ".png"
@@ -92,6 +93,18 @@ result_t tiling_create(wuss_t *wuss, tiling_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t tiling_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Tiling",
+    "Fill the screen with a repeated PNG",
+    (taskapp_create_fn_t) tiling_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void tiling_destroy(tiling_task_t *task)

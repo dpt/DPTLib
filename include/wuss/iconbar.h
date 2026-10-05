@@ -12,9 +12,10 @@
  *
  * The bar itself always exists once the library is built with the
  * WUSS_ICONBAR option on -- there is no create/destroy call for the bar,
- * only for the icons on it. Icons are laid out left to right in fixed-size
- * slots; an icon bar wider than the screen simply clips, it does not wrap or
- * scroll.
+ * only for the icons on it. Icons are as wide as their label and sit 8
+ * pixels apart, packed in creation order from the left or right edge as
+ * requested; an icon bar wider than the screen simply clips, it does not
+ * wrap or scroll.
  */
 
 #ifndef WUSS_ICONBAR_H
@@ -41,6 +42,18 @@ extern "C"
 /* wuss_iconbar_icon_t (opaque) is forward-declared in wuss.h so it can be
  * named regardless of this option. */
 
+/** Which end of the icon bar an icon is packed against. */
+typedef enum wuss_iconbar_side
+{
+  /** Packed from the left edge, each new icon to the right of the last
+   *  (the default). */
+  wuss_ICONBAR_LEFT = 0,
+
+  /** Packed from the right edge, each new icon to the left of the last. */
+  wuss_ICONBAR_RIGHT
+}
+wuss_iconbar_side_t;
+
 /**
  * Description of an icon bar icon at creation. Copied by value into the
  * icon; the caller keeps ownership of \c text, which is copied.
@@ -50,17 +63,21 @@ typedef struct wuss_iconbar_icon_spec
   /** NUL-terminated label; copied. NULL means "". */
   const char     *text;
 
-  /** The image to draw, centred in the slot with no border. Borrowed, not
+  /** The image to draw, centred in the icon with no border. Borrowed, not
    *  copied; must outlive the icon. NULL (the default) draws just the label
    *  text. */
   const bitmap_t *image;
+
+  /** Which end of the bar to place the icon at. */
+  wuss_iconbar_side_t side;
 }
 wuss_iconbar_icon_spec_t;
 
 /**
- * Add an icon to the icon bar, in the next free slot to the right of every
- * existing icon. The icon's bounding box is invalidated so the next redraw
- * paints it.
+ * Add an icon to the icon bar, next to the last icon on spec->side. The icon
+ * is as wide as its label (or image if wider; 34 pixels with neither) and is
+ * 8 pixels from its neighbours and the bar's edge. The icon's bounding box
+ * is invalidated so the next redraw paints it.
  *
  * \param[in]  wuss  Window manager.
  * \param[in]  owner Task to receive this icon's wuss_EVENT_ICON events (as a
@@ -76,7 +93,7 @@ result_t wuss_iconbar_icon_create(wuss_t                         *wuss,
                                   wuss_iconbar_icon_t           **icon);
 
 /**
- * Remove an icon from the icon bar, freeing its slot and invalidating its
+ * Remove an icon from the icon bar, closing the gap and invalidating its
  * bounding box so the next redraw clears it. Safe to pass NULL for \p icon.
  *
  * \param[in] wuss Window manager.

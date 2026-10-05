@@ -21,6 +21,7 @@
 #include "wuss/icon-spec.h"
 
 #include "icons.h"
+#include "taskapp.h"
 #include "common.h"
 
 #define ICONS_DOC_W    260
@@ -742,6 +743,18 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
 failure:
   wuss_task_destroy(delegate); /* closes the window; QUIT frees block + sprite */
   return rc;
+}
+
+result_t icons_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Icons",
+    "Work-area icons, every type",
+    (taskapp_create_fn_t) icons_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void icons_destroy(icons_task_t *task)

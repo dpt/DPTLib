@@ -16,6 +16,7 @@
 #include "ZXSpectrum/Keyboard.h"
 
 #include "chasehq.h"
+#include "taskapp.h"
 #include "zxtask.h"
 
 /* The game blocks inside chq_start for its whole life; zxtask runs it on its
@@ -197,6 +198,18 @@ result_t chasehq_create(wuss_t *wuss, chasehq_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t chasehq_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Chase H.Q.",
+    "ZX Spectrum Chase H.Q., natively ported",
+    (taskapp_create_fn_t) chasehq_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 #endif /* WUSS_APP && WUSS_CHASEHQ */

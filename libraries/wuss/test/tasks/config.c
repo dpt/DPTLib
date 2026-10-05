@@ -22,6 +22,7 @@
 #include "tasks.h" /* g_tasks.swap_mouse_buttons */
 
 #include "config.h"
+#include "taskapp.h"
 #include "common.h"
 
 /* ----------------------------------------------------------------------- */
@@ -626,6 +627,18 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
 fail_delegate:
   wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
   return rc;
+}
+
+result_t config_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Configure",
+    "System settings",
+    (taskapp_create_fn_t) config_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void config_destroy(config_task_t *task)

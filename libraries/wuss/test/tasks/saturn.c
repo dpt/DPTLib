@@ -23,6 +23,7 @@
 #include "wuss/menu.h"
 
 #include "saturn.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -281,6 +282,18 @@ fail_delegate:
   wuss_saveas_destroy(task->saveas);
   wuss_task_destroy(delegate); /* unregisters; its QUIT frees the task block */
   return rc;
+}
+
+result_t saturn_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Saturn",
+    "Elite loading-screen planet, recreated",
+    (taskapp_create_fn_t) saturn_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void saturn_destroy(saturn_task_t *task)

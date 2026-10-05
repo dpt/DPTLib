@@ -3,6 +3,7 @@
 #include <limits.h>
 #include <string.h>
 
+#include "base/utils.h"
 #include "geom/box.h"
 #include "framebuf/screen.h"
 
@@ -22,15 +23,65 @@ void wuss__iconbar_box(const wuss_t *wuss, box_t *out)
   *out = wuss->iconbar.window->visible;
 }
 
+/* Width of icon "icon": the label's width if it has one (never narrower than
+ * the image), else the image's width, else WUSS_ICONBAR_ICON. */
+static int iconbar_icon_width(const wuss_t              *wuss,
+                              const wuss_iconbar_icon_t *icon)
+{
+  bmfont_width_t width;
+  int            w;
+
+  w = (icon->spec.image != NULL) ? icon->spec.image->size.w : 0;
+
+  if (icon->spec.text[0] != '\0' && wuss->fonts.fonts[0] != NULL)
+  {
+    wuss__text_measure(wuss->fonts.fonts[0], icon->spec.text,
+                       (int) strlen(icon->spec.text), INT_MAX, NULL, &width);
+    w = MAX(w, (int) width);
+  }
+
+  return (w > 0) ? w : WUSS_ICONBAR_ICON;
+}
+
 void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out)
 {
-  box_t bar;
+  box_t                      bar;
+  const wuss_iconbar_icon_t *icon;
+  int                        i, w, edge;
 
   wuss__iconbar_box(wuss, &bar);
 
-  out->x0 = bar.x0 + WUSS_ICONBAR_GAP + index * WUSS_ICONBAR_SLOT;
+  icon = wuss->iconbar.icons[index];
+  w    = iconbar_icon_width(wuss, icon);
+
+  /* icons of one side pack from that side's edge in creation order, with
+   * WUSS_ICONBAR_GAP of bar between neighbours and at the edge */
+  if (icon->spec.side == wuss_ICONBAR_RIGHT)
+  {
+    edge = bar.x1 - WUSS_ICONBAR_GAP;
+    for (i = 0; i < index; i++)
+    {
+      if (wuss->iconbar.icons[i]->spec.side == wuss_ICONBAR_RIGHT)
+        edge -= iconbar_icon_width(wuss, wuss->iconbar.icons[i]) +
+                WUSS_ICONBAR_GAP;
+    }
+    out->x1 = edge;
+    out->x0 = edge - w;
+  }
+  else
+  {
+    edge = bar.x0 + WUSS_ICONBAR_GAP;
+    for (i = 0; i < index; i++)
+    {
+      if (wuss->iconbar.icons[i]->spec.side != wuss_ICONBAR_RIGHT)
+        edge += iconbar_icon_width(wuss, wuss->iconbar.icons[i]) +
+                WUSS_ICONBAR_GAP;
+    }
+    out->x0 = edge;
+    out->x1 = edge + w;
+  }
+
   out->y0 = bar.y0;
-  out->x1 = out->x0 + WUSS_ICONBAR_SLOT;
   out->y1 = bar.y1;
 }
 
@@ -56,7 +107,7 @@ void wuss__iconbar_icon_box(const wuss_t *wuss, int index, box_t *out)
   /* spare space splits 5:3 above:below, rounded to nearest */
   out->x0 = slot.x0;
   out->y0 = slot.y0 + ((WUSS_ICONBAR_HEIGHT - block) * 5 + 4) / 8;
-  out->x1 = out->x0 + WUSS_ICONBAR_ICON;
+  out->x1 = slot.x1;
   out->y1 = out->y0 + h;
 }
 
@@ -118,7 +169,7 @@ void wuss__iconbar_draw_icons(wuss_t *wuss, const box_t *piece)
 
     wuss__iconbar_slot_box(wuss, i, &slot);
     if (slot.x0 >= wuss->scr->size.w)
-      break;
+      continue;
 
     if (box_intersection(piece, &slot, &clipped))
       continue;

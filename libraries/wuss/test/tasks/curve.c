@@ -22,6 +22,7 @@
 #include "wuss/wuss.h"
 
 #include "curve.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -208,6 +209,18 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t curve_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Curve",
+    "Draggable Bezier curve",
+    (taskapp_create_fn_t) curve_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void curve_destroy(curve_task_t *task)

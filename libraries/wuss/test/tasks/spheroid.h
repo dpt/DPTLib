@@ -90,6 +90,9 @@ wuss_window_fn_t spheroid_handle;
  * is non-NULL, the task block is also returned through it */
 result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out);
 
+/* install the icon bar app that opens spheroid windows on demand */
+result_t spheroid_app_create(wuss_t *wuss);
+
 /* free a task block allocated by spheroid_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void spheroid_destroy(spheroid_task_t *task);
