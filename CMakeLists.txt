@@ -819,6 +819,7 @@ if(BUILD_TESTS)
         libraries/utils/bytesex/test/bytesex-test.c
         libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c
+        libraries/wuss/test/gridview-bench-test.c
         libraries/wuss/test/wuss-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
