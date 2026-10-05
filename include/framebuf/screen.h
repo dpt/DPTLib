@@ -370,6 +370,34 @@ void screen_draw_line(screen_t *scr,
                       colour_t  colour);
 
 /**
+ * Draws a solid line `width` pixels thick, with square (butt) ends.
+ *
+ * The stroke is a rectangle centred on the line from (x0,y0) to (x1,y1),
+ * extended half a pixel at each end so both endpoint pixels are covered, as
+ * for `screen_draw_line`. A pixel is set if its centre lies inside the
+ * rectangle. A `width` of 1 is exactly `screen_draw_line`; a `width` <= 0
+ * draws nothing; a zero-length line draws a `width` square. Clipped to the
+ * screen's clip region.
+ *
+ * Coordinates are `int`s and inclusive.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x0      X coordinate of first point of line.
+ * \param[in] y0      Y coordinate of first point of line.
+ * \param[in] x1      X coordinate of second point of line.
+ * \param[in] y1      Y coordinate of second point of line.
+ * \param[in] width   Thickness of the line in pixels.
+ * \param[in] colour  Colour of line.
+ */
+void screen_draw_thick_line(screen_t *scr,
+                            int       x0,
+                            int       y0,
+                            int       x1,
+                            int       y1,
+                            int       width,
+                            colour_t  colour);
+
+/**
  * Draws a connected polyline through `npoints` points: a `screen_draw_line`
  * segment between each adjacent pair. For a closed shape repeat the first
  * point as the last. Fewer than 2 points draws nothing.

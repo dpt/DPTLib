@@ -184,7 +184,8 @@ spellings going forward.
 
 - `screen_set_pixel`
 - `screen_draw_line`, `screen_draw_lines`, `screen_draw_dashed_line`,
-  `screen_draw_line_wu_fix8`, `screen_draw_line_wu_float`
+  `screen_draw_line_wu_fix8`, `screen_draw_line_wu_float`,
+  `screen_draw_thick_line`
 - `screen_draw_rect`, `screen_fill_rect`, `screen_fill_square`,
   `screen_fill_hline` (the per-row primitive `screen_fill_rect` and
   `screen_draw_circle` build on; itself a thin wrapper over `span->fill`)
