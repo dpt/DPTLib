@@ -86,9 +86,10 @@ typedef struct minesweeper_task
   int                      hud_font_h; /* hud_font's glyph cell height */
   int                      hud_field_w; /* pixel width of a "999" field in
                                          * hud_font, plus a small margin */
-  bitmap_t                 mine_bm; /* owned; drawn on a revealed mine
+  const bitmap_t          *mine_bm; /* icon pool "mine"; drawn on a revealed
+                                     * mine cell */
+  const bitmap_t          *flag_bm; /* icon pool "flag"; drawn on a flagged
                                      * cell */
-  bitmap_t                 flag_bm; /* owned; drawn on a flagged cell */
   minesweeper_size_t       size;
   minesweeper_difficulty_t difficulty;
   int                      rows, cols, mines;

@@ -338,8 +338,8 @@ struct wuss
     int            index;
   }
   caret;
-  /* Icon set loaded by wuss_iconpool_load. index i is the i-th ".png" the
-   * directory scan yielded (order unspecified -- address by name).
+  /* Icon pool loaded by wuss_iconpool_load. index i is the i-th ".png" in
+   * name order (strcmp -- still address by name).
    * names interns the leafnames-sans-".png"; atoms[i] is entry i's atom
    * in it (atom values are not array indices, so the position is tracked
    * explicitly); bitmaps[i] is the matching RLE-compressed bitmap. All

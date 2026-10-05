@@ -57,7 +57,7 @@ static int colourset_button_spec(const wuss_t     *wuss,
                                  wuss_icon_spec_t *spec)
 {
   const bitmap_t *bm;
-  int             idx, pidx;
+  int             idx;
   int             w, h;
 
   idx = wuss_iconpool_lookup(wuss, "grightc");
@@ -72,9 +72,8 @@ static int colourset_button_spec(const wuss_t     *wuss,
     return h;
   }
 
-  w    = bm->size.w;
-  h    = bm->size.h;
-  pidx = wuss_iconpool_lookup(wuss, "grightc-p");
+  w = bm->size.w;
+  h = bm->size.h;
 
   memset(spec, 0, sizeof(*spec));
   spec->bbox  = (box_t) BOX_POS_SIZE(bbox.x1 - w,
@@ -82,8 +81,8 @@ static int colourset_button_spec(const wuss_t     *wuss,
                                      w, h);
   spec->type  = wuss_ICON_TYPE_BITMAP;
   spec->flags = wuss_ICON_FLAGS_INTERACTIVE;
-  spec->u.bitmap.set         = wuss_ICONPOOL_SET(idx);
-  spec->u.bitmap.pressed_set = (pidx >= 0) ? wuss_ICONPOOL_SET(pidx) : 0;
+  spec->u.bitmap.name         = "grightc";
+  spec->u.bitmap.pressed_name = "grightc-p";
   return w;
 }
 

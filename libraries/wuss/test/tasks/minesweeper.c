@@ -356,23 +356,15 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
     task->hud_field_w = (int) field_width + MS_HUD_V_PAD;
   }
 
-  filename = pathf("%s/resources/wuss/iconpool/mine.png", resources);
-  rc = bitmap_load_png(&task->mine_bm, filename);
-  if (rc != result_OK)
+  task->mine_bm = wuss_iconpool_bitmap(wuss,
+                                       wuss_iconpool_lookup(wuss, "mine"));
+  task->flag_bm = wuss_iconpool_bitmap(wuss,
+                                       wuss_iconpool_lookup(wuss, "flag"));
+  if (task->mine_bm == NULL || task->flag_bm == NULL)
   {
     bmfontcache_release(wuss_get_font_cache(wuss), task->hud_font);
     free(task); /* nothing registered yet; nobody else owns it */
-    return rc;
-  }
-
-  filename = pathf("%s/resources/wuss/iconpool/flag.png", resources);
-  rc = bitmap_load_png(&task->flag_bm, filename);
-  if (rc != result_OK)
-  {
-    free(task->mine_bm.base);
-    bmfontcache_release(wuss_get_font_cache(wuss), task->hud_font);
-    free(task); /* nothing registered yet; nobody else owns it */
-    return rc;
+    return result_NOT_FOUND;
   }
 
   delegate_desc.handle    = minesweeper_handle;
@@ -381,8 +373,6 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
-    free(task->flag_bm.base);
-    free(task->mine_bm.base);
     bmfontcache_release(wuss_get_font_cache(wuss), task->hud_font);
     free(task); /* nothing registered yet; nobody else owns it */
     return rc;
@@ -457,8 +447,6 @@ result_t minesweeper_app_create(wuss_t *wuss)
 
 void minesweeper_destroy(minesweeper_task_t *task)
 {
-  free(task->flag_bm.base);
-  free(task->mine_bm.base);
   bmfontcache_release(wuss_get_font_cache(task->wuss), task->hud_font);
   free(task);
 }
@@ -487,7 +475,7 @@ static void minesweeper_draw_cell(minesweeper_task_t *ms,
 
   if (state == minesweeper_FLAGGED)
   {
-    screen_copy_bitmap(scr, x, y, &ms->flag_bm);
+    screen_copy_bitmap(scr, x, y, ms->flag_bm);
     return;
   }
 
@@ -496,7 +484,7 @@ static void minesweeper_draw_cell(minesweeper_task_t *ms,
 
   if (ms->mine[r][c])
   {
-    screen_copy_bitmap(scr, x, y, &ms->mine_bm);
+    screen_copy_bitmap(scr, x, y, ms->mine_bm);
     return;
   }
 
