@@ -144,7 +144,7 @@ result_t ball_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Ball",
-    "Balls bouncing off content edges",
+    "Balls bouncing off edges",
     (taskapp_create_fn_t) ball_create
   };
 

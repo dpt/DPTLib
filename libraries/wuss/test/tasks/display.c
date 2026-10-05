@@ -301,7 +301,7 @@ result_t display_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Display",
-    "Change the desktop colours and resolution",
+    "Set colours and resolution",
     (taskapp_create_fn_t) display_create
   };
 

@@ -289,7 +289,7 @@ result_t saturn_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Saturn",
-    "Elite loading-screen planet, recreated",
+    "Elite loading-screen planet",
     (taskapp_create_fn_t) saturn_create
   };
 

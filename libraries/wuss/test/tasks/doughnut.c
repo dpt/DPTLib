@@ -238,7 +238,7 @@ result_t doughnut_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Doughnut",
-    "Spinning torus, ray-marched and shaded per pixel",
+    "Spinning ray-marched torus",
     (taskapp_create_fn_t) doughnut_create
   };
 

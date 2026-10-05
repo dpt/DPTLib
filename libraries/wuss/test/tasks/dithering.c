@@ -350,7 +350,7 @@ result_t dithering_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Dithering",
-    "Error-diffusion dithering to a palette",
+    "Error-diffusion image dithering",
     (taskapp_create_fn_t) dithering_create
   };
 

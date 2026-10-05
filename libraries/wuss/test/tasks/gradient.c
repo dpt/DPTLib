@@ -321,7 +321,7 @@ result_t gradient_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Gradient",
-    "Colour gradients with ordered dithering",
+    "Dithered colour gradients",
     (taskapp_create_fn_t) gradient_create
   };
 

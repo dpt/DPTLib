@@ -300,7 +300,7 @@ result_t effects_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Effects",
-    "Apply bitmap effects to the PNGs under resources/images",
+    "Apply effects to PNGs",
     (taskapp_create_fn_t) effects_create
   };
 

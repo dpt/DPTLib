@@ -159,7 +159,7 @@ result_t greatescape_create(wuss_t *wuss, greatescape_task_t **out)
   static const zxtask_ops_t ops =
   {
     "The Great Escape",
-    "ZX Spectrum The Great Escape, recreated in C",
+    "Escape the prison camp",
     "greatescape",
     GREATESCAPE_CLOCK_HZ,
     greatescape_run,
@@ -219,7 +219,7 @@ result_t greatescape_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "The Great Escape",
-    "ZX Spectrum The Great Escape, recreated in C",
+    "Escape the prison camp",
     (taskapp_create_fn_t) greatescape_create
   };
 

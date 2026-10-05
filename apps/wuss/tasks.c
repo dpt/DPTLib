@@ -363,7 +363,7 @@ result_t task_handle_event(wuss_window_t      *window,
 result_t tasks_open_launcher(point_t pos)
 {
   static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Wuss demo", "Window manager test environment");
+    TASK_PROGINFO_DESC("Wuss demo", "Window manager demo");
 
   wuss_proginfo_set_desc(&desc);
   g_task_items[TASK_ITEM_INFO].window = wuss_proginfo_window(g_tasks.menu_task);

@@ -808,7 +808,7 @@ result_t spheroid_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Spheroid",
-    "Lit sphere after Kai's Power Tools",
+    "Lit sphere designer",
     (taskapp_create_fn_t) spheroid_create
   };
 

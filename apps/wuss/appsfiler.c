@@ -181,7 +181,7 @@ static void apps_destroy(apps_task_t *task)
 static result_t apps_menu_open(apps_task_t *task)
 {
   static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("AppsFiler", "Launcher for the demo tasks");
+    TASK_PROGINFO_DESC("AppsFiler", "Launcher for demo apps");
 
   wuss_proginfo_set_desc(&desc);
   task->menu_items[0].window = wuss_proginfo_window(task->delegate);

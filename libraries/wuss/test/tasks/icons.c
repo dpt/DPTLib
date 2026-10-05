@@ -750,7 +750,7 @@ result_t icons_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Icons",
-    "Work-area icons, every type",
+    "Every work-area icon type",
     (taskapp_create_fn_t) icons_create
   };
 

@@ -84,7 +84,7 @@ result_t keys_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Keys",
-    "Key input and focus demo",
+    "Key input and focus",
     (taskapp_create_fn_t) keys_create
   };
 

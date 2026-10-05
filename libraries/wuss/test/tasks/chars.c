@@ -531,7 +531,7 @@ result_t chars_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Chars",
-    "Bitmap font glyph grid",
+    "Font glyph grid",
     (taskapp_create_fn_t) chars_create
   };
 

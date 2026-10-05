@@ -485,7 +485,7 @@ result_t sofa_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Sofa",
-    "Rotating wireframe sofa, other shapes",
+    "Rotating wireframe shapes",
     (taskapp_create_fn_t) sofa_create
   };
 

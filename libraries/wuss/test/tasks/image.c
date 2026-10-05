@@ -143,7 +143,7 @@ result_t image_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Image",
-    "View the PNGs under resources/images",
+    "View PNG images",
     (taskapp_create_fn_t) image_create
   };
 

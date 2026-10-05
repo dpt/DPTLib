@@ -415,7 +415,7 @@ static int filer_download_selection(const filer_window_t *fw, int download)
 static result_t filer_menu_open(filer_task_t *task, wuss_window_t *window)
 {
   static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Filer", "Directory display / drag-save target");
+    TASK_PROGINFO_DESC("Filer", "Directory browser, save target");
 
 #ifdef __EMSCRIPTEN__
   filer_window_t *fw;
