@@ -24,13 +24,10 @@
 #define BALL_BOUNCE(v) ((v) = -((v) - (v) / 4))
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
- * in ball_task_t, not as a file-scope static, so that each window's Info row
- * can hold its own .window pointer to the shared proginfo singleton, retargeted
- * just before wuss_menu_open */
+ * in ball_task_t, not as a file-scope static */
 enum
 {
-  BALL_MENU_INFO = 0,
-  BALL_MENU_BACKGROUND,
+  BALL_MENU_BACKGROUND = 0,
   BALL_MENU_PAUSE,
   BALL_MENU_ADD,
   BALL_MENU_CLEAR,
@@ -116,11 +113,6 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
     return rc;
   }
-
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, BALL_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in ball_mouse */
 
   WUSS_MENU_ITEM_MENU(task->menu_items, BALL_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
@@ -265,15 +257,6 @@ static result_t ball_mouse(wuss_window_t      *window,
 
   if (button & wuss_BUTTON_MENU)
   {
-    /* static: proginfo only copies the fields when it is next shown */
-    static const wuss_proginfo_desc_t desc[2] =
-    {
-      TASK_PROGINFO_DESC("Bouncing Ball", "Balls bouncing off content edges"),
-      TASK_PROGINFO_DESC("Bouncing Balls", "Balls bouncing off content edges")
-    };
-    wuss_proginfo_set_desc(&desc[bc->nballs > 1]);
-    bc->menu_items[BALL_MENU_INFO].window = wuss_proginfo_window(bc->delegate);
-
     wuss_menu_tick_item(&bc->menu, BALL_MENU_PAUSE, bc->paused);
     wuss_menu_tick_item(&bc->menu, BALL_MENU_GRAVITY, bc->gravity);
 
@@ -495,22 +478,6 @@ result_t ball_handle(wuss_window_t      *window,
     if (window == bc->window)
       bc->window = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == bc->menu_items[BALL_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_QUIT:
     ball_destroy(bc);

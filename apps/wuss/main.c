@@ -375,6 +375,7 @@ static void wuss_frame(void *arg)
   }
 
   wuss_idle(c->wuss);
+  tasks_reap_apps();
 
   wuss_frontend_capture_mouse(c->frontend, wuss_is_dragging(c->wuss));
 

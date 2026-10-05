@@ -6120,6 +6120,35 @@ result_t wuss_test(const char *resources)
     mk_task_count = 0; /* delegate_ac reaped itself; drop the stale entry */
   }
 
+  printf("test: destroying a parent task destroys the tasks created under it\n");
+  {
+    static test_task_t tc_par, tc_kid1, tc_kid2, tc_other;
+    wuss_task_t       *par, *kid1, *kid2, *other;
+
+    memset(&tc_par, 0, sizeof(tc_par));
+    memset(&tc_kid1, 0, sizeof(tc_kid1));
+    memset(&tc_kid2, 0, sizeof(tc_kid2));
+    memset(&tc_other, 0, sizeof(tc_other));
+
+    par = mk_task(wuss, test_handle, &tc_par);
+    if (par == NULL) goto Failure;
+
+    wuss_set_task_parent(wuss, par);
+    kid1 = mk_task(wuss, test_handle, &tc_kid1);
+    kid2 = mk_task(wuss, test_handle, &tc_kid2);
+    wuss_set_task_parent(wuss, NULL);
+    other = mk_task(wuss, test_handle, &tc_other);
+    if (kid1 == NULL || kid2 == NULL || other == NULL) goto Failure;
+
+    wuss_task_destroy(par);
+    mk_task_count = 0; /* par and its kids are gone; drop the stale entries */
+    mk_task_reg[mk_task_count++] = other;
+
+    if (tc_par.stop_count != 1 || tc_kid1.stop_count != 1 ||
+        tc_kid2.stop_count != 1 || tc_other.stop_count != 0)
+      goto Failure;
+  }
+
   printf("test: a task reaping itself from inside wuss_idle does not derail the task walk\n");
   {
     static test_task_t tc_w1, tc_w2, tc_w3;

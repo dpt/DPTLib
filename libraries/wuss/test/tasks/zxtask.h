@@ -10,13 +10,12 @@
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
 #include "geom/box.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/wuss.h"
 
 /* The wuss side of a ZX Spectrum game port: a window with a border in the
- * game's border colour, a menu with Info, Speed (pause and rate),
+ * game's border colour, a menu with Speed (pause and rate),
  * Monochromatic and Double size, real-time pacing, the arrows and '.' as a
  * Kempston joystick, Shift as CAPS SHIFT and a thread for the game loop.
  * Each port's own ZXSpectrum headers stay in its task file, which supplies
@@ -66,13 +65,12 @@ struct zxtask
   const zxtask_ops_t  *ops;
   wuss_task_t         *delegate;
   wuss_window_t       *window;
-  wuss_menu_item_t     menu_items[4];
+  wuss_menu_item_t     menu_items[3];
   wuss_menu_t          menu;
   wuss_menu_item_t     speed_items[5];
   wuss_menu_t          speed_menu;
   char                 speed_title[16]; /* "Speed 100%" */
   wuss_menu_handle_t   menu_handle; /* live only between open and close */
-  wuss_proginfo_desc_t desc;
   colour_t             palette[16]; /* the screen's colours, mono aware */
   unsigned char       *pixels;   /* p4 doubled screen, when zoomed */
   int                  mono;     /* simulate a black and white TV */

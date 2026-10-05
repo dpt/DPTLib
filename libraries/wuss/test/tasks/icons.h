@@ -8,7 +8,6 @@
 #include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/gadget/colourset.h"
 #include "wuss/gadget/stringset.h"
 #include "wuss/icon.h"
@@ -23,12 +22,7 @@
 typedef struct icons_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
-  wuss_task_t        *delegate; /* the task that owns the menu */
-  wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
-                                       * leak one instance's .window pointer
-                                       * into another's menu */
-  wuss_menu_t         menu;
+  wuss_task_t        *delegate; /* the task that owns the window */
   wuss_window_t *window;
   bmfont_t      *font;
   colour_t       label;  /* axis coordinate text */

@@ -31,8 +31,7 @@
  * just before wuss_menu_open */
 enum
 {
-  CURVE_MENU_INFO = 0,
-  CURVE_MENU_BACKGROUND,
+  CURVE_MENU_BACKGROUND = 0,
   CURVE_MENU_TYPE,
   CURVE_MENU_HULL,
   CURVE_MENU_RESET,
@@ -177,11 +176,6 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
     wuss_task_destroy(delegate);
     return rc;
   }
-
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, CURVE_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in curve_mouse */
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CURVE_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
@@ -369,12 +363,6 @@ static result_t curve_mouse(curve_task_t       *task,
   case wuss_MOUSE_DOWN:
     if (button & wuss_BUTTON_MENU)
     {
-      static const wuss_proginfo_desc_t desc =
-        TASK_PROGINFO_DESC("Curve", "Draggable Bezier curve");
-      wuss_proginfo_set_desc(&desc);
-      task->menu_items[CURVE_MENU_INFO].window =
-        wuss_proginfo_window(task->delegate);
-
       wuss_menu_tick_exclusive(&task->type_menu,
                                task->npoints - CURVE_MINCONTROLPTS);
       wuss_menu_tick_item(&task->menu, CURVE_MENU_HULL, task->hull);
@@ -550,22 +538,6 @@ result_t curve_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == task->menu_items[CURVE_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_QUIT:
     curve_destroy(task);

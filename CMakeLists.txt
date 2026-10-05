@@ -460,6 +460,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/task/create.c
     libraries/wuss/core/task/destroy.c
     libraries/wuss/core/task/set-autoclose.c
+    libraries/wuss/core/task/set-parent.c
     libraries/wuss/core/task/deliver.c
     libraries/wuss/core/window/at.c
     libraries/wuss/core/window/create.c

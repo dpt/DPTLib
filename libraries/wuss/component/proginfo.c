@@ -152,6 +152,12 @@ void wuss_proginfo_set_desc(const wuss_proginfo_desc_t *desc)
   g.pending = *desc;
 }
 
+void wuss_proginfo_release(wuss_task_t *task)
+{
+  if (task != NULL && task == g.task)
+    proginfo_free();
+}
+
 result_t wuss_proginfo_handle_pre_show(void)
 {
   return wuss_dialogue_handle_pre_show(g.dialogue);

@@ -22,8 +22,7 @@
  * the shared proginfo singleton, retargeted just before wuss_menu_open */
 enum
 {
-  KEYS_MENU_INFO = 0,
-  KEYS_MENU_CLEAR
+  KEYS_MENU_CLEAR = 0
 };
 
 result_t keys_create(wuss_t *wuss, keys_task_t **out)
@@ -66,11 +65,6 @@ result_t keys_create(wuss_t *wuss, keys_task_t **out)
     wuss_task_destroy(delegate); /* its QUIT frees the task block */
     return rc;
   }
-
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, KEYS_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in keys_mouse */
 
   WUSS_MENU_ITEM(task->menu_items, KEYS_MENU_CLEAR, "Clear",
                  wuss_MENU_ITEM_NONE);
@@ -171,15 +165,10 @@ static result_t keys_redraw(wuss_window_t      *window,
 
 static result_t keys_mouse(keys_task_t *kt, const wuss_event_t *event)
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Keys", "Key input and focus demo");
 
   if (event->data.mouse.action != wuss_MOUSE_DOWN ||
       !(event->data.mouse.button & wuss_BUTTON_MENU))
     return result_OK;
-
-  wuss_proginfo_set_desc(&desc);
-  kt->menu_items[KEYS_MENU_INFO].window = wuss_proginfo_window(kt->delegate);
 
   /* Clear has nothing to do with an empty history */
   if (kt->nkeys > 0)
@@ -244,22 +233,6 @@ result_t keys_handle(wuss_window_t      *window,
     if (window == kt->window)
       kt->window = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == kt->menu_items[KEYS_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_GAIN_FOCUS:
   case wuss_EVENT_LOSE_FOCUS:

@@ -230,33 +230,19 @@ static result_t image_show(image_task_t *ic, int index)
  * open. Freed for good in the QUIT handler. */
 static result_t image_open_menu(image_task_t *ic)
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Image", "View the PNGs under resources/images");
 
   result_t     rc;
   wuss_menu_t *m;
   int          i;
 
   rc = wuss_menu_create_from_desc(&m,
-         "Image, Info, Dithering, Background, Load");
+         "Image, Dithering, Background, Load");
   if (rc != result_OK)
     return rc;
 
-  /* The descriptor syntax has no "open this window on hover" mark, so point
-   * the "Info" row at the shared proginfo singleton by hand: wuss treats a
-   * wuss_menu_item_t.window exactly like a submenu, showing it where one would
-   * open. */
-  wuss_proginfo_set_desc(&desc);
-  for (i = 0; i < m->nitems; i++)
-    if (m->items[i].text != NULL && strcmp(m->items[i].text, "Info") == 0)
-    {
-      ((wuss_menu_item_t *) m->items)[i].window =
-        wuss_proginfo_window(ic->delegate);
-      break;
-    }
-
-  /* Same trick for "Background": point it at the shared colourmenu
-   * singleton as a submenu, so it gets the usual arrow-and-hover behaviour.
+  /* The descriptor syntax has no "open this submenu on hover" mark, so point
+   * "Background" at the shared colourmenu singleton by hand as a submenu, so
+   * it gets the usual arrow-and-hover behaviour.
    * Marked BORROWED_SUBMENU so wuss_menu_destroy leaves it alone -- it is
    * owned by the singleton, not by this per-open tree. No "None" row: its
    * wuss_NO_BACKGROUND isn't a palette index, and there's nothing behind
@@ -371,13 +357,6 @@ result_t image_handle(wuss_window_t      *window,
   case wuss_EVENT_CLOSE:
     if (window == ic->window)
       ic->window = NULL;
-    return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-    if (ic->menu != NULL)
-      for (index = 0; index < ic->menu->nitems; index++)
-        if (ic->menu->items[index].window == window)
-          return wuss_proginfo_handle_pre_show();
     return result_OK;
 
   case wuss_EVENT_QUIT:

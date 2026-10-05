@@ -22,12 +22,9 @@
 #include "snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
- * per-instance in porter_duff_task_t, not as a file-scope static, so that
- * each window's Info row can hold its own .window pointer to the shared
- * proginfo singleton, retargeted just before wuss_menu_open */
+ * per-instance in porter_duff_task_t, not as a file-scope static */
 enum
 {
-  PORTER_DUFF_MENU_INFO,
   PORTER_DUFF_MENU_PAUSE,
   PORTER_DUFF_MENU_RULE,
   PORTER_DUFF_MENU_SWAP,
@@ -255,12 +252,6 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
     wuss_task_destroy(delegate);
     return rc;
   }
-
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, PORTER_DUFF_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * porter_duff_handle */
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PORTER_DUFF_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "SPACE");
@@ -601,14 +592,6 @@ result_t porter_duff_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
-      static const wuss_proginfo_desc_t desc =
-        TASK_PROGINFO_DESC("Porter-Duff",
-                           "Animated Porter-Duff compositing demo");
-
-      wuss_proginfo_set_desc(&desc);
-      pd->menu_items[PORTER_DUFF_MENU_INFO].window =
-        wuss_proginfo_window(pd->delegate);
-
       wuss_menu_tick_item(&pd->menu, PORTER_DUFF_MENU_PAUSE, pd->paused);
       wuss_menu_tick_item(&pd->menu, PORTER_DUFF_MENU_SWAP, pd->swapped);
       wuss_menu_tick_exclusive(&pd->rule_menu, pd->rule);
@@ -663,22 +646,6 @@ result_t porter_duff_handle(wuss_window_t      *window,
     if (window == pd->window)
       pd->window = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == pd->menu_items[PORTER_DUFF_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_QUIT:
     porter_duff_destroy(pd);

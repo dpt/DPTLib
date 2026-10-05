@@ -58,15 +58,6 @@
 #define CONFIG_G_LABEL    1 /* size groups, see stack_item_t::group */
 #define CONFIG_G_UNIT     2
 
-/* MENU click pops this single-item menu; the item table and wuss_menu_t live
- * per-instance in config_task_t, not as a file-scope static, so that each
- * window's Info row can hold its own .window pointer to the shared proginfo
- * singleton, retargeted just before wuss_menu_open */
-enum
-{
-  CONFIG_MENU_INFO
-};
-
 /* Timing frame's writable fields are narrower than a swatch row. */
 #define CONFIG_FIELD_W    48
 
@@ -627,15 +618,6 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, CONFIG_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * config_handle */
-
-  WUSS_MENU_TITLE(task->menu, "Configure", task->menu_items,
-                 NELEMS(task->menu_items));
-
   if (out)
     *out = task;
 
@@ -869,52 +851,16 @@ result_t config_handle(wuss_window_t      *window,
     return config_icon(event, task_data);
 
   case wuss_EVENT_MOUSE:
-    if (window != cc->window)
-      return result_OK; /* the proginfo dialogue has no click behaviour of
-                         * its own */
-
     if (event->data.mouse.action == wuss_MOUSE_DOWN &&
         (event->data.mouse.button & wuss_BUTTON_SELECT))
       return config_click(cc, event);
 
-    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
-        !(event->data.mouse.button & wuss_BUTTON_MENU))
-      return result_OK;
-
-    {
-      static const wuss_proginfo_desc_t desc =
-        TASK_PROGINFO_DESC("Configure", "System settings");
-      wuss_proginfo_set_desc(&desc);
-      cc->menu_items[CONFIG_MENU_INFO].window =
-        wuss_proginfo_window(cc->delegate);
-    }
-    return wuss_menu_open_at_pointer(cc->delegate, &cc->menu,
-                                     &cc->menu_handle);
-
-  case wuss_EVENT_MENU_CLOSED:
-    cc->menu_handle = NULL;
     return result_OK;
 
   case wuss_EVENT_CLOSE:
     if (window == cc->window)
       cc->window = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == cc->menu_items[CONFIG_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_QUIT:
     config_destroy(cc);

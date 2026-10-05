@@ -153,6 +153,7 @@ result_t wuss_create(screen_t               *scr,
   for (s = 0; s < WUSS_STACK_COUNT; s++)
     list_init(&w->z_order[s]);
   list_init(&w->tasks);
+  w->task_parent = NULL;
 
 #ifdef WUSS_ICONS
   /* load the wuss-wide icon set now that w->resources is set; a missing

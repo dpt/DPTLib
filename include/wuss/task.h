@@ -456,6 +456,21 @@ void wuss_task_destroy(wuss_task_t *doomed);
  */
 void wuss_task_set_autoclose(wuss_task_t *task, int on);
 
+/**
+ * Make every task created from now on a child of \p parent: destroying \p
+ * parent (wuss_task_destroy) first destroys its children, each firing its
+ * own wuss_EVENT_QUIT. Lets a launcher task start tasks it did not create
+ * itself and still shut them all down. Do not destroy a parent from inside a
+ * handler while wuss is walking the task list (wuss_idle, wuss_set_palette):
+ * its children vanish from under the walk. A child that self-destructs
+ * earlier (autoclose) just leaves. Pass NULL to stop; the setting is not
+ * scoped, so pair every set with a clear.
+ *
+ * \param[in] wuss   Window manager.
+ * \param[in] parent Task to parent new tasks to, or NULL for none.
+ */
+void wuss_set_task_parent(wuss_t *wuss, wuss_task_t *parent);
+
 #ifdef __cplusplus
 }
 #endif

@@ -10,7 +10,6 @@
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/dialogue.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/component/saveas.h"
 #include "wuss/icon-spec.h"
 #include "wuss/icon.h"
@@ -91,7 +90,7 @@ typedef struct saturn_task
                                         * colourmenu/.window pointers into
                                         * another's menu */
   wuss_menu_t        colours_menu;
-  wuss_menu_item_t   menu_items[5];
+  wuss_menu_item_t   menu_items[4];
   wuss_menu_t        menu;
   int                animate; /* Menu > Animate: re-seed on every idle */
 }

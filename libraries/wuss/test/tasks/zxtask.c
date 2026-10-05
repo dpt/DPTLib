@@ -47,11 +47,9 @@
 #define ZXTASK_KEMPSTON_UP    (1u << 3)
 #define ZXTASK_KEMPSTON_FIRE  (1u << 4)
 
-/* MENU click pops this menu. Its Info row is retargeted at the shared
- * proginfo singleton just before each open. */
+/* MENU click pops this menu. */
 enum
 {
-  ZXTASK_MENU_INFO,
   ZXTASK_MENU_SPEED,
   ZXTASK_MENU_MONO,
   ZXTASK_MENU_ZOOM
@@ -120,7 +118,6 @@ static void *zxtask_thread(void *opaque)
 
 void zxtask_init(zxtask_t *task, const zxtask_ops_t *ops)
 {
-  static const wuss_proginfo_desc_t desc = TASK_PROGINFO_DESC(NULL, NULL);
 
   task->ops = ops;
 
@@ -144,9 +141,6 @@ void zxtask_init(zxtask_t *task, const zxtask_ops_t *ops)
   WUSS_MENU_TITLE(task->speed_menu, task->speed_title, task->speed_items,
                   NELEMS(task->speed_items));
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, ZXTASK_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL);
   WUSS_MENU_ITEM_MENU(task->menu_items, ZXTASK_MENU_SPEED, "Speed",
                       wuss_MENU_ITEM_NONE, &task->speed_menu);
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, ZXTASK_MENU_MONO, "Monochromatic",
@@ -155,12 +149,6 @@ void zxtask_init(zxtask_t *task, const zxtask_ops_t *ops)
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_TITLE(task->menu, ops->title, task->menu_items,
                   NELEMS(task->menu_items));
-
-  /* proginfo only copies the fields when it is next shown, so the desc
-   * lives in the task block */
-  task->desc         = desc;
-  task->desc.name    = ops->title;
-  task->desc.purpose = ops->purpose;
 }
 
 result_t zxtask_start(zxtask_t *task, wuss_t *wuss)
@@ -468,10 +456,6 @@ static result_t zxtask_mouse(zxtask_t           *task,
       (event->data.mouse.button & wuss_BUTTON_MENU) == 0)
     return result_OK;
 
-  wuss_proginfo_set_desc(&task->desc);
-  task->menu_items[ZXTASK_MENU_INFO].window =
-    wuss_proginfo_window(task->delegate);
-
   return wuss_menu_open_at_pointer(task->delegate, &task->menu,
                                    &task->menu_handle);
 }
@@ -734,12 +718,6 @@ static result_t zxtask_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_PRE_SHOW:
-    if (window == task->menu_items[ZXTASK_MENU_INFO].window)
-    {
-      rc = wuss_proginfo_handle_pre_show();
-      if (rc != result_OK)
-        return rc;
-    }
     if (event->data.pre_show.handle == NULL)
       return result_OK;
 

@@ -328,19 +328,14 @@ static result_t effects_redraw(const wuss_event_t *event, void *task_data)
 /* Menu shape built from a descriptor string; the submenus are borrowed. */
 static result_t effects_open_menu(effects_task_t *ec)
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Effects", "Apply bitmap effects to the PNGs under "
-                       "resources/images");
 
   result_t     rc;
   wuss_menu_t *m;
   int          i;
 
-  rc = wuss_menu_create_from_desc(&m, "Effects, Info, Effect, Amount, Load, |Save PNG");
+  rc = wuss_menu_create_from_desc(&m, "Effects, Effect, Amount, Load, |Save PNG");
   if (rc != result_OK)
     return rc;
-
-  wuss_proginfo_set_desc(&desc);
 
   wuss_menu_tick_exclusive(&ec->effect_menu, ec->effect);
   wuss_menu_tick_exclusive(&ec->amount_menu, ec->amount);
@@ -352,11 +347,6 @@ static result_t effects_open_menu(effects_task_t *ec)
 
     if (it->text == NULL)
       continue;
-    if (strcmp(it->text, "Info") == 0)
-    {
-      it->window = wuss_proginfo_window(ec->delegate);
-      continue;
-    }
     if (strcmp(it->text, "Save PNG") == 0)
     {
       it->window = wuss_saveas_window(ec->saveas);
@@ -462,7 +452,7 @@ result_t effects_handle(wuss_window_t      *window,
       if (ec->menu->items[index].window != window)
         continue;
       if (window != wuss_saveas_window(ec->saveas))
-        return wuss_proginfo_handle_pre_show();
+        return result_OK;
       if (event->data.pre_show.handle == NULL)
         return result_OK;
       return wuss_menu_open_window_now(event->data.pre_show.handle,

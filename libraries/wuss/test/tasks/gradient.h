@@ -5,7 +5,6 @@
 
 #ifdef WUSS_APP
 
-#include "wuss/component/proginfo.h"
 #include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -39,7 +38,7 @@ typedef struct gradient_task
   wuss_saveas_t       *saveas;
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[4]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[3]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;

@@ -23,12 +23,6 @@
 #include "icons.h"
 #include "common.h"
 
-/* MENU click pops this single-item menu; the item table and wuss_menu_t
- * live per-instance in icons_task_t, not as a file-scope static, so that
- * each window's Info row can hold its own .window pointer to the shared
- * proginfo singleton, retargeted just before wuss_menu_open */
-enum { ICONS_MENU_INFO };
-
 #define ICONS_DOC_W    260
 #define ICONS_DOC_H    1570 /* taller than the window, so scrolling is exercised */
 #define ICONS_MARGIN   28  /* left edge of everything except frame captions */
@@ -736,14 +730,6 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   if (rc != result_OK)
     goto failure;
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, ICONS_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in icons_handle */
-
-  WUSS_MENU_TITLE(task->menu, "Icons", task->menu_items,
-                 NELEMS(task->menu_items));
-
   /* fully built: from here a last-window close reaps the task and its
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
@@ -936,27 +922,6 @@ result_t icons_handle(wuss_window_t      *window,
   case wuss_EVENT_ICON:
     return icons_icon(event, task_data);
 
-  case wuss_EVENT_MOUSE:
-    if (window != tcx->window)
-      return result_OK; /* the proginfo dialogue has no click behaviour of
-                         * its own */
-
-    if (event->data.mouse.action != wuss_MOUSE_DOWN)
-      return result_OK;
-
-    if (event->data.mouse.button & wuss_BUTTON_MENU)
-    {
-      static const wuss_proginfo_desc_t desc =
-        TASK_PROGINFO_DESC("Icons", "Work-area icons, every type");
-      wuss_proginfo_set_desc(&desc);
-      tcx->menu_items[ICONS_MENU_INFO].window =
-        wuss_proginfo_window(tcx->delegate);
-
-      return wuss_menu_open_at_pointer(tcx->delegate, &tcx->menu,
-                                       &tcx->menu_handle);
-    }
-    return result_OK;
-
   case wuss_EVENT_MENU_SELECT:
   {
     result_t rc;
@@ -978,24 +943,7 @@ result_t icons_handle(wuss_window_t      *window,
       (void) wuss_stringset_handle_event(tcx->sset, event, &rc);
     if (tcx->cset != NULL)
       (void) wuss_colourset_handle_event(tcx->cset, event, &rc);
-    tcx->menu_handle = NULL;
     return result_OK;
-  }
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == tcx->menu_items[ICONS_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
   }
 
   case wuss_EVENT_QUIT:

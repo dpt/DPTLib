@@ -15,6 +15,7 @@ void wuss_task_destroy(wuss_task_t *doomed)
   wuss_event_t event;
   wuss_t      *wuss;
   list_t      *e;
+  wuss_task_t *child;
 
   if (doomed == NULL)
     return;
@@ -41,6 +42,23 @@ void wuss_task_destroy(wuss_task_t *doomed)
   if (wuss->menu.chain != NULL && wuss->menu.chain->owner == doomed)
     wuss__menu_abandon(wuss);
 #endif
+
+  /* Children first, so each sees its own QUIT before the parent's. Each
+   * destroy unlinks the child (and any autoclose sibling it brings down), so
+   * restart the scan from the head every time. */
+  do
+  {
+    child = NULL;
+    for (e = wuss->tasks.next; e != NULL; e = e->next)
+      if (wuss__task_from_link(e)->parent == doomed &&
+          !(wuss__task_from_link(e)->flags & wuss_TASK__REAPING))
+      {
+        child = wuss__task_from_link(e);
+        break;
+      }
+    wuss_task_destroy(child);
+  }
+  while (child != NULL);
 
   /* One QUIT while every window is still alive. */
   event.kind = wuss_EVENT_QUIT;

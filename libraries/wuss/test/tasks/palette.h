@@ -8,7 +8,6 @@
 #include <stdbool.h>
 
 #include "framebuf/colour.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -56,7 +55,7 @@ typedef struct palette_task
   wuss_menu_item_t     load_items[PALETTE_MAX_FILES]; /* one row per
                                                         * *.hex file */
   wuss_menu_t          load_menu; /* "Load" submenu, opened off menu_items */
-  wuss_menu_item_t     menu_items[4]; /* Info, Load, Invert, Greyscale */
+  wuss_menu_item_t     menu_items[3]; /* Load, Invert, Greyscale */
   wuss_menu_t          menu;
   wuss_menu_handle_t   menu_handle; /* for wuss_menu_tick_item_live on an
                                      * ADJUST pick, which keeps the chain
