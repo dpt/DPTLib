@@ -129,7 +129,7 @@ typedef enum wuss_icon_type
    *  but the user cannot edit. Build with wuss_icon_spec_display. */
   wuss_ICON_TYPE_DISPLAY,
   /** Drawn as wuss_ICON_TYPE_BITMAP (spec.u.bitmap). Once the pointer clears
-   *  wuss_config_t::drag_threshold_px from a Select/Adjust press, starts a
+   *  wuss_config_t::mouse.drag_threshold_px from a Select/Adjust press, starts a
    *  core drag (see wuss_drag_start) sized to the icon's bounding box,
    *  hotspot at the press point; a click with no such movement behaves like
    *  an ordinary press and raises wuss_EVENT_ICON on release as usual. */

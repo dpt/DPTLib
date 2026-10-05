@@ -573,24 +573,34 @@ typedef struct wuss_config
   wuss_backdrop_t backdrop;
 
   /**
-   * Maximum interval in milliseconds between two same-button, same-window
-   * presses for the second to carry wuss_BUTTON_DOUBLE, or 0 for the default
-   * (400). Measured against the clock set by wuss_set_time; see
-   * wuss_mouse_click.
+   * Mouse interaction parameters: double-click and drag thresholds. When
+   * config is NULL, double_click_ms defaults to 400, double_click_px and
+   * drag_threshold_px to 4.
    */
-  int            double_click_ms;
+  struct
+  {
+    /**
+     * Maximum interval in milliseconds between two same-button, same-window
+     * presses for the second to carry wuss_BUTTON_DOUBLE, or 0 for the
+     * default (400). Measured against the clock set by wuss_set_time; see
+     * wuss_mouse_click.
+     */
+    int double_click_ms;
 
-  /**
-   * Maximum distance in pixels between two same-button, same-window presses
-   * for the second to carry wuss_BUTTON_DOUBLE, or 0 for the default (4).
-   */
-  int            double_click_px;
+    /**
+     * Maximum distance in pixels between two same-button, same-window
+     * presses for the second to carry wuss_BUTTON_DOUBLE, or 0 for the
+     * default (4).
+     */
+    int double_click_px;
 
-  /**
-   * Minimum distance in pixels a press must move before it starts a drag
-   * rather than a plain click, or 0 for the default (4).
-   */
-  int            drag_threshold_px;
+    /**
+     * Minimum distance in pixels a press must move before it starts a drag
+     * rather than a plain click, or 0 for the default (4).
+     */
+    int drag_threshold_px;
+  }
+  mouse;
 }
 wuss_config_t;
 

@@ -10242,7 +10242,7 @@ QuitFail:
       goto Failure; /* no movement yet: still an ordinary press */
 
     /* short of the threshold: stays an ordinary press */
-    rc = wuss_mouse_move(wuss, POINT(11 + dconfig.drag_threshold_px - 1, 31),
+    rc = wuss_mouse_move(wuss, POINT(11 + dconfig.mouse.drag_threshold_px - 1, 31),
                          NULL);
     if (rc != result_OK)
       goto Failure;
@@ -10250,14 +10250,14 @@ QuitFail:
       goto Failure;
 
     /* clears the threshold: becomes a core drag, released as an icon press */
-    rc = wuss_mouse_move(wuss, POINT(11 + dconfig.drag_threshold_px + 1, 31),
+    rc = wuss_mouse_move(wuss, POINT(11 + dconfig.mouse.drag_threshold_px + 1, 31),
                          NULL);
     if (rc != result_OK)
       goto Failure;
     if (!wuss_is_dragging(wuss))
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, POINT(11 + dconfig.drag_threshold_px + 1, 31),
+    rc = wuss_mouse_click(wuss, POINT(11 + dconfig.mouse.drag_threshold_px + 1, 31),
                           wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
     if (rc != result_OK)
       goto Failure;
