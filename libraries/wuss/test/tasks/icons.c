@@ -214,10 +214,10 @@ static void icons_add_bitmaps(icons_layout_t *lay,
   lay->y = top + sprite->size.h + 50;
 }
 
-/* A grouping frame captioned "Icon set", holding the four fixtures loaded by
- * wuss_iconpool_load -- opton/optoff/radon/radoff -- each drawn as a BITMAP icon
- * that references the loaded set by index via wuss_ICONPOOL_SET. Laid out only
- * when the set loaded (all four looked up); skipped otherwise. */
+/* A grouping frame captioned "Icon pool", holding the four fixtures loaded by
+ * wuss_iconpool_load -- opton/optoff/radon/radoff -- each drawn as a BITMAP
+ * icon that references the pool by name. Laid out only when the pool loaded
+ * (all four looked up); skipped otherwise. */
 static void icons_add_iconset(icons_layout_t *lay, const wuss_t *wuss)
 {
   static const char *const names[4] = { "opton", "optoff", "radon", "radoff" };
@@ -237,7 +237,7 @@ static void icons_add_iconset(icons_layout_t *lay, const wuss_t *wuss)
   top = lay->y;
   wuss_icon_spec_frame(&lay->specs[lay->n++],
                        (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, 44),
-                       "Icon set");
+                       "Icon pool");
 
   for (i = 0; i < 4; i++)
   {
@@ -253,7 +253,7 @@ static void icons_add_iconset(icons_layout_t *lay, const wuss_t *wuss)
     s->bbox     = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10 + i * (w + 6),
                                        top + 20, w, h);
     s->type     = wuss_ICON_TYPE_BITMAP;
-    s->u.bitmap.set = wuss_ICONPOOL_SET(idx[i]);
+    s->u.bitmap.name = names[i];
     lay->n++;
   }
 
