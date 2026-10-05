@@ -20,7 +20,6 @@
 #include "io/filetype.h"
 #include "utils/rng.h"
 #include "wuss/component/dialogue.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 
 #include "saturn.h"
@@ -84,13 +83,10 @@ static int saturn_rnd(int n)
  * instance serves either row. "Configuration" hover-opens
  * task->conf.dialogue's window, a borrowed window built once in
  * saturn_create and stored into task->menu_items[SATURN_MENU_SIZE].window
- * there. "Info" hover-opens the shared proginfo singleton's window,
- * retargeted into task->menu_items[SATURN_MENU_INFO].window just before
- * wuss_menu_open, in saturn_mouse. */
+ * there. */
 enum
 {
-  SATURN_MENU_INFO = 0,
-  SATURN_MENU_COLOURS,
+  SATURN_MENU_COLOURS = 0,
   SATURN_MENU_SIZE,
   SATURN_MENU_ANIMATE,
   SATURN_MENU_SAVE
@@ -160,9 +156,9 @@ static int *saturn_sizedlg_field(saturn_task_t *task, int row)
  * .submenu names, and saturn_pre_submenu_open retargets the shared
  * colourmenu before handing it back as the menu to actually open. The item
  * tables and wuss_menu_t values live per-instance in saturn_task_t, not as
- * file-scope statics, so that each window's Info/Configuration rows point at
- * their own .window pointers rather than every instance sharing (and
- * overwriting) one global .window pointer. */
+ * file-scope statics, so that each window's Configuration row points at its
+ * own .window pointer rather than every instance sharing (and overwriting)
+ * one global .window pointer. */
 
 static result_t saturn_conf_dialogue_create(saturn_task_t *task);
 static result_t saturn_conf_fillout(void *opaque);
@@ -244,11 +240,6 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
                  NELEMS(task->colours_items));
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, SATURN_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * saturn_mouse */
 
   WUSS_MENU_ITEM_MENU(task->menu_items, SATURN_MENU_COLOURS, "Colours",
                       wuss_MENU_ITEM_NONE, &task->colours_menu);
@@ -416,13 +407,6 @@ static result_t saturn_mouse(saturn_task_t      *task,
 
   if (button & wuss_BUTTON_MENU)
   {
-    static const wuss_proginfo_desc_t desc =
-      TASK_PROGINFO_DESC("Saturn", "Elite loading-screen planet, recreated");
-
-    wuss_proginfo_set_desc(&desc);
-    task->menu_items[SATURN_MENU_INFO].window =
-      wuss_proginfo_window(task->delegate);
-
     wuss_menu_tick_item(&task->menu, SATURN_MENU_ANIMATE, task->animate);
 
     return wuss_menu_open_at_pointer(task->delegate, &task->menu,
@@ -845,8 +829,8 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
  * saturn_pre_submenu_open). "Configuration" is a wuss_menu_item_t::window
  * leaf, not a leaf pick, so it never reaches here -- see
  * saturn_conf_dialogue_icon and saturn_sizedlg_pre_show. */
-/* Menu > Animate: a fresh sketch every null event. The proginfo and
- * Configuration windows share this (autoclose) delegate, so the task can
+/* Menu > Animate: a fresh sketch every null event. The
+ * Configuration window shares this (autoclose) delegate, so the task can
  * outlive the planet window; skip the dangling window in the meantime. */
 static result_t saturn_idle(saturn_task_t *task)
 {
@@ -926,17 +910,15 @@ result_t saturn_handle(wuss_window_t      *window,
     result_t rc;
 
     if (window == wuss_dialogue_window(task->conf.dialogue))
+    {
       rc = wuss_dialogue_handle_pre_show(task->conf.dialogue);
-    else if (window == task->menu_items[SATURN_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
+      if (rc != result_OK)
+        return rc;
+    }
 
     if (event->data.pre_show.handle == NULL)
       return result_OK; /* plain window reveal, not a flagged menu leaf:
-                          * already proceeding by default */
+                         * already proceeding by default */
 
     return wuss_menu_open_window_now(event->data.pre_show.handle,
                                      event->data.pre_show.index);

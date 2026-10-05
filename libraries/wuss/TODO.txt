@@ -118,5 +118,6 @@ NO STRONG DEPS (do any time)
 
 NOTES
 
-- Inspirations: RISC OS, Compo/PCA, Classic Mac OS, Kai's Power Tools, Asprite, Reason racks, Blender, Infinity Textures
+- Inspirations: RISC OS, Compo/PCA, Classic Mac OS, Kai's Power Tools, Asprite, Reason racks, Blender, Infinity Textures, p5.js & co.
+
 

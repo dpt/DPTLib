@@ -119,6 +119,8 @@ struct wuss_task
   const char        *name;      /* borrowed, may be NULL */
   list_t             windows;   /* anchor; nodes are window->task_link */
   unsigned int       flags;     /* wuss_TASK__* */
+  wuss_task_t       *parent;    /* NULL, or the task whose destruction takes
+                                 * this one with it; see wuss_set_task_parent */
 };
 
 struct wuss
@@ -221,6 +223,8 @@ struct wuss
   list_t                      z_order[WUSS_STACK_COUNT];
   /* Anchor; registered tasks, in wuss_task_create order. */
   list_t                      tasks;
+  /* Parent given to each task at wuss_task_create; see wuss_set_task_parent. */
+  wuss_task_t                *task_parent;
 
   /* ----- message queue ----- */
 

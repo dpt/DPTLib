@@ -11,7 +11,6 @@
 #include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
@@ -77,7 +76,7 @@ typedef struct minesweeper_task
   wuss_menu_t              size_menu;
   wuss_menu_item_t         difficulty_items[minesweeper_NDIFFICULTIES];
   wuss_menu_t              difficulty_menu;
-  wuss_menu_item_t         menu_items[5]; /* per-instance: a shared static
+  wuss_menu_item_t         menu_items[4]; /* per-instance: a shared static
                                             * would leak one instance's
                                             * .window pointer into another's
                                             * menu */

@@ -8,7 +8,6 @@
 #include "framebuf/colour.h"
 #include "framebuf/screen.h"
 #include "utils/rng.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/component/saveas.h"
 #include "wuss/gadget/colourset.h"
 #include "wuss/icon-spec.h"
@@ -58,9 +57,7 @@ typedef struct spheroid_task
   wuss_task_t       *delegate; /* the task that owns the menu */
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[7]; /* per-instance: shared static "Info"
-                                     * row would leak one instance's .window
-                                     * pointer into another's menu */
+  wuss_menu_item_t   menu_items[6]; /* per-instance, not a shared static */
   wuss_menu_t        menu;
   /* "Light" submenu: one row per light */
   wuss_menu_item_t   light_items[SPHEROID_NLIGHTS];

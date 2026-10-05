@@ -33,8 +33,7 @@
  * global. */
 enum
 {
-  GREEBLE_MENU_INFO = 0,
-  GREEBLE_MENU_RANDPAL,
+  GREEBLE_MENU_RANDPAL = 0,
   GREEBLE_MENU_PALETTE,
   GREEBLE_MENU_SIZE,
   GREEBLE_MENU_SAVE
@@ -444,13 +443,7 @@ result_t greeble_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
-      static const wuss_proginfo_desc_t desc =
-        TASK_PROGINFO_DESC("Greeble", "Prefab-scatter greebling pattern");
       unsigned int ticks;
-
-      wuss_proginfo_set_desc(&desc);
-      task->menu_items[GREEBLE_MENU_INFO].window =
-        wuss_proginfo_window(task->delegate);
 
       wuss_menu_tick_exclusive(&task->palette_menu, task->palette);
       wuss_menu_tick_exclusive(&task->size_menu, task->size);
@@ -485,24 +478,6 @@ result_t greeble_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL; /* wuss closed the chain under us */
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == task->menu_items[GREEBLE_MENU_INFO].window)
-    {
-      rc = wuss_proginfo_handle_pre_show();
-      if (rc != result_OK)
-        return rc;
-    }
-
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_QUIT:
     greeble_destroy(task);
@@ -572,12 +547,6 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
     wuss_task_destroy(delegate);
     return rc;
   }
-
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, GREEBLE_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open_ticked, in
-                                * greeble_handle */
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLE_MENU_RANDPAL,
                           "Random palettes", wuss_MENU_ITEM_NONE, "R");

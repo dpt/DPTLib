@@ -277,11 +277,6 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   WUSS_MENU_TITLE(task->strength_menu, "Strength", task->strength_items,
                   DITHERING_NSTRENGTHS);
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, DITHERING_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * dithering_menu_open */
   WUSS_MENU_ITEM_MENU(task->menu_items, DITHERING_MENU_IMAGE, "Image",
                       wuss_MENU_ITEM_DASHED, &task->image_menu);
   WUSS_MENU_ITEM_MENU(task->menu_items, DITHERING_MENU_METHOD, "Method",
@@ -399,13 +394,6 @@ static void dithering_menu_refresh(dithering_task_t *dt)
 
 static result_t dithering_menu_open(dithering_task_t *dt)
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Dithering", "Error-diffusion dithering to a palette");
-
-  wuss_proginfo_set_desc(&desc);
-  dt->menu_items[DITHERING_MENU_INFO].window =
-    wuss_proginfo_window(dt->delegate);
-
   dithering_menu_refresh(dt);
 
   return wuss_menu_open_ticked(dt->delegate, &dt->menu,
@@ -499,22 +487,6 @@ result_t dithering_handle(wuss_window_t      *window,
     if (dt->palette == DITHERING_PALETTE_DESKTOP)
       return dithering_apply(dt);
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == dt->menu_items[DITHERING_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_CLOSE:
     if (window == dt->window)

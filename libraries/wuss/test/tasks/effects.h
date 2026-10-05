@@ -7,7 +7,6 @@
 
 #include "framebuf/bitmap.h"
 #include "framebuf/screen.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"

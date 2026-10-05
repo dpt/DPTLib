@@ -88,6 +88,10 @@ result_t tasks_open_launcher(point_t pos);
  * matches */
 result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers);
 
+/* Destroy every app whose Quit was picked, with all its instances. Call once
+ * per frame, after wuss_idle. */
+void tasks_reap_apps(void);
+
 /* Switch the frontend's CRT post-effect on or off, recording the outcome in
  * g_tasks.crt and the Debug menu's tick. Needs g_tasks.frontend set. */
 void tasks_set_crt(bool on);

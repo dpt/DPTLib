@@ -11,7 +11,6 @@
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/fontmenu.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
@@ -86,10 +85,10 @@ typedef struct text_task
                                    * retargeted per hover in
                                    * text_pre_submenu_open */
   wuss_menu_t         colours_menu;
-  wuss_menu_item_t    top_items[7]; /* "Info", "Font", "Sample", "Spacing",
+  wuss_menu_item_t    top_items[6]; /* "Font", "Sample", "Spacing",
                                    * "Alignment", "Colours", "Auto-size",
                                    * built once the fontmenu
-                                   * exists so items[1].submenu can borrow
+                                   * exists so items[0].submenu can borrow
                                    * its live wuss_menu_t */
   wuss_menu_t         top_menu;   /* root menu passed to wuss_menu_open */
   wuss_menu_handle_t  menu_handle; /* chain handle from the last

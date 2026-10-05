@@ -7,7 +7,6 @@
 
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -30,9 +29,7 @@ typedef struct doughnut_task
   wuss_saveas_t     *saveas;
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[6]; /* per-instance: shared static "Info" row
-                                      * would leak one instance's .window
-                                      * pointer into another's menu */
+  wuss_menu_item_t   menu_items[5]; /* per-instance, not a shared static */
   wuss_menu_t        menu;
   wuss_menu_item_t   tube_items[4]; /* "Tube" submenu: one row per radius */
   wuss_menu_t        tube_menu;

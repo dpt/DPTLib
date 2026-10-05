@@ -29,12 +29,9 @@
 #define PARTICLES_TRAIL_DAMPING 0.25f /* fraction of pointer velocity kept */
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
- * per-instance in particles_task_t, not as a file-scope static, so that each
- * window's Info row can hold its own .window pointer to the shared proginfo
- * singleton, retargeted just before wuss_menu_open */
+ * per-instance in particles_task_t, not as a file-scope static */
 enum
 {
-  PARTICLES_MENU_INFO,
   PARTICLES_MENU_ADD,
   PARTICLES_MENU_BACKGROUND,
   PARTICLES_MENU_PAUSE,
@@ -342,11 +339,6 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, PARTICLES_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * particles_mouse */
 
   for (i = 0; i < NELEMS(task->emitter_items); i++)
     WUSS_MENU_ITEM(task->emitter_items, i, particles_intensities[i].name,
@@ -816,17 +808,6 @@ static result_t particles_mouse(wuss_window_t      *window,
 
   if (button & wuss_BUTTON_MENU)
   {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Particles",
-      "Retro explosion particle system",
-      "© David Thomas",
-      "1.0 (" __DATE__ ")"
-    };
-    wuss_proginfo_set_desc(&desc);
-    pt->menu_items[PARTICLES_MENU_INFO].window =
-      wuss_proginfo_window(pt->delegate);
-
     pt->menu_x = x;
     pt->menu_y = y;
 
@@ -1058,10 +1039,6 @@ result_t particles_handle(wuss_window_t      *window,
     {
       pt->strength_which = event->data.pre_show.index;
       rc = wuss_dialogue_handle_pre_show(pt->strength_dialogue);
-    }
-    else if (window == pt->menu_items[PARTICLES_MENU_INFO].window)
-    {
-      rc = wuss_proginfo_handle_pre_show();
     }
     else
     {

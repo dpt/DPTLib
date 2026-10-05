@@ -5,7 +5,6 @@
 
 #ifdef WUSS_APP
 
-#include "wuss/component/proginfo.h"
 #include "wuss/gadget/stringset.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -16,7 +15,7 @@
  * surface and wuss's own screen, nudging every open window back on-screen and
  * shrinking any that no longer fit, then closes the window (Adjust leaves it
  * open). Cancel closes it, discarding the picks; Adjust-Cancel instead reverts
- * them to the mode in force. A MENU click opens an Info menu. */
+ * them to the mode in force. */
 typedef struct display_task
 {
   wuss_t             *wuss;
@@ -26,9 +25,6 @@ typedef struct display_task
   wuss_stringset_t   *resolution;
   wuss_icon_t        *cancel;
   wuss_icon_t        *change;
-  wuss_menu_handle_t  menu_handle;
-  wuss_menu_item_t    menu_items[1]; /* Info */
-  wuss_menu_t         menu;
 }
 display_task_t;
 

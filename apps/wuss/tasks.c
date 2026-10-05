@@ -14,6 +14,9 @@
 #include "wuss/window.h"
 #include "wuss/menu.h"
 #include "wuss/component/proginfo.h"
+#ifdef WUSS_ICONBAR
+#include "wuss/iconbar.h"
+#endif
 
 #include "frontend.h"
 #include "tasks.h"
@@ -92,13 +95,201 @@ void tasks_build_screen_palette(colour_t       *out,
  * hand-written wrapper per task. */
 typedef result_t (*task_create_fn_t)(wuss_t *wuss, void **out);
 
-static result_t spawn_task(const char *name, task_create_fn_t create)
+/* One launchable task: g_*_tasks[i] below. */
+typedef struct task_entry task_entry_t;
+typedef struct app        app_t;
+
+struct task_entry
+{
+  const char      *name;
+  task_create_fn_t create;
+  const char      *purpose; /* the app's Info dialogue, "Purpose" row */
+  bool             bare;    /* manages its own icon bar icon: no app wrapper */
+  app_t           *app;     /* the running app's icon bar presence, or NULL */
+};
+
+#ifdef WUSS_ICONBAR
+
+/* ----- icon bar apps ----------------------------------------------------
+ *
+ * Launching a task installs an app: an icon bar icon owned by its own task.
+ * SELECT on the icon opens another instance of the task's main window by
+ * calling the task's X_create; MENU opens the app menu, whose "Info" row
+ * shows the program information dialogue and whose "Quit" row removes the
+ * icon and shuts down every instance. Each instance is a task of its own,
+ * parented to the app task (wuss_set_task_parent) so Quit can find it. */
+
+enum
+{
+  APP_MENU_INFO,
+  APP_MENU_QUIT,
+  APP_MENU_COUNT
+};
+
+struct app
+{
+  task_entry_t        *entry;
+  wuss_task_t         *task;
+  wuss_iconbar_icon_t *icon;
+  wuss_menu_handle_t   menu_handle;
+  wuss_menu_item_t     menu_items[APP_MENU_COUNT];
+  wuss_menu_t          menu;
+  bool                 quit; /* Quit picked; tasks_reap_apps destroys the task
+                              * once wuss_idle has finished walking the task
+                              * list, as destroying it takes its instances
+                              * with it */
+};
+
+static result_t app_spawn_instance(app_t *app)
 {
   result_t rc;
 
-  rc = create(g_tasks.wuss, NULL);
+  wuss_set_task_parent(g_tasks.wuss, app->task);
+  rc = app->entry->create(g_tasks.wuss, NULL);
+  wuss_set_task_parent(g_tasks.wuss, NULL);
+
   if (rc != result_OK)
-    logf_error("wuss: %s create failed, rc=0x%X (%s)", name, rc,
+    logf_error("wuss: %s create failed, rc=0x%X (%s)", app->entry->name, rc,
+               result_string(rc));
+  return rc;
+}
+
+static result_t app_menu_open(app_t *app)
+{
+  const wuss_proginfo_desc_t desc =
+    TASK_PROGINFO_DESC(app->entry->name, app->entry->purpose);
+
+  wuss_proginfo_set_desc(&desc);
+  app->menu_items[APP_MENU_INFO].window = wuss_proginfo_window(app->task);
+
+  return wuss_iconbar_menu_open(app->task, &app->menu, &app->menu_handle);
+}
+
+static result_t app_handle(wuss_window_t      *window,
+                           const wuss_event_t *event,
+                           void               *task_data)
+{
+  app_t *app;
+
+  app = task_data;
+
+  switch (event->kind)
+  {
+  case wuss_EVENT_ICON:
+    if (window != NULL || event->data.iconbar_icon.action != wuss_MOUSE_UP)
+      return result_OK;
+    if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
+      return app_menu_open(app);
+    if (event->data.iconbar_icon.button & wuss_BUTTON_SELECT)
+      return app_spawn_instance(app);
+    return result_OK; /* ADJUST: nothing yet */
+
+  case wuss_EVENT_MENU_SELECT:
+    if (event->data.menu_select.menu == &app->menu &&
+        event->data.menu_select.index == APP_MENU_QUIT)
+      app->quit = true;
+    return result_OK;
+
+  case wuss_EVENT_MENU_CLOSED:
+    app->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == app->menu_items[APP_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
+    else
+      rc = result_OK;
+    if (rc != result_OK || event->data.pre_show.handle == NULL)
+      return rc;
+
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+  }
+
+  case wuss_EVENT_QUIT:
+    wuss_proginfo_release(app->task);
+    app->entry->app = NULL;
+    free(app);
+    return result_OK;
+
+  default:
+    return result_OK;
+  }
+}
+
+/* Install entry's app: its task and icon bar icon. */
+static result_t app_install(task_entry_t *entry)
+{
+  result_t                 rc;
+  app_t                   *app;
+  wuss_task_desc_t         desc;
+  wuss_iconbar_icon_spec_t spec;
+
+  app = calloc(1, sizeof(*app));
+  if (app == NULL)
+    return result_OOM;
+
+  app->entry = entry;
+
+  WUSS_MENU_ITEM_WINDOW(app->menu_items, APP_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo
+                                * singleton in app_menu_open */
+  WUSS_MENU_ITEM_SHORTCUT(app->menu_items, APP_MENU_QUIT, "Quit",
+                          wuss_MENU_ITEM_DASHED, NULL);
+  WUSS_MENU_TITLE(app->menu, entry->name, app->menu_items,
+                  NELEMS(app->menu_items));
+
+  desc.handle    = app_handle;
+  desc.task_data = app;
+  desc.name      = entry->name;
+  rc = wuss_task_create(g_tasks.wuss, &desc, &app->task);
+  if (rc != result_OK)
+  {
+    free(app);
+    return rc;
+  }
+  entry->app = app;
+
+  spec.text  = entry->name;
+  spec.image = NULL;
+  rc = wuss_iconbar_icon_create(g_tasks.wuss, app->task, &spec, &app->icon);
+  if (rc != result_OK)
+    wuss_task_destroy(app->task); /* its QUIT frees app and clears entry->app */
+
+  return rc;
+}
+
+#endif /* WUSS_ICONBAR */
+
+static result_t spawn_task(task_entry_t *entry)
+{
+  result_t rc;
+
+#ifdef WUSS_ICONBAR
+  if (!entry->bare)
+  {
+    if (entry->app == NULL)
+    {
+      rc = app_install(entry);
+      if (rc != result_OK)
+      {
+        logf_error("wuss: %s install failed, rc=0x%X (%s)", entry->name, rc,
+                   result_string(rc));
+        return rc;
+      }
+    }
+
+    return app_spawn_instance(entry->app);
+  }
+#endif
+
+  rc = entry->create(g_tasks.wuss, NULL);
+  if (rc != result_OK)
+    logf_error("wuss: %s create failed, rc=0x%X (%s)", entry->name, rc,
                result_string(rc));
   return rc;
 }
@@ -106,68 +297,61 @@ static result_t spawn_task(const char *name, task_create_fn_t create)
 /* The backdrop MENU-button pop-up now holds only system actions; every task
  * is launched from AppsFiler, which walks g_task_categories below. */
 
-/* One launchable task: g_*_tasks[i] below. */
-typedef struct
-{
-  const char      *name;
-  task_create_fn_t create;
-}
-task_entry_t;
 
-static const task_entry_t
+static task_entry_t
 g_games_tasks[] =
 {
-  { "Ball",        (task_create_fn_t) ball_create        },
+  { "Ball", (task_create_fn_t) ball_create, "Balls bouncing off content edges" },
 #ifdef WUSS_CHASEHQ
-  { "Chase H.Q.",  (task_create_fn_t) chasehq_create     },
+  { "Chase H.Q.", (task_create_fn_t) chasehq_create, "ZX Spectrum Chase H.Q., natively ported" },
 #endif
 #ifdef WUSS_GREATESCAPE
-  { "The Great Escape", (task_create_fn_t) greatescape_create },
+  { "The Great Escape", (task_create_fn_t) greatescape_create, "ZX Spectrum The Great Escape, recreated in C" },
 #endif
-  { "Minesweeper", (task_create_fn_t) minesweeper_create }
+  { "Minesweeper", (task_create_fn_t) minesweeper_create, "Classic minesweeper" }
 },
 g_tests_tasks[] =
 {
 #ifdef WUSS_ICONBAR
 #endif
-  { "Icons",       (task_create_fn_t) icons_create       },
-  { "Keys",        (task_create_fn_t) keys_create        },
-  { "Porter-Duff", (task_create_fn_t) porter_duff_create },
-  { "Text",        (task_create_fn_t) text_create        }
+  { "Icons", (task_create_fn_t) icons_create, "Work-area icons, every type" },
+  { "Keys", (task_create_fn_t) keys_create, "Key input and focus demo" },
+  { "Porter-Duff", (task_create_fn_t) porter_duff_create, "Animated Porter-Duff compositing demo" },
+  { "Text", (task_create_fn_t) text_create, "Sample-text layout with font/colour/spacing pickers" }
 },
 g_utilities_tasks[] =
 {
-  { "Chars",       (task_create_fn_t) chars_create       },
-  { "Clock",       (task_create_fn_t) clock_create       }
+  { "Chars", (task_create_fn_t) chars_create, "Bitmap font glyph grid" },
+  { "Clock", (task_create_fn_t) clock_create, "Analogue or digital clock" }
 },
 g_visuals_tasks[] =
 {
-  { "Checker",     (task_create_fn_t) checker_create     },
-  { "Curve",       (task_create_fn_t) curve_create       },
-  { "Dithering",   (task_create_fn_t) dithering_create   },
-  { "Effects",     (task_create_fn_t) effects_create     },
-  { "Gradient",    (task_create_fn_t) gradient_create    },
-  { "Greeble",     (task_create_fn_t) greeble_create     },
-  { "Image",       (task_create_fn_t) image_create       },
-  { "Lissajous",   (task_create_fn_t) lissajous_create   },
-  { "Patterns",    (task_create_fn_t) patterns_create    },
-  { "Tiling",      (task_create_fn_t) tiling_create      }
+  { "Checker", (task_create_fn_t) checker_create, "Two independent cycling checkerboard patterns" },
+  { "Curve", (task_create_fn_t) curve_create, "Draggable Bezier curve" },
+  { "Dithering", (task_create_fn_t) dithering_create, "Error-diffusion dithering to a palette" },
+  { "Effects", (task_create_fn_t) effects_create, "Apply bitmap effects to the PNGs under resources/images" },
+  { "Gradient", (task_create_fn_t) gradient_create, "Colour gradients with ordered dithering" },
+  { "Greeble", (task_create_fn_t) greeble_create, "Prefab-scatter greebling pattern" },
+  { "Image", (task_create_fn_t) image_create, "View the PNGs under resources/images" },
+  { "Lissajous", (task_create_fn_t) lissajous_create, "Lissajous figure, drifting frequencies" },
+  { "Patterns", (task_create_fn_t) patterns_create, "Ordered-dither gradient between two chosen colours" },
+  { "Tiling", (task_create_fn_t) tiling_create, "Fill the screen with a repeated PNG" }
 },
 g_toys_tasks[] =
 {
-  { "Doughnut",    (task_create_fn_t) doughnut_create    },
-  { "Particles",   (task_create_fn_t) particles_create   },
-  { "Saturn",      (task_create_fn_t) saturn_create      },
-  { "Sofa",        (task_create_fn_t) sofa_create        },
-  { "Spheroid",    (task_create_fn_t) spheroid_create    }
+  { "Doughnut", (task_create_fn_t) doughnut_create, "Spinning torus, ray-marched and shaded per pixel" },
+  { "Particles", (task_create_fn_t) particles_create, "Retro explosion particle system" },
+  { "Saturn", (task_create_fn_t) saturn_create, "Elite loading-screen planet, recreated" },
+  { "Sofa", (task_create_fn_t) sofa_create, "Rotating wireframe sofa, other shapes" },
+  { "Spheroid", (task_create_fn_t) spheroid_create, "Lit sphere after Kai's Power Tools" }
 },
 g_system_tasks[] =
 {
-  { "Configure",   (task_create_fn_t) config_create      },
-  { "Display",     (task_create_fn_t) display_create     },
-  { "Palette",     (task_create_fn_t) palette_create     },
+  { "Configure", (task_create_fn_t) config_create, "System settings" },
+  { "Display", (task_create_fn_t) display_create, "Change the desktop colours and resolution" },
+  { "Palette", (task_create_fn_t) palette_create, "Desktop and screen palette grid" },
 #ifdef WUSS_ICONBAR
-  { "Filer",       (task_create_fn_t) filer_create        }
+  { "Filer", (task_create_fn_t) filer_create, NULL, true }
 #endif
 };
 
@@ -387,10 +571,10 @@ result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers)
 
 /* tasks_spawn walks every category's table by name, regardless of which
  * category a task lives in. */
-static const struct
+static struct
 {
   const char         *name;
-  const task_entry_t *tasks;
+  task_entry_t       *tasks;
   int                  count;
 }
 g_task_categories[] =
@@ -425,8 +609,7 @@ const char *tasks_entry_name(int category, int index)
 
 result_t tasks_entry_spawn(int category, int index)
 {
-  return spawn_task(g_task_categories[category].tasks[index].name,
-                    g_task_categories[category].tasks[index].create);
+  return spawn_task(&g_task_categories[category].tasks[index]);
 }
 
 /* Spawns every task in every category, in table order. */
@@ -436,8 +619,7 @@ static void tasks_spawn_all(void)
 
   for (c = 0; c < (int) NELEMS(g_task_categories); c++)
     for (i = 0; i < g_task_categories[c].count; i++)
-      (void) spawn_task(g_task_categories[c].tasks[i].name,
-                        g_task_categories[c].tasks[i].create);
+      (void) spawn_task(&g_task_categories[c].tasks[i]);
 }
 
 /* Finds and spawns the single task named name (case-sensitive, matching the
@@ -451,7 +633,7 @@ static bool tasks_spawn_one(const char *name)
     for (i = 0; i < g_task_categories[c].count; i++)
       if (strcmp(g_task_categories[c].tasks[i].name, name) == 0)
       {
-        (void) spawn_task(name, g_task_categories[c].tasks[i].create);
+        (void) spawn_task(&g_task_categories[c].tasks[i]);
         return true;
       }
 
@@ -490,4 +672,21 @@ void tasks_spawn(const char *names)
     if (*p == ',')
       p++;
   }
+}
+
+void tasks_reap_apps(void)
+{
+#ifdef WUSS_ICONBAR
+  int c, i;
+
+  for (c = 0; c < (int) NELEMS(g_task_categories); c++)
+    for (i = 0; i < g_task_categories[c].count; i++)
+    {
+      app_t *app;
+
+      app = g_task_categories[c].tasks[i].app;
+      if (app != NULL && app->quit)
+        wuss_task_destroy(app->task); /* its QUIT frees app */
+    }
+#endif
 }

@@ -27,8 +27,7 @@
  * singleton, retargeted just before wuss_menu_open */
 enum
 {
-  CHECKER_MENU_INFO = 0,
-  CHECKER_MENU_INK,
+  CHECKER_MENU_INK = 0,
   CHECKER_MENU_PAPER,
   CHECKER_MENU_PATTERN,
   CHECKER_MENU_SWAP,
@@ -122,12 +121,6 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
     wuss_task_destroy(delegate);
     return rc;
   }
-
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, CHECKER_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * checker_handle */
 
   /* both rows open the shared colourmenu; checker_pre_submenu_open retitles
    * it and picks which colour a pick lands in */
@@ -360,13 +353,6 @@ result_t checker_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
-      static const wuss_proginfo_desc_t desc =
-        TASK_PROGINFO_DESC("Checker",
-                           "Two independent cycling checkerboard patterns");
-      wuss_proginfo_set_desc(&desc);
-      cc->menu_items[CHECKER_MENU_INFO].window =
-        wuss_proginfo_window(cc->delegate);
-
       cc->menu_window = window;
       wuss_menu_tick_exclusive(&cc->pattern_menu,
                                (window == cc->window2) ? cc->pattern2
@@ -407,22 +393,6 @@ result_t checker_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_CLOSED:
     cc->menu_handle = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == cc->menu_items[CHECKER_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_CLOSE:
     if (window == cc->menu_window)

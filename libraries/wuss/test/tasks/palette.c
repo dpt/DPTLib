@@ -29,10 +29,9 @@
                                 * length */
 
 /* indices of the top-level menu's fixed rows */
-#define PALETTE_MENU_INFO_INDEX    0
-#define PALETTE_MENU_LOAD_INDEX    1
-#define PALETTE_MENU_INVERT_INDEX  2
-#define PALETTE_MENU_GREY_INDEX    3
+#define PALETTE_MENU_LOAD_INDEX    0
+#define PALETTE_MENU_INVERT_INDEX  1
+#define PALETTE_MENU_GREY_INDEX    2
 
 /* ----------------------------------------------------------------------- */
 /* Parse a *.hex file: one "rrggbb" line per colour, no leading '#'. Fails
@@ -161,11 +160,6 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   }
   WUSS_MENU_TITLE(task->load_menu, "Load", task->load_items, task->nnames);
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, PALETTE_MENU_INFO_INDEX, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * palette_menu_open */
   WUSS_MENU_ITEM_MENU(task->menu_items, PALETTE_MENU_LOAD_INDEX, "Load",
                       wuss_MENU_ITEM_NONE, &task->load_menu);
   WUSS_MENU_ITEM(task->menu_items, PALETTE_MENU_INVERT_INDEX,
@@ -348,14 +342,7 @@ static result_t palette_redraw_screen(palette_task_t     *pc,
  * touches the TICKED bit. */
 static result_t palette_menu_open(palette_task_t *pc)
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Palette", "Desktop and screen palette grid");
-
   unsigned int ticks;
-
-  wuss_proginfo_set_desc(&desc);
-  pc->menu_items[PALETTE_MENU_INFO_INDEX].window =
-    wuss_proginfo_window(pc->delegate);
 
   wuss_menu_tick_exclusive(&pc->load_menu, pc->selected);
 
@@ -482,9 +469,6 @@ result_t palette_handle(wuss_window_t      *window,
     return palette_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
-    if (window != pc->window && window != pc->window2)
-      return result_OK; /* the proginfo dialogue has no click behaviour of
-                         * its own */
     return palette_click(task_data, event);
 
   case wuss_EVENT_MENU_SELECT:
@@ -493,22 +477,6 @@ result_t palette_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_CLOSED:
     pc->menu_handle = NULL; /* wuss closed the chain under us */
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == pc->menu_items[PALETTE_MENU_INFO_INDEX].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_CLOSE:
     if (window == pc->window2)

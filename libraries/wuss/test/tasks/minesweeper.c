@@ -94,14 +94,10 @@ g_minesweeper_difficulties[minesweeper_NDIFFICULTIES] =
 
 /* MENU click over the board pops this menu; the item tables and wuss_menu_t
  * values live per-instance in minesweeper_task_t, not as file-scope
- * statics, so that each window's Info row points at its own .window pointer
- * (retargeted at the shared proginfo singleton just before wuss_menu_open,
- * in minesweeper_mouse) rather than every instance sharing (and overwriting)
- * one global .window pointer -- and so two instances don't fight over one
- * shared tick mark on the Grid Size or Difficulty submenus */
+ * statics, so that two instances don't fight over one shared tick mark on the
+ * Grid Size or Difficulty submenus */
 enum
 {
-  MINESWEEPER_MENU_INFO,
   MINESWEEPER_MENU_NEW_GAME,
   MINESWEEPER_MENU_SIZE,
   MINESWEEPER_MENU_DIFFICULTY,
@@ -423,12 +419,6 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
     WUSS_MENU_TITLE(task->difficulty_menu, "Difficulty",
                    task->difficulty_items, NELEMS(task->difficulty_items));
   }
-
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, MINESWEEPER_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * minesweeper_mouse */
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, MINESWEEPER_MENU_NEW_GAME,
                           "New Game", wuss_MENU_ITEM_NONE, "N");
@@ -808,13 +798,7 @@ static result_t minesweeper_mouse(minesweeper_task_t *ms,
 
   if (button & wuss_BUTTON_MENU)
   {
-    static const wuss_proginfo_desc_t desc =
-      TASK_PROGINFO_DESC("Minesweeper", "Classic minesweeper");
-
     wuss_menu_item_t *give_up;
-
-    wuss_proginfo_set_desc(&desc);
-    ms->menu_items[MINESWEEPER_MENU_INFO].window = wuss_proginfo_window(ms->task);
 
     wuss_menu_tick_exclusive(&ms->size_menu, ms->size);
     wuss_menu_tick_exclusive(&ms->difficulty_menu, ms->difficulty);
@@ -938,7 +922,7 @@ result_t minesweeper_handle(wuss_window_t      *window,
     }
     else
     {
-      return result_OK; /* Info row: nothing to do here */
+      return result_OK; /* submenu rows act through their own picks */
     }
 
     {
@@ -958,22 +942,6 @@ result_t minesweeper_handle(wuss_window_t      *window,
     if (window == ms->window)
       ms->window = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == ms->menu_items[MINESWEEPER_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_PALETTE:
     minesweeper_prepare_colours(ms);

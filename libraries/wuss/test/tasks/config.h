@@ -12,7 +12,6 @@
 
 #include "framebuf/pattern.h"
 #include "geom/box.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/icon.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
@@ -62,11 +61,6 @@ typedef struct config_task
   screen_pattern_t     pattern; /* selected pattern swatch; also the
                                  * result's tile */
   wuss_icon_t         *set_backdrop_icon;
-  wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
-                                       * leak one instance's Info row .window
-                                       * into another's menu */
-  wuss_menu_t         menu;
 }
 config_task_t;
 

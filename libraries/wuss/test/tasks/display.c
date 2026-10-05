@@ -21,8 +21,6 @@
 #include "display.h"
 #include "common.h"
 
-enum { DISPLAY_MENU_INFO };
-
 #define DISPLAY_G_LABEL      1 /* size group, see stack_item_t::group */
 #define DISPLAY_SET_W        120
 #define DISPLAY_ROW_H        18
@@ -291,15 +289,6 @@ result_t display_create(wuss_t *wuss, display_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, DISPLAY_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * display_mouse */
-
-  WUSS_MENU_TITLE(task->menu, "Display", task->menu_items,
-                 NELEMS(task->menu_items));
-
   if (out)
     *out = task;
 
@@ -311,22 +300,6 @@ void display_destroy(display_task_t *task)
   wuss_stringset_destroy(task->colours);
   wuss_stringset_destroy(task->resolution);
   free(task);
-}
-
-static result_t display_mouse(display_task_t *dc, wuss_button_t button)
-{
-  if (!(button & wuss_BUTTON_MENU))
-    return result_OK;
-
-  {
-    static const wuss_proginfo_desc_t desc =
-      TASK_PROGINFO_DESC("Display",
-                         "Change the desktop colours and resolution");
-    wuss_proginfo_set_desc(&desc);
-    dc->menu_items[DISPLAY_MENU_INFO].window = wuss_proginfo_window(dc->delegate);
-  }
-
-  return wuss_menu_open_at_pointer(dc->delegate, &dc->menu, &dc->menu_handle);
 }
 
 /* offer an event to both string sets; 1 if one consumed it, its outcome in
@@ -376,38 +349,17 @@ result_t display_handle(wuss_window_t      *window,
     }
     return result_OK;
 
-  case wuss_EVENT_MOUSE:
-    if (window != dc->window)
-      return result_OK; /* the proginfo dialogue has no click behaviour of
-                         * its own */
-    if (event->data.mouse.action != wuss_MOUSE_DOWN)
-      return result_OK;
-    return display_mouse(dc, event->data.mouse.button);
-
   case wuss_EVENT_MENU_SELECT:
     if (display_offer(dc, event, &rc))
       return rc;
 
-    return result_OK; /* Info is a submenu only; nothing to act on */
+    return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
     /* both sets must see it, and neither consumes it */
     (void) wuss_stringset_handle_event(dc->colours, event, &rc);
     (void) wuss_stringset_handle_event(dc->resolution, event, &rc);
-    dc->menu_handle = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-    if (window == dc->menu_items[DISPLAY_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
 
   case wuss_EVENT_CLOSE:
     if (window == dc->window)

@@ -7,7 +7,6 @@
 
 #include "framebuf/bitmap.h"
 #include "geom/point.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -33,9 +32,7 @@ typedef struct tiling_task
   wuss_menu_item_t load_items[TILING_MAX_NAMES]; /* one row per names[] */
   wuss_menu_t    load_menu; /* "Load" submenu, borrowed by menu */
   wuss_menu_t   *menu;      /* owned: built from a descriptor string on each
-                             * open, freed at QUIT. its "Info" row's .window
-                             * is retargeted at the shared proginfo singleton
-                             * just before wuss_menu_open */
+                             * open, freed at QUIT */
   wuss_menu_handle_t menu_handle; /* the open chain, if any */
 }
 tiling_task_t;

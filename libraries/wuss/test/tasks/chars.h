@@ -8,7 +8,6 @@
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
 #include "wuss/component/fontmenu.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/component/saveas.h"
 #include "wuss/gadget/gridview.h"
 #include "wuss/task.h"
@@ -52,7 +51,7 @@ typedef struct chars_task
   char                page_labels[CHARS_MAX_PAGES][8]; /* "U+1F400" */
   unsigned long       page_bases[CHARS_MAX_PAGES]; /* page_items[i]'s page */
   wuss_menu_t         page_menu;
-  wuss_menu_item_t    menu_items[4]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[3]; /* per-instance: a shared static would
                                       * leak one instance's .window pointer
                                       * into another's menu */
   wuss_menu_t         menu;

@@ -31,8 +31,7 @@
  * just before wuss_menu_open */
 enum
 {
-  CLOCK_MENU_INFO = 0,
-  CLOCK_MENU_BACKGROUND,
+  CLOCK_MENU_BACKGROUND = 0,
   CLOCK_MENU_DIGITAL,
   CLOCK_MENU_SECONDS,
   CLOCK_MENU_12_HOUR,
@@ -172,11 +171,6 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, CLOCK_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in clock_mouse */
-
   WUSS_MENU_ITEM_MENU(task->menu_items, CLOCK_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
@@ -314,10 +308,6 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
 {
   if (button & wuss_BUTTON_MENU)
   {
-    static const wuss_proginfo_desc_t desc =
-      TASK_PROGINFO_DESC("Clock", "Analogue or digital clock");
-    wuss_proginfo_set_desc(&desc);
-    cc->menu_items[CLOCK_MENU_INFO].window = wuss_proginfo_window(cc->delegate);
     wuss_menu_tick_item(&cc->menu, CLOCK_MENU_DIGITAL, cc->digital);
     wuss_menu_tick_item(&cc->menu, CLOCK_MENU_SECONDS, cc->show_second);
     wuss_menu_tick_item(&cc->menu, CLOCK_MENU_12_HOUR, cc->twelve_hour);
@@ -449,22 +439,6 @@ result_t clock_handle(wuss_window_t      *window,
     if (window == cc->window)
       cc->window = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == cc->menu_items[CLOCK_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_QUIT:
     clock_destroy(cc);

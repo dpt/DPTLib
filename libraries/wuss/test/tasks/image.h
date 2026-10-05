@@ -8,7 +8,6 @@
 #include "framebuf/bitmap.h"
 #include "framebuf/screen.h"
 #include "wuss/component/colourmenu.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -34,10 +33,7 @@ typedef struct image_task
   wuss_menu_t    load_menu; /* "Load" submenu, borrowed by menu */
   wuss_menu_t   *menu;      /* owned: MENU-button demo tree, built from a
                               * descriptor string; rebuilt on each open,
-                              * freed at QUIT. its "Info" row's .window is
-                              * retargeted at the shared proginfo singleton
-                              * just before wuss_menu_open, in
-                              * image_open_menu */
+                              * freed at QUIT */
   wuss_menu_handle_t menu_handle; /* the open chain, if any */
   wuss_menu_item_t dither_items[3]; /* one row per screen_dither_t */
   wuss_menu_t    dither_menu; /* "Dithering" submenu, borrowed by menu */

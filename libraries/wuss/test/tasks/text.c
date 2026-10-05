@@ -274,14 +274,11 @@ oom:
   return result_OOM;
 }
 
-/* index into task->top_items[] of the "Info" leaf */
-#define TEXT_MENU_INFO 0
-
 /* index into task->top_items[] of the "Font" leaf */
-#define TEXT_MENU_FONT 1
+#define TEXT_MENU_FONT 0
 
 /* index into task->top_items[] of the "Auto-size" leaf */
-#define TEXT_MENU_AUTOSIZE 6
+#define TEXT_MENU_AUTOSIZE 5
 
 /* "Alignment" submenu rows */
 enum { TEXT_ALIGN_LEFT = 0, TEXT_ALIGN_CENTRE, TEXT_ALIGN_RIGHT };
@@ -565,13 +562,6 @@ static result_t text_set_align(text_task_t *task, int idx)
 
 static result_t text_open_menu(text_task_t *task)
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Text",
-                       "Sample-text layout with font/colour/spacing pickers");
-
-  wuss_proginfo_set_desc(&desc);
-  task->top_items[TEXT_MENU_INFO].window = wuss_proginfo_window(task->delegate);
-
   return wuss_menu_open_at_pointer(task->delegate, &task->top_menu,
                                    &task->menu_handle);
 }
@@ -768,35 +758,30 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   /* top-level menu: "Font" borrows the fontmenu's own live wuss_menu_t (so
    * ticks and wuss_fontmenu_selected keep working), "Sample"/"Spacing"/
    * "Alignment"/"Colours" are the per-instance menus built above */
-  task->top_items[0].text    = "Info";
-  task->top_items[0].flags   =
-    wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN;
-  task->top_items[0].submenu = NULL;
+  task->top_items[0].text    = "Font";
+  task->top_items[0].flags   = wuss_MENU_ITEM_PRE_OPEN;
+  task->top_items[0].submenu = menu;
   task->top_items[0].window  = NULL;
-  task->top_items[1].text    = "Font";
-  task->top_items[1].flags   = wuss_MENU_ITEM_PRE_OPEN;
-  task->top_items[1].submenu = menu;
+  task->top_items[1].text    = "Sample";
+  task->top_items[1].flags   = wuss_MENU_ITEM_NONE;
+  task->top_items[1].submenu = &task->sample_menu;
   task->top_items[1].window  = NULL;
-  task->top_items[2].text    = "Sample";
+  task->top_items[2].text    = "Spacing";
   task->top_items[2].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[2].submenu = &task->sample_menu;
+  task->top_items[2].submenu = &task->spacing_menu;
   task->top_items[2].window  = NULL;
-  task->top_items[3].text    = "Spacing";
+  task->top_items[3].text    = "Alignment";
   task->top_items[3].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[3].submenu = &task->spacing_menu;
+  task->top_items[3].submenu = &task->align_menu;
   task->top_items[3].window  = NULL;
-  task->top_items[4].text    = "Alignment";
+  task->top_items[4].text    = "Colours";
   task->top_items[4].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[4].submenu = &task->align_menu;
+  task->top_items[4].submenu = &task->colours_menu;
   task->top_items[4].window  = NULL;
-  task->top_items[5].text    = "Colours";
+  task->top_items[5].text    = "Auto-size";
   task->top_items[5].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[5].submenu = &task->colours_menu;
+  task->top_items[5].submenu = NULL;
   task->top_items[5].window  = NULL;
-  task->top_items[6].text    = "Auto-size";
-  task->top_items[6].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[6].submenu = NULL;
-  task->top_items[6].window  = NULL;
 
   WUSS_MENU_TITLE(task->top_menu, "Text", task->top_items,
                  NELEMS(task->top_items));
@@ -1202,22 +1187,6 @@ result_t text_handle(wuss_window_t      *window,
     if (window == tcx->window)
       tcx->window = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == tcx->top_items[TEXT_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_QUIT:
     text_destroy(tcx);

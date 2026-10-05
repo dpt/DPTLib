@@ -39,8 +39,7 @@
  * singleton, retargeted just before wuss_menu_open */
 enum
 {
-  CHARS_MENU_INFO = 0,
-  CHARS_MENU_FONT,
+  CHARS_MENU_FONT = 0,
   CHARS_MENU_PAGE,
   CHARS_MENU_SAVE
 };
@@ -336,12 +335,6 @@ static void chars_build_page_menu(chars_task_t *task)
 
 static result_t chars_open_menu(chars_task_t *task)
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Chars", "Bitmap font glyph grid");
-
-  wuss_proginfo_set_desc(&desc);
-  task->menu_items[CHARS_MENU_INFO].window =
-    wuss_proginfo_window(task->delegate);
 
   return wuss_menu_open_at_pointer(task->delegate, &task->menu,
                                    &task->menu_handle);
@@ -509,12 +502,6 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
     wuss_task_destroy(delegate);
     return rc;
   }
-
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, CHARS_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * chars_open_menu */
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CHARS_MENU_FONT, "Font",
                       wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
@@ -688,24 +675,6 @@ result_t chars_handle(wuss_window_t      *window,
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return chars_pre_submenu_open(cc, event);
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == cc->menu_items[CHARS_MENU_INFO].window)
-    {
-      rc = wuss_proginfo_handle_pre_show();
-      if (rc != result_OK)
-        return rc;
-    }
-
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_KEY:
     if (window != cc->window)

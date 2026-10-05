@@ -130,18 +130,15 @@ static void tiling_show(tiling_task_t *tc, int index)
  * open. */
 static result_t tiling_open_menu(tiling_task_t *tc)
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Tiling", "Fill the screen with a repeated PNG");
 
   result_t     rc;
   wuss_menu_t *m;
   int          i;
 
-  rc = wuss_menu_create_from_desc(&m, "Tiling, Info, Load, Reset origin");
+  rc = wuss_menu_create_from_desc(&m, "Tiling, Load, Reset origin");
   if (rc != result_OK)
     return rc;
 
-  wuss_proginfo_set_desc(&desc);
   wuss_menu_tick_exclusive(&tc->load_menu, tc->index);
   for (i = 0; i < m->nitems; i++)
   {
@@ -149,11 +146,7 @@ static result_t tiling_open_menu(tiling_task_t *tc)
 
     if (it->text == NULL)
       continue;
-    if (strcmp(it->text, "Info") == 0)
-    {
-      it->window = wuss_proginfo_window(tc->delegate);
-    }
-    else if (strcmp(it->text, "Load") == 0)
+    if (strcmp(it->text, "Load") == 0)
     {
       it->submenu = &tc->load_menu;
       it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
@@ -249,13 +242,6 @@ result_t tiling_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_CLOSED:
     tc->menu_handle = NULL; /* wuss closed the chain under us */
-    return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-    if (tc->menu != NULL)
-      for (i = 0; i < tc->menu->nitems; i++)
-        if (tc->menu->items[i].window == window)
-          return wuss_proginfo_handle_pre_show();
     return result_OK;
 
   case wuss_EVENT_CLOSE:
