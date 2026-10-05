@@ -789,12 +789,12 @@ static result_t config_icon(const wuss_event_t *event, void *task_data)
     /* Round-trip the rest of the config unchanged: wuss_set_config replaces
      * every field, there is no partial update. */
     wuss_get_config(cc->wuss, &config);
-    config.double_click_ms   = atoi(wuss_icon_get_text(cc->double_click_ms_icon));
-    config.double_click_px   = atoi(wuss_icon_get_text(cc->double_click_px_icon));
-    config.drag_threshold_px = atoi(wuss_icon_get_text(cc->drag_threshold_px_icon));
+    config.mouse.double_click_ms   = atoi(wuss_icon_get_text(cc->double_click_ms_icon));
+    config.mouse.double_click_px   = atoi(wuss_icon_get_text(cc->double_click_px_icon));
+    config.mouse.drag_threshold_px = atoi(wuss_icon_get_text(cc->drag_threshold_px_icon));
 
-    if (config.double_click_ms < 0 || config.double_click_px < 0 ||
-        config.drag_threshold_px < 0)
+    if (config.mouse.double_click_ms < 0 || config.mouse.double_click_px < 0 ||
+        config.mouse.drag_threshold_px < 0)
       return result_BAD_ARG;
 
     return wuss_set_config(cc->wuss, &config);

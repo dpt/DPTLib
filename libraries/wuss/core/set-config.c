@@ -221,18 +221,18 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
 #endif
 #endif /* WUSS_FURNITURE */
 
-  if (config != NULL && config->double_click_ms > 0)
-    w->input.double_click_ms = config->double_click_ms;
+  if (config != NULL && config->mouse.double_click_ms > 0)
+    w->input.double_click_ms = config->mouse.double_click_ms;
   else
     w->input.double_click_ms = WUSS_DEFAULT_DOUBLE_CLICK_MS;
 
-  if (config != NULL && config->double_click_px > 0)
-    w->input.double_click_px = config->double_click_px;
+  if (config != NULL && config->mouse.double_click_px > 0)
+    w->input.double_click_px = config->mouse.double_click_px;
   else
     w->input.double_click_px = WUSS_DEFAULT_DOUBLE_CLICK_PX;
 
-  if (config != NULL && config->drag_threshold_px > 0)
-    w->input.drag_threshold_px = config->drag_threshold_px;
+  if (config != NULL && config->mouse.drag_threshold_px > 0)
+    w->input.drag_threshold_px = config->mouse.drag_threshold_px;
   else
     w->input.drag_threshold_px = WUSS_DEFAULT_DRAG_THRESHOLD_PX;
 
