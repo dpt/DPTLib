@@ -19,6 +19,7 @@
 #include "wuss/menu-desc.h"
 
 #include "image.h"
+#include "taskapp.h"
 #include "common.h"
 
 #define NINEPATCHSZ    9
@@ -135,6 +136,18 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t image_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Image",
+    "View the PNGs under resources/images",
+    (taskapp_create_fn_t) image_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void image_destroy(image_task_t *task)

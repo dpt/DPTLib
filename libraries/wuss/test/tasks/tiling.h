@@ -44,6 +44,9 @@ wuss_window_fn_t tiling_handle;
  * the task block is also returned through it */
 result_t tiling_create(wuss_t *wuss, tiling_task_t **out);
 
+/* install the icon bar app that opens tiling windows on demand */
+result_t tiling_app_create(wuss_t *wuss);
+
 /* free a task block allocated by tiling_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void tiling_destroy(tiling_task_t *task);

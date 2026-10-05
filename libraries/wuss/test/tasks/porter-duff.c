@@ -18,6 +18,7 @@
 #include "io/path.h"
 
 #include "porter-duff.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -293,6 +294,18 @@ free_a:
   free(task); /* no task was registered on any goto here; nobody else owns it */
 
   return rc;
+}
+
+result_t porter_duff_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Porter-Duff",
+    "Animated Porter-Duff compositing demo",
+    (taskapp_create_fn_t) porter_duff_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void porter_duff_destroy(porter_duff_task_t *task)

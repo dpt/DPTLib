@@ -76,6 +76,9 @@ wuss_window_fn_t greeble_handle;
  * non-NULL, the task block is also returned through it */
 result_t greeble_create(wuss_t *wuss, greeble_task_t **out);
 
+/* install the icon bar app that opens greeble windows on demand */
+result_t greeble_app_create(wuss_t *wuss);
+
 /* free a task block allocated by greeble_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void greeble_destroy(greeble_task_t *task);

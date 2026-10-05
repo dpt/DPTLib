@@ -17,6 +17,7 @@
 
 #include "common.h"
 #include "particles.h"
+#include "taskapp.h"
 
 #define PARTICLES_WIDTH     480
 #define PARTICLES_HEIGHT    384
@@ -407,6 +408,18 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t particles_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Particles",
+    "Retro explosion particle system",
+    (taskapp_create_fn_t) particles_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void particles_destroy(particles_task_t *task)

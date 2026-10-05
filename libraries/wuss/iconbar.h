@@ -11,14 +11,14 @@
 #include "wuss/wuss.h"
 #include "wuss/iconbar.h"
 
-/* Fixed slot geometry: each icon gets a square this many pixels on a side
- * (WUSS_ICONBAR_ICON), left to right with WUSS_ICONBAR_GAP of empty bar
- * between them -- unlike the icon square itself, the gap is not drawn on,
- * so it reads as space rather than a shared border. An icon bar wider than
- * the screen just clips -- no wrap, no scroll. */
+/* Slot geometry: an icon is as wide as its label (or image, whichever is
+ * wider; WUSS_ICONBAR_ICON if it has neither) and packs from its side's edge
+ * in creation order, with WUSS_ICONBAR_GAP of empty bar between neighbours
+ * and at the edge -- the gap is not drawn on, so it reads as space rather
+ * than a shared border. An icon bar wider than the screen just clips -- no
+ * wrap, no scroll. */
 #define WUSS_ICONBAR_ICON       34
 #define WUSS_ICONBAR_GAP        8
-#define WUSS_ICONBAR_SLOT       (WUSS_ICONBAR_ICON + WUSS_ICONBAR_GAP)
 #define WUSS_ICONBAR_HEIGHT     67
 #define WUSS_ICONBAR_TEXT_PAD   2  /* clear space above the label */
 
@@ -40,13 +40,13 @@ struct wuss_iconbar_icon
  * created). */
 void wuss__iconbar_box(const wuss_t *wuss, box_t *out);
 
-/* Icon i's on-screen slot box within the bar (screen space), left to right
- * in creation order. Does not clip to the bar's own box -- a slot past the
- * screen's right edge is the caller's to skip drawing/hit-testing. */
+/* Icon i's on-screen slot box within the bar (screen space): its full height
+ * and width, excluding the gap beside it. Does not clip to the bar's own box
+ * -- a slot off the screen is the caller's to skip drawing/hit-testing. */
 void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out);
 
-/* Icon i's own box (screen space): WUSS_ICONBAR_ICON wide, as tall as its
- * image, placed as above, excluding the gap that follows it. */
+/* Icon i's own box (screen space): as wide as its slot, as tall as its
+ * image, placed as above. */
 void wuss__iconbar_icon_box(const wuss_t *wuss, int index, box_t *out);
 
 /* Paint every icon (image/label) into "piece", a piece of

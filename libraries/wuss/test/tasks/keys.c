@@ -15,6 +15,7 @@
 #include "wuss/task.h"
 
 #include "keys.h"
+#include "taskapp.h"
 #include "common.h"
 
 /* MENU click pops this menu; the item table lives per-instance in
@@ -76,6 +77,18 @@ result_t keys_create(wuss_t *wuss, keys_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t keys_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Keys",
+    "Key input and focus demo",
+    (taskapp_create_fn_t) keys_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void keys_destroy(keys_task_t *task)

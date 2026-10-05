@@ -19,6 +19,7 @@
 #include "tasks.h" /* app_set_mode, app_get_depth */
 
 #include "display.h"
+#include "taskapp.h"
 #include "common.h"
 
 #define DISPLAY_G_LABEL      1 /* size group, see stack_item_t::group */
@@ -293,6 +294,18 @@ result_t display_create(wuss_t *wuss, display_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t display_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Display",
+    "Change the desktop colours and resolution",
+    (taskapp_create_fn_t) display_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void display_destroy(display_task_t *task)

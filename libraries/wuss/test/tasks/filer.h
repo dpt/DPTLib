@@ -99,6 +99,10 @@ wuss_window_fn_t filer_handle;
  * the task block is also returned through it. */
 result_t filer_create(wuss_t *wuss, filer_task_t **out);
 
+/* create the Filer: it keeps its own icon bar icon, so there is nothing to
+ * wrap and no window opens until the icon is clicked */
+result_t filer_app_create(wuss_t *wuss);
+
 /* free a task block allocated by filer_create; normally called by the
  * task's wuss_EVENT_QUIT handler, not by callers directly */
 void filer_destroy(filer_task_t *task);

@@ -137,6 +137,9 @@ wuss_window_fn_t text_handle;
  * it */
 result_t text_create(wuss_t *wuss, text_task_t **out);
 
+/* install the icon bar app that opens text windows on demand */
+result_t text_app_create(wuss_t *wuss);
+
 /* free a task block allocated by text_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void text_destroy(text_task_t *task);

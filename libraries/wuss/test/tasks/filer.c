@@ -311,6 +311,7 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
   }
 
   spec.text  = "Filer";
+  spec.side  = wuss_ICONBAR_LEFT;
   spec.image = task->have_glyph_directory ? &task->glyph_directory : NULL;
   rc = wuss_iconbar_icon_create(wuss, task->delegate, &spec,
                                 &task->iconbar_icon);
@@ -325,6 +326,11 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t filer_app_create(wuss_t *wuss)
+{
+  return filer_create(wuss, NULL);
 }
 
 void filer_destroy(filer_task_t *task)

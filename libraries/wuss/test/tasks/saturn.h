@@ -104,6 +104,9 @@ wuss_window_fn_t saturn_handle;
  * if out is non-NULL, the task block is also returned through it */
 result_t saturn_create(wuss_t *wuss, saturn_task_t **out);
 
+/* install the icon bar app that opens saturn windows on demand */
+result_t saturn_app_create(wuss_t *wuss);
+
 /* free a task block allocated by saturn_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void saturn_destroy(saturn_task_t *task);

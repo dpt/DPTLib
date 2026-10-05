@@ -9,21 +9,21 @@
 
 wuss_iconbar_icon_t *wuss__iconbar_hit_test(wuss_t *wuss, point_t p)
 {
-  box_t bar;
-  int   index;
+  box_t bar, slot;
+  int   i;
 
   wuss__iconbar_box(wuss, &bar);
   if (!box_contains_point(&bar, p.x, p.y))
     return NULL;
 
-  if (p.x - bar.x0 < WUSS_ICONBAR_GAP)
-    return NULL; /* over the bar's leading gap */
+  for (i = 0; i < wuss->iconbar.n; i++)
+  {
+    wuss__iconbar_slot_box(wuss, i, &slot);
+    if (box_contains_point(&slot, p.x, p.y))
+      return wuss->iconbar.icons[i];
+  }
 
-  index = (p.x - bar.x0 - WUSS_ICONBAR_GAP) / WUSS_ICONBAR_SLOT;
-  if (index < 0 || index >= wuss->iconbar.n)
-    return NULL;
-
-  return wuss->iconbar.icons[index];
+  return NULL; /* over the gap or bare bar */
 }
 
 /* Click/drag dispatch, called from wuss_mouse_click once the point has

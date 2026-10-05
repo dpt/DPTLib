@@ -22,6 +22,7 @@
 #include "utils/fxp.h"
 
 #include "clock.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -195,6 +196,18 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t clock_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Clock",
+    "Analogue or digital clock",
+    (taskapp_create_fn_t) clock_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void clock_destroy(clock_task_t *task)

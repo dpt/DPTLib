@@ -908,6 +908,8 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/spheroid.c
         libraries/wuss/test/tasks/text.c
         libraries/wuss/test/tasks/tiling.c
+        libraries/wuss/test/tasks/taskapp.c
+        libraries/wuss/test/tasks/taskapp.h
         libraries/wuss/test/tasks/zxtask.c)
 
     if(TARGET_RISCOS)

@@ -24,6 +24,7 @@
 #include "wuss/menu.h"
 
 #include "text.h"
+#include "taskapp.h"
 #include "common.h"
 
 #ifndef M_PI
@@ -823,6 +824,18 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t text_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Text",
+    "Sample-text layout with font/colour/spacing pickers",
+    (taskapp_create_fn_t) text_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void text_destroy(text_task_t *task)

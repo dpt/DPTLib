@@ -89,6 +89,9 @@ wuss_window_fn_t particles_handle;
  * if out is non-NULL, the task block is also returned through it */
 result_t particles_create(wuss_t *wuss, particles_task_t **out);
 
+/* install the icon bar app that opens particles windows on demand */
+result_t particles_app_create(wuss_t *wuss);
+
 /* free a task block allocated by particles_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void particles_destroy(particles_task_t *task);

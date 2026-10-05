@@ -18,6 +18,7 @@
 
 #include "snapshot.h"
 #include "sofa.h"
+#include "taskapp.h"
 #include "common.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
@@ -477,6 +478,18 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t sofa_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Sofa",
+    "Rotating wireframe sofa, other shapes",
+    (taskapp_create_fn_t) sofa_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void sofa_destroy(sofa_task_t *task)

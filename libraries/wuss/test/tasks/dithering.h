@@ -88,6 +88,9 @@ wuss_window_fn_t dithering_handle;
  * is also returned through it */
 result_t dithering_create(wuss_t *wuss, dithering_task_t **out);
 
+/* install the icon bar app that opens dithering windows on demand */
+result_t dithering_app_create(wuss_t *wuss);
+
 /* free a task block allocated by dithering_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void dithering_destroy(dithering_task_t *task);

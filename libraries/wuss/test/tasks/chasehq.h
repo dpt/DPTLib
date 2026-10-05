@@ -17,6 +17,9 @@ typedef struct chasehq_task chasehq_task_t;
  * is also returned through it */
 result_t chasehq_create(wuss_t *wuss, chasehq_task_t **out);
 
+/* install the icon bar app that opens chasehq windows on demand */
+result_t chasehq_app_create(wuss_t *wuss);
+
 #endif /* WUSS_APP && WUSS_CHASEHQ */
 
 #endif /* TASKS_CHASEHQ_H */

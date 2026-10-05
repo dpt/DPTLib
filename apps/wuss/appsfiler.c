@@ -314,6 +314,7 @@ result_t appsfiler_create(wuss_t *wuss)
   }
 
   spec.text  = "Apps";
+  spec.side  = wuss_ICONBAR_LEFT;
   spec.image = task->have_glyph_directory ? &task->glyph_directory : NULL;
   rc = wuss_iconbar_icon_create(wuss, task->delegate, &spec,
                                 &task->iconbar_icon);

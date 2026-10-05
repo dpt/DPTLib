@@ -18,6 +18,7 @@
 #include "wuss/menu.h"
 
 #include "greeble.h"
+#include "taskapp.h"
 #include "common.h"
 #include "greeble-tiles.h"
 #include "snapshot.h"
@@ -587,6 +588,18 @@ result_t greeble_create(wuss_t *wuss, greeble_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t greeble_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Greeble",
+    "Prefab-scatter greebling pattern",
+    (taskapp_create_fn_t) greeble_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void greeble_destroy(greeble_task_t *task)

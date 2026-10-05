@@ -70,6 +70,9 @@ wuss_window_fn_t effects_handle;
  * non-NULL, the task block is also returned through it */
 result_t effects_create(wuss_t *wuss, effects_task_t **out);
 
+/* install the icon bar app that opens effects windows on demand */
+result_t effects_app_create(wuss_t *wuss);
+
 /* free a task block allocated by effects_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void effects_destroy(effects_task_t *task);

@@ -20,6 +20,7 @@
 #include "wuss/menu.h"
 
 #include "palette.h"
+#include "taskapp.h"
 #include "common.h"
 
 #define PALETTE_HEX_EXT     ".hex"
@@ -216,6 +217,18 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t palette_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Palette",
+    "Desktop and screen palette grid",
+    (taskapp_create_fn_t) palette_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void palette_destroy(palette_task_t *task)
