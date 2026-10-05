@@ -45,6 +45,8 @@ struct wuss_gridview
   int                            label_chars;
   size2d_t                       cell;    /* glyph+label cell size, with padding */
   size2d_t                       content; /* widest glyph/label, tallest glyph */
+  bmfont_t                      *measured_font; /* font last measured with */
+  int                            measured_height; /* its height then */
   int                            pad_x;   /* cell side edge to its contents */
   int                            pad_y;   /* cell top/bottom edge to contents */
   int                            spacing; /* glyph to label */
@@ -108,7 +110,9 @@ static void gridview_measure_items(wuss_gridview_t *gv)
     }
   }
 
-  gv->content = SIZE2D(MAX(glyph_w, label_w), glyph_h);
+  gv->content         = SIZE2D(MAX(glyph_w, label_w), glyph_h);
+  gv->measured_font   = font;
+  gv->measured_height = wuss__fontset_height(&wuss->fonts, 0);
 }
 
 /* Cell size from the cached content size, the padding and the font height:
@@ -548,7 +552,15 @@ size2d_t wuss_gridview_get_cell_size(const wuss_gridview_t *gv)
 
 void wuss_gridview_remeasure(wuss_gridview_t *gv)
 {
-  gridview_measure_items(gv);
+  wuss_t *wuss;
+
+  wuss = gv->window->task->wuss;
+
+  /* label widths only change with the font, so skip the item walk when the
+   * font and its height are as they were when last measured */
+  if (wuss->fonts.fonts[0] != gv->measured_font ||
+      wuss__fontset_height(&wuss->fonts, 0) != gv->measured_height)
+    gridview_measure_items(gv);
   if (!gv->fixed_cell)
     gv->cell = gridview_cell_size(gv);
   gridview_reflow(gv);

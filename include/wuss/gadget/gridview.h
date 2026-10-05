@@ -195,8 +195,10 @@ size2d_t wuss_gridview_get_cell_size(const wuss_gridview_t *gridview);
 
 /**
  * Re-measure the cell after the window's font or palette changed, then
- * reflow and redraw. Called by \ref wuss_gridview_handle_event on
- * wuss_EVENT_PALETTE and wuss_EVENT_RELAYOUT.
+ * reflow and redraw. The items are only walked again if the font or its
+ * height differs from the last measure; changes to the items alone are not
+ * picked up. Called by \ref wuss_gridview_handle_event on wuss_EVENT_PALETTE
+ * and wuss_EVENT_RELAYOUT.
  *
  * \param[in] gridview Handle.
  */
