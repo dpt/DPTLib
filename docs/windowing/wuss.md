@@ -256,7 +256,7 @@ The bevel's light (top/left) and dark (bottom/right) edge shades come from `conf
 - `wuss_iconpool_bitmap(wuss, index)` → the compressed `bitmap_t *` (window-manager-owned), or `NULL` out of range.
 - `wuss_iconpool_count(wuss)`.
 
-A `wuss_ICON_TYPE_BITMAP` spec with `u.bitmap.image == NULL` and `u.bitmap.set = wuss_ICONPOOL_SET(idx)` draws the loaded entry at `idx` (the `wuss_ICONPOOL_SET` macro offsets by one so a zero-initialised spec means "no entry"). An out-of-range index is `result_WUSS_BAD_INDEX`. Calling `wuss_iconpool_load` again replaces the set; `wuss_destroy` frees it. A missing directory is not an error — it yields a zero-length set. `dir` is copied internally, so a `path_join_filename` result is safe to pass.
+A `wuss_ICON_TYPE_BITMAP` spec with `u.bitmap.image == NULL` and `u.bitmap.set = wuss_ICONPOOL_SET(idx)` draws the loaded entry at `idx` (the `wuss_ICONPOOL_SET` macro offsets by one so a zero-initialised spec means "no entry"). Alternatively set `u.bitmap.name` (and `pressed_name` for the held-down image) to an entry's name and let `wuss_icon_create` resolve it; an unknown name logs a warning and the icon draws the red placeholder box. `image` wins over `set`, which wins over `name`. An out-of-range index is `result_WUSS_BAD_INDEX`. Calling `wuss_iconpool_load` again replaces the set; `wuss_destroy` frees it. A missing directory is not an error — it yields a zero-length set. `dir` is copied internally, so a `path_join_filename` result is safe to pass.
 
 ## Components
 

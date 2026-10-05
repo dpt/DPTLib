@@ -14,6 +14,7 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
 {
   wuss_colour_t   fg, bg, swatch;
   int             has_swatch;
+  int             is_bitmap, set, pressed_set, name_missing, idx;
   const bitmap_t *bitmap;
 
   assert(w    != NULL);
@@ -60,26 +61,58 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
     return result_WUSS_BAD_ICON;
 
   /* A BITMAP (or DRAGGABLE) icon draws spec->u.bitmap.image, or -- when that
-   * is NULL -- the loaded icon-set entry spec->u.bitmap.set names
-   * (wuss_ICONPOOL_SET encodes the 0-based index +1, so 0 means "no entry"). A
+   * is NULL -- the icon pool entry spec->u.bitmap.set names
+   * (wuss_ICONPOOL_SET encodes the 0-based index +1, so 0 means "no entry"),
+   * or failing that the one spec->u.bitmap.name names. A name the pool lacks
+   * is warned about and leaves the bitmap NULL, so the icon draws the red
+   * placeholder box rather than failing creation. A
    * DRAGGABLE may have neither: it is still a drag handle, drawn as the red
  * box that stands in for any bitmap that can't be drawn. */
-  bitmap = spec->u.bitmap.image;
-  if ((spec->type == wuss_ICON_TYPE_BITMAP ||
-       spec->type == wuss_ICON_TYPE_DRAGGABLE) && bitmap == NULL &&
-      spec->u.bitmap.set > 0)
+  is_bitmap = (spec->type == wuss_ICON_TYPE_BITMAP ||
+               spec->type == wuss_ICON_TYPE_DRAGGABLE);
+
+  bitmap       = spec->u.bitmap.image;
+  set          = spec->u.bitmap.set;
+  pressed_set  = spec->u.bitmap.pressed_set;
+  name_missing = 0;
+
+  if (is_bitmap && bitmap == NULL && set == 0 && spec->u.bitmap.name != NULL)
   {
-    bitmap = wuss_iconpool_bitmap(w, spec->u.bitmap.set - 1);
+    idx = wuss_iconpool_lookup(w, spec->u.bitmap.name);
+    if (idx >= 0)
+    {
+      set = wuss_ICONPOOL_SET(idx);
+    }
+    else
+    {
+      logf_warning("wuss: icon pool has no \"%s\"", spec->u.bitmap.name);
+      name_missing = 1;
+    }
+  }
+
+  if (is_bitmap && pressed_set == 0 && spec->u.bitmap.pressed_name != NULL)
+  {
+    idx = wuss_iconpool_lookup(w, spec->u.bitmap.pressed_name);
+    if (idx >= 0)
+      pressed_set = wuss_ICONPOOL_SET(idx);
+    else
+      logf_warning("wuss: icon pool has no \"%s\"",
+                   spec->u.bitmap.pressed_name);
+  }
+
+  if (is_bitmap && bitmap == NULL && set > 0)
+  {
+    bitmap = wuss_iconpool_bitmap(w, set - 1);
     if (bitmap == NULL)
       return result_WUSS_BAD_INDEX;
   }
 
-  if (spec->type == wuss_ICON_TYPE_BITMAP && bitmap == NULL)
+  if (spec->type == wuss_ICON_TYPE_BITMAP && bitmap == NULL && !name_missing)
     return result_WUSS_BAD_ICON;
 
   /* the pressed image is looked up at draw time; just check it exists */
-  if (spec->type == wuss_ICON_TYPE_BITMAP && spec->u.bitmap.pressed_set > 0 &&
-      wuss_iconpool_bitmap(w, spec->u.bitmap.pressed_set - 1) == NULL)
+  if (spec->type == wuss_ICON_TYPE_BITMAP && pressed_set > 0 &&
+      wuss_iconpool_bitmap(w, pressed_set - 1) == NULL)
     return result_WUSS_BAD_INDEX;
 
   if (spec->type == wuss_ICON_TYPE_PATTERN &&
@@ -148,7 +181,11 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
   {
   case wuss_ICON_TYPE_BITMAP:
   case wuss_ICON_TYPE_DRAGGABLE:
-    out->spec.u.bitmap.image = bitmap;
+    out->spec.u.bitmap.image        = bitmap;
+    out->spec.u.bitmap.set          = set;
+    out->spec.u.bitmap.pressed_set  = pressed_set;
+    out->spec.u.bitmap.name         = NULL; /* borrowed; resolved above */
+    out->spec.u.bitmap.pressed_name = NULL;
     break;
   case wuss_ICON_TYPE_MENU_ENTRY:
     out->spec.u.menu_entry.swatch = swatch;
