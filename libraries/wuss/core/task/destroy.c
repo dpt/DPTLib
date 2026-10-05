@@ -78,6 +78,11 @@ void wuss_task_destroy(wuss_task_t *doomed)
   wuss__iconbar_task_destroyed(wuss, doomed);
 #endif
 
+#ifdef WUSS_ICONS
+  /* After the windows: their icons point into this pool. */
+  wuss__iconpool_clear(wuss, &doomed->iconpool);
+#endif
+
   list_remove(&wuss->tasks, &doomed->link);
   wuss__free(wuss, doomed);
 }

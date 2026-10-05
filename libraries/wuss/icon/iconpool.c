@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -29,9 +30,10 @@
  * three arrays grow in lockstep via wuss__array_grow. */
 typedef struct icons_load
 {
-  wuss_t   *wuss;
-  char      dir[ICONS_DIR_MAX]; /* own copy; see ICONS_DIR_MAX */
-  int      *atoms;   /* owned; atoms[i] is entry i's atom in wuss->icon.names */
+  wuss_t          *wuss;
+  char             dir[ICONS_DIR_MAX]; /* own copy; see ICONS_DIR_MAX */
+  struct atom_set *names;   /* owned until handed to the pool */
+  int             *atoms;   /* owned; atoms[i] is entry i's atom in names */
   bitmap_t *bitmaps; /* owned */
   int       n;
   int       cap;     /* shared allocation length of atoms[] and bitmaps[] */
@@ -140,7 +142,7 @@ static result_t icons_load_entry(const char *leaf, void *opaque)
   /* Intern the name. atom_new returns result_ATOM_NAME_EXISTS (with the
    * existing atom) for a repeat -- a directory scan can't repeat a leaf, so
    * treat only a hard error as failure. */
-  rc = atom_new(st->wuss->icon.names,
+  rc = atom_new(st->names,
                 (const unsigned char *) name, strlen(name) + 1, &atom);
   if (rc != result_OK && rc != result_ATOM_NAME_EXISTS)
   {
@@ -177,42 +179,39 @@ static result_t icons_load_entry(const char *leaf, void *opaque)
   return result_OK;
 }
 
-void wuss__iconpool_free(wuss_t *wuss)
+void wuss__iconpool_clear(wuss_t *wuss, struct wuss_iconpool *pool)
 {
   int i;
 
   assert(wuss != NULL);
+  assert(pool != NULL);
 
-  for (i = 0; i < wuss->icon.nbitmaps; i++)
-    free(wuss->icon.bitmaps[i].base);
+  for (i = 0; i < pool->nbitmaps; i++)
+    free(pool->bitmaps[i].base);
 
-  wuss__free(wuss, wuss->icon.bitmaps);
-  wuss__free(wuss, wuss->icon.atoms);
-  wuss->icon.bitmaps  = NULL;
-  wuss->icon.atoms    = NULL;
-  wuss->icon.nbitmaps = 0;
+  wuss__free(wuss, pool->bitmaps);
+  wuss__free(wuss, pool->atoms);
+  pool->bitmaps  = NULL;
+  pool->atoms    = NULL;
+  pool->nbitmaps = 0;
 
-  if (wuss->icon.names != NULL)
+  if (pool->names != NULL)
   {
-    atom_destroy(wuss->icon.names);
-    wuss->icon.names = NULL;
+    atom_destroy(pool->names);
+    pool->names = NULL;
   }
 }
 
-result_t wuss__iconpool_match_screen(wuss_t *wuss)
+static result_t icons_match_pool(pixelfmt_t            order,
+                                 struct wuss_iconpool *pool)
 {
-  result_t   rc;
-  pixelfmt_t order;
-  bitmap_t  *bm;
-  int        i;
+  result_t  rc;
+  bitmap_t *bm;
+  int       i;
 
-  assert(wuss != NULL);
-
-  order = icons_order_for(wuss->scr->format);
-
-  for (i = 0; i < wuss->icon.nbitmaps; i++)
+  for (i = 0; i < pool->nbitmaps; i++)
   {
-    bm = &wuss->icon.bitmaps[i];
+    bm = &pool->bitmaps[i];
     if (pixelfmt_log2bpp(pixelfmt_base(bm->format)) != 5 ||
         !icons_rb_swapped(pixelfmt_base(bm->format), order))
       continue;
@@ -233,10 +232,37 @@ result_t wuss__iconpool_match_screen(wuss_t *wuss)
   return result_OK;
 }
 
+result_t wuss__iconpool_match_screen(wuss_t *wuss)
+{
+  result_t   rc;
+  pixelfmt_t order;
+  list_t    *e;
+
+  assert(wuss != NULL);
+
+  order = icons_order_for(wuss->scr->format);
+
+  rc = icons_match_pool(order, &wuss->icon);
+  if (rc != result_OK)
+    return rc;
+
+  for (e = wuss->tasks.next; e != NULL; e = e->next)
+  {
+    rc = icons_match_pool(order, &wuss__task_from_link(e)->iconpool);
+    if (rc != result_OK)
+      return rc;
+  }
+
+  return result_OK;
+}
+
 /* Order the entries by name (strcmp) so indices don't depend on the platform's
  * directory scan order. Insertion sort: a handful of icons. atoms[] and
  * bitmaps[] are permuted in lockstep. */
-static void icons_sort(wuss_t *wuss, int *atoms, bitmap_t *bitmaps, int n)
+static void icons_sort(struct atom_set *names,
+                       int             *atoms,
+                       bitmap_t        *bitmaps,
+                       int              n)
 {
   const char *name;
   bitmap_t    bm;
@@ -247,13 +273,13 @@ static void icons_sort(wuss_t *wuss, int *atoms, bitmap_t *bitmaps, int n)
   {
     atom = atoms[i];
     bm   = bitmaps[i];
-    name = (const char *) atom_get(wuss->icon.names, (atom_t) atom, NULL);
+    name = (const char *) atom_get(names, (atom_t) atom, NULL);
 
     for (j = i; j > 0; j--)
     {
       const char *prev;
 
-      prev = (const char *) atom_get(wuss->icon.names, (atom_t) atoms[j - 1],
+      prev = (const char *) atom_get(names, (atom_t) atoms[j - 1],
                                      NULL);
       if (strcmp(prev, name) <= 0)
         break;
@@ -267,33 +293,31 @@ static void icons_sort(wuss_t *wuss, int *atoms, bitmap_t *bitmaps, int n)
   }
 }
 
-result_t wuss_iconpool_load(wuss_t *wuss, const char *dir)
+/* Build "pool" from every "*.png" in dir, replacing any previous contents. */
+static result_t icons_load(wuss_t               *wuss,
+                           struct wuss_iconpool *pool,
+                           const char           *dir)
 {
   result_t     rc;
   icons_load_t st;
   int          i;
 
-  assert(wuss != NULL);
-
-  if (dir == NULL)
-    return result_NULL_ARG;
-
   if (strlen(dir) >= sizeof(st.dir))
     return result_BAD_ARG;
 
-  wuss__iconpool_free(wuss);
-
-  wuss->icon.names = atom_create();
-  if (wuss->icon.names == NULL)
-    return result_OOM;
+  wuss__iconpool_clear(wuss, pool);
 
   st.wuss    = wuss;
+  st.names   = atom_create();
   st.atoms   = NULL;
   st.bitmaps = NULL;
   st.n       = 0;
   st.cap     = 0;
   st.rc      = result_OK;
   strcpy(st.dir, dir);
+
+  if (st.names == NULL)
+    return result_OOM;
 
   rc = dirscan_walk(dir, icons_load_entry, &st);
 
@@ -310,17 +334,38 @@ result_t wuss_iconpool_load(wuss_t *wuss, const char *dir)
       free(st.bitmaps[i].base);
     wuss__free(wuss, st.bitmaps);
     wuss__free(wuss, st.atoms);
-    atom_destroy(wuss->icon.names);
-    wuss->icon.names = NULL;
+    atom_destroy(st.names);
     return rc;
   }
 
-  icons_sort(wuss, st.atoms, st.bitmaps, st.n);
+  icons_sort(st.names, st.atoms, st.bitmaps, st.n);
 
-  wuss->icon.atoms    = st.atoms;
-  wuss->icon.bitmaps  = st.bitmaps;
-  wuss->icon.nbitmaps = st.n;
+  pool->names    = st.names;
+  pool->atoms    = st.atoms;
+  pool->bitmaps  = st.bitmaps;
+  pool->nbitmaps = st.n;
   return result_OK;
+}
+
+result_t wuss_iconpool_load(wuss_t *wuss, const char *dir)
+{
+  assert(wuss != NULL);
+
+  if (dir == NULL)
+    return result_NULL_ARG;
+
+  return icons_load(wuss, &wuss->icon, dir);
+}
+
+/* Copy "<resources>/resources/<sub>" into dir (size ICONS_DIR_MAX): pathf
+ * hands back one shared static buffer, and the per-file joins would clobber
+ * it mid-load. */
+static void icons_resource_dir(char       *dir,
+                               const char *resources,
+                               const char *sub)
+{
+  strncpy(dir, pathf("%s/resources/%s", resources, sub), ICONS_DIR_MAX - 1);
+  dir[ICONS_DIR_MAX - 1] = '\0';
 }
 
 result_t wuss_iconpool_load_resource(wuss_t *wuss, const char *resources)
@@ -332,13 +377,32 @@ result_t wuss_iconpool_load_resource(wuss_t *wuss, const char *resources)
   if (resources == NULL)
     return result_NULL_ARG;
 
-  /* copy: pathf hands back one shared static buffer, and the per-file joins
-   * would clobber it mid-call */
-  strncpy(dir, pathf("%s/resources/wuss/iconpool", resources),
-          sizeof(dir) - 1);
-  dir[sizeof(dir) - 1] = '\0';
+  icons_resource_dir(dir, resources, "wuss/iconpool");
 
   return wuss_iconpool_load(wuss, dir);
+}
+
+/* Index of "name" in pool, or -1. */
+static int icons_find(const struct wuss_iconpool *pool, const char *name)
+{
+  atom_t atom;
+  int    i;
+
+  if (name == NULL || pool->names == NULL)
+    return -1;
+
+  atom = atom_for_block(pool->names, (const unsigned char *) name,
+                        strlen(name) + 1);
+  if (atom == atom_NOT_FOUND)
+    return -1;
+
+  /* atom values are not array indices -- find which entry holds it. A handful
+   * of icons, so a linear scan is cheaper than a second index structure. */
+  for (i = 0; i < pool->nbitmaps; i++)
+    if (pool->atoms[i] == (int) atom)
+      return i;
+
+  return -1;
 }
 
 int wuss_iconpool_count(const wuss_t *wuss)
@@ -349,26 +413,9 @@ int wuss_iconpool_count(const wuss_t *wuss)
 
 int wuss_iconpool_lookup(const wuss_t *wuss, const char *name)
 {
-  atom_t atom;
-  int    i;
-
   assert(wuss != NULL);
 
-  if (name == NULL || wuss->icon.names == NULL)
-    return -1;
-
-  atom = atom_for_block((atom_set_t *) wuss->icon.names,
-                        (const unsigned char *) name, strlen(name) + 1);
-  if (atom == atom_NOT_FOUND)
-    return -1;
-
-  /* atom values are not array indices -- find which entry holds it. A handful
-   * of icons, so a linear scan is cheaper than a second index structure. */
-  for (i = 0; i < wuss->icon.nbitmaps; i++)
-    if (wuss->icon.atoms[i] == (int) atom)
-      return i;
-
-  return -1;
+  return icons_find(&wuss->icon, name);
 }
 
 const bitmap_t *wuss_iconpool_bitmap(const wuss_t *wuss, int index)
@@ -379,6 +426,69 @@ const bitmap_t *wuss_iconpool_bitmap(const wuss_t *wuss, int index)
     return NULL;
 
   return &wuss->icon.bitmaps[index];
+}
+
+/* ----------------------------------------------------------------------- */
+
+result_t wuss_task_iconpool_load(wuss_task_t *task, const char *dir)
+{
+  assert(task != NULL);
+
+  if (dir == NULL)
+    return result_NULL_ARG;
+
+  return icons_load(task->wuss, &task->iconpool, dir);
+}
+
+result_t wuss_task_iconpool_load_resource(wuss_task_t *task,
+                                          const char  *resources)
+{
+  char sub[ICONS_DIR_MAX];
+  char dir[ICONS_DIR_MAX];
+
+  assert(task != NULL);
+
+  if (resources == NULL)
+    return result_NULL_ARG;
+
+  if (task->name == NULL)
+    return result_BAD_ARG;
+
+  if ((size_t) snprintf(sub, sizeof(sub), "wuss/tasks/%s/iconpool",
+                        task->name) >= sizeof(sub))
+    return result_BAD_ARG;
+
+  icons_resource_dir(dir, resources, sub);
+
+  return wuss_task_iconpool_load(task, dir);
+}
+
+const bitmap_t *wuss__iconpool_find(const wuss_t      *wuss,
+                                    const wuss_task_t *task,
+                                    const char        *name)
+{
+  int idx;
+
+  assert(wuss != NULL);
+
+  if (task != NULL)
+  {
+    idx = icons_find(&task->iconpool, name);
+    if (idx >= 0)
+      return &task->iconpool.bitmaps[idx];
+  }
+
+  idx = icons_find(&wuss->icon, name);
+
+  return (idx >= 0) ? &wuss->icon.bitmaps[idx] : NULL;
+}
+
+const bitmap_t *wuss_task_iconpool_find(const wuss_task_t *task,
+                                        const char        *name)
+{
+  assert(task != NULL);
+
+  return wuss__iconpool_find(task->wuss, task, name);
 }
 
 #endif /* WUSS_ICONS */

@@ -32,6 +32,12 @@ result_t wuss_task_create(wuss_t                 *wuss,
   t->flags     = 0;
   t->parent    = wuss->task_parent;
   list_init(&t->windows);
+#ifdef WUSS_ICONS
+  t->iconpool.names    = NULL;
+  t->iconpool.atoms    = NULL;
+  t->iconpool.bitmaps  = NULL;
+  t->iconpool.nbitmaps = 0;
+#endif
 
   list_add_to_tail(&wuss->tasks, &t->link);
 

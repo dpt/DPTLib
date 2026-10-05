@@ -513,8 +513,8 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
   screen_t        clipped;
 
   bm = NULL;
-  if (wuss__icon_pressed(c->icon) && c->icon->spec.u.bitmap.pressed_set > 0)
-    bm = wuss_iconpool_bitmap(c->wuss, c->icon->spec.u.bitmap.pressed_set - 1);
+  if (wuss__icon_pressed(c->icon))
+    bm = c->icon->spec.u.bitmap.pressed_image;
   if (bm == NULL)
     bm = c->icon->spec.u.bitmap.image;
 
