@@ -129,15 +129,17 @@ static void iconbar_draw_icon(wuss_t                    *wuss,
     screen_t clipped;
     int      x, y;
 
+    /* an empty intersection only skips the image: the label lies below
+     * icon_box, so it may still be inside the clip */
     clipped = *wuss->scr;
-    if (box_intersection(&wuss->scr->clip, icon_box, &clipped.clip))
-      return;
-
-    x = icon_box->x0 +
-        ((icon_box->x1 - icon_box->x0) - icon->spec.image->size.w) / 2;
-    y = icon_box->y0 +
-        ((icon_box->y1 - icon_box->y0) - icon->spec.image->size.h) / 2;
-    screen_copy_bitmap(&clipped, x, y, icon->spec.image);
+    if (!box_intersection(&wuss->scr->clip, icon_box, &clipped.clip))
+    {
+      x = icon_box->x0 +
+          ((icon_box->x1 - icon_box->x0) - icon->spec.image->size.w) / 2;
+      y = icon_box->y0 +
+          ((icon_box->y1 - icon_box->y0) - icon->spec.image->size.h) / 2;
+      screen_copy_bitmap(&clipped, x, y, icon->spec.image);
+    }
   }
 
   if (icon->spec.text[0] != '\0' && wuss->fonts.fonts[0] != NULL)
@@ -173,6 +175,9 @@ void wuss__iconbar_draw_icons(wuss_t *wuss, const box_t *piece)
 
     if (box_intersection(piece, &slot, &clipped))
       continue;
+
+    /* earlier drawing (client redraw, window icons) may have changed it */
+    wuss->scr->clip = *piece;
 
     wuss__iconbar_icon_box(wuss, i, &icon_box);
     iconbar_draw_icon(wuss, wuss->iconbar.icons[i], &icon_box);
