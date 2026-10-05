@@ -53,7 +53,7 @@ result_t palette_load_hex_n(const char *resources,
   int         i;
   unsigned    r, g, b;
 
-  path = pathf("%s/resources/palettes/%s.hex", resources, name);
+  path = pathf("%s/resources/wuss/palettes/%s.hex", resources, name);
 
   fp = fopen(path, "r");
   if (fp == NULL)
@@ -131,7 +131,7 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   task->selected  = 0;
 
   resources = wuss_get_resources(wuss);
-  dir       = pathf("%s/resources/palettes", resources);
+  dir       = pathf("%s/resources/wuss/palettes", resources);
   namelist_scan(dir, PALETTE_HEX_EXT, task->names[0],
                 sizeof(task->names[0]), PALETTE_MAX_FILES, 1 /* sorted */,
                 &task->nnames);
