@@ -12,7 +12,6 @@
 #include "base/debug.h"
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
-#include "io/path.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/iconbar.h"
 #include "wuss/menu.h"
@@ -55,40 +54,6 @@ struct app
 };
 
 static app_t *g_apps; /* every installed app */
-
-/* The application glyph is shared by every app's icon: loaded for the first
- * and freed with the last. */
-static bitmap_t g_glyph;
-static bool     g_glyph_loaded;
-static int      g_glyph_refs;
-
-static const bitmap_t *glyph_acquire(const wuss_t *wuss)
-{
-  const char *path;
-
-  if (g_glyph_refs == 0)
-  {
-    path           = pathf("%s/resources/wuss/iconpool/file_app.png",
-                           wuss_get_resources(wuss));
-    g_glyph_loaded = bitmap_load_png(&g_glyph, path) == result_OK;
-    if (!g_glyph_loaded)
-      logf_warning("taskapp: glyph '%s' unavailable; icons show label only",
-                   path);
-  }
-  g_glyph_refs++;
-
-  return g_glyph_loaded ? &g_glyph : NULL;
-}
-
-static void glyph_release(void)
-{
-  if (--g_glyph_refs > 0)
-    return;
-
-  if (g_glyph_loaded)
-    free(g_glyph.base);
-  g_glyph_loaded = false;
-}
 
 static result_t app_spawn_instance(app_t *app)
 {
@@ -165,7 +130,6 @@ static result_t app_handle(wuss_window_t      *window,
     for (link = &g_apps; *link != app; link = &(*link)->next)
       ;
     *link = app->next;
-    glyph_release();
     free(app);
     return result_OK;
 
@@ -213,7 +177,9 @@ result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc)
   g_apps    = app;
 
   spec.text  = desc->name;
-  spec.image = glyph_acquire(wuss);
+  spec.image = wuss_task_iconpool_find(app->task, "file_app");
+  if (spec.image == NULL)
+    logf_warning("taskapp: icon 'file_app' unavailable; icons show label only");
   spec.side  = wuss_ICONBAR_RIGHT;
   rc = wuss_iconbar_icon_create(wuss, app->task, &spec, &app->icon);
   if (rc != result_OK)

@@ -12,7 +12,6 @@
 #include "base/debug.h"
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
-#include "io/path.h"
 #include "wuss/gadget/gridview.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/iconbar.h"
@@ -51,12 +50,9 @@ struct apps_task
 
   apps_window_t         windows[1 + APPS_MAX_CATEGORIES]; /* [0] root,
                                                            * [c + 1] category c */
-  bitmap_t              glyph_file;
-  bitmap_t              glyph_directory;
-  bitmap_t              glyph_apps;
-  int                   have_glyph_file;
-  int                   have_glyph_directory;
-  int                   have_glyph_apps;
+  const bitmap_t       *glyph_file;      /* borrowed from the icon pool */
+  const bitmap_t       *glyph_directory;
+  const bitmap_t       *glyph_apps;
 
   wuss_menu_handle_t    menu_handle;
   wuss_menu_item_t      menu_items[1]; /* "Info" */
@@ -80,13 +76,12 @@ static void apps_item(int index, void *opaque, wuss_gridview_item_t *out)
   if (aw->category < 0)
   {
     out->label = tasks_category_name(index);
-    out->glyph = aw->owner->have_glyph_directory ?
-                 &aw->owner->glyph_directory : NULL;
+    out->glyph = aw->owner->glyph_directory;
     return;
   }
 
   out->label = tasks_entry_name(aw->category, index);
-  out->glyph = aw->owner->have_glyph_file ? &aw->owner->glyph_file : NULL;
+  out->glyph = aw->owner->glyph_file;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -172,11 +167,6 @@ static void apps_destroy(apps_task_t *task)
     if (task->windows[i].gridview != NULL)
       wuss_gridview_destroy(task->windows[i].gridview);
 
-  if (task->have_glyph_file)
-    free(task->glyph_file.base);
-  if (task->have_glyph_directory)
-    free(task->glyph_directory.base);
-
   free(task);
 }
 
@@ -258,18 +248,17 @@ static result_t apps_handle(wuss_window_t      *window,
   }
 }
 
-static void apps_load_glyph(const char *resources,
-                            const char *leaf,
-                            bitmap_t   *bm,
-                            int        *have)
+static const bitmap_t *apps_find_glyph(const wuss_task_t *task,
+                                       const char        *name)
 {
-  const char *path;
+  const bitmap_t *bm;
 
-  path  = pathf("%s/resources/wuss/iconpool/%s.png", resources, leaf);
-  *have = bitmap_load_png(bm, path) == result_OK;
-  if (!*have)
+  bm = wuss_task_iconpool_find(task, name);
+  if (bm == NULL)
     logf_warning("appsfiler: glyph '%s' unavailable; cells show label only",
-                 path);
+                 name);
+
+  return bm;
 }
 
 result_t appsfiler_create(wuss_t *wuss)
@@ -278,7 +267,6 @@ result_t appsfiler_create(wuss_t *wuss)
   apps_task_t             *task;
   wuss_task_desc_t         desc;
   wuss_iconbar_icon_spec_t spec;
-  const char              *resources;
   int                      i;
 
   task = calloc(1, sizeof(*task));
@@ -292,14 +280,6 @@ result_t appsfiler_create(wuss_t *wuss)
     task->windows[i].category = i - 1;
   }
 
-  resources = wuss_get_resources(wuss);
-  apps_load_glyph(resources, "file_app", &task->glyph_file,
-                  &task->have_glyph_file);
-  apps_load_glyph(resources, "file_dir", &task->glyph_directory,
-                  &task->have_glyph_directory);
-  apps_load_glyph(resources, "apps", &task->glyph_apps,
-                  &task->have_glyph_apps);
-  
   WUSS_MENU_ITEM_WINDOW(task->menu_items, 0, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo
@@ -317,9 +297,13 @@ result_t appsfiler_create(wuss_t *wuss)
     return rc;
   }
 
+  task->glyph_file      = apps_find_glyph(task->delegate, "file_app");
+  task->glyph_directory = apps_find_glyph(task->delegate, "file_dir");
+  task->glyph_apps      = apps_find_glyph(task->delegate, "apps");
+
   spec.text  = "Apps";
   spec.side  = wuss_ICONBAR_LEFT;
-  spec.image = task->have_glyph_apps ? &task->glyph_apps : NULL;
+  spec.image = task->glyph_apps;
   rc = wuss_iconbar_icon_create(wuss, task->delegate, &spec,
                                 &task->iconbar_icon);
   if (rc != result_OK)

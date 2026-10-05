@@ -102,12 +102,12 @@ static const bitmap_t *filer_glyph_for(filer_task_t          *task,
                                        const dirlist_entry_t *entry)
 {
   if (entry->is_dir)
-    return task->have_glyph_directory ? &task->glyph_directory : NULL;
+    return task->glyph_directory;
 
   if (entry->type.ext != NULL && strcmp(entry->type.ext, ".png") == 0)
-    return task->have_glyph_png ? &task->glyph_png : NULL;
+    return task->glyph_png;
 
-  return task->have_glyph_file ? &task->glyph_file : NULL;
+  return task->glyph_file;
 }
 
 static void filer_item(int index, void *opaque, wuss_gridview_item_t *out)
@@ -251,18 +251,17 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
 
 /* ----------------------------------------------------------------------- */
 
-static void filer_load_glyph(const char *resources,
-                             const char *leaf,
-                             bitmap_t   *bm,
-                             int        *have)
+static const bitmap_t *filer_find_glyph(const wuss_task_t *task,
+                                        const char        *name)
 {
-  const char *path;
+  const bitmap_t *bm;
 
-  path  = pathf("%s/resources/wuss/iconpool/%s.png", resources, leaf);
-  *have = bitmap_load_png(bm, path) == result_OK;
-  if (!*have)
+  bm = wuss_task_iconpool_find(task, name);
+  if (bm == NULL)
     logf_warning("filer: glyph '%s' unavailable; cells show label only",
-                 path);
+                 name);
+
+  return bm;
 }
 
 result_t filer_create(wuss_t *wuss, filer_task_t **out)
@@ -271,7 +270,6 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
   filer_task_t            *task;
   wuss_task_desc_t         delegate_desc;
   wuss_iconbar_icon_spec_t spec;
-  const char              *resources;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -279,14 +277,6 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
 
   task->wuss     = wuss;
   task->nwindows = 0;
-
-  resources = wuss_get_resources(wuss);
-  filer_load_glyph(resources, "file_unk", &task->glyph_file,
-                   &task->have_glyph_file);
-  filer_load_glyph(resources, "file_dir", &task->glyph_directory,
-                   &task->have_glyph_directory);
-  filer_load_glyph(resources, "file_b60", &task->glyph_png,
-                   &task->have_glyph_png);
 
   WUSS_MENU_ITEM_WINDOW(task->menu_items, FILER_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
@@ -310,9 +300,13 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
     return rc;
   }
 
+  task->glyph_file      = filer_find_glyph(task->delegate, "file_unk");
+  task->glyph_directory = filer_find_glyph(task->delegate, "file_dir");
+  task->glyph_png       = filer_find_glyph(task->delegate, "file_b60");
+
   spec.text  = "Filer";
   spec.side  = wuss_ICONBAR_LEFT;
-  spec.image = task->have_glyph_directory ? &task->glyph_directory : NULL;
+  spec.image = task->glyph_directory;
   rc = wuss_iconbar_icon_create(wuss, task->delegate, &spec,
                                 &task->iconbar_icon);
   if (rc != result_OK)
@@ -342,13 +336,6 @@ void filer_destroy(filer_task_t *task)
     wuss_gridview_destroy(task->windows[i].gridview);
     dirlist_destroy(task->windows[i].listing);
   }
-
-  if (task->have_glyph_file)
-    free(task->glyph_file.base);
-  if (task->have_glyph_directory)
-    free(task->glyph_directory.base);
-  if (task->have_glyph_png)
-    free(task->glyph_png.base);
 
   free(task);
 }
