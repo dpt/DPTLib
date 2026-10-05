@@ -59,8 +59,8 @@ static int stringset_arrow_spec(const wuss_t     *wuss,
   int             idx, pidx;
   int             w, h;
 
-  idx = wuss_icons_lookup(wuss, "gright");
-  bm  = (idx >= 0) ? wuss_icons_bitmap(wuss, idx) : NULL;
+  idx = wuss_iconpool_lookup(wuss, "gright");
+  bm  = (idx >= 0) ? wuss_iconpool_bitmap(wuss, idx) : NULL;
   if (bm == NULL)
   {
     /* no icon set: a square button the height of the gadget */
@@ -73,7 +73,7 @@ static int stringset_arrow_spec(const wuss_t     *wuss,
 
   w    = bm->size.w;
   h    = bm->size.h;
-  pidx = wuss_icons_lookup(wuss, "gright-p");
+  pidx = wuss_iconpool_lookup(wuss, "gright-p");
 
   memset(spec, 0, sizeof(*spec));
   spec->bbox  = (box_t) BOX_POS_SIZE(bbox.x1 - w,
@@ -81,8 +81,8 @@ static int stringset_arrow_spec(const wuss_t     *wuss,
                                      w, h);
   spec->type  = wuss_ICON_TYPE_BITMAP;
   spec->flags = wuss_ICON_FLAGS_INTERACTIVE;
-  spec->u.bitmap.set         = wuss_ICON_SET(idx);
-  spec->u.bitmap.pressed_set = (pidx >= 0) ? wuss_ICON_SET(pidx) : 0;
+  spec->u.bitmap.set         = wuss_ICONPOOL_SET(idx);
+  spec->u.bitmap.pressed_set = (pidx >= 0) ? wuss_ICONPOOL_SET(pidx) : 0;
   return w;
 }
 

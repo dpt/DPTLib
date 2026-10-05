@@ -356,7 +356,7 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
     task->hud_field_w = (int) field_width + MS_HUD_V_PAD;
   }
 
-  filename = pathf("%s/resources/wuss/icons/mine.png", resources);
+  filename = pathf("%s/resources/wuss/iconpool/mine.png", resources);
   rc = bitmap_load_png(&task->mine_bm, filename);
   if (rc != result_OK)
   {
@@ -365,7 +365,7 @@ result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out)
     return rc;
   }
 
-  filename = pathf("%s/resources/wuss/icons/flag.png", resources);
+  filename = pathf("%s/resources/wuss/iconpool/flag.png", resources);
   rc = bitmap_load_png(&task->flag_bm, filename);
   if (rc != result_OK)
   {

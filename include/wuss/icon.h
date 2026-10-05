@@ -237,11 +237,11 @@ wuss_icon_flags_t;
 #define wuss_ICON_FONT_OF(f)    (((f) >> 9) & 3)
 
 /**
- * Encode a 0-based icon-set index (from \ref wuss_icons_lookup) for
+ * Encode a 0-based icon-set index (from \ref wuss_iconpool_lookup) for
  * wuss_icon_spec_data::bitmap::set. The stored value is offset by one so a
  * zero-initialised spec reads as "no icon-set entry".
  */
-#define wuss_ICON_SET(i)        ((i) + 1)
+#define wuss_ICONPOOL_SET(i)        ((i) + 1)
 
 /**
  * A wuss_ICON_TYPE_SLIDER's axis: which way its groove runs and, so, which
@@ -295,9 +295,9 @@ typedef union wuss_icon_spec_data
      *  (the default) falls back to \c set. */
     const bitmap_t *image;
     /** When \c image is NULL, draw an entry from the window manager's loaded
-     *  icon set (see \ref wuss_icons_load). Zero (the default for a
+     *  icon set (see \ref wuss_iconpool_load). Zero (the default for a
      *  zero-initialised spec) means "no icon-set entry"; encode a 0-based
-     *  index from \ref wuss_icons_lookup with \ref wuss_ICON_SET. Ignored
+     *  index from \ref wuss_iconpool_lookup with \ref wuss_ICONPOOL_SET. Ignored
      *  when \c image is set. */
     int             set;
     /** Icon-set entry drawn instead while the icon is pressed (see \c set
@@ -660,10 +660,10 @@ result_t wuss_icon_set_caret(wuss_window_t *window,
  * Scan a directory for PNG images and load them as the window manager's icon
  * set. Each ".png" file becomes one indexed entry: its pixels are loaded and
  * then RLE-compressed in place (see \ref bitmap_compress), and its leafname
- * sans ".png" is recorded so \ref wuss_icons_lookup can resolve it back to
- * the index. Non-".png" entries are ignored. Entry indices are assigned in
- * the order the platform's directory scan yields, which is unspecified --
- * address entries by name, not by a hardcoded index.
+ * sans ".png" is recorded so \ref wuss_iconpool_lookup can resolve it back
+ * to the index. Non-".png" entries are ignored. Entries are sorted by name
+ * (strcmp), so an index is stable across platforms -- but still address
+ * entries by name, not by a hardcoded index.
  *
  * Calling this again replaces the previous set (the old bitmaps and names
  * are freed). \ref wuss_destroy frees the set.
@@ -675,32 +675,30 @@ result_t wuss_icon_set_caret(wuss_window_t *window,
  *         allocation failure, or a code propagated from the PNG loader or
  *         the compressor (the set is left empty on failure).
  */
-result_t wuss_icons_load(wuss_t *wuss, const char *dir);
+result_t wuss_iconpool_load(wuss_t *wuss, const char *dir);
 
 /**
- * Convenience wrapper for \ref wuss_icons_load: loads the wuss-wide icon set
- * from "<resources>/resources/wuss/icons" followed by
- * "<resources>/resources/wuss/files" (file type icons, e.g. "file_xxx"), the
- * fixed locations every demo task uses. A name repeated across the two
- * directories keeps both entries and \ref wuss_icons_lookup finds the first.
- * \p resources is joined via \c pathf and copied before the load, so the
- * caller need not worry about \c pathf's single shared return buffer.
+ * Convenience wrapper for \ref wuss_iconpool_load: loads the wuss-wide icon
+ * pool from "<resources>/resources/wuss/iconpool", the fixed location every
+ * demo task uses. \p resources is joined via \c pathf and copied before the
+ * load, so the caller need not worry about \c pathf's single shared return
+ * buffer.
  *
  * \param[in] wuss      Window manager.
  * \param[in] resources Resource root, as returned by \ref
  *                      wuss_get_resources.
- * \return As \ref wuss_icons_load.
+ * \return As \ref wuss_iconpool_load.
  */
-result_t wuss_icons_load_resource(wuss_t *wuss, const char *resources);
+result_t wuss_iconpool_load_resource(wuss_t *wuss, const char *resources);
 
 /**
- * Number of entries in the loaded icon set (see \ref wuss_icons_load). Zero
- * if none has been loaded.
+ * Number of entries in the loaded icon set (see \ref wuss_iconpool_load).
+ * Zero if none has been loaded.
  *
  * \param[in] wuss Window manager.
  * \return The entry count.
  */
-int wuss_icons_count(const wuss_t *wuss);
+int wuss_iconpool_count(const wuss_t *wuss);
 
 /**
  * Resolve an icon-set entry's name to its index.
@@ -708,20 +706,20 @@ int wuss_icons_count(const wuss_t *wuss);
  * \param[in] wuss Window manager.
  * \param[in] name Entry name: a loaded file's leafname without ".png".
  * \return The 0-based index, or -1 if no entry has that name. Pass the index
- *         through \ref wuss_ICON_SET to put it in a spec's \c icon_set.
+ *         through \ref wuss_ICONPOOL_SET to put it in a spec's \c icon_set.
  */
-int wuss_icons_lookup(const wuss_t *wuss, const char *name);
+int wuss_iconpool_lookup(const wuss_t *wuss, const char *name);
 
 /**
  * Fetch an icon-set entry's (compressed) bitmap by index.
  *
  * \param[in] wuss  Window manager.
- * \param[in] index 0-based index, 0..\ref wuss_icons_count -1.
+ * \param[in] index 0-based index, 0..\ref wuss_iconpool_count -1.
  * \return The bitmap, owned by the window manager and valid until the next
- *         \ref wuss_icons_load or \ref wuss_destroy, or NULL if \p index is
- *         out of range.
+ *         \ref wuss_iconpool_load or \ref wuss_destroy, or NULL if \p index
+ *         is out of range.
  */
-const bitmap_t *wuss_icons_bitmap(const wuss_t *wuss, int index);
+const bitmap_t *wuss_iconpool_bitmap(const wuss_t *wuss, int index);
 
 #endif /* WUSS_ICONS */
 

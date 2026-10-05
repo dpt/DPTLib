@@ -68,7 +68,7 @@ static const bitmap_t *glyph_acquire(const wuss_t *wuss)
 
   if (g_glyph_refs == 0)
   {
-    path           = pathf("%s/resources/wuss/files/file_app.png",
+    path           = pathf("%s/resources/wuss/iconpool/file_app.png",
                            wuss_get_resources(wuss));
     g_glyph_loaded = bitmap_load_png(&g_glyph, path) == result_OK;
     if (!g_glyph_loaded)

@@ -9124,35 +9124,35 @@ QuitFail:
     wuss_window_close(win_sl);
   }
 
-  printf("test: wuss_icons_load scans resources/wuss/icons and compresses\n");
+  printf("test: wuss_iconpool_load scans resources/wuss/iconpool and compresses\n");
 
   {
     const bitmap_t *icon_bm;
     int             idx, opton, count;
 
-    rc = wuss_icons_load_resource(wuss, resources);
+    rc = wuss_iconpool_load_resource(wuss, resources);
     if (rc != result_OK)
       goto Failure;
 
-    /* resources/wuss/icons/ may carry more than these four fixtures
+    /* resources/wuss/iconpool/ may carry more than these four fixtures
      * (optoff/opton/radoff/radon), so just require they're all present. */
-    count = wuss_icons_count(wuss);
+    count = wuss_iconpool_count(wuss);
     if (count < 4)
       goto Failure;
 
-    opton = wuss_icons_lookup(wuss, "opton");
-    if (opton < 0 || wuss_icons_lookup(wuss, "radoff") < 0)
+    opton = wuss_iconpool_lookup(wuss, "opton");
+    if (opton < 0 || wuss_iconpool_lookup(wuss, "radoff") < 0)
       goto Failure;
-    if (wuss_icons_lookup(wuss, "nonesuch") != -1)
+    if (wuss_iconpool_lookup(wuss, "nonesuch") != -1)
       goto Failure;
 
-    icon_bm = wuss_icons_bitmap(wuss, opton);
+    icon_bm = wuss_iconpool_bitmap(wuss, opton);
     if (icon_bm == NULL || !bitmap_is_compressed(icon_bm))
       goto Failure;
-    if (wuss_icons_bitmap(wuss, count) != NULL)
+    if (wuss_iconpool_bitmap(wuss, count) != NULL)
       goto Failure;
 
-    /* an icon spec picks it up by index via wuss_ICON_SET */
+    /* an icon spec picks it up by index via wuss_ICONPOOL_SET */
     {
       static test_task_t tc_ic;
       wuss_task_t       *delegate_ic;
@@ -9175,25 +9175,25 @@ QuitFail:
       memset(&spec, 0, sizeof(spec));
       spec.bbox     = (box_t) BOX_POS_SIZE(0, 0, 16, 16);
       spec.type     = wuss_ICON_TYPE_BITMAP;
-      spec.u.bitmap.set = wuss_ICON_SET(opton);
+      spec.u.bitmap.set = wuss_ICONPOOL_SET(opton);
       rc = wuss_icon_create(win_ic, &spec, &icon);
       if (rc != result_OK)
         goto Failure;
 
       /* a pressed image resolves the same way */
       spec.u.bitmap.pressed_set =
-        wuss_ICON_SET(wuss_icons_lookup(wuss, "radon"));
+        wuss_ICONPOOL_SET(wuss_iconpool_lookup(wuss, "radon"));
       rc = wuss_icon_create(win_ic, &spec, &icon);
       if (rc != result_OK)
         goto Failure;
 
-      spec.u.bitmap.pressed_set = wuss_ICON_SET(99);
+      spec.u.bitmap.pressed_set = wuss_ICONPOOL_SET(99);
       if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)
         goto Failure;
       spec.u.bitmap.pressed_set = 0;
 
       /* a bogus index is rejected */
-      spec.u.bitmap.set = wuss_ICON_SET(99);
+      spec.u.bitmap.set = wuss_ICONPOOL_SET(99);
       if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)
         goto Failure;
       rc = result_OK;
@@ -9202,11 +9202,11 @@ QuitFail:
     }
 
     /* a reload replaces the set cleanly (no leak, ASan would catch it) */
-    rc = wuss_icons_load_resource(wuss, resources);
-    if (rc != result_OK || wuss_icons_count(wuss) != count)
+    rc = wuss_iconpool_load_resource(wuss, resources);
+    if (rc != result_OK || wuss_iconpool_count(wuss) != count)
       goto Failure;
 
-    idx = wuss_icons_lookup(wuss, "optoff");
+    idx = wuss_iconpool_lookup(wuss, "optoff");
     if (idx < 0)
       goto Failure;
 
@@ -9219,7 +9219,7 @@ QuitFail:
       screen_t      p4scr;
       pixelfmt_t    fmt32;
 
-      icon_bm = wuss_icons_bitmap(wuss, opton);
+      icon_bm = wuss_iconpool_bitmap(wuss, opton);
       fmt32   = pixelfmt_base(icon_bm->format);
       if (fmt32 != pixelfmt_bgra8888 && fmt32 != pixelfmt_bgrx8888)
         goto Failure;
@@ -9233,7 +9233,7 @@ QuitFail:
       rc = wuss_resize(wuss, &p4scr);
       if (rc != result_OK)
         goto Failure;
-      if (wuss_icons_bitmap(wuss, opton) != icon_bm ||
+      if (wuss_iconpool_bitmap(wuss, opton) != icon_bm ||
           !bitmap_is_compressed(icon_bm) ||
           (pixelfmt_base(icon_bm->format) != pixelfmt_rgba8888 &&
            pixelfmt_base(icon_bm->format) != pixelfmt_rgbx8888))
@@ -9242,48 +9242,48 @@ QuitFail:
       rc = wuss_resize(wuss, &scr);
       if (rc != result_OK)
         goto Failure;
-      if (wuss_icons_bitmap(wuss, opton) != icon_bm ||
+      if (wuss_iconpool_bitmap(wuss, opton) != icon_bm ||
           pixelfmt_base(icon_bm->format) != fmt32)
         goto Failure;
     }
   }
 
-  printf("test: wuss_icons_load keeps paletted icons uncompressed, compresses deep ones and fails the set on a bad PNG\n");
+  printf("test: wuss_iconpool_load keeps paletted icons uncompressed, compresses deep ones and fails the set on a bad PNG\n");
 
   {
     int idx;
 
-    rc = wuss_icons_load(wuss, pathf("%s/resources/wuss-test/icons",
+    rc = wuss_iconpool_load(wuss, pathf("%s/resources/wuss-test/icons",
                                      resources));
     if (rc != result_OK)
       goto Failure;
-    if (wuss_icons_count(wuss) != 4)
+    if (wuss_iconpool_count(wuss) != 4)
       goto Failure;
 
     /* paletted PNGs can't be RLE-compressed, and stay as loaded: they must
      * not abort the load or be dropped */
-    idx = wuss_icons_lookup(wuss, "pal2");
-    if (idx < 0 || wuss_icons_bitmap(wuss, idx)->format != pixelfmt_p2)
+    idx = wuss_iconpool_lookup(wuss, "pal2");
+    if (idx < 0 || wuss_iconpool_bitmap(wuss, idx)->format != pixelfmt_p2)
       goto Failure;
-    idx = wuss_icons_lookup(wuss, "grey8");
-    if (idx < 0 || wuss_icons_bitmap(wuss, idx)->format != pixelfmt_p8)
+    idx = wuss_iconpool_lookup(wuss, "grey8");
+    if (idx < 0 || wuss_iconpool_bitmap(wuss, idx)->format != pixelfmt_p8)
       goto Failure;
 
     /* a grey+alpha PNG is expanded to 32bpp and so compresses like RGBA */
-    idx = wuss_icons_lookup(wuss, "greyalpha8");
-    if (idx < 0 || !bitmap_is_compressed(wuss_icons_bitmap(wuss, idx)))
+    idx = wuss_iconpool_lookup(wuss, "greyalpha8");
+    if (idx < 0 || !bitmap_is_compressed(wuss_iconpool_bitmap(wuss, idx)))
       goto Failure;
-    idx = wuss_icons_lookup(wuss, "rgba");
-    if (idx < 0 || !bitmap_is_compressed(wuss_icons_bitmap(wuss, idx)))
+    idx = wuss_iconpool_lookup(wuss, "rgba");
+    if (idx < 0 || !bitmap_is_compressed(wuss_iconpool_bitmap(wuss, idx)))
       goto Failure;
 
     /* a file that isn't a PNG fails the whole load */
-    if (wuss_icons_load(wuss, pathf("%s/resources/wuss-test/badicons",
+    if (wuss_iconpool_load(wuss, pathf("%s/resources/wuss-test/badicons",
                                     resources)) == result_OK)
       goto Failure;
 
     /* put the standard set back for the tests that follow */
-    rc = wuss_icons_load_resource(wuss, resources);
+    rc = wuss_iconpool_load_resource(wuss, resources);
     if (rc != result_OK)
       goto Failure;
   }

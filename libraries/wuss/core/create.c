@@ -158,15 +158,15 @@ result_t wuss_create(screen_t               *scr,
 #ifdef WUSS_ICONS
   /* load the wuss-wide icon set now that w->resources is set; a missing
    * resources root or icons directory just leaves the set empty, not an
-   * error -- callers needing the icon set check wuss_icons_count/_lookup */
+   * error -- callers needing the icon set check wuss_iconpool_count/_lookup */
   if (resources != NULL)
-    (void) wuss_icons_load_resource(w, resources);
+    (void) wuss_iconpool_load_resource(w, resources);
 #endif
 
   if (bmfontcache_create(&w->font_cache) != result_OK)
   {
 #ifdef WUSS_ICONS
-    wuss__icons_registry_free(w);
+    wuss__iconpool_free(w);
 #endif
     wuss__free(w, w->palette);
     wuss__free(w, w);

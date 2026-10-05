@@ -37,7 +37,7 @@ extern "C"
  * colour).
  */
 #define result_WUSS_BAD_ICON   (result_BASE_WUSS + 2)
-/** An icon-set index (see wuss_icons_load) was out of range. */
+/** An icon-set index (see wuss_iconpool_load) was out of range. */
 #define result_WUSS_BAD_INDEX  (result_BASE_WUSS + 3)
 /**
  * Returned by a task's handle from wuss_EVENT_KEY to decline the key; see

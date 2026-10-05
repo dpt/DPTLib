@@ -61,7 +61,7 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
 
   /* A BITMAP (or DRAGGABLE) icon draws spec->u.bitmap.image, or -- when that
    * is NULL -- the loaded icon-set entry spec->u.bitmap.set names
-   * (wuss_ICON_SET encodes the 0-based index +1, so 0 means "no entry"). A
+   * (wuss_ICONPOOL_SET encodes the 0-based index +1, so 0 means "no entry"). A
    * DRAGGABLE may have neither: it is still a drag handle, drawn as the red
  * box that stands in for any bitmap that can't be drawn. */
   bitmap = spec->u.bitmap.image;
@@ -69,7 +69,7 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
        spec->type == wuss_ICON_TYPE_DRAGGABLE) && bitmap == NULL &&
       spec->u.bitmap.set > 0)
   {
-    bitmap = wuss_icons_bitmap(w, spec->u.bitmap.set - 1);
+    bitmap = wuss_iconpool_bitmap(w, spec->u.bitmap.set - 1);
     if (bitmap == NULL)
       return result_WUSS_BAD_INDEX;
   }
@@ -79,7 +79,7 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
 
   /* the pressed image is looked up at draw time; just check it exists */
   if (spec->type == wuss_ICON_TYPE_BITMAP && spec->u.bitmap.pressed_set > 0 &&
-      wuss_icons_bitmap(w, spec->u.bitmap.pressed_set - 1) == NULL)
+      wuss_iconpool_bitmap(w, spec->u.bitmap.pressed_set - 1) == NULL)
     return result_WUSS_BAD_INDEX;
 
   if (spec->type == wuss_ICON_TYPE_PATTERN &&
@@ -125,10 +125,10 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
     gh = 0;
     for (i = 0; i < 2; i++)
     {
-      idx = wuss_icons_lookup(w, wuss__icon_radio_option_name(spec->type, i));
+      idx = wuss_iconpool_lookup(w, wuss__icon_radio_option_name(spec->type, i));
       if (idx < 0)
         continue;
-      state_bm = wuss_icons_bitmap(w, idx);
+      state_bm = wuss_iconpool_bitmap(w, idx);
       if (state_bm == NULL)
         continue;
       gw = MAX(gw, state_bm->size.w);

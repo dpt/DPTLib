@@ -606,6 +606,13 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- **Breaking:** the `wuss` icon set becomes the icon pool.
+  `resources/wuss/icons/` and `resources/wuss/files/` merge into one flat
+  directory, `resources/wuss/iconpool/`; `wuss_icons_*` is renamed
+  `wuss_iconpool_*` and `wuss_ICON_SET` becomes `wuss_ICONPOOL_SET`.
+  Entries are now sorted by name, so indices no longer depend on the
+  platform's directory scan order. Also moves `resources/palettes/` to
+  `resources/wuss/palettes/`.
 - **Breaking:** bitmap fonts move to a hierarchical layout,
   `resources/bmfonts/<Family>/<Style>.png` (e.g. `GrongyUI/Bold.png`,
   `Tiny/Regular.png`; the `-Lg` digits become the `DPT-DigitsLg` family).
