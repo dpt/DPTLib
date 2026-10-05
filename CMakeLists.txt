@@ -877,6 +877,8 @@ if(BUILD_APPS)
         apps/wuss/main.c
         apps/wuss/script.c
         apps/wuss/script.h
+        apps/wuss/taskmanager.c
+        apps/wuss/taskmanager.h
         apps/wuss/tasks.c
         libraries/wuss/test/tasks/ball.c
         libraries/wuss/test/tasks/chasehq.c
