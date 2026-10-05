@@ -44,6 +44,8 @@ struct wuss_gridview
   bitvec_t                      *selected;
   int                            label_chars;
   size2d_t                       cell;    /* glyph+label cell size, with padding */
+  int                            edge_pad; /* cell edge to its contents */
+  int                            spacing; /* glyph to label */
   int                            columns; /* set by reflow; at least 1 once
                                            * reflowed, 0 before */
   size2d_t                       doc;     /* extent last given the window */
@@ -59,43 +61,53 @@ struct wuss_gridview
 
 /* ----------------------------------------------------------------------- */
 
-/* Cell size: the largest glyph's box combined with "label_chars" characters
- * of the window's font, plus padding, stacked glyph-over-label. Walks every
- * item once, at create time only -- the plan fixes cell size for the
- * gadget's lifetime so one long name cannot inflate the grid later. */
+/* Cell size: the widest item (its glyph or its measured label, the label
+ * capped at "label_chars" characters of the window's font) plus padding,
+ * stacked glyph-over-label. Walks every item once, at create time only --
+ * the label cap stops one long name inflating the grid. */
 static size2d_t gridview_measure_cell(wuss_gridview_t *gv)
 {
   wuss_t              *wuss;
   bmfont_t            *font;
   wuss_gridview_item_t item;
-  bmfont_width_t       char_w, label_w;
-  int                  glyph_w, glyph_h, i;
+  bmfont_width_t       char_w, text_w;
+  int                  glyph_w, glyph_h, label_w, cap_w, i;
 
   wuss    = gv->window->task->wuss;
   font    = wuss->fonts.fonts[0];
   glyph_w = 0;
   glyph_h = 0;
-
-  for (i = 0; i < gv->count; i++)
-  {
-    gv->item_fn(i, gv->opaque, &item);
-    if (item.glyph == NULL)
-      continue;
-    glyph_w = MAX(glyph_w, item.glyph->size.w);
-    glyph_h = MAX(glyph_h, item.glyph->size.h);
-  }
-
   label_w = 0;
+  cap_w   = 0;
+
   if (font != NULL)
   {
     char_w = 0;
     wuss__text_measure(font, "M", 1, INT_MAX, NULL, &char_w);
-    label_w = char_w * (bmfont_width_t) gv->label_chars;
+    cap_w = (int) char_w * gv->label_chars;
   }
 
-  return SIZE2D(MAX(glyph_w, (int) label_w) + 2 * wuss_STD_GAP,
+  for (i = 0; i < gv->count; i++)
+  {
+    gv->item_fn(i, gv->opaque, &item);
+    if (item.glyph != NULL)
+    {
+      glyph_w = MAX(glyph_w, item.glyph->size.w);
+      glyph_h = MAX(glyph_h, item.glyph->size.h);
+    }
+
+    if (item.label != NULL && font != NULL)
+    {
+      text_w = 0;
+      wuss__text_measure(font, item.label, (int) strlen(item.label), INT_MAX,
+                        NULL, &text_w);
+      label_w = MAX(label_w, MIN((int) text_w, cap_w));
+    }
+  }
+
+  return SIZE2D(MAX(glyph_w, label_w) + 2 * gv->edge_pad,
                glyph_h + wuss__fontset_height(&wuss->fonts, 0) +
-               3 * wuss_STD_GAP);
+               2 * gv->edge_pad + gv->spacing);
 }
 
 result_t wuss_gridview_create(wuss_gridview_t            **out,
@@ -142,6 +154,8 @@ result_t wuss_gridview_create(wuss_gridview_t            **out,
   gv->pow2        = 0;
   gv->selectable  = 1;
   gv->fixed_cell  = 0;
+  gv->edge_pad    = wuss_STD_GAP;
+  gv->spacing     = wuss_STD_GAP;
   gv->has_bg      = 0;
   gv->draw        = NULL;
   gv->cell        = gridview_measure_cell(gv);
@@ -341,7 +355,7 @@ static void gridview_draw_cell(wuss_gridview_t    *gv,
   if (item.glyph != NULL)
   {
     glyph_x = screen_box.x0 + (gv->cell.w - item.glyph->size.w) / 2;
-    glyph_y = screen_box.y0 + wuss_STD_GAP;
+    glyph_y = screen_box.y0 + gv->edge_pad;
     screen_copy_bitmap(&clipped, glyph_x, glyph_y, item.glyph);
   }
 
@@ -353,14 +367,14 @@ static void gridview_draw_cell(wuss_gridview_t    *gv,
     if (len >= (int) sizeof(buf))
       len = (int) sizeof(buf) - 1;
     wuss__text_measure(font, item.label, len, INT_MAX, NULL, &w);
-    if ((int) w > gv->cell.w - 2 * wuss_STD_GAP)
+    if ((int) w > gv->cell.w - 2 * gv->edge_pad)
     {
       bmfont_width_t ellipsis_w, target;
 
       wuss__text_measure(font, GRIDVIEW_ELLIPSIS,
                         (int) strlen(GRIDVIEW_ELLIPSIS), INT_MAX, NULL,
                         &ellipsis_w);
-      target = (bmfont_width_t) MAX(gv->cell.w - 2 * wuss_STD_GAP -
+      target = (bmfont_width_t) MAX(gv->cell.w - 2 * gv->edge_pad -
                                     (int) ellipsis_w, 0);
       wuss__text_measure(font, item.label, len, target, &split, &w);
       if (split > (int) sizeof(buf) - (int) sizeof(GRIDVIEW_ELLIPSIS))
@@ -375,7 +389,7 @@ static void gridview_draw_cell(wuss_gridview_t    *gv,
       memcpy(buf, item.label, (size_t) len);
     }
 
-    label_y = screen_box.y1 - wuss_STD_GAP - height;
+    label_y = screen_box.y1 - gv->edge_pad - height;
     pos.x   = screen_box.x0 + (gv->cell.w - (int) w) / 2;
     pos.y   = label_y + ascent;
     wuss__text_draw(font, &clipped, buf, len, fg, bg, &pos, NULL);
@@ -552,6 +566,14 @@ void wuss_gridview_set_layout(wuss_gridview_t *gv,
 
   gridview_reflow(gv);
   wuss_window_invalidate_visible(gv->window);
+}
+
+void wuss_gridview_set_padding(wuss_gridview_t *gv, int edge, int spacing)
+{
+  gv->edge_pad = MAX(edge, 0);
+  gv->spacing  = MAX(spacing, 0);
+
+  wuss_gridview_remeasure(gv);
 }
 
 void wuss_gridview_set_draw(wuss_gridview_t         *gv,
