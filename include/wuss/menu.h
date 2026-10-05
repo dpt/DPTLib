@@ -237,14 +237,14 @@ result_t wuss_menu_open_at_pointer(wuss_task_t        *task,
 
 /**
  * As wuss_menu_open, but placed with its bottom edge \p gap pixels above the
- * bottom of the screen and its left at \p x, for a menu opened from the icon
- * bar. Unlike wuss_menu_open it does not swallow the next MOUSE_UP, as an
- * icon bar click is delivered on release.
+ * bottom of the screen and horizontally centred on \p x, for a menu opened
+ * from the icon bar. Unlike wuss_menu_open it does not swallow the next
+ * MOUSE_UP, as an icon bar click is delivered on release.
  *
  * \param[in]  task Task that receives the menu's events.
  * \param[in]  menu Menu to show; borrowed, must outlive the open chain.
- * \param[in]  x    Pointer x; the menu's left is nudged as for
- *                  wuss_menu_open.
+ * \param[in]  x    Pointer x; the menu is centred on it, nudged onto the
+ *                  screen if need be.
  * \param[in]  gap  Distance from the screen's bottom edge to the menu's, >
  *                  0.
  * \param[out] out  Filled with the chain handle, or NULL if not wanted.

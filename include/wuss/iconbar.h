@@ -104,9 +104,9 @@ void wuss_iconbar_icon_destroy(wuss_t *wuss, wuss_iconbar_icon_t *icon);
 #ifdef WUSS_MENUS
 /**
  * Open \p menu for an icon bar icon, as wuss_menu_open_above placed at the
- * pointer's x with the bar's standard gap (47px) between the menu's bottom
- * edge and the bottom of the screen. Call it from the icon's wuss_EVENT_ICON
- * handler.
+ * pointer's x, centred on it, with the bar's standard gap (47px) between the
+ * menu's bottom edge and the bottom of the screen. Call it from the icon's
+ * wuss_EVENT_ICON handler.
  *
  * \param[in]  task Task that receives the menu's events.
  * \param[in]  menu Menu to show; borrowed, must outlive the open chain.

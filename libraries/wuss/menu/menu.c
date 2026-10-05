@@ -908,6 +908,10 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   wuss__furniture_carve_for(menu_flags, wuss__button_size_for(wuss, menu_flags),
                             &carve);
 
+  /* an icon bar menu is centred on the pointer, not hung from it */
+  if (parent == NULL && wuss->menu.bottom_gap > 0)
+    at.x -= width / 2;
+
   /* Nudge onto the screen where it can be, but keep the top-left on screen.
    * `at` is the content top-left; the window's visible box also spans the
    * outline on all four sides, the titlebar above and (for a scrolling menu)
@@ -1127,8 +1131,6 @@ result_t wuss_menu_open_above(wuss_task_t        *task,
 
   if (wuss->menu.chain != NULL)
     wuss__menu_abandon(wuss);
-
-  x -= wuss__menu_entry_gutter_left(wuss__fontset_height(&wuss->fonts, 0));
 
   wuss->menu.bottom_gap = gap;
   rc = wuss__menu_spawn(wuss, task, menu, POINT(x, 0), NULL, &root);
