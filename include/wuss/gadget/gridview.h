@@ -218,16 +218,20 @@ void wuss_gridview_set_layout(wuss_gridview_t *gridview,
 
 /**
  * Set the padding inside each cell. The defaults are \ref wuss_STD_GAP for
- * both. Has no effect on a cell size set with \ref
+ * all three. Has no effect on a cell size set with \ref
  * wuss_gridview_set_cell_size, other than where the glyph and label sit.
  * Re-measures the cell, reflows and redraws.
  *
  * \param[in] gridview Handle.
- * \param[in] edge     Pixels between the cell's edges and its contents.
+ * \param[in] pad_x    Pixels between the cell's left and right edges and its
+ *                     contents.
+ * \param[in] pad_y    Pixels between the cell's top and bottom edges and its
+ *                     contents.
  * \param[in] spacing  Pixels between the glyph and the label.
  */
 void wuss_gridview_set_padding(wuss_gridview_t *gridview,
-                               int              edge,
+                               int              pad_x,
+                               int              pad_y,
                                int              spacing);
 
 /**
