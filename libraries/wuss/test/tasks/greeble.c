@@ -595,7 +595,7 @@ result_t greeble_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Greeble",
-    "Prefab-scatter greebling pattern",
+    "Scattered greebling pattern",
     (taskapp_create_fn_t) greeble_create
   };
 

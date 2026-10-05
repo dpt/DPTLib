@@ -100,7 +100,7 @@ result_t tiling_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Tiling",
-    "Fill the screen with a repeated PNG",
+    "Tile screen with PNG",
     (taskapp_create_fn_t) tiling_create
   };
 

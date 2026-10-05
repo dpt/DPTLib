@@ -144,7 +144,7 @@ result_t chasehq_create(wuss_t *wuss, chasehq_task_t **out)
   static const zxtask_ops_t ops =
   {
     "Chase H.Q.",
-    "ZX Spectrum Chase H.Q., natively ported",
+    "Chase and smash bad guys",
     "chasehq",
     Z80_CLOCK_128K,
     chasehq_run,
@@ -205,7 +205,7 @@ result_t chasehq_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Chase H.Q.",
-    "ZX Spectrum Chase H.Q., natively ported",
+    "Chase and smash bad guys",
     (taskapp_create_fn_t) chasehq_create
   };
 

@@ -301,7 +301,7 @@ result_t porter_duff_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Porter-Duff",
-    "Animated Porter-Duff compositing demo",
+    "Animated Porter-Duff compositing",
     (taskapp_create_fn_t) porter_duff_create
   };
 

@@ -415,7 +415,7 @@ result_t particles_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Particles",
-    "Retro explosion particle system",
+    "Retro explosion particles",
     (taskapp_create_fn_t) particles_create
   };
 

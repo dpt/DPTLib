@@ -151,7 +151,7 @@ result_t lissajous_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Lissajous",
-    "Lissajous figure, drifting frequencies",
+    "Drifting Lissajous figure",
     (taskapp_create_fn_t) lissajous_create
   };
 

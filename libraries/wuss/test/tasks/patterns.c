@@ -160,7 +160,7 @@ result_t patterns_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Patterns",
-    "Ordered-dither gradient between two chosen colours",
+    "Dithered two-colour gradient",
     (taskapp_create_fn_t) patterns_create
   };
 

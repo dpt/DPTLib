@@ -224,7 +224,7 @@ result_t palette_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Palette",
-    "Desktop and screen palette grid",
+    "Desktop palette swatches",
     (taskapp_create_fn_t) palette_create
   };
 

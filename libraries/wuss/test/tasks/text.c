@@ -831,7 +831,7 @@ result_t text_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Text",
-    "Sample-text layout with font/colour/spacing pickers",
+    "Text layout sampler",
     (taskapp_create_fn_t) text_create
   };
 
